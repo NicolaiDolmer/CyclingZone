@@ -1,13 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sortRacesByDateDesc, raceDayOfYear } from "./raceCalendarSort.js";
+import { sortRacesByDateDesc, raceDayOfYear, raceSeasonNumber } from "./raceCalendarSort.js";
 
 // #1930 — Afsluttede løb skal som standard vises nyeste-først. Sorteringen spejler
 // kommende-listens dato-nøgle (dateTextToDayOfYear) men faldende. Den rene logik
 // enhedstestes, så rækkefølgen er korrekt uafhængigt af UI-render.
 
-function race(id, dateText) {
-  return { id, pool_race: dateText == null ? null : { date_text: dateText } };
+function race(id, dateText, seasonNumber) {
+  return {
+    id,
+    pool_race: dateText == null ? null : { date_text: dateText },
+    ...(seasonNumber === undefined ? {} : { season: { number: seasonNumber } }),
+  };
 }
 
 test("sorterer nyeste (seneste dato) øverst", () => {
@@ -80,4 +84,45 @@ test("raceDayOfYear læser pool_race.date_text og håndterer manglende dato", ()
   assert.equal(raceDayOfYear(race("x", null)), Infinity);
   assert.equal(raceDayOfYear({}), Infinity);
   assert.equal(raceDayOfYear(undefined), Infinity);
+});
+
+// #3297 — regression af #1930: dato-nøglen manglede en sæson-komponent, så et
+// S1-løb dateret sent på året (dd/mm uden årstal) kunne overhale et S2-løb kørt
+// i går. Sæson skal trumfe dato uanset dd/mm-værdien.
+
+test("raceSeasonNumber læser race.season.number og håndterer manglende sæson", () => {
+  assert.equal(raceSeasonNumber(race("x", "5/7", 2)), 2);
+  assert.equal(raceSeasonNumber(race("x", "5/7")), -Infinity);
+  assert.equal(raceSeasonNumber({}), -Infinity);
+  assert.equal(raceSeasonNumber(undefined), -Infinity);
+});
+
+test("sæson trumfer dato: et S1-løb sent på året lægger sig IKKE over et S2-løb tidligt på året", () => {
+  const races = [
+    race("s1-dec", "20/12", 1),
+    race("s2-aug", "3/8", 2),
+  ];
+  const ids = sortRacesByDateDesc(races).map((r) => r.id);
+  assert.deepEqual(ids, ["s2-aug", "s1-dec"]);
+});
+
+test("nyeste sæson først, dato afgør indbyrdes rækkefølge inden for samme sæson", () => {
+  const races = [
+    race("s1-jan", "2/1", 1),
+    race("s2-mar", "10/3", 2),
+    race("s1-jul", "5/7", 1),
+    race("s2-jan", "2/1", 2),
+  ];
+  const ids = sortRacesByDateDesc(races).map((r) => r.id);
+  assert.deepEqual(ids, ["s2-mar", "s2-jan", "s1-jul", "s1-jan"]);
+});
+
+test("løb uden sæson-felt overhovedet (bagudkompatibilitet: kaldere der ikke henter season_id) sorteres rent på dato som før", () => {
+  const races = [
+    race("mar", "10/3"),
+    race("jul", "5/7"),
+    race("jan", "2/1"),
+  ];
+  const ids = sortRacesByDateDesc(races).map((r) => r.id);
+  assert.deepEqual(ids, ["jul", "mar", "jan"]);
 });

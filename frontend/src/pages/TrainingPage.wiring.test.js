@@ -108,3 +108,16 @@ test("#1895.2 dagens-hint tager højde for rytter-override (samme opløsningsræ
   assert.match(src, /riderOverrideDays/, "skal sende rytterens egen override til resolveDayIntensityDisplay");
   assert.match(src, /weekRhythmTodayHintOwn/);
 });
+
+// #3299: Form/Træthed-kolonnerne foldes ind i portræt (#3045-kontrakten, "hidden
+// sm:table-cell" på både header og celle), men uden en mobil-sort-kontrol kunne
+// spilleren ikke sortere på træthed i portræt — kun se værdien som ren tekst i
+// navne-underlinjen. Samme mønster som RidersPage's MobileSortControl: eksponerer
+// PRÆCIS de samme sort-nøgler (rosterSort.handleSort) som desktop-headerne, kun
+// synlig under sm-breakpointet.
+test("#3299 mobil-sort-kontrol eksponerer træthed (+ form) via rosterSort, kun synlig i portræt", () => {
+  assert.match(src, /sm:hidden[^`]*mb-3/, "skal have et sm:hidden-wrapper (samme klassenavne-mønster som RidersPage)");
+  assert.match(src, /key:\s*"fatigue"/, "sort-options skal inkludere fatigue-nøglen");
+  assert.match(src, /key:\s*"form"/, "sort-options skal inkludere form-nøglen");
+  assert.match(src, /onSort=\{rosterSort\.handleSort\}/, "skal skrive til samme sort-state som desktop-headerne (ingen ny sort-logik)");
+});

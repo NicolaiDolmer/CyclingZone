@@ -109,6 +109,20 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Fatigue is sortable on your phone again",
+          "body": "The portrait fix for the training page brought training back to mobile, but the fatigue column, the one you sort by to see who needs rest, stayed hidden behind the desktop-only column headers. A sort dropdown now lets you pick fatigue (or form) in portrait, no rotating to landscape needed."
+        },
+        "da": {
+          "title": "Træthed kan sorteres på telefonen igen",
+          "body": "Portræt-fixet på trænings-siden bragte træning tilbage til mobilen, men træthed-kolonnen, den du sorterer efter for at se hvem der skal have hvile, var stadig skjult bag de desktop-only kolonne-headers. En sorterings-dropdown lader dig nu vælge træthed (eller form) i portræt, uden at skulle rotere til landskab."
+        },
+        "refs": [3299, 3194]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
         "topic": "Academy",
         "en": {
           "title": "Academy candidate names no longer lead to a dead end",

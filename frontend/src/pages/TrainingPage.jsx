@@ -23,6 +23,7 @@ import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Section, SectionHeader, Button, Select, Checkbox,
   PageLoader, EmptyState, ChevronDownIcon, TeamIcon, XIcon,
+  ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
@@ -100,6 +101,49 @@ function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
           style={{ width: `${info.pct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+// #3299: mobil-sorterings-kontrol — Type/Form/Træthed-headerne er skjult i portræt
+// (#3045-kolonnekontrakten, "hidden sm:table-cell"), og træthed er netop den
+// kolonne spillere sorterer på for at afgøre hvem der skal have hvile (restsymptom
+// efter #3194's portræt-fix). Samme mønster som RidersPage's MobileSortControl:
+// select + retnings-toggle eksponerer PRÆCIS de samme sort-nøgler som desktop-
+// headerne og skriver til samme rosterSort-state via handleSort — ingen ny
+// sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
+function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
+  const options = [
+    { key: "name", label: t("colRider") },
+    { key: "primary_type", label: t("colType") },
+    { key: "form", label: t("form") },
+    { key: "fatigue", label: t("fatigue") },
+  ];
+  const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
+
+  return (
+    <div className="sm:hidden flex items-end gap-2 mb-3">
+      <label className="flex-1 min-w-0">
+        <span className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("mobileSort.label")}</span>
+        <Select size="sm" value={sort ?? ""} onChange={(e) => onSort(e.target.value)} className="w-full">
+          {options.map(({ key, label }) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </Select>
+      </label>
+      <button
+        type="button"
+        onClick={() => sort && onSort(sort)}
+        disabled={!sort}
+        aria-label={dirAria}
+        title={dirAria}
+        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
+          bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors disabled:opacity-40"
+      >
+        {sortDir === "desc"
+          ? <ArrowDownIcon size={16} aria-hidden="true" />
+          : <ArrowUpIcon size={16} aria-hidden="true" />}
+      </button>
     </div>
   );
 }
@@ -918,6 +962,20 @@ export default function TrainingPage() {
             </div>
           </details>
         </Card>
+
+        {/* #3299: mobil-sortering — Form/Træthed sorteres via kolonne-headers på
+            desktop, men headerne er skjult i portræt (#3045-kolonnekontrakten).
+            Uden denne kontrol kunne træthed (den kolonne spillere rent faktisk
+            sorterer på for at se hvem der skal have hvile) slet ikke sorteres i
+            portræt. */}
+        {riders.length > 0 && (
+          <RosterMobileSortControl
+            sort={rosterSort.sort}
+            sortDir={rosterSort.sortDir}
+            onSort={rosterSort.handleSort}
+            t={t}
+          />
+        )}
 
         {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
         {riders.length > 0 && (

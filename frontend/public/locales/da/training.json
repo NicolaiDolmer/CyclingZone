@@ -10,6 +10,11 @@
   "disabledNote": "Daglig træning er sat på pause lige nu. Træningsprogrammer kan stadig sættes op.",
   "form": "Form",
   "fatigue": "Træthed",
+  "mobileSort": {
+    "label": "Sortér efter",
+    "ascAria": "Sorterer stigende, tryk for faldende",
+    "descAria": "Sorterer faldende, tryk for stigende"
+  },
   "recoveryNoteTitle": "Får man energi tilbage hver dag?",
   "recoveryNote": "Ja. Hver nat omkring midnat restituerer hver rytter noget træthed, så den aldrig sidder fast på 100. Hvile- og rolige dage restituerer mest; normal træning lander på et bæredygtigt niveau; hård træning bygger stadig træthed op i løbet af dagen. En høj Recovery-evne gør det hurtigere.",
   "focusGuideTitle": "Hvad hvert fokus træner",
