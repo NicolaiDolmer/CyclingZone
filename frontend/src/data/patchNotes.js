@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.91",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Stage race sponsor bonuses now count every result",
+          "body": "A pagination bug in the sponsor bonus calculation could silently drop stage wins and podiums for races with more than 1000 results, so multi-stage sponsor contracts sometimes underpaid stage win and podium bonuses. All results are counted correctly now."
+        },
+        "da": {
+          "title": "Etapeløbs-sponsorbonusser tæller nu alle resultater",
+          "body": "En pagineringsfejl i sponsorbonus-beregningen kunne stille droppe etapesejre og podier for løb med over 1000 resultater, så flerdags-sponsorkontrakter nogle gange underbetalte etapesejr- og podiebonusser. Alle resultater tælles korrekt nu."
+        },
+        "refs": [3315]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Get notified when your sponsor pays out",
+          "body": "Sponsor income now sends a notification: season-start payouts, race-day income plus any result bonus (combined into one message per race), signing bonuses, and season objective bonuses all show up in your inbox with the amount."
+        },
+        "da": {
+          "title": "Få besked når din sponsor betaler ud",
+          "body": "Sponsorindtægt sender nu en notifikation: sæsonstart-udbetalinger, løbsdags-indkomst plus evt. resultatbonus (samlet i én besked pr. løb), underskriftsbonusser og sæsonmåls-bonusser vises alle i din indbakke med beløbet."
+        },
+        "refs": [3315]
+      }
+    ]
+  },
+  {
     "version": "7.90",
     "date": "2026-08-04",
     "label": "Beta",

@@ -336,7 +336,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
 
     // Pay sponsor income (idempotent: cron-retry må ikke double-pay)
     if (!skipSponsor) {
-      await creditTeam(
+      const sponsorCreditResult = await creditTeam(
         team.id,
         sponsorPayout,
         "sponsor",
@@ -353,6 +353,27 @@ export async function processSeasonStart(seasonId, deps = {}) {
           },
         }
       );
+
+      // #3315 (ejer-godkendt 4/8): notificér holdejeren om sæson-start-
+      // sponsorudbetalingen. Kun ved faktisk kreditering (ikke et idempotent
+      // cron-retry-skip) og kun for et beløb > 0.
+      if (!sponsorCreditResult.skipped && sponsorPayout > 0) {
+        const sponsorName = activeContract?.sponsor_name || "Your sponsor";
+        await notifyManagerSafe(
+          team.id,
+          "sponsor_paid",
+          "Sponsor payout",
+          `${sponsorName} paid out ${sponsorPayout} CZ$ for the new season.`,
+          { supabase: supabaseClient, now: deps.now },
+          {
+            titleCode: "notif.sponsorPaid.seasonStart.title",
+            titleParams: {},
+            messageCode: "notif.sponsorPaid.seasonStart.message",
+            messageParams: { sponsor: sponsorName, amount: sponsorPayout },
+          },
+          { sourcePath: "processSeasonStart.sponsorPaid", seasonId, captureException: deps.captureException }
+        );
+      }
     } else {
       console.log(
         `  ⏭️  ${team.name}: sæson-1-sponsor sprunget over (uberørt startkapital ${INITIAL_BALANCE})`
