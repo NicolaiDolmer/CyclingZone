@@ -89,13 +89,17 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       .order("number", { ascending: true }),
 
     // #1776: akademi-hentning = signing af egen akademirytter til førsteholdet.
-    // Vises som tilgang ("Academy"-kilde, ingen pris). Kun status='signed' —
-    // tilbudte/afviste intakes er ingen tilgang. (Tidligere blev academy_graduation
-    // med status='promoted' brugt, men den tabel har 0 rows i prod; de reelle
+    // Vises som tilgang ("Academy"-kilde). Kun status='signed' — tilbudte/afviste
+    // intakes er ingen tilgang. (Tidligere blev academy_graduation med
+    // status='promoted' brugt, men den tabel har 0 rows i prod; de reelle
     // hentninger ligger i academy_intake.) Service-role (api.js) bypasser RLS, så
     // posten vises også på ANDRE holds historik (#1525).
+    // #2793: signing_fee (persisteret ved signing, se academyIntake.js) er
+    // rytterens kostbasis — uden den kan transfer-profit-panelet ikke parre en
+    // senere sale mod dette køb. NULL på ældre rækker fra før #2793 (kostbasis
+    // ukendt, UI viser det eksplicit i stedet for et bart "unknown").
     supabase.from("academy_intake")
-      .select("id, status, resolved_at, created_at, rider:rider_id(id, firstname, lastname)")
+      .select("id, status, resolved_at, created_at, signing_fee, rider:rider_id(id, firstname, lastname)")
       .eq("team_id", teamId)
       .eq("status", "signed")
       .order("resolved_at", { ascending: false }),
@@ -183,18 +187,22 @@ export async function buildTeamTransferHistory(supabase, teamId) {
     });
   }
 
-  // #1776: akademi-hentning (signing til førsteholdet) som tilgang uden pris.
+  // #1776/#2793: akademi-hentning (signing til førsteholdet) som tilgang.
+  // amount = den persisterede signing-fee (kostbasis) — null på rækker fra
+  // FØR #2793 hvor kostbasen ikke blev gemt (transferProfit.js/UI viser det
+  // eksplicit som "kostbasis ukendt" i stedet for at antage en pris).
   for (const g of academyRes.data || []) {
     const date = g.resolved_at || g.created_at;
+    const fee = g.signing_fee ?? null;
     events.push({
       id: `academy:${g.id}`,
       type: "academy",
       direction: "in", // intern forfremmelse = tilgang til truppen
-      cash_flow: null, // akademi-intake har ingen købspris
+      cash_flow: fee != null ? "out" : null, // signing-fee er en ægte kontant-udgift
       date,
       rider: g.rider,
       counterparty: null, // kilde = akademiet, ikke et modpartshold
-      amount: null,
+      amount: fee,
       season_number: resolveSeason(date),
     });
   }

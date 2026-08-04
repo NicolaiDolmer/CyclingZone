@@ -13487,16 +13487,19 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 //     øjebliksbillede (IKKE kumulativt betalt-til-dato, da løn opkræves som ét
 //     samlet 'salary'-beløb pr. hold pr. sæson og ikke kan splittes akademi/senior
 //     i ledger'en). Vist adskilt fra de kumulative tal for ikke at blande stock/flow.
-//   - Realiserede salg: den ENESTE vej en akademi-udviklet rytter sælges på i dag
-//     er graduerings-flowet (academyGraduation.js "sell"-handlingen) — en
-//     academy_graduation-row med status='sold' der opretter en almindelig
-//     senior-auktion (is_youth=false, seller_team_id=holdet). Matches på
-//     rider_id + seller_team_id. #785-reglen genbruges: en gennemført auktion
-//     uden vinder (og uden garanteret salg) er intet salg.
+//   - Realiserede salg (#2793): salgs-poolen er ALLE nogensinde signede
+//     academy_intake-rækker for holdet — IKKE kun dem der passerede graduerings-
+//     flowet (academyGraduation.js "sell"), da academy_graduation er praktisk
+//     talt tom/uverificeret i prod. Matches mod holdets gennemførte salg, både
+//     via almindelig senior-auktion (is_youth=false, #785-reglen ekskluderer
+//     auktioner uden vinder/garanteret salg) OG via transfermarkedet (accepterede
+//     transfer_offers — den terminale gennemførte tilstand).
 //   - "Salgspræmie" (realiseret værdiskabelse) = current_price - starting_price
-//     for hvert realiseret salg, dvs. beløbet budt op over rytterens markedsværdi
-//     PÅ SALGSTIDSPUNKTET (auctions.starting_price = calculateRiderMarketValue
-//     ved oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
+//     for AUKTIONS-salg, dvs. beløbet budt op over rytterens markedsværdi PÅ
+//     SALGSTIDSPUNKTET (auctions.starting_price = calculateRiderMarketValue ved
+//     oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
+//     Transfermarkeds-salg har ingen tilsvarende baseline og bidrager derfor
+//     kun til salesProceeds, ikke valueCreation (se academyPnl.js).
 router.get("/academy/pnl", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -13522,32 +13525,45 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
       .in("type", ["academy_drift", "academy_signing"]);
     if (financeErr) throw new Error(financeErr.message);
 
-    // Realiserede salg: graduerede akademiryttere holdet valgte at sælge (academyGraduation.js).
-    const { data: soldGrads, error: gradErr } = await supabase
-      .from("academy_graduation")
-      .select("rider_id, resolved_at, riders(firstname, lastname)")
+    // Akademi-udviklede ryttere: ALLE nogensinde signede academy_intake-rækker
+    // for holdet (#2793 — ikke længere afhængig af academy_graduation).
+    const { data: signedIntake, error: intakeErr } = await supabase
+      .from("academy_intake")
+      .select("rider_id, riders(firstname, lastname)")
       .eq("team_id", teamId)
-      .eq("status", "sold");
-    if (gradErr) throw new Error(gradErr.message);
+      .eq("status", "signed");
+    if (intakeErr) throw new Error(intakeErr.message);
+
+    const academyRiderIds = (signedIntake ?? []).map((r) => r.rider_id).filter(Boolean);
+    const riderById = new Map((signedIntake ?? []).map((r) => [r.rider_id, r.riders ?? {}]));
 
     let auctionRows = [];
-    const soldRiderIds = (soldGrads ?? []).map((g) => g.rider_id).filter(Boolean);
-    if (soldRiderIds.length > 0) {
-      const { data, error: aucErr } = await supabase
-        .from("auctions")
-        .select("id, rider_id, current_price, starting_price, current_bidder_id, is_guaranteed_sale, actual_end, status")
-        .eq("seller_team_id", teamId)
-        .eq("is_youth", false)
-        .eq("status", "completed")
-        .in("rider_id", soldRiderIds);
-      if (aucErr) throw new Error(aucErr.message);
-      auctionRows = data ?? [];
+    let transferRows = [];
+    if (academyRiderIds.length > 0) {
+      const [auctionRes, transferRes] = await Promise.all([
+        supabase
+          .from("auctions")
+          .select("id, rider_id, current_price, starting_price, current_bidder_id, is_guaranteed_sale, actual_end, status")
+          .eq("seller_team_id", teamId)
+          .eq("is_youth", false)
+          .eq("status", "completed")
+          .in("rider_id", academyRiderIds),
+        supabase
+          .from("transfer_offers")
+          .select("id, rider_id, offer_amount, counter_amount, updated_at, seller_team_id, status")
+          .eq("seller_team_id", teamId)
+          .eq("status", "accepted")
+          .in("rider_id", academyRiderIds),
+      ]);
+      if (auctionRes.error) throw new Error(auctionRes.error.message);
+      if (transferRes.error) throw new Error(transferRes.error.message);
+      auctionRows = auctionRes.data ?? [];
+      transferRows = transferRes.data ?? [];
     }
 
     const current = computeAcademyCurrent(rosterRows ?? [], { slotsMax: ACADEMY.SLOTS });
     const { driftPaid, signingFeesPaid } = computeAcademyCumulative(financeRows ?? []);
-    const gradByRider = new Map((soldGrads ?? []).map((g) => [g.rider_id, g]));
-    const sales = buildAcademySales(auctionRows, gradByRider);
+    const sales = buildAcademySales(auctionRows, transferRows, riderById);
 
     res.json({
       enabled: true,
