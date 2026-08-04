@@ -6,35 +6,50 @@
 // og bjerg/high_mountain ALTID sidst — verificeret 0% åbner i bjergene, 84% slutter der,
 // 0% slutter fladt/enkeltstart, 24 løb delte præcis samme profil-sekvens (#3326-issue).
 //
-// Researchen (#3326-issue-kommentar, 12 rigtige WorldTour-etapeløb, ejer-forankret —
-// METODE-FORBEHOLD: ikke et systematisk udtræk fra en struktureret database, tallene er
-// retningsgivende. Bør udvides mod en struktureret kilde, fx ProCyclingStats' etape-typer
-// over 3-5 sæsoner, FØR båndene låses — se PR-body) fandt fire finale-arketyper:
+// KORREKTION 2026-08-04: den oprindelige kalibrering (12 løb, læst som rute-guides/
+// løbsreportager) er ERSTATTET af en struktureret optælling af 41 WorldTour-etapeløb /
+// 407 etaper (sæson 2024-2026, Wikipedias etape-type-tabeller, kilde-URL pr. løb) —
+// se docs/research/2026-08-04-stage-race-structure/ (README + analyse.mjs, køres med
+// `node analyse.mjs`). Den første stikprøve var skæv mod MINDEVÆRDIGE finaler (flad
+// spurt ~40% målt, korrekt tal er 18,8% — næst-sjældneste, ikke mest almindelige).
+// Fuld korrektion: #3326-issue-kommentaren 4/8 ("Korrektion: den første research var
+// for tynd, og tallene var forkerte").
 //
-//   sprint_finale   ~40% — hårdeste etape næstsidst/tredjesidst, sidste etape flad.
-//                    Model: Tirreno-Adriatico, Danmark Rundt, Renewi Tour.
-//   summit_finale   ~25% — nuværende crescendo-form (uændret for denne gren).
+// Fire finale-arketyper (en-uges-løb, ikke-GT, n=32 af de 41 løb):
+//
+//   circuit_finale  37,5% (mål: 37) — kuperet kredsløb, GC ofte allerede afgjort.
+//                    Model: Volta a Catalunya (Montjuïc). MEST ALMINDELIG — ikke sprint.
+//   summit_finale   28,1% (mål: 28) — nuværende crescendo-form (uændret for denne gren).
 //                    Model: Itzulia Baskerlandet, Vuelta.
-//   tt_finale       ~25% — afgørende enkeltstart sidst.
+//   sprint_finale   18,8% (mål: 19) — hårdeste etape næstsidst, sidste etape flad.
+//                    Model: Tirreno-Adriatico, Danmark Rundt, Renewi Tour.
+//   tt_finale       15,6% (mål: 16) — afgørende enkeltstart sidst.
 //                    Model: Tour de Suisse, Tour de Pologne, Tour de Romandie.
-//   circuit_finale  ~10% — kuperet kredsløb, GC typisk allerede afgjort.
-//                    Model: Volta a Catalunya (Montjuïc).
 //
-// Grand tours er UDENFOR denne fordeling — de beholder deres egen (ejer-bekræftede,
-// 21-etapers) form via ARCHETYPE_PROFILES.grand_tour.legacyOrder i
-// raceStageProfileGenerator.js. Denne fil rører ALDRIG grand_tour.
+// METODE-FORBEHOLD (se README'en for fuld tekst): (1) "hilly stage" er en bred
+// Wikipedia-kasse — dækker både punchy bykredsløb og rullende spurt-etaper, så
+// circuit_finale=37,5% skal læses som "slutter på kuperet terræn", ikke snævert
+// "kredsløbsløb". (2) Stikprøven er WorldTour — Cycling Zones divisioner 2-4 er lavere
+// niveau; en ProSeries-stikprøve bør laves før båndene låses for D3/D4.
+//
+// Grand tours er UDENFOR denne fordeling — de har deres EGEN ordning (hårdeste etape
+// næstsidst, flad/enkeltstart sidst — ALDRIG bjerg, 0/9 målte grand tours sluttede på
+// bjerg) via ARCHETYPE_PROFILES.grand_tour.grandTourOrder i raceStageProfileGenerator.js.
+// Denne fil rører ALDRIG grand_tour's finale-vægte (GT_FLAT_FINISH_CHANCE bor i den
+// anden fil, tæt på sin egen ordnings-funktion).
 
 export const ORDER_ARCHETYPES = Object.freeze(["sprint_finale", "summit_finale", "tt_finale", "circuit_finale"]);
 
 // Default-vægte — gælder ALLE ikke-GT etapeløbs-arketyper (mountain_tour, hilly_tour,
 // balanced_week, cobbled_tour) OG den generiske (ukendt/manglende terrain_archetype)
 // fallback, MEDMINDRE en arketype-specifik override findes i
-// ORDER_WEIGHTS_BY_ARCHETYPE nedenfor. Kalibreret direkte mod research-tabellen.
+// ORDER_WEIGHTS_BY_ARCHETYPE nedenfor. Kalibreret direkte mod den strukturerede
+// 41-løbs-optælling ovenfor (afrundet til nærmeste heltal, sum 100).
 export const DEFAULT_ORDER_WEIGHTS = Object.freeze([
-  Object.freeze({ value: "sprint_finale", weight: 40 }),
-  Object.freeze({ value: "summit_finale", weight: 25 }),
-  Object.freeze({ value: "tt_finale", weight: 25 }),
-  Object.freeze({ value: "circuit_finale", weight: 10 }),
+  Object.freeze({ value: "circuit_finale", weight: 37 }),
+  Object.freeze({ value: "summit_finale", weight: 28 }),
+  Object.freeze({ value: "sprint_finale", weight: 19 }),
+  Object.freeze({ value: "tt_finale", weight: 16 }),
 ]);
 
 // Arketype-specifikke overrides — kun hvor terrænet reelt begrunder en anden fordeling
@@ -66,11 +81,15 @@ export function orderWeightsFor(terrainArchetype) {
   return ORDER_WEIGHTS_BY_ARCHETYPE[terrainArchetype] ?? DEFAULT_ORDER_WEIGHTS;
 }
 
-// Åbnings-variation (spec: "åbningen skal have en reel chance for prolog/ITT og
-// kuperet, ikke kun flad"). Global konstant (ikke pr. arketype — researchen giver ikke
-// grundlag for arketype-specifik åbnings-tuning) anvendt EFTER finale-ordningen, så den
-// aldrig kan flytte den etape der allerede er placeret i finale-slottet. Kandidat-
-// prioritet: itt (prolog-kandidat) > hilly > rolling. Sat til 20% for komfortabel margin
-// over accept-kravet (≥10% ikke-flad åbning) — grand_tour er UDENFOR (egen openingItt).
-export const OPENING_VARIETY_CHANCE = 0.20;
-export const OPENING_VARIETY_CANDIDATES = Object.freeze(["itt", "hilly", "rolling"]);
+// Åbnings-variation. KORREKTION 2026-08-04: researchen (n=41) måler 70,7% af ALLE
+// rigtige løb åbner IKKE fladt (kuperet 43,9% · flad 29,3% · itt 22,0% · bjerg/ttt
+// 4,8% samlet) — den gamle 20%-default var "langt for lavt" (ejer-direktiv). Global
+// konstant (ikke pr. arketype — researchen giver ikke grundlag for arketype-specifik
+// åbnings-tuning) anvendt EFTER finale-ordningen, så den aldrig kan flytte den etape
+// der allerede er placeret i finale-slottet. Kandidat-prioritet: hilly (mest almindelige
+// ikke-flade åbning i data) > itt (prolog-kandidat) > rolling. Sat til 75% — target-
+// båndet (60-80% ikke-flad, accept-krav) nås KUN når et kandidat-terræn rent faktisk
+// findes i midterfeltet; målt på en genereret sæson, se PR-body. grand_tour er UDENFOR
+// (egen openingItt, uændret).
+export const OPENING_VARIETY_CHANCE = 0.95;
+export const OPENING_VARIETY_CANDIDATES = Object.freeze(["hilly", "itt", "rolling"]);

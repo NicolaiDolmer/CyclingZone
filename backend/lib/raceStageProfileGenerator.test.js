@@ -20,6 +20,7 @@ import {
   timeTrialCap,
   applyOrderArchetype,
   applyOpeningVariety,
+  SPRINT_FINALE_EARLY_DECIDER_CHANCE,
 } from "./raceStageProfileGenerator.js";
 import {
   ORDER_ARCHETYPES,
@@ -27,6 +28,7 @@ import {
   ORDER_WEIGHTS_BY_ARCHETYPE,
   orderWeightsFor,
   OPENING_VARIETY_CHANCE,
+  OPENING_VARIETY_CANDIDATES,
 } from "./raceStageOrderProfiles.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
@@ -591,4 +593,88 @@ test("andre stage-arketyper er upåvirkede af openingItt (summit_tour etape 1 er
     if (stages[0].profile_type !== "itt") sawNonItt = true;
   }
   assert.ok(sawNonItt, "summit_tour må ikke systematisk åbne med itt");
+});
+
+// ── #3326-korrektion 2026-08-04: 41-løbs-research — GT'ens egen ordning ──────────
+// 0/9 rigtige grand tours (2024-2026) sluttede på bjerg; hårdeste etape lå næstsidst
+// i 88,9% af tilfældene. Se raceStageOrderProfiles.js + toGrandTourFinale.
+
+test("#3326-korrektion grand_tour (21): ALDRIG bjerg-finale over mange seeds (0/9 i researchen)", () => {
+  const HARD = new Set(["mountain", "high_mountain"]);
+  for (let seed = 1; seed <= 300; seed++) {
+    const stages = generateRaceStageProfiles(
+      { id: `gtfin-${seed}`, race_type: "stage_race", stages: 21, pool_race_id: `pool-gtfin-${seed}`, terrain_archetype: "grand_tour" },
+      { seed }
+    );
+    const last = stages[stages.length - 1].profile_type;
+    assert.ok(!HARD.has(last), `seed ${seed}: grand_tour sluttede på bjerg (${last})`);
+  }
+});
+
+test("#3326-korrektion grand_tour (21): hårdeste etape ligger næstsidst (ikke sidst, ikke tidligere)", () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    const stages = generateRaceStageProfiles(
+      { id: `gtpos-${seed}`, race_type: "stage_race", stages: 21, pool_race_id: `pool-gtpos-${seed}`, terrain_archetype: "grand_tour" },
+      { seed }
+    );
+    const types = stages.map((s) => s.profile_type);
+    // "Hårdeste" = high_mountain hvis til stede, ellers mountain (crescendo-scaffoldens
+    // sidste tilbageværende element, jf. toGrandTourFinale).
+    const hardestType = types.includes("high_mountain") ? "high_mountain" : "mountain";
+    const hardestIdx = types.lastIndexOf(hardestType);
+    assert.equal(hardestIdx, types.length - 2, `seed ${seed}: hårdeste (${hardestType}) ikke næstsidst (${types.join(",")})`);
+  }
+});
+
+test("#3326-korrektion grand_tour (21): finalen er flad/rullende eller enkeltstart, over mange seeds ses begge", () => {
+  const finales = new Set();
+  for (let seed = 1; seed <= 300; seed++) {
+    const stages = generateRaceStageProfiles(
+      { id: `gtfinale-${seed}`, race_type: "stage_race", stages: 21, pool_race_id: `pool-gtfinale-${seed}`, terrain_archetype: "grand_tour" },
+      { seed }
+    );
+    const last = stages[stages.length - 1].profile_type;
+    assert.ok(["flat", "rolling", "itt"].includes(last), `seed ${seed}: uventet GT-finale ${last}`);
+    finales.add(last);
+  }
+  assert.ok(finales.has("flat") || finales.has("rolling"), "forventede mindst én flad/rullende GT-finale");
+  assert.ok(finales.has("itt"), "forventede mindst én enkeltstart-GT-finale (~22% i researchen)");
+});
+
+// ── #3326-korrektion 2026-08-04: sprint_finale's "tredjesidste sker praktisk taget
+// aldrig" (research n=32: kun 3,1%) ──────────────────────────────────────────────
+
+test("#3326-korrektion SPRINT_FINALE_EARLY_DECIDER_CHANCE er lav (research: 3,1%, ikke 50%)", () => {
+  assert.ok(SPRINT_FINALE_EARLY_DECIDER_CHANCE > 0 && SPRINT_FINALE_EARLY_DECIDER_CHANCE <= 0.1);
+});
+
+test("#3326-korrektion applyOrderArchetype sprint_finale: hårdeste er næstsidst langt de fleste gange", () => {
+  const HARD = new Set(["mountain", "high_mountain"]);
+  // ÉN hård etape i multisættet (ikke to som i "hårdeste FØR sidste dag"-testen ovenfor)
+  // — så det rykkede element er entydigt, og lastIndexOf finder netop DEN.
+  let nextToLast = 0;
+  const N = 400;
+  for (let seed = 1; seed <= N; seed++) {
+    const types = ["flat", "rolling", "hilly", "high_mountain", "flat"];
+    const ordered = applyOrderArchetype(makeRng(seed), types, "sprint_finale");
+    const hardestIdx = ordered.lastIndexOf("high_mountain");
+    assert.ok(HARD.has(ordered[hardestIdx]));
+    if (hardestIdx === ordered.length - 2) nextToLast++;
+  }
+  assert.ok(nextToLast / N >= 0.85, `kun ${nextToLast}/${N} næstsidst — forventede ≥85% (research: tredjesidste er sjælden)`);
+});
+
+// ── #3326-korrektion 2026-08-04: åbning — kuperet skal være hyppigste ikke-flade
+// åbning (research n=41: kuperet 43,9% > itt 22,0% > bjerg/ttt 4,8%) ─────────────
+
+test("#3326-korrektion OPENING_VARIETY_CANDIDATES: hilly prioriteret FØR itt", () => {
+  assert.deepEqual(OPENING_VARIETY_CANDIDATES, ["hilly", "itt", "rolling"]);
+});
+
+test("#3326-korrektion applyOpeningVariety: vælger hilly over itt når begge findes i midterfeltet", () => {
+  for (let seed = 1; seed <= 200; seed++) {
+    const ordered = ["flat", "hilly", "itt", "mountain", "flat"];
+    const varied = applyOpeningVariety(makeRng(seed), ordered.slice());
+    if (varied[0] !== "flat") assert.equal(varied[0], "hilly", `seed ${seed}: valgte ${varied[0]} i stedet for hilly`);
+  }
 });
