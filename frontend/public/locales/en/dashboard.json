@@ -118,6 +118,7 @@
     },
     "standings": {
       "title": "Division {division} · Standings",
+      "titlePool": "{label} · Standings",
       "linkAll": "Full standings →",
       "empty": "No season data yet",
       "emptyCta": "View full standings →"
