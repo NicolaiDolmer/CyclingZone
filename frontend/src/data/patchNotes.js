@@ -79,6 +79,19 @@ export const PATCHES = [
         "refs": [2793]
       },
       {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "See why your sponsor pays you",
+          "body": "The Sponsor tab on the Finance page now breaks the season's sponsor income down into three expandable groups: the guaranteed season base, one line per race showing days and rate, and every bonus you have earned. A result bonus cap, if your deal has one, shows how much of it you have used."
+        },
+        "da": {
+          "title": "Se hvorfor din sponsor betaler dig",
+          "body": "Sponsor-fanen på Finance-siden bryder nu sæsonens sponsorindtægt ned i tre udfoldelige grupper: den garanterede sæsonbase, én linje pr. løb med dage og rate, og alle de bonusser du har tjent. Har din aftale et resultatbonus-loft, viser en linje hvor meget af det du har brugt."
+        }
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "topic": "Races",

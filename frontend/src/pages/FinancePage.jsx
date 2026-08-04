@@ -9,6 +9,7 @@ import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
 import SponsorContractPanel from "../components/SponsorContractPanel";
+import SponsorIncomeBreakdown from "../components/SponsorIncomeBreakdown";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
@@ -775,6 +776,13 @@ export default function FinancePage() {
 
         {/* ───────────────────────────── Sponsor ───────────────────────────── */}
         <TabPanel value="sponsors">
+          {/* "Sponsor income" (ejer-godkendt mockup 4/8) — HVORFOR holdet får
+              sponsorpenge (udfoldelig gruppering). Placeret over kontrakt-detaljerne så den mest
+              spillerrelevante information (hvad har jeg faktisk fået, og hvorfor)
+              møder øjet først; vilkårene (SponsorContractPanel) følger under. */}
+          <div className="mb-4">
+            <SponsorIncomeBreakdown />
+          </div>
           <SponsorContractPanel />
         </TabPanel>
 
