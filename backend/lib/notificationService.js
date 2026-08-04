@@ -341,16 +341,30 @@ export async function defaultFetchFirstTimeManagers({ supabase, race, userIds })
       .from("teams")
       .select("id, user_id")
       .in("user_id", userIds);
-    if (teamsError || !teams?.length) return new Set();
+    if (teamsError) {
+      // #2389 A2: var 100% stille — en fejlende first-timer-lookup degraderer
+      // hele #3310-featurens varmere copy tavst til standard for alle, uden
+      // noget logspor overhovedet.
+      console.error(`  ❌ first-time-manager-lookup fejlede (teams, race ${race?.id}):`, teamsError?.message || teamsError);
+      captureException(teamsError, { tags: { flow: "notifications", stage: "first-time-managers-teams" }, raceId: race?.id });
+      return new Set();
+    }
+    if (!teams?.length) return new Set();
     const { data: other, error: otherError } = await supabase
       .from("race_results")
       .select("team_id")
       .in("team_id", teams.map((t) => t.id))
       .neq("race_id", race.id);
-    if (otherError) return new Set();
+    if (otherError) {
+      console.error(`  ❌ first-time-manager-lookup fejlede (race_results, race ${race?.id}):`, otherError?.message || otherError);
+      captureException(otherError, { tags: { flow: "notifications", stage: "first-time-managers-race-results" }, raceId: race?.id });
+      return new Set();
+    }
     const veteranTeamIds = new Set((other ?? []).map((r) => r.team_id));
     return new Set(teams.filter((t) => !veteranTeamIds.has(t.id)).map((t) => t.user_id));
-  } catch {
+  } catch (err) {
+    console.error(`  ❌ first-time-manager-lookup fejlede (race ${race?.id}):`, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "first-time-managers" }, raceId: race?.id });
     return new Set();
   }
 }
