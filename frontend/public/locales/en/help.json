@@ -1154,7 +1154,7 @@
     },
     "whyReportFaq": {
       "q": "How can I see why a result happened?",
-      "a": "Race pages explain notable outcomes in plain language, not just numbers. Small badges next to a rider's name flag things like a helper who sacrificed his own placing for the captain, a pre-stage favorite who had an off day, or a rider who timed his form peak perfectly. A 'The bigger picture' block on the stage page adds a sentence for bigger swings, like a change of overall leader. The exact numbers behind a result stay hidden; only the story is shown."
+      "a": "Race pages explain notable outcomes in plain language, not just numbers. Small badges next to a rider's name flag things like a helper who sacrificed his own placing for the captain, a pre-stage favorite who had an off day, or a rider who timed his form peak perfectly. A 'The bigger picture' block on the stage page adds a sentence for bigger swings, like a change of overall leader. The exact numbers behind a result stay hidden; only the story is shown. The 'off day' badge can, by construction, only ever land on that stage's strongest rider on paper (never on a helper riding in support of a captain), so it says nothing about fatigue or how much rest a rider has had."
     },
     "contractExpiryRetirementFaq": {
       "q": "What happens to expiring contracts and older riders at the season change?",
