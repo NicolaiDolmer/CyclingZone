@@ -39,6 +39,7 @@ import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
+import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
 import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
 import { SEASON_AUTO_TRANSITION_ENABLED } from "./lib/economyConstants.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
@@ -547,6 +548,25 @@ async function runSquadEnforcementCron() {
 }
 
 // ─── Daglig træning: assistent-sweep (#1305) ─────────────────────────────────
+
+// #2180 — 36t-før-løbsstart "mangler holdudtagelse"-varsel (indbakke). Kører hele
+// tiden (ikke kl.22-gatet som trænings-/scout-sweepene) — et løb kan starte når som
+// helst i døgnet, så varslet skal kunne fyre uafhængigt af den daglige rytme.
+async function runSelectionWarningSweepCron() {
+  const result = await runSelectionWarningSweep({ supabase, now: new Date() });
+  if (result.warned) {
+    console.log(`📋 Holdudtagelse-varsel: ${result.warned} hold varslet (løb <36t væk uden manuel udtagelse)`);
+  }
+  if (result.failed) {
+    console.error(`❌ Holdudtagelse-varsel: ${result.failed} notifikationer fejlede (per-hold try/catch isoleret)`);
+    // #2389 A2: aggregeret capture pr. tick (mirror trænings-/heal-sweep-mønstret) —
+    // en systemisk notif-fejl her betyder spillere IKKE bliver advaret før deadline.
+    sentryCapture(new Error(`selection warning sweep: ${result.failed} notifikationer fejlede`), {
+      tags: { cron: "selection-warning" },
+      extra: { racesDue: result.racesDue, warned: result.warned, deduped: result.deduped, failed: result.failed },
+    });
+  }
+}
 
 async function runTrainingSweepCron() {
   const result = await runTrainingSweep({ supabase, now: new Date() });
@@ -1115,6 +1135,7 @@ const ALL_CRON_MONITORS = [
   ["auctions", CRON_MONITOR_1MIN],
   ["deadline-day", CRON_MONITOR_5MIN],
   ["squad-enforcement", CRON_MONITOR_5MIN],
+  ["selection-warning", CRON_MONITOR_5MIN],
   ["debt-warnings", CRON_MONITOR_24H],
   ["board-auto-accept", CRON_MONITOR_30MIN],
   ["board-mid-season", CRON_MONITOR_30MIN],
@@ -1185,6 +1206,13 @@ export function startCron() {
   // Every 5 minutes: squad enforcement (kun aktiv på lukkede vinduer der ikke er enforced)
   setInterval(
     trackedTick("squad enforcement", monitorCron("squad-enforcement", runSquadEnforcementCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Every 5 minutes: #2180 "mangler holdudtagelse"-varsel — løb <36t væk uden
+  // MANUEL udtagelse. notifyTeamOwner-dedup (24t) holder gentagne ticks harmløse.
+  setInterval(
+    trackedTick("selection warning", monitorCron("selection-warning", runSelectionWarningSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 
