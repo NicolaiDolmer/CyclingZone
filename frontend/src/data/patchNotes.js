@@ -343,11 +343,11 @@ export const PATCHES = [
         "topic": "Navigation",
         "en": {
           "title": "The race calendar now lives inside the Planning hub",
-          "body": "The calendar is the fourth tab in the Planning hub, next to Team selection, Form plan and Strategy — so everything you use to plan your season sits on one page. The Planning menu group is down to a single entry. Nothing about the calendar itself has changed: same month grid, same season and division pickers, same clickable race chips. The old /calendar link and every button that pointed there redirect to the new tab automatically."
+          "body": "The calendar is the fourth tab in the Planning hub, next to Team selection, Form plan and Strategy, so everything you use to plan your season sits on one page. The Planning menu group is down to a single entry. Nothing about the calendar itself has changed: same month grid, same season and division pickers, same clickable race chips. The old /calendar link and every button that pointed there redirect to the new tab automatically."
         },
         "da": {
           "title": "Løbskalenderen bor nu inde i Planlægnings-hubben",
-          "body": "Kalenderen er den fjerde fane i Planlægnings-hubben, ved siden af Holdudtagelse, Formplan og Strategi — så alt du bruger til at planlægge din sæson står på én side. Menugruppen Planlægning er nede på ét enkelt punkt. Intet i selve kalenderen er ændret: samme måneds-grid, samme sæson- og divisionsvælgere, samme klikbare løbs-chips. Det gamle /calendar-link og alle knapper der pegede derhen sendes automatisk videre til den nye fane."
+          "body": "Kalenderen er den fjerde fane i Planlægnings-hubben, ved siden af Holdudtagelse, Formplan og Strategi, så alt du bruger til at planlægge din sæson står på én side. Menugruppen Planlægning er nede på ét enkelt punkt. Intet i selve kalenderen er ændret: samme måneds-grid, samme sæson- og divisionsvælgere, samme klikbare løbs-chips. Det gamle /calendar-link og alle knapper der pegede derhen sendes automatisk videre til den nye fane."
         },
         "refs": [3102]
       }
@@ -385,11 +385,11 @@ export const PATCHES = [
         "topic": "Navigation",
         "en": {
           "title": "One Planning hub: Team selection, Form plan and Strategy under a single menu entry",
-          "body": "The three planning surfaces now live together on one page with tabs: Team selection (the race board, unchanged), Form plan (the season planner) and Strategy. The Planning menu group shrinks from four entries to two (Planning and Calendar). The old Races page has been dissolved: the world race catalogue and the completed-races results panel moved to the Results hub (under Archive and Latest respectively). Every old link and bookmark — /races, /planner, the strategy page — redirects to the right tab automatically, and nothing about how the race board works has changed."
+          "body": "The three planning surfaces now live together on one page with tabs: Team selection (the race board, unchanged), Form plan (the season planner) and Strategy. The Planning menu group shrinks from four entries to two (Planning and Calendar). The old Races page has been dissolved: the world race catalogue and the completed-races results panel moved to the Results hub (under Archive and Latest respectively). Every old link and bookmark (/races, /planner, the strategy page) redirects to the right tab automatically, and nothing about how the race board works has changed."
         },
         "da": {
           "title": "Én Planlægnings-hub: Holdudtagelse, Formplan og Strategi under ét menupunkt",
-          "body": "De tre planlægnings-flader bor nu sammen på én side med faner: Holdudtagelse (løbs-boardet, uændret), Formplan (sæsonplanlæggeren) og Strategi. Menugruppen Planlægning skrumper fra fire punkter til to (Planlægning og Kalender). Den gamle Løb-side er opløst: verdens-løbskataloget og resultat-panelet med afsluttede løb er flyttet til Resultat-hubben (under henholdsvis Arkiv og Seneste). Alle gamle links og bogmærker — /races, /planner, strategisiden — sendes automatisk videre til den rigtige fane, og intet i måden boardet virker på er ændret."
+          "body": "De tre planlægnings-flader bor nu sammen på én side med faner: Holdudtagelse (løbs-boardet, uændret), Formplan (sæsonplanlæggeren) og Strategi. Menugruppen Planlægning skrumper fra fire punkter til to (Planlægning og Kalender). Den gamle Løb-side er opløst: verdens-løbskataloget og resultat-panelet med afsluttede løb er flyttet til Resultat-hubben (under henholdsvis Arkiv og Seneste). Alle gamle links og bogmærker (/races, /planner, strategisiden) sendes automatisk videre til den rigtige fane, og intet i måden boardet virker på er ændret."
         },
         "refs": [3102]
       }
@@ -448,11 +448,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "The extend-contract button now tells you upfront when a rider is at the cap",
-          "body": "Riders at the contract-extension cap (season number + 3, see the previous fix) still showed a normal 'Extend contract' button — clicking it only failed after you tried, with no warning beforehand. The button is now disabled with an explanation ('Contract at maximum length') whenever a rider can't be extended further, on both the rider profile and the squad page's manage panel, so you never click into a request that was always going to be rejected."
+          "body": "Riders at the contract-extension cap (season number + 3, see the previous fix) still showed a normal 'Extend contract' button: clicking it only failed after you tried, with no warning beforehand. The button is now disabled with an explanation ('Contract at maximum length') whenever a rider can't be extended further, on both the rider profile and the squad page's manage panel, so you never click into a request that was always going to be rejected."
         },
         "da": {
           "title": "Forlæng kontrakt-knappen fortæller nu på forhånd når en rytter er på loftet",
-          "body": "Ryttere på kontrakt-forlængelses-loftet (sæsonnummer + 3, se forrige rettelse) viste stadig en helt normal 'Forlæng kontrakt'-knap — klikket fejlede først EFTER forsøget, uden varsel på forhånd. Knappen er nu deaktiveret med en forklaring ('Kontrakt på maksimal længde') når en rytter ikke kan forlænges yderligere, både på rytterprofilen og holdsidens administrationspanel — så du aldrig klikker dig ind i et forsøg der altid var dømt til at blive afvist."
+          "body": "Ryttere på kontrakt-forlængelses-loftet (sæsonnummer + 3, se forrige rettelse) viste stadig en helt normal 'Forlæng kontrakt'-knap: klikket fejlede først EFTER forsøget, uden varsel på forhånd. Knappen er nu deaktiveret med en forklaring ('Kontrakt på maksimal længde') når en rytter ikke kan forlænges yderligere, både på rytterprofilen og holdsidens administrationspanel, så du aldrig klikker dig ind i et forsøg der altid var dømt til at blive afvist."
         },
         "refs": [3164]
       }
@@ -490,11 +490,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Repeated contract extensions can no longer push a rider's contract years into the future",
-          "body": "Extending a rider's contract from their profile added a season and renegotiated the salary — but nothing stopped you from doing it again and again in the same sitting, locking in a low salary many seasons ahead. Extensions are now capped: a contract's expiry season can never be pushed more than 3 seasons past the current one. Trying to extend past that cap is now blocked with a clear message instead of silently succeeding."
+          "body": "Extending a rider's contract from their profile added a season and renegotiated the salary, but nothing stopped you from doing it again and again in the same sitting, locking in a low salary many seasons ahead. Extensions are now capped: a contract's expiry season can never be pushed more than 3 seasons past the current one. Trying to extend past that cap is now blocked with a clear message instead of silently succeeding."
         },
         "da": {
           "title": "Gentagne kontraktforlængelser kan ikke længere skubbe en rytters kontrakt årevis frem",
-          "body": "At forlænge en rytters kontrakt fra profilsiden lagde en sæson til og genforhandlede lønnen — men intet stoppede dig i at gøre det igen og igen i samme session, så en lav løn blev låst mange sæsoner frem. Forlængelser har nu et loft: en kontrakts udløbssæson kan aldrig rykkes mere end 3 sæsoner forbi den nuværende. Forsøger du at forlænge forbi loftet, blokeres det nu med en tydelig besked i stedet for stille at lykkes."
+          "body": "At forlænge en rytters kontrakt fra profilsiden lagde en sæson til og genforhandlede lønnen, men intet stoppede dig i at gøre det igen og igen i samme session, så en lav løn blev låst mange sæsoner frem. Forlængelser har nu et loft: en kontrakts udløbssæson kan aldrig rykkes mere end 3 sæsoner forbi den nuværende. Forsøger du at forlænge forbi loftet, blokeres det nu med en tydelig besked i stedet for stille at lykkes."
         },
         "refs": [3143]
       },
@@ -504,11 +504,11 @@ export const PATCHES = [
         "topic": "Squad",
         "en": {
           "title": "Your squad page now shows which riders count against the 8-rider sell-block",
-          "body": "Selling, releasing or auctioning your own rider is blocked if it would leave your team below the 8 riders needed to race once expiring contracts and retirement risk at the next season change are counted — but the squad page gave no clue which riders counted, so a blocked sale looked arbitrary. Your squad list now shows a 'contract expiring' or 'retirement risk' badge next to every rider who counts, and a blocked sale names the specific riders in the error message instead of just a number. The rule itself is unchanged — this only makes it visible before you try to sell."
+          "body": "Selling, releasing or auctioning your own rider is blocked if it would leave your team below the 8 riders needed to race once expiring contracts and retirement risk at the next season change are counted, but the squad page gave no clue which riders counted, so a blocked sale looked arbitrary. Your squad list now shows a 'contract expiring' or 'retirement risk' badge next to every rider who counts, and a blocked sale names the specific riders in the error message instead of just a number. The rule itself is unchanged: this only makes it visible before you try to sell."
         },
         "da": {
           "title": "Din holdside viser nu hvilke ryttere der tæller mod 8-rytter-salgsspærren",
-          "body": "Salg, frigivelse eller auktion af din egen rytter blokeres hvis det ville efterlade dit hold under de 8 ryttere der kræves for at stille til start, når kontraktudløb og pensionsrisiko ved næste sæsonskifte tælles med — men holdsiden gav intet fingerpeg om hvilke ryttere der talte, så et blokeret salg virkede vilkårligt. Din rytterliste viser nu en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller, og et blokeret salg navngiver de konkrete ryttere i fejlbeskeden i stedet for bare et tal. Selve reglen er uændret — dette gør den blot synlig, før du forsøger at sælge."
+          "body": "Salg, frigivelse eller auktion af din egen rytter blokeres hvis det ville efterlade dit hold under de 8 ryttere der kræves for at stille til start, når kontraktudløb og pensionsrisiko ved næste sæsonskifte tælles med, men holdsiden gav intet fingerpeg om hvilke ryttere der talte, så et blokeret salg virkede vilkårligt. Din rytterliste viser nu en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller, og et blokeret salg navngiver de konkrete ryttere i fejlbeskeden i stedet for bare et tal. Selve reglen er uændret: dette gør den blot synlig, før du forsøger at sælge."
         },
         "refs": [3097]
       }
@@ -525,11 +525,11 @@ export const PATCHES = [
         "topic": "Auctions",
         "en": {
           "title": "Exhausted auto-bids now cancel themselves and release your reserved balance",
-          "body": "When someone outbid your auto-bid above its cap, the auto-bid stayed on the auction as a dead entry — it could never fire again, but it kept part of your balance reserved until you deleted it yourself, and if you were leapfrogged without ever leading you got no message at all. An outbid auto-bid is now cancelled automatically, the reservation is released right away, and you always get a notification saying so."
+          "body": "When someone outbid your auto-bid above its cap, the auto-bid stayed on the auction as a dead entry: it could never fire again, but it kept part of your balance reserved until you deleted it yourself, and if you were leapfrogged without ever leading you got no message at all. An outbid auto-bid is now cancelled automatically, the reservation is released right away, and you always get a notification saying so."
         },
         "da": {
           "title": "Udmattede autobud annullerer nu sig selv og frigiver din reserverede saldo",
-          "body": "Når nogen overbød dit autobud over dets loft, blev autobuddet liggende på auktionen som en død række — det kunne aldrig byde igen, men det holdt en del af din saldo reserveret indtil du selv slettede det, og blev du sprunget over uden nogensinde at føre, fik du slet ingen besked. Et overbudt autobud annulleres nu automatisk, reservationen frigives med det samme, og du får altid en notifikation om det."
+          "body": "Når nogen overbød dit autobud over dets loft, blev autobuddet liggende på auktionen som en død række: det kunne aldrig byde igen, men det holdt en del af din saldo reserveret indtil du selv slettede det, og blev du sprunget over uden nogensinde at føre, fik du slet ingen besked. Et overbudt autobud annulleres nu automatisk, reservationen frigives med det samme, og du får altid en notifikation om det."
         },
         "refs": [230]
       }
@@ -546,11 +546,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Rider stats no longer disappear when you hold your phone upright",
-          "body": "Rider tables dropped their numbers in portrait. The Rider database was the worst of it — upright you got a name, a nationality, a type, a team and an age, and nothing else; turn the phone sideways and the stats appeared. My team, Academy, Wishlist and Daily training had the same gap. All five now use the same rule: the name column stays put while you scroll sideways, and the columns that don't fit fold into a second line under the rider's name instead of vanishing. You get type, age, rating and value without rotating anything."
+          "body": "Rider tables dropped their numbers in portrait. The Rider database was the worst of it: upright you got a name, a nationality, a type, a team and an age, and nothing else; turn the phone sideways and the stats appeared. My team, Academy, Wishlist and Daily training had the same gap. All five now use the same rule: the name column stays put while you scroll sideways, and the columns that don't fit fold into a second line under the rider's name instead of vanishing. You get type, age, rating and value without rotating anything."
         },
         "da": {
           "title": "Rytter-stats forsvinder ikke længere når du holder telefonen oprejst",
-          "body": "Rytter-tabeller tabte deres tal i portræt. Rytterdatabasen var værst — oprejst fik du navn, nationalitet, type, hold og alder, og intet andet; vippede du telefonen, kom stats frem. My team, Akademi, Wishlist og Daily training havde samme hul. Alle fem følger nu samme regel: navnekolonnen bliver stående når du scroller sidelæns, og de kolonner der ikke er plads til, foldes ind på en anden linje under rytterens navn i stedet for at forsvinde. Du får type, alder, rating og værdi uden at dreje noget."
+          "body": "Rytter-tabeller tabte deres tal i portræt. Rytterdatabasen var værst: oprejst fik du navn, nationalitet, type, hold og alder, og intet andet; vippede du telefonen, kom stats frem. My team, Akademi, Wishlist og Daily training havde samme hul. Alle fem følger nu samme regel: navnekolonnen bliver stående når du scroller sidelæns, og de kolonner der ikke er plads til, foldes ind på en anden linje under rytterens navn i stedet for at forsvinde. Du får type, alder, rating og værdi uden at dreje noget."
         },
         "refs": [3045]
       }
@@ -567,11 +567,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Rider and staff numbers are colour-coded against the real field",
-          "body": "The colour scale behind every ability and rating was anchored to numbers that no longer matched the game. Green meant \"solid\" from 42 up, but the median rider ability is 12 and only the top 3% clear 53 — so almost every rider on a human team rendered the same grey, and the colour told you nothing. The scale is now anchored to the actual population: grey is typical, green is top quarter, yellow is top tenth, gold is top 3%. Staff get their own scale, because staff numbers come from a different model and were reading far too high on the rider one. The top of the scale is amber instead of red, so an elite rider no longer shares a colour with errors and warnings. No rider or staff member changed — only the colour used to show them."
+          "body": "The colour scale behind every ability and rating was anchored to numbers that no longer matched the game. Green meant \"solid\" from 42 up, but the median rider ability is 12 and only the top 3% clear 53, so almost every rider on a human team rendered the same grey, and the colour told you nothing. The scale is now anchored to the actual population: grey is typical, green is top quarter, yellow is top tenth, gold is top 3%. Staff get their own scale, because staff numbers come from a different model and were reading far too high on the rider one. The top of the scale is amber instead of red, so an elite rider no longer shares a colour with errors and warnings. No rider or staff member changed, only the colour used to show them."
         },
         "da": {
           "title": "Rytter- og staff-tal er nu farvet efter det rigtige felt",
-          "body": "Farveskalaen bag alle evner og ratings var ankret til tal der ikke længere passede til spillet. Grøn betød \"solid\" fra 42 og op, men en median rytterevne er 12, og kun de øverste 3 % kommer over 53 — så næsten alle ryttere på et menneskehold stod i samme grå, og farven fortalte dig ingenting. Skalaen er nu ankret til den faktiske population: grå er typisk, grøn er øverste fjerdedel, gul er øverste tiendedel, guld er øverste 3 %. Staff har fået deres egen skala, fordi staff-tal kommer fra en anden model og lå alt for højt på rytter-skalaen. Toppen af skalaen er rav i stedet for rød, så en elite-rytter ikke længere deler farve med fejl og advarsler. Ingen rytter eller ansat har ændret sig — kun farven de vises med."
+          "body": "Farveskalaen bag alle evner og ratings var ankret til tal der ikke længere passede til spillet. Grøn betød \"solid\" fra 42 og op, men en median rytterevne er 12, og kun de øverste 3 % kommer over 53, så næsten alle ryttere på et menneskehold stod i samme grå, og farven fortalte dig ingenting. Skalaen er nu ankret til den faktiske population: grå er typisk, grøn er øverste fjerdedel, gul er øverste tiendedel, guld er øverste 3 %. Staff har fået deres egen skala, fordi staff-tal kommer fra en anden model og lå alt for højt på rytter-skalaen. Toppen af skalaen er rav i stedet for rød, så en elite-rytter ikke længere deler farve med fejl og advarsler. Ingen rytter eller ansat har ændret sig, kun farven de vises med."
         },
         "refs": [2890]
       }
@@ -588,11 +588,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Race days now line up with the calendar",
-          "body": "A race day in the Race Hub was a rolling 24 hours counted from the season's very first stage, not an actual day. Because the racing block runs across the afternoon and evening, anything early in the day landed in the previous day's bucket — so a day mixed one evening with the next morning, and 61% of this season's stages showed up under the wrong day. A race day is a real calendar day now. Day links point at the day they say, the timeline counts the season's actual days instead of a fixed 60, and the \"today\" marker moves at midnight instead of in the middle of the afternoon."
+          "body": "A race day in the Race Hub was a rolling 24 hours counted from the season's very first stage, not an actual day. Because the racing block runs across the afternoon and evening, anything early in the day landed in the previous day's bucket, so a day mixed one evening with the next morning, and 61% of this season's stages showed up under the wrong day. A race day is a real calendar day now. Day links point at the day they say, the timeline counts the season's actual days instead of a fixed 60, and the \"today\" marker moves at midnight instead of in the middle of the afternoon."
         },
         "da": {
           "title": "Løbsdage passer nu med kalenderen",
-          "body": "En løbsdag i Løbs-hubben var et rullende døgn talt fra sæsonens allerførste etape — ikke en rigtig dag. Fordi løbsblokken kører hen over eftermiddagen og aftenen, faldt alt tidligt på dagen i gårsdagens bøtte, så en dag blandede den ene aften med den næste formiddag, og 61 % af sæsonens etaper stod under den forkerte dag. En løbsdag er en rigtig kalenderdag nu. Dags-links peger på den dag de siger, tidslinjen tæller sæsonens faktiske dage i stedet for faste 60, og \"i dag\"-markøren rykker ved midnat i stedet for midt om eftermiddagen."
+          "body": "En løbsdag i Løbs-hubben var et rullende døgn talt fra sæsonens allerførste etape, ikke en rigtig dag. Fordi løbsblokken kører hen over eftermiddagen og aftenen, faldt alt tidligt på dagen i gårsdagens bøtte, så en dag blandede den ene aften med den næste formiddag, og 61 % af sæsonens etaper stod under den forkerte dag. En løbsdag er en rigtig kalenderdag nu. Dags-links peger på den dag de siger, tidslinjen tæller sæsonens faktiske dage i stedet for faste 60, og \"i dag\"-markøren rykker ved midnat i stedet for midt om eftermiddagen."
         },
         "refs": [3107]
       }
@@ -882,11 +882,11 @@ export const PATCHES = [
         "topic": "Help",
         "en": {
           "title": "Help pages no longer describe rules the game doesn't have",
-          "body": "The training help claimed you only get 3 training focus slots per season — in reality you can set a focus on as many riders as you like, and always could. The division table in the help also listed only Divisions 1-3; the pyramid has four divisions, and the table now shows all of them."
+          "body": "The training help claimed you only get 3 training focus slots per season. In reality you can set a focus on as many riders as you like, and always could. The division table in the help also listed only Divisions 1-3; the pyramid has four divisions, and the table now shows all of them."
         },
         "da": {
           "title": "Hjælpesiderne beskriver ikke længere regler spillet ikke har",
-          "body": "Trænings-hjælpen påstod at du kun har 3 trænings-fokus-slots pr. sæson — i virkeligheden kan du sætte fokus på så mange ryttere du vil, og det har du altid kunnet. Divisions-tabellen i hjælpen viste desuden kun Division 1-3; pyramiden har fire divisioner, og tabellen viser nu dem alle."
+          "body": "Trænings-hjælpen påstod at du kun har 3 trænings-fokus-slots pr. sæson. I virkeligheden kan du sætte fokus på så mange ryttere du vil, og det har du altid kunnet. Divisions-tabellen i hjælpen viste desuden kun Division 1-3; pyramiden har fire divisioner, og tabellen viser nu dem alle."
         },
         "refs": [1914]
       }
@@ -1579,7 +1579,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Sæson-opsamlingen henter nu på et øjeblik i stedet for at hakke",
-          "body": "Sæsonsiden hentede før hvert eneste løbsresultat fra hele sæsonen ned i din browser, før den kunne vise noget. Det blev langsommere jo længere ind i sæsonen vi kom, og kunne give op helt på en fuld sæson. Nu regnes tallene ud på serveren og sendes som én lille opsummering. Samme stilling, samme præmiefører, samme etapesejrskonge, samme udviklingsgraf — bare hurtigt. Det betyder mest lige efter sæsonen slutter, hvor alle åbner opsamlingen på én gang."
+          "body": "Sæsonsiden hentede før hvert eneste løbsresultat fra hele sæsonen ned i din browser, før den kunne vise noget. Det blev langsommere jo længere ind i sæsonen vi kom, og kunne give op helt på en fuld sæson. Nu regnes tallene ud på serveren og sendes som én lille opsummering. Samme stilling, samme præmiefører, samme etapesejrskonge, samme udviklingsgraf, bare hurtigt. Det betyder mest lige efter sæsonen slutter, hvor alle åbner opsamlingen på én gang."
         },
         "refs": [2891]
       }
@@ -1866,7 +1866,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Endagsløb viser ikke længere point der aldrig blev uddelt",
-          "body": "Ruteprofilerne for endagsløb viste bjerg- og sprintpoint ved stigningerne, men de point blev aldrig uddelt. Adfærden var rigtig — det var visningen der var forkert: bjerg- og pointkonkurrencer findes kun i etapeløb, hvor de bygges op over flere dage. Et endagsløb har en vinder, ikke en trøje. Stigningerne og mellemsprinten står der stadig på profilen, bare uden et pointløfte hæftet på. Etapeløb er uændrede."
+          "body": "Ruteprofilerne for endagsløb viste bjerg- og sprintpoint ved stigningerne, men de point blev aldrig uddelt. Adfærden var rigtig. Det var visningen der var forkert: bjerg- og pointkonkurrencer findes kun i etapeløb, hvor de bygges op over flere dage. Et endagsløb har en vinder, ikke en trøje. Stigningerne og mellemsprinten står der stadig på profilen, bare uden et pointløfte hæftet på. Etapeløb er uændrede."
         },
         "refs": [2818]
       }
@@ -1943,7 +1943,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Udholdenhed tæller nu den rigtige vej i sæson 1's løb",
-          "body": "En fejl i løbsmotoren fik sæson 1's etaper til at opføre sig som om de var ekstremt korte. Det tændte lange-dage-effekten med det forkerte fortegn, så ryttere med høj udholdenhed i det stille blev straffet, mens ryttere med lav udholdenhed blev belønnet. Træthed vejede samtidig omkring 15 procent for lidt. Sæson 2's løb var aldrig påvirket, fordi de har rigtige rutedata. Rettelsen genopretter den tilsigtede adfærd på de resterende sæson 1-etaper — dem der afgør op- og nedrykning."
+          "body": "En fejl i løbsmotoren fik sæson 1's etaper til at opføre sig som om de var ekstremt korte. Det tændte lange-dage-effekten med det forkerte fortegn, så ryttere med høj udholdenhed i det stille blev straffet, mens ryttere med lav udholdenhed blev belønnet. Træthed vejede samtidig omkring 15 procent for lidt. Sæson 2's løb var aldrig påvirket, fordi de har rigtige rutedata. Rettelsen genopretter den tilsigtede adfærd på de resterende sæson 1-etaper, dem der afgør op- og nedrykning."
         },
         "refs": [2804]
       }
@@ -2128,11 +2128,11 @@ export const PATCHES = [
         "topic": "Economy",
         "en": {
           "title": "Relegation parachute softens the drop from Division 1 or 2",
-          "body": "Get relegated from Division 1 or Division 2, and your team now receives a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once. Division 3 to 4 is unaffected — Division 4 has no upkeep costs, so there's nothing to cushion there."
+          "body": "Get relegated from Division 1 or Division 2, and your team now receives a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once. Division 3 to 4 is unaffected: Division 4 has no upkeep costs, so there's nothing to cushion there."
         },
         "da": {
           "title": "Nedrykningsfaldskærm dæmper faldet fra Division 1 eller 2",
-          "body": "Bliver dit hold nedrykket fra Division 1 eller Division 2, får du nu en nedrykningsfaldskærm ved starten af din næste sæson: halvdelen af den sponsorindtægt du mister ved at rykke en division ned, udbetalt én gang. Division 3 til 4 er upåvirket — Division 4 har ingen driftsomkostninger, så der er intet at dæmpe der."
+          "body": "Bliver dit hold nedrykket fra Division 1 eller Division 2, får du nu en nedrykningsfaldskærm ved starten af din næste sæson: halvdelen af den sponsorindtægt du mister ved at rykke en division ned, udbetalt én gang. Division 3 til 4 er upåvirket: Division 4 har ingen driftsomkostninger, så der er intet at dæmpe der."
         },
         "refs": [1980]
       }
@@ -2477,11 +2477,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Staff",
         "en": {
-          "title": "Release staff — for a severance fee",
+          "title": "Release staff, for a severance fee",
           "body": "You can now release your own staff (Sports Director, Chief Scout, Team Doctor, Academy Director, Commercial Director) from their staff profile or the staff overview list. Releasing them ends the contract immediately and opens the role for a new hire right away, but it isn't free: you pay a severance fee of 4 weeks' wages, deducted the moment you confirm. The confirmation dialog always shows the exact fee before you commit."
         },
         "da": {
-          "title": "Opsig staff — mod et opsigelsesgebyr",
+          "title": "Opsig staff, mod et opsigelsesgebyr",
           "body": "Du kan nu opsige dit eget staff (sportsdirektør, chefscout, holdlæge, akademichef, kommerciel direktør) fra staff-profilen eller personale-oversigten. Opsigelse afslutter ansættelsen med det samme og frigiver pladsen til ny-hyring med det samme, men det er ikke gratis: du betaler et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter."
         },
         "refs": [2649]
@@ -2517,7 +2517,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Skadede ryttere kan nu altid fjernes fra en trup, og omfordeling er nemmere",
-          "body": "Tre relaterede rettelser. Assistenten auto-udtager ikke længere en skadet rytter til noget løb. En allerede udtaget skadet rytter kan nu altid fjernes fra en trup — også midt i et etapeløb, hvor truppen tidligere var helt låst. Og at vælge en rytter til et etapeløb bliver ikke længere stille blokeret af et auto-udtaget endagsløb et andet sted i vinduet: er det stadig bare assistentens forslag, ryddes det automatisk; er det et manuelt valg, eller er løbet allerede i gang, får du en klar fejl der navngiver rytteren og det konfliktende løb i stedet for en umærket fejl."
+          "body": "Tre relaterede rettelser. Assistenten auto-udtager ikke længere en skadet rytter til noget løb. En allerede udtaget skadet rytter kan nu altid fjernes fra en trup, også midt i et etapeløb, hvor truppen tidligere var helt låst. Og at vælge en rytter til et etapeløb bliver ikke længere stille blokeret af et auto-udtaget endagsløb et andet sted i vinduet: er det stadig bare assistentens forslag, ryddes det automatisk; er det et manuelt valg, eller er løbet allerede i gang, får du en klar fejl der navngiver rytteren og det konfliktende løb i stedet for en umærket fejl."
         },
         "refs": [2637]
       },
@@ -2618,11 +2618,11 @@ export const PATCHES = [
         "topic": "Dashboard",
         "en": {
           "title": "\"New\" badge on your results card now follows your account",
-          "body": "The \"New\" badge on \"How your team did\" remembered which race you'd seen in your browser only, so it reset every time you switched device — and with over half of visits on mobile, that meant seeing \"New\" again for a result you'd already checked. It now follows your account across every device."
+          "body": "The \"New\" badge on \"How your team did\" remembered which race you'd seen in your browser only, so it reset every time you switched device, and with over half of visits on mobile, that meant seeing \"New\" again for a result you'd already checked. It now follows your account across every device."
         },
         "da": {
           "title": "\"Nyt\"-badge på dit resultat-kort følger nu din konto",
-          "body": "\"Nyt\"-badget på \"Sådan gik det for dit hold\" huskede kun hvilket løb du havde set i din browser, så det nulstillede sig hver gang du skiftede enhed — og med over halvdelen af besøg på mobil betød det \"Nyt\" igen for et resultat du allerede havde tjekket. Det følger nu din konto på tværs af alle enheder."
+          "body": "\"Nyt\"-badget på \"Sådan gik det for dit hold\" huskede kun hvilket løb du havde set i din browser, så det nulstillede sig hver gang du skiftede enhed, og med over halvdelen af besøg på mobil betød det \"Nyt\" igen for et resultat du allerede havde tjekket. Det følger nu din konto på tværs af alle enheder."
         },
         "refs": [2593]
       }
@@ -2660,11 +2660,11 @@ export const PATCHES = [
         "topic": "Club",
         "en": {
           "title": "See other teams' staff and facilities",
-          "body": "Any team's page now has a Staff & Facilities tab, so you can scout what a rival has built without opening their squad blind. It shows the same level of detail you'd see comparing hiring candidates — names, roles and tiers — never their salaries or upgrade costs."
+          "body": "Any team's page now has a Staff & Facilities tab, so you can scout what a rival has built without opening their squad blind. It shows the same level of detail you'd see comparing hiring candidates (names, roles and tiers), never their salaries or upgrade costs."
         },
         "da": {
           "title": "Se andre holds staff og faciliteter",
-          "body": "Alle holds side har nu en Staff & faciliteter-fane, så du kan spejde efter hvad en konkurrent har bygget uden at gætte blindt. Den viser samme detaljeniveau som når du sammenligner ansættelseskandidater — navne, roller og niveauer — aldrig deres løn eller opgraderingspriser."
+          "body": "Alle holds side har nu en Staff & faciliteter-fane, så du kan spejde efter hvad en konkurrent har bygget uden at gætte blindt. Den viser samme detaljeniveau som når du sammenligner ansættelseskandidater (navne, roller og niveauer), aldrig deres løn eller opgraderingspriser."
         },
         "refs": [2601]
       }
@@ -2681,11 +2681,11 @@ export const PATCHES = [
         "topic": "Team",
         "en": {
           "title": "Team results tab now shows your full race history",
-          "body": "The results tab on your team page only showed point-scoring results, which hid 92% of your team's race history — including, sometimes, the exact race the dashboard's \"How your team did\" card had just linked you to. It now shows every result, with point-scoring rows still highlighted."
+          "body": "The results tab on your team page only showed point-scoring results, which hid 92% of your team's race history, including, sometimes, the exact race the dashboard's \"How your team did\" card had just linked you to. It now shows every result, with point-scoring rows still highlighted."
         },
         "da": {
           "title": "Holdets resultat-fane viser nu hele løbshistorikken",
-          "body": "Resultat-fanen på din holdside viste kun pointgivende resultater, hvilket skjulte 92% af holdets løbshistorik — herunder til tider netop det løb som dashboardets \"Sådan gik det for dit hold\"-kort lige havde linket til. Den viser nu alle resultater, med de pointgivende rækker stadig fremhævet."
+          "body": "Resultat-fanen på din holdside viste kun pointgivende resultater, hvilket skjulte 92% af holdets løbshistorik, herunder til tider netop det løb som dashboardets \"Sådan gik det for dit hold\"-kort lige havde linket til. Den viser nu alle resultater, med de pointgivende rækker stadig fremhævet."
         },
         "refs": [2593]
       }
@@ -3080,11 +3080,11 @@ export const PATCHES = [
         "topic": "Discord",
         "en": {
           "title": "Discord feeds now speak English",
-          "body": "Auction, transfer, race result and board webhooks in the Discord server were posted in Danish. All player-facing Discord messages — channel feeds and direct messages to managers — are now in English."
+          "body": "Auction, transfer, race result and board webhooks in the Discord server were posted in Danish. All player-facing Discord messages (channel feeds and direct messages to managers) are now in English."
         },
         "da": {
           "title": "Discord-feeds taler nu engelsk",
-          "body": "Auktions-, transfer-, løbsresultat- og bestyrelses-webhooks i Discord-serveren blev postet på dansk. Alle spillervendte Discord-beskeder — kanal-feeds og direkte beskeder til managers — er nu på engelsk."
+          "body": "Auktions-, transfer-, løbsresultat- og bestyrelses-webhooks i Discord-serveren blev postet på dansk. Alle spillervendte Discord-beskeder (kanal-feeds og direkte beskeder til managers) er nu på engelsk."
         },
         "refs": [2520]
       }
@@ -3699,11 +3699,11 @@ export const PATCHES = [
         "topic": "UI",
         "en": {
           "title": "Consistent sort arrows on rider rankings, team results and transfer history",
-          "body": "The sortable column headers on the rider rankings page, a team's race results tab and its transfer history tab now share the same arrow icon and highlight style as the rest of the app, instead of each table using its own look. No change to what you can sort by or how — just a more consistent feel when comparing columns."
+          "body": "The sortable column headers on the rider rankings page, a team's race results tab and its transfer history tab now share the same arrow icon and highlight style as the rest of the app, instead of each table using its own look. No change to what you can sort by or how, just a more consistent feel when comparing columns."
         },
         "da": {
           "title": "Ensartede sorterings-pile på rangliste, resultater og transferhistorik",
-          "body": "De sorterbare kolonne-headers på rytter-ranglisten, et holds resultat-fane og dets transferhistorik-fane bruger nu samme pil-ikon og fremhævnings-stil som resten af appen, i stedet for at hver tabel havde sit eget look. Ingen ændring i hvad eller hvordan du kan sortere — bare et mere ensartet udtryk når du sammenligner kolonner."
+          "body": "De sorterbare kolonne-headers på rytter-ranglisten, et holds resultat-fane og dets transferhistorik-fane bruger nu samme pil-ikon og fremhævnings-stil som resten af appen, i stedet for at hver tabel havde sit eget look. Ingen ændring i hvad eller hvordan du kan sortere, bare et mere ensartet udtryk når du sammenligner kolonner."
         },
         "refs": [2295]
       }
@@ -3738,7 +3738,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Sæt en individuel ugeplan for de ryttere du mikro-styrer",
-          "body": "Hver rytters række på Træningssiden har nu en \"Individuel ugeplan\"-knap, der åbner en pr-rytter-version af ugerytmen: din egen ønskede intensitet pr. ugedag, kun for netop den rytter. Den vinder over holdets ugentlige rytme for netop denne rytter, og fokus røres aldrig. Ryttere med egen plan viser et lille \"Egen plan\"-mærkat i rosteret, så du hurtigt kan se hvem der kører sit eget program. Ryttere uden en er upåvirkede — de følger bare holdets rytme (eller sæson-intensiteten, præcis som før)."
+          "body": "Hver rytters række på Træningssiden har nu en \"Individuel ugeplan\"-knap, der åbner en pr-rytter-version af ugerytmen: din egen ønskede intensitet pr. ugedag, kun for netop den rytter. Den vinder over holdets ugentlige rytme for netop denne rytter, og fokus røres aldrig. Ryttere med egen plan viser et lille \"Egen plan\"-mærkat i rosteret, så du hurtigt kan se hvem der kører sit eget program. Ryttere uden en er upåvirkede: de følger bare holdets rytme (eller sæson-intensiteten, præcis som før)."
         },
         "refs": [1895]
       }
@@ -3755,11 +3755,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Riders without a training focus now train toward their type by default",
-          "body": "Riders with no focus set used to train Endurance no matter their type, so a Sprinter with no plan quietly built the wrong abilities. The assistant now picks a focus that suits the rider's type instead, and the focus field shows a small \"Assistant: ...(auto)\" note when this applies. The bulk-apply bar for selected riders also gained a \"Smart focus (by rider type)\" option that gives each selected rider their own type-matched focus in one go, skipping any rider who already has a focus set — your own choice always wins."
+          "body": "Riders with no focus set used to train Endurance no matter their type, so a Sprinter with no plan quietly built the wrong abilities. The assistant now picks a focus that suits the rider's type instead, and the focus field shows a small \"Assistant: ...(auto)\" note when this applies. The bulk-apply bar for selected riders also gained a \"Smart focus (by rider type)\" option that gives each selected rider their own type-matched focus in one go, skipping any rider who already has a focus set: your own choice always wins."
         },
         "da": {
           "title": "Ryttere uden trænings-fokus træner nu efter typen som standard",
-          "body": "Ryttere uden et valgt fokus trænede tidligere altid Udholdenhed uanset type, så en spurter uden plan stille byggede de forkerte evner. Assistenten vælger nu et fokus der passer til rytterens type i stedet, og fokus-feltet viser en lille \"Assistent: ...(auto)\"-note når det gælder. Anvend-på-valgte-bjælken fik også en \"Smart fokus (efter ryttertype)\"-mulighed, der giver hver valgt rytter sit eget type-matchede fokus i én omgang, og springer ryttere der allerede har et fokus over — din egen beslutning vinder altid."
+          "body": "Ryttere uden et valgt fokus trænede tidligere altid Udholdenhed uanset type, så en spurter uden plan stille byggede de forkerte evner. Assistenten vælger nu et fokus der passer til rytterens type i stedet, og fokus-feltet viser en lille \"Assistent: ...(auto)\"-note når det gælder. Anvend-på-valgte-bjælken fik også en \"Smart fokus (efter ryttertype)\"-mulighed, der giver hver valgt rytter sit eget type-matchede fokus i én omgang, og springer ryttere der allerede har et fokus over: din egen beslutning vinder altid."
         },
         "refs": [1894]
       }
@@ -4000,11 +4000,11 @@ export const PATCHES = [
         "topic": "Finance",
         "en": {
           "title": "Forced sales during a debt breach now actually pay down your debt",
-          "body": "When your team's debt goes over the division ceiling for two seasons in a row, the board force-sells your most valuable riders. That sale money now pays your loans down directly (oldest loan first) instead of just sitting in a stat the board tracked internally — so a forced sale genuinely reduces your debt and the breach won't automatically repeat next season on the same numbers. Your transaction history also shows these repayments separately from ones you make yourself."
+          "body": "When your team's debt goes over the division ceiling for two seasons in a row, the board force-sells your most valuable riders. That sale money now pays your loans down directly (oldest loan first) instead of just sitting in a stat the board tracked internally, so a forced sale genuinely reduces your debt and the breach won't automatically repeat next season on the same numbers. Your transaction history also shows these repayments separately from ones you make yourself."
         },
         "da": {
           "title": "Tvangssalg ved gældsbrud afdrager nu faktisk din gæld",
-          "body": "Når holdets gæld ligger over divisionens loft to sæsoner i træk, tvangssælger bestyrelsen dine mest værdifulde ryttere. De penge afdrager nu dine lån direkte (ældste lån først) i stedet for bare at indgå i et internt bestyrelses-tal — så et tvangssalg reelt sænker din gæld, og bruddet gentager sig ikke automatisk næste sæson på de samme tal. Din transaktionshistorik viser også disse afdrag adskilt fra dem du selv foretager."
+          "body": "Når holdets gæld ligger over divisionens loft to sæsoner i træk, tvangssælger bestyrelsen dine mest værdifulde ryttere. De penge afdrager nu dine lån direkte (ældste lån først) i stedet for bare at indgå i et internt bestyrelses-tal, så et tvangssalg reelt sænker din gæld, og bruddet gentager sig ikke automatisk næste sæson på de samme tal. Din transaktionshistorik viser også disse afdrag adskilt fra dem du selv foretager."
         },
         "refs": [2303]
       }
@@ -4329,11 +4329,11 @@ export const PATCHES = [
         "topic": "Board",
         "en": {
           "title": "The board's salary cap is now actually binding",
-          "body": "When the board sets a salary cap after a satisfaction crisis, it was frozen to whatever your wage bill happened to be at that exact moment — sometimes near 0 — and only checked when signing a rider via transfer or auction. It didn't stop you from growing past it through contract extensions. The cap now gives real headroom (1.5x your wage bill), never tightens below a level it was already at, and also blocks contract extensions that would push you over it. It's also more forgiving on the way in: it never triggers on a single bad patch (satisfaction has to stay below 40% for two evaluations in a row) and it can't happen at all during your team's first 30 days."
+          "body": "When the board sets a salary cap after a satisfaction crisis, it was frozen to whatever your wage bill happened to be at that exact moment (sometimes near 0), and only checked when signing a rider via transfer or auction. It didn't stop you from growing past it through contract extensions. The cap now gives real headroom (1.5x your wage bill), never tightens below a level it was already at, and also blocks contract extensions that would push you over it. It's also more forgiving on the way in: it never triggers on a single bad patch (satisfaction has to stay below 40% for two evaluations in a row) and it can't happen at all during your team's first 30 days."
         },
         "da": {
           "title": "Bestyrelsens løncap er nu reelt bindende",
-          "body": "Når bestyrelsen sætter et løncap efter en tilfredshedskrise, blev det frosset til lige præcis den lønsum du havde i det øjeblik — nogle gange næsten 0 — og blev kun tjekket ved signering af en rytter via transfer eller auktion. Det stoppede dig ikke fra at vokse forbi det via kontraktforlængelser. Cappen giver nu reelt vækstrum (1,5x din lønsum), strammes aldrig under et niveau den allerede har været på, og blokerer nu også kontraktforlængelser der ville sende dig over det. Den er også mildere på vej ind: den udløses aldrig af en enkelt dårlig periode (tilfredsheden skal være under 40% to evalueringer i træk), og den kan slet ikke ramme i dit holds første 30 dage."
+          "body": "Når bestyrelsen sætter et løncap efter en tilfredshedskrise, blev det frosset til lige præcis den lønsum du havde i det øjeblik (nogle gange næsten 0), og blev kun tjekket ved signering af en rytter via transfer eller auktion. Det stoppede dig ikke fra at vokse forbi det via kontraktforlængelser. Cappen giver nu reelt vækstrum (1,5x din lønsum), strammes aldrig under et niveau den allerede har været på, og blokerer nu også kontraktforlængelser der ville sende dig over det. Den er også mildere på vej ind: den udløses aldrig af en enkelt dårlig periode (tilfredsheden skal være under 40% to evalueringer i træk), og den kan slet ikke ramme i dit holds første 30 dage."
         },
         "refs": [2237]
       }
@@ -5316,11 +5316,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Auto-picked race captain is now your strongest rider",
-          "body": "When a captain has to be filled in for you on the team-selection board — because you removed your captain or never set one — the board now picks your strongest rider for that race instead of whoever happened to be first in the list. Previously it could quietly hand the captaincy to a weaker rider and push aside your intended leader. A captain you have chosen yourself is always kept. Note: roles still lock once a race is under way, so this affects upcoming races only."
+          "body": "When a captain has to be filled in for you on the team-selection board (because you removed your captain or never set one), the board now picks your strongest rider for that race instead of whoever happened to be first in the list. Previously it could quietly hand the captaincy to a weaker rider and push aside your intended leader. A captain you have chosen yourself is always kept. Note: roles still lock once a race is under way, so this affects upcoming races only."
         },
         "da": {
           "title": "Auto-valgt løbskaptajn er nu din stærkeste rytter",
-          "body": "Når en kaptajn skal udfyldes for dig på udtagelses-board'et — fordi du fjernede din kaptajn eller aldrig satte en — vælger board'et nu din stærkeste rytter til løbet i stedet for tilfældigvis den første i listen. Før kunne det stille give kaptajnsbindet til en svagere rytter og skubbe din tiltænkte leder til side. En kaptajn du selv har valgt, bevares altid. Bemærk: roller låses stadig når et løb er i gang, så dette gælder kun kommende løb."
+          "body": "Når en kaptajn skal udfyldes for dig på udtagelses-board'et (fordi du fjernede din kaptajn eller aldrig satte en), vælger board'et nu din stærkeste rytter til løbet i stedet for tilfældigvis den første i listen. Før kunne det stille give kaptajnsbindet til en svagere rytter og skubbe din tiltænkte leder til side. En kaptajn du selv har valgt, bevares altid. Bemærk: roller låses stadig når et løb er i gang, så dette gælder kun kommende løb."
         },
         "refs": [2028]
       }
@@ -5505,11 +5505,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Removed the misleading \"best skill\" line from rider profiles",
-          "body": "The rider profile's top-right corner showed a \"Best: …\" line that was still derived from the old skill ratings, not the current Cycling Zone abilities, so it could be outdated and misleading. We removed the line entirely — the abilities tab is the accurate source — with no replacement, to keep the profile uncluttered."
+          "body": "The rider profile's top-right corner showed a \"Best: …\" line that was still derived from the old skill ratings, not the current Cycling Zone abilities, so it could be outdated and misleading. We removed the line entirely (the abilities tab is the accurate source) with no replacement, to keep the profile uncluttered."
         },
         "da": {
           "title": "Fjernet det misvisende \"bedste evne\"-felt fra rytterprofilen",
-          "body": "Rytterprofilens øverste højre hjørne viste en \"Bedste: …\"-linje der stadig var udledt af de gamle evne-tal, ikke de nuværende Cycling Zone-evner, så den kunne være forældet og misvisende. Vi har fjernet linjen helt — Evner-fanen er den korrekte kilde — uden erstatning, så profilen ikke bliver overfyldt."
+          "body": "Rytterprofilens øverste højre hjørne viste en \"Bedste: …\"-linje der stadig var udledt af de gamle evne-tal, ikke de nuværende Cycling Zone-evner, så den kunne være forældet og misvisende. Vi har fjernet linjen helt (Evner-fanen er den korrekte kilde) uden erstatning, så profilen ikke bliver overfyldt."
         },
         "refs": [1781]
       },
@@ -5519,11 +5519,11 @@ export const PATCHES = [
         "topic": "Help",
         "en": {
           "title": "Help page now shows only the current rider abilities",
-          "body": "The Riders section of the help page still listed the old 14 skill abbreviations (FL, BJ, KB …) above the 15 current Cycling Zone abilities, which was confusing. We removed the outdated list — the help page now explains only the 15 abilities the game actually uses."
+          "body": "The Riders section of the help page still listed the old 14 skill abbreviations (FL, BJ, KB …) above the 15 current Cycling Zone abilities, which was confusing. We removed the outdated list: the help page now explains only the 15 abilities the game actually uses."
         },
         "da": {
           "title": "Hjælp-siden viser nu kun de nuværende rytter-evner",
-          "body": "Rytter-sektionen på hjælp-siden listede stadig de gamle 14 evne-forkortelser (FL, BJ, KB …) oven over de 15 nuværende Cycling Zone-evner, hvilket var forvirrende. Vi har fjernet den forældede liste — hjælp-siden forklarer nu kun de 15 evner spillet faktisk bruger."
+          "body": "Rytter-sektionen på hjælp-siden listede stadig de gamle 14 evne-forkortelser (FL, BJ, KB …) oven over de 15 nuværende Cycling Zone-evner, hvilket var forvirrende. Vi har fjernet den forældede liste: hjælp-siden forklarer nu kun de 15 evner spillet faktisk bruger."
         },
         "refs": [1832]
       },
@@ -5537,7 +5537,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Hviledage ligner ikke længere et tabt træningsfokus",
-          "body": "I den daglige træningsrapport blev ryttere på en hviledag vist som \"Intet fokus valgt\" i Næste +1-kolonnen, selvom et fokus stadig var valgt — det fik det til at se ud som om fokusset var gået tabt. Hviledage står nu som \"Hviledag\" der, og fokus-kolonnen viser fortsat det valgte fokus."
+          "body": "I den daglige træningsrapport blev ryttere på en hviledag vist som \"Intet fokus valgt\" i Næste +1-kolonnen, selvom et fokus stadig var valgt. Det fik det til at se ud som om fokusset var gået tabt. Hviledage står nu som \"Hviledag\" der, og fokus-kolonnen viser fortsat det valgte fokus."
         },
         "refs": [1937]
       },
@@ -5568,11 +5568,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Race categories renamed to fit Cycling Zone's own world",
-          "body": "The race-class categories no longer borrow real-world race names. \"Tour de France\" is now \"Grand Tour\" and \"Giro / Vuelta\" is now \"Major Tour\" across the calendar, race library, and points & prizes. Points, prizes and which races fall in each class are unchanged — only the labels."
+          "body": "The race-class categories no longer borrow real-world race names. \"Tour de France\" is now \"Grand Tour\" and \"Giro / Vuelta\" is now \"Major Tour\" across the calendar, race library, and points & prizes. Points, prizes and which races fall in each class are unchanged, only the labels."
         },
         "da": {
           "title": "Løbskategorier omdøbt så de passer til Cycling Zones egen verden",
-          "body": "Løbsklasse-kategorierne låner ikke længere navne fra rigtige løb. \"Tour de France\" hedder nu \"Grand Tour\" og \"Giro / Vuelta\" hedder nu \"Major Tour\" på tværs af kalenderen, løbsbiblioteket og point & præmier. Point, præmier og hvilke løb der ligger i hver klasse er uændrede — kun etiketterne."
+          "body": "Løbsklasse-kategorierne låner ikke længere navne fra rigtige løb. \"Tour de France\" hedder nu \"Grand Tour\" og \"Giro / Vuelta\" hedder nu \"Major Tour\" på tværs af kalenderen, løbsbiblioteket og point & præmier. Point, præmier og hvilke løb der ligger i hver klasse er uændrede, kun etiketterne."
         },
         "refs": [1780]
       },
@@ -5630,11 +5630,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race calendar",
         "en": {
-          "title": "Click into any race — stages now shown by day and time",
+          "title": "Click into any race: stages now shown by day and time",
           "body": "Every race on the calendar is now clickable: tap a race to open its planning page. Stage races are split out across the days they run, each stage shown on its own day with its start time (for example \"stage 1 · 12:00\", \"stage 2 · 15:00\"), so you can see exactly when each stage goes off and plan your squad for it."
         },
         "da": {
-          "title": "Klik ind på et hvilket som helst løb — etaper vises nu pr. dag og tidspunkt",
+          "title": "Klik ind på et hvilket som helst løb: etaper vises nu pr. dag og tidspunkt",
           "body": "Hvert løb i kalenderen er nu klikbart: tryk på et løb for at åbne dets planlægningsside. Etapeløb er delt ud over de dage de køres, og hver etape vises på sin egen dag med sit starttidspunkt (for eksempel \"1. etape · 12:00\", \"2. etape · 15:00\"), så du kan se præcis hvornår hver etape køres og planlægge din trup til den."
         },
         "refs": [1945]
@@ -5645,11 +5645,11 @@ export const PATCHES = [
         "topic": "Race calendar",
         "en": {
           "title": "Tighter, more varied race programme per division",
-          "body": "Each division's season programme now has a precise number of race-days that scales down the pyramid, with more racing and more overlapping races in Division 3 so there is always something to ride. Grand Tours run as a spread-out spine with other races alongside them, and the monuments are free to start — your best riders are never locked inside a stage race when a monument comes up."
+          "body": "Each division's season programme now has a precise number of race-days that scales down the pyramid, with more racing and more overlapping races in Division 3 so there is always something to ride. Grand Tours run as a spread-out spine with other races alongside them, and the monuments are free to start: your best riders are never locked inside a stage race when a monument comes up."
         },
         "da": {
           "title": "Strammere, mere varieret løbsprogram pr. division",
-          "body": "Hver divisions sæson-program har nu et præcist antal løbsdage der skalerer ned ad pyramiden, med mere racing og flere overlappende løb i Division 3, så der altid er noget at køre. Grand Tour-løbene kører som en spredt rygrad med andre løb ved siden af, og monumenterne er frie at stille til — dine bedste ryttere er aldrig låst inde i et etapeløb, når et monument dukker op."
+          "body": "Hver divisions sæson-program har nu et præcist antal løbsdage der skalerer ned ad pyramiden, med mere racing og flere overlappende løb i Division 3, så der altid er noget at køre. Grand Tour-løbene kører som en spredt rygrad med andre løb ved siden af, og monumenterne er frie at stille til: dine bedste ryttere er aldrig låst inde i et etapeløb, når et monument dukker op."
         },
         "refs": [1945]
       }
@@ -5785,11 +5785,11 @@ export const PATCHES = [
         "topic": "Help",
         "en": {
           "title": "Fixed outdated numbers in the in-game Help",
-          "body": "A few figures in Help & Rules were left over from older settings. The starting budget now correctly reads 500,000 CZ$ (not 800,000), the relaunch squad is described as 12 riders (not 8), and the prize-money section now matches the live payout of 75 CZ$ per point — the examples (e.g. a Tour de France win) and the 'points × 1,500' line were still showing the old, 20× higher amounts. The actual gameplay was always correct; only the Help text was wrong."
+          "body": "A few figures in Help & Rules were left over from older settings. The starting budget now correctly reads 500,000 CZ$ (not 800,000), the relaunch squad is described as 12 riders (not 8), and the prize-money section now matches the live payout of 75 CZ$ per point: the examples (e.g. a Tour de France win) and the 'points × 1,500' line were still showing the old, 20× higher amounts. The actual gameplay was always correct; only the Help text was wrong."
         },
         "da": {
           "title": "Rettet forældede tal i in-game-hjælpen",
-          "body": "Et par tal i Hjælp & Regler var rester fra ældre indstillinger. Startbudgettet står nu korrekt som 500.000 CZ$ (ikke 800.000), relaunch-truppen beskrives som 12 ryttere (ikke 8), og præmie-afsnittet matcher nu den faktiske udbetaling på 75 CZ$ per point — eksemplerne (fx en Tour de France-sejr) og 'point × 1.500'-linjen viste stadig de gamle beløb, der var 20× for høje. Selve spillet var altid korrekt; kun hjælpeteksten var forkert."
+          "body": "Et par tal i Hjælp & Regler var rester fra ældre indstillinger. Startbudgettet står nu korrekt som 500.000 CZ$ (ikke 800.000), relaunch-truppen beskrives som 12 ryttere (ikke 8), og præmie-afsnittet matcher nu den faktiske udbetaling på 75 CZ$ per point: eksemplerne (fx en Tour de France-sejr) og 'point × 1.500'-linjen viste stadig de gamle beløb, der var 20× for høje. Selve spillet var altid korrekt; kun hjælpeteksten var forkert."
         },
         "refs": [1907, 1819]
       }
@@ -5827,11 +5827,11 @@ export const PATCHES = [
         "topic": "Dashboard",
         "en": {
           "title": "Dashboard now shows your own division's next races",
-          "body": "The 'Next races' card on the dashboard was listing races from every division, so it could show events you are not actually entered in — and it disagreed with the team-selection page about which races were coming up. It now filters to your own pool, so the dashboard and team selection always agree on your next races."
+          "body": "The 'Next races' card on the dashboard was listing races from every division, so it could show events you are not actually entered in, and it disagreed with the team-selection page about which races were coming up. It now filters to your own pool, so the dashboard and team selection always agree on your next races."
         },
         "da": {
           "title": "Dashboardet viser nu din egen divisions næste løb",
-          "body": "'Næste løb'-kortet på dashboardet listede løb fra alle divisioner, så det kunne vise løb du slet ikke er tilmeldt — og det var uenigt med holdudtagelse-siden om hvilke løb der var på vej. Det filtrerer nu til din egen pulje, så dashboard og holdudtagelse altid er enige om dine næste løb."
+          "body": "'Næste løb'-kortet på dashboardet listede løb fra alle divisioner, så det kunne vise løb du slet ikke er tilmeldt, og det var uenigt med holdudtagelse-siden om hvilke løb der var på vej. Det filtrerer nu til din egen pulje, så dashboard og holdudtagelse altid er enige om dine næste løb."
         },
         "refs": [1906]
       }
@@ -5938,12 +5938,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Races",
         "en": {
-          "title": "Squad editing for overlapping races works again — swap riders freely, no more ghost riders",
-          "body": "Editing your squad for races on the same day was stuck: you couldn't swap a rider, withdrawing didn't release anyone, and free riders couldn't be added. You can now edit freely while building a squad — remove and add riders even when a race is full; it simply won't save below the minimum until you fill it back up. Withdrawing one of two overlapping races now frees those riders for the other race. And riders who left your team — sold, released, retired, or moved to the academy — no longer show up as blank locked slots in your lineup or get auto-picked by the assistant."
+          "title": "Squad editing for overlapping races works again: swap riders freely, no more ghost riders",
+          "body": "Editing your squad for races on the same day was stuck: you couldn't swap a rider, withdrawing didn't release anyone, and free riders couldn't be added. You can now edit freely while building a squad: remove and add riders even when a race is full; it simply won't save below the minimum until you fill it back up. Withdrawing one of two overlapping races now frees those riders for the other race. And riders who left your team (sold, released, retired, or moved to the academy) no longer show up as blank locked slots in your lineup or get auto-picked by the assistant."
         },
         "da": {
-          "title": "Trup-redigering til overlappende løb virker igen — byt ryttere frit, ingen spøgelses-ryttere",
-          "body": "Det var låst at redigere truppen til løb på samme dag: man kunne ikke bytte en rytter, afmelding frigjorde ingen, og ledige ryttere kunne ikke tilføjes. Du kan nu redigere frit mens du bygger truppen — fjern og tilføj ryttere selv når et løb er fuldt; det gemmes bare ikke under minimum, før du fylder op igen. Afmelder du det ene af to overlappende løb, frigøres rytterne nu til det andet løb. Og ryttere der har forladt holdet — solgt, frigivet, pensioneret eller flyttet til akademiet — optræder ikke længere som blanke, låste pladser i din trup eller bliver auto-valgt af assistenten."
+          "title": "Trup-redigering til overlappende løb virker igen: byt ryttere frit, ingen spøgelses-ryttere",
+          "body": "Det var låst at redigere truppen til løb på samme dag: man kunne ikke bytte en rytter, afmelding frigjorde ingen, og ledige ryttere kunne ikke tilføjes. Du kan nu redigere frit mens du bygger truppen: fjern og tilføj ryttere selv når et løb er fuldt; det gemmes bare ikke under minimum, før du fylder op igen. Afmelder du det ene af to overlappende løb, frigøres rytterne nu til det andet løb. Og ryttere der har forladt holdet (solgt, frigivet, pensioneret eller flyttet til akademiet) optræder ikke længere som blanke, låste pladser i din trup eller bliver auto-valgt af assistenten."
         },
         "refs": [1823, 1800, 1742]
       }
@@ -6956,11 +6956,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Fixed riders showing no stats or abilities",
-          "body": "A batch of riders created on 18 June were left without their derived abilities and value because the calculation step never finished for them, so they showed up blank wherever stats are displayed. Their underlying ratings were always intact — only the derived layer was missing. We restored the missing data and added a safeguard: the game now verifies every rider has a full ability set, automatically re-derives any rider that slips through, and fails loudly if a batch is ever left incomplete, so this can't quietly happen again."
+          "body": "A batch of riders created on 18 June were left without their derived abilities and value because the calculation step never finished for them, so they showed up blank wherever stats are displayed. Their underlying ratings were always intact, only the derived layer was missing. We restored the missing data and added a safeguard: the game now verifies every rider has a full ability set, automatically re-derives any rider that slips through, and fails loudly if a batch is ever left incomplete, so this can't quietly happen again."
         },
         "da": {
           "title": "Rettet ryttere der ikke viste stats eller evner",
-          "body": "En gruppe ryttere oprettet 18. juni stod uden deres afledte evner og værdi, fordi beregningstrinet aldrig blev færdigt for dem, så de fremstod blanke overalt hvor stats vises. Deres underliggende ratings var altid intakte — kun det afledte lag manglede. Vi har genskabt de manglende data og tilføjet en sikring: spillet verificerer nu at hver rytter har et fuldt evne-sæt, re-deriverer automatisk enhver rytter der falder igennem, og fejler højlydt hvis et batch nogensinde efterlades ufuldstændigt, så det ikke kan ske stille igen."
+          "body": "En gruppe ryttere oprettet 18. juni stod uden deres afledte evner og værdi, fordi beregningstrinet aldrig blev færdigt for dem, så de fremstod blanke overalt hvor stats vises. Deres underliggende ratings var altid intakte, kun det afledte lag manglede. Vi har genskabt de manglende data og tilføjet en sikring: spillet verificerer nu at hver rytter har et fuldt evne-sæt, re-deriverer automatisk enhver rytter der falder igennem, og fejler højlydt hvis et batch nogensinde efterlades ufuldstændigt, så det ikke kan ske stille igen."
         },
         "refs": [
           1673
@@ -6972,11 +6972,11 @@ export const PATCHES = [
         "topic": "Board",
         "en": {
           "title": "Your board is open from day one",
-          "body": "The board of directors is now unlocked from the start of your first season. You can dive into your plans and negotiate with the board right away instead of waiting a season — the team is yours to build from the first day."
+          "body": "The board of directors is now unlocked from the start of your first season. You can dive into your plans and negotiate with the board right away instead of waiting a season: the team is yours to build from the first day."
         },
         "da": {
           "title": "Din bestyrelse er åben fra dag ét",
-          "body": "Bestyrelsen er nu låst op fra starten af din første sæson. Du kan kaste dig over dine planer og forhandle med bestyrelsen med det samme i stedet for at vente en sæson — holdet er dit at bygge fra første dag."
+          "body": "Bestyrelsen er nu låst op fra starten af din første sæson. Du kan kaste dig over dine planer og forhandle med bestyrelsen med det samme i stedet for at vente en sæson: holdet er dit at bygge fra første dag."
         },
         "refs": [
           1680
@@ -6988,11 +6988,11 @@ export const PATCHES = [
         "topic": "Economy",
         "en": {
           "title": "No double income or running costs at season one start",
-          "body": "When a new club starts with its founding budget, it no longer also receives a sponsor payout on top in season one — that was double income at the very start. Running costs (upkeep) are also held back until the season is actually underway, so you are not charged operating costs before you have raced. Sponsor and upkeep return to normal from season two onward."
+          "body": "When a new club starts with its founding budget, it no longer also receives a sponsor payout on top in season one: that was double income at the very start. Running costs (upkeep) are also held back until the season is actually underway, so you are not charged operating costs before you have raced. Sponsor and upkeep return to normal from season two onward."
         },
         "da": {
           "title": "Ingen dobbelt-indkomst eller driftsomkostninger ved sæson 1-start",
-          "body": "Når en ny klub starter med sin startkapital, får den ikke længere også en sponsorudbetaling oveni i sæson 1 — det var dobbelt-indkomst lige ved opstart. Driftsomkostninger (upkeep) holdes også tilbage indtil sæsonen reelt er i gang, så du ikke betaler driftsudgifter før du har kørt løb. Sponsor og upkeep er tilbage til normalen fra sæson 2 og frem."
+          "body": "Når en ny klub starter med sin startkapital, får den ikke længere også en sponsorudbetaling oveni i sæson 1: det var dobbelt-indkomst lige ved opstart. Driftsomkostninger (upkeep) holdes også tilbage indtil sæsonen reelt er i gang, så du ikke betaler driftsudgifter før du har kørt løb. Sponsor og upkeep er tilbage til normalen fra sæson 2 og frem."
         },
         "refs": [
           1678
@@ -7065,12 +7065,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Races",
         "en": {
-          "title": "Flatter prize payouts — a tighter field, winning still pays",
-          "body": "Race prize money is spread more evenly across the standings, so a strong rider further down still earns a meaningful payout instead of nearly everything going to the overall winner. The total prize pool per race is unchanged — only its shape is flatter. Winning still pays clearly more than placing, so there's every reason to race for the win."
+          "title": "Flatter prize payouts: a tighter field, winning still pays",
+          "body": "Race prize money is spread more evenly across the standings, so a strong rider further down still earns a meaningful payout instead of nearly everything going to the overall winner. The total prize pool per race is unchanged, only its shape is flatter. Winning still pays clearly more than placing, so there's every reason to race for the win."
         },
         "da": {
-          "title": "Fladere præmieudbetaling — tættere felt, sejr betaler sig stadig",
-          "body": "Præmiepengene i løb fordeles mere jævnt over klassementet, så en stærk rytter længere nede stadig får en mærkbar udbetaling i stedet for at næsten alt går til den samlede vinder. Den samlede præmiepulje pr. løb er uændret — kun formen er fladere. At vinde betaler sig stadig klart mere end at blive placeret, så der er al mulig grund til at køre efter sejren."
+          "title": "Fladere præmieudbetaling: tættere felt, sejr betaler sig stadig",
+          "body": "Præmiepengene i løb fordeles mere jævnt over klassementet, så en stærk rytter længere nede stadig får en mærkbar udbetaling i stedet for at næsten alt går til den samlede vinder. Den samlede præmiepulje pr. løb er uændret, kun formen er fladere. At vinde betaler sig stadig klart mere end at blive placeret, så der er al mulig grund til at køre efter sejren."
         },
         "refs": [
           1607
@@ -7155,7 +7155,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Se hvad der allerede er bygget på roadmappet",
-          "body": "Roadmappet har nu en \"Allerede bygget\"-sektion nederst. Når en plan fra roadmappet går live i spillet, flytter den herned, så du kan se hvor langt Cycling Zone er nået — ikke kun hvad der stadig venter forude. Afstemningssektionen ovenfor virker præcis som før."
+          "body": "Roadmappet har nu en \"Allerede bygget\"-sektion nederst. Når en plan fra roadmappet går live i spillet, flytter den herned, så du kan se hvor langt Cycling Zone er nået, ikke kun hvad der stadig venter forude. Afstemningssektionen ovenfor virker præcis som før."
         },
         "refs": [
           1600
@@ -7269,11 +7269,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rules",
         "en": {
-          "title": "New Rules page — the numbers in one place",
+          "title": "New Rules page: the numbers in one place",
           "body": "A dedicated Rules page now collects every limit, rate and formula in one authoritative reference: squad cap, economy (sponsor, salary, debt, division bonus), auctions, transfers, races, season and promotion, the academy, and fair play. The Help page still answers \"how do I X\" and links into Rules as the source of truth. The figures are pinned to the game code so they can't drift out of date. Find it in the sidebar next to Help."
         },
         "da": {
-          "title": "Ny Regler-side — tallene ét sted",
+          "title": "Ny Regler-side: tallene ét sted",
           "body": "En dedikeret Regler-side samler nu alle grænser, satser og formler i én autoritativ reference: trup-loft, økonomi (sponsor, løn, gæld, divisionsbonus), auktioner, transfers, løb, sæson og op-/nedrykning, akademiet og fair play. Hjælp-siden svarer stadig på \"hvordan gør jeg X\" og linker ind til Regler som sandheden. Tallene er låst til spillets kode, så de ikke kan drive ud af sync. Find den i sidebaren ved siden af Hjælp."
         },
         "refs": [
