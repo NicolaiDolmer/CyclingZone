@@ -21,11 +21,47 @@
 import { renownTarget } from "./renownEngine.js";
 import { generateOffers, FULL_CALENDAR_DAYS, guaranteedFractionForLength } from "./sponsorOffers.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { notifyTeamOwner } from "./notificationService.js";
+import { captureException } from "./sentry.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
+
+// #3315 (ejer-godkendt 4/8): notificér holdejeren om en sponsor-bonus-udbetaling
+// (signing eller season-objective). Aldrig-kastende — kaldes fra sæson-
+// transitionens kritiske sti (expireAndRenewContracts/evaluateSeasonObjectives),
+// og en notifikationsfejl må ikke vælte fornyelsen/evalueringen, samme forsvar
+// som economyEngine.notifyManagerSafe og sponsorRaceDayIncome.notifySponsorPaidSafe.
+const SPONSOR_BONUS_MESSAGE_BY_VARIANT = {
+  signingBonus: (sponsor, amount) => `${sponsor} paid out a ${amount} CZ$ signing bonus.`,
+  objectiveBonus: (sponsor, amount) => `${sponsor} paid out ${amount} CZ$ for meeting your season objective.`,
+};
+
+async function notifySponsorBonusPaidSafe(supabase, { teamId, sponsorName, amount, variant }) {
+  const sponsor = sponsorName || "Your sponsor";
+  try {
+    await notifyTeamOwner({
+      supabase,
+      teamId,
+      type: "sponsor_paid",
+      title: "Sponsor payout",
+      message: SPONSOR_BONUS_MESSAGE_BY_VARIANT[variant](sponsor, amount),
+      metadata: {
+        titleCode: `notif.sponsorPaid.${variant}.title`,
+        titleParams: {},
+        messageCode: `notif.sponsorPaid.${variant}.message`,
+        messageParams: { sponsor, amount },
+      },
+    });
+  } catch (error) {
+    console.error(
+      `  ❌ [sponsorContractsService] sponsor_paid notification (${variant}) failed for team ${teamId}: ${error?.message || error}`
+    );
+    captureException(error, { tags: { flow: "sponsor-contracts", stage: "notify", variant }, teamId });
+  }
+}
 
 // #2914 (ejer-beslutning 25/7): default ved ikke-valg = 1-sæsons safe-aftale.
 // 47 af 73 hold der valgte, valgte 1 sæson — defaulten skal matche flertallet,
@@ -421,7 +457,7 @@ async function creditSigningBonus({ supabase, contract }) {
   const clause = (contract.bonus_clauses || []).find((c) => c.type === "signing");
   const amount = Number(clause?.amount) || 0;
   if (amount <= 0) return;
-  await incrementBalanceWithAudit(
+  const { skipped } = await incrementBalanceWithAudit(
     supabase,
     {
       teamId: contract.team_id,
@@ -448,6 +484,15 @@ async function creditSigningBonus({ supabase, contract }) {
     },
     { allowDuplicate: true }
   );
+  // #3315 (ejer-godkendt 4/8): kun ved faktisk kreditering (ikke et idempotent skip).
+  if (!skipped) {
+    await notifySponsorBonusPaidSafe(supabase, {
+      teamId: contract.team_id,
+      sponsorName: contract.sponsor_name,
+      amount,
+      variant: "signingBonus",
+    });
+  }
 }
 
 // Sæsonmåls-klausul-typer (#2948 "top_half", #3192 "top_40pct" — se
@@ -537,7 +582,16 @@ export async function evaluateSeasonObjectives({ supabase, finishedSeasonNumber 
       },
       { allowDuplicate: true }
     );
-    if (!skipped) paid += 1;
+    if (!skipped) {
+      paid += 1;
+      // #3315 (ejer-godkendt 4/8): kun ved faktisk kreditering.
+      await notifySponsorBonusPaidSafe(supabase, {
+        teamId: contract.team_id,
+        sponsorName: contract.sponsor_name,
+        amount,
+        variant: "objectiveBonus",
+      });
+    }
   }
 
   return { evaluated: withObjective.length, paid };
