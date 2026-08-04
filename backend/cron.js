@@ -1033,8 +1033,15 @@ async function runRiderDoubleBookingWatchCron() {
   const result = await runRiderDoubleBookingWatch({ supabase, captureExceptionFn: sentryCapture });
   if (result.alerted) {
     console.error(
-      `🚨 Binding-invariant-vagt: ${result.conflicts} dobbeltbookede rytter-par ` +
+      `🚨 Binding-invariant-vagt: ${result.live} dobbeltbookede rytter-par ` +
       `(${result.actionable} kan stadig nås før afvikling) (#3113)`
+    );
+  } else if (result.historical > 0) {
+    // Ikke en fejl: historiske par (begge løb afviklet) alarmerer ikke, men skal stadig
+    // være synlige i loggen, så de ikke glider ud af syne helt (#3119-opfølgning 4/8).
+    console.log(
+      `ℹ️  Binding-invariant-vagt: 0 aktive brud, ${result.historical} historiske par ` +
+      `(begge løb afviklet) alarmerer ikke (#3113)`
     );
   }
 }

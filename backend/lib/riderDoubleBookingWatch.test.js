@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findDoubleBookedRiders, runRiderDoubleBookingWatch } from "./riderDoubleBookingWatch.js";
+import { findDoubleBookedRiders, runRiderDoubleBookingWatch, splitLiveConflicts } from "./riderDoubleBookingWatch.js";
 
 const w = (start, end = start) => ({ start, end });
 
@@ -104,12 +104,18 @@ function makeSupabase(state) {
   return { from: (t) => builder(t) };
 }
 
-function seedState({ entries, stagesCompleted = {}, riders = null }) {
+function seedState({ entries, stagesCompleted = {}, raceStatus = {}, riders = null }) {
   return {
     seasons: [{ id: "s2", number: 2, status: "active" }],
     races: [
-      { id: "A", season_id: "s2", name: "Tour des Hauts Plateaux", stages_completed: stagesCompleted.A ?? 0 },
-      { id: "B", season_id: "s2", name: "Tour de Malaisie", stages_completed: stagesCompleted.B ?? 0 },
+      {
+        id: "A", season_id: "s2", name: "Tour des Hauts Plateaux",
+        stages_completed: stagesCompleted.A ?? 0, status: raceStatus.A ?? "scheduled",
+      },
+      {
+        id: "B", season_id: "s2", name: "Tour de Malaisie",
+        stages_completed: stagesCompleted.B ?? 0, status: raceStatus.B ?? "scheduled",
+      },
     ],
     race_stage_schedule: [
       { race_id: "A", stage_number: 1, scheduled_at: "2026-07-27T16:20:00Z", game_day: 0 },
@@ -167,9 +173,10 @@ test("runRiderDoubleBookingWatch: dobbeltbooket rytter → ÉN capture med fast 
   assert.equal(captured[0][1].extra.sample[0].raceA, "Tour des Hauts Plateaux");
 });
 
-// Prod-formen 27/7: begge løb er allerede afviklet → bruddet er historik og kræver en
-// ejer-gated tilbagerulning, ikke en hurtig entry-sletning. Vagten skal skelne.
-test("runRiderDoubleBookingWatch: afviklede løb tælles som brud, men ikke som actionable", async () => {
+// Prod-formen 27/7: begge løb er i GANG (etaper kørt, men ikke afsluttet) → bruddet
+// kræver en ejer-gated tilbagerulning, ikke en hurtig entry-sletning. Vagten skal
+// skelne, men den skal stadig alarmere: løbene er ikke færdige.
+test("runRiderDoubleBookingWatch: igangværende løb tælles som brud, men ikke som actionable", async () => {
   const state = seedState({
     entries: [
       { race_id: "A", team_id: "t1", rider_id: "r1" },
@@ -179,7 +186,116 @@ test("runRiderDoubleBookingWatch: afviklede løb tælles som brud, men ikke som 
   });
   const res = await runRiderDoubleBookingWatch({ supabase: makeSupabase(state), captureExceptionFn: () => {} });
   assert.equal(res.conflicts, 1);
+  assert.equal(res.live, 1, "løbene er i gang (status scheduled) → stadig et levende brud");
   assert.equal(res.actionable, 0);
+  assert.equal(res.alerted, true);
+});
+
+// ── Historik-filter (ejer-valg 4/8) ───────────────────────────────────────────
+// De 4 Brutaliste-par fra sæson-auditen 28/7 fyrede CYCLINGZONE-44 hver time i en uge
+// uden at nogen kunne handle: begge løb var afviklet. Vagten tæller dem stadig, men
+// alarmerer ikke på dem.
+test("runRiderDoubleBookingWatch: begge løb afviklet → historik, INGEN alarm", async () => {
+  const state = seedState({
+    entries: [
+      { race_id: "A", team_id: "t1", rider_id: "r1" },
+      { race_id: "B", team_id: "t1", rider_id: "r1" },
+    ],
+    stagesCompleted: { A: 8, B: 8 },
+    raceStatus: { A: "completed", B: "completed" },
+  });
+  const captured = [];
+  const res = await runRiderDoubleBookingWatch({
+    supabase: makeSupabase(state), captureExceptionFn: (e, ctx) => captured.push([e, ctx]),
+  });
+  assert.equal(res.conflicts, 1, "bruddet tælles stadig (forensik bevares)");
+  assert.equal(res.historical, 1);
+  assert.equal(res.live, 0);
+  assert.equal(res.actionable, 0);
+  assert.equal(res.alerted, false);
+  assert.equal(captured.length, 0, "ingen Sentry-capture på et dødt par");
+});
+
+// Modstykket: filteret må ikke sluge et NYT brud der rammer et allerede afviklet løb.
+// Så længe ét af de to løb kan nås, er alarmen på.
+test("runRiderDoubleBookingWatch: kun ÉT løb afviklet → stadig alarm", async () => {
+  const state = seedState({
+    entries: [
+      { race_id: "A", team_id: "t1", rider_id: "r1" },
+      { race_id: "B", team_id: "t1", rider_id: "r1" },
+    ],
+    stagesCompleted: { A: 8, B: 0 },
+    raceStatus: { A: "completed", B: "scheduled" },
+  });
+  const captured = [];
+  const res = await runRiderDoubleBookingWatch({
+    supabase: makeSupabase(state), captureExceptionFn: (e, ctx) => captured.push([e, ctx]),
+  });
+  assert.equal(res.live, 1);
+  assert.equal(res.historical, 0);
+  assert.equal(res.actionable, 1, "B er ikke startet → kan stadig nås");
+  assert.equal(res.alerted, true);
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0][1].extra.count, 1);
+  assert.equal(captured[0][1].extra.historical, 0);
+});
+
+test("runRiderDoubleBookingWatch: levende OG historisk par i samme tick → alarmen tæller kun de levende", async () => {
+  const state = seedState({
+    entries: [
+      { race_id: "A", team_id: "t1", rider_id: "r1" },
+      { race_id: "B", team_id: "t1", rider_id: "r1" },
+    ],
+    stagesCompleted: { A: 8, B: 8 },
+    raceStatus: { A: "completed", B: "completed" },
+  });
+  // Tredje løb C er ikke startet og overlapper A/B — r2 er dobbeltbooket dér (levende).
+  state.races.push({ id: "C", season_id: "s2", name: "Ronde van Vlaanderen", stages_completed: 0, status: "scheduled" });
+  state.race_stage_schedule.push({ race_id: "C", stage_number: 1, scheduled_at: "2026-07-27T18:00:00Z", game_day: 0 });
+  state.race_entries.push({ race_id: "A", team_id: "t1", rider_id: "r2" }, { race_id: "C", team_id: "t1", rider_id: "r2" });
+  state.riders.push({ id: "r2", team_id: "t1", is_academy: false, is_retired: false });
+
+  const captured = [];
+  const res = await runRiderDoubleBookingWatch({
+    supabase: makeSupabase(state), captureExceptionFn: (e, ctx) => captured.push([e, ctx]),
+  });
+  assert.equal(res.conflicts, 2);
+  assert.equal(res.historical, 1, "r1's par (A+B, begge afviklet)");
+  assert.equal(res.live, 1, "r2's par (A+C, C ikke startet)");
+  assert.equal(res.alerted, true);
+  assert.equal(captured[0][1].extra.count, 1, "alarmen tæller kun det levende par");
+  assert.equal(captured[0][1].extra.historical, 1);
+  assert.equal(captured[0][1].extra.sample.length, 1);
+});
+
+// ── splitLiveConflicts (pure) ─────────────────────────────────────────────────
+
+test("splitLiveConflicts: kun 'completed' på BEGGE løb gør et par historisk", () => {
+  const raceById = new Map([
+    ["done1", { status: "completed" }],
+    ["done2", { status: "completed" }],
+    ["running", { status: "scheduled" }],
+  ]);
+  const conflicts = [
+    { raceA: "done1", raceB: "done2" },
+    { raceA: "done1", raceB: "running" },
+    { raceA: "running", raceB: "done2" },
+  ];
+  const { live, historical } = splitLiveConflicts({ conflicts, raceById });
+  assert.equal(historical.length, 1);
+  assert.deepEqual(historical[0], { raceA: "done1", raceB: "done2" });
+  assert.equal(live.length, 2);
+});
+
+test("splitLiveConflicts: ukendt løb regnes som levende (fail-open på alarmen)", () => {
+  const raceById = new Map([["done", { status: "completed" }]]);
+  const { live, historical } = splitLiveConflicts({ conflicts: [{ raceA: "done", raceB: "ukendt" }], raceById });
+  assert.equal(live.length, 1);
+  assert.equal(historical.length, 0);
+});
+
+test("splitLiveConflicts: tom input → tomme lister", () => {
+  assert.deepEqual(splitLiveConflicts({}), { live: [], historical: [] });
 });
 
 // #3185 (forensik 3/8): en SOLGT rytters entry hos det gamle hold er ikke et brud.
