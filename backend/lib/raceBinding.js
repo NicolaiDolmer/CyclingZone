@@ -68,10 +68,24 @@ export function raceBindingWindow(scheduleRows) {
 // CET-ordinaler når game_day mangler) — dette er KUN til visning ("Race day N" / "Race days N–M")
 // og returnerer null hvis nogen række mangler game_day, så UI'et kan skjule mærket frem for at vise
 // skrald. Et endagsløb → start===end; et etapeløb → første..sidste in-game-dag.
+//
+// #3107 rod-årsag: Monuments har game_day i 100000-båndet — en bevidst lane-packer-
+// sentinel (MONUMENT_GAMEDAY_BASE, raceCalendarLanePacker.js), IKKE en ægte in-game-dag.
+// Uden dette tjek lækkede sentinellen direkte ud i UI'et som "Race day 100000"
+// (RaceColumn.jsx + RaceHubBoard.jsx's gruppe-header — begge læser game_day herfra og
+// gør allerede korrekt Number.isFinite-defensivt, men et sentinel-TAL ER finite). Samme
+// "skjul frem for at vise skrald"-filosofi som linjen nedenfor: et monument har ingen
+// meningsfuld synlig "in-game-dag" (den afledte BINDING-dag, deriveMonumentBindingWindow,
+// er en pulje-lokal beregning til overlap-håndhævelse — ikke en visningsdag), så mærket
+// skjules i stedet for at vise sentinellen. Bevidst STRENGERE end isMonumentBandSchedule
+// (der kræver ALLE rækker i båndet, til binding-formål): til VISNING skjuler vi allerede
+// hvis BLOT én række er i båndet — et blandet løb (i praksis ikke reelt muligt, en hel
+// race er enten monument eller ej) skal aldrig vise et "Race days 3-100000"-vindue.
 export function raceGameDaySpan(scheduleRows) {
   if (!scheduleRows?.length) return null;
   const days = scheduleRows.map((r) => r?.game_day).filter((d) => Number.isFinite(d));
   if (days.length !== scheduleRows.length) return null; // en delvist-backfillet række → skjul mærket
+  if (days.some((d) => d >= MONUMENT_GAMEDAY_BASE)) return null; // sentinel-bånd → skjul mærket (#3107)
   return { start: Math.min(...days), end: Math.max(...days) };
 }
 
