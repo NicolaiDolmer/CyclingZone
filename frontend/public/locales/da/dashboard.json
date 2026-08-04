@@ -118,6 +118,7 @@
     },
     "standings": {
       "title": "Division {division} · Stilling",
+      "titlePool": "{label} · Stilling",
       "linkAll": "Fuld rangliste →",
       "empty": "Ingen sæsondata endnu",
       "emptyCta": "Se den fulde rangliste →"
@@ -180,7 +181,7 @@
   "forecast": {
     "loading": "Beregner forecast…",
     "title": "Næste sæson · prognose",
-    "subtitle": "Forventet cashflow baseret på roster + lån + sponsor",
+    "subtitle": "Forventet cashflow baseret på roster + lån + sponsor + driftsudgifter",
     "tier": {
       "green": {
         "label": "Grøn",
@@ -204,7 +205,11 @@
       "sponsor": "Sponsor",
       "prize": "Præmiepenge (estimat)",
       "salary": "Løn",
-      "loanInterest": "Lånerenter"
+      "loanInterest": "Lånerenter",
+      "upkeep": "Vedligehold",
+      "facilityUpkeep": "Facilitets-vedligehold",
+      "staffSalary": "Stab-lønninger",
+      "academyDrift": "Akademi-drift"
     },
     "sponsorDetail": {
       "contract": "Kontrakt med {sponsor}: garanteret base {base}, løbsdags-indtægt oveni",

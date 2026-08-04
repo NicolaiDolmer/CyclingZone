@@ -19,6 +19,7 @@ import {
   hireStaff as defaultHire,
   fireStaff as defaultFire,
   releaseStaff as defaultRelease,
+  loadFiredStaffNames,
 } from "./facilityService.js";
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
@@ -136,7 +137,11 @@ export async function getStaffCandidatesHandler(
   if (error) throw new Error(`facilityRoutes: could not load facility tier for ${teamId}/${role}: ${error.message}`);
   const facilityTier = data?.tier ?? 0;
 
-  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier });
+  // #2887: udelukker holdets egne tidligere fyrede staff i denne rolle, så UI'et
+  // aldrig viser den samme fyrede kandidat igen (rehire-loop-guard, samme filter
+  // som hireStaff bruger til at validere candidateName).
+  const firedNames = await loadFiredStaffNames(teamId, role, supabaseClient);
+  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames: firedNames });
   return { status: 200, body: { role, facilityTier, candidates } };
 }
 
