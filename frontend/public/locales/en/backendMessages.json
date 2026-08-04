@@ -388,6 +388,10 @@
         "message": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin.",
         "messageReason": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin: {reason}"
       }
+    },
+    "welcome": {
+      "title": "Welcome to Cycling Zone",
+      "message": "Your team is ready. Place a bid in the auction house to sign your first rider."
     }
   },
   "error": {

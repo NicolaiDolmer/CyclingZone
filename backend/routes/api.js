@@ -97,6 +97,7 @@ import {
 import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
+  buildWelcomeNotification,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -6916,6 +6917,20 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
         firstSeenAt: attributionRow?.first_seen_at || req.body?.attribution?.first_seen_at,
         timezoneOffsetMinutes: req.body?.attribution?.timezone_offset_minutes,
       });
+
+      // Gab 2 (docs/audits/2026-08-03-product-gap-review.md, #2822): giv hvert
+      // nyt hold én garanteret notifikation ved oprettelse, så indbakken aldrig
+      // er strukturelt tom fra dag 1 — se begrundelsen i
+      // notificationService.buildWelcomeNotification. Fire-and-forget, må
+      // ALDRIG blokere eller forsinke signup (samme princip som attribution +
+      // identity-event ovenfor).
+      if (result.team?.id) {
+        notifyTeamOwnerBuilt(result.team.id, buildWelcomeNotification())
+          .catch((e) => {
+            console.error("[welcome-notification] fejlede:", { teamId: result.team.id, error: e?.message || e });
+            captureException(e, { tags: { flow: "notifications", stage: "welcome" }, teamId: result.team.id });
+          });
+      }
     }
 
     res.status(result.created ? 201 : 200).json(result);
