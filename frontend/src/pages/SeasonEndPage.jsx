@@ -10,6 +10,7 @@ import SeasonHonours from "../components/SeasonHonours";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
 import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
+import { pickDefaultSeason } from "../lib/seasonEndDefault.js";
 import {
   CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
@@ -276,7 +277,12 @@ export default function SeasonEndPage() {
     if (!seasons.length) return;
     let target = null;
     if (urlSeasonId) target = seasons.find(s => s.id === urlSeasonId);
-    if (!target) target = seasons.find(s => s.status === "active") || seasons[0];
+    // #2752: uden en :seasonId i url'en faldt siden altid tilbage til den AKTIVE
+    // sæson — lige efter et sæsonskifte er den tom (ingen løb kørt endnu), så
+    // spilleren så EmptyState i stedet for det sæsonafslut de netop fik en
+    // notifikation om. pickDefaultSeason foretrækker den seneste COMPLETED sæson
+    // i et kort vindue efter transitionen, ellers uændret adfærd (aktiv sæson).
+    if (!target) target = pickDefaultSeason(seasons);
     if (target && target.id !== selectedSeason?.id) loadSeason(target);
   }, [urlSeasonId, seasons]); // eslint-disable-line react-hooks/exhaustive-deps
 

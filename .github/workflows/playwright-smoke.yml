@@ -19,6 +19,11 @@ name: Playwright Smoke
 on:
   pull_request:
   workflow_dispatch:
+  # Merge queue (4/8): suiten kørte allerede på selve PR'en. I køen sætter
+  # changes-jobbet eksplicit frontend=false, så frontend-smoke skipper
+  # (skipped = grøn for required checks, præcis som på docs-/backend-PR'er)
+  # og kø-batches ikke betaler ~10 min windows-runtime pr. omgang.
+  merge_group:
 
 permissions:
   contents: read
@@ -31,8 +36,12 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
+      frontend: ${{ steps.filter.outputs.frontend || steps.mg.outputs.frontend }}
     steps:
+      - name: Merge group skips suite
+        if: github.event_name == 'merge_group'
+        run: echo "frontend=false" >> "$GITHUB_OUTPUT"
+        id: mg
       - name: Detect frontend changes
         id: filter
         if: github.event_name == 'pull_request'

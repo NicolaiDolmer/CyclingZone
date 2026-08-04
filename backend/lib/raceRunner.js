@@ -423,9 +423,13 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     if (v3) {
       const roleByRider = new Map(stageEntrants.map((e) => [e.rider_id, e.race_role]));
       const formByRider = new Map(stageEntrants.filter((e) => e.form != null).map((e) => [e.rider_id, e.form]));
+      // #3115 gap 1b (D3 DEL 2): dagens resolved effort pr. rytter (S3
+      // resolveStageEntrant, samme kilde som se.effort ovenfor) — kun til
+      // tag_saved_effort/tag_gave_everything, se raceNarrative.js.
+      const effortByRider = new Map(stageEntrants.filter((e) => e.effort != null).map((e) => [e.rider_id, e.effort]));
       const stageMoments = extractStageMoments({
         stageNumber, isFinal, isStageRace,
-        ranked, roleByRider, formByRider, breakawayStatus,
+        ranked, roleByRider, formByRider, effortByRider, breakawayStatus,
         incidentsForStage: incidents,
         gc: isStageRace ? gc : null,
         previousGcLeaderId,
@@ -1681,9 +1685,11 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   }
   const roleByRider = new Map(simEntrants.map((e) => [e.rider_id, e.race_role]));
   const formByRider = new Map(simEntrants.filter((e) => e.form != null).map((e) => [e.rider_id, e.form]));
+  // #3115 gap 1b (D3 DEL 2): se buildRaceResults' tilsvarende note.
+  const effortByRider = new Map(simEntrants.filter((e) => e.effort != null).map((e) => [e.rider_id, e.effort]));
   const stageMoments = v3 ? extractStageMoments({
     stageNumber, isFinal, isStageRace: true,
-    ranked, roleByRider, formByRider, breakawayStatus,
+    ranked, roleByRider, formByRider, effortByRider, breakawayStatus,
     incidentsForStage: stampedIncidents,
     gc, previousGcLeaderId,
   }) : [];

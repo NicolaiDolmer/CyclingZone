@@ -759,7 +759,7 @@
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
-        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter is always sent into the day's breakaway and rides harder to stay clear. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
+        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter is always sent into the day's breakaway and rides harder to stay clear. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. High aggression is never a downside for the rider himself: joining a breakaway costs nothing extra, no added fatigue and no penalty to his own finishing position if the break gets caught, so an aggressive rider only ever gains more chances at a result. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
@@ -771,7 +771,7 @@
       },
       "breakaway": {
         "title": "Breakaways",
-        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. Stage results mark riders who were in the breakaway with a flag, showing whether they stayed away to the finish or were caught by the bunch."
+        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. Stage results mark riders who were in the breakaway with a flag, showing whether they stayed away to the finish or were caught by the bunch. Joining the breakaway costs a rider nothing extra: no added fatigue and no penalty to his own finishing position if it gets caught. It is a free shot at a better result, never a gamble with a downside."
       },
       "fatigue": {
         "title": "Fatigue matters",
