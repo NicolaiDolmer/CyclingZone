@@ -72,19 +72,23 @@ export default function RaceSelectionPanel({
 
   // #3310: udtrukket til en genbrugelig loader — kaldes fra effekten ved raceId-skift
   // OG fra autoSelect() efter et vellykket assistent-kald, så panelet reflekterer den
-  // nye trup uden en fuld sideindlæsning. Ren flytning af den eksisterende krop; den
-  // oprindelige cancelled-vagt (undgå at et forældet svar overskriver state efter
-  // unmount/raceId-skift) lever videre som en delt ref, så den også dækker
-  // autoSelect()'s reload.
-  const cancelledRef = useRef(false);
+  // nye trup uden en fuld sideindlæsning. En delt boolean-ref er IKKE nok her: hver
+  // effect-kørsel ville nulstille den samme ref til false, så et forældet A-svar (race
+  // A -> race B uden remount, samme route) kunne slippe forbi tjekket efter B's effect
+  // allerede havde "un-cancelled" den. En monotont stigende generation løser det —
+  // hvert kald indfanger sit eget generationsnummer FØR fetch'et, og sammenligner
+  // EFTER: kun svaret for den seneste generation (effect-start ELLER unmount/skift)
+  // får lov at skrive state. Dækker både effektens eget load og autoSelect()'s reload.
+  const generationRef = useRef(0);
   const loadSelection = useCallback(async () => {
     const headers = await authHeaders();
     if (!headers) return;
+    const requestGeneration = generationRef.current;
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection`, { headers });
       if (!res.ok) return;
       const body = await res.json();
-      if (cancelledRef.current) return;
+      if (requestGeneration !== generationRef.current) return;
       setData(body);
       if (body.selection) {
         setSel({
@@ -101,14 +105,14 @@ export default function RaceSelectionPanel({
   }, [raceId]);
 
   useEffect(() => {
-    cancelledRef.current = false;
+    generationRef.current += 1;
     setData(null);
     setStatus("idle");
     setErrorKey(null);
     setErrorDetail(null);
     setTouched(false);
     loadSelection();
-    return () => { cancelledRef.current = true; };
+    return () => { generationRef.current += 1; };
   }, [raceId, loadSelection]);
 
   // Flag OFF eller løbet ikke længere åbent → intet panel.
@@ -153,6 +157,13 @@ export default function RaceSelectionPanel({
   const raceLive = (data.race?.stages_completed ?? 0) > 0;
   const errParams = { min: size.min, max: size.max };
   const saving = status === "saving";
+  // #3310 quality-fix: Auto-select kører en server-mutation (delete+insert) på samme
+  // race_entries-rækker som et manuelt Gem. Uden dette gør en manuel toggle/klik MENS
+  // auto-select's POST+reload stadig kører til et race mod loadSelection()'s
+  // efterfølgende setSel() (sidste skriv vinder, ikke-deterministisk). Alle kontroller
+  // der kan ændre/gemme udtagelsen låses derfor også under auto-select-loading, ikke
+  // kun under saving.
+  const busy = saving || autoStatus === "loading";
   // #1747: skjul skadede ryttere. En allerede-udtaget (skadet) rytter forbliver
   // synlig så manageren ikke mister overblikket over en ugyldig udtagelse.
   const injuredCount = riders.filter((r) => r.injured).length;
@@ -344,7 +355,7 @@ export default function RaceSelectionPanel({
           // fjernelse er altid tilladt, kun tilføjelse valideres. Tidligere gjorde
           // `rider.injured` alene checkboxen disabled UANSET checked-state, så en
           // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
-          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
+          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
             <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
@@ -426,7 +437,7 @@ export default function RaceSelectionPanel({
               const bound = boundByRider.get(rider.id) ?? null;
               // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
               // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
-              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
+              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
               return (
                 <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
@@ -487,7 +498,7 @@ export default function RaceSelectionPanel({
             value={sel.captainId}
             riders={selectedRiders}
             emptyLabel="—"
-            disabled={saving}
+            disabled={busy}
             onChange={(v) => setRole("captainId", v)}
           />
           <RoleSelect
@@ -495,7 +506,7 @@ export default function RaceSelectionPanel({
             value={sel.sprintCaptainId}
             riders={selectedRiders}
             emptyLabel={t("selection.noRole")}
-            disabled={saving}
+            disabled={busy}
             onChange={(v) => setRole("sprintCaptainId", v)}
           />
           <RoleSelect
@@ -503,7 +514,7 @@ export default function RaceSelectionPanel({
             value={sel.hunterId}
             riders={selectedRiders}
             emptyLabel={t("selection.noRole")}
-            disabled={saving}
+            disabled={busy}
             onChange={(v) => setRole("hunterId", v)}
           />
         </div>
@@ -537,7 +548,7 @@ export default function RaceSelectionPanel({
             <button
               type="button"
               onClick={autoSelect}
-              disabled={autoStatus === "loading" || saving}
+              disabled={busy}
               className="px-4 py-2 rounded-lg border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t("selection.autoFill")}
@@ -545,7 +556,7 @@ export default function RaceSelectionPanel({
             <button
               type="button"
               onClick={save}
-              disabled={clientErrors.length > 0 || saving}
+              disabled={clientErrors.length > 0 || busy}
               className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
               {saving ? t("selection.saving") : t("selection.save")}
