@@ -430,6 +430,13 @@ async function creditSigningBonus({ supabase, contract }) {
         type: "sponsor_signing_bonus",
         amount,
         description: `Sponsor — signing bonus (${contract.sponsor_name})`,
+        // #3198-fund-7b: metadata.code lader FinancePage vise en oversat tekst
+        // i stedet for den rå engelske description ovenfor (kun brugt som
+        // fallback for legacy-rækker uden metadata).
+        metadata: {
+          code: "tx.sponsor.signingBonus",
+          params: { sponsorName: contract.sponsor_name },
+        },
         actor_type: FINANCE_ACTOR_TYPE.SYSTEM,
         actor_id: null,
         source_path: "sponsorContractsService.creditSigningBonus",
@@ -514,6 +521,11 @@ export async function evaluateSeasonObjectives({ supabase, finishedSeasonNumber 
           type: "sponsor_objective_bonus",
           amount,
           description: `Sponsor — season objective met (${contract.sponsor_name})`,
+          // #3198-fund-7b: se creditSigningBonus ovenfor.
+          metadata: {
+            code: "tx.sponsor.objectiveBonus",
+            params: { sponsorName: contract.sponsor_name },
+          },
           actor_type: FINANCE_ACTOR_TYPE.SYSTEM,
           actor_id: null,
           source_path: "sponsorContractsService.evaluateSeasonObjectives",

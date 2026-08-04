@@ -29,6 +29,24 @@ test("forskellige seeds giver (som regel) forskellige kandidater", () => {
   assert.notDeepEqual(generateStaffCandidates(ARGS), other);
 });
 
+// ── #2887: genansættelses-bug — excludeNames forhindrer at en fyret kandidat
+// dukker op igen i den deterministiske pulje (samme seed ville ellers ALTID
+// reproducere præcis samme 3 navne, inkl. den lige-fyrede).
+test("excludeNames udelader angivne navne fra puljen, stadig 3 kandidater, ingen dubletter", () => {
+  const full = generateStaffCandidates(ARGS);
+  const excluded = new Set([full[0].name]);
+  const filtered = generateStaffCandidates({ ...ARGS, excludeNames: excluded });
+  assert.equal(filtered.length, 3);
+  assert.equal(filtered.some((c) => c.name === full[0].name), false, "ekskluderet navn må ikke optræde i puljen");
+  const names = filtered.map((c) => c.name);
+  assert.equal(new Set(names).size, 3, "ingen dubletter i erstatnings-puljen");
+});
+
+test("excludeNames tomt/udeladt → uændret adfærd (bagudkompatibel default)", () => {
+  assert.deepEqual(generateStaffCandidates({ ...ARGS, excludeNames: new Set() }), generateStaffCandidates(ARGS));
+  assert.deepEqual(generateStaffCandidates(ARGS), generateStaffCandidates(ARGS));
+});
+
 // ── #2216 A4: kandidater beriges med overall + topSpecialization til visning ──
 
 test("kandidater har overall (fra derivation) + topSpecialization, deterministisk", () => {

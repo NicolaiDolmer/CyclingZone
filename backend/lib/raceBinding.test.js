@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow, loadPoolLocalCetSpans } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -179,7 +179,11 @@ test("findRiderBindingConflicts: intet vindue → ingen konflikter", () => {
 // svarer tomt, ligesom før #3070; season_id bliver undefined på begge sider af
 // sammenligningen i loaderen, så eksisterende tests (der ikke sætter season_id på
 // hverken race eller entries) er upåvirkede.
-function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], raceSeasonById = null } = {}) {
+// #3114b: raceLeagueDivisionById udvider den eksisterende "races"-sæson-opslagsgren
+// (id, season_id → nu + league_division_id). seasonRaces dækker den NYE
+// .eq("season_id", ...)-gren (uden .in("id", ...)) som loadPoolLocalCetSpans bruger til
+// at bygge det pulje-lokale monument-indeks — separat fra otherRaceIds-opslaget ovenfor.
+function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], raceSeasonById = null, raceLeagueDivisionById = null, seasonRaces = null } = {}) {
   function from(table) {
     const f = {};
     const b = {
@@ -204,9 +208,16 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
           }));
         } else if (table === "race_withdrawals") {
           data = withdrawnRaceIds.map((race_id) => ({ race_id }));
-        } else if (table === "races" && raceSeasonById) {
-          const ids = f.in_id || [];
-          data = ids.map((id) => ({ id, season_id: raceSeasonById[id] ?? null }));
+        } else if (table === "races") {
+          if (f.in_id && raceSeasonById) {
+            const ids = f.in_id || [];
+            data = ids.map((id) => ({
+              id, season_id: raceSeasonById[id] ?? null,
+              league_division_id: raceLeagueDivisionById?.[id] ?? null,
+            }));
+          } else if (f.season_id !== undefined && seasonRaces) {
+            data = seasonRaces;
+          }
         }
         return Promise.resolve({ data, error: null }).then(resolve, reject);
       },
@@ -308,6 +319,103 @@ test("loadTeamBindingContext: entry fra en ANDEN sæson binder ikke, selvom game
     findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }),
     [], "r1 skal være fri til at udtages i race-this på tværs af sæsongrænsen"
   );
+});
+
+// #3114b: save-guarden afleder nu monument-vinduer pulje-lokalt (samme logik som
+// sweep'en) i stedet for det naive {100000+}-vindue der aldrig kan overlappe et normalt
+// løb. Uden dette kunne en manuel D1-udtagelse dobbeltbooke en rytter i et monument OG
+// et normalt løb samme dag (kun D1 har monumenter i dag, D1 er pt. AI-only — relevant
+// fra D1-oprykningen efter 23/8).
+test("loadTeamBindingContext: DETTE løb er et monument → thisWindow afledes pulje-lokalt, konflikt fanges (#3114b)", async () => {
+  const supabase = makeSupabase({
+    scheduleByRace: {
+      "race-monument": [{ race_id: "race-monument", scheduled_at: "2026-07-29T17:00:00Z", game_day: 100000 }],
+      "race-a": [
+        { race_id: "race-a", scheduled_at: "2026-07-29T08:00:00Z", game_day: 3 },
+        { race_id: "race-a", scheduled_at: "2026-07-29T15:00:00Z", game_day: 4 },
+      ],
+    },
+    teamEntries: [{ race_id: "race-a", rider_id: "r1" }],
+    raceSeasonById: { "race-a": "s1" },
+    raceLeagueDivisionById: { "race-a": 1 },
+    seasonRaces: [
+      { id: "race-monument", league_division_id: 1 },
+      { id: "race-a", league_division_id: 1 },
+    ],
+  });
+  const ctx = await loadTeamBindingContext({
+    supabase, race: { id: "race-monument", season_id: "s1", league_division_id: 1 }, teamId: "team-1",
+  });
+  assert.deepEqual(ctx.thisWindow, { start: 3, end: 4 }, "afledt fra race-a's game_day-span på samme CET-dato, IKKE {100000,100000}");
+  assert.equal(ctx.otherRaces.length, 1);
+  const bound = findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces });
+  assert.deepEqual(bound, ["r1"], "r1 (i race-a) skal flages bundet mod monumentet — hullet er lukket");
+});
+
+test("loadTeamBindingContext: en ANDEN af holdets løb er et monument → dets vindue afledes pulje-lokalt (#3114b)", async () => {
+  const supabase = makeSupabase({
+    scheduleByRace: {
+      "race-a": [
+        { race_id: "race-a", scheduled_at: "2026-07-29T08:00:00Z", game_day: 3 },
+        { race_id: "race-a", scheduled_at: "2026-07-29T15:00:00Z", game_day: 4 },
+      ],
+      "race-monument": [{ race_id: "race-monument", scheduled_at: "2026-07-29T17:00:00Z", game_day: 100000 }],
+    },
+    teamEntries: [{ race_id: "race-monument", rider_id: "r2" }],
+    raceSeasonById: { "race-monument": "s1" },
+    raceLeagueDivisionById: { "race-monument": 1 },
+    seasonRaces: [
+      { id: "race-monument", league_division_id: 1 },
+      { id: "race-a", league_division_id: 1 },
+    ],
+  });
+  const ctx = await loadTeamBindingContext({
+    supabase, race: { id: "race-a", season_id: "s1", league_division_id: 1 }, teamId: "team-1",
+  });
+  assert.equal(ctx.otherRaces.length, 1);
+  assert.deepEqual(ctx.otherRaces[0].window, { start: 3, end: 4 }, "monumentet afledes til samme span som race-a, ikke {100000,100000}");
+  const bound = findRiderBindingConflicts({ riderIds: ["r2"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces });
+  assert.deepEqual(bound, ["r2"], "r2 (i monumentet) skal flages bundet mod race-a");
+});
+
+test("loadTeamBindingContext: monument uden matchende puljeløb på datoen → intet vindue, ingen falsk binding (konservativt som deriveMonumentBindingWindow)", async () => {
+  const supabase = makeSupabase({
+    scheduleByRace: {
+      "race-monument": [{ race_id: "race-monument", scheduled_at: "2026-07-29T17:00:00Z", game_day: 100000 }],
+      "race-a": [{ race_id: "race-a", scheduled_at: "2026-07-28T08:00:00Z", game_day: 3 }], // anden dato
+    },
+    teamEntries: [{ race_id: "race-a", rider_id: "r1" }],
+    raceSeasonById: { "race-a": "s1" },
+    raceLeagueDivisionById: { "race-a": 1 },
+    seasonRaces: [
+      { id: "race-monument", league_division_id: 1 },
+      { id: "race-a", league_division_id: 1 },
+    ],
+  });
+  const ctx = await loadTeamBindingContext({
+    supabase, race: { id: "race-monument", season_id: "s1", league_division_id: 1 }, teamId: "team-1",
+  });
+  assert.equal(ctx.thisWindow, null, "ingen pulje-løb 29/7 → kan ikke afledes, ligesom deriveMonumentBindingWindow alene");
+  assert.deepEqual(findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }), []);
+});
+
+test("loadPoolLocalCetSpans: bygger ét span-indeks pr. ønsket pulje, monument-rækker udelades", async () => {
+  const supabase = makeSupabase({
+    scheduleByRace: {
+      "race-a": [{ race_id: "race-a", scheduled_at: "2026-07-29T08:00:00Z", game_day: 3 }],
+      "race-monument": [{ race_id: "race-monument", scheduled_at: "2026-07-29T17:00:00Z", game_day: 100000 }],
+      "race-b": [{ race_id: "race-b", scheduled_at: "2026-07-29T09:00:00Z", game_day: 7 }], // pulje 2 — IKKE ønsket
+    },
+    seasonRaces: [
+      { id: "race-a", league_division_id: 1 },
+      { id: "race-monument", league_division_id: 1 },
+      { id: "race-b", league_division_id: 2 },
+    ],
+  });
+  const spans = await loadPoolLocalCetSpans({ supabase, seasonId: "s1", pools: [1] });
+  assert.equal(spans.size, 1, "kun pulje 1 blev bedt om");
+  const ord29 = Date.parse("2026-07-29T00:00:00Z") / 86_400_000;
+  assert.deepEqual(spans.get(1).get(ord29), { start: 3, end: 3 }, "kun race-a bidrager — monumentet er udeladt");
 });
 
 test("findManualOverlapConflicts: ingen konflikt når vinduer ikke overlapper", () => {

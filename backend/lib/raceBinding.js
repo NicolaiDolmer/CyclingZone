@@ -98,8 +98,18 @@ export function raceGameDaySpan(scheduleRows) {
 // CET-ordinal → {min,max} game_day. Pulje-lokalt er obligatorisk — divisionernes
 // kalendere er forskudt i real-tid, så samme game_day falder på forskellige datoer
 // i forskellige puljer (målt i prod 3/8: D2 kørte gd 0-7 27-30/7, D4 kørte gd 4
-// først 31/7). Save-guarden (loadTeamBindingContext) har ikke pulje-kontekst og
-// beholder indtil videre hullet for manuelle D1-udtagelser — sporet i #3114.
+// først 31/7).
+//
+// #3114b (4/8): save-guarden (loadTeamBindingContext, nedenfor) afleder nu SAMME
+// vindue, on-demand: kun når det aktuelle løb eller et af holdets ANDRE committede
+// løb rent faktisk er i monument-båndet, indlæses sæsonens (race, schedule)-par én
+// gang og pulje-lokale spans bygges for de(t) nødvendige pulje(r) — se
+// loadPoolLocalCetSpans. I dag er alle Monuments league_division_id=1 (D1, verificeret
+// mod prod 4/8), som pt. er AI-only, så hullet var latent; relevant fra D1-oprykningen
+// efter 23/8. Den atomare hård-garanti INDE i replace_race_selection-RPC'en (SQL,
+// database/2026-07-10-replace-race-selection-binding-guard.sql) har STADIG samme hul
+// for den snævre samtidigheds-case (to næsten-simultane manuelle gem) — ikke lukket
+// her, se PR-beskrivelsen for #3114 for detaljer og en verificeret afledningsquery.
 
 // Er HELE løbets schedule i monument-båndet? (Monuments er endagsløb — én række —
 // men vi kræver alle rækker, så et blandet/korrupt løb falder tilbage til
@@ -260,6 +270,44 @@ export function teamInRacePool({ teamDivisionId, racePoolId }) {
   return teamDivisionId === racePoolId;
 }
 
+// Pulje-lokalt CET→game_day-spans-indeks til monument-afledning i loadTeamBindingContext
+// (#3114b). Henter sæsonens løb + schedule ÉN gang (samme fremgangsmåde som sweep'en,
+// raceEntryGenerator.js: hvilke løb der bidrager til hvilken puljes indeks kan først
+// afgøres når man kender ALLE sæsonens løbs pulje-tilhør) og bygger ét CET-ordinal→
+// {start,end}-span-indeks pr. ØNSKET pulje. Kaldes KUN når mindst ét af de involverede
+// løb (dette eller et af holdets andre committede løb) rent faktisk er i monument-båndet
+// — de fleste udtagelses-gem rammer aldrig denne gren (5 monumenter/sæson). Returnerer
+// Map<pool, Map<cetOrdinal,{start,end}>>.
+export async function loadPoolLocalCetSpans({ supabase, seasonId, pools }) {
+  const wanted = new Set(pools);
+  const { data: seasonRaces, error: eRaces } = await supabase
+    .from("races").select("id, league_division_id").eq("season_id", seasonId);
+  if (eRaces) throw new Error(`races (monument pool index): ${eRaces.message}`);
+  const raceIds = (seasonRaces || []).map((r) => r.id);
+  const { data: seasonSched, error: eSched } = await selectInChunks({
+    supabase, table: "race_stage_schedule", columns: "race_id, scheduled_at, game_day",
+    inColumn: "race_id", ids: raceIds,
+  });
+  if (eSched) throw new Error(`race_stage_schedule (monument pool index): ${eSched.message}`);
+  const schedByRace = new Map();
+  for (const s of seasonSched || []) {
+    if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+    schedByRace.get(s.race_id).push(s);
+  }
+  const rowsByPool = new Map();
+  for (const r of seasonRaces || []) {
+    const key = r.league_division_id ?? null;
+    if (!wanted.has(key)) continue;
+    const rows = schedByRace.get(r.id);
+    if (!rows || isMonumentBandSchedule(rows)) continue; // kun NORMALE løb bidrager til indekset
+    if (!rowsByPool.has(key)) rowsByPool.set(key, []);
+    rowsByPool.get(key).push(...rows);
+  }
+  const spanByPool = new Map();
+  for (const [key, rows] of rowsByPool) spanByPool.set(key, buildCetToGameDaySpan(rows));
+  return spanByPool;
+}
+
 // DB-loader: hent det aktuelle løbs tidsvindue + holdets udtagne ryttere i ANDRE
 // løb (grupperet pr. løb med deres tidsvindue), så findRiderBindingConflicts kan
 // afgøre om en udtagelse dobbeltbooker en rytter. Tynd I/O — al logik er pure ovenfor.
@@ -271,11 +319,19 @@ export function teamInRacePool({ teamDivisionId, racePoolId }) {
 // dette. `race.season_id` SKAL derfor være med i kalderens select (begge kaldere i
 // api.js gør det). Vi filtrerer FØR raceBindingWindow bygges, så en anden sæsons
 // entries aldrig når ind i otherRaces.
+//
+// #3114b: dette ELLER et af holdets andre committede løb kan være i monument-båndet
+// (game_day >= MONUMENT_GAMEDAY_BASE) — deres vindue afledes da pulje-lokalt via
+// loadPoolLocalCetSpans + deriveMonumentBindingWindow, SAMME logik som sweep'en
+// (raceEntryGenerator.js), i stedet for det naive {100000+}-vindue der aldrig kan
+// overlappe et normalt løb. `race.league_division_id` SKAL derfor også med i kalderens
+// select (begge kaldere i api.js gør det).
 export async function loadTeamBindingContext({ supabase, race, teamId }) {
   const { data: thisSched, error: e1 } = await supabase
     .from("race_stage_schedule").select("race_id, scheduled_at, game_day").eq("race_id", race.id);
   if (e1) throw new Error(`race_stage_schedule (this): ${e1.message}`);
-  const thisWindow = raceBindingWindow(thisSched);
+  const naiveThisWindow = raceBindingWindow(thisSched);
+  const thisIsMonument = isMonumentBandSchedule(thisSched);
 
   // Rod A (#1823): holdets afmeldte løb binder IKKE — de udtagne ryttere er frie til
   // det overlappende løb. Entries bevares (gen-tilmelding giver samme trup), men de
@@ -304,7 +360,10 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
     ridersByRace.get(e.race_id).push(e.rider_id);
   }
   let otherRaceIds = [...ridersByRace.keys()];
-  if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
+  // Ingen andre committede løb → intet at binde imod, uanset om DETTE løb er et
+  // monument. naiveThisWindow er inert her (findRiderBindingConflicts/mapRiderBindingDetails
+  // kortslutter på tom otherRaces), så en (evt. forkert) afledning er spildt arbejde.
+  if (!otherRaceIds.length) return { thisWindow: naiveThisWindow, otherRaces: [] };
 
   // Sæson-filter (#3070): et separat opslag mod races (ikke et embedded
   // race_entries.select("...,races!inner(season_id)")-filter) — vi har allerede
@@ -312,13 +371,16 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   // lettere at verificere mod den ægte PostgREST-kontrakt end at stole på embedded-
   // filter-semantik vi ikke har testet ende-til-ende her. Chunket (#3030/#3031-
   // mønster): et hold kan i teorien have entries i mange løb på tværs af sæsoner.
+  // #3114b: + league_division_id, så et evt. monument blandt de andre løb kan afledes
+  // pulje-lokalt uden en ekstra tur til DB.
   const { data: otherRaceRows, error: e3Season } = await selectInChunks({
-    supabase, table: "races", columns: "id, season_id", inColumn: "id", ids: otherRaceIds,
+    supabase, table: "races", columns: "id, season_id, league_division_id", inColumn: "id", ids: otherRaceIds,
   });
   if (e3Season) throw new Error(`races season lookup (binding): ${e3Season.message}`);
   const seasonByRaceId = new Map((otherRaceRows || []).map((r) => [r.id, r.season_id]));
+  const poolByRaceId = new Map((otherRaceRows || []).map((r) => [r.id, r.league_division_id ?? null]));
   otherRaceIds = otherRaceIds.filter((rid) => seasonByRaceId.get(rid) === race.season_id);
-  if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
+  if (!otherRaceIds.length) return { thisWindow: naiveThisWindow, otherRaces: [] };
 
   const { data: scheds, error: e3 } = await supabase
     .from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", otherRaceIds);
@@ -330,9 +392,33 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
     schedByRace.get(s.race_id).push(s);
   }
 
+  // #3114b: hvilke løb (dette + andre) er RENT FAKTISK i monument-båndet? Kun dem skal
+  // afledes pulje-lokalt — resten bruger raceBindingWindow som hidtil. Byg kun indeks for
+  // de pulje(r) der faktisk er i spil (typisk 0 eller 1 — begge kaldere sikrer at DETTE
+  // løb har race.season_id + race.league_division_id sat).
+  const otherMonumentIds = new Set(otherRaceIds.filter((rid) => isMonumentBandSchedule(schedByRace.get(rid))));
+  const neededPools = new Set();
+  if (thisIsMonument) neededPools.add(race.league_division_id ?? null);
+  for (const rid of otherMonumentIds) neededPools.add(poolByRaceId.get(rid) ?? null);
+
+  let cetSpanByPool = new Map();
+  if (neededPools.size && race.season_id != null) {
+    cetSpanByPool = await loadPoolLocalCetSpans({ supabase, seasonId: race.season_id, pools: [...neededPools] });
+  }
+
+  const thisWindow = thisIsMonument
+    ? deriveMonumentBindingWindow(thisSched, cetSpanByPool.get(race.league_division_id ?? null))
+    : naiveThisWindow;
+
   const otherRaces = otherRaceIds
-    .map((rid) => ({ raceId: rid, window: raceBindingWindow(schedByRace.get(rid)), riderIds: ridersByRace.get(rid) }))
-    .filter((o) => o.window); // løb uden schedule kan ikke binde
+    .map((rid) => {
+      const rows = schedByRace.get(rid);
+      const window = otherMonumentIds.has(rid)
+        ? deriveMonumentBindingWindow(rows, cetSpanByPool.get(poolByRaceId.get(rid) ?? null))
+        : raceBindingWindow(rows);
+      return { raceId: rid, window, riderIds: ridersByRace.get(rid) };
+    })
+    .filter((o) => o.window); // løb uden (evt. afledt) vindue kan ikke binde
 
   // Forward-guard (#3070): sæson-filtret ovenfor er den ENESTE ting der forhindrer
   // game_day-nøglerummet (sæson-relativt, nulstilles hver sæson) i at blande to

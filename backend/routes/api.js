@@ -97,6 +97,7 @@ import {
 import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
+  buildWelcomeNotification,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -146,6 +147,7 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
@@ -319,7 +321,7 @@ import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAc
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
 import { buildCustomerRows, summarizeNps } from "../lib/growthSnapshot.js";
-import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches } from "../lib/balanceDriftMetrics.js";
+import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches, findConsecutiveTierBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
 import { aggregateTraffic } from "../lib/trafficMetrics.js";
@@ -4060,6 +4062,126 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
   }
 });
 
+// POST /api/races/:raceId/selection/auto — #2180 one-click "auto-udtag" (indbakke-
+// knappen på 36t-varslet, selectionWarningSweep.js). Assistenten bygger + gemmer
+// holdets trup for DETTE løb med samme motor som Race Hub's dag-scopede "Auto-
+// udfyld" (POST /races/distribution/regenerate, assignTeamAcrossRaces) — bare
+// skalet ned til ét løb, så managerens ANDRE løb den dag ikke røres.
+//
+// Rører ALDRIG en manager-kurateret trup: blokerer med 409 hvis holdet allerede
+// har MINDST ÉN manuel entry for løbet (is_auto_filled=false — samme "mangler
+// udtagelse"-diskriminator som varsel-sweepet og regenerate-endpointets
+// mode=missing). Et rent auto-udfyldt felt (fra den stille time-sweep) MÅ gerne
+// overskrives — det er netop den situation knappen findes til.
+router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+    if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+    // Frys (#1825): et igangværende etapeløb må ikke få sit startfelt genskrevet.
+    if (isRaceLineupFrozen(race)) return res.status(409).json({ error: "selection_race_started" });
+    if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
+      return res.status(409).json({ error: "selection_wrong_pool" });
+    }
+
+    const { data: withdrawal, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    // Et bevidst fravalg (afmeldt) er ikke "mangler udtagelse" — assistenten skal
+    // ikke tilmelde holdet igen uden om manageren.
+    if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
+
+    const { data: existingEntries, error: entErr } = await supabase
+      .from("race_entries").select("rider_id, is_auto_filled")
+      .eq("race_id", race.id).eq("team_id", req.team.id);
+    if (entErr) return res.status(500).json({ error: entErr.message });
+    if ((existingEntries || []).some((e) => e.is_auto_filled === false)) {
+      return res.status(409).json({ error: "selection_already_exists" });
+    }
+
+    // #2579/#2637: delt eligibility-filter + skade-udelukkelse — samme regler som
+    // raceRunner.fillMissingTeamEntries og regenerate-endpointet (Spec 6.5, #1306).
+    const [{ data: teamRiders, error: ridersErr }, { data: stageProfiles, error: profErr }] = await Promise.all([
+      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id)),
+      supabase.from("race_stage_profiles")
+        .select("stage_number, profile_type, finale_type, demand_vector")
+        .eq("race_id", race.id).order("stage_number", { ascending: true }),
+    ]);
+    if (ridersErr) return res.status(500).json({ error: ridersErr.message });
+    if (profErr) return res.status(500).json({ error: profErr.message });
+    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    if (!teamRiderIds.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
+
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const [{ data: abilities, error: abErr }, { data: conditions, error: condErr }] = await Promise.all([
+      supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
+      supabase.from("rider_condition").select("rider_id, fatigue, injured_until").in("rider_id", teamRiderIds),
+    ]);
+    if (abErr) return res.status(500).json({ error: abErr.message });
+    if (condErr) return res.status(500).json({ error: condErr.message });
+    const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
+    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const todayStr = copenhagenDateString();
+    const injuredIds = new Set(
+      (conditions || []).filter((c) => c.injured_until && c.injured_until >= todayStr).map((c) => c.rider_id)
+    );
+    const candidateRiders = teamRiderIds
+      .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
+      .filter((r) => r.abilities && !injuredIds.has(r.rider_id));
+
+    // #1845/#3070: samme binding-kontekst som PUT /selection — udelukker ryttere der
+    // allerede er committet i et af holdets ANDRE, tidsoverlappende løb (1 rytter =
+    // 1 løb pr. løbsdag). S3-strategien (aChain/captains) genbruges som samme
+    // præference-lag som Race Hub's regenerate-knap, så assistenten er konsistent.
+    const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
+    const strategy = await loadTeamStrategy({ supabase, teamId: req.team.id, rosterIds: new Set(teamRiderIds) });
+
+    const picks = pickAutoSelection({
+      candidateRiders, race, stages: stageProfiles || [],
+      thisWindow: binding.thisWindow, lockedWindows: binding.otherRaces, strategy,
+    });
+    if (!picks.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
+
+    // #2599: en eksplicit auto-udtagelse supersederer en evt. tidligere "Ryd dag/alt"-
+    // markering for netop dette (race,team)-par (samme regel som manuel gem/regenerate).
+    const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
+      .delete().eq("race_id", race.id).eq("team_id", req.team.id);
+    if (clearCleanupErr) captureException(new Error(`race_entry_clears cleanup (auto-select): ${clearCleanupErr.message}`));
+
+    const rows = picks.map((p) => ({
+      race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
+    }));
+    // Delete-then-insert (samme mønster + samme atomicitets-afvejning som regenerate-
+    // endpointet ovenfor — se dets kommentar: ægte atomicitet kræver replace_race_selection-
+    // RPC'en, men den er skrevet til manager-input, ikke assistent-genererede picks).
+    const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
+    if (delErr) return res.status(500).json({ error: delErr.message });
+    const { error: insErr } = await supabase.from("race_entries").insert(rows);
+    if (insErr) return res.status(500).json({ error: insErr.message });
+
+    res.json({
+      ok: true,
+      rider_ids: picks.map((p) => p.rider_id),
+      captain_id: picks.find((p) => p.race_role === "captain")?.rider_id ?? null,
+      sprint_captain_id: picks.find((p) => p.race_role === "sprint_captain")?.rider_id ?? null,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═══ Race v3 (#2224), slice S3 (#2034): STAGE-ROLLER + EFFORT PR. ETAPE ═══════
 //
 // I MODSÆTNING til /selection (frosset når stages_completed>0, #1825) er dette
@@ -6916,6 +7038,20 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
         firstSeenAt: attributionRow?.first_seen_at || req.body?.attribution?.first_seen_at,
         timezoneOffsetMinutes: req.body?.attribution?.timezone_offset_minutes,
       });
+
+      // Gab 2 (docs/audits/2026-08-03-product-gap-review.md, #2822): giv hvert
+      // nyt hold én garanteret notifikation ved oprettelse, så indbakken aldrig
+      // er strukturelt tom fra dag 1 — se begrundelsen i
+      // notificationService.buildWelcomeNotification. Fire-and-forget, må
+      // ALDRIG blokere eller forsinke signup (samme princip som attribution +
+      // identity-event ovenfor).
+      if (result.team?.id) {
+        notifyTeamOwnerBuilt(result.team.id, buildWelcomeNotification())
+          .catch((e) => {
+            console.error("[welcome-notification] fejlede:", { teamId: result.team.id, error: e?.message || e });
+            captureException(e, { tags: { flow: "notifications", stage: "welcome" }, teamId: result.team.id });
+          });
+      }
     }
 
     res.status(result.created ? 201 : 200).json(result);
@@ -7193,6 +7329,12 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
 
     const ascRows = [...(rows || [])].reverse().map(r => ({ date: r.metric_date, statuses: r.statuses }));
     const breaches = findConsecutiveBreaches(ascRows, { minConsecutiveDays: 3 });
+    // #2557/#3250-opfølgning (spor B1, del B): per-tier-brud, IKKE koblet til
+    // Discord-alarmen (se findConsecutiveTierBreaches()'s header) — kun
+    // forespørgelsesbar her, så fx tier3 kan vises som brudt selvom
+    // `breaches` ovenfor (det globale aggregat) er tomt.
+    const tierBreachRows = ascRows.map(r => ({ date: r.date, tierStatuses: r.statuses?.byTier || {} }));
+    const tierBreaches = findConsecutiveTierBreaches(tierBreachRows, { minConsecutiveDays: 3 });
 
     res.json({
       bands: BALANCE_DRIFT_BANDS,
@@ -7204,6 +7346,7 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
         computedAt: r.computed_at,
       })),
       breaches,
+      tierBreaches,
     });
   } catch (error) {
     res.status(500).json({ error: error.message || "Kunne ikke hente balance-drift-data" });
@@ -13344,16 +13487,19 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 //     øjebliksbillede (IKKE kumulativt betalt-til-dato, da løn opkræves som ét
 //     samlet 'salary'-beløb pr. hold pr. sæson og ikke kan splittes akademi/senior
 //     i ledger'en). Vist adskilt fra de kumulative tal for ikke at blande stock/flow.
-//   - Realiserede salg: den ENESTE vej en akademi-udviklet rytter sælges på i dag
-//     er graduerings-flowet (academyGraduation.js "sell"-handlingen) — en
-//     academy_graduation-row med status='sold' der opretter en almindelig
-//     senior-auktion (is_youth=false, seller_team_id=holdet). Matches på
-//     rider_id + seller_team_id. #785-reglen genbruges: en gennemført auktion
-//     uden vinder (og uden garanteret salg) er intet salg.
+//   - Realiserede salg (#2793): salgs-poolen er ALLE nogensinde signede
+//     academy_intake-rækker for holdet — IKKE kun dem der passerede graduerings-
+//     flowet (academyGraduation.js "sell"), da academy_graduation er praktisk
+//     talt tom/uverificeret i prod. Matches mod holdets gennemførte salg, både
+//     via almindelig senior-auktion (is_youth=false, #785-reglen ekskluderer
+//     auktioner uden vinder/garanteret salg) OG via transfermarkedet (accepterede
+//     transfer_offers — den terminale gennemførte tilstand).
 //   - "Salgspræmie" (realiseret værdiskabelse) = current_price - starting_price
-//     for hvert realiseret salg, dvs. beløbet budt op over rytterens markedsværdi
-//     PÅ SALGSTIDSPUNKTET (auctions.starting_price = calculateRiderMarketValue
-//     ved oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
+//     for AUKTIONS-salg, dvs. beløbet budt op over rytterens markedsværdi PÅ
+//     SALGSTIDSPUNKTET (auctions.starting_price = calculateRiderMarketValue ved
+//     oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
+//     Transfermarkeds-salg har ingen tilsvarende baseline og bidrager derfor
+//     kun til salesProceeds, ikke valueCreation (se academyPnl.js).
 router.get("/academy/pnl", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -13379,32 +13525,45 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
       .in("type", ["academy_drift", "academy_signing"]);
     if (financeErr) throw new Error(financeErr.message);
 
-    // Realiserede salg: graduerede akademiryttere holdet valgte at sælge (academyGraduation.js).
-    const { data: soldGrads, error: gradErr } = await supabase
-      .from("academy_graduation")
-      .select("rider_id, resolved_at, riders(firstname, lastname)")
+    // Akademi-udviklede ryttere: ALLE nogensinde signede academy_intake-rækker
+    // for holdet (#2793 — ikke længere afhængig af academy_graduation).
+    const { data: signedIntake, error: intakeErr } = await supabase
+      .from("academy_intake")
+      .select("rider_id, riders(firstname, lastname)")
       .eq("team_id", teamId)
-      .eq("status", "sold");
-    if (gradErr) throw new Error(gradErr.message);
+      .eq("status", "signed");
+    if (intakeErr) throw new Error(intakeErr.message);
+
+    const academyRiderIds = (signedIntake ?? []).map((r) => r.rider_id).filter(Boolean);
+    const riderById = new Map((signedIntake ?? []).map((r) => [r.rider_id, r.riders ?? {}]));
 
     let auctionRows = [];
-    const soldRiderIds = (soldGrads ?? []).map((g) => g.rider_id).filter(Boolean);
-    if (soldRiderIds.length > 0) {
-      const { data, error: aucErr } = await supabase
-        .from("auctions")
-        .select("id, rider_id, current_price, starting_price, current_bidder_id, is_guaranteed_sale, actual_end, status")
-        .eq("seller_team_id", teamId)
-        .eq("is_youth", false)
-        .eq("status", "completed")
-        .in("rider_id", soldRiderIds);
-      if (aucErr) throw new Error(aucErr.message);
-      auctionRows = data ?? [];
+    let transferRows = [];
+    if (academyRiderIds.length > 0) {
+      const [auctionRes, transferRes] = await Promise.all([
+        supabase
+          .from("auctions")
+          .select("id, rider_id, current_price, starting_price, current_bidder_id, is_guaranteed_sale, actual_end, status")
+          .eq("seller_team_id", teamId)
+          .eq("is_youth", false)
+          .eq("status", "completed")
+          .in("rider_id", academyRiderIds),
+        supabase
+          .from("transfer_offers")
+          .select("id, rider_id, offer_amount, counter_amount, updated_at, seller_team_id, status")
+          .eq("seller_team_id", teamId)
+          .eq("status", "accepted")
+          .in("rider_id", academyRiderIds),
+      ]);
+      if (auctionRes.error) throw new Error(auctionRes.error.message);
+      if (transferRes.error) throw new Error(transferRes.error.message);
+      auctionRows = auctionRes.data ?? [];
+      transferRows = transferRes.data ?? [];
     }
 
     const current = computeAcademyCurrent(rosterRows ?? [], { slotsMax: ACADEMY.SLOTS });
     const { driftPaid, signingFeesPaid } = computeAcademyCumulative(financeRows ?? []);
-    const gradByRider = new Map((soldGrads ?? []).map((g) => [g.rider_id, g]));
-    const sales = buildAcademySales(auctionRows, gradByRider);
+    const sales = buildAcademySales(auctionRows, transferRows, riderById);
 
     res.json({
       enabled: true,
