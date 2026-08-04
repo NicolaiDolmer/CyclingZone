@@ -17,7 +17,7 @@
     },
     "countdown": {
       "title": "Time left and auto-extension",
-      "body": "If you bid in the last 10 minutes, the auction is automatically extended. You can always respond if someone outbids you at the very end."
+      "body": "If a bid takes the lead in the last 10 minutes, the auction extends automatically. Bidding without taking the lead, for example against an auto-bid that counters you, does not extend it."
     }
   },
   "hint": {
@@ -25,7 +25,7 @@
     "minBidLabel": "Min bid:",
     "minBidBody": "A new bid must be at least 1 CZ$ above the current bid. Min bid is pre-filled in the input field.",
     "autoExtendLabel": "10-min auto-extension:",
-    "autoExtendBody": "Bids in the last 10 minutes extend the auction, so you can always respond if someone outbids you at the very end.",
+    "autoExtendBody": "A bid that takes the lead in the last 10 minutes extends the auction, so you can respond at the very end. A bid that does not take the lead does not extend it.",
     "startTour": "Show me around"
   },
   "ticker": {

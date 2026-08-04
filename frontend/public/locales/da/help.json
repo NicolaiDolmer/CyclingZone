@@ -127,7 +127,7 @@
       },
       "tenMinExtend": {
         "title": "10-minutters forlængelse",
-        "text": "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen kan ikke løbe ud over dagens aktive vindue: ville de ekstra 10 minutter række ud over lukketid, springer auktionen i stedet direkte til næste vindues åbning, hvor kun de overskydende minutter føres med (fx et bud der ville have afsluttet auktionen 5 minutter efter lukketid, afslutter den i stedet 5 minutter inde i næste vindue)."
+        "text": "Hvis et bud overtager føringen inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Føringen skal reelt skifte: byder du mod et autobud, og det modsvarer dig uden på noget tidspunkt at miste føringen, forlænges der ikke. Det er bevidst, for det forhindrer at en auktion trækkes i langdrag med gentagne minimumsbud, der aldrig truer den førende. Forlængelserne fortsætter, indtil intet bud overtager føringen i de sidste 10 minutter. Forlængelsen kan ikke løbe ud over dagens aktive vindue: ville de ekstra 10 minutter række ud over lukketid, springer auktionen i stedet direkte til næste vindues åbning, hvor kun de overskydende minutter føres med (fx et bud der ville have afsluttet auktionen 5 minutter efter lukketid, afslutter den i stedet 5 minutter inde i næste vindue)."
       },
       "squadAndAuctions": {
         "title": "Holdstørrelse og auktioner",

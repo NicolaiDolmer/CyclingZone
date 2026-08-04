@@ -127,7 +127,7 @@
       },
       "tenMinExtend": {
         "title": "10-minute extension",
-        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension cannot spill past the day's active window: if the extra 10 minutes would land after close, the auction skips straight to the next window's opening instead, carrying over only the leftover minutes (e.g. a bid that would have ended the auction 5 minutes after close instead ends it 5 minutes into the next window)."
+        "text": "If a bid takes the lead within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. The lead has to actually change: if you bid against an auto-bid and it counters you without ever losing the lead, nothing is extended. That is deliberate, because it stops an auction being dragged out by repeated minimum bids that never threaten the leader. Extensions continue until no bid takes the lead in the final 10 minutes. The extension cannot spill past the day's active window: if the extra 10 minutes would land after close, the auction skips straight to the next window's opening instead, carrying over only the leftover minutes (e.g. a bid that would have ended the auction 5 minutes after close instead ends it 5 minutes into the next window)."
       },
       "squadAndAuctions": {
         "title": "Squad size and auctions",
