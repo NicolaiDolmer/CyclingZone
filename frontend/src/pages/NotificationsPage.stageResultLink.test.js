@@ -30,3 +30,24 @@ test("#3243 stage_result har stadig en generisk fallback i TYPE_CONFIG (uændret
     "TYPE_CONFIG.stage_result.link forbliver den sikre fallback — kun click-handlerens deep-link-regel ændres",
   );
 });
+
+// #2180/#3310: selection_warning havde backend live (#3280) men manglede sin
+// TYPE_CONFIG-entry — faldt til DEFAULT_TYPE_CONFIG (generisk klokke, intet
+// link). Kalender-boardet er en sikker fallback (uden raceId ingen deep-link
+// mulig); click-handleren deep-linker til løbets selection-anker når
+// metadata.raceId/related_id findes, samme mønster som race_result/stage_result.
+test("selection_warning har TYPE_CONFIG-entry med kalender-fallback", () => {
+  assert.match(
+    source,
+    /selection_warning:\s*\{[^}]*link: "\/planning\?tab=calendar"/,
+    "TYPE_CONFIG.selection_warning skal have en kalender-fallback så beskeden ikke lander uden link",
+  );
+});
+
+test("selection_warning deep-linker til løbets selection-anker", () => {
+  assert.match(
+    source,
+    /selection_warning[\s\S]{0,120}\/races\/\$\{[^}]+\}#selection/,
+    "click-handleren skal route selection_warning til /races/:raceId#selection når raceId/related_id findes",
+  );
+});
