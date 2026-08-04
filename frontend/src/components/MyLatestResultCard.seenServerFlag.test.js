@@ -58,3 +58,16 @@ test("#2593 mark-seen kaldes IKKE når race.seen allerede er true (idempotent p�
     "effekten skal springe POST-kaldet over når løbet allerede er markeret set",
   );
 });
+
+test("#3243 fyrer first_race_result_shown-funnel-eventet samme sted som mark-seen (kun ved overgangen usét→set)", () => {
+  assert.match(
+    source,
+    /import \{ logFirstEvent \} from "\.\.\/lib\/logEvent";/,
+    "skal importere logFirstEvent",
+  );
+  assert.match(
+    source,
+    /logFirstEvent\("first_race_result_shown", \{ race_id: raceId \}\);/,
+    "eventet skal bære race_id, samme payload-form som de øvrige first_*-events",
+  );
+});

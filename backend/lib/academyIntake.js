@@ -460,10 +460,13 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   if (acq?.code === "already_assigned") throw new Error("already_assigned");
   if (!acq?.ok) throw new Error(`finalize_academy_acquisition uventet svar: ${JSON.stringify(acq)}`);
 
-  // 4. Opdatér academy_intake → signed.
+  // 4. Opdatér academy_intake → signed. #2793: persistér signing-fee'en som
+  // rytterens kostbasis — uden dette kunne hverken akademi-P&L'en (kostbasis
+  // pr. rytter) eller transfer-profit-panelet (køb→salg-parring) regne et
+  // realiseret salg af en akademi-udviklet rytter.
   const { error: intakeUpdateErr } = await supabase
     .from("academy_intake")
-    .update({ status: "signed", resolved_at: new Date().toISOString() })
+    .update({ status: "signed", resolved_at: new Date().toISOString(), signing_fee: fee })
     .eq("id", intakeRow.id);
   if (intakeUpdateErr) throw new Error(`signAcademyCandidate intake update: ${intakeUpdateErr.message}`);
 

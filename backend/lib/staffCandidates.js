@@ -51,15 +51,24 @@ function hashString(s) {
   return h >>> 0;
 }
 
-export function generateStaffCandidates({ teamId, seasonNumber, role, facilityTier }) {
+// excludeNames (Set|Array, valgfri): #2887 — navne der ALDRIG må optræde i den
+// genererede pulje, typisk holdets egne tidligere FYREDE staff for samme rolle.
+// Uden dette er puljen 100% deterministisk på (teamId, seasonNumber, role) —
+// en fyret medarbejder ville derfor genopstå som topkandidat ved næste
+// candidates-refresh i samme sæson ("fyr for at få en bedre" bliver meningsløst,
+// se Discord-evidens i issuet). rand()-strømmen forbliver uændret for
+// IKKE-ekskluderede navne (samme behandling som usedNames-dedup), så en tom/
+// udeladt excludeNames giver 100% samme output som før.
+export function generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames }) {
   const rand = mulberry32(hashString(`${teamId}:${seasonNumber}:${role}`));
   // facilityTier 0 giver stadig tier-1-kandidater (teaser i UI); selve ansættelsen blokeres af validateHire (staff-tier > facilitets-tier).
   const maxTier = Math.max(1, Math.min(5, facilityTier));
+  const excluded = excludeNames instanceof Set ? excludeNames : new Set(excludeNames ?? []);
   const candidates = [];
   const usedNames = new Set();
   while (candidates.length < 3) {
     const name = pickStaffName(rand);
-    if (usedNames.has(name)) continue;
+    if (usedNames.has(name) || excluded.has(name)) continue;
     usedNames.add(name);
     const tier = 1 + Math.floor(rand() * maxTier);
     // #2216 A4: berig med afledt overall + top-specialisering til UI-visning/

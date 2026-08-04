@@ -6,7 +6,20 @@ import {
   countdownSegments,
   relativeDayKey,
   RACE_TIMEZONE,
+  formatCountdown,
 } from "./stageScheduleConfig.js";
+
+// Minimal fake t() — matcher i18next-signaturen godt nok til at teste formatCountdown
+// uden en ægte i18next-instans (samme mønster som resten af filen: ren logik, ingen DOM).
+function fakeT(key, opts) {
+  if (key === "races:detail.stageSchedule.startingNow") return "Starting now";
+  if (key === "races:detail.stageSchedule.countdownPrefix") return "in";
+  const count = opts?.count;
+  if (key === "races:detail.stageSchedule.countdownDays") return `${count} day${count === 1 ? "" : "s"}`;
+  if (key === "races:detail.stageSchedule.countdownHours") return `${count} hour${count === 1 ? "" : "s"}`;
+  if (key === "races:detail.stageSchedule.countdownMinutes") return `${count} min`;
+  return key;
+}
 
 test("stageStatus classifies done/next/pending from stages_completed", () => {
   // Løbet har afviklet 2 etaper.
@@ -99,4 +112,22 @@ test("relativeDayKey returns null for invalid input", () => {
 
 test("RACE_TIMEZONE is the Copenhagen IANA zone", () => {
   assert.equal(RACE_TIMEZONE, "Europe/Copenhagen");
+});
+
+// #3243 — formatCountdown genbruges af TeamSelectionCtaCard (nyt holds
+// første-løb-CTA) og DashboardPage ("Kommende løb"). Samme streng begge steder.
+test("formatCountdown renders 'starting now' for past/now scheduled times", () => {
+  assert.equal(formatCountdown(1000, 5000, fakeT), "Starting now");
+});
+
+test("formatCountdown renders prefix + the two most-significant segments", () => {
+  const nowMs = 0;
+  const scheduledMs = (1 * 24 * 60 + 3 * 60) * 60 * 1000; // 1d 3h
+  assert.equal(formatCountdown(scheduledMs, nowMs, fakeT), "in 1 day 3 hours");
+});
+
+test("formatCountdown falls back to minutes-only under an hour", () => {
+  const nowMs = 0;
+  const scheduledMs = 12 * 60 * 1000; // 12 min
+  assert.equal(formatCountdown(scheduledMs, nowMs, fakeT), "in 12 min");
 });
