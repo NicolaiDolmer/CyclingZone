@@ -22,4 +22,19 @@
   <url>
     <loc>https://cyclingzone.org/handelsbetingelser</loc>
   </url>
+  <!-- #2042 A: login-vaeg lempet for disse fire trust/marketing-sider (refs #2824) —
+       ingen per-account data, ren i18n-prosa (roadmap falder tilbage til statisk
+       kopi for logget-ud, RLS uaendret). -->
+  <url>
+    <loc>https://cyclingzone.org/help</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/rules</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/roadmap</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/patch-notes</loc>
+  </url>
 </urlset>

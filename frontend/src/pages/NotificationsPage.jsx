@@ -72,6 +72,9 @@ const TYPE_CONFIG = {
   // #2842: svar på spillerens egen feedback-indsendelse. Bevidst UDEN link —
   // beskeden ER indholdet, og der findes ingen side at sende spilleren hen til.
   admin_notice:              { Icon: InboxIcon,        color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15" },
+  // Gab 2 (#2822): garanteret første notifikation ved holdoprettelse — peger
+  // mod auktionshuset (samme CTA som beskeden selv).
+  welcome:                   { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/auctions" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
@@ -515,8 +518,12 @@ export default function NotificationsPage() {
                           ? `/riders/${n.metadata.riderId}`
                           : n.type === "transfer_interest" && n.related_id
                             ? `/riders/${n.related_id}`
-                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside
-                            : n.type === "race_result" && (n.metadata?.raceId || n.related_id)
+                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside.
+                            // #3243: stage_result bar SAMME metadata.raceId (#2523) men manglede denne
+                            // regel og faldt til den generiske /resultater — ekstra klik lige på det
+                            // trin (første etaperesultat) hvor en ny spiller allerede er tilbøjelig til
+                            // at give op.
+                            : (n.type === "race_result" || n.type === "stage_result") && (n.metadata?.raceId || n.related_id)
                               ? `/races/${n.metadata?.raceId || n.related_id}`
                               // #2832-review (ejer-merge-krav): season_ended bærer den AFSLUTTEDE
                               // sæsons id i related_id (emitSeasonEndedNotifications). Uden dette

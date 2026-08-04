@@ -357,6 +357,18 @@
     "hideInjured": "Hide injured",
     "suitability": "Suitability",
     "routeMatch": "Route match",
+    "driverInsight": {
+      "escape": {
+        "high": "Escape chance: High. Aggression pulls him into breakaway attempts often on this terrain, and it never costs his own result if the move gets caught.",
+        "medium": "Escape chance: Medium. Aggression occasionally pulls him into breakaway attempts on this terrain, with no cost if the move gets caught.",
+        "low": "Escape chance: Low. Not aggressive enough to be a regular breakaway threat on this terrain."
+      },
+      "tactics": {
+        "strong": "Tactical fit: Strong. This stage rewards positioning and race-reading, and that's a strength of his.",
+        "average": "Tactical fit: Average. This stage rewards positioning and race-reading.",
+        "poor": "Tactical fit: Limited. This stage rewards positioning and race-reading, which isn't his strength yet."
+      }
+    },
     "sort": {
       "label": "Sort by",
       "ascAria": "Sorting ascending, tap for descending",

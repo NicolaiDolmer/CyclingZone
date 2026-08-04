@@ -15,12 +15,20 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Card, FlagIcon } from "./ui";
+import { formatCountdown } from "../lib/stageScheduleConfig.js";
 
-export default function TeamSelectionCtaCard({ nextRace }) {
+// #3243 — startAtMs/nowMs (valgfri): ægte race_stage_schedule-countdown til
+// løbsstart, samme kilde+format som dashboardets "Kommende løb"-kort. Et helt
+// nyt hold har intet andet signal for HVORNÅR deres første løb kører end dette
+// kort, og uden countdown'en ved de kun AT det kommer, ikke hvornår de skal
+// vende tilbage (funnel-fund #3243: 12% af nye hold venter 4+ dage på deres
+// første resultat — transparens om timingen er billigere end at gætte).
+export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs = null }) {
   const { t } = useTranslation("races");
   if (!nextRace) return null;
 
   const bodyKey = nextRace.race_type === "stage_race" ? "discoverCta.bodyStage" : "discoverCta.bodyOneDay";
+  const showCountdown = Number.isFinite(startAtMs) && Number.isFinite(nowMs);
 
   return (
     <Card className="mb-5 p-5 flex flex-col sm:flex-row sm:items-center gap-4" data-testid="team-selection-cta">
@@ -31,6 +39,9 @@ export default function TeamSelectionCtaCard({ nextRace }) {
         <div className="min-w-0">
           <h2 className="font-semibold text-cz-1 text-sm">{t("discoverCta.title")}</h2>
           <p className="text-cz-3 text-xs mt-0.5">{t(bodyKey, { race: nextRace.name })}</p>
+          {showCountdown && (
+            <p className="text-cz-3 text-3xs mt-1 tabular-nums">{formatCountdown(startAtMs, nowMs, t)}</p>
+          )}
         </div>
       </div>
       {/* #2288 F — landede tidligere øverst på race-siden uden at vise

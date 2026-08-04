@@ -221,6 +221,13 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
             type: "sponsor_result_bonus",
             amount: b.amount,
             description: `Sponsor — result bonus (${b.wins} wins, ${b.podiums} podiums)`,
+            // #3198-fund-7b: metadata.code lader FinancePage vise en oversat
+            // tekst i stedet for den rå engelske description ovenfor (kun
+            // brugt som fallback for legacy-rækker uden metadata).
+            metadata: {
+              code: "tx.sponsor.resultBonus",
+              params: { wins: b.wins, podiums: b.podiums },
+            },
             season_id: seasonId,
             race_id: race.id,
             actor_type: actorType,

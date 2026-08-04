@@ -83,15 +83,34 @@ function createSupabaseMock({ facilities = [], staff = [], balance = 0, season =
       }
       if (table === "team_staff") {
         return {
-          select: () => ({
-            eq: () => ({
-              eq: (col, val) => {
-                assert.equal(col, "status");
-                assert.equal(val, "active");
-                return Promise.resolve({ data: staff, error: null });
-              },
-            }),
-          }),
+          select: (cols) => {
+            // #2887: GET candidates' loadFiredStaffNames-query — select("name") +
+            // 3× eq() (team_id, role, status='fired'), thenable (ingen .maybeSingle()).
+            if (cols === "name") {
+              const filters = {};
+              const chain = {
+                eq(col, val) {
+                  filters[col] = val;
+                  return chain;
+                },
+                then(resolve, reject) {
+                  const rows = staff.filter((s) => Object.entries(filters).every(([k, v]) => s[k] === v));
+                  return Promise.resolve({ data: rows.map((r) => ({ name: r.name })), error: null }).then(resolve, reject);
+                },
+              };
+              return chain;
+            }
+            // Eksisterende: GET facilities' aktiv-staff-liste (2× eq, direkte promise).
+            return {
+              eq: () => ({
+                eq: (col, val) => {
+                  assert.equal(col, "status");
+                  assert.equal(val, "active");
+                  return Promise.resolve({ data: staff, error: null });
+                },
+              }),
+            };
+          },
         };
       }
       throw new Error(`unexpected table ${table}`);
@@ -291,6 +310,30 @@ test("GET candidates: bruger holdets NUVÆRENDE facilitets-tier + deterministisk
   );
   assert.equal(body.candidates.length, 3);
   assert.ok(body.candidates.every((c) => c.tier >= 1 && c.tier <= 3));
+});
+
+// #2887: rehire-loop — kandidatlisten må ALDRIG genoptræde med et navn holdet
+// selv har fyret i samme rolle (samme deterministiske seed reproducerer ellers
+// præcis samme 3 navne på hver refresh, inkl. den lige-fyrede topkandidat).
+test("GET candidates: udelukker fyrede navne for samme team+role fra puljen (#2887 rehire-loop)", async () => {
+  const seasonNumber = 3;
+  const facilityTier = 3;
+  const full = generateStaffCandidates({ teamId: TEAM_ID, seasonNumber, role: "training", facilityTier });
+  const fired = full[0]; // ville ellers deterministisk genopstå som topkandidat
+  const supabase = createSupabaseMock({
+    facilities: [{ track: "training", tier: facilityTier }],
+    staff: [{ team_id: TEAM_ID, role: "training", status: "fired", name: fired.name }],
+  });
+
+  const { status, body } = await getStaffCandidatesHandler(
+    { teamId: TEAM_ID, role: "training", seasonNumber },
+    supabase,
+    { flags: ENABLED }
+  );
+
+  assert.equal(status, 200);
+  assert.equal(body.candidates.length, 3);
+  assert.equal(body.candidates.some((c) => c.name === fired.name), false, "fyret kandidat må ikke genoptræde i puljen");
 });
 
 test("GET candidates: flag off → 403 facilities_disabled", async () => {

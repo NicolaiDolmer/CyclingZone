@@ -653,7 +653,9 @@ const SEED_BOARD_ROSTER = RIDERS.filter((r) => r.team_id === TEST_TEAM.id).map((
   firstname: r.firstname, lastname: r.lastname,
   primary_type: r.primary_type, secondary_type: r.secondary_type, nationality_code: r.nationality_code,
   // S5: suitability + aggression + kondition så RoleCards/FitBar/jæger-chip har data i preview.
-  suitability: 78 - i * 9, aggression: 72 - i * 6, form: 60 - i * 3, fatigue: 12 + i * 7,
+  // #3115 Gap 1b: tactics stigende (modsat aggression) så RiderFitInsight-preview
+  // dækker alle tre bånd (poor/average/strong) på tværs af truppen.
+  suitability: 78 - i * 9, aggression: 72 - i * 6, tactics: 28 + i * 7, form: 60 - i * 3, fatigue: 12 + i * 7,
 }));
 export const SEED_DISTRIBUTION = {
   enabled: true,
@@ -810,6 +812,7 @@ export const SEED_SELECTION = {
     suitability: r.suitability,
     stageSuitability: null,
     aggression: r.aggression,
+    tactics: r.tactics,
     form: r.form,
     fatigue: r.fatigue,
     injured: i === SEED_BOARD_ROSTER.length - 1,
