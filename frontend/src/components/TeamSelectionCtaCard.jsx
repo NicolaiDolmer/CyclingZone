@@ -23,7 +23,7 @@ import { formatCountdown } from "../lib/stageScheduleConfig.js";
 // kort, og uden countdown'en ved de kun AT det kommer, ikke hvornår de skal
 // vende tilbage (funnel-fund #3243: 12% af nye hold venter 4+ dage på deres
 // første resultat — transparens om timingen er billigere end at gætte).
-export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs = null }) {
+export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs = null, primary = true }) {
   const { t } = useTranslation("races");
   if (!nextRace) return null;
 
@@ -49,7 +49,11 @@ export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs
           scrolle direkte ned til RaceSelectionPanel ved load. */}
       <Link
         to={`/races/${nextRace.id}#selection`}
-        className="flex-shrink-0 self-start sm:self-auto px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 transition-opacity"
+        className={`flex-shrink-0 self-start sm:self-auto px-4 py-2 rounded-lg text-sm font-semibold ${
+          primary
+            ? "bg-cz-accent text-cz-on-accent hover:opacity-90 transition-opacity"
+            : "border border-cz-border bg-transparent text-cz-1 hover:border-cz-3 transition-colors"
+        }`}
       >
         {t("discoverCta.action")}
       </Link>
