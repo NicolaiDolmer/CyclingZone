@@ -156,6 +156,8 @@
     },
     "unknownBuy": "Unknown",
     "unknownBuyHint": "No purchase found in the team's history, e.g. initial squad or swap. Profit cannot be calculated.",
+    "unknownAcademyBuy": "Academy (cost unknown)",
+    "unknownAcademyBuyHint": "This rider was signed from the academy before cost tracking was added. Profit cannot be calculated.",
     "total": "Total realized profit",
     "totalExcluded": "{count, plural, one {# sale} other {# sales}} without a known purchase price, not included in the total."
   },

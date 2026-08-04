@@ -119,9 +119,18 @@ export default function AcademyPnl() {
                     <td className="px-4 py-2 text-cz-2">{s.soldAt ? formatDate(s.soldAt) : "–"}</td>
                     <td className="px-4 py-2 text-right"><Amount value={s.price} /></td>
                     <td className="px-4 py-2 text-right">
-                      <span className={`font-mono ${s.premium >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
-                        {formatNumber(s.premium)} CZ$
-                      </span>
+                      {/* #2793: transfermarkeds-salg har ingen markedsværdi-ved-
+                          listing-baseline (asking_price sættes frit af sælger),
+                          så premium er null — vis en streg i stedet for at
+                          antage 0 (der ville se ud som "solgt til nøjagtig
+                          markedsværdi"). */}
+                      {s.premium == null ? (
+                        <span className="text-cz-3">–</span>
+                      ) : (
+                        <span className={`font-mono ${s.premium >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                          {formatNumber(s.premium)} CZ$
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
