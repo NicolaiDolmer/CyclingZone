@@ -90,6 +90,13 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // season_form_reset_runs (#3249/PR #3271, merged natbølge 4/8): claim-tabel
+  // mod dobbelt-decay i seasonFormReset. Skrives FØRST ved sæsonskifte med
+  // season_form_reset_mode='decay' (tidligst S2→S3-cutoveren 23/8) — kan ikke
+  // flag-gates i FLAG_GATED_EMPTY_TABLES, for mode ER allerede 'decay' mens
+  // tabellen korrekt er tom indtil transitionen. Samme klasse som hall_of_fame.
+  // Fjern entry når tabellen har rows (efter 23/8).
+  "season_form_reset_runs",
   // email_log (#2725/#2853): var her som en manuel "jeg tjekkede engang"-entry.
   // Flyttet 26/7 (#2985) til FLAG_GATED_EMPTY_TABLES — samme mekanisme som
   // academy_season_intake_runs. Se den registrering for den fulde forklaring;
@@ -256,6 +263,13 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // (`/api/peak-plans` + `/${planId}/accept-training`), så den statiske caller-grep
   // ikke matcher path-mønstret. Desuden launch-gated bag peak_planner_enabled.
   "POST /peak-plans/:id/accept-training",
+  // #2180 one-click auto-udtag: backend-endpointet (+ det tilhørende 36t-
+  // varsel-sweep, selectionWarningSweep.js) shippet FØR indbakke-knappen —
+  // eksplicit backend-only scope for denne PR (se PR-body). En senere
+  // frontend-session wirer notifikationens metadata.raceId til dette
+  // endpoint fra NotificationsPage.jsx. Intentional orphaned indtil da,
+  // ikke drift; fjern denne entry når knappen lander.
+  "POST /races/:raceId/selection/auto",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).

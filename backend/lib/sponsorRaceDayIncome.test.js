@@ -397,6 +397,11 @@ test("payRaceDaySponsorsToDate krediterer stage_win/podium-bonusser for etape-re
   assert.equal(bonusCall.payload.idempotency_key, "sponsor_results:r1:t1");
   assert.equal(bonusCall.payload.reason_code, FINANCE_REASON.SPONSOR_RESULT_BONUS);
   assert.equal(bonusCall.payload.related_entity_type, FINANCE_RELATED_ENTITY.RACE);
+  // #3198-fund-7b: metadata.code skal findes så FinancePage kan vise oversat
+  // tekst i stedet for den rå engelske description.
+  assert.equal(bonusCall.payload.metadata?.code, "tx.sponsor.resultBonus");
+  assert.equal(bonusCall.payload.metadata?.params?.wins, 1);
+  assert.equal(bonusCall.payload.metadata?.params?.podiums, 1);
 
   // results_bonus_paid opdateret på kontrakten (persisteret loft-forbrug).
   assert.equal(supabase.state.updates.length, 1);

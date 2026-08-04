@@ -97,7 +97,7 @@ export const BALANCE_DRIFT_BANDS = Object.freeze({
   breakawayWinSharePct:    Object.freeze({ min: 1, max: 7, reportOnly: true }),
   // #2731-opfølgning B — count-baseret supplement til maxRiderWinRate, se
   // maxRiderWinCountAboveRateFloor()'s header for kalibrering + Rubio-casen.
-  // reportOnly: 50% dags-hit-rate over en 30-dages empirisk scanning (se
+  // reportOnly: 77% dags-hit-rate over en 30-dages empirisk scanning (se
   // funktionens header) er ikke sjælden nok til hård alarm endnu.
   maxRiderDominantWinCount: Object.freeze({ max: 6, reportOnly: true }), // >=7 sejre m. rate>=COUNT_TRIGGER_MIN_RATE
 });
@@ -192,9 +192,10 @@ export function maxRiderWinRateLowerBound({
  *     tusindvis af ryttere) har ALTID en topscorer et sted; ren
  *     sejrs-optælling er lige så følsom over for pooling-støj som den rå
  *     maxRiderWinRate var før #3245.
- *   - wins>=7 MED rate>=0,40: 15/30 dage (50%) — rate-gulvet er derfor ikke
- *     pynt, det er det eneste håndtag der faktisk diskriminerer signal fra
- *     "ugens topscorer".
+ *   - wins>=7 MED rate>=0,40: 23/30 dage (77%; PR #3273's body sagde 15/30,
+ *     men adversarial re-verifikation 4/8 fandt 23/30 ad tre uafhængige veje,
+ *     se PR-kommentaren) — gulvet skærer altså kun ~20 procentpoint af og
+ *     diskriminerer svagere end oprindeligt antaget.
  *   - wins>=8 (uden gulv): 10/30 (33%). wins>=9: 0/30 — aldrig observeret,
  *     så X=9 ville aldrig fange NOGEN dominans, heller ikke ægte tilfælde.
  *
@@ -203,7 +204,7 @@ export function maxRiderWinRateLowerBound({
  * kun 0,012 margin — Y=0,45 (samme som det rå maxRiderWinRate-bånd) ville
  * UDELUKKE ham. minStarts=5 matcher den eksisterende konvention.
  *
- * 50% dags-hit-rate er IKKE sjælden — se BALANCE_DRIFT_BANDS' reportOnly-
+ * 77% dags-hit-rate er IKKE sjælden — se BALANCE_DRIFT_BANDS' reportOnly-
  * begrundelse for hvorfor denne metrik (ligesom jourSansSharePct/
  * breakawayWinSharePct) er synlig/persisteret, men aldrig alarm-eligible.
  *
