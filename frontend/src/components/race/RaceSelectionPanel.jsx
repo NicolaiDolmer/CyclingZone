@@ -81,9 +81,14 @@ export default function RaceSelectionPanel({
   // får lov at skrive state. Dækker både effektens eget load og autoSelect()'s reload.
   const generationRef = useRef(0);
   const loadSelection = useCallback(async () => {
+    // #3310 quality-fix: snapshottet SKAL tages FØR det første await (authHeaders()
+    // kan reelt gå på netværk ved Supabase-token-refresh). Ellers kan et forældet
+    // kald (race A) vågne EFTER raceId er skiftet til B og generationRef er steget,
+    // læse det NYE tal som sit eget requestGeneration, og guarden matcher stadig —
+    // race A's data overskriver race B's state. Se kommentaren ovenfor funktionen.
+    const requestGeneration = generationRef.current;
     const headers = await authHeaders();
     if (!headers) return;
-    const requestGeneration = generationRef.current;
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection`, { headers });
       if (!res.ok) return;
