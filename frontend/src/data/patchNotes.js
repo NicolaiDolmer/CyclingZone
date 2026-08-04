@@ -105,6 +105,20 @@ export const PATCHES = [
           "body": "Dashboard-moduler som form og stillinger åbner nu på din egen division og gruppe i stedet for 1. division. Nye managere får også en glattere vej fra oprettelse til deres første løbsresultat, og sponsorbonus-transaktioner viser ordentlig tekst på begge sprog."
         },
         "refs": [2182, 3243]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy candidate names no longer lead to a dead end",
+          "body": "Clicking a candidate's name on the academy intake screen could show \"rider not found\": the candidate isn't visible in the rider database yet since he hasn't joined your academy. The name is now plain text until you sign or reject him; the signing fee, potential and other details on the card are unchanged."
+        },
+        "da": {
+          "title": "Akademi-kandidatnavne fører ikke længere til en blindgyde",
+          "body": "Klik på en kandidats navn på akademiets intake-skærm kunne vise \"rytter ikke fundet\": kandidaten er endnu ikke synlig i rytterdatabasen, fordi han ikke er optaget i dit akademi. Navnet er nu almindelig tekst, indtil du signer eller afviser ham; signeringspris, potentiale og de øvrige detaljer på kortet er uændret."
+        },
+        "refs": [3142]
       }
     ]
   },
