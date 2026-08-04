@@ -265,6 +265,36 @@ function buildRawUciMenRacePointRows() {
   return rows;
 }
 
+// #3328 (ejer-beslutning 4/8): klasse↔etapeantal-båndet giver WorldTour A/B/C SAMME
+// etapeinterval (6-8) — kun præmie/point skal differentiere klasserne fremover, ikke
+// længde. Ved bånd-midtpunktet (7 etaper) gav OtherWorldTourC's UCI-tro skala LAVERE
+// afkast pr. rytterdag end ProSeries' 3-5-bånd (GC-vinderskala: 300/7 ≈ 42,9 point/dag
+// mod ProSeries 200/4 = 50 point/dag) — det omvendte incitament spillerne fladede
+// ("det længste løb giver det laveste afkast", #3328). OtherWorldTourB (400/7 ≈ 57,1)
+// og OtherWorldTourA (500/7 ≈ 71,4) klarer sig allerede foran ProSeries ved samme
+// bånd-midtpunkt og røres ikke.
+//
+// +25% på OtherWorldTourC lander på ≈53,6 point/rytterdag — mellem ProSeries (50, +7%
+// margin) og OtherWorldTourB (57,1) — bevarer prestige-rækkefølgen
+// B > C > ProSeries og giver C en reel (ikke marginal) fordel over ProSeries.
+//
+// Ejeren har IKKE specificeret en præcis multiplikator — dette er et konservativt
+// default, bygget tunbart ét sted, til ejer-godkendelse (se PR #3327/#3328-body for
+// før/efter-målingen pr. rytterdag).
+export const OTHER_WORLD_TOUR_C_STAGE_DAY_MULTIPLIER = 1.25;
+
+// Anvend multiplikatoren på ALLE OtherWorldTourC-rækker (alle result_types — GC, etape,
+// trøjer, hold) EFTER flatten, så den serverede kurves interne FORM er uændret (samme
+// flatten-transform), kun det absolutte NIVEAU for denne ene klasse hæves. prize_money
+// = points × PRIZE_PER_POINT (raceResultsEngine.js) — så præmien skaleres proportionalt
+// med point, uden en separat præmie-tabel at holde i sync.
+function applyClassStageDayBalance(rows, multiplier = OTHER_WORLD_TOUR_C_STAGE_DAY_MULTIPLIER) {
+  if (!multiplier || multiplier === 1) return rows;
+  return rows.map((r) => (
+    r.race_class === "OtherWorldTourC" ? { ...r, points: Math.round(r.points * multiplier) } : r
+  ));
+}
+
 // Den SERVEREDE prod-kurve = rå UCI-kurve med den ejer-godkendte flatten (#1607) bagt ind:
 // Klassement/Klassiker-kurverne komprimeres 50% mod deres egen middel pr. race-class
 // (sum-bevaret → præmie-niveauet uændret, kun formen flader), mens etape/troje/hold-point
@@ -272,8 +302,9 @@ function buildRawUciMenRacePointRows() {
 // uden at bryde fresh-population-gaten — se docs/audits/2026-06-21-economy-fase2-calibration.md.
 // Kalibrerings-harnessen genbruger SAMME transform (racePointFlatten.js) så scorecardet ved
 // PROD (override flatten 0) matcher den shippede kurve bit-for-bit.
+// #3328: + klasse↔rytterdag-balance (kun OtherWorldTourC, se applyClassStageDayBalance).
 export function buildUciMenRacePointRows() {
-  return applyFlattenToPointRows(buildRawUciMenRacePointRows(), PROD_FLATTEN, PROD_BREADTH_BOOST);
+  return applyClassStageDayBalance(applyFlattenToPointRows(buildRawUciMenRacePointRows(), PROD_FLATTEN, PROD_BREADTH_BOOST));
 }
 
 // Eksponér den uflade baseline til tests/diagnostik (ikke prod-serveret).

@@ -41,7 +41,8 @@ test("UCI men race point defaults keep stage/jersey scales (flatten-invariant)",
 
   assert.equal(pointFor(rows, "TourFrance", "Etapeplacering", 1), 210);
   assert.equal(pointFor(rows, "GiroVuelta", "Bjergtroje", 3), 95);
-  assert.equal(pointFor(rows, "OtherWorldTourC", "Forertroje", 1), 6);
+  // #3328: OtherWorldTourC × 1.25 (klasse↔rytterdag-balance) → 6 → 8.
+  assert.equal(pointFor(rows, "OtherWorldTourC", "Forertroje", 1), 8);
   assert.equal(pointFor(rows, "Class2", "Etapeplacering", 3), 1);
 });
 
@@ -83,7 +84,8 @@ test("Bjerg + Point final classifications cover all stage-race classes", () => {
   // Derived (non-Grand-Tour)
   assert.equal(pointFor(rows, "OtherWorldTourA", "Bjergtroje", 1), 80);
   assert.equal(pointFor(rows, "OtherWorldTourB", "Pointtroje", 2), 48);
-  assert.equal(pointFor(rows, "OtherWorldTourC", "Bjergtroje", 3), 26);
+  // #3328: OtherWorldTourC × 1.25 (klasse↔rytterdag-balance) → 26 → 33.
+  assert.equal(pointFor(rows, "OtherWorldTourC", "Bjergtroje", 3), 33);
   assert.equal(pointFor(rows, "ProSeries", "Pointtroje", 1), 32);
   assert.equal(pointFor(rows, "Class1", "Bjergtroje", 2), 15);
   assert.equal(pointFor(rows, "Class2", "Pointtroje", 1), 6);
@@ -96,7 +98,8 @@ test("Ungdoms final classifications cover all stage-race classes", () => {
   assert.equal(pointFor(rows, "GiroVuelta", "Ungdomstroje", 1), 80);
   assert.equal(pointFor(rows, "OtherWorldTourA", "Ungdomstroje", 1), 40);
   assert.equal(pointFor(rows, "OtherWorldTourB", "Ungdomstroje", 2), 20);
-  assert.equal(pointFor(rows, "OtherWorldTourC", "Ungdomstroje", 3), 9);
+  // #3328: OtherWorldTourC × 1.25 (klasse↔rytterdag-balance) → 9 → 11.
+  assert.equal(pointFor(rows, "OtherWorldTourC", "Ungdomstroje", 3), 11);
   assert.equal(pointFor(rows, "ProSeries", "Ungdomstroje", 1), 16);
   assert.equal(pointFor(rows, "Class1", "Ungdomstroje", 1), 10);
   assert.equal(pointFor(rows, "Class2", "Ungdomstroje", 3), 1);
@@ -117,7 +120,8 @@ test("Per-day jerseys (Bjerg/Point/Ungdoms) cover all stage-race classes at rank
   // Andre tiers
   assert.equal(pointFor(rows, "OtherWorldTourA", "BjergtrojeDag", 1), 6);
   assert.equal(pointFor(rows, "OtherWorldTourB", "PointtrojeDag", 1), 5);
-  assert.equal(pointFor(rows, "OtherWorldTourC", "UngdomstrojeDag", 1), 4);
+  // #3328: OtherWorldTourC × 1.25 (klasse↔rytterdag-balance) → 4 → 5.
+  assert.equal(pointFor(rows, "OtherWorldTourC", "UngdomstrojeDag", 1), 5);
   assert.equal(pointFor(rows, "ProSeries", "BjergtrojeDag", 1), 3);
   assert.equal(pointFor(rows, "Class1", "PointtrojeDag", 1), 2);
   assert.equal(pointFor(rows, "Class2", "UngdomstrojeDag", 1), 1);
@@ -146,4 +150,27 @@ test("Team classifications cover stage races (EtapelobHold) + one-day races (Kla
   assert.equal(pointFor(rows, "Monuments", "EtapelobHold", 1), undefined);
   // TourFrance er stage-race → ingen KlassikerHold (Grand Tours kører ikke som klassikere)
   assert.equal(pointFor(rows, "TourFrance", "KlassikerHold", 1), undefined);
+});
+
+// #3328 accept-kriterie: "verificér at højere klasse faktisk giver højere afkast PR.
+// RYTTERDAG — en WorldTour-uge skal slå to ProSeries-løb i samme periode." Målt på
+// GC-vinderskalaen (Klassement/Klassiker rank 1) ved hver klasses etapeantal-bånd-
+// midtpunkt (#3328-bånd: ProSeries 3-5 → 4, WorldTour C/B/A 6-8 → 7).
+test("#3328: point pr. rytterdag stiger med klasse ved klasse↔længde-båndets midtpunkt", () => {
+  const rows = buildUciMenRacePointRows();
+  const bandMidpoint = (band) => (band[0] + band[1]) / 2;
+
+  const perStageDay = (raceClass, resultType, band) => pointFor(rows, raceClass, resultType, 1) / bandMidpoint(band);
+
+  const psPerDay = perStageDay("ProSeries", "Klassement", [3, 5]);
+  const cPerDay = perStageDay("OtherWorldTourC", "Klassiker", [6, 8]);
+  const bPerDay = perStageDay("OtherWorldTourB", "Klassiker", [6, 8]);
+  const aPerDay = perStageDay("OtherWorldTourA", "Klassement", [6, 8]);
+
+  // Hierarkiet skal holde: ProSeries < WT-C < WT-B < WT-A (højere klasse = højere afkast
+  // PR. RYTTERDAG — GC-krone-antal pr. race er et separat spørgsmål, se PR-body for den
+  // fulde "1 WT-uge vs. 2 ProSeries-løb"-sweep på tværs af alle kategorier).
+  assert.ok(psPerDay < cPerDay, `ProSeries (${psPerDay.toFixed(1)}) skal være under WT-C (${cPerDay.toFixed(1)}) pr. rytterdag`);
+  assert.ok(cPerDay < bPerDay, `WT-C (${cPerDay.toFixed(1)}) skal være under WT-B (${bPerDay.toFixed(1)}) pr. rytterdag`);
+  assert.ok(bPerDay < aPerDay, `WT-B (${bPerDay.toFixed(1)}) skal være under WT-A (${aPerDay.toFixed(1)}) pr. rytterdag`);
 });

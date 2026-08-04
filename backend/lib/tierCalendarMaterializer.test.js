@@ -6,6 +6,18 @@ import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
 
+// #3327/#3328 (2026-08-04): eksplicit opt-out af de nye kalender-dækningsgarantier
+// (endagsløb/etapeløb-mix, klasse↔længde-bånd, terræn-familie-minimum, mountain-free-
+// minimum) for tests der bevidst bruger små/kunstige katalog-fixtures til at teste ANDEN
+// mekanik (GT-gate, overlap-cap, kronologi, dedup, quote-hit-mekanik). Tomme objekter
+// slår hver garanti fra (samme konvention som selectTierRaceSet: `?.[tier]` → undefined
+// → springes). Dedikerede #3327/#3328-tests nedenfor bruger IKKE denne — de tester
+// netop de nye garantier med formålsbyggede fixtures.
+const LEGACY_MIX = {
+  oneDayShareTargets: {}, classStageLengthBand: null, priorityArchetypes: null,
+  oneDayShareMin: {}, terrainFamilyMin: {}, mountainFreeMin: {},
+};
+
 // Mock-supabase (samme mønster som seasonCalendarMaterializer.test.js): insert().select()
 // returnerer HELE den indsatte række, så materializeren får pool_race_id + name/stages.
 function makeSupabase(initial = {}) {
@@ -73,7 +85,7 @@ test("plan: kun LIVE puljer får en kalender (pulje 6 uden managere udeladt)", (
 });
 
 test("plan: div 3 rammer præcis 84, tæthed 3 hver dag, alt placeret", () => {
-  const t = buildTierMaterializationPlan({ pools, catalog: tier3Catalog(), from: FROM }).tierPlans[0];
+  const t = buildTierMaterializationPlan({ pools, catalog: tier3Catalog(), from: FROM, ...LEGACY_MIX }).tierPlans[0];
   assert.equal(t.quota, 84);
   assert.equal(t.totalGameDays, 84);
   assert.equal(t.quotaHit, true, `shortfall=${t.shortfall}`);
@@ -142,7 +154,7 @@ test("plan: cross-division dedup — intet løb deles mellem to divisioner", () 
 });
 
 test("plan: hver division rammer sin præcise kvote (140/112/84)", () => {
-  const byTier = Object.fromEntries(buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM }).tierPlans.map((t) => [t.tier, t]));
+  const byTier = Object.fromEntries(buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM, ...LEGACY_MIX }).tierPlans.map((t) => [t.tier, t]));
   assert.equal(byTier[1].totalGameDays, 140);
   assert.equal(byTier[2].totalGameDays, 112);
   assert.equal(byTier[3].totalGameDays, 84);
@@ -215,7 +227,7 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
   const teams = [mgr("a1", 4), mgr("a2", 4), mgr("a3", 4), mgr("b1", 5), mgr("b2", 5), mgr("b3", 5)];
   const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
 
-  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
   assert.ok(summary.racesInserted > 0, "der skal indsættes løb");
 
   // generator_version stemplet 4 på hver profil (#2769: pass 2 rute-berigelse wired ind).
@@ -263,7 +275,7 @@ test("apply: arketype driver parcours (cobbled_classic endagsløb → brosten do
   const mgr = (id, pool) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: pool });
   const teams = [mgr("a1", 4), mgr("a2", 4), mgr("a3", 4), mgr("b1", 5), mgr("b2", 5), mgr("b3", 5)];
   const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
-  await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
+  await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
 
   const oneDayProfiles = sb.state.race_stage_profiles.filter((p) => {
     const r = sb.state.races.find((x) => x.id === p.race_id);
@@ -323,7 +335,7 @@ test("#2251 plan: tier 4 vælger ALDRIG Grand Tours, selv når kataloget har led
     ...tier4EligibleRows,
   ];
   const t4pools = [{ id: 8, tier: 4, realManagerCount: 2 }];
-  const { tierPlans } = buildTierMaterializationPlan({ pools: t4pools, catalog, from: FROM });
+  const { tierPlans } = buildTierMaterializationPlan({ pools: t4pools, catalog, from: FROM, ...LEGACY_MIX });
   const t4 = tierPlans.find((p) => p.tier === 4);
   assert.ok(t4, "tier 4 skal have en plan");
   const stagesById = new Map(catalog.map((c) => [c.id, c.stages]));
@@ -355,7 +367,7 @@ test("#2251 dryRun rapporterer calendarViolations pr. tier (tom liste når plane
   const league_divisions = [{ id: 8, tier: 4, pool_index: 0, label: "Division 4 — A" }];
   const teams = [mgrTeam("m1", 8)];
   const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
-  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, dryRun: true });
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, dryRun: true, ...LEGACY_MIX });
   assert.ok(summary.tiers.length > 0);
   assert.ok(summary.tiers.every((t) => Array.isArray(t.calendarViolations) && t.calendarViolations.length === 0));
 });
@@ -405,7 +417,7 @@ function tier4ActivationState() {
 
 test("#2149 aktivering af sovende tier-4-pulje materialiserer kalender for den pulje (søster-pulje forbliver tom)", async () => {
   const sb = makeSupabase(tier4ActivationState());
-  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX });
 
   assert.equal(summary.skipped, null);
   assert.equal(summary.tier, 4);
@@ -418,10 +430,10 @@ test("#2149 aktivering af sovende tier-4-pulje materialiserer kalender for den p
 
 test("#2149 idempotent: andet kald er no-op (has-calendar) og duplikerer intet", async () => {
   const sb = makeSupabase(tier4ActivationState());
-  await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+  await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX });
   const racesAfterFirst = sb.state.races.length;
 
-  const second = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+  const second = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX });
   assert.equal(second.skipped, "has-calendar");
   assert.equal(sb.state.races.length, racesAfterFirst, "ingen dubletter ved dobbelt-kald");
 });
@@ -462,7 +474,7 @@ test("#2149 midt-sæson-aktivering afkortes til de-facto sæson-slut (ingen etap
   ];
   const sb = makeSupabase(state);
 
-  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM }); // now=28/6 → from=29/6
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX }); // now=28/6 → from=29/6
   assert.equal(summary.skipped, null);
   assert.equal(summary.realDays, 11, "29/6 → 10/7 = 11 rest-dage");
   assert.equal(summary.tiers[0].quota, 22, "kvote = density 2 × 11 dage");
@@ -592,7 +604,7 @@ test("#2276 reconcile: aktivering af en enkelt tier-4-pulje senere respekterer a
   const existingRaces = [{ id: "existing-1", season_id: "s1", league_division_id: 101, pool_race_id: "mon-4", name: "Il Lombardia" }];
   const state = { league_divisions: divisions, teams, race_pool: catalog, races: existingRaces, race_stage_profiles: [], race_stage_schedule: [] };
   const sb = makeSupabase(state);
-  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, tiers: [4], dryRun: false, realDays: 28 });
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, tiers: [4], dryRun: false, realDays: 28, ...LEGACY_MIX });
   const tier4Names = new Set(sb.state.races.filter((r) => r.league_division_id === 401).map((r) => r.name));
   assert.ok(!tier4Names.has("Il Lombardia"), "tier 4 må ikke vælge et navn allerede brugt i tier 1");
   assert.equal(summary.tiers.find((t) => t.tier === 4)?.calendarViolations?.length ?? 0, 0);
@@ -606,6 +618,7 @@ test("#2276 rest-af-sæson override: buildTierMaterializationPlan tager eksplici
     realDays: overrideRealDays,
     quotas: { ...TIER_GAME_DAY_QUOTA, 4: overrideDensity * overrideRealDays },
     density: { 1: 5, 2: 4, 3: 3, 4: overrideDensity },
+    ...LEGACY_MIX,
   });
   const tier4 = tierPlans.find((t) => t.tier === 4);
   const tier3 = tierPlans.find((t) => t.tier === 3);
@@ -637,6 +650,7 @@ test("#2276 rest-af-sæson override: materializeTierCalendars respekterer densit
     realDays: overrideRealDays,
     quotas: { ...TIER_GAME_DAY_QUOTA, 4: overrideDensity * overrideRealDays },
     density: { 1: 5, 2: 4, 3: 3, 4: overrideDensity },
+    ...LEGACY_MIX,
   });
   const tier4Line = summary.tiers.find((t) => t.tier === 4);
   assert.equal(tier4Line.quota, overrideDensity * overrideRealDays);
@@ -650,4 +664,68 @@ test("#2276 rest-af-sæson override: materializeTierCalendars respekterer densit
   const pool401 = sb.state.races.filter((r) => r.league_division_id === 401).map((r) => r.name).sort();
   const pool402 = sb.state.races.filter((r) => r.league_division_id === 402).map((r) => r.name).sort();
   assert.deepEqual(pool401, pool402);
+});
+
+// ── #3327/#3328 · dækningsgarantier — genereringen fejler HØJLYDT, aldrig stille underdækning ──
+
+// D2-lignende katalog (tier 2-whitelist: OtherWorldTourB/ProSeries/OtherWorldTourC), rigeligt
+// forsynet med alt UNDTAGEN brosten-arketyper (cobbled_classic/cobbled_tour) — INGEN
+// cobbles-etaper er mulige uanset hvad selection vælger. Klasse↔længde-bånd overholdes
+// (ProSeries 3-5, WorldTour B/C 6-8), så #3328-båndet ikke selv trigger violations her.
+function d2CatalogWithoutCobbles() {
+  const rows = [];
+  for (let i = 0; i < 20; i++) rows.push({ id: `ps-flat-${i}`, name: `PS Flat ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "flat_sprint" });
+  for (let i = 0; i < 20; i++) rows.push({ id: `ps-hilly-${i}`, name: `PS Hilly ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "hilly_classic" });
+  for (let i = 0; i < 5; i++) rows.push({ id: `ps-itt-${i}`, name: `PS ITT ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "itt_classic" });
+  for (let i = 0; i < 30; i++) rows.push({ id: `ps-sr-${i}`, name: `PS Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 4, terrain_archetype: "balanced_week" });
+  for (let i = 0; i < 10; i++) rows.push({ id: `ps-ht-${i}`, name: `PS Hilly Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 4, terrain_archetype: "hilly_tour" });
+  for (let i = 0; i < 10; i++) rows.push({ id: `owb-sr-${i}`, name: `OWB Tour ${i}`, race_class: "OtherWorldTourB", race_type: "stage_race", stages: 7, terrain_archetype: "mountain_tour" });
+  for (let i = 0; i < 10; i++) rows.push({ id: `owc-sr-${i}`, name: `OWC Tour ${i}`, race_class: "OtherWorldTourC", race_type: "stage_race", stages: 7, terrain_archetype: "sprinters_week" });
+  return rows;
+}
+
+test("#3327 dryRun: en brosten-fri katalog-tier rapporterer coverageStats + calendarViolations, kaster IKKE (dryRun=true)", async () => {
+  const league_divisions = [{ id: 2, tier: 2, pool_index: 0, label: "Division 2 — A" }, { id: 3, tier: 2, pool_index: 1, label: "Division 2 — B" }];
+  const teams = [mgrTeam("m1", 2), mgrTeam("m2", 3)];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: d2CatalogWithoutCobbles() });
+
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, dryRun: true });
+  const tier2Line = summary.tiers.find((t) => t.tier === 2);
+  assert.ok(tier2Line, "tier 2 skal have en rapport-linje");
+  assert.equal(tier2Line.coverageStats.familyCounts.cobbles, 0, "intet cobbled_classic/cobbled_tour i kataloget → 0 brosten-etaper");
+  assert.ok(
+    tier2Line.calendarViolations.some((v) => v.includes('terræn-familie "cobbles"') && v.includes("#3327")),
+    tier2Line.calendarViolations.join(" · "),
+  );
+  // dryRun rapporterer, men SKRIVER intet og kaster intet.
+  assert.equal(summary.racesInserted, 0);
+});
+
+test("#3327 apply: samme brosten-fri kalender NÆGTES appliet (dryRun=false kaster højlydt, ingen stille underdækning)", async () => {
+  const league_divisions = [{ id: 2, tier: 2, pool_index: 0, label: "Division 2 — A" }, { id: 3, tier: 2, pool_index: 1, label: "Division 2 — B" }];
+  const teams = [mgrTeam("m1", 2), mgrTeam("m2", 3)];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: d2CatalogWithoutCobbles() });
+
+  await assert.rejects(
+    materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, dryRun: false }),
+    /terræn-familie "cobbles".*#3327/,
+  );
+  // Intet blev skrevet — refusal-gaten er FØR nogen insert.
+  assert.equal(sb.state.races.length, 0);
+});
+
+test("#3328 apply: en klasse↔længde-bånd-brydende plan (band-filter omgået via forceTiers/allowedClasses=null) nægtes appliet", async () => {
+  // Byg et rent tier-2-katalog der OPFYLDER #3327's dækningsgarantier fint, men indeholder
+  // en ProSeries-etapeløb på 8 etaper — over #3328's ProSeries-bånd [3,5]. classStageLengthBand
+  // filtrerer den fra i SELECTION, så vi tvinger den ind via en direkte raceRows-konstruktion
+  // for at bevise at detectCoverageViolations selv (defense-in-depth) fanger et brud, hvis
+  // en fremtidig selection-ændring nogensinde skulle lade den slippe igennem.
+  const { computeTierCoverageStats, detectCoverageViolations, CLASS_STAGE_LENGTH_BAND } = await import("./tierCalendarGuarantees.js");
+  const raceRows = [
+    { pool_race_id: "ps-8", race_class: "ProSeries", race_type: "stage_race", stages: 8 },
+  ];
+  const profilesByPoolRaceId = new Map([["ps-8", Array.from({ length: 8 }, () => ({ profile_type: "flat" }))]]);
+  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId, classStageLengthBand: CLASS_STAGE_LENGTH_BAND });
+  const violations = detectCoverageViolations({ tier: 2, stats, oneDayShareMin: {}, terrainFamilyMin: {}, mountainFreeMin: {} });
+  assert.ok(violations.some((v) => v.includes("klasse↔længde-bånd brudt") && v.includes("ps-8") && v.includes("#3328")), violations.join(" · "));
 });
