@@ -1,4 +1,4 @@
-import { ArrowUpIcon, ArrowDownIcon } from "./icons/index.jsx";
+import { ArrowUpIcon, ArrowDownIcon, SortIcon } from "./icons/index.jsx";
 
 // SortableTh — den ENE kanoniske sorterbare tabel-header for HELE siden.
 //
@@ -14,12 +14,27 @@ import { ArrowUpIcon, ArrowDownIcon } from "./icons/index.jsx";
 // matcher fortsat <SortTh sortKey="..."> uændret.
 
 /**
- * Delt retnings-indikator (op/ned-pil). Bruges af både SortableTh og den delte
- * Table.Th, så en aktiv sort-kolonne viser samme glyf uanset hvilken tabel-
- * primitiv den er bygget med.
+ * Delt retnings-indikator. Bruges af både SortableTh og den delte Table.Th, så
+ * enhver sorterbar kolonne viser samme glyf uanset hvilken tabel-primitiv den
+ * er bygget med.
+ *
+ * #3188: en INAKTIV sorterbar header viste tidligere INTET ikon — kun
+ * cursor-pointer + en hover-farve, som er usynlig affordance på touch (ingen
+ * hover) og let overses på desktop. Det fik kolonne-headers til at fremstå som
+ * "ligner en kontrol, men intet sker" (Clarity dead-click-mistanke på /team,
+ * #3188). Nu viser en inaktiv-men-sorterbar kolonne en dæmpet to-vejs-pil
+ * (SortIcon, samme mutede tekstfarve som headeren selv — ingen ny farve
+ * introduceres); den aktive kolonne viser fortsat den skarpe retningspil
+ * (op/ned efter sortDir). Ren tilføjelse — aria-sort/klik-mål er uændret.
  */
 export function SortIndicator({ active, dir }) {
-  if (!active) return null;
+  if (!active) {
+    return (
+      <span className="ms-0.5 inline-flex align-middle">
+        <SortIcon size={10} aria-hidden="true" />
+      </span>
+    );
+  }
   return (
     <span className="ms-0.5 inline-flex align-middle">
       {dir === "desc"

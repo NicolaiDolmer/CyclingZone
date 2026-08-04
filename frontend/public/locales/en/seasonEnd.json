@@ -69,5 +69,24 @@
   "relegation": "↓ Down",
   "myProgression": "Your team's points progression",
   "loadError": "Couldn't load the season. Please try again.",
-  "retry": "Try again"
+  "retry": "Try again",
+  "recap": {
+    "heading": "Your season, wrapped",
+    "metaFinal": "Season {number} · final",
+    "eyebrow": "Season {number} complete",
+    "stat": {
+      "rank": "Final rank",
+      "points": "Points",
+      "stageWins": "Stage wins",
+      "prize": "Prize won"
+    },
+    "rankLine": "#{rank} of {size} in Division {division}",
+    "movement": {
+      "promoted": "↑ Promoted to Division {division}",
+      "relegated": "↓ Relegated to Division {division}",
+      "maintained": "Held Division {division}"
+    },
+    "share": "Copy recap link",
+    "shareCopied": "Link copied"
+  }
 }

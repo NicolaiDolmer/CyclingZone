@@ -14,6 +14,8 @@ import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLog
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
+import RiderFitInsight from "./RiderFitInsight.jsx";
+import { hunterBreakawayStrength } from "../../lib/roleHint.js";
 import {
   effectiveStageFit,
   bestFitRiderId,
@@ -128,6 +130,9 @@ export default function RaceSelectionPanel({
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
   const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
+  // #3115 Gap 1b: udbruds-styrken for DENNE etape (spejler HunterExplainer) — beregnet
+  // én gang her og sendt ned i RiderFitInsight pr. rytter, så den ikke genberegnes 30x.
+  const breakawayStrength = hunterBreakawayStrength(selectedStageProfileType, selectedStageFinaleType);
   const atMax = sel.riderIds.length >= size.max;
   // #2637: løbet er "live" (0 < stages_completed < stages, status forbliver 'scheduled'
   // hele afviklingen, #1825) — trup-TILFØJELSER er frosset, men fjernelse er altid
@@ -349,6 +354,7 @@ export default function RaceSelectionPanel({
                         <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
                       )}
                       <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                      <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.form")}</span>
@@ -430,6 +436,7 @@ export default function RaceSelectionPanel({
                         <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
                       )}
                       <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                      <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.form ?? "—"}</td>
