@@ -5,7 +5,13 @@ import { runEmailDay1Sweep, DAY1_WINDOW_MIN_MS, DAY1_WINDOW_MAX_MS } from "./ema
 // resultTeamIds: team ids that have >=1 race_results row (drives hasResults).
 // resultsErrorForTeamIds: team ids where the race_results lookup itself
 // throws, to exercise the per-team try/catch isolation.
-function makeSupabase(teamRows, userEmails = {}, { resultTeamIds = [], resultsErrorForTeamIds = [] } = {}) {
+// raceIdByTeamId: team id -> race_id, drives the #3310 deep-link CTA
+// (latestRaceId) for teams that are also in resultTeamIds.
+function makeSupabase(
+  teamRows,
+  userEmails = {},
+  { resultTeamIds = [], resultsErrorForTeamIds = [], raceIdByTeamId = {} } = {}
+) {
   return {
     from(table) {
       if (table === "teams") {
@@ -44,11 +50,17 @@ function makeSupabase(teamRows, userEmails = {}, { resultTeamIds = [], resultsEr
         return {
           select() { return this; },
           eq(_col, id) { teamId = id; return this; },
+          order() { return this; },
           limit: async () => {
             if (resultsErrorForTeamIds.includes(teamId)) {
               return { data: null, error: { message: "connection reset" } };
             }
-            return { data: resultTeamIds.includes(teamId) ? [{ id: `result-${teamId}` }] : [], error: null };
+            return {
+              data: resultTeamIds.includes(teamId)
+                ? [{ id: `result-${teamId}`, race_id: raceIdByTeamId[teamId] ?? null, created_at: "2026-07-19T00:00:00Z" }]
+                : [],
+              error: null,
+            };
           },
         };
       }
@@ -128,6 +140,23 @@ test("hasResults=true renders the results-in copy for a team with a race_results
 
   assert.equal(sendCalls[0].subject, "Day 1: your first results are in");
   assert.ok(sendCalls[0].html.includes("already on the board"));
+});
+
+test("hasResults=true with a race_id deep-links the CTA to that race (#3310, dormant)", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
+  const supabase = makeSupabase(
+    rows,
+    { "user-42": "player@example.com" },
+    { resultTeamIds: ["t1"], raceIdByTeamId: { t1: "race-99" } }
+  );
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.ok(sendCalls[0].html.includes("https://cyclingzone.org/races/race-99"));
 });
 
 test("hasResults=false renders the truthful no-results-yet copy, never the invented results claim", async () => {

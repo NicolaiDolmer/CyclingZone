@@ -6,6 +6,7 @@ const {
   notifyTeamOwner,
   emitRaceResultNotifications,
   RACE_RESULT_TYPE,
+  defaultFetchFirstTimeManagers,
   notifyAndClearWatchlistForRiders,
   WATCHLIST_DEPARTED_TYPE,
   emitStageResultNotifications,
@@ -270,6 +271,92 @@ test("emitRaceResult: manglende race.id giver nul-stats uden at hente deltagere"
   assert.equal(fetched, false, "ingen deltager-fetch uden race.id");
   assert.equal(calls.length, 0);
   assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
+});
+
+// ─── #3310 · første-resultat-copy-variant ─────────────────────────────────────
+
+test("emitRaceResultNotifications bruger første-resultat-copy for førstegangs-managere", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  await emitRaceResultNotifications({
+    supabase: {},
+    race: { id: "race-9", name: "Vuelta a Castilla" },
+    notify,
+    fetchParticipatingManagers: async () => ["user-first", "user-vet"],
+    fetchFirstTimeManagers: async () => new Set(["user-first"]),
+  });
+  const first = calls.find((c) => c.userId === "user-first");
+  const vet = calls.find((c) => c.userId === "user-vet");
+  assert.equal(first.metadata.titleCode, "notif.firstRaceResult.title");
+  assert.equal(first.metadata.messageCode, "notif.firstRaceResult.message");
+  assert.match(first.title, /first race/i);
+  assert.match(first.message, /Vuelta a Castilla/);
+  assert.equal(first.relatedId, "race-9");
+  assert.equal(vet.metadata.titleCode, "notif.raceResult.title");
+  assert.equal(vet.title, "Race result is in");
+});
+
+// Fixture til defaultFetchFirstTimeManagers: mock af .from("teams").select("id,
+// user_id").in("user_id", ...) og .from("race_results").select("team_id")
+// .in("team_id", ...).neq("race_id", ...) (samme stil som createNotificationSupabase).
+function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = null } = {}) {
+  return {
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            assert.equal(columns, "id, user_id");
+            return {
+              in(column, values) {
+                assert.equal(column, "user_id");
+                if (teamsError) return Promise.resolve({ data: null, error: teamsError });
+                const data = teams.filter((t) => values.includes(t.user_id));
+                return Promise.resolve({ data, error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "race_results") {
+        return {
+          select(columns) {
+            assert.equal(columns, "team_id");
+            return {
+              in(column, values) {
+                assert.equal(column, "team_id");
+                return {
+                  neq(column2, _value2) {
+                    assert.equal(column2, "race_id");
+                    const data = otherResults.filter((r) => values.includes(r.team_id));
+                    return Promise.resolve({ data, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+}
+
+test("defaultFetchFirstTimeManagers: manager uden andre resultater er first-timer", async () => {
+  const supabase = makeFirstTimeSupabase({
+    teams: [{ id: "t1", user_id: "user-first" }, { id: "t2", user_id: "user-vet" }],
+    otherResults: [{ team_id: "t2" }],
+  });
+  const set = await defaultFetchFirstTimeManagers({
+    supabase, race: { id: "race-9" }, userIds: ["user-first", "user-vet"],
+  });
+  assert.deepEqual([...set], ["user-first"]);
+});
+
+test("defaultFetchFirstTimeManagers: fejl → tomt sæt (alle får standard-copy)", async () => {
+  const supabase = makeFirstTimeSupabase({ teamsError: new Error("boom") });
+  const set = await defaultFetchFirstTimeManagers({
+    supabase, race: { id: "race-9" }, userIds: ["u1"],
+  });
+  assert.equal(set.size, 0);
 });
 
 // ─── #2524 · notifyAndClearWatchlistForRiders ─────────────────────────────────

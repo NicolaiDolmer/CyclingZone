@@ -176,6 +176,10 @@
       "title": "Resultat er klar",
       "message": "{race} er kørt. Se resultatet."
     },
+    "firstRaceResult": {
+      "title": "Dit første løb er kørt",
+      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig."
+    },
     "stageResult": {
       "title": "Etaperesultat er klar",
       "message": "Etape {stage} af {race} er kørt. Din bedste: {rider}, placering {position}.",

@@ -22,6 +22,7 @@ import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
+import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces } from "../lib/upcomingRaces";
@@ -665,6 +666,11 @@ export default function DashboardPage() {
   const onboardingIncomplete = Boolean(
     onboardingProgress && onboardingProgress.completed_count < onboardingProgress.total_count
   );
+
+  // #3310 comeback-buen: første-løbs-øjeblikket ejer toppen af dashboardet
+  // indtil manageren har set sit første resultat (samme server-flag som
+  // "Nyt"-badgen, teams.my_result_seen_race_id via #2593 del 2).
+  const firstRaceMomentActive = myLatestResultVisible && isFirstRaceMoment(myLatestResult);
   const showDiscordNudgeBanner = !onboardingIncomplete && showDiscordNudge;
 
   // #2925 — sæsonstart-guiden. Undertrykt mens onboarding kører (samme regel som
@@ -726,11 +732,23 @@ export default function DashboardPage() {
         }
       />
 
+      {/* #3310: første-løbs-øjeblikket ejer toppen indtil resultatet er set. */}
+      {firstRaceMomentActive && (
+        <MyLatestResultCard
+          data={myLatestResult}
+          nextRace={squadSelectionMissingRace}
+          nextRaceStartAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
+          nowMs={nowMs}
+        />
+      )}
+
       {/* #2288 B — Onboarding progress flyttet til TOP af stakken (over Næste
           træk) indtil onboarding er fuldført, så den ikke drukner blandt andre
           kort. Completion-kortet bliver hvor det plejer (post-onboarding). */}
       {!onboardingDismissed && onboardingIncomplete && (
-        <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
+        <div className={firstRaceMomentActive ? "opacity-75" : undefined}>
+          <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
+        </div>
       )}
 
       {/* #2925 — "Season N: kom i gang". Over "Næste træk", fordi de fire
@@ -879,12 +897,16 @@ export default function DashboardPage() {
         nextRace={squadSelectionMissingRace}
         startAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
         nowMs={nowMs}
+        primary={!firstRaceMomentActive}
       />
 
       {/* #2466: "How your team did" — resultat-push øverst over modul-gridden.
           Kortet renderer intet før endpoint-svaret er landet (myLatestResult
-          starter som null), empty state når holdet endnu ingen løb har kørt. */}
-      {myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
+          starter som null), empty state når holdet endnu ingen løb har kørt.
+          #3310: mens første-løbs-varianten ejer toppen af dashboardet (se
+          firstRaceMomentActive ovenfor), udelades denne anden instans for at
+          undgå at kortet vises to gange. */}
+      {!firstRaceMomentActive && myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
 
       {/* Main grid — #2849 bølge 1: sibling-gap 14px (spec) */}
       <div className="grid lg:grid-cols-2 gap-[14px]">

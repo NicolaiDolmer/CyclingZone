@@ -8,6 +8,7 @@ import { formatNumber } from "../lib/intl";
 import { buildRaceRecap } from "../lib/raceRecap.js";
 import { supabase } from "../lib/supabase";
 import { logFirstEvent } from "../lib/logEvent";
+import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 
 // #2466 — "How your team did": resultat-push for holdets seneste finaliserede
 // løb. Modsat "Seneste resultater"-kortet (løbets VINDER) viser dette kort DINE
@@ -120,10 +121,12 @@ function HistoryRow({ entry, t }) {
   );
 }
 
-export default function MyLatestResultCard({ data }) {
-  const { t } = useTranslation(["dashboard", "races"]);
+export default function MyLatestResultCard({ data, nextRace = null, nextRaceStartAtMs = null, nowMs = null }) {
+  const { t, i18n } = useTranslation(["dashboard", "races"]);
   const isNew = useSeenBadge(data?.race);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  // #3310 comeback-buen: uset første resultat → dashboardets landings-øjeblik.
+  const firstRaceMoment = isFirstRaceMoment(data);
 
   // Recap-momentet genbruger den eksisterende fortælle-logik + races-namespacets
   // oversættelser 1:1 (ingen dublerede strenge). Backend har trimmet rækkerne
@@ -156,14 +159,16 @@ export default function MyLatestResultCard({ data }) {
           at trunkere modultitlen (54,9% af trafikken er mobil). */}
       <div className="flex items-center justify-between gap-x-3 gap-y-1 mb-1 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
-          <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.myResult.title")}</h2>
+          <h2 className="font-semibold text-cz-1 text-sm">
+            {firstRaceMoment ? t("dashboard:cards.myResult.firstRaceTitle") : t("dashboard:cards.myResult.title")}
+          </h2>
           {race && isNew && (
             <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 flex-shrink-0">
               {t("dashboard:cards.myResult.newBadge")}
             </span>
           )}
         </div>
-        {race && (
+        {race && !firstRaceMoment && (
           <Link to={`/races/${race.id}`} state={{ from: "dashboard" }}
             className="text-xs text-cz-accent-t hover:underline flex-shrink-0">
             {t("dashboard:cards.myResult.linkFull")}
@@ -180,6 +185,17 @@ export default function MyLatestResultCard({ data }) {
         </div>
       ) : (
         <>
+          {/* #3310 — landings-øjeblikkets intro: hvornår løbet blev afsluttet,
+              med "while you were away"-framingen fra design-specen (S1). */}
+          {firstRaceMoment && race && (
+            <p className="text-cz-2 text-xs mb-3">
+              {race.last_import
+                ? t("dashboard:cards.myResult.firstRaceIntroAt", {
+                    time: new Date(race.last_import).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" }),
+                  })
+                : t("dashboard:cards.myResult.firstRaceIntro")}
+            </p>
+          )}
           {/* #2886 — sæsonen til dato ØVERST, som issuet foreskriver: den er
               rammen om resten af kortet ("hvor står jeg?"), ikke facit efter
               detaljerne. Labelen er kort ("Denne sæson") og spejler
@@ -317,6 +333,29 @@ export default function MyLatestResultCard({ data }) {
                   <HistoryRow key={h.race_id} entry={h} t={t} />
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* #3310 — viewets ene guldknap: fuld etaperapport ER historien.
+              TeamSelectionCtaCard's CTA nedgraderes til sekundær mens denne
+              variant er aktiv (guld-rationen, PAGE_TEMPLATES). */}
+          {firstRaceMoment && race && (
+            <div className="mt-4 pt-3.5 border-t border-cz-border flex flex-wrap items-center justify-between gap-3">
+              <Link
+                to={`/races/${race.id}`}
+                state={{ from: "dashboard" }}
+                className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                {t("dashboard:cards.myResult.firstRaceCta")}
+              </Link>
+              {nextRace && nextRaceStartAtMs && nowMs && nextRaceStartAtMs > nowMs && (
+                <span className="text-xs text-cz-3">
+                  {t("dashboard:cards.myResult.firstRaceNext", {
+                    race: nextRace.name,
+                    count: Math.max(1, Math.ceil((nextRaceStartAtMs - nowMs) / 86400000)),
+                  })}
+                </span>
+              )}
             </div>
           )}
         </>

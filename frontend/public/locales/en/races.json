@@ -384,6 +384,8 @@
     "boundConflict": "Overlaps {race}",
     "autoPicked": "Assistant's pick. Adjust and save to take control.",
     "raceLiveNote": "This race is underway. You can still remove riders (e.g. if injured), but no new riders can be added until it finishes.",
+    "autoFill": "Auto-select",
+    "autoFillError": "Could not auto-select. Try again.",
     "save": "Save selection",
     "saving": "Saving…",
     "saved": "Selection saved.",

@@ -381,6 +381,7 @@ const FAQ_KEYS = [
   "season0To1Special",
   "season1RaceCalendarFaq",
   "overlappingRaces",
+  "autoSelect",
   "teamStrategyFaq",
   "relaunchTeamMoney",
   "relaunchRiderNames",

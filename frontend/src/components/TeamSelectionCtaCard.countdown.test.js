@@ -15,7 +15,7 @@ const source = readFileSync(join(__dirname, "TeamSelectionCtaCard.jsx"), "utf8")
 test("#3243 accepterer startAtMs/nowMs som valgfrie props (default null, ingen breaking change)", () => {
   assert.match(
     source,
-    /export default function TeamSelectionCtaCard\(\{\s*nextRace,\s*startAtMs\s*=\s*null,\s*nowMs\s*=\s*null\s*\}\)/,
+    /export default function TeamSelectionCtaCard\(\{\s*nextRace,\s*startAtMs\s*=\s*null,\s*nowMs\s*=\s*null,?[^}]*\}\)/,
     "startAtMs/nowMs skal være valgfrie med null-default",
   );
 });

@@ -75,6 +75,9 @@ const TYPE_CONFIG = {
   // Gab 2 (#2822): garanteret første notifikation ved holdoprettelse — peger
   // mod auktionshuset (samme CTA som beskeden selv).
   welcome:                   { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/auctions" },
+  // #2180/#3310: 36t-varsel uden manuel udtagelse — deep-link til løbets
+  // selection-panel; kalender-boardet som fallback uden raceId.
+  selection_warning:         { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/planning?tab=calendar" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
@@ -525,6 +528,11 @@ export default function NotificationsPage() {
                             // at give op.
                             : (n.type === "race_result" || n.type === "stage_result") && (n.metadata?.raceId || n.related_id)
                               ? `/races/${n.metadata?.raceId || n.related_id}`
+                              // #2180/#3310: selection_warning bærer raceId (samme mønster som
+                              // race_result/stage_result) og deep-linker til løbets
+                              // selection-panel i stedet for det generiske kalender-board.
+                              : n.type === "selection_warning" && (n.metadata?.raceId || n.related_id)
+                                ? `/races/${n.metadata?.raceId || n.related_id}#selection`
                               // #2832-review (ejer-merge-krav): season_ended bærer den AFSLUTTEDE
                               // sæsons id i related_id (emitSeasonEndedNotifications). Uden dette
                               // pegede beskeden på det generiske /seasons, som defaulter til den

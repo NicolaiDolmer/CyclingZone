@@ -101,7 +101,12 @@
       "seasonRaces": "{count, plural, one {# løb} other {# løb}}",
       "stageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
       "empty": "Dine ryttere har ikke kørt løb endnu. Holdets resultater lander her efter det første løb.",
-      "emptyCta": "Åbn løbskalenderen →"
+      "emptyCta": "Åbn løbskalenderen →",
+      "firstRaceTitle": "Dit første løb er kørt",
+      "firstRaceIntro": "Kørt mens du var væk. Sådan gik det.",
+      "firstRaceIntroAt": "Afsluttet {time} mens du var væk. Sådan gik det.",
+      "firstRaceCta": "Læs hele løbshistorien",
+      "firstRaceNext": "Næste løb: {race}, {count, plural, one {om # dag} other {om # dage}}"
     },
     "auctions": {
       "title": "Aktive Auktioner",
