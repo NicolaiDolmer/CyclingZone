@@ -10132,27 +10132,40 @@ async function resolveCurrentSeasonNumber() {
   return s?.number ?? 1;
 }
 
+// Alle finance_transactions-typer der udgør sponsorindkomst (#1663/#2948).
+// Delt mellem livstids-earnings (nedenfor) og sæson-scoped breakdown (Finance-
+// sidens "Sponsor income"-sektion, ejer-godkendt mockup 4/8).
+const SPONSOR_INCOME_TX_TYPES = [
+  "sponsor",
+  "sponsor_race_day",
+  "sponsor_result_bonus",
+  "sponsor_signing_bonus",
+  "sponsor_objective_bonus",
+];
+
 // GET /api/sponsor/contract — holdets aktive sponsor-kontrakt (eller null) +
 // akkumuleret sponsorindtjening siden kontraktstart (#2948: kontraktpanelet
 // viser hvad aftalen faktisk har givet, pr. kilde).
+//
+// Udvidet med `season` — RÅ (ugrupperede) sponsor-transaktioner for den
+// AKTIVE sæson, til Finance-sidens "Sponsor income"-sektion (ejer-godkendt
+// mockup 4/8). Grupperings-/
+// summerings-logikken er bevidst IKKE her — den bor som en ren, unit-testet
+// funktion i frontend/src/lib/sponsorIncomeBreakdown.js, så den kan testes
+// uden en DB. Racenavn embedded via FK (samme mønster som finance-report).
 router.get("/sponsor/contract", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const contract = await getActiveContract({ supabase, teamId: req.team.id });
 
     let earnings = null;
+    let season = null;
     if (contract) {
       const { data: rows, error: txError } = await supabase
         .from("finance_transactions")
         .select("type, amount")
         .eq("team_id", req.team.id)
-        .in("type", [
-          "sponsor",
-          "sponsor_race_day",
-          "sponsor_result_bonus",
-          "sponsor_signing_bonus",
-          "sponsor_objective_bonus",
-        ])
+        .in("type", SPONSOR_INCOME_TX_TYPES)
         .gte("created_at", contract.created_at);
       if (txError) throw txError;
       earnings = { base: 0, raceDays: 0, results: 0, signing: 0, objective: 0, total: 0 };
@@ -10165,8 +10178,38 @@ router.get("/sponsor/contract", requireAuth, async (req, res) => {
         else if (r.type === "sponsor_objective_bonus") earnings.objective += amount;
         earnings.total += amount;
       }
+
+      const { data: activeSeason, error: activeSeasonError } = await supabase
+        .from("seasons")
+        .select("id, number")
+        .eq("status", "active")
+        .maybeSingle();
+      if (activeSeasonError) throw activeSeasonError;
+      if (activeSeason?.id) {
+        const { data: seasonRows, error: seasonTxError } = await supabase
+          .from("finance_transactions")
+          .select("id, type, amount, description, metadata, created_at, race_id, race:race_id(name)")
+          .eq("team_id", req.team.id)
+          .eq("season_id", activeSeason.id)
+          .in("type", SPONSOR_INCOME_TX_TYPES)
+          .order("created_at", { ascending: true });
+        if (seasonTxError) throw seasonTxError;
+        season = {
+          number: activeSeason.number,
+          transactions: (seasonRows || []).map((r) => ({
+            id: r.id,
+            type: r.type,
+            amount: Number(r.amount) || 0,
+            description: r.description || null,
+            metadata: r.metadata || null,
+            createdAt: r.created_at,
+            raceId: r.race_id || null,
+            raceName: r.race?.name || null,
+          })),
+        };
+      }
     }
-    res.json({ contract, earnings });
+    res.json({ contract, earnings, season });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

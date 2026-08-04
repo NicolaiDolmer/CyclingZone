@@ -72,5 +72,46 @@
     "earningsResults": "Resultatbonusser",
     "earningsObjective": "Sæsonmål",
     "earningsTotal": "I alt"
+  },
+  "income": {
+    "title": "Sponsorindtægt",
+    "meta": "{sponsor} · denne sæson",
+    "metaNoSponsor": "Denne sæson",
+    "loading": "Indlæser sponsorindtægt",
+    "errorTitle": "Kunne ikke indlæse din sponsorindtægt",
+    "error": "Intet er gået tabt, og din saldo er i god behold. Prøv igen.",
+    "retry": "Prøv igen",
+    "totalLabel": "I alt denne sæson",
+    "split": "Garanteret {guaranteed} · tjent oveni {earned}",
+    "group": {
+      "fixed": {
+        "title": "Fast indtægt",
+        "row": "Sæsonbase (kontraktgaranti)"
+      },
+      "raceDays": {
+        "title": "Løbsdage",
+        "row": "{raceName} · {days, plural, one {# dag} other {# dage}} à {rate} CZ$",
+        "unknownRace": "Løb",
+        "showAll": "Vis alle {count} løb",
+        "showLess": "Vis færre"
+      },
+      "bonuses": {
+        "title": "Bonusser",
+        "stageWin": "Etapesejr-bonus · {raceName}",
+        "podium": "Podie-bonus · {raceName}",
+        "signing": "Underskriftsbonus",
+        "objective": "Sæsonmål-bonus",
+        "generic": "Resultatbonus · {raceName}",
+        "capLine": "Resultatbonus-loft: {used} af {limit} brugt"
+      }
+    },
+    "footer": {
+      "full": "Sådan får du penge: din kontrakt garanterer en sæsonbase, betaler pr. løbsdag dit hold stiller til start i, og lægger bonusser oveni for etapesejre og podiepladser.",
+      "noBonuses": "Sådan får du penge: din kontrakt garanterer en sæsonbase og betaler pr. løbsdag dit hold stiller til start i."
+    },
+    "empty": {
+      "title": "Ingen sponsorindtægt endnu",
+      "description": "Indtægten vises her, når din sæsonbase er krediteret og dit hold begynder at køre løb."
+    }
   }
 }
