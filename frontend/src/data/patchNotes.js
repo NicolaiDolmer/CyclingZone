@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.92",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your first race now gets the spotlight",
+          "body": "The dashboard highlights your team's first result until you have seen it, race alerts open the race itself, and squad warnings link straight to the selection panel with a new one-click Auto-select."
+        },
+        "da": {
+          "title": "Dit første løb får nu rampelyset",
+          "body": "Dashboardet fremhæver holdets første resultat indtil du har set det, løbs-notifikationer åbner selve løbet, og udtagelses-varsler linker direkte til panelet med et nyt et-kliks Auto-udtag."
+        },
+        "refs": [3310, 2180]
+      }
+    ]
+  },
+  {
     "version": "7.91",
     "date": "2026-08-04",
     "label": "Beta",
