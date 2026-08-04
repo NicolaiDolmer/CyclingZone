@@ -1,10 +1,12 @@
-# Simulations-drift: otte målinger, ét mønster
+# Simulations-drift: ni målinger, ét mønster
 
 > Syntese fra Discord-sweep 4/8 + natbølge 4.-5. august. Alle tal er målt read-only mod prod eller mod repoets kode — ingen skøn. Kilde-issues i hver sektion.
 
 ## Påstanden
 
-De otte fund nedenfor blev fundet uafhængigt af hinanden, i otte forskellige spor. De er ikke otte problemer. **De er ét problem målt otte steder: spillets simulationslag har drevet væk fra designhensigten, og systemerne forstærker hinandens drift.**
+De ni fund nedenfor blev fundet uafhængigt af hinanden, i ni forskellige spor. De er ikke ni problemer. **De er ét problem målt ni steder: spillets simulationslag har drevet væk fra designhensigten, og systemerne forstærker hinandens drift.**
+
+Fællesnævneren er ikke dårlig kode. Det er at **driften ikke blev målt** — flere af målingerne nedenfor eksisterede som gates der meldte grønt, eller som issues hvis tal var måneder gamle og faktor 10-1000 forkerte.
 
 Konkret: en puncheur kan ikke eksistere, har ingen etaper at skinne på, kalenderen belønner ikke specialisering, og menneskeholdene kører trættere end feltet. Fire uafhængige mekanismer der alle skubber spillet mod "bred rytter vinder", som er præcis den klage spillerne rejste 4/8.
 
@@ -56,7 +58,18 @@ Konsekvens: hvert etapeløb fortæller samme historie, og den taktiske beslutnin
 ### 7. Kvalitetsgaten kan ikke stoles på
 [#3009](https://github.com/NicolaiDolmer/CyclingZone/issues/3009): balance-scorecards exiter grønt trods FAIL. [#3347](https://github.com/NicolaiDolmer/CyclingZone/issues/3347): tier 3's realisme-gate fejler ~11 % af genereringerne på ren tilfældighed (målt over 3.000 syntetiske sæsoner). To gates der ikke betyder det de ser ud til at betyde.
 
-### 8. En display-label styrer økonomien
+### 8. Pengemængden firdobles — og gaten skjulte det
+[#3360](https://github.com/NicolaiDolmer/CyclingZone/issues/3360). Målt 5/8 efter at exit-code-gaten blev rettet (PR #3248, 3/8):
+
+| | Mål | Faktisk |
+|---|---|---|
+| Pengemængde over 5 sæsoner | ≤1,3× | **4,24×** |
+| Holdbalance @S5 | ≤1,3× start | **3,55-3,63×** |
+| Net-tilførsel pr. division | ±30.000 | **~319.000** (≈10×) |
+
+Gaten `exit`ede grønt trods FAIL fra før launch til 3/8. `docs/audits/2026-06-21-economy-fase2-calibration.md` erklærer fresh-gaten grøn ("D1 +3,6k, alle ✅"); genkørt i dag giver D1 net 318.712 — **~90 gange drift**. Den fil er stale.
+
+### 9. En display-label styrer økonomien
 [#3345](https://github.com/NicolaiDolmer/CyclingZone/issues/3345). `primary_type` er input til `predictBaseValue` to steder. At rette fund 1 ville flytte spillets samlede markedsværdi **−24,5 %** og ændre trupværdien ≥10 % for 239 af 367 hold. Typen er samtidig input til potentiale-lofterne, som selv er input til typen — en cirkularitet.
 
 ## Hvorfor de hænger sammen
@@ -76,7 +89,9 @@ Fund **6** forstærker det: et bredt hold tåler den ekstra træthed bedre end e
 
 Den vigtigste konsekvens er at **fundene ikke bør løses enkeltvis i vilkårlig rækkefølge.** Tre observationer:
 
-**A. Gaten først.** Fund 7 skal lukkes før noget balance-arbejde vurderes, ellers måles resultatet af de øvrige rettelser med et instrument der lyver. #3009 er billig og blokerer troværdigheden af alt andet.
+**A. Gaten først — og den er allerede lukket.** Fund 7's exit-code-fejl blev rettet 3/8 (PR #3248). Det er præcis derfor fund 8 kunne måles overhovedet. Læringen står: et instrument der lyver gør al måling værdiløs, og her kostede det hele beta-perioden.
+
+**A2. Fund 8 er sandsynligvis det mest alvorlige.** En økonomi der firdobles over fem sæsoner udhuler enhver økonomisk beslutning i spillet — gæld bliver ligegyldig, transferpriser løber, og tidlige spilleres forspring bliver strukturelt. Det gør også fund 9 mindre presserende: hvis pengemængden alligevel skal rekalibreres, er en −24,5 % revaluering af markedsværdier ikke længere en isoleret risiko men en del af samme regnestykke.
 
 **B. Kalender-kæden hænger sammen og har en deadline.** Fund 2, 3, 4 og 5 rører alle etape- og kalender-genereringen, og S3-kalenderen skal bygges før **23/8**. De er kalibreret mod hinanden og bør landes som én kæde i rækkefølgen #3327/#3328 → #3326 → #3349. Bygges S3 før de er inde, cementeres skævheden i endnu en sæson.
 
