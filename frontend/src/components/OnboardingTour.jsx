@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { readTour, advanceTour, endTour } from "../lib/onboardingTour";
+import { findVisibleTarget } from "../lib/onboardingTourTarget.js";
 
 // Onboarding v2 Slice 1b — peg-pil-tooltip overlay.
 // Mounted på de sider hvor tour-trin findes (RidersPage, AuctionsPage).
@@ -9,6 +10,7 @@ import { readTour, advanceTour, endTour } from "../lib/onboardingTour";
 // Props:
 //   pageKey: "riders" | "auctions"
 //   steps: [{ target: cssSelector, title, body }]
+
 export default function OnboardingTour({ pageKey, steps }) {
   const { t } = useTranslation("auth");
   const [tour, setTour] = useState(() => readTour());
@@ -22,7 +24,7 @@ export default function OnboardingTour({ pageKey, steps }) {
       setRect(null);
       return;
     }
-    const target = document.querySelector(current.target);
+    const target = findVisibleTarget(current.target);
     if (target) {
       setRect(target.getBoundingClientRect());
     } else {
@@ -36,7 +38,7 @@ export default function OnboardingTour({ pageKey, steps }) {
       return;
     }
     // Scroll target ind i synet ved opstart af nyt step
-    const target = document.querySelector(current.target);
+    const target = findVisibleTarget(current.target);
     if (target?.scrollIntoView) {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
