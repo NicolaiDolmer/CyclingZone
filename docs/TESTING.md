@@ -110,9 +110,23 @@ node scripts/setup-test-accounts.mjs              # live
 
 Mint Supabase JWT for et test-account via `signInWithPassword` (anon-key, ikke service-role).
 
+**Sikkerhed (#3342):** default-output er en gitignored fil, IKKE stdout — et
+fuldt access_token på stdout er en secret-leak-vektor i en agent-session
+(stdout = transcript). Scriptet skriver til `.codex.local/test-token.json` og
+printer kun **stien**.
+
 ```bash
 node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev
-node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --json
+# → printer fil-stien, fx .codex.local/test-token.json
+node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --out=.codex.local/my-token.json
+```
+
+`--print` bevarer den gamle adfærd (printer tokenet direkte til stdout) — kun
+til manuel brug i en terminal UDENFOR Claude Code, ALDRIG fra en agent-session:
+
+```bash
+node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --print
+node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --print --json
 ```
 
 ### `scripts/smoke-test-prod.mjs`
