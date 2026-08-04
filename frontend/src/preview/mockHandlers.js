@@ -3,6 +3,7 @@
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
+import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import {
   TEST_USER,
   TEST_TEAM,
@@ -132,9 +133,16 @@ export function restRows(table, requestUrl = "") {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_RACES.filter(r => r.id === id);
       }
-      // #3102 etape 2: Resultat-hubben henter kun de AFSLUTTEDE løb
-      // (status=eq.completed). Uden filteret her ville hubben også vise det
-      // kommende og det igangværende løb, som i prod aldrig ville nå frem.
+      // #3333: Resultat-hubben henter nu status=completed ELLER igangværende
+      // etapeløb (.or("status.eq.completed,stages_completed.gt.0")) — status
+      // alene er IKKE en pålidelig "afsluttet"-markør (raceResultVisibility.js).
+      // Matcher den nye .or(...)-formede query-streng (postgrest lægger den i et
+      // uafkodet or=(…)-param, derfor decodeURIComponent). Falder tilbage til det
+      // gamle rene status=eq.completed-mønster hvis en fremtidig kalder bruger det.
+      const decodedSearch = decodeURIComponent(url.search);
+      if (decodedSearch.includes("or=(status.eq.completed") && decodedSearch.includes("stages_completed.gt.0")) {
+        return SEED_RACES.filter(raceHasReportableResults);
+      }
       if (url.search.includes("status=eq.completed")) {
         return SEED_RACES.filter(r => r.status === "completed");
       }

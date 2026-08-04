@@ -14,7 +14,8 @@
     "empty": "No races have finished here yet",
     "emptyBody": "Results appear here as soon as the first race in this selection is done.",
     "noPodium": "No classification imported for this race yet",
-    "viewFull": "Full result"
+    "viewFull": "Full result",
+    "stageProgress": "Stage {done} of {total}"
   },
   "filters": {
     "seasonLabel": "Season",

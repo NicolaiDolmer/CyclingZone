@@ -331,6 +331,13 @@ export const SEED_RACE_RESULTS = [
   { id: "res-d1-team-2", race_id: "race-done-1", stage_number: 1, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-1", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 1, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 20, prize_money: 40000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-2", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
+  // #3333 — race-live-1 (Settimana Preview, igangværende, 2/5 etaper): 'leader'-
+  // rækker for seneste kørte etape (2), samme resultat_type som motoren skriver
+  // undervejs (raceLiveStandings.js/#2081) — status forbliver 'scheduled', kun
+  // stages_completed markerer fremdriften. Uden disse rækker viser Resultat-
+  // hubbens kort "ingen klassement" for et løb der reelt har en løbende stilling.
+  { id: "res-live1-leader-1", race_id: "race-live-1", stage_number: 2, result_type: "leader", rank: 1, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, finish_time: "+0:00", points_earned: 20, prize_money: 0, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team: { id: TEST_TEAM.id, name: TEST_TEAM.name } } },
+  { id: "res-live1-leader-2", race_id: "race-live-1", stage_number: 2, result_type: "leader", rank: 2, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:18", points_earned: 0, prize_money: 0, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
 ];
 
 // race_stage_passages — Sub-4 (#2448) preview-seed: KOM/mellemsprint/mål-

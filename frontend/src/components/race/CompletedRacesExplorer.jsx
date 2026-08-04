@@ -11,6 +11,7 @@ import { Link } from "react-router";
 import RiderLink from "../RiderLink";
 import { sortRacesByDateDesc } from "../../lib/raceCalendarSort";
 import { racesForPool } from "../../lib/racesByPool";
+import { raceHasReportableResults, raceIsInProgress } from "../../lib/raceResultVisibility.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../../lib/expectedPrizeCalculator";
 import { hasRouteData, sharedYMax } from "../../lib/stageRouteProfile.js";
 import StageProfileGraph from "./StageProfileGraph.jsx";
@@ -74,7 +75,7 @@ function RaceCardRouteThumbnail({ race, profiles }) {
 }
 
 export default function CompletedRacesExplorer() {
-  const { t } = useTranslation("races");
+  const { t } = useTranslation(["races", "results"]);
 
   const [races, setRaces] = useState([]);
   const [racePoints, setRacePoints] = useState([]);
@@ -126,12 +127,16 @@ export default function CompletedRacesExplorer() {
 
   const myRaces = useMemo(() => racesForPool(races, myPoolId), [races, myPoolId]);
 
-  // #1930: afsluttede løb vises nyeste-først (spejler kommende-sorteringen men DESC).
-  // Memoized separat (#2448 Task 12) så profil-fetch-effekten herunder kun
-  // genkører når selve løbslisten ændrer sig — ikke ved hvert render (fx et klik
-  // der sætter selectedRace).
+  // #1930: afsluttede/igangværende løb vises nyeste-først (spejler kommende-
+  // sorteringen men DESC). Memoized separat (#2448 Task 12) så profil-fetch-
+  // effekten herunder kun genkører når selve løbslisten ændrer sig — ikke ved
+  // hvert render (fx et klik der sætter selectedRace).
+  // #3333 — raceHasReportableResults er DET delte prædikat med ResultaterPage's
+  // Seneste-fane: et etapeløb beholder status='scheduled' hele afviklingen, så
+  // det gamle `r.results?.length > 0 || r.status === "completed"` var uenigt med
+  // Seneste-fanens (dengang strengere) filter om hvad "afsluttet" betyder.
   const completedRaces = useMemo(
-    () => sortRacesByDateDesc(myRaces.filter(r => r.results?.length > 0 || r.status === "completed")),
+    () => sortRacesByDateDesc(myRaces.filter(raceHasReportableResults)),
     [myRaces],
   );
   const completedRaceIds = useMemo(() => completedRaces.map(r => r.id), [completedRaces]);
@@ -186,24 +191,40 @@ export default function CompletedRacesExplorer() {
       <Section>
         <SectionHeader title={t("calendar.completed")} />
         <div className="flex flex-col gap-2">
-          {completedRaces.map(race => (
-            <Card key={race.id} interactive
-              className={`p-4 cursor-pointer ${selectedRace?.id === race.id ? "border-cz-accent/40" : ""}`}
-              onClick={() => handleRaceClick(race)}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-cz-1 font-medium text-sm">{race.name}</p>
-                  <p className="text-cz-3 text-xs mt-0.5">
-                    {t("calendar.resultsImported", { count: race.results?.length || 0 })}
-                  </p>
+          {completedRaces.map(race => {
+            // #3333 — igangværende etapeløb (status stadig 'scheduled', men
+            // stages_completed>0) må ALDRIG bære "Completed"-badgen: viser i
+            // stedet en "Live"-pille + kørt-status ("Etape 14 af 21") i stedet
+            // for den ellers meningsløse "N results imported" for et løb der
+            // stadig kører.
+            const inProgress = raceIsInProgress(race);
+            return (
+              <Card key={race.id} interactive
+                className={`p-4 cursor-pointer ${selectedRace?.id === race.id ? "border-cz-accent/40" : ""}`}
+                onClick={() => handleRaceClick(race)}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-cz-1 font-medium text-sm">{race.name}</p>
+                    <p className="text-cz-3 text-xs mt-0.5">
+                      {inProgress
+                        ? t("results:latest.stageProgress", { done: race.stages_completed ?? 0, total: race.stages })
+                        : t("calendar.resultsImported", { count: race.results?.length || 0 })}
+                    </p>
+                  </div>
+                  {inProgress ? (
+                    <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">
+                      {t("status.live")}
+                    </span>
+                  ) : (
+                    <span className="text-3xs uppercase bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">
+                      {t("status.completed")}
+                    </span>
+                  )}
                 </div>
-                <span className="text-3xs uppercase bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">
-                  {t("status.completed")}
-                </span>
-              </div>
-              <RaceCardRouteThumbnail race={race} profiles={stageProfilesByRace[race.id]} />
-            </Card>
-          ))}
+                <RaceCardRouteThumbnail race={race} profiles={stageProfilesByRace[race.id]} />
+              </Card>
+            );
+          })}
         </div>
       </Section>
 
