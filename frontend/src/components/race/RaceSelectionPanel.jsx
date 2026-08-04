@@ -7,7 +7,7 @@
 // (raceSelectionLogic.js) så fejl vises FØR kaldet — samme fetch-mønster
 // som useTraining (Bearer-token fra Supabase-session).
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLogic.js";
@@ -66,38 +66,50 @@ export default function RaceSelectionPanel({
   // dokumenterede default-rækkefølge ud over #1951's scope og brød
   // gem-udtagelses-smoke-testen). `sort: null` = uændret rækkefølge.
   const [sort, setSort] = useState({ sort: null, dir: "desc" });
+  // #2180/#3310: status for Auto-select-assistenten (separat fra save()'s status,
+  // så et fejlet assistent-kald ikke fejlagtigt viser den manuelle gem-fejlbesked).
+  const [autoStatus, setAutoStatus] = useState("idle"); // idle | loading | error
+
+  // #3310: udtrukket til en genbrugelig loader — kaldes fra effekten ved raceId-skift
+  // OG fra autoSelect() efter et vellykket assistent-kald, så panelet reflekterer den
+  // nye trup uden en fuld sideindlæsning. Ren flytning af den eksisterende krop; den
+  // oprindelige cancelled-vagt (undgå at et forældet svar overskriver state efter
+  // unmount/raceId-skift) lever videre som en delt ref, så den også dækker
+  // autoSelect()'s reload.
+  const cancelledRef = useRef(false);
+  const loadSelection = useCallback(async () => {
+    const headers = await authHeaders();
+    if (!headers) return;
+    try {
+      const res = await fetch(`${API}/api/races/${raceId}/selection`, { headers });
+      if (!res.ok) return;
+      const body = await res.json();
+      if (cancelledRef.current) return;
+      setData(body);
+      if (body.selection) {
+        setSel({
+          riderIds: body.selection.rider_ids ?? [],
+          captainId: body.selection.captain_id ?? null,
+          sprintCaptainId: body.selection.sprint_captain_id ?? null,
+          hunterId: body.selection.hunter_id ?? null,
+          freeRoleIds: body.selection.free_role_ids ?? [],
+        });
+      }
+    } catch {
+      /* netværk — panelet forbliver skjult */
+    }
+  }, [raceId]);
 
   useEffect(() => {
-    let cancelled = false;
+    cancelledRef.current = false;
     setData(null);
     setStatus("idle");
     setErrorKey(null);
     setErrorDetail(null);
     setTouched(false);
-    (async () => {
-      const headers = await authHeaders();
-      if (!headers) return;
-      try {
-        const res = await fetch(`${API}/api/races/${raceId}/selection`, { headers });
-        if (!res.ok) return;
-        const body = await res.json();
-        if (cancelled) return;
-        setData(body);
-        if (body.selection) {
-          setSel({
-            riderIds: body.selection.rider_ids ?? [],
-            captainId: body.selection.captain_id ?? null,
-            sprintCaptainId: body.selection.sprint_captain_id ?? null,
-            hunterId: body.selection.hunter_id ?? null,
-            freeRoleIds: body.selection.free_role_ids ?? [],
-          });
-        }
-      } catch {
-        /* netværk — panelet forbliver skjult */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [raceId]);
+    loadSelection();
+    return () => { cancelledRef.current = true; };
+  }, [raceId, loadSelection]);
 
   // Flag OFF eller løbet ikke længere åbent → intet panel.
   if (!data?.enabled || data.race?.status !== "scheduled") return null;
@@ -236,6 +248,25 @@ export default function RaceSelectionPanel({
     } catch {
       setStatus("error");
       setErrorKey("generic");
+    }
+  }
+
+  // #2180/#3310: et-kliks assistent-udtagelse — samme motor som Race Hub's
+  // dag-scopede "Auto-udfyld", skaleret til dette ene løb. Blokeres serverside (409)
+  // hvis holdet allerede har en manuel entry; et rent auto-udfyldt felt overskrives.
+  // Efter succes genindlæses panelet via loadSelection() så trup + roller + is_auto_filled
+  // afspejler det assistenten netop gemte, uden en fuld sidegenindlæsning.
+  async function autoSelect() {
+    const headers = await authHeaders();
+    if (!headers) return;
+    setAutoStatus("loading");
+    try {
+      const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
+      if (!res.ok) { setAutoStatus("error"); return; }
+      await loadSelection();
+      setAutoStatus("idle");
+    } catch {
+      setAutoStatus("error");
     }
   }
 
@@ -497,14 +528,29 @@ export default function RaceSelectionPanel({
               <p className="text-xs text-cz-success">{t("selection.saved")}</p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={save}
-            disabled={clientErrors.length > 0 || saving}
-            className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity self-start sm:self-auto"
-          >
-            {saving ? t("selection.saving") : t("selection.save")}
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {autoStatus === "error" && (
+              <span className="text-xs text-cz-danger">{t("selection.autoFillError")}</span>
+            )}
+            {/* #2180/#3310: sekundær stil — guld nr. 2 er ikke tilladt, Gem forbliver
+                den primære handling. */}
+            <button
+              type="button"
+              onClick={autoSelect}
+              disabled={autoStatus === "loading" || saving}
+              className="px-4 py-2 rounded-lg border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {t("selection.autoFill")}
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={clientErrors.length > 0 || saving}
+              className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              {saving ? t("selection.saving") : t("selection.save")}
+            </button>
+          </div>
         </div>
       </div>
 
