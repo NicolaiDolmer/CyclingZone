@@ -17,6 +17,11 @@ on:
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
   workflow_dispatch:
+  # Merge queue (4/8): merge_group understøtter ikke paths-filtre, så KUN
+  # stubben trigges i køen og rapporterer perf-gate grønt — bundle-gaten
+  # kørte allerede på selve PR'en (lighthouse-ci.yml har bevidst IKKE
+  # merge_group-trigger, ellers ville begge rapportere samme context).
+  merge_group:
 
 permissions:
   contents: read

@@ -2,6 +2,10 @@ name: Dependency review
 
 on:
   pull_request:
+  # Merge queue (4/8): dependency-review-action kræver PR-kontekst og kan ikke
+  # evaluere en merge group. Valideringen skete på PR'en; i køen rapporterer
+  # jobbet grønt via pass-through-steppet nedenfor (samme context-navn).
+  merge_group:
 
 permissions:
   contents: read
@@ -11,10 +15,16 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
+      - name: Merge group pass-through
+        if: github.event_name == 'merge_group'
+        run: echo "Dependency review koerte paa selve PR'en; en merge group har ingen PR-diff at gennemgaa. Rapporterer groent."
+
       - name: Check out repository
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v7
 
       - name: Block vulnerable dependency changes
+        if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
