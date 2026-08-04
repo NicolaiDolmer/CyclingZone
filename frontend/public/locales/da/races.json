@@ -357,6 +357,18 @@
     "hideInjured": "Skjul skadede",
     "suitability": "Egnethed",
     "routeMatch": "Rute-match",
+    "driverInsight": {
+      "escape": {
+        "high": "Udbruds-chance: Høj. Aggression trækker ham ofte med i udbrudsforsøg på dette terræn, og det koster aldrig hans eget resultat hvis forsøget bliver hentet.",
+        "medium": "Udbruds-chance: Middel. Aggression trækker ham en gang imellem med i udbrudsforsøg på dette terræn, uden omkostning hvis forsøget bliver hentet.",
+        "low": "Udbruds-chance: Lav. Ikke aggressiv nok til at være en fast udbruds-trussel på dette terræn."
+      },
+      "tactics": {
+        "strong": "Taktisk fit: Stærkt. Denne etape belønner positionering og løbslæsning, og det er en styrke for ham.",
+        "average": "Taktisk fit: Middel. Denne etape belønner positionering og løbslæsning.",
+        "poor": "Taktisk fit: Begrænset. Denne etape belønner positionering og løbslæsning, hvilket endnu ikke er hans styrke."
+      }
+    },
     "sort": {
       "label": "Sortér efter",
       "ascAria": "Sorterer stigende, tryk for faldende",
