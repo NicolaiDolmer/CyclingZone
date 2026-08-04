@@ -53,18 +53,19 @@ test("isRealizedSale: ingen vinder + ikke garanteret = intet salg (#785)", () =>
   assert.equal(isRealizedSale({ current_bidder_id: null, is_guaranteed_sale: false }), false);
 });
 
-// ─── buildAcademySales ──────────────────────────────────────────────────────
+// ─── buildAcademySales (#2793: matcher academy_intake.status='signed', IKKE
+// længere academy_graduation) ────────────────────────────────────────────────
 
-test("buildAcademySales: bygger salgs-liste med navn + salgspræmie, nyeste først", () => {
-  const gradByRider = new Map([
-    ["rider-1", { resolved_at: "2026-06-01T00:00:00Z", riders: { firstname: "Anna", lastname: "Sørensen" } }],
-    ["rider-2", { resolved_at: "2026-05-01T00:00:00Z", riders: { firstname: "Bo", lastname: "Nielsen" } }],
+test("buildAcademySales: bygger salgs-liste med navn + salgspræmie fra auktioner, nyeste først", () => {
+  const riderById = new Map([
+    ["rider-1", { firstname: "Anna", lastname: "Sørensen" }],
+    ["rider-2", { firstname: "Bo", lastname: "Nielsen" }],
   ]);
   const auctions = [
     { rider_id: "rider-1", current_price: 12000, starting_price: 9000, current_bidder_id: "team-x", is_guaranteed_sale: false, actual_end: "2026-06-05T12:00:00Z" },
     { rider_id: "rider-2", current_price: 4000, starting_price: 4000, current_bidder_id: "team-y", is_guaranteed_sale: false, actual_end: "2026-05-02T12:00:00Z" },
   ];
-  const sales = buildAcademySales(auctions, gradByRider);
+  const sales = buildAcademySales(auctions, [], riderById);
   assert.equal(sales.length, 2);
   assert.equal(sales[0].riderId, "rider-1"); // nyeste actual_end først
   assert.equal(sales[0].riderName, "Anna Sørensen");
@@ -74,32 +75,65 @@ test("buildAcademySales: bygger salgs-liste med navn + salgspræmie, nyeste før
 });
 
 test("buildAcademySales: filtrerer ikke-realiserede auktioner fra (#785)", () => {
-  const gradByRider = new Map([["rider-1", { riders: { firstname: "Anna", lastname: "Sørensen" } }]]);
+  const riderById = new Map([["rider-1", { firstname: "Anna", lastname: "Sørensen" }]]);
   const auctions = [
     { rider_id: "rider-1", current_price: 9000, starting_price: 9000, current_bidder_id: null, is_guaranteed_sale: false },
   ];
-  const sales = buildAcademySales(auctions, gradByRider);
+  const sales = buildAcademySales(auctions, [], riderById);
   assert.equal(sales.length, 0);
 });
 
-test("buildAcademySales: falder tilbage på graduation.resolved_at når actual_end mangler", () => {
-  const gradByRider = new Map([["rider-1", { resolved_at: "2026-04-01T00:00:00Z", riders: {} }]]);
-  const auctions = [
-    { rider_id: "rider-1", current_price: 5000, starting_price: 5000, current_bidder_id: "team-z", is_guaranteed_sale: false, actual_end: null },
-  ];
-  const sales = buildAcademySales(auctions, gradByRider);
-  assert.equal(sales[0].soldAt, "2026-04-01T00:00:00Z");
-  assert.equal(sales[0].riderName, null); // intet navn tilgængeligt
-});
-
-test("buildAcademySales: manglende graduation-match giver stadig et salg (defensivt)", () => {
+test("buildAcademySales: manglende navne-match giver stadig et salg (defensivt)", () => {
   const auctions = [
     { rider_id: "rider-orphan", current_price: 3000, starting_price: 2000, current_bidder_id: "team-a", is_guaranteed_sale: false, actual_end: "2026-03-01T00:00:00Z" },
   ];
-  const sales = buildAcademySales(auctions, new Map());
+  const sales = buildAcademySales(auctions, [], new Map());
   assert.equal(sales.length, 1);
   assert.equal(sales[0].riderName, null);
   assert.equal(sales[0].premium, 1000);
+});
+
+// #2793 kernefund: en signet akademi-rytter solgt på almindelig auktion UDEN
+// nogensinde at passere graduerings-flowet (academy_graduation har 0 rows for
+// dette hold) skal stadig tælles som et realiseret salg. Reproducerer prod-
+// casen fra #2793 (rytter 27dee26d…, Discord-rapport @thelamba 2026-07-22).
+test("buildAcademySales: signet akademi-rytter solgt på almindelig auktion uden graduation-row tælles med (#2793)", () => {
+  const riderById = new Map([["rider-1", { firstname: "Test", lastname: "Rider" }]]);
+  const auctions = [
+    { rider_id: "rider-1", current_price: 65451, starting_price: 50000, current_bidder_id: "team-buyer", is_guaranteed_sale: false, actual_end: "2026-07-21T21:06:08Z" },
+  ];
+  const sales = buildAcademySales(auctions, [], riderById);
+  assert.equal(sales.length, 1);
+  assert.equal(sales[0].price, 65451);
+  assert.equal(sales[0].premium, 15451);
+  assert.equal(sales[0].source, "auction");
+});
+
+test("buildAcademySales: signet akademi-rytter solgt via transfermarkedet tælles med, premium er null (ingen baseline)", () => {
+  const riderById = new Map([["rider-2", { firstname: "Trans", lastname: "Fer" }]]);
+  const transfers = [
+    { rider_id: "rider-2", offer_amount: 20000, counter_amount: 22000, updated_at: "2026-07-15T10:00:00Z", status: "accepted" },
+  ];
+  const sales = buildAcademySales([], transfers, riderById);
+  assert.equal(sales.length, 1);
+  assert.equal(sales[0].price, 22000); // counter_amount vinder over offer_amount
+  assert.equal(sales[0].premium, null);
+  assert.equal(sales[0].listedValue, null);
+  assert.equal(sales[0].source, "transfer");
+});
+
+test("buildAcademySales: transfer uden positivt beløb (0/negativ) tælles ikke som salg", () => {
+  const transfers = [{ rider_id: "rider-3", offer_amount: 0, counter_amount: null, updated_at: "2026-07-01T00:00:00Z" }];
+  assert.equal(buildAcademySales([], transfers, new Map()).length, 0);
+});
+
+test("buildAcademySales: blander auktions- og transfer-salg, sorteret nyeste først", () => {
+  const auctions = [{ rider_id: "r-auc", current_price: 5000, starting_price: 4000, current_bidder_id: "t1", is_guaranteed_sale: false, actual_end: "2026-06-01T00:00:00Z" }];
+  const transfers = [{ rider_id: "r-tra", offer_amount: 6000, updated_at: "2026-07-01T00:00:00Z" }];
+  const sales = buildAcademySales(auctions, transfers, new Map());
+  assert.equal(sales.length, 2);
+  assert.equal(sales[0].riderId, "r-tra"); // nyeste dato først
+  assert.equal(sales[1].riderId, "r-auc");
 });
 
 // ─── summarizeAcademyPnl ────────────────────────────────────────────────────
@@ -131,6 +165,18 @@ test("summarizeAcademyPnl: ingen salg giver 0-indtægter og negativ net cash flo
   assert.equal(result.cumulative.salesProceeds, 0);
   assert.equal(result.cumulative.valueCreation, 0);
   assert.equal(result.cumulative.netCashFlow, -10000);
+});
+
+test("summarizeAcademyPnl: transfer-salg (premium=null) tæller fuldt i salesProceeds, 0 i valueCreation", () => {
+  const current = { slotsUsed: 1, slotsMax: 8, payroll: 3000 };
+  const sales = [
+    { riderId: "r1", price: 12000, premium: 3000 }, // auktion
+    { riderId: "r2", price: 8000, premium: null }, // transfer, ingen baseline
+  ];
+  const result = summarizeAcademyPnl({ current, driftPaid: 0, signingFeesPaid: 0, sales });
+  assert.equal(result.cumulative.salesProceeds, 20000);
+  assert.equal(result.cumulative.valueCreation, 3000); // KUN auktionens premium
+  assert.equal(result.cumulative.salesCount, 2);
 });
 
 test("summarizeAcademyPnl: kapper salgs-listen til de 20 seneste", () => {

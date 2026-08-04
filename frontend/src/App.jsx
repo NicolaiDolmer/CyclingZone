@@ -279,15 +279,13 @@ export default function App() {
             <Route path="activity" element={<Navigate to="/notifications?tab=activity" replace />} />
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
             <Route path="watchlist" element={<WatchlistPage />} />
-            <Route path="help" element={<HelpPage />} />
-            <Route path="rules" element={<RulesPage />} />
+            {/* #2042 A: help/rules/patch-notes/roadmap flyttet ud herunder — de er
+                nu offentlige (se den ubeskyttede Layout-gruppe nedenfor). */}
             {/* #2359: HoF-fladen afløses af verdenshistorik (S3); route redirecter, side-kode
                 bevares indtil narrativ-fladen erstatter den — se HallOfFamePage.jsx. */}
             <Route path="hall-of-fame" element={<Navigate to="/standings" replace />} />
             <Route path="season-preview" element={<Navigate to="/standings?view=strength" replace />} />
             <Route path="head-to-head" element={<Navigate to="/standings?compare=1" replace />} />
-            <Route path="patch-notes" element={<PatchNotesPage />} />
-            <Route path="roadmap" element={<RoadmapPage />} />
             {/* #3102 etape 3: Planlægnings-hubben (Holdudtagelse · Formplan ·
                 Strategi · Kalender). De fire gamle ruter redirecter med
                 fane-mapping. */}
@@ -346,6 +344,20 @@ export default function App() {
             <Route path="scouting" element={<ScoutingCentralPage />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+
+          {/* #2042 A (public-pages login-wall loosening, refs #2824): trust/marketing
+              content that carries no per-account data — read-only for logged-out
+              visitors too, so a shared link from Hattrick/Reddit doesn't hit a login
+              wall. Layout itself already tolerates session === null (dashboard-only
+              widgets — balance, online-count, admin group — simply stay hidden); no
+              RLS was touched (roadmap_items/roadmap_votes stay `authenticated`-only,
+              see PR body). Deliberately NOT wrapped in ProtectedRoute. */}
+          <Route element={<Layout />}>
+            <Route path="help" element={<HelpPage />} />
+            <Route path="rules" element={<RulesPage />} />
+            <Route path="patch-notes" element={<PatchNotesPage />} />
+            <Route path="roadmap" element={<RoadmapPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

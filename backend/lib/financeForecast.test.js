@@ -66,17 +66,23 @@ test("computeFinanceForecast: sund manager → grøn", () => {
   assert.equal(result.projected_prize, 18 * 6_000);
   assert.equal(result.projected_salary, -(18 * 8_000));
   assert.equal(result.projected_loan_interest, 0);
-  // net = 240_000 + 108_000 - 144_000 = 204_000 → ≥ 50K og debt 0/900K=0 → grøn.
-  assert.equal(result.projected_net, 204_000);
+  // #3236: D2-upkeep (140K) er nu med — target-sæson er 2, så ikke deferred.
+  assert.equal(result.projected_upkeep, -140_000);
+  assert.equal(result.projected_facility_upkeep, 0, "ingen faciliteter i archetype");
+  assert.equal(result.projected_staff_salary, 0, "ingen staff i archetype");
+  assert.equal(result.projected_academy_drift, 0, "ingen akademi-ryttere i archetype");
+  // net = 240_000 + 108_000 - 144_000 - 140_000(upkeep D2) = 64_000 → ≥ 50K og debt 0/900K=0 → grøn.
+  assert.equal(result.projected_net, 64_000);
   assert.ok(result.confidence_low < result.projected_net);
   assert.ok(result.confidence_high > result.projected_net);
 });
 
 test("computeFinanceForecast: marginal manager → gul", () => {
   const result = computeFinanceForecast(ARCHETYPES.marginal);
-  // sponsor = 240K × 0.9 = 216K, prize = 14×1500 = 21K, salary = -224K, rente = -20K.
-  // net = 216_000 + 21_000 - 224_000 - 20_000 = -7_000 → i [-50K, 50K] → gul.
-  assert.equal(result.projected_net, -7_000);
+  // sponsor = 240K × 0.9 = 216K, prize = 14×1500 = 21K, salary = -224K, rente = -20K,
+  // upkeep D3 = -40K (#3236).
+  // net = 216_000 + 21_000 - 224_000 - 20_000 - 40_000 = -47_000 → i [-50K, 50K] → gul.
+  assert.equal(result.projected_net, -47_000);
   assert.equal(result.risk_tier, "yellow");
   // debt-ratio = 350K/600K = 0.583 → > 50% giver "debt_growing" warning.
   const debtWarn = result.warnings.find((w) => w.code === "debt_growing");
@@ -96,11 +102,12 @@ test("computeFinanceForecast: gæld-stor manager → rød (debt > 80%)", () => {
 
 test("computeFinanceForecast: konkurs-tæt manager → rød (net + trend)", () => {
   const result = computeFinanceForecast(ARCHETYPES.nearBankrupt);
-  // sponsor = 240K × 0.8 = 192K, prize = 12 × 800 = 9.6K, salary = -264K, rente = -50K.
-  // net = 192_000 + 9_600 - 264_000 - 50_000 = -112_400.
-  assert.equal(result.projected_net, -112_400);
+  // sponsor = 240K × 0.8 = 192K, prize = 12 × 800 = 9.6K, salary = -264K, rente = -50K,
+  // upkeep D3 = -40K (#3236).
+  // net = 192_000 + 9_600 - 264_000 - 50_000 - 40_000 = -152_400.
+  assert.equal(result.projected_net, -152_400);
   assert.equal(result.risk_tier, "red");
-  // Trend: 550K + 2×112.4K = 774.8K > 600K ceiling → trend-warning aktiv.
+  // Trend består stadig (upkeep gør underskuddet endnu større, ikke mindre).
   const trendWarn = result.warnings.find((w) => w.code === "debt_trend");
   assert.ok(trendWarn, "skal have debt_trend warning");
 });
@@ -196,6 +203,161 @@ test("computeFinanceForecast: risk-tier-grænser matcher spec'en", () => {
     debtCeiling: 900_000,
   });
   assert.equal(debt80Plus.risk_tier, "red");
+});
+
+// ─── #3236 · Forecast medregner upkeep + facilitets-/stab-udgifter + akademi ──
+// (økonomi-audit #3198, fund #1: forecastet medregnede tidligere KUN
+// sponsor+præmie−løn−lånerente — 51-55% af nettoet var umodelleret for hold
+// med facilitets-/akademi-investering).
+
+test("computeFinanceForecast (#3236): hold uden faciliteter/staff/akademi → alle 4 nye felter er 0", () => {
+  const result = computeFinanceForecast({
+    team: { division: 4, sponsor_income: 240_000 }, // D4: upkeep = 0
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  assert.equal(result.projected_upkeep, 0);
+  assert.equal(result.projected_facility_upkeep, 0);
+  assert.equal(result.projected_staff_salary, 0);
+  assert.equal(result.projected_academy_drift, 0);
+});
+
+test("computeFinanceForecast (#3236): upkeep er division-skaleret og trækkes fra net", () => {
+  const d1 = computeFinanceForecast({
+    team: { division: 1, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  const d3 = computeFinanceForecast({
+    team: { division: 3, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  // UPKEEP_BY_DIVISION: D1=440K, D3=40K (economyConstants.js).
+  assert.equal(d1.projected_upkeep, -440_000);
+  assert.equal(d3.projected_upkeep, -40_000);
+  assert.equal(d1.projected_net, 240_000 - 440_000);
+  assert.equal(d3.projected_net, 240_000 - 40_000);
+});
+
+test("computeFinanceForecast (#3236): upkeep udskydes i sæson 1 (før første løb, #1678)", () => {
+  // targetSeasonNumber=1 (currentSeasonNumber udeladt, targetSeasonNumber sat direkte).
+  const season1 = computeFinanceForecast({
+    team: { division: 1, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    targetSeasonNumber: 1,
+  });
+  assert.equal(season1.projected_upkeep, 0, "sæson 1-upkeep er deferred");
+  assert.equal(season1.inputs.upkeep_deferred, true);
+
+  const season2 = computeFinanceForecast({
+    team: { division: 1, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    targetSeasonNumber: 2,
+  });
+  assert.equal(season2.projected_upkeep, -440_000, "sæson 2+ opkræver upkeep normalt");
+  assert.equal(season2.inputs.upkeep_deferred, false);
+});
+
+test("computeFinanceForecast (#3236): facilitets-upkeep summerer tier-upkeep over spor", () => {
+  const result = computeFinanceForecast({
+    team: { division: 4, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    facilityTracks: [{ track: "training", tier: 2 }, { track: "medical", tier: 1 }],
+    facilitiesEnabled: true,
+  });
+  // Matcher facilityEngine.test.js: tier 2 (3_500) + tier 1 (1_500) = 5_000.
+  assert.equal(result.projected_facility_upkeep, -5_000);
+  assert.equal(result.inputs.facility_track_count, 2);
+});
+
+test("computeFinanceForecast (#3236): staff-løn summerer aktive lønninger", () => {
+  const result = computeFinanceForecast({
+    team: { division: 4, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    activeStaffSalaries: [{ salary: 12_000 }, { salary: 8_000 }],
+    facilitiesEnabled: true,
+  });
+  assert.equal(result.projected_staff_salary, -20_000);
+  assert.equal(result.inputs.active_staff_count, 2);
+});
+
+test("computeFinanceForecast (#3236): facilitets-upkeep + staff-løn gates på facilitiesEnabled=false", () => {
+  const result = computeFinanceForecast({
+    team: { division: 4, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    facilityTracks: [{ track: "training", tier: 3 }],
+    activeStaffSalaries: [{ salary: 15_000 }],
+    facilitiesEnabled: false,
+  });
+  assert.equal(result.projected_facility_upkeep, 0, "gated bag facilitiesEnabled=false");
+  assert.equal(result.projected_staff_salary, 0, "gated bag facilitiesEnabled=false");
+});
+
+test("computeFinanceForecast (#3236): akademi-drift = antal pladser × DRIFT_PER_SEASON", () => {
+  const withAcademy = computeFinanceForecast({
+    team: { division: 4, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    academyRiderCount: 4,
+  });
+  // ACADEMY.DRIFT_PER_SEASON = 5_000 (academyFlag.js).
+  assert.equal(withAcademy.projected_academy_drift, -20_000);
+  assert.equal(withAcademy.inputs.academy_rider_count, 4);
+
+  const noAcademy = computeFinanceForecast({
+    team: { division: 4, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    academyRiderCount: 0,
+  });
+  assert.equal(noAcademy.projected_academy_drift, 0);
+});
+
+test("computeFinanceForecast (#3236): D2-hold med facilitets-/akademi-investering — afvigelsen falder markant", () => {
+  // Mirrors audit #3198 §3: et D2-hold der investerer i faciliteter+akademi+staff
+  // fik tidligere et forecast der var >50% for optimistisk, fordi disse 4
+  // udgiftsstrømme slet ikke indgik.
+  const noInvestment = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 400_000 },
+    riders: Array.from({ length: 18 }, () => ({ salary: 8_000, prize_earnings_bonus: 6_000 })),
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  const withInvestment = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 400_000 },
+    riders: Array.from({ length: 18 }, () => ({ salary: 8_000, prize_earnings_bonus: 6_000 })),
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    facilityTracks: [{ track: "training", tier: 3 }, { track: "medical", tier: 2 }],
+    activeStaffSalaries: [{ salary: 18_000 }],
+    academyRiderCount: 4,
+    facilitiesEnabled: true,
+  });
+  // Investeringen trækker ekstra facility_upkeep+staff_salary+academy_drift
+  // fra nettoet — begge hold har samme upkeep (samme division), så forskellen
+  // isolerer PRÆCIS de 3 nye udgiftsstrømme facility/staff/academy leverer.
+  const extraCost = noInvestment.projected_net - withInvestment.projected_net;
+  assert.ok(extraCost > 0, "investerende hold skal have lavere net end ikke-investerende");
+  assert.equal(
+    extraCost,
+    -withInvestment.projected_facility_upkeep
+      - withInvestment.projected_staff_salary
+      - withInvestment.projected_academy_drift
+  );
 });
 
 // ─── #981 · Realiseret sæson-præmie som gulv for prize-estimatet ──────────────
@@ -372,6 +534,25 @@ test("computeMultiSeasonForecast — gæld-tung manager: lån decay'er over sæs
   assert.ok(s1.projected_loan_interest <= -99_000);
   assert.ok(s2.projected_loan_interest > s1.projected_loan_interest, "rente falder med decay");
   assert.ok(s3.projected_loan_interest > s2.projected_loan_interest);
+});
+
+test("computeMultiSeasonForecast (#3236): facilitets-/staff-/akademi-udgifter er status-quo over hele horisonten", () => {
+  const result = computeMultiSeasonForecast({
+    ...ARCHETYPES.healthy,
+    seasonsAhead: 3,
+    facilityTracks: [{ track: "training", tier: 2 }],
+    activeStaffSalaries: [{ salary: 10_000 }],
+    academyRiderCount: 3,
+    facilitiesEnabled: true,
+  });
+  const [s1, s2, s3] = result.forecasts;
+  // "Intet ændrer sig"-antagelsen gælder facilities/staff/akademi ligesom
+  // roster/salary — samme beløb i alle 3 sæsoner.
+  for (const s of [s1, s2, s3]) {
+    assert.equal(s.projected_facility_upkeep, -3_500, "tier 2 training-upkeep");
+    assert.equal(s.projected_staff_salary, -10_000);
+    assert.equal(s.projected_academy_drift, -15_000, "3 pladser × 5_000");
+  }
 });
 
 test("computeMultiSeasonForecast — sæson 2+ bruger variabel sponsor (intro kun sæson 1)", () => {

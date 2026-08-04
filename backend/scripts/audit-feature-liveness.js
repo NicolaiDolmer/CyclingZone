@@ -90,6 +90,13 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // season_form_reset_runs (#3249/PR #3271, merged natbølge 4/8): claim-tabel
+  // mod dobbelt-decay i seasonFormReset. Skrives FØRST ved sæsonskifte med
+  // season_form_reset_mode='decay' (tidligst S2→S3-cutoveren 23/8) — kan ikke
+  // flag-gates i FLAG_GATED_EMPTY_TABLES, for mode ER allerede 'decay' mens
+  // tabellen korrekt er tom indtil transitionen. Samme klasse som hall_of_fame.
+  // Fjern entry når tabellen har rows (efter 23/8).
+  "season_form_reset_runs",
   // email_log (#2725/#2853): var her som en manuel "jeg tjekkede engang"-entry.
   // Flyttet 26/7 (#2985) til FLAG_GATED_EMPTY_TABLES — samme mekanisme som
   // academy_season_intake_runs. Se den registrering for den fulde forklaring;
@@ -162,6 +169,12 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
   // undtagen off), så en fremtidig flip fanges automatisk uden at nogen skal
   // huske at rydde whitelisten.
   ["email_log", { flagKey: "email_loop_enabled" }],
+  // Dagsbaseret løntræk (#2840/PR #3256, merged 3/8 gated): wage_deduction_mode
+  // er en MODE-nøgle, ikke en boolsk — "season_upfront" (default, nuværende
+  // adfærd) er dens off-tilstand, "daily" tænder sweepen. offValues fortæller
+  // isFlagOff hvilke værdier der tæller som off. Flippes til "daily" (tidligst
+  // S3-cutover 23/8) og tabellen forbliver tom, flager Detector A som normalt.
+  ["wage_daily_runs", { flagKey: "wage_deduction_mode", offValues: ["season_upfront"] }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
@@ -250,6 +263,13 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // (`/api/peak-plans` + `/${planId}/accept-training`), så den statiske caller-grep
   // ikke matcher path-mønstret. Desuden launch-gated bag peak_planner_enabled.
   "POST /peak-plans/:id/accept-training",
+  // #2180 one-click auto-udtag: backend-endpointet (+ det tilhørende 36t-
+  // varsel-sweep, selectionWarningSweep.js) shippet FØR indbakke-knappen —
+  // eksplicit backend-only scope for denne PR (se PR-body). En senere
+  // frontend-session wirer notifikationens metadata.raceId til dette
+  // endpoint fra NotificationsPage.jsx. Intentional orphaned indtil da,
+  // ikke drift; fjern denne entry når knappen lander.
+  "POST /races/:raceId/selection/auto",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).
@@ -268,10 +288,10 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // survey_banner_clicked fjernet fra whitelisten 16/7 (#2467): SurveyBanner.jsx
   // slettet + eventet fjernet fra KNOWN_EVENTS, så entry'en var stale (Detector E
   // tjekker kun events der stadig er i KNOWN_EVENTS).
-  // Academy (#1669): academy_graduate fyrer først når en akademirytter når
-  // graduation-alderen (samme gating som academy_graduation-tabellen i Detector A).
-  // Fjern entry når eventet flyder (tjek player_events).
-  "academy_graduate",
+  // (academy_graduate (#1669) fjernet 3/8 efter instruktionen i entryen selv:
+  // eventet flyder nu — 11 impressions i 30-dages-vinduet, verificeret mod prod
+  // af audit-kørslen selv ("Stale whitelist-entry"-fund) — så Detector E
+  // overvåger det normalt igen.)
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
@@ -360,8 +380,9 @@ async function fetchAppConfigFlags() {
 // featureStage.js's evaluateFlagStage (som kun kender off/beta/on) fordi
 // Detector A skal virke for BEGGE flag-familier der forekommer i kodebasen:
 // tre-tilstand off/beta/on (featureStage.js) OG off/dry_run/on (emailLoopFlag.js).
-export function isFlagOff(value) {
-  return value === undefined || value === null || value === false || value === "off";
+export function isFlagOff(value, offValues = []) {
+  return value === undefined || value === null || value === false || value === "off"
+    || offValues.includes(value);
 }
 
 // Ren beslutningsfunktion for ÉN Detector A-tabelrække — ingen supabase/fs,
@@ -391,7 +412,7 @@ export function evaluateDetectorARow(row, { insertPaths, flags }) {
   // en fortsat tom tabel er en ægte død feature og skal flages som normalt.
   const flagGate = FLAG_GATED_EMPTY_TABLES.get(row.table_name);
   const flagValue = flagGate ? flags.get(flagGate.flagKey) : undefined;
-  if (flagGate && isFlagOff(flagValue)) return null;
+  if (flagGate && isFlagOff(flagValue, flagGate.offValues ?? [])) return null;
 
   const paths = insertPaths.get(row.table_name);
   if (!paths || paths.size === 0) return null; // ingen backend-write — ikke vores problem
