@@ -1,28 +1,44 @@
 // #3172: node:internal/test_runner intermittently corrupts worker-IPC data
-// ("Unable to deserialize cloned data due to invalid or unsupported version")
-// only when MANY test-file workers stream results back to the parent test
-// runner process at the same time. Root cause upstream: nodejs/node#64061,
-// fixed by nodejs/node#64706 (merged 2026-07-26) — a signed/unsigned bug in
-// the test runner's internal `processRawBuffer` that mishandles large IPC
-// buffers. That fix has not reached our pinned Node 24.x line yet, so we
-// isolate the offending file instead of waiting on a Node bump.
+// ("Unable to deserialize cloned data due to invalid or unsupported version").
+// Root cause upstream: nodejs/node#64061, fixed by nodejs/node#64706 (merged
+// 2026-07-26) — a signed/unsigned bug in the test runner's internal
+// `processRawBuffer` that mishandles large IPC buffers streamed from a
+// per-file test worker back to the parent process. That fix has not reached
+// our pinned Node 24.x line yet.
 //
 // lib/economyEngine.test.js is by far the largest backend test file (100+
 // top-level tests, 6500+ lines, ~250KB) — its per-worker result payload is
-// large enough to be the one that trips the bug when it lands concurrently
-// with the other ~340 test-file workers. Isolated runs of the file are
-// 102/102 green every time; the flake has only ever been observed in the
-// full suite (#3169-CI, #3171-CI).
+// the one large enough to trip the bug.
 //
-// Fix: run the large file alone FIRST (no concurrent worker traffic to race
-// against), then run every other backend test file exactly as before (same
-// flags, same default concurrency). Any CLI args npm forwards (e.g.
-// `--test-reporter=spec` from `npm test -- --test-reporter=spec`) are passed
-// through to both passes unchanged.
+// A first fix (2026-08-03, PR #3222) ran this file alone in its own pass,
+// theorizing the bug needed concurrent IPC traffic from other workers to
+// trigger. That theory was WRONG: the isolated pass itself failed with the
+// exact same deserialize error twice more the same evening (CI runs
+// 30836291715 attempt 1 @17:20 and 30840936886 @18:22, both on the isolated
+// Pass 1, zero other workers running). The bug is triggered by this file's
+// payload size/shape alone, not by concurrency — isolating it from other
+// workers only lowered the odds of hitting the exact buffer boundary that
+// trips `processRawBuffer`, it didn't remove the vulnerable code path.
 //
-// Deliberately NOT using `--test-concurrency=1` for the whole suite: that
-// would serialize all ~344 files and materially slow down CI/local runs for
-// a bug that only needs ONE file kept out of the concurrent pool.
+// Actual fix: run this one file with `--test-isolation=none`, which makes
+// node:test execute it in the *same* process instead of spawning a child
+// worker that streams results back over a socket via structured-clone IPC.
+// With no IPC round-trip for this file, `processRawBuffer`/`FileTest.parseMessage`
+// are never invoked for it, so the bug class cannot trigger regardless of
+// payload size or concurrent load. Verified locally: 25/25 consecutive green
+// runs, exit codes and failure-propagation confirmed correct (a deliberately
+// failing test still exits 1), and the per-file `FileTest` wrapper line that
+// appeared in every crash stack trace is absent from `--test-isolation=none`
+// output — confirming the vulnerable path is structurally bypassed, not just
+// avoided by timing.
+//
+// `--test-isolation=none` is scoped to Pass 1 ONLY (this one file). Pass 2
+// (all other ~340 files) keeps the default process-per-file isolation
+// unchanged — disabling isolation suite-wide would risk state/global leakage
+// between unrelated test files, a much bigger blast radius than this one
+// file needs. Any CLI args npm forwards (e.g. `--test-reporter=spec` from
+// `npm test -- --test-reporter=spec`) are passed through to both passes
+// unchanged, in addition to the isolation flag on Pass 1.
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import path from "node:path";
@@ -44,10 +60,10 @@ function findTestFiles(dir, out) {
   return out;
 }
 
-function runNodeTest(extraArgs, files) {
+function runNodeTest(extraArgs, files, isolationArgs = []) {
   const result = spawnSync(
     process.execPath,
-    ["--test", "--import", "./test-setup.js", ...extraArgs, ...files],
+    ["--test", "--import", "./test-setup.js", ...isolationArgs, ...extraArgs, ...files],
     { stdio: "inherit", cwd: backendRoot },
   );
   if (result.error) throw result.error;
@@ -77,8 +93,11 @@ const restFilesRelative = allTestFilesAbsolute
   .filter((file) => file !== isolatedAbsolute)
   .map((file) => path.relative(backendRoot, file));
 
-console.log(`\n[run-tests] Pass 1/2: ${ISOLATED_RELATIVE} in isolation (#3172 worker-IPC flake guard)\n`);
-const isolatedStatus = runNodeTest(extraArgs, [ISOLATED_RELATIVE]);
+console.log(
+  `\n[run-tests] Pass 1/2: ${ISOLATED_RELATIVE} with --test-isolation=none ` +
+    "(#3172 worker-IPC deserialize-bug guard — no child worker, no IPC, bug class cannot trigger)\n",
+);
+const isolatedStatus = runNodeTest(extraArgs, [ISOLATED_RELATIVE], ["--test-isolation=none"]);
 if (isolatedStatus !== 0) {
   process.exit(isolatedStatus);
 }

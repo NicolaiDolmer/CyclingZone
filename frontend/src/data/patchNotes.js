@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.89",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A heads-up when a race still needs your lineup",
+          "body": "If a race starts in less than 36 hours and you have not picked your lineup manually, a notification now lands in your inbox. The assistant can also fill in that one race for you in a single click, using the same rules as the race hub's auto-fill, so it never double-books a rider on the same day and never selects someone who is injured."
+        },
+        "da": {
+          "title": "Et praj når et løb stadig mangler din udtagelse",
+          "body": "Hvis et løb starter om mindre end 36 timer og du ikke selv har sat din udtagelse, lander der nu en notifikation i din indbakke. Assistenten kan også udfylde netop dét løb for dig med ét klik, efter samme regler som løbs-hubbens auto-udfyld, så den aldrig dobbeltbooker en rytter samme dag og aldrig vælger en skadet."
+        },
+        "refs": [2180]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "New teams get a proper welcome",
+          "body": "Creating your team now drops a welcome note in your inbox that points you straight to the auction house. Until now a brand-new account stared at a completely empty inbox until the first event happened to reach it."
+        },
+        "da": {
+          "title": "Nye hold får en ordentlig velkomst",
+          "body": "Når du opretter dit hold, lander der nu en velkomstbesked i din indbakke der peger dig direkte mod auktionshuset. Indtil nu stirrede en helt ny konto på en tom indbakke, indtil den første hændelse tilfældigvis ramte den."
+        },
+        "refs": [2822]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Club",
+        "en": {
+          "title": "Fired staff no longer sneak back into your candidate list",
+          "body": "When you fired a staff member, the next candidate refresh could offer the exact same person again, often as the top pick. Candidate generation now remembers who you have let go and keeps them out for good."
+        },
+        "da": {
+          "title": "Fyret personale sniger sig ikke længere tilbage på kandidatlisten",
+          "body": "Når du fyrede et personalemedlem, kunne næste kandidat-opdatering tilbyde præcis samme person igen, ofte som topkandidat. Kandidatgenereringen husker nu hvem du har ladet gå, og holder dem ude permanent."
+        },
+        "refs": [2887]
+      }
+    ]
+  },
+  {
     "version": "7.88",
     "date": "2026-08-03",
     "label": "Beta",

@@ -64,6 +64,9 @@ export const BALANCE_DRIFT_TUNING = Object.freeze({
   ROBUST_ESTIMATORS: envFlag("BALANCE_DRIFT_ROBUST_ESTIMATORS", false),
   WILSON_Z: envNum("BALANCE_DRIFT_WILSON_Z", 1.96),
   POOL_WINDOW_DAYS: envNum("BALANCE_DRIFT_POOL_WINDOW_DAYS", 7),
+  // #2731-opfølgning B (count-baseret dominans-trigger, se
+  // maxRiderWinCountAboveRateFloor() nedenfor for kalibreringsgrundlaget).
+  COUNT_TRIGGER_MIN_RATE: envNum("BALANCE_DRIFT_COUNT_TRIGGER_MIN_RATE", 0.40),
 });
 
 // Metrikker der klassificeres på et POOLET vindue når robust-mode er ON.
@@ -92,6 +95,11 @@ export const BALANCE_DRIFT_BANDS = Object.freeze({
   maxRiderWinRate:         Object.freeze({ max: 0.45 }), // ≥5 starter i vinduet
   jourSansSharePct:        Object.freeze({ min: 2, max: 5, reportOnly: true }),
   breakawayWinSharePct:    Object.freeze({ min: 1, max: 7, reportOnly: true }),
+  // #2731-opfølgning B — count-baseret supplement til maxRiderWinRate, se
+  // maxRiderWinCountAboveRateFloor()'s header for kalibrering + Rubio-casen.
+  // reportOnly: 77% dags-hit-rate over en 30-dages empirisk scanning (se
+  // funktionens header) er ikke sjælden nok til hård alarm endnu.
+  maxRiderDominantWinCount: Object.freeze({ max: 6, reportOnly: true }), // >=7 sejre m. rate>=COUNT_TRIGGER_MIN_RATE
 });
 
 // Metrikker der IKKE skal deltage i 3-dages-alarmen selv når de er "røde"
@@ -160,6 +168,74 @@ export function maxRiderWinRateLowerBound({
     }
   }
   return { maxLowerBound: best, riders, leader };
+}
+
+/**
+ * #2731-opfølgning B — COUNT-baseret supplement til maxRiderWinRate/Wilson-LB.
+ *
+ * HVORFOR WILSON IKKE FANGER RUBIO-CASEN: Wilson-LB (ovenfor) belønner en
+ * EKSTREM rate over et lille antal starter højere end en mere moderat rate
+ * over et stort, troværdigt antal starter — fordi LB måler "hvor sikre kan vi
+ * være på at raten er høj", ikke "hvor mange sejre har rytteren faktisk
+ * samlet". #3245-auditens 2/8-vindue: Aitor Rubio (7 sejre/17 starter,
+ * rate 0,412) har Wilson-LB **0,216**, mens Lars Wouters (5/7=0,714, en langt
+ * mindre robust stikprøve) har LB **0,359** — højere, selvom Rubio ifølge
+ * auditens p≈1e-9-beregning er "dagens reelt mest dominerende rytter målt på
+ * et troværdigt antal starter". Et rent COUNT-mål retter denne blinde vinkel
+ * ved at se på det ABSOLUTTE sejrsantal, med et rate-gulv som eneste filter
+ * mod highvolume/lav-rate-ryttere (mange starter, tilfældigt nogle sejre).
+ *
+ * EMPIRISK KALIBRERING (2026-08-03, read-only SELECT mod prod, samme
+ * 14-dages rullende vinduer som windowRows i balanceDriftWatch.js, 30
+ * target-datoer 5/7-3/8 — se PR-body for de fulde tal):
+ *   - wins>=7 UDEN rate-gulv: 29/30 dage (97%) — poolen (alle divisioner,
+ *     tusindvis af ryttere) har ALTID en topscorer et sted; ren
+ *     sejrs-optælling er lige så følsom over for pooling-støj som den rå
+ *     maxRiderWinRate var før #3245.
+ *   - wins>=7 MED rate>=0,40: 23/30 dage (77%; PR #3273's body sagde 15/30,
+ *     men adversarial re-verifikation 4/8 fandt 23/30 ad tre uafhængige veje,
+ *     se PR-kommentaren) — gulvet skærer altså kun ~20 procentpoint af og
+ *     diskriminerer svagere end oprindeligt antaget.
+ *   - wins>=8 (uden gulv): 10/30 (33%). wins>=9: 0/30 — aldrig observeret,
+ *     så X=9 ville aldrig fange NOGEN dominans, heller ikke ægte tilfælde.
+ *
+ * X=7 (bånd-max=6 i BALANCE_DRIFT_BANDS.maxRiderDominantWinCount, dvs. værdi
+ * >6 er "brud"), Y=0,40 (COUNT_TRIGGER_MIN_RATE): Rubios 0,412 klarer Y med
+ * kun 0,012 margin — Y=0,45 (samme som det rå maxRiderWinRate-bånd) ville
+ * UDELUKKE ham. minStarts=5 matcher den eksisterende konvention.
+ *
+ * 77% dags-hit-rate er IKKE sjælden — se BALANCE_DRIFT_BANDS' reportOnly-
+ * begrundelse for hvorfor denne metrik (ligesom jourSansSharePct/
+ * breakawayWinSharePct) er synlig/persisteret, men aldrig alarm-eligible.
+ *
+ * @param {object} args
+ * @param {Map<string, number>} args.winsByRider
+ * @param {Map<string, number>} args.startsByRider
+ * @param {number} [args.minStarts]
+ * @param {number} [args.minRate]  rate-gulv (0-1)
+ * @returns {{maxWinsAboveRateFloor:number|null, riders:number, leader:{riderId:string, wins:number, starts:number, rate:number}|null}}
+ */
+export function maxRiderWinCountAboveRateFloor({
+  winsByRider = new Map(),
+  startsByRider = new Map(),
+  minStarts = 5,
+  minRate = BALANCE_DRIFT_TUNING.COUNT_TRIGGER_MIN_RATE,
+} = {}) {
+  let best = null;
+  let leader = null;
+  let riders = 0;
+  for (const [riderId, starts] of startsByRider.entries()) {
+    if (starts < minStarts) continue;
+    const wins = winsByRider.get(riderId) || 0;
+    const rate = starts > 0 ? wins / starts : 0;
+    if (rate < minRate) continue;
+    riders++;
+    if (best == null || wins > best || (wins === best && rate > (leader?.rate ?? 0))) {
+      best = wins;
+      leader = { riderId, wins, starts, rate };
+    }
+  }
+  return { maxWinsAboveRateFloor: best, riders, leader };
 }
 
 /**
@@ -272,6 +348,10 @@ export function computeDayMetrics({
   // trenden kan sammenlignes historisk uanset om robust-mode er flippet.
   // Klassifikationen bruger den kun når flaget er ON.
   const winLb = maxRiderWinRateLowerBound({ winsByRider, startsByRider, minStarts: 5 });
+  // #2731-opfølgning B: ALTID beregnet og persisteret (samme mønster som
+  // maxRiderWinRateLb ovenfor), reportOnly-båndet afgør om den nogensinde
+  // klassificerer rødt/alarmerer — se maxRiderWinCountAboveRateFloor()'s header.
+  const countDom = maxRiderWinCountAboveRateFloor({ winsByRider, startsByRider, minStarts: 5 });
 
   return {
     favoriteWinRate: dom.favoriteWinRate,
@@ -282,11 +362,260 @@ export function computeDayMetrics({
     maxRiderWinRate: winStats.maxWinRate,
     maxRiderWinRateLb: winLb.maxLowerBound,
     maxRiderWinRateRiders: winLb.riders,
+    maxRiderDominantWinCount: countDom.maxWinsAboveRateFloor,
+    maxRiderDominantWinCountRiders: countDom.riders,
     jourSansSharePct: riderStageCount > 0 ? (100 * jourSansHits) / riderStageCount : null,
     breakawayWinSharePct: breakawayEligibleStages > 0 ? (100 * breakawayWins) / breakawayEligibleStages : null,
     stageInstances: dom.races,
     incidentStages: inc.stages,
   };
+}
+
+/**
+ * #2557 — PER-TIER-opdeling af dagens dominans-observationer.
+ *
+ * HVORFOR: aggregatet er et gennemsnit af puljer der opfører sig MODSAT. Målt
+ * 27/7-3/8 (docs/audits/2026-08-03-team-dominance-2557.md) vandt favoritten
+ * 49% i tier 3 (for forudsigeligt) men kun 15,6-17,5% i tier 1/2/4 (for
+ * tilfældigt, under bånd-min 0,25). Ét gennemsnit landede tæt på båndet og
+ * skjulte begge fejl i 3 uger — og variant C (PR #2575) blev kalibreret mod
+ * netop det gennemsnit. Opdelingen er derfor ikke pynt: uden den kan en
+ * kalibrering ikke se hvilken retning den skal gå.
+ *
+ * REPORT-ONLY: deltager ALDRIG i rød-klassifikation eller 3-dages-alarmen
+ * (classifyDay itererer kun BALANCE_DRIFT_BANDS). Den lever i den persisterede
+ * metrics-jsonb så admin-trenden og fremtidige kalibreringer kan læse den.
+ *
+ * @param {Array<ReturnType<typeof import("./raceDominanceMetrics.js").observeRace> & {tier?:number|null}>} observations
+ * @returns {Record<string, {stages:number, favoriteWinRate:number|null,
+ *   favoritePodiumRate:number|null, share4PlusSameTeamTop10:number|null,
+ *   avgDistinctTeamsTop10:number|null}>} nøgle = `tier${n}` eller "unknown"
+ */
+export function computeTierBreakdown(observations = []) {
+  const byTier = new Map();
+  for (const obs of observations) {
+    const key = obs?.tier == null ? "unknown" : `tier${obs.tier}`;
+    if (!byTier.has(key)) byTier.set(key, []);
+    byTier.get(key).push(obs);
+  }
+
+  const out = {};
+  for (const [key, group] of [...byTier].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const agg = aggregateObservations(group);
+    out[key] = {
+      stages: agg.races,
+      favoriteWinRate: agg.favoriteWinRate,
+      favoritePodiumRate: agg.favoritePodiumRate,
+      share4PlusSameTeamTop10: agg.share4PlusSameTeamTop10,
+      avgDistinctTeamsTop10: agg.avgDistinctTeamsTop10,
+    };
+  }
+  return out;
+}
+
+// De fire nøgler computeTierBreakdown() rent faktisk beregner pr. tier
+// (dnfRatePct/maxRiderWinRate/jourSans/breakaway lever kun i det globale
+// aggregat — ingen pr.-tier-nedbrydning af dem findes endnu).
+const TIER_CLASSIFIED_METRICS = Object.freeze([
+  "favoriteWinRate",
+  "favoritePodiumRate",
+  "share4PlusSameTeamTop10",
+  "avgDistinctTeamsTop10",
+]);
+
+/**
+ * #2557/#3250-opfølgning (spor B1, del B) — klassificér HVER tiers
+ * nedbrydning mod de SAMME kanoniske bånd som det globale aggregat.
+ *
+ * HVORFOR: computeTierBreakdown() (ovenfor) beregner allerede tallene, men er
+ * bevidst report-only — den deltager ikke i rød/grøn-klassifikation.
+ * #3250-auditens hovedfund var netop at det GLOBALE aggregat kan se rimeligt
+ * ud (grønt/gult) mens ÉN tier alene bryder båndet kraftigt: tier 3 vandt
+ * favoritten 49% af tiden (27/7-3/8, docs/audits/2026-08-03-team-dominance-2557.md)
+ * mens tier 1/2/4 lå på 15,6-17,5% — hver ende trækker aggregatet mod midten
+ * og skjuler begge fejl. Denne funktion tilføjer klassifikationen ovenpå
+ * computeTierBreakdown()'s tal, så et enkelt tier-brud er SYNLIGT selv når
+ * det globale aggregat er grønt.
+ *
+ * Verificeret mod ægte prod-data (2026-08-02 — eneste dag med persisteret
+ * byTier på skrivetidspunktet, da #2557/#3250 kun lige er merget): global
+ * favoriteWinRate-status var "yellow", mens denne funktion klassificerede
+ * tier1 (0,200), tier3 (0,583) OG tier4 (0,188) som "red" — kun tier2 (0,25)
+ * var grøn. Beviser konkret at aggregatet kan maskere et per-tier-brud, og at
+ * tier 3 IKKE er den eneste tier der kan trippe alene.
+ *
+ * @param {Record<string, {stages:number, favoriteWinRate:number|null, favoritePodiumRate:number|null, share4PlusSameTeamTop10:number|null, avgDistinctTeamsTop10:number|null}>} byTier  computeTierBreakdown()-output
+ * @param {Record<string, {min?:number,max?:number,reportOnly?:boolean}>} [bands]  BALANCE_DRIFT_BANDS som standard
+ * @returns {Record<string, Record<string, {value:number|null, status:string}>>}  nøgle = tier (`tier1`..`tier4`/"unknown"), derefter metric
+ */
+export function classifyTierBreakdown(byTier = {}, bands = BALANCE_DRIFT_BANDS) {
+  const out = {};
+  for (const [tierKey, tierMetrics] of Object.entries(byTier)) {
+    const tierOut = {};
+    for (const metricKey of TIER_CLASSIFIED_METRICS) {
+      const band = bands[metricKey];
+      if (!band) continue;
+      const value = tierMetrics?.[metricKey] ?? null;
+      tierOut[metricKey] = { value, status: classifyMetric(value, band) };
+    }
+    out[tierKey] = tierOut;
+  }
+  return out;
+}
+
+/**
+ * #2557 (afsnit 5b) — PER-LØB snapshot af share4Plus for ÉN dag: klynge-enheden
+ * cluster-korrektionen nedenfor grupperer på. Et løb bidrager i praksis kun ÉN
+ * etape pr. kalenderdag (season-invariant "1 rytter = 1 løb/dag"), så denne
+ * dags snapshot er triviel i sig selv (klynge = etape); værdien kommer først
+ * når flere dages snapshots puljes i poolClusterCorrectedShare4Plus — en
+ * flerdags-etapeløb (samme raceId over N dage) er DÉR den korrelerede klynge.
+ *
+ * REPORT-ONLY: persisteres i metrics-jsonb'en (som byTier), læses aldrig af
+ * classifyDay/classifyMetric — ændrer intet ved den nuværende vagt.
+ *
+ * @param {Array<ReturnType<typeof import("./raceDominanceMetrics.js").observeRace> & {raceId?:string|null}>} observations
+ * @returns {Record<string, {hits:number, stages:number}>}  nøgle = raceId (string); ukendt raceId udelades (kan ikke klynges — samme princip som foldRiderWindowRows' NULL-rider_id-værn)
+ */
+export function computeShare4PlusRaceSnapshot(observations = []) {
+  const out = {};
+  for (const obs of observations) {
+    if (obs?.raceId == null) continue;
+    const key = String(obs.raceId);
+    if (!out[key]) out[key] = { hits: 0, stages: 0 };
+    out[key].stages++;
+    if (obs.maxSameTeamTop10 >= 4) out[key].hits++;
+  }
+  return out;
+}
+
+/**
+ * #2557 (afsnit 5b) — klynge-korrigeret estimat + standardfejl for en binær
+ * pr.-etape-hændelse, fra allerede grupperede (hits, stages)-par (én pr.
+ * løb/klynge). Ren matematik uden share4Plus-specifik viden, så den kan
+ * genbruges til andre pr.-etape-metrikker med samme klynge-struktur.
+ *
+ * HVORFOR: en naiv pr.-etape-SE (`naiveSe`, sqrt(p(1-p)/n) — den klassiske
+ * Bernoulli-antagelse) behandler korrelerede etaper i SAMME løb som
+ * uafhængige observationer og overvurderer signifikansen. Auditen
+ * (docs/audits/2026-08-03-team-dominance-2557.md, afsnit 5b) målte 27/7-3/8:
+ * samme punktestimat (~0,11-0,12), men naivt ~7 SE fra bånd-max mod ~2,2 SE
+ * klynge-korrigeret — 57 løb, ikke 265 uafhængige etaper.
+ *
+ * Metode: klynge-estimatet (`clusterEstimate`) er det UVÆGTEDE gennemsnit af
+ * hver klynges EGEN rate (hits/stages i den klynge) — IKKE et etape-vægtet
+ * gennemsnit, som ville genindføre samme bias. `clusterSe` = sample-sd
+ * (n−1-nævner) af klynge-raterne / sqrt(antal klynger), samme konvention som
+ * en simpel cluster-robust ("CR1"-lignende) SE for en klynget middelværdi.
+ * Kræver ≥2 klynger for en SE (sd er udefineret ved n=1) — `clusterSd`/
+ * `clusterSe` er `null` ved 0-1 klynger, aldrig NaN.
+ *
+ * @param {Record<string, {hits:number, stages:number}>} byCluster
+ * @returns {{
+ *   clusters:number, stages:number, hits:number,
+ *   naiveEstimate:number|null, naiveSe:number|null,
+ *   clusterEstimate:number|null, clusterSd:number|null, clusterSe:number|null,
+ * }}
+ */
+export function clusterCorrectedRate(byCluster = {}) {
+  const buckets = Object.values(byCluster || {}).filter(
+    (b) => b && Number.isFinite(b.stages) && b.stages > 0 && Number.isFinite(b.hits)
+  );
+  const clusters = buckets.length;
+  const stages = buckets.reduce((sum, b) => sum + b.stages, 0);
+  const hits = buckets.reduce((sum, b) => sum + b.hits, 0);
+
+  if (clusters === 0) {
+    return {
+      clusters: 0, stages: 0, hits: 0,
+      naiveEstimate: null, naiveSe: null,
+      clusterEstimate: null, clusterSd: null, clusterSe: null,
+    };
+  }
+
+  const naiveEstimate = stages > 0 ? hits / stages : null;
+  const naiveSe = naiveEstimate != null && stages > 0
+    ? Math.sqrt((naiveEstimate * (1 - naiveEstimate)) / stages)
+    : null;
+
+  const clusterRates = buckets.map((b) => b.hits / b.stages);
+  const clusterEstimate = clusterRates.reduce((sum, r) => sum + r, 0) / clusters;
+
+  let clusterSd = null;
+  let clusterSe = null;
+  if (clusters >= 2) {
+    const variance = clusterRates.reduce((sum, r) => sum + (r - clusterEstimate) ** 2, 0) / (clusters - 1);
+    clusterSd = Math.sqrt(variance);
+    clusterSe = clusterSd / Math.sqrt(clusters);
+  }
+
+  return { clusters, stages, hits, naiveEstimate, naiveSe, clusterEstimate, clusterSd, clusterSe };
+}
+
+/**
+ * Afstand fra et punktestimat til båndets relevante grænse, målt i
+ * standardfejl (SE). Positiv = uden for båndet med den afstand; 0 = inden for
+ * båndet. `null` hvis estimat/SE mangler, ikke-endelig, eller SE ≤ 0 (kan
+ * ikke måles — aldrig NaN/Infinity).
+ *
+ * @param {number|null} estimate
+ * @param {number|null} se
+ * @param {{min?:number, max?:number}} band
+ * @returns {number|null}
+ */
+export function distanceInStandardErrors(estimate, se, band = {}) {
+  if (estimate == null || !Number.isFinite(estimate)) return null;
+  if (se == null || !Number.isFinite(se) || se <= 0) return null;
+  const { min, max } = band;
+  if (max != null && estimate > max) return (estimate - max) / se;
+  if (min != null && estimate < min) return (min - estimate) / se;
+  return 0;
+}
+
+/**
+ * #2557 (afsnit 5b) — pool share4Plus-klynge-snapshots
+ * (computeShare4PlusRaceSnapshot()-output, persisteret som
+ * metrics.share4PlusByRace) over de seneste `windowDays` PERSISTEREDE rækker
+ * og klynge-korrigér resultatet. Samme rækkefølge-/hul-tolerance som
+ * poolDailyRate (nyeste `windowDays` rækker, ingen gætning ved manglende
+ * data) — men merger PR.-LØB i stedet for at genskabe én pulje-tæller, så
+ * samme løb over flere dage korrekt tælles som ÉN klynge, ikke N.
+ *
+ * REPORT-ONLY: bruges ikke af classifyDay/classifyMetric i denne PR (#2557
+ * afsnit 6, "Nu (denne PR, inert): mål problemet permanent" — hvorvidt
+ * klassifikationen skal skifte til denne estimator, og om båndet 0,05 skal
+ * rekalibreres på klynge-korrigeret basis, er en ejer-beslutning, jf.
+ * auditens åbne spørgsmål 3).
+ *
+ * @param {Array<{date:string, metrics?:{share4PlusByRace?:Record<string,{hits:number,stages:number}>}}>} rows
+ * @param {number} [windowDays]
+ * @returns {ReturnType<typeof clusterCorrectedRate> & {days:number}}
+ */
+export function poolClusterCorrectedShare4Plus(rows = [], windowDays = BALANCE_DRIFT_TUNING.POOL_WINDOW_DAYS) {
+  const sorted = [...rows]
+    .filter((r) => r && r.date)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, Math.max(1, Math.floor(windowDays)));
+
+  const merged = {};
+  let days = 0;
+  for (const row of sorted) {
+    const snapshot = row.metrics?.share4PlusByRace;
+    if (!snapshot || typeof snapshot !== "object") continue;
+    let sawRace = false;
+    for (const [raceId, bucket] of Object.entries(snapshot)) {
+      const hits = Number(bucket?.hits);
+      const stages = Number(bucket?.stages);
+      if (!Number.isFinite(hits) || !Number.isFinite(stages) || stages <= 0) continue;
+      sawRace = true;
+      if (!merged[raceId]) merged[raceId] = { hits: 0, stages: 0 };
+      merged[raceId].hits += hits;
+      merged[raceId].stages += stages;
+    }
+    if (sawRace) days++;
+  }
+
+  return { ...clusterCorrectedRate(merged), days };
 }
 
 /**
@@ -421,6 +750,67 @@ export function findConsecutiveBreaches(rows = [], { minConsecutiveDays = 3 } = 
     }
   }
   return breaches;
+}
+
+/**
+ * #2557/#3250-opfølgning (spor B1, del B) — SAMME algoritme som
+ * findConsecutiveBreaches, men på PER-TIER-klassifikationen
+ * (classifyTierBreakdown()-output), så fx tier3 kan trippe ALENE i 3+ dage i
+ * træk selvom det globale aggregat (findConsecutiveBreaches) er grønt i hele
+ * perioden — det var netop det #3250-auditen viste var sket i praksis.
+ *
+ * IKKE wired til Discord-alarmen (balanceDriftWatch.js sender kun payload for
+ * findConsecutiveBreaches' output). Resultatet er forespørgelsesbart via
+ * GET /api/admin/balance-drift (tierBreaches-feltet) og fuldt unit-testet her,
+ * så at koble den til webhook'en er én lille commit væk — men det kræver
+ * ejerens vurdering af støjniveau over en længere periode først (samme
+ * beslutning som #3245/#3250 begge eksplicit efterlod til ejeren).
+ *
+ * @param {Array<{date:string, tierStatuses:Record<string,Record<string,{status:string}>>}>} rows  vilkårlig rækkefølge (sorteres internt), skal indeholde DAGENS række
+ * @param {{minConsecutiveDays?:number}} [opts]
+ * @returns {Array<{tier:string, metric:string, days:number, since:string}>}  sorteret efter tier, så metric
+ */
+export function findConsecutiveTierBreaches(rows = [], { minConsecutiveDays = 3 } = {}) {
+  if (rows.length === 0) return [];
+  const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  // Saml alle (tier, metric)-par der optræder NOGEN gang i vinduet — en dag
+  // uden etaper i en given tier (byTier mangler nøglen den dag) skal IKKE
+  // forveksles med et manglende cron-tick; det håndteres separat af
+  // isConsecutiveDay nedenfor (datoen selv mangler stadig aldrig en RÆKKE).
+  const pairs = new Set();
+  for (const row of sorted) {
+    for (const [tier, metrics] of Object.entries(row.tierStatuses || {})) {
+      for (const metric of Object.keys(metrics)) pairs.add(`${tier}::${metric}`);
+    }
+  }
+
+  const breaches = [];
+  for (const pairKey of pairs) {
+    const [tier, metric] = pairKey.split("::");
+    let streak = 0;
+    let streakStart = null;
+    let prevDate = null;
+    for (const row of sorted) {
+      const status = row.tierStatuses?.[tier]?.[metric]?.status;
+      const isConsecutiveDay = prevDate == null || daysBetween(prevDate, row.date) === 1;
+      if (status === "red" && isConsecutiveDay) {
+        streak = isConsecutiveDay && prevDate != null && streak > 0 ? streak + 1 : 1;
+        if (streak === 1) streakStart = row.date;
+      } else if (status === "red" && !isConsecutiveDay) {
+        streak = 1;
+        streakStart = row.date;
+      } else {
+        streak = 0;
+        streakStart = null;
+      }
+      prevDate = row.date;
+    }
+    if (streak >= minConsecutiveDays) {
+      breaches.push({ tier, metric, days: streak, since: streakStart });
+    }
+  }
+  return breaches.sort((a, b) => (a.tier === b.tier ? (a.metric < b.metric ? -1 : 1) : a.tier < b.tier ? -1 : 1));
 }
 
 /**

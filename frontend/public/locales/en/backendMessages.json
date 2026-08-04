@@ -190,6 +190,10 @@
       "title": "Squad below race minimum",
       "message": "Your squad has {count} race-eligible rider(s), below the {min}-rider minimum needed to field a race day. Sign free agents or bid in an auction before your next race."
     },
+    "selectionWarning": {
+      "title": "Squad selection needed",
+      "message": "{race} starts within 36 hours and you haven't picked your squad yet. Select your riders, or let the assistant auto-select for you."
+    },
     "riderRetired": {
       "title": "{name} has retired",
       "message": "{name} has retired from professional cycling at age {age}. His place in your squad is now free."
@@ -388,6 +392,10 @@
         "message": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin.",
         "messageReason": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin: {reason}"
       }
+    },
+    "welcome": {
+      "title": "Welcome to Cycling Zone",
+      "message": "Your team is ready. Place a bid in the auction house to sign your first rider."
     }
   },
   "error": {

@@ -37,11 +37,17 @@
 //   - "decay" er IKKE idempotent ved gen-kørsel: det er en kontraktion mod
 //     target baseret på den værdi der STÅR I DB NU (new = target + (old -
 //     target) × factor). Kører man den to gange, decayer den yderligere mod
-//     target — samme egenskab som "rest_days" i seasonFatigueReset.js. Vælger
-//     ejeren "decay" til ship, bør en claim-tabel (jf.
-//     academy_season_intake_runs-mønsteret i #2911) overvejes FØR flip, så en
-//     operatørs "kør sæsonskiftet igen for en sikkerheds skyld" ikke dobbelt-
-//     decayer formen. Åbent spørgsmål — se PR-beskrivelsen.
+//     target — samme egenskab som "rest_days" i seasonFatigueReset.js.
+//
+// CLAIM-GUARD MOD DOBBELT-DECAY (#3249, jf. #3249-rapportens anbefaling):
+//   applySeasonFormReset claimer den aktive sæson FØRST (season_form_reset_runs,
+//   PK season_id) — men KUN i mode "decay", da det er den ENESTE mode der ikke
+//   selv er idempotent (baseline er en ren konstant-funktion, band er seedet på
+//   rytter+sæson). Samme mønster som season_fatigue_reset_runs (#2910): en
+//   PK-kollision på season_id betyder "allerede kørt for denne sæson" →
+//   { ran:false, reason:"already_ran" } i stedet for at decaye videre. En
+//   operatørs "kør sæsonskiftet igen for en sikkerheds skyld" giver dermed
+//   nøjagtig samme sluttilstand som én kørsel.
 
 import { seededUnit } from "./riderProgression.js";
 import { fetchAllPaged } from "./dbChunk.js";
@@ -165,6 +171,39 @@ export function seasonResetForm({
 }
 
 /**
+ * Slå den aktive sæson op. Bevidst en LOKAL forespørgsel (ikke en delt import)
+ * — modulet skal kunne stå alene, samme begrundelse som
+ * seasonFatigueReset.js' resolveActiveSeason.
+ */
+async function resolveActiveSeason(supabase) {
+  const { data, error } = await supabase
+    .from("seasons").select("id, number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`season form reset: season lookup: ${error.message}`);
+  return data ?? null;
+}
+
+// Stempl claim-rækken færdig. completed_at skiller "kørslen nåede igennem" fra
+// "kørslen døde undervejs og formen er delvist decayet". Best-effort: en fejl
+// her må ikke kaste efter at formen ER skrevet — ellers ville kaldestedet tro
+// intet skete, mens sluttilstanden faktisk er korrekt (samme disciplin som
+// seasonFatigueReset.js' finishRun).
+async function finishRun(supabase, seasonId, summary, nowIso) {
+  const { error } = await supabase
+    .from("season_form_reset_runs")
+    .update({
+      riders: summary.riders,
+      changed: summary.changed,
+      avg_before: summary.avgBefore,
+      avg_after: summary.avgAfter,
+      completed_at: nowIso,
+    })
+    .eq("season_id", seasonId);
+  if (error) {
+    console.error(`season form reset: failed to stamp claim row completed: ${error.message}`);
+  }
+}
+
+/**
  * Anvend sæsonskifte-form-nulstillingen på HELE rider_condition-tabellen.
  *
  * - Config-gated (fail-safe "off"). Kaldes fra seasonStartHooks.js, aldrig
@@ -175,9 +214,17 @@ export function seasonResetForm({
  * - `season` SKAL angives når mode er "band" (bruges som seed-komponent for
  *   idempotens pr. sæson) — mangler den, kaster funktionen FØR første række,
  *   i stedet for at falde tavst tilbage til en fælles/forkert seed.
+ * - MODE "DECAY" er claim-guardet mod dobbelt-kørsel (#3249): claimer den
+ *   aktive sæson FØRST i season_form_reset_runs (PK season_id). Ingen aktiv
+ *   sæson → { ran:false, reason:"no_active_season" }. Allerede claimet →
+ *   { ran:false, reason:"already_ran" }. dryRun brænder ALDRIG claimet (en
+ *   efterfølgende rigtig kørsel skal stadig kunne køre). baseline/band claimer
+ *   intet — de er allerede bevisligt idempotente og skal ikke pådrages ekstra
+ *   DB-trafik for en garanti de ikke har brug for.
  *
  * @returns {Promise<{ran:boolean, reason?:string, mode?:string, riders?:number,
- *   changed?:number, avgBefore?:number, avgAfter?:number, dryRun?:boolean}>}
+ *   changed?:number, avgBefore?:number, avgAfter?:number, dryRun?:boolean,
+ *   seasonId?:string, seasonNumber?:number}>}
  */
 export async function applySeasonFormReset({
   supabase,
@@ -186,6 +233,7 @@ export async function applySeasonFormReset({
   season = null,
   config = null,
   readConfig = readSeasonFormResetConfig,
+  resolveSeason = resolveActiveSeason,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -196,13 +244,45 @@ export async function applySeasonFormReset({
     throw new Error("applySeasonFormReset: 'season' er obligatorisk for mode 'band'");
   }
 
+  const nowIso = now instanceof Date ? now.toISOString() : String(now);
+
+  // Claim-FØRST — kun mode "decay", kun i apply-mode (en dry-run må aldrig
+  // brænde sæsonens claim, se docstring ovenfor).
+  let claimedSeason = null;
+  if (cfg.mode === "decay" && !dryRun) {
+    const activeSeason = await resolveSeason(supabase);
+    if (!activeSeason) return { ran: false, reason: "no_active_season" };
+
+    const { data: claim, error: claimErr } = await supabase
+      .from("season_form_reset_runs")
+      .upsert(
+        { season_id: activeSeason.id, mode: cfg.mode, started_at: nowIso },
+        { onConflict: "season_id", ignoreDuplicates: true }
+      )
+      .select("season_id");
+    if (claimErr) throw new Error(`season form reset claim: ${claimErr.message}`);
+    if (!claim?.length) {
+      return {
+        ran: false,
+        reason: "already_ran",
+        seasonId: activeSeason.id,
+        seasonNumber: activeSeason.number,
+      };
+    }
+    claimedSeason = activeSeason;
+  }
+
   const { data: conditions, error } = await fetchAllPaged(() =>
     supabase.from("rider_condition").select("rider_id, form").order("rider_id")
   );
   if (error) throw new Error(`season form reset: rider_condition load: ${error.message}`);
-  if (!conditions?.length) return { ran: true, mode: cfg.mode, riders: 0, changed: 0, dryRun };
+  if (!conditions?.length) {
+    if (claimedSeason) {
+      await finishRun(supabase, claimedSeason.id, { riders: 0, changed: 0, avgBefore: 0, avgAfter: 0 }, nowIso);
+    }
+    return { ran: true, mode: cfg.mode, riders: 0, changed: 0, dryRun };
+  }
 
-  const nowIso = now instanceof Date ? now.toISOString() : String(now);
   const rows = [];
   let sumBefore = 0;
   let sumAfter = 0;
@@ -239,7 +319,7 @@ export async function applySeasonFormReset({
     avgAfter: Math.round((sumAfter / conditions.length) * 10) / 10,
   };
 
-  if (dryRun || rows.length === 0) return summary;
+  if (dryRun) return summary;
 
   for (let i = 0; i < rows.length; i += SEASON_FORM_RESET_DEFAULTS.upsertChunk) {
     const chunk = rows.slice(i, i + SEASON_FORM_RESET_DEFAULTS.upsertChunk);
@@ -249,5 +329,6 @@ export async function applySeasonFormReset({
     if (upErr) throw new Error(`season form reset upsert: ${upErr.message}`);
   }
 
+  if (claimedSeason) await finishRun(supabase, claimedSeason.id, summary, nowIso);
   return summary;
 }
