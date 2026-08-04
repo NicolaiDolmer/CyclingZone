@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.95",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "internal",
+        "topic": "Race engine",
+        "en": {
+          "title": "Stage-race generator picks a finale style instead of always climbing to the finish",
+          "body": "The generator that builds a stage race's terrain used to sort every race the same way: sprint stages first, mountains always last. Real WorldTour races don't work like that (Tirreno-Adriatico ends in a bunch sprint, Tour de Suisse on a final time trial, Volta a Catalunya on a hilly circuit). The generator now picks one of four finale styles per race (sprint, summit, time-trial, hilly-circuit), weighted to match research on real races, and gives races a real chance at a non-flat opening stage too. Grand tours keep their existing form (hardest terrain in the final week, ceremonial finish). No visible effect until the next season's calendar is built."
+        },
+        "da": {
+          "title": "Etapeløbs-generatoren vælger en finale-stil i stedet for altid at klatre til mål",
+          "body": "Generatoren der bygger et etapeløbs terræn sorterede før alle løb ens: sprint-etaper først, bjerge altid sidst. Sådan fungerer rigtige WorldTour-løb ikke (Tirreno-Adriatico slutter i en bunkespurt, Tour de Suisse på en afsluttende enkeltstart, Volta a Catalunya på et kuperet kredsløb). Generatoren vælger nu én af fire finale-stile pr. løb (sprint, bjerg-top, enkeltstart, kuperet kredsløb), vægtet mod research på rigtige løb, og giver også løb en reel chance for en ikke-flad åbningsetape. Grand tours beholder deres nuværende form (hårdeste terræn i sidste uge, ceremoniel afslutning). Ingen synlig effekt før næste sæsons kalender bygges."
+        },
+        "refs": [3326]
+      }
+    ]
+  },
+  {
     "version": "7.94",
     "date": "2026-08-04",
     "label": "Beta",

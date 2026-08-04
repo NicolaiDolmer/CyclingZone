@@ -2,21 +2,23 @@
   "r1": [
     {
       "stage_number": 1,
-      "profile_type": "flat",
-      "finale_type": "reduced_sprint",
+      "profile_type": "mountain",
+      "finale_type": "descent",
       "demand_vector": {
-        "sprint": 0.61,
-        "acceleration": 0.15,
-        "flat": 0.06,
-        "positioning": 0.08,
-        "endurance": 0.02,
-        "randomness": 0.08
+        "climbing": 0.5,
+        "tempo": 0.12,
+        "endurance": 0.14,
+        "recovery": 0.06,
+        "punch": 0.04,
+        "tactics": 0.02,
+        "positioning": 0.02,
+        "randomness": 0.1
       }
     },
     {
       "stage_number": 2,
       "profile_type": "mountain",
-      "finale_type": "breakaway",
+      "finale_type": "long_climb",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -30,23 +32,8 @@
     },
     {
       "stage_number": 3,
-      "profile_type": "mountain",
-      "finale_type": "descent",
-      "demand_vector": {
-        "climbing": 0.5,
-        "tempo": 0.12,
-        "endurance": 0.14,
-        "recovery": 0.06,
-        "punch": 0.04,
-        "tactics": 0.02,
-        "positioning": 0.02,
-        "randomness": 0.1
-      }
-    },
-    {
-      "stage_number": 4,
       "profile_type": "high_mountain",
-      "finale_type": "descent",
+      "finale_type": "long_climb",
       "demand_vector": {
         "climbing": 0.52,
         "endurance": 0.18,
@@ -55,6 +42,19 @@
         "punch": 0.04,
         "tactics": 0.02,
         "randomness": 0.1
+      }
+    },
+    {
+      "stage_number": 4,
+      "profile_type": "flat",
+      "finale_type": "bunch_sprint",
+      "demand_vector": {
+        "sprint": 0.61,
+        "acceleration": 0.15,
+        "flat": 0.06,
+        "positioning": 0.08,
+        "endurance": 0.02,
+        "randomness": 0.08
       }
     }
   ],
@@ -74,21 +74,23 @@
     },
     {
       "stage_number": 2,
-      "profile_type": "flat",
-      "finale_type": "bunch_sprint",
+      "profile_type": "mountain",
+      "finale_type": "descent",
       "demand_vector": {
-        "sprint": 0.61,
-        "acceleration": 0.15,
-        "flat": 0.06,
-        "positioning": 0.08,
-        "endurance": 0.02,
-        "randomness": 0.08
+        "climbing": 0.5,
+        "tempo": 0.12,
+        "endurance": 0.14,
+        "recovery": 0.06,
+        "punch": 0.04,
+        "tactics": 0.02,
+        "positioning": 0.02,
+        "randomness": 0.1
       }
     },
     {
       "stage_number": 3,
       "profile_type": "mountain",
-      "finale_type": "breakaway",
+      "finale_type": "descent",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -117,17 +119,15 @@
     },
     {
       "stage_number": 5,
-      "profile_type": "mountain",
-      "finale_type": "descent",
+      "profile_type": "flat",
+      "finale_type": "bunch_sprint",
       "demand_vector": {
-        "climbing": 0.5,
-        "tempo": 0.12,
-        "endurance": 0.14,
-        "recovery": 0.06,
-        "punch": 0.04,
-        "tactics": 0.02,
-        "positioning": 0.02,
-        "randomness": 0.1
+        "sprint": 0.61,
+        "acceleration": 0.15,
+        "flat": 0.06,
+        "positioning": 0.08,
+        "endurance": 0.02,
+        "randomness": 0.08
       }
     }
   ],
@@ -164,21 +164,8 @@
     },
     {
       "stage_number": 2,
-      "profile_type": "flat",
-      "finale_type": "reduced_sprint",
-      "demand_vector": {
-        "sprint": 0.61,
-        "acceleration": 0.15,
-        "flat": 0.06,
-        "positioning": 0.08,
-        "endurance": 0.02,
-        "randomness": 0.08
-      }
-    },
-    {
-      "stage_number": 3,
       "profile_type": "hilly",
-      "finale_type": "punch",
+      "finale_type": "breakaway",
       "demand_vector": {
         "punch": 0.44,
         "tempo": 0.1,
@@ -191,9 +178,24 @@
       }
     },
     {
+      "stage_number": 3,
+      "profile_type": "mountain",
+      "finale_type": "descent",
+      "demand_vector": {
+        "climbing": 0.5,
+        "tempo": 0.12,
+        "endurance": 0.14,
+        "recovery": 0.06,
+        "punch": 0.04,
+        "tactics": 0.02,
+        "positioning": 0.02,
+        "randomness": 0.1
+      }
+    },
+    {
       "stage_number": 4,
       "profile_type": "mountain",
-      "finale_type": "long_climb",
+      "finale_type": "descent",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -207,17 +209,15 @@
     },
     {
       "stage_number": 5,
-      "profile_type": "mountain",
-      "finale_type": "descent",
+      "profile_type": "flat",
+      "finale_type": "bunch_sprint",
       "demand_vector": {
-        "climbing": 0.5,
-        "tempo": 0.12,
-        "endurance": 0.14,
-        "recovery": 0.06,
-        "punch": 0.04,
-        "tactics": 0.02,
-        "positioning": 0.02,
-        "randomness": 0.1
+        "sprint": 0.61,
+        "acceleration": 0.15,
+        "flat": 0.06,
+        "positioning": 0.08,
+        "endurance": 0.02,
+        "randomness": 0.08
       }
     }
   ]

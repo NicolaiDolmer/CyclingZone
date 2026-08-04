@@ -21,6 +21,7 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { attachRoute } from "./raceRouteGenerator.js";
+import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
@@ -29,7 +30,15 @@ import { attachRoute } from "./raceRouteGenerator.js";
 // runtime-guard afhænger af tallet — kun et persisteret stempel).
 // v4 (2026-07-21, #2769): pass 2 (attachRoute) beriger hver etape med en rute
 // (distance/climbs/sprints/sektorer) via en dedikeret rng-strøm. Pass 1 bit-identisk.
-export const GENERATOR_VERSION = 4;
+// v5 (2026-08-04, #3326, ejer-anmodet research): erstattede den globale
+// STAGE_ORDER_HINT-crescendo-sortering (0% åbnede i bjergene, 84% sluttede der, 24 løb
+// delte samme profil-sekvens) med finale-drevne ordnings-arketyper
+// (raceStageOrderProfiles.js) for ALLE ikke-GT etapeløb + generisk fallback. grand_tour
+// beholder sin gamle crescendo-form uændret (ARCHETYPE_PROFILES.grand_tour.legacyOrder).
+// Pass 1-output for ikke-GT etapeløb ÆNDRES bevidst (det ER hele pointen med #3326) —
+// pass1-golden.json-fixturen er regenereret. Determinisme bevaret: samme seed + samme
+// types-multisæt → samme rækkefølge.
+export const GENERATOR_VERSION = 5;
 
 // rider_derived_abilities-kolonnerne (scoring-dimensioner). demand_vector-nøgler
 // skal være ⊆ disse ∪ {"randomness"}.
@@ -133,7 +142,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // openingItt (#2771): GT'er åbner med enkeltstart (etape 1) — Sub-3's prolog-træk
   // i attachRoute gør den 5-8 km i ~60 % af tilfældene. Multisettet af etapetyper
   // er uændret (kun rækkefølgen), så tier-/realisme-bånd påvirkes ikke.
-  grand_tour:     { kind: "stage", openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }] },
+  // legacyOrder (#3326): GT er UDENFOR den finale-drevne ordnings-fordeling (ejer-
+  // bekræftet — GT'ens 21 etaper og crescendo-form (hårdeste terræn i sidste uge) må
+  // ikke ændres). Beholder den oprindelige STAGE_ORDER_HINT-sortering uændret.
+  grand_tour:     { kind: "stage", legacyOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }] },
   mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 16 }, { value: "rolling", weight: 14 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 34 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 6 }] },
   hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 34 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 8 }] },
   sprinters_week: { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 50 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 12 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 6 }] },
@@ -277,7 +289,20 @@ function buildSingle(rng, cfg, race) {
   return [toStage(rng, weightedPick(rng, weights), 1, race, false)];
 }
 
-// Ordn "mod klimaks" (sprint tidligt, bjerg sent) + map til etaper. Delt af begge stier.
+// Deterministisk crescendo-scaffold: sprint tidligt, bjerg sent (den oprindelige
+// #1102-sortering). Bruges dels af den legacy (GT-only) sti nedenfor, dels som
+// UDGANGSPUNKT for de finale-drevne ordnings-arketyper (#3326) — de tager denne
+// scaffold og flytter ÉN etape (finale-slottet), resten forbliver crescendo-agtig.
+function sortByHint(rng, types) {
+  return types
+    .map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.t);
+}
+
+// LEGACY sti — kun grand_tour (ARCHETYPE_PROFILES.grand_tour.legacyOrder) kalder
+// denne. Ordn "mod klimaks" (sprint tidligt, bjerg sent) + map til etaper. Uændret
+// siden #2771 (openingType-parameteren er GT'ens åbnings-ITT-træk).
 function orderAndBuild(rng, types, stages, race, openingType = null) {
   types.length = stages; // defensiv trim
   // openingType (#2771): træk ÉN forekomst ud af sorteringen og sæt den som etape 1
@@ -290,35 +315,197 @@ function orderAndBuild(rng, types, stages, race, openingType = null) {
       opening = openingType;
     }
   }
-  const ordered = types
-    .map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }))
-    .sort((a, b) => a.key - b.key)
-    .map((x) => x.t);
+  const ordered = sortByHint(rng, types);
   if (opening) ordered.unshift(opening);
   return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true));
 }
 
-// Generisk (uændret adfærd): garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5.
-// STAGE_FILLER_WEIGHTS har ingen TT, så generisk kan ikke akkumulere TT fra filler;
-// TT-loftet håndhæves alligevel defensivt (guaranteed TT ⊆ de 2 første pladser).
+// ── #3326: finale-drevne ordnings-arketyper (ikke-GT etapeløb + generisk fallback) ──
+// Vægtene bor i raceStageOrderProfiles.js (data, tunbar uden deploy). Se den fils
+// docstring for research-baggrunden. GT bruger ALDRIG denne sti (legacyOrder ovenfor).
+
+const MOUNTAIN_FAMILY = new Set(["mountain", "high_mountain"]);
+const CIRCUIT_FAMILY = new Set(["hilly", "classic"]); // IKKE "rolling" — den er sprint_finale-territorium, holder finale-typerne ikke-overlappende for målbarhed
+const FLAT_FAMILY = new Set(["flat", "rolling"]);
+
+function isFeasibleOrderArchetype(name, types) {
+  if (name === "tt_finale") return types.some(isTimeTrial);
+  if (name === "circuit_finale") return types.some((t) => CIRCUIT_FAMILY.has(t));
+  if (name === "sprint_finale") return types.some((t) => FLAT_FAMILY.has(t));
+  return types.some((t) => MOUNTAIN_FAMILY.has(t)); // summit_finale + ukendt navn
+}
+
+// Konverter ÉN filler-slot (index >= protectedCount, aldrig en garanti) til targetType,
+// så den ØNSKEDE finale-arketype bliver mulig uden at røre garanti-regionen. Prioriteret
+// ofre-rækkefølge: flat → rolling → hilly/cobbles/classic. Ofrer ALDRIG mountain/
+// high_mountain/itt — heller ikke som sidste udvej. #3326-regression fanget under
+// sæson-måling: en tidligere "sidste udvej ofrer HVAD SOM HELST"-variant kunne (for
+// filler-fattige arketyper som summit_tour, ofte kun 1 filler-plads) klobbe den ENESTE
+// filler-plads selvom den var mountain/high_mountain, hvilket sænkede tier 3's summit-
+// andel under realisme-båndet (#2755, verificeret 40/200→13/200 fail-rate-forskel på
+// syntetiske sæsoner). Bjerge er IKKE fungible, flad/rullende/kuperet er. Returnerer
+// false hvis der ikke findes en SIKKER filler-plads (ingen filler-plads overhovedet,
+// ELLER alle filler-pladser er mountain/high_mountain/itt) — den kaldende
+// resolveOrderArchetype falder da tilbage til et andet feasible ordnings-valg fremfor
+// at ofre bjerg-terræn.
+const FORCE_SACRIFICE_PRIORITY = Object.freeze(["flat", "rolling", "hilly", "cobbles", "classic"]);
+function forceFillerType(types, protectedCount, targetType) {
+  if (types.length <= protectedCount) return false;
+  for (const pref of FORCE_SACRIFICE_PRIORITY) {
+    for (let i = types.length - 1; i >= protectedCount; i--) {
+      if (types[i] === pref) { types[i] = targetType; return true; }
+    }
+  }
+  return false; // alle filler-pladser er mountain/high_mountain/itt — ofr dem aldrig
+}
+
+// Sikkerhedsnet når den trukne arketype hverken er feasible ELLER kan forceres (ingen
+// filler-plads): vælg det bedste FEASIBLE alternativ fra samme vægt-tabel; findes intet,
+// falder vi tilbage til summit_finale (altid feasible — alle stage-arketyper garanterer
+// mindst ét bjerg-terræn).
+function fallbackOrderArchetype(rng, types, weights, exclude) {
+  const remaining = weights.filter((w) => w.value !== exclude && isFeasibleOrderArchetype(w.value, types));
+  if (!remaining.length) return "summit_finale";
+  return weightedPick(rng, remaining);
+}
+
+// Træk ÉN ordnings-arketype (vægtet) + gør den feasible (forcer filler om nødvendigt).
+// Kan MUTERE `types` (forceFillerType) — det er tilsigtet: types er det midlertidige
+// arbejds-array bygget af den kaldende builder, ikke et delt/frosset objekt.
+function resolveOrderArchetype(rng, types, protectedCount, weights) {
+  const picked = weightedPick(rng, weights);
+  if (picked === "tt_finale" && !isFeasibleOrderArchetype("tt_finale", types)) {
+    if (forceFillerType(types, protectedCount, "itt")) return picked;
+    return fallbackOrderArchetype(rng, types, weights, picked);
+  }
+  if (picked === "circuit_finale" && !isFeasibleOrderArchetype("circuit_finale", types)) {
+    if (forceFillerType(types, protectedCount, "hilly")) return picked;
+    return fallbackOrderArchetype(rng, types, weights, picked);
+  }
+  return picked;
+}
+
+// sprint_finale: flyt ÉN flad/rullende etape til sidste plads (spec: "sidste etape
+// flad") og flyt den hårdeste etape (crescendo-scaffoldens sidste før transform) til
+// næstsidst ELLER tredjesidst (spec: "hårdeste etape næstsidste/tredjesidste") — 50/50,
+// kun tredjesidst hvis der er plads (≥4 etaper). Rester forbliver i crescendo-rækkefølge.
+function toSprintFinale(rng, scaffold) {
+  const n = scaffold.length;
+  const rollThird = rng() < 0.5; // altid forbrugt — stabilt rng-forbrug uanset n
+  if (n < 2) return scaffold.slice();
+  const arr = scaffold.slice();
+  // Foretræk en flad/rullende INSTANS der ikke allerede er åbneren (i>0), for variation;
+  // fald tilbage til den første forekomst hvis den er den eneste.
+  let flatIdx = arr.findIndex((t, i) => i > 0 && FLAT_FAMILY.has(t));
+  if (flatIdx === -1) flatIdx = arr.findIndex((t) => FLAT_FAMILY.has(t));
+  if (flatIdx === -1) return arr; // defensivt — flad er altid garanteret et sted
+  const finale = arr.splice(flatIdx, 1)[0];
+  if (!arr.length) { arr.push(finale); return arr; } // n var 1 (kan ikke ske for etapeløb, men totalt)
+  const hardest = arr.pop(); // scaffold er crescendo — sidste tilbageværende er hårdest
+  const wantThird = rollThird && arr.length >= 1;
+  const insertAt = wantThird ? arr.length - 1 : arr.length;
+  arr.splice(Math.max(0, insertAt), 0, hardest);
+  arr.push(finale);
+  return arr;
+}
+
+// tt_finale: flyt den (garanterede/forcerede) enkeltstart til sidste plads. Resten
+// forbliver crescendo — hvad end der var hårdest før (typisk bjerg) lander derved lige
+// FØR enkeltstarten, som Tour de Suisse/Pologne/Romandie-modellen i researchen.
+function toTtFinale(rng, scaffold) {
+  const arr = scaffold.slice();
+  const idx = arr.lastIndexOf("itt");
+  if (idx === -1) return arr; // defensivt — resolveOrderArchetype har allerede sikret feasibility
+  const [itt] = arr.splice(idx, 1);
+  arr.push(itt);
+  return arr;
+}
+
+// circuit_finale: flyt en kuperet (hilly/classic) etape til sidste plads. GC er
+// "typisk allerede afgjort" fordi den hårdeste etape (var sidst i scaffolden) nu
+// rykker frem — automatisk, uden ekstra logik.
+function toCircuitFinale(rng, scaffold) {
+  const arr = scaffold.slice();
+  let idx = -1;
+  for (let i = arr.length - 1; i >= 0; i--) { if (CIRCUIT_FAMILY.has(arr[i])) { idx = i; break; } }
+  if (idx === -1) return arr; // defensivt — resolveOrderArchetype har allerede sikret feasibility
+  const [val] = arr.splice(idx, 1);
+  arr.push(val);
+  return arr;
+}
+
+const ORDER_TRANSFORMS = Object.freeze({
+  summit_finale: (rng, scaffold) => scaffold, // uændret crescendo — bjerg/high_mountain er allerede sidst
+  sprint_finale: toSprintFinale,
+  tt_finale: toTtFinale,
+  circuit_finale: toCircuitFinale,
+});
+
+// Eksporteret for golden-tests: kør scaffold + transform for en EKSPLICIT ordnings-
+// arketype (uden vægtet valg/forcing — testeren leverer et types-multisæt der allerede
+// understøtter den ønskede arketype).
+export function applyOrderArchetype(rng, types, orderArchetype) {
+  const scaffold = sortByHint(rng, types);
+  const transform = ORDER_TRANSFORMS[orderArchetype] ?? ORDER_TRANSFORMS.summit_finale;
+  return transform(rng, scaffold);
+}
+
+// Åbnings-variation (spec: reel chance for ikke-flad åbning). Søger EFTER finale-
+// ordningen, i det åbne midterfelt (index 1..length-2) — rører ALDRIG index 0's
+// nuværende indhold ind i finale-slottet (length-1), så den aldrig kannibaliserer en
+// allerede placeret finale (fx tt_finales enkeltstart).
+export function applyOpeningVariety(rng, ordered) {
+  const roll = rng(); // altid forbrugt — stabilt rng-forbrug
+  if (ordered.length < 3 || roll >= OPENING_VARIETY_CHANCE) return ordered;
+  for (const cand of OPENING_VARIETY_CANDIDATES) {
+    for (let i = 1; i < ordered.length - 1; i++) {
+      if (ordered[i] === cand) {
+        const arr = ordered.slice();
+        [arr[0], arr[i]] = [arr[i], arr[0]];
+        return arr;
+      }
+    }
+  }
+  return ordered;
+}
+
+// Finale-drevet ordning + map til etaper. Bruges af ALLE ikke-GT etapeløbs-arketyper +
+// generisk fallback (terrainArchetype=null → DEFAULT_ORDER_WEIGHTS).
+function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, protectedCount) {
+  types.length = stages; // defensiv trim (parity med orderAndBuild)
+  const weights = orderWeightsFor(terrainArchetype);
+  const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, weights);
+  let ordered = applyOrderArchetype(rng, types, orderArchetype);
+  ordered = applyOpeningVariety(rng, ordered);
+  return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true));
+}
+
+// Generisk: garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5. STAGE_FILLER_WEIGHTS
+// har ingen TT, så generisk kan ikke akkumulere TT fra filler ud over det indledende
+// 70%-træk; TT-loftet håndhæves alligevel defensivt (guaranteed TT ⊆ de 2 første pladser).
+// #3326: rækkefølgen er nu finale-drevet (DEFAULT_ORDER_WEIGHTS), ikke længere ren
+// crescendo — konsistent med de kendte arketyper i stedet for en to-tier legacy-adfærd.
 function buildStageRaceGeneric(rng, stages, race) {
   const types = ["flat", "mountain"];
   if (stages >= 5 && rng() < 0.7) types.push("itt");
   const protectedCount = types.length; // flad+bjerg(+evt. itt) = garantier
   while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
   capTimeTrials(rng, types, protectedCount, STAGE_FILLER_WEIGHTS);
-  return orderAndBuild(rng, types, stages, race);
+  return orderAndBuildFinaleDriven(rng, types, stages, race, null, protectedCount);
 }
 
 // Arketype-drevet: garantier (force-include, trimmet til stages) + filler-vægte.
 // TT-loftet (#2029) håndhæves EFTER filler er lagt på: filler-tilføjede TT ud over
 // loftet re-rulles til ikke-TT-terræn, mens arketypens garanterede TT bevares.
+// #3326: legacyOrder (kun grand_tour) beholder den gamle crescendo-sti; alle andre
+// arketyper går gennem den finale-drevne ordning.
 function buildStageRaceArchetype(rng, stages, cfg, race) {
   const types = cfg.guarantees.slice(0, stages);
   const protectedCount = types.length; // guarantees = beskyttet region
   while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
   capTimeTrials(rng, types, protectedCount, cfg.filler);
-  return orderAndBuild(rng, types, stages, race, cfg.openingItt ? "itt" : null);
+  if (cfg.legacyOrder) return orderAndBuild(rng, types, stages, race, cfg.openingItt ? "itt" : null);
+  return orderAndBuildFinaleDriven(rng, types, stages, race, race?.terrain_archetype, protectedCount);
 }
 
 // Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
