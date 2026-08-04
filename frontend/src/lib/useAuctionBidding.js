@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getMinimumAuctionBid } from "./marketValues";
-import { formatBidWarning, computeAvailableForBid } from "./auctionLogic";
+import { formatBidWarning, computeAvailableForBid, isAuctionTimeExpired } from "./auctionLogic";
 import { logEvent, logFirstEvent } from "./logEvent";
 import { formatNumber } from "./intl";
 import { useBlockedAction } from "./useBlockedAction.js";
@@ -53,17 +53,36 @@ export function useAuctionBidding({
 
   const myProxy = auction.myProxyMax || null;
 
+  // #3110: byd-/autobud-knappen forblev aktiv efter nedtællingen ramte 0 —
+  // status-cronen der sætter auction.status="completed" kan tage et stykke
+  // tid, og indtil da var canBid (AuctionsPage.jsx) stadig sand, så knappen
+  // sad klikbar hele vinduet (Sentry CYCLINGZONE-3Y, 4 hold på 19 timer).
+  // Client-side ur, ikke auction.status — deadline flyttes ved forlængelse
+  // (status "extended"), og calculated_end fanger det uden ekstra prop.
+  const [timeExpired, setTimeExpired] = useState(() => isAuctionTimeExpired(auction.calculated_end));
+  useEffect(() => {
+    setTimeExpired(isAuctionTimeExpired(auction.calculated_end));
+    const tick = setInterval(() => {
+      setTimeExpired(isAuctionTimeExpired(auction.calculated_end));
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [auction.calculated_end]);
+
   // #2719: hvorfor kan knappen ikke køre? Færdige, lokaliserede sætninger — null
   // = ikke blokeret. Bemærk at proxyInput bevidst IKKE nulstilles når minBid
   // stiger (det ville overskrive det spilleren selv har tastet); i stedet siger
   // vi det højt, så et forældet loft aldrig bliver et dødt klik.
   const minBidText = formatNumber(minBid);
-  const bidBlockedReason = bidAmount < minBid
-    ? t("auctions:bid.blockedBelowMin", { amount: minBidText })
-    : null;
-  const proxyBlockedReason = proxyInput < minBid
-    ? t("auctions:bid.proxy.blockedBelowMin", { amount: minBidText })
-    : null;
+  const bidBlockedReason = timeExpired
+    ? t("auctions:bid.blockedExpired")
+    : bidAmount < minBid
+      ? t("auctions:bid.blockedBelowMin", { amount: minBidText })
+      : null;
+  const proxyBlockedReason = timeExpired
+    ? t("auctions:bid.proxy.blockedExpired")
+    : proxyInput < minBid
+      ? t("auctions:bid.proxy.blockedBelowMin", { amount: minBidText })
+      : null;
 
   const bidBlock = useBlockedAction(bidBlockedReason);
   const proxyBlock = useBlockedAction(proxyBlockedReason);

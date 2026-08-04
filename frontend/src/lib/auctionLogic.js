@@ -79,6 +79,18 @@ export function computeAvailableForBid({ balance, reservedBalance, auction, myTe
   return Math.max(0, (Number(balance) || 0) - reservedExclThis);
 }
 
+// #3110: klient-spejl af backendens isAuctionExpired (auctionEngine.js) — samme
+// >= grænsesemantik, så "udløbet" flipper i samme øjeblik på begge sider.
+// Bruges af useAuctionBidding til at deaktivere Byd/autobud-knappen når
+// nedtællingen rammer 0, i stedet for at vente på at status-cronen (som kan
+// tage et stykke tid) sætter auction.status til "completed". Uden dette
+// forblev knappen klikbar i vinduet mellem udløb og finalize (#3110, Sentry
+// CYCLINGZONE-3Y — 4 hold ramt på 19 timer).
+export function isAuctionTimeExpired(calculatedEnd, now = new Date()) {
+  if (!calculatedEnd) return false;
+  return new Date(now) >= new Date(calculatedEnd);
+}
+
 // Bug #29 — squad-cap er warning, ikke block. Manager må gå over max under transfer-vinduet;
 // squadEnforcement-cron auto-sælger + bøder først ved vindue-luk hvis stadig over max.
 // #1170: teksten resolves via i18n (var hardcodet dansk — lækkede i EN-mode).

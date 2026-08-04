@@ -175,7 +175,11 @@ export const AUCTIONS = [
     starting_price: 50000,
     current_price: 50000,
     min_increment: 5000,
-    calculated_end: "2026-05-20T12:00:00.000Z",
+    // #3110: relativ til "nu" i stedet for en fastfrosset kalenderdato — en
+    // frosset fortids-dato bliver af isAuctionTimeExpired (auctionLogic.js)
+    // korrekt læst som udløbet, uanset hvornår testen kører, og blokerer så
+    // byd-knappen i core-smoke's "ingen blanke skærme"-snapshot af /auctions.
+    calculated_end: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
     status: "active",
     is_guaranteed_sale: false,
     rider: RIDERS[1],
