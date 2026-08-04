@@ -403,6 +403,24 @@
     "welcome": {
       "title": "Welcome to Cycling Zone",
       "message": "Your team is ready. Place a bid in the auction house to sign your first rider."
+    },
+    "sponsorPaid": {
+      "seasonStart": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out {amount} CZ$ for the new season."
+      },
+      "raceDay": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out {amount} CZ$ for {race}."
+      },
+      "signingBonus": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out a {amount} CZ$ signing bonus."
+      },
+      "objectiveBonus": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out {amount} CZ$ for meeting your season objective."
+      }
     }
   },
   "error": {

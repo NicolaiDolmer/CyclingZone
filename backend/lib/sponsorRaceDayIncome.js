@@ -27,6 +27,9 @@
 
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { fetchAllRows } from "./supabasePagination.js";
+import { notifyTeamOwner } from "./notificationService.js";
+import { captureException } from "./sentry.js";
 
 // PostgREST returnerer maks 1000 rækker pr. request uanset filter. Sæsonens
 // sponsor-nøgler overstiger det længe før sæsonslut, så vi SKAL paginere —
@@ -120,6 +123,35 @@ export function computeResultBonusCredits({ race, stageResults, contractsByTeam,
   return credits;
 }
 
+// #3315 (ejer-godkendt 4/8): notificér holdejeren om en sponsor-udbetaling for
+// et løb (race-day-indkomst og/eller resultat-bonus, allerede summeret af
+// kalderen). Aldrig-kastende — en notifikationsfejl må ikke vælte payout-
+// sweepen, samme forsvar som economyEngine.notifyManagerSafe.
+async function notifySponsorPaidSafe(supabase, { teamId, sponsorName, amount, raceName, raceId }) {
+  const sponsor = sponsorName || "Your sponsor";
+  try {
+    await notifyTeamOwner({
+      supabase,
+      teamId,
+      type: "sponsor_paid",
+      title: "Sponsor payout",
+      message: `${sponsor} paid out ${amount} CZ$ for ${raceName}.`,
+      relatedId: raceId,
+      metadata: {
+        titleCode: "notif.sponsorPaid.raceDay.title",
+        titleParams: {},
+        messageCode: "notif.sponsorPaid.raceDay.message",
+        messageParams: { sponsor, amount, race: raceName },
+      },
+    });
+  } catch (error) {
+    console.error(
+      `  ❌ [sponsorRaceDayIncome] sponsor_paid notification failed for team ${teamId} (race ${raceId}): ${error?.message || error}`
+    );
+    captureException(error, { tags: { flow: "sponsor-race-day", stage: "notify" }, teamId, raceId });
+  }
+}
+
 // I/O: udbetal per-løbsdag-sponsor-indkomst + resultat-bonusser for alle
 // completede løb i en sæson. Mirror'er prizePayoutEngine.paySeasonPrizesToDate's
 // race-query + payload-shape. opts.actorType lader en cron-sweep logge som SYSTEM.
@@ -128,7 +160,7 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
 
   const { data: races, error: racesError } = await supabase
     .from("races")
-    .select("id, stages, status")
+    .select("id, name, stages, status")
     .eq("season_id", seasonId)
     .eq("status", "completed");
   if (racesError) throw new Error(racesError.message);
@@ -136,7 +168,7 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
 
   const { data: contracts, error: contractsError } = await supabase
     .from("sponsor_contracts")
-    .select("id, team_id, per_race_day_rate, bonus_clauses, results_bonus_paid")
+    .select("id, team_id, sponsor_name, per_race_day_rate, bonus_clauses, results_bonus_paid")
     .eq("status", "active");
   if (contractsError) throw new Error(contractsError.message);
 
@@ -160,16 +192,27 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
   let credited = 0;
   let resultBonuses = 0;
   for (const race of races) {
-    const { data: results, error: resultsError } = await supabase
+    // #3315: PostgREST capper stille ved 1000 rækker — etapeløb har 5000+
+    // race_results-rækker, så et upagineret select droppede vinder-/podie-
+    // rækker vilkårligt og undertalte stage_win/podium-bonusser massivt (94%
+    // manko for ét ramt hold i prod, verificeret 4/8). .order("id") gør
+    // paginering deterministisk (samme mønster som prizePayoutEngine.js).
+    const results = await fetchAllRows(() => supabase
       .from("race_results")
       .select("team_id, result_type, rank")
-      .eq("race_id", race.id);
-    if (resultsError) throw new Error(resultsError.message);
+      .eq("race_id", race.id)
+      .order("id", { ascending: true }));
 
     const participatingTeamIds = [
       ...new Set((results || []).map((r) => r.team_id).filter(Boolean)),
     ];
     const credits = computeRaceDayCredits({ race, participatingTeamIds, contractsByTeam });
+
+    // #3315 (ejer-godkendt 4/8): akkumulér faktisk krediteret beløb pr. hold for
+    // DENNE løbsdag, så vi bagefter kan sende ÉN sponsor_paid-notifikation der
+    // dækker race-day + evt. resultat-bonus samlet — ikke én pr. klausul (spam).
+    // Kun beløb der reelt blev krediteret (ikke skipped/idempotent-dublet) tæller.
+    const notifyAmountByTeam = {};
 
     for (const c of credits) {
       if (paidKeys.has(c.idempotencyKey)) continue;
@@ -195,7 +238,10 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
         },
         { allowDuplicate: true }
       );
-      if (!skipped) credited += 1;
+      if (!skipped) {
+        credited += 1;
+        notifyAmountByTeam[c.teamId] = (notifyAmountByTeam[c.teamId] || 0) + c.amount;
+      }
     }
 
     // #2948: resultat-bonusser (kun etape-rækker, rank 1-3).
@@ -243,6 +289,7 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
       );
       if (skipped) continue;
       resultBonuses += 1;
+      notifyAmountByTeam[b.teamId] = (notifyAmountByTeam[b.teamId] || 0) + b.amount;
 
       // Persistér loft-forbruget. Kreditering skete (idempotent), så inkrement
       // her er sikkert; ved crash mellem de to writes over-krediteres højst én
@@ -258,6 +305,21 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
         if (capError) throw new Error(capError.message);
         contract.results_bonus_paid = (Number(contract.results_bonus_paid) || 0) + b.amount;
       }
+    }
+
+    // #3315: ÉN sponsor_paid-notifikation pr. hold der reelt fik penge for
+    // dette løb (race-day og/eller resultat-bonus, summeret). Notifikationen
+    // må ALDRIG vælte payout-sweepen — en fejlet besked er tabt, ikke en
+    // gentaget kreditering (skipped-guarden ovenfor er allerede idempotent).
+    for (const [teamId, amount] of Object.entries(notifyAmountByTeam)) {
+      if (amount <= 0) continue;
+      await notifySponsorPaidSafe(supabase, {
+        teamId,
+        sponsorName: contractsByTeam[teamId]?.sponsor_name,
+        amount,
+        raceName: race.name,
+        raceId: race.id,
+      });
     }
   }
 

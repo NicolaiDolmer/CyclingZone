@@ -10,6 +10,11 @@
   "disabledNote": "Daily training is currently paused. Training programs can still be set up now.",
   "form": "Form",
   "fatigue": "Fatigue",
+  "mobileSort": {
+    "label": "Sort by",
+    "ascAria": "Sorting ascending, tap for descending",
+    "descAria": "Sorting descending, tap for ascending"
+  },
   "recoveryNoteTitle": "Do riders get energy back every day?",
   "recoveryNote": "Yes. Every night around midnight each rider recovers some fatigue, so it never gets stuck at 100. Rest and easy days recover the most; normal training settles at a sustainable level; hard training still builds fatigue up over the day. A high Recovery rating speeds it up.",
   "focusGuideTitle": "What each focus trains",

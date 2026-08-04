@@ -115,3 +115,24 @@ test("promote-dialogen projicerer lønnen med holdets division (#2796)", () => {
     "uden division falder projectSeniorSalary tilbage på den globale sats og viser samme løn for alle ryttere",
   );
 });
+
+test("intake-kandidat-navnet linker ALDRIG til rytterprofilen (#3142)", () => {
+  // #3142: en 'offered' academy_intake-kandidat er bevidst skjult for den
+  // almindelige rytter-DB via RLS (database/2026-06-22-hide-intake-riders-from-db.sql,
+  // #1743) — is_offered_intake_rider() gør /riders/:id "rytter ikke fundet" for
+  // NETOP denne rytter, uanset hvilket hold der klikker. Et RiderLink her ville
+  // derfor altid være en dødsende. Isolér INTAKE-sektionen (mellem sektions-
+  // kommentarerne) og assertér at den ikke bruger RiderLink — roster- og
+  // graduerings-sektionerne (allerede ejede/signerede ryttere, ikke 'offered')
+  // beholder deres RiderLink uændret.
+  const start = pageSource.indexOf("INTAKE-sektion");
+  assert.ok(start > 0, "kunne ikke finde INTAKE-sektionen i AcademyPage.jsx");
+  const end = pageSource.indexOf("ROSTER-sektion", start);
+  assert.ok(end > start, "kunne ikke finde slutningen af INTAKE-sektionen");
+  const intakeSection = pageSource.slice(start, end);
+  assert.doesNotMatch(
+    intakeSection,
+    /<RiderLink\b/,
+    "intake-kandidatkortet må ikke linke til /riders/:id — profilen er RLS-skjult for 'offered'-kandidater og giver altid 'rider not found'",
+  );
+});

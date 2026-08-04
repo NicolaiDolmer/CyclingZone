@@ -403,6 +403,24 @@
     "welcome": {
       "title": "Velkommen til Cycling Zone",
       "message": "Dit hold er klar. Byd i auktionshuset for at hente din første rytter."
+    },
+    "sponsorPaid": {
+      "seasonStart": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte {amount} CZ$ ved sæsonstart."
+      },
+      "raceDay": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte {amount} CZ$ for {race}."
+      },
+      "signingBonus": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte en underskriftsbonus på {amount} CZ$."
+      },
+      "objectiveBonus": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte {amount} CZ$ for at opfylde jeres sæsonmål."
+      }
     }
   },
   "error": {

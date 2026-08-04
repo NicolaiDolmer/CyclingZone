@@ -437,13 +437,18 @@ export default function AcademyPage() {
 
               return (
                 <Card key={item.intakeId} className="p-4 flex flex-col gap-3">
-                  {/* Navn + nationalitet */}
+                  {/* Navn + nationalitet. #3142: INGEN RiderLink her — en 'offered'
+                      intake-kandidat er bevidst skjult for den almindelige rytter-DB
+                      via RLS (database/2026-06-22-hide-intake-riders-from-db.sql,
+                      #1743), så /riders/:id ville altid give "rider not found" for
+                      netop denne rytter, uanset hvilket hold der klikker. Navnet er
+                      derfor almindelig tekst indtil kandidaten er signeret/afvist —
+                      roster- og gradueringssektionerne linker fortsat (de ryttere er
+                      ikke længere 'offered' og er derfor synlige). */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm leading-snug truncate">
-                        <RiderLink id={rider.id} className="text-cz-1 hover:text-cz-accent-t transition-colors">
-                          {rider.firstname} {rider.lastname}
-                        </RiderLink>
+                      <p className="font-semibold text-sm leading-snug truncate text-cz-1">
+                        {rider.firstname} {rider.lastname}
                       </p>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         {rider.nationality_code && <NationCell code={rider.nationality_code} />}

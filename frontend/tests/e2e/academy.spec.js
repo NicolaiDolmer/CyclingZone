@@ -24,8 +24,10 @@ test("academy page renders intake candidates, slot counter, and roster", async (
   // Slot-tæller
   await expect(page.locator("main")).toContainText(/Academy.*2.*\/.*8|Akademi.*2.*\/.*8/i);
 
-  // Intake-sektion — kandidaterne selv er sprog-uafhængige.
-  await expect(page.getByRole("link", { name: /Emil Kristiansen/i })).toBeVisible();
+  // Intake-sektion — kandidaterne selv er sprog-uafhængige. #3142: navnet er
+  // bevidst REN TEKST (RLS skjuler kandidaten indtil optagelse) — aldrig et link.
+  await expect(page.getByText(/Emil Kristiansen/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Emil Kristiansen/i })).toHaveCount(0);
 
   // Serious prospect-badge (Emil Kristiansen er is_serious=true)
   await expect(page.locator("main")).toContainText(/Serious|Seriøs/i);
