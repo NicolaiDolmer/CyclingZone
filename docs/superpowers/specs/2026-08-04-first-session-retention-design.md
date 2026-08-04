@@ -46,7 +46,7 @@ Copy-regler: EN først, DA sekundært; ingen em-dash i player-facing copy (`tone
 
 **Kanoniske mål (ikke consent-gatede):**
 
-1. **Dag-1-retention:** andel af ugekohorte (ekskl. seneste 2 dage) med `last_seen >= created_at + 24 h`. Ny række på admin-sprint-metrics. Event-serien beholdes som sekundær med consent-loft (68 %) angivet.
+1. **Dag-1-retention:** kanonisk kilde = eksisterende RPC `get_cohort_retention` (rolling: seneste aktivitet ≥ signup + 24 t; aktivitet = `last_seen` ∪ `player_events`, IKKE consent-gated) — vises allerede som kohorte-tabel på `/admin/growth`. Event-serien beholdes som sekundær med consent-loft (68 %) angivet.
 2. **Payoff:** andel nye managere med bekræftet set første resultat (`my_result_seen_race_id` sat). Baseline ~34 % (gulv).
 3. Sekundær: `notification_clicked` pr. type for `race_result`/`selection_warning` (consent-gated, kun retningsgivende).
 
@@ -59,7 +59,7 @@ Copy-regler: EN først, DA sekundært; ingen em-dash i player-facing copy (`tone
 ## Implementeringsnoter
 
 - **Filer (forventet):** `frontend/src/components/MyLatestResultCard.jsx` (variant), `frontend/src/pages/DashboardPage.jsx` (rækkefølge-gate + CTA-nedgradering), `frontend/src/pages/NotificationsPage.jsx` (`TYPE_CONFIG`: `selection_warning` + `race_result`-deep-link), `backend/lib/notificationService.js` (første-resultat-copy-variant), `backend/lib/emailTemplates.js` + `emailDay1Sweep.js` (deep-link), `frontend/src/pages/RaceDetailPage.jsx` (Auto-select-knap i selection-panelet), admin-sprint-metrics: ny read-only RPC `get_day1_retention_cohorts` (ugekohorter, `last_seen`-metoden fra #3310-kommentaren, ekskl. seneste 2 dage) + række på `/admin/sprint-metrics`.
-- Ingen tabel-/skemaændringer og ingen nye notifikationstyper. Præcisering (4/8, post-godkendelse): admin-rækken kræver dog én idempotent RPC-migration (`get_day1_retention_cohorts`, `CREATE OR REPLACE FUNCTION`, read-only) — Claude applier selv post-merge under #2642-rammerne. i18n en+da for al ny copy.
+- Ingen migrationer overhovedet (præcisering 2, 4/8 plan-recon: den tidligere annoncerede `get_day1_retention_cohorts`-RPC bortfalder — eksisterende `get_cohort_retention` fra 2026-06-09 dækker behovet). Ingen nye notifikationstyper. i18n en+da for al ny copy.
 - Template-compliance: alle nye elementer komponeres af eksisterende opskrifter (PAGE_TEMPLATES.md); én guld-primær pr. view håndhæves i begge berørte views (dashboard + løbsside).
 - Pre-flight: `verify-local.ps1` + `npm run lint` + alle 3 playwright-projekter (UI-ændringer). Patch notes + `help.json` (en+da) ved ship — kæden er brugerrettet.
 - UI-merge kræver ejer-visuel-godkendelse (memory-regel): preview/screenshots af dashboard-varianten + notifikationsrækken før merge.
