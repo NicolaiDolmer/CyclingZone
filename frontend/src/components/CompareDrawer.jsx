@@ -9,6 +9,7 @@ import StatCompare from "./StatCompare";
 import { Portal, PageLoader } from "./ui";
 import { XIcon } from "./ui/icons";
 import { formatNumber } from "../lib/intl";
+import { fetchAllRows } from "../lib/supabasePagination";
 
 // Compare-drawer — folder Head-to-Head ind i Standings-hub'en (#1609). Side-panel
 // der sammenligner to hold: StatCompare (point/etapesejre/GC/sæsoner) + indbyrdes
@@ -61,10 +62,13 @@ export default function CompareDrawer({ teamA, teamB, onClose }) {
       const allRiderIds = [...ridersA, ...ridersB].map(r => r.id);
       const pointsByRider = {};
       if (allRiderIds.length > 0) {
-        const { data: resultRows } = await supabase
+        // #3331: up to ~76 riders (two full squads) × a season's worth of
+        // race_results each can exceed the 1000-row PostgREST cap — paginate.
+        const resultRows = await fetchAllRows(() => supabase
           .from("race_results")
           .select("rider_id, points_earned")
-          .in("rider_id", allRiderIds);
+          .in("rider_id", allRiderIds)
+          .order("id", { ascending: true }));
         for (const row of resultRows || []) {
           pointsByRider[row.rider_id] = (pointsByRider[row.rider_id] || 0) + (row.points_earned || 0);
         }

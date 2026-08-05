@@ -2064,10 +2064,12 @@ export async function simulateStageByIndex({
     try {
       // Embed = HELE løbets race_results (alle etaper) genlæst fra DB, ikke kun
       // final-etapens nybyggede rækker — så GC-vinder + alle etapevindere vises.
-      const { data: wholeRaceRows } = await supabase
+      // #3331: grand tours already exceed 1000 race_results rows in prod — paginate.
+      const wholeRaceRows = await fetchAllRows(() => supabase
         .from("race_results")
         .select("result_type, rank, rider_name, stage_number")
-        .eq("race_id", race.id);
+        .eq("race_id", race.id)
+        .order("id", { ascending: true }));
       // S4 (#1176): stage-by-stage-stiens `incidents`-variabel er scopet til KUN
       // final-etapen (linje ~1483 filtrerer på stageNumber) — for DNF-linjen i
       // hele-løbet-embeddet re-hentes derfor race_incidents for HELE løbet her.

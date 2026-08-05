@@ -1,6 +1,6 @@
 import { isKnownNotificationType } from "./notificationTypes.js";
 import { captureException } from "./sentry.js";
-import { SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
+import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -317,13 +317,20 @@ export async function emitRaceResultNotifications({
  * riders' flere team-relationer. Standard-implementering; injicérbar i test.
  */
 async function defaultFetchParticipatingManagers({ supabase, raceId }) {
-  const { data, error } = await supabase
-    .from("race_results")
-    .select("rider:rider_id!inner(team:team_id!inner(user_id, is_ai, is_frozen))")
-    .eq("race_id", raceId)
-    .eq("rider.team.is_ai", false)
-    .eq("rider.team.is_frozen", false);
-  if (error) {
+  // #3331: large stage races produce 1000+ race_results rows (up to ~17k for
+  // the biggest grand tours) — a naive unpaginated select here would silently
+  // drop some human managers' "your race finished" notification. fetchAllRows
+  // pages via .range(); .order("id") keeps pages stable.
+  let data;
+  try {
+    data = await fetchAllRows(() => supabase
+      .from("race_results")
+      .select("rider:rider_id!inner(team:team_id!inner(user_id, is_ai, is_frozen))")
+      .eq("race_id", raceId)
+      .eq("rider.team.is_ai", false)
+      .eq("rider.team.is_frozen", false)
+      .order("id", { ascending: true }));
+  } catch (error) {
     throw new Error(`Could not load participating managers for race ${raceId}: ${error.message}`);
   }
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
@@ -350,12 +357,18 @@ export async function defaultFetchFirstTimeManagers({ supabase, race, userIds })
       return new Set();
     }
     if (!teams?.length) return new Set();
-    const { data: other, error: otherError } = await supabase
-      .from("race_results")
-      .select("team_id")
-      .in("team_id", teams.map((t) => t.id))
-      .neq("race_id", race.id);
-    if (otherError) {
+    // #3331: a team can accumulate 1000+ race_results rows over several
+    // seasons (max observed ~5.1k) — an unpaginated select here would falsely
+    // mark veteran teams as "first-timer" once truncation kicks in.
+    let other;
+    try {
+      other = await fetchAllRows(() => supabase
+        .from("race_results")
+        .select("team_id")
+        .in("team_id", teams.map((t) => t.id))
+        .neq("race_id", race.id)
+        .order("id", { ascending: true }));
+    } catch (otherError) {
       console.error(`  ❌ first-time-manager-lookup fejlede (race_results, race ${race?.id}):`, otherError?.message || otherError);
       captureException(otherError, { tags: { flow: "notifications", stage: "first-time-managers-race-results" }, raceId: race?.id });
       return new Set();
@@ -568,6 +581,9 @@ export async function emitStageResultNotifications({
  * implementering; injicérbar i test.
  */
 async function defaultFetchStageParticipants({ supabase, raceId, stageNumber }) {
+  // pagination-safe: one (race_id, stage_number, result_type="stage") slice is
+  // bounded by that race's field size — verified max 192 rows repo-wide
+  // (#3331 audit, 2026-08-05), well under the 1000-row PostgREST cap.
   const { data, error } = await supabase
     .from("race_results")
     .select("rank, rider_name, team:team_id!inner(user_id, is_ai, is_frozen)")
