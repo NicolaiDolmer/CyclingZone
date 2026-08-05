@@ -2,12 +2,29 @@
 // #203: Mint Supabase JWT for et test-account.
 // Bruger anon-key + signInWithPassword — ingen service-role-key i CLI.
 //
+// SIKKERHED (#3342): default-output-kanalen er en gitignored fil, IKKE
+// stdout. Stdout = agent-transcript naar scriptet koeres fra en agent (Claude
+// Code, subagent, spawn_task) — et fuldt Supabase access_token paa stdout er
+// en direkte secret-leak-vektor. Leaket 2026-08-04 20:00 under #3336-arbejde;
+// fanget af sanitize-secrets.sh, men FOERST efter tokenet allerede stod i
+// transcriptet. Se docs/SECRET_LEAK_VECTORS.md (tabel B).
+//
 // Forudsætning: test-konti er oprettet med kendt password (TEST_ACCOUNT_PASSWORD)
 // via scripts/setup-test-accounts.mjs (eller Supabase MCP create_user).
 //
-// Brug:
+// Brug (SIKKER default — skriver til fil, printer kun stien):
 //   node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev
-//   node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --json
+//   node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --out=.codex.local/my-token.json
+//
+// Brug (UTRYG — printer tokenet direkte til stdout):
+//   node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --print
+//   node scripts/get-test-token.mjs --email=test-a@cyclingzone.dev --print --json
+//
+//   ADVARSEL: --print er KUN til manuel brug fra en terminal UDENFOR Claude
+//   Code. Kør ALDRIG --print fra en agent-session — stdout ER transcriptet,
+//   og tokenet lander permanent i konteksten selvom sanitize-secrets.sh
+//   fanger og redacter det bagefter (#3342). Blokeres proaktivt af
+//   .claude/hooks/block-dangerous-secret-commands.sh.
 //
 // Env (læses fra backend/.env):
 //   SUPABASE_URL              — Supabase project URL
@@ -16,12 +33,38 @@
 
 import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { dirname, join } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { mkdirSync, writeFileSync, chmodSync } from "fs";
 import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(__dirname, "..");
+const DEFAULT_OUT = join(REPO_ROOT, ".codex.local", "test-token.json");
+
 config({ path: join(__dirname, "../backend/.env"), quiet: true });
+
+const HELP = `
+Brug:
+  node scripts/get-test-token.mjs --email=<email> [--out=<path>]
+  node scripts/get-test-token.mjs --email=<email> --print [--json]   ⚠️ UTRYG
+
+Default (sikker): minter tokenet og skriver det til en gitignored fil
+(default: .codex.local/test-token.json, restriktive rettigheder hvor OS
+tillader det). Stdout printer KUN filstien — aldrig selve tokenet.
+
+Flags:
+  --email=<email>  Påkrævet. Test-konto-email (fx test-a@cyclingzone.dev).
+  --out=<path>     Overstyr output-filens sti (default .codex.local/test-token.json).
+  --json           Sammen med --print: print fuldt JSON-objekt (email,
+                    access_token, user_id, expires_at) i stedet for bar token.
+                    Uden --print: ingen effekt — filen er altid JSON.
+  --print          ⚠️ ALDRIG fra en agent-session. Printer tokenet (eller
+                    JSON m. --json) direkte til stdout — den gamle, utrygge
+                    adfærd. Kun til manuel brug i en terminal UDENFOR Claude
+                    Code. Se docs/SECRET_LEAK_VECTORS.md.
+  --help           Vis denne hjælp.
+`;
 
 function parseArgs(argv) {
   const args = {};
@@ -36,9 +79,16 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv);
+
+  if (args.help) {
+    console.log(HELP.trim());
+    return;
+  }
+
   const email = args.email;
   if (!email) {
-    console.error("Brug: node scripts/get-test-token.mjs --email=<email> [--json]");
+    console.error("Brug: node scripts/get-test-token.mjs --email=<email> [--out=<path>] [--print] [--json]");
+    console.error("Kør med --help for fuld dokumentation.");
     process.exit(2);
   }
 
@@ -71,16 +121,42 @@ async function main() {
     process.exit(1);
   }
 
-  if (args.json) {
-    console.log(JSON.stringify({
-      email,
-      access_token: token,
-      user_id: data.user.id,
-      expires_at: data.session.expires_at,
-    }));
-  } else {
-    console.log(token);
+  const payload = {
+    email,
+    access_token: token,
+    user_id: data.user.id,
+    expires_at: data.session.expires_at,
+  };
+
+  if (args.print) {
+    console.error(
+      "⚠️  ADVARSEL: --print skriver tokenet direkte til stdout. " +
+        "Kør ALDRIG dette fra en agent-session (Claude Code/subagent/spawn_task) " +
+        "— stdout ER transcriptet (#3342, docs/SECRET_LEAK_VECTORS.md)."
+    );
+    if (args.json) {
+      console.log(JSON.stringify(payload));
+    } else {
+      console.log(token);
+    }
+    return;
   }
+
+  const outArg = typeof args.out === "string" ? args.out : undefined;
+  const outPath = outArg ? resolve(REPO_ROOT, outArg) : DEFAULT_OUT;
+
+  mkdirSync(dirname(outPath), { recursive: true, mode: 0o700 });
+  writeFileSync(outPath, JSON.stringify(payload, null, 2) + "\n", { mode: 0o600 });
+  try {
+    // Best effort — NTFS/Windows respekterer ikke POSIX-mode fuldt via Node,
+    // men chmod fejler ikke destruktivt der. .gitignore (.codex.local/) er
+    // det primære værn; filrettigheder er defense-in-depth.
+    chmodSync(outPath, 0o600);
+  } catch {
+    // ignoreret — se kommentar ovenfor.
+  }
+
+  console.log(outPath);
 }
 
 main().catch((err) => {

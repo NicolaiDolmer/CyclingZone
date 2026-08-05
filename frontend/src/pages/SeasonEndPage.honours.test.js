@@ -39,7 +39,9 @@ test("#2863 blokken læser ALDRIG rå race_results eller rider_rankings_mv til k
   // managere ved cutover, er det præcis den fælde #2891 lige har lukket.
   assert.doesNotMatch(code, /from\(\s*["'`]rider_rankings_mv["'`]\s*\)/);
   assert.doesNotMatch(code, /from\(\s*["'`]race_results["'`]\s*\)/);
-  assert.doesNotMatch(code, /fetchAllRows\s*\(/);
+  // Bandet mod de to tabeller er selve beskyttelsen: uden dem kan en
+  // fetchAllRows herfra ikke ramme noget tungt. Sæson-scope-kravet på
+  // pagineringen håndhæves i SeasonEndPage.recapAggregate.test.js (#3331).
 });
 
 test("#2863 en manglende migration skjuler blokken, den fejler ikke siden", () => {

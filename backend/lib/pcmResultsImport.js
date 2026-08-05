@@ -477,33 +477,21 @@ export async function importPcmResults({
       // (slutetapen bærer stage_number = sidste etape, så dens gc/trøje-rækker
       //  røres ikke når en mellem-etape lægges ind). Gør "én fil ad gangen" sikkert.
       //
-      // #2974: PRÆCIS samme fejlklasse som #2898 ramte fuld-sim-stien med, bare i
-      // import-stien. supabase-js kaster ikke — fejler denne delete tavst (fx et
-      // statement timeout), indsætter applyRaceResults nedenfor de nye rækker OVEN
-      // PÅ de gamle. Konsekvens: dublerede points_earned og DOBBELT prize_money
-      // (prizePayoutEngine.js betaler pr. point-række). Abort FØR insert.
+      // #3022 (afløser #2974's separate delete-tjek her): delete-af-berørte-etaper +
+      // insert køres nu ATOMISK i ÉN DB-transaktion via applyRaceResults' interne
+      // apply_race_results_batch-RPC-kald (stageNumbers sat → RPC-branch, se
+      // raceResultsEngine.js) — samme ordning som fuld-sim-stien (raceRunner.js)
+      // fik i samme PR. Lukker OGSÅ crash-mellem-de-to-kald-vinduet (#3022
+      // fejlmode B), ikke kun det tavse-delete-fejler-vindue #2974 dækkede.
+      // Idempotent PR. ETAPE uændret: kun etaperne denne upload faktisk indeholder
+      // slettes, så en genupload af én fil ikke wiper resten af løbet.
       const stagesInUpload = [...new Set(built.resultRows.map((r) => r.stage_number))];
-      if (stagesInUpload.length) {
-        const { error: deleteError } = await supabase
-          .from("race_results")
-          .delete()
-          .eq("race_id", race.id)
-          .in("stage_number", stagesInUpload);
-        if (deleteError) {
-          const err = new Error(
-            `race_results delete failed for race ${race.id} (stages ${stagesInUpload.join(",")}) — ` +
-              `aborting BEFORE insert to prevent duplicated points/prizes: ${deleteError.message}`,
-          );
-          console.error(`  ⚠️  ${err.message}`);
-          captureException(err, { tags: { flow: "pcm-import", stage: "race-results-delete" }, raceId: race.id });
-          throw err;
-        }
-      }
       const insertRows = stripInternal(built.resultRows);
       const applied = await applyRaceResults({
         supabase,
         race: { ...race, season_id: season.id },
         resultRows: insertRows,
+        stageNumbers: stagesInUpload,
         ensureSeasonStandings,
         updateStandings,
       });

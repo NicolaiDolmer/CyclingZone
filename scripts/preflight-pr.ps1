@@ -30,6 +30,10 @@ try {
   node scripts/lint-dropped-supabase-error.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "dropped-supabase-error-guard" }
 
+  Write-Host "== pagination-guard (PostgREST 1000-row cap, #3331) ==" -ForegroundColor Cyan
+  node scripts/lint-pagination-guard.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "pagination-guard" }
+
   Write-Host "== frontend eslint ==" -ForegroundColor Cyan
   Push-Location (Join-Path $root "frontend")
   npm run lint

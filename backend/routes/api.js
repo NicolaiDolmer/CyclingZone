@@ -6119,6 +6119,10 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const sentSellerIds = allSent.map(o => o.seller?.id).filter(Boolean);
   const uniqueTeamIds = [...new Set([req.team.id, ...sentSellerIds])];
 
+  // pagination-safe: uniqueTeamIds = this manager's own team + the distinct
+  // sellers they've personally sent offers to — self-bounded by one user's
+  // own activity (riders max 38/team, would need 27+ distinct sellers to
+  // approach the cap; #3331 audit).
   const [{ data: squadRiders }, { data: squadTeams }] = await Promise.all([
     supabase.from("riders").select("team_id").in("team_id", uniqueTeamIds),
     supabase.from("teams").select("id, division").in("id", uniqueTeamIds),
@@ -7502,8 +7506,15 @@ function isEstablishedTeam(team) {
 // registrering), så de målte intet — kun first_bid_placed var en ægte handling.
 // Erstattet med 4 handlinger manageren rent faktisk selv skal udføre:
 //   1. first_bid_placed     — bud i en auktion (uændret, allerede ægte).
-//   2. first_training_run   — mindst 1 række i training_day_runs (dagligt
-//                              trænings-tick har ramt holdet mindst én gang).
+//   2. first_training_run   — mindst 1 række i training_day_runs MED
+//                              executed_by='manager' (#3007: raden skrives også
+//                              af 22:00-assistent-sweepen, executed_by='assistant',
+//                              trainingSweep.js — uden dette filter stod trinnet
+//                              som fuldført for ALLE hold samme aften uanset om
+//                              manageren selv havde trykket "Træn i dag", så det
+//                              målte ikke en spillerhandling. Verificeret på prod
+//                              5/8: 180/180 hold "færdige" på den gamle any-executor-
+//                              tælling, kun 97/180 havde nogensinde selv trænet).
 //   3. first_squad_selected — mindst én MANUEL holdudtagelse (race_entries med
 //                              is_auto_filled=false) — samme tabel/kolonne som
 //                              RaceSelectionPanel/saveSelection skriver til
@@ -7539,7 +7550,10 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
 
   const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes] = await Promise.all([
     supabase.from("auction_bids").select("id", { count: "exact", head: true }).eq("team_id", teamId),
-    supabase.from("training_day_runs").select("team_id", { count: "exact", head: true }).eq("team_id", teamId),
+    // #3007: executed_by='manager' — se kommentaren ovenfor. Uden dette filter
+    // tælles også de rækker den kl. 22-assistent-sweep skriver, og trinnet
+    // flipper til grønt af sig selv samme aften uden nogen spillerhandling.
+    supabase.from("training_day_runs").select("team_id", { count: "exact", head: true }).eq("team_id", teamId).eq("executed_by", "manager"),
     // #2516: race_entries har INGEN id-kolonne (composite key race_id+rider_id+team_id)
     // — select("id") gav 42703 "column race_entries.id does not exist" (CYCLINGZONE-34).
     supabase.from("race_entries").select("race_id", { count: "exact", head: true }).eq("team_id", teamId).eq("is_auto_filled", false),
@@ -7734,6 +7748,8 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         // estimatet i computeFinanceForecast. Samme type-filter som FinancePage's
         // præmie-kort ("prize" + "bonus"). Rækkeantal pr. hold pr. sæson er
         // bounded af antal løb — langt under PostgREST's 1000-cap.
+        // pagination-safe: one team, one season, prize/bonus only — verified
+        // max 305 rows per team across ALL types/seasons combined (#3331 audit).
         supabase
           .from("finance_transactions")
           .select("amount")
@@ -7833,6 +7849,11 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
         .select("id, number, status, start_date, end_date")
         .eq("id", seasonId)
         .single(),
+      // pagination-safe: one team, one season, all transaction types —
+      // verified max 236 rows repo-wide (#3331 audit, 2026-08-05); a season
+      // is a bounded-length ledger window (race days + weekly charges), so
+      // this doesn't grow unboundedly with total game history like the
+      // ALL-time-per-team count does (verified max 305 there).
       supabase
         .from("finance_transactions")
         .select("id, type, amount, description, reason_code, metadata, created_at")
@@ -7848,6 +7869,8 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
         .eq("status", "active"),
       // #2305: sæson-scoped præmieliste til Oversigt-kortet (server-side, med
       // løbsnavn embedded via FK så klienten slipper for et ekstra opslag).
+      // pagination-safe: one team, one season, prize/bonus only — a subset of
+      // the already-verified 236-row per-team-per-season max (#3331 audit).
       supabase
         .from("finance_transactions")
         .select("id, amount, race_id, description, created_at, race:race_id(name)")
@@ -7856,6 +7879,8 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
         .in("type", ["prize", "bonus"])
         .order("amount", { ascending: false }),
       // #2305: all-time-sum — henter KUN amount-kolonnen og summerer server-side.
+      // pagination-safe: one team, prize/bonus only, ALL seasons — verified
+      // max 55 rows repo-wide (#3331 audit, 2026-08-05).
       supabase
         .from("finance_transactions")
         .select("amount")
@@ -9866,7 +9891,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     const raceMeta = raceMetaById.get(raceId);
     const finalStage = raceMeta.stages ?? 1;
 
-    const [myRowsRes, recapRowsRes, incidentsRes, seasonRacesRes] = await Promise.all([
+    const [myRowsRes, recapRows, incidentsRes, seasonRacesRes] = await Promise.all([
+      // pagination-safe: one team's own results in one race — bounded by
+      // squad/stage-count, nowhere near the 1000-row cap (#3331 audit).
       supabase
         .from("race_results")
         .select("result_type, stage_number, rank, finish_time, points_earned, prize_money, rider_id, rider_name, rider:rider_id(id, firstname, lastname, nationality_code)")
@@ -9875,12 +9902,16 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       // Recap-grundlag: kun sidste etapes rækker (endeligt klassement — motoren
       // skriver gc/points/mountain/team ved stages; endagsløb = etape 1).
       // stage_number.is.null-grenen dækker gamle importer uden etape-nummer.
-      supabase
+      // #3331: verified max 792 rows for the biggest grand tour today — under
+      // the cap but with thin headroom as divisions/fields grow, so paginated
+      // (not just annotated) rather than relying on that margin holding.
+      fetchAllRows(() => supabase
         .from("race_results")
         .select("result_type, stage_number, rank, finish_time, in_breakaway, breakaway_caught, team_id, team_name, rider_id, rider_name, rider:rider_id(id, firstname, lastname), team:team_id(id, name)")
         .eq("race_id", raceId)
         .in("result_type", ["gc", "stage", "team", "points", "mountain"])
-        .or(`stage_number.eq.${finalStage},stage_number.is.null`),
+        .or(`stage_number.eq.${finalStage},stage_number.is.null`)
+        .order("id", { ascending: true })),
       supabase
         .from("race_incidents")
         .select("stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(firstname, lastname)")
@@ -9897,7 +9928,8 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       }),
     ]);
     if (myRowsRes.error) throw myRowsRes.error;
-    if (recapRowsRes.error) throw recapRowsRes.error;
+    // recapRows came from fetchAllRows(), which throws on error — no separate
+    // { error } check needed (it would already have rejected the Promise.all above).
     // race_incidents kan mangle i ældre miljøer (v3-flag) — degradér til tom
     // liste i stedet for at vælte hele kortet (samme holdning som RaceDetailPage).
     const incidents = incidentsRes.error ? [] : (incidentsRes.data || []);
@@ -9968,7 +10000,7 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       history,
       season_totals,
       recap: {
-        results: trimRecapRows(recapRowsRes.data || []),
+        results: trimRecapRows(recapRows || []),
         incidents,
       },
     });
@@ -10175,6 +10207,9 @@ router.get("/sponsor/contract", requireAuth, async (req, res) => {
     let earnings = null;
     let season = null;
     if (contract) {
+      // pagination-safe: one team, sponsor tx types only, since the current
+      // contract started — verified max 16 rows per team repo-wide even
+      // across a team's ENTIRE sponsor-tx history (#3331 audit, 2026-08-05).
       const { data: rows, error: txError } = await supabase
         .from("finance_transactions")
         .select("type, amount")
@@ -10200,6 +10235,8 @@ router.get("/sponsor/contract", requireAuth, async (req, res) => {
         .maybeSingle();
       if (activeSeasonError) throw activeSeasonError;
       if (activeSeason?.id) {
+        // pagination-safe: one team, one season, sponsor tx types only — a
+        // subset of the already-verified 16-row all-time-per-team max (#3331 audit).
         const { data: seasonRows, error: seasonTxError } = await supabase
           .from("finance_transactions")
           .select("id, type, amount, description, metadata, created_at, race_id, race:race_id(name)")
@@ -13580,6 +13617,8 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
     if (rosterErr) throw new Error(rosterErr.message);
 
     // Kumulative akademi-specifikke pengebevægelser (drift + signing-fees, hele historikken).
+    // pagination-safe: one team, academy tx types only — bounded by the
+    // 8-slot academy cap, verified max 28 rows per team repo-wide (#3331 audit).
     const { data: financeRows, error: financeErr } = await supabase
       .from("finance_transactions")
       .select("type, amount")

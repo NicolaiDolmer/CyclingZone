@@ -147,6 +147,8 @@ test("#2469 forward-guard (recorder-variant): narrow select() projicerer canned 
     race_results: [{ rank: 1, races: { race_class: "Monuments" }, secret: "x" }],
   }, recorder);
 
+  // pagination-safe: test fixture against createRecorderSupabase's canned
+  // in-memory array (1 row), not a real Supabase/PostgREST call.
   return supabase.from("race_results").select("rank, races!inner(race_class)").eq("team_id", "t1").then(({ data }) => {
     assert.deepEqual(data, [{ rank: 1, races: { race_class: "Monuments" } }]);
     assert.ok(!("secret" in data[0]), "secret lækkede gennem en select der ikke bad om den");

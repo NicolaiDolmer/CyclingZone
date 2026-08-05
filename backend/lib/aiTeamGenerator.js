@@ -379,7 +379,11 @@ async function removeAiTeams(supabase, aiTeams, count) {
     await snapshotRaceResultNamesForTeams(supabase, batch);
     // #2524: hent navn+id FØR delete (rider_watchlist ingen FK-cascade — se
     // notifyAndClearWatchlistForRiders).
-    const { data: watchedRiders } = await supabase.from("riders").select("id, firstname, lastname").in("team_id", batch);
+    // #3331: batch kan være op til 500 team-id'er × op til 38 ryttere/hold —
+    // kan overstige 1000-rækkers-loftet, så pagineret.
+    const watchedRiders = await fetchAllRows(() => supabase
+      .from("riders").select("id, firstname, lastname").in("team_id", batch)
+      .order("id", { ascending: true }));
     const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
     if (rErr) throw new Error(`AI-rider delete: ${rErr.message}`);
     await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
@@ -409,7 +413,11 @@ export async function clearAllAiTeams(supabase) {
     const batch = ids.slice(i, i + INSERT_BATCH);
     // #2524: hent navn+id FØR delete (rider_watchlist ingen FK-cascade — se
     // notifyAndClearWatchlistForRiders).
-    const { data: watchedRiders } = await supabase.from("riders").select("id, firstname, lastname").in("team_id", batch);
+    // #3331: batch kan være op til 500 team-id'er × op til 38 ryttere/hold —
+    // kan overstige 1000-rækkers-loftet, så pagineret.
+    const watchedRiders = await fetchAllRows(() => supabase
+      .from("riders").select("id, firstname, lastname").in("team_id", batch)
+      .order("id", { ascending: true }));
     const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
     if (rErr) throw new Error(`clearAllAiTeams (rider delete): ${rErr.message}`);
     await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });

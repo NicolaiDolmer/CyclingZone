@@ -16,6 +16,7 @@ import { ABILITY_KEYS } from "../../lib/raceSimulator.js";
 import { raceBindingWindow, windowsOverlap } from "../../lib/raceBinding.js";
 import { excludeBoundRiders } from "../../lib/raceFieldIntegrity.js";
 import { autopickTeamSelection, selectionSizeForRace } from "../../lib/raceAutopick.js";
+import { fetchAllRows } from "../../lib/supabasePagination.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -125,9 +126,15 @@ async function reSimBoucles() {
   const pointsLookup = await loadPointsLookup(race);
 
   // GAMMEL tilstand
-  const { data: oldRows } = await db.from("race_results")
-    .select("result_type, rank, rider_id, rider_name, team_id, prize_money, stage_number").eq("race_id", race.id);
+  // #3331: this is a data-INTEGRITY diagnostic — a silently truncated "old
+  // state" would make the old-vs-new diff itself wrong, defeating the point.
+  const oldRows = await fetchAllRows(() => db.from("race_results")
+    .select("result_type, rank, rider_id, rider_name, team_id, prize_money, stage_number")
+    .eq("race_id", race.id)
+    .order("id", { ascending: true }));
   const oldGc = (oldRows || []).filter((r) => r.result_type === "gc").sort((a, b) => a.rank - b.rank);
+  // pagination-safe: one race, prize type only — bounded by that race's team
+  // count (verified max 192 race_entries per race, #3331 audit).
   const { data: oldTx } = await db.from("finance_transactions")
     .select("team_id, amount").eq("race_id", race.id).eq("type", "prize");
   const oldPaid = new Map();

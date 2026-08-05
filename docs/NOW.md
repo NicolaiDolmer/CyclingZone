@@ -5,8 +5,10 @@
 ## Aktiv styring
 
 > **🎯 Next action:**
-> 1. **Næste session (anbefalet):** **kalender-blokken før #3295** (deadline 23/8) — #3327 D2-dækning · #3328 klasse↔længde · #3326 etaperækkefølge · #3329 D1-overlap. Derefter tillids-bugs #3333/#3330/#3332 + guard #3331. Alternativ: motor-køen (#3145 bekræftet ITT-fejl, #3149/#3150/#2944).
-> 1b. **#3325 (ryttertyper) + #3345 (frossen værdisætning) klar til ejer-review:** #3345-blockeren (V4-revaluering -24,5%, 239/367 hold ≥10% skift) løst ved at fryse værdien på `riders.valuation_type` (ny frossen kolonne, backfillet fra prod-typen FØR reklassificering) — primary_type/secondary_type reklassificeres nu frit uden at flytte økonomien. Draft-PR (base = fix/3345-revalue-after-rider-type-refit, som selv sidder på #3343's branch) beviser total market_value uændret (993,47M→993,47M, 0/368 hold ≥10% skift). Migration i `database/proposals/` (ikke kørt). Opfølgning: [#3353](https://github.com/NicolaiDolmer/CyclingZone/issues/3353) (V4-re-fit, fjerner frysningen). Alle 3 PR'er (#3343 klassifikation, #3348 blocker-analyse, denne) skal merges sammen jf. "typer+værdier samtidig"-beslutningen.
+> 1. **Merge-kø (16 draft-PR'er, rækkefølge + gates i [night-wave-2026-08-05.md](audits/night-wave-2026-08-05.md)).** Start med backend-only-blokken (#3352 security, #3355 akademi, #3354, #3356, #3358, #3359, #3351), så ryttertype-kæden #3343→#3348→#3357 samlet, så kalenderen #3344+#3346 før S3 bygges. **#3339/#3341/#3343 er CONFLICTING** (patchNotes) — kræver manuel opløsning; rebase udefra i agent-worktrees virker IKKE (prøvet, afbrudt uden skade).
+> 1b. **Tidskritisk før 23/8:** godkend akademi-reparations-SQL (#3355 — ellers frigives 22 ryttere fejlagtigt) · #1150-kæden (1.399 ryttere) · katalog-migrationen til #3344. Alle idempotente m. post-verify i `database/proposals/`, ingen kørt.
+> 1c. **Ejer-klik:** 37 Sentry cron-monitorer skal Enable'es manuelt (liste i PR #3351).
+> 1d. **Tidskritisk (Sentry-triage 5/8):** [#3377](https://github.com/NicolaiDolmer/CyclingZone/pull/3377) fikser CYCLINGZONE-44 — Team Fakta har 1 rytter i to overlappende løb (starter **6/8 + 7/8**); merge før da, ellers kører han begge. Rod-årsag: fuld-manuel trup blev sprunget over uden at prune sin residuale auto-række. Data-reparation sker af sig selv ved næste sweep-tick efter deploy.
 > 2. **Hos ejeren:** Resend-nøgler + mailtekst-godkendelse (#2853, ~15 min, tænder intet — kæden er deep-linket og flip-klar) · #3300's 3 designsvar · Railway MCP re-auth · penge-kæden #2813 · #3147-basekadence (lavtryk nu) · beslutnings-ark 60 sager · logo #481.
 > 3. **Måle-datoer:** ~18/8 payoff-mål (≥60 % ser første resultat, baseline ~34 %) + dag-1-effekt via get_cohort_retention på /admin/growth.
 
@@ -15,6 +17,8 @@
 > **🔴 Platform:** Prod 191 brugere, 54 aktive/7d. **Dag-1 ~31 % seneste 2 uger (var ~64 % juni) — last_seen-metode, #3310.** #2853 venter på Resend-nøgle (e-mail-kæden er nu deep-linket og flip-klar). #2736 Alunta-cron: tjek første kørsel ~23:49. Railway MCP kræver re-auth.
 
 > **📌 Åbne opfølgninger:** #3145 ITT-motor-fejl (bekræftet 4/8) · #3112-guard (forslag klar) · de 5 pending-D4-kontrakter (aktiveres ikke automatisk, jf. #3319-PR-body) · #3307-relateret unchecked-delete OK · #3290 lukket · #2164 (ved S2→S3) · #3172 (luk ~18/8) · #3275 draft = reseed-fundament · #3189→#2041-rest.
+
+> **🟢 Natbølge 4.-5./8 (19 spor, 0 merges — merge kræver ejer-go):** **16 draft-PR'er** klar til review, merge-rækkefølge i [night-wave-2026-08-05.md](audits/night-wave-2026-08-05.md). **Nye brændende fund:** [#3360](https://github.com/NicolaiDolmer/CyclingZone/issues/3360) pengemængden firdobles over 5 sæsoner (4,24× mod mål 1,3×) — gaten skjulte det gennem hele betaen · #1150 er ikke 807 men **1.399** udløbende ryttere, 170/180 hold berørt, AI havde ingen fornyelse (PR #3362) · #2881: samme bug fandtes uopdaget et 2. sted, **22 ryttere frigives fejlagtigt 23/8** uden reparation (PR #3355) · 44/115 target_race_ids peger allerede på døde S1-løb (PR #3361). **Syntese af 9 målinger:** [simulation-drift-synthesis.md](audits/2026-08-05-simulation-drift-synthesis.md). Ejer-beslutninger 4/8: ryttertype = potentiale for alle · D2 ~50/50 · ProSeries 3-5 / WT 6-8 · typer+værdier samtidig (løst via frossen `valuation_type`, total uændret 993M) · katalog-udvidelse godkendt.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
