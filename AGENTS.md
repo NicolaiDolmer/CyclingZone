@@ -9,7 +9,7 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
 ## Hard rules
 
 > **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-15 ✍️ (orkestrering; 14 bliver 🔒 når [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367) lukkes).
+> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)).
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
@@ -52,7 +52,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 13. **Ingen påstand uden en måling. Issue-tal ældre end en uge GENMÅLES, de citeres ikke.** _Næsten hvert tal i natbølgens issues var forkert med faktor 10-1000: 247 → 225.947 NULL-rækker · 807 → 1.399 udløbende ryttere · "grøn" økonomi → 90× drift._
 
-14. **Isolation er infrastruktur, ikke disciplin.** Et spor må ikke kunne ødelægge et andet ved et uheld. [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367) skal lukkes før næste bølge. _Delt `node_modules` ramte 4 af 20 spor og kostede verifikations-dækning på en sikkerheds-PR. `npm ci` gennem en junction tømte hoved-checkoutets install midt i bølgen._
+14. **Isolation er infrastruktur, ikke disciplin.** Et spor må ikke kunne ødelægge et andet ved et uheld. **Lukket 5/8 ([#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)):** worktrees junctioner nu til en lockfile-hashet cache i `%LOCALAPPDATA%`, ikke til hoved-checkoutet — der findes ingen sti fra et worktree ind i mains `node_modules`. `preflight-night-wave.ps1` advarer hvis en legacy-junction alligevel dukker op. _Delt `node_modules` ramte 4 af 20 spor og kostede verifikations-dækning på en sikkerheds-PR. `npm ci` gennem en junction tømte hoved-checkoutets install midt i bølgen._
 
 15. **Mennesket beslutter, AI'en fremskaffer beviset.** Bed aldrig om godkendelse af et gæt — mål først, præsentér så. _Gennemgående mønster: beslutningsoplæg byggede på issue-tekster i stedet for på prod._
 

@@ -57,6 +57,16 @@ $setupScript = Join-Path $RepoRoot "scripts\setup-worktree.ps1"
 $setupArgs = @('-NoProfile', '-File', $setupScript, '-WorktreeRoot', $wt, '-MainRepoRoot', $RepoRoot)
 if ($DryRun) { $setupArgs += '-DryRun' }
 & pwsh @setupArgs
+# #3367: et halvt setup er vaerre end ingen — agenten opdager det foerst som
+# ERR_MODULE_NOT_FOUND eller "supabaseUrl is required" midt i en test-koersel.
+# Stop her i stedet, med worktreet intakt saa problemet kan loeses og setup gentages.
+if ($LASTEXITCODE -ne 0) {
+  Write-Host ""
+  Write-Host "[stop] setup-worktree.ps1 kunne ikke goere worktreet klar (exit $LASTEXITCODE)." -ForegroundColor Red
+  Write-Host "       Worktreet er oprettet i $wt, men mangler node_modules og/eller .env." -ForegroundColor Yellow
+  Write-Host "       Loes problemet ovenfor og koer: pwsh -File scripts/setup-worktree.ps1 -WorktreeRoot $wt -Rebuild" -ForegroundColor Yellow
+  exit 1
+}
 
 Write-Host ""
 Write-Host "=== Memory + codex-junctions for worktree ===" -ForegroundColor Cyan

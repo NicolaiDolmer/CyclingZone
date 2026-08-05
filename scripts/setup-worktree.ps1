@@ -1,43 +1,66 @@
 # setup-worktree.ps1
 #
 # Idempotent setup af et EKSISTERENDE worktree (harness-oprettet eller manuelt).
-# Sætter de to ting op som et worktree mangler hvis det blev oprettet uden om
-# new-worktree.ps1 (fx Claude Code-harnessens .claude/worktrees/<navn>):
+# Kontrakt: NAAR SCRIPTET ER FAERDIGT MED EXIT 0 ER WORKTREET KLAR — det har
+# fungerende node_modules for rod/backend/frontend OG .env-filer. Fejler noget af
+# det, exit'er scriptet 1 med en handlingsorienteret besked (aldrig et stille skip).
 #
-#   1. node_modules-junctions -> main-repoets node_modules (sparer ~500 MB + install-tid)
-#   2. .env-hardlinks fra OneDrive-context\secrets (backend/.env, frontend/.env,
-#      frontend/.env.production, .mcp.json)
+#   1. node_modules-junctions -> et DELT, LOCKFILE-HASHET cache-install
+#      (%LOCALAPPDATA%\CyclingZone\node-modules-cache\<pkg>-<hash>\node_modules)
+#   2. .env-hardlinks (backend/.env, frontend/.env, frontend/.env.production,
+#      .mcp.json) fra OneDrive-context\secrets, med main-checkoutet som fallback
+#
+# ISOLATION (#3367, afloeser #2967-junction-til-main):
+# Tidligere pegede junctionen paa MAIN-checkoutets node_modules. `npm ci` sletter
+# node_modules foer den geninstallerer, og sletningen foeres igennem junctionen —
+# saa en enkelt `npm ci` i et worktree toemte ejerens hoved-checkout (3 gange paa
+# een nat, 4.-5./8). En preinstall-guard kan IKKE fange det: `npm ci` sletter
+# node_modules FOER preinstall koerer (verificeret npm 11.13.0).
+#
+# Derfor peger junctionen nu paa et delt cache-install uden for begge checkouts:
+#   - Hoved-checkoutet kan ikke laengere naas fra et worktree. Struktureslt, ikke
+#     ved disciplin.
+#   - Rammer en agent alligevel cachen med `npm ci`, er skaden selv-helende:
+#     naeste setup-koersel opdager en usund cache og genopbygger den.
+#   - Cachen er noeglet paa package-lock.json-hash, saa en branch med aendrede
+#     dependencies automatisk faar sit eget install (#2967's korrekthedsproblem).
 #
 # SIKKERHED (jf. #634 + repoets secret-leak-regler): env-linking sker via
-# `mklink /H` (hardlink) DIREKTE til OneDrive-secret-filerne. Scriptet LÆSER
-# aldrig secret-værdierne og dumper dem aldrig — det laver kun filsystem-links.
-# Samme sikre mekanisme som new-worktree.ps1 brugte (link-onedrive-context.ps1
-# håndterer ikke længere .env efter #327 Infisical-migration, så .env-hardlink-
-# logikken bor her).
-#
-# Idempotent: alle trin skipper hvis target allerede er på plads → sikkert at
-# køre igen, og en no-op når alt er sat op (fx kaldt fra SessionStart-hook).
+# `mklink /H` (hardlink). Scriptet LAESER aldrig secret-vaerdierne og dumper dem
+# aldrig — det laver kun filsystem-links.
 #
 # Brug:
 #   pwsh -File scripts/setup-worktree.ps1                 # auto-detect via git (CWD = worktree)
 #   pwsh -File scripts/setup-worktree.ps1 -DryRun         # rapportér uden at skrive
 #   pwsh -File scripts/setup-worktree.ps1 -Quiet          # kun warnings/fejl (hook-mode)
+#   pwsh -File scripts/setup-worktree.ps1 -Rebuild        # tving genopbygning af usunde links/cache
 #   pwsh -File scripts/setup-worktree.ps1 -WorktreeRoot <wt> -MainRepoRoot <main>
 #
-# Refs #994.
+# Refs #994, #2967, #3367.
 
 param(
   [string] $WorktreeRoot,
   [string] $MainRepoRoot,
+  [string] $CacheRoot,
   [switch] $DryRun,
-  [switch] $Quiet
+  [switch] $Quiet,
+  [switch] $Rebuild
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$script:Problems = @()
+
 function Write-Info($msg, $color = "Gray") {
   if (-not $Quiet) { Write-Host $msg -ForegroundColor $color }
+}
+function Write-Warn($msg) {
+  Write-Host $msg -ForegroundColor Yellow
+}
+function Write-Problem($msg) {
+  $script:Problems += $msg
+  Write-Host $msg -ForegroundColor Red
 }
 function Write-Section($title) {
   if (-not $Quiet) {
@@ -76,9 +99,16 @@ if (-not $MainRepoRoot) {
 }
 $MainRepoRoot = Resolve-FullPath $MainRepoRoot
 
+if (-not $CacheRoot) {
+  $localAppData = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $env:USERPROFILE "AppData\Local" }
+  $CacheRoot = Join-Path $localAppData "CyclingZone\node-modules-cache"
+}
+$CacheRoot = Resolve-FullPath $CacheRoot
+
 $mode = if ($DryRun) { " [DRY-RUN]" } else { "" }
 Write-Info "Worktree:  $WorktreeRoot$mode"
 Write-Info "Main repo: $MainRepoRoot"
+Write-Info "Cache:     $CacheRoot"
 
 if ($WorktreeRoot -eq $MainRepoRoot) {
   # Vi er i selve main-repoet — node_modules + .env er rigtige filer her, ikke links.
@@ -87,97 +117,196 @@ if ($WorktreeRoot -eq $MainRepoRoot) {
   exit 0
 }
 
-# --- 1. node_modules-junctions (delt med main) ---
-#
-# #2967: junctionen deler main-repoets RIGTIGE node_modules. Det er kun sikkert
-# når worktreets lockfile er identisk med mains. Er de forskellige:
-#   1) worktreet kører sine tests mod mains pakker (stille forkert resultat —
-#      bider hårdest netop i dependency-PR'er, hvor testene betyder mest), og
-#   2) et `npm ci` i én af dem sletter node_modules FØR geninstallation, og
-#      junctionen fører sletningen over i den anden. Ramte hoved-checkoutet 3x
-#      på én aften 25/7 (sidste gang forsvandt `react`, 1320 tests fejlede).
-# Derfor: sammenlign lockfile-hash. Match -> junction (billigt, korrekt).
-# Mismatch -> ingen junction, worktreet får sin egen install.
-function Get-LockfileHash($repoRoot, $nmRelPath) {
-  $lock = Join-Path (Join-Path $repoRoot (Split-Path $nmRelPath -Parent)) 'package-lock.json'
-  if (-not (Test-Path $lock)) { return $null }
-  return (Get-FileHash -Path $lock -Algorithm SHA256).Hash
+# --- Hjælpere ---
+
+# En node_modules-mappe er "sund" hvis npm har efterladt sit install-manifest
+# OG der faktisk ligger pakker. Ren Test-Path er IKKE nok: en junction til et
+# toemt maal, eller en halvfaerdig install, bestaar Test-Path og giver saa
+# ERR_MODULE_NOT_FOUND senere (symptomet 4.-5./8).
+function Test-NodeModulesHealthy([string]$nm) {
+  if (-not (Test-Path $nm)) { return $false }
+  if (-not (Test-Path (Join-Path $nm ".package-lock.json"))) { return $false }
+  $firstPkg = Get-ChildItem $nm -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+  return ($null -ne $firstPkg)
 }
 
-function Set-NodeModulesJunctions {
-  Write-Section "node_modules junctions (delt med main)"
-  foreach ($nm in @('backend\node_modules', 'frontend\node_modules')) {
-    $src = Join-Path $MainRepoRoot $nm
-    $dst = Join-Path $WorktreeRoot $nm
-    if (-not (Test-Path $src)) {
-      Write-Info "  [skip] $nm mangler i main repo (kør 'npm install' i main først)" "Yellow"
-      continue
+function Get-LinkTarget([string]$p) {
+  $item = Get-Item $p -Force -ErrorAction SilentlyContinue
+  if (-not $item) { return $null }
+  foreach ($prop in @('LinkTarget', 'Target')) {
+    if ($item.PSObject.Properties.Name -contains $prop) {
+      $v = $item.$prop
+      if ($v) { return (@($v)[0]) }
     }
-    if (Test-Path $dst) {
-      Write-Info "  [skip] $nm findes allerede"
+  }
+  return $null
+}
+
+function Test-IsJunction([string]$p) {
+  if (-not (Test-Path $p)) { return $false }
+  $item = Get-Item $p -Force -ErrorAction SilentlyContinue
+  if (-not $item) { return $false }
+  return [bool]($item.Attributes -band [IO.FileAttributes]::ReparsePoint)
+}
+
+function Remove-JunctionPoint([string]$p) {
+  # rmdir fjerner KUN reparse-punktet, ikke maalet. Remove-Item -Recurse ville
+  # foelge junctionen og slette maalets indhold — praecis den fejl vi bekaemper.
+  & cmd /c rmdir /Q "$p" 2>&1 | Out-Null
+  return -not (Test-Path $p)
+}
+
+function Get-LockHash([string]$dir) {
+  $lock = Join-Path $dir 'package-lock.json'
+  if (-not (Test-Path $lock)) { return $null }
+  return (Get-FileHash -Path $lock -Algorithm SHA256).Hash.Substring(0, 12).ToLower()
+}
+
+# Byg (eller genbrug) et delt cache-install for en given lockfile-hash.
+# Cachen ligger uden for BEGGE checkouts, saa en destruktiv npm-operation i et
+# worktree aldrig kan naa hoved-checkoutet.
+function Get-CachedNodeModules([string]$pkgName, [string]$srcDir, [string]$hash) {
+  $cacheDir = Join-Path $CacheRoot "$pkgName-$hash"
+  $cacheNm = Join-Path $cacheDir 'node_modules'
+
+  if (Test-NodeModulesHealthy $cacheNm) {
+    Write-Info "  [cache-hit] $pkgName-$hash"
+    return $cacheNm
+  }
+
+  if ($DryRun) {
+    Write-Info "  [would-build-cache] npm ci i $cacheDir" "Cyan"
+    return $cacheNm
+  }
+
+  Write-Info "  [cache-miss] bygger $pkgName-$hash (npm ci, engangs pr. lockfile)..." "Yellow"
+  New-Item -ItemType Directory $cacheDir -Force | Out-Null
+
+  # En usund cache genopbygges fra bunden. Cachen ejes af dette script alene —
+  # ingen checkout peger paa dens indhold uden om junctionerne, saa det er sikkert.
+  if (Test-Path $cacheNm) {
+    Remove-Item $cacheNm -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  foreach ($f in @('package.json', 'package-lock.json', '.npmrc')) {
+    $src = Join-Path $srcDir $f
+    if (Test-Path $src) { Copy-Item $src (Join-Path $cacheDir $f) -Force }
+  }
+
+  $ciExit = 1
+  Push-Location $cacheDir
+  try {
+    & npm ci --no-audit --no-fund 2>&1 | Out-String | Out-Null
+    $ciExit = $LASTEXITCODE
+  } finally {
+    Pop-Location
+  }
+
+  if ($ciExit -ne 0 -or -not (Test-NodeModulesHealthy $cacheNm)) {
+    Write-Problem "  [FEJL] npm ci fejlede i cachen ($cacheDir, exit $ciExit)."
+    Write-Problem "         Koer den manuelt dér, eller giv worktreet sit eget install:"
+    Write-Problem "         cd $WorktreeRoot; npm ci --prefix $pkgName"
+    return $null
+  }
+  Write-Info "  [ok] cache bygget: $cacheDir"
+  return $cacheNm
+}
+
+# --- 1. node_modules (junction til delt, lockfile-hashet cache) ---
+function Set-NodeModulesLinks {
+  Write-Section "node_modules (delt cache, isoleret fra hoved-checkoutet)"
+
+  $packages = @(
+    @{ Name = 'root';     Rel = '' },
+    @{ Name = 'backend';  Rel = 'backend' },
+    @{ Name = 'frontend'; Rel = 'frontend' }
+  )
+
+  foreach ($pkg in $packages) {
+    $srcDir = if ($pkg.Rel) { Join-Path $WorktreeRoot $pkg.Rel } else { $WorktreeRoot }
+    $label = if ($pkg.Rel) { "$($pkg.Rel)\node_modules" } else { "node_modules" }
+    $dst = Join-Path $srcDir 'node_modules'
+
+    if (-not (Test-Path (Join-Path $srcDir 'package.json'))) {
+      Write-Info "  [skip] $label — ingen package.json"
       continue
     }
 
-    # Lockfile-gate (#2967) — deling kræver identiske lockfiles.
-    $pkgDir = Split-Path $nm -Parent
-    $mainHash = Get-LockfileHash $MainRepoRoot $nm
-    $wtHash = Get-LockfileHash $WorktreeRoot $nm
-    if ($null -eq $mainHash -or $null -eq $wtHash) {
-      Write-Info "  [skip] $nm — kunne ikke læse package-lock.json i begge; deler IKKE" "Yellow"
+    $hash = Get-LockHash $srcDir
+    if (-not $hash) {
+      Write-Problem "  [FEJL] $label — package-lock.json mangler i worktreet; kan ikke afgoere pakke-saet."
       continue
     }
-    if ($mainHash -ne $wtHash) {
-      # Ingen deling — men efterlad ALDRIG worktreet uden node_modules. Hooken
-      # scripts/hooks/setup-worktree-if-needed.sh kalder os netop fordi mappen
-      # mangler, og dens kontrakt er "efter dette er worktreet klar". Sprang vi
-      # bare over, ville agentens `node --test` fejle med "Cannot find package".
-      Write-Info "  [ingen junction] $pkgDir har en anden package-lock.json end main (#2967)." "Yellow"
-      Write-Info "                   Deling ville give forkerte pakker + risiko for at 'npm ci'" "Yellow"
-      Write-Info "                   sletter mains node_modules. Installerer separat i stedet." "Yellow"
-      if ($DryRun) {
-        Write-Info "  [would-npm-ci] npm ci --prefix $pkgDir (i $WorktreeRoot)" "Cyan"
+
+    # Allerede sund OG ikke tvunget rebuild? Lad vaere. Men en junction skal
+    # ogsaa pege paa den RIGTIGE cache — ellers koerer worktreet mod en anden
+    # branchs pakker (#2967's stille korrektheds-fejl).
+    $expectedTarget = Join-Path (Join-Path $CacheRoot "$($pkg.Name)-$hash") 'node_modules'
+    if ((-not $Rebuild) -and (Test-NodeModulesHealthy $dst)) {
+      if (-not (Test-IsJunction $dst)) {
+        Write-Info "  [skip] $label — eget install, sundt (roeres ikke)"
         continue
       }
-      Push-Location $WorktreeRoot
-      try {
-        & npm ci --prefix $pkgDir 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0 -and (Test-Path $dst)) {
-          Write-Info "  [ok] $nm installeret separat"
-        } else {
-          Write-Info "  [FEJL] 'npm ci --prefix $pkgDir' fejlede (exit $LASTEXITCODE)." "Red"
-          Write-Info "         Kør den manuelt i $WorktreeRoot før du bruger worktreet." "Red"
-        }
-      } finally {
-        Pop-Location
+      $current = Get-LinkTarget $dst
+      if ($current -and ((Resolve-FullPath $current) -eq $expectedTarget)) {
+        Write-Info "  [skip] $label — junction peger allerede rigtigt"
+        continue
       }
+      Write-Info "  [relink] $label — junction peger paa $current (forventet $expectedTarget)" "Yellow"
+    }
+
+    $cacheNm = Get-CachedNodeModules $pkg.Name $srcDir $hash
+    if (-not $cacheNm) { continue }
+
+    if (Test-Path $dst) {
+      if (Test-IsJunction $dst) {
+        if ($DryRun) {
+          Write-Info "  [would-rmdir-junction] $label" "Cyan"
+        } elseif (-not (Remove-JunctionPoint $dst)) {
+          Write-Problem "  [FEJL] $label — kunne ikke fjerne junction-punktet (fil i brug?)."
+          continue
+        }
+      } else {
+        # Rigtig mappe, men usund (eller -Rebuild). Reparér i worktreet — det er
+        # worktreets egen mappe, saa npm ci her rammer ingen andre.
+        if ($DryRun) {
+          Write-Info "  [would-npm-ci] eget usundt install i $label" "Cyan"
+          continue
+        }
+        Write-Info "  [repair] $label — eget install er usundt, koerer npm ci lokalt..." "Yellow"
+        $exit = 1
+        Push-Location $srcDir
+        try {
+          & npm ci --no-audit --no-fund 2>&1 | Out-String | Out-Null
+          $exit = $LASTEXITCODE
+        } finally { Pop-Location }
+        if ($exit -ne 0 -or -not (Test-NodeModulesHealthy $dst)) {
+          Write-Problem "  [FEJL] $label — npm ci fejlede (exit $exit). Koer manuelt i $srcDir."
+        } else {
+          Write-Info "  [ok] $label repareret lokalt"
+        }
+        continue
+      }
+    }
+
+    if ($DryRun) {
+      Write-Info "  [would-junction] $dst -> $cacheNm" "Cyan"
       continue
     }
-    $parent = Split-Path $dst -Parent
-    if ($parent -and -not (Test-Path $parent)) {
-      if ($DryRun) { Write-Info "  [would-mkdir] $parent" "Cyan" }
-      else { New-Item -ItemType Directory $parent -Force | Out-Null }
-    }
-    if ($DryRun) {
-      Write-Info "  [would-junction] $dst -> $src" "Cyan"
+
+    New-Item -ItemType Junction -Path $dst -Target $cacheNm -ErrorAction SilentlyContinue | Out-Null
+    if (Test-NodeModulesHealthy $dst) {
+      Write-Info "  [ok] $label -> $cacheNm"
     } else {
-      New-Item -ItemType Junction -Path $dst -Target $src | Out-Null
-      Write-Info "  [ok] $nm"
+      Write-Problem "  [FEJL] $label — junction blev ikke oprettet/sund."
     }
   }
 }
 
-# --- 2. .env-hardlinks (direkte til OneDrive-secrets; ingen værdier læses) ---
+# --- 2. .env-hardlinks (OneDrive-secrets, med main-checkoutet som fallback) ---
 function Set-EnvHardlinks {
-  Write-Section ".env hardlinks (direkte til OneDrive-secrets)"
-  if (-not $env:OneDrive) {
-    Write-Info "  [skip] OneDrive ikke konfigureret (env:OneDrive er tom)" "Yellow"
-    return
-  }
-  $secretsRoot = Join-Path $env:OneDrive "CyclingZone-context\secrets"
-  if (-not (Test-Path $secretsRoot)) {
-    Write-Info "  [skip] OneDrive-secrets ikke fundet ($secretsRoot)" "Yellow"
-    return
-  }
+  Write-Section ".env hardlinks"
+
   # OneDrive-secrets bruger '.' i navnet (backend.env), worktree bruger '\.env'
   $envMap = [ordered]@{
     'backend\.env'             = 'backend.env'
@@ -185,45 +314,87 @@ function Set-EnvHardlinks {
     'frontend\.env.production' = 'frontend.env.production'
     '.mcp.json'                = 'mcp.json'
   }
+  # Uden disse fejler backend `node --test` med "supabaseUrl is required" — den
+  # praecise fejl der ramte ~120 testfiler 5/8. Derfor er de en hard gate.
+  $required = @('backend\.env', 'frontend\.env')
+
+  $secretsRoot = $null
+  if ($env:OneDrive) {
+    $candidate = Join-Path $env:OneDrive "CyclingZone-context\secrets"
+    if (Test-Path $candidate) { $secretsRoot = $candidate }
+  }
+  if (-not $secretsRoot) {
+    Write-Warn "  [warn] OneDrive-secrets ikke fundet — falder tilbage til main-checkoutet."
+  }
+
   foreach ($k in $envMap.Keys) {
     $dst = Join-Path $WorktreeRoot $k
-    $src = Join-Path $secretsRoot $envMap[$k]
-    if (-not (Test-Path $src)) {
-      Write-Info "  [skip] OneDrive-source mangler: $($envMap[$k])" "Yellow"
-      continue
-    }
+
     # Idempotent: rør ikke en fil der allerede er på plads (hardlink ELLER rigtig fil).
     # Vi sletter aldrig en eksisterende .env → ingen risiko for at klippe lokalt indhold.
     if (Test-Path $dst) {
       Write-Info "  [skip] $k findes allerede"
       continue
     }
+
+    # Kilde-kaede: OneDrive-secret -> main-checkoutets egen fil. Main-fallbacken er
+    # det der goer setup robust naar OneDrive er offline/ikke-hydreret; mains
+    # .env er selv et hardlink til samme OneDrive-fil, saa indholdet er identisk.
+    $sources = @()
+    if ($secretsRoot) { $sources += (Join-Path $secretsRoot $envMap[$k]) }
+    $sources += (Join-Path $MainRepoRoot $k)
+
+    $src = $sources | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $src) {
+      Write-Warn "  [warn] ingen kilde til $k (proevede: $($sources -join ', '))"
+      continue
+    }
+
     $parent = Split-Path $dst -Parent
     if ($parent -and -not (Test-Path $parent)) {
       if ($DryRun) { Write-Info "  [would-mkdir] $parent" "Cyan" }
       else { New-Item -ItemType Directory $parent -Force | Out-Null }
     }
     if ($DryRun) {
-      Write-Info "  [would-hardlink] $k -> $($envMap[$k])" "Cyan"
+      Write-Info "  [would-hardlink] $k -> $src" "Cyan"
       continue
     }
     # cmd /c mklink /H: mere tolerant overfor OneDrive cloud-files end New-Item -HardLink.
     # Læser ALDRIG fil-indholdet — laver kun et filsystem-hardlink.
     $out = & cmd /c mklink /H "$dst" "$src" 2>&1
-    if ($LASTEXITCODE -eq 0) {
-      Write-Info "  [ok] $k"
-    } else {
-      Write-Info "  [warn] mklink fejlede for $k`: $out" "Yellow"
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $dst)) {
+      # Sidste udvej: kopi. Hardlink fejler paa tvaers af volumener og paa
+      # dehydrerede OneDrive-filer; en kopi er stadig bedre end intet .env.
+      Write-Warn "  [warn] mklink fejlede for $k ($out) — kopierer i stedet"
+      Copy-Item $src $dst -Force -ErrorAction SilentlyContinue
+    }
+    if (Test-Path $dst) { Write-Info "  [ok] $k" }
+  }
+
+  foreach ($r in $required) {
+    if (-not (Test-Path (Join-Path $WorktreeRoot $r))) {
+      if ($DryRun) { continue }
+      Write-Problem "  [FEJL] $r mangler — backend/frontend-tests vil fejle med 'supabaseUrl is required'."
+      Write-Problem "         Fix: infisical export --env=dev > $(Join-Path $WorktreeRoot 'backend\.env')"
     }
   }
 }
 
-Set-NodeModulesJunctions
+Set-NodeModulesLinks
 Set-EnvHardlinks
 
 Write-Info ""
 if ($DryRun) {
   Write-Info "Dry-run færdig. Kør uden -DryRun for at anvende." "Green"
-} else {
-  Write-Info "Worktree-setup færdig: $WorktreeRoot" "Green"
+  exit 0
 }
+
+if ($script:Problems.Count -gt 0) {
+  Write-Host ""
+  Write-Host "Worktree-setup UFULDSTAENDIG ($($script:Problems.Count) problem(er)): $WorktreeRoot" -ForegroundColor Red
+  Write-Host "Koer 'pwsh -File scripts/setup-worktree.ps1 -Rebuild' efter at have loest ovenstaaende." -ForegroundColor Yellow
+  exit 1
+}
+
+Write-Info "Worktree-setup færdig: $WorktreeRoot" "Green"
+exit 0

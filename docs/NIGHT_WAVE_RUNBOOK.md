@@ -48,7 +48,7 @@ Kanonisk formulering: [`AGENTS.md` §Orkestrering af parallelle agenter](../AGEN
 - **Maks 5 åbne PR'er ad gangen.** Fuld kø → merge før nyt startes. _Køen nåede 23; `patchNotes.js`-konflikterne voksede hurtigere end de blev lukket._
 - **Genmål før du dispatcher.** Issue-tal >1 uge gamle er kilder, ikke facts. _247→225.947 · 807→1.399 · "grøn"→90× drift._
 - **Dispatch-forfilter pr. kandidat-issue:** `gh issue view N --json state` + findes der en merged PR med `Refs #N`? _4 spor i nat var allerede løst; ét kald pr. kandidat havde fanget alle fire._
-- **Isolation før skala:** [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367) (worktree-`node_modules`) skal være lukket før næste bølge. _Delt install ramte 4 af 20 spor; `npm ci` gennem junctionen tømte hoved-checkoutet midt i bølgen._
+- **Isolation før skala:** ✅ lukket 5/8 ([#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)). Worktrees junctioner til en lockfile-hashet cache i `%LOCALAPPDATA%\CyclingZone\node-modules-cache\`, ikke til hoved-checkoutet. Preflight advarer hvis en legacy-junction ind i main dukker op igen. _Delt install ramte 4 af 20 spor; `npm ci` gennem junctionen tømte hoved-checkoutet midt i bølgen._
 - **Beslutningsoplæg indeholder målinger, ikke gæt.** Mål først, præsentér så — ét spørgsmål ad gangen.
 
 ## Recovery (workflow dør med parent-session)

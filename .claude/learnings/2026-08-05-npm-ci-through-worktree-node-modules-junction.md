@@ -22,10 +22,15 @@ En enkelt fil (`@rolldown/binding-win32-x64-msvc/rolldown-binding.win32-x64-msvc
 2. Reparerede main separat: `npm install` (IKKE `ci` — reconciler i stedet for slet-alt-først) mod main's absolutte sti, kørt 2 gange (`npm install` er ikke altid idempotent i ét hop fra en delvist ødelagt tilstand). Én pakke (`playwright`, ikke `@playwright/test`) forblev korrupt pga. den låste fil; hentet en ren kopi via `npm install` i en scratch-mappe og `cp -r` den ind manuelt, uden at røre den låste rolldown-fil.
 3. Verificerede main med `node --test` (grønt) før jeg gik videre.
 
-## Forward-guard (forslag, ikke udført denne session)
+## Forward-guard (UDFØRT samme dag, #3367)
 
-- `setup-worktree-if-needed.sh`/`setup-worktree.ps1` kunne lægge en `.junction-marker`-fil (eller README) i worktreets `node_modules`-forælder der eksplicit advarer: "dette er en junction til main — ALDRIG `npm ci`/`npm install` her; brug `cmd /c rmdir /Q node_modules && npm ci` i ÉT sammenhængende kald hvis du reelt har brug for en uafhængig install."
-- Overvej at `npm run sync-deps` selv detekterer en junction (`(Get-Item node_modules).LinkType -eq "Junction"`) og nægter/advarer i stedet for at køre `npm ci` blindt.
+Rod-årsagen er fjernet strukturelt i stedet for at blive advaret om:
+
+1. **Worktrees junctioner ikke længere til hoved-checkoutet.** `setup-worktree.ps1` peger dem på en delt cache nøglet på `package-lock.json`-hash i `%LOCALAPPDATA%\CyclingZone\node-modules-cache\`. Der findes ingen sti fra et worktree ind i mains `node_modules`. Rammer nogen cachen, er skaden selv-helende (næste setup-kørsel genopbygger den) og rammer ingen checkout.
+2. **`npm run sync-deps` kører `scripts/guard-node-modules-junction.mjs` først** og nægter med den korrekte opskrift hvis en `node_modules` er en junction.
+3. **Sundheds-tjek i stedet for eksistens-tjek** i hooken og i `preflight-night-wave.ps1` (`node_modules/.package-lock.json`), så en udhulet install fanges før den bliver til `ERR_MODULE_NOT_FOUND` midt i en kørsel.
+
+**Vigtig detalje der udelukkede den oplagte løsning:** en `preinstall`-lifecycle-guard virker IKKE. `npm ci` sletter `node_modules` **før** `preinstall` kører (verificeret på npm 11.13.0 med en sentinel-fil: den var allerede væk da preinstall fyrede). Guarden skal ligge før npm overhovedet startes.
 
 ## Lektion for fremtidige agenter
 
