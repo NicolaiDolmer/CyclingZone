@@ -27,6 +27,8 @@ import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
+import RaceLink from "../components/RaceLink";
+import { recentResultStage } from "../lib/recentResultLink.js";
 import { isContractExpiringAtTransition } from "../lib/riderAge";
 import { Flag } from "../components/Flag";
 import useDashboardLayout from "../lib/useDashboardLayout";
@@ -1324,8 +1326,24 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               {recentResults.map(race => (
                 <div key={race.race_id} className="flex items-center justify-between py-2 border-b border-cz-border last:border-0 gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-cz-1 text-sm truncate">{race.name}</p>
+                  {/* #3373 (spillerrapport, Discord 4/8: "Løbene under seneste
+                      resultater under dashboard linker ikke"): løbsnavnet var ren
+                      tekst i en ikke-interaktiv <div>, mens vinderen ved siden af
+                      var et link — modulet var altså det ENESTE sted i appen hvor
+                      et løb ikke var klikbart. Hele venstre celle (navn OG
+                      vinder-linjen) er nu ét hit-target via RaceLink, samme greb
+                      som løbskortenes header (#3187) — ægte <a>, så tastatur-fokus
+                      + Enter virker. Vinderen forbliver sit eget RiderLink: et
+                      link i et link er ikke tilgængeligt (samme grænse som
+                      RaceResultCard på Resultat-hubben). */}
+                  <RaceLink
+                    id={race.race_id}
+                    stage={recentResultStage(race)}
+                    state={{ from: "dashboard" }}
+                    data-testid="recent-result-open"
+                    className="group block flex-1 min-w-0"
+                  >
+                    <p className="text-cz-1 text-sm truncate transition-colors group-hover:text-cz-accent-t">{race.name}</p>
                     <p className="text-cz-3 text-xs mt-0.5">
                       {race.winner?.result_type === "gc"
                         // Endagsløb gemmer vinderen som gc-række men har intet
@@ -1335,7 +1353,7 @@ export default function DashboardPage() {
                             : t("dashboard:cards.recentResults.winner"))
                         : t("dashboard:cards.recentResults.stage", { n: race.winner?.stage_number ?? 0 })}
                     </p>
-                  </div>
+                  </RaceLink>
                   {race.winner && (
                     <div className="text-right min-w-0">
                       <RiderLink id={race.winner.rider_id} className="text-cz-1 text-sm hover:underline inline-flex items-center justify-end gap-1 max-w-full">
