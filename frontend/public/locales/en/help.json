@@ -790,7 +790,7 @@
     },
     "peakTraining": {
       "q": "How does peak training work?",
-      "a": "When you set a peak, the planner suggests a build week and a taper week for the lead-up. Accept one from the rider drawer and it writes that rhythm to the rider's weekly training. Training the right focus for the race profile, staying consistent, and reaching the taper rested all raise how much of the peak you realize. A peak locks three days before its window starts, so plan ahead."
+      "a": "When you set a peak, the planner suggests a build week and a taper week for the lead-up. Accept one from the rider drawer and it writes that rhythm to the rider's weekly training. Training the right focus for the race profile, staying consistent, and reaching the taper rested all raise how much of the peak you realize. A peak stays fully editable (retarget it, remove it, or set a second one) right up until its window actually starts; once that date arrives it locks, since the peak is then in use. Both the Squad tab and the rider drawer show exactly when each peak locks, and a lock badge always names the date it happened."
     },
     "peakValue": {
       "q": "How much is a peak actually worth?",

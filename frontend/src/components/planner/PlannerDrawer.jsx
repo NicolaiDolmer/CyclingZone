@@ -239,7 +239,15 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
                     {t("assistant.reset")}
                   </button>
                 ) : (
-                  <button className="shrink-0 text-3xs text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy || p.locked} onClick={() => onRemovePeak(p.id)}>
+                  // #3094: samme "hvorfor + hvornår" som Trup-fanen — en disabled
+                  // knap uden forklaring var selve klagen (jonasnielsen_05591 4/8:
+                  // "kan ikke fjerne hans ene peak").
+                  <button
+                    className="shrink-0 text-3xs text-cz-2 hover:text-cz-1 disabled:opacity-40"
+                    disabled={busy || p.locked}
+                    title={p.locked ? t("squad.lockedTooltip", { date: formatOrdinalShort(dateToOrdinal(p.windowStart), months) }) : undefined}
+                    onClick={() => onRemovePeak(p.id)}
+                  >
                     <XIcon size={13} aria-hidden="true" /> {t("drawer.rider.removePeak")}
                   </button>
                 )}
@@ -251,6 +259,11 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
                     faldt derfor altid tilbage til den neutrale --text-2, så "peak i
                     fare" aldrig fik sin advarselsfarve i noget tema. */}
                 {!p.isSuggestion && <>{" · "}<span style={{ color: meta.tone === "warn" ? "rgb(var(--accent-t))" : undefined }}>{meta.glyph} {t(`status.${meta.key}`)}</span></>}
+                {/* #3094: forudsigeligt FØR det sker — samme information som
+                    lås-badgen, blot udtrykt som "hvornår" i stedet for "hvorfor". */}
+                {!p.isSuggestion && !p.locked && p.windowStart && (
+                  <>{" · "}{t("squad.locksOn", { date: formatOrdinalShort(dateToOrdinal(p.windowStart), months) })}</>
+                )}
               </div>
               {p.isSuggestion && (
                 <div className="text-3xs text-cz-3 mb-2">
