@@ -36,6 +36,7 @@ import {
   SEED_CALENDAR,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
+  SEED_SCOUTING_REPORT,
   SEED_MANAGER_TRANSFERS,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
@@ -587,6 +588,11 @@ export function apiResponse(pathname, search = "") {
   // tjekkes FØR /development (endsWith er disjunkt, men rækkefølgen holder intentionen klar).
   if (pathname.endsWith("/development-projection")) return SEED_PROJECTION;
   if (pathname.endsWith("/development")) return SEED_DEVELOPMENT;
+
+  // #3334: Scouting-fanens rapport — provenance (navngiven scout + tier) +
+  // loft-bånd. Tjekkes FØR /scouting (disjunkt endsWith, samme mønster som
+  // projection/development ovenfor).
+  if (pathname.endsWith("/scouting-report")) return SEED_SCOUTING_REPORT;
 
   // #2842 admin-feedback-indbakke. Uden en seed her ville fladen stå tom på
   // preview, og ejeren kunne ikke se den før den var live (det har bidt før).

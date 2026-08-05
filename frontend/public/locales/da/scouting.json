@@ -62,6 +62,13 @@
     "topFind": "Topfund · gratis rapport",
     "statusFreeAgent": "Kontraktfri"
   },
+  "teamHistory": {
+    "title": "Ryttere spejdet af dit hold",
+    "subtitle": "Alle afsluttede enkelt-rytter-undersøgelser, uanset hvilken spejder der lavede dem.",
+    "empty": "Ingen enkelt-rytter-undersøgelse har meldt sig endnu.",
+    "levelValue": "Niveau {level}",
+    "riderUnavailable": "Ikke længere tilgængelig"
+  },
   "error": {
     "capacity": "Din spejder er allerede fuldt booket. Se listen over aktive opgaver, din eksisterende opgave kører stadig og rapporterer som planlagt.",
     "insufficient_funds": "Ikke nok i kassen til at dække rejseomkostningen.",

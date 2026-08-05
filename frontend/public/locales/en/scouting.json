@@ -62,6 +62,13 @@
     "topFind": "Top find · free report",
     "statusFreeAgent": "Free agent"
   },
+  "teamHistory": {
+    "title": "Riders scouted by your team",
+    "subtitle": "Every completed individual investigation, no matter which scout ran it.",
+    "empty": "No individual investigation has reported back yet.",
+    "levelValue": "Level {level}",
+    "riderUnavailable": "No longer available"
+  },
   "error": {
     "capacity": "Your scout is already at full capacity. See the active jobs list, your existing job is still queued and will report as scheduled.",
     "insufficient_funds": "Not enough balance to cover the travel cost.",

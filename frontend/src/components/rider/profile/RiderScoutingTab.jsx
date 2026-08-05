@@ -204,10 +204,13 @@ export default function RiderScoutingTab({ rider, scouting, seasonYear = null })
     );
   }
 
-  const { verdict, types, stars, value, own } = report;
+  const { verdict, types, stars, value, own, scout: scoutMeta } = report;
   const orderedTypes = TYPE_ORDER
     .map((key) => types?.find((x) => x.key === key))
     .filter(Boolean);
+  // Ukendt/manglende scout-provenance (fx ældre klient-cache) degraderer sikkert
+  // til "default"-linjen frem for at interpolere undefined navn/tier.
+  const isDefaultScout = scoutMeta?.isDefault !== false;
 
   return (
     <div className="space-y-3">
@@ -216,6 +219,16 @@ export default function RiderScoutingTab({ rider, scouting, seasonYear = null })
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <Eyebrow>{t(own ? "profile.scouting.eyebrowOwn" : "profile.scouting.eyebrowOther")}</Eyebrow>
+            {/* #3334: rapportens kilde — hvilken af HOLDETS EGNE scouts der pt.
+                driver præcisionen. Altid synlig (ikke kun hover) så et scout-
+                skift ikke er en overraskelse næste gang rapporten åbnes. Ingen
+                ny potentiale-lækage (#2798): beskriver kun viewer-holdets eget
+                personale, aldrig noget om målets skjulte evner. */}
+            <p className="text-cz-3 text-3xs font-mono mt-1 mb-0">
+              {isDefaultScout
+                ? t("profile.scouting.provenanceDefault", { overall: scoutMeta?.overall ?? 40 })
+                : t("profile.scouting.provenanceNamed", { name: scoutMeta?.name, tier: scoutMeta?.tier })}
+            </p>
             <div className="flex items-center gap-2.5 mt-2 flex-wrap">
               <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
                 {verdict ? t(`profile.scouting.headline_${verdict.headlineKey}`) : t("profile.scouting.capsMissingTitle")}
@@ -284,6 +297,10 @@ export default function RiderScoutingTab({ rider, scouting, seasonYear = null })
             ))}
           </div>
           <p className="text-cz-3 text-3xs mt-3 mb-0">{t("profile.scouting.typesLegend")}</p>
+          {/* #3334: den forklaring der var savnet i nosyaras sag — hvorfor
+              båndet kan se anderledes ud fra én visning til den næste, og at
+              rytterens egne evner aldrig er berørt af det. */}
+          <p className="text-cz-3 text-3xs mt-1.5 mb-0">{t("profile.scouting.recalcNote")}</p>
         </SectionCard>
       )}
 

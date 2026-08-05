@@ -1130,6 +1130,29 @@ export const SEED_PROJECTION = {
   pastPeak: false,
 };
 
+// #3334 preview-seed: GET /api/riders/:id/scouting-report — samme sprinter-profil
+// som SEED_PROJECTION (now:70, sprinter-loft 78-86), plus rapport-provenance
+// (navngiven chefscout, tier 2) så feature'en er synlig på preview uden en
+// hyret spejder i SEED_CLUB (der er bevidst stadig default-spejder, #1441 A3).
+export const SEED_SCOUTING_REPORT = {
+  level: 3, maxLevel: 3, own: true, capsMissing: false,
+  stars: { lo: 4.5, hi: 5 },
+  types: [
+    { key: "sprinter", now: 70, ceilLo: 78, ceilHi: 86 },
+    { key: "puncheur", now: 44, ceilLo: 48, ceilHi: 54 },
+    { key: "brostensrytter", now: 52, ceilLo: 56, ceilHi: 61 },
+    { key: "baroudeur", now: 41, ceilLo: 45, ceilHi: 50 },
+    { key: "rouleur", now: 55, ceilLo: 59, ceilHi: 64 },
+    { key: "tt", now: 38, ceilLo: 42, ceilHi: 47 },
+    { key: "gc", now: 30, ceilLo: 34, ceilHi: 39 },
+    { key: "climber", now: 27, ceilLo: 31, ceilHi: 36 },
+  ],
+  verdict: { headlineKey: "keep_and_develop", confidence: "high", factorKeys: ["age_upside", "ceiling_gap", "type_match", "form_unknown"] },
+  value: { market: 420000, expected: 468000 },
+  scout: { isDefault: false, name: "Sofie Lindqvist", tier: 2, overall: 61, hiredAt: "2026-07-20T10:00:00.000Z" },
+  generatedAt: "2026-08-05T09:00:00.000Z",
+};
+
 // #2819 preview-seed: onboarding-progress i den ÆGTE respons-form fra
 // GET /api/me/onboarding-progress (steps[{key,done}] + completed_count/total_count
 // + dismissed/established). Den gamle mock returnerede {steps:[], completed_steps,

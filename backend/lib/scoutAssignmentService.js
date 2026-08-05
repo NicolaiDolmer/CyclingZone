@@ -29,7 +29,7 @@ async function loadTeamBalance(teamId, supabaseClient) {
 export async function loadScout(teamId, supabaseClient) {
   const { data: staffRow, error: staffError } = await supabaseClient
     .from("team_staff")
-    .select("id, name, role, tier, salary, status")
+    .select("id, name, role, tier, salary, status, created_at")
     .eq("team_id", teamId)
     .eq("role", "scouting")
     .eq("status", "active")
@@ -48,6 +48,11 @@ export async function loadScout(teamId, supabaseClient) {
   return {
     id: staffRow.id,
     name: staffRow.name,
+    tier: staffRow.tier,
+    // #3334: hvornår DENNE scout blev ansat — bruges af scouting-report-provenance
+    // (frontend "assessed by X, since <dato>") så rapport-omskrivning ved scout-
+    // skift ikke opleves som en uforklaret rytter-forringelse.
+    hiredAt: staffRow.created_at ?? null,
     overall: abilities.overall,
     roleSkills: abilities.role_skills ?? DEFAULT_SCOUT.roleSkills,
     isDefault: false,

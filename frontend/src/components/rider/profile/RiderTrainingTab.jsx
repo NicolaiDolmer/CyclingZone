@@ -23,7 +23,7 @@ import {
   TRAINING_SETBACK_PCT, injuryDaysLeft,
 } from "../../../lib/training.js";
 import {
-  focusProgress, riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
+  focusProgress, riderHistoryFromRuns, breakthroughJumps, isBreakthrough, isFocusFullyCapped,
 } from "../../../lib/trainingReport.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
 
@@ -74,7 +74,13 @@ function fatigueColor(fatigue) {
 
 // ── Fokus + intensitet + aktivt fokus ───────────────────────────────────────────
 function FocusCard({ rider, training, progress, t }) {
-  const { slots, planFor, setPlan, clearPlan, savingId } = training;
+  // #3334: "training" (backendMessages-navnerum) huser den EKSISTERENDE
+  // focusCapped/focusCappedTitle-copy (#2578) — allerede live på TrainingPage's
+  // roster-tabel, men aldrig koblet ind på rytterprofilens Trænings-fane, hvor
+  // nosyaras sag opstod. Genbruger nøjagtig samme tekst i stedet for at opfinde
+  // ny (TrainingPage.jsx linje ~656 er referencen).
+  const { t: tTraining } = useTranslation("training");
+  const { slots, planFor, setPlan, clearPlan, savingId, capped } = training;
   const plan = planFor(rider.id);
   const focus = plan?.focus ?? null;
   const intensity = plan?.intensity ?? "normal";
@@ -109,6 +115,12 @@ function FocusCard({ rider, training, progress, t }) {
     ? TRAINING_FOCUS_ABILITIES[focus].map((a) => t(`racePreview.derived.${a}`)).join(" + ")
     : null;
   const risk = TRAINING_SETBACK_PCT[intensity] ?? 0;
+  // #3334/#2578: ALLE fokussets evner på livstidsloftet → progress-baren ville
+  // stå dødt/næsten-fuld uden forklaring — nøjagtig det signal @nosyara. læste
+  // som "min træning virker ikke", da hendes chefscout-skift samtidig flyttede
+  // et helt andet tal (loft-BÅNDET på Scouting-fanen). "capped" er kun ability-
+  // NØGLER (aldrig tal — caps er server-hidden, #1162).
+  const fullyCapped = focus && !isRest && isFocusFullyCapped(focus, capped?.[rider.id]);
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -207,23 +219,36 @@ function FocusCard({ rider, training, progress, t }) {
                 })}
               </span>
             </div>
-            <div className="relative h-[7px] bg-cz-subtle rounded-full" aria-hidden="true">
-              <div
-                className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/85 transition-[width] duration-500"
-                style={{ width: `${fp?.pct ?? 0}%` }}
-              />
-            </div>
-            <div className="flex justify-between gap-2 mt-1.5">
-              <span className="text-3xs text-cz-3">
-                {fp && fpVal != null
-                  ? t("profile.training.progressTo", {
-                      ability: t(`racePreview.derived.${fp.ability}`),
-                      from: fpVal, to: fpVal + 1, pct: fp.pct,
-                    })
-                  : t("profile.training.progressPending")}
-              </span>
-              <span className="text-3xs text-cz-3 flex-none">{t("profile.training.effectNote")}</span>
-            </div>
+            {fullyCapped ? (
+              // #3334: loftet er nået — sig det EKSPLICIT i stedet for at vise
+              // et tal der bare står stille (issue-accept-kriterie #4).
+              <p
+                className="text-[12px] text-cz-2 leading-snug cursor-help"
+                title={tTraining("focusCappedTitle")}
+              >
+                {tTraining("focusCapped")}
+              </p>
+            ) : (
+              <>
+                <div className="relative h-[7px] bg-cz-subtle rounded-full" aria-hidden="true">
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/85 transition-[width] duration-500"
+                    style={{ width: `${fp?.pct ?? 0}%` }}
+                  />
+                </div>
+                <div className="flex justify-between gap-2 mt-1.5">
+                  <span className="text-3xs text-cz-3">
+                    {fp && fpVal != null
+                      ? t("profile.training.progressTo", {
+                          ability: t(`racePreview.derived.${fp.ability}`),
+                          from: fpVal, to: fpVal + 1, pct: fp.pct,
+                        })
+                      : t("profile.training.progressPending")}
+                  </span>
+                  <span className="text-3xs text-cz-3 flex-none">{t("profile.training.effectNote")}</span>
+                </div>
+              </>
+            )}
             <p className="mt-2 text-2xs text-cz-2 leading-snug">
               {risk > 0 ? t("profile.training.riskNote", { risk }) : t("profile.training.noRiskNote")}
             </p>

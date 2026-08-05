@@ -1660,6 +1660,14 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
 // verdict. Rå potentiale/ability_caps forlader ALDRIG serveren (#1162) — kun
 // bånd fra buildScoutEstimate/buildTypeCeilingBands. Level 0 + ikke-egen →
 // { hidden: true } (samme kontrakt som POST /scouting/estimates).
+//
+// #3334: rapporten viser nu sin KILDE (`scout` + `generatedAt`) — hvilken af
+// holdets egne scouts der pt. driver bånd-præcisionen, og hvornår den blev
+// beregnet. Ingen ny potentiale-lækage (#2798): `scout` beskriver KUN viewer-
+// holdets egen ansatte (samme felter som ScoutingCentralPage.ScoutCard/
+// StaffProfilePage allerede viser), aldrig noget om måls skjulte potentiale —
+// rapporten er ALTID live-beregnet (ingen snapshot gemmes), så "hvornår" er
+// serverens nu-tidspunkt, ikke et cachet genererings-tidspunkt.
 router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -1674,6 +1682,15 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
     ]);
     if (error) throw new Error(error.message);
     if (!rider) return res.status(404).json({ error: "Rider not found" });
+
+    const scoutMeta = {
+      isDefault: scout.isDefault !== false,
+      name: scout.isDefault === false ? scout.name : null,
+      tier: scout.isDefault === false ? scout.tier ?? null : null,
+      overall: scout.overall ?? null,
+      hiredAt: scout.isDefault === false ? scout.hiredAt ?? null : null,
+    };
+    const generatedAt = new Date().toISOString();
 
     const own = rider.team_id != null && rider.team_id === req.team.id;
     const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
@@ -1732,11 +1749,13 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         stars: starsMasked, types, verdict,
         value: expected != null ? { market: rider.market_value, expected } : null,
         capsMissing: false,
+        scout: scoutMeta, generatedAt,
       });
     }
     res.json({
       level, maxLevel: state.maxLevel, own,
       stars: starsMasked, types, verdict, value: null, capsMissing: true,
+      scout: scoutMeta, generatedAt,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

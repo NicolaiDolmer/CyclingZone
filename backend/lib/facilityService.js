@@ -9,6 +9,7 @@ import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { debitTeam } from "./economyEngine.js";
 import { FINANCE_REASON } from "./economyConstants.js";
+import { notifyScoutChanged } from "./notificationService.js"; // #3334
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
 
@@ -134,7 +135,8 @@ export async function purchaseFacilityUpgrade(
 export async function hireStaff(
   { teamId, role, candidateName, seasonId, seasonNumber },
   supabaseClient,
-  flags = DEFAULT_FLAGS
+  flags = DEFAULT_FLAGS,
+  notify = notifyScoutChanged // #3334, injicérbar for test
 ) {
   if (!flags.facilitiesEnabled) return { ok: false, error: "facilities_disabled" };
   // Membership-validering FØR DB-queries — ugyldig role skal aldrig koste queries.
@@ -203,6 +205,17 @@ export async function hireStaff(
       { onConflict: "staff_id" }
     );
   if (abilityError) throw new Error(`facilityService: staff ability upsert failed for ${inserted.id}: ${abilityError.message}`);
+
+  // #3334: dette er et SKIFTE (holdet har fyret en scouting-staff i denne rolle
+  // før — firedNames blev allerede hentet ovenfor til kandidat-eksklusion), ikke
+  // holdets første nogensinde ansatte spejder. Eksisterende scoutingrapporter
+  // genberegnes med den nye scouts præcision fra næste visning — notifikationen
+  // forklarer det FØR spilleren selv opdager "rapporten ændrede sig". notify()
+  // isolerer selv sine fejl (fanger, logger, Sentry) og må ALDRIG kunne vælte
+  // selve ansættelsen, som allerede er persisteret på dette tidspunkt.
+  if (role === "scouting" && firedNames.size > 0) {
+    await notify({ supabase: supabaseClient, teamId, scoutName: candidate.name, scoutTier: candidate.tier });
+  }
 
   return {
     ok: true,
