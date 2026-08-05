@@ -58,13 +58,13 @@
         },
         "divisionBonus": {
           "title": "Divisionsbonus (sæsonslut)",
-          "text": "En engangsbonus udbetalt ved sæsonslut ud fra din endelige placering i din division:",
+          "text": "En engangsbonus udbetalt ved sæsonslut. Læs den i to trin: find rækken for den plads du sluttede på i din egen division, og derefter kolonnen for den division du kørte i. Tomme celler giver ingenting, og det gør placeringer under nederste række heller ikke.",
           "rows": [
-            ["Placering", "Division 1", "Division 2", "Division 3"],
-            ["1.", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$"],
-            ["2.", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$"],
-            ["3.", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$"],
-            ["4.", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—"]
+            ["Din slutplacering", "I Division 1", "I Division 2", "I Division 3", "I Division 4"],
+            ["Nr. 1 i din division", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
+            ["Nr. 2 i din division", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
+            ["Nr. 3 i din division", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
+            ["Nr. 4 i din division", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
           ]
         }
       }

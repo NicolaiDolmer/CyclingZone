@@ -172,7 +172,7 @@ const SECTION_DEFS = [
       { id: "seasonFlow", kind: "steps" },
       { id: "racesAndResults", kind: "text" },
       { id: "prizeMoney", kind: "text" },
-      { id: "divisionBonus", kind: "rows" },
+      { id: "divisionBonus", kind: "textRows" },
       { id: "raceLibrary", kind: "text" },
       { id: "promotionRelegation", kind: "text" },
       { id: "whenSeasonEnds", kind: "text" },
@@ -416,6 +416,17 @@ function buildSections(t, vars) {
         }
         if (block.kind === "rows") {
           return { title, rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars) };
+        }
+        // #3100: a bare table can be read the wrong way round (a player read the
+        // division-bonus table's place column as a division and expected the wrong
+        // payout). "textRows" puts a how-to-read line above the table, the same
+        // sentence /rules already carries.
+        if (block.kind === "textRows") {
+          return {
+            title,
+            text: t(`${blockBase}.text`, vars),
+            rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars),
+          };
         }
         if (block.kind === "textCta") {
           return {

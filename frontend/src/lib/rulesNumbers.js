@@ -43,7 +43,11 @@ export const RULES_NUMBERS = {
   divisionCapacity: 20, // DIVISION_CAPACITY
   firstPromotionSeason: 1, // FIRST_PROMOTION_RELEGATION_SEASON
 
-  // --- Division bonus (backend/lib/economyEngine.js DIVISION_BONUSES) ---
+  // --- Division bonus (backend/lib/economyConstants.js DIVISION_BONUSES) ---
+  // bonusD<division>P<slutplacering i den division>. #3100: division 4 manglede
+  // helt (tilføjet i backenden af #1608, aldrig spejlet her), så /rules og /help
+  // tav om en division der har fået bonusser udbetalt i produktion. Drift-guarden
+  // i rulesNumbers.test.js kræver nu fuld dækning af DIVISION_BONUSES.
   bonusD1P1: 300000,
   bonusD1P2: 200000,
   bonusD1P3: 100000,
@@ -55,6 +59,9 @@ export const RULES_NUMBERS = {
   bonusD3P1: 75000,
   bonusD3P2: 50000,
   bonusD3P3: 25000,
+  bonusD4P1: 50000,
+  bonusD4P2: 25000,
+  bonusD4P3: 10000,
 
   // --- Academy (backend/lib/academyFlag.js ACADEMY) ---
   academySlots: 8, // ACADEMY.SLOTS

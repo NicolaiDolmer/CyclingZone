@@ -58,13 +58,13 @@
         },
         "divisionBonus": {
           "title": "Division bonus (season end)",
-          "text": "A one-time bonus paid at season end based on your final placing in your division:",
+          "text": "A one-time bonus paid at season end. Read it in two steps: pick the row for the place you finished in your own division, then the column for the division you rode in. Blank cells pay nothing, and so does any place below the last row.",
           "rows": [
-            ["Place", "Division 1", "Division 2", "Division 3"],
-            ["1st", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$"],
-            ["2nd", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$"],
-            ["3rd", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$"],
-            ["4th", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—"]
+            ["Where you finished", "In Division 1", "In Division 2", "In Division 3", "In Division 4"],
+            ["1st in your division", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
+            ["2nd in your division", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
+            ["3rd in your division", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
+            ["4th in your division", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
           ]
         }
       }

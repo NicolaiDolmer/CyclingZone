@@ -27,6 +27,7 @@ import {
   MIN_DIVISION,
   MAX_DIVISION,
   DIVISION_CAPACITY,
+  DIVISION_BONUSES,
   FIRST_PROMOTION_RELEGATION_SEASON,
 } from "../../../backend/lib/economyConstants.js";
 import {
@@ -40,15 +41,6 @@ import {
 } from "../../../backend/lib/squadEnforcement.js";
 import { ACADEMY } from "../../../backend/lib/academyFlag.js";
 
-// DIVISION_BONUSES is module-private in economyEngine.js (not exported). Mirror the
-// literal here; the values below are the same array structure asserted by the
-// engine's own season-end tests. If the engine table changes, update both.
-const DIVISION_BONUSES = {
-  1: [300_000, 200_000, 100_000, 50_000],
-  2: [150_000, 100_000, 50_000, 25_000],
-  3: [75_000, 50_000, 25_000],
-};
-
 test("squad numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.squadCap, MAX_SQUAD_SIZE);
   assert.equal(RULES_NUMBERS.windowBuffer, TRANSFER_WINDOW_SOFT_CAP_BUFFER);
@@ -56,8 +48,8 @@ test("squad numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.squadPenaltyPoints, SQUAD_PENALTY_POINTS);
   // starterSquadAllocator.STARTER_SQUAD.TOTAL_SIZE = MIN_RIDERS_FOR_RACE + TAIL_SIZE(4).
   // That module pulls in supabase/generator deps that don't load under a frontend
-  // node --test, so we mirror the +4 tail here (same approach as DIVISION_BONUSES
-  // below). If TAIL_SIZE changes in starterSquadAllocator.js, update both.
+  // node --test, so we mirror the +4 tail here. If TAIL_SIZE changes in
+  // starterSquadAllocator.js, update both.
   assert.equal(RULES_NUMBERS.initialSquadSize, MIN_RIDERS_FOR_RACE + 4);
 });
 
@@ -86,18 +78,35 @@ test("season structure matches backend constants", () => {
   assert.equal(RULES_NUMBERS.firstPromotionSeason, FIRST_PROMOTION_RELEGATION_SEASON);
 });
 
-test("division bonus table matches the season-end payout table", () => {
-  assert.equal(RULES_NUMBERS.bonusD1P1, DIVISION_BONUSES[1][0]);
-  assert.equal(RULES_NUMBERS.bonusD1P2, DIVISION_BONUSES[1][1]);
-  assert.equal(RULES_NUMBERS.bonusD1P3, DIVISION_BONUSES[1][2]);
-  assert.equal(RULES_NUMBERS.bonusD1P4, DIVISION_BONUSES[1][3]);
-  assert.equal(RULES_NUMBERS.bonusD2P1, DIVISION_BONUSES[2][0]);
-  assert.equal(RULES_NUMBERS.bonusD2P2, DIVISION_BONUSES[2][1]);
-  assert.equal(RULES_NUMBERS.bonusD2P3, DIVISION_BONUSES[2][2]);
-  assert.equal(RULES_NUMBERS.bonusD2P4, DIVISION_BONUSES[2][3]);
-  assert.equal(RULES_NUMBERS.bonusD3P1, DIVISION_BONUSES[3][0]);
-  assert.equal(RULES_NUMBERS.bonusD3P2, DIVISION_BONUSES[3][1]);
-  assert.equal(RULES_NUMBERS.bonusD3P3, DIVISION_BONUSES[3][2]);
+// #3100: assert BOTH directions against the real exported table. The old version
+// pinned RULES_NUMBERS against a hand-copied literal that stopped at division 3,
+// so when #1608 added tier 4 to the engine the guard stayed green while /rules and
+// /help silently omitted a whole division that was already being paid out in prod.
+// Direction 1 catches a value drifting; direction 2 catches a whole row going missing.
+test("division bonus table matches the season-end payout table (every cell)", () => {
+  for (const [division, amounts] of Object.entries(DIVISION_BONUSES)) {
+    amounts.forEach((amount, index) => {
+      const key = `bonusD${division}P${index + 1}`;
+      assert.equal(
+        RULES_NUMBERS[key],
+        amount,
+        `${key} must equal DIVISION_BONUSES[${division}][${index}] (${amount})`
+      );
+    });
+  }
+});
+
+test("no division bonus cell is missing from or invented in RULES_NUMBERS", () => {
+  const expected = Object.entries(DIVISION_BONUSES)
+    .flatMap(([division, amounts]) => amounts.map((_, i) => `bonusD${division}P${i + 1}`))
+    .sort();
+  const actual = Object.keys(RULES_NUMBERS).filter((k) => /^bonusD\d+P\d+$/.test(k)).sort();
+  assert.deepEqual(
+    actual,
+    expected,
+    "RULES_NUMBERS bonus keys must cover DIVISION_BONUSES exactly — a new division or " +
+      "placement in the engine has to reach /rules and /help, and a removed one has to leave"
+  );
 });
 
 test("academy numbers match backend constants", () => {

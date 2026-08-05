@@ -37,6 +37,7 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import {
   DEBT_CEILING_BY_DIVISION,
+  DIVISION_BONUSES,
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
@@ -113,16 +114,6 @@ const RACE_IDS_IN_CHUNK = 120;
 // Backward-compat alias for SPONSOR_INCOME_BASE — fjernes i 07b.
 // Importeres af betaResetService, boardAutoAccept og api.js.
 export const DEFAULT_SPONSOR_INCOME = SPONSOR_INCOME_BASE;
-
-const DIVISION_BONUSES = {
-  1: [300_000, 200_000, 100_000, 50_000],
-  2: [150_000, 100_000, 50_000, 25_000],
-  3: [75_000, 50_000, 25_000],
-  // #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21): tier 4 = bunden,
-  // lavest sæson-slut-bonus pr. pulje-placering. Uden denne række ville div-4-hold få
-  // tavst undefined → continue i payDivisionBonuses (samme tavse hul som [1,2,3]-loopet).
-  4: [50_000, 25_000, 10_000],
-};
 
 function throwIfSupabaseError(error, message) {
   if (error) {
