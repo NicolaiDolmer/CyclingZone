@@ -8,6 +8,7 @@ import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import LeaderBadge from "../components/LeaderBadge";
 import SeasonHonours from "../components/SeasonHonours";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { divColor } from "../lib/divisionColors.js";
 import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
 import { pickDefaultSeason } from "../lib/seasonEndDefault.js";
@@ -228,11 +229,15 @@ export default function SeasonEndPage() {
       const prizeWinner = prizeTop ? { team: teamMeta[prizeTop[0]], amount: prizeTop[1] } : null;
 
       // 2+3. Transfers: finance_transactions type=transfer_in/out for season
-      const { data: txData } = await supabase
+      // #3331: league-wide (ALL teams) per season — verified 886 rows for
+      // season 1 already (88% of the 1000-row cap), so paginated rather than
+      // relying on that margin holding as more teams/seasons accumulate.
+      const txData = await fetchAllRows(() => supabase
         .from("finance_transactions")
         .select("team_id, amount, description, created_at, type, team:team_id(id, name, is_ai)")
         .eq("season_id", season.id)
-        .in("type", ["transfer_in", "transfer_out"]);
+        .in("type", ["transfer_in", "transfer_out"])
+        .order("id", { ascending: true }));
 
       const txs = (txData || []).filter(t => !t.team?.is_ai);
 
