@@ -43,8 +43,8 @@
     "title": "Season {number} wrapped",
     "dismissAria": "Dismiss the season wrap card",
     "movement": {
-      "promoted": "↑ Promoted to Division {division}",
-      "relegated": "↓ Relegated to Division {division}",
+      "promoted": "↑ Promoted",
+      "relegated": "↓ Relegated",
       "maintained": "Held Division {division}"
     },
     "rankLine": "You finished #{rank} of {size} in Division {division}",

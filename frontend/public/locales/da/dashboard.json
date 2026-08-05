@@ -43,8 +43,8 @@
     "title": "Sæson {number} er slut",
     "dismissAria": "Skjul sæson-opsummeringskortet",
     "movement": {
-      "promoted": "↑ Rykket op til division {division}",
-      "relegated": "↓ Rykket ned til division {division}",
+      "promoted": "↑ Rykket op",
+      "relegated": "↓ Rykket ned",
       "maintained": "Holdt division {division}"
     },
     "rankLine": "Du blev nr. {rank} af {size} i division {division}",
