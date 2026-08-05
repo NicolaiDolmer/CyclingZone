@@ -91,7 +91,24 @@ export function predictBaseValue(rider, abilities, model /*, opts */) {
   const haveAbilities = ABILITY_KEYS.some((k) => Number.isFinite(Number(abilities?.[k])));
   if (!haveAbilities) return null;
 
-  const type = rider?.primary_type ?? null;
+  // #3345 FROZEN VALUATION TYPE: læs rider.valuation_type FØR rider.primary_type.
+  // Baggrund: #3325/#3343 reklassificerer primary_type mod ability_caps (potentiale
+  // i stedet for nuværende form). Målt mod hele prod-populationen (8.282 aktive
+  // ryttere) flytter det populationens samlede market_value -24,5% under V4 (den
+  // LIVE model) med de EKSISTERENDE, u-refittede koefficienter — se issue #3345.
+  // En gyldig re-fit af V4 kræver en fuld Monte Carlo-sæson-simulering
+  // (simulateSeasonProduction.js), en markant større opgave end selve
+  // reklassificeringen. Ejer-beslutning (4/8): frys værdien på den type rytteren
+  // HAVDE i prod FØR reklassificeringen (riders.valuation_type, backfillet
+  // ÉN GANG — se database/proposals/2026-08-04-3345-frozen-valuation-type.sql),
+  // og lad primary_type/secondary_type reklassificeres frit uden at flytte
+  // økonomien. Fallback til primary_type dækker rækker/objekter der aldrig fik
+  // valuation_type sat (fixtures, simulations, fiktive/nye ryttere ved oprettelse
+  // — der findes ingen "gammel" værdi at fryse for dem).
+  // NÅR V4 ER RE-FITTET mod den nye klassifikation (opfølgnings-issue #3353):
+  // fjern denne fallback-kæde, læs primary_type direkte igen, og drop
+  // riders.valuation_type-kolonnen.
+  const type = rider?.valuation_type ?? rider?.primary_type ?? null;
   let O = blendedOutput(abilities, type, model.alpha ?? 1);
   // Ekstrapolations-guard: kurven er kun kalibreret op til den højeste anchor
   // (output_max i model-JSON). Output derover klampes — ellers eksploderer den

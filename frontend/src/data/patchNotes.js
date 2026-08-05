@@ -14,13 +14,13 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Rider type now shows what a rider can become, not just today's form",
-          "body": "Rider type (the label shown on the profile and roster, e.g. climber, sprinter, GC) is now based on a rider's long-term ceiling instead of their current stats. This makes the label stable for the rest of a rider's career and fixes a bug where almost every young rider was labelled climber or time trial regardless of what they were actually best suited for. Your riders' stats have not changed, only some of their type labels have."
+          "body": "Rider type (the label shown on the profile and roster, e.g. climber, sprinter, GC) is now based on a rider's long-term ceiling instead of their current stats. This makes the label stable for the rest of a rider's career and fixes a bug where almost every young rider was labelled climber or time trial regardless of what they were actually best suited for. Your riders' stats have not changed, and neither has their market value: only some of the type labels have moved, prices are unaffected by this update."
         },
         "da": {
           "title": "Ryttertype viser nu potentiale, ikke kun dagens form",
-          "body": "Ryttertypen (labelen på profilen og rytteroversigten, fx klatrer, sprinter, GC) bygger nu på rytterens langsigtede loft i stedet for de nuværende stats. Det gør labelen stabil resten af karrieren og retter en fejl hvor stort set alle unge ryttere blev vist som klatrer eller tempo uanset hvad de reelt egnede sig til. Dine rytteres stats er uændrede, kun nogle af type-labelerne skifter."
+          "body": "Ryttertypen (labelen på profilen og rytteroversigten, fx klatrer, sprinter, GC) bygger nu på rytterens langsigtede loft i stedet for de nuværende stats. Det gør labelen stabil resten af karrieren og retter en fejl hvor stort set alle unge ryttere blev vist som klatrer eller tempo uanset hvad de reelt egnede sig til. Dine rytteres stats er uændrede, og det er markedsværdien også: kun nogle af type-labelerne flytter sig, priserne er upåvirkede af denne opdatering."
         },
-        "refs": [3325]
+        "refs": [3325, 3345]
       },
       {
         "category": "improved",
@@ -105,6 +105,20 @@ export const PATCHES = [
           "body": "Et etapeløb der havde kørt flere etaper, men ikke var helt færdigt, var usynligt på Resultat-hubbens Seneste-fane, fordi den kun kiggede efter løb markeret afsluttet. Igangværende etapeløb vises nu også der, tydeligt markeret Live med en \"Etape X af Y\"-linje, og den aktuelle top 3 mens løbet stadig kører."
         },
         "refs": [3333]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Season forecast now includes facility, staff and academy costs",
+          "body": "The Finance page's season forecast used to count only sponsor income and prize money minus rider wages and loan interest, leaving out facility upkeep, staff salaries, upkeep and academy running costs entirely. For teams that had invested in facilities or an academy, the old number was too optimistic by roughly half: it promised a much bigger surplus than teams actually got. The forecast now includes all of those costs, calculated with the exact same formulas as the real season-start charge, and the help text has been rewritten to state precisely what is (and isn't) covered."
+        },
+        "da": {
+          "title": "Sæsonprognosen medregner nu facilitets-, staff- og akademi-omkostninger",
+          "body": "Sæsonprognosen på Finanser-siden talte tidligere kun sponsorindtægt og præmiepenge minus rytterløn og lånerenter, og udelod helt facilitets-vedligehold, stab-lønninger, upkeep og akademi-drift. For hold der havde investeret i faciliteter eller et akademi, var det gamle tal for optimistisk med omkring det halve: det lovede et langt større overskud end holdene faktisk fik. Prognosen medregner nu alle disse omkostninger, beregnet med præcis samme formler som den faktiske sæson-start-opkrævning, og hjælpeteksten er omskrevet så den siger præcist hvad der er (og ikke er) dækket."
+        },
+        "refs": [3236, 3332]
       }
     ]
   },

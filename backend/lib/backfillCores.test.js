@@ -142,6 +142,25 @@ test("deriveForRiderIds (apply) upserter physiology + abilities OG sætter type 
   }
 });
 
+test("#3345: deriveForRiderIds (apply) sætter valuation_type = primary_type for en HELT NY rytter (intet at fryse imod)", async () => {
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] }); // ingen valuation_type på input
+  await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+  const u = supabase.writes.updates.find((x) => x.val === "r1");
+  assert.ok(u, "r1 skal opdateres");
+  assert.equal(u.patch.valuation_type, u.patch.primary_type, "ny rytter: valuation_type = den friske primary_type");
+});
+
+test("#3345: deriveForRiderIds (apply) BEVARER et allerede-sat valuation_type ved re-derive (heal-sweep-sikker)", async () => {
+  // Simulerer en EKSISTERENDE, allerede-frosset rytter der re-deriveres (fx
+  // riderDeriveHealSweep) — reklassificeringen giver måske en ANDEN primary_type,
+  // men valuation_type skal IKKE overskrives.
+  const supabase = makeMockSupabase({ riders: [{ ...makeRider("r1"), valuation_type: "gc" }] });
+  await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+  const u = supabase.writes.updates.find((x) => x.val === "r1");
+  assert.ok(u, "r1 skal opdateres");
+  assert.equal(u.patch.valuation_type, "gc", "eksisterende valuation_type må ALDRIG overskrives af re-derive");
+});
+
 test("deriveForRiderIds (apply) skriver ability_caps + ability_progress for ALLE ryttere (#2001)", async () => {
   // makeRider er født 2000-01-01 → voksen (26 ved asOfYear 2026). Tidligere fik voksne
   // NULL caps her (kun akademi-alder fik youth-caps); #2001 wirer fulde caps + nul-progress.

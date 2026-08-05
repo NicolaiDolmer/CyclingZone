@@ -53,6 +53,50 @@ test("hazard: 0 under vinduet, lineær i vinduet, 1 fra guaranteedAge og opefter
   assert.equal(hazard(45), 1);
 });
 
+// ── #3345: frossen valuation_type ──────────────────────────────────────────────
+
+test("#3345: predictBaseValueV4 reads valuation_type BEFORE primary_type", () => {
+  const abilities = makeAbilities();
+  const model = fixtureModel({
+    fit: {
+      alpha: 0.5, a: 5, b: 0, c: 0,
+      offset: { sprinter: 0, tt: 0, climber: 0, puncheur: 0, brostensrytter: 0, baroudeur: 0, rouleur: 0, gc: 2 },
+      r2_log: 0.9, n_samples: 500,
+    },
+  });
+  // Samme rytter, samme abilities: reklassificeret til sprinter (primary_type),
+  // men den FROSNE type er stadig gc (højere offset) — værdien skal følge gc.
+  const viaFrozenGc = predictBaseValueV4(
+    { id: "r", primary_type: "sprinter", valuation_type: "gc", potentiale: 4, age: 25 }, abilities, model
+  );
+  const viaFreshSprinter = predictBaseValueV4(
+    { id: "r", primary_type: "sprinter", potentiale: 4, age: 25 }, abilities, model
+  );
+  const viaDirectGc = predictBaseValueV4(
+    { id: "r", primary_type: "gc", potentiale: 4, age: 25 }, abilities, model
+  );
+  assert.equal(viaFrozenGc, viaDirectGc, "valuation_type=gc skal give SAMME værdi som primary_type=gc direkte");
+  assert.ok(viaFrozenGc > viaFreshSprinter, "gc's højere offset skal slå igennem, ikke sprinter's");
+});
+
+test("#3345: currentProductionValue reads valuation_type BEFORE primary_type (samme kæde som predictBaseValueV4)", () => {
+  const abilities = makeAbilities();
+  const model = fixtureModel({
+    fit: {
+      alpha: 0.5, a: 5, b: 0, c: 0,
+      offset: { sprinter: 0, tt: 0, climber: 0, puncheur: 0, brostensrytter: 0, baroudeur: 0, rouleur: 0, gc: 2 },
+      r2_log: 0.9, n_samples: 500,
+    },
+  });
+  const viaFrozenGc = currentProductionValue(
+    { id: "r", primary_type: "sprinter", valuation_type: "gc", potentiale: 4, age: 25 }, abilities, model
+  );
+  const viaDirectGc = currentProductionValue(
+    { id: "r", primary_type: "gc", potentiale: 4, age: 25 }, abilities, model
+  );
+  assert.equal(viaFrozenGc, viaDirectGc);
+});
+
 // ── (1) Ung høj-potentiale rytter: fremskrivning HÆVER abilities tidligt ───────
 
 test("ung høj-potentiale rytter: forventede abilities + produktion stiger de første sæsoner", () => {
