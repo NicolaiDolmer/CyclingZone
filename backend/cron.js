@@ -77,6 +77,7 @@ import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
+import { runDiscordRaceDigestSweep } from "./lib/discordRaceDigestSweep.js"; // #3400
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
@@ -1039,6 +1040,13 @@ async function runEmailRaceDigestSweepCron() {
   if (r.sent) console.log(`✉️  Email-race-digest: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
 }
 
+// #3400: Discord-DM-digest for race_result/stage_result (max 1/manager/dag,
+// egen time-gate — se discordRaceDigestSweep.js's header for begrundelsen).
+async function runDiscordRaceDigestSweepCron() {
+  const r = await runDiscordRaceDigestSweep({ supabase, now: new Date() });
+  if (r.sent) console.log(`🚴 Discord-race-digest: ${r.sent} DM sendt (${r.candidates} kandidater)`);
+}
+
 // ─── Alunta subscription-reconcile (#2736) ────────────────────────────────────
 // aluntaWebhook.js's ACTIVATING-set lytter på 'invoice.paid', men det event
 // FINDES IKKE hos Alunta — current_period_end opdateres derfor muligvis
@@ -1411,6 +1419,10 @@ export function startCron() {
   );
   setInterval(
     trackedTick("email-race-digest sweep", monitorCron("email-race-digest", runEmailRaceDigestSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
+  setInterval(
+    trackedTick("discord-race-digest sweep", monitorCron("discord-race-digest", runDiscordRaceDigestSweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
   );
 

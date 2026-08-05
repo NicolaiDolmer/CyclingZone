@@ -146,6 +146,56 @@ test("only includes results imported today (Copenhagen day) via imported_at >= c
   assert.deepEqual(sendCalls.map((c) => c.userId), ["u1"]);
 });
 
+// ─── #3399 · narrative headline leads the digest ──────────────────────────
+
+test("passes the narrative headline for the manager's BEST (lowest-rank) race today to buildRaceDigestEmail", async () => {
+  const rows = [
+    row({ rank: 5, rider_name: "Rider A", team_id: "t1", userId: "u1", raceId: "race-worse", raceName: "Race Worse" }),
+    row({ rank: 1, rider_name: "Rider B", team_id: "t1", userId: "u1", raceId: "race-best", raceName: "Race Best" }),
+  ];
+  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }] });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+  const narrativeCalls = [];
+  const fetchNarrative = async ({ race }) => {
+    narrativeCalls.push(race.id);
+    return race.id === "race-best" ? { headlineText: "Krogh takes the sprint", ranksByUser: new Map() } : null;
+  };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret", fetchNarrative });
+
+  assert.deepEqual(narrativeCalls, ["race-best"], "kun det bedste løb slår rubrik op, ikke det ringere");
+  assert.ok(sendCalls[0].html.includes("Krogh takes the sprint"));
+});
+
+test("narrative fetch failure degrades to no headline, never throws", async () => {
+  const rows = [row({ rank: 1, rider_name: "Rider A", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
+  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }] });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+  const result = await runEmailRaceDigestSweep({
+    supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret",
+    fetchNarrative: async () => { throw new Error("boom"); },
+  });
+  assert.equal(result.sent, 1);
+  assert.ok(!sendCalls[0].html.includes("Your best moment"));
+});
+
+test("narrative lookup is memoized per raceId across managers sharing the same race", async () => {
+  const rows = [
+    row({ rank: 1, rider_name: "Rider A", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" }),
+    row({ rank: 2, rider_name: "Rider B", team_id: "t2", userId: "u2", raceId: "race-1", raceName: "Race" }),
+  ];
+  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }, { id: "u2", email: "u2@example.com" }] });
+  const send = async () => ({ status: "dry_run" });
+  let calls = 0;
+  const fetchNarrative = async () => { calls += 1; return { headlineText: "Krogh takes the sprint", ranksByUser: new Map() }; };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret", fetchNarrative });
+
+  assert.equal(calls, 1, "samme raceId slås kun op én gang, uanset hvor mange managere deler den");
+});
+
 test("per-manager failures are isolated", async () => {
   const rows = [
     row({ rank: 1, rider_name: "R1", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" }),
