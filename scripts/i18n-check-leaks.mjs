@@ -88,6 +88,7 @@ export const EXEMPT_DIRS = [
 export const EXEMPT_FILES = new Map([
   ["frontend/src/lib/legacyFinanceMessage.js", "Parser-only matching of Danish prose already stored in legacy finance rows; recognized text resolves to locale keys before display."],
   ["frontend/src/pages/AdminGrowthPage.jsx", "Admin-only samlet vækst-dashboard (#3196)."],
+  ["frontend/src/pages/AdminFairplayPage.jsx", "Admin-only fair-play review-kø (#3138)."],
   ["frontend/src/pages/AdminSprintMetricsPage.jsx", "Admin-only intern metrics-side."],
   ["frontend/src/pages/AdminWaitlistPage.jsx", "Admin-only waitlist-værktøj."],
   ["frontend/src/pages/AdminAttributionPage.jsx", "Admin-only signup-attribution-dashboard (#679)."],

@@ -46,6 +46,7 @@ const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
 // faner i AdminGrowthPage — deres filer eksporterer nu kun *Content()-
 // komponenter (genbrugt derfra), ingen standalone route/lazy-import længere.
 const AdminGrowthPage = lazy(() => import("./pages/AdminGrowthPage"));
+const AdminFairplayPage = lazy(() => import("./pages/AdminFairplayPage")); // #3138
 const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
@@ -331,6 +332,7 @@ export default function App() {
               <Route path="*"       element={<Navigate to="/admin/season" replace />} />
             </Route>
             <Route path="admin/growth" element={<AdminGrowthPage />} />
+            <Route path="admin/fairplay" element={<AdminFairplayPage />} /> {/* #3138 */}
             {/* #3196: gamle standalone-ruter redirecter til deres fane i det
                 samlede vækst-dashboard, så eksisterende bogmærker/links ikke knækker. */}
             <Route path="admin/waitlist" element={<Navigate to="/admin/growth?tab=waitlist" replace />} />

@@ -154,6 +154,7 @@ export const ALL_CRON_MONITORS = [
   ["email-race-digest", CRON_MONITOR_60MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_24H],
+  ["fairplay-scoring", CRON_MONITOR_24H],
 ];
 
 // ─── UNMONITORED_CRON_TICKS ────────────────────────────────────────────────
