@@ -132,13 +132,37 @@ Dispatch-forfilter kørt på alle 20 kandidater før fan-out. **#3336 var allere
 
 Batch 1 (3 kode-spor + 2 rene målinger; målinger giver ingen PR og belaster ikke 5-PR-loftet):
 
-| Spor | Issue | Type |
-|---|---|---|
-| Dashboardets "Seneste resultater" linker ikke til løbssiden | #3373 | bugfix |
-| Divisionsbonus-copy forveksler division og placering | #3100 | bugfix (copy) |
-| Auktioner desktop: fører-holdnavn kun i hover-tooltip | #3099 | bugfix |
-| Pengemængden firdobles over 5 sæsoner | #3360 | **måling** → beslutningsoplæg, ingen kode |
-| Betaler specialisering sig? | #3337 | **måling**, ingen kode |
+| Spor | Issue | PR | Resultat |
+|---|---|---|---|
+| Dashboardets "Seneste resultater" linker ikke til løbssiden | #3373 | #3388 | ✅ merged |
+| Divisionsbonus-copy forveksler division og placering | #3100 | #3387 | ✅ merged |
+| Auktioner desktop: fører-holdnavn kun i hover-tooltip | #3099 | #3386 | ⏸ **afventer ejerens visuelle go** |
+| Pengemængden firdobles over 5 sæsoner | #3360 | — | ✅ målt, oplæg postet |
+| Betaler specialisering sig? | #3337 | — | ✅ målt, svar postet |
+
+5 agenter, 0 døde, 1,12 mio. tokens, 38 min wall-clock. Ingen node_modules-relaterede spor-fejl — første bølge efter #3367.
+
+### Hvorfor #3386 ikke blev merget
+
+Agenten flagede det selv: ændringen er en anelse bredere end issuets ordlyd (ny "Ingen bud endnu"-tilstand, og fører-navnet vises nu også når spilleren selv fører). Merge-gaten er forudgående enighed, ikke risiko — vi aftalte problemet, ikke denne løsning. Plus UI-reglen fra 31/7. PR'en er grøn og klar; den mangler kun ét ord.
+
+De to der blev merget er begge tilfælde hvor issue-teksten selv beskriver fixet: et dødt link skal virke, og en forkert tekst skal være rigtig.
+
+### Fund fra sporene der er større end sporene selv
+
+**#3360 — det er økonomien, ikke tærsklen.** Issuets 4,24× er delvis en målefejl: `freshPopulationBurden.js:61` kalder `computeFrozenSalary({base_value,...})`, men funktionen blev omskrevet 18/7 (#2594) til kun at læse `current_production_value` → `undefined` → fallback 1.288 CZ$ løn pr. hold pr. sæson, identisk i alle divisioner. Rettet giver harnessen 2,54× i stedet for 4,24×.
+
+Men prod er værre end issuet: **+500.198 CZ$ garanteret net pr. hold pr. sæson** (mål: 37.500). Lønbyrden er **5,6 % af sponsoren** mod designets 85 %; en gennemsnitsrytter er værd 97.513 og koster 1.697 pr. sæson. Absorptionen er 17,3 % mod designkravet på ≥90 %. Sæsonskiftet 26/7 udbetalte **+42,9 mio. på én dag**, og median-auktionsprisen gik fra 20.160 til 35.985 ugen efter.
+
+1,3×-målet er sporbart (ejer-låst 21/6) men blev sat da startkapitalen var 800k, sænket til 500k dagen efter (#1717) og aldrig genbesøgt. Det ændrer ikke konklusionen: ved +500.198/sæson rammer man 5× efter fem sæsoner.
+
+**#3337 — specialisering betaler sig kraftigt, men kun i to discipliner.** Ved samme pris giver den spidse rytter **+84 % point**; ved samme evne-budget 5,6×. Bredde er spillets dårligste køb (bred allrounder: 0,0 % GC-sejre over 648 simulerede løb). Kontrolleret for pris slår den spidse halvdel den brede i **alle 10 pris-deciler**.
+
+Men bjerg + højbjerg er **84,6 %** af al GC-tid, så kun klatring og spurt er levedygtige specialer. Enkeltstarts-specialisten er død (490 point pr. mio.), og puncheuren har en **7,9× prispræmie** i `riderValuationModelV4.json` fittet på 19 observationer, mens den leverer 503 point pr. mio. mod climberens 1.358. Spillerne betaler altså for meget for en type der ikke leverer — hører hjemme i #3353.
+
+Issuets påstand om at "vinderne har næsten dobbelt TT" holder ikke: genmålt er klatring 2,31× og TT 1,51× mod feltet.
+
+**Konsekvens for #3349:** terræn-mixet halverer skævheden, men lukker den ikke (klatring forbliver 2,8× punch). `GAP_MODEL` er den reelle balance-knap: fladt spread 40 mod bjerg 600 betyder at 31 % af etaperne bidrager 4 % af GC-tiden.
 
 ---
 
