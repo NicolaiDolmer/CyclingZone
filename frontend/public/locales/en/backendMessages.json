@@ -12,6 +12,7 @@
       "objectiveBonus": "Sponsor · Season objective met ({sponsorName})"
     },
     "salary": "Season salaries · {count} riders",
+    "wageDaily": "Daily wage · {count} riders",
     "upkeep": "Upkeep (operating costs) · Division {division}",
     "parachute": "Relegation parachute · Division {oldDivision} → {newDivision}",
     "academyDrift": "Academy upkeep · {count} slots × {drift_per_slot} pts",

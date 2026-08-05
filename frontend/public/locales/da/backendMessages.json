@@ -12,6 +12,7 @@
       "objectiveBonus": "Sponsor · Sæsonmål opnået ({sponsorName})"
     },
     "salary": "Sæsonlønninger · {count} ryttere",
+    "wageDaily": "Dagsløn · {count} ryttere",
     "upkeep": "Drift og vedligehold · Division {division}",
     "parachute": "Nedrykningsfaldskærm · Division {oldDivision} → {newDivision}",
     "academyDrift": "Akademi-drift · {count} pladser × {drift_per_slot} pts",

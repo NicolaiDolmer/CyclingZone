@@ -6,6 +6,8 @@
  * via injected functions for at gøre den enheds-testbar.
  */
 
+import { fetchAllRows } from "./supabasePagination.js";
+
 export const SQUAD_MINS = { 1: 20, 2: 14, 3: 8 };
 
 export const WARNING_STEPS = [
@@ -224,9 +226,11 @@ export async function loadFinalWhistleData({ supabase, window }) {
   ];
   const panicTeamIds = new Set();
   if (sellerIds.length) {
-    const [{ data: sellerTeams }, { data: sellerRiders }] = await Promise.all([
+    // #3331: sellerIds spans EVERY seller across the whole deadline day —
+    // could plausibly exceed 26 teams (× max 38 riders/team) on a busy day.
+    const [{ data: sellerTeams }, sellerRiders] = await Promise.all([
       supabase.from("teams").select("id, division").in("id", sellerIds),
-      supabase.from("riders").select("team_id").in("team_id", sellerIds),
+      fetchAllRows(() => supabase.from("riders").select("team_id").in("team_id", sellerIds).order("id", { ascending: true })),
     ]);
     const teamDiv = Object.fromEntries((sellerTeams || []).map(t => [t.id, t.division]));
     const riderCounts = {};

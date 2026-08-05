@@ -1305,36 +1305,22 @@ export async function simulateRace({
     };
   }
 
-  // Idempotent PR. ETAPE — spejler pcmResultsImport: slet kun de etaper denne
-  // afvikling faktisk dækker, så en gen-afvikling ikke wiper andre etaper.
-  //
-  // #2898: eksplicit error-tjek er PÅKRÆVET her. Fejler denne delete tavst (fx et
-  // statement timeout under samtidige etaper — netop det Sentry fangede i
-  // CYCLINGZONE-3D/3E), ville applyRaceResults nedenfor indsætte de nye rækker
-  // OVEN PÅ de gamle race_results — dublerede points_earned og dobbelt
-  // prize_money (prizePayoutEngine.js). Abort FØR insert, ingen tavs fortsættelse.
+  // #3022 (afløser #2898's separate delete-tjek her): delete-af-berørte-etaper +
+  // insert køres nu ATOMISK i ÉN DB-transaktion via applyRaceResults' interne
+  // apply_race_results_batch-RPC-kald (stageNumbers sat → RPC-branch, se
+  // raceResultsEngine.js). #2898's pointe (en fejlet delete må IKKE lade et
+  // insert køre oven på de gamle rækker) er dermed en Postgres-transaktions-
+  // garanti i stedet for en JS-level check-og-abort — strengere: den lukker
+  // OGSÅ crash-mellem-de-to-kald-vinduet (#3022 fejlmode B), som #2898 ikke
+  // dækkede. Idempotent PR. ETAPE uændret: kun de etaper denne afvikling faktisk
+  // dækker slettes, så en gen-afvikling ikke wiper andre etaper.
   const stagesInRun = [...new Set(resultRows.map((r) => r.stage_number))];
-  if (stagesInRun.length) {
-    const { error: deleteError } = await supabase
-      .from("race_results")
-      .delete()
-      .eq("race_id", race.id)
-      .in("stage_number", stagesInRun);
-    if (deleteError) {
-      const err = new Error(
-        `race_results delete failed for race ${race.id} (stages ${stagesInRun.join(",")}) — ` +
-          `aborting BEFORE insert to prevent duplicated points/prizes: ${deleteError.message}`,
-      );
-      console.error(`  ⚠️  ${err.message}`);
-      captureException(err, { tags: { flow: "race-run", stage: "race-results-delete" }, raceId: race.id });
-      throw err;
-    }
-  }
 
   const applied = await applyRaceResults({
     supabase,
     race: { ...race },
     resultRows,
+    stageNumbers: stagesInRun,
     ensureSeasonStandings,
     updateStandings,
   });
@@ -1969,8 +1955,25 @@ export async function simulateStageByIndex({
     // self-healing, og var aldrig en del af counter↔results-desync'en. Et crash her
     // efterlader korrekte race_results + counter; en næste afvikling/recompute re-deriverer
     // standings. persistRuns (run-snapshot) er ligeledes additiv enrichment.
-    await ensureSeasonStandings(race.season_id);
-    await updateStandings(race.season_id, race.id);
+    //
+    // #2877: FØR denne try/catch væltede en standings-fejl (fx statement timeout
+    // under samtidige etape-afviklinger — se economyEngine.js's withSupabaseRetry-
+    // kommentar) resten af funktionen, OG fordi stages_completed allerede er bumpet
+    // af den atomære apply_stage_result-RPC ovenfor, kører etapen ALDRIG igen (den
+    // reelle udløser: FIX 5-låsen forhindrer re-afvikling af samme stageIndex).
+    // persistRuns/persistIncidents/persistStageMoments/applyFatigue nedenfor er IKKE
+    // self-healende som standings er — de skrives PRÆCIS ÉN gang pr. etape. At lade
+    // en standings-fejl vælte dem gjorde berigelsen gidsel for et recompute den intet
+    // har med at gøre (19 etaper i 14 løb tabt permanent, målt i prod 25/7). Fanget +
+    // Sentry-capturet (synligt, ikke tavst skjult) — standings retter sig selv ved
+    // næste etape/recompute; berigelsen nedenfor skrives uanset udfaldet her.
+    try {
+      await ensureSeasonStandings(race.season_id);
+      await updateStandings(race.season_id, race.id);
+    } catch (err) {
+      console.error(`  ⚠️  standings recompute failed after stage ${stageNumber} (race ${race.id}) — enrichment continues, standings will self-heal on next recompute: ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "standings-recompute" }, raceId: race.id, stageNumber });
+    }
 
     // #3193: samme flytning som fuld-løb-stien ovenfor — refresh rangliste-
     // matviews LIGE EFTER season_standings er opdateret, ikke efter board-
@@ -2064,10 +2067,12 @@ export async function simulateStageByIndex({
     try {
       // Embed = HELE løbets race_results (alle etaper) genlæst fra DB, ikke kun
       // final-etapens nybyggede rækker — så GC-vinder + alle etapevindere vises.
-      const { data: wholeRaceRows } = await supabase
+      // #3331: grand tours already exceed 1000 race_results rows in prod — paginate.
+      const wholeRaceRows = await fetchAllRows(() => supabase
         .from("race_results")
         .select("result_type, rank, rider_name, stage_number")
-        .eq("race_id", race.id);
+        .eq("race_id", race.id)
+        .order("id", { ascending: true }));
       // S4 (#1176): stage-by-stage-stiens `incidents`-variabel er scopet til KUN
       // final-etapen (linje ~1483 filtrerer på stageNumber) — for DNF-linjen i
       // hele-løbet-embeddet re-hentes derfor race_incidents for HELE løbet her.

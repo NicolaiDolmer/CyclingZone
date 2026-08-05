@@ -405,6 +405,11 @@ export const SEED_RACE_STAGE_MOMENTS = [
   { id: "mom-d2-s2-5", race_id: "race-done-2", stage_number: 2, moment_key: "solo_win", params: { riderId: RIDERS[1].id, gapSeconds: 45 }, significance: 55, rider_ids: [RIDERS[1].id], team_ids: [RIVAL_TEAM.id] },
   { id: "mom-d2-s2-6", race_id: "race-done-2", stage_number: 2, moment_key: "tag_gave_everything", params: { riderId: RIDERS[1].id }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
   { id: "mom-d2-s2-7", race_id: "race-done-2", stage_number: 2, moment_key: "tag_saved_effort", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  // #3336: helper_work-forklaret favorit-nedtur på Mikkel (stage 2) — demonstrerer
+  // at tag_favorite_collapse's badge-tooltip nu viser DEN FAKTISKE årsag
+  // (ikke altid jour_sans-teksten som Adas tag_jour_sans ovenfor).
+  { id: "mom-d2-s2-8", race_id: "race-done-2", stage_number: 2, moment_key: "favorite_off_day", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 65, rider_ids: [RIDERS[1].id], team_ids: [] },
+  { id: "mom-d2-s2-9", race_id: "race-done-2", stage_number: 2, moment_key: "tag_favorite_collapse", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
 ];
 
 // #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,
@@ -1129,16 +1134,20 @@ export const SEED_PROJECTION = {
 // GET /api/me/onboarding-progress (steps[{key,done}] + completed_count/total_count
 // + dismissed/established). Den gamle mock returnerede {steps:[], completed_steps,
 // completion_pct} — en form ingen kode læser, så dashboard-kortet stod uden trin og
-// "Show me how"-knappen kunne slet ikke klikkes i preview. Trin 1 er markeret done,
-// så NÆSTE trin er træning (trin 2) og touren på /training kan startes fra kortet.
+// "Show me how"-knappen kunne slet ikke klikkes i preview.
+// #3007: trin 1 (first_bid_placed) sat til IKKE fuldført (var før "done" for at vise
+// trin 2's tour by default). Det betyder AuctionsFirstBidHint + "Første valg"-
+// anbefalingen på /auctions nu er synlig uden manuel localStorage-omgåelse, så
+// ejeren kan se den flade der rent faktisk afgør aktivering direkte i preview.
+// Ingen tests refererer denne seed (kun mockHandlers.js bruges af Playwright).
 export const SEED_ONBOARDING_PROGRESS = {
   steps: [
-    { key: "first_bid_placed", done: true },
+    { key: "first_bid_placed", done: false },
     { key: "first_training_run", done: false },
     { key: "first_squad_selected", done: false },
     { key: "board_plan_set", done: false },
   ],
-  completed_count: 1,
+  completed_count: 0,
   total_count: 4,
   dismissed: false,
   established: false,

@@ -158,6 +158,14 @@ def is_secret_path(p):
         return True
     if "/secrets/" in pl.lower():
         return True
+    # #3342: get-test-token.mjs' sikre default skriver JWT-payload til
+    # .codex.local/test-token*.json. Filen er lige saa secret som en direkte
+    # Read af .env — bloker den samme vej. Match baade relative stier
+    # (".codex.local/...", uden leading slash) og absolutte/nested stier.
+    pl_lower = pl.lower()
+    if (pl_lower.startswith(".codex.local/") or "/.codex.local/" in pl_lower) and \
+       base.lower().startswith("test-token"):
+        return True
     return False
 
 hits = [p for p in paths if is_secret_path(p)]
@@ -303,12 +311,36 @@ if printf '%s' "$CMDLO" | grep -Eq '(^|[^a-z])infisical[[:space:]]+(secrets|expo
   # Se key-navne i Infisical-dashboardet. ALDRIG 'infisical secrets'/'--plain'/'export' i agent-session."
 fi
 
-# --- Cat / Get-Content på .env-filer ---
+# --- get-test-token.mjs --print (#3342) ---
+# Scriptets sikre default skriver JWT'et til en gitignored fil og printer kun
+# stien. `--print` er det eksplicitte opt-out der genindfører den gamle
+# adfærd (raw access_token på stdout = transcript). Leaket 2026-08-04 20:00
+# under #3336-arbejde. Blokeres KATEGORISK — ingen safe-pipe-undtagelse,
+# ligesom infisical secrets/export ovenfor.
+if printf '%s' "$CMDLO" | grep -Eq 'get-test-token\.mjs' && \
+   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])--print([[:space:]=]|$)'; then
+  block "get-test-token.mjs --print (printer Supabase JWT til stdout = transcript)" \
+    "  # Sikker default (skriver til gitignored fil, printer kun stien):
+  node scripts/get-test-token.mjs --email=<email>
+  # Brug filens STI i næste kommando — læs/print ALDRIG selve indholdet.
+  # --print er KUN til manuel terminalbrug UDENFOR Claude Code."
+fi
+
+# --- Cat / Get-Content på .env-filer + get-test-token.mjs-output (#3342) ---
 if printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])cat[[:space:]]+([^|;&]+/)?\.env'; then
   block "cat .env (direkte secret-file læsning)" \
     "  # Kun key-navne:
   grep -oE '^[A-Z_][A-Z0-9_]+' backend/.env
   # Eller åben fil i editor manuelt (uden agent)."
+fi
+
+if printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])(cat|type)[[:space:]]+([^|;&]+/)?test-token[^[:space:]]*\.json' || \
+   printf '%s' "$CMDLO" | grep -Eq 'get-content[[:space:]]+([^|;&]+/)?test-token[^[:space:]]*\.json' || \
+   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])gc[[:space:]]+([^|;&]+/)?test-token[^[:space:]]*\.json'; then
+  block "cat/Get-Content på get-test-token.mjs-output (printer JWT til stdout)" \
+    "  # Filen ER outputtet fra get-test-token.mjs — samme leak som --print.
+  # Brug filens STI i næste kommando i stedet for at printe indholdet
+  # (fx lad en anden proces læse filen selv, uden at ekko'e værdien)."
 fi
 
 if printf '%s' "$CMDLO" | grep -Eq 'get-content[[:space:]]+([^|;&]+/)?\.env' || \

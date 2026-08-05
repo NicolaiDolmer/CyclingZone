@@ -1,0 +1,193 @@
+{
+  "$comment": "Kendte upaginerede selects mod deny-listede tabeller (ratchet — maa kun skrumpe). De fleste er verificeret sikre pr. 2026-08-05 (single-team/single-race-scoping, se PR-body for #3331-audittens rækketal), men ikke alle er annoteret inline endnu. Genereret af scripts/lint-pagination-guard.mjs --update-baseline. Refs #3331. Nye overtrædelser må IKKE tilføjes her — paginér med fetchAllRows, eller tilføj en \"pagination-safe: <begrundelse>\"-kommentar og fjern entryen herfra.",
+  "files": {
+    "backend/lib/academyIntakeExpirySweep.js": {
+      "riders": 1
+    },
+    "backend/lib/achievementEngine.js": {
+      "riders": 2
+    },
+    "backend/lib/aiRecoverySweep.js": {
+      "riders": 1
+    },
+    "backend/lib/aiTeamGenerator.js": {
+      "riders": 2,
+      "race_entries": 1
+    },
+    "backend/lib/betaResetService.js": {
+      "riders": 1
+    },
+    "backend/lib/boardConsequences.js": {
+      "riders": 2
+    },
+    "backend/lib/boardMidSeason.js": {
+      "riders": 1
+    },
+    "backend/lib/boardSequentialNegotiation.js": {
+      "riders": 1
+    },
+    "backend/lib/dailyTrainingEngine.js": {
+      "riders": 1
+    },
+    "backend/lib/newAccountGates.js": {
+      "race_entries": 1
+    },
+    "backend/lib/notificationService.js": {
+      "riders": 1
+    },
+    "backend/lib/raceBinding.js": {
+      "race_stage_schedule": 2,
+      "race_entries": 1
+    },
+    "backend/lib/raceEntryCleanup.js": {
+      "race_entries": 1
+    },
+    "backend/lib/raceEntryGenerator.js": {
+      "race_entries": 2
+    },
+    "backend/lib/racePeakPlans.js": {
+      "race_stage_profiles": 1,
+      "race_stage_schedule": 1
+    },
+    "backend/lib/raceRunner.js": {
+      "race_stage_profiles": 1,
+      "race_stage_schedule": 1,
+      "race_entries": 2,
+      "riders": 1
+    },
+    "backend/lib/raceSelection.js": {
+      "riders": 1,
+      "race_stage_profiles": 1,
+      "race_entries": 1
+    },
+    "backend/lib/raceStageRolesApi.js": {
+      "race_entries": 1,
+      "riders": 1
+    },
+    "backend/lib/riderValueRefresh.js": {
+      "riders": 1
+    },
+    "backend/lib/scoutReportVisibility.js": {
+      "riders": 1
+    },
+    "backend/lib/scoutSweep.js": {
+      "riders": 1
+    },
+    "backend/lib/squadEnforcement.js": {
+      "riders": 1
+    },
+    "backend/lib/squadRiskGuard.js": {
+      "riders": 1
+    },
+    "backend/lib/stageRaceTransferDefer.js": {
+      "race_entries": 1,
+      "riders": 1
+    },
+    "backend/lib/stageScheduler.js": {
+      "race_stage_schedule": 1
+    },
+    "backend/lib/stallWatchdog.js": {
+      "race_stage_schedule": 1
+    },
+    "backend/lib/teamProfileEngine.js": {
+      "riders": 2
+    },
+    "backend/lib/tierCalendarMaterializer.js": {
+      "race_stage_schedule": 1
+    },
+    "backend/lib/transferExecution.js": {
+      "riders": 3
+    },
+    "backend/lib/wageDeductionSweep.js": {
+      "riders": 1
+    },
+    "backend/routes/api.js": {
+      "riders": 19,
+      "race_stage_schedule": 2,
+      "race_entries": 7,
+      "race_stage_profiles": 2
+    },
+    "backend/scripts/boardIdentityBackfillDryRun.js": {
+      "riders": 1
+    },
+    "backend/scripts/convertHillyToMountainClassics.js": {
+      "race_stage_profiles": 1
+    },
+    "backend/scripts/dev/backfillAcademyDeriveTail.js": {
+      "riders": 1
+    },
+    "backend/scripts/dev/cleanup-ghost-race-entries.mjs": {
+      "riders": 1
+    },
+    "backend/scripts/dev/diag-0c-overlap.mjs": {
+      "race_stage_schedule": 1
+    },
+    "backend/scripts/dev/diag-0c-season-state.mjs": {
+      "race_stage_schedule": 1
+    },
+    "backend/scripts/dev/rerun-corrupt-races-dryrun.mjs": {
+      "race_stage_profiles": 1,
+      "race_stage_schedule": 2,
+      "race_entries": 2
+    },
+    "backend/scripts/dev/reset-division-3.mjs": {
+      "riders": 1
+    },
+    "backend/scripts/dev/verify-calendar-readmodel.mjs": {
+      "race_stage_schedule": 1,
+      "race_stage_profiles": 1
+    },
+    "backend/scripts/driftMonitor.js": {
+      "riders": 2
+    },
+    "backend/scripts/gcAccumulationScorecard.js": {
+      "race_stage_profiles": 1
+    },
+    "backend/scripts/repair2251Tier4GrandTours.js": {
+      "race_stage_schedule": 1
+    },
+    "backend/scripts/repair2276Div4Cascade.js": {
+      "race_stage_schedule": 1,
+      "race_entries": 1
+    },
+    "frontend/src/components/CompareDrawer.jsx": {
+      "riders": 2
+    },
+    "frontend/src/components/race/CompletedRacesExplorer.jsx": {
+      "race_stage_profiles": 1
+    },
+    "frontend/src/components/race/StageScheduleCard.jsx": {
+      "race_stage_schedule": 1
+    },
+    "frontend/src/components/rider/RiderManageActions.jsx": {
+      "race_entries": 1
+    },
+    "frontend/src/pages/DashboardPage.jsx": {
+      "race_stage_schedule": 1
+    },
+    "frontend/src/pages/RaceDetailPage.jsx": {
+      "race_stage_profiles": 1,
+      "race_stage_schedule": 1
+    },
+    "frontend/src/pages/ResultaterPage.jsx": {
+      "race_stage_schedule": 1,
+      "riders": 1
+    },
+    "frontend/src/pages/RiderComparePage.jsx": {
+      "riders": 1
+    },
+    "frontend/src/pages/RiderStatsPage.jsx": {
+      "riders": 2
+    },
+    "frontend/src/pages/RidersPage.jsx": {
+      "riders": 1
+    },
+    "frontend/src/pages/TeamPage.jsx": {
+      "race_entries": 1,
+      "riders": 2
+    },
+    "frontend/src/pages/TrainingPage.jsx": {
+      "riders": 1
+    }
+  }
+}

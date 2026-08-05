@@ -10,7 +10,7 @@
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { notifyTeamOwner } from "./notificationService.js";
-import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contractSeed.js";
+import { contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
@@ -77,11 +77,17 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
 /**
  * Udfør ét graduerings-udfald. action ∈ promote|sell|release.
  *
- * - promote: is_academy=false + NY senior-løn (overskriver arvet akademi-løn,
- *   ejer-beslutning 3) + senior-kontrakt. Kræver ledig senior-plads (division-cap).
+ * - promote: is_academy=false. #1309-kontrakt-invariant (#2881): kun en reelt
+ *   kontraktløs rytter får en ny standard-kontrakt via contractOnAcquirePatch —
+ *   en akademirytter der graduerer beholder næsten altid sin eksisterende
+ *   kontrakt (arvet fra intake eller et tidligere akademi-ophold) UÆNDRET.
+ *   Kræver ledig senior-plads (division-cap).
  * - sell:    opret senior-auktion (seller=hold, is_youth=false). Rytteren forbliver
  *   is_academy=true (uden for cap) indtil auktions-finalization afgør udfaldet.
- * - release: team_id=NULL, is_academy=false (free agent).
+ * - release: team_id=NULL, is_academy=false, salary/contract_length/
+ *   contract_end_season=NULL (fri agent — #1309: kontrakter kun på ejede
+ *   ryttere, ellers "arver" et senere erhvervelses-kald fejlagtigt akademi-
+ *   kontrakten via contractOnAcquirePatch).
  *
  * @throws 'invalid_action' | 'not_pending' | 'rider_not_found' | 'squad_cap_violation'
  */
@@ -97,7 +103,7 @@ export async function resolveGraduation(supabase, {
   if (!grad || grad.status !== "pending") throw new Error("not_pending");
 
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, base_value, prize_earnings_bonus, current_production_value, market_value, salary")
+    .select("id, team_id, firstname, lastname, base_value, prize_earnings_bonus, current_production_value, market_value, salary, contract_length, contract_end_season")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 
@@ -107,17 +113,21 @@ export async function resolveGraduation(supabase, {
     const future = state?.future_count ?? state?.rider_count ?? 0;
     if (future + 1 > cap) throw new Error("squad_cap_violation");
 
-    // NY senior-løn (overskriv arvet akademi-løn) — #2594: cpv × divisions-sats.
-    const salary = computeFrozenSalary({ ...rider, division: state?.division });
-    const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
+    // #2881/#1309: samme gate som academyTransfer.js promote() + al anden
+    // erhvervelse — kun en rytter der reelt er kontraktløs (salary/end_season
+    // == null, fx den sjældne healing-case) får en frisk standard-kontrakt.
+    // En akademirytter der graduerer HAR næsten altid allerede en gyldig
+    // kontrakt (fra intake eller et tidligere demote()-ophold) — den arves
+    // UÆNDRET, regenerér ALDRIG (spec-beslutning 3 handlede om HVILKEN
+    // løn-formel der bruges til en NY kontrakt, ikke om ubetinget overskrivning).
+    const contractPatch = contractOnAcquirePatch(rider, seasonNumber, { division: state?.division });
     const { error } = await supabase.from("riders").update({
       is_academy: false,
-      salary,
-      contract_length: length,
-      contract_end_season: computeContractEndSeason(seasonNumber, length),
+      ...contractPatch,
     }).eq("id", riderId);
     if (error) throw new Error(`resolveGraduation promote update: ${error.message}`);
     await finishGraduation(supabase, { gradId: grad.id, status: "promoted", teamId, rider, now, action, notify });
+    const salary = contractPatch.salary ?? rider.salary;
     return { riderId, action: "promoted", salary };
   }
 
@@ -127,9 +137,17 @@ export async function resolveGraduation(supabase, {
     return { riderId, action: "sold" };
   }
 
-  // release
+  // release: fri agent — kontrakter kun på ejede ryttere (#1309), så salary/
+  // contract_length/contract_end_season nulles her, samme mønster som
+  // contractExpiryRelease.js/retirementRelease.js. Uden dette ville rytteren
+  // stå som fri agent med en IKKE-null akademi-kontrakt, og et senere
+  // contractOnAcquirePatch-kald (auktion/transfer) ville fejlagtigt "arve" den
+  // stale kontrakt i stedet for at give en frisk (#2881-følgefund).
   const { error } = await supabase.from("riders")
-    .update({ team_id: null, is_academy: false }).eq("id", riderId);
+    .update({
+      team_id: null, is_academy: false,
+      salary: null, contract_length: null, contract_end_season: null,
+    }).eq("id", riderId);
   if (error) throw new Error(`resolveGraduation release update: ${error.message}`);
   // #1906 defense-in-depth: ryd rytterens fremtidige race_entries så de ikke hænger ved som ghost.
   await clearFutureRaceEntriesSafe({ supabase, riderId, label: "academy_release" });

@@ -52,10 +52,10 @@ test("scoreRiderType: kontrast = snit(positive z) − snit(negative z) (hånd-re
 });
 
 test("scoreRiderType: kun positive vægte → ingen negativ-straf", () => {
-  // rouleur = { flat:2, endurance:1, climbing:-1, sprint:-1 }
+  // rouleur = { flat:4, endurance:1, climbing:-1, sprint:-1 } (#3325: flat 2→4)
   const ab = { flat: 50, endurance: 20, climbing: 0, sprint: 0 };
-  // pos = (2·50 + 1·20)/3 = 40. neg = (0+0)/2 = 0. score = 40.
-  assert.equal(scoreRiderType(ab, RIDER_TYPES.find((t) => t.key === "rouleur").weights, NEUTRAL_BASELINE), 40);
+  // pos = (4·50 + 1·20)/5 = 44. neg = (0+0)/2 = 0. score = 44.
+  assert.equal(scoreRiderType(ab, RIDER_TYPES.find((t) => t.key === "rouleur").weights, NEUTRAL_BASELINE), 44);
 });
 
 // ── Guards ────────────────────────────────────────────────────────────────────
@@ -151,9 +151,11 @@ test("fixture: brostensspecialist → brostensrytter", () => {
 });
 
 test("fixture: ægte etapeløbsrytter → gc", () => {
+  // #3325: climber/tt trukket ned (mindre punch/tempo/endurance-overlap) så gc-
+  // profilen (høj climbing+time_trial+recovery SAMTIDIG) vinder med klar margin.
   const gc = rider({
-    climbing: 82, time_trial: 70, recovery: 68, tempo: 72, endurance: 66,
-    durability: 60, punch: 55, prolog: 50, flat: 45, sprint: 22, acceleration: 30,
+    climbing: 85, time_trial: 80, recovery: 75, tempo: 50, endurance: 50,
+    durability: 50, punch: 40, prolog: 50, flat: 30, sprint: 15, acceleration: 20,
   });
   assert.equal(computeRiderTypes(gc, BASELINE).primary.key, "gc");
 });

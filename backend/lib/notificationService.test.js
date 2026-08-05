@@ -326,8 +326,21 @@ function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = nul
                 return {
                   neq(column2, _value2) {
                     assert.equal(column2, "race_id");
-                    const data = otherResults.filter((r) => values.includes(r.team_id));
-                    return Promise.resolve({ data, error: null });
+                    return {
+                      // #3331: defaultFetchFirstTimeManagers now pages via
+                      // fetchAllRows, which chains .order() then .range() on
+                      // the query builder. Test data is small (< 1 page).
+                      order(column3, options) {
+                        assert.equal(column3, "id");
+                        assert.deepEqual(options, { ascending: true });
+                        return {
+                          range(_from, _to) {
+                            const data = otherResults.filter((r) => values.includes(r.team_id));
+                            return Promise.resolve({ data, error: null });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },

@@ -141,6 +141,10 @@ export async function loadGoalContextForBoard({
       // Podie-placeringer (rank 1-3 i GC) i klassiker-kategorien. #1238: én query
       // over den kanoniske klasse-liste; Monuments-delmængden + den fulde
       // klassiker-optælling (kun endagsløb) splittes i JS via de delte helpers.
+      // pagination-safe: one team's rank<=3 GC results, further narrowed to
+      // classic-only races within the plan's season window — verified max 54
+      // rows per team repo-wide even WITHOUT the race_class/season narrowing
+      // (#3331 audit, 2026-08-05), far under the 1000-row cap.
       supabase
         .from("race_results")
         .select("rank, races!inner(race_class, race_type, season_id)")
@@ -150,6 +154,9 @@ export async function loadGoalContextForBoard({
         .in("races.race_class", CLASSIC_RACE_CLASSES)
         .in("races.season_id", planSeasonIds),
       // Etapeløb-trøjer (point/bjerg/young, rank=1)
+      // pagination-safe: one team's rank=1 jersey wins, further narrowed to
+      // the plan's season window — verified max 23 rows per team repo-wide
+      // even WITHOUT the season narrowing (#3331 audit, 2026-08-05).
       supabase
         .from("race_results")
         .select("rank, races!inner(season_id)")
@@ -158,6 +165,9 @@ export async function loadGoalContextForBoard({
         .eq("rank", 1)
         .in("races.season_id", planSeasonIds),
       // Netto transfer-balance (positive = transfer_in/salg, negative = transfer_out/køb)
+      // pagination-safe: one team's transfer-only transactions, narrowed to
+      // the plan's season window — verified max 114 rows per team repo-wide
+      // even WITHOUT the season narrowing (#3331 audit, 2026-08-05).
       supabase
         .from("finance_transactions")
         .select("amount, type")

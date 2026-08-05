@@ -2,9 +2,16 @@
 // Backfill riders.primary_type / secondary_type (#49 / #1101-kæden).
 //
 // Tynd CLI-wrapper om backend/lib/backfillCores.js → runRiderTypesBackfill (#1103).
-// Idempotent + deterministisk: computeRiderTypes pr. aktive rytter ud fra dens
-// game-abilities + den fittede baseline. Påvirker ikke økonomien — kolonnerne
-// bruges kun til visning + filtrering.
+// Idempotent + deterministisk: computeRiderTypes pr. rytter ud fra dens
+// ability_caps (POTENTIALE, #3325 — ikke de nuværende evner) + den caps-fittede
+// baseline.
+//
+// ØKONOMISK SIDE-EFFEKT (#3325, ikke længere "kun visning"): predictBaseValue
+// bruger primary_type som en kategorisk offset (riderValuation.js), så en type-
+// ændring HER flytter base_value/market_value på næste refreshChangedRiderValues-
+// sweep (daglig trænings-tick / API-kald), selvom ingen abilities ændrede sig.
+// Kør IKKE denne backfill uden at have læst PR-beskrivelsen for #3325's målte
+// værdi-pyramide-forskydning (fictionalLaunchPopulation.test.js).
 //
 //   node scripts/backfillRiderTypes.js            # apply
 //   node scripts/backfillRiderTypes.js --dry-run  # beregn + vis fordeling, skriv ikke

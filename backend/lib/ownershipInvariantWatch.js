@@ -6,7 +6,7 @@
 // detekterer hvis invarianten nogensinde brydes igen, uanset årsag — den
 // reparerer INTET, den alarmerer.
 //
-// FIRE invarianter der aldrig må være sande:
+// FEM invarianter der aldrig må være sande:
 //   A. En aktiv/extended UNGDOMSauktion hvor rytteren er hold-ejet
 //      (team_id NOT NULL eller pending_team_id NOT NULL).
 //   B. En aktiv/extended auktion UDEN sælger (seller_team_id IS NULL) der
@@ -27,6 +27,21 @@
 //      (frie AI-akademi-prospekter med ai_team_id skal fortsat blokeres), så
 //      vagten fanger klassen i stedet, uanset hvilken frigivelses-sti der
 //      skabte den.
+//   E. (#3330) En STALE parkeret transfer: pending_team_id NOT NULL i mere end
+//      PENDING_TRANSFER_STALE_HOURS. stageRaceTransferDefer.js parkerer et
+//      holdskifte på pending_team_id når en rytter handles midt i et aktivt
+//      fleretape-løb (#1995); flushen kaldes KUN ved løbs-finalisering for DET
+//      løbs deltagere (raceRunner.js). Falder flushen på gulvet (løbet
+//      finaliseres ad en anden vej, admin-genkørsel springer over) hænger
+//      rytteren i limbo for evigt — og INDTIL denne invariant blev tilføjet
+//      blev pending_team_id != null aktivt regnet som "gyldigt ejet" (se
+//      isOwned nedenfor, som STADIG er korrekt til invariant A/B: en rytter
+//      der reelt er midt i en aktiv handel skal ikke kunne komme på en
+//      ungdoms-/sælgerløs auktion). Prod-evidens: Vasco Fernandes stod
+//      parkeret 22/6→4/8 (>40 dage) med en betalt, aldrig-leveret handel —
+//      rapporteret af en spiller i Discord. #3330's heal-sweep
+//      (deferredTransferHealSweep.js) reparerer nu proaktivt; DENNE invariant
+//      er backstoppet for hvis den heal-sweep selv fejler/er slukket.
 //
 // READ-ONLY: ingen DB-writes, ingen ny tabel, ingen migration. Én Sentry-
 // capture pr. invariant pr. tick med FAST fingerprint (mirror ai-trim-
@@ -38,6 +53,22 @@ import { findStaleOfferedIntake } from "./academyIntakeReconcile.js";
 
 const CHUNK = 1000;
 const SAMPLE_LIMIT = 50;
+
+// #3330: hvor længe må pending_team_id stå parkeret før det er et invariant-
+// brud i stedet for en legitim, igangværende deferral (#1995)? Valgt
+// KONSERVATIVT (48t) — bevidst længere end det længste fleretape-løb realistisk
+// kan tage (typisk 1-3 dages afvikling i denne motor), så en ÆGTE igangværende
+// deferral aldrig falsk-alarmerer (samme lektie som STALE_BACKSTOP_HOURS i
+// aiTeamTrimHealSweep.js: CYCLINGZONE-31 lærte os at en for stram tærskel spammer
+// Sentry på lovlige, langvarige tilstande). Målt mod riders.updated_at, som
+// #3330 nu stemples eksplicit ved HVER parkering (squadEnforcement.js,
+// transferExecution.js, auctionFinalization.js — se deres #3330-kommentarer) —
+// riders har ingen auto-touch-trigger, så uden den eksplicitte stempling ville
+// updated_at bare være row-creation-tidspunktet og gøre denne invariant enten
+// altid eller aldrig sand. En LEGACY parkeret række (stemplet FØR denne PR,
+// fx Vasco selv) har en gammel updated_at og fanges derfor korrekt af samme
+// tærskel uden nogen data-reparation.
+export const PENDING_TRANSFER_STALE_HOURS = 48;
 
 // Alle aktive/extended auktioner — begge invariant A og B læser fra samme
 // bagvedliggende population, så vi henter den én gang.
@@ -82,6 +113,31 @@ async function fetchStrandedAcademyFreeAgents(supabase) {
       .order("id"));
 }
 
+// Invariant E (#3330): alle parkerede holdskifter (pending_team_id NOT NULL).
+// Server-side filtreret på pending_team_id (billig — kun 0-nogle-få rækker
+// forventet i praksis); ALDER afgøres af kalderen (runOwnershipInvariantWatch)
+// mod et Date-parset updated_at, ikke ved streng-sammenligning — Postgres/
+// PostgREST's timestamp-format ("2026-06-22 13:48:45.599546+00") matcher ikke
+// nødvendigvis en JS toISOString()-cutoff byte-for-byte.
+async function fetchAllPendingTransfers(supabase) {
+  return fetchAllRows(() =>
+    supabase
+      .from("riders")
+      .select("id, firstname, lastname, team_id, pending_team_id, updated_at")
+      .not("pending_team_id", "is", null)
+      .order("id"));
+}
+
+// Fail-closed: en række uden (parsebar) updated_at har UKENDT alder, ikke en
+// legitim frisk parkering — tæller derfor som stale. riders.updated_at er i
+// praksis altid sat (DEFAULT now() ved row-creation), så dette rammer kun en
+// teoretisk NULL/korrupt værdi, men fail-closed er den sikre retning her.
+function pendingTransferAgeMs(rider, now) {
+  const setAt = rider.updated_at ? new Date(rider.updated_at).getTime() : NaN;
+  if (Number.isNaN(setAt)) return Infinity;
+  return now.getTime() - setAt;
+}
+
 function isOwned(ridersById, riderId) {
   const rider = ridersById.get(riderId);
   if (!rider) return false;
@@ -101,23 +157,24 @@ function auctionFindingSample(auctions, ridersById) {
 }
 
 /**
- * Kør de tre ownership-invariant-tjek. Pure I/O + notify — INGEN writes.
+ * Kør de fem ownership-invariant-tjek. Pure I/O + notify — INGEN writes.
  *
  * @param {object}   args
  * @param {object}   args.supabase
  * @param {(err:Error, ctx:object) => void} [args.captureExceptionFn]
- * @param {Date}     [args.now]  DI-hook (uændret behov lige nu — alle tre tjek
- *                                er nutids-øjebliksbilleder, ikke tidsvinduer),
- *                                accepteret for konsistens med de øvrige guards.
- * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number, strandedAcademy:number}, alerted:boolean}>}
+ * @param {Date}     [args.now]  DI-hook — bruges nu af invariant E (#3330) til
+ *                                pending-transfer-alderstjekket; de øvrige fire
+ *                                tjek forbliver nutids-øjebliksbilleder.
+ * @param {number}   [args.pendingTransferStaleHours] override af PENDING_TRANSFER_STALE_HOURS (tests).
+ * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number, strandedAcademy:number, stalePendingTransfer:number}, alerted:boolean}>}
  */
 export async function runOwnershipInvariantWatch({
   supabase,
   captureExceptionFn,
   now = new Date(),
+  pendingTransferStaleHours = PENDING_TRANSFER_STALE_HOURS,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
-  void now; // reserveret DI-hook, ingen tidsvindue-logik pt.
 
   const activeAuctions = await fetchActiveAuctions(supabase);
   const youthAuctions = activeAuctions.filter((a) => a.is_youth === true);
@@ -134,6 +191,14 @@ export async function runOwnershipInvariantWatch({
   const sellerlessOwned = sellerlessAuctions.filter((a) => isOwned(ridersById, a.rider_id));
   const staleIntake = await findStaleOfferedIntake(supabase);
   const strandedAcademy = await fetchStrandedAcademyFreeAgents(supabase);
+
+  // Invariant E (#3330): pending_team_id parkeret længere end den konservative
+  // grænse — se PENDING_TRANSFER_STALE_HOURS for begrundelsen af tærsklen.
+  const pendingStaleMs = pendingTransferStaleHours * 60 * 60 * 1000;
+  const allPending = await fetchAllPendingTransfers(supabase);
+  const stalePendingTransfer = allPending.filter(
+    (r) => pendingTransferAgeMs(r, now) > pendingStaleMs
+  );
 
   let alerted = false;
 
@@ -193,6 +258,28 @@ export async function runOwnershipInvariantWatch({
     );
   }
 
+  if (stalePendingTransfer.length > 0) {
+    alerted = true;
+    captureExceptionFn?.(
+      new Error(
+        `Ownership-invariant-brud: ${stalePendingTransfer.length} rytter med pending_team_id parkeret > ${pendingTransferStaleHours}t (#3330)`
+      ),
+      {
+        tags: { cron: "ownership-invariant-watch" },
+        fingerprint: ["stale-pending-team-id-transfer"],
+        extra: {
+          count: stalePendingTransfer.length,
+          sample: stalePendingTransfer.slice(0, SAMPLE_LIMIT).map((r) => ({
+            riderId: r.id,
+            teamId: r.team_id ?? null,
+            pendingTeamId: r.pending_team_id,
+            updatedAt: r.updated_at ?? null,
+          })),
+        },
+      }
+    );
+  }
+
   return {
     checked: activeAuctions.length,
     findings: {
@@ -200,6 +287,7 @@ export async function runOwnershipInvariantWatch({
       sellerlessOwned: sellerlessOwned.length,
       staleIntake: staleIntake.length,
       strandedAcademy: strandedAcademy.length,
+      stalePendingTransfer: stalePendingTransfer.length,
     },
     alerted,
   };

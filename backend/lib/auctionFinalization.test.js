@@ -2746,7 +2746,8 @@ test("finalizeAuctionById parkerer holdskiftet når rytteren er i et aktivt etap
   assert.equal(result.ok, true);
   assert.equal(result.code, "completed", "auktionen fuldføres straks (Model B)");
   // Holdskiftet er parkeret: pending_team_id, IKKE team_id/acquired_at.
-  assert.deepEqual(riderUpdates, [{ pending_team_id: "buyer-team" }]);
+  // #3330: updated_at stemples eksplicit ved parkering (forward-guard-grundlag).
+  assert.deepEqual(riderUpdates, [{ pending_team_id: "buyer-team", updated_at: "2026-07-03T11:00:00.000Z" }]);
   // Vinder-beskeden forklarer at rytteren ankommer efter løbet.
   const won = notifications.find((n) => n.type === "auction_won" && n.teamId === "buyer-team");
   assert.match(won.message, /etapeløb/);
