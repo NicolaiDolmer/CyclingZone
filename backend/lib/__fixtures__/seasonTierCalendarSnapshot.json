@@ -1,0 +1,881 @@
+{
+  "source": "sæson 2 (live race_pool + races), én repræsentativ pulje pr. tier — snapshot via raceRouteRealismDrawHarness.js --refresh",
+  "seasonNumber": 2,
+  "seasonId": "00000000-0000-0000-0000-000000000002",
+  "tiers": [
+    {
+      "tier": 1,
+      "races": [
+        {
+          "name": "Hamburger Klassiker",
+          "external_id": "efb4c1e793743dbf",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "La Doyenne des Ardennes",
+          "external_id": "b9dcaf3b7502a487",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Tour de la Vistule",
+          "external_id": "8e4697e7abdd241d",
+          "race_type": "stage_race",
+          "stages": 7,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Tour des Volcans d'Auvergne",
+          "external_id": "56e8cc25a3a554e0",
+          "race_type": "stage_race",
+          "stages": 8,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "La Classique Bretonne",
+          "external_id": "7d190d4b60dc0573",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Giro della Penisola",
+          "external_id": "0517c7c06ff46e30",
+          "race_type": "stage_race",
+          "stages": 21,
+          "terrain_archetype": "grand_tour"
+        },
+        {
+          "name": "Vuelta Vasca",
+          "external_id": "a67745cde67181de",
+          "race_type": "stage_race",
+          "stages": 6,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "La Corsa dei Due Mari",
+          "external_id": "5ba80f6e6ceda7ac",
+          "race_type": "stage_race",
+          "stages": 7,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Volta Catalana",
+          "external_id": "6f1c2acd3f2c4aff",
+          "race_type": "stage_race",
+          "stages": 7,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "La Course au Soleil",
+          "external_id": "996943c650cdd061",
+          "race_type": "stage_race",
+          "stages": 8,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "De Vlaamse Ronde",
+          "external_id": "fb8a6a4c9762e506",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Ronde van de Lage Landen",
+          "external_id": "406156a532092ff9",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Tour of South Australia",
+          "external_id": "0ff35661f3b390f7",
+          "race_type": "stage_race",
+          "stages": 6,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Tour des Alpes Suisses",
+          "external_id": "7ebee31329278908",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "Clásica del Cantábrico",
+          "external_id": "8e03312380623984",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "L'Enfer du Nord",
+          "external_id": "2492f98e221c8b6f",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Westkust Klassieker",
+          "external_id": "d2e66c0bcaff51c3",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "La Classica d'Autunno",
+          "external_id": "f162dd79bd523ec9",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "mountain_classic"
+        },
+        {
+          "name": "Tour de l'Hexagone",
+          "external_id": "9842de2c8a2038b7",
+          "race_type": "stage_race",
+          "stages": 21,
+          "terrain_archetype": "grand_tour"
+        },
+        {
+          "name": "Tour du Léman",
+          "external_id": "686f5c0c685b51fd",
+          "race_type": "stage_race",
+          "stages": 6,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "Terre di Toscana",
+          "external_id": "6ada4b5428dfd7b2",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Milano–Riviera",
+          "external_id": "6b92159c1f118b7d",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "long_sprint_classic"
+        },
+        {
+          "name": "Le Mur de Huy",
+          "external_id": "7afe652a93f56e13",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Vuelta Ibérica",
+          "external_id": "09c303ddf55156ff",
+          "race_type": "stage_race",
+          "stages": 21,
+          "terrain_archetype": "grand_tour"
+        },
+        {
+          "name": "Klassieker van Harelbeke",
+          "external_id": "eb71c9752a295a2f",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        }
+      ]
+    },
+    {
+      "tier": 2,
+      "races": [
+        {
+          "name": "Tour d'Anatolie",
+          "external_id": "8c5d66f8693bb2f2",
+          "race_type": "stage_race",
+          "stages": 8,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Tour Belge",
+          "external_id": "fcc733e30342e52e",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Vuelta Valenciana",
+          "external_id": "c9386064c4822b13",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Tour of South China",
+          "external_id": "a806091f46365091",
+          "race_type": "stage_race",
+          "stages": 6,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Tour des Émirats",
+          "external_id": "fcc2ea9002ae4abd",
+          "race_type": "stage_race",
+          "stages": 7,
+          "terrain_archetype": "sprinter_tour_summits"
+        },
+        {
+          "name": "Klassieker van Brugge",
+          "external_id": "a6f5ad7c745f818e",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Tour Luxembourgeois",
+          "external_id": "f2e79fabe14a80ae",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Tour de Germanie",
+          "external_id": "c3aa1c5f17971d46",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Grand Prix du Saint-Laurent",
+          "external_id": "64a2a18688621713",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "De Openingsklassieker",
+          "external_id": "ec2db56c9dacccd5",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Tour de Malaisie",
+          "external_id": "66a0cf8343bcc55d",
+          "race_type": "stage_race",
+          "stages": 8,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Tour Wallon",
+          "external_id": "252bf0b9b19b5eb9",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "hilly_tour"
+        },
+        {
+          "name": "Tour de l'Île de Hainan",
+          "external_id": "bd9671a8df65e312",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Tour du Danube",
+          "external_id": "25140aef9bc0bc1e",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Københavns Klassiker",
+          "external_id": "376978090cd54610",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Taunus-Klassiker",
+          "external_id": "71f874621d924b5e",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Vlaamse Doortocht",
+          "external_id": "870ce2ec9a0e7752",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Ocean Road Classic",
+          "external_id": "9206e19f82e2393e",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Volta Algarvia",
+          "external_id": "952f56dfbd8e9204",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Limburgse Klassieker",
+          "external_id": "f1c33846c869ff29",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Tour du Tyrol",
+          "external_id": "2c886b8569f84a4f",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "Tour du Hedjaz",
+          "external_id": "4347a825d8394291",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Tour of the Isles",
+          "external_id": "f84e937a61314683",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Tour des Hauts Plateaux",
+          "external_id": "64cf48002fdc5095",
+          "race_type": "stage_race",
+          "stages": 8,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "Tour Adriatique",
+          "external_id": "2e1b01a699c4c188",
+          "race_type": "stage_race",
+          "stages": 6,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Les Quatre Jours du Nord",
+          "external_id": "0b5441db03a6b9fd",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "sprinters_week"
+        },
+        {
+          "name": "Grand Prix du Mont-Royal",
+          "external_id": "fa86d85ee0dd3268",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        }
+      ]
+    },
+    {
+      "tier": 3,
+      "races": [
+        {
+          "name": "Trofeo Ligure",
+          "external_id": "b2eb3c7fe98f5f5c",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Milano–Piemonte",
+          "external_id": "2e2665f78d6c5aa7",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Tour des Alpes Juliennes",
+          "external_id": "bce1bccdd57efbb9",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Classique du Littoral",
+          "external_id": "682c4718283bb457",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Tour de Bohême",
+          "external_id": "d8e29ad791b6d037",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Giro d'Abruzzo Nuovo",
+          "external_id": "8fe98b9f788c3b06",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Coppa di Peccioli",
+          "external_id": "d54bc27ea5e20a56",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Classique de Touraine",
+          "external_id": "21d4984f205e9c79",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Brusselse Klassieker",
+          "external_id": "be92323f2b3171eb",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Gran Premio di Prato",
+          "external_id": "8faf46a899c24612",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Klassieker van Kuurne",
+          "external_id": "cf07b4158a776295",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Classique du Japon",
+          "external_id": "7f6cf4565f876b92",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Classique de l'Ardèche",
+          "external_id": "9dab19acc94fe360",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Trofeo delle Tre Valli",
+          "external_id": "a279269a83cbcb86",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Clásica Almeriense",
+          "external_id": "4f323988f4181386",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Boucles Mayennaises",
+          "external_id": "9306a4e0a882c0f2",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Classique du Léon",
+          "external_id": "27dae2b98e26998f",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Mascate Classic",
+          "external_id": "aea34f4c27148948",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "itt_classic"
+        },
+        {
+          "name": "Tour de la Loire",
+          "external_id": "5062e511e0a3adfa",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Circuit des Frontières",
+          "external_id": "95d709e3a381d91d",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Giro Emiliano",
+          "external_id": "6f347eeb9c92269a",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Classique de l'Avesnois",
+          "external_id": "e7c6d51672e7031d",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Klassiker im Münsterland",
+          "external_id": "045d7d6a3f8b3a12",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Gran Premio del Piemonte",
+          "external_id": "82a3805d9cd25c0a",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Coppa di Legnano",
+          "external_id": "08f7cc19855b8bc3",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Classica delle Colline Venete",
+          "external_id": "33adaa4818b2dcf6",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Clássica da Figueira",
+          "external_id": "2a75953b60d75e25",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Vlaamse Najaarsklassieker",
+          "external_id": "4c3cdf466ad916dc",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Grand Prix de Namur",
+          "external_id": "d1d1789e925a61f3",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Klassieker van de Kust",
+          "external_id": "cf8c28a3853a7ffa",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Vuelta Burgalesa",
+          "external_id": "622efeaa9c1a849d",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Tour du Golfe",
+          "external_id": "91fa500cce27810f",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Tour Arctique",
+          "external_id": "e2471519c99384c6",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Classique de la Drôme",
+          "external_id": "f56c0f3f0a8995b7",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Brabantse Klassieker",
+          "external_id": "50c62405df6384e4",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Tour des Fjords",
+          "external_id": "8a290667f3713fd8",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "hilly_tour"
+        },
+        {
+          "name": "Classique du Hainaut",
+          "external_id": "4188b8a4df02f9f6",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Chesapeake Classic",
+          "external_id": "a8cb4b28b265f228",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Prijs van de Schelde",
+          "external_id": "693405cd4e4f75f0",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Koerse van Nokere",
+          "external_id": "a82d1210a449a18e",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Classique du Morbihan",
+          "external_id": "fa891fca48cb42a4",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Giro Veneto",
+          "external_id": "eabb75dcd757c1b0",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Gran Premio de Navarra",
+          "external_id": "8dd753d8cc9887d6",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Vuelta Andaluza",
+          "external_id": "241b2846959aa1c7",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Grand Prix des Flandres Françaises",
+          "external_id": "54387870ff01bd3e",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Danmark Rundt",
+          "external_id": "37e566b5829adb99",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "cobbled_tour"
+        }
+      ]
+    },
+    {
+      "tier": 4,
+      "races": [
+        {
+          "name": "Gran Premio de Castilla",
+          "external_id": "5206a2390029811d",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "itt_classic"
+        },
+        {
+          "name": "Tour de la Provence Mineur",
+          "external_id": "a15a0038c23d0c69",
+          "race_type": "stage_race",
+          "stages": 3,
+          "terrain_archetype": "hilly_tour"
+        },
+        {
+          "name": "Gran Premio de Llanera",
+          "external_id": "ac52a1689e9d6b03",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Tour des Cévennes",
+          "external_id": "91b97c71a759380e",
+          "race_type": "stage_race",
+          "stages": 3,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Vuelta a Cantabria Menor",
+          "external_id": "7f4995d869ed10a3",
+          "race_type": "stage_race",
+          "stages": 3,
+          "terrain_archetype": "hilly_tour"
+        },
+        {
+          "name": "Étoile de Bessèges Mineure",
+          "external_id": "459b40b640ed5b1a",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Klassieker van de Kempen",
+          "external_id": "9e1ef0170988185e",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Vuelta a los Picos",
+          "external_id": "b5d4329a6fa8dc15",
+          "race_type": "stage_race",
+          "stages": 5,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Grand Prix de Wallonie Neuf",
+          "external_id": "93b6f6325eece92d",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Rund um Köln Neu",
+          "external_id": "80bb2a632ae10e4d",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Circuit de l'Aveyron",
+          "external_id": "071fd481a6278b1a",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        },
+        {
+          "name": "Coppa Appenninica",
+          "external_id": "10298289a65c4967",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "mountain_classic"
+        },
+        {
+          "name": "Giro del Trentino Nuovo",
+          "external_id": "8b36bfed0f0557f5",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Classique des Flandres-Sud",
+          "external_id": "5ff610d83e9b74f5",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "cobbled_classic"
+        },
+        {
+          "name": "Tour du Jura",
+          "external_id": "4e559db3ff7da746",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "Settimana di Coppi e Bartali Minore",
+          "external_id": "339f4f05e3d8d96b",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "hilly_tour"
+        },
+        {
+          "name": "Tour de l'Ain Nouveau",
+          "external_id": "8f40dfb81187fab3",
+          "race_type": "stage_race",
+          "stages": 3,
+          "terrain_archetype": "summit_tour"
+        },
+        {
+          "name": "O Gran Camiño Menor",
+          "external_id": "4f43b6e0843c1380",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "mountain_tour"
+        },
+        {
+          "name": "Tour de la Provence Verte",
+          "external_id": "2c051046f358c5a5",
+          "race_type": "stage_race",
+          "stages": 4,
+          "terrain_archetype": "balanced_week"
+        },
+        {
+          "name": "Ronde van Vlaams-Brabant",
+          "external_id": "7e002873eb156b00",
+          "race_type": "stage_race",
+          "stages": 3,
+          "terrain_archetype": "cobbled_tour"
+        },
+        {
+          "name": "Trofeo Camp de Morvedre Nuevo",
+          "external_id": "675cc3db58920886",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Trofeo Mediterraneo",
+          "external_id": "1fb9d0fe7fe0bbbd",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "flat_sprint"
+        },
+        {
+          "name": "Grand Prix Criquielion Nouveau",
+          "external_id": "0d66fbfbeaf44973",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "puncheur"
+        },
+        {
+          "name": "Famenne-Ardenne Classique Nouvelle",
+          "external_id": "92f20de262004754",
+          "race_type": "single",
+          "stages": 1,
+          "terrain_archetype": "hilly_classic"
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,7 @@
 // climbs[], sprints[], sectors[] jf. spec §3-4. Ingen DB/fs, ingen Math.random/Date.
 
 import { makeRng } from "./fictionalRiderGenerator.js";
+import { seasonSeedSuffix } from "./raceSeedAxis.js";
 
 // FNV-1a 32-bit (lokal kopi af raceStageProfileGenerator.stableSeed — selvstændig fil).
 function stableSeed(str) {
@@ -16,10 +17,11 @@ const presentKey = (v) => (typeof v === "string" ? (v.trim() === "" ? null : v) 
 function seedIdentityFor(race) {
   return presentKey(race?.external_id) ?? presentKey(race?.pool_race_id) ?? race?.id ?? "adhoc";
 }
+// #3347: sæson-aksen (inkl. re-draw-varianten) kommer fra raceSeedAxis.js, så pass 2's
+// ruter ligger på PRÆCIS samme akse som pass 1's profiler. Variant 0 → uændret nøgle.
 function routeSeedKey(race, stageNumber) {
   const id = String(seedIdentityFor(race));
-  const season = race?.season_id ? `::${race.season_id}` : "";
-  return `${id}${season}:route:${stageNumber}`;
+  return `${id}${seasonSeedSuffix(race)}:route:${stageNumber}`;
 }
 
 function randInt(rng, min, max) { return min + Math.floor(rng() * (max - min + 1)); }

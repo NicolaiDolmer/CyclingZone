@@ -15,6 +15,11 @@
 //                 en GT der ikke kan måles, generator-/DB-fejl). Aldrig GO på tomt grundlag.
 // Kun exit 0 er grønt lys; 1 og 2 blokerer begge, men fortæller forskellige ting.
 //
+// #3347: gaten scorer tierens RESOLVEREDE træk (raceRouteRealismDraw.js) — dvs. det
+// deterministiske gen-træk skrive-stierne også vil persistere. Gaten er UÆNDRET hård:
+// er alle gen-træk brugt uden at båndene holder, scores det kanoniske træk og verdicten
+// bliver NO-GO (exit 1). Re-draw fjerner terningkastet, ikke kravet.
+//
 // Data-laget (collectSeasonTierRaces) og render-laget (formatScorecard) er eksporteret,
 // så gatens beslutning kan testes uden DB (jf. audit-league-size-invariant.js).
 
@@ -23,8 +28,9 @@ import dotenv from "dotenv";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { generateRaceStageProfiles } from "../lib/raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, GENERATOR_VERSION } from "../lib/raceStageProfileGenerator.js";
 import { scoreSeason } from "../lib/raceRouteRealismMetrics.js";
+import { resolveSeasonDraw } from "../lib/raceRouteRealismDraw.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -52,36 +58,43 @@ export async function collectSeasonTierRaces({ supabase, seasonNumber, generateP
     supabase.from("races").select("id, name, race_type, stages, pool_race_id, league_division_id").eq("season_id", season.id).order("id"));
 
   const byTier = new Map();
-  const errorsByTier = new Map();
   for (const r of races) {
     if (!samplePools.has(r.league_division_id)) continue;
     const tier = tierByDiv.get(r.league_division_id);
     const meta = metaByPool.get(r.pool_race_id) || {};
-    const seedRace = { ...r, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null, season_id: season.id };
     if (!byTier.has(tier)) byTier.set(tier, []);
-    // #2854: en enkelt løbs-generering der kaster må hverken vælte hele rapporten
-    // eller forsvinde tavst — den bogføres som "ikke vurderet" og trækker verdicten
-    // væk fra GO uden at blive forvekslet med et båndbrud.
-    let stages;
-    try {
-      stages = generateProfiles(seedRace);
-    } catch (e) {
-      if (!errorsByTier.has(tier)) errorsByTier.set(tier, []);
-      errorsByTier.get(tier).push(`profil-generering fejlede for «${r.name}»: ${e.message || e}`);
-      continue;
-    }
-    byTier.get(tier).push({ name: r.name, race_type: r.race_type, terrain_archetype: seedRace.terrain_archetype, stages });
+    byTier.get(tier).push({ ...r, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null, season_id: season.id });
   }
 
-  const allTiers = new Set([...byTier.keys(), ...errorsByTier.keys()]);
-  return [...allTiers].sort((a, b) => a - b).map((tier) => ({
-    tier, races: byTier.get(tier) || [], errors: errorsByTier.get(tier) || [],
-  }));
+  // #3347: gaten scorer det træk der FAKTISK ville blive persisteret — dvs. tierens
+  // deterministiske re-draw-variant, ikke altid attempt 0. Skrive-stierne
+  // (tierCalendarMaterializer / backfillRaceStageProfiles) løser variantet med SAMME
+  // rene funktion, så scorecardet og databasen aldrig kan komme til at måle hver sit
+  // parcours. Selve generator-fejl-kontrakten (#2854) bor nu i drawTierAttempt: et løb
+  // der kaster bogføres som "kunne ikke vurderes", aldrig tavst væk.
+  const draws = resolveSeasonDraw({
+    tierSeedRaces: [...byTier.keys()].sort((a, b) => a - b).map((tier) => ({ tier, seedRaces: byTier.get(tier) })),
+    generateProfiles,
+  });
+  return draws.map((d) => ({ ...d.entry, draw: { attempt: d.attempt, exhausted: d.exhausted, attemptsTried: d.attemptsTried, firstDrawFailures: d.firstDrawFailures } }));
 }
 
-/** Render-lag: summary → linjer. Ren funktion, så outputtet kan asserteres i test. */
-export function formatScorecard(summary, seasonNumber) {
-  const lines = [`\n=== Rute-realisme-scorecard — sæson ${seasonNumber} (in-memory regen, generator v4) ===\n`];
+/**
+ * Render-lag: summary → linjer. Ren funktion, så outputtet kan asserteres i test.
+ * tierEntries er valgfri og bruges KUN til at rapportere #3347's re-draw-varianter —
+ * et re-draw må aldrig ske i tavshed.
+ */
+export function formatScorecard(summary, seasonNumber, tierEntries = []) {
+  const lines = [`\n=== Rute-realisme-scorecard — sæson ${seasonNumber} (in-memory regen, generator v${GENERATOR_VERSION}) ===\n`];
+  const redrawn = tierEntries.filter((t) => t.draw && (t.draw.attempt > 0 || t.draw.exhausted));
+  for (const t of redrawn) {
+    if (t.draw.exhausted) {
+      lines.push(`⚠ Tier ${t.tier}: alle ${t.draw.attemptsTried} deterministiske gen-træk brød båndene — scorecardet viser det kanoniske træk (#3347).`);
+    } else {
+      lines.push(`↻ Tier ${t.tier}: kanonisk træk brød båndene (${t.draw.firstDrawFailures.join(" · ")}) → gen-træk ${t.draw.attempt} valgt deterministisk (#3347).`);
+    }
+  }
+  if (redrawn.length) lines.push("");
   for (const t of summary.tiers) {
     const s = t.score;
     const mark = t.gateState === "gated" ? (s.pass ? "✅" : "❌") : t.gateState === "advisory" ? "–" : "⚠";
@@ -136,7 +149,7 @@ if (isMain) {
   try {
     const tierEntries = await collectSeasonTierRaces({ supabase, seasonNumber: SEASON });
     const summary = scoreSeason(tierEntries);
-    for (const line of formatScorecard(summary, SEASON)) console.log(line);
+    for (const line of formatScorecard(summary, SEASON, tierEntries)) console.log(line);
     process.exitCode = summary.exitCode;
   } catch (e) {
     console.error(e);
