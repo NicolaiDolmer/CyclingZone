@@ -46,7 +46,7 @@ console.log(`${"═".repeat(78)}`);
 console.log(`\nAktiv sæson: #${active.number}  (id ${active.id}, status='${active.status}')`);
 
 // ── 2. Kør dry-run ───────────────────────────────────────────────────────────
-const { plan } = await transitionToNextSeason({ supabase, fromSeasonId: active.id, dryRun: true });
+const { plan, carryOverPreview } = await transitionToNextSeason({ supabase, fromSeasonId: active.id, dryRun: true });
 
 console.log(`\n── PLAN ──────────────────────────────────────────────────────────────────`);
 console.log(`  Fra sæson:          #${plan.from_season.number}  (${plan.from_season.id})`);
@@ -116,6 +116,33 @@ for (const r of rows) {
 const contractFree = plan.sponsor_breakdown.filter((r) => r.sponsor_mode !== "contract");
 if (contractFree.length) {
   console.log(`\n  ⚠️  ${contractFree.length} hold uden kontrakt-modelleret base — undersøg (previewet skal være kontrakt-bevidst).`);
+}
+
+// ── 5. Manager-opsætnings-carry-over (#2916) ─────────────────────────────────
+console.log(`\n── OPSÆTNINGS-CARRY-OVER (#2916) ─────────────────────────────────────────`);
+if (!carryOverPreview) {
+  console.log(`  (intet carryOverPreview i svaret)`);
+} else if (carryOverPreview.error) {
+  console.log(`  ⚠️  Carry-over-probe fejlede: ${carryOverPreview.error}`);
+} else {
+  const s = carryOverPreview.surfaces || {};
+  console.log(`  Menneskehold: ${carryOverPreview.human_teams}`);
+  if (carryOverPreview.handler_drift?.length) {
+    console.log(`  ⚠️  Handler-drift: ${carryOverPreview.handler_drift.join("; ")}`);
+  }
+  console.log(`\n  COPY — training_plans:`);
+  console.log(`     eligible=${s.training_plans?.eligible ?? "—"}  ville_kopiere=${s.training_plans?.carried ?? "—"}` +
+    ` (${s.training_plans?.teams ?? "—"} hold)  allerede_i_ny_sæson=${s.training_plans?.skipped_already_present ?? "—"}`);
+  console.log(`\n  REVALIDATE — rider_peak_plans (peaks på løb i forkert pulje / uden mål):`);
+  console.log(`     checket=${s.rider_peak_plans?.checked ?? "—"}  wrong_pool=${s.rider_peak_plans?.wrong_pool ?? "—"}` +
+    `  missing_target=${s.rider_peak_plans?.missing_target ?? "—"}  hold_ramt=${s.rider_peak_plans?.teams_affected ?? "—"}`);
+  console.log(`\n  REVALIDATE — race_entries (manuelle udtagelser i forkert pulje):`);
+  console.log(`     checket=${s.race_entries?.checked ?? "—"}  wrong_pool=${s.race_entries?.wrong_pool ?? "—"}` +
+    `  hold_ramt=${s.race_entries?.teams_affected ?? "—"}`);
+  console.log(`\n  REVALIDATE — team_race_strategy.target_race_ids (holdstrategiens prioriterede løb):`);
+  console.log(`     checket_hold=${s.team_race_strategy?.checked_teams ?? "—"}  checket_refs=${s.team_race_strategy?.checked_refs ?? "—"}` +
+    `  stale=${s.team_race_strategy?.stale_refs ?? "—"}  wrong_pool=${s.team_race_strategy?.wrong_pool_refs ?? "—"}` +
+    `  hold_ramt=${s.team_race_strategy?.teams_affected ?? "—"}`);
 }
 
 console.log(`\n${"═".repeat(78)}`);

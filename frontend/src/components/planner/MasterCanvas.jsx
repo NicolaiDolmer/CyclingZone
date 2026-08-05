@@ -15,7 +15,7 @@ import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
 import { Flag } from "../Flag";
 import { StarIcon, FlagIcon } from "../ui";
-import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel } from "./plannerShared";
+import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel, formatOrdinalShort } from "./plannerShared";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
 const CX = RAIL, CW = VBW - RAIL - RRAIL;
@@ -316,6 +316,10 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                   const midY = (top + bot) / 2;
                   return (
                     <g key={`k${p.id}`} opacity={isDragging ? 0.85 : (p.isSuggestion ? 0.8 : 1)}>
+                      {/* #3094: samme forklaring som Trup-fanens badge — en låst
+                          bracket uden grund var selve klagen. Hover-titlen giver
+                          drag-håndtaget den samme "hvorfor + hvornår" som listen. */}
+                      {p.locked && <title>{t("squad.lockedTooltip", { date: formatOrdinalShort(p.startO, months) })}</title>}
                       <rect x={bx} y={top - 3} width={bw} height={bot - top + 6} fill="none" stroke={CZ.goldDeep} strokeWidth="1.3" rx="2" strokeDasharray={p.isSuggestion ? "3 2" : undefined} />
                       {[bx, bx + bw].map((hx, hi) => (
                         <rect

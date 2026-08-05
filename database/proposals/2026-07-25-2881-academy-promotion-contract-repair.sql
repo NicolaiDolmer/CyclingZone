@@ -47,6 +47,30 @@
 --   │       overskrevet kontrakten uafhængigt af promote-bugget) — IKKE rørt.
 --   └─   3 → team_id IS NULL i dag (frigivet/solgt siden) — IKKE rørt.
 --
+-- ─── GEN-KVANTIFICERET 5/8 (11 dage senere, stadig IKKE kørt) ──────────────────
+--
+-- WHERE-prædikatet er selv-begrænsende (matcher kun rækker der STADIG viser
+-- 2/2-signaturen), så det er stadig sikkert/idempotent at køre — men tallene
+-- ovenfor er STALE. Frisk optælling (samme queries, prod, 5/8):
+--
+--   120 distinct ryttere har nu en 'academy_promoted'-notifikation (op fra 97 —
+--       flere promoveringer i de 11 mellemliggende dage, inkl. efter kode-
+--       fixet 25/7, som IKKE bidrager til 2/2-bugsignaturen).
+--   ├─  22 → STADIG 2/2-bugsignaturen (ned fra 48 — 26 er selv-korrigeret via
+--   │       spiller-initieret #1720-forlængelse siden 25/7). ← DENNE migration
+--   │       rammer nu 22 rækker, ikke 48. Post-verify-forventningerne nedenfor
+--   │       (§2/§3) er opdateret til de FRISKE tal.
+--   ├─  32 → nu 3/3 (selv-korrigeret, op fra 24) — IKKE rørt.
+--   ├─  36 → andet (kontrakt-tilstande der hverken er 2/2 eller 3/3 — primært
+--   │       videre forlængelser forbi 3/3) — IKKE rørt.
+--   ├─  24 → is_academy=true igen (op fra 17) — IKKE rørt.
+--   └─   6 → team_id IS NULL (op fra 3) — IKKE rørt.
+--
+-- ⚠ #2744-ur: sæson 2 er AKTIV (startede 27/7) — disse 22 riders har
+--   contract_end_season=2, dvs. de vil blive FEJLAGTIGT frigivet som fri agent
+--   ved S2→S3-overgangen medmindre denne reparation er kørt inden da. Højere
+--   prioritet end den 25/7-vurdering antog ("ingen akut risiko søndag").
+--
 -- ─── Løn: IKKE rekonstruerbar, IKKE rørt ────────────────────────────────────────
 --
 -- Den gamle buggede kode gen-beregnede OGSÅ salary (computeFrozenSalary ud fra
@@ -135,13 +159,15 @@ COMMIT;
 --                  WHERE n.type = 'academy_promoted' AND n.related_id = r.id);
 --    → forventet: 0
 --
--- 2) Backup-tabellen har præcis 48 rækker (matcher kvantificeringen ovenfor):
+-- 2) Backup-tabellen har præcis 22 rækker (matcher 5/8-gen-kvantificeringen —
+--    IKKE de oprindelige 48 fra 25/7, se opdateret afsnit ovenfor):
 --    SELECT count(*) FROM backup_academy_promotion_contract_fix_20260725;
---    → forventet: 48
+--    → forventet: 22 (kør query'en i kvantificeringsafsnittet igen umiddelbart
+--      før du kører migrationen for at bekræfte tallet ikke er faldet yderligere)
 --
--- 3) Ingen util­sigtet sideeffekt på de 24/5/17/3 EKSKLUDEREDE grupper (salary
---    OG kontraktfelter uændret — kør igen efter migration, sammenlign mod
---    kvantificeringen ovenfor):
+-- 3) Ingen util­sigtet sideeffekt på de EKSKLUDEREDE grupper (salary OG
+--    kontraktfelter uændret — kør igen efter migration, sammenlign mod
+--    5/8-kvantificeringen ovenfor):
 --    SELECT r.contract_length, r.contract_end_season, count(*)
 --    FROM (SELECT DISTINCT related_id AS rider_id FROM notifications
 --          WHERE type = 'academy_promoted') pe
@@ -149,5 +175,22 @@ COMMIT;
 --    WHERE r.is_academy = false AND r.team_id IS NOT NULL
 --    GROUP BY r.contract_length, r.contract_end_season
 --    ORDER BY 1, 2;
---    → forventet: samme fordeling som før, MINUS 2/2-rækken (nu 0), PLUS 48
---      flere i 3/3-rækken (24 + 48 = 72).
+--    → forventet: samme fordeling som før migration, MINUS 2/2-rækken (nu 0),
+--      PLUS de reparerede rækker tilføjet til 3/3-rækken (32 + 22 = 54, hvis
+--      ingen yderligere selv-korrigering skete mellem denne kvantificering og
+--      kørslen).
+--
+-- ─── Nyt bug-vindue efter fix (post-verify til at bekræfte INGEN NYE rammes) ───
+-- Kør EFTER kode-fixets deploy-tidspunkt (a13bf3d4, 25/7) for at bekræfte
+-- ingen NYE promote()-kald via academyTransfer.js har givet 2/2-signaturen:
+--
+--   SELECT count(*) FROM riders r
+--   WHERE r.is_academy = false AND r.team_id IS NOT NULL
+--     AND r.contract_length = 2 AND r.contract_end_season = 2
+--     AND EXISTS (
+--       SELECT 1 FROM notifications n
+--       WHERE n.type = 'academy_promoted' AND n.related_id = r.id
+--         AND n.created_at > '2026-07-25T12:00:13Z'  -- PR #2929 merge-tidspunkt
+--     );
+--   → forventet: 0 (bekræftet 5/8 — ingen af de 22 tilbageværende har en
+--     'academy_promoted'-notifikation efter fixets merge-tidspunkt).

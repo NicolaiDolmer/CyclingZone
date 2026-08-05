@@ -1090,20 +1090,24 @@ router.get("/riders/:id/development", requireAuth, async (req, res) => {
 router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }, seasonNumber] = await Promise.all([
+    const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }, { data: abilityRow, error: abilityErr }, seasonNumber] = await Promise.all([
       supabase.from("riders").select("base_value, birthdate, potentiale").eq("id", id).maybeSingle(),
       supabase.from("rider_derived_ability_history")
         .select("snapshot_date, abilities")
         .eq("rider_id", id)
         .order("snapshot_date", { ascending: true }),
+      // #3325: nuværende ability_caps — typen er potentiale-baseret og tidsuafhængig,
+      // så historiske vinduer klassificeres mod DENNE, ikke en historisk snapshot-type.
+      supabase.from("rider_derived_abilities").select("ability_caps").eq("rider_id", id).maybeSingle(),
       getActiveSeasonNumber(),
     ]);
     if (riderErr) throw new Error(riderErr.message);
     if (histErr) throw new Error(histErr.message);
+    if (abilityErr) throw new Error(abilityErr.message);
     if (!riderRow) return res.status(404).json({ error: "rider not found" });
     const windows = computeRiderValueTrend({
       currentBaseValue: riderRow.base_value,
-      rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber) },
+      rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber), caps: abilityRow?.ability_caps },
       snapshotsAsc: history || [],
       baseline: RIDER_TYPES_BASELINE,
       model: VALUATION_MODEL_V4,
@@ -7500,8 +7504,15 @@ function isEstablishedTeam(team) {
 // registrering), så de målte intet — kun first_bid_placed var en ægte handling.
 // Erstattet med 4 handlinger manageren rent faktisk selv skal udføre:
 //   1. first_bid_placed     — bud i en auktion (uændret, allerede ægte).
-//   2. first_training_run   — mindst 1 række i training_day_runs (dagligt
-//                              trænings-tick har ramt holdet mindst én gang).
+//   2. first_training_run   — mindst 1 række i training_day_runs MED
+//                              executed_by='manager' (#3007: raden skrives også
+//                              af 22:00-assistent-sweepen, executed_by='assistant',
+//                              trainingSweep.js — uden dette filter stod trinnet
+//                              som fuldført for ALLE hold samme aften uanset om
+//                              manageren selv havde trykket "Træn i dag", så det
+//                              målte ikke en spillerhandling. Verificeret på prod
+//                              5/8: 180/180 hold "færdige" på den gamle any-executor-
+//                              tælling, kun 97/180 havde nogensinde selv trænet).
 //   3. first_squad_selected — mindst én MANUEL holdudtagelse (race_entries med
 //                              is_auto_filled=false) — samme tabel/kolonne som
 //                              RaceSelectionPanel/saveSelection skriver til
@@ -7537,7 +7548,10 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
 
   const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes] = await Promise.all([
     supabase.from("auction_bids").select("id", { count: "exact", head: true }).eq("team_id", teamId),
-    supabase.from("training_day_runs").select("team_id", { count: "exact", head: true }).eq("team_id", teamId),
+    // #3007: executed_by='manager' — se kommentaren ovenfor. Uden dette filter
+    // tælles også de rækker den kl. 22-assistent-sweep skriver, og trinnet
+    // flipper til grønt af sig selv samme aften uden nogen spillerhandling.
+    supabase.from("training_day_runs").select("team_id", { count: "exact", head: true }).eq("team_id", teamId).eq("executed_by", "manager"),
     // #2516: race_entries har INGEN id-kolonne (composite key race_id+rider_id+team_id)
     // — select("id") gav 42703 "column race_entries.id does not exist" (CYCLINGZONE-34).
     supabase.from("race_entries").select("race_id", { count: "exact", head: true }).eq("team_id", teamId).eq("is_auto_filled", false),

@@ -42,6 +42,18 @@ test("onboarding-progress: first_squad_selected querier race_entries med is_auto
   );
 });
 
+// #3007: training_day_runs skrives også af 22:00-assistent-sweepen
+// (executed_by="assistant", trainingSweep.js) — uden dette filter var trinnet
+// completed for ALLE hold samme aften uanset om manageren selv trænede.
+test("onboarding-progress: first_training_run kræver executed_by='manager' (raden skrives også af 22:00-assistent-sweepen)", () => {
+  const block = routeBlock('router.get("/me/onboarding-progress"');
+  assert.match(
+    block,
+    /\.from\("training_day_runs"\)[\s\S]*?\.eq\("team_id",\s*teamId\)[\s\S]*?\.eq\("executed_by",\s*"manager"\)/,
+    "first_training_run skal filtrere på executed_by='manager', ikke tælle assistent-sweepens rækker",
+  );
+});
+
 test("onboarding-progress: board_plan_set kræver negotiation_status='completed' (ikke bare 'findes en board_profiles-række', som er auto-seedet ved sæson-start)", () => {
   const block = routeBlock('router.get("/me/onboarding-progress"');
   assert.match(

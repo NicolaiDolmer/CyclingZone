@@ -23,7 +23,7 @@ import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
 import { Section, SectionHeader, StarIcon, FlagIcon, AlertTriangleIcon, LockIcon, XIcon, ChevronRightIcon } from "../ui";
 import { formatOrdinalShort, formatRaceDateLabel, riderShortName, dateToOrdinal, statusMeta } from "./plannerShared";
-import { squadSlots, targetableRacesFor, paybackRiskRaceIds, riderSeasonLoad } from "./plannerSquadModel";
+import { squadSlots, targetableRacesFor, paybackRiskRaceIds, locksImmediatelyRaceIds, riderSeasonLoad } from "./plannerSquadModel";
 
 // Tabellen bliver til en kort-liste under md. Cellerne beholder deres semantik
 // (<td>), så en skærmlæser stadig læser rækken som en række.
@@ -72,10 +72,25 @@ function PeakValue({ peak, paybackDays, months }) {
           </span>
         </div>
       ))}
-      {peak.locked && (
-        <div className="mt-1 flex items-center gap-1 text-3xs text-cz-3">
+      {/* #3094: en lås uden forklaring var selve klagen ("ingen varsel, ingen
+          forklaring, ingen fortryd") — badgen forklarer nu ALTID hvorfor +
+          hvornår, og en endnu-ikke-låst peak viser hvornår den vil, så
+          tidspunktet er kendt på forhånd i stedet for en overraskelse. */}
+      {peak.locked ? (
+        <div
+          className="mt-1 flex items-center gap-1 text-3xs text-cz-3"
+          title={peak.windowStart
+            ? t("squad.lockedTooltip", { date: formatOrdinalShort(dateToOrdinal(peak.windowStart), months) })
+            : t("squad.lockedTooltipGeneric")}
+        >
           <LockIcon size={12} aria-hidden="true" />{t("status.locked")}
         </div>
+      ) : (
+        !peak.isSuggestion && peak.windowStart && (
+          <div className="mt-1 flex items-center gap-1 text-3xs text-cz-3">
+            {t("squad.locksOn", { date: formatOrdinalShort(dateToOrdinal(peak.windowStart), months) })}
+          </div>
+        )
       )}
       {!peak.isSuggestion && peak.windowStart && (
         <div className="mt-1 font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">
@@ -104,6 +119,12 @@ function PeakSlot({ rider, slot, races, todayOrd, months, paybackDays, busy, dis
     // Vinduet kommer færdig-snappet fra boardet (race.peakWindow) — her laves kun
     // interval-tjekket mod rytterens program (alle entries + øvrige peak-mål).
     const risky = paybackRiskRaceIds({ rider, races, paybackDays, currentTargetId });
+    // #3094 straks-plaster 1a: advar FØR valget når et mål-løbs vindue allerede
+    // er i gang — det er stadig den ene måde en peak kan blive låst i samme
+    // øjeblik den sættes, selv efter lås-tærsklen flyttede til "vinduet er
+    // begyndt". Payback tjekkes FØRST: et løb kan i teorien ramme begge, og
+    // "låser med det samme" er den mere overraskende af de to.
+    const locksNow = locksImmediatelyRaceIds({ races, todayOrd });
     return targetable.map((r) => ({
       id: r.id,
       // Audit-punkt 1 fra #2905: konsekvensen skal kunne ses FØR man vælger.
@@ -112,17 +133,28 @@ function PeakSlot({ rider, slot, races, todayOrd, months, paybackDays, busy, dis
       // allerede klient-side i riderSuitability, samme tal som race-skuffen
       // rangerer med. Kronologisk rækkefølge (ejer-valg 27/7): en sæsonkalender
       // læst ud af dato-orden er svær at finde et bestemt løb i.
-      label: t(risky.has(r.id) ? "squad.raceOptionPayback" : "squad.raceOption", {
-        date: formatRaceDateLabel(r, months),
-        race: r.name,
-        fit: riderSuitability(rider.abilities, r.demandVector).score,
-      }),
+      label: t(
+        locksNow.has(r.id) ? "squad.raceOptionLocksNow"
+          : risky.has(r.id) ? "squad.raceOptionPayback"
+            : "squad.raceOption",
+        {
+          date: formatRaceDateLabel(r, months),
+          race: r.name,
+          fit: riderSuitability(rider.abilities, r.demandVector).score,
+        },
+      ),
     }));
   }, [rider, races, todayOrd, currentTargetId, months, paybackDays, t]);
 
   const locked = Boolean(peak?.locked);
   const isSuggestion = Boolean(peak?.isSuggestion);
   const selectDisabled = busy || disabled || locked;
+  // #3094: en disabled kontrol uden forklaring ER klagen ("kan ikke fjerne hans
+  // ene peak" — jonasnielsen_05591 4/8). Titlen forklarer HVORFOR + HVORNÅR den
+  // låste, i stedet for at kontrollen bare holder op med at reagere.
+  const lockedTitle = locked && peak?.windowStart
+    ? t("squad.lockedTooltip", { date: formatOrdinalShort(dateToOrdinal(peak.windowStart), months) })
+    : locked ? t("squad.lockedTooltipGeneric") : null;
 
   const onChange = (e) => {
     const raceId = e.target.value;
@@ -140,13 +172,15 @@ function PeakSlot({ rider, slot, races, todayOrd, months, paybackDays, busy, dis
             ? <FlagIcon size={13} className="text-cz-accent-t" />
             : <span className="block w-2 h-2 rounded-full border border-dashed border-cz-3" />}
       </span>
-      {/* min-h på mobil: en native select på ~30px er et for lille tap-mål.
-          Desktop-rækkerne beholder deres tættere rytme. */}
+      {/* min-h[44px] på mobil (#2883 accept-kriterie: alle interaktive mål på
+          /planner ≥44×44px — en select under det er et for lille tap-mål).
+          Desktop-rækkerne beholder deres tættere rytme (md:min-h-0). */}
       <select
-        className={`min-h-[40px] min-w-0 flex-1 rounded-cz border bg-cz-card px-2 py-1.5 text-[12.5px] text-cz-1 disabled:opacity-50 md:min-h-0 ${peak ? "border-cz-border" : "border-dashed border-cz-border text-cz-3"}`}
+        className={`min-h-[44px] min-w-0 flex-1 rounded-cz border bg-cz-card px-2 py-1.5 text-[12.5px] text-cz-1 disabled:opacity-50 md:min-h-0 ${peak ? "border-cz-border" : "border-dashed border-cz-border text-cz-3"}`}
         value={currentTargetId ?? ""}
         disabled={selectDisabled}
         aria-label={t("squad.pickRace", { name: riderShortName(rider) })}
+        title={lockedTitle ?? undefined}
         onChange={onChange}
       >
         <option value="">{t("squad.noPeak")}</option>
@@ -155,10 +189,10 @@ function PeakSlot({ rider, slot, races, todayOrd, months, paybackDays, busy, dis
       {peak && !isSuggestion && (
         <button
           type="button"
-          className="shrink-0 text-cz-3 hover:text-cz-1 disabled:opacity-40"
+          className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center text-cz-3 hover:text-cz-1 disabled:opacity-40 md:min-h-0 md:min-w-0 md:p-0.5"
           disabled={busy || locked}
           aria-label={t("squad.remove")}
-          title={t("squad.remove")}
+          title={lockedTitle ?? t("squad.remove")}
           onClick={() => onRemovePeak(peak.id)}
         >
           <XIcon size={14} aria-hidden="true" />
