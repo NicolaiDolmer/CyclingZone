@@ -95,6 +95,20 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "In-progress stage races now show up on the Results hub",
+          "body": "A stage race that had run several stages but wasn't fully finished used to be invisible on the Results hub's Latest tab, since it only looked for races marked completed. In-progress stage races now show there too, clearly marked Live with a \"Stage X of Y\" progress line, and the current top 3 while the race is still under way."
+        },
+        "da": {
+          "title": "Igangværende etapeløb vises nu på Resultat-hubben",
+          "body": "Et etapeløb der havde kørt flere etaper, men ikke var helt færdigt, var usynligt på Resultat-hubbens Seneste-fane, fordi den kun kiggede efter løb markeret afsluttet. Igangværende etapeløb vises nu også der, tydeligt markeret Live med en \"Etape X af Y\"-linje, og den aktuelle top 3 mens løbet stadig kører."
+        },
+        "refs": [3333]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
         "topic": "Finance",
         "en": {
           "title": "Season forecast now includes facility, staff and academy costs",

@@ -12,6 +12,9 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
 import { filterByDivisionPool, ALL_DIVISIONS_VALUE, ALL_POOLS_VALUE } from "../lib/resultsFilter";
 import { latestScheduledMsByRace } from "../lib/raceCompletionDate";
+import { raceHasReportableResults, raceIsInProgress } from "../lib/raceResultVisibility.js";
+import { capLatestRaces } from "../lib/raceLatestWindow.js";
+import { podiumFor } from "../lib/raceResultsPodium.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import {
@@ -63,20 +66,6 @@ const HUB_LINKS = [
   { to: "/standings?tab=riders",  key: "riderRankings",  Icon: BikeIcon },
   { to: "/seasons",               key: "seasonSnapshot", Icon: CalendarIcon },
 ];
-
-// Podiet for ét løb: etapeløb afgøres på det samlede klassement (gc), endagsløb
-// på selve etaperesultatet. GC-rækker findes kun på den sidst kørte etape, så vi
-// tager altid det højeste stage_number og lader rank bestemme rækkefølgen.
-export function podiumFor(race, rows) {
-  const type = race.race_type === "stage_race" ? "gc" : "stage";
-  const forRace = (rows || []).filter(r => r.race_id === race.id && r.result_type === type);
-  if (forRace.length === 0) return [];
-  const maxStage = Math.max(...forRace.map(r => r.stage_number ?? 0));
-  return forRace
-    .filter(r => (r.stage_number ?? 0) === maxStage)
-    .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))
-    .slice(0, 3);
-}
 
 export default function ResultaterPage() {
   // races-namespacet leverer løbs-taksonomien (klasse, type) som kortene deler
@@ -260,7 +249,7 @@ export default function ResultaterPage() {
     // "top 5 overall" limiteres FØR pulje-filtreringen kan fjerne nogle af dem.
     // Tophold er billigere at rette rigtigt (season_standings er lille) og er
     // derfor pulje-scoped nedenfor.
-    const [standingsRes, topRiderStatsRes, finishedRacesRes] = await Promise.all([
+    const [standingsRes, topRiderStatsRes, racesWithResultsRes] = await Promise.all([
       supabase
         .from("season_standings")
         .select("total_points, stage_wins, gc_wins, team:team_id(id, name, is_ai, division, league_division_id)")
@@ -273,40 +262,55 @@ export default function ResultaterPage() {
         .eq("season_id", seasonRow.id)
         .order("points", { ascending: false })
         .limit(5),
+      // #3333: status alene er IKKE en pålidelig "afsluttet"-markør — et etapeløb
+      // beholder status='scheduled' under HELE afviklingen (kun stages_completed
+      // er pålidelig, se backend/lib/stageRaceTransferDefer.js). .or() henter
+      // derfor både færdige løb OG igangværende etapeløb server-side; raceHasReportableResults
+      // (samme prædikat som CompletedRacesExplorer) filtrerer forsvarsvist igen nedenfor.
       supabase
         .from("races")
-        .select("id, name, race_type, race_class, stages, status, league_division_id, pool_race:pool_race_id(date_text)")
+        .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
         .eq("season_id", seasonRow.id)
-        .eq("status", "completed"),
+        .or("status.eq.completed,stages_completed.gt.0"),
     ]);
     if (standingsRes.error) throw standingsRes.error;
-    if (finishedRacesRes.error) throw finishedRacesRes.error;
+    if (racesWithResultsRes.error) throw racesWithResultsRes.error;
 
     const matchingTeams = filterByDivisionPool(standingsRes.data || [], s => s.team?.league_division_id, selection, divisionsById);
     setTopTeams(matchingTeams.filter(s => !s.team?.is_ai).slice(0, 3));
 
-    // #3102 etape 2 / #3197: de faktiske resultater, nu filtreret til den valgte
-    // sæson+division+pulje (default = egen kontekst) i stedet for altid egen
-    // pulje i den aktive sæson. sortRacesByDateDesc er den samme rene funktion
-    // kalenderen bruger, så "seneste" betyder det samme begge steder.
-    const matchingFinishedRaces = filterByDivisionPool(finishedRacesRes.data || [], r => r.league_division_id, selection, divisionsById);
-    const finished = sortRacesByDateDesc(matchingFinishedRaces).slice(0, LATEST_LIMIT);
-    setLatestRaces(finished);
+    // #3102 etape 2 / #3197 / #3333: de faktiske resultater, nu filtreret til den
+    // valgte sæson+division+pulje (default = egen kontekst) OG til "har resultater
+    // at vise" (færdig ELLER igangværende). sortRacesByDateDesc er den samme rene
+    // funktion kalenderen bruger, så "seneste" betyder det samme begge steder.
+    // capLatestRaces sikrer at LATEST_LIMIT-afskæringen ikke kan skjule en HEL
+    // løbstype (etapeløb der fylder mange datosloter kan ellers skubbe alle
+    // endagsløb ud af vinduet — verificeret mod prod-data, #3333).
+    const matchingRacesWithResults = filterByDivisionPool(racesWithResultsRes.data || [], r => r.league_division_id, selection, divisionsById)
+      .filter(raceHasReportableResults);
+    const windowRaces = capLatestRaces(sortRacesByDateDesc(matchingRacesWithResults), LATEST_LIMIT);
+    setLatestRaces(windowRaces);
 
-    if (finished.length) {
-      // Kun podiet (rank ≤ 3) hentes, og kun de to klassementer et podie kan
-      // komme fra. Uden .lte("rank", 3) ville et etapeløb trække hele feltet
-      // for hver etape hjem for at vise tre navne.
-      // pagination-safe: LATEST_LIMIT (9) races × rank<=3 × 2 result_types —
-      // worst case ~21 stages × 3 ranks + 3 gc podium per race ≈ 66 rows ×
-      // 9 races ≈ 594, verified comfortably under the 1000-row cap (#3331
-      // audit, 2026-08-05; race_stage_schedule max 21 stages/race).
+    if (windowRaces.length) {
+      // Podiet (rank ≤ 3) hentes for 'gc' (færdige etapeløb) og 'stage' (endagsløb).
+      // 'leader' er med for igangværende etapeløb — deres endelige 'gc'-række
+      // findes først ved finalization, så podiumFor falder tilbage til seneste
+      // 'leader'-snapshot (se lib/raceResultsPodium.js, #3333). Uden .lte("rank", 3)
+      // ville et etapeløb trække hele feltet for hver etape hjem for at vise tre navne.
+      //
+      // Rækketal (#3331-audit, 2026-08-05): LATEST_LIMIT (9) løb × rank<=3 ×
+      // result_types — worst case ~21 etaper × 3 ranks + 3 gc-podium pr. løb
+      // ≈ 66 rækker × 9 løb ≈ 594, komfortabelt under 1000-loftet
+      // (race_stage_schedule har max 21 etaper pr. løb). #3333's 'leader' er en
+      // tredje result_type, men kun for løb der ALLEREDE er i vinduet —
+      // antallet af løb er uændret, så loftet holder.
       const [resultsRes, scheduleRes] = await Promise.all([
+        // pagination-safe: bundet af LATEST_LIMIT (9 løb × rank<=3), se noten ovenfor
         supabase
           .from("race_results")
           .select("race_id, result_type, rank, stage_number, rider_id, rider_name, team_name, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
-          .in("race_id", finished.map(r => r.id))
-          .in("result_type", ["gc", "stage"])
+          .in("race_id", windowRaces.map(r => r.id))
+          .in("result_type", ["gc", "stage", "leader"])
           .lte("rank", 3),
         // #3197: kortenes dato-meta var race_pool.date_text (rå import-dato uden
         // årstal, ingen forbindelse til spillets faktiske kalender — se
@@ -315,7 +319,7 @@ export default function ResultaterPage() {
         supabase
           .from("race_stage_schedule")
           .select("race_id, scheduled_at")
-          .in("race_id", finished.map(r => r.id)),
+          .in("race_id", windowRaces.map(r => r.id)),
       ]);
       // Kast, ikke tavst `|| []`: en fejlet podie-hentning skal give ErrorState
       // med retry, ikke ni løbskort der ser resultatløse ud.
@@ -636,17 +640,31 @@ function RaceResultCard({ race, podium, playedAtMs, t }) {
   const playedText = playedAtMs
     ? formatDate(new Date(playedAtMs), "medium", { timeZone: "Europe/Copenhagen" })
     : null;
-  const typeText = race.race_type === "stage_race"
-    ? t("races:raceType.stageRaceParen", { count: race.stages })
-    : t("races:raceType.oneDayShort");
+  // #3333 — et igangværende etapeløb viser kørt-status ("Etape 14 af 21") i
+  // stedet for det statiske etape-antal, og en "Live"-badge ved navnet, så det
+  // ALDRIG kan læses som et færdigt løb (accept-kriterie, samme pille-stil som
+  // Dashboard's live-badge, #1828/DashboardPage.jsx).
+  const inProgress = raceIsInProgress(race);
+  const typeText = inProgress
+    ? t("latest.stageProgress", { done: race.stages_completed ?? 0, total: race.stages })
+    : race.race_type === "stage_race"
+      ? t("races:raceType.stageRaceParen", { count: race.stages })
+      : t("races:raceType.oneDayShort");
 
   return (
     <Section>
       <SectionHeader
         title={
-          <Link to={`/races/${race.id}`} className="hover:text-cz-accent-t transition-colors">
-            {race.name}
-          </Link>
+          <span className="inline-flex items-center gap-2">
+            <Link to={`/races/${race.id}`} className="hover:text-cz-accent-t transition-colors">
+              {race.name}
+            </Link>
+            {inProgress && (
+              <span className="flex-shrink-0 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
+                {t("races:status.live")}
+              </span>
+            )}
+          </span>
         }
         meta={[playedText, typeText].filter(Boolean).join(" · ")}
       />
