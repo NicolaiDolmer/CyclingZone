@@ -317,6 +317,72 @@ test("hire: ability-upsert bruger onConflict staff_id + sætter updated_at", asy
   assert.ok(typeof payload.updated_at === "string" && Date.parse(payload.updated_at) > 0);
 });
 
+// #3334 — chefscout-skift-notifikation.
+test("hire: role scouting AFTER a prior fired scouting-staff → emits scout_changed notification", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "scouting", tier: 5 }],
+    staff: [{ id: "staff-old", team_id: "team-1", role: "scouting", status: "fired", salary: 10_000, tier: 2, name: "Old Scout" }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "scouting", facilityTier: 5, excludeNames: new Set(["Old Scout"]),
+  })[0];
+
+  const notifyCalls = [];
+  const notify = async (args) => { notifyCalls.push(args); return { delivered: true, deduped: false }; };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "scouting", candidateName: candidate.name },
+    supabase, ENABLED, notify
+  );
+  assert.equal(result.ok, true);
+  assert.equal(notifyCalls.length, 1, "skifte-notifikation skal afsendes præcis én gang");
+  assert.equal(notifyCalls[0].teamId, "team-1");
+  assert.equal(notifyCalls[0].scoutName, candidate.name);
+  assert.equal(notifyCalls[0].scoutTier, candidate.tier);
+});
+
+test("hire: role scouting FØRSTE gang (ingen tidligere fyret scouting-staff) → INGEN scout_changed-notifikation", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "scouting", tier: 5 }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "scouting", facilityTier: 5,
+  })[0];
+
+  const notifyCalls = [];
+  const notify = async (args) => { notifyCalls.push(args); return { delivered: true, deduped: false }; };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "scouting", candidateName: candidate.name },
+    supabase, ENABLED, notify
+  );
+  assert.equal(result.ok, true);
+  assert.equal(notifyCalls.length, 0, "første nogensinde ansatte spejder har intet at genberegne");
+});
+
+test("hire: role training AFTER a prior fired training-staff → INGEN scout_changed-notifikation (kun scouting-rollen)", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
+    staff: [{ id: "staff-old", team_id: "team-1", role: "training", status: "fired", salary: 10_000, tier: 2, name: "Old Coach" }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "training", facilityTier: 5, excludeNames: new Set(["Old Coach"]),
+  })[0];
+
+  const notifyCalls = [];
+  const notify = async (args) => { notifyCalls.push(args); return { delivered: true, deduped: false }; };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: candidate.name },
+    supabase, ENABLED, notify
+  );
+  assert.equal(result.ok, true);
+  assert.equal(notifyCalls.length, 0, "kun scouting-rollens skift skal udløse rapport-genberegnings-beskeden");
+});
+
 test("hire: role occupied → role_occupied, no insert", async () => {
   const supabase = createFacilitySupabase({
     team: { id: "team-1", balance: 1_000_000 },

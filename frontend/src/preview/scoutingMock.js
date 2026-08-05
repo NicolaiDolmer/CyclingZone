@@ -39,6 +39,10 @@ const FREE_AGENTS = Object.freeze({
 
 // Én afsluttet mission i seed så shortlist-feedet (inkl. topFind-badge og
 // #2644-status-labels: kontraktfri vs. holdnavn) kan verificeres uden klik.
+// #2721: + én afsluttet enkelt-rytter-undersøgelse (kind:'target') så den
+// holds-brede TeamScoutHistory-sektion (ScoutingCentralPage) har noget at vise
+// uden klik — mission SKAL blive completed[0] (scoutingMock.test.js læser den
+// via completed[0]), så target-entryen er tilføjet EFTER.
 const SEED_COMPLETED = [
   {
     id: "scout-done-1",
@@ -55,6 +59,16 @@ const SEED_COMPLETED = [
       "scout-fa-2": { status: "free_agent" },
       [RIDERS[1].id]: { status: "team", teamName: RIVAL_TEAM.name },
     },
+  },
+  {
+    id: "scout-done-2",
+    kind: "target",
+    rider_id: RIDERS[0].id,
+    target_level: 2,
+    status: "completed",
+    completed_at: "2026-07-22T08:30:00.000Z",
+    result: { level: 2 },
+    riderStatus: {},
   },
 ];
 

@@ -777,3 +777,64 @@ export function buildWelcomeNotification() {
     },
   };
 }
+
+// ─── #3334 · Chefscout-skift-notifikation ─────────────────────────────────
+//
+// PROBLEM (#3334, @nosyara. Discord-sag 4/8): en spiller skiftede chefscout
+// (fyrede + genansatte en anden), og næste gang hun åbnede en ungdomsrytters
+// scoutingrapport var loft-båndet omskrevet — INGEN besked forklarede at det
+// var scout-skiftet (præcisionen/gulvet, jf. scoutHalfWidth) der flyttede
+// tallene, ikke rytteren selv. Hun troede rytteren var blevet dårligere og
+// ændrede hans træning for at "rette" et fald der aldrig skete.
+//
+// Afsendes fra facilityService.hireStaff() NÅR role==='scouting' OG holdet
+// har fyret en tidligere scouting-staff før (loadFiredStaffNames.size > 0) —
+// dvs. dette er et SKIFTE, ikke holdets første nogensinde ansatte spejder
+// (en helt ny scout har ingen eksisterende rapporter at genberegne).
+export const SCOUT_CHANGED_TYPE = "scout_changed";
+
+/**
+ * #3334 · Byg payloaden for "din scout er skiftet, rapporter genberegnes"-
+ * notifikationen. Eksplicit på det centrale punkt: rytternes FAKTISKE evner
+ * er uændrede — kun præcisionen på det viste loft-bånd er anderledes.
+ */
+export function buildScoutChangedNotification({ scoutName, scoutTier }) {
+  const name = scoutName || "Your new scout";
+  return {
+    type: SCOUT_CHANGED_TYPE,
+    title: "New scout, reports recalculated",
+    message: scoutTier != null
+      ? `${name} (tier ${scoutTier}) is now assessing your riders. Existing scouting reports are recalculated to match their precision — your riders' actual abilities have not changed.`
+      : `${name} is now assessing your riders. Existing scouting reports are recalculated to match their precision — your riders' actual abilities have not changed.`,
+    relatedId: null,
+    metadata: {
+      scoutName: name,
+      scoutTier: scoutTier ?? null,
+      titleCode: "notif.scoutChanged.title",
+      titleParams: {},
+      messageCode: "notif.scoutChanged.message",
+      messageParams: { scoutName: name, scoutTier: scoutTier ?? null },
+    },
+  };
+}
+
+/**
+ * #3334 · Notificér holdejeren om et netop gennemført chefscout-SKIFTE (ikke
+ * første-gangs-ansættelse). Kaldes EFTER team_staff-insert er bekræftet
+ * (facilityService.hireStaff) — en notifikationsfejl må ALDRIG kunne vælte
+ * selve ansættelsen (samme A2-isolerings-mønster som resten af filen, #2389).
+ * `notify` injicérbar for test.
+ */
+export async function notifyScoutChanged({
+  supabase, teamId, scoutName, scoutTier, notify = notifyTeamOwner, now = new Date(),
+}) {
+  if (!teamId) return { delivered: false, deduped: false, reason: "missing_team" };
+  try {
+    const payload = buildScoutChangedNotification({ scoutName, scoutTier });
+    return await notify({ supabase, teamId, now, ...payload });
+  } catch (err) {
+    console.error(`  ❌ scout-changed-notifikation fejlede (hold ${teamId}):`, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "scout-changed" }, teamId });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
+}
