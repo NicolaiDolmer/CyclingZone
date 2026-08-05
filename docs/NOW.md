@@ -19,7 +19,7 @@
 
 > **📌 Åbne opfølgninger:** ⚠️ **`audit`-checken er rød på ENHVER PR** — detector D flagger snapshot-tabellen ovenfor som schema-drift (ikke i `database/*.sql`). Ikke-blokerende, men det er falsk rød på hver PR indtil tabellen droppes eller whitelistes · **[#3337](https://github.com/NicolaiDolmer/CyclingZone/issues/3337) målt: specialisering betaler sig kraftigt (+84 % point ved samme pris)** — men kun klatring og spurt er levedygtige; puncheur har 7,9× prispræmie i V4 og leverer 503 point/mio. mod climberens 1.358 → hører i #3353 · [#3349](https://github.com/NicolaiDolmer/CyclingZone/issues/3349) måltal på POST-backfill-populationen · #3353 V4-refit (gen-kalibrér #3393's eksponent bagefter) · #3295 S3-kalender · #3145 · #3112 · #2830 ureviewet · #2645 Del B · #3172 (luk ~18/8) · #2164 (ved S2→S3).
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Fable-orkestrator (verdensklasse bølge 1, chunk A) — 4 sonnet-agenter i worktrees på #3396/#3397/#3398/#3399+#3400. Launched 5/8. Chunk B (#3401/#3402) venter på PR-kø <5.
 
 ## Standing context (forever-relaunch)
 
