@@ -239,8 +239,16 @@ export function extractStageMoments({
       riderIds: [favorite.rider_id],
       boost: reason !== "unexplained" ? 10 : 0,
     });
-    if (reason === "jour_sans") {
-      push(moments, { key: "tag_favorite_collapse", params: { riderId: favorite.rider_id, rank: favorite.rank }, riderIds: [favorite.rider_id] });
+    // #3336: tag_favorite_collapse ledsager favorite_off_day for ALLE forklarede
+    // årsager (samme "unexplained er særlig"-grænse boost-linjen ovenfor allerede
+    // bruger — ærlig-degraderings-reglen: uden forklaring ville et badge/tooltip
+    // overstate hvor sikre vi er). reason threades med, så frontend kan vise den
+    // FAKTISKE årsag i stedet for en fast jour_sans-tekst (spillerens hjælperytter-
+    // ofring blev tidligere altid vist som "benene var der bare ikke" — forkert,
+    // ikke bare upræcist). Selve udvælgelsen (hvem er favorit, FAVORITE_OFF_DAY_RANK,
+    // boost-værdier) er UÆNDRET — kun hvornår det ledsagende badge vises.
+    if (reason !== "unexplained") {
+      push(moments, { key: "tag_favorite_collapse", params: { riderId: favorite.rider_id, rank: favorite.rank, reason }, riderIds: [favorite.rider_id] });
     }
   }
 

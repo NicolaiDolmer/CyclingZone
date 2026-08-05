@@ -211,7 +211,12 @@ async function executeAutoPurchase({
       .from("riders")
       .update(
         deferRegistration
-          ? { pending_team_id: team.id, ...contractPatch }
+          // #3330: updated_at stemples eksplicit HER (ikke en DB-trigger — riders
+          // har ingen auto-touch-trigger) så ownershipInvariantWatch's forward-guard
+          // kan måle "hvor længe har pending_team_id stået sådan" pålideligt. Uden
+          // dette ville guarden læse en tilfældig, ofte ældgammel updated_at (typisk
+          // row-creation-tidspunktet) og enten aldrig eller altid alarmere.
+          ? { pending_team_id: team.id, updated_at: now.toISOString(), ...contractPatch }
           : {
               team_id: team.id,
               pending_team_id: null,

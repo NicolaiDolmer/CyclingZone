@@ -14,6 +14,7 @@ import { racesForPool } from "../../lib/racesByPool";
 import { raceHasReportableResults, raceIsInProgress } from "../../lib/raceResultVisibility.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../../lib/expectedPrizeCalculator";
 import { hasRouteData, sharedYMax } from "../../lib/stageRouteProfile.js";
+import { fetchAllRows } from "../../lib/supabasePagination";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import {
   Card,
@@ -110,12 +111,17 @@ export default function CompletedRacesExplorer() {
   useEffect(() => { loadAll(); }, []);
 
   async function loadRaceResults(raceId) {
-    const { data } = await supabase
+    // #3331: verified up to ~17k race_results rows for the biggest grand
+    // tours (213 races already exceed 1000) — paginate, and add .order("id")
+    // as a stable tiebreaker after the display sort so pages don't skip/repeat
+    // rows on result_type/rank ties.
+    const data = await fetchAllRows(() => supabase
       .from("race_results")
       .select("*, rider:rider_id(id, firstname, lastname, team:team_id(name))")
       .eq("race_id", raceId)
       .order("result_type")
-      .order("rank");
+      .order("rank")
+      .order("id", { ascending: true }));
     return data || [];
   }
 

@@ -265,6 +265,54 @@ function buildRawUciMenRacePointRows() {
   return rows;
 }
 
+// #3328 kriterium (spiller-citat, Discord 4/8): "the stage races are now longer (up to
+// 8 stages), but about half of the races are still ProSeries... we race longer races
+// versus tougher competition and are barely rewarded." Konkret krav: ÉN WorldTour-uge
+// skal give bedre afkast end TO ProSeries-løb i samme periode, målt pr. RYTTERDAG
+// (præmiepenge + point — de to er proportionale, prize_money = points × PRIZE_PER_POINT
+// (75, uniform på tværs af klasser), så ranking er identisk uanset hvilken man bruger).
+//
+// MÅLT (ikke gættet) 4/8 mod to baselines — begge nødvendige fordi de IKKE er enige:
+//   1) `race_points`-tabellen i prod (read-only SELECT) — de FAKTISKE udbetalinger
+//      spillerne ser lige nu. Klassement rank1: ProSeries=260, OtherWorldTourC=390,
+//      OtherWorldTourB=455, OtherWorldTourA=520. (Denne tabel er sidst synkroniseret
+//      2026-06-03 via scripts/seedUciMenRacePoints.js — race_point_cascade/-master
+//      #894 R2-modellen kan siden have finjusteret den. Se PR-body/rapport for det fund.)
+//   2) buildUciMenRacePointRows() (denne fil, multiplier=1) — hvad en fremtidig reseed
+//      VILLE skrive: ProSeries=114, OtherWorldTourC=166, OtherWorldTourB=221,
+//      OtherWorldTourA=277 (flatten 0.5 bagt ind, se længere nede i filen).
+//
+// GC-krone-beløbet er UAFHÆNGIGT af etapeantal (samme Klassement-skala uanset om løbet
+// har 6, 7 eller 8 etaper) — kun rytterdags-RATEN varierer med det faktiske etapeantal.
+// Kriteriet "1 WT-uge > 2 ProSeries-løb" er derfor etapeantal-uafhængigt: det reducerer
+// til OtherWorldTourC_efter > 2 × ProSeries, som skal holde på BEGGE baselines.
+//
+// +25% (det oprindelige gæt) FEJLER kriteriet på begge: DB 390 vs mål 520 (-25%), kode
+// 208 vs mål 228 (-9%). Selv break-even (×1.333) giver 0% margin på DB og fejler stadig
+// koden (-3%). ×1.5 klarer begge med solid margin: DB 585 vs 520 (+12,5%), kode 249 vs
+// 228 (+9,2%). Se PR #3327/#3328-body for den fulde rytterdag-tabel på tværs af bånd.
+//
+// Bivirkning, IKKE en fejl i denne udregning: ved ×1.5 overhaler OtherWorldTourC
+// OtherWorldTourB i BEGGE baselines (DB 585 > 455, kode 249 > 221). Det er fordi
+// OtherWorldTourB's EGET reelle afkast (455) allerede er under 2×ProSeries (520) —
+// B fejler #3328's brede kriterium ("højere klasse = højere afkast") helt uafhængigt
+// af denne PR. Den tidligere "bevar B > C"-antagelse i denne kommentar var selv bygget
+// på et gæt (den rå UCI-skala, ikke reelle udbetalinger) og holder ikke ved efterprøvning
+// — B/A's egen prissætning er et separat, ikke-scoped follow-up (se PR-body).
+export const OTHER_WORLD_TOUR_C_STAGE_DAY_MULTIPLIER = 1.5;
+
+// Anvend multiplikatoren på ALLE OtherWorldTourC-rækker (alle result_types — GC, etape,
+// trøjer, hold) EFTER flatten, så den serverede kurves interne FORM er uændret (samme
+// flatten-transform), kun det absolutte NIVEAU for denne ene klasse hæves. prize_money
+// = points × PRIZE_PER_POINT (raceResultsEngine.js) — så præmien skaleres proportionalt
+// med point, uden en separat præmie-tabel at holde i sync.
+function applyClassStageDayBalance(rows, multiplier = OTHER_WORLD_TOUR_C_STAGE_DAY_MULTIPLIER) {
+  if (!multiplier || multiplier === 1) return rows;
+  return rows.map((r) => (
+    r.race_class === "OtherWorldTourC" ? { ...r, points: Math.round(r.points * multiplier) } : r
+  ));
+}
+
 // Den SERVEREDE prod-kurve = rå UCI-kurve med den ejer-godkendte flatten (#1607) bagt ind:
 // Klassement/Klassiker-kurverne komprimeres 50% mod deres egen middel pr. race-class
 // (sum-bevaret → præmie-niveauet uændret, kun formen flader), mens etape/troje/hold-point
@@ -272,8 +320,9 @@ function buildRawUciMenRacePointRows() {
 // uden at bryde fresh-population-gaten — se docs/audits/2026-06-21-economy-fase2-calibration.md.
 // Kalibrerings-harnessen genbruger SAMME transform (racePointFlatten.js) så scorecardet ved
 // PROD (override flatten 0) matcher den shippede kurve bit-for-bit.
+// #3328: + klasse↔rytterdag-balance (kun OtherWorldTourC, se applyClassStageDayBalance).
 export function buildUciMenRacePointRows() {
-  return applyFlattenToPointRows(buildRawUciMenRacePointRows(), PROD_FLATTEN, PROD_BREADTH_BOOST);
+  return applyClassStageDayBalance(applyFlattenToPointRows(buildRawUciMenRacePointRows(), PROD_FLATTEN, PROD_BREADTH_BOOST));
 }
 
 // Eksponér den uflade baseline til tests/diagnostik (ikke prod-serveret).

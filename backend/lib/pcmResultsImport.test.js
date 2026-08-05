@@ -411,25 +411,34 @@ function spySupabase({ season, dbRaces, deletes }) {
   };
 }
 
-test("importPcmResults: genupload af én etape sletter KUN den etape, ikke hele løbet", async () => {
+test("importPcmResults: genupload af én etape sender KUN den etape som stageNumbers (atomisk delete+insert, #3022)", async () => {
   const season = { id: "s1", number: 1 };
   const dbRaces = [{ id: "r1", name: "Test Tour", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 5, status: "completed" }];
   const deletes = [];
   const supabase = spySupabase({ season, dbRaces, deletes });
 
+  let appliedStageNumbers = null;
+  let appliedRaceId = null;
   const report = await importPcmResults({
     supabase,
     files: [{ filename: "stage2.xml", buffer: Buffer.from(pcmStageXml({ current: 2, total: 5 })) }],
     dryRun: false,
-    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    applyRaceResults: async ({ resultRows, race, stageNumbers }) => {
+      appliedStageNumbers = stageNumbers;
+      appliedRaceId = race.id;
+      return { rowsImported: resultRows.length };
+    },
     ensureSeasonStandings: async () => {},
     updateStandings: async () => {},
   });
 
-  // Præcis ét delete-kald, scoped til race_id r1 + KUN stage_number [2].
-  assert.equal(deletes.length, 1);
-  assert.equal(deletes[0].race_id, "r1");
-  assert.deepEqual(deletes[0].stage_number, [2]);
+  // #3022: delete+insert sker nu ATOMISK inde i applyRaceResults (via
+  // apply_race_results_batch-RPC'en) — intet separat .from("race_results").delete()
+  // her i import-orchestratoren længere (spySupabase's `deletes` er derfor tom).
+  // Idempotent-PR.-ETAPE-garantien beviser vi i stedet via stageNumbers-argumentet.
+  assert.equal(deletes.length, 0, "delete sker nu inde i applyRaceResults, ikke som et separat kald herfra");
+  assert.equal(appliedRaceId, "r1");
+  assert.deepEqual(appliedStageNumbers, [2], "KUN den uploadede etape må sendes med, ikke hele løbet");
   assert.equal(report.success, true);
 });
 

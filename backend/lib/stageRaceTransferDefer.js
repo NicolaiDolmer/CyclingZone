@@ -74,6 +74,54 @@ export async function shouldDeferTeamChange(supabase, riderIds) {
 }
 
 /**
+ * Flush ÉN parkeret rytter: pending_team_id → team_id, hvis den fortsat peger
+ * hvor kalderen læste den (TOCTOU/idempotency-guard). Delt kerne for BÅDE
+ * race-scoped flush (flushDeferredTransfersForRace, kaldt fra raceRunner.js ved
+ * løbs-finalisering) OG den periodiske self-heal-sweep (deferredTransferHealSweep.js,
+ * #3330) der fanger ryttere hvis flush faldt på gulvet — løbet blev finaliseret
+ * ad en anden vej, admin-genkørsel sprang over, etc. ÉN implementering af TOCTOU-
+ * guarden forhindrer de to stier i at drifte fra hinanden (netop den slags drift
+ * der lod Vasco Fernandes hænge parkeret 22/6→4/8, #3330).
+ *
+ * @param {object} supabase
+ * @param {{ id: string, firstname?: string, lastname?: string, pending_team_id: string }} rider
+ * @param {{ notifyTeamOwner: Function, flushedAt: string, arrivalNote: string }} opts
+ *   flushedAt: ISO-timestamp skrevet til acquired_at. arrivalNote: sætning der
+ *   forklarer ANKOMST-konteksten i notifikationen (fx "Touren er kørt færdigt").
+ * @returns {Promise<boolean>} true hvis rytteren rent faktisk blev flushet nu.
+ */
+export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flushedAt, arrivalNote }) {
+  // Captur målholdet FØR update — rider-objektet kan være samme reference som
+  // rækken der muteres (in-memory doubles), og notify skal bruge værdien bagefter.
+  const targetTeamId = rider.pending_team_id;
+  // TOCTOU/idempotency-guard: flush KUN hvis pending_team_id stadig peger hvor vi
+  // læste. En genkørsel (recovery/heal-sweep) finder pending_team_id=null → 0 rows → skip.
+  const { data: moved, error: mErr } = await supabase
+    .from("riders")
+    .update({ team_id: targetTeamId, pending_team_id: null, acquired_at: flushedAt })
+    .eq("id", rider.id)
+    .eq("pending_team_id", targetTeamId)
+    .select("id");
+  if (mErr) throw new Error(`flushParkedRider: flush update failed (${rider.id}): ${mErr.message}`);
+  if (!moved || moved.length === 0) return false;
+
+  // Rytteren forlod sælgeren for fremtidige løb — ryd hans ghost-entries så de
+  // ikke phantom-binder en plads (samme forsvar som transfer/auktions-stierne, #1906).
+  await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "stage_race_deferred_flush" });
+
+  const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
+  await notifyTeamOwner(
+    targetTeamId,
+    "transfer_offer_accepted",
+    "Rytteren er ankommet",
+    `${riderName} er nu skiftet til dit hold — ${arrivalNote}.`,
+    rider.id,
+    { riderId: rider.id }
+  );
+  return true;
+}
+
+/**
  * Kaldes NÅR et løb er finaliseret (status='completed'). Flusher parkerede
  * holdskifter (rider.pending_team_id → team_id) for de af LØBETS deltagere der
  * ikke længere er i et andet aktivt fleretape-løb.
@@ -117,36 +165,11 @@ export async function flushDeferredTransfersForRace(supabase, race, { notifyTeam
   if (toFlush.length === 0) return empty;
 
   const flushedAt = (now || new Date()).toISOString();
+  const arrivalNote = `${race.name || "hans etapeløb"} er kørt færdigt`;
   const flushedIds = [];
   for (const rider of toFlush) {
-    // Captur målholdet FØR update — rider-objektet kan være samme reference som
-    // rækken der muteres (in-memory doubles), og notify skal bruge værdien bagefter.
-    const targetTeamId = rider.pending_team_id;
-    // TOCTOU/idempotency-guard: flush KUN hvis pending_team_id stadig peger hvor vi
-    // læste. En genkørsel (recovery) finder pending_team_id=null → 0 rows → skip.
-    const { data: moved, error: mErr } = await supabase
-      .from("riders")
-      .update({ team_id: targetTeamId, pending_team_id: null, acquired_at: flushedAt })
-      .eq("id", rider.id)
-      .eq("pending_team_id", targetTeamId)
-      .select("id");
-    if (mErr) throw new Error(`flushDeferredTransfersForRace: flush update failed (${rider.id}): ${mErr.message}`);
-    if (!moved || moved.length === 0) continue;
-
-    // Rytteren forlod sælgeren for fremtidige løb — ryd hans ghost-entries så de
-    // ikke phantom-binder en plads (samme forsvar som transfer/auktion-stierne, #1906).
-    await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "stage_race_deferred_flush" });
-
-    const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
-    await notifyTeamOwner(
-      targetTeamId,
-      "transfer_offer_accepted",
-      "Rytteren er ankommet",
-      `${riderName} er nu skiftet til dit hold — ${race.name || "hans etapeløb"} er kørt færdigt.`,
-      rider.id,
-      { riderId: rider.id }
-    );
-    flushedIds.push(rider.id);
+    const flushed = await flushParkedRider(supabase, rider, { notifyTeamOwner, flushedAt, arrivalNote });
+    if (flushed) flushedIds.push(rider.id);
   }
 
   return { ridersFlushed: flushedIds.length, riderIds: flushedIds };

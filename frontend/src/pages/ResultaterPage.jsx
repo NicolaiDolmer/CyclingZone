@@ -297,7 +297,15 @@ export default function ResultaterPage() {
       // findes først ved finalization, så podiumFor falder tilbage til seneste
       // 'leader'-snapshot (se lib/raceResultsPodium.js, #3333). Uden .lte("rank", 3)
       // ville et etapeløb trække hele feltet for hver etape hjem for at vise tre navne.
+      //
+      // Rækketal (#3331-audit, 2026-08-05): LATEST_LIMIT (9) løb × rank<=3 ×
+      // result_types — worst case ~21 etaper × 3 ranks + 3 gc-podium pr. løb
+      // ≈ 66 rækker × 9 løb ≈ 594, komfortabelt under 1000-loftet
+      // (race_stage_schedule har max 21 etaper pr. løb). #3333's 'leader' er en
+      // tredje result_type, men kun for løb der ALLEREDE er i vinduet —
+      // antallet af løb er uændret, så loftet holder.
       const [resultsRes, scheduleRes] = await Promise.all([
+        // pagination-safe: bundet af LATEST_LIMIT (9 løb × rank<=3), se noten ovenfor
         supabase
           .from("race_results")
           .select("race_id, result_type, rank, stage_number, rider_id, rider_name, team_name, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")

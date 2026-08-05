@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import { generateBoardGoals } from "../lib/boardGoals.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "../lib/boardConstants.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -50,22 +51,40 @@ function minRidersTarget(goals) {
 async function main() {
   const supabase = await getClient();
 
-  const { data: teams, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name, division, sponsor_income, balance")
-    .eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false);
-  if (teamsError) throw new Error(`teams: ${teamsError.message}`);
+  // #2022 fase 3 · #2951-klassen: naivt .select()/.in() uden .range() lyver stille
+  // på >1000 rækker (PostgREST-default). Sæsonen er vokset til 3129+ ryttere på
+  // ægte hold (2026-08-05) — over grænsen — så det uparginerede riders-kald herunder
+  // ramte samme mønster som PCM-rytter-matcheren/updateStandings: teams hvis rytter-
+  // rækker landede efter cutoff fik `riders.length === 0` → "tom trup → springes
+  // over" (defensivt no-op) i stedet for at blive kalibreret. 12 af 21 ægte
+  // strukturelt-uopnåelige boards blev derved stille sprunget over ved sidste
+  // kørsel. Alle tre loads pagineres nu via den kanoniske supabasePagination.js.
+  const teams = await fetchAllRows(() => (
+    supabase
+      .from("teams")
+      .select("id, name, division, sponsor_income, balance")
+      .eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false)
+      .order("id", { ascending: true })
+  ));
   const teamById = new Map((teams || []).map((t) => [t.id, t]));
   const teamIds = (teams || []).map((t) => t.id);
 
-  const [boardsRes, ridersRes] = await Promise.all([
-    supabase.from("board_profiles")
-      .select("id, team_id, plan_type, focus, current_goals")
-      .in("team_id", teamIds).eq("is_baseline", false).eq("negotiation_status", "pending"),
-    supabase.from("riders").select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}`).in("team_id", teamIds),
+  const [boards, riders] = await Promise.all([
+    fetchAllRowsChunkedIn(teamIds, (chunk) => (
+      supabase.from("board_profiles")
+        .select("id, team_id, plan_type, focus, current_goals")
+        .in("team_id", chunk).eq("is_baseline", false).eq("negotiation_status", "pending")
+        .order("id", { ascending: true })
+    )),
+    fetchAllRowsChunkedIn(teamIds, (chunk) => (
+      supabase.from("riders")
+        .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}`)
+        .in("team_id", chunk)
+        .order("id", { ascending: true })
+    )),
   ]);
-  if (boardsRes.error) throw new Error(`board_profiles: ${boardsRes.error.message}`);
-  if (ridersRes.error) throw new Error(`riders: ${ridersRes.error.message}`);
+  const boardsRes = { data: boards };
+  const ridersRes = { data: riders };
 
   const ridersByTeam = new Map();
   for (const r of ridersRes.data || []) {

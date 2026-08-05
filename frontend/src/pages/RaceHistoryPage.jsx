@@ -11,6 +11,7 @@ import {
   PageHeader, Section, SectionStack, SectionHeader,
   EmptyState, ErrorState, SkeletonLines,
 } from "../components/ui";
+import { fetchAllRows } from "../lib/supabasePagination";
 
 export default function RaceHistoryPage() {
   const { t } = useTranslation("races");
@@ -43,13 +44,20 @@ export default function RaceHistoryPage() {
 
       const raceIds = races.map(r => r.id);
 
-      const { data: results, error: resultsError } = await supabase
-        .from("race_results")
-        .select("race_id, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
-        .in("race_id", raceIds)
-        .order("rank");
-
-      if (resultsError) { setLoadError(true); return; }
+      // #3331: this spans EVERY past edition of the race (many seasons) — a
+      // recurring race can easily accumulate 1000+ race_results rows, so
+      // paginate. .order("id") is a stable tiebreaker after the display sort.
+      let results;
+      try {
+        results = await fetchAllRows(() => supabase
+          .from("race_results")
+          .select("race_id, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+          .in("race_id", raceIds)
+          .order("rank")
+          .order("id", { ascending: true }));
+      } catch {
+        setLoadError(true); return;
+      }
 
       const raceType = races[0].race_type;
       const primaryType = raceType === "stage_race" ? "gc" : "stage";

@@ -4,10 +4,94 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.94",
-    "date": "2026-08-04",
+    "version": "7.95",
+    "date": "2026-08-05",
     "label": "Beta",
     "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider type now shows what a rider can become, not just today's form",
+          "body": "Rider type (the label shown on the profile and roster, e.g. climber, sprinter, GC) is now based on a rider's long-term ceiling instead of their current stats. This makes the label stable for the rest of a rider's career and fixes a bug where almost every young rider was labelled climber or time trial regardless of what they were actually best suited for. Your riders' stats have not changed, only some of their type labels have."
+        },
+        "da": {
+          "title": "Ryttertype viser nu potentiale, ikke kun dagens form",
+          "body": "Ryttertypen (labelen på profilen og rytteroversigten, fx klatrer, sprinter, GC) bygger nu på rytterens langsigtede loft i stedet for de nuværende stats. Det gør labelen stabil resten af karrieren og retter en fejl hvor stort set alle unge ryttere blev vist som klatrer eller tempo uanset hvad de reelt egnede sig til. Dine rytteres stats er uændrede, kun nogle af type-labelerne skifter."
+        },
+        "refs": [3325]
+      },
+      {
+        "category": "improved",
+        "audience": "internal",
+        "topic": "Race engine",
+        "en": {
+          "title": "Stage-race generator picks a finale style instead of always climbing to the finish",
+          "body": "The generator that builds a stage race's terrain used to sort every race the same way: sprint stages first, mountains always last. Real WorldTour races don't work like that. Calibrated against a structured count of 41 real WorldTour stage races (407 stages, 2024-2026), the generator now picks one of four finale styles per non-grand-tour race (hilly circuit, summit, sprint, time-trial), weighted to match the real distribution (hilly circuits are the most common finale, not sprints), and gives races a real, mostly non-flat opening stage. Grand tours get their own dedicated form: hardest terrain second-to-last, flat or time-trial finish, since none of the real grand tours studied ended on a mountain stage. No visible effect until the next season's calendar is built."
+        },
+        "da": {
+          "title": "Etapeløbs-generatoren vælger en finale-stil i stedet for altid at klatre til mål",
+          "body": "Generatoren der bygger et etapeløbs terræn sorterede før alle løb ens: sprint-etaper først, bjerge altid sidst. Sådan fungerer rigtige WorldTour-løb ikke. Kalibreret mod en struktureret optælling af 41 rigtige WorldTour-etapeløb (407 etaper, 2024-2026), vælger generatoren nu én af fire finale-stile pr. ikke-grand-tour-løb (kuperet kredsløb, bjerg-top, sprint, enkeltstart), vægtet mod den faktiske fordeling (kuperede kredsløb er den mest almindelige finale, ikke spurter), og giver løb en reel, overvejende ikke-flad åbningsetape. Grand tours får deres egen ordning: hårdeste terræn næstsidst, flad eller enkeltstart-afslutning, da ingen af de rigtige grand tours i undersøgelsen sluttede på en bjergetape. Ingen synlig effekt før næste sæsons kalender bygges."
+        },
+        "refs": [3326]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Division 2's calendar gets a real classics scene, from next season",
+          "body": "Division 2 was two-thirds stage races with almost no cobbles: one race per group for the whole season. From the next season build, the calendar targets a roughly even split between one-day races and stage races, cobbled classics get a real presence, and stage race length now tracks class: ProSeries stays a short 3-5 days, WorldTour races run longer (6-8 days) and pay out more per race day. This changes how the calendar is built, not the season in progress, so you'll see it the next time your division's calendar is generated."
+        },
+        "da": {
+          "title": "Division 2 får en rigtig klassiker-scene, fra næste sæson",
+          "body": "Division 2 var to tredjedele etapeløb med næsten ingen brosten: ét løb pr. gruppe for hele sæsonen. Fra næste sæsons kalender-generering sigter kalenderen mod en nogenlunde jævn fordeling mellem endagsløb og etapeløb, brostens-klassikere får en reel tilstedeværelse, og etapeløbs-længde følger nu klassen: ProSeries forbliver kort (3-5 dage), WorldTour-løb kører længere (6-8 dage) og betaler mere pr. løbsdag. Det ændrer HVORDAN kalenderen bygges, ikke den igangværende sæson, så du ser det næste gang din divisions kalender genereres."
+        },
+        "refs": [3327, 3328]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Promoted academy riders keep the contract they already had",
+          "body": "When you promoted a rider out of your academy, the game overwrote his existing contract with a shorter one: three seasons became two, and his wage was recalculated. That is fixed, and we found the same bug hiding in a second place. We have also repaired the riders it already hit: 32 contracts are back to their correct length. Without that repair they would have been released as free agents at the season change, even though you thought you had them for another season. One thing we could not restore: the wage that was overwritten is not recorded anywhere, so it stays as it is."
+        },
+        "da": {
+          "title": "Forfremmede akademiryttere beholder den kontrakt de allerede havde",
+          "body": "Når du forfremmede en rytter ud af dit akademi, overskrev spillet hans eksisterende kontrakt med en kortere: tre sæsoner blev til to, og lønnen blev genberegnet. Det er rettet, og vi fandt den samme fejl gemt et sted mere. Vi har også repareret de ryttere den allerede nåede at ramme: 32 kontrakter er tilbage på deres rigtige længde. Uden den reparation ville de være blevet frigivet som fri agenter ved sæsonskiftet, selvom du troede du havde dem en sæson mere. Én ting kunne vi ikke genskabe: den overskrevne løn er ikke gemt nogen steder, så den bliver stående."
+        },
+        "refs": [2881]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race reports are no longer lost when the standings hiccup",
+          "body": "If the standings recalculation failed after a stage, the whole race report for that stage was thrown away with it: headline, badges and the moments that decided the day. Twenty stages across fifteen races were already affected, and those cannot be recovered. From now on the report survives even if the standings need a retry."
+        },
+        "da": {
+          "title": "Løbsrapporter går ikke længere tabt når stillingen hikker",
+          "body": "Hvis genberegningen af stillingen fejlede efter en etape, røg hele etapens løbsrapport med i faldet: overskrift, badges og de momenter der afgjorde dagen. Tyve etaper fordelt på femten løb nåede at blive ramt, og dem kan vi ikke få tilbage. Fremover overlever rapporten, også hvis stillingen skal prøve igen."
+        },
+        "refs": [2877]
+      },
+      {
+        "category": "fixed",
+        "audience": "internal",
+        "topic": "Platform",
+        "en": {
+          "title": "Result table can now enforce its own correctness",
+          "body": "The results table had no rule preventing the same entrant appearing twice in a stage, and a write could leave half a result behind if it failed midway. It now has a uniqueness rule and writes all-or-nothing. Verified against all 710,397 existing rows with zero conflicts. Also landed: a checked-in registry for the background-job monitors, three more scorecards covered by the exit-code guard, and a development script that no longer prints a login token to the terminal."
+        },
+        "da": {
+          "title": "Resultat-tabellen kan nu håndhæve sin egen korrekthed",
+          "body": "Resultat-tabellen havde ingen regel mod at samme deltager optrådte to gange i en etape, og en skrivning kunne efterlade et halvt resultat hvis den fejlede undervejs. Den har nu en unikhedsregel og skriver alt-eller-intet. Verificeret mod alle 710.397 eksisterende rækker uden en eneste konflikt. Også landet: et checked-in register over baggrundsjobbenes overvågning, tre flere scorecards dækket af exit-code-vagten, og et udviklings-script der ikke længere printer en login-token i terminalen."
+        },
+        "refs": [3022, 1847, 2892, 3009, 3342]
+      },
       {
         "category": "fixed",
         "audience": "player",
@@ -21,6 +105,27 @@ export const PATCHES = [
           "body": "Et etapeløb der havde kørt flere etaper, men ikke var helt færdigt, var usynligt på Resultat-hubbens Seneste-fane, fordi den kun kiggede efter løb markeret afsluttet. Igangværende etapeløb vises nu også der, tydeligt markeret Live med en \"Etape X af Y\"-linje, og den aktuelle top 3 mens løbet stadig kører."
         },
         "refs": [3333]
+      }
+    ]
+  },
+  {
+    "version": "7.94",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The Collapse badge now names the real reason",
+          "body": "When your stage favorite finished outside the top 15, the Collapse badge always said \"had an off day\" even when the real reason was a crash or a teammate sacrifice. It now shows the actual reason. Also added to the Help page: this badge can only ever land on the stage's strongest rider on paper, never on a helper."
+        },
+        "da": {
+          "title": "Kollaps-badgen nævner nu den rigtige årsag",
+          "body": "Når din etapefavorit sluttede uden for top 15, sagde Kollaps-badgen altid \"havde en dårlig dag\", selv når den rigtige årsag var et styrt eller en holdkammerat-ofring. Den viser nu den faktiske årsag. Også tilføjet til Hjælp-siden: badgen kan kun ramme etapens stærkeste rytter på papiret, aldrig en hjælperytter."
+        },
+        "refs": [3336]
       }
     ]
   },

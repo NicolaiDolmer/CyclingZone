@@ -530,6 +530,10 @@
           ["Tactics", "Race-craft and reading a race", "Team time trials, tactical races"]
         ]
       },
+      "riderType": {
+        "title": "What rider type actually means",
+        "text": "A rider's primary and secondary type (Climber, Sprinter, GC and so on) shows what he can become at his ceiling, not what he happens to be best at today. It's set once and stays the same for the rest of his career, so a young rider's type won't flip every season as his stats develop. That's on purpose: the type is a talent read, not a form report. If you want to know who's best suited for a specific race right now, check the suitability score on the team selection screen; it's calculated fresh from each rider's current abilities and the race's terrain. Type and suitability answer two different questions: type is who a rider is, suitability is who fits this race today."
+      },
       "development": {
         "title": "Development over time",
         "text": "On a rider's stats page there's a 'Development' tab. Here you can pick an ability, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."
@@ -790,7 +794,7 @@
     },
     "peakTraining": {
       "q": "How does peak training work?",
-      "a": "When you set a peak, the planner suggests a build week and a taper week for the lead-up. Accept one from the rider drawer and it writes that rhythm to the rider's weekly training. Training the right focus for the race profile, staying consistent, and reaching the taper rested all raise how much of the peak you realize. A peak locks three days before its window starts, so plan ahead."
+      "a": "When you set a peak, the planner suggests a build week and a taper week for the lead-up. Accept one from the rider drawer and it writes that rhythm to the rider's weekly training. Training the right focus for the race profile, staying consistent, and reaching the taper rested all raise how much of the peak you realize. A peak stays fully editable (retarget it, remove it, or set a second one) right up until its window actually starts; once that date arrives it locks, since the peak is then in use. Both the Squad tab and the rider drawer show exactly when each peak locks, and a lock badge always names the date it happened."
     },
     "peakValue": {
       "q": "How much is a peak actually worth?",
@@ -1154,7 +1158,7 @@
     },
     "whyReportFaq": {
       "q": "How can I see why a result happened?",
-      "a": "Race pages explain notable outcomes in plain language, not just numbers. Small badges next to a rider's name flag things like a helper who sacrificed his own placing for the captain, a pre-stage favorite who had an off day, or a rider who timed his form peak perfectly. A 'The bigger picture' block on the stage page adds a sentence for bigger swings, like a change of overall leader. The exact numbers behind a result stay hidden; only the story is shown."
+      "a": "Race pages explain notable outcomes in plain language, not just numbers. Small badges next to a rider's name flag things like a helper who sacrificed his own placing for the captain, a pre-stage favorite who had an off day, or a rider who timed his form peak perfectly. A 'The bigger picture' block on the stage page adds a sentence for bigger swings, like a change of overall leader. The exact numbers behind a result stay hidden; only the story is shown. The 'off day' badge can, by construction, only ever land on that stage's strongest rider on paper (never on a helper riding in support of a captain), so it says nothing about fatigue or how much rest a rider has had."
     },
     "contractExpiryRetirementFaq": {
       "q": "What happens to expiring contracts and older riders at the season change?",

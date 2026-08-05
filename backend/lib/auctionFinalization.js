@@ -939,6 +939,10 @@ async function finalizeAuctionRecord({
           deferTeamChange
             ? {
                 pending_team_id: effectiveBidderId,
+                // #3330: updated_at stemples eksplicit ved parkering (ingen
+                // auto-touch-trigger på riders) så ownershipInvariantWatch's
+                // forward-guard kan måle pending-alder pålideligt.
+                updated_at: actualEnd,
                 ...winnerContractPatch,
                 ...graduatePatch,
               }
