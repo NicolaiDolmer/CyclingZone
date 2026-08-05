@@ -94,7 +94,7 @@ export async function developRidersForSeason({
 
   // ── Idempotens: hvilke ryttere er allerede udviklet for denne sæson? ──────────
   const alreadyRows = await fetchAllRows(() =>
-    supabase.from("rider_development_log").select("rider_id").eq("season_id", seasonId));
+    supabase.from("rider_development_log").select("rider_id").eq("season_id", seasonId).order("id"));
   const alreadyDeveloped = new Set(alreadyRows.map((r) => r.rider_id));
 
   // ── Anti-double-dip (#1305): når daglig træning er aktiv springer menneskelige ──
@@ -114,7 +114,8 @@ export async function developRidersForSeason({
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
-      .eq("is_test_account", false));
+      .eq("is_test_account", false)
+      .order("id"));
     for (const t of teamRows) humanTeamIds.add(t.id);
   }
 
@@ -126,7 +127,8 @@ export async function developRidersForSeason({
     const planRows = await fetchAllRows(() => supabase
       .from("training_plans")
       .select("team_id, rider_id, focus, intensity")
-      .eq("season_id", trainingSeasonId));
+      .eq("season_id", trainingSeasonId)
+      .order("id"));
     for (const p of planRows) {
       trainingByTeamRider.set(`${p.team_id}:${p.rider_id}`, { focus: p.focus, intensity: p.intensity });
     }

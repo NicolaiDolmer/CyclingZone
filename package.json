@@ -54,6 +54,8 @@
     "test:lint-supabase-mutation": "node --test scripts/lint-unchecked-supabase-mutation.test.mjs",
     "lint:pagination-guard": "node scripts/lint-pagination-guard.mjs",
     "test:lint-pagination-guard": "node --test scripts/lint-pagination-guard.test.mjs",
+    "lint:fetchallrows-order": "node scripts/check-fetchallrows-order.mjs",
+    "test:lint-fetchallrows-order": "node --test scripts/check-fetchallrows-order.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",

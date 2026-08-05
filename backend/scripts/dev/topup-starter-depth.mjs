@@ -41,7 +41,7 @@ console.log(`${LIVE ? "LIVE" : "DRY-RUN"} — ${pending.length}/${eligible.lengt
 const ids = pending.map((t) => t.id);
 const riderCounts = new Map(ids.map((id) => [id, 0]));
 const riders = await fetchAllRows(() =>
-  sb.from("riders").select("team_id").in("team_id", ids).or("is_retired.is.null,is_retired.eq.false"));
+  sb.from("riders").select("team_id").in("team_id", ids).or("is_retired.is.null,is_retired.eq.false").order("id"));
 for (const r of riders) riderCounts.set(r.team_id, (riderCounts.get(r.team_id) || 0) + 1);
 
 // Navne-unikhed mod ALLE eksisterende ryttere.

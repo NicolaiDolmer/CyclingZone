@@ -34,6 +34,10 @@ try {
   node scripts/lint-pagination-guard.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "pagination-guard" }
 
+  Write-Host "== fetchallrows-order-guard (fetchAllRows(...) missing .order(), #3391) ==" -ForegroundColor Cyan
+  node scripts/check-fetchallrows-order.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "fetchallrows-order-guard" }
+
   Write-Host "== frontend eslint ==" -ForegroundColor Cyan
   Push-Location (Join-Path $root "frontend")
   npm run lint

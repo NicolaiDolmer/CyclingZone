@@ -31,7 +31,7 @@ if (bad.length) {
   process.exit(1);
 }
 
-const catalog = await fetchAllRows(() => supabase.from("race_pool").select("id, external_id, country, terrain_archetype"));
+const catalog = await fetchAllRows(() => supabase.from("race_pool").select("id, external_id, country, terrain_archetype").order("id"));
 const byExt = new Map(catalog.map((c) => [c.external_id, c]));
 let changes = 0, missing = 0;
 for (const d of data) {
