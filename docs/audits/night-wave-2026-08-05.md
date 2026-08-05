@@ -104,8 +104,24 @@ Agenterne rørte **ikke** `patchNotes.js` (per runbook) — hver PR har sin teks
 5. **Rebase ALDRIG et agent-worktree udefra.** `git rebase origin/main` i et agent-worktree forsøgte at genafspille hele historikken fra "Initial commit". Afbrudt uden skade, men det er en fælde der kan koste en hel bølges arbejde. Brug `gh pr update-branch` (server-side) eller en frisk worktree.
 6. **Næsten hvert issue-tal var forældet** — og typisk med faktor 10-1000 (247→225.947 · 807→1.399 · "grøn"→90× drift). Et issue der er mere end en uge gammelt bør genmåles før det bruges som beslutningsgrundlag, ikke citeres.
 
+## Femte gang: "allerede bygget" er reglen, ikke undtagelsen
+
+#2815 (PR #3363) fandt at det gradvise gældsloft allerede var bygget under **#3134 / PR #3228** (merged 3/8) og shippet slået fra, afventende ejerens tærskler. Agenten byggede derfor kun UX-delen — hvilket issuets egen 30/7-kommentar da også havde skåret scope til.
+
+Det er femte spor i nat hvor arbejdet helt eller delvist var gjort (#3015, #2840, #3009, #2916, #2815). **Mønstret er ikke tilfældigt:** repoet shipper hurtigere end issue-teksterne og MASTERPLAN opdateres. Konsekvensen er reel dobbeltarbejde-risiko for enhver fremtidig bølge.
+
+Konkret forslag til næste bølge: et dispatch-forfilter der for hvert kandidat-issue tjekker (a) `state`, (b) om der findes en merged PR med `Refs #N`, (c) hvornår issue-body sidst blev opdateret. Issues ældre end en uge markeres "genmål før dispatch".
+
 ## Hvad der stod tilbage ved close-out
 
-8 spor kørte stadig kl. 05:50: peak-redigering (#3094/#2883/#2645) · write-grants-audit (#2830) · paginerings-guard (#3331) · aktiverings-hullet (#3007) · scouting (#3334/#2721) · sæson-recap (#2752/#2361) · nyt holds bestyrelse (#2022) · sprog-flimmer (#2045). Plus en genoptaget agent der undersøger #3357's `frontend-smoke`-fejl.
+Ved close-out kl. 06:05 kørte 7 spor stadig: peak-redigering (#3094/#2883/#2645) · write-grants-audit (#2830) · paginerings-guard (#3331) · aktiverings-hullet (#3007) · scouting (#3334/#2721) · sæson-recap (#2752/#2361) · nyt holds bestyrelse (#2022) · sprog-flimmer (#2045). Plus en genoptaget agent på #3357's `frontend-smoke`-fejl.
 
 Alle har uncommitted arbejde i deres worktrees (1-12 filer hver). Falder de ud uden at pushe, gælder runbook §Recovery: fortsæt i SAMME worktree, ikke en ny.
+
+**Live status er `gh pr list --state open`** — denne fil er et øjebliksbillede fra close-out, ikke en løbende optælling. PR-tallet i metrik-tabellen kan derfor være lavere end det faktiske antal om morgenen.
+
+## Playwright-noter til merge-tiden
+
+To uafhængige spor verificerede at `mobile-webkit`-login-fejlen er en **pre-eksisterende flake**, ikke en regression — #2815's agent bekræftede det ved at køre samme test 2× mod ren `origin/main`, hvor den også fejlede. Klassificér den som advisory per runbook.
+
+`#3357`s `frontend-smoke`-fejl er derimod **ikke** en flake: `strict mode violation: getByRole('tab', {selected: true}) resolved to 2 elements` i `race-distribution.spec.js`, deterministisk på alle 3 projekter. #3343 (samme base-kæde) passerer, så den opstår mellem #3343 og #3357. En genoptaget agent undersøger; er den pre-eksisterende, skal den files separat frem for at blokere kæden.
