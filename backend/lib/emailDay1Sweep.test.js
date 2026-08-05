@@ -156,7 +156,10 @@ test("hasResults=true with a race_id deep-links the CTA to that race (#3310, dor
 
   await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
 
-  assert.ok(sendCalls[0].html.includes("https://cyclingzone.org/races/race-99"));
+  // Pin href'en, ikke en delstreng: includes() ville også passere hvis
+  // deep-linket kun stod som brødtekst, eller pegede på et fremmed host med
+  // vores URL som præfiks (CodeQL js/incomplete-url-substring-sanitization).
+  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99"/);
 });
 
 test("hasResults=false renders the truthful no-results-yet copy, never the invented results claim", async () => {
