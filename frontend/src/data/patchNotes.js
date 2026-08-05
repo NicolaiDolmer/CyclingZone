@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.96",
+    "date": "2026-08-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Races in \"Recent results\" are clickable again",
+          "body": "Tapping a race in the dashboard's \"Recent results\" now opens its result page, and when the row shows a stage winner it opens that exact stage. The module was built before race links existed, and the later rounds of making races clickable reached the rider profile and the planning hub but never came back over the dashboard. The row looked clickable and was only half of it: everything about the rider worked, everything about the race was dead. Reported by @smukkethomsen."
+        },
+        "da": {
+          "title": "Løbene i \"Seneste resultater\" kan klikkes igen",
+          "body": "Et tryk på et løb i dashboardets \"Seneste resultater\" åbner nu løbets resultatside, og viser rækken en etapevinder, åbner den præcis dén etape. Modulet blev bygget før løbslinks fandtes, og de senere runder med at gøre løb klikbare nåede rytterprofilen og planlægnings-hubben, men kom aldrig tilbage over dashboardet. Rækken så klikbar ud og var det halvt: alt om rytteren virkede, alt om løbet var dødt. Rapporteret af @smukkethomsen."
+        },
+        "refs": [3373]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Division bonus wording, and two errors in the bonus tables",
+          "body": "The season-end division bonus put two plain numbers side by side (\"Division 3, rank 1\"), which read as a placing to more than one manager. It now names the placing directly: \"Finished no. 1 in Division 3\". While we were there: the bonus tables in Help and Rules pointed in opposite directions, so both now read the same way (rows are where you finished, columns are which division you were in) and both carry a short line on how to read them. Help also promised a bonus for 5th place that the game has never paid, and neither page mentioned Division 4 at all, even though Division 4 teams have been collecting bonuses since the tier was added. Nothing has changed about what is actually paid out."
+        },
+        "da": {
+          "title": "Divisionsbonus-tekst, og to fejl i bonustabellerne",
+          "body": "Sæson-slut-bonussen satte to bare tal ved siden af hinanden (\"Division 3, plads 1\"), og det læste mere end én manager som en placering. Nu står placeringen med ord: \"Sluttede som nr. 1 i Division 3\". Mens vi var der: bonustabellerne i Hjælp og Regler vendte hver sin vej, så begge læses nu ens (rækker er din slutplacering, kolonner er den division du kørte i), og begge har fået en kort linje om hvordan man læser dem. Hjælp lovede desuden en bonus for 5. plads som spillet aldrig har udbetalt, og ingen af siderne nævnte Division 4, selv om Division 4-hold har fået bonusser lige siden divisionen blev tilføjet. Der er ikke ændret noget i hvad der faktisk udbetales."
+        },
+        "refs": [3100]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "A confirmation step before a loan that eats half your debt ceiling",
+          "body": "Taking a loan that would push your debt to 50% or more of your division's cap now shows a confirmation step with the exact numbers: your new total debt, what that is as a share of the cap, and what next season's interest adds if you repay nothing. Every loan amount also shows that season-cost forecast directly in the loan form now, and \"Use max\" has been toned down from a prominent button to plain text. Nothing is blocked and no ceiling has been lowered: you can still borrow the full amount, now with the numbers in front of you. The threshold is how much debt you are taking on, not how new your team is, so an experienced manager gearing up deliberately sees exactly the same dialog as a first-day player."
+        },
+        "da": {
+          "title": "Et bekræftelsestrin før et lån der æder halvdelen af dit gældsloft",
+          "body": "Et lån der vil skubbe din gæld til 50 % eller mere af divisionens loft viser nu et bekræftelsestrin med de præcise tal: din nye samlede gæld, hvor stor en andel af loftet det er, og hvad næste sæsons rente lægger oveni hvis du ikke betaler af. Ethvert lånebeløb viser nu også den sæsonpris direkte i låneformularen, og \"Brug max\" er tonet ned fra en fremtrædende knap til almindelig tekst. Intet blokeres, og intet loft er sænket: du kan stadig låne det fulde beløb, nu med tallene foran dig. Tærsklen er hvor meget gæld du påtager dig, ikke hvor nyt dit hold er, så en erfaren manager der bevidst gearer op ser præcis samme dialog som en spiller på sin første dag."
+        },
+        "refs": [2815]
+      }
+    ]
+  },
+  {
     "version": "7.95",
     "date": "2026-08-05",
     "label": "Beta",
