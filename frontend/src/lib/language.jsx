@@ -34,6 +34,7 @@ import {
 // selv-udløst løkke. Det direkte modul-import er den ÆGTE, permanent stabile
 // instans, så deps-arrays der refererer til den opfører sig som forventet
 // (aldrig som skjult proxy for `language`-state). Se sync-effekten nedenfor.
+import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { supabase } from "./supabase";
 
@@ -62,6 +63,17 @@ function writeStored(lng) {
 }
 
 export function LanguageProvider({ children, deferredLanguage = null }) {
+  // #2045: useTranslation() kaldes STADIG — men kun for dens ABONNEMENT, ikke
+  // for dens `i18n`-reference. Hooken tilmelder komponenten react-i18next's
+  // interne re-render ved 'languageChanged'; fjernes den, mister provideren sit
+  // re-render i samme commit som i18next selv skifter sprog, og landing-
+  // hydrationen brækker (React #418/#422/#425 — verificeret: testen fejler
+  // deterministisk uden dette kald og passerer med det).
+  //
+  // Identiteten tages derimod fra modul-singletonen ovenfor, som er permanent
+  // stabil. Det er den kombination der loeser #2045 UDEN at genindfoere
+  // hydration-fejlen: stabil identitet i deps-arrays, bevaret abonnement.
+  useTranslation();
   const [language, setLanguageState] = useState(() => normalizeLang(i18n.language));
   const [userId, setUserId] = useState(null);
 
