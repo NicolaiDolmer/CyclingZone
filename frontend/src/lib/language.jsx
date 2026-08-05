@@ -22,7 +22,19 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useTranslation } from "react-i18next";
+// #2045: importerer den DELTE i18next-SINGLETON direkte (samme objekt som
+// main.jsx/entry-server.jsx initialiserer) i stedet for at læse `i18n` via
+// react-i18next's useTranslation()-hook. react-i18next v17's useTranslation
+// returnerer et NYT wrapper-objekt (Object.create-kopi) hver gang
+// i18n.language ændrer sig (se node_modules/react-i18next/dist/es/
+// useTranslation.js: `createI18nWrapper`) — bevidst, til andre formål, men det
+// gør hook-returnerede `i18n` USTABIL som dependency-array-værdi. Enhver
+// effekt der har den hook-returnerede `i18n` i sine deps genstarter derfor
+// ved ETHVERT sprogskift, inklusive skift EFFEKTEN SELV forårsagede →
+// selv-udløst løkke. Det direkte modul-import er den ÆGTE, permanent stabile
+// instans, så deps-arrays der refererer til den opfører sig som forventet
+// (aldrig som skjult proxy for `language`-state). Se sync-effekten nedenfor.
+import i18n from "../i18n";
 import { supabase } from "./supabase";
 
 const STORAGE_KEY = "cz_lang";
@@ -50,7 +62,6 @@ function writeStored(lng) {
 }
 
 export function LanguageProvider({ children, deferredLanguage = null }) {
-  const { i18n } = useTranslation();
   const [language, setLanguageState] = useState(() => normalizeLang(i18n.language));
   const [userId, setUserId] = useState(null);
 
@@ -61,11 +72,15 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
   // Registreres FØR den deferrede switch nedenfor, så listeneren er på plads når
   // dét skift emitter 'languageChanged' (ellers ville provideren misse eventet og
   // vise EN-toggle mens teksten er dansk).
+  //
+  // #2045: `i18n` er nu det stabile modul-import (se import-kommentaren
+  // ovenfor), så denne effekt kører reelt kun ved MOUNT — ikke ved hvert
+  // sprogskift som den hook-returnerede `i18n` ville have forårsaget.
   useEffect(() => {
     const onLanguageChanged = (lng) => setLanguageState(normalizeLang(lng));
     i18n.on("languageChanged", onLanguageChanged);
     return () => i18n.off("languageChanged", onLanguageChanged);
-  }, [i18n]);
+  }, []);
 
   // Post-hydration sprog-skift (#landing-hydration): main.jsx tvinger EN under
   // landing-hydrationen (matcher den EN-prerendrede index.html) og beder os
@@ -79,6 +94,34 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // #2045 (in-app sprog-flimmer — rod-årsag): denne effekt kørte FØR med
+  // `[i18n, language]` som dependency-array. To uafhængige mekanismer fik den
+  // til at genstarte sig selv ved ETHVERT sprogskift — inklusive brugerens
+  // EGET klik i <LanguageSwitcher>, som allerede skriver DB'en nedenfor i
+  // setLanguage():
+  //
+  //   1. `language`-state ændrede sig ved skiftet → i deps-arrayet → effekten
+  //      genstartede.
+  //   2. Selv UDEN `language` i deps ville den hook-returnerede `i18n` fra
+  //      react-i18next's useTranslation() OGSÅ ændre identitet ved hvert
+  //      sprogskift (se import-kommentaren) → samme selv-udløste genstart.
+  //
+  // Hver genstart kaldte syncFromSession() PÅ NY — et helt uafhængigt
+  // HTTP-opslag på users.language, uden nogen garanti for rækkefølge overfor
+  // DB-skrivningen der lige var undervejs fra det samme klik. Landede
+  // læsningen FØR skrivningen var committed (målt: ~32ms efter klikket),
+  // læste den den GAMLE værdi og flippede UI'et tilbage til det forrige sprog
+  // — synligt som "sprog skifter flere gange". Værre: den fejlagtige lokale
+  // revert skrev IKKE til DB igen, så localStorage endte varigt i disharmoni
+  // med DB → samme flip gentog sig ved NÆSTE sideload også.
+  //
+  // Fix: (a) importér den ÆGTE stabile i18n-singleton (ovenfor) i stedet for
+  // hookens wrapper, og (b) lad denne effekt afhænge af `[]` — den skal kun
+  // køre ved mount og ved faktiske Supabase auth-events (login/logout/
+  // token-refresh, håndteret af onAuthStateChange-abonnementet nedenfor),
+  // aldrig som reaktion på sit eget resultat. `i18n.language` læses LIVE
+  // inde i syncFromSession (ikke React-state `language` fra en closure), så
+  // ingen af de to var nødvendige som dependency for korrekthed.
   useEffect(() => {
     let cancelled = false;
 
@@ -96,7 +139,7 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
         .single();
       if (cancelled) return;
       const dbLang = row?.language;
-      if (dbLang && SUPPORTED.includes(dbLang) && dbLang !== language) {
+      if (dbLang && SUPPORTED.includes(dbLang) && dbLang !== normalizeLang(i18n.language)) {
         setLanguageState(dbLang);
         writeStored(dbLang);
         i18n.changeLanguage(dbLang);
@@ -115,7 +158,7 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
       cancelled = true;
       sub?.subscription?.unsubscribe();
     };
-  }, [i18n, language]);
+  }, []);
 
   // #2039: bind <html lang> til det aktive UI-sprog APP-BREDT. Uden dette beholdt
   // app-ruterne (som ikke kalder useDocumentHead) index.html's statiske default
@@ -144,7 +187,7 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
         }
       }
     },
-    [i18n, userId]
+    [userId]
   );
 
   return (
