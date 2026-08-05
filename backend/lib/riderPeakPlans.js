@@ -22,9 +22,31 @@ import { RACE_V3_TUNING } from "./raceRoles.js";
 // den bor her, ikke i RACE_V3_TUNING (som er motorens scoring-flade).
 export const PEAK_WINDOW_RADIUS_DAYS = 2;
 
-// Låses senest 3 dage før vinduets start (addendum §2). Effektiv lås udledes ved
-// læse-tid; en persisteret locked_at er en hård lås der overtrumfer tærsklen.
-export const PEAK_LOCK_LEAD_DAYS = 3;
+// Låses når peak-VINDUET rent faktisk begynder — dvs. peaket er "startet"
+// (ejer-udmelding, Discord 27/7, #3094: "Only if the peak has been
+// started/used, it should be locked ofc."). Effektiv lås udledes ved læse-tid;
+// en persisteret locked_at er en hård lås der overtrumfer tærsklen.
+//
+// FØR 5/8 var default 3 (addendum §2's oprindelige forbehold: lås 3 dage FØR
+// vinduets start). Konsekvens: ethvert mål-løb ≤5 dage ude gav en plan der var
+// `locked:true` i SELVE svaret der oprettede den — verificeret mod prod 5/8:
+// 475 af 1.019 planer (47%) blev født låst under den regel. Fire uafhængige
+// spillerrapporter (27/7 ×3 + 4/8) klagede over præcis dette — ingen varsel,
+// ingen forklaring, ingen fortryd (#3094). Default er nu 0: låsen indtræder
+// PRÆCIS når vinduet begynder, aldrig før. Under den nye regel er tallet 217
+// (21%) — kun planer mod et mål-løb der allerede er inde i sit eget peak-
+// vindue ved oprettelse, et langt sjældnere og mere forsvarligt tilfælde.
+// Parameteren er bevaret (bagudkompatibel signatur) så tærsklen forbliver
+// tunbar uden en funktions-signatur-ændring.
+//
+// Dette er en pragmatisk mellemløsning, IKKE ejerens fulde kontrakt-forslag
+// (Discord-sweep 28/7: separat udkast/gem-tilstand + lås først ved optaktens
+// FØRSTE dag, dvs. PEAK_LEADUP_DAYS før vinduet — RACE_V3_TUNING.PEAK_LEADUP_
+// DAYS=14). Det forslag kræver en committed/draft-kolonne + et nyt UI-flow og
+// er ikke forsøgt her — se PR-beskrivelsen. Denne ændring gør udelukkende
+// låsen SEN NOK til aldrig at kunne ramme i oprettelses-øjeblikket for et
+// normalt mål-løb, og FORUDSIGELIG (vinduets startdato er kendt på forhånd).
+export const PEAK_LOCK_LEAD_DAYS = 0;
 
 // Maks 2 peak-planer pr. (rytter, sæson) — håndhæves i API (count-check), ikke en
 // DB-constraint (spec §11.4 / addendum §4).
@@ -58,6 +80,8 @@ export function snapPeakWindow(raceStageDates, { radiusDays = PEAK_WINDOW_RADIUS
 /**
  * Er en peak-plan låst (ikke længere redigerbar)? En persisteret locked_at er en
  * hård lås; ellers udledes låsen ved læse-tid: nu >= (window_start − lockLeadDays).
+ * Med default lockLeadDays=0 er det ækvivalent med "nu >= window_start", dvs.
+ * peakets vindue er faktisk begyndt (#3094 — se PEAK_LOCK_LEAD_DAYS).
  *
  * @param {{locked_at:string|null, window_start:string}} plan
  * @param {number} nowOrdinal  CET-dag-ordinal for "nu"
