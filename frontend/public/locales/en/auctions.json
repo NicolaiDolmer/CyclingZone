@@ -95,7 +95,6 @@
     "type": "Type",
     "value": "Value",
     "highestBid": "Highest bid",
-    "leaderTooltip": "Leading: {name}",
     "timeLeft": "Time left",
     "age": "Age",
     "salary": "Salary",
@@ -116,6 +115,10 @@
     "ageYears": "{age} yrs",
     "estValue": "Est. value",
     "ovrTitle": "Overall rating (1-99), weighted for the rider's type"
+  },
+  "leader": {
+    "line": "Leading: {name}",
+    "none": "No bids yet"
   },
   "timer": {
     "completed": "Completed",

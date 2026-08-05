@@ -183,6 +183,22 @@ function BidDestinationHint({ destination, t }) {
   );
 }
 
+// #3099: "hvem fører?" må ikke kræve en mus. Desktop-rækken bar fører-navnet i en
+// title-tooltip efter #228-kompakteringen — ingen visuel affordance for at beløbet
+// var hoverbart, og på touch findes tooltippen slet ikke. Mobil-kortet viste det
+// derimod som linje. Denne ene linje bruges nu af BEGGE layouts, så de ikke driver
+// fra hinanden igen, og den renderes ALTID: uden bud siger den det eksplicit, så
+// spilleren kan se at beløbet er startprisen, og så rækkehøjden er ens i hele
+// tabellen (T2-subline: text-3xs / --text-3, jf. docs/design/PAGE_TEMPLATES.md).
+function AuctionLeaderLine({ auction, t, className = "" }) {
+  const leaderName = getAuctionLeaderName(auction);
+  return (
+    <span className={`block truncate text-3xs leading-tight text-cz-3 ${className}`}>
+      {leaderName ? t("auctions:leader.line", { name: leaderName }) : t("auctions:leader.none")}
+    </span>
+  );
+}
+
 function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
@@ -315,15 +331,13 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
         {formatNumber(getRiderMarketValue(r))}
       </td>
 
-      {/* Højeste bud — #228 v2: fører-holdnavn flyttet til title-tooltip på
-          beløbet (ikke længere egen linje); vurderings-delta forbliver inline
-          ved siden af beløbet i stedet for stablet under. */}
+      {/* Højeste bud — #3099: fører-holdnavnet er tilbage som synlig sub-linje
+          under beløbet (#228 v2 flyttede det til en title-tooltip, som hverken
+          er synlig uden mus eller findes på touch). Vurderings-delta forbliver
+          inline ved siden af beløbet i stedet for stablet under. */}
       <td className="px-3 py-1.5 text-right whitespace-nowrap">
         <span className={`inline-flex items-baseline justify-end gap-1.5 ${isFlashing ? "cz-pulse-flash" : ""}`}>
-          <span
-            className="text-cz-1 font-mono font-bold text-sm"
-            title={getAuctionLeaderName(auction) && !imWinning ? t("auctions:table.leaderTooltip", { name: getAuctionLeaderName(auction) }) : undefined}
-          >
+          <span className="text-cz-1 font-mono font-bold text-sm">
             {formatNumber(auction.current_price ?? 0)}
             <span className="text-cz-3 text-xs ms-1">CZ$</span>
           </span>
@@ -333,6 +347,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
               + estimat-forbeholdet. */}
           <ValueDeltaBadge valueDelta={valueDelta} ns="auctions" className="text-3xs whitespace-nowrap" />
         </span>
+        {/* max-w + ms-auto: linjen må ikke være det der bestemmer kolonnens
+            bredde (auto table-layout tæller nowrap-tekst med, også bag
+            overflow:hidden), og skal stå højrestillet under beløbet. */}
+        <AuctionLeaderLine auction={auction} t={t} className="ms-auto max-w-[150px]" />
       </td>
 
       {/* Tid tilbage */}
@@ -599,9 +617,9 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
           <p className="text-cz-1 font-mono font-bold text-sm">
             {formatNumber(auction.current_price ?? 0)} CZ$
           </p>
-          {getAuctionLeaderName(auction) && !imWinning && (
-            <p className="text-cz-3 text-3xs truncate">{getAuctionLeaderName(auction)}</p>
-          )}
+          {/* #3099: samme linje som desktop-rækken. Før viste kortet et bart
+              holdnavn, og kun når en ANDEN førte — nu er de to layouts ens. */}
+          <AuctionLeaderLine auction={auction} t={t} className="mt-0.5" />
         </div>
         {/* #2464/#3191: estimeret markedsværdi + delta ved siden af prisen — godt
             køb/overpris skal kunne aflæses på ét blik, formuleret som estimat.
