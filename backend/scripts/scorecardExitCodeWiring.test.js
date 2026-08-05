@@ -1,15 +1,26 @@
-// #3009 forward-guard (integration-niveau): spawner de to scorecards buggen blev
-// rapporteret på (moneySupplyScorecard.js, inflationScorecard.js) som ægte child-
+// #3009 forward-guard (integration-niveau): spawner scorecards som ægte child-
 // processer og verificerer at den printede HEADLINE-verdikt matcher den faktiske
 // exit-kode. Testen parser det RIGTIGE output i stedet for at hardcode PASS/FAIL,
 // så den forbliver gyldig uanset om økonomien senere kalibreres til PASS — hvad
 // den låser fast er invarianten "FAIL => non-zero exit, PASS => exit 0", ikke det
-// aktuelle (i skrivende stund røde) resultat.
+// aktuelle resultat.
+//
+// Oprindeligt (PR #3248) dækkede denne fil kun de to scripts buggen blev
+// rapporteret på (moneySupplyScorecard.js, inflationScorecard.js). #3009-
+// backwards-checket (2026-08-05) udvidede dækningen til de tre DB-frie "søster"-
+// scorecards fra PR #3006 (facilityInvestmentScorecard.js, scoutTravelScorecard.js,
+// relegationParachuteScorecard.js) — de var allerede korrekt wiret
+// (process.exitCode = allPass ? 0 : 1, ikke den fælles gateExitCode-hjælper), men
+// stod uden et kørende regressionstjek: kun kildekode-gennemgang bekræftede at
+// exit-koden reelt matcher HEADLINE-teksten. Alle fem er 100% DB-frie/graceful-
+// uden-creds, så de kan spawnes direkte i CI/lokalt uden secrets.
 //
 // sponsorChoiceScorecard.js (scripts/, samme fejlklasse fundet under #3009's
 // backwards-check) er bevidst UDELADT her: den kræver live Supabase-service-role-
 // credentials (ikke bare read-only) og kan derfor ikke køres i CI/lokalt test-run
 // uden secrets — fixet og verificeret ved kode-gennemgang, se PR-beskrivelsen.
+// gcAccumulationScorecard.js og raceRouteRealismScorecard.js kræver ligeledes live
+// Supabase-creds og er ikke gates (intet HEADLINE/allPass-verdikt, se samme PR).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -66,4 +77,38 @@ test("inflationScorecard --advisory: exit 0 uanset verdikt", () => {
   const result = run("inflationScorecard.js", ["--advisory"]);
   headlineVerdict(result.stdout, "HEADLINE: inflations-gate");
   assert.equal(result.status, 0, "--advisory skal altid exit 0 (report-only), uanset PASS/FAIL");
+});
+
+// ── #3009 bredere-tjek (2026-08-05): de tre DB-frie søster-scorecards fra #3006 ──
+// (samme "prints FAIL, exit 0"-risikoklasse — dækket indtil nu kun ved kode-
+// gennemgang, aldrig ved en kørende proces).
+
+test("facilityInvestmentScorecard: exit-kode matcher HEADLINE-verdikt", () => {
+  const result = run("facilityInvestmentScorecard.js", []);
+  const verdict = headlineVerdict(result.stdout, "HEADLINE: facility-gates");
+  if (verdict === "FAIL") {
+    assert.notEqual(result.status, 0, `HEADLINE FAIL skal give non-zero exit-kode (fik ${result.status})`);
+  } else {
+    assert.equal(result.status, 0, `HEADLINE PASS skal give exit-kode 0 (fik ${result.status})`);
+  }
+});
+
+test("scoutTravelScorecard: exit-kode matcher HEADLINE-verdikt", () => {
+  const result = run("scoutTravelScorecard.js", []);
+  const verdict = headlineVerdict(result.stdout, "HEADLINE: scout-travel-cost-gate");
+  if (verdict === "FAIL") {
+    assert.notEqual(result.status, 0, `HEADLINE FAIL skal give non-zero exit-kode (fik ${result.status})`);
+  } else {
+    assert.equal(result.status, 0, `HEADLINE PASS skal give exit-kode 0 (fik ${result.status})`);
+  }
+});
+
+test("relegationParachuteScorecard: exit-kode matcher HEADLINE-verdikt (uden live-creds — graceful skip af sektion B)", () => {
+  const result = run("relegationParachuteScorecard.js", []);
+  const verdict = headlineVerdict(result.stdout, "HEADLINE: formel-gate");
+  if (verdict === "FAIL") {
+    assert.notEqual(result.status, 0, `HEADLINE FAIL skal give non-zero exit-kode (fik ${result.status})`);
+  } else {
+    assert.equal(result.status, 0, `HEADLINE PASS skal give exit-kode 0 (fik ${result.status})`);
+  }
 });

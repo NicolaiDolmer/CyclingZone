@@ -18,6 +18,7 @@ export { PRIZE_PER_POINT };
 import { fetchAllRows } from "./supabasePagination.js";
 import { applyRaceResultsBatchAtomic as applyRaceResultsBatchAtomicDefault } from "./stageResultRpc.js";
 import { assertValidEntrantRows } from "./raceResultEntrantKey.js";
+import { captureException } from "./sentry.js";
 
 const RESULT_TYPE_TO_RACE_POINTS = {
   stage_race: {
@@ -143,8 +144,23 @@ export async function applyRaceResults({
     rowsInserted = normalizedRows.length;
   }
 
-  await ensureSeasonStandings(race.season_id);
-  await updateStandings(race.season_id, race.id);
+  // #2877: samme kobling som simulateStageByIndex (raceRunner.js) blev ramt af —
+  // resultaterne ER skrevet på dette tidspunkt, men simulateRace's berigelses-
+  // skrivning (persistRuns/persistPassages/persistIncidents/persistStageMoments)
+  // kører FØRST efter denne funktion returnerer. Kastede standings-recompute'en
+  // uhåndteret (fx statement timeout under samtidige afviklinger), væltede det
+  // hele opkaldet og berigelsen blev aldrig skrevet — selvom resultaterne stod.
+  // updateStandings er en fuld re-derivation fra race_results — inhærent
+  // idempotent og self-healing (næste recompute retter den); berigelsen er det
+  // ikke. Fanget + Sentry-capturet (synligt, ikke tavst skjult) i stedet for at
+  // lade en recompute-fejl gøre allerede-skrevne resultater' berigelse gidsel.
+  try {
+    await ensureSeasonStandings(race.season_id);
+    await updateStandings(race.season_id, race.id);
+  } catch (err) {
+    console.error(`  ⚠️  standings recompute failed after race ${race.id} results write — enrichment continues, standings will self-heal on next recompute: ${err.message}`);
+    captureException(err, { tags: { flow: "race-results", stage: "standings-recompute" }, raceId: race.id });
+  }
 
   return {
     rowsImported: rowsInserted,

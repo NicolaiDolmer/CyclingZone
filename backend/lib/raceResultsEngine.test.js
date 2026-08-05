@@ -363,6 +363,38 @@ test("applyRaceResults: afviser en række uden gyldig deltager-identitet (#3022 
   assert.deepEqual(standingsCalls, []);
 });
 
+// #2877: standings-recompute-fejl (fx statement timeout under samtidige
+// afviklinger) skal IKKE vælte applyRaceResults — resultaterne er allerede
+// skrevet på dette tidspunkt, og simulateRace's berigelses-skrivning (runs/
+// incidents/moments) kører FØRST efter denne funktion returnerer. Kastede
+// updateStandings uhåndteret her, blev berigelsen tabt permanent selvom
+// resultaterne stod korrekt (19 etaper i 14 løb, samme rodårsag som
+// simulateStageByIndex — se raceRunner.js).
+test("#2877: applyRaceResults returnerer normalt selvom updateStandings fejler (standings self-healer, berigelse må ikke tabes)", async () => {
+  const { supabase, state } = createSupabaseDouble({ "team-1": 1000, "team-2": 500 });
+  const ensureCalls = [];
+
+  const result = await applyRaceResults({
+    supabase,
+    race: { id: "race-1", season_id: "season-1", name: "Tour de Test" },
+    resultRows: [
+      { rider_id: "rider-1", rider_name: "Rider One", team_id: "team-1", result_type: "stage", rank: 1, stage_number: 1, prize_money: 50, points_earned: 8 },
+    ],
+    ensureSeasonStandings: async (seasonId) => { ensureCalls.push(seasonId); },
+    updateStandings: async () => {
+      const err = new Error("canceling statement due to statement timeout");
+      err.code = "57014";
+      throw err;
+    },
+  });
+
+  // Resultaterne ER skrevet, og funktionen kaster IKKE videre — kalderen
+  // (simulateRace) skal kunne fortsætte til berigelses-skrivningen.
+  assert.equal(result.rowsImported, 1);
+  assert.equal(state.raceResults.length, 1);
+  assert.deepEqual(ensureCalls, ["season-1"], "ensureSeasonStandings skal stadig forsøges");
+});
+
 // #2898: fuld-sim sletter race_results FØR applyRaceResults kaldes (raceRunner.js).
 // Fejler selve insertet (fx statement timeout), skal det være en synlig fejl —
 // IKKE en tavs succes der lader standings genberegne på et ufuldstændigt
