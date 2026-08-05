@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recomputeRiderValue, selectChangedValueUpdates } from "./riderValueRefresh.js";
+import { predictBaseValue } from "./riderValuation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaseline.json"), "utf8"));
@@ -19,6 +20,21 @@ test("recomputeRiderValue: returnerer type + afrundet base_value, deterministisk
   assert.ok(a.base_value > 0);
   const b = recomputeRiderValue({ id: "r1" }, ABIL, baseline, model);
   assert.deepEqual(a, b);
+});
+
+test("#3345: recomputeRiderValue bruger riderRow.valuation_type (frossen) til base_value, ikke den friske primary_type", () => {
+  const fresh = recomputeRiderValue({ id: "r1" }, ABIL, baseline, model);
+  const otherType = Object.keys(model.offset || {}).find((k) => k !== fresh.primary_type);
+  assert.ok(otherType, "modellen skal have mindst 2 typer i offset-tabellen til denne test");
+
+  const frozen = recomputeRiderValue({ id: "r1", valuation_type: otherType }, ABIL, baseline, model);
+  // primary_type reklassificeres UAFHÆNGIGT af valuation_type (frit, jf. #3325/#3343).
+  assert.equal(frozen.primary_type, fresh.primary_type);
+  // ...men base_value følger den FROSNE valuation_type, ikke den friske primary_type —
+  // matcher direkte hvad predictBaseValue giver for `otherType` på samme abilities/model.
+  const expected = predictBaseValue({ primary_type: otherType }, ABIL, model);
+  assert.equal(frozen.base_value, Math.round(expected));
+  assert.notEqual(frozen.base_value, fresh.base_value, "de to typer skal give forskellig værdi (ellers beviser testen intet)");
 });
 
 test("selectChangedValueUpdates: skriver KUN ryttere hvor værdi/type ændrede sig", () => {

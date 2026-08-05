@@ -49,6 +49,25 @@ test("predictBaseValue applies the type-offset", () => {
   assert.equal(predictBaseValue({ primary_type: "sprinter" }, abilities(50), model), 500);
 });
 
+test("#3345: predictBaseValue reads valuation_type BEFORE primary_type", () => {
+  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(2), puncheur: Math.log(0.5) } };
+  // valuation_type (den FROSNE type) sætter offsettet — primary_type (reklassificeret) ignoreres.
+  assert.equal(
+    predictBaseValue({ primary_type: "puncheur", valuation_type: "gc" }, abilities(50), model),
+    2000
+  );
+  assert.equal(
+    predictBaseValue({ primary_type: "gc", valuation_type: "puncheur" }, abilities(50), model),
+    500
+  );
+});
+
+test("#3345: predictBaseValue falls back to primary_type when valuation_type is absent (fixtures/tests/new riders)", () => {
+  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(2), puncheur: Math.log(0.5) } };
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 2000);
+  assert.equal(predictBaseValue({ primary_type: "gc", valuation_type: null }, abilities(50), model), 2000);
+});
+
 test("predictBaseValue rises with output when b>0", () => {
   const model = { a: 0, b: 0.05, offset: {} };
   const lo = predictBaseValue({ primary_type: "gc" }, abilities(40), model);

@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-// READ-ONLY måle-harness for #3345 (blocker for #3325/#3343's merge).
+// READ-ONLY måle-harness for #3345 (oprindeligt en blocker-rapport for
+// #3325/#3343's merge — se PR #3348. UDVIDET her med FROZEN-sektionen, som
+// beviser at #3345's løsning — riders.valuation_type (frosset værdisætnings-type,
+// database/proposals/2026-08-04-3345-frozen-valuation-type.sql) — faktisk holder
+// populationens samlede market_value uændret).
 //
 // #3325/#3343 omklassificerer primary_type mod ability_caps (potentiale), men
-// backfillen er IKKE kørt mod prod (ejer-gated). Denne fil simulerer hvad der
-// sker med populationens `market_value` NÅR den backfill kører, ved at
-// genberegne EN NY primary_type (samme klassifikator + caps-baseline som
-// #3343 committer) for hele den aktive population og sende den gennem BEGGE
-// eksisterende valuation-modeller:
+// backfillen er IKKE kørt mod prod endnu (ejer-gated, ships sammen med #3345).
+// Denne fil simulerer hvad der sker med populationens `market_value` NÅR den
+// backfill kører, ved at genberegne EN NY primary_type (samme klassifikator +
+// caps-baseline som #3343 committer) for hele den aktive population og sende
+// den gennem BEGGE eksisterende valuation-modeller:
 //
 //   V3 (backend/lib/riderValuationModel.json) — SHADOW. Bruges af
 //     fictionalLaunchPopulation.test.js + enkelte admin/preview-diagnostik-
@@ -32,8 +36,16 @@
 // koefficienter"-sammenligning — den isolerer PRÆCIST hvor meget offset+O
 // alene flytter værdien, uden at blande en (umulig) re-fit ind.
 //
-// V4 er ALDRIG rørt af nogen kode i #3345-arbejdet — tallene her viser derfor
-// den ÆGTE, u-mitigerede risiko for prod market_value hvis backfillen kører.
+// V4 er ALDRIG rørt af nogen kode i #3345-arbejdet — V3/V4-tabellerne nedenfor
+// viser derfor stadig den ÆGTE, u-mitigerede risiko HVIS reklassificeringen
+// havde ramt værdien direkte (den historiske blocker-måling fra PR #3348).
+//
+// FROZEN-sektionen (ny) beviser løsningen: samme population, samme NYE
+// primary_type, men nu sendt gennem V4 med `valuation_type: oldType` sat (den
+// FROSNE type — se riders.valuation_type-kolonnen + riderValuation.js's
+// #3345-fallback-kæde `rider.valuation_type ?? rider.primary_type`). Da V4 nu
+// læser valuation_type FØR primary_type, skal FROZEN-totalen matche FØR-totalen
+// præcist (kun afrundings-støj), UANSET at primary_type er reklassificeret.
 //
 // Usage: cd backend && node scripts/measureValuationImpactAfterRiderTypeReclassification.js [--json=<sti>]
 
@@ -135,7 +147,7 @@ async function main() {
   const active = riders.filter((r) => !r.is_retired);
   console.log(`Population: ${riders.length} total · ${active.length} aktive (ikke pensioneret)\n`);
 
-  const v3Old = [], v3New = [], v4Old = [], v4New = [];
+  const v3Old = [], v3New = [], v4Old = [], v4New = [], v4Frozen = [];
   const perRider = [];
   let typeChanges = 0;
   let missingAbilities = 0;
@@ -157,25 +169,33 @@ async function main() {
     const bvV3New = predictBaseValue({ ...r, primary_type: newType }, ab, V3_MODEL);
     const bvV4Old = predictBaseValue({ ...r, primary_type: oldType, age }, ab, V4_MODEL);
     const bvV4New = predictBaseValue({ ...r, primary_type: newType, age }, ab, V4_MODEL);
+    // #3345 FIX-BEVIS: samme rytter, NY primary_type (reklassificeret, som
+    // ville blive persisteret af #3343's backfill), men valuation_type sat til
+    // den GAMLE type (= riders.valuation_type efter #3345-backfillet). predictBaseValue
+    // læser valuation_type FØR primary_type — denne værdi skal derfor være
+    // IDENTISK med bvV4Old, selvom primary_type er reklassificeret.
+    const bvV4Frozen = predictBaseValue({ ...r, primary_type: newType, valuation_type: oldType, age }, ab, V4_MODEL);
 
-    if (bvV3Old == null || bvV3New == null || bvV4Old == null || bvV4New == null) continue;
+    if (bvV3Old == null || bvV3New == null || bvV4Old == null || bvV4New == null || bvV4Frozen == null) continue;
 
     const mvV3Old = bvV3Old + prizeBonus, mvV3New = bvV3New + prizeBonus;
     const mvV4Old = bvV4Old + prizeBonus, mvV4New = bvV4New + prizeBonus;
+    const mvV4Frozen = bvV4Frozen + prizeBonus;
 
     v3Old.push(mvV3Old); v3New.push(mvV3New);
     v4Old.push(mvV4Old); v4New.push(mvV4New);
+    v4Frozen.push(mvV4Frozen);
 
     perRider.push({
       id: r.id, name: `${r.firstname} ${r.lastname}`, oldType, newType,
-      mvV3Old, mvV3New, mvV4Old, mvV4New,
+      mvV3Old, mvV3New, mvV4Old, mvV4New, mvV4Frozen,
     });
 
     if (r.team_id) {
       const team = teamById.get(r.team_id);
       if (team && !team.is_test_account && !team.is_frozen && !team.is_bank) {
-        const acc = teamSquadDelta.get(r.team_id) || { oldSum: 0, newSum: 0, count: 0, division: team.division };
-        acc.oldSum += mvV4Old; acc.newSum += mvV4New; acc.count++;
+        const acc = teamSquadDelta.get(r.team_id) || { oldSum: 0, newSum: 0, frozenSum: 0, count: 0, division: team.division };
+        acc.oldSum += mvV4Old; acc.newSum += mvV4New; acc.frozenSum += mvV4Frozen; acc.count++;
         teamSquadDelta.set(r.team_id, acc);
       }
     }
@@ -186,6 +206,7 @@ async function main() {
 
   const sumV3Old = summarize(v3Old), sumV3New = summarize(v3New);
   const sumV4Old = summarize(v4Old), sumV4New = summarize(v4New);
+  const sumV4Frozen = summarize(v4Frozen);
 
   function printTable(label, before, after) {
     const deltaPct = (100 * (after.total - before.total) / before.total).toFixed(2);
@@ -200,41 +221,54 @@ async function main() {
     console.log();
   }
 
+  // ── HOVEDBEVIS (#3345-fix): V4 med valuation_type frosset ────────────────
+  console.log("=== HOVEDBEVIS: V4 MED #3345-FRYSNING (valuation_type = gammel type, primary_type = ny type) ===");
+  printTable("V4 FROZEN (LIVE, riders.valuation_type i brug — dette er hvad der rent faktisk sker ved merge)", sumV4Old, sumV4Frozen);
+  const frozenDeltaAbs = Math.abs(sumV4Frozen.total - sumV4Old.total);
+  console.log(frozenDeltaAbs === 0
+    ? "✅ Total market_value (V4) er BYTE-IDENTISK FØR/EFTER med frysningen aktiv.\n"
+    : `❌ Total market_value (V4) AFVIGER ${fmtM(frozenDeltaAbs)} selv med frysningen aktiv — en kaldsvej er overset, undersøg FØR du forklarer det væk.\n`);
+
+  // ── Historisk kontekst: hvad #3345 forhindrer (u-frosset, PR #3348's oprindelige måling) ──
+  console.log("=== HISTORISK RISIKO (uden #3345-frysning — hvad der ville være sket) ===");
   printTable("V3 (SHADOW, riderValuationModel.json — u-refittet, se header)", sumV3Old, sumV3New);
-  printTable("V4 (LIVE, riderValuationModelV4.json — #2594-cutover, IKKE rørt)", sumV4Old, sumV4New);
+  printTable("V4 (LIVE, riderValuationModelV4.json — #2594-cutover, IKKE rørt) UDEN frysning", sumV4Old, sumV4New);
 
-  // ── Side-effekter ──────────────────────────────────────────────────────
-  console.log("--- Star Signing (#2261): market_value >= " + fmtM(STAR_RIDER_MARKET_VALUE) + " (V4) ---");
-  console.log(`  FØR ${sumV4Old.tiers.superstjerne} → EFTER ${sumV4New.tiers.superstjerne} kvalificerende ryttere\n`);
+  // ── Side-effekter (V4 FROZEN — det der rent faktisk ships) ────────────────
+  console.log("--- Star Signing (#2261): market_value >= " + fmtM(STAR_RIDER_MARKET_VALUE) + " (V4 FROZEN) ---");
+  console.log(`  FØR ${sumV4Old.tiers.superstjerne} → EFTER (frosset) ${sumV4Frozen.tiers.superstjerne} kvalificerende ryttere\n`);
 
-  console.log("--- Udvikl-og-sælg (#2670): akademi-ryttere (V4) ---");
+  console.log("--- Udvikl-og-sælg (#2670): akademi-ryttere (V4 FROZEN) ---");
   const academyIds = new Set(active.filter((r) => r.is_academy).map((r) => r.id));
   const acadOld = perRider.filter((p) => academyIds.has(p.id)).map((p) => p.mvV4Old);
-  const acadNew = perRider.filter((p) => academyIds.has(p.id)).map((p) => p.mvV4New);
-  const acadSumOld = summarize(acadOld), acadSumNew = summarize(acadNew);
-  console.log(`  n=${acadSumOld.n} · Total FØR ${fmtM(acadSumOld.total)} → EFTER ${fmtM(acadSumNew.total)} (${(100 * (acadSumNew.total - acadSumOld.total) / acadSumOld.total).toFixed(2)}%)`);
-  console.log(`  Median FØR ${fmt(acadSumOld.median)} → EFTER ${fmt(acadSumNew.median)}\n`);
+  const acadFrozen = perRider.filter((p) => academyIds.has(p.id)).map((p) => p.mvV4Frozen);
+  const acadSumOld = summarize(acadOld), acadSumFrozen = summarize(acadFrozen);
+  console.log(`  n=${acadSumOld.n} · Total FØR ${fmtM(acadSumOld.total)} → EFTER (frosset) ${fmtM(acadSumFrozen.total)} (${(100 * (acadSumFrozen.total - acadSumOld.total) / acadSumOld.total).toFixed(2)}%)`);
+  console.log(`  Median FØR ${fmt(acadSumOld.median)} → EFTER (frosset) ${fmt(acadSumFrozen.median)}\n`);
 
-  console.log("--- Gældsloft (#2815): hold-squads (real teams, V4) ---");
+  console.log("--- Gældsloft (#2815): hold-squads (real teams, V4 FROZEN) ---");
   const teamRows = [...teamSquadDelta.entries()].map(([teamId, v]) => ({
-    teamId, ...v, deltaPct: 100 * (v.newSum - v.oldSum) / (v.oldSum || 1),
+    teamId, ...v, deltaPct: 100 * (v.frozenSum - v.oldSum) / (v.oldSum || 1),
   }));
   teamRows.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
-  console.log(`  ${teamRows.length} rigtige hold med ≥1 værdisat rytter. Top 5 største squad-værdi-skift:`);
+  console.log(`  ${teamRows.length} rigtige hold med ≥1 værdisat rytter. Top 5 største squad-værdi-skift (frosset):`);
   for (const t of teamRows.slice(0, 5)) {
-    console.log(`    hold ${t.teamId} (div ${t.division}, ${t.count} ryttere): ${fmtM(t.oldSum)} → ${fmtM(t.newSum)} (${t.deltaPct >= 0 ? "+" : ""}${t.deltaPct.toFixed(1)}%)`);
+    console.log(`    hold ${t.teamId} (div ${t.division}, ${t.count} ryttere): ${fmtM(t.oldSum)} → ${fmtM(t.frozenSum)} (${t.deltaPct >= 0 ? "+" : ""}${t.deltaPct.toFixed(1)}%)`);
   }
   const bigMovers = teamRows.filter((t) => Math.abs(t.deltaPct) >= 10);
-  console.log(`  Hold med ≥10% squad-værdi-skift: ${bigMovers.length}/${teamRows.length}\n`);
+  console.log(`  Hold med ≥10% squad-værdi-skift (frosset): ${bigMovers.length}/${teamRows.length} — sammenlign med #3345-issuets oprindelige 239/367 (u-frosset)\n`);
 
   const result = {
     measured_at: new Date().toISOString(),
     population: { total: riders.length, active: active.length, valued: v3Old.length, missingAbilities },
     typeChanges,
-    v3: { before: sumV3Old, after: sumV3New },
-    v4: { before: sumV4Old, after: sumV4New },
-    academy: { before: acadSumOld, after: acadSumNew },
-    teams: { n: teamRows.length, bigMovers10pct: bigMovers.length, top5: teamRows.slice(0, 5) },
+    // #3345 hovedbevis: skal være total_delta_abs=0 (byte-identisk) — dette er
+    // tallet PR'ens Brugerverifikation-sektion citerer.
+    v4_frozen: { before: sumV4Old, after: sumV4Frozen, total_delta_abs: frozenDeltaAbs },
+    v3_unfrozen_historical: { before: sumV3Old, after: sumV3New },
+    v4_unfrozen_historical: { before: sumV4Old, after: sumV4New },
+    academy_frozen: { before: acadSumOld, after: acadSumFrozen },
+    teams_frozen: { n: teamRows.length, bigMovers10pct: bigMovers.length, top5: teamRows.slice(0, 5) },
   };
   if (JSON_OUT) {
     writeFileSync(JSON_OUT, JSON.stringify(result, null, 2) + "\n");

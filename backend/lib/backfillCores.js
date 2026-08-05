@@ -161,7 +161,10 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const valModel = valuationModel || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
 
   // Hent de berørte ryttere (legacy stat-felter + krop til physiology-seed).
-  const select = ["id", "height", "weight", "birthdate", "potentiale", ...STAT_KEYS].join(", ");
+  // #3345: valuation_type med i selectet — se trin 5's kommentar for hvorfor
+  // (denne sti dækker BÅDE helt nye ryttere OG re-derive af eksisterende/strandede
+  // ryttere, og de to skal behandles forskelligt).
+  const select = ["id", "height", "weight", "birthdate", "potentiale", "valuation_type", ...STAT_KEYS].join(", ");
   const riders = await fetchAllRows(() =>
     supabase.from("riders").select(select).in("id", ids).order("id", { ascending: true }));
   log(`deriveForRiderIds: ${riders.length}/${ids.length} ryttere fundet`);
@@ -246,6 +249,17 @@ export async function deriveForRiderIds(supabase, riderIds, {
     return {
       id: r.id,
       ...t,
+      // #3345: BEVAR et allerede-sat valuation_type (r.valuation_type, med i
+      // selectet ovenfor). Denne sti dækker BÅDE helt nye ryttere OG re-derive af
+      // EKSISTERENDE/strandede ryttere (riderDeriveHealSweep, migreringsscripts) —
+      // en healed rytter der allerede har en frosset værdi må ikke få den
+      // overskrevet med den friske (potentielt reklassificerede) type. Kun når
+      // r.valuation_type mangler helt (en HELT NY rytter, netop insertet — ingen
+      // gammel prod-værdi at bevare) sætter vi den ÉN GANG til den friske type, så
+      // FREMTIDIGE reklassificeringer af denne rytter heller ikke rører værdien.
+      // (bv/cpv ovenfor er allerede beregnet mod r.valuation_type via valueRiders
+      // spread af r — kun selve OUTPUT-feltet her skal have samme fallback-logik.)
+      valuation_type: r.valuation_type ?? t.primary_type,
       ...(bv != null ? { base_value: bv } : {}),
       ...(cpv != null ? { current_production_value: cpv } : {}),
     };
@@ -303,8 +317,12 @@ export async function deriveForRiderIds(supabase, riderIds, {
 // ── base_value SHADOW (fra backfillRiderBaseValue.js) ─────────────────────────
 export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
   const m = model || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
+  // #3345: valuation_type (den FROSNE type) skal med i selectet — predictBaseValue/
+  // currentProductionValue læser den FØR primary_type (se riderValuation.js). Uden
+  // den ville denne sweep stille revaluere hele populationen efter enhver
+  // primary_type-reklassificering (#3325/#3343), præcis det #3345 fryser mod.
   const [riders, abilities, teams, seasonNumber] = await Promise.all([
-    fetchAllRows(() => supabase.from("riders").select("id, primary_type, base_value, market_value, prize_earnings_bonus, is_academy, salary, birthdate, potentiale, team_id").order("id")),
+    fetchAllRows(() => supabase.from("riders").select("id, primary_type, valuation_type, base_value, market_value, prize_earnings_bonus, is_academy, salary, birthdate, potentiale, team_id").order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
     fetchAllRows(() => supabase.from("teams").select("id, division").order("id")),
     activeSeasonNumber(supabase),
