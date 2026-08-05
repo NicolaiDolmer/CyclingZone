@@ -11,9 +11,11 @@ import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
 import SponsorContractPanel from "../components/SponsorContractPanel";
 import SponsorIncomeBreakdown from "../components/SponsorIncomeBreakdown";
 import OnboardingTour from "../components/OnboardingTour";
+import { LoanConfirmModal } from "../components/LoanConfirmModal";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import { FINANCE_CATEGORIES, buildCategoryOrFilter } from "../lib/financeCategories";
+import { computeLoanRiskSummary } from "../lib/loanRisk";
 import {
   Tabs, TabList, Tab, TabPanel,
   Card, Button, Input, Select, ProgressMeter, PageLoader,
@@ -128,6 +130,11 @@ export default function FinancePage() {
   const [loanType, setLoanType] = useState("short");
   const [loanAmount, setLoanAmount] = useState("");
   const [takingLoan, setTakingLoan] = useState(false);
+  // #2815: bekræftelses-dialog vist FØR submit når lånet ville skubbe total
+  // gæld til ≥50% af divisionens loft (computeLoanRiskSummary) — se
+  // lib/loanRisk.js for begrundelsen. Rent friktion+oplysning: blokerer intet
+  // den samme POST ikke allerede ville acceptere, gælder ALLE hold ens.
+  const [showLoanConfirm, setShowLoanConfirm] = useState(false);
 
   // Betal lån
   const [repayId, setRepayId] = useState(null);
@@ -308,21 +315,23 @@ export default function FinancePage() {
     setTimeout(() => setMsg({ text: "" }), 5000);
   }
 
-  async function handleTakeLoan(e) {
-    e.preventDefault();
-    if (!loanAmount || parseInt(loanAmount) < 1) return;
+  // #2815: den faktiske POST — udtrukket fra handleTakeLoan så den kan kaldes
+  // enten direkte (lav-risiko lån) eller efter et bekræftet klik i
+  // LoanConfirmModal (høj-risiko lån, ≥50% af loftet).
+  async function submitLoan(amount) {
     setTakingLoan(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${API}/api/finance/loans`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ loan_type: loanType, amount: parseInt(loanAmount) }),
+        body: JSON.stringify({ loan_type: loanType, amount }),
       });
       const result = await res.json().catch(() => ({}));
       if (res.ok) {
-        showMsg(t("msg.loanCreated", { amount: formatNumber(parseInt(loanAmount)) }));
+        showMsg(t("msg.loanCreated", { amount: formatNumber(amount) }));
         setLoanAmount("");
+        setShowLoanConfirm(false);
         loadAll();
       } else {
         // #1012: strukturerede engine-fejl (error.debtCapReached m.fl.) renderes
@@ -331,12 +340,29 @@ export default function FinancePage() {
           ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
           : result.error;
         showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
+        setShowLoanConfirm(false);
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
+      setShowLoanConfirm(false);
     } finally {
       setTakingLoan(false);
     }
+  }
+
+  function handleTakeLoan(e) {
+    e.preventDefault();
+    const amount = parseInt(loanAmount);
+    if (!loanAmount || amount < 1) return;
+    // #2815: høj-gældsgrad-lån (≥50% af divisionens loft, computeLoanRiskSummary)
+    // stopper her og viser LoanConfirmModal i stedet for at submitte med det
+    // samme — samme tærskel uanset om beløbet blev tastet manuelt eller via
+    // "Brug maks". Alt under tærsklen submitter uændret, uden ekstra klik.
+    if (loanRisk.isHighDebt) {
+      setShowLoanConfirm(true);
+      return;
+    }
+    submitLoan(amount);
   }
 
   async function handleRepay(loanId, amount) {
@@ -407,6 +433,16 @@ export default function FinancePage() {
   const debtHeadroom = loanData?.debt_ceiling != null
     ? Math.max(0, loanData.debt_ceiling - (loanData?.total_debt || 0))
     : null;
+  const loanFeeNum = selectedConfig ? Math.round(loanAmountNum * selectedConfig.origination_fee_pct) : 0;
+  // #2815: risk-forecast for det INDTASTEDE beløb — samme tal driver både den
+  // altid-synlige "rente næste sæson"-linje og LoanConfirmModal (isHighDebt).
+  const loanRisk = computeLoanRiskSummary({
+    principal: loanAmountNum,
+    fee: loanFeeNum,
+    interestRatePct: selectedConfig?.interest_rate_pct,
+    currentDebt: loanData?.total_debt || 0,
+    debtCeiling: loanData?.debt_ceiling,
+  });
   const loanLabel = (type) => t(`loans.types.${type}`, { defaultValue: type });
   const txLabel = (type) => t(`transactions.type.${type}`, { defaultValue: type });
 
@@ -689,9 +725,14 @@ export default function FinancePage() {
                           })}
                         </span>
                       </p>
-                      <Button type="button" variant="secondary" size="sm"
+                      {/* #2815: nedtonet fra en fremtrædende secondary-knap til en
+                          tekst-agtig ghost-knap — max-lånbart-tallet er stadig ét klik
+                          væk for en informeret spiller, men er ikke længere den mest
+                          iøjnefaldende handling på siden. Selve friktionen ved høj
+                          gældsgrad sidder i LoanConfirmModal (nedenfor), ikke her. */}
+                      <Button type="button" variant="ghost" size="sm"
                         onClick={() => setLoanAmount(String(maxPrincipal))}
-                        className="flex-shrink-0">
+                        className="flex-shrink-0 text-cz-3">
                         {t("loans.take.useMax")}
                       </Button>
                     </div>
@@ -708,7 +749,7 @@ export default function FinancePage() {
                       <div>
                         <p className="text-cz-3">{t("loans.take.feeLabel", { pct: (selectedConfig.origination_fee_pct * 100).toFixed(0) })}</p>
                         <p className="text-cz-2 font-mono mt-0.5">
-                          {t("loans.take.feeValue", { value: formatNumber(Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
+                          {t("loans.take.feeValue", { value: formatNumber(loanFeeNum) })}
                         </p>
                       </div>
                       <div>
@@ -718,13 +759,26 @@ export default function FinancePage() {
                       <div>
                         <p className="text-cz-3">{t("loans.take.totalLabel")}</p>
                         <p className="text-cz-accent-t font-mono mt-0.5">
-                          {t("loans.take.totalValue", { value: formatNumber(loanAmountNum + Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
+                          {t("loans.take.totalValue", { value: formatNumber(loanRisk.totalOwed) })}
                         </p>
                       </div>
                     </div>
                     {exceedsMax && (
                       <p className="text-cz-danger text-xs mt-2 text-center leading-snug">
                         {t("loans.take.exceedsMax", { value: formatNumber(maxPrincipal) })}
+                      </p>
+                    )}
+                    {/* #2815: "hvad koster det pr. sæson" — den manglende oplysning
+                        issuet peger på ("der vises gebyr og totalgæld, men ikke hvad
+                        afdraget koster pr. sæson"). Vist for ETHVERT lånebeløb, ikke
+                        kun høj-gældsgrad-tilfælde — ren oplysning, ingen gate. */}
+                    {loanData?.debt_ceiling != null && (
+                      <p className={`text-xs mt-2 pt-2 border-t border-cz-border text-center leading-snug ${
+                        loanRisk.exceedsCeilingNextSeason ? "text-cz-danger" : "text-cz-3"}`}>
+                        {t("loans.take.costPerSeason", {
+                          interest: formatNumber(loanRisk.nextSeasonInterest),
+                          projected: formatNumber(loanRisk.projectedDebtAfterInterest),
+                        })}
                       </p>
                     )}
                   </div>
@@ -737,6 +791,23 @@ export default function FinancePage() {
               </form>
             )}
           </Card>
+
+          {/* #2815: bekræftelses-dialog ved høj gældsgrad (≥50% af loftet) — samme
+              tærskel for alle hold, ny som etableret. */}
+          <LoanConfirmModal
+            show={showLoanConfirm}
+            principal={loanAmountNum}
+            fee={loanFeeNum}
+            newTotalDebt={loanRisk.newTotalDebt}
+            ceilingPct={loanRisk.ceilingPct}
+            debtCeiling={loanData?.debt_ceiling}
+            nextSeasonInterest={loanRisk.nextSeasonInterest}
+            projectedDebtAfterInterest={loanRisk.projectedDebtAfterInterest}
+            exceedsCeilingNextSeason={loanRisk.exceedsCeilingNextSeason}
+            busy={takingLoan}
+            onCancel={() => setShowLoanConfirm(false)}
+            onConfirm={() => submitLoan(loanAmountNum)}
+          />
 
           {/* Lånebetingelser — kun spiller-takbare typer (kort/langt), jf. #1948 */}
           {configs.length > 0 && (
