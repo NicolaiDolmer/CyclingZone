@@ -72,5 +72,46 @@
     "earningsResults": "Result bonuses",
     "earningsObjective": "Season objective",
     "earningsTotal": "Total"
+  },
+  "income": {
+    "title": "Sponsor income",
+    "meta": "{sponsor} · this season",
+    "metaNoSponsor": "This season",
+    "loading": "Loading sponsor income",
+    "errorTitle": "Couldn't load your sponsor income",
+    "error": "Nothing was lost and your balance is safe. Try again.",
+    "retry": "Try again",
+    "totalLabel": "Total this season",
+    "split": "Guaranteed {guaranteed} · earned on top {earned}",
+    "group": {
+      "fixed": {
+        "title": "Fixed income",
+        "row": "Season base (contract guarantee)"
+      },
+      "raceDays": {
+        "title": "Race days",
+        "row": "{raceName} · {days, plural, one {# day} other {# days}} at {rate} CZ$",
+        "unknownRace": "Race",
+        "showAll": "Show all {count} races",
+        "showLess": "Show less"
+      },
+      "bonuses": {
+        "title": "Bonuses",
+        "stageWin": "Stage win bonus · {raceName}",
+        "podium": "Podium bonus · {raceName}",
+        "signing": "Signing bonus",
+        "objective": "Season objective bonus",
+        "generic": "Result bonus · {raceName}",
+        "capLine": "Result bonus cap: {used} of {limit} used"
+      }
+    },
+    "footer": {
+      "full": "Why you get paid: your contract guarantees a season base, pays per race day your team competes, and adds bonuses for stage wins and podiums.",
+      "noBonuses": "Why you get paid: your contract guarantees a season base and pays per race day your team competes."
+    },
+    "empty": {
+      "title": "No sponsor income yet",
+      "description": "Income shows up here once your season base is credited and your team starts racing."
+    }
   }
 }

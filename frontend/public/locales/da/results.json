@@ -14,7 +14,8 @@
     "empty": "Ingen løb er kørt færdigt her endnu",
     "emptyBody": "Resultater vises her så snart det første løb i dette udvalg er afgjort.",
     "noPodium": "Ingen klassement importeret for dette løb endnu",
-    "viewFull": "Hele resultatet"
+    "viewFull": "Hele resultatet",
+    "stageProgress": "Etape {done} af {total}"
   },
   "filters": {
     "seasonLabel": "Sæson",

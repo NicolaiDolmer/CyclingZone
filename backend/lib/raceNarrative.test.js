@@ -134,6 +134,38 @@ test("favorite_off_day: højeste terrain i feltet slutter uden for top 15, årsa
   assert.ok(findMoment(moments, "tag_favorite_collapse"), "jour_sans-forklaret favorit-nedtur giver også tag_favorite_collapse");
 });
 
+// #3336: tag_favorite_collapse ledsager nu favorite_off_day for incident og
+// helper_work (ikke kun jour_sans) — badge-tooltippen skal kunne afspejle DEN
+// FAKTISKE årsag i stedet for altid at antage jour_sans. Selve udvælgelsen
+// (FAVORITE_OFF_DAY_RANK, hvem der bliver favorit) er uændret i disse tests.
+test("favorite_off_day: incident-forklaret favorit-nedtur giver også tag_favorite_collapse med reason=incident", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, components: { terrain: 0.5 } }),
+    riderRow({ id: "r2", rank: 20, components: { terrain: 0.95 } }),
+  ];
+  const incidentsForStage = [{ rider_id: "r2", kind: "crash", outcome: "time_loss", time_loss_seconds: 90 }];
+  const moments = extractStageMoments({ stageNumber: 1, ranked, incidentsForStage });
+  const beat = findMoment(moments, "favorite_off_day");
+  assert.equal(beat.params.reason, "incident");
+  const tag = findMoment(moments, "tag_favorite_collapse");
+  assert.ok(tag, "incident-forklaret favorit-nedtur giver også tag_favorite_collapse");
+  assert.equal(tag.params.reason, "incident");
+});
+
+test("favorite_off_day: helper_work-forklaret favorit-nedtur giver også tag_favorite_collapse med reason=helper_work", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, components: { terrain: 0.5 } }),
+    riderRow({ id: "r2", rank: 20, components: { terrain: 0.95, work_cost: -0.1 } }),
+  ];
+  const roleByRider = new Map([["r2", "helper"]]);
+  const moments = extractStageMoments({ stageNumber: 1, ranked, roleByRider });
+  const beat = findMoment(moments, "favorite_off_day");
+  assert.equal(beat.params.reason, "helper_work");
+  const tag = findMoment(moments, "tag_favorite_collapse");
+  assert.ok(tag, "helper_work-forklaret favorit-nedtur giver også tag_favorite_collapse");
+  assert.equal(tag.params.reason, "helper_work");
+});
+
 test("favorite_off_day: ingen forklarende komponent → reason=unexplained, ingen tag_favorite_collapse", () => {
   const ranked = [
     riderRow({ id: "r1", rank: 1, components: { terrain: 0.5 } }),
@@ -263,6 +295,69 @@ test("tag_crash_ruined: kun når uheldet ramte en top-5-terrain-favorit", () => 
   const ruined = findMoments(moments, "tag_crash_ruined");
   assert.equal(ruined.length, 1);
   assert.equal(ruined[0].rider_ids[0], "favorite");
+});
+
+// ── D3 (#3115 gap 1a): tag_aggression_no_cost ───────────────────────────────
+
+test("tag_aggression_no_cost: fyrer for en typematch-rytter der blev hentet i udbrud", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, components: { terrain: 0.6 } }),
+    riderRow({ id: "r3", rank: 3, components: { terrain: 0.5 } }),
+    riderRow({ id: "r4", rank: 4, components: { terrain: 0.1 } }),
+  ];
+  const breakawayStatus = new Map([
+    ["r2", { in_breakaway: true, breakaway_caught: true }], // terrain-rang 2 af 4 → øvre halvdel
+    ["r3", { in_breakaway: true, breakaway_caught: true }], // terrain-rang 3 af 4 → nedre halvdel
+  ]);
+  const moments = extractStageMoments({ stageNumber: 1, ranked, breakawayStatus });
+  const tags = findMoments(moments, "tag_aggression_no_cost");
+  assert.equal(tags.length, 1, "kun typematch-rytteren (r2) skal have tagget, ikke r3");
+  assert.equal(tags[0].rider_ids[0], "r2");
+});
+
+test("tag_aggression_no_cost: udebliver når udbruddet HOLDT hjem (ingen fejltolknings-risiko)", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 2, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 1, components: { terrain: 0.6 } }),
+  ];
+  const breakawayStatus = new Map([["r2", { in_breakaway: true, breakaway_caught: false }]]);
+  const moments = extractStageMoments({ stageNumber: 1, ranked, breakawayStatus });
+  assert.ok(!findMoment(moments, "tag_aggression_no_cost"));
+});
+
+test("tag_aggression_no_cost: udebliver for ryttere der aldrig var i udbrud", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, components: { terrain: 0.6 } }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, ranked, breakawayStatus: new Map() });
+  assert.ok(!findMoment(moments, "tag_aggression_no_cost"));
+});
+
+// ── D3 (#3115 gap 1b): tag_saved_effort / tag_gave_everything ──────────────
+
+test("tag_saved_effort / tag_gave_everything: fyrer for spillerens egen effort-indstilling, 'normal' giver intet tag", () => {
+  const ranked = [
+    riderRow({ id: "saver", rank: 1, components: { terrain: 0.9 } }),
+    riderRow({ id: "worker", rank: 5 }),
+    riderRow({ id: "baseline", rank: 10 }),
+  ];
+  const effortByRider = new Map([["saver", "save"], ["worker", "protect"], ["baseline", "normal"]]);
+  const moments = extractStageMoments({ stageNumber: 1, ranked, effortByRider });
+  const saved = findMoments(moments, "tag_saved_effort");
+  const gave = findMoments(moments, "tag_gave_everything");
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].rider_ids[0], "saver");
+  assert.equal(gave.length, 1);
+  assert.equal(gave[0].rider_ids[0], "worker");
+});
+
+test("tag_saved_effort / tag_gave_everything: tomt effortByRider giver ingen tags (v3 uden S3-overrides)", () => {
+  const ranked = [riderRow({ id: "r1", rank: 1, components: { terrain: 0.9 } })];
+  const moments = extractStageMoments({ stageNumber: 1, ranked });
+  assert.ok(!findMoment(moments, "tag_saved_effort"));
+  assert.ok(!findMoment(moments, "tag_gave_everything"));
 });
 
 // ── Fog-gate + determinisme ─────────────────────────────────────────────────

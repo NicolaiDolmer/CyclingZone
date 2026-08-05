@@ -425,10 +425,20 @@ test("legacy-ruterne redirecter til de rigtige hub-faner (#3102 etape 3)", async
 
   await login(page);
 
-  // Holdudtagelses-genvejen → hubben (default-fanen er boardet).
+  // Kalender-genvejen → Kalender-fanen. #3298: tab-parameteren bevares, så
+  // gamle bogmærker lander på kalenderen og ikke på default-fanen (selection).
+  // Assert på den AKTIVE fane (rolle+aria-selected), ikke på fanens data-
+  // indhold — kalender-chips kræver mock-data og gør testen skør.
+  //
+  // #3364: målret fanen ved NAVN og tjek aria-selected — IKKE `{ selected: true }`
+  // uden scope. Planlægnings-hubben og CalendarPage har hver sin tablist, så en
+  // uscopet "den valgte fane"-locator matcher BEGGE når CalendarPages mockede
+  // fetch når at resolve inden for retry-vinduet → strict mode violation i ~50 %
+  // af kørslerne. Samme mønster som calendar.spec.js:25, der aldrig har flaket.
   await page.goto("/races?tab=calendar");
-  await expect(page).toHaveURL(/\/planning$/);
-  await expect(page.getByTestId("race-hub-board")).toBeVisible();
+  await expect(page).toHaveURL(/\/planning\?tab=calendar$/);
+  await expect(page.getByRole("tab", { name: /^(Calendar|Kalender)$/i }))
+    .toHaveAttribute("aria-selected", "true");
 
   // Planneren → Formplan-fanen.
   await page.goto("/planner");

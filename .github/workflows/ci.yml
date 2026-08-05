@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+  # Merge queue (4/8): required checks skal rapportere på merge-group-SHA'en,
+  # ellers timer køen ud. Alle jobs her er fil-/test-baserede og kører uændret.
+  merge_group:
 
 permissions:
   contents: read
@@ -184,6 +187,37 @@ jobs:
 
       - name: Run postgrest-cap guard
         run: node scripts/lint-postgrest-in-cap.mjs
+
+  pagination-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod PostgREST's TAVSE 1000-rækkers-loft på selects (#3331).
+    # Samme bug-klasse har ramt to gange: PCM rytter-matcher (2026-05-30, 88%
+    # af ryttere usynlige for matching) og sponsor race-day-bonus (#3315,
+    # 2026-08-04, ét menneskehold underbetalt 94%) — begge fanget af en
+    # spiller, ikke en test. Flagger `.from(<deny-listet tabel>).select(...)`
+    # uden `.limit()/.single()/.maybeSingle()/.range()` eller delegering til en
+    # fetchAllRows*-pagineringshelper. Deny-liste: race_results, riders,
+    # race_entries, race_stage_schedule, race_stage_profiles,
+    # finance_transactions, notifications. Baseline-ratchet (samme mønster som
+    # lint-ui-slop.mjs) grandfatherer ~120 pre-eksisterende, prod-verificerede
+    # sikre fund (single-team/single-race-scoping) — kun NYE overtrædelser
+    # fejler builden. Opt-out: `pagination-safe: <begrundelse>`-kommentar.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test pagination guard
+        run: node --test scripts/lint-pagination-guard.test.mjs
+
+      - name: Run pagination guard
+        run: node scripts/lint-pagination-guard.mjs
 
   getuser-guard:
     runs-on: ubuntu-latest

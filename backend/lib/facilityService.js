@@ -9,6 +9,7 @@ import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { debitTeam } from "./economyEngine.js";
 import { FINANCE_REASON } from "./economyConstants.js";
+import { notifyScoutChanged } from "./notificationService.js"; // #3334
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
 
@@ -44,6 +45,22 @@ async function loadActiveStaff(teamId, role, supabaseClient) {
     .maybeSingle();
   if (error) throw new Error(`facilityService: could not load active staff for ${teamId}/${role}: ${error.message}`);
   return data;
+}
+
+// #2887: ALLE navne holdet har fyret i denne rolle nogensinde (ikke kun
+// indeværende sæson) — bruges til at udelukke dem fra generateStaffCandidates,
+// så en fyret staff aldrig deterministisk genopstår som (top-)kandidat ved
+// næste refresh/hire. Permanent eksklusion, ikke sæson-scoped: navnet ville
+// ellers kunne genopstå i en senere sæson, hvor seedet igen matcher.
+export async function loadFiredStaffNames(teamId, role, supabaseClient) {
+  const { data, error } = await supabaseClient
+    .from("team_staff")
+    .select("name")
+    .eq("team_id", teamId)
+    .eq("role", role)
+    .eq("status", "fired");
+  if (error) throw new Error(`facilityService: could not load fired staff names for ${teamId}/${role}: ${error.message}`);
+  return new Set((data ?? []).map((r) => r.name).filter(Boolean));
 }
 
 // #2649: opslag på staffId (i stedet for role) TIL ejerskabs-guarden i releaseStaff.
@@ -118,7 +135,8 @@ export async function purchaseFacilityUpgrade(
 export async function hireStaff(
   { teamId, role, candidateName, seasonId, seasonNumber },
   supabaseClient,
-  flags = DEFAULT_FLAGS
+  flags = DEFAULT_FLAGS,
+  notify = notifyScoutChanged // #3334, injicérbar for test
 ) {
   if (!flags.facilitiesEnabled) return { ok: false, error: "facilities_disabled" };
   // Membership-validering FØR DB-queries — ugyldig role skal aldrig koste queries.
@@ -132,8 +150,10 @@ export async function hireStaff(
   const facilityTier = await loadFacilityTier(teamId, role, supabaseClient);
 
   // Kandidater regenereres SERVER-SIDE (deterministisk seed) og matches på navn —
-  // klienten må aldrig selv levere tier/salary.
-  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier });
+  // klienten må aldrig selv levere tier/salary. #2887: udelukker holdets egne
+  // tidligere fyrede staff i denne rolle (rehire-loop-guard).
+  const firedNames = await loadFiredStaffNames(teamId, role, supabaseClient);
+  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames: firedNames });
   const candidate = candidates.find((c) => c.name === candidateName);
   if (!candidate) return { ok: false, error: "invalid_candidate" };
 
@@ -185,6 +205,17 @@ export async function hireStaff(
       { onConflict: "staff_id" }
     );
   if (abilityError) throw new Error(`facilityService: staff ability upsert failed for ${inserted.id}: ${abilityError.message}`);
+
+  // #3334: dette er et SKIFTE (holdet har fyret en scouting-staff i denne rolle
+  // før — firedNames blev allerede hentet ovenfor til kandidat-eksklusion), ikke
+  // holdets første nogensinde ansatte spejder. Eksisterende scoutingrapporter
+  // genberegnes med den nye scouts præcision fra næste visning — notifikationen
+  // forklarer det FØR spilleren selv opdager "rapporten ændrede sig". notify()
+  // isolerer selv sine fejl (fanger, logger, Sentry) og må ALDRIG kunne vælte
+  // selve ansættelsen, som allerede er persisteret på dette tidspunkt.
+  if (role === "scouting" && firedNames.size > 0) {
+    await notify({ supabase: supabaseClient, teamId, scoutName: candidate.name, scoutTier: candidate.tier });
+  }
 
   return {
     ok: true,

@@ -10,7 +10,7 @@
 | 2 | **Bølgeplan + ejer-go** | Orkestrator poster plan: spor, issues, merge-policy (auto-merge grønne? SQL-policy?), antal agenter | Ejer siger eksplicit go. Go til "kør bølgen" dækker IKKE merge (se trin 5). |
 | 3 | **Launch i SAMME tur som go** | Workflow spawnes i samme svar som ejer-go modtages — turen må IKKE slutte mellem claim-commit og launch (natbølge 3-død) | Workflow-kald afsendt |
 | 4 | **Launch-bevis** | Ejer SER "Workflow kører — N agenter aktive" på skærmen før maskinen forlades | Intet bevis = bølgen er IKKE startet. Fuld stop, ingen antagelser. |
-| 5 | **Merge-protokol** (morgen) | Ejer-go pr. bølge; >5 PR'er = eksplicit bulk-go ([fleet-playbook](../.claude/learnings/) bølge 2). Rækkefølge: backend/lav-konflikt → store UI-PR'er → bredeste PR (med migration) sidst; snapshots refreshes i DENS worktree. `database/2026-*.sql` auto-applies på prod ved merge — review SQL FØR merge; post-merge må Claude selv apply/verificere via MCP under #2642-rammerne (AGENTS.md hard rule 9; destruktivt = ejer-gated). Mellemliggende deploy-verify-fails i en merge-salve er støj; kun SIDSTE merges deploy-verify + auto-migrate tæller. | Alle merges har ejer-go |
+| 5 | **Merge-protokol** (morgen) | Ejer-go pr. bølge; >5 PR'er = eksplicit bulk-go ([fleet-playbook](../.claude/learnings/) bølge 2). **Hurtig-merge (4/8, strict=false):** godkendte PRs merges med `gh pr merge --auto --squash` og lander når DERES egen CI er grøn — ingen update-branch/omkørsler. Kryds-PR-kombinationsfejl fanges først af main-CI EFTER merge, derfor: samme-fil-PRs sekvenseres stadig, og rød main = stop-alt-fix-først (se GITHUB_WORKFLOW.md §Hurtige merges). Rækkefølge (= kø-rækkefølge): backend/lav-konflikt → store UI-PR'er → bredeste PR (med migration) sidst; snapshots refreshes i DENS worktree. `database/2026-*.sql` auto-applies på prod ved merge — review SQL FØR merge; post-merge må Claude selv apply/verificere via MCP under #2642-rammerne (AGENTS.md hard rule 9; destruktivt = ejer-gated). Mellemliggende deploy-verify-fails i en merge-salve er støj; kun SIDSTE merges deploy-verify + auto-migrate tæller. | Alle merges har ejer-go |
 | 5b | **Done-flip pr. merged issue (OBLIGATORISK)** | Umiddelbart efter HVER merge: `gh issue edit <N> --add-label claude:done --remove-label claude:todo` + kort shipped-kommentar med PR-nr (via gh-retry-wrapper). Gør det PR-for-PR i merge-løkken — ikke som et separat "til sidst"-trin der glemmes. | **Nul af bølgens merged issues må stå tilbage som `claude:todo`.** Den hyppigste close-out-fejl: PR merges, issue glemmes → backlog fyldes med done-men-åbne issues (ejer-frustration 2026-06-21: ~14 done issues stod stadig som todo). |
 | 6 | **Bølge-artifact + done-verifikation** | Orkestrator skriver `docs/audits/night-wave-YYYY-MM-DD.md` (template nedenfor) ved close-out — inkl. udfyldt `Issues → claude:done`-række. | Artifact committet **og** done-flip verificeret: `gh issue list --label claude:todo` viser ingen af bølgens merged issues. |
 
@@ -38,6 +38,18 @@
 - **Semantiske kryds-PR-konflikter** (to agenter redesigner samme modul) løses centralt af orkestrator: MERGE intentionerne, vælg ikke side.
 - **Agenter må IKKE selv spawne baggrunds-underagenter** — de ender i idle-vent på børn hvis notifikationer de aldrig ser (natbølge 12/7: oprydnings-agenten hang 2× sådan og skulle nudges). Skriv eksplicit "arbejd sekventielt, ingen under-agenter" i agent-prompts; orkestratoren ejer al fan-out.
 - **Verify/review-agenter: brug `gh pr diff <url>` — ALDRIG `git checkout` i hoved-checkoutet** (eller giv dem også worktree-isolation). Natbølge 19/6: en verify-agent uden isolation checkede en `review/*`-branch ud i hoved-checkoutet og efterlod det dér, så orkestratoren måtte gendanne `main`. Read-only diff-review kræver ingen lokal branch-switch.
+
+## Orkestrator-regler (ejer-godkendt 5/8 efter natbølge 4.-5./8)
+
+Kanonisk formulering: [`AGENTS.md` §Orkestrering af parallelle agenter](../AGENTS.md) (hard rules 10-15). Den operationelle udgave:
+
+- **Luk hvert spor eksplicit.** Redder du et spors arbejde manuelt, slutter redningen med `TaskStop` — ikke med at PR'en er oprettet. _4 agenter kørte 10-12 timer efter deres arbejde var reddet; >1 mio. tokens._
+- **Tjek agent-tilstand med agent-værktøjet.** `TaskList` er todo-listen, ikke baggrundsopgaverne. Skriv hvilket værktøj konklusionen bygger på. _"Ingen agenter kører" var forkert i timevis, målt med det forkerte værktøj._
+- **Maks 5 åbne PR'er ad gangen.** Fuld kø → merge før nyt startes. _Køen nåede 23; `patchNotes.js`-konflikterne voksede hurtigere end de blev lukket._
+- **Genmål før du dispatcher.** Issue-tal >1 uge gamle er kilder, ikke facts. _247→225.947 · 807→1.399 · "grøn"→90× drift._
+- **Dispatch-forfilter pr. kandidat-issue:** `gh issue view N --json state` + findes der en merged PR med `Refs #N`? _4 spor i nat var allerede løst; ét kald pr. kandidat havde fanget alle fire._
+- **Isolation før skala:** [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367) (worktree-`node_modules`) skal være lukket før næste bølge. _Delt install ramte 4 af 20 spor; `npm ci` gennem junctionen tømte hoved-checkoutet midt i bølgen._
+- **Beslutningsoplæg indeholder målinger, ikke gæt.** Mål først, præsentér så — ét spørgsmål ad gangen.
 
 ## Recovery (workflow dør med parent-session)
 

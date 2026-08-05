@@ -50,17 +50,29 @@ test("#2891 recappen henter ALDRIG race_results-rækker til klienten igen", () =
   );
 });
 
-test("#2891 fetchAllRows er ude af filen — den var selve OFFSET-mekanismen", () => {
-  assert.doesNotMatch(
-    code,
-    /fetchAllRows\s*\(/,
-    "intet kald til fetchAllRows: OFFSET-paginering over en 459k-rækkers tabel var rodårsagen",
-  );
-  assert.doesNotMatch(
-    code,
-    /^\s*import\s+\{[^}]*fetchAllRows/m,
-    "fetchAllRows må ikke være importeret — en ubrugt import inviterer til at den tages i brug igen",
-  );
+// #3331 rettede denne guard ind. Den forbød oprindeligt fetchAllRows i HELE
+// filen. Det var for bredt: rodårsagen i #2891 var ikke pagineringen i sig selv,
+// men OFFSET-paginering over 459.347 rækker. Den bevægelse er stadig umulig
+// herfra, fordi bandet mod from("race_results")/from("rider_rankings_mv") står
+// urørt ovenfor — en fetchAllRows i denne fil KAN ikke ramme de tunge tabeller.
+//
+// Til gengæld kostede det brede band en ægte fejl: transfer-blokken hentede
+// finance_transactions uden paginering, og sæson 1 har allerede 886 transfer-
+// rækker (målt i prod 2026-08-05) mod PostgREST's tavse 1000-rækkers-loft. Ved
+// 1001 ville "sæsonens største handel" stille være blevet forkert, uden fejl.
+//
+// Reglen er derfor nu: fetchAllRows må bruges, men kun sæson-scopet.
+test("#2891/#3331 enhver fetchAllRows i filen er sæson-scopet", () => {
+  const calls = [...code.matchAll(/fetchAllRows\s*\(/g)];
+  for (const { index } of calls) {
+    const callSite = code.slice(index, index + 600);
+    assert.match(
+      callSite,
+      /\.eq\(\s*["'`]season_id["'`]/,
+      "en fetchAllRows herfra skal filtrere på season_id — et ubegrænset " +
+        "OFFSET-løb over en hel tabel var rodårsagen i #2891",
+    );
+  }
 });
 
 test("#2891 kommentar-strippen skjuler ikke ægte kode (guarden kan stadig fejle)", () => {

@@ -64,6 +64,10 @@ const TermsPageEn = lazy(() => import("./pages/TermsPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
 const ProUpgradePage = lazy(() => import("./pages/ProUpgradePage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
+// #2752 — draft-only mock preview (see the page file's own header comment for
+// scope). Same /ui convention: public, unlinked, noindex. Remove once the
+// real-wiring follow-up PR mounts these components on their real pages.
+const SeasonExperiencePreviewPage = lazy(() => import("./pages/SeasonExperiencePreviewPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
@@ -87,7 +91,7 @@ const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
 function RacesLegacyRedirect() {
   const [searchParams] = useSearchParams();
   const tab = searchParams.get("tab");
-  if (tab === "calendar") return <Navigate to="/planning" replace />;
+  if (tab === "calendar") return <Navigate to="/planning?tab=calendar" replace />;
   if (tab === "world" || tab === "library") return <Navigate to="/resultater?tab=archive" replace />;
   if (tab === "points") return <Navigate to="/resultater?tab=points" replace />;
   return <Navigate to="/resultater" replace />;
@@ -234,6 +238,7 @@ export default function App() {
           <Route path="/terms" element={<TermsPageEn />} />
           <Route path="/founder-supporter" element={<FounderSupporterPage />} />
           <Route path="/ui" element={<KitchenSinkPage />} />
+          <Route path="/ui/season-experience" element={<SeasonExperiencePreviewPage />} />
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
               loggede-ind ryger til appen. */}
           <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
@@ -274,15 +279,13 @@ export default function App() {
             <Route path="activity" element={<Navigate to="/notifications?tab=activity" replace />} />
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
             <Route path="watchlist" element={<WatchlistPage />} />
-            <Route path="help" element={<HelpPage />} />
-            <Route path="rules" element={<RulesPage />} />
+            {/* #2042 A: help/rules/patch-notes/roadmap flyttet ud herunder — de er
+                nu offentlige (se den ubeskyttede Layout-gruppe nedenfor). */}
             {/* #2359: HoF-fladen afløses af verdenshistorik (S3); route redirecter, side-kode
                 bevares indtil narrativ-fladen erstatter den — se HallOfFamePage.jsx. */}
             <Route path="hall-of-fame" element={<Navigate to="/standings" replace />} />
             <Route path="season-preview" element={<Navigate to="/standings?view=strength" replace />} />
             <Route path="head-to-head" element={<Navigate to="/standings?compare=1" replace />} />
-            <Route path="patch-notes" element={<PatchNotesPage />} />
-            <Route path="roadmap" element={<RoadmapPage />} />
             {/* #3102 etape 3: Planlægnings-hubben (Holdudtagelse · Formplan ·
                 Strategi · Kalender). De fire gamle ruter redirecter med
                 fane-mapping. */}
@@ -341,6 +344,20 @@ export default function App() {
             <Route path="scouting" element={<ScoutingCentralPage />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+
+          {/* #2042 A (public-pages login-wall loosening, refs #2824): trust/marketing
+              content that carries no per-account data — read-only for logged-out
+              visitors too, so a shared link from Hattrick/Reddit doesn't hit a login
+              wall. Layout itself already tolerates session === null (dashboard-only
+              widgets — balance, online-count, admin group — simply stay hidden); no
+              RLS was touched (roadmap_items/roadmap_votes stay `authenticated`-only,
+              see PR body). Deliberately NOT wrapped in ProtectedRoute. */}
+          <Route element={<Layout />}>
+            <Route path="help" element={<HelpPage />} />
+            <Route path="rules" element={<RulesPage />} />
+            <Route path="patch-notes" element={<PatchNotesPage />} />
+            <Route path="roadmap" element={<RoadmapPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

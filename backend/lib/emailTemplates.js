@@ -15,6 +15,7 @@ export const TEMPLATE_TYPES = Object.freeze(["welcome", "day1", "race_digest"]);
 
 const DASHBOARD_URL = "https://cyclingzone.org/dashboard";
 const RESULTS_URL = "https://cyclingzone.org/resultater";
+const RACES_URL = "https://cyclingzone.org/races";
 
 // Escapes the five HTML-significant characters. The double- and single-quote
 // replacements are required because escapeHtml output is interpolated into
@@ -114,27 +115,28 @@ export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
  * would be an invented claim for the other ~2/3 — the caller
  * (emailDay1Sweep.js) checks race_results per team and passes the real
  * answer in.
- * @param {{teamName: string, hasResults: boolean, unsubscribeUrl: string}} args
+ * @param {{teamName: string, hasResults: boolean, latestRaceId?: string|null, unsubscribeUrl: string}} args
  */
-export function buildDay1Email({ teamName, hasResults, unsubscribeUrl }) {
+export function buildDay1Email({ teamName, hasResults, latestRaceId = null, unsubscribeUrl }) {
   const name = escapeHtml(teamName) || "Your team";
   const plainName = teamName || "Your team";
 
   if (hasResults) {
     const subject = "Day 1: your first results are in";
+    const ctaUrl = latestRaceId ? `${RACES_URL}/${latestRaceId}` : DASHBOARD_URL;
 
     const bodyHtml = `
       <p style="margin:0 0 16px;">Hi,</p>
       <p style="margin:0 0 16px;">${name} raced while you were away. Your results are already on the board.</p>
       <p style="margin:0 0 16px;">Worth checking today: your race results, and any auctions ending today that you might still want to bid on.</p>
-      <p style="margin:0 0 16px;"><a href="${escapeHtml(DASHBOARD_URL)}" style="color:#1a1a1a;font-weight:600;">See your results and auctions</a></p>
+      <p style="margin:0 0 16px;"><a href="${escapeHtml(ctaUrl)}" style="color:#1a1a1a;font-weight:600;">See your results and auctions</a></p>
     `.trim();
 
     const bodyText = [
       "Hi,",
       `${plainName} raced while you were away. Your results are already on the board.`,
       "Worth checking today: your race results, and any auctions ending today that you might still want to bid on.",
-      `See your results and auctions: ${DASHBOARD_URL}`,
+      `See your results and auctions: ${ctaUrl}`,
     ].join("\n\n");
 
     return {

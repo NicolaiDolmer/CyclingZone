@@ -175,7 +175,11 @@ export const AUCTIONS = [
     starting_price: 50000,
     current_price: 50000,
     min_increment: 5000,
-    calculated_end: "2026-05-20T12:00:00.000Z",
+    // #3110: relativ til "nu" i stedet for en fastfrosset kalenderdato — en
+    // frosset fortids-dato bliver af isAuctionTimeExpired (auctionLogic.js)
+    // korrekt læst som udløbet, uanset hvornår testen kører, og blokerer så
+    // byd-knappen i core-smoke's "ingen blanke skærme"-snapshot af /auctions.
+    calculated_end: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
     status: "active",
     is_guaranteed_sale: false,
     rider: RIDERS[1],
@@ -327,6 +331,13 @@ export const SEED_RACE_RESULTS = [
   { id: "res-d1-team-2", race_id: "race-done-1", stage_number: 1, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-1", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 1, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 20, prize_money: 40000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-2", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
+  // #3333 — race-live-1 (Settimana Preview, igangværende, 2/5 etaper): 'leader'-
+  // rækker for seneste kørte etape (2), samme resultat_type som motoren skriver
+  // undervejs (raceLiveStandings.js/#2081) — status forbliver 'scheduled', kun
+  // stages_completed markerer fremdriften. Uden disse rækker viser Resultat-
+  // hubbens kort "ingen klassement" for et løb der reelt har en løbende stilling.
+  { id: "res-live1-leader-1", race_id: "race-live-1", stage_number: 2, result_type: "leader", rank: 1, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, finish_time: "+0:00", points_earned: 20, prize_money: 0, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team: { id: TEST_TEAM.id, name: TEST_TEAM.name } } },
+  { id: "res-live1-leader-2", race_id: "race-live-1", stage_number: 2, result_type: "leader", rank: 2, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:18", points_earned: 0, prize_money: 0, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
 ];
 
 // race_stage_passages — Sub-4 (#2448) preview-seed: KOM/mellemsprint/mål-
@@ -383,13 +394,29 @@ export const SEED_RACE_INCIDENTS = [
 // tabellen; tag_crash_ruined på den fiktive rider-99 der allerede har en
 // incident-seed ovenfor — han optræder ikke i nogen resultat-række, så tagget
 // forbliver usynligt i UI'et, samme graceful-degradation som DnfSection).
+//
+// D3 2026-08-04 (#3115 + #2356): sprint_win (st1) + solo_win (st2) tilføjet —
+// UDEN et vindermoment falder RaceReportPanel (raceReport.js) tilbage til v1
+// (buildRaceReport → null), så de to var nødvendige for at v2-rapporten rent
+// faktisk kan skærmbilledes. tag_aggression_no_cost/tag_saved_effort/
+// tag_gave_everything demonstrerer de to nye moment-typer.
 export const SEED_RACE_STAGE_MOMENTS = [
   { id: "mom-d2-s1-1", race_id: "race-done-2", stage_number: 1, moment_key: "team_day", params: { teamId: TEST_TEAM.id, count: 2 }, significance: 45, rider_ids: [], team_ids: [TEST_TEAM.id] },
   { id: "mom-d2-s1-2", race_id: "race-done-2", stage_number: 1, moment_key: "tag_outsider_win", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s1-3", race_id: "race-done-2", stage_number: 1, moment_key: "sprint_win", params: { riderId: RIDERS[0].id, gapSeconds: 1 }, significance: 50, rider_ids: [RIDERS[0].id], team_ids: [TEST_TEAM.id] },
+  { id: "mom-d2-s1-4", race_id: "race-done-2", stage_number: 1, moment_key: "tag_aggression_no_cost", params: { riderId: RIDERS[1].id }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
   { id: "mom-d2-s2-1", race_id: "race-done-2", stage_number: 2, moment_key: "gc_takeover", params: { riderId: RIDERS[1].id, previousLeaderId: RIDERS[0].id }, significance: 80, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-2", race_id: "race-done-2", stage_number: 2, moment_key: "final_gc", params: { riderIds: [RIDERS[1].id, RIDERS[0].id] }, significance: 90, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-3", race_id: "race-done-2", stage_number: 2, moment_key: "tag_crash_ruined", params: { riderId: "rider-99", kind: "crash", outcome: "abandon" }, significance: 30, rider_ids: ["rider-99"], team_ids: [] },
   { id: "mom-d2-s2-4", race_id: "race-done-2", stage_number: 2, moment_key: "tag_jour_sans", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-5", race_id: "race-done-2", stage_number: 2, moment_key: "solo_win", params: { riderId: RIDERS[1].id, gapSeconds: 45 }, significance: 55, rider_ids: [RIDERS[1].id], team_ids: [RIVAL_TEAM.id] },
+  { id: "mom-d2-s2-6", race_id: "race-done-2", stage_number: 2, moment_key: "tag_gave_everything", params: { riderId: RIDERS[1].id }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
+  { id: "mom-d2-s2-7", race_id: "race-done-2", stage_number: 2, moment_key: "tag_saved_effort", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  // #3336: helper_work-forklaret favorit-nedtur på Mikkel (stage 2) — demonstrerer
+  // at tag_favorite_collapse's badge-tooltip nu viser DEN FAKTISKE årsag
+  // (ikke altid jour_sans-teksten som Adas tag_jour_sans ovenfor).
+  { id: "mom-d2-s2-8", race_id: "race-done-2", stage_number: 2, moment_key: "favorite_off_day", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 65, rider_ids: [RIDERS[1].id], team_ids: [] },
+  { id: "mom-d2-s2-9", race_id: "race-done-2", stage_number: 2, moment_key: "tag_favorite_collapse", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
 ];
 
 // #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,
@@ -642,7 +669,9 @@ const SEED_BOARD_ROSTER = RIDERS.filter((r) => r.team_id === TEST_TEAM.id).map((
   firstname: r.firstname, lastname: r.lastname,
   primary_type: r.primary_type, secondary_type: r.secondary_type, nationality_code: r.nationality_code,
   // S5: suitability + aggression + kondition så RoleCards/FitBar/jæger-chip har data i preview.
-  suitability: 78 - i * 9, aggression: 72 - i * 6, form: 60 - i * 3, fatigue: 12 + i * 7,
+  // #3115 Gap 1b: tactics stigende (modsat aggression) så RiderFitInsight-preview
+  // dækker alle tre bånd (poor/average/strong) på tværs af truppen.
+  suitability: 78 - i * 9, aggression: 72 - i * 6, tactics: 28 + i * 7, form: 60 - i * 3, fatigue: 12 + i * 7,
 }));
 export const SEED_DISTRIBUTION = {
   enabled: true,
@@ -799,6 +828,7 @@ export const SEED_SELECTION = {
     suitability: r.suitability,
     stageSuitability: null,
     aggression: r.aggression,
+    tactics: r.tactics,
     form: r.form,
     fatigue: r.fatigue,
     injured: i === SEED_BOARD_ROSTER.length - 1,
@@ -1107,20 +1137,47 @@ export const SEED_PROJECTION = {
   pastPeak: false,
 };
 
+// #3334 preview-seed: GET /api/riders/:id/scouting-report — samme sprinter-profil
+// som SEED_PROJECTION (now:70, sprinter-loft 78-86), plus rapport-provenance
+// (navngiven chefscout, tier 2) så feature'en er synlig på preview uden en
+// hyret spejder i SEED_CLUB (der er bevidst stadig default-spejder, #1441 A3).
+export const SEED_SCOUTING_REPORT = {
+  level: 3, maxLevel: 3, own: true, capsMissing: false,
+  stars: { lo: 4.5, hi: 5 },
+  types: [
+    { key: "sprinter", now: 70, ceilLo: 78, ceilHi: 86 },
+    { key: "puncheur", now: 44, ceilLo: 48, ceilHi: 54 },
+    { key: "brostensrytter", now: 52, ceilLo: 56, ceilHi: 61 },
+    { key: "baroudeur", now: 41, ceilLo: 45, ceilHi: 50 },
+    { key: "rouleur", now: 55, ceilLo: 59, ceilHi: 64 },
+    { key: "tt", now: 38, ceilLo: 42, ceilHi: 47 },
+    { key: "gc", now: 30, ceilLo: 34, ceilHi: 39 },
+    { key: "climber", now: 27, ceilLo: 31, ceilHi: 36 },
+  ],
+  verdict: { headlineKey: "keep_and_develop", confidence: "high", factorKeys: ["age_upside", "ceiling_gap", "type_match", "form_unknown"] },
+  value: { market: 420000, expected: 468000 },
+  scout: { isDefault: false, name: "Sofie Lindqvist", tier: 2, overall: 61, hiredAt: "2026-07-20T10:00:00.000Z" },
+  generatedAt: "2026-08-05T09:00:00.000Z",
+};
+
 // #2819 preview-seed: onboarding-progress i den ÆGTE respons-form fra
 // GET /api/me/onboarding-progress (steps[{key,done}] + completed_count/total_count
 // + dismissed/established). Den gamle mock returnerede {steps:[], completed_steps,
 // completion_pct} — en form ingen kode læser, så dashboard-kortet stod uden trin og
-// "Show me how"-knappen kunne slet ikke klikkes i preview. Trin 1 er markeret done,
-// så NÆSTE trin er træning (trin 2) og touren på /training kan startes fra kortet.
+// "Show me how"-knappen kunne slet ikke klikkes i preview.
+// #3007: trin 1 (first_bid_placed) sat til IKKE fuldført (var før "done" for at vise
+// trin 2's tour by default). Det betyder AuctionsFirstBidHint + "Første valg"-
+// anbefalingen på /auctions nu er synlig uden manuel localStorage-omgåelse, så
+// ejeren kan se den flade der rent faktisk afgør aktivering direkte i preview.
+// Ingen tests refererer denne seed (kun mockHandlers.js bruges af Playwright).
 export const SEED_ONBOARDING_PROGRESS = {
   steps: [
-    { key: "first_bid_placed", done: true },
+    { key: "first_bid_placed", done: false },
     { key: "first_training_run", done: false },
     { key: "first_squad_selected", done: false },
     { key: "board_plan_set", done: false },
   ],
-  completed_count: 1,
+  completed_count: 0,
   total_count: 4,
   dismissed: false,
   established: false,

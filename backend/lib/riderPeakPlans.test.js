@@ -63,23 +63,35 @@ test("isPlanLocked: eksplicit locked_at → altid låst", () => {
   assert.equal(isPlanLocked(plan, ord("2026-06-02")), true);
 });
 
-test("isPlanLocked: NULL locked_at + nu FØR (start − 3d) → redigerbar", () => {
+test("isPlanLocked: NULL locked_at + nu FØR vinduets start → redigerbar (#3094)", () => {
   const plan = { locked_at: null, window_start: "2026-07-10" };
-  assert.equal(isPlanLocked(plan, ord("2026-07-06")), false); // tærskel = 07/7
+  assert.equal(isPlanLocked(plan, ord("2026-07-09")), false); // dagen før tærsklen
 });
 
-test("isPlanLocked: NULL locked_at + nu PÅ (start − 3d) → låst", () => {
+test("isPlanLocked: NULL locked_at + nu PÅ vinduets start → låst (peaket er 'startet')", () => {
   const plan = { locked_at: null, window_start: "2026-07-10" };
-  assert.equal(isPlanLocked(plan, ord("2026-07-07")), true);
+  assert.equal(isPlanLocked(plan, ord("2026-07-10")), true);
 });
 
-test("isPlanLocked: NULL locked_at + nu EFTER tærskel → låst", () => {
+test("isPlanLocked: NULL locked_at + nu EFTER vinduets start → låst", () => {
   const plan = { locked_at: null, window_start: "2026-07-10" };
-  assert.equal(isPlanLocked(plan, ord("2026-07-09")), true);
+  assert.equal(isPlanLocked(plan, ord("2026-07-12")), true);
 });
 
-test("PEAK_LOCK_LEAD_DAYS er 3 (addendum §2)", () => {
-  assert.equal(PEAK_LOCK_LEAD_DAYS, 3);
+// #3094: default var 3 (lås 3 dage FØR vinduets start) — ethvert mål-løb ≤5 dage
+// ude gav en plan der var locked:true i SELVE svaret der oprettede den (475 af
+// 1.019 planer i prod, målt 5/8). Default er nu 0: lås KUN når vinduet er
+// begyndt, aldrig før — se PEAK_LOCK_LEAD_DAYS' kommentar for den fulde kontekst
+// og hvorfor dette er en bevidst mellemløsning, ikke ejerens fulde forslag.
+test("PEAK_LOCK_LEAD_DAYS er 0 — lås først når vinduet begynder (#3094)", () => {
+  assert.equal(PEAK_LOCK_LEAD_DAYS, 0);
+});
+
+test("isPlanLocked: en gammel/tunbar lockLeadDays kan stadig give en lås FØR vinduets start", () => {
+  // Signaturen er bevaret bagudkompatibel — en kalder der EKSPLICIT beder om en
+  // forvarsels-margen kan stadig få det (fx en fremtidig UI-forhåndsvisning).
+  const plan = { locked_at: null, window_start: "2026-07-10" };
+  assert.equal(isPlanLocked(plan, ord("2026-07-08"), { lockLeadDays: 3 }), true);
 });
 
 // ── recommendFocusForDemand ──────────────────────────────────────────────────
@@ -174,12 +186,13 @@ test("serializePlan mapper DB-rækken til API-form + udleder locked", () => {
   });
 });
 
-test("serializePlan udleder locked=true efter lås-tærsklen", () => {
+test("serializePlan udleder locked=true fra vinduets start (#3094)", () => {
   const row = {
     id: "p1", rider_id: "rid", season_id: "sid", target_race_id: "race1",
     window_start: "2026-07-10", window_end: "2026-07-14", locked_at: null, created_at: "2026-06-01T10:00:00Z",
   };
-  assert.equal(serializePlan(row, ord("2026-07-08")).locked, true);
+  assert.equal(serializePlan(row, ord("2026-07-10")).locked, true);
+  assert.equal(serializePlan(row, ord("2026-07-09")).locked, false);
 });
 
 test("TRAINING_FOCUSES-nøgler er gyldige fokus-anbefalinger", () => {

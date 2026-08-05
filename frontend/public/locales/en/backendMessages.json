@@ -6,9 +6,13 @@
       "seasonStartVariable": "Sponsor income · Season start (base {base} + variable {variable} ×{modifier})",
       "seasonStartVariablePullout": "Sponsor income · Season start (base {base} + variable {variable} ×{modifier} · sponsor pullout active)",
       "seasonStartFallback": "Sponsor income · Season start (fallback {amount} ×{modifier})",
-      "seasonStartFallbackPullout": "Sponsor income · Season start (fallback {amount} ×{modifier} · sponsor pullout active)"
+      "seasonStartFallbackPullout": "Sponsor income · Season start (fallback {amount} ×{modifier} · sponsor pullout active)",
+      "signingBonus": "Sponsor · Signing bonus ({sponsorName})",
+      "resultBonus": "Sponsor · Result bonus ({wins} wins, {podiums} podiums)",
+      "objectiveBonus": "Sponsor · Season objective met ({sponsorName})"
     },
     "salary": "Season salaries · {count} riders",
+    "wageDaily": "Daily wage · {count} riders",
     "upkeep": "Upkeep (operating costs) · Division {division}",
     "parachute": "Relegation parachute · Division {oldDivision} → {newDivision}",
     "academyDrift": "Academy upkeep · {count} slots × {drift_per_slot} pts",
@@ -177,6 +181,10 @@
       "title": "Race result is in",
       "message": "{race} has been run. View the result."
     },
+    "firstRaceResult": {
+      "title": "Your first race is in the books",
+      "message": "{race} has been run. See how your riders did."
+    },
     "stageResult": {
       "title": "Stage result is in",
       "message": "Stage {stage} of {race} is done. Your best: {rider}, position {position}.",
@@ -193,6 +201,10 @@
     "squadBelowMinimum": {
       "title": "Squad below race minimum",
       "message": "Your squad has {count} race-eligible rider(s), below the {min}-rider minimum needed to field a race day. Sign free agents or bid in an auction before your next race."
+    },
+    "selectionWarning": {
+      "title": "Squad selection needed",
+      "message": "{race} starts within 36 hours and you haven't picked your squad yet. Select your riders, or let the assistant auto-select for you."
     },
     "riderRetired": {
       "title": "{name} has retired",
@@ -391,6 +403,32 @@
         "title": "Swap cancelled by admin",
         "message": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin.",
         "messageReason": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin: {reason}"
+      }
+    },
+    "welcome": {
+      "title": "Welcome to Cycling Zone",
+      "message": "Your team is ready. Place a bid in the auction house to sign your first rider."
+    },
+    "scoutChanged": {
+      "title": "New scout, reports recalculated",
+      "message": "{scoutName} is now assessing your riders. Existing scouting reports are recalculated to match their precision, but your riders' actual abilities have not changed."
+    },
+    "sponsorPaid": {
+      "seasonStart": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out {amount} CZ$ for the new season."
+      },
+      "raceDay": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out {amount} CZ$ for {race}."
+      },
+      "signingBonus": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out a {amount} CZ$ signing bonus."
+      },
+      "objectiveBonus": {
+        "title": "Sponsor payout",
+        "message": "{sponsor} paid out {amount} CZ$ for meeting your season objective."
       }
     }
   },

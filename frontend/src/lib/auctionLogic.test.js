@@ -7,6 +7,7 @@ import {
   getAuctionLeaderId,
   getAuctionLeaderName,
   getAuctionSellerLabel,
+  isAuctionTimeExpired,
   isManagerSeller,
 } from "./auctionLogic.js";
 
@@ -183,6 +184,31 @@ test("computeAvailableForBid — eget autobud-loft på target ekskluderes også"
     computeAvailableForBid({ balance: 1_000_000, reservedBalance: 250_000, auction: target, myTeamId: BUYER }),
     1_000_000,
   );
+});
+
+// ── #3110: byd-knappen skal disable PRÆCIS ved countdown-grænsen 0 ──────────
+
+test("isAuctionTimeExpired — false mens der stadig er tid tilbage (1ms før deadline)", () => {
+  const end = "2026-08-04T12:00:00.000Z";
+  const now = new Date("2026-08-04T11:59:59.999Z");
+  assert.equal(isAuctionTimeExpired(end, now), false);
+});
+
+test("isAuctionTimeExpired — true PRÆCIS i samme millisekund som deadline (>=, matcher backend isAuctionExpired)", () => {
+  const end = "2026-08-04T12:00:00.000Z";
+  const now = new Date("2026-08-04T12:00:00.000Z");
+  assert.equal(isAuctionTimeExpired(end, now), true);
+});
+
+test("isAuctionTimeExpired — true efter deadline er passeret", () => {
+  const end = "2026-08-04T12:00:00.000Z";
+  const now = new Date("2026-08-04T12:00:05.000Z");
+  assert.equal(isAuctionTimeExpired(end, now), true);
+});
+
+test("isAuctionTimeExpired — manglende calculated_end blokerer aldrig (defensiv default)", () => {
+  assert.equal(isAuctionTimeExpired(null), false);
+  assert.equal(isAuctionTimeExpired(undefined), false);
 });
 
 test("computeAvailableForBid — klamper til 0 og tåler manglende input", () => {

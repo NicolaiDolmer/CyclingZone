@@ -3,6 +3,7 @@
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
+import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import {
   TEST_USER,
   TEST_TEAM,
@@ -36,6 +37,7 @@ import {
   SEED_CALENDAR,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
+  SEED_SCOUTING_REPORT,
   SEED_MANAGER_TRANSFERS,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
@@ -132,9 +134,16 @@ export function restRows(table, requestUrl = "") {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_RACES.filter(r => r.id === id);
       }
-      // #3102 etape 2: Resultat-hubben henter kun de AFSLUTTEDE løb
-      // (status=eq.completed). Uden filteret her ville hubben også vise det
-      // kommende og det igangværende løb, som i prod aldrig ville nå frem.
+      // #3333: Resultat-hubben henter nu status=completed ELLER igangværende
+      // etapeløb (.or("status.eq.completed,stages_completed.gt.0")) — status
+      // alene er IKKE en pålidelig "afsluttet"-markør (raceResultVisibility.js).
+      // Matcher den nye .or(...)-formede query-streng (postgrest lægger den i et
+      // uafkodet or=(…)-param, derfor decodeURIComponent). Falder tilbage til det
+      // gamle rene status=eq.completed-mønster hvis en fremtidig kalder bruger det.
+      const decodedSearch = decodeURIComponent(url.search);
+      if (decodedSearch.includes("or=(status.eq.completed") && decodedSearch.includes("stages_completed.gt.0")) {
+        return SEED_RACES.filter(raceHasReportableResults);
+      }
       if (url.search.includes("status=eq.completed")) {
         return SEED_RACES.filter(r => r.status === "completed");
       }
@@ -394,6 +403,50 @@ export function apiResponse(pathname, search = "") {
     };
   }
 
+  // Finance → Sponsor-fanen (SponsorContractPanel + SponsorIncomeBreakdown).
+  // "results"-arketypen med BEGGE bonusklausuler + et loft, og 3 løbsdage
+  // (> 2 = trigger "Vis alle N løb"), så ejer-gennemklik viser ALLE elementer:
+  // fast base, flere løbsdags-rækker, bonus-split (kombineret win+podium-
+  // transaktion demonstrerer den proportionale opdeling), loft-linjen og
+  // den fulde bund-forklaring.
+  if (pathname.endsWith("/api/sponsor/contract")) {
+    const contract = {
+      id: "sponsor-preview-1",
+      team_id: TEST_TEAM.id,
+      sponsor_name: "Vesna Robotics",
+      guaranteed_base: 180000,
+      per_race_day_rate: 450,
+      length_seasons: 2,
+      start_season: 2,
+      expires_after_season: 3,
+      status: "active",
+      variant: "results",
+      bonus_clauses: [
+        { type: "stage_win", amount: 8000 },
+        { type: "podium", amount: 3500 },
+        { type: "results_cap", amount: 50000 },
+      ],
+      results_bonus_paid: 15000,
+      created_at: "2026-07-01T08:00:00.000Z",
+    };
+    return {
+      contract,
+      earnings: { base: 180000, signing: 5000, raceDays: 3150, results: 15000, objective: 0, total: 203150 },
+      season: {
+        number: 2,
+        transactions: [
+          { id: "tx-base", type: "sponsor", amount: 180000, description: "Sponsor season base", metadata: null, createdAt: "2026-07-01T08:00:00.000Z", raceId: null, raceName: null },
+          { id: "tx-signing", type: "sponsor_signing_bonus", amount: 5000, description: "Sponsor — signing bonus (Vesna Robotics)", metadata: { code: "tx.sponsor.signingBonus", params: { sponsorName: "Vesna Robotics" } }, createdAt: "2026-07-01T08:00:01.000Z", raceId: null, raceName: null },
+          { id: "tx-rd-1", type: "sponsor_race_day", amount: 1350, description: "Sponsor — race-day income", metadata: null, createdAt: "2026-07-10T18:00:00.000Z", raceId: "wp-1", raceName: "Tour de Preview" },
+          { id: "tx-rd-2", type: "sponsor_race_day", amount: 1350, description: "Sponsor — race-day income", metadata: null, createdAt: "2026-07-20T18:00:00.000Z", raceId: "wp-2", raceName: "Giro di Preview" },
+          { id: "tx-rd-3", type: "sponsor_race_day", amount: 450, description: "Sponsor — race-day income", metadata: null, createdAt: "2026-07-25T18:00:00.000Z", raceId: "wp-3", raceName: "Omloop Preview" },
+          { id: "tx-bonus-1", type: "sponsor_result_bonus", amount: 11500, description: "Sponsor — result bonus (1 wins, 1 podiums)", metadata: { code: "tx.sponsor.resultBonus", params: { wins: 1, podiums: 1 } }, createdAt: "2026-07-25T18:05:00.000Z", raceId: "wp-3", raceName: "Omloop Preview" },
+          { id: "tx-bonus-2", type: "sponsor_result_bonus", amount: 3500, description: "Sponsor — result bonus (0 wins, 1 podiums)", metadata: { code: "tx.sponsor.resultBonus", params: { wins: 0, podiums: 1 } }, createdAt: "2026-07-20T18:05:00.000Z", raceId: "wp-2", raceName: "Giro di Preview" },
+        ],
+      },
+    };
+  }
+
   if (pathname.endsWith("/api/inbox/pending")) {
     return {
       transfer_offers: [],
@@ -543,6 +596,11 @@ export function apiResponse(pathname, search = "") {
   // tjekkes FØR /development (endsWith er disjunkt, men rækkefølgen holder intentionen klar).
   if (pathname.endsWith("/development-projection")) return SEED_PROJECTION;
   if (pathname.endsWith("/development")) return SEED_DEVELOPMENT;
+
+  // #3334: Scouting-fanens rapport — provenance (navngiven scout + tier) +
+  // loft-bånd. Tjekkes FØR /scouting (disjunkt endsWith, samme mønster som
+  // projection/development ovenfor).
+  if (pathname.endsWith("/scouting-report")) return SEED_SCOUTING_REPORT;
 
   // #2842 admin-feedback-indbakke. Uden en seed her ville fladen stå tom på
   // preview, og ejeren kunne ikke se den før den var live (det har bidt før).

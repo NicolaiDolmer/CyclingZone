@@ -2,8 +2,20 @@
  * Slice 07g · Manager finance-forecast + risk-tier
  *
  * Pure function der projicerer næste sæsons cashflow for ét hold:
- *   indtægter (sponsor + præmie) − udgifter (løn + rente + lejegebyr)
+ *   indtægter (sponsor + præmie)
+ *   − udgifter (løn + rente + upkeep + facilitets-upkeep + staff-løn + akademi-drift)
  * Returnerer 🟢/🟡/🔴 risk-tier + warnings.
+ *
+ * #3236 (økonomi-audit #3198, fund #1): forecastet medregnede tidligere KUN
+ * sponsor+præmie−løn−lånerente. Upkeep, facilitets-/stab-udgifter og akademi-
+ * drift er alle division-/roster-skalerede og kendte på forecast-tidspunktet,
+ * ligesom løn — derfor tilføjet som deterministiske udgifter her, ikke som
+ * estimater. Formlerne spejler economyEngine.processTeamSeasonPayroll (upkeep,
+ * academy_drift) og economyEngine.chargeFacilityCosts (facility_upkeep,
+ * staff_salary) 1:1, så forecast og faktisk sæson-start-opkrævning stemmer
+ * overens. `sponsor_race_day` (den løbende variable sponsor-pulje) er BEVIDST
+ * ikke modelleret her — den er resultatafhængig og kan ikke forudsiges
+ * deterministisk (se audit-rapportens afsnit 3).
  *
  * Inputs er rå tal/arrays — alle DB-queries lever i route-handler. Det holder
  * funktionen testbar uden Supabase-mock og giver os deterministiske unit-tests.
@@ -13,12 +25,74 @@ import {
   buildSponsorStandingsContext,
   computeSponsorForSeason,
 } from "./sponsorEngine.js";
+import { UPKEEP_BY_DIVISION, UPKEEP_BEFORE_FIRST_RACE_ENABLED } from "./economyConstants.js";
+import { getFacilityUpkeepTotal } from "./facilityEngine.js";
+import { ACADEMY } from "./academyFlag.js";
 
 const RISK_NET_GREEN_THRESHOLD = 50_000;
 const RISK_NET_RED_THRESHOLD = -50_000;
 const RISK_DEBT_GREEN_RATIO = 0.5;
 const RISK_DEBT_YELLOW_RATIO = 0.8;
 const CONFIDENCE_BAND_PCT = 0.2; // ±20% på prize-estimatet
+
+// #3332 (forward-guard mod tavs udeladelse, mønster fra #1464/#2957): eksplicit
+// klassifikation af HVER finance_transactions.type koden rent faktisk skriver —
+// enten { modeled: true, field } hvis strømmen indgår deterministisk i
+// projected_net (feltet der bærer bidraget), eller { modeled: false, reason }
+// hvis den BEVIDST udelades, med en kort begrundelse for hvorfor den ikke kan
+// forudsiges. financeForecastTypeCoverage.test.js scanner backend-koden
+// (samme extractCodeWrittenTypes som scripts/lint-finance-types.mjs) og fejler
+// hvis en ny type dukker op her uklassificeret — det var PRÆCIS sådan
+// upkeep/facilitets-/stab-/akademi-strømmene glemte at følge med, da
+// economyEngine fik dem tilføjet over tid (postmortem
+// .claude/learnings/2026-08-03-forecast-missing-expense-side.md, fixet #3236/
+// #3251). Kanonisk kilde for hele type-universet: audit
+// docs/audits/2026-08-03-economy-audit-3198.md afsnit 1 (29 mulige typer, 20
+// observeret live 4/8 via read-only SELECT mod ghwvkxzhsbbltzfnuhhz).
+//
+// #2957-blind-spot (dokumenteret i scripts/lint-finance-types.mjs): 'loan_repayment'
+// skrives kun via SQL-RPC'en repay_loan_atomic og fanges IKKE af den JS-kilde-
+// scanner testen genbruger — testen tilføjer den manuelt til det scannede sæt.
+// Reason-strings er bevidst ENGELSKE (ikke det sædvanlige danske kode-kommentar-
+// sprog i denne fil) — #666/i18n-leak-guarden flagger danske string-literaler på
+// linjer med `reason`-kontekst i backend/lib som en potentiel API-response-leak
+// (#1053-mønstret). Disse er rene interne test-/dokumentationsdata (aldrig en del
+// af computeFinanceForecast()'s return-værdi), men engelsk fjerner enhver tvivl.
+export const FINANCE_FORECAST_TYPE_COVERAGE = Object.freeze({
+  // ── Modelled: folds deterministically into projected_net ────────────────
+  sponsor: { modeled: true, field: "projected_sponsor" },
+  prize: { modeled: true, field: "projected_prize" },
+  salary: { modeled: true, field: "projected_salary" },
+  upkeep: { modeled: true, field: "projected_upkeep" },
+  facility_upkeep: { modeled: true, field: "projected_facility_upkeep" },
+  staff_salary: { modeled: true, field: "projected_staff_salary" },
+  academy_drift: { modeled: true, field: "projected_academy_drift" },
+
+  // ── Deliberately excluded: result-/event-dependent, not forecastable ────
+  sponsor_race_day: { modeled: false, reason: "ongoing variable sponsor pool — result-dependent (race days not yet raced)" },
+  sponsor_result_bonus: { modeled: false, reason: "sponsor bonus clause — result-dependent" },
+  sponsor_objective_bonus: { modeled: false, reason: "sponsor bonus clause — season-objective-dependent" },
+  sponsor_signing_bonus: { modeled: false, reason: "one-off bonus on signing a new sponsor contract — unknown until the contract is signed" },
+  parachute: { modeled: false, reason: "relegation parachute — depends on the current season's not-yet-known final standing" },
+  forced_debt_sale: { modeled: false, reason: "forced sale from a debt-ceiling breach — a risk symptom, not a normal cost (covered by risk-tier/warnings instead)" },
+  interest: { modeled: false, reason: "negative-balance safety-net interest — contingent on the balance going negative after payroll, not a normal predictable line" },
+  squad_violation_fine: { modeled: false, reason: "fine for a squad-size rule violation — avoidable, not a normal operating cost" },
+
+  // ── Deliberately excluded: a future manager decision, not yet known ─────
+  transfer_in: { modeled: false, reason: "future rider purchase — unknown until the manager chooses it" },
+  transfer_out: { modeled: false, reason: "future rider sale — unknown until the manager chooses it" },
+  academy_signing: { modeled: false, reason: "future academy signing — unknown until the manager chooses it" },
+  facility_purchase: { modeled: false, reason: "future facility investment — unknown until the manager chooses it" },
+  staff_severance: { modeled: false, reason: "future staff termination — unknown until the manager chooses it" },
+  scout_travel: { modeled: false, reason: "manager-initiated scout mission — discretionary, unknown count/timing" },
+  bonus: { modeled: false, reason: "board bonus offer — discretionary acceptance, unknown timing/amount" },
+  loan_received: { modeled: false, reason: "future new loan — unknown until the manager takes it out" },
+  loan_repayment: { modeled: false, reason: "voluntary extra principal repayment — interest is already modelled separately (projected_loan_interest); the repayment itself is a discretionary manager decision" },
+  emergency_loan: { modeled: false, reason: "emergency-loan rescue — contingent on insolvency, ideally never triggered" },
+  admin_adjustment: { modeled: false, reason: "manual admin correction — no game-mechanical pattern to forecast" },
+  auto_squad_purchase: { modeled: false, reason: "automatic squad top-up — contingent on a future squad shortfall" },
+  auto_squad_sale: { modeled: false, reason: "automatic squad trim — contingent on a future squad surplus" },
+});
 
 export function computeFinanceForecast({
   team = {},
@@ -35,6 +109,13 @@ export function computeFinanceForecast({
   realizedSeasonPrize = 0,
   activeContract = null,
   pendingContract = null,
+  // #3236: næste sæsons kendte drift-udgifter — samme kilde-til-sandhed som
+  // economyEngine's sæson-start-opkrævning. Tomme defaults ⇒ 0-bidrag, så
+  // hold uden faciliteter/staff/akademi ikke ser en falsk udgift.
+  facilityTracks = [],
+  activeStaffSalaries = [],
+  academyRiderCount = 0,
+  facilitiesEnabled = true,
 } = {}) {
   const seasonNumber = Number.isInteger(targetSeasonNumber)
     ? targetSeasonNumber
@@ -96,11 +177,43 @@ export function computeFinanceForecast({
     0
   ) || 0;
 
+  // #3236 · Upkeep — flad pr. division (economyEngine.processTeamSeasonPayroll).
+  // #1678: udskudt i sæson 1 (før første løb) medmindre flaget slås til —
+  // forecastet skal ramme samme 0 som den faktiske sæson-1-opkrævning.
+  const upkeepDeferred = !UPKEEP_BEFORE_FIRST_RACE_ENABLED && seasonNumber === 1;
+  const upkeepForDivision = UPKEEP_BY_DIVISION[team?.division] || 0;
+  const projectedUpkeep = upkeepDeferred ? 0 : (-upkeepForDivision || 0);
+
+  // #3236 · Facilitets-upkeep + staff-sæsonløn — samme runtime-gate
+  // (facilitiesEnabled, app_config "facilities_enabled") som
+  // economyEngine.chargeFacilityCosts. Caller læser flaget; default true her
+  // så unit-tests uden eksplicit flag ikke bliver stille nul-gated.
+  const facilityUpkeepTotal = facilitiesEnabled
+    ? getFacilityUpkeepTotal(facilityTracks)
+    : 0;
+  const projectedFacilityUpkeep = -facilityUpkeepTotal || 0;
+
+  const staffSalaryTotal = facilitiesEnabled
+    ? (activeStaffSalaries || []).reduce((sum, s) => sum + (s?.salary || 0), 0)
+    : 0;
+  const projectedStaffSalary = -staffSalaryTotal || 0;
+
+  // #3236 · Akademi-drift — pr. plads, gated på count > 0 (economyEngine
+  // springer helt over ved 0 akademi-ryttere, uanset flag).
+  const academyCount = Math.max(0, Math.round(Number(academyRiderCount) || 0));
+  const projectedAcademyDrift = academyCount > 0
+    ? -(academyCount * ACADEMY.DRIFT_PER_SEASON)
+    : 0;
+
   const projectedNet =
     projectedSponsor +
     projectedPrize +
     projectedSalary +
-    projectedLoanInterest;
+    projectedLoanInterest +
+    projectedUpkeep +
+    projectedFacilityUpkeep +
+    projectedStaffSalary +
+    projectedAcademyDrift;
 
   // ±20% på prize, der er mest variable input. Sponsor/løn/rente er deterministiske
   // i et givent sæson-perspektiv — usikkerheden bor i hvor meget holdet faktisk
@@ -149,6 +262,11 @@ export function computeFinanceForecast({
     projected_prize: projectedPrize,
     projected_salary: projectedSalary,
     projected_loan_interest: projectedLoanInterest,
+    // #3236: de 4 tidligere fraværende udgiftsstrømme (audit #3198, fund #1).
+    projected_upkeep: projectedUpkeep,
+    projected_facility_upkeep: projectedFacilityUpkeep,
+    projected_staff_salary: projectedStaffSalary,
+    projected_academy_drift: projectedAcademyDrift,
     projected_net: projectedNet,
     confidence_low: confidenceLow,
     confidence_high: confidenceHigh,
@@ -175,6 +293,16 @@ export function computeFinanceForecast({
       active_loan_count: (activeLoans || []).length,
       current_season_number: currentSeasonNumber,
       target_season_number: seasonNumber,
+      // #3236: transparens om de nye udgiftsstrømmes inputs.
+      upkeep_deferred: upkeepDeferred,
+      division_upkeep: upkeepForDivision,
+      facilities_enabled: facilitiesEnabled,
+      facility_track_count: (facilityTracks || []).length,
+      facility_upkeep_total: facilityUpkeepTotal,
+      active_staff_count: (activeStaffSalaries || []).length,
+      staff_salary_total: staffSalaryTotal,
+      academy_rider_count: academyCount,
+      academy_drift_per_slot: ACADEMY.DRIFT_PER_SEASON,
     },
   };
 }
@@ -297,6 +425,9 @@ export const FORECAST_THRESHOLDS = Object.freeze({
  *   - Loan-interest = decay: amount_remaining × 0.75 per sæson som proxy for
  *     gradvis afdrag (manager kan også optage nye lån — ikke modelleret)
  *   - Balance ruller frem: balance_{N+1} = balance_N + projected_net_N
+ *   - #3236: facilities/staff/akademi = uændret (samme "intet ændrer sig"-
+ *     status-quo-antagelse som roster/salary — vi kender ikke fremtidige
+ *     facility-opgraderinger/ansættelser/akademi-optag)
  *
  * Sæson 0 (open-beta): forecast giver kun mening fra sæson 1+. Hvis target
  * er sæson 0 returneres tomt array.
@@ -321,6 +452,11 @@ export function computeMultiSeasonForecast({
   seasonsAhead = 1,
   activeContract = null,
   pendingContract = null,
+  // #3236: status-quo over hele horisonten, ligesom roster/salary.
+  facilityTracks = [],
+  activeStaffSalaries = [],
+  academyRiderCount = 0,
+  facilitiesEnabled = true,
 } = {}) {
   const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
   const forecasts = [];
@@ -356,6 +492,11 @@ export function computeMultiSeasonForecast({
       realizedSeasonPrize,
       activeContract,
       pendingContract,
+      // #3236: uændret over hele horisonten (status-quo).
+      facilityTracks,
+      activeStaffSalaries,
+      academyRiderCount,
+      facilitiesEnabled,
     });
 
     const endingBalance = rollingBalance + forecast.projected_net;

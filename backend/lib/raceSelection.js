@@ -128,6 +128,12 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       // S5: aggression (0-99) — driver udbruds-CHANCEN i motoren (raceSimulator.aggressionScore).
       // Surfaces så HunterExplainer kan rangere jæger-kandidater. null = endnu ikke beregnet.
       aggression: ab?.aggression ?? null,
+      // #3115 Gap 1b (ejer-forslag 3/8): tactics (0-99) — vægtes i visse etapers
+      // DEMAND_VECTORS (raceStageProfileGenerator.js: rolling/mountain/high_mountain/
+      // classic/ttt) og er dermed en del af rute-match-scoren for de profiler. Surfaces
+      // rå her (samme mønster som aggression ovenfor); frontend BÅNDER altid værdien
+      // (selectionDrivers.js tacticsFitBand) før visning — fog-gate, aldrig rå tal i UI.
+      tactics: ab?.tactics ?? null,
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
       injured: !!(cond?.injured_until && cond.injured_until >= todayStr),

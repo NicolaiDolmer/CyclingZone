@@ -39,10 +39,33 @@
       }
     }
   },
+  "seasonWrap": {
+    "title": "Sæson {number} er slut",
+    "dismissAria": "Skjul sæson-opsummeringskortet",
+    "movement": {
+      "promoted": "↑ Rykket op",
+      "relegated": "↓ Rykket ned",
+      "maintained": "Holdt division {division}"
+    },
+    "rankLine": "Du blev nr. {rank} af {size} i division {division}",
+    "statsLine": "{points} point · {wins, plural, one {# sejr} other {# sejre}}",
+    "cta": "Se din sæson-opsummering",
+    "goal": {
+      "promoted": "Sæson {nextNumber} starter i en ny division. Første mål: hold dig fri af nedrykningszonen.",
+      "relegated": "Sæson {nextNumber} starter nu. Slut i top 2 for at rykke direkte op igen.",
+      "heldTop": "Sæson {nextNumber} starter nu. Forsvar din placering i toppen af division {division}.",
+      "heldBottom": "Sæson {nextNumber} starter nu. Ingen nedrykningsrisiko hernede, så klatr op ad stillingen.",
+      "heldMid": "Sæson {nextNumber} starter nu. Gå efter en top-2-placering og oprykning."
+    }
+  },
   "squadWarning": {
     "over": "Hold er for stort. Max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
     "under": "Hold er for lille. Min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",
     "ctaMyTeam": "Mit Hold →"
+  },
+  "contractWarning": {
+    "message": "{count, plural, one {1 rytters kontrakt udløber} other {# rytteres kontrakter udløber}} ved sæsonskiftet. Forlæng fra rytterens profil for at beholde dem, ellers frigives de som fri agenter.",
+    "cta": "Se kontrakter →"
   },
   "discordNudge": {
     "title": "Få DMs ved overbud, transfertilbud og bestyrelses-signaler",
@@ -82,7 +105,12 @@
       "seasonRaces": "{count, plural, one {# løb} other {# løb}}",
       "stageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
       "empty": "Dine ryttere har ikke kørt løb endnu. Holdets resultater lander her efter det første løb.",
-      "emptyCta": "Åbn løbskalenderen →"
+      "emptyCta": "Åbn løbskalenderen →",
+      "firstRaceTitle": "Dit første løb er kørt",
+      "firstRaceIntro": "Kørt mens du var væk. Sådan gik det.",
+      "firstRaceIntroAt": "Afsluttet {time} mens du var væk. Sådan gik det.",
+      "firstRaceCta": "Læs hele løbshistorien",
+      "firstRaceNext": "Næste løb: {race}, {count, plural, one {om # dag} other {om # dage}}"
     },
     "auctions": {
       "title": "Aktive Auktioner",
@@ -118,6 +146,7 @@
     },
     "standings": {
       "title": "Division {division} · Stilling",
+      "titlePool": "{label} · Stilling",
       "linkAll": "Fuld rangliste →",
       "empty": "Ingen sæsondata endnu",
       "emptyCta": "Se den fulde rangliste →"
@@ -180,7 +209,7 @@
   "forecast": {
     "loading": "Beregner forecast…",
     "title": "Næste sæson · prognose",
-    "subtitle": "Forventet cashflow baseret på roster + lån + sponsor",
+    "subtitle": "Forventet cashflow baseret på roster + lån + sponsor + driftsudgifter",
     "tier": {
       "green": {
         "label": "Grøn",
@@ -204,7 +233,11 @@
       "sponsor": "Sponsor",
       "prize": "Præmiepenge (estimat)",
       "salary": "Løn",
-      "loanInterest": "Lånerenter"
+      "loanInterest": "Lånerenter",
+      "upkeep": "Vedligehold",
+      "facilityUpkeep": "Facilitets-vedligehold",
+      "staffSalary": "Stab-lønninger",
+      "academyDrift": "Akademi-drift"
     },
     "sponsorDetail": {
       "contract": "Kontrakt med {sponsor}: garanteret base {base}, løbsdags-indtægt oveni",

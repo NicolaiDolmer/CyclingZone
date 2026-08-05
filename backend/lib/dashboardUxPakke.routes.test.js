@@ -42,6 +42,18 @@ test("onboarding-progress: first_squad_selected querier race_entries med is_auto
   );
 });
 
+// #3007: training_day_runs skrives også af 22:00-assistent-sweepen
+// (executed_by="assistant", trainingSweep.js) — uden dette filter var trinnet
+// completed for ALLE hold samme aften uanset om manageren selv trænede.
+test("onboarding-progress: first_training_run kræver executed_by='manager' (raden skrives også af 22:00-assistent-sweepen)", () => {
+  const block = routeBlock('router.get("/me/onboarding-progress"');
+  assert.match(
+    block,
+    /\.from\("training_day_runs"\)[\s\S]*?\.eq\("team_id",\s*teamId\)[\s\S]*?\.eq\("executed_by",\s*"manager"\)/,
+    "first_training_run skal filtrere på executed_by='manager', ikke tælle assistent-sweepens rækker",
+  );
+});
+
 test("onboarding-progress: board_plan_set kræver negotiation_status='completed' (ikke bare 'findes en board_profiles-række', som er auto-seedet ved sæson-start)", () => {
   const block = routeBlock('router.get("/me/onboarding-progress"');
   assert.match(
@@ -178,7 +190,21 @@ test("my-latest-result: sæson-historikken kommer fra dashboard_my_team_season_r
     /supabase\.rpc\(\s*"dashboard_my_team_season_races"\s*,\s*\{[\s\S]*?p_team_id:\s*req\.team\.id[\s\S]*?p_season_id:\s*season\.id[\s\S]*?p_league_division_id:\s*req\.team\.league_division_id[\s\S]*?p_limit:[\s\S]*?\}\s*\)/,
     "historikken skal hentes via RPC'en med hold-, sæson-, divisions- og limit-argument",
   );
-  assert.doesNotMatch(block, /fetchAllRows/, "historikken må ikke paginere race_results i Node");
+  // #3331: fetchAllRows er nu bevidst i brug ANDETSTEDS i denne rute (recap-
+  // rækkerne, pagineret pga PostgREST's 1000-rækkers-loft — bounded til ÉT
+  // løbs finale-etape, ikke sæsonens fulde race_results). Denne test skal
+  // KUN blokere hvis SÆSON-HISTORIKKEN specifikt bygges fra en sådan
+  // Node-side-paginering i stedet for RPC'en — en blanket "ingen
+  // fetchAllRows i hele ruten"-assertion ville også (fejlagtigt) blokere den
+  // legitime recap-brug.
+  const buildCallMatch = block.match(/buildSeasonHistory\(\{[\s\S]*?\}\);/);
+  assert.ok(buildCallMatch, "buildSeasonHistory-kaldet skal findes i ruten");
+  assert.match(buildCallMatch[0], /seasonRacesRes/, "sæson-historikken skal komme fra RPC-resultatet (seasonRacesRes)");
+  assert.doesNotMatch(
+    buildCallMatch[0],
+    /fetchAllRows/,
+    "sæson-historikken må ikke bygges fra en Node-side fetchAllRows-paginering af race_results",
+  );
 });
 
 test("my-latest-result: RPC-loftet er en konstant (ingen ubegrænset SELECT, ingen OFFSET-paginering) (#2886)", () => {

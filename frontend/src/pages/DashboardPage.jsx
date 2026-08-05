@@ -6,20 +6,28 @@ import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
+// #2182 — rangliste-modulet skal defaulte til spillerens egen division+pulje,
+// ikke hele tieren. Genbruger StandingsPage's rene merge/pulje-match-helpers i
+// stedet for en parallel implementering (samme princip som #3197: "default-
+// konteksten er spillerens egen verden").
+import { mergeStandings } from "../lib/standingsMerge";
+import { computeMyDivisionStandings } from "../lib/dashboardDivStandings.js";
 import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { poolRaceDayTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
-import { countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
+import { formatCountdown } from "../lib/stageScheduleConfig.js";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
+import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
+import { isContractExpiringAtTransition } from "../lib/riderAge";
 import { Flag } from "../components/Flag";
 import useDashboardLayout from "../lib/useDashboardLayout";
 import {
@@ -34,6 +42,9 @@ import {
   isSeasonStartWindow, buildSeasonStartItems,
   readSeasonStartDismissed, writeSeasonStartDismissed,
 } from "../lib/seasonStartGuide";
+import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
+import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
+import { computeSeasonMovement } from "../lib/seasonRecapData.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
@@ -45,16 +56,6 @@ const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
 // opdatere uden hård reload når et løb finaliseres (#783).
 const REALTIME_TABLES = ["seasons", "race_results"];
-
-// #1828: countdown til næste etape for et igangværende løb. Genbruger de delte rene
-// helpers + races-namespacets countdown-strenge (samme tekst som StageScheduleCard).
-function nextStageCountdown(scheduledMs, nowMs, t) {
-  const parts = countdownParts(scheduledMs - nowMs);
-  if (!parts) return t("races:detail.stageSchedule.startingNow");
-  const segs = countdownSegments(parts).map((s) =>
-    t(`races:detail.stageSchedule.countdown${s.unit[0].toUpperCase()}${s.unit.slice(1)}`, { count: s.count }));
-  return `${t("races:detail.stageSchedule.countdownPrefix")} ${segs.join(" ")}`;
-}
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -89,6 +90,9 @@ export default function DashboardPage() {
   const [allAuctions, setAllAuctions] = useState([]);
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
+  // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
+  // at afgøre om egen tier har >1 pulje (hasPoolSubtabs) + puljens label i titlen.
+  const [pools, setPools] = useState([]);
   const [board, setBoard] = useState(null);
   // #1830 · board-bred tilfredshed (gnsn. på tværs af alle planer) — samme værdi
   // som Bestyrelse-sidens drivers-panel, så de to flader ikke divergerer.
@@ -161,6 +165,13 @@ export default function DashboardPage() {
     trainingPlanCount: null, pendingGraduations: null,
   });
 
+  // #2752/#2361 — "Sæson N er slut"-nudgekortet: samme vindue som sæsonstart-
+  // guiden ovenfor (seasonStartWindowOpen), men eget dismiss (per AFSLUTTET
+  // sæson, ikke per aktiv — se lib/seasonWrapNudge.js). null = intet at vise
+  // endnu (ikke hentet, eller ingen af mit holds rækker fundet).
+  const [seasonWrapDismissed, setSeasonWrapDismissed] = useState(false);
+  const [completedSeasonRecap, setCompletedSeasonRecap] = useState(null);
+
   // #2925 — sæsonstart-vinduet. Afledt af eksisterende data (aktiv sæsons
   // start_date), ikke af et nyt flag. `nowMs` tikker allerede hvert minut, så
   // vinduet lukker af sig selv uden reload og uden urent new Date() i render.
@@ -200,18 +211,24 @@ export default function DashboardPage() {
           .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
       : Promise.resolve({ data: [] });
 
-    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes] = await Promise.all([
+    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes, poolsRes] = await Promise.all([
+      // #2182: league_division_id + is_frozen-udelukkelse med — samme "rigtige
+      // hold"-diskriminator (ikke-AI/test/frosne) og select-udvidelse som
+      // StandingsPage.jsx's teamsPromise, så rangliste-modulet kan pulje-scope.
       supabase.from("teams")
-        .select("id, name, division, is_ai")
+        .select("id, name, division, is_ai, league_division_id")
         .eq("is_ai", false)
         .eq("is_test_account", false)
+        .eq("is_frozen", false)
         .order("division")
         .order("name"),
       // #1308: akademiryttere tæller ikke mod senior-cap
       // #2748: pensionerede ryttere tæller ikke med i trup-størrelsen — de
       // frigives ved sæsonskiftet og kan ikke køre løb. Spejler backend
       // getTeamMarketState (marketUtils.js).
-      supabase.from("riders").select("id, salary, is_u25, pending_team_id")
+      // #1150: contract_end_season med i selectet (samme rækker, ingen ekstra
+      // tur) — driver contractExpiringCount nedenfor (kontraktudløb-varsel).
+      supabase.from("riders").select("id, salary, is_u25, pending_team_id, contract_end_season")
         .eq("team_id", teamData.id)
         .eq("is_academy", false)
         .eq("is_retired", false),
@@ -236,8 +253,10 @@ export default function DashboardPage() {
             .order("name").limit(50)
         : Promise.resolve({ data: [] }),
       activeSeason
+        // #2182: league_division_id med i team-joinet (samme udvidelse som
+        // StandingsPage.jsx's standingsRes), så rangliste-modulet kan pulje-scope.
         ? supabase.from("season_standings")
-            .select("*, team:team_id(id, name, division, is_ai)")
+            .select("*, team:team_id(id, name, division, is_ai, league_division_id)")
             .eq("season_id", activeSeason.id)
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
@@ -246,9 +265,12 @@ export default function DashboardPage() {
         ? fetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
         : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
+      // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
+      supabase.from("league_divisions").select("id, tier, pool_index, label"),
     ]);
 
     setSeasonInfo(activeSeason || null);
+    setPools(poolsRes.data || []);
     setPoolRaceDays(poolRaceDayTotals(poolRacesRes.data || []));
     setRiders(ridersRes.data || []);
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
@@ -295,19 +317,10 @@ export default function DashboardPage() {
     (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
       standingsMap[s.team_id] = s;
     });
-    const mergedStandings = (teamsRes.data || []).map(otherTeam => (
-      standingsMap[otherTeam.id] || {
-        id: otherTeam.id,
-        team_id: otherTeam.id,
-        division: otherTeam.division,
-        team: otherTeam,
-        total_points: 0,
-        stage_wins: 0,
-        gc_wins: 0,
-        races_completed: 0,
-      }
-    ));
-    setStandings(mergedStandings);
+    // #2182: genbruger StandingsPage's rene mergeStandings-helper (lib/standingsMerge.js)
+    // i stedet for en parallel hand-rullet merge — samme 0-punkts-fallback-shape,
+    // der bærer team-objektet (inkl. league_division_id) videre til rangliste-filteret.
+    setStandings(mergeStandings(teamsRes.data || [], standingsMap));
 
     // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
     // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
@@ -488,6 +501,70 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, academyEnabled]);
 
+  // #2752/#2361 — "Sæson N er slut"-kortets data: min slutstilling i den
+  // AFSLUTTEDE sæson lige før den aktive. Samme vindue/gate som ovenstående
+  // effekt (kun 7 dage efter et sæsonskifte), så managere uden for vinduet
+  // betaler intet. Tre små, MÅLRETTEDE opslag (season-lookup, min egen række,
+  // resten af min division) — ingen af dem ligner #2891-klassens problem.
+  useEffect(() => {
+    if (!seasonStartWindowOpen || !team?.id || !seasonInfo?.id) {
+      setCompletedSeasonRecap(null);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data: completedSeason } = await supabase
+        .from("seasons").select("id, number")
+        .eq("status", "completed")
+        .order("number", { ascending: false })
+        .limit(1).maybeSingle();
+      if (cancelled) return;
+      // Kun relevant hvis den seneste completed sæson RENT FAKTISK er den den
+      // aktive sæson efterfulgte — undgår at vise et forældet facit hvis
+      // sæson-numrene af en eller anden grund ikke er fortløbende.
+      if (!completedSeason || completedSeason.number !== seasonInfo.number - 1) {
+        setCompletedSeasonRecap(null);
+        return;
+      }
+
+      const { data: standingsRow } = await supabase
+        .from("season_standings")
+        .select("division, rank_in_division, total_points, stage_wins")
+        .eq("team_id", team.id).eq("season_id", completedSeason.id).maybeSingle();
+      if (cancelled) return;
+      if (!standingsRow) { setCompletedSeasonRecap(null); return; }
+
+      // #2182-mønstret: "rigtige hold" = ikke-AI/test/frosne — samme
+      // diskriminator som resten af dashboardet bruger til holdtællinger.
+      const { data: divTeams } = await supabase
+        .from("season_standings")
+        .select("team_id, team:team_id(is_ai, is_test_account, is_frozen)")
+        .eq("season_id", completedSeason.id)
+        .eq("division", standingsRow.division);
+      if (cancelled) return;
+      const divisionSize = (divTeams || [])
+        .filter(r => !r.team?.is_ai && !r.team?.is_test_account && !r.team?.is_frozen).length;
+
+      setCompletedSeasonRecap({
+        seasonId: completedSeason.id,
+        seasonNumber: completedSeason.number,
+        division: standingsRow.division,
+        divisionSize,
+        rank: standingsRow.rank_in_division,
+        movement: computeSeasonMovement(standingsRow.division, team.division),
+        points: standingsRow.total_points,
+        wins: standingsRow.stage_wins,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, seasonInfo?.number, team?.division]);
+
+  // #2752/#2361 — dismiss huskes PR. AFSLUTTET SÆSON (ikke pr. aktiv, som
+  // seasonStartDismissed ovenfor) — se lib/seasonWrapNudge.js.
+  useEffect(() => {
+    setSeasonWrapDismissed(readSeasonWrapDismissed(completedSeasonRecap?.seasonId));
+  }, [completedSeasonRecap?.seasonId]);
+
   // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
   // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
   // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
@@ -594,6 +671,11 @@ export default function DashboardPage() {
     setSeasonStartDismissed(true);
   }
 
+  function dismissSeasonWrap() {
+    writeSeasonWrapDismissed(completedSeasonRecap?.seasonId);
+    setSeasonWrapDismissed(true);
+  }
+
   function dismissCompletion() {
     localStorage.setItem("cz-dashboard-onboarding-completion-dismissed", "1");
     setCompletionDismissed(true);
@@ -634,22 +716,34 @@ export default function DashboardPage() {
   });
   const { ownedNow, outgoingCount, warning: squadWarning } = squadStats;
 
+  // #1150 · kontraktudløb-varsel: ryttere hvis kontrakt udløber ved NÆSTE
+  // sæsonskifte (contract_end_season <= den AKTIVE sæsons nummer) — samme rene
+  // klassifikation som squad-tabellens contractExpiring-badge (#3097,
+  // TeamPage.jsx). Ejer-design 3/8 (#1150): "genforhandling MED frigivelse" —
+  // ikke-handling frigiver rytteren ved skiftet, så dette skal være svært at
+  // overse i modsætning til den passive badge alene (170 af 180 menneskehold
+  // ramt ved S2→S3, dry-run 5/8, se scripts/dryRunContractExpirySeasonEnd.js).
+  const expiringContractCount = riders.filter(
+    (r) => isContractExpiringAtTransition(r.contract_end_season, seasonInfo?.number)
+  ).length;
+
   // #2328 — "Kommende løb"-kortet: de 3 faktisk kommende løb efter ægte
   // race_stage_schedule-tid (nextStageByRace), ikke den statiske PCM-dato som
   // det tidligere top-3-udvalg blev sorteret på FØR den ægte tid var kendt.
   const displayedRaces = pickUpcomingRaces(nextRaces, nextStageByRace, 3);
 
-  // My division standings
-  const divStandingsAll = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
-    .sort((a, b) => b.total_points - a.total_points);
-  const myStandingIndex = divStandingsAll.findIndex(s => s.team_id === team?.id);
-  // #2328 — egen placering skal altid være synlig, også uden for top-5. Top-5
-  // vises som hidtil; er manageren ikke i top-5, tilføjes hans egen række sidst
-  // (med den ægte placerings-nummer bevaret via myStandingIndex i JSX'en).
-  const divStandingsTop = divStandingsAll.slice(0, 5).map((s, i) => ({ ...s, _rank: i + 1 }));
-  const divStandings = myStandingIndex >= 0 && myStandingIndex >= 5
-    ? [...divStandingsTop, { ...divStandingsAll[myStandingIndex], _rank: myStandingIndex + 1, _isOwnRowBreak: true }]
-    : divStandingsTop;
+  // My division+pool standings (#2182 — default er spillerens egen division OG
+  // pulje, ikke hele tieren; en tier kan have op til 8 puljer, se
+  // database/2026-06-21-league-divisions-pyramid.sql). Filter-logikken er
+  // udtrukket til lib/dashboardDivStandings.js (ren funktion, unit-testet med
+  // `node --test`) i stedet for at leve inline her — genbruger StandingsPage's
+  // matchesPoolTab (lib/standingsPoolFilter.js #2879) internt fremfor en
+  // parallel implementering. hasPoolSubtabs falder tilbage til false (= ingen
+  // pulje-filtrering, hele tieren, som i dag) hvis egen pulje endnu er ukendt
+  // (helt nyt hold uden league_division_id), så modulet aldrig render'er tomt
+  // for den kant-sag (#2182 acceptance).
+  const { hasPoolSubtabs, ownPoolRow, divStandingsTop, divStandings } =
+    computeMyDivisionStandings(standings, team, pools);
 
   const pendingIncoming = pendingIncomingCount;
   const activeMarketOffers = activeOffers.filter(o =>
@@ -665,12 +759,21 @@ export default function DashboardPage() {
   const onboardingIncomplete = Boolean(
     onboardingProgress && onboardingProgress.completed_count < onboardingProgress.total_count
   );
+
+  // #3310 comeback-buen: første-løbs-øjeblikket ejer toppen af dashboardet
+  // indtil manageren har set sit første resultat (samme server-flag som
+  // "Nyt"-badgen, teams.my_result_seen_race_id via #2593 del 2).
+  const firstRaceMomentActive = myLatestResultVisible && isFirstRaceMoment(myLatestResult);
   const showDiscordNudgeBanner = !onboardingIncomplete && showDiscordNudge;
 
   // #2925 — sæsonstart-guiden. Undertrykt mens onboarding kører (samme regel som
   // Discord-nudgen, #2288 B: onboarding-kortet får skærmen for sig selv), og kun
   // inden for vinduet. `ownedNow` og `boardPlanMissing` er allerede hentet, så
   // kun to lette tællinger kommer oveni.
+  // #2752/#2361 — samme vindue/onboarding-undertrykkelse som sæsonstart-guiden;
+  // eget dismiss + kræver at completedSeasonRecap rent faktisk blev fundet
+  // (ingen tom/halv-udfyldt kort mens fetch'et stadig kører eller fejlede).
+  const showSeasonWrapNudge = seasonStartWindowOpen && !seasonWrapDismissed && !onboardingIncomplete && !!completedSeasonRecap;
   const showSeasonStartGuide = seasonStartWindowOpen && !seasonStartDismissed && !onboardingIncomplete;
   const seasonStartItems = showSeasonStartGuide
     ? buildSeasonStartItems({
@@ -726,11 +829,43 @@ export default function DashboardPage() {
         }
       />
 
+      {/* #3310: første-løbs-øjeblikket ejer toppen indtil resultatet er set. */}
+      {firstRaceMomentActive && (
+        <MyLatestResultCard
+          data={myLatestResult}
+          nextRace={squadSelectionMissingRace}
+          nextRaceStartAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
+          nowMs={nowMs}
+        />
+      )}
+
       {/* #2288 B — Onboarding progress flyttet til TOP af stakken (over Næste
           træk) indtil onboarding er fuldført, så den ikke drukner blandt andre
           kort. Completion-kortet bliver hvor det plejer (post-onboarding). */}
       {!onboardingDismissed && onboardingIncomplete && (
-        <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
+        <div className={firstRaceMomentActive ? "opacity-75" : undefined}>
+          <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
+        </div>
+      )}
+
+      {/* #2752/#2361 — "Sæson N er slut": den aktive sæson-lukning. Står FØR
+          "kom i gang"-tjeklisten (samme vindue, egen dismiss) — narrativ-
+          rækkefølgen er facit først ("hvad skete der"), så opgaver ("hvad nu").
+          CTA'en leder til /seasons/:id, som nu viser SeasonRecapHero (samme
+          data) for holdet. */}
+      {showSeasonWrapNudge && (
+        <SeasonWrapNudgeCard
+          seasonNumber={completedSeasonRecap.seasonNumber}
+          nextSeasonNumber={seasonInfo?.number}
+          division={completedSeasonRecap.division}
+          divisionSize={completedSeasonRecap.divisionSize}
+          rank={completedSeasonRecap.rank}
+          movement={completedSeasonRecap.movement}
+          points={completedSeasonRecap.points}
+          wins={completedSeasonRecap.wins}
+          onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
+          onDismiss={dismissSeasonWrap}
+        />
       )}
 
       {/* #2925 — "Season N: kom i gang". Over "Næste træk", fordi de fire
@@ -770,6 +905,17 @@ export default function DashboardPage() {
             division: squadWarning.division,
           })}</span>
           <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:squadWarning.ctaMyTeam")}</Link>
+        </div>
+      )}
+
+      {/* #1150 · Contract renewal warning — separat fra squad-cap-warningen
+          ovenfor (anden årsag, samme visuelle sprog). Vises altid når der er
+          udløbende kontrakter, uanset squad-cap-status. */}
+      {expiringContractCount > 0 && (
+        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
+          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <span>{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
+          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:contractWarning.cta")}</Link>
         </div>
       )}
 
@@ -871,13 +1017,24 @@ export default function DashboardPage() {
 
       {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det løb der reelt
           MANGLER udtagelse (squadSelectionMissingRace, #2328 — ikke bare det
-          tidligst scheduled-løb, som kunne være allerede-udtaget). */}
-      <TeamSelectionCtaCard nextRace={squadSelectionMissingRace} />
+          tidligst scheduled-løb, som kunne være allerede-udtaget).
+          #3243: startAtMs/nowMs giver kortet en ægte countdown til løbsstart —
+          et helt nyt hold ved i dag ikke HVORNÅR deres første løb kører, kun AT
+          det gør. Samme race_stage_schedule-kilde som "Kommende løb"-kortet. */}
+      <TeamSelectionCtaCard
+        nextRace={squadSelectionMissingRace}
+        startAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
+        nowMs={nowMs}
+        primary={!firstRaceMomentActive}
+      />
 
       {/* #2466: "How your team did" — resultat-push øverst over modul-gridden.
           Kortet renderer intet før endpoint-svaret er landet (myLatestResult
-          starter som null), empty state når holdet endnu ingen løb har kørt. */}
-      {myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
+          starter som null), empty state når holdet endnu ingen løb har kørt.
+          #3310: mens første-løbs-varianten ejer toppen af dashboardet (se
+          firstRaceMomentActive ovenfor), udelades denne anden instans for at
+          undgå at kortet vises to gange. */}
+      {!firstRaceMomentActive && myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
 
       {/* Main grid — #2849 bølge 1: sibling-gap 14px (spec) */}
       <div className="grid lg:grid-cols-2 gap-[14px]">
@@ -1019,11 +1176,11 @@ export default function DashboardPage() {
                           )}
                         </span>
                         {nextStageByRace[race.id] && (
-                          <span className="text-3xs text-cz-3 tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</span>
+                          <span className="text-3xs text-cz-3 tabular-nums">{formatCountdown(nextStageByRace[race.id], nowMs, t)}</span>
                         )}
                       </span>
                     ) : nextStageByRace[race.id]
-                      ? <p className="text-cz-2 text-sm tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</p>
+                      ? <p className="text-cz-2 text-sm tabular-nums">{formatCountdown(nextStageByRace[race.id], nowMs, t)}</p>
                       : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.scheduled")}</p>}
                   </div>
                 </Link>
@@ -1037,7 +1194,13 @@ export default function DashboardPage() {
         {isVisible("divStandings") && (
         <Section>
           <SectionHeader
-            title={t("dashboard:cards.standings.title", { division: team?.division })}
+            // #2182 — når egen tier har flere puljer, vises puljens rigtige label
+            // ("Division 3 — B", samme label-kilde som StandingsPage's
+            // league_divisions-query) i stedet for det generiske tier-tal, så
+            // titlen matcher hvad modulet faktisk viser (egen pulje, ikke hele tieren).
+            title={hasPoolSubtabs && ownPoolRow
+              ? t("dashboard:cards.standings.titlePool", { label: ownPoolRow.label })
+              : t("dashboard:cards.standings.title", { division: team?.division })}
             action={<SectionAction as={Link} to="/standings">{t("dashboard:cards.standings.linkAll")}</SectionAction>}
           />
           {divStandings.length === 0 ? (

@@ -4,6 +4,9 @@ on:
   # Required jobs must report on every PR. A path-filtered required workflow
   # leaves docs/config-only PRs waiting forever because no check run exists.
   pull_request:
+  # Merge queue (4/8): alle jobs her er fil-baserede scans og kører uændret på
+  # merge-group-SHA'en (ingen PR-kontekst nødvendig).
+  merge_group:
   push:
     branches: [main]
     paths:

@@ -6,9 +6,13 @@
       "seasonStartVariable": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier})",
       "seasonStartVariablePullout": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier} · sponsor-pullout aktiv)",
       "seasonStartFallback": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier})",
-      "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)"
+      "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)",
+      "signingBonus": "Sponsor · Signing-bonus ({sponsorName})",
+      "resultBonus": "Sponsor · Resultatbonus ({wins} sejre, {podiums} podier)",
+      "objectiveBonus": "Sponsor · Sæsonmål opnået ({sponsorName})"
     },
     "salary": "Sæsonlønninger · {count} ryttere",
+    "wageDaily": "Dagsløn · {count} ryttere",
     "upkeep": "Drift og vedligehold · Division {division}",
     "parachute": "Nedrykningsfaldskærm · Division {oldDivision} → {newDivision}",
     "academyDrift": "Akademi-drift · {count} pladser × {drift_per_slot} pts",
@@ -177,6 +181,10 @@
       "title": "Resultat er klar",
       "message": "{race} er kørt. Se resultatet."
     },
+    "firstRaceResult": {
+      "title": "Dit første løb er kørt",
+      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig."
+    },
     "stageResult": {
       "title": "Etaperesultat er klar",
       "message": "Etape {stage} af {race} er kørt. Din bedste: {rider}, placering {position}.",
@@ -193,6 +201,10 @@
     "squadBelowMinimum": {
       "title": "Trup under løbs-minimum",
       "message": "Din trup har {count} løbsklar(e) rytter(e), under {min}-rytter-minimummet der kræves for at stille et løbshold. Hent fri agenter eller byd i en auktion før dit næste løb."
+    },
+    "selectionWarning": {
+      "title": "Holdudtagelse mangler",
+      "message": "{race} starter om under 36 timer, og du har endnu ikke sat dit hold. Vælg dine ryttere, eller lad assistenten auto-udtage for dig."
     },
     "riderRetired": {
       "title": "{name} har indstillet karrieren",
@@ -391,6 +403,32 @@
         "title": "Byttehandel annulleret af admin",
         "message": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin.",
         "messageReason": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin: {reason}"
+      }
+    },
+    "welcome": {
+      "title": "Velkommen til Cycling Zone",
+      "message": "Dit hold er klar. Byd i auktionshuset for at hente din første rytter."
+    },
+    "scoutChanged": {
+      "title": "Ny spejder, rapporter genberegnet",
+      "message": "{scoutName} vurderer nu dine ryttere. Eksisterende scoutingrapporter genberegnes efter hans/hendes præcision, men dine rytteres faktiske evner er uændrede."
+    },
+    "sponsorPaid": {
+      "seasonStart": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte {amount} CZ$ ved sæsonstart."
+      },
+      "raceDay": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte {amount} CZ$ for {race}."
+      },
+      "signingBonus": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte en underskriftsbonus på {amount} CZ$."
+      },
+      "objectiveBonus": {
+        "title": "Sponsorudbetaling",
+        "message": "{sponsor} udbetalte {amount} CZ$ for at opfylde jeres sæsonmål."
       }
     }
   },

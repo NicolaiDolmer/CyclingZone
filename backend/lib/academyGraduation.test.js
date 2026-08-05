@@ -132,9 +132,21 @@ test("detectGraduates (dryRun): tæller uden writes", async () => {
 // ─── resolveGraduation ────────────────────────────────────────────────────────
 
 const PENDING_GRAD = { id: "g1", status: "pending" };
+// Ingen contract_length/contract_end_season → contractOnAcquirePatch's
+// #2902-forward-guard betragter pakken som ufuldstændig og healer den med en
+// frisk standard-kontrakt (samme adfærd som en reelt kontraktløs rytter).
 const RIDER = { id: "r1", team_id: "t1", firstname: "Grad", lastname: "Uate", base_value: 100000, prize_earnings_bonus: 0, market_value: 100000, salary: 500 };
+// #2881: akademirytter der bærer en KOMPLET, gyldig akademi-kontrakt (fra
+// intake eller et tidligere demote()-ophold) ind i graduerings-øjeblikket —
+// resolveGraduation(promote) må ALDRIG regenerere denne.
+const RIDER_WITH_ACADEMY_CONTRACT = {
+  id: "r5", team_id: "t1", firstname: "Academy", lastname: "Contracted",
+  base_value: 100000, prize_earnings_bonus: 0, market_value: 100000,
+  current_production_value: 40_000, salary: 3_200,
+  contract_length: 3, contract_end_season: 3,
+};
 
-test("resolveGraduation promote: is_academy=false + ny senior-løn; grad promoted; notify", async () => {
+test("resolveGraduation promote: is_academy=false + ufuldstændig kontrakt healer til standard-kontrakt; grad promoted; notify", async () => {
   const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER });
   const notify = spyNotify();
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
@@ -142,8 +154,27 @@ test("resolveGraduation promote: is_academy=false + ny senior-løn; grad promote
   assert.equal(res.action, "promoted");
   assert.equal(rec.riderUpdates.length, 1);
   assert.equal(rec.riderUpdates[0].is_academy, false);
-  assert.ok(rec.riderUpdates[0].salary > 0, "ny senior-løn sat");
-  assert.ok(rec.riderUpdates[0].salary !== RIDER.salary, "overskriver arvet akademi-løn");
+  assert.ok(rec.riderUpdates[0].salary > 0, "ny standard-kontrakt-løn sat");
+  assert.ok(rec.riderUpdates[0].salary !== RIDER.salary, "healer den ufuldstændige pakke (#2902-gate)");
+  assert.equal(rec.gradUpdates[0].status, "promoted");
+  assert.equal(notify.calls[0].type, "academy_graduated");
+});
+
+// #2881 regression: resolveGraduation(promote) overskrev UBETINGET
+// salary/contract_length/contract_end_season på enhver graduerende akademirytter
+// — samme #1309-invariant-brud som academyTransfer.js promote() (fixet i
+// #2929), bare via graduerings-stien. Låser fast at en akademirytter med en
+// KOMPLET, gyldig akademi-kontrakt IKKE får den rørt ved graduering — kun
+// is_academy flipper.
+test("resolveGraduation promote: #2881 — eksisterende akademi-kontrakt overlever UÆNDRET, kun is_academy flipper", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER_WITH_ACADEMY_CONTRACT });
+  const notify = spyNotify();
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await resolveGraduation(supabase, { teamId: "t1", riderId: "r5", action: "promote", seasonNumber: 2, getMarketState, notify });
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.riderUpdates.length, 1);
+  assert.deepEqual(rec.riderUpdates[0], { is_academy: false }, "kun is_academy sat — kontraktfelter UBERØRT");
+  assert.equal(res.salary, RIDER_WITH_ACADEMY_CONTRACT.salary, "løn arvet uændret");
   assert.equal(rec.gradUpdates[0].status, "promoted");
   assert.equal(notify.calls[0].type, "academy_graduated");
 });
@@ -174,6 +205,19 @@ test("resolveGraduation release: free agent (team_id=NULL, is_academy=false); gr
   assert.equal(rec.riderUpdates[0].team_id, null);
   assert.equal(rec.riderUpdates[0].is_academy, false);
   assert.equal(rec.gradUpdates[0].status, "released");
+});
+
+// #2881-følgefund: release efterlod tidligere en fri agent med en IKKE-null
+// akademi-kontrakt — brød "kontrakter kun på ejede ryttere"-invarianten
+// (#1309) og ville få et senere contractOnAcquirePatch-kald (auktion/
+// transfer) til fejlagtigt at bevare den stale kontrakt i stedet for at give
+// en frisk. Låser fast at release nu nuller kontraktfelterne.
+test("resolveGraduation release: #2881 — nuller salary/contract_length/contract_end_season (fri agent skal være kontraktløs)", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER_WITH_ACADEMY_CONTRACT });
+  await resolveGraduation(supabase, { teamId: "t1", riderId: "r5", action: "release", seasonNumber: 1, notify: spyNotify() });
+  assert.equal(rec.riderUpdates[0].salary, null);
+  assert.equal(rec.riderUpdates[0].contract_length, null);
+  assert.equal(rec.riderUpdates[0].contract_end_season, null);
 });
 
 test("resolveGraduation: afviser hvis ingen pending grad-row", async () => {

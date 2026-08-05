@@ -11,8 +11,10 @@ import { Link } from "react-router";
 import RiderLink from "../RiderLink";
 import { sortRacesByDateDesc } from "../../lib/raceCalendarSort";
 import { racesForPool } from "../../lib/racesByPool";
+import { raceHasReportableResults, raceIsInProgress } from "../../lib/raceResultVisibility.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../../lib/expectedPrizeCalculator";
 import { hasRouteData, sharedYMax } from "../../lib/stageRouteProfile.js";
+import { fetchAllRows } from "../../lib/supabasePagination";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import {
   Card,
@@ -74,7 +76,7 @@ function RaceCardRouteThumbnail({ race, profiles }) {
 }
 
 export default function CompletedRacesExplorer() {
-  const { t } = useTranslation("races");
+  const { t } = useTranslation(["races", "results"]);
 
   const [races, setRaces] = useState([]);
   const [racePoints, setRacePoints] = useState([]);
@@ -92,7 +94,10 @@ export default function CompletedRacesExplorer() {
 
     const [racesRes, racePointsRes, myTeamRes] = await Promise.all([
       // #1715: league_division_id med, så listen kan filtrere til spillerens pulje.
-      supabase.from("races").select("*, league_division_id, results:race_results(id), pool_race:pool_race_id(date_text)").order("name"),
+      // #3297: season:season_id(number) med, så sortRacesByDateDesc kan sortere
+      // på sæson FØR dato — listen henter afsluttede løb på tværs af sæsoner,
+      // og dato-nøglen alene (dd/mm uden årstal) blander S1- og S2-løb tilfældigt.
+      supabase.from("races").select("*, league_division_id, results:race_results(id), pool_race:pool_race_id(date_text), season:season_id(number)").order("name"),
       supabase.from("race_points").select("race_class, result_type, rank, points"),
       supabase.from("teams").select("league_division_id").eq("user_id", user.id).maybeSingle(),
     ]);
@@ -106,12 +111,17 @@ export default function CompletedRacesExplorer() {
   useEffect(() => { loadAll(); }, []);
 
   async function loadRaceResults(raceId) {
-    const { data } = await supabase
+    // #3331: verified up to ~17k race_results rows for the biggest grand
+    // tours (213 races already exceed 1000) — paginate, and add .order("id")
+    // as a stable tiebreaker after the display sort so pages don't skip/repeat
+    // rows on result_type/rank ties.
+    const data = await fetchAllRows(() => supabase
       .from("race_results")
       .select("*, rider:rider_id(id, firstname, lastname, team:team_id(name))")
       .eq("race_id", raceId)
       .order("result_type")
-      .order("rank");
+      .order("rank")
+      .order("id", { ascending: true }));
     return data || [];
   }
 
@@ -123,12 +133,16 @@ export default function CompletedRacesExplorer() {
 
   const myRaces = useMemo(() => racesForPool(races, myPoolId), [races, myPoolId]);
 
-  // #1930: afsluttede løb vises nyeste-først (spejler kommende-sorteringen men DESC).
-  // Memoized separat (#2448 Task 12) så profil-fetch-effekten herunder kun
-  // genkører når selve løbslisten ændrer sig — ikke ved hvert render (fx et klik
-  // der sætter selectedRace).
+  // #1930: afsluttede/igangværende løb vises nyeste-først (spejler kommende-
+  // sorteringen men DESC). Memoized separat (#2448 Task 12) så profil-fetch-
+  // effekten herunder kun genkører når selve løbslisten ændrer sig — ikke ved
+  // hvert render (fx et klik der sætter selectedRace).
+  // #3333 — raceHasReportableResults er DET delte prædikat med ResultaterPage's
+  // Seneste-fane: et etapeløb beholder status='scheduled' hele afviklingen, så
+  // det gamle `r.results?.length > 0 || r.status === "completed"` var uenigt med
+  // Seneste-fanens (dengang strengere) filter om hvad "afsluttet" betyder.
   const completedRaces = useMemo(
-    () => sortRacesByDateDesc(myRaces.filter(r => r.results?.length > 0 || r.status === "completed")),
+    () => sortRacesByDateDesc(myRaces.filter(raceHasReportableResults)),
     [myRaces],
   );
   const completedRaceIds = useMemo(() => completedRaces.map(r => r.id), [completedRaces]);
@@ -183,24 +197,40 @@ export default function CompletedRacesExplorer() {
       <Section>
         <SectionHeader title={t("calendar.completed")} />
         <div className="flex flex-col gap-2">
-          {completedRaces.map(race => (
-            <Card key={race.id} interactive
-              className={`p-4 cursor-pointer ${selectedRace?.id === race.id ? "border-cz-accent/40" : ""}`}
-              onClick={() => handleRaceClick(race)}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-cz-1 font-medium text-sm">{race.name}</p>
-                  <p className="text-cz-3 text-xs mt-0.5">
-                    {t("calendar.resultsImported", { count: race.results?.length || 0 })}
-                  </p>
+          {completedRaces.map(race => {
+            // #3333 — igangværende etapeløb (status stadig 'scheduled', men
+            // stages_completed>0) må ALDRIG bære "Completed"-badgen: viser i
+            // stedet en "Live"-pille + kørt-status ("Etape 14 af 21") i stedet
+            // for den ellers meningsløse "N results imported" for et løb der
+            // stadig kører.
+            const inProgress = raceIsInProgress(race);
+            return (
+              <Card key={race.id} interactive
+                className={`p-4 cursor-pointer ${selectedRace?.id === race.id ? "border-cz-accent/40" : ""}`}
+                onClick={() => handleRaceClick(race)}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-cz-1 font-medium text-sm">{race.name}</p>
+                    <p className="text-cz-3 text-xs mt-0.5">
+                      {inProgress
+                        ? t("results:latest.stageProgress", { done: race.stages_completed ?? 0, total: race.stages })
+                        : t("calendar.resultsImported", { count: race.results?.length || 0 })}
+                    </p>
+                  </div>
+                  {inProgress ? (
+                    <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">
+                      {t("status.live")}
+                    </span>
+                  ) : (
+                    <span className="text-3xs uppercase bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">
+                      {t("status.completed")}
+                    </span>
+                  )}
                 </div>
-                <span className="text-3xs uppercase bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">
-                  {t("status.completed")}
-                </span>
-              </div>
-              <RaceCardRouteThumbnail race={race} profiles={stageProfilesByRace[race.id]} />
-            </Card>
-          ))}
+                <RaceCardRouteThumbnail race={race} profiles={stageProfilesByRace[race.id]} />
+              </Card>
+            );
+          })}
         </div>
       </Section>
 

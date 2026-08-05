@@ -34,6 +34,7 @@ import { useRiderNames } from "../lib/useRiderNames";
 import { daysUntil, missionCriteriaLabel } from "../lib/scoutingCentralDisplay";
 import { getCountryName } from "../lib/countryUtils";
 import { ISO2_TO_IOC } from "../lib/countryCodes";
+import { formatDate } from "../lib/intl";
 
 const COUNTRY_CODES = Object.keys(ISO2_TO_IOC);
 
@@ -304,6 +305,56 @@ function ShortlistFeed({ completed, riderNames, t }) {
   );
 }
 
+// #2721 — samlet liste over ryttere HOLDET har scoutet, uafhængigt af hvilken
+// scout der gjorde det (ejer-løfte 4/8, Discord: "so you can see all riders
+// scouted by your team in there as well"). Historik PR. scout findes allerede
+// (#3203, StaffScoutHistoryTab); dette er den holds-brede pendant.
+//
+// Ingen ny fetch nødvendig — `completed` er ALLEREDE hentet holds-bredt af
+// GET /api/scouting/central (getScoutState → loadCompletedAssignments, capped
+// til 20 nyeste, samme grænse som resten af siden bruger), og
+// hydrateCompletedVisibility har allerede fjernet ryttere der er blevet
+// skjulte/utilgængelige siden rapporten blev lavet (#2644). Vi filtrerer blot
+// til kind==='target' (individuel-rytter-undersøgelser) — mission-shortlists
+// vises allerede ovenfor i ShortlistFeed.
+function TeamScoutHistory({ completed, riderNames, t }) {
+  const investigations = completed.filter((c) => c.kind === "target");
+  if (investigations.length === 0) {
+    return (
+      <Section>
+        <SectionHeader title={t("teamHistory.title")} />
+        <p className="text-cz-3 text-[12.5px] m-0">{t("teamHistory.empty")}</p>
+      </Section>
+    );
+  }
+  return (
+    <Section>
+      <SectionHeader title={t("teamHistory.title")} />
+      <p className="text-cz-3 text-2xs mb-3">{t("teamHistory.subtitle")}</p>
+      <ul className="list-none p-0 m-0 space-y-2">
+        {investigations.map((row) => (
+          <li key={row.id} className="flex items-center justify-between gap-3 border-t border-cz-border pt-2 first:border-0 first:pt-0">
+            <span className="text-cz-1 text-[13px] min-w-0 truncate">
+              {row.rider_id ? (
+                <RiderLink id={row.rider_id} tab="scouting" className="hover:text-cz-accent-t transition-colors">
+                  {riderNames[row.rider_id] ?? t("queue.loadingRider")}
+                </RiderLink>
+              ) : (
+                <span className="text-cz-3">{t("teamHistory.riderUnavailable")}</span>
+              )}
+            </span>
+            <span className="text-cz-3 text-2xs font-mono tabular-nums flex-none whitespace-nowrap">
+              {t("teamHistory.levelValue", { level: row.target_level })}
+              {" · "}
+              {formatDate(row.completed_at, null, { day: "2-digit", month: "2-digit", year: "2-digit" })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 export default function ScoutingCentralPage() {
   const { t } = useTranslation("scouting");
   const navigate = useNavigate();
@@ -314,7 +365,12 @@ export default function ScoutingCentralPage() {
   const shortlistRiderIds = central.completed
     .filter((c) => c.kind === "mission")
     .flatMap((c) => c.result?.shortlist ?? []);
-  const riderNames = useRiderNames([...new Set([...targetRiderIds, ...shortlistRiderIds])]);
+  // #2721: team-historikkens rytter-id'er skal med i samme batch-navneopslag.
+  const historyRiderIds = central.completed
+    .filter((c) => c.kind === "target")
+    .map((c) => c.rider_id)
+    .filter(Boolean);
+  const riderNames = useRiderNames([...new Set([...targetRiderIds, ...shortlistRiderIds, ...historyRiderIds])]);
 
   const handleCancel = useCallback(async (id) => {
     setCancellingId(id);
@@ -373,6 +429,7 @@ export default function ScoutingCentralPage() {
         <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} jobConfig={central.jobConfig} t={t} />
         <MissionForm onSubmit={central.startMission} busy={central.busy} jobConfig={central.jobConfig} t={t} />
         <ShortlistFeed completed={central.completed} riderNames={riderNames} t={t} />
+        <TeamScoutHistory completed={central.completed} riderNames={riderNames} t={t} />
       </SectionStack>
     </div>
   );

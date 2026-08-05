@@ -134,9 +134,14 @@ export async function developRidersForSeason({
 
   // ── Load aktive ryttere + abilities (+ loft) ──────────────────────────────────
   const [riders, abilityRows] = await Promise.all([
+    // #3345: valuation_type med i selectet — sæson-progressionen genberegner
+    // base_value/current_production_value for HVER aktiv rytter HVER sæson (linje
+    // ~200 nedenfor). Uden det frosne felt ville denne sti stille revaluere hele
+    // populationen efter enhver primary_type-reklassificering (#3325/#3343), på
+    // den allerførste sæson-transition efter merge — præcis det #3345 fryser mod.
     fetchAllRows(() => supabase
       .from("riders")
-      .select("id, primary_type, secondary_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname")
+      .select("id, primary_type, secondary_type, valuation_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname")
       .eq("is_retired", false)
       .order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
@@ -200,7 +205,10 @@ export async function developRidersForSeason({
     // #2594: v4 kræver alder + potentiale (karriere-NPV) — begge er i scope her.
     // Alder-leddet betyder at sæson-reconcilen nu også flytter værdi ved aldring
     // (ønsket, #1364 §Symmetri). current_production_value (løn-basen) følger med.
-    const valueRider = { primary_type: r.primary_type, potentiale: r.potentiale, age };
+    // #3345: valuation_type medsendes så predictBaseValue/currentProductionValue
+    // bruger den FROSNE type (se riderValuation.js) — primary_type ovenfor er kun
+    // fallback for rækker uden valuation_type sat.
+    const valueRider = { primary_type: r.primary_type, valuation_type: r.valuation_type, potentiale: r.potentiale, age };
     const newBaseValue = predictBaseValue(valueRider, next, model);
     const newCpv = currentProductionValue(valueRider, next, model);
 

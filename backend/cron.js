@@ -39,6 +39,7 @@ import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
+import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
 import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
 import { SEASON_AUTO_TRANSITION_ENABLED } from "./lib/economyConstants.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
@@ -66,6 +67,7 @@ import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
 import { runAiTeamTrimHealSweep } from "./lib/aiTeamTrimHealSweep.js";
+import { runDeferredTransferHealSweep } from "./lib/deferredTransferHealSweep.js"; // #3330
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
@@ -79,79 +81,24 @@ import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
+// #2892 — cron-monitor-registret (config-cadences + ALL_CRON_MONITORS) er
+// udtrukket til lib/cronMonitorRegistry.js, så det kan importeres direkte af
+// backend/cron.monitorCoverage.test.js i stedet for regex-parses som rå
+// tekst. Se filen for den fulde forklaring + bidragyder-kontrakten.
+import {
+  CRON_MONITOR_1MIN,
+  CRON_MONITOR_5MIN,
+  CRON_MONITOR_10MIN,
+  CRON_MONITOR_30MIN,
+  CRON_MONITOR_60MIN,
+  CRON_MONITOR_24H,
+  ALL_CRON_MONITORS,
+} from "./lib/cronMonitorRegistry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const aluntaClient = createAluntaClient(); // #2736 — lazy: kaster først ved faktisk kald hvis ALUNTA_API_TOKEN mangler
-
-// #2077 — Sentry cron-monitor-configs. Udebliver et tick (proces død/deploy-hang)
-// fyrer Sentry en MISSED-alarm ud fra schedulen; hænger et tick over maxRuntime
-// regnes det TIMEOUT. #2389/B5: udvidet fra kun auto-prize/stage-scheduler til ALLE
-// periodiske jobs — en cron der tavst holder op med at ticke var ellers usynlig
-// indtil en spiller opdagede symptomet. Margins er rundhåndede: en Railway-deploy
-// genstarter processen og nulstiller alle setInterval-timere.
-//
-// #2395 — failureIssueThreshold=2 på sub-døgn-jobs: en Railway-deploy tager
-// processen ned længe nok til at et 5-min-tick misser sit check-in, og med Sentrys
-// default-tærskel (1) blev HVER deploy til en byge af "missed check-in"-outage-issues
-// på tværs af alle korte crons (12/7: 2 deploys → 20 falske issues). En ægte død cron
-// misser check-in FLERE gange i træk → 2 fanger den stadig (10-20 min forsinkelse),
-// mens en enkelt deploy-afbrydelse ties. Påvirker KUN monitor-heartbeat-issuet;
-// ægte exceptions fra cron-logikken captures uændret via trackedTick/captureException.
-const CRON_MONITOR_1MIN = {
-  schedule: { type: "interval", value: 1, unit: "minute" },
-  checkinMargin: 3,
-  maxRuntime: 10,
-  failureIssueThreshold: 2,
-  timezone: "Etc/UTC",
-};
-// #2440: checkinMargin 5→10. #2395 (threshold=2) dæmpede ÉN redeploy, men en
-// deploy-KLYNGE (6 genstarter på 30 min, 12/7+13/7) ramte ~12 forskellige jobs på
-// denne cadence samtidigt — hver genstart alene nåede stadig at bekræfte 1 miss
-// (slot ved +interval+margin=10min var for stramt relativt til gentagne
-// genstarter tættere end det), og NÆSTE genstart nåede at bekræfte miss #2 FØR
-// boot-primingen (se primeCronMonitorCheckIns nedenfor) nåede at nulstille
-// streaken → alarm. Margin=10 (slot bekræftes først ved +15min) giver rigelig
-// buffer til at boot-primingen altid når at resette streaken FØRST ved typiske
-// Railway-genstarts-gaps (~5-10 min i en klynge), mens en ægte død cron stadig
-// alarmerer inden for 2×5+10=20 min (dokumenteret+testet i cron.deployGrace.test.js).
-const CRON_MONITOR_5MIN = {
-  schedule: { type: "interval", value: 5, unit: "minute" },
-  checkinMargin: 10,
-  maxRuntime: 15, // min før et in_progress-tick regnes TIMEOUT
-  failureIssueThreshold: 2, // #2395: én deploy-miss alarmerer ikke; 2 i træk = ægte fejl
-  timezone: "Etc/UTC",
-};
-const CRON_MONITOR_10MIN = {
-  schedule: { type: "interval", value: 10, unit: "minute" },
-  checkinMargin: 10,
-  maxRuntime: 20,
-  failureIssueThreshold: 2,
-  timezone: "Etc/UTC",
-};
-const CRON_MONITOR_30MIN = {
-  schedule: { type: "interval", value: 30, unit: "minute" },
-  checkinMargin: 15,
-  maxRuntime: 30,
-  failureIssueThreshold: 2,
-  timezone: "Etc/UTC",
-};
-const CRON_MONITOR_60MIN = {
-  schedule: { type: "interval", value: 60, unit: "minute" },
-  checkinMargin: 30,
-  maxRuntime: 60,
-  failureIssueThreshold: 2,
-  timezone: "Etc/UTC",
-};
-// 24h-ticks: margin 3 timer — setInterval-baseret døgn-rytme drifter med deploys,
-// og en deploy-genstart + immediate-run checker ind længe før marginen rammes.
-const CRON_MONITOR_24H = {
-  schedule: { type: "interval", value: 1, unit: "day" },
-  checkinMargin: 180,
-  maxRuntime: 60,
-  timezone: "Etc/UTC",
-};
 
 const XP_REWARDS = {
   auction_won: 15,
@@ -548,6 +495,25 @@ async function runSquadEnforcementCron() {
 
 // ─── Daglig træning: assistent-sweep (#1305) ─────────────────────────────────
 
+// #2180 — 36t-før-løbsstart "mangler holdudtagelse"-varsel (indbakke). Kører hele
+// tiden (ikke kl.22-gatet som trænings-/scout-sweepene) — et løb kan starte når som
+// helst i døgnet, så varslet skal kunne fyre uafhængigt af den daglige rytme.
+async function runSelectionWarningSweepCron() {
+  const result = await runSelectionWarningSweep({ supabase, now: new Date() });
+  if (result.warned) {
+    console.log(`📋 Holdudtagelse-varsel: ${result.warned} hold varslet (løb <36t væk uden manuel udtagelse)`);
+  }
+  if (result.failed) {
+    console.error(`❌ Holdudtagelse-varsel: ${result.failed} notifikationer fejlede (per-hold try/catch isoleret)`);
+    // #2389 A2: aggregeret capture pr. tick (mirror trænings-/heal-sweep-mønstret) —
+    // en systemisk notif-fejl her betyder spillere IKKE bliver advaret før deadline.
+    sentryCapture(new Error(`selection warning sweep: ${result.failed} notifikationer fejlede`), {
+      tags: { cron: "selection-warning" },
+      extra: { racesDue: result.racesDue, warned: result.warned, deduped: result.deduped, failed: result.failed },
+    });
+  }
+}
+
 async function runTrainingSweepCron() {
   const result = await runTrainingSweep({ supabase, now: new Date() });
   if (result.swept) {
@@ -744,6 +710,32 @@ async function runAiTeamTrimHealSweepCron() {
       tags: { cron: "ai-team-trim-heal" },
       fingerprint: ["ai-trim-persistent-stall"],
       extra: { count: n, teams: result.stale },
+    });
+  }
+}
+
+// ─── Udskudt-holdskifte heal: flush parkerede ryttere flushen sprang over (#3330) ─
+// Rod-årsag: flushDeferredTransfersForRace (stageRaceTransferDefer.js) kaldes KUN
+// ved et løbs finalisering, og KUN for det løbs egne deltagere. Falder flushen på
+// gulvet dér, er der intet andet i systemet der rører pending_team_id igen — en
+// betalt handel kan blive hængende for evigt (prod: Vasco Fernandes, 22/6→4/8).
+// Denne sweep finder enhver rytter med pending_team_id != null der ikke ER i et
+// aktivt fleretape-løb (getRidersInActiveStageRace — samme diskriminator som
+// flushen selv bruger) og flusher ham. Idempotent (delt TOCTOU-guard via
+// flushParkedRider) → genkørsel = 0 rows. Cadence matcher de andre heal-sweeps.
+
+async function runDeferredTransferHealSweepCron() {
+  const notifyTeamOwner = (teamId, type, title, message, relatedId = null, metadata = null) =>
+    notifyTeamOwnerShared({ supabase, teamId, type, title, message, relatedId, metadata });
+  const result = await runDeferredTransferHealSweep({ supabase, now: new Date(), notifyTeamOwner });
+  if (result.healed) {
+    console.log(`🚚 Udskudt-holdskifte heal-sweep: ${result.healed} parkeret(e) rytter(e) flushet (#3330)`);
+  }
+  if (result.failed) {
+    console.error(`❌ Udskudt-holdskifte heal-sweep: ${result.failed} rytter(e) fejlede (per-rytter try/catch isolerede)`);
+    sentryCapture(new Error(`deferred-transfer heal sweep: ${result.failed} rytter(e) fejlede`), {
+      tags: { cron: "deferred-transfer-heal" },
+      extra: { healed: result.healed, failed: result.failed, errors: result.errors },
     });
   }
 }
@@ -1013,8 +1005,15 @@ async function runRiderDoubleBookingWatchCron() {
   const result = await runRiderDoubleBookingWatch({ supabase, captureExceptionFn: sentryCapture });
   if (result.alerted) {
     console.error(
-      `🚨 Binding-invariant-vagt: ${result.conflicts} dobbeltbookede rytter-par ` +
+      `🚨 Binding-invariant-vagt: ${result.live} dobbeltbookede rytter-par ` +
       `(${result.actionable} kan stadig nås før afvikling) (#3113)`
+    );
+  } else if (result.historical > 0) {
+    // Ikke en fejl: historiske par (begge løb afviklet) alarmerer ikke, men skal stadig
+    // være synlige i loggen, så de ikke glider ud af syne helt (#3119-opfølgning 4/8).
+    console.log(
+      `ℹ️  Binding-invariant-vagt: 0 aktive brud, ${result.historical} historiske par ` +
+      `(begge løb afviklet) alarmerer ikke (#3113)`
     );
   }
 }
@@ -1103,48 +1102,15 @@ export function trackedTick(label, fn, deps = {}) {
 // de ~12 jobs på CRON_MONITOR_5MIN, før den næste genstart nåede at gøre noget.
 //
 // Fix: send et eksplicit "ok" check-in til Sentry for ALLE monitor-configs
-// med det samme processen booter — FØR nogen setInterval er sat op. Det
-// nulstiller Sentrys consecutive-miss-streak for hver monitor til 0 ved HVER
-// genstart, så en deploy-klynge aldrig ophober nok sammenhængende misses til
-// at nå threshold, uanset hvor mange genstarter der sker (kombineret med
-// checkinMargin-bufferen ovenfor). En REELT død cron (processen kører videre,
-// men jobbet holder op med at ticke) rammes ikke af dette — der sker ingen ny
+// (ALL_CRON_MONITORS, se lib/cronMonitorRegistry.js) med det samme processen
+// booter — FØR nogen setInterval er sat op. Det nulstiller Sentrys
+// consecutive-miss-streak for hver monitor til 0 ved HVER genstart, så en
+// deploy-klynge aldrig ophober nok sammenhængende misses til at nå threshold,
+// uanset hvor mange genstarter der sker (kombineret med checkinMargin-
+// bufferen ovenfor). En REELT død cron (processen kører videre, men jobbet
+// holder op med at ticke) rammes ikke af dette — der sker ingen ny
 // boot/priming, så det normale schedule (interval + checkinMargin × threshold)
 // gælder uændret. Matematisk verificeret i cron.deployGrace.test.js.
-const ALL_CRON_MONITORS = [
-  ["auctions", CRON_MONITOR_1MIN],
-  ["deadline-day", CRON_MONITOR_5MIN],
-  ["squad-enforcement", CRON_MONITOR_5MIN],
-  ["debt-warnings", CRON_MONITOR_24H],
-  ["board-auto-accept", CRON_MONITOR_30MIN],
-  ["board-mid-season", CRON_MONITOR_30MIN],
-  ["daily-season-count-check", CRON_MONITOR_24H],
-  ["discord-bot-token-check", CRON_MONITOR_24H],
-  ["discord-role-sync", CRON_MONITOR_24H],
-  ["discord-dm-outbox-drain", CRON_MONITOR_5MIN],
-  ["training-sweep", CRON_MONITOR_5MIN],
-  ["graduation-sweep", CRON_MONITOR_5MIN],
-  ["scout-sweep", CRON_MONITOR_5MIN],
-  ["wage-deduction-sweep", CRON_MONITOR_5MIN],
-  ["starter-squad-heal", CRON_MONITOR_5MIN],
-  ["academy-heal", CRON_MONITOR_5MIN],
-  ["rider-derive-heal", CRON_MONITOR_5MIN],
-  ["ai-trim-heal", CRON_MONITOR_5MIN],
-  ["auto-prize", CRON_MONITOR_5MIN],
-  ["stage-scheduler", CRON_MONITOR_5MIN],
-  ["ranking-matview-refresh", CRON_MONITOR_10MIN],
-  ["stall-watchdog", CRON_MONITOR_30MIN],
-  ["traffic-retention", CRON_MONITOR_24H],
-  ["identity-events-retention", CRON_MONITOR_24H],
-  ["growth-snapshot", CRON_MONITOR_24H],
-  ["entry-generator", CRON_MONITOR_60MIN],
-  ["ownership-invariant-watch", CRON_MONITOR_24H],
-  ["email-welcome", CRON_MONITOR_5MIN],
-  ["email-day1", CRON_MONITOR_60MIN],
-  ["email-race-digest", CRON_MONITOR_60MIN],
-  ["alunta-subscription-reconcile", CRON_MONITOR_24H],
-];
-
 export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
   for (const [monitorSlug, config] of ALL_CRON_MONITORS) {
     try {
@@ -1180,6 +1146,13 @@ export function startCron() {
   // Every 5 minutes: squad enforcement (kun aktiv på lukkede vinduer der ikke er enforced)
   setInterval(
     trackedTick("squad enforcement", monitorCron("squad-enforcement", runSquadEnforcementCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Every 5 minutes: #2180 "mangler holdudtagelse"-varsel — løb <36t væk uden
+  // MANUEL udtagelse. notifyTeamOwner-dedup (24t) holder gentagne ticks harmløse.
+  setInterval(
+    trackedTick("selection warning", monitorCron("selection-warning", runSelectionWarningSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 
@@ -1297,6 +1270,15 @@ export function startCron() {
   // hold. Cadence matcher de andre heal-sweeps.
   setInterval(
     trackedTick("ai-trim heal sweep", monitorCron("ai-trim-heal", runAiTeamTrimHealSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Udskudt-holdskifte heal: flush parkerede ryttere (pending_team_id) der ikke
+  // (længere) er i et aktivt fleretape-løb (#3330). Diskriminator-gatet
+  // (getRidersInActiveStageRace) → idempotent, rører aldrig en rytter midt i et
+  // løb. Cadence matcher de andre heal-sweeps.
+  setInterval(
+    trackedTick("deferred-transfer heal sweep", monitorCron("deferred-transfer-heal", runDeferredTransferHealSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 

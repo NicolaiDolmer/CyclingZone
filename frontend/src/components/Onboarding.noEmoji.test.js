@@ -24,6 +24,7 @@ for (const file of [
   "OnboardingProgressCard.jsx",
   "OnboardingCompletionCard.jsx",
   "OnboardingModal.jsx",
+  "AuctionsFirstBidHint.jsx", // #3007: decision-copy rewrite — samme anti-slop-regel
 ]) {
   test(`${file} indeholder ingen emoji i chrome (#1569 anti-slop)`, () => {
     const raw = readFileSync(join(__dirname, file), "utf8");

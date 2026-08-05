@@ -6,6 +6,7 @@ const {
   notifyTeamOwner,
   emitRaceResultNotifications,
   RACE_RESULT_TYPE,
+  defaultFetchFirstTimeManagers,
   notifyAndClearWatchlistForRiders,
   WATCHLIST_DEPARTED_TYPE,
   emitStageResultNotifications,
@@ -13,6 +14,11 @@ const {
   buildScoutReportReadyNotification,
   notifyScoutReportReady,
   SCOUT_REPORT_READY_TYPE,
+  buildWelcomeNotification,
+  WELCOME_TYPE,
+  buildScoutChangedNotification,
+  notifyScoutChanged,
+  SCOUT_CHANGED_TYPE,
 } = await import("./notificationService.js");
 
 function createNotificationSupabase({
@@ -268,6 +274,105 @@ test("emitRaceResult: manglende race.id giver nul-stats uden at hente deltagere"
   assert.equal(fetched, false, "ingen deltager-fetch uden race.id");
   assert.equal(calls.length, 0);
   assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
+});
+
+// ─── #3310 · første-resultat-copy-variant ─────────────────────────────────────
+
+test("emitRaceResultNotifications bruger første-resultat-copy for førstegangs-managere", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  await emitRaceResultNotifications({
+    supabase: {},
+    race: { id: "race-9", name: "Vuelta a Castilla" },
+    notify,
+    fetchParticipatingManagers: async () => ["user-first", "user-vet"],
+    fetchFirstTimeManagers: async () => new Set(["user-first"]),
+  });
+  const first = calls.find((c) => c.userId === "user-first");
+  const vet = calls.find((c) => c.userId === "user-vet");
+  assert.equal(first.metadata.titleCode, "notif.firstRaceResult.title");
+  assert.equal(first.metadata.messageCode, "notif.firstRaceResult.message");
+  assert.match(first.title, /first race/i);
+  assert.match(first.message, /Vuelta a Castilla/);
+  assert.equal(first.relatedId, "race-9");
+  assert.equal(vet.metadata.titleCode, "notif.raceResult.title");
+  assert.equal(vet.title, "Race result is in");
+});
+
+// Fixture til defaultFetchFirstTimeManagers: mock af .from("teams").select("id,
+// user_id").in("user_id", ...) og .from("race_results").select("team_id")
+// .in("team_id", ...).neq("race_id", ...) (samme stil som createNotificationSupabase).
+function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = null } = {}) {
+  return {
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            assert.equal(columns, "id, user_id");
+            return {
+              in(column, values) {
+                assert.equal(column, "user_id");
+                if (teamsError) return Promise.resolve({ data: null, error: teamsError });
+                const data = teams.filter((t) => values.includes(t.user_id));
+                return Promise.resolve({ data, error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "race_results") {
+        return {
+          select(columns) {
+            assert.equal(columns, "team_id");
+            return {
+              in(column, values) {
+                assert.equal(column, "team_id");
+                return {
+                  neq(column2, _value2) {
+                    assert.equal(column2, "race_id");
+                    return {
+                      // #3331: defaultFetchFirstTimeManagers now pages via
+                      // fetchAllRows, which chains .order() then .range() on
+                      // the query builder. Test data is small (< 1 page).
+                      order(column3, options) {
+                        assert.equal(column3, "id");
+                        assert.deepEqual(options, { ascending: true });
+                        return {
+                          range(_from, _to) {
+                            const data = otherResults.filter((r) => values.includes(r.team_id));
+                            return Promise.resolve({ data, error: null });
+                          },
+                        };
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+}
+
+test("defaultFetchFirstTimeManagers: manager uden andre resultater er first-timer", async () => {
+  const supabase = makeFirstTimeSupabase({
+    teams: [{ id: "t1", user_id: "user-first" }, { id: "t2", user_id: "user-vet" }],
+    otherResults: [{ team_id: "t2" }],
+  });
+  const set = await defaultFetchFirstTimeManagers({
+    supabase, race: { id: "race-9" }, userIds: ["user-first", "user-vet"],
+  });
+  assert.deepEqual([...set], ["user-first"]);
+});
+
+test("defaultFetchFirstTimeManagers: fejl → tomt sæt (alle får standard-copy)", async () => {
+  const supabase = makeFirstTimeSupabase({ teamsError: new Error("boom") });
+  const set = await defaultFetchFirstTimeManagers({
+    supabase, race: { id: "race-9" }, userIds: ["u1"],
+  });
+  assert.equal(set.size, 0);
 });
 
 // ─── #2524 · notifyAndClearWatchlistForRiders ─────────────────────────────────
@@ -642,4 +747,78 @@ test("notifyScoutReportReady: en fejlende fetchRiderName isoleres (fanges, kaste
   const result = await notifyScoutReportReady({ supabase, assignment, fetchRiderName });
   assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
   assert.equal(supabase.state.inserts.length, 0);
+});
+
+// ─── Gab 2 (#2822) · buildWelcomeNotification ─────────────────────────────
+
+test("buildWelcomeNotification: korrekt type, ingen related_id, i18n-koder + EN-first fallback-tekst", () => {
+  const payload = buildWelcomeNotification();
+
+  assert.equal(payload.type, WELCOME_TYPE);
+  assert.equal(payload.type, "welcome");
+  assert.equal(payload.relatedId, null, "ikke knyttet til nogen specifik entitet");
+  assert.equal(payload.metadata.titleCode, "notif.welcome.title");
+  assert.equal(payload.metadata.messageCode, "notif.welcome.message");
+  assert.match(payload.title, /Welcome/i);
+  assert.match(payload.message, /auction house/i);
+});
+
+test("buildWelcomeNotification + notifyTeamOwner: leverer via teamId → user_id-opslag (samme sti som route-handleren bruger)", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const payload = buildWelcomeNotification();
+
+  const result = await notifyTeamOwner({ supabase, teamId: "team-1", ...payload });
+  assert.deepEqual(result, { delivered: true, deduped: false });
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].user_id, "user-1");
+  assert.equal(supabase.state.inserts[0].type, "welcome");
+  assert.equal(supabase.state.inserts[0].related_id, null);
+});
+
+// ─── #3334 · buildScoutChangedNotification + notifyScoutChanged ──────────────
+
+test("buildScoutChangedNotification: korrekt type, ingen related_id, i18n-koder + eksplicit 'stats uændret'-tekst", () => {
+  const payload = buildScoutChangedNotification({ scoutName: "Kim Andersen", scoutTier: 3 });
+
+  assert.equal(payload.type, SCOUT_CHANGED_TYPE);
+  assert.equal(payload.type, "scout_changed");
+  assert.equal(payload.relatedId, null, "ikke knyttet til én bestemt rytter/rapport");
+  assert.equal(payload.metadata.titleCode, "notif.scoutChanged.title");
+  assert.equal(payload.metadata.messageCode, "notif.scoutChanged.message");
+  assert.equal(payload.metadata.scoutName, "Kim Andersen");
+  assert.equal(payload.metadata.scoutTier, 3);
+  assert.match(payload.message, /Kim Andersen/);
+  assert.match(payload.message, /recalculated/i);
+  // #2798 potentiale-lækage-forebyggelse: teksten må ALDRIG nævne rytterens
+  // potentiale eller loft — kun at rapporten genberegnes og evnerne er uændrede.
+  assert.doesNotMatch(payload.message, /potential|ceiling/i);
+  assert.match(payload.message, /abilities have not changed/i);
+});
+
+test("buildScoutChangedNotification: manglende scoutTier falder tilbage til tier-fri tekst (default-spejder-kant)", () => {
+  const payload = buildScoutChangedNotification({ scoutName: "Kim Andersen", scoutTier: null });
+  assert.doesNotMatch(payload.message, /tier null/i);
+  assert.match(payload.message, /Kim Andersen/);
+});
+
+test("notifyScoutChanged: leverer via notifyTeamOwner (teamId → user_id-opslag)", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const result = await notifyScoutChanged({ supabase, teamId: "team-1", scoutName: "Kim Andersen", scoutTier: 3 });
+  assert.deepEqual(result, { delivered: true, deduped: false });
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].user_id, "user-1");
+  assert.equal(supabase.state.inserts[0].type, "scout_changed");
+});
+
+test("notifyScoutChanged: manglende teamId er et no-op (missing_team), kaster ikke", async () => {
+  const supabase = createNotificationSupabase();
+  const result = await notifyScoutChanged({ supabase, teamId: null, scoutName: "X", scoutTier: 1 });
+  assert.deepEqual(result, { delivered: false, deduped: false, reason: "missing_team" });
+});
+
+test("notifyScoutChanged: en fejlende notify isoleres (fanges, kaster ikke) — hire-flowet må aldrig væltes", async () => {
+  const supabase = createNotificationSupabase();
+  const notify = async () => { throw new Error("boom"); };
+  const result = await notifyScoutChanged({ supabase, teamId: "team-1", scoutName: "X", scoutTier: 1, notify });
+  assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
 });

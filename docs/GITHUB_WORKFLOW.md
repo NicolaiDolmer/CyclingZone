@@ -63,6 +63,14 @@ Doctoren samler på få linjer:
 
 Brug `-FailOnWarning` i dedikerede DX-sessions hvor warnings skal fail'e lokalt.
 
+## Hurtige merges uden strict (ejer-valgt 4/8)
+
+Main kører med `strict=false`: en godkendt PR merges med `gh pr merge --auto --squash` og lander SÅ SNART dens egen CI er grøn — ingen `gh pr update-branch`, ingen omkørsler når andre PRs merger først. Alle 16 required checks består uændret på PR'ens egen HEAD.
+
+Trade-offet (bevidst): to hver-for-sig-grønne PRs der tilsammen er røde, fanges nu først af CI'en på main EFTER merge. Discipliner der bærer det: (1) PRs der rører samme filer SEKVENSERES stadig af orkestratoren, (2) en rød main-CI efter en merge-salve er stop-alt-fix-først, (3) lokal preflight før push er fortsat obligatorisk.
+
+Historik: GitHubs ægte Merge Queue blev forsøgt 4/8 men kræver et ORG-ejet repo (CyclingZone er bruger-ejet). CI'en er allerede kø-kompatibel (`merge_group`-triggere + pass-throughs, PR #3303, i dvale) — flyttes repoet til en organisation, kan køen tændes med ét ruleset (`scratchpad`-udkastet ligger i PR #3303's beskrivelse). Rollback af dagens ændring: `gh api .../branches/main/protection/required_status_checks -X PATCH -F strict=true`.
+
 ## Risk-labels og auto-merge policy
 
 Auto-merge er standard for lav-risiko PRs, men stoppes automatisk hvis en PR har en af disse labels:

@@ -17,16 +17,18 @@
     },
     "countdown": {
       "title": "Time left and auto-extension",
-      "body": "If you bid in the last 10 minutes, the auction is automatically extended. You can always respond if someone outbids you at the very end."
+      "body": "If a bid takes the lead in the last 10 minutes, the auction extends automatically. Bidding without taking the lead, for example against an auto-bid that counters you, does not extend it."
     }
   },
   "hint": {
-    "title": "How auctions work",
-    "minBidLabel": "Min bid:",
-    "minBidBody": "A new bid must be at least 1 CZ$ above the current bid. Min bid is pre-filled in the input field.",
+    "title": "Win the bid, the rider joins your team",
+    "body": "The rider races for you from your next squad selection onward. You are bidding against real managers, not buying at a fixed price.",
+    "minBidLabel": "Placing a bid:",
+    "minBidBody": "The input is pre-filled with the minimum, at least 1 CZ$ above the current bid. Press Bid and you are in it.",
     "autoExtendLabel": "10-min auto-extension:",
-    "autoExtendBody": "Bids in the last 10 minutes extend the auction, so you can always respond if someone outbids you at the very end.",
-    "startTour": "Show me around"
+    "autoExtendBody": "A bid that takes the lead in the last 10 minutes extends the auction, so no one can snipe it in the final second.",
+    "startTour": "Show me around",
+    "jumpToRecommendation": "See an affordable pick"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 recent bid} other {# recent bids}}"
@@ -130,7 +132,8 @@
     "flash": "Flash",
     "u23": "U23",
     "u25": "U25",
-    "youth": "Youth"
+    "youth": "Youth",
+    "firstBidPick": "First pick"
   },
   "bidGate": {
     "bothFull": "No room in your academy (8/8) or senior squad (30/30). Sell a rider to bid.",
@@ -149,8 +152,10 @@
     "buttonRaiseAria": "Raise your bid",
     "sellerLabel": "You're selling",
     "blockedBelowMin": "Raise your bid to at least {amount} CZ$ to bid.",
+    "blockedExpired": "This auction has ended. Refresh to see the result.",
     "proxy": {
       "blockedBelowMin": "Your auto-bid limit must be at least {amount} CZ$, the current minimum bid.",
+      "blockedExpired": "This auction has ended. Refresh to see the result.",
       "display": "Auto-bid: max {amount} CZ$",
       "help": "We bid up to this for you, 1 CZ$ at a time. You only lose the lead if someone goes above your cap. Your cap stays private.",
       "set": "Set auto-bid limit",

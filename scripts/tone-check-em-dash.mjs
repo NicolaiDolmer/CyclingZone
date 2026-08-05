@@ -23,13 +23,18 @@
 //      + <title>. HTML-kommentarer strippes (samme princip som §2: kommentarer
 //      er ikke player-facing). Tilføjet efter en em-dash slap forbi i
 //      <meta name="description"> fordi guarden kun dækkede §1+§2.
+//   4. frontend/src/data/patchNotes.js — al patch-note-prosa bor her efter
+//      #2108/#2060 (PatchNotesPage.jsx renderer kun runtime-JSON). Filen er
+//      ikke ren JSON (`export const PATCHES = [...]`), og §2's line-regex kan
+//      ikke håndtere dens escapede \" i bodies — så modulet importeres og
+//      PATCHES scannes rekursivt som §1, med §2's glyf-citation-undtagelse.
 //
 // Brug:
 //   node scripts/tone-check-em-dash.mjs
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const LOCALES_DIR = "frontend/public/locales";
@@ -41,6 +46,7 @@ const PROSE_FILES = [
   "frontend/src/pages/TermsPageEn.jsx",
 ];
 const HTML_FILES = ["frontend/index.html"];
+const PATCH_NOTES_FILE = "frontend/src/data/patchNotes.js";
 
 const EM_DASH = "—";
 
@@ -55,18 +61,25 @@ function walkJson(dir, out = []) {
   return out;
 }
 
-function checkValue(value, path, file, violations) {
+function checkValue(value, path, file, violations, opts = {}) {
   if (typeof value === "string") {
-    if (value.includes(EM_DASH) && value.trim() !== EM_DASH) {
+    if (value.trim() === EM_DASH) return; // standalone tom-værdi-glyf
+    // Glyf-citationer ('—') er ok i prosa der OMTALER glyffen (§2-reglen).
+    const checked = opts.allowGlyphCitations
+      ? value.replaceAll(`'${EM_DASH}'`, "")
+      : value;
+    if (checked.includes(EM_DASH)) {
       violations.push(
         `${file} → ${path}: ${JSON.stringify(value.slice(0, 80))}`,
       );
     }
   } else if (Array.isArray(value)) {
-    value.forEach((v, i) => checkValue(v, `${path}[${i}]`, file, violations));
+    value.forEach((v, i) =>
+      checkValue(v, `${path}[${i}]`, file, violations, opts),
+    );
   } else if (value && typeof value === "object") {
     for (const [k, v] of Object.entries(value)) {
-      checkValue(v, path ? `${path}.${k}` : k, file, violations);
+      checkValue(v, path ? `${path}.${k}` : k, file, violations, opts);
     }
   }
 }
@@ -103,6 +116,14 @@ export function findProseEmDashViolations(source, file) {
   return violations;
 }
 
+// ---------- 4. Patch-note-data (JS-datamodul, JSON-struktur) ----------
+
+export function findPatchNotesEmDashViolations(value, file) {
+  const violations = [];
+  checkValue(value, "", file, violations, { allowGlyphCitations: true });
+  return violations;
+}
+
 // ---------- 3. index.html (meta-tags, ikke HTML-kommentarer) ----------
 
 // Erstat hver HTML-kommentar med blanktegn men bevar newlines, så
@@ -124,7 +145,7 @@ export function findHtmlEmDashViolations(source, file) {
 
 // ---------- Resultat ----------
 
-function runToneCheck() {
+async function runToneCheck() {
   const violations = [];
 
   for (const file of walkJson(join(ROOT, LOCALES_DIR))) {
@@ -155,6 +176,11 @@ function runToneCheck() {
     );
   }
 
+  const { PATCHES } = await import(
+    pathToFileURL(join(ROOT, PATCH_NOTES_FILE)).href
+  );
+  violations.push(...findPatchNotesEmDashViolations(PATCHES, PATCH_NOTES_FILE));
+
   if (violations.length) {
     console.error(
       `tone-check-em-dash: ${violations.length} em-dash-fund i player-facing copy:\n`,
@@ -169,7 +195,7 @@ function runToneCheck() {
   }
 
   console.log(
-    "tone-check-em-dash: OK — ingen em-dash i player-facing copy (locales + prosa-sider + index.html).",
+    "tone-check-em-dash: OK — ingen em-dash i player-facing copy (locales + prosa-sider + index.html + patch notes).",
   );
 }
 
@@ -177,5 +203,5 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  runToneCheck();
+  await runToneCheck();
 }

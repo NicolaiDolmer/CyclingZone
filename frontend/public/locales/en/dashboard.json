@@ -39,10 +39,33 @@
       }
     }
   },
+  "seasonWrap": {
+    "title": "Season {number} wrapped",
+    "dismissAria": "Dismiss the season wrap card",
+    "movement": {
+      "promoted": "↑ Promoted",
+      "relegated": "↓ Relegated",
+      "maintained": "Held Division {division}"
+    },
+    "rankLine": "You finished #{rank} of {size} in Division {division}",
+    "statsLine": "{points} points · {wins, plural, one {# win} other {# wins}}",
+    "cta": "View your season recap",
+    "goal": {
+      "promoted": "Season {nextNumber} starts in a new division. First goal: stay clear of the relegation zone.",
+      "relegated": "Season {nextNumber} starts now. Finish in the top two to bounce straight back up.",
+      "heldTop": "Season {nextNumber} starts now. Defend your position at the top of Division {division}.",
+      "heldBottom": "Season {nextNumber} starts now. No relegation risk down here, so climb the standings.",
+      "heldMid": "Season {nextNumber} starts now. Push for a top-two finish and promotion."
+    }
+  },
   "squadWarning": {
     "over": "Squad too large. Max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
     "under": "Squad too small. Min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
     "ctaMyTeam": "My Team →"
+  },
+  "contractWarning": {
+    "message": "{count, plural, one {1 rider's contract expires} other {# riders' contracts expire}} at the season change. Renew from the rider's profile to keep them, or they'll be released as free agents.",
+    "cta": "Review contracts →"
   },
   "discordNudge": {
     "title": "Get DMs for overbids, transfer offers, and board signals",
@@ -82,7 +105,12 @@
       "seasonRaces": "{count, plural, one {# race} other {# races}}",
       "stageWins": "{count, plural, one {# stage win} other {# stage wins}}",
       "empty": "Your riders haven't raced yet. Your team's results land here after the first race.",
-      "emptyCta": "Open the race calendar →"
+      "emptyCta": "Open the race calendar →",
+      "firstRaceTitle": "Your first race is in the books",
+      "firstRaceIntro": "Run while you were away. Here is how it went.",
+      "firstRaceIntroAt": "Finished {time} while you were away. Here is how it went.",
+      "firstRaceCta": "Read the full race story",
+      "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}"
     },
     "auctions": {
       "title": "Active Auctions",
@@ -118,6 +146,7 @@
     },
     "standings": {
       "title": "Division {division} · Standings",
+      "titlePool": "{label} · Standings",
       "linkAll": "Full standings →",
       "empty": "No season data yet",
       "emptyCta": "View full standings →"
@@ -180,7 +209,7 @@
   "forecast": {
     "loading": "Calculating forecast…",
     "title": "Next season · forecast",
-    "subtitle": "Expected cashflow based on roster + loans + sponsor",
+    "subtitle": "Expected cashflow based on roster + loans + sponsor + operating costs",
     "tier": {
       "green": {
         "label": "Green",
@@ -204,7 +233,11 @@
       "sponsor": "Sponsor",
       "prize": "Prize money (estimate)",
       "salary": "Salary",
-      "loanInterest": "Loan interest"
+      "loanInterest": "Loan interest",
+      "upkeep": "Upkeep",
+      "facilityUpkeep": "Facility upkeep",
+      "staffSalary": "Staff salaries",
+      "academyDrift": "Academy upkeep"
     },
     "sponsorDetail": {
       "contract": "Contract with {sponsor}: guaranteed base {base}, race-day income on top",

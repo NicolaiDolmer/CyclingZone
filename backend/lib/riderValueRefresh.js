@@ -25,8 +25,23 @@ const WRITE_CONCURRENCY = 25;
 
 // riderRow skal bære age + potentiale (v4-krav); mangler age → begge værdier null
 // (rytteren springes over i sweepen — samme kontrakt som manglende abilities).
-export function recomputeRiderValue(riderRow, abilities, baseline, model) {
-  const { primary, secondary } = computeRiderTypes(abilities, baseline);
+//
+// #3325: typen klassificeres mod ability_caps (POTENTIALE — stabil hele karrieren),
+// IKKE mod de live `abilities` der bruges til selve værdisætningen. `typeAbilities`
+// er derfor et separat, eksplicit argument — falder tilbage til `abilities` KUN hvis
+// caps ikke er givet (fx en rytter der endnu ikke har fået caps deriveret; degraderer
+// til den gamle live-baserede klassifikation for den ene rytter frem for at kaste).
+export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities } = {}) {
+  const typeSource = (typeAbilities && Object.keys(typeAbilities).length > 0) ? typeAbilities : abilities;
+  const { primary, secondary } = computeRiderTypes(typeSource, baseline);
+  // #3345: primary_type/secondary_type overskrives ALTID med den friske
+  // klassifikation ovenfor (de må frit reklassificeres — #3325/#3343). Bemærk at
+  // valuation_type IKKE overskrives her — den flyder ureguleret igennem fra
+  // riderRow via spreadet, så predictBaseValue/currentProductionValue (som læser
+  // valuation_type FØR primary_type, se riderValuation.js) fortsætter med at bruge
+  // den FROSNE type. Mangler riderRow.valuation_type helt (fixtures/tests/en
+  // rytter uden det felt), falder value-funktionerne selv tilbage til
+  // withType.primary_type (den friske type ovenfor) — uændret adfærd.
   const withType = { ...riderRow, primary_type: primary.key, secondary_type: secondary.key };
   const raw = predictBaseValue(withType, abilities, model);
   const cpv = currentProductionValue(withType, abilities, model);
@@ -39,13 +54,14 @@ export function recomputeRiderValue(riderRow, abilities, baseline, model) {
 }
 
 // Ren diff: returnér KUN ryttere hvor base_value, current_production_value eller
-// type ændrede sig.
-export function selectChangedValueUpdates(riders, abilityByRider, baseline, model) {
+// type ændrede sig. capsByRider er valgfri (bagudkompatibel) — udeladt/tom Map ⇒
+// recomputeRiderValue falder tilbage til abilities for typen (se ovenfor).
+export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map()) {
   const updates = [];
   for (const r of riders) {
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // ingen abilities → spring over (kan ikke værdisættes)
-    const next = recomputeRiderValue(r, ab, baseline, model);
+    const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id) });
     if (next.base_value == null) continue;
     const changed =
       next.base_value !== r.base_value ||
@@ -95,8 +111,10 @@ export async function refreshChangedRiderValues(supabase, { baseline, model, log
   const seasonNumber = season?.number ?? 1;
 
   const riderQuery = () => {
+    // #3345: valuation_type (den FROSNE type) skal med i selectet — recomputeRiderValue
+    // videresender den uændret til predictBaseValue/currentProductionValue via spread.
     let q = supabase.from("riders")
-      .select("id, primary_type, secondary_type, base_value, current_production_value, birthdate, potentiale")
+      .select("id, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale")
       .order("id");
     if (teamId) q = q.eq("team_id", teamId);
     return q;
@@ -104,11 +122,14 @@ export async function refreshChangedRiderValues(supabase, { baseline, model, log
   const riders = await fetchAllRows(riderQuery);
   for (const r of riders) r.age = ageForSeason(r.birthdate, seasonNumber);
   const riderIds = new Set(riders.map((r) => r.id));
+  // #3325: ability_caps hentes med — typen klassificeres mod POTENTIALET, ikke
+  // dagens form, så træning/progression ikke længere flytter type-labelen.
   const abilities = await fetchAllRows(() =>
-    supabase.from("rider_derived_abilities").select(`rider_id, ${ABILITY_KEYS.join(", ")}`).order("rider_id"));
+    supabase.from("rider_derived_abilities").select(`rider_id, ability_caps, ${ABILITY_KEYS.join(", ")}`).order("rider_id"));
   const abilityByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a]));
+  const capsByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
-  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m);
+  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider);
   log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret`);
   const written = await writeUpdates(supabase, updates);
   return { scanned: riders.length, changed: updates.length, written };

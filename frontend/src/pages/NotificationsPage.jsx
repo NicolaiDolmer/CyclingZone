@@ -72,6 +72,15 @@ const TYPE_CONFIG = {
   // #2842: svar på spillerens egen feedback-indsendelse. Bevidst UDEN link —
   // beskeden ER indholdet, og der findes ingen side at sende spilleren hen til.
   admin_notice:              { Icon: InboxIcon,        color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15" },
+  // Gab 2 (#2822): garanteret første notifikation ved holdoprettelse — peger
+  // mod auktionshuset (samme CTA som beskeden selv).
+  welcome:                   { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/auctions" },
+  // #2180/#3310: 36t-varsel uden manuel udtagelse — deep-link til løbets
+  // selection-panel; kalender-boardet som fallback uden raceId.
+  selection_warning:         { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/planning?tab=calendar" },
+  // #3334: chefscout-skift-forklaring — ingen enkelt rytter at linke til
+  // (rammer HELE holdets rapporter), så CTA'en er Scouting-centralen.
+  scout_changed:             { Icon: SearchIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/scouting" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
@@ -515,9 +524,18 @@ export default function NotificationsPage() {
                           ? `/riders/${n.metadata.riderId}`
                           : n.type === "transfer_interest" && n.related_id
                             ? `/riders/${n.related_id}`
-                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside
-                            : n.type === "race_result" && (n.metadata?.raceId || n.related_id)
+                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside.
+                            // #3243: stage_result bar SAMME metadata.raceId (#2523) men manglede denne
+                            // regel og faldt til den generiske /resultater — ekstra klik lige på det
+                            // trin (første etaperesultat) hvor en ny spiller allerede er tilbøjelig til
+                            // at give op.
+                            : (n.type === "race_result" || n.type === "stage_result") && (n.metadata?.raceId || n.related_id)
                               ? `/races/${n.metadata?.raceId || n.related_id}`
+                              // #2180/#3310: selection_warning bærer raceId (samme mønster som
+                              // race_result/stage_result) og deep-linker til løbets
+                              // selection-panel i stedet for det generiske kalender-board.
+                              : n.type === "selection_warning" && (n.metadata?.raceId || n.related_id)
+                                ? `/races/${n.metadata?.raceId || n.related_id}#selection`
                               // #2832-review (ejer-merge-krav): season_ended bærer den AFSLUTTEDE
                               // sæsons id i related_id (emitSeasonEndedNotifications). Uden dette
                               // pegede beskeden på det generiske /seasons, som defaulter til den

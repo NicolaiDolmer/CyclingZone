@@ -17,16 +17,18 @@
     },
     "countdown": {
       "title": "Tid tilbage og auto-forlængelse",
-      "body": "Hvis du byder i de sidste 10 minutter, forlænges auktionen automatisk. Du kan altid svare igen, hvis nogen overbyder dig på falderebet."
+      "body": "Hvis et bud overtager føringen i de sidste 10 minutter, forlænges auktionen automatisk. Byder du uden at overtage føringen, fx mod et autobud der modsvarer dig, forlænges der ikke."
     }
   },
   "hint": {
-    "title": "Sådan virker auktioner",
-    "minBidLabel": "Min-bud:",
-    "minBidBody": "Et nyt bud skal mindst være 1 CZ$ over det aktuelle bud. Min-bud er forudfyldt i input-feltet.",
+    "title": "Vind buddet, og rytteren kommer på dit hold",
+    "body": "Rytteren kører for dig fra din næste holdudtagelse. Du byder mod rigtige managere, ikke en fast pris.",
+    "minBidLabel": "Sådan byder du:",
+    "minBidBody": "Feltet er forudfyldt med minimum, mindst 1 CZ$ over det aktuelle bud. Tryk Byd, og du er med.",
     "autoExtendLabel": "10-min auto-forlængelse:",
-    "autoExtendBody": "Bud i de sidste 10 minutter forlænger auktionen, så du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
-    "startTour": "Vis mig rundt"
+    "autoExtendBody": "Et bud der overtager føringen i de sidste 10 minutter forlænger auktionen, så ingen kan snuppe den i sidste sekund.",
+    "startTour": "Vis mig rundt",
+    "jumpToRecommendation": "Se en rytter jeg har råd til"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 nyt bud} other {# nye bud}} for nylig"
@@ -130,7 +132,8 @@
     "flash": "Flash",
     "u23": "U23",
     "u25": "U25",
-    "youth": "Ungdom"
+    "youth": "Ungdom",
+    "firstBidPick": "Første valg"
   },
   "bidGate": {
     "bothFull": "Ingen plads i dit akademi (8/8) eller din senior-trup (30/30). Sælg en rytter for at byde.",
@@ -149,8 +152,10 @@
     "buttonRaiseAria": "Hæv dit bud",
     "sellerLabel": "Du sælger",
     "blockedBelowMin": "Hæv dit bud til mindst {amount} CZ$ for at byde.",
+    "blockedExpired": "Denne auktion er slut. Opdatér for at se resultatet.",
     "proxy": {
       "blockedBelowMin": "Dit autobud-loft skal være mindst {amount} CZ$, som er det aktuelle minimumsbud.",
+      "blockedExpired": "Denne auktion er slut. Opdatér for at se resultatet.",
       "display": "Autobud: max {amount} CZ$",
       "help": "Vi byder op til dette for dig, 1 CZ$ ad gangen. Du mister kun føringen hvis nogen går over dit loft. Dit loft forbliver privat.",
       "set": "Sæt autobud-loft",

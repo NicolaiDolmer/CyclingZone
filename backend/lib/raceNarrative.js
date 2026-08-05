@@ -31,6 +31,12 @@
 // Audit 15/7 (issue #2355-kommentar) pegede på et MINIMALT why-signal frem for
 // det fulde bånd-lag — denne fil implementerer netop det minimale, kvalitative
 // lag (ingen tal, ingen bånd-oversættelse af rå komponenter).
+//
+// D3 2026-08-04 (#3115 + #2356): tag_aggression_no_cost (gap 1a — udbrud er
+// gratis, viser det eksplicit når et hentet udbrud kunne fejltolkes som en
+// straf) + tag_saved_effort/tag_gave_everything (gap 1b — bånd-oversat
+// spillervalgt effort, IKKE en ny motor-komponent). frontend/src/lib/raceReport.js
+// (#2356 recap v2) bruger disse tags som beats i etape-dramaturgien.
 
 const SPRINT_GAP_S = 3;
 const CLOSE_GAP_S = 10;
@@ -43,6 +49,12 @@ const FORM_PEAK_THRESHOLD = 75;
 const CRASH_RUINED_FAVORITE_TERRAIN_RANK = 5;
 const CAPTAIN_ROLES = new Set(["captain", "sprint_captain"]);
 const HELPER_ROLES = new Set(["helper", "hunter"]);
+// #3115: "typematch/terræn passer"-tjekket for tag_aggression_no_cost nedenfor —
+// øvre halvdel af FELTETS terræn-rangering (samme rangering favorite_off_day
+// allerede bruger, ALDRIG den rå terrain-værdi). Skelner "en rytter det gav
+// mening at prøve" fra en ren desperat langskudsflugt, uden at afsløre noget
+// tal ud over den offentlige finish-rækkefølge.
+const AGGRESSION_TYPEMATCH_RANK_FRACTION = 0.5;
 
 // Story-tag-nøgler — per-rytter badges (rider_ids har præcis ÉT element).
 // Eksporteret så frontend kan skelne "tag"-momenter fra "beat"-momenter uden
@@ -55,6 +67,18 @@ export const STORY_TAG_KEYS = Object.freeze([
   "tag_outsider_win",
   "tag_favorite_collapse",
   "tag_crash_ruined",
+  // #3115 (D3 DEL 1): udbrud er en REN chance-bonus i modellen — raceSimulator.js
+  // TILFØJER bonusset, trækker det aldrig fra (ingen fatigue-/placerings-straf for
+  // forsøget). To spillere troede fejlagtigt at et hentet udbrud "kostede" rytteren
+  // dagen (Discord-sweep 28/7, issue-body). Tagget viser netop den situation
+  // eksplicit i narrativet, så mekanikken læres i spillet frem for i Discord.
+  "tag_aggression_no_cost",
+  // #3115 gap 1b (D3 DEL 2): banded indsats-forklaring — genbruger spillerens EGET
+  // taktik-valg (race_stage_roles.effort, sat på Etape-taktik-fanen FØR etapen
+  // køres) som narrativ flavour. Fog-gate-sikkert per konstruktion: viser kun den
+  // kategori spilleren selv valgte, aldrig den underliggende multiplikator.
+  "tag_saved_effort",
+  "tag_gave_everything",
 ]);
 
 export function isStoryTagKey(momentKey) {
@@ -118,6 +142,10 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
  * @param {Array<{rider_id, team_id, rank, stageGap, components}>} args.ranked  fra simulateStage
  * @param {Map<string,string>} [args.roleByRider]  rider_id → race_role (denne etapes resolved rolle)
  * @param {Map<string,number>} [args.formByRider]  rider_id → form-snapshot (0-100)
+ * @param {Map<string,'protect'|'normal'|'save'>} [args.effortByRider]  #3115 gap 1b (D3 DEL 2):
+ *   rider_id → denne etapes resolved effort (race_stage_roles.effort, S3 #2034). Spillerens EGET
+ *   taktik-valg — kun anvendt til tag_saved_effort/tag_gave_everything nedenfor. Tom/manglende
+ *   Map → ingen effort-tags (v3 uden S3-overrides, eller effort='normal' hele feltet).
  * @param {Map<string,{in_breakaway:boolean, breakaway_caught:boolean}>} [args.breakawayStatus]
  * @param {Array<{rider_id, kind, outcome, time_loss_seconds}>} [args.incidentsForStage]
  * @param {Array<{rider_id, rank}>|null} [args.gc]  GC EFTER denne etape (kun etapeløb)
@@ -130,6 +158,7 @@ export function extractStageMoments({
   ranked = [],
   roleByRider = new Map(),
   formByRider = new Map(),
+  effortByRider = new Map(),
   breakawayStatus = new Map(),
   incidentsForStage = [],
   gc = null,
@@ -210,13 +239,58 @@ export function extractStageMoments({
       riderIds: [favorite.rider_id],
       boost: reason !== "unexplained" ? 10 : 0,
     });
-    if (reason === "jour_sans") {
-      push(moments, { key: "tag_favorite_collapse", params: { riderId: favorite.rider_id, rank: favorite.rank }, riderIds: [favorite.rider_id] });
+    // #3336: tag_favorite_collapse ledsager favorite_off_day for ALLE forklarede
+    // årsager (samme "unexplained er særlig"-grænse boost-linjen ovenfor allerede
+    // bruger — ærlig-degraderings-reglen: uden forklaring ville et badge/tooltip
+    // overstate hvor sikre vi er). reason threades med, så frontend kan vise den
+    // FAKTISKE årsag i stedet for en fast jour_sans-tekst (spillerens hjælperytter-
+    // ofring blev tidligere altid vist som "benene var der bare ikke" — forkert,
+    // ikke bare upræcist). Selve udvælgelsen (hvem er favorit, FAVORITE_OFF_DAY_RANK,
+    // boost-værdier) er UÆNDRET — kun hvornår det ledsagende badge vises.
+    if (reason !== "unexplained") {
+      push(moments, { key: "tag_favorite_collapse", params: { riderId: favorite.rider_id, rank: favorite.rank, reason }, riderIds: [favorite.rider_id] });
     }
   }
 
   if (winner && terrainRanked[0] && terrainRanked[0].rider_id !== winner.rider_id) {
     push(moments, { key: "tag_outsider_win", params: { riderId: winner.rider_id }, riderIds: [winner.rider_id] });
+  }
+
+  // tag_aggression_no_cost (#3115, D3 DEL 1): udbrud er en REN chance-bonus i
+  // modellen — raceSimulator.js's selectBreakawayBonuses ADDERER bonusset,
+  // trækker ALDRIG fra (verificeret i issue-body: ingen ekstra fatigue, ingen
+  // straf på egen placering). To spillere troede fejlagtigt at et HENTET udbrud
+  // "kostede" rytteren dagen — den situation opstår netop her: rytteren angreb
+  // (in_breakaway), og udbruddet blev hentet (breakaway_caught), hvilket ser ud
+  // som et nederlag men reelt intet kostede. Typematch-tjekket (øvre halvdel af
+  // terræn-rangeringen) begrænser tagget til forsøg der gav mening at prøve —
+  // ikke et rent langskud — uden at eksponere selve terrain-værdien (kun den
+  // ordinale rangering bruges, samme mønster som favorite_off_day).
+  const terrainRankById = new Map(terrainRanked.map((r, i) => [r.rider_id, i + 1]));
+  const typematchCutoff = Math.max(1, Math.ceil(terrainRanked.length * AGGRESSION_TYPEMATCH_RANK_FRACTION));
+  for (const r of ranked) {
+    const bw = breakawayStatus.get(r.rider_id);
+    if (!bw?.in_breakaway || !bw.breakaway_caught) continue;
+    const terrainRank = terrainRankById.get(r.rider_id);
+    if (!Number.isFinite(terrainRank) || terrainRank > typematchCutoff) continue;
+    push(moments, { key: "tag_aggression_no_cost", params: { riderId: r.rider_id }, riderIds: [r.rider_id] });
+  }
+
+  // tag_saved_effort / tag_gave_everything (#3115 gap 1b, D3 DEL 2): banded
+  // indsats-forklaring — genbruger spillerens EGEN effort-indstilling
+  // (race_stage_roles.effort, sat på Etape-taktik-fanen FØR etapen køres) som
+  // narrativ flavour. Fog-gate-konform PER KONSTRUKTION: viewet gengiver kun
+  // den kategori spilleren selv valgte (protect/normal/save) — aldrig
+  // work-cost/fatigue-multiplikatoren den skalerer med (raceRoles.js).
+  // 'normal' (default/uændret) giver bevidst intet tag — kun de to yderpunkter
+  // er en fortælleværdig afvigelse fra baseline.
+  for (const r of ranked) {
+    const effort = effortByRider.get(r.rider_id);
+    if (effort === "save") {
+      push(moments, { key: "tag_saved_effort", params: { riderId: r.rider_id }, riderIds: [r.rider_id] });
+    } else if (effort === "protect") {
+      push(moments, { key: "tag_gave_everything", params: { riderId: r.rider_id }, riderIds: [r.rider_id] });
+    }
   }
 
   if (winner) {

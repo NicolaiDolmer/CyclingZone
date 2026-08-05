@@ -7,13 +7,15 @@
 // (raceSelectionLogic.js) så fejl vises FØR kaldet — samme fetch-mønster
 // som useTraining (Bearer-token fra Supabase-session).
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLogic.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
+import RiderFitInsight from "./RiderFitInsight.jsx";
+import { hunterBreakawayStrength } from "../../lib/roleHint.js";
 import {
   effectiveStageFit,
   bestFitRiderId,
@@ -64,38 +66,59 @@ export default function RaceSelectionPanel({
   // dokumenterede default-rækkefølge ud over #1951's scope og brød
   // gem-udtagelses-smoke-testen). `sort: null` = uændret rækkefølge.
   const [sort, setSort] = useState({ sort: null, dir: "desc" });
+  // #2180/#3310: status for Auto-select-assistenten (separat fra save()'s status,
+  // så et fejlet assistent-kald ikke fejlagtigt viser den manuelle gem-fejlbesked).
+  const [autoStatus, setAutoStatus] = useState("idle"); // idle | loading | error
+
+  // #3310: udtrukket til en genbrugelig loader — kaldes fra effekten ved raceId-skift
+  // OG fra autoSelect() efter et vellykket assistent-kald, så panelet reflekterer den
+  // nye trup uden en fuld sideindlæsning. En delt boolean-ref er IKKE nok her: hver
+  // effect-kørsel ville nulstille den samme ref til false, så et forældet A-svar (race
+  // A -> race B uden remount, samme route) kunne slippe forbi tjekket efter B's effect
+  // allerede havde "un-cancelled" den. En monotont stigende generation løser det —
+  // hvert kald indfanger sit eget generationsnummer FØR fetch'et, og sammenligner
+  // EFTER: kun svaret for den seneste generation (effect-start ELLER unmount/skift)
+  // får lov at skrive state. Dækker både effektens eget load og autoSelect()'s reload.
+  const generationRef = useRef(0);
+  const loadSelection = useCallback(async () => {
+    // #3310 quality-fix: snapshottet SKAL tages FØR det første await (authHeaders()
+    // kan reelt gå på netværk ved Supabase-token-refresh). Ellers kan et forældet
+    // kald (race A) vågne EFTER raceId er skiftet til B og generationRef er steget,
+    // læse det NYE tal som sit eget requestGeneration, og guarden matcher stadig —
+    // race A's data overskriver race B's state. Se kommentaren ovenfor funktionen.
+    const requestGeneration = generationRef.current;
+    const headers = await authHeaders();
+    if (!headers) return;
+    try {
+      const res = await fetch(`${API}/api/races/${raceId}/selection`, { headers });
+      if (!res.ok) return;
+      const body = await res.json();
+      if (requestGeneration !== generationRef.current) return;
+      setData(body);
+      if (body.selection) {
+        setSel({
+          riderIds: body.selection.rider_ids ?? [],
+          captainId: body.selection.captain_id ?? null,
+          sprintCaptainId: body.selection.sprint_captain_id ?? null,
+          hunterId: body.selection.hunter_id ?? null,
+          freeRoleIds: body.selection.free_role_ids ?? [],
+        });
+      }
+    } catch {
+      /* netværk — panelet forbliver skjult */
+    }
+  }, [raceId]);
 
   useEffect(() => {
-    let cancelled = false;
+    generationRef.current += 1;
     setData(null);
     setStatus("idle");
     setErrorKey(null);
     setErrorDetail(null);
     setTouched(false);
-    (async () => {
-      const headers = await authHeaders();
-      if (!headers) return;
-      try {
-        const res = await fetch(`${API}/api/races/${raceId}/selection`, { headers });
-        if (!res.ok) return;
-        const body = await res.json();
-        if (cancelled) return;
-        setData(body);
-        if (body.selection) {
-          setSel({
-            riderIds: body.selection.rider_ids ?? [],
-            captainId: body.selection.captain_id ?? null,
-            sprintCaptainId: body.selection.sprint_captain_id ?? null,
-            hunterId: body.selection.hunter_id ?? null,
-            freeRoleIds: body.selection.free_role_ids ?? [],
-          });
-        }
-      } catch {
-        /* netværk — panelet forbliver skjult */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [raceId]);
+    loadSelection();
+    return () => { generationRef.current += 1; };
+  }, [raceId, loadSelection]);
 
   // Flag OFF eller løbet ikke længere åbent → intet panel.
   if (!data?.enabled || data.race?.status !== "scheduled") return null;
@@ -128,6 +151,9 @@ export default function RaceSelectionPanel({
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
   const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
+  // #3115 Gap 1b: udbruds-styrken for DENNE etape (spejler HunterExplainer) — beregnet
+  // én gang her og sendt ned i RiderFitInsight pr. rytter, så den ikke genberegnes 30x.
+  const breakawayStrength = hunterBreakawayStrength(selectedStageProfileType, selectedStageFinaleType);
   const atMax = sel.riderIds.length >= size.max;
   // #2637: løbet er "live" (0 < stages_completed < stages, status forbliver 'scheduled'
   // hele afviklingen, #1825) — trup-TILFØJELSER er frosset, men fjernelse er altid
@@ -136,6 +162,13 @@ export default function RaceSelectionPanel({
   const raceLive = (data.race?.stages_completed ?? 0) > 0;
   const errParams = { min: size.min, max: size.max };
   const saving = status === "saving";
+  // #3310 quality-fix: Auto-select kører en server-mutation (delete+insert) på samme
+  // race_entries-rækker som et manuelt Gem. Uden dette gør en manuel toggle/klik MENS
+  // auto-select's POST+reload stadig kører til et race mod loadSelection()'s
+  // efterfølgende setSel() (sidste skriv vinder, ikke-deterministisk). Alle kontroller
+  // der kan ændre/gemme udtagelsen låses derfor også under auto-select-loading, ikke
+  // kun under saving.
+  const busy = saving || autoStatus === "loading";
   // #1747: skjul skadede ryttere. En allerede-udtaget (skadet) rytter forbliver
   // synlig så manageren ikke mister overblikket over en ugyldig udtagelse.
   const injuredCount = riders.filter((r) => r.injured).length;
@@ -186,6 +219,11 @@ export default function RaceSelectionPanel({
     setStatus("saving");
     setErrorKey(null);
     setErrorDetail(null);
+    // #3310 quality-fix: save() og autoSelect() deler statusvisningen nedenunder,
+    // så et forældet resultat fra DEN ANDEN handler skal ryddes ved start af hver —
+    // ellers kan et gammelt "Could not auto-select" stå tilbage ved siden af et
+    // netop lykkedes manuelt Gem (og omvendt).
+    if (autoStatus !== "idle") setAutoStatus("idle");
     // #2376: round-trip er OBLIGATORISK — panelet har intet UI til at ÆNDRE free_role,
     // men et gem herfra må ikke wipe free_role'r sat af boardet. Filtreret til ryttere
     // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
@@ -231,6 +269,30 @@ export default function RaceSelectionPanel({
     } catch {
       setStatus("error");
       setErrorKey("generic");
+    }
+  }
+
+  // #2180/#3310: et-kliks assistent-udtagelse — samme motor som Race Hub's
+  // dag-scopede "Auto-udfyld", skaleret til dette ene løb. Blokeres serverside (409)
+  // hvis holdet allerede har en manuel entry; et rent auto-udfyldt felt overskrives.
+  // Efter succes genindlæses panelet via loadSelection() så trup + roller + is_auto_filled
+  // afspejler det assistenten netop gemte, uden en fuld sidegenindlæsning.
+  async function autoSelect() {
+    const headers = await authHeaders();
+    if (!headers) return;
+    setAutoStatus("loading");
+    // #3310 quality-fix: ryd et evt. forældet manuelt gem-resultat (status/errorKey/
+    // errorDetail) ved start af auto-select, af samme grund som ovenfor i save().
+    if (status !== "idle") setStatus("idle");
+    if (errorKey) setErrorKey(null);
+    if (errorDetail) setErrorDetail(null);
+    try {
+      const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
+      if (!res.ok) { setAutoStatus("error"); return; }
+      await loadSelection();
+      setAutoStatus("idle");
+    } catch {
+      setAutoStatus("error");
     }
   }
 
@@ -308,7 +370,7 @@ export default function RaceSelectionPanel({
           // fjernelse er altid tilladt, kun tilføjelse valideres. Tidligere gjorde
           // `rider.injured` alene checkboxen disabled UANSET checked-state, så en
           // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
-          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
+          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
             <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
@@ -349,6 +411,7 @@ export default function RaceSelectionPanel({
                         <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
                       )}
                       <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                      <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.form")}</span>
@@ -389,7 +452,7 @@ export default function RaceSelectionPanel({
               const bound = boundByRider.get(rider.id) ?? null;
               // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
               // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
-              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
+              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
               return (
                 <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
@@ -430,6 +493,7 @@ export default function RaceSelectionPanel({
                         <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
                       )}
                       <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                      <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.form ?? "—"}</td>
@@ -449,7 +513,7 @@ export default function RaceSelectionPanel({
             value={sel.captainId}
             riders={selectedRiders}
             emptyLabel="—"
-            disabled={saving}
+            disabled={busy}
             onChange={(v) => setRole("captainId", v)}
           />
           <RoleSelect
@@ -457,7 +521,7 @@ export default function RaceSelectionPanel({
             value={sel.sprintCaptainId}
             riders={selectedRiders}
             emptyLabel={t("selection.noRole")}
-            disabled={saving}
+            disabled={busy}
             onChange={(v) => setRole("sprintCaptainId", v)}
           />
           <RoleSelect
@@ -465,7 +529,7 @@ export default function RaceSelectionPanel({
             value={sel.hunterId}
             riders={selectedRiders}
             emptyLabel={t("selection.noRole")}
-            disabled={saving}
+            disabled={busy}
             onChange={(v) => setRole("hunterId", v)}
           />
         </div>
@@ -490,14 +554,29 @@ export default function RaceSelectionPanel({
               <p className="text-xs text-cz-success">{t("selection.saved")}</p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={save}
-            disabled={clientErrors.length > 0 || saving}
-            className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity self-start sm:self-auto"
-          >
-            {saving ? t("selection.saving") : t("selection.save")}
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {autoStatus === "error" && (
+              <span className="text-xs text-cz-danger">{t("selection.autoFillError")}</span>
+            )}
+            {/* #2180/#3310: sekundær stil — guld nr. 2 er ikke tilladt, Gem forbliver
+                den primære handling. */}
+            <button
+              type="button"
+              onClick={autoSelect}
+              disabled={busy}
+              className="px-4 py-2 rounded-lg border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {t("selection.autoFill")}
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={clientErrors.length > 0 || busy}
+              className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              {saving ? t("selection.saving") : t("selection.save")}
+            </button>
+          </div>
         </div>
       </div>
 

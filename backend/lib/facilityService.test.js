@@ -99,16 +99,22 @@ function createFacilitySupabase({ team, facilities = [], staff = [] }) {
         return {
           select(_columns) {
             const filters = {};
+            const matching = () =>
+              state.staff.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
             const chain = {
               eq(column, value) {
                 filters[column] = value;
                 return chain;
               },
               maybeSingle() {
-                const row = state.staff.find(
-                  (r) => Object.entries(filters).every(([k, v]) => r[k] === v)
-                ) || null;
+                const row = matching()[0] || null;
                 return Promise.resolve({ data: row ? clone(row) : null, error: null });
+              },
+              // #2887: loadFiredStaffNames awaiter kæden direkte (listeforespørgsel,
+              // ingen .maybeSingle()) — thenable spejler supabase-js's direkte-awaitbare
+              // query builder.
+              then(resolve, reject) {
+                return Promise.resolve({ data: matching().map(clone), error: null }).then(resolve, reject);
               },
             };
             return chain;
@@ -311,6 +317,72 @@ test("hire: ability-upsert bruger onConflict staff_id + sætter updated_at", asy
   assert.ok(typeof payload.updated_at === "string" && Date.parse(payload.updated_at) > 0);
 });
 
+// #3334 — chefscout-skift-notifikation.
+test("hire: role scouting AFTER a prior fired scouting-staff → emits scout_changed notification", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "scouting", tier: 5 }],
+    staff: [{ id: "staff-old", team_id: "team-1", role: "scouting", status: "fired", salary: 10_000, tier: 2, name: "Old Scout" }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "scouting", facilityTier: 5, excludeNames: new Set(["Old Scout"]),
+  })[0];
+
+  const notifyCalls = [];
+  const notify = async (args) => { notifyCalls.push(args); return { delivered: true, deduped: false }; };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "scouting", candidateName: candidate.name },
+    supabase, ENABLED, notify
+  );
+  assert.equal(result.ok, true);
+  assert.equal(notifyCalls.length, 1, "skifte-notifikation skal afsendes præcis én gang");
+  assert.equal(notifyCalls[0].teamId, "team-1");
+  assert.equal(notifyCalls[0].scoutName, candidate.name);
+  assert.equal(notifyCalls[0].scoutTier, candidate.tier);
+});
+
+test("hire: role scouting FØRSTE gang (ingen tidligere fyret scouting-staff) → INGEN scout_changed-notifikation", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "scouting", tier: 5 }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "scouting", facilityTier: 5,
+  })[0];
+
+  const notifyCalls = [];
+  const notify = async (args) => { notifyCalls.push(args); return { delivered: true, deduped: false }; };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "scouting", candidateName: candidate.name },
+    supabase, ENABLED, notify
+  );
+  assert.equal(result.ok, true);
+  assert.equal(notifyCalls.length, 0, "første nogensinde ansatte spejder har intet at genberegne");
+});
+
+test("hire: role training AFTER a prior fired training-staff → INGEN scout_changed-notifikation (kun scouting-rollen)", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
+    staff: [{ id: "staff-old", team_id: "team-1", role: "training", status: "fired", salary: 10_000, tier: 2, name: "Old Coach" }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "training", facilityTier: 5, excludeNames: new Set(["Old Coach"]),
+  })[0];
+
+  const notifyCalls = [];
+  const notify = async (args) => { notifyCalls.push(args); return { delivered: true, deduped: false }; };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: candidate.name },
+    supabase, ENABLED, notify
+  );
+  assert.equal(result.ok, true);
+  assert.equal(notifyCalls.length, 0, "kun scouting-rollens skift skal udløse rapport-genberegnings-beskeden");
+});
+
 test("hire: role occupied → role_occupied, no insert", async () => {
   const supabase = createFacilitySupabase({
     team: { id: "team-1", balance: 1_000_000 },
@@ -379,6 +451,32 @@ test("hire: fired staff in role does NOT block a new hire", async () => {
   );
   assert.equal(result.ok, true);
   assert.equal(supabase.state.staffInserts.length, 1);
+});
+
+// #2887: rehire-loop — Discord-evidens 3/8 (@adorable_chipmunk_89342): fyrer en
+// træner for at få en bedre → den FYREDE træner blev tilbudt igen som topkandidat.
+// Årsag: generateStaffCandidates er deterministisk kun på (teamId, seasonNumber,
+// role) — blind for hvem der lige er fyret. Fix: hireStaff udelukker navne på
+// team_staff-rækker med status='fired' for samme (team,role) fra puljen, FØR
+// candidateName matches mod den.
+test("hire: fired staff's name is excluded from regenerated candidate pool (#2887 rehire-loop)", async () => {
+  const facilityTier = 5;
+  const full = generateStaffCandidates({ teamId: "team-1", seasonNumber: 7, role: "training", facilityTier });
+  const fired = full[0]; // ville ellers deterministisk genopstå som topkandidat
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: facilityTier }],
+    staff: [{ id: "staff-old", team_id: "team-1", role: "training", status: "fired", salary: 10_000, tier: 1, name: fired.name }],
+  });
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: fired.name },
+    supabase,
+    ENABLED
+  );
+
+  assert.deepEqual(result, { ok: false, error: "invalid_candidate" }, "fyret kandidat må ikke kunne genansættes");
+  assert.equal(supabase.state.staffInserts.length, 0);
 });
 
 test("hire: candidateName not in generated candidates → invalid_candidate", async () => {

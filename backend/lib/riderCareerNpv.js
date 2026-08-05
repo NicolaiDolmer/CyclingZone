@@ -81,7 +81,11 @@ function simulateCareer(rider, abilities, model) {
   const haveAbilities = ABILITY_KEYS.some((k) => Number.isFinite(Number(abilities?.[k])));
   if (!haveAbilities) return null;
 
-  const type = rider?.primary_type ?? null;
+  // #3345 FROZEN VALUATION TYPE: samme fallback-kæde som predictBaseValue (v3) i
+  // riderValuation.js — se dens #3345-kommentar for baggrund + fjernelsesplan.
+  // predictBaseValueV4 er den LIVE model (#2594-cutover), så DENNE linje er den
+  // reelle produktions-kaldsvej der skal fryses, ikke v3'ens.
+  const type = rider?.valuation_type ?? rider?.primary_type ?? null;
   const potentiale = rider?.potentiale;
   const age0 = Number(rider?.age);
   // #2594: uden gyldig alder kan hverken NPV'en eller sæson-0-leddet forankres i

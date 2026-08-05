@@ -684,6 +684,8 @@ test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salar
   assert.equal(supabase._intakeUpdates.length, 1, "præcis én intake-update");
   assert.equal(supabase._intakeUpdates[0].status, "signed");
   assert.ok(supabase._intakeUpdates[0].resolved_at, "resolved_at sat");
+  // #2793: signing_fee persisteres som rytterens kostbasis ved signing.
+  assert.equal(supabase._intakeUpdates[0].signing_fee, result.fee, "signing_fee = den beregnede fee");
 });
 
 test("signAcademyCandidate: kaster 'academy_full' når cap er opfyldt (8 ryttere), ingen rider-update, ingen RPC-debit", async () => {
