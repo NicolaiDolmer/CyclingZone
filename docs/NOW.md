@@ -17,7 +17,7 @@
 
 > **📌 Åbne opfølgninger:** [#3385](https://github.com/NicolaiDolmer/CyclingZone/issues/3385) klokke-afhængige tests (6 filer i risiko) · **[#3337](https://github.com/NicolaiDolmer/CyclingZone/issues/3337) målt: specialisering betaler sig kraftigt (+84 % point ved samme pris)** — men kun klatring og spurt er levedygtige; puncheur har en 7,9× prispræmie i V4 og leverer 503 point/mio. mod climberens 1.358 → hører i #3353 · [#3349](https://github.com/NicolaiDolmer/CyclingZone/issues/3349) måltal skal sættes på POST-backfill-populationen (puncheur går 0,3 % → 9,3 % af reklassificeringen alene) · #3347 tier 3-realisme-gate (før 23/8) · #3295 S3-kalender · #3145 · #3112 · #2830 ureviewet · #2645 Del B · #3172 (luk ~18/8) · #2164 (ved S2→S3).
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude · Code (Opus 5) · PC1 · 2026-08-05 — orkestrerer 4 parallelle worktree-subagenter: #3360 (lønbasis) · #3347 (tier 3-gate) · #3385 (klokke-tests) · #3150+#3372 (vækst/træning).
 
 ## Standing context (forever-relaunch)
 
