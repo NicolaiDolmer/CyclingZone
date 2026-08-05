@@ -119,6 +119,62 @@ export const PATCHES = [
           "body": "Sæsonprognosen på Finanser-siden talte tidligere kun sponsorindtægt og præmiepenge minus rytterløn og lånerenter, og udelod helt facilitets-vedligehold, stab-lønninger, upkeep og akademi-drift. For hold der havde investeret i faciliteter eller et akademi, var det gamle tal for optimistisk med omkring det halve: det lovede et langt større overskud end holdene faktisk fik. Prognosen medregner nu alle disse omkostninger, beregnet med præcis samme formler som den faktiske sæson-start-opkrævning, og hjælpeteksten er omskrevet så den siger præcist hvad der er (og ikke er) dækket."
         },
         "refs": [3236, 3332]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Contracts",
+        "en": {
+          "title": "AI teams now renew their own expiring contracts",
+          "body": "AI teams could not act on an expiring contract the way you can, so their squads would have been thinned automatically at the season change: up to 80 of them would have dropped to 3 to 5 riders, below the number needed to enter a race at all. AI-owned riders' contracts now renew automatically before the change. Your own squad is unaffected: an expiring contract still means you renew from the rider's profile, or lose him as a free agent. The dashboard now also warns you when any of your riders' contracts expire at the season change, not just the badge on your squad page."
+        },
+        "da": {
+          "title": "AI-hold fornyer nu selv deres udløbende kontrakter",
+          "body": "AI-hold kunne ikke handle på en udløbende kontrakt sådan som du kan, så deres trupper ville være blevet tyndet automatisk ved sæsonskiftet: op til 80 af dem ville falde til 3-5 ryttere, under det antal der skal til for overhovedet at stille op. AI-ejede rytteres kontrakter fornys nu automatisk før skiftet. Din egen trup er upåvirket: en udløbende kontrakt betyder stadig at du forlænger fra rytterens profil, ellers mister du ham som fri agent. Dashboardet varsler dig nu også når nogle af dine rytteres kontrakter udløber ved sæsonskiftet, ikke kun badgen på din holdside."
+        },
+        "refs": [1150]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting reports now say who assessed them",
+          "body": "A scouting report now shows which of your scouts made it and at what tier, and explains that the ceiling band is recalculated whenever you change chief scout while a rider's actual abilities never change. Hiring a replacement chief scout sends an inbox message saying the same thing. This came from a player who changed chief scout, saw a ceiling number move, and reasonably concluded her rider had got worse. He had not. Scouting Central also has a new list of every rider your team has scouted, whichever scout ran it, and the rider profile's Training tab now says \"Fully developed in this focus\" instead of showing a flat progress bar."
+        },
+        "da": {
+          "title": "Scoutingrapporter siger nu hvem der har vurderet dem",
+          "body": "En scoutingrapport viser nu hvilken af dine spejdere der lavede den og med hvilken tier, og forklarer at loft-båndet genberegnes hver gang du skifter chefscout, mens rytterens faktiske evner aldrig ændrer sig. Ansætter du en ny chefscout, får du en indbakke-besked der siger det samme. Det kom fra en spiller der skiftede chefscout, så et loft-tal flytte sig, og med god grund troede hendes rytter var blevet dårligere. Det var han ikke. Scouting-centralen har også fået en liste over alle ryttere dit hold har spejdet, uanset hvilken spejder der gjorde det, og rytterprofilens Trænings-fane siger nu \"Færdigudviklet i dette fokus\" i stedet for at vise en flad progress-bar."
+        },
+        "refs": [3334, 2721]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season recap runs on your real season",
+          "body": "The end-of-season recap now builds from your actual results instead of placeholder data, and the dashboard nudges you towards it when a season wraps."
+        },
+        "da": {
+          "title": "Sæson-recappen kører på din rigtige sæson",
+          "body": "Sæson-recappen bygger nu på dine faktiske resultater i stedet for pladsholder-data, og dashboardet peger dig derhen når en sæson lukker."
+        },
+        "refs": [2752, 2361]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Platform",
+        "en": {
+          "title": "Language no longer flips back after you change it",
+          "body": "Switching language could flip straight back to the previous one, because the app re-read your saved language from the database before your own change had finished saving. Worse, the wrong value then stuck: the same flip repeated on your next page load. Both are fixed."
+        },
+        "da": {
+          "title": "Sproget hopper ikke længere tilbage når du skifter det",
+          "body": "Et sprogskift kunne hoppe direkte tilbage til det forrige, fordi appen genlæste dit gemte sprog fra databasen før dit eget skift var færdiggemt. Værre: den forkerte værdi blev så stående, så samme hop gentog sig ved næste sideload. Begge dele er rettet."
+        },
+        "refs": [2045]
       }
     ]
   },
