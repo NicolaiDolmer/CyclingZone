@@ -719,7 +719,7 @@
       },
       "salary": {
         "title": "Salary",
-        "text": "Each rider's annual salary is set at signing based on what the rider is expected to produce in the current season, and is then frozen: it does not change automatically as the rider develops. Value and salary answer two different questions: value is the price of the rider's future, salary is the cost of what he delivers right now. Young talents are therefore cheap to keep on the payroll, while established stars earn wages that match their output. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
+        "text": "Each rider's annual salary is set at signing based on the rider's market value, and is then frozen: it does not change automatically as the rider develops. You pay for what you own, so the more a rider is worth, the more he costs to keep. The curve is deliberately flattened at the top: doubling a rider's value does not double his wage, and a squad full of expensive riders is a real running cost rather than an instant bankruptcy. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
       "abilitiesExplained": {
         "title": "The 15 abilities and where they matter",
@@ -948,7 +948,7 @@
       },
       "frozenSalary": {
         "title": "Why salary is frozen (gold contracts and burdens)",
-        "text": "Because salary is locked at signing, a young rider who develops into a better player becomes a bargain: you are paying an early-career rate for a now-stronger rider. This is a 'gold contract'. The opposite is also true: a fading star signed at peak value remains on a high salary even as their ability drops, becoming a financial burden. Spotting these situations early is a core part of squad management."
+        "text": "Because salary is locked at signing, a young rider who develops into a better player becomes a bargain: you are paying an early-career rate for a now-stronger rider. This is a 'gold contract'. The opposite is also true: a fading star signed at peak value remains on a high salary even as their value drops, becoming a financial burden. Spotting these situations early is a core part of squad management."
       },
       "contractOnTrade": {
         "title": "Contracts follow the rider",
@@ -956,11 +956,11 @@
       },
       "extendContract": {
         "title": "Extending a contract",
-        "text": "Extending a rider's contract from their profile page adds one season to the contract length and moves the expiry season one season further out, at a renegotiated salary based on the rider's current production. You can extend as often as you like, but the expiry season can never be pushed beyond 3 seasons past the current one: once a rider's contract already reaches that far out, further extensions are blocked until the current season advances."
+        "text": "Extending a rider's contract from their profile page adds one season to the contract length and moves the expiry season one season further out, at a renegotiated salary based on the rider's current market value: a rider who has grown more valuable also becomes more expensive to keep. You can extend as often as you like, but the expiry season can never be pushed beyond 3 seasons past the current one: once a rider's contract already reaches that far out, further extensions are blocked until the current season advances."
       },
       "freeAgents": {
         "title": "Free agents",
-        "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing. Free agents mostly appear when a rider's contract runs out and isn't renewed at the season change: in practice this is almost always a human-managed squad, since AI-controlled teams renew their own expiring contracts automatically at the same transition. The rest are riders released by their old club, either at Academy graduation or from an Academy intake offer that expired unanswered and found no buyer at auction (see 'Do Academy intake offers expire?')."
+        "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's market value) so you can plan your budget before bidding. The actual salary is set only at the moment of signing. Free agents mostly appear when a rider's contract runs out and isn't renewed at the season change: in practice this is almost always a human-managed squad, since AI-controlled teams renew their own expiring contracts automatically at the same transition. The rest are riders released by their old club, either at Academy graduation or from an Academy intake offer that expired unanswered and found no buyer at auction (see 'Do Academy intake offers expire?')."
       }
     },
     "academy": {

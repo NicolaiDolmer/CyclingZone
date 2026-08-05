@@ -248,6 +248,69 @@ export function salaryRateForDivision(division) {
   return SALARY_RATE_PROD.byDiv[Number(division)] ?? SALARY_RATE_PROD.global;
 }
 
+// ── #3360 · lønnens GRUNDLAG ────────────────────────────────────────────────────
+// Løbsdage pr. sæson (kalender-invariant, verificeret mod prod: sæson 1 og 2 har
+// begge 28). Bruges af økonomi-scorecards til at skalere løbsafhængige poster op
+// til en hel sæson.
+export const SEASON_RACE_DAYS = 28;
+
+// Mål for garanteret nettotilførsel pr. hold pr. sæson. Afledt af det ejer-låste
+// bånd (2026-06-21): 5-sæsons saldo i 0,8–1,3× startkapital. Med INITIAL_BALANCE
+// 500.000 og 4 sæson-transitioner til S5 er loftet 0,3 × 500.000 / 4 = 37.500.
+// Målt 2026-08-05 lå den faktiske værdi på ca. +500.000 — 13× for højt (#3360).
+export const TARGET_NET_PER_TEAM_PER_SEASON = 37_500;
+
+// SALARY_BASIS_MODE afgør HVAD lønnen ganges med. Rollback = sæt "production".
+//
+//  • "production" (#2594-adfærd): current_production_value × SALARY_RATE_PROD[div].
+//    Satsen (~20 %) virker, men grundlaget er nærmest fladt over alder, så et ungt
+//    talent til 180.000 CZ$ koster 1.273/sæson mens en 34-årig til 20.000 koster
+//    2.971. Spillets dyreste aktiver er de billigste at eje — bagvendt.
+//  • "market" (#3360, ejer-besluttet 2026-08-05): markedsværdi via en KONKAV kurve
+//    (salaryBasis.marketBasisSalary). Du betaler for det du EJER, ikke for det du
+//    præsterer — ingen kobling til resultater, ingen straf for at være stærk.
+//
+// Løn er FROSSEN ved signering (#1309), så et skift her rammer kun nye kontrakter
+// + forlængelser. Eksisterende kontrakter genberegnes separat og ejer-gated ved
+// sæsonskiftet (scripts/salaryBasisRecompute.js, dry-run som default).
+export const SALARY_BASIS_MODE = "market";
+
+// Kurven for "market"-grundlaget:
+//   løn = clamp(round(anchorSalary × (market_value / anchorValue)^exponent), floor, ceiling)
+//
+// KALIBRERET 2026-08-05 mod den ægte population (181 rigtige hold, 3.152 ejede
+// ryttere) med scripts/salaryBasisScorecard.js --sweep.
+//
+// Kalibrerings-anker: topdivisionens MEDIANHOLD skal betale samme andel af sin
+// sponsor i løn som designet regnede med — 316.000/400.000 = 79 % (#1441 A6-tallene
+// bag SPONSOR_INCOME_BY_DIVISION + UPKEEP_BY_DIVISION), anvendt på den sponsor
+// holdene faktisk får i dag. Det giver 364.007 CZ$ for D2-medianholdet.
+// Ankeret er BEVIDST ikke "luk hele +500k-hullet": de 8 øvrige godkendte mekanismer
+// (sponsor, bestyrelse, gebyrer, faciliteter, stab, rejse, præmie) tager resten, og
+// de må ikke shippes samtidig.
+//
+// Hvorfor eksponenten er < 1: truppernes markedsværdi spænder ~400× (58.647 →
+// 24.825.305 CZ$) mens den garanterede indtægt kun spænder ~1,25×. En lineær sats
+// (exponent 1,0) kalibreret på samme anker gør den dyreste enkeltrytter til
+// 1.890.834 CZ$/sæson — fire gange en hel sponsor for ÉN rytter — mens bunden
+// betaler 12.594. Ved 0,55 er den dyreste enkeltløn 289.159 (63 % af sponsoren):
+// mærkbart, legitimt, og til at handle sig ud af. Under ~0,45 tipper mekanismen den
+// anden vej og bliver reelt en hovedskat pr. rytter i stedet for en pris på værdi.
+//
+// Ingen division-skalering (til forskel fra SALARY_RATE_PROD): en rytter koster det
+// samme uanset hvilket hold han er på. Det der skiller hold ad er hvor meget værdi
+// de EJER — ikke hvor de spiller.
+//
+// ⚠️ Eksponenten er en funktion af værdimodellens SKÆVHED. Re-fittes v4 (#3353),
+// SKAL scorecardet køres igen og tallene her genkalibreres.
+export const SALARY_MARKET_MODEL = Object.freeze({
+  anchorValue: 100_000,   // referenceværdi (≈ gennemsnitlig markedsværdi i prod 5/8)
+  anchorSalary: 15_000,   // en rytter til præcis 100.000 CZ$ koster 15.000/sæson
+  exponent: 0.55,         // dobbelt værdi ⇒ ×1,46 løn · 10× værdi ⇒ ×3,55 · 100× ⇒ ×12,6
+  floor: 250,             // gulv: ingen gratis kontrakter (binder først under ~127 CZ$ i værdi)
+  ceiling: null,          // intet loft — den dyreste rytter skal blive ved med at koste mere
+});
+
 // ============================================================
 // 07d Fase A: audit-trail enums.
 // MUST matche database/2026-05-09-audit-log-foundation.sql CHECK constraints.

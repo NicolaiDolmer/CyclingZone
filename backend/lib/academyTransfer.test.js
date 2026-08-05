@@ -157,14 +157,16 @@ const SENIOR_U23_WITH_EXTENDED_CONTRACT = {
 };
 
 // ─── demoteSalary helper ──────────────────────────────────────────────────────
-// #2594: demoteSalary er nu en ren delegation til computeFrozenSalary —
-// current_production_value × per-division sats (ikke længere ACADEMY.SALARY_RATE
-// × base_value).
+// demoteSalary er en ren delegation til computeFrozenSalary — ét fælles løn-system.
+// #3360: testen pinner delegationen (og at ALLE grundlags-felter føres igennem),
+// ikke et tal fra ét bestemt grundlag. De eksakte formler pinnes i salaryBasis.test.js.
 
-test("demoteSalary: computeFrozenSalary-delegation (current_production_value × per-division sats, gulvet på 1)", () => {
-  assert.equal(demoteSalary({ current_production_value: 50_000, division: 3 }), 7_405); // 50_000 × 0.1481
-  assert.equal(demoteSalary({ current_production_value: null }), 161); // fallback 1000 × global (0.1606)
-  assert.equal(demoteSalary({ current_production_value: 1, division: 1 }), 1, "round(1×0.3029)=0 → gulvet til 1");
+test("demoteSalary: ren delegation til computeFrozenSalary, alle grundlags-felter føres igennem", () => {
+  const rider = { current_production_value: 50_000, market_value: 50_000, base_value: 50_000 };
+  assert.equal(demoteSalary({ ...rider, division: 3 }), computeFrozenSalary({ ...rider, division: 3 }));
+  assert.equal(demoteSalary({}), computeFrozenSalary({}));
+  assert.ok(demoteSalary({ ...rider, division: 3 }) > demoteSalary({}),
+    "en rytter med værdi må aldrig få fallback-lønnen");
 });
 
 // ─── promote ──────────────────────────────────────────────────────────────────

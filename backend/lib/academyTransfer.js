@@ -34,12 +34,12 @@ import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
 
 /**
- * Demote-løn (#2594): samme delte formel som al anden løn —
- * current_production_value × SALARY_RATE_PROD[division] (computeFrozenSalary).
- * Ét fælles løn-system (#2083-princippet), nu på produktions-basen.
+ * Demote-løn: samme delte formel som al anden løn (computeFrozenSalary → det
+ * aktive SALARY_BASIS_MODE). Ét fælles løn-system (#2083-princippet).
+ * #3360: market_value/base_value føres med, fordi de er løn-basen i "market"-mode.
  */
-export function demoteSalary({ current_production_value, division } = {}) {
-  return computeFrozenSalary({ current_production_value, division });
+export function demoteSalary({ current_production_value, market_value, base_value, division } = {}) {
+  return computeFrozenSalary({ current_production_value, market_value, base_value, division });
 }
 
 /**
@@ -72,7 +72,8 @@ export async function promote(supabase, {
   // skelne "ingen kontrakt" fra "kolonnen blev ikke hentet" — det var præcis
   // regressionen der genopstod da #2902 udvidede guarden (se filens header).
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, is_academy, base_value, prize_earnings_bonus, current_production_value, salary, contract_length, contract_end_season")
+    // #3360: market_value med — løn-basen i "market"-mode.
+    .select("id, team_id, firstname, lastname, is_academy, base_value, market_value, prize_earnings_bonus, current_production_value, salary, contract_length, contract_end_season")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
   if (rider.team_id !== teamId) throw new Error("not_owned");
@@ -147,7 +148,8 @@ export async function demote(supabase, {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, is_academy, base_value, current_production_value, birthdate, salary, contract_length, contract_end_season")
+    // #3360: market_value med — løn-basen i "market"-mode.
+    .select("id, team_id, firstname, lastname, is_academy, base_value, market_value, current_production_value, birthdate, salary, contract_length, contract_end_season")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 

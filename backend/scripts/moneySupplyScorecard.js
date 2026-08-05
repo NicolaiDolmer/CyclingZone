@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import {
   SALARY_RATE,
+  SALARY_BASIS_MODE,
   PRIZE_PER_POINT,
   INITIAL_BALANCE,
   SPONSOR_INCOME_BY_DIVISION,
@@ -128,7 +129,10 @@ function printSyntheticSection(fresh, overrides) {
   console.log("Antagelser (eksplicitte — ejer sanity-tjekker):");
   console.log(`  • Roster-størrelse        : ${fresh.squadSize} ryttere/hold (starterSquadAllocator.CORE_SIZE)`);
   console.log(`                              division-BLIND allokering → samme lønbyrde i alle divisioner`);
-  console.log(`  • Lønrate                 : ${SALARY_RATE} × market_value (= base_value ved seed; frossen ved signering)`);
+  console.log(`  • Løn-grundlag            : ${SALARY_BASIS_MODE} (#3360 · frossen ved signering)`);
+  console.log(`                              ⚠️ base_value === cpv i den SYNTETISKE population, så denne gate`);
+  console.log(`                              kan IKKE skelne de to grundlag — kun kurvens form. Grundlags-`);
+  console.log(`                              skiftet kalibreres af scripts/salaryBasisScorecard.js (ægte prod).`);
   console.log(`  • Manager-hold ved launch : ${fresh.teamCount} (relaunch-rehearsal 2026-06-11)`);
   console.log(`  • Præmie-estimat (BLØDT)  : D1 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[1])} / D2 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[2])} / D3 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[3])}`);
   console.log(`                              proxy: contract-sim repræsentativ kompetent-hold-præmie (IKKE målt)`);
@@ -258,7 +262,7 @@ function printTiers4Section(fresh, overrides) {
   console.log(`  • Roster-størrelse       : ${fresh.squadSize} ryttere/hold (starterSquadAllocator.CORE_SIZE), division-BLIND`);
   console.log(`  • Lønbyrde (repræsentativ): ${fmt(salary)}/hold — SAMME kalibrerede model som D1-D3-gaten`);
   console.log(`                             (egenskab ved kompetent-roster, IKKE ved populationsstørrelse)`);
-  console.log(`  • Lønrate                : ${SALARY_RATE} × market_value`);
+  console.log(`  • Løn-grundlag           : ${SALARY_BASIS_MODE} (#3360)`);
   console.log(`  • Præmie-estimat (BLØDT) : D1 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[1])} / D2 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[2])} / D3 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[3])} / D4 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[4])}`);
   console.log(`                             tier 4 (bunden) ANTAGET under D3 (få/ingen point i bunden)`);
   console.log();
@@ -428,7 +432,7 @@ async function printLiveSection() {
   console.log(
     "      repræsentative for fresh relaunch. Kalibreringen sker mod (A) syntetisk, ikke (B) live."
   );
-  console.log(`      Præmie-per-point=${fmt(PRIZE_PER_POINT)}, løn-rate=${SALARY_RATE}.\n`);
+  console.log(`      Præmie-per-point=${fmt(PRIZE_PER_POINT)}, løn-grundlag=${SALARY_BASIS_MODE} (legacy-rate ${SALARY_RATE}).\n`);
 }
 
 async function main() {

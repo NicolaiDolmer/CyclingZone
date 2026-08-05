@@ -15,6 +15,7 @@ import {
 } from "./transferExecution.js";
 import { OPEN_SWAP_STATUSES } from "./auctionRules.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 test("getTransferExecutionIssue rejects a buyer that would exceed the squad max", () => {
   const issue = getTransferExecutionIssue({
@@ -1121,6 +1122,8 @@ test("#1309: confirmTransferOffer opretter standard-kontrakt for kontraktløs ry
   const rider = db.riders.find((r) => r.id === "rider-1");
   rider.salary = null;
   rider.current_production_value = 1_000_000;
+  rider.market_value = 1_000_000;
+  rider.base_value = 1_000_000;
   rider.contract_length = null;
   rider.contract_end_season = null;
   db.transfer_offers.push({
@@ -1137,7 +1140,12 @@ test("#1309: confirmTransferOffer opretter standard-kontrakt for kontraktløs ry
   assert.equal(result.action, "accepted");
   const moved = db.riders.find((r) => r.id === "rider-1");
   assert.equal(moved.team_id, "buyer");
-  assert.equal(moved.salary, 148_100, "salary = current_production_value 1_000_000 × 0.1481 (buyer division 3)");
+  assert.equal(
+    moved.salary,
+    computeFrozenSalary({ current_production_value: 1_000_000, market_value: 1_000_000, division: 3 }),
+    "salary = computeFrozenSalary via det aktive SALARY_BASIS_MODE (buyer division 3)",
+  );
+  assert.notEqual(moved.salary, computeFrozenSalary({}), "må ikke lande på fallback-lønnen");
   assert.equal(moved.contract_length, 2);
   assert.equal(moved.contract_end_season, 2, "aktiv sæson 1 + 2 - 1");
 });
@@ -1184,6 +1192,8 @@ test("#1309: confirmSwapOffer create-if-missing / inherit-if-present pr. rytter"
   const offered = db.riders.find((r) => r.id === "rider-1");
   offered.salary = null;
   offered.current_production_value = 500_000;
+  offered.market_value = 500_000;
+  offered.base_value = 500_000;
   db.riders.push({
     id: "req-rider", firstname: "Req", lastname: "Star", team_id: "buyer", pending_team_id: null,
     salary: 7_500, current_production_value: 999_999, contract_length: 1, contract_end_season: 1,
@@ -1204,7 +1214,11 @@ test("#1309: confirmSwapOffer create-if-missing / inherit-if-present pr. rytter"
   // offered (kontraktløs) → ny kontrakt, nu på buyer
   const movedOffered = db.riders.find((r) => r.id === "rider-1");
   assert.equal(movedOffered.team_id, "buyer");
-  assert.equal(movedOffered.salary, 74_050, "current_production_value 500_000 × 0.1481 (receiving-team division 3)");
+  assert.equal(
+    movedOffered.salary,
+    computeFrozenSalary({ current_production_value: 500_000, market_value: 500_000, division: 3 }),
+    "salary = computeFrozenSalary via det aktive SALARY_BASIS_MODE (receiving-team division 3)",
+  );
   assert.equal(movedOffered.contract_length, 2);
   assert.equal(movedOffered.contract_end_season, 2);
   // requested (har kontrakt) → uændret, nu på seller

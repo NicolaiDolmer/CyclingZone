@@ -460,8 +460,15 @@ export async function runBaseValueBackfill(supabase, { dryRun = true, model, log
     // per-division-sats. Seniorer (is_academy=false) røres ALDRIG — deres
     // kontrakt-løn er bevidst frossen ved signering. Kun akademiryttere med en
     // eksisterende løn re-synkes.
+    // #3360: markedsværdien er nu løn-basen — brug den NETOP genberegnede base_value
+    // (bv), ikke rytterens gamle kolonne, så løn og værdi altid re-synkes sammen.
     if (r.is_academy && r.salary != null && cpv != null) {
-      update.salary = computeFrozenSalary({ current_production_value: cpv, division: divisionByTeam.get(r.team_id) });
+      update.salary = computeFrozenSalary({
+        current_production_value: cpv,
+        market_value: bv,
+        base_value: bv,
+        division: divisionByTeam.get(r.team_id),
+      });
       salariesRecomputed++;
     }
     updates.push(update);

@@ -1,4 +1,5 @@
-import { SALARY_RATE_PROD } from "./economyConstants.js";
+import { SALARY_RATE_PROD, SALARY_BASIS_MODE, SALARY_MARKET_MODEL } from "./economyConstants.js";
+import { SALARY_BASIS, marketBasisSalary, resolveMarketBase } from "./salaryBasis.js";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 
 // #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30.
@@ -168,13 +169,17 @@ export function calculateRiderMarketValue(rider = {}) {
 
 // Backend parity-twin af frontend getRiderSalary. Bruges af #1310-markeds-pakken (system-bølge-listings / prospektiv løn). Behold.
 // #1309: frossen kontrakt-løn hvis sat; ellers estimat til VISNING af free agents.
-// #2594: estimatet er nu current_production_value × global prod-sats (free agents
-// har intet hold → ingen division; den præcise divisions-sats fryses først ved
-// signering via computeFrozenSalary). Ejede ryttere har altid salary != null (seed
-// + on-acquire), så for dem returneres den frosne løn uændret. salary:0 er en
-// gyldig (gratis) kontrakt og bevares som 0.
+// #3360: estimatet følger det aktive SALARY_BASIS_MODE, så den løn en free agent
+// VISES med er den løn han faktisk får ved signering. I "production"-mode er det
+// current_production_value × global prod-sats (free agents har intet hold → ingen
+// division). Ejede ryttere har altid salary != null (seed + on-acquire), så for dem
+// returneres den frosne løn uændret. salary:0 er en gyldig (gratis) kontrakt og
+// bevares som 0.
 export function resolveRiderSalary(rider = {}) {
   if (rider && rider.salary != null) return Number(rider.salary);
+  if (SALARY_BASIS_MODE === SALARY_BASIS.MARKET) {
+    return marketBasisSalary(resolveMarketBase(rider).base, SALARY_MARKET_MODEL);
+  }
   const cpv = Number(rider?.current_production_value);
   const base = cpv > 0 ? cpv : RIDER_BASE_VALUE_FALLBACK;
   return Math.max(1, Math.round(base * SALARY_RATE_PROD.global));
