@@ -16,6 +16,11 @@ import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacke
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import {
+  TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
+  SCARCE_TERRAIN_ARCHETYPES, TIER_TERRAIN_FAMILY_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
+  computeTierCoverageStats, detectCoverageViolations,
+} from "./tierCalendarGuarantees.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -45,6 +50,24 @@ function editionYearFrom(startDate) {
   if (!startDate) return null;
   const y = Number.parseInt(String(startDate).slice(0, 4), 10);
   return Number.isFinite(y) && y >= 2000 && y <= 2099 ? y : null;
+}
+
+// #3327/#3328: generér etape-profiler (REN, ingen DB — samme funktion prod-inserten
+// bruger) for ét udvalg af raceRows, KUN til dækningsverifikation. Kaldes for én
+// repræsentativ pulje pr. tier (alle puljer i en tier deler identisk kalender, #2276),
+// i BÅDE dry-run og apply, så dry-run-rapporten viser de tal apply ville håndhæve.
+function coverageProfilesFor(raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId }) {
+  const map = new Map();
+  for (const r of raceRows) {
+    const seedRace = {
+      id: r.pool_race_id, race_type: r.race_type, stages: r.stages,
+      external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
+      terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+      season_id: seasonId,
+    };
+    map.set(r.pool_race_id, generateRaceStageProfiles(seedRace));
+  }
+  return map;
 }
 
 // #2251 kalender-invarianter (defense-in-depth oven på selectTierRaceSet's GT-gate):
@@ -141,6 +164,13 @@ export function buildTierMaterializationPlan({
   baseSeed = 1,
   forceTiers = [],
   classWhitelist = TIER_CLASS_WHITELIST,
+  // #3327/#3328 (2026-08-04): data-drevne dækningsmål — se tierCalendarGuarantees.js.
+  // Sendes videre til selectTierRaceSet, som selv falder tilbage til FØR-#3327-adfærd
+  // hvis en tier's oneDayShareTarget er null/undefined eller classStageLengthBand=null —
+  // bagudkompatibelt for kald der eksplicit overstyrer dem (fx ældre test-fixtures).
+  oneDayShareTargets = TIER_ONE_DAY_SHARE_TARGET,
+  classStageLengthBand = CLASS_STAGE_LENGTH_BAND,
+  priorityArchetypes = SCARCE_TERRAIN_ARCHETYPES,
   // #2276: navne allerede brugt af ANDRE tiers før dette kald (fx allerede-materialiserede
   // races i DB for tier 1-3, når tier 4 aktiveres i et separat reconcile-kald der ikke ser
   // de andre tiers' selection i hukommelsen). Seedes af materializeTierCalendars.
@@ -176,9 +206,14 @@ export function buildTierMaterializationPlan({
 
     // #2251: GT'er (≥15 etaper) er KUN tilladt i tier 1 (spec'ens GT-rygrad).
     // #2276: klasse-whitelist pr. tier (Monuments/GrandTour/OtherWorldTourA kun tier 1).
+    // #3327: oneDayShareTarget styrer endagsløb/etapeløb-mixet mod tierens data-mål.
+    // #3328: classStageLengthBand ekskluderer etapeløb uden for klassens etapeantal-bånd.
+    // priorityArchetypes giver knappe specialist-arketyper (brosten/ITT/mountain-free)
+    // forrang ved uafgjort prestige+størrelse.
     const sel = selectTierRaceSet({
       catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0,
       allowGrandTours: tier === 1, allowedClasses: classWhitelist?.[tier] ?? null,
+      classStageLengthBand, oneDayShareTarget: oneDayShareTargets?.[tier] ?? null, priorityArchetypes,
     });
     for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
     for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
@@ -242,6 +277,16 @@ export async function materializeTierCalendars({
   // forkortet vindue) — se repair2276Div4Cascade.js. density overstyrer KUN når eksplicit
   // angivet; default TIER_DENSITY bruges ellers uændret (design-tæthederne må ikke røres).
   realDays = 28, quotas = TIER_GAME_DAY_QUOTA, density = TIER_DENSITY,
+  // #3327/#3328 pass-through til buildTierMaterializationPlan + dækningsverifikationen.
+  // Defaults = de skarpe produktions-garantier. Tests af FØR-#3327-mekanik (GT-gate,
+  // overlap-cap, kronologi, dedup) med små syntetiske katalog-fixtures kan sende tomme
+  // objekter for eksplicit at opt-out'e — se LEGACY_MIX i tierCalendarMaterializer.test.js.
+  oneDayShareTargets = TIER_ONE_DAY_SHARE_TARGET,
+  classStageLengthBand = CLASS_STAGE_LENGTH_BAND,
+  priorityArchetypes = SCARCE_TERRAIN_ARCHETYPES,
+  oneDayShareMin = TIER_ONE_DAY_SHARE_MIN,
+  terrainFamilyMin = TIER_TERRAIN_FAMILY_MIN,
+  mountainFreeMin = TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -293,13 +338,33 @@ export async function materializeTierCalendars({
   // in-memory-genvalg åd alle ledige Class1). Cross-tier-dedup er allerede dækket af
   // usedRaceNames-seedingen fra DB ovenfor.
   const plannedPools = tiers && tiers.length ? pools.filter((p) => targetTiers.has(p.tier)) : pools;
-  const { tierPlans } = buildTierMaterializationPlan({ pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames });
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
+    oneDayShareTargets, classStageLengthBand, priorityArchetypes,
+  });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
+
+    // #3327/#3328: dækningsverifikation EFTER selection/packing men FØR apply-gaten —
+    // beregnet fra ÉN repræsentativ pulje (identisk kalender pr. tier, #2276). Fejl her
+    // slutter sig til calendarViolations, så de rammer SAMME "nægt apply"-gate som
+    // #2251/#2276-invarianterne nedenfor — ingen stille underdækning.
+    const repPool = tierPlan.pools[0];
+    if (repPool) {
+      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId });
+      const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
+      const coverageViolations = detectCoverageViolations({
+        tier: tierPlan.tier, stats: coverageStats, oneDayShareMin, terrainFamilyMin, mountainFreeMin,
+      });
+      tierPlan.coverageStats = coverageStats;
+      tierPlan.calendarViolations = [...(tierPlan.calendarViolations ?? []), ...coverageViolations];
+    }
+
     // #2251: nægt at APPLY'e en plan med kalender-invariant-brud (GT i tier >1 /
-    // GT-rygrad-overlap). dryRun må gerne rapportere planen, så bruddene kan inspiceres.
+    // GT-rygrad-overlap / #3327-#3328-dækningsbrud). dryRun må gerne rapportere planen,
+    // så bruddene kan inspiceres.
     if (!dryRun && tierPlan.calendarViolations?.length) {
       throw new Error(`calendar invariant violated (apply refused): ${tierPlan.calendarViolations.join(" · ")}`);
     }
@@ -307,7 +372,7 @@ export async function materializeTierCalendars({
       tier: tierPlan.tier, quota: tierPlan.quota, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
       shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
       unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
-      calendarViolations: tierPlan.calendarViolations ?? [], pools: [],
+      calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null, pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));
@@ -385,6 +450,9 @@ export async function materializeTierCalendars({
  */
 export async function reconcilePoolCalendarOnActivation({
   supabase, poolId, now = new Date(), materialize = materializeTierCalendars, log = () => {},
+  // #3327/#3328 pass-through til materialize() — se materializeTierCalendars for defaults
+  // + opt-out-konvention (tests af FØR-#3327-mekanik sender tomme objekter).
+  coverageOverrides = {},
 } = {}) {
   if (poolId == null) return { skipped: "no-pool" };
 
@@ -438,7 +506,7 @@ export async function reconcilePoolCalendarOnActivation({
 
   const summary = await materialize({
     supabase, seasonId: season.id, seasonStartDate: season.start_date ?? null,
-    from, tiers: [division.tier], dryRun: false, log, ...horizon,
+    from, tiers: [division.tier], dryRun: false, log, ...horizon, ...coverageOverrides,
   });
   return { skipped: null, poolId, tier: division.tier, from: from.toISOString(), realDays: horizon.realDays ?? null, ...summary };
 }
