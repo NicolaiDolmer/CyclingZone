@@ -152,6 +152,28 @@ export const RELEGATION_SLOTS = 4;
 // nedrykningspladser er stregen rank 20, og farezonen dermed rank 18-20.
 export const SURVIVAL_DANGER_MARGIN = 3;
 
+// Sæson-slut divisionsbonus: DIVISION_BONUSES[division][rank - 1] = beløb.
+// Index = slutplacering i EGEN division (season_standings.rank_in_division),
+// nøglen = divisionen. En placering uden for arrayet giver ingen bonus
+// (economyEngine.payDivisionBonuses springer over ved rank > bonuses.length).
+//
+// #3100: flyttet hertil fra economyEngine.js (var modul-privat). /rules og /help
+// spejler tabellen via frontend/src/lib/rulesNumbers.js, og spejlet blev pinnet
+// mod en HÅNDKOPI af den her tabel i rulesNumbers.test.js. Kopien stoppede ved
+// division 3, så da #1608 tilføjede tier 4 fortsatte drift-guarden med at være
+// grøn mens begge hjælpesider tav om en hel division. Med en ægte eksport kan
+// spejlet ikke længere lyve.
+//
+// #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21): tier 4 =
+// bunden, lavest sæson-slut-bonus pr. pulje-placering. Uden den række ville
+// div-4-hold få tavst undefined → continue i payDivisionBonuses.
+export const DIVISION_BONUSES = {
+  1: [300_000, 200_000, 100_000, 50_000],
+  2: [150_000, 100_000, 50_000, 25_000],
+  3: [75_000, 50_000, 25_000],
+  4: [50_000, 25_000, 10_000],
+};
+
 // -- Saeson-skift kontrol-flags (#1155, ejer-beslutning 2026-06-08) ------------
 // Tre bevidste produktbeslutninger for det foerste rigtige saeson-skift (S1->S2).
 // Alle er rene applikationskode-gates (ingen migration) og taendes igen ved at

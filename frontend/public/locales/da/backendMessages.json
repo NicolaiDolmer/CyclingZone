@@ -19,7 +19,7 @@
     "facilityUpkeep": "Facilitets-vedligehold · {tracks} spor",
     "staffSalary": "Sæsonløn til stab · {count} ansatte",
     "interest": "Renter på gæld (10% af {amount} pts)",
-    "bonus": "Divisionsbonus · Division {division}, plads {rank}",
+    "bonus": "Divisionsbonus · Sluttede som nr. {rank} i Division {division}",
     "loanReceivedShort": "Kort lån optaget (gebyr: {fee} CZ$)",
     "loanReceivedLong": "Langt lån optaget (gebyr: {fee} CZ$)",
     "loanRepayment": "Lånrate betalt",

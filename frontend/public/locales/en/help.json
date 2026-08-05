@@ -393,11 +393,13 @@
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
+        "text": "Read it in two steps: pick the row for the place you finished in your own division, then the column for the division you rode in. Blank cells pay nothing, and so does any place below the last row.",
         "rows": [
-          ["Division", "Place 1", "Place 2", "Place 3", "Place 4-5"],
-          ["Division 1", "300,000 CZ$", "200,000 CZ$", "100,000 CZ$", "50,000 CZ$"],
-          ["Division 2", "150,000 CZ$", "100,000 CZ$", "50,000 CZ$", "25,000 CZ$"],
-          ["Division 3", "75,000 CZ$", "50,000 CZ$", "25,000 CZ$", "—"]
+          ["Where you finished", "In Division 1", "In Division 2", "In Division 3", "In Division 4"],
+          ["1st in your division", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
+          ["2nd in your division", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
+          ["3rd in your division", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
+          ["4th in your division", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
         ]
       },
       "raceLibrary": {
@@ -942,7 +944,7 @@
     },
     "divisionBonusFaq": {
       "q": "What is the division bonus, and when is it paid out?",
-      "a": "The division bonus is a one-time bonus paid at season end based on your team's final placing in your division. Division 1: 300,000 / 200,000 / 100,000 / 50,000 CZ$ for places 1-4. Division 2: 150,000 / 100,000 / 50,000 / 25,000 CZ$ for places 1-4. Division 3: 75,000 / 50,000 / 25,000 CZ$ for places 1-3. The bonus is booked as 'bonus' in your finance log."
+      "a": "The division bonus is a one-time bonus paid at season end. It depends on two things at once: which division you rode in, and the place you finished on inside that division. Division 1 pays {bonusD1P1} / {bonusD1P2} / {bonusD1P3} / {bonusD1P4} CZ$ for 1st to 4th. Division 2 pays {bonusD2P1} / {bonusD2P2} / {bonusD2P3} / {bonusD2P4} CZ$ for 1st to 4th. Division 3 pays {bonusD3P1} / {bonusD3P2} / {bonusD3P3} CZ$ for 1st to 3rd. Division 4 pays {bonusD4P1} / {bonusD4P2} / {bonusD4P3} CZ$ for 1st to 3rd. Anything below that pays nothing. Note that the same amount can come from different divisions: {bonusD1P4} CZ$ is 4th in Division 1 and also 1st in Division 4, so read the transaction text, not just the number. The bonus is booked as 'bonus' in your finance log."
     },
     "sponsorPayoutTiming": {
       "q": "When is sponsor money paid out?",

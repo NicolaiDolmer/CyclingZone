@@ -19,7 +19,7 @@
     "facilityUpkeep": "Facility upkeep · {tracks} tracks",
     "staffSalary": "Staff season salaries · {count} staff",
     "interest": "Interest on debt (10% of {amount} pts)",
-    "bonus": "Division bonus · Division {division}, rank {rank}",
+    "bonus": "Division bonus · Finished no. {rank} in Division {division}",
     "loanReceivedShort": "Short-term loan taken out (fee: {fee} CZ$)",
     "loanReceivedLong": "Long-term loan taken out (fee: {fee} CZ$)",
     "loanRepayment": "Loan installment paid",

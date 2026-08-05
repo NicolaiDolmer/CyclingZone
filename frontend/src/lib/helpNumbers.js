@@ -9,12 +9,25 @@
 // RULES_NUMBERS at render time, so the rendered number always equals the backend
 // single source of truth and can't drift. helpNumbers.test.js guards the wiring.
 //
-// Only the hard scalars that drifted are pinned here. Derived tables (the prize
-// examples 1300×75 and the division-bonus table) stay as prose — pinning them
-// would require importing the full race points table too. Same scope boundary as
-// rulesNumbers.js, where the bonus table is a documented mirror.
+// Only the hard scalars that drifted are pinned here. The prize examples (1300×75)
+// stay as prose — pinning them would require importing the full race points table.
+//
+// #3100: the division-bonus table used to be in that same "stays as prose" bucket,
+// and it drifted exactly as predicted. #1608 added division 4 to the backend payout
+// table; /help kept showing three divisions and a "Place 4-5" column that never
+// existed in the payout code. Division 4 bonuses had been paid in production while
+// both help surfaces denied the division existed, so the table is now pinned to
+// RULES_NUMBERS like the rest. The bonus values live in RULES_NUMBERS already, so
+// pinning them costs nothing extra.
 
 import { RULES_NUMBERS } from "./rulesNumbers.js";
+
+// Every bonusD<division>P<place> key in RULES_NUMBERS, derived rather than listed
+// so a new division or placement in the backend table reaches /help automatically
+// instead of requiring three separate files to be remembered.
+const BONUS_KEYS = Object.keys(RULES_NUMBERS)
+  .filter((k) => /^bonusD\d+P\d+$/.test(k))
+  .sort();
 
 // Interpolation keys used inside help.json. The drift guard (helpNumbers.test.js)
 // asserts that every {{token}} in help.json is one of these and that each appears
@@ -26,6 +39,7 @@ export const HELP_NUMBER_KEYS = Object.freeze([
   "initialSquad",
   "academySlots",
   "academySigningFeePct",
+  ...BONUS_KEYS,
 ]);
 
 // Build the interpolation map for a given UI language. Thousands-separated values
@@ -34,6 +48,8 @@ export const HELP_NUMBER_KEYS = Object.freeze([
 // separator.
 export function buildHelpNumbers(lang) {
   const locale = String(lang || "").toLowerCase().startsWith("da") ? "da-DK" : "en-US";
+  const bonuses = {};
+  for (const key of BONUS_KEYS) bonuses[key] = RULES_NUMBERS[key].toLocaleString(locale);
   return {
     startingBalance: RULES_NUMBERS.startingBalance.toLocaleString(locale),
     prizePerPoint: String(RULES_NUMBERS.prizePerPoint),
@@ -41,6 +57,7 @@ export function buildHelpNumbers(lang) {
     initialSquad: String(RULES_NUMBERS.initialSquadSize),
     academySlots: String(RULES_NUMBERS.academySlots),
     academySigningFeePct: String(RULES_NUMBERS.academySigningFeePct),
+    ...bonuses,
   };
 }
 

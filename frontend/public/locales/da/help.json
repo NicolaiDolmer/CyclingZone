@@ -393,11 +393,13 @@
       },
       "divisionBonus": {
         "title": "Divisionsbonus ved sæsonafslutning",
+        "text": "Læs den i to trin: find rækken for den plads du sluttede på i din egen division, og derefter kolonnen for den division du kørte i. Tomme celler giver ingenting, og det gør placeringer under nederste række heller ikke.",
         "rows": [
-          ["Division", "Plads 1", "Plads 2", "Plads 3", "Plads 4-5"],
-          ["Division 1", "300.000 CZ$", "200.000 CZ$", "100.000 CZ$", "50.000 CZ$"],
-          ["Division 2", "150.000 CZ$", "100.000 CZ$", "50.000 CZ$", "25.000 CZ$"],
-          ["Division 3", "75.000 CZ$", "50.000 CZ$", "25.000 CZ$", "—"]
+          ["Din slutplacering", "I Division 1", "I Division 2", "I Division 3", "I Division 4"],
+          ["Nr. 1 i din division", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
+          ["Nr. 2 i din division", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
+          ["Nr. 3 i din division", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
+          ["Nr. 4 i din division", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
         ]
       },
       "raceLibrary": {
@@ -942,7 +944,7 @@
     },
     "divisionBonusFaq": {
       "q": "Hvad er divisionsbonus, og hvornår udbetales den?",
-      "a": "Divisionsbonus er en engangsbonus der udbetales ved sæsonafslutning baseret på dit holds endelige placering i din division. Division 1: 300.000 / 200.000 / 100.000 / 50.000 CZ$ for plads 1-4. Division 2: 150.000 / 100.000 / 50.000 / 25.000 CZ$ for plads 1-4. Division 3: 75.000 / 50.000 / 25.000 CZ$ for plads 1-3. Bonussen bogføres som 'bonus' i din finance-log."
+      "a": "Divisionsbonus er en engangsbonus der udbetales ved sæsonafslutning. Den afhænger af to ting på én gang: hvilken division du kørte i, og hvilken plads du sluttede på inde i den division. Division 1 giver {bonusD1P1} / {bonusD1P2} / {bonusD1P3} / {bonusD1P4} CZ$ for nr. 1 til 4. Division 2 giver {bonusD2P1} / {bonusD2P2} / {bonusD2P3} / {bonusD2P4} CZ$ for nr. 1 til 4. Division 3 giver {bonusD3P1} / {bonusD3P2} / {bonusD3P3} CZ$ for nr. 1 til 3. Division 4 giver {bonusD4P1} / {bonusD4P2} / {bonusD4P3} CZ$ for nr. 1 til 3. Alt derunder giver ingenting. Bemærk at det samme beløb kan komme fra forskellige divisioner: {bonusD1P4} CZ$ er nr. 4 i Division 1 og samtidig nr. 1 i Division 4, så læs transaktionsteksten, ikke kun tallet. Bonussen bogføres som 'bonus' i din finance-log."
     },
     "sponsorPayoutTiming": {
       "q": "Hvornår udbetales sponsorpenge?",
