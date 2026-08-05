@@ -30,15 +30,24 @@ function MockFrame({ label, children }) {
   );
 }
 
+// #2752/#2361 real-wiring follow-up (4/8): `division` betyder KONKRET "den
+// division holdet SLUTTEDE denne sæson i" (matcher SeasonRecapHero.jsx's egen
+// JSDoc + "rankLine"-teksten "#{rank} of {size} in Division {division}") —
+// IKKE destinationsdivisionen efter en evt. oprykning/nedrykning. Draft-
+// mock'en (PR #3283) blandede de to (promoted-scenariet satte division:2 men
+// en highlight der sagde "Division 3") — rettet her efter den rigtige data-
+// wiring afslørede tvetydigheden (samme rettelse fjernede {division} fra
+// movement.promoted/relegated-copyen i en+da seasonEnd.json/dashboard.json,
+// som ellers ville have vist den FORKERTE division ved en oprykning).
 const RECAP_SCENARIOS = [
   {
     id: "promoted",
-    label: "Mockup — /seasons recap hero · team promoted",
+    label: "Mockup — /seasons recap hero · team promoted (finished Division 3, now in Division 2)",
     props: {
       seasonNumber: 2,
       teamName: "Nordkyst Racing",
-      division: 2,
-      divisionSize: 18,
+      division: 3,
+      divisionSize: 20,
       rank: 2,
       movement: "promoted",
       points: 4820,
@@ -46,27 +55,25 @@ const RECAP_SCENARIOS = [
       prizeWon: 612000,
       highlights: [
         { id: "prize", icon: CoinIcon, label: "Prize leader of Division 3", value: "612,000 CZ$" },
-        { id: "transfer", icon: ExchangeIcon, label: "Biggest transfer: sold Elin Vartdal", value: "1,450,000 CZ$" },
-        { id: "stage", icon: TrophyIcon, label: "Stage king: Marco Bittner", value: "6 wins" },
+        { id: "transfer", icon: ExchangeIcon, label: "Biggest sale of the season", value: "1,450,000 CZ$" },
+        { id: "stage", icon: TrophyIcon, label: "Team stage king: Marco Bittner", value: "6 wins" },
       ],
     },
   },
   {
     id: "relegated",
-    label: "Mockup — /seasons recap hero · team relegated",
+    label: "Mockup — /seasons recap hero · team relegated (finished Division 3, now in Division 4)",
     props: {
       seasonNumber: 2,
       teamName: "Alpe Domestiques",
       division: 3,
       divisionSize: 20,
-      rank: 17,
+      rank: 19,
       movement: "relegated",
       points: 2110,
       stageWins: 2,
       prizeWon: 184000,
-      highlights: [
-        { id: "stage", icon: TrophyIcon, label: "Best result: 4th at Vuelta a Andalucia", value: "GC" },
-      ],
+      highlights: [],
     },
   },
   {
@@ -90,12 +97,12 @@ const RECAP_SCENARIOS = [
 const NUDGE_SCENARIOS = [
   {
     id: "promoted",
-    label: "Mockup — dashboard nudge · team promoted",
+    label: "Mockup — dashboard nudge · team promoted (finished Division 3, now in Division 2)",
     props: {
       seasonNumber: 2,
       nextSeasonNumber: 3,
-      division: 2,
-      divisionSize: 18,
+      division: 3,
+      divisionSize: 20,
       rank: 2,
       movement: "promoted",
       points: 4820,
@@ -104,13 +111,13 @@ const NUDGE_SCENARIOS = [
   },
   {
     id: "relegated",
-    label: "Mockup — dashboard nudge · team relegated",
+    label: "Mockup — dashboard nudge · team relegated (finished Division 3, now in Division 4)",
     props: {
       seasonNumber: 2,
       nextSeasonNumber: 3,
       division: 3,
       divisionSize: 20,
-      rank: 17,
+      rank: 19,
       movement: "relegated",
       points: 2110,
       wins: 2,
@@ -144,10 +151,14 @@ export default function SeasonExperiencePreviewPage() {
         Season experience preview
       </h1>
       <p className="mb-10 max-w-2xl text-[13.5px] text-cz-2">
-        Draft components for issue #2752 (season recap + active season-end/start
-        surfacing). Mock data only — nothing here reads real data. Owner review
-        happens on this page before the follow-up PR wires these into
-        DashboardPage.jsx and SeasonEndPage.jsx.
+        Components for issue #2752 (season recap + active season-end/start
+        surfacing). Mock data only — nothing on THIS page reads real data. The
+        real thing is now wired into DashboardPage.jsx (season-wrap nudge) and
+        SeasonEndPage.jsx (recap hero, above SeasonHonours) — this page stays
+        as a fixed-data reference for reviewing scenarios that need a specific
+        real season/team to reproduce live. Candidate for folding into the
+        kitchen sink or removing once the real wiring has been checked on a
+        live preview deploy.
       </p>
 
       <section className="mb-14">

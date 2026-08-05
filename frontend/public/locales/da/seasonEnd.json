@@ -82,9 +82,15 @@
     },
     "rankLine": "#{rank} af {size} i division {division}",
     "movement": {
-      "promoted": "↑ Rykket op til division {division}",
-      "relegated": "↓ Rykket ned til division {division}",
+      "promoted": "↑ Rykket op",
+      "relegated": "↓ Rykket ned",
       "maintained": "Holdt division {division}"
+    },
+    "highlight": {
+      "prizeLeader": "Præmie-fører i division {division}",
+      "biggestSale": "Sæsonens største salg",
+      "stageKing": "Holdets etapekonge: {name}",
+      "stageKingValue": "{count, plural, one {# sejr} other {# sejre}}"
     },
     "share": "Kopiér link til opsummering",
     "shareCopied": "Link kopieret"

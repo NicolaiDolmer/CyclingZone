@@ -41,6 +41,9 @@ import {
   isSeasonStartWindow, buildSeasonStartItems,
   readSeasonStartDismissed, writeSeasonStartDismissed,
 } from "../lib/seasonStartGuide";
+import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
+import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
+import { computeSeasonMovement } from "../lib/seasonRecapData.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
@@ -160,6 +163,13 @@ export default function DashboardPage() {
   const [seasonStartCounts, setSeasonStartCounts] = useState({
     trainingPlanCount: null, pendingGraduations: null,
   });
+
+  // #2752/#2361 — "Sæson N er slut"-nudgekortet: samme vindue som sæsonstart-
+  // guiden ovenfor (seasonStartWindowOpen), men eget dismiss (per AFSLUTTET
+  // sæson, ikke per aktiv — se lib/seasonWrapNudge.js). null = intet at vise
+  // endnu (ikke hentet, eller ingen af mit holds rækker fundet).
+  const [seasonWrapDismissed, setSeasonWrapDismissed] = useState(false);
+  const [completedSeasonRecap, setCompletedSeasonRecap] = useState(null);
 
   // #2925 — sæsonstart-vinduet. Afledt af eksisterende data (aktiv sæsons
   // start_date), ikke af et nyt flag. `nowMs` tikker allerede hvert minut, så
@@ -488,6 +498,70 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, academyEnabled]);
 
+  // #2752/#2361 — "Sæson N er slut"-kortets data: min slutstilling i den
+  // AFSLUTTEDE sæson lige før den aktive. Samme vindue/gate som ovenstående
+  // effekt (kun 7 dage efter et sæsonskifte), så managere uden for vinduet
+  // betaler intet. Tre små, MÅLRETTEDE opslag (season-lookup, min egen række,
+  // resten af min division) — ingen af dem ligner #2891-klassens problem.
+  useEffect(() => {
+    if (!seasonStartWindowOpen || !team?.id || !seasonInfo?.id) {
+      setCompletedSeasonRecap(null);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data: completedSeason } = await supabase
+        .from("seasons").select("id, number")
+        .eq("status", "completed")
+        .order("number", { ascending: false })
+        .limit(1).maybeSingle();
+      if (cancelled) return;
+      // Kun relevant hvis den seneste completed sæson RENT FAKTISK er den den
+      // aktive sæson efterfulgte — undgår at vise et forældet facit hvis
+      // sæson-numrene af en eller anden grund ikke er fortløbende.
+      if (!completedSeason || completedSeason.number !== seasonInfo.number - 1) {
+        setCompletedSeasonRecap(null);
+        return;
+      }
+
+      const { data: standingsRow } = await supabase
+        .from("season_standings")
+        .select("division, rank_in_division, total_points, stage_wins")
+        .eq("team_id", team.id).eq("season_id", completedSeason.id).maybeSingle();
+      if (cancelled) return;
+      if (!standingsRow) { setCompletedSeasonRecap(null); return; }
+
+      // #2182-mønstret: "rigtige hold" = ikke-AI/test/frosne — samme
+      // diskriminator som resten af dashboardet bruger til holdtællinger.
+      const { data: divTeams } = await supabase
+        .from("season_standings")
+        .select("team_id, team:team_id(is_ai, is_test_account, is_frozen)")
+        .eq("season_id", completedSeason.id)
+        .eq("division", standingsRow.division);
+      if (cancelled) return;
+      const divisionSize = (divTeams || [])
+        .filter(r => !r.team?.is_ai && !r.team?.is_test_account && !r.team?.is_frozen).length;
+
+      setCompletedSeasonRecap({
+        seasonId: completedSeason.id,
+        seasonNumber: completedSeason.number,
+        division: standingsRow.division,
+        divisionSize,
+        rank: standingsRow.rank_in_division,
+        movement: computeSeasonMovement(standingsRow.division, team.division),
+        points: standingsRow.total_points,
+        wins: standingsRow.stage_wins,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, seasonInfo?.number, team?.division]);
+
+  // #2752/#2361 — dismiss huskes PR. AFSLUTTET SÆSON (ikke pr. aktiv, som
+  // seasonStartDismissed ovenfor) — se lib/seasonWrapNudge.js.
+  useEffect(() => {
+    setSeasonWrapDismissed(readSeasonWrapDismissed(completedSeasonRecap?.seasonId));
+  }, [completedSeasonRecap?.seasonId]);
+
   // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
   // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
   // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
@@ -594,6 +668,11 @@ export default function DashboardPage() {
     setSeasonStartDismissed(true);
   }
 
+  function dismissSeasonWrap() {
+    writeSeasonWrapDismissed(completedSeasonRecap?.seasonId);
+    setSeasonWrapDismissed(true);
+  }
+
   function dismissCompletion() {
     localStorage.setItem("cz-dashboard-onboarding-completion-dismissed", "1");
     setCompletionDismissed(true);
@@ -677,6 +756,10 @@ export default function DashboardPage() {
   // Discord-nudgen, #2288 B: onboarding-kortet får skærmen for sig selv), og kun
   // inden for vinduet. `ownedNow` og `boardPlanMissing` er allerede hentet, så
   // kun to lette tællinger kommer oveni.
+  // #2752/#2361 — samme vindue/onboarding-undertrykkelse som sæsonstart-guiden;
+  // eget dismiss + kræver at completedSeasonRecap rent faktisk blev fundet
+  // (ingen tom/halv-udfyldt kort mens fetch'et stadig kører eller fejlede).
+  const showSeasonWrapNudge = seasonStartWindowOpen && !seasonWrapDismissed && !onboardingIncomplete && !!completedSeasonRecap;
   const showSeasonStartGuide = seasonStartWindowOpen && !seasonStartDismissed && !onboardingIncomplete;
   const seasonStartItems = showSeasonStartGuide
     ? buildSeasonStartItems({
@@ -749,6 +832,26 @@ export default function DashboardPage() {
         <div className={firstRaceMomentActive ? "opacity-75" : undefined}>
           <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
         </div>
+      )}
+
+      {/* #2752/#2361 — "Sæson N er slut": den aktive sæson-lukning. Står FØR
+          "kom i gang"-tjeklisten (samme vindue, egen dismiss) — narrativ-
+          rækkefølgen er facit først ("hvad skete der"), så opgaver ("hvad nu").
+          CTA'en leder til /seasons/:id, som nu viser SeasonRecapHero (samme
+          data) for holdet. */}
+      {showSeasonWrapNudge && (
+        <SeasonWrapNudgeCard
+          seasonNumber={completedSeasonRecap.seasonNumber}
+          nextSeasonNumber={seasonInfo?.number}
+          division={completedSeasonRecap.division}
+          divisionSize={completedSeasonRecap.divisionSize}
+          rank={completedSeasonRecap.rank}
+          movement={completedSeasonRecap.movement}
+          points={completedSeasonRecap.points}
+          wins={completedSeasonRecap.wins}
+          onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
+          onDismiss={dismissSeasonWrap}
+        />
       )}
 
       {/* #2925 — "Season N: kom i gang". Over "Næste træk", fordi de fire
