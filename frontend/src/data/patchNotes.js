@@ -91,6 +91,20 @@ export const PATCHES = [
           "body": "Resultat-tabellen havde ingen regel mod at samme deltager optrådte to gange i en etape, og en skrivning kunne efterlade et halvt resultat hvis den fejlede undervejs. Den har nu en unikhedsregel og skriver alt-eller-intet. Verificeret mod alle 710.397 eksisterende rækker uden en eneste konflikt. Også landet: et checked-in register over baggrundsjobbenes overvågning, tre flere scorecards dækket af exit-code-vagten, og et udviklings-script der ikke længere printer en login-token i terminalen."
         },
         "refs": [3022, 1847, 2892, 3009, 3342]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Season forecast now includes facility, staff and academy costs",
+          "body": "The Finance page's season forecast used to count only sponsor income and prize money minus rider wages and loan interest, leaving out facility upkeep, staff salaries, upkeep and academy running costs entirely. For teams that had invested in facilities or an academy, the old number was too optimistic by roughly half: it promised a much bigger surplus than teams actually got. The forecast now includes all of those costs, calculated with the exact same formulas as the real season-start charge, and the help text has been rewritten to state precisely what is (and isn't) covered."
+        },
+        "da": {
+          "title": "Sæsonprognosen medregner nu facilitets-, staff- og akademi-omkostninger",
+          "body": "Sæsonprognosen på Finanser-siden talte tidligere kun sponsorindtægt og præmiepenge minus rytterløn og lånerenter, og udelod helt facilitets-vedligehold, stab-lønninger, upkeep og akademi-drift. For hold der havde investeret i faciliteter eller et akademi, var det gamle tal for optimistisk med omkring det halve: det lovede et langt større overskud end holdene faktisk fik. Prognosen medregner nu alle disse omkostninger, beregnet med præcis samme formler som den faktiske sæson-start-opkrævning, og hjælpeteksten er omskrevet så den siger præcist hvad der er (og ikke er) dækket."
+        },
+        "refs": [3236, 3332]
       }
     ]
   },
