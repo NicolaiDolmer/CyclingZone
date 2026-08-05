@@ -9,7 +9,7 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
 ## Hard rules
 
 > **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)).
+> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor — ikke pr.-PR-gate).
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
@@ -55,6 +55,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 14. **Isolation er infrastruktur, ikke disciplin.** Et spor må ikke kunne ødelægge et andet ved et uheld. **Lukket 5/8 ([#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)):** worktrees junctioner nu til en lockfile-hashet cache i `%LOCALAPPDATA%`, ikke til hoved-checkoutet — der findes ingen sti fra et worktree ind i mains `node_modules`. `preflight-night-wave.ps1` advarer hvis en legacy-junction alligevel dukker op. _Delt `node_modules` ramte 4 af 20 spor og kostede verifikations-dækning på en sikkerheds-PR. `npm ci` gennem en junction tømte hoved-checkoutets install midt i bølgen._
 
 15. **Mennesket beslutter, AI'en fremskaffer beviset.** Bed aldrig om godkendelse af et gæt — mål først, præsentér så. _Gennemgående mønster: beslutningsoplæg byggede på issue-tekster i stedet for på prod._
+
+16. **En test må aldrig læse vægur-tiden.** Injicér altid et eksplicit `now`/`today` til produktionskoden i stedet for at stole på en `now = new Date()`-default. Nightly `clock-drift-test-check.yml` kører frontend-testene med klokken skubbet 6 måneder frem og fanger drift ([#3385](https://github.com/NicolaiDolmer/CyclingZone/issues/3385): main blev rød uden en commit, fordi en fast test-konstant passerede vægur-tiden).
 
 **Dispatch-forfilter (obligatorisk før et spor sendes af sted):** `gh issue view N --json state` — plus tjek om der findes en merged PR med `Refs #N`. _Fire spor i natbølgen var allerede løst. `MASTERPLAN.md` og issue-teksterne halter efter hvad der faktisk er shippet; ét kald pr. kandidat havde sparet fire spor._
 

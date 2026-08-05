@@ -1,0 +1,131 @@
+name: Nightly clock-drift test check
+
+# #3385 — 5/8 kl. 13:00 UTC blev main rød UDEN en eneste ny commit:
+# frontend/src/lib/firstBidRecommendation.test.js byggede en fast
+# FAR_FUTURE-konstant men kaldte produktionskoden uden et eksplicit `now`,
+# så den faldt tilbage på den rigtige klokke. Testene var grønne indtil
+# konstanten passerede vægur-tiden, derefter røde — uden nogen kodeændring.
+#
+# Dette job er en DETEKTOR, ikke en gate: det kører frontend `node --test`
+# med "nu" skubbet ~6 måneder frem via et preload-modul der monkeypatcher
+# Date (frontend/scripts/fake-clock-preload.mjs — kun new Date()/Date.now()
+# UDEN argumenter påvirkes, aldrig testenes egne faste tidsstempler). En
+# test der fejler under den fremskudte klokke, men er grøn i dag, læser
+# vægur-tiden et sted den ikke burde — nøjagtig #3385-klassen, fanget FØR
+# den kan gøre main rød uden en commit at pege på.
+#
+# Bevidst IKKE en required check pr. PR (se AGENTS.md-reglen indført med
+# denne fil): kun nightly cron + manuel dispatch. En gate ville kræve at
+# enhver PR var immun mod en klokke 6 måneder ude i fremtiden, hvilket er
+# en langt bredere garanti end #3385 beder om.
+
+on:
+  schedule:
+    - cron: '50 3 * * *' # dagligt kl. 03:50 UTC — næste ledige slot efter drift-monitor (03:00), quality-inbox (03:30) og league-size-invariant-audit (03:40)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  clock-drift-test-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run frontend tests with clock pushed 6 months forward
+        id: test
+        env:
+          CZ_TEST_CLOCK_OFFSET_DAYS: '183'
+        run: |
+          set +e
+          node --import ./scripts/fake-clock-preload.mjs --test --test-reporter=spec > clock-drift-test.log 2>&1
+          status=$?
+          set -e
+          cat clock-drift-test.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Upload test log
+        if: steps.test.outputs.status != '0'
+        uses: actions/upload-artifact@v7
+        with:
+          name: clock-drift-test-log
+          path: frontend/clock-drift-test.log
+
+      - name: Open or update tracking issue
+        if: github.event_name == 'schedule' && steps.test.outputs.status != '0'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const log = fs.readFileSync(path.join('frontend', 'clock-drift-test.log'), 'utf8');
+            // GitHub issue-body-loft: hold reportet under et fornuftigt loft.
+            const trimmed = log.length > 20000 ? `${log.slice(0, 20000)}\n… (afkortet, se log-artifact)` : log;
+            const title = '[bot] Klokke-drift-test fandt klokke-afhængige frontend-tests';
+            const body = [
+              '## Klokke-drift-test-check fandt fejlende test(s)',
+              '',
+              'Nightly cron kørte frontend `node --test` med "nu" skubbet 6 måneder frem ' +
+                '(se [#3385](https://github.com/${{ github.repository }}/issues/3385)). ' +
+                'Mindst én test der er grøn i dag fejler under den fremskudte klokke — ' +
+                'det betyder den læser vægur-tiden (`new Date()`/`Date.now()` uden argumenter) ' +
+                'et sted der burde have fået et eksplicit `now` injiceret.',
+              '',
+              'Dette er PRÆCIS #3385-mekanismen: main kan blive rød uden en eneste ny commit, ' +
+                'blot fordi tiden passerer en fast test-konstant.',
+              '',
+              '```',
+              trimmed.trim(),
+              '```',
+              '',
+              'Fix: giv den fejlende test et eksplicit `now`-argument til produktionskoden ' +
+                '(samme mønster som #3383 / firstBidRecommendation.test.js) i stedet for at ' +
+                'lade den falde tilbage på `new Date()`.',
+              '',
+              'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'clock-drift-audit',
+            });
+            if (existing.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing[0].number,
+                title,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['clock-drift-audit', 'priority:high', 'type:bug', 'claude:todo'],
+              });
+            }
+
+      - name: Fail if clock-dependent tests were found
+        if: steps.test.outputs.status != '0'
+        run: |
+          echo "::error::Frontend tests failed under a clock pushed 6 months forward. See test log / clock-drift-audit issue."
+          exit 1
