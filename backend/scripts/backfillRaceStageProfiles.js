@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION, PROFILE_TYPES } from "../lib/raceStageProfileGenerator.js";
+import { resolveVariantByRaceId } from "../lib/raceRouteRealismDraw.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -46,9 +47,25 @@ async function loadRaces() {
     seasonId = data.id;
   }
   return fetchAllRows(() => {
-    let q = supabase.from("races").select("id, name, race_type, stages, season_id, pool_race_id").order("id");
+    let q = supabase.from("races").select("id, name, race_type, stages, season_id, pool_race_id, league_division_id").order("id");
     if (seasonId) q = q.eq("season_id", seasonId);
     return q;
+  });
+}
+
+// #3347: hvilken re-draw-variant hører hvert løb til? Uden det ville en backfill
+// overskrive gatens træk med det kanoniske og gøre realisme-scorecardet til en løgn.
+// Grupperings-reglen (pr. season_id+tier, laveste pulje som repræsentant) bor i
+// raceRouteRealismDraw.js, så scorecardet, materializeren og backfill'ene deler den.
+async function loadVariantByRaceId(races, catalogMeta) {
+  const divisions = await fetchAllRows(() => supabase.from("league_divisions").select("id, tier").order("id"));
+  return resolveVariantByRaceId({
+    races, catalogMeta,
+    tierByDivision: new Map((divisions || []).map((d) => [d.id, d.tier])),
+    onDraw: ({ seasonId, tier, draw }) => {
+      if (draw.attempt > 0) console.log(`  ↻ sæson ${seasonId} tier ${tier}: kanonisk træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → gen-træk ${draw.attempt} (#3347)`);
+      if (draw.exhausted) console.log(`  ⚠ sæson ${seasonId} tier ${tier}: alle ${draw.attemptsTried} gen-træk brød båndene — bruger det kanoniske træk (#3347)`);
+    },
   });
 }
 
@@ -73,6 +90,7 @@ async function main() {
   const races = await loadRaces();
   const catalogMeta = await loadCatalogMeta();
   const manualRaceIds = DRY_RUN ? new Set() : await loadManualRaceIds();
+  const variantByRaceId = await loadVariantByRaceId(races, catalogMeta);
 
   const dist = Object.fromEntries(PROFILE_TYPES.map((p) => [p, 0]));
   const sample = [];
@@ -85,7 +103,8 @@ async function main() {
 
     const meta = catalogMeta.get(race.pool_race_id) || {};
     // race.season_id er allerede på rækken → indgår i seed via seedKeyFor (sæson-akse).
-    const seedRace = { ...race, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null };
+    // season_variant (#3347) = tierens resolverede re-draw, samme tal som gaten scorer.
+    const seedRace = { ...race, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null, season_variant: variantByRaceId.get(race.id) ?? 0 };
     const profiles = generateRaceStageProfiles(seedRace);
     for (const p of profiles) dist[p.profile_type]++;
     if (sample.length < 12) {

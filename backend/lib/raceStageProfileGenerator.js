@@ -21,6 +21,7 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { attachRoute } from "./raceRouteGenerator.js";
+import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
@@ -205,12 +206,13 @@ export function seedIdentityFor(race) {
   return presentKey(race?.external_id) ?? presentKey(race?.pool_race_id) ?? race?.id;
 }
 
-// Fuld seed-nøgle = løb-identitet + sæson. Alle grupper i en sæson deler nøglen
-// (konsistens); en ny sæson giver en ny nøgle (variation pr. sæson, jf. spec §5.1).
-// Uden season_id seedes på identitet alene (bagudkompatibel — tests/ad-hoc).
+// Fuld seed-nøgle = løb-identitet + sæson (+ #3347's re-draw-variant). Alle grupper i
+// en sæson deler nøglen (konsistens); en ny sæson giver en ny nøgle (variation pr.
+// sæson, jf. spec §5.1). Uden season_id seedes på identitet alene (bagudkompatibel —
+// tests/ad-hoc). season_variant 0/fraværende → nøglen er BIT-IDENTISK med før #3347.
 function seedKeyFor(race) {
   const id = String(seedIdentityFor(race));
-  return race?.season_id ? `${id}::${race.season_id}` : id;
+  return `${id}${seasonSeedSuffix(race)}`;
 }
 
 function pick(rng, arr) {
@@ -566,9 +568,12 @@ function buildStageRace(rng, stages, cfg, race) {
 
 /**
  * Generér stage-profiler for ét løb (rør ingen DB).
- * @param {{id:string, race_type?:string, stages?:number, external_id?:string, pool_race_id?:string}} race
+ * @param {{id:string, race_type?:string, stages?:number, external_id?:string, pool_race_id?:string, season_id?:string, season_variant?:number}} race
  *   Seedes på external_id ?? pool_race_id ?? id (se seedIdentityFor) — så alle kopier
  *   af samme rigtige løb (en divisions parallelle puljer) får IDENTISK parcours.
+ *   season_variant (#3347, default 0) er tier-trækkets re-draw-tæller: 0 giver præcis
+ *   samme output som før #3347; n > 0 er det n'te deterministiske gen-træk. Vælges af
+ *   resolveSeasonDrawVariants (raceRouteRealismDraw.js) — sæt den ALDRIG ad-hoc.
  * @param {{seed?:number}} [opts]  override-seed (default: stableSeed(seedIdentityFor(race)))
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */

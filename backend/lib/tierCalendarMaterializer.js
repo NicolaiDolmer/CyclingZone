@@ -15,6 +15,7 @@ import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLA
 import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
+import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import {
   TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
@@ -56,17 +57,20 @@ function editionYearFrom(startDate) {
 // bruger) for ét udvalg af raceRows, KUN til dækningsverifikation. Kaldes for én
 // repræsentativ pulje pr. tier (alle puljer i en tier deler identisk kalender, #2276),
 // i BÅDE dry-run og apply, så dry-run-rapporten viser de tal apply ville håndhæve.
-function coverageProfilesFor(raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId }) {
+// #3347: seedRace-formen for én planlagt løbsrække — ÉT sted, så dæknings-verifikationen,
+// realisme-re-drawet og selve insert'et beviseligt seeder ens.
+function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant = 0 }) {
+  return {
+    id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
+    external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
+    terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+    season_id: seasonId, season_variant: seasonVariant,
+  };
+}
+
+function coverageProfilesFor(raceRows, ctx) {
   const map = new Map();
-  for (const r of raceRows) {
-    const seedRace = {
-      id: r.pool_race_id, race_type: r.race_type, stages: r.stages,
-      external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
-      terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
-      season_id: seasonId,
-    };
-    map.set(r.pool_race_id, generateRaceStageProfiles(seedRace));
-  }
+  for (const r of raceRows) map.set(r.pool_race_id, generateRaceStageProfiles(seedRaceFor(r, ctx)));
   return map;
 }
 
@@ -352,8 +356,19 @@ export async function materializeTierCalendars({
     // slutter sig til calendarViolations, så de rammer SAMME "nægt apply"-gate som
     // #2251/#2276-invarianterne nedenfor — ingen stille underdækning.
     const repPool = tierPlan.pools[0];
+    // #3347: løs tierens realisme-re-draw FØR dæknings-verifikationen, så dækningstal,
+    // gate-scorecard og de rækker der faktisk INSERTES alle beskriver det SAMME parcours.
+    // attempt 0 (det kanoniske træk) er det normale svar og er bit-identisk med før #3347.
+    let seasonVariant = 0;
     if (repPool) {
-      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId });
+      const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId }));
+      const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces });
+      seasonVariant = draw.attempt;
+      tierPlan.realismDraw = { attempt: draw.attempt, exhausted: draw.exhausted, firstDrawFailures: draw.firstDrawFailures };
+      if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kanonisk parcours-træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → deterministisk gen-træk ${draw.attempt} (#3347)`);
+      if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
+
+      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant });
       const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
       const coverageViolations = detectCoverageViolations({
         tier: tierPlan.tier, stats: coverageStats, oneDayShareMin, terrainFamilyMin, mountainFreeMin,
@@ -372,7 +387,8 @@ export async function materializeTierCalendars({
       tier: tierPlan.tier, quota: tierPlan.quota, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
       shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
       unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
-      calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null, pools: [],
+      calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null,
+      realismDraw: tierPlan.realismDraw ?? null, pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));
@@ -397,7 +413,9 @@ export async function materializeTierCalendars({
       for (const race of inserted) {
         // external_id (samme parcours i alle puljer) + terrain_archetype (terrænkarakter)
         // + season_id (variation pr. sæson) fra konteksten.
-        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, season_id: seasonId };
+        // season_variant (#3347) er tierens resolverede re-draw — SAMME tal som
+        // dæknings-verifikationen og realisme-scorecardet bruger.
+        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, season_id: seasonId, season_variant: seasonVariant };
         for (const p of generateRaceStageProfiles(seedRace)) {
           profileRows.push({
             race_id: race.id, stage_number: p.stage_number, profile_type: p.profile_type,

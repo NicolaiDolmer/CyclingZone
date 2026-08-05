@@ -7,6 +7,23 @@ const MOUNTAIN = new Set(["mountain", "high_mountain"]);
 const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile_type);
 
 // #2755-mål pr. tier. null = intet krav.
+//
+// ER BÅNDENE KALIBRERET MOD TIERENS FAKTISKE KATALOG? (#3347, målt 2026-08-05 over 3.000
+// trækvarianter af S2-kalenderen — reproducér med
+// `node scripts/raceRouteRealismDrawHarness.js --catalog --tier 3`):
+//
+//   tier 3 (46 løb): loft 22,1 bjerg-familie-etaper (min 18 over 3.000 træk) · faktiske
+//     summits middel 9,91 (sd 2,04) · M-Down middel 43,4 % (sd 9,8)
+//   tier 4 (24 løb): loft 21,1 · summits middel 9,71 (sd 1,98) · M-Down 42,5 % (sd 10,0)
+//
+// Konklusion: båndene er OPNÅELIGE MED MARGIN i middel (tier 3 leverer 24 % flere summits
+// end kravet, og 11,6 procentpoint M-Down-luft) — de er IKKE fejlkalibreret mod kataloget.
+// Men marginen er kun ~0,9-1,2 standardafvigelser, fordi stikprøven er lille (tier 3 har
+// blot 11 etapeløb / ~22 bjerg-etaper), så ~16 % af enkelttræk lander alligevel udenfor.
+// Det er derfor #3347 løser problemet i TRÆKKET (deterministisk re-draw,
+// raceRouteRealismDraw.js) og ikke i båndene. Skal båndene hæves mod #1293's fulde mål,
+// skal katalogets summit-forsyning op FØRST: 78 % af tier 3's summits kommer fra kun 4
+// summit_tour-løb.
 export const TIER_TARGETS = Object.freeze({
   1: { summit_min: null, mdown_max_pct: null, itt_min: null, cobbles_min: null },
   2: { summit_min: null, mdown_max_pct: null, itt_min: null, cobbles_min: null },

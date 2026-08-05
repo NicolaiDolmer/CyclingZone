@@ -251,6 +251,10 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
     racesByPoolRace.get(r.pool_race_id).push(r);
   }
 
+  // #3347: materializeren rapporterer hvilken re-draw-variant tieren blev skrevet med.
+  const tier3Attempt = summary.tiers.find((t) => t.tier === 3)?.realismDraw?.attempt ?? 0;
+  assert.equal(typeof tier3Attempt, "number");
+
   let shared = 0;
   for (const [poolRaceId, rs] of racesByPoolRace) {
     if (rs.length < 2) continue; // kun løb der optræder i begge puljer
@@ -261,12 +265,68 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
     // (2) Parcourset er external_id-seedet (ikke pool_race_id/race.id). external_id != pool_race_id
     // i denne fixture, så en revert til en anden seed-kilde ville give et andet parcours.
     const meta = metaById.get(poolRaceId);
-    // season_id "s1" matcher materializerens seedRace (sæson-akse, Task 6).
-    const expected = routeStr(generateRaceStageProfiles({ id: "ignored", external_id: externalById.get(poolRaceId), race_type: meta.race_type, stages: meta.stages, season_id: "s1" }));
+    // season_id "s1" matcher materializerens seedRace (sæson-akse, Task 6); season_variant
+    // er tierens #3347-re-draw som materializeren selv rapporterer — så assertionen
+    // beskriver "det materializeren skrev", også hvis et gen-træk var nødvendigt.
+    const expected = routeStr(generateRaceStageProfiles({ id: "ignored", external_id: externalById.get(poolRaceId), race_type: meta.race_type, stages: meta.stages, season_id: "s1", season_variant: tier3Attempt }));
     assert.equal([...variants][0], expected, `pool_race ${poolRaceId}: parcours er ikke seedet på external_id+sæson`);
   }
   assert.ok(shared > 0, "mindst ét løb skal optræde i begge puljer (fan-out)");
 });
+
+// ── #3347: skrive-stien bruger PRÆCIS det træk realisme-gaten scorer ──────────
+// Gaten (raceRouteRealismScorecard) og materializeren løser re-draw-varianten med
+// samme rene funktion (resolveTierDraw). Går de fra hinanden, scorer gaten ét
+// parcours mens databasen får et andet — gaten ville være en løgn.
+test("#3347 apply: de indsatte profiler er tierens RESOLVEREDE re-draw, ikke altid attempt 0", async () => {
+  // Katalog hvor tier 3's bånd (summit ≥ 8 · M-Down ≤ 55 % · 1 fritstående ITT ·
+  // 1 brosten-i-etapeløb) er OPNÅELIGE — ellers ville hvert træk fejle og attempt
+  // altid lande på 0 (udtømt), og testen ville ikke måle det den påstår.
+  const catalog = [
+    ...[6, 5, 5, 4].map((stages, i) => ({ id: `st-${i}`, name: `Summit Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages, external_id: `ext-st-${i}`, terrain_archetype: "summit_tour" })),
+    ...[5, 4].map((stages, i) => ({ id: `cb-${i}`, name: `Cobbled Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages, external_id: `ext-cb-${i}`, terrain_archetype: "cobbled_tour" })),
+    ...Array.from({ length: 3 }, (_, i) => ({ id: `itt-${i}`, name: `Chrono ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-itt-${i}`, terrain_archetype: "itt_classic" })),
+    ...Array.from({ length: 30 }, (_, i) => ({ id: `hc-${i}`, name: `Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-hc-${i}`, terrain_archetype: "hilly_classic" })),
+  ];
+  const metaById = new Map(catalog.map((c) => [c.id, c]));
+  const league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
+  const mgr = (id) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: 4 });
+  const teams = [mgr("a1"), mgr("a2"), mgr("a3")];
+
+  // Deterministisk søgning efter en sæson hvis kanoniske træk bryder båndene — netop
+  // det tilfælde #3347 handler om. Generatoren er deterministisk, så listen er stabil.
+  let hit = null;
+  for (let i = 0; i < 12 && !hit; i++) {
+    const seasonId = `s-3347-${i}`;
+    const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
+    const summary = await materializeTierCalendars({ supabase: sb, seasonId, seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
+    const draw = summary.tiers.find((t) => t.tier === 3)?.realismDraw;
+    if (draw && draw.attempt > 0 && !draw.exhausted) hit = { seasonId, sb, draw };
+  }
+  assert.ok(hit, "fandt ingen sæson hvor det kanoniske træk brød båndene — fixturen måler ikke re-draw-stien");
+  assert.ok(hit.draw.firstDrawFailures.length > 0, "et re-draw skal kunne begrundes med det kanoniske træks brud");
+
+  // Hver persisteret profil-række skal matche generatoren MED tierens variant — og
+  // IKKE attempt 0. Gør den det, er skrive-stien og gaten beviseligt samme træk.
+  const racesById = new Map(hit.sb.state.races.map((r) => [r.id, r]));
+  const persisted = new Map();
+  for (const p of hit.sb.state.race_stage_profiles) {
+    const poolRaceId = racesById.get(p.race_id).pool_race_id;
+    if (!persisted.has(poolRaceId)) persisted.set(poolRaceId, []);
+    persisted.get(poolRaceId).push(p);
+  }
+  assert.ok(persisted.size > 0);
+  let differsFromCanonical = 0;
+  for (const [poolRaceId, rows] of persisted) {
+    const meta = metaById.get(poolRaceId);
+    const seed = { id: "ignored", external_id: meta.external_id, race_type: meta.race_type, stages: meta.stages, terrain_archetype: meta.terrain_archetype, season_id: hit.seasonId };
+    const withVariant = generateRaceStageProfiles({ ...seed, season_variant: hit.draw.attempt });
+    assert.deepEqual(rows.map(routeStr2), withVariant.map(routeStr2), `pool_race ${poolRaceId}: persisteret parcours ≠ det resolverede træk`);
+    if (JSON.stringify(generateRaceStageProfiles(seed).map(routeStr2)) !== JSON.stringify(withVariant.map(routeStr2))) differsFromCanonical++;
+  }
+  assert.ok(differsFromCanonical > 0, "re-drawet skal faktisk ændre mindst ét løbs parcours ift. attempt 0");
+});
+const routeStr2 = (p) => `${p.stage_number}:${p.profile_type}|${p.finale_type ?? ""}|${p.distance_km}`;
 
 test("apply: arketype driver parcours (cobbled_classic endagsløb → brosten dominerer)", async () => {
   const catalog = tier3Catalog().map((c) => ({ ...c, external_id: `ext-${c.id}`, terrain_archetype: c.race_type === "stage_race" ? "mountain_tour" : "cobbled_classic" }));
