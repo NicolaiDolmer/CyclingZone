@@ -171,6 +171,7 @@ const SECTION_DEFS = [
     blocks: [
       { id: "seasonFlow", kind: "steps" },
       { id: "racesAndResults", kind: "text" },
+      { id: "finalKilometre", kind: "text" },
       { id: "prizeMoney", kind: "text" },
       { id: "divisionBonus", kind: "textRows" },
       { id: "raceLibrary", kind: "text" },

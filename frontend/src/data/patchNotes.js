@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.97",
+    "date": "2026-08-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The Final Kilometre: a 90-second finish-line replay",
+          "body": "Open any race with a finished stage and the top of the page now replays its last stretch: a big countdown ticks down to the line, then riders click into the finish order one at a time, with a photo finish marker whenever the gap is under a second. It's built entirely from the result data already on the page (finish gaps, breakaway flags), so it works for stage races and one-day races alike, and a Replay button lets you watch it again, even hours after the race finished. If a race is missing the older breakaway or moment data, or your device prefers reduced motion, you just see the final result directly."
+        },
+        "da": {
+          "title": "Den sidste kilometer: en 90-sekunders målgangs-genafspilning",
+          "body": "Åbn et løb med en kørt etape, og toppen af siden afspiller nu dets sidste stykke: en stor nedtælling tikker ned mod stregen, og ryttere klikker derefter ind i målrækkefølgen én ad gangen, med en fotofinish-markering når gabet er under et sekund. Den er bygget udelukkende af resultatdata der allerede er på siden (tidsgab, udbruds-flag), så den virker for både etapeløb og endagsløb, og en Afspil igen-knap lader dig se den om, selv timer efter at løbet sluttede. Mangler et løb den ældre udbruds- eller momentdata, eller foretrækker din enhed reduceret bevægelse, ser du bare slutresultatet direkte."
+        },
+        "refs": [3396]
+      }
+    ]
+  },
+  {
     "version": "7.96",
     "date": "2026-08-05",
     "label": "Beta",
