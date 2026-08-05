@@ -107,9 +107,6 @@
       "race_entries": 7,
       "race_stage_profiles": 2
     },
-    "backend\\scripts\\boardFormationGoalsBackfill.js": {
-      "riders": 1
-    },
     "backend\\scripts\\boardIdentityBackfillDryRun.js": {
       "riders": 1
     },

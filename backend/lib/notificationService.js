@@ -331,7 +331,7 @@ async function defaultFetchParticipatingManagers({ supabase, raceId }) {
       .eq("rider.team.is_frozen", false)
       .order("id", { ascending: true }));
   } catch (error) {
-    throw new Error(`Could not load participating managers for race ${raceId}: ${error.message}`);
+    throw new Error(`Could not load participating managers for race ${raceId}: ${error.message}`, { cause: error });
   }
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
 }
