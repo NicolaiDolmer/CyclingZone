@@ -301,6 +301,10 @@
       "notifications": {
         "title": "Achievement-notifikationer",
         "text": "Når du låser et achievement op, modtager du en besked i Indbakken med achievement-ikonet og titlen. Dine låste achievements vises på din manager-profil."
+      },
+      "careerFirsts": {
+        "title": "Karriere-milepæle",
+        "text": "Spillet holder styr på karriere-milepæle for hver rytter: første sejr, første podie, første klassifikationstrøje, og klub-milepæle som en 25. sejr i dine farver. Det detekteres automatisk ud fra løbsresultater, vises som et momentkort på dit dashboard og på løbssiden, og bliver stående for altid på rytterens egen profil under Palmarès-fanen."
       }
     },
     "watchlist": {

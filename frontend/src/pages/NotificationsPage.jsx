@@ -81,6 +81,11 @@ const TYPE_CONFIG = {
   // #3334: chefscout-skift-forklaring — ingen enkelt rytter at linke til
   // (rammer HELE holdets rapporter), så CTA'en er Scouting-centralen.
   scout_changed:             { Icon: SearchIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/scouting" },
+  // #3398 (Maiden Win Engine): career-firsts (maiden win/første podium/første
+  // trøje/klub-milepæl). Fallback-link er /resultater — metadata.riderId
+  // (altid sat når rytteren har et hold) overstyrer med rytterprofilen via
+  // #1486-reglen ovenfor.
+  career_milestone:          { Icon: TrophyIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/resultater" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };

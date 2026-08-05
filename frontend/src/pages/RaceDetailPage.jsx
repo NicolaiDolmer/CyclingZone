@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { Link, useParams, useSearchParams, useLocation } from "react-router";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
+import CareerFirstMomentRow from "../components/CareerFirstMomentRow";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
 import StageRoleMatrix from "../components/race/StageRoleMatrix.jsx";
 import StageStripe from "../components/race/StageStripe.jsx";
@@ -190,6 +191,7 @@ export default function RaceDetailPage() {
   const [schedule, setSchedule] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [moments, setMoments] = useState([]);
+  const [careerEvents, setCareerEvents] = useState([]);
   const [passages, setPassages] = useState([]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
@@ -309,6 +311,14 @@ export default function RaceDetailPage() {
       .select("id, stage_number, moment_key, params, significance, rider_ids, team_ids")
       .eq("race_id", raceId);
 
+    // #3398 (Maiden Win Engine): career-firsts for DETTE løb (maiden win/første
+    // podium/første trøje/klub-milepæl). Samme degradér-ærligt-mønster —
+    // tabellen committes som .sql men anvendes først af ejeren POST-merge.
+    const careerEventsPromise = supabase
+      .from("rider_career_events")
+      .select("id, event_type, rider_id, rider_name, team_name, params, significance")
+      .eq("race_id", raceId);
+
     // Sub-2 (#2770): passage-detaljer (KOM/mellemsprint-krydsninger) pr. etape.
     // Samme degradér-ærligt-mønster som incidents/moments ovenfor — tabellen
     // committes som .sql men anvendes først af ejeren POST-merge. fetchAllRows
@@ -326,14 +336,17 @@ export default function RaceDetailPage() {
       return [];
     });
 
-    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, { data: momentRows, error: momentsError }, passageRows] = await Promise.all([
-      myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise, momentsPromise, passagesPromise,
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, { data: momentRows, error: momentsError }, { data: careerEventRows, error: careerEventsError }, passageRows] = await Promise.all([
+      myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise, momentsPromise, careerEventsPromise, passagesPromise,
     ]);
     if (incidentsError) {
       console.warn("race_incidents fetch failed (table may not be migrated yet):", incidentsError.message);
     }
     if (momentsError) {
       console.warn("race_stage_moments fetch failed (table may not be migrated yet):", momentsError.message);
+    }
+    if (careerEventsError) {
+      console.warn("rider_career_events fetch failed (table may not be migrated yet):", careerEventsError.message);
     }
 
     setMyTeamId(myTeamId);
@@ -343,6 +356,7 @@ export default function RaceDetailPage() {
     setSchedule(scheduleRows ?? []);
     setIncidents(incidentRows ?? []);
     setMoments(momentRows ?? []);
+    setCareerEvents(careerEventRows ?? []);
     setPassages(passageRows ?? []);
     setLoading(false);
   }, [raceId]);
@@ -606,6 +620,18 @@ export default function RaceDetailPage() {
             ))}
           </div>
         </section>
+
+        {/* #3398 (Maiden Win Engine): career-first-momentkort for DETTE løb —
+            placeret UNDER hero'en, over StageStripen, så det er synligt uanset
+            hvilken etape-fane der er valgt (momenterne er hele-løbs-begivenheder,
+            ikke etape-scopede tabs). Renderer intet uden data. */}
+        {careerEvents.length > 0 && (
+          <div className="mt-5 bg-cz-card border border-cz-border rounded-cz p-4">
+            {careerEvents.map((event) => (
+              <CareerFirstMomentRow key={event.id} event={event} t={t} showRaceLink={false} />
+            ))}
+          </div>
+        )}
 
         {/* StageStripe: placeret mellem kort og indhold (ikke i kortets bund) — den er
             sidens primære sub-navigation for etapeløb (kommende-etape-vælger eller

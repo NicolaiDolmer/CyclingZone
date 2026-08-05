@@ -413,6 +413,24 @@
       "title": "Ny spejder, rapporter genberegnet",
       "message": "{scoutName} vurderer nu dine ryttere. Eksisterende scoutingrapporter genberegnes efter hans/hendes præcision, men dine rytteres faktiske evner er uændrede."
     },
+    "careerMilestone": {
+      "maidenWin": {
+        "title": "Første sejr",
+        "message": "{rider} vandt sin første professionelle sejr: {race}."
+      },
+      "firstPodium": {
+        "title": "Første podie",
+        "message": "{rider} nåede sit første karriere-podie: {race}."
+      },
+      "firstJersey": {
+        "title": "Første klassifikationstrøje",
+        "message": "{rider} vandt sin første klassifikationstrøje: {race}."
+      },
+      "clubMilestoneWin": {
+        "title": "Klub-milepæl",
+        "message": "Klubben har lige noteret sejr nummer {count}, takket være {rider}."
+      }
+    },
     "sponsorPaid": {
       "seasonStart": {
         "title": "Sponsorudbetaling",

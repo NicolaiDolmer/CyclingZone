@@ -227,6 +227,7 @@
       "loadError": "Resultaterne kunne ikke hentes lige nu."
     },
     "palmares": {
+      "careerFirstsTitle": "Karriere-milepæle",
       "trophyTitle": "Trofæskab",
       "trophy": {
         "gcWins": "GC-sejre",

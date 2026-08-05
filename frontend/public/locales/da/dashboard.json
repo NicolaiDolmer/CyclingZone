@@ -110,7 +110,26 @@
       "firstRaceIntro": "Kørt mens du var væk. Sådan gik det.",
       "firstRaceIntroAt": "Afsluttet {time} mens du var væk. Sådan gik det.",
       "firstRaceCta": "Læs hele løbshistorien",
-      "firstRaceNext": "Næste løb: {race}, {count, plural, one {om # dag} other {om # dage}}"
+      "firstRaceNext": "Næste løb: {race}, {count, plural, one {om # dag} other {om # dage}}",
+      "confettiTitleGc": "Sammenlagt vundet!",
+      "confettiTitleRace": "Løb vundet!"
+    },
+    "maidenWin": {
+      "title": "Karriereøjeblikke",
+      "unknownRider": "Din rytter",
+      "viewRace": "Se løbet →",
+      "headline": {
+        "maidenWin": "Første sejr",
+        "firstPodium": "Første podie",
+        "firstJersey": "Første trøje",
+        "clubMilestoneWin": "Klub-milepæl"
+      },
+      "body": {
+        "maidenWin": "vinder sin første professionelle sejr i klubfarver: {race}",
+        "firstPodium": "når sit første karriere-podie: {race}",
+        "firstJersey": "vinder sin første klassifikationstrøje: {race}",
+        "clubMilestoneWin": "bringer sejr nummer {count} hjem for {team}"
+      }
     },
     "auctions": {
       "title": "Aktive Auktioner",
