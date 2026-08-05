@@ -211,13 +211,15 @@ test("resolveTrainingModifier: easy rammer aldrig tilbageslag", () => {
 
 test("focusTrainability: climber (uden sekundær type) — signatur-fokus er 'strength', modsat fokus er 'blocked'", () => {
   const t = focusTrainability("climber");
-  // climber weights: climbing:3, tempo:2, punch:1, endurance:1, sprint:-2, acceleration:-1, flat:-1
+  // #3325: climber weights: climbing:3, tempo:2, punch:1, endurance:1, sprint:-1
+  // (acceleration/flat-straffen fjernet — se riderTypes.js's #3325-kommentar: den
+  // fungerede som en generisk "ikke-sprinter"-bonus under caps-klassifikationen).
   assert.equal(t.vo2max, "strength");    // climbing+punch+tempo alle positive (factor 1.0)
   assert.equal(t.threshold, "strength"); // tempo positiv (time_trial neutral 0.45)
-  assert.equal(t.sprint, "blocked");     // sprint(-2) og acceleration(-1) begge negative → factor 0.12 (oppositeFactor), laveste tier
+  assert.equal(t.sprint, "limited");     // sprint(-1)→0.12, acceleration uvægtet→0.45 — blanding, ikke alle ≤0.12 (#3325: var 'blocked' da acceleration også var -1)
   assert.equal(t.endurance, "strength"); // endurance positiv
   assert.equal(t.technique, "limited");  // descending/positioning/cobblestone alle neutrale (factor 0.45)
-  assert.equal(t.aero, "limited");       // time_trial neutral (0.45), flat(-1) negativ (0.12) — blanding, ikke alle ≤0.12
+  assert.equal(t.aero, "limited");       // time_trial neutral (0.45), flat uvægtet→0.45 (#3325: var negativ)
 });
 
 test("focusTrainability: sprinter (uden sekundær type) — sprint-fokus 'strength', vo2max/threshold 'limited' (ingen blocked)", () => {
@@ -263,11 +265,15 @@ test("focusTrainability: #3195 — sekundær type rescuer et fokus primærtypen 
   assert.equal(withSecondary.sprint, "strength");
 });
 
-test("focusTrainability: #3195 — ÆGTE modsat i BÅDE primær og sekundær forbliver 'blocked' (ingen falsk rescue)", () => {
-  // climber (sprint:-2) + puncheur (sprint:-1) — begge typer straffer sprint,
-  // ingen sekundær-rescue skal forekomme.
+test("focusTrainability: #3195 — ÆGTE modsat i BÅDE primær og sekundær forbliver 'limited', ingen falsk 'strength'-rescue", () => {
+  // #3325: climber (sprint:-1) + puncheur (sprint:-1) — begge typer straffer sprint
+  // (factor 0.12), MEN ingen af dem vægter acceleration længere (factor 0.45,
+  // neutral) — så mixet lander på 'limited', ikke 'blocked' (var 'blocked' før
+  // #3325, da climber også straffede acceleration). Pointen (ingen falsk RESCUE
+  // til 'strength' fra en sekundær-type der ikke burde redde fokusset) holder
+  // stadig — puncheur redder ikke sprint til 'strength'.
   const t = focusTrainability("climber", "puncheur");
-  assert.equal(t.sprint, "blocked");
+  assert.equal(t.sprint, "limited");
 });
 
 test("focusTrainability: matcher youthRoleFactor-tierne direkte (forward-guard mod ny model-drift)", () => {

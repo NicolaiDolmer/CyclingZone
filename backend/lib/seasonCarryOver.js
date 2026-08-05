@@ -46,6 +46,15 @@
  *
  * Bevidst IKKE her: sletning, reparation eller omskrivning af managerens data.
  * Fasen er ren tilføjelse (COPY) eller ren optælling (REVALIDATE).
+ *
+ * OPFØLGNING (2026-08-05, bredere audit af #2916 før S2→S3-skiftet 23/8):
+ * `team_race_strategy` blev ikke fanget af forward-guard-scanneren dengang —
+ * tabellen har ingen `season_id`-kolonne, så den matcher ikke scannerens
+ * "sæson-scoped ejer-tabel"-mønster. Men `target_race_ids`-feltet INDEHOLDER
+ * sæson-scopede værdier (race_id'er), og disse går lige så lydløst i stykker
+ * som `rider_peak_plans.target_race_id`. Scanneren finder stadig kun tabeller
+ * hvor season_id er en KOLONNE — en tabel med sæson-scopede JSONB-referencer
+ * er fortsat et manuelt audit-punkt, ikke noget CI fanger automatisk.
  */
 
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
@@ -96,6 +105,16 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     table: "board_profiles",
     disposition: CARRY_OVER_DISPOSITION.RESET_BY_DESIGN,
     why: "Bestyrelsesplanen forhandles på ny hver sæson (negotiation_status → pending). Det ER spilmekanikken, ikke et tab af opsætning.",
+  },
+  {
+    table: "team_race_strategy",
+    disposition: CARRY_OVER_DISPOSITION.REVALIDATE,
+    why: "Ikke sæson-scoped i skemaet (PK=team_id), så a_chain/captain_priorities overlever skiftet af sig selv og roster-filtreres allerede ved læsning (raceStrategy.normalizeStrategy filtrerer mod rosterIds). Men target_race_ids peger på konkrete race_id'er, som ER sæson-scoped — raceEntryGenerator's isTargetRace-tjek matcher aldrig et race_id fra en afsluttet sæson, så holdets 'prioritér dette løb'-valg forsvinder lydløst uden fejl (samme mønster som rider_peak_plans, blot i en tabel scanneren ikke fanger fordi den mangler season_id). Verificeret i prod 2026-08-05: 44 af 115 target_race_ids-referencer peger allerede på S1-løb efter S1→S2-skiftet 27/7. Vi tæller; sletning er ejer-gated.",
+  },
+  {
+    table: "team_rider_role_rules",
+    disposition: CARRY_OVER_DISPOSITION.PERSISTS,
+    why: "Faste rytter-rolle-regler (always_captain m.fl.) er team+rider-scoped UDEN season_id og overlever skiftet af sig selv. Konsumeres kun via raceStrategy.normalizeStrategy, som allerede filtrerer mod rosterIds — en afgået rytters regel forsvinder automatisk ved læsning, uafhængigt af sæsonskiftet. Med i registret så nogen ikke fejlagtigt tilføjer season_id uden en COPY-handler.",
   },
 
   // ── Motor-output / ledgere (ingen manager-opsætning) ──────────────────────
@@ -454,6 +473,76 @@ export async function revalidateManualRaceEntries({
   return stats;
 }
 
+// ─── Flade 4: team_race_strategy.target_race_ids (REVALIDATE) ─────────────────
+
+/**
+ * Tæl target_race_ids i team_race_strategy der peger på et race_id uden for
+ * den nye sæson (stale_refs — dækker både "løb fra en afsluttet sæson" og
+ * "løb slettet") eller i en anden pulje end holdet (wrong_pool_refs). Styrer
+ * raceEntryGenerator.buildAutopickPreferences' isTargetRace-flag. Rører intet
+ * — a_chain/captain_priorities/role_rules har intet behov for dette, de er
+ * allerede roster-filtreret ved læsning (raceStrategy.normalizeStrategy).
+ */
+export async function revalidateTargetRaceIds({
+  supabase,
+  toSeasonId,
+  humanTeams = null,
+}) {
+  const teams = humanTeams ?? (await loadHumanTeams(supabase));
+  const teamById = new Map(teams.map((t) => [t.id, t]));
+
+  const rows = await fetchAllRows(() =>
+    supabase
+      .from("team_race_strategy")
+      .select("team_id, target_race_ids")
+      .order("team_id", { ascending: true })
+  );
+
+  const races = await fetchAllRows(() =>
+    supabase
+      .from("races")
+      .select("id, league_division_id")
+      .eq("season_id", toSeasonId)
+      .order("id", { ascending: true })
+  );
+  const raceById = new Map(races.map((r) => [r.id, r]));
+
+  const stats = {
+    checked_teams: 0,
+    checked_refs: 0,
+    stale_refs: 0,
+    wrong_pool_refs: 0,
+    teams_affected: 0,
+  };
+  const affected = new Set();
+  for (const row of rows) {
+    const team = teamById.get(row.team_id);
+    if (!team) continue; // ikke et menneskehold
+    const targetIds = Array.isArray(row.target_race_ids) ? row.target_race_ids : [];
+    if (targetIds.length === 0) continue;
+    stats.checked_teams += 1;
+    for (const raceId of targetIds) {
+      stats.checked_refs += 1;
+      const race = raceById.get(raceId);
+      if (!race) {
+        stats.stale_refs += 1;
+        affected.add(team.id);
+        continue;
+      }
+      if (
+        race.league_division_id != null &&
+        team.league_division_id != null &&
+        race.league_division_id !== team.league_division_id
+      ) {
+        stats.wrong_pool_refs += 1;
+        affected.add(team.id);
+      }
+    }
+  }
+  stats.teams_affected = affected.size;
+  return stats;
+}
+
 // ─── Orkestrering ─────────────────────────────────────────────────────────────
 
 /** Hvilke registry-tabeller har en implementeret handler i denne fil? */
@@ -461,6 +550,7 @@ const IMPLEMENTED_HANDLERS = Object.freeze([
   "training_plans",
   "rider_peak_plans",
   "race_entries",
+  "team_race_strategy",
 ]);
 
 /**
@@ -525,7 +615,7 @@ export async function carryOverManagerSetup({
     });
   }
 
-  // Ét fælles hold-/rytter-load deles af alle tre flader (i stedet for tre
+  // Ét fælles hold-load deles af alle fire flader (i stedet for fire
   // separate scans af de samme ~1.500 rækker).
   const humanTeams = await loadHumanTeams(supabase);
   const ridersByTeam = await loadRidersForTeams(
@@ -552,6 +642,12 @@ export async function carryOverManagerSetup({
   });
 
   surfaces.race_entries = await revalidateManualRaceEntries({
+    supabase,
+    toSeasonId,
+    humanTeams,
+  });
+
+  surfaces.team_race_strategy = await revalidateTargetRaceIds({
     supabase,
     toSeasonId,
     humanTeams,
