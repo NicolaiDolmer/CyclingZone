@@ -5,7 +5,7 @@
 export const PATCHES = [
   {
     "version": "7.95",
-    "date": "2026-08-04",
+    "date": "2026-08-05",
     "label": "Beta",
     "changes": [
       {
@@ -49,6 +49,48 @@ export const PATCHES = [
           "body": "Division 2 var to tredjedele etapeløb med næsten ingen brosten: ét løb pr. gruppe for hele sæsonen. Fra næste sæsons kalender-generering sigter kalenderen mod en nogenlunde jævn fordeling mellem endagsløb og etapeløb, brostens-klassikere får en reel tilstedeværelse, og etapeløbs-længde følger nu klassen: ProSeries forbliver kort (3-5 dage), WorldTour-løb kører længere (6-8 dage) og betaler mere pr. løbsdag. Det ændrer HVORDAN kalenderen bygges, ikke den igangværende sæson, så du ser det næste gang din divisions kalender genereres."
         },
         "refs": [3327, 3328]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Promoted academy riders keep the contract they already had",
+          "body": "When you promoted a rider out of your academy, the game overwrote his existing contract with a shorter one: three seasons became two, and his wage was recalculated. That is fixed, and we found the same bug hiding in a second place. We have also repaired the riders it already hit: 32 contracts are back to their correct length. Without that repair they would have been released as free agents at the season change, even though you thought you had them for another season. One thing we could not restore: the wage that was overwritten is not recorded anywhere, so it stays as it is."
+        },
+        "da": {
+          "title": "Forfremmede akademiryttere beholder den kontrakt de allerede havde",
+          "body": "Når du forfremmede en rytter ud af dit akademi, overskrev spillet hans eksisterende kontrakt med en kortere: tre sæsoner blev til to, og lønnen blev genberegnet. Det er rettet, og vi fandt den samme fejl gemt et sted mere. Vi har også repareret de ryttere den allerede nåede at ramme: 32 kontrakter er tilbage på deres rigtige længde. Uden den reparation ville de være blevet frigivet som fri agenter ved sæsonskiftet, selvom du troede du havde dem en sæson mere. Én ting kunne vi ikke genskabe: den overskrevne løn er ikke gemt nogen steder, så den bliver stående."
+        },
+        "refs": [2881]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race reports are no longer lost when the standings hiccup",
+          "body": "If the standings recalculation failed after a stage, the whole race report for that stage was thrown away with it: headline, badges and the moments that decided the day. Twenty stages across fifteen races were already affected, and those cannot be recovered. From now on the report survives even if the standings need a retry."
+        },
+        "da": {
+          "title": "Løbsrapporter går ikke længere tabt når stillingen hikker",
+          "body": "Hvis genberegningen af stillingen fejlede efter en etape, røg hele etapens løbsrapport med i faldet: overskrift, badges og de momenter der afgjorde dagen. Tyve etaper fordelt på femten løb nåede at blive ramt, og dem kan vi ikke få tilbage. Fremover overlever rapporten, også hvis stillingen skal prøve igen."
+        },
+        "refs": [2877]
+      },
+      {
+        "category": "fixed",
+        "audience": "internal",
+        "topic": "Platform",
+        "en": {
+          "title": "Result table can now enforce its own correctness",
+          "body": "The results table had no rule preventing the same entrant appearing twice in a stage, and a write could leave half a result behind if it failed midway. It now has a uniqueness rule and writes all-or-nothing. Verified against all 710,397 existing rows with zero conflicts. Also landed: a checked-in registry for the background-job monitors, three more scorecards covered by the exit-code guard, and a development script that no longer prints a login token to the terminal."
+        },
+        "da": {
+          "title": "Resultat-tabellen kan nu håndhæve sin egen korrekthed",
+          "body": "Resultat-tabellen havde ingen regel mod at samme deltager optrådte to gange i en etape, og en skrivning kunne efterlade et halvt resultat hvis den fejlede undervejs. Den har nu en unikhedsregel og skriver alt-eller-intet. Verificeret mod alle 710.397 eksisterende rækker uden en eneste konflikt. Også landet: et checked-in register over baggrundsjobbenes overvågning, tre flere scorecards dækket af exit-code-vagten, og et udviklings-script der ikke længere printer en login-token i terminalen."
+        },
+        "refs": [3022, 1847, 2892, 3009, 3342]
       }
     ]
   },
