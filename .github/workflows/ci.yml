@@ -219,6 +219,33 @@ jobs:
       - name: Run pagination guard
         run: node scripts/lint-pagination-guard.mjs
 
+  fetchallrows-order-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard: every fetchAllRows(...) call MUST carry a stable .order()
+    # (#3391). fetchAllRows (backend/lib/supabasePagination.js) pages through a
+    # table with .range() — without a stable, unique sort, PostgREST can return
+    # rows in a different order between pages: SILENT data loss (rows
+    # duplicated or dropped across pages), not a thrown error. Same bug class
+    # cost 88%/38% data loss in #2951/#2962; #3391 found 15 call sites still
+    # violating the contract (a comment-only requirement drifts). No opt-out —
+    # a fetchAllRows(...) call has no legitimate reason to omit .order().
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test fetchAllRows order guard
+        run: node --test scripts/check-fetchallrows-order.test.mjs
+
+      - name: Run fetchAllRows order guard
+        run: node scripts/check-fetchallrows-order.mjs
+
   getuser-guard:
     runs-on: ubuntu-latest
     permissions:

@@ -210,7 +210,7 @@ export async function runAcademyIntake(supabase, {
 
   // ── Idempotens: find allerede-seedede hold for denne sæson ───────────────────
   const seededRows = await fetchAllRows(() =>
-    supabase.from("academy_intake").select("team_id").eq("season_id", season.id)
+    supabase.from("academy_intake").select("team_id").eq("season_id", season.id).order("id")
   );
   const seededTeamIds = new Set(seededRows.map((r) => r.team_id));
 
@@ -327,7 +327,7 @@ export async function runAcademyIntakeForTeam(supabase, teamId, {
   // fik sit kuld før markøren fandtes (eller et samtidigt kald der vandt racen).
   // Sæt blot markøren — dobbelt-seed aldrig.
   const existing = await fetchAllRows(() =>
-    supabase.from("academy_intake").select("id").eq("team_id", teamId).eq("season_id", season.id)
+    supabase.from("academy_intake").select("id").eq("team_id", teamId).eq("season_id", season.id).order("id")
   );
   if (existing.length > 0) {
     await setAcademyMarker(supabase, teamId, now().toISOString());

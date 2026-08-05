@@ -76,6 +76,8 @@ function makeIntakeSupabase({
         const api = {
           select() { return api; },
           eq(col, val) { eqFilters[col] = val; return api; },
+          // #3391: fetchAllRows kræver en stabil .order() i kæden.
+          order() { return api; },
           // fetchAllRows bruger .range()
           range() {
             let rows = academyIntakeTeamIds.map((team_id) => ({ team_id }));

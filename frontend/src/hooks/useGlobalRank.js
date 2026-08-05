@@ -31,9 +31,9 @@ export function useGlobalRank() {
           .from("global_rank_mv").select("*")
           .order("global_rank", { ascending: true, nullsFirst: false })),
         fetchAllRows(() => supabase
-          .from("global_rank_weekly_snapshot").select("team_id, global_rank")),
+          .from("global_rank_weekly_snapshot").select("team_id, global_rank").order("team_id")),
         fetchAllRows(() => supabase
-          .from("global_rank_season_start_snapshot").select("team_id, global_rank")),
+          .from("global_rank_season_start_snapshot").select("team_id, global_rank").order("team_id")),
       ]);
 
       const weeklyRankByTeam = new Map((weeklyData || []).map(s => [s.team_id, n(s.global_rank)]));

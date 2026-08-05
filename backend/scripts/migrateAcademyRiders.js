@@ -37,7 +37,7 @@ async function main() {
 
   // Nuværende afledte evner (FØR) til sammenligning.
   const curAb = await fetchAllRows(() => supabase.from("rider_derived_abilities")
-    .select(["rider_id", ...PHYS].join(", ")).in("rider_id", riders.map((r) => r.id)));
+    .select(["rider_id", ...PHYS].join(", ")).in("rider_id", riders.map((r) => r.id)).order("rider_id"));
   const curByRider = new Map(curAb.map((a) => [a.rider_id, a]));
 
   // Beregn foreslåede nye stats + (lokalt afledte) nye evner — INGEN writes.

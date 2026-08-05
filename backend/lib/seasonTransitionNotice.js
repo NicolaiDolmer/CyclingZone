@@ -79,6 +79,7 @@ async function defaultFetchHumanTeamRiskRows({ supabase, activeSeasonNumber }) {
       .eq("is_frozen", false)
       .eq("is_test_account", false)
       .not("user_id", "is", null)
+      .order("id")
   );
   const teamById = new Map(teams.map((t) => [t.id, t]));
   if (teamById.size === 0) return [];
@@ -90,6 +91,7 @@ async function defaultFetchHumanTeamRiskRows({ supabase, activeSeasonNumber }) {
       .eq("is_academy", false)
       .eq("is_retired", false)
       .in("team_id", [...teamById.keys()])
+      .order("id")
   );
 
   const byTeam = new Map();

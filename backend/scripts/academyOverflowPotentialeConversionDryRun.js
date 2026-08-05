@@ -108,7 +108,8 @@ export async function computeAcademyOverflowConversionPlan({ supabase, model = r
       .from("auctions")
       .select("rider_id, current_price, starting_price")
       .not("expired_intake_team_id", "is", null)
-      .eq("status", "completed"));
+      .eq("status", "completed")
+      .order("id"));
   const riderIds = auctionRows.map((a) => a.rider_id);
   if (riderIds.length === 0) {
     log("Ingen fuldførte akademi-udløbs-auktioner fundet.");
@@ -120,9 +121,9 @@ export async function computeAcademyOverflowConversionPlan({ supabase, model = r
   const abilityCols = ["rider_id", "ability_caps", "hidden_potential", ...VISIBLE_ABILITIES].join(", ");
 
   const riderRows = await fetchAllRows(() =>
-    supabase.from("riders").select(riderCols).in("id", riderIds).is("generation_tag", null));
+    supabase.from("riders").select(riderCols).in("id", riderIds).is("generation_tag", null).order("id"));
   const abilityRows = await fetchAllRows(() =>
-    supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderRows.map((r) => r.id)));
+    supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderRows.map((r) => r.id)).order("rider_id"));
   const abilitiesById = new Map(abilityRows.map((a) => [a.rider_id, a]));
 
   log(`Kohorte (legacy akademi-overflow, generation_tag NULL, solgt via udløbs-auktion): ${riderRows.length}`);
