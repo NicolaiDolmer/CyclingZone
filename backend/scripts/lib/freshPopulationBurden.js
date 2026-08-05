@@ -56,9 +56,20 @@ export function computeFreshSalaryBurden() {
   const { assignments, leftToMarket, stats } = allocateStarterSquads(pool, teamIds);
   const byId = new Map(pool.map((p) => [p.id, p]));
 
+  // #2594 omskrev computeFrozenSalary til at læse current_production_value; dette
+  // kaldested blev aldrig fulgt med og sendte stadig { base_value }. Feltet blev
+  // dermed undefined, faldt tilbage på CONTRACT.BASE_VALUE_FALLBACK (1000), og
+  // HVER rytter fik samme løn: 1000 × global SALARY_RATE = 161 CZ$, altså 1.288
+  // CZ$ pr. 8-mands trup i alle divisioner. Symptomet var synligt i outputtet
+  // (min = median = mean = max) men blev læst som "populationen er homogen".
+  // Konsekvens: begge scorecards undervurderede lønbyrden med to størrelsesordener,
+  // og #3360's konklusion om 4,24x pengemængde-vækst hvilede på tallet.
+  // Ved seed er base_value === market_value === cpv (prize_earnings_bonus = 0),
+  // så base_value er den korrekte kilde her. Allokeringen er division-blind, så
+  // division udelades bevidst → global SALARY_RATE, jf. header-kommentaren.
   const burdens = teamIds.map((t) =>
     assignments[t].reduce(
-      (s, id) => s + computeFrozenSalary({ base_value: byId.get(id).base_value, prize_earnings_bonus: 0 }),
+      (s, id) => s + computeFrozenSalary({ current_production_value: byId.get(id).base_value }),
       0
     )
   );
