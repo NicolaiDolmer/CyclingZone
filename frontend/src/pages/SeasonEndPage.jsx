@@ -346,6 +346,9 @@ export default function SeasonEndPage() {
         // semantik, samme som #2891-RPC'en selv bruger for team_race_prize.
         let myStageKing = null;
         if (stageKings.length) {
+          // pagination-safe: stage_kings har LIMIT 5 i get_season_recap, så
+          // .in() slår højst 5 id'er op — provably bounded, langt under
+          // PostgREST's 1000-loft (#3331).
           const { data: kingRiders } = await supabase
             .from("riders").select("id, team_id")
             .in("id", stageKings.map(k => k.rider_id));
