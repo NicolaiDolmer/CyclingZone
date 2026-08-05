@@ -789,3 +789,30 @@ test("FIX 4: uden runSource → source=null (admin/manuel run tælles ikke i cap
   const runIns = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
   assert.ok(runIns.rows.every((row) => row.source === null), "manuel run skal have source=null");
 });
+
+// ── #2877: standings-recompute-fejl må ikke tabe etape-berigelsen permanent ────
+// stages_completed er allerede bumpet af den atomære apply_stage_result-RPC på
+// dette tidspunkt (FIX 5-låsen forhindrer re-afvikling af samme stageIndex) —
+// en uhåndteret standings-fejl her væltede FØR fixet resten af funktionen, og
+// runs/incidents/moments/fatigue blev ALDRIG skrevet. 19 etaper i 14 løb ramt i prod.
+test("#2877: standings recompute-fejl vælter IKKE — run-snapshot + fatigue skrives stadig", async () => {
+  const supabase = cannedFor();
+  let fatigueCalled = 0;
+  const result = await simulateStageByIndex({
+    supabase, race: STAGE_RACE, stageIndex: 1,
+    recomputeRaceDays: NOOP_DEPS.recomputeRaceDays,
+    processBoardWeekend: NOOP_DEPS.processBoardWeekend,
+    applyFatigue: async () => { fatigueCalled++; return { updated: 0 }; },
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {
+      const err = new Error("canceling statement due to statement timeout");
+      err.code = "57014";
+      throw err;
+    },
+  });
+  // Funktionen kaster IKKE videre — mellem-etapen afsluttes normalt.
+  assert.equal(result.isFinalStage, false);
+  const runIns = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
+  assert.ok(runIns, "#2877: run-snapshot SKAL persisteres selvom standings-recompute fejler");
+  assert.equal(fatigueCalled, 1, "#2877: applyFatigue skal stadig køre selvom standings-recompute fejler");
+});
