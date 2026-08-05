@@ -726,7 +726,7 @@ test("transitionToNextSeason — kalder renewExpiringAiContracts med den AFSLUTT
         renewArgs = args;
         return { candidates: 12, renewed: 12, failed: 0 };
       },
-      releaseExpiredContractRiders: async (args) => {
+      releaseExpiredContractRiders: async () => {
         order.push("contractRelease");
         return { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 };
       },

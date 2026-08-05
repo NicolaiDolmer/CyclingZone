@@ -19,7 +19,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
-import { applyHumanTeamFilter } from "../lib/humanTeamFilter.js";
+// Bevidst IKKE applyHumanTeamFilter: dette dry-run skal se BÅDE menneske- og
+// AI-hold (hele #1150's pointe var at AI-holdene ingen fornyelses-mulighed
+// havde), og klassificerer selv via t.is_ai. Bank/test/frosne filtreres fra i
+// fetchRealTeams — samme diskriminator som UI'et, minus is_ai.
 import { isContractExpiringAtTransition } from "../lib/squadRiskGuard.js";
 import { MIN_RIDERS_FOR_RACE } from "../lib/marketUtils.js";
 import { DIVISION_SQUAD_LIMITS } from "../lib/boardConstants.js";
