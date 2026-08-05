@@ -215,6 +215,22 @@ test("#2840 · dobbelt-kørsel samme dag trækker IKKE løn to gange", async () 
   assert.equal(salaryRows.length, 1, "præcis én løn-transaktion på tværs af begge kørsler");
 });
 
+test("#2840 · daglig løntransaktion bruger dedikeret tx.wageDaily-nøgle (ikke tx.salary)", () => {
+  // tx.salary siger "Season salaries · N riders" — misvisende for et enkelt
+  // dagstræk. tx.wageDaily ("Daily wage · N riders") gør finans-loggen
+  // korrekt læsbar, den dag mode nogensinde flippes til "daily" (se
+  // frontend/public/locales/{en,da}/backendMessages.json).
+  const teams = [{ id: "team-a" }];
+  const ridersByTeam = { "team-a": [{ id: "r1", salary: 6000 }] };
+  const { supabase, financeRows } = makeSweepMock({ teams, ridersByTeam });
+
+  return runWageDeductionSweep({ supabase, now: afterWindow("2026-08-03") }).then(() => {
+    const salaryRow = financeRows.find((r) => r.type === "salary");
+    assert.equal(salaryRow.metadata?.code, "tx.wageDaily");
+    assert.notEqual(salaryRow.metadata?.code, "tx.salary");
+  });
+});
+
 test("#2840 · idempotency_key stopper dobbelttræk selv hvis marker-tabellen springes over", async () => {
   // Simulerer at wage_daily_runs-markeringen (effektivitets-lag) af en eller
   // anden grund IKKE forhindrede et 2. forsøg (fx race mellem to sweep-ticks) —

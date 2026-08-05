@@ -1134,16 +1134,20 @@ export const SEED_PROJECTION = {
 // GET /api/me/onboarding-progress (steps[{key,done}] + completed_count/total_count
 // + dismissed/established). Den gamle mock returnerede {steps:[], completed_steps,
 // completion_pct} — en form ingen kode læser, så dashboard-kortet stod uden trin og
-// "Show me how"-knappen kunne slet ikke klikkes i preview. Trin 1 er markeret done,
-// så NÆSTE trin er træning (trin 2) og touren på /training kan startes fra kortet.
+// "Show me how"-knappen kunne slet ikke klikkes i preview.
+// #3007: trin 1 (first_bid_placed) sat til IKKE fuldført (var før "done" for at vise
+// trin 2's tour by default). Det betyder AuctionsFirstBidHint + "Første valg"-
+// anbefalingen på /auctions nu er synlig uden manuel localStorage-omgåelse, så
+// ejeren kan se den flade der rent faktisk afgør aktivering direkte i preview.
+// Ingen tests refererer denne seed (kun mockHandlers.js bruges af Playwright).
 export const SEED_ONBOARDING_PROGRESS = {
   steps: [
-    { key: "first_bid_placed", done: true },
+    { key: "first_bid_placed", done: false },
     { key: "first_training_run", done: false },
     { key: "first_squad_selected", done: false },
     { key: "board_plan_set", done: false },
   ],
-  completed_count: 1,
+  completed_count: 0,
   total_count: 4,
   dismissed: false,
   established: false,

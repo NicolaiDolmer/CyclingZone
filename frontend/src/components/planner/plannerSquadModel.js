@@ -131,6 +131,32 @@ export function paybackRiskRaceIds({ rider, races, paybackDays, currentTargetId 
 }
 
 /**
+ * Løb hvor et peak-VALG ville låse med det samme (#3094 — "straks-plaster" 1a).
+ * Peak-vinduet snappes om mål-løbet server-side (samme `snapPeakWindow` som
+ * skrive-stien, leveret færdigt som `race.peakWindow`); en peak låses ved
+ * læse-tid når `nu >= window_start` (peaket er "startet", backend/lib/
+ * riderPeakPlans.js#isPlanLocked). Vælger manageren et mål hvis vindue allerede
+ * er begyndt, er planen ALTSÅ låst i samme svar der opretter/flytter den — det
+ * er stadig den mest overraskende variant af #3094-fælden, selv efter
+ * lås-tærsklen er flyttet fra "3 dage før vinduet" til "vinduet er begyndt".
+ * Dropdownen markerer disse løb FØR valget, ligesom payback-risikoen.
+ *
+ * @param {object} args
+ * @param {Array<object>} args.races     board'ets racesOut (peakWindow pr. løb)
+ * @param {number|null} args.todayOrd
+ * @returns {Set<string>}  løb-id'er der ville give en øjeblikkeligt låst peak
+ */
+export function locksImmediatelyRaceIds({ races, todayOrd }) {
+  const risky = new Set();
+  if (todayOrd == null) return risky;
+  for (const race of races || []) {
+    const startOrd = dateToOrdinal(race?.peakWindow?.window_start);
+    if (startOrd != null && startOrd <= todayOrd) risky.add(race.id);
+  }
+  return risky;
+}
+
+/**
  * Sæson-belastning pr. rytter (#2772): hvor mange løb og løbsdage (etaper) er
  * rytteren tilmeldt henover sæsonen — auto-fyldte entries inklusive, for rytteren
  * stiller til start uanset hvem der satte ham på listen. Løbsdage = etape-antal
