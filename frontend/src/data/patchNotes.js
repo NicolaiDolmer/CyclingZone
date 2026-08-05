@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.95",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Division 2's calendar gets a real classics scene, from next season",
+          "body": "Division 2 was two-thirds stage races with almost no cobbles: one race per group for the whole season. From the next season build, the calendar targets a roughly even split between one-day races and stage races, cobbled classics get a real presence, and stage race length now tracks class: ProSeries stays a short 3-5 days, WorldTour races run longer (6-8 days) and pay out more per race day. This changes how the calendar is built, not the season in progress, so you'll see it the next time your division's calendar is generated."
+        },
+        "da": {
+          "title": "Division 2 får en rigtig klassiker-scene, fra næste sæson",
+          "body": "Division 2 var to tredjedele etapeløb med næsten ingen brosten: ét løb pr. gruppe for hele sæsonen. Fra næste sæsons kalender-generering sigter kalenderen mod en nogenlunde jævn fordeling mellem endagsløb og etapeløb, brostens-klassikere får en reel tilstedeværelse, og etapeløbs-længde følger nu klassen: ProSeries forbliver kort (3-5 dage), WorldTour-løb kører længere (6-8 dage) og betaler mere pr. løbsdag. Det ændrer HVORDAN kalenderen bygges, ikke den igangværende sæson, så du ser det næste gang din divisions kalender genereres."
+        },
+        "refs": [3327, 3328]
+      }
+    ]
+  },
+  {
     "version": "7.94",
     "date": "2026-08-04",
     "label": "Beta",
