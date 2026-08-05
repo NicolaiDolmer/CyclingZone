@@ -152,6 +152,7 @@ export const ALL_CRON_MONITORS = [
   ["email-welcome", CRON_MONITOR_5MIN],
   ["email-day1", CRON_MONITOR_60MIN],
   ["email-race-digest", CRON_MONITOR_60MIN],
+  ["discord-race-digest", CRON_MONITOR_60MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_24H],
 ];
 

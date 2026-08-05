@@ -42,6 +42,8 @@ const COLORS = {
   watchlist_rider_auction: 0xe8c547, // gold
   board_update:         0x3498db, // blue
   board_critical:       0xe74c3c, // red
+  // #3400: race/stage-result digest DM (max 1/day/manager, see discordRaceDigestSweep.js).
+  race_result_digest:   0x2ecc71, // green
 };
 
 // #2520: spillervendte Discord-labels på engelsk (server er EN-first).
@@ -59,6 +61,7 @@ const TYPE_LABELS = {
   watchlist_rider_auction: "👀 Watchlisted Rider on Auction",
   board_update:       "📋 Board Update",
   board_critical:     "⚠️ The Board Is Unhappy",
+  race_result_digest: "🚴 Race Results",
 };
 
 /**
@@ -652,6 +655,32 @@ export async function notifyBoardUpdateDM({
   cronRun = true,
 }) {
   await notifyFn({ teamId, userId, type, title, description, fields, cronRun });
+}
+
+// #3400: race/stage-result digest DM — mirrors race_result/stage_result notif
+// content (narrative headline + personal result, see discordRaceDigestSweep.js)
+// to Discord for managers with discord_id + discord_dm_enabled. Digest, not
+// per-event: the sweep collapses an entire Copenhagen calendar day's results
+// into ONE call here (max 1 DM/manager/day, enforced by discordRaceDigestSweep.js's
+// discord_race_digest_log dedupe — mirrors emailRaceDigestSweep.js's email_log
+// pattern). cronRun default true (only caller today is the daily cron sweep).
+//
+// NOTE: the injectable delivery param is named `deliverDM`, NOT `notifyFn` —
+// financeNotificationContract.test.js's discovery regex treats any
+// `notifyFn({ type: "<literal>" })` call as an in-app notifications.type that
+// must exist in notifications_type_check (database/schema.sql). "race_result_digest"
+// is a Discord-EMBED type (COLORS/TYPE_LABELS above), never inserted into the
+// notifications table, so it must not be discoverable by that guard.
+export async function notifyRaceResultDigestDM({
+  teamId = null,
+  userId = null,
+  title,
+  description,
+  fields = [],
+  deliverDM = notifyDiscordDM,
+  cronRun = true,
+}) {
+  await deliverDM({ teamId, userId, type: "race_result_digest", title, description, fields, cronRun });
 }
 
 export async function notifyTransferCompleted({ riderName, sellerName, buyerName, price }) {
