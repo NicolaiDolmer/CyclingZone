@@ -6,7 +6,7 @@ import {
   buildDigestItemLine,
   buildDigestDescriptionAndFields,
 } from "./discordRaceDigestSweep.js";
-import { copenhagenHour, copenhagenMidnightUTC } from "./copenhagenTime.js";
+import { copenhagenHour } from "./copenhagenTime.js";
 
 // July -> CEST (UTC+2). 18:15 UTC = 20:15 Copenhagen (inside the digest hour);
 // 17:15 UTC = 19:15 Copenhagen (outside it, and matches the EMAIL digest's own
@@ -110,7 +110,7 @@ test("sends a single digest DM combining a race_result item", async () => {
   const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", discord_id: "discord-1", discord_dm_enabled: true }] });
   const sendCalls = [];
   const sendDigestDM = async (args) => { sendCalls.push(args); };
-  const fetchRaceNarrative = async ({ race }) => ({ headlineText: "Krogh takes the sprint", ranksByUser: new Map([["u1", [2]]]) });
+  const fetchRaceNarrative = async ({ race: _race }) => ({ headlineText: "Krogh takes the sprint", ranksByUser: new Map([["u1", [2]]]) });
 
   const result = await runDiscordRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, sendDigestDM, fetchRaceNarrative });
 
