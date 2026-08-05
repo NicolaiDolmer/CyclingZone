@@ -10,6 +10,20 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
+        "audience": "internal",
+        "topic": "Race engine",
+        "en": {
+          "title": "Stage-race generator picks a finale style instead of always climbing to the finish",
+          "body": "The generator that builds a stage race's terrain used to sort every race the same way: sprint stages first, mountains always last. Real WorldTour races don't work like that. Calibrated against a structured count of 41 real WorldTour stage races (407 stages, 2024-2026), the generator now picks one of four finale styles per non-grand-tour race (hilly circuit, summit, sprint, time-trial), weighted to match the real distribution (hilly circuits are the most common finale, not sprints), and gives races a real, mostly non-flat opening stage. Grand tours get their own dedicated form: hardest terrain second-to-last, flat or time-trial finish, since none of the real grand tours studied ended on a mountain stage. No visible effect until the next season's calendar is built."
+        },
+        "da": {
+          "title": "Etapeløbs-generatoren vælger en finale-stil i stedet for altid at klatre til mål",
+          "body": "Generatoren der bygger et etapeløbs terræn sorterede før alle løb ens: sprint-etaper først, bjerge altid sidst. Sådan fungerer rigtige WorldTour-løb ikke. Kalibreret mod en struktureret optælling af 41 rigtige WorldTour-etapeløb (407 etaper, 2024-2026), vælger generatoren nu én af fire finale-stile pr. ikke-grand-tour-løb (kuperet kredsløb, bjerg-top, sprint, enkeltstart), vægtet mod den faktiske fordeling (kuperede kredsløb er den mest almindelige finale, ikke spurter), og giver løb en reel, overvejende ikke-flad åbningsetape. Grand tours får deres egen ordning: hårdeste terræn næstsidst, flad eller enkeltstart-afslutning, da ingen af de rigtige grand tours i undersøgelsen sluttede på en bjergetape. Ingen synlig effekt før næste sæsons kalender bygges."
+        },
+        "refs": [3326]
+      },
+      {
+        "category": "improved",
         "audience": "player",
         "topic": "Calendar",
         "en": {

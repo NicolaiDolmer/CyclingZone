@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST } from "./tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
-import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
 
@@ -230,9 +230,11 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
   const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
   assert.ok(summary.racesInserted > 0, "der skal indsættes løb");
 
-  // generator_version stemplet 4 på hver profil (#2769: pass 2 rute-berigelse wired ind).
+  // generator_version stemplet med DEN AKTUELLE GENERATOR_VERSION på hver profil (#2769:
+  // pass 2 rute-berigelse wired ind; #3326: bumpet til 5 — assert mod konstanten fremfor
+  // et hårdkodet literal, så fremtidige bumps ikke kræver en usynlig genopdatering her).
   for (const p of sb.state.race_stage_profiles) {
-    assert.equal(p.generator_version, 4);
+    assert.equal(p.generator_version, GENERATOR_VERSION);
     // Rute-felterne (pass 2) skal være persisteret på hver indsat profil-række.
     assert.equal(typeof p.distance_km, "number");
     assert.ok(Array.isArray(p.climbs));
