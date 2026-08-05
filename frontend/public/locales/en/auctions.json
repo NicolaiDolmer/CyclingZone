@@ -21,12 +21,14 @@
     }
   },
   "hint": {
-    "title": "How auctions work",
-    "minBidLabel": "Min bid:",
-    "minBidBody": "A new bid must be at least 1 CZ$ above the current bid. Min bid is pre-filled in the input field.",
+    "title": "Win the bid, the rider joins your team",
+    "body": "The rider races for you from your next squad selection onward. You are bidding against real managers, not buying at a fixed price.",
+    "minBidLabel": "Placing a bid:",
+    "minBidBody": "The input is pre-filled with the minimum, at least 1 CZ$ above the current bid. Press Bid and you are in it.",
     "autoExtendLabel": "10-min auto-extension:",
-    "autoExtendBody": "A bid that takes the lead in the last 10 minutes extends the auction, so you can respond at the very end. A bid that does not take the lead does not extend it.",
-    "startTour": "Show me around"
+    "autoExtendBody": "A bid that takes the lead in the last 10 minutes extends the auction, so no one can snipe it in the final second.",
+    "startTour": "Show me around",
+    "jumpToRecommendation": "See an affordable pick"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 recent bid} other {# recent bids}}"
@@ -130,7 +132,8 @@
     "flash": "Flash",
     "u23": "U23",
     "u25": "U25",
-    "youth": "Youth"
+    "youth": "Youth",
+    "firstBidPick": "First pick"
   },
   "bidGate": {
     "bothFull": "No room in your academy (8/8) or senior squad (30/30). Sell a rider to bid.",

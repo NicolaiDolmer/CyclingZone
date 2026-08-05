@@ -19,6 +19,8 @@ import { scoutSortValue } from "../lib/scouting";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
+import { pickFirstBidRecommendation } from "../lib/firstBidRecommendation";
+import { findVisibleTarget } from "../lib/onboardingTourTarget";
 import AuctionsSidebarFeed from "../components/AuctionsSidebarFeed";
 import OverbidToast from "../components/OverbidToast";
 import CountdownRing from "../components/CountdownRing";
@@ -181,7 +183,7 @@ function BidDestinationHint({ destination, t }) {
   );
 }
 
-function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting, seasonYear }) {
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -214,8 +216,8 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   const valueDelta = computeBidValueDelta(auction.current_price ?? 0, r);
 
   return (
-    <tr className={`group border-b border-cz-border hover:bg-cz-subtle transition-colors
-      ${imWinning ? "bg-cz-accent/[0.08]" : ""}`}>
+    <tr data-auction-row={auction.id} className={`group border-b border-cz-border hover:bg-cz-subtle transition-colors
+      ${imWinning ? "bg-cz-accent/[0.08]" : isRecommended ? "bg-cz-accent/[0.05] outline outline-1 -outline-offset-1 outline-cz-accent/40" : ""}`}>
 
       {/* Rytter — sticky left. #228: rent navn, hverken land eller alders-/
           statusbadges blandes ind i navnecellen — begge har nu egen kolonne. */}
@@ -249,6 +251,11 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
           de bor lokalt i samme kolonne. */}
       <td className="px-3 py-1.5">
         <div className="flex items-center gap-1 flex-wrap">
+          {isRecommended && !imWinning && (
+            <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap font-bold">
+              {t("auctions:badge.firstBidPick")}
+            </span>
+          )}
           {imWinning && (
             <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">
               {t("auctions:badge.winning")}
@@ -495,7 +502,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting, seasonYear }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -529,8 +536,9 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
   // var en malformet klasse (dobbelt alpha) der aldrig emitterede noget CSS.
   return (
     <Card
-      borderClass={imWinning ? "border-cz-accent/40" : "border-cz-border"}
-      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : ""}`}
+      data-auction-row={auction.id}
+      borderClass={imWinning ? "border-cz-accent/40" : isRecommended ? "border-cz-accent/40" : "border-cz-border"}
+      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : isRecommended ? "bg-cz-accent/5" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
@@ -565,6 +573,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {r?.primary_type && (
                 <span className="text-cz-3 text-xs">{t(`riderTypes:types.${r.primary_type}`)}</span>
               )}
+              {isRecommended && !imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded font-bold">{t("auctions:badge.firstBidPick")}</span>}
               {imWinning && <span className="text-3xs uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.winning")}</span>}
               {isSeller && <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.seller")}</span>}
               {auction.status === "extended" && <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
@@ -881,6 +890,10 @@ export default function AuctionsPage() {
   const [firstBidDismissed, setFirstBidDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-first-bid-shown") === "1",
   );
+  // #3007: id manageren pegede på ("Se en rytter jeg har råd til") — venter til
+  // filter/sort er skiftet og rækken faktisk er i DOM'et, så useEffect nedenfor
+  // kan scrolle til den i stedet for at ramme et element der endnu ikke findes.
+  const [scrollToAuctionId, setScrollToAuctionId] = useState(null);
   // #196: realtime UX — recentBidEvents driver både ticker og sidebar-feed,
   // flashingAuctionIds driver pulse-animation, toasts vises ved overbud.
   const [recentBidEvents, setRecentBidEvents] = useState([]);
@@ -1103,6 +1116,24 @@ export default function AuctionsPage() {
     checkFirstBid();
   }, [firstBidDismissed]);
 
+  // #3007: kun beregnet mens hintet rent faktisk vises (manageren har ikke
+  // budt endnu) — ingen grund til at gennemløbe auktionslisten hvert sekund
+  // for etablerede managere. Se frontend/src/lib/firstBidRecommendation.js
+  // for hvorfor "billigste med tid tilbage" er heuristikken.
+  const firstBidRecommendation = useMemo(
+    () => (showFirstBidHint ? pickFirstBidRecommendation(auctions, { myTeamId, now }) : null),
+    [showFirstBidHint, auctions, myTeamId, now],
+  );
+  // #3007 målbarhed: log ÉN gang pr. besøg at en anbefaling faktisk kunne vises
+  // (ikke hvert sekund `now` tikker, som ville oversvømme player_events).
+  const loggedRecommendationShownRef = useRef(false);
+  useEffect(() => {
+    if (firstBidRecommendation && !loggedRecommendationShownRef.current) {
+      loggedRecommendationShownRef.current = true;
+      logEvent("onboarding_first_bid_recommendation_shown");
+    }
+  }, [firstBidRecommendation]);
+
   function dismissFirstBidHint() {
     localStorage.setItem("cz-first-bid-shown", "1");
     setFirstBidDismissed(true);
@@ -1113,6 +1144,31 @@ export default function AuctionsPage() {
     startTour("auctions");
     dismissFirstBidHint();
   }
+
+  // #3007: "Se en rytter jeg har råd til" — færre skridt end at browse en
+  // tabel med 20+ auktioner uden noget "start her"-signal. Skifter til Alle-
+  // fanen, sorterer billigste bud først, og scroller til den anbefalede række
+  // (useEffect nedenfor, når DOM'et rent faktisk indeholder den efter re-render).
+  function handleJumpToFirstBidRecommendation() {
+    if (!firstBidRecommendation) return;
+    pickFilter("all");
+    setWishlistOnly(false);
+    setAuctionSort({ key: "current_price", dir: "asc" });
+    logEvent("onboarding_first_bid_recommendation_clicked");
+    setScrollToAuctionId(firstBidRecommendation.id);
+  }
+
+  useEffect(() => {
+    if (!scrollToAuctionId) return;
+    // #3007: samme mobil-kort/desktop-tabel-dublet-mønster som OnboardingTour
+    // (#3279) — begge rendrer et element med samme data-auction-row-værdi,
+    // kun ét er synligt pr. viewport. findVisibleTarget vælger det synlige.
+    const el = findVisibleTarget(`[data-auction-row="${scrollToAuctionId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setScrollToAuctionId(null);
+    }
+  }, [scrollToAuctionId, filter, auctionSort]);
 
   useEffect(() => {
     loadAll();
@@ -1560,6 +1616,7 @@ export default function AuctionsPage() {
         <AuctionsFirstBidHint
           onDismiss={dismissFirstBidHint}
           onStartTour={handleStartFirstBidTour}
+          onJumpToRecommendation={firstBidRecommendation ? handleJumpToFirstBidRecommendation : null}
         />
       )}
 
@@ -1666,6 +1723,7 @@ export default function AuctionsPage() {
           auctionsById={auctionsById}
           now={now}
           showFeed={showFeed}
+          recommendedAuctionId={firstBidRecommendation?.id ?? null}
         />
       )}
     </div>
@@ -1791,6 +1849,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             requestBidConfirm={sharedProps.requestBidConfirm}
             isFirst={sectionId === "main" && i === 0}
             isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
+            isRecommended={sectionId === "main" && sharedProps.recommendedAuctionId === a.id}
             visibleStats={sharedProps.visibleStats}
             scouting={sharedProps.scouting}
             seasonYear={sharedProps.seasonYear}
@@ -1826,6 +1885,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
                   requestBidConfirm={sharedProps.requestBidConfirm}
                   isFirst={sectionId === "main" && i === 0}
                   isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
+                  isRecommended={sectionId === "main" && sharedProps.recommendedAuctionId === a.id}
                   visibleStats={sharedProps.visibleStats}
                   scouting={sharedProps.scouting}
                   seasonYear={sharedProps.seasonYear}

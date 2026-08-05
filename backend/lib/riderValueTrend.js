@@ -40,6 +40,11 @@ function findSnapshotAtOrBefore(snapshotsAsc, referenceMs) {
 // #2594: `rider` bærer age + potentiale (v4-modellen kræver dem til karriere-NPV'en).
 // Historikken er ≤14 dage gammel = samme sæson, så nuværende alder er korrekt for
 // snapshottet (alder er sæson-drevet).
+// #3325: `rider.caps` (ability_caps, valgfri) bruges til type-klassifikationen for
+// ALLE historiske vinduer — typen er potentiale-baseret og dermed tidsuafhængig
+// (samme type gennem hele karrieren), så der findes bevidst INGEN historisk caps-
+// snapshot at genderive typen fra. Uden caps falder recomputeRiderValue tilbage til
+// den historiske snapshot's abilities (gammel adfærd).
 export function computeRiderValueTrend({ currentBaseValue, rider = {}, snapshotsAsc = [], baseline, model, now = new Date() }) {
   const windows = {};
   const nowMs = now.getTime();
@@ -51,7 +56,7 @@ export function computeRiderValueTrend({ currentBaseValue, rider = {}, snapshots
     const targetMs = nowMs - days * DAY_MS;
     const snap = findSnapshotAtOrBefore(snapshotsAsc, targetMs);
     if (!snap?.abilities) { windows[days] = null; continue; }
-    const historical = recomputeRiderValue(rider, snap.abilities, baseline, model);
+    const historical = recomputeRiderValue(rider, snap.abilities, baseline, model, { typeAbilities: rider.caps });
     if (historical.base_value == null || historical.base_value <= 0) { windows[days] = null; continue; }
     const delta = Math.round(Number(currentBaseValue) - historical.base_value);
     const pct = Math.round((delta / historical.base_value) * 1000) / 10; // 1 decimal

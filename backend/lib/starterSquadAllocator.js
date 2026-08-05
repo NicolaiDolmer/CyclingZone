@@ -28,7 +28,8 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
-import { computeRiderTypes } from "./riderTypes.js";
+import { computeRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickContractLength, computeContractEndSeason } from "./contractSeed.js";
 
@@ -191,7 +192,15 @@ export function generateAiRiderBatchWithCap({
       if (accepted.length >= count) break;
       const physiology = seedPhysiologyFromLegacy(candidate);
       const abilities = deriveAbilities(physiology, candidate);
-      const { primary } = computeRiderTypes(abilities, TYPES_BASELINE);
+      // #3325: TYPES_BASELINE er nu caps-fittet (type = potentiale) — spejler
+      // deriveForRiderIds' to-trins kæde (bootstrap-type fra live abilities mod
+      // NEUTRAL_BASELINE → ability_caps → ENDELIG type mod TYPES_BASELINE), ellers
+      // afviger dette sikkerhedsnets type/værdi fra hvad deriveForRiderIds rent
+      // faktisk persisterer bagefter, og loft-garantien (AI_TIER_VALUE_CAP) holder
+      // ikke (#2065-klassen).
+      const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
+      const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
+      const { primary } = computeRiderTypes(caps, TYPES_BASELINE);
       // v4 kræver alder (candidate bærer allerede potentiale fra generatoren).
       const value = predictBaseValue(
         { ...candidate, primary_type: primary.key, age: computeAge(candidate.birthdate, referenceYear) },
