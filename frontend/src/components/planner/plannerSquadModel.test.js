@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   squadSlots, targetableRacesFor, peakNeedsAction, plannerStatusSummary,
   pendingSuggestionPairs, ridersWithSuggestions, paybackRiskRaceIds, riderSeasonLoad,
+  locksImmediatelyRaceIds,
 } from "./plannerSquadModel.js";
 
 const race = (id, date, isMine = true) => ({ id, name: `Race ${id}`, date, isMine });
@@ -196,6 +197,24 @@ test("paybackRiskRaceIds: defensiv — manglende peakWindow/datoer/paybackDays g
   const cand = riskRace("cand", "2026-08-10", { peakWindow: { window_start: "2026-08-08", window_end: "2026-08-12" } });
   assert.equal(paybackRiskRaceIds({ rider, races: [cand, program], paybackDays: 0 }).size, 0, "payback-vindue på 0 dage kan ikke kollidere");
   assert.equal(paybackRiskRaceIds({ rider: null, races: [cand, program], paybackDays: 7 }).size, 0);
+});
+
+// ── #3094: løb der ville låse en peak med det samme ───────────────────────────
+
+test("locksImmediatelyRaceIds: løb hvis vindue allerede er begyndt flages", () => {
+  const started = riskRace("started", "2026-08-10", { peakWindow: { window_start: "2026-08-04", window_end: "2026-08-08" } });
+  const today = riskRace("today", "2026-08-11", { peakWindow: { window_start: "2026-08-06", window_end: "2026-08-10" } });
+  const future = riskRace("future", "2026-08-20", { peakWindow: { window_start: "2026-08-14", window_end: "2026-08-18" } });
+  const risky = locksImmediatelyRaceIds({ races: [started, today, future], todayOrd: 20671 /* 2026-08-06 */ });
+  assert.deepEqual([...risky].sort(), ["started", "today"], "vindue-start i dag ELLER før flages, fremtidigt vindue gør ikke");
+});
+
+test("locksImmediatelyRaceIds: defensiv — manglende peakWindow/todayOrd giver aldrig falske flag", () => {
+  const noWindow = riskRace("noWin", "2026-08-10");
+  assert.equal(locksImmediatelyRaceIds({ races: [noWindow], todayOrd: 20670 }).size, 0);
+  const cand = riskRace("cand", "2026-08-10", { peakWindow: { window_start: "2026-08-04", window_end: "2026-08-08" } });
+  assert.equal(locksImmediatelyRaceIds({ races: [cand], todayOrd: null }).size, 0);
+  assert.equal(locksImmediatelyRaceIds({ races: null, todayOrd: 20670 }).size, 0);
 });
 
 // ── #2772: sæson-belastning pr. rytter ────────────────────────────────────────

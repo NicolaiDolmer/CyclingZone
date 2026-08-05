@@ -169,3 +169,120 @@ test("helper-validering: afviser tomt resultRows / negativt stageIndex / manglen
     /rpc/,
   );
 });
+
+test("#3022 forward-guard: applyStageResultAtomic afviser en række uden gyldig deltager-identitet FØR rpc() kaldes", async () => {
+  const mock = createStageRpcMock({ stagesCompleted: 0 });
+  await assert.rejects(
+    () => applyStageResultAtomic(mock, {
+      raceId: "race-1", stageIndex: 0, stageNumber: 1, totalStages: 3,
+      resultRows: [{ result_type: "stage", rank: 1, stage_number: 1, rider_id: null, rider_name: null }],
+    }),
+    /uden gyldig deltager-identitet/,
+  );
+  assert.equal(mock.state.rpcCalls, 0, "rpc() må ikke kaldes når batchen afvises af forward-guarden");
+});
+
+// ── applyRaceResultsBatchAtomic — fuld-løb/PCM (#3022 fejlmode B) ─────────────────
+const { applyRaceResultsBatchAtomic } = await import("./stageResultRpc.js");
+
+/**
+ * Mock-RPC der simulerer apply_race_results_batch-transaktionens semantik
+ * (database/proposals/2026-08-05-race-results-batch-write-atomic-rpc.sql):
+ * delete-af-berørte-etaper + insert i ÉN "transaktion" — opts.failOn = 'insert'
+ * injicerer en fejl EFTER delete'et er "kørt" i shadow-state → ROLLBACK (state uændret).
+ */
+function createBatchRpcMock({ initialRows = [], failOn = null } = {}) {
+  const state = { rows: initialRows.slice(), rpcCalls: 0 };
+  return {
+    state,
+    rpc(name, params) {
+      assert.equal(name, "apply_race_results_batch");
+      state.rpcCalls += 1;
+
+      let shadow = state.rows.slice();
+      let deleted = 0;
+      const stageNumbers = params.p_stage_numbers;
+      if (Array.isArray(stageNumbers) && stageNumbers.length) {
+        const before = shadow.length;
+        shadow = shadow.filter((r) => !(r.race_id === params.p_race_id && stageNumbers.includes(r.stage_number)));
+        deleted = before - shadow.length;
+      }
+
+      if (failOn === "insert") {
+        // ROLLBACK: shadow forkastes (inkl. det simulerede delete) — state uændret.
+        return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key value violates unique constraint \"race_results_entrant_unique\"" } });
+      }
+
+      const newRows = params.p_result_rows.map((r) => ({
+        race_id: params.p_race_id,
+        stage_number: r.stage_number ?? 1,
+        result_type: r.result_type,
+        rider_id: r.rider_id ?? null,
+      }));
+      shadow = shadow.concat(newRows);
+
+      state.rows = shadow;
+      return Promise.resolve({ data: { rows_deleted: deleted, rows_inserted: newRows.length }, error: null });
+    },
+  };
+}
+
+const BATCH_ROW = { rider_id: "r1", rider_name: "Rider One", result_type: "gc", rank: 1, stage_number: 1 };
+
+test("applyRaceResultsBatchAtomic happy path: delete + insert committet sammen", async () => {
+  const mock = createBatchRpcMock({ initialRows: [{ race_id: "race-1", stage_number: 1, result_type: "gc", rider_id: "old" }] });
+  const r = await applyRaceResultsBatchAtomic(mock, { raceId: "race-1", stageNumbers: [1], resultRows: [BATCH_ROW] });
+  assert.equal(r.rowsDeleted, 1);
+  assert.equal(r.rowsInserted, 1);
+  assert.equal(mock.state.rows.length, 1);
+  assert.equal(mock.state.rows[0].rider_id, "r1");
+});
+
+test("applyRaceResultsBatchAtomic PARTIAL-ROLLBACK: insert-fejl (unique_violation) → delete rulles OGSÅ tilbage", async () => {
+  const existing = [{ race_id: "race-1", stage_number: 1, result_type: "gc", rider_id: "old" }];
+  const mock = createBatchRpcMock({ initialRows: existing, failOn: "insert" });
+  await assert.rejects(
+    () => applyRaceResultsBatchAtomic(mock, { raceId: "race-1", stageNumbers: [1], resultRows: [BATCH_ROW] }),
+    (err) => err.code === "23505",
+  );
+  assert.deepEqual(mock.state.rows, existing, "løbet må IKKE stå resultatløst — den gamle række skal overleve en rullet-tilbage batch");
+});
+
+test("applyRaceResultsBatchAtomic: stageNumbers=null/tom → ren insert, intet delete (approve-results-lignende brug)", async () => {
+  const mock = createBatchRpcMock({ initialRows: [] });
+  const r = await applyRaceResultsBatchAtomic(mock, { raceId: "race-1", stageNumbers: null, resultRows: [BATCH_ROW] });
+  assert.equal(r.rowsDeleted, 0);
+  assert.equal(r.rowsInserted, 1);
+});
+
+test("applyRaceResultsBatchAtomic: helper-validering afviser tomt resultRows / manglende raceId / manglende rpc", async () => {
+  const ok = createBatchRpcMock();
+  await assert.rejects(
+    () => applyRaceResultsBatchAtomic(ok, { raceId: "race-1", stageNumbers: [1], resultRows: [] }),
+    /resultRows/,
+  );
+  await assert.rejects(
+    () => applyRaceResultsBatchAtomic(ok, { raceId: null, stageNumbers: [1], resultRows: [BATCH_ROW] }),
+    /raceId/,
+  );
+  await assert.rejects(
+    () => applyRaceResultsBatchAtomic({}, { raceId: "race-1", stageNumbers: [1], resultRows: [BATCH_ROW] }),
+    /rpc/,
+  );
+});
+
+test("#3022 forward-guard: applyRaceResultsBatchAtomic afviser en intern batch-kollision FØR rpc() kaldes", async () => {
+  const mock = createBatchRpcMock();
+  await assert.rejects(
+    () => applyRaceResultsBatchAtomic(mock, {
+      raceId: "race-1",
+      stageNumbers: [1],
+      resultRows: [
+        { race_id: "race-1", stage_number: 1, result_type: "gc", rank: 1, rider_id: "r1" },
+        { race_id: "race-1", stage_number: 1, result_type: "gc", rank: 2, rider_id: "r1" },
+      ],
+    }),
+    /kollidere med race_results_entrant_unique/,
+  );
+  assert.equal(mock.state.rpcCalls, 0);
+});

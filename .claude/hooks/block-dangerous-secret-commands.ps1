@@ -94,6 +94,18 @@ if ($cmdLo -match '(^|[^a-z])infisical\s+(secrets|export)(\s|$)') {
 "@
 }
 
+# --- get-test-token.mjs --print (#3342) ---
+# Scriptets sikre default skriver JWT'et til en gitignored fil og printer kun
+# stien. `--print` genindfører den gamle adfærd (raw access_token på stdout).
+# Blokeres kategorisk, ligesom infisical secrets/export ovenfor.
+if ($cmdLo -match 'get-test-token\.mjs' -and $cmdLo -match '(^|\s)--print(\s|=|$)') {
+  Block-Command "get-test-token.mjs --print (printer Supabase JWT til stdout = transcript)" @"
+  # Sikker default (skriver til gitignored fil, printer kun stien):
+  node scripts/get-test-token.mjs --email=<email>
+  # --print er KUN til manuel terminalbrug UDENFOR Claude Code.
+"@
+}
+
 # --- Cat / Get-Content / gc på .env-filer ---
 if ($cmdLo -match '(^|\s)cat\s+([^|;&]+/)?\.env' -or
     $cmdLo -match 'get-content\s+([^|;&]+/)?\.env' -or
@@ -102,6 +114,16 @@ if ($cmdLo -match '(^|\s)cat\s+([^|;&]+/)?\.env' -or
   # Kun key-navne:
   Select-String -Path backend/.env -Pattern '^[A-Z_]+=' | ForEach-Object { (`$_ -split '=')[0] }
   # Bash: grep -oE '^[A-Z_][A-Z0-9_]+' backend/.env
+"@
+}
+
+# --- Cat / Get-Content / gc på get-test-token.mjs-output (#3342) ---
+if ($cmdLo -match '(^|\s)(cat|type)\s+([^|;&]+/)?test-token[^\s]*\.json' -or
+    $cmdLo -match 'get-content\s+([^|;&]+/)?test-token[^\s]*\.json' -or
+    $cmdLo -match '(^|\s)gc\s+([^|;&]+/)?test-token[^\s]*\.json') {
+  Block-Command "cat/Get-Content på get-test-token.mjs-output (printer JWT til stdout)" @"
+  # Filen ER outputtet fra get-test-token.mjs — samme leak som --print.
+  # Brug filens sti i næste kommando i stedet for at printe indholdet.
 "@
 }
 

@@ -8,7 +8,10 @@
 // sted. Serverer board'et i SAMME form som GET /api/peak-plans/board.
 
 const DAY_MS = 86_400_000;
-const LEADUP = 14, MAX_PER_RIDER = 2, RADIUS = 2, LOCK_LEAD = 3;
+// #3094: LOCK_LEAD spejler backend/lib/riderPeakPlans.js's PEAK_LOCK_LEAD_DAYS —
+// var 3 (lås 3 dage FØR vinduets start), er nu 0 (lås når vinduet ER begyndt,
+// dvs. peaket er "startet"). Se den fils kommentar for den fulde kontekst.
+const LEADUP = 14, MAX_PER_RIDER = 2, RADIUS = 2, LOCK_LEAD = 0;
 // #3086: konsekvens-tallene. I produktion afledes de af motorens tuning-konstanter
 // (backend/lib/plannerBoard.js peakValueFormPoints); her er de en MOCK-SPEJLING af
 // de samme vaerdier, saa preview'et viser samme stoerrelsesorden som prod. Aendres
@@ -71,6 +74,15 @@ function makeRace(id, name, terrain, date, isMine, stages, summits, division, ri
 const RACES = [
   makeRace("r-coastal", "Coastal Sprint", "sprint", "2026-04-20", true, 1, 0, 3, 1),
   makeRace("r-hill", "Hill GP", "hilly", "2026-05-10", true, 1, 0, 3, 2),
+  // #3094: 4 dage ude fra TODAY (1/6) → vindue starter 3/6 (2 dage ude). Under
+  // FØR-reglen (lås 3 dage FØR vinduet) var det født låst i samme svar der
+  // oprettede den; under EFTER-reglen (lås når vinduet begynder) er den
+  // redigerbar helt frem til 3/6 — netop den forskel PR'en viser på preview.
+  makeRace("r-spring", "Spring Sprint", "sprint", "2026-06-05", true, 1, 0, 3, 0),
+  // #3094: 1 dag ude → vinduet (start 31/5) er allerede i gang PÅ oprettelses-
+  // dagen selv under den nye regel. Dropdown-advarslen ("låser med det samme")
+  // dækker netop dette sjældnere, men stadig reelle, tilfælde.
+  makeRace("r-imminent", "City Criterium", "sprint", "2026-06-02", true, 1, 0, 3, 0),
   makeRace("r-alpine", "Alpine Classic", "mountain", "2026-06-14", true, 6, 2, 3, 3),
   makeRace("r-nat", "Nationals TT", "itt", "2026-06-25", false, 1, 0, 2, 0),
   // #3086: ligger 3 dage inde i r-alpine's payback-vindue (vindue slutter 16/6),
@@ -138,6 +150,11 @@ function seedPeaks() {
     makePeak("rd-krist", "r-alpine", 0.55),   // at_risk (active)
     makePeak("rd-krist", "r-coastal", 0.7),   // locked (past)
     makePeak("rd-soren", "r-tour", 0.62),     // pending (lead-up not started)
+    // #3094: r-spring's vindue starter 3/6, 2 dage ude fra TODAY — låst under den
+    // gamle 3-dages-forvarsels-regel, redigerbar under den nye ("vinduet er
+    // begyndt"). Denne rytter har KUN denne ene peak, så retarget/fjern/tilføj-
+    // peak-nummer-to alle er synlige handlinger direkte i Trup-fanen.
+    makePeak("rd-bianchi", "r-spring", 0.5),
   ];
 }
 

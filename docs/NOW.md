@@ -5,8 +5,10 @@
 ## Aktiv styring
 
 > **🎯 Next action:**
-> 1. **Ejer-review af 4 draft-PR'er:** #3341 Resultat-hub (synlig UI, #3102-IA) · #3339 finance-guard · #3343+#3345 ryttertyper+værdi (skal merges SAMMEN, ejer 4/8) · #3344 kalender-mix. Derefter #3331 paginerings-guard (holdt tilbage pga. konflikt).
-> 1b. **Efter #3344-merge:** apply katalog-migrationen (15 race_pool-rækker, ejer-godkendt 4/8) — idempotent + post-verify, ligger i `database/proposals/`.
+> 1. **Merge-kø (16 draft-PR'er, rækkefølge + gates i [night-wave-2026-08-05.md](audits/night-wave-2026-08-05.md)).** Start med backend-only-blokken (#3352 security, #3355 akademi, #3354, #3356, #3358, #3359, #3351), så ryttertype-kæden #3343→#3348→#3357 samlet, så kalenderen #3344+#3346 før S3 bygges. **#3339/#3341/#3343 er CONFLICTING** (patchNotes) — kræver manuel opløsning; rebase udefra i agent-worktrees virker IKKE (prøvet, afbrudt uden skade).
+> 1b. **Tidskritisk før 23/8:** godkend akademi-reparations-SQL (#3355 — ellers frigives 22 ryttere fejlagtigt) · #1150-kæden (1.399 ryttere) · katalog-migrationen til #3344. Alle idempotente m. post-verify i `database/proposals/`, ingen kørt.
+> 1c. **Ejer-klik:** 37 Sentry cron-monitorer skal Enable'es manuelt (liste i PR #3351).
+> 1d. **Tidskritisk (Sentry-triage 5/8):** [#3377](https://github.com/NicolaiDolmer/CyclingZone/pull/3377) fikser CYCLINGZONE-44 — Team Fakta har 1 rytter i to overlappende løb (starter **6/8 + 7/8**); merge før da, ellers kører han begge. Rod-årsag: fuld-manuel trup blev sprunget over uden at prune sin residuale auto-række. Data-reparation sker af sig selv ved næste sweep-tick efter deploy.
 > 2. **Hos ejeren:** Resend-nøgler + mailtekst-godkendelse (#2853, ~15 min, tænder intet — kæden er deep-linket og flip-klar) · #3300's 3 designsvar · Railway MCP re-auth · penge-kæden #2813 · #3147-basekadence (lavtryk nu) · beslutnings-ark 60 sager · logo #481.
 > 3. **Måle-datoer:** ~18/8 payoff-mål (≥60 % ser første resultat, baseline ~34 %) + dag-1-effekt via get_cohort_retention på /admin/growth.
 
@@ -16,7 +18,7 @@
 
 > **📌 Åbne opfølgninger:** #3145 ITT-motor-fejl (bekræftet 4/8) · #3112-guard (forslag klar) · de 5 pending-D4-kontrakter (aktiveres ikke automatisk, jf. #3319-PR-body) · #3307-relateret unchecked-delete OK · #3290 lukket · #2164 (ved S2→S3) · #3172 (luk ~18/8) · #3275 draft = reseed-fundament · #3189→#2041-rest.
 
-> **🟢 4/8 aften (Discord-sweep + fix-bølge):** 32t-sweep over alle forums + 42 kanaler → 15 nye issues (#3325-#3337, #3342, #3345) + 6 dedupe-kommentarer. Merged: #3338 (rytter-limbo heal-sweep — Vasco Fernandes leveret til Team Hansen efter 6 uger, 0 parkerede tilbage) · #3340 (off-day-tooltip: badgen manglede helt for 81 % af hændelserne). Draft: #3339, #3341, #3343, #3344. Ejer-beslutninger 4/8: ryttertype = potentiale for alle · D2-kalender ~50/50 · ProSeries 3-5 / WT 6-8 + højere præmie · typer+værdier udgives samtidig · katalog-udvidelse godkendt. Etaperækkefølge-specen er research-forankret i 12 rigtige WT-løb (#3326-kommentar). Sikkerhed: JWT-læk via `get-test-token.mjs` → #3342 (ingen gist oprettet, verificeret).
+> **🟢 Natbølge 4.-5./8 (19 spor, 0 merges — merge kræver ejer-go):** **16 draft-PR'er** klar til review, merge-rækkefølge i [night-wave-2026-08-05.md](audits/night-wave-2026-08-05.md). **Nye brændende fund:** [#3360](https://github.com/NicolaiDolmer/CyclingZone/issues/3360) pengemængden firdobles over 5 sæsoner (4,24× mod mål 1,3×) — gaten skjulte det gennem hele betaen · #1150 er ikke 807 men **1.399** udløbende ryttere, 170/180 hold berørt, AI havde ingen fornyelse (PR #3362) · #2881: samme bug fandtes uopdaget et 2. sted, **22 ryttere frigives fejlagtigt 23/8** uden reparation (PR #3355) · 44/115 target_race_ids peger allerede på døde S1-løb (PR #3361). **Syntese af 9 målinger:** [simulation-drift-synthesis.md](audits/2026-08-05-simulation-drift-synthesis.md). Ejer-beslutninger 4/8: ryttertype = potentiale for alle · D2 ~50/50 · ProSeries 3-5 / WT 6-8 · typer+værdier samtidig (løst via frossen `valuation_type`, total uændret 993M) · katalog-udvidelse godkendt.
 
 > **🤖 Working agent:** Ingen aktiv session.
 

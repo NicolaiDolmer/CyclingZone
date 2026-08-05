@@ -16,7 +16,7 @@ import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { buildCapsForRider, buildProgressInit } from "./riderProgression.js";
-import { computeRiderTypes, RIDER_TYPE_KEYS, ABILITY_KEYS } from "./riderTypes.js";
+import { computeRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -104,6 +104,9 @@ export async function runPhysiologyBackfill(supabase, { dryRun = true, physiolog
 }
 
 // ── Ryttertyper (fra backfillRiderTypes.js) ───────────────────────────────────
+// #3325: type = POTENTIALE, ikke dagens form. Klassificerer mod ability_caps
+// (evne-LOFTET) i stedet for de nuværende evner, så typen er stabil hele karrieren
+// (se riderTypes.js's topkommentar for hvorfor + kollaps-historikken).
 export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline, log = noop } = {}) {
   const model = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
   // Alle ryttere med abilities — også retired. Retired ryttere vises stadig på
@@ -113,13 +116,13 @@ export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline,
   const rows = await fetchAllRows(() =>
     supabase
       .from("rider_derived_abilities")
-      .select(`rider_id, ${ABILITY_KEYS.join(", ")}, riders!inner(id)`)
+      .select("rider_id, ability_caps, riders!inner(id)")
       .order("rider_id"));
-  log(`types: ${rows.length} ryttere (med abilities, inkl. retired)`);
+  log(`types: ${rows.length} ryttere (med abilities, inkl. retired) — klassificeret mod ability_caps`);
 
   const dist = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 0]));
   const updates = rows.map((r) => {
-    const { primary, secondary } = computeRiderTypes(r, model);
+    const { primary, secondary } = computeRiderTypes(r.ability_caps || {}, model);
     dist[primary.key] = (dist[primary.key] || 0) + 1;
     return { id: r.rider_id, primary_type: primary.key, secondary_type: secondary.key };
   });
@@ -167,14 +170,70 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const profiles = riders.map((r) => ({ ...seedPhysiologyFromLegacy(r), updated_at: stamp }));
   const abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: stamp }));
 
-  // 2) Ryttertyper (udledt af abilities).
-  const typeByRider = new Map();
+  // 2) BOOTSTRAP-type (#3325): en helt ny rytter har intet forudgående primary_type
+  // at seede ability_caps' rolle-faktor med (buildYouthCaps/buildCapsForRider læser
+  // primaryType/secondaryType — se riderProgression.js). Vi klassificerer derfor
+  // FØRST mod de LIVE abilities (NEUTRAL_BASELINE — typesModel er caps-fittet og
+  // ville give forkerte z-scores mod live-værdier) udelukkende for at give caps'
+  // rolle-faktor en retning. Denne type skrives ALDRIG til riders — kun den ENDELIGE
+  // caps-baserede type i trin 4 gør.
+  const bootstrapTypeByRider = new Map();
   for (const a of abilities) {
-    const { primary, secondary } = computeRiderTypes(a, typesModel);
-    typeByRider.set(a.rider_id, { primary_type: primary.key, secondary_type: secondary.key });
+    const { primary, secondary } = computeRiderTypes(a, NEUTRAL_BASELINE);
+    bootstrapTypeByRider.set(a.rider_id, { primary_type: primary.key, secondary_type: secondary.key });
   }
 
-  // 3) base_value + current_production_value (kræver primary_type + abilities;
+  // 3) ability_caps + ability_progress (#2001): wire ALLE ryttere ved derive, ikke
+  // kun akademi-alder. Tidligere satte denne sti KUN ungdoms-caps (#1791); voksne
+  // fik NULL og ventede på et sæson-progression- eller daglig-trænings-tick — frie
+  // agenter / aldrig-tickede hold endte derfor permanent NULL og kunne ikke vise
+  // progress-bar/caps på den nye rytter-side. buildCapsForRider er nu ÉN semantik
+  // for alle aldre (absolut loft + gulv, ejer 15/7).
+  //
+  // caps GENBEREGNES altid: loftet er en ren funktion af potentiale + anlæg + nuværende
+  // evne, ikke akkumuleret state — så en stale eller forkert-semantik-værdi må ikke
+  // overleve en re-derive. Det var netop "bevar hvis den findes"-mønstret der lod to
+  // uforenelige loft-semantikker fryse ned i data. Bruger BOOTSTRAP-typen (trin 2) —
+  // uændret formel/semantik ift. før #3325.
+  //
+  // progress BEVARES derimod: det ER akkumuleret træning (heal-sweep #1673 må ikke
+  // nulstille en rytters optjente fremgang). Vi læser eksisterende og fylder kun NULL.
+  const existingById = new Map();
+  {
+    const existing = await fetchAllRows(() =>
+      supabase.from("rider_derived_abilities")
+        .select("rider_id, ability_caps, ability_progress")
+        .in("rider_id", ids)
+        .order("rider_id", { ascending: true }));
+    for (const e of existing) existingById.set(e.rider_id, e);
+  }
+  const riderById = new Map(riders.map((r) => [r.id, r]));
+  const progressInit = buildProgressInit();
+  const capsByRider = new Map();
+  const abilitiesWithCaps = abilities.map((a) => {
+    const t = bootstrapTypeByRider.get(a.rider_id) || {};
+    const rider = riderById.get(a.rider_id) || {};
+    const prev = existingById.get(a.rider_id) || {};
+    const baseline = {};
+    for (const k of VISIBLE_ABILITIES) if (a[k] != null) baseline[k] = Number(a[k]);
+    const caps = buildCapsForRider(baseline, { potentiale: rider.potentiale }, t.primary_type, t.secondary_type);
+    capsByRider.set(a.rider_id, caps);
+    const progress = (prev.ability_progress && typeof prev.ability_progress === "object")
+      ? prev.ability_progress
+      : progressInit;
+    return { ...a, ability_caps: caps, ability_progress: progress };
+  });
+
+  // 4) ENDELIG type (#3325): klassificeret mod ability_caps (trin 3) + den caps-
+  // fittede baseline (typesModel) — DETTE er det der persisteres på riders og
+  // vises til spilleren. Stabil resten af karrieren (afhænger ikke af dagens form).
+  const typeByRider = new Map();
+  for (const [riderId, caps] of capsByRider) {
+    const { primary, secondary } = computeRiderTypes(caps, typesModel);
+    typeByRider.set(riderId, { primary_type: primary.key, secondary_type: secondary.key });
+  }
+
+  // 5) base_value + current_production_value (kræver primary_type + abilities;
   //    v4 kræver desuden age + potentiale — birthdate/potentiale er i selected).
   const seasonNumber = await activeSeasonNumber(supabase);
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
@@ -204,44 +263,6 @@ export async function deriveForRiderIds(supabase, riderIds, {
   }
 
   await upsertBatched(supabase, "rider_physiology_profiles", profiles, "rider_id");
-
-  // ability_caps + ability_progress (#2001): wire ALLE ryttere ved derive, ikke kun
-  // akademi-alder. Tidligere satte denne sti KUN ungdoms-caps (#1791); voksne fik NULL
-  // og ventede på et sæson-progression- eller daglig-trænings-tick — frie agenter / aldrig-
-  // tickede hold endte derfor permanent NULL og kunne ikke vise progress-bar/caps på den
-  // nye rytter-side. buildCapsForRider er nu ÉN semantik for alle aldre (absolut loft +
-  // gulv, ejer 15/7).
-  //
-  // caps GENBEREGNES altid: loftet er en ren funktion af potentiale + anlæg + nuværende
-  // evne, ikke akkumuleret state — så en stale eller forkert-semantik-værdi må ikke
-  // overleve en re-derive. Det var netop "bevar hvis den findes"-mønstret der lod to
-  // uforenelige loft-semantikker fryse ned i data.
-  //
-  // progress BEVARES derimod: det ER akkumuleret træning (heal-sweep #1673 må ikke
-  // nulstille en rytters optjente fremgang). Vi læser eksisterende og fylder kun NULL.
-  const existingById = new Map();
-  {
-    const existing = await fetchAllRows(() =>
-      supabase.from("rider_derived_abilities")
-        .select("rider_id, ability_caps, ability_progress")
-        .in("rider_id", ids)
-        .order("rider_id", { ascending: true }));
-    for (const e of existing) existingById.set(e.rider_id, e);
-  }
-  const riderById = new Map(riders.map((r) => [r.id, r]));
-  const progressInit = buildProgressInit();
-  const abilitiesWithCaps = abilities.map((a) => {
-    const t = typeByRider.get(a.rider_id) || {};
-    const rider = riderById.get(a.rider_id) || {};
-    const prev = existingById.get(a.rider_id) || {};
-    const baseline = {};
-    for (const k of VISIBLE_ABILITIES) if (a[k] != null) baseline[k] = Number(a[k]);
-    const caps = buildCapsForRider(baseline, { potentiale: rider.potentiale }, t.primary_type, t.secondary_type);
-    const progress = (prev.ability_progress && typeof prev.ability_progress === "object")
-      ? prev.ability_progress
-      : progressInit;
-    return { ...a, ability_caps: caps, ability_progress: progress };
-  });
   await upsertBatched(supabase, "rider_derived_abilities", abilitiesWithCaps, "rider_id");
   const typedWritten = await updateRidersConcurrent(supabase, riderUpdates);
 

@@ -395,6 +395,23 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         // Afmeldt, igangværende, ryddet, eller FULD manuel trup → spring over (lås rytter-tid).
         if (isWithdrawn || fullManual || isStarted || isCleared) {
           skipped += 1;
+          // #3119-opfølgning (CYCLINGZONE-44, prod 5/8): en FULD manuel trup skal stadig
+          // PRUNES. Enheden genererer ingen picks, men dens forældede is_auto_filled=true-
+          // rækker fra en tidligere kørsel overlevede før for evigt, fordi enheden aldrig
+          // nåede `staged` — og de blev heller ikke låst nedenfor (kun `manualRiders` låses).
+          // Dobbelt skade: (a) truppen står med max+N ryttere i et løb med hård
+          // selection-cap, (b) den residuale rytter regnes som FRI af assignTeamAcrossRaces
+          // og bliver udtaget til et tidsoverlappende søsterløb → binding-invariant-brud.
+          // Prod 5/8: Team Fakta havde 6 manuelle + 1 residual auto (Marcos S. Ortega) i
+          // O Gran Camiño Menor (Class2, max 6, game_day 10-13) og fik ham derfor OGSÅ som
+          // kaptajn i Settimana di Coppi e Bartali Minore (game_day 11-14).
+          // Samme klasse som #3113's "enhed med NUL picks skal stadig stages" — tredje variant.
+          // Kun fullManual prunes: et AFMELDT løbs entries bevares bevidst (#1823, gen-
+          // tilmelding giver samme trup), et IGANGVÆRENDE løbs felt er frosset (#1825), og
+          // en RYDDET enhed (#2599) er uden for dette fixs scope.
+          if (fullManual && !isWithdrawn && !isStarted && !isCleared) {
+            staged.push({ race_id: race.id, team_id: team.id, picks: [] });
+          }
           // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte/ryddede gør ikke).
           // #3113: de to tilfælde er IKKE gensidigt udelukkende — et igangværende løb kan sagtens
           // have en DELVIS manuel trup. Den gamle `else if` lod da hasManual-grenen vinde og låste
@@ -597,9 +614,14 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     const existing = new Map((freshExistingRows || []).map((e) => [e.rider_id, e.race_role]));
 
     // Manageren fyldte truppen HELT undervejs (mirror hovedløbets fullManual-gren):
-    // ingen auto-picks tilbage — eksisterende auto-rækker efterlades urørt (samme
-    // adfærd som når fullManual opdages i step 9, hvor enheden aldrig når `staged`).
-    if (manualRiders.length >= sizeRule.max) return { inserted: 0, removed: 0, roleUpdated: 0 };
+    // ingen auto-picks tilbage → PRUNE enhedens forældede auto-rækker med et tomt
+    // `desired`, præcis som step 9 nu gør. Tidligere efterlod vi dem urørt, hvilket
+    // over-fyldte truppen forbi selection-cap'en OG lod rytteren stå fri til et
+    // tidsoverlappende søsterløb (CYCLINGZONE-44, prod 5/8 — se step 9's kommentar).
+    // Manuelle rækker kan strukturelt ikke røres: applyUnitDiff filtrerer på is_auto_filled=true.
+    if (manualRiders.length >= sizeRule.max) {
+      return applyUnitDiff({ raceId, teamId, desired: new Map(), existing });
+    }
 
     const adjSizeRule = { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length };
     const lockedWindows = manualRiders.length ? [{ window, riderIds: manualRiders }] : [];

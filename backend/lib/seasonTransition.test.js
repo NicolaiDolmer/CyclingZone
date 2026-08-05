@@ -47,7 +47,7 @@ function createMockSupabase(initialState = {}) {
     notifications: initialState.notifications ? [...initialState.notifications] : [],
     sponsor_contracts: initialState.sponsor_contracts ? [...initialState.sponsor_contracts] : [],
     app_config: initialState.app_config ? [...initialState.app_config] : [],
-    // #2916 · carry-over-fasen læser disse fem tabeller. De defaulter til tomme
+    // #2916 · carry-over-fasen læser disse tabeller. De defaulter til tomme
     // arrays så den ægte fase kan køre igennem i alle transition-tests (i stedet
     // for at blive stubbet væk og dermed aldrig blive testet i sin kontekst).
     training_plans: initialState.training_plans ? [...initialState.training_plans] : [],
@@ -55,6 +55,8 @@ function createMockSupabase(initialState = {}) {
     races: initialState.races ? [...initialState.races] : [],
     rider_peak_plans: initialState.rider_peak_plans ? [...initialState.rider_peak_plans] : [],
     race_entries: initialState.race_entries ? [...initialState.race_entries] : [],
+    // #2916-opfølgning (2026-08-05) · team_race_strategy.target_race_ids-revalideringen.
+    team_race_strategy: initialState.team_race_strategy ? [...initialState.team_race_strategy] : [],
   };
   const calls = { inserts: [], updates: [], upserts: [] };
 
