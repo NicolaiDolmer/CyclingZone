@@ -58,7 +58,7 @@
 //   .claude/learnings/2026-08-04-sponsor-race-results-unpaginated-query.md
 
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
-import { join, resolve, extname } from 'node:path';
+import { join, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Known-unbounded tables (grow past 1000 rows in a live season). "At least
@@ -291,6 +291,12 @@ export function scan(source, filename = '<source>') {
   return findings;
 }
 
+// Baseline-nøglerne ER filstier, så de skal se ens ud på Windows og Linux.
+// join() giver "backend\lib\x.js" på Windows og "backend/lib/x.js" i CI; uden
+// normalisering matcher en baseline genereret på Windows INGEN af CI's fund, og
+// hele ratchet'en falder tavst tilbage til "alt er nyt". Ramte 2026-08-05.
+const toPosix = (p) => p.split(sep).join('/');
+
 function walk(dir, acc) {
   let entries;
   try { entries = readdirSync(dir); } catch { return acc; }
@@ -300,7 +306,7 @@ function walk(dir, acc) {
     let st;
     try { st = statSync(p); } catch { continue; }
     if (st.isDirectory()) walk(p, acc);
-    else if (st.isFile() && SCAN_EXTS.has(extname(p))) acc.push(p);
+    else if (st.isFile() && SCAN_EXTS.has(extname(p))) acc.push(toPosix(p));
   }
   return acc;
 }
@@ -383,7 +389,7 @@ function buildBaseline(findings) {
 function run() {
   const args = process.argv.slice(2);
   const updateBaseline = args.includes('--update-baseline');
-  const explicitFiles = args.filter((a) => a !== '--update-baseline');
+  const explicitFiles = args.filter((a) => a !== '--update-baseline').map(toPosix);
   const usingDefaultDirs = explicitFiles.length === 0;
   const files = usingDefaultDirs ? DEFAULT_DIRS.flatMap((d) => walk(d, [])) : explicitFiles;
 

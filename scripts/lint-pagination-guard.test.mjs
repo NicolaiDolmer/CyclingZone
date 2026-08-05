@@ -2,6 +2,7 @@
 // Tests for the PostgREST silent-1000-row-cap forward-guard. Run: node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { scan, stripCommentsKeepStrings, DENY_TABLES, compareAgainstBaseline } from './lint-pagination-guard.mjs';
 
 test('flags a naive unpaginated select against a deny-listed table (synthetic #3315 shape)', () => {
@@ -269,4 +270,32 @@ test('stripCommentsKeepStrings preserves line count and string content', () => {
   const stripped = stripCommentsKeepStrings(src);
   assert.equal(stripped.split('\n').length, src.split('\n').length);
   assert.ok(stripped.includes('"race_results"'));
+});
+
+// ── #3331-regression: baseline-noeglerne skal vaere platform-uafhaengige ───────
+//
+// Den foerste committede baseline blev genereret paa Windows og fik
+// backslash-noegler ("backend\lib\x.js"). CI koerer Linux og finder
+// "backend/lib/x.js", saa INGEN noegle matchede: hver eneste kendte
+// overtraedelse blev rapporteret som ny, og jobbet var roedt fra foerste
+// koersel. En ratchet der ikke kan matche sin egen baseline er ikke en
+// ratchet - den er stoej. Derfor normaliserer walk() til POSIX-separatorer,
+// og baseline-filen tjekkes her.
+test('#3331 baseline-filen indeholder ingen backslash-stier (Windows-genereret baseline braekker CI)', () => {
+  const raw = readFileSync(new URL('./pagination-guard-baseline.json', import.meta.url), 'utf8');
+  const keys = Object.keys(JSON.parse(raw).files || {});
+  assert.ok(keys.length > 0, 'baseline skal have entries, ellers tester vi ingenting');
+  const backslashed = keys.filter((k) => k.includes('\\'));
+  assert.deepEqual(
+    backslashed, [],
+    'baseline-noegler skal bruge / som separator, ogsaa naar --update-baseline koeres paa Windows',
+  );
+});
+
+test('#3331 compareAgainstBaseline matcher ikke paa tvaers af separator-stil', () => {
+  // Selve faelden, isoleret: samme fil, to skrivemaader -> ingen match.
+  const findings = [{ file: 'backend/lib/a.js', table: 'riders', line: 1, snippet: '' }];
+  const windowsBaseline = { files: { 'backend\\lib\\a.js': { riders: 1 } } };
+  const { newViolations } = compareAgainstBaseline(findings, windowsBaseline);
+  assert.equal(newViolations.length, 1, 'en backslash-baseline daekker IKKE et posix-fund');
 });
