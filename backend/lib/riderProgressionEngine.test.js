@@ -108,6 +108,31 @@ test("ung høj-pot rytter udvikler sig + base_value stiger + caps initialiseres"
   assert.equal(state.rider_development_log.length, 1, "snapshot skrevet til dev-log");
 });
 
+test("#3345: sæson-progression bruger riders.valuation_type (frossen) til base_value, ikke primary_type", async () => {
+  // To ryttere, SAMME primary_type (så vækst-trinet — som selv er styret af
+  // primary_type, se riderProgression.js — bliver identisk for begge) og SAMME
+  // abilities. Kun r-frozen har valuation_type sat til en ANDEN type. Modellens
+  // offset-tabel differentierer typerne kraftigt, så en forskel i base_value
+  // efter udvikling beviser at valuation_type (ikke primary_type) drev valget.
+  const MODEL_WITH_OFFSETS = { a: 6.14, b: 0.126, offset: { sprinter: 0, climber: 3 } };
+  const state = seedState({
+    riders: [
+      { id: "r-fresh", primary_type: "sprinter", potentiale: 3, birthdate: "1998-01-01", base_value: 100000, is_u25: false, is_retired: false, team_id: null, firstname: "A", lastname: "Fresh" },
+      { id: "r-frozen", primary_type: "sprinter", valuation_type: "climber", potentiale: 3, birthdate: "1998-01-01", base_value: 100000, is_u25: false, is_retired: false, team_id: null, firstname: "B", lastname: "Frozen" },
+    ],
+    abilities: [
+      { rider_id: "r-fresh", sprint: 55, acceleration: 55, ability_caps: null },
+      { rider_id: "r-frozen", sprint: 55, acceleration: 55, ability_caps: null },
+    ],
+  });
+  const supabase = createMockSupabase(state);
+  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL_WITH_OFFSETS });
+
+  const fresh = state.riders.find((r) => r.id === "r-fresh");
+  const frozen = state.riders.find((r) => r.id === "r-frozen");
+  assert.ok(frozen.base_value > fresh.base_value, "climber-offsettet (3) skal give en højere base_value end sprinter-offsettet (0)");
+});
+
 test("ability-history: season-transition skriver én season-snapshot pr. udviklet rytter (#2000)", async () => {
   const state = seedState({
     riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: null, firstname: "Ung", lastname: "Talent" }],

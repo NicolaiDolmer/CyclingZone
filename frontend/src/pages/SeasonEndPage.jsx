@@ -8,11 +8,14 @@ import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import LeaderBadge from "../components/LeaderBadge";
 import SeasonHonours from "../components/SeasonHonours";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { divColor } from "../lib/divisionColors.js";
 import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
 import { pickDefaultSeason } from "../lib/seasonEndDefault.js";
+import { computeSeasonMovement, resolveNextDivision, pickRecapHighlights } from "../lib/seasonRecapData.js";
+import SeasonRecapHero from "../components/SeasonRecapHero.jsx";
 import {
-  CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, PageLoader,
+  CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
   Button, Select, ZonePill,
 } from "../components/ui";
@@ -40,6 +43,26 @@ const RACE_STATUS_CLS = {
 
 function formatCZ(amount) {
   return `${formatNumber(amount || 0)} CZ$`;
+}
+
+// #2752/#2361 — oversætter ÉN teamRecap.highlights-post (ren data fra
+// pickRecapHighlights, lib/seasonRecapData.js) til SeasonRecapHero's
+// {id, icon, label, value}-kontrakt. i18n/format-lag hører hjemme HER (siden),
+// ikke i det rene lib — samme adskillelse som resten af filen (movement-tone/
+// -nøgle bor i seasonRecapCopy.js, teksten hentes her via t()).
+function mapRecapHighlight(h, t, myDivision) {
+  if (h.kind === "prizeLeader") {
+    return { id: "prizeLeader", icon: CoinIcon, label: t("recap.highlight.prizeLeader", { division: myDivision }), value: formatCZ(h.amount) };
+  }
+  if (h.kind === "biggestSale") {
+    return { id: "biggestSale", icon: ExchangeIcon, label: t("recap.highlight.biggestSale"), value: formatCZ(h.amount) };
+  }
+  // stageKing
+  return {
+    id: "stageKing", icon: TrophyIcon,
+    label: t("recap.highlight.stageKing", { name: h.name }),
+    value: t("recap.highlight.stageKingValue", { count: h.wins }),
+  };
 }
 
 function MiniLineChart({ data, color }) {
@@ -81,6 +104,15 @@ export default function SeasonEndPage() {
   //   "unavailable" = funktionen findes ikke endnu → blokken rendres slet ikke.
   const [honours, setHonours] = useState({ status: "loading", data: null });
   const [myTeamId, setMyTeamId] = useState(null);
+  // #2752/#2361 — nutids-division + navn på MIT hold. division bruges KUN som
+  // fallback-kilde til "hvilken division fik jeg næste sæson" (resolveNextDivision),
+  // navnet til recap-heroens overskrift (samme felt som teams.name andre steder).
+  const [myTeamDivision, setMyTeamDivision] = useState(null);
+  const [myTeamName, setMyTeamName] = useState(null);
+  // #2752/#2361 — den valgte sæsons per-hold "årbog": min slutstilling, faktisk
+  // op-/nedrykning og op til 3 highlights. null = intet at vise (ingen egen
+  // række i denne sæsons standings, eller sæsonen er ikke completed endnu).
+  const [teamRecap, setTeamRecap] = useState(null);
   const [loading, setLoading] = useState(true);
   // #2849 bølge 3 — canonisk ErrorState i stedet for stille fejl-degradering.
   // { type: "init" } = sæson-listen kunne ikke hentes; { type: "season", season } =
@@ -94,8 +126,10 @@ export default function SeasonEndPage() {
       const { data: { user } } = await supabase.auth.getUser();
       // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
       if (!user) { setLoading(false); return; }
-      const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+      const { data: myTeam } = await supabase.from("teams").select("id, division, name").eq("user_id", user.id).single();
       setMyTeamId(myTeam?.id);
+      setMyTeamDivision(myTeam?.division ?? null);
+      setMyTeamName(myTeam?.name ?? null);
 
       // #2763: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er ikke en rigtig
       // spillesæson og må aldrig tilbydes i spillerens sæson-vælger (samme
@@ -145,6 +179,7 @@ export default function SeasonEndPage() {
   const loadSeason = async (season) => {
     setSelectedSeason(season);
     setError(null);
+    setTeamRecap(null);
     loadHonours(season);
     try {
       const [standingsRes, racesRes, racePointsRes] = await Promise.all([
@@ -228,11 +263,15 @@ export default function SeasonEndPage() {
       const prizeWinner = prizeTop ? { team: teamMeta[prizeTop[0]], amount: prizeTop[1] } : null;
 
       // 2+3. Transfers: finance_transactions type=transfer_in/out for season
-      const { data: txData } = await supabase
+      // #3331: league-wide (ALL teams) per season — verified 886 rows for
+      // season 1 already (88% of the 1000-row cap), so paginated rather than
+      // relying on that margin holding as more teams/seasons accumulate.
+      const txData = await fetchAllRows(() => supabase
         .from("finance_transactions")
         .select("team_id, amount, description, created_at, type, team:team_id(id, name, is_ai)")
         .eq("season_id", season.id)
-        .in("type", ["transfer_in", "transfer_out"]);
+        .in("type", ["transfer_in", "transfer_out"])
+        .order("id", { ascending: true }));
 
       const txs = (txData || []).filter(t => !t.team?.is_ai);
 
@@ -265,6 +304,75 @@ export default function SeasonEndPage() {
         : null;
 
       setWinners({ prize: prizeWinner, biggestTransfer, mostActive, stageKing });
+
+      // #2752/#2361 — per-hold recap: kun for MIT hold, kun for en completed
+      // sæson (der er intet "facit" for en sæson der stadig kører). To små,
+      // MÅLRETTEDE ekstra opslag (maks 1 + maks 5 rækker) — ingen af dem er i
+      // nærheden af #2891-klassens problem (459k-rækkers offset-paginering).
+      const myStandingsRow = standings.find(s => s.team_id === myTeamId);
+      if (myStandingsRow && season.status === "completed") {
+        const nextSeasonMeta = seasons.find(s => s.number === season.number + 1);
+        let nextSeasonStandingDivision = null;
+        if (nextSeasonMeta) {
+          const { data: nextRow } = await supabase
+            .from("season_standings")
+            .select("division")
+            .eq("team_id", myTeamId)
+            .eq("season_id", nextSeasonMeta.id)
+            .maybeSingle();
+          nextSeasonStandingDivision = nextRow?.division ?? null;
+        }
+        const nextDivision = resolveNextDivision({
+          nextSeasonStandingDivision,
+          nextSeasonStatus: nextSeasonMeta?.status ?? null,
+          currentTeamDivision: myTeamDivision,
+        });
+        const movement = computeSeasonMovement(myStandingsRow.division, nextDivision);
+
+        // Min egen største salg denne sæson — samme `sells`-liste sæsonens
+        // transfer-vinder allerede er fundet i. Egen reduce (ikke afhængig af
+        // at `sells` allerede er sorteret af koden ovenfor) filtreret+sorteret
+        // til mit team_id, så en fremtidig omrokering af koden ovenfor ikke
+        // kan ændre hvilken af mine egne salg der regnes som "størst".
+        const myBiggestSale = sells.reduce((best, t) => {
+          if (t.team_id !== myTeamId) return best;
+          const amt = Math.abs(t.amount);
+          return (!best || amt > Math.abs(best.amount)) ? t : best;
+        }, null);
+
+        // Etapekonge PÅ MIT HOLD: stageKings er allerede sorteret faldende efter
+        // wins (RPC'ens ORDER BY), så første match herunder er mit holds bedste
+        // — selv når det ikke er sæsonens overordnede nr. 1. "Nuværende hold"-
+        // semantik, samme som #2891-RPC'en selv bruger for team_race_prize.
+        let myStageKing = null;
+        if (stageKings.length) {
+          // pagination-safe: stage_kings har LIMIT 5 i get_season_recap, så
+          // .in() slår højst 5 id'er op — provably bounded, langt under
+          // PostgREST's 1000-loft (#3331).
+          const { data: kingRiders } = await supabase
+            .from("riders").select("id, team_id")
+            .in("id", stageKings.map(k => k.rider_id));
+          const teamByRiderId = Object.fromEntries((kingRiders || []).map(r => [r.id, r.team_id]));
+          const mine = stageKings.find(k => teamByRiderId[k.rider_id] === myTeamId);
+          if (mine) myStageKing = { riderId: mine.rider_id, name: `${mine.firstname} ${mine.lastname}`, wins: mine.wins };
+        }
+
+        const highlights = pickRecapHighlights({
+          myTeamId,
+          divisionStandings: standings.filter(s => s.division === myStandingsRow.division),
+          prizeByTeam,
+          myBiggestSale,
+          myStageKing,
+        });
+
+        setTeamRecap({
+          standingsRow: myStandingsRow,
+          divisionSize: standings.filter(s => s.division === myStandingsRow.division).length,
+          movement,
+          prizeWon: prizeByTeam[myTeamId] || 0,
+          highlights,
+        });
+      }
     } catch (e) {
       console.error("SeasonEndPage: failed to load season data", e);
       setError({ type: "season", season });
@@ -377,6 +485,26 @@ export default function SeasonEndPage() {
         />
       ) : (
         <div className="flex flex-col gap-[14px]">
+          {/* #2752/#2361 — den personlige "årbog"-hero for MIT hold. Står
+              ØVERST, over den sæson-brede SeasonHonours nedenfor (design-
+              beslutning fra draft-PR #3283: de to læses som ét "sæson
+              opsummeret"-øjeblik, ikke to urelaterede kort). Kun for en
+              completed sæson hvor mit hold rent faktisk har en række. */}
+          {teamRecap && (
+            <SeasonRecapHero
+              seasonNumber={selectedSeason?.number}
+              teamName={myTeamName || "—"}
+              division={teamRecap.standingsRow.division}
+              divisionSize={teamRecap.divisionSize}
+              rank={teamRecap.standingsRow.rank_in_division}
+              movement={teamRecap.movement}
+              points={teamRecap.standingsRow.total_points}
+              stageWins={teamRecap.standingsRow.stage_wins}
+              prizeWon={teamRecap.prizeWon}
+              highlights={teamRecap.highlights.map(h => mapRecapHighlight(h, t, teamRecap.standingsRow.division))}
+            />
+          )}
+
           {/* #2863 Sæsonens bedste ryttere. Står ØVERST og uden for
               standings-guarden nedenfor: listerne er årbogssidens overskrift,
               og den bygger på race_results (via rider_rankings_mv), ikke på om

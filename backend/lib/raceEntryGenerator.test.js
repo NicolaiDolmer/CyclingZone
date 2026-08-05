@@ -1188,3 +1188,70 @@ test("#3114: monument i en ANDEN puljes CET-rum binder ikke på tværs (pulje-lo
   assert.ok(state.race_entries.filter((e) => e.race_id === "NORM2").length > 0, "pulje 2's normale løb fyldes stadig");
   assert.equal(res.races, 2, "kun løb med brugbart vindue tæller som usable");
 });
+
+// ── CYCLINGZONE-44 (prod 5/8): fuld manuel trup prunes, så residual-auto ikke lækker ──
+// Rod-årsag: en (race,team)-enhed med FULD manuel trup blev sprunget helt over — den nåede
+// aldrig `staged`, så en forældet is_auto_filled=true-række fra en tidligere kørsel overlevede
+// for evigt. Dobbelt skade: truppen stod med max+1 ryttere, OG den residuale rytter blev regnet
+// som fri af assignTeamAcrossRaces (skip-grenen låser kun `manualRiders`) → han blev udtaget til
+// et tidsoverlappende søsterløb. Prod: Team Fakta, O Gran Camiño Menor (game_day 10-13, 6 manuelle
+// + 1 residual auto) → samme rytter blev kaptajn i Settimana di Coppi e Bartali Minore (11-14).
+
+test("CYCLINGZONE-44: fuld manuel trup (6/6) med residual auto-række → auto-rækken prunes", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z", game_day: 3 }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  state.race_entries = ["t1-r0", "t1-r1", "t1-r2", "t1-r3", "t1-r4", "t1-r5"].map((rid, i) => (
+    { race_id: "A", rider_id: rid, team_id: "t1", race_role: i === 0 ? "captain" : "helper", is_auto_filled: false }
+  ));
+  // Residual fra en tidligere kørsel: 7. rytter, auto-fyldt, i et løb med hård cap på 6.
+  state.race_entries.push({ race_id: "A", rider_id: "t1-r6", team_id: "t1", race_role: "helper", is_auto_filled: true });
+
+  const res = await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false });
+
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A" && e.is_auto_filled === true).length, 0,
+    "residual auto-række er fjernet");
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 6,
+    "truppen er tilbage på selection-cap'en (6), kun de manuelle");
+  assert.equal(res.removed, 1, "prunet præcis én række");
+});
+
+test("CYCLINGZONE-44: residual auto-række i fuld-manuel løb dobbeltbooker IKKE et overlappende løb", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [
+    { id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+  ];
+  // Prod-formen: A = game_day 10-13, B = game_day 11-14 → vinduerne overlapper.
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-08-06T16:00:00Z", game_day: 10 },
+    { race_id: "A", stage_number: 2, scheduled_at: "2026-08-09T16:00:00Z", game_day: 13 },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-08-07T10:00:00Z", game_day: 11 },
+    { race_id: "B", stage_number: 2, scheduled_at: "2026-08-10T10:00:00Z", game_day: 14 },
+  ];
+  state.race_stage_profiles = [
+    { race_id: "A", ...flatProfile(1) }, { race_id: "A", ...flatProfile(2) },
+    { race_id: "B", ...flatProfile(1) }, { race_id: "B", ...flatProfile(2) },
+  ];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // A: fuld manuel trup (6/6) + én residual auto-række for r6.
+  state.race_entries = ["t1-r0", "t1-r1", "t1-r2", "t1-r3", "t1-r4", "t1-r5"].map((rid, i) => (
+    { race_id: "A", rider_id: rid, team_id: "t1", race_role: i === 0 ? "captain" : "helper", is_auto_filled: false }
+  ));
+  state.race_entries.push({ race_id: "A", rider_id: "t1-r6", team_id: "t1", race_role: "helper", is_auto_filled: true });
+
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false });
+
+  const aRiders = new Set(state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id));
+  const bRiders = state.race_entries.filter((e) => e.race_id === "B").map((e) => e.rider_id);
+  for (const r of bRiders) {
+    assert.ok(!aRiders.has(r), `${r} står i BEGGE overlappende løb (binding-invariant-brud)`);
+  }
+  assert.equal(aRiders.size, 6, "A står tilbage med præcis den manuelle trup");
+});

@@ -240,12 +240,16 @@ test("getScoutState: exposes jobConfig (priser/varigheder) fra SCOUT_JOB_CONFIG"
 test("getScoutState: hired scouting-staff → real overall/roleSkills, capacity reflects overall", async () => {
   const supabase = createScoutSupabase({
     team: { id: "team-1", balance: 100_000 },
-    staff: [{ id: "staff-1", team_id: "team-1", role: "scouting", status: "active", name: "Kim Andersen" }],
+    staff: [{
+      id: "staff-1", team_id: "team-1", role: "scouting", status: "active", name: "Kim Andersen",
+      tier: 4, created_at: "2026-06-20T09:00:00Z",
+    }],
     abilities: [{ staff_id: "staff-1", overall: 85, role_skills: { evaluation: 80, reach: 90 } }],
   });
   const result = await getScoutState("team-1", supabase);
   assert.deepEqual(result.scout, {
-    id: "staff-1", name: "Kim Andersen", overall: 85, roleSkills: { evaluation: 80, reach: 90 }, isDefault: false,
+    id: "staff-1", name: "Kim Andersen", tier: 4, hiredAt: "2026-06-20T09:00:00Z",
+    overall: 85, roleSkills: { evaluation: 80, reach: 90 }, isDefault: false,
   });
   assert.equal(result.capacity, 2); // overall >= 80
 });

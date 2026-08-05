@@ -59,22 +59,29 @@ test("day1 email (hasResults=false): truthful variant, no invented results claim
   assert.ok(!t.html.includes("already on the board"), "must not claim results exist when they don't");
   assert.ok(!t.text.includes("already on the board"));
   assert.ok(t.html.includes("on the calendar"));
-  assert.ok(t.html.includes("https://cyclingzone.org/dashboard"));
+  // Pin selve href'en, ikke bare en delstreng et vilkårligt sted i mailen:
+  // includes("https://cyclingzone.org/dashboard") ville også passere hvis
+  // URL'en kun stod som brødtekst, eller hvis CTA'en pegede på
+  // https://cyclingzone.org/dashboard.angriber.dk. (CodeQL
+  // js/incomplete-url-substring-sanitization flagede præcis det mønster.)
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard"/);
   assertHasUnsubscribeLink(t);
   assertNoEmDash(t, "day1 hasResults=false");
 });
 
 test("day1 med latestRaceId deep-linker CTA til løbssiden", () => {
   const t = buildDay1Email({ teamName: "Team X", hasResults: true, latestRaceId: "race-42", unsubscribeUrl: UNSUB_URL });
-  assert.ok(t.html.includes("https://cyclingzone.org/races/race-42"));
-  assert.ok(t.text.includes("https://cyclingzone.org/races/race-42"));
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42"/);
+  // Plaintext-varianten har ingen href — pin hele CTA-linjen i stedet, så
+  // URL'en skal stå alene og komplet til linjeslut.
+  assert.match(t.text, /^See your results and auctions: https:\/\/cyclingzone\.org\/races\/race-42$/m);
   assertNoEmDash(t, "day1 latestRaceId");
   assertHasUnsubscribeLink(t);
 });
 
 test("day1 uden latestRaceId falder tilbage til dashboard-URL", () => {
   const t = buildDay1Email({ teamName: "Team X", hasResults: true, latestRaceId: null, unsubscribeUrl: UNSUB_URL });
-  assert.ok(t.html.includes("https://cyclingzone.org/dashboard"));
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard"/);
 });
 
 test("race_digest email: subject, results link, unsubscribe link, no em-dash", () => {

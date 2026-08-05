@@ -16,6 +16,9 @@ function ensureRace(race) {
 import { PRIZE_PER_POINT } from "./economyConstants.js";
 export { PRIZE_PER_POINT };
 import { fetchAllRows } from "./supabasePagination.js";
+import { applyRaceResultsBatchAtomic as applyRaceResultsBatchAtomicDefault } from "./stageResultRpc.js";
+import { assertValidEntrantRows } from "./raceResultEntrantKey.js";
+import { captureException } from "./sentry.js";
 
 const RESULT_TYPE_TO_RACE_POINTS = {
   stage_race: {
@@ -82,8 +85,17 @@ export async function applyRaceResults({
   supabase,
   race,
   resultRows = [],
+  // #3022: array af de etape-numre denne skrivning dækker. Sat → delete+insert
+  // køres ATOMISK via apply_race_results_batch-RPC'en (i stedet for kaldets
+  // eget separate .delete() + dette kalds .insert() som to HTTP-round-trips) —
+  // lukker fejlmode B (crash mellem delete og insert efterlader løbet
+  // resultatløst). Uændret adfærd (ren .insert(), ingen forudgående delete) når
+  // IKKE sat — bruges af /admin/approve-results, der aldrig har en eksisterende
+  // race_results-mængde at erstatte for det løb.
+  stageNumbers = null,
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
+  applyRaceResultsBatch = applyRaceResultsBatchAtomicDefault,
 } = {}) {
   ensureSupabase(supabase);
   ensureRace(race);
@@ -114,14 +126,44 @@ export async function applyRaceResults({
     bonus_seconds: row.bonus_seconds ?? null,
   }));
 
-  const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);
-  if (insertError) throw new Error(insertError.message);
+  // Forward-guard (#3022): afvis rækker uden gyldig deltager-identitet eller en
+  // intern batch-kollision FØR databasen rammes — matcher race_results_entrant_unique.
+  assertValidEntrantRows(normalizedRows);
 
-  await ensureSeasonStandings(race.season_id);
-  await updateStandings(race.season_id, race.id);
+  let rowsInserted;
+  if (Array.isArray(stageNumbers) && stageNumbers.length) {
+    const { rowsInserted: inserted } = await applyRaceResultsBatch(supabase, {
+      raceId: race.id,
+      stageNumbers,
+      resultRows: normalizedRows,
+    });
+    rowsInserted = inserted;
+  } else {
+    const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);
+    if (insertError) throw new Error(insertError.message);
+    rowsInserted = normalizedRows.length;
+  }
+
+  // #2877: samme kobling som simulateStageByIndex (raceRunner.js) blev ramt af —
+  // resultaterne ER skrevet på dette tidspunkt, men simulateRace's berigelses-
+  // skrivning (persistRuns/persistPassages/persistIncidents/persistStageMoments)
+  // kører FØRST efter denne funktion returnerer. Kastede standings-recompute'en
+  // uhåndteret (fx statement timeout under samtidige afviklinger), væltede det
+  // hele opkaldet og berigelsen blev aldrig skrevet — selvom resultaterne stod.
+  // updateStandings er en fuld re-derivation fra race_results — inhærent
+  // idempotent og self-healing (næste recompute retter den); berigelsen er det
+  // ikke. Fanget + Sentry-capturet (synligt, ikke tavst skjult) i stedet for at
+  // lade en recompute-fejl gøre allerede-skrevne resultater' berigelse gidsel.
+  try {
+    await ensureSeasonStandings(race.season_id);
+    await updateStandings(race.season_id, race.id);
+  } catch (err) {
+    console.error(`  ⚠️  standings recompute failed after race ${race.id} results write — enrichment continues, standings will self-heal on next recompute: ${err.message}`);
+    captureException(err, { tags: { flow: "race-results", stage: "standings-recompute" }, raceId: race.id });
+  }
 
   return {
-    rowsImported: normalizedRows.length,
+    rowsImported: rowsInserted,
   };
 }
 

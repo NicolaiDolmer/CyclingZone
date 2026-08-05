@@ -9,7 +9,7 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
 ## Hard rules
 
 > **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI).
+> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-15 ✍️ (orkestrering; 14 bliver 🔒 når [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367) lukkes).
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
@@ -39,6 +39,24 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
    - **Destruktive klasser er FORTSAT ejer-gated pr. tilfælde:** `DROP TABLE`/kolonne, masse-DELETE/UPDATE af spillerdata, RLS-lempelser — jf. "ejer ser live-tilstand før atombomber".
    - **Mekanik:** filer i `database/2026-*.sql` (top-niveau) auto-applies desuden af `auto-migrate.yml` ved push til main (~3 min delay). MCP-apply bruges til at fremrykke/verificere en merged migration samt til one-off data-SQL under rammerne ovenfor — begge veje er idempotente via `schema_migrations`-tracking hhv. filkonventionen. ⚠️ **"Forberedt-men-ikke-kørt" SQL må derfor ALDRIG committes som `database/2026-*.sql`** — den KØRER ved merge uanset kommentarer i filen (bidt 18/7: backfill-2623 auto-applied trods "IKKE KØRT"-header). Udkast/forslag til ejer-review → `database/proposals/` (uden for auto-migrate-globben).
    - **Backup-forudsætning:** Supabase-org er på Pro-plan (daglige automatiske backups) — verificeret 2026-07-18. PITR-add-on-status kan ikke aflæses via MCP; ejer bekræfter i dashboard.
+
+### Orkestrering af parallelle agenter (ejer-godkendt 2026-08-05)
+
+Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbølger, fleets). Hver regel står med den hændelse der udløste den — reglen uden hændelsen bliver til prosa der drifter.
+
+10. **Enhver agent har en terminal-tilstand du har SET.** En agent er ikke færdig fordi dens arbejde er reddet — den er færdig når du har set den stoppe. Redning af et spor SKAL afsluttes med `TaskStop`. _Natbølge 4.-5./8: fire agenter kørte videre i 10-12 timer efter deres arbejde var reddet manuelt. Over 1 mio. tokens brændt på spor der var færdige._
+
+11. **Påstande om systemtilstand kræver en positiv observation.** "Jeg fandt ingen" er ikke "der er ingen". Brug det værktøj der ser den tilstand du udtaler dig om, og sig hvilket. _Samme nat: `TaskList` blev brugt til at konkludere at ingen agenter kørte. TaskList er todo-listen, ikke baggrundsopgaverne — forkert værktøj gav en forkert konklusion der holdt i timevis._
+
+12. **Loft på igangværende arbejde: maks 5 åbne PR'er.** Er køen fuld, merges før der startes nyt. _Køen nåede 23. Konflikterne i `patchNotes.js` voksede hurtigere end de blev lukket, fordi hver ny PR konfliktede med alle de foregående._
+
+13. **Ingen påstand uden en måling. Issue-tal ældre end en uge GENMÅLES, de citeres ikke.** _Næsten hvert tal i natbølgens issues var forkert med faktor 10-1000: 247 → 225.947 NULL-rækker · 807 → 1.399 udløbende ryttere · "grøn" økonomi → 90× drift._
+
+14. **Isolation er infrastruktur, ikke disciplin.** Et spor må ikke kunne ødelægge et andet ved et uheld. [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367) skal lukkes før næste bølge. _Delt `node_modules` ramte 4 af 20 spor og kostede verifikations-dækning på en sikkerheds-PR. `npm ci` gennem en junction tømte hoved-checkoutets install midt i bølgen._
+
+15. **Mennesket beslutter, AI'en fremskaffer beviset.** Bed aldrig om godkendelse af et gæt — mål først, præsentér så. _Gennemgående mønster: beslutningsoplæg byggede på issue-tekster i stedet for på prod._
+
+**Dispatch-forfilter (obligatorisk før et spor sendes af sted):** `gh issue view N --json state` — plus tjek om der findes en merged PR med `Refs #N`. _Fire spor i natbølgen var allerede løst. `MASTERPLAN.md` og issue-teksterne halter efter hvad der faktisk er shippet; ét kald pr. kandidat havde sparet fire spor._
 
 ### §LOKAL lokal-only-state (legacy — Codex-æra)
 

@@ -1,6 +1,6 @@
 import { isKnownNotificationType } from "./notificationTypes.js";
 import { captureException } from "./sentry.js";
-import { SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
+import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -317,14 +317,21 @@ export async function emitRaceResultNotifications({
  * riders' flere team-relationer. Standard-implementering; injicérbar i test.
  */
 async function defaultFetchParticipatingManagers({ supabase, raceId }) {
-  const { data, error } = await supabase
-    .from("race_results")
-    .select("rider:rider_id!inner(team:team_id!inner(user_id, is_ai, is_frozen))")
-    .eq("race_id", raceId)
-    .eq("rider.team.is_ai", false)
-    .eq("rider.team.is_frozen", false);
-  if (error) {
-    throw new Error(`Could not load participating managers for race ${raceId}: ${error.message}`);
+  // #3331: large stage races produce 1000+ race_results rows (up to ~17k for
+  // the biggest grand tours) — a naive unpaginated select here would silently
+  // drop some human managers' "your race finished" notification. fetchAllRows
+  // pages via .range(); .order("id") keeps pages stable.
+  let data;
+  try {
+    data = await fetchAllRows(() => supabase
+      .from("race_results")
+      .select("rider:rider_id!inner(team:team_id!inner(user_id, is_ai, is_frozen))")
+      .eq("race_id", raceId)
+      .eq("rider.team.is_ai", false)
+      .eq("rider.team.is_frozen", false)
+      .order("id", { ascending: true }));
+  } catch (error) {
+    throw new Error(`Could not load participating managers for race ${raceId}: ${error.message}`, { cause: error });
   }
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
 }
@@ -350,12 +357,18 @@ export async function defaultFetchFirstTimeManagers({ supabase, race, userIds })
       return new Set();
     }
     if (!teams?.length) return new Set();
-    const { data: other, error: otherError } = await supabase
-      .from("race_results")
-      .select("team_id")
-      .in("team_id", teams.map((t) => t.id))
-      .neq("race_id", race.id);
-    if (otherError) {
+    // #3331: a team can accumulate 1000+ race_results rows over several
+    // seasons (max observed ~5.1k) — an unpaginated select here would falsely
+    // mark veteran teams as "first-timer" once truncation kicks in.
+    let other;
+    try {
+      other = await fetchAllRows(() => supabase
+        .from("race_results")
+        .select("team_id")
+        .in("team_id", teams.map((t) => t.id))
+        .neq("race_id", race.id)
+        .order("id", { ascending: true }));
+    } catch (otherError) {
       console.error(`  ❌ first-time-manager-lookup fejlede (race_results, race ${race?.id}):`, otherError?.message || otherError);
       captureException(otherError, { tags: { flow: "notifications", stage: "first-time-managers-race-results" }, raceId: race?.id });
       return new Set();
@@ -568,6 +581,9 @@ export async function emitStageResultNotifications({
  * implementering; injicérbar i test.
  */
 async function defaultFetchStageParticipants({ supabase, raceId, stageNumber }) {
+  // pagination-safe: one (race_id, stage_number, result_type="stage") slice is
+  // bounded by that race's field size — verified max 192 rows repo-wide
+  // (#3331 audit, 2026-08-05), well under the 1000-row PostgREST cap.
   const { data, error } = await supabase
     .from("race_results")
     .select("rank, rider_name, team:team_id!inner(user_id, is_ai, is_frozen)")
@@ -760,4 +776,65 @@ export function buildWelcomeNotification() {
       messageParams: {},
     },
   };
+}
+
+// ─── #3334 · Chefscout-skift-notifikation ─────────────────────────────────
+//
+// PROBLEM (#3334, @nosyara. Discord-sag 4/8): en spiller skiftede chefscout
+// (fyrede + genansatte en anden), og næste gang hun åbnede en ungdomsrytters
+// scoutingrapport var loft-båndet omskrevet — INGEN besked forklarede at det
+// var scout-skiftet (præcisionen/gulvet, jf. scoutHalfWidth) der flyttede
+// tallene, ikke rytteren selv. Hun troede rytteren var blevet dårligere og
+// ændrede hans træning for at "rette" et fald der aldrig skete.
+//
+// Afsendes fra facilityService.hireStaff() NÅR role==='scouting' OG holdet
+// har fyret en tidligere scouting-staff før (loadFiredStaffNames.size > 0) —
+// dvs. dette er et SKIFTE, ikke holdets første nogensinde ansatte spejder
+// (en helt ny scout har ingen eksisterende rapporter at genberegne).
+export const SCOUT_CHANGED_TYPE = "scout_changed";
+
+/**
+ * #3334 · Byg payloaden for "din scout er skiftet, rapporter genberegnes"-
+ * notifikationen. Eksplicit på det centrale punkt: rytternes FAKTISKE evner
+ * er uændrede — kun præcisionen på det viste loft-bånd er anderledes.
+ */
+export function buildScoutChangedNotification({ scoutName, scoutTier }) {
+  const name = scoutName || "Your new scout";
+  return {
+    type: SCOUT_CHANGED_TYPE,
+    title: "New scout, reports recalculated",
+    message: scoutTier != null
+      ? `${name} (tier ${scoutTier}) is now assessing your riders. Existing scouting reports are recalculated to match their precision — your riders' actual abilities have not changed.`
+      : `${name} is now assessing your riders. Existing scouting reports are recalculated to match their precision — your riders' actual abilities have not changed.`,
+    relatedId: null,
+    metadata: {
+      scoutName: name,
+      scoutTier: scoutTier ?? null,
+      titleCode: "notif.scoutChanged.title",
+      titleParams: {},
+      messageCode: "notif.scoutChanged.message",
+      messageParams: { scoutName: name, scoutTier: scoutTier ?? null },
+    },
+  };
+}
+
+/**
+ * #3334 · Notificér holdejeren om et netop gennemført chefscout-SKIFTE (ikke
+ * første-gangs-ansættelse). Kaldes EFTER team_staff-insert er bekræftet
+ * (facilityService.hireStaff) — en notifikationsfejl må ALDRIG kunne vælte
+ * selve ansættelsen (samme A2-isolerings-mønster som resten af filen, #2389).
+ * `notify` injicérbar for test.
+ */
+export async function notifyScoutChanged({
+  supabase, teamId, scoutName, scoutTier, notify = notifyTeamOwner, now = new Date(),
+}) {
+  if (!teamId) return { delivered: false, deduped: false, reason: "missing_team" };
+  try {
+    const payload = buildScoutChangedNotification({ scoutName, scoutTier });
+    return await notify({ supabase, teamId, now, ...payload });
+  } catch (err) {
+    console.error(`  ❌ scout-changed-notifikation fejlede (hold ${teamId}):`, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "scout-changed" }, teamId });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
 }

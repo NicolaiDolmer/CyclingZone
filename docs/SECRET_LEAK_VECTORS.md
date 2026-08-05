@@ -42,6 +42,7 @@ Bekræftede store leaks:
 | 1 | 2026-04-17 → 2026-05-11 | Hardcoded i `setup.py` commit `bc9204d`, line 27 | Supabase service_role JWT (legacy) | [#296](https://github.com/NicolaiDolmer/CyclingZone/issues/296) |
 | 2 | 2026-05-25 (Session B) | `railway variables --json` × 2 i transcript | SENTRY_DSN + SUPABASE_SERVICE_KEY + DISCORD_BOT_TOKEN | [#620](https://github.com/NicolaiDolmer/CyclingZone/issues/620) |
 | 3 | 2026-05-30 | `infisical secrets --plain` i transcript (deny-list-hul: hook matchede kun `list --format json`) | SUPABASE_SERVICE_KEY + TEST_ACCOUNT_PASSWORD | [#634](https://github.com/NicolaiDolmer/CyclingZone/issues/634) follow-up |
+| 4 | 2026-08-04 20:00 | `scripts/get-test-token.mjs` printede fuldt Supabase `access_token` til stdout — kørt af en subagent under #3336-arbejde for at logge ind som testbruger | Supabase access_token for `test-a@cyclingzone.dev` (`is_test_account=true`, lav blast radius). Fanget af `sanitize-secrets.sh` PostToolUse, men EFTER tokenet allerede stod i transcriptet — scriptet havde stdout som eneste output-kanal per design. | [#3342](https://github.com/NicolaiDolmer/CyclingZone/issues/3342) |
 
 Mindre instances (verificeret ved gennemgang af `settings.local.json` allow-list — commands der har været approved og kørt minst én gang):
 
@@ -99,6 +100,8 @@ Anbefaling: #634 ships nu. #563 prioriteres i sprint 18 maj-17 juni som "P1 sikk
 | Env-grep med value | `env \| grep SUPABASE` (printer key=value) | Ingen kendt | Brug `env \| awk -F= '/SUPABASE/{print $1}'` (kun match key, ikke value). |
 | Read/Grep tool på secret-fil | `Read('.env')`, `Read('.mcp.json')`, `Grep('TOKEN', 'backend/.env')` | **2026-05-29** — Discord bot-token dumpet til transcript via `.mcp.json` (ramt 2×: session-læsning + agent-`Grep`). | ✅ **LUKKET 2026-05-29 (#634 follow-up) + hardenet 2026-06-01:** **Lag A (primær)** — `block-dangerous-secret-commands.sh` blokerer nu `Read`/`Grep` mod secret-fil-stier (`.mcp.json`, `*.env`, `*.env.*`, `*/secrets/*`; whitelist: `.example/.sample/.template`). **Lag B (backup)** — PostToolUse sanitizer dækker `Read\|Write\|Edit\|Grep`. **Lag C (root-cause)** — Discord MCP setup skriver nu `.mcp.json` uden inline token; `DISCORD_TOKEN` injectes via Infisical/user-env. |
 | Dotenv-debug-print | `node -e "require('dotenv').config(); console.log(process.env)"` | Ingen kendt | ALDRIG kør. Brug `node -e "require('dotenv').config(); console.log(Object.keys(process.env))"`. |
+| Test-account JWT-mint script (stdout-default) | `node scripts/get-test-token.mjs --email=...` — scriptets ELDRE default printede tokenet til stdout uden alternativ kanal | **2026-08-04 20:00** — fuldt Supabase `access_token` for `test-a@cyclingzone.dev` printet til agent-transcript under #3336-arbejde. Se leak #4 ovenfor. | ✅ **LUKKET 2026-08-05 (#3342):** default-kanal er nu en gitignored fil (`.codex.local/test-token.json`, restriktive rettigheder hvor OS understøtter det, `--out=<path>` for custom placering). Scriptet printer kun **stien** til stdout. `--print` bevarer den gamle rå-stdout-adfærd og er KUN til manuel terminalbrug UDENFOR Claude Code (advarsel i `--help`). PreToolUse-hook blokerer `--print`-formen kategorisk. |
+| Læsning af get-test-token.mjs' output-fil | `cat .codex.local/test-token.json`, `Get-Content .codex.local/test-token.json`, `Read('.codex.local/test-token.json')` | Ingen kendt (ny fil introduceret af #3342-fixet selv — dokumenteret proaktivt) | Filen ER et JWT i klartekst, uanset at den er gitignored — samme leak som `--print`. PreToolUse-hook blokerer `cat`/`Get-Content`/`Read`/`Grep` mod `.codex.local/test-token*.json` (samme Lag A-mønster som `.mcp.json`/`.env`). Brug filens STI i en efterfølgende kommando/proces i stedet for at printe indholdet. |
 
 ### C. Git history-mining
 
@@ -160,6 +163,9 @@ Anbefaling: #634 ships nu. #563 prioriteres i sprint 18 maj-17 juni som "P1 sikk
 | CI secret-scan workflow | ✅ Allerede live (pre-#634) | [`.github/workflows/secret-scan.yml`](../.github/workflows/secret-scan.yml) |
 | HOT-tier memory: secret-leak-prevention | ✅ Pre-existed, opdateret #634-AC4 | `feedback_secret_leak_prevention.md` |
 | Test-fixture + verifikation | ✅ Bygget #634-AC6 | [`scripts/test-sanitize-secrets.ps1`](../scripts/test-sanitize-secrets.ps1) |
+| get-test-token.mjs: sikker default-kanal (fil, ikke stdout) | ✅ Bygget #3342 | [`scripts/get-test-token.mjs`](../scripts/get-test-token.mjs) — `--print` for gammel adfærd, advarsel i `--help` |
+| PreToolUse: get-test-token.mjs --print + output-fil-read block | ✅ Bygget #3342 | samme hook — `--print`-flag + `.codex.local/test-token*.json` (cat/Get-Content/Read/Grep) |
+| Test-fixture: block-dangerous-secret-commands.sh | ✅ Bygget #3342 | [`scripts/test-block-dangerous-secret-commands.sh`](../scripts/test-block-dangerous-secret-commands.sh) |
 
 ## Når en ny vektor opdages
 

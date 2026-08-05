@@ -331,6 +331,13 @@ export const SEED_RACE_RESULTS = [
   { id: "res-d1-team-2", race_id: "race-done-1", stage_number: 1, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-1", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 1, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 20, prize_money: 40000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-2", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
+  // #3333 — race-live-1 (Settimana Preview, igangværende, 2/5 etaper): 'leader'-
+  // rækker for seneste kørte etape (2), samme resultat_type som motoren skriver
+  // undervejs (raceLiveStandings.js/#2081) — status forbliver 'scheduled', kun
+  // stages_completed markerer fremdriften. Uden disse rækker viser Resultat-
+  // hubbens kort "ingen klassement" for et løb der reelt har en løbende stilling.
+  { id: "res-live1-leader-1", race_id: "race-live-1", stage_number: 2, result_type: "leader", rank: 1, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, finish_time: "+0:00", points_earned: 20, prize_money: 0, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team: { id: TEST_TEAM.id, name: TEST_TEAM.name } } },
+  { id: "res-live1-leader-2", race_id: "race-live-1", stage_number: 2, result_type: "leader", rank: 2, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:18", points_earned: 0, prize_money: 0, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
 ];
 
 // race_stage_passages — Sub-4 (#2448) preview-seed: KOM/mellemsprint/mål-
@@ -1130,20 +1137,47 @@ export const SEED_PROJECTION = {
   pastPeak: false,
 };
 
+// #3334 preview-seed: GET /api/riders/:id/scouting-report — samme sprinter-profil
+// som SEED_PROJECTION (now:70, sprinter-loft 78-86), plus rapport-provenance
+// (navngiven chefscout, tier 2) så feature'en er synlig på preview uden en
+// hyret spejder i SEED_CLUB (der er bevidst stadig default-spejder, #1441 A3).
+export const SEED_SCOUTING_REPORT = {
+  level: 3, maxLevel: 3, own: true, capsMissing: false,
+  stars: { lo: 4.5, hi: 5 },
+  types: [
+    { key: "sprinter", now: 70, ceilLo: 78, ceilHi: 86 },
+    { key: "puncheur", now: 44, ceilLo: 48, ceilHi: 54 },
+    { key: "brostensrytter", now: 52, ceilLo: 56, ceilHi: 61 },
+    { key: "baroudeur", now: 41, ceilLo: 45, ceilHi: 50 },
+    { key: "rouleur", now: 55, ceilLo: 59, ceilHi: 64 },
+    { key: "tt", now: 38, ceilLo: 42, ceilHi: 47 },
+    { key: "gc", now: 30, ceilLo: 34, ceilHi: 39 },
+    { key: "climber", now: 27, ceilLo: 31, ceilHi: 36 },
+  ],
+  verdict: { headlineKey: "keep_and_develop", confidence: "high", factorKeys: ["age_upside", "ceiling_gap", "type_match", "form_unknown"] },
+  value: { market: 420000, expected: 468000 },
+  scout: { isDefault: false, name: "Sofie Lindqvist", tier: 2, overall: 61, hiredAt: "2026-07-20T10:00:00.000Z" },
+  generatedAt: "2026-08-05T09:00:00.000Z",
+};
+
 // #2819 preview-seed: onboarding-progress i den ÆGTE respons-form fra
 // GET /api/me/onboarding-progress (steps[{key,done}] + completed_count/total_count
 // + dismissed/established). Den gamle mock returnerede {steps:[], completed_steps,
 // completion_pct} — en form ingen kode læser, så dashboard-kortet stod uden trin og
-// "Show me how"-knappen kunne slet ikke klikkes i preview. Trin 1 er markeret done,
-// så NÆSTE trin er træning (trin 2) og touren på /training kan startes fra kortet.
+// "Show me how"-knappen kunne slet ikke klikkes i preview.
+// #3007: trin 1 (first_bid_placed) sat til IKKE fuldført (var før "done" for at vise
+// trin 2's tour by default). Det betyder AuctionsFirstBidHint + "Første valg"-
+// anbefalingen på /auctions nu er synlig uden manuel localStorage-omgåelse, så
+// ejeren kan se den flade der rent faktisk afgør aktivering direkte i preview.
+// Ingen tests refererer denne seed (kun mockHandlers.js bruges af Playwright).
 export const SEED_ONBOARDING_PROGRESS = {
   steps: [
-    { key: "first_bid_placed", done: true },
+    { key: "first_bid_placed", done: false },
     { key: "first_training_run", done: false },
     { key: "first_squad_selected", done: false },
     { key: "board_plan_set", done: false },
   ],
-  completed_count: 1,
+  completed_count: 0,
   total_count: 4,
   dismissed: false,
   established: false,

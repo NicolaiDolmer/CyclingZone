@@ -16,6 +16,9 @@ const {
   SCOUT_REPORT_READY_TYPE,
   buildWelcomeNotification,
   WELCOME_TYPE,
+  buildScoutChangedNotification,
+  notifyScoutChanged,
+  SCOUT_CHANGED_TYPE,
 } = await import("./notificationService.js");
 
 function createNotificationSupabase({
@@ -326,8 +329,21 @@ function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = nul
                 return {
                   neq(column2, _value2) {
                     assert.equal(column2, "race_id");
-                    const data = otherResults.filter((r) => values.includes(r.team_id));
-                    return Promise.resolve({ data, error: null });
+                    return {
+                      // #3331: defaultFetchFirstTimeManagers now pages via
+                      // fetchAllRows, which chains .order() then .range() on
+                      // the query builder. Test data is small (< 1 page).
+                      order(column3, options) {
+                        assert.equal(column3, "id");
+                        assert.deepEqual(options, { ascending: true });
+                        return {
+                          range(_from, _to) {
+                            const data = otherResults.filter((r) => values.includes(r.team_id));
+                            return Promise.resolve({ data, error: null });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -757,4 +773,52 @@ test("buildWelcomeNotification + notifyTeamOwner: leverer via teamId → user_id
   assert.equal(supabase.state.inserts[0].user_id, "user-1");
   assert.equal(supabase.state.inserts[0].type, "welcome");
   assert.equal(supabase.state.inserts[0].related_id, null);
+});
+
+// ─── #3334 · buildScoutChangedNotification + notifyScoutChanged ──────────────
+
+test("buildScoutChangedNotification: korrekt type, ingen related_id, i18n-koder + eksplicit 'stats uændret'-tekst", () => {
+  const payload = buildScoutChangedNotification({ scoutName: "Kim Andersen", scoutTier: 3 });
+
+  assert.equal(payload.type, SCOUT_CHANGED_TYPE);
+  assert.equal(payload.type, "scout_changed");
+  assert.equal(payload.relatedId, null, "ikke knyttet til én bestemt rytter/rapport");
+  assert.equal(payload.metadata.titleCode, "notif.scoutChanged.title");
+  assert.equal(payload.metadata.messageCode, "notif.scoutChanged.message");
+  assert.equal(payload.metadata.scoutName, "Kim Andersen");
+  assert.equal(payload.metadata.scoutTier, 3);
+  assert.match(payload.message, /Kim Andersen/);
+  assert.match(payload.message, /recalculated/i);
+  // #2798 potentiale-lækage-forebyggelse: teksten må ALDRIG nævne rytterens
+  // potentiale eller loft — kun at rapporten genberegnes og evnerne er uændrede.
+  assert.doesNotMatch(payload.message, /potential|ceiling/i);
+  assert.match(payload.message, /abilities have not changed/i);
+});
+
+test("buildScoutChangedNotification: manglende scoutTier falder tilbage til tier-fri tekst (default-spejder-kant)", () => {
+  const payload = buildScoutChangedNotification({ scoutName: "Kim Andersen", scoutTier: null });
+  assert.doesNotMatch(payload.message, /tier null/i);
+  assert.match(payload.message, /Kim Andersen/);
+});
+
+test("notifyScoutChanged: leverer via notifyTeamOwner (teamId → user_id-opslag)", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const result = await notifyScoutChanged({ supabase, teamId: "team-1", scoutName: "Kim Andersen", scoutTier: 3 });
+  assert.deepEqual(result, { delivered: true, deduped: false });
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].user_id, "user-1");
+  assert.equal(supabase.state.inserts[0].type, "scout_changed");
+});
+
+test("notifyScoutChanged: manglende teamId er et no-op (missing_team), kaster ikke", async () => {
+  const supabase = createNotificationSupabase();
+  const result = await notifyScoutChanged({ supabase, teamId: null, scoutName: "X", scoutTier: 1 });
+  assert.deepEqual(result, { delivered: false, deduped: false, reason: "missing_team" });
+});
+
+test("notifyScoutChanged: en fejlende notify isoleres (fanges, kaster ikke) — hire-flowet må aldrig væltes", async () => {
+  const supabase = createNotificationSupabase();
+  const notify = async () => { throw new Error("boom"); };
+  const result = await notifyScoutChanged({ supabase, teamId: "team-1", scoutName: "X", scoutTier: 1, notify });
+  assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
 });

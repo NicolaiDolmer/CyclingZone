@@ -4,6 +4,181 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.95",
+    "date": "2026-08-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider type now shows what a rider can become, not just today's form",
+          "body": "Rider type (the label shown on the profile and roster, e.g. climber, sprinter, GC) is now based on a rider's long-term ceiling instead of their current stats. This makes the label stable for the rest of a rider's career and fixes a bug where almost every young rider was labelled climber or time trial regardless of what they were actually best suited for. Your riders' stats have not changed, and neither has their market value: only some of the type labels have moved, prices are unaffected by this update."
+        },
+        "da": {
+          "title": "Ryttertype viser nu potentiale, ikke kun dagens form",
+          "body": "Ryttertypen (labelen på profilen og rytteroversigten, fx klatrer, sprinter, GC) bygger nu på rytterens langsigtede loft i stedet for de nuværende stats. Det gør labelen stabil resten af karrieren og retter en fejl hvor stort set alle unge ryttere blev vist som klatrer eller tempo uanset hvad de reelt egnede sig til. Dine rytteres stats er uændrede, og det er markedsværdien også: kun nogle af type-labelerne flytter sig, priserne er upåvirkede af denne opdatering."
+        },
+        "refs": [3325, 3345]
+      },
+      {
+        "category": "improved",
+        "audience": "internal",
+        "topic": "Race engine",
+        "en": {
+          "title": "Stage-race generator picks a finale style instead of always climbing to the finish",
+          "body": "The generator that builds a stage race's terrain used to sort every race the same way: sprint stages first, mountains always last. Real WorldTour races don't work like that. Calibrated against a structured count of 41 real WorldTour stage races (407 stages, 2024-2026), the generator now picks one of four finale styles per non-grand-tour race (hilly circuit, summit, sprint, time-trial), weighted to match the real distribution (hilly circuits are the most common finale, not sprints), and gives races a real, mostly non-flat opening stage. Grand tours get their own dedicated form: hardest terrain second-to-last, flat or time-trial finish, since none of the real grand tours studied ended on a mountain stage. No visible effect until the next season's calendar is built."
+        },
+        "da": {
+          "title": "Etapeløbs-generatoren vælger en finale-stil i stedet for altid at klatre til mål",
+          "body": "Generatoren der bygger et etapeløbs terræn sorterede før alle løb ens: sprint-etaper først, bjerge altid sidst. Sådan fungerer rigtige WorldTour-løb ikke. Kalibreret mod en struktureret optælling af 41 rigtige WorldTour-etapeløb (407 etaper, 2024-2026), vælger generatoren nu én af fire finale-stile pr. ikke-grand-tour-løb (kuperet kredsløb, bjerg-top, sprint, enkeltstart), vægtet mod den faktiske fordeling (kuperede kredsløb er den mest almindelige finale, ikke spurter), og giver løb en reel, overvejende ikke-flad åbningsetape. Grand tours får deres egen ordning: hårdeste terræn næstsidst, flad eller enkeltstart-afslutning, da ingen af de rigtige grand tours i undersøgelsen sluttede på en bjergetape. Ingen synlig effekt før næste sæsons kalender bygges."
+        },
+        "refs": [3326]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Division 2's calendar gets a real classics scene, from next season",
+          "body": "Division 2 was two-thirds stage races with almost no cobbles: one race per group for the whole season. From the next season build, the calendar targets a roughly even split between one-day races and stage races, cobbled classics get a real presence, and stage race length now tracks class: ProSeries stays a short 3-5 days, WorldTour races run longer (6-8 days) and pay out more per race day. This changes how the calendar is built, not the season in progress, so you'll see it the next time your division's calendar is generated."
+        },
+        "da": {
+          "title": "Division 2 får en rigtig klassiker-scene, fra næste sæson",
+          "body": "Division 2 var to tredjedele etapeløb med næsten ingen brosten: ét løb pr. gruppe for hele sæsonen. Fra næste sæsons kalender-generering sigter kalenderen mod en nogenlunde jævn fordeling mellem endagsløb og etapeløb, brostens-klassikere får en reel tilstedeværelse, og etapeløbs-længde følger nu klassen: ProSeries forbliver kort (3-5 dage), WorldTour-løb kører længere (6-8 dage) og betaler mere pr. løbsdag. Det ændrer HVORDAN kalenderen bygges, ikke den igangværende sæson, så du ser det næste gang din divisions kalender genereres."
+        },
+        "refs": [3327, 3328]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Promoted academy riders keep the contract they already had",
+          "body": "When you promoted a rider out of your academy, the game overwrote his existing contract with a shorter one: three seasons became two, and his wage was recalculated. That is fixed, and we found the same bug hiding in a second place. We have also repaired the riders it already hit: 32 contracts are back to their correct length. Without that repair they would have been released as free agents at the season change, even though you thought you had them for another season. One thing we could not restore: the wage that was overwritten is not recorded anywhere, so it stays as it is."
+        },
+        "da": {
+          "title": "Forfremmede akademiryttere beholder den kontrakt de allerede havde",
+          "body": "Når du forfremmede en rytter ud af dit akademi, overskrev spillet hans eksisterende kontrakt med en kortere: tre sæsoner blev til to, og lønnen blev genberegnet. Det er rettet, og vi fandt den samme fejl gemt et sted mere. Vi har også repareret de ryttere den allerede nåede at ramme: 32 kontrakter er tilbage på deres rigtige længde. Uden den reparation ville de være blevet frigivet som fri agenter ved sæsonskiftet, selvom du troede du havde dem en sæson mere. Én ting kunne vi ikke genskabe: den overskrevne løn er ikke gemt nogen steder, så den bliver stående."
+        },
+        "refs": [2881]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race reports are no longer lost when the standings hiccup",
+          "body": "If the standings recalculation failed after a stage, the whole race report for that stage was thrown away with it: headline, badges and the moments that decided the day. Twenty stages across fifteen races were already affected, and those cannot be recovered. From now on the report survives even if the standings need a retry."
+        },
+        "da": {
+          "title": "Løbsrapporter går ikke længere tabt når stillingen hikker",
+          "body": "Hvis genberegningen af stillingen fejlede efter en etape, røg hele etapens løbsrapport med i faldet: overskrift, badges og de momenter der afgjorde dagen. Tyve etaper fordelt på femten løb nåede at blive ramt, og dem kan vi ikke få tilbage. Fremover overlever rapporten, også hvis stillingen skal prøve igen."
+        },
+        "refs": [2877]
+      },
+      {
+        "category": "fixed",
+        "audience": "internal",
+        "topic": "Platform",
+        "en": {
+          "title": "Result table can now enforce its own correctness",
+          "body": "The results table had no rule preventing the same entrant appearing twice in a stage, and a write could leave half a result behind if it failed midway. It now has a uniqueness rule and writes all-or-nothing. Verified against all 710,397 existing rows with zero conflicts. Also landed: a checked-in registry for the background-job monitors, three more scorecards covered by the exit-code guard, and a development script that no longer prints a login token to the terminal."
+        },
+        "da": {
+          "title": "Resultat-tabellen kan nu håndhæve sin egen korrekthed",
+          "body": "Resultat-tabellen havde ingen regel mod at samme deltager optrådte to gange i en etape, og en skrivning kunne efterlade et halvt resultat hvis den fejlede undervejs. Den har nu en unikhedsregel og skriver alt-eller-intet. Verificeret mod alle 710.397 eksisterende rækker uden en eneste konflikt. Også landet: et checked-in register over baggrundsjobbenes overvågning, tre flere scorecards dækket af exit-code-vagten, og et udviklings-script der ikke længere printer en login-token i terminalen."
+        },
+        "refs": [3022, 1847, 2892, 3009, 3342]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "In-progress stage races now show up on the Results hub",
+          "body": "A stage race that had run several stages but wasn't fully finished used to be invisible on the Results hub's Latest tab, since it only looked for races marked completed. In-progress stage races now show there too, clearly marked Live with a \"Stage X of Y\" progress line, and the current top 3 while the race is still under way."
+        },
+        "da": {
+          "title": "Igangværende etapeløb vises nu på Resultat-hubben",
+          "body": "Et etapeløb der havde kørt flere etaper, men ikke var helt færdigt, var usynligt på Resultat-hubbens Seneste-fane, fordi den kun kiggede efter løb markeret afsluttet. Igangværende etapeløb vises nu også der, tydeligt markeret Live med en \"Etape X af Y\"-linje, og den aktuelle top 3 mens løbet stadig kører."
+        },
+        "refs": [3333]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Season forecast now includes facility, staff and academy costs",
+          "body": "The Finance page's season forecast used to count only sponsor income and prize money minus rider wages and loan interest, leaving out facility upkeep, staff salaries, upkeep and academy running costs entirely. For teams that had invested in facilities or an academy, the old number was too optimistic by roughly half: it promised a much bigger surplus than teams actually got. The forecast now includes all of those costs, calculated with the exact same formulas as the real season-start charge, and the help text has been rewritten to state precisely what is (and isn't) covered."
+        },
+        "da": {
+          "title": "Sæsonprognosen medregner nu facilitets-, staff- og akademi-omkostninger",
+          "body": "Sæsonprognosen på Finanser-siden talte tidligere kun sponsorindtægt og præmiepenge minus rytterløn og lånerenter, og udelod helt facilitets-vedligehold, stab-lønninger, upkeep og akademi-drift. For hold der havde investeret i faciliteter eller et akademi, var det gamle tal for optimistisk med omkring det halve: det lovede et langt større overskud end holdene faktisk fik. Prognosen medregner nu alle disse omkostninger, beregnet med præcis samme formler som den faktiske sæson-start-opkrævning, og hjælpeteksten er omskrevet så den siger præcist hvad der er (og ikke er) dækket."
+        },
+        "refs": [3236, 3332]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Contracts",
+        "en": {
+          "title": "AI teams now renew their own expiring contracts",
+          "body": "AI teams could not act on an expiring contract the way you can, so their squads would have been thinned automatically at the season change: up to 80 of them would have dropped to 3 to 5 riders, below the number needed to enter a race at all. AI-owned riders' contracts now renew automatically before the change. Your own squad is unaffected: an expiring contract still means you renew from the rider's profile, or lose him as a free agent. The dashboard now also warns you when any of your riders' contracts expire at the season change, not just the badge on your squad page."
+        },
+        "da": {
+          "title": "AI-hold fornyer nu selv deres udløbende kontrakter",
+          "body": "AI-hold kunne ikke handle på en udløbende kontrakt sådan som du kan, så deres trupper ville være blevet tyndet automatisk ved sæsonskiftet: op til 80 af dem ville falde til 3-5 ryttere, under det antal der skal til for overhovedet at stille op. AI-ejede rytteres kontrakter fornys nu automatisk før skiftet. Din egen trup er upåvirket: en udløbende kontrakt betyder stadig at du forlænger fra rytterens profil, ellers mister du ham som fri agent. Dashboardet varsler dig nu også når nogle af dine rytteres kontrakter udløber ved sæsonskiftet, ikke kun badgen på din holdside."
+        },
+        "refs": [1150]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting reports now say who assessed them",
+          "body": "A scouting report now shows which of your scouts made it and at what tier, and explains that the ceiling band is recalculated whenever you change chief scout while a rider's actual abilities never change. Hiring a replacement chief scout sends an inbox message saying the same thing. This came from a player who changed chief scout, saw a ceiling number move, and reasonably concluded her rider had got worse. He had not. Scouting Central also has a new list of every rider your team has scouted, whichever scout ran it, and the rider profile's Training tab now says \"Fully developed in this focus\" instead of showing a flat progress bar."
+        },
+        "da": {
+          "title": "Scoutingrapporter siger nu hvem der har vurderet dem",
+          "body": "En scoutingrapport viser nu hvilken af dine spejdere der lavede den og med hvilken tier, og forklarer at loft-båndet genberegnes hver gang du skifter chefscout, mens rytterens faktiske evner aldrig ændrer sig. Ansætter du en ny chefscout, får du en indbakke-besked der siger det samme. Det kom fra en spiller der skiftede chefscout, så et loft-tal flytte sig, og med god grund troede hendes rytter var blevet dårligere. Det var han ikke. Scouting-centralen har også fået en liste over alle ryttere dit hold har spejdet, uanset hvilken spejder der gjorde det, og rytterprofilens Trænings-fane siger nu \"Færdigudviklet i dette fokus\" i stedet for at vise en flad progress-bar."
+        },
+        "refs": [3334, 2721]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season recap runs on your real season",
+          "body": "The end-of-season recap now builds from your actual results instead of placeholder data, and the dashboard nudges you towards it when a season wraps."
+        },
+        "da": {
+          "title": "Sæson-recappen kører på din rigtige sæson",
+          "body": "Sæson-recappen bygger nu på dine faktiske resultater i stedet for pladsholder-data, og dashboardet peger dig derhen når en sæson lukker."
+        },
+        "refs": [2752, 2361]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Platform",
+        "en": {
+          "title": "Language no longer flips back after you change it",
+          "body": "Switching language could flip straight back to the previous one, because the app re-read your saved language from the database before your own change had finished saving. Worse, the wrong value then stuck: the same flip repeated on your next page load. Both are fixed."
+        },
+        "da": {
+          "title": "Sproget hopper ikke længere tilbage når du skifter det",
+          "body": "Et sprogskift kunne hoppe direkte tilbage til det forrige, fordi appen genlæste dit gemte sprog fra databasen før dit eget skift var færdiggemt. Værre: den forkerte værdi blev så stående, så samme hop gentog sig ved næste sideload. Begge dele er rettet."
+        },
+        "refs": [2045]
+      }
+    ]
+  },
+  {
     "version": "7.94",
     "date": "2026-08-04",
     "label": "Beta",

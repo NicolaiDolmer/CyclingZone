@@ -12,6 +12,7 @@
       "objectiveBonus": "Sponsor · Season objective met ({sponsorName})"
     },
     "salary": "Season salaries · {count} riders",
+    "wageDaily": "Daily wage · {count} riders",
     "upkeep": "Upkeep (operating costs) · Division {division}",
     "parachute": "Relegation parachute · Division {oldDivision} → {newDivision}",
     "academyDrift": "Academy upkeep · {count} slots × {drift_per_slot} pts",
@@ -403,6 +404,10 @@
     "welcome": {
       "title": "Welcome to Cycling Zone",
       "message": "Your team is ready. Place a bid in the auction house to sign your first rider."
+    },
+    "scoutChanged": {
+      "title": "New scout, reports recalculated",
+      "message": "{scoutName} is now assessing your riders. Existing scouting reports are recalculated to match their precision, but your riders' actual abilities have not changed."
     },
     "sponsorPaid": {
       "seasonStart": {

@@ -82,9 +82,15 @@
     },
     "rankLine": "#{rank} of {size} in Division {division}",
     "movement": {
-      "promoted": "↑ Promoted to Division {division}",
-      "relegated": "↓ Relegated to Division {division}",
+      "promoted": "↑ Promoted",
+      "relegated": "↓ Relegated",
       "maintained": "Held Division {division}"
+    },
+    "highlight": {
+      "prizeLeader": "Prize leader of Division {division}",
+      "biggestSale": "Biggest sale of the season",
+      "stageKing": "Team stage king: {name}",
+      "stageKingValue": "{count, plural, one {# win} other {# wins}}"
     },
     "share": "Copy recap link",
     "shareCopied": "Link copied"

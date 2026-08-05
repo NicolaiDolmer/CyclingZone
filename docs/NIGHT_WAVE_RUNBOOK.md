@@ -39,6 +39,18 @@
 - **Agenter må IKKE selv spawne baggrunds-underagenter** — de ender i idle-vent på børn hvis notifikationer de aldrig ser (natbølge 12/7: oprydnings-agenten hang 2× sådan og skulle nudges). Skriv eksplicit "arbejd sekventielt, ingen under-agenter" i agent-prompts; orkestratoren ejer al fan-out.
 - **Verify/review-agenter: brug `gh pr diff <url>` — ALDRIG `git checkout` i hoved-checkoutet** (eller giv dem også worktree-isolation). Natbølge 19/6: en verify-agent uden isolation checkede en `review/*`-branch ud i hoved-checkoutet og efterlod det dér, så orkestratoren måtte gendanne `main`. Read-only diff-review kræver ingen lokal branch-switch.
 
+## Orkestrator-regler (ejer-godkendt 5/8 efter natbølge 4.-5./8)
+
+Kanonisk formulering: [`AGENTS.md` §Orkestrering af parallelle agenter](../AGENTS.md) (hard rules 10-15). Den operationelle udgave:
+
+- **Luk hvert spor eksplicit.** Redder du et spors arbejde manuelt, slutter redningen med `TaskStop` — ikke med at PR'en er oprettet. _4 agenter kørte 10-12 timer efter deres arbejde var reddet; >1 mio. tokens._
+- **Tjek agent-tilstand med agent-værktøjet.** `TaskList` er todo-listen, ikke baggrundsopgaverne. Skriv hvilket værktøj konklusionen bygger på. _"Ingen agenter kører" var forkert i timevis, målt med det forkerte værktøj._
+- **Maks 5 åbne PR'er ad gangen.** Fuld kø → merge før nyt startes. _Køen nåede 23; `patchNotes.js`-konflikterne voksede hurtigere end de blev lukket._
+- **Genmål før du dispatcher.** Issue-tal >1 uge gamle er kilder, ikke facts. _247→225.947 · 807→1.399 · "grøn"→90× drift._
+- **Dispatch-forfilter pr. kandidat-issue:** `gh issue view N --json state` + findes der en merged PR med `Refs #N`? _4 spor i nat var allerede løst; ét kald pr. kandidat havde fanget alle fire._
+- **Isolation før skala:** [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367) (worktree-`node_modules`) skal være lukket før næste bølge. _Delt install ramte 4 af 20 spor; `npm ci` gennem junctionen tømte hoved-checkoutet midt i bølgen._
+- **Beslutningsoplæg indeholder målinger, ikke gæt.** Mål først, præsentér så — ét spørgsmål ad gangen.
+
 ## Recovery (workflow dør med parent-session)
 
 Detektion: `git worktree list` + `gh pr list --head <branch>` pr. spor. Genopretning i prioriteret rækkefølge:
