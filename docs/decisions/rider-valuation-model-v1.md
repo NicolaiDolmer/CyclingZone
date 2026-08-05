@@ -1,7 +1,20 @@
 # Rider Valuation Model — data-drevet `base_value`
 
 > Beslutnings-doc for [#1101](https://github.com/NicolaiDolmer/CyclingZone/issues/1101) (del af relaunch-epic [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105)).
-> v1 locked via ejer-Q&A 6. juni; **v2 (CURRENT) locked via ejer-kalibrerings-session 7. juni 2026.** Denne fil er **kilden** til designvalgene — ikke lokal-only.
+> v1 locked via ejer-Q&A 6. juni; **v2 locked via ejer-kalibrerings-session 7. juni 2026.**
+> **LIVE i dag er v4** (karriere-NPV, `#2594`-cutover 18/7 — se `riderCareerNpv.js` +
+> `docs/superpowers/specs/2026-07-13-rider-valuation-v4-production-value-design.md`, ikke
+> dokumenteret i denne fil endnu). v2/v3 nedenfor er SHADOW (bruges kun af
+> `fictionalLaunchPopulation.test.js` + enkelte admin-diagnostik-stier), styrer ikke
+> `base_value`/`market_value` i prod. Denne fil er **kilden** til designvalgene — ikke lokal-only.
+>
+> **⚠ KENDT BRUD (fundet 4/8, #3345):** v3's anchor-mekanisme (match anchors ved NAVN mod
+> `riders`) har været død siden **2026-06-27** — de 26 navngivne referenceryttere (PCM-import)
+> blev permanent slettet i en ejer-godkendt oprydning (`c03ebac5`, #1933), uafhængigt af
+> #3325. `scripts/fitRiderValuationModel.js` resolver 0/26 anchors mod prod i dag og kan ikke
+> re-fittes uden enten (a) nye ejer-valgte anchor-ryttere fra den nuværende population, eller
+> (b) et snapshot af de gamle anchor-ryttere (fx via en Supabase PITR-branch) — ingen af delene
+> udført. Se `.claude/learnings/2026-08-04-value-model-refit-blocked-v4-live-not-v3-anchors-dead.md`.
 
 ## v2 (anchor-kalibreret, 7/6-2026) — CURRENT
 

@@ -530,6 +530,10 @@
           ["Taktik", "Race-forståelse og at læse et løb", "Holdtidskørsler, taktiske løb"]
         ]
       },
+      "riderType": {
+        "title": "Hvad ryttertype faktisk betyder",
+        "text": "Rytterens primære og sekundære type (klatrer, sprinter, GC og så videre) viser hvad han kan blive ved sit loft, ikke hvad han tilfældigvis er bedst til lige nu. Den sættes én gang og forbliver den samme resten af karrieren, så en ung rytters type ikke skifter hver sæson i takt med at hans stats udvikler sig. Det er med vilje: typen er en talent-vurdering, ikke en formrapport. Vil du vide hvem der passer bedst til et konkret løb lige nu, så tjek egnethed-scoren på holdudtagelsen; den beregnes friskt ud fra hver rytters nuværende evner og løbets terræn. Type og egnethed svarer på to forskellige spørgsmål: type er hvem en rytter ER, egnethed er hvem der passer til DETTE løb i dag."
+      },
       "development": {
         "title": "Udvikling over tid",
         "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en evne, følge udviklingen som graf og se de seneste historiske datapunkter. Nye datapunkter kommer til når ryttere udvikler sig, fx ved sæsonskifte. Hvis fanen er tom, har rytteren endnu ingen registreret udvikling."
