@@ -27,6 +27,7 @@ import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
+import { isContractExpiringAtTransition } from "../lib/riderAge";
 import { Flag } from "../components/Flag";
 import useDashboardLayout from "../lib/useDashboardLayout";
 import {
@@ -225,7 +226,9 @@ export default function DashboardPage() {
       // #2748: pensionerede ryttere tæller ikke med i trup-størrelsen — de
       // frigives ved sæsonskiftet og kan ikke køre løb. Spejler backend
       // getTeamMarketState (marketUtils.js).
-      supabase.from("riders").select("id, salary, is_u25, pending_team_id")
+      // #1150: contract_end_season med i selectet (samme rækker, ingen ekstra
+      // tur) — driver contractExpiringCount nedenfor (kontraktudløb-varsel).
+      supabase.from("riders").select("id, salary, is_u25, pending_team_id, contract_end_season")
         .eq("team_id", teamData.id)
         .eq("is_academy", false)
         .eq("is_retired", false),
@@ -713,6 +716,17 @@ export default function DashboardPage() {
   });
   const { ownedNow, outgoingCount, warning: squadWarning } = squadStats;
 
+  // #1150 · kontraktudløb-varsel: ryttere hvis kontrakt udløber ved NÆSTE
+  // sæsonskifte (contract_end_season <= den AKTIVE sæsons nummer) — samme rene
+  // klassifikation som squad-tabellens contractExpiring-badge (#3097,
+  // TeamPage.jsx). Ejer-design 3/8 (#1150): "genforhandling MED frigivelse" —
+  // ikke-handling frigiver rytteren ved skiftet, så dette skal være svært at
+  // overse i modsætning til den passive badge alene (170 af 180 menneskehold
+  // ramt ved S2→S3, dry-run 5/8, se scripts/dryRunContractExpirySeasonEnd.js).
+  const expiringContractCount = riders.filter(
+    (r) => isContractExpiringAtTransition(r.contract_end_season, seasonInfo?.number)
+  ).length;
+
   // #2328 — "Kommende løb"-kortet: de 3 faktisk kommende løb efter ægte
   // race_stage_schedule-tid (nextStageByRace), ikke den statiske PCM-dato som
   // det tidligere top-3-udvalg blev sorteret på FØR den ægte tid var kendt.
@@ -891,6 +905,17 @@ export default function DashboardPage() {
             division: squadWarning.division,
           })}</span>
           <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:squadWarning.ctaMyTeam")}</Link>
+        </div>
+      )}
+
+      {/* #1150 · Contract renewal warning — separat fra squad-cap-warningen
+          ovenfor (anden årsag, samme visuelle sprog). Vises altid når der er
+          udløbende kontrakter, uanset squad-cap-status. */}
+      {expiringContractCount > 0 && (
+        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
+          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <span>{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
+          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:contractWarning.cta")}</Link>
         </div>
       )}
 

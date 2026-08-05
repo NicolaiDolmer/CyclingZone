@@ -63,6 +63,10 @@
     "under": "Squad too small. Min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
     "ctaMyTeam": "My Team →"
   },
+  "contractWarning": {
+    "message": "{count, plural, one {1 rider's contract expires} other {# riders' contracts expire}} at the season change. Renew from the rider's profile to keep them, or they'll be released as free agents.",
+    "cta": "Review contracts →"
+  },
   "discordNudge": {
     "title": "Get DMs for overbids, transfer offers, and board signals",
     "subtitle": "Add your Discord ID under Profile. You'll stay in the loop even when the app isn't open.",

@@ -53,6 +53,7 @@ import {
 import { renownTarget } from "./renownEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
+import { renewExpiringAiContracts as defaultRenewExpiringAiContracts } from "./aiContractAutoRenewal.js";
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
 import { detectAndNotifySquadsBelowMinimum as defaultDetectAndNotifySquadsBelowMinimum } from "./squadBelowMinimumCheck.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
@@ -974,6 +975,33 @@ export async function transitionToNextSeason({
     phase: "sponsor_contracts_renewal",
     teams: (renewTeams || []).length,
   });
+
+  // Phase 5b-2 (#1150, 5/8): AI-hold auto-fornyer udløbende senior-kontrakter FØR
+  // Phase 5c frigiver dem. AI-hold har ingen manager til at trykke "forlæng"
+  // (#1720) — uden denne fase ville contract_expiry_release nedenfor gutte
+  // AI-truppen blindt (dry-run 5/8 mod prod: flere AI-hold falder fra 8-12 til
+  // 3-5 ryttere, under MIN_RIDERS_FOR_RACE=8). Kører FØR Phase 5c, så en fornyet
+  // AI-rytters contract_end_season allerede er > plan.from_season.number når
+  // release-forespørgslens <=-gate rammer den — ingen ændring af
+  // contractExpiryRelease.js er nødvendig. Additivt + isoleret (samme disciplin
+  // som nabo-faserne): en fejl her må ALDRIG vælte resten af transitionen.
+  const renewExpiringAiContractsFn =
+    deps.renewExpiringAiContracts ?? defaultRenewExpiringAiContracts;
+  try {
+    log.push({
+      phase: "ai_contract_auto_renewal",
+      ...(await renewExpiringAiContractsFn({
+        supabase,
+        seasonNumber: plan.from_season.number,
+      })),
+    });
+  } catch (err) {
+    log.push({ phase: "ai_contract_auto_renewal", error: err.message, ...(err.partialStats || {}) });
+    captureException(err, {
+      tags: { phase: "ai_contract_auto_renewal" },
+      extra: { fromSeasonId, fromSeasonNumber: plan.from_season.number, partialStats: err.partialStats ?? null },
+    });
+  }
 
   // Phase 5c (#2744-B, ejer-beslutning 23/7 valg B): rytterkontrakt-udløb → fri-
   // agent. Ryttere hvis contract_end_season <= den NETOP AFSLUTTEDE sæson
