@@ -32,7 +32,7 @@ pwsh -File scripts/new-worktree.ps1 -Branch fix/abc -FromBranch origin/develop
 
 Scriptet:
 1. Kører `git worktree add -b <branch> <path> <from>`.
-2. Kører `setup-worktree.ps1` (se nedenfor), der junction-linker `node_modules/` fra main + hardlinker `.env`-filer + `.mcp.json` fra OneDrive-context\secrets\.
+2. Kører `setup-worktree.ps1` (se nedenfor), der junction-linker `node_modules/` til den delte, lockfile-hashede cache + hardlinker `.env`-filer + `.mcp.json` fra OneDrive-context\secrets\ (med main-checkoutet som fallback-kilde). Fejler det, stopper `new-worktree.ps1` med exit 1 i stedet for at aflevere et halvt worktree.
 3. Kører `link-onedrive-context.ps1 -RepoRoot <new-path>` så memory-junction etableres for worktreets Claude-project-folder.
 
 Åbn derefter en ny Claude Code-session med working dir `C:\dev\CyclingZone-worktrees\<slug>\`.
@@ -44,7 +44,7 @@ Claude Code-harnessen opretter sine egne worktrees under `.claude/worktrees/<nav
 To mekanismer lukker hullet:
 
 - **`scripts/setup-worktree.ps1`** — idempotent script der sætter et eksisterende worktree op:
-  - `node_modules`-junctions → main-repoets `node_modules` (sparer ~500 MB + install-tid).
+  - `node_modules`-junctions (rod + `backend` + `frontend`) → den delte, lockfile-hashede cache i `%LOCALAPPDATA%\CyclingZone\node-modules-cache\` (#3367).
   - `.env`-hardlinks (`backend/.env`, `frontend/.env`, `frontend/.env.production`, `.mcp.json`) fra `OneDrive-context\secrets\` via `mklink /H`. **Læser aldrig secret-værdier** — kun filsystem-links (jf. #634). `link-onedrive-context.ps1` håndterer ikke `.env` længere (#327 Infisical), så `.env`-logikken bor her.
   - Auto-detekterer worktree- + main-repo-sti via `git rev-parse` (CWD = worktreet); skip-if-exists på hvert trin → sikkert at køre igen, no-op i selve main-repoet.
 
@@ -54,7 +54,7 @@ To mekanismer lukker hullet:
   pwsh -File scripts/setup-worktree.ps1 -DryRun    # rapportér uden at skrive
   ```
 
-- **SessionStart-hook** (`scripts/hooks/setup-worktree-if-needed.sh` i `.claude/settings.json`) — kører `setup-worktree.ps1` automatisk ved session-start **hvis** man er i et linked worktree (`.git` er en fil) med manglende `node_modules`/`.env`. Øjeblikkelig no-op i main-repoet og når alt er på plads. Dvs. en frisk harness-worktree er klar til `pwsh -File scripts/verify-local.ps1` uden manuelle trin.
+- **SessionStart + PreToolUse(Bash)-hook** (`scripts/hooks/setup-worktree-if-needed.sh` i `.claude/settings.json`) — kører `setup-worktree.ps1` automatisk **hvis** man er i et linked worktree (`.git` er en fil) med usund `node_modules` eller manglende `.env`. Øjeblikkelig no-op i main-repoet og når alt er på plads. Dvs. en frisk harness-worktree er klar til `pwsh -File scripts/verify-local.ps1` uden manuelle trin. Fejler setup, skrives en throttle-stamp (`.git-worktree-setup-failed`, gitignored) så hooken ikke prøver forfra på hvert eneste Bash-kald — den gentager i stedet den korrekte kommando.
 
 `new-worktree.ps1` genbruger samme `setup-worktree.ps1` (ingen duplikeret junction-/env-logik).
 
@@ -116,28 +116,59 @@ Alle worktrees delte tidligere hardcodet port 4173, og `webServer.reuseExistingS
 
 Når guarden fejler: dræb processen på porten (`netstat -ano | findstr :<port>` → `Stop-Process -Id <PID> -Force`) eller kør med eksplicit fri `PW_PORT`.
 
-### Delt node_modules — kun når lockfilen matcher main ([#2967](https://github.com/NicolaiDolmer/CyclingZone/issues/2967))
+### Delt node_modules — lockfile-hashet cache uden for begge checkouts ([#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367))
 
-`setup-worktree.ps1` junction-linker `node_modules/` fra main, men **kun hvis worktreets `package-lock.json` er byte-identisk med mains**. Er den ikke, springes junctionen over og scriptet beder dig køre `npm ci --prefix <pkg>` i worktreet.
+> Afløser #2967-modellen (junction til **main**), som ramte tre uafhængige agenter på én nat 4.-5./8 og efterlod ejerens hoved-checkout i stykker.
 
-- ✅ Match → junction. Sparer disk + install-tid, og pakkerne er per definition de rigtige.
-- ✅ Mismatch → eget install. Koster ~500 MB og et par minutter i præcis de sessioner der ændrer dependencies.
+`setup-worktree.ps1` junction-linker et worktrees `node_modules` til et **delt cache-install uden for begge checkouts**:
 
-Gaten blev indført efter at hoved-checkoutets `frontend/node_modules` blev tømt **tre gange på én aften** (25/7) af en parallel wave-session. To ting gik galt, og begge er reelle:
+```
+%LOCALAPPDATA%\CyclingZone\node-modules-cache\<pkg>-<lockfile-hash>\node_modules
+   ▲                                    ▲
+   │ uden for repoet                    │ nøglet på package-lock.json-hash
+```
 
-1. **`npm ci` sletter `node_modules` før den geninstallerer.** Junctionen fører sletningen over i den anden checkout. Sidste gang forsvandt `react`, og 1320 frontend-tests fejlede med `ERR_MODULE_NOT_FOUND` midt i en dependency-PR.
-2. **Delte pakker er direkte forkerte på tværs af branches.** Den aften havde `main` `react-router-dom@6.30.4` og PR-branchen `react-router@7.18.1` uden `react-router-dom`. Én mappe kan ikke rumme begge, så den ene session kørte sine tests mod de forkerte pakker uden at opdage det. Det er en stille korrektheds-fejl, ikke bare en irritation, og den rammer hårdest netop hvor testene betyder mest.
+- **Hoved-checkoutet kan ikke længere nås fra et worktree.** Det er strukturelt, ikke disciplin: der findes ingen sti fra worktreet ind i `C:\Dev\CyclingZone\*\node_modules`.
+- **Cachen er nøglet på lockfile-hash**, så en branch der ændrer dependencies automatisk får sit eget install. Det lukker #2967's stille korrektheds-fejl (to branches der deler én mappe kan ikke begge have de rigtige pakker).
+- **Selv-helende.** Rammer nogen alligevel cachen med `npm ci`, opdager næste setup-kørsel at den er usund og bygger den igen. Ingen anden checkout tager skade imens.
+- **Engangs-omkostning:** ~500 MB + ét `npm ci` pr. distinkt lockfile-hash. Alle efterfølgende worktrees på samme lockfile får junctionen gratis.
 
-Den gamle note her sagde at det var "i praksis sjældent et problem". Det holdt indtil vi begyndte at køre 12 agenter parallelt.
+Verificeret 5/8: `npm ci --prefix frontend` kørt gennem junctionen i et worktree lod main urørt (`node_modules` 18/177/325 pakker før og efter, `express` + `react` loader stadig). npm fjernede selve junction-punktet (`npm warn reify Removing non-directory ...`) og lavede et lokalt install i worktreet.
 
-Har du allerede en junction du vil bryde manuelt (fx i en harness-worktree, som `setup-worktree.ps1` ikke nødvendigvis har rørt):
+#### Hvorfor guarden ikke er en `preinstall`-hook
+
+`npm ci` **sletter `node_modules` før `preinstall` kører** — verificeret på npm 11.13.0: en sentinel-fil i `node_modules` var allerede væk da `preinstall` fyrede. En lifecycle-guard ville derfor først råbe op efter skaden var sket. Guarden ligger i stedet *før* npm startes:
+
+```powershell
+npm run sync-deps    # kører scripts/guard-node-modules-junction.mjs først
+```
+
+Kør den selv når du er i tvivl:
+
+```powershell
+node scripts/guard-node-modules-junction.mjs
+```
+
+Den exit'er 1 og udskriver den præcise opskrift hvis en `node_modules` er en junction.
+
+#### Sundhed, ikke eksistens
+
+Både SessionStart/PreToolUse-hooken og `preflight-night-wave.ps1` tjekker nu `node_modules/.package-lock.json` (npm's install-manifest) i stedet for blot at mappen findes. En junction til et tømt mål — eller en halvfærdig install — består `Test-Path` og fejler først som `ERR_MODULE_NOT_FOUND` midt i en test-kørsel. Det var præcis symptomet 5/8.
+
+`setup-worktree.ps1` **exit'er 1** hvis worktreet ikke kunne gøres klar (manglende `node_modules` eller `backend/.env`), og `new-worktree.ps1` stopper på det. Et halvt setup er værre end intet: agenten opdager det ellers først som `supabaseUrl is required` på ~120 testfiler.
+
+#### Manuelt: bryd en junction
 
 ```powershell
 cmd /c rmdir /Q frontend\node_modules   # rmdir fjerner junctionen, IKKE målet
 npm ci --prefix frontend
 ```
 
-Brug `rmdir` og ikke `Remove-Item -Recurse` — sidstnævnte kan følge junctionen og slette main-repoets rigtige mappe. Det er den samme fælde, bare med hånden på tasterne.
+Brug `rmdir` og ikke `Remove-Item -Recurse` — sidstnævnte kan følge junctionen og slette målets indhold. Vil du bare have worktreet tilbage i en kendt god tilstand:
+
+```powershell
+pwsh -File scripts/setup-worktree.ps1 -Rebuild
+```
 
 ### Memory deles på tværs af worktrees
 

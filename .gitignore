@@ -33,6 +33,9 @@ supabase/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/*.lock
+# Throttle-stamp fra scripts/hooks/setup-worktree-if-needed.sh (#3367) — pr. worktree,
+# skrives kun naar setup fejlede, slettes naar det lykkes. Aldrig source of truth.
+.git-worktree-setup-failed
 .mcp.json
 .obsidian/
 *.canvas

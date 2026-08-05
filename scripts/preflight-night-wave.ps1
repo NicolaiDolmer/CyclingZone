@@ -231,15 +231,51 @@ if ($nodeCmd) {
   Write-Host "  [NO-GO] node ikke fundet" -ForegroundColor Red
 }
 
-foreach ($dir in @("frontend\node_modules", "backend\node_modules")) {
+# #3367: sundhed, ikke blot eksistens. En halvfaerdig eller udhulet install
+# bestaar Test-Path og fejler foerst som ERR_MODULE_NOT_FOUND midt i boelgen.
+# npm efterlader altid node_modules\.package-lock.json efter et fuldfoert install.
+foreach ($dir in @("node_modules", "frontend\node_modules", "backend\node_modules")) {
   $full = Join-Path $repoRoot $dir
-  if ((Test-Path $full) -and (@(Get-ChildItem $full -Directory -ErrorAction SilentlyContinue).Count -gt 0)) {
-    $ok += "$dir findes"
-    Write-Host "  [ok] $dir findes"
+  $manifest = Join-Path $full ".package-lock.json"
+  $hasPkgs = (Test-Path $full) -and (@(Get-ChildItem $full -Directory -ErrorAction SilentlyContinue).Count -gt 0)
+  if ($hasPkgs -and (Test-Path $manifest)) {
+    $ok += "$dir sund"
+    Write-Host "  [ok] $dir sund"
+  } elseif ($hasPkgs) {
+    $warn += "$dir mangler .package-lock.json (ufuldstaendig install) — koer 'npm run sync-deps' i main-checkout."
+    Write-Host "  [warn] $dir ufuldstaendig (ingen .package-lock.json)" -ForegroundColor Yellow
   } else {
     $warn += "$dir mangler/tom i main-checkout — koer 'npm run sync-deps' hvis orkestratoren skal koere tests lokalt."
     Write-Host "  [warn] $dir mangler eller tom" -ForegroundColor Yellow
   }
+}
+
+# Ingen worktree maa junctione ind i hoved-checkoutets node_modules (#3367).
+# Findes en saadan junction, er den gamle setup-sti stadig i brug og et enkelt
+# `npm ci` i det worktree kan toemme main midt i boelgen.
+$legacyJunctions = @()
+foreach ($line in (& git -C $repoRoot worktree list --porcelain 2>$null)) {
+  if ($line -notmatch '^worktree ') { continue }
+  $wtPath = $line.Substring(9).Trim() -replace '/','\'
+  if ([System.IO.Path]::GetFullPath($wtPath) -eq [System.IO.Path]::GetFullPath($repoRoot)) { continue }
+  foreach ($pkg in @("node_modules", "frontend\node_modules", "backend\node_modules")) {
+    $nm = Join-Path $wtPath $pkg
+    $item = Get-Item $nm -Force -ErrorAction SilentlyContinue
+    if (-not $item) { continue }
+    if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+    $target = $item.LinkTarget
+    if ($target -and ([System.IO.Path]::GetFullPath($target)).StartsWith(([System.IO.Path]::GetFullPath($repoRoot)), [StringComparison]::OrdinalIgnoreCase)) {
+      $legacyJunctions += "$wtPath\$pkg -> $target"
+    }
+  }
+}
+if ($legacyJunctions.Count -gt 0) {
+  $warn += "$($legacyJunctions.Count) worktree-junction(s) peger ind i hoved-checkoutet (#3367). Koer 'pwsh -File scripts/setup-worktree.ps1 -WorktreeRoot <wt> -Rebuild' i dem, eller ryd dem med 'npm run cleanup:worktrees:run'."
+  Write-Host "  [warn] $($legacyJunctions.Count) legacy-junction(s) ind i main:" -ForegroundColor Yellow
+  foreach ($lj in ($legacyJunctions | Select-Object -First 5)) { Write-Host "         $lj" -ForegroundColor Yellow }
+} else {
+  $ok += "ingen worktree-junctions ind i hoved-checkoutet"
+  Write-Host "  [ok] ingen worktree-junctions ind i hoved-checkoutet"
 }
 
 # --- 6. origin/main test-sanity (forhindrer at en fleet arver en roed base) ---
