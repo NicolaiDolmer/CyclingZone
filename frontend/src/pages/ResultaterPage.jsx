@@ -297,6 +297,10 @@ export default function ResultaterPage() {
       // Kun podiet (rank ≤ 3) hentes, og kun de to klassementer et podie kan
       // komme fra. Uden .lte("rank", 3) ville et etapeløb trække hele feltet
       // for hver etape hjem for at vise tre navne.
+      // pagination-safe: LATEST_LIMIT (9) races × rank<=3 × 2 result_types —
+      // worst case ~21 stages × 3 ranks + 3 gc podium per race ≈ 66 rows ×
+      // 9 races ≈ 594, verified comfortably under the 1000-row cap (#3331
+      // audit, 2026-08-05; race_stage_schedule max 21 stages/race).
       const [resultsRes, scheduleRes] = await Promise.all([
         supabase
           .from("race_results")

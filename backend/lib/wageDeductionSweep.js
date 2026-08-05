@@ -176,7 +176,7 @@ export async function runWageDeductionSweep({
           {
             idempotent: true,
             metadata: {
-              code: "tx.salary",
+              code: "tx.wageDaily",
               params: { count: ridersCharged },
             },
             audit: {

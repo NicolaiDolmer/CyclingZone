@@ -555,7 +555,7 @@ test("fillMissingTeamEntries: skadede ryttere (injured_until >= i dag) udelukkes
 });
 
 // ── simulateRace (I/O-orchestrator, smoke) ────────────────────────────────────
-test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRaceResults, sætter completed", async () => {
+test("simulateRace: bygger rækker, sender stageNumbers til applyRaceResults (atomisk delete+insert, #3022), sætter completed", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
@@ -564,17 +564,28 @@ test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRa
     race_points: [],
   });
   let appliedRows = null;
+  let appliedStageNumbers = null;
   const report = await simulateRace({
     supabase,
     race: STAGE_RACE,
-    applyRaceResults: async ({ resultRows }) => { appliedRows = resultRows; return { rowsImported: resultRows.length }; },
+    applyRaceResults: async ({ resultRows, stageNumbers }) => {
+      appliedRows = resultRows;
+      appliedStageNumbers = stageNumbers;
+      return { rowsImported: resultRows.length };
+    },
     recomputeRaceDays: async () => {},
   });
   assert.ok(appliedRows && appliedRows.length > 0, "applyRaceResults fik ingen rækker");
   assert.equal(report.stages, 3);
-  // Idempotent delete på race_results pr. etape-numre.
-  const del = supabase.__writes.find((w) => w.table === "race_results" && w.op === "delete");
-  assert.ok(del, "ingen idempotent delete af race_results");
+  // #3022: delete+insert sker nu ATOMISK inde i applyRaceResults (via
+  // apply_race_results_batch-RPC'en når stageNumbers er sat) — ikke længere et
+  // separat .from("race_results").delete()-kald her i orchestratoren. Beviset
+  // for at rigtige etaper sendes med er stageNumbers-argumentet.
+  assert.deepEqual(
+    [...new Set(appliedStageNumbers)].sort(),
+    [1, 2, 3],
+    "stageNumbers skal dække alle 3 etaper løbet faktisk producerede rækker for",
+  );
   // status=completed sat.
   const upd = supabase.__writes.find((w) => w.table === "races" && w.op === "update");
   assert.equal(upd.obj.status, "completed");
@@ -582,10 +593,18 @@ test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRa
   assert.ok(supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert"));
 });
 
-// ── #2898: fejlhåndtering på race_results delete + races.status=completed ────
+// ── #2898/#3022: fejlhåndtering på race_results-skrivning + races.status=completed
 // Injicerer en Supabase-fejl på ÉT specifikt (table, op)-par oven på makeSupabase's
 // normale happy-path (uden at røre den delte mock — andre tests skal forblive
-// upåvirkede).
+// upåvirkede). #3022 flyttede race_results' delete-then-insert IND i
+// applyRaceResults (atomisk via apply_race_results_batch-RPC'en, sat i
+// raceRunner.js gennem stageNumbers) — der er derfor ikke længere et separat
+// .from("race_results").delete()-kald HER i orchestratoren at injicere en fejl
+// på; den regressionsbeskyttelse dækkes nu af de dedikerede RPC-tests
+// (stageResultRpc.test.js + raceResultsEngine.test.js + PGlite-integrationstesten
+// backend/lib/testdb/raceResultsEntrantUnique.integration.test.js). Testene
+// nedenfor beviser i stedet at simulateRace propagerer en applyRaceResults-fejl
+// synligt og IKKE sætter status=completed på en afbrudt afvikling.
 function withInjectedError(canned, table, op, message) {
   const base = makeSupabase(canned);
   const originalFrom = base.from;
@@ -622,8 +641,30 @@ function simulateRaceCanned() {
   };
 }
 
-test("#2898 simulateRace: race_results delete-fejl → abort FØR insert (ingen dublerede point/præmier)", async () => {
-  const supabase = withInjectedError(simulateRaceCanned(), "race_results", "delete", "statement timeout");
+test("#3022 simulateRace: applyRaceResults (atomisk delete+insert) fejler → afbrydes synligt, status IKKE sat til completed", async () => {
+  // Modellerer at apply_race_results_batch-RPC'en fejler (fx en rullet-tilbage
+  // transaktion pga. race_results_entrant_unique) — den ægte ROLLBACK-garanti er
+  // bevist mod en rigtig Postgres-motor i
+  // backend/lib/testdb/raceResultsEntrantUnique.integration.test.js; her testes
+  // KUN at simulateRace propagerer fejlen og ikke fortsætter til status-flippet.
+  const supabase = makeSupabase(simulateRaceCanned());
+  await assert.rejects(
+    () => simulateRace({
+      supabase,
+      race: STAGE_RACE,
+      applyRaceResults: async () => {
+        throw new Error("apply_race_results_batch failed: statement timeout");
+      },
+      recomputeRaceDays: async () => {},
+    }),
+    /apply_race_results_batch failed/,
+  );
+  const statusUpd = supabase.__writes.find((w) => w.table === "races" && w.op === "update");
+  assert.equal(statusUpd, undefined, "status må ikke sættes til completed når afviklingen er afbrudt af en fejlet resultat-skrivning");
+});
+
+test("#2898 simulateRace: races.status=completed update-fejl → synlig fejl (ingen tavs succes)", async () => {
+  const supabase = withInjectedError(simulateRaceCanned(), "races", "update", "connection reset by peer");
   let applyRaceResultsCalled = false;
   await assert.rejects(
     () => simulateRace({
@@ -635,30 +676,13 @@ test("#2898 simulateRace: race_results delete-fejl → abort FØR insert (ingen 
       },
       recomputeRaceDays: async () => {},
     }),
-    /race_results delete failed/,
-  );
-  assert.equal(applyRaceResultsCalled, false, "insert MÅ IKKE køre efter en fejlet delete — ville duplikere point/præmier oven på de gamle rækker");
-  const statusUpd = supabase.__writes.find((w) => w.table === "races" && w.op === "update");
-  assert.equal(statusUpd, undefined, "status må ikke sættes til completed når afviklingen er afbrudt af en delete-fejl");
-});
-
-test("#2898 simulateRace: races.status=completed update-fejl → synlig fejl (ingen tavs succes)", async () => {
-  const supabase = withInjectedError(simulateRaceCanned(), "races", "update", "connection reset by peer");
-  await assert.rejects(
-    () => simulateRace({
-      supabase,
-      race: STAGE_RACE,
-      applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
-      recomputeRaceDays: async () => {},
-    }),
     /Failed to mark race .* as completed/,
   );
-  // Resultaterne ER allerede skrevet (delete + insert kørte før update-kaldet der fejler)
-  // — kun status-flippet fejler, men det skal stadig kastes synligt, ikke sluges tavst,
-  // for at recovery-logikken (der læner sig på status='completed') ikke ser en falsk
-  // "ikke afviklet"-tilstand.
-  const del = supabase.__writes.find((w) => w.table === "race_results" && w.op === "delete");
-  assert.ok(del, "race_results-delete skulle være kørt før status-update-fejlen opstod");
+  // Resultaterne ER allerede skrevet (applyRaceResults' atomiske delete+insert
+  // kørte færdigt FØR update-kaldet der fejler) — kun status-flippet fejler, men
+  // det skal stadig kastes synligt, ikke sluges tavst, for at recovery-logikken
+  // (der læner sig på status='completed') ikke ser en falsk "ikke afviklet"-tilstand.
+  assert.equal(applyRaceResultsCalled, true, "applyRaceResults skulle være kørt færdig før status-update-fejlen opstod");
 });
 
 // ── #2974: samme utjekkede delete-mønster i persist-laget ────────────────────

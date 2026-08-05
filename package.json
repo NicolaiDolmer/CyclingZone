@@ -52,6 +52,8 @@
     "test:lint-supabase-error": "node --test scripts/lint-dropped-supabase-error.test.mjs",
     "lint:supabase-mutation": "node scripts/lint-unchecked-supabase-mutation.mjs",
     "test:lint-supabase-mutation": "node --test scripts/lint-unchecked-supabase-mutation.test.mjs",
+    "lint:pagination-guard": "node scripts/lint-pagination-guard.mjs",
+    "test:lint-pagination-guard": "node --test scripts/lint-pagination-guard.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",

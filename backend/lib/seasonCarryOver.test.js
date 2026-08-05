@@ -12,6 +12,7 @@ import {
   carryTrainingPlans,
   revalidateManualRaceEntries,
   revalidatePeakPlans,
+  revalidateTargetRaceIds,
 } from "./seasonCarryOver.js";
 import { resolveProgram } from "./dailyTraining.js";
 import { isHumanTeam } from "./humanTeamFilter.js";
@@ -139,6 +140,7 @@ function baseState(overrides = {}) {
     ],
     rider_peak_plans: [],
     race_entries: [],
+    team_race_strategy: [],
     ...overrides,
   };
 }
@@ -335,15 +337,56 @@ test("revalidateManualRaceEntries tæller manuelle udtagelser i forkert pulje", 
   assert.equal(supabase.__writes.length, 0);
 });
 
+// ─── team_race_strategy.target_race_ids (REVALIDATE) ──────────────────────────
+
+test("revalidateTargetRaceIds tæller stale og forkert-pulje-referencer, rører intet", async () => {
+  const state = baseState({
+    team_race_strategy: [
+      {
+        team_id: "team-moved",
+        target_race_ids: ["race-own-pool", "race-other-pool", "race-from-last-season"],
+      },
+      // AI-hold skal ikke tælles med.
+      { team_id: "team-ai", target_race_ids: ["race-other-pool"] },
+      // Tomt array skal ikke tælle som et checket hold.
+      { team_id: "team-human", target_race_ids: [] },
+    ],
+  });
+  const supabase = createMockSupabase(state);
+
+  const stats = await revalidateTargetRaceIds({ supabase, toSeasonId: S2 });
+
+  assert.equal(stats.checked_teams, 1, "kun team-moved har et ikke-tomt target_race_ids");
+  assert.equal(stats.checked_refs, 3);
+  assert.equal(stats.stale_refs, 1, "race-from-last-season findes ikke i S2");
+  assert.equal(stats.wrong_pool_refs, 1, "race-other-pool er division 99, team-moved er division 20");
+  assert.equal(stats.teams_affected, 1);
+  assert.equal(state.team_race_strategy.length, 3, "ingen rækker rørt");
+  assert.equal(supabase.__writes.length, 0);
+});
+
+test("revalidateTargetRaceIds accepterer et hold uden target_race_ids-række", async () => {
+  const state = baseState();
+  const supabase = createMockSupabase(state);
+
+  const stats = await revalidateTargetRaceIds({ supabase, toSeasonId: S2 });
+
+  assert.equal(stats.checked_teams, 0);
+  assert.equal(stats.teams_affected, 0);
+});
+
 // ─── Orkestrering ─────────────────────────────────────────────────────────────
 
-test("carryOverManagerSetup samler alle tre flader og rapporterer ingen handler-drift", async () => {
+test("carryOverManagerSetup samler alle fire flader og rapporterer ingen handler-drift", async () => {
   const state = baseState({
     rider_peak_plans: [
       { id: "pp-wrong", rider_id: "rider-moved", season_id: S2, target_race_id: "race-other-pool" },
     ],
     race_entries: [
       { race_id: "race-other-pool", team_id: "team-moved", is_auto_filled: false },
+    ],
+    team_race_strategy: [
+      { team_id: "team-moved", target_race_ids: ["race-from-last-season"] },
     ],
   });
   const supabase = createMockSupabase(state);
@@ -355,6 +398,7 @@ test("carryOverManagerSetup samler alle tre flader og rapporterer ingen handler-
   assert.equal(result.surfaces.training_plans.carried, 1);
   assert.equal(result.surfaces.rider_peak_plans.wrong_pool, 1);
   assert.equal(result.surfaces.race_entries.wrong_pool, 1);
+  assert.equal(result.surfaces.team_race_strategy.stale_refs, 1);
 });
 
 test("carryOverManagerSetup kræver begge sæson-id'er", async () => {
