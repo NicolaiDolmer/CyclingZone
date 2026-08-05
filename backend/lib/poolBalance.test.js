@@ -6,9 +6,13 @@ import {
   teamStrength,
   poolStrengthStats,
   poolDominanceMargins,
+  poolTotalsSpread,
   tierImbalanceIndex,
   planTierReseed,
+  planRealTeamReseed,
   evaluateTierBalance,
+  buildTierInputs,
+  riderPeak,
   DEFAULT_RESEED_THRESHOLD,
   TEAM_STRENGTH_TOP_N,
 } from "./poolBalance.js";
@@ -258,4 +262,215 @@ test("evaluateTierBalance: tærskel kan overstyres", () => {
   ];
   assert.equal(evaluateTierBalance({ teams, poolIds: [1], threshold: 100 }).needsReseed, false);
   assert.equal(evaluateTierBalance({ teams, poolIds: [1], threshold: 1 }).needsReseed, true);
+});
+
+// ── riderPeak / buildTierInputs ──────────────────────────────────────────────
+
+test("riderPeak: max over de seks discipliner, manglende felt tæller som 0", () => {
+  assert.equal(riderPeak({ flat: 30, climbing: 52, sprint: 10 }), 52);
+  assert.equal(riderPeak({ cobblestone: 41 }), 41);
+  assert.equal(riderPeak({}), 0);
+});
+
+test("buildTierInputs: grupperer pr. tier og beregner styrke fra afledte evner", () => {
+  const pools = new Map([
+    [4, { id: 4, tier: 3, pool_index: 0 }],
+    [5, { id: 5, tier: 3, pool_index: 1 }],
+    [2, { id: 2, tier: 2, pool_index: 0 }],
+  ]);
+  const teams = [
+    { id: "t1", name: "Alpha", is_ai: false, is_bank: false, league_division_id: 4 },
+    { id: "t2", name: "AI Beta", is_ai: true, is_bank: false, league_division_id: 5 },
+    { id: "t3", name: "Gamma", is_ai: false, is_bank: false, league_division_id: 2 },
+  ];
+  const riders = [
+    { id: "r1", team_id: "t1", is_retired: false },
+    { id: "r2", team_id: "t1", is_retired: false },
+    { id: "r3", team_id: "t2", is_retired: false },
+    { id: "r4", team_id: "t3", is_retired: false },
+  ];
+  const abilities = new Map([
+    ["r1", { flat: 40, climbing: 10 }],
+    ["r2", { sprint: 20 }],
+    ["r3", { punch: 33 }],
+    ["r4", { time_trial: 60 }],
+  ]);
+
+  const byTier = buildTierInputs(teams, riders, abilities, pools);
+  assert.deepEqual([...byTier.keys()].sort(), [2, 3]);
+  const tier3 = byTier.get(3);
+  assert.equal(tier3.length, 2);
+  const alpha = tier3.find((t) => t.teamId === "t1");
+  assert.equal(alpha.strength, 30); // (40 + 20) / 2
+  assert.equal(alpha.isAi, false);
+  assert.deepEqual([...alpha.riderPeaks].sort((a, b) => b - a), [40, 20]);
+  assert.equal(tier3.find((t) => t.teamId === "t2").isAi, true);
+});
+
+test("buildTierInputs: bank-hold, pulje-løse hold, ukendte puljer og pensionerede ryttere ignoreres", () => {
+  const pools = new Map([[4, { id: 4, tier: 3, pool_index: 0 }]]);
+  const teams = [
+    { id: "bank", name: "Bank", is_ai: false, is_bank: true, league_division_id: 4 },
+    { id: "nopool", name: "No pool", is_ai: false, is_bank: false, league_division_id: null },
+    { id: "ghost", name: "Ghost pool", is_ai: false, is_bank: false, league_division_id: 99 },
+    { id: "real", name: "Real", is_ai: false, is_bank: false, league_division_id: 4 },
+  ];
+  const riders = [
+    { id: "r1", team_id: "real", is_retired: true },
+    { id: "r2", team_id: "real", is_retired: false },
+    { id: "r3", team_id: null, is_retired: false },
+  ];
+  const abilities = new Map([
+    ["r1", { flat: 99 }],
+    ["r2", { flat: 30 }],
+    ["r3", { flat: 80 }],
+  ]);
+
+  const byTier = buildTierInputs(teams, riders, abilities, pools);
+  assert.equal(byTier.size, 1);
+  const tier3 = byTier.get(3);
+  assert.equal(tier3.length, 1);
+  assert.equal(tier3[0].teamId, "real");
+  assert.equal(tier3[0].strength, 30, "pensioneret 99-rytter må ikke tælle med");
+});
+
+// ── poolTotalsSpread ─────────────────────────────────────────────────────────
+
+test("poolTotalsSpread: 0 for identiske pulje-totaler, positiv for skæve", () => {
+  const flat = poolStrengthStats([
+    { teamId: "a", poolId: 1, strength: 50 },
+    { teamId: "b", poolId: 2, strength: 50 },
+  ]);
+  assert.equal(poolTotalsSpread(flat), 0);
+
+  const skew = poolStrengthStats([
+    { teamId: "a", poolId: 1, strength: 60 },
+    { teamId: "b", poolId: 2, strength: 40 },
+  ]);
+  assert.equal(poolTotalsSpread(skew), 10); // populations-sd af [60, 40]
+  assert.equal(poolTotalsSpread([]), 0);
+});
+
+// ── planRealTeamReseed (motor-politikken) ────────────────────────────────────
+
+function reseedTeam(teamId, poolId, peaks, { isAi = false } = {}) {
+  return { teamId, poolId, isAi, riderPeaks: peaks, strength: teamStrength(peaks) };
+}
+function flatTeams(poolId, n, peak, prefix) {
+  return Array.from({ length: n }, (_, i) => reseedTeam(`${prefix}${i}`, poolId, Array(6).fill(peak)));
+}
+
+// Skæv tier der KAN udlignes: pulje 1 har én runaway-stakker blandt svage hold,
+// pulje 2 er fuld af middel-hold der kan holde stakkeren i skak.
+function improvableTier() {
+  return [
+    reseedTeam("S-stacker", 1, [60, 58, 56, 54, 50, 50]),
+    ...flatTeams(1, 5, 20, "w"),
+    ...flatTeams(2, 6, 45, "m"),
+  ];
+}
+
+// Den empiriske hovedfælde (målt mod prod 3/8: tier 3 ville gå 14 → 17): en
+// snake på GENNEMSNITS-styrke kan sprede to stakkere ud i hver sin pulje og
+// dermed lade dominans-marginen stå uændret.
+function unimprovableTier() {
+  return [
+    reseedTeam("A-stack", 1, [60, 58, 56, 54, 50, 50]),
+    reseedTeam("B-stack", 1, [60, 58, 56, 54, 50, 50]),
+    ...flatTeams(1, 4, 20, "w1-"),
+    ...flatTeams(2, 6, 20, "w2-"),
+  ];
+}
+
+test("planRealTeamReseed: under tærskel røres tieren ikke", () => {
+  const teams = [...flatTeams(1, 6, 30, "a"), ...flatTeams(2, 6, 30, "b")];
+  const r = planRealTeamReseed({ teams, poolIds: [1, 2] });
+  assert.equal(r.needsReseed, false);
+  assert.equal(r.applied, false);
+  assert.equal(r.skipReason, "below-threshold");
+  assert.deepEqual(r.moves, []);
+  assert.equal(r.threshold, DEFAULT_RESEED_THRESHOLD);
+});
+
+test("planRealTeamReseed: én-pulje-tier kan ikke re-seedes", () => {
+  const teams = [reseedTeam("S", 1, [60, 58, 56, 54, 50, 50]), ...flatTeams(1, 5, 20, "w")];
+  const r = planRealTeamReseed({ teams, poolIds: [1] });
+  assert.equal(r.applied, false);
+  assert.equal(r.skipReason, "single-pool-tier");
+});
+
+test("planRealTeamReseed: udligner en skæv tier og sænker skævheds-indekset", () => {
+  const r = planRealTeamReseed({ teams: improvableTier(), poolIds: [1, 2] });
+  assert.equal(r.needsReseed, true);
+  assert.equal(r.applied, true);
+  assert.equal(r.beforeIndex, 34); // stakkerens 4.-bedste 54 mod svage rivalers 20
+  assert.equal(r.projectedIndex, 9); // efter reseed står to middel-hold i puljen
+  assert.ok(r.projectedIndex < r.beforeIndex);
+  assert.ok(r.moves.length > 0);
+  assert.equal(r.movableCount, 12);
+});
+
+test("planRealTeamReseed: moves flytter kun INDEN FOR tierens egne puljer", () => {
+  const r = planRealTeamReseed({ teams: improvableTier(), poolIds: [1, 2] });
+  for (const m of r.moves) {
+    assert.ok([1, 2].includes(m.toPoolId), `ukendt destinationspulje ${m.toPoolId}`);
+    assert.notEqual(m.fromPoolId, m.toPoolId, "moves må kun indeholde ægte flytninger");
+  }
+});
+
+test("planRealTeamReseed: AI-hold flyttes ALDRIG (de er fyld der regenereres)", () => {
+  const teams = improvableTier().map((t, i) => (i % 2 === 1 ? { ...t, isAi: true } : t));
+  const aiIds = new Set(teams.filter((t) => t.isAi).map((t) => t.teamId));
+  const r = planRealTeamReseed({ teams, poolIds: [1, 2] });
+  assert.ok(aiIds.size > 0, "fixture skal indeholde AI-hold");
+  for (const m of r.moves) {
+    assert.ok(!aiIds.has(m.teamId), `AI-hold ${m.teamId} blev flyttet`);
+  }
+  assert.equal(r.movableCount, teams.length - aiIds.size);
+});
+
+test("planRealTeamReseed: tier uden ægte hold flagges skæv men røres ikke", () => {
+  const teams = improvableTier().map((t) => ({ ...t, isAi: true }));
+  const r = planRealTeamReseed({ teams, poolIds: [1, 2] });
+  assert.equal(r.needsReseed, true);
+  assert.equal(r.applied, false);
+  assert.equal(r.skipReason, "no-real-teams");
+  assert.deepEqual(r.moves, []);
+});
+
+test("planRealTeamReseed: dropper en plan der ikke forbedrer indekset", () => {
+  const r = planRealTeamReseed({ teams: unimprovableTier(), poolIds: [1, 2] });
+  assert.equal(r.needsReseed, true);
+  assert.equal(r.applied, false);
+  assert.equal(r.skipReason, "no-improvement");
+  assert.deepEqual(r.moves, [], "ingen skrivninger når planen ikke hjælper");
+  assert.equal(r.beforeIndex, 34);
+  assert.equal(r.projectedIndex, 34, "den droppede plan rapporteres stadig som evidens");
+});
+
+test("planRealTeamReseed: requireImprovement kan slås fra (til dry-run/analyse)", () => {
+  const r = planRealTeamReseed({ teams: unimprovableTier(), poolIds: [1, 2], requireImprovement: false });
+  assert.equal(r.applied, true);
+  assert.ok(r.moves.length > 0);
+});
+
+test("planRealTeamReseed: tærskel kan overstyres", () => {
+  assert.equal(planRealTeamReseed({ teams: improvableTier(), poolIds: [1, 2], threshold: 100 }).needsReseed, false);
+  assert.equal(planRealTeamReseed({ teams: improvableTier(), poolIds: [1, 2], threshold: 1 }).needsReseed, true);
+});
+
+test("planRealTeamReseed: deterministisk — samme input giver samme flytninger", () => {
+  const a = planRealTeamReseed({ teams: improvableTier(), poolIds: [1, 2] });
+  const b = planRealTeamReseed({ teams: improvableTier().reverse(), poolIds: [1, 2] });
+  assert.deepEqual(
+    [...a.moves].sort((x, y) => x.teamId.localeCompare(y.teamId)),
+    [...b.moves].sort((x, y) => x.teamId.localeCompare(y.teamId)),
+  );
+});
+
+test("planRealTeamReseed: muterer ikke input", () => {
+  const teams = improvableTier();
+  const snapshot = JSON.stringify(teams);
+  planRealTeamReseed({ teams, poolIds: [1, 2] });
+  assert.equal(JSON.stringify(teams), snapshot);
 });

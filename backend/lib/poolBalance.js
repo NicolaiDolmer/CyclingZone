@@ -32,6 +32,73 @@ export const DOMINANCE_STACK_DEPTH = 4;
 export const DOMINANCE_RIVAL_RANK = 10;
 
 /**
+ * Rytterens "peak" = max over de discipliner der afgør en etapesejr. Samme
+ * definition som audit-dokumentets tal, så alt her kan sammenlignes 1:1.
+ *
+ * @param {{flat?:number, climbing?:number, sprint?:number, time_trial?:number,
+ *   punch?:number, cobblestone?:number}} abilities  række fra rider_derived_abilities
+ * @returns {number}
+ */
+export function riderPeak(abilities = {}) {
+  return Math.max(
+    abilities.flat ?? 0,
+    abilities.climbing ?? 0,
+    abilities.sprint ?? 0,
+    abilities.time_trial ?? 0,
+    abilities.punch ?? 0,
+    abilities.cobblestone ?? 0,
+  );
+}
+
+/**
+ * Fold rå DB-rækker til lib'ens tier-input. Ren funktion (ingen I/O) — delt
+ * mellem motoren (economyEngine.reseedTierPools) og read-only-auditten
+ * (scripts/auditPoolBalance.js), så de to ALDRIG kan divergere på hvad "et
+ * holds styrke" betyder.
+ *
+ * Ekskluderer bank-holdet og hold uden pulje. AI-hold BLIVER inkluderet: de er
+ * rivaler i feltet og skal tælle i målingen (de flyttes bare ikke, se
+ * planRealTeamReseed).
+ *
+ * @param {Array<{id, name, is_ai, is_bank, league_division_id}>} teams
+ * @param {Array<{id, team_id, is_retired}>} riders
+ * @param {Map<string, object>} abilitiesByRider
+ * @param {Map<number, {tier:number, pool_index:number}>} poolsById
+ * @returns {Map<number, Array<{teamId, teamName, isAi, poolId, riderPeaks, strength}>>} pr. tier
+ */
+export function buildTierInputs(teams = [], riders = [], abilitiesByRider = new Map(), poolsById = new Map()) {
+  const peaksByTeam = new Map();
+  for (const r of riders) {
+    if (r.is_retired) continue;
+    if (!r.team_id) continue;
+    const ab = abilitiesByRider.get(r.id);
+    if (!ab) continue;
+    if (!peaksByTeam.has(r.team_id)) peaksByTeam.set(r.team_id, []);
+    peaksByTeam.get(r.team_id).push(riderPeak(ab));
+  }
+
+  const byTier = new Map();
+  for (const t of teams) {
+    if (t.is_bank) continue;
+    if (t.league_division_id == null) continue;
+    const pool = poolsById.get(t.league_division_id);
+    if (!pool) continue;
+    const riderPeaks = peaksByTeam.get(t.id) || [];
+    const entry = {
+      teamId: t.id,
+      teamName: t.name,
+      isAi: !!t.is_ai,
+      poolId: t.league_division_id,
+      riderPeaks,
+      strength: teamStrength(riderPeaks),
+    };
+    if (!byTier.has(pool.tier)) byTier.set(pool.tier, []);
+    byTier.get(pool.tier).push(entry);
+  }
+  return byTier;
+}
+
+/**
  * Median af et talarray. Sorterer internt, ændrer ikke input.
  * @param {number[]} xs
  * @returns {number|null} null hvis tom
@@ -242,4 +309,124 @@ export function evaluateTierBalance({ teams = [], poolIds = [], threshold = DEFA
     threshold,
     plan: needsReseed && poolIds.length ? planTierReseed({ teams, poolIds }) : null,
   };
+}
+
+/**
+ * Standardafvigelsen (populations-sd) af holdstyrkerne INDEN FOR hver pulje,
+ * aggregeret til ét tal pr. tier ved at tage spredningen af puljernes SUM. Det
+ * er "hvor ulige er puljerne som helhed" — komplementært til dominans-marginen,
+ * der måler toppen. Rapporteres i dry-run så et reseed kan vurderes på begge.
+ *
+ * @param {ReturnType<typeof poolStrengthStats>} stats
+ * @returns {number} 0 for 0-1 puljer
+ */
+export function poolTotalsSpread(stats = []) {
+  if (stats.length < 2) return 0;
+  const totals = stats.map((s) => s.total);
+  const mean = totals.reduce((a, b) => a + b, 0) / totals.length;
+  const variance = totals.reduce((a, b) => a + (b - mean) ** 2, 0) / totals.length;
+  return Math.sqrt(variance);
+}
+
+/**
+ * MOTOR-POLITIKKEN (#2557 spor B) — den plan sæsonovergangen faktisk ville køre.
+ *
+ * Adskiller sig fra `planTierReseed` på tre punkter, som alle er krav fra
+ * motoren og fra dry-run-målingen mod prod (se PR'ens tal):
+ *
+ * 1. **Kun ægte hold flyttes.** AI er fyld der regenereres pr. pulje af
+ *    `reconcileAiTeamsForPool` efter flytningen — samme invariant som
+ *    op/nedrykningen i `processDivisionEnd` (`if (s.team?.is_ai) continue`).
+ *    AI-holdene bliver derfor liggende og indgår kun som RIVALER i målingen.
+ * 2. **Målingen tæller hele puljen** (ægte + AI), fordi det er hele feltet der
+ *    afgør om ét hold kan fylde top 10 — samme basis som audit-dokumentet.
+ * 3. **Forbedrings-krav.** En snake på gennemsnits-styrke er IKKE garanteret at
+ *    sænke dominans-marginen: marginen handler om ét holds 4.-bedste RYTTER mod
+ *    puljens 10.-bedste rival, ikke om puljens gennemsnit. Målt mod prod 3/8
+ *    hævede en fuld snake tier 3 fra 14 til 17. Derfor droppes en plan der ikke
+ *    forbedrer indekset (`requireImprovement`, default til).
+ *
+ * MUTERER INTET — returnerer kun hvilke hold der VILLE flytte.
+ *
+ * @param {object} args
+ * @param {Array<{teamId:string, poolId:number, strength:number, riderPeaks?:number[], isAi?:boolean}>} args.teams
+ *   ALLE holdene i tieren (ægte + AI), efter op/nedrykning.
+ * @param {number[]} args.poolIds  tierens puljer i pool_index-orden
+ * @param {number} [args.threshold]
+ * @param {boolean} [args.requireImprovement=true]
+ * @returns {{needsReseed:boolean, applied:boolean, threshold:number,
+ *   beforeIndex:number, projectedIndex:number, beforeSpread:number, projectedSpread:number,
+ *   before:ReturnType<typeof poolStrengthStats>, projected:ReturnType<typeof poolStrengthStats>,
+ *   moves:Array<{teamId:string, fromPoolId:number, toPoolId:number}>,
+ *   plannedMoveCount:number, movableCount:number, skipReason:string|null}}
+ *   `projected*` = tilstanden HVIS planen udføres. Den er kun den faktiske
+ *   slut-tilstand når `applied === true`; ved `applied === false` er `moves`
+ *   tom og tieren står uændret på `before*`. Den projicerede tilstand
+ *   rapporteres alligevel, fordi den ER evidensen for at planen blev droppet.
+ */
+export function planRealTeamReseed({
+  teams = [],
+  poolIds = [],
+  threshold = DEFAULT_RESEED_THRESHOLD,
+  requireImprovement = true,
+} = {}) {
+  const before = poolStrengthStats(teams);
+  const beforeIndex = tierImbalanceIndex(teams).index;
+  const beforeSpread = poolTotalsSpread(before);
+  const empty = {
+    needsReseed: false,
+    applied: false,
+    threshold,
+    beforeIndex,
+    projectedIndex: beforeIndex,
+    beforeSpread,
+    projectedSpread: beforeSpread,
+    before,
+    projected: before,
+    moves: [],
+    plannedMoveCount: 0,
+    movableCount: 0,
+    skipReason: null,
+  };
+
+  if (poolIds.length < 2) return { ...empty, skipReason: "single-pool-tier" };
+  if (beforeIndex <= threshold) return { ...empty, skipReason: "below-threshold" };
+
+  const movable = teams.filter((t) => !t.isAi);
+  if (movable.length === 0) {
+    return { ...empty, needsReseed: true, skipReason: "no-real-teams" };
+  }
+
+  const plan = planTierReseed({ teams: movable, poolIds });
+  const dest = new Map(plan.assignments.map((a) => [a.teamId, a.toPoolId]));
+  const projected = teams.map((t) => (
+    dest.has(t.teamId) ? { ...t, poolId: dest.get(t.teamId) } : t
+  ));
+  const projectedStats = poolStrengthStats(projected);
+  const projectedIndex = tierImbalanceIndex(projected).index;
+  const projectedSpread = poolTotalsSpread(projectedStats);
+
+  const result = {
+    needsReseed: true,
+    applied: true,
+    threshold,
+    beforeIndex,
+    projectedIndex,
+    beforeSpread,
+    projectedSpread,
+    before,
+    projected: projectedStats,
+    moves: plan.moves,
+    // Antal flytninger planen INDEHOLDT, også når den droppes. `moves` tømmes
+    // ved drop (så en kalder ikke kan komme til at udføre den); dette tal er
+    // evidensen for hvor stor en omrokering der blev afvist.
+    plannedMoveCount: plan.moves.length,
+    movableCount: movable.length,
+    skipReason: null,
+  };
+
+  if (requireImprovement && projectedIndex >= beforeIndex) {
+    return { ...result, applied: false, moves: [], skipReason: "no-improvement" };
+  }
+  return result;
 }

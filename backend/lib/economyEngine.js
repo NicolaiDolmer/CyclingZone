@@ -60,6 +60,8 @@ import {
 } from "./economyConstants.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
+import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
+import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -1372,6 +1374,19 @@ export async function processSeasonEnd(seasonId, deps = {}) {
       });
     }
 
+    // #2557 spor B · styrke-balanceret pulje-reseed. Kører EFTER hele
+    // op/nedryknings-loopet (tierens medlemsliste er først endelig dér) og FØR
+    // AI-fyld-sweepen (så reconcile ser de endelige ægte-hold-tal pr. pulje).
+    // Default SLUKKET: uden app_config-nøglen season_end_pool_reseed='on' laver
+    // funktionen hverken læsninger eller skrivninger.
+    const reseedFn = deps.reseedTierPools ?? reseedTierPools;
+    await reseedFn(seasonId, {
+      supabase: supabaseClient,
+      now: notificationNow,
+      poolTree,
+      captureException: deps.captureException,
+    });
+
     // #1152 AI-fyld-sweep efter op/nedrykning: bring hver pulje tilbage til
     // POOL_TARGET_SIZE (reconcileAiTeamsForPool trimmer/top-up'er AI, rører ALDRIG ægte
     // hold; tier 3+4-puljer uden ægte hold forbliver tomme/dormant). Erstatter den gamle
@@ -2218,6 +2233,146 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
   if (promoted || relegated) {
     console.log(`  📈 Div ${division}: ${promoted} oprykket, ${relegated} relegeret (per pulje)`);
   }
+}
+
+/**
+ * #2557 spor B · STYRKE-BALANCERET PULJE-RESEED — default SLUKKET.
+ *
+ * Baggrund (docs/audits/2026-08-03-team-dominance-2557.md): pulje-tildelingen er
+ * styrke-BLIND. Destinationspuljen er en ren funktion af pool_index-træet
+ * (oprykning) hhv. round-robin (nedrykning), så en tier kan ende med puljer der
+ * har identiske medianer men vidt forskellige TOPPE. Målt 3/8 stod 3 af 15
+ * puljer for 72 % af alle bånd-brud i spillet.
+ *
+ * HVORFOR DET IKKE LIGGER INDE I processDivisionEnd: en tiers medlemsliste er
+ * først endelig når HELE loopet MIN..MAX_DIVISION er kørt. Tier T modtager
+ * nedrykkere fra processDivisionEnd(T-1) og oprykkere fra processDivisionEnd(T+1);
+ * en reseed inde i processDivisionEnd(T) ville derfor seede en ufuldstændig tier
+ * og bagefter få nye hold dumpet ind i vilkårlige puljer. Reseed'et er derfor et
+ * separat, tier-globalt skridt EFTER flytningen og FØR AI-fyld-sweepen, så
+ * reconcileAiTeamsForPool bagefter bringer hver pulje tilbage til
+ * POOL_TARGET_SIZE med det AI-antal de nye ægte-hold-tal kræver.
+ *
+ * INVARIANTER:
+ *   - Kun `league_division_id` skrives. `division` (tier) røres ALDRIG — et
+ *     reseed er en flytning INDEN FOR en tier, aldrig en skjult op/nedrykning.
+ *   - Kun ægte hold flyttes (samme regel som op/nedrykningen). AI er fyld.
+ *   - En tier røres kun hvis dens skævheds-indeks er over tærsklen OG planen
+ *     faktisk sænker indekset (planRealTeamReseed.requireImprovement) — målt
+ *     mod prod 3/8 ville en naiv snake have hævet tier 3 fra 14 til 17.
+ *   - Flag af / manglende flag / fejlet opslag ⇒ ingen læsning, ingen skrivning.
+ *
+ * @param {string} seasonId
+ * @param {object} deps
+ * @returns {Promise<{enabled:boolean, threshold:number|null, moved:number,
+ *   tiers:Array<{tier:number, beforeIndex:number, projectedIndex:number,
+ *     applied:boolean, skipReason:string|null, moved:number}>}>}
+ */
+export async function reseedTierPools(seasonId, deps = {}) {
+  const client = deps.supabase ?? await getDefaultSupabaseClient();
+  const isEnabled = deps.isPoolReseedEnabled ?? isPoolReseedEnabled;
+  const readThreshold = deps.readPoolReseedThreshold ?? readPoolReseedThreshold;
+
+  if (!await isEnabled(client)) {
+    return { enabled: false, threshold: null, moved: 0, tiers: [] };
+  }
+
+  const threshold = await readThreshold(client);
+  const tree = deps.poolTree ?? await buildPoolTree(client);
+  const poolsById = tree.byId;
+
+  // Fuld population: styrke-målingen skal se HELE feltet (ægte + AI), fordi det
+  // er alle rivaler der afgør om ét hold kan fylde top 10. Kun ægte hold flyttes.
+  const [teams, riders, abilities] = await Promise.all([
+    fetchAllRows(() => client.from("teams")
+      .select("id, name, is_ai, is_bank, league_division_id").order("id")),
+    fetchAllRows(() => client.from("riders")
+      .select("id, team_id, is_retired").order("id")),
+    fetchAllRows(() => client.from("rider_derived_abilities")
+      .select("rider_id, flat, climbing, sprint, time_trial, punch, cobblestone").order("rider_id")),
+  ]);
+
+  const abilitiesByRider = new Map(abilities.map((a) => [a.rider_id, a]));
+  const byTier = buildTierInputs(teams, riders, abilitiesByRider, poolsById);
+
+  // Tierens puljer i pool_index-orden: snake-retningen SKAL være deterministisk
+  // og matche pyramidens A/B/C/D-rækkefølge, ellers giver to kørsler på samme
+  // data forskellige puljer.
+  const poolsByTier = new Map();
+  for (const p of poolsById.values()) {
+    if (!poolsByTier.has(p.tier)) poolsByTier.set(p.tier, []);
+    poolsByTier.get(p.tier).push(p);
+  }
+  const poolIdsByTier = new Map(
+    [...poolsByTier].map(([tier, ps]) => [
+      tier,
+      [...ps].sort((a, b) => a.pool_index - b.pool_index).map((p) => p.id),
+    ]),
+  );
+
+  // Pulje-etiketten ("Division 3 — B") bruges i beskeden til manageren. 15 rækker,
+  // og kun når flaget er på — derfor et selvstændigt opslag frem for at udvide
+  // buildPoolTree, som kaldes på hver sæson-slut uanset flag.
+  const { data: poolLabelRows, error: poolLabelError } = await client
+    .from("league_divisions").select("id, label");
+  throwIfSupabaseError(poolLabelError, "Could not load league_division labels for reseed");
+  const labelByPool = new Map((poolLabelRows || []).map((p) => [p.id, p.label]));
+  const notificationDeps = { supabase: client, now: deps.now };
+  const tierReports = [];
+  let movedTotal = 0;
+
+  for (const [tier, tierTeams] of [...byTier].sort((a, b) => a[0] - b[0])) {
+    const poolIds = poolIdsByTier.get(tier) ?? [];
+    const plan = planRealTeamReseed({ teams: tierTeams, poolIds, threshold });
+    tierReports.push({
+      tier,
+      beforeIndex: plan.beforeIndex,
+      projectedIndex: plan.projectedIndex,
+      applied: plan.applied,
+      skipReason: plan.skipReason,
+      moved: plan.moves.length,
+    });
+
+    if (!plan.applied || plan.moves.length === 0) {
+      if (plan.needsReseed) {
+        console.log(
+          `  ⏸  Tier ${tier}: reseed droppet (${plan.skipReason ?? "ingen flytninger"})`
+          + ` · indeks ${plan.beforeIndex.toFixed(1)} → ${plan.projectedIndex.toFixed(1)} projiceret`,
+        );
+      }
+      continue;
+    }
+
+    for (const move of plan.moves) {
+      const { error } = await client.from("teams")
+        .update({ league_division_id: move.toPoolId })
+        .eq("id", move.teamId);
+      throwIfSupabaseError(error, `Could not reseed team ${move.teamId}`);
+      movedTotal++;
+
+      // #2976-mønster: puljen ER allerede flyttet ovenfor. Kastede beskeden,
+      // ville resten af reseed'et udeblive og efterlade tieren halvt seedet —
+      // værre end en manglende notifikation.
+      await notifyManagerSafe(
+        move.teamId, "board_update", "New pool for next season",
+        `Your team has been re-seeded into ${labelByPool.get(move.toPoolId) ?? `pool ${move.toPoolId}`} so the pools are evenly matched.`,
+        notificationDeps,
+        {
+          titleCode: "notif.poolReseeded.title",
+          titleParams: {},
+          messageCode: "notif.poolReseeded.message",
+          messageParams: { pool: labelByPool.get(move.toPoolId) ?? String(move.toPoolId) },
+        },
+        { sourcePath: "reseedTierPools.poolReseeded", seasonId, captureException: deps.captureException },
+      );
+    }
+    console.log(
+      `  🎲 Tier ${tier}: ${plan.moves.length} hold re-seedet`
+      + ` · skævheds-indeks ${plan.beforeIndex.toFixed(1)} → ${plan.projectedIndex.toFixed(1)}`,
+    );
+  }
+
+  return { enabled: true, threshold, moved: movedTotal, tiers: tierReports };
 }
 
 // #1152: rebalanceDivisions (#962 tier-fyld-fra-top) er FJERNET — superseded af den
