@@ -391,7 +391,9 @@ async function insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, d
   //    allokerings-pulje. current_production_value skrives af derive-kæden
   //    (deriveForRiderIds) og er #2894/#2902's grundlag for salary-beregningen.
   const rows = await fetchAllRows(() =>
-    supabase.from("riders").select("id, birthdate, potentiale, base_value, current_production_value").in("id", insertedIds).order("id"));
+    // #3360: market_value med — løn-basen i "market"-mode (base_value alene ville
+    // virke via fallback, men eksplicit felt gør kaldestedet uafhængigt af den).
+    supabase.from("riders").select("id, birthdate, potentiale, base_value, market_value, current_production_value").in("id", insertedIds).order("id"));
   return rows.map((r) => ({
     id: r.id,
     age: computeAge(r.birthdate, referenceYear),
@@ -440,15 +442,19 @@ async function fetchActiveSeasonNumber(supabase) {
 // pure helpers direkte — duplikerer ALDRIG formlen.
 async function applyContractFieldsForRiders(supabase, riderIds, { division, startSeason, rng }) {
   if (!riderIds || riderIds.length === 0) return 0;
+  // #3360: market_value + base_value SKAL med — de er løn-basen i "market"-mode.
+  // Uden dem får hver ny start-trup identisk bundløn (samme fejlklasse som #3389).
   const rows = await fetchAllRows(() =>
-    supabase.from("riders").select("id, current_production_value").in("id", riderIds).order("id"));
+    supabase.from("riders")
+      .select("id, current_production_value, market_value, base_value")
+      .in("id", riderIds).order("id"));
   let applied = 0;
   for (let i = 0; i < rows.length; i += WRITE_CONCURRENCY) {
     const batch = rows.slice(i, i + WRITE_CONCURRENCY);
     await Promise.all(batch.map((r) => {
       const length = pickContractLength(rng);
       const patch = {
-        salary: computeFrozenSalary({ current_production_value: r.current_production_value, division }),
+        salary: computeFrozenSalary({ ...r, division }),
         contract_length: length,
         contract_end_season: computeContractEndSeason(startSeason, length),
       };
@@ -665,7 +671,13 @@ export async function runStarterSquadAllocation(supabase, {
   const teamRows = await fetchAllRows(() =>
     supabase.from("teams").select("id, division").in("id", teamIds).order("id"));
   const divisionByTeam = new Map(teamRows.map((t) => [t.id, t.division]));
-  const cpvById = new Map([...corePool, ...tailPool].map((r) => [r.id, r.current_production_value]));
+  // #3360: hele værdi-trioen bæres med, ikke kun cpv — market_value/base_value er
+  // løn-basen i "market"-mode, og de findes allerede på de genererede pulje-rækker.
+  const valueById = new Map([...corePool, ...tailPool].map((r) => [r.id, {
+    current_production_value: r.current_production_value,
+    market_value: r.market_value ?? r.base_value,
+    base_value: r.base_value,
+  }]));
   const contractRng = makeRng((seed + 2894) >>> 0);
 
   const pairs = Object.entries(assignments).flatMap(([teamId, ids]) =>
@@ -674,7 +686,7 @@ export async function runStarterSquadAllocation(supabase, {
       return {
         id,
         team_id: teamId,
-        salary: computeFrozenSalary({ current_production_value: cpvById.get(id), division: divisionByTeam.get(teamId) }),
+        salary: computeFrozenSalary({ ...valueById.get(id), division: divisionByTeam.get(teamId) }),
         contract_length: length,
         contract_end_season: computeContractEndSeason(startSeason, length),
       };

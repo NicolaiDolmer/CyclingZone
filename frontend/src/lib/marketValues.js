@@ -10,15 +10,25 @@ export function getRiderMarketValue(rider = {}) {
   return base + (Number(rider?.prize_earnings_bonus) || 0);
 }
 
-// #2594 løn-decoupling: løn = current_production_value × SALARY_RATE_PROD[division].
-// Værdi (market_value) prissætter FREMTIDEN (karriere-NPV); løn prissætter NUTIDEN
-// (forventet produktion i indeværende sæson). Spejler backend economyConstants.js
-// (SALARY_RATE_PROD + salaryRateForDivision) — SKAL holdes i sync. Ukendt division
-// (fx free agents) → global sats.
+// ── Løn-grundlag (SKAL spejle backend economyConstants.js + salaryBasis.js) ──────
+//
+// #3360: lønnen prissættes efter MARKEDSVÆRDIEN via en konkav kurve, ikke efter
+// current_production_value. Grunden: cpv er nærmest fladt over alder, så et ungt
+// talent til 180.000 CZ$ kostede mindre end en 34-årig til 20.000 — det dyreste
+// aktiv var det billigste at eje. Kurven er konkav fordi truppernes markedsværdi
+// spænder ~400× mens indtægten spænder ~1,25×.
+//
+// Rollback: sæt SALARY_BASIS_MODE = "production" HER OG i backend samtidig.
+const SALARY_BASIS_MODE = "market";
+
+// #2594-grundlaget (rollback-sti). Spejler backend SALARY_RATE_PROD.
 const SALARY_RATE_PROD = { byDiv: { 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 }, global: 0.1606 };
 export function salaryRateForDivision(division) {
   return SALARY_RATE_PROD.byDiv[Number(division)] ?? SALARY_RATE_PROD.global;
 }
+
+// #3360-grundlaget. Spejler backend SALARY_MARKET_MODEL.
+const SALARY_MARKET_MODEL = { anchorValue: 100000, anchorSalary: 15000, exponent: 0.55, floor: 250 };
 
 function salaryFromProduction(rider, division) {
   const cpv = Number(rider?.current_production_value);
@@ -26,13 +36,34 @@ function salaryFromProduction(rider, division) {
   return Math.max(1, Math.round(base * salaryRateForDivision(division)));
 }
 
+function salaryFromMarket(rider) {
+  const mv = Number(rider?.market_value);
+  const bv = Number(rider?.base_value);
+  const base = mv > 0 ? mv : (bv > 0 ? bv : RIDER_BASE_VALUE_FALLBACK);
+  const { anchorValue, anchorSalary, exponent, floor } = SALARY_MARKET_MODEL;
+  return Math.max(floor, Math.round(anchorSalary * Math.pow(base / anchorValue, exponent)));
+}
+
+// Delt indgang: den løn et grundlag ville give. `division` bruges kun af
+// "production"-grundlaget (markedsgrundlaget er division-blindt, med vilje).
+function estimateSalary(rider, division) {
+  return SALARY_BASIS_MODE === "market"
+    ? salaryFromMarket(rider)
+    : salaryFromProduction(rider, division);
+}
+
+// Hvilken DB-kolonne løn-ESTIMATET (NULL-løn-grenen) skal filtreres på server-side.
+export const SALARY_ESTIMATE_COLUMN = SALARY_BASIS_MODE === "market"
+  ? "market_value"
+  : "current_production_value";
+
 // #1309: frossen kontrakt-løn hvis sat; ellers estimat til VISNING af free agents
 // (global sats — de har intet hold/division; den præcise sats fryses ved signering).
 // Spejler backend's resolveRiderSalary i marketUtils.js. salary:0 er en gyldig
 // (gratis) kontrakt og bevares som 0.
 export function getRiderSalary(rider = {}) {
   if (rider && rider.salary != null) return Number(rider.salary);
-  return salaryFromProduction(rider, undefined);
+  return estimateSalary(rider, undefined);
 }
 
 // #932 S7: projektér den SENIOR-løn en akademi-rytter ville fryses til ved en
@@ -41,14 +72,14 @@ export function getRiderSalary(rider = {}) {
 // returnerer den eksisterende akademi-løn. Kun til VISNING i promote-dialogen;
 // backend beregner den autoritative værdi.
 export function projectSeniorSalary(rider = {}, { division } = {}) {
-  return salaryFromProduction(rider, division);
+  return estimateSalary(rider, division);
 }
 
 // #932 S7: projektér den løn en senior-rytter ville få ved en demote. #2594: samme
 // delte formel som promotion (ét fælles løn-system, #2083-princippet). Kun til
 // VISNING i demote-dialogen; backend-RPC'en beregner den autoritative værdi.
 export function projectYouthSalary(rider = {}, { division } = {}) {
-  return salaryFromProduction(rider, division);
+  return estimateSalary(rider, division);
 }
 
 // #1827: løn-filteret gælder den VISTE løn (getRiderSalary): frossen kontrakt-løn
@@ -56,13 +87,20 @@ export function projectYouthSalary(rider = {}, { division } = {}) {
 // ryttere droppes ellers stille af et rå `salary <= X`-filter i PostgREST.
 //
 // Da PostgREST ikke kan filtrere på et COALESCE-udtryk, oversætter vi løn-grænsen
-// til en current_production_value-grænse for NULL-løn-grenen (invers af den
-// globale sats) og lader den frosne-løn-gren bruge selve salary-kolonnen.
+// til en værdi-grænse for NULL-løn-grenen (invers af den aktive løn-formel) og
+// lader den frosne-løn-gren bruge selve salary-kolonnen. Kolonnen der skal
+// filtreres på er SALARY_ESTIMATE_COLUMN — den følger grundlaget.
 // Returnerer null for en grænse der ikke er sat (parseInt-NaN), så kalderen kan
 // springe den gren over.
 export function salaryBoundToValueBound(salaryBound) {
   const n = parseInt(salaryBound, 10);
   if (!Number.isFinite(n)) return null;
+  if (SALARY_BASIS_MODE === "market") {
+    // løn = anchorSalary × (v/anchorValue)^exponent  ⇒  v = anchorValue × (løn/anchorSalary)^(1/exponent)
+    const { anchorValue, anchorSalary, exponent } = SALARY_MARKET_MODEL;
+    if (n <= 0) return 0;
+    return Math.round(anchorValue * Math.pow(n / anchorSalary, 1 / exponent));
+  }
   return Math.round(n / SALARY_RATE_PROD.global);
 }
 

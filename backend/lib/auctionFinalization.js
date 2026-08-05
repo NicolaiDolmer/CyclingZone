@@ -485,8 +485,11 @@ async function finalizeYouthAuctionRecord({
   // #2594: løn = current_production_value × per-division-sats (vinderens division).
   const { data: bidderTeam } = await supabase
     .from("teams").select("id, division").eq("id", bidderId).maybeSingle();
+  // #3360: market_value/base_value er løn-basen når SALARY_BASIS_MODE er "market".
   const salary = computeFrozenSalary({
     current_production_value: rider.current_production_value,
+    market_value: rider.market_value,
+    base_value: rider.base_value,
     division: bidderTeam?.division,
   });
   const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
