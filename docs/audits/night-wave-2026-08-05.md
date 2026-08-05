@@ -124,4 +124,8 @@ Alle har uncommitted arbejde i deres worktrees (1-12 filer hver). Falder de ud u
 
 To uafhængige spor verificerede at `mobile-webkit`-login-fejlen er en **pre-eksisterende flake**, ikke en regression — #2815's agent bekræftede det ved at køre samme test 2× mod ren `origin/main`, hvor den også fejlede. Klassificér den som advisory per runbook.
 
-`#3357`s `frontend-smoke`-fejl er derimod **ikke** en flake: `strict mode violation: getByRole('tab', {selected: true}) resolved to 2 elements` i `race-distribution.spec.js`, deterministisk på alle 3 projekter. #3343 (samme base-kæde) passerer, så den opstår mellem #3343 og #3357. En genoptaget agent undersøger; er den pre-eksisterende, skal den files separat frem for at blokere kæden.
+`#3357`s `frontend-smoke`-fejl **er også en flake** — og orkestratorens første vurdering var forkert. Jeg konkluderede "ikke en flake" fordi den ramte alle 3 projekter samtidig. Den genoptagne agent modbeviste det ved at genkøre **samme commit** fire gange: FAIL, PASS, FAIL, PASS. **~50 % flake-rate**, filet som [#3364](https://github.com/NicolaiDolmer/CyclingZone/issues/3364).
+
+Rod-årsag: `getByRole('tab', {selected: true})` i `race-distribution.spec.js:434` er ikke scopet til én `tablist` og matcher både Planlægnings-hubbens fane og kalender-sidens interne underfane, afhængigt af om den mockede fetch resolver inden for retry-vinduet.
+
+**Læring:** "fejler på alle projekter" er ikke bevis for determinisme — alle tre projekter kan ramme samme timing-race. Det eneste gyldige bevis er gentagne kørsler af samme commit. En required check med 50 % flake er værre end ingen check, fordi ægte fejl drukner i støjen.
