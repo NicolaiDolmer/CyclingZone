@@ -12,6 +12,10 @@ export const DASHBOARD_MODULES = [
   // modul defaulter til synligt for ALLE (også eksisterende localStorage-layouts,
   // jf. merge-mod-defaults i loadLayout).
   { id: "myLatestResult", defaultVisible: true },
+  // #3397: Hero & Agony moment-kort (ét personligt drama-moment pr. etape).
+  // Nyt modul defaulter til synligt for ALLE (samme merge-mod-defaults-regel
+  // som myLatestResult ovenfor).
+  { id: "heroAgony",      defaultVisible: true },
   { id: "auctions",      defaultVisible: true },
   { id: "transfers",     defaultVisible: true },
   { id: "races",         defaultVisible: true },

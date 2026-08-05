@@ -22,6 +22,10 @@ import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
+// #3397 (epic #3395 bølge 1): Hero & Agony moment-kort. Selv-hentende
+// komponent (kun team-props) med vilje — se komponentfilens kommentar for
+// merge-begrundelsen (parallel agent #3398 rører muligvis samme fil).
+import HeroAgonyCard from "../components/HeroAgonyCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
@@ -142,6 +146,7 @@ export default function DashboardPage() {
   const recentResultsVisible = isVisible("recentResults");
   const riderRankingVisible = isVisible("riderRanking");
   const myLatestResultVisible = isVisible("myLatestResult");
+  const heroAgonyVisible = isVisible("heroAgony"); // #3397
 
   // #2288 D — "Næste træk"-udvidelse: 3 lette signaler beregnet efter nextRaces/
   // board er hentet. squadSelectionMissingRace = det næste udtagelige løb HVIS
@@ -1037,6 +1042,9 @@ export default function DashboardPage() {
           firstRaceMomentActive ovenfor), udelades denne anden instans for at
           undgå at kortet vises to gange. */}
       {!firstRaceMomentActive && myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
+
+      {/* #3397: Hero & Agony moment-kort — selv-hentende, se HeroAgonyCard.jsx. */}
+      {heroAgonyVisible && <HeroAgonyCard teamId={team?.id} teamName={team?.name} />}
 
       {/* Main grid — #2849 bølge 1: sibling-gap 14px (spec) */}
       <div className="grid lg:grid-cols-2 gap-[14px]">
