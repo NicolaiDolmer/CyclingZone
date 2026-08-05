@@ -66,9 +66,13 @@ Det forklarer også ejerens observation om at `git rebase` "genafspiller hele hi
 
 ---
 
-## Spor 2 — ryttertype-backfill: FORBEREDT, IKKE KØRT
+## Spor 2 — ryttertype-backfill: ✅ KØRT 5/8 kl. 20:2x efter ejer-go
 
-Ejeren skal se live-tilstand før store prod-indgreb. Alt er klar; **intet er skrevet**.
+Ejeren så før/efter-fordelingen nedenfor og gav go. **Resultat:** 8.176 ryttere, 4.249 `primary_type` skiftet. Post-verificeret mod snapshottet: `valuation_type` ændret for **0** ryttere. `base_value`/`market_value` ændret for 63, men 22 af dem skiftede ikke type og typeandelen blandt de 63 (65 %) ligger tæt på baseline (52 %) — da værdisætningen læser `valuation_type`, som er urørt, kan backfillen ikke være årsagen. Det er den normale værdi-refresh i de 3½ time siden snapshottet.
+
+Snapshot-tabellen `riders_type_backfill_snapshot_20260805` beholdes indtil fordelingen er set an i drift.
+
+### Tallene der lå til grund for go'et
 
 ### (a) Før-snapshot taget
 
