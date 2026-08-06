@@ -51,7 +51,7 @@ function FlagCard({ flag, onUpdate, busy }) {
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="text-cz-1 text-xl font-bold font-data tabular-nums">{Number(flag.score).toFixed(2)}</span>
         <span className="text-cz-1 font-semibold">
-          {flag.team_lo_name} ↔ {flag.team_hi_name}
+          {flag.team_lo_name} – {flag.team_hi_name}
         </span>
         <Chip>{TYPE_LABELS[flag.flag_type] ?? flag.flag_type}</Chip>
         <Chip>{STATUS_LABELS[flag.status] ?? flag.status}</Chip>
