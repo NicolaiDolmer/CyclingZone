@@ -22,6 +22,8 @@ import {
   SCARCE_TERRAIN_ARCHETYPES, TIER_TERRAIN_FAMILY_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
   computeTierCoverageStats, detectCoverageViolations,
 } from "./tierCalendarGuarantees.js";
+import { computeCompositionStats } from "./calendarCompositionTargets.js";
+import { computeStageOrderStats } from "./stageOrderMetrics.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -72,6 +74,20 @@ function coverageProfilesFor(raceRows, ctx) {
   const map = new Map();
   for (const r of raceRows) map.set(r.pool_race_id, generateRaceStageProfiles(seedRaceFor(r, ctx)));
   return map;
+}
+
+// #3295/#3326/#3371: form de allerede-genererede profiler som den {race_type,
+// terrain_archetype, stages}-liste måle-lagene tager. Genbruger PRÆCIS de profiler
+// dæknings-verifikationen (og dermed insert'et) bruger — så kompositions- og
+// rækkefølgetallene i dry-run-rapporten beskriver det parcours der ville blive skrevet,
+// ikke et nyt træk.
+function measurableRacesFrom(raceRows, profilesByPoolRaceId, archetypeByPoolRace) {
+  return raceRows.map((r) => ({
+    name: r.name,
+    race_type: r.race_type,
+    terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+    stages: profilesByPoolRaceId.get(r.pool_race_id) ?? [],
+  }));
 }
 
 // #2251 kalender-invarianter (defense-in-depth oven på selectTierRaceSet's GT-gate):
@@ -375,6 +391,16 @@ export async function materializeTierCalendars({
       });
       tierPlan.coverageStats = coverageStats;
       tierPlan.calendarViolations = [...(tierPlan.calendarViolations ?? []), ...coverageViolations];
+
+      // #3295 (K-B-komposition) + #3326/#3371 (rækkefølge + arketype-variation):
+      // RAPPORTERES, gater IKKE. Kalibreringen mod K-B er ikke i mål endnu (målt
+      // baseline 6/8: flad +3,3 pp, bjerg +4,9 pp), så en hård gate her ville blokere
+      // S3-materialiseringen på et krav vi bevidst er på vej mod. Tallene skal derimod
+      // være synlige i HVER dry-run, så scorecardet og apply-stien aldrig kan komme til
+      // at måle hver sit parcours. Gaten strammes når kalibreringen lander (#3295).
+      const measurable = measurableRacesFrom(repPool.raceRows, profiles, archetypeByPoolRace);
+      tierPlan.compositionStats = computeCompositionStats(measurable);
+      tierPlan.stageOrderStats = computeStageOrderStats(measurable);
     }
 
     // #2251: nægt at APPLY'e en plan med kalender-invariant-brud (GT i tier >1 /
@@ -388,6 +414,7 @@ export async function materializeTierCalendars({
       shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
       unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
       calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null,
+      compositionStats: tierPlan.compositionStats ?? null, stageOrderStats: tierPlan.stageOrderStats ?? null,
       realismDraw: tierPlan.realismDraw ?? null, pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
