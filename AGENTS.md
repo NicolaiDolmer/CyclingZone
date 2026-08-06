@@ -58,6 +58,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 16. **En test må aldrig læse vægur-tiden.** Injicér altid et eksplicit `now`/`today` til produktionskoden i stedet for at stole på en `now = new Date()`-default. Nightly `clock-drift-test-check.yml` kører frontend-testene med klokken skubbet 6 måneder frem og fanger drift ([#3385](https://github.com/NicolaiDolmer/CyclingZone/issues/3385): main blev rød uden en commit, fordi en fast test-konstant passerede vægur-tiden).
 
+17. **Offentlighedspolitik for balance-tal (ejer-godkendt 6/8, jf. [#3436](https://github.com/NicolaiDolmer/CyclingZone/issues/3436)).** Repoet er offentligt. Kvalitativ omtale af mekanikker er OK overalt ("nedkørsel vægter for tungt", "lønnen skaleres med markedsværdi"). Præcise vægte, formler, eksponenter, konstanter og motor-interne tærskler må ALDRIG stå i issues, PR-bodies, kommentarer, patch notes eller Discord — de hører hjemme i private filer (`balance-internals/`, chat-sessioner, `database/proposals/`-headere er også offentlige!). En agent der skal dele et balance-tal med ejeren gør det i chatten, aldrig på GitHub.
+
 **Dispatch-forfilter (obligatorisk før et spor sendes af sted):** `gh issue view N --json state` — plus tjek om der findes en merged PR med `Refs #N`. _Fire spor i natbølgen var allerede løst. `MASTERPLAN.md` og issue-teksterne halter efter hvad der faktisk er shippet; ét kald pr. kandidat havde sparet fire spor._
 
 ### §LOKAL lokal-only-state (legacy — Codex-æra)
