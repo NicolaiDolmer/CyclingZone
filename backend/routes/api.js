@@ -112,6 +112,7 @@ import {
   notifySeasonEvent,
   notifyWatchlistRiderAuction,
   notifyPlayerFeedback,
+  notifyForumActivity,
   sendTestEmbed,
   sendTestDM,
   getBotToken,
@@ -124,6 +125,20 @@ import {
   setFeedbackStatus,
   replyToFeedback,
 } from "../lib/feedbackInbox.js";
+import {
+  listForumPosts,
+  getForumPost,
+  createForumPost,
+  createForumReply,
+  voteForumPoll,
+  reportForumContent,
+  listForumReports,
+  resolveForumReport,
+  setForumPostPinned,
+  deleteForumPost,
+  deleteForumReply,
+  getForumReportCounts,
+} from "../lib/forum.js";
 import {
   contractOnAcquirePatch,
   computeReleaseBuyoutFee,
@@ -360,6 +375,7 @@ import {
   marketWriteLimiter,
   presencePulseLimiter,
   feedbackLimiter,
+  forumWriteLimiter,
   userOrIpKey,
 } from "../lib/rateLimiters.js";
 import {
@@ -11921,6 +11937,209 @@ router.post("/admin/feedback/:id/reply", requireAdmin, adminWriteLimiter, async 
       adminUserId: req.user.id,
       reply: req.body?.reply,
     });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FORUM (#3199/#3201) — in-game forum: opslag, svar, ejer-polls, rapportering
+// ═══════════════════════════════════════════════════════════════════════════════
+// Al skrivning sker via service-role (forum_posts/forum_replies har kun en
+// SELECT-policy — den findes for Realtime-events, ikke for klient-queries;
+// forum_reports/forum_poll_* er deny-all). user_id/team_id udledes ALTID
+// server-side fra req.user/req.team — klienten sender aldrig egne id'er.
+// Ejer-notifikation (#3201): nye opslag/svar/rapporter pinges til Discord
+// (DISCORD_FORUM_WEBHOOK_URL → fallback ops-webhook) — best-effort, må aldrig
+// fejle selve handlingen for spilleren.
+
+// GET /api/forum/posts — keyset-pagineret liste (pinned-blok på side 1).
+router.get("/forum/posts", requireAuth, async (req, res) => {
+  try {
+    const { category, limit, cursor } = req.query;
+    res.json(await listForumPosts({ supabase, category, limit, cursor }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/forum/posts/:id — opslag + svar + evt. poll (aggregater + egen stemme).
+router.get("/forum/posts/:id", requireAuth, async (req, res) => {
+  try {
+    const { status, body } = await getForumPost({ supabase, id: req.params.id, userId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/forum/posts — nyt opslag. poll_options er admin-only (403 ellers).
+router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { category, title, body: postBody, poll_options: pollOptions } = req.body || {};
+    // Rolle + username i ét opslag: rollen gater polls, username bruges i
+    // Discord-pinget. requireAuth sætter kun req.user (auth) + req.team.
+    // Fejler opslaget behandles brugeren som ikke-admin (fail closed for polls).
+    const { data: u, error: userError } = await supabase.from("users").select("role, username").eq("id", req.user.id).single();
+    if (userError) captureException(userError);
+    const result = await createForumPost({
+      supabase,
+      userId: req.user.id,
+      teamId: req.team?.id || null,
+      isAdmin: u?.role === "admin",
+      category,
+      title,
+      body: postBody,
+      pollOptions: pollOptions ?? null,
+    });
+    if (result.status === 200) {
+      notifyForumActivity({
+        kind: "post",
+        title: typeof title === "string" ? title.trim() : "",
+        body: typeof postBody === "string" ? postBody.trim() : "",
+        category,
+        username: u?.username || null,
+        teamName: req.team?.name || null,
+      }).catch(err => console.error("[forum] discord ping (post) failed:", err.message));
+    }
+    res.status(result.status).json(result.body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/forum/posts/:id/replies — nyt svar i tråden.
+router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const result = await createForumReply({
+      supabase,
+      postId: req.params.id,
+      userId: req.user.id,
+      teamId: req.team?.id || null,
+      body: req.body?.body,
+    });
+    if (result.status === 200) {
+      const replyBody = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+      supabase.from("users").select("username").eq("id", req.user.id).single()
+        .then(({ data: u }) => notifyForumActivity({
+          kind: "reply",
+          title: result.post?.title || "",
+          body: replyBody,
+          category: result.post?.category || null,
+          username: u?.username || null,
+          teamName: req.team?.name || null,
+        }))
+        .catch(err => console.error("[forum] discord ping (reply) failed:", err.message));
+    }
+    res.status(result.status).json(result.body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/forum/posts/:id/vote — stem i ejer-poll (genafstemning = upsert).
+router.post("/forum/posts/:id/vote", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await voteForumPoll({
+      supabase,
+      postId: req.params.id,
+      userId: req.user.id,
+      optionId: req.body?.option_id,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/forum/report — rapportér opslag/svar (idempotent pr. reporter+target).
+router.post("/forum/report", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { target_type: targetType, target_id: targetId, reason } = req.body || {};
+    const result = await reportForumContent({
+      supabase,
+      reporterUserId: req.user.id,
+      targetType,
+      targetId,
+      reason,
+    });
+    if (result.status === 200 && !result.body.already) {
+      notifyForumActivity({
+        kind: "report",
+        title: `${targetType} reported`,
+        body: typeof reason === "string" && reason.trim() ? reason.trim() : "(no reason given)",
+        username: null, // rapportøren er bevidst udeladt af pinget — identiteten hører til i admin-indbakken
+        teamName: null,
+      }).catch(err => console.error("[forum] discord ping (report) failed:", err.message));
+    }
+    res.status(result.status).json(result.body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Forum-admin (#3201: rapport-indbakke + moderation) ───────────────────────
+
+// GET /api/admin/forum/reports — keyset-pagineret rapport-indbakke + badge-tal.
+router.get("/admin/forum/reports", requireAdmin, async (req, res) => {
+  try {
+    const { status, limit, cursor } = req.query;
+    const [page, counts] = await Promise.all([
+      listForumReports({ supabase, status, limit, cursor }),
+      getForumReportCounts({ supabase }),
+    ]);
+    res.json({ ...page, counts });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/admin/forum/reports/:id/resolve — markér rapport håndteret.
+router.patch("/admin/forum/reports/:id/resolve", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await resolveForumReport({ supabase, id: req.params.id, adminUserId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/admin/forum/posts/:id/pin — pin/unpin ejer-opslag.
+router.patch("/admin/forum/posts/:id/pin", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await setForumPostPinned({ supabase, id: req.params.id, pinned: req.body?.pinned });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/forum/posts/:id — soft delete + auto-resolve af rapporter.
+router.delete("/admin/forum/posts/:id", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await deleteForumPost({ supabase, id: req.params.id, adminUserId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/forum/replies/:id — soft delete + recount af posten.
+router.delete("/admin/forum/replies/:id", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await deleteForumReply({ supabase, id: req.params.id, adminUserId: req.user.id });
     res.status(status).json(body);
   } catch (e) {
     captureException(e);

@@ -1,7 +1,7 @@
 import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
-  FlagIcon, CoinIcon, TeamIcon, UploadIcon, SettingsIcon, InboxIcon,
+  FlagIcon, CoinIcon, TeamIcon, UploadIcon, SettingsIcon, InboxIcon, GlobeIcon,
 } from "../../ui/icons/index.jsx";
 
 // labelKey-pattern (i stedet for label-string) så module-level TABS-array kan
@@ -21,6 +21,8 @@ const TABS = [
   { to: "/admin/economy",  labelKey: "nav.item.finance", Icon: CoinIcon },
   { to: "/admin/users",    label: "Brugere",             Icon: TeamIcon },
   { to: "/admin/feedback", label: "Feedback",            Icon: InboxIcon },
+  { to: "/admin/forum",    label: "Forum",               Icon: GlobeIcon }, // #3201
+
   { to: "/admin/data",     label: "Data/Import",         Icon: UploadIcon },
   { to: "/admin/system",   label: "System",              Icon: SettingsIcon },
 ];

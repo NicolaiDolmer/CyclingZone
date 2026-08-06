@@ -44,6 +44,8 @@ const CORE_PAGES = [
   // waitForPageReady's heading-gate + den eksplicitte heading-assertion i loopet.
   // (v6.63/#2210 gav 0.17 pixel-diff på alle 3 projekter → blokerede auto-merge.)
   { path: "/patch-notes", heading: "Patch notes", skipSnapshot: true },
+  // #3199: forum-listen (pinned ejer-poll + spiller-opslag fra mock-seed).
+  { path: "/forum", heading: "Forum", snapshot: "forum.png" },
 ];
 
 test.beforeEach(async ({ page }) => {

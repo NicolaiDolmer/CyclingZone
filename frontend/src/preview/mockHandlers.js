@@ -399,6 +399,102 @@ export function managerProfile(teamId) {
   };
 }
 
+// #3199 — forum-seed til preview/Playwright. Pinned ejer-opslag med poll +
+// almindelige spiller-opslag, samme shape som backend/lib/forum.js serverer.
+const FORUM_AUTHOR_OWNER = { username: "dolmer", team_name: null };
+const FORUM_POSTS = [
+  {
+    id: "forum-pinned-1",
+    seq: 4,
+    created_at: "2026-08-05T09:00:00Z",
+    category: "feedback_ideas",
+    title: "Which feature should we build next?",
+    excerpt: "Vote below. I read everything in here, so add a reply if your favourite is missing.",
+    body: "Vote below. I read everything in here, so add a reply if your favourite is missing.",
+    is_pinned: true,
+    reply_count: 2,
+    last_reply_at: "2026-08-06T07:20:00Z",
+    has_poll: true,
+    author: FORUM_AUTHOR_OWNER,
+  },
+  {
+    id: "forum-post-2",
+    seq: 3,
+    created_at: "2026-08-05T18:45:00Z",
+    category: "general",
+    title: "Anyone else saving their sprinters for Deadline Day?",
+    excerpt: "My squad is thin on climbers, but the auction prices this week are brutal.",
+    body: "My squad is thin on climbers, but the auction prices this week are brutal. How are you all planning the last week of the transfer window?",
+    is_pinned: false,
+    reply_count: 3,
+    last_reply_at: "2026-08-06T06:10:00Z",
+    has_poll: false,
+    author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+  },
+  {
+    id: "forum-post-3",
+    seq: 2,
+    created_at: "2026-08-04T14:30:00Z",
+    category: "feedback_ideas",
+    title: "Idea: show rival tactics after the race",
+    excerpt: "It would help new managers learn if we could see what tactics the podium teams used.",
+    body: "It would help new managers learn if we could see what tactics the podium teams used once a race is finished.",
+    is_pinned: false,
+    reply_count: 1,
+    last_reply_at: "2026-08-05T08:00:00Z",
+    has_poll: false,
+    author: { username: "sofie_r", team_name: "Nordjysk CC" },
+  },
+  {
+    id: "forum-post-4",
+    seq: 1,
+    created_at: "2026-08-03T10:15:00Z",
+    category: "general",
+    title: "Welcome new managers from the open beta wave",
+    excerpt: "Say hi and tell us where your club is from.",
+    body: "Say hi and tell us where your club is from.",
+    is_pinned: false,
+    reply_count: 0,
+    last_reply_at: null,
+    has_poll: false,
+    author: { username: "e2e", team_name: "E2E Racing" },
+  },
+];
+
+export function forumPostDetail(postId) {
+  const post = FORUM_POSTS.find((p) => p.id === postId) || FORUM_POSTS[0];
+  return {
+    post: { ...post, is_mine: post.author.username === "e2e" },
+    replies: post.id !== "forum-post-4" ? [
+      {
+        id: `${post.id}-r1`,
+        seq: 1,
+        created_at: "2026-08-05T21:05:00Z",
+        body: "Great initiative. My vote went to race replays, the finale deserves it.",
+        author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+        is_mine: false,
+      },
+      {
+        id: `${post.id}-r2`,
+        seq: 2,
+        created_at: "2026-08-06T07:20:00Z",
+        body: "Agreed, and thanks for asking us directly in the game instead of only on Discord.",
+        author: { username: "sofie_r", team_name: "Nordjysk CC" },
+        is_mine: false,
+      },
+    ] : [],
+    poll: post.has_poll ? {
+      total_votes: 23,
+      my_option_id: null,
+      options: [
+        { id: "opt-1", idx: 0, label: "Race replays", votes: 11 },
+        { id: "opt-2", idx: 1, label: "Team chemistry", votes: 7 },
+        { id: "opt-3", idx: 2, label: "Historical stats hub", votes: 5 },
+      ],
+    } : null,
+  };
+}
+
 // `search` er valgfri (default "") så eksisterende kaldesteder — Playwright-
 // fixtures og de øvrige preview-ruter — er uændrede. Kun ruter der faktisk
 // filtrerer server-side (feedback-indbakken) læser den.
@@ -406,6 +502,20 @@ export function apiResponse(pathname, search = "") {
   // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
   const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
   if (managerMatch) return managerProfile(decodeURIComponent(managerMatch[1]));
+
+  // #3199: forum-liste + tråd-detalje.
+  const forumPostMatch = pathname.match(/\/api\/forum\/posts\/([^/]+)$/);
+  if (forumPostMatch) return forumPostDetail(decodeURIComponent(forumPostMatch[1]));
+  if (pathname.endsWith("/api/forum/posts")) {
+    const category = new URLSearchParams(search).get("category");
+    const visible = FORUM_POSTS.filter((p) => !category || p.category === category);
+    return {
+      pinned: visible.filter((p) => p.is_pinned),
+      items: visible.filter((p) => !p.is_pinned),
+      next_cursor: null,
+      limit: 25,
+    };
+  }
 
   if (pathname.endsWith("/api/board/status")) {
     return {

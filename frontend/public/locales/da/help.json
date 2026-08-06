@@ -67,13 +67,41 @@
       "consequenceTiers": {
         "title": "Konsekvens-tier (6 lag)",
         "rows": [
-          ["Lag", "Trigger", "Effekt"],
-          ["1", "Tilfredshed-baseret", "Sponsor-modifier ±20% (passiv)"],
-          ["2", "Tilfredshed <40% i 2 evalueringer i træk", "Lønloft: total løn loftbelagt til 1,5x niveauet ved udløsning, hvilket blokerer køb/kontraktforlængelser der ville vokse den yderligere. Rammer aldrig et holds første 30 dage"],
-          ["3", "Tilfredshed <30%", "Signing-restriktion: køb >300K blokeres"],
-          ["4", "Tilfredshed <15%", "Tvunget salg: din rytter med lavest værdi auto-listes (ryttere med popularity ≥70 eller værdi ≥8.000.000 CZ$ er beskyttede)"],
-          ["5", "<10% eller 2× plan-udløb under 30%", "Sponsor-pull-out: −10% sponsor én sæson"],
-          ["6 (positiv)", ">75% tilfredshed + ≥75% mål nået", "Bonus-tilbud: +200K mod ét ekstra-mål"]
+          [
+            "Lag",
+            "Trigger",
+            "Effekt"
+          ],
+          [
+            "1",
+            "Tilfredshed-baseret",
+            "Sponsor-modifier ±20% (passiv)"
+          ],
+          [
+            "2",
+            "Tilfredshed <40% i 2 evalueringer i træk",
+            "Lønloft: total løn loftbelagt til 1,5x niveauet ved udløsning, hvilket blokerer køb/kontraktforlængelser der ville vokse den yderligere. Rammer aldrig et holds første 30 dage"
+          ],
+          [
+            "3",
+            "Tilfredshed <30%",
+            "Signing-restriktion: køb >300K blokeres"
+          ],
+          [
+            "4",
+            "Tilfredshed <15%",
+            "Tvunget salg: din rytter med lavest værdi auto-listes (ryttere med popularity ≥70 eller værdi ≥8.000.000 CZ$ er beskyttede)"
+          ],
+          [
+            "5",
+            "<10% eller 2× plan-udløb under 30%",
+            "Sponsor-pull-out: −10% sponsor én sæson"
+          ],
+          [
+            "6 (positiv)",
+            ">75% tilfredshed + ≥75% mål nået",
+            "Bonus-tilbud: +200K mod ét ekstra-mål"
+          ]
         ]
       },
       "requestsAndLocks": {
@@ -266,14 +294,38 @@
       "whenDmsSent": {
         "title": "Hvornår sendes der DMs?",
         "rows": [
-          ["Event", "DM"],
-          ["Du overbydes på en auktion", "Ja"],
-          ["Du vinder en auktion", "Ja"],
-          ["Du modtager et transfer-tilbud", "Ja"],
-          ["Dit transfer-tilbud accepteres / afvises / får modbud", "Ja"],
-          ["En ny auktion oprettes (alle managers)", "Nej, kun kanal"],
-          ["Transfer fuldført (alle managers)", "Nej, kun kanal"],
-          ["Sæsonstart / sæsonslut", "Nej, kun kanal"]
+          [
+            "Event",
+            "DM"
+          ],
+          [
+            "Du overbydes på en auktion",
+            "Ja"
+          ],
+          [
+            "Du vinder en auktion",
+            "Ja"
+          ],
+          [
+            "Du modtager et transfer-tilbud",
+            "Ja"
+          ],
+          [
+            "Dit transfer-tilbud accepteres / afvises / får modbud",
+            "Ja"
+          ],
+          [
+            "En ny auktion oprettes (alle managers)",
+            "Nej, kun kanal"
+          ],
+          [
+            "Transfer fuldført (alle managers)",
+            "Nej, kun kanal"
+          ],
+          [
+            "Sæsonstart / sæsonslut",
+            "Nej, kun kanal"
+          ]
         ]
       }
     },
@@ -286,12 +338,30 @@
       "categories": {
         "title": "Kategorier",
         "rows": [
-          ["Kategori", "Eksempler"],
-          ["Auktioner", "Første bud, Sniper, High Roller, 50 vundne auktioner"],
-          ["Transfers", "Første handel, Forhandler, Kuppet, 30 transfers"],
-          ["◈ Hold", "Fuldt hold, Ungdomshold, Stjerneholdet, Oprykket!"],
-          ["Sæson", "Divisionsvinder, Podium, Bestyrelsens yndling, Veteran"],
-          ["Hemmelige", "Låses op ved uventede hændelser, beskrives ikke på forhånd"]
+          [
+            "Kategori",
+            "Eksempler"
+          ],
+          [
+            "Auktioner",
+            "Første bud, Sniper, High Roller, 50 vundne auktioner"
+          ],
+          [
+            "Transfers",
+            "Første handel, Forhandler, Kuppet, 30 transfers"
+          ],
+          [
+            "◈ Hold",
+            "Fuldt hold, Ungdomshold, Stjerneholdet, Oprykket!"
+          ],
+          [
+            "Sæson",
+            "Divisionsvinder, Podium, Bestyrelsens yndling, Veteran"
+          ],
+          [
+            "Hemmelige",
+            "Låses op ved uventede hændelser, beskrives ikke på forhånd"
+          ]
         ]
       },
       "seasonAchievements": {
@@ -411,11 +481,41 @@
         "title": "Divisionsbonus ved sæsonafslutning",
         "text": "Læs den i to trin: find rækken for den plads du sluttede på i din egen division, og derefter kolonnen for den division du kørte i. Tomme celler giver ingenting, og det gør placeringer under nederste række heller ikke.",
         "rows": [
-          ["Din slutplacering", "I Division 1", "I Division 2", "I Division 3", "I Division 4"],
-          ["Nr. 1 i din division", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
-          ["Nr. 2 i din division", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
-          ["Nr. 3 i din division", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
-          ["Nr. 4 i din division", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
+          [
+            "Din slutplacering",
+            "I Division 1",
+            "I Division 2",
+            "I Division 3",
+            "I Division 4"
+          ],
+          [
+            "Nr. 1 i din division",
+            "{bonusD1P1} CZ$",
+            "{bonusD2P1} CZ$",
+            "{bonusD3P1} CZ$",
+            "{bonusD4P1} CZ$"
+          ],
+          [
+            "Nr. 2 i din division",
+            "{bonusD1P2} CZ$",
+            "{bonusD2P2} CZ$",
+            "{bonusD3P2} CZ$",
+            "{bonusD4P2} CZ$"
+          ],
+          [
+            "Nr. 3 i din division",
+            "{bonusD1P3} CZ$",
+            "{bonusD2P3} CZ$",
+            "{bonusD3P3} CZ$",
+            "{bonusD4P3} CZ$"
+          ],
+          [
+            "Nr. 4 i din division",
+            "{bonusD1P4} CZ$",
+            "{bonusD2P4} CZ$",
+            "—",
+            "—"
+          ]
         ]
       },
       "raceLibrary": {
@@ -452,13 +552,41 @@
       "examples": {
         "title": "Eksempler på præmiebeløb",
         "rows": [
-          ["Sejr", "Point", "Præmie"],
-          ["Grand Tour-sejr", "1.300", "97.500 CZ$"],
-          ["Monument-sejr", "800", "60.000 CZ$"],
-          ["Etapesejr (Grand Tour)", "210", "15.750 CZ$"],
-          ["ProSeries-sejr", "200", "15.000 CZ$"],
-          ["Klasse 1-sejr", "125", "9.375 CZ$"],
-          ["Klasse 2-sejr", "40", "3.000 CZ$"]
+          [
+            "Sejr",
+            "Point",
+            "Præmie"
+          ],
+          [
+            "Grand Tour-sejr",
+            "1.300",
+            "97.500 CZ$"
+          ],
+          [
+            "Monument-sejr",
+            "800",
+            "60.000 CZ$"
+          ],
+          [
+            "Etapesejr (Grand Tour)",
+            "210",
+            "15.750 CZ$"
+          ],
+          [
+            "ProSeries-sejr",
+            "200",
+            "15.000 CZ$"
+          ],
+          [
+            "Klasse 1-sejr",
+            "125",
+            "9.375 CZ$"
+          ],
+          [
+            "Klasse 2-sejr",
+            "40",
+            "3.000 CZ$"
+          ]
         ]
       },
       "payout": {
@@ -482,11 +610,31 @@
       "sizePerDivision": {
         "title": "Holdstørrelse per division",
         "rows": [
-          ["Division", "Minimum ryttere", "Maksimum ryttere"],
-          ["Division 1", "0", "30"],
-          ["Division 2", "0", "30"],
-          ["Division 3", "0", "30"],
-          ["Division 4", "0", "30"]
+          [
+            "Division",
+            "Minimum ryttere",
+            "Maksimum ryttere"
+          ],
+          [
+            "Division 1",
+            "0",
+            "30"
+          ],
+          [
+            "Division 2",
+            "0",
+            "30"
+          ],
+          [
+            "Division 3",
+            "0",
+            "30"
+          ],
+          [
+            "Division 4",
+            "0",
+            "30"
+          ]
         ]
       },
       "promotionRelegation": {
@@ -534,22 +682,86 @@
       "abilitiesExplained": {
         "title": "De 15 evner, og hvor de betyder noget",
         "rows": [
-          ["Evne", "Hvad den gør", "Hvor den betyder mest"],
-          ["Klatring", "Kraft på lange stigninger", "Bjergetaper"],
-          ["Enkeltstart", "At køre alene mod uret", "Enkeltstarter"],
-          ["Flad", "At holde fart på flade veje", "Flade etaper, enkeltstarter"],
-          ["Tempo", "Vedvarende mellem-indsats", "Mellembjerge, kuperede etaper"],
-          ["Sprint", "Topfart til en finish", "Flade samlede spurter"],
-          ["Acceleration", "Eksplosivt ryk til at starte eller lukke et hul", "Spurter, kuperede angreb"],
-          ["Punch", "Korte stejle indsatser", "Kuperede etaper og finaler"],
-          ["Udholdenhed", "At holde hele distancen", "Lange, hårde dage og klassikere"],
-          ["Restituering", "At komme sig mellem dage", "Etapeløb"],
-          ["Modstandsdygtighed", "At modstå træthed, falde mindre af sent", "Hårde flere-etapers løb"],
-          ["Nedkørsel", "Favour på nedadgående finaler", "Etaper der slutter nedad"],
-          ["Brosten", "Beherskelse og kraft på brosten", "Brosten-klassikere"],
-          ["Positionering", "At blive foran", "Hektiske etaper, enkeltstarter"],
-          ["Aggression", "Lysten til at angribe", "Udbrud"],
-          ["Taktik", "Race-forståelse og at læse et løb", "Holdtidskørsler, taktiske løb"]
+          [
+            "Evne",
+            "Hvad den gør",
+            "Hvor den betyder mest"
+          ],
+          [
+            "Klatring",
+            "Kraft på lange stigninger",
+            "Bjergetaper"
+          ],
+          [
+            "Enkeltstart",
+            "At køre alene mod uret",
+            "Enkeltstarter"
+          ],
+          [
+            "Flad",
+            "At holde fart på flade veje",
+            "Flade etaper, enkeltstarter"
+          ],
+          [
+            "Tempo",
+            "Vedvarende mellem-indsats",
+            "Mellembjerge, kuperede etaper"
+          ],
+          [
+            "Sprint",
+            "Topfart til en finish",
+            "Flade samlede spurter"
+          ],
+          [
+            "Acceleration",
+            "Eksplosivt ryk til at starte eller lukke et hul",
+            "Spurter, kuperede angreb"
+          ],
+          [
+            "Punch",
+            "Korte stejle indsatser",
+            "Kuperede etaper og finaler"
+          ],
+          [
+            "Udholdenhed",
+            "At holde hele distancen",
+            "Lange, hårde dage og klassikere"
+          ],
+          [
+            "Restituering",
+            "At komme sig mellem dage",
+            "Etapeløb"
+          ],
+          [
+            "Modstandsdygtighed",
+            "At modstå træthed, falde mindre af sent",
+            "Hårde flere-etapers løb"
+          ],
+          [
+            "Nedkørsel",
+            "Favour på nedadgående finaler",
+            "Etaper der slutter nedad"
+          ],
+          [
+            "Brosten",
+            "Beherskelse og kraft på brosten",
+            "Brosten-klassikere"
+          ],
+          [
+            "Positionering",
+            "At blive foran",
+            "Hektiske etaper, enkeltstarter"
+          ],
+          [
+            "Aggression",
+            "Lysten til at angribe",
+            "Udbrud"
+          ],
+          [
+            "Taktik",
+            "Race-forståelse og at læse et løb",
+            "Holdtidskørsler, taktiske løb"
+          ]
         ]
       },
       "riderType": {
@@ -647,12 +859,30 @@
       "whatShown": {
         "title": "Hvad vises i feedet?",
         "rows": [
-          ["Hændelse", "Beskrivelse"],
-          ["Auktion vundet", "Hold vandt en auktion (viser rytter og pris)"],
-          ["Auktion startet", "Et hold har sat en rytter til auktion"],
-          ["Transfer gennemført", "En transfer mellem to managers er accepteret"],
-          ["Sæson startet", "Admin har startet en ny sæson"],
-          ["Resultater godkendt", "Admin har godkendt løbsresultater"]
+          [
+            "Hændelse",
+            "Beskrivelse"
+          ],
+          [
+            "Auktion vundet",
+            "Hold vandt en auktion (viser rytter og pris)"
+          ],
+          [
+            "Auktion startet",
+            "Et hold har sat en rytter til auktion"
+          ],
+          [
+            "Transfer gennemført",
+            "En transfer mellem to managers er accepteret"
+          ],
+          [
+            "Sæson startet",
+            "Admin har startet en ny sæson"
+          ],
+          [
+            "Resultater godkendt",
+            "Admin har godkendt løbsresultater"
+          ]
         ]
       },
       "transferRumors": {
@@ -736,12 +966,36 @@
       "tracks": {
         "title": "De 5 facilitets-spor",
         "rows": [
-          ["Facilitet", "Hvad den gør", "Status"],
-          ["Træningscenter", "Fremskynder dine ryttere daglige evne-vækst", "Aktiv nu"],
-          ["Scouting-netværk", "Låser op for at ansætte og opgradere din chefscout", "Aktiv nu"],
-          ["Medicinsk afdeling", "Fremskynder form- og skade-restitution", "Kommer snart"],
-          ["Akademi-udvidelse", "Tilføjer ekstra akademi-intake-slots", "Kommer snart"],
-          ["Kommerciel afdeling", "Øger sponsor-indtægt (loftet, en langsigtet investering)", "Kommer snart"]
+          [
+            "Facilitet",
+            "Hvad den gør",
+            "Status"
+          ],
+          [
+            "Træningscenter",
+            "Fremskynder dine ryttere daglige evne-vækst",
+            "Aktiv nu"
+          ],
+          [
+            "Scouting-netværk",
+            "Låser op for at ansætte og opgradere din chefscout",
+            "Aktiv nu"
+          ],
+          [
+            "Medicinsk afdeling",
+            "Fremskynder form- og skade-restitution",
+            "Kommer snart"
+          ],
+          [
+            "Akademi-udvidelse",
+            "Tilføjer ekstra akademi-intake-slots",
+            "Kommer snart"
+          ],
+          [
+            "Kommerciel afdeling",
+            "Øger sponsor-indtægt (loftet, en langsigtet investering)",
+            "Kommer snart"
+          ]
         ]
       },
       "liveTracksStatus": {
@@ -1205,6 +1459,18 @@
     "sprintCaptainRoleFaq": {
       "q": "Jeg har to sprintere: én er kaptajn, én er sprint-kaptajn. Hvem arbejder holdet reelt for?",
       "a": "Det afgøres pr. etape af terrænet, ikke af hvem du helst vil beskytte den dag: på flade etaper går hjælpernes støtte til sprint-kaptajnen (eller til kaptajnen, hvis du ikke har sat en sprint-kaptajn til det løb), og på alle andre etapetyper (kuperet, bakket, bjerge, højbjerge, enkeltstart, brosten, klassiker) går den kun til kaptajnen, uden nogen støtte til sprint-kaptajnen overhovedet. Kort sagt: kaptajnen er din beskyttede rytter overalt undtagen på flade etaper; sprint-kaptajnen er specifikt beskyttet på flade spurt-etaper. Sæt begge, hvis du vil køre et reelt to-sporet sprint-og-GC-hold: de konkurrerer aldrig om de samme hjælpere på samme etape."
+    },
+    "forumFaq": {
+      "q": "Hvad er Forummet?",
+      "a": "Forummet er spillets debatside og findes i Klubhus-menuen. Skriv opslag i to kategorier (Generelt og Feedback & idéer), svar i tråde, og stem i afstemninger som admin vedhæfter fastgjorte opslag."
+    },
+    "forumPollsFaq": {
+      "q": "Hvordan virker forum-afstemninger?",
+      "a": "Kun admin kan vedhæfte en afstemning til et opslag. Du har én stemme pr. afstemning og kan altid ændre den ved at vælge en anden mulighed. Stemmetallene er offentlige; hvem der stemte hvad er ikke."
+    },
+    "forumReportFaq": {
+      "q": "Hvordan rapporterer jeg et opslag eller svar i forummet?",
+      "a": "Brug Rapportér-knappen på opslaget eller svaret. Rapporten går direkte til admin, som kan fjerne indhold der ikke hører hjemme. Rapporterer du det samme to gange, opdateres blot din begrundelse."
     }
   }
 }

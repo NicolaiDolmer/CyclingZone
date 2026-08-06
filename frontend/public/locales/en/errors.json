@@ -185,6 +185,23 @@
     "feedback_reply_too_long": "Reply is too long",
     "feedback_already_replied": "This message has already been answered",
     "transfer_cooldown_active": "New teams can't send {cooldownAmount}+ CZ$ out in a single transfer or swap during their first {cooldownHours} hour(s). This unlocks in about {unlocksInHours} hour(s).",
-    "auction_created_before_account": "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away."
+    "auction_created_before_account": "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
+    "rate_forum": "Too many forum actions in a short time. Try again shortly.",
+    "forum_invalid_category": "Invalid category",
+    "forum_title_required": "A title is required",
+    "forum_title_too_long": "The title is too long",
+    "forum_body_required": "A message is required",
+    "forum_body_too_long": "The message is too long",
+    "forum_missing_id": "Missing id",
+    "forum_post_not_found": "The post was not found. It may have been removed.",
+    "forum_reply_not_found": "The reply was not found. It may have been removed.",
+    "forum_poll_admin_only": "Only the admin can attach polls",
+    "forum_poll_invalid_options": "A poll needs 2 to 8 options of at most 100 characters",
+    "forum_poll_option_not_found": "That poll option no longer exists",
+    "forum_invalid_target_type": "Invalid report target",
+    "forum_target_not_found": "The reported content was not found. It may have been removed.",
+    "forum_reason_too_long": "The reason is too long",
+    "forum_report_not_found": "Report not found",
+    "forum_invalid_pinned": "Invalid pin value"
   }
 }

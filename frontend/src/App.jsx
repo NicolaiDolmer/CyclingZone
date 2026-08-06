@@ -40,6 +40,7 @@ const AdminSeasonTab = lazy(() => import("./pages/admin/AdminSeasonTab"));
 const AdminEconomyTab = lazy(() => import("./pages/admin/AdminEconomyTab"));
 const AdminUsersTab = lazy(() => import("./pages/admin/AdminUsersTab"));
 const AdminFeedbackTab = lazy(() => import("./pages/admin/AdminFeedbackTab"));
+const AdminForumTab = lazy(() => import("./pages/admin/AdminForumTab")); // #3199/#3201
 const AdminDataTab = lazy(() => import("./pages/admin/AdminDataTab"));
 const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
 // #3196: waitlist/sprint-metrics/attribution/retention er konsolideret som
@@ -52,6 +53,8 @@ const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
 const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const ForumPage = lazy(() => import("./pages/ForumPage")); // #3199
+const ForumPostPage = lazy(() => import("./pages/ForumPostPage")); // #3199
 const RiderComparePage = lazy(() => import("./pages/RiderComparePage"));
 const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
@@ -270,6 +273,9 @@ export default function App() {
             <Route path="standings" element={<RankingsHubPage />} />
             <Route path="board" element={<BoardPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
+            {/* #3199: forum (opslag + tråd-detalje). */}
+            <Route path="forum" element={<ForumPage />} />
+            <Route path="forum/:postId" element={<ForumPostPage />} />
             <Route path="compare" element={<RiderComparePage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="pro" element={<ProUpgradePage />} />
@@ -327,6 +333,7 @@ export default function App() {
               <Route path="economy" element={<AdminEconomyTab />} />
               <Route path="users"   element={<AdminUsersTab />} />
               <Route path="feedback" element={<AdminFeedbackTab />} />
+              <Route path="forum" element={<AdminForumTab />} /> {/* #3201 */}
               <Route path="data"    element={<AdminDataTab />} />
               <Route path="system"  element={<AdminSystemTab />} />
               <Route path="*"       element={<Navigate to="/admin/season" replace />} />

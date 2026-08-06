@@ -402,6 +402,9 @@ const FAQ_KEYS = [
   "saveLegsCarryoverFaq",
   "seasonFormCarryoverFaq",
   "sprintCaptainRoleFaq",
+  "forumFaq", // #3199
+  "forumPollsFaq",
+  "forumReportFaq",
 ];
 
 function buildSections(t, vars) {

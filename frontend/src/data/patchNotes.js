@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.102",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "The Forum: talk with the other managers in the game",
+          "body": "A new Forum lives in the Clubhouse menu. Post in two categories (General and Feedback & ideas), reply in threads, and vote in polls the admin attaches to pinned announcements. A report button on every post and reply sends anything that does not belong straight to the admin."
+        },
+        "da": {
+          "title": "Forummet: snak med de andre managere i spillet",
+          "body": "Et nyt Forum bor i Klubhus-menuen. Skriv opslag i to kategorier (Generelt og Feedback & idéer), svar i tråde, og stem i afstemninger som admin vedhæfter fastgjorte opslag. En rapportér-knap på hvert opslag og svar sender alt der ikke hører hjemme direkte til admin."
+        },
+        "refs": [3199, 3201]
+      }
+    ]
+  },
+  {
     "version": "7.101",
     "date": "2026-08-06",
     "label": "Beta",

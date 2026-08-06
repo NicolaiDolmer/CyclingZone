@@ -14,7 +14,7 @@ import { attemptDmDelivery } from "./discordDmDelivery.js";
 import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
 import { recordPermanentDmFailure, clearDmFailureCount } from "./discordDeadConnection.js";
 import { captureException as sentryCapture } from "./sentry.js";
-import { getOpsWebhookUrl, makeSendOpsWebhook } from "./opsWebhook.js";
+import { getOpsWebhookUrl, makeSendOpsWebhook, withOpsMention } from "./opsWebhook.js";
 import { isDmTypeEnabled } from "./discordDmPrefs.js";
 import { resolveDmRecipient } from "./discordDmRecipient.js";
 import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
@@ -762,6 +762,51 @@ export async function notifyPlayerFeedback({ category, message, pagePath, teamNa
     }],
   };
   await sendWebhookFn(url, payload);
+}
+
+// ── Forum-aktivitet til ejeren (#3201) ────────────────────────────────────────
+// Ejer-direktiv 3/8: "mere tydeligt for mig, som admin, når der kommer nye
+// beskeder". Nye opslag/svar/rapporter pinges til DISCORD_FORUM_WEBHOOK_URL;
+// falder tilbage til ops-webhooken (privat kanal m. @mention) så pinget virker
+// uden ny provisionering. INGEN fallback til default/general-webhooken ud over
+// hvad getOpsWebhook selv gør — forum-indhold er spiller-synligt i forvejen,
+// men pings hører hjemme hos ejeren, ikke i en spiller-kanal.
+const FORUM_KIND_META = {
+  post: { label: "🗣️ New forum post", color: 0x3498db },
+  reply: { label: "💬 New forum reply", color: 0x2ecc71 },
+  report: { label: "🚩 Forum report", color: 0xe74c3c },
+};
+
+export async function notifyForumActivity({
+  kind,
+  title,
+  body,
+  category,
+  username,
+  teamName,
+  sendWebhookFn = sendWebhook,
+  getOpsWebhookFn = getOpsWebhook,
+}) {
+  const meta = FORUM_KIND_META[kind] || FORUM_KIND_META.post;
+  const dedicated = (process.env.DISCORD_FORUM_WEBHOOK_URL || "").trim();
+  const url = dedicated || (getOpsWebhookFn ? await getOpsWebhookFn() : null);
+  if (!url) return;
+
+  const fields = [];
+  if (username) fields.push({ name: "By", value: teamName ? `${username} (${teamName})` : username, inline: true });
+  if (category) fields.push({ name: "Category", value: category === "feedback_ideas" ? "Feedback & ideas" : "General", inline: true });
+
+  const payload = {
+    embeds: [{
+      title: title ? `${meta.label}: ${title.slice(0, 200)}` : meta.label,
+      description: body ? (body.length > 1000 ? `${body.slice(0, 1000)}…` : body) : "",
+      color: meta.color,
+      fields,
+      footer: { text: "Cycling Zone · forum" },
+      timestamp: new Date().toISOString(),
+    }],
+  };
+  await sendWebhookFn(url, dedicated ? payload : withOpsMention(payload));
 }
 
 export async function notifySeasonEvent({ type, seasonNumber, webhookUrl }) {
