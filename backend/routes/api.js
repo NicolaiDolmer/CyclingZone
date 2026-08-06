@@ -11978,7 +11978,9 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
     const { category, title, body: postBody, poll_options: pollOptions } = req.body || {};
     // Rolle + username i ét opslag: rollen gater polls, username bruges i
     // Discord-pinget. requireAuth sætter kun req.user (auth) + req.team.
-    const { data: u } = await supabase.from("users").select("role, username").eq("id", req.user.id).single();
+    // Fejler opslaget behandles brugeren som ikke-admin (fail closed for polls).
+    const { data: u, error: userError } = await supabase.from("users").select("role, username").eq("id", req.user.id).single();
+    if (userError) captureException(userError);
     const result = await createForumPost({
       supabase,
       userId: req.user.id,
