@@ -72,6 +72,57 @@ function compareCandidates(seed, priorityArchetypeSet) {
   };
 }
 
+/**
+ * #3295: RESERVATIONS-FASE — tag de arketyper tieren SKAL have, FØR prestige-walket.
+ *
+ * ROD-ÅRSAGEN den løser: rangeringen er prestige → STØRRELSE → knap-arketype. Arketypen er
+ * altså først TREDJE nøgle og slår kun til når to løb har både samme prestige OG samme
+ * etapeantal — hvilket næsten aldrig sker. `priorityArchetypes` (#3327) kunne derfor ikke
+ * levere det den lovede: målt på S3 fik Division 3 nul brosten-etapeløb og kun to
+ * summit_tour, uanset hvor mange af dem kataloget indeholdt. Dækningsgarantierne i
+ * tierCalendarGuarantees.js var samtidig kun en EFTERkontrol — de kunne konstatere at
+ * dækningen manglede, men ikke fremskaffe den.
+ *
+ * Det er præcis samme fejlklasse som #3327 selv fandt for endagsløb/etapeløb-mixet: "store
+ * etapeløb vinder ALTID over 1-etapes løb ved samme prestige i et sammenlagt størrelse-
+ * sorteret walk", og løsningen dér var at BUDGETTERE FØR walket i stedet for at håbe på
+ * sorteringen. Denne funktion gør det samme for terræn.
+ *
+ * Reservationen tager det HØJEST RANGEREDE løb af hver ønsket arketype (samme compare som
+ * resten, så valget er deterministisk og stadig prestige-drevet inden for arketypen). Findes
+ * arketypen ikke i kataloget, reserveres der ingenting — reservationer kan ikke fremtrylle
+ * løb, og resultatet er så et ærligt dæknings-brud i stedet for et tavst et.
+ *
+ * @param {{ranked:Array, reservations:object, budget:number}} args
+ * @returns {{taken:Array, takenIds:Set, gameDays:number, unmet:object}}
+ */
+export function reserveArchetypes({ ranked = [], reservations = null, budget = Infinity } = {}) {
+  const taken = [];
+  const takenIds = new Set();
+  const unmet = {};
+  let gameDays = 0;
+  if (!reservations) return { taken, takenIds, gameDays, unmet };
+
+  for (const [archetype, wantRaw] of Object.entries(reservations)) {
+    const want = Math.max(0, Number(wantRaw) || 0);
+    let got = 0;
+    for (const r of ranked) {
+      if (got >= want) break;
+      if (takenIds.has(r.id) || r.terrain_archetype !== archetype) continue;
+      const st = stagesOf(r);
+      // En reservation må ALDRIG sprænge kvoten — så ville kalenderen få flere løbsdage
+      // end divisionen har plads til, og pakkeren ville skulle smide noget væk vilkårligt.
+      if (gameDays + st > budget) continue;
+      taken.push(r);
+      takenIds.add(r.id);
+      gameDays += st;
+      got++;
+    }
+    if (got < want) unmet[archetype] = want - got;
+  }
+  return { taken, takenIds, gameDays, unmet };
+}
+
 // Grådigt prestige-walk over en FÆRDIG-rangeret liste op til et game-day-budget: tag hvert
 // løb der PASSER; et løb der ville skyde over springes (et senere, mindre løb lukker resten
 // præcist). Delt af enkelt-walk og de to-fase-budgetterede walks nedenfor.
@@ -96,12 +147,16 @@ function greedyFill(ranked, budget) {
  * @param {{ catalog?: Array<{id,name,race_class,race_type,stages,terrain_archetype}>, quota?: number,
  *   seed?: number, allowGrandTours?: boolean, allowedClasses?: string[]|null,
  *   classStageLengthBand?: object|null, oneDayShareTarget?: number|null,
- *   priorityArchetypes?: string[]|null }} args
- * @returns {{ stageRaces, oneDayRaces, stageGameDays, totalGameDays, quotaHit, shortfall }}
+ *   priorityArchetypes?: string[]|null, archetypeReservations?: object|null }} args
+ * @returns {{ stageRaces, oneDayRaces, stageGameDays, totalGameDays, quotaHit, shortfall,
+ *   reservedArchetypes?:number, unmetReservations?:object }}
  */
 export function selectTierRaceSet({
   catalog = [], quota = 0, seed = 1, allowGrandTours = true, allowedClasses = null,
   classStageLengthBand = null, oneDayShareTarget = null, priorityArchetypes = null,
+  // #3295: {terrain_archetype: antal} der SKAL med, valgt før prestige-walket. null =
+  // uændret historisk adfærd. Se reserveArchetypes for hvorfor priorityArchetypes ikke rakte.
+  archetypeReservations = null,
 } = {}) {
   // #2251: Grand Tours (≥15 etaper) hører KUN til Division 1 (spec'ens GT-rygrad).
   // Uden denne gate lod prestige-først-walket leftover-GT'er kaskadere ned i lavere
@@ -132,15 +187,28 @@ export function selectTierRaceSet({
     ? new Set(priorityArchetypes) : null;
   const compare = compareCandidates(seed, priorityArchetypeSet);
 
+  // #3295: reservations-fasen kører FØR alt andet, så de påkrævede arketyper er sikret
+  // uanset hvad prestige/størrelse-rangeringen ellers ville have valgt. Reservationerne
+  // tælles med i totalen og trækkes fra budgetterne nedenfor, så kvoten holder præcist.
+  const rankedAll = [...eligible].sort(compare);
+  const reserved = reserveArchetypes({ ranked: rankedAll, reservations: archetypeReservations, budget: quota });
+  const reservedRows = reserved.taken.map((r) => ({ id: r.id, name: r.name ?? null, race_class: r.race_class, stages: stagesOf(r) }));
+  const reservedSingles = reservedRows.filter((r) => r.stages === 1);
+  const reservedStages = reservedRows.filter((r) => r.stages >= 2);
+  const rest = reserved.takenIds.size ? rankedAll.filter((r) => !reserved.takenIds.has(r.id)) : rankedAll;
+
   // Uden mix-target: ÉT sammenlagt grådigt walk (uændret historisk adfærd — størrelse
   // afgør rækkefølgen inden for samme prestige, uanset endagsløb/etapeløb).
   if (oneDayShareTarget == null) {
-    const ranked = [...eligible].sort(compare);
-    const { stageRaces, oneDayRaces, total } = greedyFill(ranked, quota);
+    const { stageRaces, oneDayRaces, total } = greedyFill(rest, quota - reserved.gameDays);
+    const allStage = [...reservedStages, ...stageRaces];
+    const allOneDay = [...reservedSingles, ...oneDayRaces];
+    const grand = total + reserved.gameDays;
     return {
-      stageRaces, oneDayRaces,
-      stageGameDays: stageRaces.reduce((s, r) => s + r.stages, 0),
-      totalGameDays: total, quotaHit: total === quota, shortfall: Math.max(0, quota - total),
+      stageRaces: allStage, oneDayRaces: allOneDay,
+      stageGameDays: allStage.reduce((s, r) => s + r.stages, 0),
+      totalGameDays: grand, quotaHit: grand === quota, shortfall: Math.max(0, quota - grand),
+      reservedArchetypes: reservedRows.length, unmetReservations: reserved.unmet,
     };
   }
 
@@ -148,10 +216,8 @@ export function selectTierRaceSet({
   // budget, og fyld hver type-bunke prestige-først FOR SIG — det er hvad der faktisk styrer
   // mixet (data: TIER_ONE_DAY_SHARE_TARGET), i stedet for at lade størrelse-sorteringen
   // afgøre det som et biprodukt.
-  const singles = eligible.filter((r) => stagesOf(r) === 1);
-  const stages = eligible.filter((r) => stagesOf(r) >= 2);
-  const singlesRanked = [...singles].sort(compare);
-  const stagesRanked = [...stages].sort(compare);
+  const singlesRanked = rest.filter((r) => stagesOf(r) === 1);
+  const stagesRanked = rest.filter((r) => stagesOf(r) >= 2);
 
   // Estimér gennemsnitlig etapeløbs-længde ved en probe (fuld kvote, kun etapeløb) — bruges
   // til at oversætte et RACE-COUNT-mål (oneDayShareTarget måler antal løb, ikke game-days;
@@ -161,17 +227,28 @@ export function selectTierRaceSet({
   const avgStageLen = probe.stageRaces.length ? probe.total / probe.stageRaces.length : 1;
   const denom = avgStageLen * (1 - oneDayShareTarget) + oneDayShareTarget;
   const rawOneDayBudget = denom > 0 ? (oneDayShareTarget * quota) / denom : 0;
-  const oneDayBudget = Math.max(0, Math.min(quota, Math.round(rawOneDayBudget)));
+  // Reserverede løb tælles med i deres EGET budget, så #3327's endagsløb/etapeløb-mix ikke
+  // skævvrides af reservationerne: en reserveret itt_classic er et endagsløb og skal derfor
+  // tære på endagsløb-budgettet, ikke på etapeløbenes.
+  const reservedOneDayDays = reservedSingles.reduce((s, r) => s + r.stages, 0);
+  const reservedStageDays = reservedStages.reduce((s, r) => s + r.stages, 0);
+  // Loftet er den RESTERENDE kvote, ikke hele kvoten: reservationerne har allerede brugt
+  // reserved.gameDays. Uden det kunne en lille kvote med mange reservationer skyde over
+  // (målt: kvote 4 → 5 game-days), og pakkeren ville skulle smide et løb væk vilkårligt.
+  const remainingQuota = Math.max(0, quota - reserved.gameDays);
+  const oneDayBudget = Math.max(0, Math.min(remainingQuota, Math.round(rawOneDayBudget) - reservedOneDayDays));
 
   const oneDaySel = greedyFill(singlesRanked, oneDayBudget);
-  const stageSel = greedyFill(stagesRanked, quota - oneDaySel.total);
+  const stageBudget = remainingQuota - oneDaySel.total;
+  const stageSel = greedyFill(stagesRanked, Math.max(0, stageBudget));
 
-  const stageRaces = stageSel.stageRaces;
-  const oneDayRaces = oneDaySel.oneDayRaces;
-  const total = oneDaySel.total + stageSel.total;
+  const stageRaces = [...reservedStages, ...stageSel.stageRaces];
+  const oneDayRaces = [...reservedSingles, ...oneDaySel.oneDayRaces];
+  const total = reserved.gameDays + oneDaySel.total + stageSel.total;
   return {
     stageRaces, oneDayRaces,
     stageGameDays: stageRaces.reduce((s, r) => s + r.stages, 0),
     totalGameDays: total, quotaHit: total === quota, shortfall: Math.max(0, quota - total),
+    reservedArchetypes: reservedRows.length, unmetReservations: reserved.unmet,
   };
 }

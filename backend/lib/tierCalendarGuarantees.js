@@ -86,6 +86,37 @@ export const TIER_TERRAIN_FAMILY_MIN = Object.freeze({
 // nuværende observerede niveau.
 export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 1, 4: 2 });
 
+// ── #3295: ARKETYPE-RESERVATIONER — dækning der SIKRES, ikke bare måles bagefter ──
+//
+// Alt ovenfor er FLOORS der verificeres EFTER selection. De kan konstatere at en division
+// mangler brosten, men ikke fremskaffe den. Det var nok så længe prestige-rangeringen
+// tilfældigvis leverede dækningen; målt på S3 gjorde den ikke: Division 3 fik 0 brosten-
+// etapeløb og kun 2 summit_tour, og INGEN mængde nye katalog-løb ændrede det (kvoten er
+// fast, så nye løb fortrænger hinanden i stedet for at akkumulere).
+//
+// Reservationerne løser det ved at tage de påkrævede arketyper FØR prestige-walket
+// (selectTierRaceSet → reserveArchetypes). Samme princip som #3327's to-fase-budget for
+// endagsløb/etapeløb: styr mixet i valget, ikke i en efterkontrol.
+//
+// TALLENE er udledt af de bånd de skal opfylde, og derefter MÅLT (ikke gættet):
+//   · summit_tour er den eneste arketype med 2x high_mountain-garanti og dermed den
+//     primære kilde til summit-finaler (#2755's summit_min) OG til at holde M-Down nede —
+//     en bjergetape der slutter opad tæller ikke som "nedkørsels-finale".
+//   · cobbled_tour er eneste kilde til brosten-i-etapeløb (#2755's cobbles_min).
+//   · itt_classic er eneste kilde til fritstående enkeltstart (#2755's itt_min).
+//   · hilly_tour er den mest pålidelige kilde til etapeløb UDEN bjerg (#3327's
+//     TIER_MOUNTAIN_FREE_STAGE_RACE_MIN) — den er den eneste stage-arketype uden
+//     bjerg-garanti ud over sprinters_week.
+//
+// En reservation der ikke kan opfyldes (arketypen findes ikke i tierens klasse-vindue)
+// rapporteres som `unmetReservations` — den forsvinder aldrig tavst.
+export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
+  1: Object.freeze({ cobbled_tour: 1, itt_classic: 1 }),
+  2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
+  3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1 }),
+  4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
+});
+
 const MOUNTAIN_PROFILE_TYPES = new Set(["mountain", "high_mountain"]);
 
 /**

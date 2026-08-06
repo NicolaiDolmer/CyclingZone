@@ -20,6 +20,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import {
   TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
   SCARCE_TERRAIN_ARCHETYPES, TIER_TERRAIN_FAMILY_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
+  TIER_ARCHETYPE_RESERVATIONS,
   computeTierCoverageStats, detectCoverageViolations,
 } from "./tierCalendarGuarantees.js";
 import { computeCompositionStats } from "./calendarCompositionTargets.js";
@@ -191,6 +192,7 @@ export function buildTierMaterializationPlan({
   oneDayShareTargets = TIER_ONE_DAY_SHARE_TARGET,
   classStageLengthBand = CLASS_STAGE_LENGTH_BAND,
   priorityArchetypes = SCARCE_TERRAIN_ARCHETYPES,
+  archetypeReservations = TIER_ARCHETYPE_RESERVATIONS,
   // #2276: navne allerede brugt af ANDRE tiers før dette kald (fx allerede-materialiserede
   // races i DB for tier 1-3, når tier 4 aktiveres i et separat reconcile-kald der ikke ser
   // de andre tiers' selection i hukommelsen). Seedes af materializeTierCalendars.
@@ -234,6 +236,7 @@ export function buildTierMaterializationPlan({
       catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0,
       allowGrandTours: tier === 1, allowedClasses: classWhitelist?.[tier] ?? null,
       classStageLengthBand, oneDayShareTarget: oneDayShareTargets?.[tier] ?? null, priorityArchetypes,
+      archetypeReservations: archetypeReservations?.[tier] ?? null,
     });
     for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
     for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
@@ -304,6 +307,7 @@ export async function materializeTierCalendars({
   oneDayShareTargets = TIER_ONE_DAY_SHARE_TARGET,
   classStageLengthBand = CLASS_STAGE_LENGTH_BAND,
   priorityArchetypes = SCARCE_TERRAIN_ARCHETYPES,
+  archetypeReservations = TIER_ARCHETYPE_RESERVATIONS,
   oneDayShareMin = TIER_ONE_DAY_SHARE_MIN,
   terrainFamilyMin = TIER_TERRAIN_FAMILY_MIN,
   mountainFreeMin = TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
@@ -372,7 +376,7 @@ export async function materializeTierCalendars({
   const plannedPools = tiers && tiers.length ? pools.filter((p) => targetTiers.has(p.tier)) : pools;
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
-    oneDayShareTargets, classStageLengthBand, priorityArchetypes,
+    oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
