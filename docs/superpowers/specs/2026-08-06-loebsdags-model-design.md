@@ -25,7 +25,7 @@ Princippet fra virkeligheden: ingen kører intervaller oven i et 200 km-løb —
 - **Kalibrering (ejer-valgt 6/8): løbet udvikler ~10-20 % MERE end det pas det erstatter — men kun i løbets relevante evner.** Som i virkeligheden: man bliver bedst af at køre løb. Bænken følger med via træning; den mister kun spidsen. 1-rytter-1-løb/dag-invarianten (låst) begrænser naturligt mod race-spam.
 
 ### D3 — Rekalibrering af konstanterne
-- Med træningen ude af løbsdagene bliver raceLoad ALENE for lav (K3-simmen viste median→0). `raceFatigue.js`-profilerne skaleres OP og/eller recovery-kurven justeres, så populationen lander i målbåndet (G1). Kandidat-parametre findes empirisk i sim-harnesset — ingen håndgættede konstanter.
+- **KORRIGERET af Fase 1-simuleringen (6/8):** den oprindelige antagelse ("raceLoad alene er for lav, skal skaleres op") byggede på en modelleringsfejl i den gamle K3-sim (rest-intensitetens −14 blev lagt oven i løbsdage). Med korrekt D1-semantik er **raceLoad ×1,0 (uændret) + recoveryFraction 0,13→0,15** tilstrækkeligt: begge kohorter lander i 40-60-båndet, G2/G3 bestået, robust på tværs af nuværende kalender og K-B. Fase 2 finjusterer omkring frac ≈0,14/base ≈4,5 for at centrere human-medianen (sidder på 60-grænsen). Se #3459 Fase 1-scorecardet.
 - Etapeløb SKAL kunne skubbe ryttere over 70 (design-intentionen: kun spidsbelastning straffer) — kalibreres eksplicit mod flerdages-serier.
 
 ### D4 — AI følger PRÆCIS samme regler
