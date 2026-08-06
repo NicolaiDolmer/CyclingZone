@@ -64,7 +64,11 @@ export async function runEmailRaceDigestSweep({
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
-  if (copenhagenHour(now) !== DIGEST_HOUR_COPENHAGEN) {
+  // 2026-08-06 (#3475-klassen): præcis-time-gate + interval-nulstilling ved
+  // deploy kan springe HELE dagen over. `<` + den persisterede dedupe
+  // (email_log.dedupe_key med Copenhagen-dato, tjekket FØR send i
+  // emailService.js) giver én-gang-pr.-dag uden afhængighed af tick-timing.
+  if (copenhagenHour(now) < DIGEST_HOUR_COPENHAGEN) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, skippedReason: "outside_hour_window" };
   }
   if (!(await isActive(supabase))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
