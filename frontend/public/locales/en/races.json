@@ -604,6 +604,21 @@
     "team": {
       "winner": "Winner"
     },
+    "finalKm": {
+      "title": "The Final Kilometre",
+      "replay": "Replay",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "secondsToGo": "{count} sec to go",
+      "finishLine": "Finish",
+      "photoFinish": "Photo finish",
+      "moreFinishers": "{count, plural, one {+ # more finisher} other {+ # more finishers}}",
+      "winType": {
+        "sprint_win": "Bunch sprint",
+        "close_win": "Close finish",
+        "solo_win": "Solo victory"
+      }
+    },
     "recap": {
       "title": "Race recap",
       "win": "{rider} took the win.",

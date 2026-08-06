@@ -301,6 +301,10 @@
       "notifications": {
         "title": "Achievement notifications",
         "text": "When you unlock an achievement, you get a message in the inbox with the achievement icon and title. Your unlocked achievements show on your manager profile."
+      },
+      "careerFirsts": {
+        "title": "Career firsts",
+        "text": "The game tracks career firsts for every rider: a maiden victory, a first podium, a first classification jersey, and club milestones like a 25th win in your colours. These are detected automatically from race results, shown as a moment card on your dashboard and on the race page, and stay visible for good on the rider's own profile under the Palmares tab."
       }
     },
     "watchlist": {
@@ -371,9 +375,17 @@
         "title": "Races and results",
         "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Results, where Latest shows the races that have finished in your division. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself. You get an in-app notification after every stage you take part in, not just the final one, so a multi-day race never goes quiet."
       },
+      "finalKilometre": {
+        "title": "The Final Kilometre",
+        "text": "Open any race with a finished stage and the top of the page replays its last ~3 km: a countdown ticks down to the line, then riders click into the finish order one by one, with a photo finish marker whenever the gap is under a second. It replays from the same result data every time (press Replay to watch it again), so it works just as well hours after the race finished. If your device prefers reduced motion, or the race is missing the older breakaway/moment data, you just see the final result directly."
+      },
       "latestTeamResult": {
         "title": "Where do I see how my team did?",
         "text": "After a race with your riders is finalized, your dashboard shows a 'How your team did' card with your placements, prize money and a short recap of the race. Follow the link on the card to the full result with every stage and classification."
+      },
+      "heroAgonyCard": {
+        "title": "What is the Hero & Agony card?",
+        "text": "Your dashboard also shows a Hero & Agony card: one personal moment from your team's most recently run stage, picked automatically from what actually happened to your riders that day, be it a stage win, a race-lead swing, a rider sacrificing his own result for the team, or a favourite finishing outside the top 15. Agony counts just as much as triumph: a rider who spent the day in the breakaway and got caught right before the line makes for a better story than a quiet mid-pack finish, and the card is built to reflect that. Click 'Share as image' to download an editorial PNG of the card, ready to post to Discord."
       },
       "stageProfile": {
         "title": "Terrain and stage profiles",

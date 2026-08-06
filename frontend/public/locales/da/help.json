@@ -301,6 +301,10 @@
       "notifications": {
         "title": "Achievement-notifikationer",
         "text": "Når du låser et achievement op, modtager du en besked i Indbakken med achievement-ikonet og titlen. Dine låste achievements vises på din manager-profil."
+      },
+      "careerFirsts": {
+        "title": "Karriere-milepæle",
+        "text": "Spillet holder styr på karriere-milepæle for hver rytter: første sejr, første podie, første klassifikationstrøje, og klub-milepæle som en 25. sejr i dine farver. Det detekteres automatisk ud fra løbsresultater, vises som et momentkort på dit dashboard og på løbssiden, og bliver stående for altid på rytterens egen profil under Palmarès-fanen."
       }
     },
     "watchlist": {
@@ -371,9 +375,17 @@
         "title": "Løb og resultater",
         "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Resultater, hvor fanen Seneste viser de løb der er kørt færdigt i din division. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter. Du får en in-app-notifikation efter hver etape du deltager i, ikke kun den sidste, så et flerdages-løb aldrig går i stå."
       },
+      "finalKilometre": {
+        "title": "Den sidste kilometer",
+        "text": "Åbn et løb med en kørt etape, og toppen af siden afspiller de sidste ~3 km: en nedtælling tikker ned mod stregen, og ryttere klikker derefter ind i målrækkefølgen én for én, med en fotofinish-markering når gabet er under et sekund. Afspilningen bygger hver gang på de samme resultatdata (tryk Afspil igen for at se den om), så den virker lige så godt timer efter at løbet sluttede. Foretrækker din enhed reduceret bevægelse, eller mangler løbet den ældre udbruds-/momentdata, ser du bare slutresultatet direkte."
+      },
       "latestTeamResult": {
         "title": "Hvor ser jeg hvordan det gik mit hold?",
         "text": "Når et løb med dine ryttere er afsluttet, viser dit dashboard et 'Sådan gik det for dit hold'-kort med dine placeringer, præmiepenge og et kort referat af løbet. Følg linket på kortet til det fulde resultat med alle etaper og klassementer."
+      },
+      "heroAgonyCard": {
+        "title": "Hvad er Hero & Agony-kortet?",
+        "text": "Dit dashboard viser også et Hero & Agony-kort: ét personligt øjeblik fra dit holds senest kørte etape, valgt automatisk ud fra hvad der rent faktisk skete med dine ryttere den dag, det kan være en etapesejr, et skifte i den samlede føring, en rytter der ofrede sit eget resultat for holdet, eller en favorit der endte uden for top 15. Modgang tæller lige så meget som triumf: en rytter der sad i udbruddet hele dagen og blev hentet lige før stregen giver en bedre historie end en stille midterplacering, og kortet er bygget til at afspejle det. Klik 'Del som billede' for at hente et redaktionelt PNG af kortet, klar til at poste på Discord."
       },
       "stageProfile": {
         "title": "Terræn og etapeprofiler",

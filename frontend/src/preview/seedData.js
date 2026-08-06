@@ -419,6 +419,29 @@ export const SEED_RACE_STAGE_MOMENTS = [
   { id: "mom-d2-s2-9", race_id: "race-done-2", stage_number: 2, moment_key: "tag_favorite_collapse", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
 ];
 
+// #3398 (Maiden Win Engine) — rider_career_events preview-seed. Ada Pedersen
+// (RIDERS[0], TEST_TEAM) vandt race-done-1 (Omloop Preview, in_breakaway) — her
+// maiden win, så MaidenWinMomentCard (dashboard), CareerFirstMomentRow-blokken
+// på RaceDetailPage (race-done-1) og RiderPalmaresTab's career-firsts-liste alle
+// har noget at vise uden en migreret prod-DB. club_milestone_win på race-done-2
+// giver kortet en ANDEN event_type at rendere (variation i preview-skærmbillederne).
+// age er hardcodet (ageForSeason(Ada.birthdate="2002-04-12", season 1) = 24) —
+// preview-seed duplikerer bevidst IKKE backend-beregningen.
+export const SEED_RIDER_CAREER_EVENTS = [
+  {
+    id: "cfe-1", event_type: "maiden_win", rider_id: RIDERS[0].id, team_id: TEST_TEAM.id,
+    rider_name: "Ada Pedersen", team_name: TEST_TEAM.name, race_id: "race-done-1", season_number: 1,
+    params: { raceName: "Omloop Preview", resultType: "stage", stageNumber: 1, age: 24 },
+    significance: 90, occurred_at: "2026-03-01T16:00:00.000Z",
+  },
+  {
+    id: "cfe-2", event_type: "club_milestone_win", rider_id: RIDERS[0].id, team_id: TEST_TEAM.id,
+    rider_name: "Ada Pedersen", team_name: TEST_TEAM.name, race_id: "race-done-2", season_number: 1,
+    params: { raceName: "Giro di Preview", resultType: "stage", stageNumber: 1, age: 24, milestoneCount: 25 },
+    significance: 70, occurred_at: "2026-05-09T16:00:00.000Z",
+  },
+];
+
 // #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,
 // RiderStatsPage.fetchAllRiderSeasonRows). Egen shape (race:-embed, IKKE rider:-embed
 // som SEED_RACE_RESULTS ovenfor bruges til RaceDetailPage) — ingen delt lookup mod

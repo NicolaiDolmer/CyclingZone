@@ -110,7 +110,64 @@
       "firstRaceIntro": "Run while you were away. Here is how it went.",
       "firstRaceIntroAt": "Finished {time} while you were away. Here is how it went.",
       "firstRaceCta": "Read the full race story",
-      "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}"
+      "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}",
+      "confettiTitleGc": "GC won!",
+      "confettiTitleRace": "Race won!"
+    },
+    "maidenWin": {
+      "title": "Career moments",
+      "unknownRider": "Your rider",
+      "viewRace": "View race →",
+      "headline": {
+        "maidenWin": "Maiden victory",
+        "firstPodium": "First podium",
+        "firstJersey": "First jersey",
+        "clubMilestoneWin": "Club milestone"
+      },
+      "body": {
+        "maidenWin": "wins their first professional race in club colours: {race}",
+        "firstPodium": "reaches their first career podium: {race}",
+        "firstJersey": "wins their first classification jersey: {race}",
+        "clubMilestoneWin": "brings up win number {count} for {team}"
+      }
+    },
+    "heroAgony": {
+      "title": "Hero & Agony",
+      "linkFull": "Open race →",
+      "eyebrow": { "hero": "Hero", "agony": "Agony", "moment": "Moment" },
+      "meta": "{race}, stage {stage}",
+      "metaOneDay": "{race}",
+      "exportCta": "Share as image",
+      "exportedFilenamePrefix": "cycling-zone-hero-agony",
+      "empty": "No stage moment yet. Your first race day will show up here.",
+      "moments": {
+        "sprint_win": "{rider} won the sprint finish.",
+        "close_win": "{rider} won by just {seconds, plural, one {# second} other {# seconds}}.",
+        "close_win_generic": "{rider} held on for the win in the closest of finishes.",
+        "solo_win": "{rider} rode clear and won alone off the front.",
+        "breakaway_survived": "{rider} made the breakaway stick and won from out front.",
+        "gc_takeover_won": "{rider} took over the race lead from {previousLeader}.",
+        "gc_takeover_lost": "{rider} lost the race lead to {newLeader}.",
+        "final_gc": "{rider} finished #{rank} overall.",
+        "favorite_off_day": "{rider} entered the stage as the pre-race favourite but finished #{rank}: {reason, select, jour_sans {an off day} incident {a crash or mechanical} helper_work {a shift spent working for a teammate} other {no clear reason}}.",
+        "helper_shift": "{count, plural, one {One teammate gave} other {# teammates gave}} up their own chances to bring {captain} to the front.",
+        "tag_helper_sacrifice": "{rider} gave up his own result, finishing #{rank}, to work for {captain}.",
+        "form_peak": "{rider} arrived in top form and delivered.",
+        "tag_perfect_peak": "{rider} won on the exact stage he peaked for.",
+        "tag_peak_day": "{rider} timed his form to peak for this stage.",
+        "tag_jour_sans": "{rider} just didn't have the legs today.",
+        "tag_crash_ruined": "{rider}'s stage was wrecked by a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
+        "incident_abandon": "{rider} abandoned the stage after a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
+        "incident_time_loss": "{rider} lost {seconds, plural, one {# second} other {# seconds}} to a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
+        "incident_time_loss_generic": "{rider} lost time to a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
+        "tag_outsider_win": "{rider} won without being the strongest rider on paper.",
+        "tag_aggression_no_cost": "{rider} attacked and got caught, but it cost nothing: a breakaway attempt never costs extra fatigue or your own finish.",
+        "tag_saved_effort": "{rider} eased off today, saving something for what's ahead.",
+        "tag_gave_everything": "{rider} held nothing back, full effort all the way.",
+        "team_day": "{team} put {count} riders in the top 10 today.",
+        "breakaway_effort": "{rider} spent the stage in the breakaway, caught just before the line.",
+        "plain_result": "{rider} crossed the line in #{rank}."
+      }
     },
     "auctions": {
       "title": "Active Auctions",
@@ -189,6 +246,7 @@
       "nextActions": "Next move",
       "forecast": "Finance forecast",
       "myLatestResult": "How your team did",
+      "heroAgony": "Hero & Agony",
       "auctions": "Active auctions",
       "transfers": "Transfers & offers",
       "races": "Upcoming races",
