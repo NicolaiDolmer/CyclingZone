@@ -6,7 +6,7 @@
 
 > **🎯 Next action (vigtigst først):**
 > 1. **🔴 Ryttertype-fallout ([#3372](https://github.com/NicolaiDolmer/CyclingZone/issues/3372)-cluster + [#3441](https://github.com/NicolaiDolmer/CyclingZone/issues/3441)/[#3442](https://github.com/NicolaiDolmer/CyclingZone/issues/3442)):** backfillen 5/8 ændrede REELLE caps (buildCapsForRider afleder caps af type, riderProgressionEngine.js:181) → spillere melder potentiale-hop, falske 14-dages-deltaer og 3-4x lønkrav. Du har selv meldt "kigger på det" i Discord. Rod-årsag + beslutning (frys caps som valuation_type? rekalibrér mapping?) = næste Claude-session.
-> 2. **Dine klik (15 min):** [#2892](https://github.com/NicolaiDolmer/CyclingZone/issues/2892) genaktivér Sentry cron-monitorer (**38/39 disabled 6/8**) · #929 leaked-password-toggle · #2813 penge-gates + Resend-nøgle (#2853).
+> 2. **Dine klik:** kun #2813 penge-gates + Resend-nøgle (#2853) tilbage. ✅ #929 leaked-password slået til + advisor-verificeret 6/8. [#2892](https://github.com/NicolaiDolmer/CyclingZone/issues/2892) omlagt (ejer-valg A 6/8): Sentry-kvoten tillader kun 1 cron-monitor → Claude bygger egen heartbeat-vagt (Discord #ops-alarm ved udeblevne jobs) — ingen ejer-klik.
 > 3. **PR #3393 lønbasis (draft)** — dine 3 valg (a/b/c) uændret; koordinér med #3442-fundet. **S2-backfill efter #3347** — dit kald, urørt.
 > 4. **I aften:** fair-play-sweepens første kørsel efter 22 (#3138 lukkes ved grøn) · Discord-digestens første kl. 20-kørsel.
 
