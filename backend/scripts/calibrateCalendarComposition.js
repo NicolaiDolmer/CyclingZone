@@ -3,7 +3,8 @@
 // #3295 fase B: find de filler-vægte der bringer den GENEREREDE kalender tættest på
 // K-B-målprofilen — empirisk, ikke gættet. RØRER INTET I DB (kun SELECT).
 //
-//   node scripts/calibrateCalendarComposition.js --season 2
+//   node scripts/calibrateCalendarComposition.js --season 2      # materialiseret sæson
+//   node scripts/calibrateCalendarComposition.js --plan 3        # sæson der ikke findes endnu
 //   node scripts/calibrateCalendarComposition.js --season 2 --rounds 4
 //   node scripts/calibrateCalendarComposition.js --season 2 --tilt '{"mountain":0.6,"itt":2}'   # evaluér ét tilt
 //
@@ -31,6 +32,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { generateRaceStageProfiles, ARCHETYPE_PROFILES } from "../lib/raceStageProfileGenerator.js";
+import { materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { resolveSeasonDraw } from "../lib/raceRouteRealismDraw.js";
 import { scoreSeason } from "../lib/raceRouteRealismMetrics.js";
 import {
@@ -86,6 +88,30 @@ export async function loadSeedRacesByTier({ supabase, seasonNumber }) {
     byTier.get(tier).push({ ...r, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null, season_id: season.id });
   }
   return [...byTier.keys()].sort((a, b) => a - b).map((tier) => ({ tier, seedRaces: byTier.get(tier) }));
+}
+
+/**
+ * Læs den PLANLAGTE sæsons løbssæt (én repræsentativ pulje pr. tier) ved at køre
+ * selection+packing i dry-run. Bruges når man kalibrerer mod en sæson der endnu ikke er
+ * materialiseret — fx S3.
+ *
+ * Hvorfor det er nødvendigt: selectTierRaceSet vælger forfra hver sæson (prestige-
+ * sortering + cross-tier-dedup), så S3's udvalg IKKE er S2's. Vægte kalibreret mod S2's
+ * løbssæt kan derfor ramme S2 præcist og stadig være skæve på S3 — målt 6/8: S2-kalibrerede
+ * vægte gav S3 bjerg +3,0 pp og kuperet −2,8 pp. Kalibrér mod den sæson du skal bygge.
+ *
+ * materializeTierCalendars har dryRun=true som default; vi sender den eksplicit alligevel.
+ */
+export async function loadPlannedSeedRacesByTier({ supabase, seasonNumber, materialize = materializeTierCalendars }) {
+  const summary = await materialize({ supabase, seasonId: seasonUuid(seasonNumber), dryRun: true });
+  return summary.tiers
+    .filter((t) => Array.isArray(t.seedRaces) && t.seedRaces.length)
+    .map((t) => ({ tier: t.tier, seedRaces: t.seedRaces }));
+}
+
+// Sæson-UUID følger computeSeasonUuid(n) i seasonTransition.js: hex(n).padStart(12,'0').
+export function seasonUuid(n) {
+  return `00000000-0000-0000-0000-${Number(n).toString(16).padStart(12, "0")}`;
 }
 
 /**
@@ -175,7 +201,8 @@ export function formatReport({ seasonNumber, baseline, best, tilt, evaluations, 
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
   const argOf = (f) => { const i = process.argv.indexOf(f); return i >= 0 ? process.argv[i + 1] : null; };
-  const seasonNumber = Number(argOf("--season") ?? 2);
+  const planArg = argOf("--plan");
+  const seasonNumber = Number(planArg ?? argOf("--season") ?? 2);
   const rounds = Number(argOf("--rounds") ?? 3);
   const fixedTilt = argOf("--tilt");
   const skipArchetypes = (argOf("--skip") ?? "").split(",").filter(Boolean);
@@ -185,7 +212,9 @@ if (isMain) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   try {
-    const tierSeedRaces = await loadSeedRacesByTier({ supabase, seasonNumber });
+    const tierSeedRaces = planArg
+      ? await loadPlannedSeedRacesByTier({ supabase, seasonNumber })
+      : await loadSeedRacesByTier({ supabase, seasonNumber });
     const evaluate = (tilt) => evaluateTilt({ tierSeedRaces, tilt, skipArchetypes });
 
     const baseline = evaluate(NEUTRAL_TILT);

@@ -401,6 +401,15 @@ export async function materializeTierCalendars({
       const measurable = measurableRacesFrom(repPool.raceRows, profiles, archetypeByPoolRace);
       tierPlan.compositionStats = computeCompositionStats(measurable);
       tierPlan.stageOrderStats = computeStageOrderStats(measurable);
+
+      // #3295: den repræsentative puljes seedRaces, så en kalibrering kan køre mod den
+      // PLANLAGTE sæsons løbssæt frem for en tidligere sæsons. De to er ikke ens —
+      // selectTierRaceSet vælger forfra hver sæson (prestige-sortering + cross-tier-dedup),
+      // så vægte kalibreret mod S2's udvalg overfitter til netop det udvalg. Kun i dry-run:
+      // apply-stien har ingen brug for det, og summary'en skal ikke bære unødig vægt.
+      if (dryRun) {
+        tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant }));
+      }
     }
 
     // #2251: nægt at APPLY'e en plan med kalender-invariant-brud (GT i tier >1 /
@@ -415,6 +424,7 @@ export async function materializeTierCalendars({
       unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
       calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null,
       compositionStats: tierPlan.compositionStats ?? null, stageOrderStats: tierPlan.stageOrderStats ?? null,
+      seedRaces: tierPlan.seedRaces ?? null,
       realismDraw: tierPlan.realismDraw ?? null, pools: [],
     };
     for (const poolPlan of tierPlan.pools) {

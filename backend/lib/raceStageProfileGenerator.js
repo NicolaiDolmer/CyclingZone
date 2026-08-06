@@ -155,10 +155,22 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // 41-løbs-researchen viste 0/9 rigtige grand tours (2024-2026) sluttede på bjerg —
   // flad (77,8%) eller enkeltstart (22,2%) dominerer, og hårdeste etape lå næstsidst i
   // 88,9% af tilfældene. Se orderAndBuildGrandTour/toGrandTourFinale nedenfor.
-  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 22 }, { value: "rolling", weight: 19 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 16 }, { value: "high_mountain", weight: 11 }, { value: "itt", weight: 12 }] },
-  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 14 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 27 }, { value: "high_mountain", weight: 13 }, { value: "itt", weight: 6 }] },
-  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 15 }, { value: "rolling", weight: 35 }, { value: "hilly", weight: 54 }, { value: "mountain", weight: 11 }, { value: "high_mountain", weight: 3 }, { value: "itt", weight: 8 }] },
-  sprinters_week: { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 43 }, { value: "rolling", weight: 35 }, { value: "hilly", weight: 19 }, { value: "mountain", weight: 8 }, { value: "itt", weight: 6 }] },
+  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 19 }, { value: "rolling", weight: 19 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 13 }, { value: "itt", weight: 14 }] },
+  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 12 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 32 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 7 }] },
+  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 13 }, { value: "rolling", weight: 35 }, { value: "hilly", weight: 54 }, { value: "mountain", weight: 13 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 9 }] },
+  // #3295/#3327/#3371: bjerg-garantien erstattet af en KUPERET garanti. En "sprinter-uge"
+  // der pr. definition indeholder en bjergetape modsiger sit eget navn — Danmark Rundt,
+  // Tour of Guangxi og Tour Down Under afgøres af sprintere og puncheurs, ikke klatrere,
+  // og det var præcis det spilleren efterspurgte i #3371 ("the boring Langkawi or the Down
+  // Under, where it's often sprinters or a puncheur who takes it"). Ejeren bad om det
+  // samme i #3327: "ikke alle etapeløb skal have bjerge".
+  //
+  // Garantien FORBYDER ikke bjerg — filleren har stadig mountain 8, så nogle
+  // sprinter-uger får en bjergdag og andre ikke. Det er forskellen på variation og
+  // skabelon. Konkret konsekvens: TIER_MOUNTAIN_FREE_STAGE_RACE_MIN (#3327) kan
+  // opfyldes af tier 2/3, hvor hilly_tour hidtil var den ENESTE mulige kilde og
+  // løbsudvalget ofte slet ikke fik en.
+  sprinters_week: { kind: "stage", guarantees: ["flat", "hilly"], filler: [{ value: "flat", weight: 37 }, { value: "rolling", weight: 35 }, { value: "hilly", weight: 19 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 7 }] },
   // #3295: itt tilføjet som GARANTI (var kun filler-vægt 10). balanced_week er
   // kalenderens største arketype (19 katalog-løb / 88 løbsdage i S2's udvalg), og den
   // manglende enkeltstart dér er hovedårsagen til at ITT lå på 6,6 % mod K-B's mål.
@@ -169,10 +181,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // Realisme: Paris-Nice, Tirreno-Adriatico, Tour de Romandie og Critérium du Dauphiné
   // har alle en enkeltstart i normalår — det er kendetegnende for formatet, ikke en
   // undtagelse. Loftet (max(garanterede, 2)) er uændret, så et løb kan stadig højst få 2.
-  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 32 }, { value: "hilly", weight: 29 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 3 }, { value: "itt", weight: 10 }] },
+  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 22 }, { value: "rolling", weight: 32 }, { value: "hilly", weight: 29 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 12 }] },
   // Ørken/sprinter-tur med faste bjergankomster: garanteret 1 TT + 2 bjerg, resten
   // flad/rullende (fx UAE Tour). Filler kun flad/rullende → "resten er flade".
-  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 66 }, { value: "rolling", weight: 35 }] },
+  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 56 }, { value: "rolling", weight: 35 }] },
 
   // #2769 (Sub-1): fritstående enkeltstart-endagsløb (#2177 — 0 fritstående ITT i dag).
   itt_classic: { kind: "single", weights: [{ value: "itt", weight: 1 }] },
@@ -181,10 +193,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // sænker M-Down-andelen — mountain_tour garanterer kun mellembjerg/descent). high_mountain
   // sidst via STAGE_ORDER_HINT (7) → dronningeetape/top-finish. En itt-garanti giver samtidig
   // en enkeltstart i løbet.
-  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 12 }, { value: "rolling", weight: 19 }, { value: "hilly", weight: 19 }, { value: "mountain", weight: 16 }, { value: "high_mountain", weight: 21 }, { value: "itt", weight: 8 }] },
+  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 19 }, { value: "hilly", weight: 19 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 25 }, { value: "itt", weight: 9 }] },
 
   // #2769: etapeløb med GARANTERET brosten-etape (#2527/#2755 — 0 brosten i etapeløb i dag).
-  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 32 }, { value: "cobbles", weight: 16 }, { value: "hilly", weight: 26 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 6 }] },
+  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 22 }, { value: "rolling", weight: 32 }, { value: "cobbles", weight: 16 }, { value: "hilly", weight: 26 }, { value: "mountain", weight: 12 }, { value: "itt", weight: 7 }] },
 });
 
 // #3295 KALIBRERING (2026-08-06) — hvordan filler-vægtene ovenfor blev fundet.
@@ -195,7 +207,7 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 //
 // Vægtene er IKKE gættet. De er de gamle vægte ganget med en kalibreret tilt og afrundet:
 //
-//     flad ×0,85   ·   kuperet (rolling+hilly+classic) ×1,6   ·   bjerg ×0,8
+//     flad ×0,72   ·   kuperet (rolling+hilly+classic) ×1,6   ·   bjerg ×0,96   ·   ITT ×1,15
 //
 // Tilt'en blev fundet med `node scripts/calibrateCalendarComposition.js --season 2`, som
 // kører den fulde generator-pipeline på sæsonens faktiske løbssæt for hver kandidat og
@@ -206,20 +218,24 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // det ene for det andet. Verificér med:
 //     node scripts/calendarCompositionScorecard.js --season 2
 //
-// Resultat, målt over 392 løbsdage (fire tiers, én repræsentativ pulje hver):
+// Kalibreringen er verificeret mod BEGGE sæsoner — S2's materialiserede løbssæt OG S3's
+// PLANLAGTE. De er ikke ens: selectTierRaceSet vælger forfra hver sæson (prestige +
+// cross-tier-dedup), så vægte der kun er kalibreret mod S2 kan ramme S2 præcist og stadig
+// være skæve på S3. Første iteration gjorde netop det (S3 endte bjerg +3,0 pp).
 //
-//   FØR:  flad 27,3 · kuperet 28,8 · bjerg 32,9 · ITT  6,6 · brosten 4,3   (L1 16,4 pp, 4 uden for ±2)
-//   EFTER: flad 25,0 · kuperet 31,9 · bjerg 27,8 · ITT 11,0 · brosten 4,3   (L1  3,9 pp, 0 uden for ±2)
+//   S2 FØR:   flad 27,3 · kuperet 28,8 · bjerg 32,9 · ITT  6,6 · brosten 4,3   (4 uden for ±2)
+//   S2 EFTER: flad 24,5 · kuperet 33,2 · bjerg 26,8 · ITT 11,2 · brosten 4,3   (0 uden for ±2)
+//   S3 EFTER: flad 25,6 · kuperet 30,2 · bjerg 29,2 · ITT  8,5 · brosten 6,5   (0 uden for ±2)
 //
-// ITT-løftet kommer fra balanced_week's nye `itt`-GARANTI, ikke fra vægten (se noten
-// dér). Brosten står stille fordi den næsten udelukkende kommer fra ENDAGSLØB
+// ITT-løftet kommer fra balanced_week's `itt`-GARANTI, ikke fra vægten (se noten dér).
+// Brosten står stille på S2 fordi den næsten udelukkende kommer fra ENDAGSLØB
 // (cobbled_classic), hvis terræn er fast pr. design — den kan kun flyttes af kataloget.
 //
-// HVAD VÆGTENE IKKE KAN LØSE (målt, ikke antaget): tier-spredningen. Tier 4 lander på
-// 35,7 % bjerg og 5,4 % ITT, fordi 5 af dens 12 etapeløb er summit_tour — Class1 rummer
-// kun 5 summit_tour + 2 balanced_week + 1 cobbled_tour som etapeløb, så tier-udvalget har
-// intet andet at vælge. Tier 2's brosten (1,8 %) har samme årsag. Det er et KATALOG-
-// problem, ikke et vægt-problem, og løses ikke her.
+// HVAD VÆGTENE IKKE KAN LØSE (målt, ikke antaget): tier-spredningen. Tier 4 lander stadig
+// bjerg-tungt fordi 5 af dens 12 etapeløb er summit_tour — Class1 rummer kun 5
+// summit_tour + 2 balanced_week + 1 cobbled_tour som etapeløb, så tier-udvalget har intet
+// andet at vælge. Tier 2's brosten har samme årsag. Det er et KATALOG-problem, ikke et
+// vægt-problem, og løses ikke her.
 
 
 // Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).

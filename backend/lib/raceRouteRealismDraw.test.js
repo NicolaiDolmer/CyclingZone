@@ -25,12 +25,24 @@ const tierSeedRacesFor = (seasonId) => SNAPSHOT.tiers.map((t) => ({
 // regression, og den fastholdes af sin egen test nedenfor.
 const SEASON_2_ID = SNAPSHOT.seasonId;
 
-// Ny "retry-stien fyrer"-fixture: sæson 6's kanoniske træk bryder tier 3's summit-bånd
-// (7 < 8) og rettes af gen-træk 1. Samme egenskaber som sæson 2 havde før — ét brydende
-// tier, re-draw lykkes — så determinisme- og variant-testene måler stadig det de påstår.
-// Fundet ved at scanne sæson-id 1-40 mod den ægte generator, ikke valgt for at få
-// testene grønne: den SKAL bryde et bånd, ellers tester de intet.
-const RETRY_SEASON_ID = "00000000-0000-0000-0000-000000000006";
+// "Retry-stien fyrer"-fixture mod den ÆGTE generator: sæson 29's kanoniske træk bryder
+// tier 3's summit-bånd (7 < 8) og rettes af gen-træk 2. Ét brydende tier, re-draw lykkes.
+//
+// ⚠ DENNE KONSTANT ER KNYTTET TIL GENERATORENS VÆGTE. Ændrer nogen ARCHETYPE_PROFILES,
+// kan sæson 29's træk begynde at bestå i første forsøg, og testene nedenfor holder op med
+// at teste det de påstår (de fejler højlydt — de bliver ikke tavst grønne). Find i så fald
+// en ny med:
+//
+//   for (let n = 1; n <= 60; n++) {
+//     const id = `00000000-0000-0000-0000-${n.toString(16).padStart(12, "0")}`;
+//     const d = resolveSeasonDraw({ tierSeedRaces: tierSeedRacesFor(id) });
+//     const retried = d.filter((x) => x.attempt > 0);
+//     if (retried.length === 1 && retried[0].tier === 3 && !retried[0].exhausted) console.log(id, n);
+//   }
+//
+// Selve re-draw-MEKANIKKEN testes desuden syntetisk (fakeGenerator ovenfor), hvor det er
+// garanteret at retry-stien rammes uanset hvad generatorens vægte gør.
+const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000001d";
 
 // ── Syntetiske generatorer (fuld kontrol over hvornår et træk består) ────────
 const passingStage = () => ({ profile_type: "high_mountain", finale_type: "long_climb", distance_km: 170, sectors: [] });
@@ -95,6 +107,16 @@ test("en løbs-generering der kaster bogføres som 'kunne ikke vurderes', ikke s
   // Manglende ITT er nu et ægte båndbrud (løbet forsvandt), men fejlen er BEVARET —
   // #2854-kontrakten: aldrig tavst væk.
   assert.ok(failures.some((f) => f.includes("ITT")), failures.join(" · "));
+});
+
+test("determinisme når re-draw fyrer — syntetisk, uafhængig af generatorens vægte", () => {
+  // Vægt-uafhængig makker til den ægte-generator-test nedenfor: fakeGenerator(2) består
+  // FØRST ved attempt 2, så retry-stien rammes med sikkerhed uanset ARCHETYPE_PROFILES.
+  const run = () => resolveTierDraw({ tier: 3, seedRaces: tier3SeedRaces(), generateProfiles: fakeGenerator(2) });
+  const a = run(), b = run();
+  assert.equal(a.attempt, 2, "fixturen SKAL ramme retry-stien");
+  assert.equal(a.attempt, b.attempt);
+  assert.equal(JSON.stringify(a.entry), JSON.stringify(b.entry));
 });
 
 // ── Determinisme mod den ÆGTE generator ─────────────────────────────────────
