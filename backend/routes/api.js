@@ -1091,7 +1091,12 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }, { data: abilityRow, error: abilityErr }, seasonNumber] = await Promise.all([
-      supabase.from("riders").select("base_value, birthdate, potentiale").eq("id", id).maybeSingle(),
+      // #3441: valuation_type SKAL med — "nu"-værdien (riders.base_value) er skrevet
+      // med den frosne type (#3345), så den historiske genberegning skal bruge samme
+      // frosne type. Uden den falder predictBaseValue tilbage til den friske
+      // primary_type, og en type-reklassificering (5/8-backfillen) fremstår som et
+      // kunstigt 7/14-dages-spring selvom værdien aldrig har flyttet sig.
+      supabase.from("riders").select("base_value, birthdate, potentiale, valuation_type").eq("id", id).maybeSingle(),
       supabase.from("rider_derived_ability_history")
         .select("snapshot_date, abilities")
         .eq("rider_id", id)
@@ -1107,7 +1112,7 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
     if (!riderRow) return res.status(404).json({ error: "rider not found" });
     const windows = computeRiderValueTrend({
       currentBaseValue: riderRow.base_value,
-      rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber), caps: abilityRow?.ability_caps },
+      rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber), caps: abilityRow?.ability_caps, valuation_type: riderRow.valuation_type },
       snapshotsAsc: history || [],
       baseline: RIDER_TYPES_BASELINE,
       model: VALUATION_MODEL_V4,
