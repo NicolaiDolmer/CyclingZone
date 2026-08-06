@@ -505,7 +505,9 @@ export async function runFairplayScoringSweep({ supabase, now = new Date(), dryR
         .order("id")
     ),
     fetchAllRows(() =>
-      supabase.from("loans").select("team_id, amount, created_at").gte("created_at", loansSinceIso).order("id")
+      // KUN team_id+created_at forbruges (signal 3 er timing-baseret); loans har
+      // i oevrigt `principal`, IKKE `amount` — verificeret mod information_schema 6/8.
+      supabase.from("loans").select("team_id, created_at").gte("created_at", loansSinceIso).order("id")
     ),
   ]);
 
