@@ -95,10 +95,12 @@ export async function loadSeedRacesByTier({ supabase, seasonNumber }) {
  * selection+packing i dry-run. Bruges når man kalibrerer mod en sæson der endnu ikke er
  * materialiseret — fx S3.
  *
- * Hvorfor det er nødvendigt: selectTierRaceSet vælger forfra hver sæson (prestige-
- * sortering + cross-tier-dedup), så S3's udvalg IKKE er S2's. Vægte kalibreret mod S2's
- * løbssæt kan derfor ramme S2 præcist og stadig være skæve på S3 — målt 6/8: S2-kalibrerede
- * vægte gav S3 bjerg +3,0 pp og kuperet −2,8 pp. Kalibrér mod den sæson du skal bygge.
+ * Hvorfor det er nødvendigt: løbs-UDVALGET er faktisk identisk mellem S2 og S3 (målt 6/8 —
+ * selectTierRaceSet er deterministisk givet samme katalog og samme puljer). Det der ADSKILLER
+ * dem er PARCOURS-TRÆKKET: seed-nøglen indeholder season_id (`seedKeyFor`), så samme løb får
+ * forskelligt terræn i hver sæson — variation pr. sæson, by design. Konsekvensen er at vægte
+ * kalibreret mod S2's træk kan ramme S2 præcist og stadig være skæve på S3: målt 6/8 gav
+ * S2-kalibrerede vægte S3 bjerg +3,0 pp og kuperet −2,8 pp. Kalibrér mod den sæson du bygger.
  *
  * materializeTierCalendars har dryRun=true som default; vi sender den eksplicit alligevel.
  */

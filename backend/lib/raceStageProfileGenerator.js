@@ -218,10 +218,12 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // det ene for det andet. Verificér med:
 //     node scripts/calendarCompositionScorecard.js --season 2
 //
-// Kalibreringen er verificeret mod BEGGE sæsoner — S2's materialiserede løbssæt OG S3's
-// PLANLAGTE. De er ikke ens: selectTierRaceSet vælger forfra hver sæson (prestige +
-// cross-tier-dedup), så vægte der kun er kalibreret mod S2 kan ramme S2 præcist og stadig
-// være skæve på S3. Første iteration gjorde netop det (S3 endte bjerg +3,0 pp).
+// Kalibreringen er verificeret mod BEGGE sæsoner. Løbs-UDVALGET er identisk (selection er
+// deterministisk givet samme katalog), men PARCOURS-TRÆKKET er det ikke: seed-nøglen
+// indeholder season_id (seedKeyFor), så samme løb får forskelligt terræn hver sæson —
+// variation pr. sæson, by design. Vægte kalibreret mod ÉT sæson-træk kan derfor ramme det
+// præcist og stadig være skæve på det næste. Første iteration gjorde netop det (S3 endte
+// bjerg +3,0 pp mens S2 var i mål).
 //
 //   S2 FØR:   flad 27,3 · kuperet 28,8 · bjerg 32,9 · ITT  6,6 · brosten 4,3   (4 uden for ±2)
 //   S2 EFTER: flad 24,5 · kuperet 33,2 · bjerg 26,8 · ITT 11,2 · brosten 4,3   (0 uden for ±2)
