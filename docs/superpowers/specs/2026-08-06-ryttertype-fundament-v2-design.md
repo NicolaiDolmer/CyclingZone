@@ -23,20 +23,20 @@ Alle genererings-stier (akademi-intake, AI-fill, starter squads, pool-import-sup
 
 1. **Træk arketype-prior** fra mål-fordelingen. Fordelingen er IKKE en smagssag — og den er heller ikke et fast tal: den AFLEDES parametrisk af tre input: (a) virkelighedens kvalitative knapheds-rækkefølge (research 6/8, kilder i afsnit 6: rouleur/domestique er pelotonens rygrad; rene GC-/TT-specialister er de sjældneste; baroudeur/brosten er delvist taktik-/terræn-roller; "rene sprintere" er en truet art — Astana kørte 2022 helt uden), (b) **MÅL-kalenderens efterspørgselsprofil** — IKKE den nuværende kalender (ejer-korrektion 6/8: den nuværende er vi utilfredse med, jf. #2177's manglende ITT/TTT, #3326's etaperækkefølge, #3371's arketype-mangel; S3-kalenderen bygges om FØR 23/8 per #3295) — via en demand-mapping (flade dage→sprinter-efterspørgsel, bjerg→climber/gc, kuperet+klassiker→puncheur, brosten→brosten, ITT/TTT→tt, rolling+udbruds-formater→rouleur/baroudeur), og (c) spillets egne principper som modifikatorer (scarcity-nedvægtning af GC/TT; gulv ~8-9 % så intet løbsformat er "dødt").
 
-**Sekvens-krav:** S3-kalenderens mål-komposition (#3295-arbejdet) besluttes FØRST; derefter genberegnes tabellen nedenfor mod den — generatoren shipper aldrig kalibreret mod en kalender vi selv har kasseret. Fordi fordelingen er en formel og ikke en tabel, følger den automatisk med når kalenderen senere justeres igen (kalender og population kan ikke drifte fra hinanden).
+**Sekvens-krav (OPFYLDT 6/8):** S3-kalenderens mål-komposition er ejer-besluttet: **K-B gameplay-justeret** (flad 24 · kuperet 30 · bjerg 28 · ITT 8 · brosten 6 · TTT 4 — #3295, research-begrundet mod virkelige sæsoner 2023-2025). Tabellen nedenfor er formlen anvendt på K-B. Fordi fordelingen er en formel og ikke en tabel, følger den automatisk med når kalenderen senere justeres igen (kalender og population kan ikke drifte fra hinanden).
 
-**Illustration af metoden mod den NUVÆRENDE kalender** (2.208 løbsdage: flade 32,0 % · bjerg samlet 31,3 % · kuperet 18,8 % + klassiker 3,5 % · rolling 6,3 % · brosten 4,6 % · enkeltstart 3,5 % — tallene UDSKIFTES med S3-målprofilen før Fase 2):
+**Arbejdstal: formlen anvendt på K-B-målprofilen** (endelig finjustering i Fase 2's sim-harness; ved TTT-interim-scenariet — ITT 10/TTT 0, jf. #3295-forbeholdet — flyttes ~1 pp fra rouleur til tt):
 
-| Type | Mål-% | Begrundelse (virkelighed × kalender × design) |
+| Type | Mål-% | Begrundelse (virkelighed × K-B-kalender × design) |
 |---|---:|---|
-| climber | 17 | Bjerg = 31 % af løbsdagene; stor, veldefineret gruppe i virkeligheden (bjergetaper kræver hele klatre-hold) |
-| rouleur | 17 | Pelotonens rygrad i alle kilder; limen i alle formater + rolling-dagene |
-| sprinter | 15 | Flade dage er kalenderens største format (32 %) — bredt kontesteret; bevidst over virkelighedens faldende trend |
-| puncheur | 13 | Kuperet+klassiker ≈ 22 % af dagene; konsekvent hovedkategori i alle taksonomier |
-| baroudeur | 11 | Reelt en taktisk rolle mange fysiologier kan bære (research); udbrudstaktik skal være bredt tilgængelig |
-| brosten | 9 | Kun 4,6 % af løbsdagene — men et dedikeret prestige-format der kræver ægte konkurrence; Flandrien-typen som knap markedsvare |
+| climber | 16 | Bjerg = 28 % af K-B-dagene; stor, veldefineret gruppe i virkeligheden (bjergetaper kræver hele klatre-hold) |
+| rouleur | 16 | Pelotonens rygrad i alle kilder; limen i alle formater + TTT-motoren |
+| sprinter | 14 | Flade dage = 24 % af K-B (fortsat stort, tilgængeligt format); bevidst over virkelighedens faldende trend |
+| puncheur | 13 | Kuperet = K-B's største segment (30 %) — deles med baroudeur/rouleur; konsekvent hovedkategori i alle taksonomier |
+| baroudeur | 12 | Reelt en taktisk rolle mange fysiologier kan bære (research); udbrudstaktik skal være bredt tilgængelig på kuperet+rolling |
+| brosten | 10 | 6 % af K-B-dagene (bevidst løftet over virkelighedens 4) — dedikeret prestige-format med ægte konkurrence; Flandrien som knap markedsvare |
 | gc | 9 | Bevidst i bunden: virkelighedens sjældneste rolle (1-2 pr. WT-hold) OG spillets scarcity-/prestige-driver |
-| tt | 9 | Kun 3,5 % ITT-dage + virkelighedens snævreste niche — men strategisk afgørende i etapeløb; knap og værdifuld |
+| tt | 10 | ITT 8 % + TTT 4 % i K-B (mod 3,6 % i dag) — strategisk afgørende i etapeløb; knap og værdifuld |
 2. **Form basis-evnerne efter arketypen** (ikke kun caps): signatur-evner trækkes fra en løftet fordeling, modsatte evner fra en sænket, neutrale uændret. Separationen skal være stor nok til at klassifikatoren OPDAGER arketypen af sig selv (se success-kriterium G1) — typen skrives ikke direkte, den skal genfindes.
 3. **Hybrid-støj:** ~15 % af nye ryttere trækkes med to-arketype-blanding (giver naturlige puncheur/climber-hybrider m.m. og undgår karikatur-population).
 4. `potentiale` trækkes som i dag (uafhængigt af arketype — et stort talent kan være enhver type).
