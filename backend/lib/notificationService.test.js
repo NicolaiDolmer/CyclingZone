@@ -621,6 +621,101 @@ test("#2523 emitStageResult: manglende race.id eller stageNumber giver nul-stats
   assert.equal(calls.length, 0);
 });
 
+// ─── #3399 · narrativ rubrik i emitRaceResultNotifications/emitStageResultNotifications ─
+
+test("emitRaceResultNotifications: bruger narrativ rubrik + personligt resultat naar begge dele findes", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  const fetchRaceNarrative = async ({ race }) => {
+    assert.equal(race.id, "race-1");
+    return {
+      headlineText: "Krogh takes the sprint",
+      ranksByUser: new Map([["u1", [2, 5]]]),
+    };
+  };
+
+  await emitRaceResultNotifications({
+    supabase: {}, race: RACE, notify,
+    fetchParticipatingManagers: async () => ["u1"],
+    fetchRaceNarrative,
+  });
+
+  const call = calls[0];
+  assert.equal(call.title, "Krogh takes the sprint");
+  assert.equal(call.message, "Clásica de Prueba has been run. You placed 2nd and 5th.");
+  assert.deepEqual(call.metadata, { raceId: "race-1", narrative: true }, "ingen titleCode/messageCode — legacy title+message-gren bruges bevidst for dynamisk narrativ tekst");
+});
+
+test("emitRaceResultNotifications: degraderer til standard-copy naar narrativ mangler ranks for DENNE manager", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  const fetchRaceNarrative = async () => ({
+    headlineText: "Krogh takes the sprint",
+    ranksByUser: new Map(), // ingen ranks for u1
+  });
+
+  await emitRaceResultNotifications({
+    supabase: {}, race: RACE, notify,
+    fetchParticipatingManagers: async () => ["u1"],
+    fetchRaceNarrative,
+  });
+
+  const call = calls[0];
+  assert.equal(call.title, "Race result is in", "delvis narrativ-data => hel degradering, ikke en halv besked");
+  assert.equal(call.metadata.titleCode, "notif.raceResult.title");
+});
+
+test("emitRaceResultNotifications: degraderer til standard-copy naar fetchRaceNarrative returnerer null (gammelt/PCM-loeb)", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  await emitRaceResultNotifications({
+    supabase: {}, race: RACE, notify,
+    fetchParticipatingManagers: async () => ["u1"],
+    fetchRaceNarrative: async () => null,
+  });
+  assert.equal(calls[0].title, "Race result is in");
+});
+
+test("emitRaceResultNotifications: default fetchRaceNarrative degraderer ærligt uden supabase.from (ingen krasj)", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  await emitRaceResultNotifications({
+    supabase: {}, race: RACE, notify,
+    fetchParticipatingManagers: async () => ["u1"],
+  });
+  assert.equal(calls[0].title, "Race result is in", "default fetchRaceNarrative (buildRaceResultNarrative) mod supabase={} degraderer stille");
+});
+
+test("#2523 emitStageResult: bruger narrativ rubrik + personligt resultat naar begge dele findes", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  const fetchStageNarrative = async ({ race, stageNumber }) => {
+    assert.equal(race.id, "race-2");
+    assert.equal(stageNumber, 2);
+    return { headlineText: "Krogh wins by 0:08", ranksByUser: new Map() };
+  };
+
+  await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 2, totalStages: 5, notify,
+    fetchStageParticipants: async () => [
+      { userId: "u1", rank: 2, riderName: "Rider B" },
+      { userId: "u1", rank: 5, riderName: "Rider A" },
+    ],
+    fetchStageNarrative,
+  });
+
+  const call = calls[0];
+  assert.equal(call.title, "Krogh wins by 0:08");
+  assert.equal(call.message, "Stage 2 of Tour du Tyrol. You placed 2nd and 5th.", "begge ryttere paa holdet indgaar i det personlige resultat, ikke kun den bedste");
+  assert.deepEqual(call.metadata, { raceId: "race-2", stageNumber: 2, totalStages: 5, narrative: true });
+});
+
+test("#2523 emitStageResult: degraderer til standard-copy naar fetchStageNarrative returnerer null", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 1, totalStages: 3, notify,
+    fetchStageParticipants: async () => [{ userId: "u1", rank: 4, riderName: "Rider A" }],
+    fetchStageNarrative: async () => null,
+  });
+  assert.equal(calls[0].title, "Stage result is in");
+  assert.equal(calls[0].metadata.titleCode, "notif.stageResult.title");
+});
+
 // ─── #2945 · buildScoutReportReadyNotification + notifyScoutReportReady ──────
 
 test("buildScoutReportReadyNotification (target): korrekt type, related_id, riderId-metadata + i18n-koder", () => {

@@ -20,6 +20,7 @@ import { buildRaceDigestEmail } from "./emailTemplates.js";
 import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
 import { copenhagenHour, copenhagenDateString, copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
+import { buildRaceResultNarrative } from "./raceNarrativeNotification.js";
 
 export const DIGEST_HOUR_COPENHAGEN = 19;
 
@@ -54,6 +55,12 @@ export async function runEmailRaceDigestSweep({
   unsubSecret = process.env.EMAIL_UNSUB_SECRET,
   fetchRows = defaultFetchDigestRows,
   captureExceptionFn = captureException,
+  // #3399: narrativ rubrik ("Krogh takes the sprint") for dagens BEDSTE
+  // (laveste rank) løb pr. manager — buildRaceDigestEmail leder med den i
+  // stedet for en nøgen liste. Ærlig degradering: returnerer null for
+  // gamle/PCM-løb eller når v3 var slukket, og digesten ser da ud som før
+  // #3399 (kun listen, ingen rubrik-afsnit).
+  fetchNarrative = buildRaceResultNarrative,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -95,14 +102,35 @@ export async function runEmailRaceDigestSweep({
   let skipped = 0;
   let failed = 0;
 
+  // #3399: memoized pr. raceId — flere managere kan dele den samme "bedste"
+  // løbsdag (fx samme division-race), så vi vil ikke genberegne rubrikken pr.
+  // manager. narrativeCache holder Promise<narrative|null> per raceId.
+  const narrativeCache = new Map();
+  const getNarrative = (raceId, raceName) => {
+    if (!narrativeCache.has(raceId)) {
+      narrativeCache.set(raceId, fetchNarrative({ supabase, race: { id: raceId, name: raceName } }).catch(() => null));
+    }
+    return narrativeCache.get(raceId);
+  };
+
   for (const [userId, perRace] of bestByUserRace) {
     try {
       const email = emailByUser.get(userId);
       if (!email) { skipped += 1; continue; }
 
       const results = [...perRace.values()];
+      // Dagens rubrik = managerens BEDSTE (laveste rank) løb i dag — samme
+      // "bedste-resultat"-diskriminator digesten allerede bruger pr. løb.
+      const [topRaceId] = [...perRace.entries()].sort((a, b) => (a[1].rank ?? Infinity) - (b[1].rank ?? Infinity))[0] ?? [];
+      const narrative = topRaceId ? await getNarrative(topRaceId, perRace.get(topRaceId)?.raceName) : null;
+
       const unsubscribeUrl = unsubscribeUrlFor(userId, unsubSecret);
-      const { subject, html, text } = buildRaceDigestEmail({ teamName: null, results, unsubscribeUrl });
+      const { subject, html, text } = buildRaceDigestEmail({
+        teamName: null,
+        results,
+        headline: narrative?.headlineText ?? null,
+        unsubscribeUrl,
+      });
       const result = await send({
         supabase,
         userId,

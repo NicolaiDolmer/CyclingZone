@@ -65,6 +65,10 @@ import { loadAbandonedRiderIds } from "./raceIncidents.js";
 // S6 (#2355): why-rapport + story-tags — ren afledning af de samme komponenter
 // (ranked[].components) der allerede persisteres til race_simulation_rider_scores.
 import { extractStageMoments } from "./raceNarrative.js";
+// #3398 (Maiden Win Engine): career-firsts-detektion (maiden win/første podium/
+// første klassifikationstrøje/klub-milepæle) — UAFHÆNGIG af v3-flaget (læser
+// kun result_type/rank/rider_id/team_id, som ALLE løb altid skriver).
+import { detectCareerFirsts } from "./careerFirsts.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
@@ -1212,6 +1216,27 @@ async function persistStageMoments({ supabase, race, moments, stageNumbers }) {
   }
 }
 
+// #3398 (Maiden Win Engine): career-firsts-detektion — samme grad af graceful
+// degradation som persistStageMoments ovenfor (rider_career_events kan mangle i
+// vinduet mellem merge og ejerens manuelle migration-apply, #2642-rammerne).
+// detectCareerFirsts fanger allerede fejl PR. kandidat internt og returnerer
+// altid et stats-objekt (aldrig en throw) — denne ydre try/catch er et ekstra
+// sikkerhedslag mod uventede fejl FØR selve kandidat-loopet (fx en malformed
+// resultRows-form), så en career-firsts-fejl under INGEN omstændigheder kan
+// vælte selve løbs-finaliseringen.
+async function runCareerFirstsDetection({ supabase, race, resultRows, stageNumbers, seasonNumber }) {
+  if (!resultRows?.length) return;
+  try {
+    await detectCareerFirsts({ supabase, race, resultRows, stageNumbers, seasonNumber });
+  } catch (err) {
+    // best-effort: career-firsts-momenter er additiv pynt oven på resultatet —
+    // migrationen (2026-08-05-3398-maiden-win-engine.sql) applies manuelt EFTER
+    // merge, så tabellen kan mangle i vinduet. En fejl her må ALDRIG vælte
+    // selve løbs-finaliseringen; fladen degraderer til ingen career-first-events.
+    console.warn(`  ⚠️  career-firsts detection failed for race ${race.id} (table may not be migrated yet — degraderer til ingen career-first-events): ${err.message}`);
+  }
+}
+
 // S4 (#1176): race_incidents bærer kun rider_id (samme mønster som
 // race_results/persistIncidents ovenfor) — ét let riders-opslag før
 // notifyDiscord, så buildRaceSimEmbed's DNF-linje kan vise navne uden selv at
@@ -1355,6 +1380,14 @@ export async function simulateRace({
   if (v3 && moments.length) {
     await persistStageMoments({ supabase, race, moments, stageNumbers: stages.map((s) => s.stage_number || 1) });
   }
+  // #3398 (Maiden Win Engine): career-firsts — UAFHÆNGIG af v3 (læser kun
+  // result_type/rank/rider_id/team_id, som ALLE løb altid skriver til
+  // resultRows). Samme stageNumbers-scoping som incidents/moments ovenfor.
+  await runCareerFirstsDetection({
+    supabase, race, resultRows,
+    stageNumbers: stages.map((s) => s.stage_number || 1),
+    seasonNumber: seasonBefore?.number ?? null,
+  });
   // #2898: race_results er allerede skrevet på dette tidspunkt — recovery-logikken
   // (fx den stage-scheduler-baserede retry-sti #2878) læner sig på at status='completed'
   // er pålideligt sat. Et tavst-fejlet update ville efterlade løbet stående som
@@ -2002,6 +2035,13 @@ export async function simulateStageByIndex({
     if (v3 && moments.length) {
       await persistStageMoments({ supabase, race, moments, stageNumbers: [stageNumber] });
     }
+    // #3398 (Maiden Win Engine): career-firsts — UAFHÆNGIG af v3 (samme
+    // begrundelse som simulateRace's call-site). Dækker BÅDE mellem-etaper og
+    // final-etapen (denne blok kører før mellem-etapens early-return nedenfor).
+    await runCareerFirstsDetection({
+      supabase, race, resultRows, stageNumbers: [stageNumber],
+      seasonNumber: seasonBefore?.number ?? null,
+    });
 
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
     // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).

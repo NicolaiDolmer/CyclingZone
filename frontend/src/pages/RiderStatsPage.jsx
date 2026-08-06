@@ -1697,7 +1697,7 @@ export default function RiderStatsPage() {
       {/* #1997 S1 — Palmarès: trofæskab + karrieretotaler + sæson-æresliste
           m. holdet ved hvert resultat (#1993-snapshot). Samme seasonRows som
           Resultater-fanen, ingen dublet-fetch. */}
-      {tab === "palmares" && <RiderPalmaresTab key={rider.id} seasonRows={seasonRows} loadFailed={seasonRowsFailed} />}
+      {tab === "palmares" && <RiderPalmaresTab key={rider.id} riderId={rider.id} seasonRows={seasonRows} loadFailed={seasonRowsFailed} />}
 
       {tab === "interest" && (
         <RiderInterestTab

@@ -21,6 +21,7 @@ import {
   SEED_RACE_RESULTS,
   SEED_RACE_INCIDENTS,
   SEED_RACE_STAGE_MOMENTS,
+  SEED_RIDER_CAREER_EVENTS,
   SEED_RIDER_PALMARES_RESULTS,
   SEED_TEAM_SEASON_STANDINGS,
   SEED_TEAM_HALL_OF_FAME,
@@ -240,6 +241,28 @@ export function restRows(table, requestUrl = "") {
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_RACE_STAGE_MOMENTS.filter(m => m.race_id === id);
+      }
+      return [];
+    }
+    // #3398 (Maiden Win Engine): rider_career_events — TRE forbrugere af samme
+    // tabel (dashboard/MaidenWinMomentCard: team_id=eq.<id>, RaceDetailPage:
+    // race_id=eq.<id>, RiderPalmaresTab: rider_id=eq.<id>). Tjekkes i den
+    // rækkefølge query-strengen realistisk kan indeholde dem.
+    case "rider_career_events": {
+      const teamMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (teamMatch) {
+        const id = decodeURIComponent(teamMatch[1]);
+        return SEED_RIDER_CAREER_EVENTS.filter(e => e.team_id === id);
+      }
+      const raceMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (raceMatch) {
+        const id = decodeURIComponent(raceMatch[1]);
+        return SEED_RIDER_CAREER_EVENTS.filter(e => e.race_id === id);
+      }
+      const riderMatch = url.search.match(/rider_id=eq\.([^&]+)/);
+      if (riderMatch) {
+        const id = decodeURIComponent(riderMatch[1]);
+        return SEED_RIDER_CAREER_EVENTS.filter(e => e.rider_id === id);
       }
       return [];
     }

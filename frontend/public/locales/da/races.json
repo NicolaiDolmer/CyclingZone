@@ -604,6 +604,21 @@
     "team": {
       "winner": "Vinder"
     },
+    "finalKm": {
+      "title": "Den sidste kilometer",
+      "replay": "Afspil igen",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "secondsToGo": "{count} sek. tilbage",
+      "finishLine": "Mål",
+      "photoFinish": "Fotofinish",
+      "moreFinishers": "{count, plural, one {+ # rytter mere i mål} other {+ # ryttere mere i mål}}",
+      "winType": {
+        "sprint_win": "Massespurt",
+        "close_win": "Tæt finish",
+        "solo_win": "Solosejr"
+      }
+    },
     "recap": {
       "title": "Løbsreferat",
       "win": "{rider} tog sejren.",

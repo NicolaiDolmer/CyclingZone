@@ -1,6 +1,7 @@
 import { isKnownNotificationType } from "./notificationTypes.js";
 import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
+import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize } from "./raceNarrativeNotification.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -263,6 +264,11 @@ export async function emitRaceResultNotifications({
   notify = notifyUser,
   fetchParticipatingManagers = defaultFetchParticipatingManagers,
   fetchFirstTimeManagers = defaultFetchFirstTimeManagers,
+  // #3399: narrativ rubrik ("Krogh takes the sprint") + pr.-manager ranks,
+  // afledt af race_stage_moments/race_results (raceNarrativeNotification.js).
+  // Returnerer null (ærlig degradering) for gamle/PCM-løb eller når v3 var
+  // slukket for etapen — i så fald er adfærden UÆNDRET fra før #3399.
+  fetchRaceNarrative = buildRaceResultNarrative,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
   if (!race?.id) return stats;
@@ -277,25 +283,46 @@ export async function emitRaceResultNotifications({
   // title/message kolliderer ikke med standard-raden i (type,title,message,
   // related_id)-dedup'en (24t, notifyUser).
   const firstTimers = await fetchFirstTimeManagers({ supabase, race, userIds: eligible });
+  const narrative = await fetchRaceNarrative({ supabase, race });
   for (const userId of eligible) {
     const isFirst = firstTimers.has(userId);
+    // #3399: narrativ tilstand kræver BÅDE en rubrik OG et personligt resultat
+    // for DENNE manager — delvis data (fx rubrik uden ranks) degraderer helt
+    // til standard-copy i stedet for en halv/inkonsistent besked.
+    const personalText = buildPersonalResultText(narrative?.ranksByUser?.get(userId));
+    const useNarrative = Boolean(narrative?.headlineText && personalText);
     try {
       const res = await notify({
         supabase,
         userId,
         type: RACE_RESULT_TYPE,
-        title: isFirst ? "Your first race is in the books" : "Race result is in",
-        message: isFirst
-          ? `${raceName} has been run. See how your riders did.`
-          : `${raceName} has been run. View the result.`,
+        title: useNarrative
+          ? narrative.headlineText
+          : (isFirst ? "Your first race is in the books" : "Race result is in"),
+        message: useNarrative
+          ? (isFirst
+              ? `${raceName} has been run. ${capitalize(personalText)}. See how your riders did.`
+              : `${raceName} has been run. ${capitalize(personalText)}.`)
+          : (isFirst
+              ? `${raceName} has been run. See how your riders did.`
+              : `${raceName} has been run. View the result.`),
         relatedId: race.id,
-        metadata: {
-          raceId: race.id,
-          titleCode: isFirst ? "notif.firstRaceResult.title" : "notif.raceResult.title",
-          titleParams: {},
-          messageCode: isFirst ? "notif.firstRaceResult.message" : "notif.raceResult.message",
-          messageParams: { race: raceName },
-        },
+        // #3399: narrativ tekst er dynamisk (rytternavne/ranks pr. løb) og har
+        // intet i18n-katalog-opslag (samme EN-first-afgrænsning som
+        // emailTemplates.js) — metadata.titleCode/messageCode UDELADES bevidst
+        // her, så renderNotificationTitle/-Message (#666, frontend/src/pages/
+        // NotificationsPage.jsx) falder tilbage til title/message direkte
+        // (dokumenteret understøttet "legacy"-gren i notifyUser's JSDoc
+        // ovenfor) i stedet for at vise en generisk kode-oversat streng.
+        metadata: useNarrative
+          ? { raceId: race.id, narrative: true }
+          : {
+              raceId: race.id,
+              titleCode: isFirst ? "notif.firstRaceResult.title" : "notif.raceResult.title",
+              titleParams: {},
+              messageCode: isFirst ? "notif.firstRaceResult.message" : "notif.raceResult.message",
+              messageParams: { race: raceName },
+            },
       });
       if (res?.delivered) stats.delivered += 1;
       else if (res?.deduped) stats.deduped += 1;
@@ -524,44 +551,66 @@ export async function emitStageResultNotifications({
   totalStages,
   notify = notifyUser,
   fetchStageParticipants = defaultFetchStageParticipants,
+  // #3399: narrativ rubrik for DENNE etape + pr.-manager ranks. Ærlig
+  // degradering til standard-copy for gamle/PCM-løb eller v3-slukkede etaper.
+  fetchStageNarrative = buildStageResultNarrative,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
   if (!race?.id || !stageNumber) return stats;
 
   const rows = await fetchStageParticipants({ supabase, raceId: race.id, stageNumber });
   const bestByManager = new Map();
+  // #3399: ALLE ranks pr. manager (ikke kun den bedste) til det personlige
+  // resultat ("you placed 2nd and 5th") — et hold kan have flere ryttere i
+  // samme etape.
+  const ranksByManager = new Map();
   for (const row of rows || []) {
     if (!row?.userId) continue;
     const existing = bestByManager.get(row.userId);
     if (!existing || (row.rank != null && (existing.rank == null || row.rank < existing.rank))) {
       bestByManager.set(row.userId, row);
     }
+    if (row.rank != null) {
+      if (!ranksByManager.has(row.userId)) ranksByManager.set(row.userId, []);
+      ranksByManager.get(row.userId).push(row.rank);
+    }
   }
   stats.eligible = bestByManager.size;
 
   const raceName = race.name ?? "your race";
+  const narrative = await fetchStageNarrative({ supabase, race, stageNumber });
   for (const [userId, best] of bestByManager) {
     const riderName = best.riderName ?? "your rider";
     const position = best.rank ?? null;
+    const personalText = buildPersonalResultText(ranksByManager.get(userId));
+    const useNarrative = Boolean(narrative?.headlineText && personalText);
     try {
       const res = await notify({
         supabase,
         userId,
         type: STAGE_RESULT_TYPE,
-        title: "Stage result is in",
-        message: position != null
-          ? `Stage ${stageNumber} of ${raceName} is done. Your best: ${riderName}, position ${position}.`
-          : `Stage ${stageNumber} of ${raceName} is done.`,
+        title: useNarrative ? narrative.headlineText : "Stage result is in",
+        message: useNarrative
+          ? `Stage ${stageNumber} of ${raceName}. ${capitalize(personalText)}.`
+          : (position != null
+              ? `Stage ${stageNumber} of ${raceName} is done. Your best: ${riderName}, position ${position}.`
+              : `Stage ${stageNumber} of ${raceName} is done.`),
         relatedId: race.id,
-        metadata: {
-          raceId: race.id,
-          stageNumber,
-          totalStages: totalStages ?? null,
-          titleCode: "notif.stageResult.title",
-          titleParams: {},
-          messageCode: position != null ? "notif.stageResult.message" : "notif.stageResult.messageNoResult",
-          messageParams: { stage: stageNumber, race: raceName, rider: riderName, position },
-        },
+        // #3399: samme begrundelse som emitRaceResultNotifications ovenfor —
+        // narrativ tekst udelader bevidst titleCode/messageCode (ingen
+        // i18n-katalog for dynamisk rytter-/rubrik-tekst), så frontend falder
+        // tilbage til title/message direkte i stedet for en generisk kode.
+        metadata: useNarrative
+          ? { raceId: race.id, stageNumber, totalStages: totalStages ?? null, narrative: true }
+          : {
+              raceId: race.id,
+              stageNumber,
+              totalStages: totalStages ?? null,
+              titleCode: "notif.stageResult.title",
+              titleParams: {},
+              messageCode: position != null ? "notif.stageResult.message" : "notif.stageResult.messageNoResult",
+              messageParams: { stage: stageNumber, race: raceName, rider: riderName, position },
+            },
       });
       if (res?.delivered) stats.delivered += 1;
       else if (res?.deduped) stats.deduped += 1;

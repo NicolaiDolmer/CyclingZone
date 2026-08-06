@@ -171,11 +171,21 @@ export function buildDay1Email({ teamName, hasResults, latestRaceId = null, unsu
 
 /**
  * Daily race-digest email, sent for managers whose riders raced today.
- * @param {{teamName: string, results: Array<{riderName: string, rank: number|null, raceName: string}>, unsubscribeUrl: string}} args
+ *
+ * #3399: optionally leads with today's narrative headline (e.g. "Krogh takes
+ * the sprint", derived from race_stage_moments by
+ * raceNarrativeNotification.js's buildRaceResultNarrative/buildStageResultNarrative
+ * — see emailRaceDigestSweep.js) plus the manager's own best moment (the
+ * lowest-rank entry already present in `results` — no invented data, purely
+ * a re-sort of what the caller passed in). `headline` is OPTIONAL and purely
+ * additive: omitting it (existing callers) renders byte-identical to before
+ * #3399 — the bullet list below is never removed, only led into.
+ * @param {{teamName: string, results: Array<{riderName: string, rank: number|null, raceName: string}>, headline?: string|null, unsubscribeUrl: string}} args
  */
-export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl }) {
+export function buildRaceDigestEmail({ teamName, results, headline = null, unsubscribeUrl }) {
   const subject = "Race day: how your team did today";
   const rows = Array.isArray(results) ? results.filter((r) => r && r.riderName && r.raceName) : [];
+  const best = rows.length ? [...rows].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))[0] : null;
 
   const linesHtml = rows.length
     ? `<ul style="margin:0 0 16px;padding-left:20px;">${rows
@@ -198,9 +208,20 @@ export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl }) {
         .join("\n")
     : "Your team's results from today are ready.";
 
+  // Best-moment line only makes sense alongside a headline (it is the
+  // headline's personal counterpart) and only when we actually have a ranked
+  // result to point to — degrades to nothing (never invented) otherwise.
+  const bestMomentText = headline && best && best.rank != null
+    ? `Your best moment: ${best.riderName} placed rank ${best.rank} in ${best.raceName}.`
+    : null;
+
+  const headlineHtml = headline ? `<p style="margin:0 0 8px;font-weight:600;">${escapeHtml(headline)}</p>` : "";
+  const bestMomentHtml = bestMomentText ? `<p style="margin:0 0 16px;">${escapeHtml(bestMomentText)}</p>` : "";
+
   const name = escapeHtml(teamName) || "Your team";
   const bodyHtml = `
     <p style="margin:0 0 16px;">Hi,</p>
+    ${headlineHtml}${bestMomentHtml}
     <p style="margin:0 0 16px;">${name}'s best results from today:</p>
     ${linesHtml}
     <p style="margin:0 0 16px;"><a href="${escapeHtml(RESULTS_URL)}" style="color:#1a1a1a;font-weight:600;">See all results</a></p>
@@ -208,6 +229,8 @@ export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl }) {
 
   const bodyText = [
     "Hi,",
+    ...(headline ? [headline] : []),
+    ...(bestMomentText ? [bestMomentText] : []),
     `${teamName || "Your team"}'s best results from today:`,
     linesText,
     `See all results: ${RESULTS_URL}`,

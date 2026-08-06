@@ -9,6 +9,7 @@ import { buildRaceRecap } from "../lib/raceRecap.js";
 import { supabase } from "../lib/supabase";
 import { logFirstEvent } from "../lib/logEvent";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
+import { ConfettiModal } from "./ConfettiModal";
 
 // #2466 — "How your team did": resultat-push for holdets seneste finaliserede
 // løb. Modsat "Seneste resultater"-kortet (løbets VINDER) viser dette kort DINE
@@ -91,6 +92,32 @@ function useSeenBadge(race) {
   return isNew;
 }
 
+// #3398 (Maiden Win Engine, item 4 — "fejring af løbssejre"): ConfettiModal har
+// hidtil ALDRIG fyret i race-paths (0 hits, audit 5/8 — kun Auctions/Transfers/
+// RiderStats). Genbruger DENNE komponents allerede-eksisterende "nyt uset
+// resultat"-datastrøm (isNew, samme #2593-server-flag som badgen ovenfor) i
+// stedet for en ny detektions-sti: placements er allerede holdets ENDELIGE
+// resultat for løbet (GC for etapeløb, ellers etapen — summarizeTeamRace,
+// backend/lib/myTeamLatestResult.js), så rank===1 for den bedste placering ER
+// definitionen af "din rytter vandt løbet/GC'en". Fyrer PRÆCIS én gang pr. nyt
+// løb (raceId-ref-gate, samme engangs-mønster som useSeenBadge's egen effekt).
+function useWinCelebration(data, isNew) {
+  const [show, setShow] = useState(false);
+  const shownForRaceIdRef = useRef(null);
+
+  useEffect(() => {
+    const raceId = data?.race?.id;
+    if (!raceId || !isNew) return;
+    if (shownForRaceIdRef.current === raceId) return;
+    const won = (data?.placements || []).some((p) => p.rank === 1);
+    if (!won) return;
+    shownForRaceIdRef.current = raceId;
+    setShow(true);
+  }, [data, isNew]);
+
+  return [show, () => setShow(false)];
+}
+
 // #2886 — én række pr. tidligere løb: bedste placering, løbsnavn, point og
 // præmiepenge. Tallene står i en fast højre-kolonne (point over præmie) så de
 // flugter lodret på tværs af rækker og aldrig konkurrerer med løbsnavnet om
@@ -127,6 +154,8 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
   const [historyExpanded, setHistoryExpanded] = useState(false);
   // #3310 comeback-buen: uset første resultat → dashboardets landings-øjeblik.
   const firstRaceMoment = isFirstRaceMoment(data);
+  // #3398: løbssejr/GC-sejr-fejring for egne ryttere (se useWinCelebration).
+  const [showWinConfetti, closeWinConfetti] = useWinCelebration(data, isNew);
 
   // Recap-momentet genbruger den eksisterende fortælle-logik + races-namespacets
   // oversættelser 1:1 (ingen dublerede strenge). Backend har trimmet rækkerne
@@ -152,8 +181,21 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
     season_totals: seasonTotals = null,
   } = data;
   const visibleHistory = historyExpanded ? history : history.slice(0, COLLAPSED_HISTORY_ROWS);
+  // #3398: GC-sejr (etapeløb) vs. løbssejr (endagsløb) — samme skelnen som
+  // resten af kortet allerede bruger (race.race_type === "stage_race").
+  const winConfettiTitle = race?.race_type === "stage_race"
+    ? t("dashboard:cards.myResult.confettiTitleGc")
+    : t("dashboard:cards.myResult.confettiTitleRace");
 
   return (
+    <>
+      <ConfettiModal
+        show={showWinConfetti}
+        onClose={closeWinConfetti}
+        title={winConfettiTitle}
+        subtitle={race?.name}
+        amount={totals?.prize_money}
+      />
     <Card className="p-5 mb-4">
       {/* flex-wrap: på smalle skærme må linket falde ned på egen linje frem for
           at trunkere modultitlen (54,9% af trafikken er mobil). */}
@@ -361,5 +403,6 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
         </>
       )}
     </Card>
+    </>
   );
 }

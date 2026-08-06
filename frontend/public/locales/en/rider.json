@@ -227,6 +227,7 @@
       "loadError": "Results could not be loaded right now."
     },
     "palmares": {
+      "careerFirstsTitle": "Career firsts",
       "trophyTitle": "Trophy case",
       "trophy": {
         "gcWins": "GC wins",

@@ -413,6 +413,24 @@
       "title": "New scout, reports recalculated",
       "message": "{scoutName} is now assessing your riders. Existing scouting reports are recalculated to match their precision, but your riders' actual abilities have not changed."
     },
+    "careerMilestone": {
+      "maidenWin": {
+        "title": "Maiden victory",
+        "message": "{rider} won their first professional race: {race}."
+      },
+      "firstPodium": {
+        "title": "First podium",
+        "message": "{rider} reached their first career podium: {race}."
+      },
+      "firstJersey": {
+        "title": "First classification jersey",
+        "message": "{rider} won their first classification jersey: {race}."
+      },
+      "clubMilestoneWin": {
+        "title": "Club milestone",
+        "message": "Your club just recorded win number {count}, thanks to {rider}."
+      }
+    },
     "sponsorPaid": {
       "seasonStart": {
         "title": "Sponsor payout",

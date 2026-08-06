@@ -23,9 +23,9 @@ import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
 // #3397 (epic #3395 bølge 1): Hero & Agony moment-kort. Selv-hentende
-// komponent (kun team-props) med vilje — se komponentfilens kommentar for
-// merge-begrundelsen (parallel agent #3398 rører muligvis samme fil).
+// komponent (kun team-props) med vilje — se komponentfilens kommentar.
 import HeroAgonyCard from "../components/HeroAgonyCard";
+import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
@@ -1042,6 +1042,11 @@ export default function DashboardPage() {
           firstRaceMomentActive ovenfor), udelades denne anden instans for at
           undgå at kortet vises to gange. */}
       {!firstRaceMomentActive && myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
+
+      {/* #3398 (Maiden Win Engine): career-first-momentkort — renderer intet
+          uden data. Bevidst FØR Hero & Agony: en career-first er det sjældnere,
+          større øjeblik. */}
+      <MaidenWinMomentCard />
 
       {/* #3397: Hero & Agony moment-kort — selv-hentende, se HeroAgonyCard.jsx. */}
       {heroAgonyVisible && <HeroAgonyCard teamId={team?.id} teamName={team?.name} />}

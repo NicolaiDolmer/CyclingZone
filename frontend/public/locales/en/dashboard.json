@@ -110,7 +110,26 @@
       "firstRaceIntro": "Run while you were away. Here is how it went.",
       "firstRaceIntroAt": "Finished {time} while you were away. Here is how it went.",
       "firstRaceCta": "Read the full race story",
-      "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}"
+      "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}",
+      "confettiTitleGc": "GC won!",
+      "confettiTitleRace": "Race won!"
+    },
+    "maidenWin": {
+      "title": "Career moments",
+      "unknownRider": "Your rider",
+      "viewRace": "View race →",
+      "headline": {
+        "maidenWin": "Maiden victory",
+        "firstPodium": "First podium",
+        "firstJersey": "First jersey",
+        "clubMilestoneWin": "Club milestone"
+      },
+      "body": {
+        "maidenWin": "wins their first professional race in club colours: {race}",
+        "firstPodium": "reaches their first career podium: {race}",
+        "firstJersey": "wins their first classification jersey: {race}",
+        "clubMilestoneWin": "brings up win number {count} for {team}"
+      }
     },
     "heroAgony": {
       "title": "Hero & Agony",

@@ -119,6 +119,58 @@ test("race_digest email escapes rider/race names (no HTML injection from race_re
   assert.ok(t.html.includes("&lt;b&gt;Rider&lt;/b&gt;"));
 });
 
+// ─── #3399 · narrative headline leads the digest ──────────────────────────
+
+test("race_digest email: with headline, leads with the rubric + the manager's best moment, keeps the list", () => {
+  const t = buildRaceDigestEmail({
+    teamName: "Team Velodrome",
+    results: [
+      { riderName: "Jonas Vingegaard", rank: 3, raceName: "Vuelta a Andalucia" },
+      { riderName: "Krogh", rank: 1, raceName: "GP Sample" },
+    ],
+    headline: "Krogh takes the sprint",
+    unsubscribeUrl: UNSUB_URL,
+  });
+  assert.ok(t.html.includes("Krogh takes the sprint"), "leads with the narrative headline");
+  assert.ok(t.html.includes("Your best moment: Krogh placed rank 1 in GP Sample"), "best (lowest-rank) result, not just the first list entry");
+  assert.ok(t.html.includes("Jonas Vingegaard"), "the full results list is still present, not replaced");
+  assert.ok(t.text.includes("Krogh takes the sprint"));
+  assert.ok(t.text.includes("Your best moment: Krogh placed rank 1 in GP Sample"));
+  assertNoEmDash(t, "race_digest with headline");
+});
+
+test("race_digest email: without headline (existing callers), renders exactly as before #3399", () => {
+  const t = buildRaceDigestEmail({
+    teamName: "Team Velodrome",
+    results: [{ riderName: "Jonas Vingegaard", rank: 3, raceName: "Vuelta a Andalucia" }],
+    unsubscribeUrl: UNSUB_URL,
+  });
+  assert.ok(!t.html.includes("Your best moment"), "no best-moment line without a headline (nothing invented)");
+  assert.equal((t.html.match(/font-weight:600/g) || []).length, 1, "only the CTA link is bold — no extra headline paragraph rendered");
+});
+
+test("race_digest email: headline without any ranked result never invents a best-moment line", () => {
+  const t = buildRaceDigestEmail({
+    teamName: "Team Velodrome",
+    results: [],
+    headline: "Krogh takes the sprint",
+    unsubscribeUrl: UNSUB_URL,
+  });
+  assert.ok(t.html.includes("Krogh takes the sprint"), "headline alone can still render");
+  assert.ok(!t.html.includes("Your best moment"), "no results to point to => no invented best-moment line");
+});
+
+test("race_digest email: headline text is HTML-escaped", () => {
+  const t = buildRaceDigestEmail({
+    teamName: "Team",
+    results: [{ riderName: "Rider", rank: 1, raceName: "Race" }],
+    headline: "<script>alert(1)</script>",
+    unsubscribeUrl: UNSUB_URL,
+  });
+  assert.ok(!t.html.includes("<script>alert(1)</script>"));
+  assert.ok(t.html.includes("&lt;script&gt;"));
+});
+
 test("unsubscribe URL is quote-escaped so a value cannot break out of the href attribute", () => {
   // The unsubscribe URL is the one caller-provided value that lands inside an
   // href="..." attribute. A double quote in it must be entity-encoded, or the
