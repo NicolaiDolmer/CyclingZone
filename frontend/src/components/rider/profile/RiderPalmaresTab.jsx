@@ -11,11 +11,43 @@
 // Datalag: lib/riderPalmares.js over de samme grupperede løb som Resultater-
 // fanen (lib/riderResultsTab.js groupRiderRaces) — ingen dublet-fetch.
 
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { groupRiderRaces } from "../../../lib/riderResultsTab.js";
 import { buildTrophyCase, careerTotals, seasonHonours } from "../../../lib/riderPalmares.js";
 import { formatNumber } from "../../../lib/intl.js";
+import { supabase } from "../../../lib/supabase.js";
+import CareerFirstMomentRow from "../../CareerFirstMomentRow.jsx";
+
+// #3398 (Maiden Win Engine) — permanent palmarès-spor: en "first" skal kunne
+// genfindes på rytterens egen profil, ikke kun dashboardet/løbssiden i det
+// øjeblik den skete. Egen let fetch (samme mønster som GlobalRankWidget/
+// MaidenWinMomentCard) — degraderer stille til intet vist hvis tabellen mangler
+// eller rytteren ingen career-firsts har endnu.
+function useRiderCareerEvents(riderId) {
+  const [events, setEvents] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!riderId) return undefined;
+    (async () => {
+      const { data, error } = await supabase
+        .from("rider_career_events")
+        .select("id, event_type, rider_id, rider_name, team_name, race_id, params, occurred_at")
+        .eq("rider_id", riderId)
+        .order("occurred_at", { ascending: true })
+        .limit(20);
+      if (cancelled) return;
+      if (error) {
+        console.warn("rider_career_events fetch failed (table may not be migrated yet):", error.message);
+        return;
+      }
+      setEvents(data || []);
+    })();
+    return () => { cancelled = true; };
+  }, [riderId]);
+  return events;
+}
 
 const DAY_TYPES = ["leader", "points_day", "mountain_day", "young_day"];
 
@@ -55,8 +87,9 @@ function AchievementChip({ label, highlight = false }) {
   );
 }
 
-export default function RiderPalmaresTab({ seasonRows, loadFailed = false }) {
+export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = false }) {
   const { t } = useTranslation("rider");
+  const careerEvents = useRiderCareerEvents(riderId);
 
   if (loadFailed) {
     return (
@@ -107,6 +140,19 @@ export default function RiderPalmaresTab({ seasonRows, loadFailed = false }) {
 
   return (
     <div className="flex flex-col gap-[13px]">
+      {/* #3398 (Maiden Win Engine): permanent karriere-spor for career-firsts —
+          kronologisk (ældste først), så profilen læses som et CV. */}
+      {careerEvents.length > 0 && (
+        <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
+          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
+            {t("profile.palmares.careerFirstsTitle")}
+          </h3>
+          {careerEvents.map((event) => (
+            <CareerFirstMomentRow key={event.id} event={event} t={t} />
+          ))}
+        </div>
+      )}
+
       <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
         <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
           {t("profile.palmares.trophyTitle")}

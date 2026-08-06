@@ -301,6 +301,10 @@
       "notifications": {
         "title": "Achievement notifications",
         "text": "When you unlock an achievement, you get a message in the inbox with the achievement icon and title. Your unlocked achievements show on your manager profile."
+      },
+      "careerFirsts": {
+        "title": "Career firsts",
+        "text": "The game tracks career firsts for every rider: a maiden victory, a first podium, a first classification jersey, and club milestones like a 25th win in your colours. These are detected automatically from race results, shown as a moment card on your dashboard and on the race page, and stay visible for good on the rider's own profile under the Palmares tab."
       }
     },
     "watchlist": {

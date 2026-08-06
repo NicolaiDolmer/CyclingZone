@@ -143,6 +143,10 @@ const SECTION_DEFS = [
       { id: "seasonAchievements", kind: "text" },
       { id: "secretAchievements", kind: "text" },
       { id: "notifications", kind: "text" },
+      // #3398 (Maiden Win Engine): career-firsts er detekteret objektivt fra
+      // resultater (ikke en achievement-kategori i sig selv), men hører
+      // naturligt sammen med resten af "hvad fejrer spillet"-siden.
+      { id: "careerFirsts", kind: "text" },
     ],
   },
   {

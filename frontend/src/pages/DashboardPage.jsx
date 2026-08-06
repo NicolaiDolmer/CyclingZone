@@ -22,6 +22,7 @@ import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
+import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
@@ -1037,6 +1038,12 @@ export default function DashboardPage() {
           firstRaceMomentActive ovenfor), udelades denne anden instans for at
           undgå at kortet vises to gange. */}
       {!firstRaceMomentActive && myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
+
+      {/* #3398 (Maiden Win Engine): editorial career-first-momentkort (maiden
+          win/første podium/første trøje/klub-milepæl) for EGNE ryttere. Egen
+          fetch (selvstændig komponentfil, se MaidenWinMomentCard.jsx) — renderer
+          intet uden data, så diffet her forbliver minimalt. */}
+      <MaidenWinMomentCard />
 
       {/* Main grid — #2849 bølge 1: sibling-gap 14px (spec) */}
       <div className="grid lg:grid-cols-2 gap-[14px]">
