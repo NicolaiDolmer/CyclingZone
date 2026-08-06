@@ -50,6 +50,17 @@ test("computeRiderValueTrend: null uden abilities/model/baseline (degraderer pæ
   assert.equal(windows2[14], null, "manglende current base_value → ingen delta");
 });
 
+test("#3441: rider.valuation_type flyder med til den historiske genberegning (frossen type, ikke frisk klassifikation)", () => {
+  const frozenType = "sprinter";
+  const expectedHistorical = recomputeRiderValue({ valuation_type: frozenType }, WEAK, baseline, model).base_value;
+  const freshHistorical = recomputeRiderValue({}, WEAK, baseline, model).base_value;
+  assert.notEqual(expectedHistorical, freshHistorical, "forudsætning: frossen type skal give en anden værdi end frisk klassifikation, ellers beviser testen intet");
+  const currentBaseValue = recomputeRiderValue({ valuation_type: frozenType }, STRONG, baseline, model).base_value;
+  const snapshotsAsc = [{ snapshot_date: isoDaysAgo(14), abilities: WEAK }];
+  const windows = computeRiderValueTrend({ currentBaseValue, rider: { valuation_type: frozenType }, snapshotsAsc, baseline, model, now: NOW });
+  assert.equal(windows[14].delta, Math.round(currentBaseValue - expectedHistorical), "deltaet skal være beregnet mod den FROSNE types historiske værdi");
+});
+
 test("computeRiderValueTrend: vælger nærmeste snapshot PÅ ELLER FØR target (aldrig fremtid)", () => {
   const currentBaseValue = recomputeRiderValue({}, STRONG, baseline, model).base_value;
   // Snapshot 10 dage tilbage (før 14-dages target) + et 2 dage tilbage (efter target).
