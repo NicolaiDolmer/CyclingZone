@@ -14,7 +14,7 @@
 
 > **📌 Åbne opfølgninger:** ✅ **Forum v1 SHIPPED 6/8** ([PR #3447](https://github.com/NicolaiDolmer/CyclingZone/pull/3447) merged m. ejer-go, v7.102; migration auto-applied + SQL-verificeret; #3199/#3201 done — ejer lukker efter prod-test; valgfrit: dedikeret `DISCORD_FORUM_WEBHOOK_URL`, ellers ops-fallback); #3200 (DM) IKKE dækket · #2881 **datareparation ikke kørt** (2 SQL'er venter, ejer-gated) · #3330 Discord-svar til @knud_r_flink udestår · #3094 peaks-fladen visuelt uverificeret (redningscommit) · #3396 Final Km replay-hul (done→todo) · #2830 lockdown-SQL ejer-gated · [#3337](https://github.com/NicolaiDolmer/CyclingZone/issues/3337)-harness: ligger UTRACKET i worktree `wf_1e3ef067-8bd-5` + backup i `C:\Dev\CyclingZone-worktrees\harness-3337-backup\` (NOW's tidligere "balance-internals"-sti fandtes ikke) — gentag måling efter type-fix + #3393 · #3349 måltal på post-backfill-population · #3353 V4-refit · #3295 S3-kalender · #2645 Del B · #3172 (luk ~18/8) · #2164 (S2→S3) · branch-oprydning: 11 remote-branches + 2 worktrees venter på dine kommandoer (session-output 6/8).
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** TO parallelle sessioner 6/8 aften (ejer-orkestreret): (1) **Fable-chatsessionen** ejer fundament-fase 1 (#3458 skala-PR i worktree, #3459 sim), #3448-søndagsdrejebogen og filerne scoutingReport/riderProgression/dailyTraining/marketValue*. (2) **Opus-sessionen** claimer S3-KALENDER-PROGRAMMET (#3295+#3326+#3371+#2177) — kalender-/ruteprofil-/seeding-domænet. Kryds ikke domænerne; koordinér via issues.
 
 ## Standing context (forever-relaunch)
 
