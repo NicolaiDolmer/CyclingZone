@@ -37,6 +37,95 @@ function getHistorySellerTeamId(auction, sellerOwned) {
   return sellerOwned ? auction.seller_team_id : null;
 }
 
+// #3401 post-hammerslag-reveal: når en auktion lukker MED en vinder, fik de
+// øvrige budgivere hidtil ALDRIG at vide hvem der endte med at snuppe rytteren
+// — kun de løbende "du er overbudt"-notifikationer (anonyme, jf. proxy-
+// beskyttelsen) mens auktionen stadig kørte. Denne funktion sender ÉN
+// afsluttende "auction_lost"-notifikation pr. tabende hold, MED vinderens navn.
+//
+// Fair-play-grænse (regelændring ejer-godkendt 5/8, #3401): "dit maks" her er
+// hver tabers egen HØJESTE REALISEREDE bud (auction_bids.amount — hvad de
+// faktisk lagde), ALDRIG deres proxy-loft (auction_proxy_bids.max_amount).
+// Funktionen læser og forespørger auction_proxy_bids-tabellen ALDRIG — hverken
+// egne eller andres lofter/aktive strategier kan lække herfra, uanset om
+// proxy-rækken stadig eksisterer på finaliseringstidspunktet.
+//
+// Fire-and-forget, samme princip som kontraktudløb-notifikationen ovenfor: en
+// fejlet berigelses-notifikation må ALDRIG kunne rulle en allerede-committet
+// finalisering tilbage, så hele funktionen er indpakket i try/catch og
+// fejler stille (logget, ikke kastet).
+async function notifyLosingAuctionBidders({
+  supabase,
+  notifyTeamOwner,
+  auction,
+  rider,
+  winnerId,
+  price,
+}) {
+  if (!notifyTeamOwner || !auction?.id || !rider) return;
+  try {
+    const { data: bidRows, error } = await supabase
+      .from("auction_bids")
+      .select("team_id, amount")
+      .eq("auction_id", auction.id);
+    if (error || !bidRows?.length) return;
+
+    // Højeste REALISEREDE bud pr. tabende hold (proxy-cascade-bud lander også
+    // i auction_bids, jf. proxyBidding.js — så dette dækker BÅDE manuelle og
+    // autobud-drevne tabere, uden nogensinde at røre auction_proxy_bids).
+    const maxByTeam = new Map();
+    for (const row of bidRows) {
+      if (!row.team_id || row.team_id === winnerId) continue;
+      const prevMax = maxByTeam.get(row.team_id) ?? 0;
+      if (row.amount > prevMax) maxByTeam.set(row.team_id, row.amount);
+    }
+    if (maxByTeam.size === 0) return;
+
+    // best-effort: en fejlet navne-lookup falder tilbage til en generisk label
+    // nedenfor i stedet for at vælte den allerede-committede finalisering.
+    const { data: winnerTeam, error: winnerTeamError } = await supabase
+      .from("teams")
+      .select("name")
+      .eq("id", winnerId)
+      .maybeSingle();
+    if (winnerTeamError) {
+      console.error(
+        `  ⚠️  notifyLosingAuctionBidders: vinder-navn-opslag fejlede for auktion ${auction.id}:`,
+        winnerTeamError.message
+      );
+    }
+    const winnerName = winnerTeam?.name || "Another manager";
+    const riderName = `${rider.firstname} ${rider.lastname}`;
+
+    for (const [teamId, yourMax] of maxByTeam) {
+      const overBid = price - yourMax;
+      await notifyTeamOwner(
+        teamId,
+        "auction_lost",
+        "You lost the bidding war",
+        `${winnerName} snatched ${riderName} for ${price} CZ$ — ${overBid} CZ$ over your top bid of ${yourMax} CZ$.`,
+        auction.id,
+        {
+          riderId: rider.id,
+          titleCode: "notif.auctionLostToRival.title",
+          titleParams: {},
+          messageCode: "notif.auctionLostToRival.message",
+          messageParams: { winnerName, rider: riderName, price, overBid, yourMax },
+        }
+      ).catch(() => {
+        // best-effort: én tabers notif-fejl må ikke stoppe de øvrige i loopet.
+      });
+    }
+  } catch (e) {
+    // best-effort: se funktionens doc-comment — en fejlet reveal-notifikation
+    // må ALDRIG kunne rulle den allerede-committede finalisering tilbage.
+    console.error(
+      `  ⚠️  notifyLosingAuctionBidders fejlede for auktion ${auction?.id} (ikke-fatal):`,
+      e.message
+    );
+  }
+}
+
 async function closeAuction({
   supabase,
   auction,
@@ -373,6 +462,10 @@ async function tryPlaceYouthWinnerOnSenior({
     amount: price,
   });
 
+  // #3401: øvrige budgivere på denne ungdomsauktion får post-hammerslag-reveal
+  // med vinderens navn (se funktionens doc-comment for fair-play-grænsen).
+  await notifyLosingAuctionBidders({ supabase, notifyTeamOwner, auction, rider, winnerId: bidderId, price });
+
   return { placed: true };
 }
 
@@ -612,6 +705,10 @@ async function finalizeYouthAuctionRecord({
     rider_name: `${rider.firstname} ${rider.lastname}`,
     amount: price,
   });
+
+  // #3401: øvrige budgivere på denne ungdomsauktion (akademi-fallback) får
+  // post-hammerslag-reveal med vinderens navn (se funktionens doc-comment).
+  await notifyLosingAuctionBidders({ supabase, notifyTeamOwner, auction, rider, winnerId: bidderId, price });
 
   // #2648 (intake-udløb v2, ejer-beslutning 18/7): denne auktion stammer fra et
   // udløbet intake-tilbud NETOP HVIS auction.expired_intake_team_id er sat —
@@ -1100,6 +1197,17 @@ async function finalizeAuctionRecord({
       rider_id: auction.rider.id,
       rider_name: `${auction.rider.firstname} ${auction.rider.lastname}`,
       amount: price,
+    });
+
+    // #3401: øvrige budgivere på denne auktion får post-hammerslag-reveal med
+    // vinderens navn (se funktionens doc-comment for fair-play-grænsen).
+    await notifyLosingAuctionBidders({
+      supabase,
+      notifyTeamOwner,
+      auction,
+      rider: auction.rider,
+      winnerId: effectiveBidderId,
+      price,
     });
 
     await closeAuction({

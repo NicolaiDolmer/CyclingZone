@@ -188,6 +188,77 @@ export const AUCTIONS = [
   },
 ];
 
+// #3401: post-hammerslag-reveal — én AFSLUTTET auktion til AuctionHistoryPage
+// (status=eq.completed-queryen, se mockHandlers.js restRows("auctions")) + dens
+// fulde bud-historik (auction_bids). Egen fiktiv rider + tredje "rival"-hold
+// (ikke RIVAL_TEAM) så fixturen ikke forurener de eksisterende active-auktion-
+// eller rider-ejerskabs-antagelser andre specs bygger på.
+const BIDWAR_RIDER = {
+  id: "rider-bidwar",
+  firstname: "Théo",
+  lastname: "Journal",
+  birthdate: "2000-02-18",
+  market_value: 380000,
+  salary: 38000,
+  is_u25: true,
+  nationality_code: "fr",
+  team_id: TEST_TEAM.id,
+};
+
+export const BIDWAR_RIVAL_TEAM = { id: "team-bidwar-rival", name: "Northwind Cycling" };
+
+export const COMPLETED_AUCTIONS = [
+  {
+    id: "auction-completed-1",
+    rider_id: BIDWAR_RIDER.id,
+    seller_team_id: null,
+    current_bidder_id: TEST_TEAM.id,
+    current_price: 340000,
+    actual_end: "2026-08-04T18:12:00.000Z",
+    status: "completed",
+    is_guaranteed_sale: false,
+    rider: BIDWAR_RIDER,
+    seller: null,
+    winner: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+  },
+];
+
+export const COMPLETED_AUCTION_BIDS = [
+  { id: "bidwar-1", auction_id: "auction-completed-1", team_id: BIDWAR_RIVAL_TEAM.id, amount: 260000, bid_time: "2026-08-04T17:40:00.000Z", team: BIDWAR_RIVAL_TEAM },
+  { id: "bidwar-2", auction_id: "auction-completed-1", team_id: TEST_TEAM.id, amount: 280000, bid_time: "2026-08-04T17:52:00.000Z", team: TEST_TEAM },
+  { id: "bidwar-3", auction_id: "auction-completed-1", team_id: BIDWAR_RIVAL_TEAM.id, amount: 310000, bid_time: "2026-08-04T18:05:00.000Z", team: BIDWAR_RIVAL_TEAM },
+  { id: "bidwar-4", auction_id: "auction-completed-1", team_id: TEST_TEAM.id, amount: 340000, bid_time: "2026-08-04T18:12:00.000Z", team: TEST_TEAM },
+];
+
+// #3401: taber-notifikation-fixturen til NotificationsPage — én "auction_lost"
+// med den nye {titleCode,messageCode}-metadata (renderBackendMessage), så
+// skærmbilledet af den ægte lokaliserede tekst kan tages deterministisk.
+export const SEED_NOTIFICATIONS = [
+  {
+    id: "notif-bidwar-lost",
+    user_id: TEST_USER.id,
+    type: "auction_lost",
+    title: "You lost the bidding war",
+    message: "Northwind Cycling snatched Théo Journal for 340,000 CZ$, 12,000 CZ$ over your top bid of 328,000 CZ$.",
+    related_id: "auction-completed-2",
+    is_read: false,
+    created_at: "2026-08-05T09:14:00.000Z",
+    metadata: {
+      riderId: "rider-bidwar",
+      titleCode: "notif.auctionLostToRival.title",
+      titleParams: {},
+      messageCode: "notif.auctionLostToRival.message",
+      messageParams: {
+        winnerName: "Northwind Cycling",
+        rider: "Théo Journal",
+        price: 340000,
+        overBid: 12000,
+        yourMax: 328000,
+      },
+    },
+  },
+];
+
 // ── Race-hub seed (#prelive-harness, A2) ─────────────────────────────────────
 // Realistisk løbs-data så /races/:id + board + strategi rendrer ægte indhold på en
 // Vercel-preview. Dækker hele livscyklussen: 1 kommende stage-race, 1 "I gang"

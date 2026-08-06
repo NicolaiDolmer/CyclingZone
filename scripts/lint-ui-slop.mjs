@@ -55,6 +55,12 @@ export const EXEMPT_FILES = new Set([
   // Patch notes-historik er indhold, ikke UI-kode: body-tekst kan citere hex/emoji
   // fra tidligere ændringer ("fjernede gold-glow", emoji nævnt i en gammel note).
   "frontend/src/data/patchNotes.js",
+  // #3397: Hero & Agony PNG-eksport tegner til <canvas> via Canvas 2D API'et,
+  // som ikke kan læse Tailwind-klasser/CSS-custom-properties — ctx.fillStyle
+  // kræver en literal farvestreng. De 5 hex-værdier ER indexs.css' dark-theme-
+  // tokens, bevidst PINNET (ikke live-læst) så et delt kort ser ens ud uanset
+  // eksportørens lys/mørk-indstilling (se filens egen header-kommentar).
+  "frontend/src/lib/heroAgonyExport.js",
 ]);
 
 // --- Detektorer (rene funktioner paa kildestrenge) ------------------------

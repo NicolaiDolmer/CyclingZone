@@ -263,6 +263,10 @@
       "title": "Autobud annulleret",
       "message": "Prisen på {riderName} har passeret dit autobud-loft på {maxAmount} CZ$. Autobuddet er annulleret og din reserverede saldo frigivet."
     },
+    "auctionLostToRival": {
+      "title": "Du tabte budkrigen",
+      "message": "{winnerName} snuppede {rider} for {price} CZ$, {overBid} CZ$ over dit højeste bud på {yourMax} CZ$."
+    },
     "debtWarning": {
       "title": "⚠️ Negativ saldo",
       "message": "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer."

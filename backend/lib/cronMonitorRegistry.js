@@ -158,6 +158,7 @@ export const ALL_CRON_MONITORS = [
   // for de seneste completed sæsoner (60 min-kadence, samme som entry-generator/
   // discord-race-digest). Idempotent no-op når intet mangler.
   ["season-documentary", CRON_MONITOR_60MIN],
+  ["fairplay-scoring", CRON_MONITOR_24H],
 ];
 
 // ─── UNMONITORED_CRON_TICKS ────────────────────────────────────────────────

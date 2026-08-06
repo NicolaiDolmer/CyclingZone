@@ -4,10 +4,24 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.98",
+    "version": "7.99",
     "date": "2026-08-06",
     "label": "Beta",
     "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions get faces: see the bidding war after the hammer falls",
+          "body": "Completed auctions now have a See the bidding war button that opens the full story of the fight: which teams bid, when, and for how much, in order, with the winning bid marked. Losing an auction also tells you who beat you and by how much. Live auctions stay exactly as anonymous as before: nothing is revealed until the auction has closed, and automatic bid limits are never shown to anyone."
+        },
+        "da": {
+          "title": "Auktioner får ansigter: se budkrigen efter hammerslaget",
+          "body": "Afsluttede auktioner har nu en Se budkrigen-knap der åbner hele kampens historie: hvilke hold der bød, hvornår og med hvor meget, i rækkefølge, med det vindende bud markeret. Taber du en auktion, får du også at vide hvem der slog dig og med hvor meget. Live-auktioner er præcis lige så anonyme som før: intet afsløres før auktionen er lukket, og automatiske bud-lofter vises aldrig for nogen."
+        },
+        "refs": [3401]
+      },
       {
         "category": "new",
         "audience": "player",
@@ -21,6 +35,55 @@ export const PATCHES = [
           "body": "Efter en afsluttet sæson viser /seasons nu en dokumentar-sektion under din sæsonopsummering: din største signing, dit bedste resultat, din bedste dag og din tætteste rival i slutstillingen, skrevet som en kort fortælling bygget af dine egne verificerede tal. Den genereres én gang pr. hold, og alle læser samme tekst. En Download delekort-knap ved siden af eksporterer et screenshot-klart billede med dit holdnavn og sæsonens vigtigste tal."
         },
         "refs": [3402]
+      }
+    ]
+  },
+  {
+    "version": "7.98",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Career firsts are now moments: maiden wins, first podiums, first jerseys",
+          "body": "The game now notices when something happens for the first time. A rider's first professional win, first podium, first classification jersey, and every 25th win in your club's colours are detected the moment a race is finalized, celebrated on your dashboard and on the race page, and stamped permanently into the rider's career record, so you can find them again seasons later. And racing finally out-celebrates the transfer market: winning a race or a general classification with your own rider now triggers the same celebration that until today only fired when you won an auction."
+        },
+        "da": {
+          "title": "Karriere-førstegange er nu øjeblikke: første sejre, første podier, første trøjer",
+          "body": "Spillet lægger nu mærke til når noget sker for første gang. En rytters første professionelle sejr, første podium, første klassifikationstrøje og hver 25. sejr i din klubs farver opdages i det øjeblik et løb afsluttes, fejres på dit dashboard og på løbssiden, og stemples permanent ind i rytterens karriere, så du kan finde dem igen sæsoner senere. Og løbene fejrer endelig mere end transfermarkedet: vinder din egen rytter et løb eller en samlet klassifikation, udløser det nu den samme fejring der indtil i dag kun fyrede når du vandt en auktion."
+        },
+        "refs": [3398]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Hero & Agony: one personal moment from every stage, ready to share",
+          "body": "After each stage your dashboard now picks the single most dramatic thing that happened to your team and tells it straight: \"Your rider led the break for 142 km, caught 600 m from the line.\" Agony counts as much as glory, because a near-miss is a better story than a quiet 14th place. Every card can be exported as a clean image with one click, sized for Discord, so the moment can leave the game with you. Each line is built from what actually happened in the simulation: nothing is invented."
+        },
+        "da": {
+          "title": "Hero & Agony: ét personligt øjeblik fra hver etape, klar til at dele",
+          "body": "Efter hver etape udvælger dit dashboard nu det mest dramatiske der skete for dit hold, og siger det ligeud: \"Din rytter førte udbruddet i 142 km, hentet 600 m før stregen.\" Nederlag tæller lige så meget som triumf, for et nærved-øjeblik er en bedre historie end en stille 14.-plads. Hvert kort kan eksporteres som et rent billede med ét klik, i Discord-format, så øjeblikket kan forlade spillet sammen med dig. Hver linje er bygget af hvad der faktisk skete i simulationen: intet er opdigtet."
+        },
+        "refs": [3397]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Result notifications tell the story, and Discord gets a daily race digest",
+          "body": "\"Race result is in\" has been retired. Result notifications now lead with what actually happened (the winning move, and how your riders placed), using the same race-report engine that writes the story on the race page. And if you have linked Discord, you now get one direct message a day (at 20:00, never more) summing up how your team raced, with a link straight to the results. Every headline is built from the persisted race data, never invented."
+        },
+        "da": {
+          "title": "Resultat-notifikationer fortæller historien, og Discord får et dagligt løbs-resumé",
+          "body": "\"Race result is in\" er pensioneret. Resultat-notifikationer leder nu med hvad der faktisk skete (det afgørende træk, og hvordan dine ryttere placerede sig), med samme løbsrapport-motor som skriver historien på løbssiden. Og har du koblet Discord, får du nu én direkte besked om dagen (kl. 20, aldrig flere) der opsummerer hvordan dit hold kørte, med link direkte til resultaterne. Hver rubrik er bygget af de gemte løbsdata, aldrig opdigtet."
+        },
+        "refs": [3399, 3400]
       }
     ]
   },

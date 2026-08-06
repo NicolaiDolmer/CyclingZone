@@ -8,7 +8,11 @@ import { createTestDb } from "./testdb/createTestDb.js";
 import { handleAluntaWebhook } from "./aluntaWebhook.js";
 import { FOUNDER_SEAT_CAP } from "./founderSeats.js";
 
-const SCHEMA_FILES = ["schema.sql", "2026-06-26-cz-pro-subscriptions.sql"];
+const SCHEMA_FILES = [
+  "schema.sql",
+  "2026-06-26-cz-pro-subscriptions.sql",
+  "2026-08-06-alunta-subscriptions-last-event-at.sql",
+];
 
 // Minimal supabase-lignende adapter oven på PGlite. Understøtter det udsnit
 // af query-builderen webhook-handleren + founderSeats.js rent faktisk bruger:
@@ -247,5 +251,261 @@ test("checkout.completed ved sæde-cap sætter is_founder=false for ny abonnent"
     const { rows } = await db.query("SELECT status, is_founder FROM public.subscriptions WHERE team_id=$1", [newTeamId]);
     assert.equal(rows[0].status, "active"); // stadig fuld Pro
     assert.equal(rows[0].is_founder, false);
+  });
+});
+
+// ── Fornyelses-/udløbs-events (#2736 — invoice.paid findes ikke hos Alunta) ──
+
+test("invoice.paid genkendes IKKE længere — ingen række oprettes", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000020";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'InvoicePaidGhost') ON CONFLICT DO NOTHING", [teamId]);
+    const res = await fireWebhook(base, {
+      event: "invoice.paid",
+      data: { external_customer_id: teamId, current_period_end: new Date(Date.now() + 30 * 864e5).toISOString() },
+    });
+    assert.equal(res.status, 200); // roligt ignoreret, ikke en fejl (undgår Alunta-retry)
+    const { rows } = await db.query("SELECT * FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows.length, 0);
+  });
+});
+
+test("invoice.created og customer.* ignoreres roligt (200, ingen skrivning)", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000021";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'IgnoredEvents') ON CONFLICT DO NOTHING", [teamId]);
+    for (const event of ["invoice.created", "customer.updated"]) {
+      const res = await fireWebhook(base, { event, data: { external_customer_id: teamId } });
+      assert.equal(res.status, 200);
+    }
+    const { rows } = await db.query("SELECT * FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows.length, 0);
+  });
+});
+
+test("subscription.started sætter status=active + current_period_end, uden at claime founder-sæde", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000022";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'Started') ON CONFLICT DO NOTHING", [teamId]);
+    const periodEnd = new Date(Date.now() + 30 * 864e5).toISOString();
+    const res = await fireWebhook(base, {
+      event: "subscription.started",
+      data: {
+        external_customer_id: teamId,
+        subscription_uuid: "sub_started", customer_uuid: "cus_started",
+        plan_interval: "monthly", current_period_end: periodEnd,
+      },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT status, current_period_end, is_founder FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].status, "active");
+    assert.equal(new Date(rows[0].current_period_end).toISOString(), periodEnd);
+    // Renewal-events må ALDRIG claime nye founder-sæder, selv under sæde-loftet.
+    assert.equal(rows[0].is_founder, false);
+  });
+});
+
+test("subscription.resumed sætter status=active, uden at claime founder-sæde", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000023";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'Resumed') ON CONFLICT DO NOTHING", [teamId]);
+    const res = await fireWebhook(base, {
+      event: "subscription.resumed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_resumed", customer_uuid: "cus_resumed",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT status, is_founder FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].status, "active");
+    assert.equal(rows[0].is_founder, false);
+  });
+});
+
+test("subscription.payment_failed saetter status=past_due og bevarer eksisterende current_period_end", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000024";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'PaymentFailed') ON CONFLICT DO NOTHING", [teamId]);
+    const periodEnd = new Date(Date.now() + 10 * 864e5).toISOString();
+    // Forudgående aktiv periode (fx fra checkout.completed).
+    await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_pf", customer_uuid: "cus_pf",
+        plan_interval: "monthly", current_period_end: periodEnd,
+      },
+    });
+    // Founder-status sat direkte (uafhaengigt af det globale saede-loft, som
+    // tidligere tests i denne fil allerede har fyldt op) — testen handler om
+    // at payment_failed BEVARER en eksisterende founder-status, ikke om
+    // hvordan den blev optjent.
+    await db.query("UPDATE public.subscriptions SET is_founder=true WHERE team_id=$1", [teamId]);
+    // payment_failed-payloaden bærer IKKE current_period_end (lean payload) — skal bevares, ikke nulles.
+    const res = await fireWebhook(base, {
+      event: "subscription.payment_failed",
+      data: { external_customer_id: teamId },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT status, current_period_end, is_founder FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].status, "past_due");
+    assert.equal(new Date(rows[0].current_period_end).toISOString(), periodEnd); // bevaret, ikke nullet
+    assert.equal(rows[0].is_founder, true); // fra checkout.completed — payment_failed roerer den aldrig
+  });
+});
+
+test("subscription.ended saetter status=inactive (matcher reconcilens INACTIVE_ALIASES)", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000025";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'Ended') ON CONFLICT DO NOTHING", [teamId]);
+    await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_ended", customer_uuid: "cus_ended",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    // Founder-status sat direkte — se kommentar i payment_failed-testen ovenfor.
+    await db.query("UPDATE public.subscriptions SET is_founder=true WHERE team_id=$1", [teamId]);
+    const res = await fireWebhook(base, {
+      event: "subscription.ended",
+      data: { external_customer_id: teamId },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT status, is_founder FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].status, "inactive");
+    assert.equal(rows[0].is_founder, true); // permanent, ended roerer den aldrig
+  });
+});
+
+test("subscription.tier_changed opdaterer KUN plan_interval, roerer aldrig status", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000026";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'TierChanged') ON CONFLICT DO NOTHING", [teamId]);
+    await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_tier", customer_uuid: "cus_tier",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    const res = await fireWebhook(base, {
+      event: "subscription.tier_changed",
+      data: { external_customer_id: teamId, plan_interval: "semiannual" },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT status, plan_interval FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].status, "active"); // uaendret
+    assert.equal(rows[0].plan_interval, "semiannual");
+  });
+});
+
+test("subscription.tier_changed uden plan_interval i payload er en no-op", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000027";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'TierChangedNoop') ON CONFLICT DO NOTHING", [teamId]);
+    await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_tier2", customer_uuid: "cus_tier2",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    const res = await fireWebhook(base, {
+      event: "subscription.tier_changed",
+      data: { external_customer_id: teamId },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT plan_interval FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].plan_interval, "monthly"); // uaendret
+  });
+});
+
+test("malformed JSON-body (gyldig signatur) afvises 400", async () => {
+  await withServer(async (base) => {
+    const body = "{ not valid json";
+    const signature = createHmac("sha256", "shh").update(body, "utf8").digest("hex");
+    const res = await fetch(`${base}/api/billing/alunta-webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Signature: signature },
+      body,
+    });
+    assert.equal(res.status, 400);
+  });
+});
+
+// ── Idempotens / replay (#2736) ───────────────────────────────────────────────
+
+test("gentaget event (samme data.uuid) er en no-op — direkte DB-mutation overlever replay", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000028";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'ReplayGuard') ON CONFLICT DO NOTHING", [teamId]);
+    const payload = {
+      event: "subscription.started",
+      data: {
+        external_customer_id: teamId, uuid: "evt_replay_1",
+        subscription_uuid: "sub_replay", customer_uuid: "cus_replay",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+      timestamp: "2026-08-10T10:00:00Z",
+    };
+    const first = await fireWebhook(base, payload);
+    assert.equal(first.status, 200);
+
+    // Simulerer at raekken efterfoelgende blev aendret af noget andet (fx reconcile) —
+    // hvis replay-guarden IKKE virker, vil re-fire af SAMME event overskrive dette igen.
+    await db.query("UPDATE public.subscriptions SET plan_interval='sentinel' WHERE team_id=$1", [teamId]);
+
+    const second = await fireWebhook(base, payload); // Alunta-retry: identisk event
+    assert.equal(second.status, 200);
+
+    const { rows } = await db.query("SELECT plan_interval FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].plan_interval, "sentinel"); // uroert af replay'et
+  });
+});
+
+test("out-of-order: aeldre subscription.cancelled ankommet EFTER nyere subscription.started ignoreres", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000029";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'OutOfOrder') ON CONFLICT DO NOTHING", [teamId]);
+
+    const newer = await fireWebhook(base, {
+      event: "subscription.started",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_ooo", customer_uuid: "cus_ooo",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+      timestamp: "2026-08-10T12:00:00Z", // nyere
+    });
+    assert.equal(newer.status, 200);
+
+    // Denne cancelled-begivenhed er aeldre (fx forsinket i transit) end started ovenfor.
+    const older = await fireWebhook(base, {
+      event: "subscription.cancelled",
+      data: { external_customer_id: teamId, current_period_end: new Date(Date.now() + 5 * 864e5).toISOString() },
+      timestamp: "2026-08-10T11:00:00Z", // aeldre end den allerede-anvendte started
+    });
+    assert.equal(older.status, 200); // afvises roligt (200, ikke fejl — undgaar retry-storm)
+
+    const { rows } = await db.query("SELECT status FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].status, "active"); // IKKE regresseret til cancelled
+  });
+});
+
+test("events uden timestamp faar stadig lov (fail-open) naar der ikke er en lagret last_event_at at sammenligne med", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000030";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'NoTimestamp') ON CONFLICT DO NOTHING", [teamId]);
+    const res = await fireWebhook(base, {
+      event: "subscription.started",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_nots", customer_uuid: "cus_nots",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+      // intet top-level timestamp-felt
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT status FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].status, "active");
   });
 });

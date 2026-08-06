@@ -14,6 +14,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
 | `docs/GITHUB_WORKFLOW.md` | GitHub-workflow eller agent-loop spørgsmål |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
+| `docs/ALUNTA_OPS.md` | Alunta webhook/reconcile-opsætning · Infisical-nøgler · hvilke dashboard-events skal slås til · pre-fornyelses-tjekliste (#2736) |
 | `docs/BUSINESS_STRATEGY.md` | Monetization-spørgsmål · tier-struktur · validation sprint · UCI/IP-risiko · dansk finansiering · fact-check krav |
 | `docs/SPRINT_DASHBOARD.md` | Live status på 30-dages validation sprint · metrics-snapshot · uge-checkbox-tasks · founder-track · decision log |
 | `docs/AGENT_ARCHITECTURE.md` | Cross-agent bug · parallel-session-setup · failure-mode lookup (auto-gen fra learnings) |

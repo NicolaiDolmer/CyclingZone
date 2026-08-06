@@ -4,6 +4,9 @@
  * Én kilde til sandhed for "hvad er en deltagers stabile identitet i race_results",
  * spejlende den genererede SQL-kolonne 1:1:
  *   database/proposals/2026-08-05-race-results-entrant-key-unique-constraint.sql
+ *   + database/2026-08-06-race-results-entrant-uid.sql (#3416: entrant_uid-fallback —
+ *     delete-triggerne snapshotter FK-uuid'en før ON DELETE SET NULL, så nøglen er
+ *     STABIL hen over sletning og navne-dubletter aldrig kan vælte en delete)
  *
  * Bevis for at de to sider er enige: backend/lib/testdb/raceResultsEntrantUnique.integration.test.js
  * kører DEN ÆGTE SQL-fil mod en PGlite-instans og sammenligner med denne fils output.
@@ -40,9 +43,11 @@ export function computeEntrantKey(row) {
   const resultType = row?.result_type;
   if (isTeamScoped(resultType)) {
     if (row?.team_id) return String(row.team_id);
+    if (row?.entrant_uid) return String(row.entrant_uid);
     return `team-name:${norm(row?.team_name)}`;
   }
   if (row?.rider_id) return String(row.rider_id);
+  if (row?.entrant_uid) return String(row.entrant_uid);
   return `rider-name:${norm(row?.rider_name)}::${norm(row?.team_name)}`;
 }
 

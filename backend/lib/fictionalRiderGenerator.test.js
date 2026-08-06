@@ -142,11 +142,30 @@ test("respekterer existingFoldedNames — ingen kollision med 'eksisterende' DB-
   const existing = new Set(
     first.riders.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`)),
   );
+  // #3416: settet MUTERES af kaldet — assert mod et frosset snapshot af FØR-tilstanden.
+  const preExisting = new Set(existing);
   const second = gen({ seed: 22, count: 100, existingFoldedNames: existing });
   for (const r of second.riders) {
     const key = foldNameNordic(`${r.firstname} ${r.lastname}`);
-    assert.ok(!existing.has(key), `kolliderede med eksisterende navn: ${key}`);
+    assert.ok(!preExisting.has(key), `kolliderede med eksisterende navn: ${key}`);
   }
+});
+
+test("#3416-regression: to kald der DELER samme set giver aldrig overlappende navne (kerne+hale-mønstret)", () => {
+  // Præcis buildWeakStarterPool-mønstret fra aiTeamGenerator/starterSquadAllocator:
+  // to separate kald (kerne, hale) med SAMME set-instans. Før fixet kopierede
+  // generatoren settet, så halen ikke kendte kernens navne — prod endte med 21 hold
+  // med navne-dubletter, som væltede rytter-sletning (race_results_entrant_unique).
+  const shared = new Set();
+  const core = gen({ seed: 31, count: 80, existingFoldedNames: shared });
+  const tail = gen({ seed: 32, count: 80, existingFoldedNames: shared });
+  const coreNames = new Set(core.riders.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`)));
+  for (const r of tail.riders) {
+    const key = foldNameNordic(`${r.firstname} ${r.lastname}`);
+    assert.ok(!coreNames.has(key), `hale-kaldet genbrugte kernens navn: ${key}`);
+  }
+  // Og settet er akkumuleret (kontrakten som kaldsstederne hviler på).
+  assert.ok(shared.size >= 160, "det delte set skal indeholde begge kalds navne");
 });
 
 // ── Garanteret nationalitets-repræsentation ───────────────────────────────────

@@ -29,6 +29,7 @@
     "board:repair-members-after-dna": "node scripts/repairBoardMembersAfterDna.js",
     "pro:reconcile": "node scripts/reconcileAluntaSubscriptions.js",
     "pro:reconcile:apply": "node scripts/reconcileAluntaSubscriptions.js --apply",
+    "fairplay:dryrun": "node scripts/fairplayScoringDryRun.js",
     "test": "node scripts/run-tests.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

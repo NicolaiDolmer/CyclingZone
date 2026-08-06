@@ -82,6 +82,7 @@ import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // 
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
+import { runFairplayScoringSweep } from "./lib/fairplayFlagsCron.js"; // #3138
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 // #2892 — cron-monitor-registret (config-cadences + ALL_CRON_MONITORS) er
 // udtrukket til lib/cronMonitorRegistry.js, så det kan importeres direkte af
@@ -1081,6 +1082,21 @@ async function runAluntaSubscriptionReconcileCron() {
   }
 }
 
+// ─── Fair-play scoring-sweep (#3138) ─────────────────────────────────────────
+// Dagligt sweep der kombinerer detektorernes signaler (#3135/#3136/#3137) til
+// én vægtet score pr. par og upserter mistænkte hændelser i fairplay_flags —
+// RENT read-only analyse-lag, ingen håndhævelse (ejeren reviewer i
+// /admin/fairplay). Aktiverings-gate: tabellens eksistens — sweepet skipper
+// roligt indtil database/2026-08-06-3138-fairplay-flags.sql er applied.
+async function runFairplayScoringCron() {
+  const r = await runFairplayScoringSweep({ supabase, now: new Date() });
+  if (r.skipped) return; // migration ikke applied endnu — bevidst stille
+  console.log(
+    `🕵️  Fair-play-sweep: ${r.flags.length} over tærsklen (${r.upserted} upserted, ` +
+      `${r.skippedDismissed} dismissed-skippet) af ${r.tradingPairs} handlende par (#3138)`
+  );
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -1459,6 +1475,16 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // #3138 — dagligt fair-play scoring-sweep. Read-only analyse (upsert i
+  // service-role-only fairplay_flags); skipper roligt indtil migrationen er
+  // applied. Boot-run nedenfor gør 24h-monitoren ærlig (jf. #2389/B5:
+  // 24h-intervallet nulstilles ved hvert deploy) — sweepet er idempotent
+  // (upsert på dedup-nøgle, dismissed røres aldrig), så det er sikkert.
+  setInterval(
+    trackedTick("fairplay scoring-sweep", monitorCron("fairplay-scoring", runFairplayScoringCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
@@ -1493,6 +1519,9 @@ export function startCron() {
   // 24h-monitoren ærlig og fylder ikke ventende tilbud unødigt hvis en deploy
   // rammer lige efter det normale tick.
   trackedTick("intake-offer-expiry", runIntakeOfferExpirySweepCron)();
+  // #3138: idempotent upsert på dedup-nøgle + tavs skip før migration — boot-run
+  // gør 24h-monitoren ærlig uden risiko for dubletter eller støj.
+  trackedTick("fairplay scoring-sweep", runFairplayScoringCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
 }
 
