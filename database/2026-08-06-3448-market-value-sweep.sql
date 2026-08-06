@@ -7,8 +7,8 @@
 -- findes for at gøre håndtagene synlige i app_config i stedet for at kræve en
 -- håndskrevet INSERT den dag ejeren vil teste den.
 --
--- Slå TIL (kræver ejer-go — loft-valget afventer stadig, se #3448's anden
--- kommentar: ±15/±25(anbefalet)/±40 %):
+-- Slå TIL (ejer-go givet 6/8 for søndag 9/8: 50/50-blend + ±25 %-loft,
+-- se #3448 kommentar 3):
 --   UPDATE public.app_config SET value = '"on"'::jsonb WHERE key = 'market_value_sweep_enabled';
 -- Slå FRA igen:
 --   UPDATE public.app_config SET value = '"off"'::jsonb WHERE key = 'market_value_sweep_enabled';
@@ -36,11 +36,11 @@
 INSERT INTO public.app_config (key, value, description)
 VALUES
   ('market_value_sweep_enabled', '"off"'::jsonb,
-   'Markedsdrevet værdi-eftersyn (#3448). ''on'' = marketValueSundaySweep.js kører hver søndag (dansk tid): blander riders.base_value mod markedsmodel v1.1''s pris-gæt (backend/lib/marketValueModelV1.json), vægtet med hver rytters handelsevidens-tæthed (support-guard, K=12/±5 O/±3 år) og loftet af market_value_weekly_cap pr. uge. ''off'' (default) = ingen ændring, sweepen no-op''er stille. Ejer-go afventer stadig loft-valg (#3448, ±15/±25(anbefalet)/±40 %).'),
+   'Markedsdrevet værdi-eftersyn (#3448). ''on'' = marketValueSundaySweep.js kører hver søndag (dansk tid): blander riders.base_value mod markedsmodel v1.1''s pris-gæt (backend/lib/marketValueModelV1.json), vægtet med hver rytters handelsevidens-tæthed (support-guard, K=12/±5 O/±3 år) og loftet af market_value_weekly_cap pr. uge. ''off'' (default) = ingen ændring, sweepen no-op''er stille. Ejer-go givet 6/8 (±25 %-loft); flippes ''on'' ved søndags-aktiveringen 9/8 (#3448).'),
   ('market_value_global_weight', '0.5'::jsonb,
    'Global markedsvægt FØR support-multiplikation (#3448): w_rider = market_value_global_weight × support(rider). 0.5 er tallet #3448''s konvergens-simulering brugte for de to første uger (9/8+16/8) — kalibreret op til 1.0 ved sæsonskiftet (23/8) i simuleringen, IKKE automatisk her (kræver eksplicit ejer-opdatering af denne nøgle). Ugyldig/manglende værdi falder tilbage til 0.5.'),
   ('market_value_weekly_cap', '0.25'::jsonb,
-   'Ugentligt pr.-rytter ændrings-loft (#3448): |ny − nuværende| / nuværende <= denne værdi, hver søndag. 0.25 (±25 %) er den ANBEFALEDE kandidat fra konvergens-simuleringen (50,9 % konvergens ved 23/8, kontrolleret enkelt-uge-chok) — IKKE en ejer-godkendt beslutning endnu (kandidater: ±15/±25/±40 %, se #3448 kommentar 2). Ugyldig/manglende værdi falder tilbage til 0.25.')
+   'Ugentligt pr.-rytter ændrings-loft (#3448): |ny − nuværende| / nuværende <= denne værdi, hver søndag. 0.25 (±25 %) er ejer-besluttet 6/8 ud fra konvergens-simuleringen (50,9 % konvergens ved 23/8, kontrolleret enkelt-uge-chok — se #3448 kommentar 2+3). Ugyldig/manglende værdi falder tilbage til 0.25.')
 ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.market_value_sunday_sweep_log (
