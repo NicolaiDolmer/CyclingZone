@@ -78,6 +78,7 @@ import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
 import { runDiscordRaceDigestSweep } from "./lib/discordRaceDigestSweep.js"; // #3400
+import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // #3402
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
@@ -1047,6 +1048,19 @@ async function runDiscordRaceDigestSweepCron() {
   if (r.sent) console.log(`🚴 Discord-race-digest: ${r.sent} DM sendt (${r.candidates} kandidater)`);
 }
 
+// #3402: Sæsondokumentaren — batch-generering pr. hold for de seneste completed
+// sæsoner. Idempotent (upsert på season_id+team_id), no-op når intet mangler —
+// se seasonDocumentarySweep.js's header for "batch natten over"-begrundelsen.
+async function runSeasonDocumentarySweepCron() {
+  const r = await runSeasonDocumentarySweep({ supabase });
+  if (r.generated || r.failed) {
+    console.log(`📖 Sæsondokumentar-sweep: ${r.generated} genereret, ${r.failed} fejlet (${r.seasonsChecked} sæsoner tjekket)`);
+  }
+  if (r.failed) {
+    for (const e of r.errors) sentryCapture(new Error(`seasonDocumentarySweep: ${e.seasonId}/${e.teamId}: ${e.message}`));
+  }
+}
+
 // ─── Alunta subscription-reconcile (#2736) ────────────────────────────────────
 // aluntaWebhook.js's ACTIVATING-set lytter på 'invoice.paid', men det event
 // FINDES IKKE hos Alunta — current_period_end opdateres derfor muligvis
@@ -1423,6 +1437,14 @@ export function startCron() {
   );
   setInterval(
     trackedTick("discord-race-digest sweep", monitorCron("discord-race-digest", runDiscordRaceDigestSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
+
+  // #3402 — sæsondokumentar-sweep. 60-min-kadence (samme som entry-generator/
+  // discord-race-digest): fanger et sæsonskifte inden for timen og fylder
+  // resten op idempotent på efterfølgende ticks.
+  setInterval(
+    trackedTick("season-documentary sweep", monitorCron("season-documentary", runSeasonDocumentarySweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
   );
 

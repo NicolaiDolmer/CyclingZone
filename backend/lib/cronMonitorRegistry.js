@@ -154,6 +154,10 @@ export const ALL_CRON_MONITORS = [
   ["email-race-digest", CRON_MONITOR_60MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_24H],
+  // #3402: sæsondokumentar-sweep — polleren der fylder season_documentaries op
+  // for de seneste completed sæsoner (60 min-kadence, samme som entry-generator/
+  // discord-race-digest). Idempotent no-op når intet mangler.
+  ["season-documentary", CRON_MONITOR_60MIN],
 ];
 
 // ─── UNMONITORED_CRON_TICKS ────────────────────────────────────────────────

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.98",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Seasons",
+        "en": {
+          "title": "The season documentary: a written recap of your season",
+          "body": "After a completed season, /seasons now shows a documentary section below your season recap: your biggest signing, your top result, your best day, and the closest rival in your final standings, written up as a short narrative built from your own verified numbers. It's generated once per team and everyone reads the same text. A Download share card button next to it exports a screenshot-ready image with your team name and the season's headline facts."
+        },
+        "da": {
+          "title": "Sæsondokumentaren: en skriftlig opsummering af din sæson",
+          "body": "Efter en afsluttet sæson viser /seasons nu en dokumentar-sektion under din sæsonopsummering: din største signing, dit bedste resultat, din bedste dag og din tætteste rival i slutstillingen, skrevet som en kort fortælling bygget af dine egne verificerede tal. Den genereres én gang pr. hold, og alle læser samme tekst. En Download delekort-knap ved siden af eksporterer et screenshot-klart billede med dit holdnavn og sæsonens vigtigste tal."
+        },
+        "refs": [3402]
+      }
+    ]
+  },
+  {
     "version": "7.97",
     "date": "2026-08-05",
     "label": "Beta",

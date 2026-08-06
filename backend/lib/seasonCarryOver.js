@@ -178,6 +178,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "Motor-beregnet stilling pr. sæson. Nulstilles korrekt af sig selv fordi den nye sæson starter uden resultater.",
   },
+  {
+    table: "season_documentaries",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#3402: genereret narrativ-cache pr. (season_id, team_id), skrevet ÉN gang af backend/lib/seasonDocumentarySweep.js efter sæsonslut. Samme skema som academy_season_intake_runs — manageren konfigurerer intet her, og en carry-over ville være direkte skadelig: en kopieret dokumentar ville fortælle den GAMLE sæsons historie under den NYE sæsons overskrift. Den nye sæson starter korrekt tom (ingen række) og sweepen fylder den op efter NÆSTE sæsonslut.",
+  },
 ]);
 
 /** Tabeller registret kender, som et Set. */

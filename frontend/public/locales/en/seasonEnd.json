@@ -94,5 +94,24 @@
     },
     "share": "Copy recap link",
     "shareCopied": "Link copied"
+  },
+  "documentary": {
+    "heading": "The documentary",
+    "metaFinal": "Season {number} · final",
+    "eyebrow": "Your season, told in full",
+    "error": "Couldn't load the season documentary.",
+    "sourceLlm": "AI-polished narrative",
+    "sourceDeterministic": "Season narrative",
+    "export": "Download share card",
+    "exporting": "Preparing…",
+    "exportError": "Couldn't create the image. Please try again.",
+    "card": {
+      "eyebrow": "Season {number} documentary",
+      "signing": "Marquee signing",
+      "result": "Biggest result",
+      "rival": "Closest rival",
+      "points": "points",
+      "finalPoints": "Final points"
+    }
   }
 }

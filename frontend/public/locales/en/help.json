@@ -422,6 +422,10 @@
         "title": "When can a season be ended?",
         "text": "Admin can only end a season once all pending race results for the season's races have been processed. As long as submissions are waiting for approval or rejection, season completion is blocked."
       },
+      "seasonDocumentary": {
+        "title": "The season documentary",
+        "text": "After a completed season, /seasons shows a documentary section for your team below the season recap: your season's biggest signings, your top result, your best day, and the closest rival in your final standings, written up as a short narrative. It is generated once per team per season and cached, so everyone reads the same text. The default version is built from a template over your own verified numbers; if the owner turns on the optional AI-polish layer, the same facts are rewritten into flowing prose without adding anything new. A Download share card button next to it exports a screenshot-ready image with your team name and the season's headline facts."
+      },
       "adminRecomputeStandings": {
         "title": "Admin: recompute standings on drift",
         "text": "If an active or completed season is missing standings due to older data drift, admin can use the '↻ Standings' button on the Admin page. It recomputes the table from the stored `race_results`, creates the missing standings rows and updates the division's internal rank that the board uses at season end."
