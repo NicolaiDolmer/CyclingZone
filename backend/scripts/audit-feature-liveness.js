@@ -90,6 +90,11 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // discord_race_digest_log (digest-sweepet, merged 6/8): skrives først af den
+  // daglige kl. 20-kørsel (DISCORD_DIGEST_HOUR_COPENHAGEN). Tabellen var korrekt
+  // tom hele merge-dagen og gjorde alle PR-audits røde. Fjern når rows (efter
+  // første digest-kørsel 6/8 aften).
+  "discord_race_digest_log",
   // Forum v1 (#3199, 6/8): fem nye tabeller, alle korrekt tomme indtil spillerne
   // tager forummet i brug. Fjern entries efterhånden som tabellerne får rows
   // (posts/replies forventes først; reports/poll-votes kan være tomme længe).
