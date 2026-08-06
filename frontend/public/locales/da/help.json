@@ -461,6 +461,20 @@
         "title": "Hvad er Hero & Agony-kortet?",
         "text": "Dit dashboard viser også et Hero & Agony-kort: ét personligt øjeblik fra dit holds senest kørte etape, valgt automatisk ud fra hvad der rent faktisk skete med dine ryttere den dag, det kan være en etapesejr, et skifte i den samlede føring, en rytter der ofrede sit eget resultat for holdet, eller en favorit der endte uden for top 15. Modgang tæller lige så meget som triumf: en rytter der sad i udbruddet hele dagen og blev hentet lige før stregen giver en bedre historie end en stille midterplacering, og kortet er bygget til at afspejle det. Klik 'Del som billede' for at hente et redaktionelt PNG af kortet, klar til at poste på Discord."
       },
+      "stageEndings": {
+        "title": "Etape-afslutninger forklaret",
+        "text": "Hver etape har en finaletype vist ved siden af terræn-badget i kalenderen og på løbssiden. Hold musen over eller tryk på badget for hele forklaringen dér; tabellen herunder samler alle typerne ét sted.",
+        "rows": [
+          ["Afslutning", "Hvad det betyder"],
+          ["Massespurt", "Feltet holder sammen, og etapen afgøres i en massespurt."],
+          ["Reduceret spurt", "En reduceret gruppe holder hjem til mål og spurter om sejren."],
+          ["Stikfinale", "Et kort, stejlt ryk tæt på mål belønner et sent angreb frem for en ren spurt."],
+          ["Bjergfinale", "Selve stigningen er målstregen, hvor dagens største tidsforskelle opstår."],
+          ["Nedkørselsfinale", "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen."],
+          ["Soloenkeltstart", "Hver rytter starter alene mod uret, uden slipstrøm."],
+          ["Udbrud", "En tidlig udbrudsgruppe holder sig fri af feltet og opgør sejren indbyrdes."]
+        ]
+      },
       "stageProfile": {
         "title": "Terræn og etapeprofiler",
         "text": "Fra sæson 2 viser løb med rutedata etapens rigtige profil: det er den nøjagtige rute race-motoren afvikler, med hver stignings længde, hældning og kategori, mellemsprinten, brostenssektorer, og hvor målstregen ligger. En stignings kategori afgør hvor mange bjergpoint der er på spil på toppen, og en målgang på toppen af en stigning giver større tidsforskelle end en målgang efter en nedkørsel. Tryk på en markør på profilen for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt. Ældre løb uden rutedata viser stadig det tidligere terræn-badge: en skematisk silhuet og en vejledende kategori, ikke en målt profil."

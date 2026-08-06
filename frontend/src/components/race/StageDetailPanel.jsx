@@ -3,6 +3,7 @@ import { profileShape, profileLabelKey, finaleLabelKey } from "../../lib/stagePr
 import { hasRouteData } from "../../lib/stageRouteProfile.js";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import TerrainDNABar from "./TerrainDNABar.jsx";
+import Tooltip from "../ui/Tooltip.jsx";
 
 // Valgt-etape-panel: stor silhuet/graf + finale-markør + terræn-navn + terrain-DNA.
 // profile mangler/ukendt terræn → null (graceful, som StageProfileCard).
@@ -25,11 +26,13 @@ export default function StageDetailPanel({ profile, stageLabel }) {
             <polyline points={`${points} 100,24 0,24`} fill="currentColor" fillOpacity="0.06" stroke="none" />
             <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
           </svg>
-          {/* Finale-markør ved målet (højre ende). */}
+          {/* Finale-markør ved målet (højre ende). #2756: title viser FORKLARINGEN,
+              ikke bare gentager label-teksten — "Breakaway" alene forklarede intet
+              (Discord-feedback, thelamba 20/7). */}
           <span
             className="absolute -top-0.5 right-0 text-cz-accent-t"
             aria-hidden="true"
-            title={finaleKey ? t(`detail.${finaleKey}`) : ""}
+            title={finaleKey ? t(`detail.finaleTypeHint.${profile.finale_type}`) : ""}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
               <path d="M3 1 V13" stroke="currentColor" strokeWidth="1.5" />
@@ -43,10 +46,19 @@ export default function StageDetailPanel({ profile, stageLabel }) {
           {stageLabel && <span className="text-cz-3 font-normal me-1.5">{stageLabel} ·</span>}
           {t(`detail.${labelKey}`)}
         </p>
+        {/* #2756: uforklarede stage-ending-typer ("Summit"/"Downhill" var indlysende,
+            "Breakaway" var det ikke — Discord-feedback, thelamba 20/7). Tooltippen
+            forklarer HVAD finalen betyder; en <button> (ikke <span>) gør den
+            tap-tilgængelig på mobil via focus-within, ikke kun hover. */}
         {finaleKey && (
-          <span className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30">
-            {t(`detail.${finaleKey}`)}
-          </span>
+          <Tooltip label={t(`detail.finaleTypeHint.${profile.finale_type}`)}>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 cursor-help"
+            >
+              {t(`detail.${finaleKey}`)}
+            </button>
+          </Tooltip>
         )}
       </div>
       <div className="mt-3">
