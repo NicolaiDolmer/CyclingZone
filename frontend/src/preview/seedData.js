@@ -1194,6 +1194,21 @@ export const SEED_CALENDAR = {
     calEntry({ id: "cal-8", name: "Tour des Hauts Plateaux", raceType: "stage_race", stages: 8, division: 1, poolId: 1, poolLabel: "Division 1", gameDayStart: 14, gameDayEnd: 17, date: "2026-07-04", terrain: "mountain", isMine: false }),
     calEntry({ id: "cal-9", name: "Giro Veneto", raceType: "single", stages: 1, division: 3, poolId: 5, poolLabel: "Division 3 — B", gameDayStart: 20, date: "2026-07-10", terrain: "hilly", isMine: false }),
     calEntry({ id: "cal-10", name: "Klasika Bizkaia", raceType: "single", stages: 1, division: 1, poolId: 1, poolLabel: "Division 1", gameDayStart: 22, date: "2026-07-12", terrain: "itt", isMine: false }),
+    // #2756 — Division 2 — B (pool 3) had NO entries at all before, so the pool
+    // selector had nothing to prove itself against: switching from "Division 2 — A"
+    // to "— B" looked identical to "no filter". This one race lets a test/screenshot
+    // show a group's calendar actually differing from its sibling group's.
+    calEntry({ id: "cal-12", name: "Roue Tourangelle", raceType: "single", stages: 1, division: 2, poolId: 3, poolLabel: "Division 2 — B", gameDayStart: 12, date: "2026-07-02", terrain: "sprint", isMine: false }),
+    // #2756 — a 5-race day in a division/pool nobody's own team plays in, so the
+    // "+N more" overflow (>4 shown) and the day-detail expand have real coverage.
+    // Division 3 — A only, so this is invisible on the "mine"/"Alle hold" tabs'
+    // existing pixel-snapshot (own division is 2) — it only shows once a player
+    // scouts Division 3 — A specifically.
+    calEntry({ id: "cal-13", name: "Roc d'Azur", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 28, date: "2026-07-23", terrain: "sprint", isMine: false }),
+    calEntry({ id: "cal-14", name: "Tro-Bro Léon", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 28, date: "2026-07-23", terrain: "cobbles", isMine: false }),
+    calEntry({ id: "cal-15", name: "Faun-Ardèche Classic", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 28, date: "2026-07-23", terrain: "hilly", isMine: false }),
+    calEntry({ id: "cal-16", name: "Japan Cup", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 28, date: "2026-07-23", terrain: "mountain", isMine: false }),
+    calEntry({ id: "cal-17", name: "Coppa Bernocchi", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 28, date: "2026-07-23", terrain: "itt", isMine: false }),
   ],
 };
 

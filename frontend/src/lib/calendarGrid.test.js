@@ -12,6 +12,8 @@ import {
   monthsWithRaces,
   stepMonth,
   filterEntries,
+  expandStageEvents,
+  filterStageEvents,
 } from "./calendarGrid.js";
 
 test("daysInMonth håndterer skudår + måneds-længder", () => {
@@ -100,4 +102,38 @@ test("filterEntries: måned + division + mineOnly", () => {
   assert.deepEqual(filterEntries(entries, { year: 2026, month: 7, division: 3 }).map((e) => e.id), ["a"]);
   // Juli + mineOnly.
   assert.deepEqual(filterEntries(entries, { year: 2026, month: 7, mineOnly: true }).map((e) => e.id), ["a"]);
+});
+
+// #2756 — pulje/gruppe-vælgeren ("Division 2 A") kræver at filterStageEvents kan
+// snævre en tier ind til én konkret pulje, oven på det eksisterende division-filter.
+test("expandStageEvents bærer poolId videre fra entryen", () => {
+  const entries = [
+    { id: "r1", name: "Race A", raceType: "single", division: 2, poolId: 3, poolLabel: "Division 2 — B", date: "2026-07-05", terrain: "sprint" },
+  ];
+  const [ev] = expandStageEvents(entries);
+  assert.equal(ev.poolId, 3);
+});
+
+test("expandStageEvents falder tilbage til poolId=null når entryen ikke har en pulje", () => {
+  const entries = [{ id: "r1", name: "Race A", raceType: "single", division: 2, date: "2026-07-05", terrain: "sprint" }];
+  const [ev] = expandStageEvents(entries);
+  assert.equal(ev.poolId, null);
+});
+
+test("filterStageEvents: poolId snævrer en tier ind til én konkret gruppe", () => {
+  const events = [
+    { raceId: "a", name: "A", stage: 1, date: "2026-07-05", division: 2, poolId: 2 },
+    { raceId: "b", name: "B", stage: 1, date: "2026-07-06", division: 2, poolId: 3 },
+    { raceId: "c", name: "C", stage: 1, date: "2026-07-07", division: 1, poolId: 1 },
+  ];
+  // division 2, ingen pulje-filter → begge Division 2-puljer.
+  assert.deepEqual(
+    filterStageEvents(events, { year: 2026, month: 7, division: 2 }).map((e) => e.raceId),
+    ["a", "b"],
+  );
+  // division 2 + pulje 3 → kun gruppe B.
+  assert.deepEqual(
+    filterStageEvents(events, { year: 2026, month: 7, division: 2, poolId: 3 }).map((e) => e.raceId),
+    ["b"],
+  );
 });

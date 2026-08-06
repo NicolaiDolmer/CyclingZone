@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.103",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Scout any division's calendar, and expand a full day",
+          "body": "The calendar's Divisions tab now has a group selector when a division has more than one pool (e.g. 'Division 2 — A'), so you can browse another division's full race program before promotion or relegation, not just the tier as a whole. A day with more than 4 races used to cut off at '+N more' with nothing to click; that text is now a button that opens the day's complete program."
+        },
+        "da": {
+          "title": "Scout en vilkårlig divisions kalender, og fold en hel dag ud",
+          "body": "Kalenderens Divisioner-fane har nu en gruppe-vælger når en division har mere end én pulje (fx 'Division 2 — A'), så du kan gennemse en anden divisions fulde løbsprogram før op- eller nedrykning, ikke kun hele tieren samlet. En dag med mere end 4 løb blev før afskåret ved '+N flere' uden noget at klikke på; den tekst er nu en knap der åbner dagens fulde program."
+        },
+        "refs": [2756]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage-ending badges now explain what they mean",
+          "body": "'Summit finish' and 'Downhill finish' were self-explanatory, but 'Breakaway' was not. Every stage-ending badge (bunch sprint, reduced sprint, punchy finish, summit finish, downhill finish, solo time trial, breakaway) now has a tooltip explaining what it means, and the full list is in Help under Season."
+        },
+        "da": {
+          "title": "Etape-afslutnings-badges forklarer nu hvad de betyder",
+          "body": "'Bjergfinale' og 'Nedkørselsfinale' var selvforklarende, men 'Udbrud' var det ikke. Ethvert etape-afslutnings-badge (massespurt, reduceret spurt, stikfinale, bjergfinale, nedkørselsfinale, soloenkeltstart, udbrud) har nu et tooltip der forklarer hvad det betyder, og hele listen står i Hjælp under Sæson."
+        },
+        "refs": [2756]
+      }
+    ]
+  },
+  {
     "version": "7.102",
     "date": "2026-08-06",
     "label": "Beta",

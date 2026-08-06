@@ -175,6 +175,11 @@ const SECTION_DEFS = [
     blocks: [
       { id: "seasonFlow", kind: "steps" },
       { id: "racesAndResults", kind: "text" },
+      // #2756: stage-ending-typerne (Summit/Downhill/Breakaway/…) var uforklarede i
+      // kalender-/løbsvisningen — Discord-feedback, thelamba 20/7 ("There's 'summit'
+      // and 'downhill', clear as day, but 'breakaway'?"). Tooltips på badget'et
+      // forklarer den enkelte type; denne tabel samler alle på ét sted.
+      { id: "stageEndings", kind: "textRows" },
       { id: "finalKilometre", kind: "text" },
       { id: "prizeMoney", kind: "text" },
       { id: "divisionBonus", kind: "textRows" },

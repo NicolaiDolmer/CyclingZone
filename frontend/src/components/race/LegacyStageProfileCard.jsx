@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../../lib/stageProfileConfig.js";
+import Tooltip from "../ui/Tooltip.jsx";
 
 // #1484 — stiliseret terræn-indikator pr. etape. ÆRLIG: kategori-piktogram fra
 // race_stage_profiles.profile_type, IKKE en målt højdeprofil (#1021). Degraderer
@@ -25,8 +26,15 @@ export default function LegacyStageProfileCard({ profile, stageLabel }) {
         </p>
         <p className="text-cz-1 text-sm font-semibold leading-tight">
           {t(`detail.${labelKey}`)}
+          {/* #2756: samme uforklaret-stage-ending-fix som StageDetailPanel — se
+              dens kommentar for kilden (Discord, thelamba 20/7). */}
           {finaleKey && (
-            <span className="text-cz-3 font-normal"> · {t(`detail.${finaleKey}`)}</span>
+            <Tooltip label={t(`detail.finaleTypeHint.${profile.finale_type}`)}>
+              {" · "}
+              <button type="button" className="text-cz-3 font-normal underline decoration-dotted cursor-help">
+                {t(`detail.${finaleKey}`)}
+              </button>
+            </Tooltip>
           )}
         </p>
         <p className="text-cz-3 text-2xs mt-0.5">{t("detail.stageProfile.note")}</p>
