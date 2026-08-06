@@ -1237,12 +1237,14 @@ export const SEED_PROJECTION = {
 // hyret spejder i SEED_CLUB (der er bevidst stadig default-spejder, #1441 A3).
 //
 // #3458 Fase 1 (Del B "skala-ærlighed"): `types` er nu de RÅ tal ovenfor
-// KØRT GENNEM den ægte percentil-transform (backend/lib/typeRatingScale.js
-// typeRatingPercentile, mod den committede backend/lib/typeRatingQuantiles.json)
+// KØRT GENNEM den ægte kalibrering (backend/lib/typeRatingScale.js
+// calibratedTypeRating, mod den committede, FROSSNE backend/lib/typeRatingCalibration.json)
 // — ikke bare plausible tal. Preview viser dermed PRÆCIS hvad produktion ville
 // returnere for denne rå-profil, inkl. den overraskende (men korrekte) effekt at
-// sprinter/rouleur/brostensrytter rangerer højere relativt til feltet end
-// baroudeur/gc/climber ved samme rå niveau — det ER pointen med fixet.
+// sprinter/rouleur/brostensrytter lander højere på den kalibrerede skala end
+// baroudeur/gc/climber ved samme rå niveau — det ER pointen med fixet: skalaen er nu
+// absolut og ens for alle 8 typer, ikke længere strukturelt skæv til fordel for
+// visse typers formler.
 export const SEED_SCOUTING_REPORT = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
   stars: { lo: 4.5, hi: 5 },

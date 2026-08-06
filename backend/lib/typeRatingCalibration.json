@@ -1,15 +1,16 @@
 {
-  "description": "Kvantil-tabel til percentil-normaliserede type-ratings (#3458 Fase 1, Del B). Pr. type: 101 kvantil-breakpoints (indeks = percentil 0-100) af ratingFromAbilities(LIVE ability_caps, type) over den aktive population (ejede+AI, ikke-pensionerede). Forbruges af backend/lib/typeRatingScale.js (typeRatingPercentile — lineær interpolation, clamp [1,99]). Genberegn ugentligt (design for søndags-sweepen, #3448-kadence — ingen cron endnu, se scripts/buildTypeRatingQuantiles.js).",
-  "generatedAt": "2026-08-06T14:58:01.517Z",
+  "description": "FROSSEN kalibreringskonstant (#3458 Fase 1, Del B) - ikke et levende, befolknings-relativt lag. Fundet empirisk 6/8/2026 ved at fitte ratingFromAbilities(LIVE ability_caps, type) mod den daværende aktive population (ejede+AI, ikke-pensionerede), derefter frosset fast som en engangs-rettelse af MODELLEN: et råt tal transformeres til den samme absolutte 1-99-skala i alle 8 roller, så \"84\" betyder det samme niveau uanset type. Forbruges af backend/lib/typeRatingScale.js (calibratedTypeRating - lineær interpolation i den kalibrerede kurve, clamp [1,99]). Regenereres IKKE automatisk/ugentligt - en rekalibrering er en fremtidig, bevidst DESIGN-beslutning (Fase 2, når type-formlernes vægte efterses), kørt manuelt via scripts/buildTypeRatingCalibration.js.",
+  "frozen": true,
+  "calibratedAt": "2026-08-06T14:58:01.517Z",
   "seasonNumber": 2,
   "n": 6716,
-  "populationFilter": "riders.team_id != null && !riders.is_retired (ejede+AI); rytter uden ability_caps udelades",
+  "calibrationPopulation": "riders.team_id != null && !riders.is_retired (ejede+AI); rytter uden ability_caps udelades",
   "types": {
     "sprinter": {
       "n": 6716,
       "min": 3,
       "max": 99,
-      "quantiles": [
+      "curve": [
         3,
         17,
         19,
@@ -117,7 +118,7 @@
       "n": 6716,
       "min": 3,
       "max": 99,
-      "quantiles": [
+      "curve": [
         3,
         14,
         16,
@@ -225,7 +226,7 @@
       "n": 6716,
       "min": 1,
       "max": 99,
-      "quantiles": [
+      "curve": [
         1,
         12,
         14.3,
@@ -333,7 +334,7 @@
       "n": 6716,
       "min": 1,
       "max": 99,
-      "quantiles": [
+      "curve": [
         1,
         14,
         16.3,
@@ -441,7 +442,7 @@
       "n": 6716,
       "min": 1,
       "max": 99,
-      "quantiles": [
+      "curve": [
         1,
         15.15,
         18,
@@ -549,7 +550,7 @@
       "n": 6716,
       "min": 2,
       "max": 99,
-      "quantiles": [
+      "curve": [
         2,
         16,
         18,
@@ -657,7 +658,7 @@
       "n": 6716,
       "min": 3,
       "max": 99,
-      "quantiles": [
+      "curve": [
         3,
         18,
         21,
@@ -765,7 +766,7 @@
       "n": 6716,
       "min": 1,
       "max": 99,
-      "quantiles": [
+      "curve": [
         1,
         14,
         17,
