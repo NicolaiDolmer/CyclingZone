@@ -1,0 +1,68 @@
+{
+  "page": {
+    "title": "Forum",
+    "subtitle": "Talk with the other managers and share your ideas",
+    "newPost": "New post"
+  },
+  "categories": {
+    "all": "All",
+    "general": "General",
+    "feedback_ideas": "Feedback & ideas"
+  },
+  "list": {
+    "pinnedHeading": "Pinned",
+    "latestHeading": "Latest posts",
+    "replies": "{count, plural, =0 {No replies} one {1 reply} other {# replies}}",
+    "poll": "Poll",
+    "loadMore": "Load more",
+    "emptyTitle": "No posts yet",
+    "emptyDescription": "Be the first to start a conversation.",
+    "by": "By {name}"
+  },
+  "compose": {
+    "title": "New post",
+    "categoryLabel": "Category",
+    "titleLabel": "Title",
+    "titlePlaceholder": "What is it about?",
+    "bodyLabel": "Message",
+    "bodyPlaceholder": "Write your post",
+    "pollLabel": "Poll options (admin only, one per line)",
+    "pollHelp": "Add 2 to 8 options to attach a poll to this post.",
+    "submit": "Publish",
+    "cancel": "Cancel"
+  },
+  "post": {
+    "back": "Back to the forum",
+    "repliesHeading": "Replies",
+    "replyLabel": "Your reply",
+    "replyPlaceholder": "Write a reply",
+    "replySubmit": "Reply",
+    "noReplies": "No replies yet. Be the first to answer.",
+    "report": "Report",
+    "delete": "Delete",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinnedTag": "Pinned",
+    "notFoundTitle": "Post not found",
+    "notFoundDescription": "This post may have been removed."
+  },
+  "poll": {
+    "heading": "Poll",
+    "votes": "{count, plural, =0 {No votes yet} one {1 vote} other {# votes}}",
+    "yourVote": "Your vote"
+  },
+  "report": {
+    "title": "Report content",
+    "description": "The report goes straight to the admin. Use it for spam, abuse or anything that does not belong here.",
+    "reasonLabel": "Reason (optional)",
+    "reasonPlaceholder": "Why are you reporting this?",
+    "submit": "Send report",
+    "cancel": "Cancel",
+    "sent": "Thanks. The report has been sent to the admin."
+  },
+  "errors": {
+    "loadFailed": "The forum could not be loaded. Nothing was lost.",
+    "submitFailed": "Could not submit. Try again.",
+    "retry": "Try again"
+  }
+}

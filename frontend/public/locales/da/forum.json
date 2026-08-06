@@ -1,0 +1,68 @@
+{
+  "page": {
+    "title": "Forum",
+    "subtitle": "Snak med de andre managere og del dine idéer",
+    "newPost": "Nyt opslag"
+  },
+  "categories": {
+    "all": "Alle",
+    "general": "Generelt",
+    "feedback_ideas": "Feedback & idéer"
+  },
+  "list": {
+    "pinnedHeading": "Fastgjort",
+    "latestHeading": "Seneste opslag",
+    "replies": "{count, plural, =0 {Ingen svar} one {1 svar} other {# svar}}",
+    "poll": "Afstemning",
+    "loadMore": "Hent flere",
+    "emptyTitle": "Ingen opslag endnu",
+    "emptyDescription": "Vær den første til at starte en samtale.",
+    "by": "Af {name}"
+  },
+  "compose": {
+    "title": "Nyt opslag",
+    "categoryLabel": "Kategori",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Hvad handler det om?",
+    "bodyLabel": "Besked",
+    "bodyPlaceholder": "Skriv dit opslag",
+    "pollLabel": "Afstemningsmuligheder (kun admin, én pr. linje)",
+    "pollHelp": "Tilføj 2 til 8 muligheder for at vedhæfte en afstemning til opslaget.",
+    "submit": "Udgiv",
+    "cancel": "Annullér"
+  },
+  "post": {
+    "back": "Tilbage til forummet",
+    "repliesHeading": "Svar",
+    "replyLabel": "Dit svar",
+    "replyPlaceholder": "Skriv et svar",
+    "replySubmit": "Svar",
+    "noReplies": "Ingen svar endnu. Vær den første til at svare.",
+    "report": "Rapportér",
+    "delete": "Slet",
+    "pin": "Fastgør",
+    "unpin": "Frigør",
+    "pinnedTag": "Fastgjort",
+    "notFoundTitle": "Opslaget blev ikke fundet",
+    "notFoundDescription": "Opslaget kan være blevet fjernet."
+  },
+  "poll": {
+    "heading": "Afstemning",
+    "votes": "{count, plural, =0 {Ingen stemmer endnu} one {1 stemme} other {# stemmer}}",
+    "yourVote": "Din stemme"
+  },
+  "report": {
+    "title": "Rapportér indhold",
+    "description": "Rapporten går direkte til admin. Brug den til spam, chikane eller andet der ikke hører hjemme her.",
+    "reasonLabel": "Begrundelse (valgfri)",
+    "reasonPlaceholder": "Hvorfor rapporterer du dette?",
+    "submit": "Send rapport",
+    "cancel": "Annullér",
+    "sent": "Tak. Rapporten er sendt til admin."
+  },
+  "errors": {
+    "loadFailed": "Forummet kunne ikke indlæses. Intet er gået tabt.",
+    "submitFailed": "Kunne ikke sende. Prøv igen.",
+    "retry": "Prøv igen"
+  }
+}

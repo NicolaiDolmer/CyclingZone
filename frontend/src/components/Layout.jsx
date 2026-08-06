@@ -114,6 +114,9 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/board",          label: t("nav.item.board") },         // 959
         ...scoutingNavItem(scoutSystemEnabled, t),                     // 689
         ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
+        // #3199: nyt socialt lag — ingen brugsdata endnu, placeret sidst i
+        // gruppen indtil Clarity-tallene kan rangere det.
+        { to: "/forum", label: t("nav.item.forum") },
         // #3104 etape C: Personale (~400 sessions) er en fane i Klub nu
         // (/klub?tab=staff) — eget nav-punkt udgik, Klubhus 10 → 9 punkter.
       ],

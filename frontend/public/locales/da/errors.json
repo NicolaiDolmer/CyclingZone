@@ -185,6 +185,23 @@
     "feedback_reply_too_long": "Svaret er for langt",
     "feedback_already_replied": "Denne besked er allerede besvaret",
     "transfer_cooldown_active": "Nye hold kan ikke sende {cooldownAmount}+ CZ$ ud i en enkelt transfer eller byttehandel de første {cooldownHours} time(r). Dette låses op om ca. {unlocksInHours} time(r).",
-    "auction_created_before_account": "Jeres hold blev oprettet efter denne auktion startede, så I kan ikke byde på den. Nyere auktioner er åbne for jer med det samme."
+    "auction_created_before_account": "Jeres hold blev oprettet efter denne auktion startede, så I kan ikke byde på den. Nyere auktioner er åbne for jer med det samme.",
+    "rate_forum": "For mange forum-handlinger på kort tid. Prøv igen om lidt.",
+    "forum_invalid_category": "Ugyldig kategori",
+    "forum_title_required": "En titel er påkrævet",
+    "forum_title_too_long": "Titlen er for lang",
+    "forum_body_required": "En besked er påkrævet",
+    "forum_body_too_long": "Beskeden er for lang",
+    "forum_missing_id": "Manglende id",
+    "forum_post_not_found": "Opslaget blev ikke fundet. Det kan være blevet fjernet.",
+    "forum_reply_not_found": "Svaret blev ikke fundet. Det kan være blevet fjernet.",
+    "forum_poll_admin_only": "Kun admin kan vedhæfte afstemninger",
+    "forum_poll_invalid_options": "En afstemning kræver 2 til 8 muligheder på højst 100 tegn",
+    "forum_poll_option_not_found": "Den afstemningsmulighed findes ikke længere",
+    "forum_invalid_target_type": "Ugyldigt rapport-mål",
+    "forum_target_not_found": "Det rapporterede indhold blev ikke fundet. Det kan være blevet fjernet.",
+    "forum_reason_too_long": "Begrundelsen er for lang",
+    "forum_report_not_found": "Rapporten blev ikke fundet",
+    "forum_invalid_pinned": "Ugyldig pin-værdi"
   }
 }

@@ -67,13 +67,41 @@
       "consequenceTiers": {
         "title": "Consequence tiers (6 layers)",
         "rows": [
-          ["Layer", "Trigger", "Effect"],
-          ["1", "Satisfaction-based", "Sponsor modifier ±20% (passive)"],
-          ["2", "Satisfaction <40% for 2 evaluations in a row", "Salary cap: total salary capped at 1.5x its level when triggered, blocking buys/contract extensions that would grow it further. Never triggers in a team's first 30 days"],
-          ["3", "Satisfaction <30%", "Signing restriction: buys >300K blocked"],
-          ["4", "Satisfaction <15%", "Forced sale: your lowest-value rider is auto-listed (riders with popularity ≥70 or value ≥8,000,000 CZ$ are protected)"],
-          ["5", "<10% or 2× plan expiry below 30%", "Sponsor pullout: −10% sponsor for one season"],
-          ["6 (positive)", ">75% satisfaction + ≥75% targets met", "Bonus offer: +200K for one extra target"]
+          [
+            "Layer",
+            "Trigger",
+            "Effect"
+          ],
+          [
+            "1",
+            "Satisfaction-based",
+            "Sponsor modifier ±20% (passive)"
+          ],
+          [
+            "2",
+            "Satisfaction <40% for 2 evaluations in a row",
+            "Salary cap: total salary capped at 1.5x its level when triggered, blocking buys/contract extensions that would grow it further. Never triggers in a team's first 30 days"
+          ],
+          [
+            "3",
+            "Satisfaction <30%",
+            "Signing restriction: buys >300K blocked"
+          ],
+          [
+            "4",
+            "Satisfaction <15%",
+            "Forced sale: your lowest-value rider is auto-listed (riders with popularity ≥70 or value ≥8,000,000 CZ$ are protected)"
+          ],
+          [
+            "5",
+            "<10% or 2× plan expiry below 30%",
+            "Sponsor pullout: −10% sponsor for one season"
+          ],
+          [
+            "6 (positive)",
+            ">75% satisfaction + ≥75% targets met",
+            "Bonus offer: +200K for one extra target"
+          ]
         ]
       },
       "requestsAndLocks": {
@@ -266,14 +294,38 @@
       "whenDmsSent": {
         "title": "When are DMs sent?",
         "rows": [
-          ["Event", "DM"],
-          ["You're outbid on an auction", "Yes"],
-          ["You win an auction", "Yes"],
-          ["You receive a transfer offer", "Yes"],
-          ["Your transfer offer is accepted / rejected / countered", "Yes"],
-          ["A new auction is created (all managers)", "No, channel only"],
-          ["Transfer completed (all managers)", "No, channel only"],
-          ["Season start / season end", "No, channel only"]
+          [
+            "Event",
+            "DM"
+          ],
+          [
+            "You're outbid on an auction",
+            "Yes"
+          ],
+          [
+            "You win an auction",
+            "Yes"
+          ],
+          [
+            "You receive a transfer offer",
+            "Yes"
+          ],
+          [
+            "Your transfer offer is accepted / rejected / countered",
+            "Yes"
+          ],
+          [
+            "A new auction is created (all managers)",
+            "No, channel only"
+          ],
+          [
+            "Transfer completed (all managers)",
+            "No, channel only"
+          ],
+          [
+            "Season start / season end",
+            "No, channel only"
+          ]
         ]
       }
     },
@@ -286,12 +338,30 @@
       "categories": {
         "title": "Categories",
         "rows": [
-          ["Category", "Examples"],
-          ["Auctions", "First bid, Sniper, High Roller, 50 won auctions"],
-          ["Transfers", "First deal, Negotiator, Stolen, 30 transfers"],
-          ["◈ Team", "Full squad, Youth team, Star team, Promoted!"],
-          ["Season", "Division winner, Podium, Board favourite, Veteran"],
-          ["Secret", "Unlocked by unexpected events, not described upfront"]
+          [
+            "Category",
+            "Examples"
+          ],
+          [
+            "Auctions",
+            "First bid, Sniper, High Roller, 50 won auctions"
+          ],
+          [
+            "Transfers",
+            "First deal, Negotiator, Stolen, 30 transfers"
+          ],
+          [
+            "◈ Team",
+            "Full squad, Youth team, Star team, Promoted!"
+          ],
+          [
+            "Season",
+            "Division winner, Podium, Board favourite, Veteran"
+          ],
+          [
+            "Secret",
+            "Unlocked by unexpected events, not described upfront"
+          ]
         ]
       },
       "seasonAchievements": {
@@ -411,11 +481,41 @@
         "title": "Division bonus at season end",
         "text": "Read it in two steps: pick the row for the place you finished in your own division, then the column for the division you rode in. Blank cells pay nothing, and so does any place below the last row.",
         "rows": [
-          ["Where you finished", "In Division 1", "In Division 2", "In Division 3", "In Division 4"],
-          ["1st in your division", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
-          ["2nd in your division", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
-          ["3rd in your division", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
-          ["4th in your division", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
+          [
+            "Where you finished",
+            "In Division 1",
+            "In Division 2",
+            "In Division 3",
+            "In Division 4"
+          ],
+          [
+            "1st in your division",
+            "{bonusD1P1} CZ$",
+            "{bonusD2P1} CZ$",
+            "{bonusD3P1} CZ$",
+            "{bonusD4P1} CZ$"
+          ],
+          [
+            "2nd in your division",
+            "{bonusD1P2} CZ$",
+            "{bonusD2P2} CZ$",
+            "{bonusD3P2} CZ$",
+            "{bonusD4P2} CZ$"
+          ],
+          [
+            "3rd in your division",
+            "{bonusD1P3} CZ$",
+            "{bonusD2P3} CZ$",
+            "{bonusD3P3} CZ$",
+            "{bonusD4P3} CZ$"
+          ],
+          [
+            "4th in your division",
+            "{bonusD1P4} CZ$",
+            "{bonusD2P4} CZ$",
+            "—",
+            "—"
+          ]
         ]
       },
       "raceLibrary": {
@@ -452,13 +552,41 @@
       "examples": {
         "title": "Prize amount examples",
         "rows": [
-          ["Win", "Points", "Prize"],
-          ["Grand Tour win", "1,300", "97,500 CZ$"],
-          ["Monument win", "800", "60,000 CZ$"],
-          ["Stage win (Grand Tour)", "210", "15,750 CZ$"],
-          ["ProSeries win", "200", "15,000 CZ$"],
-          ["Class 1 win", "125", "9,375 CZ$"],
-          ["Class 2 win", "40", "3,000 CZ$"]
+          [
+            "Win",
+            "Points",
+            "Prize"
+          ],
+          [
+            "Grand Tour win",
+            "1,300",
+            "97,500 CZ$"
+          ],
+          [
+            "Monument win",
+            "800",
+            "60,000 CZ$"
+          ],
+          [
+            "Stage win (Grand Tour)",
+            "210",
+            "15,750 CZ$"
+          ],
+          [
+            "ProSeries win",
+            "200",
+            "15,000 CZ$"
+          ],
+          [
+            "Class 1 win",
+            "125",
+            "9,375 CZ$"
+          ],
+          [
+            "Class 2 win",
+            "40",
+            "3,000 CZ$"
+          ]
         ]
       },
       "payout": {
@@ -482,11 +610,31 @@
       "sizePerDivision": {
         "title": "Squad size per division",
         "rows": [
-          ["Division", "Minimum riders", "Maximum riders"],
-          ["Division 1", "0", "30"],
-          ["Division 2", "0", "30"],
-          ["Division 3", "0", "30"],
-          ["Division 4", "0", "30"]
+          [
+            "Division",
+            "Minimum riders",
+            "Maximum riders"
+          ],
+          [
+            "Division 1",
+            "0",
+            "30"
+          ],
+          [
+            "Division 2",
+            "0",
+            "30"
+          ],
+          [
+            "Division 3",
+            "0",
+            "30"
+          ],
+          [
+            "Division 4",
+            "0",
+            "30"
+          ]
         ]
       },
       "promotionRelegation": {
@@ -534,22 +682,86 @@
       "abilitiesExplained": {
         "title": "The 15 abilities and where they matter",
         "rows": [
-          ["Ability", "What it does", "Where it matters most"],
-          ["Climbing", "Power on long ascents", "Mountain stages"],
-          ["Time trial", "Riding alone against the clock", "Time trials"],
-          ["Flat", "Holding speed on flat roads", "Flat stages, time trials"],
-          ["Tempo", "Sustained mid-effort", "Mid-mountain, rolling stages"],
-          ["Sprint", "Top-end speed for a finish", "Flat bunch sprints"],
-          ["Acceleration", "Explosive kick to launch or close a gap", "Sprints, hilly attacks"],
-          ["Punch", "Short steep efforts", "Hilly stages and finales"],
-          ["Endurance", "Lasting the full distance", "Long, hard days and classics"],
-          ["Recovery", "Bouncing back between days", "Stage races"],
-          ["Durability", "Resisting fatigue, fading less late", "Hard multi-stage races"],
-          ["Descending", "Edge on downhill finishes", "Stages ending on a descent"],
-          ["Cobbles", "Handling and power on cobbles", "Cobbled classics"],
-          ["Positioning", "Staying near the front", "Hectic stages, time trials"],
-          ["Aggression", "Willingness to attack", "Breakaways"],
-          ["Tactics", "Race-craft and reading a race", "Team time trials, tactical races"]
+          [
+            "Ability",
+            "What it does",
+            "Where it matters most"
+          ],
+          [
+            "Climbing",
+            "Power on long ascents",
+            "Mountain stages"
+          ],
+          [
+            "Time trial",
+            "Riding alone against the clock",
+            "Time trials"
+          ],
+          [
+            "Flat",
+            "Holding speed on flat roads",
+            "Flat stages, time trials"
+          ],
+          [
+            "Tempo",
+            "Sustained mid-effort",
+            "Mid-mountain, rolling stages"
+          ],
+          [
+            "Sprint",
+            "Top-end speed for a finish",
+            "Flat bunch sprints"
+          ],
+          [
+            "Acceleration",
+            "Explosive kick to launch or close a gap",
+            "Sprints, hilly attacks"
+          ],
+          [
+            "Punch",
+            "Short steep efforts",
+            "Hilly stages and finales"
+          ],
+          [
+            "Endurance",
+            "Lasting the full distance",
+            "Long, hard days and classics"
+          ],
+          [
+            "Recovery",
+            "Bouncing back between days",
+            "Stage races"
+          ],
+          [
+            "Durability",
+            "Resisting fatigue, fading less late",
+            "Hard multi-stage races"
+          ],
+          [
+            "Descending",
+            "Edge on downhill finishes",
+            "Stages ending on a descent"
+          ],
+          [
+            "Cobbles",
+            "Handling and power on cobbles",
+            "Cobbled classics"
+          ],
+          [
+            "Positioning",
+            "Staying near the front",
+            "Hectic stages, time trials"
+          ],
+          [
+            "Aggression",
+            "Willingness to attack",
+            "Breakaways"
+          ],
+          [
+            "Tactics",
+            "Race-craft and reading a race",
+            "Team time trials, tactical races"
+          ]
         ]
       },
       "riderType": {
@@ -647,12 +859,30 @@
       "whatShown": {
         "title": "What appears in the feed?",
         "rows": [
-          ["Event", "Description"],
-          ["Auction won", "Team won an auction (shows rider and price)"],
-          ["Auction started", "A team has listed a rider for auction"],
-          ["Transfer completed", "A transfer between two managers was accepted"],
-          ["Season started", "Admin has started a new season"],
-          ["Results approved", "Admin has approved race results"]
+          [
+            "Event",
+            "Description"
+          ],
+          [
+            "Auction won",
+            "Team won an auction (shows rider and price)"
+          ],
+          [
+            "Auction started",
+            "A team has listed a rider for auction"
+          ],
+          [
+            "Transfer completed",
+            "A transfer between two managers was accepted"
+          ],
+          [
+            "Season started",
+            "Admin has started a new season"
+          ],
+          [
+            "Results approved",
+            "Admin has approved race results"
+          ]
         ]
       },
       "transferRumors": {
@@ -736,12 +966,36 @@
       "tracks": {
         "title": "The 5 facility tracks",
         "rows": [
-          ["Facility", "What it does", "Status"],
-          ["Training Center", "Speeds up your riders' daily ability growth", "Active now"],
-          ["Scouting Network", "Unlocks hiring and upgrading your chief scout", "Active now"],
-          ["Medical Department", "Speeds up form and injury recovery", "Coming soon"],
-          ["Academy Expansion", "Adds extra Academy intake slots", "Coming soon"],
-          ["Commercial Department", "Boosts sponsor income (capped, a long-term investment)", "Coming soon"]
+          [
+            "Facility",
+            "What it does",
+            "Status"
+          ],
+          [
+            "Training Center",
+            "Speeds up your riders' daily ability growth",
+            "Active now"
+          ],
+          [
+            "Scouting Network",
+            "Unlocks hiring and upgrading your chief scout",
+            "Active now"
+          ],
+          [
+            "Medical Department",
+            "Speeds up form and injury recovery",
+            "Coming soon"
+          ],
+          [
+            "Academy Expansion",
+            "Adds extra Academy intake slots",
+            "Coming soon"
+          ],
+          [
+            "Commercial Department",
+            "Boosts sponsor income (capped, a long-term investment)",
+            "Coming soon"
+          ]
         ]
       },
       "liveTracksStatus": {
@@ -1205,6 +1459,18 @@
     "sprintCaptainRoleFaq": {
       "q": "I have two sprinters: one is Captain, one is Sprint captain. Which one does my team actually work for?",
       "a": "It's decided per stage by the terrain, not by preference: on flat stages your helpers' support goes to the Sprint captain (falling back to the Captain if you haven't set a Sprint captain for that race), and on every other stage type (rolling, hilly, mountain, high mountain, time trial, cobbles, classic), it goes to the Captain only, with no support at all for the Sprint captain. In short: Captain is your protected rider everywhere except flat stages; Sprint captain is protected specifically on flat, bunch-sprint stages. Set both if you want a genuine two-pronged sprint-and-GC team: they never compete for the same helpers on the same stage."
+    },
+    "forumFaq": {
+      "q": "What is the Forum?",
+      "a": "The Forum is the in-game discussion board, found in the Clubhouse menu. Post in two categories (General and Feedback & ideas), reply in threads, and vote in polls attached to pinned announcements from the admin."
+    },
+    "forumPollsFaq": {
+      "q": "How do forum polls work?",
+      "a": "Only the admin can attach a poll to a forum post. You get one vote per poll and can change it at any time by picking another option. Vote totals are public; who voted for what is not."
+    },
+    "forumReportFaq": {
+      "q": "How do I report a forum post or reply?",
+      "a": "Use the Report button on the post or reply. The report goes straight to the admin, who can remove content that does not belong. Reporting the same thing twice just updates your reason."
     }
   }
 }

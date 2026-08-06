@@ -113,6 +113,18 @@ export const feedbackLimiter = buildLimiter({
   errorCode: "rate_feedback",
 });
 
+// Forum writes (#3199) — posts/replies/reports/votes. Deliberate, low-frequency
+// player actions; 10/5min allows an active thread participant while capping
+// copy-paste spam floods of the shared, all-players-visible surface.
+// EN `message` for the same reason as feedbackLimiter (#1068: no pre-i18n callers).
+export const forumWriteLimiter = buildLimiter({
+  name: "forum-write",
+  windowMs: 300_000,
+  max: 10,
+  message: "Too many forum actions in a short time. Try again shortly.",
+  errorCode: "rate_forum",
+});
+
 // Internal export for tests so they can exercise the same factory without
 // hard-coding production thresholds.
 export const __testing__ = { buildLimiter, userOrIpKey };

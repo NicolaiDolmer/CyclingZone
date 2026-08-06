@@ -105,7 +105,7 @@ export async function installNetworkMocks(page) {
 
     if (request.method() !== "GET") return json(route, { ok: true });
 
-    return json(route, apiResponse(url.pathname));
+    return json(route, apiResponse(url.pathname, url.search));
   });
 }
 
