@@ -348,9 +348,13 @@ export async function createForumPost({
     );
     if (optionError) {
       // Halvt opslag (poll lovet, poll mangler) er værre end intet opslag —
-      // best-effort oprydning før fejlen propageres til 500.
-      await supabase.from("forum_posts").delete().eq("id", inserted.id);
-      throw new Error(`forum: could not create poll options: ${optionError.message}`);
+      // best-effort oprydning før fejlen propageres til 500. En fejlet cleanup
+      // må ikke skygge for rod-fejlen; den føjes til fejlbeskeden i stedet.
+      const { error: cleanupError } = await supabase.from("forum_posts").delete().eq("id", inserted.id);
+      throw new Error(
+        `forum: could not create poll options: ${optionError.message}` +
+        (cleanupError ? ` (post cleanup also failed: ${cleanupError.message})` : "")
+      );
     }
   }
 

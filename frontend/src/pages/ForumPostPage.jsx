@@ -266,8 +266,11 @@ export default function ForumPostPage() {
 
   async function handleAdminDelete(type, id) {
     const headers = await authHeaders();
-    const path = type === "post" ? `admin/forum/posts/${id}` : `admin/forum/replies/${id}`;
-    const res = await fetch(`${API}/api/${path}`, { method: "DELETE", headers });
+    // Fuld path inline i fetch-kaldet — audit-feature-liveness' Detector B
+    // scanner efter `${X}/api/...`-literals og ser ikke variabel-byggede paths.
+    const res = type === "post"
+      ? await fetch(`${API}/api/admin/forum/posts/${id}`, { method: "DELETE", headers })
+      : await fetch(`${API}/api/admin/forum/replies/${id}`, { method: "DELETE", headers });
     if (res.ok) {
       if (type === "post") navigate("/forum");
       else await load();

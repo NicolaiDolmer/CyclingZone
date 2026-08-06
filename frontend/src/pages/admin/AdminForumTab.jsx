@@ -89,10 +89,10 @@ export default function AdminForumTab() {
 
   async function deleteTarget(report) {
     const headers = await getAuth();
-    const path = report.target_type === "post"
-      ? `admin/forum/posts/${report.target_id}`
-      : `admin/forum/replies/${report.target_id}`;
-    const res = await fetch(`${API}/api/${path}`, { method: "DELETE", headers });
+    // Fuld path inline i fetch-kaldet (Detector B-scanneren, se ForumPostPage).
+    const res = report.target_type === "post"
+      ? await fetch(`${API}/api/admin/forum/posts/${report.target_id}`, { method: "DELETE", headers })
+      : await fetch(`${API}/api/admin/forum/replies/${report.target_id}`, { method: "DELETE", headers });
     const data = await readAdminJson(res);
     if (!res.ok) throw new Error(adminErrorMessage(data, res));
   }
