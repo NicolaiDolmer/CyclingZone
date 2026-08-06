@@ -371,6 +371,10 @@
         "title": "Løb og resultater",
         "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Resultater, hvor fanen Seneste viser de løb der er kørt færdigt i din division. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter. Du får en in-app-notifikation efter hver etape du deltager i, ikke kun den sidste, så et flerdages-løb aldrig går i stå."
       },
+      "finalKilometre": {
+        "title": "Den sidste kilometer",
+        "text": "Åbn et løb med en kørt etape, og toppen af siden afspiller de sidste ~3 km: en nedtælling tikker ned mod stregen, og ryttere klikker derefter ind i målrækkefølgen én for én, med en fotofinish-markering når gabet er under et sekund. Afspilningen bygger hver gang på de samme resultatdata (tryk Afspil igen for at se den om), så den virker lige så godt timer efter at løbet sluttede. Foretrækker din enhed reduceret bevægelse, eller mangler løbet den ældre udbruds-/momentdata, ser du bare slutresultatet direkte."
+      },
       "latestTeamResult": {
         "title": "Hvor ser jeg hvordan det gik mit hold?",
         "text": "Når et løb med dine ryttere er afsluttet, viser dit dashboard et 'Sådan gik det for dit hold'-kort med dine placeringer, præmiepenge og et kort referat af løbet. Følg linket på kortet til det fulde resultat med alle etaper og klassementer."

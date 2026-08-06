@@ -40,6 +40,7 @@ import { groupPassagesForStage } from "../lib/raceStagePassages.js";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
+import FinalKilometrePlayback from "../components/race/FinalKilometrePlayback.jsx";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -369,6 +370,18 @@ export default function RaceDetailPage() {
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
 
+  // #3396 (bølge 1): "The Final Kilometre" dramatiserer altid den SENESTE kørte
+  // etape (eller etape 1 for endagsløb) — samme "seneste etape"-kontekst som
+  // WhyPanel/RaceReportPanel bruger på "samlet"-fanen, uafhængig af hvilken fane
+  // brugeren står på. Ingen nyt kald: filtrerer allerede-hentede `results`.
+  const finalKmStageNumber = isStageRace
+    ? (stageNumbers.length ? stageNumbers[stageNumbers.length - 1] : null)
+    : 1;
+  const finalKmRows = useMemo(
+    () => results.filter(r => r.result_type === "stage" && (r.stage_number ?? 1) === finalKmStageNumber),
+    [results, finalKmStageNumber],
+  );
+
   // stage_number → { profile_type, finale_type } for terræn-indikatoren (#1484).
   const profileByStage = useMemo(() => {
     const out = {};
@@ -643,6 +656,20 @@ export default function RaceDetailPage() {
 
       <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
         <div className="flex flex-col gap-[14px]">
+
+          {/* #3396 (bølge 1) — "The Final Kilometre": 90s finale-afspilning af
+              den seneste kørte etapes sidste ~3 km, øverst og fane-uafhængigt.
+              Bygget udelukkende af `results`/`moments` siden allerede har hentet;
+              renderer intet hvis feltet er for tyndt (<2 rytter-rækker) eller
+              løbet slet ikke er startet endnu — se FinalKilometrePlayback. */}
+          {hasAnyResults && (
+            <FinalKilometrePlayback
+              rows={finalKmRows}
+              moments={moments}
+              stageNumber={finalKmStageNumber}
+              stageLabel={isStageRace ? t("detail.tabStage", { number: finalKmStageNumber }) : undefined}
+            />
+          )}
 
           {/* S4: kommende løb — valgt-etape-panel (silhuet + finale-markør + terrain-
               DNA). StageStripe + race-DNA-linjen flyttet op under kortet (se ovenfor).
