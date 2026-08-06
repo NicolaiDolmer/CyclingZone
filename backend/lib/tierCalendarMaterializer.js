@@ -20,8 +20,11 @@ import { fetchAllRows } from "./supabasePagination.js";
 import {
   TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
   SCARCE_TERRAIN_ARCHETYPES, TIER_TERRAIN_FAMILY_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
+  TIER_ARCHETYPE_RESERVATIONS,
   computeTierCoverageStats, detectCoverageViolations,
 } from "./tierCalendarGuarantees.js";
+import { computeCompositionStats } from "./calendarCompositionTargets.js";
+import { computeStageOrderStats } from "./stageOrderMetrics.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -72,6 +75,20 @@ function coverageProfilesFor(raceRows, ctx) {
   const map = new Map();
   for (const r of raceRows) map.set(r.pool_race_id, generateRaceStageProfiles(seedRaceFor(r, ctx)));
   return map;
+}
+
+// #3295/#3326/#3371: form de allerede-genererede profiler som den {race_type,
+// terrain_archetype, stages}-liste måle-lagene tager. Genbruger PRÆCIS de profiler
+// dæknings-verifikationen (og dermed insert'et) bruger — så kompositions- og
+// rækkefølgetallene i dry-run-rapporten beskriver det parcours der ville blive skrevet,
+// ikke et nyt træk.
+function measurableRacesFrom(raceRows, profilesByPoolRaceId, archetypeByPoolRace) {
+  return raceRows.map((r) => ({
+    name: r.name,
+    race_type: r.race_type,
+    terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+    stages: profilesByPoolRaceId.get(r.pool_race_id) ?? [],
+  }));
 }
 
 // #2251 kalender-invarianter (defense-in-depth oven på selectTierRaceSet's GT-gate):
@@ -175,6 +192,7 @@ export function buildTierMaterializationPlan({
   oneDayShareTargets = TIER_ONE_DAY_SHARE_TARGET,
   classStageLengthBand = CLASS_STAGE_LENGTH_BAND,
   priorityArchetypes = SCARCE_TERRAIN_ARCHETYPES,
+  archetypeReservations = TIER_ARCHETYPE_RESERVATIONS,
   // #2276: navne allerede brugt af ANDRE tiers før dette kald (fx allerede-materialiserede
   // races i DB for tier 1-3, når tier 4 aktiveres i et separat reconcile-kald der ikke ser
   // de andre tiers' selection i hukommelsen). Seedes af materializeTierCalendars.
@@ -218,6 +236,7 @@ export function buildTierMaterializationPlan({
       catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0,
       allowGrandTours: tier === 1, allowedClasses: classWhitelist?.[tier] ?? null,
       classStageLengthBand, oneDayShareTarget: oneDayShareTargets?.[tier] ?? null, priorityArchetypes,
+      archetypeReservations: archetypeReservations?.[tier] ?? null,
     });
     for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
     for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
@@ -288,9 +307,14 @@ export async function materializeTierCalendars({
   oneDayShareTargets = TIER_ONE_DAY_SHARE_TARGET,
   classStageLengthBand = CLASS_STAGE_LENGTH_BAND,
   priorityArchetypes = SCARCE_TERRAIN_ARCHETYPES,
+  archetypeReservations = TIER_ARCHETYPE_RESERVATIONS,
   oneDayShareMin = TIER_ONE_DAY_SHARE_MIN,
   terrainFamilyMin = TIER_TERRAIN_FAMILY_MIN,
   mountainFreeMin = TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
+  // #3295: hypotetiske race_pool-rækker lagt oven på det rigtige katalog. KUN dry-run —
+  // se gaten nedenfor. Bruges af katalog-udvidelses-analysen til at måle effekten af
+  // foreslåede løb før nogen af dem eksisterer.
+  extraCatalogRows = [],
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -313,8 +337,16 @@ export async function materializeTierCalendars({
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
   const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
 
-  const { data: catalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
+  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
+  // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
+  // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig
+  // materialiseres — apply afvises højlydt hvis nogen prøver. Analyse-stien kører altid
+  // dryRun, og gaten her er defense-in-depth mod en fremtidig kalder der glemmer det.
+  if (extraCatalogRows.length && !dryRun) {
+    throw new Error("extraCatalogRows er KUN til dry-run-analyse — de findes ikke i race_pool og kan ikke materialiseres");
+  }
+  const catalog = extraCatalogRows.length ? [...(dbCatalog || []), ...extraCatalogRows] : dbCatalog;
   // Seed-nøgle pr. katalog-løb: external_id binder parcours til løbets VIRKELIGE
   // identitet (identisk parcours i en divisions puljer); terrain_archetype driver
   // terrænfordelingen (jf. raceStageProfileGenerator.js).
@@ -344,7 +376,7 @@ export async function materializeTierCalendars({
   const plannedPools = tiers && tiers.length ? pools.filter((p) => targetTiers.has(p.tier)) : pools;
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
-    oneDayShareTargets, classStageLengthBand, priorityArchetypes,
+    oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations,
   });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
@@ -375,6 +407,25 @@ export async function materializeTierCalendars({
       });
       tierPlan.coverageStats = coverageStats;
       tierPlan.calendarViolations = [...(tierPlan.calendarViolations ?? []), ...coverageViolations];
+
+      // #3295 (K-B-komposition) + #3326/#3371 (rækkefølge + arketype-variation):
+      // RAPPORTERES, gater IKKE. Kalibreringen mod K-B er ikke i mål endnu (målt
+      // baseline 6/8: flad +3,3 pp, bjerg +4,9 pp), så en hård gate her ville blokere
+      // S3-materialiseringen på et krav vi bevidst er på vej mod. Tallene skal derimod
+      // være synlige i HVER dry-run, så scorecardet og apply-stien aldrig kan komme til
+      // at måle hver sit parcours. Gaten strammes når kalibreringen lander (#3295).
+      const measurable = measurableRacesFrom(repPool.raceRows, profiles, archetypeByPoolRace);
+      tierPlan.compositionStats = computeCompositionStats(measurable);
+      tierPlan.stageOrderStats = computeStageOrderStats(measurable);
+
+      // #3295: den repræsentative puljes seedRaces, så en kalibrering kan køre mod den
+      // PLANLAGTE sæsons løbssæt frem for en tidligere sæsons. De to er ikke ens —
+      // selectTierRaceSet vælger forfra hver sæson (prestige-sortering + cross-tier-dedup),
+      // så vægte kalibreret mod S2's udvalg overfitter til netop det udvalg. Kun i dry-run:
+      // apply-stien har ingen brug for det, og summary'en skal ikke bære unødig vægt.
+      if (dryRun) {
+        tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant }));
+      }
     }
 
     // #2251: nægt at APPLY'e en plan med kalender-invariant-brud (GT i tier >1 /
@@ -388,6 +439,8 @@ export async function materializeTierCalendars({
       shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
       unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
       calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null,
+      compositionStats: tierPlan.compositionStats ?? null, stageOrderStats: tierPlan.stageOrderStats ?? null,
+      seedRaces: tierPlan.seedRaces ?? null,
       realismDraw: tierPlan.realismDraw ?? null, pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
