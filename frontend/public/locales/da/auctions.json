@@ -103,7 +103,6 @@
     "type": "Type",
     "value": "Værdi",
     "highestBid": "Højeste bud",
-    "leaderTooltip": "Fører: {name}",
     "timeLeft": "Tid tilbage",
     "age": "Alder",
     "salary": "Løn",
@@ -124,6 +123,10 @@
     "ageYears": "{age} år",
     "estValue": "Vurdering",
     "ovrTitle": "Samlet rating (1-99), vægtet efter rytterens type"
+  },
+  "leader": {
+    "line": "Fører: {name}",
+    "none": "Ingen bud endnu"
   },
   "timer": {
     "completed": "Afsluttet",
