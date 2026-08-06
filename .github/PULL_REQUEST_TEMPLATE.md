@@ -29,6 +29,17 @@ Refs #
 - [ ] `auto-merge` er kun sat hvis PR'en er lav-risiko og ikke kræver menneskelig beslutning
 - [ ] Dependency/security-impact er vurderet hvis `package*.json`, workflows, auth, DB eller upload-flow ændres
 
+## Afledningstjekliste (KRÆVET ved populations-mutationer)
+<!-- Indført efter ryttertype-backfillen 5/8-2026 (#3372/#3441/#3442): typeskiftet så isoleret ud,
+     men caps, scout-bånd, lønkrav og 14-dages-deltaer afledes af type ved runtime — og flyttede med.
+     Gælder enhver backfill/migration/script der muterer felter på ryttere, hold eller andre populationer. -->
+
+- [ ] **Alle afledte felter er listet:** hvilke beregninger konsumerer de muterede felter ved runtime (grep efter feltnavnet i backend/lib + frontend)? Listen skrives HER i PR-body — ikke "ingen", medmindre greppet er vedlagt.
+- [ ] **Alle afledte flader er listet:** hvilke spillervendte visninger ændrer sig som konsekvens (scout-rapporter, værdier/deltaer, lønkrav, AI-adfærd, badges/labels)?
+- [ ] **Historik-/delta-grundlag:** rører mutationen noget som delta-/historikvisninger sammenligner imod? Backfill må ikke fremstå som "ændring" for spilleren.
+- [ ] **Snapshot dækker de afledte felter** — ikke kun de direkte muterede (ellers kan effekten ikke rulles tilbage eller måles).
+- [ ] **Spillerkommunikation:** hvis en afledt flade flytter sig synligt, er kommunikationen planlagt FØR kørslen (patch note / Discord), ikke efter klagerne.
+
 ## Filer rørt
 <!-- Auto-fyldes af git, men nævn særligt risikable filer her -->
 
