@@ -87,6 +87,7 @@ import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
 import { runFairplayScoringSweep } from "./lib/fairplayFlagsCron.js"; // #3138
+import { runMarketValueSundaySweep } from "./lib/marketValueSundaySweep.js"; // #3448
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 // #2892 — cron-monitor-registret (config-cadences + ALL_CRON_MONITORS) er
 // udtrukket til lib/cronMonitorRegistry.js, så det kan importeres direkte af
@@ -1206,6 +1207,23 @@ async function runFairplayScoringCron() {
   );
 }
 
+// ─── Markedsdrevet værdi-eftersyn — søndags-sweep (#3448) ────────────────────
+// Kill-switch: app_config.market_value_sweep_enabled (default 'off') — se
+// marketValueSundaySweep.js's fil-header for hele mekanismen. Bevidst IKKE
+// monitorCron-wrappet: sweepen er søndags-gated (no-op 6/7 dage), samme
+// begrundelse som sunday-intake-drip (se UNMONITORED_CRON_TICKS i
+// cronMonitorRegistry.js) — et fast timeligt schedule ville false-positive
+// alarmere resten af ugen.
+async function runMarketValueSundaySweepCron() {
+  const r = await runMarketValueSundaySweep({ supabase, now: new Date() });
+  if (r.ran) {
+    console.log(
+      `💶 Markeds-værdi-søndags-sweep: ${r.scanned} scannet · ${r.changed} ændret · ${r.written} skrevet ` +
+        `(globalWeight=${r.globalWeight}, weeklyCap=±${(r.weeklyCap * 100).toFixed(0)}%, #3448)`
+    );
+  }
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -1616,6 +1634,14 @@ export function startCron() {
     trackedTick("fairplay scoring-sweep", monitorCron("fairplay-scoring", runFairplayScoringCron, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
   );
+
+  // #3448 — markedsdrevet værdi-eftersyn, søndags-sweep. 60-min-kadence (samme
+  // som sunday-intake-drip/entry-generator) fanger søndagens vindue inden for
+  // timen; modulet selv no-op'er alle ugens øvrige dage + er persisteret
+  // dedup'et pr. dansk kalenderdato, så overlappende ticks er harmløse.
+  // Gated bag market_value_sweep_enabled (fail-safe OFF) — ejer-go afventer
+  // stadig ugentligt-loft-valget (#3448).
+  setInterval(trackedTick("market-value-sunday-sweep", runMarketValueSundaySweepCron), 60 * 60 * 1000);
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();

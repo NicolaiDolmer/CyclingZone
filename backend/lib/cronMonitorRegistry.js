@@ -186,4 +186,9 @@ export const UNMONITORED_CRON_TICKS = [
   // (CRON_MONITOR_60MIN) forventer succes hver time; det ville false-positive
   // alarmere resten af ugen. Se runSundayIntakeTick.js for gate-logikken.
   "sunday-intake-drip",
+  // #3448: markedsdrevet værdi-eftersyn er bevidst søndags-gated + persisteret
+  // dedup'et pr. dansk kalenderdato (market_value_sunday_sweep_log), samme
+  // shape som sunday-intake-drip ovenfor — no-op 6/7 dage, så et fast
+  // CRON_MONITOR_60MIN-schedule ville false-positive alarmere resten af ugen.
+  "market-value-sunday-sweep",
 ];
