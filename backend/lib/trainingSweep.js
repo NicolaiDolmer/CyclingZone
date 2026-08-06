@@ -6,7 +6,7 @@
 // is_test_account=false — matcher boardAutoAccept.js + checkDebtWarnings (kanonik
 // for "rigtige hold" i hele spillet).
 
-import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
+import { copenhagenHour, copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
@@ -132,16 +132,28 @@ export async function runTrainingSweep({
     }
   }
 
-  // #1364: efter sweep — base_value følger nu udviklede evner. Fuld refresh
-  // (skriver kun ændrede) fungerer samtidig som sikkerhedsnet/reconcile.
+  // #1364/#3448: base_value følger udviklede evner. Fuld refresh (skriver kun
+  // ændrede) fungerer samtidig som sikkerhedsnet/reconcile — MEN kadencen er
+  // #3448 (6/8) lagt om fra DAGLIGT til KUN SØNDAG: ejer-beslutningen var at
+  // værdier fremadrettet kun skal flytte sig søndagsvist (matcher
+  // marketValueSundaySweep.js's egen søndags-gate, så de to værdi-kilder
+  // opdaterer i samme rytme i stedet for at en daglig v4-only-refresh
+  // overskriver/udjævner søndagens markedsblend midt i ugen). Type-
+  // reklassificering (primary_type/secondary_type) følger MED til søndag —
+  // acceptabelt, da typer er potentiale-stabile (ændrer sig sjældent, jf.
+  // #3325/#3345) og derfor ikke har brug for daglig frekvens. Selve
+  // TRÆNINGEN (runDay ovenfor) er UÆNDRET daglig — kun værdi-genberegningen
+  // er søndags-gated.
   let valueRefresh = null;
-  try {
-    valueRefresh = await refreshValues(supabase, { log: (m) => console.log(`  ${m}`) });
-  } catch (err) {
-    // #2389 A2: fejler refresh'en, driver base_value ud af sync med udviklede
-    // evner uden alarm (samme klasse som #2392) — capture.
-    console.error("  ❌ value-refresh efter sweep fejlede:", err.message);
-    captureException(err, { tags: { cron: "training sweep", stage: "value-refresh" } });
+  if (copenhagenWeekdayKey(tickDate) === "sun") {
+    try {
+      valueRefresh = await refreshValues(supabase, { log: (m) => console.log(`  ${m}`) });
+    } catch (err) {
+      // #2389 A2: fejler refresh'en, driver base_value ud af sync med udviklede
+      // evner uden alarm (samme klasse som #2392) — capture.
+      console.error("  ❌ value-refresh efter sweep fejlede:", err.message);
+      captureException(err, { tags: { cron: "training sweep", stage: "value-refresh" } });
+    }
   }
 
   const base = failed > 0 ? { swept, failed } : { swept };
