@@ -271,7 +271,11 @@ export function makeUniqueName(rng, cluster, usedFolded) {
  * @param {number} opts.seed               heltal — styrer al tilfældighed deterministisk
  * @param {number} opts.count              antal ryttere
  * @param {number} opts.referenceYear      år som alder/U25 beregnes mod
- * @param {Set<string>} [opts.existingFoldedNames]  foldNameNordic af alle eksisterende DB-navne
+ * @param {Set<string>} [opts.existingFoldedNames]  foldNameNordic af alle eksisterende DB-navne.
+ *        MUTERES: alle genererede navne føjes til settet, så FLERE kald der deler samme
+ *        set aldrig kan trække samme navn (#3416 — kerne+hale-kaldene i buildWeakStarterPool
+ *        gav navne-dubletter INDEN FOR samme hold, som væltede rytter-sletning via
+ *        race_results_entrant_unique da navne-fallbacken kollapsede nøglerne).
  * @param {Array<{value,weight}>} [opts.nationalityWeights]  override af default-fordeling
  * @param {Object<string,number>} [opts.tierFractions]  override af tier-andele (#1420 mix-presets);
  *        map tier→andel (superstar/star/solid); domestique er altid rest. null = DEFAULT_TIER_FRACTIONS.
@@ -293,7 +297,10 @@ export function generateFictionalRiders({
   if (!Number.isInteger(referenceYear)) throw new Error("referenceYear skal være et heltal");
 
   const rng = makeRng(seed);
-  const usedFolded = new Set(existingFoldedNames);
+  // #3416: brug det MEDSENDTE set direkte (ingen kopi) — kopien gjorde at to kald
+  // der delte samme set (fx kerne+hale i buildWeakStarterPool) ikke kendte
+  // hinandens navne og kunne give samme navn to gange på samme hold.
+  const usedFolded = existingFoldedNames;
 
   // #1420: komposition-override (mix-presets). null = modul-konstanten → samme
   // reference/værdier → identisk rng-forbrug → byte-identisk determinisme.

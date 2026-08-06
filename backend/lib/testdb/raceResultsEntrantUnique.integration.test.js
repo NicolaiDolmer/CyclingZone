@@ -74,12 +74,19 @@ function loadProposal(filename) {
   return sanitizeForPglite(raw);
 }
 
+function loadMigration(filename) {
+  const raw = readFileSync(join(DATABASE_DIR, filename), "utf8");
+  return sanitizeForPglite(raw);
+}
+
 let db;
 before(async () => {
   db = new PGlite();
   await db.exec(BASE_DDL);
   await db.exec(loadProposal("2026-08-05-race-results-entrant-key-unique-constraint.sql"));
   await db.exec(loadProposal("2026-08-05-race-results-batch-write-atomic-rpc.sql"));
+  // #3416: entrant_uid-migrationen ovenpå — præcis som prod-apply-rækkefølgen.
+  await db.exec(loadMigration("2026-08-06-race-results-entrant-uid.sql"));
 });
 after(async () => {
   if (db) await db.close();
@@ -237,6 +244,82 @@ test("apply_race_results_batch: PARTIAL-ROLLBACK — en unique-violation midt i 
   // sammen med det fejlede insert — hele funktionskaldet er ÉN transaktion).
   const { rows: after } = await db.query("SELECT COUNT(*)::int AS n FROM race_results WHERE race_id = $1", [raceId]);
   assert.equal(after[0].n, 1, "løbet må IKKE stå resultatløst efter en rullet-tilbage batch — den GAMLE række skal stadig være der");
+});
+
+// ── #3416: entrant_uid — nøglen er STABIL hen over rytter-/hold-sletning ──────
+
+test("#3416-regression: to ryttere med SAMME navn på samme hold — sletning lykkes og rækkerne forbliver distinkte", async () => {
+  const raceId = await makeRace();
+  const teamId = (await db.query("INSERT INTO teams (name, is_ai) VALUES ('AI Aero Devo', TRUE) RETURNING id")).rows[0].id;
+  const r1 = (await db.query(
+    "INSERT INTO riders (firstname, lastname, team_id) VALUES ('Minjun', 'Han', $1) RETURNING id", [teamId],
+  )).rows[0].id;
+  const r2 = (await db.query(
+    "INSERT INTO riders (firstname, lastname, team_id) VALUES ('Minjun', 'Han', $1) RETURNING id", [teamId],
+  )).rows[0].id;
+  await db.query(
+    `INSERT INTO race_results (race_id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name)
+     VALUES ($1, 1, 'stage', 5, $2, 'Minjun Han', $3, 'AI Aero Devo'),
+            ($1, 1, 'stage', 6, $4, 'Minjun Han', $3, 'AI Aero Devo')`,
+    [raceId, r1, teamId, r2],
+  );
+  // Prod-fejlen: dette DELETE væltede med race_results_entrant_unique fordi begge
+  // rækkers nøgle kollapsede til 'rider-name:minjun han::ai aero devo' ved SET NULL.
+  await db.query("DELETE FROM riders WHERE team_id = $1", [teamId]);
+  const { rows } = await db.query(
+    "SELECT entrant_key, entrant_uid, rider_id, rider_name FROM race_results WHERE race_id = $1 ORDER BY rank", [raceId],
+  );
+  assert.equal(rows.length, 2, "begge historik-rækker skal overleve sletningen");
+  assert.equal(rows[0].rider_id, null);
+  assert.equal(rows[0].rider_name, "Minjun Han", "navne-snapshottet skal stadig sættes");
+  assert.equal(rows[0].entrant_uid, r1, "entrant_uid = den slettede rytters uuid");
+  assert.equal(rows[1].entrant_uid, r2);
+  assert.equal(rows[0].entrant_key, r1, "nøglen skal være UÆNDRET af sletningen (uid-grenen, ikke navne-grenen)");
+  assert.equal(rows[1].entrant_key, r2);
+});
+
+test("#3416: DB's entrant_key matcher JS-sidens computeEntrantKey også i entrant_uid-grenen", async () => {
+  const raceId = await makeRace();
+  const riderId = await makeRider("Solo");
+  await db.query(
+    `INSERT INTO race_results (race_id, stage_number, result_type, rank, rider_id, rider_name, team_name)
+     VALUES ($1, 2, 'gc', 1, $2, 'Solo X', 'Team Y')`,
+    [raceId, riderId],
+  );
+  await db.query("DELETE FROM riders WHERE id = $1", [riderId]);
+  const { rows } = await db.query("SELECT entrant_key, entrant_uid FROM race_results WHERE race_id = $1", [raceId]);
+  const expected = computeEntrantKey({
+    result_type: "gc", rider_id: null, entrant_uid: rows[0].entrant_uid, rider_name: "Solo X", team_name: "Team Y",
+  });
+  assert.equal(rows[0].entrant_key, expected, "DB og JS skal være enige om uid-fallbacken");
+  assert.equal(rows[0].entrant_key, riderId);
+});
+
+test("#3416: hold-sletning giver team-scoped rækker uid = holdets uuid; rider-scoped rækker røres ikke", async () => {
+  const raceId = await makeRace();
+  const teamId = (await db.query("INSERT INTO teams (name, is_ai) VALUES ('AI Uid Team', TRUE) RETURNING id")).rows[0].id;
+  const riderId = await makeRider("Alive");
+  await db.query(
+    `INSERT INTO race_results (race_id, stage_number, result_type, rank, team_id, team_name)
+     VALUES ($1, 1, 'team', 1, $2, NULL)`,
+    [raceId, teamId],
+  );
+  await db.query(
+    `INSERT INTO race_results (race_id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name)
+     VALUES ($1, 1, 'stage', 1, $2, 'Alive X', $3, NULL)`,
+    [raceId, riderId, teamId],
+  );
+  await db.query("DELETE FROM teams WHERE id = $1", [teamId]);
+  const { rows } = await db.query(
+    "SELECT result_type, entrant_key, entrant_uid, team_name FROM race_results WHERE race_id = $1 ORDER BY result_type", [raceId],
+  );
+  const stageRow = rows.find((r) => r.result_type === "stage");
+  const teamRow = rows.find((r) => r.result_type === "team");
+  assert.equal(teamRow.entrant_uid, teamId, "team-scoped række: uid = holdets uuid");
+  assert.equal(teamRow.entrant_key, teamId, "team-scoped nøgle uændret af sletningen");
+  assert.equal(teamRow.team_name, "AI Uid Team", "navne-snapshottet sættes stadig");
+  assert.equal(stageRow.entrant_uid, null, "rider-scoped række ejes af rytteren — hold-sletning sætter IKKE dens uid");
+  assert.equal(stageRow.entrant_key, riderId, "rider-scoped nøgle er stadig rytterens id (rytteren lever)");
 });
 
 test("apply_race_results_batch: en anden etape end p_stage_numbers er urørt (idempotent PR. ETAPE bevaret)", async () => {
