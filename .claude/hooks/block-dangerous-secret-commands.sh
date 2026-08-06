@@ -327,8 +327,13 @@ if printf '%s' "$CMDLO" | grep -Eq 'get-test-token\.mjs' && \
 fi
 
 # --- Cat / Get-Content på .env-filer + get-test-token.mjs-output (#3342) ---
-if printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])cat[[:space:]]+([^|;&]+/)?\.env'; then
-  block "cat .env (direkte secret-file læsning)" \
+# 2026-08-06: udvidet fra kun 'cat' til alle kendte fil-læsere — en subagent
+# læste backend/.env med en læser mønstret ikke dækkede (3. bid af denne
+# vektor-klasse; sanitizer fangede outputtet, men blokken skal fyre FØR).
+# Desuden deterministisk backup i .claude/settings.json permissions.deny.
+if printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])(cat|head|tail|less|more|nl|tac|strings|od|xxd)[[:space:]]+[^|;&]*\.env' || \
+   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])(sed|awk)[[:space:]]+[^|;&]*\.env'; then
+  block "fil-læser mod .env (direkte secret-file læsning)" \
     "  # Kun key-navne:
   grep -oE '^[A-Z_][A-Z0-9_]+' backend/.env
   # Eller åben fil i editor manuelt (uden agent)."

@@ -76,7 +76,27 @@
       "NotebookEdit(docs/archive/**)",
       "Write(./docs/archive/**)",
       "Edit(./docs/archive/**)",
-      "NotebookEdit(./docs/archive/**)"
+      "NotebookEdit(./docs/archive/**)",
+      "Read(**/.env*)",
+      "Read(.env*)",
+      "Bash(cat *.env*)",
+      "Bash(*cat *.env*)",
+      "Bash(head *.env*)",
+      "Bash(*head *.env*)",
+      "Bash(tail *.env*)",
+      "Bash(*tail *.env*)",
+      "Bash(less *.env*)",
+      "Bash(more *.env*)",
+      "Bash(sed *.env*)",
+      "Bash(*sed *.env*)",
+      "Bash(awk *.env*)",
+      "Bash(strings *.env*)",
+      "PowerShell(Get-Content *.env*)",
+      "PowerShell(*Get-Content *.env*)",
+      "PowerShell(gc *.env*)",
+      "PowerShell(cat *.env*)",
+      "PowerShell(type *.env*)",
+      "PowerShell(Select-String *.env*)"
     ]
   },
   "hooks": {
