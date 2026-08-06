@@ -257,8 +257,10 @@ export function buildTierMaterializationPlan({
 
     // #3469: berig FØRST NU (umiddelbart før packing) — usedRaceIds/usedRaceNamesRunning
     // ovenfor arbejder stadig på de urørte sel.*-arrays, selectionen selv rører #3469 aldrig.
+    const enrichedStageRaces = withSeasonFraction(sel.stageRaces);
+    const enrichedOneDayRaces = withSeasonFraction(sel.oneDayRaces);
     const packed = packLaneCalendar({
-      stageRaces: withSeasonFraction(sel.stageRaces), oneDayRaces: withSeasonFraction(sel.oneDayRaces),
+      stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
       density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
     });
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
@@ -267,6 +269,22 @@ export function buildTierMaterializationPlan({
     // game_day_start = løbets første IRL-dag (real_day), IKKE binding-nøglen (monumenter har bånd).
     const gameDayStartById = new Map();
     for (const pl of packed.placements) gameDayStartById.set(pl.id, Math.min(...pl.stagesPlaced.map((s) => s.real_day)));
+
+    // #3469: fractionByRaceId + chronologyRaces — REN rapporterings-data til
+    // calendarCompositionScorecard.js' "Kronologi"-sektion (fase-tabel + klumpning).
+    // Rører aldrig apply-stien; billigt at beregne (samme størrelsesorden som packed.load).
+    const fractionByRaceId = new Map([...enrichedStageRaces, ...enrichedOneDayRaces].map((r) => [r.id, r.seasonFraction]));
+    const chronologyRaces = packed.placements.map((pl) => {
+      const cat = catalogById.get(pl.id) || {};
+      return {
+        id: pl.id,
+        race_class: cat.race_class ?? pl.race_class ?? null,
+        terrain_archetype: cat.terrain_archetype ?? null,
+        stages: pl.stages,
+        game_day_start: gameDayStartById.get(pl.id),
+        seasonFraction: fractionByRaceId.get(pl.id) ?? null,
+      };
+    });
 
     const poolPlans = tierPools.slice().sort((a, b) => a.id - b.id).map((pool) => {
       const raceRows = packed.placements.map((pl) => {
@@ -291,7 +309,7 @@ export function buildTierMaterializationPlan({
     ];
 
     tierPlans.push({
-      tier, quota, density: dens, overlapCap: cap, calendarViolations,
+      tier, quota, density: dens, realDays, overlapCap: cap, calendarViolations,
       totalGameDays: sel.totalGameDays, quotaHit: sel.quotaHit, shortfall: sel.shortfall,
       raceCount: packed.placements.length,
       load: packed.load, emptyDays: packed.emptyDays, underfilledDays: packed.underfilledDays,
@@ -299,6 +317,7 @@ export function buildTierMaterializationPlan({
       overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
       straddleGameDays: packed.straddleGameDays,
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
+      chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       pools: poolPlans,
     });
   }
@@ -457,13 +476,15 @@ export async function materializeTierCalendars({
       throw new Error(`calendar invariant violated (apply refused): ${tierPlan.calendarViolations.join(" · ")}`);
     }
     const tLine = {
-      tier: tierPlan.tier, quota: tierPlan.quota, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
+      tier: tierPlan.tier, quota: tierPlan.quota, density: tierPlan.density, realDays: tierPlan.realDays, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
       shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
       unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
       calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null,
       compositionStats: tierPlan.compositionStats ?? null, stageOrderStats: tierPlan.stageOrderStats ?? null,
       seedRaces: tierPlan.seedRaces ?? null,
-      realismDraw: tierPlan.realismDraw ?? null, pools: [],
+      realismDraw: tierPlan.realismDraw ?? null,
+      chronologyRaces: tierPlan.chronologyRaces ?? null, // #3469: dry-run-rapportering (Kronologi-sektionen)
+      pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));

@@ -1,0 +1,92 @@
+#3469 — sæson-kronologi i kalender-generatoren — FØR/EFTER-måling
+Kørt: node scripts/calendarCompositionScorecard.js --plan 3 (dry-run, ingen writes)
+FØR = raceCalendarLanePacker.js på commit 015d9c30 (pre-#3469) + #3469-plumbing (date_text
+      i select + seasonFraction-berigelse) — dvs. fraction-data findes, men pakkeren ignorerer
+      den endnu (jævn/interleaved placering, som i dag).
+EFTER = fuld #3469 (fase-bevidst placering i raceCalendarLanePacker.js).
+
+KONKLUSION: kompositions-tabellerne (terræn %), rækkefølge-stats (#3326) og GO/NO-GO-verdikten
+er BYTE-IDENTISKE mellem FØR og EFTER (se diff nedenfor — kun Kronologi-linjerne + tie-break-
+rækkefølgen i byArchetype-parenteserne, som er kosmetisk) → placering ændrer IKKE komposition,
+præcis som krævet. GT'er og monumenter rykker fra "spredt jævnt/vilkårligt langs tidslinjen" til
+"tæt på deres date_text-fraction":
+
+  Tier 1 GT-positioner (mål fra date_text → faktisk placeret i den pakkede tidslinje):
+    FØR:   2e8fcf30 (Vuelta Ibérica)      mål 0.79 → placeret 0.00
+           54cbd997 (Giro della Penisola) mål 0.40 → placeret 0.54
+           e548cc6c (Tour de l'Hexagone)  mål 0.61 → placeret 0.75
+    EFTER: 54cbd997 (Giro della Penisola) mål 0.40 → placeret 0.32
+           e548cc6c (Tour de l'Hexagone)  mål 0.61 → placeret 0.57
+           2e8fcf30 (Vuelta Ibérica)      mål 0.79 → placeret 0.82
+    → EFTER bevarer korrekt rækkefølge (Giro→Tour→Vuelta) og lander inden for ~0.05 af målet;
+      FØR havde Vuelta FØRST i kalenderen (fraction 0.00) selvom den reelt ligger sidst (0.79).
+
+  Tier 1 monument-positioner:
+    FØR:   ebfac467 mål 0.30 → 0.07 · 901d1a00 mål 0.28 → 0.29 · d17d0b5c mål 0.97 → 0.50 ·
+           f2ace2bf mål 0.35 → 0.68 · 39799ba9 mål 0.22 → 0.89  (ingen korrelation med målet)
+    EFTER: 39799ba9 mål 0.22 → 0.21 · 901d1a00 mål 0.28 → 0.25 · ebfac467 mål 0.30 → 0.29 ·
+           f2ace2bf mål 0.35 → 0.32 · d17d0b5c mål 0.97 → 0.93  (monoton, ~0.01-0.04 fra målet)
+    → De 4 forårsmonumenter (0.22-0.35) og den ene efterårsmonument (0.97) er nu tydeligt
+      adskilt i den pakkede kalender, som i virkeligheden.
+
+  Brosten-klumpning (cobbled_classic+cobbled_tour, andel af brosten-løbsdage i det tætteste
+  25 %-vindue af tidslinjen):
+    Tier 1: 77 % → 92 %  (STIGER, som forventet — tier 1's brostensudvalg klumper reelt marts-april)
+    Tier 2: 83 % → 50 %  (FALDER)
+    Tier 3: 91 % → 64 %  (FALDER)
+    Tier 4: 100 % → 75 % (FALDER)
+    → Se punkt 5 i "tvivl/beslutninger" i PR-body: dette er IKKE en fejl. FØR-tallet er en
+      TILFÆLDIG bivirkning af selection-rækkefølgen (archetypeReservations-fasen lægger knappe
+      arketyper forrest i sel.oneDayRaces → de lander uforvarende i banded-poolens FØRSTE
+      spor-fyld). EFTER-tallet er den ÆGTE spredning af tier 2-4's brostens-løbs date_text —
+      disse divisioners konkrete brostens-katalog er (målt) IKKE så snævert marts-april-bundet
+      som tier 1's udvalg. Kun tier 1 var forventet at stige markant, jf. issue-teksten
+      ("baseline forventet ≈ jævn") — de tre andre tiers viser at hypotesen om universel
+      klumpning ikke holder for HELE kataloget, kun for de specifikke løb tier 1 vælger.
+
+Fuld diff mellem FØR- og EFTER-kørslens output (kun Kronologi-linjer + kosmetisk tie-break-
+rækkefølge i byArchetype-parenteser ændrer sig — komposition/rækkefølge/GO-NO-GO uændret):
+30,32c30,32
+<       brosten-klumpning (cobbled_classic+cobbled_tour): 77 % af 13 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+<       GT-positioner (mål fra date_text → faktisk placeret, fraction 0..1): 2e8fcf30(mål 0.79→placeret 0.00) · 54cbd997(mål 0.40→placeret 0.54) · e548cc6c(mål 0.61→placeret 0.75)
+<       monument-positioner (mål → faktisk placeret, fraction 0..1): ebfac467(mål 0.30→placeret 0.07) · 901d1a00(mål 0.28→placeret 0.29) · d17d0b5c(mål 0.97→placeret 0.50) · f2ace2bf(mål 0.35→placeret 0.68) · 39799ba9(mål 0.22→placeret 0.89)
+---
+>       brosten-klumpning (cobbled_classic+cobbled_tour): 92 % af 13 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+>       GT-positioner (mål fra date_text → faktisk placeret, fraction 0..1): 54cbd997(mål 0.40→placeret 0.32) · e548cc6c(mål 0.61→placeret 0.57) · 2e8fcf30(mål 0.79→placeret 0.82)
+>       monument-positioner (mål → faktisk placeret, fraction 0..1): 39799ba9(mål 0.22→placeret 0.21) · 901d1a00(mål 0.28→placeret 0.25) · ebfac467(mål 0.30→placeret 0.29) · f2ace2bf(mål 0.35→placeret 0.32) · d17d0b5c(mål 0.97→placeret 0.93)
+47,48c47,48
+<       Classics Block            18 løbsdage  (mountain_tour 13, cobbled_classic 3, puncheur 1, flat_sprint 1)
+<       First GT Block            37 løbsdage  (balanced_week 13, hilly_tour 9, mountain_tour 6, sprinters_week 6, flat_sprint 1, hilly_classic 1, cobbled_classic 1)
+---
+>       Classics Block            18 løbsdage  (mountain_tour 13, cobbled_classic 3, flat_sprint 1, puncheur 1)
+>       First GT Block            37 løbsdage  (balanced_week 13, hilly_tour 9, sprinters_week 6, mountain_tour 6, hilly_classic 1, cobbled_classic 1, flat_sprint 1)
+50c50
+<       Second GT/Late Summer     17 løbsdage  (sprinters_week 7, cobbled_tour 6, puncheur 2, hilly_classic 1, flat_sprint 1)
+---
+>       Second GT/Late Summer     17 løbsdage  (sprinters_week 7, cobbled_tour 6, puncheur 2, flat_sprint 1, hilly_classic 1)
+52c52
+<       brosten-klumpning (cobbled_classic+cobbled_tour): 83 % af 12 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+---
+>       brosten-klumpning (cobbled_classic+cobbled_tour): 50 % af 12 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+67,72c67,72
+<       Classics Block            18 løbsdage  (summit_tour 5, sprinters_week 5, cobbled_classic 2, hilly_classic 2, puncheur 2, flat_sprint 2)
+<       First GT Block            15 løbsdage  (sprinters_week 10, cobbled_classic 2, hilly_classic 1, flat_sprint 1, puncheur 1)
+<       High Summer               11 løbsdage  (cobbled_tour 5, balanced_week 5, itt_classic 1)
+<       Second GT/Late Summer     15 løbsdage  (summit_tour 9, hilly_classic 3, cobbled_classic 1, puncheur 1, flat_sprint 1)
+<       Autumn Finale              9 løbsdage  (hilly_classic 5, puncheur 2, cobbled_classic 1, flat_sprint 1)
+<       brosten-klumpning (cobbled_classic+cobbled_tour): 91 % af 11 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+---
+>       Classics Block            18 løbsdage  (sprinters_week 5, summit_tour 5, hilly_classic 2, puncheur 2, cobbled_classic 2, flat_sprint 2)
+>       First GT Block            15 løbsdage  (sprinters_week 10, cobbled_classic 2, puncheur 1, hilly_classic 1, flat_sprint 1)
+>       High Summer               11 løbsdage  (balanced_week 5, cobbled_tour 5, itt_classic 1)
+>       Second GT/Late Summer     15 løbsdage  (summit_tour 9, hilly_classic 3, flat_sprint 1, puncheur 1, cobbled_classic 1)
+>       Autumn Finale              9 løbsdage  (hilly_classic 5, puncheur 2, flat_sprint 1, cobbled_classic 1)
+>       brosten-klumpning (cobbled_classic+cobbled_tour): 64 % af 11 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+87c87
+<       Classics Block            13 løbsdage  (balanced_week 4, hilly_tour 4, hilly_classic 2, puncheur 2, mountain_classic 1)
+---
+>       Classics Block            13 løbsdage  (balanced_week 4, hilly_tour 4, puncheur 2, hilly_classic 2, mountain_classic 1)
+92c92
+<       brosten-klumpning (cobbled_classic+cobbled_tour): 100 % af 4 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+---
+>       brosten-klumpning (cobbled_classic+cobbled_tour): 75 % af 4 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
