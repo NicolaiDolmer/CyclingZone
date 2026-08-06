@@ -214,6 +214,38 @@ test("buildCalendarModel returnerer division-træ + dag-liste", () => {
   assert.deepEqual(days.map((d) => d.gameDay), [0, 2, 3]);
 });
 
+// ── #3470: restGameDays (GT-hviledage) ───────────────────────────────────────
+
+test("#3470 buildCalendarModel: GT med huller i game_days afleder restGameDays (huller i [gameDayStart,gameDayEnd])", () => {
+  const input = sampleInput();
+  // r-stage får et EKSTRA scheduleRow på game_day 6 (springer 4 og 5 over — to hviledage).
+  input.scheduleRows.push({ race_id: "r-stage", stage_number: 6, scheduled_at: "2026-07-04T06:00:00Z", game_day: 6 });
+  input.profileRows.push({ race_id: "r-stage", stage_number: 6, profile_type: "flat" });
+  const { entries } = buildCalendarModel(input);
+  const stage = entries.find((e) => e.id === "r-stage");
+  assert.equal(stage.gameDayStart, 2);
+  assert.equal(stage.gameDayEnd, 6);
+  assert.deepEqual(stage.restGameDays, [4, 5], "hullerne i [2,6] uden en etape");
+});
+
+test("#3470 buildCalendarModel: løb UDEN huller (r-single, r-stage i sampleInput()) får INGEN restGameDays-felt", () => {
+  const { entries } = buildCalendarModel(sampleInput());
+  for (const e of entries) assert.ok(!("restGameDays" in e), `${e.id} skal ikke have restGameDays uden huller`);
+});
+
+test("#3470 toCalendarWireEntry: restGameDays medtages KUN når entry'en har den (wire-trimning)", () => {
+  const withHoles = sampleInput();
+  withHoles.scheduleRows.push({ race_id: "r-stage", stage_number: 6, scheduled_at: "2026-07-04T06:00:00Z", game_day: 6 });
+  withHoles.profileRows.push({ race_id: "r-stage", stage_number: 6, profile_type: "flat" });
+  const stageWithHoles = buildCalendarModel(withHoles).entries.find((e) => e.id === "r-stage");
+  const wireWithHoles = toCalendarWireEntry(stageWithHoles);
+  assert.deepEqual(wireWithHoles.restGameDays, [4, 5]);
+
+  const stageNoHoles = buildCalendarModel(sampleInput()).entries.find((e) => e.id === "r-stage");
+  const wireNoHoles = toCalendarWireEntry(stageNoHoles);
+  assert.ok(!("restGameDays" in wireNoHoles), "intet restGameDays-felt når løbet ikke har huller");
+});
+
 // ── toCalendarWireEntry (#2861 payload-trim) ─────────────────────────────────
 
 test("toCalendarWireEntry bevarer PRÆCIS de felter kalender-fladen renderer", () => {

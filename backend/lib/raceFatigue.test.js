@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { raceFatigueLoad, applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
+import { raceFatigueLoad, applyRaceFatigue, stageEnteringFatigues, restDayFatigue, applyGrandTourRestDayFatigue } from "./raceFatigue.js";
+import { nextFatigue } from "./riderCondition.js";
 
 // ── raceFatigueLoad ───────────────────────────────────────────────────────────
 
@@ -249,4 +250,145 @@ test("applyRaceFatigue: rytter uden nøgle i effortByRider falder til multiplika
   const rows = supabase.__calls.find((c) => c.op === "upsert").rows;
   assert.equal(rows.find((r) => r.rider_id === "r1").fatigue, 27); // 20 + 10*0.7
   assert.equal(rows.find((r) => r.rider_id === "r2").fatigue, 30); // 20 + 10*1.0 (ikke i map → normal)
+});
+
+// ── #3470: restDayFatigue (REN kerne, GT-hviledags-restitution) ────────────────────
+
+test("restDayFatigue: 0 hviledage → uændret træthed (identitet)", () => {
+  assert.equal(restDayFatigue({ fatigue: 72, restDays: 0, recoveryAbility: 60 }), 72);
+});
+
+test("restDayFatigue: ÉN hviledag matcher PRÆCIS ét nextFatigue({intensity:'rest'})-tick", () => {
+  const expected = nextFatigue({ fatigue: 80, intensity: "rest", recoveryAbility: 60 });
+  assert.equal(restDayFatigue({ fatigue: 80, restDays: 1, recoveryAbility: 60 }), expected);
+});
+
+test("restDayFatigue: N hviledage = N tick i træk (samme sekvens som seasonFatigueReset's rest_days-mode)", () => {
+  let manual = 90;
+  for (let i = 0; i < 3; i++) manual = nextFatigue({ fatigue: manual, intensity: "rest", recoveryAbility: 40 });
+  assert.equal(restDayFatigue({ fatigue: 90, restDays: 3, recoveryAbility: 40 }), manual);
+});
+
+test("restDayFatigue: mærkbar restitution — 3 hviledage sænker høj træthed markant (raceRunner.test.js's fulde 21-etapers harness måler den samlede peak-fatigue-effekt)", () => {
+  const before = 90;
+  const after = restDayFatigue({ fatigue: before, restDays: 3, recoveryAbility: 50 });
+  assert.ok(after < before - 30, `3 hviledage skal give en markant restitution: ${before} → ${after}`);
+  // Monoton: flere hviledage giver aldrig MINDRE restitution end færre (samme start/recovery).
+  const after1 = restDayFatigue({ fatigue: before, restDays: 1, recoveryAbility: 50 });
+  const after2 = restDayFatigue({ fatigue: before, restDays: 2, recoveryAbility: 50 });
+  assert.ok(after1 > after2 && after2 > after, `restitution skal vokse med antal hviledage: ${after1} > ${after2} > ${after}`);
+});
+
+test("restDayFatigue: højere recoveryAbility giver MERE restitution end lavere (samme fatigue/restDays)", () => {
+  const low = restDayFatigue({ fatigue: 85, restDays: 2, recoveryAbility: 10 });
+  const high = restDayFatigue({ fatigue: 85, restDays: 2, recoveryAbility: 90 });
+  assert.ok(high < low, `høj recovery (${high}) skal give lavere sluttræthed end lav recovery (${low})`);
+});
+
+test("restDayFatigue: clamp 0-100, heltal, robust ved manglende/negative/ugyldige inputs", () => {
+  assert.equal(restDayFatigue({ fatigue: null, restDays: 2 }), restDayFatigue({ fatigue: 0, restDays: 2 }));
+  assert.equal(restDayFatigue({ fatigue: 50, restDays: -1 }), 50, "negativt restDays clampes til 0");
+  assert.ok(Number.isInteger(restDayFatigue({ fatigue: 77, restDays: 1, recoveryAbility: 33 })));
+});
+
+test("restDayFatigue: default recoveryAbility (50) bruges når udeladt", () => {
+  assert.equal(restDayFatigue({ fatigue: 80, restDays: 1 }), restDayFatigue({ fatigue: 80, restDays: 1, recoveryAbility: 50 }));
+});
+
+// ── #3470: applyGrandTourRestDayFatigue (frisk læs-modificér-skriv, som applyRaceFatigue) ──
+
+test("applyGrandTourRestDayFatigue: frisk DB-læsning → restDayFatigue → upsert, onConflict rider_id", async () => {
+  const supabase = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 90 }, { rider_id: "r2", fatigue: 60 }] });
+  const fixedNow = new Date("2026-08-06T12:00:00Z");
+  const recoveryAbilityByRider = new Map([["r1", 70], ["r2", 30]]);
+  const result = await applyGrandTourRestDayFatigue({
+    supabase, riderIds: ["r1", "r2"], restDays: 2, recoveryAbilityByRider, now: fixedNow,
+  });
+  assert.equal(result.updated, 2);
+  const upserted = supabase.__calls.find((c) => c.op === "upsert");
+  assert.equal(upserted.opts?.onConflict, "rider_id");
+  const r1 = upserted.rows.find((r) => r.rider_id === "r1");
+  const r2 = upserted.rows.find((r) => r.rider_id === "r2");
+  assert.equal(r1.fatigue, restDayFatigue({ fatigue: 90, restDays: 2, recoveryAbility: 70 }));
+  assert.equal(r2.fatigue, restDayFatigue({ fatigue: 60, restDays: 2, recoveryAbility: 30 }));
+  assert.equal(r1.updated_at, "2026-08-06T12:00:00.000Z");
+  assert.deepEqual([...result.fatigueByRider.entries()].sort(), [["r1", r1.fatigue], ["r2", r2.fatigue]].sort());
+});
+
+test("applyGrandTourRestDayFatigue: rytter uden condition-række starter fra 0 (samme fallback som applyRaceFatigue)", async () => {
+  const supabase = makeSupabase({ conditionRows: [] });
+  const result = await applyGrandTourRestDayFatigue({ supabase, riderIds: ["r-ny"], restDays: 1 });
+  const row = supabase.__calls.find((c) => c.op === "upsert").rows.find((r) => r.rider_id === "r-ny");
+  assert.equal(row.fatigue, restDayFatigue({ fatigue: 0, restDays: 1, recoveryAbility: 50 }));
+  assert.equal(result.fatigueByRider.get("r-ny"), row.fatigue);
+});
+
+test("applyGrandTourRestDayFatigue: rytter uden nøgle i recoveryAbilityByRider falder til default 50", async () => {
+  const supabase = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 80 }] });
+  const result = await applyGrandTourRestDayFatigue({ supabase, riderIds: ["r1"], restDays: 1, recoveryAbilityByRider: new Map() });
+  const row = supabase.__calls.find((c) => c.op === "upsert").rows.find((r) => r.rider_id === "r1");
+  assert.equal(row.fatigue, restDayFatigue({ fatigue: 80, restDays: 1, recoveryAbility: 50 }));
+  assert.equal(result.fatigueByRider.get("r1"), row.fatigue);
+});
+
+test("applyGrandTourRestDayFatigue: tom riderIds ELLER restDays=0 → {updated:0} uden DB-kald", async () => {
+  const supabase = makeSupabase();
+  const r1 = await applyGrandTourRestDayFatigue({ supabase, riderIds: [], restDays: 3 });
+  const r2 = await applyGrandTourRestDayFatigue({ supabase, riderIds: ["r1"], restDays: 0 });
+  assert.equal(r1.updated, 0);
+  assert.equal(r2.updated, 0);
+  assert.equal(supabase.__calls.length, 0, "ingen DB-kald ved tom riderIds/restDays=0");
+});
+
+test("applyGrandTourRestDayFatigue: select-fejl → kaster Error", async () => {
+  const supabase = makeSupabase({ selectError: { message: "connection refused" } });
+  await assert.rejects(
+    () => applyGrandTourRestDayFatigue({ supabase, riderIds: ["r1"], restDays: 1 }),
+    /rider_condition \(GT hviledags-restitution\)/
+  );
+});
+
+test("applyGrandTourRestDayFatigue: upsert-fejl → kaster Error (kald-stedet sluger, samme mønster som applyRaceFatigue)", async () => {
+  const supabase = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 50 }], upsertError: { message: "upsert boom" } });
+  await assert.rejects(
+    () => applyGrandTourRestDayFatigue({ supabase, riderIds: ["r1"], restDays: 1 }),
+    /rider_condition upsert \(GT hviledags-restitution\)/
+  );
+});
+
+// ── #3470: stageEnteringFatigues({ restDaysBefore, recoveryAbility }) ───────────────
+
+test("stageEnteringFatigues: uden restDaysBefore er BIT-IDENTISK med før #3470", () => {
+  const profiles = ["flat", "mountain", "high_mountain"];
+  assert.deepEqual(stageEnteringFatigues(40, profiles), stageEnteringFatigues(40, profiles, { restDaysBefore: undefined }));
+  assert.deepEqual(stageEnteringFatigues(40, profiles), stageEnteringFatigues(40, profiles, { restDaysBefore: [0, 0, 0] }));
+});
+
+test("stageEnteringFatigues: restDaysBefore[i]>0 restituerer FØR etapens belastning lægges til", () => {
+  // Etape 1 flat (load 10, entering 40) → f=50 efter. 2 hviledage FØR etape 2: f tickes
+  // 2× via restDayFatigue, DEREFTER mountain (load 18) lægges til for etape 3.
+  const seq = stageEnteringFatigues(40, ["flat", "flat"], { restDaysBefore: [0, 2], recoveryAbility: 50 });
+  const afterStage1 = 50; // 40 + flat(10)
+  const restituted = restDayFatigue({ fatigue: afterStage1, restDays: 2, recoveryAbility: 50 });
+  assert.deepEqual(seq, [40, restituted]);
+});
+
+test("stageEnteringFatigues: GT-hviledage (efter etape 9/15, #3470-mønster) giver markant lavere trætheds-forløb end uden hviledage", () => {
+  // 21×flat (load 10/etape): UDEN hviledage mætter feltet ved etape 11 og sidder fast på
+  // 100 resten af touren. MED hviledage (3 efter etape 9, 2 efter etape 15 — samme
+  // positioner som GT_REST_DAY_PATTERN[3]/[2]) restituerer feltet mellem blokkene.
+  const profiles = Array(21).fill("flat");
+  const restDaysBefore = new Array(21).fill(0);
+  restDaysBefore[9] = 3;  // hviledage FØR etape 10 (0-indekseret) = efter etape 9
+  restDaysBefore[15] = 2; // hviledage FØR etape 16 = efter etape 15
+  const withoutRest = stageEnteringFatigues(0, profiles);
+  const withRest = stageEnteringFatigues(0, profiles, { restDaysBefore, recoveryAbility: 50 });
+
+  const avg = (arr) => arr.reduce((s, v) => s + v, 0) / arr.length;
+  assert.ok(avg(withRest) < avg(withoutRest) * 0.7, `hviledage skal sænke det gennemsnitlige forløb markant: ${avg(withRest)} vs ${avg(withoutRest)}`);
+  // Sidste etapes entering-fatigue: uden hviledage sidder feltet fast på loftet (100);
+  // med hviledage er der stadig "luft" tilbage — den mærkbare effekt spec'en efterspørger.
+  assert.equal(withoutRest[20], 100, "uden hviledage skal feltet være mættet ved sidste etape");
+  assert.ok(withRest[20] < withoutRest[20] - 20, `sidste etapes entering-fatigue skal være mærkbart lavere med hviledage: ${withRest[20]} vs ${withoutRest[20]}`);
+  assert.ok(withRest.every((v) => v >= 0 && v <= 100));
 });

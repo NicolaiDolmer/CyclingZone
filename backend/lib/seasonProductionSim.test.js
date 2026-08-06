@@ -96,6 +96,34 @@ test("assignSeasonFields: ledige ryttere (ikke optaget) kan stadig bruges i et s
   for (const id of eIds) assert.ok(!fIds.has(id));
 });
 
+// #3470: GT-hviledage giver et HUL i game_days (fx [500,501,...,506,508,...] — dag 507
+// mangler, en hviledag fyldt af et filler-løb). Busy-markeringen skal bruge SPÆNDET
+// (min..max), ikke kun de eksplicitte værdier, så GT-ryttere er blokeret fra filler-løbet
+// på selve hviledagen (samme span-binding som prod's binding-lag, #3470-arkitekturgrundlag).
+test("assignSeasonFields: GT med hul i game_days (hviledag) blokerer stadig ryttere PÅ hviledagen (span-binding)", () => {
+  const races = [
+    // GT'en spænder game_day 500..508 men har KUN etaper på 500-503 og 505-508 —
+    // 504 er en hviledag (hul), fyldt af raceFiller nedenfor.
+    {
+      id: "raceGT", race_type: "stage_race", league_division_id: "D1",
+      stages: [flatStage, { ...flatStage, stage_number: 2 }, { ...flatStage, stage_number: 3 }],
+      game_days: [500, 501, 503, 505, 507, 508],
+    },
+    // raceFiller ligger PRÆCIS på hviledagen (504) — deler INGEN eksplicit game_day-værdi
+    // med raceGT, men ligger inden for dens span.
+    { id: "raceFiller", race_type: "single", league_division_id: "D1", stages: [flatStage], game_days: [504] },
+  ];
+  const teamsByDivision = new Map([["D1", ["t1"]]]);
+  const ridersByTeam = new Map([["t1", riders(["r1", "r2"])]]);
+
+  const { entrantsByRaceId, stats } = assignSeasonFields({ races, teamsByDivision, ridersByTeam });
+  assert.ok(entrantsByRaceId.has("raceGT"), "GT skal have fået sit felt (kørt først, laveste game_day)");
+  // raceFiller kan IKKE tildele t1's ryttere (alle optaget af raceGT via span-binding,
+  // selvom 504 aldrig er en eksplicit værdi i raceGT.game_days) → udelades af outputtet.
+  assert.ok(!entrantsByRaceId.has("raceFiller"), "filler-løbet på hviledagen skal IKKE kunne tildele GT'ens optagede ryttere");
+  assert.equal(stats.skipped_no_entrants, 1);
+});
+
 test("assignSeasonFields: races uden division/stage-profiler/schedule skippes og tælles i stats", () => {
   const races = [
     { id: "raceNoDiv", race_type: "single", league_division_id: null, stages: [flatStage], game_days: [1] },

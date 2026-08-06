@@ -360,6 +360,93 @@ test("fatigue: PRÆCIS ét applyFatigue-kald pr. invokation, med DENNE etapes pr
   }
 });
 
+// ── #3470: GT-hviledags-restitution (post-lock, mellem to etaper) ──────────────
+test("#3470: game_day-hul til NÆSTE etape → applyGrandTourRestDayFatigue kaldt PRÆCIS én gang, post-lock, med korrekt restDays + fulde riderIds", async () => {
+  const race = { ...STAGE_RACE, stages_completed: 1 };
+  // game_day for etape 1,2,3: 0,1,4 → 2 hviledages hul mellem etape 2 og 3.
+  const schedule = [
+    { race_id: race.id, stage_number: 1, game_day: 0 },
+    { race_id: race.id, stage_number: 2, game_day: 1 },
+    { race_id: race.id, stage_number: 3, game_day: 4 },
+  ];
+  const supabase = cannedFor(race, STAGES_3, { race_stage_schedule: schedule });
+  const cap = captureStageResult();
+  const restDayCalls = [];
+  await simulateStageByIndex({
+    supabase, race, stageIndex: 1, // etape 2 — hullet ligger TIL NÆSTE etape (3)
+    ...NOOP_DEPS,
+    applyStageResult: cap.applyStageResult,
+    applyGrandTourRestDayFatigue: async (args) => { restDayCalls.push(args); return { updated: args.riderIds.length, fatigueByRider: new Map() }; },
+  });
+  assert.equal(restDayCalls.length, 1, "hviledags-restitutionen skal kaldes PRÆCIS én gang");
+  assert.equal(restDayCalls[0].restDays, 2, "2 hviledage (game_day 4 - 1 - 1)");
+  assert.deepEqual([...restDayCalls[0].riderIds].sort(), ENTRANTS.map((e) => e.rider_id).sort());
+  assert.ok(restDayCalls[0].recoveryAbilityByRider instanceof Map);
+  assert.equal(restDayCalls[0].recoveryAbilityByRider.get("climber"), 84, "recoveryAbility skal komme fra entrantens abilities");
+});
+
+test("#3470: INTET game_day-hul (sammenhængende etaper) → applyGrandTourRestDayFatigue kaldes IKKE", async () => {
+  const supabase = cannedFor(STAGE_RACE, STAGES_3, {
+    race_stage_schedule: [
+      { race_id: STAGE_RACE.id, stage_number: 1, game_day: 0 },
+      { race_id: STAGE_RACE.id, stage_number: 2, game_day: 1 },
+      { race_id: STAGE_RACE.id, stage_number: 3, game_day: 2 },
+    ],
+  });
+  let called = false;
+  await simulateStageByIndex({
+    supabase, race: STAGE_RACE, stageIndex: 0, // etape 1 — næste etape (2) er umiddelbart efter
+    ...NOOP_DEPS,
+    applyGrandTourRestDayFatigue: async () => { called = true; return { updated: 0, fatigueByRider: new Map() }; },
+  });
+  assert.equal(called, false, "ingen hul → ingen hviledags-restitution");
+});
+
+test("#3470: manglende race_stage_schedule-data (legacy/tomt) → INGEN kald, degraderer til 0 hviledage (nuværende adfærd)", async () => {
+  const race = { ...STAGE_RACE, stages_completed: 1 };
+  const supabase = cannedFor(race, STAGES_3); // ingen race_stage_schedule i canned
+  let called = false;
+  await simulateStageByIndex({
+    supabase, race, stageIndex: 1,
+    ...NOOP_DEPS,
+    applyGrandTourRestDayFatigue: async () => { called = true; return { updated: 0, fatigueByRider: new Map() }; },
+  });
+  assert.equal(called, false);
+});
+
+test("#3470: applyGrandTourRestDayFatigue-fejl vælter IKKE afviklingen (best-effort, samme mønster som applyFatigue)", async () => {
+  const race = { ...STAGE_RACE, stages_completed: 1 };
+  const schedule = [
+    { race_id: race.id, stage_number: 1, game_day: 0 },
+    { race_id: race.id, stage_number: 2, game_day: 1 },
+    { race_id: race.id, stage_number: 3, game_day: 3 },
+  ];
+  const supabase = cannedFor(race, STAGES_3, { race_stage_schedule: schedule });
+  const cap = captureStageResult();
+  const result = await simulateStageByIndex({
+    supabase, race, stageIndex: 1,
+    ...NOOP_DEPS,
+    applyStageResult: cap.applyStageResult,
+    applyGrandTourRestDayFatigue: async () => { throw new Error("rest day boom"); },
+  });
+  assert.ok(cap.rows()?.length > 0, "resultaterne skal stadig være persisteret trods fejlen");
+  assert.equal(result.stageNumber, 2);
+});
+
+test("#3470: single-etapeløb (race_type != stage_race) rører ALDRIG hviledags-restitutionen", async () => {
+  const singleRace = { ...STAGE_RACE, race_type: "single", stages: 1 };
+  const supabase = cannedFor(singleRace, [STAGES_3[0]], {
+    race_stage_schedule: [{ race_id: singleRace.id, stage_number: 1, game_day: 0 }],
+  });
+  let called = false;
+  await simulateStageByIndex({
+    supabase, race: singleRace, stageIndex: 0,
+    ...NOOP_DEPS,
+    applyGrandTourRestDayFatigue: async () => { called = true; return { updated: 0, fatigueByRider: new Map() }; },
+  });
+  assert.equal(called, false);
+});
+
 // ── Persist: KUN etape N's race_results via atomær RPC (idempotent delete+insert) ──
 test("persist: kun etape N skrives — atomær RPC med race_id + stage_number=N + kun etape-N-rækker", async () => {
   const supabase = cannedFor();

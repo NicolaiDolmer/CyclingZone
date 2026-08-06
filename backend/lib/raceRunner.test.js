@@ -6,6 +6,7 @@ import {
   loadEntrantsForRace,
   simulateRace,
   deriveIsU25FromBirthdate,
+  restDaysBeforeEachStage,
 } from "./raceRunner.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled } from "./raceEngineFlag.js";
 import { PRIZE_PER_POINT } from "./economyConstants.js";
@@ -44,6 +45,32 @@ const STAGES_3 = [
   { stage_number: 2, profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain },
   { stage_number: 3, profile_type: "high_mountain", demand_vector: DEMAND_VECTORS.high_mountain },
 ];
+
+// #3470: game_day-sekvens for et 21-etapers GT med 1 hviledag (game_day-hul) EFTER hver
+// etape i `restPositions` (1-indekseret, samme form som grandTourRestDayPositions).
+function gtGameDaysWithRest(restPositions) {
+  const gds = [];
+  let gd = 0;
+  for (let stage = 1; stage <= 21; stage++) {
+    gds.push(gd);
+    gd += 1;
+    if (restPositions.includes(stage)) gd += 1; // hviledag = spring ét game_day over
+  }
+  return gds;
+}
+// 21×flat (load 10/etape, #1021-hybrid) — bevidst den LETTESTE profil: high_mountain
+// (load 20) mætter feltet til fatigue-loftet (100) inden for 5-6 etaper uanset hviledage,
+// hvilket ville skjule effekten bag et fælles loft i begge scenarier. flat holder feltet
+// under loftet længe nok til at hviledagenes restitution er MÅLBAR (samme valg som
+// raceFatigue.test.js's tilsvarende harness-test). game_day attacheret KUN når `gds` er
+// givet (mirrorer attachStageGameDays' .game_day-mutation); udeladt → restDaysBeforeEachStage
+// giver alt-0 (bit-identisk fallback, samme kontrakt som #3469's fraction-frie fallback).
+function stages21WithGameDays(gds) {
+  return Array.from({ length: 21 }, (_, i) => ({
+    stage_number: i + 1, profile_type: "flat", demand_vector: DEMAND_VECTORS.flat,
+    ...(gds ? { game_day: gds[i] } : {}),
+  }));
+}
 // Realistisk-formet pointLookup (kun nogle ranks scorer, som race_points).
 const POINTS = {
   "stage__1": 43, "stage__2": 30, "stage__3": 20,
@@ -188,6 +215,51 @@ test("akkumulering bevarer determinisme: finalFatigue identisk på tværs af kal
   const a = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
   const b = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
   assert.deepEqual(a.finalFatigue, b.finalFatigue);
+});
+
+// ── #3470: GT-hviledage — fatigue-forløb over 21 etaper MED vs UDEN game_day-huller ──
+
+test("restDaysBeforeEachStage: udleder GT_REST_DAY_PATTERN[3]-huller (efter etape 6/12/18) fra .game_day", () => {
+  const stages = stages21WithGameDays(gtGameDaysWithRest([6, 12, 18]));
+  const gaps = restDaysBeforeEachStage(stages);
+  assert.equal(gaps.length, 21);
+  assert.equal(gaps[0], 0, "ingen hviledag før første etape");
+  // Hviledag ligger FØR etape 7/13/19 (0-indekseret 6/12/18).
+  assert.equal(gaps[6], 1, "1 hviledag før etape 7 (efter etape 6)");
+  assert.equal(gaps[12], 1, "1 hviledag før etape 13 (efter etape 12)");
+  assert.equal(gaps[18], 1, "1 hviledag før etape 19 (efter etape 18)");
+  for (let i = 0; i < gaps.length; i++) if (![6, 12, 18].includes(i)) assert.equal(gaps[i], 0, `etape ${i + 1}: uventet hviledag`);
+});
+
+test("restDaysBeforeEachStage: uden .game_day (ikke attacheret) → alt 0 (bit-identisk med før #3470)", () => {
+  const gaps = restDaysBeforeEachStage(stages21WithGameDays(null));
+  assert.deepEqual(gaps, new Array(21).fill(0));
+});
+
+test("#3470 buildRaceResults: GT med game_day-huller (3 hviledage efter etape 6/12/18) giver MARKANT lavere finalFatigue end uden huller — samme rytterfelt/seed", () => {
+  const stagesWithRest = stages21WithGameDays(gtGameDaysWithRest([6, 12, 18]));
+  const stagesWithoutRest = stages21WithGameDays(null); // ingen .game_day → 0 hviledage (fallback)
+  const gtRace = { id: "gt-race", race_type: "stage_race", race_class: "GiroVuelta", season_id: "s1" };
+
+  const withRest = buildRaceResults({ race: gtRace, stages: stagesWithRest, entrants: ENTRANTS, pointsLookup: POINTS });
+  const withoutRest = buildRaceResults({ race: gtRace, stages: stagesWithoutRest, entrants: ENTRANTS, pointsLookup: POINTS });
+
+  // Determinisme: SAMME entrants/pointsLookup — kun game_day-hullerne adskiller de to kald.
+  // UDEN hviledage mætter hele feltet trætheds-loftet (100) inden sidste etape (21×flat-load
+  // uden restitution overskrider 100 langt før etape 21). MED hviledage er feltet ALDRIG
+  // mættet ved sidste etape — den kategoriske forskel (loft vs. luft tilbage) ER den
+  // mærkbare effekt ejeren efterspurgte (#3470 punkt 5).
+  for (const e of ENTRANTS) {
+    const before = withoutRest.finalFatigue[e.rider_id];
+    const after = withRest.finalFatigue[e.rider_id];
+    assert.equal(before, 100, `${e.rider_id}: uden hviledage skal feltet være mættet ved sidste etape`);
+    assert.ok(after < 100, `${e.rider_id}: med hviledage skal feltet IKKE være mættet ved sidste etape (${after})`);
+    assert.ok(before - after >= 10, `${e.rider_id}: effekten skal være mærkbar (delta ${before - after} < 10)`);
+  }
+  // Rapportér den faktiske delta for det repræsentative feltmedlem (climber, recovery 84).
+  const climberBefore = withoutRest.finalFatigue.climber;
+  const climberAfter = withRest.finalFatigue.climber;
+  assert.ok(Number.isFinite(climberBefore) && Number.isFinite(climberAfter));
 });
 
 test("runs: én pr. etape med seed + entrant-snapshot", () => {

@@ -129,7 +129,11 @@ export function splitISODate(iso) {
 //
 // Output: { entries: [...], days: [{ gameDay, date }], divisions: [{division, pools}] }
 // Hver entry repræsenterer ÉT løb (én pulje-instans) på sin startdag, beriget med
-// terræn, division/pulje og "mit hold"-flag.
+// terræn, division/pulje og "mit hold"-flag. #3470: entries for Grand Tours med
+// hviledage bærer desuden `restGameDays: number[]` — game_days i [gameDayStart,
+// gameDayEnd] hvor løbet IKKE selv har en etape (huller, jf. raceCalendarLanePacker.js's
+// Option A). Udeladt (ikke tomt array) på løb uden huller — se toCalendarWireEntry for
+// samme wire-trimning.
 export function buildCalendarModel({
   races = [],
   scheduleRows = [],
@@ -201,6 +205,15 @@ export function buildCalendarModel({
     const profileTypes = profilesByRace.get(race.id) || [];
     const isMine = teamDivisionId != null && race.league_division_id === teamDivisionId;
 
+    // #3470: hviledage — huller i [gameDayStart, gameDayEnd] uden en etape (GT-
+    // rest-dage, jf. raceCalendarLanePacker.js's Option A: hul i game_day, TÆT
+    // stage_number). Kun regnet ud for løb med ≥2 game_days (endagsløb/monumenter har
+    // trivielt ingen huller). Wire-trimmet: feltet udelades af entry'en når tomt.
+    const restGameDays = [];
+    if (dayset && dayset.size > 1) {
+      for (let gd = startDay; gd <= endDay; gd++) if (!dayset.has(gd)) restGameDays.push(gd);
+    }
+
     entries.push({
       id: race.id,
       name: race.name,
@@ -221,6 +234,7 @@ export function buildCalendarModel({
       isMine,
       leaderSet: teamLeaderRaceIds.has(race.id),
       entered: teamEntryRaceIds.has(race.id),
+      ...(restGameDays.length ? { restGameDays } : {}), // #3470: kun til stede når ikke-tom
     });
   }
 
@@ -256,6 +270,10 @@ export function buildCalendarModel({
 // tier), men en pulje-vælger ("Division 2 A") kræver at kalender-klienten kan
 // matche events mod en specifik pulje — poolId tages derfor med igen.
 // poolLabel dækker visningen, poolIndex forbliver ubrugt (droppes stadig).
+// #3470: restGameDays (GT-hviledage) tages KUN med når entry'en rent faktisk har
+// nogen (wire-trimning, samme princip som resten af denne funktion) — de fleste løb
+// (endagsløb, ikke-GT-etapeløb) sender derfor intet ekstra. Frontend-visningen af
+// feltet er UDEN FOR SCOPE her (separat PR — se #3470's PR-body).
 export function toCalendarWireEntry(entry) {
   return {
     id: entry.id,
@@ -270,6 +288,7 @@ export function toCalendarWireEntry(entry) {
     stageSchedule: entry.stageSchedule,
     isMine: entry.isMine,
     leaderSet: entry.leaderSet,
+    ...(entry.restGameDays?.length ? { restGameDays: entry.restGameDays } : {}),
   };
 }
 

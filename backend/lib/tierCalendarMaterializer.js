@@ -26,6 +26,7 @@ import {
 import { computeCompositionStats } from "./calendarCompositionTargets.js";
 import { computeStageOrderStats } from "./stageOrderMetrics.js";
 import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPhaseProfiles.js";
+import { grandTourRestDayCount } from "./grandTourRestDays.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -215,6 +216,16 @@ export function buildTierMaterializationPlan({
   };
   const withSeasonFraction = (races) => races.map((r) => ({ ...r, seasonFraction: seasonFractionOf(r.id) }));
 
+  // #3470: hviledags-antal pr. GT (≥15 etaper), udledt af SAMME date_text-kilde som
+  // seasonFraction. 0 for alt der ikke er en GT eller mangler date_text — harmløst felt
+  // på ikke-GT'er, og packLaneCalendar bruger det KUN i STREAM's fase-ankrede GT-gren
+  // (bit-identisk uden). Rører ALDRIG hvilke løb der er valgt (kun rækkefølge/placering).
+  const grandTourRestDaysOf = (raceId) => {
+    const cat = catalogById.get(raceId);
+    return cat ? grandTourRestDayCount({ dateText: cat.date_text, stages: cat.stages }) : 0;
+  };
+  const withGrandTourRestDays = (races) => races.map((r) => ({ ...r, restDays: grandTourRestDaysOf(r.id) }));
+
   const liveByTier = new Map();
   for (const p of pools) {
     if (!poolHasCalendar(p.tier, p.realManagerCount) && !forced.has(p.tier)) continue;
@@ -303,9 +314,11 @@ export function buildTierMaterializationPlan({
     for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
     for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
 
-    // #3469: berig FØRST NU (umiddelbart før packing) — usedRaceIds/usedRaceNamesRunning
-    // ovenfor arbejder stadig på de urørte sel.*-arrays, selectionen selv rører #3469 aldrig.
-    const enrichedStageRaces = withSeasonFraction(sel.stageRaces);
+    // #3469/#3470: berig FØRST NU (umiddelbart før packing) — usedRaceIds/usedRaceNamesRunning
+    // ovenfor arbejder stadig på de urørte sel.*-arrays, selectionen selv rører #3469/#3470 aldrig.
+    // restDays er kun meningsfuld på stageRaces (kun etapeløb kan være GT'er), men beriges
+    // harmløst med 0 på oneDayRaces også for et ensartet enrich-mønster.
+    const enrichedStageRaces = withGrandTourRestDays(withSeasonFraction(sel.stageRaces));
     const enrichedOneDayRaces = withSeasonFraction(sel.oneDayRaces);
     const packed = packLaneCalendar({
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
@@ -368,6 +381,7 @@ export function buildTierMaterializationPlan({
       gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
+      grandTourRestDays: packed.grandTourRestDays, // #3470: dry-run-diagnostik, se packLaneCalendar's docstring.
       pools: poolPlans,
     });
   }
@@ -534,6 +548,7 @@ export async function materializeTierCalendars({
       seedRaces: tierPlan.seedRaces ?? null,
       realismDraw: tierPlan.realismDraw ?? null,
       chronologyRaces: tierPlan.chronologyRaces ?? null, // #3469: dry-run-rapportering (Kronologi-sektionen)
+      grandTourRestDays: tierPlan.grandTourRestDays ?? [], // #3470: dry-run-rapportering (hviledage + fillere)
       pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
