@@ -4,6 +4,167 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.100",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "The leading team is shown directly in the auction row",
+          "body": "In live auctions, the currently leading team is now shown directly in the row instead of only appearing on hover, so you can scan the whole board at a glance on desktop and mobile alike."
+        },
+        "da": {
+          "title": "Det førende hold vises direkte i auktionsrækken",
+          "body": "I live-auktioner vises det aktuelt førende hold nu direkte i selve rækken i stedet for kun at dukke op ved hover, så du kan skimme hele tavlen med ét blik på både desktop og mobil."
+        },
+        "refs": [3099]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "First-bid hint explains the recommended starting bid",
+          "body": "New auction bidders now get a hint explaining why the recommended starting bid is what it is, and it points at one rider your budget can actually afford, so your first bid is a decision instead of a guess."
+        },
+        "da": {
+          "title": "Første-bud-hint forklarer det anbefalede startbud",
+          "body": "Nye budgivere i auktioner får nu et hint der forklarer hvorfor det anbefalede startbud er som det er, og det peger på én rytter dit budget reelt har råd til, så dit første bud er en beslutning i stedet for et gæt."
+        },
+        "refs": [3007]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season peaks can be edited and removed again",
+          "body": "Season peaks can be edited or removed again after being set. This fixes a bug where a peak locked in the same second it was placed, with no warning, explanation or undo."
+        },
+        "da": {
+          "title": "Sæson-peaks kan redigeres og fjernes igen",
+          "body": "Sæson-peaks kan nu redigeres eller fjernes igen efter de er sat. Det retter en fejl hvor et peak låste i samme sekund det blev placeret, uden varsel, forklaring eller fortryd."
+        },
+        "refs": [3094]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Manual squads are no longer double-booked into overlapping races",
+          "body": "Fixed a bug where a rider on a fully manual squad could still get auto-booked into a second, overlapping race on the same race days."
+        },
+        "da": {
+          "title": "Manuelle trupper dobbeltbookes ikke længere i overlappende løb",
+          "body": "Rettede en fejl hvor en rytter i en fuldt manuel trup stadig kunne blive auto-udtaget til endnu et, overlappende løb på de samme løbsdage."
+        },
+        "refs": [3377]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Every board now calibrates its formation goals",
+          "body": "Fixed a bug where 12 of 21 teams never got their board's formation goals calibrated, because a query silently treated large squads as empty."
+        },
+        "da": {
+          "title": "Alle bestyrelser kalibrerer nu deres formations-mål",
+          "body": "Rettede en fejl hvor 12 ud af 21 hold aldrig fik deres bestyrelses formations-mål kalibreret, fordi en forespørgsel stille tolkede store trupper som tomme."
+        },
+        "refs": [2022]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Traded riders can no longer get stuck in transfer limbo",
+          "body": "Fixed a bug where a rider bought mid-way through a stage race could get permanently stuck between teams if the race never finalized properly. One real trade was stuck for over 40 days, reported by a player on Discord; a daily heal-sweep now delivers stuck riders and alerts us if a transfer parks for more than 48 hours."
+        },
+        "da": {
+          "title": "Handlede ryttere kan ikke længere sidde fast i overførsels-limbo",
+          "body": "Rettede en fejl hvor en rytter købt midt i et etapeløb kunne sidde permanent fast mellem to hold hvis løbet aldrig blev korrekt afsluttet. En reel handel sad fast i over 40 dage, rapporteret af en spiller på Discord; et dagligt heal-sweep leverer nu fastlåste ryttere og advarer os hvis en overførsel parkerer i mere end 48 timer."
+        },
+        "refs": [3330]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Completed races sort correctly across seasons",
+          "body": "Fixed the sort order on the Results page's completed-races list, which could rank an old season's race above a more recent one because it only compared day and month, not season."
+        },
+        "da": {
+          "title": "Afsluttede løb sorteres korrekt på tværs af sæsoner",
+          "body": "Rettede sorteringen i listen over afsluttede løb på Resultat-siden, som kunne rangere et løb fra en gammel sæson over et nyere, fordi den kun sammenlignede dag og måned og ikke sæson."
+        },
+        "refs": [3312]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Sponsor bonuses show in your language and in the Sponsor filter",
+          "body": "Sponsor bonus payouts now show in your own language in the finance history (Danish players previously saw raw English text), and sponsor bonuses now correctly appear when filtering the history by Sponsor."
+        },
+        "da": {
+          "title": "Sponsorbonusser vises på dit sprog og i Sponsor-filteret",
+          "body": "Sponsor-bonusudbetalinger vises nu på dit eget sprog i finanshistorikken (danske spillere så tidligere rå engelsk tekst), og sponsorbonusser dukker nu korrekt op når man filtrerer historikken på Sponsor."
+        },
+        "refs": [3260]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Facilities and scout travel get their own expense categories",
+          "body": "Facility purchases and scout travel costs now show as their own categories in the Finance page's expense breakdown, instead of both being lumped into an unlabeled Other."
+        },
+        "da": {
+          "title": "Faciliteter og scout-rejser får egne udgiftskategorier",
+          "body": "Facilitetskøb og scout-rejseudgifter vises nu som deres egne kategorier i finanssidens udgiftsopdeling, i stedet for begge at blive puttet i et umærket Andet."
+        },
+        "refs": [3261]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Global rankings break ties on results, not team names",
+          "body": "Global team rankings now break ties on actual race results (classification wins, stage podiums, best finishes) before falling back to team name, instead of effectively deciding close ties alphabetically."
+        },
+        "da": {
+          "title": "Globale ranglister afgør uafgjort på resultater, ikke holdnavne",
+          "body": "Globale hold-ranglister afgør nu uafgjorte placeringer ud fra faktiske løbsresultater (klassementssejre, etapepodier, bedste placeringer) før holdnavnet, i stedet for reelt at afgøre tætte opgør alfabetisk."
+        },
+        "refs": [3210]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Old calendar links land on the Calendar tab again",
+          "body": "Old bookmarks and links to the races calendar now correctly land on the Calendar tab inside the Planning hub, instead of dropping you on the default Team Selection tab."
+        },
+        "da": {
+          "title": "Gamle kalender-links lander på Kalender-fanen igen",
+          "body": "Gamle bogmærker og links til løbskalenderen lander nu korrekt på Kalender-fanen inde i Planlægnings-hubben, i stedet for at efterlade dig på standard-fanen Holdudtagelse."
+        },
+        "refs": [3298]
+      }
+    ]
+  },
+  {
     "version": "7.99",
     "date": "2026-08-06",
     "label": "Beta",
