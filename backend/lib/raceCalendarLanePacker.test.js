@@ -228,6 +228,14 @@ test("packer: stream — GT-rygraden fase-ankres, forbliver non-overlap, ingen t
     + cfg.oneDayRaces.filter((x) => x.race_class !== "Monuments").length;
   assert.equal(nonMonumentDays, inputNonMonumentDays, "ingen ikke-monument-events tabt");
   assert.ok(r.timelineLength <= totalSlots, `timelineLength ${r.timelineLength} > totalSlots ${totalSlots}`);
+  // #3472 (ejer-feedback PR #3472, 6/8): regressions-vagt mod D1-overlap-kollapset — v1's
+  // GT-anker fyldte KUN stream 0 mod hvert target, hvilket gjorde sene dele af sæsonen næsten
+  // enkelt-sporede (mål på det rigtige katalog: overlapDays faldt 21→16). v2 fordeler rest-
+  // fyldet LEAST-LOADED over ALLE streams under fremdriften mod targetSlot. Denne fixture giver
+  // 22 med v2 (målt); tærsklen sættes til 20 — solidt over v1's kollaps, med margin mod naturlig
+  // fixture-følsomhed.
+  assert.ok(r.overlapDays >= 20, `#3472-regression: overlapDays ${r.overlapDays} for lavt — GT-ankeret klemmer sandsynligvis stream 1-2 tomme igen`);
+  assert.ok(r.maxOverlap <= 3, `maxOverlap ${r.maxOverlap} > cap 3`);
 });
 
 test("packer: stream — monumenter fase-ankres til deres fraction-slot + kollisionsvandring", () => {

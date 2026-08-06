@@ -155,21 +155,48 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
     // (samme cursor, stream 0, sekventiel placering).
     const gtsByPhase = orderByPhase(gts);
     if (gtsByPhase) {
-      let remainingGtLen = gtsByPhase.reduce((s, g) => s + lenOf(g), 0);
+      // #3472 (ejer-feedback på PR #3472, 6/8): v1 fyldte KUN stream 0 mod hvert GT-target,
+      // hvilket gjorde stream 0 meget lang mens stream 1-2 forblev korte og "løb tør" tidligt
+      // i game_day-rummet — sene dele af sæsonen blev derfor næsten enkelt-sporede (D1
+      // overlapDays faldt 21→16, målt med diagnose()). Fix (ejer-anvist formel): rest-fyldet
+      // fordeles LEAST-LOADED over ALLE streams (også stream 0) under hele fremdriften mod
+      // targetSlot — streams skrider dermed jævnt frem sammen, og GT-perioderne forbliver
+      // overlap-tunge som resten af sæsonen. `placedCount` (summen af events på ALLE streams,
+      // inkl. tidligere GT'er) er progress-proxyen mod targetSlot — IKKE streamCursor[0]
+      // alene (ejer: "det samlede event-antal er den rigtige proxy for GT'ens slot-position
+      // når streams skrider jævnt frem"). Målt (dry-run --plan 3, rigtigt katalog): D1
+      // overlapDays 16→22 (≥21-kravet), maxOverlap forbliver ≤ cap. GT-positionerne rammer
+      // stadig korrekt rækkefølge og er i samme størrelsesorden som v1 (se PR-body/baseline-
+      // filen for de fulde tal — en afprøvet alternativ variant med streamCursor[0] som
+      // stop-betingelse gav VÆRRE præcision OG lavere overlap, så den blev forkastet).
+      let remainingGtLen = gtsByPhase.reduce((s, g) => s + lenOf(g), 0); // inkl. DENNE gt (jf. ejer-formel), dekrementeres i slutningen af hver iteration
       let ri = 0;
+      let placedCount = 0;
       for (const gt of gtsByPhase) {
-        remainingGtLen -= lenOf(gt);
-        // Target-startslot ≈ fraction × (plads der er tilbage til DENNE GT + resten af
-        // tidslinjen, minus pladsen efterfølgende GT'er skal bruge) — clampet til
-        // [nuværende cursor, loft], så GT'en aldrig rykkes forbi det punkt hvor
-        // efterfølgende GT'er ikke længere kan være der, og stream 0 aldrig kan
-        // overskride totalSlots.
-        const ceiling = Math.max(streamCursor[0], totalSlots - remainingGtLen - lenOf(gt));
-        const target = Math.min(ceiling, Math.max(streamCursor[0], Math.round(gt.seasonFraction * (totalSlots - remainingGtLen))));
-        while (ri < rest.length && streamCursor[0] < target && streamCursor[0] + lenOf(rest[ri]) <= target) {
-          placeStream(0, rest[ri++]);
+        // Target-/loft-slot ≈ fraction × (totalSlots − resterende GT-fodaftryk INKL. denne)
+        // — reserverer dermed automatisk plads til GT'en selv + alle senere GT'er.
+        const ceiling = totalSlots - remainingGtLen;
+        const target = Math.min(ceiling, Math.max(placedCount, Math.round(gt.seasonFraction * (totalSlots - remainingGtLen))));
+        // stream0Ceiling = samme loft, men som en HARD clamp på stream 0's EGEN cursor (den
+        // eneste stream der bærer GT'er sekventielt) — bevarer #3469's oprindelige
+        // clamp-garanti selvom fyldet nu spredes over alle streams.
+        const stream0Ceiling = ceiling;
+        while (ri < rest.length && placedCount < target) {
+          let s = 0;
+          for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t;
+          if (s === 0 && streamCursor[0] + lenOf(rest[ri]) > stream0Ceiling) {
+            let alt = -1;
+            for (let t = 1; t < cap; t++) if (alt === -1 || streamCursor[t] < streamCursor[alt]) alt = t;
+            if (alt === -1) break; // cap===1 (ingen alternativ stream) — usædvanligt, men undgå uendelig løkke.
+            s = alt;
+          }
+          placeStream(s, rest[ri]);
+          placedCount += lenOf(rest[ri]);
+          ri++;
         }
         placeStream(0, gt);
+        placedCount += lenOf(gt);
+        remainingGtLen -= lenOf(gt); // klar til NÆSTE gt's target-beregning (nu ekskl. denne)
       }
       for (; ri < rest.length; ri++) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, rest[ri]); }
     } else {

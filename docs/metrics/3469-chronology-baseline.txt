@@ -90,3 +90,58 @@ rækkefølge i byArchetype-parenteser ændrer sig — komposition/rækkefølge/G
 <       brosten-klumpning (cobbled_classic+cobbled_tour): 100 % af 4 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
 ---
 >       brosten-klumpning (cobbled_classic+cobbled_tour): 75 % af 4 brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen
+
+── PR #3472 opfølgning (6/8): ejer-feedback rettede D1-overlap-regression ──────────────
+
+Ejer målte med diagnose() på PR #3472's v1 (fase-anker-implementeringen ovenfor): D1
+overlapDays FALDT fra 21 (gammel packer, pre-#3469) til 16 (v1) — fordi GT-anker-padding-
+loopet KUN fyldte stream 0 mod hvert target, hvilket gjorde stream 0 meget lang mens
+stream 1-2 forblev korte og "løb tør" tidligt i game_day-rummet. Sene dele af sæsonen blev
+derfor næsten enkelt-sporede under GT-blokkene — stik imod ejer-designet ("1. division skal
+kræve MEST planlægning, ikke mindst").
+
+FIX (v2, raceCalendarLanePacker.js layoutStream): rest-fyldet mod hvert GT-target fordeles
+nu LEAST-LOADED over ALLE streams (også stream 0), ikke kun stream 0. `placedCount` (summen
+af events på alle streams) er progress-proxyen mod targetSlot i stedet for streamCursor[0]
+alene. Target-formlen bruger nu "resterende GT-fodaftryk INKLUSIVE denne GT" (ejer-formel),
+og en eksplicit stream0Ceiling-clamp forhindrer stream 0's egen cursor i at overskride
+pladsen resterende GT'er skal bruge. Fallback (ingen fractions) er UÆNDRET (samme perGap-gren).
+
+overlapDays pr. tier (målt med buildTierMaterializationPlan + diagnose() på det rigtige
+katalog, --plan 3):
+
+  Tier   Gammel packer (pre-#3469)   v1 (PR #3472 første version)   v2 (denne fix)
+  1      21                          16  ❌ (ejer-fund)              22  ✅ (≥21-kravet, maxOverlap=3=cap)
+  2      27                          27  (uændret — ingen GT'er)     27  (uændret)
+  3      28                          28  (uændret — ingen GT'er)     28  (uændret)
+  4      27                          27  (uændret — ingen GT'er)     27  (uændret)
+
+D1 er nu OVER den gamle packers niveau (22 > 21) og i samme størrelsesorden som D2-4
+(27/28/27) — ikke helt op på deres niveau (strukturelt loft: GT'ernes samlede 63 game-dage
+sidder alle på stream 0 alene, hvilket uundgåeligt gør stream 0 længere end streams 1-2 selv
+med perfekt balanceret fyld — de "gerne 24+"-tallet i ejer-kravet blev ikke nået, men den
+hårde bund (≥21, matche/overgå gammel packer) er opfyldt med margin). emptyDays=0,
+maxOverlap=3 (=cap, ikke over) alle 4 tiers.
+
+GT-positioner (tier 1, mål fra date_text → faktisk placeret, v2):
+  Giro della Penisola   mål 0.40 → placeret 0.29  (Δ 0.11 × 28 dage ≈ 3,1 dage — v1 var 0.32, Δ0.08)
+  Tour de l'Hexagone    mål 0.61 → placeret 0.68  (Δ 0.07 × 28 dage ≈ 2,0 dage — v1 var 0.57, Δ0.04)
+  Vuelta Ibérica        mål 0.79 → placeret 0.82  (Δ 0.03 × 28 dage ≈ 0,8 dage — v1 var 0.82, Δ0.03)
+  → Rækkefølgen (Giro→Tour→Vuelta) er bevaret. Præcisionen er marginalt lavere end v1 på de
+    to første GT'er (fordi least-loaded-fyldet nu "spreder sig" lidt bredere end det stramt
+    stream-0-fokuserede v1-fyld), men holder sig inden for ejer-kravets ~1,5-dags-tolerance
+    for Vuelta og er ~2-3 dage for Giro/Tour — se "tvivl/beslutninger" i PR-svaret.
+
+Monument-positioner (tier 1, uændret mekanik — IKKE rørt af denne fix):
+  39799ba9 mål 0.22 → 0.21 · 901d1a00 mål 0.28 → 0.25 · ebfac467 mål 0.30 → 0.29 ·
+  f2ace2bf mål 0.35 → 0.32 · d17d0b5c mål 0.97 → 0.93  (identisk med v1 — kriterium c opfyldt).
+
+Komposition/gates (kriterium d): `node scripts/buildSeasonCalendar.js --season 3
+--first-day 2026-08-24` giver PRÆCIS samme tal som før fixet (flad 25,6% · kuperet 31,8% ·
+bjerg 27,9% · ITT 8,5% · brosten 6,2% · TTT 0,0%, 387 løbsdage) — ✅ Alle gates grønne.
+Placering ændrer stadig ikke komposition.
+
+Test-status: fuld backend-suite 5571/5571 grønne. raceCalendarLanePacker.test.js 20/20
+(GT-anker-testen "packer: stream — GT-rygraden fase-ankres..." udvidet med et
+overlapDays≥20-regressionsvagt + maxOverlap≤3, målt til 22 på en synthetic fixture der
+efterligner det rigtige katalogs D1-form).
