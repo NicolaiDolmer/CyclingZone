@@ -7349,6 +7349,87 @@ router.get("/admin/growth/nps", requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Fair-play review-kø (#3138) ─────────────────────────────────────────────
+// fairplay_flags er service_role-only (RLS: ingen klient-adgang) — al læsning
+// og ejer-dom går gennem disse to admin-endpoints. Rent analyse-lag: intet
+// her ændrer spil-tilstand; 'actioned' er kun ejerens bogføring af at en sag
+// blev håndteret (selve sanktionen er en separat, manuel ejer-handling).
+
+// GET /api/admin/fairplay/flags — åbne (default) eller alle (?status=all),
+// højeste score først. Tolererer manglende tabel (migration endnu ikke
+// applied) med {flags: [], tableMissing: true} så fladen kan forklare det.
+router.get("/admin/fairplay/flags", requireAdmin, async (req, res) => {
+  try {
+    let query = supabase
+      .from("fairplay_flags")
+      .select("id, flag_type, team_id_lo, team_id_hi, score, signals, evidence, status, owner_note, first_detected_at, last_scored_at, updated_at")
+      .order("score", { ascending: false });
+    if (req.query.status !== "all") query = query.in("status", ["new", "reviewing"]);
+    const { data: rows, error } = await query;
+    if (error) {
+      const missing = error.code === "42P01" || error.code === "PGRST205"
+        || /does not exist|schema cache/i.test(error.message ?? "");
+      if (missing) return res.json({ flags: [], tableMissing: true });
+      throw error;
+    }
+
+    // Live navne-opslag — evidensens navne er et snapshot fra scoringstidspunktet
+    // og kan drifte hvis et hold omdøbes.
+    const teamIds = [...new Set((rows || []).flatMap(r => [r.team_id_lo, r.team_id_hi]))];
+    let teamsById = {};
+    if (teamIds.length) {
+      const { data: teams, error: teamsErr } = await supabase
+        .from("teams")
+        .select("id, name")
+        .in("id", teamIds);
+      if (teamsErr) throw teamsErr;
+      teamsById = Object.fromEntries((teams || []).map(t => [t.id, t]));
+    }
+
+    res.json({
+      flags: (rows || []).map(r => ({
+        ...r,
+        team_lo_name: teamsById[r.team_id_lo]?.name ?? r.evidence?.team_lo ?? r.team_id_lo,
+        team_hi_name: teamsById[r.team_id_hi]?.name ?? r.evidence?.team_hi ?? r.team_id_hi,
+      })),
+      tableMissing: false,
+    });
+  } catch (error) {
+    captureException(error);
+    res.status(500).json({ error: error.message || "Kunne ikke hente fair-play-flag" });
+  }
+});
+
+// POST /api/admin/fairplay/flags/:id — ejerens dom: status og/eller notat.
+// dismissed/actioned fredes derefter af det daglige sweep (fairplayFlagsCron
+// gen-scorer dem aldrig), så dommen står ved magt.
+router.post("/admin/fairplay/flags/:id", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, owner_note: ownerNote } = req.body || {};
+    const allowed = ["new", "reviewing", "dismissed", "actioned"];
+    if (status !== undefined && !allowed.includes(status)) {
+      return res.status(400).json({ error: `Ugyldig status — tilladt: ${allowed.join(", ")}` });
+    }
+    const patch = { updated_at: new Date().toISOString() };
+    if (status !== undefined) patch.status = status;
+    if (ownerNote !== undefined) patch.owner_note = String(ownerNote ?? "").slice(0, 2000) || null;
+
+    const { data, error } = await supabase
+      .from("fairplay_flags")
+      .update(patch)
+      .eq("id", req.params.id)
+      .select("id, status, owner_note, updated_at")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: "Flag ikke fundet" });
+
+    res.json({ flag: data });
+  } catch (error) {
+    captureException(error);
+    res.status(500).json({ error: error.message || "Kunne ikke opdatere fair-play-flag" });
+  }
+});
+
 // #2414 — Balance-drift-vagt: 14-dages trend + grøn/gul/rød mod race
 // v3-kalibreringens kanoniske bånd. Læser KUN den natlige jobs persisterede
 // snapshot (race_balance_drift_daily) — ingen genberegning mod race_results her.
