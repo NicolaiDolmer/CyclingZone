@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.101",
+    "version": "7.102",
     "date": "2026-08-06",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Et nyt Forum bor i Klubhus-menuen. Skriv opslag i to kategorier (Generelt og Feedback & idéer), svar i tråde, og stem i afstemninger som admin vedhæfter fastgjorte opslag. En rapportér-knap på hvert opslag og svar sender alt der ikke hører hjemme direkte til admin."
         },
         "refs": [3199, 3201]
+      }
+    ]
+  },
+  {
+    "version": "7.101",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "False '14-day change' on rider values after the rider-type recalibration",
+          "body": "The 'change last 14 days' on a rider's value could show a large jump or drop that never happened, because the historical comparison used the new rider type from the Aug 5 recalibration while the current value used the frozen one. The value itself never moved; only the comparison was wrong. Both ends now use the same basis."
+        },
+        "da": {
+          "title": "Falsk 'ændring seneste 14 dage' på rytterværdier efter ryttertype-rekalibreringen",
+          "body": "'Ændring seneste 14 dage' på en rytters værdi kunne vise et stort spring eller fald der aldrig er sket, fordi den historiske sammenligning brugte den nye ryttertype fra rekalibreringen 5/8, mens den nuværende værdi brugte den fastfrosne. Selve værdien har aldrig flyttet sig; kun sammenligningen var forkert. Begge ender bruger nu samme grundlag."
+        },
+        "refs": [3441]
       }
     ]
   },
