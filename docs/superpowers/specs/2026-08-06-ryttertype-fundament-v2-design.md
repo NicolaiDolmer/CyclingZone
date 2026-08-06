@@ -17,9 +17,22 @@ Måle-harness (genbruges som QA-gates): `backend/scripts/measureBestType3372.js`
 
 ### Del A — Arketype-generation (nye ryttere fødes MED identitet)
 
-Alle genererings-stier (akademi-intake, AI-fill, starter squads, pool-import-suppleringer) lægges om til arketype-først:
+**Design-princip (research-begrundet, 6/8):** Branchens to mest sammenlignelige forbilleder — Pro Cycling Manager (12-13 kontinuerte attributter → speciale-label AFLEDES) og Football Manager (attributter → rolle beregnes) — styrer IKKE efter en fast kvote pr. type; typen *emergerer* fra realistisk formede attributter. Del A følger samme princip: arketypen er en **formnings-prior for attribut-generatoren**, ikke en label der skrives direkte — klassifikatoren skal stadig selv OPDAGE typen (G1), og den emergente fordeling er gaten (G4), ikke en hård kvote.
 
-1. **Træk arketype** fra en mål-fordeling (ejer-justerbar konfiguration; startbud: sprinter 18 % · climber 22 % · tt 12 % · puncheur 12 % · baroudeur 12 % · brosten 8 % · rouleur 8 % · gc 8 % — ingen type under 5 %).
+Alle genererings-stier (akademi-intake, AI-fill, starter squads, pool-import-suppleringer) lægges om til arketype-prior-først:
+
+1. **Træk arketype-prior** fra mål-fordelingen nedenfor. Fordelingen er IKKE en smagssag — den er syntesen af (a) virkelighedens kvalitative knapheds-rækkefølge (research 6/8, kilder i afsnit 6: rouleur/domestique er pelotonens rygrad; rene GC-/TT-specialister er de sjældneste; baroudeur/brosten er delvist taktik-/terræn-roller; "rene sprintere" er en truet art — Astana kørte 2022 helt uden), (b) VORES kalenders målte efterspørgsel (2.208 løbsdage: flade 32,0 % · bjerg samlet 31,3 % · kuperet 18,8 % + klassiker 3,5 % · rolling 6,3 % · brosten 4,6 % · enkeltstart 3,5 %), og (c) spillets egne principper (scarcity som værdidriver på GC/TT; intet løbsformat må være "dødt" → gulv ~8-9 %):
+
+| Type | Mål-% | Begrundelse (virkelighed × kalender × design) |
+|---|---:|---|
+| climber | 17 | Bjerg = 31 % af løbsdagene; stor, veldefineret gruppe i virkeligheden (bjergetaper kræver hele klatre-hold) |
+| rouleur | 17 | Pelotonens rygrad i alle kilder; limen i alle formater + rolling-dagene |
+| sprinter | 15 | Flade dage er kalenderens største format (32 %) — bredt kontesteret; bevidst over virkelighedens faldende trend |
+| puncheur | 13 | Kuperet+klassiker ≈ 22 % af dagene; konsekvent hovedkategori i alle taksonomier |
+| baroudeur | 11 | Reelt en taktisk rolle mange fysiologier kan bære (research); udbrudstaktik skal være bredt tilgængelig |
+| brosten | 9 | Kun 4,6 % af løbsdagene — men et dedikeret prestige-format der kræver ægte konkurrence; Flandrien-typen som knap markedsvare |
+| gc | 9 | Bevidst i bunden: virkelighedens sjældneste rolle (1-2 pr. WT-hold) OG spillets scarcity-/prestige-driver |
+| tt | 9 | Kun 3,5 % ITT-dage + virkelighedens snævreste niche — men strategisk afgørende i etapeløb; knap og værdifuld |
 2. **Form basis-evnerne efter arketypen** (ikke kun caps): signatur-evner trækkes fra en løftet fordeling, modsatte evner fra en sænket, neutrale uændret. Separationen skal være stor nok til at klassifikatoren OPDAGER arketypen af sig selv (se success-kriterium G1) — typen skrives ikke direkte, den skal genfindes.
 3. **Hybrid-støj:** ~15 % af nye ryttere trækkes med to-arketype-blanding (giver naturlige puncheur/climber-hybrider m.m. og undgår karikatur-population).
 4. `potentiale` trækkes som i dag (uafhængigt af arketype — et stort talent kan være enhver type).
@@ -59,3 +72,18 @@ Hver fase = egen PR med simulér-før-ship-bevis i PR-body. Ingen prod-mutation 
 - **Percentil-drift:** normaliserede tal flytter sig når populationen flytter sig (en rytter kan "falde" uden at blive dårligere). Mitigeret: ugentlig (ikke daglig) genberegning + hjælpetekst der forklarer relativiteten. Fravalgt alternativ: fast kalibrering (ville rådne over tid).
 - **Argmax-tildeling** (ejer-spurgt, målt, afvist): genskaber kollapset (92 % i 2 typer).
 - **Re-klassificering af eksisterende** mod ny generator-baseline: fravalgt — tredje rystelse uden spillerværdi.
+- **Hård kvote-tildeling** (fravalgt, research 6/8): PCM/FM-præcedensen viser at typen skal emergere fra attributterne; en kvote der skriver labels direkte ville genskabe "pålagt identitet"-sygdommen med nye tal.
+
+## 6. Research-grundlag (6/8 — "vi gætter ikke her", ejer-krav)
+
+**Ærligt forbehold:** ingen offentlig kilde publicerer en optalt %-fordeling af WT-feltet på primær-speciale — tabellen i Del A er en designer-syntese af kvalitativ konsensus + vores egen kalender-måling, ikke en oversat statistik.
+
+- ProCyclingStats' specialty-system (6 kategorier, eksplicit overlappende — klatrer-point discountes 50 % mod Hills): procyclingstats.com/info/rider-specialties. PCS' egen "single specialty riders"-side fremhæver rene enkelt-speciale-ryttere som kuriositet → multi-speciale er normen.
+- CyclingScoop "Sorting Hat" (6 kategorier; Pogačar/Van Aert m.fl. beskrives som transcenderende anomalier): cyclingscoop.com/pros/what-is-specialization-cycling
+- Biketips "8 Types of Road Cyclists" (tætteste match på vores taksonomi): biketips.com/types-of-cyclists-in-road-cycling-explained
+- Baroudeur = taktisk rolle, ikke fysiologisk arketype: en.wikipedia.org/wiki/Breakaway_specialist
+- "Pure Sprinters: Endangered Species" (Astana 2022 uden én ren sprinter): velo.outsideonline.com
+- Holdstørrelser/GT-truppe-logik: theconversation.com (domestiques-sprinters-and-climbers), biketips.com, inrng.com, radmarkt.com
+- PCM's attribut→afledt-speciale-model: web.cyanide-studio.com (PCM 2021 guide, basics-specialisations)
+- FM's attribut→rolle-model: fmscout.com, fmdossier.dev
+- Egen kalender-måling (SQL 6/8): 2.208 løbsdage fordelt flat 32,0 / mountain 23,2 / hilly 18,8 / high_mountain 8,1 / rolling 6,3 / cobbles 4,6 / itt 3,5 / classic 3,5 / ttt 0,1 %.

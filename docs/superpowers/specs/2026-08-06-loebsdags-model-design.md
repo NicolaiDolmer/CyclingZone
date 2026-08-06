@@ -1,6 +1,7 @@
 # Løbsdags-modellen — design-spec (fatigue + træning + udvikling forbundet)
 
 **Status:** Udkast til ejer-godkendelse (retning nikket 6/8 i chat efter afvisning af K4/K4′).
+**Ejer-beslutninger 6/8 (chat):** (1) Racing udvikler LIDT bedre end træning — ~10-20 % mere end det pas det erstatter, kun i løbets relevante evner (D2 er kalibreret herefter). (2) Motor-skiftet går live VED SÆSONSKIFTET 23/8 sammen med markedsmodel-100 % og løn-genberegningen — ét nulpunkt, én roadbook. Konsekvens accepteret af ejer: AI-under-træthedsglidningen (#3015) står frem til 23/8 uden interim-fix; fase 1 (V1+V2) kører nu.
 **Ejer-krav:** managers træningsvalg må ALDRIG overskrives eller "bogholderi-fuskes" (K4′ afvist som fup 6/8); systemerne skal forbindes ærligt — verdensklasse, ikke sjusk.
 **Refs:** #2650 (mætning + sim), #2402 (nat-restitution, lukkes med ærligt svar), #3015 (AI-hvile-fixet der vendte problemet), #2578 (0-fremgang-klager), #2262 (trænings-rekalibrering).
 
@@ -21,7 +22,7 @@ Princippet fra virkeligheden: ingen kører intervaller oven i et 200 km-løb —
 
 ### D2 — Løbet giver udviklings-stimulus
 - Racing er den bedste træning: løbsdeltagelse giver udviklings-effekt mappet fra løbsprofilen (bjerg-etape → climbing/endurance-stimulus; brosten → cobblestone; enkeltstart → tt osv.), skaleret af indsats/distance. Verifikationsskridt V1 (nedenfor) fastlægger præcist hvordan dette kobles ind i den eksisterende udviklings-mekanik uden dobbelt-kredit.
-- Nettoeffekt-krav: en aktivt racende rytters samlede udviklingstempo må ikke falde (G4) — løbet skal mindst matche det pas det erstatter, for relevante evner.
+- **Kalibrering (ejer-valgt 6/8): løbet udvikler ~10-20 % MERE end det pas det erstatter — men kun i løbets relevante evner.** Som i virkeligheden: man bliver bedst af at køre løb. Bænken følger med via træning; den mister kun spidsen. 1-rytter-1-løb/dag-invarianten (låst) begrænser naturligt mod race-spam.
 
 ### D3 — Rekalibrering af konstanterne
 - Med træningen ude af løbsdagene bliver raceLoad ALENE for lav (K3-simmen viste median→0). `raceFatigue.js`-profilerne skaleres OP og/eller recovery-kurven justeres, så populationen lander i målbåndet (G1). Kandidat-parametre findes empirisk i sim-harnesset — ingen håndgættede konstanter.
