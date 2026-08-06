@@ -113,6 +113,10 @@
         "title": "Auto-bid cap",
         "text": "Auto-bid cap lets you set your private maximum. If you're not already leading, the auto-bid places the minimum bid for you straight away so you take the lead. After that it bids for you automatically each time someone outbids you, raising your bid 1 CZ$ at a time and never above your cap. You stay in front until another manager goes higher than your cap, and only then are you outbid. Your cap is private, so other managers never see it. If your balance can no longer cover your cap, the auto-bid stops until you free up funds."
       },
+      "anonymityAndReveal": {
+        "title": "Anonymous bidding, then a full reveal",
+        "text": "While an auction is running, bids are anonymous: you see amounts and whether you're winning, never who else is bidding. That protects everyone's auto-bid cap and strategy from being read by rivals. Once the hammer falls, the full bid war is revealed. From a completed auction in Auctions → History, click 'View bid war' to see every realized bid in order, with the bidder's name, and you'll also be told who won it if you lost. Auto-bid caps and active strategies are never revealed, before or after the auction closes. Only the bids that were actually placed are ever shown."
+      },
       "tieRule": {
         "title": "Ties on equal bids",
         "text": "If another manager bids exactly your auto-bid cap, you keep the lead at that same price with no increase. When two bids match, the manager who reached that amount first holds the lead. Setting a cap therefore also defends your lead against anyone who only matches it."

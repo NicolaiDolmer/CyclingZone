@@ -86,7 +86,15 @@
     "salaryNone": "—",
     "pageOf": "Side {page} af {total}",
     "prev": "Forrige",
-    "next": "Næste"
+    "next": "Næste",
+    "viewBidWar": "Se budkrigen"
+  },
+  "bidWar": {
+    "title": "Budkrig: {rider}",
+    "subtitle": "Slutpris {price} CZ$. Alle realiserede bud, nu hammeren er faldet.",
+    "empty": "Der blev ikke lagt bud på denne rytter.",
+    "winningBid": "Vindende bud",
+    "fairPlayNote": "Kun realiserede bud vises her. Autobud-lofter og aktive strategier forbliver altid private, også efter auktionen er afsluttet."
   },
   "table": {
     "rider": "Rytter",
@@ -190,6 +198,7 @@
     "empty": "Ingen aktivitet endnu på dine auktioner.",
     "yourBid": "Du bød",
     "counterBid": "Modbud",
+    "counterBidNamed": "{name}s modbud",
     "fallbackRider": "Rytter",
     "relativeSec": "{n}s siden",
     "relativeMin": "{n}m siden",
@@ -220,7 +229,8 @@
     }
   },
   "fallback": {
-    "rider": "rytter"
+    "rider": "rytter",
+    "team": "en manager"
   },
   "celebration": {
     "title": "Du vandt auktionen!",

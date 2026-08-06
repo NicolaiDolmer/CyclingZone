@@ -86,7 +86,15 @@
     "salaryNone": "—",
     "pageOf": "Page {page} of {total}",
     "prev": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "viewBidWar": "View bid war"
+  },
+  "bidWar": {
+    "title": "Bid war: {rider}",
+    "subtitle": "Final price {price} CZ$. Every realized bid, now the hammer has fallen.",
+    "empty": "No bids were placed on this rider.",
+    "winningBid": "Winning bid",
+    "fairPlayNote": "Only realized bids are shown here. Auto-bid caps and active strategies always stay private, even after the auction closes."
   },
   "table": {
     "rider": "Rider",
@@ -190,6 +198,7 @@
     "empty": "No activity yet on your auctions.",
     "yourBid": "You bid",
     "counterBid": "Counter bid",
+    "counterBidNamed": "{name}'s counter-bid",
     "fallbackRider": "Rider",
     "relativeSec": "{n}s ago",
     "relativeMin": "{n}m ago",
@@ -220,7 +229,8 @@
     }
   },
   "fallback": {
-    "rider": "rider"
+    "rider": "rider",
+    "team": "a manager"
   },
   "celebration": {
     "title": "You won the auction!",

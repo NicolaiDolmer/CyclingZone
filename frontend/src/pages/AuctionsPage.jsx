@@ -1724,6 +1724,10 @@ export default function AuctionsPage() {
           now={now}
           showFeed={showFeed}
           recommendedAuctionId={firstBidRecommendation?.id ?? null}
+          // #3401: best-effort navne-snapshot til post-hammerslag-berigelse af
+          // "Modbud"-labels for auktioner der er lukket (ingen ekstra fetch —
+          // genbruger cachen der allerede bygges til fører-navnet, #196/#910).
+          teamNamesById={Object.fromEntries(teamNameCacheRef.current)}
         />
       )}
     </div>
@@ -1916,7 +1920,7 @@ function AuctionsContent(props) {
   const { t } = useTranslation("auctions");
   const {
     filter, filtered, wishlistOnly, mySituationBuckets,
-    feedEvents, auctionsById, myTeamId, now, showFeed,
+    feedEvents, auctionsById, myTeamId, now, showFeed, teamNamesById,
     ...rest
   } = props;
   const sharedProps = { myTeamId, ...rest };
@@ -1982,6 +1986,7 @@ function AuctionsContent(props) {
             auctionsById={auctionsById}
             myTeamId={myTeamId}
             now={now}
+            teamNamesById={teamNamesById}
           />
         </div>
       )}

@@ -113,6 +113,10 @@
         "title": "Autobud loft",
         "text": "Autobud loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører, placerer autobud minimumsbuddet for dig med det samme, så du tager føringen. Derefter byder det automatisk for dig hver gang nogen overbyder dig, og hæver dit bud 1 CZ$ ad gangen, aldrig over dit loft. Du bliver ved med at føre, indtil en anden manager går højere end dit loft, og først dér er du overbudt. Dit loft er privat, så andre managers ser det aldrig. Hvis din balance ikke længere kan dække dit loft, stopper autobuddet, indtil du frigør midler."
       },
+      "anonymityAndReveal": {
+        "title": "Anonyme bud, derefter fuldt reveal",
+        "text": "Mens en auktion kører, er buddene anonyme: du ser beløb og om du fører, aldrig hvem andre der byder. Det beskytter alles autobud-loft og strategi mod at blive aflæst af rivaler. Når hammeren falder, afsløres hele budkrigen. Fra en afsluttet auktion under Auktioner → Historik kan du klikke 'Se budkrigen' for at se alle realiserede bud i rækkefølge, med budgiverens navn, og du får også at vide hvem der vandt, hvis du tabte. Autobud-lofter og aktive strategier afsløres aldrig, hverken før eller efter auktionen lukker. Kun de bud der reelt blev lagt, vises."
+      },
       "tieRule": {
         "title": "Uafgjort ved ens bud",
         "text": "Byder en anden manager præcis dit autobud-loft, beholder du føringen til samme pris uden stigning. Når to bud er ens, beholder den manager der nåede beløbet først føringen. At sætte et loft forsvarer derfor også din føring mod nogen der kun matcher det."
