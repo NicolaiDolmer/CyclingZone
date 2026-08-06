@@ -6,7 +6,14 @@
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 
-export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, now }) {
+// #3401: teamNamesById er en best-effort snapshot af AuctionsPage's egen
+// teamNameCacheRef (ingen ekstra fetch herfra). Bruges KUN til at berige et
+// event hvis event's auktion IKKE længere findes i auctionsById — det sker
+// netop når auktionen er lukket (completed auctions fjernes fra listen ved
+// realtime-update, se AuctionsPage). Mens auktionen stadig kører, matcher
+// auctionsById[e.auction_id], og labelen forbliver ubetinget anonym — samme
+// proxy-beskyttelse som før, ingen ændring af den logik.
+export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, now, teamNamesById = {} }) {
   const { t } = useTranslation("auctions");
   const visible = events.slice(-30).reverse();
 
@@ -41,13 +48,21 @@ export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, no
               const r = auction?.rider;
               const riderName = r ? `${r.firstname} ${r.lastname}` : t("feed.fallbackRider");
               const isMine = e.team_id === myTeamId;
+              // #3401: auktionen findes ikke længere i den aktive liste → den er
+              // lukket (post-hammerslag). Reveal ALDRIG mens auktionen kører.
+              const isClosed = !auction;
+              const counterName = !isMine && isClosed ? teamNamesById[e.team_id] : null;
               return (
                 <li key={e.id || `${e.auction_id}-${e.ts}`} className="px-4 py-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="text-cz-1 text-xs font-medium truncate">{riderName}</p>
                       <p className="text-cz-3 text-3xs mt-0.5">
-                        {isMine ? t("feed.yourBid") : t("feed.counterBid")}
+                        {isMine
+                          ? t("feed.yourBid")
+                          : counterName
+                            ? t("feed.counterBidNamed", { name: counterName })
+                            : t("feed.counterBid")}
                         {" · "}
                         {formatRelativeTime(e.ts)}
                       </p>

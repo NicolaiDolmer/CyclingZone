@@ -45,6 +45,8 @@ import {
   SEED_GLOBAL_RANK,
   SEED_GLOBAL_RANK_WEEKLY,
   SEED_GLOBAL_RANK_SEASON_START,
+  COMPLETED_AUCTIONS,
+  COMPLETED_AUCTION_BIDS,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -112,7 +114,30 @@ export function restRows(table, requestUrl = "") {
       }
       return RIDERS;
     case "auctions":
+      // #3401: AuctionHistoryPage forespørger .eq("status","completed") —
+      // AuctionsPage's aktive liste (.in("status",["active","extended"])) skal
+      // IKKE se den afsluttede budkrig-fixture (ville forstyrre core-smoke's
+      // "Aktive (1)"-readiness-gate for /auctions).
+      if (url.search.includes("status=eq.completed")) return COMPLETED_AUCTIONS;
       return AUCTIONS;
+    case "auction_bids": {
+      // #3401: post-hammerslag-reveal. loadBidStats (AuctionHistoryPage) bruger
+      // .in("auction_id", [...]) for aggregat-tal; openBidWar bruger
+      // .eq("auction_id", id) for den fulde historik med holdnavne. auction_bids
+      // er den eneste kilde — auction_proxy_bids (loftet) forbliver tom herunder,
+      // ligesom i prod-RLS (kun ejer-teamet kan læse egne proxy-rækker).
+      const eqMatch = url.search.match(/auction_id=eq\.([^&]+)/);
+      if (eqMatch) {
+        const id = decodeURIComponent(eqMatch[1]);
+        return COMPLETED_AUCTION_BIDS.filter(b => b.auction_id === id);
+      }
+      const inMatch = decodeURIComponent(url.search).match(/auction_id=in\.\(([^)]*)\)/);
+      if (inMatch) {
+        const ids = new Set(inMatch[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")));
+        return COMPLETED_AUCTION_BIDS.filter(b => ids.has(b.auction_id));
+      }
+      return [];
+    }
     case "roadmap_items":
       return ROADMAP_ITEMS;
     case "races": {

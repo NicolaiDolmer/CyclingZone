@@ -6,6 +6,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import AuctionBidWarModal from "../components/AuctionBidWarModal";
 import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { formatNumber, formatDate } from "../lib/intl";
@@ -72,6 +73,13 @@ export default function AuctionHistoryPage() {
   // Client-side aggregation af auction_bids (public-read RLS) for de auktioner
   // der er synlige på den aktuelle side. Map: auctionId -> { bids, bidders }.
   const [bidStats, setBidStats] = useState({});
+  // #3401 post-hammerslag-reveal: den auktion hvis budkrig-modal er åben (eller
+  // null). Selve bud-listen (MED holdnavne) hentes on-demand ved åbning i
+  // stedet for at ligge i bidStats-aggregatet, så siden ikke skal hente hver
+  // enkelt bud-række + team-join for alle 30 rækker på hver side-load.
+  const [bidWarAuction, setBidWarAuction] = useState(null);
+  const [bidWarBids, setBidWarBids] = useState([]);
+  const [bidWarLoading, setBidWarLoading] = useState(false);
   const PER_PAGE = 30;
   // #2293: server-side kolonne-sort. Kun direkte auctions-kolonner er
   // sorterbare (se lib/auctionHistorySort.js); Pris + Tid er numeriske og
@@ -170,6 +178,32 @@ export default function AuctionHistoryPage() {
       next[auctionId] = { bids: entry.bids, bidders: entry.bidders.size };
     }
     setBidStats(next);
+  }
+
+  // #3401 post-hammerslag-reveal: fuld budhistorik MED holdnavne for ÉN
+  // afsluttet auktion, hentet on-demand når manageren åbner "Se budkrigen".
+  // Kun REALISEREDE bud (auction_bids.amount) — auction_proxy_bids (lofter)
+  // forespørges ALDRIG herfra, jf. fair-play-grænsen i #3401.
+  async function openBidWar(auction) {
+    setBidWarAuction(auction);
+    setBidWarBids([]);
+    setBidWarLoading(true);
+    const { data, error } = await supabase
+      .from("auction_bids")
+      .select("id, team_id, amount, bid_time, team:team_id(name)")
+      .eq("auction_id", auction.id)
+      .order("bid_time", { ascending: true });
+    setBidWarBids(
+      error || !data
+        ? []
+        : data.map(b => ({ ...b, team_name: b.team?.name }))
+    );
+    setBidWarLoading(false);
+  }
+
+  function closeBidWar() {
+    setBidWarAuction(null);
+    setBidWarBids([]);
   }
 
   // #246: aggregat-stats korrekt på tværs af alle ikke-kun-aktuel-side
@@ -346,6 +380,20 @@ export default function AuctionHistoryPage() {
                         value: formatNumber(a.rider?.market_value),
                         salary: a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : t("history.salaryNone"),
                       })}</p>
+                      {/* #3401: post-hammerslag-reveal — kun for auktioner der reelt
+                          havde en budkrig (bids>0). Altid synlig (rider-cellen skjules
+                          aldrig på mobil), i modsætning til Bud-kolonnen der er desktop-
+                          only, så mobil får samme adgang til reveal som desktop. */}
+                      {bids && bids.bids > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); openBidWar(a); }}
+                          className="mt-1 inline-flex items-center gap-1 text-3xs text-cz-accent-t hover:underline"
+                        >
+                          <GavelIcon size={11} aria-hidden="true" />
+                          {t("history.viewBidWar")}
+                        </button>
+                      )}
                     </Td>
                     <Td className="hidden sm:table-cell">
                       <div className="flex flex-wrap items-center gap-1">
@@ -419,6 +467,18 @@ export default function AuctionHistoryPage() {
           )}
         </Card>
       )}
+
+      {/* #3401: post-hammerslag-reveal af budkrigen — kun realiserede bud,
+          aldrig proxy-lofter (se komponentens doc-comment). */}
+      <AuctionBidWarModal
+        open={Boolean(bidWarAuction)}
+        onClose={closeBidWar}
+        riderName={bidWarAuction?.rider ? `${bidWarAuction.rider.firstname} ${bidWarAuction.rider.lastname}` : ""}
+        finalPrice={bidWarAuction?.current_price}
+        winnerId={bidWarAuction?.current_bidder_id}
+        bids={bidWarBids}
+        loading={bidWarLoading}
+      />
     </div>
   );
 }

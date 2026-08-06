@@ -95,6 +95,7 @@ function createFinalizeAuctionSupabase({
   offerWithdrawals = [],
   swapWithdrawals = [],
   activeStageRaceRiderIds = [], // #1995: ryttere i et aktivt fleretape-løb → defer
+  auctionBids = [], // #3401: realiserede bud (team_id, amount) — bruges KUN til losing-bidder-reveal, ALDRIG auction_proxy_bids
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -407,6 +408,23 @@ function createFinalizeAuctionSupabase({
             Promise.resolve({ data: chain._rows, error: null }).then(resolve, reject),
         };
         return chain;
+      }
+
+      // #3401: notifyLosingAuctionBidders' eneste query mod bud-historikken —
+      // KUN team_id+amount fra auction_bids, aldrig auction_proxy_bids.
+      if (table === "auction_bids") {
+        return {
+          select(columns) {
+            assert.equal(columns, "team_id, amount");
+            return {
+              eq(column, value) {
+                assert.equal(column, "auction_id");
+                assert.equal(value, auction.id);
+                return Promise.resolve({ data: auctionBids, error: null });
+              },
+            };
+          },
+        };
       }
 
       throw new Error(`Unexpected table: ${table}`);
@@ -1148,6 +1166,76 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     { teamId: "buyer-team", action: "auction_won" },
     { teamId: "seller-team", action: "auction_sold" },
   ]);
+});
+
+// #3401: post-hammerslag-reveal — hver tabende budgiver får ÉN "auction_lost"
+// med vinderens navn + delta over deres eget højeste REALISEREDE bud. Testen
+// dækker BÅDE: (a) korrekt delta pr. taber, (b) at teams uden en eneste
+// auction_bids-række (aldrig bød) ikke får noget, og (c) at funktionen aldrig
+// forespørger auction_proxy_bids — createFinalizeAuctionSupabase kaster på
+// ethvert ukendt table-navn, så en utilsigtet proxy-læsning ville fejle testen.
+test("finalizeAuctionById reveals the winner's name to losing bidders with their own bid delta (#3401)", async () => {
+  const notifications = [];
+  const auctionUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auctionUpdates,
+      auction: {
+        id: "auction-bidwar",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 300,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-bidwar",
+          firstname: "Contested",
+          lastname: "Rider",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Winning Wheels", balance: 1000, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      // Realiserede bud: buyer-team vandt for 300. rival-a's højeste bud var 260
+      // (to rækker — kun den højeste tæller). rival-b bød aldrig (ingen rækker).
+      auctionBids: [
+        { team_id: "rival-a", amount: 200 },
+        { team_id: "buyer-team", amount: 250 },
+        { team_id: "rival-a", amount: 260 },
+        { team_id: "buyer-team", amount: 300 },
+      ],
+    }),
+    auctionId: "auction-bidwar",
+    notifyTeamOwner: async (teamId, type, title, message, relatedId, metadata) => {
+      notifications.push({ teamId, type, title, message, relatedId, metadata });
+    },
+    awardXP: async () => {},
+    now: new Date("2026-04-22T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+
+  const lostNotifs = notifications.filter((n) => n.type === "auction_lost");
+  assert.equal(lostNotifs.length, 1, "kun rival-a bød reelt — rival-b og sælger får ikke auction_lost");
+  const [notif] = lostNotifs;
+  assert.equal(notif.teamId, "rival-a");
+  assert.match(notif.message, /Winning Wheels/);
+  assert.match(notif.message, /Contested Rider/);
+  assert.match(notif.message, /40 CZ\$/); // 300 - 260 over eget maks
+  assert.equal(notif.metadata.messageCode, "notif.auctionLostToRival.message");
+  assert.deepEqual(notif.metadata.messageParams, {
+    winnerName: "Winning Wheels",
+    rider: "Contested Rider",
+    price: 300,
+    overBid: 40,
+    yourMax: 260,
+  });
 });
 
 // #822: en rytter solgt på normal auktion må ikke blive stående som "til salg"

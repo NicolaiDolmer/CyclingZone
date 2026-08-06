@@ -263,6 +263,10 @@
       "title": "Auto-bid cancelled",
       "message": "The price on {riderName} has passed your auto-bid cap of {maxAmount} CZ$. The auto-bid has been cancelled and your reserved balance released."
     },
+    "auctionLostToRival": {
+      "title": "You lost the bidding war",
+      "message": "{winnerName} snatched {rider} for {price} CZ$, {overBid} CZ$ over your top bid of {yourMax} CZ$."
+    },
     "debtWarning": {
       "title": "⚠️ Negative balance",
       "message": "Your team has a negative balance. Check the Finances page for details."
