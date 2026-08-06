@@ -37,7 +37,7 @@ import { materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../lib/calendarStartDate.js";
 import { computeCompositionStats, aggregateCompositionStats, detectCompositionViolations, ACTIVE_TARGET } from "../lib/calendarCompositionTargets.js";
 import { computeStageOrderStats, detectStageOrderViolations } from "../lib/stageOrderMetrics.js";
-import { scoreSeason } from "../lib/raceRouteRealismMetrics.js";
+import { scoreSeason, TIER_TARGETS } from "../lib/raceRouteRealismMetrics.js";
 import { resolveSeasonDraw } from "../lib/raceRouteRealismDraw.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -51,9 +51,11 @@ export function seasonUuid(n) {
  * Kør alle gates på en dry-run-plan. Ren funktion af summary'en, så beslutningen kan
  * testes uden DB.
  *
- * @returns {{blocking:string[], compositionDrift:string[], report:object}}
+ * @returns {{blocking:string[], compositionDrift:string[], severity:number, report:object}}
  *   blocking          brud der ALDRIG må overrides
  *   compositionDrift  K-B-afvigelser (kan lempes med --allow-composition-drift)
+ *   severity          samlet numerisk afstand til båndene (0 = alt grønt) — lader en
+ *                     søgning se delvis fremgang, hvor antal-brud ser nul
  */
 export function gatePlan(summary) {
   const blocking = [];
@@ -79,13 +81,27 @@ export function gatePlan(summary) {
   }
 
   // Realisme-båndene scores på det RESOLVEREDE træk — samme tal skrive-stien persisterer.
+  // `severity` er den samlede NUMERISKE afstand til båndene, ikke bare antal brud. Antal
+  // alene er en for grov ledetråd for en søgning: tier 3's summit-bånd lukkes først af
+  // FLERE nye løb, så ingen enkelt kandidat fjerner bruddet, og en søgning der kun tæller
+  // brud ser dem alle som værdiløse. Afstanden (summit 5 → 6 → 7 → 8) viser fremgangen.
+  let severity = 0;
   if (tierEntries.length) {
     const draws = resolveSeasonDraw({ tierSeedRaces: tierEntries });
     const realism = scoreSeason(draws.map((d) => d.entry));
     for (const f of realism.failures) blocking.push(`realisme-bånd — ${f}`);
+    for (const t of realism.tiers) {
+      const s = t.score, tgt = TIER_TARGETS[t.tier] ?? {};
+      if (tgt.summit_min != null) severity += Math.max(0, tgt.summit_min - s.summit_finishes);
+      if (tgt.mdown_max_pct != null) severity += Math.max(0, s.mdown_pct - tgt.mdown_max_pct) / 5;
+      if (tgt.itt_min != null) severity += Math.max(0, tgt.itt_min - s.standalone_itt) * 3;
+      if (tgt.cobbles_min != null) severity += Math.max(0, tgt.cobbles_min - s.cobbles_in_stagerace) * 3;
+    }
   } else {
     blocking.push("ingen tier leverede et løbssæt at score realisme på");
+    severity += 100;
   }
+  severity += blocking.filter((b) => !b.startsWith("realisme-bånd")).length * 10;
 
   const season = aggregateCompositionStats(
     summary.tiers.map((t) => t.compositionStats).filter((s) => s && s.raceDays > 0)
@@ -93,7 +109,7 @@ export function gatePlan(summary) {
   const { rows, violations } = detectCompositionViolations({ stats: season, target: ACTIVE_TARGET, label: "sæson" });
   compositionDrift.push(...violations);
 
-  return { blocking, compositionDrift, report: { season, rows } };
+  return { blocking, compositionDrift, severity, report: { season, rows } };
 }
 
 /** Post-verify EFTER apply: tæl det der faktisk står i DB, og fang etaper i fortiden. */

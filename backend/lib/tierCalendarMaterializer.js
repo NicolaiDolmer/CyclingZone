@@ -307,6 +307,10 @@ export async function materializeTierCalendars({
   oneDayShareMin = TIER_ONE_DAY_SHARE_MIN,
   terrainFamilyMin = TIER_TERRAIN_FAMILY_MIN,
   mountainFreeMin = TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
+  // #3295: hypotetiske race_pool-rækker lagt oven på det rigtige katalog. KUN dry-run —
+  // se gaten nedenfor. Bruges af katalog-udvidelses-analysen til at måle effekten af
+  // foreslåede løb før nogen af dem eksisterer.
+  extraCatalogRows = [],
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -329,8 +333,16 @@ export async function materializeTierCalendars({
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
   const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
 
-  const { data: catalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
+  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
+  // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
+  // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig
+  // materialiseres — apply afvises højlydt hvis nogen prøver. Analyse-stien kører altid
+  // dryRun, og gaten her er defense-in-depth mod en fremtidig kalder der glemmer det.
+  if (extraCatalogRows.length && !dryRun) {
+    throw new Error("extraCatalogRows er KUN til dry-run-analyse — de findes ikke i race_pool og kan ikke materialiseres");
+  }
+  const catalog = extraCatalogRows.length ? [...(dbCatalog || []), ...extraCatalogRows] : dbCatalog;
   // Seed-nøgle pr. katalog-løb: external_id binder parcours til løbets VIRKELIGE
   // identitet (identisk parcours i en divisions puljer); terrain_archetype driver
   // terrænfordelingen (jf. raceStageProfileGenerator.js).
