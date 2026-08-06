@@ -94,5 +94,24 @@
     },
     "share": "Kopiér link til opsummering",
     "shareCopied": "Link kopieret"
+  },
+  "documentary": {
+    "heading": "Dokumentaren",
+    "metaFinal": "Sæson {number} · endelig",
+    "eyebrow": "Din sæson, fortalt fra ende til anden",
+    "error": "Kunne ikke indlæse sæsondokumentaren.",
+    "sourceLlm": "AI-poleret fortælling",
+    "sourceDeterministic": "Sæsonfortælling",
+    "export": "Download delekort",
+    "exporting": "Forbereder…",
+    "exportError": "Kunne ikke lave billedet. Prøv igen.",
+    "card": {
+      "eyebrow": "Sæson {number}-dokumentar",
+      "signing": "Sæsonens signing",
+      "result": "Største resultat",
+      "rival": "Tætteste rival",
+      "points": "point",
+      "finalPoints": "Slutpoint"
+    }
   }
 }

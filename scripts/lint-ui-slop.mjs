@@ -61,6 +61,10 @@ export const EXEMPT_FILES = new Set([
   // tokens, bevidst PINNET (ikke live-læst) så et delt kort ser ens ud uanset
   // eksportørens lys/mørk-indstilling (se filens egen header-kommentar).
   "frontend/src/lib/heroAgonyExport.js",
+  // #3402: sæsondokumentarens delekort — samme klasse som heroAgonyExport:
+  // canvas-tegnet PNG kan ikke bruge CSS-tokens; paletten er bevidst PINNET
+  // så et delt kort ser ens ud uanset eksportørens lys/mørk-indstilling.
+  "frontend/src/lib/seasonDocumentaryExport.js",
 ]);
 
 // --- Detektorer (rene funktioner paa kildestrenge) ------------------------

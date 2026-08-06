@@ -430,6 +430,10 @@
         "title": "Hvornår kan en sæson afsluttes?",
         "text": "Admin kan først afslutte en sæson når afventende løbsresultater for sæsonens løb er behandlet. Så længe der ligger indberetninger og venter på godkendelse eller afvisning, stopper sæsonafslutningen."
       },
+      "seasonDocumentary": {
+        "title": "Sæsondokumentaren",
+        "text": "Efter en afsluttet sæson viser /seasons en dokumentar-sektion for dit hold under sæsonopsummeringen: dine største signings, dit bedste resultat, din bedste dag og din tætteste rival i slutstillingen, skrevet som en kort fortælling. Den genereres én gang pr. hold pr. sæson og caches, så alle læser samme tekst. Standardversionen bygges af en skabelon over dine egne verificerede tal; slår ejeren det valgfrie AI-poleringslag til, bliver de samme fakta omskrevet til flydende prosa uden at tilføje noget nyt. En Download delekort-knap ved siden af eksporterer et screenshot-klart billede med dit holdnavn og sæsonens vigtigste tal."
+      },
       "adminRecomputeStandings": {
         "title": "Admin: genberegn standings ved drift",
         "text": "Hvis en aktiv eller afsluttet sæson mangler stilling pga. ældre data-drift, kan admin bruge knappen '↻ Standings' på Admin-siden. Den genberegner tabellen ud fra de gemte `race_results`, opretter de manglende standings-rækker og opdaterer divisionens interne rang, som bestyrelsen bruger ved sæsonafslutning."

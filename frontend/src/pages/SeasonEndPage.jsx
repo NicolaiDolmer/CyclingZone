@@ -13,7 +13,9 @@ import { divColor } from "../lib/divisionColors.js";
 import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
 import { pickDefaultSeason } from "../lib/seasonEndDefault.js";
 import { computeSeasonMovement, resolveNextDivision, pickRecapHighlights } from "../lib/seasonRecapData.js";
+import { isMissingTableError } from "../lib/seasonDocumentaryData.js";
 import SeasonRecapHero from "../components/SeasonRecapHero.jsx";
+import SeasonDocumentary from "../components/SeasonDocumentary.jsx";
 import {
   CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
@@ -103,6 +105,13 @@ export default function SeasonEndPage() {
   //   status: "loading" | "ready" | "failed" | "unavailable"
   //   "unavailable" = funktionen findes ikke endnu → blokken rendres slet ikke.
   const [honours, setHonours] = useState({ status: "loading", data: null });
+  // #3402 — sæsondokumentaren: samme uafhængige status-state som honours
+  // ovenfor, af PRÆCIS samme grund (season_documentaries er additiv, en
+  // manglende/fejlende dokumentar må aldrig kunne tage resten af siden med
+  // sig ned ved cutover). "unavailable" dækker BÅDE "migrationen mangler
+  // endnu" og "sweepen har ikke nået dette hold endnu" — begge er "intet at
+  // vise", ikke en fejl.
+  const [documentary, setDocumentary] = useState({ status: "loading", data: null });
   const [myTeamId, setMyTeamId] = useState(null);
   // #2752/#2361 — nutids-division + navn på MIT hold. division bruges KUN som
   // fallback-kilde til "hvilken division fik jeg næste sæson" (resolveNextDivision),
@@ -176,11 +185,44 @@ export default function SeasonEndPage() {
     }
   };
 
+  // #3402 — dokumentaren læses fra season_documentaries (cachet/persisteret af
+  // backend/lib/seasonDocumentarySweep.js), IKKE genereret client-side — "alle
+  // læser samme tekst" (issue-AC). Egen fetch, egen state, samme isolations-
+  // begrundelse som loadHonours ovenfor.
+  const loadDocumentary = async (season) => {
+    if (!myTeamId || season.status !== "completed") {
+      setDocumentary({ status: "unavailable", data: null });
+      return;
+    }
+    setDocumentary({ status: "loading", data: null });
+    try {
+      const { data, error: docError } = await supabase
+        .from("season_documentaries")
+        .select("*")
+        .eq("season_id", season.id)
+        .eq("team_id", myTeamId)
+        .maybeSingle();
+      if (docError) throw docError;
+      // null = enten migrationen mangler ikke (tabellen findes), men sweepen
+      // har endnu ikke nået dette hold, ELLER holdet ikke havde en
+      // standings-række denne sæson. Begge er "intet at vise", ikke en fejl.
+      setDocumentary(data ? { status: "ready", data } : { status: "unavailable", data: null });
+    } catch (e) {
+      if (isMissingTableError(e)) {
+        setDocumentary({ status: "unavailable", data: null });
+        return;
+      }
+      console.error("SeasonEndPage: failed to load season documentary", e);
+      setDocumentary({ status: "failed", data: null });
+    }
+  };
+
   const loadSeason = async (season) => {
     setSelectedSeason(season);
     setError(null);
     setTeamRecap(null);
     loadHonours(season);
+    loadDocumentary(season);
     try {
       const [standingsRes, racesRes, racePointsRes] = await Promise.all([
         supabase.from("season_standings")
@@ -404,6 +446,8 @@ export default function SeasonEndPage() {
   // #2863: blokken retry'er KUN sit eget kald — resten af siden er allerede
   // hentet og skal ikke gen-hentes for at prøve ét RPC-kald igen.
   const retryHonours = () => { if (selectedSeason) loadHonours(selectedSeason); };
+  // #3402 — samme "retry KUN sit eget kald"-mønster som retryHonours.
+  const retryDocumentary = () => { if (selectedSeason) loadDocumentary(selectedSeason); };
 
   const seasonExpectedTotal = useMemo(() => {
     if (!races.length || !racePoints.length) return 0;
@@ -502,6 +546,21 @@ export default function SeasonEndPage() {
               stageWins={teamRecap.standingsRow.stage_wins}
               prizeWon={teamRecap.prizeWon}
               highlights={teamRecap.highlights.map(h => mapRecapHighlight(h, t, teamRecap.standingsRow.division))}
+            />
+          )}
+
+          {/* #3402 — sæsondokumentaren: narrativ årbog oven på #2752-recappen,
+              lige under SeasonRecapHero (samme "mit holds sæson"-klynge, adskilt
+              fra den sæson-brede SeasonHonours nedenfor). "unavailable" = enten
+              migrationen mangler endnu, sweepen har ikke nået dette hold endnu,
+              eller holdet ikke havde en standings-række — ingen blok, ingen fejl. */}
+          {documentary.status !== "unavailable" && (
+            <SeasonDocumentary
+              status={documentary.status}
+              data={documentary.data}
+              onRetry={retryDocumentary}
+              seasonNumber={selectedSeason?.number}
+              teamName={myTeamName}
             />
           )}
 

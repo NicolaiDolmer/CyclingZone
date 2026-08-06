@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.99",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions get faces: see the bidding war after the hammer falls",
+          "body": "Completed auctions now have a See the bidding war button that opens the full story of the fight: which teams bid, when, and for how much, in order, with the winning bid marked. Losing an auction also tells you who beat you and by how much. Live auctions stay exactly as anonymous as before: nothing is revealed until the auction has closed, and automatic bid limits are never shown to anyone."
+        },
+        "da": {
+          "title": "Auktioner får ansigter: se budkrigen efter hammerslaget",
+          "body": "Afsluttede auktioner har nu en Se budkrigen-knap der åbner hele kampens historie: hvilke hold der bød, hvornår og med hvor meget, i rækkefølge, med det vindende bud markeret. Taber du en auktion, får du også at vide hvem der slog dig og med hvor meget. Live-auktioner er præcis lige så anonyme som før: intet afsløres før auktionen er lukket, og automatiske bud-lofter vises aldrig for nogen."
+        },
+        "refs": [3401]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Seasons",
+        "en": {
+          "title": "The season documentary: a written recap of your season",
+          "body": "After a completed season, /seasons now shows a documentary section below your season recap: your biggest signing, your top result, your best day, and the closest rival in your final standings, written up as a short narrative built from your own verified numbers. It's generated once per team and everyone reads the same text. A Download share card button next to it exports a screenshot-ready image with your team name and the season's headline facts."
+        },
+        "da": {
+          "title": "Sæsondokumentaren: en skriftlig opsummering af din sæson",
+          "body": "Efter en afsluttet sæson viser /seasons nu en dokumentar-sektion under din sæsonopsummering: din største signing, dit bedste resultat, din bedste dag og din tætteste rival i slutstillingen, skrevet som en kort fortælling bygget af dine egne verificerede tal. Den genereres én gang pr. hold, og alle læser samme tekst. En Download delekort-knap ved siden af eksporterer et screenshot-klart billede med dit holdnavn og sæsonens vigtigste tal."
+        },
+        "refs": [3402]
+      }
+    ]
+  },
+  {
     "version": "7.98",
     "date": "2026-08-06",
     "label": "Beta",
