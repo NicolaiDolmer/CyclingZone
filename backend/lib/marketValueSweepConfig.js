@@ -3,8 +3,8 @@
 // nøglerne bor i app_config, IKKE hardcodet, så ejeren kan justere/slå til uden
 // deploy. Alle tre nøgler seedes 'off'/default af
 // database/2026-08-06-3448-market-value-sweep.sql — denne fil er INERT indtil
-// ejeren selv flipper market_value_sweep_enabled til 'on' (se issue #3448's
-// anden kommentar: loft-valg + go afventer stadig ejeren).
+// market_value_sweep_enabled flippes til 'on' (planlagt søndag 9/8 per ejer-go
+// 6/8: 50/50-blend + ±25 %-loft, se #3448 kommentar 3).
 //
 // Fail-safe-retning: enhver læse-fejl (DB nede, netværk, malformed value) falder
 // tilbage til DISABLED — samme tilstand som "ingen konfiguration sat endnu". Det
@@ -18,7 +18,7 @@ export const MARKET_VALUE_GLOBAL_WEIGHT_KEY = "market_value_global_weight";
 export const MARKET_VALUE_WEEKLY_CAP_KEY = "market_value_weekly_cap";
 
 export const DEFAULT_GLOBAL_WEIGHT = 0.5;
-export const DEFAULT_WEEKLY_CAP = 0.25; // ejer-valg udestår (#3448 kommentar 2: ±15/±25/±40 %) — 0.25 er ANBEFALINGEN, ikke en trufet beslutning.
+export const DEFAULT_WEEKLY_CAP = 0.25; // ejer-besluttet ±25 % (chat 6/8, dokumenteret på #3448 kommentar 3).
 
 /** True kun ved eksplicit 'on'/true i app_config. Alt andet (inkl. fejl) = false. */
 export async function isMarketValueSweepEnabled(supabase, opts = {}) {
@@ -48,8 +48,8 @@ export async function readMarketValueGlobalWeight(supabase) {
 
 /**
  * Ugentligt pr.-rytter ændrings-loft (0-1, eksklusiv 0 — 0 ville fastfryse alt).
- * Ugyldig/manglende værdi ⇒ DEFAULT_WEEKLY_CAP (±25 %, den ANBEFALEDE — ikke
- * ejer-godkendte — kandidat fra #3448's konvergens-simulering).
+ * Ugyldig/manglende værdi ⇒ DEFAULT_WEEKLY_CAP (±25 %, ejer-besluttet 6/8 ud
+ * fra #3448's konvergens-simulering).
  * @returns {Promise<number>}
  */
 export async function readMarketValueWeeklyCap(supabase) {
