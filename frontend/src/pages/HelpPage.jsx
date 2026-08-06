@@ -318,6 +318,7 @@ const FAQ_KEYS = [
   "scoutVisibilityFaq",
   "scoutNetworkOwnRidersFaq",
   "scoutChangeRecalcFaq",
+  "typeRatingScaleFaq",
   "scoutHistoryFaq",
   "watchlistSaleNotificationFaq",
   "riderSalaryView",

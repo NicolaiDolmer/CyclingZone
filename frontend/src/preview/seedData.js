@@ -1250,18 +1250,28 @@ export const SEED_PROJECTION = {
 // som SEED_PROJECTION (now:70, sprinter-loft 78-86), plus rapport-provenance
 // (navngiven chefscout, tier 2) så feature'en er synlig på preview uden en
 // hyret spejder i SEED_CLUB (der er bevidst stadig default-spejder, #1441 A3).
+//
+// #3458 Fase 1 (Del B "skala-ærlighed"): `types` er nu de RÅ tal ovenfor
+// KØRT GENNEM den ægte kalibrering (backend/lib/typeRatingScale.js
+// calibratedTypeRating, mod den committede, FROSSNE backend/lib/typeRatingCalibration.json)
+// — ikke bare plausible tal. Preview viser dermed PRÆCIS hvad produktion ville
+// returnere for denne rå-profil, inkl. den overraskende (men korrekte) effekt at
+// sprinter/rouleur/brostensrytter lander højere på den kalibrerede skala end
+// baroudeur/gc/climber ved samme rå niveau — det ER pointen med fixet: skalaen er nu
+// absolut og ens for alle 8 typer, ikke længere strukturelt skæv til fordel for
+// visse typers formler.
 export const SEED_SCOUTING_REPORT = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
   stars: { lo: 4.5, hi: 5 },
   types: [
-    { key: "sprinter", now: 70, ceilLo: 78, ceilHi: 86 },
-    { key: "puncheur", now: 44, ceilLo: 48, ceilHi: 54 },
-    { key: "brostensrytter", now: 52, ceilLo: 56, ceilHi: 61 },
-    { key: "baroudeur", now: 41, ceilLo: 45, ceilHi: 50 },
-    { key: "rouleur", now: 55, ceilLo: 59, ceilHi: 64 },
-    { key: "tt", now: 38, ceilLo: 42, ceilHi: 47 },
-    { key: "gc", now: 30, ceilLo: 34, ceilHi: 39 },
-    { key: "climber", now: 27, ceilLo: 31, ceilHi: 36 },
+    { key: "sprinter", now: 96, ceilLo: 98, ceilHi: 99 },
+    { key: "puncheur", now: 34, ceilLo: 39, ceilHi: 47 },
+    { key: "brostensrytter", now: 73, ceilLo: 80, ceilHi: 87 },
+    { key: "baroudeur", now: 40, ceilLo: 51, ceilHi: 64 },
+    { key: "rouleur", now: 77, ceilLo: 82, ceilHi: 87 },
+    { key: "tt", now: 22, ceilLo: 31, ceilHi: 40 },
+    { key: "gc", now: 11, ceilLo: 18, ceilHi: 26 },
+    { key: "climber", now: 12, ceilLo: 18, ceilHi: 25 },
   ],
   verdict: { headlineKey: "keep_and_develop", confidence: "high", factorKeys: ["age_upside", "ceiling_gap", "type_match", "form_unknown"] },
   value: { market: 420000, expected: 468000 },
