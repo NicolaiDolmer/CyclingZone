@@ -145,34 +145,63 @@ function layoutBanded({ stageRaces, classics, density: D, days, cap }) {
   return { placements, timelineLength: T };
 }
 
-// #3470: tag det NÆSTE endagsløb (lenOf===1) fra `rest`, søgt FRA index `ri` (elementer
-// FØR ri regnes som allerede-konsumeret af den almindelige gap-fill-gang og røres aldrig).
-// Fundet element FJERNES via splice — kun index >= ri kan ramme, så `ri` selv forbliver et
-// gyldigt "næste ukonsumerede element"-pointer for kalderens fortsatte vandring bagefter
-// (elementer før ri er urørte; elementer fra ri og frem rykker blot ét ned når ét fjernes).
-// Intet endagsløb tilbage → null (kalderen degraderer hviledagen væk, se placeGrandTourSegments).
-function takeNextOneDayFiller(rest, ri) {
-  for (let j = ri; j < rest.length; j++) {
-    if (lenOf(rest[j]) === 1) return rest.splice(j, 1)[0];
+// #3470 (supply-fix, ejer-krav 6/8 — samme fejlklasse som reservations-fasen i
+// tierRaceSelection.js, jf. .claude/learnings/2026-08-06-garanti-uden-forsyning-blokerede-
+// s3-kalenderen.md): reservér fillere FØR padding-loopet (target/ceiling-vandringen +
+// slut-flush'en) forbruger rest-køen grådigt. Uden dette "vandt" den almindelige gap-
+// fill/least-loaded-fordeling ofte ALLE endagsløb før GT'erne fik deres tur, så
+// hviledagene degraderede selv når kataloget havde rigeligt med endagsløb (6/7 degraderet
+// i dry-run mod prod-kataloget 6/8, kun 1/7 fyldt).
+//
+// Runde-baseret (round-robin i fase-rækkefølge over `gtsByPhase`): runde r reserverer
+// GT'ens r'te hviledag (0-indekseret) FØR nogen GT får sin (r+1)'te — alle GT'er får
+// dermed mindst én hviledag reserveret før nogen får to, når puljen er knap. Inden for
+// én GT/runde vælges det endagsløb i `pool` hvis seasonFraction ligger TÆTTEST på GT'ens
+// EGEN seasonFraction (proxy for hvor i sæsonen denne hviledag falder — GT'en har kun ÉT
+// fase-anker, ikke ét pr. hviledag) — deterministisk tiebreak |Δfraction| → id.localeCompare.
+// `pool` MUTERES (splice) — reserverede løb er dermed væk fra puljen kaldestedet iterer
+// videre over. Returnerer Map<gt.id, race[]> (races i den rækkefølge GT'en skal bruge dem).
+function reserveGrandTourFillers(gtsByPhase, pool) {
+  const neededByGt = new Map(gtsByPhase.map((gt) => [
+    gt.id,
+    grandTourRestDayPositions({ stages: lenOf(gt), restDays: Number(gt.restDays) || 0 }).length,
+  ]));
+  const reservedByGt = new Map(gtsByPhase.map((gt) => [gt.id, []]));
+  const maxNeeded = Math.max(0, ...neededByGt.values());
+
+  for (let round = 0; round < maxNeeded; round++) {
+    for (const gt of gtsByPhase) {
+      if (round >= (neededByGt.get(gt.id) ?? 0)) continue;
+      if (!pool.length) continue; // puljen tom — resten degraderer (rapporteret i placeGrandTourSegments)
+      const target = Number.isFinite(gt.seasonFraction) ? gt.seasonFraction : 0.5;
+      let bestIdx = 0;
+      for (let j = 1; j < pool.length; j++) {
+        const dj = Math.abs((Number.isFinite(pool[j].seasonFraction) ? pool[j].seasonFraction : 0.5) - target);
+        const db = Math.abs((Number.isFinite(pool[bestIdx].seasonFraction) ? pool[bestIdx].seasonFraction : 0.5) - target);
+        if (dj < db || (dj === db && String(pool[j].id).localeCompare(String(pool[bestIdx].id)) < 0)) bestIdx = j;
+      }
+      reservedByGt.get(gt.id).push(pool.splice(bestIdx, 1)[0]);
+    }
   }
-  return null;
+  return reservedByGt;
 }
 
 // #3470: placér ét GT's etaper i segmenter adskilt af hviledage — Option A (verificeret
 // arkitektur-grundlag #3470): HUL i game_day, TÆT stage_number (1..N uafbrudt, ingen
 // binding-lag rører etape-nummerering). `positions` er 1-indekserede etape-numre EFTER
 // hvilke en hviledag indsættes (grandTourRestDayPositions). Hver hviledag fyldes med ét
-// endagsløb fra `rest` (splejset ud af puljen, så det ikke genbruges/tælles dobbelt —
-// #3469-kvoteregnskabet i selection er uændret, fillere var allerede en del af puljen).
-// Findes intet endagsløb tilbage til en given hviledag, DEGRADERES den ærligt væk (GT'ens
-// næste etape lægges umiddelbart efter i stedet — ingen tabte events), rapporteret i
-// `restDayReport` (dry-run-diagnostik, #3470 punkt 3). restDays/positions tom ⇒ ét
-// segment ⇒ bit-identisk med placeStream(0, gt) (før #3470).
-function placeGrandTourSegments({ gt, positions, rest, ri, manualEvents, streamCursor, restDayReport }) {
+// endagsløb fra `reserved` (RESERVERET til netop denne GT af reserveGrandTourFillers, FØR
+// padding-loopet kørte — se dens docstring). Er `reserved` for kort (puljen slap op),
+// DEGRADERES den manglende hviledag ærligt væk (GT'ens næste etape lægges umiddelbart
+// efter i stedet — ingen tabte events), rapporteret i `restDayReport` (dry-run-
+// diagnostik, #3470 punkt 3). restDays/positions tom ⇒ ét segment ⇒ bit-identisk med
+// placeStream(0, gt) (før #3470).
+function placeGrandTourSegments({ gt, positions, reserved, manualEvents, streamCursor, restDayReport }) {
   const total = lenOf(gt);
   const boundaries = [...positions, total];
   let stageNum = 1;
   let segStart = 0;
+  let reservedIdx = 0;
   const fillerIds = [];
   const degradedAfterStage = [];
   for (const boundary of boundaries) {
@@ -185,7 +214,7 @@ function placeGrandTourSegments({ gt, positions, rest, ri, manualEvents, streamC
     streamCursor[0] = start + segLen;
     segStart = boundary;
     if (boundary === total) break; // sidste segment — ingen hviledag efter sidste etape
-    const filler = takeNextOneDayFiller(rest, ri);
+    const filler = reservedIdx < reserved.length ? reserved[reservedIdx++] : null;
     if (filler) {
       const fStart = streamCursor[0];
       manualEvents.push({ race: filler, type: "single", stage_number: 1, game_day: fStart, stream: 0 });
@@ -228,6 +257,20 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
     // date_text kan hviledags-antallet alligevel ikke udledes.
     const gtsByPhase = orderByPhase(gts);
     if (gtsByPhase) {
+      // #3470 (supply-fix, ejer-krav 6/8 — samme fejlklasse som reservations-fasen i
+      // tierRaceSelection.js): reservér fillere FØR padding-loopet nedenfor forbruger
+      // rest-køen grådigt — se reserveGrandTourFillers' docstring. Reservationen opererer
+      // på en KOPI af de endagsløb i `rest` (single-day, lenOf===1); de FAKTISK reserverede
+      // fjernes derefter fra `rest` selv, så padding-loopet (og slut-flush'en) aldrig kan
+      // genbruge dem. Rækkefølgen/mængden af events er UÆNDRET — kun HVILKE konkrete løb
+      // der lander i hullerne, flyttes tidligere.
+      const singleDayPool = rest.filter((r) => lenOf(r) === 1);
+      const reservedByGt = reserveGrandTourFillers(gtsByPhase, singleDayPool);
+      const reservedIds = new Set([...reservedByGt.values()].flat().map((r) => r.id));
+      if (reservedIds.size) {
+        for (let j = rest.length - 1; j >= 0; j--) if (reservedIds.has(rest[j].id)) rest.splice(j, 1);
+      }
+
       // #3472 (ejer-feedback på PR #3472, 6/8): v1 fyldte KUN stream 0 mod hvert GT-target,
       // hvilket gjorde stream 0 meget lang mens stream 1-2 forblev korte og "løb tør" tidligt
       // i game_day-rummet — sene dele af sæsonen blev derfor næsten enkelt-sporede (D1
@@ -335,7 +378,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
           placedCount += lenOf(rest[ri]);
           ri++;
         }
-        // #3470: GT'en placeres nu i segmenter adskilt af hviledags-fillere
+        // #3470: GT'en placeres nu i segmenter adskilt af RESERVEREDE hviledags-fillere
         // (placeGrandTourSegments) i stedet for placeStream(0, gt) direkte — men bidrager
         // stadig KUN til stream 0 (samme sekventielle GT-rygrad-invariant som før #3470, og
         // samme stream separations-bufferet holder afstand til).
@@ -345,7 +388,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
         // fremdriften mod senere GT'ers target-beregning.
         const positions = grandTourRestDayPositions({ stages: lenOf(gt), restDays: Number(gt.restDays) || 0 });
         const gtStreamStart = streamCursor[0];
-        placeGrandTourSegments({ gt, positions, rest, ri, manualEvents, streamCursor, restDayReport: gtRestDayReport });
+        placeGrandTourSegments({ gt, positions, reserved: reservedByGt.get(gt.id) ?? [], manualEvents, streamCursor, restDayReport: gtRestDayReport });
         placedCount += streamCursor[0] - gtStreamStart;
         remainingGtLen -= footprintOf(gt); // klar til NÆSTE gt's target-beregning (nu ekskl. denne)
         requiredStream0Buffer = GT_SEPARATION_BUFFER_DAYS * D; // gælder NÆSTE gt (0 hvis der ikke er flere)
