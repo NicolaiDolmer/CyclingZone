@@ -68,7 +68,10 @@ export const NOISE_SD_SCALE = 0.16;
 // (peloton); spread = sekunder pr. score-point over tærsklen. Flade etaper
 // neutraliseres (felt-finish, gab≈0), bjerg/ITT åbner ægte gab → GC afgøres i
 // bjergene. Display-only (gc-RANK driver points); tunbar ÉT sted.
-const GAP_MODEL = Object.freeze({
+// #3426: eksporteret (var modul-privat) så descentGapScorecard.js kan genbruge
+// de UÆNDREDE anker-tabeller i sin før/efter-sammenligning i stedet for at
+// hånd-kopiere dem (driftrisiko). Ren tilføjelse — ingen adfærdsændring.
+export const GAP_MODEL = Object.freeze({
   flat:          { bunch: 0.06, spread: 40 },
   rolling:       { bunch: 0.04, spread: 90 },
   hilly:         { bunch: 0.02, spread: 200 },
@@ -79,8 +82,8 @@ const GAP_MODEL = Object.freeze({
   cobbles:       { bunch: 0.02, spread: 250 },
   classic:       { bunch: 0.02, spread: 220 },
 });
-const GAP_MODEL_DEFAULT = Object.freeze({ bunch: 0.03, spread: 150 });
-const MAX_STAGE_GAP_SECONDS = 1800; // sikkerhedsloft (30 min)
+export const GAP_MODEL_DEFAULT = Object.freeze({ bunch: 0.03, spread: 150 });
+export const MAX_STAGE_GAP_SECONDS = 1800; // sikkerhedsloft (30 min)
 
 // ── Seams til #1021 (returnerer neutralt i light-motoren) ─────────────────────
 // Signaturerne er bevidst rige nok til at den fulde motor kan fylde dem ud uden
@@ -167,7 +170,7 @@ function longDayComponent(entrant, distFactor) {
   return (distFactor - 1) * LONG_DAY_ENDURANCE_WEIGHT * ((clamp(end, 0, 99) - 50) / 49);
 }
 
-function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+export function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); } // #3426: eksporteret til scorecard-genbrug
 
 // ── Hold-seam aktiveret (#1307, spec 8.2) ─────────────────────────────────────
 // Hjælperkvalitet (terrain-score) × friskhed (1 − træthed-dæmpning) booster den
@@ -187,12 +190,20 @@ const SPRINT_PROFILES = new Set(["flat"]);
 // Plan 1 (#1122): descending som finale-modifier — på descent-finaler får gode
 // nedkørere en bonus, dårlige taber (centreret om 50). Lille terræn-bjerg-vægt
 // (descending i bjerg-demand) kan tilføjes separat i DEMAND_VECTORS hvis ønsket.
-export const DESCENDING_FINALE_WEIGHT = 0.04;
+// #3426 (empirisk kalibreret 6/8): sænket 0.04→0.018 (bånd 0.015-0.020). Ved
+// 0.04 gav en enkelt spillers rytter-spænd (Δ25/49) op til (25/49)×0.04×800 =
+// 15,0 s PR. rytter oven i den generelle nedkørsels-spredning — matchede
+// spillerklagen på #3426 eksakt. Kombineret med den nu-fungerende
+// stageGapModel-dæmpning er 0.018 nok til at gode nedkørere stadig vinder tid.
+export const DESCENDING_FINALE_WEIGHT = 0.018;
 const DESCENT_FINALES = new Set(["descent"]);
 
 // Sub-3 (#2771): teknisk finale AFLEDES af rutedata — persisteres ikke.
 export const TECHNICAL_DESCENT_WINDOW_KM = [3, 12];
-export const TECHNICAL_FINALE_WEIGHT = 0.06; // samlet ±, fordeles 60/40 descending/positioning
+// #3426 (empirisk kalibreret 6/8): sænket 0.06→0.035 (bånd 0.030-0.040), samme
+// rod-årsag som DESCENDING_FINALE_WEIGHT ovenfor — for stor per-rytter-spænd på
+// tekniske finaler oven i en spredning der nu allerede er dæmpet i stageGapModel.
+export const TECHNICAL_FINALE_WEIGHT = 0.035; // samlet ±, fordeles 60/40 descending/positioning
 export function isTechnicalFinale(sp = {}) {
   if (DESCENT_FINALES.has(sp.finale_type)) return true;
   const d = finiteDistanceKm(sp); // #2804: NULL-distance er ikke "0 km"
@@ -477,8 +488,22 @@ export function terrainScore(abilities, demandVector) {
 // på spread. Uden rutedata er alle faktorer 1.0 → bit-identisk med main.
 // En fuld kontinuerlig model er senere drop-in bag SAMME grænseflade.
 export const SUMMIT_SPREAD_FACTOR = 1.3;        // bånd 1.2-1.4 (kalibrering)
+// #3426 (empirisk målt 6/8 på 161.874 stage-resultater): denne dæmpning rammer
+// ALLEREDE målet for den gruppe der får den (p5/p10/p20/p40 ≈ 18/32/46/63 s,
+// matcher nedkørsel ≈ 0,2-0,5× summit i virkeligheden) — UÆNDRET, rør ikke det
+// der virker. Problemet var at for få nedkørsler NÅEDE denne faktor (se
+// VALLEY_MIN_DESCENT_KM + descent-fallback-grenen nedenfor).
 export const VALLEY_SPREAD_FACTOR = 0.6;        // bånd 0.5-0.75
-export const VALLEY_MIN_DESCENT_KM = 10;
+// #3426: sænket 10→3 km (empirisk kalibreret). 3-10 km nedkørsler efter sidste
+// top fik FØR ingen spread-dæmpning overhovedet (kun kategori-faktoren) og
+// spredte på niveau med/over summit-finaler (p40 174-196 s vs. summit 148 s) —
+// stik modsat af hvad en nedkørsel gør i virkeligheden (feltet samles).
+export const VALLEY_MIN_DESCENT_KM = 3;
+// #3426: frontgruppe-klumpning KUN på descent-grenen (bunch var 0.0 for
+// mountain/high_mountain, jf. GAP_MODEL — nedkørsler havde ingen "samme tid"-
+// tærskel overhovedet). Empirisk startværdi 0.015 (bånd 0.010-0.020),
+// kalibreret i descentGapScorecard.js mod den målte 18/32/46/63-baseline.
+export const DESCENT_GAP_BUNCH = 0.015;
 export const LAST_CLIMB_CATEGORY_FACTORS = Object.freeze({ HC: 1.25, "1": 1.10, "2": 1.0, "3": 0.85, "4": 0.7 });
 export const ITT_REFERENCE_KM = 30;
 // #2771 Task 7 kalibrerings-revision (arkitekt 22/7): korte kronometre
@@ -488,8 +513,8 @@ export const ITT_REFERENCE_KM = 30;
 // på korte distancer — eksponenten retter det: 6 km → spread ≈ 86, 8 km ≈ 125,
 // 15 km ≈ 284, 30 km → 700 (uændret anker), 40 km → clamp 900.
 export const ITT_DISTANCE_EXPONENT = 1.3;
-const CLIMB_GAP_PROFILES = new Set(["mountain", "high_mountain", "hilly"]);
-const SPREAD_CLAMP = [40, 1000];
+export const CLIMB_GAP_PROFILES = new Set(["mountain", "high_mountain", "hilly"]); // #3426: eksporteret til scorecard-genbrug
+export const SPREAD_CLAMP = [40, 1000]; // #3426: eksporteret til scorecard-genbrug
 
 export function stageGapModel(stageProfile = {}) {
   const anchor = GAP_MODEL[stageProfile.profile_type] || GAP_MODEL_DEFAULT;
@@ -516,12 +541,21 @@ export function stageGapModel(stageProfile = {}) {
       bunch = 0;
     } else if (Number.isFinite(distance) && distance - Number(last.crest_km) >= VALLEY_MIN_DESCENT_KM) {
       spread *= VALLEY_SPREAD_FACTOR;
+      bunch = Math.max(bunch, DESCENT_GAP_BUNCH); // #3426: frontgruppe-klumpning på nedkørsler
     }
+  } else if (DESCENT_FINALES.has(stageProfile.finale_type)) {
+    // #3426: rutedata mangler (ingen climbs, eller profil uden for
+    // CLIMB_GAP_PROFILES) — 150 af 274 descent-etaper i prod havde intet
+    // rutedata og spredte med FULDT bjerg-anker (600/800), værre end
+    // summit-finaler. finale_type='descent' er et kendt signal selv uden
+    // climbs-array — dæmp med SAMME VALLEY_SPREAD_FACTOR som rute-baseret dal-finish.
+    spread *= VALLEY_SPREAD_FACTOR;
+    bunch = Math.max(bunch, DESCENT_GAP_BUNCH);
   }
   return { bunch, spread: Math.round(clamp(spread, SPREAD_CLAMP[0], SPREAD_CLAMP[1])) };
 }
 
-function gapFor(stageProfile, deficit) {
+export function gapFor(stageProfile, deficit) { // #3426: eksporteret til scorecard-genbrug
   const m = stageGapModel(stageProfile);
   if (deficit <= m.bunch) return 0;
   return Math.round(clamp((deficit - m.bunch) * m.spread, 0, MAX_STAGE_GAP_SECONDS));
