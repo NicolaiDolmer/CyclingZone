@@ -41,9 +41,13 @@ Alle genererings-stier (akademi-intake, AI-fill, starter squads, pool-import-sup
 3. **Hybrid-støj:** ~15 % af nye ryttere trækkes med to-arketype-blanding (giver naturlige puncheur/climber-hybrider m.m. og undgår karikatur-population).
 4. `potentiale` trækkes som i dag (uafhængigt af arketype — et stort talent kan være enhver type).
 
-### Del B — Skala-ærlighed (visningen)
+### Del B — Skala-ærlighed (REVIDERET per ejer-beslutning 6/8 aften: ABSOLUT kalibrering, ikke relativ visning)
 
-`buildTypeCeilingBands` (scout-rapporten) og øvrige flader der viser type-ratings side om side, viser fremover **percentil-normaliserede** tal: "84" betyder "bedre potentiale i rollen end 84 % af feltet" — samme betydning i alle 8 roller. Implementering: kvantil-tabel pr. type, genberegnet ugentligt (kan bo i søndags-sweepen fra #3448 — samme kadence-filosofi), committet som JSON-artefakt så visningen er deterministisk mellem genberegninger. Hjælpetekst (en+da) forklarer skalaen.
+Ejeren afviste percentil-/"sammenlignet med feltet"-semantikken: ratings og potentialer skal vises som det de ER — på en absolut, stabil skala hvor samme tal betyder samme niveau i alle 8 roller og over tid (FM/PCM-princippet: sammenlignelighed bygges IND i modellen, ikke ovenpå som relativt lag).
+
+Implementering: de 8 type-bedømmelsers output-skalaer **kalibreres én gang** (den empiriske måling 6/8 bruges til at FINDE justeringen — derefter fryses den som modelkonstant, `typeRatingCalibration.json`). Ingen automatisk/ugentlig regenerering — rekalibrering er en fremtidig design-beslutning, ikke en cron. UI-sproget er absolut ("tallene kan sammenlignes på tværs af roller"), aldrig relativt. Hjælpetekst (en+da) forklarer rekalibreringen.
+
+**Fase 2-tilføjelse (ejer 6/8):** selve type-formlernes VÆGTE (hvilke evner definerer en fighter/bjergrytter/… og hvor meget) efterses grundigt sammen med generator-arbejdet — "modellerne skal bare blive bedre". Research-drevet som kalender-beslutningen; ingen hurtige laps.
 
 ### Del C — Eksisterende ryttere: INGEN tredje rystelse
 
