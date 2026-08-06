@@ -244,8 +244,13 @@ test("#3470: GT-hviledage — span = stages-1+restDaysFilled når date_text find
   // #3327-uafhængigt: totalGameDays/kvote UÆNDRET — fillere er allerede en del af puljen.
   assert.equal(tier1.totalGameDays, 140);
   assert.equal(tier1.quotaHit, true, `shortfall=${tier1.shortfall}`);
-  // cap holder stadig (tier 1 = 3).
-  assert.ok(tier1.maxOverlap <= 3, `tier1 maxOverlap ${tier1.maxOverlap} > 3`);
+  // #3469-basen (c3487416, D1-overlap-fix) fordeler rest-fyldet LEAST-LOADED over ALLE
+  // streams — det løfter overlapDays generelt, men en GT-hviledags-slot kan derfor nu bære
+  // BÅDE GT'ens dormante span (binding fortsætter gennem hullet) OG fillerens EGEN aktive
+  // tilstedeværelse på PRÆCIS den game_day — ét ekstra "identitet" på netop de faktiske
+  // hviledags-fyldte slots. Loftet er derfor cap+1 KUN på disse specifikke dage (se samme
+  // note i raceCalendarLanePacker.test.js). Ingen produktionskode gater på maxOverlap.
+  assert.ok(tier1.maxOverlap <= 4, `tier1 maxOverlap ${tier1.maxOverlap} > cap+1 (4)`);
 });
 
 test("plan: monumenter får game_day i binding-fri båndet; game_day_start = almindelig dag", () => {
