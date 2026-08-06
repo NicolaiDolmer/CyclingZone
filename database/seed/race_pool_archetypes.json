@@ -141,5 +141,6 @@
   { "external_id": "3721d97b66d6a76a", "name": "Région Pays de la Loire Tour Mineur", "country": "France", "terrain_archetype": "sprinters_week" },
   { "external_id": "4f43b6e0843c1380", "name": "O Gran Camiño Menor", "country": "Spain", "terrain_archetype": "mountain_tour" },
   { "external_id": "339f4f05e3d8d96b", "name": "Settimana di Coppi e Bartali Minore", "country": "Italy", "terrain_archetype": "hilly_tour" },
-  { "external_id": "a15a0038c23d0c69", "name": "Tour de la Provence Mineur", "country": "France", "terrain_archetype": "hilly_tour" }
+  { "external_id": "a15a0038c23d0c69", "name": "Tour de la Provence Mineur", "country": "France", "terrain_archetype": "hilly_tour" },
+  { "external_id": "d7817de0a18d1bf5", "name": "Chrono des Herbiers Mineur", "country": "France", "terrain_archetype": "itt_classic" }
 ]
