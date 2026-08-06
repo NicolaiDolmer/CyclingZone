@@ -315,6 +315,14 @@ const WHITELIST_PROD_ONLY_TABLES = new Set([
   "rider_watchlist",
   "transfer_windows",
   "xp_log",
+  // MIDLERTIDIG (#3367-sessionen 5/8): før-snapshot taget forud for
+  // backfillRiderTypes.js, så de 4.249 type-skift kan rulles tilbage. Den er
+  // bevidst IKKE en migration — den er et engangs-sikkerhedsnet, ikke skema.
+  // Uden denne entry flagger detector D den som schema-drift, og `audit` blev
+  // dermed rød på ENHVER PR (falsk rød, ikke-blokerende men støjende).
+  // FJERN denne linje sammen med tabellen når den nye type-fordeling er set an
+  // i drift — se docs/audits/night-wave-2026-08-05-aften.md for rollback-SQL.
+  "riders_type_backfill_snapshot_20260805",
 ]);
 
 // ---------------------------------------------------------------------------
