@@ -29,6 +29,10 @@
     "label": "Division",
     "all": "Alle divisioner"
   },
+  "poolMenu": {
+    "label": "Pulje",
+    "all": "Alle puljer"
+  },
   "filter": {
     "mine": "Mit holds løb"
   },

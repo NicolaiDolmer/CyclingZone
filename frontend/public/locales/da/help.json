@@ -461,6 +461,20 @@
         "title": "Hvad er Hero & Agony-kortet?",
         "text": "Dit dashboard viser også et Hero & Agony-kort: ét personligt øjeblik fra dit holds senest kørte etape, valgt automatisk ud fra hvad der rent faktisk skete med dine ryttere den dag, det kan være en etapesejr, et skifte i den samlede føring, en rytter der ofrede sit eget resultat for holdet, eller en favorit der endte uden for top 15. Modgang tæller lige så meget som triumf: en rytter der sad i udbruddet hele dagen og blev hentet lige før stregen giver en bedre historie end en stille midterplacering, og kortet er bygget til at afspejle det. Klik 'Del som billede' for at hente et redaktionelt PNG af kortet, klar til at poste på Discord."
       },
+      "stageEndings": {
+        "title": "Etape-afslutninger forklaret",
+        "text": "Hver etape har en finaletype vist ved siden af terræn-badget i kalenderen og på løbssiden. Hold musen over eller tryk på badget for hele forklaringen dér; tabellen herunder samler alle typerne ét sted.",
+        "rows": [
+          ["Afslutning", "Hvad det betyder"],
+          ["Massespurt", "Feltet holder sammen, og etapen afgøres i en massespurt."],
+          ["Reduceret spurt", "En reduceret gruppe holder hjem til mål og spurter om sejren."],
+          ["Stikfinale", "Et kort, stejlt ryk tæt på mål belønner et sent angreb frem for en ren spurt."],
+          ["Bjergfinale", "Selve stigningen er målstregen, hvor dagens største tidsforskelle opstår."],
+          ["Nedkørselsfinale", "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen."],
+          ["Soloenkeltstart", "Hver rytter starter alene mod uret, uden slipstrøm."],
+          ["Udbrud", "En tidlig udbrudsgruppe holder sig fri af feltet og opgør sejren indbyrdes."]
+        ]
+      },
       "stageProfile": {
         "title": "Terræn og etapeprofiler",
         "text": "Fra sæson 2 viser løb med rutedata etapens rigtige profil: det er den nøjagtige rute race-motoren afvikler, med hver stignings længde, hældning og kategori, mellemsprinten, brostenssektorer, og hvor målstregen ligger. En stignings kategori afgør hvor mange bjergpoint der er på spil på toppen, og en målgang på toppen af en stigning giver større tidsforskelle end en målgang efter en nedkørsel. Tryk på en markør på profilen for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt. Ældre løb uden rutedata viser stadig det tidligere terræn-badge: en skematisk silhuet og en vejledende kategori, ikke en målt profil."
@@ -1199,6 +1213,10 @@
     "scoutChangeRecalcFaq": {
       "q": "Jeg ansatte en ny chefscout, og en rytters scoutingrapport ændrede sig. Blev rytteren dårligere?",
       "a": "Nej. En scoutingrapport beregnes altid live, ud fra DIN NUVÆRENDE chefscouts præcision, så den genberegnes fra bunden hver gang du åbner den. Enhver rytters scoutingrapport viser nu hvem der vurderede den og med hvilken tier under overskriften, så du altid kan se hvis vurdering du kigger på. Ansætter du en spejder med en lavere rating, bliver loft-båndet du ser bredere og kan flytte sig; en højere rating gør det smallere. Ingen af retningerne rører rytterens faktiske evner, som kun flytter sig via træning, alder og løb. Skifter du chefscout efter at holdet allerede har scoutede ryttere, får du en indbakke-besked der forklarer præcis dette, i samme øjeblik den nye ansættelse lander."
+    },
+    "typeRatingScaleFaq": {
+      "q": "Hvorfor ændrede tallene sig i 'Potentiale pr. ryttertype', og hvad betyder de nu?",
+      "a": "Tallene i ryttertype-rækkerne på Scouting-fanen er blevet rekalibreret, ikke rytteren. Rytterens faktiske evner, loft og ryttertype er ikke ændret, kun hvordan loft-båndet og nuværende niveau vises. Før denne ændring var de otte typer ikke på en sammenlignelig skala: nogle typers formler gav strukturelt højere tal end andre for næsten alle ryttere, så en 84 i én type ikke betød det samme som en 84 i en anden. Rekalibreringen retter den uoverensstemmelse én gang for alle, på modelniveau, så hvert tal nu betyder samme niveau overalt: en 84 i én type repræsenterer den samme underliggende styrke som en 84 i en hvilken som helst anden type, og du kan sammenligne direkte på tværs af alle otte typer. Det er en engangs-rettelse af ratingmodellen, ikke en score relativt til den nuværende spillerpulje: en rytters tal ligger fast, medmindre hans egne evner ændrer sig."
     },
     "seasonChangeMoneyFaq": {
       "q": "Hvad sker der med min økonomi ved sæsonskiftet?",

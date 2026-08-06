@@ -68,6 +68,55 @@ test("'Alle hold'-fanen viser andre divisioners løb (dæmpet)", async ({ page }
   expect(await page.getByRole("link", { name: /Grand Prix de Namur/ }).count()).toBeGreaterThan(1);
 });
 
+test("#2756: pulje-vælgeren viser en anden divisions/gruppes fulde program (scouting)", async ({ page }) => {
+  await gotoCalendar(page);
+  await page.getByRole("tab", { name: "Divisioner" }).click();
+  await expect(page.getByRole("tab", { name: "Divisioner" })).toHaveAttribute("aria-selected", "true");
+
+  // Skift til Division 3, hvor spilleren IKKE selv har hold — den fulde bevisbyrde
+  // for scouting-issuet (thelamba 20/7: "kan ikke vælge fx 'Division 2 A'").
+  await page.getByLabel("Division", { exact: true }).selectOption({ label: "Division 3" });
+  const poolSelect = page.getByLabel("Pulje", { exact: true });
+  await expect(poolSelect).toBeVisible();
+
+  // "Division 3 — A" har det seedede 5-løbs-overflow-dag (#2756 dækning nedenfor);
+  // "Division 3 — B" har Giro Veneto (cal-9) i stedet. De to grupper skal give
+  // synligt FORSKELLIGE programmer — det var netop umuligt før dette issue.
+  await poolSelect.selectOption({ label: "Division 3 — A" });
+  await expect(page.getByRole("link", { name: /Roc d'Azur/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Giro Veneto/ })).toHaveCount(0);
+
+  await poolSelect.selectOption({ label: "Division 3 — B" });
+  await expect(page.getByRole("link", { name: /Giro Veneto/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Roc d'Azur/ })).toHaveCount(0);
+});
+
+test("#2756: '+N more' folder dagens fulde program ud i stedet for tavs afkortning", async ({ page }) => {
+  await gotoCalendar(page);
+  await page.getByRole("tab", { name: "Divisioner" }).click();
+  await page.getByLabel("Division", { exact: true }).selectOption({ label: "Division 3" });
+  await page.getByLabel("Pulje", { exact: true }).selectOption({ label: "Division 3 — A" });
+
+  // Dagcellen sorterer alfabetisk (ingen klokkeslæt seedet) og viser kun de
+  // første 4 af de 5 seedede løb: Coppa Bernocchi/Faun-Ardèche/Japan Cup/Roc
+  // d'Azur er synlige med det samme, "Tro-Bro Léon" (sidst alfabetisk) er
+  // afkortet bag en interaktiv "+1 flere".
+  await expect(page.getByRole("link", { name: /Tro-Bro Léon/ })).toHaveCount(0);
+  const moreButton = page.getByRole("button", { name: "+1 flere" });
+  await expect(moreButton).toBeVisible();
+
+  await moreButton.click();
+  const modal = page.getByRole("dialog");
+  await expect(modal).toBeVisible();
+  // Modalen viser HELE dagens program, inkl. det tidligere skjulte 5. løb.
+  for (const name of ["Roc d'Azur", "Tro-Bro Léon", "Faun-Ardèche Classic", "Japan Cup", "Coppa Bernocchi"]) {
+    await expect(modal.getByRole("link", { name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) })).toBeVisible();
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(modal).not.toBeVisible();
+});
+
 test("snapshot: kalender-flade", async ({ page }) => {
   await gotoCalendar(page);
   await expect(page.getByRole("link", { name: /Grand Prix de Namur/ }).first()).toBeVisible();

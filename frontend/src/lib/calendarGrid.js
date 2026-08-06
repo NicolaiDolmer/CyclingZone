@@ -76,6 +76,7 @@ export function expandStageEvents(entries) {
         time: s.time || null,
         terrain: s.terrain || e.terrain || null,
         division: e.division,
+        poolId: e.poolId ?? null,
         poolLabel: e.poolLabel,
         isMine: e.isMine,
         leaderSet: e.leaderSet,
@@ -85,12 +86,16 @@ export function expandStageEvents(entries) {
   return out;
 }
 
-// Filters stage events to a single month (and optionally a division/tier + "mine only").
-export function filterStageEvents(events, { year, month, division = null, mineOnly = false } = {}) {
+// Filters stage events to a single month (and optionally a division/tier + pool/group
+// within that tier + "mine only"). poolId narrows a tier down to a single group (e.g.
+// "Division 2 A") — null means "every pool in the tier" (#2756: scouting a whole
+// division's calendar, then a single group within it).
+export function filterStageEvents(events, { year, month, division = null, poolId = null, mineOnly = false } = {}) {
   const prefix = `${year}-${pad2(month)}`;
   return (events || []).filter((ev) => {
     if (!ev.date || !ev.date.startsWith(prefix)) return false;
     if (division != null && ev.division !== division) return false;
+    if (poolId != null && ev.poolId !== poolId) return false;
     if (mineOnly && !ev.isMine) return false;
     return true;
   });

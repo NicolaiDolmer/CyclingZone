@@ -44,3 +44,27 @@ To konkrete vaner der ville have fanget det:
 ## Beslægtet mønster i samme session
 
 Samme klasse fejl, mildere form: vægte kalibreret mod S2's løbssæt ramte S2 præcist og gav S3 bjerg +3,0 pp. Igen fordi udvalget genudvælges pr. sæson. Kalibreringen er nu verificeret mod **begge** sæsoner, og `calendarCompositionCalibration.test.js` fejler hvis kompositionen driver uden for ±2 pp.
+
+---
+
+## KORREKTION samme dag: rod-årsagen var dybere end katalog-forsyning
+
+Analysen ovenfor er rigtig så langt den går, men den stopper for tidligt. Jeg konkluderede at garantien manglede *forsyning* — at der var for få `hilly_tour`-løb i kataloget. Det viste sig at være forkert.
+
+**Testen der afgjorde det:** jeg føjede 21 nye kandidat-løb til kataloget (dry-run) og lod en søgning finde det bedste sæt. Den mættedes efter **to** løb. De øvrige 19 flyttede ingenting.
+
+**Den virkelige rod-årsag:** `selectTierRaceSet` rangerer kandidater `prestige → STØRRELSE → knap-arketype`. Arketypen er tredje nøgle og slår kun til når to løb har både samme prestige *og* samme etapeantal — hvilket næsten aldrig sker. `SCARCE_TERRAIN_ARCHETYPES` (#3327) skulle give brosten- og ITT-løb forrang, men blev i praksis aldrig nået: et 6-etapers `mountain_tour` slår altid et 3-etapers `cobbled_tour` på størrelse.
+
+Dertil: divisionens kvote er **fast** (84 game-days for D3). Nye katalog-løb ændrer derfor *hvilke* løb divisionen tager, ikke *hvor mange*. De fortrænger hinanden i stedet for at akkumulere. Det ene løb der faktisk hjalp, udfyldte en **tom** plads i D4 — ikke en fortrængning.
+
+**Fikset:** en reservations-fase (`reserveArchetypes`) der tager de påkrævede arketyper FØR prestige-walket. 4 blokerende brud → 1, og kompositionen blev samtidig bedre (bjerg landede 0,1 pp fra målet).
+
+## Den egentlige læring
+
+**En efterkontrol kan konstatere en mangel, men aldrig fremskaffe det manglende.** Alle dækningsgarantierne i `tierCalendarGuarantees.js` var skrevet som verifikation efter selection. De virkede så længe prestige-rangeringen tilfældigvis leverede dækningen — og fejlede lydløst da den holdt op.
+
+Ironien er at #3327 selv havde fundet præcis denne fejlklasse et lag tidligere, for endagsløb/etapeløb-mixet, og skrevet løsningen ned i sin egen kommentar: *"store etapeløb vinder ALTID over 1-etapes løb ved samme prestige i et sammenlagt størrelses-sorteret walk"* — hvorefter kvoten blev splittet i to budgetter FØR walket. Den indsigt blev bare ikke ført videre til terræn.
+
+**Spørgsmål der ville have fanget det hurtigere:** når en sortering har flere nøgler, hvor ofte bliver den n'te nøgle overhovedet nået? Her: næsten aldrig. En prioritet der ligger efter en nøgle med høj kardinalitet (etapeantal) er ikke en prioritet — den er dekoration.
+
+**Og en metode-læring om mig selv:** jeg foreslog at sænke båndene, da katalog-udvidelsen ikke virkede. Ejeren afviste det ("vi laver ikke quick fixes"), og det var rigtigt — jeg havde diagnosticeret symptomet som årsagen. Når to forsøg på at løse noget begge fejler på samme måde, er det et signal om at modellen af problemet er forkert, ikke om at målet skal sænkes.

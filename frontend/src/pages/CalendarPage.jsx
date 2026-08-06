@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
+import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
 import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
 import {
   buildMonthGrid,
@@ -38,7 +38,7 @@ async function authHeaders() {
 }
 
 export default function CalendarPage() {
-  const { t, i18n } = useTranslation("calendar");
+  const { t, i18n } = useTranslation(["calendar", "common"]);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   // #2849 bølge 3 — kanonisk fejl-tilstand (states-sheet manglede en ÷ pr. audit'en);
@@ -48,8 +48,15 @@ export default function CalendarPage() {
   const [retryTick, setRetryTick] = useState(0);
   const [tab, setTab] = useState("mine");
   const [division, setDivision] = useState(null); // null = all divisions
+  // #2756: pulje/gruppe-vælger inden for en division ("Division 2 A") — spillere
+  // kunne før kun scoute en HEL tier, ikke en enkelt gruppe (Discord-feedback,
+  // thelamba 20/7+19/7: "I couldn't select 'Division 2 A' calendar"). null = alle
+  // puljer i den valgte tier. Nulstilles hver gang division skifter (changeDivision).
+  const [pool, setPool] = useState(null);
   const [mineOnly, setMineOnly] = useState(false);
   const [cursor, setCursor] = useState(null); // { year, month }
+  // #2756: dagen der er foldet ud i "+N more"-modalen. null = lukket.
+  const [expandedDayIso, setExpandedDayIso] = useState(null);
   // #2449: sæson-vælger (S1/S2/...) — null = ingen eksplicit valg endnu (backend
   // defaulter til den aktive sæson, uændret adfærd for gamle klienter).
   const [seasonNumber, setSeasonNumber] = useState(null);
@@ -93,6 +100,19 @@ export default function CalendarPage() {
     return division; // "divisions" tab → dropdown value
   }, [tab, division, data]);
 
+  // #2756: pulje-filteret virker kun sammen med en KONKRET division (samme regel
+  // som Resultat-hubbens hasPoolSubtabs, #3197) — "Alle divisioner"/"Mit hold"/
+  // "Alle hold" har ingen mening at snævre til én gruppe.
+  const activePool = tab === "divisions" ? pool : null;
+
+  // Division-vælger: nulstiller ALTID pulje-valget — en pulje fra forrige division
+  // giver ikke mening under den nye (samme reset-regel som ResultaterPage #3197).
+  function changeDivision(value) {
+    setDivision(value === "" || value == null ? null : Number(value));
+    setPool(null);
+    setTab("divisions");
+  }
+
   // "Mit hold"-tab is the strongest filter: only the player's own races. The legend
   // checkbox ("Mit holds løb") provides the same filter on the other tabs.
   const effectiveMineOnly = tab === "mine" || mineOnly;
@@ -105,9 +125,10 @@ export default function CalendarPage() {
       year: cursor.year,
       month: cursor.month,
       division: activeDivision,
+      poolId: activePool,
       mineOnly: effectiveMineOnly,
     });
-  }, [allStageEvents, cursor, activeDivision, effectiveMineOnly]);
+  }, [allStageEvents, cursor, activeDivision, activePool, effectiveMineOnly]);
 
   const byDate = useMemo(() => groupStageEventsByDate(stageEvents), [stageEvents]);
   const weeks = useMemo(() => (cursor ? buildMonthGrid(cursor.year, cursor.month) : []), [cursor]);
@@ -148,6 +169,8 @@ export default function CalendarPage() {
 
   const monthLabel = cursor ? formatMonth(cursor, i18n.language) : "";
   const divisionTree = data.divisions || [];
+  // #2756: puljerne i den valgte division — kun til pulje-vælgeren.
+  const tierPools = division != null ? (divisionTree.find((d) => d.division === division)?.pools || []) : [];
 
   const eyebrow = data.season
     ? (data.season.raceDaysTotal
@@ -163,7 +186,7 @@ export default function CalendarPage() {
         t={t}
         eyebrow={eyebrow}
         division={division}
-        onDivision={(v) => { setDivision(v); setTab("divisions"); }}
+        onDivision={changeDivision}
         data={data}
         availableSeasons={availableSeasons}
         seasonNumber={displaySeasonNumber}
@@ -214,12 +237,12 @@ export default function CalendarPage() {
 
       {/* Division dropdown only matters on the "divisions" tab */}
       {tab === "divisions" && (
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-xs uppercase tracking-[0.12em] text-cz-3">{t("divisionMenu.label")}</span>
           <Select
             size="sm"
             value={division ?? ""}
-            onChange={(e) => setDivision(e.target.value === "" ? null : Number(e.target.value))}
+            onChange={(e) => changeDivision(e.target.value)}
             className="w-44"
           >
             <option value="">{t("divisionMenu.all")}</option>
@@ -227,6 +250,24 @@ export default function CalendarPage() {
               <option key={d.division} value={d.division}>{t("division", { n: d.division })}</option>
             ))}
           </Select>
+          {/* #2756: pulje/gruppe-vælger — kun vist når den valgte division reelt har
+              mere end én pulje (samme hasPoolSubtabs-regel som Resultat-hubben,
+              ResultaterPage.jsx #3197). "Alle divisioner" har ingen entydig
+              pulje-liste, så vælgeren skjules der. */}
+          {tierPools.length > 1 && (
+            <Select
+              size="sm"
+              aria-label={t("poolMenu.label")}
+              value={pool ?? ""}
+              onChange={(e) => setPool(e.target.value === "" ? null : Number(e.target.value))}
+              className="w-44"
+            >
+              <option value="">{t("poolMenu.all")}</option>
+              {tierPools.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </Select>
+          )}
         </div>
       )}
 
@@ -249,13 +290,31 @@ export default function CalendarPage() {
             {weeks.map((week, wi) => (
               <div key={wi} className="grid grid-cols-7">
                 {week.map((cell, ci) => (
-                  <DayCell key={ci} cell={cell} entries={cell ? byDate.get(cell.iso) : null} todayISO={todayISO} t={t} />
+                  <DayCell
+                    key={ci}
+                    cell={cell}
+                    entries={cell ? byDate.get(cell.iso) : null}
+                    todayISO={todayISO}
+                    t={t}
+                    onExpand={setExpandedDayIso}
+                  />
                 ))}
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* #2756: "+N more" foldede før ikke ud — klik åbnede intet. Modalen viser
+          dagens FULDE program (ikke kun overflowet), så listen matcher hvad
+          cellen allerede viste øverst i stedet for at splitte den i to visninger. */}
+      <DayDetailModal
+        iso={expandedDayIso}
+        events={expandedDayIso ? byDate.get(expandedDayIso) : null}
+        onClose={() => setExpandedDayIso(null)}
+        t={t}
+        locale={i18n.language}
+      />
 
       {stageEvents.length === 0 && (
         <div className="mt-4">
@@ -340,7 +399,7 @@ function CalendarControls({ t, eyebrow = null, division, onDivision, data, avail
 
 // ── day cell ─────────────────────────────────────────────────────────────────
 
-function DayCell({ cell, entries, todayISO, t }) {
+function DayCell({ cell, entries, todayISO, t, onExpand }) {
   if (!cell) {
     return <div className="border-b border-r border-cz-border bg-cz-subtle/40 min-h-[7rem]" aria-hidden="true" />;
   }
@@ -366,11 +425,42 @@ function DayCell({ cell, entries, todayISO, t }) {
         {shown.map((ev) => (
           <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} />
         ))}
+        {/* #2756: "+N more" var før statisk tekst — spillere kunne ikke se resten
+            af dagens program uden at være i den division/pulje selv. Nu åbner den
+            et dag-panel med hele dagens løb (Discord-feedback, thelamba 20/7). */}
         {overflow > 0 && (
-          <p className="px-0.5 text-3xs text-cz-3">{t("moreRaces", { count: overflow })}</p>
+          <button
+            type="button"
+            onClick={() => onExpand(cell.iso)}
+            className="block w-full px-0.5 text-start text-3xs text-cz-3 underline decoration-dotted transition-colors hover:text-cz-1"
+          >
+            {t("moreRaces", { count: overflow })}
+          </button>
         )}
       </div>
     </div>
+  );
+}
+
+// #2756: dag-detalje-modal — genbruger DialogSurface/Modal'et fra UI-kittet
+// (PAGE_TEMPLATES.md forbyder ny modal-markup) og StageChip'en dagcellen
+// allerede renderer, så listen ser identisk ud, bare fuld i stedet for afkortet.
+function DayDetailModal({ iso, events, onClose, t, locale }) {
+  const list = events || [];
+  return (
+    <Modal
+      open={iso != null}
+      onClose={onClose}
+      title={iso ? formatDayLong(iso, locale) : ""}
+      closeLabel={t("common:actions.close")}
+      size="sm"
+    >
+      <div className="space-y-1.5">
+        {list.map((ev) => (
+          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} />
+        ))}
+      </div>
+    </Modal>
   );
 }
 
@@ -435,4 +525,18 @@ function formatMonth({ year, month }, locale) {
     year: "numeric",
   }).format(new Date(Date.UTC(year, month - 1, 15)));
   return label.toUpperCase();
+}
+
+// #2756: dag-modalens titel. Bygger datoen fra "YYYY-MM-DD"-strengen selv (aldrig
+// new Date(iso) — samme UTC-midnat-TZ-fælde calendarGrid.js's filhoved advarer om)
+// og bruger middag-UTC som anker, så Europe/Copenhagen-projektionen aldrig kan
+// rulle en dag frem/tilbage om sommertiden.
+function formatDayLong(iso, locale) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale || "en", {
+    timeZone: "Europe/Copenhagen",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(Date.UTC(y, m - 1, d, 12)));
 }

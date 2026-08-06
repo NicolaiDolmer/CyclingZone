@@ -29,6 +29,10 @@
     "label": "Division",
     "all": "All divisions"
   },
+  "poolMenu": {
+    "label": "Pool",
+    "all": "All pools"
+  },
   "filter": {
     "mine": "My team's races"
   },

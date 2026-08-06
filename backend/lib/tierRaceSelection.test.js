@@ -94,3 +94,83 @@ test("selectTierRaceSet: rapporterer shortfall når kataloget ikke kan fylde kvo
   assert.equal(sel.shortfall, 83);
   assert.equal(gameDays(sel), 1);
 });
+
+// ── #3295: arketype-reservationer ────────────────────────────────────────────
+// Rod-årsagen de løser: rangeringen er prestige → STØRRELSE → knap-arketype, så
+// arketypen er tredje nøgle og slår kun til ved uafgjort på de to første. Målt på S3
+// gav det Division 3 nul brosten-etapeløb uanset katalogets indhold.
+
+// Katalog hvor den knappe arketype ALDRIG vinder på prestige+størrelse: mange store
+// ProSeries-etapeløb uden arketype, og ét lille cobbled_tour af samme klasse.
+function scarcityCatalog() {
+  const rows = [];
+  for (let i = 0; i < 20; i++) rows.push({ id: `ps-big-${i}`, name: `Stort ${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 6, terrain_archetype: "mountain_tour" });
+  for (let i = 0; i < 20; i++) rows.push({ id: `ps-od-${i}`, name: `Endags ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "hilly_classic" });
+  rows.push({ id: "ps-cob", name: "Brostensløb", race_class: "ProSeries", race_type: "stage_race", stages: 3, terrain_archetype: "cobbled_tour" });
+  rows.push({ id: "ps-itt", name: "Enkeltstart", race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "itt_classic" });
+  return rows;
+}
+
+test("#3295 uden reservationer taber den knappe arketype — rod-årsagen", () => {
+  const sel = selectTierRaceSet({ catalog: scarcityCatalog(), quota: 30, seed: 1, oneDayShareTarget: 0.5 });
+  assert.ok(!sel.stageRaces.some((r) => r.id === "ps-cob"),
+    "fixturen skal gengive problemet: cobbled_tour taber på størrelse (3 < 6 etaper)");
+});
+
+test("#3295 reservationer sikrer de knappe arketyper", () => {
+  const sel = selectTierRaceSet({
+    catalog: scarcityCatalog(), quota: 30, seed: 1, oneDayShareTarget: 0.5,
+    archetypeReservations: { cobbled_tour: 1, itt_classic: 1 },
+  });
+  assert.ok(sel.stageRaces.some((r) => r.id === "ps-cob"), "cobbled_tour skal være reserveret");
+  assert.ok(sel.oneDayRaces.some((r) => r.id === "ps-itt"), "itt_classic skal være reserveret");
+  assert.equal(sel.reservedArchetypes, 2);
+  assert.deepEqual(sel.unmetReservations, {});
+});
+
+test("#3295 reservationer sprænger ALDRIG kvoten", () => {
+  for (const quota of [4, 10, 30, 84]) {
+    const sel = selectTierRaceSet({
+      catalog: scarcityCatalog(), quota, seed: 3, oneDayShareTarget: 0.5,
+      archetypeReservations: { cobbled_tour: 2, itt_classic: 2, mountain_tour: 3 },
+    });
+    assert.ok(sel.totalGameDays <= quota, `kvote ${quota} overskredet: ${sel.totalGameDays}`);
+  }
+});
+
+test("#3295 en reservation der ikke kan opfyldes rapporteres, forsvinder ikke tavst", () => {
+  const sel = selectTierRaceSet({
+    catalog: scarcityCatalog(), quota: 30, seed: 1, oneDayShareTarget: 0.5,
+    archetypeReservations: { cobbled_tour: 5, summit_tour: 2 },
+  });
+  assert.equal(sel.unmetReservations.cobbled_tour, 4, "kataloget har kun 1 cobbled_tour");
+  assert.equal(sel.unmetReservations.summit_tour, 2, "kataloget har ingen summit_tour");
+});
+
+test("#3295 reservationer er bagudkompatible: null giver PRÆCIS samme udvalg som før", () => {
+  const args = { catalog: scarcityCatalog(), quota: 30, seed: 7, oneDayShareTarget: 0.5 };
+  const before = selectTierRaceSet(args);
+  const after = selectTierRaceSet({ ...args, archetypeReservations: null });
+  assert.deepEqual(after.stageRaces, before.stageRaces);
+  assert.deepEqual(after.oneDayRaces, before.oneDayRaces);
+  assert.equal(after.totalGameDays, before.totalGameDays);
+});
+
+test("#3295 reservationer skævvrider ikke #3327's endagsløb/etapeløb-mix", () => {
+  // En reserveret itt_classic er et ENDAGSLØB og skal tære på endagsløb-budgettet, ikke
+  // på etapeløbenes — ellers ville reservationer stille og roligt æde etapeløbs-andelen.
+  const args = { catalog: scarcityCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5 };
+  const base = selectTierRaceSet(args);
+  const withRes = selectTierRaceSet({ ...args, archetypeReservations: { itt_classic: 1 } });
+  const shareOf = (s) => s.oneDayRaces.length / (s.oneDayRaces.length + s.stageRaces.length);
+  assert.ok(Math.abs(shareOf(withRes) - shareOf(base)) < 0.1,
+    `endagsløb-andel flyttede sig for meget: ${shareOf(base).toFixed(2)} → ${shareOf(withRes).toFixed(2)}`);
+});
+
+test("#3295 reservationer er deterministiske", () => {
+  const args = {
+    catalog: scarcityCatalog(), quota: 30, seed: 5, oneDayShareTarget: 0.5,
+    archetypeReservations: { cobbled_tour: 1, itt_classic: 1 },
+  };
+  assert.deepEqual(selectTierRaceSet(args), selectTierRaceSet(args));
+});
