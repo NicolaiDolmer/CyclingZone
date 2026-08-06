@@ -28,11 +28,11 @@ export const PATCHES = [
         "topic": "Dashboard",
         "en": {
           "title": "Hero & Agony: one personal moment from every stage, ready to share",
-          "body": "After each stage your dashboard now picks the single most dramatic thing that happened to your team and tells it straight: \"Your rider led the break for 142 km — caught 600 m from the line.\" Agony counts as much as glory, because a near-miss is a better story than a quiet 14th place. Every card can be exported as a clean image with one click, sized for Discord, so the moment can leave the game with you. Each line is built from what actually happened in the simulation — nothing is invented."
+          "body": "After each stage your dashboard now picks the single most dramatic thing that happened to your team and tells it straight: \"Your rider led the break for 142 km, caught 600 m from the line.\" Agony counts as much as glory, because a near-miss is a better story than a quiet 14th place. Every card can be exported as a clean image with one click, sized for Discord, so the moment can leave the game with you. Each line is built from what actually happened in the simulation: nothing is invented."
         },
         "da": {
           "title": "Hero & Agony: ét personligt øjeblik fra hver etape, klar til at dele",
-          "body": "Efter hver etape udvælger dit dashboard nu det mest dramatiske der skete for dit hold, og siger det ligeud: \"Din rytter førte udbruddet i 142 km — hentet 600 m før stregen.\" Nederlag tæller lige så meget som triumf, for et nærved-øjeblik er en bedre historie end en stille 14.-plads. Hvert kort kan eksporteres som et rent billede med ét klik, i Discord-format, så øjeblikket kan forlade spillet sammen med dig. Hver linje er bygget af hvad der faktisk skete i simulationen — intet er opdigtet."
+          "body": "Efter hver etape udvælger dit dashboard nu det mest dramatiske der skete for dit hold, og siger det ligeud: \"Din rytter førte udbruddet i 142 km, hentet 600 m før stregen.\" Nederlag tæller lige så meget som triumf, for et nærved-øjeblik er en bedre historie end en stille 14.-plads. Hvert kort kan eksporteres som et rent billede med ét klik, i Discord-format, så øjeblikket kan forlade spillet sammen med dig. Hver linje er bygget af hvad der faktisk skete i simulationen: intet er opdigtet."
         },
         "refs": [3397]
       },
@@ -42,11 +42,11 @@ export const PATCHES = [
         "topic": "Notifications",
         "en": {
           "title": "Result notifications tell the story, and Discord gets a daily race digest",
-          "body": "\"Race result is in\" has been retired. Result notifications now lead with what actually happened — the winning move, and how your riders placed — using the same race-report engine that writes the story on the race page. And if you have linked Discord, you now get one direct message a day (at 20:00, never more) summing up how your team raced, with a link straight to the results. Every headline is built from the persisted race data, never invented."
+          "body": "\"Race result is in\" has been retired. Result notifications now lead with what actually happened (the winning move, and how your riders placed), using the same race-report engine that writes the story on the race page. And if you have linked Discord, you now get one direct message a day (at 20:00, never more) summing up how your team raced, with a link straight to the results. Every headline is built from the persisted race data, never invented."
         },
         "da": {
           "title": "Resultat-notifikationer fortæller historien, og Discord får et dagligt løbs-resumé",
-          "body": "\"Race result is in\" er pensioneret. Resultat-notifikationer leder nu med hvad der faktisk skete — det afgørende træk, og hvordan dine ryttere placerede sig — med samme løbsrapport-motor som skriver historien på løbssiden. Og har du koblet Discord, får du nu én direkte besked om dagen (kl. 20, aldrig flere) der opsummerer hvordan dit hold kørte, med link direkte til resultaterne. Hver rubrik er bygget af de gemte løbsdata, aldrig opdigtet."
+          "body": "\"Race result is in\" er pensioneret. Resultat-notifikationer leder nu med hvad der faktisk skete (det afgørende træk, og hvordan dine ryttere placerede sig), med samme løbsrapport-motor som skriver historien på løbssiden. Og har du koblet Discord, får du nu én direkte besked om dagen (kl. 20, aldrig flere) der opsummerer hvordan dit hold kørte, med link direkte til resultaterne. Hver rubrik er bygget af de gemte løbsdata, aldrig opdigtet."
         },
         "refs": [3399, 3400]
       }
