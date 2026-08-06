@@ -25,6 +25,7 @@ import {
 } from "./tierCalendarGuarantees.js";
 import { computeCompositionStats } from "./calendarCompositionTargets.js";
 import { computeStageOrderStats } from "./stageOrderMetrics.js";
+import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPhaseProfiles.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -201,6 +202,19 @@ export function buildTierMaterializationPlan({
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
   const forced = new Set(forceTiers);
 
+  // #3469: sæson-spændet beregnes ÉN GANG af det FULDE katalog (før tier-filtrering/dedup),
+  // så seasonFraction-normaliseringen er ens på tværs af tiers (jf. computeSeasonSpan-
+  // kontrakten i seasonPhaseProfiles.js). Løb uden parsebar date_text får fraction=null —
+  // packLaneCalendar falder tilbage til sin fraction-frie algoritme for enhver liste der
+  // indeholder ét eller flere sådanne løb (bit-identisk med før #3469).
+  const seasonSpan = computeSeasonSpan(catalog);
+  const seasonFractionOf = (raceId) => {
+    const cat = catalogById.get(raceId);
+    const parsed = cat ? parseRaceDateText(cat.date_text) : null;
+    return parsed ? seasonFraction(parsed.startDoy, seasonSpan) : null;
+  };
+  const withSeasonFraction = (races) => races.map((r) => ({ ...r, seasonFraction: seasonFractionOf(r.id) }));
+
   const liveByTier = new Map();
   for (const p of pools) {
     if (!poolHasCalendar(p.tier, p.realManagerCount) && !forced.has(p.tier)) continue;
@@ -241,7 +255,12 @@ export function buildTierMaterializationPlan({
     for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
     for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
 
-    const packed = packLaneCalendar({ stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES });
+    // #3469: berig FØRST NU (umiddelbart før packing) — usedRaceIds/usedRaceNamesRunning
+    // ovenfor arbejder stadig på de urørte sel.*-arrays, selectionen selv rører #3469 aldrig.
+    const packed = packLaneCalendar({
+      stageRaces: withSeasonFraction(sel.stageRaces), oneDayRaces: withSeasonFraction(sel.oneDayRaces),
+      density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
+    });
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
@@ -337,7 +356,10 @@ export async function materializeTierCalendars({
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
   const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
 
-  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
+  // #3469: date_text tilføjet — race_pool's VIRKELIGE dato, kilden til seasonFraction
+  // (se buildTierMaterializationPlan). READ-ONLY overalt: external_id = sha256(name|date_text)
+  // er parcours-identitet, mutation ville ændre alle parcours (racePoolImport.js).
+  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text");
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
   // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
   // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig
