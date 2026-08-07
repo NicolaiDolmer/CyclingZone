@@ -54,6 +54,7 @@ import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { computeSeasonMovement } from "../lib/seasonRecapData.js";
 import { fetchReservedBalance, computeAvailableBalance } from "../lib/availableBalance.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
+import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
   PageHeader, Section, SectionHeader, SectionAction,
@@ -1449,12 +1450,27 @@ export default function DashboardPage() {
         </Section>
         )}
 
-        {/* Rider ranking (#1005) */}
+        {/* Rider ranking (#1005). #3507: modulet er division-scopet (bevidst,
+            #2182/#3262 — "dit eget univers som default"); "Din division"-
+            mærket + linket der bærer scopet med gør det tydeligt at listen
+            IKKE er sæson-global, og at "Fuld rangliste →" lander på præcis
+            den samme liste (prod-bug var nul overlap mellem de to). */}
         {isVisible("riderRanking") && (
         <Section>
           <SectionHeader
-            title={t("dashboard:cards.riderRanking.title")}
-            action={<SectionAction as={Link} to="/standings?tab=riders">{t("dashboard:cards.riderRanking.linkAll")}</SectionAction>}
+            title={
+              <>
+                {t("dashboard:cards.riderRanking.title")}
+                <span className="ms-2 font-data text-2xs uppercase tracking-[.08em] text-cz-3 align-middle">
+                  {t("dashboard:cards.riderRanking.scopeLabel")}
+                </span>
+              </>
+            }
+            action={
+              <SectionAction as={Link} to={buildRiderRankingLink({ division: team?.division, poolId: team?.league_division_id })}>
+                {t("dashboard:cards.riderRanking.linkAll")}
+              </SectionAction>
+            }
           />
           {riderRanking.length === 0 ? (
             <div className="text-center py-4">
@@ -1476,6 +1492,7 @@ export default function DashboardPage() {
                       {r.is_ai ? t("dashboard:cards.riderRanking.aiBadge") : (r.team_name || "")}
                       {r.stage_wins > 0 && ` · ${t("dashboard:cards.riderRanking.stageWins", { count: r.stage_wins })}`}
                       {r.gc_wins > 0 && ` · ${t("dashboard:cards.riderRanking.gcWins", { count: r.gc_wins })}`}
+                      {r.classic_wins > 0 && ` · ${t("dashboard:cards.riderRanking.classicWins", { count: r.classic_wins })}`}
                     </p>
                   </div>
                   <span className="font-mono font-bold text-cz-accent-t text-sm flex-shrink-0">{t("dashboard:cards.riderRanking.points", { points: formatNumber(r.points || 0) })}</span>

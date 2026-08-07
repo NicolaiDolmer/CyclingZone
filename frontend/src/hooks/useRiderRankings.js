@@ -49,8 +49,12 @@ export function useRiderRankings() {
           .from("rider_rankings_mv").select("*")
           .eq("season_id", seasonData.id)
           .order("rider_id", { ascending: true })),
+        // #3507: team-joinet inkluderer nu division + league_division_id
+        // (pulje-id) — nødvendigt for rytterfanens division/pulje-filter
+        // (RiderRankingsPage), som lader dashboardets "Fuld rangliste →"-link
+        // lande på samme scope som dashboardets eget division-scopede modul.
         fetchAllRows(() => supabase.from("riders")
-          .select("id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai)")
+          .select("id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai, division, league_division_id)")
           .eq("is_retired", false)
           .order("id", { ascending: true })),
       ]);

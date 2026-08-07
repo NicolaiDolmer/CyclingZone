@@ -24,6 +24,7 @@ import {
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
+import { fetchGcClassicSplit, splitGcWins } from "../lib/dashboardRiderRankingGcSplit.js";
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { createCheckoutHandler } from "../lib/billingCheckout.js";
@@ -9983,7 +9984,19 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
       p_league_division_id: req.team.league_division_id ?? null,
     });
     if (rankError) throw rankError;
-    res.json({ riders: riders || [] });
+
+    // #3507: split RPC'ens samlede gc_wins (alle løbstyper) i gc_wins
+    // (etapeløb) / classic_wins (klassikere), så modulets kolonner matcher
+    // "Fuld rangliste →"-målsiden (rider_rankings_mv) — se
+    // dashboardRiderRankingGcSplit.js for hvorfor dette bevidst er en
+    // hjælpefunktion uden for selve ruteblokken.
+    const riderIds = (riders || []).map((r) => r.rider_id);
+    const gcRows = await fetchGcClassicSplit(supabase, {
+      riderIds,
+      seasonId: season.id,
+      leagueDivisionId: req.team.league_division_id ?? null,
+    });
+    res.json({ riders: splitGcWins(riders, gcRows) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

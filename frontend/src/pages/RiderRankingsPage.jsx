@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -9,6 +10,9 @@ import { ageBadgeKey, seasonReferenceYear } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
 import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
+import { filterByDivisionPool, ALL_POOLS_VALUE } from "../lib/resultsFilter";
+import { resolveDivisionSelectionFromParams, ALL_DIVISIONS_VALUE } from "../lib/riderRankingDivisionLink";
+import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import {
   Input,
   Select,
@@ -23,6 +27,13 @@ import {
   CalendarIcon,
 } from "../components/ui";
 import { WRAP } from "../components/ui/dataTableStyles.js";
+
+// #3507 — division-vælgerens faste tier-liste (1..4), samme kilde/mønster som
+// ResultaterPage's ALL_DIVISIONS (#3197), så begge flader viser identiske tiers.
+const ALL_DIVISIONS = Array.from(
+  { length: RULES_NUMBERS.maxDivision - RULES_NUMBERS.minDivision + 1 },
+  (_, i) => RULES_NUMBERS.minDivision + i,
+);
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
@@ -99,6 +110,7 @@ function StatCell({ value, active }) {
 export default function RiderRankingsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("riders");
+  const [searchParams, setSearchParams] = useSearchParams();
   // #2175: rangliste-data (sæson + færdig-aggregerede rytter-stats) kommer fra
   // useRiderRankings — ÉN let query mod rider_rankings_mv + display-join i stedet
   // for den gamle client-agg over ~38k race_results. error → fejl-UI, ikke spinner.
@@ -113,6 +125,52 @@ export default function RiderRankingsPage() {
   const [teamFilter, setTeamFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [colVisible, setColVisible] = useState(loadColumnVisibility);
+  // #3507 — league_divisions (referencedata: pulje-id → tier/pool_index/label),
+  // hentet én gang. Bruges KUN til at slå rytterens team.league_division_id op
+  // mod division/pulje-URL-param'ene (resolveDivisionSelectionFromParams) —
+  // fanens EGEN default forbliver "alle divisioner" uden param'ene.
+  const [divisions, setDivisions] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index")
+      .then(({ data }) => { if (!cancelled) setDivisions(data || []); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const divisionsById = useMemo(() => new Map(divisions.map(d => [d.id, d])), [divisions]);
+
+  // #3507 — dashboardets "Fuld rangliste →"-link bærer spillerens division
+  // (+pulje) som ?division=&pool= (riderRankingDivisionLink.js). Fraværende/
+  // "all" param = ingen filtrering (uændret status quo for direkte besøg).
+  const divisionParamRaw = searchParams.get("division");
+  const poolParamRaw = searchParams.get("pool");
+  const selection = resolveDivisionSelectionFromParams(divisionParamRaw, poolParamRaw);
+  const tierPools = divisions
+    .filter(d => d.tier === selection.tier)
+    .sort((a, b) => a.pool_index - b.pool_index);
+  const hasPoolSubtabs = selection.tier != null && tierPools.length > 1;
+
+  // Division-vælger: skifter division nulstiller ALTID pulje-valget (samme
+  // mønster som ResultaterPage/StandingsPage's divTab→poolTab-reset, #3197).
+  function changeDivision(value) {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (value === ALL_DIVISIONS_VALUE) params.delete("division");
+      else params.set("division", value);
+      params.delete("pool");
+      return params;
+    }, { replace: true });
+  }
+
+  function changePool(value) {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (value === ALL_POOLS_VALUE) params.delete("pool");
+      else params.set("pool", value);
+      return params;
+    }, { replace: true });
+  }
 
   function handleSort(key) {
     if (sortKey === key) setSortAsc(a => !a);
@@ -131,16 +189,29 @@ export default function RiderRankingsPage() {
     setOwnerFilter("all");
     setTeamFilter("all");
     setSearch("");
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.delete("division");
+      params.delete("pool");
+      return params;
+    }, { replace: true });
   }
 
-  // #1004: hold-vælgerens options = de hold der faktisk optræder i ranglisten.
+  // #3507 — division/pulje-filteret anvendes FØRST (samme model som
+  // ResultaterPage/#3197): fravaerende param = alle rytter-hold matcher
+  // (poolMatchesSelection tier=null), så resten af filtrene/hold-vælgeren
+  // arbejder på det allerede division-scopede felt.
+  const divisionFiltered = filterByDivisionPool(riders, r => r.team?.league_division_id, selection, divisionsById);
+
+  // #1004: hold-vælgerens options = de hold der faktisk optræder i (division-
+  // filtrerede) ranglisten.
   const teamOptions = [...new Map(
-    riders.filter(r => r.team).map(r => [String(r.team.id), r.team.name])
+    divisionFiltered.filter(r => r.team).map(r => [String(r.team.id), r.team.name])
   ).entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const filtered = riders
+  const filtered = divisionFiltered
     .filter(r => {
       if (ownerFilter === "manager") return r.team && !r.team.is_ai;
       if (ownerFilter === "ai")      return !!r.team?.is_ai;
@@ -163,7 +234,7 @@ export default function RiderRankingsPage() {
   // Synlige valgfri kolonner i fast rækkefølge.
   const visibleOptionalCols = OPTIONAL_COLS.filter(c => colVisible[c.key]);
 
-  const hasActiveFilters = ownerFilter !== "all" || teamFilter !== "all" || !!search;
+  const hasActiveFilters = ownerFilter !== "all" || teamFilter !== "all" || !!search || selection.tier != null;
 
   // #3104 etape C: siden er fane-indhold i Ranglister-hubben nu (RankingsHubPage
   // ejer PageHeader + faner), så egen PageHeader og yder-container udgik — samme
@@ -294,6 +365,15 @@ export default function RiderRankingsPage() {
         {season
           ? `${t("rankings.season", { n: season.number })}${filtered.length > 0 ? ` · ${t("rankings.ridersCount", { count: filtered.length })}` : ""}`
           : t("rankings.noActiveSeason")}
+        {/* #3507 — tydelig filter-indikator når man er landet her via
+            dashboardets division-scopede "Fuld rangliste →"-link (eller har
+            valgt en division manuelt), så det er soleklart at listen IKKE er
+            sæson-global lige nu. */}
+        {selection.tier != null && (
+          <span className="ms-2 font-medium text-cz-accent-t">
+            · {t("rankings.filterIndicator", { division: selection.tier })}
+          </span>
+        )}
       </p>
 
       {/* Filter-bar (T2-recept): search Input + op til 3 Selects, kolonne-toggle
@@ -305,6 +385,32 @@ export default function RiderRankingsPage() {
             placeholder={t("rankings.searchPlaceholder")}
           />
         </div>
+        {/* #3507 — division(+pulje)-filter, samme model som ResultaterPage
+            (#3197): fravaerende param = alle divisioner (uændret default). */}
+        <Select
+          size="sm"
+          aria-label={t("rankings.divisionFilterLabel")}
+          value={selection.tier ?? ALL_DIVISIONS_VALUE}
+          onChange={e => changeDivision(e.target.value)}
+        >
+          <option value={ALL_DIVISIONS_VALUE}>{t("rankings.divisionFilterAll")}</option>
+          {ALL_DIVISIONS.map(d => (
+            <option key={d} value={d}>{t("rankings.divisionFilterOption", { n: d })}</option>
+          ))}
+        </Select>
+        {hasPoolSubtabs && (
+          <Select
+            size="sm"
+            aria-label={t("rankings.poolFilterLabel")}
+            value={selection.poolId ?? ALL_POOLS_VALUE}
+            onChange={e => changePool(e.target.value)}
+          >
+            <option value={ALL_POOLS_VALUE}>{t("rankings.poolFilterAll")}</option>
+            {tierPools.map(p => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+          </Select>
+        )}
         <Select
           size="sm"
           aria-label={t("rankings.ownerFilterLabel")}
