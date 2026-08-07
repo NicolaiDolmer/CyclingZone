@@ -90,19 +90,11 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // discord_race_digest_log (digest-sweepet, merged 6/8): skrives først af den
-  // daglige kl. 20-kørsel (DISCORD_DIGEST_HOUR_COPENHAGEN). Tabellen var korrekt
-  // tom hele merge-dagen og gjorde alle PR-audits røde. Fjern når rows (efter
-  // første digest-kørsel 6/8 aften).
-  "discord_race_digest_log",
-  // Forum v1 (#3199, 6/8): fem nye tabeller, alle korrekt tomme indtil spillerne
-  // tager forummet i brug. Fjern entries efterhånden som tabellerne får rows
-  // (posts/replies forventes først; reports/poll-votes kan være tomme længe).
-  "forum_posts",
-  "forum_replies",
-  "forum_reports",
-  "forum_poll_options",
-  "forum_poll_votes",
+  // discord_race_digest_log: fjernet 7/8 — digestens første kl. 20-kørsel 6/8
+  // aften skrev 32 rækker (fix #3475 verificeret), auditen dækker tabellen igen.
+  // Forum v1 (#3199): alle fem entries fjernet 7/8 — spillerne tog forummet i
+  // brug første døgn (posts/replies/votes/reports har alle rows). Auditen
+  // dækker dem igen.
   // season_form_reset_runs (#3249/PR #3271, merged natbølge 4/8): claim-tabel
   // mod dobbelt-decay i seasonFormReset. Skrives FØRST ved sæsonskifte med
   // season_form_reset_mode='decay' (tidligst S2→S3-cutoveren 23/8) — kan ikke

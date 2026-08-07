@@ -109,7 +109,6 @@ const RACE_PROFILE_ABILITY_MAP = Object.freeze({
   // Holdenkeltstart: samme TT-evne + taktik/positionering (holdsamarbejde).
   ttt: ["time_trial", "tactics", "positioning"],
 });
-const KNOWN_PROFILE_TYPES = Object.keys(RACE_PROFILE_ABILITY_MAP);
 
 // Kalender-scenarier for profil-MIX (påvirker den GENNEMSNITLIGE raceLoad/løbsdag,
 // jf. opgaven — "profilmixet ændrer den gennemsnitlige raceLoad pr. dag"):
@@ -208,7 +207,7 @@ function buildCandidates() {
 const CANDIDATES = buildCandidates();
 
 // ── Simulering af én rytter over DAYS dage, fuld D1-D4-model ───────────────
-function simulateRider({ startFatigue, recoveryAbility, isAi, rng, candidate, profileMix, raceProb, intensityDist, focusDist, devMult = DEV_MULT }) {
+function simulateRider({ startFatigue, recoveryAbility, rng, candidate, profileMix, raceProb, intensityDist, focusDist, devMult = DEV_MULT }) {
   let fatigue = startFatigue;
   const trace = [fatigue];
   let daysToTarget = null;

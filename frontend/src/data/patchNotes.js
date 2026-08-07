@@ -28,11 +28,11 @@ export const PATCHES = [
         "topic": "Calendar",
         "en": {
           "title": "Scout any division's calendar, and expand a full day",
-          "body": "The calendar's Divisions tab now has a group selector when a division has more than one pool (e.g. 'Division 2 — A'), so you can browse another division's full race program before promotion or relegation, not just the tier as a whole. A day with more than 4 races used to cut off at '+N more' with nothing to click; that text is now a button that opens the day's complete program."
+          "body": "The calendar's Divisions tab now has a group selector when a division has more than one pool (for example the A and B pools in Division 2), so you can browse another division's full race program before promotion or relegation, not just the tier as a whole. A day with more than 4 races used to cut off at '+N more' with nothing to click; that text is now a button that opens the day's complete program."
         },
         "da": {
           "title": "Scout en vilkårlig divisions kalender, og fold en hel dag ud",
-          "body": "Kalenderens Divisioner-fane har nu en gruppe-vælger når en division har mere end én pulje (fx 'Division 2 — A'), så du kan gennemse en anden divisions fulde løbsprogram før op- eller nedrykning, ikke kun hele tieren samlet. En dag med mere end 4 løb blev før afskåret ved '+N flere' uden noget at klikke på; den tekst er nu en knap der åbner dagens fulde program."
+          "body": "Kalenderens Divisioner-fane har nu en gruppe-vælger når en division har mere end én pulje (for eksempel pulje A og B i Division 2), så du kan gennemse en anden divisions fulde løbsprogram før op- eller nedrykning, ikke kun hele tieren samlet. En dag med mere end 4 løb blev før afskåret ved '+N flere' uden noget at klikke på; den tekst er nu en knap der åbner dagens fulde program."
         },
         "refs": [2756]
       },

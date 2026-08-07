@@ -231,7 +231,6 @@ export function selectTierRaceSet({
   // skævvrides af reservationerne: en reserveret itt_classic er et endagsløb og skal derfor
   // tære på endagsløb-budgettet, ikke på etapeløbenes.
   const reservedOneDayDays = reservedSingles.reduce((s, r) => s + r.stages, 0);
-  const reservedStageDays = reservedStages.reduce((s, r) => s + r.stages, 0);
   // Loftet er den RESTERENDE kvote, ikke hele kvoten: reservationerne har allerede brugt
   // reserved.gameDays. Uden det kunne en lille kvote med mange reservationer skyde over
   // (målt: kvote 4 → 5 game-days), og pakkeren ville skulle smide et løb væk vilkårligt.
