@@ -233,4 +233,29 @@ describe("runAiRecoverySweep", () => {
     const result = await runAiRecoverySweep({ supabase, now: afterWindow, isEnabled: async () => true });
     assert.deepEqual(result, { swept: 0, ridersRecovered: 0 });
   });
+
+  // ── #3459 D4: no-op når løbsdags-motoren har overtaget AI-restitutionen ──────
+  it("race_day_engine_enabled=on → no-op (dailyTrainingEngine dækker AI-hold nu), ingen riders/upsert-kald", async () => {
+    const supabase = makeMockSupabase({
+      aiTeams: [{ id: "ai1" }],
+      ridersByTeam: { ai1: [{ id: "r1" }] },
+      conditionByRider: { r1: { rider_id: "r1", form: 50, fatigue: 100 } },
+    });
+    const result = await runAiRecoverySweep({
+      supabase, now: afterWindow, isEnabled: async () => true, isRaceDayEnabled: async () => true,
+    });
+    assert.deepEqual(result, { swept: 0, ridersRecovered: 0, skipped: "race_day_engine_on" });
+  });
+
+  it("race_day_engine_enabled=off (default) → uændret adfærd (bit-identisk med før #3459)", async () => {
+    const supabase = makeMockSupabase({
+      aiTeams: [{ id: "ai1" }],
+      ridersByTeam: { ai1: [{ id: "r1" }] },
+      conditionByRider: { r1: { rider_id: "r1", form: 50, fatigue: 100 } },
+    });
+    const result = await runAiRecoverySweep({
+      supabase, now: afterWindow, isEnabled: async () => true, isRaceDayEnabled: async () => false,
+    });
+    assert.deepEqual(result, { swept: 1, ridersRecovered: 1 });
+  });
 });

@@ -7,7 +7,8 @@
 // den ønskede adfærd: vi opdaterer kun træthed, rører aldrig form.
 
 import { effortFatigueMultiplier } from "./raceRoles.js";
-import { nextFatigue } from "./riderCondition.js";
+import { nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
+import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
@@ -134,15 +135,20 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
  * så et game_day-hul giver IKKE automatisk en ekstra rigtig-kalenderdags recovery-cyklus
  * (trainingSweep.js/riderCondition.js tickker pr. REAL dansk kalenderdag) — denne funktion
  * ER den eksplicitte erstatning derfor. Deterministisk, ingen DB/Date/random.
- * @param {{fatigue:number|null|undefined, restDays:number, recoveryAbility?:number}} args
+ * #3459 D3: valgfrie `recoveryBase`/`recoveryFraction` — passthrough til nextFatigue,
+ * udeladt/undefined = CONDITION_CONFIG's status quo (bit-identisk). Kaldestedet
+ * (applyGrandTourRestDayFatigue nedenfor) afgør ud fra race_day_engine_enabled om
+ * RACE_DAY_ENGINE_RECOVERY_CONFIG sendes — denne kerne-funktion forbliver ren/uafhængig
+ * af flag-læsning (samme adskillelse som nextFatigue selv).
+ * @param {{fatigue:number|null|undefined, restDays:number, recoveryAbility?:number, recoveryBase?:number, recoveryFraction?:number}} args
  * @returns {number} heltal 0-100
  */
-export function restDayFatigue({ fatigue, restDays, recoveryAbility = 50 } = {}) {
+export function restDayFatigue({ fatigue, restDays, recoveryAbility = 50, recoveryBase, recoveryFraction } = {}) {
   const days = Math.max(0, Math.floor(Number(restDays) || 0));
   const rec = Number.isFinite(Number(recoveryAbility)) ? Number(recoveryAbility) : 50;
   let f = Number.isFinite(Number(fatigue)) ? Number(fatigue) : 0;
   for (let i = 0; i < days; i++) {
-    f = nextFatigue({ fatigue: f, intensity: "rest", recoveryAbility: rec });
+    f = nextFatigue({ fatigue: f, intensity: "rest", recoveryAbility: rec, recoveryBase, recoveryFraction });
   }
   return Math.max(0, Math.min(100, Math.round(f)));
 }
@@ -155,6 +161,12 @@ export function restDayFatigue({ fatigue, restDays, recoveryAbility = 50 } = {})
  * tidligere applyRaceFatigue-kald i SAMME kald; kun en frisk læsning her holder rest-tick'et
  * synkront med den faktiske DB-tilstand. recoveryAbilityByRider mangler en rytter →
  * default 50 (samme neutral-fallback som seasonFatigueReset.js).
+ * #3459 D3 (minimal ændring, jf. opgavens grænse — raceRunner.js/kaldestedet røres
+ * IKKE): recoveryBase/recoveryFraction følger race_day_engine_enabled KONSISTENT med
+ * dailyTrainingEngine.js — flagget læses her, internt, fordi kaldestedet (raceRunner.js)
+ * allerede sender `supabase` med i args og ligger uden for denne opgaves rørings-grænse.
+ * Flag off (default) = bit-identisk (samme ekstra-men-harmløse app_config-select som
+ * dailyTrainingEngine.js allerede laver hver tick).
  * @param {{ supabase, riderIds: string[], restDays: number, recoveryAbilityByRider?: Map<string,number>, now?: Date }}
  * @returns {{ updated: number, fatigueByRider: Map<string,number> }} fatigueByRider lader
  *   kald-stedet synkronisere et in-memory entrants-snapshot (fx til selve simuleringen)
@@ -162,6 +174,9 @@ export function restDayFatigue({ fatigue, restDays, recoveryAbility = 50 } = {})
  */
 export async function applyGrandTourRestDayFatigue({ supabase, riderIds, restDays, recoveryAbilityByRider = new Map(), now = new Date() }) {
   if (!riderIds?.length || !restDays) return { updated: 0, fatigueByRider: new Map() };
+
+  const raceDayEngineOn = await isRaceDayEngineEnabled(supabase);
+  const recoveryOverrides = raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {};
 
   const { data, error } = await supabase
     .from("rider_condition")
@@ -172,7 +187,10 @@ export async function applyGrandTourRestDayFatigue({ supabase, riderIds, restDay
   const by = new Map((data ?? []).map((r) => [r.rider_id, r.fatigue]));
   const rows = riderIds.map((id) => ({
     rider_id: id,
-    fatigue: restDayFatigue({ fatigue: by.get(id), restDays, recoveryAbility: recoveryAbilityByRider.get(id) ?? 50 }),
+    fatigue: restDayFatigue({
+      fatigue: by.get(id), restDays, recoveryAbility: recoveryAbilityByRider.get(id) ?? 50,
+      ...recoveryOverrides,
+    }),
     updated_at: now.toISOString(),
   }));
 

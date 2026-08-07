@@ -12,16 +12,17 @@
 // (assistant, bonus=false). Ingen nondeterminisme udover `now`-default +
 // updated_at-timestamps.
 
-import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
+import { copenhagenDateString, copenhagenWeekdayKey, copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
 import { resolveDayIntensity } from "./training.js";
-import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury } from "./riderCondition.js";
+import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { isAcademyAge, ACADEMY } from "./academyFlag.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { riderLevelBand } from "./staffAbilityConstants.js";
+import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
@@ -36,6 +37,40 @@ function addDaysToDate(dateStr, days) {
   const d = new Date(dateStr + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+// #3459 D1: batch-lookup "hvilke af holdets ryttere racede i dag" — race_results
+// (result_type='stage') med imported_at i tickDate's danske kalenderdøgn, filtreret
+// på holdets rider_ids. Fail-safe by construction: ALDRIG throw — en query-fejl
+// resolver som { data: null, error } så kald-stedet kan falde tilbage til "ingen
+// løbsdag antaget" (log warning) i stedet for at vælte hele trænings-dagen for et
+// helt hold pga. én best-effort-berigelse. Kun kaldt når raceDayEngineOn (kald-
+// stedet sender Promise.resolve({data:[],error:null}) når flag off — ingen ekstra
+// DB-belastning for en slukket feature).
+async function loadRacedRiderIdsToday(supabase, riderIds, now, tickDate) {
+  try {
+    const dayStart = copenhagenMidnightUTC(now);
+    const dayEnd = copenhagenMidnightUTC(new Date(`${addDaysToDate(tickDate, 1)}T12:00:00Z`));
+    // pagination-safe: .in("rider_id", riderIds) bounds this to ÉT holds egen
+    // rytter-trup (typisk < 30, langt under PostgREST's 1000-rækkers-loft) —
+    // samme størrelsesorden som de øvrige team-scopede loads i denne fil (fx
+    // abilities/condition ovenfor), ikke en tabel-bred/ubegrænset select.
+    const { data, error } = await supabase
+      .from("race_results")
+      .select("rider_id")
+      .eq("result_type", "stage")
+      .in("rider_id", riderIds)
+      .gte("imported_at", dayStart.toISOString())
+      .lt("imported_at", dayEnd.toISOString());
+    if (error) return { data: null, error };
+    return { data: data ?? [], error: null };
+  } catch (err) {
+    // best-effort: en synkron/netværks-fejl her må ALDRIG vælte hele holdets
+    // trænings-dag pga. én best-effort-berigelse — kald-stedet logger en warning
+    // og falder tilbage til "ingen løbsdag antaget" (samme fail-safe-kontrakt
+    // som error-grenen ovenfor).
+    return { data: null, error: err };
+  }
 }
 
 /**
@@ -104,12 +139,19 @@ export async function runTeamTrainingDay({
 
   const riderIds = riders.map((r) => r.id);
 
+  // #3459 D1: flaget afgør om løbsdags-lookuppet overhovedet skal køre — læst FØR
+  // batch-Promise.all'et så den betingede query kan indgå i samme batch (kodemap-
+  // kravet: "i samme Promise.all som øvrige hold-inputs") uden at spilde en query
+  // på en slukket feature.
+  const raceDayEngineOn = await isRaceDayEngineEnabled(supabase);
+
   // ── 3) Load abilities, training plans + condition i parallell ─────────────────
   const [
     { data: abilityRows, error: abilityError },
     { data: planRows, error: planError },
     { data: conditionRows, error: conditionError },
     { data: weekPlanRow, error: weekPlanError },
+    raceDayResult,
   ] = await Promise.all([
     supabase.from("rider_derived_abilities").select("*").in("rider_id", riderIds),
     supabase.from("training_plans")
@@ -123,12 +165,31 @@ export async function runTeamTrainingDay({
     supabase.from("training_week_plans")
       .select("rider_id, days")
       .eq("team_id", teamId),
+    // #3459 D1: kun query'et når flagget er on — flag off giver en no-op-promise
+    // (bit-identisk med før #3459, ingen ekstra DB-kald).
+    raceDayEngineOn
+      ? loadRacedRiderIdsToday(supabase, riderIds, now, tickDate)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (abilityError) throw new Error(`abilities load: ${abilityError.message}`);
   if (planError) throw new Error(`plans load: ${planError.message}`);
   if (conditionError) throw new Error(`condition load: ${conditionError.message}`);
   if (weekPlanError) throw new Error(`week plan load: ${weekPlanError.message}`);
+
+  // #3459 D1 fail-safe: query-fejl → tom mængde (INGEN løbsdag antaget), log warning.
+  // Kaster ALDRIG — en fejlet best-effort-berigelse må ikke vælte hele holdets
+  // trænings-dag (samme filosofi som Plan B's facilitets-load, #1441).
+  let racedRiderIds = new Set();
+  if (raceDayEngineOn) {
+    if (raceDayResult.error) {
+      // ASCII-only besked (#i18n-leak-guard, BACKEND_CONTEXT matcher error/message-linjer med
+      // æ/ø/å) — dette er intern ops-logging, ikke en spiller-synlig API-fejl.
+      console.warn(`  ⚠️ race-day lookup failed for team ${teamId} (${tickDate}): ${raceDayResult.error.message} - assuming no race day (fail-safe)`);
+    } else {
+      racedRiderIds = new Set((raceDayResult.data ?? []).map((r) => r.rider_id));
+    }
+  }
 
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
   const planByRider = new Map((planRows ?? []).map((p) => [p.rider_id, p]));
@@ -217,13 +278,26 @@ export async function runTeamTrainingDay({
     // Er rytteren skadet i dag?
     const injuredToday = !!(cond.injured_until && cond.injured_until >= tickDate);
 
+    // #3459 D1: racede rytteren i dag (flag on)? injuredToday har forrang (kan i
+    // praksis ikke ske samtidig — en skadet rytter stilles ikke til start — men
+    // defensivt konsistent med resten af grenen).
+    const racedToday = !injuredToday && raceDayEngineOn && racedRiderIds.has(rider.id);
+
     // Pre-tick træthed til skaderisiko-beregning (brug den aktuelle, ikke den næste).
     const preFatigue = Number(cond.fatigue ?? 0);
-    const effectiveIntensity = injuredToday ? "rest" : program.intensity;
+    // D1: "race" er bevidst IKKE en gyldig DAILY_TRAINING_CONFIG.intensities-nøgle —
+    // DAILY_TRAINING_CONFIG.fatigueLoad["race"] er undefined → nextFatigue's
+    // `?? 0`-fallback giver PRÆCIS D1-semantikken (intet trænings-load, IKKE
+    // rest-intensitetens -14). Samme "??0"-mekanisme injuryRisk() læner sig på
+    // nedenfor (intensity !== "hard" → 0 risiko — ingen trænings-skaderisiko på
+    // løbsdage, se "Åbne designbeslutninger" i PR-body).
+    const effectiveIntensity = injuredToday ? "rest" : racedToday ? "race" : program.intensity;
 
-    // Daglig tick: kun på raske ryttere (skadet → no gains, behandles som rest).
+    // Daglig tick: kun på raske, ikke-racende ryttere (skadet/løbsdag → no gains,
+    // program.intensity/training_plans RØRES ALDRIG — samme mønster som
+    // injuredToday-grenen, G5-invarianten).
     let tickResult = null;
-    if (!injuredToday && age != null) {
+    if (!injuredToday && !racedToday && age != null) {
       const condMult = conditionMultiplier({ form: Number(cond.form ?? 50), fatigue: preFatigue });
       tickResult = applyDailyTick({
         riderId: rider.id,
@@ -248,11 +322,14 @@ export async function runTeamTrainingDay({
       });
     }
 
-    // Træthed + form for næste dag.
+    // Træthed + form for næste dag. #3459 D3: recoveryBase/recoveryFraction følger
+    // race_day_engine_enabled — udeladt (flag off) = CONDITION_CONFIG's status quo
+    // (bit-identisk); on = RACE_DAY_ENGINE_RECOVERY_CONFIG (4.5/0.15, empirisk valgt).
     const newFatigue = nextFatigue({
       fatigue: preFatigue,
       intensity: effectiveIntensity,
       recoveryAbility: abilities.recovery ?? 50,
+      ...(raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {}),
     });
     const newForm = nextForm({ form: Number(cond.form ?? 50), fatigue: newFatigue });
 
@@ -356,6 +433,10 @@ export async function runTeamTrainingDay({
       focus: program.focus,
       intensity: effectiveIntensity,
       focus_source: plan ? "plan" : "auto",
+      // #3459 D1 — additivt rapport-felt (fremtidig UI, jf. spec V3 "Løbsdag —
+      // dagens træning erstattes af løbet"). false når flag off (bit-identisk
+      // datamodel, ingen eksisterende consumer læser feltet endnu).
+      race_day: racedToday,
     });
   }
 
