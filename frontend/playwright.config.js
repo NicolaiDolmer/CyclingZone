@@ -9,13 +9,24 @@ import { resolveRuntimePort } from "./playwright.ports.js";
 const FRONTEND_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = resolveRuntimePort(FRONTEND_ROOT);
 
-// #1342: mobile-webkit hænger systematisk på windows-latest CI-runneren —
-// navigations-races (page.goto("/board") afbrydes af en auth-redirect til
-// /dashboard) efterfulgt af en webkit-worker der ikke kan exit'e → jobbet hang i
-// 48 min. Webkit BESTÅR lokalt (samme suite, 87/90), så det er et CI-runner-
-// timing-artefakt, ikke en produkt- eller webkit-overalt-bug. Vi beholder webkit
-// til lokale full-runs men dropper den i CI; mobile-chromium dækker stadig
-// mobil-viewport i CI (så #536-fælden — grøn desktop, rød mobil — undgås).
+// #3429: mobile-webkit kører i CI igen. Historikken, fordi den forklarer hvorfor
+// den var væk og hvad der skal holdes i live for at den bliver:
+//
+//   #1342 (maj) droppede webkit fra CI: webServer-kommandoen var dengang
+//   `npm run build && npm run preview` i ÉN kommando, hvilket efterlod en
+//   forældreløs preview-proces på windows-runneren som Playwright ikke kunne
+//   dræbe. Webkit-workeren kunne ikke exit'e og jobbet hang i 48 min.
+//
+//   Den rodårsag findes ikke længere: playwright-smoke.yml bygger frontend i sit
+//   EGET step, så webServer i CI kun starter `vite preview` (én proces, se det
+//   steps kommentar). Derfor er #1342's antagelse gen-testet her — og jobbet har
+//   nu også `timeout-minutes` som backstop, så et fremtidigt hæng fejler hurtigt
+//   i stedet for at æde en runner.
+//
+// Prisen ved at lade webkit blive ude var større end hængets: den er den ENESTE
+// mobil-Safari-dækning der findes, og uden CI kunne dens snapshots drive uset.
+// Det skete: planner-snapshottet drev 5/8 (#3378) og blev først opdaget 6/8 —
+// og rettet ved et tilfælde af en anden PR's snapshot-refresh. Se #3429.
 const ALL_PROJECTS = [
   {
     name: "desktop-chromium",
@@ -38,9 +49,9 @@ const ALL_PROJECTS = [
     },
   },
 ];
-const PROJECTS = process.env.CI
-  ? ALL_PROJECTS.filter((p) => p.name !== "mobile-webkit")
-  : ALL_PROJECTS;
+// Ingen CI-filtrering: lokal pre-flight og CI kører præcis de samme tre
+// projekter. Divergensen mellem de to var selve fejlen i #3429.
+const PROJECTS = ALL_PROJECTS;
 
 export default defineConfig({
   testDir: "./tests/e2e",
