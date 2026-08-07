@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.105",
+    "date": "2026-08-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season calendar",
+        "en": {
+          "title": "Season 3 calendar rebuilt: real season rhythm, Grand Tour rest days and a fairer race mix",
+          "body": "The Season 3 calendar (starting 24 August) has been rebuilt from the ground up. The season now follows the rhythm of a real cycling year: an opening week, a cobbled classics week with the monuments in their real order, the three Grand Tours running Giro, then Tour, then Vuelta at their true points in the season, and an autumn finale. Grand Tours finally have rest days (Giro 3, Tour and Vuelta 2 each): your riders in the race recover while a substitute race fills the day, so there is racing every single day. The balance between one-day races and stage races is now even across all divisions, Division 2 gets real summit finishes, and four new races join the calendar, including the Chrono Champenois Majeur and the Tour des Grandes Alpes. Permanent quality guards now watch every future season, so mountains, sprints, time trials and cobbles can never quietly disappear from your calendar."
+        },
+        "da": {
+          "title": "Sæson 3-kalenderen genbygget: ægte sæsonrytme, hviledage i Grand Tours og en mere fair løbsblanding",
+          "body": "Sæson 3-kalenderen (starter 24. august) er genbygget fra bunden. Sæsonen følger nu en rigtig cykelsæsons rytme: en åbningsuge, en brostensklassiker-uge med monumenterne i deres rigtige rækkefølge, de tre Grand Tours som Giro, så Tour, så Vuelta på deres sande punkter i sæsonen, og en efterårsfinale. Grand Tours har endelig hviledage (Giro 3, Tour og Vuelta 2 hver): dine ryttere i løbet restituerer, mens et erstatningsløb fylder dagen, så der køres løb hver eneste dag. Balancen mellem endagsløb og etapeløb er nu ens på tværs af alle divisioner, Division 2 får rigtige bjergtop-finaler, og fire nye løb kommer med i kalenderen, blandt andet Chrono Champenois Majeur og Tour des Grandes Alpes. Permanente kvalitetsvagter overvåger nu enhver fremtidig sæson, så bjerge, spurter, enkeltstarter og brosten aldrig stille kan forsvinde fra din kalender."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.104",
     "date": "2026-08-07",
     "label": "Beta",
