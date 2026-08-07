@@ -34,6 +34,8 @@
     "lint:ui-slop": "node scripts/lint-ui-slop.mjs",
     "test:lint-ui-slop": "node --test scripts/lint-ui-slop.test.mjs",
     "check:ui-slop-baseline": "node scripts/lint-ui-slop.mjs --update-baseline",
+    "lint:t2-container": "node scripts/lint-t2-container-guard.mjs",
+    "test:lint-t2-container": "node --test scripts/lint-t2-container-guard.test.mjs",
     "lint:postgrest-cap": "node scripts/lint-postgrest-in-cap.mjs",
     "test:lint-postgrest-cap": "node --test scripts/lint-postgrest-in-cap.test.mjs",
     "lint:getuser-guard": "node scripts/lint-getuser-guard.mjs",

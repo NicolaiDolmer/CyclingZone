@@ -294,9 +294,13 @@ export default function AcademyPage() {
   // #2849 bølge 6: Academy stod på den editoriale 38px-header uden at være på
   // ejer-godkendelseslisten for editorial-headers (kun Klub/ScoutingCentral/
   // SeasonPlanner) — bragt til T1's kanoniske PageHeader (docs/design/PAGE_TEMPLATES.md).
+  // #3454: fejl-/disabled-staterne er selv læse-tunge (en enkelt besked), men
+  // deler containerbredde med sidens hovedindhold nedenfor, så bredden ikke
+  // hopper når en fejl løses ved retry — samme mønster som RidersPage's
+  // fejl-gren.
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <PageHeader title={t("title")} />
         <ErrorState title={t("error.loadTitle")} description={t("error.loadBody")} />
       </div>
@@ -306,15 +310,20 @@ export default function AcademyPage() {
   // Flag slukket
   if (!enabled) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <PageHeader title={t("title")} />
         <EmptyState title={t("title")} description={t("disabledNote")} />
       </div>
     );
   }
 
+  // #3454: T1 (max-w-4xl) → T2 (max-w-[1600px]) — akademiets roster bruger
+  // allerede den kanoniske DataTable (#3045, T2-recipen), men sad klemt i en
+  // T1-container med spildt whitespace i siderne (ejer-direktiv 6/8, samme
+  // fejlklasse som #1675/#1186/#2446). Layout.jsx's WIDE_CONTENT_ROUTES
+  // matcher (se Layout.jsx), så shellen giver nu fuld bredde til denne cap.
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-[1600px] mx-auto">
       {/* Saldo + slot-tæller er ren status-tekst (intet Select/Button) — samme
           dokumenterede afvigelse fra action-cluster-kontrakten "max 1 select +
           1 primary" som ActivityPage's lastUpdated-tidsstempel, fordi siden ikke
