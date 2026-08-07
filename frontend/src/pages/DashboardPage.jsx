@@ -50,6 +50,7 @@ import {
 } from "../lib/seasonStartGuide";
 import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
 import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
+import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { computeSeasonMovement } from "../lib/seasonRecapData.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import {
@@ -782,6 +783,19 @@ export default function DashboardPage() {
   // (ingen tom/halv-udfyldt kort mens fetch'et stadig kører eller fejlede).
   const showSeasonWrapNudge = seasonStartWindowOpen && !seasonWrapDismissed && !onboardingIncomplete && !!completedSeasonRecap;
   const showSeasonStartGuide = seasonStartWindowOpen && !seasonStartDismissed && !onboardingIncomplete;
+
+  // #3509 — gold-CTA prioritetskæde (docs/design/PAGE_TEMPLATES.md: maks ÉN gold
+  // primary-knap pr. view). Rækkefølge: first-race-moment > squad-selection-CTA >
+  // season-wrap. Kun det højst-prioriterede aktive kort beholder guld; resten
+  // nedgraderes til sekundær variant (samme mønster som MyLatestResultCard's
+  // eksisterende nedgradering af TeamSelectionCtaCard). Ren logik i
+  // lib/dashboardGoldCta.js — se DashboardPage.goldCtaPriority.test.js for
+  // dækning af alle kombinationer.
+  const { squadCtaActive, seasonWrapPrimary } = computeDashboardGoldCta({
+    firstRaceMomentActive,
+    squadCtaEligible: !!squadSelectionMissingRace,
+    seasonWrapVisible: showSeasonWrapNudge,
+  });
   const seasonStartItems = showSeasonStartGuide
     ? buildSeasonStartItems({
       squadCount: ownedNow,
@@ -870,6 +884,7 @@ export default function DashboardPage() {
           movement={completedSeasonRecap.movement}
           points={completedSeasonRecap.points}
           wins={completedSeasonRecap.wins}
+          primary={seasonWrapPrimary}
           onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
           onDismiss={dismissSeasonWrap}
         />
@@ -1032,7 +1047,7 @@ export default function DashboardPage() {
         nextRace={squadSelectionMissingRace}
         startAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
         nowMs={nowMs}
-        primary={!firstRaceMomentActive}
+        primary={squadCtaActive}
       />
 
       {/* #2466: "How your team did" — resultat-push øverst over modul-gridden.

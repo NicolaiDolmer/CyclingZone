@@ -22,7 +22,15 @@ import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/season
 // DESIGN: canonical Section/SectionHeader recipe, dismiss-X mirrors
 // SeasonStartGuideCard's own dismiss affordance (dismissal should be
 // per-season, same localStorage pattern as seasonStartGuide.js — left to the
-// real-wiring follow-up). ONE gold primary CTA ("view recap").
+// real-wiring follow-up). ONE gold primary CTA ("view recap") — but only when
+// no higher-priority moment already owns the gold slot; see `primary` prop.
+//
+// #3509 — this card used to always render its CTA as gold, which could stack
+// with TeamSelectionCtaCard's own gold CTA right after a season switch (recap
+// not dismissed yet AND next season's squad selection still missing). The
+// gold-CTA priority chain now lives in DashboardPage.jsx (first-race-moment >
+// squad-selection-CTA > season-wrap); `primary` reflects whether this card
+// won that chain.
 export default function SeasonWrapNudgeCard({
   seasonNumber,
   nextSeasonNumber,
@@ -32,6 +40,7 @@ export default function SeasonWrapNudgeCard({
   movement = null,
   points = 0,
   wins = 0,
+  primary = true,
   onView,
   onDismiss,
 }) {
@@ -81,7 +90,7 @@ export default function SeasonWrapNudgeCard({
       </p>
 
       <div className="flex justify-end">
-        <Button variant="primary" size="sm" onClick={onView}>
+        <Button variant={primary ? "primary" : "secondary"} size="sm" onClick={onView}>
           {t("seasonWrap.cta")}
         </Button>
       </div>
