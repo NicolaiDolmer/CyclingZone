@@ -304,14 +304,34 @@ test("default-konstanter er eksporteret med forventet form", () => {
   assert.equal(typeof DEFAULT_TIER_TYPE_WEIGHTS.superstar.gc, "number");
 });
 
-test("eksplicit default-override === ingen override (byte-identisk determinisme)", () => {
-  const plain = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
-  const explicit = generateFictionalRiders({
+// #3458 fase 2 PR2: FØR denne PR var "ingen override" === "eksplicit DEFAULT_TIER_TYPE_
+// WEIGHTS" (samme LEGACY vægtet-pick-mekanisme begge veje). Nu betyder "ingen override"
+// den NYE arketype-prior-mekanisme (archetypeDistribution.js), mens et EKSPLICIT
+// tierTypeWeights (selv med de gamle default-værdier) bevidst falder tilbage til den
+// GAMLE LEGACY-mekanisme (#1420 dev-tooling-kontrakten, fictionalRiderMixPresets.js,
+// skal forblive uændret/forudsigelig). De to stier er derfor IKKE længere byte-
+// identiske — det er selve pointen med denne PR (default-populationen får en prior,
+// mix-preset-værktøjet gør ikke). Testen verificerer nu i stedet at BEGGE stier
+// hver for sig er internt deterministiske, og at de bevidst AFVIGER.
+test("ingen override (NY prior) vs. eksplicit DEFAULT_TIER_TYPE_WEIGHTS (LEGACY) — bevidst forskellige, hver for sig deterministiske", () => {
+  const plainA = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const plainB = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  assert.deepEqual(plainA.riders, plainB.riders, "NY sti skal være deterministisk");
+
+  const explicitA = generateFictionalRiders({
     seed: 2026, count: 800, referenceYear: REF_YEAR,
     tierFractions: DEFAULT_TIER_FRACTIONS,
     tierTypeWeights: DEFAULT_TIER_TYPE_WEIGHTS,
   });
-  assert.deepEqual(explicit.riders, plain.riders);
+  const explicitB = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    tierFractions: DEFAULT_TIER_FRACTIONS,
+    tierTypeWeights: DEFAULT_TIER_TYPE_WEIGHTS,
+  });
+  assert.deepEqual(explicitA.riders, explicitB.riders, "LEGACY sti skal være deterministisk");
+
+  assert.notDeepEqual(explicitA.riders, plainA.riders,
+    "LEGACY (eksplicit tierTypeWeights) og NY (ingen override) skal IKKE længere være identiske — #3458 fase 2 PR2");
 });
 
 test("skewet tierTypeWeights flytter realiseret type-fordeling (sprinter op)", () => {

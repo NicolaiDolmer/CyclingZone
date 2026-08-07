@@ -1,9 +1,12 @@
 #!/usr/bin/env node
-// DB-frit sim-harness for #3458 fase 2 del 1 (arketype-prior-generator, akademi-intake).
+// DB-frit sim-harness for #3458 fase 2 (arketype-prior-generator).
 //
-// Genererer n≥1.000 akademi-kandidater IN-MEMORY (ingen DB, ingen mutation) og kører
-// dem gennem PRÆCIS den samme afled-kæde som `deriveForRiderIds` (backfillCores.js):
-//   generateAcademyCandidates → seedPhysiologyFromLegacy → deriveAbilities
+// Fase 2 del 1 (PR1, merged #3500): akademi-intake alene.
+// Fase 2 del 2 (PR2, denne udvidelse): samme G1-G4-harness, nu pr. GENERERINGS-STI
+// (--path=academy|fictional|starter|ai, eller ingen flag/--path=all = alle fire).
+// Hver sti genererer n kandidater IN-MEMORY (ingen DB, ingen mutation) og kører dem
+// gennem PRÆCIS den samme afled-kæde som `deriveForRiderIds` (backfillCores.js):
+//   (kandidat) → seedPhysiologyFromLegacy → deriveAbilities
 //     → bootstrap-type (computeRiderTypes mod NEUTRAL_BASELINE)
 //     → buildCapsForRider (rolle-faktor fra bootstrap-typen)
 //     → ENDELIG type (computeRiderTypes mod riderTypesBaseline.json)
@@ -15,22 +18,41 @@
 //   G3  tildelt type == normaliseret bedste rolle                           ≥90 %
 //   G4  emergent fordeling over 8 typer                                     ingen <5% eller >30%
 //
-// Exit 1 hvis ÉN gate fejler (ingen tavs grøn — #3009-læringen: gates der ikke fejler
-// synligt bliver ikke set). Rører INTET i DB.
+// De 4 stier:
+//   academy    — generateAcademyCandidates (akademi-intake, PR1, uændret)
+//   fictional  — generateFictionalRiders DEFAULT-sti (markeds-population/launch-
+//                population — fictionalLaunchPopulation.js kalder SAMME funktion
+//                med samme parameterform, så denne sti dækker begge)
+//   starter    — buildWeakStarterPool-mekanikken (rescaleStatIntoWindow ind i
+//                STARTER_POOL_STAT_WINDOW) — dækker starter-squads OG AI tier 3/4
+//                (samme mekanisme, aiTeamGenerator.js's defaultAllocateSquadForTeam)
+//   ai         — generateAiRiderBatchWithCap-mekanikken (tier 1/2 AI-fill: den ægte
+//                arketype-generator + typeShareCap-gating)
 //
-//   node scripts/simArchetypeGeneration3458.js [--n=2000] [--seed=2026] [--out=<path>]
+// Exit 1 hvis ÉN gate fejler på NOGEN målt sti (ingen tavs grøn — #3009-læringen).
+// Rører INTET i DB.
+//
+//   node scripts/simArchetypeGeneration3458.js [--path=all] [--n=2000] [--seed=2026] [--out=<path>]
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { generateAcademyCandidates } from "../lib/academyGenerator.js";
-import { makeRng } from "../lib/fictionalRiderGenerator.js";
+import { makeRng, generateFictionalRiders, STAT_KEYS, AI_SIGNATURE_CFG } from "../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { buildCapsForRider } from "../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ratingFromAbilities } from "../lib/scoutingReport.js";
+import { predictBaseValue } from "../lib/riderValuation.js";
+import {
+  STARTER_POOL_STAT_WINDOW,
+  AI_TIER_FRACTIONS,
+  AI_TIER_VALUE_CAP,
+  rescaleStatIntoWindow,
+  computeAge,
+} from "../lib/starterSquadAllocator.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,6 +65,12 @@ const N = parseInt(arg("n", "2000"), 10);
 const SEED = parseInt(arg("seed", "2026"), 10);
 const REFERENCE_YEAR = 2026;
 const OUT_PATH = arg("out", null);
+const PATH_ARG = arg("path", "all");
+const ALL_PATHS = ["academy", "fictional", "starter", "ai"];
+const PATHS_TO_RUN = PATH_ARG === "all" ? ALL_PATHS : PATH_ARG.split(",").map((s) => s.trim());
+for (const p of PATHS_TO_RUN) {
+  if (!ALL_PATHS.includes(p)) throw new Error(`ukendt --path=${p} (gyldige: ${ALL_PATHS.join(", ")}, all)`);
+}
 
 // GATE-MÅL (design-spec §3).
 const GATES = Object.freeze({
@@ -55,10 +83,12 @@ const GATES = Object.freeze({
 
 const TYPES_BASELINE_PATH = join(__dirname, "../lib/riderTypesBaseline.json");
 const typesBaseline = JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
+const VALUATION_MODEL_PATH = join(__dirname, "../lib/riderValuationModelV4.json");
+const valuationModel = JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
 
 // Percentil-hjælper (mid-rank ved ties) — samme mønster som
 // scripts/measureNormalizedTypes3372.js, så G2/G3 måles på samme semantik som
-// den ægte-population-målingen #3372 gaten stammer fra.
+// den ægte-population-målingen #3372-gaten stammer fra.
 function buildPercentileFn(sortedAsc) {
   return (v) => {
     let lo = 0, hi = sortedAsc.length;
@@ -77,50 +107,159 @@ function median(sortedAsc) {
   return n % 2 ? sortedAsc[mid] : (sortedAsc[mid - 1] + sortedAsc[mid]) / 2;
 }
 
-function main() {
-  console.log(`=== #3458 fase 2: arketype-generator sim-harness (n=${N}, seed=${SEED}, DB-frit) ===\n`);
+// ── Delt afled-kæde (spejler deriveForRiderIds 1:1) ─────────────────────────────
+// riderRow: { id, ...STAT_KEYS, birthdate, potentiale, ... } + archetypeDraw
+// ({ primary, secondary, isHybrid }) fra genererings-stien (KUN til G1-måling,
+// aldrig persisteret i produktion).
+function runDeriveChain(riderRow, archetypeDraw, referenceYear) {
+  const physiology = seedPhysiologyFromLegacy(riderRow);
+  const abilities = deriveAbilities(physiology, riderRow);
 
-  // ── 1) Generér kuldet (in-memory, samme kerne som produktionsstien) ─────────
-  const rng = makeRng(SEED);
+  // Bootstrap-type: klassificeret mod LIVE abilities + NEUTRAL_BASELINE (#3325-
+  // mønsteret, deriveForRiderIds trin 2) — giver caps' rolle-faktor en retning.
+  const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
+
+  const baseline = {};
+  for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
+  const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
+
+  // ENDELIG type: klassificeret mod ability_caps + den SHIPPEDE caps-fittede
+  // baseline (deriveForRiderIds trin 4) — dette er den type der ville blive
+  // PERSISTERET til riders.primary_type i produktion.
+  const final = computeRiderTypes(caps, typesBaseline);
+
+  return {
+    archetypeDraw,
+    abilities,
+    caps,
+    potentiale: riderRow.potentiale,
+    age: referenceYear - Number(String(riderRow.birthdate).slice(0, 4)),
+    finalPrimary: final.primary.key,
+    finalSecondary: final.secondary.key,
+  };
+}
+
+// ── Sti-specifikke kandidat-byggere (alle DB-frie, alle bevarer archetypeDraw) ──
+
+function buildAcademyRiders(n, seed, referenceYear) {
+  const rng = makeRng(seed);
   const candidates = generateAcademyCandidates({
-    rng,
-    referenceYear: REFERENCE_YEAR,
-    existingNames: new Set(),
-    countOverride: N,
+    rng, referenceYear, existingNames: new Set(), countOverride: n,
   });
-
-  // ── 2) Kør HELE afled-kæden pr. kandidat (spejler deriveForRiderIds 1:1) ────
-  const riders = candidates.map((c, i) => {
-    const riderRow = { id: `sim-${SEED}-${i}`, ...c.rider };
-    const physiology = seedPhysiologyFromLegacy(riderRow);
-    const abilities = deriveAbilities(physiology, riderRow);
-
-    // Bootstrap-type: klassificeret mod LIVE abilities + NEUTRAL_BASELINE (#3325-
-    // mønsteret, deriveForRiderIds trin 2) — giver caps' rolle-faktor en retning.
-    const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
-
-    const baseline = {};
-    for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
-    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
-
-    // ENDELIG type: klassificeret mod ability_caps + den SHIPPEDE caps-fittede
-    // baseline (deriveForRiderIds trin 4) — dette er den type der ville blive
-    // PERSISTERET til riders.primary_type i produktion.
-    const final = computeRiderTypes(caps, typesBaseline);
-
-    return {
-      archetypeDraw: c.archetypeDraw, // { primary, secondary, isHybrid } — ALDRIG skrevet til DB
-      abilities,
-      caps,
-      potentiale: riderRow.potentiale,
-      age: REFERENCE_YEAR - Number(String(riderRow.birthdate).slice(0, 4)),
-      finalPrimary: final.primary.key,
-      finalSecondary: final.secondary.key,
-    };
+  return candidates.map((c, i) => {
+    const riderRow = { id: `sim-academy-${seed}-${i}`, ...c.rider };
+    return runDeriveChain(riderRow, c.archetypeDraw, referenceYear);
   });
+}
+
+// DEFAULT-stien i generateFictionalRiders (#3458 fase 2 PR2) — markeds-/launch-
+// population. fictionalLaunchPopulation.js's generateLaunchPopulation() kalder
+// SAMME funktion med samme parameterform (ingen tierTypeWeights) → denne måling
+// dækker begge stier (de er byte-for-byte samme generator-kald, kun seed/count
+// afviger).
+function buildFictionalRiders(n, seed, referenceYear) {
+  const { riders } = generateFictionalRiders({ seed, count: n, referenceYear });
+  return riders.map((r, i) => {
+    const riderRow = { id: `sim-fictional-${seed}-${i}`, ...r };
+    return runDeriveChain(riderRow, r._meta.archetypeDraw, referenceYear);
+  });
+}
+
+// Genbruger den ÆGTE rescaleStatIntoWindow (starterSquadAllocator.js) direkte —
+// dækker BÅDE start-trupper (buildWeakStarterPool) OG AI tier 3/4
+// (aiTeamGenerator.js's defaultAllocateSquadForTeam, clamp-vindue-stien), som
+// deler nøjagtig samme mekanisme.
+function buildStarterRiders(n, seed, referenceYear) {
+  const { riders } = generateFictionalRiders({ seed, count: n, referenceYear });
+  return riders.map((r, i) => {
+    const rescaledStats = {};
+    for (const k of STAT_KEYS) rescaledStats[k] = rescaleStatIntoWindow(r[k], STARTER_POOL_STAT_WINDOW);
+    const riderRow = { id: `sim-starter-${seed}-${i}`, ...r, ...rescaledStats };
+    return runDeriveChain(riderRow, r._meta.archetypeDraw, referenceYear);
+  });
+}
+
+// Genbruger generateAiRiderBatchWithCap's ACCEPT-LOOP-logik (starterSquadAllocator.js)
+// 1:1, men bevarer archetypeDraw (den ægte funktion returnerer en ren INSERT-payload
+// uden _meta — nødvendigt for produktion, uegnet til G1-måling). tier 1's
+// AI_TIER_FRACTIONS/AI_TIER_VALUE_CAP bruges som repræsentativ konfiguration (samme
+// arketype-generator-mekanisme som tier 2, blot en anden fraction/cap-værdi).
+// #3458 fase 2 PR2: kører MANGE UAFHÆNGIGE 24-rytter-batches (AI_SQUAD.TOTAL_SIZE
+// — den ÆGTE produktions-skala pr. AI-hold, aiTeamGenerator.js's
+// defaultAllocateSquadForTeam) i stedet for ÉN kæmpe n-batch. generateAiRiderBatch-
+// WithCap's accept/reject-loop (typeShareCap+valueCap) er tunet til denne lille
+// skala (60 runder, batchSize=needed×6) — en enkelt n=2000-batch udtømmer
+// nationalitets-navnepoolen og/eller runde-budgettet uden reel produktions-
+// relevans (ingen AI-hold genererer 2000 ryttere i ét kald). n rundes op til
+// nærmeste multiplum af 24.
+const AI_BATCH_SIZE = 24; // AI_SQUAD.TOTAL_SIZE (8 kerne + 16 hale)
+function buildAiRiders(n, seed, referenceYear) {
+  const tierFractions = AI_TIER_FRACTIONS[1];
+  const valueCap = AI_TIER_VALUE_CAP[1];
+  const typeShareCap = 0.4;
+  const maxRounds = 150; // rundhåndteret margin til måling (prod bruger 60 pr. #2065-postmortem)
+  const batches = Math.ceil(n / AI_BATCH_SIZE);
+  const accepted = [];
+  for (let b = 0; b < batches; b++) {
+    const batchSeed = (seed + b * 104729) >>> 0;
+    const maxPerType = Math.max(1, Math.ceil(AI_BATCH_SIZE * typeShareCap));
+    const typeCounts = new Map();
+    const usedNames = new Set();
+    const batchAccepted = [];
+    let attemptSeed = batchSeed;
+    let round = 0;
+    while (batchAccepted.length < AI_BATCH_SIZE && round < maxRounds) {
+      round++;
+      const needed = AI_BATCH_SIZE - batchAccepted.length;
+      const batchSize = Math.max(needed * 6, 30);
+      const { riders } = generateFictionalRiders({
+        seed: attemptSeed, count: batchSize, referenceYear, existingFoldedNames: usedNames, tierFractions,
+        signatureCfg: AI_SIGNATURE_CFG,
+      });
+      attemptSeed = (attemptSeed + 104729) >>> 0;
+      for (const candidate of riders) {
+        if (batchAccepted.length >= AI_BATCH_SIZE) break;
+        const physiology = seedPhysiologyFromLegacy(candidate);
+        const abilities = deriveAbilities(physiology, candidate);
+        const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
+        const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
+        const { primary } = computeRiderTypes(caps, typesBaseline);
+        const value = predictBaseValue(
+          { ...candidate, primary_type: primary.key, age: computeAge(candidate.birthdate, referenceYear) },
+          abilities,
+          valuationModel,
+        );
+        const withinValueCap = value == null || valueCap == null || value <= valueCap;
+        const withinTypeCap = (typeCounts.get(primary.key) || 0) < maxPerType;
+        if (withinValueCap && withinTypeCap) {
+          typeCounts.set(primary.key, (typeCounts.get(primary.key) || 0) + 1);
+          batchAccepted.push(candidate);
+        }
+      }
+    }
+    if (batchAccepted.length < AI_BATCH_SIZE) {
+      throw new Error(`buildAiRiders: batch ${b} only ${batchAccepted.length}/${AI_BATCH_SIZE} riders accepted after ${round} rounds`);
+    }
+    accepted.push(...batchAccepted);
+  }
+  return accepted.slice(0, n).map((r, i) => {
+    const riderRow = { id: `sim-ai-${seed}-${i}`, ...r };
+    return runDeriveChain(riderRow, r._meta.archetypeDraw, referenceYear);
+  });
+}
+
+const PATH_BUILDERS = Object.freeze({
+  academy: buildAcademyRiders,
+  fictional: buildFictionalRiders,
+  starter: buildStarterRiders,
+  ai: buildAiRiders,
+});
+
+// ── G1-G4-måling for ÉN sti's rytter-array ──────────────────────────────────────
+function measurePath(pathName, riders) {
   const n = riders.length;
 
-  // ── G1: klassifikatorens endelige type == trukket arketype (hybrid: en af de to) ──
+  // G1: klassifikatorens endelige type == trukket arketype (hybrid: en af de to).
   let g1Hits = 0;
   for (const r of riders) {
     const { primary, secondary, isHybrid } = r.archetypeDraw;
@@ -129,9 +268,7 @@ function main() {
   }
   const g1Pct = Math.round((g1Hits / n) * 1000) / 10;
 
-  // ── G2/G3: normaliseret rolle-percentil pr. rytter (mønster fra measureNormalizedTypes3372.js) ──
-  // scores[t] = "loft-rating som type t" hvis rytterens NUVÆRENDE evner var caps'et
-  // efter type t's rolle-faktor (samme metode targetet #3372-gaten selv måler mod).
+  // G2/G3: normaliseret rolle-percentil pr. rytter (mønster fra measureNormalizedTypes3372.js).
   const rawScores = riders.map((r) => {
     const scores = {};
     for (const t of RIDER_TYPE_KEYS) {
@@ -157,13 +294,13 @@ function main() {
   const sortedDepths = [...depths].sort((a, b) => a - b);
   const g2Median = median(sortedDepths);
 
-  // ── G4: emergent fordeling over 8 typer (ENDELIG type, ikke arketype-trækket) ──
+  // G4: emergent fordeling over 8 typer (ENDELIG type, ikke arketype-trækket).
   const dist = Object.fromEntries(RIDER_TYPE_KEYS.map((t) => [t, 0]));
   for (const r of riders) dist[r.finalPrimary] = (dist[r.finalPrimary] || 0) + 1;
   const distPct = Object.fromEntries(RIDER_TYPE_KEYS.map((t) => [t, Math.round((dist[t] / n) * 1000) / 10]));
   const g4Violations = RIDER_TYPE_KEYS.filter((t) => distPct[t] < GATES.g4MinTypePct || distPct[t] > GATES.g4MaxTypePct);
 
-  // ── Arketype-trækkets egen fordeling (til sammenligning — IKKE selve gaten) ──
+  // Arketype-trækkets egen fordeling (til sammenligning — IKKE selve gaten).
   const drawDist = Object.fromEntries(RIDER_TYPE_KEYS.map((t) => [t, 0]));
   let hybridCount = 0;
   for (const r of riders) {
@@ -172,8 +309,8 @@ function main() {
   }
   const hybridPct = Math.round((hybridCount / n) * 1000) / 10;
 
-  // ── Scorecard ────────────────────────────────────────────────────────────────
   const scorecard = {
+    path: pathName,
     meta: { generatedAt: new Date().toISOString(), n, seed: SEED, referenceYear: REFERENCE_YEAR, hybridPct },
     gates: {
       G1_classifier_matches_archetype: { pct: g1Pct, min: GATES.g1MinPct, pass: g1Pct >= GATES.g1MinPct },
@@ -190,18 +327,19 @@ function main() {
       p75: sortedDepths[Math.floor(0.75 * (n - 1))],
     },
   };
+  return scorecard;
+}
 
-  const allPass = Object.values(scorecard.gates).every((g) => g.pass);
-
-  // ── Læsbar tabel ────────────────────────────────────────────────────────────
-  console.log(`Hybrid-andel: ${hybridPct}% (mål ~15%)\n`);
+function printScorecard(sc) {
+  console.log(`\n=== sti: ${sc.path} (n=${sc.meta.n}, seed=${sc.meta.seed}) ===`);
+  console.log(`Hybrid-andel: ${sc.meta.hybridPct}% (mål ~15%)\n`);
   console.log("Arketype-træk-fordeling (prior, IKKE gaten) vs. endelig type-fordeling (ENDELIG, G4-gaten):");
   console.log(`  ${"type".padEnd(16)} ${"træk %".padStart(8)} ${"endelig %".padStart(10)}`);
   for (const t of RIDER_TYPE_KEYS) {
-    console.log(`  ${t.padEnd(16)} ${String(scorecard.archetypeDrawDistributionPct[t]).padStart(8)} ${String(distPct[t]).padStart(10)}`);
+    console.log(`  ${t.padEnd(16)} ${String(sc.archetypeDrawDistributionPct[t]).padStart(8)} ${String(sc.finalTypeDistributionPct[t]).padStart(10)}`);
   }
   console.log("");
-  for (const [gateName, g] of Object.entries(scorecard.gates)) {
+  for (const [gateName, g] of Object.entries(sc.gates)) {
     const status = g.pass ? "PASS" : "FAIL";
     if (gateName === "G4_emergent_distribution") {
       console.log(`${status}  ${gateName}: violations=${JSON.stringify(g.violations)}`);
@@ -209,13 +347,26 @@ function main() {
       console.log(`${status}  ${gateName}: ${JSON.stringify(g)}`);
     }
   }
-  console.log(`\nSpecialiserings-dybde: p10=${scorecard.depthPercentiles.p10} p25=${scorecard.depthPercentiles.p25} median=${scorecard.depthPercentiles.median} p75=${scorecard.depthPercentiles.p75}`);
-  console.log(`\n${allPass ? "ALLE GATES GRØNNE" : "GATE(S) FEJLEDE"}\n`);
-  console.log("=== SCORECARD JSON ===");
-  console.log(JSON.stringify(scorecard, null, 2));
+  console.log(`Specialiserings-dybde: p10=${sc.depthPercentiles.p10} p25=${sc.depthPercentiles.p25} median=${sc.depthPercentiles.median} p75=${sc.depthPercentiles.p75}`);
+}
 
-  if (OUT_PATH) writeFileSync(OUT_PATH, JSON.stringify(scorecard, null, 2));
+function main() {
+  console.log(`=== #3458 fase 2: arketype-generator sim-harness (stier=${PATHS_TO_RUN.join(",")}, n=${N}, seed=${SEED}, DB-frit) ===`);
 
+  const scorecards = {};
+  for (const pathName of PATHS_TO_RUN) {
+    const riders = PATH_BUILDERS[pathName](N, SEED, REFERENCE_YEAR);
+    const sc = measurePath(pathName, riders);
+    scorecards[pathName] = sc;
+    printScorecard(sc);
+  }
+
+  const allPass = Object.values(scorecards).every((sc) => Object.values(sc.gates).every((g) => g.pass));
+  console.log(`\n${allPass ? "ALLE GATES GRØNNE (alle målte stier)" : "GATE(S) FEJLEDE"}\n`);
+  console.log("=== SCORECARD JSON (pr. sti) ===");
+  console.log(JSON.stringify(scorecards, null, 2));
+
+  if (OUT_PATH) writeFileSync(OUT_PATH, JSON.stringify(scorecards, null, 2));
   if (!allPass) process.exitCode = 1;
 }
 
