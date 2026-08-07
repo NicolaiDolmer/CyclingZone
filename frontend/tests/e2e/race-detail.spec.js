@@ -124,12 +124,12 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   // #1484 terræn-indikator: etape 1 = fladt + massespurt.
   await expect(page.getByText("Terræn", { exact: true })).toBeVisible();
   await expect(page.getByText("Fladt")).toBeVisible();
-  await expect(page.getByText("Massespurt")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Massespurt" })).toBeVisible();
 
   // Etape 2 = bjerge + bjergfinale (skifter med fanen).
   await page.getByRole("button", { name: "Etape 2" }).click();
   await expect(page.getByText("Bjerge")).toBeVisible();
-  await expect(page.getByText("Bjergfinale")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 
   // Sub-2 (#2770): ingen passage-data mocket → ingen passage-sektion nogen steder.
   await expect(page.getByText("Mellemresultater")).toHaveCount(0);
