@@ -18,10 +18,11 @@ import { FINANCE_CATEGORIES, buildCategoryOrFilter } from "../lib/financeCategor
 import { computeLoanRiskSummary } from "../lib/loanRisk";
 import { computeReservedBalance } from "../lib/availableBalance";
 import {
-  Tabs, TabList, Tab, TabPanel,
-  Card, Button, Input, Select, ProgressMeter, PageLoader,
+  AmountInput, Tabs, TabList, Tab, TabPanel,
+  Card, Button, Select, ProgressMeter, PageLoader,
   ChevronRightIcon, XIcon,
 } from "../components/ui";
+import { controlClass } from "../components/ui/fieldStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -128,8 +129,11 @@ export default function FinancePage() {
   const [msg, setMsg] = useState({ text: "", type: "" });
 
   // Optag lån
+  // #3495: loanAmount/repayAmount er number|null (parsed via AmountInput) —
+  // var tidligere en rå streng parseInt'et flere steder, samme faktor-1000-
+  // risiko som transferlistens pris-felt.
   const [loanType, setLoanType] = useState("short");
-  const [loanAmount, setLoanAmount] = useState("");
+  const [loanAmount, setLoanAmount] = useState(null);
   const [takingLoan, setTakingLoan] = useState(false);
   // #2815: bekræftelses-dialog vist FØR submit når lånet ville skubbe total
   // gæld til ≥50% af divisionens loft (computeLoanRiskSummary) — se
@@ -139,7 +143,7 @@ export default function FinancePage() {
 
   // Betal lån
   const [repayId, setRepayId] = useState(null);
-  const [repayAmount, setRepayAmount] = useState("");
+  const [repayAmount, setRepayAmount] = useState(null);
   const [repaying, setRepaying] = useState(false);
 
   // Onboarding v2 Slice 3 — first-visit-hint, dismiss persisteres i localStorage
@@ -315,7 +319,7 @@ export default function FinancePage() {
       const result = await res.json().catch(() => ({}));
       if (res.ok) {
         showMsg(t("msg.loanCreated", { amount: formatNumber(amount) }));
-        setLoanAmount("");
+        setLoanAmount(null);
         setShowLoanConfirm(false);
         loadAll();
       } else {
@@ -337,8 +341,8 @@ export default function FinancePage() {
 
   function handleTakeLoan(e) {
     e.preventDefault();
-    const amount = parseInt(loanAmount);
-    if (!loanAmount || amount < 1) return;
+    const amount = loanAmount;
+    if (amount == null || amount < 1) return;
     // #2815: høj-gældsgrad-lån (≥50% af divisionens loft, computeLoanRiskSummary)
     // stopper her og viser LoanConfirmModal i stedet for at submitte med det
     // samme — samme tærskel uanset om beløbet blev tastet manuelt eller via
@@ -351,14 +355,14 @@ export default function FinancePage() {
   }
 
   async function handleRepay(loanId, amount) {
-    if (!amount || parseInt(amount) < 1) return;
+    if (amount == null || amount < 1) return;
     setRepaying(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${API}/api/finance/loans/${loanId}/repay`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ amount: parseInt(amount) }),
+        body: JSON.stringify({ amount }),
       });
       const result = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -369,7 +373,7 @@ export default function FinancePage() {
               remaining: formatNumber(result.remaining ?? 0),
             }));
         setRepayId(null);
-        setRepayAmount("");
+        setRepayAmount(null);
         loadAll();
       } else {
         // #1012: samme lokaliserede fejl-rendering som handleTakeLoan
@@ -410,7 +414,7 @@ export default function FinancePage() {
   // vælges eller optages af spillere — backend afviser dem også, dette skjuler dem i UI.
   const configs = (loanData?.configs || []).filter(c => c.loan_type === "short" || c.loan_type === "long");
   const selectedConfig = configs.find(c => c.loan_type === loanType);
-  const loanAmountNum = parseInt(loanAmount) || 0;
+  const loanAmountNum = loanAmount ?? 0;
   // #1012: max_principal/max_fee/max_total_debt kommer fra backend (samme formel
   // som serverens loft-validering — ingen klient-kopi der kan drifte).
   const maxPrincipal = selectedConfig?.max_principal ?? null;
@@ -639,26 +643,27 @@ export default function FinancePage() {
                       </div>
 
                       {repayId === loan.id ? (
-                        <div className="flex gap-2">
-                          <Input type="number" value={repayAmount}
-                            onChange={e => setRepayAmount(e.target.value)}
+                        <div className="flex gap-2 items-start">
+                          <AmountInput value={repayAmount}
+                            onValueChange={v => setRepayAmount(v)}
                             placeholder={maxRepay > 0
                               ? t("loans.active.startRepayMaxPlaceholder", { value: formatNumber(maxRepay) })
                               : t("loans.active.repayPlaceholder")}
-                            size="sm" className="flex-1" />
+                            wrapperClassName="flex-1"
+                            className={`${controlClass({ size: "sm" })} w-full`} />
                           <Button variant="primary" size="sm" onClick={() => handleRepay(loan.id, repayAmount)}
-                            disabled={repaying || !repayAmount || parseInt(repayAmount) < 1}>
+                            disabled={repaying || repayAmount == null || repayAmount < 1}>
                             {repaying ? t("loans.active.repayingBtn") : t("loans.active.repayBtn")}
                           </Button>
                           <Button variant="ghost" size="sm"
-                            onClick={() => { setRepayId(null); setRepayAmount(""); }}
+                            onClick={() => { setRepayId(null); setRepayAmount(null); }}
                             aria-label={t("loans.active.cancelRepayAria")}>
                             <XIcon size={14} aria-hidden />
                           </Button>
                         </div>
                       ) : (
                         <Button variant="secondary" size="sm" fullWidth
-                          onClick={() => { setRepayId(loan.id); setRepayAmount(maxRepay > 0 ? maxRepay.toString() : ""); }}
+                          onClick={() => { setRepayId(loan.id); setRepayAmount(maxRepay > 0 ? maxRepay : null); }}
                           disabled={maxRepay <= 0}>
                           {t("loans.active.startRepay")}
                         </Button>
@@ -688,10 +693,10 @@ export default function FinancePage() {
                   </div>
                   <div>
                     <label className="block text-cz-3 text-xs mb-1">{t("loans.take.amountLabel")}</label>
-                    <Input type="number" required min={1} value={loanAmount}
-                      onChange={e => setLoanAmount(e.target.value)}
+                    <AmountInput value={loanAmount}
+                      onValueChange={v => setLoanAmount(v)}
                       placeholder={t("loans.take.amountPlaceholder")}
-                      className="w-full" />
+                      className={`${controlClass()} w-full`} />
                   </div>
                 </div>
 
@@ -716,7 +721,7 @@ export default function FinancePage() {
                           iøjnefaldende handling på siden. Selve friktionen ved høj
                           gældsgrad sidder i LoanConfirmModal (nedenfor), ikke her. */}
                       <Button type="button" variant="ghost" size="sm"
-                        onClick={() => setLoanAmount(String(maxPrincipal))}
+                        onClick={() => setLoanAmount(maxPrincipal)}
                         className="flex-shrink-0 text-cz-3">
                         {t("loans.take.useMax")}
                       </Button>

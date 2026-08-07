@@ -38,6 +38,7 @@ import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider } from "../lib/raceStageMoments.js";
 import { groupPassagesForStage } from "../lib/raceStagePassages.js";
+import { classificationPointTotals } from "../lib/raceClassificationTotals.js";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
@@ -266,7 +267,7 @@ export default function RaceDetailPage() {
     const rowsPromise = fetchAllRows(() =>
       supabase
         .from("race_results")
-        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)")
+        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, sprint_points, kom_points, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)")
         .eq("race_id", raceId)
         .order("id")
     );
@@ -460,6 +461,20 @@ export default function RaceDetailPage() {
     if (race?.race_type !== "stage_race" || finalByType.gc?.length) return null;
     return buildLiveStandings(results);
   }, [race?.race_type, finalByType, results]);
+
+  // #3519: sprint-/bjergkonkurrence-point-TOTALER pr. rytter — mountain_day/
+  // points_day-rækkerne (liveStandings) bærer kun rangen, ikke pointtallet bag
+  // den, så en spiller kan ikke se HVOR TÆT/LANGT han er fra podiet. Live =
+  // "efter seneste kørte etape" (samme etape som liveStandings.stage); Final =
+  // alle etaper (løbet er afgjort). Begge kun relevante mens der er resultater.
+  const liveClassificationTotals = useMemo(
+    () => (liveStandings ? classificationPointTotals(results, profileByStage, liveStandings.stage) : null),
+    [results, profileByStage, liveStandings],
+  );
+  const finalClassificationTotals = useMemo(
+    () => classificationPointTotals(results, profileByStage, null),
+    [results, profileByStage],
+  );
 
   // #2081: "mit hold" løses til den faktiske team_id (kan være ukendt hvis ikke logget
   // ind endnu ved første render) — "all" og en eksplicit team_id går uændret igennem.
@@ -770,8 +785,8 @@ export default function RaceDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
                   <SectionStack>
                     {liveStandings
-                      ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />
-                      : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />}
+                      ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} pointsTotals={liveClassificationTotals} />
+                      : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} pointsTotals={finalClassificationTotals} />}
                   </SectionStack>
                   <SectionStack>
                     <RaceRecap results={results} scopeType="overall" incidents={incidents} />
@@ -781,7 +796,7 @@ export default function RaceDetailPage() {
                 </div>
               )}
               {stageNumbers.map(n => activeTab === `stage-${n}` && (
-                <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
+                <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} profileByStage={profileByStage}
                   filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents}
                   moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
                   raceId={race.id} raceName={race.name} passages={passages} t={t} />
@@ -1133,7 +1148,19 @@ function StoryTagBadges({ moments, riderId, stageNumber, t }) {
   );
 }
 
-function OverallTab({ finalByType, filterRows, myTeamId, moments }) {
+// #3519: mountain/points-klassementerne er point-baserede (ikke tids-baserede)
+// — rangordenen alene fortæller ikke en spiller HVOR TÆT/LANGT han er fra
+// podiet. pointsTotals={mountain,sprint} (raceClassificationTotals.js) bærer
+// de faktiske løbende totaler; denne helper vælger den rigtige Map pr.
+// klassement-nøgle (gc/young/team har ingen point-total at vise → undefined).
+function pointsTotalMapForKey(pointsTotals, key) {
+  if (!pointsTotals) return undefined;
+  if (key === "mountain") return pointsTotals.mountain;
+  if (key === "points") return pointsTotals.sprint;
+  return undefined;
+}
+
+function OverallTab({ finalByType, filterRows, myTeamId, moments, pointsTotals }) {
   const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
@@ -1144,7 +1171,7 @@ function OverallTab({ finalByType, filterRows, myTeamId, moments }) {
       {CLASSIFICATIONS.map(c => {
         const rows = filterRows(finalByType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} pointsTotalByRider={pointsTotalMapForKey(pointsTotals, c.key)} />;
       })}
     </SectionStack>
   );
@@ -1153,7 +1180,7 @@ function OverallTab({ finalByType, filterRows, myTeamId, moments }) {
 // #2081: løbende klassementer for et igangværende etapeløb — samme tabeller som
 // det endelige klassement, med eksplicit "stillingen efter etape N"-ramme så
 // ingen forveksler den med slutresultatet.
-function LiveOverallTab({ byType, stage, filterRows, myTeamId, moments }) {
+function LiveOverallTab({ byType, stage, filterRows, myTeamId, moments, pointsTotals }) {
   const { t } = useTranslation("races");
   return (
     <SectionStack>
@@ -1164,16 +1191,23 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, moments }) {
       {CLASSIFICATIONS.map(c => {
         const rows = filterRows(byType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} pointsTotalByRider={pointsTotalMapForKey(pointsTotals, c.key)} />;
       })}
     </SectionStack>
   );
 }
 
-function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
+function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
   const [classTab, setClassTab] = useState("stage");
 
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
+
+  // #3519: point-totaler "efter etape {stage}" for mountain/points-sub-fanen —
+  // samme SSOT-genbrug som Overall-fanerne (raceClassificationTotals.js).
+  const stagePointsTotals = useMemo(
+    () => classificationPointTotals(results, profileByStage, stage),
+    [results, profileByStage, stage],
+  );
 
   // Sub-2 (#2770): passage-grupper (KOM/mellemsprint) for DENNE etape — kun
   // relevante i "stage"-sub-fanen (måltavlen), ikke under de øvrige klassement-
@@ -1212,7 +1246,7 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, mo
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
         <SectionStack>
-          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} moments={moments} stageNumber={stage} />
+          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} />
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>
         <SectionStack>
@@ -1336,10 +1370,16 @@ function ResultEntityCell({ row, highlightWinner, t, moments, stageNumber }) {
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10, moments = [], stageNumber = null }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
+  // #3519: mountain/points-klassementernes FAKTISKE løbende total (hvorfor er
+  // rangen X? — se raceClassificationTotals.js). Egen kolonne, adskilt fra
+  // showPoints/points_earned ovenfor (præmiepoint for at ramme podiet i denne
+  // klassement — en helt anden pointskala, ofte 0 hvis ejeren ikke har
+  // konfigureret race_points for disse result_types).
+  const showPointsTotal = pointsTotalByRider != null && rows.some(r => (pointsTotalByRider.get(r.rider_id) ?? 0) > 0);
   // Gap-kolonne kun når motoren har skrevet tider (stage/gc fra Race Engine v2);
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
   const showTime = rows.some(r => r.finish_time);
@@ -1393,6 +1433,13 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                     {showPoints && (
                       <td className="px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap">
                         {(r.points_earned ?? 0) > 0 ? `${formatNumber(r.points_earned)} pt` : ""}
+                      </td>
+                    )}
+                    {showPointsTotal && (
+                      <td className="px-4 py-2 text-right text-cz-1 font-mono text-xs whitespace-nowrap tabular-nums">
+                        {(pointsTotalByRider.get(r.rider_id) ?? 0) > 0
+                          ? t("detail.passages.points", { count: pointsTotalByRider.get(r.rider_id) })
+                          : ""}
                       </td>
                     )}
                   </tr>

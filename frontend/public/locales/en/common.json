@@ -99,5 +99,9 @@
     "searchHelp": "Search help and FAQ",
     "selectSeason": "Select season"
   },
-  "leaderBadge": "Leader"
+  "leaderBadge": "Leader",
+  "amountInput": {
+    "invalid": "Enter a whole number, e.g. 150000 or 150.000",
+    "parsedPreview": "= {amount} CZ$"
+  }
 }

@@ -138,6 +138,30 @@ jobs:
       - name: Run anti-drift guard
         run: node scripts/lint-ui-slop.mjs
 
+  t2-container-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #3454 forward-guard: en side der bruger den kanoniske <DataTable>
+    # (T2 "wide data"-recipe, docs/design/PAGE_TEMPLATES.md) hører ikke hjemme
+    # i en T1-container (max-w-4xl) — samme fejlklasse ramte production tre
+    # gange (#1675, #1186, #2446, #3454). Lille, lukket allowlist (ikke en
+    # ratchet) — hver undtagelse kræver en eksplicit begrundelse i scriptet.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test T2-container guard
+        run: node --test scripts/lint-t2-container-guard.test.mjs
+
+      - name: Run T2-container guard
+        run: node scripts/lint-t2-container-guard.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:

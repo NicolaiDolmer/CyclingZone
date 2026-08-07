@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { supabase } from "../lib/supabase";
 import { useRealtimeRefetch } from "./useRealtimeRefetch";
 
@@ -32,6 +32,13 @@ export function useActionSummary() {
   const [pending, setPending] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // #3521: Layout (nav-badge) mounter dette hook SAMTIDIG med sider der også
+  // konsumerer det direkte (DashboardPage, NotificationsPage) — et delt,
+  // hardkodet kanalnavn kolliderede da to instanser abonnerede på samme
+  // Supabase realtime-topic ("cannot add postgres_changes callbacks ...
+  // after subscribe()", Layout crashede via ErrorBoundary). useId() giver
+  // hver hook-instans sit eget topic, så flere samtidige mounts er sikre.
+  const instanceId = useId();
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -47,7 +54,7 @@ export function useActionSummary() {
   }, []);
 
   useEffect(() => { refetch(); }, [refetch]);
-  useRealtimeRefetch("action-summary-live", PENDING_TABLES, refetch);
+  useRealtimeRefetch(`action-summary-live-${instanceId}`, PENDING_TABLES, refetch);
 
   return { pending, loading, loaded, refetch };
 }

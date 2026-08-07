@@ -37,6 +37,7 @@
     "auction_not_active": "This auction is no longer active",
     "auction_expired": "The auction has ended",
     "cannot_bid_own_rider": "You can't bid on your own rider",
+    "invalid_bid_amount": "Bid amount must be a positive whole number",
     "bid_below_minimum": "Bid must be at least {min} CZ$",
     "insufficient_balance_after_bids": "You have {available} CZ$ left after your existing bids",
     "bid_save_failed": "Your bid couldn't be saved. Try again.",

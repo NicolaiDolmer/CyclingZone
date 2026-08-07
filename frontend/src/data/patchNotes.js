@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.106",
+    "date": "2026-08-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider potential",
+        "en": {
+          "title": "Potential stars no longer color-code by age",
+          "body": "Potential stars used to turn silver/grey for riders 30 or older. The intent was to flag age, but players read the silver tone as \"fully developed\" (no potential left), which was wrong: those riders could still have room to grow. Stars are now always shown in one consistent gold tone. Five stars is five stars, wherever you see them. Age is unaffected and still shown as a number everywhere it already was (rider tables, profile header, auction cards)."
+        },
+        "da": {
+          "title": "Potentiale-stjerner farvekoder ikke længere efter alder",
+          "body": "Potentiale-stjerner skiftede tidligere til sølv/grå for ryttere på 30 år eller derover. Hensigten var at markere alder, men spillerne læste den sølvfarvede tone som \"færdigudviklet\" (intet potentiale tilbage), hvilket var forkert: de ryttere kunne stadig have plads til at vokse. Stjernerne vises nu altid i én konsistent guldtone. Fem stjerner er fem stjerner, uanset hvor du ser dem. Alderen er upåvirket og vises stadig som et tal alle de steder den allerede gjorde (rytter-tabeller, profil-header, auktionskort)."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.105",
     "date": "2026-08-07",
     "label": "Beta",

@@ -11,16 +11,25 @@
 // indtil næste sæson, hvor ny titel ('sæson N+1') igen vil kunne fyre.
 //
 // Skip-betingelser:
-//   - Window er 'locked' (sæson 1 baseline) → ingen 1yr-board endnu
-//   - Window er sæson-2-onboarding (pending_*) → 1yr-plan er evt. ikke signed endnu
 //   - completed < midpoint
 //   - is_ai/is_bank/is_frozen team
 //   - 1yr-board mangler eller er pending (ikke completed)
 //
+// #3502 · Der er BEVIDST ingen global transfer_windows.board_negotiation_state-
+// gate her længere (var her tidligere: skip medmindre window==='complete').
+// Feltet skrives kun ét sted i hele koden (boardSequentialNegotiation.js, kun
+// til 'pending_5yr', kun ved sæson-1-slut) og falder aldrig videre til
+// 'complete' — hver efterfølgende sæsonskifte opretter desuden et NYT window
+// uden feltet (seasonTransition.js insertTransferWindowIfMissing), som falder
+// tilbage til DB-default 'locked'. Med den gate havde mid-season-cronen ALDRIG
+// kørt i prod. Skip-betingelsen "1yr-board mangler eller er pending" ovenfor
+// er i sig selv et præcist, per-hold signal hentet direkte fra board_profiles
+// — den globale gate var redundant OG den faktiske årsag til at cronen var død.
+//
 // Skalerings-præmis (CLAUDE.md): ingen kode-loops over fast manager-antal —
 // kun human teams loades, division-standings batch-loades én gang.
 
-import { BOARD_NEGOTIATION_STATES, BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
+import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { parseBoardGoals, evaluateGoalProgress } from "./boardGoals.js";
 
 export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
@@ -44,21 +53,6 @@ export async function processMidSeasonReviewCron({
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
 
   const summary = { teams_checked: 0, banners_sent: 0, errors: 0 };
-
-  // 1. Skip hvis vi er i baseline-fasen eller mid-onboarding (sæson 2)
-  const { data: latestWindow, error: windowError } = await supabase
-    .from("transfer_windows")
-    .select("id, board_negotiation_state")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (windowError) throw windowError;
-
-  const windowState = latestWindow?.board_negotiation_state ?? "locked";
-  if (windowState !== BOARD_NEGOTIATION_STATES.COMPLETE) {
-    // Onboarding-fasen kan have pending boards → vent indtil COMPLETE.
-    return summary;
-  }
 
   const { data: activeSeason, error: seasonError } = await supabase
     .from("seasons")

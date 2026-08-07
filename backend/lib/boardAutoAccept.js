@@ -19,11 +19,22 @@
 // Daglig cron-job — idempotent via notification-dedup (24h vindue) + status-check
 // (skipper teams der allerede har en signed plan for nuværende plan_type).
 //
+// #3502 · Der er BEVIDST ingen global transfer_windows.board_negotiation_state-
+// gate her længere (var her tidligere: skip hele cronen medmindre window var
+// 'pending_5yr'/'pending_3yr'/'pending_1yr'). Feltet skrives kun ét sted i hele
+// koden (boardSequentialNegotiation.js — kun til 'pending_5yr', kun ved
+// sæson-1-slut) og falder aldrig videre. Hver efterfølgende sæsonskifte
+// opretter desuden et NYT window uden feltet (seasonTransition.js
+// insertTransferWindowIfMissing), som falder tilbage til DB-default 'locked'.
+// Med den gate var cronen reelt død fra 26/7 (ingen T-3/T-1-reminders, ingen
+// auto-accept). Erstattet af et per-hold signal i processTeamAutoAccept
+// (hasStartedNegotiation) hentet direkte fra board_profiles/teams-domænet,
+// som ikke kan drifte samme vej.
+//
 // Skalerings-præmis (CLAUDE.md): ingen kode-loops over fast manager-antal —
 // vi loader kun human teams fra DB og itererer dem dynamisk.
 
 import {
-  BOARD_NEGOTIATION_STATES,
   BOARD_IDENTITY_RIDER_SELECT,
   ONBOARDING_PLAN_SEQUENCE,
 } from "./boardConstants.js";
@@ -38,6 +49,25 @@ import { regenerateBoardMembersForTeam } from "./boardMembers.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// #3502 · Backfill-dæmpning ved deploy. Cronen var reelt død fra 26/7 (global
+// window-gate, se filens toppe-kommentar) — prod-verifikation 7/8 viser 161
+// pending real board-rækker for humane hold, hvoraf 149 allerede har et anker
+// >= 5 dage gammelt. UDEN denne dæmpning ville det FØRSTE cron-tick efter
+// merge bulk-auto-acceptere alle 149 på én gang (samme skadesmønster som
+// #2463's "218 auto-accepts dagen efter sæsonstart" — se
+// .claude/learnings/2026-07-16-board-auto-accept-unit-mismatch.md).
+//
+// Løsning uden nogen DB-skrivning (kode-fix-only-mandat, #3502): en floor der
+// klapper enhver reelt ældre anker OP til selve floor-datoen, så hvert
+// backloggede hold får en frisk, fuld T-3/T-1/auto-accept-cyklus fra deploy
+// af i stedet for at blive dømt på det outage-akkumulerede efterslæb. Ren
+// nedre grænse — påvirker ALDRIG et anker der reelt ligger efter floor'en
+// (dvs. enhver forhandling der åbner normalt efter deploy er helt uberørt).
+// Selv-udløbende: når "nu" passerer floor + 5 dage, er clampen et permanent
+// no-op for al fremtidig drift. Sat til ejer-review-vinduet efter denne PR
+// (~1 uge margin fra 7/8) — juster datoen op hvis merge trækker ud.
+export const AUTO_ACCEPT_ROLLOUT_FLOOR = new Date("2026-08-15T00:00:00Z");
 
 // Tærskler — kalenderdage siden planen blev åbnet til forhandling (#2463).
 // Navnesemantikken (T_MINUS_3/T_MINUS_1/AUTO_ACCEPT) er bevaret fra
@@ -122,6 +152,10 @@ export async function processBoardAutoAcceptCron({
   notifyUser,
   now = new Date(),
   captureExceptionFn,
+  // #3502 · Injicerbar for tests (se AUTO_ACCEPT_ROLLOUT_FLOOR ovenfor). Den
+  // rigtige cron (backend/cron.js) sender ALDRIG denne — den bruger altid
+  // default-floor'en.
+  rolloutFloor = AUTO_ACCEPT_ROLLOUT_FLOOR,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
@@ -132,21 +166,6 @@ export async function processBoardAutoAcceptCron({
     auto_accepted: 0,
     errors: 0,
   };
-
-  // Skip hvis vi er uden for sæson-2-onboarding-fasen (window er locked = baseline).
-  const { data: latestWindow, error: windowError } = await supabase
-    .from("transfer_windows")
-    .select("id, board_negotiation_state")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (windowError) throw windowError;
-
-  const windowState = latestWindow?.board_negotiation_state ?? "locked";
-  if (windowState === BOARD_NEGOTIATION_STATES.LOCKED
-    || windowState === BOARD_NEGOTIATION_STATES.COMPLETE) {
-    return summary;
-  }
 
   const { data: activeSeason, error: seasonError } = await supabase
     .from("seasons")
@@ -174,6 +193,7 @@ export async function processBoardAutoAcceptCron({
         activeSeason,
         notifyUser,
         now,
+        rolloutFloor,
       });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
@@ -198,6 +218,7 @@ async function processTeamAutoAccept({
   activeSeason,
   notifyUser,
   now,
+  rolloutFloor = AUTO_ACCEPT_ROLLOUT_FLOOR,
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
 
@@ -218,6 +239,21 @@ async function processTeamAutoAccept({
   if (boardsError) throw boardsError;
 
   const realBoards = (boards || []).filter((b) => !b.is_baseline && b.plan_type !== "baseline");
+
+  // #3502 · Erstatter den tidligere globale transfer_windows.board_negotiation_state-
+  // gate (skrevet ÉN gang, kun til 'pending_5yr', af boardSequentialNegotiation.js —
+  // faldt aldrig videre, og enhver senere sæsonskifte-insertTransferWindowIfMissing
+  // (seasonTransition.js) skabte et nyt window UDEN feltet, som dermed defaultede
+  // til 'locked'). Det gjorde cronen reelt død fra 26/7. Sandheden om "har DETTE
+  // hold overhovedet startet forhandling" ligger i board_profiles-domænet, ikke i
+  // et globalt vindues-felt: enten er team.season_1_identity_basis sat (skrives
+  // synkront som trin 1 i startSequentialNegotiation for S1-kohorten, og af
+  // ensureSeasonIdentityBasis ved holddannelse for S2+-nykommere, teamProfileEngine.js)
+  // eller også findes der allerede en rigtig (ikke-baseline) board-række. Et hold der
+  // stadig sidder i sæson-1-baseline-observation har hverken.
+  const hasStartedNegotiation = Boolean(team.season_1_identity_basis) || realBoards.length > 0;
+  if (!hasStartedNegotiation) return result;
+
   const pendingPlanType = findPendingPlanType(realBoards);
   if (!pendingPlanType) return result;
 
@@ -227,7 +263,11 @@ async function processTeamAutoAccept({
   const openedAt = resolveNegotiationOpenedAt({ team, pendingBoard, realBoards });
   if (!openedAt) return result; // Alt ugyldigt/manglende → skip holdet, ingen exception.
 
-  const daysSinceOpen = (now.getTime() - openedAt.getTime()) / DAY_MS;
+  // #3502 · Backfill-dæmpning — se AUTO_ACCEPT_ROLLOUT_FLOOR ovenfor. Klapper
+  // kun ankre der ligger FØR floor'en op til den; ankre efter floor'en (al
+  // normal fremtidig drift) er uberørte.
+  const effectiveOpenedAt = openedAt < rolloutFloor ? rolloutFloor : openedAt;
+  const daysSinceOpen = (now.getTime() - effectiveOpenedAt.getTime()) / DAY_MS;
 
   if (daysSinceOpen >= AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT) {
     const accepted = await autoAcceptPendingPlan({
