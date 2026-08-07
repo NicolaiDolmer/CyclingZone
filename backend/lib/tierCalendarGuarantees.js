@@ -66,13 +66,19 @@ export const SCARCE_TERRAIN_ARCHETYPES = Object.freeze([
 // cobbles+classic samlet under overskriften "brostens-etaper" — det gengives i
 // dry-run-rapporten som to separate kolonner (samme konvention), men KUN `cobbles`
 // håndhæves som garanti.
+// #3469 (hærdnings-pakken, ejer-beslutning 7/8): "mountain"-familien tilføjet —
+// mountain+high_mountain-profiler, samme håndhævelse (coverage-gate/apply-refusal) som
+// de øvrige familier. Uden den kunne bjerg-forsyningen (summit-finaler, M-Down-loftet)
+// kun MÅLES af raceRouteRealismMetrics.js EFTER hele selection var låst — denne familie
+// giver samme "reservér/beskyt i valget" gulv som cobbles/flat/itt/hilly allerede har.
 export const TERRAIN_FAMILY_BY_PROFILE_TYPE = Object.freeze({
   cobbles: "cobbles",
   flat: "flat_sprint",
   itt: "itt", ttt: "itt",
   hilly: "hilly",
+  mountain: "mountain", high_mountain: "mountain",
 });
-export const TERRAIN_FAMILIES = Object.freeze(["cobbles", "flat_sprint", "itt", "hilly"]);
+export const TERRAIN_FAMILIES = Object.freeze(["cobbles", "flat_sprint", "itt", "hilly", "mountain"]);
 
 // Minimum antal etaper (ikke løb!) pr. terræn-familie pr. PULJE pr. sæson. Pooler i en
 // tier deler identisk kalender (#2276), så "pr. pulje" = tierens samlede udvalg — ingen
@@ -80,11 +86,20 @@ export const TERRAIN_FAMILIES = Object.freeze(["cobbles", "flat_sprint", "itt", 
 // Øvrige tal = floor et godt stykke under nuværende observerede niveau (prod, sæson 2,
 // 4/8) — beskytter mod fremtidig regression uden at tvinge uændrede tiers til at ramme
 // et nyt eksakt tal.
+// mountain-gulvet (#3469, ejer-beslutning 7/8): EMPIRISK KALIBRERET mod katalogets
+// faktiske bjerg-familie-loft (2.000 trækvarianter × 2 base-seeds pr. tier, 2026-08-07 —
+// samme harness/metode som raceRouteRealismMetrics.js's TIER_TARGETS-docstring,
+// `node scripts/raceRouteRealismDrawHarness.js --catalog --tier N`):
+//   T1 loft middel 46,1 (min 31 over 2.000 træk) → mål 28, rigelig margin.
+//   T2 loft middel 21,1 (min 15 — TYND margin) → mål 20, samme interim-forsyningsmangel
+//     som D2's summit_min i raceRouteRealismMetrics.js (kataloget mangler bjerg-løb).
+//   T3 loft middel 20,4 (min 18) → mål 12, rigelig margin.
+//   T4 loft middel 20,3 (min 19) → mål 13, rigelig margin.
 export const TIER_TERRAIN_FAMILY_MIN = Object.freeze({
-  1: Object.freeze({ cobbles: 3, flat_sprint: 20, itt: 5, hilly: 10 }),
-  2: Object.freeze({ cobbles: 6, flat_sprint: 15, itt: 4, hilly: 8 }),
-  3: Object.freeze({ cobbles: 5, flat_sprint: 12, itt: 3, hilly: 8 }),
-  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6 }),
+  1: Object.freeze({ cobbles: 3, flat_sprint: 20, itt: 5, hilly: 10, mountain: 28 }),
+  2: Object.freeze({ cobbles: 6, flat_sprint: 15, itt: 4, hilly: 8, mountain: 20 }),
+  3: Object.freeze({ cobbles: 5, flat_sprint: 12, itt: 3, hilly: 8, mountain: 12 }),
+  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6, mountain: 13 }),
 });
 
 // Minimum antal etapeløb UDEN bjerg-etape (mountain/high_mountain) pr. pulje pr. sæson
@@ -149,7 +164,12 @@ export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 
 // cobbled_tour-garantien alene.
 export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   1: Object.freeze({ cobbled_tour: 1, itt_classic: 1, cobbled_classic: 2 }),
-  2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
+  // summit_tour 1→2 (#3469, 7/8 catalog-upgrade følge-commit): de 2 nye OWTC summit_tour-
+  // løb (Vuelta a los Pirineos + Tour des Grandes Alpes, seedet 7/8) gør D2's
+  // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge
+  // rent faktisk vælges hver sæson, ikke kun det ene prestige-walket alligevel ville have
+  // taget. Reservationen garanterer det, samme princip som resten af tabellen.
+  2: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
   3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
   4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
 });

@@ -86,12 +86,54 @@ export const ACTIVE_TARGET = TTT_ENGINE_SUPPORTED ? KB_TARGET_FULL : KB_TARGET_I
 // en TTT-etape der slipper igennem mens motoren ikke kan score den, er en fejl vi vil se.
 export const COMPOSITION_TOLERANCE_PP = 2;
 
-// Pr.-tier-tolerance. Tier 4 har kun 56 løbsdage, så ÉN etape flytter 1,8 pp — en
-// ±2 pp-tolerance dér er reelt "±1 etape" og umulig at ramme stabilt. Tolerancen
-// skaleres derfor med stikprøvestørrelsen: en tier må afvige ±2 pp ELLER ±2 løbsdage,
-// hvad der er størst. Samme erkendelse som #3347's docstring gør for realisme-båndene
-// (små tiers har ægte spredning, det er ikke et kalibreringsproblem).
+// Pr.-tier-tolerance (generisk sikkerhedsnet). Tier 4 har kun 56 løbsdage, så ÉN etape
+// flytter 1,8 pp — en ±2 pp-tolerance dér er reelt "±1 etape" og umulig at ramme stabilt.
+// Tolerancen skaleres derfor med stikprøvestørrelsen: en tier må afvige ±2 pp ELLER
+// ±2 løbsdage, hvad der er størst. Samme erkendelse som #3347's docstring gør for
+// realisme-båndene (små tiers har ægte spredning, det er ikke et kalibreringsproblem).
+// Bruges nu som GULV under TIER_COMPOSITION_TOLERANCE_PP (se nedenfor), ikke som
+// eneste kilde — se den tabels docstring for hvorfor.
 export const TIER_MIN_TOLERANCE_RACE_DAYS = 2;
+
+// ── Pr.-tier-tolerance som DATA (#3469, ejer-beslutning 8/8) ──────────────────────
+//
+// PROBLEMET (#3469 leverance 4, opdaget da pr.-tier-gaten blev tilføjet i gatePlan()):
+// season-aggregatet rammer K-B fint (±2 pp), men de 4 tiers afviger hver for sig langt
+// mere — ARCHETYPE_PROFILES's filler-vægte (#3295) er kalibreret mod SÆSON-AGGREGATET,
+// ikke pr. tier, og hver tier trækker fra en anden delmængde af kataloget (klasse-
+// whitelist, jf. tierRaceSelection.js), så tier-specifik skævhed er et reelt, MÅLT
+// katalog-loft — ikke en fejl i selve trækket. En pr.-tier-gate med FAST ±2 pp ville
+// derfor være rød FRA FØDSLEN på enhver realistisk plan, hvilket lærer alle at bruge
+// --allow-tier-composition-drift som standard-reflex — og så vogter gaten reelt intet
+// (jf. #3295's egen frys-det-gode-doktrin: en gate der altid kræver et flag er en gate
+// ingen længere læser).
+//
+// LØSNINGEN: tolerancen er PR.-TIER DATA, sat til den STØRSTE afvigelse MÅLT på den
+// nuværende S3-plan (node scripts/buildSeasonCalendar.js --season 3 --first-day
+// 2026-08-24, 2026-08-08) + 1 pp buffer, minimum 3 pp — så dagens plan består UDEN
+// flag, mens en NY regression (fx et fremtidigt katalog-skred der presser en tier
+// endnu længere væk fra K-B) stadig fanges.
+//
+//   tier 1 (140 løbsdage): værste afvigelse kuperet +5,14 pp → tolerance 7 pp
+//   tier 2 (111 løbsdage): værste afvigelse brosten +3,01 pp → tolerance 5 pp
+//   tier 3 ( 82 løbsdage): værste afvigelse bjerg   -6,05 pp → tolerance 8 pp
+//   tier 4 ( 56 løbsdage): værste afvigelse kuperet -8,79 pp → tolerance 10 pp
+//
+// Mønstret (mindre tier → større tolerance) matcher TIER_MIN_TOLERANCE_RACE_DAYS'
+// stikprøve-logik ovenfor, men er nu et MÅLT tal pr. tier i stedet for en generisk
+// formel — formlen undervurderede systematisk (den antog kun "færre løbsdage", ikke
+// at hver tier OGSÅ trækker fra et andet klasse-vindue af kataloget).
+//
+// DETTE ER EN KENDT KALIBRERINGSOPGAVE, IKKE EN PERMANENT AFSLAPNING: at stramme mod
+// sæson-niveauets ±2 pp pr. tier kræver at ARCHETYPE_PROFILES's filler-vægte
+// kalibreres PR. TIER (i dag: én global vægt-tabel for alle tiers), en opgave #3295's
+// egen kalibrerings-dokumentation allerede pegede på ("tier-spredningen er katalogets
+// loft", se raceStageProfileGenerator.js's #3295-kalibrerings-kommentar og
+// scripts/calibrateCalendarComposition.js). Indtil den kalibrering laves, er
+// --allow-tier-composition-drift bevaret til nødstilfælde (fx en midlertidig
+// katalog-mangel der presser én tier hårdere end tabellen tillader) — men default-
+// stien kræver den IKKE længere for en normal plan.
+export const TIER_COMPOSITION_TOLERANCE_PP = Object.freeze({ 1: 7, 2: 5, 3: 8, 4: 10 });
 
 /**
  * Tæl løbsdage pr. kompositions-kategori for ét sæt genererede løb.

@@ -13,10 +13,28 @@
 //   node scripts/raceRouteRealismDrawHarness.js --variants 500   # hurtigere kørsel
 //   node scripts/raceRouteRealismDrawHarness.js --catalog        # KAN kataloget levere båndene? (#3347 retning 1)
 //   node scripts/raceRouteRealismDrawHarness.js --refresh        # gen-snapshot fixturen fra DB (read-only SELECT)
+//   node scripts/raceRouteRealismDrawHarness.js --refresh-plan --season 3 --first-day 2026-08-24
+//                                                                # gen-snapshot fra en DRY-RUN-plan (se nedenfor)
 //   node scripts/raceRouteRealismDrawHarness.js --season 2       # rapportér den ÆGTE sæsons træk
 //
 // "FØR" = attempt 0 for alle tiers (adfærden før #3347).
 // "EFTER" = resolveSeasonDraw (op til MAX_REALISM_DRAW_ATTEMPTS deterministiske gen-træk).
+//
+// ── --refresh vs --refresh-plan (#3469, 8/8) ─────────────────────────────────────
+// --refresh læser `races` for en ALLEREDE MATERIALISERET sæson — et rent snapshot af
+// hvad der historisk blev skrevet. Det er PRÆCIS hvad fixturen skal dokumentere en
+// eksisterende sæsons kanoniske træk, men det betyder også at et snapshot af en
+// GAMMEL sæson (fx sæson 2) fryser DEN sæsons daværende SELECTION — inkl. eventuelle
+// katalog-huller der siden er lukket (fx #3469's arketype-reservationer, som ikke
+// eksisterede da sæson 2 blev bygget). Regenerering med --refresh mod samme gamle
+// sæson ændrer intet, fordi `races`-rækkerne er historiske og immutable.
+// --refresh-plan kører i stedet en ÆGTE dry-run af materializeTierCalendars (samme
+// kode som scripts/buildSeasonCalendar.js's CLI) mod en sæson der IKKE behøver være
+// materialiseret endnu — seedRaces afspejler dermed den LEVENDE selection-algoritme
+// (klasse-whitelist, prestige-walk, arketype-reservationer), uden at kræve at nogen
+// først skriver kalenderen til DB. Brug denne når fixturen skal opdateres til at
+// afspejle katalog-ændringer eller selection-logik der er landet SIDEN den sæson
+// fixturen hidtil pegede på blev materialiseret.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -33,6 +51,7 @@ const FIXTURE = join(__dirname, "..", "lib", "__fixtures__", "seasonTierCalendar
 
 const argIdx = (flag) => process.argv.indexOf(flag);
 const argNum = (flag, fallback) => (argIdx(flag) >= 0 ? Number(process.argv[argIdx(flag) + 1]) : fallback);
+const argStr = (flag, fallback = null) => (argIdx(flag) >= 0 ? process.argv[argIdx(flag) + 1] : fallback);
 
 export function loadSnapshot(path = FIXTURE) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -89,7 +108,9 @@ function summarize(label, n, t, seasonFails) {
 // ── CLI ──────────────────────────────────────────────────────────────────────
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
-  if (process.argv.includes("--refresh")) {
+  if (process.argv.includes("--refresh-plan")) {
+    await refreshFixtureFromPlan();
+  } else if (process.argv.includes("--refresh")) {
     await refreshFixture();
   } else if (process.argv.includes("--catalog")) {
     reportCatalogCapacity(argNum("--variants", 3000), argNum("--tier", 3));
@@ -250,4 +271,65 @@ async function snapshotFromDb(seasonNumber) {
     tiers: [...byTier.keys()].sort((a, b) => a - b).map((tier) => ({ tier, races: byTier.get(tier) })),
   };
   return { snapshot };
+}
+
+// #3469 (8/8): --refresh-plan — samme UUID-skema som scripts/buildSeasonCalendar.js's
+// seasonUuid, duplikeret her (i stedet for importeret) fordi buildSeasonCalendar.js er
+// et CLI-script med sin egen isMain-blok, ikke et genbrugeligt modul for denne værdi.
+function seasonUuid(n) {
+  return `00000000-0000-0000-0000-${Number(n).toString(16).padStart(12, "0")}`;
+}
+
+/**
+ * --refresh-plan: byg snapshottet fra en DRY-RUN af materializeTierCalendars (samme
+ * kode som skrive-stien) i stedet for at læse allerede-materialiserede `races`-rækker.
+ * Kun SELECT — dryRun:true skriver intet i DB. Kræver ikke at sæsonen er materialiseret;
+ * seedRaces afspejler den LEVENDE selection-algoritme (klasse-whitelist, prestige-walk,
+ * arketype-reservationer) mod det NUVÆRENDE race_pool-katalog.
+ */
+async function snapshotFromDryRunPlan(seasonNumber, { firstDay } = {}) {
+  const [{ createClient }, dotenv, { materializeTierCalendars }, { resolveCalendarFrom }] = await Promise.all([
+    import("@supabase/supabase-js"), import("dotenv"),
+    import("../lib/tierCalendarMaterializer.js"), import("../lib/calendarStartDate.js"),
+  ]);
+  dotenv.default.config({ path: join(__dirname, "..", ".env"), quiet: true });
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_KEY mangler i backend/.env");
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+  const seasonId = seasonUuid(seasonNumber);
+  const from = resolveCalendarFrom({ firstRaceDate: firstDay || undefined });
+  const plan = await materializeTierCalendars({
+    supabase, seasonId, seasonStartDate: firstDay || null, from, dryRun: true, log: () => {},
+  });
+
+  const tiers = plan.tiers
+    .filter((t) => Array.isArray(t.seedRaces) && t.seedRaces.length)
+    .map((t) => ({
+      tier: t.tier,
+      races: t.seedRaces.map((r) => ({
+        name: r.name, external_id: r.external_id, race_type: r.race_type,
+        stages: r.stages, terrain_archetype: r.terrain_archetype,
+      })),
+    }))
+    .sort((a, b) => a.tier - b.tier);
+
+  const snapshot = {
+    source: `sæson ${seasonNumber} (DRY-RUN-plan via materializeTierCalendars — nuværende selection inkl. #3469-arketype-reservationer, IKKE materialiseret til DB), én repræsentativ pulje pr. tier — snapshot via raceRouteRealismDrawHarness.js --refresh-plan`,
+    seasonNumber, seasonId,
+    tiers,
+  };
+  return { snapshot };
+}
+
+/** --refresh-plan: gen-snapshot fixturen fra en dry-run-plan. Kun SELECT — skriver intet i DB. */
+async function refreshFixtureFromPlan() {
+  const seasonNumber = argNum("--season", 3);
+  const firstDay = argStr("--first-day");
+  if (!firstDay) throw new Error("--refresh-plan kræver --first-day YYYY-MM-DD (samme guard som buildSeasonCalendar.js --apply — gæt aldrig sæsonens startdato)");
+  const { snapshot } = await snapshotFromDryRunPlan(seasonNumber, { firstDay });
+  if (!snapshot.tiers.length) throw new Error(`dry-run-planen for sæson ${seasonNumber} gav 0 tiers med seedRaces — intet at skrive`);
+  writeFileSync(FIXTURE, `${JSON.stringify(snapshot, null, 2)}\n`);
+  console.log(`Fixture opdateret (dry-run-plan): ${FIXTURE}`);
+  for (const t of snapshot.tiers) console.log(`  tier ${t.tier}: ${t.races.length} løb`);
 }

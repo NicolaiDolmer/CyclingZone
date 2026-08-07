@@ -88,6 +88,19 @@ async function getMaterializeTierCalendars() {
   return materializeTierCalendarsImpl;
 }
 
+// #3469 (leverance 5): samme gate scripts/buildSeasonCalendar.js's CLI kører (kalender-
+// invarianter, etaperækkefølge, realisme-bånd inkl. #3469's finale-gulve, sæson- OG
+// pr.-tier-komposition) — ekstraheret til lib/seasonCalendarGate.js netop så
+// forever-stien her kan dele den, i stedet for at springe den over (se docstringen ved
+// kaldestedet nedenfor).
+let gatePlanImpl;
+async function getGatePlan() {
+  if (!gatePlanImpl) {
+    gatePlanImpl = (await import("./seasonCalendarGate.js")).gatePlan;
+  }
+  return gatePlanImpl;
+}
+
 // #2910 + #2911 · Lazy import (samme mønster som ovenstående) — sæsonstart-hooksene
 // er flag-gatede og fail-safe OFF, så modulet loades kun når transitionen kører.
 let runSeasonStartHooksImpl;
@@ -1164,34 +1177,84 @@ export async function transitionToNextSeason({
   // logges kun når aktiv). Kører EFTER season-start (puljerne/standings er sat) og FØR
   // admin_log, så hver ny sæson åbner med friske per-division-kalendre uden manuel
   // race-selection. Materializeren er idempotent + skriver kun til LIVE puljer.
+  //
+  // #3469 (leverance 5, ejer-fund: denne sti sprang gatePlan HELT over): FØR planlagde
+  // denne fase direkte med writes (dryRun:false) — kalender-invarianter, etaperækkefølge
+  // (#3326), realisme-bånd (#2755/#2769/#3347/#3469) og komposition (#3295/#3469) blev
+  // ALDRIG tjekket, kun scripts/buildSeasonCalendar.js's manuelle CLI-sti kørte gaten.
+  // Fasen kører nu FØRST en dry-run-plan, gate'r den (SAMME gatePlan som CLI'en, ingen
+  // ny mekanisme), og nægter kun at APPLY'e ved BLOKERENDE brud — allowTierCompositionDrift
+  // står bevidst på default (false): en automatisk transition må ALDRIG selv acceptere en
+  // afvigelse en menneske-kørt CLI-session skulle tage aktivt stilling til.
+  //
+  // FAIL-SAFE (læst af #2642/postmortem-mønsteret i denne fils øvrige faser): en nægtet
+  // kalender er BEDRE end en dårlig — fasen logger nægtelsen (med de konkrete brud) og
+  // fanges af Sentry, men VÆLTER ALDRIG resten af transitionen (samme disciplin som
+  // retirement_release/squad_below_minimum_check ovenfor). Spillerne får ingen ny
+  // kalender den transition, men resten af sæsonskiftet (sponsor/payroll/puljer/
+  // notifikationer) gennemføres uændret, og fasen er idempotent — en efterfølgende
+  // manuel `buildSeasonCalendar.js`-kørsel (eller en rettet katalog-tilstand + en
+  // re-kørt transition) kan lukke hullet uden at noget andet skal rulles tilbage.
   const isAutoCalendarEnabledFn = deps.isAutoCalendarEnabled ?? isAutoCalendarEnabled;
   if (await isAutoCalendarEnabledFn(supabase)) {
     const materializeFn = deps.materializeTierCalendars ?? (await getMaterializeTierCalendars());
-    log.push({
-      phase: "season_calendar",
-      ...(await materializeFn({
+    const gatePlanFn = deps.gatePlan ?? (await getGatePlan());
+    let calendarApplied = false;
+    try {
+      const dryPlan = await materializeFn({
         supabase,
         seasonId: plan.to_season.id,
         seasonStartDate: transitionAtIso,
         from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
-        dryRun: false,
-      })),
-    });
+        dryRun: true,
+      });
+      const { blocking, compositionDrift, tierCompositionDrift } = gatePlanFn(dryPlan);
+
+      if (blocking.length) {
+        log.push({
+          phase: "season_calendar", skipped: true, reason: "gate_blocked",
+          blocking, compositionDrift, tierCompositionDrift,
+        });
+        captureException(new Error(`auto-calendar (phase 17) refused by gatePlan: ${blocking.join(" · ")}`), {
+          tags: { phase: "season_calendar" },
+          extra: { toSeasonId: plan.to_season.id, blocking, compositionDrift, tierCompositionDrift },
+        });
+      } else {
+        const applied = await materializeFn({
+          supabase,
+          seasonId: plan.to_season.id,
+          seasonStartDate: transitionAtIso,
+          from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
+          dryRun: false,
+        });
+        log.push({ phase: "season_calendar", ...applied, compositionDrift, tierCompositionDrift });
+        calendarApplied = true;
+      }
+    } catch (err) {
+      log.push({ phase: "season_calendar", error: err.message });
+      captureException(err, {
+        tags: { phase: "season_calendar" },
+        extra: { toSeasonId: plan.to_season.id },
+      });
+    }
 
     // Fase 0b: proaktiv entry-generator — fyld de friske kalender-løb med assistent-
     // udtagne hold (binding-bevidst, idempotent). Additivt + bag eget flag (fail-safe
     // OFF); en fejl må ALDRIG vælte sæson-transitionen (samme disciplin som de øvrige
-    // additive trin). Kører efter materialiseringen, så løbene findes.
-    const isAutoEntryGeneratorEnabledFn = deps.isAutoEntryGeneratorEnabled ?? isAutoEntryGeneratorEnabled;
-    if (await isAutoEntryGeneratorEnabledFn(supabase)) {
-      try {
-        const runGeneratorFn = deps.runRaceEntryGenerator ?? (await getRunRaceEntryGenerator());
-        log.push({
-          phase: "season_entry_generator",
-          ...(await runGeneratorFn({ supabase, seasonId: plan.to_season.id, dryRun: false })),
-        });
-      } catch (err) {
-        log.push({ phase: "season_entry_generator", error: err.message });
+    // additive trin). Kører efter materialiseringen, så løbene findes — og KUN hvis
+    // kalenderen faktisk blev anvendt (gaten kan have nægtet den ovenfor).
+    if (calendarApplied) {
+      const isAutoEntryGeneratorEnabledFn = deps.isAutoEntryGeneratorEnabled ?? isAutoEntryGeneratorEnabled;
+      if (await isAutoEntryGeneratorEnabledFn(supabase)) {
+        try {
+          const runGeneratorFn = deps.runRaceEntryGenerator ?? (await getRunRaceEntryGenerator());
+          log.push({
+            phase: "season_entry_generator",
+            ...(await runGeneratorFn({ supabase, seasonId: plan.to_season.id, dryRun: false })),
+          });
+        } catch (err) {
+          log.push({ phase: "season_entry_generator", error: err.message });
+        }
       }
     }
   }

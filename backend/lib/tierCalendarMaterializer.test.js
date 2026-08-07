@@ -349,13 +349,18 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
 // parcours mens databasen får et andet — gaten ville være en løgn.
 test("#3347 apply: de indsatte profiler er tierens RESOLVEREDE re-draw, ikke altid attempt 0", async () => {
   // Katalog hvor tier 3's bånd (summit ≥ 8 · M-Down ≤ 55 % · 1 fritstående ITT ·
-  // 1 brosten-i-etapeløb) er OPNÅELIGE — ellers ville hvert træk fejle og attempt
-  // altid lande på 0 (udtømt), og testen ville ikke måle det den påstår.
+  // 1 brosten-i-etapeløb · #3469: bunch-sprint ≥ 10 · nedkørsels-finale ≥ 4 ·
+  // enkeltstart-slutfinale ≥ 1) er OPNÅELIGE — ellers ville hvert træk fejle og attempt
+  // altid lande på 0 (udtømt), og testen ville ikke måle det den påstår. flat_sprint-
+  // løbene (#3469-tilføjelse) leverer bunch-sprint-forsyning; uden dem har kataloget
+  // næsten ingen "flat"-etaper (kun de garanterede flad-åbningsetaper i summit_tour/
+  // cobbled_tour), og bunch_sprint_min ville aldrig kunne opfyldes.
   const catalog = [
     ...[6, 5, 5, 4].map((stages, i) => ({ id: `st-${i}`, name: `Summit Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages, external_id: `ext-st-${i}`, terrain_archetype: "summit_tour" })),
     ...[5, 4].map((stages, i) => ({ id: `cb-${i}`, name: `Cobbled Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages, external_id: `ext-cb-${i}`, terrain_archetype: "cobbled_tour" })),
     ...Array.from({ length: 3 }, (_, i) => ({ id: `itt-${i}`, name: `Chrono ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-itt-${i}`, terrain_archetype: "itt_classic" })),
     ...Array.from({ length: 30 }, (_, i) => ({ id: `hc-${i}`, name: `Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-hc-${i}`, terrain_archetype: "hilly_classic" })),
+    ...Array.from({ length: 15 }, (_, i) => ({ id: `fs-${i}`, name: `Sprint Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-fs-${i}`, terrain_archetype: "flat_sprint" })),
   ];
   const metaById = new Map(catalog.map((c) => [c.id, c]));
   const league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
