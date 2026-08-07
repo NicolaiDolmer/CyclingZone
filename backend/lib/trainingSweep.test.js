@@ -242,3 +242,91 @@ describe("runTrainingSweep query-fejl", () => {
     );
   });
 });
+
+// ── #3459 D4: race_day_engine_enabled inkluderer AI-hold i sweepet ────────────
+// En mere realistisk teams-mock der RENT FAKTISK filtrerer på akkumulerede
+// .eq()-kald (modsat makeFullMockSupabase, der ignorerer filtre og altid
+// returnerer det injicerede array) — nødvendig for at bevise at is_ai-filteret
+// reelt fjernes/bevares afhængigt af flagget, ikke bare at sweepet "virker".
+function makeD4MockSupabase({ raceDayEngineValue = false, teams, season = { id: "s1", number: 1 }, runs = [] }) {
+  function teamsBuilder(filters = []) {
+    return {
+      select() { return teamsBuilder(filters); },
+      eq(col, val) { return teamsBuilder([...filters, [col, val]]); },
+      then(resolve, reject) {
+        const filtered = teams.filter((t) => filters.every(([c, v]) => t[c] === v));
+        return Promise.resolve({ data: filtered, error: null }).then(resolve, reject);
+      },
+    };
+  }
+  const passthrough = (data) => ({
+    select() { return this; },
+    eq() { return this; },
+    maybeSingle: async () => ({ data, error: null }),
+    then(resolve, reject) { return Promise.resolve({ data, error: null }).then(resolve, reject); },
+  });
+  return {
+    from(table) {
+      if (table === "app_config") {
+        return {
+          select() {
+            return {
+              eq(_col, key) {
+                const value = key === "race_day_engine_enabled" ? raceDayEngineValue : true; // daily_training_enabled=on
+                return { maybeSingle: async () => ({ data: { value }, error: null }) };
+              },
+            };
+          },
+        };
+      }
+      if (table === "teams") return teamsBuilder();
+      if (table === "seasons") return passthrough(season);
+      if (table === "training_day_runs") return passthrough(runs);
+      return passthrough([]);
+    },
+  };
+}
+
+describe("#3459 D4: is_ai-filteret følger race_day_engine_enabled", () => {
+  const afterWindow = new Date("2026-06-20T20:30:00Z"); // 22:30 CEST
+
+  it("flag off (default): kun is_ai=false hold sweepes (bit-identisk med før #3459)", async () => {
+    const teams = [
+      { id: "human1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "ai1", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false },
+    ];
+    const supabase = makeD4MockSupabase({ raceDayEngineValue: false, teams });
+    const called = [];
+    const runDay = async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; };
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
+    assert.deepEqual(called, ["human1"], "AI-holdet udelukkes stadig når flagget er off");
+    assert.equal(result.swept, 1);
+  });
+
+  it("flag on: is_ai=false-filteret fjernes — AI-hold sweepes gennem SAMME motor", async () => {
+    const teams = [
+      { id: "human1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "ai1", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false },
+    ];
+    const supabase = makeD4MockSupabase({ raceDayEngineValue: "on", teams });
+    const called = [];
+    const runDay = async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; };
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
+    assert.deepEqual(called.sort(), ["ai1", "human1"], "både menneske- og AI-hold sweepes når flagget er on");
+    assert.equal(result.swept, 2);
+  });
+
+  it("flag on: is_bank/is_frozen/is_test_account-filtrene bevares uændret (kun is_ai fjernes)", async () => {
+    const teams = [
+      { id: "ai1", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "bank1", is_ai: true, is_bank: true, is_frozen: false, is_test_account: false },
+      { id: "frozen1", is_ai: true, is_bank: false, is_frozen: true, is_test_account: false },
+      { id: "test1", is_ai: true, is_bank: false, is_frozen: false, is_test_account: true },
+    ];
+    const supabase = makeD4MockSupabase({ raceDayEngineValue: "on", teams });
+    const called = [];
+    const runDay = async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; };
+    await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
+    assert.deepEqual(called, ["ai1"], "bank/frozen/test-account-hold udelukkes stadig, kun ai1 kvalificerer");
+  });
+});

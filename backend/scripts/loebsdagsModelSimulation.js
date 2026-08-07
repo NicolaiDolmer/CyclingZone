@@ -186,8 +186,14 @@ const RECOVERY_VARIANTS = {
   // menneske-medianen lige PÅ 60-grænsen ved raceLoad×1.0 (se rapport) — testet
   // her for at se om en KOMBINERET, lidt kraftigere recovery giver mere luft.
   combined_base5_frac015: { label: "KOMBINERET: base 4→5 + frac 0.13→0.15", recoveryBase: 5, recoveryFraction: 0.15 },
+  // #3459 Fase 2 finjustering (D3): human-medianen sad PÅ 60-grænsen ved frac0.15 —
+  // test frac≈0.14 og base≈4.5-varianter for at centrere begge kohorter i 40-60.
+  frac014: { label: "recoveryFraction 0.13→0.14", recoveryBase: 4, recoveryFraction: 0.14 },
+  base4_5: { label: "recoveryBase 4→4.5", recoveryBase: 4.5, recoveryFraction: 0.13 },
+  base4_5_frac014: { label: "base 4→4.5 + frac 0.13→0.14", recoveryBase: 4.5, recoveryFraction: 0.14 },
+  base4_5_frac015: { label: "base 4→4.5 + frac 0.13→0.15", recoveryBase: 4.5, recoveryFraction: 0.15 },
 };
-const RACELOAD_MULTS = [1.0, 1.25, 1.5, 1.75];
+const RACELOAD_MULTS = [1.0];
 
 function buildCandidates() {
   const out = {};
@@ -422,10 +428,10 @@ function main() {
     console.log(`  ${CANDIDATES[key].label.padEnd(45)} meanPeak=${String(r.meanPeak).padStart(6)}  %ryttere≥70 undervejs=${r.pctExceeded70}%`);
   }
 
-  console.log(`\n${"#".repeat(60)}\nG4 — UDVIKLINGSTEMPO: RACENDE VS. BÆNK (devMult=${DEV_MULT}, alle recovery-varianter × raceLoad{1.0,1.25})\n${"#".repeat(60)}`);
+  console.log(`\n${"#".repeat(60)}\nG4 — UDVIKLINGSTEMPO: RACENDE VS. BÆNK (devMult=${DEV_MULT}, alle recovery-varianter × raceLoad{1.0})\n${"#".repeat(60)}`);
   const g4Results = [];
   for (const rKey of Object.keys(RECOVERY_VARIANTS)) {
-    for (const mult of [1.0, 1.25]) {
+    for (const mult of RACELOAD_MULTS) {
       const key = `${rKey}_x${mult}`;
       for (const dm of [DEV_MULT_LO, DEV_MULT, DEV_MULT_HI]) {
         const r = runDevTempoComparison(key, dm);

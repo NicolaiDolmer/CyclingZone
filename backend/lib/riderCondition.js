@@ -23,19 +23,40 @@ export const CONDITION_CONFIG = Object.freeze({
   injuryMaxDays: 5,
 });
 
-export function nextFatigue({ fatigue, intensity, recoveryAbility = 50, raceLoad = 0 }) {
+// #3459 D3: recoveryBase/recoveryFraction er VALGFRIE overrides (bag
+// race_day_engine_enabled) — udeladt/undefined falder tilbage til
+// CONDITION_CONFIG's status-quo-værdier, så alle eksisterende kaldere (uden
+// kendskab til flagget) forbliver BIT-IDENTISKE. Kaldestedet (dailyTrainingEngine.js/
+// raceFatigue.js) afgør — ud fra flagget — om RACE_DAY_ENGINE_RECOVERY_CONFIG sendes.
+export function nextFatigue({ fatigue, intensity, recoveryAbility = 50, raceLoad = 0, recoveryBase, recoveryFraction }) {
   const cfg = CONDITION_CONFIG;
   const f = Number(fatigue);
   if (!Number.isFinite(f)) return 50; // korrupt input → neutral fallback
   const load = DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
+  const base = Number.isFinite(recoveryBase) ? recoveryBase : cfg.recoveryBase;
+  const frac = Number.isFinite(recoveryFraction) ? recoveryFraction : cfg.recoveryFraction;
   // Daglig recovery = fast gulv + evne-bidrag + andel af aktuel træthed (#1676).
   const recovery =
-    cfg.recoveryBase +
+    base +
     cfg.recoveryFromAbility * ((Number(recoveryAbility) || 0) / 99) +
-    cfg.recoveryFraction * Math.max(0, f);
+    frac * Math.max(0, f);
   const next = f + load + Number(raceLoad || 0) - recovery;
   return Math.max(0, Math.min(100, Math.round(next)));
 }
+
+// #3459 D3 — løbsdags-motorens rekalibrerede restitutions-konstanter (kill-switched
+// bag race_day_engine_enabled). Valgt empirisk i Fase 2-finjusteringen
+// (backend/scripts/loebsdagsModelSimulation.js, 7/8 — se PR #3459 fase 2a-body for
+// fuldt scorecard): recoveryFraction 0.13→0.15 ALENE lander human-medianen PRÆCIS på
+// 60-grænsen (marginal, kun 49% reelt i [40-60]); recoveryBase 4→4.5 ALENE centrerer
+// slet ikke (human-median 67, stadig over grænsen). Den KOMBINEREDE pakke
+// (base 4.5 + frac 0.15) centrerer BEGGE kohorter i 40-60 i BEGGE kalender-scenarier
+// (human median 57, AI median 42) uden at give køb på G2 (<15% ≥70) eller G3
+// (etapeløb skal stadig kunne skubbe over 70 — meanPeak 78.7, 68.5% rammer ≥70).
+export const RACE_DAY_ENGINE_RECOVERY_CONFIG = Object.freeze({
+  recoveryBase: 4.5,
+  recoveryFraction: 0.15,
+});
 
 export function nextForm({ form, fatigue }) {
   const cfg = CONDITION_CONFIG;

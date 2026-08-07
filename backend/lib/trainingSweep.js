@@ -8,6 +8,7 @@
 
 import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
+import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
 import { captureException } from "./sentry.js";
@@ -68,14 +69,16 @@ export async function runTrainingSweep({
   // ── Hold + sæson + dagens kørsler ─────────────────────────────────────────────
   const tickDate = copenhagenDateString(now);
 
+  // #3459 D4: race_day_engine_enabled fjerner is_ai=false-filteret — AI-hold kører
+  // gennem SAMME dailyTrainingEngine som menneskehold (samme motor, nul asymmetri).
+  // Flag off (default) = eksakt samme query som før #3459 (bit-identisk).
+  const raceDayEngineOn = await isRaceDayEngineEnabled(supabase);
+  const teamsQuery = raceDayEngineOn
+    ? supabase.from("teams").select("id").eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false)
+    : supabase.from("teams").select("id").eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false);
+
   const [teamsResult, seasonResult, runsResult] = await Promise.all([
-    supabase
-      .from("teams")
-      .select("id")
-      .eq("is_ai", false)
-      .eq("is_bank", false)
-      .eq("is_frozen", false)
-      .eq("is_test_account", false),
+    teamsQuery,
 
     supabase
       .from("seasons")

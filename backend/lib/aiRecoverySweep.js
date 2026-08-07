@@ -27,6 +27,7 @@
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { shouldSweepNow, teamsNeedingSweep } from "./trainingSweep.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
+import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { nextFatigue, nextForm } from "./riderCondition.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
@@ -125,17 +126,31 @@ export async function recoverRidersForTeam({ supabase, teamId, now = new Date() 
  * @param {object} args.supabase — service-role Supabase-client
  * @param {Date}   [args.now]    — referencetid
  * @param {Function} [args.isEnabled] — DI-hook til test; default isDailyTrainingEnabled
+ * @param {Function} [args.isRaceDayEnabled] — DI-hook til test; default isRaceDayEngineEnabled
  * @returns {Promise<{swept: number, failed?: number, ridersRecovered: number, skipped?: string}>}
  */
 export async function runAiRecoverySweep({
   supabase,
   now = new Date(),
   isEnabled = isDailyTrainingEnabled,
+  isRaceDayEnabled = isRaceDayEngineEnabled,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   if (!shouldSweepNow(now)) {
     return { swept: 0, ridersRecovered: 0, skipped: "before_window" };
+  }
+
+  // #3459 D4: løbsdags-motoren (dailyTrainingEngine.js via trainingSweep.js) tager
+  // AI-holdenes daglige restitution over når race_day_engine_enabled er on — samme
+  // motor for AI som mennesker, nul asymmetri (design-intentionen bag D4). Denne
+  // sweep ville ellers dobbelt-tikke AI-rytternes fatigue/form. Filen SLETTES IKKE
+  // i denne PR (#3015-særtilfældet fjernes i en opfølgnings-PR efter 23/8-
+  // verifikation) — no-op'er blot her, logget skip.
+  const raceDayEngineOn = await isRaceDayEnabled(supabase);
+  if (raceDayEngineOn) {
+    console.log("  ⏭️  AI-recovery sweep sprunget over — race_day_engine_enabled=on (dailyTrainingEngine dækker AI-hold nu, #3459 D4)");
+    return { swept: 0, ridersRecovered: 0, skipped: "race_day_engine_on" };
   }
 
   const enabled = await isEnabled(supabase);
