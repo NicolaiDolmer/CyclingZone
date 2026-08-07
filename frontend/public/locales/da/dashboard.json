@@ -1,4 +1,6 @@
 {
+  "loadError": "Kunne ikke indlæse dashboardet. Prøv igen.",
+  "retry": "Prøv igen",
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rytter} other {# ryttere}}",
     "incoming": "+{count} ind",
