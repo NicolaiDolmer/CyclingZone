@@ -38,12 +38,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { raceFatigueLoad } from "../lib/raceFatigue.js";
-import { DAILY_TRAINING_CONFIG, growthFractionForAge } from "../lib/dailyTraining.js";
+import {
+  DAILY_TRAINING_CONFIG, growthFractionForAge, RACE_PROFILE_ABILITY_MAP, RACE_DEV_CONFIG,
+} from "../lib/dailyTraining.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES, TRAINING_FOCUS_KEYS } from "../lib/training.js";
 import { youthMultiplier } from "../lib/academyFlag.js";
 import { youthRateForPotential } from "../lib/riderProgression.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
-import { nextFatigue, CONDITION_CONFIG } from "../lib/riderCondition.js";
+import { nextFatigue, CONDITION_CONFIG, conditionMultiplier } from "../lib/riderCondition.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCRATCH = "C:/Users/Nicolai/AppData/Local/Temp/claude/C--Dev-CyclingZone/9e7f6053-4cce-4595-93fa-ef5fe13ed219/scratchpad";
@@ -85,30 +87,9 @@ const AI_INTENSITY_DIST = [["normal", 0.5], ["easy", 0.5]];
 const AI_FOCUS_DIST = TRAINING_FOCUS_KEYS.map((f) => [f, 1 / TRAINING_FOCUS_KEYS.length]);
 
 // ── D2 — race-profil → udviklings-relevante evner ──────────────────────────
-// Dokumenteret forslag (afledt af raceFatigue.js's 9 profiltyper + eksisterende
-// TRAINING_FOCUSES-grupperinger, så mapningen "føles" som den trænings-fokus
-// løbstypen mest ligner):
-const RACE_PROFILE_ABILITY_MAP = Object.freeze({
-  // Fladt/sprinter-terræn: aero (flat) + sprint-fokus (sprint,acceleration).
-  flat: ["flat", "sprint", "acceleration"],
-  // Bølget terræn uden hårde stigninger: punchy ryk + tempo-holdeevne (vo2max-adjacent).
-  rolling: ["punch", "tempo", "endurance"],
-  // Kuperet: klassisk vo2max-trekant (climbing/punch/tempo).
-  hilly: ["climbing", "punch", "tempo"],
-  // Én-dags-klassiker (teknisk + hårdt, IKKE brosten): teknik + udholdenhed/durability.
-  classic: ["punch", "durability", "positioning"],
-  // Brosten: teknik (cobblestone) + robusthed + fladt-power.
-  cobbles: ["cobblestone", "durability", "flat"],
-  // Bjerg: climbing + udholdenhed/durability (vo2max+endurance-krydsning).
-  mountain: ["climbing", "endurance", "durability"],
-  // Højbjerg: samme som bjerg + recovery (længere/hårdere belastning kræver mere
-  // restitutionsevne for at kunne omsætte belastningen — spejler raceLoad 20 vs 18).
-  high_mountain: ["climbing", "endurance", "recovery", "durability"],
-  // Enkeltstart: threshold+aero-krydsning (time_trial er fælles for begge fokusser).
-  itt: ["time_trial", "tempo"],
-  // Holdenkeltstart: samme TT-evne + taktik/positionering (holdsamarbejde).
-  ttt: ["time_trial", "tactics", "positioning"],
-});
+// #3459 D2 (implementering): RACE_PROFILE_ABILITY_MAP er FLYTTET til
+// backend/lib/dailyTraining.js så sim og produktionsmotor (applyRaceDevelopmentTick)
+// deler ÉN sandhed — ingen lokal duplikat her længere. Importeret ovenfor.
 
 // Kalender-scenarier for profil-MIX (påvirker den GENNEMSNITLIGE raceLoad/løbsdag,
 // jf. opgaven — "profilmixet ændrer den gennemsnitlige raceLoad pr. dag"):
@@ -133,8 +114,10 @@ const DAYS = 28;
 const TARGET_LO = 40, TARGET_HI = 60, PUNISH_THRESHOLD = 70;
 const REP_AGE = 27;          // repræsentativ alder (karrieretop, youthMultiplier=1.0)
 const REP_POTENTIALE = 3;    // repræsentativ potentiale (median af 1-6-skalaen)
-const DEV_MULT = 1.15;       // D2 midtpunkt (ejer-valgt bånd 1.10-1.20)
-const DEV_MULT_LO = 1.10, DEV_MULT_HI = 1.20; // G4-sensitivitet
+// #3459 D2 (implementering): DEV_MULT-konstanterne genbruger nu RACE_DEV_CONFIG
+// (samme kilde som applyRaceDevelopmentTick) i stedet for lokale duplikater.
+const DEV_MULT = RACE_DEV_CONFIG.devMult;             // 1.15 — D2 midtpunkt (ejer-valgt bånd 1.10-1.20)
+const DEV_MULT_LO = RACE_DEV_CONFIG.devMultLo, DEV_MULT_HI = RACE_DEV_CONFIG.devMultHi; // G4-sensitivitet
 
 // ── Deterministisk PRNG (samme mulberry32 som #2650) ────────────────────────
 function mulberry32(seed) {
@@ -162,7 +145,13 @@ function pickWeighted(rng, dist) {
 // staff/facility/academy-leddene (alle = 1.0 for en "gennemsnits-rytter uden
 // klub-opgraderinger" — konservativt, undervurderer ikke forskellen mellem
 // scenarier, som er det denne sim faktisk måler).
-function trainingUnitTotal({ focus, intensity }, noise) {
+// #3459 Fase 2 (D2-implementering, verifikationsskridt 1): conditionMult ER NU
+// MED (var sim'ens bevidst udeladte "kendte hul", jf. spec-risici) — samme led
+// som dailyAbilityDelta ganger ind, beregnet fra rytterens FAKTISKE fatigue-
+// trace (form fastholdt neutral 50 — sim'en har intet form-tidsserie-tracking i
+// population-samplet, kun fatigue; se simulateRider). staff/facility/academy
+// forbliver 1.0 (team-konfiguration uden for population-samplets scope).
+function trainingUnitTotal({ focus, intensity }, noise, conditionMult = 1) {
   if (intensity === "rest") return 0;
   const focusAbilities = TRAINING_FOCUSES[focus] ?? [];
   const base = (growthFractionForAge(REP_AGE) * DAILY_TRAINING_CONFIG.dailyBudgetBoost) / DAILY_TRAINING_CONFIG.daysPerSeason;
@@ -172,7 +161,7 @@ function trainingUnitTotal({ focus, intensity }, noise) {
     const mult = focusAbilities.includes(ability)
       ? (TRAINING_CONFIG.focusGrowthMult[intensity] ?? 1)
       : TRAINING_CONFIG.offFocusMult;
-    total += base * mult * youthMultiplier(REP_AGE) * potRate * noise;
+    total += base * mult * youthMultiplier(REP_AGE) * potRate * noise * conditionMult;
   }
   return total;
 }
@@ -226,6 +215,12 @@ function simulateRider({ startFatigue, recoveryAbility, rng, candidate, profileM
     const noise = 0.85 + 0.3 * rng(); // samme ±15%-spredning som DAILY_TRAINING_CONFIG.noiseSpan
     const racesToday = rng() < raceProb;
     let trainingLoad = 0, raceLoad = 0, devToday = 0;
+    // #3459 Fase 2: conditionMult beregnet af DAGENS start-fatigue (pre-tick,
+    // samme som dailyTrainingEngine.js's preFatigue) + neutral form=50 (sim'en
+    // har ingen form-tidsserie). Ganges ind i BÅDE trænings- og race-dages
+    // udviklingsstimulus — en høj-fatigue rytter (racer eller ej) udvikler
+    // langsommere, PRÆCIS som produktionsformlen.
+    const condMult = conditionMultiplier({ form: 50, fatigue });
 
     if (racesToday) {
       daysRaced++;
@@ -236,7 +231,7 @@ function simulateRider({ startFatigue, recoveryAbility, rng, candidate, profileM
       // hvis dagen IKKE var en løbsdag — "det pas der ellers var blevet kørt").
       const wouldBeIntensity = pickWeighted(rng, intensityDist);
       const wouldBeFocus = pickWeighted(rng, focusDist);
-      const replaced = trainingUnitTotal({ focus: wouldBeFocus, intensity: wouldBeIntensity }, noise);
+      const replaced = trainingUnitTotal({ focus: wouldBeFocus, intensity: wouldBeIntensity }, noise, condMult);
       devToday = replaced * devMult;
       const relevant = RACE_PROFILE_ABILITY_MAP[profile] ?? [];
       if (relevant.length) {
@@ -247,13 +242,13 @@ function simulateRider({ startFatigue, recoveryAbility, rng, candidate, profileM
       const intensity = pickWeighted(rng, intensityDist);
       const focus = pickWeighted(rng, focusDist);
       trainingLoad = DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
-      devToday = trainingUnitTotal({ focus, intensity }, noise);
+      devToday = trainingUnitTotal({ focus, intensity }, noise, condMult);
       const focusAbilities = TRAINING_FOCUSES[focus] ?? [];
       if (intensity !== "rest") {
         for (const a of VISIBLE_ABILITIES) {
           const mult = focusAbilities.includes(a) ? (TRAINING_CONFIG.focusGrowthMult[intensity] ?? 1) : TRAINING_CONFIG.offFocusMult;
           const base = (growthFractionForAge(REP_AGE) * DAILY_TRAINING_CONFIG.dailyBudgetBoost) / DAILY_TRAINING_CONFIG.daysPerSeason;
-          devByAbility[a] += base * mult * youthMultiplier(REP_AGE) * youthRateForPotential(REP_POTENTIALE) * noise;
+          devByAbility[a] += base * mult * youthMultiplier(REP_AGE) * youthRateForPotential(REP_POTENTIALE) * noise * condMult;
         }
       }
     }

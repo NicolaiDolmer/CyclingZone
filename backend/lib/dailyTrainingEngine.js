@@ -13,7 +13,7 @@
 // updated_at-timestamps.
 
 import { copenhagenDateString, copenhagenWeekdayKey, copenhagenMidnightUTC } from "./copenhagenTime.js";
-import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
+import { resolveProgram, applyDailyTick, applyRaceDevelopmentTick } from "./dailyTraining.js";
 import { resolveDayIntensity } from "./training.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
@@ -47,6 +47,8 @@ function addDaysToDate(dateStr, days) {
 // helt hold pga. én best-effort-berigelse. Kun kaldt når raceDayEngineOn (kald-
 // stedet sender Promise.resolve({data:[],error:null}) når flag off — ingen ekstra
 // DB-belastning for en slukket feature).
+// #3459 D2: select udvidet med race_id + stage_number — koblingspunktet til
+// race_stage_profiles (profil-typen) der driver RACE_PROFILE_ABILITY_MAP nedenfor.
 async function loadRacedRiderIdsToday(supabase, riderIds, now, tickDate) {
   try {
     const dayStart = copenhagenMidnightUTC(now);
@@ -57,7 +59,7 @@ async function loadRacedRiderIdsToday(supabase, riderIds, now, tickDate) {
     // abilities/condition ovenfor), ikke en tabel-bred/ubegrænset select.
     const { data, error } = await supabase
       .from("race_results")
-      .select("rider_id")
+      .select("rider_id, race_id, stage_number")
       .eq("result_type", "stage")
       .in("rider_id", riderIds)
       .gte("imported_at", dayStart.toISOString())
@@ -69,6 +71,34 @@ async function loadRacedRiderIdsToday(supabase, riderIds, now, tickDate) {
     // trænings-dag pga. én best-effort-berigelse — kald-stedet logger en warning
     // og falder tilbage til "ingen løbsdag antaget" (samme fail-safe-kontrakt
     // som error-grenen ovenfor).
+    return { data: null, error: err };
+  }
+}
+
+// #3459 D2: batch-lookup profil-type pr. (race_id, stage_number) for dagens
+// racede ryttere. race_stage_profiles er den RENESTE sti fra race_results til
+// RACE_PROFILE_ABILITY_MAP — races/race_stage_schedule har INGEN profil-kolonne
+// (kun stage_schedule's scheduled_at, races' race_type/race_class). Fail-safe
+// (samme kontrakt som loadRacedRiderIdsToday ovenfor): query-fejl → { data: null,
+// error } så kald-stedet falder tilbage til raceFatigueLoad's samme 'rolling'-
+// ukendt-profil-fallback i stedet for at vælte trænings-dagen.
+async function loadRaceStageProfiles(supabase, raceIds) {
+  if (!raceIds.length) return { data: [], error: null };
+  try {
+    const { data, error } = await supabase
+      .from("race_stage_profiles")
+      .select("race_id, stage_number, profile_type")
+      // pagination-safe: raceIds er dedupet fra ÉT holds dagens racede ryttere
+      // (typisk 0-1 løb pr. hold pr. dag, langt under PostgREST's 1000-rækkers-
+      // loft) — samme størrelsesorden som race_results-loaded ovenfor, ikke en
+      // tabel-bred/ubegrænset select.
+      .in("race_id", raceIds);
+    if (error) return { data: null, error };
+    return { data: data ?? [], error: null };
+  } catch (err) {
+    // best-effort: en synkron/netværks-fejl her må ALDRIG vælte hele holdets
+    // trænings-dag pga. én best-effort-berigelse — kald-stedet falder tilbage
+    // til 'rolling'-profilen (samme fail-safe-kontrakt som ovenfor).
     return { data: null, error: err };
   }
 }
@@ -181,13 +211,38 @@ export async function runTeamTrainingDay({
   // Kaster ALDRIG — en fejlet best-effort-berigelse må ikke vælte hele holdets
   // trænings-dag (samme filosofi som Plan B's facilitets-load, #1441).
   let racedRiderIds = new Set();
+  // #3459 D2: rider_id → profil-type for dagens løb (RACE_PROFILE_ABILITY_MAP-nøgle).
+  // Fallback pr. rytter = 'rolling' (samme ukendt-profil-fallback som raceFatigueLoad)
+  // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
+  // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
+  const racedRiderProfileByRider = new Map();
   if (raceDayEngineOn) {
     if (raceDayResult.error) {
       // ASCII-only besked (#i18n-leak-guard, BACKEND_CONTEXT matcher error/message-linjer med
       // æ/ø/å) — dette er intern ops-logging, ikke en spiller-synlig API-fejl.
       console.warn(`  ⚠️ race-day lookup failed for team ${teamId} (${tickDate}): ${raceDayResult.error.message} - assuming no race day (fail-safe)`);
     } else {
-      racedRiderIds = new Set((raceDayResult.data ?? []).map((r) => r.rider_id));
+      const racedRows = raceDayResult.data ?? [];
+      racedRiderIds = new Set(racedRows.map((r) => r.rider_id));
+
+      // #3459 D2: hent profil-typen for de racede etaper — kun de race_id'er der
+      // rent faktisk optræder i dagens racede rækker (typisk 0-1 pr. hold pr. dag).
+      const raceIds = [...new Set(racedRows.map((r) => r.race_id).filter(Boolean))];
+      const stageProfilesResult = raceIds.length
+        ? await loadRaceStageProfiles(supabase, raceIds)
+        : { data: [], error: null };
+      const profileByRaceStage = new Map();
+      if (stageProfilesResult.error) {
+        console.warn(`  ⚠️ race-stage-profile lookup failed for team ${teamId} (${tickDate}): ${stageProfilesResult.error.message} - falling back to 'rolling' (fail-safe)`);
+      } else {
+        for (const row of stageProfilesResult.data ?? []) {
+          profileByRaceStage.set(`${row.race_id}:${row.stage_number}`, row.profile_type);
+        }
+      }
+      for (const row of racedRows) {
+        const key = `${row.race_id}:${row.stage_number}`;
+        racedRiderProfileByRider.set(row.rider_id, profileByRaceStage.get(key) ?? "rolling");
+      }
     }
   }
 
@@ -293,13 +348,18 @@ export async function runTeamTrainingDay({
     // løbsdage, se "Åbne designbeslutninger" i PR-body).
     const effectiveIntensity = injuredToday ? "rest" : racedToday ? "race" : program.intensity;
 
-    // Daglig tick: kun på raske, ikke-racende ryttere (skadet/løbsdag → no gains,
-    // program.intensity/training_plans RØRES ALDRIG — samme mønster som
-    // injuredToday-grenen, G5-invarianten).
+    // Daglig tick: raske ryttere får ENTEN en normal træningsdag ELLER (racede i
+    // dag) en race-udviklings-dag — GENSIDIGT UDELUKKENDE grene i samme if/else,
+    // så dobbelt-kredit er umulig by construction (#3459 D2). Skadede ryttere får
+    // ingen af delene (no gains, program.intensity/training_plans RØRES ALDRIG —
+    // G5-invarianten).
     let tickResult = null;
-    if (!injuredToday && !racedToday && age != null) {
+    if (!injuredToday && age != null) {
       const condMult = conditionMultiplier({ form: Number(cond.form ?? 50), fatigue: preFatigue });
-      tickResult = applyDailyTick({
+      // Fælles parametre for begge tick-typer — samme program/condition/staff/
+      // facility/academy-kæde uanset kilde (design-krav: skrivestien er blind
+      // for kilden, se applyRaceDevelopmentTick's docblok).
+      const sharedTickArgs = {
         riderId: rider.id,
         dateStr: tickDate,
         age,
@@ -319,7 +379,18 @@ export async function runTeamTrainingDay({
         staff: trainingStaff,
         facilityTier: trainingFacilityTier,
         riderLevel: riderLevelBand({ is_academy: rider.is_academy, age }),
-      });
+      };
+      if (racedToday) {
+        // #3459 D2: profil-typen slås op pr. rytter (racedRiderProfileByRider,
+        // fallback 'rolling' allerede sat ovenfor) — devMult følger
+        // RACE_DEV_CONFIG's default (1.15) via applyRaceDevelopmentTick.
+        tickResult = applyRaceDevelopmentTick({
+          ...sharedTickArgs,
+          profileType: racedRiderProfileByRider.get(rider.id) ?? "rolling",
+        });
+      } else {
+        tickResult = applyDailyTick(sharedTickArgs);
+      }
     }
 
     // Træthed + form for næste dag. #3459 D3: recoveryBase/recoveryFraction følger
