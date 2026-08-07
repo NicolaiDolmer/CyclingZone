@@ -158,6 +158,123 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   expect(capturedBody.rider_ids).toContain(capturedBody.captain_id);
 });
 
+// #3520 (spillerforslag, carpediemjbp): klik på rytternavnet skal åbne en profil-popup
+// i stedet for at (dobbelt-)vælge rytteren. Checkboxen forbliver den ENESTE vælger.
+test("klik på rytternavn åbner profil-popup uden at ændre udtagelsen", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", (route) => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? SCHEDULED_RACE : [SCHEDULED_RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", (route) => json(route, []));
+
+  await page.route(`**/api/races/${RACE_ID}/selection`, async (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders(request),
+      body: JSON.stringify({
+        enabled: true,
+        race: SCHEDULED_RACE,
+        size: { min: 6, max: 8 },
+        selection: null,
+        riders: SELECTION_RIDERS,
+        availableCount: 8,
+      }),
+    });
+  });
+
+  await login(page);
+  await page.goto(`/races/${RACE_ID}`);
+
+  const panel = page.getByTestId("race-selection-panel");
+  await expect(panel).toBeVisible();
+
+  // Ingen ryttere er valgt endnu.
+  await expect(panel.getByRole("checkbox", { name: /Rider 0/ })).not.toBeChecked();
+
+  // Klik på navnet (knap, ikke checkbox) — åbner popup, ændrer IKKE udtagelsen.
+  await panel.getByRole("button", { name: /Rider 0/ }).click();
+  const modal = page.getByTestId("rider-mini-profile-modal");
+  await expect(modal).toBeVisible();
+  await expect(modal.getByText("Rider 0")).toBeVisible();
+
+  // Checkboxen er stadig unchecked — popuppen rørte ikke sel.
+  await expect(panel.getByRole("checkbox", { name: /Rider 0/ })).not.toBeChecked();
+  // Tælleren viser stadig 0 valgt.
+  await expect(panel.getByText(/0\/8/)).toBeVisible();
+
+  // Escape lukker popuppen.
+  await page.keyboard.press("Escape");
+  await expect(modal).toBeHidden();
+
+  // Popuppen kan også lukkes ved klik på Luk-knappen (X) — samme knap på tværs af
+  // viewports. Backdrop-klik testes IKKE her: på mobil er panelet en fuld-skærms
+  // sheet (w-full h-full, #3520-AC), så der er intet synligt backdrop at klikke på.
+  await panel.getByRole("button", { name: /Rider 1/ }).click();
+  await expect(modal).toBeVisible();
+  await modal.getByRole("button", { name: /luk/i }).click();
+  await expect(modal).toBeHidden();
+
+  // Checkboxen virker stadig upåvirket efter popup-interaktionen.
+  await panel.getByRole("checkbox", { name: /Rider 0/ }).check();
+  await expect(panel.getByRole("checkbox", { name: /Rider 0/ })).toBeChecked();
+  await expect(panel.getByText(/1\/8/)).toBeVisible();
+});
+
+// #3520: backdrop-klik lukker popuppen på desktop (der er intet backdrop at klikke på,
+// på mobil er panelet en fuld-skærms sheet — testet ovenfor via Luk-knappen i stedet).
+test("klik udenfor rytterprofil-popuppen lukker den (desktop)", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "backdrop findes kun ved en centreret modal (desktop)");
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", (route) => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? SCHEDULED_RACE : [SCHEDULED_RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", (route) => json(route, []));
+  await page.route(`**/api/races/${RACE_ID}/selection`, async (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders(request),
+      body: JSON.stringify({
+        enabled: true,
+        race: SCHEDULED_RACE,
+        size: { min: 6, max: 8 },
+        selection: null,
+        riders: SELECTION_RIDERS,
+        availableCount: 8,
+      }),
+    });
+  });
+
+  await login(page);
+  await page.goto(`/races/${RACE_ID}`);
+
+  const panel = page.getByTestId("race-selection-panel");
+  await panel.getByRole("button", { name: /Rider 0/ }).click();
+  const modal = page.getByTestId("rider-mini-profile-modal");
+  await expect(modal).toBeVisible();
+
+  // Klik i toppen af viewporten — uden for det centrerede kort — lukker popuppen.
+  await page.mouse.click(5, 5);
+  await expect(modal).toBeHidden();
+  // Udtagelsen er stadig uændret.
+  await expect(panel.getByRole("checkbox", { name: /Rider 0/ })).not.toBeChecked();
+});
+
 // #1954: et løb i en ANDEN pulje/division (backend GET → eligible:false) må ikke
 // vise et fuldt udtageligt panel der først fejler ved gem — kun en read-only forklaring.
 test("fremmed-pulje-løb viser read-only forklaring, ikke et udtageligt panel", async ({ page }) => {

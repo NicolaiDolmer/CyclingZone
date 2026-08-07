@@ -25,6 +25,7 @@ import {
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
 import { ArrowUpIcon, ArrowDownIcon } from "../ui/index.js";
+import RiderMiniProfileModal from "../rider/RiderMiniProfileModal.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -69,6 +70,9 @@ export default function RaceSelectionPanel({
   // #2180/#3310: status for Auto-select-assistenten (separat fra save()'s status,
   // så et fejlet assistent-kald ikke fejlagtigt viser den manuelle gem-fejlbesked).
   const [autoStatus, setAutoStatus] = useState("idle"); // idle | loading | error
+  // #3520: rytteren hvis profil-popup er åben (klik på navn) — ren visning, rører
+  // ALDRIG sel/udtagelsen. null = lukket. Checkboxen forbliver den ENESTE vælger.
+  const [profileRider, setProfileRider] = useState(null);
 
   // #3310: udtrukket til en genbrugelig loader — kaldes fra effekten ved raceId-skift
   // OG fra autoSelect() efter et vellykket assistent-kald, så panelet reflekterer den
@@ -374,17 +378,30 @@ export default function RaceSelectionPanel({
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
             <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
-              <label className={`flex items-start gap-3 px-4 py-3 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={disabled}
-                  onChange={() => update(toggleRider(sel, rider.id, size.max))}
-                  className="accent-cz-accent disabled:cursor-not-allowed mt-1 shrink-0"
-                />
+              {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den, ikke
+                  længere navnet (spillerforslag: navneklik skal åbne profil, ikke toggle). */}
+              <div className="flex items-start gap-3 px-4 py-3">
+                <label className={`flex items-center pt-0.5 shrink-0 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    aria-label={rider.name}
+                    onChange={() => update(toggleRider(sel, rider.id, size.max))}
+                    className="accent-cz-accent disabled:cursor-not-allowed"
+                  />
+                </label>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-cz-1 font-medium">{rider.name}</span>
+                    {/* #3520: navnet åbner rytterens profil-popup — påvirker IKKE sel. */}
+                    <button
+                      type="button"
+                      onClick={() => setProfileRider(rider)}
+                      aria-label={t("selection.riderProfile.viewProfile", { name: rider.name })}
+                      className="text-cz-1 font-medium text-left hover:text-cz-accent-t hover:underline transition-colors"
+                    >
+                      {rider.name}
+                    </button>
                     {rider.injured && (
                       <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                         {t("selection.injured")}
@@ -423,7 +440,7 @@ export default function RaceSelectionPanel({
                     </span>
                   </div>
                 </div>
-              </label>
+              </div>
             </li>
           );
         })}
@@ -456,15 +473,27 @@ export default function RaceSelectionPanel({
               return (
                 <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
-                    <label className={`flex items-center gap-2 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={() => update(toggleRider(sel, rider.id, size.max))}
-                        className="accent-cz-accent disabled:cursor-not-allowed"
-                      />
-                      <span className="text-cz-1 font-medium">{rider.name}</span>
+                    {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den. */}
+                    <div className="flex items-center gap-2">
+                      <label className={`flex items-center ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={disabled}
+                          aria-label={rider.name}
+                          onChange={() => update(toggleRider(sel, rider.id, size.max))}
+                          className="accent-cz-accent disabled:cursor-not-allowed"
+                        />
+                      </label>
+                      {/* #3520: navnet åbner rytterens profil-popup — påvirker IKKE sel. */}
+                      <button
+                        type="button"
+                        onClick={() => setProfileRider(rider)}
+                        aria-label={t("selection.riderProfile.viewProfile", { name: rider.name })}
+                        className="text-cz-1 font-medium text-left hover:text-cz-accent-t hover:underline transition-colors"
+                      >
+                        {rider.name}
+                      </button>
                       {rider.injured && (
                         <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                           {t("selection.injured")}
@@ -482,7 +511,7 @@ export default function RaceSelectionPanel({
                           {t("selection.freeRole")}
                         </span>
                       )}
-                    </label>
+                    </div>
                   </td>
                   <td className="px-4 py-2.5">
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
@@ -587,6 +616,16 @@ export default function RaceSelectionPanel({
         profileType={selectedStageProfileType}
         finaleType={selectedStageFinaleType}
         hunterId={sel.hunterId}
+      />
+
+      {/* #3520: rytterens profil-popup — åbnes af navneklikket ovenfor, ændrer ALDRIG
+          sel/udtagelsen. Lukkes med Escape/klik-udenfor (useModalA11y i modalen selv). */}
+      <RiderMiniProfileModal
+        rider={profileRider}
+        selectedStageIndex={selectedStageIndex}
+        bound={profileRider ? (boundByRider.get(profileRider.id) ?? null) : null}
+        fitLabel={fitSortLabel}
+        onClose={() => setProfileRider(null)}
       />
     </section>
   );
