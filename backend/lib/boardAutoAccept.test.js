@@ -28,6 +28,14 @@ import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-07-16T15:00:00Z");
 
+// #3502 · Denne fil dækker de rene threshold-mekanikker (dag 0/2/4/5) — ikke
+// AUTO_ACCEPT_ROLLOUT_FLOOR-dæmpningen (den har egne tests i
+// boardCronSeasonTransitionGuard.test.js). Epoch-floor'en er allerede passeret
+// af enhver realistisk `now` i denne fil, så den er reelt et no-op her — men
+// eksplicit injiceret så fixturens NOW (2026-07-16, FØR den ægte rollout-floor)
+// ikke selv bliver dæmpet.
+const DISABLE_ROLLOUT_FLOOR = new Date(0);
+
 function daysAgo(n, base = NOW) {
   return new Date(base.getTime() - n * DAY_MS).toISOString();
 }
@@ -137,6 +145,7 @@ async function runCron(state, now) {
     supabase: makeFakeSupabase(state),
     notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
     now,
+    rolloutFloor: DISABLE_ROLLOUT_FLOOR,
   });
   return { summary, notifications };
 }
@@ -352,6 +361,7 @@ async function runRenewalCron(state) {
     supabase: makeFakeSupabase(state),
     notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
     now: NOW,
+    rolloutFloor: DISABLE_ROLLOUT_FLOOR,
   });
   const renewed = state.board_profiles.find((b) => b.team_id === "team-1" && b.plan_type === "1yr");
   return { summary, notifications, renewed };

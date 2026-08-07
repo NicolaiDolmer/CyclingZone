@@ -19,15 +19,29 @@
 //   startSequentialNegotiation (economyEngine.processSeasonEnd's inline-kald
 //   ved sæson-1-slut) → insertTransferWindowIfMissing (kaldt ved ETHVERT
 //   sæsonskifte) → processBoardAutoAcceptCron / processMidSeasonReviewCron.
+//
+// Derudover: en dedikeret test af AUTO_ACCEPT_ROLLOUT_FLOOR-dæmpningen.
+// Prod-verifikation 7/8 (samme dag som #3502-fixet blev skrevet) viste 161
+// pending real board-rækker for humane hold, hvoraf 149 allerede havde et
+// anker >= 5 dage gammelt — uden dæmpning ville FØRSTE cron-tick efter merge
+// bulk-auto-acceptere alle 149 på én gang (samme skadesmønster som #2463).
 
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import {
+  AUTO_ACCEPT_ROLLOUT_FLOOR,
+  processBoardAutoAcceptCron,
+} from "./boardAutoAccept.js";
 import { startSequentialNegotiation } from "./boardSequentialNegotiation.js";
 import { insertTransferWindowIfMissing } from "./seasonTransition.js";
-import { processBoardAutoAcceptCron } from "./boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./boardMidSeason.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+
+// De to window-drift-guard-tests nedenfor tester specifikt drift-scenariet,
+// ikke rollout-dæmpningen — floor'en disables derfor eksplicit (epoch, altid
+// passeret) så den ikke interfererer med deres egne, ældre `now`-tidsstempler.
+const DISABLE_ROLLOUT_FLOOR = new Date(0);
 
 const RIDER_STAT_FIELDS = {
   nationality_code: "FR", uci_points: 100, popularity: 50,
@@ -108,6 +122,7 @@ test("#3502 forward-guard: sæson-1-slut → sæsonskifte → auto-accept-cron v
     supabase,
     notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
     now,
+    rolloutFloor: DISABLE_ROLLOUT_FLOOR,
   });
 
   assert.equal(summary.teams_checked, 1);
@@ -168,4 +183,85 @@ test("#3502 forward-guard: mid-season-cronen virker stadig efter et sæsonskifte
   assert.equal(summary.teams_checked, 1);
   assert.equal(summary.banners_sent, 1, "mid-season-banneret skal fyre trods driftende window-state — se #3502");
   assert.equal(summary.errors, 0);
+});
+
+// =====================================================================
+// #3502 · AUTO_ACCEPT_ROLLOUT_FLOOR — backfill-dæmpning ved deploy
+//
+// Prod-verifikation 7/8: 161 pending real board-rækker for humane hold,
+// heraf 149 med et anker der allerede var >= 5 dage gammelt (outage siden
+// 26/7). Uden dæmpning ville FØRSTE cron-tick efter merge bulk-auto-
+// acceptere alle 149 på én gang — samme skadesmønster som #2463
+// ("218 auto-accepts dagen efter sæsonstart"). Disse tests bruger den
+// EKSPORTEREDE, rigtige AUTO_ACCEPT_ROLLOUT_FLOOR (ingen override) for at
+// bevise den faktiske deploy-adfærd, ikke en syntetisk stand-in.
+// =====================================================================
+
+function makeBackloggedTeamState({ teamCreatedAt }) {
+  return {
+    teams: [{
+      id: "team-backlog", user_id: "user-backlog", name: "Team Backlog",
+      balance: 500000, sponsor_income: 240000, division: 3,
+      season_1_identity_basis: { rider_count: 1 }, team_dna_key: "sprint_kommerciel",
+      created_at: teamCreatedAt,
+      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+    }],
+    riders: [],
+    seasons: [{ id: "season-2", number: 2, status: "active", race_days_completed: 300, race_days_total: 60 }],
+    board_profiles: [],
+    team_board_members: [],
+    season_standings: [],
+  };
+}
+
+test("#3502: en outage-backlogget forhandling (anker langt før floor) auto-accepterer IKKE straks ved deploy", async () => {
+  // Holdets forhandling har reelt stået åben siden LÆNGE før rollout-floor'en
+  // (spejler prod-fundet: anker 26/7, floor 15/8) — uden dæmpning ville dette
+  // være dagevis over auto-accept-tærsklen allerede ved deploy.
+  const state = makeBackloggedTeamState({ teamCreatedAt: "2026-06-01T00:00:00Z" });
+  const supabase = createFakeSupabase(state);
+
+  const justAfterFloor = new Date(AUTO_ACCEPT_ROLLOUT_FLOOR.getTime() + 1 * 24 * 60 * 60 * 1000);
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async () => ({ delivered: true }),
+    now: justAfterFloor,
+  });
+
+  assert.equal(summary.teams_checked, 1);
+  assert.equal(summary.auto_accepted, 0, "backlogget hold skal IKKE straks auto-accepteres ved deploy — se #3502");
+  assert.equal(summary.reminders_sent, 0, "1 dag efter floor er stadig under T-3-tærsklen (2 dage)");
+});
+
+test("#3502: samme backloggede hold får en frisk, fuld cyklus TALT FRA floor'en, ikke fra det reelle (gamle) anker", async () => {
+  const state = makeBackloggedTeamState({ teamCreatedAt: "2026-06-01T00:00:00Z" });
+  const supabase = createFakeSupabase(state);
+
+  const sixDaysAfterFloor = new Date(AUTO_ACCEPT_ROLLOUT_FLOOR.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async () => ({ delivered: true }),
+    now: sixDaysAfterFloor,
+  });
+
+  assert.equal(summary.auto_accepted, 1, "6 dage EFTER floor'en skal holdet auto-accepteres normalt");
+});
+
+test("#3502: en forhandling der åbner EFTER floor'en er slet ikke påvirket af dæmpningen (ren nedre grænse)", async () => {
+  // team.created_at ligger EFTER floor'en — det reelle anker er allerede
+  // nyere end floor'en, så clampen er et no-op og normal 2/4/5-dages-logik
+  // gælder uændret. Dette er den PERMANENTE tilstand efter floor-vinduet.
+  const afterFloor = new Date(AUTO_ACCEPT_ROLLOUT_FLOOR.getTime() + 10 * 24 * 60 * 60 * 1000);
+  const twoDaysAfterThat = new Date(afterFloor.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const state = makeBackloggedTeamState({ teamCreatedAt: afterFloor.toISOString() });
+  const supabase = createFakeSupabase(state);
+
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async () => ({ delivered: true }),
+    now: twoDaysAfterThat,
+  });
+
+  assert.equal(summary.reminders_sent, 1, "2 rigtige dage efter et rigtigt (post-floor) anker skal give T-3 som normalt");
+  assert.equal(summary.auto_accepted, 0);
 });
