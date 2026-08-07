@@ -35,7 +35,7 @@ test.describe("Auction start-price typo guard (#3184)", () => {
 
     await page.getByRole("button", { name: /^(Put up for auction|Sæt til auktion)$/ }).click();
 
-    const priceInput = page.getByRole("spinbutton").first();
+    const priceInput = page.getByTestId("auction-start-price-input");
     await priceInput.fill("168000"); // Ada's market_value (1.680.000) ÷ 10 — ciffer-drop
 
     await page.getByRole("button", { name: /^(Start auction|Start auktion)$/ }).click();
@@ -67,7 +67,7 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     await page.goto("/riders/rider-1");
     await page.getByRole("button", { name: /^(Put up for auction|Sæt til auktion)$/ }).click();
 
-    const priceInput = page.getByRole("spinbutton").first();
+    const priceInput = page.getByTestId("auction-start-price-input");
     await priceInput.fill("168000");
     await page.getByRole("button", { name: /^(Start auction|Start auktion)$/ }).click();
 
@@ -85,13 +85,70 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     await page.goto("/riders/rider-1");
     await page.getByRole("button", { name: /^(Put up for auction|Sæt til auktion)$/ }).click();
 
-    const priceInput = page.getByRole("spinbutton").first();
+    const priceInput = page.getByTestId("auction-start-price-input");
     // 1.680.000 × 0,49 — median ratio for konkurrenceudsatte auktioner (#3136),
     // ikke et ciffer-drop-mønster. Skal IKKE flages.
     await priceInput.fill("823200");
     await page.getByRole("button", { name: /^(Start auction|Start auktion)$/ }).click();
 
     await expect(page.getByRole("dialog")).toBeHidden();
+  });
+
+  // #3495: udbudspris "150.000" (dansk tusindtalsseparator) blev tidligere
+  // sat til salg for 150 — parseInt("150.000", 10) === 150. Disse to tests
+  // dækker samme klasse af bug for auktions-startprisen OG transferlistens
+  // udbudspris (den faktiske hændelse fra Discord-sweepet), ved at indtaste
+  // MED separatorer og verificere det RÅ POST-body-tal, ikke kun UI'et.
+  test("rider profile — auction start price with dot-separated thousands is not truncated (#3495)", async ({ page }) => {
+    let capturedBody = null;
+    await page.route("**/api/auctions", route => {
+      if (route.request().method() === "POST") {
+        capturedBody = JSON.parse(route.request().postData() || "{}");
+      }
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, warnings: [] }) });
+    });
+
+    await login(page);
+    await page.goto("/riders/rider-1");
+    await page.getByRole("button", { name: /^(Put up for auction|Sæt til auktion)$/ }).click();
+
+    const priceInput = page.getByTestId("auction-start-price-input");
+    // 150.000 er hverken et ciffer-drop-mønster af Adas værdi (1.680.000) eller
+    // over den, så typo-guarden IKKE forventes at blande sig — testen isolerer
+    // rent parsing/normalisering, ikke #3184-guarden.
+    await priceInput.fill("150.000");
+    // Klartekst-bekræftelse af det parsede beløb, synlig FØR submit (krav #3
+    // i #3495-fixet) — beviser feltet forstod 150.000, ikke 150.
+    await expect(page.getByText(/= 150\.000 CZ\$/)).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeHidden();
+
+    await page.getByRole("button", { name: /^(Start auction|Start auktion)$/ }).click();
+
+    await expect.poll(() => capturedBody).not.toBeNull();
+    expect(capturedBody.starting_price).toBe(150000);
+  });
+
+  test("rider profile — transfer listing price with dot-separated thousands is not truncated (#3495)", async ({ page }) => {
+    let capturedBody = null;
+    await page.route("**/api/transfers", route => {
+      if (route.request().method() === "POST") {
+        capturedBody = JSON.parse(route.request().postData() || "{}");
+      }
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "new-listing", asking_price: 150000 }) });
+    });
+
+    await login(page);
+    await page.goto("/riders/rider-1");
+    await page.getByRole("button", { name: /↔ List for sale|↔ Sæt til salg/ }).click();
+
+    const priceInput = page.getByTestId("transfer-list-price-input");
+    await priceInput.fill("150.000");
+    await expect(page.getByText(/= 150\.000 CZ\$/)).toBeVisible();
+
+    await page.getByRole("button", { name: /^(List for sale|Sæt til salg)$/ }).click();
+
+    await expect.poll(() => capturedBody).not.toBeNull();
+    expect(capturedBody.asking_price).toBe(150000);
   });
 
   test("team page — squad tab shows the same guard for the RiderActionModal auction tab", async ({ page }) => {
@@ -106,7 +163,7 @@ test.describe("Auction start-price typo guard (#3184)", () => {
       .getByRole("button", { name: /^(Sell \/ Auction|Sælg \/ Auktion)$/ })
       .click();
 
-    const priceInput = page.getByRole("spinbutton").first();
+    const priceInput = page.getByTestId("team-auction-start-price-input");
     await priceInput.fill("168000");
     await page.getByRole("button", { name: /^(Start|Start auction|Start auktion)$/ }).click();
 
@@ -136,7 +193,7 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     await expect(page.getByRole("button", { name: "Change language" })).toBeVisible();
 
     await page.getByRole("button", { name: /^(Put up for auction|Sæt til auktion)$/ }).click();
-    const priceInput = page.getByRole("spinbutton").first();
+    const priceInput = page.getByTestId("auction-start-price-input");
     await priceInput.fill("168000");
     await page.getByRole("button", { name: /^(Start auction|Start auktion)$/ }).click();
 

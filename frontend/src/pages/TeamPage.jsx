@@ -29,7 +29,8 @@ import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import { cycleSortState } from "../lib/riderSort";
-import { PageHeader, Button, Input, BikeIcon, PageLoader, EmptyState, DataTable } from "../components/ui";
+import { AmountInput, PageHeader, Button, BikeIcon, PageLoader, EmptyState, DataTable } from "../components/ui";
+import { controlClass } from "../components/ui/fieldStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
@@ -102,7 +103,11 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   }, [rider.id]);
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
-  const auctionPriceError = auctionPrice > riderValue || auctionPrice < 0;
+  // auctionPrice === null (ugyldigt/ikke-parsbart format, #3495) tælles altid som fejl.
+  const auctionPriceError = auctionPrice == null || auctionPrice > riderValue || auctionPrice < 0;
+  // #3495: parseInt(e.target.value) uden NaN-guard — et tomt/ugyldigt felt
+  // sendte tidligere NaN direkte til POST-body. transferPrice er nu number|null.
+  const transferPriceInvalid = transferPrice == null || transferPrice < 1;
 
   // Hent quote ved skift til release/extend-fanen (kun én gang pr. åbning).
   useEffect(() => {
@@ -280,10 +285,11 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
                 </label>
               )}
               <div className="flex gap-2">
-                <Input type="number" value={auctionPrice} min={0} max={riderValue}
-                  error={auctionPriceError}
-                  onChange={e => { const v = parseInt(e.target.value, 10); setAuctionPrice(Number.isNaN(v) ? 0 : v); }}
-                  className="flex-1 font-mono" />
+                <AmountInput value={auctionPrice}
+                  onValueChange={v => setAuctionPrice(v)}
+                  data-testid="team-auction-start-price-input"
+                  wrapperClassName="flex-1"
+                  className={`${controlClass({ error: auctionPriceError })} font-mono`} />
                 <Button onClick={handleAuctionSubmit} disabled={loading || auctionPriceError}
                   className={ddActive && flash ? "!bg-cz-danger !text-white hover:brightness-110" : ""}>
                   {loading ? t("actionModal.loadingShort") : (ddActive && flash) ? t("actionModal.auction.startFlashButton") : t("actionModal.auction.startButton")}
@@ -300,10 +306,12 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
             <div>
               <p className="text-cz-2 text-xs mb-3">{t("actionModal.transfer.description")}</p>
               <div className="flex gap-2">
-                <Input type="number" value={transferPrice} min={1}
-                  onChange={e => setTransferPrice(parseInt(e.target.value))}
-                  className="flex-1 font-mono" />
-                <Button onClick={listTransfer} disabled={loading}>
+                <AmountInput value={transferPrice}
+                  onValueChange={v => setTransferPrice(v)}
+                  data-testid="team-transfer-list-price-input"
+                  wrapperClassName="flex-1"
+                  className={`${controlClass({ error: transferPriceInvalid })} font-mono`} />
+                <Button onClick={listTransfer} disabled={loading || transferPriceInvalid}>
                   {loading ? t("actionModal.loadingShort") : t("actionModal.transfer.listButton")}
                 </Button>
               </div>
