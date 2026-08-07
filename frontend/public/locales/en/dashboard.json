@@ -207,7 +207,9 @@
       "titlePool": "{label} · Standings",
       "linkAll": "Full standings →",
       "empty": "No season data yet",
-      "emptyCta": "View full standings →"
+      "emptyCta": "View full standings →",
+      "aiBadge": "AI",
+      "managerRank": "#{rank} among managers"
     },
     "board": {
       "title": "Board Status",

@@ -225,12 +225,15 @@ export default function DashboardPage() {
       : Promise.resolve({ data: [] });
 
     const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
-      // #2182: league_division_id + is_frozen-udelukkelse med — samme "rigtige
-      // hold"-diskriminator (ikke-AI/test/frosne) og select-udvidelse som
-      // StandingsPage.jsx's teamsPromise, så rangliste-modulet kan pulje-scope.
+      // #2182: league_division_id + is_frozen-udelukkelse med — samme
+      // "rigtige hold"-diskriminator (test/frosne, IKKE AI) og select-
+      // udvidelse som StandingsPage.jsx's teamsPromise, så rangliste-modulet
+      // kan pulje-scope. #3506: AI-hold TÆLLES MED (fjernet .eq("is_ai",
+      // false)) — samme scope som Standings-siden (#1718), ellers giver
+      // dashboardets placeringstal et andet resultat end målsiden for samme
+      // hold.
       supabase.from("teams")
         .select("id, name, division, is_ai, league_division_id")
-        .eq("is_ai", false)
         .eq("is_test_account", false)
         .eq("is_frozen", false)
         .order("division")
@@ -330,8 +333,11 @@ export default function DashboardPage() {
       }
     }
 
+    // #3506: AI-hold var tidligere filtreret væk her (før mergeStandings), så
+    // de aldrig indgik i rangberegningen — deraf placerings-mismatchet mod
+    // Standings-siden. AI-hold tælles nu med, samme scope som Standings-siden.
     const standingsMap = {};
-    (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
+    (standingsRes.data || []).forEach(s => {
       standingsMap[s.team_id] = s;
     });
     // #2182: genbruger StandingsPage's rene mergeStandings-helper (lib/standingsMerge.js)
@@ -759,7 +765,10 @@ export default function DashboardPage() {
   // pulje-filtrering, hele tieren, som i dag) hvis egen pulje endnu er ukendt
   // (helt nyt hold uden league_division_id), så modulet aldrig render'er tomt
   // for den kant-sag (#2182 acceptance).
-  const { hasPoolSubtabs, ownPoolRow, divStandingsTop, divStandings } =
+  // #3506: _rank er nu det kanoniske, Standings-konsistente tal (AI-hold med
+  // i rangberegningen, jf. #1718). myManagerRank er det sekundære "blandt
+  // managere"-tal (kun menneskehold), vist som lille tillægslinje på egen række.
+  const { hasPoolSubtabs, ownPoolRow, divStandingsTop, divStandings, myManagerRank } =
     computeMyDivisionStandings(standings, team, pools);
 
   const pendingIncoming = pendingIncomingCount;
@@ -1276,7 +1285,29 @@ export default function DashboardPage() {
                       style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
                       className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
-                      <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
+                      <div className="w-28 flex-shrink-0 min-w-0">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <p className={`text-sm truncate ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
+                          {/* #1718/#3506 — diskret AI-markør, samme dæmpede stil som
+                              Standings-siden (lib/standingsPoolFilter-relateret formsprog) —
+                              AI-hold tælles nu med i rangberegningen og kan optræde i
+                              top-5, og skal kunne skelnes ligesom på målsiden. */}
+                          {s.team?.is_ai && (
+                            <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-3xs font-medium uppercase text-cz-3">
+                              {t("dashboard:cards.standings.aiBadge")}
+                            </span>
+                          )}
+                        </div>
+                        {/* #3506 — sekundær tillægslinje: kun på egen række, og kun når
+                            "blandt managere"-tallet reelt afviger fra det kanoniske
+                            placeringstal (dvs. AI-hold ligger foran). Undgår støj når
+                            de to tal er ens. */}
+                        {isMe && myManagerRank != null && myManagerRank !== s._rank && (
+                          <p className="text-cz-3 text-3xs tabular-nums">
+                            {t("dashboard:cards.standings.managerRank", { rank: myManagerRank })}
+                          </p>
+                        )}
+                      </div>
                       <div className="flex-1">
                         <MiniBar value={s.total_points || 0} max={maxPts} color={isLeader ? "rgb(var(--accent))" : "var(--text-3)"} />
                       </div>

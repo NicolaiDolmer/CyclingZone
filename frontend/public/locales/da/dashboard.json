@@ -207,7 +207,9 @@
       "titlePool": "{label} · Stilling",
       "linkAll": "Fuld rangliste →",
       "empty": "Ingen sæsondata endnu",
-      "emptyCta": "Se den fulde rangliste →"
+      "emptyCta": "Se den fulde rangliste →",
+      "aiBadge": "AI",
+      "managerRank": "#{rank} blandt managere"
     },
     "board": {
       "title": "Bestyrelsens Status",

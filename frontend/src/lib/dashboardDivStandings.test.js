@@ -74,15 +74,51 @@ test("computeMyDivisionStandings — kant-tilfælde: intet aktivt hold (team nul
   assert.equal(result.myStandingIndex, -1);
 });
 
-test("computeMyDivisionStandings — AI-hold filtreres væk fra egen pulje-rangliste", () => {
+// #3506 — AI-hold skal MED i den kanoniske rangberegning (samme scope som
+// Standings-siden, #1718), ikke filtreres væk før placeringen udregnes. Før
+// #3506 gav det to forskellige placeringstal for samme hold på dashboard vs.
+// Standings (prod: #2 vs. #16, Division 8 S2 — 18 AI-hold + 6 menneskehold).
+test("computeMyDivisionStandings — AI-hold TÆLLER MED i divStandingsAll/myStandingIndex (#3506, samme scope som Standings-siden)", () => {
   const myTeam = { id: "me", division: 3, league_division_id: 11 };
   const standings = [
     standingRow({ id: 1, teamId: "me", division: 3, poolId: 11, points: 50 }),
     standingRow({ id: 2, teamId: "ai-team", division: 3, poolId: 11, points: 999, isAi: true }),
   ];
-  const { divStandingsAll } = computeMyDivisionStandings(standings, myTeam, ALL_POOLS);
-  assert.equal(divStandingsAll.length, 1);
-  assert.equal(divStandingsAll[0].team_id, "me");
+  const { divStandingsAll, myStandingIndex } = computeMyDivisionStandings(standings, myTeam, ALL_POOLS);
+  assert.equal(divStandingsAll.length, 2, "AI-hold skal tælle med i det kanoniske felt");
+  assert.deepEqual(divStandingsAll.map(s => s.team_id), ["ai-team", "me"]);
+  assert.equal(myStandingIndex, 1, "eget hold er #2 (0-indekseret 1) når AI-holdet tælles med");
+});
+
+// #3506 — reproducerer prod-eksemplet fra issuet: 18 AI-hold + 6 menneskehold
+// i samme pulje. Eget hold ligger midt i AI-feltet på point, men er nr. 2
+// blandt de 6 menneske-managere. myStandingIndex/_rank (kanonisk) skal matche
+// Standings-siden; myManagerRank er det sekundære "blandt managere"-tal.
+test("computeMyDivisionStandings — myManagerRank giver placering blandt kun menneskehold, adskilt fra det kanoniske myStandingIndex (#3506 prod-repro)", () => {
+  const myTeam = { id: "me", division: 8, league_division_id: 11 };
+  const standings = [
+    // 15 AI-hold med flere point end "me" (145) → "me" bliver #16 kanonisk.
+    ...Array.from({ length: 15 }, (_, i) =>
+      standingRow({ id: i, teamId: `ai${i}`, division: 8, poolId: 11, points: 200 - i, isAi: true })),
+    standingRow({ id: 100, teamId: "me", division: 8, poolId: 11, points: 145 }),
+    // 3 AI-hold med færre point end "me".
+    ...Array.from({ length: 3 }, (_, i) =>
+      standingRow({ id: 200 + i, teamId: `ai-low${i}`, division: 8, poolId: 11, points: 50 - i, isAi: true })),
+    // 5 menneskehold — kun 1 med flere point end "me" → "me" bliver #2 blandt managere.
+    standingRow({ id: 300, teamId: "human-leader", division: 8, poolId: 11, points: 180 }),
+    ...Array.from({ length: 4 }, (_, i) =>
+      standingRow({ id: 301 + i, teamId: `human${i}`, division: 8, poolId: 11, points: 60 - i })),
+  ];
+  const { myStandingIndex, myManagerRank } = computeMyDivisionStandings(standings, myTeam, ALL_POOLS);
+  // 15 AI-hold med flere point + human-leader (180 > 145) = 16 hold foran "me" => #17.
+  assert.equal(myStandingIndex + 1, 17, "kanonisk placering (samme scope som Standings) skal tælle AI-hold med");
+  assert.equal(myManagerRank, 2, "sekundært tal: #2 blandt kun menneske-managerne");
+});
+
+test("computeMyDivisionStandings — myManagerRank er null når eget hold ikke findes (kant-tilfælde)", () => {
+  const standings = [standingRow({ id: 1, teamId: "someone", division: 3, poolId: 11, points: 50 })];
+  const { myManagerRank } = computeMyDivisionStandings(standings, { id: "me", division: 3, league_division_id: 11 }, ALL_POOLS);
+  assert.equal(myManagerRank, null);
 });
 
 test("computeMyDivisionStandings — sorterer efter total_points faldende", () => {
