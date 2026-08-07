@@ -150,5 +150,8 @@
   {"external_id":"7c89cea334c5dd5c","name":"Tour du Massif Central","country":"France","terrain_archetype":"mountain_tour"},
   {"external_id":"94d0a93648e19393","name":"Tour of Scandinavia","country":"Sweden","terrain_archetype":"balanced_week"},
   {"external_id":"92e05a8bd2376062","name":"Volta a Portugal Maior","country":"Portugal","terrain_archetype":"summit_tour"},
-  {"external_id":"3175cdde86ba575c","name":"Vuelta a Murcia Mayor","country":"Spain","terrain_archetype":"mountain_tour"}
+  {"external_id":"3175cdde86ba575c","name":"Vuelta a Murcia Mayor","country":"Spain","terrain_archetype":"mountain_tour"},
+  {"external_id":"097e2d7bc48095a3","name":"Chrono Champenois Majeur","country":"France","terrain_archetype":"itt_classic"},
+  {"external_id":"a9a48734b7c0b879","name":"Vuelta a los Pirineos","country":"Spain","terrain_archetype":"summit_tour"},
+  {"external_id":"78e684cc50060148","name":"Tour des Grandes Alpes","country":"France","terrain_archetype":"summit_tour"}
 ]
