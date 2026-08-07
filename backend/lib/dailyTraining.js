@@ -20,6 +20,31 @@ export const DAILY_TRAINING_CONFIG = Object.freeze({
 
 export const DEFAULT_PROGRAM = Object.freeze({ focus: "endurance", intensity: "normal" });
 
+// #3459 D2 — race-profil → udviklings-relevante evner. Flyttet HERTIL fra
+// backend/scripts/loebsdagsModelSimulation.js (var lokal duplikat i sim'en) så sim
+// og produktionsmotor deler ÉN sandhed (ejer-mandat i spec'en, D2-afsnittet).
+// Dokumenteret forslag (afledt af raceFatigue.js's 9 profiltyper + eksisterende
+// TRAINING_FOCUSES-grupperinger, så mapningen "føles" som den trænings-fokus
+// løbstypen mest ligner) — se sim-scriptets historik for den fulde begrundelse
+// pr. profiltype.
+export const RACE_PROFILE_ABILITY_MAP = Object.freeze({
+  flat: ["flat", "sprint", "acceleration"],
+  rolling: ["punch", "tempo", "endurance"],
+  hilly: ["climbing", "punch", "tempo"],
+  classic: ["punch", "durability", "positioning"],
+  cobbles: ["cobblestone", "durability", "flat"],
+  mountain: ["climbing", "endurance", "durability"],
+  high_mountain: ["climbing", "endurance", "recovery", "durability"],
+  itt: ["time_trial", "tempo"],
+  ttt: ["time_trial", "tactics", "positioning"],
+});
+
+// #3459 D2 — devMult-bånd (ejer-valgt 6/8): racing udvikler ~10-20% MERE end det
+// pas det erstatter, kun i løbets relevante evner. Sim-valideret (G4) midtpunkt
+// 1.15 — behold medmindre målinger mod ægte population siger andet (se PR-body
+// G4-scorecard).
+export const RACE_DEV_CONFIG = Object.freeze({ devMult: 1.15, devMultLo: 1.10, devMultHi: 1.20 });
+
 // #1894: ryttere uden aktiv plan trænede tidligere ALTID DEFAULT_PROGRAM
 // ("endurance") uanset ryttertype (44% af trup — fejludvikling for fx sprintere).
 // primaryType er VALGFRI (bagudkompatibel) — udeladt/null falder tilbage til
@@ -139,6 +164,90 @@ export function applyDailyTick({
       bar >= 1
       && (gains[ability] ?? 0) < dailyCeiling
       && current + (gains[ability] ?? 0) < Math.min(99, caps?.[ability] ?? 99)
+    ) {
+      bar -= 1;
+      gains[ability] = (gains[ability] ?? 0) + 1;
+    }
+    if (gains[ability]) nextAbilities[ability] = current + gains[ability];
+    nextProgress[ability] = Math.min(bar, 0.999);
+  }
+
+  return {
+    abilities: nextAbilities,
+    progress: nextProgress,
+    gains,
+    score: Math.round(score * 100) / 100,
+    noise,
+    status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal",
+  };
+}
+
+// #3459 D2 — søster-funktion til applyDailyTick ovenfor. Ren funktion, ingen DB.
+// Kaldt fra dailyTrainingEngine.js's per-rytter-loop i den gren hvor D1-gaten
+// (race_day_engine_enabled on + racedToday) fanger racede ryttere — GENSIDIGT
+// UDELUKKENDE med applyDailyTick i samme loop (enten-eller, aldrig begge for
+// samme rytter samme dag), så dobbelt-kredit er umulig by construction.
+//
+// Model (ejer-beslutning 6/8, docs/superpowers/specs/2026-08-06-loebsdags-model-design.md
+// D2): "det erstattede pas" beregnes NØJAGTIGT som en normal træningsdag ville
+// (samme program/conditionMult/staff/facility/academy/bonus-kæde, via
+// dailyAbilityDelta, summeret over ALLE VISIBLE_ABILITIES — modsat sim'ens
+// bevidst forenklede "gap=1"-enhedsmodel). devMult (RACE_DEV_CONFIG, 1.10-1.20,
+// default 1.15) ganges på DENNE sum, og resultatet omfordeles JÆVNT over KUN
+// løbsprofilens relevante evner (RACE_PROFILE_ABILITY_MAP, fallback 'rolling'
+// for ukendt profil — samme fallback-semantik som raceFatigue.js's
+// raceFatigueLoad). Evner allerede på cap springes over (budgettet for dén evne
+// går tabt, omfordeles IKKE til de andre relevante evner — samme "hver evne
+// står for sig selv"-semantik som applyDailyTick's per-ability gap-model).
+//
+// Returnerer SAMME kontrakt som applyDailyTick ({abilities, gains, progress,
+// score, noise, status}) — skrivestien i dailyTrainingEngine.js (abilityPatch/
+// gainsDetail/historyRows) er blind for kilden.
+export function applyRaceDevelopmentTick({
+  riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap,
+  staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
+  profileType, devMult = RACE_DEV_CONFIG.devMult,
+}) {
+  const cfg = DAILY_TRAINING_CONFIG;
+  // Egen seed-namespace ("rtick" vs. "dtick") — samme (rider,dato)-par kan ALDRIG
+  // ramme begge stier samme dag (gensidigt udelukkende), men et separat namespace
+  // holder de to tick-typers noise uafhængige for læsbarhed/fremtidssikring.
+  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`rtick:${riderId}:${dateStr}`);
+  const nextAbilities = { ...abilities };
+  const nextProgress = { ...(progress ?? {}) };
+  const gains = {};
+
+  // "Det erstattede pas": sum af dailyAbilityDelta over ALLE VISIBLE_ABILITIES med
+  // rytterens FAKTISKE program (resolveProgram + dagens intensitets-opløsning) —
+  // samme faktor-kæde en normal træningsdag ville brugt.
+  let replacedTotal = 0;
+  for (const ability of VISIBLE_ABILITIES) {
+    const current = Number(abilities[ability] ?? 0);
+    if (!Number.isFinite(current)) continue;
+    replacedTotal += dailyAbilityDelta({
+      ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
+      staff, facilityTier, riderLevel, academyRateMult,
+    });
+  }
+
+  const relevant = RACE_PROFILE_ABILITY_MAP[profileType] ?? RACE_PROFILE_ABILITY_MAP.rolling ?? [];
+  const devTotal = replacedTotal * devMult;
+  const perAbility = relevant.length > 0 ? devTotal / relevant.length : 0;
+  const dailyCeiling = Number.isFinite(hardDailyCap) ? hardDailyCap : Infinity;
+
+  let score = 0;
+  for (const ability of relevant) {
+    if (perAbility <= 0) continue;
+    const current = Number(nextAbilities[ability] ?? 0);
+    if (!Number.isFinite(current)) continue;
+    const cap = caps?.[ability];
+    if (cap != null && current >= cap) continue; // på cap — intet at vinde, budget tabes (ikke omfordelt)
+    score += perAbility;
+    let bar = Number(nextProgress[ability] ?? 0) + perAbility;
+    while (
+      bar >= 1
+      && (gains[ability] ?? 0) < dailyCeiling
+      && current + (gains[ability] ?? 0) < Math.min(99, cap ?? 99)
     ) {
       bar -= 1;
       gains[ability] = (gains[ability] ?? 0) + 1;

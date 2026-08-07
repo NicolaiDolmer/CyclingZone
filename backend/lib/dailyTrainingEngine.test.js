@@ -119,6 +119,9 @@ function createMockSupabase(state, opts = {}) {
           } else if (opts.injectRaceResultsError && table === "race_results") {
             // #3459 D1 fail-safe-test: race_results-lookuppet fejler.
             result = { data: null, error: { message: opts.injectRaceResultsError } };
+          } else if (opts.injectRaceStageProfilesError && table === "race_stage_profiles") {
+            // #3459 D2 fail-safe-test: race_stage_profiles-lookuppet (profil-typen) fejler.
+            result = { data: null, error: { message: opts.injectRaceStageProfilesError } };
           } else {
             result = { data: state[table].filter(matchRow), error: null };
           }
@@ -877,7 +880,7 @@ function seedFlagOn(state, value = "on") {
   state.app_config = [{ key: RACE_DAY_ENGINE_FLAG_KEY, value }];
 }
 
-test("D1 (flag on): racede rytteren i dag → intet tick, plan urørt, load=0 (ikke rest -14)", async () => {
+test("D1+D2 (flag on): racede rytteren i dag → race-udvikling (IKKE 0), plan urørt, load=0 (ikke rest -14)", async () => {
   const state = seedState({
     conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
     plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
@@ -893,8 +896,11 @@ test("D1 (flag on): racede rytteren i dag → intet tick, plan urørt, load=0 (i
   });
 
   const rr = result.report.riders[0];
-  assert.deepEqual(rr.gains, {}, "løbsdag → ingen ability-gains (træningspasset springes over)");
-  assert.equal(rr.score, 0, "score = 0 på løbsdag");
+  // #3459 D2 (implementering): raced dage giver IKKE længere score=0 — raceRedaget
+  // "det erstattede pas" bliver til race-udvikling i stedet (applyRaceDevelopmentTick),
+  // omdirigeret til løbsprofilens relevante evner. Testen hed oprindeligt "intet
+  // tick" fra D1-alene-fasen (før D2 landede på samme branch) — opdateret her.
+  assert.ok(rr.score > 0, `løbsdag giver race-udvikling, ikke 0 (var ${rr.score})`);
   assert.equal(rr.intensity, "race", "rapporten markerer dagen som løbsdag");
   assert.equal(rr.race_day, true, "rapport-feltet race_day markerer løbsdagen");
   assert.equal(rr.injured, false, "løbsdag er ikke det samme som skade");
@@ -995,6 +1001,161 @@ test("D1 (flag off, default): et race_results-hit i dag ændrer INTET — bit-id
   assert.equal(rr.race_day, false, "flag off → løbsdags-gaten er slet ikke aktiv");
   assert.equal(rr.intensity, "hard", "intensiteten er den ægte plan-intensitet, ikke 'race'");
   assert.ok(rr.gains.climbing >= 1, "rytteren trænede normalt (bit-identisk med før #3459)");
+});
+
+// ── #3459 D2: race-udviklings-tick (søster-funktion applyRaceDevelopmentTick) ──
+
+test("D2 (flag on): kendt løbsprofil → KUN profilens relevante evner får progress (aldrig trænings-fokussets evner)", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "sprint", intensity: "hard" }],
+    // sprint-fokus (sprint/acceleration) rører IKKE mountain-profilens evner
+    // (climbing/endurance/durability) — så et gevinst-hit dér beviser at
+    // udviklingen kommer fra RACE_PROFILE_ABILITY_MAP, ikke det (ikke-kørte)
+    // trænings-fokus. Baseline-abilities (50, rigeligt gap til de genberegnede
+    // livstidslofter) så der reelt ER budget at omfordele.
+    abilities: [makeAbilityRow("r1")],
+  });
+  seedFlagOn(state);
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  state.race_stage_profiles = [{ race_id: "race-1", stage_number: 1, profile_type: "mountain" }];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.race_day, true);
+  assert.ok(rr.score > 0, "race-udvikling gav en positiv score");
+  // gains_detail viser KUN mountain-evner hvis en +1 blev krydset — sprint/
+  // acceleration (dagens plan-fokus, IKKE relevant for mountain) må ALDRIG stå i
+  // gains_detail på en løbsdag.
+  for (const ability of Object.keys(rr.gains_detail)) {
+    assert.ok(["climbing", "endurance", "durability", "recovery"].includes(ability),
+      `${ability} er uden for mountain-profilens evneliste — burde ikke have fået en gevinst`);
+  }
+  assert.equal(rr.gains.sprint, undefined, "sprint (plan-fokus) må IKKE få gevinst på en løbsdag");
+  assert.equal(rr.gains.acceleration, undefined, "acceleration (plan-fokus) må IKKE få gevinst på en løbsdag");
+});
+
+test("D2: racet rytter får ALDRIG både trænings-tick OG race-udvikling samme dag (gensidigt udelukkende)", async () => {
+  const state = seedState({
+    riders: [makeRider({ id: "r1" }), makeRider({ id: "r2" })],
+    abilities: [makeAbilityRow("r1"), makeAbilityRow("r2", { ability_progress: { climbing: 0.999 } })],
+    conditions: [makeCondition("r1"), makeCondition("r2")],
+    plans: [
+      { rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" },
+      { rider_id: "r2", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" },
+    ],
+  });
+  seedFlagOn(state);
+  // Kun r1 racede i dag. Mountain-profilen (climbing/endurance/durability) matcher
+  // klatrer-rytterens (default primary_type) faktiske vækst-caps — en flad profil
+  // ville lægge budgettet på evner UDEN gap for denne rytter-type (klippet til 0
+  // ved cap-tjekket) og gøre testen ufølsom for det den faktisk skal bevise.
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  state.race_stage_profiles = [{ race_id: "race-1", stage_number: 1, profile_type: "mountain" }];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const r1 = result.report.riders.find((r) => r.rider_id === "r1");
+  const r2 = result.report.riders.find((r) => r.rider_id === "r2");
+  assert.equal(r1.race_day, true, "r1 racede");
+  assert.ok(r1.score > 0, "r1 fik race-udvikling");
+  // r1's gevinster må UDELUKKENDE komme fra mountain-profilen (climbing/endurance/
+  // durability) — INGEN andre VISIBLE_ABILITIES må stige. Det ville kun kunne ske
+  // hvis r1 fik BÅDE trænings-tick OG race-udvikling samme dag.
+  for (const ability of Object.keys(r1.gains)) {
+    assert.ok(["climbing", "endurance", "durability"].includes(ability),
+      `${ability} er uden for mountain-profilen — r1 fik uventet en gevinst uden for race-udviklingens evneliste`);
+  }
+  assert.equal(r2.race_day, false, "r2 racede ikke — normal træningsdag");
+  assert.ok(r2.gains.climbing >= 1, "r2 (vo2max-fokus, ikke racede) fik en normal trænings-gevinst i climbing");
+});
+
+test("D2: ukendt/manglende race_stage_profiles-række → 'rolling'-fallback (udvikling anvendes stadig)", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "sprint", intensity: "hard" }],
+    abilities: [makeAbilityRow("r1")],
+  });
+  seedFlagOn(state);
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-ukendt", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  // Ingen matchende race_stage_profiles-række for race-ukendt/1.
+  state.race_stage_profiles = [];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.race_day, true);
+  assert.ok(rr.score > 0, "manglende profil-række falder tilbage til 'rolling' — udvikling sker stadig, ikke 0");
+});
+
+test("D2 fail-safe: race_stage_profiles-lookup fejler → 'rolling'-fallback, dagen fejler IKKE", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "sprint", intensity: "hard" }],
+    abilities: [makeAbilityRow("r1")],
+  });
+  seedFlagOn(state);
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  const supabase = createMockSupabase(state, { injectRaceStageProfilesError: "connection timeout" });
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  assert.equal(result.alreadyRan, false, "en fejlet profil-berigelse vælter ikke træningsdagen");
+  const rr = result.report.riders[0];
+  assert.equal(rr.race_day, true);
+  assert.ok(rr.score > 0, "fail-safe: 'rolling'-fallback bruges, udvikling sker stadig");
+});
+
+test("D2 (flag off): et race_stage_profiles-hit ændrer INTET — race-udvikling er slet ikke aktiv uden flagget", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+  });
+  // Intet app_config-seed → flag off.
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  state.race_stage_profiles = [{ race_id: "race-1", stage_number: 1, profile_type: "mountain" }];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.race_day, false, "flag off → hverken D1- eller D2-gaten er aktiv");
+  assert.ok(rr.gains.climbing >= 1, "rytteren trænede normalt (bit-identisk med før #3459), IKKE mountain-profilens evner");
+});
+
+test("D2: G5-invariant — training_plans er ALDRIG rørt på en race-udviklings-dag", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "sprint", intensity: "hard" }],
+    abilities: [makeAbilityRow("r1")],
+  });
+  seedFlagOn(state);
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  state.race_stage_profiles = [{ race_id: "race-1", stage_number: 1, profile_type: "itt" }];
+  const plansSnapshot = JSON.parse(JSON.stringify(state.training_plans));
+  const supabase = createMockSupabase(state);
+
+  await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  assert.deepEqual(state.training_plans, plansSnapshot, "training_plans uændret efter en race-udviklings-dag");
 });
 
 test("D3: recoveryFraction/base følger flagget — on giver mærkbart anderledes træthed end off (samme input)", async () => {

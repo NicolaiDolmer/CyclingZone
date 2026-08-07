@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   DAILY_TRAINING_CONFIG, DEFAULT_PROGRAM, resolveProgram,
   growthFractionForAge, abilityMult, dailyAbilityDelta, applyDailyTick,
-  computeAcademySeasonCeiling,
+  computeAcademySeasonCeiling, applyRaceDevelopmentTick, RACE_PROFILE_ABILITY_MAP, RACE_DEV_CONFIG,
 } from "./dailyTraining.js";
 import { TRAINING_CONFIG } from "./training.js";
 import { youthMultiplier } from "./academyFlag.js";
@@ -358,4 +358,119 @@ test("applyDailyTick: academyRateMult=1/3 skalerer progress-akkumulering præcis
     Math.abs(third.progress.sprint - full.progress.sprint / 3) < 1e-9,
     `got ${third.progress.sprint}, expected ${full.progress.sprint / 3}`,
   );
+});
+
+// ── #3459 D2: applyRaceDevelopmentTick (søster-funktion til applyDailyTick) ─
+
+// Fælles fixture: fem evner med lille, ens gap (5) — kun DISSE bidrager til
+// "det erstattede pas" (alle andre VISIBLE_ABILITIES har current=0/cap=undefined
+// ⇒ gap=0 ⇒ delta=0, jf. dailyAbilityDelta), så testene forbliver håndregnbare.
+function raceDevFixture(overrides = {}) {
+  return {
+    riderId: "race1", dateStr: "2026-08-10", age: 27,
+    abilities: { climbing: 50, endurance: 50, durability: 50, sprint: 50, flat: 50 },
+    caps: { climbing: 55, endurance: 55, durability: 55, sprint: 55, flat: 55 },
+    progress: {},
+    program: { focus: "sprint", intensity: "normal" },
+    conditionMult: 1, bonus: false, potentiale: 3,
+    ...overrides,
+  };
+}
+
+test("applyRaceDevelopmentTick: kun løbsprofilens relevante evner får gevinst — resten urørt", () => {
+  // mountain → ["climbing", "endurance", "durability"] (RACE_PROFILE_ABILITY_MAP).
+  const out = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain" }));
+  for (const a of RACE_PROFILE_ABILITY_MAP.mountain) {
+    assert.ok(out.progress[a] > 0, `${a} skal have fået progress (løbsrelevant evne)`);
+  }
+  // sprint/flat er IKKE i mountain-mappingen — skal forblive urørt.
+  assert.equal(out.progress.sprint ?? 0, 0, "sprint er uden for mountain-profilen — ingen progress");
+  assert.equal(out.progress.flat ?? 0, 0, "flat er uden for mountain-profilen — ingen progress");
+  assert.equal(out.abilities.sprint, 50);
+  assert.equal(out.abilities.flat, 50);
+});
+
+test("applyRaceDevelopmentTick: ukendt profil-type falder tilbage til 'rolling' (samme fallback som raceFatigueLoad)", () => {
+  const known = applyRaceDevelopmentTick(raceDevFixture({ profileType: "rolling" }));
+  const unknown = applyRaceDevelopmentTick(raceDevFixture({ profileType: "helt-ukendt-profil-xyz" }));
+  assert.deepEqual(unknown.progress, known.progress, "ukendt profil ⇒ identisk output med eksplicit 'rolling'");
+  for (const a of RACE_PROFILE_ABILITY_MAP.rolling) {
+    assert.ok(unknown.progress[a] > 0, `${a} (rolling-fallback) skal have fået progress`);
+  }
+});
+
+test("applyRaceDevelopmentTick: devMult skalerer 'det erstattede pas' lineært", () => {
+  const base = raceDevFixture({ profileType: "mountain" });
+  const atOne = applyRaceDevelopmentTick({ ...base, devMult: 1.0 });
+  const atDefault = applyRaceDevelopmentTick({ ...base, devMult: RACE_DEV_CONFIG.devMult }); // 1.15
+  const atDouble = applyRaceDevelopmentTick({ ...base, devMult: 2.0 });
+  for (const a of RACE_PROFILE_ABILITY_MAP.mountain) {
+    assert.ok(Math.abs(atDefault.progress[a] - atOne.progress[a] * RACE_DEV_CONFIG.devMult) < 1e-9,
+      `${a}: devMult=1.15 skal give 1.15× devMult=1.0's progress`);
+    assert.ok(Math.abs(atDouble.progress[a] - atOne.progress[a] * 2.0) < 1e-9,
+      `${a}: devMult=2.0 skal give 2× devMult=1.0's progress`);
+  }
+  assert.ok(atDefault.score > atOne.score, "sanity: default devMult (1.15) > devMult 1.0 ⇒ højere score");
+});
+
+test("applyRaceDevelopmentTick: caps respekteres — evne allerede på cap får INTET, ingen evne overstiger cap", () => {
+  // climbing er ÉT point under cap med næsten fuld progress-bar — stort devMult-
+  // budget skal presse den PRÆCIST til cap, aldrig forbi (samme cap-loop-mekanik
+  // som applyDailyTick).
+  const out = applyRaceDevelopmentTick(raceDevFixture({
+    profileType: "mountain",
+    abilities: { climbing: 54, endurance: 50, durability: 50 },
+    caps: { climbing: 55, endurance: 90, durability: 90 }, // endurance/durability: stort gap → stort devTotal-bidrag
+    progress: { climbing: 0.99 },
+    devMult: 3.0,
+  }));
+  assert.ok(out.abilities.climbing <= 55, `cap sprængt: ${out.abilities.climbing} > 55`);
+  assert.equal(out.abilities.climbing, 55, "climbing skal ramme cap men aldrig overstige");
+
+  // Evne PÅ cap fra start (endurance) — separat scenarie: intet gap ⇒ intet i
+  // "det erstattede pas" for endurance selv, MEN endurance er stadig i relevant-
+  // listen og skal ikke få nogen progress-akkumulering af de ANDRE evners budget.
+  const capped = applyRaceDevelopmentTick(raceDevFixture({
+    profileType: "mountain",
+    abilities: { climbing: 50, endurance: 55, durability: 50 },
+    caps: { climbing: 55, endurance: 55, durability: 55 }, // endurance: current===cap
+    progress: {},
+  }));
+  assert.equal(capped.abilities.endurance, 55, "endurance var allerede på cap — uændret");
+  assert.equal(capped.progress.endurance ?? 0, 0, "på cap ⇒ ingen progress-akkumulering, budget tabes (ikke omfordelt)");
+});
+
+test("applyRaceDevelopmentTick: conditionMult skalerer proportionalt (samme led som dailyAbilityDelta)", () => {
+  const full = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain", conditionMult: 1.0 }));
+  const half = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain", conditionMult: 0.5 }));
+  for (const a of RACE_PROFILE_ABILITY_MAP.mountain) {
+    assert.ok(Math.abs(half.progress[a] - full.progress[a] * 0.5) < 1e-9,
+      `${a}: conditionMult=0.5 skal halvere progress ift. conditionMult=1.0`);
+  }
+});
+
+test("applyRaceDevelopmentTick: staff/facility/academyRateMult-kæden ganger ind PRÆCIST som dailyAbilityDelta", () => {
+  const withoutBoost = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain" }));
+  const withAcademyBoost = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain", academyRateMult: 2.0 }));
+  for (const a of RACE_PROFILE_ABILITY_MAP.mountain) {
+    assert.ok(Math.abs(withAcademyBoost.progress[a] - withoutBoost.progress[a] * 2.0) < 1e-9,
+      `${a}: academyRateMult=2.0 skal fordoble progress (samme led som applyDailyTick sender til dailyAbilityDelta)`);
+  }
+});
+
+test("applyRaceDevelopmentTick: samme kontrakt-form som applyDailyTick (abilities/gains/progress/score/noise/status)", () => {
+  const out = applyRaceDevelopmentTick(raceDevFixture({ profileType: "flat" }));
+  assert.deepEqual(Object.keys(out).sort(), ["abilities", "gains", "noise", "progress", "score", "status"]);
+  assert.ok(["over", "normal", "under"].includes(out.status));
+});
+
+test("applyRaceDevelopmentTick: muterer ikke input, deterministisk pr. (rider,dato)", () => {
+  const abilities = { climbing: 50, endurance: 50, durability: 50 };
+  const progress = { climbing: 0.2 };
+  const input = raceDevFixture({ profileType: "mountain", abilities, progress });
+  const out1 = applyRaceDevelopmentTick(input);
+  assert.deepEqual(abilities, { climbing: 50, endurance: 50, durability: 50 }, "input-abilities urørt");
+  assert.deepEqual(progress, { climbing: 0.2 }, "input-progress urørt");
+  const out2 = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain", abilities: { ...abilities }, progress: { ...progress } }));
+  assert.deepEqual(out1, out2, "samme (rider,dato)-seed ⇒ identisk output");
 });
