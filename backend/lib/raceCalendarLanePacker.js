@@ -14,11 +14,29 @@
 //     realiseres (for få endagsløb / monumenter til stede).
 //
 // REN + deterministisk (ingen DB/Date/random).
+//
+// #3469 (2026-08-06): race-objekter kan nu bære en valgfri numerisk `seasonFraction` (0..1,
+// jf. seasonPhaseProfiles.js) — tierCalendarMaterializer.js beriger sel.stageRaces/
+// sel.oneDayRaces med den FØR de fodres hertil, ud fra race_pool.date_text. Når ALLE items i
+// en given liste har fraction, sortéres/ankres de efter fase i stedet for jævn spredning;
+// mangler ÉT ELLER FLERE items fraction, falder pakkeren tilbage til den gamle, fraction-frie
+// algoritme — BIT-IDENTISK med før #3469 (alle eksisterende fixtures uden date_text rammer
+// derfor denne sti uændret). SELECTIONEN (hvilke løb) rører #3469 aldrig, kun rækkefølgen.
 
 export const MONUMENT_GAMEDAY_BASE = 100000;
 
 const lenOf = (r) => Math.max(1, Number(r.stages) || 1);
 const byBigThenId = (a, b) => lenOf(b) - lenOf(a) || String(a.id).localeCompare(String(b.id));
+const hasFraction = (r) => typeof r.seasonFraction === "number" && Number.isFinite(r.seasonFraction);
+const byPhaseThenBigThenId = (a, b) => a.seasonFraction - b.seasonFraction || lenOf(b) - lenOf(a) || String(a.id).localeCompare(String(b.id));
+
+// #3469: fase-sortér `items` (stabilt: fraction asc → stages desc → id) når ALLE har en
+// numerisk seasonFraction; ellers null — kalderen falder tilbage til sin nuværende
+// (fraction-frie) sti, garanteret bit-identisk med før #3469.
+function orderByPhase(items) {
+  if (!items.every(hasFraction)) return null;
+  return [...items].sort(byPhaseThenBigThenId);
+}
 
 // Fletter to lister jævnt (a typisk etapeløb, b klassikere) så b spredes ud mellem a.
 function interleave(a, b) {
@@ -59,13 +77,19 @@ function layoutBanded({ stageRaces, classics, density: D, days, cap }) {
     chains[best].items.push(r);
     chains[best].used += lenOf(r);
   }
-  // Fyld hvert spor til T med baseline-klassikere (interleaved for spredning).
-  const pool = [...classics];
+  // Fyld hvert spor til T med baseline-klassikere. Rækkefølgen inden for sporet fase-sortéres
+  // (se chain.seq nedenfor) når hele sporets etapeløb+klassikere har en date_text-fraction.
+  // #3469-determinisme: `pool` kildes fra `classics` i RÅ input-rækkefølge (som før #3469) når
+  // fraction mangler — bit-identisk fallback. Har ALLE klassikere fraction, sortéres poolen
+  // kanonisk FØR splice-tildelingen pr. spor, så selve tildelingen (hvilket løb i hvilket
+  // spor) bliver uafhængig af input-rækkefølgen (krav: samme resultat uanset input-rækkefølge
+  // når fractions findes) i stedet for at hænge på hvilken rækkefølge oneDayRaces kom i.
+  const pool = orderByPhase(classics) ?? [...classics];
   for (const chain of chains) {
     const fill = pool.splice(0, T - chain.used);
-    chain.seq = interleave(chain.items, fill); // rækkefølge af race-objekter
+    chain.seq = orderByPhase([...chain.items, ...fill]) ?? interleave(chain.items, fill); // rækkefølge af race-objekter
   }
-  const overlay = pool; // resterende = overlayCount
+  const overlay = orderByPhase(pool) ?? pool; // resterende = overlayCount, fase-sorteret (#3469)
 
   // chainAt[c][g] = { race, stage_number } for game-dag g i spor c.
   const chainAt = chains.map((chain) => {
@@ -91,6 +115,9 @@ function layoutBanded({ stageRaces, classics, density: D, days, cap }) {
       const g = d * K + k;
       for (let c = 0; c < B; c++) {
         const cell = chainAt[c][g];
+        // Defensiv — bør aldrig ske (chains fyldes til nøjagtig T ved konstruktion), men en
+        // fejl her skal fejle beskrivende, ikke som en rå TypeError (forberedelse til #3470).
+        if (!cell) throw new Error(`raceCalendarLanePacker: banded chainAt[${c}][${g}] er tom (hul i spor) — packing-invariant brudt`);
         const p = ensure(cell.race);
         p.stagesPlaced.push({ stage_number: cell.stage_number, real_day: d, game_day: g, lane: lane++ });
         p.startRealDay = Math.min(p.startRealDay, d);
@@ -115,13 +142,131 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   const streamCursor = new Array(cap).fill(0);
   const raceSpan = new Map();
   const placeStream = (s, race) => { const start = streamCursor[s]; streamCursor[s] = start + lenOf(race); raceSpan.set(race.id, { start, len: lenOf(race), stream: s, race }); };
-  const rest = interleave(others, classics);
+  const totalSlots = D * days; // #3469: flyttet op — GT-fase-ankeret skal kende totalSlots FØR placeringen.
+
+  // #3469: fase-sortér rest-løbene (fylder ikke-GT-strømmen) når alle har en date_text-
+  // fraction; ellers uændret jævn fletning (bit-identisk med før #3469).
+  const rest = orderByPhase([...others, ...classics]) ?? interleave(others, classics);
 
   if (gts.length) {
-    const perGap = Math.floor(Math.floor(rest.length / 2) / gts.length);
-    let ri = 0;
-    gts.forEach((gt) => { placeStream(0, gt); for (let k = 0; k < perGap && ri < rest.length; k++) placeStream(0, rest[ri++]); });
-    for (; ri < rest.length; ri++) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, rest[ri]); }
+    // #3469: GT'er fase-ankres til et target-startslot på stream 0 i stedet for jævnt
+    // perGap-fyld — MEN kun når ALLE GT'er har en numerisk fraction; ellers uændret gammel
+    // perGap-algoritme (bit-identisk fallback). Non-overlap er STRUKTUREL i begge grene
+    // (samme cursor, stream 0, sekventiel placering).
+    const gtsByPhase = orderByPhase(gts);
+    if (gtsByPhase) {
+      // #3472 (ejer-feedback på PR #3472, 6/8): v1 fyldte KUN stream 0 mod hvert GT-target,
+      // hvilket gjorde stream 0 meget lang mens stream 1-2 forblev korte og "løb tør" tidligt
+      // i game_day-rummet — sene dele af sæsonen blev derfor næsten enkelt-sporede (D1
+      // overlapDays faldt 21→16, målt med diagnose()). Fix (ejer-anvist formel): rest-fyldet
+      // fordeles LEAST-LOADED over ALLE streams (også stream 0) under hele fremdriften mod
+      // targetSlot — streams skrider dermed jævnt frem sammen, og GT-perioderne forbliver
+      // overlap-tunge som resten af sæsonen. `placedCount` (summen af events på ALLE streams,
+      // inkl. tidligere GT'er) er progress-proxyen mod targetSlot — IKKE streamCursor[0]
+      // alene (ejer: "det samlede event-antal er den rigtige proxy for GT'ens slot-position
+      // når streams skrider jævnt frem"). Målt (dry-run --plan 3, rigtigt katalog): D1
+      // overlapDays 16→22 (≥21-kravet), maxOverlap forbliver ≤ cap. GT-positionerne rammer
+      // stadig korrekt rækkefølge og er i samme størrelsesorden som v1 (se PR-body/baseline-
+      // filen for de fulde tal — en afprøvet alternativ variant med streamCursor[0] som
+      // stop-betingelse gav VÆRRE præcision OG lavere overlap, så den blev forkastet).
+      // #3472 v3 (ejer-fund 6/8, anden runde): game_day-non-overlap på stream 0 garanterer
+      // IKKE at GT'erne også får disjunkte KALENDERDAGE (real_day) — flere spor interleaves
+      // ind i samme real_day ved slot-komprimeringen (real_day = floor(slot/D)). ROD-ÅRSAG
+      // (fundet ved afprøvning mod det rigtige katalog): least-loaded-fyldet vælger PR.
+      // DEFINITION den mindst belastede stream — lige efter en GT ligger stream 0 ALTID
+      // FORAN 1-2, så alt "gulv"-fyld (uanset hvor højt targettet sættes) lander på 1-2 og
+      // BACKFILLER deres LAVERE game_day-værdier — det rykker ALDRIG stream 0's egen cursor
+      // og skaber derfor INGEN game_day-afstand til den næste GT (som starter PRÆCIS ved
+      // stream 0's cursor). To forsøg der byggede videre på targettet alene (placedCount- og
+      // "leveling"-baserede gulve) ændrede derfor reelt IKKE noget — GT'erne forblev ryg-mod-
+      // ryg i game_day (fx Giro 13-33, Tour 34-54, ZERO game_day-mellemrum) og delte dermed
+      // kalenderdag uanset gulvets størrelse.
+      //
+      // Fix: et LILLE, EKSPLICIT stream-0-KUN buffer (GT_SEPARATION_BUFFER_DAYS×D events)
+      // placeres FØRST, ligeglad med least-loaded, umiddelbart efter forrige GT — dette er
+      // den ENESTE måde at reelt rykke stream 0's cursor (og dermed GT'ens game_day-position)
+      // fremad. Resten af fremdriften mod fase-targettet forbliver least-loaded over ALLE
+      // streams som før (bevarer #3472-overlap-fixet). Bufferet er sat til det HÅRDE minimum
+      // (1×D — garanterer netop "aldrig delt dag", ikke nødvendigvis en tom bufferdag) fordi
+      // afprøvning viste at et større buffer (2×D, "1 tom dags luft") kostede uforholdsmæssigt
+      // meget overlap på tier 1's konkrete (sparsomme) restløbs-udvalg — se måletal i
+      // PR-body/baseline-filen. Separations-bufferet har PRIORITET over fase-præcision (ejer:
+      // "ingen delt dag > præcist anker") — men taber til ceiling-garantien (ingen tabte
+      // events/overskredet totalSlots er stadig hårdt): når rest-køen løber tør eller ceiling
+      // ikke levner plads, placeres GT'en så tæt på som muligt, og en ÆGTE efter-hånden-
+      // verifikation i diagnose()'s gtRealDaySeparationViolations rapporterer det i stedet
+      // for at fejle stille.
+      const GT_SEPARATION_BUFFER_DAYS = 1; // 1×D ⇒ hårdt minimum (aldrig delt dag); se overlap-afvejning i kommentar ovenfor
+      let remainingGtLen = gtsByPhase.reduce((s, g) => s + lenOf(g), 0); // inkl. DENNE gt (jf. ejer-formel), dekrementeres i slutningen af hver iteration
+      let ri = 0;
+      let placedCount = 0;
+      let requiredStream0Buffer = 0; // intet buffer-krav før den FØRSTE gt (ingen forrige at holde afstand til)
+      for (const gt of gtsByPhase) {
+        const ceiling = totalSlots - remainingGtLen;
+        // stream0Ceiling = samme loft, men som en HARD clamp på stream 0's EGEN cursor (den
+        // eneste stream der bærer GT'er sekventielt) — bevarer #3469's oprindelige
+        // clamp-garanti selvom fyldet nu spredes over alle streams.
+        const stream0Ceiling = ceiling;
+
+        // Trin 1: eksplicit stream-0-KUN buffer (separations-krav fra FORRIGE gt, om nogen).
+        // Vælger det MINDST OVERSKYDENDE tilgængelige løb (helst præcis passende) frem for
+        // blot næste i fase-rækkefølgen — et vilkårligt stort flerdags-løb her ville overskyde
+        // bufferet unødigt og koste ekstra overlap-dage til ingen nytte (målt: reducerer
+        // overskridelsen mærkbart uden at ændre overlap-invarianten). Løbet fjernes fra `rest`
+        // (splice) uanset position ≥ ri — resten bevarer sin fase-rækkefølge til trin 2.
+        let stream0Buffered = 0;
+        while (stream0Buffered < requiredStream0Buffer) {
+          let bestIdx = -1, bestLen = Infinity;
+          for (let i = ri; i < rest.length; i++) {
+            const l = lenOf(rest[i]);
+            if (streamCursor[0] + l > stream0Ceiling) continue; // ceiling-garantien er hård
+            const need = requiredStream0Buffer - stream0Buffered;
+            if (l <= need && l < bestLen) { bestLen = l; bestIdx = i; if (l === need) break; }
+          }
+          if (bestIdx === -1) {
+            // intet passer uden at overskyde bufferet (eller ceiling) — tag det mindste
+            // tilgængelige for at minimere overskridelsen, i stedet for at give helt op.
+            for (let i = ri; i < rest.length; i++) {
+              const l = lenOf(rest[i]);
+              if (streamCursor[0] + l > stream0Ceiling) continue;
+              if (l < bestLen) { bestLen = l; bestIdx = i; }
+            }
+          }
+          if (bestIdx === -1) break; // intet kan placeres uden at overskride ceiling
+          const [item] = rest.splice(bestIdx, 1);
+          placeStream(0, item);
+          stream0Buffered += lenOf(item);
+          placedCount += lenOf(item);
+        }
+
+        // Trin 2: fase-target ≈ fraction × (totalSlots − resterende GT-fodaftryk INKL. denne)
+        // — fyldes LEAST-LOADED over alle streams (bevarer overlap, jf. #3472 runde 1).
+        const target = Math.min(ceiling, Math.max(placedCount, Math.round(gt.seasonFraction * (totalSlots - remainingGtLen))));
+        while (ri < rest.length && placedCount < target) {
+          let s = 0;
+          for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t;
+          if (s === 0 && streamCursor[0] + lenOf(rest[ri]) > stream0Ceiling) {
+            let alt = -1;
+            for (let t = 1; t < cap; t++) if (alt === -1 || streamCursor[t] < streamCursor[alt]) alt = t;
+            if (alt === -1) break; // cap===1 (ingen alternativ stream) — usædvanligt, men undgå uendelig løkke.
+            s = alt;
+          }
+          placeStream(s, rest[ri]);
+          placedCount += lenOf(rest[ri]);
+          ri++;
+        }
+        placeStream(0, gt);
+        placedCount += lenOf(gt);
+        remainingGtLen -= lenOf(gt); // klar til NÆSTE gt's target-beregning (nu ekskl. denne)
+        requiredStream0Buffer = GT_SEPARATION_BUFFER_DAYS * D; // gælder NÆSTE gt (0 hvis der ikke er flere)
+      }
+      for (; ri < rest.length; ri++) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, rest[ri]); }
+    } else {
+      const perGap = Math.floor(Math.floor(rest.length / 2) / gts.length);
+      let ri = 0;
+      gts.forEach((gt) => { placeStream(0, gt); for (let k = 0; k < perGap && ri < rest.length; k++) placeStream(0, rest[ri++]); });
+      for (; ri < rest.length; ri++) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, rest[ri]); }
+    }
   } else {
     for (const race of rest) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, race); }
   }
@@ -135,19 +280,35 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   }
   events.sort((a, b) => a.game_day - b.game_day || a.stream - b.stream || String(a.race.id).localeCompare(String(b.race.id)) || a.stage_number - b.stage_number);
 
-  const totalSlots = D * days;
-  const monSlot = new Set();
+  // #3469: monumenter fase-ankres (slot ≈ fraction × (totalSlots-1)) + den eksisterende
+  // kollisionsvandring, KUN når ALLE monumenter har en numerisk fraction; ellers uændret
+  // jævn stepF-spredning (bit-identisk med før #3469). Map slot→løb (i stedet for det gamle
+  // Set + ordinal-opslag i `monuments`) gør slot-tildelingen eksplicit i begge grene.
+  const monSlot = new Map();
   if (monuments.length) {
-    const stepF = totalSlots / monuments.length;
-    for (let i = 0; i < monuments.length; i++) { let slot = Math.min(totalSlots - 1, Math.floor(i * stepF + stepF / 2)); while (monSlot.has(slot)) slot = (slot + 1) % totalSlots; monSlot.add(slot); }
+    const monByPhase = orderByPhase(monuments);
+    if (monByPhase) {
+      for (const m of monByPhase) {
+        let slot = Math.min(totalSlots - 1, Math.max(0, Math.round(m.seasonFraction * (totalSlots - 1))));
+        while (monSlot.has(slot)) slot = (slot + 1) % totalSlots;
+        monSlot.set(slot, m);
+      }
+    } else {
+      const stepF = totalSlots / monuments.length;
+      for (let i = 0; i < monuments.length; i++) {
+        let slot = Math.min(totalSlots - 1, Math.floor(i * stepF + stepF / 2));
+        while (monSlot.has(slot)) slot = (slot + 1) % totalSlots;
+        monSlot.set(slot, monuments[i]);
+      }
+    }
   }
   const placementsById = new Map();
   const ensure = (race, type, stages) => { if (!placementsById.has(race.id)) placementsById.set(race.id, { id: race.id, type, race_class: race.race_class ?? null, stages, startRealDay: Infinity, stagesPlaced: [] }); return placementsById.get(race.id); };
-  let ei = 0, monIdx = 0, monGameDay = MONUMENT_GAMEDAY_BASE;
+  let ei = 0, monGameDay = MONUMENT_GAMEDAY_BASE;
   for (let slot = 0; slot < totalSlots; slot++) {
     const real_day = Math.floor(slot / D), lane = slot % D;
-    if (monSlot.has(slot) && monIdx < monuments.length) {
-      const m = monuments[monIdx++];
+    if (monSlot.has(slot)) {
+      const m = monSlot.get(slot);
       const p = ensure(m, "single", 1);
       p.stagesPlaced.push({ stage_number: 1, real_day, game_day: monGameDay++, lane }); p.startRealDay = Math.min(p.startRealDay, real_day);
       continue;
@@ -164,7 +325,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
 }
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra game-dag-spans, uafhængigt af layout).
-function diagnose(placements, days, D, cap, timelineLength, layoutMode) {
+function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMinStages) {
   const load = new Array(days).fill(0);
   const racesOnDay = Array.from({ length: days }, () => new Set());
   for (const p of placements) for (const st of p.stagesPlaced) { load[st.real_day] += 1; racesOnDay[st.real_day].add(p.id); }
@@ -190,17 +351,44 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode) {
   let straddleGameDays = 0;
   for (const set of irlByGameDay.values()) if (set.size > 1) straddleGameDays += 1;
 
+  // #3472 v3 (ejer-fund 6/8, anden runde): ÆGTE efter-hånden-verifikation af GT-real-day-
+  // adskillelse — uafhængig af hvordan layoutStream KONSTRUEREDE separationen (dens
+  // placedCount-baserede gulv er en approksimation), så et konstruktionstidspunkt-estimat der
+  // viser sig forkert (fx rest-køen løb tør) rapporteres her i stedet for at fejle stille.
+  // GT'er identificeres via `stages >= spineMinStages` (samme tærskel pakkeren selv brugte
+  // til at udskille rygraden) — banded-layouts har aldrig GT'er (kun stream), så listen er
+  // tom der og tjekket er et no-op.
+  const gtSpans = spineMinStages == null ? [] : placements
+    .filter((p) => (p.stages ?? 1) >= spineMinStages)
+    .map((p) => ({ id: p.id, startRealDay: Math.min(...p.stagesPlaced.map((s) => s.real_day)), endRealDay: Math.max(...p.stagesPlaced.map((s) => s.real_day)) }))
+    .sort((a, b) => a.startRealDay - b.startRealDay);
+  const gtRealDaySeparationViolations = [];
+  for (let i = 1; i < gtSpans.length; i++) {
+    const gap = gtSpans[i].startRealDay - gtSpans[i - 1].endRealDay;
+    if (gap < 1) {
+      gtRealDaySeparationViolations.push(
+        `${gtSpans[i - 1].id} (slutter kalenderdag ${gtSpans[i - 1].endRealDay}) og ${gtSpans[i].id} ` +
+        `(starter kalenderdag ${gtSpans[i].startRealDay}) deler eller overlapper kalenderdag`
+      );
+    }
+  }
+
   return {
     load, racesPerDay: racesOnDay.map((s) => s.size), days, density: D, overlapCap: cap, layoutMode, timelineLength,
     emptyDays: load.filter((x) => x === 0).length,
     underfilledDays: load.filter((x) => x < D).length,
     overlapDays: racesOnDay.map((s) => s.size).filter((n) => n >= 2).length,
     maxOverlap, overlapHistogram, straddleGameDays,
+    gtRealDaySeparationViolations,
   };
 }
 
 /**
  * @param {{ stageRaces?, oneDayRaces?, density?, days?, overlapCap?, spineMinStages?, seed? }} args
+ *   Race-objekter i stageRaces/oneDayRaces kan bære en valgfri numerisk `seasonFraction`
+ *   (0..1, jf. seasonPhaseProfiles.js/#3469) — bruges til fase-baseret placering. Mangler ÉT
+ *   eller flere løb i en given liste den, falder pakkeren tilbage til den fraction-frie
+ *   algoritme for netop den liste (bit-identisk med før #3469).
  */
 export function packLaneCalendar({
   stageRaces = [], oneDayRaces = [], density = 1, days = 28,
@@ -217,7 +405,7 @@ export function packLaneCalendar({
   if (!res) { layoutMode = "stream"; res = layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }); }
 
   const placements = res.placements;
-  const diag = diagnose(placements, days, D, cap, res.timelineLength, layoutMode);
+  const diag = diagnose(placements, days, D, cap, res.timelineLength, layoutMode, spineMinStages);
 
   const placedIds = new Set(placements.map((p) => p.id));
   return {

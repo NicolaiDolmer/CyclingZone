@@ -45,6 +45,8 @@ import {
   computeCompositionStats, aggregateCompositionStats, detectCompositionViolations,
 } from "../lib/calendarCompositionTargets.js";
 import { computeStageOrderStats, detectStageOrderViolations, STAGE_ORDER_TARGETS } from "../lib/stageOrderMetrics.js";
+import { SEASON_PHASES, computePhaseStats } from "../lib/seasonPhaseProfiles.js";
+import { GRAND_TOUR_MIN_STAGES } from "../lib/tierRaceSelection.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -74,6 +76,10 @@ export async function collectPlannedTierEntries({ supabase, seasonNumber, materi
       ...(t.quotaHit === false ? [`tier ${t.tier}: kvoten blev ikke fyldt (mangler ${t.shortfall} game-days) — kompositionen måles på en ufuldstændig kalender`] : []),
     ],
     plan: { quota: t.quota, totalGameDays: t.totalGameDays, quotaHit: t.quotaHit, shortfall: t.shortfall, calendarViolations: t.calendarViolations },
+    // #3469: kun tilgængelig i --plan mode (chronologyRaces kommer fra dry-run-planen).
+    density: t.density ?? null,
+    realDays: t.realDays ?? null,
+    chronologyRaces: t.chronologyRaces ?? null,
   }));
 }
 
@@ -143,9 +149,85 @@ export function scoreComposition(tierEntries = [], { target = ACTIVE_TARGET } = 
   };
 }
 
+// ── #3469: Kronologi — måler PLACERING (fase-fordeling + klumpning), RAPPORTERES kun,
+// gater ikke (ingen ny violation i denne PR — se PR-body). Kun tilgængelig i --plan mode
+// (chronologyRaces kommer fra dry-run-planens repræsentative pulje, #2276). ─────────────
+export const COBBLED_ARCHETYPES = Object.freeze(["cobbled_classic", "cobbled_tour"]);
+
+/**
+ * Ren funktion — bygger fase-tabel + klumpnings-/GT-/monument-positioner for ÉN tiers
+ * chronologyRaces (fra tierCalendarMaterializer.js' dry-run-plan, #3469). `real_day` bruges
+ * som game_day_start pr. løb (ikke pr. etape) — en bevidst approksimation for kalendrede
+ * flerdags-etapeløb (deres reelle IRL-dage kan afvige fra første etape pga. GT-komprimering),
+ * men EKSAKT for endagsløb (brostens-klassikerne er næsten alle endagsløb) — acceptabelt for
+ * en RAPPORTERINGS-metrik der ikke gater noget.
+ */
+export function computeChronologyReport(t) {
+  if (!t?.chronologyRaces?.length) return null;
+  const races = t.chronologyRaces;
+  const density = t.density ?? 1;
+  // #3469: game_day_start er en IRL-dag (real_day, 0..realDays-1) — IKKE en game-day-kvote-
+  // værdi. totalSlots (til computePhaseStats' klumpnings-vindue, som arbejder i
+  // real_day×density+lane-rum, jf. raceCalendarLanePacker.js) = density × realDays; den
+  // separate IRL-dags-fraction (til GT/monument-positioner) deler med realDays alene.
+  const realDays = t.realDays ?? (density > 0 ? Math.round((t.plan?.totalGameDays ?? 0) / density) : 0);
+  const totalSlots = density * realDays;
+
+  const placements = races.map((r) => ({
+    id: r.id,
+    race_class: r.terrain_archetype ?? "(ukendt)", // #3469: "arketype" i denne sektion = terrain_archetype, ikke UCI race_class.
+    stagesPlaced: Array.from({ length: Math.max(1, r.stages || 1) }, (_, k) => ({ stage_number: k + 1, real_day: r.game_day_start ?? 0, lane: 0 })),
+  }));
+  const fractionByRaceId = new Map(races.map((r) => [r.id, r.seasonFraction]));
+
+  const phaseStats = computePhaseStats({ placements, fractionByRaceId, totalSlots, density, clumpArchetypes: COBBLED_ARCHETYPES });
+
+  // #3469: rapportér BÅDE målet (seasonFraction — intrinsisk, fra date_text, upåvirket af
+  // packeren) OG hvor løbet FAKTISK endte i den pakkede tidslinje (placedFraction =
+  // game_day_start/realDays — IRL-dags-fraction) — kun sidstnævnte ændrer sig mellem "før"
+  // og "efter" #3469.
+  const placedFractionOf = (r) => (realDays > 0 && Number.isFinite(r.game_day_start) ? r.game_day_start / realDays : null);
+  const gts = races
+    .filter((r) => (r.stages ?? 1) >= GRAND_TOUR_MIN_STAGES)
+    .sort((a, b) => (a.game_day_start ?? 0) - (b.game_day_start ?? 0))
+    .map((r) => ({ id: r.id, target: r.seasonFraction, placed: placedFractionOf(r) }));
+  const monuments = races
+    .filter((r) => r.race_class === "Monuments")
+    .sort((a, b) => (a.game_day_start ?? 0) - (b.game_day_start ?? 0))
+    .map((r) => ({ id: r.id, target: r.seasonFraction, placed: placedFractionOf(r) }));
+
+  return {
+    phaseStats, gts, monuments,
+    missingFraction: races.filter((r) => !Number.isFinite(r.seasonFraction)).length,
+    raceCount: races.length,
+  };
+}
+
 // ── Render ──────────────────────────────────────────────────────────────────────
 const pad = (s, n) => String(s).padEnd(n);
 const num = (v, n = 5, d = 1) => v.toFixed(d).padStart(n);
+
+function chronologyLines(report) {
+  if (!report) return [];
+  const lines = [`    Kronologi (#3469, ${SEASON_PHASES.length} faser · ${report.raceCount} løb, ${report.missingFraction} uden date_text-fraction):`];
+  for (const ph of report.phaseStats.phases) {
+    if (ph.raceDays === 0) continue;
+    const byArchetype = Object.entries(ph.byArchetype).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(", ");
+    lines.push(`      ${pad(ph.name, 24)} ${String(ph.raceDays).padStart(3)} løbsdage  (${byArchetype})`);
+  }
+  if (report.phaseStats.clumping && report.phaseStats.clumping.matchedDays > 0) {
+    const c = report.phaseStats.clumping;
+    lines.push(`      brosten-klumpning (cobbled_classic+cobbled_tour): ${(c.windowShare * 100).toFixed(0)} % af ${c.matchedDays} brosten-løbsdage inden for det tætteste 25 %-vindue af tidslinjen`);
+  }
+  const fmtPositions = (rows) => rows.map((r) => {
+    const target = Number.isFinite(r.target) ? r.target.toFixed(2) : "?";
+    const placed = Number.isFinite(r.placed) ? r.placed.toFixed(2) : "?";
+    return `${r.id.slice(0, 8)}(mål ${target}→placeret ${placed})`;
+  }).join(" · ");
+  if (report.gts.length) lines.push(`      GT-positioner (mål fra date_text → faktisk placeret, fraction 0..1): ${fmtPositions(report.gts)}`);
+  if (report.monuments.length) lines.push(`      monument-positioner (mål → faktisk placeret, fraction 0..1): ${fmtPositions(report.monuments)}`);
+  return lines;
+}
 
 function compositionTable(rows, raceDays) {
   const lines = [
@@ -198,6 +280,7 @@ export function formatScorecard(summary, { seasonNumber, mode }) {
         `   |   variation: ${o.distinctSequences} distinkte sekvenser af ${o.stageRaces} etapeløb · ${o.distinctArchetypes} arketyper (#3371)`,
       );
     }
+    lines.push(...chronologyLines(computeChronologyReport(t)));
     lines.push(``);
   }
 

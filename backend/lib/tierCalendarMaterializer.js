@@ -25,6 +25,7 @@ import {
 } from "./tierCalendarGuarantees.js";
 import { computeCompositionStats } from "./calendarCompositionTargets.js";
 import { computeStageOrderStats } from "./stageOrderMetrics.js";
+import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPhaseProfiles.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -201,12 +202,46 @@ export function buildTierMaterializationPlan({
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
   const forced = new Set(forceTiers);
 
+  // #3469: sæson-spændet beregnes ÉN GANG af det FULDE katalog (før tier-filtrering/dedup),
+  // så seasonFraction-normaliseringen er ens på tværs af tiers (jf. computeSeasonSpan-
+  // kontrakten i seasonPhaseProfiles.js). Løb uden parsebar date_text får fraction=null —
+  // packLaneCalendar falder tilbage til sin fraction-frie algoritme for enhver liste der
+  // indeholder ét eller flere sådanne løb (bit-identisk med før #3469).
+  const seasonSpan = computeSeasonSpan(catalog);
+  const seasonFractionOf = (raceId) => {
+    const cat = catalogById.get(raceId);
+    const parsed = cat ? parseRaceDateText(cat.date_text) : null;
+    return parsed ? seasonFraction(parsed.startDoy, seasonSpan) : null;
+  };
+  const withSeasonFraction = (races) => races.map((r) => ({ ...r, seasonFraction: seasonFractionOf(r.id) }));
+
   const liveByTier = new Map();
   for (const p of pools) {
     if (!poolHasCalendar(p.tier, p.realManagerCount) && !forced.has(p.tier)) continue;
     if (!liveByTier.has(p.tier)) liveByTier.set(p.tier, []);
     liveByTier.get(p.tier).push(p);
   }
+
+  // #3469 (ejer-fund 8/8, klasse-bevidst — runde 6): forudberegn, pr. arketype, den
+  // SORTEREDE liste af tiers der reserverer den (want > 0) — bruges nedenfor til (a) at
+  // afgøre om DENNE tier er den SIDSTE til at reservere en given arketype (intet
+  // nedstrøms at beskytte, fri walk) og (b) hvilke KLASSER der skal beskyttes for den
+  // (kun klasser en senere reserverende tier faktisk kan vælge fra — se
+  // selectTierRaceSet's downstreamProtectedArchetypes-docstring for rod-årsagen: D2
+  // sultede D4's cobbled_tour; en første, klasse-BLIND udgave af fixet ville have beskåret
+  // D1/D2's egen OWTB/OWTC/Monuments-brosten for at beskytte D3's urelaterede
+  // ProSeries/Class1-forsyning).
+  const reservationTiersByArchetype = new Map();
+  for (const [tierKey, cfg] of Object.entries(archetypeReservations ?? {})) {
+    const t = Number(tierKey);
+    if (!Number.isFinite(t)) continue;
+    for (const [arch, want] of Object.entries(cfg ?? {})) {
+      if (Math.max(0, Number(want) || 0) <= 0) continue;
+      if (!reservationTiersByArchetype.has(arch)) reservationTiersByArchetype.set(arch, []);
+      reservationTiersByArchetype.get(arch).push(t);
+    }
+  }
+  for (const arr of reservationTiersByArchetype.values()) arr.sort((a, b) => a - b);
 
   // Cross-tier dedup: øverste tier vælger først (de største løb), lavere fra resten.
   // usedRaceIds/usedRaceNamesRunning seedes med input (fx allerede-materialiserede tiers i DB)
@@ -232,22 +267,73 @@ export function buildTierMaterializationPlan({
     // #3328: classStageLengthBand ekskluderer etapeløb uden for klassens etapeantal-bånd.
     // priorityArchetypes giver knappe specialist-arketyper (brosten/ITT/mountain-free)
     // forrang ved uafgjort prestige+størrelse.
+    // #3469 (klasse-bevidst udgave, ejer-fund runde 6): arketyper hvor en SENERE tier
+    // (højere tier-nummer) reserverer dem — kun DISSE må ikke dobbelt-dyppes af DENNE
+    // tiers almindelige walk ud over hvad SENERE tier(s) selv skal bruge. VIGTIGT: dette
+    // gælder UANSET om denne tier selv har en reservation for arketypen (rettet 8/8, runde
+    // 6 — v1's `tiersList.includes(tier)`-guard fejlede stille for D3's cobbled_classic:
+    // KUN tier 3 reserverer den, så tier 1/2 (som slet ikke selv reserverer den) fik ALDRIG
+    // en beskyttelses-post og forblev fuldstændig ubegrænsede). PR. ARKETYPE begrænses
+    // beskyttelsen til klasserne de(n) SENERE tier(s) reelt kan vælge fra (unionen af
+    // deres class-whitelists) — ikke arketypen som helhed. Rod-årsag for klasse-skelnen:
+    // uden den ville D1/D2's EGEN brostens-komposition (OWTB/OWTC/Monuments — klasser D3
+    // slet ikke kan vælge fra) blive beskåret for at beskytte D3's ProSeries/Class1-
+    // forsyning, som D1/D2 aldrig rørte ved i første omgang.
+    const downstreamProtectedArchetypes = {};
+    for (const [arch, tiersList] of reservationTiersByArchetype.entries()) {
+      const laterTiers = tiersList.filter((t) => t > tier);
+      if (!laterTiers.length) continue; // ingen SENERE tier reserverer denne arketype — intet at beskytte
+      let unionClasses = new Set();
+      let unrestricted = false;
+      for (const t2 of laterTiers) {
+        const wl = classWhitelist?.[t2];
+        if (!Array.isArray(wl)) { unrestricted = true; break; } // en senere klasse-ubegrænset tier → beskyt alle klasser
+        for (const c of wl) unionClasses.add(c);
+      }
+      downstreamProtectedArchetypes[arch] = unrestricted ? null : [...unionClasses];
+    }
+
     const sel = selectTierRaceSet({
       catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0,
       allowGrandTours: tier === 1, allowedClasses: classWhitelist?.[tier] ?? null,
       classStageLengthBand, oneDayShareTarget: oneDayShareTargets?.[tier] ?? null, priorityArchetypes,
       archetypeReservations: archetypeReservations?.[tier] ?? null,
+      downstreamProtectedArchetypes,
     });
     for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
     for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
 
-    const packed = packLaneCalendar({ stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES });
+    // #3469: berig FØRST NU (umiddelbart før packing) — usedRaceIds/usedRaceNamesRunning
+    // ovenfor arbejder stadig på de urørte sel.*-arrays, selectionen selv rører #3469 aldrig.
+    const enrichedStageRaces = withSeasonFraction(sel.stageRaces);
+    const enrichedOneDayRaces = withSeasonFraction(sel.oneDayRaces);
+    const packed = packLaneCalendar({
+      stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
+      density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
+    });
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
     // game_day_start = løbets første IRL-dag (real_day), IKKE binding-nøglen (monumenter har bånd).
     const gameDayStartById = new Map();
     for (const pl of packed.placements) gameDayStartById.set(pl.id, Math.min(...pl.stagesPlaced.map((s) => s.real_day)));
+
+    // #3469: fractionByRaceId + chronologyRaces — REN rapporterings-data til
+    // calendarCompositionScorecard.js' "Kronologi"-sektion (fase-tabel + klumpning).
+    // Rører aldrig apply-stien; billigt at beregne (samme størrelsesorden som packed.load).
+    const fractionByRaceId = new Map([...enrichedStageRaces, ...enrichedOneDayRaces].map((r) => [r.id, r.seasonFraction]));
+    const chronologyRaces = packed.placements.map((pl) => {
+      const cat = catalogById.get(pl.id) || {};
+      return {
+        id: pl.id,
+        race_class: cat.race_class ?? pl.race_class ?? null,
+        terrain_archetype: cat.terrain_archetype ?? null,
+        stages: pl.stages,
+        game_day_start: gameDayStartById.get(pl.id),
+        real_day_end: Math.max(...pl.stagesPlaced.map((s) => s.real_day)), // #3472 v3: til GT-real-day-spredning i rapportering
+        seasonFraction: fractionByRaceId.get(pl.id) ?? null,
+      };
+    });
 
     const poolPlans = tierPools.slice().sort((a, b) => a.id - b.id).map((pool) => {
       const raceRows = packed.placements.map((pl) => {
@@ -272,14 +358,16 @@ export function buildTierMaterializationPlan({
     ];
 
     tierPlans.push({
-      tier, quota, density: dens, overlapCap: cap, calendarViolations,
+      tier, quota, density: dens, realDays, overlapCap: cap, calendarViolations,
       totalGameDays: sel.totalGameDays, quotaHit: sel.quotaHit, shortfall: sel.shortfall,
       raceCount: packed.placements.length,
       load: packed.load, emptyDays: packed.emptyDays, underfilledDays: packed.underfilledDays,
       overlapDays: packed.overlapDays, maxOverlap: packed.maxOverlap,
       overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
       straddleGameDays: packed.straddleGameDays,
+      gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
+      chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       pools: poolPlans,
     });
   }
@@ -337,7 +425,10 @@ export async function materializeTierCalendars({
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
   const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
 
-  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
+  // #3469: date_text tilføjet — race_pool's VIRKELIGE dato, kilden til seasonFraction
+  // (se buildTierMaterializationPlan). READ-ONLY overalt: external_id = sha256(name|date_text)
+  // er parcours-identitet, mutation ville ændre alle parcours (racePoolImport.js).
+  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text");
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
   // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
   // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig
@@ -435,13 +526,15 @@ export async function materializeTierCalendars({
       throw new Error(`calendar invariant violated (apply refused): ${tierPlan.calendarViolations.join(" · ")}`);
     }
     const tLine = {
-      tier: tierPlan.tier, quota: tierPlan.quota, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
+      tier: tierPlan.tier, quota: tierPlan.quota, density: tierPlan.density, realDays: tierPlan.realDays, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
       shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
       unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
       calendarViolations: tierPlan.calendarViolations ?? [], coverageStats: tierPlan.coverageStats ?? null,
       compositionStats: tierPlan.compositionStats ?? null, stageOrderStats: tierPlan.stageOrderStats ?? null,
       seedRaces: tierPlan.seedRaces ?? null,
-      realismDraw: tierPlan.realismDraw ?? null, pools: [],
+      realismDraw: tierPlan.realismDraw ?? null,
+      chronologyRaces: tierPlan.chronologyRaces ?? null, // #3469: dry-run-rapportering (Kronologi-sektionen)
+      pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));

@@ -16,13 +16,21 @@
 
 // ── #3327: endagsløb/etapeløb-mix pr. tier (andel af RACE COUNT, ikke game-days) ──
 //
-// D2 hævet til ~50/50 (ejer-beslutning 4/8, #3327-kommentar). D1/D3/D4 sat til deres
-// NUVÆRENDE observerede andel (prod, sæson 2, 4/8) som bevidst target/floor — ingen
-// tilsigtet ændring for dem, kun at gøre tallet til data i stedet for et biprodukt af
-// en grådig prestige-sortering. Floor = target minus en tolerance (rounding + katalog-
-// knaphed kan gøre præcis ramte target urealistisk).
-export const TIER_ONE_DAY_SHARE_TARGET = Object.freeze({ 1: 0.48, 2: 0.50, 3: 0.76, 4: 0.50 });
-export const TIER_ONE_DAY_SHARE_MIN = Object.freeze({ 1: 0.38, 2: 0.40, 3: 0.62, 4: 0.40 });
+// EJER-BESLUTNING 2026-08-07 morgen (afløser 4/8-frysningen nedenfor — se den kun som
+// historik): "Der mangler nogle endagsløb i 1. division. Der er for mange i 3. division.
+// 2. division kan godt holde til et par stykker mere. Mere ensartet balance." Orkestrator-
+// oversættelse til mål (antal-andel endagsløb): D1 0,55 (op fra 0,48 — for få endagsløb) ·
+// D2 0,55 (op fra 0,50 — "kan godt holde til et par stykker mere") · D3 0,58 (NED fra
+// 0,76 — "for mange") · D4 0,55 (uændret niveau, nu eksplicit samme tal som D1/D2 for
+// "mere ensartet balance" i stedet for et separat 0,50-tal). MIN = target − 0,10 (husets
+// mønster fra 4/8-frysningen, uændret metode).
+//
+// HISTORIK (4/8-frysning, nu AFLØST): D2 hævet til ~50/50 (ejer-beslutning 4/8,
+// #3327-kommentar). D1/D3/D4 var sat til deres DAVÆRENDE observerede andel (prod, sæson 2,
+// 4/8) som bevidst target/floor — ingen tilsigtet ændring for dem dengang, kun at gøre
+// tallet til data i stedet for et biprodukt af en grådig prestige-sortering.
+export const TIER_ONE_DAY_SHARE_TARGET = Object.freeze({ 1: 0.55, 2: 0.55, 3: 0.58, 4: 0.55 });
+export const TIER_ONE_DAY_SHARE_MIN = Object.freeze({ 1: 0.45, 2: 0.45, 3: 0.48, 4: 0.45 });
 
 // ── #3328: klasse↔etapeantal-bånd (ejer-beslutning 4/8) ──
 //
@@ -110,10 +118,39 @@ export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 
 //
 // En reservation der ikke kan opfyldes (arketypen findes ikke i tierens klasse-vindue)
 // rapporteres som `unmetReservations` — den forsvinder aldrig tavst.
+//
+// #3469 (ejer-fund 8/8, endagsløbs-balance-opfølgning — TO runder): D1/D2/D3's
+// cobbled_classic-tilføjelser.
+//
+// Runde 1: D3's lavere endagsløbs-mål (0,76→0,58, samme dags tidligere beslutning)
+// fortrængte cobbled_classic fra D3's almindelige walk — cobbles-terræn-familien
+// (#3327, TIER_TERRAIN_FAMILY_MIN[3].cobbles=5) faldt fra 7 til 1 etape. cobbled_tour
+// bidrager 1; cobbled_classic:4 lukker resten (1+4=5). Samme "reservér-før-det-
+// grådige-walk"-princip som resten af denne tabel — men reservationen ALENE virkede
+// ikke: D1's (klasse-ubegrænsede) og D2's almindelige walk havde allerede opbrugt
+// stort set al cobbled_classic-forsyning i D3's klasse-vindue (ProSeries/Class1) FØR
+// D3's tur, fordi hverken D1 eller D2 selv reserverede arketypen (selectTierRaceSet's
+// downstreamProtectedArchetypes-mekanisme beskytter kun tiers der INDIREKTE truer en
+// SENERE tiers reservation — den krævede ingen af sine egne, så intet forhindrede
+// D1/D2 i frit at tømme D3's delte ProSeries-pulje).
+//
+// Runde 2 (samme dag, ejer-fund): at gøre selectTierRaceSet's beskyttelse KLASSE-
+// BEVIDST (kun ProSeries/Class1 beskyttet for D3, ikke OWTB/OWTC/Monuments) rettede
+// D3 — men blotlagde SAMME mønster ét niveau højere: D2's EGET cobbles-gulv
+// (TIER_TERRAIN_FAMILY_MIN[2].cobbles=6) viste sig at have hvilet på ProSeries-
+// cobbled_classic hele tiden (nu beskyttet væk til D3), OG D1's klasse-ubegrænsede
+// walk tog samtidig ALLE 5 OWTB + begge Monuments cobbled_classic — langt over D1's
+// eget gulv (3) — og efterlod D2 (hvis whitelist også inkluderer OWTB) med kun
+// OWTC(4) tilbage, under dens egne 6. Samme rod-årsag, samme fix: D1 og D2 får nu
+// EGNE cobbled_classic-reservationer, dimensioneret til PRÆCIS deres eget gulv minus
+// cobbled_tour-bidraget (D1: 3−1=2 · D2: 6−1=5) — det udløser automatisk
+// downstreamProtectedArchetypes-beskyttelsen for tiers FØR dem også, uden at kræve en
+// ny mekanisme. D4 behøvede ingen tilføjelse — dens gulv (1) var allerede dækket af
+// cobbled_tour-garantien alene.
 export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
-  1: Object.freeze({ cobbled_tour: 1, itt_classic: 1 }),
-  2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
-  3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1 }),
+  1: Object.freeze({ cobbled_tour: 1, itt_classic: 1, cobbled_classic: 2 }),
+  2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
+  3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
   4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
 });
 

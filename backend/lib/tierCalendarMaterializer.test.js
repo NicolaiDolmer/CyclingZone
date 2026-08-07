@@ -62,11 +62,19 @@ const routeStr = (profiles) => profiles.slice().sort((a, b) => a.stage_number - 
   .map((p) => `${p.stage_number}:${p.profile_type}|${p.finale_type ?? ""}`).join(">");
 
 // Tier-3-katalog: ProSeries + Class1, > kvote 84.
+// #3469 (2026-08-07 morgen, ejer-beslutning om endagsløbs-balancen): D3's endagsløb-
+// TARGET faldt 0,76→0,58 — under DEFAULT (ikke-LEGACY_MIX) settings vil to-fase-budgettet
+// nu bede om FLERE etapeløbs-game-days end før. ProSeries-etapeløbene på 8/6 falder uden
+// for #3328's klasse-bånd [3,5] og udgår derfor af det tilgængelige udvalg under default —
+// Class1-etapeløbs-udvalget er derfor udvidet (Class1 har intet bånd) så fixturen har nok
+// forsyning til at ramme 84 UDEN shortfall under de nye default-mål (verificeret mod det
+// rigtige katalog: D3 rammer 84/84 uændret — det er KUN denne lille syntetiske fixture der
+// var for sparsom).
 function tier3Catalog() {
   const rows = [];
   [8, 6, 5, 5, 4].forEach((st, i) => rows.push({ id: `ps-sr-${i}`, name: `Stage ${i}`, race_class: "ProSeries", race_type: "stage_race", stages: st }));
   for (let i = 0; i < 40; i++) rows.push({ id: `ps-od-${i}`, name: `Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1 });
-  [5, 4, 4, 4, 3].forEach((st, i) => rows.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
+  [5, 4, 4, 4, 3, 5, 4, 4, 4, 3, 5, 4, 4, 4, 3].forEach((st, i) => rows.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
   for (let i = 0; i < 10; i++) rows.push({ id: `c1-od-${i}`, name: `C1 Classic ${i}`, race_class: "Class1", race_type: "single", stages: 1 });
   return rows;
 }
@@ -790,4 +798,55 @@ test("#3328 apply: en klasse↔længde-bånd-brydende plan (band-filter omgået 
   const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId, classStageLengthBand: CLASS_STAGE_LENGTH_BAND });
   const violations = detectCoverageViolations({ tier: 2, stats, oneDayShareMin: {}, terrainFamilyMin: {}, mountainFreeMin: {} });
   assert.ok(violations.some((v) => v.includes("klasse↔længde-bånd brudt") && v.includes("ps-8") && v.includes("#3328")), violations.join(" · "));
+});
+
+// ── #3469 (ejer-fund 8/8): downstreamProtectedArchetypes — cross-tier integrationstest ──
+// Rod-årsag: D2 (processeres FØR D3/D4) havde rigeligt budget til at tage MERE end sin
+// egen cobbled_tour-reservation, og sultede D4's tilsvarende reservation tavst (kataloget
+// rummer kun 4 cobbled_tour i alt, 1 pr. tier). buildTierMaterializationPlan skal nu selv
+// beregne + videresende downstreamProtectedArchetypes, så den ØVERSTE af to tiers der
+// begge reserverer samme arketype IKKE dobbelt-dypper.
+function crossTierScarceCatalog() {
+  const rows = [];
+  for (let i = 0; i < 30; i++) rows.push({ id: `ps-big-${i}`, name: `Stort ${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 5 });
+  for (let i = 0; i < 30; i++) rows.push({ id: `ps-od-${i}`, name: `Endags ${i}`, race_class: "ProSeries", race_type: "single", stages: 1 });
+  // KUN 2 cobbled_tour i hele kataloget, delt mellem to tiers der HVER reserverer 1 —
+  // efterligner det rigtige katalogs knaphed (4 cobbled_tour, 4 tiers, 1 hver).
+  rows.push({ id: "ps-cob-1", name: "Brostensløb 1", race_class: "ProSeries", race_type: "stage_race", stages: 3, terrain_archetype: "cobbled_tour" });
+  rows.push({ id: "ps-cob-2", name: "Brostensløb 2", race_class: "ProSeries", race_type: "stage_race", stages: 3, terrain_archetype: "cobbled_tour" });
+  return rows;
+}
+
+test("#3469 cross-tier arketype-knaphed: en øvre tier med rigeligt budget sulter IKKE en nedre tiers reservation af samme arketype", () => {
+  const pools2 = [
+    { id: 10, tier: 2, realManagerCount: 8 },
+    { id: 11, tier: 3, realManagerCount: 8 },
+  ];
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools: pools2, catalog: crossTierScarceCatalog(), from: FROM,
+    archetypeReservations: { 2: { cobbled_tour: 1 }, 3: { cobbled_tour: 1 } },
+    oneDayShareTargets: {}, classStageLengthBand: null, priorityArchetypes: null,
+  });
+  const tier2 = tierPlans.find((t) => t.tier === 2);
+  const tier3 = tierPlans.find((t) => t.tier === 3);
+  const cobbledCount = (tp) => tp.pools[0].raceRows.filter((r) => r.pool_race_id === "ps-cob-1" || r.pool_race_id === "ps-cob-2").length;
+  assert.equal(cobbledCount(tier2), 1, "tier 2 (processeres først) skal kun tage SIN egen reservation, ikke begge");
+  assert.equal(cobbledCount(tier3), 1, "tier 3's egen reservation skal stadig kunne opfyldes — intet dobbelt-dyp fra tier 2");
+});
+
+test("#3469 nedre tier (ingen senere tier reserverer arketypen) kan stadig frit tage mere end sin egen reservation", () => {
+  // Modstykke til testen ovenfor: en tier der er den SIDSTE til at reservere en arketype
+  // (her: kun tier 4 reserverer cobbled_tour) skal IKKE begrænses — intet nedstrøms at
+  // beskytte. Regressionsvagt mod at "downstreamProtectedArchetypes" fejlagtigt anvendes
+  // for bredt (det brød oprindeligt D4's egen kvote-udfyldning under implementeringen).
+  const pools2 = [{ id: 40, tier: 4, realManagerCount: 8 }];
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools: pools2, catalog: crossTierScarceCatalog(), from: FROM,
+    archetypeReservations: { 4: { cobbled_tour: 1 } },
+    oneDayShareTargets: {}, classStageLengthBand: null, priorityArchetypes: null,
+    classWhitelist: { 4: null },
+  });
+  const tier4 = tierPlans.find((t) => t.tier === 4);
+  const cobbledCount = tier4.pools[0].raceRows.filter((r) => r.pool_race_id === "ps-cob-1" || r.pool_race_id === "ps-cob-2").length;
+  assert.equal(cobbledCount, 2, "den eneste tier der reserverer arketypen skal frit kunne tage begge — intet nedstrøms at beskytte");
 });
