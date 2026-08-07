@@ -15,6 +15,8 @@ import {
 import { clusterForNationality } from "./fictionalRiderNames.js";
 import { NAME_CLUSTERS } from "./fictionalRiderNames.js";
 import { ACADEMY } from "./academyFlag.js";
+import { drawArchetypePair } from "./archetypeDistribution.js";
+import { RIDER_TYPES } from "./riderTypes.js";
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
@@ -38,10 +40,17 @@ export function drawPotentiale(rng) {
   return POTENTIALE_TIERS[POTENTIALE_TIERS.length - 1];
 }
 
-// Vælg et ungdoms-anlæg (én af de 8 typer). Holdt enkelt; nation-bias rører ikke type.
-const YOUTH_ARCHETYPE_POOL = ["climber", "sprinter", "tt", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"];
+// Vælg et ungdoms-anlæg (#3458 fase 2: arketype-prior-først). Trækkes fra
+// archetypeDistribution.js' mål-fordeling (formel afledt af MÅL-kalenderens
+// K-B-profil + demand-mapping + scarcity-modifikatorer + gulv — IKKE en fast
+// tabel her, se archetypeDistribution.js for kilden). ~15 % trækkes som en
+// to-arketype-hybrid (drawArchetypePair) — det anlæg der senere skal give
+// generateYouthStats nok SEPARATION til at klassifikatoren genfinder typen
+// af sig selv (design-spec G1). Typen skrives ALDRIG direkte som rytterens
+// type — kun `deriveForRiderIds`-kæden (physiology→abilities→caps→klassifikator)
+// tildeler den endelige type; dette er blot en formnings-PRIOR for stats.
 function pickYouthArchetype(rng) {
-  return YOUTH_ARCHETYPE_POOL[Math.floor(rng() * YOUTH_ARCHETYPE_POOL.length)];
+  return drawArchetypePair(rng);
 }
 
 /**
@@ -102,10 +111,17 @@ export function generateAcademyCandidates({
     const potentiale = drawPotentiale(rng);
     const is_serious = potentiale >= 4.5;
 
-    // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk;
-    // de lave stats giver via fallback-derivationen lave evner i ungdoms-båndet.
-    const archetypeType = pickYouthArchetype(rng);
-    const { stats } = generateYouthStats({ rng, age, potentiale, archetypeType });
+    // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk
+    // fra arketype-mål-fordelingen (#3458 fase 2, ~15% hybrid); de lave stats giver via
+    // fallback-derivationen lave evner i ungdoms-båndet.
+    const archetypeDraw = pickYouthArchetype(rng); // { primary, secondary, isHybrid }
+    const { stats } = generateYouthStats({
+      rng,
+      age,
+      potentiale,
+      archetypeType: archetypeDraw.primary,
+      secondaryArchetypeType: archetypeDraw.secondary,
+    });
 
     // Krop: spred højde/vægt så physiology-seedingen ikke defaulter alle til
     // 180cm/70kg (#1478). Neutralt WorldTour-range; weight afledt af plausibel BMI.
@@ -115,6 +131,12 @@ export function generateAcademyCandidates({
 
     candidates.push({
       is_serious,
+      // #3458 sim-harness/test-introspektion ALENE — IKKE en DB-kolonne. Aldrig
+      // spredt ind i rider-insert-payloaden (academyIntake spreader kun `.rider`),
+      // så arketype-trækket lækker aldrig til `riders`-tabellen: den ENDELIGE type
+      // tildeles udelukkende af deriveForRiderIds-kæden (klassifikatoren skal selv
+      // GENFINDE arketypen — se G1 i design-spec'en).
+      archetypeDraw,
       rider: {
         firstname,
         lastname,
@@ -150,18 +172,142 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   startLuckSd: 1.2,
   // Alders-skalering ("spol kurven frem" til faktisk alder).
   statPerYearOver16: 1.4,
-  // Arketypens signatur-stats løftes (skaleret ned fra voksen-niveau).
-  signatureBoostScale: 0.20,
-  // Hårde grænser (−3-bånd): gulv → afledt bund ~1-3; loft → afledt top mætter ~12.
+  // #3458 fase 2 — empirisk tunet mod G1-G4 via simArchetypeGeneration3458.js (se
+  // PR-scorecard for det endelige tal). Tre fund undervejs, i rækkefølge (holdt
+  // som kalibrerings-historik — næste tuning-runde starter her, ikke fra bunden):
+  //
+  //  1) Ved den GAMLE (fase-1) 0.20-skala (klemt ind under det uændrede
+  //     statCeil=54) genfandt klassifikatoren KUN 21,5% af de trukne arketyper:
+  //     den fysiske signatur-evne kunne aldrig overstige ~12 (pcmFrac-loftet ved
+  //     PCM 54), mens `aggression`s ALDERS-drevne gulv (abilityDerivation.js's
+  //     youth-komponent — uafhængig af stat_ftr) giver ALLE 16-21-årige ~16-25 i
+  //     aggression uanset arketype. Under NEUTRAL_BASELINE-bootstrap OG under den
+  //     endelige typesBaseline-klassifikation (fittet på VOKSEN-caps: aggression
+  //     har markant lavere mean/std end de fysiske evner) vinder baroudeur derfor
+  //     næsten altid medmindre signatur-evnen presses langt over sit gamle loft.
+  //  2) Et FLADT, ensartet tillæg pr. signatur-nøgle (statCeilBoosted hævet,
+  //     magnitude ens for alle boostede stats) rettede baroudeur-kollapset, men
+  //     gav stadig skæv separation MELLEM typer der DELER evner — fx puncheur
+  //     (punch:3, tempo:2) "stjal" climber-kandidater (climbing:3, tempo:2,
+  //     punch:1, endurance:1), fordi climber's eget boost-mønster (fra den DELTE
+  //     ARCHETYPE_BY_TYPE, fictionalRiderGenerator.js — RØRES IKKE her) pressede
+  //     tempo/punch lige så højt som climbing selv, og puncheur fik samtidig en
+  //     gratis bonus fra climber's (lave, ikke-boostede) time_trial.
+  //  3) LØSNINGEN (signatureProfile ovenfor): boost/damp-magnitude er nu
+  //     PROPORTIONAL med klassifikatorens EGEN vægt (RIDER_TYPES, riderTypes.js —
+  //     importeret READ-ONLY) i stedet for et gæt eller et fladt tal. Den evne
+  //     der ADSKILLER en type fra dens nærmeste konkurrent (climbing for climber,
+  //     vægt 3, IKKE delt med puncheur) får dermed automatisk et større løft end
+  //     en DELT evne (tempo/punch, vægt 1-2) — separationen matcher PRÆCIS det
+  //     klassifikatoren selv belønner.
+  signatureBoostPerWeight: 15,
+  // KUN de boostede signatur-stats clampes til dette (højere) loft — neutrale/
+  // dæmpede stats forbliver i det oprindelige lave −3-bånd (statCeil). Dette ER
+  // "unge talenter viser deres speciale tidligt, selvom resten er råt" — ikke en
+  // generel opblødning af ungdoms-loftet.
+  statCeilBoosted: 99,
+  // Modsatte stats trækkes ned proportionalt med |vægt| (samme princip som
+  // signatureBoostPerWeight ovenfor — fx tt's climbing:-2-straf dæmpes hårdere
+  // end en almindelig -1-straf).
+  dampPerWeight: 2.6,
+  // Hårde grænser (−3-bånd): gulv → afledt bund ~1-3; loft → afledt top mætter ~12
+  // (for IKKE-boostede stats — se statCeilBoosted for signatur-stats' loft).
   sd: 0.8,
   statFloor: 48.5,
   statCeil: 54,
 });
 
+// #3458 fase 2: signatur-profil pr. arketype, afledt af KLASSIFIKATORENS EGNE
+// vægte (riderTypes.js RIDER_TYPES — importeret READ-ONLY, ALDRIG muteret her)
+// i stedet for fictionalRiderGenerator.js' ARCHETYPE_BY_TYPE (den tabel er delt
+// med PR2's voksen-sti og kalibreret til værdi-pyramiden, IKKE til akademi-
+// klassifikation — se YOUTH_GEN_CONFIG-kommentaren for hvorfor et flat/ensartet
+// boost pr. type-fra-den-tabel gav skæv separation, fx puncheur der "stjal"
+// climber-kandidater via delte punch/tempo-evner).
+//
+// Ved at bruge RIDER_TYPES' EGNE vægte direkte får den evne der ADSKILLER en
+// type fra dens nærmeste konkurrent (fx climber's climbing, vægt 3 — IKKE delt
+// med puncheur) et proportionalt STØRRE løft end en delt evne (tempo/punch,
+// vægt 1-2, delt med puncheur/gc) — separationen matcher dermed PRÆCIS det
+// klassifikatoren selv vægter, i stedet for et gæt.
+const ABILITY_TO_STAT = Object.freeze({
+  climbing: "stat_bj", time_trial: "stat_tt", flat: "stat_fl", tempo: "stat_kb",
+  sprint: "stat_sp", acceleration: "stat_acc", punch: "stat_bk", endurance: "stat_udh",
+  recovery: "stat_res", durability: "stat_mod", descending: "stat_ned",
+  cobblestone: "stat_bro", aggression: "stat_ftr",
+});
+
+const RIDER_TYPE_WEIGHTS_BY_KEY = Object.freeze(
+  Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights])),
+);
+
+// #3458: gc er det ENESTE anlæg hvis to TOP-vægtede evner (climbing OG
+// time_trial, begge vægt 3) er en RIVAL-typs HELE signatur på egen hånd (tt =
+// { time_trial: 3 } alene). Et symmetrisk climbing=time_trial-boost mætter
+// derfor time_trial lige så højt som en REN tt-profil (ability 99 for begge),
+// hvilket vinder "som-var-han-tt"-normaliseringen (G3, scoutingReport.js'
+// blendedOutput — en ANDEN formel end riderTypes.js' kontrast, urørt her) fra
+// gc næsten hver gang (målt via simArchetypeGeneration3458.js: gc alene stod
+// for ~90% af ALLE G3-mismatches). Modvirkes HER (akademi-genereringen alene —
+// hverken riderTypes.js' vægte eller GC-guarden i #98-103 røres): gc's
+// time_trial-signatur dæmpes til dette forhold af climbing's, stadig SOLIDT
+// over GC-guardens tærskel (53) ved enhver potentiale, men uden at mætte
+// tt-aksen identisk med en ren tidskører.
+const GC_TIME_TRIAL_BOOST_RATIO = 0.55;
+// Samme overlap-logik, MILDERE: efter time_trial-dæmpningen flyttede resten af
+// G3-overlappet fra tt til climber (climbing er uændret det ene MÆTTEDE
+// signatur-træk gc og climber deler 1:1). En let dæmpning (climbing forbliver
+// SOLIDT over GC-guardens 53-tærskel) reducerer det uden at genskabe
+// tt-overlappet eller true gc's egen kontrast-sejr (målt iterativt, se
+// PR-scorecard).
+const GC_CLIMBING_BOOST_RATIO = 0.85;
+
+// { boost: { stat_key: vægt (>0) }, damp: { stat_key: |vægt| (fra <0) } } for ÉN arketype.
+function signatureProfile(archetypeKey) {
+  const weights = RIDER_TYPE_WEIGHTS_BY_KEY[archetypeKey];
+  if (!weights) throw new Error(`signatureProfile: ukendt arketype ${archetypeKey}`);
+  const boost = {};
+  const damp = {};
+  for (const [ability, w] of Object.entries(weights)) {
+    const statKey = ABILITY_TO_STAT[ability];
+    if (!statKey) continue; // evner uden en PCM-kilde (ingen i dag) — spring over
+    if (w > 0) boost[statKey] = w;
+    else if (w < 0) damp[statKey] = -w;
+  }
+  if (archetypeKey === "gc") {
+    boost[ABILITY_TO_STAT.time_trial] *= GC_TIME_TRIAL_BOOST_RATIO;
+    boost[ABILITY_TO_STAT.climbing] *= GC_CLIMBING_BOOST_RATIO;
+  }
+  return { boost, damp };
+}
+
+// Bland to arketypers signatur til ÉN syntetisk profil til en hybrid-rytter.
+// boost = gennemsnit af de to vægte (union af nøgler, manglende = 0) — begge
+// anlæg bidrager, ingen forsvinder. damp = KUN de FÆLLES svagheder (snit, ikke
+// union) — en hybrid skal ikke dæmpes på en evne der er den ENE arketypes
+// signatur (fx en climber+puncheur-hybrid må ikke dæmpe punch).
+function blendArchetypeSignature(primaryKey, secondaryKey) {
+  const a = signatureProfile(primaryKey);
+  const b = signatureProfile(secondaryKey);
+  const boost = {};
+  for (const key of new Set([...Object.keys(a.boost), ...Object.keys(b.boost)])) {
+    boost[key] = ((a.boost[key] ?? 0) + (b.boost[key] ?? 0)) / 2;
+  }
+  const damp = {};
+  for (const key of Object.keys(a.damp)) {
+    if (key in b.damp) damp[key] = (a.damp[key] + b.damp[key]) / 2;
+  }
+  return { boost, damp };
+}
+
 // Generér lave, anlægs-formede, alders- OG talent-skalerede stats for én ung, med per-rytter start-held.
-export function generateYouthStats({ rng, age, potentiale, archetypeType, cfg = YOUTH_GEN_CONFIG }) {
-  const arch = ARCHETYPE_BY_TYPE[archetypeType];
-  if (!arch) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
+// secondaryArchetypeType (#3458, ~15% af kuldet): trækker en to-arketype-hybrid-profil
+// (blandet signatur, se blendArchetypeSignature) i stedet for et rent anlæg.
+export function generateYouthStats({ rng, age, potentiale, archetypeType, secondaryArchetypeType = null, cfg = YOUTH_GEN_CONFIG }) {
+  if (!ARCHETYPE_BY_TYPE[archetypeType]) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
+  const arch = secondaryArchetypeType
+    ? blendArchetypeSignature(archetypeType, secondaryArchetypeType)
+    : signatureProfile(archetypeType);
   const ageLift = Math.max(0, (Number(age) || 16) - 16) * cfg.statPerYearOver16;
   const potLift = (clamp(Number(potentiale) || 1, 1, 6) - 1) * cfg.potStartLift;
   const startLuck = gaussian(rng, 0, cfg.startLuckSd); // ÉT træk pr. rytter (coherent profil-shift) — BLØDGØR talent-tendensen
@@ -169,9 +315,19 @@ export function generateYouthStats({ rng, age, potentiale, archetypeType, cfg = 
   const stats = {};
   for (const key of STAT_KEYS) {
     let v = gaussian(rng, base, cfg.sd);
-    if (arch.boost[key]) v += arch.boost[key] * cfg.signatureBoostScale;
-    else if (arch.damp?.includes(key)) v -= 1;
-    stats[key] = Math.round(clamp(v, cfg.statFloor, cfg.statCeil));
+    let ceil = cfg.statCeil;
+    if (arch.boost[key]) {
+      // Proportionalt med klassifikator-vægten (se signatureProfile ovenfor):
+      // en vægt-3-evne (fx climber's climbing) får et STØRRE løft end en
+      // vægt-1-evne DEN TYPE deler med en konkurrent (fx climber's punch, delt
+      // med puncheur) — separationen matcher dermed klassifikatorens egen
+      // kontrast-formel i stedet for et gæt.
+      v += arch.boost[key] * cfg.signatureBoostPerWeight;
+      ceil = cfg.statCeilBoosted; // kun signatur-stats får det højere loft
+    } else if (arch.damp[key]) {
+      v -= arch.damp[key] * cfg.dampPerWeight;
+    }
+    stats[key] = Math.round(clamp(v, cfg.statFloor, ceil));
   }
-  return { stats, archetypeType };
+  return { stats, archetypeType, secondaryArchetypeType };
 }

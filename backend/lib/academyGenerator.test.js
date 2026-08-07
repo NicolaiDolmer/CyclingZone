@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { makeRng } from "./fictionalRiderGenerator.js";
+import { makeRng, STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { generateAcademyCandidates, generateYouthStats, drawPotentiale, POTENTIALE_TIERS } from "./academyGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
@@ -21,7 +21,15 @@ test("generateAcademyCandidates: 3-5 kandidater, is_serious afledt (pot>=4.5), a
     assert.equal(c.rider.is_academy, false, "kandidat er endnu ikke signet");
     assert.equal(c.rider.team_id ?? null, null, "kandidat er ikke ejet endnu");
     assert.ok(c.rider.firstname && c.rider.lastname);
-    for (const k of ["stat_fl", "stat_sp", "stat_bj"]) assert.ok(c.rider[k] >= 50 && c.rider[k] <= 62);
+    // #3458 fase 2: stats er IKKE længere universelt lave — den boostede
+    // signatur-stat (arketype-prior) kan lovligt nå helt op mod 99 (se
+    // "akademi-kandidat har et anlæg"-testen nedenfor for det specifikke krav).
+    // Her tjekkes kun den generelle skema-sanitet: alle 14 PCM-stats er heltal i
+    // det lovlige 0-99-bånd.
+    for (const k of STAT_KEYS) {
+      assert.ok(Number.isInteger(c.rider[k]), `${k}=${c.rider[k]} skal være et heltal`);
+      assert.ok(c.rider[k] >= 0 && c.rider[k] <= 99, `${k}=${c.rider[k]} uden for [0,99]`);
+    }
   }
 });
 
@@ -93,16 +101,20 @@ test("nation-bias: identityBasis vægter dominant_nationality højere", () => {
   assert.ok(dkBiased > dkPlain, `biased ${dkBiased} skal > plain ${dkPlain}`);
 });
 
-test("generateYouthStats: 16-årig climber → afledt top ~15, bund ~7, ingen evne >25", () => {
+// #3458 fase 2 (revideret 7/8): FØR denne PR var 16-årige universelt svage (top
+// afledt evne <=25, ingen reel separation) — netop DERFOR kunne klassifikatoren
+// aldrig genfinde det trukne anlæg (G1). Nu skal signatur-evnen (climbing for
+// climber) skille sig markant ud fra en dæmpet modsat-evne (sprint, climber's
+// eneste negative RIDER_TYPES-vægt) SELV ved 16 år — det ER separationen G1
+// kræver. Se simArchetypeGeneration3458.js for den fulde G1-G4-måling.
+test("generateYouthStats: 16-årig climber → signatur-evnen (climbing) adskiller sig markant fra den dæmpede modsat-evne (sprint)", () => {
   const rng = makeRng(2026);
   const { stats, archetypeType } = generateYouthStats({ rng, age: 16, potentiale: 6, archetypeType: "climber" });
   const rider = { id: "y1", birthdate: "2010-06-15", potentiale: 6, height: 175, weight: 60, ...stats };
   const abil = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
-  const phys = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
-  const vals = phys.map((k) => abil[k]);
-  const top = Math.max(...vals), bottom = Math.min(...vals);
-  assert.ok(top <= 25, `top-evne ${top} skal være lav for en 16-årig`);
-  assert.ok(bottom >= 1, `bund ${bottom}`);
+  assert.ok(abil.climbing >= 70, `climbing ${abil.climbing} skal være tydeligt boostet (signatur, RIDER_TYPES-vægt 3)`);
+  assert.ok(abil.sprint <= 10, `sprint ${abil.sprint} skal være tydeligt dæmpet (climber's eneste negative vægt)`);
+  assert.ok(abil.climbing - abil.sprint >= 50, `separation ${abil.climbing - abil.sprint} skal være markant`);
   assert.equal(archetypeType, "climber");
 });
 
@@ -113,11 +125,22 @@ test("generateYouthStats: 19-årig fødes stærkere end 16-årig (alders-skaleri
   assert.ok(sum(older) > sum(young), `19-årig ${sum(older)} skal > 16-årig ${sum(young)}`);
 });
 
-test("akademi-kandidat har et anlæg (boostet signatur-stat) og lave stats", () => {
+// #3458 fase 2: signatur-stat(s) må nu legitimt nå det HØJERE loft
+// (statCeilBoosted=99) — det er selve pointen (separation for G1). Testen
+// beskytter i stedet det der STADIG skal holde: mindst én stat rammer det høje
+// bånd (beviser boostet virker), og de IKKE-boostede stats forbliver i det
+// oprindelige lave −3-bånd (statCeil=54).
+test("akademi-kandidat har et anlæg: mindst én stat boostes højt, resten forbliver i ungdoms-båndet", () => {
   const out = generateAcademyCandidates({ rng: makeRng(2026), referenceYear: REF_YEAR, existingNames: new Set() });
+  const allStatKeys = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_sp","stat_acc","stat_udh","stat_mod","stat_res","stat_ftr","stat_bro"];
   for (const c of out) {
-    const maxStat = Math.max(...["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_sp","stat_acc","stat_udh","stat_mod","stat_res"].map((k) => c.rider[k]));
-    assert.ok(maxStat <= 62, `max stat ${maxStat} skal være i ungdoms-båndet`);
+    const maxStat = Math.max(...allStatKeys.map((k) => c.rider[k]));
+    assert.ok(maxStat >= 60, `max stat ${maxStat} skal vise et boostet anlæg`);
+    // Ikke ALLE stats må være boostede — mindst nogle skal forblive under det
+    // gamle, ikke-boostede loft (54) plus lidt gaussian-støj-margin (en hybrid
+    // kan have flere boostede nøgler end et rent anlæg, så tærsklen er løs).
+    const belowCeil = allStatKeys.filter((k) => c.rider[k] <= 56);
+    assert.ok(belowCeil.length >= 3, `for mange stats boostet: kun ${belowCeil.length}/${allStatKeys.length} under det lave bånd`);
   }
 });
 
