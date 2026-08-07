@@ -14,6 +14,8 @@
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { NAME_CLUSTERS, clusterForNationality } from "./fictionalRiderNames.js";
 import { seedArchetypePhysiology } from "./archetypePhysiology.js";
+import { drawArchetypePair, DEFAULT_DISTRIBUTION, ARCHETYPE_TYPES } from "./archetypeDistribution.js";
+import { signatureProfile, blendArchetypeSignature, signatureMagnitudeScale } from "./archetypeSignature.js";
 
 // ── Seeded PRNG (mulberry32) ──────────────────────────────────────────────────
 export function makeRng(seed) {
@@ -158,6 +160,15 @@ export const DEFAULT_TIER_TYPE_WEIGHTS = TIER_TYPE_WEIGHTS;
 // Globalt gulv på sjældne typer (ejer-spec: etape-variation kræver dybde i alle
 // discipliner). Håndhæves ved at promovere de billigste over-repræsenterede typer.
 //
+// #3458 fase 2 PR2: gulvet er nu KUN aktivt på LEGACY-stien (eksplicit
+// tierTypeWeights-override, #1420 dev-tooling). DEFAULT-stien (ALLE rigtige
+// produktions-kaldere, se generateFictionalRiders nedenfor) trækker i stedet fra
+// archetypeDistribution.js, hvis eget FLOOR_PCT (~8,5 % pr. type, langt over dette
+// gulv) håndhæves i selve MÅL-FORDELINGEN frem for som en efterfølgende
+// promoverings-løkke — dvs. #3570/S2's degenerations-klasse kan strukturelt ikke
+// opstå der. #3570/S2's skalering nedenfor er BEVARET og håndhæves fortsat på
+// legacy-stien; se scaleMinTypes + kommentaren i type-sekvensen.
+//
 // #3570/S2 (10/8): gulvene er ANTAL, kalibreret mod ejer-spec'ens ~800-rytter-felt
 // ("alle 8 repræsenteret, gulv gc≥30, sprinter≥40" — orakel i
 // fictionalLaunchPopulation.js: LAUNCH_TYPE_FLOORS). De blev oprindeligt håndhævet
@@ -200,6 +211,160 @@ export function scaleMinTypes(count, mins = ENSURE_MIN_TYPES, reference = ENSURE
   return scaled;
 }
 
+// ── #3458 fase 2 PR2: DEFAULT-stien — arketype-prior fra archetypeDistribution.js ──
+// (samme mønster som akademiets PR1, udvidet til markeds-/AI-/launch-populationen).
+// Denne sti bruges når INGEN tierTypeWeights-override er givet (dvs. ALLE rigtige
+// produktions-kaldere: starterSquadAllocator.js, aiTeamGenerator.js, fictionalLaunch-
+// Population.js — ingen af dem sætter tierTypeWeights). Eksplicit tierTypeWeights
+// (#1420 dev-tooling/mix-presets, fictionalRiderMixPresets.js) bruger FORTSAT den
+// gamle TIER_TYPE_WEIGHTS-mekanisme uændret (se generateFictionalRiders nedenfor) —
+// et bevidst dobbelt-spor der holder dev-tool-kontrakten (og dens tests) intakt.
+
+// Eksplicit, KOMMENTERET tier-modifikator OVEN PÅ archetypeDistribution-formlen
+// (IKKE en parallel tabel — kun multiplikative afvigelser fra mål-fordelingen).
+// Bevarer den gamle TIER_TYPE_WEIGHTS' tier-differentiering (flere gc/tt-specialister
+// i toppen af værdi-pyramiden, hvor etapeløbs-/tt-stjerner hører hjemme; flere
+// rouleur/baroudeur-hjælperyttere i bunden) uden at duplikere hele fordelingen.
+// Multiplicerer DEFAULT_DISTRIBUTION FØR trækning — drawArchetype normaliserer selv
+// (vægtet sum), så absolutte tal er ligegyldige, kun RATIOEN mellem typer tæller.
+// Udeladte typer (ingen nøgle) = uændret (×1). FLOOR_PCT (~8,5%) i archetypeDistribution.js
+// betyder ingen type kan blive helt væk selv efter en nedvægtning.
+// #3458 fase 2 PR2 (empirisk justeret via sim-harness): gc/tt-multiplikatoren for
+// superstar/star DÆMPET (fra 2.6/1.8 og 1.8/1.4) — gc/tt er de to typer med mest
+// evne-OVERLAP (climbing+time_trial delt mellem gc/climber/tt, se GC_TIME_TRIAL/
+// CLIMBING_BOOST_RATIO), OG superstar/star-tiernes dampScale (0,35/0,5 — "superstjerner
+// er alsidige", uændret v3-værdi-udligningsmekanik) svækker BEVIDST dæmpningen af
+// off-type-stats ved høje tiers — de to effekter sammen gjorde netop superstar/
+// star markant sværere at klassificere korrekt (målt: 66,7%/72,7% G1 mod 90-92%
+// for solid/domestique). Mildere gc/tt-vægtning holder STADIG tier-differentieringen
+// (flere etapeløbs-/tt-specialister i toppen), blot mindre aggressivt.
+const TIER_ARCHETYPE_MODIFIER = Object.freeze({
+  superstar:  Object.freeze({ gc: 1.15, tt: 1.1, climber: 1.2, sprinter: 1.1, rouleur: 0.5, baroudeur: 0.5 }),
+  star:       Object.freeze({ gc: 1.1, tt: 1.05, climber: 1.1, rouleur: 0.65, baroudeur: 0.65 }),
+  solid:      Object.freeze({ gc: 1.2, tt: 1.1, rouleur: 0.85 }),
+  domestique: Object.freeze({ rouleur: 1.3, baroudeur: 1.15, gc: 0.5, tt: 0.7 }),
+});
+
+function distributionForTier(tierValue) {
+  const modifier = TIER_ARCHETYPE_MODIFIER[tierValue];
+  if (!modifier) return DEFAULT_DISTRIBUTION;
+  const out = {};
+  for (const t of ARCHETYPE_TYPES) out[t] = DEFAULT_DISTRIBUTION[t] * (modifier[t] ?? 1);
+  return out;
+}
+
+// Klassifikator-vægt-afledt boost/dæmp for MARKEDS-/AI-/launch-populationen —
+// samme MØNSTER som akademiets signatureProfile (archetypeSignature.js), men
+// magnitude-formlen er TILPASSET: akademiets flade "vægt × konstant" forudsætter
+// en SMAL, lav basis (16-årige, statCeil 54→99 — langt over stat-loftet 85, så
+// enhver rimelig boost mætter). Markeds-populationen spænder derimod over 4
+// værdi-TIERS på den SAMME hårde [50,85]-skala (statMean 53 → 70,75) — en flad
+// konstant der adskiller vægt-1 fra vægt-3 ved domestique-tieren (mean 53) METTER
+// IDENTISK (begge ability 99) ved superstar-tieren (mean 70,75), fordi begge
+// allerede passerer pcmFrac-loftet på 85 — hele separations-idéen forsvinder netop
+// øverst i værdi-pyramiden. LØSNINGEN: normalisér boost/damp-magnitude til en
+// ANDEL af tier'ens EGET resterende hovedrum (til loft/gulv), skaleret af den
+// STØRSTE vægt i selve signatur-profilen (signatureMagnitudeScale) — typens EGEN
+// top-evne mætter dermed PÅLIDELIGT uanset tier, mens delte lavere-vægtede evner
+// kun får en forholdsmæssig mindre andel af det SAMME hovedrum. Tier-invariant
+// udgave af akademiets vægt-proportionalitets-princip — ikke et nyt princip.
+const ADULT_SIGNATURE_CFG = Object.freeze({
+  // KENDT, ROD-ÅRSAGS-UNDERSØGT SPÆNDING (empirisk, se PR-body): boost-magnitude
+  // er den SAMME "hvor ekstrem er signatur-evnen"-drejeknap som predictBaseValue's
+  // speciale-led læser (v3-kalibrering, riderValuation.js — RØRES IKKE). Et
+  // hovedrum stort nok til akademiets G1-niveau (95,6%, jf. YOUTH_GEN_CONFIG)
+  // SPRÆNGER launch-populationens EKSISTERENDE, ejer-godkendte værdi-pyramide-
+  // kalibrering (fictionalLaunchPopulation.test.js: superstjerner∈[3,18] —
+  // 1,45 gav 105!). 0,67 er det HØJESTE hovedrum der stadig holder pyramiden
+  // (superstjerner=4, stjerner=95, maxV=36,3M, alle inden for de eksisterende
+  // grænser) — værdipyramiden er en PRE-EXISTING, testet invariant og VINDER
+  // over G1 her. Dæmpnings-siden (dampHeadroomFraction) påvirker IKKE maxV
+  // (verificeret empirisk: konstant ~36,3M for damp 0,66→4,0) og kan derfor
+  // skrues højere for ekstra klassifikations-kontrast uden værdi-risiko.
+  boostHeadroomFraction: 0.67,
+  dampHeadroomFraction: 2.0,
+  // Samme designfund som akademiet (archetypeSignature.js/academyGenerator.js):
+  // gc's climbing+time_trial er BEGGE vægt-3, og time_trial ALENE er en RIVAL-
+  // typs (tt) hele signatur — symmetrisk mætning af begge vinder tt-normaliseringen
+  // (G3) for gc næsten hver gang.
+  gcTimeTrialBoostRatio: 0.55,
+  gcClimbingBoostRatio: 0.85,
+});
+
+// TYPE_MEAN_ADJUST-lookup for et arketype-træk (hybrid: gennemsnit af de to).
+// Defineret her (frem for inline) da den bruges to steder (gaussian-base OG
+// hovedrums-beregning nedenfor).
+function typeMeanAdjustFor(draw) {
+  const primaryAdj = TYPE_MEAN_ADJUST[draw.primary] ?? 0;
+  if (!draw.isHybrid) return primaryAdj;
+  const secondaryAdj = TYPE_MEAN_ADJUST[draw.secondary] ?? 0;
+  return (primaryAdj + secondaryAdj) / 2;
+}
+
+// #3458 fase 2 PR2 (fund efter generateAiRiderBatchWithCap-verifikation, se
+// AI_SIGNATURE_CFG nedenfor for udledningen): cfg er nu et PARAMETER (default
+// ADULT_SIGNATURE_CFG), ikke en fast modul-konstant — AI tier 1/2 skal kunne bede
+// om en MILDERE signatur-intensitet uden at svække markeds-/launch-populationens.
+function buildStatsFromSignature(rng, tier, draw, cfg = ADULT_SIGNATURE_CFG) {
+  const signature = draw.isHybrid
+    ? blendArchetypeSignature(draw.primary, draw.secondary, cfg)
+    : signatureProfile(draw.primary, cfg);
+  const maxBoost = signatureMagnitudeScale(signature.boost);
+  const maxDamp = signatureMagnitudeScale(signature.damp);
+  const adjustedMean = tier.statMean + typeMeanAdjustFor(draw);
+  // #1194's dampScale (superstar 0,35/star 0,5 — "superstjerner er alsidige") er tunet
+  // til VÆRDI-pyramiden (bevarer et højt snit på tværs af evner for elite-værdi-båndet),
+  // ikke til klassifikations-SEPARATION — anvendt råt gav superstar/star markant
+  // dårligere G1 (66,7%/72,7% mod 90-92% for solid/domestique) fordi off-type-stats
+  // knap nok dæmpes ved høje tiers. Et LOKALT gulv (KUN her, TIERS' egen dampScale-
+  // værdi/OLD buildStats' brug er urørt) sikrer nok kontrast til klassifikation uden at
+  // fjerne #1194's "alsidig elite"-intention helt.
+  const dampScale = Math.max(tier.dampScale ?? 1, 0.8);
+  const headroomUp = STAT_CEIL - adjustedMean;
+  const headroomDown = adjustedMean - STAT_FLOOR;
+  const stats = {};
+  for (const key of STAT_KEYS) {
+    let v = gaussian(rng, adjustedMean, tier.sd ?? 3.5);
+    if (signature.boost[key]) {
+      const frac = maxBoost > 0 ? signature.boost[key] / maxBoost : 0;
+      v += headroomUp * frac * cfg.boostHeadroomFraction;
+    } else if (signature.damp[key]) {
+      const frac = maxDamp > 0 ? signature.damp[key] / maxDamp : 0;
+      v -= headroomDown * frac * cfg.dampHeadroomFraction * dampScale;
+    }
+    stats[key] = Math.round(clamp(v, STAT_FLOOR, STAT_CEIL));
+  }
+  return stats;
+}
+
+// #3458 fase 2 PR2 — REEL PRODUKTIONS-REGRESSION fundet + rettet (verificeret
+// empirisk mod den ÆGTE generateAiRiderBatchWithCap, ikke kun harnesset): AI
+// tier 1/2-fyld kombinerer arketype-generatoren med et HÅRDT værdiloft
+// (AI_TIER_VALUE_CAP, #2065-sikkerhedsnet, ejer-gated — RØRES IKKE her).
+// Værdimodellen blender speciale-scoren 50/50 med snittet af alle evner (v3-
+// kalibrering) — jo mere PÅLIDELIGT saturerende signatur-boost, jo oftere bliver
+// en KORREKT klassificeret specialist-kandidat værd flere MILLIONER, langt over
+// tier 1's 200.000-loft. Ved den oprindelige (G1-optimerede, men værdipyramide-
+// brydende) boostHeadroomFraction=1,35 fejlede 9/20 seeds ("kun X/24 under
+// loft") mod 0/20 for den GAMLE ARCHETYPE_BY_TYPE-mekanisme — en reel regression.
+// ADULT_SIGNATURE_CFG er sidenhen SÆNKET (0,67) for at overholde launch-
+// populationens EGEN, pre-existing værdi-pyramide-kalibrering (se dens
+// kommentar) — hvilket ALENE bragte AI-fejlraten til 0/80 uden en separat cfg.
+// AI_SIGNATURE_CFG bevares alligevel som en EKSPLICIT, UAFHÆNGIGT tunet
+// sikkerhedsmargin (defense-in-depth): hvis ADULT_SIGNATURE_CFG senere justeres
+// igen (fx et markeds-/værdi-refit løfter loftet), skal AI tier 1/2 IKKE
+// stiltiende arve en ny risiko for #2065-klassen af fejl — værdiloftet er
+// stadig den ÆGTE garanti (generateAiRiderBatchWithCap forkaster/rerruller),
+// denne cfg reducerer blot hvor OFTE loftet rammes. Empirisk tunet (80 seeds,
+// begge tiers, ÆGTE 60-runders-budget): boostHeadroomFraction=1,0 gav 2/80
+// (2,5%) fejl for tier 2 (100% domestique, 100k-loft — det strammeste); 0,9
+// gav 0/80 for BEGGE tiers.
+export const AI_SIGNATURE_CFG = Object.freeze({
+  ...ADULT_SIGNATURE_CFG,
+  boostHeadroomFraction: 0.9,
+  dampHeadroomFraction: 0.9,
+});
+
 // Default-nationalitetsvægte: afspejler prod-feltet (2026-05-31) + garanteret
 // repræsentation af ikke-vestlige nationer (se GUARANTEED) for at teste hybrid-
 // navnepools' svageste punkt. Vægt ≈ relativ tilstedeværelse i feltet.
@@ -225,8 +390,11 @@ const GUARANTEED = ["CN", "JP", "KR", "CO", "DZ", "ER"];
 // kilden i evne-systemet (#1122, abilityDerivation.js: PCM 50→spil-1, 85→spil-99).
 // Skalaen er fast (empirisk om PCM), derfor hardcodet — ikke koblet til evne-
 // systemets tuning-ankre (CALIBRATION), selvom de tilfældigvis er samme tal nu.
-const STAT_FLOOR = 50;
-const STAT_CEIL = 85;
+// #3458 fase 2 PR2: eksporteret så starterSquadAllocator.js kan RESKALERE (ikke
+// blot clampe) ind i sit svage vindue uden at duplikere denne skala — se
+// buildWeakStarterPool's kommentar for hvorfor reskalering afløste clamp.
+export const STAT_FLOOR = 50;
+export const STAT_CEIL = 85;
 
 // Kalibreret mod den ægte poolede PCM-fordeling (prod 2026-06-07): mean ~60.5,
 // sd ~5.6, median 60, p99 ~75, max 85 — dvs. 85 er EKSTREMT sjældent (~1% af
@@ -322,6 +490,10 @@ export function makeUniqueName(rng, cluster, usedFolded) {
  *        map tier→andel (superstar/star/solid); domestique er altid rest. null = DEFAULT_TIER_FRACTIONS.
  * @param {Object<string,Object<string,number>>} [opts.tierTypeWeights]  override af per-tier
  *        arketype-vægte (#1420); null = DEFAULT_TIER_TYPE_WEIGHTS. Default på begge → uændret adfærd.
+ * @param {object} [opts.signatureCfg]  #3458 fase 2 PR2 — KUN NY-stien (ingen
+ *        tierTypeWeights-override): boost/dæmp-hovedrums-cfg til buildStatsFromSignature.
+ *        Default ADULT_SIGNATURE_CFG (markeds-/launch-styrke). AI tier 1/2 sender
+ *        AI_SIGNATURE_CFG (mildere — se dens kommentar for hvorfor).
  * @returns {{ riders: object[], coverage: object, seed: number }}
  */
 export function generateFictionalRiders({
@@ -332,6 +504,7 @@ export function generateFictionalRiders({
   nationalityWeights = DEFAULT_NATIONALITY_WEIGHTS,
   tierFractions = null,
   tierTypeWeights = null,
+  signatureCfg = ADULT_SIGNATURE_CFG,
 }) {
   if (!Number.isInteger(seed)) throw new Error("seed skal være et heltal");
   if (!Number.isInteger(count) || count < 1) throw new Error("count skal være et positivt heltal");
@@ -353,6 +526,10 @@ export function generateFictionalRiders({
           : t,
       )
     : TIERS;
+  // #3458 fase 2 PR2: eksplicit tierTypeWeights → LEGACY-mekanisme (#1420 dev-
+  // tooling, uændret adfærd/determinisme); ingen override (ALLE rigtige
+  // produktions-kaldere) → NY arketype-prior-mekanisme (archetypeDistribution.js).
+  const usingLegacyTypeWeights = tierTypeWeights != null;
   const typeWeights = tierTypeWeights ?? TIER_TYPE_WEIGHTS;
 
   // ── Tier-sekvens via eksakt kvote (ikke Poisson-sampling) ───────────────────
@@ -370,21 +547,38 @@ export function generateFictionalRiders({
     [tierSeq[i], tierSeq[j]] = [tierSeq[j], tierSeq[i]];
   }
 
-  // ── Type-sekvens: tier-aware vægtet pick + gulv på sjældne typer ─────────────
-  const typeSeq = tierSeq.map((t) => {
-    const weights = typeWeights[t.value];
-    return weightedPick(rng, Object.entries(weights).map(([value, weight]) => ({ value, weight })));
-  });
-  // Gulvene skaleres til dette kalds count (#3570/S2) — se ENSURE_MIN_TYPES.
-  const minTypes = scaleMinTypes(count);
-  for (const [type, min] of Object.entries(minTypes)) {
-    let have = typeSeq.filter((x) => x === type).length;
-    for (let i = 0; i < typeSeq.length && have < min; i++) {
-      if (typeWeights[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
-      if (typeSeq[i] === type || minTypes[typeSeq[i]]) continue; // stjæl ikke fra andet gulv
-      typeSeq[i] = type;
-      have++;
+  // ── Arketype-træk-sekvens: LEGACY (vægtet pick + gulv) ELLER NY (#3458 prior) ──
+  // Begge grene producerer samme form: { primary, secondary, isHybrid }. LEGACY
+  // sætter altid secondary=null/isHybrid=false (ingen hybrid-støj i den gamle sti —
+  // #1420 dev-tooling-kontrakten er en ren, forudsigelig type-skew, ikke en
+  // sim-realisme-feature).
+  let typeDrawSeq;
+  if (usingLegacyTypeWeights) {
+    typeDrawSeq = tierSeq.map((t) => {
+      const weights = typeWeights[t.value];
+      const type = weightedPick(rng, Object.entries(weights).map(([value, weight]) => ({ value, weight })));
+      return { primary: type, secondary: null, isHybrid: false };
+    });
+    // #3570/S2 (BEVARET gennem #3458-rebasen): gulvene skaleres til dette kalds
+    // count — se ENSURE_MIN_TYPES. Uden skaleringen promoverer "mindst 30 gc og
+    // 40 sprintere" HELE trækket ved count 4/8/16/24. Legacy-stien har ingen
+    // FLOOR_PCT at falde tilbage på, så skaleringen er den ENESTE ting der holder
+    // små legacy-træk fra at degenerere til 100 % sprinter+gc.
+    const minTypes = scaleMinTypes(count);
+    for (const [type, min] of Object.entries(minTypes)) {
+      let have = typeDrawSeq.filter((x) => x.primary === type).length;
+      for (let i = 0; i < typeDrawSeq.length && have < min; i++) {
+        if (typeWeights[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
+        if (typeDrawSeq[i].primary === type || minTypes[typeDrawSeq[i].primary]) continue; // stjæl ikke fra andet gulv
+        typeDrawSeq[i] = { primary: type, secondary: null, isHybrid: false };
+        have++;
+      }
     }
+  } else {
+    // #3458 fase 2 PR2: arketype-prior-først (samme princip som akademiets PR1) —
+    // trækkes fra archetypeDistribution-formlen, tier-modificeret (se
+    // TIER_ARCHETYPE_MODIFIER), med ~15% hybrid-støj (drawArchetypePair).
+    typeDrawSeq = tierSeq.map((t) => drawArchetypePair(rng, { distribution: distributionForTier(t.value) }));
   }
 
   // Byg nationalitets-sekvens: garanterede nationer først, resten vægtet, så
@@ -416,10 +610,11 @@ export function generateFictionalRiders({
     coverage.byCluster[clusterKey] = (coverage.byCluster[clusterKey] || 0) + 1;
 
     const tier = tierSeq[i];
-    const archetype = ARCHETYPE_BY_TYPE[typeSeq[i]];
+    const draw = typeDrawSeq[i];
+    const archetype = ARCHETYPE_BY_TYPE[draw.primary]; // demografi (heightMean/bmi) — opslag pr. PRIMÆR type i begge grene
 
     const { firstname, lastname } = makeUniqueName(rng, cluster, usedFolded);
-    const stats = buildStats(rng, tier, archetype);
+    const stats = usingLegacyTypeWeights ? buildStats(rng, tier, archetype) : buildStatsFromSignature(rng, tier, draw, signatureCfg);
     const demo = buildDemographics(rng, tier, archetype, referenceYear);
     const physiology = seedArchetypePhysiology({
       archetype: archetype.type,
@@ -447,7 +642,11 @@ export function generateFictionalRiders({
       // Bevidst udeladt (DB udleder/defaulter, backfill ejer base_value): id, base_value, market_value, salary,
       // team_id, ai_team_id, pending_team_id, prize_earnings_bonus, is_retired,
       // created_at, updated_at, acquired_at.
-      _meta: { tier: tier.value, archetype: archetype.type, age: demo.age, cluster: clusterKey, physiology },
+      // archetypeDraw (#3458 fase 2 PR2): fuldt { primary, secondary, isHybrid }-træk —
+      // KUN til sim-harness/test-introspektion (G1-måling), ALDRIG en DB-kolonne;
+      // toInsertPayload fjerner hele _meta. `archetype` (streng) bevaret uændret for
+      // bagudkompatibilitet (eksisterende callers/tests filtrerer på denne).
+      _meta: { tier: tier.value, archetype: archetype.type, archetypeDraw: draw, age: demo.age, cluster: clusterKey, physiology },
     });
   }
 
