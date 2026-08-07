@@ -24,9 +24,25 @@
 // (cross-tier-dedup, #2276), og alle puljer i en tier kører identisk løbssæt (#2276).
 // Et re-draw af tier 3 rører derfor aldrig tier 1's parcours — og en tier hvis træk
 // består i første forsøg får attempt 0, dvs. bit-identisk output med før #3347.
+//
+// #3469 (runde 6, ejer-fund 8/8): #3326 (etaperækkefølge — "bjerg i første halvdel" m.fl.)
+// er PRÆCIS samme klasse problem som #2755/#2769 — et sæson-aggregat over uafhængige
+// pr.-etape rækkefølge-terninger — men stod FØR denne ændring uden for re-draw-søgningen:
+// drawTierAttempt scorede kun scoreSeason (#2755/#2769-båndene), og buildSeasonCalendar.js
+// gatePlan() checkede detectStageOrderViolations SEPARAT, EFTER re-draw havde låst variant.
+// Konsekvens: en tier kunne lande på en variant der bestod #2755/#2769 men brød #3326,
+// og INTET forsøg 1-11 blev nogensinde afprøvet mod det bånd — re-draw-mekanismen var
+// blind for netop den fejlklasse den var bygget til at absorbere. Fundet konkret da
+// klasse-bevidst nedstrøms-beskyttelse (samme runde) korrekt ændrede tier 2's stage-udvalg
+// og trak dens attempt-0-træk under #3326's bjerg-i-første-halvdel-minimum (7,1 % af 10 %).
+// FIX: failures i drawTierAttempt inkluderer nu OGSÅ detectStageOrderViolations, så
+// resolveTierDraw søger den mindste attempt der består BEGGE kriterie-familier samtidig —
+// ingen ny mekanisme, kun den eksisterende terning kastet med ét ekstra øje på den.
+// Nulrisiko for tiers der allerede bestod attempt 0 på begge fronter (uændret variant=0).
 
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 import { scoreSeason } from "./raceRouteRealismMetrics.js";
+import { computeStageOrderStats, detectStageOrderViolations } from "./stageOrderMetrics.js";
 
 // 12 forsøg. Målt pr.-forsøg-fejlrate: tier 1 ≈ 44 % (GT-bånd), tier 3 ≈ 16 %,
 // tier 4 ≈ 3 %. Værste tier giver 0,44^12 ≈ 6·10⁻⁵ restrisiko — langt under
@@ -64,7 +80,14 @@ export function drawTierAttempt({ tier, seedRaces = [], errors = [], attempt = 0
   // unassessed (manglende datagrundlag) tæller IKKE som båndbrud — et re-draw kan ikke
   // fremtrylle løb der ikke findes, så det ville blot brænde alle forsøg af.
   const { failures } = scoreSeason([entry]);
-  return { entry, failures };
+  // #3469 (runde 6): #3326-rækkefølgebåndene er SAMME slags aggregat-over-tilfældighed
+  // som #2755/#2769 — tag dem med i samme søgning (se fil-docstringen ovenfor). 0
+  // etapeløb er "kan ikke vurderes", ikke et brud (#2854-kontrakten, jf. detectStageOrderViolations).
+  const stageOrderStats = computeStageOrderStats(races);
+  const stageOrderFailures = stageOrderStats.stageRaces > 0
+    ? detectStageOrderViolations({ stats: stageOrderStats, label: `tier ${tier}` })
+    : [];
+  return { entry, failures: [...failures, ...stageOrderFailures] };
 }
 
 /**

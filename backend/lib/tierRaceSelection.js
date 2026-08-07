@@ -157,15 +157,28 @@ export function selectTierRaceSet({
   // #3295: {terrain_archetype: antal} der SKAL med, valgt før prestige-walket. null =
   // uændret historisk adfærd. Se reserveArchetypes for hvorfor priorityArchetypes ikke rakte.
   archetypeReservations = null,
-  // #3469 (ejer-fund 8/8): arketyper som DENNE tiers almindelige walk IKKE må tage ud over
-  // sin egen reservation, fordi en SENERE tier (højere tier-nummer, processeres efter
-  // denne) også har en reservation for samme arketype og ellers kan blive sultet (rod-
-  // årsag D4's cobbled_tour: D2 tog 2 — 1 via reservation, 1 via almindelig walk — og D4
-  // fik 0, fordi kataloget kun rummer 4 i alt). Beregnes af KALDEREN (kender hele
-  // tier-rækkefølgen; denne funktion kender kun sin egen tier), IKKE af archetypeReservations
-  // alene — en arketype DENNE tier er den SIDSTE til at reservere for, skal IKKE begrænses
-  // (intet nedstrøms at beskytte; at gøre det alligevel sultede D4's egen kvote-udfyldning
-  // af summit_tour/hilly_tour, som blev opdaget under implementeringen og rettet her).
+  // #3469 (ejer-fund 8/8, KLASSE-BEVIDST udgave — anden runde): arketyper som DENNE tiers
+  // almindelige walk IKKE må tage ud over sin egen reservation, fordi en SENERE tier
+  // (højere tier-nummer, processeres efter denne) også har en reservation for samme
+  // arketype og ellers kan blive sultet (rod-årsag D4's cobbled_tour: D2 tog 2 — 1 via
+  // reservation, 1 via almindelig walk — og D4 fik 0, fordi kataloget kun rummer 4 i alt).
+  //
+  // Formen er { [arketype]: string[]|null } — IKKE en flad arketype-liste (v1's fejl):
+  // beskyttelsen skal kun ramme løb i KLASSER en senere reserverende tier reelt kan vælge
+  // (skæringen arketype × nedstrøms-whitelist-klasser). Uden klasse-skelnen ville D1/D2's
+  // brostens-komposition (K-B ~6 %, egne OWTB/OWTC/Monuments-brosten) blive beskåret for
+  // at beskytte D3's ProSeries/Class1-forsyning, som D1/D2 aldrig havde brug for i første
+  // omgang — en ren arketype-blokering rammer klasser der er urelaterede for downstream.
+  //   værdi null      → beskyt ALLE klasser for arketypen (en senere klasse-ubegrænset
+  //                      tier — kun tier 1 er klasse-ubegrænset, og tier 1 er altid
+  //                      FØRST, så dette er reelt uopnåeligt i dag, men understøttes for
+  //                      robusthed hvis en fremtidig tier-rækkefølge ændrer sig).
+  //   værdi string[]  → beskyt KUN løb hvis race_class er i listen (unionen af de
+  //                      senere reserverende tiers' whitelists).
+  // Beregnes af KALDEREN (kender hele tier-rækkefølgen + klasse-whitelists; denne funktion
+  // kender kun sin egen tier). En arketype DENNE tier er den SIDSTE til at reservere for
+  // er slet ikke en nøgle her — intet nedstrøms at beskytte (v1's blanket-fejl sultede
+  // D4's egen kvote-udfyldning af summit_tour/hilly_tour, rettet i første #3469-runde).
   downstreamProtectedArchetypes = null,
 } = {}) {
   // #2251: Grand Tours (≥15 etaper) hører KUN til Division 1 (spec'ens GT-rygrad).
@@ -205,17 +218,19 @@ export function selectTierRaceSet({
   const reservedRows = reserved.taken.map((r) => ({ id: r.id, name: r.name ?? null, race_class: r.race_class, stages: stagesOf(r) }));
   const reservedSingles = reservedRows.filter((r) => r.stages === 1);
   const reservedStages = reservedRows.filter((r) => r.stages >= 2);
-  // #3469 (ejer-fund 8/8): downstreamProtectedArchetypes ekskluderer resterende kandidater
-  // af de OPGIVNE arketyper fra DENNE tiers almindelige walk, ud over hvad reservationen
-  // selv tog — se parameter-docstringen ovenfor for rod-årsagen. Kun arketyper KALDEREN
-  // eksplicit har markeret (fordi en SENERE tier også reserverer dem) begrænses; en tier
-  // der er DEN SIDSTE til at reservere en arketype (fx D4 for hilly_tour/summit_tour) skal
-  // fortsat kunne fylde sin kvote frit med ekstra af den arketype.
-  const downstreamProtectedSet = Array.isArray(downstreamProtectedArchetypes) && downstreamProtectedArchetypes.length
-    ? new Set(downstreamProtectedArchetypes) : null;
+  // #3469 (ejer-fund 8/8, klasse-bevidst): downstreamProtectedArchetypes ekskluderer KUN
+  // resterende kandidater af en beskyttet arketype HVIS de også er i en beskyttet klasse
+  // for den arketype — se parameter-docstringen ovenfor. `null`-værdien betyder "beskyt
+  // alle klasser"; et array konverteres til et Set pr. arketype for O(1)-opslag.
+  const downstreamProtectedClassesByArchetype = downstreamProtectedArchetypes
+    ? new Map(Object.entries(downstreamProtectedArchetypes).map(([arch, classes]) => [arch, Array.isArray(classes) ? new Set(classes) : null]))
+    : null;
   const rest = rankedAll.filter((r) => {
     if (reserved.takenIds.has(r.id)) return false;
-    if (downstreamProtectedSet && downstreamProtectedSet.has(r.terrain_archetype)) return false;
+    if (downstreamProtectedClassesByArchetype && downstreamProtectedClassesByArchetype.has(r.terrain_archetype)) {
+      const protectedClasses = downstreamProtectedClassesByArchetype.get(r.terrain_archetype);
+      if (protectedClasses === null || protectedClasses.has(r.race_class)) return false;
+    }
     return true;
   });
 

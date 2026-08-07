@@ -222,12 +222,15 @@ export function buildTierMaterializationPlan({
     liveByTier.get(p.tier).push(p);
   }
 
-  // #3469 (ejer-fund 8/8): forudberegn, pr. arketype, den SORTEREDE liste af tiers der
-  // reserverer den (want > 0) — bruges til at afgøre om DENNE tier er den SIDSTE til at
-  // reservere en given arketype (intet nedstrøms at beskytte, fri walk) eller om en SENERE
-  // tier også reserverer den (walkens overskud ud over egen reservation skal ekskluderes,
-  // så den knappe forsyning ikke sultes tavst). Se selectTierRaceSet's
-  // downstreamProtectedArchetypes-docstring for rod-årsagen (D2 sultede D4's cobbled_tour).
+  // #3469 (ejer-fund 8/8, klasse-bevidst — runde 6): forudberegn, pr. arketype, den
+  // SORTEREDE liste af tiers der reserverer den (want > 0) — bruges nedenfor til (a) at
+  // afgøre om DENNE tier er den SIDSTE til at reservere en given arketype (intet
+  // nedstrøms at beskytte, fri walk) og (b) hvilke KLASSER der skal beskyttes for den
+  // (kun klasser en senere reserverende tier faktisk kan vælge fra — se
+  // selectTierRaceSet's downstreamProtectedArchetypes-docstring for rod-årsagen: D2
+  // sultede D4's cobbled_tour; en første, klasse-BLIND udgave af fixet ville have beskåret
+  // D1/D2's egen OWTB/OWTC/Monuments-brosten for at beskytte D3's urelaterede
+  // ProSeries/Class1-forsyning).
   const reservationTiersByArchetype = new Map();
   for (const [tierKey, cfg] of Object.entries(archetypeReservations ?? {})) {
     const t = Number(tierKey);
@@ -264,12 +267,31 @@ export function buildTierMaterializationPlan({
     // #3328: classStageLengthBand ekskluderer etapeløb uden for klassens etapeantal-bånd.
     // priorityArchetypes giver knappe specialist-arketyper (brosten/ITT/mountain-free)
     // forrang ved uafgjort prestige+størrelse.
-    // #3469: arketyper DENNE tier reserverer, hvor en SENERE tier (højere tier-nummer)
-    // OGSÅ reserverer dem — kun disse må ikke dobbelt-dyppes af tierens egen almindelige
-    // walk. En arketype hvor denne tier er den sidste i rækken er upåvirket (fri walk).
-    const downstreamProtectedArchetypes = [...reservationTiersByArchetype.entries()]
-      .filter(([, tiersList]) => tiersList.includes(tier) && tier < tiersList[tiersList.length - 1])
-      .map(([arch]) => arch);
+    // #3469 (klasse-bevidst udgave, ejer-fund runde 6): arketyper hvor en SENERE tier
+    // (højere tier-nummer) reserverer dem — kun DISSE må ikke dobbelt-dyppes af DENNE
+    // tiers almindelige walk ud over hvad SENERE tier(s) selv skal bruge. VIGTIGT: dette
+    // gælder UANSET om denne tier selv har en reservation for arketypen (rettet 8/8, runde
+    // 6 — v1's `tiersList.includes(tier)`-guard fejlede stille for D3's cobbled_classic:
+    // KUN tier 3 reserverer den, så tier 1/2 (som slet ikke selv reserverer den) fik ALDRIG
+    // en beskyttelses-post og forblev fuldstændig ubegrænsede). PR. ARKETYPE begrænses
+    // beskyttelsen til klasserne de(n) SENERE tier(s) reelt kan vælge fra (unionen af
+    // deres class-whitelists) — ikke arketypen som helhed. Rod-årsag for klasse-skelnen:
+    // uden den ville D1/D2's EGEN brostens-komposition (OWTB/OWTC/Monuments — klasser D3
+    // slet ikke kan vælge fra) blive beskåret for at beskytte D3's ProSeries/Class1-
+    // forsyning, som D1/D2 aldrig rørte ved i første omgang.
+    const downstreamProtectedArchetypes = {};
+    for (const [arch, tiersList] of reservationTiersByArchetype.entries()) {
+      const laterTiers = tiersList.filter((t) => t > tier);
+      if (!laterTiers.length) continue; // ingen SENERE tier reserverer denne arketype — intet at beskytte
+      let unionClasses = new Set();
+      let unrestricted = false;
+      for (const t2 of laterTiers) {
+        const wl = classWhitelist?.[t2];
+        if (!Array.isArray(wl)) { unrestricted = true; break; } // en senere klasse-ubegrænset tier → beskyt alle klasser
+        for (const c of wl) unionClasses.add(c);
+      }
+      downstreamProtectedArchetypes[arch] = unrestricted ? null : [...unionClasses];
+    }
 
     const sel = selectTierRaceSet({
       catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0,

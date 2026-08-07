@@ -119,21 +119,37 @@ export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 
 // En reservation der ikke kan opfyldes (arketypen findes ikke i tierens klasse-vindue)
 // rapporteres som `unmetReservations` — den forsvinder aldrig tavst.
 //
-// #3469 (ejer-fund 8/8, endagsløbs-balance-opfølgning): D3's cobbled_classic-tilføjelse.
-// D3's lavere endagsløbs-mål (0,76→0,58, samme dags tidligere beslutning) fortrængte
-// cobbled_classic fra D3's almindelige walk — cobbles-terræn-familien (#3327,
-// TIER_TERRAIN_FAMILY_MIN[3].cobbles=5) faldt fra 7 til 1 etape (kun cobbled_tour-
-// reservationens ene garanterede cobbles-etape tilbage). cobbled_tour bidrager 1;
-// cobbled_classic:4 lukker resten (1+4=5, nøjagtig minimum). Samme
-// "reservér-før-det-grådige-walk"-princip som resten af denne tabel — cobbled_classic
-// var IKKE tidligere en reservations-arketype (kun etapeløbs-arketyper var), men
-// #3469-fundet i selectTierRaceSet (rest ekskluderer nu reservations-arketyper fra egen
-// almindelige walk ud over reservationens eget antal, se dér) gør endagsløbs-
-// reservationer lige så robuste som etapeløbs-reservationerne — samme mønster D4's
-// itt_classic allerede beviste virker for endagsløb.
+// #3469 (ejer-fund 8/8, endagsløbs-balance-opfølgning — TO runder): D1/D2/D3's
+// cobbled_classic-tilføjelser.
+//
+// Runde 1: D3's lavere endagsløbs-mål (0,76→0,58, samme dags tidligere beslutning)
+// fortrængte cobbled_classic fra D3's almindelige walk — cobbles-terræn-familien
+// (#3327, TIER_TERRAIN_FAMILY_MIN[3].cobbles=5) faldt fra 7 til 1 etape. cobbled_tour
+// bidrager 1; cobbled_classic:4 lukker resten (1+4=5). Samme "reservér-før-det-
+// grådige-walk"-princip som resten af denne tabel — men reservationen ALENE virkede
+// ikke: D1's (klasse-ubegrænsede) og D2's almindelige walk havde allerede opbrugt
+// stort set al cobbled_classic-forsyning i D3's klasse-vindue (ProSeries/Class1) FØR
+// D3's tur, fordi hverken D1 eller D2 selv reserverede arketypen (selectTierRaceSet's
+// downstreamProtectedArchetypes-mekanisme beskytter kun tiers der INDIREKTE truer en
+// SENERE tiers reservation — den krævede ingen af sine egne, så intet forhindrede
+// D1/D2 i frit at tømme D3's delte ProSeries-pulje).
+//
+// Runde 2 (samme dag, ejer-fund): at gøre selectTierRaceSet's beskyttelse KLASSE-
+// BEVIDST (kun ProSeries/Class1 beskyttet for D3, ikke OWTB/OWTC/Monuments) rettede
+// D3 — men blotlagde SAMME mønster ét niveau højere: D2's EGET cobbles-gulv
+// (TIER_TERRAIN_FAMILY_MIN[2].cobbles=6) viste sig at have hvilet på ProSeries-
+// cobbled_classic hele tiden (nu beskyttet væk til D3), OG D1's klasse-ubegrænsede
+// walk tog samtidig ALLE 5 OWTB + begge Monuments cobbled_classic — langt over D1's
+// eget gulv (3) — og efterlod D2 (hvis whitelist også inkluderer OWTB) med kun
+// OWTC(4) tilbage, under dens egne 6. Samme rod-årsag, samme fix: D1 og D2 får nu
+// EGNE cobbled_classic-reservationer, dimensioneret til PRÆCIS deres eget gulv minus
+// cobbled_tour-bidraget (D1: 3−1=2 · D2: 6−1=5) — det udløser automatisk
+// downstreamProtectedArchetypes-beskyttelsen for tiers FØR dem også, uden at kræve en
+// ny mekanisme. D4 behøvede ingen tilføjelse — dens gulv (1) var allerede dækket af
+// cobbled_tour-garantien alene.
 export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
-  1: Object.freeze({ cobbled_tour: 1, itt_classic: 1 }),
-  2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
+  1: Object.freeze({ cobbled_tour: 1, itt_classic: 1, cobbled_classic: 2 }),
+  2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
   3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
   4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
 });

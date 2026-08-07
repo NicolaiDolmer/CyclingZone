@@ -369,3 +369,102 @@ rod-årsag-reproduktion, beskyttelse virker, scopet til KUN angivne arketyper, b
 kompatibel null-default) + 2 nye integrationstests i tierCalendarMaterializer.test.js
 (cross-tier-knaphed løses; sidste-tier-i-rækken forbliver fri). Fuld backend-suite
 5579/5579 grønne.
+
+── PR #3472 opfølgning (8/8, runde 6): klasse-bevidst beskyttelse + #3326 ind i re-draw ──
+
+Ejer-koordinator: v5's "D3-kataloghul" var IKKE et kataloghul — det var KLASSE-BLINDHED i
+downstreamProtectedArchetypes (arketype-niveau, ikke arketype×klasse). D1/D2 behøver ikke
+ProSeries/Class1-cobbled_classic (deres egne gulve dækkes af Monuments/OWTB/OWTC + egne
+cobbled_tour), men v5's beskyttelse kunne ikke skelne "tag frit af OWTB" fra "lad ProSeries
+være" — den var enten alt-eller-intet pr. arketype.
+
+FIX 1 (tierRaceSelection.js): downstreamProtectedArchetypes ændret fra flad arketype-liste
+til { [arketype]: klasseliste|null }. null = beskyt alle klasser (uændret ved fra generelle
+tests), en liste = beskyt KUN løb hvis race_class er i listen — resten er frit.
+
+FIX 2 (tierCalendarMaterializer.js) — KRITISK BUG i første forsøg: precompute-blokken havde
+`if (!tiersList.includes(tier)) continue`, som kun beskyttede en arketype for tier T hvis T
+SELV også reserverede den. Kun D3 reserverede cobbled_classic → D1/D2 forblev fuldt frie,
+fix 1 havde MÅLBART NUL effekt. Rettet ved at fjerne guarden: beskyttelse gælder når EN
+SENERE tier reserverer, uanset om denne tier selv gør. downstreamProtectedArchetypes[arch]
+= unionen af klasse-whitelists for alle senere tiers der reserverer arch (null hvis nogen
+af dem er unrestricted).
+
+KASKADE (samme dag, målt): efter fix 2 gik D3's cobbles-gate grøn, men D2's cobbles-familie
+faldt til 5 (under gulv 6) — dens ProSeries-adgang var netop blevet lukket, og dens eneste
+alternativ (OWTB) blev tavst opædt af D1 (unrestricted, tog 7 cobbled_classic — langt over
+sit eget gulv 3). FIX: D1 og D2 fik EGNE eksplicitte cobbled_classic-reservationer (D1: 2,
+D2: 5 — begge dimensioneret til at nå eget gulv sammen med deres cobbled_tour-garanti,
+1+2=3 for D1, 1+5=6 for D2). Dette udløser AUTOMATISK samme beskyttelses-maskine opad mod
+endnu tidligere tiers.
+
+MÅLT RESULTAT (cobbles_family_total = cobbled_classic + cobbled_tour RACE-antal pr. tier,
+dry-run --plan 3, LIVE katalog):
+  Tier  FØR (v5)  EFTER (runde 6)  klasser (efter)
+  D1    3         3                Monuments×2, OWTB×1 (uændret sammensætning)
+  D2    ukendt*   10               OWTC×5, OWTB×4, OWTC(tour)×1
+  D3    2         8                ProSeries×7, ProSeries(tour)×1
+  D4    3         3                Class1×1, Class2×1, Class1(tour)×1
+  * D2 var ikke isoleret målt i v5 (v5's rapport fokuserede på D3/D4's brud); D2's gulv
+    (6) var dog dækket i v5 via UBESKYTTET ProSeries-adgang, som forsvandt da fix 2 landede
+    — deraf reservationen.
+
+BROSTEN-LØBSDAGE (game-day-niveau, IKKE race-antal — cobbled_tour er et etapeløb, så dets
+dage tæller alle med; dette er tallet ejer-koordinatorens "~8 brosten-dage for D1" refererer
+til, EFTERPRØVET via calendarCompositionScorecard --plan 3's "brosten-klumpning"-linje):
+  D1: 8 løbsdage (2 cobbled_classic + 6-etapers cobbled_tour) — UÆNDRET fra ejerens ~8.
+  D2: 15 løbsdage · D3: 12 løbsdage · D4: 5 løbsdage. Sæson-total: 40 brosten-løbsdage.
+  → (a) BEKRÆFTET: D1's brosten-komposition faldt IKKE — race-antal og løbsdage begge
+    uændrede/identiske med FØR runde 6.
+
+DÆKNINGSGATE (b): D3 cobbles-familie 8, mod minimum 5 — GRØNT (var 2, blokerende, i v5).
+
+NY GATE OPDAGET UNDERVEJS (#3326, tier 2): efter fix 1+2 landede korrekt, skiftede D2's
+konkrete etapeløbs-udvalg (samme totalbudget, andre specifikke løb, da ProSeries-
+kandidater forsvandt fra dens endagsbudget og flyttede krone-vægten). Det kanoniske
+parcours-træk (attempt 0) endte under #3326's "bjerg i første halvdel"-minimum (7,1 % af
+10 %). Isoleret grundigt: IKKE følsom over for reservations-STØRRELSE (testet 3/4/5/6/7 for
+D2, og med/uden D1's reservation — udfaldet 7,1 % ændrede sig aldrig). Rod-årsag: #3347's
+re-draw-mekanisme (raceRouteRealismDraw.js) scorede KUN #2755/#2769-realismebåndene —
+#3326 blev tjekket SEPARAT i buildSeasonCalendar.js EFTER variant-valget var låst, så
+re-draw-søgningen var strukturelt blind for netop den fejlklasse den er bygget til at
+absorbere (aggregat over pr.-etape-rækkefølge-tilfældighed, samme princip som #2755/#2769).
+
+FIX 3 (raceRouteRealismDraw.js): drawTierAttempt's failures inkluderer nu OGSÅ
+detectStageOrderViolations (fra samme genererede races-array som scoreSeason bruger) —
+resolveTierDraw søger nu den mindste attempt der består BEGGE kriterie-familier samtidig.
+Ingen ny mekanisme; samme deterministiske afledte-seed-terning, ét ekstra øje. Nulrisiko
+for tiers der allerede bestod attempt 0 på begge fronter (variant forbliver 0). MÅLT: D2's
+resolverede variant gik fra 0 (attempt 0, ubeskyttet #3326-check) til 1 (attempt 1, består
+nu begge kriterie-familier). D1/D3 uændrede variant-tal (6 hhv. 1, som før).
+
+VERIFIKATION (dry-run --plan 3 via buildSeasonCalendar.js, LIVE katalog):
+a) D1 brosten: 8 løbsdage, UÆNDRET — se ovenfor.
+b) D3 cobbles-familie: 8, mod minimum 5 — GRØNT.
+c) buildSeasonCalendar.js --season 3 --first-day 2026-09-01:
+   "✅ Alle gates grønne: kalender-invarianter · realisme-bånd · etaperækkefølge ·
+   K-B-komposition." — DETTE FJERNER DET SIDSTE BLOKERENDE BRUD. #3472-pakken er
+   kandidat til ejer-go.
+   (--season 2 kan ikke køres direkte gennem buildSeasonCalendar.js: sæson 2 er ACTIVE i
+   dette miljø, og scriptet har en hård 27/6-blitz-guard mod at materialisere ind i en
+   igangværende sæson — det er FORVENTET, ikke en fejl i denne PR.)
+d) Endagsløbs-andele (mål ±3pp): D1 57,1% (mål 55) · D2 58,8% (mål 55) · D3 59,4% (mål 58)
+   · D4 57,7% (mål 55) — alle i mål.
+   K-B sæson-aggregat (±2pp, --plan 3): flad 23,4% (-0,6) · kuperet 32,9% (+0,9) ·
+   bjerg 27,5% (-0,5) · ITT 10,0% (+0,0) · brosten 6,2% (+0,2) · TTT 0,0% — 0 kategorier
+   udenfor bånd, GRØNT (dette er den gate buildSeasonCalendar.js faktisk håndhæver).
+   K-B sæson-aggregat for sæson 2 (allerede materialiseret, upåvirket af denne PR — læst
+   via --season 2): samme mønster, 0 kategorier udenfor bånd.
+   (calendarCompositionScorecard.js's PR-TIER K-B-bånd viser fortsat flere brud på begge
+   sæsoner — dette er #3295's KENDTE, forud-eksisterende "rapportér, gatér ikke"-tilstand,
+   uændret af denne PR: sæson 2 (allerede i DB, umuligt at denne PR har rørt den) viser
+   PRÆCIS samme klasse pr.-tier-afvigelser som sæson 3's plan. Ikke en regression.)
+   GT-separation: 0 brud alle 4 tiers, begge sæsoner. Monument-ankre uændrede
+   (0,21/0,25/0,29/0,32/0,93 mod mål 0,22/0,28/0,30/0,35/0,97).
+   overlapDays: D1 20 (maxOverlap 3) · D2 28 (2) · D3 27 (2) · D4 28 (2) — alle under cap.
+e) Regressionsvagt (v5's "for-bred beskyttelse"-test) stadig grøn + 2 NYE tests tilføjet i
+   tierRaceSelection.test.js der demonstrerer klasse-skelnen i SAMME fixture (OWTB-brosten
+   tages frit, ProSeries-brosten beskyttes, når kun ProSeries er i beskyttelseslisten).
+
+Test-status: fuld backend-suite 5581/5581 grønne (2 nye tests denne runde). Preflight
+grøn (kun 4 pre-eksisterende frontend react-hooks-advarsler, urelateret).

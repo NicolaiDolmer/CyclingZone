@@ -199,10 +199,10 @@ test("#3469 uden downstreamProtectedArchetypes: en tier med rigeligt budget kan 
   assert.equal(cobbledTourTaken.length, 2, "fixturen skal gengive problemet: begge cobbled_tour tages, selvom kun 1 er reserveret");
 });
 
-test("#3469 downstreamProtectedArchetypes forhindrer denne tier i at tage arketypen ud over egen reservation", () => {
+test("#3469 downstreamProtectedArchetypes (klasse: null = alle) forhindrer denne tier i at tage arketypen ud over egen reservation", () => {
   const sel = selectTierRaceSet({
     catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5,
-    archetypeReservations: { cobbled_tour: 1 }, downstreamProtectedArchetypes: ["cobbled_tour"],
+    archetypeReservations: { cobbled_tour: 1 }, downstreamProtectedArchetypes: { cobbled_tour: null },
   });
   const cobbledTourTaken = sel.stageRaces.filter((r) => r.id === "ps-cob-1" || r.id === "ps-cob-2");
   assert.equal(cobbledTourTaken.length, 1, "kun den reserverede cobbled_tour må tages — resten skal falde igennem til en senere tier");
@@ -212,7 +212,7 @@ test("#3469 downstreamProtectedArchetypes påvirker KUN de angivne arketyper", (
   const base = selectTierRaceSet({ catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5 });
   const withProtection = selectTierRaceSet({
     catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5,
-    downstreamProtectedArchetypes: ["mountain_tour"], // ikke reserveret her — skal ikke ændre noget for cobbled_tour
+    downstreamProtectedArchetypes: { mountain_tour: null }, // ikke reserveret her — skal ikke ændre noget for cobbled_tour
   });
   const cobCount = (s) => s.stageRaces.filter((r) => r.id === "ps-cob-1" || r.id === "ps-cob-2").length;
   assert.equal(cobCount(withProtection), cobCount(base), "en arketype uden egen reservation må ikke pludselig blive begrænset af en urelateret downstream-beskyttelse");
@@ -221,4 +221,41 @@ test("#3469 downstreamProtectedArchetypes påvirker KUN de angivne arketyper", (
 test("#3469 downstreamProtectedArchetypes=null (default) er bagudkompatibel — ingen begrænsning", () => {
   const args = { catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5, archetypeReservations: { cobbled_tour: 1 } };
   assert.deepEqual(selectTierRaceSet(args), selectTierRaceSet({ ...args, downstreamProtectedArchetypes: null }));
+});
+
+// ── #3469 (ejer-fund runde 6): KLASSE-BEVIDST beskyttelse — den samme arketype kan have
+// klasser der ER nedstrøms-beskyttet og klasser der IKKE er. Rod-årsag: D1/D2's egen
+// OWTB/OWTC/Monuments-brosten-komposition (K-B ~6 %) må ikke beskæres for at beskytte D3's
+// urelaterede ProSeries/Class1-forsyning — beskyttelsen skal kun ramme skæringen
+// arketype × nedstrøms-tierens klasse-whitelist. ──────────────────────────────────────
+function twoClassCobbledClassicCatalog() {
+  const rows = [];
+  for (let i = 0; i < 20; i++) rows.push({ id: `owtb-od-${i}`, name: `OWTB endags ${i}`, race_class: "OtherWorldTourB", race_type: "single", stages: 1, terrain_archetype: "flat_sprint" });
+  for (let i = 0; i < 20; i++) rows.push({ id: `ps-od-${i}`, name: `PS endags ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "flat_sprint" });
+  // To cobbled_classic-kandidater i FORSKELLIGE klasser — kun ProSeries-udgaven er
+  // nedstrøms-beskyttet i testen nedenfor (efterligner D1/D2's OWTB-brosten vs. D3's
+  // ProSeries-brosten).
+  rows.push({ id: "owtb-cob", name: "OWTB brostensløb", race_class: "OtherWorldTourB", race_type: "single", stages: 1, terrain_archetype: "cobbled_classic" });
+  rows.push({ id: "ps-cob", name: "ProSeries brostensløb", race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "cobbled_classic" });
+  return rows;
+}
+
+test("#3469 klasse-bevidst beskyttelse: ProSeries-brosten beskyttes, OWTB-brosten forbliver FRI (samme arketype, forskellig klasse)", () => {
+  // Kvote = hele kataloget (42 endagsløb) — begge cob-kandidater ville NORMALT blive taget
+  // (kontrol-testen nedenfor beviser det); kun beskyttelsen udelukker "ps-cob".
+  const sel = selectTierRaceSet({
+    catalog: twoClassCobbledClassicCatalog(), quota: 42, seed: 3,
+    downstreamProtectedArchetypes: { cobbled_classic: ["ProSeries"] }, // KUN ProSeries beskyttet, ikke OtherWorldTourB
+  });
+  const took = (id) => sel.oneDayRaces.some((r) => r.id === id);
+  assert.ok(took("owtb-cob"), "OWTB-brosten er IKKE i den beskyttede klasseliste — skal frit kunne tages");
+  assert.ok(!took("ps-cob"), "ProSeries-brosten ER i den beskyttede klasseliste — skal IKKE tages af denne tiers almindelige walk");
+});
+
+test("#3469 klasse-bevidst beskyttelse: uden beskyttelse tages BEGGE klasser normalt (kontrol)", () => {
+  // Kvote = hele kataloget (42 endagsløb), ingen mix-target — begge cob-kandidater passer
+  // altid ind, uanset alfabetisk id-rækkefølge, når budgettet ikke er stramt.
+  const sel = selectTierRaceSet({ catalog: twoClassCobbledClassicCatalog(), quota: 42, seed: 3 });
+  const took = (id) => sel.oneDayRaces.some((r) => r.id === id);
+  assert.ok(took("owtb-cob") && took("ps-cob"), "fixturen skal gengive at begge klasser normalt konkurrerer frit om budgettet");
 });
