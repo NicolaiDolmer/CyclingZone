@@ -4,6 +4,169 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.107",
+    "date": "2026-08-08",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Amount fields no longer drop thousand separators",
+          "body": "Typing 150.000 (or 150,000 or 150 000) as an asking price used to be read as 150, putting a rider on the market at a thousandth of the intended price. All amount fields (asking price, auction start price, bids, proxy max, loans, contract offers) now understand thousand separators, reject ambiguous input instead of silently truncating it, and show the parsed amount in plain text below the field before you submit."
+        },
+        "da": {
+          "title": "Beløbsfelter dropper ikke længere tusindtalsseparatorer",
+          "body": "Skrev du 150.000 (eller 150,000 eller 150 000) som udbudspris, blev det læst som 150, og en rytter røg på markedet til en tusindedel af den tilsigtede pris. Alle beløbsfelter (udbudspris, auktions-startpris, bud, proxy-max, lån, kontrakttilbud) forstår nu tusindtalsseparatorer, afviser tvetydigt input i stedet for stiltiende at skære det af, og viser det aflæste beløb i klartekst under feltet før du sender."
+        }
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "See your actual points in the Mountains and Points competitions",
+          "body": "The classification tables used to show only your rank. They now also show the points total behind it, live during stage races and per stage, so you can see exactly how close you are to the jersey and why you did or did not make the top 3."
+        },
+        "da": {
+          "title": "Se dine faktiske point i bjerg- og pointkonkurrencen",
+          "body": "Klassement-tabellerne viste før kun din placering. De viser nu også pointtallet bag den, live under etapeløb og pr. etape, så du kan se præcis hvor tæt du er på trøjen, og hvorfor du kom eller ikke kom i top 3."
+        }
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Click a rider's name to peek at their profile",
+          "body": "In team selection, clicking a rider's name now opens a quick profile popup with form, fatigue and abilities, and the checkbox is now the only way to add or remove a rider from the lineup. You can check your facts without losing your picks or leaving the page."
+        },
+        "da": {
+          "title": "Klik på et rytternavn og kig på profilen",
+          "body": "I holdudtagelsen åbner et klik på rytterens navn nu en hurtig profil-popup med form, træthed og evner, og checkboxen er den eneste måde at vælge og fravælge på. Du kan tjekke fakta uden at miste din udtagelse eller forlade siden."
+        }
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Unanswered offers now show as a badge on Transfers",
+          "body": "When the front page unread counter cleared, it was easy to forget offers you had not answered. The Transfers menu item now carries its own badge counting unanswered incoming offers, and it disappears when everything is answered."
+        },
+        "da": {
+          "title": "Ubesvarede tilbud vises nu som badge på Transfers",
+          "body": "Når forsidens ulæst-tæller forsvandt, var det let at glemme tilbud du ikke havde svaret på. Transfers-menupunktet har nu sit eget badge der tæller ubesvarede indgående tilbud, og det forsvinder når alt er besvaret."
+        }
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard header now shows your available balance",
+          "body": "The header used to show your raw balance even when a large part of it was committed in leading auction bids. It now shows the same available balance as the Finance page, with the amount locked in bids as a secondary line, so the two pages can never disagree."
+        },
+        "da": {
+          "title": "Dashboard-headeren viser nu din disponible saldo",
+          "body": "Headeren viste før din rå saldo, selv når en stor del var bundet i førende auktionsbud. Den viser nu samme disponible saldo som Finans-siden, med det bud-bundne beløb som en sekundær linje, så de to sider aldrig kan være uenige."
+        }
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your dashboard division standing matches the Standings page",
+          "body": "The dashboard used to exclude AI teams before calculating your rank, so the same team could show #2 on the dashboard and #16 on the Standings page. Both now count every team the same way: the dashboard shows your true division rank, with your rank among human managers as a secondary line when the two differ."
+        },
+        "da": {
+          "title": "Din divisionsplacering på dashboardet matcher nu Standings-siden",
+          "body": "Dashboardet fjernede før AI-hold inden din placering blev udregnet, så samme hold kunne stå som nr. 2 på dashboardet og nr. 16 på Standings-siden. Begge tæller nu alle hold ens: dashboardet viser din rigtige divisionsplacering, med din placering blandt menneske-managere som en sekundær linje når de to tal er forskellige."
+        }
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Rider ranking module now leads to the list it came from",
+          "body": "The dashboard's rider ranking shows the top 5 in your own division, but its link opened a season-wide list where none of them appeared. The link now lands on the full ranking filtered to your division, with a clear indicator, the module is labeled Your division, and GC wins are shown split from classic wins just like the target page."
+        },
+        "da": {
+          "title": "Rytter-ranglisten fører nu til den liste den kom fra",
+          "body": "Dashboardets rytter-rangliste viser top 5 i din egen division, men linket åbnede en sæson-global liste hvor ingen af dem optrådte. Linket lander nu på den fulde rangliste filtreret til din division, med tydelig indikator, modulet er mærket Din division, og GC-sejre vises adskilt fra klassikersejre ligesom på målsiden."
+        }
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard shows a clear error instead of appearing empty",
+          "body": "If the dashboard failed to load, it used to render as if you simply had no data. It now shows a clear error message with a retry button, and the results and rider ranking modules show a loading skeleton instead of flashing a false empty state while they fetch."
+        },
+        "da": {
+          "title": "Dashboardet viser en tydelig fejl i stedet for at fremstå tomt",
+          "body": "Hvis dashboardet ikke kunne indlæses, så det før ud som om du slet ingen data havde. Det viser nu en tydelig fejlbesked med prøv igen-knap, og resultat- og rangliste-modulerne viser et loading-skelet i stedet for at blinke en falsk tom tilstand mens de henter."
+        }
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Only one gold action button at a time",
+          "body": "Right after a season switch the dashboard could show two gold call-to-action buttons at once (season recap and squad selection). A strict priority now decides which single action gets the gold button."
+        },
+        "da": {
+          "title": "Kun én gylden handlingsknap ad gangen",
+          "body": "Lige efter et sæsonskifte kunne dashboardet vise to gyldne handlingsknapper på én gang (sæson-recap og holdudtagelse). En fast prioritering afgør nu hvilken enkelt handling der får den gyldne knap."
+        }
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Critical board notifications now lead somewhere",
+          "body": "The board's most urgent notifications (forced sales, bonus goals) had no click target and vanished under the Board filter. They now link straight to the Board page, carry a proper warning icon, and show up where you expect them."
+        },
+        "da": {
+          "title": "Kritiske bestyrelses-notifikationer fører nu et sted hen",
+          "body": "Bestyrelsens mest presserende notifikationer (tvangssalg, bonus-mål) havde intet klik-mål og forsvandt under Board-filteret. De linker nu direkte til Bestyrelses-siden, har et rigtigt advarsels-ikon og dukker op hvor du forventer dem."
+        }
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board sends renewal reminders again",
+          "body": "A state bug had silently stopped the board's contract renewal reminders and plan takeovers since late July, and the mid-season review had never run at all. Both now run reliably, and teams with backlogged negotiations get a fresh reminder cycle instead of an instant takeover."
+        },
+        "da": {
+          "title": "Bestyrelsen sender fornyelses-påmindelser igen",
+          "body": "En tilstands-fejl havde i stilhed stoppet bestyrelsens kontraktfornyelses-påmindelser og plan-overtagelser siden sidst i juli, og midtvejs-evalueringen havde aldrig kørt. Begge kører nu pålideligt, og hold med ophobede forhandlinger får en frisk påmindelses-cyklus i stedet for en øjeblikkelig overtagelse."
+        }
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy uses the full page width",
+          "body": "The academy roster was boxed into a narrow column with wasted space on both sides. It now uses the wide data layout, and a new guard keeps future data-heavy pages from making the same mistake."
+        },
+        "da": {
+          "title": "Akademiet bruger hele sidebredden",
+          "body": "Akademi-rosteret var klemt inde i en smal kolonne med spildt plads i begge sider. Det bruger nu det brede data-layout, og en ny vagt forhindrer fremtidige data-tunge sider i at begå samme fejl."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.106",
     "date": "2026-08-07",
     "label": "Beta",

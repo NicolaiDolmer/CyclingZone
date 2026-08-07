@@ -1424,7 +1424,7 @@
     },
     "raceJerseysFaq": {
       "q": "Hvordan virker den grønne trøje og bjergtrøjen?",
-      "a": "Den grønne trøje tæller spurtpoint, som optjenes ved mellemsprinter og ved etapemål, vægtet efter hvor spurtvenlig etapen er, så flade mål giver flere point end bjergetaper. Bjergtrøjen tæller KOM-point, som optjenes ved at være først over en kategoriseret stigning, med dobbelt point på et topmål. Bonussekunder tæller også med til GC: 10/6/4 sekunder til de tre første ryttere ved et etapemål, og 3/2/1 sekunder ved hver mellemsprint. Ryttere i et udbrud kan føre over en stigning eller sprint før feltet ankommer, så et udbrud kan vinde bjergtrøjen selv uden at være med i GC-kampen. Gælder løb fra sæson 2 og frem."
+      "a": "Den grønne trøje tæller spurtpoint, som optjenes ved mellemsprinter og ved etapemål, vægtet efter hvor spurtvenlig etapen er, så flade mål giver flere point end bjergetaper. Bjergtrøjen tæller KOM-point, som optjenes ved at være først over en kategoriseret stigning, med dobbelt point på et topmål. Bonussekunder tæller også med til GC: 10/6/4 sekunder til de tre første ryttere ved et etapemål, og 3/2/1 sekunder ved hver mellemsprint. Ryttere i et udbrud kan føre over en stigning eller sprint før feltet ankommer, så et udbrud kan vinde bjergtrøjen selv uden at være med i GC-kampen. Du kan følge begge konkurrencer direkte i spillet: klassement-tabellerne viser hver rytters pointtotal (ikke kun placeringen), og etape-resultatsiden viser hvem der tog point ved hver stigning og sprint. Gælder løb fra sæson 2 og frem."
     },
     "raceRouteRealismFaq": {
       "q": "Hvorfor er tidsforskellene så forskellige mellem bjergetaper?",

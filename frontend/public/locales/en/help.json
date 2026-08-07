@@ -1424,7 +1424,7 @@
     },
     "raceJerseysFaq": {
       "q": "How do the green jersey and mountains jersey work?",
-      "a": "The green jersey tracks sprint points, earned at intermediate sprints and at stage finishes, weighted by how sprint-friendly the stage is, so flat finishes hand out more than mountain ones. The mountains jersey tracks KOM points, earned by cresting categorized climbs first, with double points on a summit finish. Bonus seconds count toward the GC too: 10/6/4 seconds for the first three riders at a stage finish, and 3/2/1 seconds at each intermediate sprint. Riders in a breakaway can lead over a climb or sprint before the bunch arrives, so a breakaway can win the mountains jersey even without contending for GC. Applies to races from season 2 onward."
+      "a": "The green jersey tracks sprint points, earned at intermediate sprints and at stage finishes, weighted by how sprint-friendly the stage is, so flat finishes hand out more than mountain ones. The mountains jersey tracks KOM points, earned by cresting categorized climbs first, with double points on a summit finish. Bonus seconds count toward the GC too: 10/6/4 seconds for the first three riders at a stage finish, and 3/2/1 seconds at each intermediate sprint. Riders in a breakaway can lead over a climb or sprint before the bunch arrives, so a breakaway can win the mountains jersey even without contending for GC. You can follow both competitions directly in the game: the classification tables show each rider's points total (not just the rank), and the stage result page shows who took points at every climb and sprint. Applies to races from season 2 onward."
     },
     "raceRouteRealismFaq": {
       "q": "Why do time gaps differ so much between mountain stages?",
