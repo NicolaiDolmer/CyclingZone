@@ -56,8 +56,16 @@ const row = ({ rank, rider_name, team_id, userId, raceId, raceName, imported_at 
   imported_at,
 });
 
+test("efter kl. 19 samme dag (deploy-restart catch-up) koerer sweepen stadig (#3475-klassen)", async () => {
+  const CATCHUP_NOW = new Date("2026-07-20T18:15:00Z"); // 20:15 Copenhagen
+  assert.ok(copenhagenHour(CATCHUP_NOW) > DIGEST_HOUR_COPENHAGEN);
+  const supabase = makeSupabase({ raceResultRows: [], userRows: [] });
+  const result = await runEmailRaceDigestSweep({ supabase, now: CATCHUP_NOW, isActive: async () => true });
+  assert.notEqual(result.skippedReason, "outside_hour_window");
+});
+
 test("outside the 19:00-19:59 Copenhagen hour, the sweep does no DB work at all", async () => {
-  assert.notEqual(copenhagenHour(OUT_OF_WINDOW_NOW), DIGEST_HOUR_COPENHAGEN);
+  assert.ok(copenhagenHour(OUT_OF_WINDOW_NOW) < DIGEST_HOUR_COPENHAGEN);
   const supabase = {
     from() { throw new Error("must not query any table outside the digest hour"); },
   };

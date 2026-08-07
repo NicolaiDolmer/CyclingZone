@@ -154,6 +154,7 @@ import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js"
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
+import { calibratedBands } from "../lib/typeRatingScale.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -1771,9 +1772,14 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         bestCeilMid: (bestCeil.ceilLo + bestCeil.ceilHi) / 2,
         valueGap,
       });
+      // #3458 Fase 1 (Del B "skala-ærlighed"): verdict/best/bestCeil ovenfor bruger
+      // BEVIDST de rå ratings (samme enhed som gap-tærsklerne i buildVerdict) — kun
+      // det VISTE `types`-array kalibreres til den absolutte, sammenlignelige skala,
+      // så "84" betyder det samme niveau i alle 8 roller. Ingen ændring af
+      // ability_caps/type/potentiale.
       return res.json({
         level, maxLevel: state.maxLevel, own,
-        stars: starsMasked, types, verdict,
+        stars: starsMasked, types: calibratedBands(types), verdict,
         value: expected != null ? { market: rider.market_value, expected } : null,
         capsMissing: false,
         scout: scoutMeta, generatedAt,

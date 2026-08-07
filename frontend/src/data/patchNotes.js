@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.103",
+    "date": "2026-08-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Rider type ratings are now comparable across roles",
+          "body": "The eight type ratings in the scout report used to be calculated on eight different scales, so a completely average rider could show 37 as a sprinter but 56 as a puncheur. The scales have been recalibrated to one shared scale: the same number now means the same level in every role, so you can finally compare a rider's roles side by side. Your riders' abilities, types and potential are untouched. The displayed numbers shifted once with this recalibration and will only move again when a rider himself develops."
+        },
+        "da": {
+          "title": "Ryttertype-bedømmelser kan nu sammenlignes på tværs af roller",
+          "body": "De otte type-bedømmelser i scoutrapporten blev tidligere beregnet på otte forskellige skalaer, så en helt gennemsnitlig rytter kunne stå med 37 som sprinter men 56 som puncheur. Skalaerne er nu rekalibreret til én fælles skala: samme tal betyder samme niveau i alle roller, så du endelig kan sammenligne en rytters roller side om side. Dine rytteres evner, typer og potentiale er urørte. De viste tal flyttede sig én gang med denne rekalibrering og bevæger sig fremover kun, når rytteren selv udvikler sig."
+        },
+        "refs": [3458]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Scout any division's calendar, and expand a full day",
+          "body": "The calendar's Divisions tab now has a group selector when a division has more than one pool (e.g. 'Division 2 — A'), so you can browse another division's full race program before promotion or relegation, not just the tier as a whole. A day with more than 4 races used to cut off at '+N more' with nothing to click; that text is now a button that opens the day's complete program."
+        },
+        "da": {
+          "title": "Scout en vilkårlig divisions kalender, og fold en hel dag ud",
+          "body": "Kalenderens Divisioner-fane har nu en gruppe-vælger når en division har mere end én pulje (fx 'Division 2 — A'), så du kan gennemse en anden divisions fulde løbsprogram før op- eller nedrykning, ikke kun hele tieren samlet. En dag med mere end 4 løb blev før afskåret ved '+N flere' uden noget at klikke på; den tekst er nu en knap der åbner dagens fulde program."
+        },
+        "refs": [2756]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage-ending badges now explain what they mean",
+          "body": "'Summit finish' and 'Downhill finish' were self-explanatory, but 'Breakaway' was not. Every stage-ending badge (bunch sprint, reduced sprint, punchy finish, summit finish, downhill finish, solo time trial, breakaway) now has a tooltip explaining what it means, and the full list is in Help under Season."
+        },
+        "da": {
+          "title": "Etape-afslutnings-badges forklarer nu hvad de betyder",
+          "body": "'Bjergfinale' og 'Nedkørselsfinale' var selvforklarende, men 'Udbrud' var det ikke. Ethvert etape-afslutnings-badge (massespurt, reduceret spurt, stikfinale, bjergfinale, nedkørselsfinale, soloenkeltstart, udbrud) har nu et tooltip der forklarer hvad det betyder, og hele listen står i Hjælp under Sæson."
+        },
+        "refs": [2756]
+      }
+    ]
+  },
+  {
     "version": "7.102",
     "date": "2026-08-06",
     "label": "Beta",

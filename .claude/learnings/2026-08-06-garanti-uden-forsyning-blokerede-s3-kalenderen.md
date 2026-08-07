@@ -68,3 +68,9 @@ Ironien er at #3327 selv havde fundet præcis denne fejlklasse et lag tidligere,
 **Spørgsmål der ville have fanget det hurtigere:** når en sortering har flere nøgler, hvor ofte bliver den n'te nøgle overhovedet nået? Her: næsten aldrig. En prioritet der ligger efter en nøgle med høj kardinalitet (etapeantal) er ikke en prioritet — den er dekoration.
 
 **Og en metode-læring om mig selv:** jeg foreslog at sænke båndene, da katalog-udvidelsen ikke virkede. Ejeren afviste det ("vi laver ikke quick fixes"), og det var rigtigt — jeg havde diagnosticeret symptomet som årsagen. Når to forsøg på at løse noget begge fejler på samme måde, er det et signal om at modellen af problemet er forkert, ikke om at målet skal sænkes.
+
+## Samme mønster, tredje gang samme dag: GT-hviledags-fillerne (#3470)
+
+Første implementering af GT-hviledage tog "næste ledige endagsløb" fra rest-køen som filler — men da GT'erne placeres, havde paddingen allerede forbrugt køen, så **6 af 7 hviledage degraderede stille** (1/7 fyldt). Mekanik uden reserveret forsyning, igen. Fixet var identisk med #3295's reservations-fase: reservér filler-endagsløbene FØR det grådige forbrug (round-robin så alle GT'er får én før nogen får to) → 7/7 fyldt, uden katalog-ændring.
+
+Mønster-reglen står nu tredobbelt bekræftet på én dag: **enhver mekanik der "tager fra en pulje til sidst" skal reservere sit behov først** — ellers er den et lotteri over forbrugs-rækkefølgen. Og: en degrade-sti der er "sikker" (ingen crash) men stille, skal ALTID rapporteres i scorecard/diagnose, for det var netop degrade-rapporten der afslørede 1/7.

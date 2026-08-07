@@ -93,8 +93,18 @@ const row = ({ raceId, raceName, resultType, stageNumber = null, userId, importe
   imported_at,
 });
 
+test("efter kl. 20 samme dag (deploy-restart catch-up) koerer sweepen stadig", async () => {
+  // 2026-08-06: gaten var `!== 20`; deploy-genstarter aad kl. 20-vinduet og
+  // hele dagen blev sprunget over. `>=` + dedup-loggen = catch-up uden dobbelt-DM.
+  const CATCHUP_NOW = new Date("2026-07-20T19:15:00Z"); // 21:15 Copenhagen
+  assert.ok(copenhagenHour(CATCHUP_NOW) > DISCORD_DIGEST_HOUR_COPENHAGEN);
+  const supabase = makeSupabase({ raceResultRows: [], userRows: [], alreadySentUserIds: [] });
+  const result = await runDiscordRaceDigestSweep({ supabase, now: CATCHUP_NOW });
+  assert.notEqual(result.skippedReason, "outside_hour_window");
+});
+
 test("outside the digest hour, the sweep does no DB work at all", async () => {
-  assert.notEqual(copenhagenHour(OUT_OF_WINDOW_NOW), DISCORD_DIGEST_HOUR_COPENHAGEN);
+  assert.ok(copenhagenHour(OUT_OF_WINDOW_NOW) < DISCORD_DIGEST_HOUR_COPENHAGEN);
   const supabase = { from() { throw new Error("must not query any table outside the digest hour"); } };
   const result = await runDiscordRaceDigestSweep({ supabase, now: OUT_OF_WINDOW_NOW });
   assert.equal(result.skippedReason, "outside_hour_window");

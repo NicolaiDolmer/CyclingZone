@@ -247,10 +247,15 @@ export function buildCalendarModel({
 // model (peak-plans-board'et bruger fx status/gameDayStart/terrainStages), men
 // kalender-fladen læser kun felterne herunder: expandStageEvents i
 // frontend/src/lib/calendarGrid.js plukker id/name/raceType/stages/stage-planen/
-// division/poolLabel/isMine/leaderSet, og date+terrain bruges som fallback når et
-// løb mangler stageSchedule. raceClass, status, poolId, poolIndex, gameDayStart,
+// division/poolId/poolLabel/isMine/leaderSet, og date+terrain bruges som fallback
+// når et løb mangler stageSchedule. raceClass, status, poolIndex, gameDayStart,
 // gameDayEnd, terrainStages og entered blev sendt men aldrig læst — 67 kB (S1) /
 // 73 kB (S2) af rå JSON pr. kalender-load, som mobilen skulle parse for ingenting.
+//
+// #2756: poolId var oprindeligt trimmet væk her (kalenderen filtrerede kun på
+// tier), men en pulje-vælger ("Division 2 A") kræver at kalender-klienten kan
+// matche events mod en specifik pulje — poolId tages derfor med igen.
+// poolLabel dækker visningen, poolIndex forbliver ubrugt (droppes stadig).
 export function toCalendarWireEntry(entry) {
   return {
     id: entry.id,
@@ -258,6 +263,7 @@ export function toCalendarWireEntry(entry) {
     raceType: entry.raceType,
     stages: entry.stages,
     division: entry.division,
+    poolId: entry.poolId,
     poolLabel: entry.poolLabel,
     date: entry.date,
     terrain: entry.terrain,

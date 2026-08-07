@@ -135,7 +135,13 @@ export async function runDiscordRaceDigestSweep({
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
-  if (copenhagenHour(now) !== DISCORD_DIGEST_HOUR_COPENHAGEN) {
+  // 2026-08-06 (første kørsel fejlede): gaten var `!== 20` (præcis-time-vindue),
+  // men times-intervallet i cron.js nulstilles ved hvert Railway-deploy — en
+  // deploy-tung aften kan dermed springe HELE dagen over (målt 6/8: restarts
+  // 20:40/20:51/22:07 CPH åd kl. 20-vinduet, 0 DM sendt). `>=` + den
+  // persisterede dedup-log (UNIQUE sweep_date, tjekkes pr. bruger nedenfor)
+  // giver samme én-gang-pr.-dag-garanti uden afhængighed af tick-timing.
+  if (copenhagenHour(now) < DISCORD_DIGEST_HOUR_COPENHAGEN) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, skippedReason: "outside_hour_window" };
   }
 

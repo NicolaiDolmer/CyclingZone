@@ -839,6 +839,15 @@
       "solo_tt": "Solo time trial",
       "breakaway": "Breakaway"
     },
+    "finaleTypeHint": {
+      "bunch_sprint": "The peloton stays together and the stage is decided in a mass sprint.",
+      "reduced_sprint": "A reduced group survives to the line and sprints for the win.",
+      "punch": "A short, steep kick near the line rewards a late attack over a pure sprint.",
+      "long_climb": "Summit finish: the climb itself is the finish line, opening the biggest time gaps of the day.",
+      "descent": "The finish comes after a descent, giving chasers a chance to close back down before the line.",
+      "solo_tt": "Every rider starts alone against the clock, no drafting.",
+      "breakaway": "An early escape group stays clear of the peloton and contests the win among themselves."
+    },
     "route": {
       "stats": {
         "km": "KM",
