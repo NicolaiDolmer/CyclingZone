@@ -17,9 +17,12 @@
 //   · DRY-RUN er default. --apply er det ENESTE der skriver.
 //   · Kalender-invarianter (#2251/#2276/#3327/#3328) skal være rene. Ingen override.
 //   · Realisme-båndene (#2755/#2769/#3347) skal være grønne. Ingen override.
-//   · Kompositionen (#3295) skal ramme K-B. --allow-composition-drift kan lempe PRÆCIS
-//     dette ene krav (det er en balance-målsætning, ikke en korrekthedsinvariant), og
-//     afvigelsen printes så tydeligt at ingen kan overse hvad de accepterede.
+//   · Kompositionen (#3295) skal ramme K-B, både på SÆSON-AGGREGATET og PR. TIER (#3469,
+//     leverance 4 — en tier kunne før forsvinde i sæson-gennemsnittet). Hver af de to
+//     niveauer har sit EGET override-flag (--allow-composition-drift hhv.
+//     --allow-tier-composition-drift), fordi det er balance-målsætninger, ikke
+//     korrekthedsinvarianter, og afvigelsen printes så tydeligt at ingen kan overse hvad
+//     de accepterede.
 //   · Første løbsdag SKAL være i fremtiden — resolveCalendarFrom kaster ellers. Det er
 //     guarden fra 27/6-blitzen, hvor en kalender materialiseret i fortiden fik
 //     race-scheduleren til at afvikle en hel sæson på minutter.
@@ -35,10 +38,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../lib/calendarStartDate.js";
-import { aggregateCompositionStats, detectCompositionViolations, ACTIVE_TARGET } from "../lib/calendarCompositionTargets.js";
-import { detectStageOrderViolations } from "../lib/stageOrderMetrics.js";
-import { scoreSeason, TIER_TARGETS } from "../lib/raceRouteRealismMetrics.js";
-import { resolveSeasonDraw } from "../lib/raceRouteRealismDraw.js";
+import { gatePlan } from "../lib/seasonCalendarGate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -47,70 +47,11 @@ export function seasonUuid(n) {
   return `00000000-0000-0000-0000-${Number(n).toString(16).padStart(12, "0")}`;
 }
 
-/**
- * Kør alle gates på en dry-run-plan. Ren funktion af summary'en, så beslutningen kan
- * testes uden DB.
- *
- * @returns {{blocking:string[], compositionDrift:string[], severity:number, report:object}}
- *   blocking          brud der ALDRIG må overrides
- *   compositionDrift  K-B-afvigelser (kan lempes med --allow-composition-drift)
- *   severity          samlet numerisk afstand til båndene (0 = alt grønt) — lader en
- *                     søgning se delvis fremgang, hvor antal-brud ser nul
- */
-export function gatePlan(summary) {
-  const blocking = [];
-  const compositionDrift = [];
-
-  const tierEntries = [];
-  for (const t of summary.tiers) {
-    for (const v of t.calendarViolations ?? []) blocking.push(`kalender-invariant — ${v}`);
-
-    if (!t.compositionStats || t.compositionStats.raceDays === 0) {
-      blocking.push(`tier ${t.tier}: 0 løbsdage i planen — kalenderen ville være tom`);
-      continue;
-    }
-    if (t.quotaHit === false && t.shortfall > 3) {
-      // Små huller (1-3 dage) er katalog-knaphed og accepteret; et stort hul betyder at
-      // selection fejlede og kalenderen ville have tomme perioder.
-      blocking.push(`tier ${t.tier}: kvoten mangler ${t.shortfall} game-days — for stort hul til at materialisere`);
-    }
-    for (const v of detectStageOrderViolations({ stats: t.stageOrderStats, label: `tier ${t.tier}` })) {
-      blocking.push(`etaperækkefølge (#3326) — ${v}`);
-    }
-    if (Array.isArray(t.seedRaces) && t.seedRaces.length) tierEntries.push({ tier: t.tier, seedRaces: t.seedRaces });
-  }
-
-  // Realisme-båndene scores på det RESOLVEREDE træk — samme tal skrive-stien persisterer.
-  // `severity` er den samlede NUMERISKE afstand til båndene, ikke bare antal brud. Antal
-  // alene er en for grov ledetråd for en søgning: tier 3's summit-bånd lukkes først af
-  // FLERE nye løb, så ingen enkelt kandidat fjerner bruddet, og en søgning der kun tæller
-  // brud ser dem alle som værdiløse. Afstanden (summit 5 → 6 → 7 → 8) viser fremgangen.
-  let severity = 0;
-  if (tierEntries.length) {
-    const draws = resolveSeasonDraw({ tierSeedRaces: tierEntries });
-    const realism = scoreSeason(draws.map((d) => d.entry));
-    for (const f of realism.failures) blocking.push(`realisme-bånd — ${f}`);
-    for (const t of realism.tiers) {
-      const s = t.score, tgt = TIER_TARGETS[t.tier] ?? {};
-      if (tgt.summit_min != null) severity += Math.max(0, tgt.summit_min - s.summit_finishes);
-      if (tgt.mdown_max_pct != null) severity += Math.max(0, s.mdown_pct - tgt.mdown_max_pct) / 5;
-      if (tgt.itt_min != null) severity += Math.max(0, tgt.itt_min - s.standalone_itt) * 3;
-      if (tgt.cobbles_min != null) severity += Math.max(0, tgt.cobbles_min - s.cobbles_in_stagerace) * 3;
-    }
-  } else {
-    blocking.push("ingen tier leverede et løbssæt at score realisme på");
-    severity += 100;
-  }
-  severity += blocking.filter((b) => !b.startsWith("realisme-bånd")).length * 10;
-
-  const season = aggregateCompositionStats(
-    summary.tiers.map((t) => t.compositionStats).filter((s) => s && s.raceDays > 0)
-  );
-  const { rows, violations } = detectCompositionViolations({ stats: season, target: ACTIVE_TARGET, label: "sæson" });
-  compositionDrift.push(...violations);
-
-  return { blocking, compositionDrift, severity, report: { season, rows } };
-}
+// #3469 (leverance 5): gatePlan flyttet til lib/seasonCalendarGate.js, så
+// seasonTransition.js's forever-sti (fase 17, `auto_calendar_enabled`) kan køre PRÆCIS
+// samme gate FØR den materialiserer med writes. Re-eksporteret uændret her, så CLI'en
+// nedenfor og eksisterende kaldere/tests af `./buildSeasonCalendar.js` er upåvirkede.
+export { gatePlan };
 
 /** Post-verify EFTER apply: tæl det der faktisk står i DB, og fang etaper i fortiden. */
 export async function postVerify({ supabase, seasonId }) {
@@ -142,6 +83,7 @@ if (isMain) {
   const firstDay = argOf("--first-day");
   const apply = process.argv.includes("--apply");
   const allowDrift = process.argv.includes("--allow-composition-drift");
+  const allowTierDrift = process.argv.includes("--allow-tier-composition-drift");
 
   if (!Number.isInteger(seasonNumber) || seasonNumber < 1) {
     console.error("--season <N> kræves (heltal ≥ 1)"); process.exit(2);
@@ -180,7 +122,7 @@ if (isMain) {
 
     // 1) Planlæg (altid dry-run først — også når vi skal apply'e).
     const plan = await materializeTierCalendars({ supabase, seasonId, seasonStartDate: firstDay || null, from, dryRun: true, log: () => {} });
-    const { blocking, compositionDrift, report } = gatePlan(plan);
+    const { blocking, compositionDrift, tierCompositionDrift, report } = gatePlan(plan, { allowTierCompositionDrift: allowTierDrift });
 
     console.log(`\n── Plan ──`);
     for (const t of plan.tiers) {
@@ -209,6 +151,12 @@ if (isMain) {
       console.warn(`   → --allow-composition-drift sat: fortsætter MED ovenstående afvigelse.`);
     } else {
       console.log(`\n✅ Alle gates grønne: kalender-invarianter · realisme-bånd · etaperækkefølge · K-B-komposition.`);
+    }
+    if (tierCompositionDrift.length) {
+      // #3469: kun nået hvis --allow-tier-composition-drift er sat (ellers er samme
+      // brud allerede i `blocking` ovenfor og har stoppet scriptet).
+      console.warn(`\n⚠ PR.-TIER KOMPOSITIONS-AFVIGELSE (${tierCompositionDrift.length}, lempet med --allow-tier-composition-drift):`);
+      for (const c of tierCompositionDrift) console.warn(`   · ${c}`);
     }
 
     if (!apply) {

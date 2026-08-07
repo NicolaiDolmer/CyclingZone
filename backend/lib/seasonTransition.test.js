@@ -1164,7 +1164,13 @@ test("transitionToNextSeason — auto_calendar ON: materialiserer kalender for d
       notifySeasonEvent: async () => {},
       expireAndRenewContracts: async () => {},
       isAutoCalendarEnabled: async () => true,
+      // #3469 (leverance 5): fasen kalder nu materializeTierCalendars TO gange (dry-run
+      // for gaten, derefter apply) — mock'en tæller kald og svarer identisk begge gange,
+      // så denne tests FOKUS (fase-rækkefølge + wiring) forbliver uændret. gatePlan
+      // mockes til "alt grønt", fordi selve gate-logikken har sin EGEN dedikerede
+      // dækning nedenfor og i scripts/buildSeasonCalendar.test.js.
       materializeTierCalendars: async (args) => { calArgs = args; return { racesInserted: 30, stageProfiles: 90, stageSchedules: 90, tiers: [] }; },
+      gatePlan: () => ({ blocking: [], compositionDrift: [], tierCompositionDrift: [] }),
     },
   });
 
@@ -1172,14 +1178,62 @@ test("transitionToNextSeason — auto_calendar ON: materialiserer kalender for d
   const calPhase = result.log.find((p) => p.phase === "season_calendar");
   assert.ok(calPhase, "season_calendar-fasen skal logges når flaget er ON");
   assert.equal(calPhase.racesInserted, 30);
+  assert.equal(calPhase.skipped, undefined, "en gatePlan der siger alt grønt må ikke skippe kalenderen");
   assert.ok(calArgs, "materializeTierCalendars skal kaldes");
   assert.equal(calArgs.seasonId, "00000000-0000-0000-0000-000000000001", "kalender for den NYE sæson (plan.to_season.id)");
-  assert.equal(calArgs.dryRun, false, "forever-transition materialiserer med writes");
+  assert.equal(calArgs.dryRun, false, "SIDSTE kald (apply) skal materialisere med writes");
   // Rækkefølge: efter sponsor_payout, før admin_log.
   const idxPayout = result.log.findIndex((p) => p.phase === "sponsor_payout");
   const idxCal = result.log.findIndex((p) => p.phase === "season_calendar");
   const idxAdmin = result.log.findIndex((p) => p.phase === "admin_log");
   assert.ok(idxPayout < idxCal && idxCal < idxAdmin, "kalender-fasen ligger mellem sponsor_payout og admin_log");
+});
+
+// #3469 (leverance 5): FØR sprang forever-stien gatePlan helt over — en dårlig plan
+// (kalender-invariant/etaperækkefølge/realisme-bånd/komposition-brud) blev materialiseret
+// blindt. Fasen skal nu nægte at APPLY'e ved et blokerende brud, logge nægtelsen
+// (skipped:true + de konkrete brud) og lade RESTEN af transitionen fortsætte uændret
+// (fail-safe: hellere ingen auto-kalender end en dårlig).
+test("transitionToNextSeason — auto_calendar ON + gatePlan blokerer: nægter apply, vælter IKKE resten af transitionen", async () => {
+  const materializeCalls = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
+      isAutoCalendarEnabled: async () => true,
+      materializeTierCalendars: async (args) => { materializeCalls.push(args.dryRun); return { racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] }; },
+      gatePlan: () => ({
+        blocking: ["realisme-bånd — tier 2: summit 4 < 6"],
+        compositionDrift: [],
+        tierCompositionDrift: [],
+      }),
+    },
+  });
+
+  assert.equal(result.ok, true, "en nægtet auto-kalender må IKKE vælte hele transitionen");
+  const calPhase = result.log.find((p) => p.phase === "season_calendar");
+  assert.ok(calPhase, "season_calendar-fasen skal logges selv når den nægter");
+  assert.equal(calPhase.skipped, true);
+  assert.equal(calPhase.reason, "gate_blocked");
+  assert.ok(calPhase.blocking.some((b) => b.includes("summit 4 < 6")), JSON.stringify(calPhase.blocking));
+
+  // Kun DRY-RUN-kaldet skete — apply (dryRun:false) blev ALDRIG kaldt.
+  assert.deepEqual(materializeCalls, [true], "materializeTierCalendars må kun kaldes med dryRun:true når gaten blokerer");
+
+  // Resten af transitionen (sponsor_payout, admin_log m.fl.) gennemføres uændret.
+  assert.ok(result.log.find((p) => p.phase === "sponsor_payout"), "sponsor_payout skal stadig køre");
+  assert.ok(result.log.find((p) => p.phase === "admin_log"), "admin_log skal stadig køre — transitionen fuldføres");
+  assert.equal(result.log.find((p) => p.phase === "season_entry_generator"), undefined, "entry-generatoren må IKKE køre når kalenderen blev nægtet");
 });
 
 test("transitionToNextSeason — auto_calendar OFF (fail-safe default): ingen kalender-fase", async () => {
