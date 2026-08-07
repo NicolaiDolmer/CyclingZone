@@ -83,10 +83,12 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      # #1342: CI kører kun chromium-projekterne (desktop + mobile). mobile-webkit
-      # hænger systematisk på windows-latest og er droppet i CI (se playwright.config.js).
+      # #3429: CI kører alle tre projekter igen (desktop-chromium,
+      # mobile-chromium, mobile-webkit). Webkit var droppet siden #1342 og var
+      # dermed den eneste browser hvis snapshots kunne drive uset — se
+      # playwright.config.js for hvorfor #1342's rodårsag ikke findes længere.
       - name: Install Playwright browsers
-        run: npx playwright install chromium
+        run: npx playwright install chromium webkit
 
       # #1342: byg frontend FØR Playwright, så webServer-kommandoen i CI kun er
       # `vite preview` (én proces). `npm run build && npm run preview` i én
@@ -105,9 +107,11 @@ jobs:
 
       # timeout-minutes: backstop så et fremtidigt teardown-hæng aldrig igen kan
       # æde en 6-timers runner (#1342: et webkit-hæng kørte 48 min før cancel).
-      # Et grønt chromium-only run er ~3-4 min, så 15 min er rigelig hovedplads.
+      # #3429 lagde mobile-webkit tilbage i suiten (+~5 min lokalt målt: 125
+      # tests, 4,6 min), så loftet er hævet fra 15 til 25 min. Det er stadig
+      # stramt nok til at et ægte hæng fejler hurtigt frem for at hænge timevis.
       - name: Run Playwright smoke
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: npm run test:e2e
 
       - name: Upload Playwright report
