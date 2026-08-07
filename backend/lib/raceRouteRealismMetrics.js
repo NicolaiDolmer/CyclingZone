@@ -46,29 +46,41 @@ const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile
 // det målte middel — samme "margin i middel, spredning løses af #3347-re-draw"-mønster
 // som D3/D4.
 //
-// D2's summit_min (6) og itt_min (0) er BEVIDST INTERIM: katalogets faktiske middel
-// (5,16 summits) ligger UNDER det valgte mål, og loftets minimum (15 bjerg-familie-etaper
-// over 2.000 træk) er tyndt mod målet (20, se TIER_TERRAIN_FAMILY_MIN.mountain). D2
-// mangler kort sagt bjerg-forsyning i kataloget — ejer-godkendelse af 3 nye katalog-løb
-// afventer (separat PR), hvorefter D2's mål hæves i egen commit. mdown_max_pct (65) og
-// summit_min (6) er derfor sat til hvad kataloget REELT kan levere med margin lige nu,
-// ikke til D3/D4-niveau. itt_min=0 (uændret fra tidligere): D2's katalog har ingen
-// pålidelig fritstående-ITT-forsyning i dag — se itt_classic-reservationen i
-// tierCalendarGuarantees.js for den underliggende mangel.
+// D2's summit_min/mdown_max_pct/itt_min startede (samme commit-serie, samme dag) som
+// BEVIDST INTERIM 6/65/0: katalogets daværende middel (5,16 summits, 0 pålidelig
+// fritstående ITT) lå under et D3/D4-niveau bånd. Ejeren godkendte 7/8 tre nye
+// katalog-løb der lukkede PRÆCIS de to huller (Chrono Champenois Majeur, OWTB
+// itt_classic — D2's første pålidelige fritstående ITT — samt Vuelta a los Pirineos og
+// Tour des Grandes Alpes, begge OWTC summit_tour). TIER_ARCHETYPE_RESERVATIONS[2]
+// .summit_tour hævet 1→2 (tierCalendarGuarantees.js) samme commit, så BEGGE nye
+// summit_tour-løb garanteres valgt, ikke kun ét af dem tilfældigt via prestige-walket.
 //
-// VERIFICERET (2026-08-07): nuværende S3-plan består under de nye bånd (re-draw absorberer
-// spredningen, samme mekanisme som D3/D4); D2's tidligere observerede skred (summit 4,
-// M-Down 53 %) fanges nu som rødt af summit_min=6 (regressionstest i
-// raceRouteRealismMetrics.test.js); re-draw-succes ≥ 99,5 % over alle fire tiers.
+// OPGRADERINGS-MÅLING (2026-08-07, EFTER de 3 løb er seedet i prod): 2.000 trækvarianter
+// af tier 2's FAKTISKE S3-udvalg (33 løb, dry-run-planens seedRaces — ikke en syntetisk
+// fixture) mod kandidat-båndet summit≥8/mdown≤60%/itt≥1/cobbles≥1:
+//   summit_finishes: middel 9,84 (sd 2,51, p20=8, min 3) — op fra 5,16 FØR de nye løb.
+//   mdown_pct:       middel 50,1 % (sd 9,1) — ned fra 57,1 %.
+//   standalone_itt:  middel 1,00, MIN 1 — 100 % af trækkene har nu mindst 1 fritstående
+//                    ITT (itt_classic-reservationen holder pålideligt, hvor den før
+//                    manglede forsyning helt).
+//   attempt-0 pass-rate mod kandidatbåndet: 76,9 % · re-draw-succes op til 12 forsøg:
+//                    100,0 % (0 exhausted) — langt over #3469's 80 %-accept-kriterium.
+// Konklusion: opgraderet til summit_min 8 / mdown_max_pct 60 / itt_min 1 (samme
+// summit/itt-niveau som D3, mdown 5pp løsere — D2's spredning er stadig større, færre
+// løb end D3). Finale-gulvene (bunch_sprint/descent_finale/solo_tt_final, uændrede fra
+// første udkast) re-verificeret mod samme 33-løbs-udvalg og holder fortsat med margin.
+//
+// VERIFICERET (2026-08-07): nuværende S3-plan består under de opgraderede bånd (re-draw
+// absorberer spredningen, samme mekanisme som D1/D3/D4); D2's tidligere observerede
+// skred (summit 4, M-Down 53 %) fanges stadig som rødt, nu af det HÆVEDE summit_min=8
+// (regressionstest i raceRouteRealismMetrics.test.js).
 export const TIER_TARGETS = Object.freeze({
   1: {
     summit_min: 12, mdown_max_pct: 55, itt_min: 1, cobbles_min: 1,
     bunch_sprint_min: 15, descent_finale_min: 8, solo_tt_final_min: 2,
   },
   2: {
-    // itt_min/summit_min/mdown_max_pct: BEVIDST INTERIM — se docstring ovenfor. Hæves i
-    // separat commit når de 3 ejer-godkendte katalog-løb (bjerg-forsyning) er live.
-    summit_min: 6, mdown_max_pct: 65, itt_min: 0, cobbles_min: 1,
+    summit_min: 8, mdown_max_pct: 60, itt_min: 1, cobbles_min: 1,
     bunch_sprint_min: 15, descent_finale_min: 10, solo_tt_final_min: 1,
   },
   3: {

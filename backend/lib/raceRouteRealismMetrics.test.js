@@ -102,11 +102,11 @@ test("#3469: TIER_TARGETS matcher hærdnings-pakken for D1/D2", () => {
   assert.equal(TIER_TARGETS[1].descent_finale_min, 8);
   assert.equal(TIER_TARGETS[1].solo_tt_final_min, 2);
 
-  // D2's summit_min/itt_min er bevidst interim (katalog mangler bjerg-forsyning) — se
-  // docstringen i raceRouteRealismMetrics.js.
-  assert.equal(TIER_TARGETS[2].summit_min, 6);
-  assert.equal(TIER_TARGETS[2].mdown_max_pct, 65);
-  assert.equal(TIER_TARGETS[2].itt_min, 0);
+  // D2 opgraderet 7/8 (samme dag, følge-commit) efter de 3 ejer-godkendte katalog-løb
+  // landede — se docstringen i raceRouteRealismMetrics.js for målingen bag opgraderingen.
+  assert.equal(TIER_TARGETS[2].summit_min, 8);
+  assert.equal(TIER_TARGETS[2].mdown_max_pct, 60);
+  assert.equal(TIER_TARGETS[2].itt_min, 1);
   assert.equal(TIER_TARGETS[2].cobbles_min, 1);
   assert.equal(TIER_TARGETS[2].bunch_sprint_min, 15);
   assert.equal(TIER_TARGETS[2].descent_finale_min, 10);
@@ -123,8 +123,8 @@ test("#3469: alle divisioner er nu gated — ingen advisory-tier tilbage", () =>
 });
 
 // D2's tidligere observerede skred (summit 4, M-Down 53 %) — under de GAMLE u-gatede
-// D2-bånd (før #3469) passerede dette stiltiende. Under de NYE bånd (summit_min 6) skal
-// det fanges som et rødt båndbrud.
+// D2-bånd (før #3469) passerede dette stiltiende. Under de NYE (og siden OPGRADEREDE,
+// samme dag) bånd (summit_min 8) skal det fanges som et rødt båndbrud.
 test("#3469: D2's tidligere skred (summit 4, M-Down 53%) fanges som rødt under de nye bånd", () => {
   const skredRaces = [
     // 4 summit-finaler + 4 andre bjerg-etaper, hvoraf 53% (afrundet) ender i nedkørsel.
@@ -137,9 +137,9 @@ test("#3469: D2's tidligere skred (summit 4, M-Down 53%) fanges som rødt under 
   ];
   const s = scoreTier(2, skredRaces);
   assert.equal(s.summit_finishes, 4);
-  assert.equal(s.mdown_pct, 56); // 5/9 ≈ 56% — under det (bevidst rummelige) 65%-loft
-  assert.equal(s.pass, false, "summit_min=6 skal fælde skredet, selvom M-Down er inden for det nye 65%-loft");
-  assert.ok(s.failures.some((f) => f.includes("summit 4 < 6")), s.failures.join(" · "));
+  assert.equal(s.mdown_pct, 56); // 5/9 ≈ 56% — under det (opgraderede) 60%-loft
+  assert.equal(s.pass, false, "summit_min=8 skal fælde skredet, selvom M-Down er inden for det opgraderede 60%-loft");
+  assert.ok(s.failures.some((f) => f.includes("summit 4 < 8")), s.failures.join(" · "));
 });
 
 // ── scoreSeason: GO kræver at HVER gatet delscore kørte og bestod (#2854) ────

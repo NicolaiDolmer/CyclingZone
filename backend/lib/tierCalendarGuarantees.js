@@ -164,7 +164,12 @@ export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 
 // cobbled_tour-garantien alene.
 export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   1: Object.freeze({ cobbled_tour: 1, itt_classic: 1, cobbled_classic: 2 }),
-  2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
+  // summit_tour 1→2 (#3469, 7/8 catalog-upgrade følge-commit): de 2 nye OWTC summit_tour-
+  // løb (Vuelta a los Pirineos + Tour des Grandes Alpes, seedet 7/8) gør D2's
+  // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge
+  // rent faktisk vælges hver sæson, ikke kun det ene prestige-walket alligevel ville have
+  // taget. Reservationen garanterer det, samme princip som resten af tabellen.
+  2: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
   3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
   4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
 });
