@@ -48,10 +48,19 @@ const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000001d";
 const passingStage = () => ({ profile_type: "high_mountain", finale_type: "long_climb", distance_km: 170, sectors: [] });
 const failingStage = () => ({ profile_type: "mountain", finale_type: "descent", distance_km: 170, sectors: [] });
 // Tier 3's bånd: summit ≥ 8, M-Down ≤ 55 %, 1 fritstående ITT, 1 brosten-i-etapeløb.
+//
+// #3469: to FASTE (variant-uafhængige) løb tilføjet — 'd' (bunch-sprint-forsyning) og
+// 'e' (nedkørsels-finale-forsyning) — så de nye finale-gulve (bunch_sprint_min ≥ 10,
+// descent_finale_min ≥ 4) er opfyldt UANSET om 'a' er i sin fail- eller pass-tilstand.
+// 'e' er dimensioneret PRÆCIS til at holde M-Down-loftet (55 %) når 'a' passerer (8 summit
+// + 4 nedkørsel = 12 bjerg-etaper, 4/12 ≈ 33 % — rigelig margin) samtidig med at ramme
+// descent_finale_min ≥ 4 præcist (samme "lige akkurat"-stil som 'a's summit=8-eksakt-match).
 const tier3SeedRaces = () => [
   { id: "a", name: "Bjergløb", race_type: "stage_race", stages: 8 },
   { id: "b", name: "Enkeltstart", race_type: "single", stages: 1 },
   { id: "c", name: "Brostensløb", race_type: "stage_race", stages: 2 },
+  { id: "d", name: "Sprint-serien", race_type: "stage_race", stages: 12 },
+  { id: "e", name: "Nedkørsels-serien", race_type: "stage_race", stages: 4 },
 ];
 function fakeGenerator(passFrom) {
   return (race) => {
@@ -61,6 +70,8 @@ function fakeGenerator(passFrom) {
       return [{ profile_type: "flat", finale_type: "bunch_sprint", distance_km: 170, sectors: [] },
         { profile_type: "cobbles", finale_type: "reduced_sprint", distance_km: 160, sectors: [{ kind: "cobbles" }] }];
     }
+    if (race.id === "d") return Array.from({ length: 12 }, () => ({ profile_type: "flat", finale_type: "bunch_sprint", distance_km: 158, sectors: [] }));
+    if (race.id === "e") return Array.from({ length: 4 }, () => ({ profile_type: "mountain", finale_type: "descent", distance_km: 170, sectors: [] }));
     const stage = variant >= passFrom ? passingStage : failingStage;
     return Array.from({ length: 8 }, stage);
   };
@@ -93,11 +104,16 @@ test("gaten forbliver HÅRD: alle forsøg brugt → attempt 0 + exhausted + atte
   assert.deepEqual(draw.failures, draw.firstDrawFailures);
 });
 
-test("u-gatede tiers (1/2) trækkes aldrig om for tier-bånd — de har ingen", () => {
-  // Ingen mål i TIER_TARGETS for tier 1/2 → ingen failures → attempt 0.
+// #3469 (ejer-beslutning 7/8: "Alle divisioner skal have realisme-bånd"): FØR denne
+// hærdning havde tier 1/2 ingen mål i TIER_TARGETS, og et vedvarende brud blev ALDRIG
+// trukket om. Nu har begge divisioner rigtige bånd — et vedvarende brud (fakeGenerator
+// der aldrig rammer et summit-finish) opfører sig derfor nøjagtig som tier 3/4 altid har:
+// alle forsøg brugt, exhausted, fald tilbage til det kanoniske træk.
+test("#3469: tier 1/2 er nu REALISME-GATEDE ligesom tier 3/4 — et vedvarende brud udtømmer alle forsøg", () => {
   const draw = resolveTierDraw({ tier: 2, seedRaces: tier3SeedRaces(), generateProfiles: fakeGenerator(Infinity) });
-  assert.equal(draw.attempt, 0);
-  assert.equal(draw.exhausted, false);
+  assert.equal(draw.exhausted, true);
+  assert.equal(draw.attempt, 0, "udtømt → det kanoniske træk, samme kontrakt som tier 3/4");
+  assert.ok(draw.failures.some((f) => f.includes("summit")), draw.failures.join(" · "));
 });
 
 test("en løbs-generering der kaster bogføres som 'kunne ikke vurderes', ikke som båndbrud", () => {
@@ -138,19 +154,38 @@ test("et kanonisk træk der bryder tier 3's bånd rettes af re-drawet — og KUN
   assert.ok(first.failures.some((f) => f.startsWith("tier 3:")), first.failures.join(" · "));
 
   const draws = resolveSeasonDraw({ tierSeedRaces });
-  assert.deepEqual(scoreSeason(draws.map((d) => d.entry)).failures, []);
-  // Kun den brydende tier trækkes om — de øvrige tiers' parcours røres ikke.
+  const resolved = scoreSeason(draws.map((d) => d.entry));
+  // #3469: tier 1/2 fik EGNE realisme-bånd (itt_min/cobbles_min m.fl.). Dette snapshot
+  // er sæson 2's ALLEREDE MATERIALISEREDE (historiske, låste) løbs-udvalg — det blev
+  // valgt FØR itt_classic/cobbled_tour-reservationerne (#3469 runde 1/2) garanterede den
+  // forsyning for tier 1/2 i produktion. Et re-draw kan kun variere PARCOURS-generering
+  // for et allerede-fastlåst løbs-udvalg — det kan aldrig opfinde et løb der ikke blev
+  // valgt dengang. Det er et hul i DETTE ene historiske øjebliksbillede, ikke i den
+  // levende selektions-algoritme (verificeret separat mod S3's plan, se PR-body). Testens
+  // fokus (tier 3's re-draw) forbliver derfor uændret: INGEN af de resterende brud må
+  // være tier 3's.
+  assert.ok(resolved.failures.every((f) => !f.startsWith("tier 3:")), resolved.failures.join(" · "));
+  assert.ok(resolved.failures.length > 0, "tier 1/2's historiske hul skal stadig være synligt, ikke tavst forsvundet");
+  // Kun den brydende tier 3 trækkes om — de øvrige tiers' parcours røres ikke.
   assert.deepEqual(draws.filter((d) => d.attempt > 0).map((d) => d.tier), [3]);
 });
 
-test("#3295: sæson 2's kanoniske træk består nu ALLE realisme-bånd uden re-draw", () => {
+test("#3295: sæson 2's kanoniske træk består tier 3/4's realisme-bånd uden re-draw", () => {
   // Før kompositions-kalibreringen brød sæson 2's tier 3 M-Down-båndet (57 % > 55 %) og
   // krævede et gen-træk. De nye filler-vægte (bjerg ned, kuperet op) fjernede bruddet.
   // Fastholdes som regression-vagt: går denne test i rødt, er kalibreringen drevet
   // tilbage mod den gamle bjerg-tunge fordeling.
   const draws = resolveSeasonDraw({ tierSeedRaces: tierSeedRacesFor(SEASON_2_ID) });
-  assert.deepEqual(draws.map((d) => d.attempt), [0, 0, 0, 0], "ingen tier skal behøve et gen-træk");
-  assert.deepEqual(scoreSeason(draws.map((d) => d.entry)).failures, []);
+  assert.deepEqual(draws.map((d) => d.attempt), [0, 0, 0, 0], "intet re-draw HJÆLPER — tier 1/2 kan strukturelt ikke (se nedenfor), tier 3/4 har ikke brug for det");
+
+  const resolved = scoreSeason(draws.map((d) => d.entry));
+  assert.ok(resolved.failures.every((f) => f.startsWith("tier 1:") || f.startsWith("tier 2:")), resolved.failures.join(" · "));
+
+  // #3469: samme historiske hul som testen ovenfor — sæson 2's tier 1/2-udvalg blev
+  // materialiseret FØR itt_classic/cobbled_tour-reservationerne fandtes, så draw.exhausted
+  // (ikke et båndbrud i den LEVENDE selektionsalgoritme) er den ærlige rapportering her.
+  assert.equal(draws.find((d) => d.tier === 1).exhausted, true);
+  assert.equal(draws.find((d) => d.tier === 2).exhausted, true);
 });
 
 test("re-draw ændrer BÅDE etape-profiler (pass 1) og ruter (pass 2)", () => {

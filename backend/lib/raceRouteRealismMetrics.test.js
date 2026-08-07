@@ -1,17 +1,34 @@
 // backend/lib/raceRouteRealismMetrics.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scoreTier, scoreSeason, TIER_TARGETS, VERDICT } from "./raceRouteRealismMetrics.js";
+import { scoreTier, scoreSeason, TIER_TARGETS, VERDICT, tierGateState } from "./raceRouteRealismMetrics.js";
 
 const st = (profile_type, finale_type, distance_km = 160) => ({ profile_type, finale_type, distance_km, sectors: [] });
 const stageRace = (stages) => ({ race_type: "stage_race", stages });
 const oneDay = (profile_type, finale_type) => ({ race_type: "single", stages: [st(profile_type, finale_type)] });
 
 // ── Fixtures til sæson-aggregatet (scoreSeason) ─────────────────────────────
-// En tier-3-pulje der opfylder ALLE #2755-mål (summit ≥ 8, M-Down ≤ 55%, 1 ITT, 1 brosten).
+// En tier-3-pulje der opfylder ALLE #2755/#3469-mål (summit ≥ 8, M-Down ≤ 55%, 1 ITT,
+// 1 brosten, bunch_sprint ≥ 10, descent-finale ≥ 4, solo_tt-slutfinale ≥ 1).
 function passingTier3Races() {
   return [
-    stageRace(Array.from({ length: 8 }, () => st("high_mountain", "long_climb", 170))),
+    stageRace(Array.from({ length: 4 }, () => st("high_mountain", "long_climb", 170))
+      .concat(Array.from({ length: 4 }, () => st("mountain", "descent", 170)))),
+    stageRace(Array.from({ length: 4 }, () => st("high_mountain", "long_climb", 170))),
+    oneDay("itt", "solo_tt"),
+    stageRace(Array.from({ length: 10 }, () => st("flat", "bunch_sprint", 158))
+      .concat([{ ...st("cobbles", "reduced_sprint", 160), sectors: [{ kind: "cobbles", start_km: 80, length_km: 2 }] }])),
+  ];
+}
+
+// #3469: en tier-1-pulje der opfylder ALLE mål (summit ≥ 12, M-Down ≤ 55%, 1 ITT,
+// 1 brosten, bunch_sprint ≥ 15, descent-finale ≥ 8, solo_tt-slutfinale ≥ 2).
+function passingTier1Races() {
+  return [
+    stageRace(Array.from({ length: 12 }, () => st("high_mountain", "long_climb", 170))),
+    stageRace(Array.from({ length: 8 }, () => st("mountain", "descent", 170))),
+    stageRace(Array.from({ length: 15 }, () => st("flat", "bunch_sprint", 158))),
+    oneDay("itt", "solo_tt"),
     oneDay("itt", "solo_tt"),
     stageRace([st("flat", "bunch_sprint"), { ...st("cobbles", "reduced_sprint", 160), sectors: [{ kind: "cobbles", start_km: 80, length_km: 2 }] }]),
   ];
@@ -54,7 +71,7 @@ test("GO/NO-GO: en tier under mål fejler gaten", () => {
 // en grand tour faldt udenfor HC-båndet, fordi kun scoreTier gate'de verdicten.
 test("#2854: en grand tour udenfor HC-båndet må ikke give GO", () => {
   const summary = scoreSeason([
-    { tier: 1, races: [{ ...stageRace(grandTourStages({ hc: 1 })), name: "Tour de l'Hexagone" }] },
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 1 })), name: "Tour de l'Hexagone" }] },
     { tier: 3, races: passingTier3Races() },
   ]);
 
@@ -74,16 +91,67 @@ test("TIER_TARGETS matcher #2755 for tier 3 og 4", () => {
   assert.equal(TIER_TARGETS[4].mdown_max_pct, 60);
 });
 
+// #3469: D1/D2 er nu udfyldt, samme form som D3/D4 (ejer-beslutning 7/8: "Alle
+// divisioner skal have realisme-bånd") — inkl. de nye finale-gulve fra leverance 2.
+test("#3469: TIER_TARGETS matcher hærdnings-pakken for D1/D2", () => {
+  assert.equal(TIER_TARGETS[1].summit_min, 12);
+  assert.equal(TIER_TARGETS[1].mdown_max_pct, 55);
+  assert.equal(TIER_TARGETS[1].itt_min, 1);
+  assert.equal(TIER_TARGETS[1].cobbles_min, 1);
+  assert.equal(TIER_TARGETS[1].bunch_sprint_min, 15);
+  assert.equal(TIER_TARGETS[1].descent_finale_min, 8);
+  assert.equal(TIER_TARGETS[1].solo_tt_final_min, 2);
+
+  // D2's summit_min/itt_min er bevidst interim (katalog mangler bjerg-forsyning) — se
+  // docstringen i raceRouteRealismMetrics.js.
+  assert.equal(TIER_TARGETS[2].summit_min, 6);
+  assert.equal(TIER_TARGETS[2].mdown_max_pct, 65);
+  assert.equal(TIER_TARGETS[2].itt_min, 0);
+  assert.equal(TIER_TARGETS[2].cobbles_min, 1);
+  assert.equal(TIER_TARGETS[2].bunch_sprint_min, 15);
+  assert.equal(TIER_TARGETS[2].descent_finale_min, 10);
+  assert.equal(TIER_TARGETS[2].solo_tt_final_min, 1);
+});
+
+// #3469: alle 4 divisioner er nu realisme-gatede — ingen tier er længere bevidst
+// u-gatet ("advisory"). Erstatter den tidligere antagelse om at D1/D2 var advisory.
+test("#3469: alle divisioner er nu gated — ingen advisory-tier tilbage", () => {
+  assert.equal(tierGateState(1), "gated");
+  assert.equal(tierGateState(2), "gated");
+  assert.equal(tierGateState(3), "gated");
+  assert.equal(tierGateState(4), "gated");
+});
+
+// D2's tidligere observerede skred (summit 4, M-Down 53 %) — under de GAMLE u-gatede
+// D2-bånd (før #3469) passerede dette stiltiende. Under de NYE bånd (summit_min 6) skal
+// det fanges som et rødt båndbrud.
+test("#3469: D2's tidligere skred (summit 4, M-Down 53%) fanges som rødt under de nye bånd", () => {
+  const skredRaces = [
+    // 4 summit-finaler + 4 andre bjerg-etaper, hvoraf 53% (afrundet) ender i nedkørsel.
+    stageRace(
+      Array.from({ length: 4 }, () => st("high_mountain", "long_climb", 170))
+        .concat(Array.from({ length: 5 }, () => st("mountain", "descent", 170))),
+    ),
+    oneDay("itt", "solo_tt"),
+    stageRace([st("flat", "bunch_sprint"), { ...st("cobbles", "reduced_sprint", 160), sectors: [{ kind: "cobbles", start_km: 80, length_km: 2 }] }]),
+  ];
+  const s = scoreTier(2, skredRaces);
+  assert.equal(s.summit_finishes, 4);
+  assert.equal(s.mdown_pct, 56); // 5/9 ≈ 56% — under det (bevidst rummelige) 65%-loft
+  assert.equal(s.pass, false, "summit_min=6 skal fælde skredet, selvom M-Down er inden for det nye 65%-loft");
+  assert.ok(s.failures.some((f) => f.includes("summit 4 < 6")), s.failures.join(" · "));
+});
+
 // ── scoreSeason: GO kræver at HVER gatet delscore kørte og bestod (#2854) ────
 
 test("scoreSeason: alt grønt → GO + exit 0", () => {
   const summary = scoreSeason([
-    { tier: 1, races: [{ ...stageRace(grandTourStages({ hc: 4 })), name: "Tour de l'Hexagone" }] },
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 4 })), name: "Tour de l'Hexagone" }] },
     { tier: 3, races: passingTier3Races() },
   ]);
   assert.equal(summary.verdict, VERDICT.GO);
   assert.equal(summary.exitCode, 0);
-  assert.equal(summary.gatedTiersEvaluated, 1);
+  assert.equal(summary.gatedTiersEvaluated, 2);
   assert.equal(summary.grandToursEvaluated, 1);
   assert.deepEqual(summary.failures, []);
   assert.deepEqual(summary.unassessed, []);
@@ -108,11 +176,15 @@ test("scoreSeason: tom kalender giver UKENDT — ikke GO", () => {
   assert.deepEqual(noRaces.failures, [], "0 løb er fravær af evidens, ikke et båndbrud");
 });
 
-test("scoreSeason: kun u-gatede tiers målte reelt intet → UKENDT", () => {
-  const summary = scoreSeason([{ tier: 1, races: [{ ...stageRace(grandTourStages()), name: "GT" }] }]);
+// #3469: FØR hærdnings-pakken var D1/D2 bevidst u-gatede ("advisory"), så en sæson med
+// KUN en u-gatet tier målte reelt intet. Efter #3469 er der ingen "advisory"-tier
+// tilbage (se testen ovenfor) — scenariet kan nu kun opstå via en helt UKENDT tier
+// (ikke i TIER_TARGETS overhovedet).
+test("scoreSeason: kun ukendte tiers målte reelt intet → UKENDT", () => {
+  const summary = scoreSeason([{ tier: 9, races: [stageRace([st("flat", "bunch_sprint")])] }]);
   assert.equal(summary.verdict, VERDICT.UNKNOWN);
   assert.ok(summary.unassessed.some((u) => u.includes("ingen gatet tier")));
-  assert.equal(summary.tiers[0].gateState, "advisory", "tier 1 er bevidst u-gatet, ikke grøn");
+  assert.equal(summary.tiers[0].gateState, "undefined", "tier 9 er ikke defineret i TIER_TARGETS overhovedet");
 });
 
 test("scoreSeason: en tier uden mål i TIER_TARGETS er ikke tavst grøn", () => {
@@ -128,7 +200,7 @@ test("scoreSeason: en tier uden mål i TIER_TARGETS er ikke tavst grøn", () => 
 test("scoreSeason: en GT-arketype med for få etaper rapporteres, ikke sprunget over", () => {
   const summary = scoreSeason([
     { tier: 3, races: passingTier3Races() },
-    { tier: 1, races: [{ ...stageRace(grandTourStages({ stageCount: 18 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ stageCount: 18 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
   ]);
   assert.equal(summary.verdict, VERDICT.UNKNOWN);
   assert.equal(summary.grandToursEvaluated, 0);

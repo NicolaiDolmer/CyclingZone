@@ -24,11 +24,61 @@ const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile
 // raceRouteRealismDraw.js) og ikke i båndene. Skal båndene hæves mod #1293's fulde mål,
 // skal katalogets summit-forsyning op FØRST: 78 % af tier 3's summits kommer fra kun 4
 // summit_tour-løb.
+//
+// ── #3469 HÆRDNINGS-PAKKEN (ejer-beslutning 7/8: "Alle divisioner skal have
+// realisme-bånd") — D1/D2 udfyldt, samme form som D3/D4 ────────────────────────────────
+//
+// METODE: samme harness som ovenfor (`node scripts/raceRouteRealismDrawHarness.js
+// --catalog --tier N`), 2.000 trækvarianter × 2 base-seeds (S2's ægte katalog-snapshot +
+// et re-refresh mod nuværende race_pool) pr. tier, 2026-08-07. Værdierne er MÅLT, ikke
+// gættet — samme disciplin som D3/D4 ovenfor:
+//
+//   tier 1 (25 løb, katalog): loft 46,1 bjerg-familie-etaper (min 31) · faktiske summits
+//     middel 18,1 (sd 3,4, min 9) · M-Down middel 47,2 % (sd 7,0) · finale-tælling (samme
+//     snapshot, 500 træk): bunch_sprint middel 22,2 (min 12) · descent-finale middel 21,8
+//     (min 12) · solo_tt-slutfinale-løb middel 2,4 (min 0)
+//   tier 2 (27 løb, katalog): loft 21,1 (min 15 — TYND margin) · faktiske summits middel
+//     5,16 (sd 2,1, min 0 — UNDER det valgte mål 6) · M-Down middel 57,1 % (sd 10,8) ·
+//     bunch_sprint middel 22,1 (min 12) · descent-finale middel 12,1 (min 6) ·
+//     solo_tt-slutfinale-løb middel 3,5 (min 0)
+//
+// D1's bånd (summit ≥ 12, M-Down ≤ 55 %, itt ≥ 1, cobbles ≥ 1) ligger komfortabelt under
+// det målte middel — samme "margin i middel, spredning løses af #3347-re-draw"-mønster
+// som D3/D4.
+//
+// D2's summit_min (6) og itt_min (0) er BEVIDST INTERIM: katalogets faktiske middel
+// (5,16 summits) ligger UNDER det valgte mål, og loftets minimum (15 bjerg-familie-etaper
+// over 2.000 træk) er tyndt mod målet (20, se TIER_TERRAIN_FAMILY_MIN.mountain). D2
+// mangler kort sagt bjerg-forsyning i kataloget — ejer-godkendelse af 3 nye katalog-løb
+// afventer (separat PR), hvorefter D2's mål hæves i egen commit. mdown_max_pct (65) og
+// summit_min (6) er derfor sat til hvad kataloget REELT kan levere med margin lige nu,
+// ikke til D3/D4-niveau. itt_min=0 (uændret fra tidligere): D2's katalog har ingen
+// pålidelig fritstående-ITT-forsyning i dag — se itt_classic-reservationen i
+// tierCalendarGuarantees.js for den underliggende mangel.
+//
+// VERIFICERET (2026-08-07): nuværende S3-plan består under de nye bånd (re-draw absorberer
+// spredningen, samme mekanisme som D3/D4); D2's tidligere observerede skred (summit 4,
+// M-Down 53 %) fanges nu som rødt af summit_min=6 (regressionstest i
+// raceRouteRealismMetrics.test.js); re-draw-succes ≥ 99,5 % over alle fire tiers.
 export const TIER_TARGETS = Object.freeze({
-  1: { summit_min: null, mdown_max_pct: null, itt_min: null, cobbles_min: null },
-  2: { summit_min: null, mdown_max_pct: null, itt_min: null, cobbles_min: null },
-  3: { summit_min: 8, mdown_max_pct: 55, itt_min: 1, cobbles_min: 1 },
-  4: { summit_min: 4, mdown_max_pct: 60, itt_min: 1, cobbles_min: 1 },
+  1: {
+    summit_min: 12, mdown_max_pct: 55, itt_min: 1, cobbles_min: 1,
+    bunch_sprint_min: 15, descent_finale_min: 8, solo_tt_final_min: 2,
+  },
+  2: {
+    // itt_min/summit_min/mdown_max_pct: BEVIDST INTERIM — se docstring ovenfor. Hæves i
+    // separat commit når de 3 ejer-godkendte katalog-løb (bjerg-forsyning) er live.
+    summit_min: 6, mdown_max_pct: 65, itt_min: 0, cobbles_min: 1,
+    bunch_sprint_min: 15, descent_finale_min: 10, solo_tt_final_min: 1,
+  },
+  3: {
+    summit_min: 8, mdown_max_pct: 55, itt_min: 1, cobbles_min: 1,
+    bunch_sprint_min: 10, descent_finale_min: 4, solo_tt_final_min: 1,
+  },
+  4: {
+    summit_min: 4, mdown_max_pct: 60, itt_min: 1, cobbles_min: 1,
+    bunch_sprint_min: 7, descent_finale_min: 4, solo_tt_final_min: 1,
+  },
 });
 
 // WT-realisme-bånd (spec §6), pr. etape-type. [min,max] km.
@@ -46,10 +96,11 @@ function allStages(races) {
 }
 
 /**
- * Scorer én tier mod #2755-målene.
+ * Scorer én tier mod #2755-målene (+ #3469's finale-gulve).
  * @param {number} tier
  * @param {Array<{race_type:string, stages:Array<{profile_type,finale_type,distance_km,sectors}>}>} races
- * @returns {{tier,summit_finishes,mountain_stages,mdown_pct,standalone_itt,cobbles_in_stagerace,pass,failures,distanceOutliers}}
+ * @returns {{tier,summit_finishes,mountain_stages,mdown_pct,standalone_itt,cobbles_in_stagerace,
+ *   bunch_sprint_stage_days,descent_finale_stage_days,solo_tt_final_races,pass,failures,distanceOutliers}}
  */
 export function scoreTier(tier, races) {
   const stages = allStages(races);
@@ -59,6 +110,18 @@ export function scoreTier(tier, races) {
   const standaloneItt = races.filter((r) => r.race_type === "single" && (r.stages || []).some((s) => s.profile_type === "itt")).length;
   const cobblesInStageRace = races.filter((r) => r.race_type === "stage_race" && (r.stages || []).some((s) => s.profile_type === "cobbles")).length;
   const mdownPct = mountainStages.length ? Math.round((mdown.length / mountainStages.length) * 100) : 0;
+
+  // #3469 finale-gulve (leverance 2): "etapedage" = rå optælling af stages med den givne
+  // finale_type (tværs af alle profile_type), ikke en andel. descent-finale-etapedage
+  // GENBRUGER mdown-tælleren — det er PRÆCIS samme tal, blot udtrykt som et minimums-gulv
+  // i stedet for et procent-loft (mdown_max_pct), fordi kun mountain/high_mountain-profiler
+  // kan få finale_type "descent" (raceStageProfileGenerator.js's FINALE_BY_PROFILE).
+  const bunchSprintStageDays = stages.filter((s) => s.finale_type === "bunch_sprint").length;
+  const descentFinaleStageDays = mdown.length;
+  const soloTtFinalRaces = races.filter((r) => {
+    const rs = Array.isArray(r.stages) ? r.stages : [];
+    return rs.length > 0 && rs[rs.length - 1]?.finale_type === "solo_tt";
+  }).length;
 
   const distanceOutliers = stages.filter((s) => {
     const band = WT_DISTANCE_BANDS[s.profile_type];
@@ -71,10 +134,15 @@ export function scoreTier(tier, races) {
   if (t.mdown_max_pct != null && mdownPct > t.mdown_max_pct) failures.push(`M-Down ${mdownPct}% > ${t.mdown_max_pct}%`);
   if (t.itt_min != null && standaloneItt < t.itt_min) failures.push(`fritstående ITT ${standaloneItt} < ${t.itt_min}`);
   if (t.cobbles_min != null && cobblesInStageRace < t.cobbles_min) failures.push(`brosten-i-etapeløb ${cobblesInStageRace} < ${t.cobbles_min}`);
+  if (t.bunch_sprint_min != null && bunchSprintStageDays < t.bunch_sprint_min) failures.push(`bunch-sprint-etapedage ${bunchSprintStageDays} < ${t.bunch_sprint_min} (#3469)`);
+  if (t.descent_finale_min != null && descentFinaleStageDays < t.descent_finale_min) failures.push(`nedkørsels-finale-etapedage ${descentFinaleStageDays} < ${t.descent_finale_min} (#3469)`);
+  if (t.solo_tt_final_min != null && soloTtFinalRaces < t.solo_tt_final_min) failures.push(`løb med enkeltstart-slutfinale ${soloTtFinalRaces} < ${t.solo_tt_final_min} (#3469)`);
 
   return {
     tier, summit_finishes: summit, mountain_stages: mountainStages.length, mdown_pct: mdownPct,
     standalone_itt: standaloneItt, cobbles_in_stagerace: cobblesInStageRace,
+    bunch_sprint_stage_days: bunchSprintStageDays, descent_finale_stage_days: descentFinaleStageDays,
+    solo_tt_final_races: soloTtFinalRaces,
     distanceOutliers, pass: failures.length === 0, failures,
   };
 }
