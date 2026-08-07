@@ -214,7 +214,13 @@ function fullCatalogWithGtDates() {
 }
 
 test("#3470: GT-hviledage — span = stages-1+restDaysFilled når date_text findes, stage_number tæt 1..21, kvote uændret", () => {
-  const plan = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalogWithGtDates(), from: FROM });
+  // LEGACY_MIX: denne test isolerer #3470's GT-hviledags-mekanik (ANDEN mekanik, jf.
+  // LEGACY_MIX's docstring øverst i filen) — uden opt-out fanger #3327/#3328's
+  // downstreamProtectedArchetypes (main, klasse-bevidst nedstrøms-beskyttelse) et 1-dags
+  // shortfall PÅ NETOP dette minimale/kunstige katalog (139/140), et selection-lag-fund der
+  // intet har med #3470 at gøre — samme isolerings-mønster som #2251/overlap-cap/kronologi/
+  // dedup-testene i denne fil.
+  const plan = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalogWithGtDates(), from: FROM, ...LEGACY_MIX });
   const tier1 = plan.tierPlans.find((t) => t.tier === 1);
   const div1 = tier1.pools[0];
   const expectedRestDaysPlanned = { "gt-1": 3, "gt-0": 2, "gt-2": 2 };
