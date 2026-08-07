@@ -357,6 +357,12 @@
     "hideInjured": "Hide injured",
     "suitability": "Suitability",
     "routeMatch": "Route match",
+    "riderProfile": {
+      "viewProfile": "View {name}'s profile",
+      "aggression": "Aggression",
+      "tactics": "Tactics",
+      "hint": "Closing this does not change your selection. Use the checkbox to select or deselect this rider."
+    },
     "driverInsight": {
       "escape": {
         "high": "Escape chance: High. Aggression pulls him into breakaway attempts often on this terrain, and it never costs his own result if the move gets caught.",

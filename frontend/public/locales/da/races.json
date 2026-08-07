@@ -357,6 +357,12 @@
     "hideInjured": "Skjul skadede",
     "suitability": "Egnethed",
     "routeMatch": "Rute-match",
+    "riderProfile": {
+      "viewProfile": "Se {name}s profil",
+      "aggression": "Aggression",
+      "tactics": "Taktik",
+      "hint": "Lukker du denne, ændres udtagelsen ikke. Brug checkboxen til at vælge eller fravælge rytteren."
+    },
     "driverInsight": {
       "escape": {
         "high": "Udbruds-chance: Høj. Aggression trækker ham ofte med i udbrudsforsøg på dette terræn, og det koster aldrig hans eget resultat hvis forsøget bliver hentet.",
