@@ -23,7 +23,7 @@ import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Section, SectionHeader, Button, Select, Checkbox,
   PageLoader, EmptyState, ChevronDownIcon, TeamIcon, XIcon,
-  ArrowUpIcon, ArrowDownIcon,
+  ArrowUpIcon, ArrowDownIcon, FlagIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
@@ -163,6 +163,7 @@ export default function TrainingPage() {
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
     weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan,
     riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
+    racingToday,
   } = training;
 
   // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
@@ -424,6 +425,11 @@ export default function TrainingPage() {
     const riderTrainability = trainability[rider.id] ?? {};
     const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
 
+    // #3459 V3: løbsdags-badge — feltet findes KUN når race_day_engine_enabled er
+    // on (backend udelader det helt ellers, se useTraining.js), så tilstedeværelse
+    // alene er hele gaten. Planen (fokus/intensitet) RØRES ALDRIG her — kun visning.
+    const raceToday = racingToday[rider.id] ?? null;
+
     // #1895 PR 2: rytterens EGEN ugeplan-override, hvis sat — vinder over holdets
     // ugerytme for netop denne rytter (samme lagdeling som motoren).
     const riderOverrideDays = riderWeekPlans[rider.id] ?? null;
@@ -609,7 +615,9 @@ export default function TrainingPage() {
             <div
               role="group"
               aria-label={`${tRider("training.intensity")} — ${rider.firstname} ${rider.lastname}`}
-              className="inline-flex rounded-cz border border-cz-border overflow-hidden"
+              // #3459 V3: dæmpet (ikke deaktiveret) på løbsdage — planen er urørt og
+              // gælder alle ikke-løbsdage, knapperne forbliver derfor fuldt aktive.
+              className={`inline-flex rounded-cz border border-cz-border overflow-hidden ${raceToday ? "opacity-[0.55]" : ""}`}
             >
               {TRAINING_INTENSITIES.map((k) => (
                 <button
@@ -638,7 +646,23 @@ export default function TrainingPage() {
           {/* Ejer-kvalitetspas 24/7: den fulde kilde-forklaring gentaget som prosa
               under HVER række var visuel støj — kompakt T2-meta-linje med den
               fulde forklaring som title-tooltip i stedet. */}
-          {teamRhythmActive && (
+          {/* #3459 V3: løbsdags-linjen ERSTATTER (ikke supplerer) den normale
+              rytme-hint på dage rytteren racer i dag — planen er urørt (knapperne
+              er kun dæmpet ovenfor, ikke deaktiveret), racedagen ER dagens svar på
+              "hvorfor". Tooltip forklarer hele mekanikken; badgen selv holdes kort
+              (samme kompakte T2 meta-linje-format som rytme-hinten den erstatter). */}
+          {raceToday ? (
+            <div
+              className="mt-1 flex items-center gap-1 font-data text-3xs uppercase tracking-[.06em] text-cz-accent"
+              title={t("raceDayTooltip", {
+                riderName: `${rider.firstname} ${rider.lastname}`,
+                raceName: raceToday.race ?? t("raceDayTooltipRaceFallback"),
+              })}
+            >
+              <FlagIcon size={12} aria-hidden="true" />
+              {t("raceDayBadge")}
+            </div>
+          ) : teamRhythmActive && (
             <div
               className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3"
               title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
