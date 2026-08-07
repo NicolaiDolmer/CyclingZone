@@ -232,11 +232,13 @@
     },
     "riderRanking": {
       "title": "Rider ranking",
+      "scopeLabel": "Your division",
       "linkAll": "Full ranking →",
       "empty": "Results appear here after the first races",
       "emptyCta": "Open the race calendar →",
       "stageWins": "{count, plural, one {1 stage win} other {# stage wins}}",
       "gcWins": "{count} GC",
+      "classicWins": "{count} classic",
       "points": "{points} pts",
       "aiBadge": "AI"
     }

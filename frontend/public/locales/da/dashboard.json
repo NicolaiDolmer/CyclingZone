@@ -232,11 +232,13 @@
     },
     "riderRanking": {
       "title": "Rytterrangliste",
+      "scopeLabel": "Din division",
       "linkAll": "Hele ranglisten →",
       "empty": "Resultater vises her efter de første løb",
       "emptyCta": "Åbn løbskalenderen →",
       "stageWins": "{count, plural, one {1 etapesejr} other {# etapesejre}}",
       "gcWins": "{count} GC",
+      "classicWins": "{count} klassiker",
       "points": "{points} pt",
       "aiBadge": "AI"
     }
