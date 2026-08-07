@@ -35,8 +35,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../lib/calendarStartDate.js";
-import { computeCompositionStats, aggregateCompositionStats, detectCompositionViolations, ACTIVE_TARGET } from "../lib/calendarCompositionTargets.js";
-import { computeStageOrderStats, detectStageOrderViolations } from "../lib/stageOrderMetrics.js";
+import { aggregateCompositionStats, detectCompositionViolations, ACTIVE_TARGET } from "../lib/calendarCompositionTargets.js";
+import { detectStageOrderViolations } from "../lib/stageOrderMetrics.js";
 import { scoreSeason, TIER_TARGETS } from "../lib/raceRouteRealismMetrics.js";
 import { resolveSeasonDraw } from "../lib/raceRouteRealismDraw.js";
 
