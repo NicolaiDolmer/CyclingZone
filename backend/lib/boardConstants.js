@@ -7,10 +7,18 @@ export const PLAN_DURATIONS = {
 };
 
 // S-02a · sekventiel forhandling i sæson 2-onboarding (5yr → 3yr → 1yr).
-// Per-team progression aflæses af board_profiles-rows (api.js:3093);
-// window-state er global fase-lås (transfer_windows.board_negotiation_state).
+// Per-team progression aflæses af board_profiles-rows (api.js:3093).
 export const ONBOARDING_PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
 
+// #3502 · board_negotiation_state skrives kun ÉT sted (boardSequentialNegotiation.js,
+// kun til PENDING_5YR, kun ved sæson-1-slut) og falder ALDRIG videre til
+// PENDING_3YR/PENDING_1YR/COMPLETE. Hver efterfølgende sæsonskifte opretter
+// desuden et NYT transfer_windows-row uden feltet (seasonTransition.js
+// insertTransferWindowIfMissing), som falder tilbage til DB-default LOCKED.
+// Feltet er derfor IKKE en pålidelig global fase-lås — boardAutoAccept.js og
+// boardMidSeason.js læser ikke længere dette felt, de aflæser behovet direkte
+// fra board_profiles/teams. Konstanterne lever videre (skrives stadig, bruges
+// af tests + evt. fremtidig display), men skal IKKE bruges som gate.
 export const BOARD_NEGOTIATION_STATES = {
   LOCKED: "locked",         // sæson 1 baseline — wizard disabled
   PENDING_5YR: "pending_5yr", // sæson 2 onboarding åbnet

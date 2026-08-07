@@ -18,9 +18,11 @@ import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { pathMatchesNavItem } from "../lib/navMatching.js";
+import { buildNavBadgeCounts, resolveNavBadgeCount, formatNavBadgeCount } from "../lib/navBadges.js";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
+import { useActionSummary } from "../hooks/useActionSummary";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -43,7 +45,11 @@ const API = import.meta.env.VITE_API_URL;
 // #3102 etape 3: "/races" og "/planner" udgik (ruterne redirecter);
 // "/planning" arver deres T2-behov — holdudtagelses-boardet skal ud til kanten
 // på store skærme (#2568-ejer-kravet gælder uændret i hubben).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater"]);
+// #3454: "/academy" tilføjet — rosteret bruger den kanoniske DataTable
+// (T2-recipe, sticky navnekolonne) og var fejlagtigt fanget i shellens
+// max-w-6xl selvom sidens egen container allerede stod på max-w-[1600px]
+// (samme fejlklasse som #1675/#1186/#2446 — se PAGE_TEMPLATES.md).
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/academy"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -139,7 +145,10 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/auctions",     label: t("nav.item.auctions") },
         // #987: excludeQuery så "Transfers" ikke lyser op når man står på
         // transferliste-genvejen (?tab=market) — kun én af de to er aktiv.
-        { to: "/transfers",    label: t("nav.item.transfers"), excludeQuery: "tab=market" },
+        // #3521: badge: true — ubesvarede indgående tilbud (samme kilde som
+        // Indbakkens "Skal handles"-fane, se buildNavBadgeCounts). Kun det
+        // primære punkt, ikke transferliste-genvejen nedenfor.
+        { to: "/transfers",    label: t("nav.item.transfers"), excludeQuery: "tab=market", badge: true },
         { to: "/transfers?tab=market", label: t("nav.item.transferList") },
         { to: "/watchlist",    label: t("nav.item.watchlist") },
         // #3104 etape C: Min Aktivitet (<245 sessions) er en fane i Indbakken nu
@@ -185,9 +194,12 @@ async function fetchUnreadCount(userId) {
   return count || 0;
 }
 
-function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery, excludePaths, title }) {
+function NavItem({ to, label, badge, onClick, location, badgeCounts, exact, excludeQuery, excludePaths, title }) {
   const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
-  const showBadge = badge && unread > 0;
+  // #3521: badge-tallet er nu item-specifikt (Indbakke ≠ Transfers) — se
+  // navBadges.js. resolveNavBadgeCount returnerer 0 for items uden badge: true.
+  const badgeValue = resolveNavBadgeCount({ to, badge }, badgeCounts);
+  const showBadge = badgeValue > 0;
   // #3102: Link, ikke NavLink. NavLink beregner selv aktiv-tilstand på et rent
   // prefix-match og sætter aria-current="page" ud fra DEN — den kender hverken
   // excludeQuery eller excludePaths. Med tre nav-items under /races-prefixet
@@ -208,8 +220,8 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
         <span className="truncate">{label}</span>
       </span>
       {showBadge && (
-        <span className="bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
-          {unread > 9 ? "9+" : unread}
+        <span className="bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0 tabular-nums">
+          {formatNavBadgeCount(badgeValue)}
         </span>
       )}
       {/* #481 PR-2: hover indicator — the wordmark's short thick accent-dash, scales
@@ -222,7 +234,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel, onOpenFeedback, contactLabel }) {
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, logoutLabel, onOpenFeedback, contactLabel }) {
   const { t } = useTranslation("common");
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
@@ -289,7 +301,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               {isOpen && (
                 <div className="py-0.5">
                   {group.items.map(item => (
-                    <NavItem key={item.to} {...item} onClick={onNav} location={location} unread={unread} />
+                    <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} />
                   ))}
                 </div>
               )}
@@ -300,7 +312,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
         {bottomItems.map(item => (
-          <NavItem key={item.to} {...item} onClick={onNav} location={location} unread={unread} />
+          <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} />
         ))}
 
         {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
@@ -365,6 +377,13 @@ export default function Layout() {
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
   const heartbeatRef = useRef(null);
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
+  // #3521: Transfers-menupunktets badge — ubesvarede indgående tilbud. Samme
+  // kanoniske kilde som Indbakkens "Skal handles"-fane (useActionSummary →
+  // /api/inbox/pending), IKKE en ny beregning; hooket polyfetcher + realtime-
+  // opdaterer sig selv (useRealtimeRefetch), så badgen forsvinder automatisk
+  // når alle tilbud er besvaret uden ekstra wiring her.
+  const { pending: pendingActions } = useActionSummary();
+  const badgeCounts = buildNavBadgeCounts({ unread, pendingOffersCount: pendingActions.counts.total });
 
   async function fetchOnlineCount(headers) {
     if (!API) return;
@@ -534,7 +553,7 @@ export default function Layout() {
 
   const needsSetup = teamLoaded && !team?.manager_name;
   const sidebarProps = {
-    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread,
+    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts,
     logoutLabel: t("nav.item.logout"),
     onOpenFeedback: () => setFeedbackOpen(true),
     contactLabel: t("nav.item.contact"),
@@ -585,8 +604,8 @@ export default function Layout() {
             <NavLink to="/notifications" aria-label={t("a11y.openNotifications")} className="relative">
               <BellIcon aria-hidden="true" className="w-5 h-5 text-cz-sidebar-2 hover:text-cz-sidebar-1" />
               {unread > 0 && (
-                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none">
-                  {unread > 9 ? "9+" : unread}
+                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none tabular-nums">
+                  {formatNavBadgeCount(unread)}
                 </span>
               )}
             </NavLink>

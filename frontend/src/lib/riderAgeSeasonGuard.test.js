@@ -69,8 +69,25 @@ test("#3071: ingen modul-niveau CURRENT_YEAR = new Date().getFullYear() tilbage"
 // #3071 acceptkriterium: "PotentialeStars beregner ikke længere alder ved
 // modul-load". Eksplicit navngivet guard så regressionen er let at spotte,
 // selv efter den generelle CURRENT_YEAR-guard ovenfor.
+//
+// #3497 (ejer-beslutning, Discord 7/8): PotentialeStars beregner IKKE længere
+// alder overhovedet — den tidligere isOld-gren (grå ved 30+) er fjernet, så
+// seasonYear-prop'en herfra er væk. Guarden er derfor blevet til et generelt
+// "ingen wall-clock" spot-tjek i stedet for et seasonYear-prop-krav.
 test("#3071: PotentialeStars.jsx beregner ikke alder ved modul-load", () => {
   const src = readFileSync(join(srcRoot, "components", "PotentialeStars.jsx"), "utf8");
   assert.doesNotMatch(src, /new Date\(\)\.getFullYear\(\)/, "PotentialeStars.jsx må ikke længere kalde new Date().getFullYear() (wall-clock, fastfrosset ved modul-load)");
-  assert.match(src, /seasonYear/, "PotentialeStars.jsx skal tage imod en seasonYear-prop (sæson-år, ikke wall-clock)");
+});
+
+// #3497 forward-guard: grå/sølv stjerner for ryttere 30+ blev læst af spillerne
+// som "færdigudviklet" i stedet for det de faktisk var (alder). Ejeren i
+// Discord 7/8: "Så fjernes det i sin nuværende form med de grå stjerner...
+// 5 stjerner, er 5 stjerner." Denne guard fejler hvis alders-betinget
+// stjerne-farve (birthdate/seasonYear-prop eller en isOld-lignende gren)
+// nogensinde genindføres i PotentialeStars.jsx.
+test("#3497: PotentialeStars.jsx farvelægger ikke stjerner efter alder", () => {
+  const src = readFileSync(join(srcRoot, "components", "PotentialeStars.jsx"), "utf8");
+  assert.doesNotMatch(src, /\bbirthdate\b/, "PotentialeStars.jsx må ikke tage imod birthdate igen — stjerne-farven må ikke afhænge af alder (#3497)");
+  assert.doesNotMatch(src, /\bseasonYear\b/, "PotentialeStars.jsx må ikke tage imod seasonYear igen — stjerne-farven må ikke afhænge af alder (#3497)");
+  assert.doesNotMatch(src, /isOld/i, "PotentialeStars.jsx må ikke genindføre en alders-betinget isOld-gren (#3497)");
 });

@@ -37,6 +37,7 @@
     "auction_not_active": "Auktionen er ikke aktiv",
     "auction_expired": "Auktionen er udløbet",
     "cannot_bid_own_rider": "Du kan ikke byde på din egen rytter",
+    "invalid_bid_amount": "Budbeløbet skal være et positivt helt tal",
     "bid_below_minimum": "Bud skal være mindst {min} CZ$",
     "insufficient_balance_after_bids": "Du har {available} CZ$ tilbage efter eksisterende bud",
     "bid_save_failed": "Bud kunne ikke gemmes",

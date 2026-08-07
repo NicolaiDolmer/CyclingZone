@@ -5199,6 +5199,16 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
 
   const { amount, proxy_max } = req.body;
   if (!amount) return res.status(400).json({ error: "amount required" });
+  // #3495: getAuctionBidIssue nedenfor validerer amount via en LOKAL
+  // Number(amount)-kopi, men den koercerede værdi blev aldrig givet tilbage —
+  // ruten insatte/opdaterede tidligere det RÅ req.body.amount (kunne i teorien
+  // være en streng Postgres selv ville numerisk-parse anderledes end vores
+  // egen normalisering). numericAmount er nu single source of truth for både
+  // valideringen og selve skrivningen.
+  const numericAmount = Number(amount);
+  if (!Number.isInteger(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ error: "Bid amount must be a positive whole number", errorCode: "invalid_bid_amount" });
+  }
 
   // Fetch auction
   const { data: auction } = await supabase
@@ -5274,7 +5284,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     allMyProxies: proxiesExceptThis,
   });
   const bidIssue = getAuctionBidIssue({
-    amount,
+    amount: numericAmount,
     proxyMax: proxy_max,
     currentPrice: auction.current_price,
     currentBidderId: auction.current_bidder_id,
@@ -5351,7 +5361,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     supabase,
     buyerTeamId: req.team.id,
     riderId: auction.rider_id,
-    purchasePrice: amount,
+    purchasePrice: numericAmount,
   });
   if (signingBlock) {
     return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
@@ -5372,7 +5382,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   const { error: bidInsertError } = await supabase.from("auction_bids").insert({
     auction_id: auction.id,
     team_id: req.team.id,
-    amount,
+    amount: numericAmount,
     bid_time: bidTime.toISOString(),
     triggered_extension: false,
   });
@@ -5395,13 +5405,13 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
 
   // Update auction (price + leader only — no extension yet).
   await supabase.from("auctions").update({
-    current_price: amount,
+    current_price: numericAmount,
     current_bidder_id: req.team.id,
   }).eq("id", auction.id);
 
   // Store proxy max-loft if provided with the bid
   const numericProxyMax = Number(proxy_max);
-  if (Number.isFinite(numericProxyMax) && numericProxyMax > amount) {
+  if (Number.isFinite(numericProxyMax) && numericProxyMax > numericAmount) {
     await supabase.from("auction_proxy_bids").upsert(
       { auction_id: auction.id, team_id: req.team.id, max_amount: numericProxyMax },
       { onConflict: "auction_id,team_id" }
@@ -5421,7 +5431,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       auction.seller_team_id,
       transferNotif.buildBidReceivedNotification({
         bidderName: req.team.name,
-        amount,
+        amount: numericAmount,
         riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
         riderId: auction.rider_id,
       }),
@@ -5471,7 +5481,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       previousLeader,
       transferNotif.buildAuctionOutbidNotification({
         bidderName: req.team.name,
-        amount,
+        amount: numericAmount,
         riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
         riderId: auction.rider_id,
       }),
@@ -5479,7 +5489,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     );
     notifyOutbid({
       riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
-      newBid: amount,
+      newBid: numericAmount,
       bidderName: req.team.name,
       teamId: previousLeader,
     }).catch((e) => console.error("[notifyOutbid] failed", { auctionId: auction.id, error: e.message }));
@@ -5514,7 +5524,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
 
   res.json({
     success: true,
-    new_price: finalAuction?.current_price ?? amount,
+    new_price: finalAuction?.current_price ?? numericAmount,
     extended: extensionApplied,
     new_end: extensionApplied && extensionEnd ? extensionEnd.toISOString() : undefined,
     warnings: bidWarnings,
@@ -5852,6 +5862,15 @@ router.get("/transfers", requireAuth, async (req, res) => {
 router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!assertTeamNotTransferFrozen(req, res)) return;
   const { rider_id, asking_price } = req.body;
+  // #3495: denne route havde INGEN server-side validering/coercion af
+  // asking_price (i modsætning til PATCH-stierne nedenfor, som begge kører
+  // getListingPriceUpdateIssue) — en malformed/streng-formateret pris ville
+  // enten blive insat rå eller fejle med et uklart 500 fra DB-driveren i
+  // stedet for et rent 400. Samme positivt-heltal-invariant som PATCH.
+  const numericAskingPrice = Number(asking_price);
+  if (!Number.isInteger(numericAskingPrice) || numericAskingPrice <= 0) {
+    return res.status(400).json({ error: "Asking price must be a positive whole number", errorCode: "invalid_asking_price" });
+  }
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired, is_academy").eq("id", rider_id).single();
   if (!rider || rider.team_id !== req.team.id)
@@ -5879,7 +5898,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
 
   const { data, error } = await supabase
     .from("transfer_listings")
-    .insert({ rider_id, seller_team_id: req.team.id, asking_price })
+    .insert({ rider_id, seller_team_id: req.team.id, asking_price: numericAskingPrice })
     .select().single();
   if (error) {
     // 23505 = unique_violation fra uniq_transfer_listings_one_active_per_rider
@@ -5900,7 +5919,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     if (watchers?.length) {
       await Promise.all(watchers.map(w =>
         notifyBuilt(w.user_id, transferNotif.buildWatchlistListedNotification({
-          riderName: riderFullName, askingPrice: asking_price || 0, riderId: rider_id,
+          riderName: riderFullName, askingPrice: numericAskingPrice, riderId: rider_id,
         }), listingId).catch(() => {})
       ));
     }

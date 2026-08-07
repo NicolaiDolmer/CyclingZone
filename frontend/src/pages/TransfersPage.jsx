@@ -15,10 +15,11 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortRows } from "../lib/useTableSort.js";
 import { previewBulkPriceAdjust } from "../lib/bulkPriceAdjust.js";
+import { parseAmountInput, parseAdjustmentValue } from "../lib/amountInput.js";
 import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
 import {
-  EmptyState, ExchangeIcon, InboxIcon, PageLoader,
+  AmountInput, EmptyState, ExchangeIcon, InboxIcon, PageLoader,
   PageHeader, Section, Button, Tabs, TabList, Tab,
 } from "../components/ui";
 // #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
@@ -271,9 +272,10 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
             <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.counterLabel")}</label>
               <div className="flex flex-col sm:flex-row gap-2">
-                <input type="number" value={counterAmt}
-                  onChange={e => setCounterAmt(parseInt(e.target.value) || 0)}
-                  className="min-w-0 flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                <AmountInput value={counterAmt}
+                  onValueChange={v => setCounterAmt(v ?? 0)}
+                  wrapperClassName="min-w-0 flex-1"
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
                   disabled={loading || counterAmt <= 0}
                   className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
@@ -419,9 +421,10 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
             <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.newOfferLabel")}</label>
               <div className="flex flex-col sm:flex-row gap-2">
-                <input type="number" value={newAmt}
-                  onChange={e => setNewAmt(parseInt(e.target.value) || 0)}
-                  className="min-w-0 flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                <AmountInput value={newAmt}
+                  onValueChange={v => setNewAmt(v ?? 0)}
+                  wrapperClassName="min-w-0 flex-1"
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={() => doAction("new_offer", { counter_amount: newAmt, message: msg })}
                   disabled={loading || newAmt <= 0}
                   className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
@@ -574,9 +577,11 @@ function SwapCard({ swap, myTeamId, onAction }) {
             <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("swapCard.form.cashReceiveLabel")}</label>
               <div className="flex gap-2">
-                <input type="number" value={counterCash}
-                  onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                <AmountInput value={counterCash}
+                  onValueChange={v => setCounterCash(v ?? 0)}
+                  allowNegative
+                  wrapperClassName="flex-1"
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 {/* #2843: counter_cash gemmes i SAMME konvention som cash_adjustment
                     (schema: positiv = proposing betaler receiving; transferExecution
                     vælger payer med `cash > 0 ? proposing : receiving`). Feltet
@@ -624,9 +629,11 @@ function SwapCard({ swap, myTeamId, onAction }) {
             <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("swapCard.form.cashPayLabel")}</label>
               <div className="flex gap-2">
-                <input type="number" value={counterCash}
-                  onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                <AmountInput value={counterCash}
+                  onValueChange={v => setCounterCash(v ?? 0)}
+                  allowNegative
+                  wrapperClassName="flex-1"
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_cash: counterCash })}
                   disabled={loading}
                   className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
@@ -700,9 +707,11 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
       <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
         <label className="text-cz-3 text-xs uppercase tracking-wider">{t("transferCard.editPriceLabel")}</label>
         <div className="flex flex-col sm:flex-row gap-2">
-          <input type="number" value={price} min={1}
-            onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
-            className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+          <AmountInput value={price}
+            onValueChange={v => setPrice(v)}
+            data-testid="transfer-edit-price-input"
+            wrapperClassName="min-w-0 flex-1"
+            className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
           <div className="flex gap-2">
             <Button variant="primary" size="sm" className="flex-1 sm:flex-none"
               onClick={savePrice} loading={busy} disabled={priceInvalid}>
@@ -791,10 +800,11 @@ function MarketOfferForm({ listing, onOffer }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col sm:flex-row gap-2">
-        <input type="number" value={offerAmt}
-          onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
+        <AmountInput value={offerAmt}
+          onValueChange={v => setOfferAmt(v ?? 0)}
           aria-label={t("offerCard.form.newOfferLabel")}
-          className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+          wrapperClassName="min-w-0 flex-1"
+          className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
         <Button variant="primary" size="sm"
           onClick={() => { if (offerAmt > 0) setConfirmOpen(true); }}
           loading={loading} disabled={offerAmt <= 0}>
@@ -940,12 +950,17 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
   const [mode, setMode] = useState("percent");
   const [rawValue, setRawValue] = useState("");
 
-  const value = parseFloat(rawValue);
-  const hasValue = rawValue !== "" && Number.isFinite(value);
+  // #3495: parseFloat("150.000", "set") ville have samme faktor-1000-fejl
+  // som transferlistens pris-felt — parseAdjustmentValue er mode-bevidst
+  // (set/amount = heltals-CZ$ med tusind-normalisering, percent = decimal).
+  const parsedValue = parseAdjustmentValue(rawValue, mode);
+  const hasValue = rawValue.trim() !== "" && parsedValue.valid;
+  const value = parsedValue.valid ? parsedValue.value : null;
   const preview = hasValue
     ? previewBulkPriceAdjust(selectedListings, { mode, value })
     : [];
   const changedCount = preview.filter(p => p.changed).length;
+  const showInvalid = rawValue.trim() !== "" && !parsedValue.valid;
 
   // Rytternavn pr. listing-id til preview-rækkerne (selectedListings bærer
   // rider-objektet, previewBulkPriceAdjust kender kun id/from/to).
@@ -975,17 +990,29 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
             </Button>
           ))}
         </div>
-        <input
-          type="number"
-          inputMode="decimal"
-          data-testid="bulk-price-value"
-          value={rawValue}
-          onChange={e => setRawValue(e.target.value)}
-          placeholder={t(`bulkPrice.valuePlaceholder.${mode}`)}
-          aria-label={t("bulkPrice.valueLabel")}
-          className="min-w-0 flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2
-            text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent"
-        />
+        <div className="min-w-0 flex-1">
+          <input
+            type="text"
+            inputMode={mode === "percent" ? "decimal" : "numeric"}
+            data-testid="bulk-price-value"
+            value={rawValue}
+            onChange={e => setRawValue(e.target.value)}
+            placeholder={t(`bulkPrice.valuePlaceholder.${mode}`)}
+            aria-label={t("bulkPrice.valueLabel")}
+            aria-invalid={showInvalid || undefined}
+            className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2
+              text-cz-1 font-mono text-sm focus:outline-none
+              ${showInvalid ? "border-cz-danger focus:border-cz-danger" : "border-cz-border focus:border-cz-accent"}`}
+          />
+          {showInvalid && (
+            <p className="text-2xs text-cz-danger mt-1">{t("common:amountInput.invalid")}</p>
+          )}
+          {!showInvalid && hasValue && mode !== "percent" && (
+            <p className="text-2xs text-cz-3 mt-1 tabular-nums">
+              {t("common:amountInput.parsedPreview", { amount: formatNumber(value) })}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Preview: rytter + nuværende pris → ny pris, så justeringen aldrig er en
@@ -1342,10 +1369,12 @@ export default function TransfersPage() {
   // filtreres her på selve listingen, uden om rytter-filter-hooket.
   function passesAskingPriceFilter(listing) {
     const price = listing.asking_price ?? 0;
-    const minP = parseInt(riderFilters.filters.min_asking_price);
-    const maxP = parseInt(riderFilters.filters.max_asking_price);
-    if (!isNaN(minP) && price < minP) return false;
-    if (!isNaN(maxP) && price > maxP) return false;
+    // #3495: parseInt("150.000") → 150 ramte filter-feltet ligesom
+    // listepris-felterne — samme normaliserede parser her.
+    const minP = parseAmountInput(riderFilters.filters.min_asking_price);
+    const maxP = parseAmountInput(riderFilters.filters.max_asking_price);
+    if (minP.valid && price < minP.value) return false;
+    if (maxP.valid && price > maxP.value) return false;
     return true;
   }
   // #3191: samme mønster som passesAskingPriceFilter ovenfor — %-afvigelsen er

@@ -99,5 +99,9 @@
     "searchHelp": "Søg i hjælp og FAQ",
     "selectSeason": "Vælg sæson"
   },
-  "leaderBadge": "Fører"
+  "leaderBadge": "Fører",
+  "amountInput": {
+    "invalid": "Angiv et helt tal, fx 150000 eller 150.000",
+    "parsedPreview": "= {amount} CZ$"
+  }
 }
