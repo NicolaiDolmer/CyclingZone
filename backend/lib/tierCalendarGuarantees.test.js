@@ -125,6 +125,33 @@ test("detectCoverageViolations: klasse↔længde-bånd-brud rammer SAMME violati
   assert.ok(violations.some((v) => v.includes("klasse↔længde-bånd brudt") && v.includes("#3328")), violations.join(" · "));
 });
 
+// #3469 (hærdnings-pakken): mountain-familien (mountain+high_mountain) tælles nu som en
+// egen terræn-familie, samme håndhævelse (coverage-gate/apply-refusal) som cobbles/flat/
+// itt/hilly.
+test("computeTierCoverageStats: 'mountain' tæller BÅDE mountain og high_mountain-profiler (#3469)", () => {
+  const races = [
+    race("r1", "ProSeries", "stage_race", ["flat", "mountain", "high_mountain", "high_mountain"]),
+  ];
+  const { raceRows, profilesByPoolRaceId } = buildFixture(races);
+  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
+  assert.equal(stats.familyCounts.mountain, 3, "1 mountain + 2 high_mountain = 3 bjerg-familie-etaper");
+});
+
+test("detectCoverageViolations: fanger en kalender UDEN bjerg-dækning (#3469)", () => {
+  // Tier 3-lignende kalender med kun 2 bjerg-etaper — langt under tier 3's mål (12).
+  const races = [
+    race("s1", "ProSeries", "single", ["flat"]),
+    race("s2", "ProSeries", "single", ["cobbles"]),
+    race("r1", "ProSeries", "stage_race", ["flat", "mountain", "hilly"]),
+  ];
+  const { raceRows, profilesByPoolRaceId } = buildFixture(races);
+  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
+  const violations = detectCoverageViolations({ tier: 3, stats });
+
+  assert.ok(violations.some((v) => v.includes('terræn-familie "mountain"') && v.includes("#3327")), violations.join(" · "));
+  assert.ok(violations.some((v) => v.includes(`under garanteret minimum ${TIER_TERRAIN_FAMILY_MIN[3].mountain}`)), violations.join(" · "));
+});
+
 test("detectCoverageViolations: tomme override-maps (LEGACY_MIX-mønster) slår ALLE garantier fra", () => {
   const { raceRows, profilesByPoolRaceId } = buildFixture([race("s1", "ProSeries", "single", ["flat"])]);
   const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
