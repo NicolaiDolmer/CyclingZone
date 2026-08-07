@@ -1,6 +1,6 @@
 # Bestyrelses-rework: "Mandatet" — design-spec
 
-**Status:** Udkast til ejer-review (brainstorm-session 7/8-2026). **10 ejer-beslutninger låst 7/8** (se §6) — mangler kun mobil-mockup-godkendelse (runde 3).
+**Status:** ✅ GODKENDT (ejer, 7/8-2026 — efter desktop-mockups runde 1-2 + mobil-mockup runde 3). Alle 10 beslutninger i §6 er låst. Implementeringsplan: `docs/slices/09-board-mandate-rework-MASTER.md`.
 **Supersederer:** Epic [#955](https://github.com/NicolaiDolmer/CyclingZone/issues/955) (UI-rework til faner) — fanerne udgår helt i denne model.
 **Grundlag:** 7-spors audit 7/8 (frontend, backend, GitHub, Discord, docs, konkurrenter, prod-verifikation). Nøglefund refereret inline.
 
