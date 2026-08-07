@@ -361,16 +361,12 @@ test("packer: stream — GT-hviledage: 3 hviledage splitter GT i 4 segmenter, hu
     assert.equal(fp.stagesPlaced.length, 1, "filler skal være et endagsløb");
   }
 
-  // #3469-basen (c3487416, D1-overlap-fix) fordeler rest-fyldet LEAST-LOADED over ALLE
-  // streams i stedet for kun stream 0 — det løfter den generelle overlapDays (ejer-krav),
-  // men betyder at en GT-hviledags-slot nu kan bære BÅDE GT'ens dormante span (binding
-  // fortsætter gennem hullet, jf. #3470-arkitekturgrundlag) OG fillerens EGEN aktive
-  // tilstedeværelse på PRÆCIS den game_day — ét ekstra "identitet" på netop de fysiske
-  // hviledags-slots (verificeret mod prod-kataloget 7/8: præcis game_day 19, Giro's eneste
-  // filler-slot i den kørsel, ramte 4). Loftet er derfor cap+1, KUN på faktiske
-  // hviledags-fyldte game_days — ikke en åben regression. Ingen produktionskode gater på
-  // maxOverlap (detectCalendarViolations tjekker det ikke); rapportér til ejer ved fund.
-  assert.ok(r.maxOverlap <= cfg.overlapCap + 1, `maxOverlap ${r.maxOverlap} > cap+1 (${cfg.overlapCap + 1}) — uventet HØJERE end det kendte GT-hviledag+filler-loft`);
+  // #3470 (ejer-beslutning 7/8, afløser den midlertidige cap+1-tolerance fra rebase på
+  // c3487416): diagnose()'s overlap-optælling er nu STAGE-baseret (kun løb der FAKTISK
+  // kører en etape den pågældende game_day tæller med) i stedet for span-baseret (min..max)
+  // — en GT på hviledag tæller derfor IKKE længere med i den dags overlap, og loftet er
+  // atter det hårde cap (ingen +1-undtagelse for hviledags-slots).
+  assert.ok(r.maxOverlap <= cfg.overlapCap, `maxOverlap ${r.maxOverlap} > cap ${cfg.overlapCap}`);
   assert.deepEqual(r.unplaced, []);
   assert.deepEqual(r.leftoverSingles, []);
   const spans = ["gt-1", "gt-2", "gt-3"].map((id) => {
@@ -554,4 +550,60 @@ test("packer: stream — GT-hviledage (fallback, én GT uden fraction): reservat
     return r;
   });
   assert.deepEqual(packLaneCalendar(cfg), packLaneCalendar(div1()), "restDays uden ALLE GT'er har fraction skal give bit-identisk output med perGap-fallback (restDays helt inert)");
+});
+
+// ── #3470 (ejer-beslutning 7/8): overlap-optælling stage-baseret, ikke span-baseret ────────
+// diagnose()'s maxOverlap/overlapHistogram tæller nu KUN game_days hvor et løb FAKTISK har
+// en etape (ikke min..max-span) — en GT på hviledag tæller derfor ikke længere med. For løb
+// UDEN huller er de to metoder matematisk identiske (gameDays-sættet ER hele [min,max]),
+// hvilket denne test beviser eksplicit ved at genimplementere den GAMLE span-baserede
+// beregning og kræve bit-for-bit samme facit på fixtures uden hviledage.
+function referenceSpanBasedOverlap(placements) {
+  const spans = placements
+    .filter((p) => p.stagesPlaced.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE))
+    .map((p) => [Math.min(...p.stagesPlaced.map((s) => s.game_day)), Math.max(...p.stagesPlaced.map((s) => s.game_day))]);
+  const hi = spans.length ? Math.max(...spans.map((s) => s[1])) : -1;
+  const overlapHistogram = {};
+  let maxOverlap = 0;
+  for (let g = 0; g <= hi; g++) {
+    const n = spans.filter(([a, b]) => a <= g && b >= g).length;
+    overlapHistogram[n] = (overlapHistogram[n] || 0) + 1;
+    if (n > maxOverlap) maxOverlap = n;
+  }
+  return { maxOverlap, overlapHistogram };
+}
+
+test("packer: #3470 — for løb UDEN hviledage er stage-baseret og span-baseret overlap-optælling MATEMATISK IDENTISK (regressionsvagt, ejer-beslutning 7/8)", () => {
+  const fixtures = [
+    div1(),
+    div3(),
+    withFraction(div1(), (r) => fractionOfId(r.id)),
+    withFraction(div3(), (r) => fractionOfId(r.id)),
+  ];
+  for (const cfg of fixtures) {
+    const r = packLaneCalendar(cfg);
+    const ref = referenceSpanBasedOverlap(r.placements);
+    assert.equal(r.maxOverlap, ref.maxOverlap, "maxOverlap divergerer for fixture uden hviledage — stage-basering må IKKE ændre tal for huller-frie løb");
+    assert.deepEqual(r.overlapHistogram, ref.overlapHistogram, "overlapHistogram divergerer for fixture uden hviledage");
+  }
+});
+
+test("packer: #3470 — GT-hviledage: en hviledag tæller IKKE med i overlap (GT'ens span-medlemsskab den dag ignoreres nu)", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  cfg.stageRaces = cfg.stageRaces.map((r) => (r.id === "gt-1" ? { ...r, restDays: 3 } : r));
+  const r = packLaneCalendar(cfg);
+  const report = r.grandTourRestDays.find((x) => x.id === "gt-1");
+  assert.ok(report.fillerIds.length > 0, "testen kræver mindst én fyldt hviledag");
+  const gt1 = r.placements.find((p) => p.id === "gt-1");
+  const holeGameDay = report.fillerIds
+    .map((id) => r.placements.find((p) => p.id === id).stagesPlaced[0].game_day)[0];
+  // GT'en har INGEN stagesPlaced-entry på hul-dagen (den ægte kilde til stage-basering).
+  assert.ok(!gt1.stagesPlaced.some((s) => s.game_day === holeGameDay), "gt-1 må ikke have en etape-entry på hviledagen");
+  // Loftet holder stadig hårdt (cap, ikke cap+1).
+  assert.ok(r.maxOverlap <= cfg.overlapCap, `maxOverlap ${r.maxOverlap} > cap ${cfg.overlapCap}`);
 });

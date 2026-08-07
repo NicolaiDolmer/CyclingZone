@@ -460,20 +460,31 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   return { placements, timelineLength, gtRestDayReport };
 }
 
-// Diagnostik fra placements (ÆGTE binding-overlap fra game-dag-spans, uafhængigt af layout).
+// Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
+// uafhængigt af layout — #3470 ejer-beslutning 7/8: stage-baseret, ikke span-baseret; se
+// kommentaren ved maxOverlap/overlapHistogram nedenfor).
 function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMinStages) {
   const load = new Array(days).fill(0);
   const racesOnDay = Array.from({ length: days }, () => new Set());
   for (const p of placements) for (const st of p.stagesPlaced) { load[st.real_day] += 1; racesOnDay[st.real_day].add(p.id); }
 
-  const spans = placements
+  // #3470 (ejer-beslutning 7/8, afløser den midlertidige cap+1-tolerance): overlappet her
+  // tæller KUN løb der FAKTISK har en etape på den pågældende game_day — ikke span-baseret
+  // (min..max). En GT på hviledag (game_day-hul, #3470) tæller derfor IKKE med i den dags
+  // overlap; dens ryttere er stadig bundet, men BINDINGSLAGENE (raceBinding.js m.fl.) er
+  // SEPARATE, span-baserede systemer og RØRES IKKE her — kun denne diagnostiske optælling
+  // ændres. For løb UDEN huller er stage- og span-baseret optælling matematisk identisk
+  // (gameDays-sættet ER hele [min,max]-intervallet), så alle andre tal er uændrede.
+  const gameDaysByPlacement = placements
     .filter((p) => p.stagesPlaced.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE))
-    .map((p) => [Math.min(...p.stagesPlaced.map((s) => s.game_day)), Math.max(...p.stagesPlaced.map((s) => s.game_day))]);
-  const hi = spans.length ? Math.max(...spans.map((s) => s[1])) : -1;
+    .map((p) => new Set(p.stagesPlaced.map((s) => s.game_day)));
+  const hi = gameDaysByPlacement.length
+    ? Math.max(...gameDaysByPlacement.map((gds) => Math.max(...gds)))
+    : -1;
   const overlapHistogram = {};
   let maxOverlap = 0;
   for (let g = 0; g <= hi; g++) {
-    const n = spans.filter(([a, b]) => a <= g && b >= g).length;
+    const n = gameDaysByPlacement.filter((gds) => gds.has(g)).length;
     overlapHistogram[n] = (overlapHistogram[n] || 0) + 1;
     if (n > maxOverlap) maxOverlap = n;
   }
