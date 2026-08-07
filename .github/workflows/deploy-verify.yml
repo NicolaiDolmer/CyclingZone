@@ -172,6 +172,9 @@ jobs:
             exit 1
           fi
 
+      - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
+        run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
+
       - name: Verify Sentry source-maps uploaded (#621 item 3)
         id: sourcemaps
         # Opt-in via secrets. Hvis SENTRY_AUTH_TOKEN ikke er konfigureret i GitHub Actions
