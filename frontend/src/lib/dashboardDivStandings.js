@@ -3,6 +3,16 @@
 // 8 puljer, se database/2026-06-21-league-divisions-pyramid.sql). Samme
 // princip som #3197: "default-konteksten er spillerens egen verden".
 //
+// #3506 — rangberegningen (divStandingsAll) bruger nu SAMME scope som
+// Standings-siden: AI-hold tælles med (bevidst valg i #1718), ikke kun
+// division+pulje-filteret. Før #3506 blev AI-hold fjernet FØR placeringen
+// blev udregnet, hvilket gav et andet placeringstal end målsiden for samme
+// hold (prod-eksempel: #2 på dashboardet vs. #16 på Standings, Division 8
+// S2 med 18 AI-hold + 6 menneskehold). myStandingIndex/_rank er nu det
+// kanoniske, Standings-konsistente tal. myManagerRank er et separat,
+// sekundært tal (placering blandt kun menneske-holdene i samme division/
+// pulje) til den lille tillægslinje ("#2 blandt managere") på egen række.
+//
 // Ren funktion (ingen React/Supabase-afhængigheder) så filter-logikken kan
 // unit-testes med `node --test`, i stedet for kun at leve inline i
 // DashboardPage.jsx's render-krop. Genbruger StandingsPage's matchesPoolTab
@@ -28,6 +38,7 @@ function rowPoolId(s) {
  *   divStandingsTop: Array,
  *   divStandings: Array,
  *   myStandingIndex: number,
+ *   myManagerRank: number|null,
  * }}
  */
 export function computeMyDivisionStandings(standings, team, pools) {
@@ -43,12 +54,23 @@ export function computeMyDivisionStandings(standings, team, pools) {
   const hasPoolSubtabs = tierPools.length > 1 && myPoolId != null;
   const ownPoolRow = hasPoolSubtabs ? (tierPools.find(p => p.id === myPoolId) || null) : null;
 
+  // #3506 — samme scope som Standings-siden (division/pulje-filtreret, men
+  // AI-hold MED, jf. #1718). Dette er det kanoniske, målside-konsistente
+  // placeringstal (myStandingIndex → _rank).
   const divStandingsAll = safeStandings
-    .filter(s => !s.team?.is_ai && s.team?.division === myDivision)
+    .filter(s => s.team?.division === myDivision)
     .filter(s => matchesPoolTab(rowPoolId(s), myPoolId, hasPoolSubtabs))
     .sort((a, b) => b.total_points - a.total_points);
 
   const myStandingIndex = divStandingsAll.findIndex(s => s.team_id === team?.id);
+
+  // #3506 — sekundært tal: placering blandt KUN menneske-holdene i samme
+  // division/pulje (den gamle beregning, bevaret som tillægsinfo). null hvis
+  // eget hold ikke findes i det menneske-scopede felt (fx AI-testkonto).
+  const managerStandings = divStandingsAll.filter(s => !s.team?.is_ai);
+  const myManagerIndex = managerStandings.findIndex(s => s.team_id === team?.id);
+  const myManagerRank = myManagerIndex >= 0 ? myManagerIndex + 1 : null;
+
   // #2328 — egen placering skal altid være synlig, også uden for top-5. Top-5
   // vises som hidtil; er manageren ikke i top-5, tilføjes hans egen række sidst
   // (med den ægte placerings-nummer bevaret via myStandingIndex).
@@ -57,5 +79,5 @@ export function computeMyDivisionStandings(standings, team, pools) {
     ? [...divStandingsTop, { ...divStandingsAll[myStandingIndex], _rank: myStandingIndex + 1, _isOwnRowBreak: true }]
     : divStandingsTop;
 
-  return { hasPoolSubtabs, ownPoolRow, divStandingsAll, divStandingsTop, divStandings, myStandingIndex };
+  return { hasPoolSubtabs, ownPoolRow, divStandingsAll, divStandingsTop, divStandings, myStandingIndex, myManagerRank };
 }
