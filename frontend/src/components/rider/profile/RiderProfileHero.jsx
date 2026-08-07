@@ -92,7 +92,7 @@ export default function RiderProfileHero({
   showTeam = true,                // false når switcher-baren allerede viser holdnavnet (ejer-runde 3: aldrig dobbelt)
   overallRating,
   age,
-  seasonYear = null,        // #3071: sæson-referenceår (useActiveSeasonYear) — retirementRiskBadgeKey + ScoutablePotentiale-tint
+  seasonYear = null,        // #3071: sæson-referenceår (useActiveSeasonYear) — retirementRiskBadgeKey
   typeLabel,
   divisionLabel,                  // fx "DIV 2" (null hvis ukendt)
   valueAmount,                    // "4.366" (uden CZ$-suffix)
@@ -241,7 +241,7 @@ export default function RiderProfileHero({
         <HeroStat
           label={potentialEyebrow}
           value={scouting
-            ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel seasonYear={seasonYear} />
+            ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel />
             : "—"}
           valueClassName="text-[15px] font-semibold"
         />

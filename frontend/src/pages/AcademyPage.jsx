@@ -170,7 +170,7 @@ export default function AcademyPage() {
       sortKey: "potential",
       // #2796: labelAsTitle — stjernerne bærer informationen, den kvalitative
       // tekst ligger i tooltip'en.
-      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle seasonYear={seasonYear} />,
+      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle />,
     },
     {
       key: "value",
@@ -489,7 +489,7 @@ export default function AcademyPage() {
                   {potential && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-cz-3">{t("potential")}</span>
-                      <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} birthdate={rider.birthdate} seasonYear={seasonYear} />
+                      <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} />
                     </div>
                   )}
 

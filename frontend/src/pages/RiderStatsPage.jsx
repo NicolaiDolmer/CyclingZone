@@ -1743,7 +1743,7 @@ export default function RiderStatsPage() {
       {/* Scouting bygges i egen slice — "på vej"-flade med roadmap-link +
           stemme-opfordring (ejer-beslutning 3/7). Scout-flowet (estimat +
           scout-knap) lever indtil da i hero'en. */}
-      {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} seasonYear={seasonYear} />}
+      {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} />}
       </div>
     </div>
   );

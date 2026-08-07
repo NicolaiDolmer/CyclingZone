@@ -1,5 +1,4 @@
 import { useId } from "react";
-import { ageForSeason } from "../lib/riderAge.js";
 
 // Delt stjerne-geometri (samme path som ui/icons StarIcon) — renderes nu som
 // SVG i stedet for ★-glyf, så potentiale-stjernerne deler stroke/fyld-system med
@@ -46,21 +45,19 @@ const clamp01 = (n) => Math.max(0, Math.min(1, n));
 // den der vil have den. Opt-in, så eksisterende kald-sites er uændrede — og
 // den fjerner samtidig den nowrap-span der presser tætte containere ud i
 // vandret overløb (samme mønster som #2720 rapporterer for "Verdensklasse-emne").
-export default function PotentialeStars({ value, range, label, birthdate, seasonYear, large = false, labelAsTitle = false }) {
+export default function PotentialeStars({ value, range, label, large = false, labelAsTitle = false }) {
   const showLabel = label && !labelAsTitle;
   const titleAttrs = label && labelAsTitle ? { title: label, "aria-label": label } : {};
   // Unik pr. instans, så clipPath-id'er ikke kolliderer mellem flere stjerne-rækker
   // på samme side (SVG-id'er er dokument-globale). Sanitér useId's koloner.
   const uid = useId().replace(/:/g, "");
-  // #3071: sæson-alder (fra useActiveSeasonYear via kaldersiden), IKKE wall-clock.
-  // Manglende seasonYear → age=null → "gammel rytter"-tonen udebliver i stedet for
-  // at gætte forkert (en manglende alder er bedre end en forkert).
-  const age = ageForSeason(birthdate, seasonYear);
-  const isOld = age !== null && age >= 30;
-  // Token-baserede toner (ingen rå hex): gamle ryttere = neutral (text-3),
-  // ellers brand-guld (accent). Lysere "måske"-tone = accent ved lav alpha.
-  const tone = isOld ? "rgb(var(--div-3))" : "rgb(var(--accent))";
-  const softTone = isOld ? "rgb(var(--div-3) / 0.45)" : "rgb(var(--accent) / 0.45)";
+  // #3497 (ejer-beslutning, Discord 7/8): stjernerne kodede tidligere alder (grå
+  // ved 30+) via en alders-betinget gren her — læst af spillerne som
+  // "færdigudviklet", men det var udelukkende alder. "5 stjerner, er 5
+  // stjerner." Én konsistent brand-guld tone uanset alder; alderen vises i
+  // stedet som tal de steder rytteren i forvejen har en alderskolonne/-badge.
+  const tone = "rgb(var(--accent))";
+  const softTone = "rgb(var(--accent) / 0.45)";
   const emptyTone = "rgb(var(--div-3) / 0.3)";
   const sizeClass = large ? "text-lg" : "text-sm";
 

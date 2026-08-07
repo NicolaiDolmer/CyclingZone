@@ -372,7 +372,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* Potentiale */}
       <td className="px-3 py-1.5">
-        <ScoutablePotentiale rider={r} scouting={scouting} showScout seasonYear={seasonYear} />
+        <ScoutablePotentiale rider={r} scouting={scouting} showScout />
       </td>
 
       {/* Sælger — lige før stats */}
@@ -660,7 +660,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
       {r?.id && scouting.estimateFor(r.id) !== null && (
         <div className="mt-2 flex items-center gap-1.5">
           <span className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.potential")}</span>
-          <ScoutablePotentiale rider={r} scouting={scouting} showScout seasonYear={seasonYear} />
+          <ScoutablePotentiale rider={r} scouting={scouting} showScout />
         </div>
       )}
       {visibleStatsArr.length > 0 && (
