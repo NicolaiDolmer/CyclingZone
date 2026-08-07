@@ -77,7 +77,7 @@ test("upcoming race detail: stage stripe + terrain DNA + per-stage route match",
 
   // Valgt-etape-panel (default etape 1 = flad): terrain-DNA-bar + massespurt-finale.
   await expect(page.getByText(/Terræn-DNA/)).toBeVisible();
-  await expect(page.getByText("Massespurt")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Massespurt" })).toBeVisible();
 
   // Opstilling med per-etape rute-match: label skifter fra "Egnethed" til
   // "Rute-match". Responsivt panel viser etiketten i tabel-headeren (sm+) ELLER
@@ -89,5 +89,5 @@ test("upcoming race detail: stage stripe + terrain DNA + per-stage route match",
 
   // Skift til etape 2 (høj bjerg) → profil + finale + rute-match opdateres.
   await page.getByRole("button", { name: "Etape 2" }).click();
-  await expect(page.getByText("Bjergfinale")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 });

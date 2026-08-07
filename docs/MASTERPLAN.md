@@ -21,14 +21,14 @@ Fra #feedback-from-dolmer: ✅ **#3196** vækst-dashboard LUKKET 3/8 nat (/admin
 ## 3 · AUGUST — vækst oven på et tæt spand
 16. ⚪ Fable-sporet: #2822 benchmark · #1369 retention-arkitektur · #1140 første 20 min · #2824 synlighed/SEO · #2823 fleet-playbook. **Aktiverings-hullet:** #3007 (61 hold har aldrig budt) · #2182 · #3067 · ✅ #3187/#3188 dead-clicks lukket 3/8 nat (#3189-verdikt: Clarity-tal = stitching-artefakt, fix i #2041).
 17. ⚪ Onboarding: #1569 + #2045 (19 % ser nogensinde et løbsresultat) · velkomstmail venter kun på e-mail-loop.
-18. ⚪ #1173 referral + #2236 outreach + #2759 ads (løbende, ikke begivenhedsbundet).
+18. ⚪ #1173 referral + #2236 outreach + #2759 ads (løbende, ikke begivenhedsbundet). **Forudsætning før #2759:** #1784 spend-loft — Pro fakturerer usage-baseret, og betalt trafik uden loft er en åben regning (kæde: #3486 token → baseline-tal → loft, model A notifikation).
 19. ⚪ #62/#91/#2180 daglig rytme · 20. ⚪ #2443/#1602/#2445 menu + mobil · #2009/#2448 · #2810 · 21. ⚪ #2698/#2262/#1974 progression · #2887 (nu m. genansættelses-bug) · #2699 akademi-nerf (ejer-udskudt) · #2084/#1299/#1301 · 22. ⚪ #2042 login-væg (A-delen billig; hører til #2824).
 
 ## 4 · EFTER AUGUST
 Vægtning (ejer): simulerings-dybde > polish > indholds-bredde. 23. Træning/ungdom #2492 m.fl. · 24. Kontrakt-liv #1150/#1310 (**udløbs-håndhævelsen FLYTTET FREM til NU-bølge pkt. 3, ejer 3/8**; resten — krav/klausuler/lån — forbliver her) · 25. Motor-dybde #2476/#2410/#2416/#2412 · 26. Værdi-kæden #2667/#2669/#1281/#2452/#2670 · 27. #2477 · 28. Skalering #323/#1375 (~300 brugere) · 29. #1441 · 30. Socialt lag #2209/#935 (**løftet af ejer-direktiv 3/8 → #3199/#3200 er v1**) · 31. Brand #481/#671 + SEO · 32. #955 · 33. #2462.
 
 ## Ops/community-sidestrøm (subagent, aldrig hovedspor)
-#2758 (nu ejer-krævet automatisk) · #2460 · #2440 · #2409/#2423 · #2511 · #2572 · AI-audit #2689 · Railway MCP re-auth (fundet 3/8) · Supabase: kun #929 leaked-password tilbage (✅ #3124-hærdning live 3/8; is_admin/RPC-advisors dokumenteret som intentionelle) · #2830/#2901/#2858.
+#2758 (nu ejer-krævet automatisk) · #2460 · #2440 · #2409/#2423 (P2 cache LUKKET 7/8, PR #3484 — Vercel-alarm `Edge Requests spike`) · **#3486 VERCEL_TOKEN** (2 min ejer-klik; låser #1784 op + gør forbrug læsbart herfra) · #3487 bot-flade (log-mode først) · #2511 · #2572 · AI-audit #2689 · Railway MCP re-auth (fundet 3/8) · Supabase: kun #929 leaked-password tilbage (✅ #3124-hærdning live 3/8; is_admin/RPC-advisors dokumenteret som intentionelle) · #2830/#2901/#2858.
 
 **FROSSET:** #2217/#2218. **Parkeret:** #1712 (≥300) · #1941 · #450 · live-taktik/replay.
 

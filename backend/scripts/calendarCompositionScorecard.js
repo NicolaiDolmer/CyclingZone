@@ -40,7 +40,7 @@ import { collectSeasonTierRaces } from "./raceRouteRealismScorecard.js";
 import { materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { GENERATOR_VERSION } from "../lib/raceStageProfileGenerator.js";
 import {
-  ACTIVE_TARGET, KB_TARGET_FULL, KB_TARGET_INTERIM, TTT_ENGINE_SUPPORTED,
+  ACTIVE_TARGET, TTT_ENGINE_SUPPORTED,
   COMPOSITION_CATEGORIES, CATEGORY_LABELS, COMPOSITION_TOLERANCE_PP,
   computeCompositionStats, aggregateCompositionStats, detectCompositionViolations,
 } from "../lib/calendarCompositionTargets.js";
