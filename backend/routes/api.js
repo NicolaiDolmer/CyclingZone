@@ -160,6 +160,8 @@ import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitio
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
+import { RACE_DAY_ENGINE_FLAG_KEY } from "../lib/raceDayEngineFlag.js";
+import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
@@ -1884,12 +1886,18 @@ router.get("/training/me", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const teamId = req.team.id;
-    const [{ activeSeasonId, state }, isBetaTester, stage] = await Promise.all([
+    const [{ activeSeasonId, state }, isBetaTester, stage, raceDayStage] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
       readFlagStage(supabase, DAILY_TRAINING_FLAG_KEY),
+      readFlagStage(supabase, RACE_DAY_ENGINE_FLAG_KEY),
     ]);
     const enabled = evaluateFlagStage(stage, { isBetaTester });
+    // #3459 V3: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres KUN når
+    // løbsdags-motoren er on for brugeren — samme flag/stage der styrer D1-D4 i
+    // dailyTrainingEngine.js. Flag off (nu) = feltet udelades helt, ikke bare tomt
+    // (UI'et er 100% uændret, ingen ny consumer at bryde).
+    const raceDayEngineOn = evaluateFlagStage(raceDayStage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -1917,9 +1925,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
     }
 
     // Today's run-row + condition + progress + holdets ugerytme (#1895 PR 1) —
-    // batched (max 4 ekstra queries mod DB).
+    // batched (max 5 ekstra queries mod DB).
     const todayDate = copenhagenDateString(new Date());
-    const [todayRunResult, conditionResult, progressResult, weekPlanResult] = await Promise.all([
+    const [todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday] = await Promise.all([
       activeSeasonId
         ? supabase
             .from("training_day_runs")
@@ -1946,6 +1954,10 @@ router.get("/training/me", requireAuth, async (req, res) => {
         .from("training_week_plans")
         .select("rider_id, days")
         .eq("team_id", teamId),
+      // #3459 V3: kun query'et når raceDayEngineOn (bit-identisk med før #3459 når
+      // flag off — ingen ekstra DB-kald). Selve loaderen er fail-safe (returnerer
+      // {} ved fejl), så den kan indgå direkte i Promise.all uden try/catch her.
+      raceDayEngineOn ? loadRacingTodayByRider(supabase, teamId, riderIds, new Date()) : Promise.resolve({}),
     ]);
 
     const todayRun = todayRunResult.data ?? null;
@@ -1987,7 +1999,14 @@ router.get("/training/me", requireAuth, async (req, res) => {
       if (cappedForRider.length) capped[row.rider_id] = cappedForRider;
     }
 
-    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped, trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans });
+    res.json({
+      ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
+      trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
+      // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
+      // hvordan andre gated felter i denne response håndteres, ingen ny consumer
+      // kan skelne "flag off" fra "ingen data" på et felt der ikke findes.
+      ...(raceDayEngineOn ? { racingToday } : {}),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
