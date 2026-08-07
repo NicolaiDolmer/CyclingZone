@@ -174,3 +174,51 @@ test("#3295 reservationer er deterministiske", () => {
   };
   assert.deepEqual(selectTierRaceSet(args), selectTierRaceSet(args));
 });
+
+// ── #3469 (ejer-fund 8/8): downstreamProtectedArchetypes — rod-årsagen til D4's sultede
+// cobbled_tour-reservation (D2 tog 2: 1 via reservation, 1 via almindelig walk). ──────────
+function twoScarceCobbledTourCatalog() {
+  const rows = [];
+  // Kun ÉT konkurrerende stort etapeløb (6 etaper) — rigeligt slæk i etapeløbs-budgettet
+  // til at BEGGE 3-etapers cobbled_tour-kandidater ville blive taget af den almindelige
+  // walk, hvis intet forhindrer det (efterligner det rigtige katalogs situation, hvor en
+  // tier med plads i sit budget tager MERE end sin egen 1-reservation).
+  rows.push({ id: "ps-big-0", name: "Stort løb", race_class: "ProSeries", race_type: "stage_race", stages: 6, terrain_archetype: "mountain_tour" });
+  for (let i = 0; i < 20; i++) rows.push({ id: `ps-od-${i}`, name: `Endags ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, terrain_archetype: "hilly_classic" });
+  rows.push({ id: "ps-cob-1", name: "Brostensløb 1", race_class: "ProSeries", race_type: "stage_race", stages: 3, terrain_archetype: "cobbled_tour" });
+  rows.push({ id: "ps-cob-2", name: "Brostensløb 2", race_class: "ProSeries", race_type: "stage_race", stages: 3, terrain_archetype: "cobbled_tour" });
+  return rows;
+}
+
+test("#3469 uden downstreamProtectedArchetypes: en tier med rigeligt budget kan tage MERE end sin egen reservation (rod-årsagen)", () => {
+  const sel = selectTierRaceSet({
+    catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5,
+    archetypeReservations: { cobbled_tour: 1 },
+  });
+  const cobbledTourTaken = sel.stageRaces.filter((r) => r.id === "ps-cob-1" || r.id === "ps-cob-2");
+  assert.equal(cobbledTourTaken.length, 2, "fixturen skal gengive problemet: begge cobbled_tour tages, selvom kun 1 er reserveret");
+});
+
+test("#3469 downstreamProtectedArchetypes forhindrer denne tier i at tage arketypen ud over egen reservation", () => {
+  const sel = selectTierRaceSet({
+    catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5,
+    archetypeReservations: { cobbled_tour: 1 }, downstreamProtectedArchetypes: ["cobbled_tour"],
+  });
+  const cobbledTourTaken = sel.stageRaces.filter((r) => r.id === "ps-cob-1" || r.id === "ps-cob-2");
+  assert.equal(cobbledTourTaken.length, 1, "kun den reserverede cobbled_tour må tages — resten skal falde igennem til en senere tier");
+});
+
+test("#3469 downstreamProtectedArchetypes påvirker KUN de angivne arketyper", () => {
+  const base = selectTierRaceSet({ catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5 });
+  const withProtection = selectTierRaceSet({
+    catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5,
+    downstreamProtectedArchetypes: ["mountain_tour"], // ikke reserveret her — skal ikke ændre noget for cobbled_tour
+  });
+  const cobCount = (s) => s.stageRaces.filter((r) => r.id === "ps-cob-1" || r.id === "ps-cob-2").length;
+  assert.equal(cobCount(withProtection), cobCount(base), "en arketype uden egen reservation må ikke pludselig blive begrænset af en urelateret downstream-beskyttelse");
+});
+
+test("#3469 downstreamProtectedArchetypes=null (default) er bagudkompatibel — ingen begrænsning", () => {
+  const args = { catalog: twoScarceCobbledTourCatalog(), quota: 40, seed: 2, oneDayShareTarget: 0.5, archetypeReservations: { cobbled_tour: 1 } };
+  assert.deepEqual(selectTierRaceSet(args), selectTierRaceSet({ ...args, downstreamProtectedArchetypes: null }));
+});

@@ -157,6 +157,16 @@ export function selectTierRaceSet({
   // #3295: {terrain_archetype: antal} der SKAL med, valgt før prestige-walket. null =
   // uændret historisk adfærd. Se reserveArchetypes for hvorfor priorityArchetypes ikke rakte.
   archetypeReservations = null,
+  // #3469 (ejer-fund 8/8): arketyper som DENNE tiers almindelige walk IKKE må tage ud over
+  // sin egen reservation, fordi en SENERE tier (højere tier-nummer, processeres efter
+  // denne) også har en reservation for samme arketype og ellers kan blive sultet (rod-
+  // årsag D4's cobbled_tour: D2 tog 2 — 1 via reservation, 1 via almindelig walk — og D4
+  // fik 0, fordi kataloget kun rummer 4 i alt). Beregnes af KALDEREN (kender hele
+  // tier-rækkefølgen; denne funktion kender kun sin egen tier), IKKE af archetypeReservations
+  // alene — en arketype DENNE tier er den SIDSTE til at reservere for, skal IKKE begrænses
+  // (intet nedstrøms at beskytte; at gøre det alligevel sultede D4's egen kvote-udfyldning
+  // af summit_tour/hilly_tour, som blev opdaget under implementeringen og rettet her).
+  downstreamProtectedArchetypes = null,
 } = {}) {
   // #2251: Grand Tours (≥15 etaper) hører KUN til Division 1 (spec'ens GT-rygrad).
   // Uden denne gate lod prestige-først-walket leftover-GT'er kaskadere ned i lavere
@@ -195,7 +205,19 @@ export function selectTierRaceSet({
   const reservedRows = reserved.taken.map((r) => ({ id: r.id, name: r.name ?? null, race_class: r.race_class, stages: stagesOf(r) }));
   const reservedSingles = reservedRows.filter((r) => r.stages === 1);
   const reservedStages = reservedRows.filter((r) => r.stages >= 2);
-  const rest = reserved.takenIds.size ? rankedAll.filter((r) => !reserved.takenIds.has(r.id)) : rankedAll;
+  // #3469 (ejer-fund 8/8): downstreamProtectedArchetypes ekskluderer resterende kandidater
+  // af de OPGIVNE arketyper fra DENNE tiers almindelige walk, ud over hvad reservationen
+  // selv tog — se parameter-docstringen ovenfor for rod-årsagen. Kun arketyper KALDEREN
+  // eksplicit har markeret (fordi en SENERE tier også reserverer dem) begrænses; en tier
+  // der er DEN SIDSTE til at reservere en arketype (fx D4 for hilly_tour/summit_tour) skal
+  // fortsat kunne fylde sin kvote frit med ekstra af den arketype.
+  const downstreamProtectedSet = Array.isArray(downstreamProtectedArchetypes) && downstreamProtectedArchetypes.length
+    ? new Set(downstreamProtectedArchetypes) : null;
+  const rest = rankedAll.filter((r) => {
+    if (reserved.takenIds.has(r.id)) return false;
+    if (downstreamProtectedSet && downstreamProtectedSet.has(r.terrain_archetype)) return false;
+    return true;
+  });
 
   // Uden mix-target: ÉT sammenlagt grådigt walk (uændret historisk adfærd — størrelse
   // afgør rækkefølgen inden for samme prestige, uanset endagsløb/etapeløb).

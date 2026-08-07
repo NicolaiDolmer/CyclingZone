@@ -289,3 +289,83 @@ selve testen, kun re-kalibrering (som dens egen fejlbesked foreskriver). pass1-g
 regenereret (balanced_week's filler-vægte ændrede pass-1-output for r2, samme "bevidst
 ændring, fixture regenereret"-præcedens som #3326-korrektionen). tierCalendarMaterializer.
 test.js's tier3Catalog()-fixture udvidet (se separat commit).
+
+── PR #3472 opfølgning (8/8, v5): strukturel reservations-fix for de 2 blokerende fund ──
+
+Ejer-koordinator afviste at løse v4's 2 blokerende fund ved at sænke garantier eller
+rulle endagsløbs-beslutningen tilbage: "de er endnu en instans af dagens mønster (garanti
+uden reserveret forsyning), og løsningen er den du selv byggede i #3462: RESERVATION FØR
+det grådige walk."
+
+DIAGNOSE (rod-årsag for BEGGE fund, målt — IKKE som først antaget):
+  · D3's cobbled_classic-mangel: bekræftet — D3's lavere endagsløbs-mål (0,76→0,58)
+    fortrænger cobbled_classic fra selectionen, som antaget.
+  · D4's cobbled_tour-mangel: IKKE D3 der over-reserverer (som først gættet) — det er D2
+    (processeres FØR D3/D4) hvis almindelige (ikke-reservations-) walk tog EN EKSTRA
+    cobbled_tour ud over sin egen 1-reservation, fordi "Danmark Rundt" rangerede højt nok
+    i D2's udvidede endagsløbs-budget. Kataloget rummer PRÆCIST 4 cobbled_tour i alt —
+    nøjagtig 1 pr. tier — så D2's ekstra greb sultede D4's egen reservation tavst (0<1).
+
+FIX 1 — strukturel, generel (tierRaceSelection.js + tierCalendarMaterializer.js):
+  Ny parameter `downstreamProtectedArchetypes` på selectTierRaceSet: arketyper DENNE
+  tiers almindelige walk ikke må tage ud over sin egen reservation, fordi en SENERE tier
+  (højere tier-nummer) også reserverer dem. buildTierMaterializationPlan beregner den
+  automatisk (pr. arketype: er denne tier IKKE den sidste i rækken af tiers der
+  reserverer den?). Et FØRSTE forsøg (blankt "ekskludér alle reservations-arketyper fra
+  egen walk") ramte en NY regression: D4's kvote faldt til 47/56 (mangler 9), fordi D4 ER
+  den sidste tier for summit_tour/hilly_tour og har LOVLIGT brug for at tage mere end sin
+  egen reservations-minimum for at fylde kvoten — rettet ved kun at beskytte arketyper
+  hvor en SENERE tier faktisk også reserverer (ikke en blanket-regel).
+  Resultat: D4's cobbled_tour: 0→1 (FIKSET). D2's cobbled_tour: 2→1 (kappet til egen
+  reservation). D4's kvote: tilbage til 55/56 (PRE-EXISTING lille mangel, uændret).
+  Realisme-båndet cobbles_min for D4 (0<1): LØST — ikke længere blokerende.
+
+FIX 2 — D3's cobbled_classic-reservation (tierCalendarGuarantees.js):
+  TIER_ARCHETYPE_RESERVATIONS[3].cobbled_classic = 4 tilføjet (cobbled_tour bidrager 1
+  cobbles-etape via sin garanti; 4 mere fra cobbled_classic ville nå minimum 5).
+  MÅLT RESULTAT: kun 1 af de 4 ønskede blev reserveret — D3's cobbles-familie endte på
+  2 etaper (1 cobbled_tour + 1 cobbled_classic), STADIG under minimum 5.
+
+  ÆGTE KATALOGHUL (option b, IKKE valgt/løst selv — kræver ejer-beslutning), PRÆCISE TAL:
+    · Total cobbled_classic i kataloget: 20
+    · D3-eligible (ProSeries+Class1 klasse-whitelist): 8 (7 ProSeries + 1 Class1)
+    · Forbrugt af D1+D2 FØR D3's tur: 7 (alle 7 ProSeries-kandidater — D1 har ingen
+      klasse-begrænsning og D2's whitelist inkluderer ProSeries eksplicit)
+    · Tilbage til D3 ved dens tur: 1 (den ene Class1-kandidat)
+    · D3's reservation (ønsket 4) sikrer derfor kun: 1
+    · D3's cobbles-familie i alt: 1 (cobbled_tour) + 1 (cobbled_classic) = 2, mod
+      minimum 5 — MANGLER 3.
+  ÅRSAG: hverken D1 eller D2 har cobbled_classic i DERES EGNE reservationer, så
+  downstream-beskyttelses-mekanismen (fix 1) beskytter den ikke for dem — de er frie til
+  at tømme D3's delte forsyning (ProSeries) FØR D3 overhovedet får sin tur. Dette er en
+  ANDEN klasse fejl end cobbled_tour-sagen (der var nøjagtig 1:1 pr. tier); her er
+  forsyningen rigelig i ABSOLUTTE tal (20), men SKÆVT FORDELT på tværs af klasse-
+  whitelists, og D2 alene forbruger langt mere end sin egen 1-reservations-behov.
+  MULIGE VEJE (ejer-beslutning, ikke valgt her): (a) udvid D1/D2's downstream-beskyttelse
+  til også at dække cobbled_classic (kræver eksplicit design-beslutning om hvor meget D1/
+  D2 "har ret til"), (b) sænk D3's cobbles-minimum, eller (c) udvid kataloget med flere
+  ProSeries/Class1 cobbled_classic-løb (proposeCatalogExpansion-mønstret).
+
+VERIFIKATION (dry-run --plan 3 + --season 2):
+a) Endagsløbs-andele (mål ±3 pp) — ALLE 4 TIERS FORTSAT I MÅL:
+   D1 55,6 % (mål 55) · D2 55,9 % (mål 55) · D3 59,4 % (mål 58, +1,4 pp) ·
+   D4 57,7 % (mål 55, +2,7 pp) — reservationen skubbede IKKE D3 tilbage mod
+   klassiker-cirkus (den fylder budgettet med ANDRE endagsløb, som forventet).
+b) K-B sæson-aggregat ±2 pp: JA, begge sæsoner, UÆNDRET fra v4 (0 kategorier uden for
+   bånd). Ingen re-kalibrering nødvendig — reservations-fixet ændrer selection marginalt,
+   ikke stage-profil-genereringen.
+c) Dækningsgarantier + realisme-bånd: 1 BLOKERENDE FUND TILBAGE (D3 cobbles, se ovenfor —
+   ægte kataloghul, rapporteret med tal, IKKE løst). D4's realisme-bånd nu GRØNT.
+d) D1 overlapDays: 20 (uændret fra v4). D2 28 · D3 28 · D4 27. maxOverlap ≤ cap alle
+   tiers. D3's kvote 83/84 (nyt, lille 1-dags mangel — IKKE blokerende, samme klasse som
+   D4's pre-existing mangel).
+e) GT-real-day-separation: 0 brud alle 4 tiers (uændret). D1 GT-spans: Giro [8-16]
+   (mål 0,40→placeret 0,29) · Tour [17-21] (mål 0,61→placeret 0,61, PRÆCIS ramt) ·
+   Vuelta [23-27] (mål 0,79→placeret 0,82). Monument-positioner uændrede
+   (0,21/0,25/0,29/0,32/0,93 mod mål 0,22/0,28/0,30/0,35/0,97).
+
+Test-status: 4 nye tests i tierRaceSelection.test.js (downstreamProtectedArchetypes:
+rod-årsag-reproduktion, beskyttelse virker, scopet til KUN angivne arketyper, bagud-
+kompatibel null-default) + 2 nye integrationstests i tierCalendarMaterializer.test.js
+(cross-tier-knaphed løses; sidste-tier-i-rækken forbliver fri). Fuld backend-suite
+5579/5579 grønne.

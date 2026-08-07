@@ -222,6 +222,24 @@ export function buildTierMaterializationPlan({
     liveByTier.get(p.tier).push(p);
   }
 
+  // #3469 (ejer-fund 8/8): forudberegn, pr. arketype, den SORTEREDE liste af tiers der
+  // reserverer den (want > 0) — bruges til at afgøre om DENNE tier er den SIDSTE til at
+  // reservere en given arketype (intet nedstrøms at beskytte, fri walk) eller om en SENERE
+  // tier også reserverer den (walkens overskud ud over egen reservation skal ekskluderes,
+  // så den knappe forsyning ikke sultes tavst). Se selectTierRaceSet's
+  // downstreamProtectedArchetypes-docstring for rod-årsagen (D2 sultede D4's cobbled_tour).
+  const reservationTiersByArchetype = new Map();
+  for (const [tierKey, cfg] of Object.entries(archetypeReservations ?? {})) {
+    const t = Number(tierKey);
+    if (!Number.isFinite(t)) continue;
+    for (const [arch, want] of Object.entries(cfg ?? {})) {
+      if (Math.max(0, Number(want) || 0) <= 0) continue;
+      if (!reservationTiersByArchetype.has(arch)) reservationTiersByArchetype.set(arch, []);
+      reservationTiersByArchetype.get(arch).push(t);
+    }
+  }
+  for (const arr of reservationTiersByArchetype.values()) arr.sort((a, b) => a - b);
+
   // Cross-tier dedup: øverste tier vælger først (de største løb), lavere fra resten.
   // usedRaceIds/usedRaceNamesRunning seedes med input (fx allerede-materialiserede tiers i DB)
   // så et enkelt-tier-kald (reconcilePoolCalendarOnActivation) ikke kan gense en navn/id der
@@ -246,11 +264,19 @@ export function buildTierMaterializationPlan({
     // #3328: classStageLengthBand ekskluderer etapeløb uden for klassens etapeantal-bånd.
     // priorityArchetypes giver knappe specialist-arketyper (brosten/ITT/mountain-free)
     // forrang ved uafgjort prestige+størrelse.
+    // #3469: arketyper DENNE tier reserverer, hvor en SENERE tier (højere tier-nummer)
+    // OGSÅ reserverer dem — kun disse må ikke dobbelt-dyppes af tierens egen almindelige
+    // walk. En arketype hvor denne tier er den sidste i rækken er upåvirket (fri walk).
+    const downstreamProtectedArchetypes = [...reservationTiersByArchetype.entries()]
+      .filter(([, tiersList]) => tiersList.includes(tier) && tier < tiersList[tiersList.length - 1])
+      .map(([arch]) => arch);
+
     const sel = selectTierRaceSet({
       catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0,
       allowGrandTours: tier === 1, allowedClasses: classWhitelist?.[tier] ?? null,
       classStageLengthBand, oneDayShareTarget: oneDayShareTargets?.[tier] ?? null, priorityArchetypes,
       archetypeReservations: archetypeReservations?.[tier] ?? null,
+      downstreamProtectedArchetypes,
     });
     for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
     for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }

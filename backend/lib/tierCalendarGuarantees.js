@@ -118,10 +118,23 @@ export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 
 //
 // En reservation der ikke kan opfyldes (arketypen findes ikke i tierens klasse-vindue)
 // rapporteres som `unmetReservations` — den forsvinder aldrig tavst.
+//
+// #3469 (ejer-fund 8/8, endagsløbs-balance-opfølgning): D3's cobbled_classic-tilføjelse.
+// D3's lavere endagsløbs-mål (0,76→0,58, samme dags tidligere beslutning) fortrængte
+// cobbled_classic fra D3's almindelige walk — cobbles-terræn-familien (#3327,
+// TIER_TERRAIN_FAMILY_MIN[3].cobbles=5) faldt fra 7 til 1 etape (kun cobbled_tour-
+// reservationens ene garanterede cobbles-etape tilbage). cobbled_tour bidrager 1;
+// cobbled_classic:4 lukker resten (1+4=5, nøjagtig minimum). Samme
+// "reservér-før-det-grådige-walk"-princip som resten af denne tabel — cobbled_classic
+// var IKKE tidligere en reservations-arketype (kun etapeløbs-arketyper var), men
+// #3469-fundet i selectTierRaceSet (rest ekskluderer nu reservations-arketyper fra egen
+// almindelige walk ud over reservationens eget antal, se dér) gør endagsløbs-
+// reservationer lige så robuste som etapeløbs-reservationerne — samme mønster D4's
+// itt_classic allerede beviste virker for endagsløb.
 export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   1: Object.freeze({ cobbled_tour: 1, itt_classic: 1 }),
   2: Object.freeze({ summit_tour: 1, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
-  3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1 }),
+  3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
   4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
 });
 
