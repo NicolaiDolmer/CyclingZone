@@ -34,7 +34,7 @@ import { potentialLabelKey } from "../../lib/scouting";
 // #2849 bølge 5 (ejer-feedback): `hideLevel` skjuler scouting-niveau-badgen
 // ("2/3") — hero-stat-rækken viser kun stjernerne; niveauet hører til i
 // scouting-fanen. Opt-in, eksisterende kald-sites uændrede.
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = false, hideLevel = false, seasonYear = null }) {
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = false, hideLevel = false }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -137,12 +137,12 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   // vis som eksakte stjerner. `exact`-feltet findes ikke længere i det maskerede
   // estimat (#2244 A3) — dette er REN clamping-defensiv, ikke en "kendt eksakt"-gren.
   if (estimate.lo === estimate.hi) {
-    return <PotentialeStars value={estimate.lo} label={label} birthdate={rider.birthdate} seasonYear={seasonYear} large={large} labelAsTitle={labelAsTitle} />;
+    return <PotentialeStars value={estimate.lo} label={label} large={large} labelAsTitle={labelAsTitle} />;
   }
 
   return (
     <span className="inline-flex items-center gap-2 flex-wrap">
-      <PotentialeStars range={estimate} label={label} birthdate={rider.birthdate} seasonYear={seasonYear} large={large} labelAsTitle={labelAsTitle} />
+      <PotentialeStars range={estimate} label={label} large={large} labelAsTitle={labelAsTitle} />
       {!hideLevel && level > 0 && (
         <span className="text-3xs font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>
           {level}/{maxLevel}

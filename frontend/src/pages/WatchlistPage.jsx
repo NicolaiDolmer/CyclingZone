@@ -316,7 +316,7 @@ export default function WatchlistPage() {
     },
     {
       key: "potential", header: t("thPotential"), sortKey: "_scoutMid",
-      render: (entry) => <ScoutablePotentiale rider={entry.rider} scouting={scouting} seasonYear={seasonYear} />,
+      render: (entry) => <ScoutablePotentiale rider={entry.rider} scouting={scouting} />,
     },
     ...STATS.map(({ key, label }) => ({
       key, header: label, numeric: true, sortKey: key,

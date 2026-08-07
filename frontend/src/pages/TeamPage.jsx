@@ -232,7 +232,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
           {scouting.estimateFor(rider.id) !== null && (
             <div className="flex items-center justify-between mb-2 pb-2 border-b border-cz-border">
               <span className="text-cz-3 text-xs">{t("actionModal.potentialLabel")}</span>
-              <ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle hideLevel seasonYear={seasonYear} />
+              <ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle hideLevel />
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
@@ -648,7 +648,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, ac
       compact: true,
       // #2849 bølge 6 + #2888: stjernerne alene — den kvalitative label ligger i
       // tooltip'en (labelAsTitle) og scout-niveauet i scouting-fanen (hideLevel).
-      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel seasonYear={seasonYear} />,
+      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
     },
     {
       key: "value",
