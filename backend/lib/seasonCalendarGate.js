@@ -11,7 +11,10 @@
 // import-sti (`./buildSeasonCalendar.js`) er derfor stadig gyldig for eksisterende
 // kaldere/tests.
 
-import { aggregateCompositionStats, detectCompositionViolations, ACTIVE_TARGET } from "./calendarCompositionTargets.js";
+import {
+  aggregateCompositionStats, detectCompositionViolations, ACTIVE_TARGET,
+  TIER_COMPOSITION_TOLERANCE_PP, COMPOSITION_TOLERANCE_PP,
+} from "./calendarCompositionTargets.js";
 import { detectStageOrderViolations } from "./stageOrderMetrics.js";
 import { scoreSeason, TIER_TARGETS } from "./raceRouteRealismMetrics.js";
 import { resolveSeasonDraw } from "./raceRouteRealismDraw.js";
@@ -63,12 +66,18 @@ export function gatePlan(summary, { allowTierCompositionDrift = false } = {}) {
     // #3469 (leverance 4): pr.-tier K-B-komposition. FØR denne ændring gatede
     // buildSeasonCalendar.js kun SÆSON-AGGREGATET (compositionDrift nedenfor) — en tier
     // kunne afvige markant fra K-B og forsvinde i sæson-gennemsnittet, hvis en anden tier
-    // afveg den modsatte vej. applyMinRaceDayTolerance:true bruger SAMME skalerede
-    // tolerance som #3295's egen dokumentation anbefaler for små stikprøver (tier 4 har
-    // kun 56 løbsdage — ±2 pp der er reelt ±1 etape) i stedet for en fast ±2 pp der ville
-    // være urealistisk stram for de mindre tiers.
+    // afveg den modsatte vej.
+    //
+    // Tolerancen kommer fra TIER_COMPOSITION_TOLERANCE_PP (DATA, calendarCompositionTargets.js
+    // — MÅLT pr.-tier-afvigelse på den nuværende plan + 1 pp buffer, se den tabels
+    // docstring for hvorfor), IKKE fra en generisk størrelses-formel: hver tier trækker
+    // fra et ANDET klasse-vindue af kataloget (tierRaceSelection.js), så tier-skævheden
+    // er katalogets loft, ikke bare en lille-stikprøve-effekt. applyMinRaceDayTolerance:true
+    // bevares som et sikkerhedsnet UNDER tabellen (aldrig strammere end den generiske
+    // skalering) for tiers uden en eksplicit tabel-værdi.
     const { violations: tierDrift } = detectCompositionViolations({
       stats: t.compositionStats, target: ACTIVE_TARGET, label: `tier ${t.tier}`, applyMinRaceDayTolerance: true,
+      tolerancePp: TIER_COMPOSITION_TOLERANCE_PP[t.tier] ?? COMPOSITION_TOLERANCE_PP,
     });
     if (tierDrift.length) {
       if (allowTierCompositionDrift) tierCompositionDrift.push(...tierDrift);
