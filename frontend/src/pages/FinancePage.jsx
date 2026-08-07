@@ -16,6 +16,7 @@ import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import { FINANCE_CATEGORIES, buildCategoryOrFilter } from "../lib/financeCategories";
 import { computeLoanRiskSummary } from "../lib/loanRisk";
+import { computeReservedBalance } from "../lib/availableBalance";
 import {
   Tabs, TabList, Tab, TabPanel,
   Card, Button, Input, Select, ProgressMeter, PageLoader,
@@ -209,26 +210,10 @@ export default function FinancePage() {
     } else {
       setForecast(null);
     }
-    // #44: worst-case commitment = MAX(current_price, my_proxy_max) for leading
-    // + my_proxy_max for ikke-leading auktioner.
-    const leadingMap = new Map();
-    for (const a of leadingRes.data || []) leadingMap.set(a.id, a.current_price || 0);
-    const proxyMap = new Map();
-    for (const p of proxiesRes.data || []) {
-      if (["active", "extended"].includes(p.auction?.status)) {
-        proxyMap.set(p.auction_id, p.max_amount || 0);
-      }
-    }
-    let reserved = 0;
-    const seen = new Set();
-    for (const [auctionId, currentPrice] of leadingMap) {
-      reserved += Math.max(currentPrice, proxyMap.get(auctionId) || 0);
-      seen.add(auctionId);
-    }
-    for (const [auctionId, proxyMax] of proxyMap) {
-      if (!seen.has(auctionId)) reserved += proxyMax;
-    }
-    setReservedBalance(reserved);
+    // #44/#3508: worst-case commitment = MAX(current_price, my_proxy_max) for
+    // leading + my_proxy_max for ikke-leading auktioner. Delt med Dashboard-
+    // headeren via lib/availableBalance.js så tallene aldrig kan drifte.
+    setReservedBalance(computeReservedBalance(leadingRes.data, proxiesRes.data));
 
     // #2305: præmie-kortet er sæson-scoped og server-beregnet. Genbruger
     // finance-report-endpointets prizes-blok (season-sum + antal løb + all-time)

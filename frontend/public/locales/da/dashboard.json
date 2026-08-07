@@ -2,7 +2,8 @@
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rytter} other {# ryttere}}",
     "incoming": "+{count} ind",
-    "outgoing": "−{count} ud"
+    "outgoing": "−{count} ud",
+    "lockedInBids": "{value} CZ$ låst i bud"
   },
   "nextActions": {
     "title": "Næste træk",

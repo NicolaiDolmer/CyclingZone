@@ -2,7 +2,8 @@
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rider} other {# riders}}",
     "incoming": "+{count} in",
-    "outgoing": "−{count} out"
+    "outgoing": "−{count} out",
+    "lockedInBids": "{value} CZ$ locked in bids"
   },
   "nextActions": {
     "title": "Next move",

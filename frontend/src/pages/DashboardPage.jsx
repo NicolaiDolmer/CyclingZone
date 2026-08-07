@@ -52,6 +52,7 @@ import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
 import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { computeSeasonMovement } from "../lib/seasonRecapData.js";
+import { fetchReservedBalance, computeAvailableBalance } from "../lib/availableBalance.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
@@ -95,6 +96,10 @@ export default function DashboardPage() {
   const [riders, setRiders] = useState([]);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
   const [allAuctions, setAllAuctions] = useState([]);
+  // #3508: reserveret beløb i førende auktionsbud + proxy-max — samme
+  // beregning som FinancePage (lib/availableBalance.js), så header-saldoen
+  // aldrig kan vise et højere disponibelt tal end Finance-siden.
+  const [reservedBalance, setReservedBalance] = useState(0);
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
   // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
@@ -219,7 +224,7 @@ export default function DashboardPage() {
           .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
       : Promise.resolve({ data: [] });
 
-    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes, poolsRes] = await Promise.all([
+    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
       // #2182: league_division_id + is_frozen-udelukkelse med — samme "rigtige
       // hold"-diskriminator (ikke-AI/test/frosne) og select-udvidelse som
       // StandingsPage.jsx's teamsPromise, så rangliste-modulet kan pulje-scope.
@@ -275,8 +280,12 @@ export default function DashboardPage() {
       poolRacesPromise,
       // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
       supabase.from("league_divisions").select("id, tier, pool_index, label"),
+      // #3508: reserveret beløb i førende bud + proxy-max — delt helper med
+      // FinancePage (lib/availableBalance.js), se kommentar ved state-deklarationen.
+      fetchReservedBalance(supabase, teamData.id),
     ]);
 
+    setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
     setPools(poolsRes.data || []);
     setPoolRaceDays(poolRaceDayTotals(poolRacesRes.data || []));
@@ -831,8 +840,19 @@ export default function DashboardPage() {
                 saldoblokken læses som et link (den linker allerede til /finance). */}
             <Link to="/finance" className="flex items-center gap-1 text-right group" title={t("common:sidebar.balance")}>
               <div>
-                <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">{formatNumber(team?.balance)} CZ$</p>
+                {/* #3508: disponibel saldo (rå minus bundet i førende bud + proxy-max) —
+                    samme beregning som FinancePage (lib/availableBalance.js), aldrig rå
+                    team.balance. Det bundne beløb er synligt nedenfor (genbruger
+                    FinancePage's "locked in bids"-formsprog). */}
+                <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">
+                  {formatNumber(computeAvailableBalance(team?.balance, reservedBalance))} CZ$
+                </p>
                 <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
+                {reservedBalance > 0 && (
+                  <p className="text-cz-3/70 text-xs">
+                    {t("dashboard:header.lockedInBids", { value: formatNumber(reservedBalance) })}
+                  </p>
+                )}
               </div>
               <ChevronRightIcon size={16} className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0" aria-hidden="true" />
             </Link>
