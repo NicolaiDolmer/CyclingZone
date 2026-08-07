@@ -16,13 +16,21 @@
 
 // ── #3327: endagsløb/etapeløb-mix pr. tier (andel af RACE COUNT, ikke game-days) ──
 //
-// D2 hævet til ~50/50 (ejer-beslutning 4/8, #3327-kommentar). D1/D3/D4 sat til deres
-// NUVÆRENDE observerede andel (prod, sæson 2, 4/8) som bevidst target/floor — ingen
-// tilsigtet ændring for dem, kun at gøre tallet til data i stedet for et biprodukt af
-// en grådig prestige-sortering. Floor = target minus en tolerance (rounding + katalog-
-// knaphed kan gøre præcis ramte target urealistisk).
-export const TIER_ONE_DAY_SHARE_TARGET = Object.freeze({ 1: 0.48, 2: 0.50, 3: 0.76, 4: 0.50 });
-export const TIER_ONE_DAY_SHARE_MIN = Object.freeze({ 1: 0.38, 2: 0.40, 3: 0.62, 4: 0.40 });
+// EJER-BESLUTNING 2026-08-07 morgen (afløser 4/8-frysningen nedenfor — se den kun som
+// historik): "Der mangler nogle endagsløb i 1. division. Der er for mange i 3. division.
+// 2. division kan godt holde til et par stykker mere. Mere ensartet balance." Orkestrator-
+// oversættelse til mål (antal-andel endagsløb): D1 0,55 (op fra 0,48 — for få endagsløb) ·
+// D2 0,55 (op fra 0,50 — "kan godt holde til et par stykker mere") · D3 0,58 (NED fra
+// 0,76 — "for mange") · D4 0,55 (uændret niveau, nu eksplicit samme tal som D1/D2 for
+// "mere ensartet balance" i stedet for et separat 0,50-tal). MIN = target − 0,10 (husets
+// mønster fra 4/8-frysningen, uændret metode).
+//
+// HISTORIK (4/8-frysning, nu AFLØST): D2 hævet til ~50/50 (ejer-beslutning 4/8,
+// #3327-kommentar). D1/D3/D4 var sat til deres DAVÆRENDE observerede andel (prod, sæson 2,
+// 4/8) som bevidst target/floor — ingen tilsigtet ændring for dem dengang, kun at gøre
+// tallet til data i stedet for et biprodukt af en grådig prestige-sortering.
+export const TIER_ONE_DAY_SHARE_TARGET = Object.freeze({ 1: 0.55, 2: 0.55, 3: 0.58, 4: 0.55 });
+export const TIER_ONE_DAY_SHARE_MIN = Object.freeze({ 1: 0.45, 2: 0.45, 3: 0.48, 4: 0.45 });
 
 // ── #3328: klasse↔etapeantal-bånd (ejer-beslutning 4/8) ──
 //

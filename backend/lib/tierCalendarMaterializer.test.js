@@ -62,11 +62,19 @@ const routeStr = (profiles) => profiles.slice().sort((a, b) => a.stage_number - 
   .map((p) => `${p.stage_number}:${p.profile_type}|${p.finale_type ?? ""}`).join(">");
 
 // Tier-3-katalog: ProSeries + Class1, > kvote 84.
+// #3469 (2026-08-07 morgen, ejer-beslutning om endagsløbs-balancen): D3's endagsløb-
+// TARGET faldt 0,76→0,58 — under DEFAULT (ikke-LEGACY_MIX) settings vil to-fase-budgettet
+// nu bede om FLERE etapeløbs-game-days end før. ProSeries-etapeløbene på 8/6 falder uden
+// for #3328's klasse-bånd [3,5] og udgår derfor af det tilgængelige udvalg under default —
+// Class1-etapeløbs-udvalget er derfor udvidet (Class1 har intet bånd) så fixturen har nok
+// forsyning til at ramme 84 UDEN shortfall under de nye default-mål (verificeret mod det
+// rigtige katalog: D3 rammer 84/84 uændret — det er KUN denne lille syntetiske fixture der
+// var for sparsom).
 function tier3Catalog() {
   const rows = [];
   [8, 6, 5, 5, 4].forEach((st, i) => rows.push({ id: `ps-sr-${i}`, name: `Stage ${i}`, race_class: "ProSeries", race_type: "stage_race", stages: st }));
   for (let i = 0; i < 40; i++) rows.push({ id: `ps-od-${i}`, name: `Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1 });
-  [5, 4, 4, 4, 3].forEach((st, i) => rows.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
+  [5, 4, 4, 4, 3, 5, 4, 4, 4, 3, 5, 4, 4, 4, 3].forEach((st, i) => rows.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
   for (let i = 0; i < 10; i++) rows.push({ id: `c1-od-${i}`, name: `C1 Classic ${i}`, race_class: "Class1", race_type: "single", stages: 1 });
   return rows;
 }
