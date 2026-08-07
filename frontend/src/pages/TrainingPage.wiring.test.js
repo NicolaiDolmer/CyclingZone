@@ -13,8 +13,22 @@ const src = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
 test("#1480.1 roster-query henter ryttertype-kolonnerne", () => {
   assert.match(
     src,
-    /\.select\("id, firstname, lastname, primary_type, secondary_type"\)/,
-    "querien skal hente primary_type/secondary_type så typen kan vises",
+    /\.select\("id, firstname, lastname, primary_type, secondary_type, is_academy"\)/,
+    "querien skal hente primary_type/secondary_type så typen kan vises, + is_academy (#3300)",
+  );
+});
+
+// #3300: akademi-status pr. rytter-række — is_academy medtages read-only i den
+// eksisterende roster-query (INGEN ny query/migration) og vises via den
+// eksisterende RiderBadges-recipe (samme "academy"-badge som TeamPage/
+// TeamProfilePage), placeret i den sticky navne-celle så den er synlig uændret
+// på desktop OG portræt-mobil uden en ny kolonne.
+test("#3300 roster-rækken viser akademi-status via den delte RiderBadges-recipe", () => {
+  assert.match(src, /import RiderBadges from "\.\.\/components\/rider\/RiderBadges\.jsx"/);
+  assert.match(
+    src,
+    /<RiderBadges badges=\{\[rider\.is_academy && "academy"\]\} \/>/,
+    "skal genbruge den eksisterende academy-badge-nøgle, ikke en ny visuel",
   );
 });
 

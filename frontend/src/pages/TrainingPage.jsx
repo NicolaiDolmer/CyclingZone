@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
+import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
@@ -235,9 +236,12 @@ export default function TrainingPage() {
           .eq("user_id", user.id)
           .single();
         if (!myTeam) return;
+        // #3300: is_academy medtages read-only i samme select (ingen migration,
+        // intet nyt kald) — feltet findes allerede på riders, kun mangel på
+        // visning på trænings-siden.
         const { data } = await supabase
           .from("riders")
-          .select("id, firstname, lastname, primary_type, secondary_type")
+          .select("id, firstname, lastname, primary_type, secondary_type, is_academy")
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders(data || []);
@@ -490,6 +494,13 @@ export default function TrainingPage() {
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
               {rider.firstname} {rider.lastname}
             </RiderLink>
+            {/* #3300: akademi-status pr. rytter-række — genbruger den eksisterende
+                akademi-badge/chip-recipe (RiderBadges, samme som TeamPage/
+                TeamProfilePage) i stedet for at opfinde en ny visuel. Placeret i
+                den sticky navne-celle, så den ér synlig uændret på desktop OG
+                portræt-mobil uden en ny kolonne (least-invasive, jf. issue #3300
+                spm. 1+3 — ingen gruppering, ingen ny mobil-logik nødvendig). */}
+            <RiderBadges badges={[rider.is_academy && "academy"]} />
             {/* #1895 PR 2: markering for ryttere med egen ugeplan-override, så man
                 kan se hvem der kører sit eget program uden at åbne panelet. */}
             {hasOwnWeekPlan && (
