@@ -33,7 +33,7 @@ import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { ageForSeason } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
-import { BlockedNote, Button, Card, CheckIcon, ErrorState, PageLoader, XIcon } from "../components/ui";
+import { AmountInput, BlockedNote, Button, Card, CheckIcon, ErrorState, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
@@ -177,8 +177,9 @@ function SwapOfferButton({ rider, myTeamId }) {
           </select>
           <div className="flex items-center gap-2">
             <label className="text-cz-3 text-xs flex-shrink-0">{t("swapOffer.cashLabel")}</label>
-            <input type="number" value={cash} onChange={e => setCash(parseInt(e.target.value) || 0)}
-              className="flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+            <AmountInput value={cash} onValueChange={v => setCash(v ?? 0)}
+              wrapperClassName="flex-1"
+              className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           </div>
           <p className="text-cz-3 text-xs">{t("swapOffer.cashHint")}</p>
           <button onClick={sendSwap} disabled={loading || !offeredId}
@@ -244,7 +245,7 @@ function DirectOfferButton({ rider }) {
       </button>
       {show && (
         <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
-          <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
+          <AmountInput value={amount} onValueChange={v => setAmount(v ?? 0)}
             placeholder={t("directOffer.amountPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <input type="text" value={message} onChange={e => setMessage(e.target.value)}
@@ -409,9 +410,10 @@ function TransferListButton({ rider }) {
       {show && (
         <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <p className="text-cz-3 text-xs">{t("sellRider.description")}</p>
-          <input type="number" value={price} min={1}
-            onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
+          <AmountInput value={price}
+            onValueChange={v => setPrice(v)}
             placeholder={t("sellRider.pricePlaceholder")}
+            data-testid="transfer-list-price-input"
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <button onClick={submit} disabled={loading || priceInvalid}
             className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
@@ -520,13 +522,12 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
       ) : (
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-[1fr_auto] gap-2">
-            <input
-              type="number"
+            <AmountInput
               value={bidAmount}
-              min={minBid}
-              onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
+              onValueChange={v => setBidAmount(v ?? 0)}
               aria-label={t("auctionPanel.bidInputAria")}
-              className="min-w-0 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+              wrapperClassName="min-w-0"
+              className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
             />
             <button
               type="button"
@@ -583,15 +584,14 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
               </button>
             ) : (
               <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
+                <div className="flex items-start gap-2">
+                  <AmountInput
                     value={proxyInput}
-                    min={minBid}
-                    onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                    onValueChange={v => setProxyInput(v ?? 0)}
                     placeholder={t("auctionPanel.proxy.inputPlaceholder")}
                     aria-label={t("auctionPanel.proxy.inputAria")}
-                    className="min-w-0 w-32 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                    wrapperClassName="min-w-0 w-32"
+                    className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     type="button"
@@ -649,7 +649,9 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   const [typoWarning, setTypoWarning] = useState(null);
 
   // Egne ryttere: pris må være mellem 0 og Værdi (ikke over). AI/fri rytter: Værdi er gulvet.
-  const priceError      = isOwnRider ? (price > riderValue || price < 0) : (price < riderValue);
+  // price === null (ugyldigt/ikke-parsbart format, #3495) tælles altid som fejl
+  // — ellers ville et ugyldigt tal ikke coerce til noget der fejler tjekket.
+  const priceError      = price == null || (isOwnRider ? (price > riderValue || price < 0) : (price < riderValue));
 
   async function submitAuction() {
     setLoading(true);
@@ -682,14 +684,13 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
               <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
             </label>
           )}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="number"
+          <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+            <AmountInput
               value={price}
-              min={isOwnRider ? 0 : riderValue}
-              max={isOwnRider ? riderValue : undefined}
-              onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
-              className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
+              onValueChange={v => setPrice(v)}
+              data-testid="auction-start-price-input"
+              wrapperClassName="min-w-0 flex-1"
+              className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
                 ${priceError
                   ? "border-cz-danger/40 focus:border-cz-danger"
                   : "border-cz-border focus:border-cz-accent"}`}

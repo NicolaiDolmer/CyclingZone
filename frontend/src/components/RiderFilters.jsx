@@ -18,6 +18,14 @@ import { useTranslation } from "react-i18next";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
 import { Card, ChevronRightIcon, Input, Select, XIcon } from "./ui";
+import { parseAmountInput } from "../lib/amountInput.js";
+
+// #3495: filter-chippen viste tidligere parseInt(filters.min_x) — samme
+// faktor-1000-fejl som beløbsfelterne, hvis brugeren har tastet fx "150.000".
+function parsedFilterAmount(raw) {
+  const parsed = parseAmountInput(raw);
+  return parsed.valid ? parsed.value : 0;
+}
 import { labelClass } from "./ui/fieldStyles.js";
 import { formatNumber } from "../lib/intl";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
@@ -470,10 +478,10 @@ export default function RiderFilters({
           {filters.max_salary && <Chip t={t} label={t("chips.salary.max", { amount: formatNumber(parseInt(filters.max_salary)) })} onRemove={() => onChange("max_salary", "")} />}
           {filters.min_age && <Chip t={t} label={t("chips.age.min", { value: filters.min_age })} onRemove={() => onChange("min_age", "")} />}
           {filters.max_age && <Chip t={t} label={t("chips.age.max", { value: filters.max_age })} onRemove={() => onChange("max_age", "")} />}
-          {filters.min_auction_price && <Chip t={t} label={t("chips.bid.min", { amount: formatNumber(parseInt(filters.min_auction_price)) })} onRemove={() => onChange("min_auction_price", "")} />}
-          {filters.max_auction_price && <Chip t={t} label={t("chips.bid.max", { amount: formatNumber(parseInt(filters.max_auction_price)) })} onRemove={() => onChange("max_auction_price", "")} />}
-          {showAskingPriceFilter && filters.min_asking_price && <Chip t={t} label={t("chips.askingPrice.min", { amount: formatNumber(parseInt(filters.min_asking_price)) })} onRemove={() => onChange("min_asking_price", "")} />}
-          {showAskingPriceFilter && filters.max_asking_price && <Chip t={t} label={t("chips.askingPrice.max", { amount: formatNumber(parseInt(filters.max_asking_price)) })} onRemove={() => onChange("max_asking_price", "")} />}
+          {filters.min_auction_price && <Chip t={t} label={t("chips.bid.min", { amount: formatNumber(parsedFilterAmount(filters.min_auction_price)) })} onRemove={() => onChange("min_auction_price", "")} />}
+          {filters.max_auction_price && <Chip t={t} label={t("chips.bid.max", { amount: formatNumber(parsedFilterAmount(filters.max_auction_price)) })} onRemove={() => onChange("max_auction_price", "")} />}
+          {showAskingPriceFilter && filters.min_asking_price && <Chip t={t} label={t("chips.askingPrice.min", { amount: formatNumber(parsedFilterAmount(filters.min_asking_price)) })} onRemove={() => onChange("min_asking_price", "")} />}
+          {showAskingPriceFilter && filters.max_asking_price && <Chip t={t} label={t("chips.askingPrice.max", { amount: formatNumber(parsedFilterAmount(filters.max_asking_price)) })} onRemove={() => onChange("max_asking_price", "")} />}
           {showValueDeviationFilter && filters.min_value_deviation_pct && <Chip t={t} label={t("chips.valueDeviation.min", { value: filters.min_value_deviation_pct })} onRemove={() => onChange("min_value_deviation_pct", "")} />}
           {showValueDeviationFilter && filters.max_value_deviation_pct && <Chip t={t} label={t("chips.valueDeviation.max", { value: filters.max_value_deviation_pct })} onRemove={() => onChange("max_value_deviation_pct", "")} />}
           {filters.u25 && <Chip t={t} label={t("toggles.u25")} onRemove={() => onChange("u25", false)} />}

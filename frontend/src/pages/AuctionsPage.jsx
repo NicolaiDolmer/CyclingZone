@@ -48,13 +48,14 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
+import { parseAmountInput } from "../lib/amountInput.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { ageBadgeKey, retirementRiskBadgeKey, ageForSeason } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import {
-  Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
+  AmountInput, Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
   PageHeader, Section, EmptyState, ErrorState, BlockedNote, XIcon,
 } from "../components/ui";
 // #2849 bølge 1: tabel-wrap-radius/border deles med cz-table-recipen (T2), men
@@ -404,14 +405,15 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 reelt får plads uden at wrappe. Min-bud vises som title-tooltip
                 på input i stedet for en selvstændig tekstlinje under. */}
             <div className="flex items-center gap-1.5">
-              <input
-                type="number"
+              <AmountInput
                 value={bidAmount}
-                min={minBid}
-                onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
+                onValueChange={v => setBidAmount(v ?? 0)}
+                showPreview={false}
                 data-tour={isFirst ? "auctions-bid-input" : undefined}
                 aria-label={t("auctions:bid.inputAria")}
                 title={t("auctions:bid.minBid", { amount: formatNumber(minBid) })}
+                wrapperClassName="contents"
+                feedbackClassName="text-3xs text-cz-danger max-w-[90px] leading-tight"
                 className="w-20 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
                   text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
               />
@@ -472,13 +474,14 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
             {proxyExpanded && (
               <div className="flex flex-col gap-0.5 mt-0.5">
                 <div className="flex items-center gap-1">
-                  <input
-                    type="number"
+                  <AmountInput
                     value={proxyInput}
-                    min={minBid}
-                    onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                    onValueChange={v => setProxyInput(v ?? 0)}
+                    showPreview={false}
                     placeholder={t("auctions:bid.proxy.placeholder")}
                     aria-label={t("auctions:bid.proxy.inputAria")}
+                    wrapperClassName="contents"
+                    feedbackClassName="text-3xs text-cz-danger max-w-[240px] leading-tight"
                     className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-none focus:border-cz-accent"
                   />
                   <button
@@ -686,14 +689,13 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 knappen (side om side, ikke stablet under). flex-wrap er kun en
                 responsiv sikkerhedsventil for meget smalle bredder. */}
             <div className="flex items-center gap-2 flex-wrap">
-              <input
-                type="number"
+              <AmountInput
                 value={bidAmount}
-                min={minBid}
-                onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
+                onValueChange={v => setBidAmount(v ?? 0)}
                 data-tour={isFirst ? "auctions-bid-input" : undefined}
                 aria-label={t("auctions:bid.inputAria")}
-                className="min-w-0 flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                wrapperClassName="min-w-0 flex-1"
+                className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
               />
               <button
                 type="button"
@@ -754,15 +756,14 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             )}
             {proxyExpanded && (
               <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
+                <div className="flex items-start gap-2">
+                  <AmountInput
                     value={proxyInput}
-                    min={minBid}
-                    onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                    onValueChange={v => setProxyInput(v ?? 0)}
                     placeholder={t("auctions:bid.proxy.placeholder")}
                     aria-label={t("auctions:bid.proxy.inputAria")}
-                    className="min-w-0 w-32 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                    wrapperClassName="min-w-0 w-32"
+                    className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     type="button"
@@ -1458,10 +1459,11 @@ export default function AuctionsPage() {
 
   function passesAuctionPriceFilter(a) {
     const price = a.current_price || 0;
-    const minP = parseInt(riderFilters.filters.min_auction_price);
-    const maxP = parseInt(riderFilters.filters.max_auction_price);
-    if (!isNaN(minP) && price < minP) return false;
-    if (!isNaN(maxP) && price > maxP) return false;
+    // #3495: parseInt("150.000") → 150 ramte filter-feltet ligesom bud-felterne.
+    const minP = parseAmountInput(riderFilters.filters.min_auction_price);
+    const maxP = parseAmountInput(riderFilters.filters.max_auction_price);
+    if (minP.valid && price < minP.value) return false;
+    if (maxP.valid && price > maxP.value) return false;
     return true;
   }
 

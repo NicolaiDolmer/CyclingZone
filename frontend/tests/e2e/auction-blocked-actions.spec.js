@@ -24,7 +24,11 @@ test("auto-bid Save explains itself instead of dying silently (#2719)", async ({
   // .first() rammer den flade viewporten faktisk renderer).
   await page.getByRole("button", { name: /autobud-loft|auto-bid limit/i }).first().click();
 
-  const limitInput = page.getByRole("spinbutton", { name: /autobud-loft|auto-bid limit/i }).first();
+  // #3495: proxy-/bud-felterne skiftede fra type="number" (role "spinbutton")
+  // til type="text" + inputMode="numeric" (role "textbox") for at kunne
+  // acceptere danske tusindtalsseparatorer ("," og mellemrum blokeres helt af
+  // native number-inputs).
+  const limitInput = page.getByRole("textbox", { name: /autobud-loft|auto-bid limit/i }).first();
   await expect(limitInput).toBeVisible();
   await limitInput.fill("40000");
 
