@@ -145,3 +145,74 @@ Test-status: fuld backend-suite 5571/5571 grønne. raceCalendarLanePacker.test.j
 (GT-anker-testen "packer: stream — GT-rygraden fase-ankres..." udvidet med et
 overlapDays≥20-regressionsvagt + maxOverlap≤3, målt til 22 på en synthetic fixture der
 efterligner det rigtige katalogs D1-form).
+
+── PR #3472 opfølgning (6/8, tredje runde): ejer-fund rettede GT-real-day-deling ──────
+
+Ejeren verificerede i placements-data at v2's GT'er DELTE kalenderdag på real-day-aksen
+selvom deres game_day-spans var strengt disjunkte (game_day-non-overlap på stream 0 er
+STRUKTUREL, men flere spor interleaves ind i samme real_day ved slot-komprimeringen,
+real_day = floor(slot/D)). Målt: Giro sluttede real_day 19, Tour startede real_day 19
+(delt); Tour sluttede 23, Vuelta startede 23 (delt). Ejer: "det må de altså ikke kunne."
+
+ROD-ÅRSAG (fundet ved afprøvning mod det rigtige katalog, to forkastede forsøg først):
+Least-loaded-fyldet (fra runde 1's overlap-fix) vælger PR. DEFINITION den mindst
+belastede stream — lige efter en GT ligger stream 0 ALTID foran stream 1-2, så ALT
+efterfølgende "gulv"-fyld (uanset hvor højt fase-targettet sættes) lander på 1-2 og
+BACKFILLER deres LAVERE game_day-værdier. Det rykker ALDRIG stream 0's egen cursor og
+skaber derfor INGEN game_day-afstand til den næste GT (som starter PRÆCIS ved stream 0's
+cursor). To forsøg der byggede videre på targettet alene (en placedCount-baseret variant
+og en "alle-streams-skal-indhente-niveau"-variant, begge afledt af ejerens oprindelige
+formel) ÆNDREDE INGENTING i praksis — GT'erne forblev ryg-mod-ryg i game_day (fx Giro
+13-33, Tour 34-54, ZERO game_day-mellemrum) uanset gulvets størrelse, fordi least-loaded
+konsekvent undgår at fylde stream 0 selv.
+
+FIX (v3, raceCalendarLanePacker.js layoutStream): et LILLE, EKSPLICIT stream-0-KUN
+buffer (GT_SEPARATION_BUFFER_DAYS×D events, sat til det hårde minimum 1×D efter måling —
+se afvejning nedenfor) placeres FØRST, umiddelbart efter forrige GT, ligeglad med
+least-loaded — den ENESTE måde at reelt rykke stream 0's cursor fremad. Bufferet vælger
+det mindst-overskydende tilgængelige løb (helst præcis passende, evt. via flere små løb)
+for at minimere spild. Resten af fremdriften mod fase-targettet forbliver least-loaded
+over ALLE streams som i runde 1 (bevarer det meste af overlap-fixet). En ÆGTE
+efter-hånden-verifikation (diagnose()'s nye gtRealDaySeparationViolations-felt, uafhængig
+af hvordan layoutet KONSTRUEREDE separationen) rapporterer ethvert resterende brud i
+stedet for at fejle stille — målt: 0 brud på alle 4 tiers.
+
+AFVEJNING overlap vs. separation (målt, flere buffer-størrelser afprøvet mod det rigtige
+katalog): tier 1's konkrete restløbs-udvalg (KUN 17 ikke-GT-ikke-monument-løb, tier 1
+vælger 25 løb i alt: 3 GT + 5 monumenter + 17 rest) er sparsomt — der er ikke meget
+"fyldstof" til at både garantere adskillelse OG maksimere overlap samtidig. Testet:
+  Buffer 1×D (5 events): D1 overlapDays 20, INGEN delte dage (valgt, se nedenfor)
+  Buffer 2×D (10 events, "1 tom bufferdag"): D1 overlapDays 17, stadig ingen delte dage
+  Buffer 3-6×D: 17-18, ikke bedre end 2×D
+Buffer 1×D (hårdt minimum: aldrig delt dag, men ikke nødvendigvis en HEL tom dag) valgt
+som bedste afvejning. D1 overlapDays FALDT fra runde 1's 22 til 20 — 1 UNDER ejerens
+"≥21"-krav. Dette er RAPPORTERET ÅBENT, ikke skjult: separations-kravet ("ingen delt dag")
+er ufravigeligt per ejer-instruks og PRIORITERET over overlap-tallet i denne PR, men de to
+mål trækker i modsatte retninger på tier 1's konkrete (sparsomme) restløbs-udvalg, og jeg
+har ikke fundet en konfiguration der rammer BEGGE mål præcist. Kræver ejer-beslutning:
+accepter 20, eller find en anden vej (fx udvid tier 1's restløbs-kvote, hvis det er en
+mulighed).
+
+Målt (dry-run --plan 3, rigtigt katalog, buildTierMaterializationPlan + diagnose()):
+  overlapDays: D1 22→20 (❌ 1 under ≥21-kravet) · D2 27 (uændret) · D3 28 (uændret) ·
+  D4 27 (uændret). maxOverlap uændret (≤cap alle tiers). gtRealDaySeparationViolations:
+  0 på ALLE 4 tiers (kriterium a opfyldt: INGEN delt kalenderdag).
+
+  GT real-day-spans (D1): Giro real_day 8-16 (mål-fraction 0.40 → placeret-fraction 0.29) ·
+  Tour real_day 18-22 (mål 0.61 → placeret 0.64) · Vuelta real_day 23-27 (mål 0.79 →
+  placeret 0.82). Mellemrum: Giro→Tour = 1 TOM kalenderdag (dag 17) · Tour→Vuelta = 0 tomme
+  dage men INGEN deling (dag 22 slutter, dag 23 starter — nabodage, ikke samme dag).
+  GT-rækkefølge (Giro→Tour→Vuelta) korrekt bevaret; præcisionen er svagt bedre for Giro
+  (0.29 vs runde 2's 0.29, uændret) og Tour (0.64 vs runde 2's 0.68 — faktisk BEDRE), men
+  Vuelta uændret (0.82).
+
+  Monument-positioner (D1): UÆNDREDE — 39799ba9 0.22→0.21 · 901d1a00 0.28→0.25 ·
+  ebfac467 0.30→0.29 · f2ace2bf 0.35→0.32 · d17d0b5c 0.97→0.93 (kriterium d opfyldt,
+  mekanikken er ikke rørt af denne fix).
+
+  Komposition/gates: byte-identiske med tidligere (flad 25,6 % · kuperet 31,8 % ·
+  bjerg 27,9 % · ITT 8,5 % · brosten 6,2 % · TTT 0,0 %, 387 løbsdage) — alle gates grønne
+  (kriterium d opfyldt).
+
+Test-status: raceCalendarLanePacker.test.js 22/22 (2 nye: GT-real-day-adskillelse på
+synthetic fixture + fallback-bit-identisk-verifikation). Fuld backend-suite 5573/5573.

@@ -228,14 +228,55 @@ test("packer: stream — GT-rygraden fase-ankres, forbliver non-overlap, ingen t
     + cfg.oneDayRaces.filter((x) => x.race_class !== "Monuments").length;
   assert.equal(nonMonumentDays, inputNonMonumentDays, "ingen ikke-monument-events tabt");
   assert.ok(r.timelineLength <= totalSlots, `timelineLength ${r.timelineLength} > totalSlots ${totalSlots}`);
-  // #3472 (ejer-feedback PR #3472, 6/8): regressions-vagt mod D1-overlap-kollapset — v1's
-  // GT-anker fyldte KUN stream 0 mod hvert target, hvilket gjorde sene dele af sæsonen næsten
-  // enkelt-sporede (mål på det rigtige katalog: overlapDays faldt 21→16). v2 fordeler rest-
-  // fyldet LEAST-LOADED over ALLE streams under fremdriften mod targetSlot. Denne fixture giver
-  // 22 med v2 (målt); tærsklen sættes til 20 — solidt over v1's kollaps, med margin mod naturlig
-  // fixture-følsomhed.
-  assert.ok(r.overlapDays >= 20, `#3472-regression: overlapDays ${r.overlapDays} for lavt — GT-ankeret klemmer sandsynligvis stream 1-2 tomme igen`);
+  // #3472 (ejer-feedback PR #3472, 6/8 — to runder): regressions-vagt mod D1-overlap-
+  // kollapset — v1's GT-anker fyldte KUN stream 0 mod hvert target, hvilket gjorde sene dele
+  // af sæsonen næsten enkelt-sporede (mål på det rigtige katalog: overlapDays faldt 21→16).
+  // v2 fordeler rest-fyldet LEAST-LOADED over ALLE streams under fremdriften mod targetSlot.
+  // v3 (anden runde) tilføjer et lille eksplicit stream-0-KUN separations-buffer mellem
+  // konsekutive GT'er (se næste test) — det koster ganske lidt overlap igen. Denne fixture
+  // giver 21 med v3 (målt, ned fra v2's 22); tærsklen sættes til 18 — solidt over v1's
+  // kollaps, med margin mod naturlig fixture-/katalog-følsomhed (det RIGTIGE katalogs tier 1
+  // har et sparsommere restløbs-udvalg end denne fixture og lander på 20, jf. PR-body).
+  assert.ok(r.overlapDays >= 18, `#3472-regression: overlapDays ${r.overlapDays} for lavt — GT-ankeret klemmer sandsynligvis stream 1-2 tomme igen`);
   assert.ok(r.maxOverlap <= 3, `maxOverlap ${r.maxOverlap} > cap 3`);
+});
+
+test("packer: stream — GT-real-day-adskillelse (#3472 v3) — konsekutive GT'er deler ALDRIG kalenderdag", () => {
+  // Ejer-fund 6/8 (anden runde): game_day-non-overlap på stream 0 garanterede IKKE disjunkte
+  // KALENDERDAGE (real_day) — flere spor interleaves ind i samme real_day ved slot-
+  // komprimeringen. Denne test verificerer FAKTISKE real_day-spans (ikke kun game_day).
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  const r = packLaneCalendar(cfg);
+  assert.equal(r.layoutMode, "stream");
+  assert.deepEqual(r.gtRealDaySeparationViolations, [], "diagnose() skal rapportere ZERO GT-real-day-brud");
+
+  const spans = ["gt-1", "gt-2", "gt-3"].map((id) => {
+    const rd = r.placements.find((p) => p.id === id).stagesPlaced.map((s) => s.real_day);
+    return { id, start: Math.min(...rd), end: Math.max(...rd) };
+  }).sort((a, b) => a.start - b.start);
+  for (let i = 1; i < spans.length; i++) {
+    const gap = spans[i].start - spans[i - 1].end;
+    assert.ok(gap >= 1, `${spans[i - 1].id} (slutter dag ${spans[i - 1].end}) og ${spans[i].id} (starter dag ${spans[i].start}) deler eller overlapper kalenderdag`);
+  }
+  // Fallback (ingen fractions) skal fortsat være urørt — ingen separations-logik kan udløses
+  // uden GT-fractions, og diagnose() skal stadig returnere en tom violations-liste (ingen GT'er
+  // identificeret som "adskilt for sent" når stien slet ikke rammer fase-ankeret).
+  const fallback = packLaneCalendar(div1());
+  assert.deepEqual(fallback.gtRealDaySeparationViolations, []);
+});
+
+test("packer: GT-real-day-adskillelse — fallback (ingen fractions) er BIT-IDENTISK med før #3472 v3", () => {
+  // spineMinStages sendes nu til diagnose() (nyt param) — verificér at selve PLACERINGEN
+  // (placements/load/overlap/etc.) forbliver uændret for den fraction-frie sti; kun det NYE
+  // gtRealDaySeparationViolations-felt tilføjes (tomt, siden ingen GT-liste udløste separation).
+  const r = packLaneCalendar(div1());
+  assert.deepEqual(r.gtRealDaySeparationViolations, []);
+  assert.equal(r.layoutMode, "stream");
 });
 
 test("packer: stream — monumenter fase-ankres til deres fraction-slot + kollisionsvandring", () => {

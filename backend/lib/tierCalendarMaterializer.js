@@ -282,6 +282,7 @@ export function buildTierMaterializationPlan({
         terrain_archetype: cat.terrain_archetype ?? null,
         stages: pl.stages,
         game_day_start: gameDayStartById.get(pl.id),
+        real_day_end: Math.max(...pl.stagesPlaced.map((s) => s.real_day)), // #3472 v3: til GT-real-day-spredning i rapportering
         seasonFraction: fractionByRaceId.get(pl.id) ?? null,
       };
     });
@@ -316,6 +317,7 @@ export function buildTierMaterializationPlan({
       overlapDays: packed.overlapDays, maxOverlap: packed.maxOverlap,
       overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
       straddleGameDays: packed.straddleGameDays,
+      gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       pools: poolPlans,
