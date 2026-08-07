@@ -10,39 +10,59 @@ import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 import { scoreSeason } from "./raceRouteRealismMetrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// Ægte kalender-snapshot (sæson 2, én repræsentativ pulje pr. tier) — samme fil
+// Ægte kalender-snapshot, én repræsentativ pulje pr. tier — samme fil
 // scripts/raceRouteRealismDrawHarness.js måler fail-raten på.
+//
+// #3469 (8/8): snapshottet blev REGENERERET fra en DRY-RUN-plan af sæson 3 (ikke en
+// læsning af en allerede-materialiseret sæsons `races`-tabel) via
+// `node scripts/raceRouteRealismDrawHarness.js --refresh-plan --season 3 --first-day 2026-08-24`.
+// Grunden: det GAMLE snapshot (sæson 2's historiske, frosne `races`-udvalg) blev
+// materialiseret FØR itt_classic/cobbled_tour-arketype-reservationerne (#3469 runde 1/2)
+// garanterede den forsyning for tier 1/2 — snapshottet var derfor strukturelt umuligt at
+// bestå D1/D2's nye realisme-bånd, uanset hvor mange gen-træk der blev prøvet (re-draw
+// varierer KUN parcours-generering for et allerede-fastlåst løbsudvalg, aldrig hvilke løb
+// der blev valgt). Et nyt --refresh mod samme (allerede spillede) sæson 2 ville have
+// reproduceret PRÆCIS samme frosne udvalg — derfor dry-run-planen i stedet, som kører den
+// LEVENDE selection-algoritme (klasse-whitelist, prestige-walk, reservationer) mod det
+// NUVÆRENDE race_pool-katalog uden at kræve at nogen sæson er skrevet til DB.
 const SNAPSHOT = JSON.parse(readFileSync(join(__dirname, "__fixtures__", "seasonTierCalendarSnapshot.json"), "utf8"));
 const tierSeedRacesFor = (seasonId) => SNAPSHOT.tiers.map((t) => ({
   tier: t.tier,
   seedRaces: t.races.map((r) => ({ ...r, id: r.external_id, season_id: seasonId })),
 }));
 
-// Sæson 2's ÆGTE id. Frem til #3295-kalibreringen (2026-08-06) brød dens kanoniske
-// tier-3-træk M-Down-båndet (57 % > 55 %) — præcis det tilfælde #3347 blev åbnet på — og
-// den var derfor fixturen for "retry-stien fyrer". Efter kalibreringen (bjerg-vægte ned,
-// kuperet op) består sæson 2's kanoniske træk i FØRSTE forsøg. Det er en gevinst, ikke en
-// regression, og den fastholdes af sin egen test nedenfor.
-const SEASON_2_ID = SNAPSHOT.seasonId;
+// Snapshottets ÆGTE season_id (sæson 3's dry-run-plan). Dens kanoniske (attempt 0) træk
+// bryder tier 1/2/3's realisme-bånd (spredning, samme #3347-mønster som altid) — alle tre
+// rettes af re-drawet uden at udtømme forsøgene. Se test nedenfor.
+const PLAN_SEASON_ID = SNAPSHOT.seasonId;
 
-// "Retry-stien fyrer"-fixture mod den ÆGTE generator: sæson 29's kanoniske træk bryder
-// tier 3's summit-bånd (7 < 8) og rettes af gen-træk 2. Ét brydende tier, re-draw lykkes.
+// "Retry-stien fyrer"-fixture mod den ÆGTE generator: dette season_id's kanoniske træk
+// bryder tier 2 OG tier 3's bånd, begge rettes af gen-træk. Bruges af determinisme- og
+// variant-testene nedenfor, som ikke kræver at KUN ét tier bryder.
 //
-// ⚠ DENNE KONSTANT ER KNYTTET TIL GENERATORENS VÆGTE. Ændrer nogen ARCHETYPE_PROFILES,
-// kan sæson 29's træk begynde at bestå i første forsøg, og testene nedenfor holder op med
-// at teste det de påstår (de fejler højlydt — de bliver ikke tavst grønne). Find i så fald
-// en ny med:
+// ⚠ DENNE KONSTANT ER KNYTTET TIL GENERATORENS VÆGTE + DET AKTUELLE LØBSUDVALG. Ændrer
+// nogen ARCHETYPE_PROFILES eller regenereres snapshottet (se ovenfor), kan dette
+// season_id's træk begynde at bestå i første forsøg, og testene nedenfor holder op med at
+// teste det de påstår (de fejler højlydt — de bliver ikke tavst grønne). Find i så fald en
+// ny med:
 //
-//   for (let n = 1; n <= 60; n++) {
+//   for (let n = 1; n <= 200; n++) {
 //     const id = `00000000-0000-0000-0000-${n.toString(16).padStart(12, "0")}`;
 //     const d = resolveSeasonDraw({ tierSeedRaces: tierSeedRacesFor(id) });
-//     const retried = d.filter((x) => x.attempt > 0);
-//     if (retried.length === 1 && retried[0].tier === 3 && !retried[0].exhausted) console.log(id, n);
+//     if (d.some((x) => x.attempt > 0)) console.log(id, n, d.map((x) => x.attempt));
 //   }
 //
-// Selve re-draw-MEKANIKKEN testes desuden syntetisk (fakeGenerator ovenfor), hvor det er
+// Selve re-draw-MEKANIKKEN testes desuden syntetisk (fakeGenerator nedenfor), hvor det er
 // garanteret at retry-stien rammes uanset hvad generatorens vægte gør.
 const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000001d";
+
+// Samme idé, men for testen der SPECIFIKT skal bevise "kun ÉN tier brød, og KUN den
+// trækkes om" — fundet via søgeloopet ovenfor mod det regenererede snapshot (8/8): det
+// kanoniske træk bryder PRÆCIS tier 3 (#3469's nye nedkørsels-finale-gulv, "nedkørsels-
+// finale-etapedage 3 < 4"), og gen-træk 1 retter det. Samme skrøbelighed som RETRY_SEASON_ID
+// (se advarslen ovenfor) — søg en ny med samme loop, filtreret til
+// `retried.length === 1 && retried[0].tier === 3`, hvis denne holder op med at ramme.
+const SINGLE_TIER_RETRY_SEASON_ID = "00000000-0000-0000-0000-000000000005";
 
 // ── Syntetiske generatorer (fuld kontrol over hvornår et træk består) ────────
 const passingStage = () => ({ profile_type: "high_mountain", finale_type: "long_climb", distance_km: 170, sectors: [] });
@@ -147,45 +167,43 @@ test("determinisme: samme season_id → bit-identisk kalender (også når re-dra
 });
 
 test("et kanonisk træk der bryder tier 3's bånd rettes af re-drawet — og KUN den tier trækkes om", () => {
-  const tierSeedRaces = tierSeedRacesFor(RETRY_SEASON_ID);
+  const tierSeedRaces = tierSeedRacesFor(SINGLE_TIER_RETRY_SEASON_ID);
   const first = scoreSeason(tierSeedRaces.map(({ tier, seedRaces }) => ({
     tier, races: seedRaces.map((r) => ({ name: r.name, race_type: r.race_type, terrain_archetype: r.terrain_archetype, stages: generateRaceStageProfiles(r) })),
   })));
-  assert.ok(first.failures.some((f) => f.startsWith("tier 3:")), first.failures.join(" · "));
+  assert.ok(first.failures.every((f) => f.startsWith("tier 3:")), `fixturen skal PRÆCIS bryde tier 3, ellers tester vi ikke det testen påstår: ${first.failures.join(" · ")}`);
+  assert.ok(first.failures.length > 0, "fixturen skal reelt bryde noget");
 
   const draws = resolveSeasonDraw({ tierSeedRaces });
   const resolved = scoreSeason(draws.map((d) => d.entry));
-  // #3469: tier 1/2 fik EGNE realisme-bånd (itt_min/cobbles_min m.fl.). Dette snapshot
-  // er sæson 2's ALLEREDE MATERIALISEREDE (historiske, låste) løbs-udvalg — det blev
-  // valgt FØR itt_classic/cobbled_tour-reservationerne (#3469 runde 1/2) garanterede den
-  // forsyning for tier 1/2 i produktion. Et re-draw kan kun variere PARCOURS-generering
-  // for et allerede-fastlåst løbs-udvalg — det kan aldrig opfinde et løb der ikke blev
-  // valgt dengang. Det er et hul i DETTE ene historiske øjebliksbillede, ikke i den
-  // levende selektions-algoritme (verificeret separat mod S3's plan, se PR-body). Testens
-  // fokus (tier 3's re-draw) forbliver derfor uændret: INGEN af de resterende brud må
-  // være tier 3's.
-  assert.ok(resolved.failures.every((f) => !f.startsWith("tier 3:")), resolved.failures.join(" · "));
-  assert.ok(resolved.failures.length > 0, "tier 1/2's historiske hul skal stadig være synligt, ikke tavst forsvundet");
+  assert.deepEqual(resolved.failures, [], "re-drawet skal rette bruddet fuldstændigt — alle 4 tiers er nu realisme-gatede (#3469), ingen strukturelle huller tilbage efter snapshottet blev regenereret fra en dry-run-plan (se fil-header)");
   // Kun den brydende tier 3 trækkes om — de øvrige tiers' parcours røres ikke.
   assert.deepEqual(draws.filter((d) => d.attempt > 0).map((d) => d.tier), [3]);
 });
 
-test("#3295: sæson 2's kanoniske træk består tier 3/4's realisme-bånd uden re-draw", () => {
-  // Før kompositions-kalibreringen brød sæson 2's tier 3 M-Down-båndet (57 % > 55 %) og
-  // krævede et gen-træk. De nye filler-vægte (bjerg ned, kuperet op) fjernede bruddet.
-  // Fastholdes som regression-vagt: går denne test i rødt, er kalibreringen drevet
-  // tilbage mod den gamle bjerg-tunge fordeling.
-  const draws = resolveSeasonDraw({ tierSeedRaces: tierSeedRacesFor(SEASON_2_ID) });
-  assert.deepEqual(draws.map((d) => d.attempt), [0, 0, 0, 0], "intet re-draw HJÆLPER — tier 1/2 kan strukturelt ikke (se nedenfor), tier 3/4 har ikke brug for det");
+// #3469 (8/8, erstatter det tidligere "#3295: sæson 2 består uden re-draw"-narrativ):
+// snapshottet er nu sæson 3's DRY-RUN-plan (se fil-header) — et FRISKERE, større
+// løbsudvalg end sæson 2's frosne historiske udvalg, og dens kanoniske træk bryder
+// faktisk tier 1/2/3's bånd (ren spredning, #3347-mønsteret). Det interessante er IKKE
+// længere "ingen tier behøver re-draw" — det er at ALLE FIRE tiers (inkl. de nye D1/D2-
+// bånd) rent faktisk KAN nå grønt via re-draw, uden en eneste udtømt (exhausted) tier.
+// Det er selve beviset på at #3469's itt_classic/cobbled_tour-reservationer lukkede det
+// hul den forrige (sæson-2-baserede) fixture blotlagde.
+test("#3469: sæson 3-planens kanoniske træk bryder tier 1/2/3's bånd (spredning) — re-drawet retter ALLE, ingen tier udtømt", () => {
+  const tierSeedRaces = tierSeedRacesFor(PLAN_SEASON_ID);
+  const first = scoreSeason(tierSeedRaces.map(({ tier, seedRaces }) => ({
+    tier, races: seedRaces.map((r) => ({ name: r.name, race_type: r.race_type, terrain_archetype: r.terrain_archetype, stages: generateRaceStageProfiles(r) })),
+  })));
+  assert.ok(first.failures.length > 0, "det kanoniske træk skal reelt bryde noget, ellers tester vi ikke re-draw-stien");
 
-  const resolved = scoreSeason(draws.map((d) => d.entry));
-  assert.ok(resolved.failures.every((f) => f.startsWith("tier 1:") || f.startsWith("tier 2:")), resolved.failures.join(" · "));
-
-  // #3469: samme historiske hul som testen ovenfor — sæson 2's tier 1/2-udvalg blev
-  // materialiseret FØR itt_classic/cobbled_tour-reservationerne fandtes, så draw.exhausted
-  // (ikke et båndbrud i den LEVENDE selektionsalgoritme) er den ærlige rapportering her.
-  assert.equal(draws.find((d) => d.tier === 1).exhausted, true);
-  assert.equal(draws.find((d) => d.tier === 2).exhausted, true);
+  const draws = resolveSeasonDraw({ tierSeedRaces });
+  assert.deepEqual(scoreSeason(draws.map((d) => d.entry)).failures, [], "re-drawet skal fjerne ALLE brud, på tværs af alle 4 tiers");
+  assert.ok(draws.every((d) => !d.exhausted), draws.map((d) => `tier ${d.tier}: exhausted=${d.exhausted}`).join(" · "));
+  // Mindst tier 1-3 har historisk krævet et gen-træk på denne plan (dokumenteret i
+  // fil-headeren) — tier 4 komponerer sig grønt fra start. Assert'et er bevidst løst
+  // koblet til de PRÆCISE attempt-numre (de skifter med ARCHETYPE_PROFILES-vægte, jf.
+  // RETRY_SEASON_ID-advarslen ovenfor) — kun at NOGEN reelt trak om.
+  assert.ok(draws.some((d) => d.attempt > 0), draws.map((d) => `tier ${d.tier}=${d.attempt}`).join(" · "));
 });
 
 test("re-draw ændrer BÅDE etape-profiler (pass 1) og ruter (pass 2)", () => {
