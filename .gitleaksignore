@@ -27,3 +27,8 @@ bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:backend/.env:jwt:2
 # DM-settings-tilstand. gitleaks:allow tilføjet i en senere commit, men gitleaks
 # scanner HELE PR-historikken, så den oprindelige commit skal allowlistes:
 fa572f73006572659bbb76050b5b65aa78b9c1ef:frontend/src/preview/mockHandlers.js:discord-client-id:201
+#
+# Falsk-positiv (#3458 PR #3500): gate-loop i sim-harnesset hed `[key, g]` og
+# sammenlignede med strengen "G4_emergent_distribution" -> matchede generic-api-key.
+# Rettet til gateName i opfoelgende commit; historisk commit allowlistes:
+3a3c7012aa85a64631cebfce2b45477823c4b9c5:backend/scripts/simArchetypeGeneration3458.js:generic-api-key:206

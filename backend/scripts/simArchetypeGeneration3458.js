@@ -201,12 +201,12 @@ function main() {
     console.log(`  ${t.padEnd(16)} ${String(scorecard.archetypeDrawDistributionPct[t]).padStart(8)} ${String(distPct[t]).padStart(10)}`);
   }
   console.log("");
-  for (const [key, g] of Object.entries(scorecard.gates)) {
+  for (const [gateName, g] of Object.entries(scorecard.gates)) {
     const status = g.pass ? "PASS" : "FAIL";
-    if (key === "G4_emergent_distribution") {
-      console.log(`${status}  ${key}: violations=${JSON.stringify(g.violations)}`);
+    if (gateName === "G4_emergent_distribution") {
+      console.log(`${status}  ${gateName}: violations=${JSON.stringify(g.violations)}`);
     } else {
-      console.log(`${status}  ${key}: ${JSON.stringify(g)}`);
+      console.log(`${status}  ${gateName}: ${JSON.stringify(g)}`);
     }
   }
   console.log(`\nSpecialiserings-dybde: p10=${scorecard.depthPercentiles.p10} p25=${scorecard.depthPercentiles.p25} median=${scorecard.depthPercentiles.median} p75=${scorecard.depthPercentiles.p75}`);
