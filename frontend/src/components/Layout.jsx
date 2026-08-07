@@ -43,7 +43,11 @@ const API = import.meta.env.VITE_API_URL;
 // #3102 etape 3: "/races" og "/planner" udgik (ruterne redirecter);
 // "/planning" arver deres T2-behov — holdudtagelses-boardet skal ud til kanten
 // på store skærme (#2568-ejer-kravet gælder uændret i hubben).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater"]);
+// #3454: "/academy" tilføjet — rosteret bruger den kanoniske DataTable
+// (T2-recipe, sticky navnekolonne) og var fejlagtigt fanget i shellens
+// max-w-6xl selvom sidens egen container allerede stod på max-w-[1600px]
+// (samme fejlklasse som #1675/#1186/#2446 — se PAGE_TEMPLATES.md).
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/academy"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
