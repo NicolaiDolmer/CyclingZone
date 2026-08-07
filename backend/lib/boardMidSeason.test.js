@@ -472,7 +472,43 @@ test("processMidSeasonReviewCron skipper foer midpoint", async () => {
   assert.equal(summary.banners_sent, 0);
 });
 
-test("processMidSeasonReviewCron skipper i baseline-fasen (window=locked)", async () => {
+// #3502 · Erstatter den tidligere "skipper i baseline-fasen (window=locked)"-
+// test. Den reelle baseline-tilstand er ingen 1yr-board overhovedet (kun en
+// baseline-række, plan_type='baseline') — ikke et window-felt. Holdet TÆLLES
+// stadig med (teams_checked), det er kun banneret der udebliver.
+test("processMidSeasonReviewCron skipper hold der stadig sidder i sæson-1-baseline (ingen 1yr-board)", async () => {
+  const state = makeMidSeasonState({
+    raceDaysCompleted: 30,
+    boardSatisfaction: 20,
+  });
+  state.board_profiles = [{
+    id: "board-baseline",
+    team_id: "team-1",
+    plan_type: "baseline",
+    satisfaction: 20,
+    current_goals: [],
+    negotiation_status: "completed",
+    is_baseline: true,
+  }];
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await processMidSeasonReviewCron({
+    supabase,
+    notifyUser: async () => ({ delivered: true, deduped: false }),
+  });
+  assert.equal(summary.teams_checked, 1, "holdet indgår i den itererede population");
+  assert.equal(summary.banners_sent, 0);
+});
+
+// #3502 forward-guard: transfer_windows.board_negotiation_state skrives kun ét
+// sted (boardSequentialNegotiation.js, kun til 'pending_5yr', kun ved
+// sæson-1-slut) og et efterfølgende sæsonskifte opretter altid et NYT window
+// uden feltet (seasonTransition.js insertTransferWindowIfMissing → DB-default
+// 'locked'). Denne test simulerer netop den drift — nyeste window er 'locked' —
+// og beviser at cronen alligevel fyrer, fordi den aflæser behovet direkte fra
+// board_profiles (completed 1yr-board) i stedet for det driftende window-felt.
+// Fejler denne test, er #3502-regressionen tilbage.
+test("#3502: processMidSeasonReviewCron ignorerer en driftende transfer_windows.board_negotiation_state='locked'", async () => {
   const state = makeMidSeasonState({
     raceDaysCompleted: 30,
     boardSatisfaction: 20,
@@ -484,23 +520,8 @@ test("processMidSeasonReviewCron skipper i baseline-fasen (window=locked)", asyn
     supabase,
     notifyUser: async () => ({ delivered: true, deduped: false }),
   });
-  assert.equal(summary.teams_checked, 0);
-  assert.equal(summary.banners_sent, 0);
-});
-
-test("processMidSeasonReviewCron skipper i onboarding-fasen (window=pending_5yr)", async () => {
-  const state = makeMidSeasonState({
-    raceDaysCompleted: 30,
-    boardSatisfaction: 20,
-    windowState: "pending_5yr",
-  });
-  const supabase = makeFakeSupabase(state);
-
-  const summary = await processMidSeasonReviewCron({
-    supabase,
-    notifyUser: async () => ({ delivered: true, deduped: false }),
-  });
-  assert.equal(summary.banners_sent, 0);
+  assert.equal(summary.teams_checked, 1);
+  assert.equal(summary.banners_sent, 1, "banneret skal fyre trods 'locked' window — se #3502");
 });
 
 test("processMidSeasonReviewCron er idempotent — eksisterende notif skipper", async () => {

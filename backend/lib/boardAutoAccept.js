@@ -19,11 +19,22 @@
 // Daglig cron-job — idempotent via notification-dedup (24h vindue) + status-check
 // (skipper teams der allerede har en signed plan for nuværende plan_type).
 //
+// #3502 · Der er BEVIDST ingen global transfer_windows.board_negotiation_state-
+// gate her længere (var her tidligere: skip hele cronen medmindre window var
+// 'pending_5yr'/'pending_3yr'/'pending_1yr'). Feltet skrives kun ét sted i hele
+// koden (boardSequentialNegotiation.js — kun til 'pending_5yr', kun ved
+// sæson-1-slut) og falder aldrig videre. Hver efterfølgende sæsonskifte
+// opretter desuden et NYT window uden feltet (seasonTransition.js
+// insertTransferWindowIfMissing), som falder tilbage til DB-default 'locked'.
+// Med den gate var cronen reelt død fra 26/7 (ingen T-3/T-1-reminders, ingen
+// auto-accept). Erstattet af et per-hold signal i processTeamAutoAccept
+// (hasStartedNegotiation) hentet direkte fra board_profiles/teams-domænet,
+// som ikke kan drifte samme vej.
+//
 // Skalerings-præmis (CLAUDE.md): ingen kode-loops over fast manager-antal —
 // vi loader kun human teams fra DB og itererer dem dynamisk.
 
 import {
-  BOARD_NEGOTIATION_STATES,
   BOARD_IDENTITY_RIDER_SELECT,
   ONBOARDING_PLAN_SEQUENCE,
 } from "./boardConstants.js";
@@ -133,21 +144,6 @@ export async function processBoardAutoAcceptCron({
     errors: 0,
   };
 
-  // Skip hvis vi er uden for sæson-2-onboarding-fasen (window er locked = baseline).
-  const { data: latestWindow, error: windowError } = await supabase
-    .from("transfer_windows")
-    .select("id, board_negotiation_state")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (windowError) throw windowError;
-
-  const windowState = latestWindow?.board_negotiation_state ?? "locked";
-  if (windowState === BOARD_NEGOTIATION_STATES.LOCKED
-    || windowState === BOARD_NEGOTIATION_STATES.COMPLETE) {
-    return summary;
-  }
-
   const { data: activeSeason, error: seasonError } = await supabase
     .from("seasons")
     .select("id, number, race_days_completed, race_days_total")
@@ -218,6 +214,21 @@ async function processTeamAutoAccept({
   if (boardsError) throw boardsError;
 
   const realBoards = (boards || []).filter((b) => !b.is_baseline && b.plan_type !== "baseline");
+
+  // #3502 · Erstatter den tidligere globale transfer_windows.board_negotiation_state-
+  // gate (skrevet ÉN gang, kun til 'pending_5yr', af boardSequentialNegotiation.js —
+  // faldt aldrig videre, og enhver senere sæsonskifte-insertTransferWindowIfMissing
+  // (seasonTransition.js) skabte et nyt window UDEN feltet, som dermed defaultede
+  // til 'locked'). Det gjorde cronen reelt død fra 26/7. Sandheden om "har DETTE
+  // hold overhovedet startet forhandling" ligger i board_profiles-domænet, ikke i
+  // et globalt vindues-felt: enten er team.season_1_identity_basis sat (skrives
+  // synkront som trin 1 i startSequentialNegotiation for S1-kohorten, og af
+  // ensureSeasonIdentityBasis ved holddannelse for S2+-nykommere, teamProfileEngine.js)
+  // eller også findes der allerede en rigtig (ikke-baseline) board-række. Et hold der
+  // stadig sidder i sæson-1-baseline-observation har hverken.
+  const hasStartedNegotiation = Boolean(team.season_1_identity_basis) || realBoards.length > 0;
+  if (!hasStartedNegotiation) return result;
+
   const pendingPlanType = findPendingPlanType(realBoards);
   if (!pendingPlanType) return result;
 

@@ -1366,8 +1366,14 @@ test("processBoardAutoAcceptCron: per-team fail kalder captureExceptionFn med te
   assert.equal(captureCalls[0].ctx.extra.seasonId, "season-2");
 });
 
-test("processBoardAutoAcceptCron skips when window is locked (baseline phase)", async () => {
-  const state = makeAutoAcceptState({ daysSinceOpen: 5, windowState: "locked" });
+// #3502 · Erstatter den tidligere "skips when window is locked"-test. Cronen
+// gater ikke længere på transfer_windows.board_negotiation_state (feltet
+// drifter — se #3502): et hold der endnu ikke har season_1_identity_basis
+// OG ingen rigtig (ikke-baseline) board_profiles-række, sidder stadig i
+// sæson-1-baseline-observation og skal skippes — men holdet TÆLLES stadig
+// med (teams_checked), det er kun handlingen der udebliver.
+test("processBoardAutoAcceptCron skips team still in season-1 baseline (no identity_basis, no real board row)", async () => {
+  const state = makeAutoAcceptState({ daysSinceOpen: 5, identityBasis: null });
   const supabase = makeFakeSupabase(state);
 
   const summary = await processBoardAutoAcceptCron({
@@ -1376,7 +1382,8 @@ test("processBoardAutoAcceptCron skips when window is locked (baseline phase)", 
     now: AUTO_ACCEPT_TEST_NOW,
   });
 
-  assert.equal(summary.teams_checked, 0);
+  assert.equal(summary.teams_checked, 1, "holdet indgår i den itererede population");
+  assert.equal(summary.reminders_sent, 0);
   assert.equal(summary.auto_accepted, 0);
 });
 
@@ -1425,11 +1432,27 @@ test("processBoardAutoAcceptCron rolls back team_dna_key when board regeneration
 // falder tilbage til team.created_at, jf. boardAutoAccept.js).
 const AUTO_ACCEPT_TEST_NOW = new Date("2026-05-05T10:00:00Z");
 
+// #3502 · Minimal, ikke-null identity_basis. Default for makeAutoAcceptState,
+// fordi et hold ægte kun kan have en pending onboarding-plan i prod hvis
+// season_1_identity_basis allerede er sat (skrives synkront som trin 1 i
+// startSequentialNegotiation, FØR nogen board-række overhovedet oprettes — se
+// hasStartedNegotiation i boardAutoAccept.js). Test der specifikt vil dække
+// "endnu ikke startet onboarding" skal eksplicit sende identityBasis: null.
+const SAMPLE_IDENTITY_BASIS = {
+  youth_level: "medium",
+  youth_share_pct: 30,
+  primary_specialization: "balanced",
+  national_core: { code: "DK", count: 3, share_pct: 30, strength: "medium", established: true },
+  star_profile: { level: "low" },
+  rider_count: 10,
+  season_number_observed: 1,
+};
+
 function makeAutoAcceptState({
   daysSinceOpen = 0,
   now = AUTO_ACCEPT_TEST_NOW,
   windowState = "pending_5yr",
-  identityBasis = null,
+  identityBasis = SAMPLE_IDENTITY_BASIS,
 } = {}) {
   const createdAt = new Date(now.getTime() - daysSinceOpen * 24 * 60 * 60 * 1000).toISOString();
   return {
