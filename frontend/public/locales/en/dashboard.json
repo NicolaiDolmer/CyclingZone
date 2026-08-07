@@ -1,4 +1,6 @@
 {
+  "loadError": "Couldn't load the dashboard. Please try again.",
+  "retry": "Try again",
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rider} other {# riders}}",
     "incoming": "+{count} in",

@@ -57,7 +57,7 @@ import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
-  PageHeader, Section, SectionHeader, SectionAction,
+  PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState, SkeletonLines,
 } from "../components/ui";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
@@ -114,6 +114,11 @@ export default function DashboardPage() {
   const [activeOffers, setActiveOffers] = useState([]);
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
+  // #3510 — eksplicit fejl-tilstand med retry frem for et tomt, "ingen data"-
+  // udseende dashboard: loadAll fangede tidligere fejl med console.error alene
+  // og faldt igennem til finally { setLoading(false) } → et fuldt tomt dashboard
+  // uden fejlbesked. Samme mønster som StandingsPage/#2175.
+  const [error, setError] = useState(null);
 
   const [seasonInfo, setSeasonInfo] = useState(null);
   const [poolRaceDays, setPoolRaceDays] = useState(null); // #1829: per-pulje løbsdage-tæller
@@ -145,8 +150,14 @@ export default function DashboardPage() {
   // Dashboard-customize (#1005): vis/skjul moduler, persisteret i localStorage.
   const { isVisible, toggleModule, resetToDefault } = useDashboardLayout();
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [recentResults, setRecentResults] = useState([]);
-  const [riderRanking, setRiderRanking] = useState([]);
+  // #3510 — null = ikke hentet endnu (post-first-paint modul), skal vise
+  // loading-skeleton; [] = hentet OG bekræftet tom, skal vise empty-state.
+  // Tidligere defaultede begge til [] direkte, så modulerne viste et falsk
+  // "ingen resultater"-empty-state i round-trip-vinduet ved HVERT load (false-
+  // empty flash) — samme distinktion som MyLatestResultCard allerede laver
+  // korrekt for sit eget null-default (se datakontrakt-kommentaren i den fil).
+  const [recentResults, setRecentResults] = useState(null);
+  const [riderRanking, setRiderRanking] = useState(null);
   // #2466: resultat-push — null = ikke hentet endnu/fejlet (kortet renderer intet),
   // { race: null } = ingen finaliserede løb (empty state), ellers payload.
   const [myLatestResult, setMyLatestResult] = useState(null);
@@ -192,6 +203,7 @@ export default function DashboardPage() {
   const seasonStartWindowOpen = isSeasonStartWindow(seasonInfo, new Date(nowMs));
 
   async function loadAll() {
+    setError(null);
     try {
     const [{ data: { user } }, { data: { session } }] = await Promise.all([
       supabase.auth.getUser(),
@@ -390,6 +402,7 @@ export default function DashboardPage() {
 
     } catch (e) {
       console.error("Dashboard load failed:", e);
+      setError(e);
     } finally {
       setLoading(false);
     }
@@ -634,14 +647,19 @@ export default function DashboardPage() {
         recentResultsVisible && (async () => {
           try {
             const r = await fetch(`${API}/api/dashboard/recent-results`, { headers });
-            if (r.ok && !cancelled) setRecentResults((await r.json()).races || []);
-          } catch { /* best-effort */ }
+            if (cancelled) return;
+            // #3510 — svaret er nu SANDHEDEN uanset ok/fejl: r.ok → de rigtige
+            // resultater (evt. []); ellers eksplicit [] så modulet falder tilbage
+            // til empty-state fremfor at blive hængende i skeleton for evigt.
+            setRecentResults(r.ok ? (await r.json()).races || [] : []);
+          } catch { if (!cancelled) setRecentResults([]); }
         })(),
         riderRankingVisible && (async () => {
           try {
             const r = await fetch(`${API}/api/dashboard/rider-ranking`, { headers });
-            if (r.ok && !cancelled) setRiderRanking((await r.json()).riders || []);
-          } catch { /* best-effort */ }
+            if (cancelled) return;
+            setRiderRanking(r.ok ? (await r.json()).riders || [] : []);
+          } catch { if (!cancelled) setRiderRanking([]); }
         })(),
         // #2466: "How your team did" — holdets eget seneste løbsresultat.
         myLatestResultVisible && (async () => {
@@ -707,6 +725,19 @@ export default function DashboardPage() {
 
   if (loading) return (
     <PageLoader />
+  );
+
+  // #3510 — kanonisk ErrorState (docs/design/PAGE_TEMPLATES.md) i stedet for at
+  // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte
+  // (samme mønster som StandingsPage/#2175); setLoading(true) genviser
+  // PageLoader mens den nye forespørgsel er i flugt.
+  if (error) return (
+    <div translate="no" className="max-w-5xl mx-auto">
+      <ErrorState
+        title={t("dashboard:loadError")}
+        action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("dashboard:retry")}</Button>}
+      />
+    </div>
   );
 
   const winningAuctions = allAuctions.filter(a => getAuctionLeaderId(a) === team?.id);
@@ -1397,7 +1428,11 @@ export default function DashboardPage() {
             title={t("dashboard:cards.recentResults.title")}
             action={<SectionAction as={Link} to="/resultater">{t("dashboard:cards.recentResults.linkAll")}</SectionAction>}
           />
-          {recentResults.length === 0 ? (
+          {recentResults === null ? (
+            // #3510 — post-first-paint fetch endnu ikke landet: skeleton, ikke
+            // et falsk "ingen resultater"-empty-state (false-empty flash).
+            <SkeletonLines lines={3} />
+          ) : recentResults.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.recentResults.empty")}</p>
               <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.recentResults.emptyCta")}</Link>
@@ -1472,7 +1507,9 @@ export default function DashboardPage() {
               </SectionAction>
             }
           />
-          {riderRanking.length === 0 ? (
+          {riderRanking === null ? (
+            <SkeletonLines lines={3} />
+          ) : riderRanking.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.riderRanking.empty")}</p>
               <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.riderRanking.emptyCta")}</Link>
