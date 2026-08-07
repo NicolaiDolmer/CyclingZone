@@ -1,6 +1,6 @@
 # Bestyrelses-rework: "Mandatet" — design-spec
 
-**Status:** Udkast til ejer-review (brainstorm-session 7/8-2026, ejer valgte Retning B + forhandlingsmodel "2+1").
+**Status:** Udkast til ejer-review (brainstorm-session 7/8-2026). **10 ejer-beslutninger låst 7/8** (se §6) — mangler kun mobil-mockup-godkendelse (runde 3).
 **Supersederer:** Epic [#955](https://github.com/NicolaiDolmer/CyclingZone/issues/955) (UI-rework til faner) — fanerne udgår helt i denne model.
 **Grundlag:** 7-spors audit 7/8 (frontend, backend, GitHub, Discord, docs, konkurrenter, prod-verifikation). Nøglefund refereret inline.
 
@@ -16,7 +16,7 @@
 
 1. **Én relation.** Ét tillidstal (0-100) pr. hold. Aldrig to tal for samme ting to steder.
 2. **Kvittering for alt.** Hver tillidsbevægelse, hvert måls tæller: hvad tælles, hvornår sidst opdateret, hvem i bestyrelsen vægter det. Genbruger `board_satisfaction_events`.
-3. **Personer i front.** 5 navngivne medlemmer (nordisk navnepulje); hvert mål ejes af et medlem; formanden taler; formandsskifte er et narrativt beat.
+3. **Personer i front.** 5 navngivne medlemmer — **navnepulje følger klub-DNA** (italiensk klassiker → italienske navne, skandinavisk udvikling → nordiske osv.); hvert mål ejes af et medlem; formanden taler; formandsskifte er et narrativt beat.
 4. **≤2 klik.** Enhver handling på bestyrelsessiden: maks 2 klik. Årsmødets hurtigste vej ("acceptér alt + underskriv"): 2 klik.
 5. **Uændrede grundregler:** aldrig fyring; blød kalibrering (ejer 7/7, #2237); styrke straffes aldrig; konsekvens-lagene består; manager-only.
 6. **Design-system:** T1-skabelon, `rounded-cz`, stroke-ikoner (emoji-portrætter udgår), én gold-knap pr. view, tabular figures, EN først/DA under, ingen em-dash i player-copy.
@@ -28,12 +28,15 @@
 - **Bestyrelsesrelation** (pr. hold, erstatter 3 × `board_profiles`-satisfaction): `confidence` 0-100 + 4 kategoriscorer (results/economy/identity/ranking — eksisterende vægte og evaluerings-motor genbruges).
 - **Mandat** (1-årigt, 3-5 mål): genereres af eksisterende `generateBoardGoals` (fokus × DNA × dynamisk kalibrering). Forhandles på årsmødet.
 - **Vision** (DNA-forankret, 5-årig arc): 3/5-års-målene bliver **milepæle** med mål-sæson (fx "S4: monument-podium"). Evalueres i deres mål-sæson; påvirker confidence dér — ikke løbende parallelle kontrakter.
+- **Misset milepæl** (ejer-valg 7/8): ét synligt engangs-tillidsslag skaleret efter milepælens vægt + formandens reaktion i referatet. Visionen fortsætter uforstyrret — ingen kaskade ind i næste mandat.
+- **Belønningsvaluta** (ejer-valg 7/8): mål-bonusser/straffe (inkl. stretch) udbetales KUN i confidence. Penge forbliver i lag 6-bonustilbud + budget-modifier — ingen nye pengestrømme før økonomi-auditten (#3501).
 - **Konsekvens-lag 1-6:** uændrede tærskler, nu mod det ENE confidence-tal.
 - **Sponsor-vækstmål** re-pointes til ægte kontrakt-økonomi (`sponsor_contracts`-udbetalinger pr. sæson) — aldrig `teams.sponsor_income` (dødt felt, #3494).
 
 ### 3.2 Årsmødet (erstatter wizard + renew + sekventiel onboarding)
 
-- Ét fuldskærms-møde pr. sæson: fokusvalg → foreslået mandat → **maks 2 mål justeres** (modtilbud: Easier / Keep / Stretch — stretch = større bonus OG større straf, #1235 foldet ind) → **1 anmodning** (de gamle request-typer) → underskriv.
+- Ét fuldskærms-møde pr. sæson: fokusvalg → foreslået mandat → **justeringer** (modtilbud: Easier / Keep / Stretch — stretch = større bonus OG større straf, #1235 foldet ind) → **1 anmodning** (de gamle request-typer) → underskriv.
+- **Tillids-trappe** (ejer-valg 7/8): forhandlingsmagt er optjent. Confidence <30 → 1 justering; 30-74 → 2 justeringer (standard); ≥75 → 3 justeringer, og bestyrelsen strækker sig længere i modtilbud. Tærskler valideres i fase 1-scorecardet.
 - Medlemsreaktioner vises inline ved hvert modtilbud (personlighed i beslutningen).
 - Afslag på anmodning kommer ALTID med et modtilbud (FM/OOTP-mønsteret) — aldrig et rent nej.
 - Auto-accept-fallback efter 5 kalenderdage består (cron repareret via #3502; state aflæses fra pending-mandater, ikke window-feltet).
@@ -42,7 +45,7 @@
 
 ### 3.3 Sæson-beat (doktrinens "1-2 seasonal events")
 
-- **Mid-season check-in** (eksisterende `boardMidSeason`-mekanik, genoplivet via #3502): formanden gør status i referatet + "skal handles"-markering ved lav confidence.
+- **Mid-season check-in** (eksisterende `boardMidSeason`-mekanik, genoplivet via #3502): formanden gør status i referatet + "skal handles"-markering ved lav confidence. **Check-in'et låser samtidig 1 "ekstraordinær samtale" op** (ejer-valg 7/8) — én anmodning uden for årsmødet, så relationen lever hele sæsonen. Samlet: 1 anmodning på årsmødet + 1 mid-season = doktrinens "1-2 seasonal events".
 - **Ekstraordinært møde** ved konsekvens-trigger (lag 3+): kort event med formandens begrundelse + hvad der låser op. Ingen ny mekanik — en overflade på eksisterende triggers.
 
 ### 3.4 Boardroom-siden (T1, erstatter hele BoardPage)
@@ -59,8 +62,8 @@ Mobil: samme kort stakket; boardroom-genvej fra dashboardets bestyrelseskort.
 
 - 1-års-planens mål → sæsonens mandat (uændrede mål; ingen genforhandling påtvinges).
 - 3/5-års-planernes mål → visions-milepæle med deres oprindelige slut-sæsoner (grandfathering-princippet fra #1234: ingen forringes retroaktivt).
-- Confidence-startværdi = vægtet snit af de 3 satisfactions (forslag: 1yr 50 % / 3yr 30 % / 5yr 20 %) — snapshot + kvitterings-event ("Board model updated") + backup-tabel som ved #3095-reparationen.
-- Timing: bedst sammen med S2→S3-cutover 23/8 (naturligt plan-udløbs-vindue).
+- Confidence-startværdi = vægtet snit af de 3 satisfactions: **1yr 50 % / 3yr 30 % / 5yr 20 %** (ejer-valg 7/8) — snapshot + kvitterings-event ("Board model updated") + backup-tabel som ved #3095-reparationen.
+- Timing (ejer-valg 7/8): **migrationen lander ved S2→S3-cutover 23/8** (naturligt plan-udløbs-vindue). Kræver fase 0+1 færdige inden — koordineres med cutover-runbook + race-day-motor + #3393-lønkørsel samme dag. UI-flip (fase 2) få dage efter.
 
 ### 3.6 Fjernes
 
@@ -79,8 +82,17 @@ Wizard (3 trin + kø), plan-faner, 3 separate tilfredshedstal, GoalMiniDialog-do
 
 Foldes ind/supersederes: #955, #1235, #1237, #1240, #1111, #101, #165 (AC3), #2723 (board-visningen; fuldt renown-system forbliver #1099), #3335, #2022 (stykke B), #3152 (adresseres af kvitteringer + mandat-modellen; bonus-koblingen genbesøges i fase 1-scorecardet). Fase 0-bugs kører som selvstændige issues før/parallelt.
 
-## 6. Åbne punkter til ejer-review
+## 6. Beslutningslog (alle ejer-valg 7/8-2026)
 
-1. Confidence-migrationens vægte (50/30/20) — ok, eller anden fordeling?
-2. Navnepulje til medlemmer: nordisk/international mix eller ren dansk/nordisk?
-3. Mobil-mockup ønskes som runde 3 før spec-godkendelse?
+| # | Beslutning | Valg |
+|---|---|---|
+| 1 | Retning | B: "Mandatet" (én tillid, ét årligt mandat, vision som tidslinje) |
+| 2 | Forhandlingsmodel | 2 justeringer + 1 anmodning pr. årsmøde (basis) |
+| 3 | Misset visions-milepæl | Engangs-tillidsslag + formandsreaktion; ingen kaskade |
+| 4 | Belønningsvaluta | Kun confidence; penge forbliver i lag 6 + modifier |
+| 5 | Anmodnings-kadence | Årsmøde + 1 ekstraordinær samtale (låses op ved mid-season check-in) |
+| 6 | Tillids-trappe | Ja: <30 → 1, 30-74 → 2, ≥75 → 3 justeringer + længere modtilbud |
+| 7 | Migrations-vægte | 50/30/20 (1yr/3yr/5yr) |
+| 8 | Navnepulje | Følger klub-DNA |
+| 9 | Fase 1-timing | S2→S3-cutover 23/8 |
+| 10 | Godkendelses-gate | Mobil-mockup (runde 3) vises før endelig spec-godkendelse |
