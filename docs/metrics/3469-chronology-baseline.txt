@@ -216,3 +216,76 @@ Målt (dry-run --plan 3, rigtigt katalog, buildTierMaterializationPlan + diagnos
 
 Test-status: raceCalendarLanePacker.test.js 22/22 (2 nye: GT-real-day-adskillelse på
 synthetic fixture + fallback-bit-identisk-verifikation). Fuld backend-suite 5573/5573.
+
+── PR #3472 opfølgning (7/8 morgen, v4): ejer-beslutning om endagsløbs-balancen ─────────
+
+Ejer-beslutning (7/8 morgen), afløser 4/8-frysningen: "Der mangler nogle endagsløb i
+1. division. Der er for mange i 3. division. 2. division kan godt holde til et par
+stykker mere. Mere ensartet balance." Mål (antal-andel endagsløb): D1 0,55 (op fra 0,48) ·
+D2 0,55 (op fra 0,50) · D3 0,58 (NED fra 0,76) · D4 0,55 (op fra 0,50). MIN = target−0,10.
+
+a) ENDAGSLØBS-ANDELE (dry-run --plan 3, mål ±3 pp) — ALLE 4 TIERS I MÅL:
+   D1  15 endagsløb + 12 etapeløb = 27 løb · 55,6 % (mål 55 %)
+   D2  19 endagsløb + 15 etapeløb = 34 løb · 55,9 % (mål 55 %)
+   D3  19 endagsløb + 14 etapeløb = 33 løb · 57,6 % (mål 58 %)
+   D4  15 endagsløb + 11 etapeløb = 26 løb · 57,7 % (mål 55 %, +2,7 pp — inden for tolerance)
+
+b) K-B-KOMPOSITION — SÆSON-AGGREGAT ±2 pp: JA, begge sæsoner (efter re-kalibrering, se
+   raceStageProfileGenerator.js's #3469-sektion for den fulde tilt-udledning):
+     S2 EFTER: flad 23,7 · kuperet 33,4 · bjerg 26,8 · ITT 11,7 · brosten 4,3 (0 uden for ±2)
+     S3 EFTER: flad 24,3 · kuperet 31,5 · bjerg 28,1 · ITT 10,0 · brosten 6,1 (0 uden for ±2)
+   PR.-TIER ±2 pp (skaleret tolerance): NEJ, hverken S2 eller S3 — MEN dette er en
+   PRÆ-EKSISTERENDE, DOKUMENTERET begrænsning, IKKE en ny regression: S2 med de GAMLE
+   (6/8-)vægte havde ALLEREDE 14 pr.-tier-brud (NO-GO); med de NYE vægte har S2 15 brud —
+   praktisk talt uændret (+1). Tier-spredningen er et KATALOG-problem (hver tiers
+   klasse-whitelist tvinger et andet arketype-mix), ikke noget én global filler-vægt-tilt
+   kan løse — dokumenteret allerede i 6/8-kalibreringens egen docstring, bekræftet igen
+   her. En joint-kalibrering (fælles evaluate-funktion der summerer S2+S3's score,
+   scripts/calibrateCalendarComposition.js's byggeklodser genbrugt ad-hoc) fandt tilten
+   flad×0,805 · kuperet×1,15 · bjerg×0,977 · ITT×1,322 · brosten×0,5 oven på 6/8-vægtene —
+   den bedste fundne balance mellem S2 og S3 (en S3-alene-optimeret tilt regredierede S2's
+   kuperet til 34,2 %, ude af bånd).
+
+c) DÆKNINGSGARANTIER + REALISME-BÅND: ❌ 2 BLOKERENDE FUND (buildSeasonCalendar.js
+   --season 3 nægter at fortsætte) — BEGGE NYE, forårsaget af D3's lavere endagsløbs-mål,
+   VERIFICERET via git-diff mod de gamle targets (samme katalog, kun target ændret):
+     · D3: terræn-familien "cobbles" (#3327) faldt fra 7 → 1 etape, under garanteret
+       minimum 5. D3's lavere endagsløbs-mål (0,76→0,58) fortrænger cobbled_classic-
+       endagsløb fra selectionen — INGEN filler-vægt kan rette det (cobbled_classic har
+       FAST terræn, ikke vægt-styret).
+     · D4: realisme-båndet cobbles_min (mindst 1 brosten-etape i et etapeløb) fejler
+       (0 < 1) — TIER_ARCHETYPE_RESERVATIONS[4].cobbled_tour:1 opfyldes ikke under de nye
+       targets (katalog-knaphed for cobbled_tour PÅ TVÆRS af tiers — højere tiers reserverer
+       deres cobbled_tour først).
+   INGEN af disse løses i denne PR — de er SELECTION/reservations-niveau-spørgsmål, og
+   ejeren bad eksplicit om at få afvejningen rapporteret i stedet for at få den valgt.
+   Rækkefølge (#3326): ingen nye brud observeret i dry-run-outputtet.
+
+d) D1 OVERLAPDAYS: 20 (UÆNDRET fra PR #3472 runde 3's baseline — det ekstra "fyldstof"
+   fra D1's højere endagsløbs-mål (0,48→0,55) FLYTTEDE IKKE tallet). maxOverlap 3 (=cap).
+   Hypotesen "flere endagsløb løser D1-overlap-kravet" holdt IKKE i praksis — GT-rygraden
+   (63 af 140 game-days på étt spor) forbliver den dominerende strukturelle begrænsning,
+   uanset hvor mange endagsløb der er tilgængelige til at fylde de ØVRIGE spor med.
+   D2/D3/D4 overlapDays: 28/28/27 (svagt op fra 27/28/27).
+
+e) GT-ANKRE + REAL-DAY-SEPARATION + MONUMENT-ANKRE: ALLE INTAKTE.
+   gtRealDaySeparationViolations = 0 på ALLE 4 tiers. D1 GT-spans: Giro [8-16] (mål 0,40→
+   placeret 0,29) · Tour [17-21] (mål 0,61→placeret 0,61, PRÆCIS ramt) · Vuelta [23-27]
+   (mål 0,79→placeret 0,82). Monument-positioner: 0,21/0,25/0,29/0,32/0,93 mod mål
+   0,22/0,28/0,30/0,35/0,97 — uændrede, mekanikken er ikke rørt.
+
+f) LØBSDAGS-/ANTALSTABEL (dry-run --plan 3):
+   Tier  Endagsløb  Etapeløb  Løb i alt  Game-days  Quota  overlapDays  maxOverlap
+   D1    15         12        27         140/140    140    20           3
+   D2    19         15        34         112/112    112    28           2
+   D3    19         14        33         84/84      84     28           2
+   D4    15         11        26         55/56*     56     27           2
+   * D4's 1-dags shortfall er PRE-EXISTING (verificeret uændret fra FØR denne PR-serie,
+     katalog-knaphed uafhængig af endagsløbs-balancen).
+
+Test-status: fuld backend-suite 5573/5573 grønne. calendarCompositionCalibration.test.js
+(#3295-regressionsvagten, kun sæson-aggregat) grøn uændret — INGEN manuel redigering af
+selve testen, kun re-kalibrering (som dens egen fejlbesked foreskriver). pass1-golden.json
+regenereret (balanced_week's filler-vægte ændrede pass-1-output for r2, samme "bevidst
+ændring, fixture regenereret"-præcedens som #3326-korrektionen). tierCalendarMaterializer.
+test.js's tier3Catalog()-fixture udvidet (se separat commit).
