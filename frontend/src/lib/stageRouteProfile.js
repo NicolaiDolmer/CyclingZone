@@ -214,7 +214,7 @@ export const INTERMEDIATE_BONUS_SECONDS = Object.freeze([3, 2, 1]);
 
 // Fra backend/lib/raceSimulator.js (Sub-3, #2771 rute-bevidst gap-model).
 export const TECHNICAL_DESCENT_WINDOW_KM = Object.freeze([3, 12]);
-export const VALLEY_MIN_DESCENT_KM = 10;
+export const VALLEY_MIN_DESCENT_KM = 3;
 export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
   flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
   cobbles: 160, classic: 230, itt: 27.5, ttt: 35,

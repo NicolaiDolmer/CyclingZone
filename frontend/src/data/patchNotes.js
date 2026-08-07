@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.104",
+    "date": "2026-08-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race engine",
+        "en": {
+          "title": "Downhill finishes no longer split the field like summit finishes",
+          "body": "Stages that finish after a descent used to spread the time gaps as much as a summit finish, and a weak descender could lose 30 to 50 seconds even inside a group. That was backwards: in reality the front group comes back together on the way down. Descent finishes now gather the field (gaps are roughly a third to half of a summit finish), the descending skill still matters but tops out around 14 seconds instead of 65, and stages with a technical finale also spread a bit less. Summit finishes, flat sprints, time trials and cobbles are untouched."
+        },
+        "da": {
+          "title": "Nedkørselsfinaler splitter ikke længere feltet som bjergfinaler",
+          "body": "Etaper der slutter efter en nedkørsel spredte tidsforskellene lige så meget som en bjergfinale, og en svag nedkører kunne tabe 30 til 50 sekunder selv inde i en gruppe. Det var omvendt af virkeligheden: frontgruppen samles på vej ned. Nedkørselsfinaler samler nu feltet (forskellene er cirka en tredjedel til halvdelen af en bjergfinale), nedkørselsevnen betyder stadig noget men topper omkring 14 sekunder i stedet for 65, og etaper med teknisk finale spreder også lidt mindre. Bjergfinaler, massespurter, enkeltstarter og brosten er uændrede."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.103",
     "date": "2026-08-06",
     "label": "Beta",

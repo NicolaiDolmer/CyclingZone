@@ -1,0 +1,88 @@
+
+🏔️  NEDKØRSELS-GAB-SCORECARD (#3426) — seeds=2026,7,42 · felt=140 · population=900/seed (in-memory, rører ikke prod)
+   EFTER-konstanter: VALLEY_MIN_DESCENT_KM=3 · DESCENT_GAP_BUNCH=0.015 · DESCENDING_FINALE_WEIGHT=0.018 · TECHNICAL_FINALE_WEIGHT=0.035
+   FØR-konstanter (legacy): VALLEY_MIN_DESCENT_KM=10 · DESCENT_GAP_BUNCH=0 (ikke opfundet endnu) · DESCENDING_FINALE_WEIGHT=0.04 · TECHNICAL_FINALE_WEIGHT=0.06
+
+  1130 S3-profiler (455 løb) + 159 supplerende descent-uden-rutedata-profiler (S1)
+
+  seed 2026 kørt (0.4s)
+  seed 7 kørt (0.4s)
+  seed 42 kørt (0.4s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+PR. GRUPPE — median gab (sekunder) ved position 5/10/20/40, før → efter
+(kontrol-grupper: kun finale-frie løb — den ÆGTE uændret-invariant; se finale-berørt-andel)
+
+  control_classic        n=  96  p5   11→  11  p10   22→  22  p20   34→  34  p40   50→  50  [finale-berørt: 48/96]
+  control_cobbles        n= 198  p5   24→  24  p10   41→  41  p20   63→  63  p40   85→  85  [finale-berørt: 99/198]
+  control_flat           n= 951  p5    0→   0  p10    0→   0  p20    3→   3  p40   22→  22  [finale-berørt: 321/951]
+  control_rolling        n= 168  p5    2→   2  p10    7→   7  p20   13→  13  p40   19→  19  [finale-berørt: 81/168]
+  descent_3_10           n= 330  p5   23→  12  p10   40→  22  p20   58→  34  p40   79→  46  [finale-berørt: 330/330]
+  descent_ge10           n=1008  p5   15→  13  p10   26→  24  p20   38→  38  p40   51→  50  [finale-berørt: 441/1008]
+  descent_no_route       n= 477  p5   42→  18  p10   75→  36  p20  148→  82  p40  242→ 135  [finale-berørt: 477/477]
+  itt_ttt                n= 261  p5   19→  19  p10   44→  44  p20   89→  89  p40  143→ 143
+  summit                 n= 378  p5   37→  37  p10   84→  84  p20  179→ 179  p40  350→ 350
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+GATE (a): tidligere udæmpede nedkørsels-grupper konvergerer mod ~18/32/46/63s (bånd 0.5×-1.6-2.3×, videre ved dybere positioner), ratio nedkørsel/summit ≤0.5 ved p5/p10
+
+  ✅ descent_ge10 p5 efter=13s  [bånd 9-29s]
+  ✅ descent_ge10 p10 efter=24s  [bånd 16-51s]
+  ✅ descent_ge10 p20 efter=38s  [bånd 23-87s]
+  ✅ descent_ge10 p40 efter=50s  [bånd 32-145s]
+  ✅ descent_ge10/summit p5 ratio=0.36  [krav ≤0.5]
+  ✅ descent_ge10/summit p10 ratio=0.29  [krav ≤0.5]
+  ✅ descent_3_10 p5 efter=12s  [bånd 9-29s]
+  ✅ descent_3_10 p10 efter=22s  [bånd 16-51s]
+  ✅ descent_3_10 p20 efter=34s  [bånd 23-87s]
+  ✅ descent_3_10 p40 efter=46s  [bånd 32-145s]
+  ✅ descent_3_10/summit p5 ratio=0.33  [krav ≤0.5]
+  ✅ descent_3_10/summit p10 ratio=0.26  [krav ≤0.5]
+  ✅ descent_no_route p5 efter=18s  [bånd 9-29s]
+  ✅ descent_no_route p10 efter=36s  [bånd 16-51s]
+  ✅ descent_no_route p20 efter=82s  [bånd 23-87s]
+  ✅ descent_no_route p40 efter=135s  [bånd 32-145s]
+  ✅ descent_no_route/summit p5 ratio=0.49  [krav ≤0.5]
+  ✅ descent_no_route/summit p10 ratio=0.43  [krav ≤0.5]
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+GATE (b): max descending-drevet per-rytter-differens (ren descending-gren) ≤15s, aldrig inverteret
+
+  ✅ max descending-attribueret spænd (ren gren) = 14.3s  [krav ≤15s]  (descent_no_route, race 1e91b877-c824-4bc4-afa9-3b341cab0a72, etape 4, seed 7)
+  ✅ monotoni (bedre nedkører ⇒ aldrig værre finale-bidrag): descending-only=true teknisk-blend=true
+  ✅ max descending-attribueret spænd (teknisk blandet-gren, rapport-only) = 20.8s  (før-vægt ville have givet ~35.7s)  (descent_3_10, race 041c2480-65cf-4f4f-9a49-578b75d1825e, etape 20, seed 7)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+GATE (c): summit/flat/rolling/itt/cobbles/classic (+ øvrige control_*) er UÆNDREDE — MÅLT PÅ FINALE-FRIE LØB
+(finale-berørte løb i disse grupper — fx cobbles-sektor-finaler — flytter sig BEVIDST via TECHNICAL_FINALE_WEIGHT-reduktionen, #3426 item 6; rapporteres separat, ikke gatet)
+
+  ✅ control_classic (n=48 finale-frie) — bit-identisk før/efter · 48 finale-berørte løb rapporteres separat (gate d)
+  ✅ control_cobbles (n=99 finale-frie) — bit-identisk før/efter · 99 finale-berørte løb rapporteres separat (gate d)
+  ✅ control_flat (n=630 finale-frie) — bit-identisk før/efter · 321 finale-berørte løb rapporteres separat (gate d)
+  ✅ control_rolling (n=87 finale-frie) — bit-identisk før/efter · 81 finale-berørte løb rapporteres separat (gate d)
+  ✅ itt_ttt (n=261 finale-frie) — bit-identisk før/efter
+  ✅ summit (n=378 finale-frie) — bit-identisk før/efter
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+GATE (d): udbruds-vinderrater uændrede for kontrol-gruppernes finale-FRIE løb; sprinter-vinderrate ≥90% på flat, uændret
+
+  ✅ control_classic (finale-frie) udbrud-vinderandel: 0.0% → 0.0%
+  ·  control_classic (finale-berørte, n=48) udbrud-vinderandel: 0.0% → 0.0% (rapport-only — TECHNICAL_FINALE_WEIGHT-reduktion er bevidst her)
+  ✅ control_cobbles (finale-frie) udbrud-vinderandel: 15.2% → 15.2%
+  ·  control_cobbles (finale-berørte, n=99) udbrud-vinderandel: 7.1% → 7.1% (rapport-only — TECHNICAL_FINALE_WEIGHT-reduktion er bevidst her)
+  ✅ control_flat (finale-frie) udbrud-vinderandel: 5.7% → 5.7%
+  ·  control_flat (finale-berørte, n=321) udbrud-vinderandel: 4.4% → 4.0% (rapport-only — TECHNICAL_FINALE_WEIGHT-reduktion er bevidst her)
+  ✅ control_rolling (finale-frie) udbrud-vinderandel: 9.2% → 9.2%
+  ·  control_rolling (finale-berørte, n=81) udbrud-vinderandel: 3.7% → 4.9% (rapport-only — TECHNICAL_FINALE_WEIGHT-reduktion er bevidst her)
+  ·  descent_3_10 udbrud-vinderandel: 30.0% → 32.4% (rapport-only — denne gren er netop den der fixes)
+  ·  descent_ge10 udbrud-vinderandel: 31.3% → 31.4% (rapport-only — denne gren er netop den der fixes)
+  ·  descent_no_route udbrud-vinderandel: 33.3% → 33.3% (rapport-only — denne gren er netop den der fixes)
+  ✅ itt_ttt (finale-frie) udbrud-vinderandel: 0.0% → 0.0%
+  ✅ summit (finale-frie) udbrud-vinderandel: 0.5% → 0.5%
+  ✅ sprinter-vinderrate (flat, finale-frie) efter=98.9%  [krav ≥90%]
+  ✅ sprinter-vinderrate (flat, finale-frie) uændret: 98.9% → 98.9%
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+✅ GO — alle gatede delscore grønne (exit 0)
+
