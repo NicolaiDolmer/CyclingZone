@@ -65,6 +65,10 @@ const TYPE_CONFIG = {
   emergency_loan:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/finance" },
   loan_paid_off:             { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/finance" },
   board_update:              { Icon: ClipboardIcon,    color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/board" },
+  // #3505: mest handlingskrævende bestyrelses-hændelse (tvangssalg, bonus-mål,
+  // lag 4-6-konsekvenser fra boardConsequences.js) — danger-styling, samme
+  // link som board_update, men manglede sit eget TYPE_CONFIG-entry.
+  board_critical:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/board" },
   // #2945: mission-fund har intet riderId → falder tilbage til /scouting.
   // target-undersøgelser SÆTTER metadata.riderId → den generiske #1486-regel
   // (linje ~484) overstyrer dette link med /riders/:riderId automatisk.
@@ -95,7 +99,7 @@ const MINE_FILTER_TYPES = {
   unread:    null,
   auctions:  ["bid_received","bid_placed","auction_won","auction_lost","auction_outbid","watchlist_rider_auction"],
   transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed","watchlist_departed","contract_expiring"],
-  board:     ["board_update"],
+  board:     ["board_update", "board_critical"],
   finance:   ["salary_paid","sponsor_paid","loan_created","emergency_loan","loan_paid_off"],
 };
 
