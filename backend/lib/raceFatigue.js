@@ -7,6 +7,7 @@
 // den ønskede adfærd: vi opdaterer kun træthed, rører aldrig form.
 
 import { effortFatigueMultiplier } from "./raceRoles.js";
+import { nextFatigue } from "./riderCondition.js";
 
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
@@ -48,17 +49,26 @@ export function raceFatigueLoad(profileType) {
  * 'normal', BIT-IDENTISK med før S3). `efforts[i]` falsy (huller/for kort array,
  * bør ikke ske men defensivt) → 'normal' for den etape.
  *
+ * #3470: valgfri `restDaysBefore`-array (parallel til profileTypes) — antal GT-
+ * hviledage (game_day-hul) FØR etape i. Er restDaysBefore[i] > 0, restitueres f via
+ * restDayFatigue (SAMME model som den eksplicitte hviledags-restitution der rent
+ * faktisk skrives til rider_condition, raceRunner.js) FØR etapens belastning lægges
+ * til — så prædiktionen her ikke dobbelt-tæller/modsiger den faktiske restitution.
+ * Udeladt/alt 0 → BIT-IDENTISK med før #3470.
+ *
  * @param {number|null|undefined} startFatigue
  * @param {string[]} profileTypes  etapeprofiler i etape-rækkefølge
- * @param {{effort?: 'protect'|'normal'|'save', efforts?: string[]}} [opts]
+ * @param {{effort?: 'protect'|'normal'|'save', efforts?: string[], restDaysBefore?: number[], recoveryAbility?: number}} [opts]
  * @returns {number[]} træthed ved START af hver etape (samme længde som profileTypes)
  */
-export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts } = {}) {
+export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts, restDaysBefore, recoveryAbility = 50 } = {}) {
   let f = Number.isFinite(Number(startFatigue))
     ? Math.max(0, Math.min(100, Number(startFatigue)))
     : 0;
   const out = [];
   for (let i = 0; i < profileTypes.length; i++) {
+    const rest = Array.isArray(restDaysBefore) ? (Number(restDaysBefore[i]) || 0) : 0;
+    if (rest > 0) f = restDayFatigue({ fatigue: f, restDays: rest, recoveryAbility });
     const p = profileTypes[i];
     const stageEffort = Array.isArray(efforts) ? (efforts[i] || "normal") : effort;
     const mult = effortFatigueMultiplier(stageEffort);
@@ -112,4 +122,64 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
   if (upErr) throw new Error(`rider_condition upsert (race fatigue): ${upErr.message}`);
 
   return { updated: rows.length };
+}
+
+/**
+ * #3470 — REN KERNE: hviledags-restitueret træthed. Et GT-game_day-hul (mellem to
+ * etaper, jf. grandTourRestDayPositions/raceCalendarLanePacker.js) tickes gennem DEN
+ * ÆGTE daglige model (riderCondition.nextFatigue, intensity "rest") ÉN gang PR.
+ * hviledag i hullet, med rytterens EGEN recoveryAbility. Samme mekanik som
+ * sæsonskifte-restitutionen (seasonFatigueReset.js's "rest_days"-mode) — GT'er er
+ * IRL-komprimerede (flere game_day-slots pr. rigtig kalenderdag, jf. TIER_STAGE_SLOTS),
+ * så et game_day-hul giver IKKE automatisk en ekstra rigtig-kalenderdags recovery-cyklus
+ * (trainingSweep.js/riderCondition.js tickker pr. REAL dansk kalenderdag) — denne funktion
+ * ER den eksplicitte erstatning derfor. Deterministisk, ingen DB/Date/random.
+ * @param {{fatigue:number|null|undefined, restDays:number, recoveryAbility?:number}} args
+ * @returns {number} heltal 0-100
+ */
+export function restDayFatigue({ fatigue, restDays, recoveryAbility = 50 } = {}) {
+  const days = Math.max(0, Math.floor(Number(restDays) || 0));
+  const rec = Number.isFinite(Number(recoveryAbility)) ? Number(recoveryAbility) : 50;
+  let f = Number.isFinite(Number(fatigue)) ? Number(fatigue) : 0;
+  for (let i = 0; i < days; i++) {
+    f = nextFatigue({ fatigue: f, intensity: "rest", recoveryAbility: rec });
+  }
+  return Math.max(0, Math.min(100, Math.round(f)));
+}
+
+/**
+ * #3470 — persistér GT-hviledags-restitution med SAMME læs-modificér-skriv-sti som
+ * applyRaceFatigue (frisk DB-læsning → restDayFatigue → upsert). Bevidst en frisk læsning
+ * (ikke et in-memory fatigue-øjebliksbillede) — kaldestedet i raceRunner.js's fuld-sim-gren
+ * processerer FLERE etaper i ÉT kald, og rider_condition.fatigue akkumulerer undervejs fra
+ * tidligere applyRaceFatigue-kald i SAMME kald; kun en frisk læsning her holder rest-tick'et
+ * synkront med den faktiske DB-tilstand. recoveryAbilityByRider mangler en rytter →
+ * default 50 (samme neutral-fallback som seasonFatigueReset.js).
+ * @param {{ supabase, riderIds: string[], restDays: number, recoveryAbilityByRider?: Map<string,number>, now?: Date }}
+ * @returns {{ updated: number, fatigueByRider: Map<string,number> }} fatigueByRider lader
+ *   kald-stedet synkronisere et in-memory entrants-snapshot (fx til selve simuleringen)
+ *   uden endnu en DB-læsning.
+ */
+export async function applyGrandTourRestDayFatigue({ supabase, riderIds, restDays, recoveryAbilityByRider = new Map(), now = new Date() }) {
+  if (!riderIds?.length || !restDays) return { updated: 0, fatigueByRider: new Map() };
+
+  const { data, error } = await supabase
+    .from("rider_condition")
+    .select("rider_id, fatigue")
+    .in("rider_id", riderIds);
+  if (error) throw new Error(`rider_condition (GT hviledags-restitution): ${error.message}`);
+
+  const by = new Map((data ?? []).map((r) => [r.rider_id, r.fatigue]));
+  const rows = riderIds.map((id) => ({
+    rider_id: id,
+    fatigue: restDayFatigue({ fatigue: by.get(id), restDays, recoveryAbility: recoveryAbilityByRider.get(id) ?? 50 }),
+    updated_at: now.toISOString(),
+  }));
+
+  const { error: upErr } = await supabase
+    .from("rider_condition")
+    .upsert(rows, { onConflict: "rider_id" });
+  if (upErr) throw new Error(`rider_condition upsert (GT hviledags-restitution): ${upErr.message}`);
+
+  return { updated: rows.length, fatigueByRider: new Map(rows.map((r) => [r.rider_id, r.fatigue])) };
 }

@@ -178,7 +178,12 @@ test("plan: Div 1 får alle 3 Grand Tours + alle 5 monumenter; div 3 ingen Grand
   assert.ok(!div3.some((r) => ["TourFrance", "GiroVuelta"].includes(r.race_class)), "ingen GT i div3");
 });
 
-test("plan: Grand Tour spænder 21 game-dage (kronologi) men komprimeres i IRL (>1 etape/dag)", () => {
+// #3470: fullCatalog() har INGEN date_text på nogen løb — GT'erne rammer derfor
+// #3469/#3470s fraction-/hviledags-FRIE fallback-sti (perGap, bit-identisk med før
+// #3469), som SKAL forblive 100% kontinuert (0 hviledage, ingen date_text at udlede dem
+// af). Se "#3470: GT-hviledage" nedenfor for den NYE kontrakt (span = stages-1+restDays)
+// når date_text ER sat på GT'erne.
+test("plan: Grand Tour spænder 21 game-dage (kronologi, fallback uden date_text) men komprimeres i IRL (>1 etape/dag)", () => {
   const div1 = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM }).tierPlans.find((t) => t.tier === 1).pools[0];
   for (const id of ["gt-0", "gt-1", "gt-2"]) {
     const rows = div1.stageRows.filter((s) => s.pool_race_id === id);
@@ -192,6 +197,62 @@ test("plan: Grand Tour spænder 21 game-dage (kronologi) men komprimeres i IRL (
     assert.ok(Object.keys(byIrl).length < 21, `${id}: ikke komprimeret (${Object.keys(byIrl).length} IRL-dage)`);
     assert.ok(Math.max(...Object.values(byIrl)) >= 2, `${id}: ingen IRL-dag med >1 etape (ingen komprimering)`);
   }
+});
+
+// #3470: fullCatalog() + date_text på de 3 GT'er (rigtige Giro/Tour/Vuelta-datoer, samme
+// tal som grandTourRestDays.test.js) — aktiverer #3469's fase-ankrede STREAM-gren OG
+// dermed #3470's hviledags-segmentering (restDays udledes AUTOMATISK af date_text, ingen
+// separat "restDays"-fixture-felt). Resten af kataloget er bevidst UDEN date_text (samme
+// isolerede gate-test-mønster som raceCalendarLanePacker.test.js's fallback-tests).
+function fullCatalogWithGtDates() {
+  return fullCatalog().map((c) => {
+    if (c.id === "gt-1") return { ...c, date_text: "8/5 - 31/5" };  // Giro → 24 dage/21 etaper → 3 hviledage
+    if (c.id === "gt-0") return { ...c, date_text: "1/7 - 23/7" };  // Tour → 23 dage/21 etaper → 2 hviledage
+    if (c.id === "gt-2") return { ...c, date_text: "22/8 - 13/9" }; // Vuelta → 23 dage/21 etaper → 2 hviledage
+    return c;
+  });
+}
+
+test("#3470: GT-hviledage — span = stages-1+restDaysFilled når date_text findes, stage_number tæt 1..21, kvote uændret", () => {
+  // LEGACY_MIX: denne test isolerer #3470's GT-hviledags-mekanik (ANDEN mekanik, jf.
+  // LEGACY_MIX's docstring øverst i filen) — uden opt-out fanger #3327/#3328's
+  // downstreamProtectedArchetypes (main, klasse-bevidst nedstrøms-beskyttelse) et 1-dags
+  // shortfall PÅ NETOP dette minimale/kunstige katalog (139/140), et selection-lag-fund der
+  // intet har med #3470 at gøre — samme isolerings-mønster som #2251/overlap-cap/kronologi/
+  // dedup-testene i denne fil.
+  const plan = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalogWithGtDates(), from: FROM, ...LEGACY_MIX });
+  const tier1 = plan.tierPlans.find((t) => t.tier === 1);
+  const div1 = tier1.pools[0];
+  const expectedRestDaysPlanned = { "gt-1": 3, "gt-0": 2, "gt-2": 2 };
+  assert.equal(tier1.grandTourRestDays.length, 3, "en rapportlinje pr. GT (#3470 punkt 3)");
+  for (const [id, restDaysPlanned] of Object.entries(expectedRestDaysPlanned)) {
+    const report = tier1.grandTourRestDays.find((r) => r.id === id);
+    assert.ok(report, `${id}: mangler grandTourRestDays-rapportlinje`);
+    assert.equal(report.restDaysPlanned, restDaysPlanned, `${id}: restDaysPlanned skal matche date_text-spændet`);
+    // Konsistens: hver planlagt hviledag er enten fyldt (filler) eller degraderet — aldrig tabt.
+    assert.equal(report.restDaysFilled + report.degradedAfterStage.length, restDaysPlanned, `${id}: filled+degraded skal summe til planned`);
+    assert.equal(report.fillerIds.length, report.restDaysFilled);
+
+    const rows = div1.stageRows.filter((s) => s.pool_race_id === id);
+    const gds = [...new Set(rows.map((s) => s.game_day))].sort((a, b) => a - b);
+    assert.equal(gds.length, 21, `${id}: skal stadig have 21 UNIKKE etape-game-dage`);
+    // Kun de FAKTISK fyldte hviledage strækker spændet — degraderede hviledage lægges IKKE
+    // ind som et hul (GT'ens næste etape lægges umiddelbart efter, "degradér ærligt").
+    assert.equal(gds[gds.length - 1] - gds[0], 21 - 1 + report.restDaysFilled, `${id}: span skal være stages-1+restDaysFilled`);
+    const stageNumbers = rows.map((s) => s.stage_number).sort((a, b) => a - b);
+    assert.deepEqual(stageNumbers, Array.from({ length: 21 }, (_, i) => i + 1), `${id}: stage_number skal være tæt 1..21 (Option A)`);
+  }
+  // Mindst ét GT fik rent faktisk mindst én hviledag fyldt i dette katalog — beviser at
+  // fyldnings-stien (ikke kun degrade-stien) faktisk er udøvet af testen.
+  assert.ok(tier1.grandTourRestDays.some((r) => r.restDaysFilled > 0), "mindst ét GT skal have mindst én fyldt hviledag");
+  // #2251-invarianten (ingen GT-overlap) holder stadig med de forlængede spænd.
+  assert.deepEqual(tier1.calendarViolations, [], `uventede violations: ${JSON.stringify(tier1.calendarViolations)}`);
+  // #3327-uafhængigt: totalGameDays/kvote UÆNDRET — fillere er allerede en del af puljen.
+  assert.equal(tier1.totalGameDays, 140);
+  assert.equal(tier1.quotaHit, true, `shortfall=${tier1.shortfall}`);
+  // #3470 (ejer-beslutning 7/8): diagnose()'s overlap-optælling er nu STAGE-baseret — en GT
+  // på hviledag tæller ikke længere med i den dags overlap, loftet er atter det hårde cap.
+  assert.ok(tier1.maxOverlap <= 3, `tier1 maxOverlap ${tier1.maxOverlap} > cap 3`);
 });
 
 test("plan: monumenter får game_day i binding-fri båndet; game_day_start = almindelig dag", () => {

@@ -41,7 +41,7 @@ import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_K
 import { isRaceEngineV3ScoringEnabled } from "./raceEngineFlag.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
+import { applyRaceFatigue, stageEnteringFatigues, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import {
   loadStageRoleOverrides,
   resolveStageEntrant,
@@ -262,6 +262,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   // Fylder seamen raceSimulator.js:74 beskriver, uden at røre simulateStage-kontrakten.
   const stageProfiles = stagesSorted.map((s) => s.profile_type);
   const stageNumbers = stagesSorted.map((s) => s.stage_number || 1);
+  // #3470: GT-hviledage FØR hver etape (game_day-hul) — REN, udledt af stagesSorted's
+  // .game_day (attacheret af kaldestedet, se attachStageGameDays). Alt 0 når data
+  // mangler/ikke er attacheret → BIT-IDENTISK med før #3470 (stageEnteringFatigues'
+  // restDaysBefore no-op'er på alt-0).
+  const restDaysBefore = restDaysBeforeEachStage(stagesSorted);
   // S3 (#2034): per-rytter per-etape effort-sekvens til fatigue-akkumuleringen —
   // KUN når v3=true (flag-off skal forblive bit-identisk). effortsSequenceForRider
   // returnerer null når stageRoleOverrides er tom/undefined → stageEnteringFatigues
@@ -269,7 +274,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   const fatigueSeqById = new Map(
     entrants.map((e) => {
       const efforts = v3 ? effortsSequenceForRider(stageRoleOverrides, e.rider_id, stageNumbers) : null;
-      return [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles, efforts ? { efforts } : {})];
+      return [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles, {
+        ...(efforts ? { efforts } : {}),
+        restDaysBefore,
+        recoveryAbility: e.abilities?.recovery,
+      })];
     })
   );
 
@@ -523,6 +532,50 @@ async function loadStageProfiles(supabase, raceId) {
     .order("stage_number", { ascending: true });
   if (error) throw new Error(`race_stage_profiles: ${error.message}`);
   return data || [];
+}
+
+// #3470: stage_number → game_day for ét løb. game_day er den ROBUSTE kilde til GT-
+// hviledags-huller (se raceCalendarLanePacker.js's Option A: hul i game_day, TÆT
+// stage_number) — DEN faktiske binding-nøgle, uafhængig af IRL-komprimering
+// (scheduled_at kan ikke bruges til det samme: flere game_day-slots deler ofte samme
+// kalenderdato, jf. TIER_STAGE_SLOTS). Manglende/legacy schedule-data → tomt Map
+// (kalderen degraderer til 0 hviledage, ikke en fejl — samme mønster som
+// loadStageDayOrdinals i racePeakPlans.js).
+async function loadStageGameDays(supabase, raceId) {
+  const { data, error } = await supabase
+    .from("race_stage_schedule")
+    // pagination-safe: bundet til ÉT race_id — et løb har maks ~21 etaper
+    // (GRAND_TOUR_MIN_STAGES-loftet), langt under PostgREST's 1000-rækkers-cap.
+    .select("stage_number, game_day")
+    .eq("race_id", raceId);
+  if (error) throw new Error(`race_stage_schedule (GT hviledags-gab): ${error.message}`);
+  const out = new Map();
+  for (const row of data || []) if (row.game_day != null) out.set(row.stage_number, row.game_day);
+  return out;
+}
+
+// #3470: antal GT-hviledage (game_day-hul) FØR hver etape i `stagesSorted` — parallelt
+// array (index 0 er altid 0, ingen "før" første etape). REN, ingen DB — `stagesSorted`
+// skal allerede bære `.game_day` (attacheret af kaldestedet, samme mønster som
+// attachPeakContext's `.peakDay`-mutation). Manglende game_day-data for et par →
+// 0 (degraderer til nuværende adfærd). Eksporteret til test (raceRunner.test.js).
+export function restDaysBeforeEachStage(stagesSorted) {
+  const gaps = new Array(stagesSorted.length).fill(0);
+  for (let i = 1; i < stagesSorted.length; i++) {
+    const prevGd = stagesSorted[i - 1]?.game_day;
+    const curGd = stagesSorted[i]?.game_day;
+    if (Number.isFinite(prevGd) && Number.isFinite(curGd)) {
+      gaps[i] = Math.max(0, curGd - prevGd - 1);
+    }
+  }
+  return gaps;
+}
+
+// #3470: hæft game_day på hver stage (mutation, samme livscyklus som attachPeakContext's
+// peakDay) — UAFHÆNGIGT af v3-flaget (fatigue-restitution er ikke en v3-feature).
+async function attachStageGameDays({ supabase, race, stages, loadStageGameDaysFn }) {
+  const gameDayByStageNumber = await loadStageGameDaysFn(supabase, race.id);
+  for (const s of stages) s.game_day = gameDayByStageNumber.get(s.stage_number ?? 1) ?? null;
 }
 
 // S5 (#2224): resolvér peak-kontekst for ét løb og hæft den på stages + entrants
@@ -1269,6 +1322,10 @@ export async function simulateRace({
   notifyDiscord = null,
   notifyInApp = null,
   applyFatigue = applyRaceFatigue,
+  // #3470: injectable, default læser race_stage_schedule.game_day + persisterer via
+  // den ægte GT-hviledags-restitution (bit-identisk no-op når ingen game_day-huller).
+  loadStageGameDays: loadStageGameDaysFn = loadStageGameDays,
+  applyGrandTourRestDayFatigue: applyGrandTourRestDayFatigueFn = applyGrandTourRestDayFatigueShared,
   // #2352 (Race v3 S1): injectable som de øvrige samarbejdspartnere ovenfor —
   // default læser den ægte kill-switch (app_config.race_engine_v3_scoring).
   checkV3Enabled = isRaceEngineV3ScoringEnabled,
@@ -1293,6 +1350,11 @@ export async function simulateRace({
     .maybeSingle();
 
   const stages = await loadStageProfiles(supabase, race.id);
+  // #3470: hæft game_day på hver etape (kun meningsfuldt for etapeløb — endagsløb har
+  // trivielt game_day-hul=0 uanset) FØR entrants/results bygges, UAFHÆNGIGT af v3.
+  if (race.race_type === "stage_race") {
+    await attachStageGameDays({ supabase, race, stages, loadStageGameDaysFn });
+  }
   if (!stages.length) throw new Error(`No race_stage_profiles for race ${race.id} — run backfill`);
 
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: !dryRun });
@@ -1412,7 +1474,27 @@ export async function simulateRace({
   // berigelse; et upsert-problem må ikke vælte finalization (mirror B2-beslutningen
   // for condition-berigelse i loadEntrantsForRace).
   const riderIds = entrants.map((e) => e.rider_id);
-  for (const stage of stages) {
+  const recoveryAbilityByRider = new Map(entrants.map((e) => [e.rider_id, e.abilities?.recovery]));
+  // #3470: samme rækkefølge + samme game_day-hul-udledning som fatigueSeqById ovenfor
+  // (restDaysBeforeEachStage(stagesSorted)) — persisteringen HER skal matche det
+  // simuleringen allerede regnede med, ikke en uafhængig genberegning.
+  const persistStagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
+  const persistRestDaysBefore = restDaysBeforeEachStage(persistStagesSorted);
+  for (let i = 0; i < persistStagesSorted.length; i++) {
+    const stage = persistStagesSorted[i];
+    // #3470: eksplicit hviledags-restitution FØR denne etapes belastning skrives, hvis
+    // der er et game_day-hul til FORRIGE etape (GT-rest-dag). Fejl sluges (samme mønster
+    // som applyFatigue nedenfor) — restitutionen er additiv berigelse, ikke kritisk sti.
+    if (persistRestDaysBefore[i] > 0) {
+      try {
+        await applyGrandTourRestDayFatigueFn({
+          supabase, riderIds, restDays: persistRestDaysBefore[i], recoveryAbilityByRider,
+        });
+      } catch (err) {
+        console.error(`  ⚠️  GT hviledags-restitution fejlede (etape ${stage.stage_number}, ${persistRestDaysBefore[i]} hviledage): ${err.message}`);
+        captureException(err, { tags: { flow: "race-run", stage: "gt-rest-day-fatigue" }, raceId: race.id, stageNumber: stage.stage_number });
+      }
+    }
     try {
       // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) ganger
       // dagens fatigue-load — se raceFatigue.applyRaceFatigue's jsdoc.
@@ -1780,6 +1862,10 @@ export async function simulateStageByIndex({
   notifyStageInApp = null,
   applyFatigue = applyRaceFatigue,
   applyStageResult = applyStageResultAtomic,
+  // #3470: injectable, default læser race_stage_schedule.game_day + persisterer den
+  // ægte GT-hviledags-restitution (bit-identisk no-op når intet game_day-hul).
+  loadStageGameDays: loadStageGameDaysFn = loadStageGameDays,
+  applyGrandTourRestDayFatigue: applyGrandTourRestDayFatigueFn = applyGrandTourRestDayFatigueShared,
   // #2352 (Race v3 S1): injectable, default læser den ægte kill-switch.
   checkV3Enabled = isRaceEngineV3ScoringEnabled,
   // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true.
@@ -1804,6 +1890,11 @@ export async function simulateStageByIndex({
   if (!stages.length) throw new Error(`No race_stage_profiles for race ${race.id} — run backfill`);
   if (stageIndex > stages.length - 1) {
     throw new Error(`stageIndex ${stageIndex} out of range (race has ${stages.length} stages)`);
+  }
+  // #3470: hæft game_day på hver etape FØR entrants/results bygges, UAFHÆNGIGT af v3
+  // (samme mønster/begrundelse som simulateRace ovenfor).
+  if (race.race_type === "stage_race") {
+    await attachStageGameDays({ supabase, race, stages, loadStageGameDaysFn });
   }
 
   const stagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
@@ -2054,6 +2145,32 @@ export async function simulateStageByIndex({
       // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.
       console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
       captureException(err, { tags: { flow: "race-run", stage: "fatigue-upsert" }, raceId: race.id, stageNumber });
+    }
+
+    // #3470: eksplicit hviledags-restitution — game_day-hul til NÆSTE etape (GT-rest-dag)
+    // tickes HER, umiddelbart efter DENNE etapes egen fatigue-skrivning (post-lock, samme
+    // sti som applyFatigue ovenfor) — IKKE ved starten af næste etapes invokation. Det
+    // garanterer idempotens: kun den VINDENDE afvikling af DENNE etape (FIX 5-låsen
+    // ovenfor) når hertil, så et genforsøg/samtidigt kald af samme stageIndex kan
+    // ALDRIG dobbelt-anvende restitutionen. Næste etapes loadEntrantsForRace læser den
+    // restituerede rider_condition.fatigue som en frisk DB-læsning — ingen ekstra kode
+    // nødvendig i simuleringsstien (samme mekanik buildStageRowsAccumulated's docstring
+    // beskriver: "…plus evt. restitution mellem etapedage").
+    if (race.race_type === "stage_race" && stageIndex + 1 < stagesSorted.length) {
+      const nextGd = stagesSorted[stageIndex + 1]?.game_day;
+      const curGd = thisStage.game_day;
+      const restDays = Number.isFinite(nextGd) && Number.isFinite(curGd) ? Math.max(0, nextGd - curGd - 1) : 0;
+      if (restDays > 0) {
+        try {
+          const recoveryAbilityByRider = new Map(entrants.map((e) => [e.rider_id, e.abilities?.recovery]));
+          await applyGrandTourRestDayFatigueFn({
+            supabase, riderIds: entrants.map((e) => e.rider_id), restDays, recoveryAbilityByRider,
+          });
+        } catch (err) {
+          console.error(`  ⚠️  GT hviledags-restitution fejlede (race ${race.id} efter etape ${stageNumber}, ${restDays} hviledage): ${err.message}`);
+          captureException(err, { tags: { flow: "race-run", stage: "gt-rest-day-fatigue" }, raceId: race.id, stageNumber });
+        }
+      }
     }
 
     // ── Mellem-etape: INGEN finalization. status forbliver scheduled (binær enum). ──

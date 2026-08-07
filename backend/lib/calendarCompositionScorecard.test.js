@@ -121,6 +121,30 @@ test("formatScorecard rapporterer TTT-forbeholdet, tier-tabeller og verdict", ()
   assert.ok(out.includes("GO"));
 });
 
+// #3470: GT-hviledage rapporteres (gater ikke) når tier-entry'en bærer grandTourRestDays
+// (kun --plan mode, fra packLaneCalendar via tierCalendarMaterializer.js's dry-run-plan).
+test("#3470 formatScorecard: GT-hviledage-linje vises pr. GT når grandTourRestDays er sat", () => {
+  const tier = onTargetTier(1, 140);
+  tier.grandTourRestDays = [
+    { id: "gt-giro", name: "Giro della Penisola", stages: 21, restDaysPlanned: 3, restDaysFilled: 3, fillerIds: ["od-1", "od-2", "od-3"], degradedAfterStage: [] },
+    { id: "gt-vuelta", name: "Vuelta Ibérica", stages: 21, restDaysPlanned: 2, restDaysFilled: 1, fillerIds: ["od-4"], degradedAfterStage: [15] },
+  ];
+  const summary = scoreComposition([tier]);
+  const out = formatScorecard(summary, { seasonNumber: 3, mode: "dry-run-plan" }).join("\n");
+  assert.ok(out.includes("GT-hviledage (#3470)"));
+  assert.ok(out.includes("Giro della Penisola: 21 etaper + 3 hviledage (efter etape 6/12/18)"));
+  assert.ok(out.includes("3/3 fyldt"));
+  assert.ok(out.includes("Vuelta Ibérica: 21 etaper + 2 hviledage (efter etape 9/15)"));
+  assert.ok(out.includes("1/2 fyldt"));
+  assert.ok(out.includes("⚠ DEGRADERET efter etape 15"), "degraderede hviledage skal fremgå tydeligt");
+});
+
+test("#3470 formatScorecard: ingen GT-hviledage-sektion når grandTourRestDays er tom/mangler", () => {
+  const summary = scoreComposition([onTargetTier(1, 140)]);
+  const out = formatScorecard(summary, { seasonNumber: 3, mode: "dry-run-plan" }).join("\n");
+  assert.ok(!out.includes("GT-hviledage (#3470)"));
+});
+
 test("EXIT_CODE dækker alle tre verdicts", () => {
   assert.equal(EXIT_CODE[VERDICT.GO], 0);
   assert.equal(EXIT_CODE[VERDICT.NO_GO], 1);

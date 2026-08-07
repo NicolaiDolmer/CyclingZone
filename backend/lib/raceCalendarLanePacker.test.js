@@ -54,7 +54,12 @@ test("packer: HARD — overlap (forskellige binding-løb pr. game-dag) overstige
   }
 });
 
-test("packer: kronologi — hver etape sin egen game-dag; et N-etapers løb spænder N game-dage", () => {
+// #3470: div1()-fixturen har INGEN date_text/seasonFraction/restDays på nogen løb — den
+// rammer derfor pakkerens fraction-/hviledags-FRIE fallback-sti (bit-identisk med før
+// #3469/#3470), som stadig SKAL være 100% kontinuert (ingen huller uden en beregnet
+// restDays). Se "packer: stream — GT-hviledage" nedenfor for den NYE kontrakt
+// (span = stages-1+restDays) når fractions+restDays ER sat.
+test("packer: kronologi (fallback uden date_text/fractions) — hver etape sin egen game-dag; et N-etapers løb spænder N game-dage", () => {
   const r = packLaneCalendar(div1());
   for (const src of div1().stageRaces) {
     const p = r.placements.find((x) => x.id === src.id);
@@ -311,4 +316,294 @@ test("packer: kvote/density/overlap-invarianter holder også med seasonFraction 
     assert.equal(r.emptyDays, 0, "ingen tomme dage");
     assert.ok(r.maxOverlap <= cfg.overlapCap, `maxOverlap ${r.maxOverlap} > cap ${cfg.overlapCap}`);
   }
+});
+
+// ── #3470: GT-hviledage (KUN i STREAM's fase-ankrede gren) ─────────────────────────
+test("packer: stream — GT-hviledage: 3 hviledage splitter GT i 4 segmenter, huller i game_day, TÆT stage_number 1..21, fillere fra puljen", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  cfg.stageRaces = cfg.stageRaces.map((r) => (r.id === "gt-1" ? { ...r, restDays: 3 } : r));
+  const r = packLaneCalendar(cfg);
+  const gt1 = r.placements.find((p) => p.id === "gt-1");
+
+  // Option A (#3470 verificeret arkitektur-grundlag): TÆT stage_number 1..21, uafbrudt —
+  // hullet er i game_day, ALDRIG i stage_number.
+  const stageNumbers = gt1.stagesPlaced.map((s) => s.stage_number).sort((a, b) => a - b);
+  assert.deepEqual(stageNumbers, Array.from({ length: 21 }, (_, i) => i + 1), "stage_number skal være tæt 1..21");
+
+  // Game_day-span = stages-1+restDays (NY kontrakt, jf. tierCalendarMaterializer.test.js).
+  const gds = gt1.stagesPlaced.map((s) => s.game_day).sort((a, b) => a - b);
+  assert.equal(gds[gds.length - 1] - gds[0], 21 - 1 + 3, "game_day-span skal være stages-1+restDays");
+  const gdSet = new Set(gds);
+  const holes = [];
+  for (let g = gds[0]; g <= gds[gds.length - 1]; g++) if (!gdSet.has(g)) holes.push(g);
+  assert.equal(holes.length, 3, "3 huller i gt-1s game_day-span");
+
+  // Diagnostik (#3470 punkt 3): 3 planlagte, 3 fyldt, ingen degraderet.
+  const report = r.grandTourRestDays.find((x) => x.id === "gt-1");
+  assert.ok(report, "gt-1 skal have en grandTourRestDays-rapportlinje");
+  assert.equal(report.restDaysPlanned, 3);
+  assert.equal(report.restDaysFilled, 3);
+  assert.deepEqual(report.degradedAfterStage, []);
+  assert.equal(report.fillerIds.length, 3);
+
+  // Fillerne er endagsløb der PRÆCIS fylder hullerne (spillerne beholder det daglige etape-flow).
+  const fillerGameDays = report.fillerIds
+    .map((id) => r.placements.find((p) => p.id === id).stagesPlaced[0].game_day)
+    .sort((a, b) => a - b);
+  assert.deepEqual(fillerGameDays, holes, "fillerne skal fylde PRÆCIS hullerne i gt-1s game_day-span");
+  for (const fillerId of report.fillerIds) {
+    const fp = r.placements.find((p) => p.id === fillerId);
+    assert.equal(fp.stagesPlaced.length, 1, "filler skal være et endagsløb");
+  }
+
+  // #3470 (ejer-beslutning 7/8, afløser den midlertidige cap+1-tolerance fra rebase på
+  // c3487416): diagnose()'s overlap-optælling er nu STAGE-baseret (kun løb der FAKTISK
+  // kører en etape den pågældende game_day tæller med) i stedet for span-baseret (min..max)
+  // — en GT på hviledag tæller derfor IKKE længere med i den dags overlap, og loftet er
+  // atter det hårde cap (ingen +1-undtagelse for hviledags-slots).
+  assert.ok(r.maxOverlap <= cfg.overlapCap, `maxOverlap ${r.maxOverlap} > cap ${cfg.overlapCap}`);
+  assert.deepEqual(r.unplaced, []);
+  assert.deepEqual(r.leftoverSingles, []);
+  const spans = ["gt-1", "gt-2", "gt-3"].map((id) => {
+    const gd = r.placements.find((p) => p.id === id).stagesPlaced.map((s) => s.game_day);
+    return [Math.min(...gd), Math.max(...gd)];
+  }).sort((a, b) => a[0] - b[0]);
+  for (let i = 1; i < spans.length; i++) assert.ok(spans[i][0] > spans[i - 1][1], `GT-overlap: ${JSON.stringify(spans)}`);
+});
+
+test("packer: stream — GT-hviledage: uden fraction/restDays (0) forbliver ét sammenhængende segment (bit-identisk med #3469)", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  const withRestDays = { ...cfg, stageRaces: cfg.stageRaces.map((r) => (r.id === "gt-1" ? { ...r, restDays: 0 } : r)) };
+  assert.deepEqual(packLaneCalendar(withRestDays), packLaneCalendar(cfg), "restDays: 0 skal give bit-identisk output med restDays udeladt");
+  const r = packLaneCalendar(cfg);
+  const gt1 = r.placements.find((p) => p.id === "gt-1");
+  const gds = gt1.stagesPlaced.map((s) => s.game_day).sort((a, b) => a - b);
+  assert.equal(gds[gds.length - 1] - gds[0], 20, "uden restDays: span = stages-1 (ingen huller)");
+  assert.deepEqual(r.grandTourRestDays.find((x) => x.id === "gt-1"), { id: "gt-1", name: null, stages: 21, restDaysPlanned: 0, restDaysFilled: 0, fillerIds: [], degradedAfterStage: [] });
+});
+
+test("packer: stream — GT-hviledage: intet endagsløb tilbage ⇒ degraderer ærligt (ingen tabte events, ingen huller indsat)", () => {
+  const stageRaces = [{ id: "gt-only", stages: 21, race_class: "GrandTour", seasonFraction: 0.5, restDays: 3 }];
+  const oneDayRaces = [{ id: "mon-1", race_class: "Monuments", seasonFraction: 0.9 }]; // tvinger stream-layout, ingen endagsløb-fillere til rådighed
+  const cfg = { stageRaces, oneDayRaces, density: 2, days: 30, overlapCap: 2, spineMinStages: 15 };
+  const r = packLaneCalendar(cfg);
+  assert.equal(r.layoutMode, "stream");
+  const gt = r.placements.find((p) => p.id === "gt-only");
+  assert.equal(gt.stagesPlaced.length, 21, "alle 21 etaper skal stadig være placeret — ingen tabte events");
+  const stageNumbers = gt.stagesPlaced.map((s) => s.stage_number).sort((a, b) => a - b);
+  assert.deepEqual(stageNumbers, Array.from({ length: 21 }, (_, i) => i + 1));
+  const gds = gt.stagesPlaced.map((s) => s.game_day).sort((a, b) => a - b);
+  assert.equal(gds[gds.length - 1] - gds[0], 20, "fuldt degraderet: ingen huller indsat, span = stages-1");
+
+  const report = r.grandTourRestDays.find((x) => x.id === "gt-only");
+  assert.ok(report);
+  assert.equal(report.restDaysPlanned, 3);
+  assert.equal(report.restDaysFilled, 0);
+  assert.deepEqual(report.degradedAfterStage, [6, 12, 18]);
+  assert.deepEqual(report.fillerIds, []);
+});
+
+// ── #3470 supply-fix (6/8): reservér fillere FØR padding forbruger rest-køen grådigt ──
+// Samme fejlklasse som reservations-fasen i tierRaceSelection.js (garanti-uden-forsyning) —
+// uden reservationen "vandt" den almindelige gap-fill/least-loaded-fordeling ALLE
+// endagsløb før GT'erne fik deres tur, og hviledagene degraderede selv med rigelig forsyning.
+
+test("packer: stream — GT-hviledage (rigelig forsyning): ALLE 3 GT'ers hviledage reserveres og fyldes (0 degraderet)", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  // Alle 3 GT'er får hviledage — 2+2+3 = 7 i alt. div1() har 43 od-* endagsløb, langt over behovet.
+  cfg.stageRaces = cfg.stageRaces.map((r) => {
+    if (r.id === "gt-1") return { ...r, restDays: 2 };
+    if (r.id === "gt-2") return { ...r, restDays: 2 };
+    if (r.id === "gt-3") return { ...r, restDays: 3 };
+    return r;
+  });
+  const r = packLaneCalendar(cfg);
+  assert.equal(r.grandTourRestDays.length, 3);
+  let totalPlanned = 0, totalFilled = 0;
+  for (const report of r.grandTourRestDays) {
+    assert.equal(report.restDaysFilled, report.restDaysPlanned, `${report.id}: forventede ALLE hviledage fyldt med rigelig forsyning`);
+    assert.deepEqual(report.degradedAfterStage, [], `${report.id}: ingen degradering forventet`);
+    totalPlanned += report.restDaysPlanned;
+    totalFilled += report.restDaysFilled;
+  }
+  assert.equal(totalPlanned, 7);
+  assert.equal(totalFilled, 7);
+  // Ingen filler genbrugt på tværs af GT'er (hver reserveret races-id optræder præcis én gang).
+  const allFillerIds = r.grandTourRestDays.flatMap((rep) => rep.fillerIds);
+  assert.equal(new Set(allFillerIds).size, allFillerIds.length, "ingen filler dobbelt-tildelt");
+  // Kvote/events-regnskab uændret: intet tabt.
+  assert.deepEqual(r.unplaced, []);
+  assert.deepEqual(r.leftoverSingles, []);
+});
+
+test("packer: stream — GT-hviledage (knap forsyning): fordeles RETFÆRDIGT på tværs af GT'erne (alle får ≥1 før nogen får 2)", () => {
+  // 3 GT'er, hver 2 hviledage (behov=6) — kun 4 endagsløb i puljen (knaphed).
+  // Fraction-valg konstrueret så det deterministiske nærmeste-match er entydigt pr. runde:
+  //   runde 0: gt-a(0.30)→od-1(0.31) · gt-b(0.50)→od-2(0.51) · gt-c(0.70)→od-3(0.71)
+  //   runde 1: gt-a(0.30)→od-4(0.32, eneste tilbage) · gt-b/gt-c: puljen tom → degraderer
+  const stageRaces = [
+    { id: "gt-a", stages: 21, race_class: "GrandTour", seasonFraction: 0.30, restDays: 2 },
+    { id: "gt-b", stages: 21, race_class: "GrandTour", seasonFraction: 0.50, restDays: 2 },
+    { id: "gt-c", stages: 21, race_class: "GrandTour", seasonFraction: 0.70, restDays: 2 },
+  ];
+  const oneDayRaces = [
+    { id: "mon-1", race_class: "Monuments", seasonFraction: 0.95 }, // tvinger stream-layout
+    { id: "od-1", race_class: "ProSeries", seasonFraction: 0.31 },
+    { id: "od-2", race_class: "ProSeries", seasonFraction: 0.51 },
+    { id: "od-3", race_class: "ProSeries", seasonFraction: 0.71 },
+    { id: "od-4", race_class: "ProSeries", seasonFraction: 0.32 },
+  ];
+  const cfg = { stageRaces, oneDayRaces, density: 4, days: 60, overlapCap: 3, spineMinStages: 15 };
+  const r = packLaneCalendar(cfg);
+  const byId = Object.fromEntries(r.grandTourRestDays.map((rep) => [rep.id, rep]));
+
+  // Alle 3 GT'er fik MINDST 1 hviledag fyldt, FØR nogen fik 2 (fairness-garantien).
+  assert.ok(byId["gt-a"].restDaysFilled >= 1);
+  assert.ok(byId["gt-b"].restDaysFilled >= 1);
+  assert.ok(byId["gt-c"].restDaysFilled >= 1);
+  // Determinerede udfald (jf. fraction-konstruktionen ovenfor): gt-a fik begge (den var
+  // først i fase-rækkefølge OG tættest på begge resterende kandidater i runde 1).
+  assert.equal(byId["gt-a"].restDaysFilled, 2);
+  assert.equal(byId["gt-b"].restDaysFilled, 1);
+  assert.equal(byId["gt-c"].restDaysFilled, 1);
+  assert.equal(byId["gt-b"].degradedAfterStage.length, 1);
+  assert.equal(byId["gt-c"].degradedAfterStage.length, 1);
+  // Total forbrug = hele puljen (4 endagsløb), intet spildt/genbrugt.
+  const totalFilled = Object.values(byId).reduce((s, rep) => s + rep.restDaysFilled, 0);
+  assert.equal(totalFilled, 4);
+  const allFillerIds = Object.values(byId).flatMap((rep) => rep.fillerIds);
+  assert.equal(new Set(allFillerIds).size, 4, "alle 4 endagsløb i puljen brugt, ingen dobbelttildeling");
+  // Ingen tabte events for GT'erne selv.
+  for (const id of ["gt-a", "gt-b", "gt-c"]) {
+    assert.equal(r.placements.find((p) => p.id === id).stagesPlaced.length, 21);
+  }
+});
+
+test("packer: stream — GT-hviledage (knap forsyning): reservationen fjerner IKKE de reserverede løb fra padding/least-loaded-fordelingen (ingen dobbelttælling)", () => {
+  const stageRaces = [{ id: "gt-only", stages: 21, race_class: "GrandTour", seasonFraction: 0.5, restDays: 1 }];
+  const oneDayRaces = [
+    { id: "mon-1", race_class: "Monuments", seasonFraction: 0.9 },
+    { id: "od-1", race_class: "ProSeries", seasonFraction: 0.5 },
+    { id: "od-2", race_class: "ProSeries", seasonFraction: 0.1 },
+  ];
+  const cfg = { stageRaces, oneDayRaces, density: 2, days: 30, overlapCap: 2, spineMinStages: 15 };
+  const r = packLaneCalendar(cfg);
+  const report = r.grandTourRestDays.find((x) => x.id === "gt-only");
+  assert.equal(report.restDaysFilled, 1);
+  assert.deepEqual(report.fillerIds, ["od-1"]);
+  // od-1 er placeret PRÆCIS én gang (som filler) — od-2 placeres separat af den normale
+  // least-loaded-fordeling. Ingen løb optræder to gange i placements.
+  const placedIds = r.placements.map((p) => p.id);
+  assert.equal(new Set(placedIds).size, placedIds.length, "intet løb placeret to gange");
+  assert.ok(r.placements.some((p) => p.id === "od-2"), "od-2 (ikke reserveret) skal stadig være placeret af den normale fordeling");
+  assert.deepEqual(r.unplaced, []);
+  assert.deepEqual(r.leftoverSingles, []);
+});
+
+test("packer: stream — GT-hviledage: determinisme (samme input → identisk output) + omvendt input-rækkefølge giver identisk output", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  cfg.stageRaces = cfg.stageRaces.map((r) => {
+    if (r.id === "gt-1") return { ...r, restDays: 2 };
+    if (r.id === "gt-2") return { ...r, restDays: 3 };
+    if (r.id === "gt-3") return { ...r, restDays: 2 };
+    return r;
+  });
+  const a = packLaneCalendar(cfg);
+  const b = packLaneCalendar(cfg);
+  assert.deepEqual(a, b, "samme input → identisk output");
+
+  const reversed = { ...cfg, stageRaces: [...cfg.stageRaces].reverse(), oneDayRaces: [...cfg.oneDayRaces].reverse() };
+  const c = packLaneCalendar(reversed);
+  assert.deepEqual(a, c, "omvendt input-rækkefølge → identisk output når fractions/restDays findes");
+});
+
+test("packer: stream — GT-hviledage (fallback, én GT uden fraction): reservationen kører ALDRIG i perGap-fallback-grenen, selv med restDays sat", () => {
+  // Kun gt-2/gt-3 får en fraction (gt-1 mangler) — hele gtsByPhase-gaten fejler igen (som
+  // #3469's egen test), SELV med restDays sat på alle 3 — reservationen bor inde i
+  // gtsByPhase-grenen og må derfor aldrig røres her. restDays er derfor HELT INERT i
+  // fallback-grenen: output skal være bit-identisk med div1() uden nogen restDays overhovedet.
+  const cfg = div1();
+  cfg.stageRaces = cfg.stageRaces.map((r) => {
+    if (r.id === "gt-2") return { ...r, seasonFraction: fractionOfId(r.id), restDays: 2 };
+    if (r.id === "gt-3") return { ...r, seasonFraction: fractionOfId(r.id), restDays: 2 };
+    if (r.id === "gt-1") return { ...r, restDays: 3 }; // bevidst UDEN seasonFraction
+    return r;
+  });
+  assert.deepEqual(packLaneCalendar(cfg), packLaneCalendar(div1()), "restDays uden ALLE GT'er har fraction skal give bit-identisk output med perGap-fallback (restDays helt inert)");
+});
+
+// ── #3470 (ejer-beslutning 7/8): overlap-optælling stage-baseret, ikke span-baseret ────────
+// diagnose()'s maxOverlap/overlapHistogram tæller nu KUN game_days hvor et løb FAKTISK har
+// en etape (ikke min..max-span) — en GT på hviledag tæller derfor ikke længere med. For løb
+// UDEN huller er de to metoder matematisk identiske (gameDays-sættet ER hele [min,max]),
+// hvilket denne test beviser eksplicit ved at genimplementere den GAMLE span-baserede
+// beregning og kræve bit-for-bit samme facit på fixtures uden hviledage.
+function referenceSpanBasedOverlap(placements) {
+  const spans = placements
+    .filter((p) => p.stagesPlaced.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE))
+    .map((p) => [Math.min(...p.stagesPlaced.map((s) => s.game_day)), Math.max(...p.stagesPlaced.map((s) => s.game_day))]);
+  const hi = spans.length ? Math.max(...spans.map((s) => s[1])) : -1;
+  const overlapHistogram = {};
+  let maxOverlap = 0;
+  for (let g = 0; g <= hi; g++) {
+    const n = spans.filter(([a, b]) => a <= g && b >= g).length;
+    overlapHistogram[n] = (overlapHistogram[n] || 0) + 1;
+    if (n > maxOverlap) maxOverlap = n;
+  }
+  return { maxOverlap, overlapHistogram };
+}
+
+test("packer: #3470 — for løb UDEN hviledage er stage-baseret og span-baseret overlap-optælling MATEMATISK IDENTISK (regressionsvagt, ejer-beslutning 7/8)", () => {
+  const fixtures = [
+    div1(),
+    div3(),
+    withFraction(div1(), (r) => fractionOfId(r.id)),
+    withFraction(div3(), (r) => fractionOfId(r.id)),
+  ];
+  for (const cfg of fixtures) {
+    const r = packLaneCalendar(cfg);
+    const ref = referenceSpanBasedOverlap(r.placements);
+    assert.equal(r.maxOverlap, ref.maxOverlap, "maxOverlap divergerer for fixture uden hviledage — stage-basering må IKKE ændre tal for huller-frie løb");
+    assert.deepEqual(r.overlapHistogram, ref.overlapHistogram, "overlapHistogram divergerer for fixture uden hviledage");
+  }
+});
+
+test("packer: #3470 — GT-hviledage: en hviledag tæller IKKE med i overlap (GT'ens span-medlemsskab den dag ignoreres nu)", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  cfg.stageRaces = cfg.stageRaces.map((r) => (r.id === "gt-1" ? { ...r, restDays: 3 } : r));
+  const r = packLaneCalendar(cfg);
+  const report = r.grandTourRestDays.find((x) => x.id === "gt-1");
+  assert.ok(report.fillerIds.length > 0, "testen kræver mindst én fyldt hviledag");
+  const gt1 = r.placements.find((p) => p.id === "gt-1");
+  const holeGameDay = report.fillerIds
+    .map((id) => r.placements.find((p) => p.id === id).stagesPlaced[0].game_day)[0];
+  // GT'en har INGEN stagesPlaced-entry på hul-dagen (den ægte kilde til stage-basering).
+  assert.ok(!gt1.stagesPlaced.some((s) => s.game_day === holeGameDay), "gt-1 må ikke have en etape-entry på hviledagen");
+  // Loftet holder stadig hårdt (cap, ikke cap+1).
+  assert.ok(r.maxOverlap <= cfg.overlapCap, `maxOverlap ${r.maxOverlap} > cap ${cfg.overlapCap}`);
 });

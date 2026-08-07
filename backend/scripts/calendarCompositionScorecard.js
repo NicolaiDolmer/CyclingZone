@@ -47,6 +47,7 @@ import {
 import { computeStageOrderStats, detectStageOrderViolations, STAGE_ORDER_TARGETS } from "../lib/stageOrderMetrics.js";
 import { SEASON_PHASES, computePhaseStats } from "../lib/seasonPhaseProfiles.js";
 import { GRAND_TOUR_MIN_STAGES } from "../lib/tierRaceSelection.js";
+import { grandTourRestDayPositions } from "../lib/grandTourRestDays.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -80,6 +81,9 @@ export async function collectPlannedTierEntries({ supabase, seasonNumber, materi
     density: t.density ?? null,
     realDays: t.realDays ?? null,
     chronologyRaces: t.chronologyRaces ?? null,
+    // #3470: samme "kun --plan mode"-begrænsning — grandTourRestDays kommer fra
+    // packLaneCalendar via dry-run-planen (se tierCalendarMaterializer.js).
+    grandTourRestDays: t.grandTourRestDays ?? null,
   }));
 }
 
@@ -229,6 +233,26 @@ function chronologyLines(report) {
   return lines;
 }
 
+// #3470: GT-hviledage — RAPPORTERES kun (gater ikke, samme princip som Kronologi-
+// sektionen ovenfor). Kun tilgængelig i --plan mode (grandTourRestDays kommer fra
+// packLaneCalendar via dry-run-planen, tierCalendarMaterializer.js).
+function grandTourRestDayLines(t) {
+  const report = t.grandTourRestDays;
+  if (!report?.length) return [];
+  const lines = [`    GT-hviledage (#3470):`];
+  for (const gt of report) {
+    const label = gt.name ?? gt.id;
+    const positions = grandTourRestDayPositions({ stages: gt.stages, restDays: gt.restDaysPlanned });
+    const afterNote = positions.length ? ` (efter etape ${positions.join("/")})` : "";
+    const fillers = gt.fillerIds.length ? gt.fillerIds.map((id) => String(id).slice(0, 12)).join(", ") : "(ingen)";
+    const degradeNote = gt.degradedAfterStage.length
+      ? ` — ⚠ DEGRADERET efter etape ${gt.degradedAfterStage.join("/")} (intet endagsløb tilbage i puljen)`
+      : "";
+    lines.push(`      ${label}: ${gt.stages} etaper + ${gt.restDaysPlanned} hviledage${afterNote}, ${gt.restDaysFilled}/${gt.restDaysPlanned} fyldt, fillers: ${fillers}${degradeNote}`);
+  }
+  return lines;
+}
+
 function compositionTable(rows, raceDays) {
   const lines = [
     `    ${pad("terræn", 9)} ${pad("faktisk", 8)} ${pad("mål", 6)} ${pad("afvigelse", 10)} status`,
@@ -281,6 +305,7 @@ export function formatScorecard(summary, { seasonNumber, mode }) {
       );
     }
     lines.push(...chronologyLines(computeChronologyReport(t)));
+    lines.push(...grandTourRestDayLines(t));
     lines.push(``);
   }
 

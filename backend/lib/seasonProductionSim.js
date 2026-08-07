@@ -12,11 +12,15 @@
 // Felt-tildelings-invariant (§2428 Kontrakt 1, "1 rytter = 1 løb/dag som i drift",
 // jf. project_race_overlap_intended_grace_rejected): en rytter kan ikke optræde i to
 // løb der deler et game_day. Håndhæves via et GLOBALT busy-set keyed på game_day —
-// når et hold får tildelt ryttere til et løb, markeres de optaget på ALLE løbets
-// game_days (etapeløb spænder flere dage), så de er utilgængelige for ethvert andet
-// løb der overlapper blot ét af dem. Løbene behandles i stigende game_day-orden
-// (mindste game_day pr. løb, stabil id-tiebreak) — det er en BEVIDST, dokumenteret
-// prioritering: løb der falder tidligere i sæsonen "vinder" ryttere ved konflikt.
+// når et hold får tildelt ryttere til et løb, markeres de optaget på ALLE game_days i
+// løbets SPÆND (min..max af game_days — #3470: SAMME span-binding som prod's binding-lag
+// (raceBinding.js/#3470-verifikationsgrundlag), ikke kun de eksplicitte game_days-værdier.
+// Et Grand Tour med hviledage (huller i game_days) blokerer dermed ryttere PÅ hviledagene
+// også — GT-ryttere kan ikke "smutte ud" i et filler-løb på deres eget hold), så de er
+// utilgængelige for ethvert andet løb der overlapper blot ét game_day i spændet. Løbene
+// behandles i stigende game_day-orden (mindste game_day pr. løb, stabil id-tiebreak) —
+// det er en BEVIDST, dokumenteret prioritering: løb der falder tidligere i sæsonen
+// "vinder" ryttere ved konflikt.
 
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { percentile } from "./valuationScorecard.js";
@@ -44,9 +48,20 @@ import { percentile } from "./valuationScorecard.js";
 export function assignSeasonFields({ races = [], teamsByDivision = new Map(), ridersByTeam = new Map() } = {}) {
   // busyByGameDay: game_day → Set(rider_id) allerede tildelt et løb på den dag.
   const busyByGameDay = new Map();
-  const isBusy = (riderId, gameDays) => gameDays.some((gd) => busyByGameDay.get(gd)?.has(riderId));
+  // #3470: span (min..max) af et løbs game_days — huller (GT-hviledage) tælles MED, så
+  // busy-markeringen matcher prod's span-baserede binding-lag i stedet for kun at ramme de
+  // dage hvor løbet rent faktisk har en etape.
+  const gameDaySpan = (gameDays) => {
+    if (!gameDays?.length) return [];
+    const lo = Math.min(...gameDays);
+    const hi = Math.max(...gameDays);
+    const out = [];
+    for (let gd = lo; gd <= hi; gd++) out.push(gd);
+    return out;
+  };
+  const isBusy = (riderId, gameDays) => gameDaySpan(gameDays).some((gd) => busyByGameDay.get(gd)?.has(riderId));
   const markBusy = (riderId, gameDays) => {
-    for (const gd of gameDays) {
+    for (const gd of gameDaySpan(gameDays)) {
       if (!busyByGameDay.has(gd)) busyByGameDay.set(gd, new Set());
       busyByGameDay.get(gd).add(riderId);
     }
