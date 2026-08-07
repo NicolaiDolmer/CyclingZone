@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
+import { formatNavBadgeCount } from "../lib/navBadges.js";
 
 function pathMatches(pathname, to) {
   return pathname === to || pathname.startsWith(`${to}/`);
@@ -91,8 +92,8 @@ export default function MobileQuickNav({ unread }) {
               <div className="relative">
                 {icon}
                 {showBadge && (
-                  <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
-                    {unread > 9 ? "9+" : unread}
+                  <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none tabular-nums">
+                    {formatNavBadgeCount(unread)}
                   </span>
                 )}
               </div>
