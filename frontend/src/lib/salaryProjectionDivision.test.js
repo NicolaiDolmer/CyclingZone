@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 // projectYouthSalary importeres bevidst IKKE: den deler formel med
 // projectSeniorSalary (salaryFromProduction), så adfærds-assertionerne nedenfor
 // dækker begge. Kald-site-guarden matcher på kilde-tekst og rammer begge navne.
-import { projectSeniorSalary, salaryRateForDivision } from "./marketValues.js";
+import { projectSeniorSalary, salaryRateForDivision, SALARY_ESTIMATE_COLUMN } from "./marketValues.js";
 
 // #2796 forward-guard.
 //
@@ -37,20 +37,36 @@ function* jsxFiles(dir) {
   }
 }
 
-test("division ændrer faktisk den projicerede løn (ellers er guarden meningsløs)", () => {
-  const rider = { current_production_value: 100_000 };
-  const d1 = projectSeniorSalary(rider, { division: 1 });
-  const global = projectSeniorSalary(rider);
-  assert.notEqual(d1, global, "D1-satsen skal afvige fra den globale — ellers kan fejlen ikke ses");
-  assert.equal(d1, Math.round(100_000 * salaryRateForDivision(1)));
-  assert.equal(global, Math.round(100_000 * salaryRateForDivision(undefined)));
+// #3360 opdaterede hvad fejlen ser ud som. Markedsgrundlaget er division-BLINDT
+// (en rytter koster det samme uanset hold), så "division ændrer lønnen" gælder kun
+// production-grundlaget. Selve fejlklassen — en plausibel konstant fordi et input
+// mangler — er UÆNDRET, den hænger nu bare på værdi-feltet i stedet for divisionen.
+test("den projicerede løn afhænger af det input det aktive grundlag læser", () => {
+  if (SALARY_ESTIMATE_COLUMN === "market_value") {
+    const lav = projectSeniorSalary({ market_value: 20_000 }, { division: 1 });
+    const hoej = projectSeniorSalary({ market_value: 100_000 }, { division: 1 });
+    assert.ok(hoej > lav, "markedsgrundlaget skal reagere på market_value");
+    assert.equal(
+      projectSeniorSalary({ market_value: 100_000 }, { division: 1 }),
+      projectSeniorSalary({ market_value: 100_000 }, { division: 3 }),
+      "markedsgrundlaget er division-blindt med vilje (#3360)",
+    );
+  } else {
+    const rider = { current_production_value: 100_000 };
+    assert.notEqual(projectSeniorSalary(rider, { division: 1 }), projectSeniorSalary(rider));
+    assert.equal(projectSeniorSalary(rider, { division: 1 }), Math.round(100_000 * salaryRateForDivision(1)));
+  }
 });
 
-test("den plausible konstant 161 opstår stadig når BEGGE inputs mangler", () => {
-  // Dokumenterer symptomet så en fremtidig læser genkender det: base-fallback
-  // 1000 × global sats 0,1606 = 161. Samme værdi for enhver rytter.
-  assert.equal(projectSeniorSalary({}), 161);
-  assert.equal(projectSeniorSalary({ current_production_value: null }), 161);
+test("en plausibel konstant opstår stadig når værdi-inputtet mangler", () => {
+  // Dokumenterer symptomet så en fremtidig læser genkender det: ENHVER rytter får
+  // samme velformede beløb, uden exception og uden log. Præcis den fejl der viste
+  // 161 CZ$ i promote-dialogen i uger (#2796) og 161 CZ$/rytter i lønbyrde-
+  // harnessen i to måneder (#3389).
+  const konstant = projectSeniorSalary({});
+  assert.equal(projectSeniorSalary({ current_production_value: null, market_value: null }), konstant);
+  assert.equal(projectSeniorSalary({ firstname: "Ingen", lastname: "Værdi" }), konstant);
+  assert.ok(konstant > 0, "fallbacken er et velformet tal — det er netop derfor den er farlig");
 });
 
 test("intet kald-site kalder projectSeniorSalary/projectYouthSalary uden division", () => {

@@ -363,7 +363,7 @@ export function runScorecard(opts = {}) {
     for (const d of [1, 2, 3]) {
       const dt = teams.filter((t) => t.division === d);
       if (!dt.length) continue;
-      const wageBills = dt.map((t) => t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0));
+      const wageBills = dt.map((t) => t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, market_value: r.base_value, current_production_value: r.base_value }), 0));
       console.log(`    D${d}: ${dt.length} hold · median roster-værdi ${fmt(median(dt.map((t) => t.rosterValue)))} · median lønbyrde ${fmt(median(wageBills))}`);
     }
     console.log();
@@ -405,7 +405,7 @@ export function runScorecard(opts = {}) {
     if (!divTeams.length) { if (print) console.log(`  D${d}: ingen hold`); continue; }
     const prizes = divTeams.map((t) => seasonPrize.get(t.id)).sort((a, b) => a - b);
     const salaries = divTeams.map((t) =>
-      t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0)
+      t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, market_value: r.base_value, current_production_value: r.base_value }), 0)
     );
     const medPrize = median(prizes);
     const medSalary = median(salaries);
@@ -441,7 +441,7 @@ export function runScorecard(opts = {}) {
 
     // Net pr. hold (renown-sponsor − upkeep − holdets egen løn + holdets egen præmie).
     const nets = divTeams.map((t) => {
-      const salary = t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0);
+      const salary = t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, market_value: r.base_value, current_production_value: r.base_value }), 0);
       return sponsorByTeam.get(t.id) - upkeep - salary + seasonPrize.get(t.id);
     }).sort((a, b) => a - b);
 

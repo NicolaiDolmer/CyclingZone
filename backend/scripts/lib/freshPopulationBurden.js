@@ -67,11 +67,18 @@ export function computeFreshSalaryBurden() {
   // Ved seed er base_value === market_value === cpv (prize_earnings_bonus = 0),
   // så base_value er den korrekte kilde her. Allokeringen er division-blind, så
   // division udelades bevidst → global SALARY_RATE, jf. header-kommentaren.
+  //
+  // #3360: ALLE tre felter sendes nu, så kaldestedet er korrekt uanset hvilket
+  // grundlag SALARY_BASIS_MODE peger på. Det er præcis den kobling der knækkede
+  // sidst — et kaldested der kun kender ét feltnavn fejler tavst ved et basis-skift.
+  // NB: netop fordi base_value === cpv i den syntetiske population kan denne gate
+  // IKKE måle forskellen mellem de to grundlag; kun kurvens form. Grundlags-skiftet
+  // kalibreres mod den ÆGTE population (scripts/salaryBasisScorecard.js).
   const burdens = teamIds.map((t) =>
-    assignments[t].reduce(
-      (s, id) => s + computeFrozenSalary({ current_production_value: byId.get(id).base_value }),
-      0
-    )
+    assignments[t].reduce((s, id) => {
+      const bv = byId.get(id).base_value;
+      return s + computeFrozenSalary({ current_production_value: bv, market_value: bv, base_value: bv });
+    }, 0)
   );
   const squadSizes = teamIds.map((t) => assignments[t].length);
 

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { computeReleaseBuyoutFee, computeContractExtension, maxAllowedContractEndSeason, contractExtensionCapInfo } from "./contractSeed.js";
+import { computeReleaseBuyoutFee, computeContractExtension, computeFrozenSalary, maxAllowedContractEndSeason, contractExtensionCapInfo } from "./contractSeed.js";
 
 // #1719 (fyrings-/opsigelsesknap med buyout-gebyr) + #1720 (kontraktforlængelse)
 // + #2179 (kontraktforlængelse direkte på akademi-ryttere, ingen op-/nedrykning).
@@ -206,16 +206,17 @@ test("release blokeres når balance < gebyr, tillades ellers", () => {
 });
 
 test("extend producerer en højere udløbssæson + frisk løn fra værdi", () => {
-  // #2594: lønnen kommer nu fra current_production_value × req.team.division-sats
-  // (ikke længere market_value × 0.067).
+  // #3360: lønnen kommer fra det aktive grundlag (SALARY_BASIS_MODE) — samme formel
+  // som signering. Testen pinner delegationen, ikke ét grundlags konstant.
+  const rider = { current_production_value: 500_000, market_value: 500_000, division: 3 };
   const next = computeContractExtension({
-    current_production_value: 500_000,
-    division: 3,
+    ...rider,
     contract_end_season: 3,
     contract_length: 1,
     currentSeason: 2,
   });
   assert.equal(next.contract_end_season, 4); // 3 + 1
   assert.equal(next.contract_length, 2);
-  assert.equal(next.salary, 74_050); // 500_000 × 0.1481 (division 3)
+  assert.equal(next.salary, computeFrozenSalary(rider));
+  assert.ok(next.salary > computeFrozenSalary({}), "værdi-felterne skal nå frem til løn-formlen");
 });

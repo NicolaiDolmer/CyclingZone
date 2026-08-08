@@ -58,7 +58,13 @@ async function main() {
   const changes = [];
   for (const r of riders) {
     const before = Number(r.salary);
-    const after = computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: r.prize_earnings_bonus });
+    // #3360: send alle grundlags-felter, så scriptet er korrekt uanset
+    // SALARY_BASIS_MODE (base_value er stadig kilden i denne syntetiske kontekst).
+    const after = computeFrozenSalary({
+      base_value: r.base_value,
+      market_value: r.base_value,
+      current_production_value: r.base_value,
+    });
     sumBefore += before;
     sumAfter += after;
     if (after < before) nDown++;
