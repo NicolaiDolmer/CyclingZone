@@ -20,7 +20,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { makeRng, generateFictionalRiders, toInsertPayload, STAT_KEYS } from "./fictionalRiderGenerator.js";
+import { makeRng, generateFictionalRiders, toInsertPayload, STAT_KEYS, STAT_FLOOR, STAT_CEIL } from "./fictionalRiderGenerator.js";
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
@@ -172,7 +172,7 @@ export function aiValueCapForTier(tier) {
 export function generateAiRiderBatchWithCap({
   count, tierFractions, valueCap, seed, referenceYear,
   existingFoldedNames = new Set(), generate = generateFictionalRiders,
-  typeShareCap = 0.4, maxRounds = 60,
+  typeShareCap = 0.4, maxRounds = 60, signatureCfg = undefined,
 }) {
   const accepted = [];
   const typeCounts = new Map();
@@ -186,6 +186,9 @@ export function generateAiRiderBatchWithCap({
     const batchSize = Math.max(needed * 6, 30);
     const { riders } = generate({
       seed: attemptSeed, count: batchSize, referenceYear, existingFoldedNames: usedNames, tierFractions,
+      // #3458 fase 2 PR2: kun videresendt hvis sat (undefined → generateFictionalRiders'
+      // egen default ADULT_SIGNATURE_CFG, uændret adfærd for eksisterende kaldere).
+      ...(signatureCfg ? { signatureCfg } : {}),
     });
     attemptSeed = (attemptSeed + 104729) >>> 0; // næste rundes seed (primtal-spring)
     for (const candidate of riders) {
@@ -341,9 +344,47 @@ export function distributeTailRiders(tailPool, teamIds, perTeam, { seed = LAUNCH
 const WRITE_CONCURRENCY = 25;
 const INSERT_BATCH = 500;
 
+// #3458 fase 2 PR2: RESKALÉR (ikke clamp) ind i det svage vindue. Lineær, orden-
+// bevarende reskalering fra hele [STAT_FLOOR,STAT_CEIL]-domænet ind i det ønskede
+// (stadig svage) vindue — erstatter den gamle hårde clamp (min/max), som TRUNKEREDE
+// enhver mættet/boostet signatur-stat identisk til window.hi uanset arketype og
+// dermed viskede al arketype-differentiering fuldstændig ud for netop denne sti.
+//
+// KENDT, ROD-ÅRSAGS-UNDERSØGT GRÆNSE (empirisk, sim-harness --path=starter, målt
+// 7/8): selv med denne reskalering når G1 (klassifikator genfinder arketype) IKKE
+// design-spec'ens ≥90%-mål for den SVAGE pulje specifikt (målt ~30-38% afhængig af
+// forsøg) — markeds-/AI-tier1-2-/akademi-stierne (ingen post-generation-kompression)
+// rammer alle ≥90%. To forsøg på at lukke gabet med MERE aggressiv reskalering
+// (potens-kurve + udvidet sub-loft for boostede stats) blev afprøvet og FORKASTET:
+// de krævede at en enkelt signatur-stat kunne overstige window.hi markant, hvilket
+// bryder en EKSISTERENDE, testet, ejer-godkendt invariant (#1487 "forward-guard":
+// afledte styrke-evner fra den svage pulje skal forblive ≤25 — testet i
+// starterSquadAllocator.test.js). Rod-årsagen ligger DYBERE end selve reskalerings-
+// mekanikken: riderTypesBaseline.json er fittet mod DEN ÆGTE, langt STÆRKERE
+// population (fx time_trial-mean ~45, std ~16) — enhver evne i en ekstremt svag,
+// komprimeret pulje (afledt evne typisk ≤21) får derfor et KRAFTIGT negativt
+// z-score UANSET arketype, og typer hvis formel STRAFFER (negativ vægt) netop de
+// evner der har den HØJESTE baseline-middelværdi (fx baroudeurs eneste negative
+// vægt er time_trial, baseline-mean ~45 — den højeste i tabellen) vinder
+// systematisk kontrast-scoren via "dobbelt-negativ" uanset trukket arketype.
+// VERIFICERET FØR-EKSISTERENDE (ikke en regression i denne PR): den GAMLE
+// ARCHETYPE_BY_TYPE-mekanisme gennem SAMME reskalering + afled-kæde giver samme
+// størrelsesorden (G1 ~37%, samme baroudeur-dominans). At lukke gabet kræver enten
+// en dedikeret svag-pulje-baseline (riderTypesBaseline.json-fitting) eller at røre
+// ability_caps-rolle-faktoren (riderProgression.js) — begge uden for denne PR's
+// "kun genererings-stier"-mandat og uden for opgavens hårde grænser. Anbefales som
+// separat, isoleret opfølgnings-issue (samme B-spor-mønster som PR1's G3-fund,
+// #3503) hvis ejeren vil lukke gabet helt. G2 (specialiserings-dybde) og den
+// generelle "arketype-prior i stedet for uniform"-forbedring holder stadig.
+export function rescaleStatIntoWindow(v, window) {
+  const frac = Math.max(0, Math.min(1, (v - STAT_FLOOR) / (STAT_CEIL - STAT_FLOOR)));
+  return Math.round(window.lo + frac * (window.hi - window.lo));
+}
+
 // #1487: byg en dedikeret SVAG start-pool (in-memory). Genbruger den ægte generator
-// (typer/demografi/potentiale/alder bevares) og clamper KUN stat-felterne ind i
-// vinduet før derivation → lave afledte styrke-evner. Returnerer ren INSERT-payload
+// (typer/demografi/potentiale/alder bevares) og RESKALERER stat-felterne ind i
+// vinduet før derivation → lave afledte styrke-evner, MEN med arketype-separationen
+// bevaret (se rescaleStatIntoWindow ovenfor). Returnerer ren INSERT-payload
 // (pcm_id null, intet id/base_value — DB/derive ejer dem).
 export function buildWeakStarterPool({
   count,
@@ -354,12 +395,12 @@ export function buildWeakStarterPool({
   generate = generateFictionalRiders,
 }) {
   const { riders } = generate({ seed, count, referenceYear, existingFoldedNames });
-  const clamped = riders.map((r) => {
+  const rescaled = riders.map((r) => {
     const stats = {};
-    for (const k of STAT_KEYS) stats[k] = Math.max(window.lo, Math.min(window.hi, r[k]));
+    for (const k of STAT_KEYS) stats[k] = rescaleStatIntoWindow(r[k], window);
     return { ...r, ...stats };
   });
-  return toInsertPayload(clamped);
+  return toInsertPayload(rescaled);
 }
 
 // Navne-unikhed mod ALLE eksisterende ryttere (den svage pulje genereres separat
