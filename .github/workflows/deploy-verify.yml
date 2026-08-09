@@ -172,6 +172,14 @@ jobs:
             exit 1
           fi
 
+      # Jobbet kører ellers UDEN arbejdstræ (alle øvrige trin er rene curl-/gh-kald mod
+      # de deployede URL'er). Uden dette checkout fejlede trinnet nedenfor med
+      # MODULE_NOT_FOUND på hvert eneste push siden 7/8 — dvs. cache-guarden fra #3484
+      # har aldrig kørt, samtidig med at en permanent rød Deploy verify gjorde at ægte
+      # fejl druknede. Se #3565.
+      - name: Checkout (kun til cache-header-guarden)
+        uses: actions/checkout@v4
+
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
 

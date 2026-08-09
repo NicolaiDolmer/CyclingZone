@@ -206,6 +206,14 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // sæson-skift; den daglige cron (backend/cron.js → runDiscordRoleSyncCron) gør
   // arbejdet. Ingen frontend-kalder by design. Intentional orphaned, ikke drift.
   "POST /admin/discord/sync-division-roles",
+  // Fiktiv-population-preview (#1364): read-only diagnostik der kører de 800 fiktive
+  // ryttere gennem HELE værdi-kæden (baseline → typer → valuation) og returnerer
+  // base_value-fordelingen. Rører intet i DB. Havde en frontend-kalder i admin's Rider
+  // Explorer indtil #3558 fjernede den fladen; endpointet er bevidst bevaret som
+  // curl-værktøj til værdi-/ryttertype-arbejdet (#3564, #3353, #3345) — det er netop
+  // dét man vil kunne køre FØR en omklassificering for at se hvordan værdierne flytter
+  // sig. Intentional orphaned, ikke drift. Se #3563.
+  "GET /admin/fictional-rider-preview",
   // Health / probe
   "GET /health",
   // Admin-only via curl/admin-page-future-wiring (cancel-tools fra adminRouteOwnership-kontrakt #97)
