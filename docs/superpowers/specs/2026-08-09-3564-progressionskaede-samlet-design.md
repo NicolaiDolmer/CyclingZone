@@ -1,6 +1,6 @@
 # Progressionskæden samlet: potentiale → loft → type → værdi → løn (#3564)
 
-**Status:** v0.1 — research-fase afsluttet 9/8 (14-agent workflow + egne verifikationer). Afventer ejer-beslutning 1-5 (stilles én ad gangen, se §8). Måltal markeret **FORESLÅET** er ikke bindende før beslutningerne er faldet og harness-kørsler har bekræftet dem.
+**Status:** v0.2 — research afsluttet 9/8 (14-agent workflow + egne verifikationer), og **alle 5 ejer-beslutninger låst 9/8 aften** (se beslutningslog i §8). Måltal markeret **FORESLÅET** skal fortsat harness-verificeres før hvert trin ships. Næste: harness-runde (nye gates negativ-testes mod defekt 7/8-konfiguration) + trin 1-implementeringsplan.
 
 **Anker:** [#3564](https://github.com/NicolaiDolmer/CyclingZone/issues/3564) · Baggrund: 9/8-hændelsen ([#3561](https://github.com/NicolaiDolmer/CyclingZone/issues/3561)) + postmortem `.claude/learnings/2026-08-09-gates-der-maaler-relativt-fanger-ikke-absolutte-niveauer.md`
 
@@ -80,8 +80,8 @@ Indhold: 1-99-migration + skæv estimat-generator (bygges SAMMEN, jf. beslutning
 **Udligning af potentiale-overskuddet (ejer-krav 9/8, del af migrationen):** beholdningen har 11,7 % pot 5-6 mod planens ~1,4 % (målt 9/8: 248 pot-6, heraf 224 ejede + 713 pot-5; før-19/7-kohorten 15,2 %, efter-kohorten 8,7 % — andre generator-stier bruger ikke #2064-geometrien). Migrationen 1-6→1-99 udføres derfor som **rang-bevarende kvantil-remap** mod målfordelingen (geometrien oversat til 1-99), stratificeret pr. aldersgruppe: ingen rytter overhaler nogen, men fordelingens form presses ned på planen. Samme kørsel: scouting-estimater re-genereres mod de nye tal. Krav: snapshot FØR + dry-run-diff med absolutte deltaer (ejede vs. frie, pr. manager) forelægges ejeren før apply — 90 % af pot-6 er ejede, så dette er en manager-vendt mutation. Følgevirkning: værdien falder for nedjusterede ryttere (v4 er potentiale-monoton) — det er tilsigtet, men skal med i dry-run-diffen. Forward-guard: alle generator-stier (ikke kun akademiet) SKAL trække fra samme mål-geometri fremover + stock-gate på fordelingen.
 Porte: forhold = G3 arketype-bevarelse ≥90 % pr. potentiale-bånd (skal GENMÅLES post-9/8 — de encifrede tal ved pot 5-6 er fra før rekalibreringen) · niveau = I1 100 % + p99(caps) ≤ loft pr. tier + post-remap-fordeling inden for ±2 pp af mål pr. aldersgruppe · hale = hårdt loft på antal pot ≥90 (1-99-skala) pr. kuld OG i beholdningen.
 
-**Trin 2 — vækstkurven** (#2698 · træningsscore · udviklingshastighed · #3459-kobling · beslutning 4-5)
-Indhold: kurveform mellem skelettets ankre; `tickResult.score` (logges allerede pr. rytter/dag i `training_day_runs.report`) som byggesten for en evt. spiller-vendt træningsscore; race-day-motorens devMult 1,15 indregnes.
+**Trin 2 — vækstkurven** (#2698 · træningsscore · udviklingshastighed · #3459-kobling · beslutning 4-5, BEGGE LÅST 9/8)
+Indhold: kontinuert absolut-niveau-kurve i motoren (gap-relativ logik udfases som primær driver); potentiale som multiplikator på daglig trænings-kvalitet; træningsscore 1-99 (privat, synlig pr. dag + 30-dages historik) som det led udviklingen afledes af; race-day-motorens devMult 1,15 indregnes; UI/hjælpetekster formidler trinbånd. Designmål: max nås ~27 år.
 Porte: forhold/median = median bedste-evne pr. (alder × potentiale) inden for ±15 % af skelettet · **niveau (anti-frontloading) = ingen årgang over aldersbåndets max-%-af-loft (fx 19-årig ≤70 % af eget loft)** — denne gate ville have flaget "77/88 ved 19" · hale = ≤5 % af 21-årige med nul-gab; ≤5 % pr. årgang over 85 % af loft før 24.
 
 **Trin 3 — startniveau/generator** (#3561-re-kalibrering · ungdoms-fittet baseline · baroudeur-fix · #3512 genopbygges)
@@ -113,9 +113,9 @@ Porte (køres FØR hvert sweep-flip og hver refit): forhold = holdout-MAE bedre 
 - [x] 1 (ejer 9/8): **A-pakken** — eksakt 1-99 i DB, migration + skæv estimat-generator bygges sammen, #2798-fix er bindende forudsætning før migrationen rulles. **Tillæg (ejer 9/8):** potentiale-overskuddet udlignes ved migrationen — der er lavet for mange høj-potentiale-ryttere ift. planen; se kvantil-remap i §6 trin 1.
 - [x] 2 (ejer 9/8): **#2798 = A + remap-koblingen** — potentiale-leddet fjernes fra PUBLICERET værdi for <22-årige uden handelsevidens (synlige evner + alder + type); fuld model forbliver intern. AI-bud på ungdom kører også på offentlig værdi (ellers bliver budadfærd ny sidekanal). Rækkefølge i trin 1: offentlig-pris-fix FØR 1-6→1-99-remappen rammer prod. Konsekvens-sim af de ~1.200 unge priser før ship (port i trin 4).
 - [ ] 3: …
-- [ ] 3: …
-- [ ] 4: …
-- [ ] 5: …
+- [x] 3 (ejer 9/8): **Ét potentiale pr. rytter + 8 type-loftprofiler.** Rytteren har ét skjult 1-99-tal; hver ryttertype definerer en kalibreret profil for hvordan tallet fordeles over evne-grupperne (erstatter de grove rollefaktorer 1,0/0,82/0,45/0,12; skærpes ved højt potentiale → løser #3503). Scouting forbliver ét estimat.
+- [x] 4 (ejer 9/8): **#2698 = kontinuert absolut-niveau-kurve i motoren** ("jo højere niveau, jo langsommere vækst"); trappetrins-sprog KUN i hjælpetekster/UI. **Potentialet ganger ind på den daglige trænings kvalitet** (jo bedre potentiale, jo bedre daglig træning). **Hårdt designmål (ejer-citat): ryttere når deres max omkring 27 år — færdigudviklet ved 20-21 er en fejltilstand.** Kalibreres mod skelettet (§5).
+- [x] 5 (ejer 9/8): **Træningsscore = synlig daglig score 1-99 pr. rytter** ("hvor god var dagens træning") med 30 dages historik-visning; **udviklingen afledes af scoren**: score = f(potentiale, alder, intensitet, form/træthed, faciliteter, fokus) → evne-gevinst = f(score, absolut niveau). Byggesten: `tickResult.score` (normaliseres til 1-99, persisteres, UI). **Design-antagelse (Claude, ikke modsagt):** scoren er PRIVAT for ejeren af rytteren, og dagsstøjen er stor nok til at talent-signalet kræver uger — talent-opdagelse tjenes gennem eget akademi-arbejde (gameplay-kanal) i stedet for den lukkede værdi-sidekanal. Offentliggøres scoren, genåbnes #2798 ad bagdøren.
 
 ## 9. Kendte huller og forbehold (fra kritiker-gennemgang, skal lukkes undervejs)
 
