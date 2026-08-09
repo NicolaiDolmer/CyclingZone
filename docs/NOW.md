@@ -13,7 +13,7 @@
 
 > **📌 Åbne opfølgninger (komprimeret):** #3572 mid-season-cron fixet+verificeret 9/8 · **[#3586](https://github.com/NicolaiDolmer/CyclingZone/issues/3586) skema-guard i CI** (prototypen fandt #3585 blandt 553 selects — 2 bugs af samme klasse på én dag) · [#3587](https://github.com/NicolaiDolmer/CyclingZone/issues/3587) tavs auto-accept-cron · #3563 forældreløst admin-endpoint (audit rød) · #3502 board-crons · #2881 datareparation (ejer-gated) · #3545 Discord-5xx (høj) · #3337-harness i worktree `wf_1e3ef067-8bd-5` · #3353/#3349/#2645/#2164/#3172 · roadmap-teasers klar i `discord-roadmap-teasers\` (ejeren poster). Historik: git-log + issues.
 
-> **🤖 Working agent:** Ingen aktiv session (ryttertype-målingen lukkede 10/8 — næste session starter med pkt. 1: ejer-go på PR #3588, derefter beslutningen om hvad identiteten skal fryses PÅ). NB: worktrees `feat-3458-archetype-gen-pr2` (parkeret draft #3512) + `feat-3570-fast-rytter-identitet` (PR #3588) bevaret.
+> **🤖 Working agent:** Claude Code (Opus 5) — natbølge #3570 "hvad fryses identiteten PÅ", startet 10/8 00:2x. Sim-først, INGEN prod-mutation (reparationen er ejer-gated). Dateret snapshot 10/8: `snapshot-3570-full.mjs` (n=8.199, bærer nu `birthdate` + sæson-alder). NB: worktrees `feat-3458-archetype-gen-pr2` (parkeret draft #3512) + `feat-3570-fast-rytter-identitet` (PR #3588) bevaret.
 
 ## Standing context (forever-relaunch)
 
