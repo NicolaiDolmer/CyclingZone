@@ -1,0 +1,52 @@
+{
+  "description": "UNGDOMS-fittet population-baseline (mean/std pr. game-ability) til ryttertype-z-score for 16-21-årige (#3564/#3570). Klassificering mod DENNE baseline i stedet for riderTypesBaseline.json (voksen-fittet) retter den strukturelle baroudeur-overvægt unge ryttere fik af at blive z-scoret mod en voksenpopulation de pr. definition ligger under (time_trial strukturelt lavt + aggression-aldersgulv i abilityDerivation.js). Fittet over ability_caps for en fiktiv akademi-kandidat-population (samme afled-kæde som produktionens deriveForRiderIds trin 1-3: physiology → abilities → bootstrap-type [NEUTRAL_BASELINE] → buildCapsForRider) — metode 1:1 genbrugt fra scripts/simYouthClassificationFix3458.js's validerede variant A. Deterministisk (fast seed, ingen DB).",
+  "population": "fictional-academy-youth-caps",
+  "method": "simYouthClassificationFix3458.js variant A (caps × ungdoms-fittet baseline)",
+  "fitted_at": "2026-08-09",
+  "seed": 2026,
+  "n": 20000,
+  "validation": {
+    "g1_before_pct_adult_baseline": 20.4,
+    "g1_after_pct_youth_baseline": 50.5,
+    "distribution_after_pct": {
+      "sprinter": 25.4,
+      "tt": 14.4,
+      "climber": 30.7,
+      "puncheur": 2.3,
+      "brostensrytter": 13.2,
+      "baroudeur": 8.7,
+      "rouleur": 5.3,
+      "gc": 0
+    }
+  },
+  "mean": {
+    "climbing": 15.364,
+    "time_trial": 12.84,
+    "flat": 39.908,
+    "tempo": 25.761,
+    "sprint": 15.838,
+    "acceleration": 24.261,
+    "punch": 39.08,
+    "endurance": 40.568,
+    "recovery": 35.977,
+    "durability": 24.261,
+    "descending": 35.977,
+    "cobblestone": 22.602,
+    "aggression": 36.365
+  },
+  "std": {
+    "climbing": 15.109,
+    "time_trial": 13.264,
+    "flat": 10.852,
+    "tempo": 10.936,
+    "sprint": 14.46,
+    "acceleration": 9.607,
+    "punch": 12.789,
+    "endurance": 11.392,
+    "recovery": 12.341,
+    "durability": 9.607,
+    "descending": 12.341,
+    "cobblestone": 9.064,
+    "aggression": 11.8
+  }
+}

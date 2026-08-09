@@ -13,12 +13,15 @@ import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { computeRiderTypes, ABILITY_KEYS } from "./riderTypes.js";
+import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
+// #3570: unge (< 22 år) klassificeres mod DENNE baseline — se riderTypesBaselineSelect.js.
+const TYPES_BASELINE_YOUTH_PATH = join(__dirname, "./riderTypesBaselineYouth.json");
 const VALUATION_MODEL_PATH = join(__dirname, "./riderValuationModelV4.json");
 const noop = () => {};
 const WRITE_CONCURRENCY = 25;
@@ -31,9 +34,16 @@ const WRITE_CONCURRENCY = 25;
 // er derfor et separat, eksplicit argument — falder tilbage til `abilities` KUN hvis
 // caps ikke er givet (fx en rytter der endnu ikke har fået caps deriveret; degraderer
 // til den gamle live-baserede klassifikation for den ene rytter frem for at kaste).
-export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities } = {}) {
+// #3570: youthBaseline (opts) er OPT-IN og BAGUDKOMPATIBEL — udeladt/null ⇒
+// funktionen bruger `baseline` for ALLE aldre, PRÆCIS som før #3570 (ingen
+// eksisterende caller/test ændrer adfærd uden eksplicit at sende den med).
+// Når den sendes med, vælges den for ryttere med riderRow.age < 22 (se
+// riderTypesBaselineSelect.js). age skal være sæson-alder (ageForSeason) —
+// samme konvention som resten af værdi-kæden.
+export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline } = {}) {
   const typeSource = (typeAbilities && Object.keys(typeAbilities).length > 0) ? typeAbilities : abilities;
-  const { primary, secondary } = computeRiderTypes(typeSource, baseline);
+  const typeModel = selectTypesBaseline(riderRow?.age, baseline, youthBaseline);
+  const { primary, secondary } = computeRiderTypes(typeSource, typeModel);
   // #3345: primary_type/secondary_type overskrives ALTID med den friske
   // klassifikation ovenfor (de må frit reklassificeres — #3325/#3343). Bemærk at
   // valuation_type IKKE overskrives her — den flyder ureguleret igennem fra
@@ -56,12 +66,12 @@ export function recomputeRiderValue(riderRow, abilities, baseline, model, { type
 // Ren diff: returnér KUN ryttere hvor base_value, current_production_value eller
 // type ændrede sig. capsByRider er valgfri (bagudkompatibel) — udeladt/tom Map ⇒
 // recomputeRiderValue falder tilbage til abilities for typen (se ovenfor).
-export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map()) {
+export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map(), youthBaseline) {
   const updates = [];
   for (const r of riders) {
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // ingen abilities → spring over (kan ikke værdisættes)
-    const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id) });
+    const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline });
     if (next.base_value == null) continue;
     const changed =
       next.base_value !== r.base_value ||
@@ -100,8 +110,15 @@ async function writeUpdates(supabase, updates) {
 // Genberegn type+base_value+current_production_value for (evt. ét holds) ryttere;
 // skriv kun de ændrede. baseline/model defaulter fra de committede JSON-filer
 // (som runBaseValueBackfill).
-export async function refreshChangedRiderValues(supabase, { baseline, model, log = noop, teamId } = {}) {
+export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, log = noop, teamId } = {}) {
   const bl = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
+  // #3570: OPT-IN via param, samme mønster som backfillCores.js — produktionens
+  // CLI/sweep-callere sender ikke youthBaseline eksplicit og får derfor den
+  // committede ungdoms-JSON (alders-gated by default); test-callere der IKKE
+  // ønsker gating kan sende `youthBaseline: null` eksplicit for at slå den fra.
+  const youthBl = youthBaseline !== undefined
+    ? youthBaseline
+    : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
   const m = model || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
 
   // v4-alder forankres i den aktive sæson (samme ageForSeason som progression).
@@ -129,7 +146,7 @@ export async function refreshChangedRiderValues(supabase, { baseline, model, log
   const abilityByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a]));
   const capsByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
-  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider);
+  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl);
   log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret`);
   const written = await writeUpdates(supabase, updates);
   return { scanned: riders.length, changed: updates.length, written };

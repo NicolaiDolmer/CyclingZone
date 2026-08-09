@@ -17,6 +17,7 @@ import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { buildCapsForRider, buildProgressInit } from "./riderProgression.js";
 import { computeRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -28,6 +29,9 @@ const UPSERT_BATCH = 500;
 const WRITE_CONCURRENCY = 25;
 
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
+// #3570: unge (< 22 år, se riderTypesBaselineSelect.js) klassificeres mod DENNE
+// baseline i den ENDELIGE type-tildeling i stedet for voksen-baselinen ovenfor.
+const TYPES_BASELINE_YOUTH_PATH = join(__dirname, "./riderTypesBaselineYouth.json");
 // #2594 cutover: v4 (karriere-NPV) er den live værdi-model.
 const VALUATION_MODEL_PATH = join(__dirname, "./riderValuationModelV4.json");
 
@@ -107,22 +111,34 @@ export async function runPhysiologyBackfill(supabase, { dryRun = true, physiolog
 // #3325: type = POTENTIALE, ikke dagens form. Klassificerer mod ability_caps
 // (evne-LOFTET) i stedet for de nuværende evner, så typen er stabil hele karrieren
 // (se riderTypes.js's topkommentar for hvorfor + kollaps-historikken).
-export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline, log = noop } = {}) {
+export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline, youthBaseline, log = noop } = {}) {
   const model = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
+  // #3570: youthModel er OPT-IN via param (test/diagnostik-callere der ikke sender
+  // den er uændrede — selectTypesBaseline falder tilbage til `model` for ALLE
+  // aldre når youthModel er null/undefined). Produktionens CLI-wrapper
+  // (scripts/backfillRiderTypes.js) sender ingen af de to — begge loades derfor
+  // her fra de committede JSON-filer, så produktionsstien ER alders-gated by default.
+  const youthModel = youthBaseline !== undefined
+    ? youthBaseline
+    : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
+  const seasonNumber = await activeSeasonNumber(supabase);
   // Alle ryttere med abilities — også retired. Retired ryttere vises stadig på
   // profiler + Hall of Fame, så de skal have en gyldig type; ellers efterlader en
   // type-fjernelse (fx leadout) dem med et tomt badge. Matcher base_value-backfill,
   // der også dækker alle riders. Inner-join holder orphan-abilities ude.
+  // birthdate med i selectet (#3570) — kun til alders-gaten, skrives ingen steder.
   const rows = await fetchAllRows(() =>
     supabase
       .from("rider_derived_abilities")
-      .select("rider_id, ability_caps, riders!inner(id)")
+      .select("rider_id, ability_caps, riders!inner(id, birthdate)")
       .order("rider_id"));
   log(`types: ${rows.length} ryttere (med abilities, inkl. retired) — klassificeret mod ability_caps`);
 
   const dist = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 0]));
   const updates = rows.map((r) => {
-    const { primary, secondary } = computeRiderTypes(r.ability_caps || {}, model);
+    const age = ageForSeason(r.riders?.birthdate, seasonNumber);
+    const rowModel = selectTypesBaseline(age, model, youthModel);
+    const { primary, secondary } = computeRiderTypes(r.ability_caps || {}, rowModel);
     dist[primary.key] = (dist[primary.key] || 0) + 1;
     return { id: r.rider_id, primary_type: primary.key, secondary_type: secondary.key };
   });
@@ -148,6 +164,7 @@ export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline,
 export async function deriveForRiderIds(supabase, riderIds, {
   dryRun = false,
   typesBaseline,
+  youthTypesBaseline,
   valuationModel,
   now,
   log = noop,
@@ -158,7 +175,16 @@ export async function deriveForRiderIds(supabase, riderIds, {
   }
   const stamp = now || new Date().toISOString();
   const typesModel = typesBaseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
+  // #3570: OPT-IN via param (samme fallback-mønster som backfillRiderTypes-stien) —
+  // callere der ikke sender youthTypesBaseline eksplicit får den committede JSON
+  // (produktionsstien ER dermed alders-gated by default); undefined ⇒ ikke "slået fra".
+  const youthTypesModel = youthTypesBaseline !== undefined
+    ? youthTypesBaseline
+    : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
   const valModel = valuationModel || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
+  // #3570: seasonNumber flyttet HERTIL (var tidligere kun hentet ved trin 5) — trin 4
+  // (ENDELIG type) skal nu også kende alderen for at vælge baseline.
+  const seasonNumber = await activeSeasonNumber(supabase);
 
   // Hent de berørte ryttere (legacy stat-felter + krop til physiology-seed).
   // #3345: valuation_type med i selectet — se trin 5's kommentar for hvorfor
@@ -230,15 +256,24 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // 4) ENDELIG type (#3325): klassificeret mod ability_caps (trin 3) + den caps-
   // fittede baseline (typesModel) — DETTE er det der persisteres på riders og
   // vises til spilleren. Stabil resten af karrieren (afhænger ikke af dagens form).
+  //
+  // #3570: unge (< 22 år, samme sæson-alder som base_value-leddet i trin 5) bruger
+  // i stedet youthTypesModel — se riderTypesBaselineSelect.js's topkommentar for
+  // rod-årsagen. Voksne (>= 22) rammer PRÆCIS samme kodesti som før (selectTypesBaseline
+  // returnerer typesModel uændret) — bit-identisk klassifikation, se
+  // archetypeGenerationGates.test.js's "voksne uændret"-regressionstest.
   const typeByRider = new Map();
   for (const [riderId, caps] of capsByRider) {
-    const { primary, secondary } = computeRiderTypes(caps, typesModel);
+    const rider = riderById.get(riderId) || {};
+    const age = ageForSeason(rider.birthdate, seasonNumber);
+    const rowModel = selectTypesBaseline(age, typesModel, youthTypesModel);
+    const { primary, secondary } = computeRiderTypes(caps, rowModel);
     typeByRider.set(riderId, { primary_type: primary.key, secondary_type: secondary.key });
   }
 
   // 5) base_value + current_production_value (kræver primary_type + abilities;
   //    v4 kræver desuden age + potentiale — birthdate/potentiale er i selected).
-  const seasonNumber = await activeSeasonNumber(supabase);
+  //    seasonNumber er allerede hentet ovenfor (#3570, trin 4 har brug for den nu).
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
   const riderUpdates = riders.map((r) => {
     const t = typeByRider.get(r.id) || { primary_type: null, secondary_type: null };
