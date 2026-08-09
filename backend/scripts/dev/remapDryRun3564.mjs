@@ -199,26 +199,31 @@ for (const band of AGE_BANDS) {
       spreadInto(high.slice(cursor, cursor + s.n), s.lo, s.hi, set);
       cursor += s.n;
     }
-    // 3) FREDNINGSGULV (ejer-justering 9/8 aften, efter variant B-diffen): en
-    //    gammel 6,0'er må ALDRIG lande under 80 ("5,0-ækvivalent", loft ~80).
-    //    Løft blob-placerede 6,0'ere rang-ordnet ind i [80, 84,3). Kan ikke
-    //    bryde rang: seats tildeles top-ned efter rang, så hvis NOGEN 6,0'er
-    //    står i blobben, holder ingen 5,5'er et seat — de løftede kan derfor
-    //    kun møde andre 6,0'ere (alle ≥84,3) ovenover. Konsekvens (accepteret,
-    //    dokumenteret): hale-ankret ≥74,5 overskrides af fredningsklassen
-    //    (stock-legacy der eroderer ved aldring); FLOW/generator følger planen.
-    const GRANDFATHER_FLOOR_POT6 = 80;
-    const liftees = high.filter((r) => r.potentiale === 6 && remapById.get(r.id).newPot99 < GRANDFATHER_FLOOR_POT6)
-      .sort((a, b) => remapById.get(a.id).newPot99 - remapById.get(b.id).newPot99 || (seededUnit(a.id) - seededUnit(b.id)));
-    if (liftees.length) {
-      // Løfte-loft = under den LAVESTE ikke-løftede 6,0'er i båndet (ellers kan
-      // en løftet lav-ranket 6,0'er overhale en seat-holdende 6,0'er på 80-84 —
-      // gav 3 rang-brud i første kørsel). Ingen ikke-løftede ⇒ op til 84,3.
-      const keptAboveFloor = high
-        .filter((r) => r.potentiale === 6 && remapById.get(r.id).newPot99 >= GRANDFATHER_FLOOR_POT6)
+    // 3) FREDNINGSGULVE (ejer-justeringer 9/8 aften, efter variant B-diffen):
+    //    - gammel 6,0'er må ALDRIG lande under 80 ("5,0-ækvivalent", loft ~80)
+    //    - gammel 5,5'er må ALDRIG lande under 74,5 ("5,0-grænsen") — valgt af
+    //      ejeren som opfølgning (lukker hullet 75-79; blødere overgang).
+    //    Anvendes i FALDENDE pot-orden. Løfte-loftet pr. gulv er rang-sikkert:
+    //    under (a) hard-cap (næste gulv/segment-grænse), (b) laveste IKKE-
+    //    løftede same-pot-værdi ≥ gulvet (ellers kunne en løftet lav-ranket
+    //    overhale en seat-holder — gav 3 rang-brud i første 6,0-kørsel), og
+    //    (c) laveste værdi hos ENHVER højere pot i båndet. Konsekvens
+    //    (accepteret, dokumenteret): hale-ankret ≥74,5 overskrides af
+    //    fredningsklasserne (stock-legacy der eroderer ved aldring);
+    //    FLOW/generator følger planen. ≥84,3/≥94,1 forbliver på plan.
+    const GRANDFATHER_FLOORS = [
+      { pot: 6, floor: 80, hardCap: 84.3 },
+      { pot: 5.5, floor: 74.5, hardCap: 80 },
+    ];
+    for (const { pot, floor, hardCap } of GRANDFATHER_FLOORS) {
+      const liftees = high.filter((r) => r.potentiale === pot && remapById.get(r.id).newPot99 < floor)
+        .sort((a, b) => remapById.get(a.id).newPot99 - remapById.get(b.id).newPot99 || (seededUnit(a.id) - seededUnit(b.id)));
+      if (!liftees.length) continue;
+      const bounds = high
+        .filter((r) => (r.potentiale === pot && remapById.get(r.id).newPot99 >= floor) || r.potentiale > pot)
         .map((r) => remapById.get(r.id).newPot99);
-      const liftHi = keptAboveFloor.length ? Math.min(84.3, Math.min(...keptAboveFloor)) : 84.3;
-      spreadInto(liftees, GRANDFATHER_FLOOR_POT6, liftHi, set);
+      const liftHi = bounds.length ? Math.min(hardCap, Math.min(...bounds)) : hardCap;
+      spreadInto(liftees, floor, liftHi, set);
     }
   }
 }
