@@ -1,6 +1,6 @@
 # Progressionskæden samlet: potentiale → loft → type → værdi → løn (#3564)
 
-**Status:** v0.2 — research afsluttet 9/8 (14-agent workflow + egne verifikationer), og **alle 5 ejer-beslutninger låst 9/8 aften** (se beslutningslog i §8). Måltal markeret **FORESLÅET** skal fortsat harness-verificeres før hvert trin ships. Næste: harness-runde (nye gates negativ-testes mod defekt 7/8-konfiguration) + trin 1-implementeringsplan.
+**Status:** v0.3 — harness-runden GENNEMFØRT 9/8 aften (10-agent workflow + egne verifikationer; resultater i §11). Alle 15 porte implementeret + negativ-testet (PR [#3567](https://github.com/NicolaiDolmer/CyclingZone/pull/3567) merged). Alle 5 ejer-beslutninger fra §8 står, MEN harness-runden har rejst 4 nye ejer-beslutninger (§11.5, stilles én ad gangen) — trin 1-migrationen og trin 2-kalibreringen er blokeret på dem.
 
 **Anker:** [#3564](https://github.com/NicolaiDolmer/CyclingZone/issues/3564) · Baggrund: 9/8-hændelsen ([#3561](https://github.com/NicolaiDolmer/CyclingZone/issues/3561)) + postmortem `.claude/learnings/2026-08-09-gates-der-maaler-relativt-fanger-ikke-absolutte-niveauer.md`
 
@@ -37,7 +37,7 @@ Ejer-beslutning 9/8: progressionsopgaverne planlægges som ÉN kæde, fordi de r
 - **Løn:** 4.495/8.151 har salary>0; løn/værdi median 4,0 %, p95 12,2 %, én outlier 111 %. Manager-saldi: 190 reelle, median 763.397, max 1.276.576.
 - **Fiktiv population (800, lokal kørsel af preview-modulet):** værdibånd 7/74/117/602 mod mål 12/60/230/500 — solid-båndet halveret ift. design. NB: admin-preview kører **v3-modellen**, ikke live-v4 — misvisende flade.
 - **Backfill 5/8:** snapshot-tabel findes (`riders_type_backfill_snapshot_20260805`, 8.176 rækker). 5.234 fik ny primary_type; kun 1.654 fik reel base_value-ændring (median +5,7 %, hale +91,3 % / 3,99 mio.). `updated_at` er UBRUGELIG som audit-markør (98,3 % urørt trods bulk-updates) — **kalibreringer skal ske mod daterede snapshots, aldrig "nuværende DB"**.
-- **Referencepopulation:** de 384 rene akademi-kandidater kan identificeres eksakt (`academy_intake status='offered'`, oprettet <9/8; alle uden hold/condition/træning; bedste evne snit 19,4/median 18).
+- **Referencepopulation:** de 384 rene akademi-kandidater kan identificeres eksakt (`academy_intake status='offered'`, oprettet <9/8; alle uden hold/condition/træning). **Forlig 9/8 aften:** "bedste evne snit 19,4/median 18" er målt over ALLE 15 evner og domineres totalt af aggressions aldersgulv (aggression alene: 19,33/18); over de 10 FYSISKE evner er tallet 9,40/9. Brug altid 10-fysiske-definitionen som reference. **Forlig 2:** "224/248 pot-6 ejede" = human (166) + AI (58); frie = 24 — human-ejede alene er 166.
 
 ## 4. Designprincipper (bindende for alle trin)
 
@@ -133,3 +133,36 @@ Porte (køres FØR hvert sweep-flip og hver refit): forhold = holdout-MAE bedre 
 ## 10. Datakilder
 
 Research-rapporter (14 agenter, 9/8): workflow `wf_35feb20d-788` (session-transcript). Prod-SQL: read-only mod ghwvkxzhsbbltzfnuhhz. Scripts genkørt 9/8: `checkYouthBand2064.mjs`, `simYouthClassificationFix3458.js`, `simRiderTypesCapsMeasure.js`, `fitYouthStartLuck3561.mjs`, `youthShowcase3561.mjs`, `simArchetypeCalibration3458.js` (alle verificeret read-only før kørsel). Egne verifikationer 9/8: fit-datering (`marketValueModelV1.draft.json`), top-8-outliers, pot-6-survivorship (68 ryttere dekomponeret).
+
+## 11. Harness-runden 9/8 aften (v0.3) — resultater og nye beslutningspunkter
+
+Workflow `wf_8830557f-820` (10 agenter: dateret prod-snapshot + frontloading-krydsmåling + remap-dry-run + #2798-sim + gates + kurve-harness + 3 research-spor + kritiker). Alle resultater egen-verificeret ved genkørsel i main checkout.
+
+### 11.1 Porte (leverance 1) — ✅ leveret, merged
+
+15 porte i `backend/scripts/dev/lib/progressionGates3564.mjs`; bevis i `gates3564NegativeProof.mjs`: **hver port fejler på ≥1 kendt defekt (F1 7/8-config · F2 9/8-underkorrektion · F3 frontloaded motor · F4 dateret prod-stock · F6/F7 syntetiske) OG består F5 (sund reference).** `checkYouthBand2064.mjs` rettet til tosidet check — dagens config rapporteres nu korrekt UNDER MÅL. Halemasse forligt: diskret 1-6-hale P(≥5,5)=0,322 % ≠ kontinuert 1-99-hale P(≥90)=0,201 % (`continuousTailProbability99`) — brug den rigtige pr. skala. Rest: T4-gates er testet på abstrakte før/efter-arrays, ikke wiret til ægte værdikæde (planlagt afhængighed for trin 4); hale-gates kræver stokastisk population (trin 3-afhængighed); gate-lib mangler egne `node --test`-filer.
+
+### 11.2 Frontloading prod-krydsmålt (leverance 2) — ✅ delvist bekræftet, skarpere end sim
+
+Prod kan ikke afprøve flerårs-banen (max 48 kalenderdages motor-vækst siden 22/6), men fænomenet er bekræftet og **trænings-dage-gated, ikke alders-gated**: +11-35 pp %-af-loft på ~20-41 dage, SAMME tempo pr. dag for 16- og 20-årige; enkelte ryttere allerede på 86-97 % af loft efter 48 dage. En median/p90-gate ville bestå i dag mens halen allerede fejler — bekræfter §4.2. Motor-livscyklus-sim (F3) reproducerer "pot-6 ~94 % af loft ved 19". Anbefaling til trin 2: overvej trænings-dage-siden-generering som supplerende gate-akse.
+
+### 11.3 Kurve-harness (leverance 3) — ✅ fit fundet, 2 strukturelle fund
+
+`curveHarness3564.mjs`: S = 1-99-score af (Q × potMult × ±15 % støj); delta = A×(S/50)^β × 1/(1+(L/L0)^γ) × (1−L/cap)^0,3. **Fit: A=0,7 · L0=9 · γ=0,6 · β=1,6 · softLoftExp=0,3** — alle §5-ankre inden for ±15 % (22-års-søjlen +3-13 %, 28-års −2-4 %), %loft@22 64-68 %, @25 81-84 %, max ved 28 (off-by-én pga. decline-start), anti-frontloading 19-årig 42-47 % ✅. Kurver visualiseret for ejeren 9/8 aften (ny vs gammel motor pr. potentiale). To strukturelle fund der IKKE kan tunes væk:
+- **Specialiserings-gab = 0,0 strukturelt:** 7/8 typer har 2+ evner med rollefaktor 1,0; med én rider-niveau-score får de identiske baner for evigt. Gab-målet (≥2/≥4/≥6) er uopnåeligt i den låste modelfamilie → beslutning D i §11.5.
+- **Træningsscore afslører potentiale på 1-3 dage, ikke uger:** potMult-spredningen (±38 %) ≫ dagsstøjen (±15 %). Beslutning 5's privatlivs-antagelse er empirisk modbevist → beslutning C i §11.5.
+
+### 11.4 Trin 1 (leverance 4) — dry-run kørt; migration BLOKERET på beslutning A
+
+- **Remap-dry-run** (`remapDryRun3564.mjs` + [dry-run-rapport](2026-08-09-3564-trin1-remap-dryrun.md)): §6-algoritmen kørt bogstaveligt mod dateret snapshot: 0 rang-brud, 5/6 aldersbånd består ±2pp, stock-gate rammer 0,22 % mod mål 0,20 % — MEN den nedjusterer **88,8 % af hele bestanden** (100 % af alle tiers 2,0-6,0; kun tier 1,0 urørt) og barberer **-27,0 % af total base_value** (607→444 mio.), fordi stock i ALLE tiers er survivorship-tæt ift. friskt-kulds-geometrien. Det er langt bredere end "udligning af overskuddet" — ejer-beslutning A i §11.5.
+- **#2798-A-sim** (`sim3564_2798_public_price.mjs`): 1.538 <22-årige uden handelsevidens (mod estimatet ~1.213 — definitions-afklaring udestår). Median-delta 0, men p10 −72 %/p90 +60 % (re-fordeling); human-ejede unge −36 % median, frie +34 %; korrelation pct×potentiale r=−0,96. Bisektion: før fix genfindes potentiale (fejl <0,1); efter fix ikke-invertérbar per konstruktion. **KRITISK NYT FUND: `GET /riders/:id` sender `base_value_preview` LIVE-beregnet med SAND potentiale til alle loggede-ind brugere (api.js ~932-973) — en separat lækagevej der SKAL med i PR-0**; `value-trend`-ruten er sekundær kandidat (uauditeret). AI-bud-motor findes ikke endnu (fremtidssikring: skal læse market_value).
+- **PR-plan trin 1** (rækkefølge): **PR-0** #2798-A (neutraliseret potentiale-input i predictBaseValueV4-kald for <22 u. evidens + `riderValueRefresh` skriver offentlig værdi + base_value_preview-fix + bisektions-verify) → **PR-1** skala-fundament 1-99 (skala-tolerante læsere, fælles mål-geometri for ALLE generator-stier — OBS: `fictionalRiderGenerator.buildDemographics` bruger i dag tier-intervaller + aldersbonus, IKKE geometrien — skæv estimat-generator på 1-99) → **PR-2** selve migrationen (snapshot → remap+estimat-regen i én kørsel → post-verify T1-N3/T1-H1/I1 → ejer-go på dry-run-diff FØR apply; rollback-SQL skrevet FØR) → **PR-3** #3503-A rollefaktor-eftersyn (efter 23/8). Fictional-preview før/efter blev IKKE leveret: preview-fladen er en afkoblet launch-population uden drawPotentiale (+ v3-model) — accept af udeladelse eller alternativ leverance udestår hos ejeren.
+- **Overlever-scan (egen, 9/8 aften):** 0 akademi-skabte loft-brud — #3561-oprydningen var komplet. 362 loft-brud er ALLE 22/6-seed-legacy (inkl. Carlos Lozano 74 mio.) = den kendte klasse til 16/8-verify-beslutningen (§7 pkt. 2).
+
+### 11.5 Nye ejer-beslutninger (stilles én ad gangen, rækkefølge = blokerings-orden)
+
+- [ ] **A. Remap-afgrænsning (blokerer trin 1/PR-2):** (a) bogstavelig §6-remap = bevidst bred nulstilling (89 % ned, −27 % værdi) eller (b) hale-korrigeret remap (bestandens egen fordeling som mål for tier ≤4,5; kun toppen presses mod geometrien). Anbefaling: **b**.
+- [ ] **B. §2a vs §5-konflikten (blokerer trin 2-kalibrering):** bevist af to uafhængige spor: population-bred §2a-median kan ikke nå "bedste 6" når 83 % af massen er pot ≤2, OG §5-skelettet krydser §2a's graduerings-12 allerede ved 16,8-18,7 år. §2a's 20-21-anker 12/12 = LOFTET ved dagens bånd (gab matematisk umuligt; 96,9 % nul-gab målt). Valg: (a) §2a omfortolkes til per-tier-medianer, (b) 20-21-ankeret flyttes under loftet via båndudvidelse (sim-evidens: statCeil 58 + base 49 + slope 1,3 + luck 0,8 → graduering ~15/21, nul-gab halveret til 46 %), (c) §5 nedjusteres. Anbefaling: **a+b sammen** (per-tier-mål + moderat båndudvidelse; genåbner §2a-ankeret = eksplicit ejer-sag).
+- [ ] **C. Træningsscorens privatliv (blokerer beslutning 5-implementering):** "talent kræver uger" er modbevist (1-3 dage). Valg: (a) dagsstøj op til ±40-50 %, (b) potMult-spredning ned, (c) acceptér hurtig aflæsning (genåbner reelt #2798 ad bagdøren). Anbefaling: **a** (+ genkør harness med valgt støj FØR konstanterne låses).
+- [ ] **D. Specialiserings-gab (blokerer gab-portene):** (a) lille pr.-evne-støjkomponent i score→gevinst-leddet, (b) gab-mål redefineres for multi-signatur-typer (bedste-primær vs bedste-neutral), (c) overlades til beslutning 3's type-loftprofiler. Anbefaling: **a+c** (støj giver mikro-variation nu; profilerne bærer den ægte differentiering).
+- Derefter (ikke-blokerende): type-peaks-tabellen (research-forslag: sprinter 26 · rouleur/puncheur/climber 27 · tt 28 · gc/brosten/baroudeur 29; hybrid-anbefaling: godkend RETNINGEN, implementér som egen slice efter #3564) · scouting-rollen (anbefaling: Model B udvidet — dybde-rapport pr. evne + peak-prognose; afhænger af C) · fictional-preview-udeladelsen.
