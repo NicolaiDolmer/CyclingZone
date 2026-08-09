@@ -55,3 +55,39 @@ test("selectChangedValueUpdates: skriver KUN ryttere hvor værdi/type ændrede s
   // (løn-basen); selectChangedValueUpdates diff'er + skriver den med.
   assert.deepEqual(Object.keys(u2).sort(), ["base_value", "current_production_value", "id", "primary_type", "secondary_type"]);
 });
+
+// ── #3570: nattens sweep omdøber ikke længere en rytter med fast identitet ────
+
+test("#3570: recomputeRiderValue bruger archetype_draw som identitet — nattens sweep overskriver den ikke", () => {
+  // Uden anlæg: klassifikatoren bestemmer (uændret adfærd for alle eksisterende ryttere).
+  const uden = recomputeRiderValue({ id: "r1" }, ABIL, baseline, model);
+  const andenType = ["gc", "brostensrytter", "rouleur", "sprinter"].find((t) => t !== uden.primary_type);
+
+  // Med anlæg: anlægget vinder, uanset hvad evnerne ligner.
+  const med = recomputeRiderValue(
+    { id: "r1", archetype_draw: { primary: andenType, secondary: null, isHybrid: false } },
+    ABIL, baseline, model,
+  );
+  assert.equal(med.primary_type, andenType, "primær type følger det persisterede anlæg");
+  assert.notEqual(med.secondary_type, andenType, "sekundær er aldrig lig primær");
+});
+
+test("#3570: et tomt/ugyldigt archetype_draw ændrer intet (bagudkompatibel)", () => {
+  const forventet = recomputeRiderValue({ id: "r1" }, ABIL, baseline, model);
+  for (const draw of [null, undefined, {}, { primary: null }, { primary: "findes_ikke" }]) {
+    const faktisk = recomputeRiderValue({ id: "r1", archetype_draw: draw }, ABIL, baseline, model);
+    assert.deepEqual(faktisk, forventet, `uændret for draw=${JSON.stringify(draw)}`);
+  }
+});
+
+test("#3570: selectChangedValueUpdates retter en rytter TILBAGE til sit anlæg (drift-reparation)", () => {
+  // En rytter hvis persisterede label er drevet væk fra anlægget skal fanges som
+  // ændret og skrives tilbage — det er sådan løkke-driften ruller af sig selv.
+  const draw = { primary: "gc", secondary: null, isHybrid: false };
+  const forkert = recomputeRiderValue({ id: "r1" }, ABIL, baseline, model).primary_type === "gc"
+    ? "sprinter" : "gc";
+  const riders = [{ id: "r1", primary_type: forkert, secondary_type: "rouleur", base_value: 1, archetype_draw: draw }];
+  const updates = selectChangedValueUpdates(riders, new Map([["r1", ABIL]]), baseline, model);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].primary_type, "gc", "sweepen skriver anlægget tilbage");
+});
