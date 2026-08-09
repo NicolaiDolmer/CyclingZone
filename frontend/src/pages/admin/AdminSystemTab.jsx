@@ -6,6 +6,7 @@ import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components
 import BetaToolsSection from "../../components/admin/sections/BetaToolsSection";
 import BoardTestModeSection from "../../components/admin/sections/BoardTestModeSection";
 import BalanceDriftWatchSection from "../../components/admin/sections/BalanceDriftWatchSection";
+import { ChevronDownIcon } from "../../components/ui/icons/index.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -326,10 +327,25 @@ export default function AdminSystemTab() {
         <BalanceDriftWatchSection getAuth={getAuth} />
       </AdminSection>
 
+      {/* #3498: foldet sammen som default (samme <details>/group-open-mønster som
+          TrainingPage/LandingPage-FAQ) — 13 destruktive knapper var den største
+          knap-mur i admin-UI'et. Ingen funktionalitet fjernet, kun skjult bag klik. */}
       {BETA_ENABLED && (
-        <AdminSection title="Beta-testværktøjer">
-          <BetaToolsSection getAuth={getAuth} onMsg={showMsg} />
-        </AdminSection>
+        <details className="group bg-cz-card border border-cz-border rounded-cz p-4 sm:p-5 mb-4">
+          <summary className="text-cz-1 font-semibold text-sm flex items-center justify-between gap-2 cursor-pointer list-none">
+            <span className="flex items-center gap-2">
+              <span className="w-1 h-4 bg-red-400 rounded-full" />Beta-testværktøjer
+            </span>
+            <ChevronDownIcon
+              size={16}
+              className="shrink-0 text-cz-3 transition-transform duration-200 group-open:rotate-180"
+              aria-hidden="true"
+            />
+          </summary>
+          <div className="mt-4">
+            <BetaToolsSection getAuth={getAuth} onMsg={showMsg} />
+          </div>
+        </details>
       )}
     </>
   );

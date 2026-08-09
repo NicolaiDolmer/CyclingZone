@@ -3,7 +3,6 @@ import { supabase } from "../../lib/supabase";
 import { RACE_CLASSES, getRaceClassLabel } from "../../lib/uciRaceClasses";
 import RacePoolSection from "../../components/admin/RacePoolSection";
 import RacePointsAdminSection from "../../components/admin/RacePointsAdminSection";
-import RiderExplorerSection from "../../components/admin/RiderExplorerSection";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
@@ -507,10 +506,6 @@ export default function AdminDataTab() {
             )}
           </div>
         )}
-      </AdminSection>
-
-      <AdminSection title="Rider Explorer (fiktiv launch-population)">
-        <RiderExplorerSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
     </>
   );

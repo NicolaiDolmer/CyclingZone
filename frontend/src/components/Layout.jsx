@@ -87,12 +87,15 @@ function buildBottomItems(t, team) {
 // #3196: waitlist/sprint-metrics/attribution/retention konsolideret til ÉT
 // "Vækst"-punkt (/admin/growth, faner internt) — ejer-direktiv om at samle
 // vækst-data ét sted i stedet for fire spredte sub-nav-punkter.
+// #3498: Fair play (/admin/fairplay, #3138) havde intet nav-punkt, kun direkte
+// URL — ejer-beslutning 8/8 om at give den samme synlighed som Vækst.
 function buildAdminGroup(t) {
   return {
     key: "admin", label: t("nav.group.admin"),
     items: [
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/growth", label: t("nav.item.growth") },
+      { to: "/admin/fairplay", label: t("nav.item.fairplay") },
     ],
   };
 }
