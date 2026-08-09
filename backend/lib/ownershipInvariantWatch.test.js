@@ -9,7 +9,13 @@ import { runOwnershipInvariantWatch } from "./ownershipInvariantWatch.js";
 //   academy_intake: select(...).eq("status","offered").order().range()
 //                   (findStaleOfferedIntake's egen riders-select("id, team_id")
 //                    genbruger samme riders-mock)
-function makeMock({ auctions = [], riders = [], intake = [], auctionsError = null } = {}) {
+//   races/race_entries: CYCLINGZONE-48 — invariant E's andet kriterie kalder
+//                   getRidersInActiveStageRace, som IKKE pagineres (ingen
+//                   .order().range()) men awaites direkte. Derfor er de to
+//                   buildere thenable. Default er TOMME lister = "ingen kører
+//                   et aktivt etapeløb", hvilket bevarer alle eksisterende
+//                   forventninger uændret.
+function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], auctionsError = null } = {}) {
   return {
     from(table) {
       if (table === "auctions") {
@@ -79,6 +85,39 @@ function makeMock({ auctions = [], riders = [], intake = [], auctionsError = nul
               data: out.map((r) => ({ id: r.id, team_id: r.team_id, rider_id: r.rider_id })),
               error: null,
             });
+          },
+        };
+        return b;
+      }
+      if (table === "races") {
+        const filters = [];
+        const b = {
+          select() { return b; },
+          eq(col, val) { filters.push(["eq", col, val]); return b; },
+          neq(col, val) { filters.push(["neq", col, val]); return b; },
+          gt(col, val) { filters.push(["gt", col, val]); return b; },
+          then(resolve, reject) {
+            const out = races.filter((r) =>
+              filters.every(([op, c, v]) => {
+                if (op === "eq") return r[c] === v;
+                if (op === "neq") return r[c] !== v;
+                if (op === "gt") return (r[c] ?? 0) > v;
+                return true;
+              })
+            );
+            return Promise.resolve({ data: out.map((r) => ({ id: r.id })), error: null }).then(resolve, reject);
+          },
+        };
+        return b;
+      }
+      if (table === "race_entries") {
+        const inFilters = [];
+        const b = {
+          select() { return b; },
+          in(col, vals) { inFilters.push([col, vals]); return b; },
+          then(resolve, reject) {
+            const out = raceEntries.filter((e) => inFilters.every(([c, v]) => v.includes(e[c])));
+            return Promise.resolve({ data: out.map((e) => ({ rider_id: e.rider_id })), error: null }).then(resolve, reject);
           },
         };
         return b;
@@ -402,6 +441,115 @@ test("#3330 pendingTransferStaleHours-override styrer tærsklen (test-injektion)
     pendingTransferStaleHours: 1, // strammere tærskel end default 48t
   });
   assert.equal(result.findings.stalePendingTransfer, 1, "med en 1t-tærskel er en 2t-gammel parkering stale");
+});
+
+// ─── CYCLINGZONE-48 · invariant E's ANDET kriterie: stadig i aktivt etapeløb ──
+// Rod-årsag 8/8: 48t-tærsklen antog at et fleretape-løb altid var afviklet
+// inden for 2 døgn. Prod modbeviste det (4-etape-løb, 55t+ realtid, 3/4 etaper
+// kørt) → vagten alarmerede dagligt på en HELT lovlig, igangværende deferral.
+// Invariant E kræver nu BEGGE dele: gammel parkering OG intet aktivt løb.
+
+test("CYCLINGZONE-48 gammel parkering MEN rytteren er stadig i aktivt etapeløb → INTET brud", async () => {
+  const riders = [
+    {
+      id: "r-long-stage-race", team_id: "team-seller", pending_team_id: "team-buyer",
+      updated_at: "2026-08-06T21:52:35Z", // 55t gammel — over 48t-tærsklen
+    },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: new Date("2026-08-09T05:00:00Z"),
+    // Prod-scenariet: rytteren kører stadig "O Gran Camiño Menor" (3/4 etaper).
+    getRidersInActiveStageRaceFn: async () => ["r-long-stage-race"],
+  });
+  assert.equal(result.findings.stalePendingTransfer, 0, "lovlig igangværende deferral må ALDRIG alarmere, uanset alder");
+  assert.equal(calls.length, 0);
+  assert.equal(result.alerted, false);
+});
+
+test("CYCLINGZONE-48 gammel parkering OG løbet er ovre → brud (Vasco-klassen fanges uændret)", async () => {
+  const riders = [
+    {
+      id: "r-vasco", team_id: "team-seller", pending_team_id: "team-buyer",
+      updated_at: "2026-06-22T13:48:45Z",
+    },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: new Date("2026-08-04T12:00:00Z"),
+    getRidersInActiveStageRaceFn: async () => [], // intet aktivt løb
+  });
+  assert.equal(result.findings.stalePendingTransfer, 1, "heal-sweepen burde have repareret denne — backstoppet skal stadig fyre");
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].ctx.fingerprint, ["stale-pending-team-id-transfer"]);
+});
+
+test("CYCLINGZONE-48 blandet: én i løb + én uden løb → kun den uden løb tælles", async () => {
+  const riders = [
+    { id: "r-racing", team_id: "t1", pending_team_id: "t2", updated_at: "2026-06-01T00:00:00Z" },
+    { id: "r-stranded", team_id: "t3", pending_team_id: "t4", updated_at: "2026-06-01T00:00:00Z" },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: new Date("2026-08-04T12:00:00Z"),
+    getRidersInActiveStageRaceFn: async () => ["r-racing"],
+  });
+  assert.equal(result.findings.stalePendingTransfer, 1);
+  assert.equal(calls[0].ctx.extra.sample.length, 1);
+  assert.equal(calls[0].ctx.extra.sample[0].riderId, "r-stranded");
+});
+
+test("CYCLINGZONE-48 ingen alders-kandidater → race-opslaget kaldes SLET IKKE (ingen ekstra queries pr. tick)", async () => {
+  const riders = [
+    { id: "r-fresh", team_id: "t1", pending_team_id: "t2", updated_at: "2026-08-04T10:00:00Z" }, // 2t gammel
+  ];
+  let lookupCalls = 0;
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders }),
+    captureExceptionFn: () => {},
+    now: new Date("2026-08-04T12:00:00Z"),
+    getRidersInActiveStageRaceFn: async () => { lookupCalls += 1; return []; },
+  });
+  assert.equal(result.findings.stalePendingTransfer, 0);
+  assert.equal(lookupCalls, 0, "vagten kører dagligt — den normale 0-kandidat-tick må ikke koste to ekstra queries");
+});
+
+test("CYCLINGZONE-48 ÆGTE diskriminator (ingen DI-stub) mod races/race_entries — aktivt etapeløb dæmper alarmen", async () => {
+  // Ingen getRidersInActiveStageRaceFn-injektion her: dette kører den RIGTIGE
+  // getRidersInActiveStageRace mod mock-tabellerne, så query-formen (race_type/
+  // status/stages_completed + entry-opslag) er dækket, ikke kun kald-kontrakten.
+  const riders = [
+    { id: "r-in-race", team_id: "t1", pending_team_id: "t2", updated_at: "2026-06-01T00:00:00Z" },
+    { id: "r-no-race", team_id: "t3", pending_team_id: "t4", updated_at: "2026-06-01T00:00:00Z" },
+  ];
+  const races = [
+    // Aktivt: stage_race, ikke completed, mindst én etape kørt.
+    { id: "race-active", race_type: "stage_race", status: "scheduled", stages_completed: 3 },
+    // Afsluttet — må IKKE dæmpe.
+    { id: "race-done", race_type: "stage_race", status: "completed", stages_completed: 4 },
+    // Endagsløb — må IKKE dæmpe.
+    { id: "race-oneday", race_type: "one_day", status: "scheduled", stages_completed: 1 },
+  ];
+  const raceEntries = [
+    { race_id: "race-active", rider_id: "r-in-race" },
+    { race_id: "race-done", rider_id: "r-no-race" },
+    { race_id: "race-oneday", rider_id: "r-no-race" },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders, races, raceEntries }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: new Date("2026-08-04T12:00:00Z"),
+  });
+  assert.equal(result.findings.stalePendingTransfer, 1);
+  assert.equal(calls[0].ctx.extra.sample[0].riderId, "r-no-race",
+    "kun rytteren uden aktivt etapeløb er et brud — afsluttet løb og endagsløb dæmper ikke");
 });
 
 test("#3330 flere stale pending-parkeringer → ÉN capture med alle i sample, ikke én pr. rytter", async () => {
