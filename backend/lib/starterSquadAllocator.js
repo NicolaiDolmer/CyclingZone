@@ -29,12 +29,15 @@ import { deriveForRiderIds } from "./backfillCores.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
 import { computeRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickContractLength, computeContractEndSeason } from "./contractSeed.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
+// #3570: unge (< 22 år) AI-kandidater klassificeres mod DENNE — se riderTypesBaselineSelect.js.
+const YOUTH_TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaselineYouth.json"), "utf8"));
 // #2594 cutover: cap-gaten SKAL bruge samme model som deriveForRiderIds persisterer
 // med (v4) — ellers kan en kandidat passere en v3-beregnet gate og lande over
 // tier-loftet når v4-værdien skrives (#2065-klassen, fanget af aiTeamGenerator-testen).
@@ -198,12 +201,20 @@ export function generateAiRiderBatchWithCap({
       // afviger dette sikkerhedsnets type/værdi fra hvad deriveForRiderIds rent
       // faktisk persisterer bagefter, og loft-garantien (AI_TIER_VALUE_CAP) holder
       // ikke (#2065-klassen).
+      //
+      // #3570: samme spejling gælder alders-gaten — deriveForRiderIds vælger nu
+      // YOUTH_TYPES_BASELINE for < 22-årige AI-kandidater i sin ENDELIGE
+      // klassifikation, så sikkerhedsnettet HER skal vælge den samme baseline for
+      // den samme rytter, ellers kan en ung AI-rytter passere dette gate mod den
+      // GAMLE (voksen) klassifikation og lande over tier-loftet når deriveForRiderIds
+      // bagefter reklassificerer den mod ungdoms-baselinen (samme #2065-klasse).
+      const age = computeAge(candidate.birthdate, referenceYear);
       const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
       const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
-      const { primary } = computeRiderTypes(caps, TYPES_BASELINE);
+      const { primary } = computeRiderTypes(caps, selectTypesBaseline(age, TYPES_BASELINE, YOUTH_TYPES_BASELINE));
       // v4 kræver alder (candidate bærer allerede potentiale fra generatoren).
       const value = predictBaseValue(
-        { ...candidate, primary_type: primary.key, age: computeAge(candidate.birthdate, referenceYear) },
+        { ...candidate, primary_type: primary.key, age },
         abilities,
         VALUATION_MODEL
       );

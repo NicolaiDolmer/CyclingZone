@@ -45,7 +45,12 @@ function findSnapshotAtOrBefore(snapshotsAsc, referenceMs) {
 // (samme type gennem hele karrieren), så der findes bevidst INGEN historisk caps-
 // snapshot at genderive typen fra. Uden caps falder recomputeRiderValue tilbage til
 // den historiske snapshot's abilities (gammel adfærd).
-export function computeRiderValueTrend({ currentBaseValue, rider = {}, snapshotsAsc = [], baseline, model, now = new Date() }) {
+// #3570: youthBaseline (valgfri, bagudkompatibel) videresendes til
+// recomputeRiderValue så trend-genberegningen alders-gater PRÆCIS som den
+// persisterede værdi — udeladt ⇒ uændret (voksen-baseline for alle), men
+// api.js's value-trend-endpoint SKAL sende den (ellers kunstige deltaer for
+// fremtidige unge ryttere uden frosset valuation_type).
+export function computeRiderValueTrend({ currentBaseValue, rider = {}, snapshotsAsc = [], baseline, model, youthBaseline = null, now = new Date() }) {
   const windows = {};
   const nowMs = now.getTime();
   // Number(null) === 0 (falsk-finite) — eksplicit null/undefined-tjek FØRST,
@@ -56,7 +61,7 @@ export function computeRiderValueTrend({ currentBaseValue, rider = {}, snapshots
     const targetMs = nowMs - days * DAY_MS;
     const snap = findSnapshotAtOrBefore(snapshotsAsc, targetMs);
     if (!snap?.abilities) { windows[days] = null; continue; }
-    const historical = recomputeRiderValue(rider, snap.abilities, baseline, model, { typeAbilities: rider.caps });
+    const historical = recomputeRiderValue(rider, snap.abilities, baseline, model, { typeAbilities: rider.caps, youthBaseline });
     if (historical.base_value == null || historical.base_value <= 0) { windows[days] = null; continue; }
     const delta = Math.round(Number(currentBaseValue) - historical.base_value);
     const pct = Math.round((delta / historical.base_value) * 1000) / 10; // 1 decimal

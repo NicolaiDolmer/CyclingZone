@@ -497,6 +497,22 @@ try {
   RIDER_TYPES_BASELINE = null;
 }
 
+// #3570: ungdoms-baselinen SKAL følge med alle steder api.js selv genberegner
+// type/værdi (value-trend) — ellers klassificerer trend-genberegningen unge mod
+// voksen-baselinen mens den persisterede base_value er ungdoms-klassificeret,
+// og 7/14-dages-deltaet viser et kunstigt spring (#3441-bugklassen).
+let RIDER_TYPES_BASELINE_YOUTH = null;
+try {
+  RIDER_TYPES_BASELINE_YOUTH = JSON.parse(
+    readFileSync(join(__dirname, "../lib/riderTypesBaselineYouth.json"), "utf8")
+  );
+} catch {
+  // best-effort: manglende/ulæselig ungdoms-baseline må ikke vælte API-opstart —
+  // null ⇒ selectTypesBaseline falder konservativt tilbage til voksen-baselinen
+  // (samme degraderings-mønster som RIDER_TYPES_BASELINE-blokken ovenfor).
+  RIDER_TYPES_BASELINE_YOUTH = null;
+}
+
 // Strategi-rosterens kolonne-projektion (GET /api/races/strategy). Delt konstant
 // så projektionen kan kontrakt-testes mod det reelle skema (PGlite-harness,
 // raceStrategy.contract.integration.test.js). `riders` har INGEN `overall`-kolonne
@@ -1136,6 +1152,7 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
       snapshotsAsc: history || [],
       baseline: RIDER_TYPES_BASELINE,
       model: VALUATION_MODEL_V4,
+      youthBaseline: RIDER_TYPES_BASELINE_YOUTH,
     });
     res.json({ windows });
   } catch (err) {
