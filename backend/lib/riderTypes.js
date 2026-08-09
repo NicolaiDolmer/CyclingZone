@@ -167,3 +167,54 @@ export function computeRiderTypes(abilities = {}, baseline = NEUTRAL_BASELINE) {
   scored.sort((a, b) => b.score - a.score); // stabil: lige scores beholder RIDER_TYPES-orden
   return { primary: scored[0], secondary: scored[1] };
 }
+
+// Er `draw` et brugbart, persisteret anlæg? (jsonb fra riders.archetype_draw — kan
+// være null, {} eller bære en type-nøgle vi ikke længere kender.)
+function drawPrimaryKey(draw) {
+  const key = draw && typeof draw === "object" ? draw.primary : null;
+  return RIDER_TYPE_KEYS.includes(key) ? key : null;
+}
+
+// Rytterens IDENTITET (#3570, ejer-beslutning 10/8: "fast identitet fra fødslen").
+//
+// Rod-årsagen den lukker: klassifikationen var et LUKKET KREDSLØB. buildCapsForRider
+// former ability_caps ud fra den PERSISTEREDE type (dailyTrainingEngine, hvert tick),
+// og computeRiderTypes udledte typen igen af netop de caps (riderValueRefresh, hver
+// nat via trainingSweep) — typen bekræftede bare sig selv. Målt 9/8 ved at iterere
+// løkken til fikspunkt på de 3.382 menneske-ejede ryttere: baroudeur 53,5 % /
+// puncheur 0,2 % mod ejer-målene 11 % / 13 % — og fikspunktet var stort set
+// uafhængigt af hvilke RIDER_TYPES-vægte der blev shippet (E1+D_TT: 53,1 %; genfit
+// af ungdoms-baselinen: 68,0 %). Vægt-tuning flyttede altså startbetingelsen for en
+// proces hvis slutpunkt ikke afhang af den. Det forklarer #3450 direkte: spillernes
+// klatrere gled tilbage mod fighter i løbet af nogle nætter efter hver rettelse.
+//
+// Løsningen: når rytteren HAR et anlæg (riders.archetype_draw — trukket ved
+// generering, persisteret i academyIntake.js) er DET identiteten. Klassifikatoren
+// beholder sine to ægte roller: at forme lofterne (youthRoleFactor deler
+// RIDER_TYPES-vægtene) og at give en rytter UDEN anlæg en identitet.
+//
+// Sekundær-typen: et ikke-hybrid træk har secondary = null, men hver rytter i spillet
+// viser i dag en sekundær type. Den UI-kontrakt bevares ved at lade klassifikatoren
+// udpege den bedste type ≠ primær. Det er bevidst en svagere forankring end primæren
+// (naturalSecondaryFactor 0,82 mod 1,0 i youthRoleFactor) — fikspunkt-målingen i
+// PR-beskrivelsen viser at primær-forankringen alene er nok til at bryde driften.
+//
+// BAGUDKOMPATIBEL: uden et gyldigt draw er dette bit-identisk med computeRiderTypes
+// (samme kald, samme retur) — dvs. uændret for alle 8.186 eksisterende ryttere.
+// Returnerer samme form som computeRiderTypes: { primary: {key, score}, secondary: {…} }.
+export function resolveRiderTypes(archetypeDraw, abilities = {}, baseline = NEUTRAL_BASELINE) {
+  const primaryKey = drawPrimaryKey(archetypeDraw);
+  if (!primaryKey) return computeRiderTypes(abilities, baseline);
+
+  // Guards springes bevidst over for den TRUKNE primær: anlægget ER sandheden om
+  // rytteren, og en guard er en heuristik der skal udelukke urealistiske GÆT.
+  const scored = RIDER_TYPES.map((t) => ({ key: t.key, score: scoreRiderType(abilities, t.weights, baseline) }));
+  const byKey = new Map(scored.map((s) => [s.key, s]));
+
+  const drawSecondary = archetypeDraw.secondary;
+  const secondaryKey = (RIDER_TYPE_KEYS.includes(drawSecondary) && drawSecondary !== primaryKey)
+    ? drawSecondary
+    : scored.filter((s) => s.key !== primaryKey).sort((a, b) => b.score - a.score)[0].key;
+
+  return { primary: byKey.get(primaryKey), secondary: byKey.get(secondaryKey) };
+}

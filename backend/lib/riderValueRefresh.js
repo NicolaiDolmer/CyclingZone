@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { computeRiderTypes, ABILITY_KEYS } from "./riderTypes.js";
+import { resolveRiderTypes, ABILITY_KEYS } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
@@ -43,7 +43,12 @@ const WRITE_CONCURRENCY = 25;
 export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline } = {}) {
   const typeSource = (typeAbilities && Object.keys(typeAbilities).length > 0) ? typeAbilities : abilities;
   const typeModel = selectTypesBaseline(riderRow?.age, baseline, youthBaseline);
-  const { primary, secondary } = computeRiderTypes(typeSource, typeModel);
+  // #3570 (ejer-beslutning 10/8): bærer rytteren et PERSISTERET anlæg
+  // (riders.archetype_draw), er DET identiteten — nattens sweep omdøber ham ikke.
+  // Det var her løkken lukkede sig: caps blev formet af typen (dailyTrainingEngine)
+  // og typen udledt af de samme caps her, hver nat. Se resolveRiderTypes.
+  // Ryttere uden draw klassificeres præcis som før — bit-identisk.
+  const { primary, secondary } = resolveRiderTypes(riderRow?.archetype_draw, typeSource, typeModel);
   // #3345: primary_type/secondary_type overskrives ALTID med den friske
   // klassifikation ovenfor (de må frit reklassificeres — #3325/#3343). Bemærk at
   // valuation_type IKKE overskrives her — den flyder ureguleret igennem fra
@@ -130,8 +135,10 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const riderQuery = () => {
     // #3345: valuation_type (den FROSNE type) skal med i selectet — recomputeRiderValue
     // videresender den uændret til predictBaseValue/currentProductionValue via spread.
+    // #3570: archetype_draw med i selectet — rytterens persisterede anlæg er hans
+    // identitet, og uden den i rækken ville sweepen gætte typen forfra hver nat.
     let q = supabase.from("riders")
-      .select("id, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale")
+      .select("id, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale, archetype_draw")
       .order("id");
     if (teamId) q = q.eq("team_id", teamId);
     return q;

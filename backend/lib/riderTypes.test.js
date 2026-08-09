@@ -8,6 +8,7 @@ import {
   NEUTRAL_BASELINE,
   scoreRiderType,
   computeRiderTypes,
+  resolveRiderTypes,
 } from "./riderTypes.js";
 
 // Syntetisk baseline (mean 35, std 15 pr. evne) ~ prod-abilities — gør testene
@@ -166,4 +167,83 @@ test("fixture: ægte etapeløbsrytter → gc", () => {
     durability: 50, punch: 40, prolog: 50, flat: 30, sprint: 15, acceleration: 20,
   });
   assert.equal(computeRiderTypes(gc, BASELINE).primary.key, "gc");
+});
+
+// ── #3570: fast rytter-identitet (ejer-beslutning 10/8) ─────────────────────
+// resolveRiderTypes bryder løkken type → ability_caps → type. Se funktionens
+// topkommentar for fikspunkt-målingen der begrunder den.
+
+test("#3570: uden archetype_draw er resolveRiderTypes BIT-IDENTISK med computeRiderTypes", () => {
+  // Den bærende bagudkompatibilitets-invariant: alle 8.186 eksisterende ryttere
+  // har archetype_draw = NULL og må ikke flytte sig af denne ændring.
+  const profiles = [];
+  for (let i = 0; i < 200; i++) {
+    const p = {};
+    // Deterministisk pseudo-tilfældig spredning (ingen Math.random i tests).
+    for (const [j, a] of ABILITY_KEYS.entries()) p[a] = 5 + ((i * 37 + j * 61) % 90);
+    profiles.push(p);
+  }
+  for (const [nul, label] of [[undefined, "undefined"], [null, "null"], [{}, "{}"],
+    [{ primary: null }, "primary:null"], [{ primary: "ikke_en_type" }, "ukendt nøgle"],
+    ["baroudeur", "streng i stedet for objekt"]]) {
+    for (const p of profiles) {
+      const expected = computeRiderTypes(p, BASELINE);
+      const actual = resolveRiderTypes(nul, p, BASELINE);
+      assert.equal(actual.primary.key, expected.primary.key, `primær uændret (${label})`);
+      assert.equal(actual.secondary.key, expected.secondary.key, `sekundær uændret (${label})`);
+      assert.equal(actual.primary.score, expected.primary.score, `score uændret (${label})`);
+    }
+  }
+});
+
+test("#3570: et gyldigt anlæg vinder over klassifikatoren — også når de er uenige", () => {
+  // Ren spurter-profil, men trukket som gc: anlægget er sandheden om rytteren.
+  const spurter = rider({ sprint: 95, acceleration: 92, flat: 80, climbing: 10, time_trial: 15 });
+  assert.equal(computeRiderTypes(spurter, BASELINE).primary.key, "sprinter", "forudsætning: klassifikatoren siger sprinter");
+  assert.equal(resolveRiderTypes({ primary: "gc" }, spurter, BASELINE).primary.key, "gc");
+});
+
+test("#3570: hybrid-træk bærer sin egen sekundære type; ikke-hybrid får klassifikatorens bedste ≠ primær", () => {
+  const p = rider({ climbing: 80, tempo: 70, punch: 65 });
+
+  const hybrid = resolveRiderTypes({ primary: "gc", secondary: "brostensrytter", isHybrid: true }, p, BASELINE);
+  assert.equal(hybrid.primary.key, "gc");
+  assert.equal(hybrid.secondary.key, "brostensrytter", "sekundær kommer fra trækket");
+
+  const ren = resolveRiderTypes({ primary: "gc", secondary: null, isHybrid: false }, p, BASELINE);
+  assert.equal(ren.primary.key, "gc");
+  assert.ok(RIDER_TYPE_KEYS.includes(ren.secondary.key), "sekundær er en rigtig type (UI-kontrakten holder)");
+  assert.notEqual(ren.secondary.key, "gc", "sekundær er aldrig lig primær");
+
+  // Et træk der peger sekundær == primær må ikke give en duplikat.
+  const dup = resolveRiderTypes({ primary: "gc", secondary: "gc", isHybrid: true }, p, BASELINE);
+  assert.notEqual(dup.secondary.key, dup.primary.key);
+});
+
+test("#3570: LØKKEN ER SELVBEKRÆFTENDE — en forkert type cementeres for evigt uden forankring", async () => {
+  // Selve defekten: caps formes af den persisterede type (dailyTrainingEngine) og
+  // typen udledes af de samme caps (riderValueRefresh). En rytter der ÉN gang blev
+  // fejlklassificeret kan derfor aldrig komme tilbage — lofterne bekræfter labelen,
+  // og labelen former lofterne. Dette er den prod-drift #3450 rapporterer.
+  const { buildCapsForRider } = await import("./riderProgression.js");
+  const start = rider({ climbing: 40, tempo: 38, punch: 35, flat: 30 });
+  const ctx = { potentiale: 5 };
+
+  // Rytteren ER trukket som gc, men bærer en gammel fejl-label: sprinter.
+  let forkert = { primary: { key: "sprinter" }, secondary: { key: "rouleur" } };
+  for (let runde = 0; runde < 10; runde++) {
+    const caps = buildCapsForRider(start, ctx, forkert.primary.key, forkert.secondary.key);
+    forkert = computeRiderTypes(caps, BASELINE);
+  }
+  assert.equal(forkert.primary.key, "sprinter",
+    "uden forankring er fejl-labelen et fikspunkt — rytteren finder aldrig tilbage til sit anlæg");
+
+  // Med forankring finder han tilbage i FØRSTE runde og bliver der.
+  const draw = { primary: "gc", secondary: null, isHybrid: false };
+  let typer = { primary: { key: "sprinter" }, secondary: { key: "rouleur" } };
+  for (let runde = 0; runde < 10; runde++) {
+    const caps = buildCapsForRider(start, ctx, typer.primary.key, typer.secondary.key);
+    typer = resolveRiderTypes(draw, caps, BASELINE);
+    assert.equal(typer.primary.key, "gc", `runde ${runde + 1}: identiteten står fast`);
+  }
 });

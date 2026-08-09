@@ -16,7 +16,7 @@ import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { buildCapsForRider, buildProgressInit } from "./riderProgression.js";
-import { computeRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { computeRiderTypes, resolveRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
@@ -275,12 +275,19 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // rod-årsagen. Voksne (>= 22) rammer PRÆCIS samme kodesti som før (selectTypesBaseline
   // returnerer typesModel uændret) — bit-identisk klassifikation, se
   // archetypeGenerationGates.test.js's "voksne uændret"-regressionstest.
+  //
+  // #3570 (ejer-beslutning 10/8, "fast identitet fra fødslen"): har rytteren et
+  // PERSISTERET anlæg, er DET identiteten — vi klassificerer ikke oven i de caps
+  // som anlægget selv lige har formet i trin 3. Uden dette blev anlægget brugt til
+  // at forme lofterne og derefter kastet væk, hvorefter typen blev gættet forfra ud
+  // fra de samme lofter. Se resolveRiderTypes i riderTypes.js for løkke-målingen.
+  // Ryttere uden draw (alle eksisterende) rammer PRÆCIS samme kodesti som før.
   const typeByRider = new Map();
   for (const [riderId, caps] of capsByRider) {
     const rider = riderById.get(riderId) || {};
     const age = ageForSeason(rider.birthdate, seasonNumber);
     const rowModel = selectTypesBaseline(age, typesModel, youthTypesModel);
-    const { primary, secondary } = computeRiderTypes(caps, rowModel);
+    const { primary, secondary } = resolveRiderTypes(rider.archetype_draw, caps, rowModel);
     typeByRider.set(riderId, { primary_type: primary.key, secondary_type: secondary.key });
   }
 
