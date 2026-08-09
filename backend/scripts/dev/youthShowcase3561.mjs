@@ -13,7 +13,7 @@ import { generateAcademyCandidates, YOUTH_GEN_CONFIG } from "../../lib/academyGe
 import { makeRng } from "../../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
-import { buildCapsForRider, buildYouthCaps, YOUTH_PROGRESSION_CONFIG } from "../../lib/riderProgression.js";
+import { buildCapsForRider, YOUTH_PROGRESSION_CONFIG } from "../../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE } from "../../lib/riderTypes.js";
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, DEFAULT_PROGRAM } from "../../lib/dailyTraining.js";
 
