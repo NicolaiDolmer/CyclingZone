@@ -19,6 +19,7 @@ import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { buildCapsForRider, buildYouthCaps } from "./riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { YOUTH_GEN_CONFIG } from "./academyGenerator.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -26,12 +27,17 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const typesBaseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaseline.json"), "utf8"));
+// #3570: den ENDELIGE klassifikation for akademi-kandidater (altid < 22 år) skal nu
+// gennem selectTypesBaseline ligesom deriveForRiderIds/backfillCores.js — ellers
+// tester denne gate en anden kodesti end den produktionen faktisk kører.
+const youthTypesBaseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaselineYouth.json"), "utf8"));
 
 const N = 300;
 const SEED = 20260806;
 const REFERENCE_YEAR = 2026;
 
-// G1-GULVET SÆNKET 85 → 18 den 2026-08-09 (#3561). Læs dette før du "retter" det op igen:
+// G1-GULVET SÆNKET 85 → 18 den 2026-08-09 (#3561), HÆVET 18 → 35 den 2026-08-09
+// (#3570, klassifikations-fixet er nu landet). Læs dette før du "retter" det op igen:
 //
 // De 85 % var kun opnåelige fordi #3458 fase 2 mættede signatur-stats ved 99 (boost 15,
 // statCeilBoosted 99). Det gav G1 95,6 % — og 374 prod-ryttere med afledt evne 90 og
@@ -41,18 +47,31 @@ const REFERENCE_YEAR = 2026;
 // 23-30 % ved ENHVER kalibrering der holder potentiale-loftet, og springer først til
 // 95,6 % når stats mættes ved 99.
 //
-// Rod-årsagen ligger IKKE i generatoren: ungdoms-caps klassificeres mod
+// Rod-årsagen lå IKKE i generatoren: ungdoms-caps blev klassificeret mod
 // riderTypesBaseline.json, som er fittet over VOKSEN-caps. Der er time_trial strukturelt
 // lav (z = −1,92 — kun tt/gc vægter den positivt, alle andre får neutralFactor 0,45), så
-// enhver type der STRAFFER time_trial får en gratis bonus: baroudeur (time_trial: −1)
-// æder 68 % af kuldet. Prod bekræfter at det er ÆLDRE end #3458 — ungdomskuld før 7/8 er
-// 35 % baroudeur / 33 % climber / 25 % puncheur, mens sprinter kollapser fra 20,6 %
-// (voksne) til 0,8 %. En ungdoms-fittet baseline løfter G1 til 71,7 % (målt,
-// scripts/simYouthClassificationFix3458.js) — DET er rettelsen, ikke flere stat-point.
+// enhver type der STRAFFER time_trial fik en gratis bonus: baroudeur (time_trial: −1)
+// åd 68-77 % af kuldet (målt 9/8: 76,7 % af human-ejede 16-21-årige i prod).
 //
-// Gulvet her er derfor sat til det opnåelige niveau og fanger stadig et ægte kollaps
-// (fase-1-niveauet var ~21 %). Hæv det FØRST når klassifikations-fixet er landet.
-const G1_REGRESSION_FLOOR_PCT = 18;
+// #3570-RETTELSEN: en SEPARAT ungdoms-fittet baseline (riderTypesBaselineYouth.json,
+// scripts/fitRiderTypesBaselineYouth.js) bruges nu til den ENDELIGE klassifikation for
+// < 22-årige (selectTypesBaseline, riderTypesBaselineSelect.js) — z-scores bliver
+// meningsfulde INDEN FOR ungdomskuldet i stedet for mod en voksenpopulation unge pr.
+// definition ligger under. MÅLT (denne fils population, n=300, seed=20260806):
+// G1 24,0 % (gammel voksen-baseline) → 44,7 % (ny ungdoms-baseline).
+//
+// VIGTIGT — dette er LAVERE end de 71,7-77 % scripts/simYouthClassificationFix3458.js's
+// eget CLI-default (--boost=2 --ceil=60) rapporterer: de tal er målt med en BOOSTET
+// generator-separation der IKKE matcher YOUTH_GEN_CONFIG's faktiske shippede defaults
+// (signatureBoostPerWeight 0,8 / statCeilBoosted 54, sænket 2026-08-09 af #3561 EFTER
+// #3458s måling). fitRiderTypesBaselineYouth.js fitter bevidst mod DEN RIGTIGE,
+// shippede population (ingen genCfg-override — samme population som deriveForRiderIds
+// rent faktisk klassificerer) — se scriptets topkommentar for den fulde afvigelses-
+// dokumentation. 44,7 % er derfor det ærlige, opnåelige tal, ikke 71,7-77 %.
+//
+// Gulvet er sat til 35 (≈10pp under det målte 44,7 %, samme sikkerhedsmargin-princip
+// som 18-gulvet havde til ~24-30 %). Fanger stadig et reelt kollaps.
+const G1_REGRESSION_FLOOR_PCT = 35;
 // Rå-evne-gab: SÆNKET 8 → 1 og indsnævret til 16-18-årige den 2026-08-09 (#3561).
 // Ungdomsbåndet topper ved afledt evne 12, så et gab på 8 kræver at båndet brydes.
 // Værre: statPerYearOver16 (1,4 rå point/år) løfter base-niveauet OVER statCeil=54 ved
@@ -73,7 +92,11 @@ const YOUTH_BAND_MAX_PHYSICAL_ABILITY = 15;
 const G7_MAX_PCT_BORN_AT_GRADUATION_LEVEL = 5;
 const GRADUATION_LEVEL_ABILITY = 12;
 
-function runCohort(n, seed) {
+// useAdultBaselineOnly (#3570-negativ-test): når true, springer den ENDELIGE
+// klassifikation selectTypesBaseline-gaten over og bruger UDELUKKENDE den gamle
+// voksen-baseline — reproducerer dagens (FØR #3570) defekte kodesti, så
+// negativ-testen nedenfor kan bevise at gaten faktisk retter noget.
+function runCohort(n, seed, { useAdultBaselineOnly = false } = {}) {
   const rng = makeRng(seed);
   const candidates = generateAcademyCandidates({
     rng, referenceYear: REFERENCE_YEAR, existingNames: new Set(), countOverride: n,
@@ -86,7 +109,13 @@ function runCohort(n, seed) {
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
     const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
-    const final = computeRiderTypes(caps, typesBaseline);
+    // #3570: akademi-kandidater er ALTID 16-21 år (< 22) — samme alders-gate som
+    // deriveForRiderIds/backfillCores.js bruger i produktion.
+    const age = REFERENCE_YEAR - Number(String(riderRow.birthdate).slice(0, 4));
+    const finalModel = useAdultBaselineOnly
+      ? typesBaseline
+      : selectTypesBaseline(age, typesBaseline, youthTypesBaseline);
+    const final = computeRiderTypes(caps, finalModel);
     const youthCaps = buildYouthCaps(riderRow.potentiale, bootstrap.primary.key, bootstrap.secondary.key);
     return {
       archetypeDraw: c.archetypeDraw,
@@ -99,6 +128,16 @@ function runCohort(n, seed) {
   });
 }
 
+function g1Pct(riders) {
+  let hits = 0;
+  for (const r of riders) {
+    const { primary, secondary, isHybrid } = r.archetypeDraw;
+    const hit = isHybrid ? (r.finalPrimary === primary || r.finalPrimary === secondary) : r.finalPrimary === primary;
+    if (hit) hits++;
+  }
+  return (hits / riders.length) * 100;
+}
+
 // De fysiske evner ungdomsbåndet gælder for. `aggression` er UNDTAGET med vilje: den
 // har et alders-drevet gulv (abilityDerivation: +0,15·youth for alle 16-21-årige) der
 // er uafhængigt af stats og ville gøre båndet umåleligt.
@@ -109,14 +148,41 @@ const PHYSICAL_ABILITIES = Object.freeze([
 
 test(`G1-regression: klassifikatoren genfinder det trukne anlæg ≥${G1_REGRESSION_FLOOR_PCT}% (n=${N}, seed=${SEED})`, () => {
   const riders = runCohort(N, SEED);
-  let hits = 0;
-  for (const r of riders) {
-    const { primary, secondary, isHybrid } = r.archetypeDraw;
-    const hit = isHybrid ? (r.finalPrimary === primary || r.finalPrimary === secondary) : r.finalPrimary === primary;
-    if (hit) hits++;
-  }
-  const pct = (hits / riders.length) * 100;
+  const pct = g1Pct(riders);
   assert.ok(pct >= G1_REGRESSION_FLOOR_PCT, `G1 ${pct.toFixed(1)}% under regressions-gulvet ${G1_REGRESSION_FLOOR_PCT}% (fase-1-niveauet var ~21% — se academyGenerator.js' YOUTH_GEN_CONFIG-historik hvis dette fejler)`);
+});
+
+// #3570 NEGATIV-TEST (designprincip: en gate skal fejle på KENDT defekt kode).
+// Beviser at gaten faktisk måler #3570-fixet, ikke bare en tilfældig tærskel: den
+// SAMME population, klassificeret mod den GAMLE voksen-baseline alene (dagens
+// defekt FØR #3570), skal falde under det NYE gulv.
+test(`#3570 NEGATIV-TEST: voksen-baseline ALENE (dagens defekt) falder under det nye gulv ${G1_REGRESSION_FLOOR_PCT}%`, () => {
+  const riders = runCohort(N, SEED, { useAdultBaselineOnly: true });
+  const pct = g1Pct(riders);
+  assert.ok(
+    pct < G1_REGRESSION_FLOOR_PCT,
+    `voksen-baseline-alene gav G1 ${pct.toFixed(1)}% — forventede den under ${G1_REGRESSION_FLOOR_PCT}% ` +
+    `(hvis den IKKE er det, måler gaten ikke længere #3570-fixet, og #3570-baseline-gaten er blevet virkningsløs)`
+  );
+});
+
+// #3570: voksne (>= 22 år) skal ramme PRÆCIS samme kodesti som før fixet —
+// selectTypesBaseline skal returnere `typesBaseline` uændret, uanset om
+// youthTypesBaseline findes. Bit-identisk klassifikation, ikke bare "samme resultat
+// i praksis" — vi tester den FAKTISKE funktion begge produktionsstier kalder.
+test("#3570: voksne (≥22 år) er BIT-IDENTISK uændret af ungdoms-baseline-gaten", () => {
+  const adultAges = [22, 23, 30, 45, 99];
+  for (const age of adultAges) {
+    const model = selectTypesBaseline(age, typesBaseline, youthTypesBaseline);
+    assert.equal(model, typesBaseline, `alder ${age} skal give den UÆNDREDE voksen-baseline-reference`);
+  }
+  // Samme caps-sæt, klassificeret via den fulde selectTypesBaseline-sti for en
+  // 30-årig, skal give SAMME primary/secondary som et direkte kald mod
+  // typesBaseline (den gamle, hidtidige kodesti) — dvs. gaten er et rent no-op for voksne.
+  const caps = { climbing: 60, time_trial: 55, flat: 30, tempo: 50, sprint: 20, acceleration: 25, punch: 45, endurance: 55, recovery: 40, durability: 35, descending: 30, cobblestone: 25, aggression: 20 };
+  const direct = computeRiderTypes(caps, typesBaseline);
+  const gated = computeRiderTypes(caps, selectTypesBaseline(30, typesBaseline, youthTypesBaseline));
+  assert.deepEqual(gated, direct, "en 30-årigs klassifikation er uændret af #3570");
 });
 
 test(`G1-regression: determinisme (samme seed → samme kuld → samme G1-tal)`, () => {
