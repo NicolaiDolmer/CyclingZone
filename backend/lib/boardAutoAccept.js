@@ -219,15 +219,24 @@ export async function processBoardAutoAcceptCron({
 
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
-    // #3579 · user:user_id(last_seen) afgør hvilket tærskelsæt holdet får
-    // (resolveThresholds). FK teams_user_id_fkey → users.id gør joinet muligt
-    // uden en ekstra query; hold uden bruger giver user=null → inaktiv-sættet.
-    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key, created_at, user:user_id(last_seen)")
+    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key, created_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .eq("is_test_account", false);
   if (teamsError) throw teamsError;
+
+  // #3579 · last_seen pr. manager afgør hvilket tærskelsæt holdet får
+  // (resolveThresholds). Bevidst en SEPARAT query frem for et embedded
+  // `user:user_id(last_seen)`-join på selecten ovenfor: teams-queryen er
+  // cronens kritiske sti, og en fejlende relations-udledning dér ville kaste
+  // og dræbe HELE kørslen — altså præcis den tilstand #3502/#3572 lige har
+  // rettet. Her er konsekvensen af en fejl afgrænset: opslaget degraderer til
+  // et tomt map, og alle hold falder tilbage til det korte (nuværende) sæt.
+  const lastSeenByUserId = await loadLastSeenByUserId({
+    supabase,
+    userIds: (humanTeams || []).map((t) => t.user_id).filter(Boolean),
+  });
 
   for (const team of humanTeams || []) {
     summary.teams_checked += 1;
@@ -239,6 +248,7 @@ export async function processBoardAutoAcceptCron({
         notifyUser,
         now,
         rolloutFloor,
+        lastSeenByUserId,
       });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
@@ -257,6 +267,33 @@ export async function processBoardAutoAcceptCron({
   return summary;
 }
 
+/**
+ * #3579 · Slår last_seen op for de managere cronen skal vurdere.
+ *
+ * Fejler opslaget, returneres et tomt map i stedet for at kaste: uden
+ * last_seen falder alle hold tilbage til det korte tærskelsæt, hvilket er
+ * nøjagtig adfærden før denne ændring. En degradering er langt at foretrække
+ * frem for at vælte cronen for alle hold.
+ *
+ * @returns {Promise<Map<string, string|null>>} user_id → last_seen
+ */
+async function loadLastSeenByUserId({ supabase, userIds }) {
+  const map = new Map();
+  if (!userIds?.length) return map;
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, last_seen")
+    .in("id", userIds);
+
+  if (error) {
+    console.error("  ⚠️  board auto-accept: kunne ikke hente last_seen — alle hold falder tilbage til det korte vindue:", error.message);
+    return map;
+  }
+  for (const row of data || []) map.set(row.id, row.last_seen ?? null);
+  return map;
+}
+
 async function processTeamAutoAccept({
   supabase,
   team,
@@ -264,6 +301,7 @@ async function processTeamAutoAccept({
   notifyUser,
   now,
   rolloutFloor = AUTO_ACCEPT_ROLLOUT_FLOOR,
+  lastSeenByUserId = new Map(),
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
 
@@ -315,7 +353,10 @@ async function processTeamAutoAccept({
   const daysSinceOpen = (now.getTime() - effectiveOpenedAt.getTime()) / DAY_MS;
 
   // #3579 · Aktive spillere kører på det lange vindue, forladte konti på det korte.
-  const thresholds = resolveThresholds(team.user, now);
+  const thresholds = resolveThresholds(
+    { last_seen: lastSeenByUserId.get(team.user_id) ?? null },
+    now
+  );
 
   if (daysSinceOpen >= thresholds.AUTO_ACCEPT) {
     const accepted = await autoAcceptPendingPlan({

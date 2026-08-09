@@ -184,7 +184,7 @@ test("#3579: varslet sendes KUN i første døgn — ellers ville det gentages da
   // Aktiv spiller: vinduet mellem varsel og T-3 er 5 dage — uden [0,1)-grænsen
   // ville spilleren få samme besked hver eneste dag i den periode.
   const active = baseState({ teamCreatedAt: new Date(NOW.getTime() - 3 * DAY_MS).toISOString() });
-  active.teams[0].user = { last_seen: NOW.toISOString() };
+  active.users = [{ id: "user-1", last_seen: NOW.toISOString() }];
   const activeRun = await runCron(active, NOW);
   assert.equal(activeRun.notifications.length, 0);
 });
@@ -193,7 +193,7 @@ test("#3579: et backlogget hold får varslet FØR nedtællingen, målt fra rollo
   // Spejler prod: anker 26/7, floor 15/8. Holdet har hørt intet siden 26/7,
   // så det første det møder efter floor'en skal være varslet — ikke "3 dage tilbage".
   const state = baseState({ teamCreatedAt: "2026-07-26T00:00:00Z" });
-  state.teams[0].user = { last_seen: "2026-08-14T12:00:00Z" };
+  state.users = [{ id: "user-1", last_seen: "2026-08-14T12:00:00Z" }];
 
   const justAfterFloor = new Date(AUTO_ACCEPT_ROLLOUT_FLOOR.getTime() + 2 * 60 * 60 * 1000);
   const notifications = [];
@@ -520,7 +520,7 @@ test("#3579: resolveThresholds vælger sæt ud fra last_seen", () => {
 test("#3579: en AKTIV spiller auto-accepteres IKKE på dag 5 (forladt-kontoens frist)", async () => {
   const opened = new Date(NOW.getTime() - 5 * DAY_MS);
   const state = baseState({ teamCreatedAt: opened.toISOString() });
-  state.teams[0].user = { last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() };
+  state.users = [{ id: "user-1", last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() }];
 
   const { summary, notifications } = await runCron(state, NOW);
 
@@ -533,7 +533,7 @@ test("#3579: en AKTIV spiller auto-accepteres IKKE på dag 5 (forladt-kontoens f
 test("#3579: samme aktive spiller auto-accepteres på dag 10", async () => {
   const opened = new Date(NOW.getTime() - 10 * DAY_MS);
   const state = baseState({ teamCreatedAt: opened.toISOString() });
-  state.teams[0].user = { last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() };
+  state.users = [{ id: "user-1", last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() }];
 
   const { summary } = await runCron(state, NOW);
   assert.equal(summary.auto_accepted, 1);
@@ -542,22 +542,43 @@ test("#3579: samme aktive spiller auto-accepteres på dag 10", async () => {
 test("#3579: en forladt konto beholder den korte frist — oprydning bremses ikke", async () => {
   const opened = new Date(NOW.getTime() - 5 * DAY_MS);
   const state = baseState({ teamCreatedAt: opened.toISOString() });
-  state.teams[0].user = { last_seen: new Date(NOW.getTime() - 40 * DAY_MS).toISOString() };
+  state.users = [{ id: "user-1", last_seen: new Date(NOW.getTime() - 40 * DAY_MS).toISOString() }];
 
   const { summary } = await runCron(state, NOW);
   assert.equal(summary.auto_accepted, 1, "92 forladte konti skal stadig ryddes op på 5 dage");
 });
 
+test("#3579: fejler last_seen-opslaget, DEGRADERER cronen til det korte vindue — den må aldrig vælte", async () => {
+  // Hele pointen med at hente last_seen i en separat query frem for et join på
+  // teams-selecten: et fejlende opslag her må ikke kunne dræbe kørslen for ALLE
+  // hold (= tilstanden #3502/#3572 lige har rettet).
+  const state = baseState({ teamCreatedAt: new Date(NOW.getTime() - 5 * DAY_MS).toISOString() });
+  state.users = [{ id: "user-1", last_seen: NOW.toISOString() }]; // ville ellers give det lange vindue
+
+  const supabase = createFakeSupabase(state, { errors: { users: { select: "users-opslag nede" } } });
+  const notifications = [];
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
+    now: NOW,
+    rolloutFloor: DISABLE_ROLLOUT_FLOOR,
+  });
+
+  assert.equal(summary.errors, 0, "et fejlende last_seen-opslag må ikke tælle som fejl pr. hold");
+  assert.equal(summary.teams_checked, 1, "cronen skal stadig gennemgå holdene");
+  assert.equal(summary.auto_accepted, 1, "uden last_seen falder holdet tilbage til det korte (nuværende) vindue");
+});
+
 test("#3579: aktiv spillers T-1 falder på dag 8, ikke dag 4", async () => {
-  const activeLastSeen = { last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() };
+  const activeUsers = [{ id: "user-1", last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() }];
 
   const atDay4 = baseState({ teamCreatedAt: new Date(NOW.getTime() - 4 * DAY_MS).toISOString() });
-  atDay4.teams[0].user = activeLastSeen;
+  atDay4.users = activeUsers;
   const day4 = await runCron(atDay4, NOW);
   assert.equal(day4.notifications.length, 0, "dag 4 ligger mellem varsel og T-3 for en aktiv spiller");
 
   const atDay8 = baseState({ teamCreatedAt: new Date(NOW.getTime() - 8 * DAY_MS).toISOString() });
-  atDay8.teams[0].user = activeLastSeen;
+  atDay8.users = activeUsers;
   const day8 = await runCron(atDay8, NOW);
   assert.equal(day8.notifications[0].type, "board_critical");
   assert.equal(day8.notifications[0].metadata.messageParams.daysLeft, 2);
