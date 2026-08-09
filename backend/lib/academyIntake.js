@@ -125,7 +125,15 @@ export async function seedAcademyCohortForTeam(supabase, {
 
   // #2064/#2493: generation_tag = 's<sæsonnummer>' på alle ungdoms-genererede ryttere.
   const generationTag = `s${season.number}`;
-  const riderPayload = candidates.map((c) => ({ ...c.rider, generation_tag: generationTag }));
+  // #3570 fase 2: persistér det TRUKNE anlæg (archetypeDraw — se academyGenerator.js's
+  // kommentar for hvorfor det historisk aldrig blev spredt ind her). deriveForRiderIds
+  // (kaldt lige nedenfor i denne funktions call-sites) bruger den til at forme
+  // ability_caps af DET TRUKNE anlæg i stedet for et bootstrap-gæt.
+  const riderPayload = candidates.map((c) => ({
+    ...c.rider,
+    generation_tag: generationTag,
+    archetype_draw: c.archetypeDraw,
+  }));
   const { data: insertedRiders, error: riderErr } = await supabase
     .from("riders")
     .insert(riderPayload)

@@ -19,6 +19,22 @@ const migrationSource = readFileSync(
   "utf8",
 );
 
+test("GET /riders/:id stripper archetype_draw for ikke-admins (#3570)", () => {
+  // Det trukne anlæg er samme oracle-klasse som potentiale (afslører sand
+  // arketype + delvist invertibel mod potentiale via caps-formen). API'et kører
+  // service_role og omgår kolonne-grants — maskeringen SKAL ske i api.js.
+  assert.match(
+    apiSource,
+    /if \(!viewerIsAdmin\) delete data\.archetype_draw;/,
+    "GET /riders/:id skal slette data.archetype_draw for ikke-admins før response",
+  );
+  assert.match(
+    apiSource,
+    /delete safe\.archetype_draw;/,
+    "akademi-rosteret skal strippe archetype_draw (samme sti som potentiale)",
+  );
+});
+
 test("GET /riders/:id stripper potentiale for ikke-admins (#1162)", () => {
   // Routen selecter `*` (service_role ser alt) og SKAL derfor slette feltet
   // før res.json for ikke-admin-viewers.

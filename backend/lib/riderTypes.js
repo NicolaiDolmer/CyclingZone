@@ -89,17 +89,19 @@ export const RIDER_TYPE_KEYS = Object.freeze(RIDER_TYPES.map((t) => t.key));
 // caps-rummets fordeling — de originale tal (PCM-mappede, live-evne-rummet) betyder
 // noget helt andet mod ability_caps, som har en anden mean/std pr. evne (fx recovery:
 // caps-std 8,6 vs. live-std 13,3). Ny værdi = samme percentil i caps-populationen som
-// originalen havde i live-populationen, derefter yderligere løsnet for gc (gc-AND-
-// gaten var matematisk næsten-tom: 3-4 uafhængige ~97-99-percentil-betingelser
-// SAMTIDIG ≈ produktet af sandsynlighederne ≈ 0, uanset skalering — se PR-beskrivelsen
-// for målingerne). highSpeciality: 79→88. gcClimbing: 57→53 (rekalibreret ~84,
-// yderligere løsnet). gcTimeTrial: 43→53 (rekalibreret ~70, yderligere løsnet).
-// gcRecovery: 43→27 (rekalibreret ~45, yderligere løsnet).
+// originalen havde i live-populationen. highSpeciality: 79→88.
+//
+// #3570 fase 2 (ejer-beslutning 9/8, låst): GC-guarden (gcClimbing/gcTimeTrial/
+// gcRecovery + punch<=tt-betingelsen) er SLETTET herfra (se guardedOut nedenfor).
+// Guarden var et AND af 3-4 uafhængige høj-percentil-betingelser oven på caps der
+// nu FORMES af det trukne anlæg (#3570 fase 2, backfillCores.js) — en ægte gc-caps-
+// profil rammer sjældent alle betingelser samtidig, og guarden var derfor selv en
+// af de tre porte gc-tragten døde i (målt 9/8: gc 0,0 % uanset guard-dæmpning
+// alene). Rouleur-guarden (highSpeciality) er UÆNDRET — den blokerer noget helt
+// andet (en rytter med et reelt speciale er ikke hjælperytter) og var ikke en del
+// af gc-defekten.
 export const GUARDS = Object.freeze({
   highSpeciality: 88,  // ≥ → ikke rouleur (har et reelt speciale, er ikke hjælperytter)
-  gcClimbing: 53,
-  gcTimeTrial: 53,
-  gcRecovery: 27,
 });
 
 // Evner der tæller som "et reelt speciale" for rouleur-guarden (bjerg, kb, bk, brosten, tt, sprint).
@@ -137,21 +139,16 @@ export function scoreRiderType(abilities = {}, weights = {}, baseline = NEUTRAL_
 }
 
 // Hvilke typer er udelukket for denne rytter (ejer-guards). Returnerer et Set af keys.
+//
+// #3570 fase 2: gc-guarden (bjerg+tt+recovery-AND + punch<=tt) er FJERNET herfra —
+// se GUARDS' kommentar ovenfor. gc afgøres nu udelukkende af kontrast-scoren
+// (scoreRiderType) mod den caps-profil det trukne anlæg formede.
 function guardedOut(abilities) {
   const out = new Set();
   // ≥ tærskel i et reelt speciale → ikke rouleur (hjælperytter): du har et speciale
   if (SPECIALITY_ABILITIES.some((a) => num(abilities[a]) >= GUARDS.highSpeciality)) out.add("rouleur");
   // sprint > brosten → ikke brostensrytter (en ægte spurter er ikke brostensrytter)
   if (num(abilities.sprint) > num(abilities.cobblestone)) out.add("brostensrytter");
-  // gc kun for ægte etapeløbsryttere: bjerg + tt + recovery alle høje samtidig,
-  // OG stærkere på enkeltstart end på korte stigninger (punch ≤ tt). Den sidste
-  // betingelse skiller punch-tunge puncheurs/baroudeurs ud, der ellers sniger sig
-  // gennem score-snittet som "gc" trods en eksplosiv (ikke etape-) profil (#1122).
-  const isGc = num(abilities.climbing) >= GUARDS.gcClimbing
-    && num(abilities.time_trial) >= GUARDS.gcTimeTrial
-    && num(abilities.recovery) >= GUARDS.gcRecovery
-    && num(abilities.punch) <= num(abilities.time_trial);
-  if (!isGc) out.add("gc");
   return out;
 }
 

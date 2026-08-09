@@ -110,6 +110,11 @@ export const WHITELIST_FILES = {
 // two currently-gated tables — no undocumented gap exists.
 // ---------------------------------------------------------------------------
 export const ALLOWLIST_HIDDEN_COLUMNS = {
+  'riders.archetype_draw':
+    '#3570 — det TRUKNE anlaeg (generator-sandheden bag caps-formningen, fase 2). ' +
+    'Afsloerer rytterens sande arketype + er delvist invertibel mod skjult ' +
+    'potentiale via caps-formen — samme oracle-klasse som riders.potentiale. ' +
+    'Klienten faar typen via primary_type/scouting, aldrig raa-traekket.',
   'riders.potentiale':
     '#1162 — raw scouting potential. Client gets a fuzzy server-computed estimate ' +
     '(POST /api/scouting/estimates) instead; the raw value is an oracle for cheating ' +
