@@ -115,10 +115,12 @@ test("generateYouthStats: 16-årig climber → signatur-evnen (climbing) adskill
   const { stats, archetypeType } = generateYouthStats({ rng, age: 16, potentiale: 6, archetypeType: "climber" });
   const rider = { id: "y1", birthdate: "2010-06-15", potentiale: 6, height: 175, weight: 60, ...stats };
   const abil = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
-  assert.ok(abil.climbing >= 10, `climbing ${abil.climbing} skal ligge i toppen af ungdomsbåndet (signatur, RIDER_TYPES-vægt 3)`);
+  // Tallene er kalibreret mod #2064's ejer-godkendte anker ("16-årig bedste anlæg ~6")
+  // og mod de faktiske prod-kuld fra før 7/8 (bedste evne 5,2 i snit ved 16 år).
+  assert.ok(abil.climbing >= 5, `climbing ${abil.climbing} skal ligge i toppen af ungdomsbåndet (signatur, RIDER_TYPES-vægt 3)`);
   assert.ok(abil.climbing <= 15, `climbing ${abil.climbing} må IKKE forlade ungdomsbåndet — en 16-årig må ikke starte over senior-medianen (#3561)`);
-  assert.ok(abil.sprint <= 5, `sprint ${abil.sprint} skal være tydeligt dæmpet (climber's eneste negative vægt)`);
-  assert.ok(abil.climbing - abil.sprint >= 8, `separation ${abil.climbing - abil.sprint} skal være tydelig inden for båndet`);
+  assert.ok(abil.sprint <= 3, `sprint ${abil.sprint} skal være tydeligt dæmpet (climber's eneste negative vægt)`);
+  assert.ok(abil.climbing - abil.sprint >= 4, `separation ${abil.climbing - abil.sprint} skal være tydelig inden for båndet`);
   assert.equal(archetypeType, "climber");
 });
 
@@ -142,8 +144,15 @@ test("akademi-kandidat holder sig i ungdoms-båndet, med signaturen i toppen", (
       maxStat <= YOUTH_GEN_CONFIG.statCeil,
       `rå stat ${maxStat} over ungdoms-loftet ${YOUTH_GEN_CONFIG.statCeil} — start-evnen ville løfte ability_caps over potentiale-loftet (#3561)`
     );
-    // Signaturen skal stadig VÆRE der: mindst én stat i toppen af båndet.
-    assert.ok(maxStat >= YOUTH_GEN_CONFIG.statCeil - 2, `max stat ${maxStat} viser intet anlæg — signatur-boostet virker ikke`);
+    // Signaturen skal stadig VÆRE der — men som et RELATIVT løft, ikke et absolut
+    // niveau: en 16-årig med potentiale 1 skal have lave stats hele vejen rundt.
+    // Et absolut gulv (fx "maxStat >= 52") ville tvinge netop den rytter op i toppen
+    // af båndet og genskabe "vinder fra start"-problemet i det små.
+    const minStat = Math.min(...allStatKeys.map((k) => c.rider[k]));
+    assert.ok(
+      maxStat > minStat || maxStat >= YOUTH_GEN_CONFIG.statCeil,
+      `ingen spredning i profilen (alle stats = ${maxStat}) og ikke mættet ved loftet — signatur-boostet virker ikke`
+    );
   }
 });
 

@@ -216,7 +216,18 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   //     current): en mættet start-stat OVERSKRIVER hele potentiale-semantikken, så
   //     en pot-1,0-rytter (loft 35) fik caps 99. Se scripts/simArchetypeCalibration3458.js
   //     for sweepet der måler dette (G5/G6) — og BRUG den før du rører tallene igen.
-  signatureBoostPerWeight: 2,
+  //
+  //  5) 2 → 0,8 den 2026-08-09, EFTER måling mod prod. Punkt 4 sænkede kun loftet og
+  //     ramte dermed niveauet nogenlunde, men lod boostet stå 2,5× over det system der
+  //     faktisk virkede: den gamle formel gav climber stat_bj 12 × 0,20 = +2,4 rå point,
+  //     mens boost 2 × klassifikator-vægt 3 gav +6. Følgen var alt for firkantede
+  //     16-årige — specialiserings-gab 3,9 hvor de virkende kuld lå på 1,25.
+  //     0,8 × vægt 3 = +2,4 reproducerer den gamle magnitude PRÆCIST, men med fase 2's
+  //     bedre proportionalitet (vægt 3 > 2 > 1 i stedet for den gamle tabels løse tal).
+  //     Målt mod de 384 prod-kandidater fra 19/7-6/8 der aldrig fik et hold (= rene
+  //     start-værdier): afvigelse 0,12 mod 0,475 for boost 2. Se scripts/dev/
+  //     fitYouthCalibration3561.mjs — KØR DEN før du rører tallet igen.
+  signatureBoostPerWeight: 0.8,
   // KUN de boostede signatur-stats clampes til dette loft — neutrale/dæmpede stats
   // forbliver i det lave −3-bånd (statCeil).
   //
@@ -234,7 +245,12 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   // Modsatte stats trækkes ned proportionalt med |vægt| (samme princip som
   // signatureBoostPerWeight ovenfor — fx tt's climbing:-2-straf dæmpes hårdere
   // end en almindelig -1-straf).
-  dampPerWeight: 2.6,
+  //
+  // 2,6 → 1,0 den 2026-08-09 (#3561), samme måling som signatureBoostPerWeight: den
+  // gamle formel dæmpede fladt med −1, så 1,0 pr. vægtenhed rammer vægt-1-straffen
+  // præcist og bevarer proportionaliteten for vægt-2-straffe. 2,6 pressede modsat-evner
+  // helt i bund og var halvdelen af den for firkantede profil.
+  dampPerWeight: 1.0,
   // Hårde grænser (−3-bånd): gulv → afledt bund ~1-3; loft → afledt top mætter ~12
   // (for IKKE-boostede stats — se statCeilBoosted for signatur-stats' loft).
   sd: 0.8,
