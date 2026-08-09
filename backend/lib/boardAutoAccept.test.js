@@ -17,10 +17,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
+  ACTIVE_PLAYER_THRESHOLDS,
+  AUTO_ACCEPT_ROLLOUT_FLOOR,
   AUTO_ACCEPT_THRESHOLDS,
   BOARD_AUTO_ACCEPT_SELECT,
   findPendingPlanType,
   resolveNegotiationOpenedAt,
+  resolveThresholds,
   processBoardAutoAcceptCron,
 } from "./boardAutoAccept.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
@@ -152,14 +155,56 @@ async function runCron(state, now) {
 
 // ── Nyt hold: dag 0 / 2 / 4 / 5 siden planen blev åbnet ──────────────────
 
-test("nyt hold, dag 0 siden åbning: intet sker", async () => {
+// #3579 · Var tidligere "dag 0: intet sker". Tavshed på dag 0 var netop
+// problemet: spillerens FØRSTE kontakt blev nedtællingen på dag 2. Nu åbner
+// forløbet med et neutralt varsel.
+test("#3579: nyt hold, dag 0 siden åbning: neutralt varsel uden nedtælling", async () => {
   const state = baseState({ teamCreatedAt: NOW.toISOString() });
   const { summary, notifications } = await runCron(state, NOW);
 
   assert.equal(summary.teams_checked, 1);
-  assert.equal(summary.reminders_sent, 0);
   assert.equal(summary.auto_accepted, 0);
-  assert.equal(notifications.length, 0);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].type, "board_update");
+  assert.equal(notifications[0].metadata.titleCode, "notif.boardPlanOpened.title");
+  assert.equal(notifications[0].metadata.messageCode, "notif.boardPlanOpened.message");
+  assert.equal(
+    notifications[0].metadata.messageParams.daysLeft, undefined,
+    "åbnings-varslet må ikke bære en nedtælling"
+  );
+  assert.doesNotMatch(notifications[0].message, /\d+ days? left|takes over/i);
+});
+
+test("#3579: varslet sendes KUN i første døgn — ellers ville det gentages dagligt indtil T-3", async () => {
+  // Dag 1,5: stadig før T-3 (dag 2), men uden for varsel-vinduet [0,1).
+  const state = baseState({ teamCreatedAt: new Date(NOW.getTime() - 1.5 * DAY_MS).toISOString() });
+  const { notifications } = await runCron(state, NOW);
+  assert.equal(notifications.length, 0, "intet gentaget varsel mellem første døgn og T-3");
+
+  // Aktiv spiller: vinduet mellem varsel og T-3 er 5 dage — uden [0,1)-grænsen
+  // ville spilleren få samme besked hver eneste dag i den periode.
+  const active = baseState({ teamCreatedAt: new Date(NOW.getTime() - 3 * DAY_MS).toISOString() });
+  active.teams[0].user = { last_seen: NOW.toISOString() };
+  const activeRun = await runCron(active, NOW);
+  assert.equal(activeRun.notifications.length, 0);
+});
+
+test("#3579: et backlogget hold får varslet FØR nedtællingen, målt fra rollout-floor'en", async () => {
+  // Spejler prod: anker 26/7, floor 15/8. Holdet har hørt intet siden 26/7,
+  // så det første det møder efter floor'en skal være varslet — ikke "3 dage tilbage".
+  const state = baseState({ teamCreatedAt: "2026-07-26T00:00:00Z" });
+  state.teams[0].user = { last_seen: "2026-08-14T12:00:00Z" };
+
+  const justAfterFloor = new Date(AUTO_ACCEPT_ROLLOUT_FLOOR.getTime() + 2 * 60 * 60 * 1000);
+  const notifications = [];
+  await processBoardAutoAcceptCron({
+    supabase: makeFakeSupabase(state),
+    notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
+    now: justAfterFloor,
+  });
+
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].metadata.titleCode, "notif.boardPlanOpened.title");
 });
 
 test("nyt hold, dag 2 siden åbning: T-3 info-reminder (board_update)", async () => {
@@ -430,5 +475,90 @@ test("#2469 forward-guard: BOARD_AUTO_ACCEPT_SELECT dækker hvert felt der læse
 
 // Sanity: tærsklerne er stadig 2/4/5, blot i dage nu — dokumenterer #2463's kontrakt.
 test("#2463: AUTO_ACCEPT_THRESHOLDS er kalenderdage (2/4/5), ikke race_days_completed", () => {
-  assert.deepEqual(AUTO_ACCEPT_THRESHOLDS, { T_MINUS_3: 2, T_MINUS_1: 4, AUTO_ACCEPT: 5 });
+  assert.deepEqual(AUTO_ACCEPT_THRESHOLDS, { NOTICE: 0, T_MINUS_3: 2, T_MINUS_1: 4, AUTO_ACCEPT: 5 });
+});
+
+test("#3579: aktive spillere har dobbelt vindue — og rækkefølgen er ens i begge sæt", () => {
+  assert.deepEqual(ACTIVE_PLAYER_THRESHOLDS, { NOTICE: 0, T_MINUS_3: 5, T_MINUS_1: 8, AUTO_ACCEPT: 10 });
+  for (const set of [AUTO_ACCEPT_THRESHOLDS, ACTIVE_PLAYER_THRESHOLDS]) {
+    assert.ok(set.NOTICE < set.T_MINUS_3, "varsel skal komme før T-3");
+    assert.ok(set.T_MINUS_3 < set.T_MINUS_1, "T-3 skal komme før T-1");
+    assert.ok(set.T_MINUS_1 < set.AUTO_ACCEPT, "T-1 skal komme før auto-accept");
+  }
+  assert.ok(
+    ACTIVE_PLAYER_THRESHOLDS.AUTO_ACCEPT > AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT,
+    "en aktiv spiller må aldrig få KORTERE frist end en forladt konto"
+  );
+});
+
+// ── #3579 · Aktiv vs. forladt konto ──────────────────────────────────────
+//
+// Auto-accept er en sikkerhedsventil for hold ingen passer. Prod-tal 9/8: af
+// 144 hold med uafklaret plan havde 92 ikke været logget ind i 14+ dage. For
+// dem er auto-accept oprydning. De 24 aktive + 27 halvaktive er dem disse
+// tests beskytter: de må ikke få deres flerårsplan valgt af maskinen på samme
+// korte frist som en forladt konto.
+
+test("#3579: resolveThresholds vælger sæt ud fra last_seen", () => {
+  const now = new Date("2026-08-20T12:00:00Z");
+  const active = { last_seen: new Date(now.getTime() - 2 * DAY_MS).toISOString() };
+  const stale = { last_seen: new Date(now.getTime() - 30 * DAY_MS).toISOString() };
+  const edgeInside = { last_seen: new Date(now.getTime() - 13.9 * DAY_MS).toISOString() };
+  const edgeOutside = { last_seen: new Date(now.getTime() - 14.1 * DAY_MS).toISOString() };
+
+  assert.equal(resolveThresholds(active, now), ACTIVE_PLAYER_THRESHOLDS);
+  assert.equal(resolveThresholds(edgeInside, now), ACTIVE_PLAYER_THRESHOLDS);
+  assert.equal(resolveThresholds(stale, now), AUTO_ACCEPT_THRESHOLDS);
+  assert.equal(resolveThresholds(edgeOutside, now), AUTO_ACCEPT_THRESHOLDS);
+
+  // Manglende/ugyldig last_seen → ingen at varsle → oprydnings-sættet.
+  assert.equal(resolveThresholds(null, now), AUTO_ACCEPT_THRESHOLDS);
+  assert.equal(resolveThresholds({}, now), AUTO_ACCEPT_THRESHOLDS);
+  assert.equal(resolveThresholds({ last_seen: "ikke-en-dato" }, now), AUTO_ACCEPT_THRESHOLDS);
+});
+
+test("#3579: en AKTIV spiller auto-accepteres IKKE på dag 5 (forladt-kontoens frist)", async () => {
+  const opened = new Date(NOW.getTime() - 5 * DAY_MS);
+  const state = baseState({ teamCreatedAt: opened.toISOString() });
+  state.teams[0].user = { last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() };
+
+  const { summary, notifications } = await runCron(state, NOW);
+
+  assert.equal(summary.auto_accepted, 0, "dag 5 er T-3 for en aktiv spiller, ikke auto-accept");
+  assert.equal(summary.reminders_sent, 1);
+  assert.equal(notifications[0].metadata.messageCode, "notif.boardT3Reminder.message");
+  assert.equal(notifications[0].metadata.messageParams.daysLeft, 5, "nedtællingen skal regne mod DET AKTIVE sæts frist");
+});
+
+test("#3579: samme aktive spiller auto-accepteres på dag 10", async () => {
+  const opened = new Date(NOW.getTime() - 10 * DAY_MS);
+  const state = baseState({ teamCreatedAt: opened.toISOString() });
+  state.teams[0].user = { last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() };
+
+  const { summary } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 1);
+});
+
+test("#3579: en forladt konto beholder den korte frist — oprydning bremses ikke", async () => {
+  const opened = new Date(NOW.getTime() - 5 * DAY_MS);
+  const state = baseState({ teamCreatedAt: opened.toISOString() });
+  state.teams[0].user = { last_seen: new Date(NOW.getTime() - 40 * DAY_MS).toISOString() };
+
+  const { summary } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 1, "92 forladte konti skal stadig ryddes op på 5 dage");
+});
+
+test("#3579: aktiv spillers T-1 falder på dag 8, ikke dag 4", async () => {
+  const activeLastSeen = { last_seen: new Date(NOW.getTime() - 1 * DAY_MS).toISOString() };
+
+  const atDay4 = baseState({ teamCreatedAt: new Date(NOW.getTime() - 4 * DAY_MS).toISOString() });
+  atDay4.teams[0].user = activeLastSeen;
+  const day4 = await runCron(atDay4, NOW);
+  assert.equal(day4.notifications.length, 0, "dag 4 ligger mellem varsel og T-3 for en aktiv spiller");
+
+  const atDay8 = baseState({ teamCreatedAt: new Date(NOW.getTime() - 8 * DAY_MS).toISOString() });
+  atDay8.teams[0].user = activeLastSeen;
+  const day8 = await runCron(atDay8, NOW);
+  assert.equal(day8.notifications[0].type, "board_critical");
+  assert.equal(day8.notifications[0].metadata.messageParams.daysLeft, 2);
 });
