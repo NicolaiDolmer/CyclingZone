@@ -334,7 +334,7 @@ export default function AdminSystemTab() {
         <details className="group bg-cz-card border border-cz-border rounded-cz p-4 sm:p-5 mb-4">
           <summary className="text-cz-1 font-semibold text-sm flex items-center justify-between gap-2 cursor-pointer list-none">
             <span className="flex items-center gap-2">
-              <span className="w-1 h-4 bg-red-400 rounded-full" />Beta-testværktøjer
+              <span className="w-1 h-4 bg-cz-danger rounded-full" />Beta-testværktøjer
             </span>
             <ChevronDownIcon
               size={16}

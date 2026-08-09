@@ -18,6 +18,23 @@
 // Exit 1 hvis ÉN gate fejler (ingen tavs grøn — #3009-læringen: gates der ikke fejler
 // synligt bliver ikke set). Rører INTET i DB.
 //
+// ⚠️ KENDT RØD SIDEN 2026-08-09 (#3561): G1 ≈ 24 % og G3 ≈ 5 % — det er FORVENTET og må
+// IKKE "rettes" ved at skrue på generator-konstanterne. De 95,6 % / 86,3 % som denne
+// harness rapporterede før 9/8 blev købt ved at mætte signatur-stats ved 99, hvilket gav
+// 374 prod-ryttere med afledt evne 90 og markedsværdi op til 42 mio (caps =
+// max(potentiale-loft, current) → en pot-1,0-rytter fik caps 99).
+//
+// Kalibrerings-sweepet (simArchetypeCalibration3458.js, 54 kombinationer) viser at G1 og
+// ungdomsbåndet er GENSIDIGT UDELUKKENDE med den nuværende klassifikation: G1 ligger på
+// 23-30 % ved ENHVER kalibrering der respekterer potentiale-loftet. Rod-årsagen er at
+// ungdoms-caps klassificeres mod riderTypesBaseline.json (fittet over VOKSEN-caps), hvor
+// time_trial er strukturelt lav (z = −1,92) → enhver type der straffer time_trial får en
+// gratis bonus, og baroudeur æder 68 % af kuldet. En ungdoms-fittet baseline løfter G1 til
+// 71,7 % (målt, simYouthClassificationFix3458.js) — DET er rettelsen.
+//
+// De invarianter der faktisk beskytter spillet (G5 potentiale-loft, G6 ungdomsbånd) ligger
+// i lib/archetypeGenerationGates.test.js og kører i `node --test`.
+//
 //   node scripts/simArchetypeGeneration3458.js [--n=2000] [--seed=2026] [--out=<path>]
 
 import { readFileSync, writeFileSync } from "node:fs";
