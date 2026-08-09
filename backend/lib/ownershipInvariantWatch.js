@@ -28,7 +28,10 @@
 //      vagten fanger klassen i stedet, uanset hvilken frigivelses-sti der
 //      skabte den.
 //   E. (#3330) En STALE parkeret transfer: pending_team_id NOT NULL i mere end
-//      PENDING_TRANSFER_STALE_HOURS. stageRaceTransferDefer.js parkerer et
+//      PENDING_TRANSFER_STALE_HOURS OG rytteren er IKKE længere i et aktivt
+//      fleretape-løb (CYCLINGZONE-48 — se PENDING_TRANSFER_STALE_HOURS for
+//      hvorfor alderen alene gav falske positiver på lovlige, lange løb).
+//      stageRaceTransferDefer.js parkerer et
 //      holdskifte på pending_team_id når en rytter handles midt i et aktivt
 //      fleretape-løb (#1995); flushen kaldes KUN ved løbs-finalisering for DET
 //      løbs deltagere (raceRunner.js). Falder flushen på gulvet (løbet
@@ -50,17 +53,23 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { findStaleOfferedIntake } from "./academyIntakeReconcile.js";
+import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 
 const CHUNK = 1000;
 const SAMPLE_LIMIT = 50;
 
 // #3330: hvor længe må pending_team_id stå parkeret før det er et invariant-
 // brud i stedet for en legitim, igangværende deferral (#1995)? Valgt
-// KONSERVATIVT (48t) — bevidst længere end det længste fleretape-løb realistisk
-// kan tage (typisk 1-3 dages afvikling i denne motor), så en ÆGTE igangværende
-// deferral aldrig falsk-alarmerer (samme lektie som STALE_BACKSTOP_HOURS i
-// aiTeamTrimHealSweep.js: CYCLINGZONE-31 lærte os at en for stram tærskel spammer
-// Sentry på lovlige, langvarige tilstande). Målt mod riders.updated_at, som
+// KONSERVATIVT (48t). ALDEREN ALENE ER IKKE NOK: antagelsen om at 48t var
+// "længere end det længste fleretape-løb realistisk kan tage (typisk 1-3 dage)"
+// holdt ikke i prod (CYCLINGZONE-48, 8/8): et 4-etape-løb spænder over flere
+// game-days og tog 55t+ realtid, så en HELT legitim, igangværende deferral
+// alarmerede dagligt — præcis den falsk-positiv-klasse tærsklen skulle undgå
+// (samme lektie som STALE_BACKSTOP_HOURS i aiTeamTrimHealSweep.js: CYCLINGZONE-31
+// lærte os at en for stram tærskel spammer Sentry på lovlige, langvarige
+// tilstande). Derfor er alderen nu kun FØRSTE af TO betingelser — anden er
+// "rytteren er ikke længere i et aktivt fleretape-løb", se runOwnershipInvariantWatch.
+// Målt mod riders.updated_at, som
 // #3330 nu stemples eksplicit ved HVER parkering (squadEnforcement.js,
 // transferExecution.js, auctionFinalization.js — se deres #3330-kommentarer) —
 // riders har ingen auto-touch-trigger, så uden den eksplicitte stempling ville
@@ -166,6 +175,9 @@ function auctionFindingSample(auctions, ridersById) {
  *                                pending-transfer-alderstjekket; de øvrige fire
  *                                tjek forbliver nutids-øjebliksbilleder.
  * @param {number}   [args.pendingTransferStaleHours] override af PENDING_TRANSFER_STALE_HOURS (tests).
+ * @param {(supabase:object, riderIds:string[]) => Promise<string[]>} [args.getRidersInActiveStageRaceFn]
+ *        DI-hook (CYCLINGZONE-48) — invariant E's andet kriterie. Default er den
+ *        ÆGTE getRidersInActiveStageRace, dvs. samme diskriminator som heal-sweepen.
  * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number, strandedAcademy:number, stalePendingTransfer:number}, alerted:boolean}>}
  */
 export async function runOwnershipInvariantWatch({
@@ -173,6 +185,7 @@ export async function runOwnershipInvariantWatch({
   captureExceptionFn,
   now = new Date(),
   pendingTransferStaleHours = PENDING_TRANSFER_STALE_HOURS,
+  getRidersInActiveStageRaceFn = getRidersInActiveStageRace,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -194,11 +207,28 @@ export async function runOwnershipInvariantWatch({
 
   // Invariant E (#3330): pending_team_id parkeret længere end den konservative
   // grænse — se PENDING_TRANSFER_STALE_HOURS for begrundelsen af tærsklen.
+  //
+  // CYCLINGZONE-48 (8/8): alder alene gav falske positiver. En parkering er
+  // LOVLIG så længe rytteren stadig er i et aktivt fleretape-løb — uanset hvor
+  // længe det løb tager — fordi flushen først kan køre ved løbs-finalisering
+  // (#1995). Vi bruger derfor SAMME diskriminator som heal-sweepen selv
+  // (deferredTransferHealSweep.js → getRidersInActiveStageRace): et brud er
+  // "gammel parkering MEN løbet er ovre", altså præcis den tilstand hvor
+  // heal-sweepen burde have repareret rytteren og ikke gjorde det. Det gør
+  // vagten til et ægte backstop for en fejlende heal-sweep i stedet for en
+  // wall-clock-timer på lovlige, langvarige løb. Vasco-klassen (parkeret 40+
+  // dage, intet aktivt løb) fanges uændret.
   const pendingStaleMs = pendingTransferStaleHours * 60 * 60 * 1000;
   const allPending = await fetchAllPendingTransfers(supabase);
-  const stalePendingTransfer = allPending.filter(
+  const agedPending = allPending.filter(
     (r) => pendingTransferAgeMs(r, now) > pendingStaleMs
   );
+  // Kun slå op når der FAKTISK er alders-kandidater — vagten kører dagligt og
+  // skal ikke koste to ekstra queries på den normale 0-kandidat-tick.
+  const stillRacingIds = agedPending.length
+    ? new Set(await getRidersInActiveStageRaceFn(supabase, agedPending.map((r) => r.id)))
+    : new Set();
+  const stalePendingTransfer = agedPending.filter((r) => !stillRacingIds.has(r.id));
 
   let alerted = false;
 
@@ -262,7 +292,7 @@ export async function runOwnershipInvariantWatch({
     alerted = true;
     captureExceptionFn?.(
       new Error(
-        `Ownership-invariant-brud: ${stalePendingTransfer.length} rytter med pending_team_id parkeret > ${pendingTransferStaleHours}t (#3330)`
+        `Ownership-invariant-brud: ${stalePendingTransfer.length} rytter med pending_team_id parkeret > ${pendingTransferStaleHours}t UDEN aktivt etapeløb (#3330)`
       ),
       {
         tags: { cron: "ownership-invariant-watch" },

@@ -990,8 +990,14 @@ async function runOwnershipInvariantWatchCron() {
   });
   if (result.alerted) {
     console.error(
+      // CYCLINGZONE-48: log ALLE fem tællere. Linjen viste kun de tre
+      // oprindelige (#2647), så et brud på invariant D/E printede
+      // "brud fundet — youthOwned=0, sellerlessOwned=0, staleIntake=0" og
+      // lignede en falsk alarm i Railway-loggen. Nye invarianter SKAL med her.
       `🚨 Ownership-invariant-vagt: brud fundet — youthOwned=${result.findings.youthOwned}, ` +
-      `sellerlessOwned=${result.findings.sellerlessOwned}, staleIntake=${result.findings.staleIntake} (#2647)`
+      `sellerlessOwned=${result.findings.sellerlessOwned}, staleIntake=${result.findings.staleIntake}, ` +
+      `strandedAcademy=${result.findings.strandedAcademy}, ` +
+      `stalePendingTransfer=${result.findings.stalePendingTransfer} (#2647/#3330)`
     );
   }
 }
