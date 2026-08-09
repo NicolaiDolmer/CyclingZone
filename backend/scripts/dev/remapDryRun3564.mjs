@@ -11,6 +11,19 @@
 // Kør: SNAP_DIR=<sti-til-dateret-snapshot> node scripts/dev/remapDryRun3564.mjs
 // (snapshot laves med scripts/dev/snapshot-3564-progression-chain.mjs — SAMME
 // dato-stemplede mappe skal bruges her, aldrig levende DB.)
+//
+// VARIANTER (REMAP_VARIANT=a|b, default b — ejer-beslutning A låst 9/8 aften):
+//   a  Bogstavelig §6-remap: hele bestanden kvantil-mappes mod friskt-kulds-
+//      geometrien pr. aldersbånd. Dry-run 9/8 viste: nedjusterer 88,8 % af
+//      bestanden / -27 % total værdi — AFVIST af ejeren som migrations-mål,
+//      bevaret her som sammenligningsgrundlag.
+//   b  HALE-KORRIGERET (valgt): tiers 1,0-4,0 beholder deres tier-centre
+//      (intra-tier-spredning over tier-båndet ±4,9 via rang — 1-99-granularitet
+//      uden tier-skift); kun ≥4,5-klassen ("pot 5-6" per ceil-def, overskuddet
+//      fra spec §3) kvantil-presses mod planens HALE-ankre pr. aldersbånd:
+//      antal ≥74,5 ("5,0+") / ≥84,3 ("5,5+") / ≥94,1 ("6,0") = planens masser
+//      (0,699 % / 0,322 % / 0,114 % af båndet); resten af klassen lander
+//      rang-ordnet i (64,7-74,5) = "4,5-ækvivalent". Rang bevares fuldt.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -39,11 +52,16 @@ const teamById = new Map(teams.map((t) => [t.team_id, t]));
 // [v_k-4.9, v_k+4.9] klippet til [1,99]. Vægt pr. tier = POTENTIALE_DECAY^k
 // (samme geometri som drawPotentiale — ikke gentunet her).
 const K = POTENTIALE_TIERS.length; // 11
-const centers = POTENTIALE_TIERS.map((_, k) => Math.round(1 + k * 9.8));
+// EKSAKTE centre (1 + k·9,8) til intervaller/CDF — afrunding her forskød
+// intervallerne op til ±0,4 point og fejl-flaggede ~4 % af midter-tiers som
+// tier-skift (epsilon-artefakt fundet ved variant b-kørslen 9/8). Kun
+// DISPLAY-tabellen (target_geometry) bruger afrundede centre.
+const centersExact = POTENTIALE_TIERS.map((_, k) => 1 + k * 9.8);
+const centers = centersExact.map((c) => Math.round(c));
 const weightsRaw = POTENTIALE_TIERS.map((_, k) => POTENTIALE_DECAY ** k);
 const weightSum = weightsRaw.reduce((a, b) => a + b, 0);
 const weights = weightsRaw.map((w) => w / weightSum);
-const intervals = centers.map((c) => [Math.max(1, c - 4.9), Math.min(99, c + 4.9)]);
+const intervals = centersExact.map((c) => [Math.max(1, c - 4.9), Math.min(99, c + 4.9)]);
 
 // potentiale (1-6, continuous) -> "tier center på 1-99-skalaen" (ANKER, ikke
 // spredt) — bruges til manager-diffens "hvad ville uændret placering have
@@ -121,20 +139,67 @@ function bandOf(age) {
 }
 
 // ── 3) Stratificeret rang-bevarende kvantil-remap ──────────────────────────
+const VARIANT = (process.env.REMAP_VARIANT || "b").toLowerCase();
+if (!["a", "b"].includes(VARIANT)) {
+  console.error(`Ukendt REMAP_VARIANT '${VARIANT}' — brug a eller b`);
+  process.exit(1);
+}
+const byPotThenHash = (a, b) => (a.potentiale - b.potentiale) || (seededUnit(a.id) - seededUnit(b.id));
+// Rang-ordnet uniform spredning over (lo, hi]: (i+0,5)/n-kvantiler, afrundet.
+const spreadInto = (sorted, lo, hi, assign) => {
+  const n = sorted.length;
+  sorted.forEach((r, i) => {
+    const x = lo + ((i + 0.5) / n) * (hi - lo);
+    assign(r, Math.max(1, Math.min(99, Math.round(x))));
+  });
+};
+
 const remapById = new Map(); // id -> { newPot99, oldPot, band }
 for (const band of AGE_BANDS) {
   const group = riders.filter((r) => bandOf(r.age) === band.key);
-  const sorted = [...group].sort((a, b) => {
-    if (a.potentiale !== b.potentiale) return a.potentiale - b.potentiale;
-    return seededUnit(a.id) - seededUnit(b.id);
-  });
-  const n = sorted.length;
-  sorted.forEach((r, rank) => {
-    const q = (rank + 0.5) / n;
-    const xReal = inverseCdf(q);
-    const newPot99 = Math.max(1, Math.min(99, Math.round(xReal)));
-    remapById.set(r.id, { newPot99, oldPot: r.potentiale, band: band.key });
-  });
+  const nBand = group.length;
+  const set = (r, newPot99) => remapById.set(r.id, { newPot99, oldPot: r.potentiale, band: band.key });
+
+  if (VARIANT === "a") {
+    const sorted = [...group].sort(byPotThenHash);
+    sorted.forEach((r, rank) => {
+      const q = (rank + 0.5) / nBand;
+      set(r, Math.max(1, Math.min(99, Math.round(inverseCdf(q)))));
+    });
+    continue;
+  }
+
+  // VARIANT B — hale-korrigeret (ejer-valgt 9/8 aften):
+  // 1) tiers 1,0-4,0 (k=0..6): form-bevarende — spred hver tiers ryttere
+  //    rang-ordnet over tierens EGET 1-99-interval [v_k-4,9, v_k+4,9].
+  for (let k = 0; k <= 6; k++) {
+    const tierPot = POTENTIALE_TIERS[k];
+    const inTier = group.filter((r) => r.potentiale === tierPot).sort(byPotThenHash);
+    if (!inTier.length) continue;
+    const [lo, hi] = intervals[k];
+    spreadInto(inTier, lo, hi, set);
+  }
+  // 2) ≥4,5-klassen: planens hale-ankre pr. aldersbånd (masser fra SAMME mål-CDF).
+  const high = group.filter((r) => r.potentiale >= 4.5).sort(byPotThenHash);
+  const nHigh = high.length;
+  if (nHigh) {
+    const pGe = (x) => 1 - targetCdfAt(x - 1e-9);
+    let c74 = Math.min(nHigh, Math.round(nBand * pGe(74.5))); // planens "5,0+"-masse
+    let c84 = Math.min(c74, Math.round(nBand * pGe(84.3)));   // "5,5+"
+    let c94 = Math.min(c84, Math.round(nBand * pGe(94.1)));   // "6,0"
+    const seg = [
+      { n: nHigh - c74, lo: intervals[7][0], hi: 74.5 }, // blob: "4,5-ækvivalent" (64,7-74,5)
+      { n: c74 - c84, lo: 74.5, hi: 84.3 },
+      { n: c84 - c94, lo: 84.3, hi: 94.1 },
+      { n: c94, lo: 94.1, hi: 99 },
+    ];
+    let cursor = 0;
+    for (const s of seg) {
+      if (s.n <= 0) continue;
+      spreadInto(high.slice(cursor, cursor + s.n), s.lo, s.hi, set);
+      cursor += s.n;
+    }
+  }
 }
 
 // Rang-bevarelse-egenskab (kontrol, ikke kun antagelse): for hvert aldersbånd,
@@ -226,11 +291,20 @@ function managerBucket(teamId) {
   return perManager.get(teamId);
 }
 
+// Klassifikation af ned/op: TIER-ÆKVIVALENT-skift, IKKE rå 1-99-delta mod
+// centret. Intra-tier-spredningen (±4,9 ⇒ ±0,25 tier, tilsigtet 1-99-
+// granularitet) må ikke tælle som "nedjusteret" — det ville stemple halvdelen
+// af enhver urørt tier som ramt. Tærskel 0,28 = kvart trin (0,25) + et halvt
+// heltals-afrundingskorn (0,5/19,6 ≈ 0,026): Math.round ved interval-kanterne
+// kan spilde op til dét udenfor spredningen (målt: 2-4 % falsk-flaggede i tier
+// 3,0/3,5 ved 0,25). Et ÆGTE tier-skift er ≥0,5 — god margin til begge sider.
+const TIER_EPS = 0.28;
 const allDiffRows = [];
 for (const r of riders) {
   const { newPot99, oldPot } = remapById.get(r.id);
   const oldCenter99 = potentialeToCenter99(oldPot);
   const delta = newPot99 - oldCenter99;
+  const tierDelta = pot99ToTierEquivalent(newPot99) - oldPot;
   const row = {
     id: r.id,
     name: `${r.firstname} ${r.lastname}`,
@@ -241,22 +315,23 @@ for (const r of riders) {
     oldCenter99: round2(oldCenter99),
     newPot99,
     delta: round2(delta),
+    tierDelta: round2(tierDelta),
   };
   allDiffRows.push(row);
 
   if (r.team_id) {
     const b = managerBucket(r.team_id);
     b.n++;
-    if (delta < -0.01) b.downgraded++;
-    else if (delta > 0.01) b.upgraded++;
+    if (tierDelta < -TIER_EPS) b.downgraded++;
+    else if (tierDelta > TIER_EPS) b.upgraded++;
     else b.unchanged++;
-    if (!b.biggestSingleDowngrade || delta < b.biggestSingleDowngrade.delta) {
-      b.biggestSingleDowngrade = { name: row.name, age: row.age, oldPot, oldCenter99: row.oldCenter99, newPot99, delta: row.delta };
+    if (!b.biggestSingleDowngrade || tierDelta < b.biggestSingleDowngrade.tierDelta) {
+      b.biggestSingleDowngrade = { name: row.name, age: row.age, oldPot, oldCenter99: row.oldCenter99, newPot99, delta: row.delta, tierDelta: row.tierDelta };
     }
   }
 }
 
-const top20Losers = [...allDiffRows].sort((a, b) => a.delta - b.delta).slice(0, 20)
+const top20Losers = [...allDiffRows].sort((a, b) => a.tierDelta - b.tierDelta).slice(0, 20)
   .map((r) => ({ ...r, team_name: teamById.get(r.team_id)?.name ?? (r.team_id ? "(ukendt hold)" : "(ingen — fri agent)"), manager_display_name: teamById.get(r.team_id)?.manager_display_name ?? null }));
 
 // Ejede vs. frie vs. AI — separat rapport
@@ -264,8 +339,8 @@ const byOwner = { human: { n: 0, downgraded: 0, upgraded: 0, unchanged: 0 }, ai:
 for (const row of allDiffRows) {
   const o = byOwner[row.owner];
   o.n++;
-  if (row.delta < -0.01) o.downgraded++;
-  else if (row.delta > 0.01) o.upgraded++;
+  if (row.tierDelta < -TIER_EPS) o.downgraded++;
+  else if (row.tierDelta > TIER_EPS) o.upgraded++;
   else o.unchanged++;
 }
 
@@ -306,11 +381,35 @@ valueTop20Deltas.sort((a, b) => a.delta - b.delta);
 const valueTop20Losers = valueTop20Deltas.slice(0, 20);
 const valueTop20Gainers = [...valueTop20Deltas].sort((a, b) => b.delta - a.delta).slice(0, 20);
 
+// ── Hale-anker-gate (variant b's T1-N3-afløser): antal ≥74,5/≥84,3/≥94,1 pr.
+// aldersbånd mod planens masser. Fuld-form-gaten (±2pp mod plan-CDF'en) gælder
+// KUN variant a — variant b bevarer bevidst stock-formen i tiers ≤4,0, så dér
+// er hale-ankrene selve migrations-målet (ejer-beslutning A, 9/8 aften).
+const tailGate = {};
+for (const band of AGE_BANDS) {
+  const group = riders.filter((r) => bandOf(r.age) === band.key);
+  const nBand = group.length;
+  const pGe = (x) => 1 - targetCdfAt(x - 1e-9);
+  const count = (x) => group.filter((r) => remapById.get(r.id).newPot99 >= x).length;
+  tailGate[band.key] = {
+    n: nBand,
+    ge74_5: { actual: count(74.5), plan: round2(nBand * pGe(74.5)) },
+    ge84_3: { actual: count(84.3), plan: round2(nBand * pGe(84.3)) },
+    ge94_1: { actual: count(94.1), plan: round2(nBand * pGe(94.1)) },
+  };
+}
+
 // ── Skriv output ─────────────────────────────────────────────────────────────
 const out = {
   generated_at: new Date().toISOString(),
+  variant: VARIANT,
+  variant_note: VARIANT === "b"
+    ? "HALE-KORRIGERET (ejer-beslutning A, 9/8 aften): tiers 1,0-4,0 form-bevaret (intra-tier-spredning); kun >=4,5-klassen presses mod planens hale-ankre. Fuld-form-fordelingsgaten (distribution_by_age_band.gateRows) er FORVENTET rød i mellemtiers for denne variant — se tail_gate for migrations-målet."
+    : "BOGSTAVELIG §6-remap (afvist som migrations-mål 9/8 aften; bevaret til sammenligning).",
+  generated_at_note: "kør-tidspunkt; snapshottet er sandheden for dataalder",
   snapshot_measured_at_utc: "2026-08-09T12:50:47.470Z",
-  method_note: "Offline dry-run mod dateret snapshot (ingen DB-writes/queries). Kvantil-remap 1-6->1-99, stratificeret pr. aldersbånd, rang-bevarende (verificeret pr. bånd, se rank_violations).",
+  method_note: "Offline dry-run mod dateret snapshot (ingen DB-writes/queries). Kvantil-remap 1-6->1-99, stratificeret pr. aldersbånd, rang-bevarende (verificeret pr. bånd, se rank_violations). Ned/op-klassifikation: tier-ækvivalent-skift > 0,25 (intra-tier-spredning tæller ikke).",
+  tail_gate: tailGate,
   target_geometry: {
     tiers: POTENTIALE_TIERS,
     decay: POTENTIALE_DECAY,
@@ -358,7 +457,7 @@ const downgradeByAgeBand = {};
 for (const b of AGE_BANDS) downgradeByAgeBand[b.key] = { n: 0, downgraded: 0, meanDelta: 0 };
 for (const row of allDiffRows) {
   const tb = downgradeByOldTier[row.oldPot];
-  if (tb) { tb.n++; if (row.delta < -0.01) tb.downgraded++; }
+  if (tb) { tb.n++; if (row.tierDelta < -TIER_EPS) tb.downgraded++; }
 }
 // (aldersbånd allerede kendt via remapById, brug det i stedet for genopslag)
 for (const r of riders) {
@@ -368,7 +467,7 @@ for (const r of riders) {
   const bb = downgradeByAgeBand[band];
   bb.n++;
   bb.meanDelta += delta;
-  if (delta < -0.01) bb.downgraded++;
+  if (pot99ToTierEquivalent(newPot99) - oldPot < -TIER_EPS) bb.downgraded++;
 }
 for (const band of AGE_BANDS) downgradeByAgeBand[band.key].meanDelta = round2(downgradeByAgeBand[band.key].meanDelta / downgradeByAgeBand[band.key].n);
 
@@ -378,8 +477,11 @@ out.structural_finding_stock_vs_flow = {
   downgrade_share_by_age_band: Object.fromEntries(Object.entries(downgradeByAgeBand).map(([b, v]) => [b, { n: v.n, downgraded: v.downgraded, downgraded_pct: round2(100 * v.downgraded / v.n), mean_delta_99scale: v.meanDelta }])),
 };
 
-writeFileSync(`${SNAP_DIR}/remap-dryrun-result.json`, JSON.stringify(out, null, 2));
-console.log("Skrev remap-dryrun-result.json");
+writeFileSync(`${SNAP_DIR}/remap-dryrun-result-${VARIANT}.json`, JSON.stringify(out, null, 2));
+console.log(`Skrev remap-dryrun-result-${VARIANT}.json (variant ${VARIANT})`);
 console.log("rank_violations:", rankViolations.length);
 console.log("stock_gate:", out.stock_gate);
+console.log("tail_gate:", JSON.stringify(tailGate, null, 1));
+console.log("owner_diff:", JSON.stringify(byOwner));
+console.log("nedjusteret pr. gammel tier:", JSON.stringify(out.structural_finding_stock_vs_flow.downgrade_share_by_old_tier));
 console.log("value_effect_v4 (sum/delta):", out.value_effect_v4.old_value_sum, out.value_effect_v4.new_value_sum, out.value_effect_v4.delta_sum, out.value_effect_v4.delta_pct + "%");

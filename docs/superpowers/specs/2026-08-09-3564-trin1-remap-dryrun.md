@@ -1,6 +1,22 @@
 # #3564 trin 1 — kvantil-remap 1-6 → 1-99 (DRY-RUN, ingen writes)
 
-Snapshot målt 2026-08-09 12:50:47 UTC · script `backend/scripts/dev/remapDryRun3564.mjs` (kør med `SNAP_DIR=<dateret snapshot fra snapshot-3564-progression-chain.mjs>`) · algoritme per spec §6 trin 1 (rang-bevarende kvantil-remap, stratificeret pr. aldersbånd, mål-CDF = draw-geometrien oversat til 1-99). Genkørt og verificeret identisk fra committet script 9/8 aften. Ejer-beslutning A/B (afgrænsning af remappen) udestår — se hovedspec §11.
+Snapshot målt 2026-08-09 12:50:47 UTC · script `backend/scripts/dev/remapDryRun3564.mjs` (kør med `SNAP_DIR=<dateret snapshot fra snapshot-3564-progression-chain.mjs>`; `REMAP_VARIANT=a|b`, default b). **Ejer-beslutning A afgjort 9/8 aften: variant B (hale-korrigeret) er migrations-målet** — variant A (bogstavelig §6, resten af dette dokument) er bevaret som sammenligningsgrundlag/begrundelse for valget.
+
+## VARIANT B (VALGT) — hale-korrigeret remap, dry-run-resultat
+
+**Algoritme:** tiers 1,0-4,0 beholder deres tier-centre (form-bevarende intra-tier-spredning ±4,9 via rang — 1-99-granularitet uden tier-skift); kun ≥4,5-klassen (961 ryttere, "pot 5-6"-overskuddet fra spec §3) kvantil-presses mod planens HALE-ankre pr. aldersbånd: antal ≥74,5 ("5,0+") / ≥84,3 ("5,5+") / ≥94,1 ("6,0") = planens masser (0,70 % / 0,32 % / 0,11 % af båndet). Rang bevares fuldt (0 brud verificeret). Ned/op-klassifikation: tier-ækvivalent-skift >0,28 (kvart trin + afrundingskorn; intra-tier-spredning tæller ikke).
+
+**Resultat (samme daterede snapshot):**
+- **Kun top-klassen rammes:** 470 nedjusterede (237/248 pot-5,0 · 169/176 pot-5,5 · 64/72 pot-6,0) — tiers 1,0-4,5: **0**. Mod variant A's 7.243.
+- **Landing for de 961:** 904 → "4,5-ækvivalent" (65-74) · 31 → "5,0" (74,5-84,3) · 17 → "5,5" · 9 → "6,0" (94,1-99). Største enkelt-nerf: uheldige pot-6,0'ere → 73-74 (−1,33 tier-ækv; loft ~88 → ~74). NB: gamle 4,5'ere flyttes marginalt inden i blobben (op til −0,25 tier — under klassifikations-tærsklen, men synligt i værdi-effekten).
+- **Hale-gate:** matcher planen i ALLE 6 aldersbånd (fx 26-30: 19 ≥74,5 mod plan 19,0). Stock-gate: 16 ≥90 mod forventet 16,4 (0,20 %).
+- **Værdi-effekt (v4, offline):** 607,1 → 558,8 mio. = **−48,3 mio. (−8,0 %)** mod A's −27,0 %. Koncentreret på top-klassen; største enkelt-tab: Carlos Lozano (fri agent, kendt 22/6-legacy) −3,2 mio.; største human-ejede −1,8 mio. (Thomas Ward).
+- **Manager-diff:** 289 human-ejede nedjusterede fordelt på 110 af 192 human-hold; hårdest ramte hold mister 9 ryttere i tier-status (mod 37 i A). Top-5: Top Pro Cycling/rivka583 (9 ned, −0,9 mio.) · LEGO-Vestas/dolamba (9, −1,1 mio.) · FOSS-Trackman/andrecl1 (8, −0,6 mio.) · Team Hansen/CyberSimon (7, −1,4 mio.) · Équipe Lorraine Acier/Friisørens Salon (6, −0,2 mio.). Fuld tabel: `remap-dryrun-result-b.json` → `manager_diff`.
+- **Gate-konsekvens:** fuld-form-gaten T1-N3 (±2pp mod plan-CDF) gælder KUN variant A; for variant B er migrations-målet hale-ankrene (`tail_gate` i output) + form-bevarelse i tiers ≤4,0. Gate-biblioteket skal have denne variant-B-målsætning med før PR-2.
+
+---
+
+## VARIANT A (AFVIST som migrations-mål — bevaret som sammenligning)
 
 ## VERDICT: IKKE klar til PR-plan uden ejer-afklaring
 
