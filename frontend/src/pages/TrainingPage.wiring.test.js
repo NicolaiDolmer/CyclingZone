@@ -18,18 +18,54 @@ test("#1480.1 roster-query henter ryttertype-kolonnerne", () => {
   );
 });
 
-// #3300: akademi-status pr. rytter-række — is_academy medtages read-only i den
-// eksisterende roster-query (INGEN ny query/migration) og vises via den
-// eksisterende RiderBadges-recipe (samme "academy"-badge som TeamPage/
-// TeamProfilePage), placeret i den sticky navne-celle så den er synlig uændret
-// på desktop OG portræt-mobil uden en ny kolonne.
-test("#3300 roster-rækken viser akademi-status via den delte RiderBadges-recipe", () => {
+// #3300 (rework efter ejer-feedback): akademi-status pr. rytter-række —
+// is_academy medtages read-only i den eksisterende roster-query (INGEN ny
+// query/migration) og vises via den eksisterende RiderBadges-recipe (samme
+// "academy"-badge som TeamPage/TeamProfilePage). Ejer afviste v1 (badge inline
+// i navne-cellen) — badgen skal stå i sin EGEN kolonne, "på samme måde som
+// badges andre steder" (TeamPages Status-kolonne, der bundler badges via
+// RiderBadges). Guarden tjekker derfor BÅDE at RiderBadges bruges, OG at den
+// ikke længere ligger inde i den sticky navne-celle.
+test("#3300 roster-rækken viser akademi-status via den delte RiderBadges-recipe, i sin egen kolonne", () => {
   assert.match(src, /import RiderBadges from "\.\.\/components\/rider\/RiderBadges\.jsx"/);
   assert.match(
     src,
     /<RiderBadges badges=\{\[rider\.is_academy && "academy"\]\} \/>/,
     "skal genbruge den eksisterende academy-badge-nøgle, ikke en ny visuel",
   );
+
+  // Navne-cellen (sticky left-10) må IKKE længere indeholde RiderBadges eller
+  // ugeplan-toggle-knappen — begge er flyttet til deres egne kolonner.
+  const nameCellStart = src.indexOf("sticky-name-cell sticky left-10");
+  assert.ok(nameCellStart > -1, "navne-cellen skal stadig eksistere");
+  const nameCellEnd = src.indexOf("</td>", nameCellStart);
+  const nameCellSrc = src.slice(nameCellStart, nameCellEnd);
+  assert.doesNotMatch(nameCellSrc, /RiderBadges/, "akademi-badgen må ikke længere ligge i navne-cellen");
+  assert.doesNotMatch(nameCellSrc, /toggleRiderWeekPlan/, "ugeplan-toggle-knappen må ikke længere ligge i navne-cellen");
+
+  // Badgen skal stå i "Status"-kolonnen (samme header-mønster som TeamPage).
+  assert.match(src, /t\("colStatus"\)/, "Status-kolonnen skal stadig have sin header");
+  const statusCellStart = src.indexOf("Status: akademi");
+  assert.ok(statusCellStart > -1, "Status-kolonnen skal have en kommentar der forklarer akademi+badges-bundlingen");
+  const statusCellTdStart = src.indexOf("<td", statusCellStart);
+  const statusCellEnd = src.indexOf("</td>", statusCellTdStart);
+  const statusCellSrc = src.slice(statusCellTdStart, statusCellEnd);
+  assert.match(statusCellSrc, /<RiderBadges badges=\{\[rider\.is_academy && "academy"\]\} \/>/, "akademi-badgen skal stå i Status-kolonnen");
+});
+
+// #3300-rework: ugeplan-knappen får sin egen kolonne (ejer-feedback, samme
+// session som badge-flytningen ovenfor) — "colWeekPlan" er den nye header-nøgle.
+test("#3300-rework individuel ugeplan-knap har sin egen kolonne", () => {
+  assert.match(src, /"colWeekPlan"/, "skal have en dedikeret kolonne-header for ugeplan-knappen");
+  assert.match(src, /const ROSTER_COLS = 10;/, "kolonnetal skal være opdateret til den nye kolonne");
+
+  const weekPlanCellStart = src.indexOf("Individuel ugeplan — egen kolonne");
+  assert.ok(weekPlanCellStart > -1, "ugeplan-kolonnens celle skal have sin egen kommentar");
+  const weekPlanTdStart = src.indexOf("<td", weekPlanCellStart);
+  const weekPlanTdEnd = src.indexOf("</td>", weekPlanTdStart);
+  const weekPlanCellSrc = src.slice(weekPlanTdStart, weekPlanTdEnd);
+  assert.match(weekPlanCellSrc, /toggleRiderWeekPlan\(rider\.id\)/, "ugeplan-toggle-knappen skal stå i sin egen kolonne");
+  assert.match(weekPlanCellSrc, /individualWeekPlanToggleOpen/, "knap-teksten skal genbruges uændret");
 });
 
 test("#1480.1 hver række renderer en RiderTypeBadge", () => {

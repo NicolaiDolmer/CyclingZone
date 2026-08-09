@@ -53,6 +53,7 @@
   "colGains": "Fremgang",
   "colResult": "Resultat",
   "colStatus": "Status",
+  "colWeekPlan": "Ugeplan",
   "groupByType": "Gruppér efter type",
   "untypedGroup": "Ingen type endnu",
   "groupCount": "{n, plural, one {# rytter} other {# ryttere}}",

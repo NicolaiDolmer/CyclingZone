@@ -53,6 +53,7 @@
   "colGains": "Gains",
   "colResult": "Result",
   "colStatus": "Status",
+  "colWeekPlan": "Weekly plan",
   "groupByType": "Group by type",
   "untypedGroup": "No type yet",
   "groupCount": "{n, plural, one {# rider} other {# riders}}",
