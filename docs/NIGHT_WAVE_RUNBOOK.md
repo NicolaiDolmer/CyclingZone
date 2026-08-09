@@ -38,6 +38,7 @@
 - **Semantiske kryds-PR-konflikter** (to agenter redesigner samme modul) løses centralt af orkestrator: MERGE intentionerne, vælg ikke side.
 - **Agenter må IKKE selv spawne baggrunds-underagenter** — de ender i idle-vent på børn hvis notifikationer de aldrig ser (natbølge 12/7: oprydnings-agenten hang 2× sådan og skulle nudges). Skriv eksplicit "arbejd sekventielt, ingen under-agenter" i agent-prompts; orkestratoren ejer al fan-out.
 - **Verify/review-agenter: brug `gh pr diff <url>` — ALDRIG `git checkout` i hoved-checkoutet** (eller giv dem også worktree-isolation). Natbølge 19/6: en verify-agent uden isolation checkede en `review/*`-branch ud i hoved-checkoutet og efterlod det dér, så orkestratoren måtte gendanne `main`. Read-only diff-review kræver ingen lokal branch-switch.
+- **Lagdelt verifikation (ejer-godkendt 8/8, #3556):** små, isolerede UI-diffs bruger `node scripts/verify-affected.mjs` til målrettede specs lokalt; CI's required checks bærer den fulde suite. TIER FULL-diffs kræver stadig fuld lokal suite. **Kun ÉN fuld e2e-suite ad gangen pr. maskine** (serial test-slot — parallelle `npm run test:e2e`-kørsler deler port/build-artefakter og gav falske fejl, natbølgens læring 7-8/8).
 
 ## Orkestrator-regler (ejer-godkendt 5/8 efter natbølge 4.-5./8)
 
