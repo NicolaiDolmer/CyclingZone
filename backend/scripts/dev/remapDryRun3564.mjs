@@ -38,7 +38,7 @@ const BACKEND_LIB = path.join(import.meta.dirname, "../../lib");
 
 // ── Dynamisk import af prod-koden vi genbruger (ingen egen hash/loft-logik) ──
 const { POTENTIALE_TIERS, POTENTIALE_DECAY } = await import(pathToFileURL(`${BACKEND_LIB}/academyGenerator.js`).href);
-const { seededUnit, buildCapsForRider } = await import(pathToFileURL(`${BACKEND_LIB}/riderProgression.js`).href);
+const { seededUnit } = await import(pathToFileURL(`${BACKEND_LIB}/riderProgression.js`).href);
 const { predictBaseValueV4 } = await import(pathToFileURL(`${BACKEND_LIB}/riderCareerNpv.js`).href);
 const riderValuationModelV4 = JSON.parse(readFileSync(`${BACKEND_LIB}/riderValuationModelV4.json`, "utf8"));
 
