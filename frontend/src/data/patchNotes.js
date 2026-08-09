@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.108",
+    "date": "2026-08-09",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training page shows who belongs to the academy",
+          "body": "Academy riders follow their own growth rules and cap, but looked identical to seniors on the training page. Each rider row now shows an Academy badge in the status column, and the individual weekly plan button has its own column, so both are visible at a glance on desktop and mobile."
+        },
+        "da": {
+          "title": "Træningssiden viser hvem der hører til akademiet",
+          "body": "Akademiryttere følger deres egne vækstregler og eget loft, men så identiske ud med seniorer på træningssiden. Hver rytter-række viser nu et Akademi-badge i status-kolonnen, og knappen til den individuelle ugeplan har fået sin egen kolonne, så begge dele ses med ét blik på desktop og mobil."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.107",
     "date": "2026-08-08",
     "label": "Beta",
