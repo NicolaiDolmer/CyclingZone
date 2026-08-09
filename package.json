@@ -58,6 +58,8 @@
     "test:lint-pagination-guard": "node --test scripts/lint-pagination-guard.test.mjs",
     "lint:fetchallrows-order": "node scripts/check-fetchallrows-order.mjs",
     "test:lint-fetchallrows-order": "node --test scripts/check-fetchallrows-order.test.mjs",
+    "verify:affected": "node scripts/verify-affected.mjs",
+    "test:verify-affected": "node --test scripts/verify-affected.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",
