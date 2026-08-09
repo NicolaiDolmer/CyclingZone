@@ -62,6 +62,9 @@ function pickYouthArchetype(rng) {
  * @param {Set<string>} opts.existingNames foldNameNordic-sæt af eksisterende navne (muteres)
  * @param {{ dominant_nationality?: string }} [opts.identityBasis]  nation-bias
  * @param {number|null} [opts.countOverride]         #2064 S0: overstyr antal (drip-kuld-størrelse)
+ * @param {object} [opts.genCfg]  stat-genererings-config; default YOUTH_GEN_CONFIG.
+ *   KUN til kalibrerings-harnesses (simArchetypeCalibration.js) — produktionsstien
+ *   sender den ALDRIG, så en fejlkalibrering kan ikke snige sig ind via en call-site.
  * @returns {{ is_serious: boolean, rider: object }[]}
  */
 export function generateAcademyCandidates({
@@ -70,6 +73,7 @@ export function generateAcademyCandidates({
   existingNames,
   identityBasis = null,
   countOverride = null,
+  genCfg = YOUTH_GEN_CONFIG,
 }) {
   // ── Antal kandidater ─────────────────────────────────────────────────────────
   // #2064 S0: `??` sikrer at rng()-trækkene sker i NØJAGTIG samme rækkefølge som
@@ -121,6 +125,7 @@ export function generateAcademyCandidates({
       potentiale,
       archetypeType: archetypeDraw.primary,
       secondaryArchetypeType: archetypeDraw.secondary,
+      cfg: genCfg,
     });
 
     // Krop: spred højde/vægt så physiology-seedingen ikke defaulter alle til
@@ -200,12 +205,32 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   //     vægt 3, IKKE delt med puncheur) får dermed automatisk et større løft end
   //     en DELT evne (tempo/punch, vægt 1-2) — separationen matcher PRÆCIS det
   //     klassifikatoren selv belønner.
-  signatureBoostPerWeight: 15,
-  // KUN de boostede signatur-stats clampes til dette (højere) loft — neutrale/
-  // dæmpede stats forbliver i det oprindelige lave −3-bånd (statCeil). Dette ER
-  // "unge talenter viser deres speciale tidligt, selvom resten er råt" — ikke en
-  // generel opblødning af ungdoms-loftet.
-  statCeilBoosted: 99,
+  //
+  //  4) SÆNKET 15 → 2 den 2026-08-09 (#3561-regressionen). Punkt 1-3 ovenfor tunede
+  //     ALENE mod G1-G4 — ingen af de fire gates måler ABSOLUTTE niveauer. Med
+  //     boost 15 × klassifikator-vægt op til 3 blev signatur-stats løftet +45 rå
+  //     point oven på en base på ~48-51 og clampet ved statCeilBoosted=99, dvs.
+  //     mættet. Prod-følgen 9/8: 374 akademi-kandidater med afledt bedste evne 90
+  //     i snit (senior-snit 20, spillets 50 dyreste 80) og markedsværdi op til
+  //     42 mio. Rod-årsagen er at buildCapsForRider gør caps = max(potentiale-loft,
+  //     current): en mættet start-stat OVERSKRIVER hele potentiale-semantikken, så
+  //     en pot-1,0-rytter (loft 35) fik caps 99. Se scripts/simArchetypeCalibration3458.js
+  //     for sweepet der måler dette (G5/G6) — og BRUG den før du rører tallene igen.
+  signatureBoostPerWeight: 2,
+  // KUN de boostede signatur-stats clampes til dette loft — neutrale/dæmpede stats
+  // forbliver i det lave −3-bånd (statCeil).
+  //
+  // SAT LIG statCeil (99 → 54) den 2026-08-09. INVARIANTEN der skal holdes: en
+  // ungdomsrytters NUVÆRENDE evne må aldrig løfte ability_caps over det loft hans
+  // potentiale tillader (pot 1 → 35). pcmFrac ankrer PCM 50→evne 1 og 85→evne 99,
+  // så rå stat 54 ⇒ afledt evne 12 — præcis #2064's ejer-godkendte anker ("afledt
+  // top mætter ~12"). Ethvert loft herover lader current bryde igennem potentiale-
+  // loftet for de laveste potentialer. Målt: ceil 54 → G5 (potentiale-loft
+  // respekteret) 100 %; ceil 60 → 95-99 %; ceil 99 → 0,2 %.
+  //
+  // Boostet former derfor INDEN FOR båndet: vægt-3-evner rammer loftet, vægt-1-evner
+  // lander ~2 point lavere. Det er den separation ungdomsbåndet tillader.
+  statCeilBoosted: 54,
   // Modsatte stats trækkes ned proportionalt med |vægt| (samme princip som
   // signatureBoostPerWeight ovenfor — fx tt's climbing:-2-straf dæmpes hårdere
   // end en almindelig -1-straf).

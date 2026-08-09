@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.108",
+    "date": "2026-08-09",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy prospects were far too strong — cohort withdrawn and money refunded",
+          "body": "A change to how youth prospects are generated made this weekend's academy intake wildly overpowered: the average candidate was stronger than the 50 most valuable riders in the game, which also pushed signing fees into the millions. Every affected prospect has been removed, and the four managers who had already signed or won one on auction have had the full amount refunded. The academy is temporarily closed while the generator is corrected — no other riders or results were affected."
+        },
+        "da": {
+          "title": "Akademi-emner var alt for stærke — kuldet er trukket tilbage og pengene refunderet",
+          "body": "En ændring i måden ungdomsemner genereres på gjorde weekendens akademi-intake vildt overpowered: den gennemsnitlige kandidat var stærkere end spillets 50 mest værdifulde ryttere, hvilket også sendte signing fees op i millionklassen. Alle berørte emner er fjernet, og de fire managere der allerede havde skrevet kontrakt eller vundet en på auktion har fået hele beløbet retur. Akademiet er midlertidigt lukket mens generatoren rettes — ingen andre ryttere eller resultater er påvirket."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.107",
     "date": "2026-08-08",
     "label": "Beta",
