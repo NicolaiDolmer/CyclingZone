@@ -14,10 +14,22 @@
 //     "NS_ERROR_NOT_INITIALIZED", "window.parent is null"). Ankeret paa stien
 //     "/_next-live/feedback/instrument" er bevidst SNAEVERT — det matcher kun
 //     toolbar-bundlen, ikke vores egen app-kode, saa aegte fejl stadig fanges.
+//   - WebKit-maskeret extension-injektion (CYCLINGZONE-4B): Safari/iOS
+//     eksponerer IKKE en extensions rigtige URL til siden — den erstattes af
+//     "webkit-masked-url://hidden/". Derfor slap iOS-extensions forbi
+//     safari-extension:-moensteret ovenfor (prod 7-8/8: "Cannot destructure
+//     property 'tabId' from null or undefined" i en frame ved navn
+//     setupExtension — tredjeparts-kode, ikke vores). Moensteret er sikkert
+//     bredt: WebKit maskerer kun scripts hvis URL ikke maa eksponeres til
+//     siden (extensions/user scripts). Vores egen bundle serveres fra
+//     cyclingzone.org og maskeres aldrig, og appen indlaeser ingen scripts fra
+//     blob:-URL'er (de eneste createObjectURL-kald er CSV-downloads), saa en
+//     aegte app-fejl kan ikke faa en maskeret blame-frame.
 export const DENY_URLS = [
   /^chrome-extension:\/\//,
   /^moz-extension:\/\//,
   /^safari-(web-)?extension:\/\//,
+  /^webkit-masked-url:\/\//,
   /\/_next-live\/feedback\/instrument/,
 ];
 

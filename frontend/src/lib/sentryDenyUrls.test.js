@@ -27,6 +27,12 @@ test("browser-extension-URL'er filtreres fortsat (#1792 — ingen regression)", 
   assert.equal(isDeniedUrl("safari-web-extension://abcdef/inpage.js"), true);
 });
 
+test("CYCLINGZONE-4B: webkit-maskerede extension-URL'er filtreres (Safari/iOS skjuler den rigtige URL)", () => {
+  // Den faktiske stacktrace-URL fra CYCLINGZONE-4B (setupExtension-frame).
+  assert.equal(isDeniedUrl("webkit-masked-url://hidden/"), true);
+  assert.equal(isDeniedUrl("webkit-masked-url://hidden/:149626:47"), true);
+});
+
 test("normale app-fejl filtreres IKKE (filteret er ikke for bredt)", () => {
   const appUrls = [
     // Vores egne bundlede app-chunks.
@@ -40,6 +46,10 @@ test("normale app-fejl filtreres IKKE (filteret er ikke for bredt)", () => {
     // _next-live-praefikset — maa ikke rammes.
     "https://cyclingzone.org/feedback/instrument-panel.js",
     "https://cyclingzone.org/assets/UserFeedbackForm-9f8e7d.js",
+    // CYCLINGZONE-4B: "webkit" som almindeligt ord i en app-URL maa ikke rammes
+    // — kun selve webkit-masked-url:-skemaet.
+    "https://cyclingzone.org/assets/webkit-polyfill-1a2b3c.js",
+    "https://cyclingzone.org/assets/masked-url-helper.js",
   ];
   for (const url of appUrls) {
     assert.equal(isDeniedUrl(url), false, `app-URL burde IKKE filtreres: ${url}`);
