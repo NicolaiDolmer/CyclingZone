@@ -88,17 +88,25 @@ test("guard: brosten ≥ sprint tillader brostensrytter", () => {
   assert.equal(computeRiderTypes(r, BASELINE).primary.key, "brostensrytter");
 });
 
-test("gc-gate: bjerg+tt+recovery alle ≥ tærskel → gc mulig", () => {
+test("gc: bjerg+tt+recovery alle høje → gc mulig (kontrast, ingen AND-guard)", () => {
   const r = rider({ climbing: 75, time_trial: 60, recovery: 60, tempo: 65, endurance: 60, durability: 55, sprint: 20 });
   const { primary, secondary } = computeRiderTypes(r, BASELINE);
   assert.ok([primary.key, secondary.key].includes("gc"), "gc bør være i top-2 for ægte etapeløbsrytter");
 });
 
-test("gc-gate: lav recovery → aldrig gc (selv med høj bjerg+tt)", () => {
-  const r = rider({ climbing: 90, time_trial: 80, recovery: GUARDS.gcRecovery - 5, tempo: 70 });
+// #3570 fase 2 (ejer-beslutning 9/8, låst): den tidligere AND-guard (bjerg+tt+
+// recovery alle ≥ tærskel + punch<=tt) er SLETTET fra guardedOut — se GUARDS'
+// kommentar i riderTypes.js for hvorfor (den var selv en af portene gc-tragten
+// døde i, målt 9/8: gc 0,0 % genfinding uanset guard-dæmpning alene). gc
+// afgøres nu UDELUKKENDE af kontrast-scoren: en profil med høj climbing+time_trial
+// men LAV recovery kan derfor nu havne i top-2 som gc (den gamle guard ville have
+// udelukket den helt, uanset hvor stærk kontrasten var) — dette er MÅL-adfærden,
+// ikke en fejl. Testen dokumenterer det faktiske (målte) udfald, tuner ikke mod det.
+test("gc: guarden er fjernet — lav recovery udelukker ikke længere gc fra top-2", () => {
+  const r = rider({ climbing: 90, time_trial: 80, recovery: 17, tempo: 70 });
   const { primary, secondary } = computeRiderTypes(r, BASELINE);
-  assert.notEqual(primary.key, "gc");
-  assert.notEqual(secondary.key, "gc");
+  assert.ok([primary.key, secondary.key].includes("gc"),
+    "med guarden fjernet skal en stærk klatre+tt-profil kunne ende i top-2 som gc selv med lav recovery");
 });
 
 // ── computeRiderTypes generelt ───────────────────────────────────────────────

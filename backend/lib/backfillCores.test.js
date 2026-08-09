@@ -251,3 +251,57 @@ test("deriveForRiderIds (apply) KASTER ikke når alle id'er fik fuld derive", as
 // computeYouthCapsForRider er fjernet (ejer 15/7): loftet er ikke længere alders-gatet,
 // så en separat "kun for akademi-alder"-helper gav to semantikker at vælge imellem.
 // buildCapsForRider dækker nu alle aldre — dens kontrakt testes i riderProgression.test.js.
+
+// ─── #3570 fase 2: archetype_draw former caps DIREKTE (ikke bootstrap) ─────────
+
+test("#3570: deriveForRiderIds (apply) BRUGER archetype_draw's primary/secondary til ability_caps, IKKE bootstrap-gættet", async () => {
+  // makeRider har uniform stat=70 for alle STAT_KEYS (flad profil) → bootstrap
+  // (klassificeret mod NEUTRAL_BASELINE) gætter typisk noget helt andet end "gc" på
+  // en flad profil. Sætter et EKSPLICIT gc/climber-draw og verificerer at caps
+  // faktisk afspejler DET trukne anlæg (buildCapsForRider med draw.primary/secondary)
+  // — ikke bootstrap-typen.
+  const rider = { ...makeRider("r1"), archetype_draw: { primary: "gc", secondary: "climber", isHybrid: true } };
+  const supabase = makeMockSupabase({ riders: [rider] });
+  await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+
+  const abUpsert = supabase.writes.upserts.find((u) => u.table === "rider_derived_abilities");
+  const row = abUpsert.rows[0];
+
+  // Direkte reference-beregning: samme baseline + potentiale + alder som
+  // deriveForRiderIds selv bruger, men eksplicit mod draw.primary/secondary.
+  const { deriveAbilities, VISIBLE_ABILITIES: VA } = await import("./abilityDerivation.js");
+  const { seedPhysiologyFromLegacy } = await import("./physiologySeeding.js");
+  const { buildCapsForRider: buildCaps } = await import("./riderProgression.js");
+  const physiology = seedPhysiologyFromLegacy(rider);
+  const abilities = deriveAbilities(physiology, rider);
+  const baseline = {};
+  for (const k of VA) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
+  const expectedCaps = buildCaps(baseline, { potentiale: rider.potentiale }, "gc", "climber");
+
+  assert.deepEqual(row.ability_caps, expectedCaps, "caps skal matche buildCapsForRider(..., draw.primary, draw.secondary), IKKE bootstrap-typen");
+});
+
+test("#3570: deriveForRiderIds (apply) er BIT-IDENTISK uændret for en rytter UDEN archetype_draw (bootstrap-fallback)", async () => {
+  // makeRider sætter INTET archetype_draw-felt → bagudkompatibel fallback til
+  // bootstrap-typen (samme kodesti/formel som FØR #3570 fase 2).
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+  const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+  assert.equal(res.typed, 1);
+  const u = supabase.writes.updates.find((x) => x.val === "r1");
+  assert.ok(u.patch.primary_type, "primary_type sat via bootstrap-fallback som før");
+  const abUpsert = supabase.writes.upserts.find((u2) => u2.table === "rider_derived_abilities");
+  const row = abUpsert.rows[0];
+  for (const k of ABILITY_KEYS) {
+    assert.ok(Number.isFinite(row.ability_caps[k]) && row.ability_caps[k] >= 0 && row.ability_caps[k] <= 99,
+      `cap for ${k} er stadig et gyldigt tal uden draw`);
+  }
+});
+
+test("#3570: deriveForRiderIds (apply) falder tilbage til bootstrap ved archetype_draw uden primary (null/tomt draw)", async () => {
+  // archetype_draw kan være NULL i DB — draw.primary skal eksplicit tjekkes
+  // (draw && draw.primary), ikke bare draw (et tomt objekt må ikke crashe).
+  const rider = { ...makeRider("r1"), archetype_draw: null };
+  const supabase = makeMockSupabase({ riders: [rider] });
+  const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+  assert.equal(res.typed, 1, "et NULL archetype_draw crasher ikke og typer stadig rytteren");
+});

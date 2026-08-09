@@ -479,6 +479,33 @@ test("seedAcademyCohortForTeam: countOverride respekteres + generation_tag stemp
   }
 });
 
+// #3570 fase 2: archetype_draw skrives ved rytter-insert (kandidaterne bærer
+// allerede archetypeDraw fra academyGenerator.js — se dens kommentar for hvorfor
+// feltet historisk ALDRIG blev spredt ind i rider-insert-payloaden).
+test("#3570: seedAcademyCohortForTeam skriver archetype_draw ({primary, secondary, isHybrid}) på hver ny rytter", async () => {
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "s-id", number: 2, start_date: "2026-07-27" },
+    academyIntakeTeamIds: [],
+    existingRiders: [],
+  });
+
+  await seedAcademyCohortForTeam(supabase, {
+    teamId: "team-1",
+    season: { id: "s-id", number: 2, start_date: "2026-07-27" },
+    referenceYear: 2026,
+    existingNames: new Set(),
+    rng: makeRng(7),
+    countOverride: 2,
+  });
+
+  assert.equal(supabase._riderInserts.length, 2);
+  for (const row of supabase._riderInserts) {
+    assert.ok(row.archetype_draw && typeof row.archetype_draw === "object", "archetype_draw sat (ikke null/undefined)");
+    assert.ok(typeof row.archetype_draw.primary === "string", "archetype_draw.primary er en type-nøgle");
+    assert.equal(typeof row.archetype_draw.isHybrid, "boolean", "archetype_draw.isHybrid er boolean");
+  }
+});
+
 // ─── Ingen aktiv sæson ────────────────────────────────────────────────────────
 
 test("runAcademyIntake (dryRun): ingen aktiv sæson returnerer note uden kast", async () => {

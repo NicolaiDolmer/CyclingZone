@@ -53,25 +53,30 @@ const REFERENCE_YEAR = 2026;
 // enhver type der STRAFFER time_trial fik en gratis bonus: baroudeur (time_trial: −1)
 // åd 68-77 % af kuldet (målt 9/8: 76,7 % af human-ejede 16-21-årige i prod).
 //
-// #3570-RETTELSEN: en SEPARAT ungdoms-fittet baseline (riderTypesBaselineYouth.json,
-// scripts/fitRiderTypesBaselineYouth.js) bruges nu til den ENDELIGE klassifikation for
-// < 22-årige (selectTypesBaseline, riderTypesBaselineSelect.js) — z-scores bliver
-// meningsfulde INDEN FOR ungdomskuldet i stedet for mod en voksenpopulation unge pr.
-// definition ligger under. MÅLT (denne fils population, n=300, seed=20260806):
-// G1 24,0 % (gammel voksen-baseline) → 44,7 % (ny ungdoms-baseline).
+// #3570 FASE 1-RETTELSEN (landet, PR #3571): en SEPARAT ungdoms-fittet baseline
+// (riderTypesBaselineYouth.json) bruges til den ENDELIGE klassifikation for
+// < 22-årige (selectTypesBaseline) — MÅLT dengang (bootstrap-drevne caps, denne fils
+// population): G1 24,0 % (voksen-baseline) → 44,7 % (ungdoms-baseline).
 //
-// VIGTIGT — dette er LAVERE end de 71,7-77 % scripts/simYouthClassificationFix3458.js's
-// eget CLI-default (--boost=2 --ceil=60) rapporterer: de tal er målt med en BOOSTET
-// generator-separation der IKKE matcher YOUTH_GEN_CONFIG's faktiske shippede defaults
-// (signatureBoostPerWeight 0,8 / statCeilBoosted 54, sænket 2026-08-09 af #3561 EFTER
-// #3458s måling). fitRiderTypesBaselineYouth.js fitter bevidst mod DEN RIGTIGE,
-// shippede population (ingen genCfg-override — samme population som deriveForRiderIds
-// rent faktisk klassificerer) — se scriptets topkommentar for den fulde afvigelses-
-// dokumentation. 44,7 % er derfor det ærlige, opnåelige tal, ikke 71,7-77 %.
+// #3570 FASE 2-RETTELSEN (denne PR, ejer-go 9/8 sent): runCohort ovenfor er opdateret
+// til at bruge caps formet af DET TRUKNE ANLÆG (archetypeDraw.primary/secondary)
+// direkte, i stedet for et BOOTSTRAP-gæt (klassificeret mod flade, næsten-ens
+// 16-21-års-profiler under NEUTRAL_BASELINE — målt 9/8: 0/303 gc-trukne genkendt som
+// gc). GC-guarden (riderTypes.js) er samtidig slettet. MÅLT (denne fils population,
+// n=300, seed=20260806, EFTER begge ændringer):
+//   G1 (produktion: draw-caps + ungdoms-baseline)        72,3 %
+//   G1 (draw-caps + VOKSEN-baseline)                     71,3 %  (se negativ-test)
+//   G1 (BOOTSTRAP-caps + ungdoms-baseline — fase 1-kæden) 49,3 %
+//   G1 (BOOTSTRAP-caps + VOKSEN-baseline — den ORIGINALE, dokumenterede pre-#3570-
+//       defekt, 76,7 % baroudeur i prod 9/8)               28,3 %
+// Draw-caps former en så adskilt profil at selv voksen-baselinen nu klassificerer
+// rimeligt (71,3 % — kun 1pp under produktionens 72,3 %); FASE 1's
+// ungdoms-baseline-fix var derfor et NØDVENDIGT men ikke TILSTRÆKKELIGT skridt —
+// fase 2's draw-caps er den dominerende driver (49,3 % → 72,3 %, se negativ-testene).
 //
-// Gulvet er sat til 35 (≈10pp under det målte 44,7 %, samme sikkerhedsmargin-princip
-// som 18-gulvet havde til ~24-30 %). Fanger stadig et reelt kollaps.
-const G1_REGRESSION_FLOOR_PCT = 35;
+// Gulvet er hævet 35 → 60 (≈12pp under det målte 72,3 %, samme
+// sikkerhedsmargin-princip som de tidligere gulve havde).
+const G1_REGRESSION_FLOOR_PCT = 60;
 // Rå-evne-gab: SÆNKET 8 → 1 og indsnævret til 16-18-årige den 2026-08-09 (#3561).
 // Ungdomsbåndet topper ved afledt evne 12, så et gab på 8 kræver at båndet brydes.
 // Værre: statPerYearOver16 (1,4 rå point/år) løfter base-niveauet OVER statCeil=54 ved
@@ -92,11 +97,19 @@ const YOUTH_BAND_MAX_PHYSICAL_ABILITY = 15;
 const G7_MAX_PCT_BORN_AT_GRADUATION_LEVEL = 5;
 const GRADUATION_LEVEL_ABILITY = 12;
 
-// useAdultBaselineOnly (#3570-negativ-test): når true, springer den ENDELIGE
-// klassifikation selectTypesBaseline-gaten over og bruger UDELUKKENDE den gamle
-// voksen-baseline — reproducerer dagens (FØR #3570) defekte kodesti, så
-// negativ-testen nedenfor kan bevise at gaten faktisk retter noget.
-function runCohort(n, seed, { useAdultBaselineOnly = false } = {}) {
+// #3570 FASE 2: runCohort spejler nu backfillCores.deriveForRiderIds' PRODUKTIONS-
+// kæde PRÆCIST — caps formes af det TRUKNE anlæg (archetypeDraw.primary/secondary),
+// ikke bootstrap-gættet. Bootstrap beregnes stadig (samme som produktionen — fallback-
+// sti for ryttere UDEN et draw) men bruges kun når useBootstrapCaps=true.
+//
+//   useAdultBaselineOnly (#3570 fase 1-negativ-test): springer selectTypesBaseline-
+//     gaten over og bruger UDELUKKENDE voksen-baselinen — reproducerer FASE 1-
+//     defekten (unge klassificeret mod voksen-baseline).
+//   useBootstrapCaps (#3570 fase 2-negativ-test): bruger BOOTSTRAP-typen (ikke det
+//     trukne anlæg) til caps — reproducerer FASE 1-KÆDENS defekt (0/303 gc-trukne
+//     genkendt, målt 9/8) OG er den faktiske "intet draw"-kodesti for eksisterende
+//     ryttere (backfillCores.js's fallback-gren).
+function runCohort(n, seed, { useAdultBaselineOnly = false, useBootstrapCaps = false } = {}) {
   const rng = makeRng(seed);
   const candidates = generateAcademyCandidates({
     rng, referenceYear: REFERENCE_YEAR, existingNames: new Set(), countOverride: n,
@@ -108,7 +121,11 @@ function runCohort(n, seed, { useAdultBaselineOnly = false } = {}) {
     const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
-    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
+    // #3570 fase 2: DET TRUKNE anlæg former caps direkte (samme gren som
+    // backfillCores.js's deriveForRiderIds tager når rider.archetype_draw findes).
+    const capsPrimary = useBootstrapCaps ? bootstrap.primary.key : c.archetypeDraw.primary;
+    const capsSecondary = useBootstrapCaps ? bootstrap.secondary.key : (c.archetypeDraw.secondary || null);
+    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, capsPrimary, capsSecondary);
     // #3570: akademi-kandidater er ALTID 16-21 år (< 22) — samme alders-gate som
     // deriveForRiderIds/backfillCores.js bruger i produktion.
     const age = REFERENCE_YEAR - Number(String(riderRow.birthdate).slice(0, 4));
@@ -116,7 +133,7 @@ function runCohort(n, seed, { useAdultBaselineOnly = false } = {}) {
       ? typesBaseline
       : selectTypesBaseline(age, typesBaseline, youthTypesBaseline);
     const final = computeRiderTypes(caps, finalModel);
-    const youthCaps = buildYouthCaps(riderRow.potentiale, bootstrap.primary.key, bootstrap.secondary.key);
+    const youthCaps = buildYouthCaps(riderRow.potentiale, capsPrimary, capsSecondary);
     return {
       archetypeDraw: c.archetypeDraw,
       finalPrimary: final.primary.key,
@@ -152,17 +169,31 @@ test(`G1-regression: klassifikatoren genfinder det trukne anlæg ≥${G1_REGRESS
   assert.ok(pct >= G1_REGRESSION_FLOOR_PCT, `G1 ${pct.toFixed(1)}% under regressions-gulvet ${G1_REGRESSION_FLOOR_PCT}% (fase-1-niveauet var ~21% — se academyGenerator.js' YOUTH_GEN_CONFIG-historik hvis dette fejler)`);
 });
 
-// #3570 NEGATIV-TEST (designprincip: en gate skal fejle på KENDT defekt kode).
-// Beviser at gaten faktisk måler #3570-fixet, ikke bare en tilfældig tærskel: den
-// SAMME population, klassificeret mod den GAMLE voksen-baseline alene (dagens
-// defekt FØR #3570), skal falde under det NYE gulv.
-test(`#3570 NEGATIV-TEST: voksen-baseline ALENE (dagens defekt) falder under det nye gulv ${G1_REGRESSION_FLOOR_PCT}%`, () => {
-  const riders = runCohort(N, SEED, { useAdultBaselineOnly: true });
+// #3570 FASE 2 NEGATIV-TEST (designprincip: en gate skal fejle på KENDT defekt kode).
+// Den ORIGINALE, dokumenterede pre-#3570-defekt (bootstrap-caps OG voksen-baseline —
+// 76,7 % baroudeur målt i prod 9/8) skal falde LANGT under det nye gulv.
+test(`#3570 NEGATIV-TEST (original defekt): bootstrap-caps + voksen-baseline falder under det nye gulv ${G1_REGRESSION_FLOOR_PCT}%`, () => {
+  const riders = runCohort(N, SEED, { useAdultBaselineOnly: true, useBootstrapCaps: true });
   const pct = g1Pct(riders);
   assert.ok(
     pct < G1_REGRESSION_FLOOR_PCT,
-    `voksen-baseline-alene gav G1 ${pct.toFixed(1)}% — forventede den under ${G1_REGRESSION_FLOOR_PCT}% ` +
-    `(hvis den IKKE er det, måler gaten ikke længere #3570-fixet, og #3570-baseline-gaten er blevet virkningsløs)`
+    `bootstrap-caps + voksen-baseline gav G1 ${pct.toFixed(1)}% — forventede den under ${G1_REGRESSION_FLOOR_PCT}% ` +
+    `(hvis den IKKE er det, måler gaten ikke længere den originale defekt)`
+  );
+});
+
+// #3570 FASE 2 NEGATIV-TEST (isolerer draw-caps som driveren): den SAMME population,
+// med FASE 1-KÆDEN (bootstrap-caps, ungdoms-baseline — PR #3571's shippede kodesti),
+// skal give MARKANT lavere G1 end produktionen (draw-caps). Beviser at fase 2's
+// arkitektur-fix (archetype_draw former caps) er det der driver forbedringen — ikke
+// blot støj fra GC-guard-sletningen alene (som gælder BEGGE linjer her ens).
+test("#3570 FASE 2 NEGATIV-TEST: bootstrap-caps (fase 1-kæden) giver markant LAVERE G1 end draw-caps (produktion)", () => {
+  const production = g1Pct(runCohort(N, SEED));
+  const phase1Chain = g1Pct(runCohort(N, SEED, { useBootstrapCaps: true }));
+  assert.ok(
+    phase1Chain < production - 15,
+    `fase 1-kæden (bootstrap-caps) gav G1 ${phase1Chain.toFixed(1)}% mod produktionens ${production.toFixed(1)}% — ` +
+    `forventede mindst 15pp forskel (hvis IKKE, isolerer denne test ikke længere draw-caps' effekt)`
   );
 });
 

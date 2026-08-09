@@ -271,6 +271,34 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   sd: 0.8,
   statFloor: 48.5,
   statCeil: 54,
+  // #3570 fase 2: FLYTTET hertil (var modul-konstanter GC_TIME_TRIAL_BOOST_RATIO/
+  // GC_CLIMBING_BOOST_RATIO) så scorecard-varianter kan sweepe dem uden at
+  // duplikere signatureProfile-logikken — se signatureProfile nedenfor for hvorfor
+  // gc's to top-vægtede evner historisk blev dæmpet (#3458: undgå at mætte
+  // tt-aksen identisk med en ren tidskører i G3/scoutingReport-normaliseringen).
+  //
+  // GENMÅLT under den NYE caps-kæde (archetype_draw former caps DIREKTE via
+  // buildCapsForRider, #3570 fase 2) mod tre varianter — 0.55/0.85 (den gamle
+  // værdi), 0.8/0.9, 1.0/1.0, OG kontrol-ekstremerne 0/0 og 0.1/2.0 (se
+  // backend/scripts/dev/gcFunnel3570.mjs --gcTt=X --gcClimb=Y, n=3000):
+  // ALLE FEM gav BIT-IDENTISK udfald (260/303 = 85,8 % af de trukne gc-anlæg
+  // endte gc, hele kuldets fordeling uændret til sidste ryttter). Årsag: caps =
+  // max(absolut_loft(potentiale, anlæg), current) i buildCapsForRider — det
+  // absolutte loft (som denne ratio IKKE rører; det kommer fra RIDER_TYPES'
+  // vægt-FORTEGN via youthRoleFactor, ikke fra generatorens boost-MAGNITUDE)
+  // dominerer for stort set alle potentiale-niveauer, fordi ungdomsbåndets
+  // afledte current-evner (statCeilBoosted=54 ⇒ afledt ~12) er langt under det
+  // absolutte loft. Ratioen former derfor kun de synlige RÅ current-stats en
+  // frisk 16-21-årig starter med (en ren display-nuance), IKKE klassifikationen
+  // eller livstidsloftet — modsat før fase 2, hvor bootstrap-typen (afledt af
+  // NETOP disse current-stats) satte rolle-faktoren for caps.
+  //
+  // KONKLUSION: ingen af de tre kandidat-varianter forbedrer eller forværrer
+  // G1/gc-genfinding — værdien er derfor BEVIDST UÆNDRET (0.55/0.85). At ændre
+  // den ville være en tuning uden empirisk gevinst (og ville svække #3458's
+  // stadig-gældende G3-display-begrundelse ovenfor uden grund).
+  gcTimeTrialBoostRatio: 0.55,
+  gcClimbingBoostRatio: 0.85,
 });
 
 // #3458 fase 2: signatur-profil pr. arketype, afledt af KLASSIFIKATORENS EGNE
@@ -305,21 +333,14 @@ const RIDER_TYPE_WEIGHTS_BY_KEY = Object.freeze(
 // blendedOutput — en ANDEN formel end riderTypes.js' kontrast, urørt her) fra
 // gc næsten hver gang (målt via simArchetypeGeneration3458.js: gc alene stod
 // for ~90% af ALLE G3-mismatches). Modvirkes HER (akademi-genereringen alene —
-// hverken riderTypes.js' vægte eller GC-guarden i #98-103 røres): gc's
-// time_trial-signatur dæmpes til dette forhold af climbing's, stadig SOLIDT
-// over GC-guardens tærskel (53) ved enhver potentiale, men uden at mætte
-// tt-aksen identisk med en ren tidskører.
-const GC_TIME_TRIAL_BOOST_RATIO = 0.55;
-// Samme overlap-logik, MILDERE: efter time_trial-dæmpningen flyttede resten af
-// G3-overlappet fra tt til climber (climbing er uændret det ene MÆTTEDE
-// signatur-træk gc og climber deler 1:1). En let dæmpning (climbing forbliver
-// SOLIDT over GC-guardens 53-tærskel) reducerer det uden at genskabe
-// tt-overlappet eller true gc's egen kontrast-sejr (målt iterativt, se
-// PR-scorecard).
-const GC_CLIMBING_BOOST_RATIO = 0.85;
+// hverken riderTypes.js' vægte røres): gc's time_trial/climbing-signatur
+// dæmpes af cfg.gcTimeTrialBoostRatio/gcClimbingBoostRatio (YOUTH_GEN_CONFIG,
+// #3570 fase 2 — flyttet fra modul-konstanter til cfg så scorecard-varianter
+// kan sweepe forholdet uden at duplikere denne funktion; se YOUTH_GEN_CONFIG's
+// kommentar for den GENMÅLTE værdi under den nye caps-kæde).
 
 // { boost: { stat_key: vægt (>0) }, damp: { stat_key: |vægt| (fra <0) } } for ÉN arketype.
-function signatureProfile(archetypeKey) {
+function signatureProfile(archetypeKey, cfg) {
   const weights = RIDER_TYPE_WEIGHTS_BY_KEY[archetypeKey];
   if (!weights) throw new Error(`signatureProfile: ukendt arketype ${archetypeKey}`);
   const boost = {};
@@ -331,8 +352,8 @@ function signatureProfile(archetypeKey) {
     else if (w < 0) damp[statKey] = -w;
   }
   if (archetypeKey === "gc") {
-    boost[ABILITY_TO_STAT.time_trial] *= GC_TIME_TRIAL_BOOST_RATIO;
-    boost[ABILITY_TO_STAT.climbing] *= GC_CLIMBING_BOOST_RATIO;
+    boost[ABILITY_TO_STAT.time_trial] *= cfg.gcTimeTrialBoostRatio;
+    boost[ABILITY_TO_STAT.climbing] *= cfg.gcClimbingBoostRatio;
   }
   return { boost, damp };
 }
@@ -342,9 +363,9 @@ function signatureProfile(archetypeKey) {
 // anlæg bidrager, ingen forsvinder. damp = KUN de FÆLLES svagheder (snit, ikke
 // union) — en hybrid skal ikke dæmpes på en evne der er den ENE arketypes
 // signatur (fx en climber+puncheur-hybrid må ikke dæmpe punch).
-function blendArchetypeSignature(primaryKey, secondaryKey) {
-  const a = signatureProfile(primaryKey);
-  const b = signatureProfile(secondaryKey);
+function blendArchetypeSignature(primaryKey, secondaryKey, cfg) {
+  const a = signatureProfile(primaryKey, cfg);
+  const b = signatureProfile(secondaryKey, cfg);
   const boost = {};
   for (const key of new Set([...Object.keys(a.boost), ...Object.keys(b.boost)])) {
     boost[key] = ((a.boost[key] ?? 0) + (b.boost[key] ?? 0)) / 2;
@@ -362,8 +383,8 @@ function blendArchetypeSignature(primaryKey, secondaryKey) {
 export function generateYouthStats({ rng, age, potentiale, archetypeType, secondaryArchetypeType = null, cfg = YOUTH_GEN_CONFIG }) {
   if (!ARCHETYPE_BY_TYPE[archetypeType]) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
   const arch = secondaryArchetypeType
-    ? blendArchetypeSignature(archetypeType, secondaryArchetypeType)
-    : signatureProfile(archetypeType);
+    ? blendArchetypeSignature(archetypeType, secondaryArchetypeType, cfg)
+    : signatureProfile(archetypeType, cfg);
   const ageLift = Math.max(0, (Number(age) || 16) - 16) * cfg.statPerYearOver16;
   const potLift = (clamp(Number(potentiale) || 1, 1, 6) - 1) * cfg.potStartLift;
   const startLuck = gaussian(rng, 0, cfg.startLuckSd); // ÉT træk pr. rytter (coherent profil-shift) — BLØDGØR talent-tendensen

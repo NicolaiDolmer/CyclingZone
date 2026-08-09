@@ -190,7 +190,10 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // #3345: valuation_type med i selectet — se trin 5's kommentar for hvorfor
   // (denne sti dækker BÅDE helt nye ryttere OG re-derive af eksisterende/strandede
   // ryttere, og de to skal behandles forskelligt).
-  const select = ["id", "height", "weight", "birthdate", "potentiale", "valuation_type", ...STAT_KEYS].join(", ");
+  // #3570 fase 2: archetype_draw med i selectet — det TRUKNE ungdoms-anlæg (skrevet
+  // af academyIntake.js ved rytter-insert). Ryttere UDEN et draw (alle voksne, PCM-
+  // import, alt eksisterende) har NULL her → uændret bootstrap-adfærd (trin 2/3).
+  const select = ["id", "height", "weight", "birthdate", "potentiale", "valuation_type", "archetype_draw", ...STAT_KEYS].join(", ");
   const riders = await fetchAllRows(() =>
     supabase.from("riders").select(select).in("id", ids).order("id", { ascending: true }));
   log(`deriveForRiderIds: ${riders.length}/${ids.length} ryttere fundet`);
@@ -240,8 +243,18 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const progressInit = buildProgressInit();
   const capsByRider = new Map();
   const abilitiesWithCaps = abilities.map((a) => {
-    const t = bootstrapTypeByRider.get(a.rider_id) || {};
     const rider = riderById.get(a.rider_id) || {};
+    // #3570 fase 2: en rytter med et PERSISTERET archetype_draw (akademi-intake,
+    // academyIntake.js) får sine caps formet af DET TRUKNE anlæg — den faktiske
+    // stat-formning candidaten blev genereret efter — i stedet for bootstrap-
+    // gættet (trin 2 ovenfor, klassificeret mod flade 1-12-profiler, målt 9/8:
+    // 0/303 gc-trukne genkendes som gc). Uden et draw (alle eksisterende ryttere,
+    // enhver ikke-akademi-sti) er dette bit-identisk med FØR #3570 fase 2 — samme
+    // bootstrap-fallback, samme kodesti.
+    const draw = rider.archetype_draw;
+    const t = (draw && draw.primary)
+      ? { primary_type: draw.primary, secondary_type: draw.secondary || null }
+      : (bootstrapTypeByRider.get(a.rider_id) || {});
     const prev = existingById.get(a.rider_id) || {};
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (a[k] != null) baseline[k] = Number(a[k]);
