@@ -153,7 +153,7 @@ test("#3502 forward-guard: mid-season-cronen virker stadig efter et sæsonskifte
     ],
     season_standings: [{
       team_id: "team-1", season_id: "season-3", division: 3,
-      rank_in_division: 4, total_points: 200, stage_wins: 1, gc_wins: 0, prize_money: 50000,
+      rank_in_division: 4, total_points: 200, stage_wins: 1, gc_wins: 0,
     }],
     notifications: [],
   };

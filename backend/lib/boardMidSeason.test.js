@@ -28,7 +28,7 @@ import {
   resolveBoardRequest,
 } from "./boardEngine.js";
 import { processMidSeasonReviewCron } from "./boardMidSeason.js";
-import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+import { createFakeSupabase, parseSelectColumns } from "./testUtils/fakeSupabase.js";
 
 // =====================================================================
 // applyTradeoffTighteningToGoals — pure function (F3)
@@ -680,17 +680,17 @@ test("processMidSeasonReviewCron: relative_rank taeller pulje-baseret (league_di
       {
         team_id: "team-1", season_id: "season-5", division: 3,
         league_division_id: 101, rank_in_division: 2,
-        total_points: 100, stage_wins: 0, gc_wins: 0, prize_money: 0,
+        total_points: 100, stage_wins: 0, gc_wins: 0,
       },
       {
         team_id: "team-2", season_id: "season-5", division: 3,
         league_division_id: 101, rank_in_division: 1,
-        total_points: 200, stage_wins: 0, gc_wins: 0, prize_money: 0,
+        total_points: 200, stage_wins: 0, gc_wins: 0,
       },
       {
         team_id: "team-3", season_id: "season-5", division: 3,
         league_division_id: 202, rank_in_division: 1,
-        total_points: 150, stage_wins: 0, gc_wins: 0, prize_money: 0,
+        total_points: 150, stage_wins: 0, gc_wins: 0,
       },
     ],
     transfer_windows: [{
@@ -764,7 +764,6 @@ function makeMidSeasonState({
       total_points: 200,
       stage_wins: 1,
       gc_wins: 0,
-      prize_money: 50000,
     }],
     transfer_windows: [{
       id: "tw-1",
@@ -778,6 +777,38 @@ function makeMidSeasonState({
 // #2598 · makeFakeSupabase — tynd wrapper om den delte, projektion-aware
 // fake (backend/lib/testUtils/fakeSupabase.js). Erstatter den tidligere
 // lokale, ikke-projicerende variant (samme pattern kopieret i boardEngine.test.js m.fl.).
+//
+// #3572 · Forward-guard: fake'en er projektion-aware, men ikke skema-aware —
+// en select på en kolonne der ikke findes i prod gav bare `undefined` i test og
+// en PostgREST-fejl i prod (`column season_standings.prize_money does not exist`,
+// CYCLINGZONE-4D). Wrapperen validerer nu season_standings-selects mod det
+// faktiske prod-skema, så samme klasse af fejl fanges lokalt.
+//
+// Kilde: information_schema.columns @ prod, verificeret 2026-08-09.
+// Udvid listen når en migration tilføjer kolonner til season_standings.
+const SEASON_STANDINGS_COLUMNS = new Set([
+  "id", "season_id", "team_id", "division", "total_points", "races_completed",
+  "stage_wins", "gc_wins", "updated_at", "rank_in_division", "penalty_points",
+  "league_division_id",
+]);
+
 function makeFakeSupabase(state) {
-  return createFakeSupabase(state);
+  const fake = createFakeSupabase(state);
+  const realFrom = fake.from.bind(fake);
+  fake.from = (table) => {
+    const builder = realFrom(table);
+    if (table !== "season_standings") return builder;
+    const realSelect = builder.select.bind(builder);
+    builder.select = (columns) => {
+      for (const col of parseSelectColumns(columns) || []) {
+        assert.ok(
+          SEASON_STANDINGS_COLUMNS.has(col),
+          `season_standings har ingen kolonne "${col}" i prod — selecten vil fejle i PostgREST`
+        );
+      }
+      return realSelect(columns);
+    };
+    return builder;
+  };
+  return fake;
 }

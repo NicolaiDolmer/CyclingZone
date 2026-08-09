@@ -81,7 +81,12 @@ export async function processMidSeasonReviewCron({
   // 3. Batch-load standings for sæsonen — bruges af evaluateGoalProgress + relative_rank
   const { data: standingsAll, error: standingsError } = await supabase
     .from("season_standings")
-    .select("team_id, division, league_division_id, rank_in_division, total_points, stage_wins, gc_wins, prize_money")
+    // NB: `prize_money` findes IKKE på season_standings (præmiepenge ligger på
+    // race_results). Kolonnen stod i selecten fra dag 1, men cronen nåede aldrig
+    // at køre i prod før #3502-fixet — så PostgREST-fejlen dukkede først op 9/8.
+    // Feltet blev aldrig læst nedstrøms. Forward-guard: kolonne-assert i
+    // boardMidSeason.test.js (makeFakeSupabase).
+    .select("team_id, division, league_division_id, rank_in_division, total_points, stage_wins, gc_wins")
     .eq("season_id", activeSeason.id);
   if (standingsError) throw standingsError;
 

@@ -22,6 +22,19 @@ export const PATCHES = [
         }
       },
       {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Your board now checks in halfway through the season",
+          "body": "The mid-season review, where the board reacts if you are falling behind on your goals, never ran in production: it queried a column that does not exist, so the job failed every time it started. The query is fixed, and the review now runs from the midpoint of the season onwards."
+        },
+        "da": {
+          "title": "Din bestyrelse melder sig nu midtvejs i sæsonen",
+          "body": "Midtvejs-gennemgangen, hvor bestyrelsen reagerer hvis du er bagud på dine mål, har aldrig kørt i produktion: den spurgte efter en kolonne der ikke findes, så jobbet fejlede hver gang det startede. Forespørgslen er rettet, og gennemgangen kører nu fra midten af sæsonen og frem."
+        }
+      },
+      {
         "category": "improved",
         "audience": "player",
         "topic": "Training",
