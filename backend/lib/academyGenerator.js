@@ -174,7 +174,22 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   potStartLift: 0.5,
   // Per-rytter "start-held": ÉT seeded gaussian-træk der løfter/sænker HELE profilen, så
   // potentiale-tiers overlapper. Store talenter kan være langsomme startere; små kan starte lidt over middel.
-  startLuckSd: 1.2,
+  //
+  // 1,2 → 0,6 den 2026-08-09 (ejer-valg, #3561). #2064 §2a's medianer var overholdt
+  // (16-17 lå på kerne 1 / bedste 4 mod aftalens 3/6 — altså UNDER), men HALEN var det
+  // ikke: 7,1 % af alle 16-17-årige blev født med bedste anlæg 12, hvilket er præcis
+  // det niveau §2a sætter for 20-21-årige VED GRADUERING. To tredjedele af dem
+  // (102 af 154) havde potentiale ≤ 2 — altså ikke talenter, bare held i trækket.
+  // De sprang dermed fem års udvikling over.
+  //
+  // Årsagen er skalaen: hele ungdomsbåndet er 4 rå point bredt (50-54 ⇒ evne 1-12), så
+  // et startheld med spredning 1,2 rækker fra bunden til toppen af båndet. §2a's
+  // hensigt ("små kan starte LIDT over middel") kræver at spredningen er lille i
+  // forhold til båndet. 0,6 halverer andelen på graduerings-niveau til 3,7 % uden at
+  // flytte medianen og uden at svække talent-signalet (pot-1 median 4 vs pot-6 7,
+  // uændret). Mål før du ændrer: scripts/dev/fitYouthStartLuck3561.mjs +
+  // scripts/dev/checkYouthBand2064.mjs (sidstnævnte verificerer mod §2a-tabellen).
+  startLuckSd: 0.6,
   // Alders-skalering ("spol kurven frem" til faktisk alder).
   statPerYearOver16: 1.4,
   // #3458 fase 2 — empirisk tunet mod G1-G4 via simArchetypeGeneration3458.js (se

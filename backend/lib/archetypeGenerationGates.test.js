@@ -65,6 +65,13 @@ const G2_REGRESSION_MEDIAN_FLOOR = 1;
 const G2_MAX_AGE = 18;
 // Ungdomsbånd (#2064-ankre): afledt top mætter ~12; loft med luft til seed-varians.
 const YOUTH_BAND_MAX_PHYSICAL_ABILITY = 15;
+// G7 (ejer-valg 9/8, #3561): hvor stor en andel af de 16-17-årige må fødes på
+// GRADUERINGS-niveau (evne 12 = det §2a sætter for 20-21-årige)? Medianerne alene
+// fangede ikke dette: koden lå på kerne 1 / bedste 4 mod aftalens 3/6 — altså under —
+// mens 7,1 % af kuldet blev født i toppen af hele båndet, to tredjedele af dem med
+// potentiale ≤ 2. De sprang fem års udvikling over. Målt efter startLuckSd 1,2 → 0,6: 3,7 %.
+const G7_MAX_PCT_BORN_AT_GRADUATION_LEVEL = 5;
+const GRADUATION_LEVEL_ABILITY = 12;
 
 function runCohort(n, seed) {
   const rng = makeRng(seed);
@@ -177,6 +184,28 @@ test(`G6-invariant: ungdomsbånd — ingen afledt fysisk evne over ${YOUTH_BAND_
   assert.ok(
     værst.evne <= YOUTH_BAND_MAX_PHYSICAL_ABILITY,
     `højeste afledte fysiske evne ${værst.evne} (${værst.ability}, pot ${værst.pot}) over ungdomsbåndets ${YOUTH_BAND_MAX_PHYSICAL_ABILITY} — se #3561`
+  );
+});
+
+test(`G7-invariant: højst ${G7_MAX_PCT_BORN_AT_GRADUATION_LEVEL} % af 16-17-årige fødes på graduerings-niveau`, () => {
+  // Medianen kan ligge pænt under aftalen mens HALEN er helt gal — det var præcis
+  // tilstanden 9/8. Denne gate måler fordelingens top, ikke dens midte.
+  const rng = makeRng(SEED + 7);
+  const candidates = generateAcademyCandidates({
+    rng, referenceYear: REFERENCE_YEAR, existingNames: new Set(), countOverride: 3000,
+  });
+  const unge = candidates.filter((c) => REFERENCE_YEAR - Number(String(c.rider.birthdate).slice(0, 4)) <= 17);
+  let iToppen = 0;
+  for (const c of unge) {
+    const riderRow = { id: "g7", ...c.rider };
+    const abilities = deriveAbilities(seedPhysiologyFromLegacy(riderRow), riderRow);
+    if (Math.max(...PHYSICAL_ABILITIES.map((a) => Number(abilities[a]) || 0)) >= GRADUATION_LEVEL_ABILITY) iToppen++;
+  }
+  const pct = (iToppen / Math.max(1, unge.length)) * 100;
+  assert.ok(
+    pct <= G7_MAX_PCT_BORN_AT_GRADUATION_LEVEL,
+    `${pct.toFixed(1)} % af de 16-17-årige (${iToppen}/${unge.length}) fødes med evne ≥ ${GRADUATION_LEVEL_ABILITY} — ` +
+    `de springer fem års udvikling over. Sænk YOUTH_GEN_CONFIG.startLuckSd; se #3561.`
   );
 });
 
