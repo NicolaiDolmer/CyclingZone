@@ -964,6 +964,10 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
   // med den sande potentiale, men kun det færdige TAL forlader serveren.)
   const riderPotentiale = data.potentiale;
   if (!viewerIsAdmin) delete data.potentiale;
+  // #3570: archetype_draw (det trukne anlæg, fase 2) er samme oracle-klasse som
+  // potentiale — forlader ALDRIG serveren for ikke-admins (API'et kører
+  // service_role og omgår kolonne-grants, så maskeringen SKAL ske her).
+  if (!viewerIsAdmin) delete data.archetype_draw;
 
   // #1101/#2594: vedhæft den live-beregnede v4 base_value som PREVIEW (beta-chip).
   // null hvis model mangler eller rytter ingen abilities/alder har.
@@ -13922,6 +13926,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       .map((r) => {
         const safe = { ...r };
         delete safe.potentiale;
+        delete safe.archetype_draw; // #3570: samme skjulte-oracle-klasse som potentiale
         return safe;
       })
       .sort((a, b) => String(b.birthdate ?? "").localeCompare(String(a.birthdate ?? "")));
