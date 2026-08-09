@@ -105,3 +105,7 @@ backend/lib/riderProductionSample.json
 
 # Cutover-rollback-artefakter (prod-data: balances + restore-SQL) — lokale, regenererbare
 backend/scripts/snapshots/
+
+# #3564 harness: lokale daterede prod-snapshots (committes aldrig)
+backend/scripts/dev/.snapshots-*/
+backend/scripts/dev/gates-matrix-3564.json
