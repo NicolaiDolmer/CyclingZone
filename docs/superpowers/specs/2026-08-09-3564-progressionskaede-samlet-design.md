@@ -76,8 +76,9 @@ Principper bag tallene:
 Rækkefølge fra #3564 (ejer-godkendt): potentiale og lofter først, så vækstkurven, startniveauet til ALLERSIDST.
 
 **Trin 1 — potentiale + lofter** (#2454 · #3503 · beslutning 1-3)
-Indhold: evt. 1-99-migration + estimat-generator; loft-interpolation; fix af `max(tapered,current)`-udvandingen (#3503, ejer-aftalt "A nu, B senere", efter 23/8-cutover); I1 udvides til ALLE ryttere og alle 4 generator-stier (i dag kun academy — #3512's stier har ingen niveau-invarianter).
-Porte: forhold = G3 arketype-bevarelse ≥90 % pr. potentiale-bånd (skal GENMÅLES post-9/8 — de encifrede tal ved pot 5-6 er fra før rekalibreringen) · niveau = I1 100 % + p99(caps) ≤ loft pr. tier · hale = fordeling af caps pr. tier.
+Indhold: 1-99-migration + skæv estimat-generator (bygges SAMMEN, jf. beslutning 1); loft-interpolation; fix af `max(tapered,current)`-udvandingen (#3503, ejer-aftalt "A nu, B senere", efter 23/8-cutover); I1 udvides til ALLE ryttere og alle 4 generator-stier (i dag kun academy — #3512's stier har ingen niveau-invarianter).
+**Udligning af potentiale-overskuddet (ejer-krav 9/8, del af migrationen):** beholdningen har 11,7 % pot 5-6 mod planens ~1,4 % (målt 9/8: 248 pot-6, heraf 224 ejede + 713 pot-5; før-19/7-kohorten 15,2 %, efter-kohorten 8,7 % — andre generator-stier bruger ikke #2064-geometrien). Migrationen 1-6→1-99 udføres derfor som **rang-bevarende kvantil-remap** mod målfordelingen (geometrien oversat til 1-99), stratificeret pr. aldersgruppe: ingen rytter overhaler nogen, men fordelingens form presses ned på planen. Samme kørsel: scouting-estimater re-genereres mod de nye tal. Krav: snapshot FØR + dry-run-diff med absolutte deltaer (ejede vs. frie, pr. manager) forelægges ejeren før apply — 90 % af pot-6 er ejede, så dette er en manager-vendt mutation. Følgevirkning: værdien falder for nedjusterede ryttere (v4 er potentiale-monoton) — det er tilsigtet, men skal med i dry-run-diffen. Forward-guard: alle generator-stier (ikke kun akademiet) SKAL trække fra samme mål-geometri fremover + stock-gate på fordelingen.
+Porte: forhold = G3 arketype-bevarelse ≥90 % pr. potentiale-bånd (skal GENMÅLES post-9/8 — de encifrede tal ved pot 5-6 er fra før rekalibreringen) · niveau = I1 100 % + p99(caps) ≤ loft pr. tier + post-remap-fordeling inden for ±2 pp af mål pr. aldersgruppe · hale = hårdt loft på antal pot ≥90 (1-99-skala) pr. kuld OG i beholdningen.
 
 **Trin 2 — vækstkurven** (#2698 · træningsscore · udviklingshastighed · #3459-kobling · beslutning 4-5)
 Indhold: kurveform mellem skelettets ankre; `tickResult.score` (logges allerede pr. rytter/dag i `training_day_runs.report`) som byggesten for en evt. spiller-vendt træningsscore; race-day-motorens devMult 1,15 indregnes.
@@ -109,7 +110,7 @@ Porte (køres FØR hvert sweep-flip og hver refit): forhold = holdout-MAE bedre 
 5. **Træningsscore:** hvad er den en score FOR (spiller-feedback? AI-styring? løn-input?), og hvad påvirker den? `tickResult.score` er byggestenen.
 
 **Beslutningslog:** (udfyldes løbende)
-- [ ] 1: …
+- [x] 1 (ejer 9/8): **A-pakken** — eksakt 1-99 i DB, migration + skæv estimat-generator bygges sammen, #2798-fix er bindende forudsætning før migrationen rulles. **Tillæg (ejer 9/8):** potentiale-overskuddet udlignes ved migrationen — der er lavet for mange høj-potentiale-ryttere ift. planen; se kvantil-remap i §6 trin 1.
 - [ ] 2: …
 - [ ] 3: …
 - [ ] 4: …
