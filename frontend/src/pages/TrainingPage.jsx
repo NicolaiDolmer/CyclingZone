@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
+import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
@@ -235,9 +236,12 @@ export default function TrainingPage() {
           .eq("user_id", user.id)
           .single();
         if (!myTeam) return;
+        // #3300: is_academy medtages read-only i samme select (ingen migration,
+        // intet nyt kald) — feltet findes allerede på riders, kun mangel på
+        // visning på trænings-siden.
         const { data } = await supabase
           .from("riders")
-          .select("id, firstname, lastname, primary_type, secondary_type")
+          .select("id, firstname, lastname, primary_type, secondary_type, is_academy")
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders(data || []);
@@ -368,7 +372,9 @@ export default function TrainingPage() {
   // --- Gruppering + multi-select (#1480) ---
   // Antal kolonner i roster-tabellen (select + type + 7 oprindelige) — bruges til
   // colSpan på gruppe-header-rækker.
-  const ROSTER_COLS = 9;
+  // #3300-rework: +1 kolonne (individuel ugeplan-knap flyttet ud af navne-cellen
+  // og ind i sin egen kolonne, jf. ejer-feedback).
+  const ROSTER_COLS = 10;
 
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
@@ -490,16 +496,6 @@ export default function TrainingPage() {
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
               {rider.firstname} {rider.lastname}
             </RiderLink>
-            {/* #1895 PR 2: markering for ryttere med egen ugeplan-override, så man
-                kan se hvem der kører sit eget program uden at åbne panelet. */}
-            {hasOwnWeekPlan && (
-              <span
-                className="inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
-                title={t("individualWeekPlanBadgeTitle")}
-              >
-                {t("individualWeekPlanBadge")}
-              </span>
-            )}
           </div>
           {/* #3045: portræt-kolonnekontrakt — Type + Form + Træthed foldes ind
               i navne-underlinjen ≤640px (samme "DataTable fold"-mønster som
@@ -523,13 +519,6 @@ export default function TrainingPage() {
               `${t("fatigue")} ${cond.fatigue ?? "—"}`,
             ].filter(Boolean).join(" · ")}
           </div>
-          <button
-            type="button"
-            onClick={() => toggleRiderWeekPlan(rider.id)}
-            className="mt-0.5 text-3xs text-cz-3 hover:text-cz-accent underline decoration-dotted"
-          >
-            {isExpanded ? t("individualWeekPlanToggleClose") : t("individualWeekPlanToggleOpen")}
-          </button>
         </td>
 
         {/* Ryttertype */}
@@ -713,9 +702,17 @@ export default function TrainingPage() {
           <MiniBar value={cond.fatigue} color="bg-cz-warning" label={t("fatigue")} />
         </td>
 
-        {/* Status: skadet / høj risiko */}
+        {/* Status: akademi + skadet / høj risiko. Ejer-feedback (rework af #3300):
+            akademi-badgen skal stå i sin egen kolonne "på samme måde som badges
+            andre steder" — samme RiderBadges-recipe og samme Status-kolonne som
+            TeamPage/TeamProfilePage bundler badges i (injured/academy/age/risk/
+            contract alt sammen under ÉN "Status"-header), i stedet for at ligge
+            inline i navne-cellen. Ingen `hidden sm:table-cell` — TeamPages
+            badges-kolonne foldes heller ikke væk i portræt (#3194), den scroller
+            vandret som resten af tabellen. */}
         <td className={tdClass({})}>
           <div className="flex flex-wrap gap-1">
+            <RiderBadges badges={[rider.is_academy && "academy"]} />
             {injured && (
               <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
                 {daysLeft === 1
@@ -726,6 +723,32 @@ export default function TrainingPage() {
             {highRisk && (
               <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
                 {t("injuryRisk")}
+              </span>
+            )}
+          </div>
+        </td>
+
+        {/* Individuel ugeplan — egen kolonne (rework af #3300, ejer-feedback: knappen
+            der åbner rytterens egen ugeplan skal ikke ligge i navne-cellen, men have
+            sin egen kolonne, ligesom akademi-badgen ovenfor). Ingen `hidden sm:table-
+            cell` — skal virke på mobil ligesom badges-kolonnen. */}
+        <td className={tdClass({})}>
+          <div className="flex flex-col items-start gap-1">
+            <button
+              type="button"
+              onClick={() => toggleRiderWeekPlan(rider.id)}
+              className="text-3xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
+            >
+              {isExpanded ? t("individualWeekPlanToggleClose") : t("individualWeekPlanToggleOpen")}
+            </button>
+            {/* #1895 PR 2: markering for ryttere med egen ugeplan-override, så man
+                kan se hvem der kører sit eget program uden at åbne panelet. */}
+            {hasOwnWeekPlan && (
+              <span
+                className="inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
+                title={t("individualWeekPlanBadgeTitle")}
+              >
+                {t("individualWeekPlanBadge")}
               </span>
             )}
           </div>
@@ -1119,6 +1142,9 @@ export default function TrainingPage() {
                         {t("fatigue")}
                       </SortTh>
                       <th className={thClass({})}>{t("colStatus")}</th>
+                      {/* #3300-rework: individuel ugeplan-knap i egen kolonne (ejer-
+                          feedback), samme mønster som badges-kolonnen ovenfor. */}
+                      <th className={thClass({})}>{t("colWeekPlan")}</th>
                     </tr>
                   </thead>
                   <tbody>
