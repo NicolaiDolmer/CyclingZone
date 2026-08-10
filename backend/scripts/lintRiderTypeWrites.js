@@ -91,6 +91,12 @@ export const TYPE_WRITE_FILES = Object.freeze({
   "routes/api.js":
     "Læser og videresender riders.primary_type i API-svar (fx transfer-listen). " +
     "Ingen af rutens riders-writes rører type-kolonnerne.",
+  "scripts/dev/repair3570Apply.mjs":
+    "#3570-reparationen: engangs-frysningen af rytter-identiteten. Skriver " +
+    "archetype_draw + primary_type + secondary_type i ÉN operation, hvor typen ER " +
+    "det frosne anlæg — samme værdi resolveRiderTypes returnerer for det draw. " +
+    "Klassifikatoren kaldes ikke; post-verify kontrollerer eksplicit at " +
+    "resolveRiderTypes(draw, caps, baseline).primary matcher den skrevne type.",
   "scripts/dev/repairYouthOutliers2699.mjs":
     "#2699-nedjusteringen: LÆSER primary_type for at bruge den som anlæg og kalder " +
     "resolveRiderTypes for at vise den resulterende type i dry-run-rapporten. " +

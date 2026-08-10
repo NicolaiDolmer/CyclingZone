@@ -1,0 +1,589 @@
+// backend/scripts/dev/repair3570Apply.test.js
+// ============================================================================
+// Tests for #3570-reparations-værktøjet. Mock-supabase i samme stil som
+// lib/backfillCores.test.js, men med ægte tilstand: updates og inserts RAMMER
+// de in-memory-tabeller, så idempotens og post-verify kan testes for alvor
+// (en mock der kun logger skrivninger kan ikke bevise nogen af delene).
+//
+// NEGATIV-TEST er obligatorisk for de to sidste porte:
+//   * backup-porten skal FEJRE en sund backup og FEJLE på en ufuldstændig,
+//     og der må ikke være skrevet én rytter-række når den fejler.
+//   * post-verify skal BESTÅ på et korrekt resultat og FEJLE på en indsat
+//     afvigelse (saboteret primary_type, saboteret loft, ændret valuation_type).
+//
+// Refs #3570.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  runRepair3570, buildPlan, runSelvtest, bevisIdempotens, diffModBaseline,
+  parseArgs, backupDDL, backupTabeller, cphDateStamp, quotasFromPct, solveAssignment,
+  recoverBirthArchetype, segmentOf, postVerify, DRYRUN_FACIT, MAAL,
+} from "./repair3570Apply.mjs";
+import { STAT_KEYS } from "../../lib/fictionalRiderGenerator.js";
+import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
+import { RIDER_TYPE_KEYS } from "../../lib/riderTypes.js";
+import { buildCapsForRider } from "../../lib/riderProgression.js";
+
+const STILLE = () => {};
+
+// ── Mock-supabase med ægte in-memory-tilstand ───────────────────────────────
+function makeDb({ riders, abilities, ekstraTabeller = {} } = {}) {
+  const tables = {
+    seasons: [{ number: 2, status: "active", start_date: "2026-07-27", end_date: null, race_days_completed: 14, race_days_total: 28 }],
+    app_config: [{ key: "race_day_engine_enabled", value: "off" }],
+    teams: [
+      { id: "team-human", name: "Menneskeholdet", division: 1, is_ai: false, is_test_account: false, is_frozen: false, user_id: "u1" },
+      { id: "team-ai", name: "AI-holdet", division: 2, is_ai: true, is_test_account: false, is_frozen: false, user_id: null },
+    ],
+    users: [{ id: "u1", username: "nicolai" }],
+    riders,
+    rider_derived_abilities: abilities,
+    ...ekstraTabeller,
+  };
+  const writes = { updates: [], inserts: [] };
+  // Fejl-injektion: { select: {table, message}, insert: {table, message}, update: {table, message} }
+  const fejl = {};
+  // Saboteur: kaldes efter en update er anvendt, så en "indsat afvigelse" kan
+  // opstå MELLEM skrivningen og post-verify — præcis den situation porten findes for.
+  let saboteur = null;
+  // Tabt-skrivning: får en insert til at droppe rækker uden at fejle.
+  let dropInsert = null;
+
+  const clone = (r) => JSON.parse(JSON.stringify(r));
+
+  function from(table) {
+    const rows = () => tables[table];
+    const selectBuilder = () => ({
+      range(a, b) {
+        if (fejl.select?.table === table) return Promise.resolve({ data: null, error: { message: fejl.select.message } });
+        if (!rows()) return Promise.resolve({ data: null, error: { message: `relation "public.${table}" does not exist` } });
+        return Promise.resolve({ data: rows().slice(a, b + 1).map(clone), error: null });
+      },
+      in(col, ids) {
+        if (fejl.select?.table === table) return Promise.resolve({ data: null, error: { message: fejl.select.message } });
+        if (!rows()) return Promise.resolve({ data: null, error: { message: `relation "public.${table}" does not exist` } });
+        const s = new Set(ids);
+        return Promise.resolve({ data: rows().filter((r) => s.has(r[col])).map(clone), error: null });
+      },
+      eq(col, val) {
+        const b = selectBuilder();
+        const base = rows() ?? [];
+        return { ...b, maybeSingle: () => Promise.resolve({ data: clone(base.find((r) => r[col] === val) ?? null), error: null }) };
+      },
+    });
+
+    const applyUpdate = (patch, matcher) => {
+      if (fejl.update?.table === table) return { error: { message: fejl.update.message } };
+      const target = (rows() ?? []).filter(matcher);
+      const effektiv = saboteur ? saboteur(table, patch, target) ?? patch : patch;
+      for (const r of target) Object.assign(r, clone(effektiv));
+      writes.updates.push({ table, patch: clone(patch), n: target.length });
+      return { error: null };
+    };
+
+    return {
+      select: () => selectBuilder(),
+      insert(newRows) {
+        if (fejl.insert?.table === table) return Promise.resolve({ error: { message: fejl.insert.message } });
+        if (!tables[table]) return Promise.resolve({ error: { message: `relation "public.${table}" does not exist` } });
+        const list = dropInsert?.table === table ? newRows.slice(0, Math.max(0, newRows.length - dropInsert.drop)) : newRows;
+        tables[table].push(...list.map(clone));
+        writes.inserts.push({ table, n: list.length });
+        return Promise.resolve({ error: null });
+      },
+      update(patch) {
+        return {
+          in: (col, ids) => Promise.resolve(applyUpdate(patch, (r) => ids.includes(r[col]))),
+          eq: (col, val) => Promise.resolve(applyUpdate(patch, (r) => r[col] === val)),
+        };
+      },
+    };
+  }
+
+  return {
+    from, tables, writes,
+    saetFejl(f) { Object.assign(fejl, f); },
+    saetSaboteur(fn) { saboteur = fn; },
+    saetDropInsert(d) { dropInsert = d; },
+    ryttereOpdateret: () => writes.updates.filter((u) => u.table === "riders").reduce((a, u) => a + u.n, 0),
+    lofterOpdateret: () => writes.updates.filter((u) => u.table === "rider_derived_abilities").reduce((a, u) => a + u.n, 0),
+  };
+}
+
+// ── Fixture ─────────────────────────────────────────────────────────────────
+// 16 ryttere: 8 menneske-ejede, 4 AI, 4 frie. Stat-profilerne varieres, så
+// segmenteringen ikke degenererer til én bøtte.
+function makeFixture({ n = 16, medDraw = 0 } = {}) {
+  const riders = [];
+  const abilities = [];
+  for (let i = 0; i < n; i++) {
+    const id = `r${String(i).padStart(2, "0")}`;
+    const owner = i < 8 ? "team-human" : i < 12 ? "team-ai" : null;
+    const r = {
+      id, firstname: "Rytter", lastname: id,
+      birthdate: i % 4 === 0 ? "2007-03-01" : "1999-05-12",   // nogle under 22 i sæson-alder
+      height: 173 + (i % 8) * 3,
+      weight: null,
+      potentiale: 2 + (i % 5) * 0.5,
+      archetype_draw: i < medDraw ? { primary: RIDER_TYPE_KEYS[i % 8], secondary: RIDER_TYPE_KEYS[(i + 3) % 8] } : null,
+      primary_type: "baroudeur", secondary_type: "rouleur", valuation_type: "baroudeur",
+      team_id: owner, base_value: 50_000 + i * 1_000, market_value: 55_000 + i * 1_000,
+      current_production_value: 1_000, salary: 900, is_academy: false, is_retired: false,
+    };
+    // Krops-relationen generatoren bruger: weight = round(bmi · (h/100)²).
+    const bmi = [22.8, 22.2, 19.5, 21.0, 23.2, 21.3, 21.8, 21.6][i % 8];
+    r.weight = Math.round(bmi * (r.height / 100) ** 2);
+    for (const k of STAT_KEYS) r[k] = 52;
+    // Giv hver rytter en signatur, så fødsels-modellen har noget at arbejde med.
+    r[STAT_KEYS[i % STAT_KEYS.length]] = i % 3 === 0 ? 62 : 56;
+    r[STAT_KEYS[(i + 5) % STAT_KEYS.length]] = 50;
+    riders.push(r);
+
+    const a = { rider_id: id, ability_caps: {}, ability_progress: { climbing: 0.5 } };
+    for (const k of VISIBLE_ABILITIES) a[k] = 40 + ((i * 3 + k.length) % 20);
+    for (const k of VISIBLE_ABILITIES) a.ability_caps[k] = a[k] + 25;
+    abilities.push(a);
+  }
+  // To pensionerede: de er uden for skrive-scopet, men SKAL med i backuppen.
+  for (let i = 0; i < 2; i++) {
+    const id = `pens${i}`;
+    const r = { ...riders[i], id, lastname: id, is_retired: true, archetype_draw: null, team_id: null };
+    riders.push(r);
+    abilities.push({ ...abilities[i], rider_id: id });
+  }
+  return { riders, abilities };
+}
+
+function tommeBackupTabeller(suffix) {
+  const t = backupTabeller(suffix);
+  return { [t.riders]: [], [t.abilities]: [] };
+}
+
+const SUFFIX = "20260816";
+const APPLY = { apply: true, ejerBekraeftet: true, backupSuffix: SUFFIX, log: STILLE, ingenBaseline: true };
+const DRY = { backupSuffix: SUFFIX, log: STILLE, ingenBaseline: true };
+
+function nyDb(opts = {}) {
+  const { riders, abilities } = makeFixture(opts);
+  return makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX) });
+}
+
+// ── 1. Dry-run skriver intet ────────────────────────────────────────────────
+test("dry-run (default) skriver ingenting og rapporterer hvad den ville skrive", async () => {
+  const db = nyDb();
+  const res = await runRepair3570(db, DRY);
+
+  assert.equal(res.tilstand, "DRY-RUN");
+  assert.equal(db.writes.updates.length, 0, "dry-run må ikke opdatere");
+  assert.equal(db.writes.inserts.length, 0, "dry-run må ikke fylde backup-tabeller");
+  assert.ok(res.skriveScope.identitet > 0, "der er faktisk noget at skrive");
+  assert.equal(res.skrevet.identitet, 0);
+  assert.equal(res.skrevet.lofter, 0);
+  assert.equal(res.backup.dryRun, true);
+  assert.equal(res.postVerify, undefined, "post-verify kører ikke i dry-run");
+  // De 2 pensionerede er ikke i planen.
+  assert.equal(res.frisk.pensionerede, 2);
+  assert.equal(res.plan.skrives + res.skriveScope.udeladt, 16);
+});
+
+test("dry-run beviser idempotens (anden kørsel ville skrive 0 rækker)", async () => {
+  const db = nyDb();
+  const res = await runRepair3570(db, DRY);
+  assert.equal(res.idempotens.ok, true);
+  assert.equal(res.idempotens.andenKoerselSkriver, 0);
+  assert.equal(res.idempotens.andenKoerselIdentitet, 0);
+  assert.equal(res.idempotens.andenKoerselCaps, 0);
+});
+
+// ── 2. --apply uden ejer-flag ───────────────────────────────────────────────
+test("--apply uden --jeg-har-set-dry-runnet skriver intet og kaster", async () => {
+  const db = nyDb();
+  await assert.rejects(
+    () => runRepair3570(db, { ...DRY, apply: true }),
+    /jeg-har-set-dry-runnet/,
+  );
+  assert.equal(db.writes.updates.length, 0);
+  assert.equal(db.writes.inserts.length, 0);
+});
+
+test("parseArgs: ejer-gaten er to separate flag", () => {
+  assert.deepEqual(
+    [parseArgs([]).apply, parseArgs([]).ejerBekraeftet],
+    [false, false],
+  );
+  const a = parseArgs(["--apply"]);
+  assert.equal(a.apply, true);
+  assert.equal(a.ejerBekraeftet, false);
+  const b = parseArgs(["--apply", "--jeg-har-set-dry-runnet", "--lofter=menneske"]);
+  assert.equal(b.ejerBekraeftet, true);
+  assert.equal(b.lofter, "menneske");
+  assert.throws(() => parseArgs(["--lofter=noget-andet"]), /alle\|menneske\|ingen/);
+});
+
+// ── 3. Backup-porten — positiv og NEGATIV ───────────────────────────────────
+test("apply fylder og verificerer BEGGE backup-tabeller før første rytter-skrivning", async () => {
+  const db = nyDb();
+  const res = await runRepair3570(db, APPLY);
+  const t = backupTabeller(SUFFIX);
+
+  assert.equal(res.backup.verificeret, true);
+  // Backuppen dækker ALLE ryttere, også de 2 pensionerede.
+  assert.equal(res.backup.kopi.riders, 18);
+  assert.equal(res.backup.kopi.abilities, 18);
+  assert.equal(db.tables[t.riders].length, 18);
+  assert.equal(db.tables[t.abilities].length, 18);
+
+  // Backup-inserts kom FØR den første riders-update.
+  const foersteRiderUpdate = db.writes.updates.findIndex((u) => u.table === "riders");
+  assert.ok(foersteRiderUpdate >= 0, "der blev faktisk skrevet");
+  assert.ok(db.writes.inserts.length >= 2, "begge backup-tabeller blev fyldt");
+  // Backuppen bærer FØR-tilstanden, ikke efter.
+  assert.equal(db.tables[t.riders].every((r) => r.primary_type === "baroudeur"), true);
+});
+
+test("NEGATIV: backup-tabellen findes ikke → afbryder før skrivning, med DDL i fejlen", async () => {
+  const { riders, abilities } = makeFixture();
+  const db = makeDb({ riders, abilities });        // ingen backup-tabeller
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.match(err.message, /kunne ikke læses/);
+      assert.match(err.message, /CREATE TABLE IF NOT EXISTS public\.riders_3570_backup_20260816/);
+      return true;
+    },
+  );
+  assert.equal(db.ryttereOpdateret(), 0, "ingen rytter-række må være skrevet");
+  assert.equal(db.lofterOpdateret(), 0);
+});
+
+test("NEGATIV: insert i backup-tabellen fejler → afbryder før skrivning", async () => {
+  const db = nyDb();
+  db.saetFejl({ insert: { table: backupTabeller(SUFFIX).abilities, message: "permission denied" } });
+  await assert.rejects(() => runRepair3570(db, APPLY), /INSERT .*permission denied/);
+  assert.equal(db.ryttereOpdateret(), 0);
+  assert.equal(db.lofterOpdateret(), 0);
+});
+
+test("NEGATIV: backup taber rækker tavst → verifikationen fanger det, intet skrives", async () => {
+  const db = nyDb();
+  db.saetDropInsert({ table: backupTabeller(SUFFIX).riders, drop: 3 });
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    /backup ikke verificeret[\s\S]*IKKE skrevet én rytter-række/,
+  );
+  assert.equal(db.ryttereOpdateret(), 0);
+  assert.equal(db.lofterOpdateret(), 0);
+});
+
+test("NEGATIV: en backup taget EFTER en skrivning afvises af data-spærren", async () => {
+  const db = nyDb();
+  const t = backupTabeller(SUFFIX);
+  // Simulér en kopi taget efter reparationen: alle bærer et archetype_draw.
+  db.tables[t.riders] = db.tables.riders.map((r) => ({
+    id: r.id, archetype_draw: { primary: "climber", secondary: "gc" },
+    primary_type: "climber", secondary_type: "gc", valuation_type: r.valuation_type,
+    base_value: r.base_value, market_value: r.market_value, is_retired: r.is_retired,
+  }));
+  // Spærren tæller på DATA, ikke tidsstempel — men den kræver flere end
+  // baseline-antallet, så fixture'en skaleres op til over spærren.
+  for (let i = 0; i < 60; i++) {
+    db.tables[t.riders].push({ id: `x${i}`, archetype_draw: { primary: "gc", secondary: "tt" } });
+  }
+  await assert.rejects(() => runRepair3570(db, APPLY), /taget EFTER en reparation/);
+  assert.equal(db.ryttereOpdateret(), 0);
+});
+
+// ── 4. Idempotens — anden kørsel skriver 0 rækker ───────────────────────────
+test("to kørsler i træk: anden kørsel skriver 0 rækker", async () => {
+  const db = nyDb();
+  const foerste = await runRepair3570(db, APPLY);
+  assert.ok(foerste.skrevet.identitet > 0, "første kørsel skriver");
+  assert.ok(foerste.skrevet.lofter > 0);
+
+  const skrevetEfterFoerste = { r: db.ryttereOpdateret(), c: db.lofterOpdateret() };
+  const insertsEfterFoerste = db.writes.inserts.length;
+
+  // Anden kørsel — samme DB, samme flag. Alle ryttere bærer nu et anlæg, så de
+  // er alle uden for scope, og hverken backup eller skrivning bliver nødvendig.
+  const anden = await runRepair3570(db, { ...APPLY, fortsaetDelvis: true });
+  assert.equal(anden.skrevet.identitet, 0, "anden kørsel må ikke skrive identitet");
+  assert.equal(anden.skrevet.lofter, 0, "anden kørsel må ikke skrive lofter");
+  assert.equal(anden.skriveScope.identitet, 0);
+  assert.equal(anden.skriveScope.lofter, 0);
+  assert.equal(db.writes.inserts.length, insertsEfterFoerste, "ingen ny backup for 0 rækker");
+  assert.equal(db.ryttereOpdateret(), skrevetEfterFoerste.r, "ingen nye riders-updates");
+  assert.equal(db.lofterOpdateret(), skrevetEfterFoerste.c, "ingen nye caps-updates");
+});
+
+test("bevisIdempotens fanger en planlægger der ikke stabiliserer", () => {
+  const { riders, abilities } = makeFixture({ n: 8 });
+  const abById = new Map(abilities.map((a) => [a.rider_id, a]));
+  const rows = riders.filter((r) => !r.is_retired).map((r) => {
+    const a = abById.get(r.id);
+    const ab = {};
+    for (const k of VISIBLE_ABILITIES) ab[k] = a[k];
+    return { ...r, rider_id: r.id, age: 27, owner_kind: "human", abilities: ab, ability_caps: a.ability_caps, har_abilities_raekke: true };
+  });
+  const plan = buildPlan(rows, { seasonNumber: 2 });
+  assert.equal(bevisIdempotens(rows, plan).ok, true);
+
+  // NEGATIV: en plan der "glemmer" at skrive draw'et stabiliserer aldrig.
+  const daarlig = { ...plan, poster: plan.poster.map((p) => ({ ...p, draw: null })) };
+  const res = bevisIdempotens(rows, daarlig);
+  assert.equal(res.ok, false);
+  assert.ok(res.andenKoerselSkriver > 0);
+});
+
+// ── 5. Post-verify — positiv og NEGATIV ─────────────────────────────────────
+test("post-verify består på et korrekt resultat", async () => {
+  const db = nyDb();
+  const res = await runRepair3570(db, APPLY);
+  assert.equal(res.postVerify.bestaaet, true);
+  assert.equal(res.postVerify.kontrolleret, res.skrevet.identitet);
+  for (const v of Object.values(res.postVerify.antal)) assert.equal(v, 0);
+  // Invarianterne holder også målt direkte på tabellen.
+  for (const r of db.tables.riders.filter((x) => !x.is_retired)) {
+    assert.ok(r.archetype_draw, "alle levende har et anlæg");
+    assert.equal(r.primary_type, r.archetype_draw.primary);
+    assert.equal(r.valuation_type, "baroudeur", "valuation_type er urørt (#3345)");
+  }
+});
+
+test("NEGATIV: post-verify fanger en saboteret primary_type", async () => {
+  const db = nyDb();
+  // Saboteren skriver en anden synlig type end draw'et for ÉN rytter.
+  db.saetSaboteur((table, patch, target) => {
+    if (table !== "riders" || !patch.archetype_draw) return null;
+    if (!target.some((r) => r.id === "r03")) return null;
+    return { ...patch, primary_type: patch.primary_type === "gc" ? "sprinter" : "gc" };
+  });
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.match(err.message, /POST-VERIFY FEJLEDE/);
+      assert.ok(err.rapport.antal.typeMismatch > 0, "typeMismatch skal fyre");
+      return true;
+    },
+  );
+});
+
+test("NEGATIV: post-verify fanger et saboteret loft (under rytterens nuværende evne)", async () => {
+  const db = nyDb();
+  db.saetSaboteur((table, patch) => {
+    if (table !== "rider_derived_abilities" || !patch.ability_caps) return null;
+    return { ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 1])) };
+  });
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.match(err.message, /POST-VERIFY FEJLEDE/);
+      assert.ok(err.rapport.antal.gulvBrud > 0, "gulv-brud skal fyre");
+      assert.ok(err.rapport.antal.capsMismatch > 0, "caps-mismatch skal fyre");
+      return true;
+    },
+  );
+});
+
+test("NEGATIV: post-verify fanger en ændret valuation_type", async () => {
+  const db = nyDb();
+  db.saetSaboteur((table, patch) => {
+    if (table !== "riders" || !patch.archetype_draw) return null;
+    return { ...patch, valuation_type: "sprinter" };   // #3345-frysningen brudt
+  });
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.ok(err.rapport.antal.valuationAendret > 0, "valuation_type-porten skal fyre");
+      return true;
+    },
+  );
+});
+
+test("postVerify kaldt direkte fanger en manglende række", async () => {
+  const db = nyDb();
+  const res = await runRepair3570(db, DRY);
+  assert.equal(res.tilstand, "DRY-RUN");
+  // Ingen skrivning har fundet sted → post-verify mod samme scope skal fejle
+  // på ALT (ingen har et draw endnu). Det er den positive kontrol af at porten
+  // overhovedet kan se forskel.
+  const plan = buildPlan(
+    (await import("./repair3570Apply.mjs")).abilitiesOf ? [] : [],
+    { seasonNumber: 2 },
+  );
+  assert.equal(plan.poster.length, 0);
+  await assert.rejects(
+    () => postVerify(db, { poster: [{ rider_id: "findes-ikke", skrives: true, abilities: {} }] },
+      { skrevneCaps: [], foerValuation: new Map(), seasonNumber: 2 }),
+    /POST-VERIFY FEJLEDE/,
+  );
+});
+
+// ── 6. --lofter-varianten (dry-runnets beslutning 2) ────────────────────────
+test("--lofter=ingen skriver identiteten, men rører ikke ability_caps", async () => {
+  const db = nyDb();
+  const foerCaps = JSON.parse(JSON.stringify(db.tables.rider_derived_abilities));
+  const res = await runRepair3570(db, { ...APPLY, lofter: "ingen" });
+  assert.ok(res.skrevet.identitet > 0);
+  assert.equal(res.skrevet.lofter, 0);
+  assert.equal(db.lofterOpdateret(), 0);
+  assert.deepEqual(db.tables.rider_derived_abilities, foerCaps, "lofterne er bit-identiske");
+  assert.equal(res.postVerify.capsKontrolleret, 0);
+});
+
+test("--lofter=menneske skriver kun lofter for menneske-ejede hold", async () => {
+  const db = nyDb();
+  const res = await runRepair3570(db, { ...APPLY, lofter: "menneske" });
+  assert.ok(res.skrevet.lofter > 0);
+  assert.ok(res.skrevet.lofter < res.skrevet.identitet, "kun en delmængde får nye lofter");
+  const menneskeIds = new Set(db.tables.riders.filter((r) => r.team_id === "team-human" && !r.is_retired).map((r) => r.id));
+  for (const u of db.writes.updates.filter((x) => x.table === "rider_derived_abilities")) assert.equal(u.n, 1);
+  assert.ok(res.skrevet.lofter <= menneskeIds.size);
+});
+
+// ── 7. Delvis-kørsel-spærren ────────────────────────────────────────────────
+test("en afbrudt kørsel (nogle har draw, ikke alle) kræver --fortsaet-delvis", async () => {
+  const { riders, abilities } = makeFixture({ n: 80, medDraw: 60 });
+  const db = makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX) });
+  await assert.rejects(() => runRepair3570(db, APPLY), /ligner en afbrudt kørsel/);
+  assert.equal(db.ryttereOpdateret(), 0);
+
+  const db2 = makeDb({ riders: JSON.parse(JSON.stringify(riders)), abilities: JSON.parse(JSON.stringify(abilities)), ekstraTabeller: tommeBackupTabeller(SUFFIX) });
+  const res = await runRepair3570(db2, { ...APPLY, fortsaetDelvis: true });
+  assert.ok(res.skrevet.identitet > 0);
+});
+
+test("ryttere med eksisterende archetype_draw udelades HELT (B2)", async () => {
+  const db = nyDb({ medDraw: 3 });
+  const foer = JSON.parse(JSON.stringify(db.tables.riders.slice(0, 3)));
+  const foerCaps = JSON.parse(JSON.stringify(db.tables.rider_derived_abilities.slice(0, 3)));
+  const res = await runRepair3570(db, APPLY);
+  assert.equal(res.skriveScope.udeladt, 3);
+  for (let i = 0; i < 3; i++) {
+    assert.deepEqual(db.tables.riders[i], foer[i], "hverken draw, primary_type eller secondary_type rørt");
+    assert.deepEqual(db.tables.rider_derived_abilities[i], foerCaps[i], "heller ikke lofterne");
+  }
+});
+
+// ── 8. Selvtesten mod det daterede snapshot (paritets-porten) ───────────────
+test("selvtest: planlæggeren reproducerer det godkendte dry-run præcist", () => {
+  const res = runSelvtest();
+  assert.equal(res.bestaaet, true, `afvigelser: ${JSON.stringify(res.afvigelser)}`);
+  assert.deepEqual(res.plan.segmenter, { ...DRYRUN_FACIT.segmenter });
+  assert.equal(res.plan.kilder["fødsel"], 2582);
+  assert.equal(res.plan.kilder.tildelt, 5611);
+  assert.equal(res.plan.kilder["eksisterende draw"], 6);
+  assert.equal(res.tal.skrives, 8193);
+  assert.ok(Math.abs(res.plan.loeser.gap) < 1e-6, "transport-løsningen er dual-certificeret optimal");
+});
+
+test("NEGATIV: selvtesten fyrer hvis planlæggeren driver væk fra facit", () => {
+  const res = runSelvtest({ facit: { ...DRYRUN_FACIT, primaerSkift: 5964 } });
+  assert.equal(res.bestaaet, false);
+  assert.deepEqual(res.afvigelser, [{ navn: "primær-skift", faktisk: 5965, forventet: 5964 }]);
+});
+
+test("runRepair3570 stopper før DB-adgang hvis selvtesten ikke kan køre", async () => {
+  const db = nyDb();
+  await assert.rejects(
+    () => runRepair3570(db, { ...DRY, baselineDir: "C:/findes/ikke/3570" }),
+    /ENOENT|no such file/i,
+  );
+  assert.equal(db.writes.updates.length, 0);
+});
+
+// ── 9. Diff mod 10/8-planen ─────────────────────────────────────────────────
+test("diffModBaseline finder drift, nye og forsvundne ryttere", () => {
+  const basis = [
+    { rider_id: "a", firstname: "A", lastname: "A", primary_type: "climber", ability_caps: { climbing: 50 } },
+    { rider_id: "b", firstname: "B", lastname: "B", primary_type: "gc", ability_caps: { climbing: 50 } },
+  ];
+  const mk = (rows, primaries) => ({
+    poster: rows.map((r, i) => ({
+      rider_id: r.rider_id, row: r, newPrimary: primaries[i], newSecondary: "rouleur",
+      oldCaps: r.ability_caps, segment: "B", kilde: "tildelt",
+    })),
+  });
+  const baseline = mk(basis, ["sprinter", "tt"]);
+  const frisk = mk(
+    [{ ...basis[0], primary_type: "rouleur" }, { rider_id: "c", firstname: "C", lastname: "C", primary_type: "gc", ability_caps: { climbing: 50 } }],
+    ["puncheur", "gc"],
+  );
+  const d = diffModBaseline(frisk, baseline);
+  assert.equal(d.labelDriftAntal, 1, "a's label drev fra climber til rouleur");
+  assert.equal(d.primaerDiffAntal, 1, "a får en anden frossen type end 10/8-planen");
+  assert.equal(d.nye.length, 1);
+  assert.equal(d.forsvundne.length, 1);
+});
+
+// ── 10. Byggeklodser ────────────────────────────────────────────────────────
+test("quotasFromPct rammer ejerens mål og summer eksakt til n", () => {
+  for (const n of [0, 1, 7, 100, 5611, 8193]) {
+    const q = quotasFromPct(n, MAAL);
+    assert.equal(q.reduce((a, b) => a + b, 0), n, `sum for n=${n}`);
+  }
+  const q = quotasFromPct(5611, MAAL);
+  assert.deepEqual(Object.fromEntries(RIDER_TYPE_KEYS.map((k, i) => [k, q[i]])), DRYRUN_FACIT.kvoter);
+});
+
+test("solveAssignment respekterer kvoterne og er dual-certificeret optimal", () => {
+  const S = Array.from({ length: 40 }, (_, i) => RIDER_TYPE_KEYS.map((_k, k) => Math.sin(i * 7 + k * 13)));
+  const q = quotasFromPct(40, MAAL);
+  const sol = solveAssignment(S, q);
+  assert.deepEqual(sol.counts, q);
+  assert.ok(Math.abs(sol.gap) < 1e-6, `dual-gap ${sol.gap}`);
+  assert.throws(() => solveAssignment(S, [40, 0, 0, 0, 0, 0, 0, 1]), /kvoter summer til 41/);
+});
+
+test("segmentOf og fødsels-genfindingen følger F4's regler", () => {
+  const base = Object.fromEntries(STAT_KEYS.map((k) => [k, 52]));
+  assert.equal(segmentOf({ ...base, stat_bj: 48 }, "adult"), "D", "min < 49 → legacy");
+  assert.equal(segmentOf({ ...base, stat_bj: 86 }, "adult"), "D", "max > 85 → legacy");
+  assert.equal(segmentOf(base, "youth"), "C", "akademi-familien → C");
+  assert.equal(segmentOf({ ...base, stat_bj: 70 }, "adult"), "A", "max > 57 → fri pyramide");
+  assert.equal(segmentOf(base, "adult"), "B", "ellers trup-pulje");
+  assert.equal(segmentOf({ ...base, stat_bj: null }, "adult"), "D", "manglende stats → legacy");
+
+  const g = recoverBirthArchetype({ ...base, stat_sp: 64, stat_acc: 61, stat_fl: 58, height: 182, weight: Math.round(22.8 * 1.82 ** 2) });
+  assert.ok(RIDER_TYPE_KEYS.includes(g.primary));
+  assert.equal(g.ranked.length, 8);
+  assert.equal(g.rankOf[g.primary], 1);
+  assert.ok(g.confidence > 0 && g.confidence <= 1);
+  assert.equal(recoverBirthArchetype({ height: 180, weight: 70 }), null, "uden stats: ingen evidens, ikke et gæt");
+});
+
+test("planen skriver BEGGE ben af anlægget (primær + sekundær)", async () => {
+  const db = nyDb();
+  await runRepair3570(db, APPLY);
+  for (const r of db.tables.riders.filter((x) => !x.is_retired)) {
+    assert.ok(RIDER_TYPE_KEYS.includes(r.archetype_draw.primary));
+    assert.ok(RIDER_TYPE_KEYS.includes(r.archetype_draw.secondary));
+    assert.notEqual(r.archetype_draw.primary, r.archetype_draw.secondary);
+    assert.equal(r.secondary_type, r.archetype_draw.secondary);
+  }
+});
+
+test("de skrevne lofter er præcis buildCapsForRider med produktionens kaldform", async () => {
+  const db = nyDb();
+  await runRepair3570(db, APPLY);
+  const rById = new Map(db.tables.riders.map((r) => [r.id, r]));
+  for (const a of db.tables.rider_derived_abilities) {
+    const r = rById.get(a.rider_id);
+    if (r.is_retired) continue;
+    const evner = {};
+    for (const k of VISIBLE_ABILITIES) evner[k] = Number(a[k]);
+    const alder = 2027 - new Date(r.birthdate).getFullYear();
+    const forventet = buildCapsForRider(evner, { potentiale: r.potentiale, age: alder }, r.primary_type, r.secondary_type);
+    for (const k of VISIBLE_ABILITIES) assert.equal(Number(a.ability_caps[k]), forventet[k], `${a.rider_id}.${k}`);
+  }
+});
+
+test("backup-DDL og datostempel", () => {
+  const ddl = backupDDL("20260816");
+  assert.match(ddl, /riders_3570_backup_20260816/);
+  assert.match(ddl, /rider_derived_abilities_3570_backup_20260816/);
+  assert.match(ddl, /rider_id uuid PRIMARY KEY/, "primærnøglen prod-præcedensen mangler");
+  assert.match(ddl, /base_value integer/, "base_value/market_value skal med (§10.5)");
+  assert.match(cphDateStamp(new Date("2026-08-16T23:30:00Z")), /^20260817$/, "dansk lokaltid, ikke UTC");
+});

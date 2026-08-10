@@ -25,3 +25,14 @@ infisical run --env=prod -- node scripts/dev/snapshot-3570-birthstats.mjs <outDi
 **Vigtigt:** populationen driver. Mellem 22:30 og formiddagen 10/8 blev mindst 45
 menneske-ejede ryttere reklassificeret af nattens sweep. Snapshottet er facit for
 ANALYSEN, men enhver skrive-liste skal genberegnes på skrivedagen.
+
+**Reparationen kører aldrig fra en forudberegnet liste.** Værktøjet
+`backend/scripts/dev/repair3570Apply.mjs` tager sit eget friske snapshot og bygger
+planen forfra hver gang. Snapshottet her bruges til to ting: som rollback-grundlag,
+og som **selvtest** — værktøjet kører sin planlægger mod netop disse filer og kræver
+at den reproducerer dry-runnets godkendte tal, før den overhovedet rører produktionen.
+
+```
+node scripts/dev/repair3570Apply.mjs --hjaelp      # flag-oversigt
+node scripts/dev/repair3570Apply.mjs --selvtest    # kun paritets-porten, ingen DB
+```
