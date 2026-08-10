@@ -10,6 +10,7 @@ import { ABILITY_KEYS, computeRiderTypes } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { buildCapsForRider } from "./riderProgression.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -228,6 +229,52 @@ test("#3345: deriveForRiderIds (apply) BEVARER et allerede-sat valuation_type ve
   const u = supabase.writes.updates.find((x) => x.val === "r1");
   assert.ok(u, "r1 skal opdateres");
   assert.equal(u.patch.valuation_type, "gc", "eksisterende valuation_type må ALDRIG overskrives af re-derive");
+});
+
+test("#3591: deriveForRiderIds aftrapper loftet efter peakAge — samme kaldform som dailyTrainingEngine", async () => {
+  // Rod-årsagen: backfill-stien kaldte buildCapsForRider UDEN age, motoren MED.
+  // De to skrivestier producerede derfor forskellige lofter for samme rytter med
+  // samme type, og ryttere motoren aldrig har tikket (AI-ejede/frie, så længe
+  // race_day_engine_enabled='off') fik aldrig deres loft aftrappet.
+  //
+  // Fixturen er en veteran langt forbi peakAge, så taperen faktisk bider.
+  const veteran = { ...makeRider("vet"), birthdate: "1988-01-01" }; // sæson-alder 38
+  const supabase = makeMockSupabase({ riders: [veteran] });
+  await deriveForRiderIds(supabase, ["vet"], { dryRun: false });
+
+  const abUpsert = supabase.writes.upserts.find((u) => u.table === "rider_derived_abilities");
+  assert.ok(abUpsert, "abilities upsertes");
+  const row = abUpsert.rows.find((r) => r.rider_id === "vet");
+  assert.ok(row?.ability_caps, "ability_caps skrives");
+
+  const abilities = {};
+  for (const k of VISIBLE_ABILITIES) if (row[k] != null) abilities[k] = Number(row[k]);
+
+  // Mocken har ingen seeded "seasons"-tabel → activeSeasonNumber falder tilbage til 1.
+  const age = ageForSeason(veteran.birthdate, 1);
+  assert.ok(age > 30, `fixturen skal være forbi peakAge (var ${age})`);
+
+  // Den type pipelinen faktisk endte med (skrives på riders i samme kørsel).
+  const patch = supabase.writes.updates.find((u) => u.val === "vet")?.patch;
+  assert.ok(patch?.primary_type, "primary_type skrives");
+  const { primary_type: p, secondary_type: s } = patch;
+
+  const medAlder = buildCapsForRider(abilities, { potentiale: veteran.potentiale, age }, p, s);
+  const udenAlder = buildCapsForRider(abilities, { potentiale: veteran.potentiale }, p, s);
+
+  // Selve regressionen: de to kaldformer SKAL give forskellige lofter for denne
+  // rytter (ellers beviser testen ingenting), og det skrevne loft skal matche
+  // produktionens kaldform — den MED alder.
+  const forskel = VISIBLE_ABILITIES.filter((a) => Number(medAlder[a]) !== Number(udenAlder[a]));
+  assert.ok(forskel.length > 0, "fixturen skal kunne skelne de to kaldformer");
+  for (const a of VISIBLE_ABILITIES) {
+    assert.equal(Number(row.ability_caps[a]), Number(medAlder[a]), `${a}: loftet skal være aftrappet (kaldform MED alder)`);
+  }
+
+  // Spillerbeskyttelse: gulvet er rytterens nuværende evne — aldrig under.
+  for (const a of VISIBLE_ABILITIES) {
+    assert.ok(Number(row.ability_caps[a]) >= Number(abilities[a] ?? 0), `${a}: loft må aldrig komme under nuværende evne`);
+  }
 });
 
 test("deriveForRiderIds (apply) skriver ability_caps + ability_progress for ALLE ryttere (#2001)", async () => {

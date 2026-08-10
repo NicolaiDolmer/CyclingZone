@@ -276,7 +276,25 @@ export async function deriveForRiderIds(supabase, riderIds, {
     const prev = existingById.get(a.rider_id) || {};
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (a[k] != null) baseline[k] = Number(a[k]);
-    const caps = buildCapsForRider(baseline, { potentiale: rider.potentiale }, t.primary_type, t.secondary_type);
+    // #3591: alderen SKAL med. buildCapsForRider bruger den i taperedAbsoluteCap, som
+    // aftrapper det absolutte loft efter peakAge. Produktionens anden skrivesti,
+    // dailyTrainingEngine.js:314, sender den — denne gjorde ikke, og de to stier
+    // producerede derfor forskellige lofter for SAMME rytter med SAMME type.
+    //
+    // Hvem det ramte: de ryttere motoren aldrig har tikket (AI-ejede og frie —
+    // trainingSweep filtrerer på is_ai=false så længe race_day_engine_enabled='off').
+    // Deres caps kom udelukkende herfra og er derfor aldrig blevet aftrappet. Målt på
+    // dateret snapshot 10/8: kun 46 af 3.473 AI-rytteres caps matcher noget
+    // buildCapsForRider-output overhovedet, og 45,4 % taber loft alene ved kaldformen
+    // (p10 Δ bedste-af-8 loft-rating −29).
+    //
+    // Hvorfor det hastede: #3459 tænder race_day_engine, hvorefter AI-holdene tickes
+    // for første gang og motoren genopbygger deres caps MED alder. Uden denne rettelse
+    // ville korrektionen ramme som en sideeffekt af et feature-flag i stedet for som en
+    // kontrolleret ændring. Ingen rytter kan miste evne: buildCapsForRider returnerer
+    // max(tapered, current), så gulvet er rytterens nuværende evne.
+    const age = ageForSeason(rider.birthdate, seasonNumber);
+    const caps = buildCapsForRider(baseline, { potentiale: rider.potentiale, age }, t.primary_type, t.secondary_type);
     capsByRider.set(a.rider_id, caps);
     const progress = (prev.ability_progress && typeof prev.ability_progress === "object")
       ? prev.ability_progress
