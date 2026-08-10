@@ -4,6 +4,69 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.112",
+    "date": "2026-08-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Your missing intake has been delivered, plus two extra",
+          "body": "Sunday's academy intake produced candidates that were far too strong, so they were removed. That left most academies empty, and some of you received an email about a squad that was not there. Both of those were our mistake. Every academy has now received the two candidates Sunday should have given you, plus two extra as an apology. If you were one of the three teams that did receive a cohort on Sunday, you have the two extra. That is 762 new prospects across all 192 academies, generated with the corrected calibration: a 16 year old now starts genuinely raw at around ability 2 and reaches graduation level near 12 by the age of 20, instead of arriving fully formed. Rider types are spread properly again too. Sprinters had almost vanished from academy intakes at under one percent while breakaway riders took two thirds of every cohort; both are back to their intended share of roughly one type in eight."
+        },
+        "da": {
+          "title": "Jeres manglende kuld er leveret, plus to ekstra",
+          "body": "Søndagens akademi-optag lavede kandidater der var alt for stærke, så de blev fjernet. Det efterlod de fleste akademier tomme, og nogle af jer fik en mail om et kuld der ikke var der. Begge dele var vores fejl. Alle akademier har nu fået de to kandidater søndagen skulle have givet, plus to ekstra som undskyldning. Var du et af de tre hold der faktisk fik et kuld i søndags, har du de to ekstra. Det er 762 nye emner fordelt på alle 192 akademier, lavet med den rettede kalibrering: en 16-årig starter nu reelt fra bunden omkring evne 2 og når graduerings-niveau omkring 12 som 20-årig i stedet for at ankomme færdigudviklet. Ryttertyperne er også fordelt ordentligt igen. Sprintere var stort set forsvundet fra akademi-kuldene med under én procent, mens udbryderryttere tog to tredjedele af hvert kuld; begge er tilbage på deres tilsigtede andel af cirka én type ud af otte."
+        },
+        "refs": [3576, 3561]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy prospects were being born a year older every season",
+          "body": "An academy candidate is supposed to arrive between 16 and 21 years old. He did, measured against the calendar year the season started in, but the rest of the game reads a rider's age from the season number instead. Those two matched in season 1 and have drifted apart by one year every season since, because every season so far has started inside the same calendar year. In season 2 that meant the youngest prospects already showed as 17 and the oldest as 22, which is past the academy's own age limit. In season 3 it would have been 18 to 23, and roughly one prospect in six would have been born outside the academy age range entirely, classified as an adult and without the youth bonus on his value. The generator now reads the same age the rest of the game does. Existing riders are untouched; this affects prospects born from now on."
+        },
+        "da": {
+          "title": "Akademi-emner blev født et år ældre for hver sæson",
+          "body": "En akademi-kandidat skal ankomme mellem 16 og 21 år. Det gjorde han også, målt mod det kalenderår sæsonen startede i, men resten af spillet aflæser en rytters alder ud fra sæsonnummeret i stedet. De to passede sammen i sæson 1 og er drevet et år fra hinanden for hver sæson siden, fordi alle sæsoner indtil nu er startet inden for samme kalenderår. I sæson 2 betød det at de yngste emner allerede stod som 17 og de ældste som 22, hvilket er over akademiets egen aldersgrænse. I sæson 3 ville det have været 18 til 23, og cirka hvert sjette emne ville være født helt uden for akademi-alderen, klassificeret som voksen og uden ungdomsbonussen på sin værdi. Generatoren aflæser nu samme alder som resten af spillet. Eksisterende ryttere er urørte; det gælder emner født fra nu af."
+        },
+        "refs": [3611]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Fourteen prospects that were born too strong have been brought back into range",
+          "body": "Fourteen candidates still sitting in academies were generated under an older calibration and came out well above what a young rider is meant to be. The most extreme was a 19 year old with a best ability of 39, which is above the average senior professional. They have been returned to the youth range. They keep their name, nationality, age, potential and rider type, so it is the same rider on the same card; only the current ability level changed, and it now lands where their age says it should. Nobody had paid for any of them, and none of them were on an auction with a bid. Riders that already belong to a team were not touched, and neither were the auctions currently running."
+        },
+        "da": {
+          "title": "Fjorten emner der blev født for stærke er sat tilbage i niveau",
+          "body": "Fjorten kandidater der stadig lå i akademier var lavet under en ældre kalibrering og kom ud langt over hvad en ung rytter skal være. Det mest ekstreme tilfælde var en 19-årig med bedste evne 39, hvilket er over en gennemsnitlig voksen prof. De er sat tilbage i ungdomsniveauet. De beholder navn, nationalitet, alder, potentiale og ryttertype, så det er den samme rytter på det samme kort; kun det nuværende evneniveau er ændret, og det lander nu hvor deres alder tilsiger. Ingen havde betalt for nogen af dem, og ingen af dem lå på en auktion med bud. Ryttere der allerede tilhører et hold blev ikke rørt, og det gjorde de igangværende auktioner heller ikke."
+        },
+        "refs": [2699]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "The academy email now waits until the prospects actually exist",
+          "body": "The message telling you that new academy talent had arrived was sent while the candidates were still being built. If anything went wrong in the seconds after, you got an email pointing at riders that were not ready, or not there at all. That is what several of you ran into on Sunday. The notification is now sent only after every candidate in the batch is complete, and if the batch fails, no message goes out at all."
+        },
+        "da": {
+          "title": "Akademi-mailen venter nu til emnerne rent faktisk findes",
+          "body": "Beskeden om at nyt akademi-talent var ankommet blev sendt mens kandidaterne stadig blev bygget. Gik noget galt i sekunderne efter, fik du en mail der pegede på ryttere som ikke var klar, eller slet ikke var der. Det var det flere af jer løb ind i søndag. Notifikationen sendes nu først når hver eneste kandidat i kuldet er færdig, og fejler kuldet, går der ingen besked ud overhovedet."
+        },
+        "refs": [3576]
+      }
+    ]
+  },
+  {
     "version": "7.111",
     "date": "2026-08-10",
     "label": "Beta",
