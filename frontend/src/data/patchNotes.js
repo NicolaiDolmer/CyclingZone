@@ -20,6 +20,19 @@ export const PATCHES = [
           "title": "Nye hold starter ikke længere med en trup af kun sprintere og klassementsryttere",
           "body": "Rytter-generatoren har et gulv der garanterer et minimum af klassementsryttere og sprintere i det frie marked, og det gulv var skrevet som et fast antal, kalibreret til et felt på 800 ryttere. Det blev anvendt på hver eneste batch, også de 8+4 ryttere en ny manager får ved oprettelse, og de trupper der genereres til nye AI-hold. I en batch på otte promoverede \"mindst 30 klassementsryttere og 40 sprintere\" hele batchen: hver ny start-trup blev trukket som cirka tre fjerdedele sprintere og en fjerdedel klassementsryttere, uden en eneste af de øvrige seks ryttertyper. Gulvet er nu en andel af batchen frem for et fast antal, så en trup på tolv trækkes på tværs af alle otte typer. Den frie markeds-population fra relaunch er fuldstændig uændret. Ryttere der allerede er i spillet påvirkes ikke af denne ændring alene."
         }
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "Discord announcements are no longer lost when Discord has a hiccup",
+          "body": "When Discord was briefly unavailable, the game gave up after about three seconds and threw the message away. On the evening of 7 August that silently swallowed eight auction announcements, so nobody in Discord was told there was anything to bid on. Messages that cannot be delivered right away are now saved and retried over the following hours instead of being dropped. The same path carries race results, so those are protected too."
+        },
+        "da": {
+          "title": "Discord-beskeder forsvinder ikke længere når Discord har et hik",
+          "body": "Når Discord var kortvarigt utilgængeligt, gav spillet op efter cirka tre sekunder og smed beskeden væk. Om aftenen 7. august slugte det otte auktions-annonceringer, så ingen i Discord fik at vide at der var noget at byde på. Beskeder der ikke kan leveres med det samme, gemmes nu og genforsøges over de følgende timer i stedet for at blive droppet. Samme kanal bærer løbsresultater, så de er beskyttet nu også."
+        }
       }
     ]
   },

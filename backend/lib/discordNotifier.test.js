@@ -341,25 +341,123 @@ test("sendWebhook — permanent config-fejl (404, dødt webhook #2395) → Sentr
 });
 
 // Kerne-regressionstesten for selve #2882-bugreporten: en 429 der overlever
-// ALLE retry-forsøg (permanent rate-limit, fx en vedvarende byge) skal nu
-// capture'es til Sentry — før denne fix forsvandt den tavst med kun
-// console.error, hvilket var præcis hvorfor droppet 24/7 ikke blev opdaget.
-test("sendWebhook — 429 overlever alle forsøg → synlig Sentry-capture (var tavst før #2882)", async () => {
+// ALLE retry-forsøg (permanent rate-limit, fx en vedvarende byge) må ikke
+// forsvinde tavst — før #2882 gjorde den præcis det, med kun console.error.
+//
+// #3545 flyttede REDNINGEN et trin videre: beskeden droppes ikke længere, den
+// lægges i discord_webhook_outbox og genforsøges over ~27 timer. Sentry-capturen
+// flyttes tilsvarende til det tidspunkt hvor beskeden REELT er tabt (drainen,
+// dækket i discordWebhookOutbox.test.js), så en kortvarig 5xx-krusning ikke
+// længere ser ud som datatab.
+test("sendWebhook — 429 overlever alle forsøg → lagt i outbox (#3545), ingen for tidlig capture", async () => {
   const { fetchFn, calls } = makeFetchSequence([{ status: 429, body: { retry_after: 0 } }]);
   const captureExceptionFn = makeCaptureSpy();
+  const enqueued = [];
 
   await sendWebhook(RESULT_WEBHOOK, { embeds: [{ title: "Koerse van Nokere" }] }, {
     fetchFn,
     sleepFn: noSleep,
     captureExceptionFn,
+    enqueueWebhookFn: async (args) => {
+      enqueued.push(args);
+      return { enqueued: true };
+    },
   });
 
   assert.equal(calls.length, 4); // default maxAttempts i attemptWebhookDelivery
+  assert.equal(enqueued.length, 1);
+  assert.equal(enqueued[0].webhookUrl, RESULT_WEBHOOK);
+  assert.deepEqual(enqueued[0].payload, { embeds: [{ title: "Koerse van Nokere" }] });
+  assert.equal(enqueued[0].lastStatus, 429);
+  assert.equal(captureExceptionFn.calls.length, 0, "beskeden er ikke tabt endnu — outbox'en har den");
+});
+
+// Hændelsen 7/8 22:21-22:23 i ren form: Discord svarer 503 i hele inline-vinduet
+// og 8 auktions-annonceringer blev droppet permanent. Nu skal payloaden overleve.
+test("sendWebhook — Discord-5xx-udfald (#3545-hændelsen) tabes ikke længere, men gemmes til genforsøg", async () => {
+  const { fetchFn } = makeFetchSequence([{ status: 503, body: { message: "service unavailable" } }]);
+  const captureExceptionFn = makeCaptureSpy();
+  const enqueued = [];
+
+  await sendWebhook(RESULT_WEBHOOK, { embeds: [{ title: "New Auction: Naoki Goto" }] }, {
+    fetchFn,
+    sleepFn: noSleep,
+    captureExceptionFn,
+    enqueueWebhookFn: async (args) => {
+      enqueued.push(args);
+      return { enqueued: true };
+    },
+  });
+
+  assert.equal(enqueued.length, 1);
+  assert.equal(enqueued[0].lastStatus, 503);
+  assert.deepEqual(enqueued[0].payload, { embeds: [{ title: "New Auction: Naoki Goto" }] });
+  assert.equal(captureExceptionFn.calls.length, 0);
+});
+
+// Fallback: hvis outbox-insertet selv fejler (defekt tabel, RLS-drift), falder vi
+// tilbage til den gamle SYNLIGE adfærd frem for at fejle tavst.
+test("sendWebhook — outbox-enqueue fejler → Sentry-capture som før #3545", async () => {
+  const { fetchFn } = makeFetchSequence([{ status: 503, body: {} }]);
+  const captureExceptionFn = makeCaptureSpy();
+
+  await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, {
+    fetchFn,
+    sleepFn: noSleep,
+    captureExceptionFn,
+    enqueueWebhookFn: async () => ({ enqueued: false }),
+  });
+
   assert.equal(captureExceptionFn.calls.length, 1);
   const { error, context } = captureExceptionFn.calls[0];
   assert.match(error.message, /Discord webhook dropped after 4 attempt\(s\)/);
-  assert.equal(context.tags.reason, "rate-limited");
-  assert.equal(context.extra.attempts, 4);
+  assert.equal(context.tags.reason, "discord-5xx");
+  assert.equal(context.extra.enqueued, false);
+});
+
+// Loop-vagt: outbox-drainens EGEN dead-alarm sender via sendWebhook. Uden
+// enqueueOnFailure:false ville en fejlende alarm lægge sig selv i outbox'en og
+// producere en ny række pr. drain-runde.
+test("sendWebhook — enqueueOnFailure:false lægger IKKE i outbox (drainens dead-alarm)", async () => {
+  const { fetchFn } = makeFetchSequence([{ status: 503, body: {} }]);
+  const captureExceptionFn = makeCaptureSpy();
+  let enqueueCalls = 0;
+
+  await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, {
+    fetchFn,
+    sleepFn: noSleep,
+    captureExceptionFn,
+    enqueueOnFailure: false,
+    enqueueWebhookFn: async () => {
+      enqueueCalls++;
+      return { enqueued: true };
+    },
+  });
+
+  assert.equal(enqueueCalls, 0);
+  assert.equal(captureExceptionFn.calls.length, 1, "alarmen skal stadig være synlig i Sentry");
+});
+
+// Et dødt/fejlkonfigureret webhook (#2395) er permanent — det må ALDRIG i
+// outbox'en, ellers bruger vi 27 timer på at prøve noget der aldrig kan lykkes.
+test("sendWebhook — permanent config-fejl går IKKE i outbox (#3545 x #2395)", async () => {
+  const { fetchFn } = makeFetchSequence([{ status: 404, body: { message: "Unknown Webhook" } }]);
+  const captureExceptionFn = makeCaptureSpy();
+  let enqueueCalls = 0;
+
+  await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, {
+    fetchFn,
+    sleepFn: noSleep,
+    captureExceptionFn,
+    enqueueWebhookFn: async () => {
+      enqueueCalls++;
+      return { enqueued: true };
+    },
+  });
+
+  assert.equal(enqueueCalls, 0);
+  assert.equal(captureExceptionFn.calls.length, 1);
+  assert.match(captureExceptionFn.calls[0].error.message, /persistent config\/routing error/);
 });
 
 // #2882: to resultat-poster til SAMME webhook-URL (fx to puljer der begge

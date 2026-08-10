@@ -126,6 +126,7 @@ export const ALL_CRON_MONITORS = [
   ["discord-bot-token-check", CRON_MONITOR_24H],
   ["discord-role-sync", CRON_MONITOR_24H],
   ["discord-dm-outbox-drain", CRON_MONITOR_5MIN],
+  ["discord-webhook-outbox-drain", CRON_MONITOR_5MIN],
   ["training-sweep", CRON_MONITOR_5MIN],
   ["ai-recovery-sweep", CRON_MONITOR_5MIN],
   ["graduation-sweep", CRON_MONITOR_5MIN],
