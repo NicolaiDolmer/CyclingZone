@@ -1,1 +1,6 @@
 .githooks/* text eol=lf
+
+# Genereret fil der SKAL være byte-identisk med sin generator (#3570). Uden denne
+# linje giver core.autocrlf=true den CRLF i et Windows-checkout, og drift-vagten i
+# repair3570Apply.test.js fejler efter enhver rebase — uden at SQL'en har ændret sig.
+backend/scripts/dev/repair3570Rollback.sql text eol=lf

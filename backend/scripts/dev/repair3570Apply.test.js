@@ -855,8 +855,14 @@ test("B1′: DDL, rollback-SQL og værktøjets kolonne-lister deler nøjagtig é
 });
 
 test("B1′: den checkede-ind repair3570Rollback.sql er ikke drevet fra generatoren", () => {
+  // Linjeskift normaliseres. Repoet kører core.autocrlf=true, så git leverer filen
+  // med CRLF i et Windows-checkout mens generatoren skriver LF — vagten ville da
+  // fejle rødt på hver eneste rebase uden at én tegn af SQL havde flyttet sig.
+  // .gitattributes holder filen på LF; dette er andet lag, så en dev med en anden
+  // git-konfiguration ikke får et falsk STOP på skrivedagen.
+  const lf = (s) => s.replace(/\r\n/g, "\n");
   const fil = readFileSync(join(__dirname, "repair3570Rollback.sql"), "utf8");
-  assert.equal(fil, rollbackSQL(KANONISK_BACKUP_SUFFIX),
+  assert.equal(lf(fil), lf(rollbackSQL(KANONISK_BACKUP_SUFFIX)),
     "kør: node scripts/dev/repair3570Apply.mjs --print-rollback-sql > scripts/dev/repair3570Rollback.sql");
 });
 
