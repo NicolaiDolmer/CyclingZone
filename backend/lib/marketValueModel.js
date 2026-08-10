@@ -31,6 +31,10 @@ export function meanAbilityScore(abilities) {
   return n > 0 ? sum / n : null;
 }
 
+// De led der ALTID indgår i ln(price). g_popularity er bevidst udeladt: den
+// bruges kun når popularity_mode === "raw" og valideres dér.
+const COEF_TERMS = ["a", "b", "c", "d_age", "e_age2", "f_potentiale", "h_is_youth"];
+
 function offsetFor(type, offsetDict = {}) {
   const v = offsetDict[type];
   if (Number.isFinite(v)) return v;
@@ -61,6 +65,16 @@ export function predictMarketPrice(features, coef) {
   if (coef.popularity_mode === "residualized") {
     throw new Error("predictMarketPrice: popularity_mode 'residualized' er ikke understøttet i produktion (kræver fit-scriptets side-regression)");
   }
+  // Koefficienterne valideres EKSPLICIT, ikke kun via resultatet. Et manglende
+  // led (undefined) ville ganske vist give NaN og blive fanget nedenfor, men
+  // `null` og "" coercer til 0 og et numerisk STRENG-led coercer til sit tal —
+  // begge dele giver en helt endelig, helt forkert pris. Det er præcis den
+  // "stille forkerte tal"-klasse filens kontrakt lover at undgå.
+  for (const k of COEF_TERMS) {
+    if (!Number.isFinite(coef?.[k])) {
+      throw new Error(`predictMarketPrice: koefficient '${k}' er ikke et tal (${coef?.[k]}) — tjek marketValueModelV1.json`);
+    }
+  }
   const off = offsetFor(primary_type, coef.offset);
   let lnPrice = coef.a
     + coef.b * O
@@ -71,9 +85,25 @@ export function predictMarketPrice(features, coef) {
     + coef.h_is_youth * (is_youth ? 1 : 0)
     + off;
   if (coef.popularity_mode === "raw") {
+    if (!Number.isFinite(coef.g_popularity)) {
+      throw new Error(`predictMarketPrice: koefficient 'g_popularity' er ikke et tal (${coef.g_popularity}) med popularity_mode 'raw'`);
+    }
     lnPrice += coef.g_popularity * (Number(popularity) || 0);
   }
-  return Math.exp(lnPrice);
+  const price = Math.exp(lnPrice);
+  // Koefficient-blokken valideres her, ikke felt-for-felt ovenfor: mangler ét
+  // led (truncated/malformet JSON), bliver lnPrice NaN og exp(NaN) = NaN. Uden
+  // dette kast forplanter NaN'en sig lydløst gennem blendTarget →
+  // applyWeeklyCap (Math.max(lo, NaN) = NaN) → Math.max(1, Math.round(NaN)) =
+  // NaN, og fordi NaN !== currentValue ville sweepen kø'e {base_value: NaN} til
+  // skrivning. --refit-stien kan overskrive marketValueModelV1.json, så en
+  // ødelagt koefficient-blok ER nåbar — fejl højlydt i stedet.
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new Error(
+      `predictMarketPrice: ugyldig prædiktion (${price}) — tjek koefficient-blokken i marketValueModelV1.json`
+    );
+  }
+  return price;
 }
 
 /**
@@ -92,6 +122,12 @@ export function computeSupport(rider, salesIndex, { oWindow = 5, ageWindow = 3, 
   let count = 0;
   for (const s of salesIndex || []) {
     if (s.primary_type !== rider.primary_type) continue;
+    // Ikke-endelige salgs-entries SKAL frasorteres FØR vindues-tjekkene: begge
+    // tjek bruger `>` på Math.abs, og `NaN > x` er false, så et salg med
+    // O/age = null/NaN ville aldrig blive sprunget over — det ville tælle som
+    // "nærliggende handel" og fail-open puste support (og dermed markedsvægten)
+    // op for et segment uden reel evidens.
+    if (!Number.isFinite(s.O) || !Number.isFinite(s.age)) continue;
     if (Math.abs(s.O - rider.O) > oWindow) continue;
     if (Math.abs(s.age - rider.age) > ageWindow) continue;
     count += 1;

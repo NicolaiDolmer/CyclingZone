@@ -24,8 +24,17 @@
 //
 // DEDUP: market_value_sunday_sweep_log (UNIQUE sweep_date) — persisteret, samme
 // begrundelse som discord_race_digest_log (in-memory guards nulstiller ved
-// Railway-redeploy; en cron der tikker hver time kunne ellers dobbelt-køre
-// sweepen samme søndag efter en genstart).
+// Railway-redeploy; en tick der kører flere gange kunne ellers dobbelt-køre
+// sweepen samme søndag efter en genstart). Dagen CLAIMES atomisk FØR første
+// rytter-skrivning og opsummeres bagefter — se defaultClaimSweepDate.
+//
+// RÆKKEFØLGE PÅ SØNDAGE (kritisk): sweepen kaldes som SIDSTE trin i
+// trainingSweep.js's søndags-værdi-pipeline, EFTER refreshChangedRiderValues.
+// Kørte markedsblendet først, ville v4-refresh'en kl. 22 samme søndag genberegne
+// base_value rent fra v4 og dermed skrive blendet væk igen for præcis de ryttere
+// sweepen havde flyttet — featuren ville se ud til at virke og reelt være en
+// no-op. Derfor er der bevidst INGEN selvstændig timeligt cron-tick for denne
+// sweep; se trainingSweep.js's kald + cron.js.
 //
 // SALESINDEX-FORENKLING (bevidst, dokumenteret afvigelse fra fit-scriptet):
 // fit-scriptet matcher hvert salg mod rytterens abilities PÅ SALGSTIDSPUNKTET
@@ -128,29 +137,44 @@ async function defaultFetchPopulation({ supabase }) {
   );
 }
 
-async function defaultHasAlreadyRunToday({ supabase, sweepDate }) {
-  const { data, error } = await supabase
+// Atomisk dato-CLAIM — SKAL stå FØR nogen rytter-skrivning.
+//
+// Rækkefølgen er ikke kosmetik: loftet (±25 %) er relativt til rytterens
+// NUVÆRENDE base_value. Skrev vi først værdierne og først bagefter dedup-rækken,
+// ville en fejlet (eller af en anden proces vundet) log-insert betyde at næste
+// times-tick samme søndag kørte HELE sweepen igen — denne gang med de allerede
+// flyttede værdier som udgangspunkt. To kørsler = op til ±56 % på én søndag, tre
+// = ±95 %. UNIQUE(sweep_date) gør INSERT'et til den naturlige mutex: vinder vi
+// rækken, ejer vi dagen; taber vi den (23505 unique_violation), har en anden
+// proces allerede claimet og vi skal IKKE mutere noget.
+async function defaultClaimSweepDate({ supabase, sweepDate }) {
+  const { error } = await supabase
     .from(MARKET_VALUE_SWEEP_LOG_TABLE)
-    .select("id")
-    .eq("sweep_date", sweepDate)
-    .maybeSingle();
-  if (error) {
-    if (isMissingTableError(error)) return { alreadyRun: false, tableMissing: true };
-    throw new Error(`market-value-sunday-sweep dedupe-check: ${error.message}`);
+    .insert({ sweep_date: sweepDate });
+  if (!error) return { claimed: true, tableMissing: false };
+  if (isMissingTableError(error)) return { claimed: false, tableMissing: true };
+  if (error.code === "23505" || /duplicate key|unique constraint/i.test(String(error.message || ""))) {
+    return { claimed: false, tableMissing: false };
   }
-  return { alreadyRun: !!data, tableMissing: false };
+  throw new Error(`market-value-sunday-sweep claim: ${error.message}`);
 }
 
-async function defaultLogSweepRun({ supabase, sweepDate, summary }) {
-  const { error } = await supabase.from(MARKET_VALUE_SWEEP_LOG_TABLE).insert({
-    sweep_date: sweepDate,
-    scanned: summary.scanned,
-    changed: summary.changed,
-    written: summary.written,
-    global_weight: summary.globalWeight,
-    weekly_cap: summary.weeklyCap,
-    sales_index_size: summary.salesIndexSize,
-  });
+// Efter-skrivning: fyld claim-rækken med resultatet. Fejler DENNE, beholder vi
+// claim'et (rækken findes) — værdierne er skrevet, og en manglende opsummering
+// må aldrig kunne udløse en gentagelse af selve mutationen.
+async function defaultCompleteSweepRun({ supabase, sweepDate, summary }) {
+  const { error } = await supabase
+    .from(MARKET_VALUE_SWEEP_LOG_TABLE)
+    .update({
+      scanned: summary.scanned,
+      changed: summary.changed,
+      written: summary.written,
+      global_weight: summary.globalWeight,
+      weekly_cap: summary.weeklyCap,
+      sales_index_size: summary.salesIndexSize,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("sweep_date", sweepDate);
   if (error) throw error;
 }
 
@@ -158,13 +182,18 @@ async function writeUpdates(supabase, updates) {
   let written = 0;
   for (let i = 0; i < updates.length; i += WRITE_CONCURRENCY) {
     const batch = updates.slice(i, i + WRITE_CONCURRENCY);
-    await Promise.all(
-      batch.map(({ id, base_value }) =>
-        supabase.from("riders").update({ base_value }).eq("id", id).then(({ error }) => {
-          if (error) throw new Error(`market-value-sunday-sweep riders update ${id}: ${error.message}`);
-        })
-      )
+    // Resultatet BINDES eksplicit (ikke .then()-destrukturering): supabase-js
+    // kaster ikke, og lint-unchecked-supabase-mutation.mjs (#2974) kræver en
+    // bundet `{ error }` på enhver await'et mutation.
+    const results = await Promise.all(
+      batch.map(async ({ id, base_value }) => {
+        const { error } = await supabase.from("riders").update({ base_value }).eq("id", id);
+        return { id, error };
+      })
     );
+    for (const { id, error } of results) {
+      if (error) throw new Error(`market-value-sunday-sweep riders update ${id}: ${error.message}`);
+    }
     written += batch.length;
   }
   return written;
@@ -181,7 +210,7 @@ async function writeUpdates(supabase, updates) {
  */
 export async function runMarketValueSundaySweep({
   supabase,
-  now = new Date(),
+  now,
   isEnabled = isMarketValueSweepEnabled,
   readGlobalWeight = readMarketValueGlobalWeight,
   readWeeklyCap = readMarketValueWeeklyCap,
@@ -191,12 +220,19 @@ export async function runMarketValueSundaySweep({
   fetchRidersByIds = defaultFetchRidersByIds,
   fetchAbilitiesByRider = defaultFetchAbilitiesByRider,
   fetchPopulation = defaultFetchPopulation,
-  hasAlreadyRunToday = defaultHasAlreadyRunToday,
-  logSweepRun = defaultLogSweepRun,
+  claimSweepDate = defaultClaimSweepDate,
+  completeSweepRun = defaultCompleteSweepRun,
   log = noop,
   captureExceptionFn = captureException,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
+  // `now` er PÅKRÆVET (AGENTS.md hard rule 16): en `now = new Date()`-default
+  // lader tests læse vægur-tiden, og en søndags-gated sweep ville så bestå eller
+  // fejle afhængigt af hvilken ugedag suiten kører. Cron-grænsefladen injicerer
+  // allerede et eksplicit `now`.
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
+    throw new Error("runMarketValueSundaySweep: eksplicit `now` (Date) er påkrævet — se AGENTS.md hard rule 16");
+  }
 
   if (copenhagenWeekdayKey(copenhagenDateString(now)) !== "sun") {
     return { ran: false, skipped: "not_sunday" };
@@ -205,10 +241,12 @@ export async function runMarketValueSundaySweep({
   const enabled = await isEnabled(supabase);
   if (!enabled) return { ran: false, skipped: "flag_off" };
 
+  // CLAIM FØR MUTATION — se defaultClaimSweepDate for hvorfor rækkefølgen er
+  // kritisk (dobbelt cap-anvendelse ved gentagelse samme søndag).
   const sweepDate = copenhagenDateString(now);
-  const { alreadyRun, tableMissing } = await hasAlreadyRunToday({ supabase, sweepDate });
+  const { claimed, tableMissing } = await claimSweepDate({ supabase, sweepDate });
   if (tableMissing) return { ran: false, skipped: "log_table_missing" };
-  if (alreadyRun) return { ran: false, skipped: "already_ran_today" };
+  if (!claimed) return { ran: false, skipped: "already_ran_today" };
 
   const seasonNumber = await fetchActiveSeasonNumber({ supabase });
   if (seasonNumber == null) return { ran: false, skipped: "no_active_season" };
@@ -285,14 +323,15 @@ export async function runMarketValueSundaySweep({
   );
 
   try {
-    await logSweepRun({ supabase, sweepDate, summary });
+    await completeSweepRun({ supabase, sweepDate, summary });
   } catch (err) {
-    // Værdierne ER allerede skrevet — en fejlende log-insert må ALDRIG få det til
-    // at se ud som om sweepen fejlede (samme lære som discordRaceDigestSweep's
-    // log-insert-fejlhåndtering). Risikoen ved en tabt log-række er højst at
-    // sweepen kører igen ved næste times-tick samme søndag, aldrig et tab.
-    console.error("  ⚠️  market-value-sunday-sweep-log insert fejlede (sweep ER kørt):", err?.message || err);
-    captureExceptionFn(err, { tags: { cron: "market-value-sunday-sweep", stage: "log-insert" } });
+    // Claim-rækken ER skrevet (og bevares) — dagen forbliver dermed låst, så en
+    // fejlet opsummering kan IKKE udløse en gentagen kørsel med dobbelt
+    // cap-anvendelse. Det eneste tab er selve tællerne; rækken står tilbage med
+    // completed_at = NULL, hvilket netop er signalet "kørte, men rapporterede
+    // ikke". Derfor må fejlen ikke få sweepen til at se fejlet ud.
+    console.error("  ⚠️  market-value-sunday-sweep-log opsummering fejlede (sweep ER kørt, dagen forbliver claimet):", err?.message || err);
+    captureExceptionFn(err, { tags: { cron: "market-value-sunday-sweep", stage: "log-complete" } });
   }
 
   return summary;

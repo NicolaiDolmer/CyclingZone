@@ -11,6 +11,7 @@ import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
+import { runMarketValueSundaySweep } from "./marketValueSundaySweep.js"; // #3448
 import { captureException } from "./sentry.js";
 
 export const SWEEP_FROM_HOUR = 22;
@@ -54,6 +55,7 @@ export async function runTrainingSweep({
   now = new Date(),
   runDay = runTeamTrainingDay,
   refreshValues = refreshChangedRiderValues,
+  runMarketValueSweep = runMarketValueSundaySweep,
 } = {}) {
   // ── Tidsvindue ────────────────────────────────────────────────────────────────
   if (!shouldSweepNow(now)) {
@@ -148,6 +150,7 @@ export async function runTrainingSweep({
   // TRÆNINGEN (runDay ovenfor) er UÆNDRET daglig — kun værdi-genberegningen
   // er søndags-gated.
   let valueRefresh = null;
+  let marketValueSweep = null;
   if (copenhagenWeekdayKey(tickDate) === "sun") {
     try {
       valueRefresh = await refreshValues(supabase, { log: (m) => console.log(`  ${m}`) });
@@ -157,8 +160,31 @@ export async function runTrainingSweep({
       console.error("  ❌ value-refresh efter sweep fejlede:", err.message);
       captureException(err, { tags: { cron: "training sweep", stage: "value-refresh" } });
     }
+
+    // #3448 — markedsblendet er SIDSTE skridt i søndagens værdi-pipeline, og
+    // rækkefølgen er hele pointen: refreshValues ovenfor genberegner base_value
+    // rent fra v4 og skriver alt der afviger. Kørte markedsblendet i sin egen
+    // cron tidligere på søndagen, ville denne refresh skrive blendet væk igen
+    // for præcis de ryttere blendet havde flyttet — og sweepens dato-dedup ville
+    // så blokere en ny kørsel. Featuren ville se ud til at virke og reelt være
+    // en no-op. Ét ordnet flow er derfor eneste korrekte placering.
+    //
+    // Sweepen bærer selv sine gates (søndag, market_value_sweep_enabled
+    // fail-safe OFF, atomisk dato-claim), så kaldet er en no-op indtil ejeren
+    // flipper flaget. Egen try/catch: et fejlende markedsblend må ikke
+    // maskere/annullere træningen eller v4-refresh'en ovenfor.
+    try {
+      marketValueSweep = await runMarketValueSweep({ supabase, now });
+    } catch (err) {
+      // Bevidst uden æ/ø/å i selve strengen — samme konvention som
+      // "value-refresh"-linjen ovenfor (i18n-check-leaks.mjs's DANISH_CHARS
+      // -detektor kigger på string-literaler; denne fils baseline er 0).
+      console.error("  ❌ market-value sweep fejlede:", err.message);
+      captureException(err, { tags: { cron: "training sweep", stage: "market-value-sweep" } });
+    }
   }
 
   const base = failed > 0 ? { swept, failed } : { swept };
-  return valueRefresh ? { ...base, valueRefresh } : base;
+  const withRefresh = valueRefresh ? { ...base, valueRefresh } : base;
+  return marketValueSweep?.ran ? { ...withRefresh, marketValueSweep } : withRefresh;
 }

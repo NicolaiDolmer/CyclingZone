@@ -90,6 +90,30 @@ function meanAbilityScore(abilities) {
   return n > 0 ? sum / n : null;
 }
 
+// ⚠️ KENDT AFVIGELSE fra runtime-alderen — læs før en refit promoveres.
+//
+// Denne funktion giver KONTINUERT kalender-alder på salgstidspunktet
+// ((sale_ts − birthdate) / år). Runtime-sweepen (marketValueSundaySweep.js)
+// fodrer derimod predictMarketPrice med SÆSON-alder, `ageForSeason(birthdate,
+// seasonNumber)` fra lib/riderSeasonAge.js — et HELTAL, defineret som
+// LAUNCH_REFERENCE_YEAR + (sæson − 1) − fødselsår, altså cykelsportens
+// "den alder han fylder i sæsonens kalenderår".
+//
+// Konsekvens: `d_age`/`e_age2` fittes på én alders-skala og evalueres på en
+// anden. De to falder sammen i middel, men afviger op til ±0,5 år pr. rytter,
+// og fordi ledet er kvadratisk er fejlen ikke symmetrisk. Modellen er derfor
+// systematisk let skæv i alders-leddet.
+//
+// Hvorfor det ikke bare er rettet her: en korrekt sæson-alder pr. handel kræver
+// at hver sale_ts mappes til det sæsonnummer der var aktivt DA handlen skete
+// (sæsonerne følger ikke rigtige kalenderår — S1=2026, S2=2027, S3=2028 afvikles
+// alle i virkelighedens 2026). At skifte definition ændrer koefficienterne og
+// kræver derfor en refit + ejer-godkendelse ("simulér-før-ship"), ikke en
+// stilfærdig ændring i en oprydnings-PR.
+//
+// ⛔ TODO før markeds-sweepen aktiveres: refit under sæson-alder og sammenlign
+//    holdout-MAE mod den promoverede model. Se model-artefaktets
+//    notes.age_definition_divergence.
 function ageAt(birthdate, atDate) {
   if (!birthdate || !atDate) return null;
   const b = new Date(birthdate).getTime();
@@ -532,6 +556,13 @@ async function main() {
   const featureBaseCount = chosenFeatures.length;
   const { offsets: finalOffsets, floorShift, unsampledTypes } = assembleOffsets(finalBeta, refType, fullDummyTypes, featureBaseCount);
   const finalA = finalBeta[0] + floorShift;
+  // Typer uden handels-evidens får ikke et fittet offset — de gulv-skiftes til
+  // det laveste observerede. Det SKAL være synligt i output: deres offset er
+  // ekstrapoleret, ikke målt, og en rytter af sådan en type prissættes derfor på
+  // et gæt (support-guarden fryser ham typisk alligevel, men ikke garanteret).
+  if (unsampledTypes.length) {
+    console.log(`⚠️  Typer UDEN handler i datasættet (offset ekstrapoleret til gulvet): ${unsampledTypes.join(", ")}`);
+  }
 
   const idxO = chosenFeatures.indexOf("O"), idxO2 = chosenFeatures.indexOf("O2");
   const idxAge = chosenFeatures.indexOf("age"), idxAge2 = chosenFeatures.indexOf("age2");
@@ -562,17 +593,10 @@ async function main() {
     `f(potentiale)=${finalCoef.f_potentiale.toFixed(4)} g(popularity, ${finalCoef.popularity_mode})=${finalCoef.g_popularity.toFixed(4)} ` +
     `h(is_youth)=${finalCoef.h_is_youth.toFixed(4)}`);
 
-  // v1-koefficienter (uændret, for direkte sammenligning i output).
-  const v1Coef = {
-    a: 5.250117292803289, b: 0.09755971515350939, c: 0.00016375821380286776,
-    d_age: 0.13920874227234634, e_age2: -0.0023008744653105913, f_potentiale: 0.2352095529674077,
-    g_popularity: -0.018473006511599104, popularity_mode: "raw", h_is_youth: -0.45230065783017426,
-    offset: {
-      sprinter: 0.5863098247249124, tt: 0.181537445137884, climber: 0.27353128225558293,
-      puncheur: 0.6113251439443864, brostensrytter: 0.4178199391995449, baroudeur: 0,
-      rouleur: 0.022364545556452984, gc: 0.13581808688633046,
-    },
-  };
+  // v1's holdout-tal (fastfrosset reference, samme split) til 3-vejs-outputtet
+  // nedenfor. v1's KOEFFICIENTER stod tidligere også her som en hardkodet
+  // konstant, men blev aldrig læst af noget — de findes i git-historikken og i
+  // den promoverede marketValueModelV1.json.
   const v1Holdout = { n: 205, mae_ln: 0.914436700508712, mae_czk: 56118, mape: 0.7971360302500812 };
 
   // v1.1 holdout på SAMME split (den valgte variants tal, allerede beregnet ovenfor).
@@ -894,11 +918,27 @@ async function main() {
       v4_live: v4Holdout,
       train_r2_log_weighted: chosenVariant.trainR2,
     },
-    notes:
-      "v1.1 (#3448 pkt. 2) — popularity: " + popularityDecision + " (se popularity_analysis). Støtte-guard tilføjet " +
-      "for uhandlede segmenter (elite/youth) — se guard-blok. Ugentligt ændrings-loft ±" + (recommendedCap * 100) +
-      "% anbefalet efter simulering af 3 kandidater over 3 uger (9/8, 16/8, 23/8-sæsonskifte). Fittet READ-ONLY af " +
-      "backend/scripts/fitMarketValueModelV1.js mod samme datasæt som v1 (989 completed auctions + accepterede transfer_offers).",
+    notes: {
+      summary:
+        "v1.1 (#3448 pkt. 2) — popularity: " + popularityDecision + " (se popularity_analysis). Støtte-guard tilføjet " +
+        "for uhandlede segmenter (elite/youth) — se guard-blok. Ugentligt ændrings-loft ±" + (recommendedCap * 100) +
+        "% anbefalet efter simulering af 3 kandidater over 3 uger (9/8, 16/8, 23/8-sæsonskifte). Fittet READ-ONLY af " +
+        "backend/scripts/fitMarketValueModelV1.js mod samme datasæt som v1 (989 completed auctions + accepterede transfer_offers).",
+      popularity_confound:
+        "UAFKLARET i denne model. g_popularity er stadig NEGATIV, altså modsat intentionen (mere populær ⇒ lavere " +
+        "forudsagt pris), præcis som i v1. 'v1.1' løser ALTSÅ IKKE konfounden. Beslutningen 'keep_raw' følger af " +
+        "udvælgelses-reglens struktur, ikke af evidens for at rå popularity måler en gyldig pris-effekt: variant C " +
+        "(residualiseret) er algebraisk identisk med A (samme holdout-MAE, samme koefficient), og variant B (uden " +
+        "popularity) taber med ~22,7 % på holdout-MAE. Reglen KUNNE derfor ikke vælge andet end A. popularity er " +
+        "stærkt korreleret med O og alder (se corr_*), så koefficienten opsamler sandsynligvis residual type-/alders- " +
+        "struktur frem for en selvstændig popularitets-præmie. Læs den ikke som et kausalt pris-led.",
+      age_definition_divergence:
+        "Modellen er FITTET på kontinuert kalender-alder på salgstidspunktet (fitMarketValueModelV1.js's ageAt), men " +
+        "EVALUERES i runtime på heltals-sæsonalder (lib/riderSeasonAge.js's ageForSeason, som marketValueSundaySweep.js " +
+        "bruger). d_age/e_age2 er derfor fittet på én alders-skala og anvendt på en anden — de falder sammen i middel, " +
+        "men afviger op til ±0,5 år pr. rytter, og alders-leddet er kvadratisk. Skal rettes med en refit under " +
+        "sæson-alder FØR sweepen aktiveres; se kommentaren over ageAt i fit-scriptet.",
+    },
   };
   writeFileSync(OUT_PATH, JSON.stringify(draftModel, null, 2) + "\n");
   console.log(`\nSkrev ${OUT_PATH}`);
@@ -922,7 +962,35 @@ async function main() {
       // Ingen promoveret model endnu — intet at sammenligne imod, se nedenfor.
     }
 
-    if (promotedExists && Number.isFinite(previousMae) && Number.isFinite(newMae)) {
+    // Gaten må KUN springes over når der beviseligt ikke ER noget at
+    // sammenligne imod (ingen promoveret fil). Alle andre "kan ikke
+    // sammenligne"-tilfælde er AFVISNINGER, ikke gratis promoveringer:
+    //   - promoveret model findes, men mangler et brugbart holdout-MAE
+    //     ⇒ vi ved ikke om vi forværrer noget.
+    //   - den NYE fits MAE er ikke et tal (evalHoldout returnerer null når ingen
+    //     holdout-række gav en endelig prædiktion) ⇒ promovering ville låse
+    //     gaten permanent åben: previousMae ville være null ved hver senere
+    //     kørsel, og #3448's punkt 5 ville aldrig gribe igen.
+    if (!Number.isFinite(newMae)) {
+      console.error(
+        `\n❌ --refit AFVIST: den nye fits holdout-MAE(CZ$) er ikke et tal (n_holdout=${v1_1Holdout.n}). ` +
+        `Uden en målbar holdout-fejl kan kvalitets-gaten ikke afgøre noget, og en promovering ville ` +
+        `desuden slå gaten permanent fra ved fremtidige refits. ${PROMOTED_MODEL_PATH} er IKKE overskrevet ` +
+        `— kun draft-JSON'en (${OUT_PATH}) er opdateret.`
+      );
+      process.exitCode = 1;
+    } else if (!promotedExists) {
+      writeFileSync(PROMOTED_MODEL_PATH, JSON.stringify(draftModel, null, 2) + "\n");
+      console.log(`\n✅ --refit: ingen tidligere promoveret model at sammenligne imod — promoverede ${PROMOTED_MODEL_PATH} uden gate (første kørsel).`);
+    } else if (!Number.isFinite(previousMae)) {
+      console.error(
+        `\n❌ --refit AFVIST: den promoverede model (${PROMOTED_MODEL_PATH}) har intet brugbart ` +
+        `holdout.market_v1_1.mae_czk / holdout.market_v1.mae_czk at sammenligne imod. ` +
+        `Ret artefaktet (eller fjern det bevidst, hvis en ren gen-promovering ER hensigten) — ` +
+        `filen er IKKE overskrevet.`
+      );
+      process.exitCode = 1;
+    } else {
       const regression = (newMae - previousMae) / previousMae;
       if (regression > REFIT_MAE_REGRESSION_THRESHOLD) {
         console.error(
@@ -939,9 +1007,6 @@ async function main() {
           `promoverede ${PROMOTED_MODEL_PATH}.`
         );
       }
-    } else {
-      writeFileSync(PROMOTED_MODEL_PATH, JSON.stringify(draftModel, null, 2) + "\n");
-      console.log(`\n✅ --refit: ingen tidligere promoveret model at sammenligne imod — promoverede ${PROMOTED_MODEL_PATH} uden gate (første kørsel).`);
     }
   }
 

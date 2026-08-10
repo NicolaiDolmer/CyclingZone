@@ -163,3 +163,63 @@ describe("applyWeeklyCap", () => {
     assert.equal(applyWeeklyCap(100_000, -50_000, 0.25), 75_000);
   });
 });
+
+// ── CodeRabbit-fund (PR #3449) ───────────────────────────────────────────────
+describe("predictMarketPrice — malformet koefficient-blok", () => {
+  const FEATURES = { O: 60, age: 26, potentiale: 3.5, popularity: 10, primary_type: "gc" };
+
+  it("kaster i stedet for at returnere NaN når et koefficient-led mangler", () => {
+    const broken = { ...COEF };
+    delete broken.d_age;
+    assert.throws(() => predictMarketPrice(FEATURES, broken), /koefficient 'd_age'/);
+  });
+
+  it("kaster på et null-led i stedet for stiltiende at regne det som 0", () => {
+    assert.throws(
+      () => predictMarketPrice(FEATURES, { ...COEF, b: null }),
+      /koefficient 'b'/
+    );
+  });
+
+  it("kaster på et streng-led i stedet for at coerce det", () => {
+    assert.throws(
+      () => predictMarketPrice(FEATURES, { ...COEF, f_potentiale: "0.235" }),
+      /koefficient 'f_potentiale'/
+    );
+  });
+
+  it("kaster når g_popularity mangler men popularity_mode er 'raw'", () => {
+    const broken = { ...COEF };
+    delete broken.g_popularity;
+    assert.throws(() => predictMarketPrice(FEATURES, broken), /g_popularity/);
+  });
+
+  it("kaster hvis modellen ville give en uendelig pris", () => {
+    assert.throws(
+      () => predictMarketPrice(FEATURES, { ...COEF, a: 1e9 }),
+      /ugyldig prædiktion/
+    );
+  });
+});
+
+describe("computeSupport — ugyldige salgs-entries", () => {
+  const RIDER = { O: 60, age: 26, primary_type: "gc" };
+
+  it("tæller IKKE et salg med O=NaN som nærliggende (fail-open-hullet)", () => {
+    const sales = Array.from({ length: 12 }, () => ({ O: NaN, age: 26, primary_type: "gc" }));
+    assert.equal(computeSupport(RIDER, sales, { K: 12 }), 0);
+  });
+
+  it("tæller IKKE et salg med age=null som nærliggende", () => {
+    const sales = Array.from({ length: 12 }, () => ({ O: 60, age: null, primary_type: "gc" }));
+    assert.equal(computeSupport(RIDER, sales, { K: 12 }), 0);
+  });
+
+  it("tæller kun de gyldige entries når listen er blandet", () => {
+    const sales = [
+      ...Array.from({ length: 6 }, () => ({ O: 60, age: 26, primary_type: "gc" })),
+      ...Array.from({ length: 6 }, () => ({ O: undefined, age: 26, primary_type: "gc" })),
+    ];
+    assert.equal(computeSupport(RIDER, sales, { K: 12 }), 0.5);
+  });
+});
