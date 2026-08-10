@@ -515,6 +515,203 @@ export function buildPlan(rows, { seasonNumber, model = BIRTH_MODEL } = {}) {
   };
 }
 
+// ── Den godkendte skriveplan som kilde til identiteten ──────────────────────
+/**
+ * DET EJEREN GODKENDER ER EN PLAN, IKKE EN MÅLFUNKTION.
+ *
+ * `buildPlan` bærer rev2's målfunktion: `solveAssignment` MAKSIMERER fødsels-pasning
+ * under kvoterne. Ejeren låste 10/8 indstilling D, som minimerer ANTALLET af
+ * ændringer under de samme kvoter. De to giver samme typefordeling (kvoterne er
+ * ens) men flytter 2.211 navngivne ryttere hver sin vej — målt i simuleringen,
+ * segment B 2.177 + segment D 34. Kørt uden `--plan-fil` skriver værktøjet altså
+ * rev2, uanset hvilken fil der ligger på disken.
+ *
+ * Rettelsen er ikke at bygge D's målfunktion ind ved siden af rev2's — så ville
+ * næste beslutning kræve en tredje. Identiteten læses fra den godkendte plan, og
+ * værktøjet beholder præcis det den er til for: FRISKE data. Lofterne genberegnes
+ * altid ud af rytterens NUVÆRENDE evner med `buildCapsForRider`; kun valget af
+ * type kommer fra filen. Et loft fra en fil er per definition forældet, og det var
+ * hele grunden til at værktøjet tager sit eget snapshot (gulv-garantien).
+ *
+ * Fail-closed: står en rytter i skrive-scopet men ikke i filen, findes der ingen
+ * godkendt identitet til ham, og kørslen stopper. Den må ikke falde tilbage på
+ * løseren for restpopulationen — det ville blande to målfunktioner i samme
+ * skrivning.
+ */
+export function laesPlanFil(sti) {
+  const raa = JSON.parse(readFileSync(sti, "utf8"));
+  if (!Array.isArray(raa.ryttere)) throw new Error(`--plan-fil: ${sti} har ingen "ryttere"-liste.`);
+  const identitet = new Map();
+  for (const r of raa.ryttere) {
+    if (!r.rider_id) throw new Error(`--plan-fil: en post mangler rider_id (${sti}).`);
+    if (identitet.has(r.rider_id)) throw new Error(`--plan-fil: ${r.rider_id} står to gange.`);
+    const post = {
+      skrives: r.skrives === true,
+      primary: r.primary_efter ?? null,
+      secondary: r.secondary_efter ?? null,
+      caps: r.skrives_ability_caps ?? null,
+    };
+    if (post.skrives) {
+      if (!RIDER_TYPE_KEYS.includes(post.primary)) throw new Error(`--plan-fil: ${r.rider_id} har ugyldig primary_efter "${post.primary}".`);
+      if (!RIDER_TYPE_KEYS.includes(post.secondary)) throw new Error(`--plan-fil: ${r.rider_id} har ugyldig secondary_efter "${post.secondary}".`);
+      if (post.primary === post.secondary) throw new Error(`--plan-fil: ${r.rider_id} har samme primær og sekundær ("${post.primary}").`);
+    }
+    identitet.set(r.rider_id, post);
+  }
+  return {
+    sti, identitet,
+    revision: raa.revision ?? null,
+    genereret: raa.genereret ?? null,
+    kvoter: raa.regel?.kvoter ?? null,
+    antal: identitet.size,
+    skrives: [...identitet.values()].filter((x) => x.skrives).length,
+  };
+}
+
+/**
+ * Lægger planens identitet ned over en frisk plan og genberegner alt afledt.
+ * MUTERER `plan`. Returnerer den rapport kørslen skal gates på.
+ */
+export function paalaegPlanFil(plan, planFil) {
+  const r = {
+    fil: planFil.sti, revision: planFil.revision,
+    daekket: 0, ikkeIFilen: [], filenUdelader: [], filenSkriverEkstra: [],
+    aendretFraLoeser: 0, aendretEksempler: [],
+    capsCeller: 0, capsAfvigelser: [],
+  };
+  for (const p of plan.poster) {
+    const f = planFil.identitet.get(p.rider_id);
+    if (!p.skrives) {
+      if (f?.skrives) r.filenSkriverEkstra.push({ rider_id: p.rider_id, navn: navnAf(p.row), grund: p.udeladelses_grund });
+      continue;
+    }
+    if (!f) { r.ikkeIFilen.push({ rider_id: p.rider_id, navn: navnAf(p.row), segment: p.segment, ejer: p.row.owner_kind }); continue; }
+    if (!f.skrives) { r.filenUdelader.push({ rider_id: p.rider_id, navn: navnAf(p.row), segment: p.segment }); continue; }
+
+    r.daekket++;
+    if (p.newPrimary !== f.primary || p.newSecondary !== f.secondary) {
+      r.aendretFraLoeser++;
+      if (r.aendretEksempler.length < 10) {
+        r.aendretEksempler.push({ rider_id: p.rider_id, navn: navnAf(p.row), loeser: p.newPrimary, fil: f.primary, segment: p.segment });
+      }
+    }
+    p.newPrimary = f.primary;
+    p.newSecondary = f.secondary;
+    p.draw = { primary: p.newPrimary, secondary: p.newSecondary };
+    // Lofterne kommer ALDRIG fra filen — altid fra rytterens friske evner.
+    p.newCaps = buildCapsForRider(p.abilities, { potentiale: p.row.potentiale, age: p.row.age }, p.newPrimary, p.newSecondary);
+    // Filens egne lofter er beregnet af et ANDET spor på et ANDET tidspunkt.
+    // Sammenligningen er derfor et ægte paritets-bevis, ikke en tautologi: på
+    // frosne data skal de være celle-identiske, på friske data er forskellen
+    // præcis den træning der er sket siden.
+    if (f.caps) {
+      for (const a of VISIBLE_ABILITIES) {
+        r.capsCeller++;
+        if (Number(f.caps[a]) !== Number(p.newCaps[a])) {
+          if (r.capsAfvigelser.length < 50) r.capsAfvigelser.push({ rider_id: p.rider_id, evne: a, fil: Number(f.caps[a]), beregnet: Number(p.newCaps[a]) });
+          else r.capsAfvigelser.length++;
+        }
+      }
+    }
+    p.pasnings_rang = p.genfundet ? p.genfundet.rankOf[p.newPrimary] : null;
+    p.konfidens = p.kilde === "fødsel" ? p.genfundet.confidence : null;
+    p.konfidens_baand = konfidensBaand(p.konfidens);
+    p.primaerSkifter = p.newPrimary !== p.row.primary_type;
+    p.sekundaerSkifter = p.newSecondary !== p.row.secondary_type;
+    p.vaersteSaenkning = Math.max(0, ...VISIBLE_ABILITIES.map((a) => Number(p.oldCaps[a] ?? 0) - Number(p.newCaps[a] ?? 0)));
+    p.vaersteHaevning = Math.max(0, ...VISIBLE_ABILITIES.map((a) => Number(p.newCaps[a] ?? 0) - Number(p.oldCaps[a] ?? 0)));
+    p.capsAendres = !sameCaps(p.oldCaps, p.newCaps);
+    p.identitetAendres = !validDraw(p.row.archetype_draw)
+      || p.row.archetype_draw.primary !== p.newPrimary
+      || p.row.archetype_draw.secondary !== p.newSecondary
+      || p.row.primary_type !== p.newPrimary
+      || p.row.secondary_type !== p.newSecondary;
+  }
+  plan.planFil = r;
+  plan.loeser = { ...plan.loeser, tilsidesat_af_planfil: true, fil: planFil.sti, revision: planFil.revision };
+  return r;
+}
+
+/**
+ * PARITETS-gate for `--plan-fil` — ikke en dæknings-gate.
+ *
+ * Filen anvendes på det FROSNE 10/8-snapshot, og alt hvad den påstår om de ryttere
+ * snapshottet OGSÅ kender skal kunne genskabes af repoets egne funktioner: lofterne
+ * celle for celle, gulv-garantien, og at den frosne type resolver til sig selv.
+ *
+ * DÆKNINGEN høre IKKE hjemme her. Planen skal efter sin egen forskrift genereres
+ * forfra på skrivedagen, og en fil bygget på et NYERE snapshot har et andet
+ * rytter-sæt end det daterede. Krævede denne gate fuld dækning af 10/8-snapshottet,
+ * ville den afvise præcis den fil man skal bruge. Kravet om at hver rytter i det
+ * FRISKE scope har en godkendt identitet står i `runRepair3570`, hvor populationen
+ * er den rigtige — og det er fail-closed dér.
+ */
+export function runPlanFilSelvtest({ dir = BASELINE_SNAPSHOT_DIR, planFil }) {
+  const { plan, rapport } = baselinePlanMedPlanFil(dir, planFil);
+  const afvigelser = [];
+  const cmp = (navn, faktisk, forventet) => { if (faktisk !== forventet) afvigelser.push({ navn, faktisk, forventet }); };
+
+  // Uden ét eneste fælles navn er der intet at bevise paritet PÅ.
+  if (rapport.daekket === 0) {
+    afvigelser.push({ navn: "ryttere fælles med 10/8-snapshottet", faktisk: 0, forventet: ">0" });
+  }
+  // En rytter begge sider kender, hvor filen siger "skriv ikke" og scopet siger
+  // "skriv", er en ægte modstrid — ikke en populations-forskel.
+  cmp("ryttere filen udelader men scopet skriver", rapport.filenUdelader.length, 0);
+  cmp("caps-celler der afviger fra filens egne", rapport.capsAfvigelser.length, 0);
+
+  const skriver = plan.poster.filter((p) => p.skrives);
+
+  // Kvoterne kan kun kontrolleres når filen dækker HELE 10/8-puljen; ellers måles
+  // en delmængde mod et fuldt kvote-sæt, og tallene ville altid være for lave.
+  const fuldDaekning = rapport.ikkeIFilen.length === 0;
+  if (planFil.kvoter && fuldDaekning) {
+    const pulje = plan.poster.filter((p) => p.skrives && p.kilde === "tildelt");
+    const c = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 0]));
+    for (const p of pulje) c[p.newPrimary]++;
+    for (const k of RIDER_TYPE_KEYS) cmp(`kvote ${k}`, c[k], planFil.kvoter[k]);
+  }
+
+  // Invarianterne — de samme som runSelvtest kræver, nu på filens tildeling.
+  let gulvBrud = 0, drift = 0, udenforInterval = 0;
+  for (const p of skriver) {
+    const model = selectTypesBaseline(p.row.age, ADULT_BASELINE, YOUTH_BASELINE);
+    if (resolveRiderTypes(p.draw, p.newCaps, model).primary.key !== p.newPrimary) drift++;
+    for (const a of VISIBLE_ABILITIES) {
+      const c = Number(p.newCaps[a]);
+      if (c < Number(p.abilities[a] ?? 0)) gulvBrud++;
+      if (!(c >= 0 && c <= 99)) udenforInterval++;
+    }
+  }
+  if (drift) afvigelser.push({ navn: "resolveRiderTypes-drift", faktisk: drift, forventet: 0 });
+  if (gulvBrud) afvigelser.push({ navn: "gulv-brud", faktisk: gulvBrud, forventet: 0 });
+  if (udenforInterval) afvigelser.push({ navn: "lofter uden for [0,99]", faktisk: udenforInterval, forventet: 0 });
+
+  return {
+    bestaaet: afvigelser.length === 0, afvigelser, rapport,
+    fuldDaekning, daekket: rapport.daekket, ikkeIFilen: rapport.ikkeIFilen.length,
+    sammenligninger: 4 + (fuldDaekning ? RIDER_TYPE_KEYS.length : 0) + rapport.capsCeller
+      + skriver.length * (1 + VISIBLE_ABILITIES.length * 2),
+  };
+}
+
+const planFilBaselineCache = new Map();
+/**
+ * Baseline-planen MED planfilen lagt over. Diffen i trin 4 skal måle datadrift —
+ * bygges baselinen uden filen, ville den i stedet måle forskellen mellem to
+ * målfunktioner og drukne driften i 2.211 falske udslag.
+ */
+export function baselinePlanMedPlanFil(dir, planFil) {
+  const n = `${dir}|${planFil.sti}`;
+  if (!planFilBaselineCache.has(n)) {
+    const { rows, seasonNumber } = loadBaselineSnapshot(dir);
+    const plan = buildPlan(rows, { seasonNumber });
+    const rapport = paalaegPlanFil(plan, planFil);
+    planFilBaselineCache.set(n, { rows, plan, rapport });
+  }
+  return planFilBaselineCache.get(n);
+}
+
 // ── Fordelinger / sammendrag ────────────────────────────────────────────────
 export function fordeling(keys) {
   const c = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 0]));
@@ -952,13 +1149,22 @@ BEGIN;
 --     allerede (delvis) kørt, er enhver kopi herfra en efter-tilstand, og den ville
 --     være ubrugelig som rollback-kilde. Samme datagrænse som apply-værktøjets
 --     \`DRAW_BASELINE_SPAERRE\`.
+--     NB: tabel-eksistens og række-tælling SKAL stå i hver sin sætning. Skrives de
+--     som ét udtryk (\`to_regclass(…) IS NOT NULL AND (SELECT count(*) FROM …) > 0\`),
+--     slår Postgres relations-navnet op når UDTRYKKET planlægges — kortslutningen
+--     redder det ikke — og hele blokken fejler med "relation does not exist" på en
+--     ren database, altså i præcis den førstegangs-situation PART A findes til.
+--     Målt mod PostgreSQL 18.3 (PGlite) 10/8: den gamle form fejlede både på en ren
+--     database OG på en allerede repareret, hvor den skjulte sin egen STOP-besked.
 DO $$
-DECLARE n_draw bigint;
+DECLARE n_draw bigint; n_kopi bigint;
 BEGIN
-  IF to_regclass('public.${t.riders}') IS NOT NULL
-     AND (SELECT count(*) FROM public.${t.riders}) > 0 THEN
-    RAISE NOTICE 'public.${t.riders} findes allerede — PART A rører den ikke.';
-    RETURN;
+  IF to_regclass('public.${t.riders}') IS NOT NULL THEN
+    EXECUTE 'SELECT count(*) FROM public.${t.riders}' INTO n_kopi;
+    IF n_kopi > 0 THEN
+      RAISE NOTICE 'public.${t.riders} findes allerede (% rækker) — PART A rører den ikke.', n_kopi;
+      RETURN;
+    END IF;
   END IF;
   SELECT count(*) INTO n_draw FROM public.riders WHERE archetype_draw IS NOT NULL;
   IF n_draw > ${DRAW_BASELINE_SPAERRE} THEN
@@ -1577,6 +1783,7 @@ export const STANDARD_OPTIONS = Object.freeze({
   apply: false,
   ejerBekraeftet: false,
   lofter: "alle",              // alle | menneske | ingen
+  planFil: null,               // sti til den godkendte skriveplan (identiteten)
   backupSuffix: null,          // default: dagens dato i Europe/Copenhagen
   fortsaetDelvis: false,
   baselineDir: BASELINE_SNAPSHOT_DIR,
@@ -1614,6 +1821,25 @@ export async function runRepair3570(supabase, options = {}) {
   }
   log(`  ✅ ${selvtest.sammenligninger.toLocaleString("da-DK")} sammenligninger · 0 afvigelser`);
 
+  // 1b) Den godkendte skriveplan. Uden den skriver værktøjet sin EGEN målfunktion
+  //     (rev2), og det er ikke det ejeren har godkendt.
+  let planFil = null;
+  if (o.planFil) {
+    log("── 1b/8 Godkendt skriveplan ──");
+    planFil = laesPlanFil(o.planFil);
+    const pfSelv = runPlanFilSelvtest({ dir: o.baselineDir, planFil });
+    ud.planFilSelvtest = { bestaaet: pfSelv.bestaaet, afvigelser: pfSelv.afvigelser, sammenligninger: pfSelv.sammenligninger };
+    if (!pfSelv.bestaaet) {
+      log(`  🔴 ${pfSelv.afvigelser.length} afvigelse(r):`);
+      for (const a of pfSelv.afvigelser) log(`     ${a.navn}: ${a.faktisk} (forventet ${a.forventet})`);
+      throw new Error("Planfilen og koden er uenige — der er ikke rørt ved produktionen.");
+    }
+    log(`  ${planFil.revision ?? planFil.sti}`);
+    log(`  ✅ ${pfSelv.sammenligninger.toLocaleString("da-DK")} sammenligninger · 0 afvigelser · ${planFil.skrives} identiteter`);
+  } else {
+    log("── 1b/8 INGEN --plan-fil: identiteten kommer fra værktøjets egen løser (rev2's målfunktion) ──");
+  }
+
   // 2) Frisk snapshot.
   log("── 2/8 Frisk prod-snapshot (kun SELECT) ──");
   const frisk = await hentFriskPopulation(supabase);
@@ -1628,6 +1854,35 @@ export async function runRepair3570(supabase, options = {}) {
   // 3) Planen bygges forfra på det friske snapshot.
   log("── 3/8 Planen bygges forfra ──");
   const plan = buildPlan(frisk.rows, { seasonNumber: frisk.seasonNumber });
+  if (planFil) {
+    const pf = paalaegPlanFil(plan, planFil);
+    ud.planFil = {
+      fil: pf.fil, revision: pf.revision, daekket: pf.daekket,
+      ikkeIFilen: pf.ikkeIFilen.length, filenUdelader: pf.filenUdelader.length,
+      filenSkriverEkstra: pf.filenSkriverEkstra.length,
+      aendretFraLoeser: pf.aendretFraLoeser, aendretEksempler: pf.aendretEksempler,
+      capsCeller: pf.capsCeller, capsAfvigelser: pf.capsAfvigelser.length,
+      ikkeIFilenRyttere: pf.ikkeIFilen.slice(0, 25),
+    };
+    log(`  planfilen dækker ${pf.daekket} af ${plan.poster.filter((p) => p.skrives).length} i scopet · ${pf.aendretFraLoeser} identiteter afviger fra værktøjets egen løser`);
+    if (pf.filenSkriverEkstra.length) {
+      log(`  ℹ ${pf.filenSkriverEkstra.length} ryttere står i filen men er ude af scopet nu (de springes over)`);
+    }
+    if (pf.ikkeIFilen.length || pf.filenUdelader.length) {
+      // Fail-closed. Restpopulationen må IKKE falde tilbage på løseren — så ville
+      // to målfunktioner blive blandet i én skrivning.
+      for (const x of pf.ikkeIFilen.slice(0, 10)) log(`     mangler i filen: ${x.navn} (${x.ejer}, seg. ${x.segment})`);
+      throw new Error(
+        `STOP: ${pf.ikkeIFilen.length} ryttere i skrive-scopet har ingen godkendt identitet i ${pf.fil}, `
+        + `og ${pf.filenUdelader.length} udelades af filen men er i scopet. Det er ryttere der er født `
+        + "efter planen blev lavet. Generér planen forfra på et friskt snapshot, eller kør uden --plan-fil "
+        + "(så gælder værktøjets egen målfunktion, ikke ejerens beslutning).",
+      );
+    }
+    if (pf.capsAfvigelser.length) {
+      log(`  ℹ ${pf.capsAfvigelser.length} af ${pf.capsCeller} loft-celler afviger fra filens egne tal — rytterne har trænet siden planen blev lavet. Lofterne skrives fra FRISKE evner.`);
+    }
+  }
   const tal = populationsTal(plan.poster);
   ud.plan = {
     segmenter: plan.segmenter, kilder: plan.kilder, kvoter: plan.kvoter, loeser: plan.loeser,
@@ -1652,7 +1907,10 @@ export async function runRepair3570(supabase, options = {}) {
   // 4) Diff mod dry-runnets plan — flyttede verden sig under ejeren?
   if (!o.ingenBaseline) {
     log("── 4/8 Diff mod planen fra 10/8-snapshottet ──");
-    const diff = diffModBaseline(plan, selvtest.plan);
+    // Baselinen skal bygges med SAMME identitets-kilde som den friske plan, ellers
+    // måler diffen forskellen mellem to målfunktioner i stedet for datadrift.
+    const baseline = planFil ? baselinePlanMedPlanFil(o.baselineDir, planFil).plan : selvtest.plan;
+    const diff = diffModBaseline(plan, baseline);
     ud.diff = {
       baseline_n: diff.baseline_n, frisk_n: diff.frisk_n,
       nye: diff.nye.length, forsvundne: diff.forsvundne.length,
@@ -1775,6 +2033,14 @@ function rapportér(ud, plan, log) {
   log("");
   log(`Identitetens kilde: ${Object.entries(plan.kilder).map(([k, v]) => `${k} ${v}`).join(" · ")}`);
   log(`Segmenter: ${Object.entries(plan.segmenter).map(([k, v]) => `${k} ${v}`).join(" · ")}`);
+  log("");
+  if (ud.planFil) {
+    log(`Tildelingen kommer fra den godkendte plan: ${ud.planFil.revision ?? ud.planFil.fil}`);
+    log(`  ${ud.planFil.daekket} identiteter fra filen · ${ud.planFil.aendretFraLoeser} af dem afviger fra værktøjets egen løser.`);
+  } else {
+    log("⚠ Tildelingen kommer fra VÆRKTØJETS EGEN løser (rev2's målfunktion), ikke fra en godkendt plan-fil.");
+    log("  Er en anden indstilling låst, skal den gives med --plan-fil — ellers skrives rev2.");
+  }
   if (ud.diff) {
     log("");
     log(`Verden flyttede sig siden 10/8: ${ud.diff.labelDriftAntal} nye labels · ${ud.diff.capsDriftAntal} nye lofter i DB · ${ud.diff.primaerDiffAntal} ryttere får en anden frossen type end 10/8-planen.`);
@@ -1814,6 +2080,7 @@ export function parseArgs(argv) {
     apply: has("--apply"),
     ejerBekraeftet: has("--jeg-har-set-dry-runnet"),
     lofter,
+    planFil: val("--plan-fil", null),
     backupSuffix: val("--backup-suffix", null),
     fortsaetDelvis: has("--fortsaet-delvis"),
     ingenBaseline: has("--ingen-baseline"),
@@ -1834,6 +2101,14 @@ FLAG
                              beviser idempotens, rapporterer — skriver ALDRIG.
   --apply                    Intention om at skrive. Virker KUN sammen med næste flag.
   --jeg-har-set-dry-runnet   Ejer-gate. Uden den skriver --apply ingenting.
+  --plan-fil=<sti>           Den GODKENDTE skriveplan bestemmer identiteten (fx
+                             indstilling D). UDEN dette flag bruger værktøjet sin
+                             egen løser, som bærer rev2's målfunktion — den giver
+                             samme typefordeling, men flytter 2.211 navngivne
+                             ryttere anderledes end D. Lofterne kommer ALDRIG fra
+                             filen; de genberegnes altid ud af friske evner.
+                             Står en rytter i scopet uden identitet i filen, stopper
+                             kørslen — der faldes ikke tilbage på løseren.
   --lofter=alle|menneske|ingen
                              Hvilke ability_caps der skrives (dry-runnets beslutning 2).
                              alle (default) · menneske = kun menneske-ejede hold ·
@@ -1879,6 +2154,16 @@ async function main() {
     for (const a of res.afvigelser) console.log(`  🔴 ${a.navn}: ${a.faktisk} (forventet ${a.forventet})`);
     if (!res.bestaaet) process.exit(1);
     console.log(`  ✅ planlæggeren reproducerer det godkendte dry-run (segmenter ${JSON.stringify(res.plan.segmenter)}, kilder ${JSON.stringify(res.plan.kilder)})`);
+    if (args.planFil) {
+      const pf = laesPlanFil(args.planFil);
+      const p = runPlanFilSelvtest({ dir: args.baselineDir, planFil: pf });
+      console.log(`Planfil-selvtest mod ${args.planFil}`);
+      console.log(`  ${p.sammenligninger.toLocaleString("da-DK")} sammenligninger · ${p.afvigelser.length} afvigelser`);
+      for (const a of p.afvigelser) console.log(`  🔴 ${a.navn}: ${a.faktisk} (forventet ${a.forventet})`);
+      if (!p.bestaaet) process.exit(1);
+      console.log(`  ✅ ${pf.revision ?? pf.sti}`);
+      console.log(`  ✅ ${pf.skrives} identiteter · ${p.rapport.capsCeller} loft-celler celle-identiske · ${p.rapport.aendretFraLoeser} afviger fra værktøjets egen løser`);
+    }
     return;
   }
 
@@ -1894,6 +2179,7 @@ async function main() {
     apply: args.apply,
     ejerBekraeftet: args.ejerBekraeftet,
     lofter: args.lofter,
+    planFil: args.planFil,
     backupSuffix: args.backupSuffix,
     fortsaetDelvis: args.fortsaetDelvis,
     baselineDir: args.baselineDir,

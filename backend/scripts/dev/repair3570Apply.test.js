@@ -16,8 +16,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -25,6 +26,8 @@ import {
   parseArgs, backupDDL, backupTabeller, cphDateStamp, quotasFromPct, solveAssignment,
   recoverBirthArchetype, segmentOf, postVerify, sikreBackup, rollbackSQL,
   DRYRUN_FACIT, MAAL, BACKUP_SKEMA, KANONISK_BACKUP_SUFFIX, FORSVUNDNE_GRAENSE_MIN,
+  laesPlanFil, paalaegPlanFil, runPlanFilSelvtest, baselinePlan, hentFriskPopulation,
+  BASELINE_SNAPSHOT_DIR,
 } from "./repair3570Apply.mjs";
 import { STAT_KEYS } from "../../lib/fictionalRiderGenerator.js";
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
@@ -938,4 +941,193 @@ test("B5: skellet hviler på et SELVSTÆNDIGT eksistens-opslag, ikke på det bre
       return true;
     },
   );
+});
+
+// ── --plan-fil: den GODKENDTE plan bestemmer identiteten ────────────────────
+// Værktøjets egen løser bærer rev2's målfunktion. Ejeren låste indstilling D.
+// De to giver samme typefordeling (kvoterne er ens) men flytter 2.211 navngivne
+// ryttere hver sin vej, så uden --plan-fil skriver værktøjet rev2 — uanset hvilken
+// fil der ligger på disken.
+//
+// Den POSITIVE prøve nedenfor er bevidst selv-refererende: plan-filen genereres ud
+// af værktøjets egen baseline-plan, så den kan ikke bevise at D er rigtig. Det bevis
+// ligger i kørslen mod den ægte D-fil (376.890 sammenligninger, 122.895 loft-celler,
+// 0 afvigelser). Det disse tests beviser er MEKANIKKEN: at filen faktisk overtager
+// identiteten, at lofterne stadig kommer fra friske evner, og at porten kan fejle.
+function planFilFra(poster, kvoter) {
+  return {
+    revision: "test",
+    regel: kvoter ? { kvoter } : {},
+    ryttere: poster.map((p) => ({
+      rider_id: p.rider_id,
+      skrives: !!p.skrives,
+      primary_efter: p.skrives ? p.newPrimary : null,
+      secondary_efter: p.skrives ? p.newSecondary : null,
+      skrives_ability_caps: p.skrives ? { ...p.newCaps } : null,
+    })),
+  };
+}
+function skrivPlanFil(objekt, navn) {
+  const dir = mkdtempSync(join(tmpdir(), "planfil-"));
+  const sti = join(dir, `${navn}.json`);
+  writeFileSync(sti, JSON.stringify(objekt));
+  return sti;
+}
+
+test("laesPlanFil afviser ugyldige planer (type, dublet, primær == sekundær)", () => {
+  const en = (r) => skrivPlanFil({ ryttere: [r] }, "ugyldig");
+  assert.throws(() => laesPlanFil(en({ rider_id: "a", skrives: true, primary_efter: "bjergged", secondary_efter: "gc" })), /ugyldig primary_efter/);
+  assert.throws(() => laesPlanFil(en({ rider_id: "a", skrives: true, primary_efter: "gc", secondary_efter: "gc" })), /samme primær og sekundær/);
+  assert.throws(() => laesPlanFil(en({ skrives: true, primary_efter: "gc", secondary_efter: "tt" })), /mangler rider_id/);
+  assert.throws(() => laesPlanFil(skrivPlanFil({ ryttere: [
+    { rider_id: "a", skrives: true, primary_efter: "gc", secondary_efter: "tt" },
+    { rider_id: "a", skrives: true, primary_efter: "gc", secondary_efter: "tt" },
+  ] }, "dublet")), /står to gange/);
+  assert.throws(() => laesPlanFil(skrivPlanFil({ intet: 1 }, "tom")), /ingen "ryttere"-liste/);
+});
+
+test("--plan-fil overtager identiteten, men lofterne kommer STADIG fra friske evner", async () => {
+  const db = nyDb();
+  const frisk = await hentFriskPopulation(db);
+  const plan = buildPlan(frisk.rows, { seasonNumber: frisk.seasonNumber });
+  const løserValg = new Map(plan.poster.map((p) => [p.rider_id, p.newPrimary]));
+
+  // Filen vælger en ANDEN type end løseren for hver rytter i scopet — og bærer
+  // bevidst forkerte lofter (99 overalt). Lofterne skal komme fra buildCapsForRider.
+  const fil = planFilFra(plan.poster);
+  const løgn = Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, 99]));
+  for (const r of fil.ryttere) {
+    if (!r.skrives) continue;
+    r.primary_efter = RIDER_TYPE_KEYS.find((k) => k !== løserValg.get(r.rider_id));
+    r.secondary_efter = RIDER_TYPE_KEYS.find((k) => k !== r.primary_efter);
+    r.skrives_ability_caps = { ...løgn };
+  }
+  const pf = laesPlanFil(skrivPlanFil(fil, "andet-valg"));
+  const plan2 = buildPlan(frisk.rows, { seasonNumber: frisk.seasonNumber });
+  const rapport = paalaegPlanFil(plan2, pf);
+
+  assert.equal(rapport.ikkeIFilen.length, 0);
+  assert.ok(rapport.aendretFraLoeser > 0, "filen skal faktisk have overtaget noget");
+  for (const p of plan2.poster.filter((x) => x.skrives)) {
+    assert.equal(p.newPrimary, pf.identitet.get(p.rider_id).primary, "identiteten kommer fra filen");
+    assert.equal(p.draw.primary, p.newPrimary, "draw'et følger med");
+    const forventet = buildCapsForRider(p.abilities, { potentiale: p.row.potentiale, age: p.row.age }, p.newPrimary, p.newSecondary);
+    assert.deepEqual(p.newCaps, forventet, "loftet er genberegnet ud af friske evner");
+    assert.notDeepEqual(p.newCaps, løgn, "loftet er IKKE filens");
+  }
+  assert.ok(rapport.capsAfvigelser.length > 0, "filens forkerte lofter er rapporteret, ikke tiet ihjel");
+});
+
+test("--plan-fil er fail-closed: en rytter i scopet uden identitet i filen fanges", async () => {
+  const db = nyDb();
+  const frisk = await hentFriskPopulation(db);
+  const fil = planFilFra(buildPlan(frisk.rows, { seasonNumber: frisk.seasonNumber }).poster);
+  fil.ryttere.splice(fil.ryttere.findIndex((r) => r.skrives), 1);
+  const pf = laesPlanFil(skrivPlanFil(fil, "mangler"));
+  const plan2 = buildPlan(frisk.rows, { seasonNumber: frisk.seasonNumber });
+  const rapport = paalaegPlanFil(plan2, pf);
+  assert.equal(rapport.ikkeIFilen.length, 1);
+  // Rytteren beholder løserens valg i objektet, men han er talt som udækket —
+  // og kørslen kaster på netop det tal, i stedet for at skrive to målfunktioner.
+  assert.equal(rapport.daekket, plan2.poster.filter((p) => p.skrives).length - 1);
+});
+
+test("runPlanFilSelvtest består på en gyldig plan og fejler på tre beskadigelser", () => {
+  const { plan } = baselinePlan(BASELINE_SNAPSHOT_DIR);
+  const gyldig = planFilFra(plan.poster, plan.kvoter);
+  const ok = runPlanFilSelvtest({ dir: BASELINE_SNAPSHOT_DIR, planFil: laesPlanFil(skrivPlanFil(gyldig, "gyldig")) });
+  assert.equal(ok.bestaaet, true, JSON.stringify(ok.afvigelser));
+  assert.equal(ok.rapport.capsAfvigelser.length, 0);
+  assert.ok(ok.rapport.capsCeller > 100_000, "hele loft-fladen er sammenlignet");
+
+  const cellen = planFilFra(plan.poster, plan.kvoter);
+  const r1 = cellen.ryttere.find((r) => r.skrives);
+  r1.skrives_ability_caps.climbing = Number(r1.skrives_ability_caps.climbing) + 1;
+  const n1 = runPlanFilSelvtest({ dir: BASELINE_SNAPSHOT_DIR, planFil: laesPlanFil(skrivPlanFil(cellen, "celle")) });
+  assert.equal(n1.bestaaet, false);
+  assert.ok(n1.afvigelser.some((a) => a.navn.includes("caps-celler")));
+
+  const kvote = planFilFra(plan.poster, plan.kvoter);
+  const r2 = kvote.ryttere.find((r) => r.skrives && r.primary_efter !== "gc");
+  r2.primary_efter = "gc";
+  if (r2.secondary_efter === "gc") r2.secondary_efter = "sprinter";
+  const n2 = runPlanFilSelvtest({ dir: BASELINE_SNAPSHOT_DIR, planFil: laesPlanFil(skrivPlanFil(kvote, "kvote")) });
+  assert.equal(n2.bestaaet, false);
+  assert.ok(n2.afvigelser.some((a) => a.navn.startsWith("kvote ")));
+
+  // En rytter der mangler er IKKE en paritets-fejl — filen kan være bygget på et
+  // nyere snapshot. Den skal rapporteres, kvote-kontrollen skal falde bort (ellers
+  // måles en delmængde mod et fuldt kvote-sæt), og dækningskravet håndhæves i
+  // runRepair3570 mod den friske population. Se testen nedenfor.
+  const mangler = planFilFra(plan.poster, plan.kvoter);
+  mangler.ryttere.splice(mangler.ryttere.findIndex((r) => r.skrives), 1);
+  const n3 = runPlanFilSelvtest({ dir: BASELINE_SNAPSHOT_DIR, planFil: laesPlanFil(skrivPlanFil(mangler, "mangler2")) });
+  assert.equal(n3.bestaaet, true, "manglende dækning er ikke en paritets-fejl");
+  assert.equal(n3.fuldDaekning, false);
+  assert.equal(n3.ikkeIFilen, 1);
+  assert.ok(!n3.afvigelser.some((a) => a.navn.startsWith("kvote ")), "kvoterne kontrolleres ikke på en delmængde");
+
+  // NEGATIV 4: en fil uden ét eneste fælles navn kan ikke bevise noget.
+  const fremmed = { revision: "fremmed", ryttere: [{ rider_id: "findes-ikke", skrives: true, primary_efter: "gc", secondary_efter: "tt", skrives_ability_caps: null }] };
+  const n4 = runPlanFilSelvtest({ dir: BASELINE_SNAPSHOT_DIR, planFil: laesPlanFil(skrivPlanFil(fremmed, "fremmed")) });
+  assert.equal(n4.bestaaet, false);
+  assert.ok(n4.afvigelser.some((a) => a.navn.includes("fælles")));
+});
+
+test("dækningskravet håndhæves mod den FRISKE population, ikke mod 10/8-snapshottet", async () => {
+  const db = nyDb();
+  const frisk = await hentFriskPopulation(db);
+  const plan = buildPlan(frisk.rows, { seasonNumber: frisk.seasonNumber });
+  const { plan: bPlan } = baselinePlan(BASELINE_SNAPSHOT_DIR);
+
+  const fil = planFilFra(bPlan.poster, bPlan.kvoter);
+  const fixtur = planFilFra(plan.poster);
+  fixtur.ryttere.splice(fixtur.ryttere.findIndex((r) => r.skrives), 1);   // én frisk rytter mangler
+  for (const r of fixtur.ryttere) fil.ryttere.push(r);
+
+  await assert.rejects(
+    () => runRepair3570(db, { ...APPLY, planFil: skrivPlanFil(fil, "hul"), ingenBaseline: true }),
+    /ingen godkendt identitet/,
+  );
+  assert.equal(db.writes.updates.length, 0, "der må ikke være skrevet én række");
+  assert.equal(db.writes.inserts.length, 0, "og ingen backup taget");
+});
+
+test("hele kørslen med --plan-fil skriver filens identitet, ikke løserens", async () => {
+  const db = nyDb();
+  const frisk = await hentFriskPopulation(db);
+  const plan = buildPlan(frisk.rows, { seasonNumber: frisk.seasonNumber });
+  const { plan: bPlan } = baselinePlan(BASELINE_SNAPSHOT_DIR);
+
+  // Filen dækker BÅDE baseline-snapshottet (selvtesten kræver det) og fixturen.
+  const fil = planFilFra(bPlan.poster, bPlan.kvoter);
+  const fixtur = planFilFra(plan.poster);
+  for (const r of fixtur.ryttere) {
+    if (r.skrives) {
+      const anden = RIDER_TYPE_KEYS.find((k) => k !== r.primary_efter);
+      if (r.secondary_efter === anden) r.secondary_efter = r.primary_efter;
+      r.primary_efter = anden;
+      r.skrives_ability_caps = null;
+    }
+    fil.ryttere.push(r);
+  }
+  const res = await runRepair3570(db, { ...APPLY, planFil: skrivPlanFil(fil, "union"), ingenBaseline: true });
+
+  assert.equal(res.planFilSelvtest.bestaaet, true);
+  assert.equal(res.planFil.ikkeIFilen, 0);
+  assert.ok(res.planFil.aendretFraLoeser > 0);
+  for (const r0 of fixtur.ryttere.filter((r) => r.skrives)) {
+    const r = db.tables.riders.find((x) => x.id === r0.rider_id);
+    assert.equal(r.primary_type, r0.primary_efter, `${r0.rider_id} skal bære filens type`);
+    assert.equal(r.archetype_draw.primary, r0.primary_efter);
+  }
+  assert.equal(res.postVerify.bestaaet, true);
+});
+
+test("uden --plan-fil siger rapporten eksplicit at det er værktøjets egen løser", async () => {
+  const linjer = [];
+  await runRepair3570(nyDb(), { ...DRY, log: (s) => linjer.push(s) });
+  const tekst = linjer.join("\n");
+  assert.match(tekst, /INGEN --plan-fil/);
+  assert.match(tekst, /VÆRKTØJETS EGEN løser/);
 });

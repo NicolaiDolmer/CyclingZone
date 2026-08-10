@@ -45,13 +45,22 @@ BEGIN;
 --     allerede (delvis) kørt, er enhver kopi herfra en efter-tilstand, og den ville
 --     være ubrugelig som rollback-kilde. Samme datagrænse som apply-værktøjets
 --     `DRAW_BASELINE_SPAERRE`.
+--     NB: tabel-eksistens og række-tælling SKAL stå i hver sin sætning. Skrives de
+--     som ét udtryk (`to_regclass(…) IS NOT NULL AND (SELECT count(*) FROM …) > 0`),
+--     slår Postgres relations-navnet op når UDTRYKKET planlægges — kortslutningen
+--     redder det ikke — og hele blokken fejler med "relation does not exist" på en
+--     ren database, altså i præcis den førstegangs-situation PART A findes til.
+--     Målt mod PostgreSQL 18.3 (PGlite) 10/8: den gamle form fejlede både på en ren
+--     database OG på en allerede repareret, hvor den skjulte sin egen STOP-besked.
 DO $$
-DECLARE n_draw bigint;
+DECLARE n_draw bigint; n_kopi bigint;
 BEGIN
-  IF to_regclass('public.riders_3570_backup_20260816') IS NOT NULL
-     AND (SELECT count(*) FROM public.riders_3570_backup_20260816) > 0 THEN
-    RAISE NOTICE 'public.riders_3570_backup_20260816 findes allerede — PART A rører den ikke.';
-    RETURN;
+  IF to_regclass('public.riders_3570_backup_20260816') IS NOT NULL THEN
+    EXECUTE 'SELECT count(*) FROM public.riders_3570_backup_20260816' INTO n_kopi;
+    IF n_kopi > 0 THEN
+      RAISE NOTICE 'public.riders_3570_backup_20260816 findes allerede (% rækker) — PART A rører den ikke.', n_kopi;
+      RETURN;
+    END IF;
   END IF;
   SELECT count(*) INTO n_draw FROM public.riders WHERE archetype_draw IS NOT NULL;
   IF n_draw > 50 THEN
