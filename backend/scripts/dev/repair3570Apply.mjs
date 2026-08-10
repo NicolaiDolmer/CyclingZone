@@ -1677,9 +1677,11 @@ export const forsvundneGraense = (n) =>
  *   * En FEJLET SKRIVNING sletter aldrig noget. Rækken står der stadig med sine
  *     gamle værdier og fanges af (a)-(e): `udenDraw`, `typeMismatch`, `capsMismatch`.
  *     Den kan derfor ikke gemme sig i den forventede kategori.
- *   * Rytteren findes, men abilities-rækken mangler: `rider_derived_abilities.rider_id`
- *     er FK → `riders.id` ON DELETE CASCADE, så den række kan ikke forsvinde af sig
- *     selv mens rytteren lever → hård fejl (`manglerAbilitiesRaekke`).
+ *   * Rytteren findes, men abilities-rækken mangler: de to opslag er ikke atomare, så
+ *     en sletning kan lande MELLEM dem. Derfor bekræftes det med et selvstændigt
+ *     eksistens-opslag (trin 1b) præcis som i trin 1. Er rytteren væk → forventet
+ *     sletning. Lever han → hård fejl (`manglerAbilitiesRaekke`), for FK'en er
+ *     ON DELETE CASCADE og rækken kan da ikke være forsvundet af sig selv.
  *   * Og loftet: forsvinder mere end `FORSVUNDNE_GRAENSE_PCT` af scopet, er det ikke
  *     trim-sweepen længere → hård fejl.
  */
@@ -1714,6 +1716,24 @@ export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, s
       fejl.manglerRaekke.push(id);
     }
   }
+  // Trin 1b: SAMME behandling for abilities-rækken. De to opslag ovenfor er ikke atomare,
+  // så en sletning der lander MELLEM dem efterlader rytteren i det første svar og væk i det
+  // andet. FK'en er ON DELETE CASCADE, men præmissen "rytteren lever" stammer fra en
+  // forespørgsel der allerede er returneret — den holder ikke på tværs af to læsninger.
+  // Uden dette kaster en korrekt skrivning et falsk alarmsignal, og kørebogen sender
+  // ejeren i rollback på det.
+  const uden_a = scope.filter((p) => rById.has(p.rider_id) && !aById.has(p.rider_id)).map((p) => p.rider_id);
+  const slettetMellemOpslag = new Set();
+  if (uden_a.length) {
+    const stadig = new Set((await selectIn(supabase, "riders", "id", "id", uden_a)).map((r) => r.id));
+    for (const id of uden_a) {
+      if (stadig.has(id)) continue;                      // rytteren lever → ægte fejl, afgøres i løkken
+      slettetMellemOpslag.add(id);
+      const p = scope.find((x) => x.rider_id === id);
+      forventet.forsvundetUnderKoerslen.push({ rider_id: id, navn: navnAf(p.row ?? {}), ejer: p.row?.owner_kind ?? null, hold: p.row?.manager_display_name ?? null });
+    }
+  }
+
   const graense = forsvundneGraense(scope.length);
   if (forventet.forsvundetUnderKoerslen.length > graense) {
     fejl.forsvundneOverGraense.push(
@@ -1726,9 +1746,13 @@ export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, s
     const r = rById.get(p.rider_id);
     const a = aById.get(p.rider_id);
     if (!r) continue;                                    // afgjort i trin 1
-    // Rytteren lever, men abilities-rækken er væk. FK'en er ON DELETE CASCADE, så
-    // det kan ikke skyldes en sletning — noget andet har fjernet den.
-    if (!a) { fejl.manglerAbilitiesRaekke.push(p.rider_id); continue; }
+    // Abilities-rækken er væk. Er rytteren selv slettet mellem de to opslag, er det
+    // trim-sweepen og dermed forventet (afgjort i trin 1b). Lever han stadig, har noget
+    // andet fjernet rækken, og det ER en fejl.
+    if (!a) {
+      if (!slettetMellemOpslag.has(p.rider_id)) fejl.manglerAbilitiesRaekke.push(p.rider_id);
+      continue;
+    }
 
     if (!validDraw(r.archetype_draw)) { fejl.udenDraw.push(p.rider_id); continue; }
 

@@ -540,6 +540,58 @@ test("postVerify kaldt direkte: uskreven rytter fejler, forsvundet rytter gør i
   assert.equal(ud.kontrolleret, 0);
 });
 
+test("postVerify: sletning MELLEM riders- og abilities-laesningen er forventet, ikke fejl (B5)", async () => {
+  // De to opslag i postVerify er ikke atomare. Lander aiTeamTrimHealSweeps sletning
+  // imellem dem, staar rytteren i det FOERSTE svar og er vaek i det ANDET. Uden
+  // trin 1b's selvstaendige eksistens-opslag blev det en haard fejl — et falsk
+  // alarmsignal der ville sende ejeren i rollback paa en korrekt skrivning.
+  const PV = "id, archetype_draw, primary_type, secondary_type, valuation_type, birthdate, potentiale";
+  const draw = { primary: "sprinter", secondary: "rouleur", isHybrid: false };
+  const lav = ({ slettesMellem }) => {
+    let riders = [
+      { id: "r1", archetype_draw: draw, primary_type: "sprinter", secondary_type: "rouleur", valuation_type: null, birthdate: "1999-01-01", potentiale: 3 },
+      { id: "r2", archetype_draw: draw, primary_type: "sprinter", secondary_type: "rouleur", valuation_type: null, birthdate: "1999-01-01", potentiale: 3 },
+    ];
+    let ab = [{ rider_id: "r1", ability_caps: {}, ability_progress: {} }];  // r2 mangler sin raekke
+    let sect = 0;
+    return {
+      from: (tab) => ({
+        select: (cols) => ({
+          in: async (_c, ids) => {
+            if (tab === "riders" && cols === PV) { sect = 1; return { data: riders.filter((r) => ids.includes(r.id)), error: null }; }
+            if (tab === "rider_derived_abilities") {
+              if (sect === 1 && slettesMellem) riders = riders.filter((r) => r.id !== "r2");  // cron sletter praecis her
+              sect = 2;
+              return { data: ab.filter((a) => ids.includes(a.rider_id)), error: null };
+            }
+            return { data: riders.filter((r) => ids.includes(r.id)).map((r) => ({ id: r.id })), error: null };
+          },
+        }),
+      }),
+    };
+  };
+  const plan = { poster: [{ rider_id: "r1", skrives: true, abilities: {}, row: {} }, { rider_id: "r2", skrives: true, abilities: {}, row: {} }] };
+  const opt = { skrevneCaps: [], foerValuation: new Map([["r1", null], ["r2", null]]), seasonNumber: 2 };
+
+  // (a) Slettet imellem de to laesninger -> forventet, ingen fejl.
+  const ud = await postVerify(lav({ slettesMellem: true }), plan, opt);
+  assert.equal(ud.bestaaet, true);
+  assert.equal(ud.antal.manglerAbilitiesRaekke, 0);
+  assert.equal(ud.forventet.forsvundetUnderKoerslen, 1);
+
+  // (b) Rytteren LEVER, men abilities-raekken er vaek -> stadig haard fejl.
+  //     Uden dette ben ville (a) bare have slaaet vagten fra.
+  await assert.rejects(
+    () => postVerify(lav({ slettesMellem: false }), plan, opt),
+    (err) => {
+      assert.match(err.message, /POST-VERIFY FEJLEDE/);
+      assert.equal(err.rapport.antal.manglerAbilitiesRaekke, 1);
+      assert.equal(err.rapport.forventet.forsvundetUnderKoerslen, 0);
+      return true;
+    },
+  );
+});
+
 // ── 6. --lofter-varianten (dry-runnets beslutning 2) ────────────────────────
 test("--lofter=ingen skriver identiteten, men rører ikke ability_caps", async () => {
   const db = nyDb();
