@@ -91,6 +91,12 @@ export const TYPE_WRITE_FILES = Object.freeze({
   "routes/api.js":
     "Læser og videresender riders.primary_type i API-svar (fx transfer-listen). " +
     "Ingen af rutens riders-writes rører type-kolonnerne.",
+  "scripts/dev/repairYouthOutliers2699.mjs":
+    "#2699-nedjusteringen: LÆSER primary_type for at bruge den som anlæg og kalder " +
+    "resolveRiderTypes for at vise den resulterende type i dry-run-rapporten. " +
+    "Scriptets egen UPDATE rører kun stat_*-kolonnerne + archetype_draw — typen " +
+    "persisteres udelukkende af deriveForRiderIds bagefter, altså gennem den " +
+    "allerede-ankrede identitets-kilde.",
 });
 
 // ---------------------------------------------------------------------------
