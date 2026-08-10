@@ -42,6 +42,19 @@ export const PATCHES = [
         }
       },
       {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "More time to negotiate your plan, and a heads-up before the clock starts",
+          "body": "When a plan is waiting for you, the board now opens with a plain message that it's ready to talk, instead of going straight to a countdown. If you've been active recently you also get twice as long to negotiate: ten days instead of five, with reminders along the way. The short deadline still applies to teams nobody is managing, so dormant squads don't sit unresolved. This follows a period where the reminders were broken and never reached you at all."
+        },
+        "da": {
+          "title": "Mere tid til at forhandle din plan, og et varsel før uret går i gang",
+          "body": "Når en plan venter på dig, åbner bestyrelsen nu med en almindelig besked om, at den er klar til at tale, i stedet for at gå direkte til en nedtælling. Har du været aktiv for nylig, får du samtidig dobbelt så lang tid til at forhandle: ti dage i stedet for fem, med påmindelser undervejs. Den korte frist gælder stadig hold, ingen styrer, så inaktive trupper ikke bliver hængende uafklarede. Det følger en periode, hvor påmindelserne var i stykker og aldrig nåede frem til dig."
+        }
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "topic": "Board",

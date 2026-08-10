@@ -72,11 +72,53 @@ export const AUTO_ACCEPT_ROLLOUT_FLOOR = new Date("2026-08-15T00:00:00Z");
 // Tærskler — kalenderdage siden planen blev åbnet til forhandling (#2463).
 // Navnesemantikken (T_MINUS_3/T_MINUS_1/AUTO_ACCEPT) er bevaret fra
 // Q-bekræftelse C 2026-05-05 — kun enheden ændrede sig (race-days → dage).
+//
+// #3579 · NOTICE er en NEUTRAL åbnings-besked uden nedtælling. Før den fandtes,
+// var spillerens første kontakt en nedtælling ("du har 3 dage tilbage") — og
+// efter #3502-udfaldet (cronen død 26/7-7/8) kom den efter tre ugers tavshed.
+// Tavsheden var vores fejl, så nedtællingen må ikke være det første de hører.
 export const AUTO_ACCEPT_THRESHOLDS = {
+  NOTICE: 0,      // dage siden åbning → neutralt varsel, ingen nedtælling
   T_MINUS_3: 2,   // dage siden åbning → info-reminder (board_update)
   T_MINUS_1: 4,   // dage siden åbning → kritisk reminder (board_critical)
   AUTO_ACCEPT: 5, // dage siden åbning → bestyrelsen tager over
 };
+
+// #3579 · Aktive spillere får dobbelt vindue. Auto-accept er en sikkerhedsventil
+// for de hold ingen passer — ikke en måde at træffe flerårs-beslutninger på
+// vegne af nogen der spiller lige nu. En aktiv manager der ikke har forhandlet
+// har sandsynligvis ikke SET opfordringen (synligheds-problem, jf. #3514/#2223),
+// ikke fravalgt den. Prod-tal 9/8: af 144 hold med uafklaret plan var 92 ikke
+// logget ind i 14+ dage — for dem er auto-accept ren oprydning. De resterende
+// 24 aktive + 27 halvaktive er dem denne tærskel beskytter.
+export const ACTIVE_PLAYER_THRESHOLDS = {
+  NOTICE: 0,
+  T_MINUS_3: 5,
+  T_MINUS_1: 8,
+  AUTO_ACCEPT: 10,
+};
+
+// Grænsen for "spiller stadig". users.last_seen inden for dette vindue = aktiv.
+export const ACTIVE_PLAYER_LAST_SEEN_DAYS = 14;
+
+/**
+ * #3579 · Vælg tærskelsæt ud fra om der sidder et menneske bag holdet.
+ * Ukendt/manglende last_seen behandles som inaktiv: der er ingen at varsle,
+ * og oprydning er det rigtige udfald.
+ *
+ * @param {object|null} lastSeenSource — teams-rækkens embeddede user (`{ last_seen }`)
+ * @param {Date} now
+ */
+export function resolveThresholds(lastSeenSource, now) {
+  const lastSeenRaw = lastSeenSource?.last_seen ?? null;
+  if (!lastSeenRaw) return AUTO_ACCEPT_THRESHOLDS;
+  const lastSeenMs = new Date(lastSeenRaw).getTime();
+  if (Number.isNaN(lastSeenMs)) return AUTO_ACCEPT_THRESHOLDS;
+  const daysSinceSeen = (now.getTime() - lastSeenMs) / DAY_MS;
+  return daysSinceSeen <= ACTIVE_PLAYER_LAST_SEEN_DAYS
+    ? ACTIVE_PLAYER_THRESHOLDS
+    : AUTO_ACCEPT_THRESHOLDS;
+}
 
 // #2469 · Kolonnerne autoAcceptPendingPlan viderefører fra en EKSISTERENDE
 // board-række. Enhver kolonne der læses som `existingBoard?.x ?? <default>` i
@@ -184,6 +226,18 @@ export async function processBoardAutoAcceptCron({
     .eq("is_test_account", false);
   if (teamsError) throw teamsError;
 
+  // #3579 · last_seen pr. manager afgør hvilket tærskelsæt holdet får
+  // (resolveThresholds). Bevidst en SEPARAT query frem for et embedded
+  // `user:user_id(last_seen)`-join på selecten ovenfor: teams-queryen er
+  // cronens kritiske sti, og en fejlende relations-udledning dér ville kaste
+  // og dræbe HELE kørslen — altså præcis den tilstand #3502/#3572 lige har
+  // rettet. Her er konsekvensen af en fejl afgrænset: opslaget degraderer til
+  // et tomt map, og alle hold falder tilbage til det korte (nuværende) sæt.
+  const lastSeenByUserId = await loadLastSeenByUserId({
+    supabase,
+    userIds: (humanTeams || []).map((t) => t.user_id).filter(Boolean),
+  });
+
   for (const team of humanTeams || []) {
     summary.teams_checked += 1;
     try {
@@ -194,6 +248,7 @@ export async function processBoardAutoAcceptCron({
         notifyUser,
         now,
         rolloutFloor,
+        lastSeenByUserId,
       });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
@@ -212,6 +267,33 @@ export async function processBoardAutoAcceptCron({
   return summary;
 }
 
+/**
+ * #3579 · Slår last_seen op for de managere cronen skal vurdere.
+ *
+ * Fejler opslaget, returneres et tomt map i stedet for at kaste: uden
+ * last_seen falder alle hold tilbage til det korte tærskelsæt, hvilket er
+ * nøjagtig adfærden før denne ændring. En degradering er langt at foretrække
+ * frem for at vælte cronen for alle hold.
+ *
+ * @returns {Promise<Map<string, string|null>>} user_id → last_seen
+ */
+async function loadLastSeenByUserId({ supabase, userIds }) {
+  const map = new Map();
+  if (!userIds?.length) return map;
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, last_seen")
+    .in("id", userIds);
+
+  if (error) {
+    console.error("  ⚠️  board auto-accept: kunne ikke hente last_seen — alle hold falder tilbage til det korte vindue:", error.message);
+    return map;
+  }
+  for (const row of data || []) map.set(row.id, row.last_seen ?? null);
+  return map;
+}
+
 async function processTeamAutoAccept({
   supabase,
   team,
@@ -219,6 +301,7 @@ async function processTeamAutoAccept({
   notifyUser,
   now,
   rolloutFloor = AUTO_ACCEPT_ROLLOUT_FLOOR,
+  lastSeenByUserId = new Map(),
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
 
@@ -269,7 +352,13 @@ async function processTeamAutoAccept({
   const effectiveOpenedAt = openedAt < rolloutFloor ? rolloutFloor : openedAt;
   const daysSinceOpen = (now.getTime() - effectiveOpenedAt.getTime()) / DAY_MS;
 
-  if (daysSinceOpen >= AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT) {
+  // #3579 · Aktive spillere kører på det lange vindue, forladte konti på det korte.
+  const thresholds = resolveThresholds(
+    { last_seen: lastSeenByUserId.get(team.user_id) ?? null },
+    now
+  );
+
+  if (daysSinceOpen >= thresholds.AUTO_ACCEPT) {
     const accepted = await autoAcceptPendingPlan({
       supabase,
       team,
@@ -283,7 +372,7 @@ async function processTeamAutoAccept({
     return result;
   }
 
-  if (daysSinceOpen >= AUTO_ACCEPT_THRESHOLDS.T_MINUS_1) {
+  if (daysSinceOpen >= thresholds.T_MINUS_1) {
     const sent = await sendT1CriticalReminder({
       team,
       planType: pendingPlanType,
@@ -291,12 +380,13 @@ async function processTeamAutoAccept({
       notifyUser,
       now,
       daysSinceOpen,
+      thresholds,
     });
     result.reminder_sent = sent;
     return result;
   }
 
-  if (daysSinceOpen >= AUTO_ACCEPT_THRESHOLDS.T_MINUS_3) {
+  if (daysSinceOpen >= thresholds.T_MINUS_3) {
     const sent = await sendT3InfoReminder({
       team,
       planType: pendingPlanType,
@@ -304,6 +394,23 @@ async function processTeamAutoAccept({
       notifyUser,
       now,
       daysSinceOpen,
+      thresholds,
+    });
+    result.reminder_sent = sent;
+    return result;
+  }
+
+  // #3579 · Åbnings-varsel: kun i planens FØRSTE døgn. Beskeden bærer ingen
+  // nedtælling, så 24h-dedup'en i notifyUser ville ellers sende den igen hvert
+  // døgn indtil T-3 (5 dage i træk for aktive spillere). Vinduet [0,1) giver
+  // præcis én levering — cronen tikker hvert 30. minut, så den rammes altid.
+  if (daysSinceOpen >= thresholds.NOTICE && daysSinceOpen < 1) {
+    const sent = await sendOpeningNotice({
+      team,
+      planType: pendingPlanType,
+      pendingBoard,
+      notifyUser,
+      now,
     });
     result.reminder_sent = sent;
   }
@@ -324,14 +431,43 @@ export function findPendingPlanType(realBoards) {
   return null;
 }
 
-async function sendT3InfoReminder({
-  team, planType, pendingBoard, notifyUser, now, daysSinceOpen,
+// #3579 · Neutralt åbnings-varsel. Ingen nedtælling, ingen "hvis du ikke gør
+// noget"-trussel — kun at planen ligger klar, og at der kommer en påmindelse
+// inden bestyrelsen selv beslutter. Dette er den besked der skal være spillerens
+// FØRSTE kontakt om en pending plan.
+async function sendOpeningNotice({
+  team, planType, pendingBoard, notifyUser, now,
 }) {
   if (!team.user_id) return false;
 
   const planLabelEn = formatPlanLabelEn(planType);
   const planLabelKey = planLabelI18nKey(planType);
-  const daysLeft = Math.max(1, Math.ceil(AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - daysSinceOpen));
+  const result = await notifyUser({
+    userId: team.user_id,
+    type: "board_update",
+    title: `Your board is ready to discuss your ${planLabelEn}`,
+    message: `Your ${planLabelEn} is waiting to be negotiated. Take the time you need. You'll get a reminder before the board decides on its own.`,
+    relatedId: pendingBoard?.id ?? null,
+    metadata: {
+      titleCode: "notif.boardPlanOpened.title",
+      titleParams: { planLabelKey },
+      messageCode: "notif.boardPlanOpened.message",
+      messageParams: { planLabelKey },
+    },
+    now,
+  });
+  return Boolean(result?.delivered);
+}
+
+async function sendT3InfoReminder({
+  team, planType, pendingBoard, notifyUser, now, daysSinceOpen,
+  thresholds = AUTO_ACCEPT_THRESHOLDS,
+}) {
+  if (!team.user_id) return false;
+
+  const planLabelEn = formatPlanLabelEn(planType);
+  const planLabelKey = planLabelI18nKey(planType);
+  const daysLeft = Math.max(1, Math.ceil(thresholds.AUTO_ACCEPT - daysSinceOpen));
   const result = await notifyUser({
     userId: team.user_id,
     type: "board_update",
@@ -351,12 +487,13 @@ async function sendT3InfoReminder({
 
 async function sendT1CriticalReminder({
   team, planType, pendingBoard, notifyUser, now, daysSinceOpen,
+  thresholds = AUTO_ACCEPT_THRESHOLDS,
 }) {
   if (!team.user_id) return false;
 
   const planLabelEn = formatPlanLabelEn(planType);
   const planLabelKey = planLabelI18nKey(planType);
-  const daysLeft = Math.max(1, Math.ceil(AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - daysSinceOpen));
+  const daysLeft = Math.max(1, Math.ceil(thresholds.AUTO_ACCEPT - daysSinceOpen));
   const isSingle = daysLeft === 1;
   const result = await notifyUser({
     userId: team.user_id,

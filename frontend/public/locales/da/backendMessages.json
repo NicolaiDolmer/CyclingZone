@@ -153,6 +153,10 @@
       "title": "Ny pulje til næste sæson",
       "message": "Dit hold er sat i {pool}, så puljerne er lige stærke."
     },
+    "boardPlanOpened": {
+      "title": "Din bestyrelse er klar til at drøfte din {planLabel}",
+      "message": "Din {planLabel} venter på at blive forhandlet. Tag den tid du har brug for. Du får en påmindelse, før bestyrelsen selv beslutter."
+    },
     "boardT3Reminder": {
       "title": "Bestyrelsen venter på din {planLabel}",
       "message": "Du har {daysLeft} dage tilbage til at forhandle din {planLabel}. Hvis du ikke gør noget, vælger bestyrelsen selv."
