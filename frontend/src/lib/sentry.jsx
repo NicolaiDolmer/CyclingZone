@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/react";
 import { useEffect } from "react";
-import { isChunkLoadError, shouldAttemptChunkReload } from "./chunkErrors.js";
+import { documentIsStillLoadable, isChunkLoadError, shouldAttemptChunkReload } from "./chunkErrors.js";
 // Direkte imports (IKKE barrel) — saa main-bundlen kun traekker ErrorState +
 // Button (+ deres ikon/styles) ind, ikke hele ui-laget (#479). #671 Plan 3.
 import ErrorState from "../components/ui/ErrorState.jsx";
@@ -102,16 +102,45 @@ function AppErrorFallback({ error, eventId, resetError }) {
         event: "Error ID",
       };
 
+  // Auto-recovery ved stale chunk (#881/#906) — navigations-guarded (#3602).
+  //
+  // Denne effect kaldte før `window.location.reload()` synkront. Men WebKit melder
+  // en chunk-load der blev ABORTERET af en igangværende navigation med præcis
+  // samme fejlstreng som en ægte stale chunk, så boundary'en reloadede dokumenter
+  // der allerede var på vej væk — og kaprede brugerens navigation (målt: reload
+  // 39 ms efter aborten, 1,4 s før den ægte navigation nåede at committe).
+  //
+  // documentIsStillLoadable() spørger dokumentet om det stadig kan hente noget.
+  // Kun hvis ja brænder vi loop-guard-nøglen og reloader. Se chunkErrors.js.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const shouldReload = shouldAttemptChunkReload({
-      error,
-      release: RELEASE,
-      storage: window.sessionStorage,
+    if (typeof window === "undefined") return undefined;
+    // Gate på chunk-fejl FØR canary'en: en almindelig render-fejl skal ikke
+    // udløse et netværkskald.
+    if (!isChunkLoadError(error)) return undefined;
+
+    let cancelled = false;
+    const cancel = () => { cancelled = true; };
+    window.addEventListener("pagehide", cancel);
+
+    documentIsStillLoadable({
+      fetchFn: window.fetch?.bind(window),
+      url: window.location.href,
+    }).then((alive) => {
+      if (cancelled || !alive) return;
+      const shouldReload = shouldAttemptChunkReload({
+        error,
+        release: RELEASE,
+        storage: window.sessionStorage,
+      });
+      if (shouldReload) {
+        window.location.reload();
+      }
     });
-    if (shouldReload) {
-      window.location.reload();
-    }
+
+    return () => {
+      cancel();
+      window.removeEventListener("pagehide", cancel);
+    };
   }, [error]);
 
   // On-spec branded fallback paa ErrorState + Button (#671 Plan 3). Statisk

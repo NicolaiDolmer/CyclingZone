@@ -20,6 +20,9 @@ import "./index.css";
 // `vite:preloadError` og uhåndterede chunk-rejections (dynamic imports uden for
 // React.lazy). Ét kontrolleret reload til frisk index.html, loop-guarded via
 // samme per-release sessionStorage-nøgle som boundary'en.
+// #3602: reload'en er navigations-guarded — den fyrer kun hvis dokumentet stadig
+// kan hente noget, så en chunk-abort forårsaget af en igangværende navigation
+// ikke bliver fejllæst som en stale chunk og kaprer navigationen.
 const _release = import.meta.env.VITE_SENTRY_RELEASE || import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
 installChunkReloadHandlers({
   target: window,
