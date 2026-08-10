@@ -60,10 +60,23 @@ overleve længere end en request/tick, skal beskeden på disk — der findes ing
 ## Backwards-check
 
 - `discordDmDelivery.js` har allerede outbox (#1115) — dækket.
-- `discordWebhookDelivery.js` var det eneste tilbageværende Discord-leveringslag uden
-  persistens. Nu dækket.
-- Ingen andre eksterne fire-and-forget-kald i backend'en har inline-only retry
-  (Resend-mails går via provider-kø; Supabase-kald er synkrone med kalderens fejlsti).
+- `discordWebhookDelivery.js` var det eneste tilbageværende **Discord**-leveringslag
+  uden persistens. Nu dækket.
+- **`emailService.js` har det VÆRRE: ingen retry overhovedet.** Ét
+  `resend.emails.send()`-kald; ved fejl skrives en `failed`-række i `email_log` +
+  en Sentry-capture, og så er mailen tabt. Ingen kode læser rækken igen. Loopet er
+  ikke tændt endnu (#2853/#3585), så der er ingen aktuel spillerskade — men det er
+  samme form som #3572/#3585: en latent defekt bag en gate der aldrig har været
+  åben. Eget issue: **#3600**, bør lukkes FØR loopet tændes.
+  (Første udgave af dette dokument påstod at Resend-mails gik via en provider-kø.
+  Det er forkert: `idempotencyKey` forhindrer dubletter ved genforsøg, men skaber
+  ingen kø — der er intet der genforsøger.)
+- Supabase-kald er synkrone med kalderens fejlsti — ikke fire-and-forget.
+
+Verificeret ved grep over `backend/lib` + `backend/routes` efter `await fetch(`,
+`maxAttempts` og retry-loops: de eneste udgående leveringslag er Discord (DM +
+webhook, begge nu dækket), `discordBotTokenCheck.js` (ren health-probe, intet at
+levere) og Resend (#3600).
 
 ## Forward-guard
 
