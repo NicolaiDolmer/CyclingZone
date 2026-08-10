@@ -28,7 +28,7 @@ import {
   recoverBirthArchetype, segmentOf, postVerify, sikreBackup, rollbackSQL,
   DRYRUN_FACIT, MAAL, BACKUP_SKEMA, KANONISK_BACKUP_SUFFIX, FORSVUNDNE_GRAENSE_MIN,
   laesPlanFil, paalaegPlanFil, runPlanFilSelvtest, baselinePlan, hentFriskPopulation,
-  BASELINE_SNAPSHOT_DIR,
+  BASELINE_SNAPSHOT_DIR, PLAN_SNAPSHOT_TAGET, foerPlanen,
 } from "./repair3570Apply.mjs";
 import { STAT_KEYS } from "../../lib/fictionalRiderGenerator.js";
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
@@ -407,6 +407,74 @@ test("NEGATIV: en backup taget EFTER en skrivning afvises af data-spærren", asy
   }
   await assert.rejects(() => runRepair3570(db, APPLY), /taget EFTER en reparation/);
   assert.equal(db.ryttereOpdateret(), 0);
+});
+
+test("data-spærren skelner NYFØDTE med draw fra en halv reparation", async () => {
+  // Kernen i rettelsen. FØR skæringspunktet talte spærren ALLE ryttere med et draw
+  // mod 50. Nyfødte fødes med et draw (#3606), så prod stod 10/8 på 740 — hvoraf 722
+  // var født samme aften. Spærren ville have afvist en fuldstændig gyldig før-kopi
+  // og gjort reparationen ukørbar af helt almindelig vækst.
+  const efterPlanen = "2026-08-10T17:47:17.060Z";   // de 722 fra 10/8 kl. 19:47
+  const foerPlanenTs = "2026-08-01T09:00:00.000Z";
+
+  // Spejler prod: de ekstra ryttere står i public.riders, ikke i en kopi. De har
+  // allerede et draw, så de falder ud af skrive-scopet — præcis som de 722 gør.
+  const nyDbMedDraws = (createdAt) => {
+    const db = nyDb();
+    const skabelon = db.tables.riders[0];
+    for (let i = 0; i < 300; i++) {
+      db.tables.riders.push({
+        ...JSON.parse(JSON.stringify(skabelon)),
+        id: `n${i}`, lastname: `n${i}`, created_at: createdAt,
+        archetype_draw: { primary: "gc", secondary: "tt" },
+        primary_type: "gc", secondary_type: "tt", valuation_type: "gc",
+      });
+      db.tables.rider_derived_abilities.push({
+        ...JSON.parse(JSON.stringify(db.tables.rider_derived_abilities[0])), rider_id: `n${i}`,
+      });
+    }
+    return db;
+  };
+
+  // 300 nyfødte med draw — langt over 50, men alle født EFTER planen. Må ikke fyre.
+  const db = nyDbMedDraws(efterPlanen);
+  const ud = await runRepair3570(db, APPLY);
+  assert.ok(ud.skrevet.identitet > 0, "300 nyfødte med draw må ikke kunne spærre kørslen");
+
+  // Samme 300, men født FØR planen: det ER signaturen på en halv reparation.
+  // Delvis-kørsel-spærren (trin 3) fyrer før backup-spærren (trin 6) — begge er
+  // ægte afvisninger; det er rækkefølgen der afgør hvilken besked operatøren ser.
+  await assert.rejects(
+    () => runRepair3570(nyDbMedDraws(foerPlanenTs), APPLY),
+    /fra før planens snapshot har allerede et archetype_draw/,
+  );
+
+  // Og en rytter uden created_at tælles med — fail-closed.
+  await assert.rejects(
+    () => runRepair3570(nyDbMedDraws(null), APPLY),
+    /fra før planens snapshot har allerede et archetype_draw/,
+  );
+
+  // foerPlanen() sammenligner som tidspunkter, ikke strenge: PostgREST's
+  // `+00:00`-form og snapshottets `Z`-form skal give samme svar.
+  assert.equal(foerPlanen({ created_at: "2026-08-10T17:47:17.060037+00:00" }), false);
+  assert.equal(foerPlanen({ created_at: "2026-08-09T22:30:17.000000+00:00" }), true);
+  assert.equal(foerPlanen({ created_at: null }), true);
+  assert.equal(foerPlanen({ created_at: "vrøvl" }), true);
+  assert.ok(PLAN_SNAPSHOT_TAGET.startsWith("2026-08-09T22:30:17"));
+});
+
+test("rollbackSQL bager skæringspunktet ind i BEGGE spærrer, og afviser et ugyldigt", () => {
+  const sql = rollbackSQL(SUFFIX);
+  const cutoff = PLAN_SNAPSHOT_TAGET;
+  const a0 = sql.slice(sql.indexOf("-- A0."), sql.indexOf("-- A1."));
+  const b0 = sql.slice(sql.indexOf("-- B0."), sql.indexOf("-- B1."));
+  for (const [navn, blok] of [["A0", a0], ["B0", b0]]) {
+    assert.match(blok, new RegExp(`created_at < '${cutoff.replace(/[.]/g, "\\.")}'::timestamptz`), `${navn} mangler skæringspunktet`);
+  }
+  // Operatøren må ikke kunne komme til at køre A0 og B0 med hver sit skæringspunkt.
+  assert.equal(a0.match(/'2026-[^']+Z'::timestamptz/g).length, b0.match(/'2026-[^']+Z'::timestamptz/g).length);
+  assert.throws(() => rollbackSQL(SUFFIX, { foer: "i går" }), /ugyldigt skæringspunkt/);
 });
 
 // ── 4. Idempotens — anden kørsel skriver 0 rækker ───────────────────────────

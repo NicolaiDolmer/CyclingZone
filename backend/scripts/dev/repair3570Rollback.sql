@@ -62,9 +62,14 @@ BEGIN
       RETURN;
     END IF;
   END IF;
-  SELECT count(*) INTO n_draw FROM public.riders WHERE archetype_draw IS NOT NULL;
+  -- Kun ryttere der fandtes FØR planens snapshot. Nyfødte får et draw ved fødslen,
+  -- så en utidsbegrænset optælling ville fyre på almindelig vækst i stedet for på en
+  -- halv reparation (målt 10/8: 740 med draw, heraf 722 født samme aften).
+  SELECT count(*) INTO n_draw FROM public.riders
+   WHERE archetype_draw IS NOT NULL
+     AND (created_at IS NULL OR created_at < '2026-08-09T22:30:17.369Z'::timestamptz);
   IF n_draw > 50 THEN
-    RAISE EXCEPTION 'STOP: % ryttere har allerede et archetype_draw. Reparationen er (delvis) kørt — en kopi taget nu er IKKE en rollback-kilde.', n_draw;
+    RAISE EXCEPTION 'STOP: % ryttere fra før planens snapshot (%) har allerede et archetype_draw. Reparationen er (delvis) kørt — en kopi taget nu er IKKE en rollback-kilde.', n_draw, '2026-08-09T22:30:17.369Z';
   END IF;
 END
 $$;
@@ -81,6 +86,7 @@ SELECT
   base_value,
   market_value,
   is_retired,
+  created_at,
   now() AS captured_at
 FROM public.riders;
 
@@ -175,10 +181,15 @@ BEGIN
 
   -- Er kopien fra FØR eller EFTER reparationen? Et tidsstempel kan ikke afgøre det
   -- (rollbacken køres på samme dag), men DATA kan: før reparationen har en håndfuld
-  -- levende ryttere et archetype_draw; efter har hele peletonen.
-  SELECT count(*) INTO n_draw FROM public.riders_3570_backup_20260816 WHERE archetype_draw IS NOT NULL;
+  -- af de ryttere DER FANDTES FØR PLANEN et archetype_draw; efter har hele peletonen.
+  -- Afgrænsningen på created_at er ikke pynt: nyfødte ryttere fødes med et draw, så
+  -- uden den ville en helt gyldig før-kopi blive afvist, alene fordi der var kommet
+  -- nye ryttere til (målt 10/8: 740 med draw, heraf 722 født samme aften).
+  SELECT count(*) INTO n_draw FROM public.riders_3570_backup_20260816
+   WHERE archetype_draw IS NOT NULL
+     AND (created_at IS NULL OR created_at < '2026-08-09T22:30:17.369Z'::timestamptz);
   IF n_draw > 50 THEN
-    RAISE EXCEPTION 'STOP: kopien indeholder % ryttere med archetype_draw. Kopien er taget EFTER skrivningen og er IKKE en rollback-kilde.', n_draw;
+    RAISE EXCEPTION 'STOP: kopien indeholder % ryttere fra før planens snapshot (%) med archetype_draw. Kopien er taget EFTER skrivningen og er IKKE en rollback-kilde.', n_draw, '2026-08-09T22:30:17.369Z';
   END IF;
 
   RAISE NOTICE 'Backup OK: % riders-rækker, % abilities-rækker, % med draw, taget %.', n_riders, n_abilities, n_draw, taget;

@@ -77,14 +77,26 @@ export const DA = Object.freeze({
 });
 
 /**
- * Data-spærren, samme tal som `rollback.sql`s PART B: før reparationen har en
- * håndfuld ryttere et `archetype_draw` (dem født efter #3588-deployet). Findes der
- * flere end dette uden at ALLE har et, er en tidligere kørsel afbrudt midt i.
+ * Data-spærren, samme tal som `rollback.sql`s PART A/B: før reparationen har kun en
+ * håndfuld ryttere et `archetype_draw`. Findes der flere, er en tidligere kørsel
+ * afbrudt midt i, og databasen kan ikke bruges som rollback-kilde.
+ *
+ * VIGTIGT — hvorfor den TÆLLER MED ET SKÆRINGSPUNKT (10/8): kendetegnet «kun en
+ * håndfuld levende ryttere har et draw» var sandt da 6 havde ét. Nyfødte ryttere får
+ * nu et draw ved fødslen (#3606 gemmer anlægget på alle otte fødselsstier), så tallet
+ * vokser af sig selv: målt i prod 10/8 kl. 20:00 var det 740, hvoraf 722 var født
+ * samme aften kl. 19:47. Spærren kunne altså ikke længere skelne «reparationen er
+ * kørt» fra «der er født nye ryttere» — og det er dens eneste opgave.
+ *
+ * Rettelsen: tæl kun ryttere der fandtes FØR planens snapshot. De nyfødte har per
+ * definition en senere `created_at` og kan ikke forurene tallet. Før reparationen står
+ * det på 18; i det øjeblik den kører, springer det til 8.193. En rytter uden
+ * `created_at` tælles MED — fail-closed, spærren skal hellere fyre for meget.
  */
 export const DRAW_BASELINE_SPAERRE = 50;
 
 const RIDER_COLS =
-  "id, firstname, lastname, birthdate, height, weight, potentiale, archetype_draw, " +
+  "id, firstname, lastname, birthdate, created_at, height, weight, potentiale, archetype_draw, " +
   "primary_type, secondary_type, valuation_type, team_id, base_value, market_value, " +
   "current_production_value, salary, is_academy, is_retired, " + STAT_KEYS.join(", ");
 
@@ -103,6 +115,32 @@ export const BIRTH_MODEL = JSON.parse(
 
 /** Det daterede snapshot der ligger permanent i repoet (rollback- og selvtest-grundlag). */
 export const BASELINE_SNAPSHOT_DIR = join(REPO_ROOT, "docs/snapshots/3570");
+
+/**
+ * Skæringspunktet `DRAW_BASELINE_SPAERRE` tælles op til. Det er det øjeblik det
+ * daterede snapshot blev taget — altså den population planen er bygget over. Alt
+ * der er født senere er uden for reparationens scope (de har allerede et draw) og
+ * må derfor ikke tælle med i spærren. Læses ud af snapshottets egen `meta`, så
+ * cutoff og plan ikke kan drive fra hinanden.
+ */
+export const PLAN_SNAPSHOT_TAGET = JSON.parse(
+  readFileSync(join(BASELINE_SNAPSHOT_DIR, "meta-2026-08-10.json"), "utf8"),
+).takenAt;
+
+/**
+ * Fandtes rytteren før planens snapshot? Ukendt eller uparsebar `created_at` ⇒ ja
+ * (fail-closed: spærren skal hellere fyre for meget end for lidt).
+ *
+ * Sammenlignes som TIDSPUNKTER, ikke som strenge. PostgREST leverer
+ * `2026-08-10T17:47:17.060037+00:00` mens snapshottets `takenAt` er
+ * `2026-08-09T22:30:17.369Z` — to formater hvis leksikografiske orden kun tilfældigvis
+ * er den rigtige, og som bryder inden for samme sekund.
+ */
+const FOER_MS = Date.parse(PLAN_SNAPSHOT_TAGET);
+export function foerPlanen(r, foer = FOER_MS) {
+  const t = Date.parse(r?.created_at ?? "");
+  return Number.isNaN(t) || t < (typeof foer === "number" ? foer : Date.parse(foer));
+}
 
 /**
  * Tallene ejeren godkendte i `RAPPORT-DRYRUN.md` (rev 2). Selvtesten kører
@@ -976,6 +1014,9 @@ export async function hentFriskPopulation(supabase) {
     const row = {
       rider_id: r.id,
       firstname: r.firstname, lastname: r.lastname, birthdate: r.birthdate,
+      // Bæres med udelukkende til `foerPlanen()` — spærrerne skal kunne skelne en
+      // nyfødt med anlæg fra en halvt gennemført reparation.
+      created_at: r.created_at ?? null,
       age: ageForSeason(r.birthdate, aktiv.number),
       potentiale: r.potentiale != null ? Number(r.potentiale) : null,
       archetype_draw: r.archetype_draw,
@@ -1047,6 +1088,11 @@ export const BACKUP_SKEMA = Object.freeze({
       Object.freeze({ navn: "base_value", sql: "integer" }),
       Object.freeze({ navn: "market_value", sql: "integer" }),
       Object.freeze({ navn: "is_retired", sql: "boolean" }),
+      // Bæres med så PART B's spærre kan stille samme spørgsmål som PART A's:
+      // «hvor mange ryttere DER FANDTES FØR PLANEN har et draw?». Uden den kan en
+      // kopi ikke skelne en før-tilstand fra en efter-tilstand, når nyfødte ryttere
+      // fødes med et draw.
+      Object.freeze({ navn: "created_at", sql: "timestamptz" }),
     ]),
   }),
   abilities: Object.freeze({
@@ -1101,8 +1147,12 @@ export const KANONISK_BACKUP_SUFFIX = "20260816";
  * filen med `psql -f`, committede den uanset tallene. De er nu ægte porte
  * (`DO $$ … RAISE EXCEPTION`), så en fejlet kontrol afbryder transaktionen.
  */
-export function rollbackSQL(suffix = KANONISK_BACKUP_SUFFIX) {
+export function rollbackSQL(suffix = KANONISK_BACKUP_SUFFIX, { foer = PLAN_SNAPSHOT_TAGET } = {}) {
   const t = backupTabeller(suffix);
+  // Bages ind i filen, ikke læst af den: `psql -f` har ingen adgang til repoets
+  // snapshot-meta, og en operatør må ikke kunne komme til at køre A0 og B0 med hver
+  // sit skæringspunkt. Regenerér filen hvis planen bygges på et nyere snapshot.
+  if (!/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(foer)) throw new Error(`rollbackSQL: ugyldigt skæringspunkt "${foer}" (forventer ISO-8601 med Z).`);
   const R = BACKUP_SKEMA.riders, A = BACKUP_SKEMA.abilities;
   const kopiSelect = (def) => def.kolonner.map((k) => `  ${k.navn},`).join("\n") + "\n  now() AS captured_at";
   return `-- ═══════════════════════════════════════════════════════════════════════════════
@@ -1169,9 +1219,14 @@ BEGIN
       RETURN;
     END IF;
   END IF;
-  SELECT count(*) INTO n_draw FROM public.riders WHERE archetype_draw IS NOT NULL;
+  -- Kun ryttere der fandtes FØR planens snapshot. Nyfødte får et draw ved fødslen,
+  -- så en utidsbegrænset optælling ville fyre på almindelig vækst i stedet for på en
+  -- halv reparation (målt 10/8: 740 med draw, heraf 722 født samme aften).
+  SELECT count(*) INTO n_draw FROM public.riders
+   WHERE archetype_draw IS NOT NULL
+     AND (created_at IS NULL OR created_at < '${foer}'::timestamptz);
   IF n_draw > ${DRAW_BASELINE_SPAERRE} THEN
-    RAISE EXCEPTION 'STOP: % ryttere har allerede et archetype_draw. Reparationen er (delvis) kørt — en kopi taget nu er IKKE en rollback-kilde.', n_draw;
+    RAISE EXCEPTION 'STOP: % ryttere fra før planens snapshot (%) har allerede et archetype_draw. Reparationen er (delvis) kørt — en kopi taget nu er IKKE en rollback-kilde.', n_draw, '${foer}';
   END IF;
 END
 $$;
@@ -1271,10 +1326,15 @@ BEGIN
 
   -- Er kopien fra FØR eller EFTER reparationen? Et tidsstempel kan ikke afgøre det
   -- (rollbacken køres på samme dag), men DATA kan: før reparationen har en håndfuld
-  -- levende ryttere et archetype_draw; efter har hele peletonen.
-  SELECT count(*) INTO n_draw FROM public.${t.riders} WHERE archetype_draw IS NOT NULL;
+  -- af de ryttere DER FANDTES FØR PLANEN et archetype_draw; efter har hele peletonen.
+  -- Afgrænsningen på created_at er ikke pynt: nyfødte ryttere fødes med et draw, så
+  -- uden den ville en helt gyldig før-kopi blive afvist, alene fordi der var kommet
+  -- nye ryttere til (målt 10/8: 740 med draw, heraf 722 født samme aften).
+  SELECT count(*) INTO n_draw FROM public.${t.riders}
+   WHERE archetype_draw IS NOT NULL
+     AND (created_at IS NULL OR created_at < '${foer}'::timestamptz);
   IF n_draw > ${DRAW_BASELINE_SPAERRE} THEN
-    RAISE EXCEPTION 'STOP: kopien indeholder % ryttere med archetype_draw. Kopien er taget EFTER skrivningen og er IKKE en rollback-kilde.', n_draw;
+    RAISE EXCEPTION 'STOP: kopien indeholder % ryttere fra før planens snapshot (%) med archetype_draw. Kopien er taget EFTER skrivningen og er IKKE en rollback-kilde.', n_draw, '${foer}';
   END IF;
 
   RAISE NOTICE 'Backup OK: % riders-rækker, % abilities-rækker, % med draw, taget %.', n_riders, n_abilities, n_draw, taget;
@@ -1468,7 +1528,10 @@ export async function sikreBackup(supabase, { suffix, dryRun, log }) {
   // Spørgsmålet er ikke om KOPIEN har draws, men om DEN LEVENDE DATABASE stadig er
   // i sin før-tilstand: er den halvt skrevet, kan der ikke laves en gyldig
   // rollback-kilde af den — uanset hvilket tabelnavn man vælger.
-  const draws = (rk) => rk.filter((r) => validDraw(r.archetype_draw)).length;
+  // Kun ryttere der fandtes FØR planens snapshot tæller. Nyfødte får et draw ved
+  // fødslen og ville ellers få spærren til at fyre på almindelig vækst — se
+  // DRAW_BASELINE_SPAERRE's kommentar.
+  const draws = (rk) => rk.filter((r) => validDraw(r.archetype_draw) && foerPlanen(r)).length;
   const raad =
     "\nEn ny kopi kan IKKE laves nu: databasen bærer allerede en halv reparation, så enhver "
     + "kopi taget herfra er en efter-tilstand. Brug backup-tabellen fra FØR den afbrudte kørsel "
@@ -1874,9 +1937,10 @@ export async function runRepair3570(supabase, options = {}) {
     takenAt: frisk.takenAt, saeson: frisk.seasonNumber, levende: frisk.rows.length,
     alleRiders: frisk.antalAlleRiders, pensionerede: frisk.antalPensionerede,
     udenAbilitiesRaekke: frisk.udenAbilitiesRaekke,
-    medDraw: frisk.rows.filter((r) => validDraw(r.archetype_draw)).length,
+    medDraw: frisk.rows.filter((r) => validDraw(r.archetype_draw) && foerPlanen(r)).length,
+    medDrawNyfoedte: frisk.rows.filter((r) => validDraw(r.archetype_draw) && !foerPlanen(r)).length,
   };
-  log(`  ${frisk.rows.length} levende ryttere · sæson ${frisk.seasonNumber} · ${ud.frisk.medDraw} har allerede et anlæg · ${frisk.antalPensionerede} pensionerede (uden for scope)`);
+  log(`  ${frisk.rows.length} levende ryttere · sæson ${frisk.seasonNumber} · ${ud.frisk.medDraw} fra før planen har allerede et anlæg · ${ud.frisk.medDrawNyfoedte} nyfødte med anlæg (uden for scope, født efter ${PLAN_SNAPSHOT_TAGET}) · ${frisk.antalPensionerede} pensionerede (uden for scope)`);
 
   // 3) Planen bygges forfra på det friske snapshot.
   log("── 3/8 Planen bygges forfra ──");
@@ -1918,16 +1982,21 @@ export async function runRepair3570(supabase, options = {}) {
   };
   log(`  ${tal.skrives} ryttere i skrive-scopet · ${tal.primaerSkift} skifter synlig type · løser-gap ${plan.loeser.gap.toExponential(1)}`);
 
-  // Delvis-kørsel-spærre.
+  // Delvis-kørsel-spærre. Tælles KUN over ryttere fra før planens snapshot — nyfødte
+  // fødes med et anlæg og er aldrig i scope, så de siger intet om hvorvidt en tidligere
+  // kørsel blev afbrudt. Uden afgrænsningen fyrede den på almindelig vækst: 740 med
+  // anlæg i prod 10/8, hvoraf 722 var født samme aften.
   const medDraw = ud.frisk.medDraw;
-  if (medDraw >= frisk.rows.length) {
-    log("  ⚠ ALLE levende ryttere har allerede et anlæg — reparationen er kørt. 0 rækker at skrive.");
+  const foerPlanenIAlt = frisk.rows.filter((r) => foerPlanen(r)).length;
+  if (tal.skrives === 0) {
+    log("  ⚠ Ingen ryttere tilbage i skrive-scopet — reparationen er kørt. 0 rækker at skrive.");
   } else if (medDraw > DRAW_BASELINE_SPAERRE && !o.fortsaetDelvis) {
     throw new Error(
-      `STOP: ${medDraw} af ${frisk.rows.length} ryttere har allerede et archetype_draw, men ikke alle. `
-      + "Det ligner en afbrudt kørsel. Genoptages den, bliver kvoterne beregnet over den RESTERENDE pulje, "
-      + "og fordelingen bliver en anden end den ejeren godkendte. Gennemgå tilstanden og kør igen med --fortsaet-delvis "
-      + "hvis det er bevidst.",
+      `STOP: ${medDraw} af ${foerPlanenIAlt} ryttere fra før planens snapshot har allerede et archetype_draw, `
+      + "men ikke alle. Det ligner en afbrudt kørsel. Genoptages den, bliver kvoterne beregnet over den "
+      + "RESTERENDE pulje, og fordelingen bliver en anden end den ejeren godkendte. Gennemgå tilstanden og "
+      + `kør igen med --fortsaet-delvis hvis det er bevidst. (${ud.frisk.medDrawNyfoedte} nyfødte med anlæg `
+      + "er talt fra — de er født efter planen og har aldrig været i scope.)",
     );
   }
 
