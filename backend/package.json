@@ -15,6 +15,7 @@
     "sim:contracts": "node scripts/economyContractSimulation.js --markdown",
     "sim:academy": "node scripts/academyEconomySimulation.js --markdown",
     "gates:mutation-audit": "node scripts/gateMutationAudit.js",
+    "lint:rider-type-writes": "node scripts/lintRiderTypeWrites.js",
     "audit:reset-fk": "node scripts/audit-reset-fk-coverage.js",
     "race:gate": "node scripts/raceGate.js --seeds=2026,7,42",
     "race:gate:routes": "node scripts/raceGate.js --seeds=2026,7,42 --routes",

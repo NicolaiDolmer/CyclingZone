@@ -111,6 +111,18 @@ export async function runPhysiologyBackfill(supabase, { dryRun = true, physiolog
 // #3325: type = POTENTIALE, ikke dagens form. Klassificerer mod ability_caps
 // (evne-LOFTET) i stedet for de nuværende evner, så typen er stabil hele karrieren
 // (se riderTypes.js's topkommentar for hvorfor + kollaps-historikken).
+//
+// #3570/#3588: dette er det TREDJE sted den persisterede type skrives — og det
+// eneste der dækker HELE peletonen på én gang (alle rækker i
+// rider_derived_abilities, inkl. retired). #3588 gjorde resolveRiderTypes til
+// identitets-kilden i deriveForRiderIds (trin 4) og riderValueRefresh, men lod
+// denne sti klassificere fra caps uden at læse archetype_draw. Konsekvensen var
+// at ÉN kørsel af `node scripts/backfillRiderTypes.js` (eller relaunch-
+// sekvensen, relaunchOrchestrator.js) tavst ville nulstille den frosne identitet
+// for hver eneste rytter og genåbne løkken. Stien spørger nu samme kilde som de
+// to andre. Ryttere uden draw (alle eksisterende pr. 10/8 på 6 nær) rammer
+// PRÆCIS samme kodesti som før — resolveRiderTypes falder tilbage til
+// computeRiderTypes med samme argumenter, bit-identisk.
 export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline, youthBaseline, log = noop } = {}) {
   const model = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
   // #3570: youthModel er OPT-IN via param (test/diagnostik-callere der ikke sender
@@ -127,18 +139,22 @@ export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline,
   // type-fjernelse (fx leadout) dem med et tomt badge. Matcher base_value-backfill,
   // der også dækker alle riders. Inner-join holder orphan-abilities ude.
   // birthdate med i selectet (#3570) — kun til alders-gaten, skrives ingen steder.
+  // archetype_draw med i selectet (#3570/#3588) — rytterens persisterede anlæg ER
+  // hans identitet; uden den i rækken ville denne sti gætte typen forfra og
+  // overskrive frysningen.
   const rows = await fetchAllRows(() =>
     supabase
       .from("rider_derived_abilities")
-      .select("rider_id, ability_caps, riders!inner(id, birthdate)")
+      .select("rider_id, ability_caps, riders!inner(id, birthdate, archetype_draw)")
       .order("rider_id"));
-  log(`types: ${rows.length} ryttere (med abilities, inkl. retired) — klassificeret mod ability_caps`);
+  const withDraw = rows.filter((r) => r.riders?.archetype_draw?.primary).length;
+  log(`types: ${rows.length} ryttere (med abilities, inkl. retired) — ${withDraw} med persisteret archetype_draw (identitet bevares), ${rows.length - withDraw} klassificeret mod ability_caps`);
 
   const dist = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 0]));
   const updates = rows.map((r) => {
     const age = ageForSeason(r.riders?.birthdate, seasonNumber);
     const rowModel = selectTypesBaseline(age, model, youthModel);
-    const { primary, secondary } = computeRiderTypes(r.ability_caps || {}, rowModel);
+    const { primary, secondary } = resolveRiderTypes(r.riders?.archetype_draw, r.ability_caps || {}, rowModel);
     dist[primary.key] = (dist[primary.key] || 0) + 1;
     return { id: r.rider_id, primary_type: primary.key, secondary_type: secondary.key };
   });
@@ -212,6 +228,8 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const bootstrapTypeByRider = new Map();
   for (const a of abilities) {
     const { primary, secondary } = computeRiderTypes(a, NEUTRAL_BASELINE);
+    // rider-type-write-ok: bootstrap-gæt til caps' rolle-faktor (trin 3), skrives
+    // ALDRIG til riders — den persisterede type kommer fra trin 4's resolveRiderTypes.
     bootstrapTypeByRider.set(a.rider_id, { primary_type: primary.key, secondary_type: secondary.key });
   }
 

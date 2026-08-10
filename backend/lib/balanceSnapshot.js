@@ -136,6 +136,8 @@ export function buildBalanceSnapshot(options = {}) {
       startAge: Number.isFinite(birthYear) ? referenceYear - birthYear : null,
       is_u25: !!r.is_u25,
       overall: riderOverall(abilities),
+      // rider-type-write-ok: 100 % in-memory balance-snapshot (deterministisk
+      // tal-screenshot, ingen DB) — typen bruges kun til at værdisætte i rapporten.
       baseValue: predictBaseValue({ primary_type: derived }, abilities, model),
       abilities,
     };
