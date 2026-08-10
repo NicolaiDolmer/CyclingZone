@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.111",
+    "date": "2026-08-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider types were rewriting themselves every night, and that loop is now closed",
+          "body": "On August 5 we changed how a rider's type is decided, so that it described what he could become rather than his current form. That change is in v7.95, and it introduced a problem we did not see: a rider's type was used to build his long term ceilings, and the next night those same ceilings were used to decide his type again. The calculation was feeding itself. Once a rider drifted in one direction, the loop kept pushing him further the same way, every night, on its own, and no correction we made could hold. That is how roughly three out of four player-owned young riders ended up labelled as fighters regardless of their real profile, and why GC talents could not come out of the academy at all. It was not your training and it was not chance. The loop was closed on the evening of August 9. A rider now has one fixed type, and the game cannot change it on its own any more. Your young riders were corrected the same night: the share labelled fighter among player-owned riders under 22 went from 74 percent to 16 percent, and their ceilings followed within a day. Two things follow from this that are worth being clear about. First, your rider's type is no longer a description of what he is good at today. It is what he was born with, and it is the shape his long term ceilings are built around, so a rider can still be strong at something outside his type. Second, the race engine does not read rider type at all, so a wrong label never cost you a placing in a race. What it cost was the shape of the ceilings a rider could grow into. Riders aged 22 and up were hit by the same loop and have not been corrected yet. That correction is being prepared and will be announced before it runs. From August 16, a new academy rider keeps the profile he was born with."
+        },
+        "da": {
+          "title": "Ryttertyper omskrev sig selv hver nat, og den løkke er nu lukket",
+          "body": "Den 5. august ændrede vi måden en rytters type afgøres på, så den beskrev hvad han kunne blive frem for hans nuværende form. Den ændring står i v7.95, og den indførte et problem vi ikke fik øje på: rytterens type blev brugt til at bygge hans langsigtede lofter, og næste nat blev netop de lofter brugt til at afgøre hans type igen. Udregningen fodrede sig selv. Når en rytter først var gledet i én retning, blev han skubbet videre samme vej hver nat, af sig selv, og ingen rettelse vi lavede kunne holde. Sådan endte cirka tre ud af fire spiller-ejede unge ryttere som fightere uanset deres faktiske profil, og derfor kunne klassementstalenter slet ikke komme ud af akademiet. Det var ikke din træning, og det var ikke tilfældigheder. Løkken blev lukket om aftenen den 9. august. En rytter har nu én fast type, og spillet kan ikke længere ændre den af sig selv. Dine unge ryttere blev rettet samme nat: andelen af fightere blandt spiller-ejede ryttere under 22 gik fra 74 procent til 16 procent, og deres lofter fulgte med inden for et døgn. To ting følger af det, og de er værd at sige rent. For det første er din rytters type ikke længere en beskrivelse af hvad han er god til i dag. Det er hvad han blev født med, og det er den form hans langsigtede lofter er bygget efter, så en rytter kan sagtens være stærk i noget uden for sin type. For det andet læser løbsmotoren slet ikke ryttertype, så en forkert type har aldrig kostet dig en placering i et løb. Den kostede formen på de lofter rytteren kunne vokse op i. Ryttere på 22 år og opefter blev ramt af den samme løkke og er ikke rettet endnu. Den korrektion er under forberedelse og bliver annonceret før den kører. Fra den 16. august beholder en ny akademi-rytter den profil han blev født med."
+        },
+        "refs": [3570, 3588, 3590]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Climbing training produces progress again for your young riders",
+          "body": "Several of you reported that mountain training stopped producing any climbing progress after your riders changed type, and some of you moved your training away from the mountains because of it. That was real, and it had the same root cause as the loop above: a rider who was relabelled away from climbing had his climbing ceiling lowered to match his new label, so there was nothing left for him to grow into. For your young riders this has already reversed. When the ceilings caught up with the corrected types, the climbing ceiling was raised for 222 player-owned riders under 22, by as much as 48 points, and it was lowered for none of them. The only abilities that got tighter are aggression and punch, which is the old fighter signature being trimmed away from riders who never had a talent for it. If you moved your training away from the mountains, it is safe to move it back. Riders aged 22 and up are covered by the correction mentioned above, which has not run yet."
+        },
+        "da": {
+          "title": "Klatretræning giver fremgang igen for dine unge ryttere",
+          "body": "Flere af jer meldte at bjergtræning holdt op med at give fremgang i klatring efter jeres ryttere skiftede type, og nogle af jer lagde træningen væk fra bjergene af den grund. Det var ægte, og det havde samme rodårsag som løkken ovenfor: en rytter der blev omklassificeret væk fra klatring fik sit klatre-loft sænket, så det passede til hans nye type, og dermed var der ikke mere at vokse op i. For jeres unge ryttere er det allerede vendt. Da lofterne fulgte med de rettede typer, blev klatre-loftet hævet for 222 spiller-ejede ryttere under 22, med op til 48 point, og det blev sænket for ingen af dem. De eneste evner der blev strammet, er aggression og punch, altså den gamle fighter-signatur der beskæres væk fra ryttere der aldrig havde anlæg for den. Har du lagt din træning væk fra bjergene, kan du roligt lægge den tilbage. Ryttere på 22 år og opefter er dækket af den korrektion der er nævnt ovenfor, og som ikke er kørt endnu."
+        },
+        "refs": [3450, 3570]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Some riders still look unstable, and here is exactly why",
+          "body": "A few of you have seen a rider change type twice within 48 hours and asked whether types are still moving around. They are not, but there is a real reason a rider can look unstable. Four pairs of rider types are currently too similar for the game to separate reliably, because one type's strengths are a subset of the other's: time trialist and GC, puncheur and climber, rouleur and cobbles rider, and rouleur and breakaway rider. A rider who sits between two of them can be read as either. This is a display and classification issue, not a racing one: the race engine judges a rider on his abilities and on what the stage actually demands, so a hilly finish and a mountain finish already reward different riders correctly. We know precisely why this happens now and it is on the list to fix properly."
+        },
+        "da": {
+          "title": "Nogle ryttere ser stadig ustabile ud, og her er præcis hvorfor",
+          "body": "Et par stykker har set en rytter skifte type to gange inden for 48 timer og spurgt om typerne stadig flytter sig. Det gør de ikke, men der er en reel grund til at en rytter kan se ustabil ud. Fire par af ryttertyper ligner i øjeblikket hinanden for meget til at spillet kan skelne dem pålideligt, fordi den ene types styrker er en delmængde af den andens: tidskører og klassementsrytter, puncheur og klatrer, rouleur og brostensrytter, samt rouleur og baroudeur. En rytter der ligger mellem to af dem, kan læses som begge. Det er et visnings- og klassifikationsproblem, ikke et løbsproblem: løbsmotoren bedømmer en rytter på hans evner og på hvad etapen faktisk kræver, så en bakket afslutning og en bjergafslutning belønner allerede forskellige ryttere korrekt. Vi ved præcis hvorfor det sker nu, og det står på listen til at blive rettet ordentligt."
+        },
+        "refs": [3592]
+      }
+    ]
+  },
+  {
     "version": "7.110",
     "date": "2026-08-10",
     "label": "Beta",
