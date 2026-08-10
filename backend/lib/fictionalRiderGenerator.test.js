@@ -13,6 +13,7 @@ import {
   scaleMinTypes,
 } from "./fictionalRiderGenerator.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
+import { drawArchetypePair } from "./archetypeDistribution.js";
 
 const REF_YEAR = 2026;
 const FORBIDDEN_FIELDS = ["id", "price", "market_value", "salary", "team_id", "ai_team_id", "prize_earnings_bonus"];
@@ -382,6 +383,52 @@ test("#1122 _meta.physiology fjernes af toInsertPayload (ikke en riders-kolonne)
   for (const row of toInsertPayload(riders)) {
     assert.ok(!("physiology" in row) && !("_meta" in row), "physiology/_meta lækkede ind i INSERT-payload");
   }
+});
+
+// ── #3606: anlægget overlever ind i INSERT-payloaden ──────────────────────────
+// Generatoren trækker en arketype og former hele rytteren efter den; før #3606
+// blev trækket kastet væk af toInsertPayload, så klassifikatoren måtte gætte typen
+// bagefter — rodårsagen bag #3570. Testene fejler UDEN rettelsen (payloaden havde
+// slet ingen archetype_draw).
+
+test("#3606 toInsertPayload bærer det TRUKNE anlæg som archetype_draw", () => {
+  const { riders } = generateFictionalRiders({ seed: 4242, count: 60, referenceYear: REF_YEAR });
+  const payload = toInsertPayload(riders);
+  assert.equal(payload.length, riders.length);
+  for (let i = 0; i < payload.length; i++) {
+    const draw = payload[i].archetype_draw;
+    assert.ok(draw, `rytter ${i} mangler archetype_draw i INSERT-payloaden`);
+    assert.equal(
+      draw.primary, riders[i]._meta.archetype,
+      "det persisterede anlæg skal være DET TRUKNE, ikke et gæt",
+    );
+    assert.ok(ARCHETYPE_BY_TYPE[draw.primary], `ukendt arketype '${draw.primary}'`);
+  }
+});
+
+test("#3606 anlæggets form matcher akademi-stiens præcist (primary/secondary/isHybrid)", () => {
+  // academyGenerator.js' drawArchetypePair er SSOT for formen; academyIntake.js
+  // skriver dens retur direkte til archetype_draw. Voksen-generatoren skal skrive
+  // NØJAGTIG samme nøglesæt, ellers læser resolveRiderTypes/caps-kæden to former.
+  const academyShape = drawArchetypePair(makeRng(7));
+  const { riders } = generateFictionalRiders({ seed: 99, count: 40, referenceYear: REF_YEAR });
+  for (const row of toInsertPayload(riders)) {
+    assert.deepEqual(
+      Object.keys(row.archetype_draw).sort(), Object.keys(academyShape).sort(),
+      "archetype_draw's nøglesæt afviger fra akademi-stiens",
+    );
+    // Voksen-generatoren trækker ÉN arketype og former stats efter den alene —
+    // der er ingen anden arketype i kroppen at persistere. Samme værdier som de
+    // ~85 % ikke-hybride akademi-træk.
+    assert.equal(row.archetype_draw.secondary, null);
+    assert.equal(row.archetype_draw.isHybrid, false);
+  }
+});
+
+test("#3606 kaldere med et _meta UDEN archetypeDraw er uændrede (bagudkompatibel)", () => {
+  const [row] = toInsertPayload([{ firstname: "A", lastname: "B", _meta: { age: 23 } }]);
+  assert.ok(!("archetype_draw" in row), "må ikke opfinde et anlæg der aldrig blev trukket");
+  assert.ok(!("_meta" in row));
 });
 
 // ── Komposition-override (#1420 mix-presets) ──────────────────────────────────

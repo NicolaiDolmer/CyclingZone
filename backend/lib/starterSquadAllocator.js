@@ -212,13 +212,19 @@ export function generateAiRiderBatchWithCap({
       // #3570/#3588: tredje spejling — deriveForRiderIds former nu caps af et
       // PERSISTERET archetype_draw når rytteren har et, og lader draw'et VINDE
       // over klassifikatoren i den endelige type (resolveRiderTypes). Gaten
-      // spejler begge trin. Den svage startpulje (fictionalRiderGenerator, se
-      // buildWeakPoolPayload) bærer ikke noget draw i dag, så `draw` er undefined
-      // og udtrykket er BIT-IDENTISK med den tidligere computeRiderTypes-kæde;
-      // spejlingen står her for at gaten ikke kan drifte fra skrivestien den dag
-      // startpuljen begynder at trække et anlæg (præcis #2065-klassen igen).
+      // spejler begge trin.
+      //
+      // #3606: den dag er nu. toInsertPayload persisterer generatorens træk som
+      // `archetype_draw`, så payloaden DENNE funktion returnerer bærer et anlæg —
+      // og deriveForRiderIds bygger derfor caps + endelig type af anlægget, ikke
+      // af et bootstrap-gæt. Læser gaten ikke det samme anlæg, vurderer den en
+      // ANDEN rytter end den der lander i DB'en, og værdiloftet (AI_TIER_VALUE_CAP)
+      // holder ikke længere — præcis #2065-klassen. `candidate` er den RÅ
+      // generator-record (bærer `_meta`, ikke kolonne-navnet), derfor begge
+      // opslag: `_meta.archetypeDraw` for generator-stien, `archetype_draw` for
+      // en allerede-payload-formet kandidat (injiceret `generate` i tests).
       const age = computeAge(candidate.birthdate, referenceYear);
-      const draw = candidate.archetype_draw;
+      const draw = candidate._meta?.archetypeDraw ?? candidate.archetype_draw;
       const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
       const capsSeed = (draw && draw.primary)
         ? { primary: draw.primary, secondary: draw.secondary || null }
