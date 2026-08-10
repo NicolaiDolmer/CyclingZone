@@ -3,15 +3,60 @@ import assert from "node:assert/strict";
 
 import {
   runIntakeOfferExpirySweep,
+  resolveDailyQuota,
   INTAKE_OFFER_EXPIRY_DAYS,
   INTAKE_EXPIRY_AUCTION_DURATION_HOURS,
   INTAKE_EXPIRY_MAX_PER_DAY,
+  INTAKE_EXPIRY_STEADY_PER_DAY,
+  INTAKE_EXPIRY_CATCHUP_PER_DAY,
+  INTAKE_EXPIRY_BACKLOG_THRESHOLD,
 } from "./academyIntakeExpirySweep.js";
 
-test("konstanter: 7 dages udløb, 24h-auktion, 30 pr. DAG", () => {
+test("konstanter: 7 dages udløb, 24h-auktion, 45/60 pr. DAG", () => {
   assert.equal(INTAKE_OFFER_EXPIRY_DAYS, 7);
   assert.equal(INTAKE_EXPIRY_AUCTION_DURATION_HOURS, 24);
-  assert.equal(INTAKE_EXPIRY_MAX_PER_DAY, 30);
+  // Ejer-godkendt 10/8: 30 var strukturelt for lav — ~300 tilbud skal udløbe pr.
+  // uge (43/dag) mod en kapacitet på 210. Køen voksede ~90/uge af sig selv.
+  assert.equal(INTAKE_EXPIRY_STEADY_PER_DAY, 45);
+  assert.equal(INTAKE_EXPIRY_CATCHUP_PER_DAY, 60);
+  assert.equal(INTAKE_EXPIRY_MAX_PER_DAY, INTAKE_EXPIRY_STEADY_PER_DAY, "den bevarede eksport peger på steady-satsen");
+  assert.ok(INTAKE_EXPIRY_CATCHUP_PER_DAY > INTAKE_EXPIRY_STEADY_PER_DAY, "indhentning skal være hurtigere end normal drift");
+});
+
+test("kvote: efterslæb over tærsklen → CATCHUP-satsen", async () => {
+  const intakeRows = [];
+  const supabase = buildMockSupabase({
+    intakeRows, riders: [], capture: {},
+    overdueOverride: INTAKE_EXPIRY_BACKLOG_THRESHOLD + 1,
+  });
+  const { quota, overdue } = await resolveDailyQuota(supabase, NOW.toISOString());
+  assert.equal(quota, INTAKE_EXPIRY_CATCHUP_PER_DAY);
+  assert.equal(overdue, INTAKE_EXPIRY_BACKLOG_THRESHOLD + 1);
+});
+
+test("kvote: efterslæb PÅ tærsklen → stadig STEADY (kun OVER udløser indhentning)", async () => {
+  const supabase = buildMockSupabase({
+    intakeRows: [], riders: [], capture: {},
+    overdueOverride: INTAKE_EXPIRY_BACKLOG_THRESHOLD,
+  });
+  const { quota } = await resolveDailyQuota(supabase, NOW.toISOString());
+  assert.equal(quota, INTAKE_EXPIRY_STEADY_PER_DAY);
+});
+
+test("kvote: tom kø → STEADY", async () => {
+  const supabase = buildMockSupabase({ intakeRows: [], riders: [], capture: {}, overdueOverride: 0 });
+  const { quota, overdue } = await resolveDailyQuota(supabase, NOW.toISOString());
+  assert.equal(quota, INTAKE_EXPIRY_STEADY_PER_DAY);
+  assert.equal(overdue, 0);
+});
+
+test("kvoten falder TILBAGE til steady når puklen er afviklet (selv-korrigerende)", async () => {
+  // Det scenarie der ellers ville kræve at nogen huskede at sænke tallet manuelt.
+  const medPukkel = buildMockSupabase({ intakeRows: [], riders: [], capture: {}, overdueOverride: 400 });
+  assert.equal((await resolveDailyQuota(medPukkel, NOW.toISOString())).quota, INTAKE_EXPIRY_CATCHUP_PER_DAY);
+
+  const efterAfvikling = buildMockSupabase({ intakeRows: [], riders: [], capture: {}, overdueOverride: 12 });
+  assert.equal((await resolveDailyQuota(efterAfvikling, NOW.toISOString())).quota, INTAKE_EXPIRY_STEADY_PER_DAY);
 });
 
 test("runIntakeOfferExpirySweep: skip når flag OFF", async () => {
@@ -34,7 +79,7 @@ test("runIntakeOfferExpirySweep: kaster hvis supabase-klient mangler", async () 
 //   (eq→lt→order→limit), (c) reconcile-UPDATE pr. stale række (eq id + eq status),
 //   (d) expiry-UPDATE (in→eq→select).
 //   riders: select id,team_id,pending_team_id .in(id, ids) — ejerskabs-sandheden.
-function buildMockSupabase({ intakeRows, riders, expiredLast24h = 0, capture }) {
+function buildMockSupabase({ intakeRows, riders, expiredLast24h = 0, capture, overdueOverride = null }) {
   const riderById = new Map(riders.map((r) => [r.id, r]));
   return {
     from(table) {
@@ -59,9 +104,24 @@ function buildMockSupabase({ intakeRows, riders, expiredLast24h = 0, capture }) 
       return {
         select(cols, opts) {
           if (opts?.head && opts?.count === "exact") {
+            // To count-queries deler denne gren:
+            //   1. dagsforbrug — status='expired' + resolved_at > døgn siden
+            //   2. efterslæb (#3576-kvoten) — status='offered' + created_at < cutoff
+            // Grenen vælges af hvilken status der filtreres på.
+            let status = null;
             const chain = {
-              eq(c, v) { assert.equal(c, "status"); assert.equal(v, "expired"); return chain; },
-              gt(c, _v) { assert.equal(c, "resolved_at"); return Promise.resolve({ count: expiredLast24h, error: null }); },
+              eq(c, v) { assert.equal(c, "status"); status = v; return chain; },
+              gt(c, _v) {
+                assert.equal(c, "resolved_at");
+                assert.equal(status, "expired");
+                return Promise.resolve({ count: expiredLast24h, error: null });
+              },
+              lt(c, cutoffIso) {
+                assert.equal(c, "created_at");
+                assert.equal(status, "offered");
+                const n = intakeRows.filter((r) => r.status === "offered" && r.created_at < cutoffIso).length;
+                return Promise.resolve({ count: overdueOverride ?? n, error: null });
+              },
             };
             return chain;
           }

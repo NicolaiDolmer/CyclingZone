@@ -798,7 +798,9 @@ async function runRaceEntryGeneratorSweepCron() {
 async function runIntakeOfferExpirySweepCron() {
   const r = await runIntakeOfferExpirySweep({ supabase });
   if (r.ran && r.expired > 0) {
-    console.log(`🎓 Intake-udløb: ${r.expired} 'offered'-tilbud sat til 'expired' (cutoff ${r.cutoff})`);
+    // quota/overdue med i linjen: uden dem kan man ikke se om sweep'en kører i
+    // indhentning (efterslæb) eller normal drift uden selv at spørge databasen.
+    console.log(`🎓 Intake-udløb: ${r.expired} 'offered'-tilbud sat til 'expired' (kvote ${r.quota}/dag, ${r.overdue} overmodne i kø, cutoff ${r.cutoff})`);
   }
 }
 

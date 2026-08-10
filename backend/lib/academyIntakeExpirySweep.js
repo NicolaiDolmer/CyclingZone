@@ -37,7 +37,61 @@ import { listRejectedAsYouthAuction } from "./youthMarket.js";
 
 export const INTAKE_OFFER_EXPIRY_DAYS = 7;
 export const INTAKE_EXPIRY_AUCTION_DURATION_HOURS = 24;
-export const INTAKE_EXPIRY_MAX_PER_DAY = 30;
+
+// ── Dagskvote (ejer-godkendt 10/8) ───────────────────────────────────────────
+// Kvoten stod på 30/dag og var STRUKTURELT for lav: målt 10/8 kommer der ~345 nye
+// tilbud om ugen (søndags-drip 192 hold × 2 + signups), hvoraf managerne kun
+// besvarer ~45. De resterende ~300 skal udløbe — altså 43/dag — mod en kapacitet
+// på 210/uge. Køen voksede derfor ~90/uge af sig selv: 327 af 368 ventende tilbud
+// var over 7-dages-grænsen, det ældste fra 25/7, og sweep'en havde kørt 30/30
+// hver eneste dag siden 1/8.
+//
+// STEADY dækker den normale tilgang med lidt luft. CATCHUP bruges så længe der er
+// et efterslæb, så en pukkel (fx kompensations-kuldets 762 ekstra tilbud, #3576)
+// afvikles i stedet for at lægge sig oven i køen permanent.
+//
+// Hvorfor adaptiv og ikke "sæt 60 nu, husk at sænke til 45 om en måned": ingen
+// husker det. Kvoten læser efterslæbet ved hver kørsel og falder selv tilbage til
+// STEADY når puklen er væk — samme princip som FLAG_GATED_EMPTY_TABLES i
+// audit-feature-liveness.js, hvor en selv-korrigerende regel afløste en statisk
+// liste nogen skulle vedligeholde.
+//
+// Prisen ved at hæve: udløbne tilbud bliver til 24-timers ungdomsauktioner, og det
+// marked er allerede mættet — budprocenten faldt fra 53-82 % (ved 17 udløb/dag i
+// juli) til 20-30 % ved 30/dag, og ungdomsauktioner udgør pt. 30 af 31 aktive
+// auktioner. Flere udløb betyder derfor flere USOLGTE. Det er acceptabelt, fordi en
+// usolgt ungdomsrytter bliver fri agent og dermed synlig på markedet, i stedet for
+// at ligge skjult i et akademi-tilbud ingen svarer på. Går budprocenten under ~15 %,
+// er det signalet om at udbuddet — ikke kvoten — er problemet.
+export const INTAKE_EXPIRY_STEADY_PER_DAY = 45;
+export const INTAKE_EXPIRY_CATCHUP_PER_DAY = 60;
+// Over dette antal overmodne tilbud regnes køen som et efterslæb, ikke som normal
+// gennemstrømning. ~2 dages steady-kapacitet.
+export const INTAKE_EXPIRY_BACKLOG_THRESHOLD = 100;
+
+// Bevaret som eksport: cron-monitor og tests importerer den. Peger nu på
+// steady-satsen, så en læser ikke tror kvoten stadig er 30.
+export const INTAKE_EXPIRY_MAX_PER_DAY = INTAKE_EXPIRY_STEADY_PER_DAY;
+
+/**
+ * Dagens kvote: CATCHUP hvis der er et efterslæb af overmodne tilbud, ellers STEADY.
+ * Tæller kun tilbud der FAKTISK er over grænsen — ikke hele køen.
+ */
+export async function resolveDailyQuota(supabase, cutoffIso) {
+  const { count, error } = await supabase
+    .from("academy_intake")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "offered")
+    .lt("created_at", cutoffIso);
+  if (error) throw new Error(`academy_intake backlog count: ${error.message}`);
+  const overdue = count ?? 0;
+  return {
+    quota: overdue > INTAKE_EXPIRY_BACKLOG_THRESHOLD
+      ? INTAKE_EXPIRY_CATCHUP_PER_DAY
+      : INTAKE_EXPIRY_STEADY_PER_DAY,
+    overdue,
+  };
+}
 
 export async function runIntakeOfferExpirySweep({
   supabase,
@@ -60,9 +114,11 @@ export async function runIntakeOfferExpirySweep({
     .eq("status", "expired")
     .gt("resolved_at", dayAgoIso);
   if (cntError) throw new Error(`academy_intake expiry day-count: ${cntError.message}`);
-  const budget = INTAKE_EXPIRY_MAX_PER_DAY - (expiredToday ?? 0);
+  // Dagens kvote afhænger af om der er et efterslæb (se konstanterne ovenfor).
+  const { quota, overdue } = await resolveDailyQuota(supabase, cutoffIso);
+  const budget = quota - (expiredToday ?? 0);
   if (budget <= 0) {
-    return { ran: true, expired: 0, auctioned: 0, reconciled: 0, reason: "daily_budget_spent", cutoff: cutoffIso };
+    return { ran: true, expired: 0, auctioned: 0, reconciled: 0, reason: "daily_budget_spent", cutoff: cutoffIso, quota, overdue };
   }
 
   // Ældste først. Hent budget + buffer, så afstemte (ejede) rækker ikke æder
@@ -160,5 +216,10 @@ export async function runIntakeOfferExpirySweep({
     reconciled,
     ...(auctionErrors.length ? { auctionErrors } : {}),
     cutoff: cutoffIso,
+    // Med i svaret så cron-loggen viser HVILKEN kvote der var i brug og hvor stort
+    // efterslæbet var — ellers kan man ikke se om sweep'en er i indhentning eller
+    // normal drift uden at forespørge databasen selv.
+    quota,
+    overdue,
   };
 }
