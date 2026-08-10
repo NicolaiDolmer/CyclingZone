@@ -11,11 +11,13 @@ import {
   buildWeakStarterPool,
   computeAge,
   deriveTeamSeed,
+  generateAiRiderBatchWithCap,
   hashStringToSeed,
   runStarterSquadAllocation,
 } from "./starterSquadAllocator.js";
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
+import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 
@@ -277,6 +279,60 @@ test("svag start-pulje: afledte styrke-evner forbliver svage (≤25) (#1487 forw
     globalMax = Math.max(globalMax, maxStat);
   }
   assert.ok(globalMax <= 25, `stærkeste styrke-evne ${globalMax} > 25 — start-puljen er ikke længere svag`);
+});
+
+// ── #3606: en NY managers start-trup bærer sit anlæg ind i DB'en ──────────────
+// Dette er den sti spilleren møder først: 8 kerne + 4 hale = 12 ryttere
+// (insertWeakSquadForTeam). Før #3606 blev generatorens træk kastet væk af
+// toInsertPayload, så deriveForRiderIds byggede caps + endelig type på et
+// bootstrap-GÆT — målt over 400 simulerede trupper fik 72,6 % af rytterne en
+// anden synlig type end deres anlæg, og baroudeur alene fyldte 39,7 %.
+// Testen fejler UDEN rettelsen: 0 af 12 rækker bar archetype_draw.
+test("#3606 start-trup-payload (8 kerne + 4 hale): alle 12 bærer archetype_draw", () => {
+  const teamId = "team-3606";
+  const existingFoldedNames = new Set(); // delt kerne+hale, som i insertWeakSquadForTeam
+  const payload = [
+    ...buildWeakStarterPool({
+      count: STARTER_SQUAD.CORE_SIZE, seed: deriveTeamSeed(2026 + 1487, teamId),
+      referenceYear: 2026, existingFoldedNames, window: STARTER_POOL_STAT_WINDOW,
+    }),
+    ...buildWeakStarterPool({
+      count: STARTER_SQUAD.TAIL_SIZE, seed: deriveTeamSeed(2026 + 1487 + 7, teamId),
+      referenceYear: 2026, existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW,
+    }),
+  ];
+
+  assert.equal(payload.length, STARTER_SQUAD.TOTAL_SIZE);
+  for (const [i, r] of payload.entries()) {
+    const draw = r.archetype_draw;
+    assert.ok(draw, `rytter ${i} af ${payload.length} mangler archetype_draw`);
+    assert.ok("primary" in draw && "secondary" in draw, `rytter ${i}: anlægget mangler et felt`);
+    assert.ok(RIDER_TYPE_KEYS.includes(draw.primary), `rytter ${i}: ugyldig primary '${draw.primary}'`);
+  }
+});
+
+// Samme garanti for AI tier 1/2-stien (generateAiRiderBatchWithCap). Værdi-/type-
+// gaten dér klassificerer kandidaten LOKALT før accept; læser den ikke det samme
+// anlæg som payloaden bærer, vurderer den en anden rytter end den der lander i
+// DB'en og AI_TIER_VALUE_CAP holder ikke (#2065-klassen).
+test("#3606 AI-batch-payload bærer archetype_draw, og gaten dømmer på samme anlæg", () => {
+  const batch = generateAiRiderBatchWithCap({
+    count: 24, tierFractions: { superstar: 0, star: 0, solid: 0 }, valueCap: 400_000,
+    seed: 3606, referenceYear: 2026,
+  });
+  assert.equal(batch.length, 24);
+  for (const [i, r] of batch.entries()) {
+    assert.ok(r.archetype_draw, `AI-rytter ${i} mangler archetype_draw`);
+    assert.ok(RIDER_TYPE_KEYS.includes(r.archetype_draw.primary), `AI-rytter ${i}: ugyldig primary`);
+  }
+  // Gaten (typeShareCap) tæller den type deriveForRiderIds ENDER med. Med et
+  // persisteret anlæg ER den typen = draw.primary, så loftet skal holde på DEN.
+  const counts = new Map();
+  for (const r of batch) counts.set(r.archetype_draw.primary, (counts.get(r.archetype_draw.primary) || 0) + 1);
+  const maxPerType = Math.max(1, Math.ceil(24 * 0.4));
+  for (const [type, n] of counts) {
+    assert.ok(n <= maxPerType, `${type} fylder ${n}/24 — over typeShareCap (${maxPerType})`);
+  }
 });
 
 test("starCutoffFraction 0: ingen stjerner ekskluderes — også den dyreste allokeres (#1487)", () => {

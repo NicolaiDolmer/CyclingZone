@@ -48,6 +48,10 @@ CREATE TABLE riders (
   stat_acc INTEGER, stat_ned INTEGER, stat_udh INTEGER, stat_mod INTEGER,
   stat_res INTEGER, stat_ftr INTEGER,
   potentiale DECIMAL(3,1),
+  -- #3570 fase 2 (database/2026-08-09-3570-archetype-draw.sql) — verificeret til
+  -- stede i prod 10/8. #3606 lader toInsertPayload skrive generatorens træk hertil,
+  -- så DDL'en her SKAL bære kolonnen for fortsat at spejle prod.
+  archetype_draw JSONB,
   is_u25 BOOLEAN DEFAULT FALSE,
   is_retired BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -175,4 +179,23 @@ test("payload indeholder ingen ukendte kolonner (alle keys findes i schemaet)", 
   }
   // Sanity: alle 14 stats med.
   for (const s of STAT_KEYS) assert.ok(s in sample, `mangler ${s}`);
+});
+
+// #3606: anlægget skal overleve HELE vejen — ikke bare stå i payloaden, men
+// faktisk lande i jsonb-kolonnen med begge felter i behold. Fejler uden
+// rettelsen (kolonnen skrives aldrig → alle rækker NULL).
+test("#3606 det trukne anlæg lander i riders.archetype_draw (jsonb round-trip)", async () => {
+  const { riders } = generateFictionalRiders({ seed: 3606, count: 30, referenceYear: REF_YEAR });
+  await insertRiders(db, toInsertPayload(riders));
+
+  const { rows } = await db.query(
+    "SELECT archetype_draw FROM riders WHERE archetype_draw IS NOT NULL",
+  );
+  assert.equal(rows.length, 30, "alle 30 ryttere skal bære et anlæg");
+  const drawn = new Set(riders.map((r) => r._meta.archetype));
+  for (const r of rows) {
+    const draw = typeof r.archetype_draw === "string" ? JSON.parse(r.archetype_draw) : r.archetype_draw;
+    assert.ok("primary" in draw && "secondary" in draw && "isHybrid" in draw, "form afviger fra akademi-stiens");
+    assert.ok(drawn.has(draw.primary), `'${draw.primary}' er ikke en trukket arketype`);
+  }
 });
