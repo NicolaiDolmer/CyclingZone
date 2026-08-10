@@ -25,7 +25,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { generateAcademyCandidates } from "../../lib/academyGenerator.js";
-import { seedAcademyCohortForTeam, fetchActiveSeason, fetchExistingFoldedRiderNames, hashStringToSeed } from "../../lib/academyIntake.js";
+import { seedAcademyCohortForTeam, fetchActiveSeason, fetchExistingFoldedRiderNames, hashStringToSeed, referenceYearForSeason } from "../../lib/academyIntake.js";
 import { makeRng } from "../../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
@@ -157,7 +157,8 @@ async function main() {
 
   const season = await fetchActiveSeason(sb);
   if (!season) throw new Error("ingen aktiv sæson");
-  const referenceYear = parseInt(String(season.start_date).slice(0, 4), 10) || 2026;
+  // #3611: sæson-referenceåret, delt definition med produktionsstien.
+  const referenceYear = referenceYearForSeason(season);
   console.log(`Aktiv sæson: S${season.number} (start ${season.start_date}, referenceår ${referenceYear})`);
 
   // Aktive menneskehold — SAMME filter som sundayIntakeTick.
@@ -228,6 +229,7 @@ async function main() {
   // ── APPLY ────────────────────────────────────────────────────────────────
   let seededTeams = 0;
   const allNewIds = [];
+  const seededTeamIds = [];
   const errors = [];
 
   for (const p of todo) {
@@ -252,16 +254,7 @@ async function main() {
       });
       seededTeams += 1;
       allNewIds.push(...newIds);
-
-      await notifyTeamOwner({
-        supabase: sb,
-        teamId: p.team.id,
-        type: "academy_drip",
-        title: "New academy talent has arrived",
-        message: "New candidates are waiting in your academy - sign or reject them.",
-        relatedId: null,
-        metadata: { titleCode: "notif.academyDrip.title", messageCode: "notif.academyDrip.message" },
-      });
+      seededTeamIds.push(p.team.id); // #3576: notificeres FØRST efter derive
     } catch (e) {
       errors.push(`${p.team.id}: ${e?.message ?? e}`);
     }
@@ -272,6 +265,25 @@ async function main() {
   if (allNewIds.length) {
     console.log(`\nAfleder ${allNewIds.length} nye ryttere...`);
     await deriveForRiderIds(sb, allNewIds, { dryRun: false });
+  }
+
+  // #3576: notifikationen sendes FØRST når kandidaterne kan vises. Samme
+  // rækkefølge som sundayIntakeTick — mail og datatilstand må ikke divergere,
+  // og det var netop denne kompensation der blev udløst af at de gjorde.
+  for (const teamId of seededTeamIds) {
+    try {
+      await notifyTeamOwner({
+        supabase: sb,
+        teamId,
+        type: "academy_drip",
+        title: "New academy talent has arrived",
+        message: "New candidates are waiting in your academy - sign or reject them.",
+        relatedId: null,
+        metadata: { titleCode: "notif.academyDrip.title", messageCode: "notif.academyDrip.message" },
+      });
+    } catch (e) {
+      errors.push(`notify ${teamId}: ${e?.message ?? e}`);
+    }
   }
 
   console.log(`\n✅ ${allNewIds.length} kandidater leveret til ${seededTeams} hold (tick_date ${TICK_DATE})`);

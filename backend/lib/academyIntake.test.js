@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAcademyCandidate, rejectAcademyCandidate, seedAcademyCohortForTeam } from "./academyIntake.js";
+import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAcademyCandidate, rejectAcademyCandidate, seedAcademyCohortForTeam, referenceYearForSeason } from "./academyIntake.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
+import { generateAcademyCandidates } from "./academyGenerator.js";
+import { ageForSeason } from "./riderSeasonAge.js";
+import { ACADEMY } from "./academyFlag.js";
 
 // ─── Mock-supabase helpers ────────────────────────────────────────────────────
 
@@ -872,4 +875,46 @@ test("rejectAcademyCandidate: kaster 'not_offered' når ingen offered-række eks
   );
 
   assert.equal(supabase._intakeUpdates.length, 0, "ingen intake-update ved fejl");
+});
+
+// ─── #3611: kandidaternes alder måles i SÆSON-alder, ikke kalenderår ──────────
+// Generatoren clampede fødselsåret mod season.start_date's kalenderår, mens hele
+// resten af spillet (klassifikation, værdi, isAcademyAge) læser ageForSeason =
+// LAUNCH_REFERENCE_YEAR + (N−1) − fødselsår. Alle sæsoner kører i kalenderåret
+// 2026, så start_date-året stod stille mens sæson-referenceåret voksede: hvert
+// kuld blev født ét år ældre end det forrige uden at nogen besluttede det.
+
+test("#3611: referenceYearForSeason følger sæsonnummeret, ikke start_date's kalenderår", () => {
+  // Alle tre sæsoner starter i kalenderåret 2026 — præcis prod-situationen.
+  assert.equal(referenceYearForSeason({ number: 1, start_date: "2026-06-22" }), 2026);
+  assert.equal(referenceYearForSeason({ number: 2, start_date: "2026-07-27" }), 2027);
+  assert.equal(referenceYearForSeason({ number: 3, start_date: "2026-08-24" }), 2028);
+});
+
+test("#3611: referenceYearForSeason falder tilbage til start_date-året uden sæsonnummer", () => {
+  assert.equal(referenceYearForSeason({ start_date: "2026-07-27" }), 2026);
+  assert.equal(referenceYearForSeason({}), 2026);
+});
+
+test("#3611-invariant: HVER kandidat fødes inden for akademi-alderen i sæson-alder", () => {
+  // Den test der ville have fanget driften. Den gamle formel (start_date-året)
+  // gav sæson-alder 17-22 i S2 og 18-23 i S3 — målt i prod: 29 af 397
+  // s2-kandidater var 22 og faldt dermed uden for akademiets egen aldersgrænse.
+  for (const number of [1, 2, 3, 4, 8]) {
+    const season = { id: `s-${number}`, number, start_date: "2026-07-27" };
+    const referenceYear = referenceYearForSeason(season);
+    const candidates = generateAcademyCandidates({
+      rng: makeRng(3611 + number),
+      referenceYear,
+      existingNames: new Set(),
+      countOverride: 400,
+    });
+    for (const c of candidates) {
+      const age = ageForSeason(c.rider.birthdate, number);
+      assert.ok(
+        age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE,
+        `S${number}: kandidat født ${c.rider.birthdate} har sæson-alder ${age}, uden for ${ACADEMY.MIN_AGE}-${ACADEMY.MAX_AGE}`
+      );
+    }
+  }
 });

@@ -13,6 +13,7 @@ import { computeFrozenSalary } from "./contractSeed.js";
 import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
+import { seasonReferenceYear } from "./riderSeasonAge.js";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
 // starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
@@ -60,8 +61,30 @@ export async function fetchActiveSeason(supabase) {
   return seasonRes?.data ?? null;
 }
 
-function referenceYearForSeason(season) {
-  return parseInt(String(season.start_date).slice(0, 4), 10) || 2026;
+// #3611: SÆSONENS referenceår, ikke kalenderåret i start_date. Generatoren clamper
+// kandidaternes alder til 16-21 MOD dette årstal (birthdate = referenceYear − age),
+// mens resten af spillet — klassifikation (selectTypesBaseline), værdi (v4's alders-
+// led), akademi-aldersgrænsen (isAcademyAge) — læser alderen via ageForSeason, som
+// er LAUNCH_REFERENCE_YEAR + (N−1). De to var kun ens i S1.
+//
+// Alle sæsoner hidtil kører inden for kalenderåret 2026, så start_date-året står
+// stille på 2026 mens sæson-referenceåret vokser med 1 pr. sæson: forskydningen var
+// 0 i S1, +1 i S2 og ville være +2 i S3. Målt i prod 10/8: 29 af 397 s2-kandidater
+// blev født med sæson-alder 22 — uden for akademiets egen aldersgrænse, klassificeret
+// mod VOKSEN-baselinen og uden ungdoms-multiplikator. Fremskrevet til S3 ville det
+// ramme ~17 % af hvert kuld.
+//
+// Rettelsen flytter kun fødselsåret. Verificeret på 2.000 kandidater pr. variant
+// (samme seed): alle ti FYSISKE evner er bit-identiske, fordi abilityDerivations
+// youth/experience-kurver er flade over hele 16-21-intervallet. Eneste forskel er
+// `tactics` for de ældste (16,9 → 11,9), hvilket er den rigtige retning — en
+// akademikandidat skal ikke have en semi-voksens taktiske modenhed.
+// Eksporteret så sundayIntakeTick deler DENNE ene definition. Den havde sin egen
+// kopi af udtrykket, og en duplikeret alders-formel er præcis hvordan de to stier
+// kunne drifte fra hinanden i første omgang (jf. #3089).
+export function referenceYearForSeason(season) {
+  return seasonReferenceYear(season?.number)
+    ?? (parseInt(String(season?.start_date).slice(0, 4), 10) || 2026);
 }
 
 // #1584-markør: "fik dette hold nogensinde sit FØRSTE akademi-kuld?"
