@@ -54,6 +54,24 @@ export function nextAttemptDelayMs(attempts) {
 }
 
 /**
+ * Er fejlen "tabellen findes ikke endnu" (Postgres 42P01 / PostgREST PGRST205)?
+ *
+ * Vinduet mellem merge og applied migration er reelt: drainen tikker hvert 5.
+ * minut, så uden dette filter ville et manglende schema producere ~288
+ * Sentry-events i døgnet og drukne de ægte fejl. Enqueue-stien rammes af det
+ * samme, blot sjældnere. Vi logger stadig én linje pr. forekomst, så tilstanden
+ * er synlig i Railway-loggen — vi alarmerer bare ikke på den.
+ */
+export function isMissingTableError(error) {
+  if (!error) return false;
+  const code = String(error.code || "");
+  if (code === "42P01" || code === "PGRST205") return true;
+  return /relation .*discord_webhook_outbox.* does not exist|could not find the table/i.test(
+    String(error.message || "")
+  );
+}
+
+/**
  * Læg en fejlet webhook-post i outbox'en. Best-effort: må ALDRIG kaste ind i
  * kalderen (sendWebhook er fire-and-forget for ~10 kaldere), men insert-fejl
  * logges + captures, så en defekt outbox ikke selv bliver en tavs fejl-kilde.
@@ -83,6 +101,12 @@ export async function enqueueWebhook({
 
   if (error) {
     const reason = normalizeSupabaseErrorMessage(error.message);
+    if (isMissingTableError(error)) {
+      // Migrationen er ikke applied endnu: kalderen falder tilbage til den gamle
+      // (synlige) capture af den droppede besked — ingen dobbelt-alarm herfra.
+      console.warn("[discord-webhook:outbox] tabellen findes ikke endnu — migration mangler", { error: reason });
+      return { enqueued: false };
+    }
     console.error("[discord-webhook:outbox] enqueue fejlede", { error: reason });
     captureExceptionFn?.(new Error(`Discord webhook-outbox enqueue fejlede: ${reason}`), {
       tags: { component: "discord-webhook-outbox" },
@@ -124,6 +148,12 @@ export async function processWebhookOutboxDrain({
     // #2023: normalisér en evt. Cloudflare/HTML-fejlside ned til én linje, så en
     // Supabase-outage ikke fylder Sentry med ulæselige HTML-dump-issues.
     const reason = normalizeSupabaseErrorMessage(error.message);
+    if (isMissingTableError(error)) {
+      // Vinduet mellem merge og applied migration: drainen tikker hvert 5. minut,
+      // så en capture her ville give ~288 events i døgnet og drukne ægte fejl.
+      console.warn("[discord-webhook:outbox] tabellen findes ikke endnu — migration mangler", { error: reason });
+      return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
+    }
     console.error("[discord-webhook:outbox] drain-select fejlede", { error: reason });
     captureExceptionFn?.(new Error(`Discord webhook-outbox drain-select fejlede: ${reason}`), {
       tags: { component: "discord-webhook-outbox" },

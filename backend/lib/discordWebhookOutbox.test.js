@@ -5,6 +5,7 @@ import {
   enqueueWebhook,
   processWebhookOutboxDrain,
   nextAttemptDelayMs,
+  isMissingTableError,
   MAX_OUTBOX_ATTEMPTS,
 } from "./discordWebhookOutbox.js";
 
@@ -260,6 +261,48 @@ test("drain — opbrugte forsøg → dead + ÉN aggregeret alarm for hele runden
   assert.equal(deps._webhookCalls.length, 1, "én samlet alarm pr. drain-run, ikke én pr. række");
   assert.equal(deps._captures.length, 1);
   assert.match(deps._captures[0].err.message, /2 besked\(er\) markeret dead/);
+});
+
+// Vinduet mellem merge og applied migration: drainen tikker hvert 5. minut, så en
+// capture på "tabellen findes ikke" ville give ~288 Sentry-events i døgnet og
+// drukne de ægte fejl. Enqueue-stien må heller ikke dobbelt-alarmere — kalderen
+// falder allerede tilbage til sin egen synlige capture.
+test("manglende tabel (migration ikke applied) alarmerer IKKE — hverken i drain eller enqueue", async () => {
+  const missing = { code: "42P01", message: 'relation "public.discord_webhook_outbox" does not exist' };
+
+  const drainDeps = makeDrainDeps();
+  const { supabase: drainDb } = makeSupabaseMock({ selectError: missing });
+  const result = await processWebhookOutboxDrain({
+    supabase: drainDb,
+    deliverFn: async () => assert.fail("deliverFn må ikke kaldes"),
+    ...drainDeps,
+  });
+  assert.deepEqual(result, { processed: 0, sent: 0, rescheduled: 0, dead: 0 });
+  assert.equal(drainDeps._captures.length, 0);
+
+  const captures = [];
+  const { supabase: enqueueDb } = makeSupabaseMock({ insertError: missing });
+  const enq = await enqueueWebhook({
+    supabase: enqueueDb,
+    webhookUrl: WEBHOOK,
+    payload: {},
+    captureExceptionFn: (err) => captures.push(err),
+    now: NOW,
+  });
+  assert.equal(enq.enqueued, false, "kalderen skal falde tilbage til sin egen capture");
+  assert.equal(captures.length, 0);
+});
+
+test("isMissingTableError skelner manglende tabel fra ægte fejl", () => {
+  assert.equal(isMissingTableError({ code: "42P01", message: "x" }), true);
+  assert.equal(isMissingTableError({ code: "PGRST205", message: "x" }), true);
+  assert.equal(
+    isMissingTableError({ message: "Could not find the table 'public.discord_webhook_outbox'" }),
+    true
+  );
+  assert.equal(isMissingTableError({ code: "42501", message: "permission denied" }), false);
+  assert.equal(isMissingTableError({ message: "connection reset" }), false);
+  assert.equal(isMissingTableError(null), false);
 });
 
 test("drain — select-fejl captures og returnerer nul-resultat i stedet for at kaste", async () => {

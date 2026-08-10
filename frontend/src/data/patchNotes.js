@@ -27,11 +27,11 @@ export const PATCHES = [
         "topic": "Discord",
         "en": {
           "title": "Discord announcements are no longer lost when Discord has a hiccup",
-          "body": "When Discord was briefly unavailable, the game gave up after about three seconds and threw the message away — on the evening of 7 August that silently swallowed eight auction announcements, so nobody in Discord was told there was anything to bid on. Messages that cannot be delivered right away are now saved and retried over the following hours instead of being dropped. The same path carries race results, so those are protected too."
+          "body": "When Discord was briefly unavailable, the game gave up after about three seconds and threw the message away. On the evening of 7 August that silently swallowed eight auction announcements, so nobody in Discord was told there was anything to bid on. Messages that cannot be delivered right away are now saved and retried over the following hours instead of being dropped. The same path carries race results, so those are protected too."
         },
         "da": {
           "title": "Discord-beskeder forsvinder ikke længere når Discord har et hik",
-          "body": "Når Discord var kortvarigt utilgængeligt, gav spillet op efter cirka tre sekunder og smed beskeden væk — om aftenen 7. august slugte det otte auktions-annonceringer, så ingen i Discord fik at vide at der var noget at byde på. Beskeder der ikke kan leveres med det samme, gemmes nu og genforsøges over de følgende timer i stedet for at blive droppet. Samme kanal bærer løbsresultater, så de er beskyttet nu også."
+          "body": "Når Discord var kortvarigt utilgængeligt, gav spillet op efter cirka tre sekunder og smed beskeden væk. Om aftenen 7. august slugte det otte auktions-annonceringer, så ingen i Discord fik at vide at der var noget at byde på. Beskeder der ikke kan leveres med det samme, gemmes nu og genforsøges over de følgende timer i stedet for at blive droppet. Samme kanal bærer løbsresultater, så de er beskyttet nu også."
         }
       }
     ]
