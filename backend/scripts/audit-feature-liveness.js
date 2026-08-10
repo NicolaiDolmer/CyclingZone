@@ -141,6 +141,14 @@ const PERMANENT_EMPTY_TABLES = new Set([
   // igen når den leveres (processDmOutboxDrain). Tom = alle DM'er leveret.
   // Skriv-path verificeret i discordDmOutbox.js (enqueueDm).
   "discord_dm_outbox",
+  // Discord KANAL-retry-kø (#3545, søstertabel til discord_dm_outbox): rows
+  // enqueues KUN når en webhook-post overlever inline-retry med en retryable fejl
+  // (5xx/429/netværk) og drænes igen af drain-cronen. Tom = alle kanal-poster
+  // leveret. Skriv-path verificeret i discordWebhookOutbox.js.
+  // Tilføjet 10/8, samme dag migrationen kørte: Detector A flagede tabellen som
+  // "write-but-no-data" i det sekund den blev oprettet, hvilket gjorde `audit`
+  // rød på alle PR'er — men en tom outbox er hele pointen med en outbox.
+  "discord_webhook_outbox",
   // Pending-imports er per-batch state — tomme uden for et aktivt import-run.
   "pending_race_results",
   "pending_race_result_rows",

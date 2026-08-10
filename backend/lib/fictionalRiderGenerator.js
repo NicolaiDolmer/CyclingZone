@@ -68,8 +68,29 @@ export const STAT_KEYS = [
 
 // Fjern intern `_meta` (audit/inspektion, ikke en DB-kolonne) → ren INSERT-payload.
 // Delt af CLI'en og integrationstesten, så de tester præcis samme vej.
+//
+// #3606: ÉT felt løftes UD af `_meta` før strippet — det TRUKNE anlæg
+// (`_meta.archetypeDraw`) bliver til DB-kolonnen `archetype_draw`.
+//
+// Rod-årsagen det lukker: generatoren trækker en arketype og former hele rytterens
+// stats + krop efter den (buildStats/buildDemographics), men trækket forsvandt her.
+// Klassifikatoren skulle så GÆTTE typen bagefter ud fra netop de stats — og det
+// gæt er rodårsagen bag #3570 (se resolveRiderTypes i riderTypes.js for
+// fikspunkt-målingen). Akademi-stien har persisteret sit træk siden #3570 fase 2
+// (academyIntake.js); ALLE andre generator-stier smed det væk. Målt på prod 10/8:
+// 0 af 287 ryttere på menneskehold oprettet siden 1/8 bar et anlæg.
+//
+// Denne ENE linje dækker hver eneste produktions-sti, fordi de alle passerer
+// herigennem: buildWeakStarterPool (start-trup kerne+hale, AI tier 3/4, begge
+// dev-top-ups), generateAiRiderBatchWithCap (AI tier 1/2), generateLaunchPopulation
+// → relaunchOrchestrator, og scripts/generateFictionalRiders.js.
+//
+// Guarden (`_meta?.archetypeDraw`) holder kaldere med et syntetisk `_meta` (fx
+// starterSquadAllocator.test.js' `_meta: { age: 23 }`) bit-identiske med før.
 export function toInsertPayload(riders) {
-  return riders.map(({ _meta, ...row }) => row);
+  return riders.map(({ _meta, ...row }) => (
+    _meta?.archetypeDraw ? { ...row, archetype_draw: _meta.archetypeDraw } : row
+  ));
 }
 
 // ── Type-arketyper: sigter de 8 AFLEDTE ryttertyper direkte (#669/#677-launch) ─
@@ -447,7 +468,27 @@ export function generateFictionalRiders({
       // Bevidst udeladt (DB udleder/defaulter, backfill ejer base_value): id, base_value, market_value, salary,
       // team_id, ai_team_id, pending_team_id, prize_earnings_bonus, is_retired,
       // created_at, updated_at, acquired_at.
-      _meta: { tier: tier.value, archetype: archetype.type, age: demo.age, cluster: clusterKey, physiology },
+      _meta: {
+        tier: tier.value,
+        archetype: archetype.type,
+        // #3606: rytterens ANLÆG i præcis samme form som akademi-stien persisterer
+        // (academyGenerator.js' drawArchetypePair → academyIntake.js:
+        // { primary, secondary, isHybrid }). toInsertPayload løfter det til
+        // riders.archetype_draw.
+        //
+        // secondary er null / isHybrid false FORDI voksen-generatoren kun trækker
+        // ÉN arketype (typeSeq ovenfor) og former stats + krop efter den alene —
+        // der er ingen anden arketype i rytterens krop at persistere. Det ville
+        // være en løgn om rytteren at skrive en, og at skrive klassifikatorens
+        // bedste gæt ville netop fryse gættet — rodårsagen — ind som identitet.
+        // resolveRiderTypes håndterer det: en trukket primær vinder, og bi-typen
+        // udpeges af klassifikatoren, nøjagtig som for de ~85 % IKKE-hybride
+        // akademi-ryttere (drawArchetypePair returnerer secondary null der).
+        archetypeDraw: { primary: archetype.type, secondary: null, isHybrid: false },
+        age: demo.age,
+        cluster: clusterKey,
+        physiology,
+      },
     });
   }
 
