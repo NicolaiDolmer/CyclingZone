@@ -103,6 +103,14 @@ export const TYPE_WRITE_FILES = Object.freeze({
     "Scriptets egen UPDATE rører kun stat_*-kolonnerne + archetype_draw — typen " +
     "persisteres udelukkende af deriveForRiderIds bagefter, altså gennem den " +
     "allerede-ankrede identitets-kilde.",
+  "lib/marketValueSundaySweep.js":
+    "#3448-markedsblendet LÆSER riders.primary_type og pakker den i rene " +
+    "feature-objekter til predictMarketPrice/computeSupport (markedsmodellens " +
+    "type-offset + support-guardens vindue). Sweepens eneste riders-write er " +
+    "`.update({ base_value })` — type-kolonnerne skrives aldrig herfra, og " +
+    "klassifikationen sker ikke her. Klassifikatoren (resolveRiderTypes) ejes " +
+    "fortsat af riderValueRefresh.js, som kører FØR blendet i samme " +
+    "søndags-pipeline (se trainingSweep.js).",
 });
 
 // ---------------------------------------------------------------------------

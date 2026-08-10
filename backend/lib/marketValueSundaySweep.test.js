@@ -48,8 +48,8 @@ function baseDeps(overrides = {}) {
     fetchRidersByIds: async () => new Map(),
     fetchAbilitiesByRider: async () => new Map(),
     fetchPopulation: async () => [],
-    hasAlreadyRunToday: async () => ({ alreadyRun: false, tableMissing: false }),
-    logSweepRun: async () => {},
+    claimSweepDate: async () => ({ claimed: true, tableMissing: false }),
+    completeSweepRun: async () => {},
     ...overrides,
   };
 }
@@ -71,7 +71,7 @@ describe("runMarketValueSundaySweep — gates", () => {
     const supabase = makeSupabase();
     const result = await runMarketValueSundaySweep({
       supabase, now: SUNDAY,
-      ...baseDeps({ hasAlreadyRunToday: async () => ({ alreadyRun: true, tableMissing: false }) }),
+      ...baseDeps({ claimSweepDate: async () => ({ claimed: false, tableMissing: false }) }),
     });
     assert.deepEqual(result, { ran: false, skipped: "already_ran_today" });
   });
@@ -80,7 +80,7 @@ describe("runMarketValueSundaySweep — gates", () => {
     const supabase = makeSupabase();
     const result = await runMarketValueSundaySweep({
       supabase, now: SUNDAY,
-      ...baseDeps({ hasAlreadyRunToday: async () => ({ alreadyRun: false, tableMissing: true }) }),
+      ...baseDeps({ claimSweepDate: async () => ({ claimed: false, tableMissing: true }) }),
     });
     assert.deepEqual(result, { ran: false, skipped: "log_table_missing" });
   });
@@ -120,7 +120,7 @@ describe("runMarketValueSundaySweep — blend + skriv", () => {
         fetchSaleRiderIds: async () => saleIds,
         fetchRidersByIds: async ({ riderIds }) =>
           new Map(riderIds.map((id) => [id, { birthdate: "2000-01-01", primary_type: "gc" }])),
-        logSweepRun: async ({ sweepDate, summary }) => {
+        completeSweepRun: async ({ sweepDate, summary }) => {
           assert.equal(sweepDate, "2026-08-09");
           assert.equal(summary.changed, updateCalls.length);
         },
@@ -191,7 +191,7 @@ describe("runMarketValueSundaySweep — blend + skriv", () => {
         fetchAbilitiesByRider: async () => new Map([["r1", abilities]]),
         fetchSaleRiderIds: async () => ["s1"],
         fetchRidersByIds: async () => new Map([["s1", { birthdate: "2000-01-01", primary_type: "gc" }]]),
-        logSweepRun: async () => { throw new Error("log insert fejlede"); },
+        completeSweepRun: async () => { throw new Error("log-opsummering fejlede"); },
       }),
       captureExceptionFn: (err) => { capturedErr = err; },
     });
@@ -204,5 +204,106 @@ describe("runMarketValueSundaySweep — blend + skriv", () => {
 describe("MARKET_VALUE_SWEEP_LOG_TABLE", () => {
   it("eksporterer det forventede tabelnavn", () => {
     assert.equal(MARKET_VALUE_SWEEP_LOG_TABLE, "market_value_sunday_sweep_log");
+  });
+});
+
+// ── Rækkefølge + påkrævet `now` (CodeRabbit-fund, PR #3449) ──────────────────
+describe("runMarketValueSundaySweep — claim FØR mutation", () => {
+  const ABILITIES = { climbing: 65, time_trial: 60, flat: 55, tempo: 55, sprint: 40, acceleration: 45, punch: 50, endurance: 60, recovery: 55, durability: 55, descending: 50, cobblestone: 40, aggression: 45 };
+  const POPULATION = [
+    { id: "r1", team_id: "t1", birthdate: "2000-01-01", popularity: 30, potentiale: 3.5, primary_type: "gc", base_value: 1_000_000 },
+  ];
+
+  function movingDeps(overrides = {}) {
+    return baseDeps({
+      fetchPopulation: async () => POPULATION,
+      // Dækker BEGGE opslag (salesIndex + population) — ellers er salesIndex tomt,
+      // support = 0 og sweepen flytter intet.
+      fetchAbilitiesByRider: async ({ riderIds }) => new Map(riderIds.map((id) => [id, ABILITIES])),
+      fetchSaleRiderIds: async () => Array.from({ length: 15 }, (_, i) => `s${i}`),
+      fetchRidersByIds: async ({ riderIds }) =>
+        new Map(riderIds.map((id) => [id, { birthdate: "2000-01-01", primary_type: "gc" }])),
+      ...overrides,
+    });
+  }
+
+  it("claimer dagen FØR første base_value-skrivning", async () => {
+    const updateCalls = [];
+    const supabase = makeSupabase({ updateCalls });
+    const order = [];
+    await runMarketValueSundaySweep({
+      supabase, now: SUNDAY,
+      ...movingDeps({
+        claimSweepDate: async () => { order.push("claim"); return { claimed: true, tableMissing: false }; },
+        completeSweepRun: async () => { order.push("complete"); },
+      }),
+    });
+    assert.ok(updateCalls.length > 0, "testen skal faktisk flytte mindst én værdi");
+    assert.deepEqual(order, ["claim", "complete"]);
+    // Claim'et skal ligge før skrivningerne, ikke bare før opsummeringen.
+    assert.equal(order[0], "claim");
+  });
+
+  it("muterer INTET når dagen allerede er claimet af en anden proces", async () => {
+    const updateCalls = [];
+    const supabase = makeSupabase({ updateCalls });
+    let completed = 0;
+    const result = await runMarketValueSundaySweep({
+      supabase, now: SUNDAY,
+      ...movingDeps({
+        claimSweepDate: async () => ({ claimed: false, tableMissing: false }),
+        completeSweepRun: async () => { completed++; },
+      }),
+    });
+    assert.deepEqual(result, { ran: false, skipped: "already_ran_today" });
+    assert.equal(updateCalls.length, 0, "en tabt claim må ikke føre til nogen skrivning");
+    assert.equal(completed, 0);
+  });
+
+  it("en fejlet opsummering låser stadig dagen — næste tick muterer ikke igen", async () => {
+    // Regression mod dobbelt cap-anvendelse: claim'et er skrevet, så tick 2
+    // taber claim'et og rører ingenting, selvom tick 1's completeSweepRun fejlede.
+    const updateCalls = [];
+    const supabase = makeSupabase({ updateCalls });
+    let claimed = false;
+    const claimSweepDate = async () => {
+      if (claimed) return { claimed: false, tableMissing: false };
+      claimed = true;
+      return { claimed: true, tableMissing: false };
+    };
+
+    const first = await runMarketValueSundaySweep({
+      supabase, now: SUNDAY,
+      ...movingDeps({ claimSweepDate, completeSweepRun: async () => { throw new Error("opsummering fejlede"); } }),
+      captureExceptionFn: () => {},
+    });
+    assert.equal(first.ran, true);
+    const writesAfterFirst = updateCalls.length;
+    assert.ok(writesAfterFirst > 0);
+
+    const second = await runMarketValueSundaySweep({
+      supabase, now: SUNDAY,
+      ...movingDeps({ claimSweepDate, completeSweepRun: async () => {} }),
+    });
+    assert.deepEqual(second, { ran: false, skipped: "already_ran_today" });
+    assert.equal(updateCalls.length, writesAfterFirst, "loftet må ikke kunne anvendes to gange samme søndag");
+  });
+});
+
+describe("runMarketValueSundaySweep — `now` er påkrævet", () => {
+  it("kaster hvis `now` udelades (AGENTS.md hard rule 16)", async () => {
+    const supabase = makeSupabase();
+    await assert.rejects(
+      () => runMarketValueSundaySweep({ supabase, ...baseDeps() }),
+      /eksplicit `now`/
+    );
+  });
+
+  it("kaster på et ugyldigt Date-objekt", async () => {
+    const supabase = makeSupabase();
+    await assert.rejects(
+      () => runMarketValueSundaySweep({ supabase, now: new Date("ikke-en-dato"), ...baseDeps() }),
+      /eksplicit `now`/
+    );
   });
 });

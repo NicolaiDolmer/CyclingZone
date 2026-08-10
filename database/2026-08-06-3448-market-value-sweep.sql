@@ -21,12 +21,19 @@
 -- sweepen kører to gange samme danske søndag, selv hvis processen genstarter
 -- (Railway-redeploy) midt i vinduet. service-role only.
 --
--- ⚠️ Denne fil COMMITTES kun — den anvendes ALDRIG af implementerings-agenten
---    mod prod under selve PR'en. Claude applier migrationen som et SEPARAT
---    post-merge-skridt (idempotent + post-verify, #2642-rammer, jf. CLAUDE.md
---    hard rule 9). Ikke-destruktiv (kun CREATE/INSERT ON CONFLICT DO NOTHING)
---    — ingen ejer-gate nødvendig for selve migrationen (kill-switch-værdien
---    'off' er den destruktive-mutation-gaten).
+-- ⚠️ LIVSCYKLUS — LÆS FØR MERGE: denne fil ligger i database/2026-*.sql og
+--    KØRER AUTOMATISK mod prod ved merge til main (.github/workflows/
+--    auto-migrate.yml, ~3 min efter push; AGENTS.md hard rule 9). Den anvendes
+--    IKKE manuelt af implementerings-agenten under PR'en, og der er ikke noget
+--    separat "Claude applier bagefter"-skridt at vente på — merge ER
+--    applikationen. Derfor: EJEREN merger denne PR manuelt (PR'er med
+--    database/*.sql må aldrig auto-merges), og post-apply-verifikationen
+--    (information_schema-tjek af tabel + de tre app_config-nøgler, noteret i
+--    PR-/issue-tråden) er stadig påkrævet.
+--    Migrationen er ikke-destruktiv (CREATE ... IF NOT EXISTS, INSERT ...
+--    ON CONFLICT DO NOTHING, ADD COLUMN IF NOT EXISTS) og INERT: den seeder
+--    kill-switchen til 'off', så den ændrer intet i spillet. Selve
+--    aktiveringen ('on') er den ejer-gatede handling, ikke migrationen.
 --
 -- Rollback:
 --   DELETE FROM public.app_config WHERE key IN
@@ -53,8 +60,14 @@ CREATE TABLE IF NOT EXISTS public.market_value_sunday_sweep_log (
   weekly_cap NUMERIC,
   sales_index_size INT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
   UNIQUE (sweep_date)
 );
+
+-- completed_at tilføjes separat så filen også er idempotent for en tabel der
+-- allerede blev oprettet af en tidligere version af denne migration.
+ALTER TABLE public.market_value_sunday_sweep_log
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 
 ALTER TABLE public.market_value_sunday_sweep_log ENABLE ROW LEVEL SECURITY;
 
@@ -62,4 +75,4 @@ REVOKE ALL ON public.market_value_sunday_sweep_log FROM anon, authenticated;
 GRANT ALL ON public.market_value_sunday_sweep_log TO service_role;
 
 COMMENT ON TABLE public.market_value_sunday_sweep_log IS
-  '#3448: dedupe-anker for den ugentlige markedsdrevne værdi-eftersyns-sweep — UNIQUE(sweep_date) forhindrer dobbelt-kørsel samme danske søndag på tværs af proces-genstarter (mirrors discord_race_digest_log''s mønster). service-role only.';
+  '#3448: dedupe-anker for den ugentlige markedsdrevne værdi-eftersyns-sweep — UNIQUE(sweep_date) forhindrer dobbelt-kørsel samme danske søndag på tværs af proces-genstarter (mirrors discord_race_digest_log''s mønster). Rækken indsættes som et CLAIM FØR første base_value-skrivning og opdateres med tællere + completed_at bagefter; completed_at IS NULL betyder derfor "dagen blev claimet, men kørslen rapporterede aldrig færdig" (undersøg — værdierne kan være delvist skrevet). service-role only.';
