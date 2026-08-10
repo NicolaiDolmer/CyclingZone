@@ -1,10 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill, deriveForRiderIds } from "./backfillCores.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
-import { ABILITY_KEYS } from "./riderTypes.js";
+import { ABILITY_KEYS, computeRiderTypes } from "./riderTypes.js";
+import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
+import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Én fleksibel in-memory mock der dækker alle tre kerners læse/skrive-flader:
 //   reads:  from(t).select(...).eq?(...).order(...).range(from,to)  (fetchAllRows-kontrakt)
@@ -87,6 +94,68 @@ test("runRiderTypesBackfill (dryRun) skriver intet", async () => {
   const res = await runRiderTypesBackfill(supabase, { dryRun: true });
   assert.equal(res.written, 0);
   assert.equal(supabase.writes.updates.length, 0);
+});
+
+// ── #3570/#3588: den globale type-backfill er det TREDJE sted typen skrives ───
+// Den klassificerede fra ability_caps og læste aldrig archetype_draw, så ÉN
+// kørsel (scripts/backfillRiderTypes.js eller relaunchOrchestrator) ville have
+// nulstillet den frosne identitet for hele peletonen. Målt mod snapshottet
+// 10/8 (8.199 ryttere): den gamle sti ville have overskrevet 3 af de 6
+// draw-bærende ryttere i dag, og 1.879-6.366 hvis frysningen var kørt.
+
+// Abilities-række med den embeddede riders-join som kernen faktisk selecter.
+function makeAbilitiesWithRider(rider_id, { birthdate = "2000-01-01", archetype_draw = null } = {}) {
+  return { ...makeAbilities(rider_id), riders: { id: rider_id, birthdate, archetype_draw } };
+}
+
+test("runRiderTypesBackfill: et persisteret archetype_draw VINDER over klassifikatoren", async () => {
+  // Caps'ene her klassificeres til climber (climbing 80, resten 60). Draw'et
+  // siger sprinter/brostensrytter — anlægget er identiteten.
+  const row = makeAbilitiesWithRider("r1", {
+    archetype_draw: { primary: "sprinter", secondary: "brostensrytter", isHybrid: true },
+  });
+  const supabase = makeMockSupabase({ rider_derived_abilities: [row] });
+  await runRiderTypesBackfill(supabase, { dryRun: false });
+  const patch = supabase.writes.updates[0].patch;
+  assert.equal(patch.primary_type, "sprinter");
+  assert.equal(patch.secondary_type, "brostensrytter");
+});
+
+test("runRiderTypesBackfill: et ugyldigt/ukendt draw falder tilbage til klassifikationen", async () => {
+  const bogus = makeAbilitiesWithRider("r1", { archetype_draw: { primary: "leadout" } });
+  const plain = makeAbilitiesWithRider("r1");
+  const a = makeMockSupabase({ rider_derived_abilities: [bogus] });
+  const b = makeMockSupabase({ rider_derived_abilities: [plain] });
+  await runRiderTypesBackfill(a, { dryRun: false });
+  await runRiderTypesBackfill(b, { dryRun: false });
+  assert.deepEqual(a.writes.updates[0].patch, b.writes.updates[0].patch);
+});
+
+test("runRiderTypesBackfill: uden draw er resultatet bit-identisk med computeRiderTypes", async () => {
+  const rows = [
+    makeAbilitiesWithRider("young", { birthdate: "2008-01-01" }),   // sæson-alder < 22 → ungdoms-baseline
+    makeAbilitiesWithRider("adult", { birthdate: "1995-01-01" }),
+    { ...makeAbilities("noEmbed") },                                 // ingen riders-join i rækken
+  ];
+  const supabase = makeMockSupabase({ rider_derived_abilities: rows, seasons: [{ number: 2 }] });
+  await runRiderTypesBackfill(supabase, { dryRun: false });
+
+  const adultBaseline = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
+  const youthBaseline = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaselineYouth.json"), "utf8"));
+  for (const u of supabase.writes.updates) {
+    const row = rows.find((r) => r.rider_id === u.val);
+    const model = selectTypesBaseline(ageForSeason(row.riders?.birthdate, 2), adultBaseline, youthBaseline);
+    const { primary, secondary } = computeRiderTypes(row.ability_caps || {}, model);
+    assert.equal(u.patch.primary_type, primary.key, `${u.val} primary`);
+    assert.equal(u.patch.secondary_type, secondary.key, `${u.val} secondary`);
+  }
+});
+
+test("runRiderTypesBackfill: archetype_draw ER med i selectet (mock kan ikke bevise DB-kontrakten)", () => {
+  const source = readFileSync(join(__dirname, "./backfillCores.js"), "utf8");
+  const select = source.match(/from\("rider_derived_abilities"\)\s*\.select\("([^"]+)"\)/);
+  assert.ok(select, "select-strengen findes");
+  assert.match(select[1], /riders!inner\([^)]*archetype_draw/);
 });
 
 test("runBaseValueBackfill (apply) værdisætter kun ryttere med abilities", async () => {

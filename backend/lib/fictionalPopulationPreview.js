@@ -23,6 +23,8 @@ export function buildFictionalPopulationPreview({
     const riderRow = { ...r, id };
     const abilities = deriveAbilities({}, riderRow, { asOfYear: referenceYear });
     const { primary, secondary } = computeRiderTypes(abilities, baseline);
+    // rider-type-write-ok: preview af en syntetisk population (ingen DB, ingen
+    // rytter-id'er der findes) — typen vises, persisteres aldrig.
     const withType = { ...riderRow, primary_type: primary.key, secondary_type: secondary.key };
     const base_value = predictBaseValue(withType, abilities, model);
     return {
@@ -33,6 +35,7 @@ export function buildFictionalPopulationPreview({
       age: r._meta?.age ?? null,
       tier: r._meta?.tier ?? null,
       nationality_code: r.nationality_code,
+      // rider-type-write-ok: samme preview-række som ovenfor — kun til visning.
       primary_type: primary.key,
       secondary_type: secondary.key,
       abilities,

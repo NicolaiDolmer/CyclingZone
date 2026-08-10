@@ -28,7 +28,7 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
-import { computeRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
@@ -208,10 +208,23 @@ export function generateAiRiderBatchWithCap({
       // den samme rytter, ellers kan en ung AI-rytter passere dette gate mod den
       // GAMLE (voksen) klassifikation og lande over tier-loftet når deriveForRiderIds
       // bagefter reklassificerer den mod ungdoms-baselinen (samme #2065-klasse).
+      //
+      // #3570/#3588: tredje spejling — deriveForRiderIds former nu caps af et
+      // PERSISTERET archetype_draw når rytteren har et, og lader draw'et VINDE
+      // over klassifikatoren i den endelige type (resolveRiderTypes). Gaten
+      // spejler begge trin. Den svage startpulje (fictionalRiderGenerator, se
+      // buildWeakPoolPayload) bærer ikke noget draw i dag, så `draw` er undefined
+      // og udtrykket er BIT-IDENTISK med den tidligere computeRiderTypes-kæde;
+      // spejlingen står her for at gaten ikke kan drifte fra skrivestien den dag
+      // startpuljen begynder at trække et anlæg (præcis #2065-klassen igen).
       const age = computeAge(candidate.birthdate, referenceYear);
+      const draw = candidate.archetype_draw;
       const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
-      const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
-      const { primary } = computeRiderTypes(caps, selectTypesBaseline(age, TYPES_BASELINE, YOUTH_TYPES_BASELINE));
+      const capsSeed = (draw && draw.primary)
+        ? { primary: draw.primary, secondary: draw.secondary || null }
+        : { primary: bootstrap.primary.key, secondary: bootstrap.secondary.key };
+      const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale }, capsSeed.primary, capsSeed.secondary);
+      const { primary } = resolveRiderTypes(draw, caps, selectTypesBaseline(age, TYPES_BASELINE, YOUTH_TYPES_BASELINE));
       // v4 kræver alder (candidate bærer allerede potentiale fra generatoren).
       const value = predictBaseValue(
         { ...candidate, primary_type: primary.key, age },
