@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  documentIsStillLoadable,
   getChunkReloadKey,
   installChunkReloadHandlers,
   isChunkLoadError,
@@ -28,14 +29,25 @@ function fakeTarget() {
 
 // Manuel scheduler i stedet for setTimeout: testen styrer selv hvornår den
 // udskudte reload fyrer (flush) — deterministisk, ingen ægte timere.
+// #3602: fireReload er async (den kausale navigations-guard afventer en canary-
+// fetch), så flush afventer hver opgave.
 function manualScheduler() {
   const queue = [];
   return {
     schedule: (fn) => { queue.push(fn); },
-    flush: () => { while (queue.length) queue.shift()(); },
+    flush: async () => { while (queue.length) await queue.shift()(); },
     get pending() { return queue.length; },
   };
 }
+
+// Canary-fetch-stand-ins for den kausale navigations-guard (#3602).
+// Dokumentet bliver liggende → fetchen svarer.
+const stayingDocument = () => Promise.resolve({ ok: true, status: 200 });
+// En navigation er startet → browseren afviser nye fetches (WebKit: TypeError
+// "Load failed" efter ~16 ms).
+const navigatingAwayDocument = () => Promise.reject(new TypeError("Load failed"));
+
+const PROBE = { fetchFn: stayingDocument, url: "https://cyclingzone.org/dashboard" };
 
 test("isChunkLoadError — detects Vite dynamic import failures", () => {
   assert.equal(
@@ -93,11 +105,11 @@ test("shouldAttemptChunkReload — does not reload for non-chunk errors", () => 
   );
 });
 
-test("installChunkReloadHandlers — vite:preloadError udløser præcis ét loop-guarded reload", () => {
+test("installChunkReloadHandlers — vite:preloadError udløser præcis ét loop-guarded reload", async () => {
   const target = fakeTarget();
   const timer = manualScheduler();
   let reloads = 0;
-  installChunkReloadHandlers({ target, release: "rel1", storage: memoryStorage(), reload: () => { reloads += 1; }, schedule: timer.schedule });
+  installChunkReloadHandlers({ target, release: "rel1", storage: memoryStorage(), reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE });
 
   let prevented = 0;
   const ev = () => ({ preventDefault: () => { prevented += 1; } });
@@ -105,16 +117,16 @@ test("installChunkReloadHandlers — vite:preloadError udløser præcis ét loop
   target.dispatch("vite:preloadError", ev());
 
   assert.equal(reloads, 0, "reload er udskudt — fyrer ikke synkront i event-handleren");
-  timer.flush();
+  await timer.flush();
   assert.equal(reloads, 1, "kun ét reload trods to preloadError-events (loop-guard pr. release)");
   assert.equal(prevented, 2, "preventDefault kaldes på hvert preloadError så Vite ikke selv kaster");
 });
 
-test("installChunkReloadHandlers — unhandledrejection: reloader på chunk-fejl, ignorerer andre", () => {
+test("installChunkReloadHandlers — unhandledrejection: reloader på chunk-fejl, ignorerer andre", async () => {
   const target = fakeTarget();
   const timer = manualScheduler();
   let reloads = 0;
-  installChunkReloadHandlers({ target, release: "rel2", storage: memoryStorage(), reload: () => { reloads += 1; }, schedule: timer.schedule });
+  installChunkReloadHandlers({ target, release: "rel2", storage: memoryStorage(), reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE });
 
   // Almindelig (ikke-chunk) rejection: må hverken reloade eller preventDefault'e —
   // ellers skjuler vi ægte fejl.
@@ -123,7 +135,7 @@ test("installChunkReloadHandlers — unhandledrejection: reloader på chunk-fejl
     reason: new Error("ordinary async crash"),
     preventDefault: () => { preventedOrdinary += 1; },
   });
-  timer.flush();
+  await timer.flush();
   assert.equal(reloads, 0);
   assert.equal(preventedOrdinary, 0);
 
@@ -134,22 +146,22 @@ test("installChunkReloadHandlers — unhandledrejection: reloader på chunk-fejl
     reason: new TypeError("Failed to fetch dynamically imported module: /assets/xlsx-old.js"),
     preventDefault: () => { preventedChunk += 1; },
   });
-  timer.flush();
+  await timer.flush();
   assert.equal(reloads, 1);
   assert.equal(preventedChunk, 1);
 });
 
-test("installChunkReloadHandlers — deler ét-reload-pr-release-guard med error-boundary", () => {
+test("installChunkReloadHandlers — deler ét-reload-pr-release-guard med error-boundary", async () => {
   const storage = memoryStorage();
   // Error-boundary har allerede brugt sit ene reload i denne release.
   storage.setItem(getChunkReloadKey("rel3"), "1");
   const target = fakeTarget();
   const timer = manualScheduler();
   let reloads = 0;
-  installChunkReloadHandlers({ target, release: "rel3", storage, reload: () => { reloads += 1; }, schedule: timer.schedule });
+  installChunkReloadHandlers({ target, release: "rel3", storage, reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE });
 
   target.dispatch("vite:preloadError", { preventDefault: () => {} });
-  timer.flush();
+  await timer.flush();
   assert.equal(reloads, 0, "ingen reload når guard-nøglen allerede er sat (ét reload pr. release på tværs af ALLE stier)");
 });
 
@@ -157,18 +169,18 @@ test("installChunkReloadHandlers — deler ét-reload-pr-release-guard med error
 // by another navigation to /dashboard", 2026-07-03): navigation væk fra siden
 // aborterer igangværende chunk-loads, og WebKit melder aborten som en chunk-fejl.
 // Reload'en må IKKE fyre i det døende dokument — den ville kapre den ægte navigation.
-test("installChunkReloadHandlers — teardown-abort (preloadError efterfulgt af pagehide) reloader IKKE", () => {
+test("installChunkReloadHandlers — teardown-abort (preloadError efterfulgt af pagehide) reloader IKKE", async () => {
   const storage = memoryStorage();
   const target = fakeTarget();
   const timer = manualScheduler();
   let reloads = 0;
-  installChunkReloadHandlers({ target, release: "rel4", storage, reload: () => { reloads += 1; }, schedule: timer.schedule });
+  installChunkReloadHandlers({ target, release: "rel4", storage, reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE });
 
   // Navigation river dokumentet ned → chunk-abort melder sig som preloadError...
   target.dispatch("vite:preloadError", { preventDefault: () => {} });
   // ...og pagehide når at fyre før den udskudte reload.
   target.dispatch("pagehide");
-  timer.flush();
+  await timer.flush();
 
   assert.equal(reloads, 0, "ingen reload når dokumentet er ved at unloade");
   assert.equal(
@@ -178,26 +190,120 @@ test("installChunkReloadHandlers — teardown-abort (preloadError efterfulgt af 
   );
 });
 
-test("installChunkReloadHandlers — pageshow (bfcache-restore) gør recovery mulig igen", () => {
+test("installChunkReloadHandlers — pageshow (bfcache-restore) gør recovery mulig igen", async () => {
   const target = fakeTarget();
   const timer = manualScheduler();
   let reloads = 0;
-  installChunkReloadHandlers({ target, release: "rel5", storage: memoryStorage(), reload: () => { reloads += 1; }, schedule: timer.schedule });
+  installChunkReloadHandlers({ target, release: "rel5", storage: memoryStorage(), reload: () => { reloads += 1; }, schedule: timer.schedule, ...PROBE });
 
   // Teardown-abort: undertrykt.
   target.dispatch("vite:preloadError", { preventDefault: () => {} });
   target.dispatch("pagehide");
-  timer.flush();
+  await timer.flush();
   assert.equal(reloads, 0);
 
   // Siden genoplives fra bfcache → en ægte stale chunk skal stadig recovere.
   target.dispatch("pageshow");
   target.dispatch("vite:preloadError", { preventDefault: () => {} });
-  timer.flush();
+  await timer.flush();
   assert.equal(reloads, 1, "efter pageshow fyrer den udskudte reload igen");
 });
 
-test("installChunkReloadHandlers — uden brugbart target er det en sikker no-op", () => {
+test("installChunkReloadHandlers — uden brugbart target er det en sikker no-op", async () => {
   assert.doesNotThrow(() => installChunkReloadHandlers({ target: null, release: "x", storage: memoryStorage(), reload: () => {} }));
   assert.doesNotThrow(() => installChunkReloadHandlers());
+});
+
+// ---------------------------------------------------------------------------
+// #3602 — den KAUSALE navigations-guard.
+//
+// Den temporale guard (250 ms + pagehide) var et gæt på hvor lang tid en
+// document-commit tager. Målt på CI-lignende timing: chunk-abort t+0, deferred
+// reload t+250 ms, commit/pagehide først t+1463 ms — reload'en fyrede altså
+// midt i en igangværende navigation og kaprede den.
+// ---------------------------------------------------------------------------
+
+test("documentIsStillLoadable — dokument der bliver liggende svarer på canary-fetchen", async () => {
+  assert.equal(await documentIsStillLoadable({ ...PROBE }), true);
+});
+
+test("documentIsStillLoadable — navigation in flight afviser canary-fetchen", async () => {
+  assert.equal(
+    await documentIsStillLoadable({ fetchFn: navigatingAwayDocument, url: PROBE.url }),
+    false,
+    "en afvist fetch betyder at browseren allerede er på vej væk fra dokumentet"
+  );
+});
+
+test("documentIsStillLoadable — fail-closed: timeout, manglende fetch og manglende url reloader ikke", async () => {
+  // Hængende netværk: vi må ikke blokere for evigt, og vi må ikke reloade i
+  // blinde — et reload uden net giver en browser-fejlside i stedet for den
+  // brandede fallback med sin manuelle "Genindlæs siden"-knap.
+  assert.equal(
+    await documentIsStillLoadable({ fetchFn: () => new Promise(() => {}), url: PROBE.url, timeoutMs: 5 }),
+    false,
+    "timeout → intet reload"
+  );
+  assert.equal(await documentIsStillLoadable({ url: PROBE.url }), false, "ingen fetch → intet reload");
+  assert.equal(await documentIsStillLoadable({ fetchFn: stayingDocument }), false, "ingen url → intet reload");
+  assert.equal(await documentIsStillLoadable(), false);
+});
+
+test("documentIsStillLoadable — canary'en tvinger et rigtigt netværkskald (no-store)", async () => {
+  // Et cache-hit ville kunne svare selv under en igangværende navigation og
+  // dermed give et falsk "dokumentet er i live".
+  const calls = [];
+  await documentIsStillLoadable({
+    fetchFn: (url, init) => { calls.push({ url, init }); return Promise.resolve({ ok: true }); },
+    url: PROBE.url,
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, PROBE.url);
+  assert.equal(calls[0].init.cache, "no-store");
+});
+
+test("installChunkReloadHandlers — navigation in flight (pagehide er IKKE nået at fyre) reloader IKKE", async () => {
+  // Præcis CI-vinduet: navigationen er startet og har aborteret chunk-loadet,
+  // men den nye side har ikke committet endnu, så pagehide er ikke fyret og
+  // delayMs er udløbet. Før #3602 fyrede reload'en her og kaprede navigationen.
+  const storage = memoryStorage();
+  const target = fakeTarget();
+  const timer = manualScheduler();
+  let reloads = 0;
+  installChunkReloadHandlers({
+    target,
+    release: "rel6",
+    storage,
+    reload: () => { reloads += 1; },
+    schedule: timer.schedule,
+    fetchFn: navigatingAwayDocument,
+    url: PROBE.url,
+  });
+
+  target.dispatch("vite:preloadError", { preventDefault: () => {} });
+  await timer.flush();
+
+  assert.equal(reloads, 0, "ingen reload mens en navigation er i gang — den ville blive kapret");
+  assert.equal(
+    storage.getItem(getChunkReloadKey("rel6")),
+    null,
+    "guard-nøglen brændes ikke af en navigations-abort — en ÆGTE stale chunk senere skal stadig kunne reloade"
+  );
+});
+
+test("installChunkReloadHandlers — bruger target.fetch og target.location når intet er injiceret", async () => {
+  const seen = [];
+  const target = fakeTarget();
+  target.fetch = function (url, init) { seen.push({ url, init, thisIsTarget: this === target }); return Promise.resolve({ ok: true }); };
+  target.location = { href: "https://cyclingzone.org/planning" };
+  const timer = manualScheduler();
+  let reloads = 0;
+  installChunkReloadHandlers({ target, release: "rel7", storage: memoryStorage(), reload: () => { reloads += 1; }, schedule: timer.schedule });
+
+  target.dispatch("vite:preloadError", { preventDefault: () => {} });
+  await timer.flush();
+
+  assert.equal(reloads, 1);
+  assert.deepEqual(seen.map((c) => c.url), ["https://cyclingzone.org/planning"]);
+  assert.equal(seen[0].thisIsTarget, true, "fetch skal bindes til target — ellers kaster browseren Illegal invocation");
 });

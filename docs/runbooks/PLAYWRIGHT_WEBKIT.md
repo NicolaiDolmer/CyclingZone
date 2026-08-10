@@ -14,6 +14,12 @@
 
 CI installerer WebKit-binary i [`playwright-smoke.yml`](../../.github/workflows/playwright-smoke.yml) (`npx playwright install chromium webkit`).
 
+### Historik — læs før du fjerner webkit fra CI igen
+
+`mobile-webkit` var ude af CI fra [#1342](https://github.com/NicolaiDolmer/CyclingZone/issues/1342) (maj) til [#3429](https://github.com/NicolaiDolmer/CyclingZone/issues/3429) (7/8). Årsagen var et teardown-hæng på windows-runneren: `webServer` kørte dengang `npm run build && npm run preview` som ÉN kommando og efterlod en forældreløs preview-proces, som Playwright ikke kunne dræbe → jobbet hang 48 min. Byggetrinnet er siden flyttet til sit eget workflow-step, så den rodårsag er væk, og jobbet har nu `timeout-minutes` som backstop.
+
+Prisen ved at have webkit ude viste sig større end hænget: den er den eneste mobil-Safari-dækning der findes, og uden CI kunne dens snapshots drive uset. Det skete — planner-snapshottet drev 5/8 og blev opdaget 6/8, hvorefter det blev rettet ved et tilfælde af en anden PR's snapshot-refresh. Hvis webkit skal ud af CI igen, så find en anden måde at fange den drift på først.
+
 ## Hvad det IKKE dækker
 
 Playwright WebKit ≠ rigtig iOS Safari. Det er **engine'en**, ikke iOS-wrapperen. Du får dækning for:
