@@ -31,6 +31,7 @@ import {
   sendWebhook,
   getBotToken,
   drainDiscordDmOutbox,
+  drainDiscordWebhookOutbox,
   getOpsWebhook,
   sendOpsWebhook,
 } from "./lib/discordNotifier.js";
@@ -435,6 +436,20 @@ async function runDiscordDmOutboxDrain() {
   if (result.processed) {
     console.log(
       `📬 Discord DM-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.dead} opgivet`
+    );
+  }
+}
+
+// ─── Discord webhook-outbox drain (#3545) ────────────────────────────────────
+// Samme mønster for KANAL-poster: en Discord-5xx der overlever de ~3 sekunders
+// inline-retry lander i discord_webhook_outbox i stedet for at blive droppet.
+// 7/8 tabte præcis den sti 8 auktions-annonceringer permanent.
+
+async function runDiscordWebhookOutboxDrain() {
+  const result = await drainDiscordWebhookOutbox({ now: new Date() });
+  if (result.processed) {
+    console.log(
+      `📮 Discord webhook-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.dead} opgivet`
     );
   }
 }
@@ -1256,6 +1271,12 @@ export function startCron() {
     5 * 60 * 1000
   );
 
+  // Every 5 minutes: Discord webhook-outbox drain (#3545 — retry af fejlede kanal-poster).
+  setInterval(
+    trackedTick("discord webhook-outbox drain", monitorCron("discord-webhook-outbox-drain", runDiscordWebhookOutboxDrain, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
   setInterval(
     trackedTick("training sweep", monitorCron("training-sweep", runTrainingSweepCron, CRON_MONITOR_5MIN)),
@@ -1498,6 +1519,7 @@ export function startCron() {
   trackedTick("daily season-count check", runDailySeasonCountCheck)();
   trackedTick("discord bot-token check", runDiscordBotTokenCheck)();
   trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain)();
+  trackedTick("discord webhook-outbox drain", runDiscordWebhookOutboxDrain)();
   // #2375: kør entry-generatoren straks ved boot, så et deploy fylder mid-sæson-
   // genskabte 0-entry-løb med det samme frem for at vente op til en time.
   trackedTick("entry-generator sweep", runRaceEntryGeneratorSweepCron)();

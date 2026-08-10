@@ -20,6 +20,7 @@ import { resolveDmRecipient } from "./discordDmRecipient.js";
 import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
 import { recordDmAttempt } from "./discordDmRateGuard.js";
 import { attemptWebhookDelivery } from "./discordWebhookDelivery.js";
+import { enqueueWebhook, processWebhookOutboxDrain } from "./discordWebhookOutbox.js";
 import { serializeByUrl } from "./discordWebhookQueue.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -142,14 +143,23 @@ export async function getResultWebhooks(leagueDivisionId) {
  * valgfrit 3. argument (`fetchFn`/`sleepFn`/`captureExceptionFn`) KUN til test-
  * injektion — ingen produktions-kalder sætter det.
  *
+ * #3545: retryable fejl der overlever de inline-forsøg lægges nu i
+ * discord_webhook_outbox i stedet for kun at blive capture't og droppet — se
+ * discordWebhookOutbox.js for rod-årsag (3 sek inline-tålmodighed kan ikke
+ * overleve et Discord-5xx-udfald på minutter). Inline-loftet er uændret.
+ *
  * @param {string} webhookUrl
  * @param {object} payload
- * @param {{fetchFn?: typeof fetch, sleepFn?: Function, captureExceptionFn?: Function}} [opts]
+ * @param {{fetchFn?: typeof fetch, sleepFn?: Function, captureExceptionFn?: Function, enqueueOnFailure?: boolean, enqueueWebhookFn?: Function}} [opts]
+ *   `enqueueOnFailure:false` bruges af outbox-drainens EGEN dead-alarm, så en
+ *   fejlende alarm ikke lægger sig selv i outbox'en igen (uendelig vækst).
  */
 export async function sendWebhook(webhookUrl, payload, {
   fetchFn = fetch,
   sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   captureExceptionFn = sentryCapture,
+  enqueueOnFailure = true,
+  enqueueWebhookFn = enqueueWebhook,
 } = {}) {
   if (!webhookUrl) return;
   try {
@@ -177,15 +187,38 @@ export async function sendWebhook(webhookUrl, payload, {
         // forsøg attemptWebhookDelivery gjorde (evt. `deferred` hvis Discords
         // retry_after oversteg inline-loftet). Dette er PRÆCIS den klasse fejl
         // der før forsvandt tavst med kun console.error — root-cause for 24/7-
-        // hændelsen hvor 1 af 4 tier-3-resultatposter manglede. Capture ALTID,
-        // så et tabt resultat aldrig igen kun findes i (roterede) Railway-logs.
-        captureExceptionFn(
-          new Error(`Discord webhook dropped after ${result.attempts} attempt(s): ${statusLabel} (${result.failure?.reason || "unknown"})`),
-          {
-            tags: { lib: "discordNotifier", status: String(statusLabel), reason: result.failure?.reason || "unknown" },
-            extra: { attempts: result.attempts, deferred: !!result.failure?.deferred },
-          }
-        );
+        // hændelsen hvor 1 af 4 tier-3-resultatposter manglede.
+        //
+        // #3545: beskeden er ikke længere tabt her — den lægges i outbox'en og
+        // genforsøges over ~27 timer. Sentry-capturen flyttes tilsvarende til
+        // det tidspunkt hvor beskeden REELT er tabt (outbox → dead), så en
+        // 3-sekunders 5xx-krusning ikke længere ser ud som datatab. Fejler
+        // selve enqueue'en, capturer vi med det samme — så falder vi tilbage
+        // til den gamle (synlige) adfærd i stedet for at fejle tavst.
+        const { enqueued } = enqueueOnFailure
+          ? await enqueueWebhookFn({
+              supabase,
+              webhookUrl: safeWebhookUrl,
+              payload,
+              lastStatus: result.status ?? null,
+              lastError: result.error,
+              captureExceptionFn,
+            })
+          : { enqueued: false };
+
+        if (!enqueued) {
+          captureExceptionFn(
+            new Error(`Discord webhook dropped after ${result.attempts} attempt(s): ${statusLabel} (${result.failure?.reason || "unknown"})`),
+            {
+              tags: { lib: "discordNotifier", status: String(statusLabel), reason: result.failure?.reason || "unknown" },
+              extra: { attempts: result.attempts, deferred: !!result.failure?.deferred, enqueued: false },
+            }
+          );
+        } else {
+          console.log(
+            `📮 Discord webhook lagt i outbox efter ${result.attempts} forsøg (${statusLabel}) — genforsøges af drain-cronen`
+          );
+        }
       }
     }
   } catch (err) {
@@ -436,6 +469,28 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
     // som direkte sendDM ser — tæl den med, ellers når en bruger der kun rammes
     // via outbox'en aldrig tærsklen.
     onRecipientBlocked: recordDeadConnection,
+    now,
+  });
+}
+
+/**
+ * Drain af webhook-outbox'en (#3545) — søster til drainDiscordDmOutbox ovenfor.
+ *
+ * deliverFn går direkte til attemptWebhookDelivery (IKKE sendWebhook): sendWebhook
+ * ville lægge en fejlet levering i outbox'en igen og dermed lave en ny række for
+ * hver drain-runde. serializeByUrl bevares, så drain-POSTs og live-POSTs mod
+ * SAMME webhook aldrig rammer Discord som en samtidig byge (#2882).
+ */
+export async function drainDiscordWebhookOutbox({ now = new Date() } = {}) {
+  return processWebhookOutboxDrain({
+    supabase,
+    deliverFn: ({ webhookUrl, payload }) =>
+      serializeByUrl(webhookUrl, () => attemptWebhookDelivery({ webhookUrl, payload })),
+    // Dead-alarm → ops-kanal m. @mention (#2077). enqueueOnFailure:false, ellers
+    // kan en fejlende alarm om outbox'en havne i outbox'en.
+    sendWebhookFn: (url, payload) => sendOpsWebhook(url, payload, { enqueueOnFailure: false }),
+    getAlarmWebhookFn: getOpsWebhook,
+    captureExceptionFn: sentryCapture,
     now,
   });
 }

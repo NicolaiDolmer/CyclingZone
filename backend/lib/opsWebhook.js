@@ -40,7 +40,11 @@ export function withOpsMention(payload, mention = getOpsMention()) {
 /**
  * Wrapper omkring en sendWebhook(url, payload)-fn der auto-prepender ops-@mention.
  * mentionFn evalueres ved SEND-tid, så env-ændringer slår igennem uden re-import.
+ *
+ * #3545: 3. argument videresendes uændret til sendWebhook. Uden det tabte
+ * wrapperen `enqueueOnFailure:false`, som webhook-outbox-drainens dead-alarm
+ * bruger for ikke at lægge sig selv i outbox'en.
  */
 export function makeSendOpsWebhook(sendWebhookFn, mentionFn = getOpsMention) {
-  return (url, payload) => sendWebhookFn(url, withOpsMention(payload, mentionFn()));
+  return (url, payload, opts) => sendWebhookFn(url, withOpsMention(payload, mentionFn()), opts);
 }
