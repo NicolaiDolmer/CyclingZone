@@ -10,6 +10,7 @@ import {
   DEFAULT_TIER_TYPE_WEIGHTS,
   ARCHETYPES,
   ARCHETYPE_BY_TYPE,
+  scaleMinTypes,
 } from "./fictionalRiderGenerator.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 
@@ -239,6 +240,111 @@ test("sjældne typer holder globalt gulv (gc≥30, sprinter≥40 @ 800)", () => 
   for (const t of ["sprinter", "tt", "climber", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"]) {
     assert.ok((byType[t] || 0) > 0, `type ${t} mangler helt`);
   }
+});
+
+// ── #3570/S2: gulvet skalerer med count (små træk må ikke degenerere) ─────────
+//
+// REGRESSIONSVAGT FOR EN LIVE BUG. Gulvene (gc≥30, sprinter≥40) er kalibreret mod
+// et 800-rytter-felt, men blev håndhævet som absolutte tal pr. generator-kald.
+// Trup-stierne kalder generatoren med count 4/8/16 (#1560, #1820, #2065), og der
+// promoverede gulvet HELE trækket: 100 % sprinter+gc, 0 af de øvrige seks
+// arketyper. Hver ny manager fik en start-trup trukket som 73 % sprinter / 27 % gc.
+//
+// Grænserne herunder er PRÆREGISTRERET før måling (S2/PREREG.md):
+//   • distinkte arketyper pr. træk ≥ 88 % af det ANALYTISKE optimum for netop
+//     det count, Σ_t (1−(1−p_t)^count) under ejerens knaphedsmål. Ved count=8
+//     giver formlen 5,14 → port 4,52 (præcis den præregistrerede 4,50); ved
+//     count=4 er optimum 3,27 → port 2,88 (mere end 4 distinkte KAN ikke findes
+//     i et træk på 4, så en fast port ville være matematisk umulig).
+//   • alle 8 arketyper med andel ≥ 3,0 % poolet (ejerens laveste mål er 9 %).
+//   • L1 mod knaphedsmålene ≤ 40 pp (count=800 ligger på ~22 — porten er ~2×).
+// Dagens (pre-fix) kode: count=4 → 1,82 distinkte · count=8 → 1,99 · count=16 →
+// 2,00, i alle tre tilfælde 6 arketyper på 0 % og L1 152.
+
+const SCARCITY_TARGET = {
+  sprinter: 15, tt: 9, climber: 17, puncheur: 13,
+  brostensrytter: 9, baroudeur: 11, rouleur: 17, gc: 9,
+};
+const S2_GATES = { distinctFraction: 0.88, minSharePct: 3.0, maxL1: 40 };
+
+// Forventet antal DISTINKTE arketyper i et træk på `count`, hvis trækket fulgte
+// ejerens knaphedsmål perfekt. Ren sandsynlighedsregning — ingen måling.
+function targetExpectedDistinct(count) {
+  return Object.values(SCARCITY_TARGET)
+    .reduce((s, target) => s + (1 - (1 - target / 100) ** count), 0);
+}
+
+function archetypeDrawStats(count, calls) {
+  const pooled = {};
+  let n = 0;
+  let distinctSum = 0;
+  for (let k = 0; k < calls; k++) {
+    const { riders } = generateFictionalRiders({ seed: (2026 + k * 7919) >>> 0, count, referenceYear: REF_YEAR });
+    const arch = riders.map((r) => r._meta.archetype);
+    for (const a of arch) pooled[a] = (pooled[a] || 0) + 1;
+    n += arch.length;
+    distinctSum += new Set(arch).size;
+  }
+  const share = {};
+  let l1 = 0;
+  for (const t of Object.keys(SCARCITY_TARGET)) {
+    share[t] = (100 * (pooled[t] || 0)) / n;
+    l1 += Math.abs(share[t] - SCARCITY_TARGET[t]);
+  }
+  return { share, l1, meanDistinct: distinctSum / calls };
+}
+
+function assertS2Gates(label, count, stats, { coverageFloors = {} } = {}) {
+  const floor = S2_GATES.distinctFraction * targetExpectedDistinct(count);
+  assert.ok(
+    stats.meanDistinct >= floor,
+    `${label}: kun ${stats.meanDistinct.toFixed(2)} distinkte arketyper i snit pr. træk (port ${floor.toFixed(2)})`,
+  );
+  for (const [t, s] of Object.entries(stats.share)) {
+    const gate = coverageFloors[t] ?? S2_GATES.minSharePct;
+    assert.ok(
+      s >= gate,
+      `${label}: arketypen '${t}' fylder kun ${s.toFixed(2)} % (port ${gate} %)`,
+    );
+  }
+  assert.ok(
+    stats.l1 <= S2_GATES.maxL1,
+    `${label}: L1 mod knaphedsmålene er ${stats.l1.toFixed(1)} pp (port ${S2_GATES.maxL1})`,
+  );
+}
+
+test("#3570/S2 DEFEKT-VAGT: count=8 (ny managers kerne-trup) degenererer ikke", () => {
+  assertS2Gates("count=8", 8, archetypeDrawStats(8, 600));
+});
+
+// DOKUMENTERET UNDTAGELSE (S2, 10/8): den fulde dæknings-port (alle 8 arketyper
+// ≥ 3 %) er MATEMATISK UOPNÅELIG ved count=4 for enhver kandidat der respekterer
+// tier-koblingen. Tier-kvoten ved count=4 er {solid: 1, domestique: 3}, og `gc`
+// findes kun i superstar/star/solid-vægtene → gc's STRUKTURELLE loft er
+// 1 × (2/22) / 4 = 2,27 %. Målt: 2,29 % (= 101 % af loftet). Porten sættes derfor
+// for gc til 88 % af det strukturelle loft (2,0 %), præcis samme 0,88-princip som
+// distinkt-porten. Kun en kandidat der DROPPER tier-koblingen kan nå 3 % — og den
+// ændrer relaunch-populationen, hvilket ikke er tilladt. Se S2/RAPPORT-S2.md.
+test("#3570/S2 DEFEKT-VAGT: count=4 (hale-puljen) degenererer ikke", () => {
+  assertS2Gates("count=4", 4, archetypeDrawStats(4, 1200), { coverageFloors: { gc: 2.0 } });
+});
+
+test("#3570/S2 DEFEKT-VAGT: count=16 (AI-holdenes hale) degenererer ikke", () => {
+  assertS2Gates("count=16", 16, archetypeDrawStats(16, 400));
+});
+
+test("#3570/S2 SUND REFERENCE: samme porte består ved count=800", () => {
+  // Beviser at porten ikke bare er 'alt fejler' — den kalibrerede sti passerer.
+  assertS2Gates("count=800", 800, archetypeDrawStats(800, 8));
+});
+
+test("#3570/S2: skaleringen er identitet ved kalibrerings-referencen (800)", () => {
+  assert.deepEqual(scaleMinTypes(800), { gc: 30, sprinter: 40 });
+  // Under ~13 ryttere runder begge gulve til 0 → intet gulv håndhæves.
+  assert.deepEqual(scaleMinTypes(8), {});
+  assert.deepEqual(scaleMinTypes(4), {});
+  // Halvt felt → halve gulve.
+  assert.deepEqual(scaleMinTypes(400), { gc: 15, sprinter: 20 });
 });
 
 // ── Coverage-rapport ──────────────────────────────────────────────────────────

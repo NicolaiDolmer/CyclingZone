@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.109",
+    "date": "2026-08-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "New teams no longer start with a squad of only sprinters and GC riders",
+          "body": "The rider generator has a floor that guarantees a minimum number of GC riders and sprinters in the free market, and that floor was written as a fixed head count calibrated for an 800-rider field. It was applied to every batch, including the 8+4 riders a new manager receives at sign-up and the squads generated for new AI teams. In a batch of eight, \"at least 30 GC riders and 40 sprinters\" promoted the entire batch: every new starting squad was drawn as roughly three quarters sprinters and one quarter GC riders, with none of the other six rider types present. The floor is now a share of the batch rather than a fixed number, so a squad of twelve is drawn across all eight types. The free market population generated at relaunch is completely unchanged. Riders already in the game are not affected by this change on its own."
+        },
+        "da": {
+          "title": "Nye hold starter ikke længere med en trup af kun sprintere og klassementsryttere",
+          "body": "Rytter-generatoren har et gulv der garanterer et minimum af klassementsryttere og sprintere i det frie marked, og det gulv var skrevet som et fast antal, kalibreret til et felt på 800 ryttere. Det blev anvendt på hver eneste batch, også de 8+4 ryttere en ny manager får ved oprettelse, og de trupper der genereres til nye AI-hold. I en batch på otte promoverede \"mindst 30 klassementsryttere og 40 sprintere\" hele batchen: hver ny start-trup blev trukket som cirka tre fjerdedele sprintere og en fjerdedel klassementsryttere, uden en eneste af de øvrige seks ryttertyper. Gulvet er nu en andel af batchen frem for et fast antal, så en trup på tolv trækkes på tværs af alle otte typer. Den frie markeds-population fra relaunch er fuldstændig uændret. Ryttere der allerede er i spillet påvirkes ikke af denne ændring alene."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.108",
     "date": "2026-08-09",
     "label": "Beta",
