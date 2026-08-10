@@ -11,7 +11,9 @@ Tal fra det daterede 10/8-snapshot (n=8.199), paritets-bevist mod repoets egne f
 
 ## A. Patch notes-indhentning → `#patch-notes`
 
-Sidste post dér var **7/8 kl. 12:11**. Siden er der shippet fem versioner.
+Sidste post dér var **7/8 kl. 12:11** (sæson 3-kalenderen, v7.103-7.105). Alt nedenfor er
+shippet SIDEN og er aldrig meldt ud. Kalenderen og nedkørselsfinalerne er bevidst udeladt —
+de var med i 7/8-posten.
 
 ```
 Patch notes catch-up (v7.106 to v7.110)
@@ -26,8 +28,9 @@ had signed or won one were refunded in full.
 Mid-season prize money (Aug 9): A scheduling bug delayed the payouts. All
 191 teams have been paid.
 
-Board (Aug 9): You now get a warning before a mandate runs out, and the
-renegotiation window is twice as long.
+Board (Aug 9): You now get a heads-up before a mandate runs out, and twice
+as long to negotiate. The board also checks in halfway through the season
+now, and renewal reminders are sending again.
 
 New teams (Aug 10): The rider generator had a floor meant for a field of 800
 riders, but it was applied to every batch. In a batch of eight it promoted
@@ -37,12 +40,24 @@ six types present. Fixed. It had been live for 51 days, so every team
 created since June 20 is affected. I'm looking at what those teams should
 have.
 
+Discord announcements (Aug 10): When Discord had a brief hiccup on the
+evening of Aug 7, the game gave up after three seconds and threw the message
+away. Eight auction announcements were silently lost, so nobody was told
+there was anything to bid on. Messages that can't be delivered are now saved
+and retried over the following hours. Race results use the same path, so
+they're protected too.
+
 Daily race digest (Aug 10): The digest could fail to send entirely if the
 server restarted at the wrong moment. No error, no retry, just a day with no
 summary. Fixed.
 
-Also: Season 3 calendar rebuilt, potential stars no longer coloured by age,
-downhill finishes now regroup the field, and a batch of smaller fixes.
+Subscriptions (Aug 10): Renewal and expiry didn't always update your account
+status correctly. Fixed.
+
+Smaller things: potential stars are no longer colour-coded by age, you can
+see your actual points in the Mountains and Points competitions, clicking a
+rider's name peeks at their profile, unanswered offers show as a badge on
+Transfers, and a batch of dashboard fixes.
 ```
 
 <details><summary>Dansk</summary>
@@ -60,8 +75,9 @@ skrevet kontrakt eller vundet en, fik hele beløbet retur.
 Midtvejspræmier (9/8): En planlægningsfejl forsinkede udbetalingen. Alle 191
 hold har fået deres penge.
 
-Bestyrelsen (9/8): Du får nu et varsel før et mandat udløber, og
-genforhandlingsvinduet er dobbelt så langt.
+Bestyrelsen (9/8): Du får nu et varsel før et mandat udløber, og dobbelt så
+lang tid til at forhandle. Bestyrelsen kigger også forbi midt i sæsonen nu,
+og fornyelses-påmindelserne sender igen.
 
 Nye hold (10/8): Rytter-generatoren havde et gulv beregnet til et felt på
 800 ryttere, men det blev brugt på hver eneste batch. I en batch på otte
@@ -71,13 +87,24 @@ eneste af de øvrige seks typer. Rettet. Det havde været live i 51 dage, så
 alle hold oprettet siden 20. juni er ramt. Jeg kigger på hvad de hold skal
 have.
 
+Discord-annonceringer (10/8): Da Discord kortvarigt hakkede om aftenen den
+7. august, gav spillet op efter tre sekunder og smed beskeden væk. Otte
+auktions-annonceringer gik tavst tabt, så ingen fik at vide at der var noget
+at byde på. Beskeder der ikke kan leveres, bliver nu gemt og forsøgt igen
+over de følgende timer. Løbsresultater bruger samme vej og er derfor også
+beskyttet.
+
 Dagligt løbs-resume (10/8): Resumeet kunne udeblive helt hvis serveren
 genstartede på det forkerte tidspunkt. Ingen fejl, intet nyt forsøg, bare en
 dag uden resume. Rettet.
 
-Desuden: sæson 3-kalenderen genbygget, potentiale-stjerner farves ikke
-længere efter alder, nedkørselsfinaler samler feltet, og en række mindre
-rettelser.
+Abonnementer (10/8): Fornyelse og udløb opdaterede ikke altid din
+kontostatus korrekt. Rettet.
+
+Mindre ting: potentiale-stjerner farves ikke længere efter alder, du kan se
+dine faktiske point i bjerg- og pointkonkurrencerne, et klik på en rytters
+navn viser hans profil, ubesvarede tilbud vises som badge på Transfers, og
+en række rettelser på dashboardet.
 ```
 </details>
 
