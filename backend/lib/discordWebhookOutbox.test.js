@@ -12,7 +12,13 @@ import {
 // ── Supabase-mock (chainable, registrerer writes) ────────────────────────────
 // Spejler discordDmOutbox.test.js — samme kontrakt, anden tabel.
 
-function makeSupabaseMock({ pendingRows = [], insertError = null, selectError = null } = {}) {
+function makeSupabaseMock({
+  pendingRows = [],
+  insertError = null,
+  selectError = null,
+  deleteError = null,
+  updateError = null,
+} = {}) {
   const writes = { inserts: [], updates: [], deletes: [] };
   const supabase = {
     from(table) {
@@ -38,7 +44,7 @@ function makeSupabaseMock({ pendingRows = [], insertError = null, selectError = 
           return {
             eq: (col, id) => {
               writes.updates.push({ id, values });
-              return Promise.resolve({ error: null });
+              return Promise.resolve({ error: updateError });
             },
           };
         },
@@ -46,7 +52,7 @@ function makeSupabaseMock({ pendingRows = [], insertError = null, selectError = 
           return {
             eq: (col, id) => {
               writes.deletes.push(id);
-              return Promise.resolve({ error: null });
+              return Promise.resolve({ error: deleteError });
             },
           };
         },
@@ -180,6 +186,30 @@ test("drain — succesfuld genlevering sletter rækken (auktions-annonceringen n
   assert.equal(deps._captures.length, 0, "en vellykket genlevering må ikke alarmere");
 });
 
+// #3599: guarden `lint-unchecked-supabase-mutation.mjs` fangede en bar delete uden
+// destrukturering. Testen dækker den ægte konsekvens: fejler delete'en efter en
+// vellykket levering, kan vi ikke fortryde selve leveringen (result.ok var sand) —
+// men rækken forbliver "pending" og VIL blive genleveret næste drain-tick.
+test("drain — delete-fejl efter succesfuld levering tælles stadig som sent, men logges + captures", async () => {
+  const { supabase, writes } = makeSupabaseMock({
+    pendingRows: [{ id: "row-1", webhook_url: WEBHOOK, payload: {}, attempts: 1 }],
+    deleteError: { message: "connection reset" },
+  });
+  const deps = makeDrainDeps();
+
+  const result = await processWebhookOutboxDrain({
+    supabase,
+    deliverFn: async () => ({ ok: true, status: 204 }),
+    ...deps,
+  });
+
+  assert.deepEqual(result, { processed: 1, sent: 1, rescheduled: 0, dead: 0 }, "beskeden ER leveret, tælles som sent");
+  assert.deepEqual(writes.deletes, ["row-1"], "delete-forsøget skete stadig, blot uden effekt i DB");
+  assert.equal(deps._captures.length, 1, "delete-fejlen skal være synlig i Sentry (risiko for dobbelt-levering)");
+  assert.match(deps._captures[0].err.message, /delete fejlede efter succesfuld levering/);
+  assert.match(deps._captures[0].err.message, /row-1/);
+});
+
 test("drain — fortsat 5xx replanlægges med voksende backoff, IKKE dead", async () => {
   const { supabase, writes } = makeSupabaseMock({
     pendingRows: [{ id: "row-1", webhook_url: WEBHOOK, payload: {}, attempts: 2 }],
@@ -210,6 +240,38 @@ test("drain — fortsat 5xx replanlægges med voksende backoff, IKKE dead", asyn
   assert.equal(deps._captures.length, 0, "må først alarmere når beskeden REELT er tabt");
 });
 
+// #3599: fejler reschedule-update'en, blev backoff'en ALDRIG skrevet — rækken står
+// stadig med sit gamle (allerede forfaldne) next_attempt_at. Den skal derfor IKKE
+// tælles som rescheduled (den blev det faktisk ikke), men fejlen skal være synlig.
+test("drain — reschedule-update-fejl tælles IKKE som rescheduled, men logges + captures", async () => {
+  const { supabase, writes } = makeSupabaseMock({
+    pendingRows: [{ id: "row-1", webhook_url: WEBHOOK, payload: {}, attempts: 2 }],
+    updateError: { message: "connection reset" },
+  });
+  const deps = makeDrainDeps();
+
+  const result = await processWebhookOutboxDrain({
+    supabase,
+    deliverFn: async () => ({
+      ok: false,
+      status: 503,
+      failure: { kind: "retryable", reason: "discord-5xx" },
+      error: "503: service unavailable",
+    }),
+    ...deps,
+  });
+
+  assert.deepEqual(
+    result,
+    { processed: 1, sent: 0, rescheduled: 0, dead: 0 },
+    "rescheduled må ikke tælle op — updaten fejlede, backoff blev aldrig persisteret"
+  );
+  assert.equal(writes.updates.length, 1, "update-forsøget skete stadig, blot uden effekt i DB");
+  assert.equal(deps._captures.length, 1, "reschedule-fejlen skal være synlig i Sentry");
+  assert.match(deps._captures[0].err.message, /reschedule-update fejlede/);
+  assert.match(deps._captures[0].err.message, /row-1/);
+});
+
 // #2395-klassen: et slettet/fejlkonfigureret webhook er permanent — der er
 // ingen mening i at bruge 27 timer på at prøve igen.
 test("drain — permanent fejl (dødt webhook) dør med det samme, uanset attempts", async () => {
@@ -234,6 +296,43 @@ test("drain — permanent fejl (dødt webhook) dør med det samme, uanset attemp
   assert.equal(writes.updates[0].values.dead_at, NOW.toISOString());
   assert.equal(deps._captures.length, 1);
   assert.equal(deps._webhookCalls.length, 1, "dead → ops-alarm");
+});
+
+// #3599: fejler dead-update'en, mister vi dødsmarkeringen i DB (rækken forbliver
+// "pending" med sit u-persisterede attempts-tal — risiko for uendelig genforsøg
+// uden nogensinde at nå maxAttempts). Beskeden ER alligevel død for spilleren, så
+// den skal STADIG med i deadRows/den aggregerede alarm — plus en separat, synlig
+// fejl for selve persist-fejlen.
+test("drain — dead-update-fejl tælles stadig i dead + aggregeret alarm, men logges separat", async () => {
+  const { supabase, writes } = makeSupabaseMock({
+    pendingRows: [{ id: "row-1", webhook_url: WEBHOOK, payload: {}, attempts: 1 }],
+    updateError: { message: "connection reset" },
+  });
+  const deps = makeDrainDeps();
+
+  const result = await processWebhookOutboxDrain({
+    supabase,
+    deliverFn: async () => ({
+      ok: false,
+      status: 404,
+      failure: { kind: "permanent", reason: "config-error" },
+      error: "404: Unknown Webhook",
+    }),
+    ...deps,
+  });
+
+  assert.deepEqual(result, { processed: 1, sent: 0, rescheduled: 0, dead: 1 }, "beskeden ER død uanset persist-fejlen");
+  assert.equal(writes.updates.length, 1, "update-forsøget skete stadig, blot uden effekt i DB");
+  assert.equal(deps._webhookCalls.length, 1, "dead → ops-alarm sendes stadig");
+  assert.equal(deps._captures.length, 2, "1 for selve dead-update-fejlen + 1 for den aggregerede dead-alarm");
+  assert.ok(
+    deps._captures.some((c) => /dead-update fejlede/.test(c.err.message) && /row-1/.test(c.err.message)),
+    "persist-fejlen skal være synlig separat fra den aggregerede alarm"
+  );
+  assert.ok(
+    deps._captures.some((c) => /markeret dead/.test(c.err.message)),
+    "den aggregerede dead-alarm skal stadig fyre"
+  );
 });
 
 test("drain — opbrugte forsøg → dead + ÉN aggregeret alarm for hele runden", async () => {

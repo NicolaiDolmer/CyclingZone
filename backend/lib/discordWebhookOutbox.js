@@ -170,7 +170,22 @@ export async function processWebhookOutboxDrain({
     const result = await deliverFn({ webhookUrl: row.webhook_url, payload: row.payload });
 
     if (result.ok) {
-      await supabase.from("discord_webhook_outbox").delete().eq("id", row.id);
+      const { error: deleteError } = await supabase.from("discord_webhook_outbox").delete().eq("id", row.id);
+      if (deleteError) {
+        // Beskeden ER leveret (result.ok) — det kan vi ikke fortryde. Rækken tælles
+        // derfor stadig som sent, men fejler denne delete, forbliver den "pending" i DB
+        // og vil blive samlet op + leveret IGEN ved næste drain-tick: spilleren ser
+        // beskeden to gange. Vi kan ikke forhindre det herfra, kun gøre det synligt.
+        const reason = normalizeSupabaseErrorMessage(deleteError.message);
+        console.error(
+          "[discord-webhook:outbox] delete efter succesfuld levering fejlede — risiko for dobbelt-levering",
+          { id: row.id, error: reason }
+        );
+        captureExceptionFn?.(
+          new Error(`Discord webhook-outbox delete fejlede efter succesfuld levering (id=${row.id}): ${reason}`),
+          { tags: { component: "discord-webhook-outbox" }, extra: { rowId: row.id } }
+        );
+      }
       sent++;
       continue;
     }
@@ -180,7 +195,7 @@ export async function processWebhookOutboxDrain({
     const exhausted = attempts >= maxAttempts;
 
     if (isPermanent || exhausted) {
-      await supabase
+      const { error: deadUpdateError } = await supabase
         .from("discord_webhook_outbox")
         .update({
           status: "dead",
@@ -190,9 +205,23 @@ export async function processWebhookOutboxDrain({
           dead_at: now.toISOString(),
         })
         .eq("id", row.id);
+      if (deadUpdateError) {
+        // Rækken forbliver "pending" i DB med sit gamle attempts-tal selvom leveringen
+        // reelt er opgivet — uden dette signal ville den blive samlet op igen ved næste
+        // tick og kunne blive forsøgt i det uendelige uden nogensinde at nå maxAttempts,
+        // fordi attempts-inkrementeringen heller ikke blev persisteret. Tælles STADIG
+        // med i deadRows/den aggregerede alarm nedenfor: beskeden ER død for spilleren
+        // uanset om vi nåede at skrive det.
+        const reason = normalizeSupabaseErrorMessage(deadUpdateError.message);
+        console.error("[discord-webhook:outbox] dead-markering fejlede", { id: row.id, error: reason });
+        captureExceptionFn?.(
+          new Error(`Discord webhook-outbox dead-update fejlede (id=${row.id}): ${reason}`),
+          { tags: { component: "discord-webhook-outbox" }, extra: { rowId: row.id } }
+        );
+      }
       deadRows.push({ id: row.id, status: result.status, reason: result.failure?.reason });
     } else {
-      await supabase
+      const { error: rescheduleError } = await supabase
         .from("discord_webhook_outbox")
         .update({
           attempts,
@@ -201,7 +230,20 @@ export async function processWebhookOutboxDrain({
           next_attempt_at: new Date(now.getTime() + nextAttemptDelayMs(attempts)).toISOString(),
         })
         .eq("id", row.id);
-      rescheduled++;
+      if (rescheduleError) {
+        // Backoff'en blev ALDRIG skrevet — rækken står stadig med sit gamle (allerede
+        // forfaldne) next_attempt_at og bliver samlet op igen ved næste tick uden reel
+        // backoff. Tælles derfor IKKE som rescheduled (den blev det faktisk ikke) — kun
+        // en synlig Sentry-fejl, så gentagne forsøg uden backoff ikke går ubemærket hen.
+        const reason = normalizeSupabaseErrorMessage(rescheduleError.message);
+        console.error("[discord-webhook:outbox] reschedule-update fejlede", { id: row.id, error: reason });
+        captureExceptionFn?.(
+          new Error(`Discord webhook-outbox reschedule-update fejlede (id=${row.id}): ${reason}`),
+          { tags: { component: "discord-webhook-outbox" }, extra: { rowId: row.id } }
+        );
+      } else {
+        rescheduled++;
+      }
     }
   }
 
