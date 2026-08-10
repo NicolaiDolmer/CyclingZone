@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.110",
+    "date": "2026-08-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "The daily race digest could silently fail to send",
+          "body": "The daily Discord and email summary of your races decided whether to send by checking whether the clock was inside a narrow window. If the server happened to restart while that window was open, the check never ran, and the digest for that day was simply never sent. There was no error and no retry, so the only symptom was a day with no summary. It now sends once the time has passed rather than only during an exact window, and it records what it has already sent so a restart cannot produce a duplicate either. This is the same class of bug as the board reminders that stopped arriving, and it is the reason the digest was missing on some days since it launched on August 6."
+        },
+        "da": {
+          "title": "Det daglige løbs-resume kunne udeblive uden en fejl",
+          "body": "Den daglige opsummering af dine løb på Discord og mail afgjorde om den skulle sendes ved at tjekke om klokken lå inde i et smalt vindue. Hvis serveren tilfældigvis genstartede mens det vindue var åbent, blev tjekket aldrig kørt, og dagens resume blev simpelthen aldrig sendt. Der kom ingen fejl og intet nyt forsøg, så det eneste symptom var en dag helt uden resume. Den sender nu når tidspunktet er passeret i stedet for kun i et præcist vindue, og den noterer hvad den allerede har sendt, så en genstart heller ikke kan give en dublet. Det er samme type fejl som bestyrelses-påmindelserne der holdt op med at komme, og det er forklaringen på at resumeet manglede nogle dage siden det kom 6. august."
+        },
+        "refs": [3475, 3476, 2725]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Account",
+        "en": {
+          "title": "Subscription renewal and expiry did not always update your account status",
+          "body": "Payment events for renewals, resumed subscriptions, failed payments and expiries were not all handled, so an account could keep showing the wrong status after one of those events. All four are now handled. A separate rule was tightened at the same time: only a first purchase can give you a founder seat, so a renewal never changes that status in either direction."
+        },
+        "da": {
+          "title": "Fornyelse og udløb af abonnement opdaterede ikke altid din kontostatus",
+          "body": "Betalings-events for fornyelse, genoptaget abonnement, mislykket betaling og udløb blev ikke alle håndteret, så en konto kunne blive ved med at vise forkert status efter en af de hændelser. Alle fire håndteres nu. En separat regel blev strammet samtidig: kun et førstekøb kan give en founder-plads, så en fornyelse ændrer aldrig den status i nogen retning."
+        },
+        "refs": [3408, 2736]
+      }
+    ]
+  },
+  {
     "version": "7.109",
     "date": "2026-08-10",
     "label": "Beta",
