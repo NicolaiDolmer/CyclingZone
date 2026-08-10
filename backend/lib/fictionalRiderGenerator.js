@@ -157,7 +157,48 @@ export const DEFAULT_TIER_TYPE_WEIGHTS = TIER_TYPE_WEIGHTS;
 
 // Globalt gulv på sjældne typer (ejer-spec: etape-variation kræver dybde i alle
 // discipliner). Håndhæves ved at promovere de billigste over-repræsenterede typer.
+//
+// #3570/S2 (10/8): gulvene er ANTAL, kalibreret mod ejer-spec'ens ~800-rytter-felt
+// ("alle 8 repræsenteret, gulv gc≥30, sprinter≥40" — orakel i
+// fictionalLaunchPopulation.js: LAUNCH_TYPE_FLOORS). De blev oprindeligt håndhævet
+// som ABSOLUTTE tal pr. GENERATOR-KALD, hvilket var harmløst så længe det eneste
+// kaldsted var launch-populationen (count 800, #669 7/6).
+//
+// Fra 20/6 begyndte trup-stierne at kalde generatoren med små counts:
+//   #1560 (20/6) allocateStarterSquadForTeam → buildWeakStarterPool(count 8)
+//   #1820 (23/6) hale-puljen                → buildWeakStarterPool(count 4)
+//   #2065 (30/6) AI-hold tier 3/4           → buildWeakStarterPool(count 8 og 16)
+// "Mindst 30 gc og mindst 40 sprintere" i et træk på 8 promoverer HELE trækket:
+// målt over 15.000 kald pr. størrelse er count 4/8/16/24/30/48 alle 100 %
+// sprinter+gc og 0 af de øvrige seks arketyper. Degenerationen aftager først
+// over count ≈ 96 og er væk ved ≈ 240. Målt på prod 10/8 er 5.550 af 8.199
+// levende ryttere født ad en sådan sti.
+//
+// Gulvet er derfor en ANDEL af feltet, ikke et absolut tal: det skaleres til det
+// faktiske count med 800 som kalibrerings-reference. Ved count = 800 giver
+// skaleringen præcis 30/40 igen → relaunch-populationen er byte-identisk.
+// Linjen nedenfor holdes ordret (scripts/gateMutationAudit.js' pop-MUT-6 patcher
+// netop denne tekst).
 const ENSURE_MIN_TYPES = { gc: 30, sprinter: 40 };
+const ENSURE_MIN_REFERENCE_COUNT = 800;
+
+/**
+ * Gulvene skaleret til et konkret `count`. Et gulv der runder til 0 håndhæves
+ * ikke: ved små træk er "mindst én gc" ikke et gulv, det er en kvote der spiser
+ * hele trækket. Ren funktion — forbruger INGEN rng, så determinismen for et
+ * givet (seed, count) er uændret.
+ *
+ * @param {number} count antal ryttere i dette generator-kald
+ * @returns {Object<string, number>} type → minimumsantal for netop dette kald
+ */
+export function scaleMinTypes(count, mins = ENSURE_MIN_TYPES, reference = ENSURE_MIN_REFERENCE_COUNT) {
+  const scaled = {};
+  for (const [type, min] of Object.entries(mins)) {
+    const n = Math.round((min * count) / reference);
+    if (n > 0) scaled[type] = n;
+  }
+  return scaled;
+}
 
 // Default-nationalitetsvægte: afspejler prod-feltet (2026-05-31) + garanteret
 // repræsentation af ikke-vestlige nationer (se GUARANTEED) for at teste hybrid-
@@ -334,11 +375,13 @@ export function generateFictionalRiders({
     const weights = typeWeights[t.value];
     return weightedPick(rng, Object.entries(weights).map(([value, weight]) => ({ value, weight })));
   });
-  for (const [type, min] of Object.entries(ENSURE_MIN_TYPES)) {
+  // Gulvene skaleres til dette kalds count (#3570/S2) — se ENSURE_MIN_TYPES.
+  const minTypes = scaleMinTypes(count);
+  for (const [type, min] of Object.entries(minTypes)) {
     let have = typeSeq.filter((x) => x === type).length;
     for (let i = 0; i < typeSeq.length && have < min; i++) {
       if (typeWeights[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
-      if (typeSeq[i] === type || ENSURE_MIN_TYPES[typeSeq[i]]) continue; // stjæl ikke fra andet gulv
+      if (typeSeq[i] === type || minTypes[typeSeq[i]]) continue; // stjæl ikke fra andet gulv
       typeSeq[i] = type;
       have++;
     }
