@@ -807,38 +807,406 @@ export async function hentFriskPopulation(supabase) {
   };
 }
 
-// ── Backup ──────────────────────────────────────────────────────────────────
+// ── Backup: ÉT skema, ét tabelnavn, én kilde ────────────────────────────────
+/**
+ * B1′ (adversarisk verifikation 10/8): `rollback.sql`, apply-værktøjet og
+ * `skriveplan.json` bar hver sit backup-skema — nøglekolonnen `rider_id` mod `id`,
+ * og to forskellige tabelnavne (`…_20260816` mod `…_2026_08_16`). Der fandtes
+ * INGEN kombination hvor både backuppen og rollbacken kunne køre: med rollback.sql's
+ * skema afbrød værktøjet (`column …_20260816.id does not exist`), og med værktøjets
+ * skema fejlede 3 af 5 sætninger i rollbackens PART B — 100 % af selve UPDATE'en.
+ *
+ * Rettelsen er ikke at rette tre filer i hånden — det var netop sådan de drev fra
+ * hinanden. Dette objekt er kilden: DDL'en, kolonne-listerne værktøjet SELECT'er,
+ * join-nøglerne, og HELE `rollback.sql` genereres af det (`rollbackSQL()`), så
+ * artefakterne ikke KAN være uenige igen.
+ *
+ * DE TO NØGLENAVNE ER MED VILJE FORSKELLIGE — og det var kilden til forvirringen:
+ *   `public.riders`                  har primærnøglen **`id`**
+ *   `public.rider_derived_abilities` har primærnøglen **`rider_id`** (FK → riders.id,
+ *                                    ON DELETE CASCADE)
+ * En backup-tabel arver nøglenavnet fra sin KILDE-tabel. Derfor hedder nøglen `id`
+ * i riders-kopien og `rider_id` i abilities-kopien — aldrig omvendt, og aldrig ens.
+ * Valget af `id` til riders-kopien følger både `riders.id` selv, prod-præcedensen
+ * `riders_type_backfill_snapshot_20260805` og `skriveplan.json`s `kolonner`-liste;
+ * `rollback.sql`s `SELECT id AS rider_id` var den eneste afvigende af de tre.
+ */
+export const BACKUP_SKEMA = Object.freeze({
+  riders: Object.freeze({
+    kilde: "riders",
+    prefix: "riders_3570_backup_",
+    noegle: "id",
+    // Skabelonen er prod-præcedensen `riders_type_backfill_snapshot_20260805` — plus
+    // `base_value`/`market_value` (som præcedensen har og #3570-udkastet udelod).
+    kolonner: Object.freeze([
+      Object.freeze({ navn: "id", sql: "uuid" }),
+      Object.freeze({ navn: "archetype_draw", sql: "jsonb" }),
+      Object.freeze({ navn: "primary_type", sql: "text" }),
+      Object.freeze({ navn: "secondary_type", sql: "text" }),
+      Object.freeze({ navn: "valuation_type", sql: "text" }),
+      Object.freeze({ navn: "base_value", sql: "integer" }),
+      Object.freeze({ navn: "market_value", sql: "integer" }),
+      Object.freeze({ navn: "is_retired", sql: "boolean" }),
+    ]),
+  }),
+  abilities: Object.freeze({
+    kilde: "rider_derived_abilities",
+    prefix: "rider_derived_abilities_3570_backup_",
+    noegle: "rider_id",
+    kolonner: Object.freeze([
+      Object.freeze({ navn: "rider_id", sql: "uuid" }),
+      Object.freeze({ navn: "ability_caps", sql: "jsonb" }),
+      Object.freeze({ navn: "ability_progress", sql: "jsonb" }),
+    ]),
+  }),
+});
+
+/** Kolonne-listen til SELECT/INSERT — uden `captured_at`, som DB'en selv sætter. */
+export const backupKolonner = (del) => BACKUP_SKEMA[del].kolonner.map((k) => k.navn).join(", ");
+
 export const backupTabeller = (suffix) => ({
-  riders: `riders_3570_backup_${suffix}`,
-  abilities: `rider_derived_abilities_3570_backup_${suffix}`,
+  riders: `${BACKUP_SKEMA.riders.prefix}${suffix}`,
+  abilities: `${BACKUP_SKEMA.abilities.prefix}${suffix}`,
 });
 
 /**
- * DDL'en for de to backup-tabeller. Skabelonen er prod-præcedensen
- * `riders_type_backfill_snapshot_20260805` — plus `base_value`/`market_value`
- * (som præcedensen har og #3570-udkastet udelod) og den primærnøgle præcedensen
- * mangler (uden den kan rollback-joinet ramme dubletter).
+ * DDL'en for de to backup-tabeller — genereret ud af `BACKUP_SKEMA`, samme kilde
+ * som `rollbackSQL()` og som værktøjets egne kolonne-lister. Primærnøglen er med
+ * (prod-præcedensen mangler den; uden den kan rollback-joinet ramme dubletter).
  */
 export function backupDDL(suffix) {
   const t = backupTabeller(suffix);
+  const tabel = (navn, def) => `CREATE TABLE IF NOT EXISTS public.${navn} (\n`
+    + def.kolonner.map((k) => `  ${k.navn} ${k.sql}${k.navn === def.noegle ? " PRIMARY KEY" : ""},`).join("\n")
+    + "\n  captured_at timestamptz NOT NULL DEFAULT now()\n);";
   return `-- #3570 backup-tabeller. Kør FØR reparationen, commit for sig.
-CREATE TABLE IF NOT EXISTS public.${t.riders} (
-  id uuid PRIMARY KEY,
-  archetype_draw jsonb,
-  primary_type text,
-  secondary_type text,
-  valuation_type text,
-  base_value integer,
-  market_value integer,
-  is_retired boolean,
-  captured_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS public.${t.abilities} (
-  rider_id uuid PRIMARY KEY,
-  ability_caps jsonb,
-  ability_progress jsonb,
-  captured_at timestamptz NOT NULL DEFAULT now()
-);`;
+${tabel(t.riders, BACKUP_SKEMA.riders)}
+${tabel(t.abilities, BACKUP_SKEMA.abilities)}`;
+}
+
+/**
+ * Det suffiks den checkede-ind kopi af `repair3570Rollback.sql` er genereret med.
+ * Skrivedagen er ikke fastlagt; filen i repoet er en LÆSBAR reference, og
+ * `--print-rollback-sql --backup-suffix=YYYYMMDD` udskriver dagens version.
+ */
+export const KANONISK_BACKUP_SUFFIX = "20260816";
+
+/**
+ * Hele `rollback.sql` — genereret ud af `BACKUP_SKEMA`, så den ikke kan komme i
+ * modstrid med værktøjets egne kolonne-navne (B1′). Den erstatter den håndskrevne
+ * fil, der lå i en session-scratchpad og bar et tredje skema.
+ *
+ * To ting er ændret ud over skemaet (U9 fra verifikationen): filens to
+ * "post-verify"-blokke var `SELECT`s efterfulgt af et UBETINGET `COMMIT` — køres
+ * filen med `psql -f`, committede den uanset tallene. De er nu ægte porte
+ * (`DO $$ … RAISE EXCEPTION`), så en fejlet kontrol afbryder transaktionen.
+ */
+export function rollbackSQL(suffix = KANONISK_BACKUP_SUFFIX) {
+  const t = backupTabeller(suffix);
+  const R = BACKUP_SKEMA.riders, A = BACKUP_SKEMA.abilities;
+  const kopiSelect = (def) => def.kolonner.map((k) => `  ${k.navn},`).join("\n") + "\n  now() AS captured_at";
+  return `-- ═══════════════════════════════════════════════════════════════════════════════
+-- #3570 — BACKUP + ROLLBACK af ryttertype-reparationen
+--
+-- GENERERET FIL — ret den IKKE i hånden.
+--   Kilde: backend/scripts/dev/repair3570Apply.mjs → BACKUP_SKEMA / rollbackSQL()
+--   Gendan:  node scripts/dev/repair3570Apply.mjs --print-rollback-sql [--backup-suffix=YYYYMMDD]
+--   En test i repair3570Apply.test.js fejler hvis filen og generatoren driver fra hinanden.
+--
+-- STATUS: **IKKE KØRT.** Dette er dokumentation, ikke en udført handling.
+--         Hele reparationen er ejer-gated.
+--
+-- SKEMAET (blokker B1′, verifikationen 10/8). Tidligere bar denne fil nøglekolonnen
+-- \`rider_id\` på riders-kopien mens apply-værktøjet brugte \`id\`; der fandtes ingen
+-- kombination hvor begge kunne køre. Nøglenavnet arves nu fra KILDE-tabellen:
+--     public.riders                  → primærnøgle \`id\`
+--     public.rider_derived_abilities → primærnøgle \`rider_id\` (FK → riders.id, CASCADE)
+-- Derfor: to backup-tabeller med FORSKELLIGE nøglenavne, to UPDATEs, én post-verify
+-- der joiner begge. Samme kolonner som prod-præcedensen
+-- \`public.riders_type_backfill_snapshot_20260805\`, plus \`base_value\`/\`market_value\`
+-- og den primærnøgle præcedensen mangler.
+--
+-- Permanent kopi af før-tilstanden: docs/snapshots/3570/ (gzippet).
+--
+-- DATO-SUFFIKS: \`${suffix}\` skal matche den faktiske skrive-dag. Generér filen med
+-- \`--backup-suffix=<dagen>\` i stedet for at søge-erstatte i hånden.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+
+-- ███████████████████████████████████████████████████████████████████████████████
+-- PART A — SIKKERHEDSKOPI.  Køres som sit eget, committede skridt FØR reparationen.
+--          Den eneste virkelig farlige tilstand er "identitet skrevet, ingen kopi".
+--          Committes kopien først, kan den tilstand ikke opstå.
+--
+--          Uden PART A findes der ingen rollback: \`riders.updated_at\` vedligeholdes
+--          IKKE ved UPDATE, og \`rider_derived_ability_history\` gemmer kun
+--          evne-vektoren, ikke lofterne.
+--
+--          Blokken er idempotent: to kørsler giver samme tilstand og overskriver
+--          ikke en eksisterende kopi.
+-- ███████████████████████████████████████████████████████████████████████████████
+
+BEGIN;
+
+-- A0. HÅRD SPÆRRE — en kopi må kun tages af en FØR-tilstand. Er reparationen
+--     allerede (delvis) kørt, er enhver kopi herfra en efter-tilstand, og den ville
+--     være ubrugelig som rollback-kilde. Samme datagrænse som apply-værktøjets
+--     \`DRAW_BASELINE_SPAERRE\`.
+DO $$
+DECLARE n_draw bigint;
+BEGIN
+  IF to_regclass('public.${t.riders}') IS NOT NULL
+     AND (SELECT count(*) FROM public.${t.riders}) > 0 THEN
+    RAISE NOTICE 'public.${t.riders} findes allerede — PART A rører den ikke.';
+    RETURN;
+  END IF;
+  SELECT count(*) INTO n_draw FROM public.riders WHERE archetype_draw IS NOT NULL;
+  IF n_draw > ${DRAW_BASELINE_SPAERRE} THEN
+    RAISE EXCEPTION 'STOP: % ryttere har allerede et archetype_draw. Reparationen er (delvis) kørt — en kopi taget nu er IKKE en rollback-kilde.', n_draw;
+  END IF;
+END
+$$;
+
+-- A1. Identitets-kolonnerne fra public.${R.kilde}. ALLE rækker kopieres (også de
+--     pensionerede) — det er gratis og fjerner enhver kant omkring is_retired.
+CREATE TABLE IF NOT EXISTS public.${t.riders} AS
+SELECT
+${kopiSelect(R)}
+FROM public.${R.kilde};
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = '${t.riders}_pkey') THEN
+    ALTER TABLE public.${t.riders}
+      ADD CONSTRAINT ${t.riders}_pkey PRIMARY KEY (${R.noegle});
+  END IF;
+END
+$$;
+
+-- A2. Loft-kolonnerne fra public.${A.kilde}.
+--     \`ability_progress\` skrives IKKE af reparationen, men kopieres med: et ændret
+--     loft flytter den brøkdel feltet udtrykker.
+CREATE TABLE IF NOT EXISTS public.${t.abilities} AS
+SELECT
+${kopiSelect(A)}
+FROM public.${A.kilde};
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = '${t.abilities}_pkey') THEN
+    ALTER TABLE public.${t.abilities}
+      ADD CONSTRAINT ${t.abilities}_pkey PRIMARY KEY (${A.noegle});
+  END IF;
+END
+$$;
+
+-- A3. POST-VERIFY af kopien — en ÆGTE port. Fejler én kontrol, afbrydes hele
+--     transaktionen, og PART A's CREATE TABLE ruller med tilbage.
+DO $$
+DECLARE k1 bigint; k2 bigint; k3 bigint; k4 bigint; n_b bigint; n_r bigint; n_ba bigint; n_a bigint;
+BEGIN
+  SELECT count(*) INTO n_b  FROM public.${t.riders};
+  SELECT count(*) INTO n_r  FROM public.${R.kilde};
+  SELECT count(*) INTO n_ba FROM public.${t.abilities};
+  SELECT count(*) INTO n_a  FROM public.${A.kilde};
+  SELECT count(*) INTO k1 FROM public.${R.kilde} r
+    LEFT JOIN public.${t.riders} b ON b.${R.noegle} = r.id
+   WHERE b.${R.noegle} IS NULL;
+  SELECT count(*) INTO k2 FROM public.${A.kilde} a
+    LEFT JOIN public.${t.abilities} b ON b.${A.noegle} = a.rider_id
+   WHERE b.${A.noegle} IS NULL;
+  SELECT count(*) INTO k3 FROM public.${R.kilde} r
+    JOIN public.${t.riders} b ON b.${R.noegle} = r.id
+   WHERE r.archetype_draw IS DISTINCT FROM b.archetype_draw
+      OR r.primary_type   IS DISTINCT FROM b.primary_type
+      OR r.secondary_type IS DISTINCT FROM b.secondary_type;
+  SELECT count(*) INTO k4 FROM public.${A.kilde} a
+    JOIN public.${t.abilities} b ON b.${A.noegle} = a.rider_id
+   WHERE a.ability_caps     IS DISTINCT FROM b.ability_caps
+      OR a.ability_progress IS DISTINCT FROM b.ability_progress;
+  RAISE NOTICE 'Kopi: % / % riders, % / % abilities. Kontrol 1-4: %, %, %, %.', n_b, n_r, n_ba, n_a, k1, k2, k3, k4;
+  IF n_b <> n_r OR n_ba <> n_a OR k1 <> 0 OR k2 <> 0 OR k3 <> 0 OR k4 <> 0 THEN
+    RAISE EXCEPTION 'STOP: kopien er ikke komplet (riders %/%, abilities %/%, ktr1-4 %,%,%,%). Reparationen må ikke starte.', n_b, n_r, n_ba, n_a, k1, k2, k3, k4;
+  END IF;
+END
+$$;
+
+COMMIT;
+
+
+-- ███████████████████████████████████████████████████████████████████████████████
+-- PART B — ROLLBACK.  Køres KUN hvis reparationen skal fortrydes.
+-- ███████████████████████████████████████████████████████████████████████████████
+
+-- B0. HÅRD SPÆRRE — PART B må ikke kunne køre uden en gyldig kopi fra FØR
+--     reparationen.
+DO $$
+DECLARE
+  n_riders    bigint;
+  n_abilities bigint;
+  n_draw      bigint;
+  taget       timestamptz;
+BEGIN
+  IF to_regclass('public.${t.riders}') IS NULL
+     OR to_regclass('public.${t.abilities}') IS NULL THEN
+    RAISE EXCEPTION 'STOP: en eller begge #3570-backup-tabeller mangler. Der findes ingen rollback-kilde.';
+  END IF;
+
+  SELECT count(*) INTO n_riders    FROM public.${t.riders};
+  SELECT count(*) INTO n_abilities FROM public.${t.abilities};
+  SELECT min(captured_at) INTO taget FROM public.${t.riders};
+
+  IF n_riders = 0 OR n_abilities = 0 THEN
+    RAISE EXCEPTION 'STOP: backup-tabellerne er tomme (riders=%, abilities=%).', n_riders, n_abilities;
+  END IF;
+
+  -- Er kopien fra FØR eller EFTER reparationen? Et tidsstempel kan ikke afgøre det
+  -- (rollbacken køres på samme dag), men DATA kan: før reparationen har en håndfuld
+  -- levende ryttere et archetype_draw; efter har hele peletonen.
+  SELECT count(*) INTO n_draw FROM public.${t.riders} WHERE archetype_draw IS NOT NULL;
+  IF n_draw > ${DRAW_BASELINE_SPAERRE} THEN
+    RAISE EXCEPTION 'STOP: kopien indeholder % ryttere med archetype_draw. Kopien er taget EFTER skrivningen og er IKKE en rollback-kilde.', n_draw;
+  END IF;
+
+  RAISE NOTICE 'Backup OK: % riders-rækker, % abilities-rækker, % med draw, taget %.', n_riders, n_abilities, n_draw, taget;
+END
+$$;
+
+-- B1. FORHÅNDS-KONTROL — kør og LÆS, før du starter transaktionen i B2.
+SELECT
+  (SELECT count(*) FROM public.${t.riders})                                    AS backup_riders,
+  (SELECT count(*) FROM public.${t.abilities})                                 AS backup_abilities,
+  (SELECT count(*) FROM public.${R.kilde})                                     AS riders_nu,
+  (SELECT count(*) FROM public.${A.kilde})                                     AS abilities_nu,
+  (SELECT count(*) FROM public.${R.kilde} r
+     JOIN public.${t.riders} b ON b.${R.noegle} = r.id)                        AS faelles_riders,
+  (SELECT count(*) FROM public.${A.kilde} a
+     JOIN public.${t.abilities} b ON b.${A.noegle} = a.rider_id)               AS faelles_abilities,
+  (SELECT count(*) FROM public.${R.kilde} r
+     LEFT JOIN public.${t.riders} b ON b.${R.noegle} = r.id
+    WHERE b.${R.noegle} IS NULL)                                               AS nye_ryttere_siden_kopien,
+  -- Slettede ryttere: findes i kopien, men ikke længere i public.${R.kilde}.
+  -- aiTeamTrimHealSweep fjerner overskydende AI-hold løbende (by design, #2187/#2389),
+  -- så dette tal er normalt > 0 og er IKKE en fejl. UPDATE'en rammer dem ikke.
+  (SELECT count(*) FROM public.${t.riders} b
+     LEFT JOIN public.${R.kilde} r ON b.${R.noegle} = r.id
+    WHERE r.id IS NULL)                                                        AS slettede_siden_kopien,
+  (SELECT count(*) FROM public.${R.kilde} r
+     JOIN public.${t.riders} b ON b.${R.noegle} = r.id
+    WHERE r.archetype_draw IS DISTINCT FROM b.archetype_draw
+       OR r.primary_type   IS DISTINCT FROM b.primary_type
+       OR r.secondary_type IS DISTINCT FROM b.secondary_type)                  AS identitet_ramt,
+  (SELECT count(*) FROM public.${A.kilde} a
+     JOIN public.${t.abilities} b ON b.${A.noegle} = a.rider_id
+    WHERE a.ability_caps IS DISTINCT FROM b.ability_caps)                      AS lofter_ramt,
+  (SELECT min(captured_at) FROM public.${t.riders})                            AS kopi_taget;
+
+
+-- B2. SELVE ROLLBACKEN — to UPDATEs i ÉN transaktion.
+--     Idempotent: anden kørsel rammer 0 rækker, fordi IS DISTINCT FROM-filteret
+--     så er tomt.
+BEGIN;
+
+-- B2a. Identiteten tilbage på public.${R.kilde}.
+--      \`valuation_type\`, \`base_value\` og \`market_value\` gendannes IKKE her: de
+--      skrives ikke af reparationen (#3345-frysningen), men de ligger i kopien.
+UPDATE public.${R.kilde} r
+SET archetype_draw = b.archetype_draw,
+    primary_type   = b.primary_type,
+    secondary_type = b.secondary_type
+FROM public.${t.riders} b
+WHERE b.${R.noegle} = r.id
+  AND (   r.archetype_draw IS DISTINCT FROM b.archetype_draw
+       OR r.primary_type   IS DISTINCT FROM b.primary_type
+       OR r.secondary_type IS DISTINCT FROM b.secondary_type);
+
+-- B2b. Lofterne tilbage på public.${A.kilde}.
+UPDATE public.${A.kilde} a
+SET ability_caps     = b.ability_caps,
+    ability_progress = b.ability_progress
+FROM public.${t.abilities} b
+WHERE b.${A.noegle} = a.rider_id
+  AND (   a.ability_caps     IS DISTINCT FROM b.ability_caps
+       OR a.ability_progress IS DISTINCT FROM b.ability_progress);
+
+-- B2c. POST-VERIFY inde i transaktionen — en ÆGTE port. Fejler én af de fem,
+--      afbrydes transaktionen og begge UPDATEs rulles tilbage.
+--      Ryttere der er SLETTET siden kopien indgår ikke i joinet; de kan ikke
+--      gendannes af en UPDATE og er ikke en fejl (se B4 e).
+DO $$
+DECLARE d bigint; p bigint; s bigint; c bigint; pr bigint; n bigint;
+BEGIN
+  SELECT count(*) FILTER (WHERE r.archetype_draw   IS DISTINCT FROM br.archetype_draw),
+         count(*) FILTER (WHERE r.primary_type     IS DISTINCT FROM br.primary_type),
+         count(*) FILTER (WHERE r.secondary_type   IS DISTINCT FROM br.secondary_type),
+         count(*) FILTER (WHERE a.ability_caps     IS DISTINCT FROM ba.ability_caps),
+         count(*) FILTER (WHERE a.ability_progress IS DISTINCT FROM ba.ability_progress),
+         count(*)
+    INTO d, p, s, c, pr, n
+    FROM public.${R.kilde} r
+    JOIN public.${t.riders}    br ON br.${R.noegle} = r.id
+    JOIN public.${A.kilde}     a  ON a.rider_id     = r.id
+    JOIN public.${t.abilities} ba ON ba.${A.noegle} = r.id;
+  RAISE NOTICE 'Rollback kontrolleret på % rækker: draw %, primary %, secondary %, caps %, progress %.', n, d, p, s, c, pr;
+  IF d <> 0 OR p <> 0 OR s <> 0 OR c <> 0 OR pr <> 0 THEN
+    RAISE EXCEPTION 'STOP: rollbacken er ikke komplet (draw %, primary %, secondary %, caps %, progress % af % rækker).', d, p, s, c, pr, n;
+  END IF;
+END
+$$;
+
+COMMIT;
+
+
+-- B3. EFTER-KONTROL — er før-tilstanden genskabt?
+SELECT count(*) FILTER (WHERE archetype_draw IS NOT NULL) AS ryttere_med_draw,
+       count(*)                                           AS levende
+FROM public.${R.kilde} WHERE is_retired = false;
+
+SELECT r.primary_type, count(*),
+       round(100.0 * count(*) / sum(count(*)) OVER (), 1) AS pct
+FROM public.${R.kilde} r
+JOIN public.teams t ON t.id = r.team_id
+WHERE r.is_retired = false AND t.user_id IS NOT NULL
+GROUP BY 1 ORDER BY 2 DESC;
+
+
+-- B4. HVAD DER **IKKE** KAN RULLES TILBAGE
+--
+-- a) ALT DER ER SKET SIDEN SKRIVNINGEN. Nattens sweep (22:00 dansk) genopbygger
+--    \`ability_caps\` fra den PERSISTEREDE type (dailyTrainingEngine.js) og skriver
+--    \`ability_progress\`. Køres rollbacken efter en sweep, ruller den også den nats
+--    ægte træning tilbage for de ramte ryttere. \`riderValueRefresh.js\` skriver
+--    \`base_value\`/\`market_value\`; de ER i kopien, men gendannes ikke af B2a.
+--
+-- b) HANDLINGER SPILLERNE HAR FORETAGET PÅ GRUNDLAG AF DEN NYE IDENTITET.
+--    Auktionsbud, køb, salg, lån, kontrakter, taktik- og træningsvalg,
+--    holdopstillinger. De står ved magt; kun etiketten skifter tilbage.
+--
+-- c) LØBSRESULTATER kørt med de nye lofter. Resultat-tabellerne røres ikke.
+--
+-- d) RYTTERE OPRETTET EFTER KOPIEN (akademi-intake, nye managere, AI-fill).
+--    De findes ikke i kopien og beholder deres egen identitet — hvilket er korrekt
+--    for akademi-ryttere: de har et ÆGTE \`archetype_draw\` fra #3588-stien.
+--
+-- e) RYTTERE DER ER SLETTET mellem kopi og rollback. UPDATE'en rammer dem ikke.
+--    Det sker LØBENDE og by design: \`aiTeamTrimHealSweep\` (cron) fjerner
+--    overskydende AI-hold efterhånden som nye spillere kommer til
+--    (#2187/#2389/#2074) — målt 180 ryttere / 8 AI-hold på 12,5 timer 10/8.
+--    Pensionerede ryttere ER derimod dækket: kopien tager alle rækker uanset
+--    \`is_retired\`.
+--
+-- f) DET SPILLERNE HAR SET. Managerne ville se truppen omdøbt og derefter døbt
+--    tilbage. Det kan ingen SQL fortryde, og det er den reelle grund til at
+--    beslutningen skal træffes én gang.
+--
+-- g) EN ROLLBACK GENÅBNER FEJLEN. Sættes \`archetype_draw\` tilbage til NULL,
+--    genoptager den lukkede løkke type → ability_caps → type.
+
+
+-- B5. OPRYDNING (kør IKKE sammen med rollbacken — vent til beslutningen er endelig)
+--   DROP TABLE IF EXISTS public.${t.riders};
+--   DROP TABLE IF EXISTS public.${t.abilities};
+`;
 }
 
 /**
@@ -853,8 +1221,8 @@ CREATE TABLE IF NOT EXISTS public.${t.abilities} (
 export async function sikreBackup(supabase, { suffix, dryRun, log }) {
   const t = backupTabeller(suffix);
   const kilde = {
-    riders: await selectPaged(supabase, "riders", "id, archetype_draw, primary_type, secondary_type, valuation_type, base_value, market_value, is_retired"),
-    abilities: await selectPaged(supabase, "rider_derived_abilities", "rider_id, ability_caps, ability_progress"),
+    riders: await selectPaged(supabase, BACKUP_SKEMA.riders.kilde, backupKolonner("riders")),
+    abilities: await selectPaged(supabase, BACKUP_SKEMA.abilities.kilde, backupKolonner("abilities")),
   };
 
   const laes = async (tabel, cols) => {
@@ -877,36 +1245,89 @@ export async function sikreBackup(supabase, { suffix, dryRun, log }) {
     return resultat;
   }
 
-  const eksisterendeR = await laes(t.riders, "id, archetype_draw, primary_type, secondary_type, valuation_type, base_value, market_value, is_retired");
-  const eksisterendeA = await laes(t.abilities, "rider_id, ability_caps, ability_progress");
+  const eksisterendeR = await laes(t.riders, backupKolonner("riders"));
+  const eksisterendeA = await laes(t.abilities, backupKolonner("abilities"));
 
-  // Spærre: en ikke-tom kopi må ikke være taget efter en skrivning.
-  const medDraw = eksisterendeR.filter((r) => validDraw(r.archetype_draw)).length;
-  if (eksisterendeR.length > 0 && medDraw > DRAW_BASELINE_SPAERRE) {
+  // ── B4: spærren skal gælde det den påstår ─────────────────────────────────
+  // Den gamle spærre stod KUN på en allerede fyldt tabel (`eksisterendeR.length > 0`),
+  // altså aldrig i sit eget scenarie: efter en halv kørsel er den nye backup-tabel
+  // TOM, så spærren sprang over, værktøjet fyldte kopien fra den halvt skrevne
+  // tilstand og verificerede den mod sig selv (målt: `verificeret: true` på en kopi
+  // hvor 120 ryttere allerede bar et draw). Og det eneste råd spærren gav —
+  // "vælg et nyt --backup-suffix" — pegede lige ind i hullet.
+  //
+  // Spørgsmålet er ikke om KOPIEN har draws, men om DEN LEVENDE DATABASE stadig er
+  // i sin før-tilstand: er den halvt skrevet, kan der ikke laves en gyldig
+  // rollback-kilde af den — uanset hvilket tabelnavn man vælger.
+  const draws = (rk) => rk.filter((r) => validDraw(r.archetype_draw)).length;
+  const raad =
+    "\nEn ny kopi kan IKKE laves nu: databasen bærer allerede en halv reparation, så enhver "
+    + "kopi taget herfra er en efter-tilstand. Brug backup-tabellen fra FØR den afbrudte kørsel "
+    + `(dens eget --backup-suffix) eller det daterede snapshot i ${BASELINE_SNAPSHOT_DIR}. `
+    + "Rul tilbage FØRST, kør derefter forfra.";
+
+  const medDrawKilde = draws(kilde.riders);
+  if (eksisterendeR.length === 0 && medDrawKilde > DRAW_BASELINE_SPAERRE) {
     throw new Error(
-      `STOP: public.${t.riders} indeholder allerede ${medDraw} ryttere med archetype_draw. `
-      + "Kopien er taget EFTER en reparation og duer ikke som rollback-kilde. Vælg et nyt --backup-suffix.",
+      `STOP: public.${BACKUP_SKEMA.riders.kilde} indeholder ${medDrawKilde} ryttere med archetype_draw `
+      + `(før reparationen er tallet ≤ ${DRAW_BASELINE_SPAERRE}). En kopi taget NU ville være taget EFTER `
+      + `en reparation og duer ikke som rollback-kilde.${raad}`,
     );
   }
 
-  if (eksisterendeR.length === 0) {
+  // Spærre: en ikke-tom kopi må ikke være taget efter en skrivning.
+  const medDraw = draws(eksisterendeR);
+  if (eksisterendeR.length > 0 && medDraw > DRAW_BASELINE_SPAERRE) {
+    throw new Error(
+      `STOP: public.${t.riders} indeholder allerede ${medDraw} ryttere med archetype_draw. `
+      + `Kopien er taget EFTER en reparation og duer ikke som rollback-kilde.${raad}`,
+    );
+  }
+
+  // GENBRUG vs. FYLDNING. En kopi vi selv lige har fyldt SKAL være felt-for-felt
+  // identisk med kilden — det er beviset for at INSERT'et landede. En kopi der lå
+  // der i forvejen (genoptagelse efter en afbrudt kørsel, `--fortsaet-delvis`) er
+  // per definition IKKE identisk med den nuværende tilstand: forskellen er præcis
+  // det den afbrudte kørsel nåede at skrive. For den er kravet dækning, ikke lighed
+  // — plus draw-spærren ovenfor, som er det der gør den til en før-tilstand.
+  const genbrugt = { riders: eksisterendeR.length > 0, abilities: eksisterendeA.length > 0 };
+  resultat.genbrugt = genbrugt;
+  if (!genbrugt.riders) {
     log(`  fylder public.${t.riders} (${kilde.riders.length} rækker) …`);
     resultat.indsat.riders = await indsaetBatchet(supabase, t.riders, kilde.riders.map((r) => ({ ...r })));
+  } else {
+    log(`  genbruger eksisterende public.${t.riders} (${eksisterendeR.length} rækker, ${medDraw} med draw) — kopien er fra FØR den afbrudte kørsel.`);
   }
-  if (eksisterendeA.length === 0) {
+  if (!genbrugt.abilities) {
     log(`  fylder public.${t.abilities} (${kilde.abilities.length} rækker) …`);
     resultat.indsat.abilities = await indsaetBatchet(supabase, t.abilities, kilde.abilities.map((r) => ({ ...r })));
+  } else {
+    log(`  genbruger eksisterende public.${t.abilities} (${eksisterendeA.length} rækker).`);
   }
 
   // Verifikation MOD DB, ikke mod det vi troede vi indsatte.
-  const kopiR = await laes(t.riders, "id, archetype_draw, primary_type, secondary_type, valuation_type, base_value, market_value, is_retired");
-  const kopiA = await laes(t.abilities, "rider_id, ability_caps, ability_progress");
-  const kR = new Map(kopiR.map((r) => [r.id, r]));
-  const kA = new Map(kopiA.map((r) => [r.rider_id, r]));
+  const kopiR = await laes(t.riders, backupKolonner("riders"));
+  const kopiA = await laes(t.abilities, backupKolonner("abilities"));
+
+  // B4, andet ben: kør spærren igen på den FÆRDIGE kopi. Kilde-spærren ovenfor
+  // fanger en halvt skrevet database før én eneste INSERT; denne fanger en
+  // skrivning der landede MENS kopien blev fyldt.
+  const medDrawKopi = draws(kopiR);
+  if (medDrawKopi > DRAW_BASELINE_SPAERRE) {
+    throw new Error(
+      `STOP: den færdige kopi public.${t.riders} indeholder ${medDrawKopi} ryttere med archetype_draw. `
+      + `Der er skrevet til ${BACKUP_SKEMA.riders.kilde} mens kopien blev taget — den duer ikke som `
+      + `rollback-kilde. Der er IKKE skrevet én rytter-række af dette værktøj.${raad}`,
+    );
+  }
+
+  const kR = new Map(kopiR.map((r) => [r[BACKUP_SKEMA.riders.noegle], r]));
+  const kA = new Map(kopiA.map((r) => [r[BACKUP_SKEMA.abilities.noegle], r]));
   const mangler = [], afviger = [];
   for (const r of kilde.riders) {
     const c = kR.get(r.id);
     if (!c) { mangler.push(r.id); continue; }
+    if (genbrugt.riders) continue;
     if (c.primary_type !== r.primary_type || c.secondary_type !== r.secondary_type
       || c.valuation_type !== r.valuation_type || c.base_value !== r.base_value
       || c.market_value !== r.market_value
@@ -915,17 +1336,30 @@ export async function sikreBackup(supabase, { suffix, dryRun, log }) {
   for (const r of kilde.abilities) {
     const c = kA.get(r.rider_id);
     if (!c) { mangler.push(r.rider_id); continue; }
+    if (genbrugt.abilities) continue;
     if (JSON.stringify(c.ability_caps ?? null) !== JSON.stringify(r.ability_caps ?? null)
       || JSON.stringify(c.ability_progress ?? null) !== JSON.stringify(r.ability_progress ?? null)) afviger.push(r.rider_id);
   }
   resultat.kopi = { riders: kopiR.length, abilities: kopiA.length };
   resultat.mangler = mangler.length;
   resultat.afviger = afviger.length;
-  if (kopiR.length !== kilde.riders.length || kopiA.length !== kilde.abilities.length || mangler.length || afviger.length) {
+
+  // Rækketal: en nyfyldt kopi skal matche kilden eksakt; en genbrugt må gerne have
+  // FLERE rækker (ryttere der er slettet siden kopien blev taget — se B5), men
+  // aldrig færre end den population den skal kunne rulle tilbage.
+  const forFaa = (kopi, kilde_n, erGenbrugt) => (erGenbrugt ? kopi < kilde_n : kopi !== kilde_n);
+  if (forFaa(kopiR.length, kilde.riders.length, genbrugt.riders)
+    || forFaa(kopiA.length, kilde.abilities.length, genbrugt.abilities)
+    || mangler.length || afviger.length) {
     throw new Error(
       `STOP: backup ikke verificeret. riders ${kopiR.length}/${kilde.riders.length}, `
       + `abilities ${kopiA.length}/${kilde.abilities.length}, manglende ${mangler.length}, afvigende ${afviger.length}. `
-      + "Der er IKKE skrevet én rytter-række.",
+      + "Der er IKKE skrevet én rytter-række.\n"
+      + (mangler.length
+        ? `${mangler.length} nuværende ryttere findes IKKE i kopien — de kan ikke rulles tilbage. `
+          + "Er kopien ufuldstændig (en INSERT-batch fejlede midtvejs), skal tabellen TØMMES, ikke fyldes videre: "
+          + `DELETE FROM public.${t.riders}; DELETE FROM public.${t.abilities}; og kør igen.`
+        : "Kopien afviger fra kilden — tøm de to tabeller og kør igen."),
     );
   }
   resultat.verificeret = true;
@@ -999,6 +1433,19 @@ export async function skrivLofter(supabase, poster, { concurrency = 8, log } = {
 
 // ── Post-verify ─────────────────────────────────────────────────────────────
 /**
+ * Loft over hvor mange ryttere der må forsvinde under én kørsel, før det holder op
+ * med at være normal drift. `aiTeamTrimHealSweep` fjerner ét AI-hold ad gangen —
+ * 12-24 ryttere pr. byge, målt 180 på 12,5 timer (10/8) — og skrivevinduet er
+ * 90-150 s, så realistisk 0-24. Gulvet på 25 ligger lige over den største
+ * observerede byge; procenten er katastrofe-detektoren ved prod-skala
+ * (5 % af 8.193 = 410 ryttere ≈ 17 AI-hold på under tre minutter).
+ */
+export const FORSVUNDNE_GRAENSE_PCT = 5;
+export const FORSVUNDNE_GRAENSE_MIN = 25;
+export const forsvundneGraense = (n) =>
+  Math.max(FORSVUNDNE_GRAENSE_MIN, Math.ceil((FORSVUNDNE_GRAENSE_PCT / 100) * n));
+
+/**
  * Læser tilbage fra DB og bekræfter fem invarianter. Kaster ved enhver afvigelse.
  *   (a) alle skrevne ryttere har et gyldigt `archetype_draw`
  *   (b) `primary_type` == draw'ets primær — kontrolleret gennem produktionens
@@ -1006,6 +1453,29 @@ export async function skrivLofter(supabase, poster, { concurrency = 8, log } = {
  *   (c) `ability_caps` == `buildCapsForRider` med produktionens kaldform
  *   (d) 0 lofter under rytterens nuværende evne (gulv-garantien)
  *   (e) `valuation_type` uændret for alle (#3345-frysningen må ikke røres)
+ *
+ * B5 — SLETTEDE RYTTERE ER FORVENTEDE, IKKE FEJL.
+ * `aiTeamTrimHealSweep` (cron, `backend/cron.js`, #2187/#2389/#2074) fjerner
+ * overskydende AI-hold og deres ryttere mens vi arbejder — by design, 180 ryttere
+ * på 12,5 timer den 10/8. Skrivevinduet er 90-150 s, så en byge midt i en kørsel
+ * er sandsynlig, og den gamle port kastede på den (målt: `manglerRaekke 5` på
+ * 8.061 korrekt skrevne rækker).
+ *
+ * SÅDAN SKELNES DE TO — og hvorfor skellet er skarpt, ikke et skøn:
+ *   * En SLETNING fjerner rækken. `riders`-opslaget er et rent `id IN (…)` uden
+ *     andre filtre, så "ikke i svaret" == "rækken findes ikke". Det bekræftes med
+ *     et SELVSTÆNDIGT eksistens-opslag (`select id … in id`), så et paginerings-
+ *     eller projektions-uheld i det brede opslag ikke kan maskere sig som sletning.
+ *     Kommer rytteren tilbage på anden forespørgsel, er det IKKE en sletning →
+ *     hård fejl (`manglerRaekke`).
+ *   * En FEJLET SKRIVNING sletter aldrig noget. Rækken står der stadig med sine
+ *     gamle værdier og fanges af (a)-(e): `udenDraw`, `typeMismatch`, `capsMismatch`.
+ *     Den kan derfor ikke gemme sig i den forventede kategori.
+ *   * Rytteren findes, men abilities-rækken mangler: `rider_derived_abilities.rider_id`
+ *     er FK → `riders.id` ON DELETE CASCADE, så den række kan ikke forsvinde af sig
+ *     selv mens rytteren lever → hård fejl (`manglerAbilitiesRaekke`).
+ *   * Og loftet: forsvinder mere end `FORSVUNDNE_GRAENSE_PCT` af scopet, er det ikke
+ *     trim-sweepen længere → hård fejl.
  */
 export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, seasonNumber }) {
   const scope = plan.poster.filter((p) => p.skrives);
@@ -1017,11 +1487,42 @@ export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, s
   const rById = new Map(riders.map((r) => [r.id, r]));
   const aById = new Map(ab.map((a) => [a.rider_id, a]));
 
-  const fejl = { manglerRaekke: [], udenDraw: [], typeMismatch: [], capsMismatch: [], gulvBrud: [], valuationAendret: [], traenetUnderKoerslen: [] };
+  // Forventede hændelser — de kaster IKKE, men rapporteres.
+  const forventet = { forsvundetUnderKoerslen: [], traenetUnderKoerslen: [] };
+  const fejl = { manglerRaekke: [], manglerAbilitiesRaekke: [], udenDraw: [], typeMismatch: [], capsMismatch: [], gulvBrud: [], valuationAendret: [], forsvundneOverGraense: [] };
+
+  // Trin 1: hvem manglede i det brede opslag? Bekræft med et selvstændigt
+  // eksistens-opslag før nogen kaldes "slettet".
+  const uden_r = scope.filter((p) => !rById.has(p.rider_id)).map((p) => p.rider_id);
+  const findesStadig = uden_r.length
+    ? new Set((await selectIn(supabase, "riders", "id", "id", uden_r)).map((r) => r.id))
+    : new Set();
+  const slettet = new Set(uden_r.filter((id) => !findesStadig.has(id)));
+  for (const id of uden_r) {
+    if (slettet.has(id)) {
+      const p = scope.find((x) => x.rider_id === id);
+      forventet.forsvundetUnderKoerslen.push({ rider_id: id, navn: navnAf(p.row ?? {}), ejer: p.row?.owner_kind ?? null, hold: p.row?.manager_display_name ?? null });
+    } else {
+      // Rækken kom tilbage på anden forespørgsel — så var den der hele tiden, og
+      // det brede opslag løj. Det er en læsefejl, ikke en sletning.
+      fejl.manglerRaekke.push(id);
+    }
+  }
+  const graense = forsvundneGraense(scope.length);
+  if (forventet.forsvundetUnderKoerslen.length > graense) {
+    fejl.forsvundneOverGraense.push(
+      `${forventet.forsvundetUnderKoerslen.length} af ${scope.length} ryttere forsvandt under kørslen `
+      + `(grænse ${graense}). Det er for mange til at være AI-hold-trimmen — undersøg FØR du stoler på skrivningen.`,
+    );
+  }
+
   for (const p of scope) {
     const r = rById.get(p.rider_id);
     const a = aById.get(p.rider_id);
-    if (!r || !a) { fejl.manglerRaekke.push(p.rider_id); continue; }
+    if (!r) continue;                                    // afgjort i trin 1
+    // Rytteren lever, men abilities-rækken er væk. FK'en er ON DELETE CASCADE, så
+    // det kan ikke skyldes en sletning — noget andet har fjernet den.
+    if (!a) { fejl.manglerAbilitiesRaekke.push(p.rider_id); continue; }
 
     if (!validDraw(r.archetype_draw)) { fejl.udenDraw.push(p.rider_id); continue; }
 
@@ -1035,10 +1536,10 @@ export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, s
     }
 
     if (capsSkrevet.has(p.rider_id)) {
-      const forventet = buildCapsForRider(friskeEvner, { potentiale: r.potentiale, age: alder }, r.archetype_draw.primary, r.secondary_type);
-      if (!sameCaps(a.ability_caps, forventet)) {
+      const forventetCaps = buildCapsForRider(friskeEvner, { potentiale: r.potentiale, age: alder }, r.archetype_draw.primary, r.secondary_type);
+      if (!sameCaps(a.ability_caps, forventetCaps)) {
         const trænet = VISIBLE_ABILITIES.some((k) => Number(friskeEvner[k] ?? 0) !== Number(p.abilities[k] ?? 0));
-        (trænet ? fejl.traenetUnderKoerslen : fejl.capsMismatch).push(p.rider_id);
+        (trænet ? forventet.traenetUnderKoerslen : fejl.capsMismatch).push(p.rider_id);
       }
     }
     for (const k of VISIBLE_ABILITIES) {
@@ -1051,10 +1552,20 @@ export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, s
   }
 
   const antal = Object.fromEntries(Object.entries(fejl).map(([k, v]) => [k, v.length]));
+  const forventetAntal = Object.fromEntries(Object.entries(forventet).map(([k, v]) => [k, v.length]));
   const samlet = Object.values(antal).reduce((a, b) => a + b, 0);
-  const rapport = { kontrolleret: scope.length, capsKontrolleret: capsSkrevet.size, antal, eksempler: Object.fromEntries(Object.entries(fejl).map(([k, v]) => [k, v.slice(0, 5)])) };
+  const rapport = {
+    // Slettede ryttere kan ikke kontrolleres — de tælles ikke med som kontrollerede.
+    kontrolleret: scope.length - forventet.forsvundetUnderKoerslen.length,
+    iScope: scope.length,
+    capsKontrolleret: capsSkrevet.size,
+    antal,
+    forventet: forventetAntal,
+    forsvundne: forventet.forsvundetUnderKoerslen.slice(0, 25),
+    eksempler: Object.fromEntries(Object.entries(fejl).map(([k, v]) => [k, v.slice(0, 5)])),
+  };
   if (samlet > 0) {
-    const err = new Error(`POST-VERIFY FEJLEDE: ${JSON.stringify(antal)}. Se rollback.sql / backup-tabellerne.`);
+    const err = new Error(`POST-VERIFY FEJLEDE: ${JSON.stringify(antal)}. Se repair3570Rollback.sql / backup-tabellerne.`);
     err.rapport = rapport;
     throw err;
   }
@@ -1223,6 +1734,13 @@ export async function runRepair3570(supabase, options = {}) {
   log("── 8/8 Post-verify ──");
   ud.postVerify = await postVerify(supabase, plan, { skrevneCaps: capsScope, foerValuation, seasonNumber: frisk.seasonNumber });
   log(`  ✅ ${ud.postVerify.kontrolleret} ryttere kontrolleret · 0 afvigelser`);
+  if (ud.postVerify.forventet.forsvundetUnderKoerslen) {
+    log(`  ℹ ${ud.postVerify.forventet.forsvundetUnderKoerslen} ryttere blev SLETTET under kørslen (AI-hold-trim, forventet — ikke en fejl):`);
+    for (const f of ud.postVerify.forsvundne.slice(0, 5)) log(`     ${f.navn} (${f.ejer}${f.hold ? `, ${f.hold}` : ""})`);
+  }
+  if (ud.postVerify.forventet.traenetUnderKoerslen) {
+    log(`  ℹ ${ud.postVerify.forventet.traenetUnderKoerslen} ryttere trænede under kørslen (forventet)`);
+  }
 
   ud.afsluttet = new Date().toISOString();
   rapportér(ud, plan, log);
@@ -1265,6 +1783,10 @@ function rapportér(ud, plan, log) {
     log("");
     log(`Backup: public.${ud.backup.tabeller.riders} (${ud.backup.kopi.riders}) + public.${ud.backup.tabeller.abilities} (${ud.backup.kopi.abilities}) — verificeret før skrivning.`);
     log(`Post-verify: ${ud.postVerify.kontrolleret} ryttere · 0 afvigelser på alle fem invarianter.`);
+    const fv = ud.postVerify.forventet;
+    if (fv.forsvundetUnderKoerslen || fv.traenetUnderKoerslen) {
+      log(`Forventede hændelser undervejs (ikke fejl): ${fv.forsvundetUnderKoerslen} ryttere slettet af AI-hold-trimmen · ${fv.traenetUnderKoerslen} trænede.`);
+    }
   } else if (skrev) {
     log("");
     log("Der var 0 rækker at skrive — hverken backup, skrivning eller post-verify blev nødvendig.");
@@ -1299,6 +1821,7 @@ export function parseArgs(argv) {
     concurrency: Number(val("--concurrency", "8")),
     ud: val("--ud", null),
     printBackupSql: has("--print-backup-sql"),
+    printRollbackSql: has("--print-rollback-sql"),
   };
 }
 
@@ -1324,6 +1847,11 @@ FLAG
   --concurrency=<n>          Parallelle loft-opdateringer (default 8).
   --ud=<fil.json>            Skriv hele resultat-objektet (inkl. fulde diff-lister) hertil.
   --print-backup-sql         Udskriv DDL'en for de to backup-tabeller og stop.
+  --print-rollback-sql       Udskriv HELE backup+rollback-SQL'en (PART A + PART B) og stop.
+                             Samme kilde som DDL'en og som værktøjets egne kolonne-navne,
+                             så de tre artefakter ikke kan komme i modstrid (blokker B1′).
+                             Den checkede-ind kopi ligger i scripts/dev/repair3570Rollback.sql;
+                             regenerér den med --backup-suffix=<skrivedagen>.
   --hjaelp                   Denne tekst.
 
 REKKEFØLGE (uændret uanset flag): selvtest → frisk snapshot → plan → diff mod 10/8 →
@@ -1342,6 +1870,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.hjaelp) { console.log(HJAELP); return; }
   if (args.printBackupSql) { console.log(backupDDL(args.backupSuffix || cphDateStamp())); return; }
+  if (args.printRollbackSql) { process.stdout.write(rollbackSQL(args.backupSuffix || KANONISK_BACKUP_SUFFIX)); return; }
 
   if (args.selvtest) {
     const res = runSelvtest({ dir: args.baselineDir });

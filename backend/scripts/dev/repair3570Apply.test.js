@@ -16,10 +16,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import {
   runRepair3570, buildPlan, runSelvtest, bevisIdempotens, diffModBaseline,
   parseArgs, backupDDL, backupTabeller, cphDateStamp, quotasFromPct, solveAssignment,
-  recoverBirthArchetype, segmentOf, postVerify, DRYRUN_FACIT, MAAL,
+  recoverBirthArchetype, segmentOf, postVerify, sikreBackup, rollbackSQL,
+  DRYRUN_FACIT, MAAL, BACKUP_SKEMA, KANONISK_BACKUP_SUFFIX, FORSVUNDNE_GRAENSE_MIN,
 } from "./repair3570Apply.mjs";
 import { STAT_KEYS } from "../../lib/fictionalRiderGenerator.js";
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
@@ -27,9 +32,59 @@ import { RIDER_TYPE_KEYS } from "../../lib/riderTypes.js";
 import { buildCapsForRider } from "../../lib/riderProgression.js";
 
 const STILLE = () => {};
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// ── U5: mocken håndhæver KOLONNENAVNE ───────────────────────────────────────
+// Den gamle mock kastede `cols` væk (`select: () => selectBuilder()`) og lod insert
+// skubbe vilkårlige nøgler ind. De 30 tests kunne derfor STRUKTURELT ikke fange et
+// forkert kolonnenavn — præcis blokker B1′'s defekt-klasse, hvor rollback-filen
+// oprettede backup-tabellen med nøglen `rider_id` mens værktøjet læste `id`.
+//
+// Skemaerne kommer IKKE fra værktøjets adgangs-kode (så ville porten være en
+// tautologi), men fra de to uafhængige kilder der bestemmer virkeligheden:
+//   * prod-tabellerne: katalog-opslaget mod prod 10/8 (information_schema),
+//   * backup-tabellerne: DDL'en der faktisk opretter dem — parset som tekst.
+const PROD_SKEMA = {
+  seasons: ["number", "status", "start_date", "end_date", "race_days_completed", "race_days_total"],
+  app_config: ["key", "value"],
+  teams: ["id", "name", "division", "is_ai", "is_test_account", "is_frozen", "user_id"],
+  users: ["id", "username"],
+  riders: [
+    "id", "firstname", "lastname", "birthdate", "height", "weight", "potentiale",
+    "archetype_draw", "primary_type", "secondary_type", "valuation_type", "team_id",
+    "pending_team_id", "base_value", "market_value", "current_production_value", "salary",
+    "is_academy", "is_retired", "created_at", "updated_at", ...STAT_KEYS,
+  ],
+  rider_derived_abilities: ["rider_id", "ability_caps", "ability_progress", ...VISIBLE_ABILITIES],
+};
+
+/** Læs kolonnenavnene ud af en CREATE TABLE-DDL — tekstligt, uden at spørge koden. */
+export function skemaFraDDL(ddl) {
+  const ud = {};
+  const re = /CREATE TABLE IF NOT EXISTS public\.(\w+)\s*\(([\s\S]*?)\n\);/g;
+  let m;
+  while ((m = re.exec(ddl)) !== null) {
+    ud[m[1]] = m[2].split("\n").map((l) => l.trim().replace(/,$/, "")).filter(Boolean)
+      .map((l) => l.split(/\s+/)[0]);
+  }
+  return ud;
+}
 
 // ── Mock-supabase med ægte in-memory-tilstand ───────────────────────────────
-function makeDb({ riders, abilities, ekstraTabeller = {} } = {}) {
+function makeDb({ riders, abilities, ekstraTabeller = {}, skema = {} } = {}) {
+  const kolonner = { ...PROD_SKEMA, ...skema };
+  const ukendtKolonne = (table, col) => ({ message: `column ${table}.${col} does not exist` });
+  /** @returns {{cols:string[]}|{error:object}} */
+  const vaelgKolonner = (table, cols) => {
+    const skema_t = kolonner[table];
+    if (!skema_t) return { cols: null };                 // ukendt tabel → håndteres af rows()
+    if (cols == null || String(cols).trim() === "*") return { cols: [...skema_t] };
+    const liste = String(cols).split(",").map((s) => s.trim()).filter(Boolean);
+    const ukendt = liste.find((c) => !skema_t.includes(c));
+    if (ukendt) return { error: ukendtKolonne(table, ukendt) };
+    return { cols: liste };
+  };
+  const projicér = (row, cols) => (cols ? Object.fromEntries(cols.map((c) => [c, row[c]])) : { ...row });
   const tables = {
     seasons: [{ number: 2, status: "active", start_date: "2026-07-27", end_date: null, race_days_completed: 14, race_days_total: 28 }],
     app_config: [{ key: "race_day_engine_enabled", value: "off" }],
@@ -55,27 +110,56 @@ function makeDb({ riders, abilities, ekstraTabeller = {} } = {}) {
 
   function from(table) {
     const rows = () => tables[table];
-    const selectBuilder = () => ({
-      range(a, b) {
-        if (fejl.select?.table === table) return Promise.resolve({ data: null, error: { message: fejl.select.message } });
-        if (!rows()) return Promise.resolve({ data: null, error: { message: `relation "public.${table}" does not exist` } });
-        return Promise.resolve({ data: rows().slice(a, b + 1).map(clone), error: null });
-      },
-      in(col, ids) {
-        if (fejl.select?.table === table) return Promise.resolve({ data: null, error: { message: fejl.select.message } });
-        if (!rows()) return Promise.resolve({ data: null, error: { message: `relation "public.${table}" does not exist` } });
-        const s = new Set(ids);
-        return Promise.resolve({ data: rows().filter((r) => s.has(r[col])).map(clone), error: null });
-      },
-      eq(col, val) {
-        const b = selectBuilder();
-        const base = rows() ?? [];
-        return { ...b, maybeSingle: () => Promise.resolve({ data: clone(base.find((r) => r[col] === val) ?? null), error: null }) };
-      },
-    });
+    const findes = () => !!rows();
+    const relationsFejl = () => ({ data: null, error: { message: `relation "public.${table}" does not exist` } });
+    const filterFejl = (col) => (kolonner[table] && !kolonner[table].includes(col)
+      ? { data: null, error: ukendtKolonne(table, col) } : null);
 
-    const applyUpdate = (patch, matcher) => {
+    const selectBuilder = (cols) => {
+      const valgt = vaelgKolonner(table, cols);
+      const kolonneFejl = valgt.error ? { data: null, error: valgt.error } : null;
+      return {
+        range(a, b) {
+          if (fejl.select?.table === table) return Promise.resolve({ data: null, error: { message: fejl.select.message } });
+          if (!findes()) return Promise.resolve(relationsFejl());
+          if (kolonneFejl) return Promise.resolve(kolonneFejl);
+          return Promise.resolve({ data: rows().slice(a, b + 1).map((r) => projicér(clone(r), valgt.cols)), error: null });
+        },
+        in(col, ids) {
+          if (fejl.select?.table === table) return Promise.resolve({ data: null, error: { message: fejl.select.message } });
+          if (!findes()) return Promise.resolve(relationsFejl());
+          if (kolonneFejl) return Promise.resolve(kolonneFejl);
+          const ff = filterFejl(col);
+          if (ff) return Promise.resolve(ff);
+          const s = new Set(ids);
+          return Promise.resolve({ data: rows().filter((r) => s.has(r[col])).map((r) => projicér(clone(r), valgt.cols)), error: null });
+        },
+        eq(col, val) {
+          const b = selectBuilder(cols);
+          const base = rows() ?? [];
+          return {
+            ...b,
+            maybeSingle: () => {
+              if (kolonneFejl) return Promise.resolve(kolonneFejl);
+              const ff = filterFejl(col);
+              if (ff) return Promise.resolve(ff);
+              const fundet = base.find((r) => r[col] === val) ?? null;
+              return Promise.resolve({ data: fundet ? projicér(clone(fundet), valgt.cols) : null, error: null });
+            },
+          };
+        },
+      };
+    };
+
+    const ukendtIRaekke = (row) => (kolonner[table] ? Object.keys(row).find((k) => !kolonner[table].includes(k)) : null);
+
+    const applyUpdate = (patch, matcher, filterCol) => {
       if (fejl.update?.table === table) return { error: { message: fejl.update.message } };
+      if (!findes()) return { error: { message: `relation "public.${table}" does not exist` } };
+      const ff = filterFejl(filterCol);
+      if (ff) return { error: ff.error };
+      const ukendt = ukendtIRaekke(patch);
+      if (ukendt) return { error: ukendtKolonne(table, ukendt) };
       const target = (rows() ?? []).filter(matcher);
       const effektiv = saboteur ? saboteur(table, patch, target) ?? patch : patch;
       for (const r of target) Object.assign(r, clone(effektiv));
@@ -84,10 +168,14 @@ function makeDb({ riders, abilities, ekstraTabeller = {} } = {}) {
     };
 
     return {
-      select: () => selectBuilder(),
+      select: (cols) => selectBuilder(cols),
       insert(newRows) {
         if (fejl.insert?.table === table) return Promise.resolve({ error: { message: fejl.insert.message } });
         if (!tables[table]) return Promise.resolve({ error: { message: `relation "public.${table}" does not exist` } });
+        for (const r of newRows) {
+          const ukendt = ukendtIRaekke(r);
+          if (ukendt) return Promise.resolve({ error: ukendtKolonne(table, ukendt) });
+        }
         const list = dropInsert?.table === table ? newRows.slice(0, Math.max(0, newRows.length - dropInsert.drop)) : newRows;
         tables[table].push(...list.map(clone));
         writes.inserts.push({ table, n: list.length });
@@ -95,18 +183,31 @@ function makeDb({ riders, abilities, ekstraTabeller = {} } = {}) {
       },
       update(patch) {
         return {
-          in: (col, ids) => Promise.resolve(applyUpdate(patch, (r) => ids.includes(r[col]))),
-          eq: (col, val) => Promise.resolve(applyUpdate(patch, (r) => r[col] === val)),
+          in: (col, ids) => Promise.resolve(applyUpdate(patch, (r) => ids.includes(r[col]), col)),
+          eq: (col, val) => Promise.resolve(applyUpdate(patch, (r) => r[col] === val, col)),
+        };
+      },
+      delete() {
+        // Prod sletter ryttere mens vi arbejder (aiTeamTrimHealSweep, blokker B5).
+        return {
+          in: (col, ids) => { const s = new Set(ids); tables[table] = rows().filter((r) => !s.has(r[col])); return Promise.resolve({ error: null }); },
+          eq: (col, val) => { tables[table] = rows().filter((r) => r[col] !== val); return Promise.resolve({ error: null }); },
         };
       },
     };
   }
 
   return {
-    from, tables, writes,
+    from, tables, writes, kolonner,
     saetFejl(f) { Object.assign(fejl, f); },
     saetSaboteur(fn) { saboteur = fn; },
     saetDropInsert(d) { dropInsert = d; },
+    /** Slet ryttere som prod gør det (AI-hold-trim): rækken forsvinder helt. */
+    sletRyttere(ids) {
+      const s = new Set(ids);
+      tables.riders = tables.riders.filter((r) => !s.has(r.id));
+      tables.rider_derived_abilities = tables.rider_derived_abilities.filter((a) => !s.has(a.rider_id));
+    },
     ryttereOpdateret: () => writes.updates.filter((u) => u.table === "riders").reduce((a, u) => a + u.n, 0),
     lofterOpdateret: () => writes.updates.filter((u) => u.table === "rider_derived_abilities").reduce((a, u) => a + u.n, 0),
   };
@@ -162,12 +263,20 @@ function tommeBackupTabeller(suffix) {
 }
 
 const SUFFIX = "20260816";
+/**
+ * Backup-tabellernes skema i mocken kommer fra DDL-TEKSTEN — den samme streng
+ * operatøren kører i prod for at oprette dem. Havde værktøjet læst en kolonne
+ * DDL'en ikke opretter (B1′), ville PostgREST svare `column … does not exist`,
+ * og det gør mocken nu også.
+ */
+const BACKUP_SKEMA_FRA_DDL = skemaFraDDL(backupDDL(SUFFIX));
+
 const APPLY = { apply: true, ejerBekraeftet: true, backupSuffix: SUFFIX, log: STILLE, ingenBaseline: true };
 const DRY = { backupSuffix: SUFFIX, log: STILLE, ingenBaseline: true };
 
 function nyDb(opts = {}) {
   const { riders, abilities } = makeFixture(opts);
-  return makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX) });
+  return makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX), skema: BACKUP_SKEMA_FRA_DDL });
 }
 
 // ── 1. Dry-run skriver intet ────────────────────────────────────────────────
@@ -401,23 +510,31 @@ test("NEGATIV: post-verify fanger en ændret valuation_type", async () => {
   );
 });
 
-test("postVerify kaldt direkte fanger en manglende række", async () => {
+test("postVerify kaldt direkte: uskreven rytter fejler, forsvundet rytter gør ikke (B5)", async () => {
   const db = nyDb();
   const res = await runRepair3570(db, DRY);
   assert.equal(res.tilstand, "DRY-RUN");
-  // Ingen skrivning har fundet sted → post-verify mod samme scope skal fejle
-  // på ALT (ingen har et draw endnu). Det er den positive kontrol af at porten
-  // overhovedet kan se forskel.
-  const plan = buildPlan(
-    (await import("./repair3570Apply.mjs")).abilitiesOf ? [] : [],
-    { seasonNumber: 2 },
-  );
-  assert.equal(plan.poster.length, 0);
+
+  // (a) Ingen skrivning har fundet sted → rytteren FINDES, men bærer intet draw.
+  //     Det er en fejlet skrivning, og porten skal fyre. Den positive kontrol af
+  //     at porten overhovedet kan se forskel.
+  const levende = db.tables.riders.filter((r) => !r.is_retired).slice(0, 4);
   await assert.rejects(
-    () => postVerify(db, { poster: [{ rider_id: "findes-ikke", skrives: true, abilities: {} }] },
-      { skrevneCaps: [], foerValuation: new Map(), seasonNumber: 2 }),
-    /POST-VERIFY FEJLEDE/,
+    () => postVerify(db, { poster: levende.map((r) => ({ rider_id: r.id, skrives: true, abilities: {}, row: r })) },
+      { skrevneCaps: [], foerValuation: new Map(levende.map((r) => [r.id, r.valuation_type])), seasonNumber: 2 }),
+    (err) => {
+      assert.match(err.message, /POST-VERIFY FEJLEDE/);
+      assert.equal(err.rapport.antal.udenDraw, 4);
+      return true;
+    },
   );
+
+  // (b) En rytter der IKKE findes er slettet — forventet, ingen fejl.
+  const ud = await postVerify(db, { poster: [{ rider_id: "findes-ikke", skrives: true, abilities: {}, row: {} }] },
+    { skrevneCaps: [], foerValuation: new Map(), seasonNumber: 2 });
+  assert.equal(ud.bestaaet, true);
+  assert.equal(ud.forventet.forsvundetUnderKoerslen, 1);
+  assert.equal(ud.kontrolleret, 0);
 });
 
 // ── 6. --lofter-varianten (dry-runnets beslutning 2) ────────────────────────
@@ -443,15 +560,69 @@ test("--lofter=menneske skriver kun lofter for menneske-ejede hold", async () =>
 });
 
 // ── 7. Delvis-kørsel-spærren ────────────────────────────────────────────────
+/** Kopien som den så ud FØR den afbrudte kørsel: ingen har et draw endnu. */
+function foerKoerselBackup(suffix, n) {
+  const t = backupTabeller(suffix);
+  const { riders, abilities } = makeFixture({ n, medDraw: 0 });
+  return {
+    [t.riders]: riders.map((r) => ({
+      id: r.id, archetype_draw: null, primary_type: r.primary_type, secondary_type: r.secondary_type,
+      valuation_type: r.valuation_type, base_value: r.base_value, market_value: r.market_value, is_retired: r.is_retired,
+    })),
+    [t.abilities]: abilities.map((a) => ({ rider_id: a.rider_id, ability_caps: a.ability_caps, ability_progress: a.ability_progress })),
+  };
+}
+
 test("en afbrudt kørsel (nogle har draw, ikke alle) kræver --fortsaet-delvis", async () => {
   const { riders, abilities } = makeFixture({ n: 80, medDraw: 60 });
-  const db = makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX) });
+  const db = makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX), skema: BACKUP_SKEMA_FRA_DDL });
   await assert.rejects(() => runRepair3570(db, APPLY), /ligner en afbrudt kørsel/);
   assert.equal(db.ryttereOpdateret(), 0);
+});
 
-  const db2 = makeDb({ riders: JSON.parse(JSON.stringify(riders)), abilities: JSON.parse(JSON.stringify(abilities)), ekstraTabeller: tommeBackupTabeller(SUFFIX) });
-  const res = await runRepair3570(db2, { ...APPLY, fortsaetDelvis: true });
-  assert.ok(res.skrevet.identitet > 0);
+test("B4 NEGATIV: --fortsaet-delvis må IKKE lave en frisk kopi af en halvt skrevet database", async () => {
+  // Præcis blokkerens eget scenarie: 60 af 80 bærer et draw, backup-tabellen er TOM.
+  // Den gamle spærre stod kun på en allerede fyldt tabel og sprang derfor over her —
+  // værktøjet fyldte kopien fra efter-tilstanden og kaldte den `verificeret: true`.
+  const { riders, abilities } = makeFixture({ n: 80, medDraw: 60 });
+  const db = makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX), skema: BACKUP_SKEMA_FRA_DDL });
+  await assert.rejects(
+    () => runRepair3570(db, { ...APPLY, fortsaetDelvis: true }),
+    (err) => {
+      assert.match(err.message, /duer ikke som rollback-kilde/);
+      assert.match(err.message, /Brug backup-tabellen fra FØR den afbrudte kørsel/);
+      assert.doesNotMatch(err.message, /Vælg et nyt --backup-suffix/, "rådet der pegede ind i hullet er væk");
+      return true;
+    },
+  );
+  assert.equal(db.ryttereOpdateret(), 0, "ingen rytter-række rørt");
+  assert.equal(db.tables[backupTabeller(SUFFIX).riders].length, 0, "kopien blev ikke fyldt fra efter-tilstanden");
+});
+
+test("B4: sikreBackup returnerer IKKE verificeret på en kopi taget efter en halv kørsel", async () => {
+  const { riders, abilities } = makeFixture({ n: 80, medDraw: 60 });
+  const db = makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX), skema: BACKUP_SKEMA_FRA_DDL });
+  await assert.rejects(
+    () => sikreBackup(db, { suffix: SUFFIX, dryRun: false, log: STILLE }),
+    /indeholder 60 ryttere med archetype_draw/,
+  );
+});
+
+test("B4: genoptagelse MED en gyldig før-kopi går igennem og genbruger den", async () => {
+  const { riders, abilities } = makeFixture({ n: 80, medDraw: 60 });
+  const db = makeDb({
+    riders, abilities,
+    ekstraTabeller: foerKoerselBackup(SUFFIX, 80),
+    skema: BACKUP_SKEMA_FRA_DDL,
+  });
+  const insertsFoer = db.writes.inserts.length;
+  const res = await runRepair3570(db, { ...APPLY, fortsaetDelvis: true });
+  assert.ok(res.skrevet.identitet > 0, "resten af puljen skrives");
+  assert.equal(res.backup.verificeret, true);
+  assert.deepEqual(res.backup.genbrugt, { riders: true, abilities: true });
+  assert.equal(db.writes.inserts.length, insertsFoer, "den gyldige før-kopi overskrives ikke");
+  assert.equal(db.tables[backupTabeller(SUFFIX).riders].every((r) => r.archetype_draw === null), true,
+    "kopien bærer stadig før-tilstanden");
 });
 
 test("ryttere med eksisterende archetype_draw udelades HELT (B2)", async () => {
@@ -586,4 +757,185 @@ test("backup-DDL og datostempel", () => {
   assert.match(ddl, /rider_id uuid PRIMARY KEY/, "primærnøglen prod-præcedensen mangler");
   assert.match(ddl, /base_value integer/, "base_value/market_value skal med (§10.5)");
   assert.match(cphDateStamp(new Date("2026-08-16T23:30:00Z")), /^20260817$/, "dansk lokaltid, ikke UTC");
+});
+
+// ── 11. B1′ — ÉT skema, ét tabelnavn, tre artefakter ────────────────────────
+test("B1′: DDL, rollback-SQL og værktøjets kolonne-lister deler nøjagtig ét skema", () => {
+  const suffix = "20260816";
+  const t = backupTabeller(suffix);
+  const fraDDL = skemaFraDDL(backupDDL(suffix));
+  const sql = rollbackSQL(suffix);
+
+  // 1) DDL'ens kolonner ER skemaets kolonner (+ captured_at).
+  assert.deepEqual(fraDDL[t.riders], [...BACKUP_SKEMA.riders.kolonner.map((k) => k.navn), "captured_at"]);
+  assert.deepEqual(fraDDL[t.abilities], [...BACKUP_SKEMA.abilities.kolonner.map((k) => k.navn), "captured_at"]);
+
+  // 2) De to nøgler er FORSKELLIGE og arvet fra kilde-tabellerne — det var kernen i B1′.
+  assert.equal(BACKUP_SKEMA.riders.noegle, "id");
+  assert.equal(BACKUP_SKEMA.abilities.noegle, "rider_id");
+
+  // 3) rollback-SQL'en omdøber IKKE nøglen (`SELECT id AS rider_id` var defekten)
+  //    og joiner på den samme nøgle værktøjet læser.
+  assert.doesNotMatch(sql, /id\s+AS\s+rider_id/i, "riders-kopien må ikke omdøbe id → rider_id");
+  assert.match(sql, new RegExp(`ADD CONSTRAINT ${t.riders}_pkey PRIMARY KEY \\(id\\)`));
+  assert.match(sql, new RegExp(`ADD CONSTRAINT ${t.abilities}_pkey PRIMARY KEY \\(rider_id\\)`));
+  assert.match(sql, /FROM public\.riders_3570_backup_20260816 b\nWHERE b\.id = r\.id/);
+
+  // 4) ÉT tabelnavn. Det tredje navn fra skriveplan.json (`..._2026_08_16`) findes ingen steder.
+  assert.doesNotMatch(sql, /_3570_backup_\d{4}_\d{2}_\d{2}/, "underscore-datoen er ude af omløb");
+  assert.doesNotMatch(backupDDL(suffix), /_3570_backup_\d{4}_\d{2}_\d{2}/);
+});
+
+test("B1′: den checkede-ind repair3570Rollback.sql er ikke drevet fra generatoren", () => {
+  const fil = readFileSync(join(__dirname, "repair3570Rollback.sql"), "utf8");
+  assert.equal(fil, rollbackSQL(KANONISK_BACKUP_SUFFIX),
+    "kør: node scripts/dev/repair3570Apply.mjs --print-rollback-sql > scripts/dev/repair3570Rollback.sql");
+});
+
+test("B1′ NEGATIV: en backup-tabel oprettet med det GAMLE rollback-skema (rider_id) afbryder kørslen", async () => {
+  // Sådan så verden ud før rettelsen: rollback.sql lavede riders-kopien med
+  // `SELECT id AS rider_id`, mens værktøjet læste `id`. Mocken håndhæver nu
+  // kolonnenavne, så den fejler præcis som PostgREST ville.
+  const { riders, abilities } = makeFixture();
+  const t = backupTabeller(SUFFIX);
+  const gammeltSkema = {
+    ...BACKUP_SKEMA_FRA_DDL,
+    [t.riders]: BACKUP_SKEMA_FRA_DDL[t.riders].map((c) => (c === "id" ? "rider_id" : c)),
+  };
+  const db = makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX), skema: gammeltSkema });
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.match(err.message, new RegExp(`column ${t.riders}\\.id does not exist`));
+      return true;
+    },
+  );
+  assert.equal(db.ryttereOpdateret(), 0, "0 rækker skrevet");
+  assert.equal(db.lofterOpdateret(), 0);
+});
+
+// ── 12. B5 — prod sletter ryttere mens vi skriver ───────────────────────────
+/** Lad prod slette ryttere midt i identitets-skrivningen, som AI-hold-trimmen gør. */
+function sletMidtIKoerslen(db, ids) {
+  let gjort = false;
+  db.saetSaboteur((table, patch) => {
+    if (table !== "riders" || !patch.archetype_draw || gjort) return null;
+    gjort = true;
+    db.sletRyttere(ids);
+    return null;
+  });
+}
+
+test("B5: ryttere slettet under kørslen er FORVENTEDE — post-verify består og rapporterer dem", async () => {
+  const db = nyDb();
+  const ofre = ["r08", "r09", "r10"];        // AI-ejede, som trim-sweepen tager
+  sletMidtIKoerslen(db, ofre);
+  const res = await runRepair3570(db, APPLY);
+
+  assert.equal(res.postVerify.bestaaet, true);
+  assert.equal(res.postVerify.forventet.forsvundetUnderKoerslen, 3);
+  assert.equal(res.postVerify.antal.manglerRaekke, 0, "en sletning er IKKE en manglende række");
+  assert.equal(res.postVerify.kontrolleret, res.skriveScope.identitet - 3, "de slettede tælles ikke som kontrolleret");
+  assert.deepEqual(res.postVerify.forsvundne.map((f) => f.rider_id).sort(), ofre);
+  assert.equal(res.postVerify.forsvundne.every((f) => f.ejer === "ai"), true, "ejer-arten er med i rapporten");
+});
+
+test("B5 NEGATIV: en FEJLET skrivning fejler stadig højlydt (rytteren findes, draw'et mangler)", async () => {
+  const db = nyDb();
+  // Rytteren bliver IKKE slettet — updaten lander bare aldrig på ham.
+  db.saetSaboteur((table, patch, target) => {
+    if (table !== "riders" || !patch.archetype_draw) return null;
+    const i = target.findIndex((r) => r.id === "r05");
+    if (i < 0) return null;
+    target.splice(i, 1);                      // r05 springes over i denne batch
+    return null;
+  });
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.match(err.message, /POST-VERIFY FEJLEDE/);
+      assert.equal(err.rapport.antal.udenDraw, 1, "en manglende skrivning fanges som udenDraw");
+      assert.equal(err.rapport.forventet.forsvundetUnderKoerslen, 0, "og IKKE som en sletning");
+      return true;
+    },
+  );
+});
+
+test("B5 NEGATIV: rytteren lever, men abilities-rækken er væk → hård fejl (FK'en er CASCADE)", async () => {
+  const db = nyDb();
+  let gjort = false;
+  db.saetSaboteur((table, patch) => {
+    if (table !== "riders" || !patch.archetype_draw || gjort) return null;
+    gjort = true;
+    db.tables.rider_derived_abilities = db.tables.rider_derived_abilities.filter((a) => a.rider_id !== "r02");
+    return null;
+  });
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.match(err.message, /POST-VERIFY FEJLEDE/);
+      assert.equal(err.rapport.antal.manglerAbilitiesRaekke, 1);
+      assert.equal(err.rapport.forventet.forsvundetUnderKoerslen, 0);
+      return true;
+    },
+  );
+});
+
+test("B5 NEGATIV: forsvinder flere end grænsen, er det ikke trim-sweepen længere → hård fejl", async () => {
+  const { riders, abilities } = makeFixture({ n: 80 });
+  const db = makeDb({ riders, abilities, ekstraTabeller: tommeBackupTabeller(SUFFIX), skema: BACKUP_SKEMA_FRA_DDL });
+  const mange = riders.filter((r) => !r.is_retired).slice(0, 30).map((r) => r.id);
+  assert.ok(mange.length > FORSVUNDNE_GRAENSE_MIN, "testen skal faktisk overskride gulvet");
+  sletMidtIKoerslen(db, mange);
+  await assert.rejects(
+    () => runRepair3570(db, APPLY),
+    (err) => {
+      assert.match(err.message, /POST-VERIFY FEJLEDE/);
+      assert.equal(err.rapport.antal.forsvundneOverGraense, 1);
+      return true;
+    },
+  );
+});
+
+test("B5: skellet hviler på et SELVSTÆNDIGT eksistens-opslag, ikke på det brede opslags svar", async () => {
+  const db = nyDb();
+  const res = await runRepair3570(db, APPLY);
+  assert.equal(res.postVerify.bestaaet, true);
+  // Rækken findes, men det brede opslag "taber" den. Så er den IKKE slettet, og
+  // porten skal kalde det en hård fejl — ikke en forventet sletning.
+  const rigtigeIn = db.from;
+  let brugt = false;
+  const spion = {
+    ...db,
+    from(table) {
+      const b = rigtigeIn.call(db, table);
+      if (table !== "riders") return b;
+      return {
+        ...b,
+        select: (cols) => {
+          const s = b.select(cols);
+          return {
+            ...s,
+            in: (col, ids) => {
+              // Tab r01 én gang — kun i det brede opslag, ikke i eksistens-opslaget.
+              if (!brugt && String(cols).includes("archetype_draw")) {
+                brugt = true;
+                return s.in(col, ids.filter((x) => x !== "r01"));
+              }
+              return s.in(col, ids);
+            },
+          };
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    () => postVerify(spion, { poster: db.tables.riders.filter((r) => !r.is_retired).map((r) => ({ rider_id: r.id, skrives: true, abilities: {}, row: r })) },
+      { skrevneCaps: [], foerValuation: new Map(db.tables.riders.map((r) => [r.id, r.valuation_type])), seasonNumber: 2 }),
+    (err) => {
+      assert.equal(err.rapport.antal.manglerRaekke, 1, "kom tilbage på anden forespørgsel → læsefejl, ikke sletning");
+      assert.equal(err.rapport.forventet.forsvundetUnderKoerslen, 0);
+      return true;
+    },
+  );
 });
