@@ -30,6 +30,14 @@ try {
   node scripts/lint-dropped-supabase-error.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "dropped-supabase-error-guard" }
 
+  # CI's job "dropped-supabase-error-guard" kører TO scripts; preflight kørte kun det første,
+  # så preflight kunne melde grønt mens netop det jobnavn fejlede i CI (bidt på PR #3599).
+  # Søsterguarden (#2974) rammer fire-and-forget-mutationer uden `data`-binding, som den
+  # første guard per design er blind for.
+  Write-Host "== unchecked-supabase-mutation-guard (#2974, samme CI-job) ==" -ForegroundColor Cyan
+  node scripts/lint-unchecked-supabase-mutation.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "unchecked-supabase-mutation-guard" }
+
   Write-Host "== pagination-guard (PostgREST 1000-row cap, #3331) ==" -ForegroundColor Cyan
   node scripts/lint-pagination-guard.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "pagination-guard" }
