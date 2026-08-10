@@ -16,6 +16,10 @@ verifikator på reparations-dry-runnet pegede på det som den største enkeltris
 præcis den forveksling der kostede blokker 1 i natbølgen (481 af 2.356 "unge" er 22+ i
 sæson-alder og klassificeres i produktion mod voksen-baselinen).
 
+**Den godkendte skriveplan (indstilling D) og kørebogen** ligger i
+[`docs/reparation-3570/`](../../reparation-3570/README.md) — samme grund, samme
+scratchpad de blev reddet ud af.
+
 **Genskabes med:**
 ```
 infisical run --env=prod -- node scripts/dev/snapshot-3570-full.mjs <outDir>

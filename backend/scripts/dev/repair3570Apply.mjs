@@ -539,7 +539,10 @@ export function buildPlan(rows, { seasonNumber, model = BIRTH_MODEL } = {}) {
  * skrivning.
  */
 export function laesPlanFil(sti) {
-  const raa = JSON.parse(readFileSync(sti, "utf8"));
+  // Planen er ~23 MB rå. Den ligger gzippet i repoet, ligesom snapshottene den er
+  // bygget på. Begge former læses, så en fil hentet direkte fra en generator også virker.
+  const raabytes = readFileSync(sti);
+  const raa = JSON.parse((sti.endsWith(".gz") ? gunzipSync(raabytes) : raabytes).toString("utf8"));
   if (!Array.isArray(raa.ryttere)) throw new Error(`--plan-fil: ${sti} har ingen "ryttere"-liste.`);
   const identitet = new Map();
   for (const r of raa.ryttere) {

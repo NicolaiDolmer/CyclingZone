@@ -20,6 +20,7 @@ import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 import {
   runRepair3570, buildPlan, runSelvtest, bevisIdempotens, diffModBaseline,
@@ -1037,6 +1038,29 @@ function skrivPlanFil(objekt, navn) {
   writeFileSync(sti, JSON.stringify(objekt));
   return sti;
 }
+
+test("laesPlanFil læser den gzippede plan identisk med den rå", () => {
+  const objekt = { revision: "T", ryttere: [
+    { rider_id: "a", skrives: true, primary_efter: "gc", secondary_efter: "tt", skrives_ability_caps: { climbing: 70 } },
+    { rider_id: "b", skrives: false, primary_efter: null, secondary_efter: null, skrives_ability_caps: null },
+  ] };
+  const raaSti = skrivPlanFil(objekt, "raa");
+  const gzSti = `${raaSti}.gz`;
+  writeFileSync(gzSti, gzipSync(readFileSync(raaSti)));
+
+  const raa = laesPlanFil(raaSti);
+  const gz = laesPlanFil(gzSti);
+  assert.equal(gz.antal, raa.antal);
+  assert.equal(gz.skrives, raa.skrives);
+  assert.equal(gz.revision, raa.revision);
+  assert.deepEqual([...gz.identitet.entries()], [...raa.identitet.entries()]);
+
+  // .gz-grenen vælges på endelsen — en gzippet fil UDEN endelsen skal fejle som JSON,
+  // ellers beviser testen ovenfor ikke at udpakningen faktisk skete.
+  const forklaedt = join(dirname(gzSti), "forklaedt.json");
+  writeFileSync(forklaedt, readFileSync(gzSti));
+  assert.throws(() => laesPlanFil(forklaedt));
+});
 
 test("laesPlanFil afviser ugyldige planer (type, dublet, primær == sekundær)", () => {
   const en = (r) => skrivPlanFil({ ryttere: [r] }, "ugyldig");
