@@ -254,3 +254,79 @@ test("ingen menneske-hold → ran:true, teams:0, candidates:0, ingen kald til DI
   assert.deepEqual(r, { ran: true, tickDate: "2026-07-19", teams: 0, candidates: 0 });
   assert.equal(seedCalled, false);
 });
+
+// ─── #3576: notifikationen må ALDRIG gå ud før kandidaterne er færdigbyggede ──
+// En rytter uden derive-lag har hverken evner, ryttertype eller værdi. Lå notify
+// inde i seed-loopet (som før), kunne spilleren få "New academy talent has
+// arrived", klikke ind og se tomme kandidater — præcis det spillerne meldte 9/8.
+
+test("#3576: ALLE notifikationer sendes EFTER derive-kaldet", async () => {
+  const teams = [
+    { id: "t1", season_1_identity_basis: null },
+    { id: "t2", season_1_identity_basis: null },
+  ];
+  const supabase = buildMockSupabase({ teams });
+  const rækkefølge = [];
+
+  await runSundayIntakeTick({
+    supabase,
+    now: new Date("2026-07-19T10:00:00Z"),
+    isEnabled: async () => true,
+    seedCohortFn: async (_sb, opts) => {
+      rækkefølge.push(`seed:${opts.teamId}`);
+      return [`${opts.teamId}-r1`];
+    },
+    deriveRiders: async () => { rækkefølge.push("derive"); },
+    notify: async (opts) => { rækkefølge.push(`notify:${opts.teamId}`); },
+  });
+
+  const deriveIdx = rækkefølge.indexOf("derive");
+  assert.ok(deriveIdx >= 0, "derive blev kaldt");
+  for (const [i, step] of rækkefølge.entries()) {
+    if (step.startsWith("notify:")) {
+      assert.ok(i > deriveIdx, `${step} kom FØR derive (rækkefølge: ${rækkefølge.join(" → ")})`);
+    }
+  }
+  assert.equal(rækkefølge.filter((s) => s.startsWith("notify:")).length, 2);
+});
+
+test("#3576: fejler derive, sendes INGEN notifikationer", async () => {
+  const teams = [{ id: "t1", season_1_identity_basis: null }];
+  const supabase = buildMockSupabase({ teams });
+  const notifyCalls = [];
+
+  await assert.rejects(
+    () => runSundayIntakeTick({
+      supabase,
+      now: new Date("2026-07-19T10:00:00Z"),
+      isEnabled: async () => true,
+      seedCohortFn: async (_sb, opts) => [`${opts.teamId}-r1`],
+      deriveRiders: async () => { throw new Error("derive nede"); },
+      notify: async (opts) => { notifyCalls.push(opts); },
+    }),
+    /derive nede/,
+  );
+
+  assert.equal(notifyCalls.length, 0, "ingen spiller får besked om et kuld der ikke kan vises");
+});
+
+test("#3576: en fejlet notifikation ruller ikke kuldet tilbage", async () => {
+  const teams = [
+    { id: "t1", season_1_identity_basis: null },
+    { id: "t2", season_1_identity_basis: null },
+  ];
+  const supabase = buildMockSupabase({ teams });
+
+  const r = await runSundayIntakeTick({
+    supabase,
+    now: new Date("2026-07-19T10:00:00Z"),
+    isEnabled: async () => true,
+    seedCohortFn: async (_sb, opts) => [`${opts.teamId}-r1`],
+    deriveRiders: async () => {},
+    notify: async (opts) => { if (opts.teamId === "t1") throw new Error("notify nede"); },
+  });
+
+  assert.equal(r.candidates, 2, "begge kuld står ved magt");
+  assert.equal(r.errors.length, 1);
+  assert.match(r.errors[0], /notify t1/);
+});
