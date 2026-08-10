@@ -20,7 +20,7 @@ backup-tallet bliver 8.234 og `is_retired`-kanten faktisk køres.
 | `20-rollback-rundtur.mjs` | backup → skrivning → rollback bringer alle 16.468 rækker tilbage felt for felt. Kører den **committede** rollback-fil ordret, i to varianter (PART A tager kopien / værktøjet fylder den selv), og igen for at vise at PART B er idempotent. |
 | `30-b5-sletninger.mjs` | post-verify skelner «rytter slettet af AI-hold-trimmen undervejs» (skal bestå) fra fire måder en skrivning kan gå galt (skal alle fejle). |
 | `50-negativtest-planfil.mjs` | `--plan-fil`-porten er fejlbar: den sunde D-fil består, seks beskadigelser fanges — inkl. «rytter i scopet mangler i filen» mod en frisk population, hvor kørslen skal stoppe **før** kopien tages. |
-| `21-isoler-a0.mjs` | A0-spærren i rollback-filen, isoleret. Den gamle form fejlede på en ren database — altså i præcis den førstegangs-situation PART A findes til. |
+| `21-isoler-a0.mjs` | A0-spærren i rollback-filen, isoleret — blokken læses UD AF den committede fil, så scriptet ikke beviser noget om sin egen kopi. Fire scenarier: ren database (den gamle form fejlede her, altså i præcis den førstegangs-situation PART A findes til), tom kopi, 8.193 anlæg fra før planen (skal spærre), og 722 nyfødte med anlæg (må IKKE spærre — det er regressionen skæringspunktet blev indført for). |
 
 Kør fra `backend/`:
 
