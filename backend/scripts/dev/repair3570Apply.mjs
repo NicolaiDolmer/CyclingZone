@@ -2096,6 +2096,22 @@ export function parseArgs(argv) {
     const i = argv.indexOf(f);
     return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : d;
   };
+  // `--plan-fil` er OBLIGATORISK når et menneske skriver til produktionen. Uden den falder
+  // identiteten tilbage på `buildPlan`, som bærer rev2's målfunktion (maksimér fødsels-
+  // pasning). Ejeren låste 10/8 indstilling D (minimér ANTALLET af ændringer). De to giver
+  // samme typefordeling men flytter 2.211 navngivne ryttere hver sin vej, så en kørsel uden
+  // flaget ville skrive en anden identitet end den godkendte — uden at det kunne ses på
+  // fordelingstallene. Gaten ligger HER og ikke i `runRepair3570`, fordi biblioteks-
+  // funktionen også er testfladen: tests skal kunne køre skrive-mekanikken uden en plan-fil.
+  // Et menneske skal ikke.
+  if (has("--apply") && !val("--plan-fil", null)) {
+    throw new Error(
+      "--apply kræver --plan-fil. Det ejeren godkender er en PLAN, ikke en målfunktion. "
+      + "Uden filen genberegner værktøjet tildelingen med rev2's målfunktion og skriver en "
+      + "anden identitet til 2.211 ryttere end den der blev godkendt.",
+    );
+  }
+
   const lofter = val("--lofter", "alle");
   if (!["alle", "menneske", "ingen"].includes(lofter)) throw new Error(`--lofter skal være alle|menneske|ingen, ikke "${lofter}"`);
   return {
@@ -2125,6 +2141,8 @@ FLAG
                              beviser idempotens, rapporterer — skriver ALDRIG.
   --apply                    Intention om at skrive. Virker KUN sammen med næste flag.
   --jeg-har-set-dry-runnet   Ejer-gate. Uden den skriver --apply ingenting.
+  --plan-fil <sti>           OBLIGATORISK ved --apply. Identiteten laeses herfra;
+                             uden den skriver vaerktoejet rev2 i stedet for D.
   --plan-fil=<sti>           Den GODKENDTE skriveplan bestemmer identiteten (fx
                              indstilling D). UDEN dette flag bruger værktøjet sin
                              egen løser, som bærer rev2's målfunktion — den giver

@@ -325,10 +325,11 @@ test("parseArgs: ejer-gaten er to separate flag", () => {
     [parseArgs([]).apply, parseArgs([]).ejerBekraeftet],
     [false, false],
   );
-  const a = parseArgs(["--apply"]);
+  // --plan-fil er nu obligatorisk sammen med --apply, saa de to gater maales sammen.
+  const a = parseArgs(["--apply", "--plan-fil", "p.json"]);
   assert.equal(a.apply, true);
   assert.equal(a.ejerBekraeftet, false);
-  const b = parseArgs(["--apply", "--jeg-har-set-dry-runnet", "--lofter=menneske"]);
+  const b = parseArgs(["--apply", "--jeg-har-set-dry-runnet", "--plan-fil", "p.json", "--lofter=menneske"]);
   assert.equal(b.ejerBekraeftet, true);
   assert.equal(b.lofter, "menneske");
   assert.throws(() => parseArgs(["--lofter=noget-andet"]), /alle\|menneske\|ingen/);
@@ -590,6 +591,17 @@ test("postVerify: sletning MELLEM riders- og abilities-laesningen er forventet, 
       return true;
     },
   );
+});
+
+test("parseArgs: --apply uden --plan-fil kastes (identiteten skal komme fra den godkendte plan)", () => {
+  // Uden filen falder identiteten tilbage paa buildPlan = rev2s maalfunktion, som flytter
+  // 2.211 navngivne ryttere anderledes end den godkendte D-plan. Fordelingstallene er ens,
+  // saa fejlen ville ikke kunne ses paa nogen af de tal ejeren kigger paa.
+  assert.throws(() => parseArgs(["--apply", "--jeg-har-set-dry-runnet"]), /--apply kræver --plan-fil/);
+  // Og de tre lovlige former kaster IKKE — ellers ville porten bare vaere slaaet fra.
+  assert.ok(parseArgs(["--apply", "--jeg-har-set-dry-runnet", "--plan-fil", "p.json"]).planFil === "p.json");
+  assert.ok(parseArgs([]).apply === false);
+  assert.ok(parseArgs(["--plan-fil", "p.json"]).apply === false);
 });
 
 // ── 6. --lofter-varianten (dry-runnets beslutning 2) ────────────────────────
