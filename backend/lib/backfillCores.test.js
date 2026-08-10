@@ -421,3 +421,45 @@ test("#3570: deriveForRiderIds (apply) falder tilbage til bootstrap ved archetyp
   const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
   assert.equal(res.typed, 1, "et NULL archetype_draw crasher ikke og typer stadig rytteren");
 });
+
+// ─── #3615: `.in(ids)` må ikke sprænge URL-længden ────────────────────────────
+// PostgREST sender IN-filteret i query-strengen. Over ~600 UUID'er afviser
+// Supabase requestet med et bart "Bad Request" uden at nævne længden. Ramte i
+// prod 10/8: kompensations-kuldet (#3576) indsatte 762 kandidater, hvorefter
+// deriveForRiderIds fejlede på sin FØRSTE select — 762 ryttere stod uden
+// physiology, evner, type og base_value. Søndags-drippet slap kun forbi fordi
+// 192 hold × 2 = 384 id'er lå under grænsen.
+
+function makeBatchSpyingSupabase(riders, abilities) {
+  const inCallSizes = [];
+  function from(table) {
+    const api = {
+      select() { return api; },
+      eq() { return api; },
+      in(_col, ids) { inCallSizes.push(ids.length); return api; },
+      order() { return api; },
+      range() { return Promise.resolve({ data: table === "riders" ? riders : (table === "rider_derived_abilities" ? abilities : []), error: null }); },
+      maybeSingle() { return Promise.resolve({ data: null, error: null }); },
+      upsert() { return Promise.resolve({ error: null }); },
+      update() { return { eq() { return Promise.resolve({ error: null }); } }; },
+    };
+    return api;
+  }
+  return { from, inCallSizes };
+}
+
+test("#3615: deriveForRiderIds portionerer id-listen i alle IN-opslag", async () => {
+  const ids = Array.from({ length: 762 }, (_, i) => `r${i}`);
+  const riders = ids.map((id) => makeRider(id));
+  const supabase = makeBatchSpyingSupabase(riders, []);
+
+  await deriveForRiderIds(supabase, ids, { dryRun: true });
+
+  assert.ok(supabase.inCallSizes.length > 0, "der blev lavet mindst ét IN-opslag");
+  const værst = Math.max(...supabase.inCallSizes);
+  assert.ok(
+    værst <= 200,
+    `største IN-opslag havde ${værst} id'er — over grænsen. En enkelt query med ` +
+    `alle ${ids.length} sprænger URL-længden og fejler med "Bad Request" (#3615).`
+  );
+});

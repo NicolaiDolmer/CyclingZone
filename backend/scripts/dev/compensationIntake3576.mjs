@@ -25,6 +25,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { generateAcademyCandidates } from "../../lib/academyGenerator.js";
+import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { seedAcademyCohortForTeam, fetchActiveSeason, fetchExistingFoldedRiderNames, hashStringToSeed, referenceYearForSeason } from "../../lib/academyIntake.js";
 import { makeRng } from "../../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
@@ -71,6 +72,13 @@ const args = Object.fromEntries(
   })
 );
 const APPLY = args.apply === true;
+// #3576-hændelse 10/8: rytterne blev indsat, hvorefter deriveForRiderIds fejlede på
+// sin første select (762 id'er i ét `.in()` sprænger URL-længden — rettet i
+// backfillCores, se SELECT_IN_BATCH). Kuldet stod dermed uden evner, type og værdi,
+// og notifikationerne var med vilje ikke sendt endnu. --finish samler op: den finder
+// de allerede-indsatte kandidater der mangler derive-laget, kører kæden færdig og
+// sender FØRST derefter beskederne. Sikker at gentage.
+const FINISH = args.finish === true;
 const BASE_COUNT = Number(args.base ?? 2);   // erstatning for det mistede søndagskuld
 const BONUS_COUNT = Number(args.bonus ?? 2); // ejerens undskyldning for de sidste dages problemer
 const TICK_DATE = String(args.date ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Copenhagen" }).format(new Date()));
@@ -152,6 +160,8 @@ function deriveCandidateInMemory(candidate, seasonNumber) {
 
 // ── Hoved ────────────────────────────────────────────────────────────────────
 async function main() {
+  if (FINISH) return finishInterrupted();
+
   console.log(`\n═══ Kompensations-kuld (#3576) — ${APPLY ? "APPLY" : "DRY-RUN"} ═══`);
   console.log(`tick_date: ${TICK_DATE}   erstatning: ${BASE_COUNT}   bonus: ${BONUS_COUNT}\n`);
 
@@ -290,6 +300,115 @@ async function main() {
   if (errors.length) {
     console.error(`\n❌ ${errors.length} fejl:`);
     for (const e of errors.slice(0, 20)) console.error(`   ${e}`);
+    process.exitCode = 1;
+  }
+}
+
+// ── --finish: saml op efter et afbrudt apply ─────────────────────────────────
+// Kører derive-kæden færdig for kandidater der blev INDSAT men ikke DERIVED, og
+// sender først derefter notifikationerne. Rækkefølgen er den samme som i det
+// normale apply (#3576): ingen spiller får besked om et kuld der ikke kan vises.
+async function finishInterrupted() {
+  console.log(`\n═══ Kompensations-kuld (#3576) — FINISH (samler op efter afbrudt apply) ═══\n`);
+
+  // Kandidater fra DENNE kompensation: claimet på tick_date, stadig 'offered'.
+  const { data: claimed, error: cErr } = await sb
+    .from("academy_intake_ticks").select("team_id").eq("tick_date", TICK_DATE);
+  if (cErr) throw new Error(`tick claim lookup: ${cErr.message}`);
+  const teamIds = (claimed || []).map((r) => r.team_id);
+  if (!teamIds.length) { console.log(`Ingen hold claimet på ${TICK_DATE} — intet at samle op.\n`); return; }
+
+  // Hentes i portioner — samme URL-længde-grænse som ramte derive-kaldet (se
+  // SELECT_IN_BATCH i backfillCores.js). 192 team-id'er er under grænsen, men
+  // rider-opslaget nedenfor er det ikke.
+  const rows = [];
+  for (let i = 0; i < teamIds.length; i += 100) {
+    const { data, error: rErr } = await sb
+      .from("academy_intake")
+      .select("team_id, rider_id")
+      .eq("status", "offered")
+      .in("team_id", teamIds.slice(i, i + 100));
+    if (rErr) throw new Error(`intake lookup: ${rErr.message}`);
+    rows.push(...(data || []));
+  }
+
+  // Hvilke af dem har allerede et derive-lag?
+  const allRiderIds = [...new Set(rows.map((r) => r.rider_id))];
+  const derived = new Set();
+  for (let i = 0; i < allRiderIds.length; i += 200) {
+    const { data, error: dErr } = await sb
+      .from("rider_derived_abilities").select("rider_id")
+      .in("rider_id", allRiderIds.slice(i, i + 200));
+    if (dErr) throw new Error(`derive lookup: ${dErr.message}`);
+    for (const d of data || []) derived.add(d.rider_id);
+  }
+
+  // Uden derive-lag = kandidaten er indsat men aldrig færdiggjort.
+  const missing = rows.filter((r) => !derived.has(r.rider_id));
+  const missingIds = [...new Set(missing.map((r) => r.rider_id))];
+  const affectedTeams = [...new Set(missing.map((r) => r.team_id))];
+
+  console.log(`Hold claimet på ${TICK_DATE}:        ${teamIds.length}`);
+  console.log(`Tilbud i alt for dem:               ${rows.length}`);
+  console.log(`Kandidater UDEN derive-lag:         ${missingIds.length} (${affectedTeams.length} hold)\n`);
+
+  if (missingIds.length) {
+    console.log(`Afleder ${missingIds.length} ryttere...`);
+    await deriveForRiderIds(sb, missingIds, { dryRun: false });
+    console.log(`Derive færdig.\n`);
+  } else {
+    console.log(`Alle kandidater har derive-lag.\n`);
+  }
+
+  // Notifikationer: kun til hold der ikke allerede har fået én for denne omgang.
+  // notifications adresseres på user_id (ikke team_id), så holdene mappes først —
+  // ellers ville en gentaget --finish dobbelt-notificere alle 192.
+  const teamOwner = new Map();
+  for (let i = 0; i < teamIds.length; i += 100) {
+    const { data, error: tErr } = await sb
+      .from("teams").select("id, user_id").in("id", teamIds.slice(i, i + 100));
+    if (tErr) throw new Error(`team owner lookup: ${tErr.message}`);
+    for (const t of data || []) teamOwner.set(t.id, t.user_id);
+  }
+
+  // Pagineret: notifications er deny-listet i pagination-guarden (#3331), og med
+  // 192 hold × flere notifikationstyper pr. dag er 1000-rækkers-loftet inden for
+  // rækkevidde. Et tavst afkortet svar ville få dedup-tjekket til at tro at
+  // brugere ikke havde fået besked — og dobbelt-notificere dem.
+  const alreadyNotified = await fetchAllRows(() => sb
+    .from("notifications").select("user_id")
+    .eq("type", "academy_drip")
+    .gte("created_at", `${TICK_DATE}T00:00:00Z`)
+    .order("user_id", { ascending: true }));
+  const notifiedUsers = new Set(alreadyNotified.map((n) => n.user_id));
+
+  const toNotify = teamIds.filter((id) => {
+    const uid = teamOwner.get(id);
+    return uid && !notifiedUsers.has(uid);
+  });
+  console.log(`Notifikationer at sende: ${toNotify.length} (${notifiedUsers.size} brugere har allerede fået)`);
+
+  let sent = 0;
+  const errors = [];
+  for (const teamId of toNotify) {
+    try {
+      await notifyTeamOwner({
+        supabase: sb, teamId, type: "academy_drip",
+        title: "New academy talent has arrived",
+        message: "New candidates are waiting in your academy - sign or reject them.",
+        relatedId: null,
+        metadata: { titleCode: "notif.academyDrip.title", messageCode: "notif.academyDrip.message" },
+      });
+      sent += 1;
+    } catch (e) {
+      errors.push(`notify ${teamId}: ${e?.message ?? e}`);
+    }
+  }
+
+  console.log(`\n✅ ${sent} notifikationer sendt.`);
+  if (errors.length) {
+    console.error(`\n❌ ${errors.length} fejl:`);
+    for (const e of errors.slice(0, 10)) console.error(`   ${e}`);
     process.exitCode = 1;
   }
 }

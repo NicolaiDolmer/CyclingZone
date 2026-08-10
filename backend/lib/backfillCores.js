@@ -27,6 +27,28 @@ import { computeFrozenSalary } from "./contractSeed.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UPSERT_BATCH = 500;
 const WRITE_CONCURRENCY = 25;
+// Hvor mange id'er der må stå i ÉT `.in(...)`-filter. PostgREST sender filteret i
+// query-strengen, så en lang id-liste bliver til en lang URL — og over ~600 UUID'er
+// (~22 kB) afviser Supabase den med et bart "Bad Request" uden at nævne længden.
+//
+// Ramte i prod 10/8: kompensations-kuldet (#3576) indsatte 762 akademi-kandidater,
+// hvorefter deriveForRiderIds fejlede på FØRSTE select — 762 ryttere stod uden
+// physiology, evner, type og base_value. Søndags-drippet undgik det kun fordi
+// 192 hold × 2 = 384 id'er lige akkurat holdt sig under grænsen; et større felt
+// (eller en relaunch, der deriver hele peletonen) ville have ramt den samme mur.
+const SELECT_IN_BATCH = 200;
+
+/**
+ * SELECT ... WHERE col IN (ids) i portioner, så en lang id-liste ikke sprænger
+ * URL-længden. Rækkefølgen bevares på tværs af portioner via .order() i callback'en.
+ */
+async function selectByIdsBatched(ids, runBatch) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += SELECT_IN_BATCH) {
+    out.push(...(await runBatch(ids.slice(i, i + SELECT_IN_BATCH))));
+  }
+  return out;
+}
 
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
 // #3570: unge (< 22 år, se riderTypesBaselineSelect.js) klassificeres mod DENNE
@@ -210,8 +232,8 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // af academyIntake.js ved rytter-insert). Ryttere UDEN et draw (alle voksne, PCM-
   // import, alt eksisterende) har NULL her → uændret bootstrap-adfærd (trin 2/3).
   const select = ["id", "height", "weight", "birthdate", "potentiale", "valuation_type", "archetype_draw", ...STAT_KEYS].join(", ");
-  const riders = await fetchAllRows(() =>
-    supabase.from("riders").select(select).in("id", ids).order("id", { ascending: true }));
+  const riders = await selectByIdsBatched(ids, (chunk) => fetchAllRows(() =>
+    supabase.from("riders").select(select).in("id", chunk).order("id", { ascending: true })));
   log(`deriveForRiderIds: ${riders.length}/${ids.length} ryttere fundet`);
 
   // 1) Physiology + abilities (rene transformationer).
@@ -250,11 +272,11 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // nulstille en rytters optjente fremgang). Vi læser eksisterende og fylder kun NULL.
   const existingById = new Map();
   {
-    const existing = await fetchAllRows(() =>
+    const existing = await selectByIdsBatched(ids, (chunk) => fetchAllRows(() =>
       supabase.from("rider_derived_abilities")
         .select("rider_id, ability_caps, ability_progress")
-        .in("rider_id", ids)
-        .order("rider_id", { ascending: true }));
+        .in("rider_id", chunk)
+        .order("rider_id", { ascending: true })));
     for (const e of existing) existingById.set(e.rider_id, e);
   }
   const riderById = new Map(riders.map((r) => [r.id, r]));
