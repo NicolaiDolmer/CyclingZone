@@ -23,7 +23,7 @@ import {
   TRAINING_SETBACK_PCT, injuryDaysLeft,
 } from "../../../lib/training.js";
 import {
-  focusProgress, riderHistoryFromRuns, breakthroughJumps, isBreakthrough, isFocusFullyCapped,
+  focusProgress, riderHistoryFromRuns, breakthroughJumps, isBreakthrough, focusCapState,
 } from "../../../lib/trainingReport.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
 
@@ -120,7 +120,11 @@ function FocusCard({ rider, training, progress, t }) {
   // som "min træning virker ikke", da hendes chefscout-skift samtidig flyttede
   // et helt andet tal (loft-BÅNDET på Scouting-fanen). "capped" er kun ability-
   // NØGLER (aldrig tal — caps er server-hidden, #1162).
-  const fullyCapped = focus && !isRest && isFocusFullyCapped(focus, capped?.[rider.id]);
+  // #3639: hovedrum pr. evne, ikke kun "alt dødt". Se focusCapState-kommentaren i
+  // trainingReport.js — det DELVIST døde fokus var helt tavst og ramte 741 ryttere.
+  const cappedForRider = capped?.[rider.id];
+  const focusCap = focus && !isRest ? focusCapState(focus, cappedForRider) : null;
+  const fullyCapped = focusCap?.state === "capped";
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -137,6 +141,10 @@ function FocusCard({ rider, training, progress, t }) {
       <div className="flex flex-wrap gap-[7px] mb-3">
         {TRAINING_FOCUS_KEYS.map((f) => {
           const on = focus === f;
+          // #3639: et fokus uden hovedrum må ikke se ud som et frit valg. Chippen
+          // forbliver klikbar (spilleren må gerne parkere en rytter i et dødt
+          // fokus) — men den siger nu hvad den er.
+          const dead = focusCapState(f, cappedForRider)?.state === "capped";
           return (
             <button
               key={f}
@@ -144,6 +152,7 @@ function FocusCard({ rider, training, progress, t }) {
               onClick={() => pickFocus(f)}
               disabled={busy}
               aria-pressed={on}
+              title={dead ? tTraining("focusCappedTitle") : undefined}
               className={`inline-flex items-center min-h-[44px] px-[13px] rounded-full text-[12px] transition-colors disabled:opacity-50 ${
                 on
                   ? "border border-cz-accent bg-cz-accent/15 text-cz-accent-t font-semibold"
@@ -151,6 +160,11 @@ function FocusCard({ rider, training, progress, t }) {
               }`}
             >
               {t(`profile.training.focus.${f}`)}
+              {dead && (
+                <span className="ms-1.5 font-data text-3xs uppercase tracking-[.06em] text-cz-3">
+                  {tTraining("focusOptionCapped")}
+                </span>
+              )}
             </button>
           );
         })}
@@ -247,6 +261,22 @@ function FocusCard({ rider, training, progress, t }) {
                   </span>
                   <span className="text-3xs text-cz-3 flex-none">{t("profile.training.effectNote")}</span>
                 </div>
+                {/* #3639: baren viser evnen tættest på gennembrud. Står en anden af
+                    fokussets evner på loftet, skal den navngives — ellers venter
+                    spilleren på klatring mens tempo er det der rykker. */}
+                {focusCap?.state === "partial" && (
+                  <p
+                    className="mt-1.5 text-[12px] text-cz-warning leading-snug cursor-help"
+                    title={tTraining("focusPartiallyCappedTitle", {
+                      capped: focusCap.capped.map((a) => t(`racePreview.derived.${a}`)).join(", "),
+                      open: focusCap.open.map((a) => t(`racePreview.derived.${a}`)).join(", "),
+                    })}
+                  >
+                    {tTraining("focusPartiallyCapped", {
+                      abilities: focusCap.capped.map((a) => t(`racePreview.derived.${a}`)).join(", "),
+                    })}
+                  </p>
+                )}
               </>
             )}
             <p className="mt-2 text-2xs text-cz-2 leading-snug">

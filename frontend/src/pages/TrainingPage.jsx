@@ -15,7 +15,7 @@ import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, isFocusFullyCapped, todayGainTotal, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, focusCapState, todayGainTotal, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
@@ -431,6 +431,13 @@ export default function TrainingPage() {
     const riderTrainability = trainability[rider.id] ?? {};
     const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
 
+    // #3639: hovedrum pr. evne i fokusset. Trainability ovenfor siger hvor HURTIGT
+    // et fokus vokser (tier-%'en fra #3234), aldrig om der er noget tilbage at
+    // vinde — en rytter på loftet viser derfor "100%" og læses som det rigtige
+    // valg. Her afgøres tilstanden pr. evne ud fra backendens capped-nøgler.
+    const cappedForRider = capped[rider.id];
+    const focusCap = focusCapState(plan?.focus, cappedForRider);
+
     // #3459 V3: løbsdags-badge — feltet findes KUN når race_day_engine_enabled er
     // on (backend udelader det helt ellers, se useTraining.js), så tilstedeværelse
     // alene er hele gaten. Planen (fokus/intensitet) RØRES ALDRIG her — kun visning.
@@ -547,7 +554,14 @@ export default function TrainingPage() {
                 <option value="">—</option>
                 {TRAINING_FOCUS_KEYS.map((k) => {
                   const level = riderTrainability[k];
-                  const marker = level ? t(`trainability_${level}`) : "";
+                  // #3639: et fokus uden hovedrum overtrumfer tier-markøren i
+                  // listen — "stærkt match" på et dødt fokus er præcis den
+                  // fejllæsning der kostede spillerne træningsdage. Listen er
+                  // ren INFORMATION; hvilket fokus assistenten selv vælger
+                  // (smartDefaultFocus) er bevidst uændret, se #3234.
+                  const marker = focusCapState(k, cappedForRider)?.state === "capped"
+                    ? t("focusOptionCapped")
+                    : level ? t(`trainability_${level}`) : "";
                   return (
                     <option key={k} value={k}>
                       {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
@@ -666,7 +680,7 @@ export default function TrainingPage() {
             for en død bar, og dagens vundne point vises som "+N i dag" så en
             netop-wrappet bar ikke læses som nul fremgang. */}
         <td className={tdClass({})} data-tour={isFirst ? "training-next-up" : undefined}>
-          {isFocusFullyCapped(plan?.focus, capped[rider.id]) ? (
+          {focusCap?.state === "capped" ? (
             /* Ejer-kvalitetspas 24/7: var en stor grå pill der dominerede
                kolonnen — nu stille T2-meta-tekst m. forklaring i tooltip. */
             <span
@@ -676,12 +690,31 @@ export default function TrainingPage() {
               {t("focusCapped")}
             </span>
           ) : (
-            <FocusProgress
-              info={focusProgress(plan?.focus, progress[rider.id])}
-              emptyLabel={t("noFocus")}
-              tRider={tRider}
-              toGoLabel={(o) => t("toGo", o)}
-            />
+            <>
+              <FocusProgress
+                info={focusProgress(plan?.focus, progress[rider.id])}
+                emptyLabel={t("noFocus")}
+                tRider={tRider}
+                toGoLabel={(o) => t("toGo", o)}
+              />
+              {/* #3639: baren ovenfor viser den evne der er TÆTTEST på gennembrud.
+                  Står en anden af fokussets evner på loftet, er den bar sand og
+                  samtidig misvisende — spilleren venter på klatring mens tempo
+                  rykker. Navngiv derfor de døde evner eksplicit. */}
+              {focusCap?.state === "partial" && (
+                <div
+                  className="mt-0.5 font-data text-3xs uppercase tracking-[.06em] text-cz-warning cursor-help"
+                  title={t("focusPartiallyCappedTitle", {
+                    capped: focusCap.capped.map((a) => tRider(`racePreview.derived.${a}`)).join(", "),
+                    open: focusCap.open.map((a) => tRider(`racePreview.derived.${a}`)).join(", "),
+                  })}
+                >
+                  {t("focusPartiallyCapped", {
+                    abilities: focusCap.capped.map((a) => tRider(`racePreview.derived.${a}`)).join(", "),
+                  })}
+                </div>
+              )}
+            </>
           )}
           {todayGainsByRider[rider.id] > 0 && (
             <div className="mt-0.5">

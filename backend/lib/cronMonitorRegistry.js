@@ -149,6 +149,8 @@ export const ALL_CRON_MONITORS = [
   ["entry-generator", CRON_MONITOR_60MIN],
   ["ownership-invariant-watch", CRON_MONITOR_24H],
   ["rider-double-booking-watch", CRON_MONITOR_24H],
+  // #3639: trænings-slot-vagt — daglig tælling af træningsfokus uden hovedrum.
+  ["training-slot-health-watch", CRON_MONITOR_24H],
   ["intake-offer-expiry", CRON_MONITOR_24H],
   ["email-welcome", CRON_MONITOR_5MIN],
   ["email-day1", CRON_MONITOR_60MIN],

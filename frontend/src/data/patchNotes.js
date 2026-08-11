@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.117",
+    "date": "2026-08-12",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training now tells you when an ability has reached its ceiling",
+          "body": "Several of you reported that climbing would not rise no matter how much VO2 max training a rider was given. You were right, and the page was hiding it. A focus trains more than one ability at a time, and every ability has its own lifetime ceiling set by the rider's type and potential. Once an ability reaches that ceiling it never rises again. But the progress bar only ever showed the ability closest to its next point, so a rider whose climbing was finished while tempo was still improving looked completely normal. Right now 892 riders across the game are in exactly that state, and 142 are in a focus where every single ability has topped out, meaning the training day is producing nothing at all. From today the page names the ability that has reached its ceiling, and the focus list marks any focus that has nothing left to give before you pick it. Nothing about how training works has changed. You can now see it."
+        },
+        "da": {
+          "title": "Træningen siger nu til når en evne har nået sit loft",
+          "body": "Flere af jer meldte at klatring ikke ville stige, uanset hvor meget VO2max-træning en rytter fik. I havde ret, og siden skjulte det. Et fokus træner mere end én evne ad gangen, og hver evne har sit eget livstidsloft, sat af rytterens type og potentiale. Når en evne først har nået det loft, stiger den aldrig igen. Men progress-baren viste kun den evne der var tættest på sit næste point, så en rytter hvis klatring var færdig, mens tempo stadig steg, så helt normal ud. Lige nu står 892 ryttere i spillet i præcis den tilstand, og 142 står i et fokus hvor hver eneste evne er toppet, så træningsdagen producerer ingenting overhovedet. Fra i dag navngiver siden den evne der har nået sit loft, og fokus-listen markerer et fokus der intet har tilbage at give, før du vælger det. Intet ved hvordan træning virker er ændret. Du kan nu se det."
+        },
+        "refs": [3639]
+      }
+    ]
+  },
+  {
     "version": "7.116",
     "date": "2026-08-11",
     "label": "Beta",
