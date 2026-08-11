@@ -53,7 +53,16 @@ export async function fetchSlotHealthInputs(supabase) {
   // KUN den aktive sæsons planer — præcis samme afgrænsning som
   // deriveTrainingState/loadTrainingState bruger til fladen. En plan fra en
   // afsluttet sæson styrer ingenting og må ikke tælles som et slot.
-  const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+  // Fejler dette opslag, ville planByRiderId stå tom, og HVER rytter ville falde
+  // tilbage til smartDefaultFocus — vagten ville så måle en helt anden population
+  // og persistere tallet som om det var sandt. Kast hellere: en manglende dag i
+  // trenden er ærlig, en forkert dag er ikke.
+  const { data: season, error: seasonErr } = await supabase
+    .from("seasons")
+    .select("id")
+    .eq("status", "active")
+    .maybeSingle();
+  if (seasonErr) throw new Error(`active season lookup failed: ${seasonErr.message}`);
   const planByRiderId = {};
   if (season?.id) {
     const plans = await fetchAllRowsChunkedIn(riderIds, (chunk) =>
