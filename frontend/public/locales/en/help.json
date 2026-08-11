@@ -823,6 +823,10 @@
         "title": "Why doesn't a focus grow for some riders?",
         "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. A training focus only speeds abilities toward their ceiling when the rider's type supports them, and either type counts: a strong match (primary or secondary) reaches close to the full ceiling, a neutral fit reaches roughly 45% of it, and a type actively opposed to the ability reaches only around 12% (still not zero, but slow, and for an older or already well-developed rider it may already be there). Check both of a rider's type badges before picking a focus, and the focus dropdown marks each option so you can see at a glance whether it's a strong fit, limited, or very limited for that rider."
       },
+      "ceilingReached": {
+        "title": "My rider's ability has stopped rising completely",
+        "text": "Then it has reached its lifetime ceiling. Every ability has one, set by the rider's type and potential, and once an ability arrives there it never rises again no matter how it is trained. This is different from slow growth: it is finished. Because a focus trains more than one ability at a time, one of them can be finished while the others keep climbing, and the progress bar follows whichever ability is closest to its next point. The page now names any ability in your focus that has reached its ceiling, and marks a focus in the list when every ability it trains is finished. If it is the finished ability you were training for, switch focus: that rider is as good as they will get in it. An older rider with several finished abilities is not broken, it is a rider at their peak."
+      },
       "trainToday": {
         "title": "Train today and the +25% boost",
         "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."

@@ -75,6 +75,7 @@ import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
+import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; // #3639
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
@@ -991,6 +992,25 @@ async function runBalanceDriftWatchCron() {
   });
 }
 
+// ─── Trænings-slot-vagt (#3639) ───────────────────────────────────────────────
+// Dagligt: tæl hvor mange spiller-ejede ryttere der står i et træningsfokus uden
+// hovedrum (alle fokussets evner på livstidsloftet → træningen giver nul),
+// persistér i training_slot_health_daily, alarmér ops ved loft-brud eller spring.
+// Read-only mod spil-data. Findes fordi fejlen 11/8 kun blev opdaget ved at tre
+// spillere skrev i Discord — der fandtes ingen måling der kunne have sagt det.
+async function runTrainingSlotHealthWatchCron() {
+  const result = await runTrainingSlotHealthWatch({
+    supabase,
+    sendWebhookFn: sendOpsWebhook,
+    getOpsWebhookFn: getOpsWebhook,
+    captureExceptionFn: sentryCapture,
+  });
+  console.log(
+    `  ↳ trænings-slot-vagt ${result.date}: ${result.totals.deadSlots} døde · ` +
+      `${result.totals.partialSlots} delvist døde · ${result.totals.ridersInTraining} i træning`
+  );
+}
+
 // ─── Ownership-invariant-vagt (#2647) ─────────────────────────────────────────
 // Daglig READ-ONLY safety-net mod gentagelse af incidenten 2026-07-18 (16
 // hold-ejede ryttere endte på ungdomsauktioner). Tre invarianter der aldrig må
@@ -1433,6 +1453,17 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: trænings-slot-vagt (#3639) — daglig tælling af træningsfokus
+  // uden hovedrum. Idempotent upsert på (snapshot_date, focus) → tryg ved
+  // deploy-genstart. Read-only mod spil-data; alarmerer, reparerer intet.
+  setInterval(
+    trackedTick(
+      "training-slot-health-watch",
+      monitorCron("training-slot-health-watch", runTrainingSlotHealthWatchCron, CRON_MONITOR_24H)
+    ),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 24 hours: binding-invariant-vagt (#3113) — daglig READ-ONLY kontrol af
   // "1 rytter = 1 løb pr. løbsdag". Alarmerer; reparerer intet.
   setInterval(
@@ -1545,6 +1576,9 @@ export function startCron() {
   // #3113: samme begrundelse — read-only, ingen writes. Boot-run betyder at et brud
   // opdages ved næste deploy i stedet for at vente op til 24 timer.
   trackedTick("rider-double-booking-watch", runRiderDoubleBookingWatchCron)();
+  // #3639: upsert på (snapshot_date, focus) + edge-triggered alarm-dedup → boot-run
+  // er idempotent og kan ikke re-spamme ops ved gentagne deploys.
+  trackedTick("training-slot-health-watch", runTrainingSlotHealthWatchCron)();
   // #2627: samme idempotens-begrundelse (WHERE status='offered') — boot-run gør
   // 24h-monitoren ærlig og fylder ikke ventende tilbud unødigt hvis en deploy
   // rammer lige efter det normale tick.

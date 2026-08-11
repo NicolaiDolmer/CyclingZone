@@ -42,12 +42,35 @@ export function focusProgress(focus, progressForRider) {
 // (aldrig tal — caps er server-hidden, #1162). Delvist cappet fokus (mindst én
 // evne med headroom) → false: baren er stadig meningsfuld.
 export function isFocusFullyCapped(focus, cappedForRider) {
-  if (!focus) return false;
+  return focusCapState(focus, cappedForRider)?.state === "capped";
+}
+
+// #3639: hovedrum PR. EVNE i et fokus — ikke bare "er alt dødt".
+//
+// Rod-årsagen bag de tre spillerrapporter 10/8 ("klatring stiger ikke ved
+// VO2max-træning"): et fokus træner FLERE evner (vo2max = climbing+punch+tempo),
+// men hele fladen aggregerede fokusset til ÉT tal. focusProgress ovenfor vælger
+// evnen TÆTTEST på gennembrud, så en rytter hvis climbing står på loftet, mens
+// tempo stadig rykker, viser en sund bar med tempos tal. #2578's
+// isFocusFullyCapped fangede kun det totale tilfælde (alle evner døde).
+// Målt i prod 11/8 (spiller-ejede ryttere med plan i aktiv sæson): 117 ryttere
+// helt døde — men 741 DELVIST døde uden noget signal, heraf 291 med præcis
+// climbing på loftet i vo2max. 110 af 197 spillerhold var ramt.
+//
+// cappedForRider er backend-leverede ability-NØGLER (aldrig tal — caps er
+// server-hidden, #1162), så denne funktion kan aldrig lække et loft.
+//
+// Returnerer null ved intet/ukendt fokus, ellers
+//   { state: "open" | "partial" | "capped", capped: [ability], open: [ability] }
+export function focusCapState(focus, cappedForRider) {
+  if (!focus) return null;
   const abilities = TRAINING_FOCUS_ABILITIES[focus];
-  if (!abilities?.length) return false;
-  if (!Array.isArray(cappedForRider) || !cappedForRider.length) return false;
-  const set = new Set(cappedForRider);
-  return abilities.every((a) => set.has(a));
+  if (!abilities?.length) return null;
+  const set = new Set(Array.isArray(cappedForRider) ? cappedForRider : []);
+  const cappedAbilities = abilities.filter((a) => set.has(a));
+  const openAbilities = abilities.filter((a) => !set.has(a));
+  const state = cappedAbilities.length === 0 ? "open" : openAbilities.length === 0 ? "capped" : "partial";
+  return { state, capped: cappedAbilities, open: openAbilities };
 }
 
 // #2578: samlet antal hele point vundet i dagens kørsel for én rapport-række.

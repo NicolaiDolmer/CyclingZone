@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   focusProgress, isBreakthrough, daySummary, breakthroughJumps, riderHistoryFromRuns,
-  isFocusFullyCapped, todayGainTotal,
+  isFocusFullyCapped, focusCapState, todayGainTotal,
   PEAK_FORM_THRESHOLD, NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
 
@@ -115,6 +115,36 @@ test("isFocusFullyCapped: false uden fokus, ukendt fokus eller uden capped-data"
   assert.equal(isFocusFullyCapped("ikke-et-fokus", ["tempo"]), false);
   assert.equal(isFocusFullyCapped("threshold", null), false);
   assert.equal(isFocusFullyCapped("threshold", []), false);
+});
+
+// ── #3639: focusCapState — hovedrum pr. evne, ikke kun "alt dødt" ─────────────
+
+test("focusCapState: partial er den tilstand #2578 var blind for", () => {
+  // vo2max = climbing/punch/tempo. Præcis de 291 prod-ryttere 11/8: climbing på
+  // loftet, tempo+punch har hovedrum → focusProgress viser en SUND bar for tempo,
+  // mens spilleren venter på climbing. Det var de tre rapporter 10/8.
+  const st = focusCapState("vo2max", ["climbing"]);
+  assert.equal(st.state, "partial");
+  assert.deepEqual(st.capped, ["climbing"]);
+  assert.deepEqual(st.open, ["punch", "tempo"]);
+});
+
+test("focusCapState: open/capped-yderpunkterne + fokus-fremmede evner ignoreres", () => {
+  assert.equal(focusCapState("threshold", []).state, "open");
+  assert.equal(focusCapState("threshold", null).state, "open");
+  assert.equal(focusCapState("threshold", ["sprint"]).state, "open", "sprint er ikke i threshold");
+  assert.equal(focusCapState("threshold", ["time_trial", "tempo"]).state, "capped");
+  assert.deepEqual(focusCapState("threshold", ["time_trial", "tempo"]).open, []);
+});
+
+test("focusCapState: null uden fokus eller ved ukendt fokus", () => {
+  assert.equal(focusCapState(null, ["tempo"]), null);
+  assert.equal(focusCapState("ikke-et-fokus", ["tempo"]), null);
+});
+
+test("isFocusFullyCapped: uændret kontrakt oven på focusCapState (#2578 regressions-vagt)", () => {
+  assert.equal(isFocusFullyCapped("vo2max", ["climbing"]), false, "delvist ≠ fuldt");
+  assert.equal(isFocusFullyCapped("vo2max", ["climbing", "punch", "tempo"]), true);
 });
 
 test("todayGainTotal: summerer dagens hele point; tomt/negativt/korrupt → 0", () => {
