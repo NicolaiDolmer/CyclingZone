@@ -43,3 +43,23 @@ Når en PR ændrer den variabel en gate måler på:
 3. Beholder du den gamle, mildere måling (jeg beholdt den løse G1 som oplysende test), så skriv i koden at den IKKE er gate og hvorfor.
 
 Og når du finder en konstant/regex/tærskel kopieret i to filer: saml den i samme commit som du rører den. Ikke i "en oprydnings-PR senere".
+
+---
+
+## Tilføjelse samme aften: samlingen var ikke nok — akserne var to (#3601, PR #3637)
+
+Sidste linje ovenfor siger "saml den i samme commit". Det gjorde #3636: webkit-støjfilteret lå i to kopier, og de blev samlet i `fixtures.js`. Dagen efter gik `sponsor-ui.spec.js` rød igen — på præcis den spec fixet dækkede.
+
+Fejlen var at "alle kopier" blev talt op langs **én** akse. Der var to:
+
+| Akse | Hvad #3636 gjorde | Hvad der manglede |
+|---|---|---|
+| **Specs** | Alle tre kopier samlet ét sted ✅ | — |
+| **Kanaler** | Kun `page.on("pageerror")` | `console.error` var uafdækket i helperen |
+| **Beskedvarianter** | 2 af mindst 3 mønstre | `ChunkLoadError ... chunk reload needed` |
+
+Man kan tælle sine kopier korrekt og stadig have et hul, hvis man kun spørger "hvor mange steder står den?" og ikke "hvad er alle måder fænomenet kan komme ind på?".
+
+**Regel jeg tager med:** når du samler et kendetegn ét sted, så skriv de akser ned det varierer langs — kilde, kanal, formulering, tidspunkt — og tjek hver af dem, ikke bare antallet af filer. Og byg en guard der fejler på **kilden** frem for symptomet: `guards.test.js` fejler nu hvis en spec overhovedet hænger direkte på en fejlkanal, uanset hvilken. Det er den eneste form der også dækker den fjerde akse jeg ikke har tænkt på endnu.
+
+Samme aften, samme klasse: #3554. Fem specs skrev bevis-screenshots til committede stier, og ingen gate fangede det — fordi resultatet er et beskidt arbejdstræ, ikke en rød test. En fejl der ikke producerer et rødt signal, findes ikke for CI. Derfor to guards: en statisk der læser specs, og et `git diff --exit-code` efter suiten.
