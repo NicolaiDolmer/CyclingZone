@@ -115,7 +115,25 @@ export function useAuctionBidding({
       amount: bidAmount,
       onConfirm: async () => {
         setBidStatus("loading");
-        const result = await onBid(auction.id, bidAmount);
+        let result;
+        try {
+          result = await onBid(auction.id, bidAmount);
+        } catch (cause) {
+          // #3619: kalder-siden (AuctionsPage.handleBid) har ingen try/catch om
+          // sin fetch. Falder nettet væk midt i kaldet — mobil-WebKit kaster
+          // "TypeError: Load failed" — afviste denne promise unhandled: knappen
+          // sad fast i "loading" for evigt, og spilleren fik intet at vide.
+          // Samme kur som handleRemoveProxy fik i #2719.
+          setBidStatus("error");
+          setErrorText(t("errors:generic.networkError"));
+          reportActionFailure("auction_bid", {
+            reason: "network",
+            cause,
+            context: { auctionId: auction.id, amount: bidAmount },
+          });
+          setTimeout(() => setBidStatus(null), 4000);
+          return;
+        }
         if (result.race) {
           // #194: top-level RacePriceModal håndterer — ryd loading-state
           setBidStatus(null);
@@ -152,7 +170,22 @@ export function useAuctionBidding({
       onConfirm: async () => {
         setProxyStatus("loading");
         setProxyErrorText("");
-        const result = await onSetProxy(auction.id, proxyInput);
+        let result;
+        try {
+          result = await onSetProxy(auction.id, proxyInput);
+        } catch (cause) {
+          // #3619: se handleBid ovenfor — dette var kilden til CYCLINGZONE-4E
+          // (Firefox iOS, autobud-loft gemt på en tabt forbindelse).
+          setProxyStatus("error");
+          setProxyErrorText(t("errors:generic.networkError"));
+          reportActionFailure("auction_proxy_save", {
+            reason: "network",
+            cause,
+            context: { auctionId: auction.id, maxAmount: proxyInput },
+          });
+          setTimeout(() => setProxyStatus(null), 4000);
+          return;
+        }
         setProxyStatus(result.ok ? "saved" : "error");
         if (result.ok) {
           setProxyExpanded(false);
