@@ -69,6 +69,48 @@ test("fjern-autobud kaster ikke længere resultatet væk (#2719)", () => {
   );
 });
 
+// #3619: samme klasse som #2719, men på throw-siden. Kalder-siderne
+// (AuctionsPage/RiderStatsPage) laver bar `await fetch(...)` uden try/catch, så
+// et tabt net midt i kaldet — mobil-WebKit kaster "TypeError: Load failed",
+// CYCLINGZONE-4E — afviste onConfirm-promisen unhandled: status stod fast på
+// "loading", og spilleren fik intet svar. Invarianten er derfor: ALLE tre
+// kald ud af hooket skal ligge i en try/catch der lander i en fejl-status.
+function handlerBody(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  assert.ok(start >= 0, `fandt ikke ${startMarker} i useAuctionBidding.js`);
+  const end = endMarker ? source.indexOf(endMarker, start) : source.length;
+  assert.ok(end > start, `fandt ikke ${endMarker} efter ${startMarker}`);
+  return source.slice(start, end);
+}
+
+const OUTBOUND_CALLS = [
+  { call: "onBid", start: "function handleBid()", end: "function handleSaveProxy()", statusReset: /setBidStatus\("error"\)/ },
+  { call: "onSetProxy", start: "function handleSaveProxy()", end: "async function handleRemoveProxy()", statusReset: /setProxyStatus\("error"\)/ },
+  { call: "onRemoveProxy", start: "async function handleRemoveProxy()", end: "return {", statusReset: /fail\(\{ text: t\("auctions:error\.proxyRemoveFailed"\), cause \}\)/ },
+];
+
+for (const { call, start, end, statusReset } of OUTBOUND_CALLS) {
+  test(`${call} kaldes inde i try/catch — et tabt net må ikke efterlade knappen i loading (#3619)`, () => {
+    const body = handlerBody(bidding, start, end);
+    assert.match(
+      body,
+      new RegExp(`try\\s*\\{[^}]*await ${call}\\(`, "s"),
+      `await ${call}(...) skal ligge i en try — ellers bliver netværksfejlen en unhandled rejection`,
+    );
+    assert.match(body, /catch \(cause\) \{/);
+    // Fanget er ikke nok: catch-grenen skal forlade loading-tilstanden.
+    assert.match(body, statusReset);
+    assert.match(body, /cause,?\s*[,}]/, "den kastede Error skal videre til Sentry som cause");
+  });
+}
+
+test("netværksfejl viser en lokaliseret besked, ikke en tom fejl-status (#3619)", () => {
+  const hits = bidding.match(/t\("errors:generic\.networkError"\)/g) || [];
+  assert.equal(hits.length, 2, "både bud og autobud-gem skal vise netværks-teksten");
+  assert.match(bidding, /setBidStatus\("error"\);\s*setErrorText\(t\("errors:generic\.networkError"\)\)/);
+  assert.match(bidding, /setProxyStatus\("error"\);\s*setProxyErrorText\(t\("errors:generic\.networkError"\)\)/);
+});
+
 test("kontraktforlængelse har dobbelt-submit-værn + Sentry-rapportering (#2718)", () => {
   assert.match(manage, /inFlight\s*=\s*useRef\(false\)/);
   assert.match(manage, /if \(inFlight\.current\) return;/);

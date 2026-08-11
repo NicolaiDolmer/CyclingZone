@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.116",
+    "date": "2026-08-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A bid placed on a dropped connection now tells you it failed",
+          "body": "If your connection dropped in the moment you confirmed a bid or saved an auto-bid limit, the button stayed on its loading state and nothing else happened. No error, no confirmation, and no way to tell whether the bid had gone through, so the only thing left was to reload the page and look. This was most likely to catch you on a phone. Both actions now stop, say that the server could not be reached, and reset so you can try again. Removing an auto-bid limit already worked this way."
+        },
+        "da": {
+          "title": "Et bud afgivet på en tabt forbindelse siger nu selv at det fejlede",
+          "body": "Faldt din forbindelse væk i det sekund du bekræftede et bud eller gemte et autobud-loft, blev knappen stående i sin loading-tilstand, og der skete ikke mere. Ingen fejl, ingen bekræftelse, og ingen måde at se om buddet var gået igennem, så det eneste tilbage var at genindlæse siden og kigge efter. Det ramte især på mobil. Begge handlinger stopper nu, siger at serveren ikke kunne nås, og stiller sig tilbage, så du kan prøve igen. At fjerne et autobud-loft virkede allerede sådan."
+        },
+        "refs": [3619]
+      }
+    ]
+  },
+  {
     "version": "7.115",
     "date": "2026-08-11",
     "label": "Beta",
