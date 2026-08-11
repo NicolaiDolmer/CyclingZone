@@ -67,8 +67,8 @@ function classify(rows, model) {
   for (const r of rows) {
     const key = computeRiderTypes(r.caps, model).primary.key;
     dist[key]++;
-    const { primary, secondary, isHybrid } = r.archetypeDraw;
-    if (isHybrid ? (key === primary || key === secondary) : key === primary) hits++;
+    // #3632: G1 er STRIKS (den trukne primaer) — alle anlaeg er nu to-delte.
+    if (key === r.archetypeDraw.primary) hits++;
   }
   const distPct = Object.fromEntries(RIDER_TYPE_KEYS.map((t) => [t, (dist[t] / rows.length) * 100]));
   const g1 = (hits / rows.length) * 100;

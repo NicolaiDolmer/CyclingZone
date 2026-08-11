@@ -195,7 +195,7 @@ test("#3606 det trukne anlæg lander i riders.archetype_draw (jsonb round-trip)"
   const drawn = new Set(riders.map((r) => r._meta.archetype));
   for (const r of rows) {
     const draw = typeof r.archetype_draw === "string" ? JSON.parse(r.archetype_draw) : r.archetype_draw;
-    assert.ok("primary" in draw && "secondary" in draw && "isHybrid" in draw, "form afviger fra akademi-stiens");
+    assert.ok("primary" in draw && "secondary" in draw, "form afviger fra akademi-stiens");
     assert.ok(drawn.has(draw.primary), `'${draw.primary}' er ikke en trukket arketype`);
   }
 });

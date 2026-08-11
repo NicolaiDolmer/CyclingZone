@@ -131,8 +131,8 @@ function g1AndG4(records) {
   for (const r of records) {
     const key = r.primaryType;
     dist[key]++;
-    const { primary, secondary, isHybrid } = r.archetypeDraw;
-    const hit = isHybrid ? (key === primary || key === secondary) : key === primary;
+    // #3632: G1 er STRIKS (den trukne primaer) — alle anlaeg er nu to-delte.
+    const hit = key === r.archetypeDraw.primary;
     if (hit) hits++;
     if (!perArchetype[primary]) perArchetype[primary] = { n: 0, hits: 0 };
     perArchetype[primary].n++;

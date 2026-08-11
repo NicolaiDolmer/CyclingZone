@@ -406,7 +406,7 @@ test("#3606 toInsertPayload bærer det TRUKNE anlæg som archetype_draw", () => 
   }
 });
 
-test("#3606 anlæggets form matcher akademi-stiens præcist (primary/secondary/isHybrid)", () => {
+test("#3606 anlæggets form matcher akademi-stiens præcist (primary/secondary)", () => {
   // academyGenerator.js' drawArchetypePair er SSOT for formen; academyIntake.js
   // skriver dens retur direkte til archetype_draw. Voksen-generatoren skal skrive
   // NØJAGTIG samme nøglesæt, ellers læser resolveRiderTypes/caps-kæden to former.
@@ -418,10 +418,11 @@ test("#3606 anlæggets form matcher akademi-stiens præcist (primary/secondary/i
       "archetype_draw's nøglesæt afviger fra akademi-stiens",
     );
     // Voksen-generatoren trækker ÉN arketype og former stats efter den alene —
-    // der er ingen anden arketype i kroppen at persistere. Samme værdier som de
-    // ~85 % ikke-hybride akademi-træk.
+    // der er ingen anden arketype i kroppen at persistere. Siden #3632 er den
+    // ALENE om det (akademi-stien har altid to), og det er en kendt mangel med
+    // eget issue + eget sim-krav: #3634. Testen låser den nuværende sandhed, så
+    // #3634 SKAL røre den her linje for at lande.
     assert.equal(row.archetype_draw.secondary, null);
-    assert.equal(row.archetype_draw.isHybrid, false);
   }
 });
 

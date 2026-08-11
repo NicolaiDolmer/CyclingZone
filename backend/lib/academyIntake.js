@@ -29,6 +29,25 @@ export function hashStringToSeed(str) {
   return h >>> 0;
 }
 
+// VAGT (#3632) på SKRIVE-stien: ingen ny akademi-rytter må lande i `riders` uden
+// et to-delt anlæg. drawArchetypePair kaster allerede, men vagten står her fordi
+// det er HER skaden sker — en rytter født med `secondary: null` får sin
+// secondary_type udfyldt af klassifikatoren og drifter så ved hver natlig
+// genberegning (#3593's måling: 574 af 761 i kompensations-kuldet 9/8).
+// Vagten er BEVIDST ikke afledt af et populationstal eller en tærskel: den
+// læser rytterens eget anlæg, så den ikke kan forfalde af at en anden skrivevej
+// ændrer bestanden (postmortem 2026-08-11-guard-premise-decay-archetype-draw.md).
+function assertToDeltAnlaeg(draw, teamId) {
+  if (!draw || typeof draw !== "object" || !draw.primary || !draw.secondary || draw.primary === draw.secondary) {
+    throw new Error(
+      `academy-intake (hold ${teamId}): rytter uden gyldigt to-delt anlæg ` +
+      `(${JSON.stringify(draw)}) — alle ryttere skal fødes med en sekundær arketype ` +
+      "forskellig fra den primære (#3632)"
+    );
+  }
+  return draw;
+}
+
 /**
  * Returnerer antal ryttere med is_academy=true for et givet hold.
  * Bruges af squad-cap-logik (Task 7).
@@ -155,7 +174,7 @@ export async function seedAcademyCohortForTeam(supabase, {
   const riderPayload = candidates.map((c) => ({
     ...c.rider,
     generation_tag: generationTag,
-    archetype_draw: c.archetypeDraw,
+    archetype_draw: assertToDeltAnlaeg(c.archetypeDraw, teamId),
   }));
   const { data: insertedRiders, error: riderErr } = await supabase
     .from("riders")

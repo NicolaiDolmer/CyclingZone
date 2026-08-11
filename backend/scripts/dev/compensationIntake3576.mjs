@@ -144,7 +144,7 @@ function deriveCandidateInMemory(candidate, seasonNumber) {
     potentiale: riderRow.potentiale,
     drawPrimary: draw.primary,
     drawSecondary: draw.secondary || null,
-    isHybrid: !!draw.isHybrid,
+    harSekundaert: !!draw.secondary, // #3632: altid sandt for kuld født efter 11/8
     shownType: primary.key,
     shownSecondary: secondary.key,
     blindType: blind.primary.key,
@@ -434,7 +434,7 @@ function printScorecard(rows, teamCount) {
     console.log(`  ${key.padEnd(16)} ${String(got).padStart(4)}  ${String(gotPct).padStart(5)} %  (mål ${String(target).padStart(5)} %, afvig ${delta > 0 ? "+" : ""}${delta})  ${bar}`);
   }
   console.log(`  → største afvigelse fra mål: ${Math.round(worstDelta * 10) / 10} pct-point`);
-  console.log(`  → hybrider: ${rows.filter((r) => r.isHybrid).length} (${pct(rows.filter((r) => r.isHybrid).length, n)} %, forventet ~15 %)\n`);
+  console.log(`  → med sekundært anlæg: ${rows.filter((r) => r.harSekundaert).length} (${pct(rows.filter((r) => r.harSekundaert).length, n)} %, forventet 100 % efter #3632)\n`);
 
   // 2) Ungdomsbånd — G6-invarianten der manglede da #3561 slap igennem.
   const best = rows.map((r) => r.bestAbility).sort((a, b) => a - b);

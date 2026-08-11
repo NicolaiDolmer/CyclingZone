@@ -76,7 +76,33 @@ const REFERENCE_YEAR = 2026;
 //
 // Gulvet er hævet 35 → 60 (≈12pp under det målte 72,3 %, samme
 // sikkerhedsmargin-princip som de tidligere gulve havde).
-const G1_REGRESSION_FLOOR_PCT = 60;
+//
+// #3632 (11/8) ÆNDREDE BÅDE MÅLET OG METRIKKEN — læs begge dele før du rører tallet:
+//
+// 1. METRIKKEN. g1Pct talte før et hit som "primær ELLER sekundær" for hybrider.
+//    Da ejer-beslutningen gjorde sekundær universel, ville hver eneste rytter få
+//    to chancer, og gaten ville være blevet MILDERE af den ændring den skulle
+//    bevogte (målt: løs G1 79,2 % → 90,7 %). Det er præcis guard-forfaldet i
+//    .claude/learnings/2026-08-11-guard-premise-decay-archetype-draw.md. g1Pct
+//    måler derfor nu STRIKS: genfandt klassifikatoren den TRUKNE PRIMÆR?
+// 2. MÅLET. Sekundæren giver 0,82 af loftet i sin retning (youthRoleFactor) mod
+//    0,45 for en neutral evne. Da kun 15 % havde en sekundær, ramte det 15 %;
+//    nu rammer det alle, og profilen er dermed mindre spids. MÅLT (n=300,
+//    seed 20260806, produktionskæden):
+//      striks G1 FØR #3632 (15 % med sekundær)  67,3 %
+//      striks G1 EFTER #3632 (alle)             61,7 %   ← det nye normalniveau
+//      løs G1 efter (primær ELLER sekundær)     90,7 %   ← kroppen matcher ét af
+//                                                          de to anlæg 9 ud af 10 gange
+//    n=3.000 giver 61,0 % striks / 90,4 % løs — altså ikke en seed-tilfældighed.
+// Gulvet er sat til 52: ≈10pp under de målte 61,7 %, og bevidst OVER fase-1-kædens
+// 50,0 % (se negativ-testen nedenfor) — et gulv der ikke fejler på den kendte
+// defekt, bevogter ingenting.
+const G1_REGRESSION_FLOOR_PCT = 52;
+// Hvor meget draw-caps skal slå bootstrap-caps for stadig at være den dominerende
+// driver. 15 → 8 den 2026-08-11: forskellen blev målt på den LØSE metrik (79,2 %
+// mod 49,3 %); på den strikse er den 61,7 % mod 50,0 % = 11,7pp. 8 holder en
+// margin under det målte, uden at teste mod et tal fra en anden metrik.
+const G1_DRAW_CAPS_MIN_ADVANTAGE_PP = 8;
 // Rå-evne-gab: SÆNKET 8 → 1 og indsnævret til 16-18-årige den 2026-08-09 (#3561).
 // Ungdomsbåndet topper ved afledt evne 12, så et gab på 8 kræver at båndet brydes.
 // Værre: statPerYearOver16 (1,4 rå point/år) løfter base-niveauet OVER statCeil=54 ved
@@ -145,12 +171,24 @@ function runCohort(n, seed, { useAdultBaselineOnly = false, useBootstrapCaps = f
   });
 }
 
+// STRIKS siden #3632: genfandt klassifikatoren den TRUKNE PRIMÆR? (Se
+// G1_REGRESSION_FLOOR_PCT for hvorfor "primær ELLER sekundær" ikke længere kan
+// bruges som mål, når alle ryttere har en sekundær.)
 function g1Pct(riders) {
   let hits = 0;
+  for (const r of riders) if (r.finalPrimary === r.archetypeDraw.primary) hits++;
+  return (hits / riders.length) * 100;
+}
+
+// Den LØSE variant beholdes som en selvstændig, oplysende måling: matcher kroppen
+// ét af rytterens to anlæg? Den er IKKE gate — den ville kun blive mildere af den
+// ændring den skulle bevogte — men den skiller "klassifikatoren tog fejl" fra
+// "klassifikatoren byttede om på primær og sekundær", og de to er ikke lige slemme.
+function g1LoosePct(riders) {
+  let hits = 0;
   for (const r of riders) {
-    const { primary, secondary, isHybrid } = r.archetypeDraw;
-    const hit = isHybrid ? (r.finalPrimary === primary || r.finalPrimary === secondary) : r.finalPrimary === primary;
-    if (hit) hits++;
+    const { primary, secondary } = r.archetypeDraw;
+    if (r.finalPrimary === primary || r.finalPrimary === secondary) hits++;
   }
   return (hits / riders.length) * 100;
 }
@@ -167,6 +205,28 @@ test(`G1-regression: klassifikatoren genfinder det trukne anlæg ≥${G1_REGRESS
   const riders = runCohort(N, SEED);
   const pct = g1Pct(riders);
   assert.ok(pct >= G1_REGRESSION_FLOOR_PCT, `G1 ${pct.toFixed(1)}% under regressions-gulvet ${G1_REGRESSION_FLOOR_PCT}% (fase-1-niveauet var ~21% — se academyGenerator.js' YOUTH_GEN_CONFIG-historik hvis dette fejler)`);
+});
+
+// #3632-INVARIANT: hver ENESTE kandidat fødes med et to-delt anlæg. Ikke en
+// procentsats — 100 %, ingen tolerance. Det er selve ejer-beslutningen fra 11/8,
+// og et enkelt `secondary: null` er nok til at rytterens secondary_type igen
+// hviler på klassifikatorens gæt og drifter ved den natlige genberegning.
+test("#3632-invariant: ALLE nye akademi-ryttere fødes med en sekundær ≠ primær", () => {
+  const riders = runCohort(N, SEED);
+  const uden = riders.filter((r) => !r.archetypeDraw.secondary || r.archetypeDraw.secondary === r.archetypeDraw.primary);
+  assert.equal(
+    uden.length, 0,
+    `${uden.length}/${riders.length} ryttere født uden gyldigt sekundært anlæg ` +
+    `(fx ${JSON.stringify(uden[0]?.archetypeDraw)}) — se #3632`
+  );
+});
+
+// Oplysende sidemåling til G1 (IKKE en gate — se g1LoosePct). Falder DEN her, er
+// kroppen holdt op med at ligne rytterens anlæg overhovedet, ikke bare byttet om
+// på de to. Målt 11/8: 90,7 % (n=300) / 90,4 % (n=3.000).
+test("#3632: kroppen matcher mindst ét af rytterens to anlæg ≥80 %", () => {
+  const pct = g1LoosePct(runCohort(N, SEED));
+  assert.ok(pct >= 80, `kun ${pct.toFixed(1)} % matcher primær ELLER sekundær (målt 90,7 % 11/8)`);
 });
 
 // #3570 FASE 2 NEGATIV-TEST (designprincip: en gate skal fejle på KENDT defekt kode).
@@ -191,9 +251,9 @@ test("#3570 FASE 2 NEGATIV-TEST: bootstrap-caps (fase 1-kæden) giver markant LA
   const production = g1Pct(runCohort(N, SEED));
   const phase1Chain = g1Pct(runCohort(N, SEED, { useBootstrapCaps: true }));
   assert.ok(
-    phase1Chain < production - 15,
+    phase1Chain < production - G1_DRAW_CAPS_MIN_ADVANTAGE_PP,
     `fase 1-kæden (bootstrap-caps) gav G1 ${phase1Chain.toFixed(1)}% mod produktionens ${production.toFixed(1)}% — ` +
-    `forventede mindst 15pp forskel (hvis IKKE, isolerer denne test ikke længere draw-caps' effekt)`
+    `forventede mindst ${G1_DRAW_CAPS_MIN_ADVANTAGE_PP}pp forskel (hvis IKKE, isolerer denne test ikke længere draw-caps' effekt)`
   );
 });
 

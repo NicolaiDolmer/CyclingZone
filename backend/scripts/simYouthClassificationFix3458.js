@@ -79,8 +79,8 @@ const hitRate = (finalKeyFn) => {
   for (const r of rows) {
     const key = finalKeyFn(r);
     dist[key]++;
-    const { primary, secondary, isHybrid } = r.draw;
-    if (isHybrid ? (key === primary || key === secondary) : key === primary) hits++;
+    // #3632: G1 er STRIKS (den trukne primaer) — alle anlaeg er nu to-delte.
+    if (key === r.draw.primary) hits++;
   }
   return { pct: Math.round((hits / rows.length) * 1000) / 10, dist };
 };

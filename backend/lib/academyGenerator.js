@@ -43,12 +43,13 @@ export function drawPotentiale(rng) {
 // Vælg et ungdoms-anlæg (#3458 fase 2: arketype-prior-først). Trækkes fra
 // archetypeDistribution.js' mål-fordeling (formel afledt af MÅL-kalenderens
 // K-B-profil + demand-mapping + scarcity-modifikatorer + gulv — IKKE en fast
-// tabel her, se archetypeDistribution.js for kilden). ~15 % trækkes som en
-// to-arketype-hybrid (drawArchetypePair) — det anlæg der senere skal give
-// generateYouthStats nok SEPARATION til at klassifikatoren genfinder typen
-// af sig selv (design-spec G1). Typen skrives ALDRIG direkte som rytterens
-// type — kun `deriveForRiderIds`-kæden (physiology→abilities→caps→klassifikator)
-// tildeler den endelige type; dette er blot en formnings-PRIOR for stats.
+// tabel her, se archetypeDistribution.js for kilden). Anlægget er ALTID to-delt
+// (#3632, ejer-beslutning 11/8: alle ryttere har en sekundær type) — det anlæg
+// der senere skal give generateYouthStats nok SEPARATION til at klassifikatoren
+// genfinder typen af sig selv (design-spec G1). Typen skrives ALDRIG direkte som
+// rytterens type — kun `deriveForRiderIds`-kæden (physiology→abilities→caps→
+// klassifikator) tildeler den endelige type; dette er en formnings-PRIOR for
+// stats OG ankeret der holder secondary_type fast mod den natlige genberegning.
 function pickYouthArchetype(rng) {
   return drawArchetypePair(rng);
 }
@@ -116,9 +117,9 @@ export function generateAcademyCandidates({
     const is_serious = potentiale >= 4.5;
 
     // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk
-    // fra arketype-mål-fordelingen (#3458 fase 2, ~15% hybrid); de lave stats giver via
-    // fallback-derivationen lave evner i ungdoms-båndet.
-    const archetypeDraw = pickYouthArchetype(rng); // { primary, secondary, isHybrid }
+    // fra arketype-mål-fordelingen (#3458 fase 2; altid to-delt siden #3632); de lave stats giver
+    // via fallback-derivationen lave evner i ungdoms-båndet.
+    const archetypeDraw = pickYouthArchetype(rng); // { primary, secondary }
     const { stats } = generateYouthStats({
       rng,
       age,
@@ -266,6 +267,23 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   // præcist og bevarer proportionaliteten for vægt-2-straffe. 2,6 pressede modsat-evner
   // helt i bund og var halvdelen af den for firkantede profil.
   dampPerWeight: 1.0,
+  // Hvor meget af det SEKUNDÆRE anlægs signatur der blandes ind i fødsels-statsene
+  // (0 = kun primær former kroppen, 0,5 = de to anlæg vejer lige).
+  //
+  // 0,5 → 0,10 den 2026-08-11 (#3632). 50/50 var en HYBRID-krop, og hybrider var
+  // 15 % af kuldet. Da ejer-beslutningen gjorde sekundær universel, ville 50/50
+  // ramme ALLE — og en 50/50-blanding halverer boostet på primærens signatur-evner
+  // samtidig med at den løfter sekundærens, så profilen flader ud. MÅLT (n=3.000,
+  // seed 20260806, samme kæde som archetypeGenerationGates.test.js):
+  //   sek.vægt 0,50 → specialiserings-gab (G2) snit 1,21, median 0 → G2-GATEN RYGER
+  //   sek.vægt 0,25 → snit 1,51, median 0 → gaten ryger stadig
+  //   sek.vægt 0,10 → snit 1,80, median 2 → grøn, og populationens dybde bliver
+  //                   hvor den er i dag (1,86 med 15 % hybrider på 0,50)
+  //   sek.vægt 0    → snit 2,05 (bi-typen sætter da intet aftryk i kroppen)
+  // 0,10 er altså den vægt hvor bi-typen kan ses i kroppen uden at æde
+  // primær-identiteten — og hvor populationens specialiserings-dybde er uændret
+  // af #3632. Skal den kalibreres igen, hører den til #3631's sim-scorecard.
+  secondarySignatureWeight: 0.1,
   // Hårde grænser (−3-bånd): gulv → afledt bund ~1-3; loft → afledt top mætter ~12
   // (for IKKE-boostede stats — se statCeilBoosted for signatur-stats' loft).
   sd: 0.8,
@@ -358,28 +376,33 @@ function signatureProfile(archetypeKey, cfg) {
   return { boost, damp };
 }
 
-// Bland to arketypers signatur til ÉN syntetisk profil til en hybrid-rytter.
-// boost = gennemsnit af de to vægte (union af nøgler, manglende = 0) — begge
-// anlæg bidrager, ingen forsvinder. damp = KUN de FÆLLES svagheder (snit, ikke
-// union) — en hybrid skal ikke dæmpes på en evne der er den ENE arketypes
-// signatur (fx en climber+puncheur-hybrid må ikke dæmpe punch).
+// Bland to arketypers signatur til ÉN syntetisk profil. boost = vægtet snit af de
+// to (union af nøgler, manglende = 0) — begge anlæg bidrager, ingen forsvinder.
+// damp = KUN de FÆLLES svagheder — en rytter skal ikke dæmpes på en evne der er
+// det ENE anlægs signatur (fx climber+puncheur må ikke dæmpe punch).
+//
+// #3632: vægten er `cfg.secondarySignatureWeight` (0,10) i stedet for det faste
+// 50/50-snit. Se konstantens kommentar for målingen bag.
 function blendArchetypeSignature(primaryKey, secondaryKey, cfg) {
+  const w = clamp(Number(cfg.secondarySignatureWeight ?? 0.5), 0, 0.5);
   const a = signatureProfile(primaryKey, cfg);
+  if (w === 0) return a;
   const b = signatureProfile(secondaryKey, cfg);
   const boost = {};
   for (const key of new Set([...Object.keys(a.boost), ...Object.keys(b.boost)])) {
-    boost[key] = ((a.boost[key] ?? 0) + (b.boost[key] ?? 0)) / 2;
+    boost[key] = (a.boost[key] ?? 0) * (1 - w) + (b.boost[key] ?? 0) * w;
   }
   const damp = {};
   for (const key of Object.keys(a.damp)) {
-    if (key in b.damp) damp[key] = (a.damp[key] + b.damp[key]) / 2;
+    if (key in b.damp) damp[key] = a.damp[key] * (1 - w) + b.damp[key] * w;
   }
   return { boost, damp };
 }
 
 // Generér lave, anlægs-formede, alders- OG talent-skalerede stats for én ung, med per-rytter start-held.
-// secondaryArchetypeType (#3458, ~15% af kuldet): trækker en to-arketype-hybrid-profil
-// (blandet signatur, se blendArchetypeSignature) i stedet for et rent anlæg.
+// secondaryArchetypeType (#3458; siden #3632 sat for ALLE kandidater): blander
+// bi-typens signatur let ind (se blendArchetypeSignature + secondarySignatureWeight).
+// null er stadig tilladt — kalibrerings-harnesses måler den rene primær-profil.
 export function generateYouthStats({ rng, age, potentiale, archetypeType, secondaryArchetypeType = null, cfg = YOUTH_GEN_CONFIG }) {
   if (!ARCHETYPE_BY_TYPE[archetypeType]) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
   const arch = secondaryArchetypeType

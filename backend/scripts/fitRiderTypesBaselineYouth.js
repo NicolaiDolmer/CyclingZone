@@ -115,8 +115,8 @@ function main() {
     for (const r of rows) {
       const key = computeRiderTypes(r.caps, baseline).primary.key;
       dist[key]++;
-      const { primary, secondary, isHybrid } = r.archetypeDraw;
-      if (isHybrid ? (key === primary || key === secondary) : key === primary) hits++;
+      // #3632: G1 er STRIKS (den trukne primaer) — alle anlaeg er nu to-delte.
+      if (key === r.archetypeDraw.primary) hits++;
     }
     return { pct: Math.round((hits / rows.length) * 1000) / 10, dist };
   };

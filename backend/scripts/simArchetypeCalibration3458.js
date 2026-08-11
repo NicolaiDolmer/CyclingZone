@@ -104,8 +104,8 @@ function evaluate(cfg) {
   // G1
   let g1 = 0;
   for (const r of riders) {
-    const { primary, secondary, isHybrid } = r.archetypeDraw;
-    if (isHybrid ? (r.finalPrimary === primary || r.finalPrimary === secondary) : r.finalPrimary === primary) g1++;
+    // #3632: G1 er STRIKS (den trukne primaer) — alle anlaeg er nu to-delte.
+    if (r.finalPrimary === r.archetypeDraw.primary) g1++;
   }
 
   // G2/G3

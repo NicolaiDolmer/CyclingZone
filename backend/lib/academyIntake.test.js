@@ -485,7 +485,7 @@ test("seedAcademyCohortForTeam: countOverride respekteres + generation_tag stemp
 // #3570 fase 2: archetype_draw skrives ved rytter-insert (kandidaterne bærer
 // allerede archetypeDraw fra academyGenerator.js — se dens kommentar for hvorfor
 // feltet historisk ALDRIG blev spredt ind i rider-insert-payloaden).
-test("#3570: seedAcademyCohortForTeam skriver archetype_draw ({primary, secondary, isHybrid}) på hver ny rytter", async () => {
+test("#3570/#3632: seedAcademyCohortForTeam skriver et to-delt archetype_draw ({primary, secondary}) på hver ny rytter", async () => {
   const supabase = makeIntakeSupabase({
     activeSeason: { id: "s-id", number: 2, start_date: "2026-07-27" },
     academyIntakeTeamIds: [],
@@ -505,7 +505,10 @@ test("#3570: seedAcademyCohortForTeam skriver archetype_draw ({primary, secondar
   for (const row of supabase._riderInserts) {
     assert.ok(row.archetype_draw && typeof row.archetype_draw === "object", "archetype_draw sat (ikke null/undefined)");
     assert.ok(typeof row.archetype_draw.primary === "string", "archetype_draw.primary er en type-nøgle");
-    assert.equal(typeof row.archetype_draw.isHybrid, "boolean", "archetype_draw.isHybrid er boolean");
+    // #3632: sekundæren er ankeret der holder rytterens secondary_type fast mod
+    // den natlige genberegning — den må aldrig være null eller lig primæren.
+    assert.ok(typeof row.archetype_draw.secondary === "string", "archetype_draw.secondary er en type-nøgle");
+    assert.notEqual(row.archetype_draw.secondary, row.archetype_draw.primary);
   }
 });
 

@@ -43,9 +43,9 @@ const rows = candidates.map((c, i) => {
 console.log(`=== Bootstrap-diagnose (boost=${BOOST}, loftBoosted=${CEIL}, n=${N}) ===\n`);
 
 // 1) Rammer bootstrap arketypen?
-const hits = rows.filter((r) => r.draw.isHybrid
-  ? (r.bootstrapPrimary === r.draw.primary || r.bootstrapPrimary === r.draw.secondary)
-  : r.bootstrapPrimary === r.draw.primary).length;
+// #3632: anlægget er altid to-delt, så "primær ELLER sekundær" ville gøre målingen
+// mildere netop hvor den skal være skarp. Striks: ramte den trukne primær?
+const hits = rows.filter((r) => r.bootstrapPrimary === r.draw.primary).length;
 console.log(`Bootstrap rammer arketypen: ${Math.round((hits / rows.length) * 1000) / 10} %\n`);
 
 // 2) Hvilke typer VINDER bootstrap?
@@ -73,7 +73,7 @@ for (const r of rows) {
   const stripped = { ...r.abilities, aggression: 0 };
   const b = computeRiderTypes(stripped, NEUTRAL_BASELINE);
   distNoAgg[b.primary.key]++;
-  if (r.draw.isHybrid ? (b.primary.key === r.draw.primary || b.primary.key === r.draw.secondary) : b.primary.key === r.draw.primary) hitsNoAgg++;
+  if (b.primary.key === r.draw.primary) hitsNoAgg++; // striks, se #3632 ovenfor
 }
 console.log(`\nKONTRAFAKTISK — bootstrap UDEN aggression:`);
 console.log(`  rammer arketypen: ${Math.round((hitsNoAgg / rows.length) * 1000) / 10} %  (mod ${Math.round((hits / rows.length) * 1000) / 10} % med)`);

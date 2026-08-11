@@ -11,7 +11,6 @@ import {
   FLOOR_PCT,
   drawArchetype,
   drawArchetypePair,
-  HYBRID_PROBABILITY,
 } from "./archetypeDistribution.js";
 
 // Design-spec arbejdstal (docs/superpowers/specs/2026-08-06-ryttertype-fundament-
@@ -92,23 +91,45 @@ test("drawArchetype: langsigtet fordeling konvergerer mod DEFAULT_DISTRIBUTION",
   }
 });
 
-test("drawArchetypePair: hybrid-rate konvergerer mod HYBRID_PROBABILITY (~15%)", () => {
+// #3632 (ejer-beslutning 11/8): ALLE ryttere har en sekundær type. Den gamle test
+// her målte at hybrid-raten konvergerede mod HYBRID_PROBABILITY (~15 %) — dvs. at
+// 85 % KORREKT fik `secondary: null`. Det var netop defekten: kolonnen
+// secondary_type blev udfyldt af klassifikatoren alligevel, uden anker i anlægget.
+test("#3632 drawArchetypePair: ALLE træk har en sekundær forskellig fra primær", () => {
   const rng = makeRng(7);
-  let hybridCount = 0;
   const N = 20000;
   for (let i = 0; i < N; i++) {
     const draw = drawArchetypePair(rng);
-    if (draw.isHybrid) {
-      hybridCount++;
-      assert.notEqual(draw.secondary, draw.primary, "hybrid-sekundær må ikke være samme som primær");
-      assert.ok(ARCHETYPE_TYPES.includes(draw.secondary));
-    } else {
-      assert.equal(draw.secondary, null);
-    }
-    assert.ok(ARCHETYPE_TYPES.includes(draw.primary));
+    assert.ok(ARCHETYPE_TYPES.includes(draw.primary), `ukendt primær '${draw.primary}'`);
+    assert.ok(ARCHETYPE_TYPES.includes(draw.secondary), `sekundær mangler eller er ukendt: '${draw.secondary}'`);
+    assert.notEqual(draw.secondary, draw.primary, "sekundær må ikke være samme som primær");
   }
-  const pct = (hybridCount / N) * 100;
-  assert.ok(Math.abs(pct - HYBRID_PROBABILITY * 100) <= 1.5, `hybrid-rate ${pct.toFixed(2)}% vs mål ${HYBRID_PROBABILITY * 100}%`);
+});
+
+// Vagten skal fyre på en KENDT defekt konfiguration, ikke kun se rigtig ud: et
+// types-scope med én type gør en sekundær umulig, og så SKAL trækket kaste i
+// stedet for at returnere et halvt anlæg (den tavse null var hele #3632).
+test("#3632 drawArchetypePair: kaster hvis en sekundær er umulig at trække", () => {
+  assert.throws(
+    () => drawArchetypePair(makeRng(3), { types: ["climber"], distribution: { climber: 100 } }),
+    /sekundær arketype/,
+    "et anlæg uden mulig sekundær skal kaste, ikke returnere secondary: null"
+  );
+});
+
+// Sekundæren trækkes fra SAMME mål-fordeling som primæren (renormaliseret uden
+// primæren). #3631 skal udjævne den yderligere — denne test låser blot at den
+// ikke er tom eller ensidig, så en regression i trækket ses her og ikke først i
+// prod-bestanden (målt 11/8: sprinter 33,7 %, brostensrytter 3,1 %).
+test("#3632 drawArchetypePair: sekundæren rammer alle 8 typer", () => {
+  const rng = makeRng(11);
+  const counts = Object.fromEntries(ARCHETYPE_TYPES.map((t) => [t, 0]));
+  const N = 20000;
+  for (let i = 0; i < N; i++) counts[drawArchetypePair(rng).secondary]++;
+  for (const t of ARCHETYPE_TYPES) {
+    const pct = (counts[t] / N) * 100;
+    assert.ok(pct >= 5, `sekundær '${t}' kun ${pct.toFixed(2)}% — ingen type må forsvinde fra sekundær-puljen`);
+  }
 });
 
 test("drawArchetypePair: determinisme (samme seed → samme sekvens af træk)", () => {
