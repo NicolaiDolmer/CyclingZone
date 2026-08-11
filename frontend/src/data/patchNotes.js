@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.114",
+    "date": "2026-08-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "New academy prospects are now born with both of their rider types",
+          "body": "Every rider has a main type and a second type. Until now only about one prospect in seven was born with the second one decided. For the rest the game read it off their abilities instead, and could read it differently the next time it recalculated, so the second type on the card was never really theirs to keep. From now on every new academy prospect is born with both types set, and both stay put. Their starting abilities lean very slightly toward that second type as well, so the card and the rider agree from day one. Riders already in the game keep everything they have; nothing was taken away from anyone."
+        },
+        "da": {
+          "title": "Nye akademi-emner fødes nu med begge deres ryttertyper",
+          "body": "Hver rytter har en hovedtype og en anden type. Indtil nu blev kun cirka hvert syvende emne født med den anden type fastlagt. For resten aflæste spillet den i stedet ud fra rytterens evner og kunne aflæse den anderledes næste gang det regnede efter, så den anden type på kortet aldrig rigtig var hans at beholde. Fra nu af fødes hvert nyt akademi-emne med begge typer sat, og begge bliver stående. Emnets start-evner hælder samtidig en anelse mod den anden type, så kortet og rytteren passer sammen fra dag ét. Ryttere der allerede er i spillet, beholder alt hvad de har; der er ikke taget noget fra nogen."
+        },
+        "refs": [3632, 3593]
+      }
+    ]
+  },
+  {
     "version": "7.113",
     "date": "2026-08-11",
     "label": "Beta",

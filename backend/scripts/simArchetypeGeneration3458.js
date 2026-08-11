@@ -126,7 +126,7 @@ function main() {
     const final = computeRiderTypes(caps, typesBaseline);
 
     return {
-      archetypeDraw: c.archetypeDraw, // { primary, secondary, isHybrid } — ALDRIG skrevet til DB
+      archetypeDraw: c.archetypeDraw, // { primary, secondary } — ALDRIG skrevet til DB
       abilities,
       caps,
       potentiale: riderRow.potentiale,
@@ -140,8 +140,9 @@ function main() {
   // ── G1: klassifikatorens endelige type == trukket arketype (hybrid: en af de to) ──
   let g1Hits = 0;
   for (const r of riders) {
-    const { primary, secondary, isHybrid } = r.archetypeDraw;
-    const hit = isHybrid ? (r.finalPrimary === primary || r.finalPrimary === secondary) : r.finalPrimary === primary;
+    // #3632: anlaegget er altid to-delt, saa 'primaer ELLER sekundaer' ville goere
+    // maalingen mildere netop hvor den skulle vaere skarp. G1 er STRIKS: ramte den trukne primaer?
+    const hit = r.finalPrimary === r.archetypeDraw.primary;
     if (hit) g1Hits++;
   }
   const g1Pct = Math.round((g1Hits / n) * 1000) / 10;
@@ -185,7 +186,7 @@ function main() {
   let hybridCount = 0;
   for (const r of riders) {
     drawDist[r.archetypeDraw.primary] = (drawDist[r.archetypeDraw.primary] || 0) + 1;
-    if (r.archetypeDraw.isHybrid) hybridCount++;
+    if (r.archetypeDraw.secondary) hybridCount++;
   }
   const hybridPct = Math.round((hybridCount / n) * 1000) / 10;
 

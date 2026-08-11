@@ -117,8 +117,6 @@ export const SCARCITY_MULTIPLIER = Object.freeze({
 // Spec §2 punkt 1c: "gulv ~8-9 % så intet løbsformat er dødt". 8.5 er midtpunktet.
 export const FLOOR_PCT = 8.5;
 
-const clamp01 = (n) => Math.max(0, Math.min(1, n));
-
 // ── Lag 1: rå kalender-efterspørgsel pr. arketype (før scarcity/gulv) ─────────
 // Summerer til 100 hvis calendarProfile summerer til 100 og hver kategoris
 // demand-map-andele summerer til 1 (begge sande for TARGET_CALENDAR_PROFILE_KB).
@@ -223,26 +221,46 @@ export function drawArchetype(rng, distribution = DEFAULT_DISTRIBUTION, types = 
   return types[types.length - 1];
 }
 
-// ~15 % hybrid-andel (design-spec §2 punkt 2, ejer-mandat 6/8).
-export const HYBRID_PROBABILITY = 0.15;
-
 /**
- * Træk arketype med hybrid-støj (design-spec §2 punkt 2): ~15 % af nye ryttere
- * trækkes som to-arketype-blanding. Konsumerer altid ÉT rng()-kald til primær +
- * ét til hybrid-mønten; et TREDJE kald KUN når hybrid rammer (determinisme:
- * ikke-hybrid-grenen forbruger præcis 2 kald, hybrid-grenen 3).
+ * Træk en rytters ANLÆG: en primær arketype + en sekundær forskellig fra den.
  *
- * @returns {{ primary: string, secondary: string|null, isHybrid: boolean }}
+ * #3632 (ejer-beslutning 11/8): ALLE ryttere har en sekundær type. Indtil da
+ * afgjorde `HYBRID_PROBABILITY = 0.15` (design-spec §2 punkt 2, ejer-mandat 6/8)
+ * om der overhovedet blev trukket en sekundær, og de øvrige 85 % fik
+ * `secondary: null`. Det var et levn fra et ældre design hvor sekundær type var
+ * en sjælden egenskab forbeholdt "hybrider" — og følgen var ikke kosmetisk:
+ * `riders.secondary_type` blev udfyldt af klassifikatoren alligevel (se
+ * `resolveRiderTypes`), så spilleren SÅ en sekundær type uden et anlæg til at
+ * forankre den, og den natlige genberegning kunne flytte den frit. Præcis den
+ * drift #3570 blev kørt for at stoppe. Målingen bag beslutningen: #3593.
+ *
+ * `isHybrid` er fjernet af samme grund: et flag der altid ville være sandt siger
+ * intet — og de steder der forgrenede på det (scorecards, G1-gaten: "ramte
+ * klassifikatoren primær ELLER sekundær?") blev automatisk mildere i samme
+ * sekund alle blev hybrider. Prod-rækker født FØR 11/8 bærer stadig nøglen;
+ * ingen produktionskode læser den.
+ *
+ * Determinisme: PRÆCIS to rng()-kald pr. rytter (primær + sekundær). Før var det
+ * 2 eller 3 afhængigt af mønten — altså en sekvens der afhang af eget udfald.
+ *
+ * @returns {{ primary: string, secondary: string }}
  */
 export function drawArchetypePair(rng, {
   distribution = DEFAULT_DISTRIBUTION,
   types = ARCHETYPE_TYPES,
-  hybridProbability = HYBRID_PROBABILITY,
 } = {}) {
   const primary = drawArchetype(rng, distribution, types);
-  const isHybrid = rng() < clamp01(hybridProbability);
-  if (!isHybrid) return { primary, secondary: null, isHybrid: false };
   const remaining = types.filter((t) => t !== primary);
   const secondary = drawArchetype(rng, distribution, remaining);
-  return { primary, secondary, isHybrid: true };
+  // VAGT (#3632): et anlæg uden sekundær — eller med sekundær = primær — er den
+  // tilstand hele issuet handler om. Kast hellere end at returnere det halve
+  // anlæg: en tavs `null` her er præcis det svigt der drev 574 ryttere igennem
+  // uden anker. Kalderen kan ikke gøre noget fornuftigt ved den alligevel.
+  if (!secondary || secondary === primary) {
+    throw new Error(
+      `drawArchetypePair: ugyldigt anlæg (primary=${primary}, secondary=${secondary}) — ` +
+      "alle ryttere skal have en sekundær arketype forskellig fra den primære (#3632)"
+    );
+  }
+  return { primary, secondary };
 }

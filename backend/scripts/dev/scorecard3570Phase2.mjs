@@ -131,9 +131,9 @@ function g1AndG4(records) {
   for (const r of records) {
     const key = r.primaryType;
     dist[key]++;
-    const { primary, secondary, isHybrid } = r.archetypeDraw;
-    const hit = isHybrid ? (key === primary || key === secondary) : key === primary;
-    if (hit) hits++;
+    // #3632: G1 er STRIKS (den trukne primær) — alle anlæg er nu to-delte.
+    const primary = r.archetypeDraw.primary;
+    if (key === primary) hits++;
     if (!perArchetype[primary]) perArchetype[primary] = { n: 0, hits: 0 };
     perArchetype[primary].n++;
     if (key === primary) perArchetype[primary].hits++;

@@ -473,18 +473,23 @@ export function generateFictionalRiders({
         archetype: archetype.type,
         // #3606: rytterens ANLÆG i præcis samme form som akademi-stien persisterer
         // (academyGenerator.js' drawArchetypePair → academyIntake.js:
-        // { primary, secondary, isHybrid }). toInsertPayload løfter det til
-        // riders.archetype_draw.
+        // { primary, secondary }). toInsertPayload løfter det til riders.archetype_draw.
         //
-        // secondary er null / isHybrid false FORDI voksen-generatoren kun trækker
-        // ÉN arketype (typeSeq ovenfor) og former stats + krop efter den alene —
-        // der er ingen anden arketype i rytterens krop at persistere. Det ville
-        // være en løgn om rytteren at skrive en, og at skrive klassifikatorens
-        // bedste gæt ville netop fryse gættet — rodårsagen — ind som identitet.
-        // resolveRiderTypes håndterer det: en trukket primær vinder, og bi-typen
-        // udpeges af klassifikatoren, nøjagtig som for de ~85 % IKKE-hybride
-        // akademi-ryttere (drawArchetypePair returnerer secondary null der).
-        archetypeDraw: { primary: archetype.type, secondary: null, isHybrid: false },
+        // secondary er STADIG null her efter #3632, og det er en KENDT mangel, ikke
+        // et designvalg der er blevet bekræftet: voksen-generatoren trækker ÉN
+        // arketype (typeSeq ovenfor) og former stats + krop efter den alene, så der
+        // er ingen anden arketype i kroppen at persistere. At skrive en tilfældig
+        // sekundær ville give rytteren et loft (youthRoleFactor 0,82) i en retning
+        // kroppen ikke peger, og at skrive klassifikatorens bedste gæt ville fryse
+        // netop gættet — rodårsagen — ind som identitet.
+        //
+        // Følgen er at AI-hold- og startholds-ryttere (aiTeamGenerator,
+        // starterSquadAllocator) fortsat har en secondary_type der kan drifte ved
+        // den natlige genberegning, præcis som akademi-ryttere gjorde før #3632.
+        // At lukke det kræver at voksen-stien former kroppen efter to anlæg —
+        // hvilket flytter hele launch-populationens balance-snapshot og derfor er
+        // sit eget issue med sit eget sim-scorecard: #3634.
+        archetypeDraw: { primary: archetype.type, secondary: null },
         age: demo.age,
         cluster: clusterKey,
         physiology,
