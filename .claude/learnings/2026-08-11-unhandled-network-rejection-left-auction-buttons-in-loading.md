@@ -34,6 +34,15 @@ kalder-kontrakt — fik det ikke. Fejlklassen blev diagnosticeret rigtigt og så
 ikke det sted symptomet blev observeret. Det er alle steder formen optræder. Den
 backwards-check koster to minutter og var ikke lavet.
 
+**Backwards-checket er nu kørt** og lever i
+[#3628](https://github.com/NicolaiDolmer/CyclingZone/issues/3628): et groft scan flagger
+48 `await fetch(`-kald uden omsluttende `try` i `frontend/src`. Heuristikken har høj
+falsk-positiv-rate (`useTraining`, `TransfersPage`, `riderContractActions` er dækket),
+men `ProfilePage.jsx` har **fire bekræftede** — hvoraf `toggleDmPref` er værre end
+auktions-tilfældet: den laver en optimistisk state-opdatering og ruller kun tilbage i
+`!res.ok`-grenen, så en kastet fetch efterlader UI'et med en tilstand serveren ikke har.
+Manglende feedback er irriterende; en flade der lyver om tilstanden er en anden klasse.
+
 ## Forward-guard
 
 Regressionsværnet i `useBlockedAction.test.js` er nu skrevet som en **invariant over
