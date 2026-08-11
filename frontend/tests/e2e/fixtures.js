@@ -373,3 +373,41 @@ export async function stabilizePage(page) {
     }
   });
 }
+
+// ── WebKit-dev-noise (#3601) ────────────────────────────────────────────────
+//
+// WebKit + Vite-preview + Playwright-route-mocks kaster uncaught fejl som IKKE
+// reproducerer på ægte iOS Safari: dynamiske route-chunks der afbrydes under
+// belastning ("Importing a module script failed"), og mock-svar webkit afviser
+// som cross-origin ("... due to access control checks"). Chromium er tolerant
+// over for begge, så de rammer kun mobile-webkit — og kun når hele suiten
+// kører, fordi det er dér timingen bliver presset.
+//
+// Filtret levede i to kopier (core-smoke + board-interactive) mens
+// sponsor-ui.spec.js og landing-hydration.spec.js aldrig fik det. Resultatet
+// var at netop de to gik røde på tilfældige PR'er under fuld belastning —
+// frontend-smoke er en required check, så en test-artefakt blokerede merges
+// for alle. Kopierne er samlet her, så en tredje spec ikke kan mangle den
+// igen (samme rettelses-klasse som postmortem 2026-08-11: ret ALLE kopier af
+// et kendetegn i samme commit, ellers ser det løst ud uden at være det).
+//
+// BEVIDST SMALT: kun disse to beskeder, og kun i webkit. Enhver anden uncaught
+// fejl — også i webkit — er stadig en ægte fejl der skal fejle testen.
+export const WEBKIT_DEV_NOISE = [/Importing a module script failed/i, /due to access control checks/i];
+
+/**
+ * Opsaml uncaught page-errors med webkit-dev-noise filtreret fra.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {import("@playwright/test").TestInfo} testInfo  bruges til at afgøre om projektet er webkit
+ * @returns {string[]} arrayet der fyldes undervejs — assertér på det til sidst
+ */
+export function collectPageErrors(page, testInfo) {
+  const isWebkit = testInfo.project.name.includes("webkit");
+  const errors = [];
+  page.on("pageerror", (error) => {
+    if (isWebkit && WEBKIT_DEV_NOISE.some((p) => p.test(error.message))) return;
+    errors.push(error.message);
+  });
+  return errors;
+}

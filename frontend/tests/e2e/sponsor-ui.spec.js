@@ -19,6 +19,8 @@ import {
   json,
   stabilizePage,
   corsHeaders,
+  collectPageErrors,
+  WEBKIT_DEV_NOISE,
 } from "./fixtures.js";
 
 // Kendt mock-miljø-støj: Supabase realtime-websocket'en peger på den fiktive
@@ -97,13 +99,18 @@ test.describe("#2948 sponsor UI", () => {
     // alle 3 projekter til samme filnavn, så den committede PNG afhang af hvilket
     // projekt der kørte sidst.
     const capture = testInfo.project.name === "desktop-chromium";
-    const pageErrors = [];
+    // #3601: page-errors filtreres for webkit-dev-noise (afbrudte route-chunks +
+    // mock-CORS) — se WEBKIT_DEV_NOISE i fixtures.js. Uden det gik netop denne
+    // spec rød på tilfældige PR'er under fuld belastning, og frontend-smoke er
+    // en required check, så en test-artefakt blokerede merges for alle.
+    const pageErrors = collectPageErrors(page, testInfo);
+    const isWebkit = testInfo.project.name.includes("webkit");
     const consoleErrors = [];
-    page.on("pageerror", (error) => pageErrors.push(error.message));
     page.on("console", (msg) => {
       if (msg.type() !== "error") return;
       const text = msg.text();
       if (CONSOLE_NOISE.some((p) => p.test(text))) return;
+      if (isWebkit && WEBKIT_DEV_NOISE.some((p) => p.test(text))) return;
       consoleErrors.push(text);
     });
 

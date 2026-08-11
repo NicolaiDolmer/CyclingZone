@@ -18,11 +18,8 @@ import {
   stabilizePage,
   TEXT_MASK_SELECTOR,
   waitForStableSnapshotTarget,
+  collectPageErrors,
 } from "./fixtures.js";
-
-// Samme dev-noise-filter som core-smoke: WebKit + Vite HMR + route-mocks giver
-// dev-only fejl der ikke reproducerer på prod iOS Safari.
-const WEBKIT_DEV_NOISE = [/Importing a module script failed/i, /due to access control checks/i];
 
 const BOARD_FEED_NOTIFICATIONS = [
   {
@@ -44,12 +41,7 @@ const BOARD_FEED_NOTIFICATIONS = [
 ];
 
 test("interactive board renders every section without page errors + layout snapshot (#1076)", async ({ page }, testInfo) => {
-  const isWebkit = testInfo.project.name.includes("webkit");
-  const pageErrors = [];
-  page.on("pageerror", (error) => {
-    if (isWebkit && WEBKIT_DEV_NOISE.some((p) => p.test(error.message))) return;
-    pageErrors.push(error.message);
-  });
+  const pageErrors = collectPageErrors(page, testInfo);
 
   await stabilizePage(page);
   await installNetworkMocks(page);
