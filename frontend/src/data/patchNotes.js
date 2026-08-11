@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.115",
+    "date": "2026-08-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Unanswered academy offers no longer pile up for weeks before they expire",
+          "body": "An academy offer you never answer is meant to expire after seven days, and the prospect then goes to a 24 hour youth auction that everyone can bid in. Only 30 offers a day were allowed to expire, and far more than 30 a day were arriving, so the queue kept growing: 327 of the 368 waiting offers were already past their seven days, the oldest since July 25, and the daily limit had been hit in full every day since August 1. The limit is now 45 a day, and it lifts itself to 60 for as long as there is a backlog, then settles back to 45 once the queue is clear. In practice you will see more youth riders reaching the auction market over the coming weeks, and offers you ignore will leave your inbox close to the seven days they were always supposed to take."
+        },
+        "da": {
+          "title": "Ubesvarede akademi-tilbud hober sig ikke længere op i ugevis før de udløber",
+          "body": "Et akademi-tilbud du aldrig svarer på, skal udløbe efter syv dage, og emnet går derefter på en 24 timers ungdomsauktion som alle kan byde i. Kun 30 tilbud om dagen fik lov at udløbe, og der kom langt flere end 30 ind om dagen, så køen blev ved med at vokse: 327 af de 368 ventende tilbud var allerede over deres syv dage, det ældste siden 25. juli, og dagsgrænsen var blevet brugt helt op hver eneste dag siden 1. august. Grænsen er nu 45 om dagen, og den hæver sig selv til 60 så længe der er et efterslæb, hvorefter den falder tilbage til 45 når køen er afviklet. I praksis vil du se flere ungdomsryttere nå auktionsmarkedet i de kommende uger, og tilbud du lader ligge, forlader din indbakke tæt på de syv dage de hele tiden skulle tage."
+        },
+        "refs": []
+      }
+    ]
+  },
+  {
     "version": "7.114",
     "date": "2026-08-11",
     "label": "Beta",
