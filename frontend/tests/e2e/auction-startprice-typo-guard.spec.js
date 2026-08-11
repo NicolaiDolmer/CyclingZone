@@ -4,12 +4,8 @@
 // market_value 1.680.000 — se seedData.js) og at begge veje ud af dialogen
 // virker: "Fix price" retter feltet uden at submitte, "No, intentional"
 // fortsætter den oprindelige (lave) pris uændret.
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
-import { installNetworkMocks, login, stabilizePage, json, corsHeaders } from "./fixtures.js";
-
-const SCREEN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../pr-screens");
+import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
 test.describe("Auction start-price typo guard (#3184)", () => {
   test.beforeEach(async ({ page }) => {
@@ -45,7 +41,7 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     await expect(dialog.getByText(/168.000|168000/)).toBeVisible();
     await expect(dialog.getByText(/1.680.000|1,680,000/)).toBeVisible();
 
-    await page.screenshot({ path: path.join(SCREEN_DIR, "typo-guard-rider-profile.png") });
+    await page.screenshot({ path: evidenceShotPath("pr-screens/typo-guard-rider-profile.png") });
 
     // "Fix price" retter feltet til markedsværdien UDEN at submitte — dialogen
     // lukker, formularen forbliver åben, ingen POST er sendt endnu.
@@ -170,7 +166,7 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     const dialog = page.getByRole("dialog", { name: /Check your price|Tjek din pris/ });
     await expect(dialog).toBeVisible();
 
-    await page.screenshot({ path: path.join(SCREEN_DIR, "typo-guard-team-page.png") });
+    await page.screenshot({ path: evidenceShotPath("pr-screens/typo-guard-team-page.png") });
   });
 
   // #3184: player-facing copy er EN-først (jf. CLAUDE.md sprogprioritet) — de
@@ -203,6 +199,6 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     await expect(dialog.getByRole("button", { name: "No, my price is intentional" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Fix price" })).toBeVisible();
 
-    await page.screenshot({ path: path.join(SCREEN_DIR, "typo-guard-rider-profile-en.png") });
+    await page.screenshot({ path: evidenceShotPath("pr-screens/typo-guard-rider-profile-en.png") });
   });
 });

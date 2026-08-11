@@ -62,8 +62,16 @@ test("signup-funnel-event firer ved authenticated dashboard når en pending-mark
   await expect.poll(() => events.filter(e => e === "signup").length).toBe(1);
 
   // De-dup: markøren skal være ryddet, så et reload ikke fyrer signup igen.
-  const marker = await page.evaluate(key => window.localStorage.getItem(key), SIGNUP_MARKER);
-  expect(marker).toBeNull();
+  //
+  // #3601: `expect.poll` ovenfor venter kun på event-TÆLLEREN. Rydningen af
+  // markøren sker i samme effekt, men et tick senere — og under fuld
+  // mobile-webkit-belastning nåede et enkelt `page.evaluate` at læse den FØR
+  // rydningen (målt 11/8: rød i fuld suite, grøn isoleret). Der poll'es derfor
+  // på selve markøren i stedet. Testen beviser præcis det samme; den venter
+  // bare på den tilstand den asserter på, i stedet for på en nabo-tilstand.
+  await expect
+    .poll(() => page.evaluate(key => window.localStorage.getItem(key), SIGNUP_MARKER))
+    .toBeNull();
 });
 
 test("signup firer IKKE uden pending-markør (eksisterende brugere forurener ikke funnellen)", async ({ page }) => {

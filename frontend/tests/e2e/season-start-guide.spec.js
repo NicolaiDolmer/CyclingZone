@@ -9,7 +9,7 @@
 // markeringen følger data, og dismiss får kortet til at forsvinde.
 
 import { expect, test } from "@playwright/test";
-import { installNetworkMocks, login, stabilizePage, json, TEST_TEAM } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, TEST_TEAM, evidenceShotPath } from "./fixtures.js";
 
 const SEASON_2 = {
   id: "season-2-e2e",
@@ -135,6 +135,6 @@ test("capture season start guide screenshot", async ({ page }, testInfo) => {
   await expect(card.locator("a.text-cz-accent-t")).toHaveCount(0);
 
   await card.screenshot({
-    path: `../docs/screenshots/wave3-2507/2925/season-start-guide-${testInfo.project.name}.png`,
+    path: evidenceShotPath(`docs/screenshots/wave3-2507/2925/season-start-guide-${testInfo.project.name}.png`),
   });
 });

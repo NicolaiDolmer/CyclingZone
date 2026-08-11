@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
-  installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM,
+  installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, evidenceShotPath,
 } from "./fixtures.js";
 
 // #3459 V3 — løbsdags-badge på trænings-siden (ejer-godkendt mockup 7/8, bag
@@ -76,7 +76,7 @@ test("#3459 racingToday sat: badge + dæmpede men AKTIVE intensitets-knapper, to
   // screenshot'et alene, så badge-linjen ikke ligger fysisk under nav-baren.
   await page.addStyleTag({ content: "nav.fixed.bottom-0 { display: none !important; }" });
   const isMobile = testInfo.project.name.startsWith("mobile");
-  const screenshotPath = `../pr-screens/3459-race-day-training-${isMobile ? "mobile" : "desktop"}.png`;
+  const screenshotPath = evidenceShotPath(`pr-screens/3459-race-day-training-${isMobile ? "mobile" : "desktop"}.png`);
   if (isMobile) {
     // #3194 T2 mobil-kontrakten: Intensitet-kolonnen scroller VANDRET under den
     // fastgjorte (sticky) navnekolonne (~194px, opak baggrund) — et skud af hele

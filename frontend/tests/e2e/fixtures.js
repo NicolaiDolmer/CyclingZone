@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import {
   TEST_USER,
@@ -374,6 +376,43 @@ export async function stabilizePage(page) {
   });
 }
 
+// ── Bevis-screenshots (#3554) ───────────────────────────────────────────────
+//
+// Fem specs skrev deres bevis-screenshots DIREKTE til committede stier
+// (`pr-screens/`, `docs/screenshots/`, `frontend/tests/screenshots/`). Da
+// CLAUDE.md gør hele e2e-suiten obligatorisk før ethvert frontend-push, betød
+// det at pre-flighten ALTID efterlod 7-9 ændrede binære filer i arbejdstræet.
+// To fælder, begge farlige: enten ryger PNG-diffs med i en urelateret PR (de
+// vises ikke som tekst i review), eller man rydder op med `git checkout --` og
+// rammer ægte, ucommittede skærmbilleder man lige har lavet.
+//
+// Default er derfor `frontend/test-results/` (allerede gitignored). Skal
+// billederne opdateres bevidst — fx når man laver PR-screens til en visuel
+// ændring — sættes `CZ_WRITE_COMMITTED_SHOTS=1`, præcis som
+// `--update-snapshots` er den bevidste vej til at opdatere pixel-baselines.
+//
+//   CZ_WRITE_COMMITTED_SHOTS=1 npx playwright test training-race-day
+//
+// De frittstående `*.shots.mjs`-generatorer er IKKE omfattet: de køres manuelt
+// og har det at skrive committede billeder som hele deres formål.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+
+export const WRITES_COMMITTED_SHOTS = process.env.CZ_WRITE_COMMITTED_SHOTS === "1";
+
+/**
+ * Sti til et bevis-screenshot. Tager den committede sti (repo-rod-relativ) og
+ * returnerer enten den — hvis man BEDER om at opdatere den — eller en spejlet
+ * sti under `frontend/test-results/evidence/`.
+ *
+ * @param {string} committedRelPath fx "pr-screens/3459-race-day-training-desktop.png"
+ * @returns {string} absolut sti
+ */
+export function evidenceShotPath(committedRelPath) {
+  return WRITES_COMMITTED_SHOTS
+    ? path.join(REPO_ROOT, committedRelPath)
+    : path.join(REPO_ROOT, "frontend/test-results/evidence", committedRelPath);
+}
+
 // ── WebKit-dev-noise (#3601) ────────────────────────────────────────────────
 //
 // WebKit + Vite-preview + Playwright-route-mocks kaster uncaught fejl som IKKE
@@ -391,23 +430,76 @@ export async function stabilizePage(page) {
 // igen (samme rettelses-klasse som postmortem 2026-08-11: ret ALLE kopier af
 // et kendetegn i samme commit, ellers ser det løst ud uden at være det).
 //
-// BEVIDST SMALT: kun disse to beskeder, og kun i webkit. Enhver anden uncaught
+// #3636 samlede kopierne, men lukkede ikke hullet — målt på PR #3627 kl. 11:22
+// den 11/8, hvor `sponsor-ui.spec.js` gik rød IGEN på præcis den spec fixet
+// dækkede. To akser var stadig ufuldstændige:
+//
+//   1. Beskedvarianten. WebKit formulerer den afbrudte route-chunk forskelligt
+//      afhængigt af HVOR i indlæsningen den knækker; `ChunkLoadError ... chunk
+//      reload needed` matchede ingen af de to oprindelige mønstre.
+//   2. Kanalen. Helperen dækkede kun `pageerror`, så hver spec måtte selv
+//      hænge på `console` og huske at genbruge filtret. `sponsor-ui` gjorde
+//      det; en fremtidig spec ville ikke.
+//
+// Begge er lukket nu: mønstrene dækker alle tre kendte formuleringer, og
+// `collectBrowserErrors` dækker begge kanaler ét sted. `guards.test.js` fejler
+// hvis en spec hænger direkte på `page.on("console"|"pageerror")` udenom.
+//
+// BEVIDST SMALT: kun disse beskeder, og kun i webkit. Enhver anden uncaught
 // fejl — også i webkit — er stadig en ægte fejl der skal fejle testen.
-export const WEBKIT_DEV_NOISE = [/Importing a module script failed/i, /due to access control checks/i];
+export const WEBKIT_DEV_NOISE = [
+  /Importing a module script failed/i,
+  /due to access control checks/i,
+  /ChunkLoadError/i,
+  /Failed to fetch dynamically imported module/i,
+];
 
 /**
  * Opsaml uncaught page-errors med webkit-dev-noise filtreret fra.
+ *
+ * Tynd indpakning af collectBrowserErrors for de specs der KUN asserter på
+ * `pageerror`. Bevidst ikke udvidet til også at samle konsol-fejl: det ville
+ * udvide hvad core-smoke og board-interactive beviser, i en PR om testtøj.
  *
  * @param {import("@playwright/test").Page} page
  * @param {import("@playwright/test").TestInfo} testInfo  bruges til at afgøre om projektet er webkit
  * @returns {string[]} arrayet der fyldes undervejs — assertér på det til sidst
  */
 export function collectPageErrors(page, testInfo) {
+  return collectBrowserErrors(page, testInfo).pageErrors;
+}
+
+/**
+ * Opsaml browser-fejl fra BEGGE kanaler — uncaught `pageerror` og
+ * `console.error` — med webkit-dev-noise filtreret fra i begge.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {import("@playwright/test").TestInfo} testInfo
+ * @param {{ consoleNoise?: RegExp[] }} [options] spec-specifik konsol-støj
+ *        (fx mock-miljøets uopløselige websocket-host) der filtreres i ALLE
+ *        projekter, ikke kun webkit.
+ * @returns {{ pageErrors: string[], consoleErrors: string[] }} arrays der
+ *        fyldes undervejs — assertér på dem til sidst.
+ */
+export function collectBrowserErrors(page, testInfo, { consoleNoise = [] } = {}) {
   const isWebkit = testInfo.project.name.includes("webkit");
-  const errors = [];
+  const isDevNoise = (text) => isWebkit && WEBKIT_DEV_NOISE.some((p) => p.test(text));
+
+  const pageErrors = [];
+  const consoleErrors = [];
+
   page.on("pageerror", (error) => {
-    if (isWebkit && WEBKIT_DEV_NOISE.some((p) => p.test(error.message))) return;
-    errors.push(error.message);
+    if (isDevNoise(error.message)) return;
+    pageErrors.push(error.message);
   });
-  return errors;
+
+  page.on("console", (msg) => {
+    if (msg.type() !== "error") return;
+    const text = msg.text();
+    if (consoleNoise.some((p) => p.test(text))) return;
+    if (isDevNoise(text)) return;
+    consoleErrors.push(text);
+  });
+
+  return { pageErrors, consoleErrors };
 }

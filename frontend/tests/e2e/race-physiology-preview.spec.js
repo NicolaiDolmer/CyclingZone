@@ -57,5 +57,8 @@ test("rider profile shows race-engine physiology + abilities preview", async ({ 
   await expect(page.getByRole("heading", { name: "Critical Power-model" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Effekt-zoner" })).toBeVisible();
 
-  await page.screenshot({ path: "C:/Users/Nicolai/AppData/Local/Temp/race-preview.png", fullPage: true });
+  // #3554: lå tidligere som en hardkodet sti ind i én bestemt maskines
+  // temp-mappe. Bevis-screenshots hører i test-results/, hvor de følger
+  // kørslen og ryddes med den.
+  await page.screenshot({ path: "test-results/race-physiology-preview.png", fullPage: true });
 });

@@ -19,8 +19,8 @@ import {
   json,
   stabilizePage,
   corsHeaders,
-  collectPageErrors,
-  WEBKIT_DEV_NOISE,
+  collectBrowserErrors,
+  evidenceShotPath,
 } from "./fixtures.js";
 
 // Kendt mock-miljø-støj: Supabase realtime-websocket'en peger på den fiktive
@@ -99,19 +99,14 @@ test.describe("#2948 sponsor UI", () => {
     // alle 3 projekter til samme filnavn, så den committede PNG afhang af hvilket
     // projekt der kørte sidst.
     const capture = testInfo.project.name === "desktop-chromium";
-    // #3601: page-errors filtreres for webkit-dev-noise (afbrudte route-chunks +
-    // mock-CORS) — se WEBKIT_DEV_NOISE i fixtures.js. Uden det gik netop denne
-    // spec rød på tilfældige PR'er under fuld belastning, og frontend-smoke er
-    // en required check, så en test-artefakt blokerede merges for alle.
-    const pageErrors = collectPageErrors(page, testInfo);
-    const isWebkit = testInfo.project.name.includes("webkit");
-    const consoleErrors = [];
-    page.on("console", (msg) => {
-      if (msg.type() !== "error") return;
-      const text = msg.text();
-      if (CONSOLE_NOISE.some((p) => p.test(text))) return;
-      if (isWebkit && WEBKIT_DEV_NOISE.some((p) => p.test(text))) return;
-      consoleErrors.push(text);
+    // #3601: BEGGE fejlkanaler filtreres for webkit-dev-noise (afbrudte
+    // route-chunks + mock-CORS) — se WEBKIT_DEV_NOISE i fixtures.js. Uden det
+    // gik netop denne spec rød på tilfældige PR'er under fuld belastning, og
+    // frontend-smoke er en required check, så en test-artefakt blokerede
+    // merges for alle. Opsamlingen ligger i fixtures.js, ikke her: da den lå
+    // her, fik konsol-kanalen kun to af de tre kendte beskedvarianter.
+    const { pageErrors, consoleErrors } = collectBrowserErrors(page, testInfo, {
+      consoleNoise: CONSOLE_NOISE,
     });
 
     await stabilizePage(page);
@@ -137,7 +132,7 @@ test.describe("#2948 sponsor UI", () => {
     await expect(page.getByText("657.800 CZ$")).toBeVisible();
 
     if (capture) {
-      await page.screenshot({ path: "tests/screenshots/sponsor-contract-panel.png", fullPage: true });
+      await page.screenshot({ path: evidenceShotPath("frontend/tests/screenshots/sponsor-contract-panel.png"), fullPage: true });
     }
 
     // ── Board → "Se tilbud"-CTA → tilbuds-modal med 5 arketyper ─────────────
@@ -229,14 +224,14 @@ test.describe("#2948 sponsor UI", () => {
       // og ikke bare midten af kort-griddet.
       const modalTop = page.getByRole("heading", { name: "Vælg din sponsor", exact: true });
       await modalTop.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: "tests/screenshots/sponsor-offer-modal.png", fullPage: true });
+      await page.screenshot({ path: evidenceShotPath("frontend/tests/screenshots/sponsor-offer-modal.png"), fullPage: true });
 
       // 360px: den smalleste udbredte telefon. Mobil er 54,9 % af trafikken, så
       // regnestykket på kortet skal kunne læses uden vandret scroll her.
       await page.setViewportSize({ width: 360, height: 900 });
       await expect(page.getByText("84 løbsdage × 455 CZ$")).toBeVisible();
       await modalTop.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: "tests/screenshots/sponsor-offer-modal-360.png", fullPage: true });
+      await page.screenshot({ path: evidenceShotPath("frontend/tests/screenshots/sponsor-offer-modal-360.png"), fullPage: true });
       await page.setViewportSize({ width: 1280, height: 800 });
     }
 

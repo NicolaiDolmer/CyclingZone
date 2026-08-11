@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath } from "./fixtures.js";
 
 // #3519 — to uafhængige spillerønsker: (a) synlige point pr. waypoint på
 // etape-resultatsiden (allerede bygget, Sub-2 #2770/#2448 — PassageList/
@@ -186,7 +186,7 @@ test("#3519 waypoint-point synlige på etape-resultatsiden", async ({ page }, te
   await page.addStyleTag({ content: "nav.fixed.bottom-0 { display: none !important; }" });
   const isMobile = testInfo.project.name.startsWith("mobile");
   if (testInfo.project.name === "mobile-webkit") return; // ét skud pr. viewport-klasse er nok (samme mønster som #3459)
-  const screenshotPath = `../pr-screens/3519-waypoint-points-${isMobile ? "mobile" : "desktop"}.png`;
+  const screenshotPath = evidenceShotPath(`pr-screens/3519-waypoint-points-${isMobile ? "mobile" : "desktop"}.png`);
   await screenshotSection(page, passageSection, screenshotPath);
 });
 
@@ -213,6 +213,6 @@ test("#3519 løbende bjerg-/pointkonkurrence synlig mens etapeløbet er i gang",
   await page.addStyleTag({ content: "nav.fixed.bottom-0 { display: none !important; }" });
   const isMobile = testInfo.project.name.startsWith("mobile");
   if (testInfo.project.name === "mobile-webkit") return;
-  const screenshotPath = `../pr-screens/3519-live-standings-${isMobile ? "mobile" : "desktop"}.png`;
+  const screenshotPath = evidenceShotPath(`pr-screens/3519-live-standings-${isMobile ? "mobile" : "desktop"}.png`);
   await screenshotSection(page, mountainSection, screenshotPath);
 });
