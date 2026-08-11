@@ -685,9 +685,12 @@ async function detectorD() {
   const findings = [];
   for (const tbl of prodTables) {
     if (WHITELIST_PROD_ONLY_TABLES.has(tbl)) continue;
-    // Transiente sikkerheds-backups (backup_<slug>_<dato>_*): oprettes FØR destruktive
-    // prod-indgreb og slettes efter verifikation — aldrig skema, så de flagges ikke som drift.
-    if (tbl.startsWith("backup_")) continue;
+    // Transiente sikkerheds-backups: oprettes FØR destruktive prod-indgreb og slettes
+    // efter verifikation — aldrig skema, så de flagges ikke som drift.
+    // To konventioner er i brug, og BEGGE skal fanges: præfiks `backup_<slug>_<dato>_*`
+    // og suffiks `<kilde>_<slug>_backup_<dato>` (#3570-reparationen 11/8 brugte den
+    // sidste, og detektoren så kun den første — 2 falske D-fund på PR #3630).
+    if (tbl.startsWith("backup_") || /_backup_\d{8}$/.test(tbl)) continue;
     if (repoTables.has(tbl)) continue;
     findings.push({
       detector: "D",

@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.113",
+    "date": "2026-08-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Riders 22 and older now have the same corrected identity as your younger riders",
+          "body": "The identity fix that corrected your player-owned riders under 22 on the night of August 9 has now run for every rider in the game. In total 7,998 riders were given a fixed primary and secondary type drawn from what they were born with, and 5,814 of them ended up with a different visible type, including 2,691 of your 3,451 player-owned riders. Baroudeur, which the old loop had pushed to 76.7 percent of your player-owned riders, is down to 11.5 percent (397 of 3,451), and for player-owned riders 22 and up the overall gap between the game's type mix and its target, summed across all eight types, fell from 127.9 to 23.7. Rider values and salaries were not touched at any point in this process, and everything was backed up before anything was written, so the change can be rolled back if needed."
+        },
+        "da": {
+          "title": "Ryttere på 22 år og opefter har nu samme rettede identitet som dine yngre ryttere",
+          "body": "Identitets-rettelsen der korrigerede dine spiller-ejede ryttere under 22 natten til 9. august, er nu kørt for alle ryttere i spillet. I alt fik 7.998 ryttere skrevet en fast primær og sekundær type ud fra det anlæg de blev født med, og 5.814 af dem endte med en anden synlig type, heraf 2.691 af dine 3.451 spiller-ejede ryttere. Baroudeur, som den gamle løkke havde presset op til 76,7 procent af dine spiller-ejede ryttere, er nede på 11,5 procent (397 af 3.451), og for spiller-ejede ryttere på 22 år og opefter faldt det samlede gab mellem spillets typefordeling og dens mål, lagt sammen på tværs af alle otte typer, fra 127,9 til 23,7. Rytternes værdi og løn er ikke rørt på noget tidspunkt i processen, og alt blev sikkerhedskopieret før noget blev skrevet, så ændringen kan rulles tilbage om nødvendigt."
+        },
+        "refs": [3570]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Climbing ceilings caught up for your older riders too",
+          "body": "7,708 riders got new ability ceilings to match their corrected type. For player-owned riders the climbing ceiling went up for 32.9 percent and down for 7.2 percent; as with the fix for your younger riders, the training progress that unlocks will only show from your next training run, not immediately."
+        },
+        "da": {
+          "title": "Klatre-lofterne fulgte med for dine ældre ryttere også",
+          "body": "7.708 ryttere fik nye evne-lofter, der matcher deres rettede type. For spiller-ejede ryttere blev klatre-loftet hævet for 32,9 procent og sænket for 7,2 procent; som med rettelsen for dine yngre ryttere viser den fremgang det låser op for, sig først ved din næste træningskørsel, ikke med det samme."
+        },
+        "refs": [3450, 3570]
+      }
+    ]
+  },
+  {
     "version": "7.112",
     "date": "2026-08-10",
     "label": "Beta",
