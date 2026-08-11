@@ -16,6 +16,7 @@ med prod-skemaet og hele 10/8-populationen. **Intet af det er kørt mod produkti
 | Skrivedag-suffiks | `YYYYMMDD` i dansk tid, fx `20260816` | Navngiver backup-tabellerne. **Samme værdi i alle tre kommandoer.** |
 | Plan-fil | den godkendte D-plan (JSON) | Uden `--plan-fil` skriver værktøjet sin EGEN målfunktion (rev2) — 2.211 ryttere ville få en anden type end ejeren godkendte. |
 | Kørselstid | identitet ~40 batches, lofter ~7.900 rækker | Skrivevinduet er 90–150 s. AI-hold-trimmen sletter ryttere imens; det er forventet. |
+| Forbindelse | `$SUPABASE_DB_URL` (Infisical, env `prod`) | **Ikke `$DATABASE_URL`** — den findes ikke. Bruges den, rammer `psql` localhost og fejler med «Connection refused», hvilket ikke ligner det det er. Målt 11/8. |
 | Rollback | `backend/scripts/dev/repair3570Rollback.sql` | Genereret fil. Ret den **aldrig** i hånden. |
 
 Alle kommandoer køres fra `backend/`.
@@ -101,7 +102,7 @@ node scripts/dev/repair3570Apply.mjs --print-rollback-sql --backup-suffix=<YYYYM
 Kør så **kun PART A** (alt før banneret `PART B — ROLLBACK`):
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/rollback-<YYYYMMDD>.sql   # klip PART B fra
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f /tmp/rollback-<YYYYMMDD>.sql   # klip PART B fra
 ```
 
 > **`-v ON_ERROR_STOP=1` er ikke valgfrit.** Uden det fortsætter `psql` efter en
@@ -170,7 +171,7 @@ abilities-række, eller flere end `max(25, 5 %)` forsvundne. Sker det → **trin
 Kør **PART B** (fra banneret og ned) af den SAMME fil du brugte i trin 2:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/rollback-<YYYYMMDD>.sql   # kun PART B
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f /tmp/rollback-<YYYYMMDD>.sql   # kun PART B
 ```
 
 **Forventet:** B0 kvitterer med `Backup OK: 8234 riders-rækker, … 6 med draw`, og
