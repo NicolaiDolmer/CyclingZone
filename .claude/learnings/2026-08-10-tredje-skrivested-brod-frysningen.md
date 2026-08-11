@@ -64,3 +64,42 @@ review. Samme mønster som #2238 (kolonne-grant) og #3331 (pagination): en invar
 der gælder "overalt" holder kun hvis der findes en maskine der kan opremse "overalt".
 Generaliseringen: **retter du N-1 af N stier, er systemet ikke rettet — det er blevet
 sværere at opdage at det ikke er rettet.**
+
+---
+
+## Efterskrift 2026-08-11 · Samme klasse ramte igen, ét lag længere nede (#3591)
+
+Læringen ovenfor handlede om hvem der SKRIVER typen. Tre dage senere ramte præcis
+samme mønster hvem der BYGGER LOFTET — og denne gang var det rettelsen selv der
+efterlod hullet.
+
+`buildCapsForRider(abilities, { potentiale, age }, primary, secondary)` blev kaldt fra
+to produktionsstier med forskellig signatur: motoren sendte `age`, `backfillCores`
+gjorde ikke. Alderen bruges kun af `taperedAbsoluteCap`, som først bider efter
+peakAge, så forskellen var **tavs** — den producerede et gyldigt, blot for højt loft.
+PR #3598 rettede `backfillCores` og beskrev punkt 1 som leveret.
+
+Der var fire kaldsteder. `starterSquadAllocator.js:232` kaldte stadig uden alder, tre
+dage efter "rettelsen" — og den sti er netop den værdi-loft-gate der skal SPEJLE
+`deriveForRiderIds` præcist for at `AI_TIER_VALUE_CAP` kan holde. Den vurderede altså
+et for højt loft for enhver kandidat over peak-alderen: samme #2065-klasse igen.
+
+**Hvorfor N-1-rettelsen var mulig her, og ikke bare uheldig:** funktionens egen
+dokumentation gjorde det lovligt. Kommentaren sagde ordret at `age` var *valgfri* og
+`udeladt/null ⇒ intet taper, bagudkompatibelt med callers uden alder`. Et kaldsted der
+glemte alderen overtrådte derfor ingenting — det brugte en dokumenteret gren. En
+statisk allowlist-scanner (mønstret fra guarden ovenfor) ville ikke have fanget det,
+fordi der ikke var nogen regel at bryde.
+
+**Rettelsen er derfor ikke et femte kaldsted, men en kontrakt:** `age` er nu påkrævet.
+Udeladt ⇒ `TypeError`; `age: null` er stadig lovligt, men skal SKRIVES. Det flytter
+fejlen fra «tavst forkert tal» til «højlydt fejl ved første kald», og gør N-1-tilstanden
+umulig frem for blot usandsynlig. Vagten står i `riderProgression.test.js`
+(`#3591 forward-guard`) med et negativ-bevis ved siden af, så den ikke kan bestå tomt
+på en fixture hvor alderen er ligegyldig.
+
+**Generaliseringen oven på den ovenfor:** når en parameter er dokumenteret valgfri,
+*er* divergens mellem kaldsteder ikke en fejl — den er en tilladt variation. At tælle
+kaldstederne hjælper ikke; man skal fjerne tilladelsen. Spørgsmålet at stille om en
+valgfri parameter i en delt beregningskerne: **"hvis to kaldsteder vælger forskelligt,
+opdager nogen det?"** Er svaret nej, er «valgfri» det samme som «uspecificeret».

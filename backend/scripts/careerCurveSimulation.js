@@ -381,7 +381,8 @@ function simulateRider(rider, modelKey, daysPerSeasonActual, capSource = "db") {
       return buildCapsForRider(ab, { potentiale: rider.potentiale, age: ageArg }, rider.primaryType, rider.secondaryType);
     }
     if (capSource === "modelA") {
-      return buildCapsForRider(ab, { potentiale: rider.potentiale }, rider.primaryType, rider.secondaryType);
+      // #3591: age: null = BEVIDST uden taper (denne gren er selve "uden alder"-varianten).
+      return buildCapsForRider(ab, { potentiale: rider.potentiale, age: null }, rider.primaryType, rider.secondaryType);
     }
     return rider.lifetimeCaps;
   };
@@ -718,7 +719,8 @@ async function main() {
     for (const r of adultPopulation) {
       headroomSum.db += clampedGapSum(r.lifetimeCaps, r.abilities);
       headroomSum.modelA += clampedGapSum(
-        buildCapsForRider(r.abilities, { potentiale: r.potentiale }, r.primaryType, r.secondaryType),
+        // #3591: age: null = bevidst uden taper (sammenlignes med med-alder-varianten nedenfor).
+        buildCapsForRider(r.abilities, { potentiale: r.potentiale, age: null }, r.primaryType, r.secondaryType),
         r.abilities,
       );
       headroomSum.modelATaper += clampedGapSum(
@@ -790,7 +792,8 @@ async function main() {
             return buildCapsForRider(a, { potentiale: r.potentiale, age: ageArg }, r.primaryType, r.secondaryType);
           }
           if (capSource === "modelA") {
-            return buildCapsForRider(a, { potentiale: r.potentiale }, r.primaryType, r.secondaryType);
+            // #3591: age: null = bevidst uden taper.
+            return buildCapsForRider(a, { potentiale: r.potentiale, age: null }, r.primaryType, r.secondaryType);
           }
           return r.lifetimeCaps;
         };

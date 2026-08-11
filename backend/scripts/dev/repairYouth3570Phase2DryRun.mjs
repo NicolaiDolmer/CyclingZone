@@ -529,7 +529,7 @@ const capsCallForm = (() => {
     const rec = recById.get(r.rider_id);
     const p = rec?.newPrimary ?? r.primary_type, s = rec?.newSecondary ?? r.secondary_type;
     const withAge = buildCapsForRider(ab, { potentiale: r.potentiale, age: a }, p, s);
-    const noAge = buildCapsForRider(ab, { potentiale: r.potentiale }, p, s);
+    const noAge = buildCapsForRider(ab, { potentiale: r.potentiale, age: null }, p, s);
     let md = 0, raised = 0;
     for (const k of VISIBLE_ABILITIES) { const d = noAge[k] - withAge[k]; if (d !== 0) { md = Math.max(md, Math.abs(d)); raised += Math.max(0, d); } }
     const band = a == null ? "ukendt" : a < 22 ? "<22" : a <= 28 ? "22-28" : a <= 32 ? "29-32" : "33+";
@@ -543,7 +543,7 @@ const capsCallForm = (() => {
     const ab = abilitiesOf(r);
     const a = seasonAgeOf(r);
     const withAge = buildCapsForRider(ab, { potentiale: r.potentiale, age: a }, r.primary_type, r.secondary_type);
-    const noAge = buildCapsForRider(ab, { potentiale: r.potentiale }, r.primary_type, r.secondary_type);
+    const noAge = buildCapsForRider(ab, { potentiale: r.potentiale, age: null }, r.primary_type, r.secondary_type);
     let md = 0;
     for (const k of VISIBLE_ABILITIES) md = Math.max(md, Math.abs(noAge[k] - withAge[k]));
     const band = a == null ? "ukendt" : a < 22 ? "<22" : a <= 28 ? "22-28" : a <= 32 ? "29-32" : "33+";

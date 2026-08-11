@@ -55,7 +55,8 @@ function runCohort(n, seed) {
     const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
-    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
+    // #3591: ungdoms-kohorte (16-21) — taperen er inaktiv, age: null er bit-identisk.
+    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale, age: null }, bootstrap.primary.key, bootstrap.secondary.key);
     const age = REFERENCE_YEAR - Number(String(riderRow.birthdate).slice(0, 4));
     return { caps, age, archetypeDraw: c.archetypeDraw };
   });

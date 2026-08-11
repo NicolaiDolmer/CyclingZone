@@ -260,7 +260,10 @@ test("#3591: deriveForRiderIds aftrapper loftet efter peakAge — samme kaldform
   const { primary_type: p, secondary_type: s } = patch;
 
   const medAlder = buildCapsForRider(abilities, { potentiale: veteran.potentiale, age }, p, s);
-  const udenAlder = buildCapsForRider(abilities, { potentiale: veteran.potentiale }, p, s);
+  // age: null gengiver PRÆCIS den gamle, defekte kaldform (taperedAbsoluteCap
+  // behandler null og undefined ens). Efter #3591's kontrakt er udeladelse en
+  // TypeError, så fravalget skrives eksplicit — testen måler stadig det samme.
+  const udenAlder = buildCapsForRider(abilities, { potentiale: veteran.potentiale, age: null }, p, s);
 
   // Selve regressionen: de to kaldformer SKAL give forskellige lofter for denne
   // rytter (ellers beviser testen ingenting), og det skrevne loft skal matche
@@ -392,7 +395,10 @@ test("#3570: deriveForRiderIds (apply) BRUGER archetype_draw's primary/secondary
   const abilities = deriveAbilities(physiology, rider);
   const baseline = {};
   for (const k of VA) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
-  const expectedCaps = buildCaps(baseline, { potentiale: rider.potentiale }, "gc", "climber");
+  // #3591: alderen SKAL med — kommentaren ovenfor har altid sagt "samme … alder",
+  // men kaldet udelod den. Mocken har ingen seeded "seasons"-tabel, så
+  // activeSeasonNumber falder tilbage til 1 (samme antagelse som veteran-testen).
+  const expectedCaps = buildCaps(baseline, { potentiale: rider.potentiale, age: ageForSeason(rider.birthdate, 1) }, "gc", "climber");
 
   assert.deepEqual(row.ability_caps, expectedCaps, "caps skal matche buildCapsForRider(..., draw.primary, draw.secondary), IKKE bootstrap-typen");
 });

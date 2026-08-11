@@ -440,11 +440,48 @@ test("taperedAbsoluteCap: age null/undefined ⇒ uændret (sikker default, bagud
   assert.equal(taperedAbsoluteCap(80, undefined, 28), 80);
 });
 
-test("buildCapsForRider: age udeladt ⇒ intet taper (identisk med gammel adfærd)", () => {
+test("buildCapsForRider: age null ⇒ intet taper (bevidst fravalg, ikke en udeladelse)", () => {
   const ab = allAbilities(20);
-  const withoutAge = buildCapsForRider(ab, { potentiale: 5 }, "climber", "tt");
+  const nullAge = buildCapsForRider(ab, { potentiale: 5, age: null }, "climber", "tt");
   const atPeak = buildCapsForRider(ab, { potentiale: 5, age: 28 }, "climber", "tt");
-  assert.deepEqual(withoutAge, atPeak, "manglende alder skal svare til age ≤ peakAge (intet taper)");
+  assert.deepEqual(nullAge, atPeak, "eksplicit age:null skal svare til age ≤ peakAge (intet taper)");
+});
+
+// ── FORWARD-GUARD (#3591) ────────────────────────────────────────────────────
+// Rodårsagen bag #3591 var ikke at ét kaldsted glemte alderen — det var at det KUNNE
+// glemme den tavst. `age` var dokumenteret valgfri, så en caller uden alder fik et
+// gyldigt, men for højt loft i stedet for en fejl. To skrivestier divergerede derfor i
+// måneder uden at nogen opdagede det, og PR #3598's rettelse af det ene kaldsted
+// lukkede ikke muligheden: `starterSquadAllocator.js` kaldte stadig uden alder tre
+// dage senere.
+//
+// Denne test er selve vagten. Fejler den, er kontrakten rullet tilbage til den
+// tilstand der producerede #3591.
+test("#3591 forward-guard: udeladt age KASTER — divergens ved udeladelse er umulig", () => {
+  const ab = allAbilities(20);
+  assert.throws(
+    () => buildCapsForRider(ab, { potentiale: 5 }, "climber", "tt"),
+    /age. skal angives eksplicit/,
+    "en caller der glemmer alderen skal fejle højlydt, ikke få et for højt loft",
+  );
+  assert.throws(
+    () => buildCapsForRider(ab, undefined, "climber", "tt"),
+    /age. skal angives eksplicit/,
+    "helt manglende rider-objekt er samme fejl",
+  );
+  // Negativ-bevis: vagten må ikke være tom — begge lovlige former skal stadig virke.
+  assert.ok(buildCapsForRider(ab, { potentiale: 5, age: null }, "climber", "tt"));
+  assert.ok(buildCapsForRider(ab, { potentiale: 5, age: 30 }, "climber", "tt"));
+});
+
+// Beviser at kontrakten faktisk BETYDER noget: for en post-peak rytter giver de to
+// lovlige former forskellige lofter. Uden denne assertion kunne vagten ovenfor bestå
+// på en fixture hvor alderen er ligegyldig, og så ville den intet bevise.
+test("#3591 forward-guard: de to lovlige kaldformer ER skelnelige for en post-peak rytter", () => {
+  const ab = allAbilities(20);
+  const udenTaper = buildCapsForRider(ab, { potentiale: 6, age: null }, "climber", "tt");
+  const medTaper = buildCapsForRider(ab, { potentiale: 6, age: 36 }, "climber", "tt");
+  assert.notDeepEqual(medTaper, udenTaper, "36-årig skal have et aftrappet loft — ellers måler vagten intet");
 });
 
 test("buildCapsForRider: post-peak taper lukker gappet — cap falder mod current med alderen", () => {

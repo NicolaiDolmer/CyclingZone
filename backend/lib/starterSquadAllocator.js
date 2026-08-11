@@ -229,7 +229,24 @@ export function generateAiRiderBatchWithCap({
       const capsSeed = (draw && draw.primary)
         ? { primary: draw.primary, secondary: draw.secondary || null }
         : { primary: bootstrap.primary.key, secondary: bootstrap.secondary.key };
-      const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale }, capsSeed.primary, capsSeed.secondary);
+      //
+      // #3591: FJERDE spejling — alderen. deriveForRiderIds sender siden PR #3598
+      // alderen med, så loftet aftrappes efter peakAge. Denne gate gjorde ikke, og
+      // vurderede derfor et for højt loft for enhver kandidat over peak-alderen:
+      // den klassificerede og prissatte en ANDEN rytter end den deriveForRiderIds
+      // bagefter persisterer — igen #2065-klassen. `age` er allerede regnet ovenfor
+      // (den samme værdi gaten bruger til baseline-valg og predictBaseValue).
+      //
+      // ÆRLIG AFGRÆNSNING: gatens `age` er computeAge(birthdate, referenceYear), og
+      // referenceYear defaulter til LAUNCH_POPULATION.referenceYear (2026 = sæson 1).
+      // deriveForRiderIds regner ageForSeason(birthdate, AKTIV sæson). Fra sæson 2
+      // er de to derfor ét år fra hinanden. Det er en ÆLDRE uoverensstemmelse der
+      // rammer baseline-valget og værdi-forudsigelsen præcis lige så meget som
+      // loftet — den er hverken indført eller lukket her, og at flytte gatens
+      // alders-akse ville ændre hvilke kandidater der accepteres. Denne linje
+      // fjerner kun divergensen ved UDELADELSE; akse-forskellen står tilbage og
+      // hører hjemme sammen med #3634 (voksen-generatorens anlæg).
+      const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale, age }, capsSeed.primary, capsSeed.secondary);
       const { primary } = resolveRiderTypes(draw, caps, selectTypesBaseline(age, TYPES_BASELINE, YOUTH_TYPES_BASELINE));
       // v4 kræver alder (candidate bærer allerede potentiale fra generatoren).
       const value = predictBaseValue(

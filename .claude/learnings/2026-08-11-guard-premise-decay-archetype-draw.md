@@ -44,3 +44,57 @@ Begge er dokumentation/fixtures der ikke fulgte med koden — værd at nævne, m
 ## Forslag til `AGENTS.md` / `docs/GUARDRAILS_CORE.md` (ikke tilføjet)
 
 > Skriver du en spærre der tæller rækker mod en fast tærskel for at udlede en tilstand: dokumentér om tærsklen er en håndhævet grænse eller en engangs-observation — og hvis observation, hvilken skrivevej der kan gøre den forkert.
+
+---
+
+## Efterskrift 2026-08-11 aften · Det var ikke kun vagten. Også ISSUET forfaldt
+
+Samme klasse, men om et dokument i stedet for en kodelinje — og den kostede nær en
+stor prod-mutation der ikke skulle have været kørt.
+
+[#3591](https://github.com/NicolaiDolmer/CyclingZone/issues/3591) beskrev en cliff ved
+23/8-flippet med målte tal fra 10/8-snapshottet: **2.139 af 3.473 AI-ryttere (61,6 %)
+skifter type ved første tick, 38,5 % taber loft, p10 Δ rating −23.** Tallene blev
+gentaget i en status-præcisering 11/8, i spec §12, i `docs/NOW.md` og i ugeplanen, hvor
+de var HELE begrundelsen for rækkefølgen «identiteten skal gøres færdig før
+markedssweepen». Fire dokumenter, ét måletidspunkt.
+
+Målt på et frisk snapshot (11/8 16:36Z, hele den levende bestand, n=8.677):
+
+| | 10/8-tallet | målt 11/8 |
+|---|---:|---:|
+| AI-ryttere hvis loft ændres ved tikket | ~61,6 % skifter type | **0 af 3.293** |
+| primær-type-skift i hele bestanden | 2.139 | **0** |
+| markedsværdi der flytter sig | «skal måles» | **0** |
+
+Præmissen var ikke forkert da den blev skrevet. Den udløb: **#3570-reparationen kørte
+11/8 kl. 08:12 og genopbyggede `ability_caps` for 7.998 ryttere med den rigtige
+kaldform (`buildCapsForRider(..., { potentiale, age }, ...)`) som en ren sideeffekt af
+at rette identiteten.** Den lukkede dermed #3591 pkt. 2 for AI-populationen uden at
+nævne #3591 med ét ord — præcis samme figur som #3606, der ugyldiggjorde en spærre
+uden at vide den fandtes.
+
+**Negativ-kontrollen der gør «0» troværdig.** «Ingen forskel» er den nemmeste måling at
+producere ved en fejl. Kontrollen: kan harnessen overhovedet SE den gamle kaldform?
+1.487 af de 3.293 AI-ryttere er forbi peakAge, så de to kaldformer giver forskellige
+lofter for dem. Gemte lofter matcher med-alder-formen for **3.293/3.293** og
+uden-alder-formen for kun 1.806 (= præcis de 1.806 før peak, hvor formerne falder
+sammen). Havde de gemte lofter stammet fra den gamle kaldform, ville tallene være byttet
+om. Uden den kontrol var «0 af 3.293» lige så foreneligt med et brudt script.
+
+## Læringen oven på den ovenfor
+
+Vagt-forfaldet ovenfor blev fundet ved at MÅLE prod frem for at læse koden. Dette er
+det samme værktøj brugt på et issue: **et issues tal er et øjebliksbillede med en
+dato, ikke en egenskab ved systemet.** Jo flere dokumenter der citerer det, jo mere
+ligner det en kendsgerning — og jo dyrere bliver det at opdage at det ikke er det.
+
+Reglen der falder ud: **måler et issue en population, og skal målingen begrunde en
+mutation af netop den population, så genmål FØR du planlægger — ikke som verifikation
+bagefter.** Genmålingen her tog ét snapshot og én harness-kørsel og ændrede opgavens
+størrelse fra 3.473 ryttere til 573.
+
+Særligt farligt når mellemtiden indeholder en anden reparation af **samme datafelt**.
+Spørgsmålet der afslører det: *«har noget rørt de rækker siden tallet blev målt?»* —
+her et `git log`/issue-opslag væk, fordi #3570-reparationen står dokumenteret med
+tidspunkt og rækkeantal.

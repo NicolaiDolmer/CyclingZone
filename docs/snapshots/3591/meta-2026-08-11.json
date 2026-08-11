@@ -1,0 +1,93 @@
+{
+  "takenAt": "2026-08-11T16:36:25.997Z",
+  "activeSeasonNumber": 2,
+  "activeSeason": {
+    "number": 2,
+    "status": "active",
+    "start_date": "2026-07-27",
+    "end_date": null,
+    "race_days_completed": 16,
+    "race_days_total": 28
+  },
+  "seasons": [
+    {
+      "number": 3,
+      "status": "upcoming",
+      "start_date": "2026-08-24",
+      "end_date": null,
+      "race_days_completed": 0,
+      "race_days_total": 60
+    },
+    {
+      "number": 2,
+      "status": "active",
+      "start_date": "2026-07-27",
+      "end_date": null,
+      "race_days_completed": 16,
+      "race_days_total": 28
+    },
+    {
+      "number": 1,
+      "status": "completed",
+      "start_date": "2026-06-22",
+      "end_date": "2026-07-26",
+      "race_days_completed": 28,
+      "race_days_total": 28
+    },
+    {
+      "number": 0,
+      "status": "completed",
+      "start_date": "2026-06-22",
+      "end_date": "2026-06-22",
+      "race_days_completed": 0,
+      "race_days_total": 60
+    }
+  ],
+  "appConfig": {
+    "survey_banner_enabled": false,
+    "survey_banner_url": "https://tally.so/r/PLACEHOLDER",
+    "season_fatigue_reset_enabled": "on",
+    "season_end_skip_division_movement": "off",
+    "transfer_price_floor_pct": 0,
+    "daily_training_enabled": "on",
+    "transfer_price_cap_multiple": null,
+    "loan_gate_min_race_days": 0,
+    "loan_gate_min_account_age_days": 0,
+    "transfer_cooldown_hours": 0,
+    "auto_entry_generator_enabled": "on",
+    "transfer_cooldown_amount_czk": 0,
+    "auction_entry_gate_enabled": false,
+    "season_form_reset_baseline_value": 50,
+    "season_form_reset_band_min": 40,
+    "season_form_reset_band_max": 60,
+    "season_form_reset_decay_target": 50,
+    "season_form_reset_decay_factor": 0.25,
+    "academy_enabled": "on",
+    "race_engine_v2_enabled": "on",
+    "auto_prize_enabled": "on",
+    "stage_scheduler_enabled": "on",
+    "facilities_enabled": "on",
+    "scout_system_enabled": "on",
+    "race_engine_v3_scoring": "on",
+    "intake_offer_expiry_enabled": "on",
+    "peak_planner_enabled": "on",
+    "season_academy_intake_enabled": "off",
+    "season_form_reset_mode": "decay",
+    "wage_deduction_mode": "season_upfront",
+    "alunta_reconcile_enabled": true,
+    "season_end_pool_reseed": "off",
+    "season_end_pool_reseed_threshold": 10,
+    "fairplay_flag_threshold": 0.35,
+    "season_documentary_llm_enabled": false,
+    "race_day_engine_enabled": "off"
+  },
+  "n": 8677,
+  "withArchetypeDraw": 8677,
+  "withCaps": 8677,
+  "ownerKind": {
+    "free": 1914,
+    "human": 3470,
+    "ai": 3293
+  },
+  "ageConvention": "age = ageForSeason(birthdate, activeSeasonNumber); age_wallclock er KUN til sammenligning med 9/8-snapshots"
+}

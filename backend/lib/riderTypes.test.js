@@ -227,7 +227,9 @@ test("#3570: LØKKEN ER SELVBEKRÆFTENDE — en forkert type cementeres for evig
   // og labelen former lofterne. Dette er den prod-drift #3450 rapporterer.
   const { buildCapsForRider } = await import("./riderProgression.js");
   const start = rider({ climbing: 40, tempo: 38, punch: 35, flat: 30 });
-  const ctx = { potentiale: 5 };
+  // age: null — denne test måler løkke-dynamikken på en syntetisk rytter uden alder,
+  // ikke taperen. #3591's kontrakt kræver at fravalget skrives eksplicit.
+  const ctx = { potentiale: 5, age: null };
 
   // Rytteren ER trukket som gc, men bærer en gammel fejl-label: sprinter.
   let forkert = { primary: { key: "sprinter" }, secondary: { key: "rouleur" } };
