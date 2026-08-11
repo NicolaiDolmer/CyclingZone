@@ -63,3 +63,23 @@ Man kan tælle sine kopier korrekt og stadig have et hul, hvis man kun spørger 
 **Regel jeg tager med:** når du samler et kendetegn ét sted, så skriv de akser ned det varierer langs — kilde, kanal, formulering, tidspunkt — og tjek hver af dem, ikke bare antallet af filer. Og byg en guard der fejler på **kilden** frem for symptomet: `guards.test.js` fejler nu hvis en spec overhovedet hænger direkte på en fejlkanal, uanset hvilken. Det er den eneste form der også dækker den fjerde akse jeg ikke har tænkt på endnu.
 
 Samme aften, samme klasse: #3554. Fem specs skrev bevis-screenshots til committede stier, og ingen gate fangede det — fordi resultatet er et beskidt arbejdstræ, ikke en rød test. En fejl der ikke producerer et rødt signal, findes ikke for CI. Derfor to guards: en statisk der læser specs, og et `git diff --exit-code` efter suiten.
+
+---
+
+## Tredje instans, næste eftermiddag: den forkerte akse gav den forkerte skyldige (#3639)
+
+Under Discord-triagen målte jeg hvor mange ryttere der træner mod et loft de allerede har nået. Første kørsel: **79 ryttere kørt fast, alle på VO2max, alle "nye i dag"** — konklusionen skrev sig selv: ryttertype-migrationen kl. 06 havde dræbt deres træning.
+
+Jeg havde målt på **klatring**. `TRAINING_FOCUSES` i `backend/lib/training.js:52` mapper `vo2max` til **climbing, punch, tempo**. Et fokus er først dødt når *alle tre* står på loftet. Målt rigtigt:
+
+| | Forkert akse (kun climbing) | Rigtig akse (alle evner i fokus) |
+|---|---|---|
+| Døde nu | 79 | **119** (alle 6 fokusser) |
+| Nye i dag | 79 | **35** |
+| Befriet i dag | (ikke målt) | **28** |
+
+Netto-effekten af migrationen var **+7**, ikke +79. Den var altså hverken årsagen eller skurken — 112 var allerede døde før den kørte. Havde jeg rapporteret den første måling, havde jeg leveret en overbevisende, veldokumenteret og forkert anklage mod dagens eneste større rettelse — og formentlig fået den rullet tilbage.
+
+Det gør mønstret til tre instanser på under et døgn, og de deler én form: **en enhed i domænet (et fokus, et fænomen, en gate) blev målt gennem én af sine bestanddele.** Klatring *var* en ægte del af vo2max — derfor så tallet rigtigt ud.
+
+**Regel:** før du tæller noget, så find dets definition i koden og tæl på den, ikke på den bestanddel der først faldt dig ind. Konkret her: `grep` efter konstanten (`TRAINING_FOCUSES`) tog ét kald og ændrede konklusionen fuldstændigt. Og: **når en måling peger på "det der skete i dag", så mistænk målingen før du mistænker dagens ændring** — den rækkefølge er billigere at tage fejl i.
