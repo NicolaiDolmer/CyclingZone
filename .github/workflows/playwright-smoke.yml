@@ -110,9 +110,31 @@ jobs:
       # #3429 lagde mobile-webkit tilbage i suiten (+~5 min lokalt målt: 125
       # tests, 4,6 min), så loftet er hævet fra 15 til 25 min. Det er stadig
       # stramt nok til at et ægte hæng fejler hurtigt frem for at hænge timevis.
+      # #3554: guards.test.js fanger KILDEN statisk (en spec der skriver til en
+      # committet sti). Den kører her fordi den er sekunder og skal fejle før
+      # de 25 minutters suite, ikke efter.
+      - name: Run e2e guards (static)
+        run: node --test tests/e2e/guards.test.js
+
       - name: Run Playwright smoke
         timeout-minutes: 25
         run: npm run test:e2e
+
+      # #3554 forward-guard: suiten må ALDRIG efterlade et beskidt arbejdstræ.
+      # Fem specs skrev direkte til committede PNG'er, så den obligatoriske
+      # lokale pre-flight altid efterlod 7-9 ændrede binære filer — enten
+      # smuttede de med i en urelateret PR (PNG-diffs er usynlige i review),
+      # eller man rullede tilbage med `git checkout --` og ramte ægte,
+      # ucommittede skærmbilleder. Guarden ovenfor dækker `page.screenshot`;
+      # denne dækker alt andet en fremtidig spec måtte finde på at skrive.
+      - name: Verify e2e left the working tree clean
+        shell: bash
+        working-directory: .
+        run: |
+          if ! git diff --exit-code --stat; then
+            echo "::error::e2e-suiten ændrede committede filer. Alt genereret skal skrives til test-results/ (se evidenceShotPath i frontend/tests/e2e/fixtures.js, #3554)."
+            exit 1
+          fi
 
       - name: Upload Playwright report
         if: failure()

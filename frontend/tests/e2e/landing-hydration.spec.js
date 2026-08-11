@@ -27,6 +27,12 @@ test("prerendered landing hydrates cleanly for a Danish visitor (no #418/#422/#4
   page,
 }) => {
   const errors = [];
+  // e2e-error-collector-exempt: denne spec asserter IKKE på "ingen fejl" —
+  // den samler alt og filtrerer bagefter på HYDRATION_ERROR (linje ~46).
+  // WebKit-dev-noise (afbrudte route-chunks, mock-CORS) kan ikke matche det
+  // mønster, så #3601-filtret ville hverken hjælpe eller skade her. Rå
+  // opsamling er det rigtige: den holder hydration-signalet uafhængigt af
+  // hvad fixtures.js måtte filtrere fra i fremtiden.
   page.on("console", (msg) => {
     if (msg.type() === "error") errors.push(msg.text());
   });
