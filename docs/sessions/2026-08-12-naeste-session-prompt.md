@@ -100,7 +100,7 @@ Plus tre andre bekræftede i ProfilePage.
 
 ## Mine klik (husk at minde mig)
 
-- **[#3553](https://github.com/NicolaiDolmer/CyclingZone/issues/3553)** — udløbet PAT. `Add to CyclingZone Roadmap` fejler på hver eneste PR (verificeret på #3637). To minutters klik, og så længe den er rød, lærer vi at ignorere røde checks. **Tag den først.**
+- **[#3553](https://github.com/NicolaiDolmer/CyclingZone/issues/3553)** — støjen er allerede fjernet i [PR #3641](https://github.com/NicolaiDolmer/CyclingZone/pull/3641) (afventer mit go, ikke merged). Tilbage til mig: ny klassisk PAT med `project`-scope i `secrets.PROJECTS_PAT` — **eller** beslutte at roadmap-boardet er dødt, og så slette workflowet i stedet. Spørg mig hvilken.
 - **[#3486](https://github.com/NicolaiDolmer/CyclingZone/issues/3486)** — `VERCEL_TOKEN` i Infisical. Låser #1784. Vercel CLI er stadig ikke installeret.
 - **Post kommunikationspakken** (`docs/discord/2026-08-10-kommunikationspakke.md`, EN+DA klar) + akademi-kompensationen.
 - **Svar på forum-spørgsmålet** i tråden "New update: Rider types": *"What do you mean 'it can be reversed'?"* — står ubesvaret siden 11/8 08:39.
