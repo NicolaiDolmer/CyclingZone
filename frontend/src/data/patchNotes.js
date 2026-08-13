@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.119",
+    "date": "2026-08-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The scout button no longer promises precision it cannot deliver",
+          "body": "The tooltip on the scout button said that scouting a rider narrows his potential estimate. That is true for the first steps, but not for the last one. Your scout's own rating sets a hard floor on how narrow any estimate can get, and for a team running the default scout that floor is already reached at the second-to-last level: paying for the final level changes the band by nothing at all. 149 of the 202 manager teams in the game have not hired a chief scout and are in exactly that position. Nobody has actually lost money on this yet. Every one of the 15 jobs bought to the last level so far came from a team that had hired a scout, so all of them got at least some improvement, though for a low-rated scout it is small. The tooltips and the scouting help now say plainly that the last level depends on your scout's rating. The floor itself is a real design problem, not just a wording one, and it is being re-measured as part of the rating work; this change is only about no longer promising something the game does not do."
+        },
+        "da": {
+          "title": "Scout-knappen lover ikke længere en præcision den ikke kan levere",
+          "body": "Tooltippet på scout-knappen sagde at det at scoute en rytter indsnævrer hans potentiale-estimat. Det passer for de første trin, men ikke for det sidste. Din egen spejders rating sætter et hårdt gulv for hvor smalt et estimat overhovedet kan blive, og for et hold med standard-spejderen er det gulv allerede nået på næstsidste niveau: at betale for sidste niveau ændrer båndet med ingenting. 149 af spillets 202 managerhold har ikke ansat en chefspejder og står præcis der. Ingen har dog reelt tabt penge på det endnu. Alle 15 opgaver der hidtil er købt til sidste niveau kom fra hold der havde ansat en spejder, så de fik alle en smule forbedring, selvom den er lille for en lavt ratet spejder. Tooltips og scouting-hjælpen siger nu ligeud at sidste niveau afhænger af din spejders rating. Selve gulvet er et rigtigt designproblem, ikke bare en formulering, og det bliver målt om som en del af rating-arbejdet; denne ændring handler kun om ikke længere at love noget spillet ikke gør."
+        },
+        "refs": [3667]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Two help answers said things that were not true",
+          "body": "The scouting help said that potential is always shown as stars and a verdict, never as a number. It is not: the Scouting tab on every rider profile has shown numbers per rider type for a while now, a current level and a ceiling band. The help now says so, and it also says how to read that band. A ceiling band is a range your rider's ceiling sits somewhere inside. It is not a number he can reach, and the top edge in particular is not a target: the band is deliberately drawn wider than the truth so the exact ceiling cannot be read off the screen. Separately, the rating-scale FAQ claimed the recalibration was a one-time correction and that a rider's number stays put unless his own abilities change. That was wrong. The scale is anchored to the rider pool, so refitting those anchors can move every rider's number without a single ability changing. The FAQ now says that, and promises a patch note whenever it happens. No rider, ability, ceiling or number changed today. Only what we tell you about them."
+        },
+        "da": {
+          "title": "To hjælpe-svar sagde noget der ikke var sandt",
+          "body": "Scouting-hjælpen sagde at potentiale altid vises som stjerner og en vurdering, aldrig som et tal. Det passer ikke: Scouting-fanen på hver rytterprofil har vist tal pr. ryttertype i et stykke tid nu, et nuværende niveau og et loft-bånd. Det siger hjælpen nu, og den siger også hvordan båndet skal læses. Et loft-bånd er et interval som rytterens loft ligger et sted inde i. Det er ikke et tal han kan nå, og især den øverste kant er ikke et mål: båndet er med vilje tegnet bredere end sandheden, så det præcise loft ikke kan aflæses på skærmen. Derudover påstod FAQ'en om rating-skalaen at rekalibreringen var en engangs-rettelse, og at en rytters tal ligger fast medmindre hans egne evner ændrer sig. Det var forkert. Skalaen er forankret i rytterpuljen, så et gen-fit af de ankre kan flytte hver eneste rytters tal uden at en eneste evne har ændret sig. Det siger FAQ'en nu, og den lover en patch note hver gang det sker. Ingen rytter, evne, loft eller tal ændrede sig i dag. Kun hvad vi fortæller jer om dem."
+        },
+        "refs": [3667]
+      }
+    ]
+  },
+  {
     "version": "7.118",
     "date": "2026-08-13",
     "label": "Beta",
