@@ -1,4 +1,20 @@
 #!/usr/bin/env node
+//
+// ⚠ FROSSET 2026-08-14 (#3666). KØR IKKE UDEN AT LÆSE DETTE FØRST.
+//
+// Scriptet importerer `ratingFromAbilities`, og den funktion betyder ikke længere
+// det samme. Før var rating et anker-normaliseret tal på 1-99; nu er den det
+// vægtede snit af rollens evner. Alle rating-deltaer scriptet PRINTER er derfor i
+// en anden enhed end da tallene blev læst og godkendt — prod-medianen faldt fra
+// 59 til 13 ved omlægningen, så et delta der dengang var lille kan i dag se stort
+// ud og omvendt.
+//
+// Selve mutationen (hvis scriptet har en) rører lofter/evner, ikke rating, og er
+// dermed uændret. Det er RAPPORTEN der ikke længere kan sammenlignes med den der
+// blev godkendt. Skal arbejdet gøres om, så re-kalibrer tærskler og forventede
+// tal mod den nye skala FØRST.
+//
+// Slicen er lukket; scriptet er bevaret som historik, ikke som værktøj.
 // #3570 fase 2 — SAMLET reparations-dry-run for de eksisterende UNGE ryttere.
 // Ejer-beslutning: ÉN kørsel (ikke to), ny label + gen-formede lofter i samme pas,
 // INGEN mutation (læser et DATERET snapshot, skriver kun til scratchpad).
