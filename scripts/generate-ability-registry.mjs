@@ -33,6 +33,12 @@ const BANNER = `// GENERERET FIL — REDIGÉR IKKE I HÅNDEN.
 
 const json = (v) => JSON.stringify(v, null, 2);
 
+// Linjeslutninger er ikke indhold. Uden denne normalisering ville et Windows-
+// checkout med core.autocrlf=true give filerne CRLF, og drift-vagten ville fejle
+// efter enhver rebase uden at en eneste vægt havde flyttet sig — samme fælde som
+// #3570 ramte. .gitattributes holder filerne på LF; dette er andet lag.
+export const normalizeEol = (s) => (s == null ? s : s.replace(/\r\n/g, "\n"));
+
 function renderRegistry() {
   const byDisplay = [...ABILITY_REGISTRY].sort((a, b) => a.displayOrder - b.displayOrder);
   const categories = [];
@@ -98,7 +104,7 @@ function main() {
     const next = render();
     let current = null;
     try { current = readFileSync(path, "utf8"); } catch { /* findes ikke endnu */ }
-    if (current === next) continue;
+    if (normalizeEol(current) === next) continue;
     if (check) {
       stale += 1;
       console.error(`[stale] ${path.replace(ROOT, ".")}`);

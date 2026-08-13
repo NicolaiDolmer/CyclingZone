@@ -4,3 +4,9 @@
 # linje giver core.autocrlf=true den CRLF i et Windows-checkout, og drift-vagten i
 # repair3570Apply.test.js fejler efter enhver rebase — uden at SQL'en har ændret sig.
 backend/scripts/dev/repair3570Rollback.sql text eol=lf
+
+# Samme mønster for #3665's genererede evne-config: drift-vagten i
+# abilityRegistryGuards.test.js sammenligner filerne med generator-outputtet.
+# Vagten normaliserer også linjeslutninger, så dette er andet lag — men uden det
+# ville filerne se ændrede ud i `git status` efter hvert checkout på Windows.
+frontend/src/lib/generated/*.js text eol=lf

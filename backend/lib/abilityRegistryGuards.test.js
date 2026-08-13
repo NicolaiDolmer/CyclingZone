@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { ABILITY_REGISTRY, REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { DISPLAY_RECIPES } from "./weights/displayRecipes.js";
-import { GENERATED_FILES } from "../../scripts/generate-ability-registry.mjs";
+import { GENERATED_FILES, normalizeEol } from "../../scripts/generate-ability-registry.mjs";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -85,7 +85,10 @@ test("#3665 vagt 4: frontendens evne-filer er genereret fra backend-kilden, ikke
   for (const { path, render } of GENERATED_FILES) {
     let current = null;
     try { current = readFileSync(path, "utf8"); } catch { /* mangler helt */ }
-    if (current !== render()) stale.push(path.replace(REPO_ROOT, "."));
+    // normalizeEol: linjeslutninger er ikke indhold. Uden den ville et Windows-
+    // checkout med core.autocrlf=true fejle vagten efter hver rebase (samme
+    // fælde som #3570). .gitattributes holder filerne på LF; dette er andet lag.
+    if (normalizeEol(current) !== render()) stale.push(path.replace(REPO_ROOT, "."));
   }
   assert.deepEqual(
     stale, [],
