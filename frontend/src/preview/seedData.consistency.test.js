@@ -26,6 +26,7 @@ import { flattenAbilities, ABILITY_KEYS } from "../lib/abilities.js";
 import { riderOverallRating } from "../lib/riderRating.js";
 import {
   RIDERS, SEED_ABILITY_CAPS, SEED_DEVELOPMENT, SEED_PROJECTION, SEED_SCOUTING_REPORT,
+  SEED_SCOUT_ESTIMATES,
 } from "./seedData.js";
 import { restRows } from "./mockHandlers.js";
 
@@ -103,6 +104,25 @@ test("hver seed-rytter har lofter, så potentiale kan vises på preview", () => 
         `${rider.id}: loftet for ${key} (${riderCaps[key]}) ligger under evnen selv (${abilities[key]})`);
     }
   }
+});
+
+test("#2454: tabellens loft-bånd er DE SAMME tal som Scouting-fanens", () => {
+  // Bandet vises to steder for samme rytter: i potentiale-kolonnen på otte
+  // tabel- og kort-flader, og på Scouting-fanens kort. To seeds ville før eller
+  // siden give to forskellige loft-bånd på samme skærm.
+  const est = SEED_SCOUT_ESTIMATES["rider-1"];
+  const fromReport = SEED_SCOUTING_REPORT.types.find((r) => r.key === SEED_SCOUTING_REPORT.primaryKey);
+  assert.equal(est.role, SEED_SCOUTING_REPORT.primaryKey);
+  assert.equal(est.ceil.lo, fromReport.ceilLo);
+  assert.equal(est.ceil.hi, fromReport.ceilHi);
+  assert.equal(est.now, fromReport.now);
+  assert.ok(est.ceil.hi > est.ceil.lo, "potentialet må aldrig kollapse til ét tal");
+
+  // Rivalen er uscoutet: intet bånd, ingen rolle (#1543).
+  const rival = SEED_SCOUT_ESTIMATES["rider-2"];
+  assert.equal(rival.hidden, true);
+  assert.equal(rival.ceil, undefined);
+  assert.equal(rival.role, undefined);
 });
 
 test("mocken lækker ALDRIG rå lofter til klienten", () => {

@@ -68,19 +68,37 @@ export function ratingFromAbilities(abilities, typeKey) {
 // rollens evner findes på rækken) giver null og udelades af båndet.
 export function buildTypeCeilingBands({ nowAbilities, caps, level, riderId, teamId, scout = DEFAULT_SCOUT }) {
   const half = scoutHalfWidth(level, scout, CEIL_HALF_WIDTH_BY_LEVEL);
-  return RIDER_TYPE_KEYS.map((key) => {
-    const now = ratingFromAbilities(nowAbilities, key);
-    const ceilTruth = ratingFromAbilities(caps, key);
-    if (now == null || ceilTruth == null) return { key, now: null, ceilLo: null, ceilHi: null };
-    const bias = (seededUnit(`scout-ceil:${riderId}:${teamId}:${key}`) * 2 - 1)
-      * half * CEIL_BIAS_FACTOR;
-    const center = ceilTruth + bias;
-    // Loftet kan pr. definition ikke ligge under nuværende niveau — clamp mod now
-    // FØR interval-clamp så båndet forbliver konsistent (lo<=hi).
-    const ceilLo = clampInt(Math.min(Math.max(center - half, now), 99), 0, 99);
-    const ceilHi = clampInt(Math.min(Math.max(center + half, now), 99), 0, 99);
-    return { key, now, ceilLo, ceilHi };
-  });
+  return RIDER_TYPE_KEYS.map((key) =>
+    ceilingBandForRole({ nowAbilities, caps, key, half, riderId, teamId }));
+}
+
+// Ét bånd for ÉN rolle. Udskilt af buildTypeCeilingBands (#2454) fordi tabel- og
+// kort-fladerne kun skal bruge rytterens egen rolle, og de SKAL få præcis samme
+// tal som Scouting-fanens kort viser for den samme rolle. To kopier af den her
+// udregning ville før eller siden give to forskellige loft-bånd for samme rytter
+// på samme skærm — den fejlklasse er allerede set i den håndholdte RADAR_ORDER
+// og i frontendens gamle RATING_TYPE_WEIGHTS.
+//
+// `half` tages ind frem for at blive udledt her, så en kalder der beder om flere
+// roller kun regner spejderens halvbredde én gang.
+export function ceilingBandForRole({ nowAbilities, caps, key, half, riderId, teamId }) {
+  const now = ratingFromAbilities(nowAbilities, key);
+  const ceilTruth = ratingFromAbilities(caps, key);
+  if (now == null || ceilTruth == null) return { key, now: null, ceilLo: null, ceilHi: null };
+  const bias = (seededUnit(`scout-ceil:${riderId}:${teamId}:${key}`) * 2 - 1)
+    * half * CEIL_BIAS_FACTOR;
+  const center = ceilTruth + bias;
+  // Loftet kan pr. definition ikke ligge under nuværende niveau — clamp mod now
+  // FØR interval-clamp så båndet forbliver konsistent (lo<=hi).
+  const ceilLo = clampInt(Math.min(Math.max(center - half, now), 99), 0, 99);
+  const ceilHi = clampInt(Math.min(Math.max(center + half, now), 99), 0, 99);
+  return { key, now, ceilLo, ceilHi };
+}
+
+// Halvbredden alene — så kaldere uden for denne fil ikke skal kende
+// CEIL_HALF_WIDTH_BY_LEVEL for at kunne bruge ceilingBandForRole.
+export function ceilingHalfWidth(level, scout = DEFAULT_SCOUT) {
+  return scoutHalfWidth(level, scout, CEIL_HALF_WIDTH_BY_LEVEL);
 }
 
 // Under denne gevinst forsvinder et ekstra scout-niveau i afrundingen til

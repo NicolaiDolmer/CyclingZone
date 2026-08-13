@@ -9,7 +9,9 @@ import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, a
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
-import { TEST_USER, SEED_ONBOARDING_PROGRESS, SEED_TRAINING } from "./seedData.js";
+import {
+  TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
+} from "./seedData.js";
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
 // objekt, eller helt fraværende (når input er et Request-objekt med egne headers).
@@ -105,10 +107,26 @@ export function installPreviewMock() {
         if (res) return jsonResponse(res.body, res.status);
       }
 
+      // #2454: potentiale-estimaterne. Preview faldt før igennem til den
+      // generiske /api-blok og fik `{ ok: true }` på denne POST, så hver
+      // potentiale-celle stod tom — inklusive de ti flader landing 1 lægger om.
+      // Samme seed som Playwright-fixturen bruger, så de to mocks ikke kan vise
+      // hver sit. Skal stå FØR scouting-central-routeren, som ellers ville
+      // returnere null for pathen og lade den falde videre.
+      if (method === "POST" && /\/api\/scouting\/estimates$/.test(url)) {
+        let ids = [];
+        if (init && init.body) { try { ids = JSON.parse(init.body).riderIds ?? []; } catch { ids = []; } }
+        const estimates = {};
+        for (const id of ids) {
+          if (SEED_SCOUT_ESTIMATES[id]) estimates[id] = SEED_SCOUT_ESTIMATES[id];
+        }
+        return jsonResponse({ teamId: TEST_TEAM.id, maxLevel: 3, estimates });
+      }
+
       // Statefuld Scouting-central-mock (#2244/#2644): rout /api/scouting/* +
       // POST /api/riders/names FØR de generiske /api-blokke, så start/annullér
       // muterer state og gennemklikket er ægte. Returnerer null for uhåndterede
-      // paths (fx /api/scouting/estimates) → falder videre som før.
+      // paths → falder videre som før.
       if (/\/api\/(scouting\/|riders\/names)/.test(url)) {
         const u = new URL(url, window.location.origin);
         let body = null;

@@ -347,8 +347,17 @@ export default function RiderScoutingTab({ rider, scouting }) {
             <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
               {t("profile.scouting.potentialLabel")}
             </span>
+            {/* #2454: potentialet står i RATING-point, samme enhed som ratingen
+                selv og som de otte tabel-flader. Stjernerne var en egen skala
+                (1-6) som intet andet i spillet brugte, så tallet her kunne ikke
+                holdes op mod noget. Faldbacken beholder dem for payloads uden
+                loft-bånd. */}
             <div className="mt-1">
-              {stars ? (
+              {primaryRow ? (
+                <span className="font-mono tabular-nums text-[17px] text-cz-1">
+                  {primaryRow.ceilLo}–{primaryRow.ceilHi}
+                </span>
+              ) : stars ? (
                 <PotentialeStars range={stars} />
               ) : (
                 <PotentialeStars value={null} />

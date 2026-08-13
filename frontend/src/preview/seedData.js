@@ -188,6 +188,23 @@ export const SEED_ABILITY_CAPS = Object.freeze({
   }),
 });
 
+// #2454 preview-seed: POST /api/scouting/estimates. Ét sted, delt af BEGGE
+// mock-konsumenter (Playwright-fixturen og runtime-preview-mocken) — de havde
+// hver sin kopi, og kun den ene ville have fået rating-båndet.
+//
+// `ceil` er rytterens egen rolles loft-bånd i RATING-point, og det er BEVIDST de
+// samme tal som SEED_SCOUTING_REPORT's primærrolle-række: en rytter må ikke vise
+// ét loft i tabellen og et andet på sin Scouting-fane. Konsistens-testen
+// håndhæver det. Rivalen er uscoutet og får `hidden` — intet bånd, ingen rolle,
+// ingen lækage (#1543).
+export const SEED_SCOUT_ESTIMATES = Object.freeze({
+  "rider-1": Object.freeze({
+    lo: 4.5, hi: 5, level: 3, role: "sprinter", now: 29,
+    ceil: Object.freeze({ lo: 40, hi: 48 }),
+  }),
+  "rider-2": Object.freeze({ hidden: true, level: 0 }),
+});
+
 // Roadmap-voting (#954): to godkendte items så /roadmap rendrer den DB-drevne
 // votable liste i stedet for det statiske i18n-fallback.
 export const ROADMAP_ITEMS = [

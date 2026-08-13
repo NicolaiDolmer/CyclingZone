@@ -831,6 +831,7 @@
     "scoutTitle": "Send your scout to sharpen this rider's potential estimate. How much sharper it gets depends on your scout's rating",
     "noSlots": "No scout slots left this season",
     "levelTitle": "Scouting level. Higher is more precise, up to your own scout's precision limit",
+    "potentialBandTitle": "Potential as {role}: he can reach {lo}-{hi}. Always a range, no scout knows a rider exactly.",
     "notScouted": "Not scouted",
     "scoutToReveal": "Potential is hidden until you scout this rider",
     "pendingTitle": "Your scout is already working on this rider",
