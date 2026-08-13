@@ -33,17 +33,24 @@
 
 **Den vigtigste arkitektur-beslutning at kende:** `riderTypeRating(abilities, typeKey)` og `riderOverallRating(rider)` har beholdt deres navne og argumenter. ~20 kaldsteder på tværs af hero, fire tabeller, fire planner-flader, radaren og Udvikling-fanen virker derfor allerede mod den nye model uden at være rørt. Det er den tekniske garanti mod en mellemtilstand med to skalaer. **Lav ikke om på det.**
 
-## Hvad der mangler
+## Gjort siden kravspec'en blev skrevet (14/8, samme dag)
 
-### 1. Falsy-gates skal blive til `Number.isFinite`
-Bunden er nu 0, ikke 1. **Målt: 2 levende ryttere i prod har rolle-rating præcis 0.** Hver `ovr > 0`- eller `ovr ? … : "—"`-gate skjuler dem som "ingen data".
-Kendte steder: `RiderProfileHero.jsx:118` (`hasRating`), `AuctionsPage.jsx:585`, og render-udtrykkene i `TeamPage`/`RidersPage`/`WatchlistPage`/de fire planner-flader. Grep efter `ovr` og `overallRating`.
-Fastlæg ÉN fallback-kontrakt ét sted: `null` (kan ikke beregnes) vises som "—", `0` vises som 0.
+| Punkt | Status |
+|---|---|
+| ~~1. Falsy-gates~~ | **Færdig.** Otte steder skiftet til `Number.isFinite` |
+| ~~3. Radaren~~ | **Færdig.** 0-40-domæne, ringe på evne-ankrene, egen rolle i guld + "læser højest"-linje. Nye i18n-nøgler `role`/`readsHighest`/`notARanking`, `bestAs` fjernet |
+| ~~7. buildVerdict-tærskler~~ | **Færdig.** 2/3/8 lagt ind + boundary-test der pinner dem |
+| ~~9. Seed og mock~~ | **Færdig.** Seed regnet med de ægte funktioner; mocken manglede helt en `rider_derived_abilities`-handler, så profilens evner aldrig kunne ses på preview |
+| Tests | `statColor.test.js` + `riderRating.test.js` omskrevet. Frontend 1873/1873, backend exit 0 |
+
+**Advarsel om preview:** `preview_start` kører fra **hovedmappen**, ikke fra worktreet. En preview startet den vej serverer `main`s kode og viser derfor ikke dine ændringer. Start dev-serveren med worktreet som cwd, ellers verificerer du den forkerte kodebase. Det kostede tid i sidste session.
+
+## Hvad der mangler
 
 ### 2. `statPlateStyle` er nu en fyldt badge
 Den returnerer `backgroundColor` + `color` + `border` i stedet for farvet tal på en tint. Kaldstederne skal have padding og radius så badgen får form — se `RiderProfileHero.jsx:235`, `TeamPage.jsx:605`, `RidersPage.jsx:424`, `WatchlistPage.jsx:269`. **Vis ejeren før/efter.**
 
-### 3. Radaren (`RiderTypeRadar.jsx`) — ejer-besluttet 14/8
+### ~~3. Radaren~~ — FÆRDIG 14/8, se statustabellen
 - Akse-domænet skal være **fast 0–40**, ikke 0–99 (linje ~44, divisoren). Målt: p90 for en rolle-rating er 29, og kun 10 af 8.747 ryttere ligger over 40 i deres bedste rolle. Med 0–99 kollapser polygonen til under en tredjedel af radius.
 - Ringene sættes på evne-ankrene, så ring-afstand betyder det samme som farven.
 - **"Best as" skal vise BEGGE ting** (ejer-valg): guld-aksen markerer rytterens EGEN rolle fra `archetype_draw`, og en neutral andenlinje siger hvad han læser højest på lige nu — som observation, ikke dom. Ordet "bedst" bruges ikke. Linjen skjules når de to er samme rolle. Mockup findes i sessionens historik.
@@ -68,13 +75,13 @@ Den returnerer `backgroundColor` + `color` + `border` i stedet for farvet tal p�
 - `silentFailureContract.2465.test.js:50` kræver ordret `return <PotentialeStars value={null} />;` i `ScoutablePotentiale.jsx` og skal opdateres bevidst.
 - **Bemærk kilden:** de otte tabel-/kort-flader får i dag KUN stjerne-enheder fra `POST /api/scouting/estimates`, som ikke engang henter `ability_caps`. Rating-point-båndet findes kun på de to enkelt-rytter-endpoints. Der skal altså en backend-sti til — `ability_caps` er en jsonb-kolonne på `rider_derived_abilities`, så det er én select, ikke en ny join.
 
-### 7. `buildVerdict`-tærskler — målt, klar til at lægge ind
+### ~~7. buildVerdict-tærskler~~ — FÆRDIG 14/8
 Erstat **4/6/12 med 2/3/8**. Fundet ved heltalssøgning der minimerer afvigelsen fra dagens fordeling af domme over hele bestanden; rammer "behold/byd"-gruppen eksakt (3.534 mod 3.534). Uden dem skifter dommen for tusindvis af ryttere uden at nogen har besluttet det.
 
 ### 8. Dead code
 `typeRatingScale.js`, `typeRatingCalibration.json`, `scripts/buildTypeRatingCalibration.js` og `typeRatingScale.test.js` kan slettes når intet læser dem. **Elleve backend-scripts importerer `ratingFromAbilities`** — fire af dem er prod-mutations- eller dry-run-scripts (`dev/lofter*3591`, `dev/repair*3570`) hvis rapporterede deltaer er i den gamle enhed. Beslut: frys dem med en header-note, eller opdatér dem.
 
-### 9. Seed og mock
+### ~~9. Seed og mock~~ — FÆRDIG 14/8
 `seedData.js:1237-1280` (`SEED_PROJECTION` now:70/ceil 78-86, `SEED_SCOUTING_REPORT` kalibrerede tal op til 96) og `mockHandlers.js:386-395` er på den gamle skala. **Ejeren kan ikke godkende visuelt på preview før de er regenereret** — det er en fejl der har bidt før.
 
 ## Målt allerede — brug tallene
