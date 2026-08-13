@@ -60,9 +60,14 @@ test("#3667 loftet vises som tal og ALTID som et interval, aldrig ét loft-tal",
   // help.json påstod at potentiale "aldrig" vises som et tal. Det gør det.
   // Guarden holder den rettede tekst ærlig: hvis tallene nogensinde fjernes
   // herfra, skal hjælpen skrives om igen — og så fejler denne test først.
-  for (const key of ["sprinter", "climber"]) {
-    await expect(page.locator(`[data-type="${key}"]`)).toHaveText(/\d+\s*·\s*\d+[–-]\d+/);
-  }
+  //
+  // #3666 spec §D4: rytterens EGEN rolle vises nu stort, med ratingen som farvet
+  // plade og loftet i sin egen kolonne, mens de øvrige syv beholder den kompakte
+  // "nu · lo–hi"-form. Guarden er derfor bundet til INTENTIONEN (et nu-tal og et
+  // interval findes på rækken) frem for til separatoren, som kun beskrev det ene
+  // af de to layouts.
+  await expect(page.locator('[data-type="sprinter"]')).toHaveText(/\d+[\s\S]*\d+[–-]\d+/);
+  await expect(page.locator('[data-type="climber"]')).toHaveText(/\d+\s*·\s*\d+[–-]\d+/);
 
   // #1543/#1162 anti-inversion: loftet må aldrig kollapse til ét tal. Hver række
   // skal have lo < hi, ellers er sandheden aflæselig direkte fra skærmen.
