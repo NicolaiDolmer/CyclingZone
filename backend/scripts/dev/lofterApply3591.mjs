@@ -5,9 +5,9 @@
 // Scriptet importerer `ratingFromAbilities`, og den funktion betyder ikke længere
 // det samme. Før var rating et anker-normaliseret tal på 1-99; nu er den det
 // vægtede snit af rollens evner. Alle rating-deltaer scriptet PRINTER er derfor i
-// en anden enhed end da tallene blev læst og godkendt — prod-medianen faldt fra
-// 59 til 13 ved omlægningen, så et delta der dengang var lille kan i dag se stort
-// ud og omvendt.
+// en anden enhed end da tallene blev læst og godkendt — medianen faldt fra 15
+// til 13, og de bedste ryttere fra 99 til 85, så et delta der dengang var lille kan
+// i dag se stort ud og omvendt.
 //
 // Selve mutationen (hvis scriptet har en) rører lofter/evner, ikke rating, og er
 // dermed uændret. Det er RAPPORTEN der ikke længere kan sammenlignes med den der

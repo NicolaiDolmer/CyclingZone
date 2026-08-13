@@ -14,11 +14,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "A rider's rating is now just the abilities his role needs",
-          "body": "The rating used to be stretched against the whole rider pool, so it could move when other riders changed. Now it is the weighted average of the abilities his role needs: 13 in every ability that counts means a rating of 13. The numbers are lower than before, a typical rider reads about 13 where he used to read 59, and they mean the same thing in every role. Nothing about your riders changed: same abilities, same ceilings, same types."
+          "body": "The rating used to be stretched against the whole rider pool, so it could move when other riders changed. Now it is the weighted average of the abilities his role needs: 13 in every ability that counts means a rating of 13. The numbers are lower than before, though for most riders the shift is small: a typical rider reads 13 where he used to read 15. The top moves most, because the old calculation pinned the best riders at 99. They mean the same thing in every role. Nothing about your riders changed: same abilities, same ceilings, same types."
         },
         "da": {
           "title": "En rytters rating er nu bare de evner hans rolle bruger",
-          "body": "Ratingen blev før strakt mod hele rytterbestanden, så den kunne flytte sig når andre ryttere ændrede sig. Nu er den det vægtede snit af de evner hans rolle bruger: 13 i alle de evner der tæller giver rating 13. Tallene er lavere end før, en typisk rytter viser omkring 13 hvor han før viste 59, og de betyder det samme i alle roller. Intet ved dine ryttere har ændret sig: samme evner, samme lofter, samme typer."
+          "body": "Ratingen blev før strakt mod hele rytterbestanden, så den kunne flytte sig når andre ryttere ændrede sig. Nu er den det vægtede snit af de evner hans rolle bruger: 13 i alle de evner der tæller giver rating 13. Tallene er lavere end før, men for de fleste ryttere er forskellen lille: en typisk rytter viser 13, hvor han før viste 15. Toppen flytter sig mest, fordi den gamle udregning klemte de bedste op på 99. De betyder det samme i alle roller. Intet ved dine ryttere har ændret sig: samme evner, samme lofter, samme typer."
         },
         "refs": [
           3666
