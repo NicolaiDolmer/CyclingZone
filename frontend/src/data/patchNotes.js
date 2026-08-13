@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.118",
+    "date": "2026-08-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "516 riders had their development ceilings corrected",
+          "body": "Every rider has two types, a main type and a secondary one, and both shape how high each of his abilities can ever climb. A group of riders created between July 25 and August 12 never got their secondary type written into their record at birth. The game showed them a secondary type, but the code that works out their ceilings could not see it, so it calculated as though they had none. Their ceilings have now been rebuilt with both types, the way every other rider in the game has always been treated. 453 riders came out with a higher ceiling and 63 with a lower one. 511 of them are free agents on the market and 5 sit on player squads. Nobody lost an ability he already had. A ceiling can never fall below a rider's current ability, so a lower ceiling means less room left to grow, not a rider who got worse. No rider changed type and no market value moved. If you are wondering why a ceiling went down: a secondary type says what a rider is not, as much as what he is. A baroudeur with rouleur as his secondary is a rider the game now states plainly will never be a climber."
+        },
+        "da": {
+          "title": "516 ryttere har fået rettet deres udviklingslofter",
+          "body": "Hver rytter har to typer, en hovedtype og en bitype, og begge former hvor højt hver af hans evner nogensinde kan nå. En gruppe ryttere skabt mellem 25. juli og 12. august fik aldrig deres bitype skrevet ind i deres stamdata ved fødslen. Spillet viste dem en bitype, men koden der regner lofterne ud kunne ikke se den, så den regnede som om de ingen havde. Deres lofter er nu bygget om med begge typer, præcis som alle andre ryttere i spillet altid er blevet behandlet. 453 ryttere kom ud med et højere loft og 63 med et lavere. 511 af dem er frie agenter på markedet og 5 sidder på spilleres hold. Ingen mistede en evne han allerede havde. Et loft kan aldrig falde under rytterens nuværende evne, så et lavere loft betyder mindre plads tilbage at vokse i, ikke en rytter der blev dårligere. Ingen rytter skiftede type, og ingen markedsværdi flyttede sig. Undrer du dig over hvorfor et loft gik ned: en bitype siger lige så meget hvad en rytter ikke er, som hvad han er. En baroudeur med rouleur som bitype er en rytter spillet nu siger ligeud aldrig bliver klatrer."
+        },
+        "refs": [3593, 3591]
+      }
+    ]
+  },
+  {
     "version": "7.117",
     "date": "2026-08-12",
     "label": "Beta",
