@@ -39,23 +39,56 @@ test("gulv: uden for [40,99] clampes til endepunkterne", () => {
 
 // ── scoutHalfWidth ─────────────────────────────────────────────────────────────
 
-test("scoutHalfWidth: gulv slår kun igennem når base er smallere end gulvet", () => {
-  const base = [12, 8, 5, 3]; // CEIL_HALF_WIDTH_BY_LEVEL
-  // overall 99 → gulv 3.0 == base[3] → uændret
-  assert.equal(scoutHalfWidth(3, { overall: 99 }, base), 3);
-  // overall 40 → gulv 5.0 > base[3]=3 → gulvet vinder
-  assert.equal(scoutHalfWidth(3, { overall: 40 }, base), 5.0);
-  // level 0 (base 12) — altid over gulvet, uændret
-  assert.equal(scoutHalfWidth(0, { overall: 40 }, base), 12);
+// #3671: gulvet er RELATIVT. Før var det en absolut konstant der klippede flere
+// niveauer ned til samme tal — med basis [9,6,4,3] og gulv 5,0 gav niveau 2 og 3
+// begge 5,0, så det sidste scout-trin købte matematisk nul for de 150 af 203
+// menneskehold uden chefscout. Nu leverer spejderen en ANDEL af indsnævringen.
+const BASE = [9, 6, 4, 3]; // CEIL_HALF_WIDTH_BY_LEVEL efter #3666
+
+test("scoutHalfWidth: hvert niveau køber altid noget, for enhver spejder", () => {
+  for (const overall of [40, 48, 55, 59, 60, 70, 85, 99]) {
+    for (let level = 1; level < BASE.length; level += 1) {
+      const forrige = scoutHalfWidth(level - 1, { overall }, BASE);
+      const nu = scoutHalfWidth(level, { overall }, BASE);
+      assert.ok(nu < forrige,
+        `spejder ${overall}: niveau ${level} købte intet (${forrige} → ${nu}). `
+        + "Det var præcis defekten i #3671.");
+    }
+  }
 });
 
-test("scoutHalfWidth: unitScale konverterer gulvet til stjerne-enheder", () => {
-  const base = [1.5, 1.2, 0.8, 0.5]; // stjerne-skala (scouting.js)
-  const scale = 0.5 / 3; // residualHalfWidth(0.5) / CEIL_HALF_WIDTH_BY_LEVEL[3](3)
-  // overall 99 → gulv 3.0 rating-pt × scale = 0.5 == base[3] → uændret
-  assert.ok(Math.abs(scoutHalfWidth(3, { overall: 99 }, base, scale) - 0.5) < 1e-9);
-  // overall 40 → gulv 5.0 × scale ≈ 0.833 > base[3]=0.5 → gulvet vinder
-  assert.ok(scoutHalfWidth(3, { overall: 40 }, base, scale) > 0.8);
+test("scoutHalfWidth: fuld scouting er bit-identisk med det gamle gulv", () => {
+  // Den egenskab der gør omlægningen sikker: ingen spejder får et SKARPERE bånd
+  // end den absolutte konstant tillod før, så maskeringen på sit strammeste
+  // punkt — dér anti-inversionen er mest følsom — er uændret.
+  for (const overall of [40, 48, 55, 59, 60, 70, 85, 99]) {
+    const nu = scoutHalfWidth(BASE.length - 1, { overall }, BASE);
+    const gammelt = minHalfWidthByScoutRating(overall);
+    assert.ok(Math.abs(nu - gammelt) < 1e-9,
+      `spejder ${overall}: fuldt scoutet gav ${nu}, det gamle gulv gav ${gammelt}`);
+  }
+});
+
+test("scoutHalfWidth: uscoutet er base[0] for alle — ingen bliver dårligere stillet", () => {
+  for (const overall of [40, 60, 99]) {
+    assert.equal(scoutHalfWidth(0, { overall }, BASE), BASE[0]);
+  }
+});
+
+test("scoutHalfWidth: resultatet ligger altid i [base[level], base[0]]", () => {
+  for (const overall of [40, 70, 99]) {
+    for (let level = 0; level < BASE.length; level += 1) {
+      const h = scoutHalfWidth(level, { overall }, BASE);
+      assert.ok(h >= BASE[level] - 1e-9 && h <= BASE[0] + 1e-9,
+        `spejder ${overall}, niveau ${level}: ${h} er uden for [${BASE[level]}, ${BASE[0]}]`);
+    }
+  }
+});
+
+test("en stærk spejder køber mere pr. niveau end en svag", () => {
+  const svag = scoutHalfWidth(2, { overall: 40 }, BASE) - scoutHalfWidth(3, { overall: 40 }, BASE);
+  const staerk = scoutHalfWidth(2, { overall: 99 }, BASE) - scoutHalfWidth(3, { overall: 99 }, BASE);
+  assert.ok(staerk > svag, "#2244's hensigt: en dårlig spejder må ikke levere ekspert-præcision");
 });
 
 test("scoutHalfWidth: DEFAULT_SCOUT bruges når intet scout gives", () => {
