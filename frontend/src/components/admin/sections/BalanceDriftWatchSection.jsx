@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { AlertTriangleIcon, XIcon } from "../../ui";
+import { AlertTriangleIcon, EmptyState, ErrorState } from "../../ui";
+import { formatBand, formatValue, normalizeBalanceDrift } from "./balanceDriftShape.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -19,21 +20,9 @@ const METRIC_LABELS = {
   breakawayWinSharePct: "Udbruds-sejrsandel (report-only)",
 };
 
-function formatValue(key, value) {
-  if (value == null || Number.isNaN(value)) return "—";
-  const pctKeys = ["favoriteWinRate", "favoritePodiumRate", "share4PlusSameTeamTop10", "maxRiderWinRate"];
-  if (pctKeys.includes(key)) return `${(value * 100).toFixed(1)}%`;
-  if (key === "dnfRatePct" || key === "jourSansSharePct" || key === "breakawayWinSharePct") return `${value.toFixed(2)}%`;
-  return value.toFixed(1);
-}
-
-function formatBand(band) {
-  if (band.reportOnly) return "rapport-only";
-  if (band.min != null && band.max != null) return `${band.min}–${band.max}`;
-  if (band.max != null) return `≤${band.max}`;
-  if (band.min != null) return `≥${band.min}`;
-  return "—";
-}
+// formatValue/formatBand + shape-normaliseringen bor i balanceDriftShape.js:
+// det er de kodestier der crashede på et ufuldstændigt svar (#3559), og som
+// ren .js kan repoets node --test eksekvere dem direkte.
 
 const STATUS_DOT = {
   green: "bg-cz-success",
@@ -64,26 +53,41 @@ export default function BalanceDriftWatchSection({ getAuth }) {
   }, [getAuth]);
 
   if (loading) return <p className="text-cz-3 text-sm">Indlæser...</p>;
-  if (error) return (
-    <p className="text-cz-danger text-sm inline-flex items-center gap-1.5">
-      <XIcon size={14} aria-hidden="true" />{error}
-    </p>
-  );
-  if (!data || data.days.length === 0) {
-    return <p className="text-cz-3 text-sm">Ingen målinger endnu — jobbet kører natligt (24h-cron, #2414).</p>;
+  if (error) return <ErrorState title="Kunne ikke hente balance-drift-data" description={error} />;
+
+  // #3559 — renderingen læser KUN fra den normaliserede shape, aldrig fra det
+  // rå svar: et svar uden days-liste er ubrugeligt (fejl-state), en tom
+  // days-liste er lovlig (empty-state). Ingen af delene må crashe sektionen.
+  const { ok, days, breaches, bands } = normalizeBalanceDrift(data);
+
+  if (!ok) {
+    return (
+      <ErrorState
+        title="Uventet svar fra balance-drift-endpointet"
+        description="Svaret manglede days-listen. Tjek GET /api/admin/balance-drift og cron-loggen for balance-drift-watch."
+      />
+    );
+  }
+  if (days.length === 0) {
+    return (
+      <EmptyState
+        title="Ingen målinger endnu"
+        description="Vagten kører natligt (24h-cron, #2414) — første måling vises her bagefter."
+      />
+    );
   }
 
   const metricKeys = Object.keys(METRIC_LABELS);
-  const latest = data.days[data.days.length - 1];
+  const latest = days[days.length - 1];
 
   return (
     <div>
-      {data.breaches.length > 0 && (
+      {breaches.length > 0 && (
         <div className="mb-4 px-3 py-2 rounded-lg text-sm bg-cz-danger-bg text-cz-danger border border-cz-danger/30 flex items-start gap-1.5">
           <AlertTriangleIcon size={14} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
           <span>
-            {data.breaches.length} bånd har været rødt i 3+ dage i træk:{" "}
-            {data.breaches.map(b => `${METRIC_LABELS[b.metric] || b.metric} (${b.days}d siden ${b.since})`).join(" · ")}
+            {breaches.length} bånd har været rødt i 3+ dage i træk:{" "}
+            {breaches.map(b => `${METRIC_LABELS[b.metric] || b.metric} (${b.days}d siden ${b.since})`).join(" · ")}
           </span>
         </div>
       )}
@@ -97,7 +101,7 @@ export default function BalanceDriftWatchSection({ getAuth }) {
             <tr className="text-cz-3 text-left">
               <th className="py-1 pr-3 font-medium">Metrik</th>
               <th className="py-1 pr-3 font-medium">Bånd</th>
-              {data.days.map(d => (
+              {days.map(d => (
                 <th key={d.date} className="py-1 px-2 font-medium whitespace-nowrap">{d.date.slice(5)}</th>
               ))}
             </tr>
@@ -106,8 +110,8 @@ export default function BalanceDriftWatchSection({ getAuth }) {
             {metricKeys.map(key => (
               <tr key={key} className="border-t border-cz-border">
                 <td className="py-1.5 pr-3 text-cz-1 whitespace-nowrap">{METRIC_LABELS[key]}</td>
-                <td className="py-1.5 pr-3 text-cz-3 whitespace-nowrap">{formatBand(data.bands[key])}</td>
-                {data.days.map(d => {
+                <td className="py-1.5 pr-3 text-cz-3 whitespace-nowrap">{formatBand(bands[key])}</td>
+                {days.map(d => {
                   const cell = d.statuses?.[key];
                   return (
                     <td key={d.date} className="py-1.5 px-2 whitespace-nowrap">
