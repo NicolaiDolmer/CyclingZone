@@ -195,7 +195,25 @@ Installeret via `pwsh -File scripts/install-user-hooks.ps1`. Idempotent — beva
 
 ### `Stop` → `bash scripts/cross-pc-stop-check.sh`
 
-**Hvad:** Advarer (ikke-blokerende) hvis der er uncommitted/unpushed work eller stash-entries ved session-end.
+**Hvad:** Advarer (ikke-blokerende) hvis der er uncommitted/unpushed work, stash-entries eller lokal-only filer i `.codex.local/` ved session-end. Trigger desuden cross-PC transcript-sync i background (#391).
+
+**Betinget siden [#3654](https://github.com/NicolaiDolmer/CyclingZone/issues/3654).** Advarslen er **tavs** medmindre der reelt er en cross-PC-situation: en anden PC end denne skal have synket ind i `~/OneDrive/CyclingZone-context/claude-transcripts-<PC>/` eller `codex-sessions-<PC>/` indenfor de sidste 14 dage. Det er samme sibling-PC-discovery som `scripts/time-tracker/report.mjs` bruger. Gaten spejler `AGENTS.md` §LOKAL: rutinen er ikke længere en per-session-gate, kun ad hoc ved mistanke om drift.
+
+Transcript-syncen kører **altid**, uafhængigt af gaten. Den er selve målingen gaten hviler på.
+
+| Env | Default | Effekt |
+|---|---|---|
+| `CROSS_PC_STOP_CHECK` | `auto` | `auto` = advar kun ved aktiv anden PC · `always` = gammel altid-tændt adfærd · `off` = advar aldrig |
+| `CROSS_PC_ACTIVE_DAYS` | `14` | Vindue for "anden PC er aktiv", i dage |
+
+**Edge cases:**
+- Ingen `~/OneDrive/CyclingZone-context/` → tavs (ingen delt context betyder ingen anden PC)
+- Kun denne PC's egen `claude-transcripts-<COMPUTERNAME>/` → tavs
+- Anden PC findes, men er ældre end vinduet → tavs
+- Gate åben, men rent arbejdstræ → tavs (ingen issues at rapportere)
+- Exit-koden er altid 0, så hooken aldrig blokerer session-end
+
+**Test:** `bash scripts/hooks/__tests__/test-cross-pc-stop-check.sh` (dækker både tændt og slukket sti mod et wegwerf-repo + fake OneDrive-rod).
 
 ### `SessionStart` (separat hook) → `bash ~/.claude/scripts/cycling-manager-cleanup.sh`
 

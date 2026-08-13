@@ -53,7 +53,7 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 **Daglig flow:**
 - Session-start: `git fetch --prune origin && git status -sb` (user-hook gør det automatisk). Hvis `[behind N]` → `git pull --ff-only`
-- Session-end: user-hook `cross-pc-stop-check.sh` advarer ved uncommitted/unpushed work
+- Session-end: user-hook `cross-pc-stop-check.sh` advarer ved uncommitted/unpushed work, men kun når en anden PC reelt har synket indenfor de sidste 14 dage (#3654; `CROSS_PC_STOP_CHECK=always` tvinger den gamle altid-tændte adfærd frem)
 - Efter manuel edit af hardlinkede filer: `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere link
 
 **Drift-protokol** ved konflikt mellem lokal og OneDrive-version:

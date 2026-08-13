@@ -1,12 +1,35 @@
 #!/bin/bash
-# Stop-hook: advarer (ikke blokerende) hvis der er uncommitted eller unpushed work
-# ved session-end. Hjaelper med cross-PC continuity.
+# Stop-hook: advarer (ikke blokerende) om lokal state en ANDEN PC ikke kan se.
 #
-# Tjekker:
+# BETINGET siden #3654. Hooken var permanent-taendt: den fyrede ved hver eneste
+# session-end og paastod at "anden PC kan ikke fortsaette", ogsaa naar der ikke
+# havde vaeret en anden PC i maanedsvis. Den modsagde dermed repoets egen regel,
+# AGENTS.md §LOKAL: "Med solo Claude-operation er rutinen ikke laengere en
+# per-session-gate — koer kun auditen ad hoc hvis du mistaenker drift (fx efter
+# laengere ophold paa en sekundaer PC)."
+#
+# Gaten er nu den regel, i kode: advarslen er TAVS medmindre en anden PC end
+# denne reelt har vaeret aktiv for nylig. "Aktiv" maales paa den delte
+# OneDrive-context, hvor hver PC ejer sin egen claude-transcripts-<PC>/ +
+# codex-sessions-<PC>/ (konvention fra scripts/cross-pc-sync.sh, #391). En PC
+# der koerer sessions skriver ind i sin mappe ved hver Stop.
+#
+# Tjekker (KUN naar gaten er aaben):
 #   1. Uncommitted changes (git status --porcelain)
 #   2. Commits ahead af upstream (git log @{u}..HEAD)
 #   3. Stash-entries (git stash list)
-#   4. PUSH: trigger cross-PC transcript sync til OneDrive (background, non-blocking)
+#   4. Lokal-only AI-state i .codex.local/ udenfor whitelist
+#
+# Uafhaengigt af gaten (koerer altid):
+#   5. PUSH: trigger cross-PC transcript sync til OneDrive (background, non-blocking).
+#      Det er selve maalingen gaten hviler paa, og den maa aldrig gates vaek (#391).
+#
+# Env-knapper:
+#   CROSS_PC_STOP_CHECK   auto (default) | always | off
+#                         auto  = advar kun naar en anden PC har vaeret aktiv
+#                         always= advar altid (gammel adfaerd)
+#                         off   = advar aldrig (transcript-sync koerer stadig)
+#   CROSS_PC_ACTIVE_DAYS  vindue for "anden PC er aktiv", i dage (default 14)
 #
 # Output: systemMessage til Claude Code via JSON paa stdout. Exit altid 0 (non-blocking).
 
@@ -20,6 +43,60 @@ fi
 if [ -x "$(git rev-parse --show-toplevel)/scripts/cross-pc-sync.sh" ]; then
   nohup bash "$(git rev-parse --show-toplevel)/scripts/cross-pc-sync.sh" >/dev/null 2>&1 &
   disown 2>/dev/null || true
+fi
+
+mode="${CROSS_PC_STOP_CHECK:-auto}"
+if [ "$mode" = "off" ]; then
+  exit 0
+fi
+
+active_days="${CROSS_PC_ACTIVE_DAYS:-14}"
+case "$active_days" in
+  '' | *[!0-9]*) active_days=14 ;;
+esac
+
+# Rod for den delte OneDrive-context. Samme udledning som scripts/cross-pc-sync.sh
+# (bevidst duplikeret frem for sourced: sync-scriptet koeres detached via nohup, og
+# et broken source dér ville droppe transcript-syncen lydloest).
+onedrive_context_root() {
+  local root="${OneDrive:-${USERPROFILE:-$HOME}/OneDrive}"
+  root=$(echo "$root" | sed 's|\\|/|g')          # Windows-stier (\) -> Unix (/)
+  root=$(echo "$root" | sed 's|^\([A-Z]\):|/\L\1|')  # C: -> /c (Git Bash)
+  echo "$root/CyclingZone-context"
+}
+
+# Ekkoer navnet paa en ANDEN PC der har synket indenfor vinduet, ellers intet.
+active_other_pc() {
+  local ctx dir name this_pc
+  ctx=$(onedrive_context_root)
+  [ -d "$ctx" ] || return 0
+
+  this_pc=$(echo "${COMPUTERNAME:-$(hostname)}" | tr '[:upper:]' '[:lower:]')
+
+  for dir in "$ctx"/claude-transcripts-* "$ctx"/codex-sessions-*; do
+    [ -d "$dir" ] || continue
+    name=$(basename "$dir")
+    name="${name#claude-transcripts-}"
+    name="${name#codex-sessions-}"
+    [ -n "$name" ] || continue
+    # Denne PC's egen mappe er ikke en cross-PC-situation.
+    [ "$(echo "$name" | tr '[:upper:]' '[:lower:]')" != "$this_pc" ] || continue
+    # -print -quit: stop ved foerste traeffer, saa hooken ikke gaar en hel
+    # transcript-mappe igennem ved hver session-end.
+    if [ -n "$(find "$dir" -type f -mtime "-$active_days" -print -quit 2>/dev/null)" ]; then
+      echo "$name"
+      return 0
+    fi
+  done
+}
+
+other_pc=""
+if [ "$mode" != "always" ]; then
+  other_pc=$(active_other_pc)
+  # Ingen anden PC har vaeret aktiv -> ingen cross-PC-situation -> ingen advarsel.
+  if [ -z "$other_pc" ]; then
+    exit 0
+  fi
 fi
 
 issues=()
@@ -77,7 +154,11 @@ msg="ADVARSEL — cross-PC sync ikke i orden:"
 for i in "${issues[@]}"; do
   msg="$msg | $i"
 done
-msg="$msg | Anden PC kan ikke fortsaette uden disse aendringer."
+if [ -n "$other_pc" ]; then
+  msg="$msg | $other_pc har synket indenfor de sidste $active_days dage og kan ikke fortsaette uden disse aendringer."
+else
+  msg="$msg | Anden PC kan ikke fortsaette uden disse aendringer (CROSS_PC_STOP_CHECK=always)."
+fi
 
 # Escape til JSON (escape backslash og quote)
 msg_json=$(echo "$msg" | sed 's/\\/\\\\/g; s/"/\\"/g')
