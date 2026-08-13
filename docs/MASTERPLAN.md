@@ -1,38 +1,68 @@
 # MASTERPLAN — prioriteret rækkefølge (SSOT for rækkefølgen)
 
-> Ejer-godkendt 2026-07-11; omskrevet 23/7; re-synket 3/8; **status-synket 6/8** efter mega-audit (28 agenter): 482→**450 åbne**, done-pukkel 54→17, 38 verificerede closes ([#627-evidens](https://github.com/NicolaiDolmer/CyclingZone/issues/627#issuecomment-5203396873)), 4 nye issues #3439-#3442, patch notes v7.100, roadmap 3 items shipped. Ejer-mandat (30/7): **LØS opgaverne — jag ikke tallet ~200.** Regel: ét spor gøres FÆRDIGT før næste startes. Status: 🔴 brand/deadline · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. Budget ≤1.500 tok. Visuel udgave: [masterplan-artifact](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635) (re-synket 7/8 aften: samlet plan efter 11-agent research — 23/8 kører som ÉN ejer-godkendt drejebog; uge 1 sept frosset til React 19+Router 8 #2960; mobil/CVD/quick-win-fyldpakker + Discord-issues #3517-#3523). Klassifikations-grundlag: [`backlog-priorities-2026-07-30.md`](audits/backlog-priorities-2026-07-30.md).
+> **Ejer-godkendt 2026-08-13** i planlægningssessionen ([#3662](https://github.com/NicolaiDolmer/CyclingZone/issues/3662)) — 12 beslutninger, rækkefølgen er sagt ja til punkt for punkt. Erstatter 23/7-udgaven. Status: 🔴 brand/deadline · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. Budget ≤1.500 tok. Visuel udgave: [masterplan-artifact](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
 
-**Målt i prod 6/8:** 199 brugere · 18 nye/7 d · WAU 79, DAU 55 (last_seen-metode) · **1 abonnement (uændret)** · 189 rigtige hold · S2 slutter søn 23/8 (17 dage). Konsekvens uændret: anskaffelsen virker — og indtægtskæden er stadig lukket (checkout pauset, /pro uden indgang, e-mail-loop slukket). **🟢 Ryttertype-brændpunktet håndteret 6-7/8 via fundamentet v2 (#3458/#3459):** skala-ærlighed + akademi-arketyper live; løbsdags-motoren komplet i main bag flag (flip 23/8); rest = #3503-loft-runden + PR #3512 (parkeret) + fase 3-kommunikation — EFTER 9/8-cutoveren.
+**Ejer-mandat 13/8, ordret:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3. Det er altoverskyggende vigtigt."* Alt andet viger for spor B — undtagen det der er bundet til en dato.
 
-## Stående spor (viger aldrig): stabilitet + fastholdelse
-**Balance er rød:** #2731 maxRiderWinRate 0,67-0,75 vs mål 0,45 (siden 16/7) · #2557 hold-dominans — nu også spiller-fortælling ("Wander Riders tager os alle") · balance-drift-vagten meldte bånd-brud 30/7 + 2/8 + 3/8 · #3015 AI-ryttere restituerer aldrig · #3009 scorecards exiter grønt trods FAIL. **Dataintegritet:** ✅ #3185 LUKKET 3/8 nat (15 ticks i træk count=4, kun de historiske Brutaliste-par).
+**Målt:** åbne issues **546** · done-pukkel **23** (begge talt 13/8, ikke 524/19) · 199 brugere, 1 abonnement (målt 6/8, ikke genmålt) · **S2 slutter søn 23/8 — 10 dage.**
 
-## 1 · NU-BØLGE (denne uge)
-1. ✅ **S2-dataintegritet FÆRDIG 3/8:** #3119+#3122+#3185-fixet live og post-verificeret (PR #3206). #3120-dry-run: **0 point/0 kr at modregne** → anbefalet luk uden mutation (ejer-ja udestår).
-2. 🔵→🟠 **Penge-kæden (ejer-gates → kode):** #2813 go-live-gates (support-mail · moms-tjek i Alunta · `CHECKOUT_PAUSED`-flip) → **#3104 etape D** /pro-indgang → **#2736 fornyelses-webhook FØR ~24/8** (eneste kunde mister ellers Pro) → #2853 e-mail-loop (3 tekster + 2 nøgler) → #2816/#2817/#2820.
-3. 🔴 **Sæsonslut 23/8 (20 dage):** ✅ 3/8-aften: #3038 lukket (PR #3167) · #1688(a) lukket (var allerede løst i #1152 — verificeret + regressionstest PR #3209) · #3036 countback lukket (PR #3210, 61-61-fixture). **Tilbage: #1150 kontraktudløb — PR #3362 klar (natbølge 5/8). Tallet er IKKE 807: dry-run mod prod 5/8 giver 1.399 (980 menneske/419 AI), 170 af 180 menneskehold berørt, 60 hold under løbs-minimum, 46 mister ≥50 % af truppen. AI-hold havde ingen fornyelse = funktionelt brud, nu fikset.** · ~~#2916~~ LUKKET 30/7 (PR #2987) — men opfølger PR #3361 fandt 6. flade: 44/115 target_race_ids peger allerede på døde S1-løb · #2752/#2361 skiftet som oplevelse.
-4. 🟢→🔵 **Fair play:** ✅ HELE kæden #3133-#3137 leveret 3/8 nat (detektorer live + kørt mod 90 dage: #3135 fangede præcis #2221, 0 FP; prisbånd/konto-gates implementeret men SLÅET FRA — **aktivering = ejer-beslutning**, kalibreret bånd klar: gulv 0,10×/loft 2,2×, #3231). Tidligere 3/8: #3132 + #3184 del I lukket. Næste: #3138 scoring → #3139. #3153 manuel review.
-5. ✅ **Mobil-regression lukket 6/8:** #3194 leveret (PR #3207+#3314); rest-klagen (træthed usynlig i portræt) spores i [#3427](https://github.com/NicolaiDolmer/CyclingZone/issues/3427).
-6. ✅ **Verdensklasse bølge 1 KOMPLET 6/8:** epic [#3395](https://github.com/NicolaiDolmer/CyclingZone/issues/3395) — alle 7 issues shippet (7 PR'er, v7.97-v7.99, 3 migrationer post-verificeret) + #3099 fører-holdet. Næste: **bølge 2** (Race Centre/Broadcast · Peloton Post · klubhus/rivaler · palmarès · dashboard · PWA · observatorium) — plan: `docs/superpowers/specs/2026-08-05-verdensklasse-game-plan.md`.
+## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-7. 🆕 **Rework-kø (ejer-godkendt 7/8):** Indbakke-triage ([#2223](https://github.com/NicolaiDolmer/CyclingZone/issues/2223), spec `2026-08-07-inbox-triage-rework-design.md`: kontrakt→handlingskø→FYI-digest; opsluger #3496/#3491/#3493/#3439/#3505) → Bestyrelses-"Mandatet" (spec ✅ GODKENDT 7/8 efter 3 mockup-runder; epic [#3514](https://github.com/NicolaiDolmer/CyclingZone/issues/3514), plan `docs/slices/09-board-mandate-rework-MASTER.md`, supersederer #955. **Kø-konflikt ejer-afgjort 7/8:** fase 0+1 kører som NATBØLGER før 23/8 uden ejer-opmærksomhed, migrationen lander VED S3-cutoveret 23/8 (ejer-gated + scorecard), fase 2-UI'et bygges EFTER indbakke-slices) → Dashboard-sportsforside (epic [#3513](https://github.com/NicolaiDolmer/CyclingZone/issues/3513), spec `2026-08-07-dashboard-hybrid-rework-design.md`: fast rygrad + spillerens widget-board — hybrid ejer-godkendt 7/8; opsluger #2442/#2583/#2445-dashboard-delen; **fase 0-bugs #3506-#3510 kan tages løbende**; = bølge 2 pkt. 37) → resten af bølge 2. Rationale: indbakke-kontrakten er grænsefladen bestyrelse (producent) og dashboard (aftager) bygger på; cockpit-visionen (B) er fast slutmål.
+1. 🔴 **#3449 markedssweep — merge + kør 14.-15/8.** Ejer-løfte 11/8 holdes ordret ("værdier og lønninger mellem i dag og fredag"). Har egen kill-switch.
+2. 🔴 **#3645 rollback-drejebog + backup-tabeller.** Ejer-valg 13/8: **backup + genberegnings-script for BÅDE løn og mandat**, ikke kun en skreven plan. De to er de eneste komponenter uden flag.
+3. 🔴 **#3514 mandat fase 1a/1b** — datamodel + migration. **Hård frist: merget og dry-run-godkendt 19/8, ellers ryger den ud af 23/8 automatisk** (ejer 13/8). Intet bygget pr. 13/8.
+4. 🔴 **#3393 løn** — re-kalibreres mod post-sweep-fordelingen (dens oprindelige forudsætning). Draft indtil ejeren godkender kurve/eksponent/sats.
+5. ✅ **#3459 race-day-flip** — komplet i main, `race_day_engine_enabled` verificeret `off` i prod. Kun selve flippet mangler.
+6. 🔵 **Auto-accept-floor 15/8 bliver stående** (ejer 13/8, ingen handling). Fair-window (#3584) er i main, så 20/8 rammer kun inaktive hold; aktive først 25/8.
 
-## 2 · EJER-DIREKTIV-SPORET (nyt 31/7-3/8 — rækkefølge kræver ejer-ja)
-Fra #feedback-from-dolmer: ✅ **#3196** vækst-dashboard LUKKET 3/8 nat (/admin/growth, 110 dages backfill; RPC-lås unødvendig — advisor-fund er kendt falsk positiv) · ✅ **#3197** resultat-fladen LUKKET 3/8 nat (vælgere + egen kontekst + ægte datoer) · ✅ **#3198** økonomi-audit LUKKET 3/8 nat (13 fund; kritisk forecast-hul → **#3236, priority:high, ejer: fix inden få dage**) · ✅ **#3199 Forum v1 SHIPPED 6/8** (PR #3447, v7.102: kategorier, tråde, ejer-polls, rapportering + #3201-ping/admin-indbakke) · **#3200** spiller-beskeder (DM) = næste etape af det sociale lag · #2739 ops-ping-fixet fortsat åbent · ✅ **#2792+#3193** lukket 3/8 (PR #3217) · **#2758** daglig Discord→GitHub-automation (design klar på issuet, afventer go).
+## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE, startet 13/8)
 
-## 3 · AUGUST — vækst oven på et tæt spand
-16. ⚪ Fable-sporet: #2822 benchmark · #1369 retention-arkitektur · #1140 første 20 min · #2824 synlighed/SEO · #2823 fleet-playbook. **Aktiverings-hullet:** #3007 (61 hold har aldrig budt) · #2182 · #3067 · ✅ #3187/#3188 dead-clicks lukket 3/8 nat (#3189-verdikt: Clarity-tal = stitching-artefakt, fix i #2041).
-17. ⚪ Onboarding: #1569 + #2045 (19 % ser nogensinde et løbsresultat) · velkomstmail venter kun på e-mail-loop.
-18. ⚪ #1173 referral + #2236 outreach + #2759 ads (løbende, ikke begivenhedsbundet). **Forudsætning før #2759:** #1784 spend-loft — Pro fakturerer usage-baseret, og betalt trafik uden loft er en åben regning (kæde: #3486 token → baseline-tal → loft, model A notifikation).
-19. ⚪ #62/#91/#2180 daglig rytme · 20. ⚪ #2443/#1602/#2445 menu + mobil · #2009/#2448 · #2810 · 21. ⚪ #2698/#2262/#1974 progression · #2887 (nu m. genansættelses-bug) · #2699 akademi-nerf (ejer-udskudt) · #2084/#1299/#1301 · 22. ⚪ #2042 login-væg (A-delen billig; hører til #2824).
+Ejer-ramme: *"Det er loft, potentiale, ryttertyperne, og følelsen af at træning ikke virker vi skal arbejde med."* Spec: [`2026-08-13-rating-fundament-v3-design.md`](superpowers/specs/2026-08-13-rating-fundament-v3-design.md). Samling: [#3664](https://github.com/NicolaiDolmer/CyclingZone/issues/3664).
 
-## 4 · EFTER AUGUST
-Vægtning (ejer): simulerings-dybde > polish > indholds-bredde. 23. Træning/ungdom #2492 m.fl. · 24. Kontrakt-liv #1150/#1310 (**udløbs-håndhævelsen FLYTTET FREM til NU-bølge pkt. 3, ejer 3/8**; resten — krav/klausuler/lån — forbliver her) · 25. Motor-dybde #2476/#2410/#2416/#2412 · 26. Værdi-kæden #2667/#2669/#1281/#2452/#2670 · 27. #2477 · 28. Skalering #323/#1375 (~300 brugere) · 29. #1441 · 30. Socialt lag #2209/#935 (**løftet af ejer-direktiv 3/8 → #3199/#3200 er v1**) · 31. Brand #481/#671 + SEO · 32. #955 · 33. #2462.
+7. **#3665** evne-registry + split af vægt-tabellen i fire — nul synlige ændringer, bevist af R2/R3.
+8. **#3666** skalaen: vægtet snit + de 8 opskrifter + ALLE visningsflader i én PR (ingen mellemtilstand med to skalaer).
+9. **#2454** potentiale 1-6 → 1-99: stjernerne erstattes i UI af **potentiel rating** (ejer 13/8). `potentiale`-feltet bliver rent internt — motor, værdi og akademi rører sig ikke. *Løfte 9/8.*
+10. **#3592** de fire matematisk uadskillelige typepar. *Løfte i live patch note v7.95.*
+11. **capsShaping**: det der tæller i ratingen skal også vokse i lofterne (spec §6 punkt 2 → #3564-sporet).
+12. **#3643 træningsfladen + #3639/#3649 loft-beskeden.** Succeskriterium er ikke konsistente tal, men at **træning føles som om den virker**.
+13. **#3667** samlet kommunikation: patch notes + `help.json` (en+da), én besked om ét system.
 
-## Ops/community-sidestrøm (subagent, aldrig hovedspor)
-#2758 (nu ejer-krævet automatisk) · #2460 · #2440 · #2409/#2423 (P2 cache LUKKET 7/8, PR #3484 — Vercel-alarm `Edge Requests spike`) · **#3486 VERCEL_TOKEN** (2 min ejer-klik; låser #1784 op + gør forbrug læsbart herfra) · #3487 bot-flade (log-mode først) · #2511 · #2572 · AI-audit #2689 · Railway MCP re-auth (fundet 3/8) · Supabase: kun #929 leaked-password tilbage (✅ #3124-hærdning live 3/8; is_admin/RPC-advisors dokumenteret som intentionelle) · #2830/#2901/#2858.
+**Udskudt igen 13/8:** #3668 rod-fix af evne-skalaen (taktik median 38 vs. bjerg 5). Ejeren: *"lige netop den med at ændre i de faktisk viste stats kan vente en smule."* Konsekvens: vej A står ved magt, R1-gaten forbliver ≤6 points spredning, og de 8 opskrifter i spec §3 gælder som skrevet.
 
-**FROSSET:** #2217/#2218. **Parkeret:** #1712 (≥300) · #1941 · #450 · live-taktik/replay.
+## C · Talent-kanalen ind i klubben (ejer-valgt 13/8)
 
-## 5 · 2027-HORISONT (vision — bevidst ikke i kø)
+14. **#3657** scoutingmissioner uden targeting — *"they feel useless the way they are now"* (4 spillere 12-13/8) + ejer-direktiv samme dag.
+15. **#3652** rapport på øvrige fundne ryttere + kortere scout-tur · **#3548** nedtælling.
+16. **#3489** flere spejdere og trænere samtidigt, hver med sit speciale.
+17. **#3658** staff-kandidater.
+18. **#3550** akademi signing fee 760k-1M for 2-stjernede. *Løfte 10/8 ("on the list").*
+19. **#3650** akademiryttere på transferlisten. *Ejer-lovet 11/8.*
+
+## D · Penge og vækst — betinget
+
+Ejer 13/8: *"skal prioriteres snarligt, når der er lidt mere styr på store bugs der fylder hos spillerne."* **Gaten er spor B leveret** — ikke en følelse, ikke en dato.
+
+20. **#2853** e-mail-loop (bygget, testet, slukket; kræver Resend-nøgle + 3 tekster). Audits' største enkelthåndtag for fastholdelse.
+21. **#2813** go-live-gates → **#3104** /pro-indgang. *(#2736 fornyelses-webhook er LUKKET 11/8 — den kunde mister ikke Pro.)*
+
+## E · Løbende (aldrig hovedspor)
+
+22. Bug-blok: **#3620** kontraktår forsvinder ved akademi-forfremmelse (regression af lukkede #2881, åben siden 24/7) · **#3541** skadedage vist forskelligt tre steder · **#3669** forhandlet byttetilbud kan ikke afvises.
+23. Gæld: 23 done-men-åbne lukkes · #2223 og #3513 opsluger reelt deres løse issues på GitHub (#3496/#3491/#3493/#3439 hhv. #2442/#2583/#2445) · #3094 lukkes som duplikat af #2883.
+24. **#3661** design-/kvalitetsprocessen → konkrete regler i `AGENTS.md`, ikke en hensigt.
+25. Ops-sidestrøm: **#3486** `VERCEL_TOKEN` (2 min ejer-klik, låser #1784) · #2758 · #3487 · #691 service-key-rotation.
+
+## Parkeret — genbesøges når B og C er leveret
+
+Verdensklasse **bølge 2** (Race Centre, Peloton Post, klubhus/rivaler, palmarès, PWA, observatorium — plan: [`2026-08-05-verdensklasse-game-plan.md`](superpowers/specs/2026-08-05-verdensklasse-game-plan.md), bølge 1 er komplet) · rework-køen **#2223** indbakke og **#3513** dashboard · forum-forbedringer (reaktioner, ulæst-markering, svar-på-indlæg) · små ønsker (asking price på transferlisten, rytterstats ved hover) · vækst-sporet #2822/#1369/#1140/#2824/#2823 · **#2960** React 19 frosset til uge 1 sept.
+
+**FROSSET:** #2217/#2218. **Parkeret siden før:** #1712 (≥300 brugere) · #1941 · #450 · live-taktik/replay (genåbnes som broadcast-teater i bølge 2).
+
+## Stående (viger aldrig)
+
+**Balance:** #2731 maxRiderWinRate 0,67-0,75 vs. mål 0,45 · #2557 hold-dominans · #3015 AI-ryttere restituerer aldrig · #3009 scorecards exiter grønt trods FAIL.
+**Doktrin:** styrke straffes ALDRIG, balance = struktur · overlap intended, 1 rytter = 1 løb/dag · simulér-før-ship for alt balance-følsomt.
+
+## 2027-horisont (bevidst ikke i kø)
+
 Verdenshistorik/klubmuseum · #1154 · #934 · #1113 · #1099 · #935 · #2222 · #26 · #938 · #1108 · #1146 · #50.
