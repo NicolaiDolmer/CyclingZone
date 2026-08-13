@@ -107,12 +107,32 @@ export function restRows(table, requestUrl = "") {
       }
       return [TEST_TEAM, RIVAL_TEAM];
     }
-    case "riders":
+    case "riders": {
       if (url.search.includes("pending_team_id=eq.")) return [];
+      // #3667: en .eq("id", riderId)-forespørgsel (rytterprofilen) blev IKKE
+      // filtreret — mocken faldt igennem til hele RIDERS, og restObject tog
+      // [0]. Enhver /riders/<id> viste derfor rider-1, uanset id'et i URL'en.
+      // Konsekvensen var falsk grønt: en spec der troede den så på en RIVAL-
+      // rytter (fx "potentiale er skjult indtil du scouter ham") så i
+      // virkeligheden på ens egen, og ville blive grøn selv hvis skjulningen
+      // gik i stykker. Samme rod-årsag og samme rettelse som `teams` ovenfor.
+      // Ukendt id → tom liste, så profilen rammer sin "ikke fundet"-gren i
+      // stedet for tavst at vise en tilfældig anden rytter.
+      const idEq = url.search.match(/[?&]id=eq\.([^&]+)/);
+      if (idEq) {
+        const id = decodeURIComponent(idEq[1]);
+        return RIDERS.filter(rider => rider.id === id);
+      }
+      const idIn = decodeURIComponent(url.search).match(/[?&]id=in\.\(([^)]*)\)/);
+      if (idIn) {
+        const ids = new Set(idIn[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")).filter(Boolean));
+        return RIDERS.filter(rider => ids.has(rider.id));
+      }
       if (url.search.includes("team_id=eq.team-e2e")) {
         return RIDERS.filter(rider => rider.team_id === TEST_TEAM.id);
       }
       return RIDERS;
+    }
     case "auctions":
       // #3401: AuctionHistoryPage forespørger .eq("status","completed") —
       // AuctionsPage's aktive liste (.in("status",["active","extended"])) skal
@@ -758,7 +778,21 @@ export function apiResponse(pathname, search = "") {
   // #3334: Scouting-fanens rapport — provenance (navngiven scout + tier) +
   // loft-bånd. Tjekkes FØR /scouting (disjunkt endsWith, samme mønster som
   // projection/development ovenfor).
-  if (pathname.endsWith("/scouting-report")) return SEED_SCOUTING_REPORT;
+  //
+  // #3667: rapporten var id-blind og gav SEED_SCOUTING_REPORT (own: true, fuldt
+  // bånd) for ENHVER rytter — også rivaler. Det kunne ikke ses før rytter-id-
+  // filteret i restRows blev rettet i samme PR, fordi hver /riders/<id> alligevel
+  // landede på ens egen rytter. Nu hvor en rival faktisk kan naas, skal mocken
+  // spejle #1543: en uscoutet fremmed rytter får { hidden: true } og INTET
+  // potentiale — ellers ville en spec kunne bevise det modsatte af prod.
+  if (pathname.endsWith("/scouting-report")) {
+    const idMatch = pathname.match(/\/api\/riders\/([^/]+)\/scouting-report$/);
+    const rider = idMatch ? RIDERS.find(r => r.id === decodeURIComponent(idMatch[1])) : null;
+    if (rider && rider.team_id !== TEST_TEAM.id) {
+      return { hidden: true, level: 0, maxLevel: SEED_SCOUTING_REPORT.maxLevel, own: false };
+    }
+    return SEED_SCOUTING_REPORT;
+  }
 
   // #2842 admin-feedback-indbakke. Uden en seed her ville fladen stå tom på
   // preview, og ejeren kunne ikke se den før den var live (det har bidt før).

@@ -17,6 +17,7 @@ import { installNetworkMocks, stabilizePage, login, collectBrowserErrors, eviden
 // specen ikke knækker hvis SEED_SCOUTING_REPORT justeres af andre grunde.
 
 const OWN_RIDER = "rider-1";
+const RIVAL_RIDER = "rider-2";
 
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
@@ -75,21 +76,19 @@ test("#3667 loftet vises som tal og ALTID som et interval, aldrig ét loft-tal",
   }
 });
 
-// Den skjulte gren stubbes direkte i stedet for at navigere til en rival-profil:
-// REST-mocken serverer altid rider-1 uanset id i URL'en, så /riders/rider-2 ville
-// rende ind i den samme (egne) rytter. At styre payloaden her rammer præcis den
-// gren komponenten skifter på (`report.hidden`), uden at hænge testen op på en
-// mock-detalje der ikke har med #1543 at gøre.
-test("#1543 uscoutet rytter viser intet potentiale — hverken bånd, tal eller chip", async ({ page }, testInfo) => {
+// Denne test navigerer til en RIGTIG rival-rytter. Det kunne den ikke før:
+// REST-mocken filtrerede aldrig på `id=eq.`, så /riders/rider-2 serverede
+// rider-1 og testen ville have været grøn uden nogensinde at se en rival.
+// Filteret er rettet i mockHandlers.restRows — uden den rettelse er denne
+// test meningsløs, og det er hele pointen med at have den her.
+test("#1543 uscoutet RIVAL-rytter viser intet potentiale — hverken bånd, tal eller chip", async ({ page }, testInfo) => {
   collectBrowserErrors(page, testInfo);
-  await page.route("**/api/riders/*/scouting-report**", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    headers: { "access-control-allow-origin": route.request().headers().origin || "*" },
-    body: JSON.stringify({ hidden: true, level: 0, maxLevel: 3, own: false }),
-  }));
   await login(page);
-  await page.goto(`/riders/${OWN_RIDER}?tab=scouting`);
+  await page.goto(`/riders/${RIVAL_RIDER}?tab=scouting`);
+
+  // Guard mod at mock-filteret regredierer: rammer vi ved et uheld vores egen
+  // rytter igen, tester resten af denne spec ingenting.
+  await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(/Ada Pedersen/i);
 
   await expect(page.getByText(/Ikke scoutet/i).first()).toBeVisible();
   await expect(page.locator("[data-type]")).toHaveCount(0);
