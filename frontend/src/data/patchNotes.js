@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.120",
+    "date": "2026-08-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The scouting report said 'High confidence' about a band 10 points wide",
+          "body": "The chip next to your scout's verdict said High confidence, Medium confidence or Low confidence. It was never measuring confidence. It measured how completely you had scouted the rider: your own riders and any rival you had scouted to the last level all got High confidence, no matter who your scout was. Two lines further down, the same card said the ceiling band reflects your current scout's precision. Both statements sat on the same card and contradicted each other. With the default scout the ceiling band is about 10 rating points wide; with a top-rated scout it is about 6. All of them were labelled High confidence. The chip now says what it actually measures: Fully scouted, Partly scouted or Barely scouted, and hovering it explains that how narrow the band is depends on your scout's rating, not on the chip. The verdict itself has also gained a line saying it is your scout's read rather than a fact. It is built on his ceiling estimate, and that estimate is deliberately personal to your team, so another manager's scout can reach a different conclusion about the same rider. We measured how often that actually happens: across 300 riders seen by 120 different simulated managers, 4.7 percent of riders got a different verdict depending on who was looking. It is not common, but it is not zero, and nothing on the card said so. Nothing about scouting, ceilings or the bands themselves has changed."
+        },
+        "da": {
+          "title": "Scouting-rapporten sagde 'Høj tillid' om et bånd der var 10 point bredt",
+          "body": "Chippen ved siden af din spejders vurdering sagde Høj tillid, Middel tillid eller Lav tillid. Den målte aldrig tillid. Den målte hvor fuldstændigt du havde scoutet rytteren: dine egne ryttere og enhver rival du havde scoutet til sidste niveau fik alle Høj tillid, uanset hvem din spejder var. To linjer længere nede sagde det samme kort, at loft-båndet afspejler din nuværende spejders præcision. Begge udsagn stod på samme kort og modsagde hinanden. Med standard-spejderen er loft-båndet omkring 10 rating-point bredt; med en topratet spejder er det omkring 6. De blev alle mærket Høj tillid. Chippen siger nu hvad den faktisk måler: Fuldt scoutet, Delvist scoutet eller Knap nok scoutet, og holder du musen over den, forklarer den at hvor smalt båndet er afhænger af din spejders rating, ikke af chippen. Selve vurderingen har også fået en linje der siger at den er din spejders aflæsning frem for en kendsgerning. Den bygger på hans loft-estimat, og det estimat er bevidst personligt for dit hold, så en anden managers spejder kan nå en anden konklusion om samme rytter. Vi målte hvor tit det rent faktisk sker: på tværs af 300 ryttere set af 120 forskellige simulerede managere fik 4,7 procent af rytterne en forskellig vurdering afhængigt af hvem der kiggede. Det er ikke almindeligt, men det er ikke nul, og intet på kortet sagde det. Intet ved scouting, lofter eller selve båndene er ændret."
+        },
+        "refs": [3667]
+      }
+    ]
+  },
+  {
     "version": "7.119",
     "date": "2026-08-13",
     "label": "Beta",
