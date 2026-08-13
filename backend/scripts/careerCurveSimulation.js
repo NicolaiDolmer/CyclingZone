@@ -374,8 +374,9 @@ function simulateRider(rider, modelKey, daysPerSeasonActual, capSource = "db") {
   // dailyTrainingEngine.js efter rebasen. Den ægte buildCapsForRider kaldes (ingen
   // kopi af formlen her). #2472 (16/7): modelATaper sender ÉN ting ekstra — alderen —
   // så buildCapsForRider aftrapper det absolutte loft efter peakAge (ejer-valg B).
-  // modelA (uden taper) sender bevidst INGEN alder — det ER blocker-fundet, bevaret
-  // urørt som sammenligningsgrundlag.
+  // modelA (uden taper) fravælger bevidst alderen — det ER blocker-fundet, bevaret
+  // urørt som sammenligningsgrundlag. Efter #3591 skrives fravalget som `age: null`;
+  // en UDELADT alder kaster nu, så varianten skal angives eksplicit for at findes.
   const capsFor = (ab, ageArg) => {
     if (capSource === "modelATaper") {
       return buildCapsForRider(ab, { potentiale: rider.potentiale, age: ageArg }, rider.primaryType, rider.secondaryType);

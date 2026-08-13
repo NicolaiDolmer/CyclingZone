@@ -69,7 +69,7 @@ sværere at opdage at det ikke er rettet.**
 
 ## Efterskrift 2026-08-11 · Samme klasse ramte igen, ét lag længere nede (#3591)
 
-Læringen ovenfor handlede om hvem der SKRIVER typen. Tre dage senere ramte præcis
+Læringen ovenfor handlede om hvem der SKRIVER typen. Dagen efter ramte præcis
 samme mønster hvem der BYGGER LOFTET — og denne gang var det rettelsen selv der
 efterlod hullet.
 
@@ -79,8 +79,8 @@ gjorde ikke. Alderen bruges kun af `taperedAbsoluteCap`, som først bider efter
 peakAge, så forskellen var **tavs** — den producerede et gyldigt, blot for højt loft.
 PR #3598 rettede `backfillCores` og beskrev punkt 1 som leveret.
 
-Der var fire kaldsteder. `starterSquadAllocator.js:232` kaldte stadig uden alder, tre
-dage efter "rettelsen" — og den sti er netop den værdi-loft-gate der skal SPEJLE
+Der var fire kaldsteder. `starterSquadAllocator.js:232` kaldte stadig uden alder
+da #3591 blev genåbnet 11/8 — halvandet døgn efter "rettelsen" merged 10/8 kl. 09:41 — og den sti er netop den værdi-loft-gate der skal SPEJLE
 `deriveForRiderIds` præcist for at `AI_TIER_VALUE_CAP` kan holde. Den vurderede altså
 et for højt loft for enhver kandidat over peak-alderen: samme #2065-klasse igen.
 
