@@ -373,6 +373,55 @@ export function restObject(table, requestUrl = "") {
   }
 }
 
+// #3667 · GET /api/riders/:id/scouting-report — manglede helt, så Scouting-fanen
+// var usynlig på preview og udækket af e2e. Formen spejler routes/api.js.
+//
+// Tallene er valgt så fanen viser den tilstand der VAR problemet: et fuldt scoutet
+// bånd på 10 rating-point (34-44) hos et hold med standard-spejderen (overall 40).
+// Præcis dér stod chippen og sagde "Høj tillid". Se scoutEngine.scoutHalfWidth —
+// gulvet er 5,0 ved overall 40, så halvbredden kan ikke komme under 5.
+//
+// #1162: rapporten indeholder ALDRIG ability_caps eller potentiale — kun de
+// bånd-maskerede tal serveren allerede har sluppet ud.
+const SCOUTING_REPORT_TYPES = [
+  { key: "sprinter", now: 41, ceilLo: 44, ceilHi: 54 },
+  { key: "puncheur", now: 33, ceilLo: 35, ceilHi: 45 },
+  { key: "brostensrytter", now: 29, ceilLo: 31, ceilHi: 41 },
+  { key: "baroudeur", now: 31, ceilLo: 34, ceilHi: 44 },
+  { key: "rouleur", now: 35, ceilLo: 38, ceilHi: 48 },
+  { key: "tt", now: 30, ceilLo: 33, ceilHi: 43 },
+  { key: "gc", now: 28, ceilLo: 31, ceilHi: 41 },
+  { key: "climber", now: 26, ceilLo: 28, ceilHi: 38 },
+];
+
+export function scoutingReport(riderId) {
+  const rider = RIDERS.find((r) => r.id === riderId);
+  const own = Boolean(rider) && rider.team_id === TEST_TEAM.id;
+
+  // #1543: uscoutet fremmed rytter → serveren sender { hidden: true } og INTET
+  // potentiale. Fanen skal vise invitationen, ikke et gratis spænd.
+  if (!own) {
+    return { hidden: true, level: 0, maxLevel: 3, own: false, scout: { isDefault: true, overall: 40 } };
+  }
+
+  return {
+    level: 3,
+    maxLevel: 3,
+    own: true,
+    stars: { lo: 4, hi: 4.5 },
+    types: SCOUTING_REPORT_TYPES,
+    verdict: {
+      headlineKey: "keep_and_develop",
+      confidence: "high",
+      factorKeys: ["age_upside", "ceiling_gap", "type_match", "watch_races"],
+    },
+    value: null,
+    capsMissing: false,
+    scout: { isDefault: true, overall: 40 },
+    generatedAt: "2026-08-13T12:00:00.000Z",
+  };
+}
+
 // #2917 · GET /api/managers/:teamId — manglede helt, så ManagerProfilePage kollapsede
 // til sin fejl-tilstand på preview og kunne ikke klik-testes før noget gik live.
 // Kontrakten spejler routes/api.js: team/user/riders/season_history/achievements/
@@ -502,6 +551,12 @@ export function apiResponse(pathname, search = "") {
   // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
   const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
   if (managerMatch) return managerProfile(decodeURIComponent(managerMatch[1]));
+
+  // #3667: scouting-rapporten (Scouting-fanen på rytterprofilen). Fanen havde
+  // ingen mock og dermed ingen e2e-dækning overhovedet — den kunne kun ses mod
+  // en kørende backend. Formen spejler backend/routes/api.js' respons 1:1.
+  const scoutingReportMatch = pathname.match(/\/api\/riders\/([^/]+)\/scouting-report$/);
+  if (scoutingReportMatch) return scoutingReport(decodeURIComponent(scoutingReportMatch[1]));
 
   // #3199: forum-liste + tråd-detalje.
   const forumPostMatch = pathname.match(/\/api\/forum\/posts\/([^/]+)$/);
