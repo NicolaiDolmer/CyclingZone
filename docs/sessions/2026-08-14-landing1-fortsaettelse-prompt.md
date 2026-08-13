@@ -45,7 +45,26 @@
 
 **Advarsel om preview:** `preview_start` kører fra **hovedmappen**, ikke fra worktreet. En preview startet den vej serverer `main`s kode og viser derfor ikke dine ændringer. Start dev-serveren med worktreet som cwd, ellers verificerer du den forkerte kodebase. Det kostede tid i sidste session.
 
-## Hvad der mangler
+## Hvad der mangler — omfang og rækkefølge
+
+Tallene er talt i koden 14/8, ikke skønnet.
+
+| # | Opgave | Omfang | Synlig for ejeren? |
+|---|---|---|---|
+| 1 | `statPlateStyle`-kaldstederne får form | 14 kaldsteder | **Ja — vis før/efter først** |
+| 3 | Scouting-kortet D4 + #3671's UI | 1 komponent, payload klar | **Ja** |
+| 2 | #2454 potentiel rating | 10 flader + **ny backend-sti** | **Ja** |
+| 4 | Udvikling-fanen | 2 filer, balance-følsomt | Delvis |
+| 5 | Dead code | 4 filer + **12 backend-scripts** | Nej |
+| 6 | #3667 hjælp/FAQ/patch notes | i18n en+da + NOW.md | **Ja — spillerbeskeden** |
+| 7 | Snapshots + e2e | 56 png, 3 specs | Nej |
+| 8 | PR med bevis | | |
+
+**Anbefalet rækkefølge: 1 → 3 → 2 → 4 → 5 → 6 → 7 → 8.** Begrundelse: 1 og 3 er små og synlige, så ejeren kan godkende udseendet tidligt. 2 er den tunge og har en backend-afhængighed. Snapshots til sidst — de giver kun mening når alt det visuelle står stille.
+
+**Den skjulte hage i punkt 2:** de otte tabel- og kort-flader får i dag KUN stjerne-enheder fra `POST /api/scouting/estimates`, som ikke engang henter `ability_caps`. Rating-point-båndet findes kun på de to enkelt-rytter-endpoints. Intervallet kan altså ikke vises uden en backend-ændring først. Det er én select (`ability_caps` er en jsonb-kolonne på `rider_derived_abilities`), men det er ikke ren frontend, og det er værd at planlægge som første skridt i punktet.
+
+## Hvad der mangler — detaljer
 
 ### 2. `statPlateStyle` er nu en fyldt badge
 Den returnerer `backgroundColor` + `color` + `border` i stedet for farvet tal på en tint. Kaldstederne skal have padding og radius så badgen får form — se `RiderProfileHero.jsx:235`, `TeamPage.jsx:605`, `RidersPage.jsx:424`, `WatchlistPage.jsx:269`. **Vis ejeren før/efter.**
