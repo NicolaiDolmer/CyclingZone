@@ -15,7 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'issues' || github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
+      # Bekvemmeligheds-automation, IKKE en korrektheds-gate: den spejler nye issues/PR'er
+      # over på roadmap-boardet. Den er bevidst `continue-on-error`, fordi et udløbet
+      # PROJECTS_PAT ellers maler en rød check på HVER eneste PR (#3553) — og en check der
+      # altid er rød, lærer os at se forbi røde checks. Det er præcis sådan #2881 blev
+      # lukket mens fejlen stadig var live.
+      #
+      # Fejlen forsvinder ikke, den flyttes: step-outputtet viser stadig årsagen, og
+      # #3553 står åbent som sporet indtil en ny PAT med `project`-scope er lagt i
+      # secret'en. Ryk ALDRIG continue-on-error over på en gate der beskytter korrekthed.
       - uses: actions/add-to-project@v2.0.0
+        continue-on-error: true
         with:
           project-url: https://github.com/users/NicolaiDolmer/projects/2
           github-token: ${{ secrets.PROJECTS_PAT }}
