@@ -55,18 +55,25 @@ const KNOTS_BY_SCALE = {
     [67, [0xe2, 0x90, 0x0f]], // apex/rav  (anker — p99,5, elite)
     [99, [0x8a, 0x4b, 0x06]], // dybeste bronze (absolut top)
   ],
-  // Normaliseret 1-99-rating (riderOverallRating og analoge overalls). Ankre: median 21
-  // (gray-rising-stop) · p75 30 (grøn) · p90 37 (gul) · p97 76 (guld) · p99,5 92 (apex).
-  rating: [
-    [0, [0x56, 0x59, 0x69]],
-    [10, [0x6f, 0x72, 0x85]],
-    [21, [0xae, 0xb1, 0xc0]],
-    [30, [0x33, 0xfc, 0x96]],
-    [37, [0xfd, 0xe4, 0x47]],
-    [76, [0xfd, 0xc0, 0x32]],
-    [92, [0xe2, 0x90, 0x0f]],
-    [99, [0x8a, 0x4b, 0x06]],
-  ],
+  // Rolle-rating (riderOverallRating/riderTypeRating).
+  //
+  // #3666: rating og evne deler nu ANKRE, fordi de deler ENHED. Ratingen er
+  // efter spec §D1 det vægtede snit af rollens evne-tal — den lever altså på
+  // præcis samme skala som tallene den er lavet af, og to ankersæt ville derfor
+  // farve det samme niveau forskelligt afhængigt af hvilken celle man kigger i.
+  // Spec §D4: "rating-tallet kan nu genbruge evne-ankrene · ét visuelt sprog i
+  // stedet for to ankersæt".
+  //
+  // Hvorfor de gamle ankre ikke bare kunne blive stående: de var fittet mod den
+  // anker-normaliserede fordeling (median 21, p90 37). Målt read-only mod prod
+  // 13/8 på den nye skala er medianen 13 og p90 29 — 6.438 af 8.747 ryttere
+  // (73,6 %) ville lande UNDER det gamle grå-stop på 21 og blive renderet i
+  // samme grå tone. Hele OVR-fladen ville blive visuelt ensfarvet. Det er
+  // #2890's fejl spejlvendt.
+  //
+  // Staff-ankrene nedenfor er en ANDEN population (staff-dimensioner fordeler
+  // sig helt anderledes) og røres ikke — ejer-krav i spec §D4.
+  // (rating tildeles nedenfor — den DELER ability-ankrene, se kommentaren ovenfor)
   // Staff dimensions/levels/roleSkills (0-99). Ankre: median 55 (gray-rising-stop) ·
   // p75 70 (grøn) · p90 85 (gul) · p97 92 (guld) · p99,5≈max 99 (apex/dybeste smelter
   // sammen — distributionen klamper hårdt i toppen af tier-båndet).

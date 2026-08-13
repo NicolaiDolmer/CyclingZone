@@ -19,7 +19,7 @@
 // residualHalfWidthFor nedenfor. `exact`-feltet er FJERNET fra det maskerede
 // output: egne ryttere viser altid et bånd (aldrig et eksakt tal), blot
 // smallere end fremmede rytteres (min-bånd × 0.8).
-import { DEFAULT_SCOUT, scoutHalfWidth } from "./scoutEngine.js";
+import { DEFAULT_SCOUT, minHalfWidthByScoutRating } from "./scoutEngine.js";
 
 export const SCOUTING_CONFIG = Object.freeze({
   // Antal aktive scout-handlinger en manager har pr. sæson. Genopfyldes implicit
@@ -125,16 +125,25 @@ function baseUncertainty(age, cfg = SCOUT_DISPLAY_CONFIG) {
 
 // Stjerne-skala-konvertering af scoutEngine's rating-point-gulv: gulvet er
 // kalibreret så et TOP-spejder (overall 99, gulv 3.0 rating-pt) matcher det
-// EKSISTERENDE residualHalfWidth (0.5 stjerne) — samme forhold som
-// scoutingReport's CEIL_HALF_WIDTH_BY_LEVEL[3]=3. En dårligere spejder (fx
+// EKSISTERENDE residualHalfWidth (0.5 stjerne). En dårligere spejder (fx
 // default-spejderen, overall 40) får dermed et BREDERE rest-bånd end den
 // gamle scout-uafhængige konstant.
-const STAR_GULV_UNIT_SCALE = SCOUT_DISPLAY_CONFIG.residualHalfWidth / 3;
+//
+// #3671: 3-tallet VAR CEIL_HALF_WIDTH_BY_LEVEL[3] — en skjult kobling til
+// rating-sporets basis-array. Da #3666 rekalibrerer den basis til [9,6,4,3],
+// ville stjerne-båndets gulv have drevet med i det stille, og det er præcis
+// den størrelse scoutingInversionHarness gater. Konstanten står derfor
+// eksplicit her nu. Værdien er UÆNDRET, så rest-båndet er bit-identisk med før.
+const STAR_GULV_RATING_POINTS = 3;
+const STAR_GULV_UNIT_SCALE = SCOUT_DISPLAY_CONFIG.residualHalfWidth / STAR_GULV_RATING_POINTS;
 
 // Rest-bånds-halvbredde (fuldt scoutet / egen rytter) for en given spejder:
-// max(residualHalfWidth, spejder-gulv-i-stjerne-enheder).
+// max(residualHalfWidth, spejder-gulv-i-stjerne-enheder). Kalder gulvet direkte
+// i stedet for gennem scoutHalfWidth, som efter #3671 er RELATIV og derfor
+// ingen virkning ville have på et 1-element-array (base[0] == base[level]).
 function residualHalfWidthFor(scout) {
-  return scoutHalfWidth(0, scout, [SCOUT_DISPLAY_CONFIG.residualHalfWidth], STAR_GULV_UNIT_SCALE);
+  const floor = minHalfWidthByScoutRating(scout?.overall ?? DEFAULT_SCOUT.overall) * STAR_GULV_UNIT_SCALE;
+  return Math.max(SCOUT_DISPLAY_CONFIG.residualHalfWidth, floor);
 }
 
 // Estimat-interval for én rytter set fra ét hold.

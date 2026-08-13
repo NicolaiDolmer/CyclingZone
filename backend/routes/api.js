@@ -154,8 +154,7 @@ import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
-import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
-import { calibratedBands } from "../lib/typeRatingScale.js";
+import { buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -1796,14 +1795,19 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         bestCeilMid: (bestCeil.ceilLo + bestCeil.ceilHi) / 2,
         valueGap,
       });
-      // #3458 Fase 1 (Del B "skala-ærlighed"): verdict/best/bestCeil ovenfor bruger
-      // BEVIDST de rå ratings (samme enhed som gap-tærsklerne i buildVerdict) — kun
-      // det VISTE `types`-array kalibreres til den absolutte, sammenlignelige skala,
-      // så "84" betyder det samme niveau i alle 8 roller. Ingen ændring af
-      // ability_caps/type/potentiale.
+      // #3666: kalibreringen er VÆK. `types` sendes nu i visnings-opskriftens egen
+      // enhed — samme enhed som evne-tallene og som alt andet i appen. Det var
+      // kalibreringen der gjorde dette ene kort til den ene flade med en anden
+      // skala end resten (spec §1.1). Ingen ændring af ability_caps/type/potentiale.
+      //
+      // #3671: `precision` fortæller sandheden om hvad næste scout-niveau
+      // faktisk køber. Uden den kan hverken knappen eller teksten vide om
+      // spilleren betaler 1.000 CZ$ for en målbar indsnævring eller for ingenting.
       return res.json({
         level, maxLevel: state.maxLevel, own,
-        stars: starsMasked, types: calibratedBands(types), verdict,
+        primaryKey: rider.primary_type ?? null,
+        stars: starsMasked, types, verdict,
+        precision: scoutPrecisionInfo(level, state.maxLevel, scout),
         value: expected != null ? { market: rider.market_value, expected } : null,
         capsMissing: false,
         scout: scoutMeta, generatedAt,

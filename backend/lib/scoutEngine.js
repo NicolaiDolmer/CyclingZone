@@ -56,6 +56,11 @@ const MEDIOCRE_HALF_WIDTH_CAP = 4.5;
 // Half-width-gulv i rating-point-enheder (matcher CEIL_HALF_WIDTH_BY_LEVEL-skalaen)
 // pr. spejder-overall: lineær 40→5.0, 99→3.0, monotonisk faldende. Middelmådig
 // spejder (overall < 60) kommer ALDRIG under 4.5 (spec beslutning 3 — evigt loft).
+//
+// #3671: BRUGES NU KUN AF STJERNE-SPORET (scouting.js' rest-bånd), hvor gulvet
+// stadig skal virke som en absolut nedre grænse på ét enkelt tal. Rating-bånd-
+// sporet er flyttet til den relative form i scoutHalfWidth nedenfor, fordi den
+// absolutte konstant dér gjorde hele scout-niveauer værdiløse — se der.
 export function minHalfWidthByScoutRating(overall) {
   const raw = Number(overall);
   const o = Math.max(GULV_FLOOR_OVERALL, Math.min(GULV_CEIL_OVERALL, Number.isFinite(raw) ? raw : DEFAULT_SCOUT.overall));
@@ -65,19 +70,55 @@ export function minHalfWidthByScoutRating(overall) {
   return interpolated;
 }
 
-// Effektiv half-width pr. niveau: max(baseHalfWidthByLevel[level], gulv).
-// baseHalfWidthByLevel er i den kaldende moduls egen enhed (rating-point for
-// scoutingReport.js' CEIL_HALF_WIDTH_BY_LEVEL, stjerne for scouting.js'
-// baseHalfWidthByAge/residualHalfWidth) — unitScale konverterer gulvet
-// (altid beregnet i rating-point) til den enhed. Default unitScale=1 (rating-point).
-export function scoutHalfWidth(level, scout = DEFAULT_SCOUT, baseHalfWidthByLevel, unitScale = 1) {
+// Spejder-kvalitet 0..1 → hvor stor en ANDEL af niveauets indsnævring spejderen
+// faktisk kan levere. 40 (default-spejder, ingen chefscout) → 2/3; 99 → 1,0.
+//
+// Tallet 2/3 er ikke valgt frit: det er præcis den værdi der får et fuldt
+// scoutet bånd til at lande på det gamle gulv. Med basis [9,6,4,3] er
+//   9 − (2/3)·(9−3) = 5,0 = minHalfWidthByScoutRating(40).
+// Og for enhver overall gælder identiteten 9 − q(o)·6 = 5 − 2t(o), dvs. den
+// nye formel giver ved FULD scouting bit-identisk samme halvbredde som den
+// gamle absolutte konstant gjorde — for hver eneste spejder-rating.
+const SCOUT_QUALITY_AT_FLOOR = 2 / 3;
+
+export function scoutQualityFactor(overall) {
+  const raw = Number(overall);
+  const o = Math.max(GULV_FLOOR_OVERALL, Math.min(GULV_CEIL_OVERALL, Number.isFinite(raw) ? raw : DEFAULT_SCOUT.overall));
+  const t = (o - GULV_FLOOR_OVERALL) / (GULV_CEIL_OVERALL - GULV_FLOOR_OVERALL);
+  return SCOUT_QUALITY_AT_FLOOR + t * (1 - SCOUT_QUALITY_AT_FLOOR);
+}
+
+// Effektiv half-width pr. niveau for RATING-loft-båndet (#3671).
+//
+// Før: max(base[level], absolut gulv). Gulvet er scout-afhængigt men
+// level-UAFHÆNGIGT, så det klippede flere niveauer ned til samme tal: med
+// basis [9,6,4,3] og gulv 5,0 (overall 40 = default, 150 af 203 menneskehold)
+// gav niveau 2 og 3 begge 5,0. Spilleren betalte 1.000 CZ$ for nul.
+//
+// Nu: spejderen leverer en ANDEL q af indsnævringen fra base[0] ned til
+// base[level]. Hvert niveau køber derfor altid noget — en svag spejder køber
+// bare mindre pr. niveau end en stærk. Egenskaber:
+//   · level 0 er uændret base[0] for alle (ingen bliver dårligere uscoutet)
+//   · fuldt scoutet er bit-identisk med det gamle gulv (se SCOUT_QUALITY_AT_FLOOR)
+//   · resultatet ligger altid i [base[level], base[0]] og er monotont i level
+//   · formen er ENHEDS-FRI — den arver kaldernes egen enhed, så unitScale-
+//     konverteringen der koblede stjerne-sporet til CEIL_HALF_WIDTH_BY_LEVEL[3]
+//     er væk. Stjerne-sporet kalder minHalfWidthByScoutRating direkte i stedet.
+export function scoutHalfWidth(level, scout = DEFAULT_SCOUT, baseHalfWidthByLevel) {
   if (!Array.isArray(baseHalfWidthByLevel) || baseHalfWidthByLevel.length === 0) {
     throw new Error("scoutHalfWidth: baseHalfWidthByLevel must be a non-empty array");
   }
   const idx = Math.max(0, Math.min(Number(level) || 0, baseHalfWidthByLevel.length - 1));
+  const widest = baseHalfWidthByLevel[0];
   const base = baseHalfWidthByLevel[idx];
-  const floor = minHalfWidthByScoutRating(scout?.overall ?? DEFAULT_SCOUT.overall) * unitScale;
-  return Math.max(base, floor);
+  const overall = Number(scout?.overall ?? DEFAULT_SCOUT.overall);
+  const half = widest - scoutQualityFactor(overall) * (widest - base);
+  // "Evigt loft" for den middelmådige spejder (spec-beslutning 3, ejer-låst):
+  // under overall 60 kommer båndet aldrig under 4,5 rating-point.
+  const capped = Number.isFinite(overall) && overall < MEDIOCRE_OVERALL_THRESHOLD
+    ? Math.max(half, Math.min(widest, MEDIOCRE_HALF_WIDTH_CAP))
+    : half;
+  return capped;
 }
 
 // Rejseomkostning for en opgave. target: costPerLevel × antal niveau-steps
