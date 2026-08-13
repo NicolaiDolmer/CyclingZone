@@ -234,7 +234,15 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 {verdict ? t(`profile.scouting.headline_${verdict.headlineKey}`) : t("profile.scouting.capsMissingTitle")}
               </h3>
               {verdict && (
-                <span className={`text-3xs font-mono font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-cz border ${CONFIDENCE_STYLE[verdict.confidence] ?? CONFIDENCE_STYLE.medium}`}>
+                // #3667: chippen måler hvor FULDT scoutet rytteren er (buildVerdict:
+                // `own || level >= maxLevel`), ikke hvor præcist estimatet er — det
+                // sidste afhænger alene af spejderens rating. Den hed "Høj tillid" og
+                // stod dermed og modsagde recalcNote nedenfor, som siger at båndet
+                // afspejler spejderens præcision. Titlen siger nu forskellen højt.
+                <span
+                  title={t(`profile.scouting.confidenceTitle_${verdict.confidence}`)}
+                  className={`text-3xs font-mono font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-cz border ${CONFIDENCE_STYLE[verdict.confidence] ?? CONFIDENCE_STYLE.medium}`}
+                >
                   {t(`profile.scouting.confidence_${verdict.confidence}`)}
                 </span>
               )}
@@ -267,6 +275,16 @@ export default function RiderScoutingTab({ rider, scouting }) {
               </li>
             ))}
           </ul>
+        )}
+        {/* #3667: dommen er bygget på båndets MIDTPUNKT, som er bevidst forskudt pr.
+            manager (scoutingReport.CEIL_BIAS_FACTOR) — den er altså en vurdering, ikke
+            en kendsgerning. Målt 13/8 mod 300 prod-ryttere × 120 simulerede managere:
+            4,7 % af rytterne får forskellig dom afhængigt af hvem der kigger. Lille,
+            men ikke nul, og intet på kortet sagde det før. */}
+        {verdict && (
+          <p className="text-cz-3 text-3xs mt-2.5 mb-0 max-w-prose">
+            {t("profile.scouting.verdictIsRead")}
+          </p>
         )}
         {!own && level < maxLevel && (
           <div className="mt-3.5 pt-3 border-t border-cz-border flex items-center gap-3 flex-wrap">
