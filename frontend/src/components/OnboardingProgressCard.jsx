@@ -5,10 +5,20 @@ import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour";
 // #2288 Slice A: 4 ægte spiller-handlinger (se backend/routes/api.js's
 // /me/onboarding-progress-kommentar for hvorfor de gamle team_named/
 // first_rider_owned-trin blev droppet — de var altid completed fra start).
+//
+// #3681: first_squad_selected pegede på "/races" indtil 14/8. Den rute blev
+// opløst i #3102 etape 3 — RacesLegacyRedirect i App.jsx sender nu et rent
+// /races (uden ?tab=) videre til /resultater, så onboarding-trin 3 landede en
+// ny spiller i Resultat-hubben, mens tourens anker [data-tour='races-column']
+// bor på Planlægnings-hubben. Tourens pageKey er stadig "races" (bevidst
+// bevaret i onboardingTour.js, så gennemførte tours ikke genstarter) — det er
+// RUTEN der skulle følge med. onboardingStepTargets-vagten i
+// backend/lib/handheldCopyGuards.test.js pinner nu tabellen mod ruterne i
+// frontend/tests/e2e/onboarding-tour-coverage.spec.js.
 const STEP_TARGETS = {
   first_bid_placed: "/auctions",
   first_training_run: "/training",
-  first_squad_selected: "/races",
+  first_squad_selected: "/planning",
   board_plan_set: "/board",
 };
 

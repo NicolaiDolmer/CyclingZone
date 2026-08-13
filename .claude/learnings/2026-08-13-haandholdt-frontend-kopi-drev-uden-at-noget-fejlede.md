@@ -48,4 +48,13 @@ En sidegevinst: samme generator fjernede seks andre håndholdte lister over de 1
 
 ## Backwards-check
 
-Andre håndholdte kopier på tværs af backend/frontend er ikke systematisk gennemsøgt i denne omgang. Kandidat til en egen sweep: grep efter kommentarer der lover manuel sync (`manuelt i sync`, `holdes i sync`, `spejl af`, `mirror of`) og afgør for hver om den kan genereres i stedet.
+**Gjort 2026-08-14 (#3681).** 25 kopier med et eksplicit sync-løfte i en kommentar blev fundet og målt mod deres kilde. Resultatet:
+
+- **9 var allerede dækket** af en drift-test (rulesNumbers, raceClassificationTotals, board-bånd, cron-monitor-slugs, raceReport-varianter, staffSeverance, clubMock, evne-registret selv, rangliste-lint'ens target-liste).
+- **14 var i sync, men uden noget der håndhævede det** — de har nu én fælles vagt i `backend/lib/handheldCopyGuards.test.js`, som kører i det required `backend-tests`-check. Hver vagt er mutations-testet: alle 14 fejler når man ændrer én af siderne.
+- **3 var drevet.** To af dem er admin-flader (`EconomyAdminSection.jsx`' spejle af `FINANCE_REASON` og `ADMIN_ACTION_TYPE`, som var 15 hhv. 3 værdier bagud). Den tredje var spiller-vendt: `OnboardingProgressCard.STEP_TARGETS` pegede stadig på `/races` efter at #3102 opløste ruten, så onboarding-trin 3 sendte en ny spiller til Resultat-hubben mens tourens anker bor på Planlægnings-hubben. Rettet i samme PR.
+
+To mønstre gik igen og er værd at kende:
+
+1. **En test der bærer sin egen tredje kopi bevogter ingenting.** `stageProfileConfig.test.js` pinnede frontend-listen mod en `DB_PROFILE_TYPES`-literal inde i testen selv — en ændring i backend-enumen ville have ladet begge stå grønne. Samme fælde i `onboarding-tour-coverage.spec.js`, som skrev *"Ruten skal matche STEP_TARGETS"* og så hardkodede sin egen rute-tabel. Det var præcis dér driften sad.
+2. **Retningen er næsten altid "backend voksede, kopien blev stående".** Alle tre drevne kopier fejlede ved TILFØJELSE i kilden, ikke ved ændring. En vagt skal derfor sammenligne hele nøglesættet, ikke bare de nøgler kopien allerede kender.
