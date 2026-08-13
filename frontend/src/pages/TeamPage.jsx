@@ -28,6 +28,7 @@ import TeamStatsTab from "../components/TeamStatsTab";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
+import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
 import { AmountInput, PageHeader, Button, BikeIcon, PageLoader, EmptyState, DataTable } from "../components/ui";
 import { controlClass } from "../components/ui/fieldStyles.js";
@@ -101,6 +102,16 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
     })();
     return () => { cancelled = true; };
   }, [rider.id]);
+  // #3597: samme delte gate som rytter-profilen. Modalen lukker ganske vist
+  // efter en succesfuld forlængelse (så den ramte ikke selve #3597-hullet),
+  // men spærringen skal afledes af det SAMME kapacitets-tal begge steder —
+  // to forskellige udledninger af "må man forlænge?" er præcis den divergens
+  // der lod runde 2 se løst ud på den ene flade og ikke den anden.
+  const extendCap = extendCapGate({
+    capped: extendCapped,
+    capInfo: extendCapInfo,
+    capSeason: extendCapSeason,
+  });
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   // auctionPrice === null (ugyldigt/ikke-parsbart format, #3495) tælles altid som fejl.
@@ -257,12 +268,14 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
               // #3164/#3186: "Forlæng"-fanen deaktiveres FØR klik når rytteren
               // står på kontrakt-loftet (#3143) — ELLER mens vi endnu ikke ved
               // det (extendCapChecking, lukker samme race-vindue som #3186
-              // fandt på rytter-profilen). Se extendCapped/extendCapChecking ovenfor.
-              const disabled = tab === "extend" && (extendCapped || extendCapChecking);
+              // fandt på rytter-profilen). #3597: spærringen kommer nu fra
+              // extendCap.atCap (kapacitets-tallet fra extensionCap), ikke fra
+              // det afvisnings-afledte extendCapped alene.
+              const disabled = tab === "extend" && (extendCap.atCap || extendCapChecking);
               return (
                 <button key={tab} type="button" onClick={() => !disabled && setActiveTab(tab)}
                   disabled={disabled}
-                  title={extendCapped && tab === "extend" ? t("actionModal.extend.capped", { season: extendCapSeason }) : undefined}
+                  title={extendCap.atCap && tab === "extend" ? t("actionModal.extend.capped", { season: extendCap.season }) : undefined}
                   className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border disabled:opacity-40 disabled:pointer-events-none
                     ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
                   {tabLabels[tab]}

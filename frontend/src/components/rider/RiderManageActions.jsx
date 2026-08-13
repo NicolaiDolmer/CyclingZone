@@ -25,6 +25,7 @@ import { resolveApiError } from "../../lib/apiError.js";
 import { isU23 } from "../../lib/riderAge.js";
 import { projectSeniorSalary, projectYouthSalary } from "../../lib/marketValues.js";
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
+import { extendCapGate } from "../../lib/extendCapGate.js";
 import { useAcademy } from "../../lib/useAcademy.js";
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
 import { AcademyTransferConfirmModal } from "../AcademyTransferConfirmModal.jsx";
@@ -195,6 +196,18 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   // om rytteren står på loftet eller ej, så mekanikken er synlig FØR spilleren
   // overhovedet nærmer sig grænsen (ikke kun som forklaring EFTER afvisning).
   const [extendCapInfo, setExtendCapInfo] = useState(null);
+  // #3597 (runde 3 af CYCLINGZONE-45): knappens spærre-tilstand må IKKE alene
+  // afhænge af extendCapped — det flag er afledt af "er vi blevet AFVIST?", og
+  // en helt almindelig succesfuld forlængelse efterlader det false selvom
+  // kapaciteten netop blev brugt op (se extendCapGate.js for hele kæden).
+  // Gaten læser i stedet extensionCap.remainingExtensions — det POSITIVE
+  // kapacitets-tal backend allerede sender i hver gren — med extendCapped som
+  // fallback for svar uden extensionCap.
+  const extendCap = extendCapGate({
+    capped: extendCapped,
+    capInfo: extendCapInfo,
+    capSeason: extendCapSeason,
+  });
 
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseQuote, setReleaseQuote] = useState(null);
@@ -214,13 +227,25 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
 
   // #3164/#3186: stille loft-tjek ved mount (se begrundelse ved extendCapInfo
   // ovenfor). extendLoading sættes for HELE tjekket, så triggerknappen
-  // (disabled={extendCapped || extendLoading}) ikke kan klikkes i det vindue
+  // (disabled={extendCap.atCap || extendLoading}) ikke kan klikkes i det vindue
   // hvor vi endnu ikke ved om rytteren står på loftet — det vindue var netop
   // det #3186 fandt stadig blev udnyttet (mobilnet, hurtige tryk). Rammer
   // IKKE-kappede ryttere cacher vi tilbuddet med det samme, så openExtend()
   // ikke behøver hente det igen når panelet åbnes.
   useEffect(() => {
     let cancelled = false;
+    // #3597: nulstil FØR tjekket. Komponenten remountes ikke når man navigerer
+    // fra /riders/A til /riders/B (samme route-element), så uden dette bar
+    // rytter B videre på A's state: A's quote ville blive vist som B's vilkår i
+    // panelet (openExtend henter ikke igen når extendQuote !== null), og A's
+    // extendCapped ville spærre B's knap for evigt. Samme klasse af fejl som
+    // selve #3597 — state der overlever den tilstand den beskrev.
+    setExtendOpen(false);
+    setExtendQuote(null);
+    setExtendErr(null);
+    setExtendCapped(false);
+    setExtendCapSeason(null);
+    setExtendCapInfo(null);
     (async () => {
       setExtendLoading(true);
       try {
@@ -255,6 +280,12 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         if (data?.extensionCap) setExtendCapInfo(data.extensionCap);
         if (ok) setExtendQuote(data);
         else {
+          // #3597: samme defensive lås som confirmExtend's fejl-gren — nåede et
+          // klik alligevel frem til en 409, må knappen ikke stå klikbar bagefter.
+          if (data?.errorCode === "contract_extension_cap_reached") {
+            setExtendCapped(true);
+            setExtendCapSeason(data?.errorParams?.maxSeason ?? null);
+          }
           setExtendErr(resolveApiError(data, t, t("auth:error.connectionFailed")));
           reportActionFailure("rider_extend_quote", {
             reason: data?.errorCode || data?.error,
@@ -366,8 +397,11 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
           #3164/#3186: deaktiveret BÅDE når loftet er bekræftet nået OG mens
           det stille tjek stadig kører (extendLoading) — spilleren skal ALDRIG
           kunne klikke sig ind i et vindue hvor UI'et endnu ikke ved om
-          handlingen er dømt til at fejle. */}
-      <button type="button" onClick={openExtend} disabled={extendCapped || extendLoading}
+          handlingen er dømt til at fejle.
+          #3597: spærringen kommer nu fra extendCap.atCap (kapacitets-tallet),
+          ikke fra det afvisnings-afledte extendCapped alene — ellers stod
+          knappen klikbar igen efter den forlængelse der brugte sidste sæson. */}
+      <button type="button" onClick={openExtend} disabled={extendCap.atCap || extendLoading}
         aria-busy={extendLoading || undefined}
         className={`${buttonClass({ variant: "primary" })} ${extendOpen ? "ring-1 ring-cz-accent/60" : ""}`}>
         {extendLoading && <BusyDot />}
@@ -382,9 +416,12 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
           <span className="text-cz-2 font-mono">{extendCapInfo.usedExtensions}/{extendCapInfo.maxExtensions}</span>
         </div>
       )}
-      {extendCapped && (
+      {/* #3597: forklaringen følger samme gate som knappen — ellers ville en
+          spærret knap stå uden begrundelse i netop det tilfælde (kapacitet brugt
+          op af en succesfuld forlængelse) hvor spilleren mest har brug for den. */}
+      {extendCap.atCap && (
         <p className={`${ACTION_PANEL} text-cz-3 text-xs`}>
-          {t("manage.extend.capped", { season: extendCapSeason })}
+          {t("manage.extend.capped", { season: extendCap.season })}
         </p>
       )}
       {extendOpen && (
