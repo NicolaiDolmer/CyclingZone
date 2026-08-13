@@ -1234,13 +1234,20 @@ export const SEED_DEVELOPMENT = [
   { snapshot_date: "2026-07-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 52, tempo: 46, sprint: 50, acceleration: 46, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
 ];
 
+// #3666: tallene er REGNET med den ægte model ud fra seed-rytterens egne evner
+// (snapshot 2026-07-01 ovenfor) gennem weights/displayRecipes.ratingForRole, og
+// loft-båndet gennem den ægte buildTypeCeilingBands med seed-spejderen
+// (overall 61, level 3). De gamle tal (now 70, loft 78-86) stammede fra den
+// anker-normaliserede skala og kunne slet ikke produceres af den nye model.
+// Preview ville dermed have vist ejeren en skala der ikke findes i prod —
+// præcis den fejl der har bidt før.
 export const SEED_PROJECTION = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
-  primaryKey: "sprinter", now: 70, ceil: { lo: 78, hi: 86 },
+  primaryKey: "sprinter", now: 50, ceil: { lo: 62, hi: 70 },
   band: [
-    { season: 0, lo: 70, hi: 70 }, { season: 1, lo: 71, hi: 76 }, { season: 2, lo: 72, hi: 79 },
-    { season: 3, lo: 72, hi: 81 }, { season: 4, lo: 73, hi: 82 }, { season: 5, lo: 73, hi: 83 },
-    { season: 6, lo: 73, hi: 83 },
+    { season: 0, lo: 50, hi: 50 }, { season: 1, lo: 52, hi: 58 }, { season: 2, lo: 54, hi: 62 },
+    { season: 3, lo: 55, hi: 65 }, { season: 4, lo: 56, hi: 67 }, { season: 5, lo: 56, hi: 68 },
+    { season: 6, lo: 56, hi: 68 },
   ],
   timing: { seasons: { lo: 2, hi: null }, ageAt: { lo: 23, hi: null } },
   pastPeak: false,
@@ -1251,29 +1258,34 @@ export const SEED_PROJECTION = {
 // (navngiven chefscout, tier 2) så feature'en er synlig på preview uden en
 // hyret spejder i SEED_CLUB (der er bevidst stadig default-spejder, #1441 A3).
 //
-// #3458 Fase 1 (Del B "skala-ærlighed"): `types` er nu de RÅ tal ovenfor
-// KØRT GENNEM den ægte kalibrering (backend/lib/typeRatingScale.js
-// calibratedTypeRating, mod den committede, FROSSNE backend/lib/typeRatingCalibration.json)
-// — ikke bare plausible tal. Preview viser dermed PRÆCIS hvad produktion ville
-// returnere for denne rå-profil, inkl. den overraskende (men korrekte) effekt at
-// sprinter/rouleur/brostensrytter lander højere på den kalibrerede skala end
-// baroudeur/gc/climber ved samme rå niveau — det ER pointen med fixet: skalaen er nu
-// absolut og ens for alle 8 typer, ikke længere strukturelt skæv til fordel for
-// visse typers formler.
+// #3666: kalibreringen er VÆK, og `types` er nu genereret ved at køre
+// seed-rytterens egne evner gennem den ÆGTE kæde — displayRecipes.ratingForRole
+// på både evner og lofter, derefter buildTypeCeilingBands med seed-spejderen
+// (overall 61) på level 3. Preview viser dermed præcis hvad produktion ville
+// returnere for denne profil, ikke plausible tal.
+//
+// Bemærk hvor meget mindre spredningen er end før: rollerne ligger nu 44-51 i
+// stedet for 11-96. Det er ikke en fejl i seedet — det ER den nye skala. De
+// gamle tal var strakt mod to populations-ankre, og netop den strækning er dét
+// omlægningen fjerner. `verdict` og `precision` er ligeledes regnet med de
+// ægte funktioner (buildVerdict med de rekalibrerede tærskler 2/3/8,
+// scoutPrecisionInfo mod det relative gulv).
 export const SEED_SCOUTING_REPORT = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
+  primaryKey: "sprinter",
   stars: { lo: 4.5, hi: 5 },
   types: [
-    { key: "sprinter", now: 96, ceilLo: 98, ceilHi: 99 },
-    { key: "puncheur", now: 34, ceilLo: 39, ceilHi: 47 },
-    { key: "brostensrytter", now: 73, ceilLo: 80, ceilHi: 87 },
-    { key: "baroudeur", now: 40, ceilLo: 51, ceilHi: 64 },
-    { key: "rouleur", now: 77, ceilLo: 82, ceilHi: 87 },
-    { key: "tt", now: 22, ceilLo: 31, ceilHi: 40 },
-    { key: "gc", now: 11, ceilLo: 18, ceilHi: 26 },
-    { key: "climber", now: 12, ceilLo: 18, ceilHi: 25 },
+    { key: "sprinter", now: 50, ceilLo: 62, ceilHi: 70 },
+    { key: "puncheur", now: 47, ceilLo: 54, ceilHi: 62 },
+    { key: "brostensrytter", now: 48, ceilLo: 52, ceilHi: 61 },
+    { key: "baroudeur", now: 48, ceilLo: 53, ceilHi: 62 },
+    { key: "rouleur", now: 51, ceilLo: 58, ceilHi: 67 },
+    { key: "tt", now: 47, ceilLo: 52, ceilHi: 60 },
+    { key: "gc", now: 45, ceilLo: 48, ceilHi: 57 },
+    { key: "climber", now: 44, ceilLo: 50, ceilHi: 58 },
   ],
-  verdict: { headlineKey: "keep_and_develop", confidence: "high", factorKeys: ["age_upside", "ceiling_gap", "type_match", "form_unknown"] },
+  verdict: { headlineKey: "keep_and_develop", confidence: "high", factorKeys: ["age_upside", "ceiling_gap", "value_gap", "type_match"] },
+  precision: { halfWidth: 4.29, nextHalfWidth: null, nextGain: 0, nextLevelIsUseless: false, maxUsefulLevel: 3, limitedByScout: false },
   value: { market: 420000, expected: 468000 },
   scout: { isDefault: false, name: "Sofie Lindqvist", tier: 2, overall: 61, hiredAt: "2026-07-20T10:00:00.000Z" },
   generatedAt: "2026-08-05T09:00:00.000Z",

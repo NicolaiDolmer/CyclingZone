@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { restRows, restObject, apiResponse, parseRpc, rpcResponse } from "./mockHandlers.js";
+import { DISPLAY_RECIPE_KEYS, ratingForRole } from "../lib/generated/displayRecipes.js";
 import { TEST_TEAM, RIVAL_TEAM } from "./seedData.js";
 import { normalizeHonours, topOf } from "../lib/seasonHonours.js";
 
@@ -160,4 +161,41 @@ test("#2863 honours-seedet overlever normalizeHonours med begge fælder intakte"
   // Tallene er strenge i seedet (som PostgREST' bigint) og skal være tal bagefter.
   assert.equal(typeof onPoints.leader.points, "number");
   assert.ok(points.every((e) => e.riderId && e.name));
+});
+
+// #3666: rider_derived_abilities havde INGEN mock-handler, så rytterprofilen
+// altid viste "Evner endnu ikke beregnet" på preview. Rating-pladen,
+// ryttertype-radaren og Fysiologi-fanen kunne dermed aldrig ses før live —
+// netop de flader rating-omlægningen ændrer.
+test("rider_derived_abilities serveres, så profilens evner findes på preview", () => {
+  const rows = restRows("rider_derived_abilities", "http://x/rest/v1/rider_derived_abilities?select=*");
+  assert.ok(rows.length > 0, "ingen evne-rækker i seedet");
+  for (const row of rows) {
+    assert.ok(row.rider_id, "rækken skal bære rider_id");
+    for (const key of ["climbing", "sprint", "flat", "positioning", "tactics"]) {
+      assert.equal(typeof row[key], "number", `evnen ${key} mangler på ${row.rider_id}`);
+    }
+  }
+});
+
+test("rider_derived_abilities filtrerer på rider_id (profilen henter ÉN rytter)", () => {
+  const url = "http://x/rest/v1/rider_derived_abilities?rider_id=eq.rider-1&select=*";
+  const rows = restRows("rider_derived_abilities", url);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].rider_id, "rider-1");
+  // restObject-stien (maybeSingle) skal give samme række, ikke et tomt objekt.
+  assert.equal(restObject("rider_derived_abilities", url).rider_id, "rider-1");
+});
+
+test("preview-seedets ratings kan produceres af den nye model", () => {
+  // Seed-tallene skal ligge inden for det modellen kan producere, ellers viser
+  // preview en skala der ikke findes i prod — den fejl har bidt før.
+  const rows = restRows("rider_derived_abilities", "http://x/rest/v1/rider_derived_abilities?select=*");
+  for (const row of rows) {
+    for (const role of DISPLAY_RECIPE_KEYS) {
+      const r = ratingForRole(row, role);
+      assert.ok(Number.isInteger(r) && r >= 0 && r <= 99,
+        `${row.rider_id} som ${role} gav ${r}`);
+    }
+  }
 });
