@@ -157,7 +157,7 @@
       "hint": "‹ › skift rytter"
     },
     "hero": {
-      "ratingEyebrow": "Rating /99",
+      "ratingEyebrow": "Rating",
       "divisionChip": "DIV {division}",
       "photoFallback": "Foto",
       "potentialOwn": "Potentiale · loft",

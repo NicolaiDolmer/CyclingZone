@@ -54,7 +54,7 @@
       "nation": "Nation",
       "rider": "Rytter",
       "rating": "Rating",
-      "ratingTitle": "Samlet rating 1-99, vægtet efter rytterens type.",
+      "ratingTitle": "Det vægtede snit af de evner hans egen rolle bruger. Samme tal betyder samme niveau i alle roller.",
       "value": "Værdi",
       "salary": "Løn",
       "potential": "Potentiale",
@@ -133,7 +133,10 @@
   "profile": {
     "back": "← Tilbage",
     "notFound": "Hold ikke fundet",
-    "loadError": { "message": "Holdet kunne ikke hentes. Intet gik tabt. Prøv igen.", "retry": "Prøv igen" },
+    "loadError": {
+      "message": "Holdet kunne ikke hentes. Intet gik tabt. Prøv igen.",
+      "retry": "Prøv igen"
+    },
     "tabsAriaLabel": "Holdprofil-sektioner",
     "yourTeam": "Dit hold",
     "managerLabel": "Manager: {name}",
@@ -232,7 +235,10 @@
   "manager": {
     "back": "Tilbage",
     "notFound": "Hold ikke fundet",
-    "loadError": { "message": "Kunne ikke indlæse denne managers profil. Intet gik tabt. Prøv igen.", "retry": "Prøv igen" },
+    "loadError": {
+      "message": "Kunne ikke indlæse denne managers profil. Intet gik tabt. Prøv igen.",
+      "retry": "Prøv igen"
+    },
     "yourTeam": "Dit hold",
     "managerPrefix": "Manager:",
     "aiManaged": "AI-styret hold",

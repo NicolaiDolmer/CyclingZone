@@ -157,7 +157,7 @@
       "hint": "‹ › switch rider"
     },
     "hero": {
-      "ratingEyebrow": "Rating /99",
+      "ratingEyebrow": "Rating",
       "divisionChip": "DIV {division}",
       "photoFallback": "Photo",
       "potentialOwn": "Potential · ceiling",

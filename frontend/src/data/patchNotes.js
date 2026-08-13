@@ -4,6 +4,78 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.121",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "A rider's rating is now just the abilities his role needs",
+          "body": "The rating used to be stretched against the whole rider pool, so it could move when other riders changed. Now it is the weighted average of the abilities his role needs: 13 in every ability that counts means a rating of 13. The numbers are lower than before, a typical rider reads about 13 where he used to read 59, and they mean the same thing in every role. Nothing about your riders changed: same abilities, same ceilings, same types."
+        },
+        "da": {
+          "title": "En rytters rating er nu bare de evner hans rolle bruger",
+          "body": "Ratingen blev før strakt mod hele rytterbestanden, så den kunne flytte sig når andre ryttere ændrede sig. Nu er den det vægtede snit af de evner hans rolle bruger: 13 i alle de evner der tæller giver rating 13. Tallene er lavere end før, en typisk rytter viser omkring 13 hvor han før viste 59, og de betyder det samme i alle roller. Intet ved dine ryttere har ændret sig: samme evner, samme lofter, samme typer."
+        },
+        "refs": [
+          3666
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Potential is a number now, not stars",
+          "body": "Potential is shown in the same unit as the rating: \"can reach 40-48\" instead of four and a half stars. That means you can hold it up against where the rider is today and see the gap. It is still always a range, because no scout knows a rider exactly."
+        },
+        "da": {
+          "title": "Potentiale er et tal nu, ikke stjerner",
+          "body": "Potentiale vises i samme enhed som ratingen: \"kan nå 40-48\" i stedet for fire en halv stjerne. Så kan du holde det op mod hvor rytteren er i dag og se afstanden. Det er stadig altid et interval, fordi ingen spejder kender en rytter præcist."
+        },
+        "refs": [
+          2454
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "The development forecast wrote riders off far too early",
+          "body": "Past his peak, a rider was forecast to lose 2.5 to 4.5 rating points a season. Measured against the race engine's own numbers, the real figure is 1.0 to 2.6. A typical 30-year-old was shown heading for zero within six seasons where the engine would take about fifteen. The forecast now reads the engine's numbers directly instead of keeping its own copy."
+        },
+        "da": {
+          "title": "Udviklings-prognosen afskrev ryttere alt for tidligt",
+          "body": "Efter sit peak blev en rytter forudsagt at miste 2,5 til 4,5 rating-point pr. sæson. Målt mod motorens egne tal er det rigtige 1,0 til 2,6. En helt almindelig 30-årig blev vist på vej mod nul inden for seks sæsoner, hvor motoren ville tage omkring femten. Prognosen læser nu motorens tal direkte i stedet for at have sin egen kopi."
+        },
+        "refs": [
+          3666
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The scouting card leads with the rider's own role",
+          "body": "The eight rider types were eight identical rows, so you had to find his own role yourself. It now sits at the top with his rating and ceiling band; the other seven are context below it. The card also tells you what the next scout level would actually buy, in the same unit as the band."
+        },
+        "da": {
+          "title": "Scouting-kortet starter med rytterens egen rolle",
+          "body": "De otte ryttertyper stod som otte ens rækker, så du selv skulle finde hans egen rolle. Den står nu øverst med hans rating og loft-bånd; de øvrige syv er kontekst nedenunder. Kortet fortæller også hvad næste scout-niveau rent faktisk køber, i samme enhed som båndet."
+        },
+        "refs": [
+          3666,
+          3671
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.120",
     "date": "2026-08-13",
     "label": "Beta",
