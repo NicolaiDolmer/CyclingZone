@@ -178,7 +178,7 @@ Princip: rollens signatur-evne vejer tungest; opskriften er bred nok til at rati
 
 | # | Kriterium | Mål |
 |---|---|---|
-| R1 | Opskrift-neutralitet: alle 8 opskrifter anvendt på **median-rytteren** | maks 3 points spredning (i dag: 7,8 — se §6) |
+| R1 | Opskrift-neutralitet: alle 8 opskrifter anvendt på **median-rytteren** | maks 6 points spredning (udkast i dag: 7,8). Grænsen er sat til det opnåelige under ejer-beslutning A, ikke til det ønskelige — se §6 |
 | R2 | Ingen eksisterende rytters `ability_caps`, `primary_type`, `secondary_type` eller `potentiale` ændres | 100 % diff mod snapshot |
 | R3 | Ingen markedsværdi ændres | 100 % uændret |
 | R4 | Hver af de 15 evner optræder i ≥1 visnings-opskrift | 100 % (CI-vagt) |
@@ -201,13 +201,24 @@ Ingen prod-mutation af eksisterende ryttere i nogen fase.
 
 ## 6. Åbne punkter til ejeren
 
-**1 — Den skæve evne-skala (§1.7). Skal besvares før Fase 2 kan shippes.**
+**1 — Den skæve evne-skala (§1.7). AFKLARET 13/8: vej A.**
 
-Anvendt på median-rytteren giver udkast-opskrifterne 6,7 (bjergrytter) til 14,5 (baroudeur). Samme rytter, dobbelt tal, alene på grund af hvilke evner rollen består af. Det underminerer ejer-beslutningen fra 13/8 om at samme tal skal betyde samme niveau.
+Anvendt på median-rytteren giver udkast-opskrifterne 6,7 (bjergrytter) til 14,5 (baroudeur). Samme rytter, dobbelt tal, alene på grund af hvilke evner rollen består af.
 
-Tre veje:
-- **A (anbefalet):** hold tekniske/mentale evner på lav vægt i alle opskrifter, og accepter en restspredning på 2-3 point. Billigst, ingen data røres, men baroudeuren mister lidt af sin signatur-identitet i tallet.
-- **B:** ret evne-skalaen ved roden — bring de 5 tekniske/mentale evner ind i samme kontrast-behandling som de 10 fysiske. Rigtigst på lang sigt og gør alle fremtidige evner nemmere. Men det ændrer eksisterende rytteres evne-tal = en tredje rystelse, som #3458 Del C forbyder.
-- **C:** en frossen per-evne skala-korrektion inde i opskriften. Løser symptomet uden at røre data — men bryder ejer-reglen *"13 i alle evner → rating 13"*, som er hele grundlaget for D1.
+Fravalgt: at rette evne-skalaen ved roden nu (ville ændre eksisterende rytteres evne-tal — taktik fra ~38 mod ~9 — og dermed være den tredje rystelse #3458 Del C forbyder), og en frossen per-evne korrektion inde i opskriften (ville bryde ejer-reglen *"13 i alle evner → rating 13"*, som er hele grundlaget for D1).
 
-**2 — Caps-formningen halter efter opskrifterne.** `capsShapingWeights` beholder dagens vægte (D3), så positionering fortsat vokser som en neutral evne for alle. Når visnings-opskriften belønner positionering hos sprintere, er der en mismatch mellem hvad der tæller og hvad der vokser. At rette det nu ville flytte lofter = tredje rystelse. Foreslået: noteres som opfølgning i #3564-sporet, hvor loft-formningen alligevel er under arbejde.
+**Ejer-beslutning:** tekniske/mentale evner holdes på lav vægt i opskrifterne, og restspredningen accepteres indtil roden er rettet som sin egen sag.
+
+**Ærlig konsekvens, målt:** restspredningen kan ikke komme under ~5-6 point med vej A. Bjergrytterens signatur er bjerg (median 5), baroudeurens er aggression (median 17); selv med taktik helt ude af baroudeur-opskriften lander han på 12,2 mod bjergrytterens 6,7. At presse ham længere ned kræver at aggression vejer så lidt at rollen holder op med at være genkendelig i tallet. Taktik beholdes derfor på vægt 1 hos baroudeuren — dens tematisk rigtige hjem, og R4 kræver at hver evne tæller mindst ét sted. Gaten R1 er sat til ≤6 point af netop den grund. **Den fulde lukning af spredningen afhænger af rod-fixet** (egen sag, se §7).
+
+**2 — Caps-formningen halter efter opskrifterne.** *(uændret status)* `capsShapingWeights` beholder dagens vægte (D3), så positionering fortsat vokser som en neutral evne for alle. Når visnings-opskriften belønner positionering hos sprintere, er der en mismatch mellem hvad der tæller og hvad der vokser. At rette det nu ville flytte lofter = tredje rystelse. Foreslået: noteres som opfølgning i #3564-sporet, hvor loft-formningen alligevel er under arbejde.
+
+---
+
+## 7. Udskudt til egen sag: evne-skalaen selv
+
+De 15 evner er ikke sammenlignelige indbyrdes (§1.7). Det er ikke kun et rating-problem — det er misvisende for spilleren i sig selv: en rytter der viser *"taktik 38, bjerg 5"* ser ud til at være syv gange bedre til taktik, og det passer ikke. De to tal kommer fra to forskellige behandlinger, ikke fra to forskellige niveauer.
+
+Årsagen er dokumenteret i `abilityDerivation.js`: de 10 fysiske evner køres gennem kontrast-forstærkning (`CONTRAST_ABILITIES`), mens descending, cobblestone, positioning, aggression og tactics bevidst holdes udenfor, fordi de er skill-stat-drevne og ikke en del af mætnings-problemet forstærkningen løste.
+
+Ejer-beslutning 13/8: **ikke i denne omgang.** Et rod-fix ændrer eksisterende rytteres viste evne-tal og er dermed den tredje rystelse #3458 Del C forbyder. Det tages op som sin egen sag, med sin egen kommunikation — og det bør ske før der tilføjes nye evner, så en ny evne fødes ind på en skala der holder.
