@@ -13,7 +13,8 @@
 >
 > Brug en workflow-session. Læs først `docs/sessions/2026-08-13-rytterne-skal-kunne-stoles-paa-prompt.md` — den bærer alt der allerede er besluttet og målt, så du ikke skal gætte eller regne det igen. Derefter #3664-tråden (designsessionens 8 beslutninger) og `docs/superpowers/specs/2026-08-13-rating-fundament-v3-design.md`.
 >
-> Leverancen er **landing 1**: #3666 + #2454 + #3667 deployet sammen, plus #3671. Ét deploy, én spillerbesked, nul rytterdata der flytter sig.
+> **Trin 1 — landing 1:** #3666 + #2454 + #3667 deployet sammen, plus #3671. Ét deploy, én spillerbesked, nul rytterdata der flytter sig.
+> **Trin 2 — landing 2:** positionerings-loftet hæves for de fem roller der belønner den. Egen PR, egen besked, og du spørger mig FØR du kører prod-mutationen.
 >
 > Ingen af de låste beslutninger genåbnes. Stil spørgsmål ét ad gangen med anbefaling først, og vis mig tingene visuelt undervejs — prosa er ikke nok når det er tal eller før/efter.
 
@@ -29,8 +30,8 @@ Otte ejer-beslutninger fra designsessionen 13/8, fuldt dokumenteret i [#3664](ht
 | Potentiel rating erstatter stjernerne 1:1 | 10 målte flader. Label kun på **hover**. Vist som **interval**. Sortering rangerer fortsat **talent** (`_scoutMid`), ikke rolle-potentiale |
 | `CEIL_HALF_WIDTH_BY_LEVEL = [9, 6, 4, 3]` | Målt + ejer-besluttet. **Regn den ikke igen** — se måling nedenfor |
 | `classifierWeights` er FROSSET | Hash-test håndhæver det. Ingen rytters type må kunne bevæge sig |
-| `capsShapingWeights` røres ikke i #3666 | Eget trin; det er den eneste del af pakken der ændrer eksisterende ryttere |
-| Tre landinger | Denne session leverer landing 1 |
+| `capsShapingWeights` røres ikke i #3666 | Den er **trin 2** i denne session — egen PR, egen besked, ejer-gated prod-mutation |
+| Tre landinger | Denne session leverer landing 1 **og** landing 2, i den rækkefølge |
 
 ## Målt allerede — brug tallene, gentag ikke arbejdet
 
@@ -45,7 +46,7 @@ Alt read-only mod prod 13/8.
 
 ## Scope
 
-**Skal med:**
+**Trin 1 — landing 1 (nul rytterdata flytter sig):**
 
 1. **#3666** — D1-modellen på alle visningsflader i én PR. OVR-plade + OVR-kolonner (Auktioner, Rytterdatabasen, Holdsiden, Ønskelisten), planner-kort, Overblik-radaren, Udvikling-fanens graf/loft-zone/projektion, `pickChartTypeKeys`, Scouting-kortet (omlagt: egen rolle stort, de øvrige 7 som kontekst), `statColor` genbruger evne-ankrene. `typeRatingCalibration.json` + `typeRatingScale.js` ud af visnings-stien.
 2. **#2454** — potentiel rating erstatter stjernerne på de 10 flader. `labelAsTitle` bliver default. `ScoutablePotentiale` omskrives til interval.
@@ -88,16 +89,49 @@ Foreslået form:
 - **Loop-guard:** 2 CI-fejl på samme symptom → stop og spørg.
 - **Vis visuelt undervejs.** Ejer-krav, gentaget tre gange i designsessionen. Widget eller preview-server før du beder om en beslutning.
 
-## Én åben beslutning ejeren skal tage
+## Trin 2 — LANDING 2: positionerings-loftet hæves (#3592, nedskåret)
 
-**Skal capsShaping (#3592, nedskåret) med i denne omgang?**
+**Ejer-besluttet 13/8.** Egen PR, egen spillerbesked, **efter** landing 1 er live. Fold den ikke ind i trin 1 — landing 1's værdi er en påstand vi kan *bevise* ("intet ved din rytter har flyttet sig"), og den overlever ikke en samtidig genberegning af lofter.
 
-Den er den **eneste** del af rytter-pakken der ændrer eksisterende rytteres lofter. Ejeren låste 13/8 at den skulle vente til efter cutover, netop fordi den flytter rytterdata og kræver prod-mutation, backup og negativ-kontrol (spec §5 gør det til et stopsignal).
+### Problemet, målt
 
-Mandatet *"styr på rytterne i dag"* kan læses begge veje. Spørg ejeren eksplicit, første gang du taler med ham:
+Rolle-faktoren i `riderProgression.js` har fire trin: **1,00** signatur i primærtype · **0,82** sekundær · **0,45** neutral · **0,12** modsat. Hvilken kasse en evne havner i, aflæses af `capsShapingWeights`.
 
-- **Uden capsShaping (anbefaling):** landing 1 alene. Beskeden bliver *"tallene betyder noget nyt — men din rytter er præcis den samme"*, og den kan bevises med R2/R3. Det er den stærkeste tillids-besked vi kan sende efter tre uger med rystelser, og den har nul risiko.
-- **Med capsShaping:** flere ryttere får rigtigt formede lofter med det samme, men beskeden bliver *"tallene ER lagt om OG din rytters loft har flyttet sig"* — to ting på én gang, hvilket er præcis det #3458 Del C forbyder.
+`positioning` har vægt **0 i alle otte ryttertyper** → altid neutral → altid 0,45 × grundloftet. Målt mod prod 13/8 er positionerings-loftets median **22-27 for hver eneste rolle** — fladt. En sprinters sprint- og flad-loft er til sammenligning 48. Forholdet 22/48 bekræfter faktoren 0,45 direkte i data.
+
+Det var uproblematisk indtil i dag: positionering indgik i **nul** af de gamle opskrifter. Fra og med #3666 belønner fem roller den — så vi belønner en evne spillet forhindrer nogen i at blive god til.
+
+### Ændringen
+
+Giv `positioning` en **positiv vægt** i `backend/lib/weights/capsShapingWeights.js` for de fem roller hvis visnings-opskrift indeholder den: `sprinter`, `tt`, `puncheur`, `brostensrytter`, `rouleur`.
+
+Magnituden er ligegyldig — både `signatureFactor` og `youthRoleFactor` tester kun **fortegnet** (`w > 0`). Brug 1 og skriv hvorfor.
+
+Derefter genberegnes caps for de berørte ryttere. **Det er en prod-mutation: spørg ejeren før kørsel** (spec §5, stopsignal).
+
+### Forventet effekt
+
+- Positionerings-loft **22 → ~48** for ca. **5.558 af 8.747** ryttere (63 %).
+- Potentiel rating **+~4 point** for dem, og tilsvarende **mere luft** mellem nu og loft — hvilket direkte hjælper på "træning føles som om den virker".
+- **Ingen kan miste noget.** Lofter kan kun stige; det er ændringens vigtigste egenskab, og den skal bevises, ikke påstås.
+
+### Gates — bevis i PR-body
+
+| # | Kriterium | Mål |
+|---|---|---|
+| B1 | **Intet evne-loft falder for nogen rytter** | 100 %, diff mod snapshot |
+| B2 | `primary_type` + `secondary_type` uændret | 100 % — typen kommer fra `archetype_draw`, men verificér det, antag det ikke |
+| B3 | Markedsværdier uændret | 100 % — `positioning` er ikke i `valuationWeights`' 13 evner, men verificér mod ægte data |
+| B4 | `potentiale`-feltet urørt | felt ikke skrevet |
+| B5 | Backup-tabel + verificeret rollback-vej FØR mutationen | dokumenteret |
+
+### En test vil fejle — med vilje
+
+`backend/lib/weightTableSplit.test.js` hævder at de tre data-styrende vægt-tabeller er bit-identiske med tabellen før splittet. Denne ændring bryder den for `capsShapingWeights`, og **det er mekanismen der virker som designet**: fjern posten fra `IDENTICAL_AT_SPLIT` og skriv hvorfor i samme commit. Rør ikke `classifierWeights`' hash-test — den er frosset.
+
+### Hvorfor det er sikkert nu, men ikke var det i går
+
+Før #3665 lå caps-formning, klassifikation og markedsværdi i **samme tabel**. At give positionering en positiv vægt ville have flyttet rytteres typer og priser samtidig. Efter splittet rører den kun lofterne. Det er præcis det fundamentet blev bygget for — og B1-B3 beviser det.
 
 ## Kilder
 
