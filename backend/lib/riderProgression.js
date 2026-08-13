@@ -18,7 +18,7 @@
 //   5. Retirement      = seeded i alders-vindue, garanteret ved guaranteedAge
 
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { RIDER_TYPES } from "./riderTypes.js";
+import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i previewRiderProgression.js) ────────
 export const PROGRESSION_CONFIG = Object.freeze({
@@ -100,8 +100,13 @@ export function seededUnit(key) {
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 // Type-vægt pr. evne (positiv = signatur, negativ = modsat, 0 = neutral/off-type).
+// #3665: loft-formningen læser sin EGEN tabel (weights/capsShapingWeights.js).
+// Bit-identisk med de tre andre ved ikrafttræden, men adskilt så trinnet efter
+// #3592 kan forme positioning op UDEN at røre en eneste rytters type eller
+// markedsværdi. Se capsShapingWeights.js for den kendte, ejer-accepterede
+// mismatch mod visnings-opskrifterne.
 const WEIGHTS_BY_TYPE = Object.freeze(
-  Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights]))
+  Object.fromEntries(CAPS_SHAPING_WEIGHTS.map((t) => [t.key, t.weights]))
 );
 
 // Signatur-faktor for (type, evne): 1.0 hvis positiv type-vægt (speciale), 0 hvis

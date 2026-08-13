@@ -1,3 +1,7 @@
+import {
+  REGISTRY_ABILITY_KEYS, REGISTRY_CONTRAST_KEYS, REGISTRY_PRIMARY_STAT,
+} from "./abilityRegistry.js";
+
 // Evne-system v3 (#1122 / #1101-kæden) — fysiske evner afledes nu fra fysiologi-profiler
 // (rider_physiology_profiles); tekniske/mentale forbliver skill-stat-drevne.
 // prolog FJERNET (merged ind i time_trial, §0.1 Beslutning 2).
@@ -46,10 +50,11 @@ export const CONTRAST = Object.freeze({
 // gennem condition/fatigue-seamen, #1021-placeholder), spreder forstærkningen durabilitys
 // felt-fordeling, hvilket HOLDER durability-liveness-seamen over gulvet (dryrun sektion E).
 // Udeladelse komprimerede tværtimod durability mod hver rytters median → seam under gulv.
-export const CONTRAST_ABILITIES = Object.freeze([
-  "climbing", "time_trial", "flat", "tempo", "sprint",
-  "acceleration", "punch", "endurance", "recovery", "durability",
-]);
+// #3665: udledt af evne-registret (`inContrast`). De 5 evner der IKKE er med —
+// descending, cobblestone, positioning, aggression, tactics — er skill-stat-drevne
+// og var aldrig en del af det mætnings-problem forstærkningen løste. Bivirkningen
+// er at de fem lever på en anden fordeling end de ti; det er #3668, ikke en fejl her.
+export const CONTRAST_ABILITIES = REGISTRY_CONTRAST_KEYS;
 
 // Median af de fysiske evner for ÉN rytter (rytterens egen profil-midte).
 function ownPhysicalMedian(out) {
@@ -72,17 +77,11 @@ function applyContrast(out, { k = CONTRAST.k, floor = CONTRAST.floor } = {}) {
   return out;
 }
 
-// 15 synlige evner i 4 kategorier (§3). prolog merged ind i time_trial (§0.1 Beslutning 2).
-// Rækkefølge = visnings-/lagrings-orden.
-export const VISIBLE_ABILITIES = Object.freeze([
-  // Fysiske (10) — prolog merged ind i time_trial (§0.1 Beslutning 2)
-  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration",
-  "punch", "endurance", "recovery", "durability",
-  // Tekniske (3)
-  "descending", "cobblestone", "positioning",
-  // Taktisk/mentale (2)
-  "aggression", "tactics",
-]);
+// 15 synlige evner (§3). prolog merged ind i time_trial (§0.1 Beslutning 2).
+// #3665: udledt af evne-registrets `storageOrder` = visnings-/lagrings-orden.
+// At tilføje en evne kræver nu én registry-post, ikke en jagt gennem tredive
+// filer — se docs/HOWTO_ADD_ABILITY.md.
+export const VISIBLE_ABILITIES = REGISTRY_ABILITY_KEYS;
 
 // Skjulte evner (§3). potentiale forbliver en eksisterende riders-kolonne; her
 // udleder vi kun hidden_potential.
@@ -92,12 +91,10 @@ export const ALL_ABILITY_KEYS = Object.freeze([...VISIBLE_ABILITIES, ...HIDDEN_A
 
 // Disciplin-evne → primær PCM-stat (§3 "Kilde"). Bruges kun i FALLBACK-stien
 // (ingen fysiologi). prolog FJERNET. Ren 50-85 → 1-99-mapping.
-export const PRIMARY_STAT = Object.freeze({
-  climbing: "stat_bj", time_trial: "stat_tt", flat: "stat_fl",
-  tempo: "stat_kb", sprint: "stat_sp", acceleration: "stat_acc", punch: "stat_bk",
-  endurance: "stat_udh", recovery: "stat_res", durability: "stat_mod",
-  descending: "stat_ned", cobblestone: "stat_bro",
-});
+// #3665: udledt af registrets `derivation: { source: "pcm", stat }`. De tre evner
+// med `source: "skill"` (positioning, aggression, tactics) har ingen PCM-kilde og
+// optræder derfor bevidst ikke her — præcis som før.
+export const PRIMARY_STAT = REGISTRY_PRIMARY_STAT;
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 

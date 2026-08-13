@@ -53,11 +53,13 @@
 // ikke en produktionsbug. KUN backfillCores.js/riderValueRefresh.js (produktions-
 // skrivestier) er opdateret til at bruge ability_caps som input.
 
+import { REGISTRY_CLASSIFIER_KEYS } from "./abilityRegistry.js";
+import { CLASSIFIER_WEIGHTS } from "./weights/classifierWeights.js";
+
 // De evner type-formlerne + guards kan referere (kolonner i rider_derived_abilities).
-export const ABILITY_KEYS = Object.freeze([
-  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration",
-  "punch", "endurance", "recovery", "durability", "descending", "cobblestone", "aggression",
-]);
+// #3665: udledt af evne-registret (`inClassifier`) i stedet for en egen literal —
+// positioning og tactics er de to af de 15 der IKKE er klassifikator-input.
+export const ABILITY_KEYS = REGISTRY_CLASSIFIER_KEYS;
 
 // Kontrast-vægte: positiv = speciale, negativ = modsat (straffes). Rækkefølgen er
 // TIE-BREAK-prioritet (markante specialister først; brede typer sidst) + dropdown-orden.
@@ -72,16 +74,12 @@ export const ABILITY_KEYS = Object.freeze([
 // caps (kun 1-3 af 8 typer vægter disse evner positivt, så de er strukturelt lave
 // for alle andre) — trimmet til kun sprint. brostensrytter/rouleur opjusteret
 // (cobblestone/flat) for at komme over ejerens ~3%-gulv.
-export const RIDER_TYPES = Object.freeze([
-  { key: "sprinter",       weights: { acceleration: 3, sprint: 2, flat: 1, durability: 1, climbing: -2, endurance: -1 } },
-  { key: "tt",             weights: { time_trial: 3, climbing: -2, sprint: -1, punch: -1 } }, // prolog merged ind i time_trial (§0.1 Besl. 2). climbing:-2 (#1122): en ren tidskører er IKKE bjergrytter — uden den vandt tt-scoren for komplette gc-ryttere (høj tt OG climbing) → gc deriverede kun ~21 mod ejer-gulv ≥30. BEVARET uændret i #3325 (netop den konkurrence gc-gaten isolerer).
-  { key: "climber",        weights: { climbing: 3, tempo: 2, punch: 1, endurance: 1, sprint: -1 } }, // #3325: acceleration/flat-straf fjernet (var en generisk "ikke-sprinter"-bonus under caps); sprint -2→-1.
-  { key: "puncheur",       weights: { punch: 3, tempo: 2, endurance: 1, time_trial: -1, sprint: -1 } }, // #3325: climbing:1-krydsled mod climber fjernet.
-  { key: "brostensrytter", weights: { cobblestone: 6, flat: 2, endurance: 1, punch: 1, climbing: -1 } }, // #3325: cobblestone 5→6, climbing-straf -2→-1 (målt: løftede 0,7%→2,2%).
-  { key: "baroudeur",      weights: { aggression: 3, flat: 1, punch: 1, endurance: 1, descending: 1, recovery: 1, time_trial: -1 } },
-  { key: "rouleur",        weights: { flat: 4, endurance: 1, climbing: -1, sprint: -1 } }, // #3325: flat 2→4 (målt: løftede 1,5%→2,1%; flat er den stærkeste rouleur-diskriminator under caps, endurance er for bredt delt til at skelne).
-  { key: "gc",             weights: { climbing: 3, time_trial: 3, recovery: 2, tempo: 2, endurance: 1, durability: 1, sprint: -2 } },
-]);
+// #3665: selve tabellen bor nu i ./weights/classifierWeights.js — én af fire
+// adskilte vægt-tabeller (klassifikation / caps-formning / værdi / visning) der
+// før var ÉN tabel med fire læsere. Se den fils header for hvorfor de tre andre
+// er bit-identiske kopier og ikke deler literal med denne.
+// Tabellen er FROSSET i rytter-pakken (ejer 13/8) — se classifierWeights.js.
+export const RIDER_TYPES = CLASSIFIER_WEIGHTS;
 
 export const RIDER_TYPE_KEYS = Object.freeze(RIDER_TYPES.map((t) => t.key));
 
