@@ -1,20 +1,20 @@
 import { test, expect } from "@playwright/test";
 import { installNetworkMocks, stabilizePage, login, collectBrowserErrors, evidenceShotPath } from "./fixtures.js";
 
-// #3667 — Scouting-fanen på rytterprofilen havde INGEN e2e-dækning overhovedet,
-// og `frontend-mock` stubbede ikke GET /api/riders/:id/scouting-report. Fanen
-// kunne derfor kun ses mod en kørende backend, hvilket er præcis grunden til at
-// to usandheder fik lov at stå på den i månedsvis:
+// #3667 — Scouting-fanen på rytterprofilen havde INGEN e2e-dækning overhovedet.
+// Mocken fandtes (mockHandlers: `/scouting-report` → SEED_SCOUTING_REPORT, #3334),
+// men ingen spec åbnede nogensinde fanen. Derfor kunne to usandheder stå på den
+// i månedsvis uden at nogen gate fangede dem:
 //
 //   • help.json lovede at potentiale "aldrig" vises som et tal — men
 //     RiderScoutingTab printer `{now} · {ceilLo}–{ceilHi}` pr. ryttertype.
-//   • chippen sagde "Høj tillid" om et bånd der er 10 rating-point bredt, fordi
-//     buildVerdict's `confidence` måler hvor FULDT scoutet rytteren er, ikke hvor
-//     præcist estimatet er.
+//   • chippen sagde "Høj tillid" om et bånd der kan være 10 rating-point bredt,
+//     fordi buildVerdict's `confidence` måler hvor FULDT scoutet rytteren er,
+//     ikke hvor præcist estimatet er (scoutEngine.minHalfWidthByScoutRating:
+//     gulvet er 5,0 ved spejder-overall 40, som 149 af 202 hold har).
 //
-// Mock'en (mockHandlers.scoutingReport) sætter bevidst et 10-point-bånd hos et
-// hold med standard-spejderen (overall 40) — den tilstand hvor modsigelsen var
-// størst. Se scoutEngine.minHalfWidthByScoutRating: gulvet er 5,0 ved overall 40.
+// Assertions herunder er bevidst bundet til FORM frem for til seedets tal, så
+// specen ikke knækker hvis SEED_SCOUTING_REPORT justeres af andre grunde.
 
 const OWN_RIDER = "rider-1";
 
