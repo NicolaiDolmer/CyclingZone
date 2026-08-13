@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Næste session:** **[#3665](https://github.com/NicolaiDolmer/CyclingZone/issues/3665) — evne-registry + split af vægt-tabellen i fire.** Ren refaktorering, nul synlige ændringer, bevis = R2/R3 (ingen rytters caps/type/potentiale/markedsværdi flytter sig). Fundamentet under hele spor B. Model: arkitekt i hovedtråden + sonnet-workers i worktree.
+> **🎯 Næste session:** **rytter-pakkens designsession ([#3664](https://github.com/NicolaiDolmer/CyclingZone/issues/3664))** — hele pakken designes færdig med ejeren FØR første linje kode, derefter bygges #3665 og videre i samme session. Ejer-krav 13/8: kvalitet over tempo, skal lande ordentligt første gang. Prompt + de 8 spørgsmål: [`docs/sessions/2026-08-13-rytter-pakke-designsession-prompt.md`](sessions/2026-08-13-rytter-pakke-designsession-prompt.md). **Ryd bordet først: merge PR #3641 + #3663.** Model: Opus 5 høj reasoning + sonnet-workers.
 
 > **⭐ ALTOVERSKYGGENDE — spor B, startet 13/8:** ejer-mandat ordret: *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Rammen er **loft, potentiale, ryttertyper og følelsen af at træning ikke virker**. Kæde: #3665 → #3666 → #2454 → #3592 → capsShaping → #3643/#3649 → #3667. Spec: [`rating-fundament-v3`](superpowers/specs/2026-08-13-rating-fundament-v3-design.md). **#3668 rod-fix udskudt igen** (ejer 13/8: de faktisk viste stats kan vente) → vej A står, de 8 opskrifter i §3 gælder som skrevet.
 
