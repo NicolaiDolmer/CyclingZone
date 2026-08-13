@@ -1,0 +1,2733 @@
+{
+  "$comment": "Mirror of the live public schema (relation -> columns) + single-column foreign keys. Read by scripts/lint-schema-columns.mjs to reject selects against columns that do not exist. Generated — do NOT hand-edit. Refresh: node scripts/lint-schema-columns.mjs --update-snapshot (requires SUPABASE_DB_URL via Infisical). Refs #3586.",
+  "generatedAt": "2026-08-14T00:00:00.000Z",
+  "relations": {
+    "academy_graduation": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "rider_id",
+        "season_id",
+        "status",
+        "deadline",
+        "created_at",
+        "resolved_at"
+      ]
+    },
+    "academy_intake": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "rider_id",
+        "season_id",
+        "is_serious",
+        "status",
+        "created_at",
+        "resolved_at",
+        "signing_fee"
+      ]
+    },
+    "academy_intake_ticks": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "tick_date",
+        "created_at"
+      ]
+    },
+    "academy_season_intake_runs": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "season_id",
+        "created_at"
+      ]
+    },
+    "achievements": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "category",
+        "title",
+        "description",
+        "icon",
+        "is_secret",
+        "sort_order"
+      ]
+    },
+    "activity_feed": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "type",
+        "team_id",
+        "team_name",
+        "rider_id",
+        "rider_name",
+        "amount",
+        "meta",
+        "created_at"
+      ]
+    },
+    "admin_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "admin_user_id",
+        "action_type",
+        "description",
+        "target_team_id",
+        "target_rider_id",
+        "meta",
+        "created_at"
+      ]
+    },
+    "ai_active_season_status": {
+      "kind": "view",
+      "columns": [
+        "season_id",
+        "season_number",
+        "status",
+        "race_days_total",
+        "race_days_completed",
+        "race_count",
+        "race_result_count",
+        "standings_count",
+        "prize_transaction_count"
+      ]
+    },
+    "ai_race_import_blockers": {
+      "kind": "view",
+      "columns": [
+        "import_log_id",
+        "created_at",
+        "rows_processed",
+        "rows_updated",
+        "rows_inserted",
+        "status",
+        "errors"
+      ]
+    },
+    "ai_recent_import_health": {
+      "kind": "view",
+      "columns": [
+        "id",
+        "import_type",
+        "rows_processed",
+        "rows_updated",
+        "rows_inserted",
+        "error_count",
+        "created_at"
+      ]
+    },
+    "ai_recovery_runs": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "tick_date",
+        "riders_recovered",
+        "created_at"
+      ]
+    },
+    "app_config": {
+      "kind": "table",
+      "columns": [
+        "key",
+        "value",
+        "description",
+        "updated_at",
+        "updated_by"
+      ]
+    },
+    "auction_bids": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "auction_id",
+        "team_id",
+        "amount",
+        "bid_time",
+        "triggered_extension",
+        "is_proxy"
+      ]
+    },
+    "auction_proxy_bids": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "auction_id",
+        "team_id",
+        "max_amount",
+        "created_at"
+      ]
+    },
+    "auction_timing_config": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "duration_hours",
+        "weekday_open_hour",
+        "weekday_close_hour",
+        "weekend_open_hour",
+        "weekend_close_hour",
+        "extension_minutes",
+        "updated_at",
+        "deadline_day_override",
+        "market_pause_level",
+        "market_paused_at",
+        "market_paused_reason"
+      ]
+    },
+    "auctions": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "seller_team_id",
+        "starting_price",
+        "current_price",
+        "current_bidder_id",
+        "min_increment",
+        "requested_start",
+        "calculated_end",
+        "actual_end",
+        "status",
+        "extension_count",
+        "created_at",
+        "is_guaranteed_sale",
+        "guaranteed_price",
+        "is_flash",
+        "cancelled_at",
+        "cancelled_by_user_id",
+        "is_youth",
+        "expired_intake_team_id"
+      ]
+    },
+    "backup_2407_20260715_pending_removal": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "name",
+        "league_division_id",
+        "pending_removal_at",
+        "backed_up_at"
+      ]
+    },
+    "backup_2456_derived_20260715": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "formula_version",
+        "climbing",
+        "time_trial",
+        "sprint",
+        "punch",
+        "endurance",
+        "cobblestone",
+        "acceleration",
+        "recovery",
+        "tactics",
+        "positioning",
+        "generated_at",
+        "prolog",
+        "flat",
+        "tempo",
+        "durability",
+        "descending",
+        "aggression",
+        "hidden_potential",
+        "ability_caps",
+        "ability_progress",
+        "season_budget_baseline",
+        "season_budget_season"
+      ]
+    },
+    "backup_2456_free_youth_20260715": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "pcm_id",
+        "firstname",
+        "lastname",
+        "birthdate",
+        "nationality_code",
+        "height",
+        "weight",
+        "popularity",
+        "uci_points",
+        "team_id",
+        "ai_team_id",
+        "stat_fl",
+        "stat_bj",
+        "stat_kb",
+        "stat_bk",
+        "stat_tt",
+        "stat_prl",
+        "stat_bro",
+        "stat_sp",
+        "stat_acc",
+        "stat_ned",
+        "stat_udh",
+        "stat_mod",
+        "stat_res",
+        "stat_ftr",
+        "is_u25",
+        "created_at",
+        "updated_at",
+        "pending_team_id",
+        "prize_earnings_bonus",
+        "potentiale",
+        "acquired_at",
+        "is_retired",
+        "base_value",
+        "primary_type",
+        "secondary_type",
+        "market_value",
+        "salary",
+        "contract_length",
+        "contract_end_season",
+        "is_academy",
+        "owner_is_ai"
+      ]
+    },
+    "backup_2456_watchlist_20260715": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "rider_id",
+        "note",
+        "created_at"
+      ]
+    },
+    "backup_2590_season_budget_20260719": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "season_budget_baseline",
+        "season_budget_season",
+        "backed_up_at"
+      ]
+    },
+    "backup_3048_20260727_sprints": {
+      "kind": "table",
+      "columns": [
+        "profile_id",
+        "race_id",
+        "stage_number",
+        "sprints_before",
+        "backed_up_at"
+      ]
+    },
+    "backup_academy_freeagent_fix_20260628": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "pcm_id",
+        "firstname",
+        "lastname",
+        "birthdate",
+        "nationality_code",
+        "height",
+        "weight",
+        "popularity",
+        "uci_points",
+        "team_id",
+        "ai_team_id",
+        "stat_fl",
+        "stat_bj",
+        "stat_kb",
+        "stat_bk",
+        "stat_tt",
+        "stat_prl",
+        "stat_bro",
+        "stat_sp",
+        "stat_acc",
+        "stat_ned",
+        "stat_udh",
+        "stat_mod",
+        "stat_res",
+        "stat_ftr",
+        "is_u25",
+        "created_at",
+        "updated_at",
+        "pending_team_id",
+        "prize_earnings_bonus",
+        "potentiale",
+        "acquired_at",
+        "is_retired",
+        "base_value",
+        "primary_type",
+        "secondary_type",
+        "market_value",
+        "salary",
+        "contract_length",
+        "contract_end_season",
+        "is_academy"
+      ]
+    },
+    "backup_academy_graduation_promote_contract_fix_20260805": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "team_id",
+        "contract_length",
+        "contract_end_season",
+        "salary",
+        "backed_up_at"
+      ]
+    },
+    "backup_academy_promotion_contract_fix_20260725": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "team_id",
+        "salary",
+        "contract_length",
+        "contract_end_season",
+        "backed_up_at"
+      ]
+    },
+    "backup_academy_salary_2083_20260703": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "old_salary",
+        "base_value",
+        "prize_earnings_bonus",
+        "backed_up_at"
+      ]
+    },
+    "backup_auction_push_24h_20260719": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "old_calculated_end",
+        "status",
+        "backed_up_at"
+      ]
+    },
+    "backup_boardgoals_formation_20260630": {
+      "kind": "table",
+      "columns": [
+        "board_id",
+        "team_id",
+        "team_name",
+        "division",
+        "plan_type",
+        "focus",
+        "negotiation_status",
+        "old_goals",
+        "backed_up_at"
+      ]
+    },
+    "backup_chronrebuild_20260628_entries": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role"
+      ]
+    },
+    "backup_chronrebuild_20260628_profiles": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "profile_type",
+        "finale_type",
+        "demand_vector",
+        "generator_version",
+        "is_manual",
+        "generated_at"
+      ]
+    },
+    "backup_chronrebuild_20260628_races": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "season_id",
+        "name",
+        "race_type",
+        "stages",
+        "status",
+        "created_at",
+        "race_class",
+        "prize_paid_at",
+        "pool_race_id",
+        "edition_year",
+        "stages_completed",
+        "scheduled_for",
+        "league_division_id",
+        "game_day_start"
+      ]
+    },
+    "backup_chronrebuild_20260628_schedule": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "scheduled_at",
+        "created_at",
+        "game_day"
+      ]
+    },
+    "backup_chronrebuild_20260628_withdrawals": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "team_id",
+        "withdrawn_at",
+        "withdrawn_reason"
+      ]
+    },
+    "backup_fairplay_20260722_orphan_entries": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role"
+      ]
+    },
+    "backup_fairplay_20260722_race_entries": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role"
+      ]
+    },
+    "backup_fairplay_20260722_riders": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "pcm_id",
+        "firstname",
+        "lastname",
+        "birthdate",
+        "nationality_code",
+        "height",
+        "weight",
+        "popularity",
+        "uci_points",
+        "team_id",
+        "ai_team_id",
+        "stat_fl",
+        "stat_bj",
+        "stat_kb",
+        "stat_bk",
+        "stat_tt",
+        "stat_prl",
+        "stat_bro",
+        "stat_sp",
+        "stat_acc",
+        "stat_ned",
+        "stat_udh",
+        "stat_mod",
+        "stat_res",
+        "stat_ftr",
+        "is_u25",
+        "created_at",
+        "updated_at",
+        "pending_team_id",
+        "prize_earnings_bonus",
+        "potentiale",
+        "acquired_at",
+        "is_retired",
+        "base_value",
+        "primary_type",
+        "secondary_type",
+        "salary",
+        "contract_length",
+        "contract_end_season",
+        "is_academy",
+        "owner_is_ai",
+        "peak_suggestions_dismissed_season_id",
+        "current_production_value",
+        "market_value",
+        "generation_tag"
+      ]
+    },
+    "backup_fairplay_20260722_teams": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "name",
+        "is_ai",
+        "ai_source_id",
+        "division",
+        "balance",
+        "sponsor_income",
+        "is_frozen",
+        "created_at",
+        "manager_name",
+        "is_bank",
+        "season_1_identity_basis",
+        "consecutive_low_satisfaction_expirations",
+        "team_dna_key",
+        "team_dna_chosen_at",
+        "is_test_account",
+        "transfer_frozen",
+        "debt_breach_streak",
+        "starter_squad_allocated_at",
+        "academy_intake_seeded_at",
+        "league_division_id",
+        "starter_depth_topped_up_at",
+        "emergency_loan_streak",
+        "pending_removal_at",
+        "onboarding_progress_dismissed_at",
+        "my_result_seen_race_id"
+      ]
+    },
+    "backup_fairplay_20260722_transfer_offers": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "listing_id",
+        "buyer_team_id",
+        "offer_amount",
+        "status",
+        "counter_amount",
+        "message",
+        "created_at",
+        "updated_at",
+        "round",
+        "last_action_by",
+        "expires_at",
+        "rider_id",
+        "seller_team_id",
+        "buyer_confirmed",
+        "seller_confirmed",
+        "buyer_archived_at",
+        "seller_archived_at"
+      ]
+    },
+    "backup_fairplay_20260722_users": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "email",
+        "username",
+        "role",
+        "created_at",
+        "discord_id",
+        "xp",
+        "level",
+        "last_seen"
+      ]
+    },
+    "backup_fairplay_2221_20260706_listings": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "seller_team_id",
+        "asking_price",
+        "status",
+        "created_at"
+      ]
+    },
+    "backup_fairplay_2221_20260706_race_entries": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role"
+      ]
+    },
+    "backup_fairplay_2221_20260706_riders": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "pcm_id",
+        "firstname",
+        "lastname",
+        "birthdate",
+        "nationality_code",
+        "height",
+        "weight",
+        "popularity",
+        "uci_points",
+        "team_id",
+        "ai_team_id",
+        "stat_fl",
+        "stat_bj",
+        "stat_kb",
+        "stat_bk",
+        "stat_tt",
+        "stat_prl",
+        "stat_bro",
+        "stat_sp",
+        "stat_acc",
+        "stat_ned",
+        "stat_udh",
+        "stat_mod",
+        "stat_res",
+        "stat_ftr",
+        "is_u25",
+        "created_at",
+        "updated_at",
+        "pending_team_id",
+        "prize_earnings_bonus",
+        "potentiale",
+        "acquired_at",
+        "is_retired",
+        "base_value",
+        "primary_type",
+        "secondary_type",
+        "market_value",
+        "salary",
+        "contract_length",
+        "contract_end_season",
+        "is_academy"
+      ]
+    },
+    "backup_fairplay_2221_20260706_sponsors": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "sponsor_name",
+        "guaranteed_base",
+        "per_race_day_rate",
+        "length_seasons",
+        "start_season",
+        "expires_after_season",
+        "status",
+        "created_at"
+      ]
+    },
+    "backup_fairplay_2221_20260706_standings": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "season_id",
+        "team_id",
+        "division",
+        "total_points",
+        "races_completed",
+        "stage_wins",
+        "gc_wins",
+        "updated_at",
+        "rank_in_division",
+        "penalty_points",
+        "league_division_id"
+      ]
+    },
+    "backup_fairplay_2221_20260706_strategy": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "a_chain",
+        "captain_priorities",
+        "target_race_ids",
+        "updated_at"
+      ]
+    },
+    "backup_fairplay_2221_20260706_teams": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "name",
+        "is_ai",
+        "ai_source_id",
+        "division",
+        "balance",
+        "sponsor_income",
+        "is_frozen",
+        "created_at",
+        "manager_name",
+        "is_bank",
+        "season_1_identity_basis",
+        "consecutive_low_satisfaction_expirations",
+        "team_dna_key",
+        "team_dna_chosen_at",
+        "is_test_account",
+        "transfer_frozen",
+        "debt_breach_streak",
+        "starter_squad_allocated_at",
+        "academy_intake_seeded_at",
+        "league_division_id",
+        "starter_depth_topped_up_at"
+      ]
+    },
+    "backup_ghost_auctions_fix_20260628": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "seller_team_id",
+        "starting_price",
+        "current_price",
+        "current_bidder_id",
+        "min_increment",
+        "requested_start",
+        "calculated_end",
+        "actual_end",
+        "status",
+        "extension_count",
+        "created_at",
+        "is_guaranteed_sale",
+        "guaranteed_price",
+        "is_flash",
+        "cancelled_at",
+        "cancelled_by_user_id",
+        "is_youth"
+      ]
+    },
+    "backup_italiensk_klassiker_monument_goal_fix_20260731": {
+      "kind": "table",
+      "columns": [
+        "board_id",
+        "team_id",
+        "current_goals",
+        "backed_up_at"
+      ]
+    },
+    "backup_race_results_2103_20260702": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "result_type",
+        "rank",
+        "rider_id",
+        "rider_name",
+        "team_id",
+        "team_name",
+        "finish_time",
+        "points_earned",
+        "prize_money",
+        "imported_at",
+        "in_breakaway",
+        "breakaway_caught"
+      ]
+    },
+    "backup_seedfix_20260628_race_stage_profiles": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "profile_type",
+        "finale_type",
+        "demand_vector",
+        "generator_version",
+        "is_manual",
+        "generated_at"
+      ]
+    },
+    "backup_team_csc_board_2104_20260702": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "plan_type",
+        "focus",
+        "satisfaction",
+        "budget_modifier",
+        "current_goals",
+        "season_id",
+        "created_at",
+        "updated_at",
+        "negotiation_status",
+        "proposed_goals",
+        "negotiation_rounds",
+        "negotiated_at",
+        "plan_start_season_number",
+        "plan_end_season_number",
+        "seasons_completed",
+        "cumulative_stage_wins",
+        "cumulative_gc_wins",
+        "plan_start_balance",
+        "plan_start_sponsor_income",
+        "is_baseline",
+        "tradeoff_active_until_season_id",
+        "tradeoff_payload",
+        "major_pivot_used_at",
+        "season_start_satisfaction",
+        "season_start_anchor_season_id"
+      ]
+    },
+    "board_consequences": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "layer",
+        "status",
+        "severity",
+        "payload",
+        "source_board_id",
+        "expires_at_season_id",
+        "created_at",
+        "resolved_at"
+      ]
+    },
+    "board_plan_snapshots": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "board_id",
+        "season_id",
+        "season_number",
+        "season_within_plan",
+        "stage_wins",
+        "gc_wins",
+        "division_rank",
+        "satisfaction_delta",
+        "goals_met",
+        "goals_total",
+        "created_at",
+        "u25_stat_sum",
+        "u25_count"
+      ]
+    },
+    "board_profiles": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "plan_type",
+        "focus",
+        "satisfaction",
+        "budget_modifier",
+        "current_goals",
+        "season_id",
+        "created_at",
+        "updated_at",
+        "negotiation_status",
+        "proposed_goals",
+        "negotiation_rounds",
+        "negotiated_at",
+        "plan_start_season_number",
+        "plan_end_season_number",
+        "seasons_completed",
+        "cumulative_stage_wins",
+        "cumulative_gc_wins",
+        "plan_start_balance",
+        "plan_start_sponsor_income",
+        "is_baseline",
+        "tradeoff_active_until_season_id",
+        "tradeoff_payload",
+        "major_pivot_used_at",
+        "season_start_satisfaction",
+        "season_start_anchor_season_id"
+      ]
+    },
+    "board_request_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "board_id",
+        "season_id",
+        "season_number",
+        "request_type",
+        "outcome",
+        "title",
+        "summary",
+        "tradeoff_summary",
+        "request_payload",
+        "board_changes",
+        "created_at"
+      ]
+    },
+    "board_satisfaction_events": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "board_id",
+        "team_id",
+        "season_id",
+        "race_id",
+        "race_name",
+        "race_days_completed",
+        "satisfaction_before",
+        "satisfaction_after",
+        "satisfaction_delta",
+        "goals_met",
+        "goals_total",
+        "reason_category",
+        "created_at"
+      ]
+    },
+    "countries": {
+      "kind": "table",
+      "columns": [
+        "iso2",
+        "name_en",
+        "name_da",
+        "ioc_code",
+        "continent",
+        "birth_weight",
+        "talent_ceiling",
+        "reputation",
+        "reputation_seed",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "discord_dm_outbox": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "discord_id",
+        "payload",
+        "status",
+        "attempts",
+        "next_attempt_at",
+        "last_status",
+        "last_error",
+        "dead_at",
+        "created_at"
+      ]
+    },
+    "discord_race_digest_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "digest_date",
+        "item_count",
+        "created_at"
+      ]
+    },
+    "discord_settings": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "webhook_name",
+        "webhook_url",
+        "is_default",
+        "created_at",
+        "webhook_type",
+        "league_division_id",
+        "tier",
+        "is_summary"
+      ]
+    },
+    "discord_webhook_outbox": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "webhook_url",
+        "payload",
+        "status",
+        "attempts",
+        "next_attempt_at",
+        "last_status",
+        "last_error",
+        "dead_at",
+        "created_at"
+      ]
+    },
+    "email_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "team_id",
+        "email_type",
+        "dedupe_key",
+        "status",
+        "provider_id",
+        "error",
+        "created_at"
+      ]
+    },
+    "fairplay_flags": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "flag_type",
+        "team_id_lo",
+        "team_id_hi",
+        "score",
+        "signals",
+        "evidence",
+        "status",
+        "owner_note",
+        "first_detected_at",
+        "last_scored_at",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "fairplay_whitelisted_pairs": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id_lo",
+        "team_id_hi",
+        "reason",
+        "whitelisted_by",
+        "created_at"
+      ]
+    },
+    "finance_transactions": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "type",
+        "amount",
+        "description",
+        "season_id",
+        "race_id",
+        "created_at",
+        "related_loan_id",
+        "actor_type",
+        "actor_id",
+        "source_path",
+        "reason_code",
+        "before_balance",
+        "after_balance",
+        "related_entity_type",
+        "related_entity_id",
+        "idempotency_key",
+        "metadata"
+      ]
+    },
+    "forum_poll_options": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "post_id",
+        "idx",
+        "label"
+      ]
+    },
+    "forum_poll_votes": {
+      "kind": "table",
+      "columns": [
+        "post_id",
+        "option_id",
+        "user_id",
+        "created_at"
+      ]
+    },
+    "forum_posts": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "seq",
+        "created_at",
+        "user_id",
+        "team_id",
+        "category",
+        "title",
+        "body",
+        "is_pinned",
+        "reply_count",
+        "last_reply_at",
+        "deleted_at",
+        "deleted_by"
+      ]
+    },
+    "forum_replies": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "seq",
+        "created_at",
+        "post_id",
+        "user_id",
+        "team_id",
+        "body",
+        "deleted_at",
+        "deleted_by"
+      ]
+    },
+    "forum_reports": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "seq",
+        "created_at",
+        "reporter_user_id",
+        "target_type",
+        "target_id",
+        "reason",
+        "status",
+        "resolved_at",
+        "resolved_by"
+      ]
+    },
+    "founder_supporter_waitlist": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "email",
+        "discord_handle",
+        "contact_type",
+        "interest_level",
+        "preferred_tier",
+        "main_reason",
+        "valued_benefits",
+        "fairness_red_line",
+        "follow_up_consent",
+        "source",
+        "consent_given_at",
+        "status",
+        "notes",
+        "intent_score",
+        "created_at",
+        "country",
+        "utm_campaign",
+        "utm_medium"
+      ]
+    },
+    "global_rank_mv": {
+      "kind": "matview",
+      "columns": [
+        "team_id",
+        "name",
+        "division",
+        "is_ai",
+        "banked_points",
+        "season_points",
+        "global_points",
+        "active_recent",
+        "is_rookie",
+        "global_rank"
+      ]
+    },
+    "global_rank_season_start_snapshot": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "season_id",
+        "global_rank",
+        "captured_at"
+      ]
+    },
+    "global_rank_weekly_snapshot": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "global_rank",
+        "captured_at"
+      ]
+    },
+    "growth_metric_snapshots": {
+      "kind": "table",
+      "columns": [
+        "snapshot_date",
+        "dau",
+        "wau",
+        "mau",
+        "total_registered",
+        "d1_eligible",
+        "d1_returning",
+        "d1_retention_pct",
+        "d7_eligible",
+        "d7_returning",
+        "d7_retention_pct",
+        "d30_eligible",
+        "d30_returning",
+        "d30_retention_pct",
+        "active_subscriptions",
+        "paying_customers",
+        "ltv_total_cents",
+        "ltv_avg_cents",
+        "nps_response_count",
+        "nps_promoters",
+        "nps_passives",
+        "nps_detractors",
+        "nps_score",
+        "generated_at"
+      ]
+    },
+    "hall_of_fame": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "category",
+        "team_id",
+        "team_name",
+        "season_id",
+        "season_number",
+        "value",
+        "recorded_at"
+      ]
+    },
+    "identity_events": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "team_id",
+        "event_type",
+        "entity_id",
+        "ip",
+        "ip_prefix",
+        "user_agent",
+        "accept_language",
+        "timezone_offset_minutes",
+        "first_seen_at",
+        "metadata",
+        "created_at"
+      ]
+    },
+    "import_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "import_type",
+        "filename",
+        "rows_processed",
+        "rows_updated",
+        "rows_inserted",
+        "errors",
+        "imported_by",
+        "created_at"
+      ]
+    },
+    "launch_waitlist": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "email",
+        "name",
+        "consent_given_at",
+        "source",
+        "utm_campaign",
+        "utm_medium",
+        "created_at"
+      ]
+    },
+    "league_divisions": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "tier",
+        "pool_index",
+        "label"
+      ]
+    },
+    "loan_config": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "division",
+        "loan_type",
+        "origination_fee_pct",
+        "interest_rate_pct",
+        "seasons",
+        "debt_ceiling",
+        "updated_at"
+      ]
+    },
+    "loans": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "loan_type",
+        "principal",
+        "origination_fee",
+        "interest_rate",
+        "seasons_total",
+        "seasons_remaining",
+        "amount_remaining",
+        "status",
+        "created_at",
+        "updated_at",
+        "season_id",
+        "accrued_interest",
+        "last_interest_season_id"
+      ]
+    },
+    "manager_achievements": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "achievement_id",
+        "unlocked_at"
+      ]
+    },
+    "matview_refresh_heartbeat": {
+      "kind": "table",
+      "columns": [
+        "matview_group",
+        "refreshed_at"
+      ]
+    },
+    "notifications": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "type",
+        "title",
+        "message",
+        "is_read",
+        "related_id",
+        "created_at",
+        "metadata"
+      ]
+    },
+    "nps_responses": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "score",
+        "reason",
+        "created_at"
+      ]
+    },
+    "ops_alert_state": {
+      "kind": "table",
+      "columns": [
+        "alert_key",
+        "signature",
+        "last_alerted_at",
+        "updated_at"
+      ]
+    },
+    "pending_race_result_rows": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "pending_id",
+        "rider_id",
+        "result_type",
+        "rank",
+        "stage_number"
+      ]
+    },
+    "pending_race_results": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "submitted_by",
+        "submitted_at",
+        "status",
+        "admin_note",
+        "reviewed_at",
+        "reviewed_by"
+      ]
+    },
+    "player_events": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "user_id",
+        "event_name",
+        "event_data",
+        "created_at"
+      ]
+    },
+    "player_feedback": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "created_at",
+        "user_id",
+        "team_id",
+        "category",
+        "message",
+        "page_path",
+        "viewport",
+        "user_agent",
+        "status",
+        "reply_message",
+        "replied_at",
+        "replied_by",
+        "status_changed_at",
+        "seq"
+      ]
+    },
+    "prize_tables": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_type",
+        "result_type",
+        "rank",
+        "prize_amount"
+      ]
+    },
+    "race_balance_drift_daily": {
+      "kind": "table",
+      "columns": [
+        "metric_date",
+        "metrics",
+        "statuses",
+        "computed_at"
+      ]
+    },
+    "race_classes": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "class_key",
+        "category",
+        "race_type",
+        "display_name"
+      ]
+    },
+    "race_entries": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role"
+      ]
+    },
+    "race_entry_clears": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "team_id",
+        "cleared_at"
+      ]
+    },
+    "race_incidents": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "rider_id",
+        "kind",
+        "outcome",
+        "time_loss_seconds",
+        "injury_days",
+        "created_at"
+      ]
+    },
+    "race_point_cascade": {
+      "kind": "table",
+      "columns": [
+        "race_class",
+        "result_type",
+        "factor",
+        "updated_at"
+      ]
+    },
+    "race_point_master": {
+      "kind": "table",
+      "columns": [
+        "result_type",
+        "master_class",
+        "anchor",
+        "ratio_ref",
+        "ratio",
+        "updated_at"
+      ]
+    },
+    "race_point_template": {
+      "kind": "table",
+      "columns": [
+        "race_class",
+        "result_type",
+        "rank",
+        "weight",
+        "updated_at"
+      ]
+    },
+    "race_points": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_class",
+        "result_type",
+        "rank",
+        "points",
+        "updated_at"
+      ]
+    },
+    "race_pool": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "external_id",
+        "name",
+        "race_class",
+        "race_type",
+        "stages",
+        "date_text",
+        "country",
+        "created_at",
+        "updated_at",
+        "terrain_archetype"
+      ]
+    },
+    "race_results": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "result_type",
+        "rank",
+        "rider_id",
+        "rider_name",
+        "team_id",
+        "team_name",
+        "finish_time",
+        "points_earned",
+        "prize_money",
+        "imported_at",
+        "in_breakaway",
+        "breakaway_caught",
+        "sprint_points",
+        "kom_points",
+        "bonus_seconds",
+        "entrant_uid",
+        "entrant_key"
+      ]
+    },
+    "race_simulation_rider_scores": {
+      "kind": "table",
+      "columns": [
+        "run_id",
+        "rider_id",
+        "rank",
+        "components"
+      ]
+    },
+    "race_simulation_runs": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "seed",
+        "engine_version",
+        "entrant_snapshot",
+        "input_checksum",
+        "created_at",
+        "source",
+        "salt_version"
+      ]
+    },
+    "race_stage_moments": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "moment_key",
+        "params",
+        "significance",
+        "rider_ids",
+        "team_ids",
+        "created_at"
+      ]
+    },
+    "race_stage_passages": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "waypoint_kind",
+        "waypoint_index",
+        "waypoint_name",
+        "waypoint_km",
+        "climb_category",
+        "rider_id",
+        "rider_name",
+        "team_id",
+        "passage_rank",
+        "points",
+        "bonus_seconds"
+      ]
+    },
+    "race_stage_profiles": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "stage_number",
+        "profile_type",
+        "finale_type",
+        "demand_vector",
+        "generator_version",
+        "is_manual",
+        "generated_at",
+        "distance_km",
+        "elevation_gain_m",
+        "climbs",
+        "sprints",
+        "sectors"
+      ]
+    },
+    "race_stage_roles": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "rider_id",
+        "race_role",
+        "effort",
+        "updated_at"
+      ]
+    },
+    "race_stage_schedule": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "scheduled_at",
+        "created_at",
+        "game_day"
+      ]
+    },
+    "race_withdrawals": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "team_id",
+        "withdrawn_at",
+        "withdrawn_reason"
+      ]
+    },
+    "races": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "season_id",
+        "name",
+        "race_type",
+        "stages",
+        "status",
+        "created_at",
+        "race_class",
+        "prize_paid_at",
+        "pool_race_id",
+        "edition_year",
+        "stages_completed",
+        "scheduled_for",
+        "league_division_id",
+        "game_day_start"
+      ]
+    },
+    "rider_caps_3591_backup_20260813": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "ability_caps_before",
+        "captured_at"
+      ]
+    },
+    "rider_career_events": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "team_id",
+        "event_type",
+        "race_id",
+        "season_number",
+        "rider_name",
+        "team_name",
+        "params",
+        "significance",
+        "dedupe_key",
+        "occurred_at",
+        "created_at"
+      ]
+    },
+    "rider_condition": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "form",
+        "fatigue",
+        "injured_until",
+        "injury_cause",
+        "updated_at"
+      ]
+    },
+    "rider_derived_abilities": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "formula_version",
+        "climbing",
+        "time_trial",
+        "sprint",
+        "punch",
+        "endurance",
+        "cobblestone",
+        "acceleration",
+        "recovery",
+        "tactics",
+        "positioning",
+        "generated_at",
+        "prolog",
+        "flat",
+        "tempo",
+        "durability",
+        "descending",
+        "aggression",
+        "hidden_potential",
+        "ability_caps",
+        "ability_progress"
+      ]
+    },
+    "rider_derived_abilities_3570_backup_20260811": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "ability_caps",
+        "ability_progress",
+        "captured_at"
+      ]
+    },
+    "rider_derived_ability_history": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "snapshot_date",
+        "source",
+        "season_number",
+        "abilities",
+        "created_at"
+      ]
+    },
+    "rider_development_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "season_id",
+        "season_number",
+        "age",
+        "abilities",
+        "base_value",
+        "retired_this_season",
+        "created_at"
+      ]
+    },
+    "rider_peak_plans": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "season_id",
+        "target_race_id",
+        "window_start",
+        "window_end",
+        "locked_at",
+        "created_at"
+      ]
+    },
+    "rider_physiology_profiles": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "ftp_wkg",
+        "ftp_watts",
+        "vo2max_power_wkg",
+        "zone2_power_wkg",
+        "pmax_watts",
+        "power_5s_wkg",
+        "power_15s_wkg",
+        "power_1m_wkg",
+        "power_5m_wkg",
+        "high_intensity_energy_kj",
+        "time_to_exhaustion_ftp_min",
+        "fatigue_resistance",
+        "recovery_rate",
+        "height_cm",
+        "weight_kg",
+        "source",
+        "version",
+        "created_at",
+        "updated_at",
+        "power_2m_wkg",
+        "power_10m_wkg",
+        "aero"
+      ]
+    },
+    "rider_profile_views": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "user_id",
+        "viewed_at",
+        "view_date"
+      ]
+    },
+    "rider_rankings_mv": {
+      "kind": "matview",
+      "columns": [
+        "season_id",
+        "rider_id",
+        "points",
+        "prize_earned",
+        "stage_wins",
+        "gc_wins",
+        "classic_wins",
+        "pts_wins",
+        "mtn_wins",
+        "young_wins",
+        "yellow_days",
+        "green_days",
+        "polka_days",
+        "white_days",
+        "top3",
+        "top10"
+      ]
+    },
+    "rider_stat_history": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "synced_at",
+        "stat_fl",
+        "stat_bj",
+        "stat_kb",
+        "stat_bk",
+        "stat_tt",
+        "stat_prl",
+        "stat_bro",
+        "stat_sp",
+        "stat_acc",
+        "stat_ned",
+        "stat_udh",
+        "stat_mod",
+        "stat_res",
+        "stat_ftr",
+        "height",
+        "weight",
+        "popularity"
+      ]
+    },
+    "rider_uci_history": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "uci_points",
+        "synced_at"
+      ]
+    },
+    "rider_watchlist": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "rider_id",
+        "note",
+        "created_at"
+      ]
+    },
+    "riders": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "pcm_id",
+        "firstname",
+        "lastname",
+        "birthdate",
+        "nationality_code",
+        "height",
+        "weight",
+        "popularity",
+        "uci_points",
+        "team_id",
+        "ai_team_id",
+        "stat_fl",
+        "stat_bj",
+        "stat_kb",
+        "stat_bk",
+        "stat_tt",
+        "stat_prl",
+        "stat_bro",
+        "stat_sp",
+        "stat_acc",
+        "stat_ned",
+        "stat_udh",
+        "stat_mod",
+        "stat_res",
+        "stat_ftr",
+        "is_u25",
+        "created_at",
+        "updated_at",
+        "pending_team_id",
+        "prize_earnings_bonus",
+        "potentiale",
+        "acquired_at",
+        "is_retired",
+        "base_value",
+        "primary_type",
+        "secondary_type",
+        "salary",
+        "contract_length",
+        "contract_end_season",
+        "is_academy",
+        "owner_is_ai",
+        "peak_suggestions_dismissed_season_id",
+        "current_production_value",
+        "market_value",
+        "generation_tag",
+        "valuation_type",
+        "archetype_draw"
+      ]
+    },
+    "riders_3570_backup_20260811": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "archetype_draw",
+        "primary_type",
+        "secondary_type",
+        "valuation_type",
+        "base_value",
+        "market_value",
+        "is_retired",
+        "created_at",
+        "captured_at"
+      ]
+    },
+    "riders_3593_backup_20260811": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "archetype_draw_before",
+        "secondary_type_before",
+        "captured_at"
+      ]
+    },
+    "riders_type_backfill_snapshot_20260805": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "primary_type",
+        "secondary_type",
+        "valuation_type",
+        "base_value",
+        "market_value",
+        "snapshot_at"
+      ]
+    },
+    "roadmap_item_scores": {
+      "kind": "view",
+      "columns": [
+        "item_id",
+        "engine",
+        "title_en",
+        "approved",
+        "status",
+        "votes",
+        "avg_idea",
+        "avg_importance",
+        "steering_score"
+      ]
+    },
+    "roadmap_items": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "engine",
+        "sort_order",
+        "title_en",
+        "title_da",
+        "approved",
+        "status",
+        "created_at",
+        "updated_at",
+        "shipped_at"
+      ]
+    },
+    "roadmap_votes": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "item_id",
+        "user_id",
+        "idea_score",
+        "importance_score",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "schema_migrations": {
+      "kind": "table",
+      "columns": [
+        "filename",
+        "applied_at"
+      ]
+    },
+    "scout_actions": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "rider_id",
+        "season_id",
+        "created_at"
+      ]
+    },
+    "scout_assignments": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "staff_id",
+        "kind",
+        "status",
+        "rider_id",
+        "target_level",
+        "mission_criteria",
+        "travel_cost",
+        "started_on",
+        "ready_on",
+        "completed_at",
+        "result",
+        "season_id",
+        "created_at"
+      ]
+    },
+    "scout_sweep_runs": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "tick_date",
+        "created_at"
+      ]
+    },
+    "season_documentaries": {
+      "kind": "table",
+      "columns": [
+        "season_id",
+        "team_id",
+        "facts",
+        "deterministic_en",
+        "deterministic_da",
+        "llm_en",
+        "llm_da",
+        "llm_model",
+        "source",
+        "generated_at",
+        "updated_at"
+      ]
+    },
+    "season_form_reset_runs": {
+      "kind": "table",
+      "columns": [
+        "season_id",
+        "mode",
+        "riders",
+        "changed",
+        "avg_before",
+        "avg_after",
+        "started_at",
+        "completed_at"
+      ]
+    },
+    "season_standings": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "season_id",
+        "team_id",
+        "division",
+        "total_points",
+        "races_completed",
+        "stage_wins",
+        "gc_wins",
+        "updated_at",
+        "rank_in_division",
+        "penalty_points",
+        "league_division_id"
+      ]
+    },
+    "seasons": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "number",
+        "status",
+        "start_date",
+        "end_date",
+        "race_days_total",
+        "race_days_completed",
+        "created_at",
+        "stage_race_priority",
+        "single_race_boost"
+      ]
+    },
+    "signup_attribution": {
+      "kind": "table",
+      "columns": [
+        "user_id",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_term",
+        "utm_content",
+        "referrer",
+        "landing_path",
+        "first_seen_at",
+        "signed_up_at"
+      ]
+    },
+    "sponsor_contracts": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "sponsor_name",
+        "guaranteed_base",
+        "per_race_day_rate",
+        "length_seasons",
+        "start_season",
+        "expires_after_season",
+        "status",
+        "created_at",
+        "variant",
+        "guaranteed_fraction",
+        "race_day_share",
+        "bonus_clauses",
+        "results_bonus_paid",
+        "activated_at"
+      ]
+    },
+    "staff_derived_abilities": {
+      "kind": "table",
+      "columns": [
+        "staff_id",
+        "overall",
+        "dimensions",
+        "levels",
+        "role_skills",
+        "formula_version",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "subscriptions": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "alunta_customer_id",
+        "alunta_subscription_id",
+        "status",
+        "plan_interval",
+        "is_founder",
+        "current_period_end",
+        "last_event_id",
+        "created_at",
+        "updated_at",
+        "terms_version",
+        "terms_accepted_at",
+        "last_event_at"
+      ]
+    },
+    "swap_offers": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "offered_rider_id",
+        "requested_rider_id",
+        "proposing_team_id",
+        "receiving_team_id",
+        "cash_adjustment",
+        "counter_cash",
+        "status",
+        "message",
+        "proposing_confirmed",
+        "receiving_confirmed",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "team_board_members": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "archetype_key",
+        "selection_kind",
+        "alignment_score",
+        "is_chairman",
+        "assigned_at"
+      ]
+    },
+    "team_dna": {
+      "kind": "table",
+      "columns": [
+        "key",
+        "label",
+        "emoji",
+        "short_description",
+        "long_description",
+        "policy_axes",
+        "national_affinity",
+        "specialization_affinity",
+        "member_alignment_bonus",
+        "goal_weighting",
+        "tradition_goal",
+        "created_at"
+      ]
+    },
+    "team_facilities": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "track",
+        "tier",
+        "purchased_season",
+        "updated_at"
+      ]
+    },
+    "team_global_rank_points": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "banked_points",
+        "updated_at"
+      ]
+    },
+    "team_race_points_mv": {
+      "kind": "matview",
+      "columns": [
+        "season_id",
+        "team_id",
+        "race_id",
+        "race_name",
+        "race_points"
+      ]
+    },
+    "team_race_strategy": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "a_chain",
+        "captain_priorities",
+        "target_race_ids",
+        "updated_at"
+      ]
+    },
+    "team_rider_role_rules": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "rider_id",
+        "role_rule"
+      ]
+    },
+    "team_staff": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "role",
+        "name",
+        "tier",
+        "salary",
+        "hired_season",
+        "status",
+        "fired_season",
+        "created_at"
+      ]
+    },
+    "team_standings_ext_mv": {
+      "kind": "matview",
+      "columns": [
+        "season_id",
+        "team_id",
+        "comp_wins",
+        "comp_podiums",
+        "podiums",
+        "prize_earned"
+      ]
+    },
+    "teams": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "name",
+        "is_ai",
+        "ai_source_id",
+        "division",
+        "balance",
+        "sponsor_income",
+        "is_frozen",
+        "created_at",
+        "manager_name",
+        "is_bank",
+        "season_1_identity_basis",
+        "consecutive_low_satisfaction_expirations",
+        "team_dna_key",
+        "team_dna_chosen_at",
+        "is_test_account",
+        "transfer_frozen",
+        "debt_breach_streak",
+        "starter_squad_allocated_at",
+        "academy_intake_seeded_at",
+        "league_division_id",
+        "starter_depth_topped_up_at",
+        "emergency_loan_streak",
+        "pending_removal_at",
+        "onboarding_progress_dismissed_at",
+        "my_result_seen_race_id"
+      ]
+    },
+    "traffic_events": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "occurred_at",
+        "event",
+        "path",
+        "device",
+        "is_bot",
+        "visit_hash"
+      ]
+    },
+    "training_day_runs": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "tick_date",
+        "executed_by",
+        "bonus_applied",
+        "report",
+        "created_at"
+      ]
+    },
+    "training_plans": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "rider_id",
+        "season_id",
+        "focus",
+        "intensity",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "training_slot_health_daily": {
+      "kind": "table",
+      "columns": [
+        "snapshot_date",
+        "focus",
+        "riders_in_training",
+        "dead_slots",
+        "partial_slots",
+        "generated_at"
+      ]
+    },
+    "training_week_plans": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "rider_id",
+        "days",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "transfer_listings": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "seller_team_id",
+        "asking_price",
+        "status",
+        "created_at"
+      ]
+    },
+    "transfer_offers": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "listing_id",
+        "buyer_team_id",
+        "offer_amount",
+        "status",
+        "counter_amount",
+        "message",
+        "created_at",
+        "updated_at",
+        "round",
+        "last_action_by",
+        "expires_at",
+        "rider_id",
+        "seller_team_id",
+        "buyer_confirmed",
+        "seller_confirmed",
+        "buyer_archived_at",
+        "seller_archived_at"
+      ]
+    },
+    "transfer_windows": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "season_id",
+        "status",
+        "opened_at",
+        "closed_at",
+        "created_at",
+        "closes_at",
+        "final_whistle_sent_at",
+        "squad_enforcement_completed_at",
+        "board_negotiation_state",
+        "squad_enforcement_started_at",
+        "board_test_mode"
+      ]
+    },
+    "users": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "email",
+        "username",
+        "role",
+        "created_at",
+        "discord_id",
+        "xp",
+        "level",
+        "last_seen",
+        "login_streak",
+        "last_login_date",
+        "discord_dm_enabled",
+        "consent_preferences",
+        "language",
+        "is_beta_tester",
+        "nps_last_prompted_at",
+        "discord_dm_prefs",
+        "email_prefs",
+        "discord_dm_failure_count",
+        "discord_disconnected_at"
+      ]
+    },
+    "wage_daily_runs": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "tick_date",
+        "riders_charged",
+        "amount",
+        "created_at"
+      ]
+    },
+    "xp_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "user_id",
+        "amount",
+        "reason",
+        "created_at"
+      ]
+    }
+  },
+  "foreignKeys": {
+    "academy_graduation.rider_id": "riders",
+    "academy_graduation.season_id": "seasons",
+    "academy_graduation.team_id": "teams",
+    "academy_intake.rider_id": "riders",
+    "academy_intake.season_id": "seasons",
+    "academy_intake.team_id": "teams",
+    "academy_intake_ticks.team_id": "teams",
+    "academy_season_intake_runs.season_id": "seasons",
+    "academy_season_intake_runs.team_id": "teams",
+    "activity_feed.rider_id": "riders",
+    "activity_feed.team_id": "teams",
+    "admin_log.admin_user_id": "users",
+    "admin_log.target_rider_id": "riders",
+    "admin_log.target_team_id": "teams",
+    "ai_recovery_runs.team_id": "teams",
+    "auction_bids.auction_id": "auctions",
+    "auction_bids.team_id": "teams",
+    "auction_proxy_bids.auction_id": "auctions",
+    "auction_proxy_bids.team_id": "teams",
+    "auctions.cancelled_by_user_id": "users",
+    "auctions.current_bidder_id": "teams",
+    "auctions.expired_intake_team_id": "teams",
+    "auctions.rider_id": "riders",
+    "auctions.seller_team_id": "teams",
+    "board_consequences.expires_at_season_id": "seasons",
+    "board_consequences.source_board_id": "board_profiles",
+    "board_consequences.team_id": "teams",
+    "board_plan_snapshots.board_id": "board_profiles",
+    "board_plan_snapshots.season_id": "seasons",
+    "board_plan_snapshots.team_id": "teams",
+    "board_profiles.season_id": "seasons",
+    "board_profiles.season_start_anchor_season_id": "seasons",
+    "board_profiles.team_id": "teams",
+    "board_profiles.tradeoff_active_until_season_id": "seasons",
+    "board_request_log.board_id": "board_profiles",
+    "board_request_log.season_id": "seasons",
+    "board_request_log.team_id": "teams",
+    "board_satisfaction_events.board_id": "board_profiles",
+    "board_satisfaction_events.race_id": "races",
+    "board_satisfaction_events.season_id": "seasons",
+    "board_satisfaction_events.team_id": "teams",
+    "fairplay_flags.team_id_hi": "teams",
+    "fairplay_flags.team_id_lo": "teams",
+    "fairplay_whitelisted_pairs.team_id_hi": "teams",
+    "fairplay_whitelisted_pairs.team_id_lo": "teams",
+    "finance_transactions.race_id": "races",
+    "finance_transactions.related_loan_id": "loans",
+    "finance_transactions.season_id": "seasons",
+    "finance_transactions.team_id": "teams",
+    "forum_poll_options.post_id": "forum_posts",
+    "forum_poll_votes.option_id": "forum_poll_options",
+    "forum_poll_votes.post_id": "forum_posts",
+    "forum_posts.team_id": "teams",
+    "forum_replies.post_id": "forum_posts",
+    "forum_replies.team_id": "teams",
+    "global_rank_season_start_snapshot.season_id": "seasons",
+    "global_rank_season_start_snapshot.team_id": "teams",
+    "global_rank_weekly_snapshot.team_id": "teams",
+    "hall_of_fame.season_id": "seasons",
+    "hall_of_fame.team_id": "teams",
+    "identity_events.team_id": "teams",
+    "import_log.imported_by": "users",
+    "loans.last_interest_season_id": "seasons",
+    "loans.season_id": "seasons",
+    "loans.team_id": "teams",
+    "manager_achievements.achievement_id": "achievements",
+    "manager_achievements.user_id": "users",
+    "notifications.user_id": "users",
+    "nps_responses.user_id": "users",
+    "pending_race_result_rows.pending_id": "pending_race_results",
+    "pending_race_result_rows.rider_id": "riders",
+    "pending_race_results.race_id": "races",
+    "player_events.team_id": "teams",
+    "player_feedback.team_id": "teams",
+    "race_entries.race_id": "races",
+    "race_entries.rider_id": "riders",
+    "race_entries.team_id": "teams",
+    "race_entry_clears.race_id": "races",
+    "race_entry_clears.team_id": "teams",
+    "race_incidents.race_id": "races",
+    "race_incidents.rider_id": "riders",
+    "race_results.race_id": "races",
+    "race_results.rider_id": "riders",
+    "race_results.team_id": "teams",
+    "race_simulation_rider_scores.run_id": "race_simulation_runs",
+    "race_simulation_runs.race_id": "races",
+    "race_stage_moments.race_id": "races",
+    "race_stage_passages.race_id": "races",
+    "race_stage_profiles.race_id": "races",
+    "race_stage_roles.race_id": "races",
+    "race_stage_roles.rider_id": "riders",
+    "race_stage_schedule.race_id": "races",
+    "race_withdrawals.race_id": "races",
+    "race_withdrawals.team_id": "teams",
+    "races.league_division_id": "league_divisions",
+    "races.pool_race_id": "race_pool",
+    "races.season_id": "seasons",
+    "rider_caps_3591_backup_20260813.rider_id": "riders",
+    "rider_career_events.race_id": "races",
+    "rider_career_events.rider_id": "riders",
+    "rider_career_events.team_id": "teams",
+    "rider_condition.rider_id": "riders",
+    "rider_derived_abilities.rider_id": "riders",
+    "rider_derived_ability_history.rider_id": "riders",
+    "rider_development_log.rider_id": "riders",
+    "rider_development_log.season_id": "seasons",
+    "rider_peak_plans.rider_id": "riders",
+    "rider_peak_plans.season_id": "seasons",
+    "rider_peak_plans.target_race_id": "races",
+    "rider_physiology_profiles.rider_id": "riders",
+    "rider_profile_views.rider_id": "riders",
+    "rider_stat_history.rider_id": "riders",
+    "rider_uci_history.rider_id": "riders",
+    "rider_watchlist.rider_id": "riders",
+    "riders.ai_team_id": "teams",
+    "riders.peak_suggestions_dismissed_season_id": "seasons",
+    "riders.pending_team_id": "teams",
+    "riders.team_id": "teams",
+    "riders_3593_backup_20260811.rider_id": "riders",
+    "roadmap_votes.item_id": "roadmap_items",
+    "scout_actions.rider_id": "riders",
+    "scout_actions.season_id": "seasons",
+    "scout_actions.team_id": "teams",
+    "scout_assignments.rider_id": "riders",
+    "scout_assignments.season_id": "seasons",
+    "scout_assignments.staff_id": "team_staff",
+    "scout_assignments.team_id": "teams",
+    "scout_sweep_runs.team_id": "teams",
+    "season_documentaries.season_id": "seasons",
+    "season_documentaries.team_id": "teams",
+    "season_form_reset_runs.season_id": "seasons",
+    "season_standings.league_division_id": "league_divisions",
+    "season_standings.season_id": "seasons",
+    "season_standings.team_id": "teams",
+    "sponsor_contracts.team_id": "teams",
+    "staff_derived_abilities.staff_id": "team_staff",
+    "subscriptions.team_id": "teams",
+    "swap_offers.offered_rider_id": "riders",
+    "swap_offers.proposing_team_id": "teams",
+    "swap_offers.receiving_team_id": "teams",
+    "swap_offers.requested_rider_id": "riders",
+    "team_board_members.team_id": "teams",
+    "team_facilities.team_id": "teams",
+    "team_global_rank_points.team_id": "teams",
+    "team_race_strategy.team_id": "teams",
+    "team_rider_role_rules.rider_id": "riders",
+    "team_rider_role_rules.team_id": "teams",
+    "team_staff.team_id": "teams",
+    "teams.league_division_id": "league_divisions",
+    "teams.my_result_seen_race_id": "races",
+    "teams.team_dna_key": "team_dna",
+    "teams.user_id": "users",
+    "training_day_runs.team_id": "teams",
+    "training_plans.rider_id": "riders",
+    "training_plans.season_id": "seasons",
+    "training_plans.team_id": "teams",
+    "training_week_plans.rider_id": "riders",
+    "training_week_plans.team_id": "teams",
+    "transfer_listings.rider_id": "riders",
+    "transfer_listings.seller_team_id": "teams",
+    "transfer_offers.buyer_team_id": "teams",
+    "transfer_offers.listing_id": "transfer_listings",
+    "transfer_offers.rider_id": "riders",
+    "transfer_offers.seller_team_id": "teams",
+    "transfer_windows.season_id": "seasons",
+    "wage_daily_runs.team_id": "teams"
+  }
+}

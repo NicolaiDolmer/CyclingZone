@@ -46,6 +46,10 @@ try {
   node scripts/check-fetchallrows-order.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "fetchallrows-order-guard" }
 
+  Write-Host "== schema-column-guard (select mod ukendt kolonne, #3586) ==" -ForegroundColor Cyan
+  node scripts/lint-schema-columns.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "schema-column-guard" }
+
   Write-Host "== t2-container-guard (DataTable in a T1 max-w-4xl container, #3454) ==" -ForegroundColor Cyan
   node scripts/lint-t2-container-guard.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "t2-container-guard" }
