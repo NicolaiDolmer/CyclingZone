@@ -9,9 +9,13 @@
 // 96% af ryttere på menneskehold renderede gråt, fordi to helt forskellige fordelinger blev
 // fodret gennem ét anker-sæt. Målt read-only mod prod (execute_sql, 2026-07-25):
 //
-//   Ankre = percentiler af FULD population (alle aktive, ikke-pensionerede ryttere — samme
-//   metode som RATING_O_ELITE/O_MIN i riderRating.js), IKKE faste tal. TUNABLE KNOBS: gen-fit
-//   ved sæsonskifte hvis populationen flytter sig markant (samme regel som riderRating.js).
+//   Ankre = percentiler af FULD population (alle aktive, ikke-pensionerede ryttere), IKKE
+//   faste tal. TUNABLE KNOBS: gen-fit ved sæsonskifte hvis populationen flytter sig markant.
+//
+//   #3666: denne historik gælder KUN "ability"/"staff*"-ankrene nedenfor. Henvisningen til
+//   RATING_O_ELITE/O_MIN i riderRating.js er fjernet, fordi de symboler ikke findes mere —
+//   rating-rampen er absolut og gen-fittes aldrig (se RIDER_RAMP). At lade en peger stå til
+//   slettet kode er præcis den slags stille drift omlægningen blev lavet for at fjerne.
 //
 //   "ability" (15 rå rytter-evne-værdier, RiderAbilityColumns/evne-badges i lister/
 //   planlægger — IKKE type-vægtet): n=104.595 værdier (6.973 ryttere).
