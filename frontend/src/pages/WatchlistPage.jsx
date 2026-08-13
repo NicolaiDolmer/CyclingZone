@@ -260,11 +260,11 @@ export default function WatchlistPage() {
       fold: true,
       foldValue: (entry) => {
         const ovr = riderOverallRating(entry.rider);
-        return ovr ? String(ovr) : "—";
+        return Number.isFinite(ovr) ? String(ovr) : "—";
       },
       render: (entry) => {
         const ovr = riderOverallRating(entry.rider);
-        return ovr ? (
+        return Number.isFinite(ovr) ? (
           <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
             style={statPlateStyle(ovr)}>
             {ovr}

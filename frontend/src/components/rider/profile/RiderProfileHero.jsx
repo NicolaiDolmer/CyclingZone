@@ -115,7 +115,7 @@ export default function RiderProfileHero({
     ? t("profile.hero.potentialScouted")
     : t("profile.hero.potentialOwn");
   const isU23 = rider.is_u25 != null && age != null && age < 23;
-  const hasRating = Number.isFinite(overallRating) && overallRating > 0;
+  const hasRating = Number.isFinite(overallRating);
   const contractText = rider.contract_end_season != null
     ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
     : t("header.noContract");

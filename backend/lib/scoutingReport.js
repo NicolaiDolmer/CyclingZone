@@ -140,19 +140,40 @@ export function scoutPrecisionInfo(level, maxLevel, scout = DEFAULT_SCOUT) {
 //   bestCeilMid : midtpunkt af bedste types loft-bånd
 //   valueGap    : forventet værdi minus markedsværdi (>0 = potentielt røverkøb);
 //                 0/ukendt → faktoren udelades.
+// Gap-tærskler i rating-point. #3666: rekalibreret fra 4/6/12.
+//
+// Tærsklerne er ABSOLUTTE tal, så en skalaomlægning ændrer hvilken dom en rytter
+// får — uden at nogen har rørt verdict-koden. Målt på hele bestanden (n=8.747)
+// falder gap-medianen fra 38 til 26 point, og kompressionen er ikke uniform
+// (p10 skrumper 42 %, medianen 32 %), så en lineær nedskalering rammer skævt:
+// den gav diff 144 mod grid-søgningens 86.
+//
+// 2/3/8 er fundet ved heltalssøgning der minimerer den samlede afvigelse fra
+// dagens FORDELING af domme. Den rammer "behold/byd"-gruppen eksakt (3.534 mod
+// 3.534). `solid_contributor` kan ikke lukkes helt (199 mod 242) — det er en
+// konsekvens af den ikke-uniforme kompression, ikke af søgningen; ingen
+// tærskel-triple i det afsøgte rum kom tættere.
+//
+// Formålet er bevidst konservativt: dommene skal betyde det SAMME efter
+// omlægningen som før. Landing 1 lover at ingen rytters data flytter sig, og en
+// dom der pludselig skifter ville modsige det løfte på skærmen.
+const GAP_NEAR_CEILING = 2;  // var 4
+const GAP_MONITOR = 3;       // var 6
+const GAP_HIGH_UPSIDE = 8;   // var 12
+
 export function buildVerdict({ age, own, level, maxLevel, bestNow, bestCeilMid, valueGap = 0 }) {
   const gap = (Number(bestCeilMid) || 0) - (Number(bestNow) || 0);
   const a = Number(age) || 26;
   const headlineKey =
-    a >= 31 && gap < 4 ? "past_peak"
-    : gap >= 12 && a <= 23 ? (own ? "keep_and_develop" : "bid_worth_considering")
-    : gap >= 6 ? "monitor"
+    a >= 31 && gap < GAP_NEAR_CEILING ? "past_peak"
+    : gap >= GAP_HIGH_UPSIDE && a <= 23 ? (own ? "keep_and_develop" : "bid_worth_considering")
+    : gap >= GAP_MONITOR ? "monitor"
     : "solid_contributor";
   const confidence = own || level >= maxLevel ? "high" : level >= 2 ? "medium" : "low";
   const pool = [];
   if (a <= 23) pool.push("age_upside");
-  if (gap >= 12) pool.push("ceiling_gap");
-  if (gap < 4) pool.push("near_ceiling");
+  if (gap >= GAP_HIGH_UPSIDE) pool.push("ceiling_gap");
+  if (gap < GAP_NEAR_CEILING) pool.push("near_ceiling");
   if (a >= 31) pool.push("decline_risk");
   if (valueGap > 0) pool.push("value_gap");
   pool.push("type_match", "form_unknown", "watch_races");

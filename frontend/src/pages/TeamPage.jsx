@@ -599,8 +599,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, ac
     numeric: true,
     compact: true,
     fold: true,
-    foldValue: (r) => (r._ovr ? String(r._ovr) : "—"),
-    render: (r) => (r._ovr ? (
+    foldValue: (r) => (Number.isFinite(r._ovr) ? String(r._ovr) : "—"),
+    render: (r) => (Number.isFinite(r._ovr) ? (
       <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
         style={statPlateStyle(r._ovr)}>
         {r._ovr}

@@ -118,3 +118,31 @@ test("verdict: value_gap-faktor kun ved positivt gap", () => {
   const noGap = buildVerdict({ age: 21, own: false, level: 2, maxLevel: 3, bestNow: 50, bestCeilMid: 70, valueGap: 0 });
   assert.ok(!noGap.factorKeys.includes("value_gap"));
 });
+
+// #3666: tærsklerne 2/3/8 er MÅLT, ikke valgt — heltalssøgning der bedst
+// reproducerer dagens fordeling af domme over hele bestanden efter at
+// gap-medianen falder fra 38 til 26 point. De øvrige verdict-tests bruger gaps
+// i sikker afstand fra grænserne og ville derfor bestå med både de gamle og de
+// nye tal. Denne tester præcis grænserne, så en fremtidig ændring er et bevidst
+// valg og ikke en afrunding.
+const verdictAt = (gap, age = 21) =>
+  buildVerdict({ age, own: true, level: 3, maxLevel: 3, bestNow: 40, bestCeilMid: 40 + gap }).headlineKey;
+
+test("verdict: gap-tærsklerne ligger på 2, 3 og 8 (målt, ikke valgt)", () => {
+  // 8 = grænsen for stort loft-gap hos en ung rytter
+  assert.equal(verdictAt(8), "keep_and_develop");
+  assert.equal(verdictAt(7), "monitor");
+  // 3 = grænsen for "hold øje"
+  assert.equal(verdictAt(3, 27), "monitor");
+  assert.equal(verdictAt(2, 27), "solid_contributor");
+  // 2 = grænsen for "tæt på sit loft" hos en ældre rytter
+  assert.equal(verdictAt(1, 33), "past_peak");
+  assert.equal(verdictAt(2, 33), "solid_contributor");
+});
+
+test("verdict: near_ceiling-faktoren følger samme grænse som past_peak", () => {
+  const paa = buildVerdict({ age: 27, own: true, level: 3, maxLevel: 3, bestNow: 40, bestCeilMid: 41 });
+  assert.ok(paa.factorKeys.includes("near_ceiling"), "gap 1 er under tærsklen 2");
+  const over = buildVerdict({ age: 27, own: true, level: 3, maxLevel: 3, bestNow: 40, bestCeilMid: 42 });
+  assert.ok(!over.factorKeys.includes("near_ceiling"), "gap 2 er PÅ tærsklen og tæller ikke");
+});
