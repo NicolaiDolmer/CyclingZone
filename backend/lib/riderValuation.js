@@ -22,7 +22,8 @@
 // backend/lib/riderValuationAnchors.json og persisteres i riderValuationModel.json.
 // Se docs/decisions/rider-valuation-model-v1.md.
 
-import { RIDER_TYPES, ABILITY_KEYS } from "./riderTypes.js";
+import { ABILITY_KEYS } from "./riderTypes.js";
+import { VALUATION_WEIGHTS } from "./weights/valuationWeights.js";
 // #2594 cutover: v4-modellen (karriere-NPV) lever i riderCareerNpv.js. Cirkulær
 // import (riderCareerNpv importerer blendedOutput m.fl. herfra) er sikker i ESM:
 // begge moduler eksporterer kun hoistede function declarations og kører ingen af
@@ -31,8 +32,13 @@ import { predictBaseValueV4 } from "./riderCareerNpv.js";
 
 export { ABILITY_KEYS };
 
+// #3665: værdimodellen læser sin EGEN vægt-tabel (weights/valuationWeights.js),
+// ikke klassifikatorens. De to er bit-identiske ved ikrafttræden — bevist af
+// weightTableSplit.test.js — men en fremtidig vægt-rettelse i ét af de fire
+// formål kan nu ikke længere flytte markedsværdier ved et uheld. Det var
+// rod-årsagen bag gentagne "små rettelser" der blev til releases med fejl.
 const WEIGHTS_BY_TYPE = Object.freeze(
-  Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights]))
+  Object.fromEntries(VALUATION_WEIGHTS.map((t) => [t.key, t.weights]))
 );
 
 // Type-output (0-99): vægtet snit af de POSITIVE vægte for rytterens primær-type.

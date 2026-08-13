@@ -8,45 +8,21 @@
 // abilityDerivation). Korte labels = kolonne-overskrifter (oversættes ikke, jf.
 // #487); fulde navne via i18n rider.json racePreview.derived.<key>.
 
-// Kategori-gruppering — ÉN kilde til sandhed for grupperet visning (RiderStatsPage).
-// Rækkefølgen af grupperne OG nøglerne i hver gruppe er ejer-bekræftet (#2000).
-export const ABILITY_CATEGORIES = [
-  {
-    key: "physical",
-    keys: [
-      "climbing", "tempo", "punch", "sprint", "acceleration",
-      "flat", "time_trial", "endurance", "durability", "recovery",
-    ],
-  },
-  {
-    key: "mental",
-    keys: ["aggression", "tactics"],
-  },
-  {
-    key: "technical",
-    keys: ["descending", "cobblestone", "positioning"],
-  },
-];
+// #3665: kategori-gruppering, keys, korte labels og ikoner er nu GENERERET fra
+// backendens evne-registry (backend/lib/abilityRegistry.js) i stedet for at være
+// fire håndholdte literaler her. Indholdet er byte-for-byte det samme som før;
+// kun kilden har flyttet sig. Regenerér med:
+//   node scripts/generate-ability-registry.mjs
+// Rækkefølgen af grupperne OG nøglerne i hver gruppe er fortsat ejer-bekræftet
+// (#2000) — den bor nu som `displayOrder` på registry-posterne.
+//
+// Denne fil beholder de AFLEDTE hjælpere (select-fragmenter, flattenAbilities,
+// topAbilityKey), fordi de er frontend-specifikke og ikke hører til i registret.
+export {
+  ABILITY_CATEGORIES, ABILITY_KEYS, ABILITY_SHORT, ABILITY_ICONS, ABILITY_I18N_KEYS,
+} from "./generated/abilityRegistry.js";
 
-// Flad liste af alle 15 evne-keys i kategori-rækkefølge. Afledt af
-// ABILITY_CATEGORIES så de to aldrig kan divergere.
-export const ABILITY_KEYS = ABILITY_CATEGORIES.flatMap((c) => c.keys);
-
-// Korte, distinkte kolonne-labels (2-3 tegn) — som PCM-labels (FL/BJ/...) var.
-export const ABILITY_SHORT = {
-  climbing: "CLM", time_trial: "TT", flat: "FLT", tempo: "TMP",
-  sprint: "SPR", acceleration: "ACC", punch: "PCH", endurance: "END",
-  recovery: "REC", durability: "DUR", descending: "DSC", cobblestone: "COB",
-  positioning: "POS", aggression: "AGR", tactics: "TAC",
-};
-
-// Glyf-ikoner pr. evne — genbruger samme visuelle sprog som de traditionelle
-// skills. Vises foran labelen på RiderStatsPage's grupperede evne-visning.
-export const ABILITY_ICONS = {
-  climbing: "▲", tempo: "◈", punch: "✦", sprint: "↯", acceleration: "▷",
-  flat: "▬", time_trial: "◴", endurance: "◎", durability: "⬣", recovery: "↺",
-  aggression: "➹", tactics: "⌖", descending: "▽", cobblestone: "⬡", positioning: "⊹",
-};
+import { ABILITY_KEYS, ABILITY_SHORT } from "./generated/abilityRegistry.js";
 
 // {key,label}-form til tabeller der itererer STATS = [{key,label}].
 export const ABILITY_STATS = ABILITY_KEYS.map((key) => ({ key, label: ABILITY_SHORT[key] }));

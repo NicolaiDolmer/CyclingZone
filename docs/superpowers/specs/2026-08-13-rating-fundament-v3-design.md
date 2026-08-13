@@ -101,10 +101,11 @@ Forbrugere der skal læse fra registret i stedet for egne lister: evne-kolonner 
 
 **At tilføje en evne bliver da:** én registry-post + én DB-kolonne + én derivations-regel + valgfri optræden i opskrifter. Ikke en jagt gennem tredive filer.
 
-**Vagter (CI, fejler bygningen):**
+**Vagter (CI, fejler bygningen — implementeret i `backend/lib/abilityRegistryGuards.test.js`, som kører i det required `backend-tests`-check):**
 1. En evne i registret der optræder i **nul** visnings-opskrifter → fejl. (Dette er den vagt der ville have fanget positionering/taktik i §1.6.)
 2. En opskrift der refererer en evne uden registry-post → fejl.
-3. Frontend-vægttabellen skal være **genereret** fra backend-kilden, ikke håndholdt — en drift-test fejler hvis de divergerer.
+3. **Ingen opskrifts evne-sæt må være delmængde af en andens** → fejl. Tilføjet efter ejer-beslutning 13/8 (#3664 spørgsmål 5): #3592 målte fire uadskillelige typepar, som opskrifterne i §3 bryder — men det var en *sideeffekt* af at hver opskrift blev bredere, ikke et designmål. Vagten gør sideeffekten til en regel. Den fandt straks et femte par (`climber ⊆ gc`), se §3.
+4. Frontend-vægttabellen skal være **genereret** fra backend-kilden, ikke håndholdt — en drift-test fejler hvis de divergerer. Målt 13/8 var den allerede drevet: `brostensrytter` havde cobblestone 5 mod backendens 6, `puncheur` havde stadig det climbing:1-krydsled #3325 fjernede, og `rouleur` havde flat 2 mod backendens 4. Intet fejlede — kopien drev bare stille.
 
 ### D3 — Fire adskilte vægt-tabeller
 
@@ -150,14 +151,16 @@ Princip: rollens signatur-evne vejer tungest; opskriften er bred nok til at rati
 |---|---|
 | Sprinter | sprint 4 · acceleration 3 · positionering 2 · flad 2 · durability 1 |
 | Tidskører | enkeltstart 5 · tempo 2 · udholdenhed 1 · durability 1 · positionering 1 |
-| Bjergrytter | bjerg 5 · tempo 2 · udholdenhed 2 · restitution 1 · durability 1 · nedkørsel 1 |
+| Bjergrytter | bjerg 5 · tempo 2 · udholdenhed 2 · restitution 1 · durability 1 · nedkørsel 1 · **punch 1** |
 | Punchér | punch 5 · tempo 2 · acceleration 1 · bjerg 1 · positionering 1 · udholdenhed 1 |
 | Brostensrytter | brosten 5 · flad 2 · durability 2 · positionering 1 · punch 1 · udholdenhed 1 |
 | Rouleur | flad 4 · udholdenhed 2 · tempo 2 · durability 1 · positionering 1 · restitution 1 · sprint 1 |
 | Baroudeur | aggression 4 · udholdenhed 2 · nedkørsel 1 · restitution 1 · punch 1 · flad 1 · taktik 1 |
 | GC | bjerg 3 · enkeltstart 3 · restitution 2 · udholdenhed 2 · tempo 2 · durability 1 · nedkørsel 1 |
 
-**Ændringer mod i dag:** sprinteren får sprint som tungeste evne (var acceleration). Tidskøreren får en bred opskrift (var enkeltstart alene). Rouleuren udvides fra to evner til syv, inkl. sprint for leadout-rollen. Positionering kommer ind i fem roller, taktik i baroudeurens. Alle 15 evner tæller nu et sted.
+**Ændringer mod i dag:** sprinteren får sprint som tungeste evne (var acceleration) — eksplicit ejer-godkendt 13/8. Tidskøreren får en bred opskrift (var enkeltstart alene). Rouleuren udvides fra to evner til syv, inkl. sprint for leadout-rollen. Positionering kommer ind i fem roller, taktik i baroudeurens. Alle 15 evner tæller nu et sted.
+
+**Rettelse 13/8 efter ejer-godkendelsen (#3665):** bjergrytteren har fået **punch 1** tilbage. Delmængde-vagten (spec §D2 vagt 3, ny efter #3664 spørgsmål 5) fandt på sin allerførste kørsel et **femte** uadskilleligt rollepar som ingen havde målt: `climber ⊆ gc` — bjergrytterens seks evner lå alle inde i GC's syv, altså samme mekanik som #3592's fire kendte par. Punch findes ikke i gc-opskriften og bryder delmængden. Valget er tematisk (en klatrer angriber på stigningen) og trækker tættere på i dag: den gamle formel havde punch 1 hos climber i forvejen. De fire #3592-par er brudt af opskrifterne som de stod.
 
 **Målt pr. type på hele bestanden:**
 
