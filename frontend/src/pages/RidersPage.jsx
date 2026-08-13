@@ -415,11 +415,11 @@ export default function RidersPage() {
       fold: true,
       foldValue: (r) => {
         const ovr = riderOverallRating(r);
-        return ovr ? String(ovr) : "—";
+        return Number.isFinite(ovr) ? String(ovr) : "—";
       },
       render: (r) => {
         const ovr = riderOverallRating(r);
-        return ovr ? (
+        return Number.isFinite(ovr) ? (
           <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
             style={statPlateStyle(ovr)}>
             {ovr}

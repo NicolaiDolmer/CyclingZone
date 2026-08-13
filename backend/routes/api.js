@@ -154,8 +154,9 @@ import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
-import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
-import { calibratedBands } from "../lib/typeRatingScale.js";
+import {
+  buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo, ceilingBandForRole, ceilingHalfWidth,
+} from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -1552,18 +1553,53 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
   if (ids.length === 0) return res.json({ teamId: req.team.id, maxLevel: SCOUTING_CONFIG.maxLevel, estimates: {} });
   if (ids.length > 500) return res.status(400).json({ error: "too_many_riders", max: 500 });
   try {
-    const [{ state }, scout, { data: riders, error }] = await Promise.all([
+    // #2454: `ability_caps` hentes nu med. Uden dem kunne POTENTIEL RATING slet
+    // ikke beregnes for tabel- og kort-fladerne — de fik kun stjerne-enheder, og
+    // rating-point-båndet fandtes udelukkende på de to enkelt-rytter-endpoints.
+    // Caps forlader stadig ALDRIG serveren (#1162): kun det maskerede bånd gør.
+    const [{ state }, scout, { data: riders, error }, { data: abilityRows, error: abErr }] = await Promise.all([
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
-      supabase.from("riders").select("id, potentiale, birthdate, team_id").in("id", ids),
+      supabase.from("riders").select("id, potentiale, birthdate, team_id, primary_type").in("id", ids),
+      supabase.from("rider_derived_abilities").select("*").in("rider_id", ids),
     ]);
     if (error) throw new Error(error.message);
+    if (abErr) throw new Error(abErr.message);
+    const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
     // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
     // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
     const currentYear = new Date().getFullYear();
     const estimates = {};
     for (const rider of riders ?? []) {
-      estimates[rider.id] = buildScoutEstimate(rider, state.levels[rider.id] ?? 0, req.team.id, SCOUTING_CONFIG, currentYear, scout);
+      const level = state.levels[rider.id] ?? 0;
+      const estimate = buildScoutEstimate(rider, level, req.team.id, SCOUTING_CONFIG, currentYear, scout);
+      // #2454: potentiel rating for rytterens EGEN rolle, i rating-point og som
+      // interval. Beregnes med præcis samme funktion som Scouting-fanens kort
+      // bruger, så de to flader ikke kan vise forskellige loft-bånd for samme
+      // rytter. Skjulte estimater (ikke-egen, uscoutet) får INTET bånd — ellers
+      // ville #1543's skjulning være omgået via en ny kanal.
+      if (estimate && !estimate.hidden && rider.primary_type) {
+        const ab = abilitiesByRider.get(rider.id);
+        const caps = ab?.ability_caps && typeof ab.ability_caps === "object" ? ab.ability_caps : null;
+        if (caps && ab) {
+          // Egne ryttere ses altid på maxLevel — samme regel som buildScoutEstimate.
+          const isOwn = rider.team_id != null && rider.team_id === req.team.id;
+          const band = ceilingBandForRole({
+            nowAbilities: ab,
+            caps,
+            key: rider.primary_type,
+            half: ceilingHalfWidth(isOwn ? SCOUTING_CONFIG.maxLevel : level, scout),
+            riderId: rider.id,
+            teamId: req.team.id,
+          });
+          if (band.ceilLo != null) {
+            estimate.role = band.key;
+            estimate.now = band.now;
+            estimate.ceil = { lo: band.ceilLo, hi: band.ceilHi };
+          }
+        }
+      }
+      estimates[rider.id] = estimate;
     }
     res.json({ teamId: req.team.id, maxLevel: state.maxLevel, estimates });
   } catch (err) {
@@ -1796,14 +1832,19 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         bestCeilMid: (bestCeil.ceilLo + bestCeil.ceilHi) / 2,
         valueGap,
       });
-      // #3458 Fase 1 (Del B "skala-ærlighed"): verdict/best/bestCeil ovenfor bruger
-      // BEVIDST de rå ratings (samme enhed som gap-tærsklerne i buildVerdict) — kun
-      // det VISTE `types`-array kalibreres til den absolutte, sammenlignelige skala,
-      // så "84" betyder det samme niveau i alle 8 roller. Ingen ændring af
-      // ability_caps/type/potentiale.
+      // #3666: kalibreringen er VÆK. `types` sendes nu i visnings-opskriftens egen
+      // enhed — samme enhed som evne-tallene og som alt andet i appen. Det var
+      // kalibreringen der gjorde dette ene kort til den ene flade med en anden
+      // skala end resten (spec §1.1). Ingen ændring af ability_caps/type/potentiale.
+      //
+      // #3671: `precision` fortæller sandheden om hvad næste scout-niveau
+      // faktisk køber. Uden den kan hverken knappen eller teksten vide om
+      // spilleren betaler 1.000 CZ$ for en målbar indsnævring eller for ingenting.
       return res.json({
         level, maxLevel: state.maxLevel, own,
-        stars: starsMasked, types: calibratedBands(types), verdict,
+        primaryKey: rider.primary_type ?? null,
+        stars: starsMasked, types, verdict,
+        precision: scoutPrecisionInfo(level, state.maxLevel, scout),
         value: expected != null ? { market: rider.market_value, expected } : null,
         capsMissing: false,
         scout: scoutMeta, generatedAt,
@@ -13850,16 +13891,21 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     const seniorMax = seniorState?.squad_limits?.max ?? 30;
 
     // Hent potentiale-værdier separat til estimat-beregning (#1162 whitelist: id, potentiale, birthdate, team_id).
+    // #2454: `primary_type` og evne-rækken kommer med, så kandidatens potentiale
+    // kan vises i RATING-point ligesom alle andre flader. Uden dem ville akademiet
+    // være det ene sted i spillet der stadig talte i stjerner.
     const candidateIds = (intakeRows ?? []).map((r) => r.rider_id).filter(Boolean);
     let potentialeByRider = {};
+    let abilitiesByCandidate = new Map();
     if (candidateIds.length > 0) {
-      const { data: potRows } = await supabase
-        .from("riders")
-        .select("id, potentiale, birthdate, team_id")
-        .in("id", candidateIds);
+      const [{ data: potRows }, { data: abRows }] = await Promise.all([
+        supabase.from("riders").select("id, potentiale, birthdate, team_id, primary_type").in("id", candidateIds),
+        supabase.from("rider_derived_abilities").select("*").in("rider_id", candidateIds),
+      ]);
       for (const r of potRows ?? []) {
         potentialeByRider[r.id] = r;
       }
+      abilitiesByCandidate = new Map((abRows ?? []).map((row) => [row.rider_id, row]));
     }
 
     // #1748 (b): en 'offered' intake-kandidat der i mellemtiden er blevet anskaffet
@@ -13889,6 +13935,27 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         teamId,
         SCOUTING_CONFIG.maxLevel,
       );
+      // #2454: samme loft-bånd i rating-point som resten af spillet viser.
+      // Akademi-klubben ejer kandidaten og ser ham derfor på maxLevel, præcis som
+      // stjerne-estimatet ovenfor allerede antog.
+      const candidateAb = abilitiesByCandidate.get(row.rider_id);
+      const candidateCaps = candidateAb?.ability_caps && typeof candidateAb.ability_caps === "object"
+        ? candidateAb.ability_caps
+        : null;
+      let potentialBand = null;
+      if (candidateCaps && candidateAb && potRow.primary_type) {
+        const band = ceilingBandForRole({
+          nowAbilities: candidateAb,
+          caps: candidateCaps,
+          key: potRow.primary_type,
+          half: ceilingHalfWidth(SCOUTING_CONFIG.maxLevel),
+          riderId: row.rider_id,
+          teamId,
+        });
+        if (band.ceilLo != null) {
+          potentialBand = { role: band.key, now: band.now, ceil: { lo: band.ceilLo, hi: band.ceilHi } };
+        }
+      }
       // #2796: kandidat-kortet bad om et irreversibelt valg (Signér/Afvis) uden
       // at vise hverken pris eller frist. Begge dele kan udledes af data vi
       // allerede har — de beregnes her, så UI'et ikke skal spejle backend-regler:
@@ -13914,6 +13981,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         signingFee,
         rider, // display-safe, ingen potentiale
         potentialEstimate,
+        potentialBand,
       };
     });
 

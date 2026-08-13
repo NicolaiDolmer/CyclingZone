@@ -34,7 +34,44 @@ import { potentialLabelKey } from "../../lib/scouting";
 // #2849 bølge 5 (ejer-feedback): `hideLevel` skjuler scouting-niveau-badgen
 // ("2/3") — hero-stat-rækken viser kun stjernerne; niveauet hører til i
 // scouting-fanen. Opt-in, eksisterende kald-sites uændrede.
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = false, hideLevel = false }) {
+// #2454 — POTENTIEL RATING erstatter stjernerne.
+//
+// Stjernerne var en egen enhed (1-6, i halve trin) som intet andet i spillet
+// brugte. Spilleren skulle selv oversætte "4,5 stjerner" til noget der kunne
+// holdes op mod rytterens rating, og det kunne han ikke: de to tal levede på
+// hver sin skala. Efter #3666 er rating det vægtede snit af rollens evner, og
+// potentiel rating er PRÆCIS samme regnestykke på lofterne. Så snart de deler
+// enhed, er intervallet "kan nå 40-48" direkte sammenligneligt med "han er 29 nu"
+// — og luften mellem dem bliver et tal spilleren kan handle på.
+//
+// Serveren leverer båndet (POST /scouting/estimates → `ceil`), regnet med samme
+// funktion som Scouting-fanens kort. Rå lofter forlader stadig aldrig serveren.
+//
+// ALTID et interval, aldrig ét tal (#1543 beslutning 3): ingen spejder kender en
+// rytter præcist, heller ikke på egne ryttere.
+//
+// `labelAsTitle` er nu default TRUE (lukker #2796's anden halvdel). Den
+// kvalitative label ("Højt potentiale") stod som synlig tekst på Auktioner,
+// Ønskelisten og Sammenlign, hvor den både fyldte og sagde mindre end tallet.
+// Den ligger nu i tooltip'en alle steder. Kaldere kan stadig sætte false.
+function PotentialBand({ ceil, role, label, large, t }) {
+  const roleName = role ? t(`riderTypes:types.${role}`) : null;
+  const bandTitle = roleName
+    ? t("rider:scouting.potentialBandTitle", { role: roleName, lo: ceil.lo, hi: ceil.hi })
+    : null;
+  const title = [label, bandTitle].filter(Boolean).join(" · ") || undefined;
+  return (
+    <span
+      title={title}
+      className={`font-mono tabular-nums whitespace-nowrap text-cz-1 ${large ? "text-[17px]" : "text-[13px]"}`}
+      data-potential-band={`${ceil.lo}-${ceil.hi}`}
+    >
+      {ceil.lo}–{ceil.hi}
+    </span>
+  );
+}
+
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -132,6 +169,29 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
 
   const labelKey = potentialLabelKey(estimate);
   const label = labelKey ? t(`rider:scouting.label_${labelKey}`) : null;
+
+  // #2454: serveren har leveret et rating-bånd → det er visningen. Stjernerne
+  // bliver stående som fallback for payloads uden `ceil` (ældre klient-cache,
+  // eller den defensive gren hvor rytteren mangler lofter). Målt 14/8 mod prod:
+  // 0 af 8.782 ryttere mangler primary_type, evne-række eller ability_caps, så
+  // fallbacken er defensiv — ikke en tilstand spillere reelt møder.
+  if (estimate.ceil) {
+    return (
+      <span className="inline-flex items-center gap-2 flex-wrap">
+        <PotentialBand ceil={estimate.ceil} role={estimate.role} label={labelAsTitle ? label : null}
+          large={large} t={t} />
+        {!labelAsTitle && label && <span className="text-2xs text-cz-3">{label}</span>}
+        {!hideLevel && level > 0 && (
+          <span className="text-3xs font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>
+            {level}/{maxLevel}
+          </span>
+        )}
+        {pendingBadge}
+        {scoutButton}
+        {scoutErrorBadge}
+      </span>
+    );
+  }
 
   // Defensiv fallback: lo === hi (fx clamping ved skalaens yderpunkter 1/6) →
   // vis som eksakte stjerner. `exact`-feltet findes ikke længere i det maskerede

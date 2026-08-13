@@ -465,14 +465,38 @@
         "title": "Etape-afslutninger forklaret",
         "text": "Hver etape har en finaletype vist ved siden af terræn-badget i kalenderen og på løbssiden. Hold musen over eller tryk på badget for hele forklaringen dér; tabellen herunder samler alle typerne ét sted.",
         "rows": [
-          ["Afslutning", "Hvad det betyder"],
-          ["Massespurt", "Feltet holder sammen, og etapen afgøres i en massespurt."],
-          ["Reduceret spurt", "En reduceret gruppe holder hjem til mål og spurter om sejren."],
-          ["Stikfinale", "Et kort, stejlt ryk tæt på mål belønner et sent angreb frem for en ren spurt."],
-          ["Bjergfinale", "Selve stigningen er målstregen, hvor dagens største tidsforskelle opstår."],
-          ["Nedkørselsfinale", "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen."],
-          ["Soloenkeltstart", "Hver rytter starter alene mod uret, uden slipstrøm."],
-          ["Udbrud", "En tidlig udbrudsgruppe holder sig fri af feltet og opgør sejren indbyrdes."]
+          [
+            "Afslutning",
+            "Hvad det betyder"
+          ],
+          [
+            "Massespurt",
+            "Feltet holder sammen, og etapen afgøres i en massespurt."
+          ],
+          [
+            "Reduceret spurt",
+            "En reduceret gruppe holder hjem til mål og spurter om sejren."
+          ],
+          [
+            "Stikfinale",
+            "Et kort, stejlt ryk tæt på mål belønner et sent angreb frem for en ren spurt."
+          ],
+          [
+            "Bjergfinale",
+            "Selve stigningen er målstregen, hvor dagens største tidsforskelle opstår."
+          ],
+          [
+            "Nedkørselsfinale",
+            "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen."
+          ],
+          [
+            "Soloenkeltstart",
+            "Hver rytter starter alene mod uret, uden slipstrøm."
+          ],
+          [
+            "Udbrud",
+            "En tidlig udbrudsgruppe holder sig fri af feltet og opgør sejren indbyrdes."
+          ]
         ]
       },
       "stageProfile": {
@@ -792,7 +816,7 @@
       },
       "scouting": {
         "title": "Scouting af potentiale",
-        "text": "En rytters potentiale er skjult indtil du scouter rytteren: uscoutede ryttere på andre hold viser slet intet estimat. Alle hold har en talentspejder, en rigtig staff-person hvis du har ansat en, ellers en standard-spejder, som tager opgaver fra Spejder-siden eller en rytters profil. En målrettet opgave undersøger én rytter og melder tilbage på cirka 30 minutter, uanset spejder-niveau; en mission dækker en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist, plus én gratis rapport på topfundet. Når du starter en mission vælger du også hvem den målretter: kontraktfrie ryttere (uden kontrakt, anbefalet, hent dem med det samme) eller ryttere på andre hold (talent ejet af en anden manager, hvor hentning kræver bud eller forhandling). Opgaver koster rejsepenge, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. En bedre spejder giver et snævrere estimat, og hans rating sætter en præcisionsgrænse han ikke kommer forbi: med standard-spejderen giver det sidste scout-niveau ingenting overhovedet. Ingen spejder kender nogensinde en rytter præcist: selv fuldt scoutede ryttere, og din egen trup, viser et smalt interval frem for en eksakt stjerneværdi. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt, og løbsresultaterne afgør hvem der havde ret. En rapport kan aldrig referere en rytter der siden er blevet utilgængelig (hentet andetsteds, eller midt i en handel): den afspejler altid hvem der faktisk er tilgængelig lige nu, og viser hver rytters nuværende status. Scouting-fanen på rytterprofilen samler den fulde rapport: vurderingen, potentiale pr. ryttertype med et loft-bånd, og en værdi-sammenligning. Samlet potentiale vises som stjerner og en vurdering. Ryttertype-rækkerne på den fane viser også tal: hans niveau i dag, og et loft-bånd. Læs det bånd som et interval hans loft ligger et sted inde i, aldrig som et tal han kan nå."
+        "text": "En rytters potentiale er skjult indtil du scouter rytteren: uscoutede ryttere på andre hold viser slet intet estimat. Alle hold har en talentspejder, en rigtig staff-person hvis du har ansat en, ellers en standard-spejder, som tager opgaver fra Spejder-siden eller en rytters profil. En målrettet opgave undersøger én rytter og melder tilbage på cirka 30 minutter, uanset spejder-niveau; en mission dækker en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist, plus én gratis rapport på topfundet. Når du starter en mission vælger du også hvem den målretter: kontraktfrie ryttere (uden kontrakt, anbefalet, hent dem med det samme) eller ryttere på andre hold (talent ejet af en anden manager, hvor hentning kræver bud eller forhandling). Opgaver koster rejsepenge, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. En bedre spejder giver et snævrere estimat, og hans rating sætter en præcisionsgrænse han ikke kommer forbi. Hvert scout-niveau køber stadig noget præcision, og Scouting-fanen fortæller dig præcis hvor meget det næste ville give. Ingen spejder kender nogensinde en rytter præcist: selv fuldt scoutede ryttere, og din egen trup, viser et smalt interval frem for et eksakt tal. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt, og løbsresultaterne afgør hvem der havde ret. En rapport kan aldrig referere en rytter der siden er blevet utilgængelig (hentet andetsteds, eller midt i en handel): den afspejler altid hvem der faktisk er tilgængelig lige nu, og viser hver rytters nuværende status. Scouting-fanen på rytterprofilen samler den fulde rapport: vurderingen, potentiale pr. ryttertype med et loft-bånd, og en værdi-sammenligning. Samlet potentiale vises som et rating-interval og en vurdering, i samme enhed som rytterens rating, så du kan holde de to op mod hinanden. Ryttertype-rækkerne på den fane viser også tal: hans niveau i dag, og et loft-bånd. Læs det bånd som et interval hans loft ligger et sted inde i, aldrig som et tal han kan nå."
       },
       "u25u23": {
         "title": "U25 og U23 ryttere",
@@ -1212,7 +1236,7 @@
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
-      "a": "Ja, på ét bestemt punkt. Spejder-missioner omfatter aldrig dine egne ryttere: en missions kandidat-pulje søger kun i andre holds og kontraktfrie ryttere, og en enkelt-rytter-undersøgelse koster og tager det samme uanset din spejders rating. Men præcisionen af de potentiale-intervaller du ser, følger din chefscout: han kender din egen trup fuldt ud, så hans rating afgør hvor smalle stjerne-intervallet og loft-båndene pr. ryttertype er på dine egne ryttere, nøjagtig som for en fuldt scoutet rival. Ingen spejder melder nogensinde en eksakt værdi: selv ved højeste rating ser du et smalt interval, aldrig en præcis stjerneværdi."
+      "a": "Ja, på ét bestemt punkt. Spejder-missioner omfatter aldrig dine egne ryttere: en missions kandidat-pulje søger kun i andre holds og kontraktfrie ryttere, og en enkelt-rytter-undersøgelse koster og tager det samme uanset din spejders rating. Men præcisionen af de potentiale-intervaller du ser, følger din chefscout: han kender din egen trup fuldt ud, så hans rating afgør hvor smalle potentiale-intervallet og loft-båndene pr. ryttertype er på dine egne ryttere, nøjagtig som for en fuldt scoutet rival. Ingen spejder melder nogensinde en eksakt værdi: selv ved højeste rating ser du et smalt interval, aldrig et præcist talværdi."
     },
     "scoutChangeRecalcFaq": {
       "q": "Jeg ansatte en ny chefscout, og en rytters scoutingrapport ændrede sig. Blev rytteren dårligere?",
@@ -1220,7 +1244,7 @@
     },
     "typeRatingScaleFaq": {
       "q": "Hvorfor ændrede tallene sig i 'Potentiale pr. ryttertype', og hvad betyder de nu?",
-      "a": "Tallene i ryttertype-rækkerne på Scouting-fanen er blevet rekalibreret, ikke rytteren. Rytterens faktiske evner, loft og ryttertype er ikke ændret, kun hvordan loft-båndet og nuværende niveau vises. Før denne ændring var de otte typer ikke på en sammenlignelig skala: nogle typers formler gav strukturelt højere tal end andre for næsten alle ryttere, så en 84 i én type ikke betød det samme som en 84 i en anden. Rekalibreringen retter den uoverensstemmelse én gang for alle, på modelniveau, så hvert tal nu betyder samme niveau overalt: en 84 i én type repræsenterer den samme underliggende styrke som en 84 i en hvilken som helst anden type, og du kan sammenligne direkte på tværs af alle otte typer. Én ting dette svar tidligere tog fejl om: skalaen ligger ikke fast for evigt. Den er forankret i rytterpuljen, så hvis de ankre gen-fittes, kan hver eneste rytters tal flytte sig uden at en eneste evne har ændret sig. Sker det, får du en patch note der siger det."
+      "a": "Dine ryttere har ikke ændret sig. Deres evner, lofter og ryttertype er præcis som før: kun måden tallet regnes ud på er lavet om. En rolles tal er nu simpelthen det vægtede snit af de evner rollen bruger, så en rytter med 13 i alle de evner der tæller, viser 13 i den rolle. Der bliver ikke længere strakt noget for at passe til resten af feltet. To konsekvenser er værd at kende. Tallene er lavere end før, men for de fleste ryttere er forskellen lille: en typisk rytter viser 13, hvor han før viste 15. Ændringen er størst i toppen, hvor den gamle udregning strakte de bedste op mod et loft der var skalaens og ikke deres eget: 15 ryttere sad klemt på 99, og det højeste tal i spillet er nu 85. Og de er stabile: en rytters tal kan kun flytte sig når hans egne evner flytter sig. Før denne ændring var skalaen forankret i hele rytterbestanden, så en ny forankring kunne flytte alle rytteres tal uden at en eneste evne havde ændret sig. Det kan ikke længere ske, og det var hele formålet."
     },
     "seasonChangeMoneyFaq": {
       "q": "Hvad sker der med min økonomi ved sæsonskiftet?",
@@ -1412,11 +1436,11 @@
     },
     "riderAbilities": {
       "q": "Hvad betyder de 15 rytter-evner?",
-      "a": "Hver rytter vurderes 1-99 på 15 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (2): Aggression (lysten til at angribe og komme med i udbrud) og Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb). Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
+      "a": "Hver rytter vurderes 0-99 på 15 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (2): Aggression (lysten til at angribe og komme med i udbrud) og Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb). Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
     },
     "riderRating": {
       "q": "Hvad betyder en rytters samlede rating?",
-      "a": "Ratingen er ét 1-99-tal for hvor god en rytter er, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i ryttertabellen på Auktioner-siden. Den blander to ting ligeligt: hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) og hans alsidighed på tværs af alle evner. Den bruger samme model som rytterens viste type og markedsværdi, så de tre altid hænger sammen. Skalaen er ankret mod hele rytterfeltet i stedet for mod et fast maksimum, så de allerbedste ryttere ligger tæt på 99, og resten af feltet spreder sig nedenunder. Ratingen afspejler kun nuværende evne. Den er ikke potentiale, og den medregner ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
+      "a": "Ratingen er ét tal for hvor god en rytter er i sin egen rolle. Den står som en farvet plade på hans profil og som en sorterbar kolonne i ryttertabellerne. Den er det vægtede snit af de evner rollen bruger, og intet andet: en rytter med 13 i alle de evner der tæller, får rating 13. To ting følger af det. Tallet betyder det samme i alle roller, så du kan sammenligne en sprinter og en bjergrytter direkte. Og det kan kun flytte sig når rytterens egne evner flytter sig, så det vil aldrig igen ændre sig fordi andre ryttere har ændret sig. Skalaen går i princippet til 99, men ingen er i nærheden: spillets bedste rytter viser 85 i dag, og han er allerede på sit eget loft. Toppen af skalaen står tom fordi ingen rytters lofter når derop, ikke fordi ingen er færdig med at træne. Ratingen er kun det nuværende niveau. Den er ikke potentiale, og den indeholder ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
     },
     "raceSignupFaq": {
       "q": "Hvor tilmelder jeg mig et løb?",

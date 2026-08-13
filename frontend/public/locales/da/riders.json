@@ -11,7 +11,7 @@
     "nation": "Nation",
     "rider": "Rytter",
     "rating": "Rating",
-    "ratingTitle": "Samlet rating 1-99, vægtet efter rytterens type.",
+    "ratingTitle": "Det vægtede snit af de evner hans egen rolle bruger. Samme tal betyder samme niveau i alle roller.",
     "team": "Hold",
     "badges": "Status",
     "age": "Alder",

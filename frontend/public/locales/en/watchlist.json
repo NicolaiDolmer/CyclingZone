@@ -8,7 +8,7 @@
   "thNation": "Nation",
   "thRider": "Rider",
   "thRating": "Rating",
-  "thRatingTitle": "Overall rating 1-99, weighted for the rider's type.",
+  "thRatingTitle": "The weighted average of the abilities his own role needs. The same number means the same level in any role.",
   "compareTooltip": "Select for comparison",
   "thTeam": "Team",
   "thBadges": "Status",

@@ -45,14 +45,36 @@ export const DISPLAY_SEASONS = 6;          // tegnet bånd-horisont (længere = 
 export const RATE_GROWTH_LO = 0.5;   // nedre: langsom-men-reel vækst (< motorens min 0.6)
 export const RATE_GROWTH_HI = 1.15;  // øvre: lidt under max-rate → strammere top
 
-// Rating-niveau decline pr. sæson efter peak. Re-ratet type-decline er ~2-4 pt/sæson
-// (flere signatur-evner falder samtidig), IKKE de 1-2.6 ability-point motoren bruger
-// pr. evne — derfor en dedikeret rating-kurve, kalibreret mod motoren.
-export const RATING_DECLINE_BY_YEARS_PAST_PEAK = Object.freeze([
-  { maxYears: 3, drop: 2.5 },
-  { maxYears: 6, drop: 3.5 },
-  { maxYears: 99, drop: 4.5 },
-]);
+// Rating-niveau decline pr. sæson efter peak.
+//
+// #3666 — DEN ER NU MOTORENS EGEN KURVE, ikke en separat kalibrering.
+//
+// Før stod her 2,5 / 3,5 / 4,5 med begrundelsen "re-ratet type-decline er ~2-4
+// pt/sæson, IKKE de 1-2,6 ability-point motoren bruger pr. evne". Det var sandt
+// på den gamle skala: normaliseringen strakte ability-faldet op, så et fald på
+// 1 evne-point kom ud som 2,5 rating-point. Den forstærkning findes ikke mere.
+// Rating ER nu det vægtede snit af rollens evner — falder hver evne med X, falder
+// snittet med X. Den dedikerede kurve var altså ikke længere en oversættelse; den
+// var bare et forkert tal.
+//
+// MÅLT 14/8 mod 1.200 ægte prod-ryttere over peak, ved at køre motorens egen
+// stepAbility ét sæsonskridt og regne rolle-ratingen før og efter:
+//
+//   1-3 år forbi peak:  faktisk 0,97   (kurven påstod 2,5)
+//   4-6 år forbi peak:  faktisk 1,70   (kurven påstod 3,5)
+//   7+  år forbi peak:  faktisk 2,63   (kurven påstod 4,5)
+//
+// Konsekvensen af de gamle tal på den nye skala var ikke kosmetisk: en rytter på
+// median-rating 15 blev projekteret til NUL på seks sæsoner. Spilleren fik at
+// vide at hans 30-årige var færdig, mens motoren i virkeligheden ville tage ~15
+// sæsoner om det samme.
+//
+// Tallene aflæses derfor DIREKTE af motoren i stedet for at blive kopieret.
+// Ændrer nogen motorens decline, følger projektionen med af sig selv — og de to
+// kan ikke længere drifte fra hinanden i tavshed. Afvigelsen mellem målingen og
+// motorens tal (0,97 mod 1,0) er off-type-evnerne, der falder 0,7× og trækker
+// det vægtede snit en anelse ned; den er under 6 % og kræver ingen korrektion.
+export const RATING_DECLINE_BY_YEARS_PAST_PEAK = PROGRESSION_CONFIG.declineByYearsPastPeak;
 export const DECLINE_MULT_STEEP = 0.9;   // nedre envelope (worst case)
 export const DECLINE_MULT_MILD = 0.6;    // øvre envelope (best case)
 
@@ -69,7 +91,13 @@ function ratingDeclineForYearsPastPeak(years) {
 // Ét sæson-skridt på RATING-niveau (ikke ability-niveau) mod et loft. Kun offentlig
 // kurve: < peak lukker `growthMult` × en aldersbestemt brøkdel af (ceil − rating);
 // ≥ peak falder `declineMult` × den kalibrerede rating-decline (rate-uafhængigt —
-// decline skaleres ikke af potentiale i motoren). Én skala 1-99.
+// decline skaleres ikke af potentiale i motoren).
+//
+// #3666: skalaens bund er 0, ikke 1. Den gamle normaliserede skala kunne ikke
+// producere 0; den nye kan (målt: 2 levende ryttere har rolle-rating præcis 0).
+// Med gulvet på 1 ville projektionen for dem tegne en linje der lå over
+// virkeligheden — og en spiller der ser 1 hvor tallet er 0, har fået et forkert
+// svar, uanset hvor lille forskellen er.
 export function stepRating(rating, ceil, age, cfg = PROGRESSION_CONFIG, growthMult = 1, declineMult = 1) {
   const peak = cfg.peakAge;
   if (age <= peak) {
@@ -84,11 +112,11 @@ export function stepRating(rating, ceil, age, cfg = PROGRESSION_CONFIG, growthMu
 // Projektér ét spor (nu → ceil) frem `seasons` sæsoner ved givne vækst-/decline-
 // multiplikatorer. Returnerer [{ season, value }] inkl. season 0 (= nu).
 export function projectTrack(now, ceil, age, seasons, cfg = PROGRESSION_CONFIG, growthMult = 1, declineMult = 1) {
-  const out = [{ season: 0, value: clamp(now, 1, 99) }];
+  const out = [{ season: 0, value: clamp(now, 0, 99) }];
   let r = now;
   let a = age;
   for (let s = 1; s <= seasons; s++) {
-    r = clamp(stepRating(r, ceil, a, cfg, growthMult, declineMult), 1, 99);
+    r = clamp(stepRating(r, ceil, a, cfg, growthMult, declineMult), 0, 99);
     a += 1;
     out.push({ season: s, value: r });
   }
@@ -106,8 +134,8 @@ export function projectCeilingBand({ now, ceilLo, ceilHi, age, seasons = MAX_PRO
   const upper = projectTrack(now, ceilHi, age, seasons, cfg, RATE_GROWTH_HI, DECLINE_MULT_MILD);
   return lower.map((p, i) => ({
     season: p.season,
-    lo: clamp(Math.floor(Math.min(p.value, upper[i].value)), 1, 99),
-    hi: clamp(Math.ceil(Math.max(p.value, upper[i].value)), 1, 99),
+    lo: clamp(Math.floor(Math.min(p.value, upper[i].value)), 0, 99),
+    hi: clamp(Math.ceil(Math.max(p.value, upper[i].value)), 0, 99),
   }));
 }
 

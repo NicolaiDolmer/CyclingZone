@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   stepRating, projectCeilingBand, ceilingTiming,
+  RATING_DECLINE_BY_YEARS_PAST_PEAK, DISPLAY_SEASONS,
 } from "./developmentProjection.js";
+import { PROGRESSION_CONFIG } from "./riderProgression.js";
 
 // #2100 — projektions-funktioner. Ren matematik; node --test.
 
@@ -95,4 +97,32 @@ test("projektionen er en ren funktion af publicerede outputs (ingen skjult input
   const a = projectCeilingBand({ now: 64, ceilLo: 71, ceilHi: 77, age: 22, seasons: 8 });
   const b = projectCeilingBand({ now: 64, ceilLo: 71, ceilHi: 77, age: 22, seasons: 8 });
   assert.deepEqual(a, b, "samme publicerede input → identisk bånd (deterministisk, seed-frit)");
+});
+
+// #3666 — DECLINE-KURVEN ER MOTORENS EGEN.
+//
+// Kurven her og motorens ability-decline var to uafhængige tal-sæt, forbundet af
+// en kommentar. Da rating-skalaen blev absolut, holdt oversættelsen mellem dem op
+// med at gælde — og intet fejlede, fordi intet målte forholdet. En median-rytter
+// blev derefter projekteret til nul på seks sæsoner mens motoren ville tage ~15.
+//
+// Testen findes for at gøre den tavse drift umulig: bindingen SKAL være identitet,
+// ikke en afskrift der ligner.
+test("#3666 projektionens decline ER motorens, ikke en kopi der ligner", () => {
+  assert.equal(
+    RATING_DECLINE_BY_YEARS_PAST_PEAK,
+    PROGRESSION_CONFIG.declineByYearsPastPeak,
+    "samme objekt-reference — en kopi ville kunne drifte i tavshed",
+  );
+});
+
+test("#3666 en median-rytter over peak rammer ikke gulvet i display-vinduet", () => {
+  // Prod-median for egen-rolle-rating er 15 (målt 14/8). Med de gamle 2,5/3,5/4,5
+  // var han på 0 efter seks sæsoner. Kravet er ikke et bestemt tal, men at
+  // projektionen ikke afskriver en helt almindelig rytter inden for det vindue
+  // spilleren faktisk får vist.
+  const band = projectCeilingBand({ now: 15, ceilLo: 15, ceilHi: 16, age: 30, seasons: DISPLAY_SEASONS });
+  const sidste = band[band.length - 1];
+  assert.ok(sidste.hi > 0, `øvre kant faldt til ${sidste.hi} inden for ${DISPLAY_SEASONS} sæsoner`);
+  assert.ok(sidste.lo >= 5, `nedre kant faldt til ${sidste.lo} — for stejlt mod motorens målte 0,97-2,63/sæson`);
 });

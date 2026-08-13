@@ -11,7 +11,7 @@
     "nation": "Nation",
     "rider": "Rider",
     "rating": "Rating",
-    "ratingTitle": "Overall rating 1-99, weighted for the rider's type.",
+    "ratingTitle": "The weighted average of the abilities his own role needs. The same number means the same level in any role.",
     "team": "Team",
     "badges": "Status",
     "age": "Age",

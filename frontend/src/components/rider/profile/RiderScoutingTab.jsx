@@ -16,6 +16,7 @@ import PotentialeStars from "../../PotentialeStars";
 import { SearchIcon } from "../../ui";
 import { getSession } from "../../../lib/supabase";
 import { formatCz } from "../../../lib/marketValues";
+import { statPlateStyle } from "../../../lib/statColor";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -47,17 +48,32 @@ function Eyebrow({ children }) {
   );
 }
 
+// Barens fulde længde i rating-point.
+//
+// #3666: ABSOLUT, ikke en populations-percentil. Det var 0,99 som et bart tal i
+// bredde-udtrykket før. Værdien er den samme, men grunden til den skal stå et
+// sted: baren viser en MAGNITUDE (og et loft, som går højere end nogen nuværende
+// rating), så den må ikke skaleres efter hvor bestanden tilfældigvis ligger —
+// ellers flytter en rytters bar sig fordi ANDRE ryttere har ændret sig, hvilket
+// er præcis den egenskab omlægningen fjernede fra selve ratingen.
+//
+// Overblik-radaren bruger bevidst 0-40 i stedet. Det er ikke en modsigelse:
+// radaren sammenligner otte rollers FORM mod hinanden på én rytter, hvor en
+// fælles 0-99-akse ville klemme polygonen sammen til en prik. Baren her
+// sammenligner niveau mod loft på én akse hvor loftet skal kunne være med.
+const BAR_SCALE_MAX = 99;
+const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MAX) * 100}%`;
+
 // Én ryttertype-række: navn · bar (nu-fyld + skraveret loft-bånd) · nu / loft-tal.
 function TypeRow({ typeKey, now, ceilLo, ceilHi, label }) {
-  const pct = (v) => `${Math.max(0, Math.min(99, v)) / 0.99}%`;
   return (
     <div className="flex items-center gap-3" data-type={typeKey}>
       <span className="w-[110px] flex-shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
       <div className="relative flex-1 h-[7px] rounded-full bg-cz-subtle overflow-hidden" aria-hidden="true">
-        <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: pct(now) }} />
+        <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: barPct(now) }} />
         <div
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
-          style={{ left: pct(ceilLo), width: `calc(${pct(ceilHi)} - ${pct(ceilLo)})` }}
+          style={{ left: barPct(ceilLo), width: `calc(${barPct(ceilHi)} - ${barPct(ceilLo)})` }}
         />
       </div>
       <span className="w-[86px] flex-shrink-0 text-right font-mono tabular-nums text-2xs">
@@ -68,8 +84,80 @@ function TypeRow({ typeKey, now, ceilLo, ceilHi, label }) {
   );
 }
 
+// Rytterens EGEN rolle, stort (spec §D4). De øvrige syv er kontekst; denne ene er
+// svaret på "hvor god er han, og hvor god kan han blive". Ratingen bruger den
+// DELTE statPlateStyle, så tallet her og tallet i heroen er samme plade — de er
+// samme tal, og må ikke kunne se forskellige ud.
+function PrimaryTypeRow({ typeKey, now, ceilLo, ceilHi, label, roleLabel, ceilingLabel }) {
+  return (
+    <div data-type={typeKey} className="border-b border-cz-border pb-3.5 mb-3.5">
+      <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
+        {roleLabel}
+      </span>
+      <div className="flex items-center gap-3 mt-1.5">
+        <span
+          className="inline-flex items-center justify-center min-w-[42px] h-[32px] px-2 rounded-cz font-display text-[19px] tabular-nums"
+          style={statPlateStyle(now)}
+        >
+          {now}
+        </span>
+        <span className="font-display text-[19px] leading-none tracking-[0.02em] uppercase text-cz-1">
+          {label}
+        </span>
+        <span className="ms-auto text-right">
+          <span className="block font-mono text-3xs uppercase tracking-[0.12em] text-cz-3">
+            {ceilingLabel}
+          </span>
+          <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
+            {ceilLo}–{ceilHi}
+          </span>
+        </span>
+      </div>
+      <div className="relative h-[11px] rounded-full bg-cz-subtle overflow-hidden mt-2.5" aria-hidden="true">
+        <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: barPct(now) }} />
+        <div
+          className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
+          style={{ left: barPct(ceilLo), width: `calc(${barPct(ceilHi)} - ${barPct(ceilLo)})` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// #3671 — hvad køber det næste scout-niveau? Tre tilstande, og ingen af dem må
+// være tavse: der findes en gevinst, gevinsten er for lille til at kunne ses, og
+// der er ikke flere niveauer at købe. Halvbredden vises som ± point, fordi det er
+// den enhed båndet ovenfor står i — spilleren skal kunne holde de to sammen.
+function PrecisionNote({ precision, t, lang }) {
+  // Decimalskilletegnet skal følge sproget — "±4.3" er engelsk og stod som en
+  // fejl midt i en dansk sætning. i18next interpolerer tallet råt, så det
+  // formateres her.
+  const round1 = (n) => (Math.round(n * 10) / 10).toLocaleString(lang || "en");
+  const half = round1(precision.halfWidth);
+
+  if (precision.nextHalfWidth == null) {
+    return (
+      <p className="text-cz-3 text-3xs mt-1.5 mb-0" data-precision="max">
+        {t("profile.scouting.precisionAtMax", { half })}
+      </p>
+    );
+  }
+  if (precision.nextLevelIsUseless) {
+    return (
+      <p className="text-cz-warning text-3xs mt-1.5 mb-0" data-precision="useless">
+        {t("profile.scouting.precisionUseless", { half })}
+      </p>
+    );
+  }
+  return (
+    <p className="text-cz-3 text-3xs mt-1.5 mb-0" data-precision="gain">
+      {t("profile.scouting.precisionNext", { half, next: round1(precision.nextHalfWidth) })}
+    </p>
+  );
+}
+
 export default function RiderScoutingTab({ rider, scouting }) {
-  const { t } = useTranslation("rider");
+  const { t, i18n } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
   const [report, setReport] = useState(null);   // null = loader, ellers payload
   const [failed, setFailed] = useState(false);
@@ -204,10 +292,17 @@ export default function RiderScoutingTab({ rider, scouting }) {
     );
   }
 
-  const { verdict, types, stars, value, own, scout: scoutMeta } = report;
+  const { verdict, types, stars, value, own, scout: scoutMeta, precision, primaryKey } = report;
   const orderedTypes = TYPE_ORDER
     .map((key) => types?.find((x) => x.key === key))
     .filter(Boolean);
+  // #3666 spec §D4: rytterens egen rolle løftes ud og vises stort; resten er
+  // kontekst. `primaryKey` kommer fra serveren (rytterens archetype_draw), ikke
+  // fra "hvilken rolle scorer højest" — en rytter må ikke skifte identitet fordi
+  // et estimat bevægede sig. Mangler den (ældre payload), falder kortet tilbage
+  // til den flade liste af otte, som før.
+  const primaryRow = primaryKey ? orderedTypes.find((r) => r.key === primaryKey) : null;
+  const secondaryRows = primaryRow ? orderedTypes.filter((r) => r.key !== primaryRow.key) : orderedTypes;
   // Ukendt/manglende scout-provenance (fx ældre klient-cache) degraderer sikkert
   // til "default"-linjen frem for at interpolere undefined navn/tier.
   const isDefaultScout = scoutMeta?.isDefault !== false;
@@ -252,8 +347,17 @@ export default function RiderScoutingTab({ rider, scouting }) {
             <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
               {t("profile.scouting.potentialLabel")}
             </span>
+            {/* #2454: potentialet står i RATING-point, samme enhed som ratingen
+                selv og som de otte tabel-flader. Stjernerne var en egen skala
+                (1-6) som intet andet i spillet brugte, så tallet her kunne ikke
+                holdes op mod noget. Faldbacken beholder dem for payloads uden
+                loft-bånd. */}
             <div className="mt-1">
-              {stars ? (
+              {primaryRow ? (
+                <span className="font-mono tabular-nums text-[17px] text-cz-1">
+                  {primaryRow.ceilLo}–{primaryRow.ceilHi}
+                </span>
+              ) : stars ? (
                 <PotentialeStars range={stars} />
               ) : (
                 <PotentialeStars value={null} />
@@ -308,8 +412,24 @@ export default function RiderScoutingTab({ rider, scouting }) {
             </h3>
             <span className="text-3xs text-cz-3">{t("profile.scouting.typesSubtitle")}</span>
           </div>
+          {primaryRow && (
+            <PrimaryTypeRow
+              typeKey={primaryRow.key}
+              now={primaryRow.now}
+              ceilLo={primaryRow.ceilLo}
+              ceilHi={primaryRow.ceilHi}
+              label={tTypes(`types.${primaryRow.key}`)}
+              roleLabel={t("profile.scouting.primaryRoleLabel")}
+              ceilingLabel={t("profile.scouting.primaryCeilingLabel")}
+            />
+          )}
+          {primaryRow && secondaryRows.length > 0 && (
+            <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 mb-2">
+              {t("profile.scouting.otherRolesLabel")}
+            </span>
+          )}
           <div className="space-y-2">
-            {orderedTypes.map((row) => (
+            {secondaryRows.map((row) => (
               <TypeRow key={row.key} typeKey={row.key} now={row.now} ceilLo={row.ceilLo} ceilHi={row.ceilHi}
                 label={tTypes(`types.${row.key}`)} />
             ))}
@@ -319,6 +439,13 @@ export default function RiderScoutingTab({ rider, scouting }) {
               båndet kan se anderledes ud fra én visning til den næste, og at
               rytterens egne evner aldrig er berørt af det. */}
           <p className="text-cz-3 text-3xs mt-1.5 mb-0">{t("profile.scouting.recalcNote")}</p>
+          {/* #3671: hvad køber det næste scout-niveau egentlig? Knappen har hidtil
+              lovet at scouting "snævrer estimatet ind" og taget 1.000 CZ$, uden at
+              kunne vide om spillerens chefscout kan levere en indsnævring. Med det
+              gamle absolutte gulv var svaret for 150 af 203 menneskehold: nul.
+              Linjen siger nu tallet højt — og ved loftet siger den hvad der ER
+              vejen frem (en bedre chefscout), i stedet for at tie. */}
+          {precision && <PrecisionNote precision={precision} t={t} lang={i18n.language} />}
         </SectionCard>
       )}
 

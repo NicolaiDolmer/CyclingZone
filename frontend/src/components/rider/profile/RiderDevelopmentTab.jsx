@@ -68,13 +68,15 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
   const H = hasProj ? projection.band.length - 1 : 0; // fremtidige sæsoner (band[0] = nu)
   const xProj = (s) => (H === 0 ? xNow : xNow + (s / H) * (VB.x1 - xNow));
 
-  // Y: lineær rating-skala med luft, klampet til [1,99]. Domænet skal rumme både den
+  // Y: lineær rating-skala med luft, klampet til [0,99]. Domænet skal rumme både den
   // registrerede kurve OG projektions-båndet + loft-zonen.
+  // #3666: gulvet er 0, ikke 1. På den nye skala er 0 en rating der findes, og en
+  // akse der starter i 1 ville skubbe den nederste linje op fra sin egen bund.
   const projVals = hasProj
     ? projection.band.flatMap((p) => [p.lo, p.hi]).concat([projection.ceil.lo, projection.ceil.hi])
     : [];
   const allRatings = seriesByKey.flatMap((s) => s.points.map((p) => p.rating)).concat(projVals);
-  const lo = Math.max(1, Math.min(...allRatings) - 4);
+  const lo = Math.max(0, Math.min(...allRatings) - 4);
   const hi = Math.min(99, Math.max(...allRatings) + 4);
   const span = Math.max(1, hi - lo);
   const yAt = (r) => VB.y1 - ((r - lo) / span) * (VB.y1 - VB.y0);

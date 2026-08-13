@@ -110,7 +110,7 @@
     "seller": "Seller",
     "bid": "Bid",
     "ovr": "OVR",
-    "ovrTitle": "Overall rating (1-99), weighted for the rider's type"
+    "ovrTitle": "The weighted average of the abilities his own role needs. The same number means the same level in any role."
   },
   "card": {
     "time": "Time",
@@ -122,7 +122,7 @@
     "potential": "Potential",
     "ageYears": "{age} yrs",
     "estValue": "Est. value",
-    "ovrTitle": "Overall rating (1-99), weighted for the rider's type"
+    "ovrTitle": "The weighted average of the abilities his own role needs. The same number means the same level in any role."
   },
   "leader": {
     "line": "Leading: {name}",

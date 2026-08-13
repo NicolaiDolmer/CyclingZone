@@ -30,6 +30,21 @@ const CY = 112;
 const R = 82;
 const angleAt = (i, n) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
 
+// #3666: akse-domænet er 0-40, ikke 0-99.
+//
+// Den gamle model normaliserede mod populations-ankre og fyldte hele 1-99. Den
+// nye er absolut, og målt read-only mod prod 13/8 (n=8.747) er p90 for en
+// rolle-rating 29 — kun 10 ryttere i hele spillet ligger over 40 i deres bedste
+// rolle. Med et 0-99-domæne ville polygonen kollapse til under en tredjedel af
+// radius for stort set alle, og de to yderste ringe ville aldrig blive nået af
+// nogen. Domænet er FAST og ikke per-rytter, så to ryttere fortsat kan holdes
+// op mod hinanden: en større polygon betyder faktisk en bedre rytter.
+const AXIS_DOMAIN = 40;
+// Ringene ligger på evne-ankrene fra statColor, så afstanden mellem to ringe
+// betyder det samme som farveskiftet gør i evne-badgene. Ejer-beslutning 14/8.
+const RING_VALUES = [12, 21, 32];
+const radiusFor = (v) => (R * Math.max(0, Math.min(AXIS_DOMAIN, Number(v) || 0))) / AXIS_DOMAIN;
+
 export default function RiderTypeRadar({ rider, onGoScouting }) {
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -41,7 +56,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
   const ratings = RADAR_ORDER.map((key) => riderTypeRating(abilities, key));
 
   const nowPoly = RADAR_ORDER.map((_, i) => {
-    const r = R * (Math.max(0, Math.min(99, ratings[i])) / 99);
+    const r = radiusFor(ratings[i]);
     return `${(CX + Math.cos(angleAt(i, n)) * r).toFixed(1)},${(CY + Math.sin(angleAt(i, n)) * r).toFixed(1)}`;
   }).join(" ");
 
@@ -49,18 +64,39 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
     x: (CX + Math.cos(angleAt(i, n)) * R).toFixed(1),
     y: (CY + Math.sin(angleAt(i, n)) * R).toFixed(1),
   }));
-  const rings = [R / 3, (2 * R) / 3, R].map((r) => r.toFixed(1));
+  const rings = RING_VALUES.map((v) => radiusFor(v).toFixed(1));
 
-  // Bedste type = højeste type-rating (tie-break = først i RADAR_ORDER/visnings-orden).
-  const bestIdx = ratings.reduce((best, v, i) => (v > ratings[best] ? i : best), 0);
-  const bestKey = RADAR_ORDER[bestIdx];
+  // #3666: guld-aksen markerer rytterens EGEN rolle, ikke den højest ratede.
+  //
+  // Radaren udnævnte før den højeste akse til "bedste type". Siden #3570 er
+  // typen en FAST identitet fra archetype_draw — en rytter kan ikke konverteres
+  // — så en flade der peger på en anden rolle inviterer til noget spillet ikke
+  // understøtter. Det er samme princip ejeren låste for Scouting-kortet 13/8.
+  //
+  // Målt eksempel fra prod: Samuel H. Bizimana er bjergrytter, men læser 18 som
+  // sprinter og 8 som bjergrytter — fordi opskrifterne består af evner der
+  // ligger på forskellige niveauer (spec §1.7, udskudt til #3668). Den gamle
+  // argmax ville have kaldt ham sprinter.
+  const ownKey = RADAR_ORDER.includes(rider?.primary_type) ? rider.primary_type : null;
+
+  // Hvad han rent faktisk læser højest på lige nu. Vises som OBSERVATION, aldrig
+  // som anbefaling, og kun når den afviger fra hans rolle — ellers er der intet
+  // at fortælle.
+  const rated = ratings
+    .map((v, i) => ({ key: RADAR_ORDER[i], v }))
+    .filter((x) => Number.isFinite(x.v));
+  const highestKey = rated.length
+    ? rated.reduce((best, x) => (x.v > best.v ? x : best)).key
+    : null;
+  const goldKey = ownKey ?? highestKey;
+  const showHighest = ownKey && highestKey && highestKey !== ownKey;
 
   const labels = RADAR_ORDER.map((key, i) => {
     const a = angleAt(i, n);
     const lx = CX + Math.cos(a) * (R + 13);
     const ly = CY + Math.sin(a) * (R + 13) + 3;
     const anchor = Math.cos(a) > 0.3 ? "start" : Math.cos(a) < -0.3 ? "end" : "middle";
-    return { key, x: lx.toFixed(1), y: ly.toFixed(1), anchor, isBest: key === bestKey };
+    return { key, x: lx.toFixed(1), y: ly.toFixed(1), anchor, isBest: key === goldKey };
   });
 
   return (
@@ -112,14 +148,13 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
 
       {/* Per-type potentiale-stjerner UDELADT her (samme grund som loft-polygonen:
           per-type potentiale findes ikke i klienten — kun ét overall-estimat). At vise
-          overall-potentialet her ville implicere et per-type loft vi ikke har. Footer
-          viser bedste type + link til Scouting; overall-potentialet står i hero'en.
-          Tilføjes når per-type potentiale-data findes (talentspejder). */}
+          overall-potentialet her ville implicere et per-type loft vi ikke har.
+          Overall-potentialet står i hero'en. */}
       <div className="mt-3 pt-3 border-t border-cz-border flex items-center gap-2.5 flex-wrap">
         <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
-          {t("profile.overview.radar.bestAs")}
+          {t("profile.overview.radar.role")}
         </span>
-        <span className="font-bold text-[13.5px] text-cz-1">{tTypes(`types.${bestKey}`)}</span>
+        <span className="font-bold text-[13.5px] text-cz-1">{tTypes(`types.${goldKey}`)}</span>
         {/* Linket skjules mens Scouting-fanen er udskudt (egen slice) — en knap
             til en fane der ikke findes ville lande på tomt indhold. */}
         {onGoScouting && (
@@ -132,6 +167,21 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           </button>
         )}
       </div>
+
+      {/* #3666: hvad han læser højest på lige nu — OBSERVATION, ikke dom.
+          Ordet "bedst" bruges ikke: rollerne består af forskellige evner, som
+          ligger på forskellige niveauer (spec §1.7, rod-fixet er #3668), så et
+          højere tal i en anden rolle betyder ikke at han burde være den rolle.
+          Linjen skjules når de to er den samme — så er der intet at fortælle. */}
+      {showHighest && (
+        <div className="mt-2 flex items-baseline gap-2 flex-wrap">
+          <span className="text-2xs text-cz-3">{t("profile.overview.radar.readsHighest")}</span>
+          <span className="text-2xs font-bold text-cz-2">{tTypes(`types.${highestKey}`)}</span>
+          <span className="text-3xs text-cz-3 basis-full">
+            {t("profile.overview.radar.notARanking")}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

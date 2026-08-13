@@ -5,11 +5,9 @@ import {
   buildTypeCeilingBands,
   buildVerdict,
   ratingFromAbilities,
-  RATING_ALPHA,
-  RATING_O_ELITE,
-  RATING_O_MIN,
 } from "./scoutingReport.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
+import { ratingForRole } from "./weights/displayRecipes.js";
 
 const CAPS = {
   climbing: 80, time_trial: 60, flat: 55, tempo: 70, sprint: 40, acceleration: 45,
@@ -18,10 +16,17 @@ const CAPS = {
 };
 const NOW = Object.fromEntries(Object.entries(CAPS).map(([k, v]) => [k, v - 15]));
 
-test("ankre matcher frontend riderRating.js (manuel sync-guard)", () => {
-  assert.equal(RATING_ALPHA, 0.5);
-  assert.equal(RATING_O_ELITE, 67.38);
-  assert.equal(RATING_O_MIN, 2.04);
+// #3666: ankrene RATING_ALPHA/O_ELITE/O_MIN findes ikke længere — modellen er
+// absolut og har ingen populations-ankre at holde i sync. Sync-guarden mod
+// frontend er flyttet til drift-vagten i abilityRegistryGuards.test.js, som
+// sammenligner den GENEREREDE frontend-fil byte for byte med generator-outputtet.
+// Det er en stærkere garanti end tre håndholdte tal der skulle huskes to steder
+// — og præcis den slags kopi der allerede havde drevet ubemærket (spec §1.5).
+test("ratingFromAbilities ER visnings-opskriften, ikke en model ved siden af", () => {
+  for (const key of RIDER_TYPE_KEYS) {
+    assert.equal(ratingFromAbilities(CAPS, key), ratingForRole(CAPS, key));
+    assert.equal(ratingFromAbilities(NOW, key), ratingForRole(NOW, key));
+  }
 });
 
 test("ratingFromAbilities: heltal i [1,99], stiger med evner", () => {
@@ -112,4 +117,32 @@ test("verdict: value_gap-faktor kun ved positivt gap", () => {
   assert.ok(withGap.factorKeys.includes("value_gap"));
   const noGap = buildVerdict({ age: 21, own: false, level: 2, maxLevel: 3, bestNow: 50, bestCeilMid: 70, valueGap: 0 });
   assert.ok(!noGap.factorKeys.includes("value_gap"));
+});
+
+// #3666: tærsklerne 2/3/8 er MÅLT, ikke valgt — heltalssøgning der bedst
+// reproducerer dagens fordeling af domme over hele bestanden efter at
+// gap-medianen falder fra 38 til 26 point. De øvrige verdict-tests bruger gaps
+// i sikker afstand fra grænserne og ville derfor bestå med både de gamle og de
+// nye tal. Denne tester præcis grænserne, så en fremtidig ændring er et bevidst
+// valg og ikke en afrunding.
+const verdictAt = (gap, age = 21) =>
+  buildVerdict({ age, own: true, level: 3, maxLevel: 3, bestNow: 40, bestCeilMid: 40 + gap }).headlineKey;
+
+test("verdict: gap-tærsklerne ligger på 2, 3 og 8 (målt, ikke valgt)", () => {
+  // 8 = grænsen for stort loft-gap hos en ung rytter
+  assert.equal(verdictAt(8), "keep_and_develop");
+  assert.equal(verdictAt(7), "monitor");
+  // 3 = grænsen for "hold øje"
+  assert.equal(verdictAt(3, 27), "monitor");
+  assert.equal(verdictAt(2, 27), "solid_contributor");
+  // 2 = grænsen for "tæt på sit loft" hos en ældre rytter
+  assert.equal(verdictAt(1, 33), "past_peak");
+  assert.equal(verdictAt(2, 33), "solid_contributor");
+});
+
+test("verdict: near_ceiling-faktoren følger samme grænse som past_peak", () => {
+  const paa = buildVerdict({ age: 27, own: true, level: 3, maxLevel: 3, bestNow: 40, bestCeilMid: 41 });
+  assert.ok(paa.factorKeys.includes("near_ceiling"), "gap 1 er under tærsklen 2");
+  const over = buildVerdict({ age: 27, own: true, level: 3, maxLevel: 3, bestNow: 40, bestCeilMid: 42 });
+  assert.ok(!over.factorKeys.includes("near_ceiling"), "gap 2 er PÅ tærsklen og tæller ikke");
 });

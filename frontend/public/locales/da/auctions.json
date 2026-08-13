@@ -110,7 +110,7 @@
     "seller": "Sælger",
     "bid": "Byd",
     "ovr": "OVR",
-    "ovrTitle": "Samlet rating (1-99), vægtet efter rytterens type"
+    "ovrTitle": "Det vægtede snit af de evner hans egen rolle bruger. Samme tal betyder samme niveau i alle roller."
   },
   "card": {
     "time": "Tid",
@@ -122,7 +122,7 @@
     "potential": "Potentiale",
     "ageYears": "{age} år",
     "estValue": "Vurdering",
-    "ovrTitle": "Samlet rating (1-99), vægtet efter rytterens type"
+    "ovrTitle": "Det vægtede snit af de evner hans egen rolle bruger. Samme tal betyder samme niveau i alle roller."
   },
   "leader": {
     "line": "Fører: {name}",

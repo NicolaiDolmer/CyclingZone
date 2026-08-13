@@ -1,112 +1,140 @@
+// Mekanik-tests for statColor.
+//
+// #3666: de gamle tests asserterede rytter-rampens ANKER-HEX direkte. Rampen er
+// nu tema-bevidst og valgt ud fra målte tilgængeligheds-krav, så hardkodede hex
+// ville låse den mod en æstetik i stedet for mod en egenskab — og det var
+// præcis dét der gjorde farverne til en tilbagevendende diskussion.
+//
+// Ansvaret er derfor delt:
+//   · statColor.contract.test.js ejer EGENSKABERNE (monoton lyshed,
+//     blæk-kontrast, farveblind-adskillelse). Den er vagten.
+//   · denne fil ejer MEKANIKKEN (interpolation, clamping, ugyldigt input,
+//     scale-opslag) — den slags der skal virke uanset hvilke farver vi vælger.
+//
+// Staff-skalaerne testes fortsat på deres eksakte hex: de er IKKE lagt om, og
+// en utilsigtet ændring af dem skal fanges (ejer-krav i spec §D4).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { statColor, statTextColor, statStyle, statPlateStyle } from "./statColor.js";
+import { statColor, statTextColor, statStyle, statPlateStyle, contrastRatio } from "./statColor.js";
 
-// Re-ankret 2026-07-25 (#2890): to skalaer, hver fittet på ægte percentiler
-// (execute_sql mod prod, samme metode som RATING_O_ELITE/O_MIN i riderRating.js).
-// "ability" (rå enkelt-evne, default) — median 12 · p75 21 · p90 32 · p97 53 · p99,5 67.
-test("statColor — ability-skala rammer sine anker-hex (default scale)", () => {
-  assert.equal(statColor(21), "#33fc96"); // grøn (p75)
-  assert.equal(statColor(32), "#fde447"); // gul (p90)
-  assert.equal(statColor(53), "#fdc032"); // guld (p97)
-  assert.equal(statColor(67), "#e2900f"); // apex/rav (p99,5)
+// Sætter/fjerner data-theme som lib/theme.jsx gør.
+function withTheme(theme, fn) {
+  const had = typeof globalThis.document !== "undefined";
+  const prev = had ? globalThis.document : undefined;
+  globalThis.document = {
+    documentElement: { getAttribute: (k) => (k === "data-theme" ? (theme === "dark" ? "dark" : null) : null) },
+  };
+  try { return fn(); } finally {
+    if (had) globalThis.document = prev; else delete globalThis.document;
+  }
+}
+const isHex = (s) => /^#[0-9a-f]{6}$/.test(s);
+
+test("statColor — rytter-rampen er tema-bevidst", () => {
+  const lys = withTheme("light", () => statColor(44, { scale: "rating" }));
+  const moerk = withTheme("dark", () => statColor(44, { scale: "rating" }));
+  assert.ok(isHex(lys) && isHex(moerk));
+  assert.notEqual(lys, moerk, "samme tal skal have sin egen farve pr. tema — ellers kan den ene ikke læses");
 });
 
-test("statColor — ability-skala knæk-punkter rammer deres eksakte hex", () => {
-  assert.equal(statColor(0), "#565969");
-  assert.equal(statColor(6), "#6f7285");
-  assert.equal(statColor(12), "#aeb1c0"); // population-median
-  assert.equal(statColor(99), "#8a4b06"); // dybeste bronze
+test("statColor — rating og ability er samme rampe (de deler enhed efter #3666)", () => {
+  withTheme("dark", () => {
+    for (const v of [0, 13, 44, 85, 99]) {
+      assert.equal(statColor(v, { scale: "rating" }), statColor(v, { scale: "ability" }));
+    }
+  });
 });
 
-// "rating" (normaliseret 1-99 riderOverallRating) — median 21 · p75 30 · p90 37 ·
-// p97 76 · p99,5 92. Samme rå tal betyder IKKE det samme som ability-skalaen (#2890).
-test("statColor — rating-skala har egne ankre (anden fordeling end ability)", () => {
-  assert.equal(statColor(30, { scale: "rating" }), "#33fc96"); // grøn (p75)
-  assert.equal(statColor(37, { scale: "rating" }), "#fde447"); // gul (p90)
-  assert.equal(statColor(76, { scale: "rating" }), "#fdc032"); // guld (p97)
-  assert.equal(statColor(92, { scale: "rating" }), "#e2900f"); // apex/rav (p99,5)
-  assert.equal(statColor(99, { scale: "rating" }), "#8a4b06");
+test("statColor — staff-skalaerne er urørte og tema-uafhængige", () => {
+  for (const theme of ["light", "dark"]) {
+    withTheme(theme, () => {
+      assert.equal(statColor(70, { scale: "staffAbility" }), "#33fc96");
+      assert.equal(statColor(85, { scale: "staffAbility" }), "#fde447");
+      assert.equal(statColor(60, { scale: "staffRating" }), "#33fc96");
+      assert.equal(statColor(65, { scale: "staffRating" }), "#fde447");
+    });
+  }
 });
 
-test("statColor — samme værdi, forskellig skala, forskellig farve", () => {
-  // 32 er "gul" (p90) på ability-skalaen, men stadig under grønt (p75=30) på rating-skalaen
-  assert.equal(statColor(32), "#fde447");
-  assert.notEqual(statColor(32, { scale: "rating" }), "#fde447");
+test("statColor — ukendt scale falder tilbage til rytter-rampen", () => {
+  withTheme("light", () => {
+    assert.equal(statColor(50, { scale: "findes-ikke" }), statColor(50, { scale: "ability" }));
+  });
 });
 
-// "staffAbility" (staff dimensions/levels/roleSkills) — median 55 · p75 70 · p90 85 ·
-// p97 92 · p99,5≈99. Egen fordeling: staff genereres via tier-bånd (28-90 + jitter),
-// IKKE rytter-evne-modellen — samme rå tal betyder ikke det samme som ability/rating.
-test("statColor — staffAbility-skala har egne ankre (tier-bånd, ikke rytter-evner)", () => {
-  assert.equal(statColor(70, { scale: "staffAbility" }), "#33fc96"); // grøn (p75)
-  assert.equal(statColor(85, { scale: "staffAbility" }), "#fde447"); // gul (p90)
-  assert.equal(statColor(92, { scale: "staffAbility" }), "#fdc032"); // guld (p97)
-  // 55 (staff-median) ville være dybt gråt/grønt-kant på ability-skalaen (langt over
-  // dens grøn-anker 21) men er netop grå-stigende-knækket her — beviser at de to
-  // skalaer IKKE kan dele ankre.
-  assert.equal(statColor(55, { scale: "staffAbility" }), "#aeb1c0");
+test("statColor — klamper uden for 0-99", () => {
+  withTheme("light", () => {
+    assert.equal(statColor(-40), statColor(0));
+    assert.equal(statColor(250), statColor(99));
+  });
 });
 
-// "staffRating" (staff overall) — median 48 · p75 60 · p90 65 · p97 71 · p99,5≈78.
-test("statColor — staffRating-skala har egne ankre (staff-overall, ikke rytter-rating)", () => {
-  assert.equal(statColor(60, { scale: "staffRating" }), "#33fc96"); // grøn (p75)
-  assert.equal(statColor(65, { scale: "staffRating" }), "#fde447"); // gul (p90)
-  assert.equal(statColor(71, { scale: "staffRating" }), "#fdc032"); // guld (p97)
-  assert.equal(statColor(78, { scale: "staffRating" }), "#e2900f"); // apex/rav (p99,5)
-});
-
-test("statColor — ukendt scale falder tilbage til ability", () => {
-  assert.equal(statColor(21, { scale: "bogus" }), statColor(21));
-});
-
-test("statColor — klamper uden for 0–99", () => {
-  assert.equal(statColor(-5), "#565969");
-  assert.equal(statColor(0), "#565969");
-  assert.equal(statColor(120), "#8a4b06");
-});
-
-test("statColor — ugyldigt input falder til floor-farve", () => {
-  assert.equal(statColor(null), "#565969");
-  assert.equal(statColor(undefined), "#565969");
-  assert.equal(statColor(NaN), "#565969");
-  assert.equal(statColor("ikke-tal"), "#565969");
+test("statColor — ugyldigt input falder til floor-farven", () => {
+  withTheme("light", () => {
+    const floor = statColor(0);
+    for (const bad of [null, undefined, NaN, "abc", {}]) assert.equal(statColor(bad), floor);
+  });
 });
 
 test("statColor — accepterer numerisk streng", () => {
-  assert.equal(statColor("21"), "#33fc96");
+  withTheme("light", () => assert.equal(statColor("44"), statColor(44)));
 });
 
-test("statColor — interpolerer monotont mellem knæk (orange i guld→apex)", () => {
-  // 60 ligger mellem guld (53) og apex (67) på ability-skalaen → orange-agtig.
-  const c60 = statColor(60);
-  const r = parseInt(c60.slice(1, 3), 16);
-  const g = parseInt(c60.slice(3, 5), 16);
-  assert.ok(r > 220, `forventede høj rød, fik ${c60}`);
-  assert.ok(g > 100 && g < 192, `forventede mellem-grøn (orange), fik ${c60}`);
+test("statColor — interpolerer mellem knæk i stedet for at hoppe", () => {
+  withTheme("dark", () => {
+    const a = statColor(60, { scale: "rating" });
+    const mid = statColor(67, { scale: "rating" });
+    const b = statColor(75, { scale: "rating" });
+    assert.ok(isHex(mid));
+    assert.notEqual(mid, a);
+    assert.notEqual(mid, b);
+  });
 });
 
-test("statTextColor — mørk tekst på lyse badges, hvid på mørke", () => {
-  assert.equal(statTextColor(32), "#101014"); // gul → mørk tekst
-  assert.equal(statTextColor(21), "#101014"); // grøn → mørk tekst
-  assert.equal(statTextColor(99), "#f5f5fa"); // dybeste bronze → hvid tekst
+test("statTextColor — vælger det blæk der giver mest kontrast", () => {
+  // #3666: valget skete før ved en fast luma-tærskel, som ramte forbi omkring
+  // mellemtonerne (2,88:1 ved rating 49). Nu måles begge og det bedste vinder.
+  for (const theme of ["light", "dark"]) {
+    withTheme(theme, () => {
+      for (let v = 0; v <= 99; v += 7) {
+        const bg = statColor(v, { scale: "rating" });
+        const ink = statTextColor(v, { scale: "rating" });
+        const anden = ink === "#101014" ? "#f5f5fa" : "#101014";
+        assert.ok(contrastRatio(ink, bg) >= contrastRatio(anden, bg),
+          `rating ${v}: valgte det dårligste blæk`);
+      }
+    });
+  }
 });
 
-test("statStyle — returnerer baggrund + kontrast-tekst", () => {
-  assert.deepEqual(statStyle(21), { backgroundColor: "#33fc96", color: "#101014" });
-  assert.deepEqual(statStyle(67), { backgroundColor: "#e2900f", color: "#101014" });
+test("statStyle — farvet baggrund + kontrast-tekst", () => {
+  withTheme("dark", () => {
+    const s = statStyle(44);
+    assert.equal(s.backgroundColor, statColor(44));
+    assert.equal(s.color, statTextColor(44));
+  });
 });
 
-test("statPlateStyle — default scale er 'rating' (bruges altid til normaliseret overall)", () => {
-  const plate = statPlateStyle(30); // p75 på rating-skalaen
-  assert.equal(plate.color, "#33fc96");
-  assert.equal(plate.backgroundColor, "#33fc9629");
-  // Samme rå tal på ability-skalaen ville IKKE ramme grøn (p75=21 der)
-  assert.notEqual(statPlateStyle(30, { scale: "ability" }).color, plate.color);
+test("statPlateStyle — fyldt badge med hårfin ramme, ikke farvet tal", () => {
+  // Ejer-beslutning 14/8 efter test med en farveblind spiller: farven er badgens
+  // FYLD, og formen bæres af rammen, så fyldet må være stille i bunden.
+  withTheme("dark", () => {
+    const p = statPlateStyle(44);
+    assert.equal(p.backgroundColor, statColor(44, { scale: "rating" }));
+    assert.equal(p.color, statTextColor(44, { scale: "rating" }));
+    assert.ok(/^1px solid /.test(p.border), "badgen skal have en hårfin ramme");
+  });
 });
 
-test("statPlateStyle — staffRating giver samme farve-plade-mekanik som rating", () => {
-  const plate = statPlateStyle(60, { scale: "staffRating" }); // p75 på staffRating-skalaen
-  assert.equal(plate.color, "#33fc96");
-  assert.equal(plate.backgroundColor, "#33fc9629");
+test("statPlateStyle — rammen vender med temaet", () => {
+  const lys = withTheme("light", () => statPlateStyle(44).border);
+  const moerk = withTheme("dark", () => statPlateStyle(44).border);
+  assert.notEqual(lys, moerk, "mørk kant på lyst tema, lys kant på mørkt");
+});
+
+test("statPlateStyle — staff-skalaen kan stadig bruges eksplicit", () => {
+  withTheme("dark", () => {
+    const p = statPlateStyle(60, { scale: "staffRating" });
+    assert.equal(p.backgroundColor, "#33fc96");
+  });
 });

@@ -133,6 +133,24 @@ export function restRows(table, requestUrl = "") {
       }
       return RIDERS;
     }
+    // #3666: mocken havde INGEN handler for denne tabel, så rytterprofilens
+    // evner altid var tomme på preview ("Evner endnu ikke beregnet"). Det
+    // betød at rating-pladen, ryttertype-radaren og Fysiologi-fanen aldrig
+    // kunne ses på preview — netop de flader omlægningen ændrer, og netop den
+    // fejlklasse der har bidt før (ejeren skal kunne teste FØR live).
+    // Evnerne ligger allerede embeddet på RIDERS; her serveres de som den
+    // selvstændige tabel siden faktisk forespørger.
+    case "rider_derived_abilities": {
+      const rows = RIDERS
+        .filter((r) => r.rider_derived_abilities)
+        .map((r) => ({ rider_id: r.id, formula_version: 2, ...r.rider_derived_abilities }));
+      const idMatch = url.search.match(/rider_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return rows.filter((row) => row.rider_id === id);
+      }
+      return rows;
+    }
     case "auctions":
       // #3401: AuctionHistoryPage forespørger .eq("status","completed") —
       // AuctionsPage's aktive liste (.in("status",["active","extended"])) skal

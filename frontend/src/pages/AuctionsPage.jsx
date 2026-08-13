@@ -582,7 +582,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {/* #2464: OVR + ryttertype — hvad køber jeg, og hvor god er han? */}
-              {ovr > 0 && (
+              {Number.isFinite(ovr) && (
                 <span
                   className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
                   style={statStyle(ovr, { scale: "rating" })}

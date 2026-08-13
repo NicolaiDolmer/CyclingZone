@@ -9,6 +9,7 @@ import {
   RIDERS,
   ROADMAP_ITEMS,
   AUCTIONS,
+  SEED_SCOUT_ESTIMATES,
 } from "../../src/preview/seedData.js";
 import {
   parseTable,
@@ -94,13 +95,15 @@ export async function installNetworkMocks(page) {
     if (url.pathname.endsWith("/api/scouting/estimates") && request.method() === "POST") {
       let ids = [];
       try { ids = JSON.parse(request.postData() || "{}").riderIds || []; } catch { /* tom body */ }
+      // #2454: seedet ligger nu i seedData (SEED_SCOUT_ESTIMATES) i stedet for
+      // her, fordi runtime-preview-mocken har brug for præcis de samme tal —
+      // ellers ville rating-båndet kun findes i den ene af de to mocks.
       const estimates = {};
       for (const id of ids) {
         const rider = RIDERS.find(r => r.id === id);
         if (!rider) continue;
-        estimates[id] = rider.team_id === TEST_TEAM.id
-          ? { lo: 4.5, hi: 4.5, exact: true, level: 3 }
-          : { hidden: true, level: 0 };
+        estimates[id] = SEED_SCOUT_ESTIMATES[id]
+          ?? (rider.team_id === TEST_TEAM.id ? { lo: 4.5, hi: 4.5, level: 3 } : { hidden: true, level: 0 });
       }
       return json(route, { teamId: TEST_TEAM.id, maxLevel: 3, estimates });
     }

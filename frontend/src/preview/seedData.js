@@ -107,10 +107,21 @@ export const RIDERS = [
     team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
     // #1529: visningen viser nu CZ-evner — embeddet rider_derived_abilities flades
     // op på rytteren (flattenAbilities) i de migrerede sider. Sprinter-profil.
+    //
+    // #3666 (ejer-besluttet 14/8): evnerne er sænket fra 52-84 til 19-31. De gamle
+    // tal var skrevet dengang normaliseringen strakte alt mod to populations-ankre
+    // og gjorde denne rytter til en 99'er. På den absolutte skala svarer de samme
+    // evner til rating 79 — omkring 99,9-percentilen af 8.747 ryttere, hvor
+    // medianen er 13 og p90 er 29. Preview viste derfor ejeren en rytter ingen
+    // spiller nogensinde møder: otte stopfyldte bjælker på radarens 0-40-akse og
+    // et loft-bånd der lå helt uden for den. Nu er hun rating 29 — stadig blandt
+    // spillets stærkeste, men et tal fladerne kan tegne. Markedsværdien er
+    // BEVIDST urørt: `auction-startprice-typo-guard.spec.js` vogter ciffer-drop
+    // på præcis 1.680.000, og den vagt er mere værd end en pænere seed-økonomi.
     rider_derived_abilities: {
-      climbing: 52, time_trial: 60, flat: 78, tempo: 64, sprint: 84, acceleration: 80,
-      punch: 70, endurance: 66, recovery: 68, durability: 71, descending: 62,
-      cobblestone: 58, positioning: 74, aggression: 60, tactics: 67,
+      climbing: 19, time_trial: 22, flat: 29, tempo: 23, sprint: 31, acceleration: 29,
+      punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23,
+      cobblestone: 21, positioning: 27, aggression: 22, tactics: 25,
     },
   },
   {
@@ -135,13 +146,64 @@ export const RIDERS = [
     pending_team_id: TEST_TEAM.id,
     pending_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
     // #1529: klatrer-profil (modsat rider-1's sprinter).
+    // #3666: sænket af samme grund som rider-1 — rating 26 i stedet for 79. Han er
+    // 29 år og dermed tæt på peak, så hans luft til loftet er bevidst mindre end
+    // Adas: 26 mod et potentiale på 32, hvor hun har 29 mod 45.
     rider_derived_abilities: {
-      climbing: 86, time_trial: 72, flat: 55, tempo: 70, sprint: 40, acceleration: 58,
-      punch: 74, endurance: 82, recovery: 75, durability: 70, descending: 68,
-      cobblestone: 50, positioning: 66, aggression: 64, tactics: 73,
+      climbing: 28, time_trial: 24, flat: 18, tempo: 23, sprint: 13, acceleration: 19,
+      punch: 24, endurance: 27, recovery: 25, durability: 23, descending: 22,
+      cobblestone: 16, positioning: 22, aggression: 21, tactics: 24,
     },
   },
 ];
+
+// ── Evne-lofter: SERVER-SANDHED, må ALDRIG serveres til klienten ────────────
+//
+// #3666: seedet havde ingen lofter overhovedet, så hverken potentiel rating
+// (#2454), loft-båndet på Scouting-fanen eller Udvikling-fanens loft-zone kunne
+// vises ægte på preview — netop de flader landing 1 ændrer mest.
+//
+// De ligger BEVIDST uden for `rider_derived_abilities`, ikke inde i den. Rå
+// `ability_caps` findes aldrig i klienten (#1162): de er invertérbare til det
+// server-skjulte potentiale, og frontendens `ABILITY_SELECT` henter kun de 15
+// evne-nøgler. Lå de på rytter-rækken, ville mocken servere klienten noget
+// produktionen aldrig sender — en preview-flade kunne se ud til at virke på et
+// felt der ikke findes i drift. Alt hvad klienten må se er de MASKEREDE bånd,
+// som endpoint-seedene nedenfor bærer.
+//
+// Tallene: Adas sprinter-potentiale lander på 45, tæt på prod-medianen for
+// potentiel rating (44 målt 13/8); Mikkels klatrer-potentiale på 32, lavere
+// fordi han er 29 år og dermed nær peak. Luften er størst på signatur-evnerne,
+// som rolle-faktoren i `riderProgression` gør den i drift.
+export const SEED_ABILITY_CAPS = Object.freeze({
+  "rider-1": Object.freeze({
+    climbing: 25, time_trial: 28, flat: 45, tempo: 29, sprint: 47, acceleration: 45,
+    punch: 32, endurance: 30, recovery: 31, durability: 45, descending: 29,
+    cobblestone: 27, positioning: 41, aggression: 28, tactics: 31,
+  }),
+  "rider-2": Object.freeze({
+    climbing: 38, time_trial: 28, flat: 22, tempo: 28, sprint: 17, acceleration: 23,
+    punch: 26, endurance: 32, recovery: 29, durability: 27, descending: 24,
+    cobblestone: 20, positioning: 26, aggression: 25, tactics: 28,
+  }),
+});
+
+// #2454 preview-seed: POST /api/scouting/estimates. Ét sted, delt af BEGGE
+// mock-konsumenter (Playwright-fixturen og runtime-preview-mocken) — de havde
+// hver sin kopi, og kun den ene ville have fået rating-båndet.
+//
+// `ceil` er rytterens egen rolles loft-bånd i RATING-point, og det er BEVIDST de
+// samme tal som SEED_SCOUTING_REPORT's primærrolle-række: en rytter må ikke vise
+// ét loft i tabellen og et andet på sin Scouting-fane. Konsistens-testen
+// håndhæver det. Rivalen er uscoutet og får `hidden` — intet bånd, ingen rolle,
+// ingen lækage (#1543).
+export const SEED_SCOUT_ESTIMATES = Object.freeze({
+  "rider-1": Object.freeze({
+    lo: 4.5, hi: 5, level: 3, role: "sprinter", now: 29,
+    ceil: Object.freeze({ lo: 40, hi: 48 }),
+  }),
+  "rider-2": Object.freeze({ hidden: true, level: 0 }),
+});
 
 // Roadmap-voting (#954): to godkendte items så /roadmap rendrer den DB-drevne
 // votable liste i stedet for det statiske i18n-fallback.
@@ -1224,57 +1286,82 @@ export const SEED_CLUB = {
 };
 
 // #2100 preview-seed: Udvikling-fanen med loft-projektion. En udviklende ung sprinter
-// (rating 58→70) + det maskerede loft-bånd + fuzzy projektion. Tallene er genereret via
-// backend/lib/developmentProjection.js (samme model prod bruger) så preview matcher live.
+// + det maskerede loft-bånd + fuzzy projektion.
+//
+// #3666: serien SLUTTER nu præcis på rytterens nuværende evner. Før gjorde den
+// ikke: historikken endte på evner der gav rating 50, mens rytteren selv står på
+// 79 — samme rytter, samme rolle, to tal. På den gamle skala var forskellen
+// gemt af normaliseringen; på den nye stod heroen og grafens sidste punkt og
+// modsagde hinanden på skærmen. Historien er den samme (en sprinter der vokser
+// på sprint/acceleration/fladt mens resten står stille), kun endepunktet er
+// bundet til sandheden. `seedData.consistency.test.js` håndhæver bindingen.
 export const SEED_DEVELOPMENT = [
-  { snapshot_date: "2026-03-01", season_number: 6, source: "baseline", abilities: { climbing: 38, time_trial: 44, flat: 44, tempo: 46, sprint: 34, acceleration: 30, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
-  { snapshot_date: "2026-04-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 46, tempo: 46, sprint: 38, acceleration: 34, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
-  { snapshot_date: "2026-05-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 48, tempo: 46, sprint: 42, acceleration: 38, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
-  { snapshot_date: "2026-06-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 50, tempo: 46, sprint: 46, acceleration: 42, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
-  { snapshot_date: "2026-07-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 52, tempo: 46, sprint: 50, acceleration: 46, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
+  { snapshot_date: "2026-03-01", season_number: 6, source: "baseline", abilities: { climbing: 19, time_trial: 22, flat: 25, tempo: 23, sprint: 23, acceleration: 21, punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23, cobblestone: 21, positioning: 27, aggression: 22, tactics: 25 } },
+  { snapshot_date: "2026-04-01", season_number: 6, source: "daily_training", abilities: { climbing: 19, time_trial: 22, flat: 26, tempo: 23, sprint: 25, acceleration: 23, punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23, cobblestone: 21, positioning: 27, aggression: 22, tactics: 25 } },
+  { snapshot_date: "2026-05-01", season_number: 6, source: "daily_training", abilities: { climbing: 19, time_trial: 22, flat: 27, tempo: 23, sprint: 27, acceleration: 25, punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23, cobblestone: 21, positioning: 27, aggression: 22, tactics: 25 } },
+  { snapshot_date: "2026-06-01", season_number: 6, source: "daily_training", abilities: { climbing: 19, time_trial: 22, flat: 28, tempo: 23, sprint: 29, acceleration: 27, punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23, cobblestone: 21, positioning: 27, aggression: 22, tactics: 25 } },
+  { snapshot_date: "2026-07-01", season_number: 6, source: "daily_training", abilities: { climbing: 19, time_trial: 22, flat: 29, tempo: 23, sprint: 31, acceleration: 29, punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23, cobblestone: 21, positioning: 27, aggression: 22, tactics: 25 } },
 ];
 
+// #3666: tallene er REGNET med den ægte model ud fra seed-rytterens NUVÆRENDE
+// evner + de nye `ability_caps` — først displayRecipes.ratingForRole, så
+// buildTypeCeilingBands med seed-spejderen (overall 61, level 3), og til sidst
+// projectCeilingBand/ceilingTiming fra developmentProjection.
+//
+// Rettet igen 14/8: første forsøg regnede fra historikkens SIDSTE SNAPSHOT i
+// stedet for rytterens egne evner, og gav derfor now:50 mens heroen viste 79 —
+// samme rytter, samme rolle, to tal på samme side. Kilden er nu rytteren selv,
+// og `seedData.consistency.test.js` fejler hvis de to nogensinde skilles igen.
 export const SEED_PROJECTION = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
-  primaryKey: "sprinter", now: 70, ceil: { lo: 78, hi: 86 },
+  primaryKey: "sprinter", now: 29, ceil: { lo: 40, hi: 48 },
   band: [
-    { season: 0, lo: 70, hi: 70 }, { season: 1, lo: 71, hi: 76 }, { season: 2, lo: 72, hi: 79 },
-    { season: 3, lo: 72, hi: 81 }, { season: 4, lo: 73, hi: 82 }, { season: 5, lo: 73, hi: 83 },
-    { season: 6, lo: 73, hi: 83 },
+    { season: 0, lo: 29, hi: 29 }, { season: 1, lo: 29, hi: 33 }, { season: 2, lo: 30, hi: 37 },
+    { season: 3, lo: 31, hi: 38 }, { season: 4, lo: 31, hi: 39 }, { season: 5, lo: 32, hi: 40 },
+    { season: 6, lo: 29, hi: 39 },
   ],
-  timing: { seasons: { lo: 2, hi: null }, ageAt: { lo: 23, hi: null } },
+  timing: { seasons: { lo: 5, hi: null }, ageAt: { lo: 29, hi: null } },
   pastPeak: false,
 };
 
 // #3334 preview-seed: GET /api/riders/:id/scouting-report — samme sprinter-profil
-// som SEED_PROJECTION (now:70, sprinter-loft 78-86), plus rapport-provenance
-// (navngiven chefscout, tier 2) så feature'en er synlig på preview uden en
-// hyret spejder i SEED_CLUB (der er bevidst stadig default-spejder, #1441 A3).
+// som SEED_PROJECTION, plus rapport-provenance (navngiven chefscout, tier 2) så
+// feature'en er synlig på preview uden en hyret spejder i SEED_CLUB (der er
+// bevidst stadig default-spejder, #1441 A3).
 //
-// #3458 Fase 1 (Del B "skala-ærlighed"): `types` er nu de RÅ tal ovenfor
-// KØRT GENNEM den ægte kalibrering (backend/lib/typeRatingScale.js
-// calibratedTypeRating, mod den committede, FROSSNE backend/lib/typeRatingCalibration.json)
-// — ikke bare plausible tal. Preview viser dermed PRÆCIS hvad produktion ville
-// returnere for denne rå-profil, inkl. den overraskende (men korrekte) effekt at
-// sprinter/rouleur/brostensrytter lander højere på den kalibrerede skala end
-// baroudeur/gc/climber ved samme rå niveau — det ER pointen med fixet: skalaen er nu
-// absolut og ens for alle 8 typer, ikke længere strukturelt skæv til fordel for
-// visse typers formler.
+// #3666: kalibreringen er VÆK, og `types` er genereret ved at køre seed-rytterens
+// NUVÆRENDE evner + `ability_caps` gennem den ÆGTE kæde — displayRecipes.
+// ratingForRole på begge, derefter buildTypeCeilingBands med seed-spejderen
+// (overall 61) på level 3. Preview viser dermed præcis hvad produktion ville
+// returnere for denne profil, ikke plausible tal.
+//
+// Rækkefølgen er `RIDER_TYPE_KEYS`, ikke sorteret efter rating: kortet vælger
+// selv sin visning, og et forsorteret seed ville skjule om det gør det rigtigt.
+// `verdict` og `precision` er ligeledes regnet med de ægte funktioner
+// (buildVerdict med de rekalibrerede tærskler 2/3/8, scoutPrecisionInfo mod det
+// relative gulv). Dommen er `monitor`, ikke `keep_and_develop`: rytteren står 5
+// point fra sit loft-midtpunkt, og det ligger over GAP_MONITOR (3) men under
+// GAP_HIGH_UPSIDE (8). Det er tærsklerne der taler, ikke et valg her.
 export const SEED_SCOUTING_REPORT = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
+  primaryKey: "sprinter",
   stars: { lo: 4.5, hi: 5 },
   types: [
-    { key: "sprinter", now: 96, ceilLo: 98, ceilHi: 99 },
-    { key: "puncheur", now: 34, ceilLo: 39, ceilHi: 47 },
-    { key: "brostensrytter", now: 73, ceilLo: 80, ceilHi: 87 },
-    { key: "baroudeur", now: 40, ceilLo: 51, ceilHi: 64 },
-    { key: "rouleur", now: 77, ceilLo: 82, ceilHi: 87 },
-    { key: "tt", now: 22, ceilLo: 31, ceilHi: 40 },
-    { key: "gc", now: 11, ceilLo: 18, ceilHi: 26 },
-    { key: "climber", now: 12, ceilLo: 18, ceilHi: 25 },
+    { key: "sprinter", now: 29, ceilLo: 40, ceilHi: 48 },
+    { key: "tt", now: 23, ceilLo: 28, ceilHi: 37 },
+    { key: "climber", now: 22, ceilLo: 26, ceilHi: 35 },
+    { key: "puncheur", now: 25, ceilLo: 28, ceilHi: 36 },
+    { key: "brostensrytter", now: 24, ceilLo: 30, ceilHi: 39 },
+    { key: "baroudeur", now: 24, ceilLo: 29, ceilHi: 37 },
+    { key: "rouleur", now: 27, ceilLo: 33, ceilHi: 42 },
+    { key: "gc", now: 23, ceilLo: 26, ceilHi: 35 },
   ],
-  verdict: { headlineKey: "keep_and_develop", confidence: "high", factorKeys: ["age_upside", "ceiling_gap", "type_match", "form_unknown"] },
-  value: { market: 420000, expected: 468000 },
+  verdict: { headlineKey: "monitor", confidence: "high", factorKeys: ["ceiling_gap", "value_gap", "type_match", "form_unknown"] },
+  precision: { halfWidth: 4.29, nextHalfWidth: null, nextGain: 0, nextLevelIsUseless: false, maxUsefulLevel: 3, limitedByScout: false },
+  // #3666: `market` sagde 420.000 om en rytter hvis egen række siger 1.680.000 —
+  // to tal om samme rytter, synlige på samme profil. Nu er de enige, og
+  // `expected` ligger stadig over, så "røverkøb?"-blokken har noget at vise.
+  value: { market: 1680000, expected: 1870000 },
   scout: { isDefault: false, name: "Sofie Lindqvist", tier: 2, overall: 61, hiredAt: "2026-07-20T10:00:00.000Z" },
   generatedAt: "2026-08-05T09:00:00.000Z",
 };

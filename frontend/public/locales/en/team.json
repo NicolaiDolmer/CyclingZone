@@ -54,7 +54,7 @@
       "nation": "Nation",
       "rider": "Rider",
       "rating": "Rating",
-      "ratingTitle": "Overall rating 1-99, weighted for the rider's type.",
+      "ratingTitle": "The weighted average of the abilities his own role needs. The same number means the same level in any role.",
       "value": "Value",
       "salary": "Salary",
       "potential": "Potential",
@@ -133,7 +133,10 @@
   "profile": {
     "back": "← Back",
     "notFound": "Team not found",
-    "loadError": { "message": "Couldn't load the team. Nothing was lost. Try again.", "retry": "Try again" },
+    "loadError": {
+      "message": "Couldn't load the team. Nothing was lost. Try again.",
+      "retry": "Try again"
+    },
     "tabsAriaLabel": "Team profile sections",
     "yourTeam": "Your team",
     "managerLabel": "Manager: {name}",
@@ -232,7 +235,10 @@
   "manager": {
     "back": "Back",
     "notFound": "Team not found",
-    "loadError": { "message": "Couldn't load this manager's profile. Nothing was lost. Try again.", "retry": "Try again" },
+    "loadError": {
+      "message": "Couldn't load this manager's profile. Nothing was lost. Try again.",
+      "retry": "Try again"
+    },
     "yourTeam": "Your team",
     "managerPrefix": "Manager:",
     "aiManaged": "AI-managed team",

@@ -8,7 +8,7 @@
   "thNation": "Nation",
   "thRider": "Rytter",
   "thRating": "Rating",
-  "thRatingTitle": "Samlet rating 1-99, vægtet efter rytterens type.",
+  "thRatingTitle": "Det vægtede snit af de evner hans egen rolle bruger. Samme tal betyder samme niveau i alle roller.",
   "compareTooltip": "Vælg til sammenligning",
   "thTeam": "Hold",
   "thBadges": "Status",
