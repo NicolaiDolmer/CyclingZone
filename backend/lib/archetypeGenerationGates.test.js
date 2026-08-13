@@ -151,10 +151,13 @@ function runCohort(n, seed, { useAdultBaselineOnly = false, useBootstrapCaps = f
     // backfillCores.js's deriveForRiderIds tager når rider.archetype_draw findes).
     const capsPrimary = useBootstrapCaps ? bootstrap.primary.key : c.archetypeDraw.primary;
     const capsSecondary = useBootstrapCaps ? bootstrap.secondary.key : (c.archetypeDraw.secondary || null);
-    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, capsPrimary, capsSecondary);
     // #3570: akademi-kandidater er ALTID 16-21 år (< 22) — samme alders-gate som
     // deriveForRiderIds/backfillCores.js bruger i produktion.
     const age = REFERENCE_YEAR - Number(String(riderRow.birthdate).slice(0, 4));
+    // #3591: alderen med i kaldformen, som produktionen gør. For denne population
+    // (16-21) er taperen per definition inaktiv — den bider først efter peakAge — så
+    // gate-tallene er uændrede; kaldformen er nu blot den samme som produktionens.
+    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale, age }, capsPrimary, capsSecondary);
     const finalModel = useAdultBaselineOnly
       ? typesBaseline
       : selectTypesBaseline(age, typesBaseline, youthTypesBaseline);

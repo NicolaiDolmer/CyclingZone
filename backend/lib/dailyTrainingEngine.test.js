@@ -382,7 +382,10 @@ test("akademi-alder (18): tickCaps=genberegnet livstidsloft (intet sæson-loft) 
   // Reference: SAMME lavniveau-funktion (applyDailyTick) med de parametre motoren
   // skal sende — tickCaps = det GENBEREGNEDE livstidsloft (IKKE et sæson-loft, og
   // IKKE den stale persisterede værdi), academyRateMult=1/3.
-  const lifetimeCaps = buildCapsForRider(riderAbilities, rider, rider.primary_type, rider.secondary_type);
+  // #3591: alderen sendes eksplicit, præcis som motoren gør (dailyTrainingEngine.js:314
+  // kalder buildCapsForRider(abilities, { ...rider, age }, ...)). Referencen skal
+  // bruge SAMME kaldform som det den er reference for — ellers måler den noget andet.
+  const lifetimeCaps = buildCapsForRider(riderAbilities, { ...rider, age: 18 }, rider.primary_type, rider.secondary_type);
   const expected = applyDailyTick({
     riderId: "ar4", dateStr: "2026-06-12", age: 18,
     abilities: riderAbilities, caps: lifetimeCaps, progress: {},
@@ -424,7 +427,8 @@ test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-m
   // motoren rent faktisk sender 1.0 for voksne, ikke bare et tal der tilfældigvis
   // regner ud til det samme. riderLevel="u23": riderLevelBand(age=25) (#2529: <26 = u23).
   // #2471: caps = det genberegnede loft (samme formel for voksne som for ungdom).
-  const lifetimeCaps = buildCapsForRider(riderAbilities, rider, rider.primary_type, rider.secondary_type);
+  // #3591: samme kaldform som motoren — alderen eksplicit med (jf. testen ovenfor).
+  const lifetimeCaps = buildCapsForRider(riderAbilities, { ...rider, age: 25 }, rider.primary_type, rider.secondary_type);
   const expected = applyDailyTick({
     riderId: "adult1", dateStr: "2026-06-12", age: 25,
     abilities: riderAbilities, caps: lifetimeCaps, progress: {},

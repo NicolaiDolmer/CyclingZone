@@ -108,7 +108,7 @@ async function main() {
     fetch_("teams", "id,division,is_ai,is_frozen,is_bank"),
     fetch_("riders", "id,team_id,is_academy,is_retired"),
     // #1673: aktive (ikke-retired) ryttere + deres derive-laget, til invariant-check.
-    fetch_("riders", "id,base_value", { is_retired: "is.false" }),
+    fetch_("riders", "id,base_value,archetype_draw,primary_type,secondary_type", { is_retired: "is.false" }),
     // rider_derived_abilities har ingen `id`-kolonne — rider_id er den unikke nøgle.
     fetch_("rider_derived_abilities", "rider_id", undefined, "rider_id"),
     fetch_("auctions", "id,rider_id,status", { status: "in.(active,extended)" }),
@@ -200,6 +200,28 @@ async function main() {
       strandedRiders.push({ riderId: r.id, missingDerived, missingValue });
     }
   }
+
+  // Check 8b (#3593): Rytterens IDENTITET skal være fuldt forankret i anlægget.
+  //
+  // `resolveRiderTypes` tager primæren fra `archetype_draw`, men falder tilbage til
+  // klassifikatoren for sekundæren når anlægget ikke bærer en — og sekundæren former
+  // loftet direkte (youthRoleFactor 0,82 mod 0,45). En rytter uden sekundært anlæg får
+  // derfor sin sekundære type udpeget på ny hver gang lofterne genberegnes, og de to
+  // skrivestier (backfillCores' `draw.secondary || null` mod dailyTrainingEngine's
+  // `riders.secondary_type`) er samtidig uenige om hvilken sekundær der gælder.
+  //
+  // Hvorfor invarianten står HER og ikke kun som en migration: bestanden blev renset
+  // 11/8, men KILDEN er ikke lukket — `fictionalRiderGenerator` skriver fortsat
+  // `secondary: null` for voksen-genererede ryttere (AI-hold, startholds-trupper),
+  // og det lukkes først af #3634. Uden denne tæller vokser tallet igen usynligt,
+  // præcis som det gjorde første gang. Går den fra 0, er #3634 blevet aktuel.
+  const unanchoredIdentity = activeRiders
+    .filter(r => !r.archetype_draw?.primary || !r.archetype_draw?.secondary)
+    .map(r => ({
+      riderId: r.id,
+      missingPrimary: !r.archetype_draw?.primary,
+      missingSecondary: !r.archetype_draw?.secondary,
+    }));
 
   // Check 9 (#2264): Ingen aktiv fri agent må stå med is_academy=true. En akademi-
   // rytter uden hold er ulovlig tilstand: den vises i markedets "All riders", men
@@ -323,6 +345,13 @@ async function main() {
         ? `OK — ${activeRiders.length} aktive ryttere har derive + base_value`
         : `${strandedRiders.length} aktiv(e) rytter(e) mangler derive (rider_derived_abilities-række eller base_value)`,
       strandedRiders.slice(0, 50)
+    ),
+    riders_identity_anchored: check(
+      unanchoredIdentity.length === 0,
+      unanchoredIdentity.length === 0
+        ? `OK — alle ${activeRiders.length} aktive ryttere har både primært og sekundært anlæg`
+        : `${unanchoredIdentity.length} aktiv(e) rytter(e) mangler et forankret anlæg — sekundæren (0,82 af loft-formningen) udpeges af klassifikatoren og kan drifte (#3593; kilden lukkes af #3634)`,
+      unanchoredIdentity.slice(0, 50)
     ),
     no_duplicate_race_results: check(
       duplicateRaceResults.length === 0,

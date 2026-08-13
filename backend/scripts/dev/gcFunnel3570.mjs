@@ -47,7 +47,9 @@ for (let i = 0; i < cands.length; i++) {
   // NY KÆDE (#3570 fase 2): caps formes DIREKTE af det trukne anlæg — intet
   // bootstrap-mellemtrin. Spejler backfillCores.deriveForRiderIds' archetype_draw-
   // gren (draw.primary/draw.secondary i stedet for bootstrapTypeByRider).
-  const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, c.archetypeDraw.primary, c.archetypeDraw.secondary);
+  // #3591: akademi-kandidat (16-21) — taperen bider først efter peakAge, så age: null
+  // er bit-identisk her; fravalget skrives blot eksplicit efter den nye kontrakt.
+  const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale, age: null }, c.archetypeDraw.primary, c.archetypeDraw.secondary);
   const final = computeRiderTypes(caps, youthBaseline);
   finalDist[final.primary.key] = (finalDist[final.primary.key] ?? 0) + 1;
   if (final.primary.key === "gc") finalGc++;

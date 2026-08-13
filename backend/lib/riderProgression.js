@@ -364,15 +364,44 @@ export function buildCaps(baselineAbilities, primaryType, potentiale, cfg = PROG
 //
 // Returnerer et 15-nøgle objekt (alle VISIBLE_ABILITIES).
 //   abilities : { climbing, sprint, ... } nuværende/afledte evner (gulvet)
-//   rider     : { potentiale, age } — age er VALGFRI (se taperedAbsoluteCap):
-//               udeladt/null ⇒ intet taper, bagudkompatibelt med callers uden alder.
+//   rider     : { potentiale, age } — age er PÅKRÆVET, se kontrakten nedenfor
 //   primaryType/secondaryType : ryttertype-nøgler (anlæggets to retninger)
 //
 // #2472 (16/7, ejer-valg B): det absolutte loft aftrappes efter peakAge via
 // taperedAbsoluteCap — se den funktion for hvorfor (blocker-fund: uden taper
 // ophæver #2472's konsolidering aldringen for post-peak-ryttere). Gulvet
 // (max(tapered, current)) er URØRT — ingen spiller mister evne han ejer.
+//
+// ── ALDERS-KONTRAKTEN (#3591, 13/8): `age` SKAL angives eksplicit ────────────
+// `age` var indtil nu dokumenteret som VALGFRI ("udeladt ⇒ intet taper,
+// bagudkompatibelt"). Præcis den valgfrihed var rodårsagen bag #3591: to
+// skrivestier kaldte den samme funktion med forskellig signatur, og forskellen
+// var TAVS — den producerede et gyldigt, men for højt loft i stedet for en fejl.
+//
+//   dailyTrainingEngine.js:314  buildCapsForRider(ab, { ...rider, age }, ...)   MED alder
+//   backfillCores.js:319        buildCapsForRider(ab, { potentiale }, ...)      UDEN alder
+//
+// Følgen målt på 10/8-snapshottet: kun 46 af 3.473 AI-rytteres gemte lofter
+// matchede noget buildCapsForRider-output overhovedet, og 45,4 % ville tabe loft
+// alene ved kaldformen. PR #3598 rettede det ene kaldsted; det gjorde ikke
+// divergensen umulig — `starterSquadAllocator.js` kaldte stadig uden alder
+// (fundet 13/8, mens dette blev skrevet, tre dage efter "rettelsen").
+//
+// Derfor er kontrakten nu EKSPLICIT frem for valgfri:
+//   age = et tal   ⇒ loftet aftrappes efter peakAge (produktionens semantik)
+//   age = null     ⇒ BEVIDST intet taper (offline-analyse, syntetiske fixtures)
+//   age udeladt    ⇒ TypeError — en caller kan ikke længere glemme alderen tavst
+//
+// `null` er stadig lovligt fordi «ingen alder» er en ægte, meningsfuld tilstand
+// for harnesses der måler netop taper-effekten. Forskellen er at den nu skal
+// SKRIVES, og dermed ses i et review, i stedet for at opstå ved udeladelse.
 export function buildCapsForRider(abilities, { potentiale, age } = {}, primaryType, secondaryType) {
+  if (age === undefined) {
+    throw new TypeError(
+      "buildCapsForRider: `age` skal angives eksplicit (#3591). Send sæson-alderen " +
+      "(ageForSeason(birthdate, seasonNumber)) — eller `age: null` hvis taperen bevidst skal udelades.",
+    );
+  }
   const absolute = buildYouthCaps(potentiale, primaryType, secondaryType);
   const peakAge = peakAgeForType(primaryType);
   const caps = {};

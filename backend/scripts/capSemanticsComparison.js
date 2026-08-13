@@ -112,8 +112,12 @@ async function main() {
     // re-deriverer det — ordningen SKAL måles mod det potentiale spilleren ser.
     const rec = { pot: Number(r.potentiale), age, cur: sum(abilities), caps: {}, overCap: {}, potBy: {}, headroom: {} };
 
+    // #3591: DB-rækken bærer ingen `age`-kolonne, og buildCapsForRider kræver nu
+    // alderen eksplicit. Den er allerede regnet lige ovenfor — send den med, så
+    // scorecardet måler samme kaldform som produktionen.
+    const rMedAlder = { ...r, age };
     for (const o of OPTIONS) {
-      const caps = o.fn ? o.fn(r, abilities) : abRow.ability_caps;
+      const caps = o.fn ? o.fn(rMedAlder, abilities) : abRow.ability_caps;
       if (!caps || typeof caps !== "object") { rec.caps[o.key] = null; continue; }
       rec.caps[o.key] = sum(caps);
       rec.potBy[o.key] = o.key === "A2" ? rederivePotential(r, abilities) : Number(r.potentiale);

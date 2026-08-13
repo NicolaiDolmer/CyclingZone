@@ -51,7 +51,10 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
     // (live abilities mod NEUTRAL_BASELINE), og DEN ENDELIGE type klassificeres mod
     // ability_caps + den rigtige (caps-fittede) baseline — samme sti som produktion.
     const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
-    const caps = buildCapsForRider(abilities, { potentiale: riderRow.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
+    // #3591: alderen med, som produktionens derive-sti gør. Samme reference-år som
+    // deriveAbilities ovenfor, så hele kæden regner mod ét årstal.
+    const age = LAUNCH_POPULATION.referenceYear - Number(String(riderRow.birthdate).slice(0, 4));
+    const caps = buildCapsForRider(abilities, { potentiale: riderRow.potentiale, age }, bootstrap.primary.key, bootstrap.secondary.key);
     const { primary } = computeRiderTypes(caps, baseline);
     typeSet.add(primary.key);
     const bv = predictBaseValue({ ...riderRow, primary_type: primary.key }, abilities, model);

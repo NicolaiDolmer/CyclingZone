@@ -118,7 +118,8 @@ function main() {
 
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
-    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale }, bootstrap.primary.key, bootstrap.secondary.key);
+    // #3591: ungdoms-kohorte (16-21) — taperen er inaktiv, age: null er bit-identisk.
+    const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale, age: null }, bootstrap.primary.key, bootstrap.secondary.key);
 
     // ENDELIG type: klassificeret mod ability_caps + den SHIPPEDE caps-fittede
     // baseline (deriveForRiderIds trin 4) — dette er den type der ville blive
