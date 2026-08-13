@@ -364,8 +364,10 @@
         "title": "Ryttertyper",
         "subtitle": "rating pr. type",
         "legendNow": "Nu",
-        "bestAs": "Bedst som",
-        "allTypes": "Alle typer →"
+        "allTypes": "Alle typer →",
+        "role": "Hans rolle",
+        "readsHighest": "Læser højest lige nu",
+        "notARanking": "Rollerne består af forskellige evner, så tallene er ikke en rangliste over hvad han bør være."
       },
       "physio": {
         "title": "Fysiologi",

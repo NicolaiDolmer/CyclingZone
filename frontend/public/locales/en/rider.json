@@ -364,8 +364,10 @@
         "title": "Rider types",
         "subtitle": "rating per type",
         "legendNow": "Now",
-        "bestAs": "Best as",
-        "allTypes": "All types →"
+        "allTypes": "All types →",
+        "role": "His role",
+        "readsHighest": "Reads highest now",
+        "notARanking": "Roles are built from different abilities, so these numbers are not a ranking of what he should be."
       },
       "physio": {
         "title": "Physiology",
