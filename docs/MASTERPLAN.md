@@ -19,15 +19,15 @@
 
 Ejer-ramme: *"Det er loft, potentiale, ryttertyperne, og følelsen af at træning ikke virker vi skal arbejde med."* Spec: [`2026-08-13-rating-fundament-v3-design.md`](superpowers/specs/2026-08-13-rating-fundament-v3-design.md). Samling: [#3664](https://github.com/NicolaiDolmer/CyclingZone/issues/3664).
 
-7. **#3665** evne-registry + split af vægt-tabellen i fire — nul synlige ændringer, bevist af R2/R3.
-8. **#3666** skalaen: vægtet snit + de 8 opskrifter + ALLE visningsflader i én PR (ingen mellemtilstand med to skalaer).
-9. **#2454** potentiale 1-6 → 1-99: stjernerne erstattes i UI af **potentiel rating** (ejer 13/8). `potentiale`-feltet bliver rent internt — motor, værdi og akademi rører sig ikke. *Løfte 9/8.*
-10. **#3592** de fire matematisk uadskillelige typepar. *Løfte i live patch note v7.95.*
-11. **capsShaping**: det der tæller i ratingen skal også vokse i lofterne (spec §6 punkt 2 → #3564-sporet).
-12. **#3643 træningsfladen + #3639/#3649 loft-beskeden.** Succeskriterium er ikke konsistente tal, men at **træning føles som om den virker**.
-13. **#3667** samlet kommunikation: patch notes + `help.json` (en+da), én besked om ét system.
+**Designet er LÅST 13/8** — 8 ejer-beslutninger med målinger i [#3664-tråden](https://github.com/NicolaiDolmer/CyclingZone/issues/3664#issuecomment-5281975050). Læs den før #3666. **Tre landinger**, ikke én: kun landing 2 flytter rytterdata.
 
-**Udskudt igen 13/8:** #3668 rod-fix af evne-skalaen (taktik median 38 vs. bjerg 5). Ejeren: *"lige netop den med at ændre i de faktisk viste stats kan vente en smule."* Konsekvens: vej A står ved magt, R1-gaten forbliver ≤6 points spredning, og de 8 opskrifter i spec §3 gælder som skrevet.
+7. ✅ **#3665** evne-registry + split af vægt-tabellen i fire — merged 13/8 (`38f8ab8a`), nul synlige ændringer, R2/R3 bevist.
+8. **LANDING 1 (før 23/8): #3666 + #2454 + #3667 i ét deploy.** De kan ikke skilles — potentiel rating *er* opskriften anvendt på lofterne. Stjernerne erstattes, labelen flyttes til hover, potentialet vises som interval. Ny gate: **loft-båndets halvbredder [12,8,5,3] måles på ny** (kalibreret til en skala hvor lofterne masede mod 99). *Løfte 9/8.*
+9. **#3592 — skåret ned til caps-formningen alene.** `classifierWeights` er **frosset**: målt 13/8 klassificerer den nul ryttere (alle 8.731 har `archetype_draw`, 100 % match). Display-delen løses af #3666. *Løfte i patch note v7.95.*
+10. **LANDING 2 (efter cutover): capsShaping.** Eneste del der ændrer eksisterende ryttere → prod-mutation, ejer-gated per spec §5, egen besked. Mål: `positioning` formes op (laveste loft i spillet, men belønnet i 5 af 8 opskrifter).
+11. **LANDING 3 (løbende): #3643 + #3649.** Ejer-defineret succeskriterium: fremgangsbar, ugens point, opskriften synlig, **tempo som hastighed** — aldrig ankomsttid. Målt: den nye skala er *mindre* træningsfølsom (38,3 % mod 28,8 % uden bevægelse på en uge), så #3666 forværrer følelsen indtil denne lander.
+
+**#3668 → #3512 = ét spor lige efter cutover** (ejer 13/8), med transparens-sessionen ([`prompt`](sessions/2026-08-13-transparens-session-prompt.md)). #3668 først — et baseline-refit uden rettet skala flytter bare problemet. Vej A og R1 ≤6 points står indtil da. #3512 bliver mere hastende efter #3666: starter-trupper (som nye managere får) rammer kun 36,3 % rigtigt, og det vil fremgå af tallene.
 
 ## C · Talent-kanalen ind i klubben (ejer-valgt 13/8)
 
