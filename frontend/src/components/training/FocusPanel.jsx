@@ -1,4 +1,4 @@
-// FocusPanel — fokus-vælgeren som panel (#3721, ejer-godkendt 16/8).
+// FocusPanel — fokus-vælgeren som panel (#3721, ejer-godkendt 14/8).
 //
 // Erstatter <select>'en begge steder man vælger fokus: /training-rosterets
 // fokus-celle og rytterprofilens Træning-fane. Ét sted, én komponent, så de to
@@ -114,7 +114,7 @@ export default function FocusPanel({
       onClose={onClose}
       size="lg"
       title={t("focusPanel.title", { name: riderName })}
-      // Ejer-krav 16/8: rytterens type og status skal bruge de SAMME
+      // Ejer-krav 14/8: rytterens type og status skal bruge de SAMME
       // komponenter som resten af siden, ikke en tekst-streng bygget her.
       // RiderTypeBadge/RiderBadges returnerer selv null uden data.
       description={

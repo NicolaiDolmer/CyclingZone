@@ -1,4 +1,4 @@
-// trainingFocus.js — ren logik bag fokus-panelet (#3721, ejer-godkendt 16/8).
+// trainingFocus.js — ren logik bag fokus-panelet (#3721, ejer-godkendt 14/8).
 //
 // Panelet erstatter fokus-<select>'en begge steder man vælger fokus (/training-
 // rosteret og rytterprofilens Træning-fane). Én række pr. fokus: hvad det

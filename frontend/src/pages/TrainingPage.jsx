@@ -596,7 +596,7 @@ export default function TrainingPage() {
         </td>
 
         {/* #3721: fokus-vælgeren er et panel, ikke en <select> (ejer-godkendt
-            16/8). Cellen bar før fire signaler i 184 px — fokussets navn, et
+            14/8). Cellen bar før fire signaler i 184 px — fokussets navn, et
             trænbarheds-mærke klistret ind i option-teksten (som klippede:
             "Threshold / TT (X very lir"), en to-linjers chip, og assistentens
             hint. Trin 2 lægger et syvende fokus i den og trin 4 point pr. sæson
@@ -1323,7 +1323,7 @@ export default function TrainingPage() {
         open={!!focusPanelRider}
         onClose={() => setFocusPanelRiderId(null)}
         rider={focusPanelRider}
-        // Ejer-krav 16/8: samme badge-sæt som rosterets Status-kolonne, via de
+        // Ejer-krav 14/8: samme badge-sæt som rosterets Status-kolonne, via de
         // samme komponenter. Panelet må ikke opfinde sin egen status-visning.
         badges={
           focusPanelRider

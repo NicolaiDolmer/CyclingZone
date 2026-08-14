@@ -1,7 +1,7 @@
 # Session-prompt: træningsmodellen, hele vejen ned (#3762 + kæden)
 
 **Model:** Opus 5 · **Indsats:** high · **Form:** design-først, ejer-beslutninger, derefter workflow-bølge
-**Skrevet:** 16/8 af struktur-sessionen (#3721) · **Status ved overlevering:** fokus-panelet er bygget og pushet, resten er design
+**Skrevet:** 14/8 af struktur-sessionen (#3721) · **Status ved overlevering:** fokus-panelet er bygget og pushet, resten er design
 
 > Denne prompt gentager ikke issuerne. Den samler det de ikke kan vide hver for sig: at fem åbne issues er ét system, og i hvilken rækkefølge de kan besluttes uden at bygge det samme to gange.
 
@@ -11,7 +11,7 @@
 
 Ejeren bad om at få træningssidens **struktur** designet (#3721). Undervejs viste målingerne at problemet ikke var layoutet alene, men modellen under det. Tre fund, alle målt:
 
-1. **Fokus-vælgeren kunne ikke bære det der var på vej.** Ejer-godkendt 16/8: den blev et **panel** med én række pr. valg og datastyrede kolonner. Bygget, grønt lokalt, ikke merget. Branch `feat/3721-traeningssidens-struktur`.
+1. **Fokus-vælgeren kunne ikke bære det der var på vej.** Ejer-godkendt 14/8: den blev et **panel** med én række pr. valg og datastyrede kolonner. Bygget, grønt lokalt, ikke merget. Branch `feat/3721-traeningssidens-struktur`.
 2. **Trænbarheds-labelen er delvist usand, men ikke som #3747 beskrev.** Målt over 384 type-kombinationer: `blocked` fyrer **0** gange (uopnåelig kode), `strength` er sand for 79 %, og `limited` er den tvetydige bucket. `løbslære` ville læse `strength` for 64 af 64, ikke `limited`. Det ægte trin 2-problem er `technique`, som går fra 0 % til 56 % `limited` når `positioning` flyttes ud. Korrektionen ligger på #3747.
 3. **Setback har aldrig ramt nogen.** Kæden er dokumenteret i #3758. Fjernelsen er ren kodesletning uden prod-mutation.
 
@@ -75,7 +75,7 @@ Fire ting der ikke er issues endnu, i stigende ambition. **Ingen af dem skal byg
 |---|---|
 | `backend/lib/dailyTraining.js` | `abilityMult` (rest → 0), `fatigueLoad` (rest −14, easy +4, normal +9, hard +16). Den motor der faktisk kører |
 | `backend/lib/training.js` | `TRAINING_FOCUSES`, `focusTrainability`, `resolveTrainingModifier` (setback bor her, og kun her) |
-| `frontend/src/components/training/FocusPanel.jsx` | Bygget 16/8. Datastyrede kolonner: signal-kolonnen forsvinder når intet kan påstås, point-pr-sæson-kolonnen dukker op når trin 4 leverer den |
+| `frontend/src/components/training/FocusPanel.jsx` | Bygget 14/8. Datastyrede kolonner: signal-kolonnen forsvinder når intet kan påstås, point-pr-sæson-kolonnen dukker op når trin 4 leverer den |
 | `frontend/src/lib/trainingFocus.js` + `.test.js` | Ren logik + 11 tests. `focusSignal('limited') === 'none'` er pinnet med begrundelse |
 | `frontend/tests/e2e/3721-*.shots.mjs` | Måle- og screenshot-scripts: blok-positioner, panelet, profil-dubletten |
 | `docs/design/3721-traeningssidens-struktur/mockup.html` | Struktur-forslaget i spillets egne tokens |

@@ -72,8 +72,8 @@ const TRAINING_ME = {
 // dagens træning. Den tænder tre blokke mere (dagens moment, tick-noten og hele
 // rapport-tabellen) som "ikke trænet endnu"-tilstanden skjuler.
 const TODAY_RUN = {
-  tick_date: "2026-08-16",
-  created_at: "2026-08-16T04:12:00.000Z",
+  tick_date: "2026-08-14",
+  created_at: "2026-08-14T04:12:00.000Z",
   executed_by: "assistant",
   bonus_applied: true,
   report: {
