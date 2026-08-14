@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> **GitHub-first start-rutine** (indført 2026-05-06 per [#70](https://github.com/NicolaiDolmer/CyclingZone/issues/70)). Token-baseline 2026-05-14: see `docs/metrics/token-baseline-before.json` (pre-Phase-1-4) og `docs/metrics/token-baseline-after-phase-1-4.json`.
+> **GitHub-first start-rutine** ([#70](https://github.com/NicolaiDolmer/CyclingZone/issues/70)). Token-budget-master: se nederst.
 
 ## Hard rules (fælles — fuld tekst i AGENTS.md)
 
@@ -12,8 +12,8 @@ Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/
 
 ## Auto-loaded (intet at gøre)
 
-- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~2.800 tok pr. 2026-06-25, re-trimmet fra 3.600). Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
-- `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (~500 tok) via `scripts/session-prefetch-issue.sh`. Ikke source of truth.
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory. Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
+- `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue via `scripts/session-prefetch-issue.sh`. Ikke source of truth.
 
 ## Start (eksplicit)
 
@@ -31,9 +31,10 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 - `docs/GITHUB_WORKFLOW.md` — Workflow, agent-loops, close-protocol
 - `docs/AGENT_ARCHITECTURE.md` — Parallel-session safety, cross-agent failure-modes (auto-gen)
 - `docs/WORKTREE_WORKFLOW.md` — Parallelle Claude Code-sessioner via git worktrees (`scripts/new-worktree.ps1`)
-- `docs/NIGHT_WAVE_RUNBOOK.md` — Natbølge: `scripts/preflight-night-wave.ps1 -Fix` (GO/NO-GO), launch i samme tur som ejer-go, launch-bevis, merge-protokol, recovery. Læs FØR enhver natbølge.
+- `docs/NIGHT_WAVE_RUNBOOK.md` — Natbølge: `preflight-night-wave.ps1 -Fix` (GO/NO-GO), launch i samme tur som ejer-go, launch-bevis, merge-protokol, recovery. Læs FØR enhver natbølge.
 - `docs/AI_CHANNEL_ROUTING.md` — Kanal-til-task-matrix (Code vs chat vs Cowork vs Dispatch); læs ved tvivl
 - `docs/AI_OPS_SCALING_ROADMAP.md` — AI/Ops + skalerings-roadmap (Track A vs Epic #323); læs før AI-ops/cross-PC/scaling-issues
+- `database/schema-snapshot.json` — kolonnenavne i `relations.<tabel>.columns`. Slå op FØR ad-hoc SQL via MCP; gæt fylder prod-loggen (#3769). `riders`: `firstname`/`lastname`/`birthdate`, ikke `name`/`age`.
 
 ## Close-out (per session)
 
@@ -54,6 +55,6 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 
 ## Token-budget
 
-Master (inkl. aktuel baseline + #605-targets): [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605).
+Master (baseline + targets): [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605).
 
 Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json`. Refresh ved connector/plugin-ændring.
