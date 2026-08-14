@@ -86,7 +86,7 @@ export const PATCHES = [
   },
   {
     "version": "7.127",
-    "date": "2026-08-15",
+    "date": "2026-08-14",
     "label": "Beta",
     "changes": [
       {
@@ -110,7 +110,7 @@ export const PATCHES = [
   },
   {
     "version": "7.126",
-    "date": "2026-08-15",
+    "date": "2026-08-14",
     "label": "Beta",
     "changes": [
       {
@@ -325,7 +325,7 @@ export const PATCHES = [
   },
   {
     "version": "7.121",
-    "date": "2026-08-14",
+    "date": "2026-08-13",
     "label": "Beta",
     "changes": [
       {
@@ -474,7 +474,7 @@ export const PATCHES = [
   },
   {
     "version": "7.117",
-    "date": "2026-08-12",
+    "date": "2026-08-11",
     "label": "Beta",
     "changes": [
       {
