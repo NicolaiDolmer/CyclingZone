@@ -25,29 +25,56 @@ function sinceDate(days, now = new Date()) {
 }
 
 export function useTrainingHistory() {
-  const [runs, setRuns] = useState([]);     // [{ tick_date, executed_by, bonus_applied, report }]
+  const [runs, setRuns] = useState([]);     // [{ tick_date, executed_by, bonus_applied, report }] — seneste 30 dage
+  const [seasonRuns, setSeasonRuns] = useState([]); // samme form, men kun dage i den AKTIVE sæson (#3709 trin 1)
+  const [seasonStart, setSeasonStart] = useState(null); // "YYYY-MM-DD" | null
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const user = await getAuthedUser();
-      if (!user) { setRuns([]); return; }
+      if (!user) { setRuns([]); setSeasonRuns([]); return; }
       const { data: myTeam } = await supabase
         .from("teams")
         .select("id")
         .eq("user_id", user.id)
         .single();
-      if (!myTeam) { setRuns([]); return; }
+      if (!myTeam) { setRuns([]); setSeasonRuns([]); return; }
+
+      // #3709 trin 1: kvitteringens enhed er point pr. SÆSON, så vinduet skal
+      // kende sæsonstarten. Sæson 1 kørte 34 dage (22/6 til 26/7, målt 14/8), så
+      // 30-dages-vinduet kan i sig selv være kortere end sæsonen. Vi henter
+      // derfor fra det TIDLIGSTE af de to datoer og deler resultatet bagefter,
+      // så `runs` beholder sin 30-dages-kontrakt (TrainingHistory + profilens
+      // 30-dages-trend siger begge "30 dage") mens `seasonRuns` er sæsonen.
+      const { data: season, error: seasonError } = await supabase
+        .from("seasons")
+        .select("start_date")
+        .eq("status", "active")
+        .maybeSingle();
+      // En manglende/fejlende sæson må ikke fabrikere et sæsontal: seasonStart
+      // bliver null, seasonAbilityGains returnerer null, og fladen viser en
+      // afventende tilstand i stedet for et opfundet "+0".
+      const activeStart = !seasonError && season?.start_date ? String(season.start_date) : null;
+      setSeasonStart(activeStart);
+
+      const windowStart = sinceDate(HISTORY_DAYS);
+      const since = activeStart && activeStart < windowStart ? activeStart : windowStart;
+
       // RLS begrænser allerede til egne hold; team_id-filteret holder query'et
       // på det aktive hold (samme indeks (team_id, tick_date DESC)).
       const { data, error } = await supabase
         .from("training_day_runs")
         .select("tick_date, executed_by, bonus_applied, report")
         .eq("team_id", myTeam.id)
-        .gte("tick_date", sinceDate(HISTORY_DAYS))
+        .gte("tick_date", since)
         .order("tick_date", { ascending: false });
-      if (!error) setRuns(data ?? []);
+      if (!error) {
+        const rows = data ?? [];
+        setRuns(rows.filter((r) => String(r.tick_date) >= windowStart));
+        setSeasonRuns(activeStart ? rows.filter((r) => String(r.tick_date) >= activeStart) : []);
+      }
     } catch {
       /* netværk — behold tidligere state */
     } finally {
@@ -57,5 +84,5 @@ export function useTrainingHistory() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { runs, loading, refresh };
+  return { runs, seasonRuns, seasonStart, loading, refresh };
 }

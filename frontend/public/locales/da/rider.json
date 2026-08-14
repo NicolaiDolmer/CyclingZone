@@ -98,8 +98,6 @@
       },
       "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
       "activeRest": "Hviler ({focus}-fokus på pause)",
-      "progressTo": "{ability} {from} → {to} · {pct}% mod næste +1",
-      "progressPending": "Bygger fremgang mod næste +1",
       "effectNote": "opdateres dagligt",
       "riskNote": "Højere intensitet vokser hurtigst, men har ~{risk}% risiko for tilbageslag der koster en del af sæsonens fremgang.",
       "noRiskNote": "Let intensitet vokser støt uden risiko for tilbageslag.",
