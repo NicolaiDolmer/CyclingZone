@@ -30,16 +30,29 @@ const CY = 112;
 const R = 82;
 const angleAt = (i, n) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
 
-// #3666: akse-domænet er 0-40, ikke 0-99.
+// #3707: akse-domænet er 0-85, ikke 0-40.
 //
-// Den gamle model normaliserede mod populations-ankre og fyldte hele 1-99. Den
-// nye er absolut, og målt read-only mod prod 13/8 (n=8.747) er p90 for en
-// rolle-rating 29 — kun 10 ryttere i hele spillet ligger over 40 i deres bedste
-// rolle. Med et 0-99-domæne ville polygonen kollapse til under en tredjedel af
-// radius for stort set alle, og de to yderste ringe ville aldrig blive nået af
-// nogen. Domænet er FAST og ikke per-rytter, så to ryttere fortsat kan holdes
-// op mod hinanden: en større polygon betyder faktisk en bedre rytter.
-const AXIS_DOMAIN = 40;
+// #3666 satte domænet til 40 ud fra p90 for en rytters BEDSTE rolle (29). Den
+// målestok så kun på ét tal pr. rytter — men radaren tegner otte akser pr.
+// rytter, og en alsidig toprytter kan ligge højt på flere af dem samtidig, ikke
+// kun sin egen rolle. Målt read-only mod prod 14/8 (n=8.763, samme otte
+// opskrifter som her): 80 ryttere får ALLE otte akser klampet til 40 (polygonen
+// rammer yderringen på hvert eneste hjørne — "maksimal i alt"), og 245 får det
+// på mindst fire ud af otte. Det er præcis symptomet i #3707: rytterens tal er
+// tydeligvis ikke maksimale, men figuren tegner som om de er. Konkret eksempel
+// (Aitor Iglesias, gc): climbing 91, time_trial 89, tempo 86 — ingen enkelt evne
+// rører 99 — men opskrifternes vægtede snit gav sprinter 64, puncheur 70, gc
+// 82 osv.: alle otte over 40, så domæne-40 tegnede ham identisk med en rytter
+// der reelt var maksimal overalt.
+//
+// 85 er ikke arbitrært: det ER spillets nuværende højeste tal (samme faktum som
+// #3666 lagde til grund andetsteds), og målt er det også nøjagtig det højeste
+// nogen rytter rammer på nogen af de otte akser i den nuværende bestand
+// (n=8.763, 14/8) — ingen rytter klampes falsk, og den eneste der rammer 100%
+// fyld på en akse er reelt den bedste i spillet til den rolle. RING_VALUES
+// (evne-ankrene) er uændrede: de beskriver stadig median/p75/p90, bare som en
+// mindre andel af et større domæne — det er korrekt, for bestanden ER lav.
+const AXIS_DOMAIN = 85;
 // Ringene ligger på evne-ankrene fra statColor, så afstanden mellem to ringe
 // betyder det samme som farveskiftet gør i evne-badgene. Ejer-beslutning 14/8.
 const RING_VALUES = [12, 21, 32];
