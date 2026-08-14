@@ -10,7 +10,10 @@
 //                             ellers falder den tilbage til det gamle slots-kald
 //                             (POST /api/scouting/:riderId).
 //   • pendingFor(riderId)   — aktiv målrettet job-model-opgave på rytteren
-//                             ({ readyOn, days }) eller undefined.
+//                             ({ readyOn, readyAt, days }) eller undefined.
+//                             readyAt (#3548) er serverens præcise klar-tidspunkt
+//                             (ISO UTC) og driver nedtællingen; readyOn/days er
+//                             det gamle dags-granulære felt.
 //   • requestEstimates(ids) — batched fetch af viewer-maskerede potentiale-
 //                             estimater (POST /api/scouting/estimates). Den rå
 //                             riders.potentiale findes IKKE i klienten længere —
@@ -46,7 +49,7 @@ export function useScouting() {
   const [scoutingId, setScoutingId] = useState(null); // rytter under aktiv scout
   const [estimates, setEstimates] = useState({});     // { <rider_id>: {lo,hi,exact,level} | null }
   const [scoutSystemEnabled, setScoutSystemEnabled] = useState(false);
-  const [pendingTargets, setPendingTargets] = useState({}); // { <rider_id>: { readyOn } }
+  const [pendingTargets, setPendingTargets] = useState({}); // { <rider_id>: { readyOn, readyAt } }
   const [jobCapacity, setJobCapacity] = useState(1);
   const [jobActiveCount, setJobActiveCount] = useState(0);
   const [jobConfig, setJobConfig] = useState(null); // { targetEtaMinutes, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
@@ -72,7 +75,12 @@ export function useScouting() {
         const active = data.jobModel?.active ?? [];
         const nextPending = {};
         for (const a of active) {
-          if (a.kind === "target" && a.rider_id) nextPending[a.rider_id] = { readyOn: a.ready_on };
+          // #3548: ready_at er serverens præcise klar-tidspunkt (created_at +
+          // etaMinutes) — null på ældre rækker, hvor UI'et falder tilbage til
+          // den flade ETA-copy.
+          if (a.kind === "target" && a.rider_id) {
+            nextPending[a.rider_id] = { readyOn: a.ready_on, readyAt: a.ready_at ?? null };
+          }
         }
         setPendingTargets(nextPending);
         setJobActiveCount(active.length);
@@ -148,7 +156,12 @@ export function useScouting() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
       if (data.assignment?.readyOn) {
-        setPendingTargets((prev) => ({ ...prev, [riderId]: { readyOn: data.assignment.readyOn } }));
+        setPendingTargets((prev) => ({
+          ...prev,
+          // #3548: readyAt kommer med i POST-svaret, så nedtællingen starter med
+          // det samme i stedet for først ved næste GET /scouting/me.
+          [riderId]: { readyOn: data.assignment.readyOn, readyAt: data.assignment.readyAt ?? null },
+        }));
         setJobActiveCount((prev) => prev + 1);
       }
       return { ok: true, assignment: data.assignment };
@@ -192,6 +205,7 @@ export function useScouting() {
 
   // Aktiv målrettet job-model-opgave på en rytter, eller undefined. `days` er et
   // afledt bekvemmelighedsfelt (hele dage til ready_on) — se scoutingCentralDisplay.js.
+  // `readyAt` (#3548) er serverens præcise klar-tidspunkt og videregives uændret.
   const pendingFor = useCallback((riderId) => {
     const pending = riderId ? pendingTargets[riderId] : undefined;
     if (!pending) return undefined;

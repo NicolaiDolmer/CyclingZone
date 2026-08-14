@@ -151,6 +151,26 @@ export function readyDateFor(kind, startedOn, { fromLevel = 0, toLevel } = {}) {
   return ready;
 }
 
+// #3548: PRÆCIST klar-tidspunkt for en målrettet undersøgelse.
+//
+// ready_on er en DATO (started_on + daysPerLevel = samme kalenderdag for target),
+// så den kan ikke bære en nedtælling på minutter. Deadline'en findes allerede i
+// data: lazyCompleteDueTargetAssignments (scoutTargetMaturation.js) modner
+// præcis de opgaver hvor `created_at <= now - etaMinutes`. Denne funktion er
+// den samme regel læst forlæns, så frontend aldrig regner tidspunktet forfra:
+// klar = created_at + etaMinutes.
+//
+// Returnerer en Date, eller null hvis created_at mangler/er ugyldig (defensivt —
+// rækken vises da bare med den gamle flade ETA-copy i stedet for en nedtælling).
+export function targetReadyAt(createdAt, etaMinutes = SCOUT_JOB_CONFIG.target.etaMinutes) {
+  if (!createdAt) return null;
+  const start = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (Number.isNaN(start.getTime())) return null;
+  const minutes = Number(etaMinutes);
+  if (!Number.isFinite(minutes)) return null;
+  return new Date(start.getTime() + minutes * 60_000);
+}
+
 // Kan holdet starte en ny opgave lige nu? Ren guard (mønster: facilityEngine.validateUpgrade).
 //   activeCount : antal aktive opgaver hos spejderen nu
 //   scout       : spejder-objekt (overall driver kapacitet)

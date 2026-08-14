@@ -17,6 +17,7 @@ import { SearchIcon } from "../../ui";
 import { getSession } from "../../../lib/supabase";
 import { formatCz } from "../../../lib/marketValues";
 import { statPlateStyle } from "../../../lib/statColor";
+import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -178,6 +179,10 @@ export default function RiderScoutingTab({ rider, scouting }) {
   // opgave på DENNE rytter blokerer knappen ("Spejderen arbejder"), uanset
   // holdets samlede kapacitet (det håndteres af knap-disable nedenfor).
   const pending = scoutSystemEnabled ? pendingFor?.(riderId) : undefined;
+  // #3548: nedtælling mod serverens ready_at (created_at + etaMinutes) i stedet
+  // for det konstante ETA-tal, så ventetiden faktisk falder mens man kigger.
+  const pendingCountdown = useScoutCountdown(pending?.readyAt ?? null);
+  const pendingReadyClock = scoutReadyClock(pending?.readyAt);
 
   const load = useCallback(async () => {
     if (!riderId) return;
@@ -228,12 +233,23 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const TARGET_JOB_MINUTES = jobConfig?.targetEtaMinutes ?? 30;
   const TARGET_JOB_COST = jobConfig?.targetCostPerLevel ?? 1000;
 
+  // #3548: tæl ned mod serverens ready_at når det findes; ellers den gamle flade
+  // ETA-copy (ældre payload uden feltet).
+  const pendingJobLabel = !pendingCountdown
+    ? t("scouting.pendingJob", { minutes: TARGET_JOB_MINUTES })
+    : pendingCountdown.state === "due"
+      ? t("scouting.pendingJobDue")
+      : t("scouting.pendingJobCountdown", { minutes: pendingCountdown.minutes });
+
   const scoutButton = (labelKey) => {
     if (pending) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-2 whitespace-nowrap">
+        <span
+          className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-2 whitespace-nowrap tabular-nums"
+          title={pendingReadyClock ? t("scouting.pendingReadyAtTitle", { time: pendingReadyClock }) : undefined}
+        >
           <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
-          {t("scouting.pendingJob", { minutes: TARGET_JOB_MINUTES })}
+          {pendingJobLabel}
         </span>
       );
     }

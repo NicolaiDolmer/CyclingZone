@@ -9,6 +9,7 @@ import {
   scoutHalfWidth,
   travelCostFor,
   readyDateFor,
+  targetReadyAt,
   canStartAssignment,
 } from "./scoutEngine.js";
 
@@ -139,6 +140,42 @@ test("readyDateFor: mission = fast varighed", () => {
 
 test("readyDateFor: ugyldig startedOn kaster", () => {
   assert.throws(() => readyDateFor("mission", "not-a-date"));
+});
+
+// ── targetReadyAt (#3548) ───────────────────────────────────────────────────────
+
+test("targetReadyAt: created_at + targetEtaMinutes", () => {
+  const createdAt = "2026-07-10T12:00:00.000Z";
+  const ready = targetReadyAt(createdAt);
+  assert.equal(ready.getTime() - Date.parse(createdAt), SCOUT_JOB_CONFIG.target.etaMinutes * 60_000);
+});
+
+// Låser den egenskab hele nedtællingen hviler på: klar-tidspunktet er PRÆCIS
+// den grænse lazyCompleteDueTargetAssignments modner mod (created_at <= now -
+// etaMinutes). Rykker den ene, skal den anden følge med.
+test("targetReadyAt: er præcis den deadline lazy-modningen håndhæver", () => {
+  const createdAt = new Date("2026-07-10T12:00:00.000Z");
+  const eta = SCOUT_JOB_CONFIG.target.etaMinutes;
+  const ready = targetReadyAt(createdAt);
+
+  const justBefore = new Date(ready.getTime() - 1_000);
+  const atDeadline = new Date(ready.getTime());
+  // Modningens egen test: created_at <= now - etaMinutes.
+  const dueBefore = (now) => new Date(now.getTime() - eta * 60_000);
+  assert.ok(createdAt > dueBefore(justBefore), "må ikke være due et sekund før ready_at");
+  assert.ok(createdAt <= dueBefore(atDeadline), "skal være due præcis på ready_at");
+});
+
+test("targetReadyAt: accepterer Date lige så vel som ISO-streng", () => {
+  const createdAt = new Date("2026-07-10T12:00:00.000Z");
+  assert.equal(targetReadyAt(createdAt).toISOString(), targetReadyAt(createdAt.toISOString()).toISOString());
+});
+
+test("targetReadyAt: manglende/ugyldig created_at giver null (ingen gættet nedtælling)", () => {
+  assert.equal(targetReadyAt(null), null);
+  assert.equal(targetReadyAt(undefined), null);
+  assert.equal(targetReadyAt("not-a-date"), null);
+  assert.equal(targetReadyAt("2026-07-10T12:00:00.000Z", "not-a-number"), null);
 });
 
 // ── canStartAssignment ──────────────────────────────────────────────────────────

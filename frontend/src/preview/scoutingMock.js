@@ -84,6 +84,14 @@ function isoDatePlusDays(days) {
   return d.toISOString().slice(0, 10);
 }
 
+// #3548: serveren sender ready_at (created_at + targetEtaMinutes) på aktive
+// målrettede opgaver, så nedtællingen har noget at tælle ned til. Mocken spejler
+// det ved at lægge ETA'en til NU, så preview-gennemklikket starter på ~30 min og
+// faktisk tikker nedad.
+function targetReadyAtIso(startedAtMs = Date.now()) {
+  return new Date(startedAtMs + JOB_CONFIG.targetEtaMinutes * 60_000).toISOString();
+}
+
 function centralPayload() {
   return {
     teamId: TEST_TEAM.id,
@@ -110,6 +118,7 @@ function startAssignment(body) {
       rider_id: body.riderId,
       status: "active",
       ready_on: isoDatePlusDays(0),
+      ready_at: targetReadyAtIso(),
     };
   } else if (kind === "mission") {
     if (!body?.criteria?.scope) return { status: 400, body: { ok: false, error: "failed" } };
@@ -154,9 +163,27 @@ export function scoutingMockRoute(method, pathname, body) {
   if (method === "GET" && pathname.endsWith("/api/scouting/me")) {
     // Gamle slots-felter bevaret (spejler det ægte endpoints spread af slots-state)
     // + scoutSystemEnabled: true, så useScoutingCentral åbner siden i preview.
+    //
+    // #3548: jobModel spejler nu det ægte endpoint (getScoutState-formen), så
+    // useScouting kan se en aktiv målrettet opgave. Uden det viste rytterprofilens
+    // "Spejderen arbejder"-tilstand sig aldrig i preview, og nedtællingen dér
+    // kunne ikke gennemklikkes.
     return {
       status: 200,
-      body: { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id, scoutSystemEnabled: true },
+      body: {
+        slots: { total: 3, used: 0, remaining: 3 },
+        maxLevel: 3,
+        levels: {},
+        teamId: TEST_TEAM.id,
+        scoutSystemEnabled: true,
+        jobModel: {
+          scout: { ...DEFAULT_SCOUT },
+          active: state.active,
+          completed: state.completed,
+          capacity: CAPACITY,
+          jobConfig: { ...JOB_CONFIG },
+        },
+      },
     };
   }
   if (method === "GET" && pathname.endsWith("/api/scouting/central")) {
