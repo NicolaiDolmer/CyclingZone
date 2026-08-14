@@ -4,6 +4,110 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.123",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Moving a rider to or from the academy cut his contract short",
+          "body": "What changed: Promoting or demoting an academy rider no longer rewrites his contract. It carries over as it is.\n\nWhy: Both moves regenerated the contract from scratch, so a deal running to season 5 came back as season 3 or 4.\n\nWhat it means for you: Contracts that were already shortened have not been repaired. Telling a shortened contract apart from a normal one takes more than the current numbers show, so the repair is tracked as its own job."
+        },
+        "da": {
+          "title": "Flytning til eller fra akademiet forkortede rytterens kontrakt",
+          "body": "Hvad ændrede sig: Rykker du en akademirytter op eller ned, bliver hans kontrakt ikke længere skrevet om. Den fortsætter som den er.\n\nHvorfor: Begge flytninger genskabte kontrakten fra bunden, så en aftale der løb til sæson 5 kom tilbage som sæson 3 eller 4.\n\nHvad det betyder for dig: Kontrakter der allerede er blevet forkortet, er ikke rettet. At skelne en forkortet kontrakt fra en normal kræver mere end de nuværende tal viser, så reparationen er sporet som sin egen opgave."
+        },
+        "refs": [
+          3620,
+          3715
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Contracts",
+        "en": {
+          "title": "Extending a contract could be refused right after it worked",
+          "body": "What changed: The extend button is now locked when you have used all three extensions on a rider.\n\nWhy: The lock was tied to having been refused, not to how many extensions were left. A successful extension cleared it, so the button came back enabled on a rider with none left, and the next click was refused.\n\nWhat it means for you: The rider profile already showed 3 of 3 used. Now the button agrees with it."
+        },
+        "da": {
+          "title": "Forlæng kontrakt kunne blive afvist lige efter den virkede",
+          "body": "Hvad ændrede sig: Forlæng-knappen er nu låst når du har brugt alle tre forlængelser på en rytter.\n\nHvorfor: Låsen hang på om du var blevet afvist, ikke på hvor mange forlængelser der var tilbage. En vellykket forlængelse ryddede den, så knappen kom tilbage på en rytter uden flere tilbage, og næste klik blev afvist.\n\nHvad det betyder for dig: Rytterprofilen viste allerede 3 af 3 brugt. Nu er knappen enig med den."
+        },
+        "refs": [
+          3597
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "A negotiated swap offer could not be turned down",
+          "body": "What changed: You can now reject a swap offer after the other manager has countered it.\n\nWhy: The reject button was there, but the server only allowed it on offers nobody had countered yet, so it answered with an invalid action error.\n\nWhat it means for you: The other manager is now told when a swap is pulled out."
+        },
+        "da": {
+          "title": "Et forhandlet byttetilbud kunne ikke afvises",
+          "body": "Hvad ændrede sig: Du kan nu afvise et byttetilbud efter at den anden manager har givet modbud.\n\nHvorfor: Afvis-knappen var der, men serveren tillod det kun på tilbud ingen havde givet modbud på, så den svarede med en fejl om ugyldig handling.\n\nHvad det betyder for dig: Den anden manager får nu besked når et bytte trækkes tilbage."
+        },
+        "refs": [
+          3669
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Reliability",
+        "en": {
+          "title": "Buttons could sit and spin when the connection dropped",
+          "body": "What changed: Six actions now show an error and let you try again instead of staying in loading.\n\nWhy: If the connection dropped mid-request, the cleanup was skipped, so the button stayed disabled until you reloaded the page.\n\nWhat it means for you: Nothing was lost when it happened. The action simply did not go through, and you can try it again."
+        },
+        "da": {
+          "title": "Knapper kunne blive stående og snurre når forbindelsen røg",
+          "body": "Hvad ændrede sig: Seks handlinger viser nu en fejl og lader dig prøve igen i stedet for at blive stående i loading.\n\nHvorfor: Røg forbindelsen midt i en forespørgsel, blev oprydningen sprunget over, så knappen blev stående som deaktiveret indtil du genindlæste siden.\n\nHvad det betyder for dig: Der gik ikke noget tabt når det skete. Handlingen blev bare ikke gennemført, og du kan prøve igen."
+        },
+        "refs": [
+          3628
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "The finance forecast showed next season's sponsor without saying so",
+          "body": "What changed: The sponsor figure in the forecast is now labelled as next season's.\n\nWhat it means for you: It now reads as a pair with the Sponsor tab, which shows your current sponsor. The two numbers were never in conflict. They just did not say which season each one belonged to."
+        },
+        "da": {
+          "title": "Økonomi-prognosen viste næste sæsons sponsor uden at sige det",
+          "body": "Hvad ændrede sig: Sponsor-tallet i prognosen er nu mærket som næste sæsons.\n\nHvad det betyder for dig: Det læser nu som et par med Sponsor-fanen, der viser din nuværende sponsor. De to tal var aldrig i modstrid. De sagde bare ikke hvilken sæson hver af dem gjaldt."
+        },
+        "refs": [
+          3621
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The scouting job now shows how long is left",
+          "body": "What changed: An active scouting job counts down to the moment the report is ready, instead of showing a fixed estimate.\n\nWhat it means for you: You can see when to come back rather than checking the page."
+        },
+        "da": {
+          "title": "Scoutopgaven viser nu hvor lang tid der er tilbage",
+          "body": "Hvad ændrede sig: En aktiv scoutopgave tæller ned til det øjeblik rapporten er klar, i stedet for at vise et fast estimat.\n\nHvad det betyder for dig: Du kan se hvornår du skal kigge igen i stedet for at tjekke siden."
+        },
+        "refs": [
+          3548
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.122",
     "date": "2026-08-14",
     "label": "Beta",

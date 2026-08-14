@@ -169,6 +169,49 @@ Brug ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eks
 
 *(Eksempel-draft baseret på Manus' Message 1 omskrevet til EN-først founder-led build-in-public-tone. Ikke godkendt til at sende. Skal koordineres med Discord-launch-timing per [#415](https://github.com/NicolaiDolmer/CyclingZone/issues/415).)*
 
+## Patch notes · format (låst 2026-08-14, ejer-godkendt)
+
+> **Baggrund:** ejer-mandat 13/8, ordret: *"for lange og rodede. Slet ikke nemme nok for spillerne at læse."* Målt udløser: v7.120 på 1.411 tegn pr. sprog i ét ubrudt afsnit med fem pointer flettet sammen. Tre beslutninger truffet 14/8 i [#3680](https://github.com/NicolaiDolmer/CyclingZone/issues/3680). Gælder alle nye entries i `frontend/src/data/patchNotes.js` fra v7.123.
+
+### 1. Fast struktur, ikke fri tekst
+
+Hver ændring skrives i faste felter, så læseren ikke selv skal skille pointerne ad:
+
+```
+Titel: hvad der er anderledes, i én linje
+
+What changed        obligatorisk. Én til to sætninger. Skal kunne stå helt alene.
+Why                 VALGFRI. Kun når noget var i stykker eller usandt.
+What it means for you   obligatorisk. Hvad spilleren skal gøre eller vide nu.
+```
+
+En ny funktion får to felter. En rettelse af noget usandt får tre. Bruger du "Why" på en enkeltlinjes ændring, er noten allerede for tung.
+
+Målestok: v7.120 gik fra 1.411 til ~430 tegn uden at miste indhold.
+
+### 2. Én kilde, to længder
+
+**Skriv aldrig en separat Discord-tekst.** Discord får titlen plus feltet "What changed", ordret. Intet nyt skrives.
+
+Begrundelsen er backloggen, ikke elegancen: v7.112 til v7.120 lå uposteet fordi en Discord-version var et selvstændigt skrivearbejde. Et udsnit koster nul minutter og kan ikke drive fra kilden. Derfor skal "What changed" altid kunne læses alene.
+
+Konteksten passer: in-app kommer man til med vilje, Discord ruller forbi på en telefon. Vil man vide hvorfor, er in-app ét klik væk.
+
+### 3. Højst ét tal, og det skal besvare "rammer det mig?"
+
+| Behold | Skær væk |
+|---|---|
+| *"149 of the 202 manager teams have not hired a chief scout"* | *"across 300 riders seen by 120 different simulated managers"* |
+| Tal der siger om spilleren er berørt | Stikprøver, metode, måleopsætning |
+
+Metodetal er bevis for at udvikleren har gjort sit arbejde, ikke information spilleren kan bruge. De hører hjemme i issuet og PR-beskrivelsen, hvor de allerede står. De er også dem der trækker en note fra 400 til 1.400 tegn, fordi de altid kræver en forklaring af hvordan der blev målt.
+
+Konkrete tal er stadig et brand-aktiv, jf. *Voice DNA* ovenfor. Aktivet er det spillerrelevante tal, ikke stikprøvestørrelsen.
+
+### Uændret
+
+Pligten, ikke formen, er det der ikke ændrer sig: patch notes er fortsat obligatoriske ved enhver brugerrettet ændring, `scripts/check-patch-notes-version.js` er fortsat CI-gate, EN først og DA under, ingen em-dash, intet opfundet indhold. Prosaen tæller ikke i JS-bundlen (statisk JSON siden [#2108](https://github.com/NicolaiDolmer/CyclingZone/issues/2108)), så længde er udelukkende et læsbarhedsspørgsmål.
+
 ## Når du er i tvivl
 
 Hvis en tekst krydser grænsen til player-eyes og du er usikker på om tonen passer: STOP og spørg founder. Per `feedback_player_facing_copy_rules.md` regel 5 er den her guide en hard-forudsætning, ikke en suggestion. Brydes den, ryger trust, og det er sværere at genopbygge end at vente 30 minutter på en afklaring.

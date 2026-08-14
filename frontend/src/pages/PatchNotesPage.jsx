@@ -257,7 +257,7 @@ export default function PatchNotesPage() {
                                     )}
                                   </button>
                                   {expanded && hasBody && (
-                                    <p className="text-cz-2 text-sm leading-relaxed mt-1">{v.body}</p>
+                                    <p className="text-cz-2 text-sm leading-relaxed mt-1 whitespace-pre-line">{v.body}</p>
                                   )}
                                 </li>
                               );
