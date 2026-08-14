@@ -543,7 +543,11 @@ function baseDb({ windowStatus }) {
       { id: "seller", name: "Seller FC", balance: 500, division: 3, user_id: "u-seller", is_bank: false },
     ],
     riders: [
-      { id: "rider-1", firstname: "Alex", lastname: "Star", team_id: "seller", pending_team_id: null, salary: 0, prize_earnings_bonus: 0 },
+      // #3620: contract_length/contract_end_season står EKSPLICIT som null.
+      // Prod-SELECTen henter kolonnerne, så "udeladt i fixturen" ville modellere
+      // en kolonne der ikke blev hentet — en helt anden tilstand end NULL, og
+      // netop den forveksling er root cause i #3620.
+      { id: "rider-1", firstname: "Alex", lastname: "Star", team_id: "seller", pending_team_id: null, salary: 0, prize_earnings_bonus: 0, contract_length: null, contract_end_season: null },
       ...sellerRiders,
       { id: "buyer-rider-1", firstname: "B", lastname: "One", team_id: "buyer", pending_team_id: null },
     ],
@@ -882,7 +886,7 @@ test("#1309: confirmSwapOffer create-if-missing / inherit-if-present pr. rytter"
   const db = baseDb({ windowStatus: "open" });
   // Modtager-hold (buyer) skal kunne afgive en rytter.
   for (let i = 0; i < 9; i++) {
-    db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null, salary: 10 });
+    db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null, salary: 10, contract_length: null, contract_end_season: null });
   }
   // offered (rider-1) = kontraktløs; requested (req-rider) = har kontrakt.
   const offered = db.riders.find((r) => r.id === "rider-1");

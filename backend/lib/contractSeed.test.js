@@ -79,6 +79,26 @@ test("contractOnAcquirePatch: salary sat MEN contract_end_season NULL → heales
   assert.equal(patch.contract_end_season, 2); // 1 + 2 - 1
 });
 
+// #3620 forward-guard: "kolonnen blev ikke SELECT'et" (undefined) må ALDRIG
+// behandles som "rytteren har ingen kontrakt" (null). Det var præcis den
+// forveksling der lod academyTransfer.js promote() regenerere hver eneste
+// kontrakt fra det øjeblik #2902 tilføjede contract_end_season til guarden —
+// 20 ryttere i prod fik længde 3 → 2 og udløbet rykket frem.
+test("contractOnAcquirePatch: #3620 — salary sat + contract_end_season IKKE hentet → kaster (gætter ikke)", () => {
+  assert.throws(
+    () => contractOnAcquirePatch({ salary: 42_000, current_production_value: 1_000_000 }, 2),
+    /contract_end_season/,
+  );
+});
+
+test("contractOnAcquirePatch: #3620 — eksplicit NULL end-sæson kaster IKKE (det er en ægte tilstand, ikke en manglende kolonne)", () => {
+  const patch = contractOnAcquirePatch(
+    { salary: 42_000, current_production_value: 1_000_000, contract_end_season: null },
+    2,
+  );
+  assert.equal(patch.contract_end_season, 3); // 2 + 2 - 1 → heales som før (#2902)
+});
+
 test("contractOnAcquirePatch: kontraktløs rytter → standard-kontrakt (length 2, frossen salary, korrekt end)", () => {
   const patch = contractOnAcquirePatch({ salary: null, current_production_value: 1_000_000 }, 1, { division: 1 });
   assert.equal(patch.contract_length, 2);

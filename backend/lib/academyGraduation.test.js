@@ -132,10 +132,14 @@ test("detectGraduates (dryRun): tæller uden writes", async () => {
 // ─── resolveGraduation ────────────────────────────────────────────────────────
 
 const PENDING_GRAD = { id: "g1", status: "pending" };
-// Ingen contract_length/contract_end_season → contractOnAcquirePatch's
+// contract_length/contract_end_season EKSPLICIT null → contractOnAcquirePatch's
 // #2902-forward-guard betragter pakken som ufuldstændig og healer den med en
 // frisk standard-kontrakt (samme adfærd som en reelt kontraktløs rytter).
-const RIDER = { id: "r1", team_id: "t1", firstname: "Grad", lastname: "Uate", base_value: 100000, prize_earnings_bonus: 0, market_value: 100000, salary: 500 };
+// #3620: nullene skal STÅ der. Et fixture der bare udelader felterne modellerer
+// "kolonnen blev ikke SELECT'et", ikke "kolonnen er NULL" — to vidt forskellige
+// ting, og netop den forveksling var root cause i #3620. resolveGraduation
+// henter begge kolonner i prod, så fixturen skal have dem.
+const RIDER = { id: "r1", team_id: "t1", firstname: "Grad", lastname: "Uate", base_value: 100000, prize_earnings_bonus: 0, market_value: 100000, salary: 500, contract_length: null, contract_end_season: null };
 // #2881: akademirytter der bærer en KOMPLET, gyldig akademi-kontrakt (fra
 // intake eller et tidligere demote()-ophold) ind i graduerings-øjeblikket —
 // resolveGraduation(promote) må ALDRIG regenerere denne.

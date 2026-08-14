@@ -6942,7 +6942,9 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
 router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { rider_id, team_id } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
-  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus, current_production_value").eq("id", rider_id).single();
+  // #3620: contract_end_season med — uden kolonnen læser contractOnAcquirePatch
+  // en `undefined` og regenererer en eksisterende kontrakt i stedet for at arve den.
+  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", rider_id).single();
   if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
   // #1309: kontrakt-on-acquire — ved admin-tildeling til et hold sættes kontrakt
   // hvis rytteren er kontraktløs (salary=null), så invarianten "ejede har altid løn" holdes.

@@ -64,7 +64,25 @@ export function computeContractEndSeason(startSeasonNumber, length) {
 // cause — 1.326 ryttere/138 hold, verificeret 25/7). Et fremtidigt erhvervelses-kald
 // på sådan en rytter heler den nu i stedet for at arve det ufuldstændige NULL-par
 // videre for evigt.
+//
+// #3620 forward-guard (14/8): guarden må ALDRIG forveksle "kolonnen blev ikke
+// SELECT'et" med "kolonnen er NULL". Da #2902 tilføjede contract_end_season til
+// guarden, blev den stille falsk for hver kalder hvis rider-SELECT ikke hentede
+// kolonnen — `undefined != null` er false, så en rytter MED kontrakt faldt
+// igennem og fik kontrakten regenereret (academyTransfer.js promote(): 20 ryttere
+// i prod fik contract_length 3 → 2 og udløb rykket frem, se #3620). Derfor:
+// er salary sat (rytteren SER kontraktbunden ud) men nøglen contract_end_season
+// slet ikke til stede på objektet, kan vi ikke afgøre inherit vs. heal — det er
+// en programmeringsfejl hos kalderen, og vi kaster i stedet for at gætte.
+// (salary == null → rytteren er kontraktløs uanset udløbssæson, så dér er
+// patchen korrekt selv uden kolonnen — fx ægte free agents.)
 export function contractOnAcquirePatch(rider, currentSeasonNumber, { division } = {}) {
+  if (rider && rider.salary != null && !("contract_end_season" in rider)) {
+    throw new Error(
+      "contractOnAcquirePatch: rider mangler feltet contract_end_season — " +
+      "tilføj kolonnen til kalderens SELECT (ellers regenereres en eksisterende kontrakt, #3620)"
+    );
+  }
   if (rider && rider.salary != null && rider.contract_end_season != null) return {};
   const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
   return {
