@@ -305,7 +305,7 @@
       "academyDrift": "Academy upkeep"
     },
     "sponsorDetail": {
-      "contract": "Contract with {sponsor}: guaranteed base {base}, race-day income on top",
+      "contract": "Next season's sponsor: {sponsor} · guaranteed base {base}, race-day income on top",
       "variable": "Base {base} + variable {variable} from last season's rank/points",
       "intro": "Intro season: variable sponsor starts from season 2",
       "fallback": "Fallback: missing standings for the previous season"
