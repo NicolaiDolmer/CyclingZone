@@ -1,80 +1,107 @@
 # Session-prompt: træningssidens struktur (#3721) + trin 2
 
-**Model:** Opus 5 · **Indsats:** high · **Form:** design-først, derefter bygge-session
-**Skrevet:** 15/8 aften, af loft- og udviklingsfart-sessionen · **Ejer-ramme:** #3721 — *"strukturen er aldrig blevet designet, kun indholdet"*
+**Model:** Opus 5 · **Indsats:** high · **Form:** design-først, ejer-godkendt mockup, derefter bygge
+**Skrevet:** 15/8 aften af loft- og udviklingsfart-sessionen · **Revideret samme aften** efter selvkritik: første udgave gentog issuet og udelod dets skarpeste fund
+
+> **#3721 er allerede grundigt skrevet, med målinger.** Læs det først og læs det helt. Dette dokument gentager det ikke — det tilføjer kun det issuet ikke kunne vide, fordi motoren under fladen er bygget om siden 14/8.
 
 ---
 
 ## Prompt (kopiér ind som første besked)
 
-> Du designer og bygger træningssidens struktur, [#3721](https://github.com/NicolaiDolmer/CyclingZone/issues/3721), og derefter trin 2 af [#3709](https://github.com/NicolaiDolmer/CyclingZone/issues/3709) ovenpå. Læs i denne rækkefølge:
+> Du designer træningssidens og rytterprofilens struktur ([#3721](https://github.com/NicolaiDolmer/CyclingZone/issues/3721)) og bygger derefter trin 2 af [#3709](https://github.com/NicolaiDolmer/CyclingZone/issues/3709) ovenpå. Læs i denne rækkefølge:
 >
-> 1. `docs/design/PAGE_TEMPLATES.md` — de tre kanoniske skabeloner er **bindende**. Opfind aldrig nyt sidehoved, container-bredde, card-padding eller loading/empty/error-markup.
-> 2. `#3721` — problemet, ejer-formuleret.
-> 3. `docs/superpowers/specs/2026-08-14-3659-rytterudvikling-og-traening-design.md` §5 og §6 — hvad fladen skal kunne bære, og hvad trin 2 og 4 lægger på den. **Læs §8.1 inklusive rettelsen.**
-> 4. `#3747` — trænbarheds-labelen kan ikke længere sige det den siger. Den skal løses **sammen med** trin 2, ikke efter.
-> 5. `#3743` — assistentens kvalitet skal afhænge af trænerens evner.
+> 1. **`#3721`, helt.** Den indeholder ejerens egne ord, en måling af hvad der ligger over rosteret, og et konkret dublet-fund mellem Overblik- og Træning-fanen. Den har også tre forslag der er markeret *"skal vurderes, ikke besluttes her"* — de er ikke beslutninger, de er dine at efterprøve.
+> 2. `docs/design/PAGE_TEMPLATES.md` — bindende. Tre skabeloner, ingen nye.
+> 3. `docs/sessions/2026-08-16-traeningssidens-struktur-prompt.md` — dette dokument, resten af det.
+> 4. `docs/superpowers/specs/2026-08-14-3659-rytterudvikling-og-traening-design.md` §5, §6 og **§8.1 inklusive rettelsen nederst**.
+> 5. `#3747` og `#3743` — to nye issues der begge lander på din flade.
 >
-> **Arbejd i en worktree.** `pwsh -File scripts/new-worktree.ps1 -Branch feat/3721-traeningssidens-struktur`. Tjek `git branch -a` og nyligt oprettede issues før du går i gang — NOW.md er ikke et pålideligt realtids-claim på tværs af worktrees ([#3712](https://github.com/NicolaiDolmer/CyclingZone/issues/3712)).
+> **Arbejd i en worktree.** `pwsh -File scripts/new-worktree.ps1 -Branch feat/3721-traeningssidens-struktur`. Tjek `git branch -a` og nyligt oprettede issues først — NOW.md er ikke et pålideligt realtids-claim på tværs af worktrees ([#3712](https://github.com/NicolaiDolmer/CyclingZone/issues/3712)).
 >
-> **Design før kode.** Ejeren har sagt at strukturen aldrig er blevet designet. Byg ikke videre på den nuværende opbygning fordi den er der — det er præcis fejlen issuet beskriver. Vis mockups før du bygger.
+> **Vis mockups og få ejer-go før du bygger.** `TrainingPage.jsx` er 1.360 linjer. Begynder du at flytte rundt i den før strukturen er godkendt, bygger du to gange.
 >
 > Vær kritisk over for dit eget arbejde. Sig det når du gætter.
 
 ---
 
-## Hvorfor denne side, og hvorfor nu
+## Ejerens egentlige krav til denne session
 
-Motoren under træningssiden er bygget om i denne uge. Fladen er ikke fulgt med, og der ligger nu tre ting i kø som alle skal stå på den samme side. Bygger man dem én ad gangen oven på en struktur ingen har designet, får man tre lag lapper.
+Ordret, 15/8: *"Det er meget vigtigt, at vi bygger et langsigtet godt managerspil med få quick fixes"* og *"sørger for at alle de nye funktioner er meget godt sammenhængende."*
 
-| hvad | hvor det kommer fra | hvad det kræver af fladen |
+**Sammenhæng er opgaven, ikke oprydning.** Der er fem ting på vej ind på den samme flade, og de kommer fra samme model. Bygges de som fem features, får spilleren fem ting at forstå. Bygges de som én model, får han én.
+
+Modellen er: **et tag og en rate.** Hvor højt en evne kan nå, og hvor hurtigt den kommer derhen. Alt på siden er en visning af de to tal.
+
+| hvad der skal på fladen | hvor det kommer fra | hvilken knap det viser |
 |---|---|---|
-| Kvitteringen pr. evne | trin 1, **live** | 15 linjer pr. rytter, hver med nu · sæsonens point · fremdrift |
-| Et **syvende** fokus (`løbslære`) | trin 2 | fokusvælgeren skal kunne rumme det |
-| Fremadrettede tal pr. fokus | trin 4, spec §5.2 | point pr. sæson pr. fokus, pr. rytter |
-| Trænbarheds-signalet | #3747 | skal vise **to** knapper i stedet for én |
-| Assistentens kvalitet | #3743 | skal kunne forklares for spilleren |
+| Kvitteringen pr. evne | trin 1, **live** | hvor langt op han er nået |
+| Trænbarheds-signalet | #3747 | **begge** — og det er hele fejlen i dag |
+| Et syvende fokus, `løbslære` | trin 2 | hvilke evner en retning rammer |
+| Point pr. sæson pr. fokus | trin 4, spec §5.2 | raten, gjort konkret |
+| Assistentens kvalitet | #3743 | hvem der vælger, når du ikke gør |
 
-Det er ikke fem små tilføjelser. Det er en side der skal svare på ét spørgsmål — *hvad skal jeg gøre ved denne rytter, og hvad får jeg ud af det* — og som lige nu ikke er bygget til at svare på noget.
+Hvis din struktur kan forklare de fem som én ting, er den rigtig. Kan den ikke, er den en liste.
 
-## Den ene ting der er vigtigst
+## Det der er sket siden #3721 blev skrevet 14/8
 
-**Assistenten er lige så god som det bedste spil.** Målt på 1.200 simulerede karrierer: `smartDefaultFocus` giver rating 28 ved 30 år, og den bedste manuelle strategi giver også 28.
+Issuet er skrevet før motoren blev bygget om. Fire ting er nye:
 
-Der findes altså i dag **ingen målbar grund til at åbne træningssiden overhovedet.** Det er den hårdeste kritik man kan rette mod en flade, og den er målt, ikke gættet.
+**1. Modellen har to knapper nu.** [#3739](https://github.com/NicolaiDolmer/CyclingZone/pull/3739) (merget) og [#3741](https://github.com/NicolaiDolmer/CyclingZone/pull/3741) skiller tag og rate ad i fem rolleklasser. Lofterne er hævet hele vejen rundt, og ryttere når nu kun ~42 % af dem mod ~94 % før. **Følge for fladen: "færdig"-markeringen bliver sjælden.** Den nuværende visning er bygget til en verden hvor ryttere mættede deres loft. Det gør de ikke længere.
 
-#3743 løser halvdelen (gør assistenten afhængig af trænerens evner, så den kan være dårlig). Men den anden halvdel er fladens: den skal gøre det **synligt og attraktivt** at gøre det selv. En side der er lige så god at ignorere som at bruge, er ikke et designproblem i detaljen — det er et designproblem i formålet.
+**2. Trænbarheds-labelen er blevet usand.** #3747, fuldt beskrevet der. Kort: den læser kun taget, og håndværk (0,95) og anden rolle (0,70) får samme label. **Det skal løses sammen med trin 2, ikke efter** — `løbslære` (positioning, tactics, aggression) består næsten udelukkende af netop de to klasser, så det nye fokus, hvis hele formål er at gøre spillets mest låste evner trænbare, vil præsentere sig som det mindst attraktive valg på siden.
 
-## Trænbarheds-labelen: løs den med trin 2, ikke efter
+**3. Assistenten er lige så god som det bedste spil.** Målt på 1.200 simulerede karrierer: `smartDefaultFocus` giver rating 28 ved 30 år, bedste manuelle strategi giver også 28. **Der findes i dag ingen målbar grund til at åbne siden overhovedet.** #3743 løser halvdelen (assistenten skal afhænge af trænerens evner). Den anden halvdel er din: siden skal gøre det synligt hvad man vinder ved at gøre det selv.
 
-Fuld beskrivelse i #3747. Kort: labelen læser kun **taget**, og modellen har nu to knapper.
+**4. Klubben har en målt værdi nu.** Facilitet + træner giver median **+12,9 %** og op til **+38,9 %** hurtigere udvikling, for 1.932 af 6.878 hold-ejede ryttere (`docs/audits/2026-08-15-3709-hul7-staff-stien-verificeret.md`). Hvis siden skal motivere en klub-investering, er det tallet.
 
-| klasse | tag | rate | label i dag |
-|---|---:|---:|---|
-| signatur | 1,30 | 0,45 | `strength` |
-| sekundær | 1,10 | 0,36 | `strength` |
-| **håndværk** | **0,95** | **0,22** | **`limited`** |
-| **anden rolle** | **0,70** | **0,15** | **`limited`** |
-| svaghed | 0,20 | 0,05 | `blocked` |
+## Rækkefølgen — min anbefaling, ikke en beslutning
 
-Grunden til at det haster sammen med trin 2: `løbslære` (positioning, tactics, aggression) kommer til at bestå næsten udelukkende af håndværk og anden rolle. **Det nye fokus, hvis hele formål er at gøre spillets mest låste evner trænbare, vil præsentere sig som det mindst attraktive valg på siden.** Shipper man trin 2 uden at røre labelen, bygger man en fælde.
+Der er en ægte afhængighed mellem #3721, #3743, #3747 og trin 2, og den peger ikke entydigt.
 
-## Grænser
+**Anbefalet:** struktur (#3721) → #3747 + trin 2 **sammen** → #3743 sidst.
 
-- **Motoren er ikke din.** `backend/lib/riderProgression.js`, `dailyTraining.js`, `training.js` er netop ombygget i [#3739](https://github.com/NicolaiDolmer/CyclingZone/pull/3739) + [#3741](https://github.com/NicolaiDolmer/CyclingZone/pull/3741). Trin 2 ændrer `TRAINING_FOCUSES` og kræver kalibrering af fokus-størrelser (specen: *"fokus-størrelser kalibreres, ikke arves"*) — det er en balance-ændring med egen måling, ikke en konstant du retter.
-- **`smartDefaultFocus` må ikke ændres som sideeffekt.** Den afgør hvilket fokus tusindvis af ryttere uden plan trænes med hver dag. Den er verificeret bit-identisk gennem trin 3 og 4 og er pinnet i en test. #3743 er stedet hvor den ændres, med egen dry-run.
-- **Ejer-go før merge på alt visuelt.** UI-PR'er merges aldrig uden at ejeren har set dem.
+Begrundelsen: strukturen skal ligge fast før noget lægges på den, ellers gentager vi fejlen. #3747 og trin 2 kan ikke skilles ad uden at shippe en fælde. #3743 kommer sidst fordi den ændrer `smartDefaultFocus`, som styrer hvilket fokus tusindvis af ryttere trænes med i prod — den kræver egen dry-run og ejer-godkendelse, og den skal ikke ligge i en UI-PR.
 
-## Værktøj der findes nu
+**Modargumentet, som du skal tage stilling til:** siden skal forklare assistenten, og hvis #3743 ændrer hvad assistenten *er*, designer du en forklaring på noget der laver sig om. Overvej at træffe *beslutningen* i #3743 (hvor dårlig må ingen træner være?) før du designer, selvom *koden* kommer sidst.
 
-- `backend/scripts/rytterudviklingScorecard.js` — flow-scorecard med fem gates. Kræver en `--baseline`-worktree (`git worktree add --detach ../ref-<navn> <commit>`). Brug den hvis trin 2's fokus-kalibrering flytter noget.
-- `docs/audits/2026-08-15-3709-flow-scorecard.md` — hvad modellen gør i dag.
-- `docs/audits/2026-08-15-3709-hul7-staff-stien-verificeret.md` — hvad træneren og faciliteten er værd (median +12,9 %, max +38,9 % for 1.932 ryttere). Relevant hvis fladen skal forklare hvorfor en klub-investering betaler sig.
+## Groundwork, så du ikke skal finde det selv
 
-## Målet, i klar tekst
+| | |
+|---|---|
+| `frontend/src/pages/TrainingPage.jsx` | **1.360 linjer.** Dette er en refaktorering, ikke en justering |
+| `frontend/src/components/rider/profile/RiderTrainingTab.jsx` | 531 linjer |
+| `frontend/src/components/rider/profile/` | 9 faner — issuet spørger om de alle er nødvendige |
+| `frontend/src/lib/useTrainingHistory.js` | henter 30 dages `training_day_runs` med `report.riders[].gains` pr. evne. En sæson er 28 dage; **filtrér på aktiv sæsons `start_date`**, ellers bløder forrige sæson ind efter sæsonskift |
+| `frontend/src/lib/useTraining.js` | forbruger `focusTrainability` — det er her #3747 rammer |
+| `frontend/src/lib/trainingReport.js` | `focusTrainabilityNotice`, den delte helper reddet ud af den droppede PR #3701 |
+| `frontend/src/preview/seedData.js` | seed-data til preview. **Hold den opdateret** — ejeren skal kunne teste på preview før live |
+| `pr-screens/3709-*.png` | skærmbilleder fra 14/8, grundlaget for issuets måling |
 
-Når sessionen er slut skal en spiller kunne åbne siden og på under et minut svare på: **hvilken af mine ryttere har mest at hente, hvad skal jeg vælge for ham, og hvad får jeg ud af det.** Ikke: hvilke felter findes der.
+## Krav der ikke er til forhandling
+
+- **Mobil er ikke en efterfølgende tilpasning.** 15 evne-linjer × en trup på 12-30 ryttere er et mobilproblem før det er et desktopproblem. Kør alle tre playwright-projekter; CI fejler ellers på mobile (#536).
+- **`smartDefaultFocus` må ikke ændres som sideeffekt.** Den er verificeret bit-identisk gennem trin 3 og 4 og pinnet i en test. Ændres den, skifter tusindvis af ryttere fokus i prod.
+- **Trin 2's fokus-størrelser kalibreres, ikke arves** (specen, ordret). `endurance` træner tre evner, `sprint` to, `løbslære` ville træne tre. Så længe fokus næsten intet betød, var det ligegyldigt; efter trin 4 er størrelsen et balance-håndtag. Brug `backend/scripts/rytterudviklingScorecard.js` (kræver en `--baseline`-worktree) — det er en balance-ændring med egen måling.
+- **Ejer-go visuelt før merge.** Ingen undtagelse for UI.
+- **Preflight:** `pwsh -File scripts/preflight-pr.ps1`. Frontend + i18n = TIER FULL: build, warning-budget, i18n-nøgler, `node --test` i `frontend/`, hele e2e-suiten.
+
+## Hvornår er du færdig
+
+Ikke "siden er pænere". Konkret:
+
+1. **Rosteret er det første man ser** på `/training`. Forklaringerne findes stadig, men et sted man opsøger dem.
+2. **Dubletten er væk.** Evnelisten står ét sted på rytterprofilen, og det er besluttet og begrundet hvilket.
+3. **En spiller kan på under et minut svare:** hvilken af mine ryttere har mest at hente, hvad skal jeg vælge for ham, og hvad får jeg ud af det.
+4. **Trænbarheds-signalet siger sandheden om begge knapper** — ikke "begrænset" om en evne hvis loft er tæt på en sekundær evnes.
+5. **`løbslære` fremstår som et rigtigt valg**, ikke som det dårligste på listen.
+6. **Strukturen kan bære trin 4's tabel** uden at nogen skal designe igen.
+
+## Grænseflader til andre spor
+
+- **Motoren er ikke din.** `riderProgression.js`, `dailyTraining.js`, `training.js` er netop ombygget. Trin 2 rører `TRAINING_FOCUSES` — det er den ene undtagelse, og den kommer med måling.
+- **Økonomi-sporet arbejder parallelt** (#3393, #3729, #3730). Trin 4 flytter rytterværdier over en karriere, og spændet mellem godt og dårligt spil går fra 16 % til 158 %. Rør ikke værdi- eller lønvisninger uden at tale med dem.
 
 ## Kilder
 
-`#3721` · `#3709` · `#3747` · `#3743` · `#3705` · `docs/design/PAGE_TEMPLATES.md` · specens §5-6 + §8.1
+`#3721` · `#3709` · `#3747` · `#3743` · `#3660` · `#3705` · `docs/design/PAGE_TEMPLATES.md` · specens §5, §6, §8.1 · `docs/audits/2026-08-15-3709-*.md`
