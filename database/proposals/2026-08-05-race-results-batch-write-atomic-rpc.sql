@@ -126,8 +126,15 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) TO service_role;
+-- #3765: REVOKE FROM PUBLIC er IKKE nok. Supabase' ALTER DEFAULT PRIVILEGES
+-- granter EXECUTE eksplicit til anon + authenticated ved enhver funktions-
+-- oprettelse, og de grants overlever et PUBLIC-revoke (klassen i #2858).
+-- Denne funktion er SECURITY DEFINER UDEN intern guard og skriver i
+-- race_results — anon-EXECUTE = enhver kan omskrive ethvert løbs resultater.
+REVOKE ALL     ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) FROM authenticated;
+GRANT  EXECUTE ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) TO service_role;
 
 -- =============================================================================
 -- Verifikation efter migration (forventet output)
