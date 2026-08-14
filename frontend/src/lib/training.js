@@ -7,20 +7,25 @@
 
 // Fokus-nøgle → evner det skubber mod cap (matcher backend TRAINING_FOCUSES).
 export const TRAINING_FOCUS_ABILITIES = Object.freeze({
-  vo2max:    Object.freeze(["climbing", "punch", "tempo"]),
-  threshold: Object.freeze(["time_trial", "tempo"]),
-  sprint:    Object.freeze(["sprint", "acceleration"]),
-  endurance: Object.freeze(["endurance", "recovery", "durability"]),
-  technique: Object.freeze(["descending", "positioning", "cobblestone"]),
-  aero:      Object.freeze(["time_trial", "flat"]),
+  vo2max:      Object.freeze(["climbing", "punch", "tempo"]),
+  threshold:   Object.freeze(["time_trial", "tempo"]),
+  sprint:      Object.freeze(["sprint", "acceleration"]),
+  endurance:   Object.freeze(["endurance", "recovery", "durability"]),
+  technique:   Object.freeze(["descending", "positioning", "cobblestone"]),
+  aero:        Object.freeze(["time_trial", "flat"]),
+  tempo:       Object.freeze(["tempo", "flat", "durability"]),
+  restitution: Object.freeze(["recovery"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUS_ABILITIES));
 
 // Alle gyldige intensiteter inkl. rest (bruges i daglig træning + TrainingFocus).
-export const TRAINING_INTENSITIES = Object.freeze(["rest", "easy", "normal", "hard"]);
+// #3762: intensiteten er ikke længere et frit valg — den er en egenskab ved
+// sessionen (se trainingDayTypes.js). Listen bevares fordi ugerytmen (#1895)
+// stadig sætter en intensitet pr. ugedag.
+export const TRAINING_INTENSITIES = Object.freeze(["rest", "recovery", "easy", "normal", "hard"]);
 
 // Display-risiko pr. intensitet (spejler backend setbackChance, i procent).
-export const TRAINING_SETBACK_PCT = Object.freeze({ easy: 0, normal: 5, hard: 18 });
+export const TRAINING_SETBACK_PCT = Object.freeze({ easy: 0, normal: 5, hard: 18, recovery: 0 });
 
 // #1895 PR 1: ugentlig træningsrytme — display-helpers. Spejrer backend
 // (backend/lib/training.js WEEKDAY_KEYS/isValidWeekPlanDays/resolveDayIntensity)

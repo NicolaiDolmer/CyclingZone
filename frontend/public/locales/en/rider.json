@@ -94,7 +94,9 @@
         "sprint": "Sprint",
         "endurance": "Endurance",
         "technique": "Technique",
-        "aero": "Aero"
+        "aero": "Aero",
+        "tempo": "Tempo",
+        "restitution": "Active recovery"
       },
       "active": "Active: {focus} · {intensity} · trains {abilities}",
       "activeRest": "Resting ({focus} focus paused)",
@@ -873,6 +875,7 @@
     "current": "Current focus",
     "assistantNoRisk": "Faster targeted growth, no setback risk.",
     "assistantRisk": "Faster targeted growth, but ~{risk}% risk of a setback (lost gains) this season.",
-    "tradeoff": "Other abilities grow a little slower."
+    "tradeoff": "Other abilities grow a little slower.",
+    "intensity_recovery": "Recovery"
   }
 }

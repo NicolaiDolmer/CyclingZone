@@ -833,15 +833,19 @@
         "title": "Setting programs",
         "steps": [
           "Go to Daily Training in the navigation.",
-          "Find a rider and choose a focus: VO2max, Threshold, Sprint, Endurance, Technique or Aero.",
-          "Choose an intensity: Rest, Easy, Normal or Hard.",
-          "Save. The program runs every day until you change it.",
+          "Find a rider and choose what kind of day it is: Rest, Active recovery, a Skill day or Training.",
+          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Intervals, Threshold or Sprint (hard). On a skill day: Technique or Aero.",
+          "Save. The day runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
       },
+      "dayTypes": {
+        "title": "The four kinds of day",
+        "text": "Rest brings fatigue down the most and develops nothing. Active recovery brings it down a little less and gives a small gain on Recovery, which makes it the only day that does both. A skill day is low load and builds craft only, at a fixed slower rate no matter what the rider is built for, so it can never beat a hard day on his own speciality. Training develops physical abilities at the level of the session you pick."
+      },
       "focusAbilities": {
-        "title": "What each focus trains",
-        "text": "Each focus develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Everyone develops across the board, just fastest in the chosen direction. The directions are: VO2max trains Climbing, Punch and Tempo. Threshold/TT trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Endurance trains Endurance, Recovery and Durability. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. Intensity sets the pace: Easy is slowest but safe, Normal is the balanced default with a small setback risk, and Hard is fastest but risks a setback or injury when a rider's fatigue is already high."
+        "title": "What each session trains",
+        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Intervals train Climbing, Punch and Tempo. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard. Hard sessions carry a risk of a setback, easy ones do not."
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",

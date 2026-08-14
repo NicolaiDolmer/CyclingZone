@@ -26,11 +26,16 @@ export const TRAINING_CONFIG = Object.freeze({
 
   // Gyldige intensiteter (display via i18n; nøgler er stabile).
   // "rest" er nu gyldig — daglig intensitet, ingen vækst (håndteres i dailyTraining.js).
-  intensities: Object.freeze(["easy", "normal", "hard", "rest"]),
+  // "recovery" (#3762) er aktiv restitution: mindre vækst end let, og trætheden
+  // falder stadig — men langsommere end på en hviledag (se fatigueLoad).
+  intensities: Object.freeze(["easy", "normal", "hard", "rest", "recovery"]),
 
   // Vækst-multiplikator på FOKUS-evnernes gap-lukning mod cap, pr. intensitet.
   // Startgæt — dry-run'es mod population før un-gating af progression.
-  focusGrowthMult: Object.freeze({ easy: 1.15, normal: 1.35, hard: 1.60 }),
+  // `recovery` ligger under `easy`: en restitutionsdag skal kunne mærkes, men
+  // aldrig konkurrere med en rigtig træningsdag — ellers er den ikke hvile,
+  // den er bare den billigste træning.
+  focusGrowthMult: Object.freeze({ easy: 1.15, normal: 1.35, hard: 1.60, recovery: 0.50 }),
 
   // Ikke-fokus-evner lukker mindre samme sæson (fokus-trade-off): du
   // specialiserer mod X frem for breddevækst.
@@ -54,22 +59,43 @@ export const TRAINING_CONFIG = Object.freeze({
 
   // Seeded risiko for tilbageslag (overtraining → tabt vækst), pr. intensitet.
   // Let = ingen risiko; hård = mærkbar. Varsles tydeligt i UI.
-  setbackChance: Object.freeze({ easy: 0, normal: 0.05, hard: 0.18 }),
+  // `recovery` har ingen risiko — en restitutionsdag der kan give tilbageslag
+  // ville være selvmodsigende.
+  setbackChance: Object.freeze({ easy: 0, normal: 0.05, hard: 0.18, recovery: 0 }),
   // Når tilbageslag rammer: sæsonens samlede vækst skaleres med denne faktor.
   setbackGrowthMult: 0.5,
 });
 
 // Fokus-nøgle → de evner (rider_derived_abilities) fokus skubber mod cap.
 // Træningssprog der overlever ind i den fulde epic (sessions-kataloget).
+// #3762: `tempo` og `restitution` er kommet til. De to er sessioner i den nye
+// dagstype-model (trainingDayTypes.js), ikke nye frie fokus — hvornår de kan
+// vælges afgøres af dagstypen. De står her fordi motoren slår evnerne op i
+// netop denne tabel; havde de ikke stået her, ville de træne ingenting.
 export const TRAINING_FOCUSES = Object.freeze({
-  vo2max:    Object.freeze(["climbing", "punch", "tempo"]),
-  threshold: Object.freeze(["time_trial", "tempo"]),
-  sprint:    Object.freeze(["sprint", "acceleration"]),
-  endurance: Object.freeze(["endurance", "recovery", "durability"]),
-  technique: Object.freeze(["descending", "positioning", "cobblestone"]),
-  aero:      Object.freeze(["time_trial", "flat"]),
+  vo2max:      Object.freeze(["climbing", "punch", "tempo"]),
+  threshold:   Object.freeze(["time_trial", "tempo"]),
+  sprint:      Object.freeze(["sprint", "acceleration"]),
+  endurance:   Object.freeze(["endurance", "recovery", "durability"]),
+  technique:   Object.freeze(["descending", "positioning", "cobblestone"]),
+  aero:        Object.freeze(["time_trial", "flat"]),
+  tempo:       Object.freeze(["tempo", "flat", "durability"]),
+  restitution: Object.freeze(["recovery"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUSES));
+
+// ⚠ FROSSET LISTE — rør den ikke når du tilføjer et fokus (#3762).
+//
+// `smartDefaultFocus` vælger det fokus assistenten træner en IKKE-planlagt
+// rytter med, live for tusindvis af ryttere. Den returnerer det FØRSTE fokus
+// med "strength" i nøgle-rækkefølge, så et nyt fokus i TRAINING_FOCUSES ville
+// kunne ændre assistentens valg for en hel type uden at nogen bad om det.
+// Specens krav er eksplicit: "smartDefaultFocus må ikke ændres som sideeffekt"
+// — den er verificeret bit-identisk gennem trin 3 og 4 og pinnet i en test.
+// Et nyt fokus skal derfor tilføjes HER bevidst, med en egen måling.
+export const SMART_DEFAULT_FOCUS_KEYS = Object.freeze([
+  "vo2max", "threshold", "sprint", "endurance", "technique", "aero",
+]);
 
 export function isValidFocus(focus) {
   return Object.prototype.hasOwnProperty.call(TRAINING_FOCUSES, focus);
@@ -252,7 +278,9 @@ export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH
 // primær-type-only-model, så smartDefaultFocus's output er 100% uændret.
 function legacyPrimaryTypeTier(primaryType, cfg = PROGRESSION_CONFIG) {
   const out = {};
-  for (const [focusKey, abilities] of Object.entries(TRAINING_FOCUSES)) {
+  // SMART_DEFAULT_FOCUS_KEYS, ikke TRAINING_FOCUSES: se kommentaren ved listen.
+  for (const focusKey of SMART_DEFAULT_FOCUS_KEYS) {
+    const abilities = TRAINING_FOCUSES[focusKey];
     if (primaryType == null) {
       out[focusKey] = "limited";
       continue;
@@ -274,7 +302,7 @@ function legacyPrimaryTypeTier(primaryType, cfg = PROGRESSION_CONFIG) {
 // fallback, ukendt/manglende type).
 export function smartDefaultFocus(primaryType, cfg = PROGRESSION_CONFIG) {
   const trainability = legacyPrimaryTypeTier(primaryType, cfg);
-  for (const focusKey of TRAINING_FOCUS_KEYS) {
+  for (const focusKey of SMART_DEFAULT_FOCUS_KEYS) {
     if (trainability[focusKey] === "strength") return focusKey;
   }
   // Manglende/ukendt type (eller en type uden nogen "strength"-fokus) giver ALT
@@ -282,9 +310,9 @@ export function smartDefaultFocus(primaryType, cfg = PROGRESSION_CONFIG) {
   // vælge "vo2max" (første TRAINING_FOCUS_KEYS-nøgle) blot fordi den kommer
   // først i rækkefølgen, hvilket ikke er en meningsfuld "smart" default.
   // "endurance" matcher DEFAULT_PROGRAM's hidtidige adfærd (bagudkompatibelt).
-  const allLimited = TRAINING_FOCUS_KEYS.every((k) => trainability[k] === "limited");
+  const allLimited = SMART_DEFAULT_FOCUS_KEYS.every((k) => trainability[k] === "limited");
   if (allLimited) return "endurance";
-  for (const focusKey of TRAINING_FOCUS_KEYS) {
+  for (const focusKey of SMART_DEFAULT_FOCUS_KEYS) {
     if (trainability[focusKey] !== "blocked") return focusKey;
   }
   return "endurance";

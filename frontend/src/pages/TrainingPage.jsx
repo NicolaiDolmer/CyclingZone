@@ -13,8 +13,17 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
-import { TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
+import { TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
+import {
+  SESSION_INTENSITY,
+  dayTypeForProgram,
+  sessionForProgram,
+  DAY_TYPES_WITHOUT_SESSION,
+  TRAINING_LEVELS,
+  TRAINING_SESSIONS_BY_LEVEL,
+  SKILL_SESSIONS,
+} from "../lib/trainingDayTypes.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt } from "../lib/trainingReport.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
@@ -52,6 +61,41 @@ const ROSTER_DESC_FIRST = new Set(["form", "fatigue", "status"]);
 // skade lægger et point oveni. Desc-først → akademi øverst med ét klik.
 const STATUS_ACADEMY_WEIGHT = 2;
 const STATUS_INJURED_WEIGHT = 1;
+
+// ── #3762: dagen som label + hurtig-skift ─────────────────────────────────
+// Rosteret viste før et fokusnavn i én kolonne og fire intensitets-knapper i
+// den næste. Under dagstype-modellen er det ÉN ting: hvad er det for en dag.
+// Kolonnen viser dagen, og knapperne skifter den.
+
+// Hvile · Aktiv restitution · rytterens egen session. Den sidste er en sentinel,
+// ikke en dagstype: hvilken dag den fører til afhænger af rytterens session.
+const QUICK_DAY_TYPES = Object.freeze(["rest", "recovery", "session"]);
+
+// Dagstypen rytterens gemte session hører til (skill eller training), eller
+// null hvis planen ikke bærer en session (fx en restitutionsdag).
+function sessionDayType(plan) {
+  const session = plan?.focus ?? null;
+  if (!session || !SESSION_INTENSITY[session]) return null;
+  return dayTypeForProgram({ focus: session, intensity: SESSION_INTENSITY[session] });
+}
+
+// Bulk-vælgerens værdi → { dayType, session }. "smart" sendes videre som
+// session, fordi assistenten vælger pr. rytter server-side (#1894).
+function bulkChoiceToDay(choice) {
+  if (choice === "smart") return { dayType: "training", session: "smart" };
+  if (DAY_TYPES_WITHOUT_SESSION.includes(choice)) return { dayType: choice, session: null };
+  return { dayType: dayTypeForProgram({ focus: choice, intensity: SESSION_INTENSITY[choice] }), session: choice };
+}
+
+// "Hvile" · "Aktiv restitution" · "Træning · Sprint" · "Færdighed · Teknik".
+function dayLabel(plan, t) {
+  const dayType = dayTypeForProgram(plan);
+  if (DAY_TYPES_WITHOUT_SESSION.includes(dayType)) return t(`dayPanel.dayType_${dayType}`);
+  const session = sessionForProgram(plan);
+  if (!session) return t(`dayPanel.dayType_${dayType}`);
+  return `${t(`dayPanel.dayType_${dayType}`)} · ${t(`dayPanel.session_${session}`)}`;
+}
+
 
 // #2819 — guidet tour på /training (aktiveres fra dashboardets "Show me how" når
 // onboarding-trin 2, first_training_run, er næste trin). Samme mønster som
@@ -218,9 +262,9 @@ export default function TrainingPage() {
   // netværk, backend-afvisning) var visuelt usynlig. Fælles wrapper + pr.-rytter
   // fejl-state (kun én celle relevant ad gangen pr. bruger-handling).
   const [planActionError, setPlanActionError] = useState(null); // { riderId, error } | null
-  async function handlePlanChange(riderId, focus, intensity) {
+  async function handlePlanChange(riderId, dayType, session = null) {
     setPlanActionError(null);
-    const result = await setPlan(riderId, focus, intensity);
+    const result = await setPlan(riderId, dayType, session);
     if (result && !result.ok) {
       setPlanActionError({ riderId, error: result.error || "failed" });
       return false;
@@ -242,8 +286,26 @@ export default function TrainingPage() {
   const [focusPanelRiderId, setFocusPanelRiderId] = useState(null);
   const focusPanelRider = focusPanelRiderId ? riders.find((r) => r.id === focusPanelRiderId) ?? null : null;
 
-  async function handleFocusPanelSave(focus, intensity) {
-    if (await handlePlanChange(focusPanelRiderId, focus, intensity)) setFocusPanelRiderId(null);
+  async function handleFocusPanelSave(dayType, session) {
+    if (await handlePlanChange(focusPanelRiderId, dayType, session)) setFocusPanelRiderId(null);
+  }
+
+  // #3762: hurtig-skift af DAGEN direkte fra rosteret. Hvile og aktiv
+  // restitution kan vælges uden et trin 2, og rytterens hidtidige session
+  // bevares i kolonnen (serveren gør det), så vejen tilbage er ét klik.
+  // Kender vi ikke hans session (fx en rytter der står på restitution), åbner
+  // vi panelet i stedet for at gætte en for ham.
+  async function handleDayQuickChange(riderId, dayType, storedFocus) {
+    if (dayType === "rest" || dayType === "recovery") {
+      await handlePlanChange(riderId, dayType, null);
+      return;
+    }
+    const session = storedFocus && SESSION_INTENSITY[storedFocus] ? storedFocus : null;
+    if (!session) {
+      setFocusPanelRiderId(riderId);
+      return;
+    }
+    await handlePlanChange(riderId, dayTypeForProgram({ focus: session, intensity: SESSION_INTENSITY[session] }), session);
   }
   async function handleFocusPanelClear() {
     if (await handleClearPlan(focusPanelRiderId)) setFocusPanelRiderId(null);
@@ -253,8 +315,9 @@ export default function TrainingPage() {
   const [groupByType, setGroupByType] = useState(false);
   const rosterSort = useSortState({ descFirstKeys: ROSTER_DESC_FIRST });
   const [selected, setSelected] = useState(() => new Set()); // valgte rider-id'er
-  const [bulkFocus, setBulkFocus] = useState("");
-  const [bulkIntensity, setBulkIntensity] = useState("normal");
+  // #3762: ét valg i stedet for to. Værdien er enten "smart", en dagstype uden
+  // session (rest/recovery) eller en session-nøgle — dagstypen udledes af den.
+  const [bulkDay, setBulkDay] = useState("");
   const [bulkMsg, setBulkMsg] = useState(null); // { type: "ok" | "partial" | "warn", text }
 
   // Hent egne ryttere fra Supabase — samme mønster som TeamPage.
@@ -613,19 +676,22 @@ export default function TrainingPage() {
             type="button"
             disabled={busy}
             onClick={() => setFocusPanelRiderId(rider.id)}
-            aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
+            aria-label={`${t("dayPanel.colDay")} — ${rider.firstname} ${rider.lastname}`}
             className="flex w-full max-w-[184px] items-center justify-between gap-2 rounded-cz border border-cz-border px-2.5 py-1.5 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle disabled:opacity-40"
           >
             <span className="min-w-0">
+              {/* #3762: cellen viser DAGEN, ikke et fokusnavn. En hviledag hedder
+                  "Hvile" — ikke "VO2max", som den gjorde da 252 planer stod på
+                  vo2max + hvile og fokusset ikke gjorde noget. */}
               <span className={`block truncate text-[13px] ${plan?.focus ? "font-medium text-cz-1" : "text-cz-3"}`}>
-                {plan?.focus ? tRider(`training.focus_${plan.focus}`) : t("focusPanel.open")}
+                {plan?.focus ? dayLabel(plan, t) : t("dayPanel.chooseDay")}
               </span>
               {/* #1894 variant 1: for ryttere UDEN plan, vis hvilket fokus
                   assistenten rent faktisk træner dem med (backend-leveret,
                   INGEN frontend-dublet af type→fokus-mappingen). */}
               {!plan?.focus && smartDefaultFocus[rider.id] && (
                 <span className="mt-0.5 block truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-                  {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
+                  {t("smartFocusHint", { focus: t(`dayPanel.session_${smartDefaultFocus[rider.id]}`) })}
                 </span>
               )}
             </span>
@@ -644,27 +710,38 @@ export default function TrainingPage() {
           {plan?.focus ? (
             <div
               role="group"
-              aria-label={`${tRider("training.intensity")} — ${rider.firstname} ${rider.lastname}`}
+              aria-label={`${t("dayPanel.colChangeDay")} — ${rider.firstname} ${rider.lastname}`}
               // #3459 V3: dæmpet (ikke deaktiveret) på løbsdage — planen er urørt og
               // gælder alle ikke-løbsdage, knapperne forbliver derfor fuldt aktive.
               className={`inline-flex rounded-cz border border-cz-border overflow-hidden ${raceToday ? "opacity-[0.55]" : ""}`}
             >
-              {TRAINING_INTENSITIES.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => handlePlanChange(rider.id, plan.focus, k)}
-                  aria-pressed={plan.intensity === k}
-                  className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
-                    plan.intensity === k
-                      ? "bg-cz-accent text-white"
-                      : "text-cz-2 hover:bg-cz-subtle"
-                  }`}
-                >
-                  {tRider(`training.intensity_${k}`)}
-                </button>
-              ))}
+              {/* #3762: intensiteten er ikke længere et frit valg — den er en
+                  egenskab ved sessionen. Knapperne skifter derfor DAGEN.
+                  Sessions-knappen bærer rytterens egen session, som serveren
+                  bevarer hen over en hviledag, så vejen tilbage er ét klik. */}
+              {QUICK_DAY_TYPES.map((k) => {
+                const activeDay = dayTypeForProgram(plan);
+                const isSession = k === "session";
+                const dayType = isSession ? sessionDayType(plan) : k;
+                const label = isSession
+                  ? t(`dayPanel.session_${plan.focus}`, { defaultValue: t("dayPanel.dayType_training") })
+                  : t(`dayPanel.dayType_${k}`);
+                const pressed = isSession ? activeDay === dayType : activeDay === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleDayQuickChange(rider.id, isSession ? "session" : k, plan.focus)}
+                    aria-pressed={pressed}
+                    className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
+                      pressed ? "bg-cz-accent text-white" : "text-cz-2 hover:bg-cz-subtle"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <span className="text-cz-3 text-xs">—</span>
@@ -858,13 +935,14 @@ export default function TrainingPage() {
 
   async function handleBulkApply() {
     setBulkMsg(null);
-    if (!bulkFocus) {
+    if (!bulkDay) {
       setBulkMsg({ type: "warn", text: t("bulkPickFocus") });
       return;
     }
     const ids = [...selected];
     if (ids.length === 0) return;
-    const result = await setPlanBulk(ids, bulkFocus, bulkIntensity);
+    const { dayType, session } = bulkChoiceToDay(bulkDay);
+    const result = await setPlanBulk(ids, dayType, session);
     // #1894 variant 3: smart-mode springer ryttere MED eksisterende plan over
     // (server-håndhævet — overskriver ALDRIG en managers eget valg). Det er en
     // forventet, ikke-fejlende delmængde, så den vises separat fra "failed".
@@ -1048,40 +1126,39 @@ export default function TrainingPage() {
           <Card className="p-4 flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-cz-1">{t("selected", { n: selected.size })}</span>
 
-            <div className="w-48">
+            {/* #3762: ét valg, ikke to. Listen er de DAGE der findes, grupperet
+                som i panelet — så en markering aldrig kan få en kombination som
+                den enkelte rytter ikke kunne have fået. */}
+            <div className="w-60">
               <Select
                 size="sm"
-                value={bulkFocus}
+                value={bulkDay}
                 disabled={bulkApplying}
-                aria-label={t("bulkSetFocus")}
-                onChange={(e) => setBulkFocus(e.target.value)}
+                aria-label={t("dayPanel.bulkSetDay")}
+                onChange={(e) => setBulkDay(e.target.value)}
               >
-                <option value="">{t("bulkSetFocus")}</option>
+                <option value="">{t("dayPanel.bulkSetDay")}</option>
                 <option value="smart">{t("bulkSmartFocusOption")}</option>
-                {TRAINING_FOCUS_KEYS.map((k) => (
-                  <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
+                <optgroup label={t("dayPanel.bulkWholeDay")}>
+                  <option value="rest">{t("dayPanel.dayType_rest")}</option>
+                  <option value="recovery">{t("dayPanel.dayType_recovery")}</option>
+                </optgroup>
+                {TRAINING_LEVELS.map((level) => (
+                  <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
+                    {TRAINING_SESSIONS_BY_LEVEL[level].map((k) => (
+                      <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+                    ))}
+                  </optgroup>
                 ))}
+                <optgroup label={t("dayPanel.dayType_skill")}>
+                  {SKILL_SESSIONS.map((k) => (
+                    <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+                  ))}
+                </optgroup>
               </Select>
             </div>
 
-            <div role="group" aria-label={t("bulkIntensity")} className="inline-flex rounded-cz border border-cz-border overflow-hidden">
-              {TRAINING_INTENSITIES.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  disabled={bulkApplying}
-                  onClick={() => setBulkIntensity(k)}
-                  aria-pressed={bulkIntensity === k}
-                  className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
-                    bulkIntensity === k ? "bg-cz-accent text-white" : "text-cz-2 hover:bg-cz-subtle"
-                  }`}
-                >
-                  {tRider(`training.intensity_${k}`)}
-                </button>
-              ))}
-            </div>
-
-            <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying || !bulkFocus}>
+            <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying || !bulkDay}>
               {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selected.size })}
             </Button>
 
@@ -1140,8 +1217,12 @@ export default function TrainingPage() {
                         className={`${thClass({})} hidden sm:table-cell`}>
                         {t("colType")}
                       </SortTh>
-                      <th className={thClass({})}>{tRider("training.focus")}</th>
-                      <th className={thClass({})}>{tRider("training.intensity")}</th>
+                      {/* #3762: kolonnerne hedder nu det de indeholder. Før stod
+                          der "Fokus" og "Intensitet" — to akser der kunne modsige
+                          hinanden. Nu er der én dag, og en hurtig vej til at
+                          skifte den. */}
+                      <th className={thClass({})}>{t("dayPanel.colDay")}</th>
+                      <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>
                       {/* #3709 trin 1: kolonnen er ikke længere "næste +1" på ÉN
                           evne, men sæsonens kvittering pr. evne i fokusset. */}
                       <th className={thClass({})}>{t("receipt.title")}</th>
