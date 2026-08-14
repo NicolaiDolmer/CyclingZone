@@ -1,7 +1,7 @@
 # Design: rytterudvikling og træning skal kunne stoles på
 
 **Issue:** [#3659](https://github.com/NicolaiDolmer/CyclingZone/issues/3659) · **Dato:** 2026-08-14 · **Form:** design-session, ingen kode
-**Status:** 13 ejer-beslutninger truffet. Stock-scorecard mod dateret snapshot + flow-scorecard på friskt kuld begge kørt 14/8. Ét nyt åbent punkt (spidsen stiger) skal afgøres før trin 4.
+**Status:** 14 ejer-beslutninger truffet. Stock-scorecard mod dateret snapshot + flow-scorecard på friskt kuld begge kørt 14/8. Ét nyt åbent punkt (spidsen stiger) skal afgøres før trin 4.
 
 > Prompt-dokumentet der startede sessionen: [`docs/sessions/2026-08-14-traening-og-udvikling-designsession-prompt.md`](../../sessions/2026-08-14-traening-og-udvikling-designsession-prompt.md)
 
@@ -173,9 +173,21 @@ Akademi-semantikken er nu korrekt: `ACADEMY.INTERIM_RATE_MULT` (1/3) + `HARD_DAI
 
 Kandidaten kørt **med** akademiets 1/3-dæmpning beholdt giver rating 22 og peak 35 i stedet for 28 og 44. At fjerne `INTERIM_RATE_MULT` er altså ikke oprydning — det er dét, der holder kandidaten på dagens niveau i stedet for langt under. Trin 5 kan ikke udskydes efter trin 4 uden at ramme spillerne med et midlertidigt fald.
 
-### Nyt åbent punkt
+### Ankeret: rating, ikke spidsen (beslutning 14, ejer 14/8)
 
-**Bedste evne stiger fra 36 til 44 ved bedste spil.** Beslutning 7 ankrede "fremragende træning = dagens niveau". Det holder på **rating** (28 mod 27), men ikke på **spidsen**: de bedst ledede ryttere bliver mærkbart stærkere end noget, der findes i dag. Det rammer race-balancen i toppen og #3503's arketype-mål mod en ny top. Skal afgøres før trin 4.
+Beslutning 7 ankrede "fremragende træning = dagens niveau". Det holder på **rating** (28 mod 27), men ikke på **spidsen** (44 mod 36). Målt: de to kan ikke ankres samtidig.
+
+| Signatur-rate | Rating (spids/forkert) | Bedste evne (spids/forkert) |
+|---|---|---|
+| i dag | 27 / 25 | 36 / 31 |
+| **0,45 (valgt)** | **28 / 18** | 44 / 26 |
+| 0,30 | 24 / 15 | 38 / 22 |
+
+Sænkes signatur-raten til 0,30 lander spidsen tæt på dagens 36, men rating falder til 24 — under dagens 27, for **alle**, også dem der spiller godt.
+
+**Valgt: ankr rating (rate 0,45).** Rating er dét spilleren ser, økonomien prissætter, og som netop er kalibreret i #3666. Spidsen på 44 er den synlige belønning for at have ledet en rytter godt i en hel karriere, og den tilfalder kun dem der gjorde det.
+
+**Følge:** race-balancen i toppen skal måles om før trin 4, mod en top på 44 i stedet for 36.
 
 ---
 
@@ -190,7 +202,7 @@ Kandidaten kørt **med** akademiets 1/3-dæmpning beholdt giver rating 22 og pea
 | 5 | Taget klipper ved 99 for potentiale ≥ 5 | **åben** — løses af trin 7 (potentiale = fart) |
 | 6 | Markedsværdi ikke målt direkte | **åben** — evnesummen (input) er målt; `predictBaseValue`-outputtet ikke |
 | 7 | Staff-stien uverificeret | **åben** — `facilityTrainingMultiplier` målt til maks +8,3 % ved tier 5; `staffTrainingBonus` gav 1,0 mod en syntetisk profil, hvilket lige så godt kan være forkert input |
-| 8 | Spidsen stiger 36 → 44 ved bedste spil | **åben, ny** — se §3bis |
+| 8 | Spidsen stiger 36 → 44 ved bedste spil | **afgjort** — beslutning 14: ankr rating, ikke spidsen. Race-balance i toppen måles om før trin 4 |
 
 ---
 
@@ -271,7 +283,7 @@ Udkast skrives til copy-paste. **Ejeren poster selv.**
 
 ---
 
-## 8. De 13 beslutninger
+## 8. De 14 beslutninger
 
 | # | Spørgsmål | Valg |
 |---|---|---|
@@ -288,6 +300,7 @@ Udkast skrives til copy-paste. **Ejeren poster selv.**
 | 11 | Hvor skal `tactics` og `aggression` hen? | Nyt fokus: løbslære |
 | 12 | Hvad kan manageren gøre ved en langsom evne? | Fokus og tid; træningslejre senere |
 | 13 | Akademi og senior samme model? | Ja, én model |
+| 14 | Ankr rating eller spidsen? | Rating — signatur-rate 0,45 |
 
 ---
 
