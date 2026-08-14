@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.125",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "One-day races showed a prize pool they could never pay",
+          "body": "What changed: The expected prize shown for a one-day race counted the points, mountain and youth classifications. Those classifications do not exist in a one-day race, so the number was up to 39 % higher than anything the race could actually pay out. It now shows only what is on the line.\n\nWhy: The calculation was shared with stage races, where all three classifications are real and are paid in full. Nobody had separated the two.\n\nWhat it means for you: The number on the calendar and in the season report is now the real pool. Nothing you have already earned changed, and stage races are unaffected."
+        },
+        "da": {
+          "title": "Endagsløb viste en præmiepulje de aldrig kunne betale",
+          "body": "Hvad ændrede sig: Den forventede præmie på et endagsløb talte point-, bjerg- og ungdomstrøjen med. De klassementer findes ikke i et endagsløb, så tallet lå op til 39 % over hvad løbet faktisk kunne udbetale. Det viser nu kun det der er på spil.\n\nHvorfor: Beregningen var delt med etapeløbene, hvor alle tre klassementer er ægte og bliver udbetalt fuldt ud. Ingen havde skilt de to ad.\n\nHvad det betyder for dig: Tallet på kalenderen og i sæsonrapporten er nu den rigtige pulje. Intet du allerede har tjent er ændret, og etapeløb er upåvirkede."
+        },
+        "refs": [
+          3718
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.124",
     "date": "2026-08-14",
     "label": "Beta",
