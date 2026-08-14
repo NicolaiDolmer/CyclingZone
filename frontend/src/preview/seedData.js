@@ -708,6 +708,13 @@ export const SEED_RACE_POINTS = [
   { race_class: "Monuments", result_type: "Klassiker", rank: 1, points: 800 },
   { race_class: "Monuments", result_type: "Klassiker", rank: 2, points: 600 },
   { race_class: "Monuments", result_type: "KlassikerHold", rank: 1, points: 120 },
+  // #3718: prod HAR trøje-rækker for Monuments (Pointtroje/Bjergtroje/Ungdomstroje) — de bruges
+  // af klasse-tabellen på Point & præmier-fanen. Fixturen manglede dem, og netop derfor kunne
+  // hverken preview eller e2e se at "forventet pulje" talte trøjer med på et endagsløb der
+  // aldrig uddeler dem. Rækkerne hører til her; præmieformlen skal ignorere dem for `single`.
+  { race_class: "Monuments", result_type: "Pointtroje", rank: 1, points: 80 },
+  { race_class: "Monuments", result_type: "Bjergtroje", rank: 1, points: 80 },
+  { race_class: "Monuments", result_type: "Ungdomstroje", rank: 1, points: 40 },
   { race_class: "Class2", result_type: "Klassiker", rank: 1, points: 40 },
   { race_class: "Class2", result_type: "Klassiker", rank: 2, points: 30 },
 ];
