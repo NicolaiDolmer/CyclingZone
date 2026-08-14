@@ -294,6 +294,7 @@ import {
   getListingCancelIssue,
   getListingPriceUpdateIssue,
   getSwapCancelIssue,
+  getSwapWithdrawIssue,
   getTransferCancelIssue,
 } from "../lib/transferExecution.js";
 import {
@@ -6929,9 +6930,20 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     return res.status(400).json({ error: "Byttehandlen er accepteret af begge parter og kan ikke annulleres af manager", errorCode: "swap_locked_both_confirmed" });
   }
 
-  // WITHDRAW — proposing team withdraws pending offer
-  if (action === "withdraw" && isProposing && swap.status === "pending") {
-    await supabase.from("swap_offers").update({ status: "withdrawn" }).eq("id", swap.id);
+  // WITHDRAW — proposing team withdraws a pending OR countered offer.
+  // #3669: "countered" manglede i fra-tilstandene, så et forhandlet bytte ikke
+  // kunne afvises — SwapCard'ets "Afvis"-knap på countered+isProposing sender
+  // netop `withdraw`, og routen svarede "Ugyldig handling". Fra-tilstandene
+  // ejes nu af getSwapWithdrawIssue (samme par som transfer_offers-routens
+  // withdraw). Modparten notificeres: efter et modbud VENTER modtageren på
+  // svar, og uden besked forsvandt modbuddet bare fra deres skærm.
+  if (action === "withdraw" && !getSwapWithdrawIssue(swap, { teamId: req.team.id })) {
+    await supabase.from("swap_offers")
+      .update({ status: "withdrawn", updated_at: new Date().toISOString() })
+      .eq("id", swap.id);
+    await notifyTeamOwnerBuilt(swap.receiving_team_id, transferNotif.buildSwapPulledOutNotification({
+      actorName: req.team.name,
+    }), swap.id);
     return res.json({ success: true, action: "withdrawn" });
   }
 

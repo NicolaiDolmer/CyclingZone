@@ -195,6 +195,35 @@ export function getSwapCancelIssue(swap) {
   return null;
 }
 
+// #3669: fra-tilstande hvor den FORESLÅENDE part må trække sit byttetilbud
+// (frontend'ens "Afvis"-knap på et modbudt bytte sender `withdraw`).
+//
+// De tre åbne bytte-tilstande er "pending", "countered" og
+// "awaiting_confirmation" (OPEN_SWAP_STATUSES i auctionRules.js).
+// "awaiting_confirmation" ejes af `cancel`-grenen — dér er der en accept i
+// spil, og getSwapCancelIssue afgør om den stadig må rulles tilbage. De to
+// LEVENDE forhandlings-tilstande, hvor hverken penge eller ryttere har
+// flyttet sig, er "pending" og "countered" — begge skal kunne trækkes.
+//
+// Routen tillod tidligere kun "pending", så et FORHANDLET bytte (modtageren
+// har budt tilbage → status "countered") sad fast: forslagsstilleren fik
+// "Ugyldig handling" og kunne hverken gennemføre eller komme af med
+// tilbuddet. transfer_offers-routen har hele tiden tilladt ["pending",
+// "countered"] på sit withdraw — det er dén paritet der genoprettes her.
+export const SWAP_WITHDRAWABLE_STATUSES = Object.freeze(["pending", "countered"]);
+
+// Returnerer null når forslagsstilleren må trække byttet, ellers { code }.
+// Kaldes fra PATCH /api/transfers/swaps/:id; en ikke-null issue falder
+// igennem til routens generiske invalid_action-svar, så der ikke introduceres
+// nye errorCodes/locale-nøgler.
+export function getSwapWithdrawIssue(swap, { teamId } = {}) {
+  if (!swap) return { code: "swap_not_found" };
+  if (!teamId || swap.proposing_team_id !== teamId) return { code: "not_proposing_team" };
+  if (!SWAP_WITHDRAWABLE_STATUSES.includes(swap.status)) return { code: "swap_not_withdrawable" };
+
+  return null;
+}
+
 // #270: ejeren må fjerne sin egen listing i både "open" og "negotiating" status.
 // Aktive offers påvirkes ikke — køber kan stadig trække tilbage / sælger afvise via
 // offers-flowet. not_found returneres bevidst (i stedet for at differentiere
