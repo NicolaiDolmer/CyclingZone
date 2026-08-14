@@ -1,10 +1,11 @@
 // RiderTrainingTab — Træning-fanen (#2000 stykke 4).
 //
 // Spejler det ægte trænings-system (useTraining + lib/training.js +
-// lib/trainingReport.js). Egen rytter: fokus-chips (sæt/skift fokus), intensitet
-// (Hvile/Let/Normal/Hård), aktivt fokus + progress mod næste +1, "hvert fokus
-// træner …"-reference (fokus→evner), daglig træningslog (7 dage) og form &
-// restitution. Fremmed rytter: låst kort (træning er skjult per spildesign).
+// lib/trainingReport.js). Egen rytter: sæsonens kvittering pr. evne (#3709 trin
+// 1), fokus-chips (sæt/skift fokus), intensitet (Hvile/Let/Normal/Hård), aktivt
+// fokus, "hvert fokus træner …"-reference (fokus→evner), daglig træningslog
+// (7 dage) og form & restitution. Fremmed rytter: låst kort (træning er skjult
+// per spildesign).
 //
 // ÆGTE data — intet opfundet. Slot-tælleren skjules når slots.total === null
 // (daglig træning = ubegrænsede programmer, TRAINING_CONFIG.unlimitedSlots).
@@ -23,8 +24,12 @@ import {
   TRAINING_SETBACK_PCT, injuryDaysLeft,
 } from "../../../lib/training.js";
 import {
-  focusProgress, riderHistoryFromRuns, breakthroughJumps, isBreakthrough, focusCapState,
+  riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
+  seasonAbilityGains, abilityReceipt,
 } from "../../../lib/trainingReport.js";
+import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
+import { formatDate } from "../../../lib/intl.js";
+import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
 import IconBase from "../../ui/icons/IconBase.jsx";
 
 const LOG_DAYS = 7;
@@ -73,14 +78,8 @@ function fatigueColor(fatigue) {
 }
 
 // ── Fokus + intensitet + aktivt fokus ───────────────────────────────────────────
-function FocusCard({ rider, training, progress, t }) {
-  // #3334: "training" (backendMessages-navnerum) huser den EKSISTERENDE
-  // focusCapped/focusCappedTitle-copy (#2578) — allerede live på TrainingPage's
-  // roster-tabel, men aldrig koblet ind på rytterprofilens Trænings-fane, hvor
-  // nosyaras sag opstod. Genbruger nøjagtig samme tekst i stedet for at opfinde
-  // ny (TrainingPage.jsx linje ~656 er referencen).
-  const { t: tTraining } = useTranslation("training");
-  const { slots, planFor, setPlan, clearPlan, savingId, capped } = training;
+function FocusCard({ rider, training, t }) {
+  const { slots, planFor, setPlan, clearPlan, savingId } = training;
   const plan = planFor(rider.id);
   const focus = plan?.focus ?? null;
   const intensity = plan?.intensity ?? "normal";
@@ -109,22 +108,10 @@ function FocusCard({ rider, training, progress, t }) {
   };
 
   const isRest = intensity === "rest";
-  const fp = focus && !isRest ? focusProgress(focus, progress) : null;
-  const fpVal = fp ? rider.abilities?.[fp.ability] : null;
   const abilitiesLabel = focus
     ? TRAINING_FOCUS_ABILITIES[focus].map((a) => t(`racePreview.derived.${a}`)).join(" + ")
     : null;
   const risk = TRAINING_SETBACK_PCT[intensity] ?? 0;
-  // #3334/#2578: ALLE fokussets evner på livstidsloftet → progress-baren ville
-  // stå dødt/næsten-fuld uden forklaring — nøjagtig det signal @nosyara. læste
-  // som "min træning virker ikke", da hendes chefscout-skift samtidig flyttede
-  // et helt andet tal (loft-BÅNDET på Scouting-fanen). "capped" er kun ability-
-  // NØGLER (aldrig tal — caps er server-hidden, #1162).
-  // #3639: hovedrum pr. evne, ikke kun "alt dødt". Se focusCapState-kommentaren i
-  // trainingReport.js — det DELVIST døde fokus var helt tavst og ramte 741 ryttere.
-  const cappedForRider = capped?.[rider.id];
-  const focusCap = focus && !isRest ? focusCapState(focus, cappedForRider) : null;
-  const fullyCapped = focusCap?.state === "capped";
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -139,12 +126,12 @@ function FocusCard({ rider, training, progress, t }) {
 
       {/* Fokus-chips (enkelt-valg, aria-pressed). Aktiv = guld; inaktiv = stiplet. */}
       <div className="flex flex-wrap gap-[7px] mb-3">
+        {/* #3709 trin 1: "loft nået"-markøren på chippen er slettet sammen med
+            focusOptionCapped/focusCappedTitle. Den lovede at et fokus var færdigt
+            for altid, hvilket bliver usandt under den nye model. Sandheden pr.
+            evne står i kvitteringen ovenfor, hvor den kan efterprøves. */}
         {TRAINING_FOCUS_KEYS.map((f) => {
           const on = focus === f;
-          // #3639: et fokus uden hovedrum må ikke se ud som et frit valg. Chippen
-          // forbliver klikbar (spilleren må gerne parkere en rytter i et dødt
-          // fokus) — men den siger nu hvad den er.
-          const dead = focusCapState(f, cappedForRider)?.state === "capped";
           return (
             <button
               key={f}
@@ -152,7 +139,6 @@ function FocusCard({ rider, training, progress, t }) {
               onClick={() => pickFocus(f)}
               disabled={busy}
               aria-pressed={on}
-              title={dead ? tTraining("focusCappedTitle") : undefined}
               className={`inline-flex items-center min-h-[44px] px-[13px] rounded-full text-[12px] transition-colors disabled:opacity-50 ${
                 on
                   ? "border border-cz-accent bg-cz-accent/15 text-cz-accent-t font-semibold"
@@ -160,11 +146,6 @@ function FocusCard({ rider, training, progress, t }) {
               }`}
             >
               {t(`profile.training.focus.${f}`)}
-              {dead && (
-                <span className="ms-1.5 font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-                  {tTraining("focusOptionCapped")}
-                </span>
-              )}
             </button>
           );
         })}
@@ -203,7 +184,7 @@ function FocusCard({ rider, training, progress, t }) {
         </div>
       )}
 
-      {/* Aktivt fokus. Hvile = ingen vækst (egen gren); ellers progress mod næste +1. */}
+      {/* Aktivt fokus. Hvile = ingen vækst (egen gren); ellers hvad fokusset træner. */}
       <div className="border-t border-cz-border pt-[11px]">
         {!focus ? (
           <p className="text-[12px] text-cz-2 leading-snug">{t("profile.training.emptyFocus")}</p>
@@ -233,52 +214,12 @@ function FocusCard({ rider, training, progress, t }) {
                 })}
               </span>
             </div>
-            {fullyCapped ? (
-              // #3334: loftet er nået — sig det EKSPLICIT i stedet for at vise
-              // et tal der bare står stille (issue-accept-kriterie #4).
-              <p
-                className="text-[12px] text-cz-2 leading-snug cursor-help"
-                title={tTraining("focusCappedTitle")}
-              >
-                {tTraining("focusCapped")}
-              </p>
-            ) : (
-              <>
-                <div className="relative h-[7px] bg-cz-subtle rounded-full" aria-hidden="true">
-                  <div
-                    className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/85 transition-[width] duration-500"
-                    style={{ width: `${fp?.pct ?? 0}%` }}
-                  />
-                </div>
-                <div className="flex justify-between gap-2 mt-1.5">
-                  <span className="text-3xs text-cz-3">
-                    {fp && fpVal != null
-                      ? t("profile.training.progressTo", {
-                          ability: t(`racePreview.derived.${fp.ability}`),
-                          from: fpVal, to: fpVal + 1, pct: fp.pct,
-                        })
-                      : t("profile.training.progressPending")}
-                  </span>
-                  <span className="text-3xs text-cz-3 flex-none">{t("profile.training.effectNote")}</span>
-                </div>
-                {/* #3639: baren viser evnen tættest på gennembrud. Står en anden af
-                    fokussets evner på loftet, skal den navngives — ellers venter
-                    spilleren på klatring mens tempo er det der rykker. */}
-                {focusCap?.state === "partial" && (
-                  <p
-                    className="mt-1.5 text-[12px] text-cz-warning leading-snug cursor-help"
-                    title={tTraining("focusPartiallyCappedTitle", {
-                      capped: focusCap.capped.map((a) => t(`racePreview.derived.${a}`)).join(", "),
-                      open: focusCap.open.map((a) => t(`racePreview.derived.${a}`)).join(", "),
-                    })}
-                  >
-                    {tTraining("focusPartiallyCapped", {
-                      abilities: focusCap.capped.map((a) => t(`racePreview.derived.${a}`)).join(", "),
-                    })}
-                  </p>
-                )}
-              </>
-            )}
+            {/* #3709 trin 1: den ene aggregerede progress-bar er væk herfra.
+                Den viste ÉN af fokussets evner (den tættest på gennembrud), så
+                en låst evne ved siden af var usynlig — rod-årsagen bag #3639 og
+                #3649. Fremdriften står nu pr. evne i kvitteringen ovenfor, hvor
+                den kan holdes op mod hvad rytteren faktisk fik i sæsonen. */}
+            <p className="text-3xs text-cz-3">{t("profile.training.effectNote")}</p>
             <p className="mt-2 text-2xs text-cz-2 leading-snug">
               {risk > 0 ? t("profile.training.riskNote", { risk }) : t("profile.training.noRiskNote")}
             </p>
@@ -302,6 +243,76 @@ function FocusCard({ rider, training, progress, t }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Sæsonens kvittering (#3709 trin 1) ──────────────────────────────────────────
+//
+// Hovedleverancen på fanen: alle 15 synlige evner med hvad rytteren står på NU,
+// hvor mange hele point han fik i DENNE SÆSON, og hvor langt han er mod næste
+// point. En låst evne skriver "færdig" i stedet for en død bar.
+//
+// Hvad der IKKE er her: taget ("nu → tag" i spec §5.1). `ability_caps` forlader
+// aldrig serveren (#1162), og patch note v7.119 lover spillerne at det præcise
+// loft ikke kan aflæses på skærmen. Taget hører til trin 3.
+//
+// Kategori-grupperingen er den samme SSOT som Overblik-fanens evne-kolonner
+// (lib/abilities.js → ABILITY_CATEGORIES), så de to flader viser evnerne i
+// samme rækkefølge.
+function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
+  const { t: tTraining } = useTranslation("training");
+  const { planFor, capped } = training;
+  const focus = planFor(rider.id)?.focus ?? null;
+  const focusAbilities = focus ? new Set(TRAINING_FOCUS_ABILITIES[focus] ?? []) : null;
+
+  const seasonStart = trainingHistory?.seasonStart ?? null;
+  const seasonGains = seasonAbilityGains(trainingHistory?.seasonRuns, rider.id, seasonStart);
+  const rowsByAbility = Object.fromEntries(
+    abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
+      abilities: rider.abilities,
+      progress,
+      capped: capped?.[rider.id],
+      seasonGains,
+    }).map((row) => [row.ability, row]),
+  );
+
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
+      <div className="flex items-baseline justify-between gap-2 mb-[11px]">
+        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+          {tTraining("receipt.title")}
+        </h3>
+        {seasonStart && (
+          <span className="font-data text-3xs uppercase tracking-[.08em] text-cz-3">
+            {tTraining("receipt.since", { date: formatDate(seasonStart) })}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-[18px] gap-y-[13px]">
+        {ABILITY_CATEGORIES.map((cat) => (
+          <div key={cat.key} className="min-w-0">
+            <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
+              {t(`stats.categories.${cat.key}`)}
+            </span>
+            <div className="mt-[5px]">
+              <AbilityReceiptHeader />
+              {cat.keys.map((key) => (
+                <AbilityReceiptRow
+                  key={key}
+                  row={rowsByAbility[key]}
+                  inFocus={!!focusAbilities?.has(key)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-3 pt-2.5 border-t border-cz-border text-3xs text-cz-3 leading-snug">
+        {seasonStart ? tTraining("receipt.note") : tTraining("receipt.pending")}
+      </p>
     </div>
   );
 }
@@ -494,14 +505,26 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   const condition = training.condition?.[rider.id] ?? null;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-[13px] items-start">
-      <div className="flex flex-col gap-[13px] min-w-0">
-        <FocusCard rider={rider} training={training} progress={progress} t={t} />
-        <DailyLogCard riderId={rider.id} runs={runs} t={t} />
-      </div>
-      <div className="flex flex-col gap-[13px] min-w-0">
-        <TrendCard riderId={rider.id} runs={runs} t={t} />
-        <FormCard condition={condition} t={t} />
+    <div className="flex flex-col gap-[13px]">
+      {/* #3709 trin 1: kvitteringen står øverst. "Det der fylder mest skal være
+          dét rytteren fik" — en kvittering kan ikke være løgn, en forudsigelse
+          kan (spec §5, docs/superpowers/specs/2026-08-14-3659-...). */}
+      <SeasonReceiptCard
+        rider={rider}
+        training={training}
+        progress={progress}
+        trainingHistory={trainingHistory}
+        t={t}
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-[13px] items-start">
+        <div className="flex flex-col gap-[13px] min-w-0">
+          <FocusCard rider={rider} training={training} t={t} />
+          <DailyLogCard riderId={rider.id} runs={runs} t={t} />
+        </div>
+        <div className="flex flex-col gap-[13px] min-w-0">
+          <TrendCard riderId={rider.id} runs={runs} t={t} />
+          <FormCard condition={condition} t={t} />
+        </div>
       </div>
     </div>
   );

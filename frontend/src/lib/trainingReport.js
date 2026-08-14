@@ -36,41 +36,101 @@ export function focusProgress(focus, progressForRider) {
   return { ability: best.ability, pct: Math.round(clamped * 100) };
 }
 
-// #2578: er ALLE fokussets evner på livstidsloftet? Så er der intet at vinde i
-// netop dette fokus, og progress-cellen skal vise "færdigudviklet" i stedet for
-// en død/stillestående bar. cappedForRider er backend-leverede ability-NØGLER
-// (aldrig tal — caps er server-hidden, #1162). Delvist cappet fokus (mindst én
-// evne med headroom) → false: baren er stadig meningsfuld.
-export function isFocusFullyCapped(focus, cappedForRider) {
-  return focusCapState(focus, cappedForRider)?.state === "capped";
+// ── #3709 trin 1: kvitteringen (point pr. SÆSON) ────────────────────────────────
+//
+// "En kvittering kan ikke være løgn, en forudsigelse kan" (spec §5, #3659). Hele
+// problemet hedder "kan managers stole på udviklingen", så fladen viser dét
+// rytteren FIK: nuværende værdi, point opnået i denne sæson, og fremdrift mod
+// næste point. Enheden er point pr. sæson (ejer-beslutning 9, 14/8).
+//
+// Taget (`nu → tag` i spec §5.1) er BEVIDST ikke med i trin 1: `ability_caps`
+// forlader aldrig serveren (#1162 — backend/routes/api.js: "KUN ability-nøgler
+// forlader serveren"), og patch note v7.119 lover spillerne at det præcise loft
+// ikke kan aflæses. Taget venter til trin 3.
+
+// Sæsonens hele point pr. evne for ÉN rytter, summeret fra trænings-kørslerne.
+//
+//   runs        : [{ tick_date, report: { riders: [...] } }] — samme form som
+//                 useTrainingHistory leverer (nyeste først, men rækkefølgen er
+//                 uden betydning her).
+//   riderId     : rytterens id
+//   seasonStart : "YYYY-MM-DD" for den AKTIVE sæsons start, eller null.
+//
+// Sæson-filteret er ikke pynt: vinduet er 30 dage, en sæson 28, så uden filteret
+// ville forrige sæsons hale bløde ind i tallet lige efter et sæsonskift.
+// tick_date er en DATE-kolonne ("YYYY-MM-DD"), så streng-sammenligning ER dato-
+// sammenligning — ingen Date-parsing, ingen tidszone.
+//
+// Returnerer { [ability]: point } (tom = rytteren fik 0 point i sæsonen), eller
+// **null** når sæsonstarten er ukendt: et fabrikeret "+0" ville være præcis den
+// slags tal en kvittering ikke må vise.
+export function seasonAbilityGains(runs, riderId, seasonStart) {
+  if (!Array.isArray(runs) || !riderId || !seasonStart) return null;
+  const since = String(seasonStart);
+  const out = {};
+  for (const run of runs) {
+    const tickDate = run?.tick_date;
+    if (!tickDate || String(tickDate) < since) continue;
+    const rows = run?.report?.riders;
+    if (!Array.isArray(rows)) continue;
+    const row = rows.find((r) => r && r.rider_id === riderId);
+    const gains = row?.gains;
+    if (!gains) continue;
+    for (const [ability, n] of Object.entries(gains)) {
+      const v = Number(n);
+      if (!Number.isFinite(v) || v <= 0) continue;
+      out[ability] = (out[ability] ?? 0) + v;
+    }
+  }
+  return out;
 }
 
-// #3639: hovedrum PR. EVNE i et fokus — ikke bare "er alt dødt".
+// Kvitterings-rækker for en liste af evner. Ren afledning — én form for begge
+// flader (/training-rosteret og rytterprofilens Træning-fane), så de to steder
+// ikke kan komme til at sige forskellige ting om samme rytter.
 //
-// Rod-årsagen bag de tre spillerrapporter 10/8 ("klatring stiger ikke ved
-// VO2max-træning"): et fokus træner FLERE evner (vo2max = climbing+punch+tempo),
-// men hele fladen aggregerede fokusset til ÉT tal. focusProgress ovenfor vælger
-// evnen TÆTTEST på gennembrud, så en rytter hvis climbing står på loftet, mens
-// tempo stadig rykker, viser en sund bar med tempos tal. #2578's
-// isFocusFullyCapped fangede kun det totale tilfælde (alle evner døde).
-// Målt i prod 11/8 (spiller-ejede ryttere med plan i aktiv sæson): 117 ryttere
-// helt døde — men 741 DELVIST døde uden noget signal, heraf 291 med præcis
-// climbing på loftet i vo2max. 110 af 197 spillerhold var ramt.
+//   abilityKeys : evner der skal med, i visningsrækkefølge
+//   abilities   : { [ability]: 1-99 } (rider_derived_abilities-rækken)
+//   progress    : { [ability]: 0..1 } (ability_progress)
+//   capped      : [ability] — backend-leverede NØGLER, aldrig cap-tal (#1162)
+//   seasonGains : resultatet af seasonAbilityGains (null = sæson ukendt)
 //
-// cappedForRider er backend-leverede ability-NØGLER (aldrig tal — caps er
-// server-hidden, #1162), så denne funktion kan aldrig lække et loft.
-//
-// Returnerer null ved intet/ukendt fokus, ellers
-//   { state: "open" | "partial" | "capped", capped: [ability], open: [ability] }
-export function focusCapState(focus, cappedForRider) {
+// Returnerer [{ ability, value, gained, pct, locked }]:
+//   value  : nuværende evne, eller null når tallet mangler
+//   gained : hele point i sæsonen, eller null når sæsonen er ukendt
+//   pct    : 0-99 fremdrift mod næste point, eller null (låst evne / ingen data)
+//   locked : evnen står på sit loft → fladen skriver "færdig" i stedet for en
+//            død bar. Ordet "aldrig" bruges ALDRIG (spec §5.1).
+export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains } = {}) {
+  const keys = Array.isArray(abilityKeys) ? abilityKeys : [];
+  const lockedSet = new Set(Array.isArray(capped) ? capped : []);
+  return keys.map((ability) => {
+    const rawValue = Number(abilities?.[ability]);
+    const rawFrac = Number(progress?.[ability]);
+    const locked = lockedSet.has(ability);
+    return {
+      ability,
+      value: Number.isFinite(rawValue) ? rawValue : null,
+      gained: seasonGains ? Number(seasonGains[ability] ?? 0) : null,
+      // Klippet ved 99: en fremdriftsbar der står på "100 %" uden at springe
+      // læses som gået i stå. Point landes af den daglige kørsel, ikke af baren.
+      pct: locked || !Number.isFinite(rawFrac)
+        ? null
+        : Math.min(99, Math.round(Math.max(0, rawFrac) * 100)),
+      locked,
+    };
+  });
+}
+
+// Kvitteringen for det AKTIVE fokus' 2-3 evner. Rosteret på /training kan ikke
+// bære 15 evner pr. række; fokussets egne evner er dét rækken handler om.
+// Erstatter den ene aggregerede progress-bar, som var rod-årsagen bag #3639:
+// baren viste kun evnen tættest på gennembrud, så en låst evne var usynlig.
+export function focusAbilityReceipt(focus, data) {
   if (!focus) return null;
   const abilities = TRAINING_FOCUS_ABILITIES[focus];
   if (!abilities?.length) return null;
-  const set = new Set(Array.isArray(cappedForRider) ? cappedForRider : []);
-  const cappedAbilities = abilities.filter((a) => set.has(a));
-  const openAbilities = abilities.filter((a) => !set.has(a));
-  const state = cappedAbilities.length === 0 ? "open" : openAbilities.length === 0 ? "capped" : "partial";
-  return { state, capped: cappedAbilities, open: openAbilities };
+  return abilityReceipt(abilities, data);
 }
 
 // #2578: samlet antal hele point vundet i dagens kørsel for én rapport-række.

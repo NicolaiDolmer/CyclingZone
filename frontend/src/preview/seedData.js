@@ -60,6 +60,10 @@ export const ACTIVE_SEASON = {
   name: "Sæson 1",
   status: "active",
   started_at: "2026-05-01T00:00:00.000Z",
+  // #3709 trin 1: `start_date` er DATE-kolonnen useTrainingHistory filtrerer
+  // sæsonens træningsdage på. Uden den kunne trænings-kvitteringen aldrig vise
+  // sæsonens point på preview — den ville stå i sin afventende tilstand.
+  start_date: "2026-05-01",
   ended_at: null,
   race_days_completed: 0,
   race_days_total: 28,
@@ -1410,16 +1414,16 @@ export const SEED_TRAINING = {
     "rider-1": { sprint: 0.82, acceleration: 0.41 },
     "rider-2": { climbing: 0.35, punch: 0.22, tempo: 0.18 },
   },
-  // #3639: preview SKAL kunne vise loft-tilstandene — med capped:{} var både
-  // #2578's "færdigudviklet" og den nye delvist-døde advarsel usynlige på preview,
-  // så en ejer-verifikation af netop denne rettelse var umulig.
-  //   Ada (rider-1, fokus sprint): acceleration på loftet, sprint har hovedrum →
-  //     DELVIST dødt. Baren viser stadig sprint 82% (tour-ankeret er urørt), og
-  //     advarslen navngiver acceleration. Det er præcis formen på de 291 prod-
-  //     ryttere hvis climbing stod stille mens tempo rykkede.
-  //   Mikkel (rider-2, ingen plan): hele vo2max på loftet → dropdown'en markerer
-  //     fokusset "loft nået" — og det er samtidig assistentens smartDefaultFocus,
-  //     hvilket er nøjagtig den tavse fælde spillerne faldt i.
+  // #3639/#3709: preview SKAL kunne vise låste evner — med capped:{} kunne
+  // kvitteringens "færdig"-tilstand ikke ses på preview, og en ejer-verifikation
+  // af netop den rettelse var umulig.
+  //   Ada (rider-1, fokus sprint): acceleration er låst, sprint har hovedrum →
+  //     kvitteringens to sprint-linjer viser præcis forskellen (den ene "færdig",
+  //     den anden 82 % på vej). Det var her den gamle ENE bar løj: den viste
+  //     sprints 82 % og skjulte at acceleration stod stille.
+  //   Mikkel (rider-2, ingen plan): climbing/punch/tempo alle låste → hele vo2max
+  //     står "færdig" i kvitteringen, og det er samtidig assistentens
+  //     smartDefaultFocus, hvilket er nøjagtig den tavse fælde spillerne faldt i.
   capped: {
     "rider-1": ["acceleration"],
     "rider-2": ["climbing", "punch", "tempo"],

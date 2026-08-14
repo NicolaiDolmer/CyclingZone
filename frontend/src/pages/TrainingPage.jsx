@@ -15,7 +15,9 @@ import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, focusCapState, todayGainTotal, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt } from "../lib/trainingReport.js";
+import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
+import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
@@ -38,9 +40,17 @@ import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../comp
 // 1-række-pr-row-kolonnemodel ikke understøtter. Ren layout-migrering — INGEN ændringer
 // i fetches/beregninger/save-handlers/state-maskiner (useTraining/useTrainingHistory uændret).
 
-// Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed (tal,
-// desc-først: "hvem er mest træt/i bedst form?" med ét klik).
-const ROSTER_DESC_FIRST = new Set(["form", "fatigue"]);
+// Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed/status
+// (tal, desc-først: "hvem er mest træt/i bedst form / hvem er akademi?" med ét klik).
+const ROSTER_DESC_FIRST = new Set(["form", "fatigue", "status"]);
+
+// #3706: Status-kolonnens comparator. Overskriften var et bart <th> uden
+// SortTh, så et klik gjorde bogstavelig talt ingenting (@cybersimon, Discord
+// 13/8). Kolonnen bærer to badges, så rangen er en vægt i stedet for en enkelt
+// værdi: akademi vejer tungest (det var dét spilleren bad om at kunne samle),
+// skade lægger et point oveni. Desc-først → akademi øverst med ét klik.
+const STATUS_ACADEMY_WEIGHT = 2;
+const STATUS_INJURED_WEIGHT = 1;
 
 // #2819 — guidet tour på /training (aktiveres fra dashboardets "Show me how" når
 // onboarding-trin 2, first_training_run, er næste trin). Samme mønster som
@@ -119,6 +129,9 @@ function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
     { key: "primary_type", label: t("colType") },
     { key: "form", label: t("form") },
     { key: "fatigue", label: t("fatigue") },
+    // #3706: Status blev sorterbar — kontrollen skal blive ved med at eksponere
+    // PRÆCIS de samme nøgler som desktop-headerne.
+    { key: "status", label: t("colStatus") },
   ];
   const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
 
@@ -239,12 +252,17 @@ export default function TrainingPage() {
         // #3300: is_academy medtages read-only i samme select (ingen migration,
         // intet nyt kald) — feltet findes allerede på riders, kun mangel på
         // visning på trænings-siden.
+        // #3709 trin 1: + de 15 evne-kolonner via det delte ABILITY_SELECT-embed
+        // (samme mønster som AuctionsPage/RidersPage). Kvitteringen skal vise hvad
+        // evnen står på NU, og uden dette embed havde rækken kun fremdrifts-
+        // procenten. Ingen ny query og ingen loft-tal: ability_caps er ikke med i
+        // ABILITY_KEYS og forlader aldrig serveren (#1162).
         const { data } = await supabase
           .from("riders")
-          .select("id, firstname, lastname, primary_type, secondary_type, is_academy")
+          .select(`id, firstname, lastname, primary_type, secondary_type, is_academy, ${ABILITY_SELECT}`)
           .eq("team_id", myTeam.id)
           .order("lastname");
-        setRiders(data || []);
+        setRiders((data || []).map(flattenAbilities));
       } finally {
         setRidersLoading(false);
       }
@@ -352,7 +370,10 @@ export default function TrainingPage() {
     return time ? t(`trainedTodayAt_${who}`, { time }) : t(`trainedToday_${who}`);
   }
 
-  const today = new Date();
+  // Stabil dags-reference: bruges både af rækkernes skade-visning og af #3706's
+  // Status-comparator, som er memoiseret — en frisk Date pr. render ville
+  // invalidere den memo hver eneste gang.
+  const today = useMemo(() => new Date(), []);
 
   const isLoading = loading || ridersLoading;
 
@@ -369,6 +390,19 @@ export default function TrainingPage() {
     ? history.runs.filter((r) => r.tick_date !== todayRun.tick_date)
     : history.runs.slice(1);
 
+  // #3709 trin 1: sæsonens hele point pr. rytter, summeret fra den AKTIVE sæsons
+  // trænings-kørsler (useTrainingHistory skærer selv forrige sæsons hale fra).
+  // Uden en kendt sæsonstart bliver map'et tomt, rækkerne får seasonGains = null
+  // og viser "—" i stedet for et opfundet "+0".
+  const seasonGainsByRider = useMemo(() => {
+    const out = {};
+    if (!history.seasonStart) return out;
+    for (const r of riders) {
+      out[r.id] = seasonAbilityGains(history.seasonRuns, r.id, history.seasonStart) ?? {};
+    }
+    return out;
+  }, [riders, history.seasonRuns, history.seasonStart]);
+
   // --- Gruppering + multi-select (#1480) ---
   // Antal kolonner i roster-tabellen (select + type + 7 oprindelige) — bruges til
   // colSpan på gruppe-header-rækker.
@@ -384,7 +418,12 @@ export default function TrainingPage() {
     primary_type: (r) => r.primary_type ?? "",
     form: (r) => condition[r.id]?.form ?? null,
     fatigue: (r) => condition[r.id]?.fatigue ?? null,
-  }), [condition]);
+    // #3706: samme to badges som Status-cellen viser, som ét sorterbart tal.
+    // injuryDaysLeft er den samme kilde cellen selv bruger, så rækkefølgen kan
+    // ikke drive fra det man ser.
+    status: (r) => (r.is_academy ? STATUS_ACADEMY_WEIGHT : 0)
+      + (injuryDaysLeft(condition[r.id]?.injured_until, today) > 0 ? STATUS_INJURED_WEIGHT : 0),
+  }), [condition, today]);
   const rosterAccessor = rosterSort.sort ? rosterAccessors[rosterSort.sort] : null;
   const sortRoster = (list) => sortRows(list, rosterAccessor, rosterSort.sortDir);
 
@@ -431,12 +470,18 @@ export default function TrainingPage() {
     const riderTrainability = trainability[rider.id] ?? {};
     const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
 
-    // #3639: hovedrum pr. evne i fokusset. Trainability ovenfor siger hvor HURTIGT
-    // et fokus vokser (tier-%'en fra #3234), aldrig om der er noget tilbage at
-    // vinde — en rytter på loftet viser derfor "100%" og læses som det rigtige
-    // valg. Her afgøres tilstanden pr. evne ud fra backendens capped-nøgler.
-    const cappedForRider = capped[rider.id];
-    const focusCap = focusCapState(plan?.focus, cappedForRider);
+    // #3709 trin 1: kvitteringen for fokussets 2-3 evner. Erstatter den ene
+    // aggregerede progress-bar, som var rod-årsagen bag #3639: baren viste kun
+    // evnen tættest på gennembrud, så en låst evne ved siden af var usynlig.
+    // Nu står hver af fokussets evner på sin egen linje med nu / sæson / på vej,
+    // og en låst evne skriver "færdig" i stedet for en død bar.
+    // `capped` er kun ability-NØGLER — cap-tal forlader aldrig serveren (#1162).
+    const focusReceipt = focusAbilityReceipt(plan?.focus, {
+      abilities: rider.abilities,
+      progress: progress[rider.id],
+      capped: capped[rider.id],
+      seasonGains: seasonGainsByRider[rider.id] ?? null,
+    });
 
     // #3459 V3: løbsdags-badge — feltet findes KUN når race_day_engine_enabled er
     // on (backend udelader det helt ellers, se useTraining.js), så tilstedeværelse
@@ -554,14 +599,12 @@ export default function TrainingPage() {
                 <option value="">—</option>
                 {TRAINING_FOCUS_KEYS.map((k) => {
                   const level = riderTrainability[k];
-                  // #3639: et fokus uden hovedrum overtrumfer tier-markøren i
-                  // listen — "stærkt match" på et dødt fokus er præcis den
-                  // fejllæsning der kostede spillerne træningsdage. Listen er
-                  // ren INFORMATION; hvilket fokus assistenten selv vælger
-                  // (smartDefaultFocus) er bevidst uændret, se #3234.
-                  const marker = focusCapState(k, cappedForRider)?.state === "capped"
-                    ? t("focusOptionCapped")
-                    : level ? t(`trainability_${level}`) : "";
+                  // #3709 trin 1: "loft nået"-markøren (focusOptionCapped) er
+                  // slettet. Den lovede spilleren at et fokus var færdigt for
+                  // altid, hvilket bliver usandt under den nye model. Sandheden
+                  // pr. evne står nu i kvitterings-kolonnen, hvor den er
+                  // efterprøvelig. Tier-markøren (#3234) er uændret.
+                  const marker = level ? t(`trainability_${level}`) : "";
                   return (
                     <option key={k} value={k}>
                       {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
@@ -675,46 +718,20 @@ export default function TrainingPage() {
           )}
         </td>
 
-        {/* Progress mod næste +1 (anticipation). #2578: ryttere hvis fokus-evner
-            ALLE står på livstidsloftet får en "færdigudviklet"-markering i stedet
-            for en død bar, og dagens vundne point vises som "+N i dag" så en
-            netop-wrappet bar ikke læses som nul fremgang. */}
+        {/* #3709 trin 1: kvitteringen for fokussets egne evner. Hver evne får
+            sin egen linje med nu / point i sæsonen / på vej, og en låst evne
+            skriver "færdig". Den gamle ene aggregerede bar viste kun evnen
+            tættest på gennembrud (#3639), og de tre loft-tekster lovede at en
+            evne aldrig steg igen — et løfte den nye model gør usandt (#3649). */}
         <td className={tdClass({})} data-tour={isFirst ? "training-next-up" : undefined}>
-          {focusCap?.state === "capped" ? (
-            /* Ejer-kvalitetspas 24/7: var en stor grå pill der dominerede
-               kolonnen — nu stille T2-meta-tekst m. forklaring i tooltip. */
-            <span
-              className="font-data text-3xs uppercase tracking-[.06em] text-cz-3 cursor-help"
-              title={t("focusCappedTitle")}
-            >
-              {t("focusCapped")}
-            </span>
+          {focusReceipt ? (
+            <div className="min-w-[176px]">
+              {focusReceipt.map((row) => (
+                <AbilityReceiptRow key={row.ability} row={row} />
+              ))}
+            </div>
           ) : (
-            <>
-              <FocusProgress
-                info={focusProgress(plan?.focus, progress[rider.id])}
-                emptyLabel={t("noFocus")}
-                tRider={tRider}
-                toGoLabel={(o) => t("toGo", o)}
-              />
-              {/* #3639: baren ovenfor viser den evne der er TÆTTEST på gennembrud.
-                  Står en anden af fokussets evner på loftet, er den bar sand og
-                  samtidig misvisende — spilleren venter på klatring mens tempo
-                  rykker. Navngiv derfor de døde evner eksplicit. */}
-              {focusCap?.state === "partial" && (
-                <div
-                  className="mt-0.5 font-data text-3xs uppercase tracking-[.06em] text-cz-warning cursor-help"
-                  title={t("focusPartiallyCappedTitle", {
-                    capped: focusCap.capped.map((a) => tRider(`racePreview.derived.${a}`)).join(", "),
-                    open: focusCap.open.map((a) => tRider(`racePreview.derived.${a}`)).join(", "),
-                  })}
-                >
-                  {t("focusPartiallyCapped", {
-                    abilities: focusCap.capped.map((a) => tRider(`racePreview.derived.${a}`)).join(", "),
-                  })}
-                </div>
-              )}
-            </>
+            <span className="text-cz-3 text-xs">{t("noFocus")}</span>
           )}
           {todayGainsByRider[rider.id] > 0 && (
             <div className="mt-0.5">
@@ -1167,14 +1184,23 @@ export default function TrainingPage() {
                       </SortTh>
                       <th className={thClass({})}>{tRider("training.focus")}</th>
                       <th className={thClass({})}>{tRider("training.intensity")}</th>
-                      <th className={thClass({})}>{t("colNextUp")}</th>
+                      {/* #3709 trin 1: kolonnen er ikke længere "næste +1" på ÉN
+                          evne, men sæsonens kvittering pr. evne i fokusset. */}
+                      <th className={thClass({})}>{t("receipt.title")}</th>
                       <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
                         {t("form")}
                       </SortTh>
                       <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
                         {t("fatigue")}
                       </SortTh>
-                      <th className={thClass({})}>{t("colStatus")}</th>
+                      {/* #3706: var et bart <th> — overskriften kunne klikkes uden
+                          at der skete noget (@cybersimon, Discord 13/8). Nu samme
+                          SortTh-recipe som navn/type/form/træthed, med en
+                          comparator der samler akademi-rytterne. */}
+                      <SortTh sortKey="status" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={thClass({})}>
+                        {t("colStatus")}
+                      </SortTh>
                       {/* #3300-rework: individuel ugeplan-knap i egen kolonne (ejer-
                           feedback), samme mønster som badges-kolonnen ovenfor. */}
                       <th className={thClass({})}>{t("colWeekPlan")}</th>

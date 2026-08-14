@@ -13,9 +13,14 @@ const src = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
 test("#1480.1 roster-query henter ryttertype-kolonnerne", () => {
   assert.match(
     src,
-    /\.select\("id, firstname, lastname, primary_type, secondary_type, is_academy"\)/,
-    "querien skal hente primary_type/secondary_type så typen kan vises, + is_academy (#3300)",
+    /\.select\(`id, firstname, lastname, primary_type, secondary_type, is_academy, \$\{ABILITY_SELECT\}`\)/,
+    "querien skal hente primary_type/secondary_type så typen kan vises, + is_academy (#3300)"
+      + " + evne-kolonnerne via det delte ABILITY_SELECT-embed (#3709 trin 1: kvitteringens 'nu'-tal)",
   );
+  // #3709 trin 1: evnerne skal fladtgøres med den DELTE helper, ikke håndrulles,
+  // så embed-formen (array vs objekt) håndteres ét sted.
+  assert.match(src, /import \{ ABILITY_SELECT, flattenAbilities \} from "\.\.\/lib\/abilities\.js"/);
+  assert.match(src, /setRiders\(\(data \|\| \[\]\)\.map\(flattenAbilities\)\)/);
 });
 
 // #3300 (rework efter ejer-feedback): akademi-status pr. rytter-række —
@@ -170,4 +175,43 @@ test("#3299 mobil-sort-kontrol eksponerer træthed (+ form) via rosterSort, kun 
   assert.match(src, /key:\s*"fatigue"/, "sort-options skal inkludere fatigue-nøglen");
   assert.match(src, /key:\s*"form"/, "sort-options skal inkludere form-nøglen");
   assert.match(src, /onSort=\{rosterSort\.handleSort\}/, "skal skrive til samme sort-state som desktop-headerne (ingen ny sort-logik)");
+});
+
+// ── #3706: Status-kolonnen kunne klikkes uden at sortere ──────────────────────
+//
+// @cybersimon, Discord #feedback-and-ideas 13/8: "if you press on status it
+// would show academy first or last, right now it is doing nothing." Verificeret
+// i koden: overskriften var et bart <th>, ikke en SortTh, og der fandtes ingen
+// comparator for kolonnen. De øvrige ikke-sorterbare kolonner (fokus,
+// intensitet, kvittering, ugeplan) er ligeledes bare <th> og ser derfor heller
+// ikke klikbare ud, så Status var den eneste egentlige mangel.
+test("#3706 Status-kolonnen er sorterbar via samme SortTh/useSortState-mønster som resten", () => {
+  assert.match(
+    src,
+    /<SortTh sortKey="status" sort=\{rosterSort\.sort\} sortDir=\{rosterSort\.sortDir\} onSort=\{rosterSort\.handleSort\}/,
+    "Status-headeren skal være en SortTh, ikke et bart <th>",
+  );
+  assert.match(src, /status: \(r\) => \(r\.is_academy \? STATUS_ACADEMY_WEIGHT : 0\)/,
+    "comparatoren skal vægte akademi-flaget, så akademi-rytterne samles");
+  assert.match(src, /ROSTER_DESC_FIRST = new Set\(\["form", "fatigue", "status"\]\)/,
+    "første klik skal give akademi ØVERST (desc-først), som spilleren beskrev");
+  assert.match(src, /key:\s*"status"/, "mobil-sort-kontrollen skal eksponere den samme nøgle");
+});
+
+// ── #3709 trin 1: kvitteringen på roster-rækken ───────────────────────────────
+test("#3709 roster-kolonnen viser kvitteringen pr. evne i fokusset, ikke én aggregeret bar", () => {
+  assert.match(src, /import AbilityReceiptRow from "\.\.\/components\/training\/AbilityReceiptRow\.jsx"/);
+  assert.match(src, /focusAbilityReceipt\(plan\?\.focus, \{/, "rækkerne skal komme fra den delte helper");
+  assert.match(src, /seasonAbilityGains\(history\.seasonRuns, r\.id, history\.seasonStart\)/,
+    "sæson-point skal filtreres på den AKTIVE sæsons start, ikke bare 30 dage");
+  assert.match(src, /t\("receipt\.title"\)/, "kolonne-headeren skal være kvitteringens titel");
+});
+
+// De tre loft-tekster er slettet: de lovede spilleren at en evne aldrig steg
+// igen. Det var sandt under den gamle model og bliver usandt under den nye
+// (#3649/#3659 spec §5.3). Guarden holder dem ude af begge flader.
+test("#3709 de tre loft-tekster er væk fra trænings-fladen", () => {
+  for (const key of ["focusOptionCapped", "focusCappedTitle", "focusPartiallyCappedTitle", "focusCapped", "focusPartiallyCapped"]) {
+    assert.doesNotMatch(src, new RegExp(`t\\("${key}"`), `${key} skal være slettet, ikke bare skjult`);
+  }
 });
