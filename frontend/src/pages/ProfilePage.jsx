@@ -241,6 +241,17 @@ export default function ProfilePage() {
   }
 
   async function toggleDmPref(prefKey, enabled) {
+    // Læses FØR den optimistiske opdatering, så tilbagerulningen er lokal.
+    // refreshDmStatus() kan IKKE bære den: den er selv et fetch med en tavs
+    // catch, så på et tabt net — præcis det scenarie #3628 handler om — ville
+    // den no-oppe og lade den optimistiske værdi stå. Fladen ville lyve igen,
+    // bare et lag længere inde. Er nøglen fraværende i dag, ruller vi tilbage
+    // til undefined, hvilket er den sande "ikke sat"-tilstand.
+    const previous = dmStatus?.dm_prefs?.[prefKey];
+    const revert = () => setDmStatus(prev => ({
+      ...prev,
+      dm_prefs: { ...(prev?.dm_prefs || {}), [prefKey]: previous },
+    }));
     try {
       const headers = await getAuthHeaders();
       if (!headers) { showMsg(t("discord.noSession"), "error"); return; }
@@ -254,6 +265,7 @@ export default function ProfilePage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         showMsg(data.error || t("errors:generic.serverError"), "error");
+        revert();
         await refreshDmStatus();
       } else {
         setDmStatus(prev => ({ ...prev, dm_prefs: data.dm_prefs }));
@@ -268,6 +280,8 @@ export default function ProfilePage() {
         cause,
         context: { prefKey, enabled },
       });
+      revert();
+      // Best-effort gensynkronisering oveni; tilbagerulningen er allerede sket.
       await refreshDmStatus();
     }
   }

@@ -73,6 +73,59 @@ test("bestyrelses-wizarden kommer ud af loading naar proposal-kaldet aldrig naar
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("DM-praeferencen ruller tilbage naar PATCH'en aldrig naar frem (#3628)", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  // Den eneste af de seks handlere hvor kuren ikke er et loading-flag, men en
+  // TILBAGERULNING af en optimistisk opdatering. Kilde-invarianten kan ikke se
+  // forskel på en tilbagerulning der virker offline og en der selv kalder
+  // netværket — kun denne test kan.
+  // Status-kaldet skal LYKKES ved indlæsning, ellers rendrer Discord-sektionen
+  // slet ikke. Det falder først bort sammen med PATCH'en — det er dét, der gør
+  // testen skarp: er tilbagerulningen afhængig af refreshDmStatus(), står
+  // kontakten forkert netop når begge kald fejler.
+  let blockStatus = false;
+  await page.route("**/api/me/discord-status", (route) =>
+    blockStatus ? route.abort("failed") : route.fallback(),
+  );
+  let abortedCalls = 0;
+  await page.route("**/api/me/discord-dm-prefs", (route) => {
+    abortedCalls += 1;
+    blockStatus = true;
+    return route.abort("failed");
+  });
+
+  await login(page);
+  await page.goto("/profile");
+
+  // Mocken giver dm_enabled: true og dm_prefs.board_update: false, så netop
+  // denne kontakt starter slukket og kan tændes. Toggle.jsx rendrer selve
+  // input'et som .sr-only (kontakten man ser er de to spans ved siden af),
+  // så den er attached men ikke "visible" i Playwrights forstand.
+  const toggle = page.locator("#dm-pref-board_update");
+  await expect(toggle).toBeAttached();
+  await expect(toggle).not.toBeChecked();
+
+  // Klik på labelen, ikke .check() på input'et: check() verificerer SLUTtilstanden
+  // og fejler når den er uændret — hvilket den er, netop fordi tilbagerulningen
+  // virker. På mobile-webkit nåede reverten at ske før verifikationen, så testen
+  // faldt på sin egen målemetode og ikke på koden. Et label-klik er desuden det
+  // en spiller faktisk gør: input'et er .sr-only.
+  await page.locator('label[for="dm-pref-board_update"]').click();
+  await expect.poll(() => abortedCalls).toBeGreaterThan(0);
+
+  // FØR fixet: den optimistiske opdatering blev stående, fordi tilbagerulningen
+  // var refreshDmStatus() — selv et fetch, med en tavs catch. Spilleren så en
+  // DM-type slået til som serveren aldrig fik at vide om.
+  await expect(page.getByText(NETWORK_ERROR_TEXT).first()).toBeVisible();
+  await expect(toggle).not.toBeChecked();
+
+  if (testInfo.project.name === "desktop-chromium") {
+    await page.screenshot({ path: evidenceShotPath("pr-screens/3628-profile-dm-pref-network-after.png") });
+  }
+});
+
 test("Gem holdinfo forlader gemmer-tilstanden naar PUT'en aldrig naar frem (#3628)", async ({ page }, testInfo) => {
   await stabilizePage(page);
   await installNetworkMocks(page);

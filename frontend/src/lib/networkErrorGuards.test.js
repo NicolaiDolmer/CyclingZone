@@ -55,7 +55,11 @@ const FIXED_HANDLERS = [
     end: "async function sendTestDm(",
     // Optimistisk UI: her er kuren ikke et loading-flag men en TILBAGERULNING —
     // uden den stod spilleren med en DM-type slået til som serveren aldrig fik.
-    clears: /catch \(cause\) \{[\s\S]*await refreshDmStatus\(\);/,
+    // Kravet er `revert()`, IKKE `refreshDmStatus()`: sidstnævnte er selv et
+    // fetch med en tavs catch, så den kan ikke rulle tilbage på et tabt net.
+    // Den første udgave af dette værn asserterede netop på refreshDmStatus og
+    // stod grøn, mens tilbagerulningen ikke kunne virke offline.
+    clears: /catch \(cause\) \{[\s\S]*\brevert\(\);/,
   },
   {
     label: "ProfilePage.sendTestDm",
@@ -117,6 +121,26 @@ test("de rettede handlere viser en lokaliseret netvaerksbesked, ikke en tom fejl
   );
   assert.match(riderStats, /setAuctionError\(t\("errors:generic\.networkError"\)\)/);
   assert.match(board, /t\("errors:generic\.networkError"\)/);
+});
+
+test("toggleDmPref's tilbagerulning kraever ikke netvaerk (#3628)", () => {
+  // Den optimistiske opdatering kan kun rulles tilbage af en værdi der er
+  // læst FØR den — ellers er den allerede overskrevet. At hente sandheden fra
+  // serveren igen er ikke en tilbagerulning: på et tabt net svarer serveren
+  // ikke, og det er præcis dét scenarie handleren findes for.
+  const body = handlerBody(profile, "async function toggleDmPref(", "async function sendTestDm(", "ProfilePage");
+  const captureAt = body.indexOf("const previous =");
+  const optimisticAt = body.indexOf("[prefKey]: enabled }");
+  const tryAt = body.indexOf("try {");
+  assert.ok(captureAt >= 0, "den tidligere værdi skal fanges eksplicit");
+  assert.ok(captureAt < tryAt, "den skal fanges før try-blokken, ikke inde i den");
+  assert.ok(captureAt < optimisticAt, "den skal fanges før den optimistiske opdatering");
+  // Og tilbagerulningen skal stå i BEGGE fejlgrene — !res.ok og catch.
+  assert.equal(
+    (body.match(/\brevert\(\);/g) || []).length,
+    2,
+    "både serverfejl-grenen og netværksgrenen skal rulle tilbage",
+  );
 });
 
 test("AuctionButton rydder loading-flaget uanset om onStart kaster (#3628)", () => {
