@@ -1,7 +1,9 @@
 # Design: rytterudvikling og træning skal kunne stoles på
 
 **Issue:** [#3659](https://github.com/NicolaiDolmer/CyclingZone/issues/3659) · **Dato:** 2026-08-14 · **Form:** design-session, ingen kode
-**Status:** 14 ejer-beslutninger truffet. Stock-scorecard mod dateret snapshot + flow-scorecard på friskt kuld begge kørt 14/8. Ét nyt åbent punkt (spidsen stiger) skal afgøres før trin 4.
+**Status:** 16 ejer-beslutninger truffet. Stock-scorecard mod dateret snapshot + flow-scorecard på friskt kuld begge kørt 14/8. Ét nyt åbent punkt (spidsen stiger) skal afgøres før trin 4.
+
+> **Rettet 14/8 under implementeringen af trin 1:** beslutning 15 og 16 er kommet til efter kode- og prod-verifikation. Taget (`nu → tag`) kan ikke bygges i trin 1 og er flyttet til trin 3. **Læs §5.0 før §5.1** — §5.1 beskriver måldesignet efter trin 3, ikke det trin 1 leverer.
 
 > Prompt-dokumentet der startede sessionen: [`docs/sessions/2026-08-14-traening-og-udvikling-designsession-prompt.md`](../../sessions/2026-08-14-traening-og-udvikling-designsession-prompt.md)
 
@@ -212,7 +214,25 @@ Sænkes signatur-raten til 0,30 lander spidsen tæt på dagens 36, men rating fa
 
 **To flader, samme enhed** — point pr. sæson — så spilleren kan holde os fast på det: vi lovede +7 på sprint, og fanen viser, at han fik +7.
 
+### 5.0 Hvad trin 1 leverer (beslutning 15 + 16, ejer 14/8)
+
+**Beslutning 15: intet tag i trin 1. Taget flyttes til trin 3.**
+
+Taget kan ikke bygges nu, og det er ikke en manglende kolonne i et API. `ability_caps` findes i `rider_derived_abilities`, men kun evne-**nøgler** forlader serveren — `backend/routes/api.js` ~2056: *"KUN ability-nøgler forlader serveren; selve cap-tallene forbliver server-hidden (#1162)."* Der står to forward-guards og passer på det: `backend/lib/potentialeHiding.routes.test.js` og `backend/lib/ceilingBandInversion.test.js`.
+
+Grunden til at guarden findes, gælder også her. Potentiel rating **er** opskriften anvendt på lofterne (MASTERPLAN §B). Viser fladen alle 15 tag-tal, kan spilleren regne den præcise potentielle rating ud, og scout-båndet er dekoration. Patch note v7.119, live siden 13/8, siger ordret til spillerne: *"the band is deliberately drawn wider than the truth so the exact ceiling cannot be read off the screen."* Trin 1 som oprindeligt beskrevet ville gøre en dag gammel tekst usand.
+
+Dertil: §5.1's eksempelrække `tactics 20 → 57` findes ikke under dagens motor. Taget bliver først bredt i trin 3 og 4. **Målt på prod 14/8** (3.584 spillerejede ryttere, alle 15 synlige evner): 18,0 % af alle evne-pladser står på loftet, i snit **2,7 af 15 pr. rytter**; 42 ryttere har alle 15 låst, 325 har ingen. `nu → tag` ville altså skrive `88 → 88` på i snit 2,7 rækker pr. rytter. Muren forsvinder ikke af at blive skrevet med tal.
+
+**Trin 1 leverer derfor pr. evne:** nuværende værdi · point opnået i denne sæson · fremdrift mod næste point · ordet "færdig" på låste evner i stedet for en død bar. Det lukker stadig #3649, fordi modsigelsen mellem loft-beskeden og potentiale-visningen forsvinder: en låst evne står nu i en liste ved siden af evner der rykker, i stedet for som en dom over rytteren.
+
+**Beslutning 16: enheden er point pr. sæson, ikke pr. uge.** MASTERPLANs succeskriterium sagde uge; beslutning 9 sagde sæson. Sæson vinder. En sæson-kolonne tæller kun op og kan derfor ikke lyve ved at nulstille; en uge-kolonne falder tilbage til +0 på en række der stadig udvikler sig. Ugen er allerede dækket af den 7-dages log der ligger på rytterprofilen. **Målt:** 27.510 evne-rækker fik mindst ét point i sæson 2, og 18.482 af dem (67,2 %) fik også et inden for de sidste syv dage.
+
+**Datakilden er frontend-only.** `useTrainingHistory` henter allerede 30 dages `training_day_runs` med `report.riders[].gains` pr. evne, og en sæson er 28 dage. Filtrér på aktiv sæsons `start_date`, ellers bløder forrige sæsons hale ind efter sæsonskift.
+
 ### 5.1 Kvitteringen (rytterprofil)
+
+> **RETTET 14/8 efter kode- og prod-verifikation (beslutning 15 + 16).** Taget kan ikke vises i trin 1 og er flyttet til trin 3. Afsnittet herunder beskriver måldesignet **efter** trin 3. Se §5.0 for hvad trin 1 faktisk leverer.
 
 Pr. evne: `nu → tag`, point opnået i denne sæson, og en fremdriftsbar mod næste point.
 
@@ -256,9 +276,9 @@ Hvert trin kan shippes og måles for sig.
 | Trin | Indhold | Motor-ændring | Gate |
 |---|---|---|---|
 | **0** ✅ | Flow-måling på friskt kuld, korrekt akademi-semantik, rating målt | nej | **kørt 14/8, se §3bis** |
-| **1** | Fladen — `/training` **og rytterprofilens Træning-fane**: kvittering, `nu → tag`, fremdriftsbar. Slet de tre loft-tekster. Fokusvælgerens fremadrettede tal venter til trin 4 | nej | ejer-godkendt visuelt; #3649, #3651, #3639 lukkes |
+| **1** | Fladen — `/training` **og rytterprofilens Træning-fane**: kvittering pr. evne (nu · sæsonens point · fremdrift · "færdig" på låste). Slet de tre loft-tekster. **Taget udgår, se §5.0.** Fokusvælgerens fremadrettede tal venter til trin 4 | nej, og frontend-only | ejer-godkendt visuelt; #3649, #3651, #3639 lukkes |
 | **2** | Nyt fokus `løbslære` (positioning, tactics, aggression); technique reduceres | lille, isoleret | fokus-størrelser kalibreret, ikke arvet |
-| **3** | Håndværks-taget: positioning + tactics. #3682 er allerede målt (+2,83 potentiel rating for 4.747 ryttere i fire roller) | ja | dry-run-diff med absolutte deltaer, ejer-gated |
+| **3** | Håndværks-taget: positioning + tactics. #3682 er allerede målt (+2,83 potentiel rating for 4.747 ryttere i fire roller). **Arver beslutning 15:** her afgøres om taget må vises på fladen, og i så fald hvordan #1162-garantien og scout-båndet skal formuleres om. Lofterne flytter sig alligevel her, og der skal alligevel en spillerbesked ud | ja | dry-run-diff med absolutte deltaer, ejer-gated |
 | **4** | Rolleklasser, rater, `offFocusMult` 0,97 → 0,35 | ja, stor | flow-scorecard + negativ-test + snapshot før mutation |
 | **5** | Akademi og senior samlet: `INTERIM_RATE_MULT` + `HARD_DAILY_CAP` fjernes | ja | **skal følge trin 4 umiddelbart** — attributionen viser at uden den falder rating til 22; #3583 lukkes |
 | **6** | *Separat issue:* ingen vokser af tid alene — AI-hold kører den daglige motor, frie agenter får intet eller et minimum | ja | rører 5.258 ryttere; egen måling |
@@ -307,6 +327,8 @@ Udkast skrives til copy-paste. **Ejeren poster selv.**
 | 12 | Hvad kan manageren gøre ved en langsom evne? | Fokus og tid; træningslejre senere |
 | 13 | Akademi og senior samme model? | Ja, én model |
 | 14 | Ankr rating eller spidsen? | Rating — signatur-rate 0,45 |
+| 15 | Skal taget vises i trin 1? | Nej. Flyttet til trin 3 (#1162, se §5.0) |
+| 16 | Sæson eller uge på kvitteringen? | Sæson |
 
 ---
 
