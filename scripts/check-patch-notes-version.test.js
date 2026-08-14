@@ -110,3 +110,43 @@ test("re-ordering uden ny version ændrer parsed versionsliste (bump stadig kræ
   `;
   assert.equal(arraysEqual(parseVersions(before), parseVersions(after)), false);
 });
+
+// #3773 — dato-guarden. Fire noter (7.117, 7.121, 7.126, 7.127) gik live med en
+// dato én dag ude i fremtiden, fordi datoen blev udledt af et dokument i stedet
+// for målt. Guarden skal fange præcis dét mønster.
+const {
+  parseDatedVersions,
+  todayInCopenhagen,
+} = require("./check-patch-notes-version.js");
+
+test("parseDatedVersions læser version og dato som par", () => {
+  const content = `
+    { "version": "7.129", "date": "2026-08-14", "label": "Beta" },
+    { "version": "7.128", "date": "2026-08-14", "label": "Beta" }
+  `;
+  assert.deepEqual(parseDatedVersions(content), [
+    { version: "7.129", date: "2026-08-14" },
+    { version: "7.128", date: "2026-08-14" },
+  ]);
+});
+
+test("en note dateret i morgen fanges som fremtidig", () => {
+  const today = todayInCopenhagen();
+  const tomorrow = new Date(`${today}T12:00:00Z`);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const stamp = tomorrow.toISOString().slice(0, 10);
+  const entries = parseDatedVersions(`{ "version": "9.99", "date": "${stamp}" }`);
+  assert.equal(entries.filter((entry) => entry.date > today).length, 1);
+});
+
+test("en note dateret i dag eller tidligere er i orden", () => {
+  const today = todayInCopenhagen();
+  const entries = parseDatedVersions(
+    `{ "version": "9.98", "date": "${today}" }, { "version": "9.97", "date": "2026-01-01" }`
+  );
+  assert.equal(entries.filter((entry) => entry.date > today).length, 0);
+});
+
+test("todayInCopenhagen giver en ISO-dato, ikke UTC-formatteret tekst", () => {
+  assert.match(todayInCopenhagen(), /^\d{4}-\d{2}-\d{2}$/);
+});

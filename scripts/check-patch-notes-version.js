@@ -53,6 +53,22 @@ function parseVersions(content) {
   return [...content.matchAll(/"?version"?:\s*["'](\d+(?:\.\d+){1,2})["']/g)].map(match => match[1]);
 }
 
+// #3773 — en notes `date` må aldrig ligge i fremtiden. Fejlen har ramt fire noter
+// (7.117, 7.121, 7.126, 7.127), alle med præcis én dag frem, og alle fordi datoen
+// blev UDLEDT af et dokument i stedet for målt. Guarden er billig og ville have
+// fanget dem alle fire på skrivetidspunktet.
+function parseDatedVersions(content) {
+  return [...content.matchAll(/"?version"?:\s*["'](\d+(?:\.\d+){1,2})["'],\s*"?date"?:\s*["'](\d{4}-\d{2}-\d{2})["']/g)]
+    .map(match => ({ version: match[1], date: match[2] }));
+}
+
+// Dansk lokaldato, ikke UTC — CI kører i UTC, og en note skrevet en aften i CEST
+// ville ellers se ud som "i morgen" i to timer af døgnet (natbølger rammer præcis
+// det vindue).
+function todayInCopenhagen() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Copenhagen" }).format(new Date());
+}
+
 function compareVersion(a, b) {
   const left = a.split(".").map(Number);
   const right = b.split(".").map(Number);
@@ -130,6 +146,17 @@ function main() {
     }
   }
 
+  const today = todayInCopenhagen();
+  const future = parseDatedVersions(readFile(root, PATCH_FILE)).filter(entry => entry.date > today);
+  if (future.length > 0) {
+    fail(
+      `PatchNotes dated in the future (today is ${today} in Europe/Copenhagen): `
+      + `${future.map(entry => `${entry.version} → ${entry.date}`).join(", ")}. `
+      + `A note's date is when it shipped, so it can never be later than today. `
+      + `Measure the date (\`date\`), do not infer it from a document or a filename.`
+    );
+  }
+
   const changed = changedFiles(baseRef);
   const patchNotesChanged = changed.includes(PATCH_FILE);
   const nowChanged = changed.includes(NOW_FILE);
@@ -178,6 +205,8 @@ function main() {
 
 module.exports = {
   parseVersions,
+  parseDatedVersions,
+  todayInCopenhagen,
   compareVersion,
   hasOptOutToken,
   arraysEqual,
