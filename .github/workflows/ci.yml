@@ -374,6 +374,33 @@ jobs:
       - name: Run swallowed-catch guard
         run: node scripts/lint-swallowed-catches.mjs
 
+  unguarded-fetch-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod NYE `await fetch(...)` uden try/catch i frontend/src
+    # (#3628). fetch() REJECTER ved netvaerksudfald (mobil-WebKit: "TypeError:
+    # Load failed"), saa et bart await efter en setLoading(true) springer
+    # oprydningen over: knappen staar i "Gemmer..." og er typisk disabled.
+    # Samme fejlklasse slap igennem to backwards-checks i traek (#2719 -> #3619
+    # -> #3628), derfor en ratchet pr. fil: baseline laast efter #3628's
+    # oprydning, en net-ny ubeskyttet fetch fejler CI. Statisk scanner, ingen
+    # DB/runtime noedvendig.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test unguarded-fetch guard
+        run: node --test scripts/lint-unguarded-fetch-in-handler.test.mjs
+
+      - name: Run unguarded-fetch guard
+        run: node scripts/lint-unguarded-fetch-in-handler.mjs
+
   silent-mutation-guard:
     runs-on: ubuntu-latest
     permissions:

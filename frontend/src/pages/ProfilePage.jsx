@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { mapSupabaseAuthError } from "../lib/authErrors";
+import { reportActionFailure } from "../lib/actionTelemetry";
 import { useSubscription } from "../lib/useSubscription";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
@@ -201,60 +202,108 @@ export default function ProfilePage() {
     setSavingEmail(false);
   }
 
+  // #3628: try/finally om HELE kroppen — ikke kun om fetch'en. getAuthHeaders()
+  // kalder supabase.auth.getSession(), som selv går på nettet når token'et skal
+  // fornyes; falder nettet væk dér, kastede den lige så tavst som fetch'en.
+  // Uden finally blev setSavingDmEnabled(false) aldrig kørt: Discord-DM-toggle'n
+  // sad fast i gemmer-tilstand uden fejlbesked. Samme kur som #3619.
   async function toggleDmEnabled(enabled) {
     setSavingDmEnabled(true);
-    const headers = await getAuthHeaders();
-    if (!headers) {
-      showMsg(t("discord.noSession"), "error");
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        showMsg(t("discord.noSession"), "error");
+        return;
+      }
+      const res = await fetch(`${API}/api/me/discord-dm-enabled`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ enabled }),
+      });
+      // .catch(() => ({})) — et non-JSON svar (fx en 502 fra proxy'en) kastede
+      // før på res.json() og landede i samme fastlåste tilstand.
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) showMsg(data.error || t("errors:generic.serverError"), "error");
+      else {
+        setDmStatus(prev => ({ ...prev, dm_enabled: data.dm_enabled }));
+        showMsg(enabled ? t("discord.dmOn") : t("discord.dmOff"));
+      }
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_discord_dm_enabled", {
+        reason: "network",
+        cause,
+        context: { enabled },
+      });
+    } finally {
       setSavingDmEnabled(false);
-      return;
     }
-    const res = await fetch(`${API}/api/me/discord-dm-enabled`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({ enabled }),
-    });
-    const data = await res.json();
-    if (!res.ok) showMsg(data.error, "error");
-    else {
-      setDmStatus(prev => ({ ...prev, dm_enabled: data.dm_enabled }));
-      showMsg(enabled ? t("discord.dmOn") : t("discord.dmOff"));
-    }
-    setSavingDmEnabled(false);
   }
 
   async function toggleDmPref(prefKey, enabled) {
-    const headers = await getAuthHeaders();
-    if (!headers) { showMsg(t("discord.noSession"), "error"); return; }
-    // Optimistic; revert to server truth on error.
-    setDmStatus(prev => ({ ...prev, dm_prefs: { ...(prev?.dm_prefs || {}), [prefKey]: enabled } }));
-    const res = await fetch(`${API}/api/me/discord-dm-prefs`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({ prefs: { [prefKey]: enabled } }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      showMsg(data.error || t("discord.noSession"), "error");
+    // Læses FØR den optimistiske opdatering, så tilbagerulningen er lokal.
+    // refreshDmStatus() kan IKKE bære den: den er selv et fetch med en tavs
+    // catch, så på et tabt net — præcis det scenarie #3628 handler om — ville
+    // den no-oppe og lade den optimistiske værdi stå. Fladen ville lyve igen,
+    // bare et lag længere inde. Er nøglen fraværende i dag, ruller vi tilbage
+    // til undefined, hvilket er den sande "ikke sat"-tilstand.
+    const previous = dmStatus?.dm_prefs?.[prefKey];
+    const revert = () => setDmStatus(prev => ({
+      ...prev,
+      dm_prefs: { ...(prev?.dm_prefs || {}), [prefKey]: previous },
+    }));
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) { showMsg(t("discord.noSession"), "error"); return; }
+      // Optimistic; revert to server truth on error.
+      setDmStatus(prev => ({ ...prev, dm_prefs: { ...(prev?.dm_prefs || {}), [prefKey]: enabled } }));
+      const res = await fetch(`${API}/api/me/discord-dm-prefs`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ prefs: { [prefKey]: enabled } }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showMsg(data.error || t("errors:generic.serverError"), "error");
+        revert();
+        await refreshDmStatus();
+      } else {
+        setDmStatus(prev => ({ ...prev, dm_prefs: data.dm_prefs }));
+      }
+    } catch (cause) {
+      // #3628, værst af de fire: den optimistiske opdatering ovenfor blev ALDRIG
+      // rullet tilbage når fetch'en kastede. Spilleren så en DM-type slået til
+      // som serveren aldrig fik at vide om — fladen løj, ikke bare tav.
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_discord_dm_pref", {
+        reason: "network",
+        cause,
+        context: { prefKey, enabled },
+      });
+      revert();
+      // Best-effort gensynkronisering oveni; tilbagerulningen er allerede sket.
       await refreshDmStatus();
-    } else {
-      setDmStatus(prev => ({ ...prev, dm_prefs: data.dm_prefs }));
     }
   }
 
   async function sendTestDm() {
     setTestingDm(true);
-    const headers = await getAuthHeaders();
-    if (!headers) {
-      showMsg(t("discord.noSession"), "error");
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        showMsg(t("discord.noSession"), "error");
+        return;
+      }
+      const res = await fetch(`${API}/api/me/discord-dm-test`, { method: "POST", headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) showMsg(data.error || t("errors:generic.serverError"), "error");
+      else showMsg(t("discord.testSent"));
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_discord_dm_test", { reason: "network", cause });
+    } finally {
       setTestingDm(false);
-      return;
     }
-    const res = await fetch(`${API}/api/me/discord-dm-test`, { method: "POST", headers });
-    const data = await res.json();
-    if (!res.ok) showMsg(data.error, "error");
-    else showMsg(t("discord.testSent"));
-    setTestingDm(false);
   }
 
   async function saveTeamInfo() {
@@ -268,33 +317,38 @@ export default function ProfilePage() {
     }
     setSavingTeam(true);
 
-    const headers = await getAuthHeaders();
-    if (!headers) {
-      showMsg(t("team.errorNoSession"), "error");
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        showMsg(t("team.errorNoSession"), "error");
+        return;
+      }
+
+      const res = await fetch(`${API}/api/teams/my`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          name: teamName.trim(),
+          manager_name: managerName.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        showMsg(data.error || t("errors:generic.serverError"), "error");
+      } else {
+        setTeam(data.team);
+        setTeamName(data.team.name || "");
+        setManagerName(data.team.manager_name || "");
+        showMsg(team ? t("team.saved") : t("team.created"));
+      }
+    } catch (cause) {
+      // #3628: hold-/managernavn sad fast i "Gemmer..." på et tabt net.
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_team_info_save", { reason: "network", cause });
+    } finally {
       setSavingTeam(false);
-      return;
     }
-
-    const res = await fetch(`${API}/api/teams/my`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({
-        name: teamName.trim(),
-        manager_name: managerName.trim(),
-      }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      showMsg(data.error, "error");
-    } else {
-      setTeam(data.team);
-      setTeamName(data.team.name || "");
-      setManagerName(data.team.manager_name || "");
-      showMsg(team ? t("team.saved") : t("team.created"));
-    }
-
-    setSavingTeam(false);
   }
 
   if (loading) return (

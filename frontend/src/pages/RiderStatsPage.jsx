@@ -10,6 +10,7 @@ import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import RiderManageActions from "../components/rider/RiderManageActions.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
@@ -653,10 +654,19 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   // — ellers ville et ugyldigt tal ikke coerce til noget der fejler tjekket.
   const priceError      = price == null || (isOwnRider ? (price > riderValue || price < 0) : (price < riderValue));
 
+  // #3628: try/finally om onStart. Uden det kørte setLoading(false) aldrig når
+  // kalderens fetch kastede på et tabt net — knappen blev stående på "Starter..."
+  // OG er disabled={loading}, så spilleren hverken kunne se fejlen eller prøve
+  // igen. Fejlbeskeden hører hjemme hos onStart (der ejer auctionError-fladen);
+  // her ejer vi kun loading-flaget, så her ryddes kun det. Samme rollefordeling
+  // som useAuctionBidding fik i #3619.
   async function submitAuction() {
     setLoading(true);
-    await onStart(price, flash);
-    setLoading(false);
+    try {
+      await onStart(price, flash);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleSubmit() {
@@ -1337,34 +1347,48 @@ export default function RiderStatsPage() {
     }
   }
 
+  // #3628: hele kroppen i try/catch. supabase.auth.getSession() går selv på nettet
+  // når token'et skal fornyes, og res.json() i fejl-grenen kastede på et non-JSON
+  // svar (fx 502 fra proxy'en) — begge landede før i samme unhandled rejection som
+  // fetch'en, og AuctionButton'ens loading-flag blev aldrig ryddet.
   async function startAuction(startPrice, isFlash = false) {
     setAuctionError(null);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/auctions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: id, starting_price: startPrice, flash_auction: isFlash }),
-    });
-    if (res.ok) {
-      // Squad-cap-warning er non-blocking siden #29 — vis besked hvis manager går over max.
-      const data = await res.json().catch(() => ({}));
-      const warning = (data.warnings || []).find(w => w?.code === "squad_capacity_exceeded");
-      if (warning) {
-        const fine = warning.finePerRider * warning.exceedBy;
-        const points = warning.penaltyPointsPerRider * warning.exceedBy;
-        alert(t("auctionStart.squadWarning", {
-          total: warning.totalAfter,
-          max: warning.maxRiders,
-          exceedBy: warning.exceedBy,
-          fine: formatNumber(fine),
-          points,
-        }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API}/api/auctions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ rider_id: id, starting_price: startPrice, flash_auction: isFlash }),
+      });
+      if (res.ok) {
+        // Squad-cap-warning er non-blocking siden #29 — vis besked hvis manager går over max.
+        const data = await res.json().catch(() => ({}));
+        const warning = (data.warnings || []).find(w => w?.code === "squad_capacity_exceeded");
+        if (warning) {
+          const fine = warning.finePerRider * warning.exceedBy;
+          const points = warning.penaltyPointsPerRider * warning.exceedBy;
+          alert(t("auctionStart.squadWarning", {
+            total: warning.totalAfter,
+            max: warning.maxRiders,
+            exceedBy: warning.exceedBy,
+            fine: formatNumber(fine),
+            points,
+          }));
+        }
+        navigate("/auctions");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAuctionError(resolveApiError(data, t, t("blocked.errorFallback")));
+        setTimeout(() => setAuctionError(null), 5000);
       }
-      navigate("/auctions");
-    } else {
-      const data = await res.json();
-      setAuctionError(resolveApiError(data, t, t("blocked.errorFallback")));
+    } catch (cause) {
+      setAuctionError(t("errors:generic.networkError"));
       setTimeout(() => setAuctionError(null), 5000);
+      reportActionFailure("auction_start", {
+        reason: "network",
+        cause,
+        context: { riderId: id, startPrice, flash: isFlash },
+      });
     }
   }
 
