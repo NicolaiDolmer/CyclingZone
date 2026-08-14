@@ -1,7 +1,7 @@
 # Design: rytterudvikling og træning skal kunne stoles på
 
 **Issue:** [#3659](https://github.com/NicolaiDolmer/CyclingZone/issues/3659) · **Dato:** 2026-08-14 · **Form:** design-session, ingen kode
-**Status:** 13 ejer-beslutninger truffet. Måling gennemført mod dateret snapshot. Klar til leveranceplan.
+**Status:** 13 ejer-beslutninger truffet. Stock-scorecard mod dateret snapshot + flow-scorecard på friskt kuld begge kørt 14/8. Ét nyt åbent punkt (spidsen stiger) skal afgøres før trin 4.
 
 > Prompt-dokumentet der startede sessionen: [`docs/sessions/2026-08-14-traening-og-udvikling-designsession-prompt.md`](../../sessions/2026-08-14-traening-og-udvikling-designsession-prompt.md)
 
@@ -130,14 +130,65 @@ Det er stadig et fald. Det skal måles igen på et friskt kuld, før det accepte
 
 ---
 
-## 4. Kendte huller i målingen — skal lukkes før ship
+## 3bis. Flow-scorecard (trin 0, kørt 14/8)
 
-1. **Stock, ikke flow.** Spec §4.3 kræver måling pr. kuld. Målingen simulerer de eksisterende 4.429 ryttere fremad fra evner, der allerede er mættede under dagens model. Et frisk kuld genereret under den nye model er ikke målt. **Største hul.**
-2. **Akademiets sæson-loft blev ikke modelleret.** Ryttere på 17-21 blev simuleret med senior-semantik, så deres vækst er overvurderet i **begge** modeller. Sammenligningen er retvisende, fordi fejlen rammer ens, men de absolutte tal for unge ryttere er for høje.
-3. **Arvede ryttere over deres formel-loft.** `buildCapsForRider` gulver ved `max(tapered, current)`, så enhver rytter på eller over sit formel-loft har forholdet 1,00 per konstruktion (p90 er stadig 1,00). Snapshottet indeholder fx en rytter med `tactics: 61` mod et formel-loft på 24. Beslutning 6 gælder ikke for dem uden en særskilt regel.
-4. **Taget klipper ved 99 for højt potentiale.** `signatur`-tag 1,30 giver 104 ved potentiale 5 og 114 ved 6 — begge klippet til 99. Potentiale mister opløsning i toppen. Beslutning 8 (potentiale = fart) løser det, men den er udskudt til et selvstændigt trin.
-5. **Markedsværdi er ikke målt direkte.** Evnesummen (input) er målt; `predictBaseValue`-outputtet er ikke.
-6. **Staff-stien er uverificeret.** `facilityTrainingMultiplier` er målt til maks **+8,3 %** ved tier 5. `staffTrainingBonus` returnerede 1,0 mod en syntetisk chef-profil, hvilket lige så godt kan skyldes forkert input som ingen effekt.
+Spec §4.3 kræver måling **pr. kuld**, ikke på beholdningen. 1.200 ryttere genereret gennem produktionens egen intake-sti — `generateAcademyCandidates` → `seedPhysiologyFromLegacy` → `deriveAbilities`, præcis som `academyIntake.js` gør det — og simuleret fra 16 til 30 år. Start ved 16 år: rating-median 7, bedste evne 18.
+
+Akademi-semantikken er nu korrekt: `ACADEMY.INTERIM_RATE_MULT` (1/3) + `HARD_DAILY_CAP` (1) for 16-21-årige i dagens model. **Produktionen bruger ikke `computeAcademySeasonCeiling`** — #2437 fjernede det (`tickCaps = caps`).
+
+### Rating ved 30 år (median, `ratingFromAbilities` — samme funktion som fladen viser)
+
+| Model | spids | rotation | standard | forkert | spænd |
+|---|---:|---:|---:|---:|---:|
+| i dag | 27 | 27 | 26 | 25 | 2 |
+| **kandidat** | **28** | 27 | 26 | **18** | **10** |
+| kandidat + akademiets 1/3 | 22 | 20 | 19 | 13 | 9 |
+| negativ-test | 33 | 32 | 31 | 30 | 3 |
+
+**Ankeret holder på rating.** God ledelse giver 28 mod dagens 27. Dårlig ledelse giver 18. Agens-spændet på rating går fra 2 til 10.
+
+### Arketype-skarphed
+
+| Model | spids | rotation | standard | forkert | spænd |
+|---|---:|---:|---:|---:|---:|
+| i dag | 0,86 | 0,87 | 0,87 | 0,87 | 0,00 |
+| **kandidat** | 0,71 | **0,87** | 0,74 | 0,58 | **0,13** |
+| negativ-test | 0,87 | 0,87 | 0,87 | 0,87 | 0,00 |
+
+**Faldet fra stock-målingen forsvinder på flow.** Under rotation rammer kandidaten 0,87 — nøjagtig dagens niveau. Arketype-skarphed er ikke tabt; den er blevet en konsekvens af at spille godt. Bemærk at dagens spænd er **0,00**: i dag er det fuldstændig ligegyldigt for rytterens identitet, hvad manageren gør.
+
+### Øvrige mål
+
+| Mål | i dag (bedst) | kandidat (bedst) | negativ-test |
+|---|---:|---:|---:|
+| Bedste evne ved 30 år | 36 | **44** | 44 |
+| Evnesum ved 30 år | 276 | 214 | 306 |
+| Feltets forskellighed | 0,42 | **0,77** | 0,56 |
+
+**Negativ-testen består også på flow:** rating-spænd 3 mod 10, arketype-spænd 0,00 mod 0,13, forskellighed 0,56 mod 0,77.
+
+### Attribution: beslutning 13 er bærende
+
+Kandidaten kørt **med** akademiets 1/3-dæmpning beholdt giver rating 22 og peak 35 i stedet for 28 og 44. At fjerne `INTERIM_RATE_MULT` er altså ikke oprydning — det er dét, der holder kandidaten på dagens niveau i stedet for langt under. Trin 5 kan ikke udskydes efter trin 4 uden at ramme spillerne med et midlertidigt fald.
+
+### Nyt åbent punkt
+
+**Bedste evne stiger fra 36 til 44 ved bedste spil.** Beslutning 7 ankrede "fremragende træning = dagens niveau". Det holder på **rating** (28 mod 27), men ikke på **spidsen**: de bedst ledede ryttere bliver mærkbart stærkere end noget, der findes i dag. Det rammer race-balancen i toppen og #3503's arketype-mål mod en ny top. Skal afgøres før trin 4.
+
+---
+
+## 4. Kendte huller i målingen
+
+| # | Hul | Status |
+|---|---|---|
+| 1 | Stock, ikke flow (spec §4.3) | **lukket** — flow-scorecard kørt 14/8, se §3bis |
+| 2 | Akademi-semantik ikke modelleret | **lukket + rettet** — prod bruger ikke sæson-loftet; det er `INTERIM_RATE_MULT` + `HARD_DAILY_CAP`, nu modelleret |
+| 3 | Rating ikke målt, kun evnesum | **lukket** — målt med `ratingFromAbilities`, se §3bis |
+| 4 | Arvede ryttere over deres formel-loft | **åben** — `max(tapered, current)` giver forholdet 1,00 per konstruktion. Snapshottet har fx `tactics: 61` mod formel-loft 24. Beslutning 6 gælder ikke for dem uden en særskilt regel |
+| 5 | Taget klipper ved 99 for potentiale ≥ 5 | **åben** — løses af trin 7 (potentiale = fart) |
+| 6 | Markedsværdi ikke målt direkte | **åben** — evnesummen (input) er målt; `predictBaseValue`-outputtet ikke |
+| 7 | Staff-stien uverificeret | **åben** — `facilityTrainingMultiplier` målt til maks +8,3 % ved tier 5; `staffTrainingBonus` gav 1,0 mod en syntetisk profil, hvilket lige så godt kan være forkert input |
+| 8 | Spidsen stiger 36 → 44 ved bedste spil | **åben, ny** — se §3bis |
 
 ---
 
@@ -190,12 +241,12 @@ Hvert trin kan shippes og måles for sig.
 
 | Trin | Indhold | Motor-ændring | Gate |
 |---|---|---|---|
-| **0** | Ret harnessen: akademi-sæsonloft ind, flow-måling på friskt kuld | nej | flow-scorecard foreligger |
+| **0** ✅ | Flow-måling på friskt kuld, korrekt akademi-semantik, rating målt | nej | **kørt 14/8, se §3bis** |
 | **1** | Fladen: kvittering, `nu → tag`, fokusvælger med point pr. sæson. Slet de tre loft-tekster | nej | ejer-godkendt visuelt; #3649, #3651 lukkes |
 | **2** | Nyt fokus `løbslære` (positioning, tactics, aggression); technique reduceres | lille, isoleret | fokus-størrelser kalibreret, ikke arvet |
 | **3** | Håndværks-taget: positioning + tactics. #3682 er allerede målt (+2,83 potentiel rating for 4.747 ryttere i fire roller) | ja | dry-run-diff med absolutte deltaer, ejer-gated |
 | **4** | Rolleklasser, rater, `offFocusMult` 0,97 → 0,35 | ja, stor | flow-scorecard + negativ-test + snapshot før mutation |
-| **5** | Akademi og senior samlet: `INTERIM_RATE_MULT` og sæson-loftet fjernes | ja | egen akademi-gate; #3583 lukkes |
+| **5** | Akademi og senior samlet: `INTERIM_RATE_MULT` + `HARD_DAILY_CAP` fjernes | ja | **skal følge trin 4 umiddelbart** — attributionen viser at uden den falder rating til 22; #3583 lukkes |
 | **6** | *Separat issue:* ingen vokser af tid alene — AI-hold kører den daglige motor, frie agenter får intet eller et minimum | ja | rører 5.258 ryttere; egen måling |
 | **7** | *Separat issue:* potentiale = fart. `rateByPotential` spredes, taget flades ud | ja | scouting, økonomi, #3503's G3-præcision |
 | **8** | *Senere:* træningslejre som betalt, tidsbegrænset handling | ja | bygges oven på et fokus-system der beviseligt virker |
