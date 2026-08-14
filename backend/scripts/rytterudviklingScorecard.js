@@ -30,6 +30,7 @@
 //     [--n=1200] [--seed=2026] [--selvtest] [--json=ud.json]
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -54,6 +55,30 @@ const BONUS = args.bonus === "true" || args.bonus === true;
 // ── Modul-indlæsning: nyt træ + baseline-træ ────────────────────────────────
 const libDir = path.resolve(args.baseline);
 const gl = (f) => import(pathToFileURL(path.join(libDir, f)).href);
+
+// ── BASELINEN SKAL VÆRE SYNLIG I RAPPORTEN (postmortem 14/8) ────────────────
+// "i dag"-modellen er et ARGUMENT, ikke en del af repoet. Den kan blive gammel uden
+// at noget fejler, og outputtet ser lige så autoritativt ud uanset hvad den peger på.
+// Det kostede #3741 to beslutninger på tal der ikke holdt: baseline-worktreen manglede
+// trin 3, som var merget imens, så "i dag" var målt lavere end den faktisk var.
+// Se .claude/learnings/2026-08-14-gaten-blev-maalt-mod-en-baseline-der-ikke-fandtes-mere.md
+const baselineHead = (() => {
+  try {
+    return execFileSync("git", ["-C", libDir, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  } catch { return null; }
+})();
+const baselineErMain = (() => {
+  if (!baselineHead) return null;
+  try {
+    execFileSync("git", ["-C", libDir, "merge-base", "--is-ancestor", "origin/main", baselineHead], { stdio: "ignore" });
+    return true;
+  } catch { return false; }
+})();
+console.error(`baseline: ${libDir}${baselineHead ? ` @ ${baselineHead.slice(0, 8)}` : " (ukendt commit)"}`);
+if (baselineErMain === false) {
+  console.error("⚠ ADVARSEL: baselinen indeholder IKKE hele origin/main. Gaten afgør om noget maa "
+    + "merges til main, saa den skal maale MOD main — ellers sammenligner du med en verden der ikke findes.");
+}
 
 const NY = {
   progression: await import("../lib/riderProgression.js"),
