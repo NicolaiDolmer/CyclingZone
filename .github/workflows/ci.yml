@@ -464,3 +464,37 @@ jobs:
 
       - name: Run unchecked-supabase-mutation guard
         run: node scripts/lint-unchecked-supabase-mutation.mjs
+
+  schema-column-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod "select mod en kolonne der ikke findes" (#3586). To bugs
+    # af nøjagtig samme klasse landede på én dag: #3572
+    # (season_standings.prize_money, latent i tre måneder) og Day-1-mailen
+    # (race_results.created_at, latent bag en feature-gate). Ingen af de tre lag
+    # kunne fange dem: createFakeSupabase er projektion-aware men ikke
+    # skema-aware (en manglende kolonne bliver bare `undefined`), fixturerne
+    # spejlede fejlen, og intet i CI læste det faktiske skema. Guarden opløser
+    # hver `.from("<relation>").select(...)` i backend/ mod
+    # database/schema-snapshot.json — en committet spejling af prods public-skema
+    # — og fejler på en kolonne skemaet ikke har. Statisk: CI rører ALDRIG
+    # databasen, den læser kun den committede JSON. Alt der ikke kan opløses
+    # EKSAKT (dynamisk tabel/select-argument, relation uden for snapshottet,
+    # uopløseligt embed) springes over og TÆLLES — falske positiver er værre end
+    # manglende dækning. Snapshot-refresh (kræver SUPABASE_DB_URL, kun lokalt):
+    # node scripts/lint-schema-columns.mjs --update-snapshot
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test schema-column guard
+        run: node --test scripts/lint-schema-columns.test.mjs
+
+      - name: Run schema-column guard
+        run: node scripts/lint-schema-columns.mjs
