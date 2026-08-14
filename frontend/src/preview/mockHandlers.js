@@ -714,6 +714,16 @@ export function apiResponse(pathname, search = "") {
 
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
   if (pathname.endsWith("/api/notifications")) return [];
+  // #2884: skal ligge FØR /api/auctions — endsWith("/api/auctions") ville ellers
+  // ikke fange den, men rækkefølgen holder de to adskilte hvis stien ændrer sig.
+  // Spejler prod-vinduet (08-24) så sluttidspunkt-vælgeren kan testes på preview.
+  if (pathname.endsWith("/api/auctions/window")) {
+    return {
+      weekday_open_hour: 8, weekday_close_hour: 24,
+      weekend_open_hour: 8, weekend_close_hour: 24,
+      min_hours: 1, max_hours: 48, timezone: "Europe/Copenhagen",
+    };
+  }
   if (pathname.endsWith("/api/auctions")) return AUCTIONS;
   if (pathname.endsWith("/api/transfers")) return [];
   if (pathname.endsWith("/api/transfers/my-offers")) {

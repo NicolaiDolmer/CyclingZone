@@ -203,6 +203,11 @@
     "forum_target_not_found": "The reported content was not found. It may have been removed.",
     "forum_reason_too_long": "The reason is too long",
     "forum_report_not_found": "Report not found",
-    "forum_invalid_pinned": "Invalid pin value"
+    "forum_invalid_pinned": "Invalid pin value",
+    "flash_custom_end_conflict": "Flash auctions run for a fixed 30 minutes and can't take a custom end time",
+    "auction_end_invalid": "Pick a valid end time for the auction",
+    "auction_end_too_soon": "An auction must run for at least {minHours} hour",
+    "auction_end_too_late": "An auction can't run for more than {maxHours} hours",
+    "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour}:00 and {closeHour}:00"
   }
 }

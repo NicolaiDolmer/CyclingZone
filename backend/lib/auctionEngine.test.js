@@ -5,7 +5,10 @@ import {
   applyLeaderShiftExtension,
   calculateAuctionEnd,
   checkBidExtension,
+  CUSTOM_END_MAX_HOURS,
+  CUSTOM_END_MIN_HOURS,
   DEFAULT_AUCTION_CONFIG,
+  getCustomAuctionEndIssue,
   isLateBidTriggerError,
 } from "./auctionEngine.js";
 
@@ -463,4 +466,85 @@ test("isLateBidTriggerError: null/undefined → false", () => {
 
 test("isLateBidTriggerError: error uden message-felt → false", () => {
   assert.equal(isLateBidTriggerError({ code: "P0001" }), false);
+});
+
+// ── getCustomAuctionEndIssue (#2884) ─────────────────────────────────────────
+// CFG = hverdag 16-22, weekend 08-23 (Copenhagen). Maj = CEST = UTC+2.
+// PROD_CFG spejler prod: 08-24 alle dage.
+const PROD_CFG = {
+  ...DEFAULT_AUCTION_CONFIG,
+  weekday_open_hour: 8, weekday_close_hour: 24,
+  weekend_open_hour: 8, weekend_close_hour: 24,
+};
+
+test("getCustomAuctionEndIssue: gyldigt klokkeslæt midt i vinduet → null", () => {
+  // Fredag 8/5 2026: nu 10:00 CEST, slut 20:44 CEST (10,7 timer frem, inde i 08-24)
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-08T18:44:00.000Z");
+  assert.equal(getCustomAuctionEndIssue(end, now, PROD_CFG), null);
+});
+
+test("getCustomAuctionEndIssue: under 1 time frem → end_too_soon", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-08T08:59:00.000Z");
+  const issue = getCustomAuctionEndIssue(end, now, PROD_CFG);
+  assert.equal(issue.code, "end_too_soon");
+  assert.equal(issue.minHours, CUSTOM_END_MIN_HOURS);
+});
+
+test("getCustomAuctionEndIssue: præcis 1 time frem → gyldigt (grænsen er inklusiv)", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-08T09:00:00.000Z");
+  assert.equal(getCustomAuctionEndIssue(end, now, PROD_CFG), null);
+});
+
+test("getCustomAuctionEndIssue: over 48 timer frem → end_too_late", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-10T08:01:00.000Z");
+  const issue = getCustomAuctionEndIssue(end, now, PROD_CFG);
+  assert.equal(issue.code, "end_too_late");
+  assert.equal(issue.maxHours, CUSTOM_END_MAX_HOURS);
+});
+
+test("getCustomAuctionEndIssue: præcis 48 timer frem → gyldigt", () => {
+  // Fre 10:00 CEST + 48t = Søn 10:00 CEST, inde i weekend-vinduet 08-24
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-10T08:00:00.000Z");
+  assert.equal(getCustomAuctionEndIssue(end, now, PROD_CFG), null);
+});
+
+test("getCustomAuctionEndIssue: klokkeslæt om natten afvises — nattelukket rulles IKKE", () => {
+  // Slut 03:44 CEST lørdag = 01:44 UTC. Uden for 08-24.
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-09T01:44:00.000Z");
+  const issue = getCustomAuctionEndIssue(end, now, PROD_CFG);
+  assert.equal(issue.code, "end_outside_window");
+});
+
+test("getCustomAuctionEndIssue: slut præcis ved midnat hører til FORRIGE dags vindue (#1904)", () => {
+  // close_hour=24 → lukketid er 00:00 den næste kalenderdag. Et sluttidspunkt
+  // præcis dér er gyldigt og må ikke fejltolkes som 'før næste dags åbning'.
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-08T22:00:00.000Z"); // 00:00 CEST natten til lørdag
+  assert.equal(getCustomAuctionEndIssue(end, now, PROD_CFG), null);
+});
+
+test("getCustomAuctionEndIssue: kortere lukketid (22) afviser 23:00", () => {
+  // CFG's hverdags-vindue er 16-22. Fredag 23:00 CEST ligger uden for.
+  const now = iso("2026-05-08T14:00:00.000Z"); // 16:00 CEST
+  const end = iso("2026-05-08T21:00:00.000Z"); // 23:00 CEST
+  const issue = getCustomAuctionEndIssue(end, now, DEFAULT_AUCTION_CONFIG);
+  assert.equal(issue.code, "end_outside_window");
+  assert.equal(issue.closeHour, 22);
+});
+
+test("getCustomAuctionEndIssue: ugyldig dato → invalid_end_time", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  assert.equal(getCustomAuctionEndIssue("ikke en dato", now, PROD_CFG).code, "invalid_end_time");
+  assert.equal(getCustomAuctionEndIssue(null, now, PROD_CFG).code, "invalid_end_time");
+});
+
+test("getCustomAuctionEndIssue: accepterer ISO-streng lige så vel som Date", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  assert.equal(getCustomAuctionEndIssue("2026-05-08T18:44:00.000Z", now, PROD_CFG), null);
 });

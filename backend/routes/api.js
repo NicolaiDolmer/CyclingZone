@@ -18,9 +18,12 @@ import { dirname, join } from "path";
 import { readFileSync } from "node:fs";
 import {
   calculateAuctionEnd,
+  getCustomAuctionEndIssue,
   isAuctionExpired,
   isLateBidTriggerError,
   applyLeaderShiftExtension,
+  CUSTOM_END_MAX_HOURS,
+  CUSTOM_END_MIN_HOURS,
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
@@ -4970,12 +4973,37 @@ router.get("/auctions", requireAuth, async (req, res) => {
 });
 
 // POST /api/auctions — start new auction
+// GET /api/auctions/window — det vindue og spænd en sælger må vælge sluttidspunkt
+// i (#2884). Kun de fire vindues-timer og grænserne; ingen admin-felter lækkes.
+// Sælgeren kan ikke gætte hvornår markedet er åbent, og vælgeren skal kunne
+// gråtone natten uden at hardkode tal der driver fra configen.
+router.get("/auctions/window", requireAuth, async (req, res) => {
+  const cfg = await getAuctionConfig();
+  const pick = (key) => cfg?.[key] ?? DEFAULT_AUCTION_CONFIG[key];
+  res.json({
+    weekday_open_hour: pick("weekday_open_hour"),
+    weekday_close_hour: pick("weekday_close_hour"),
+    weekend_open_hour: pick("weekend_open_hour"),
+    weekend_close_hour: pick("weekend_close_hour"),
+    min_hours: CUSTOM_END_MIN_HOURS,
+    max_hours: CUSTOM_END_MAX_HOURS,
+    timezone: "Europe/Copenhagen",
+  });
+});
+
 router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!(await assertMarketOpen(req, res, "auction"))) return;
 
-  const { rider_id, starting_price, min_increment = 1, flash_auction = false } = req.body;
+  const { rider_id, starting_price, min_increment = 1, flash_auction = false, ends_at = null } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
+
+  // #2884: sælgeren kan vælge et konkret sluttidspunkt i stedet for at arve den
+  // globale varighed. Flash-auktioner har deres egen faste længde (30 min), så
+  // kombinationen afvises frem for at ignorere det valgte tidspunkt i stilhed.
+  if (ends_at && flash_auction) {
+    return res.status(400).json({ error: "Flash auctions run for a fixed 30 minutes and can't take a custom end time", errorCode: "flash_custom_end_conflict" });
+  }
 
   // Flash auction guard: only allowed during Deadline Day
   if (flash_auction) {
@@ -5133,9 +5161,34 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   }
 
   const auctionCfg = await getAuctionConfig();
+
+  // #2884: et valgt sluttidspunkt bruges som det står — der akkumuleres ikke
+  // aktive timer. Uden et valg falder vi tilbage til den globale varighed.
+  if (ends_at) {
+    const endIssue = getCustomAuctionEndIssue(ends_at, new Date(), auctionCfg);
+    if (endIssue) {
+      if (endIssue.code === "invalid_end_time") {
+        return res.status(400).json({ error: "Invalid end time", errorCode: "auction_end_invalid" });
+      }
+      if (endIssue.code === "end_too_soon") {
+        return res.status(400).json({ error: `An auction must run for at least ${endIssue.minHours} hour`, errorCode: "auction_end_too_soon", errorParams: { minHours: endIssue.minHours } });
+      }
+      if (endIssue.code === "end_too_late") {
+        return res.status(400).json({ error: `An auction can't run for more than ${endIssue.maxHours} hours`, errorCode: "auction_end_too_late", errorParams: { maxHours: endIssue.maxHours } });
+      }
+      return res.status(400).json({
+        error: `Auctions can only end while the market is open, between ${endIssue.openHour}:00 and ${endIssue.closeHour}:00`,
+        errorCode: "auction_end_outside_window",
+        errorParams: { openHour: endIssue.openHour, closeHour: endIssue.closeHour },
+      });
+    }
+  }
+
   const calculatedEnd = flash_auction
     ? new Date(Date.now() + 30 * 60 * 1000)
-    : calculateAuctionEnd(new Date(), auctionCfg);
+    : ends_at
+      ? new Date(ends_at)
+      : calculateAuctionEnd(new Date(), auctionCfg);
   const initialBidderId = getAuctionInitialBidderId({
     riderTeamId: rider.team_id,
     managerTeamId: req.team.id,
