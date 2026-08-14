@@ -178,7 +178,7 @@ jobs:
       # har aldrig kørt, samtidig med at en permanent rød Deploy verify gjorde at ægte
       # fejl druknede. Se #3565.
       - name: Checkout (kun til cache-header-guarden)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
