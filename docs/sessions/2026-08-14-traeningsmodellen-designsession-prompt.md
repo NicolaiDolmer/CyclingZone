@@ -4,7 +4,7 @@
 **Skrevet:** 14/8 aften af #3721-sessionen, efter at fokus-panelet blev merget
 **Erstatter** den udgave der blev skrevet tidligere samme dag — den var skrevet før panelet landede, og før tre af fundene nedenfor fandtes.
 
-> Kør `date` som noget af det første. Denne prompt er skrevet 14/8. Repoet er selv misdateret flere steder (commits skrevet 14/8 hedder "session 15/8"), så udled aldrig dagen af filnavne eller dokumenttekst. Det kostede den forrige session en forkert dato i en patch note der var på vej ud til spillerne.
+> Kør `date` som noget af det første. Denne prompt er skrevet 14/8. Repoet er selv misdateret flere steder (commits skrevet 14/8 hedder "session 15/8"), så udled aldrig dagen af filnavne eller dokumenttekst. Det kostede den forrige session en forkert dato i en patch note der var på vej ud til spillerne — og to ældre patch notes ligger stadig med en dato i fremtiden, se punkt 2.
 
 ---
 
@@ -14,7 +14,9 @@
 >
 > **1. Vurdér om [#3741](https://github.com/NicolaiDolmer/CyclingZone/pull/3741) (trin 4+5) kan merges sikkert nu.** Læs afsnittet "#3741" nedenfor først — der er to fund som PR-beskrivelsen selv ikke kender. Vær kritisk. Konkludér med en anbefaling, ikke en liste af forbehold.
 >
-> **2. Kør beslutningen i [#3762](https://github.com/NicolaiDolmer/CyclingZone/issues/3762)** — dagstype før session. Den blokerer #3759, #3760, trin 2 og #3747. Stil beslutningerne ÉN ad gangen med en anbefaling, ikke som et dossier.
+> **2. Ret datoen på patch notes v7.126 og v7.127.** Begge er live og dateret én dag ude i fremtiden. Se afsnittet "Patch note-datoerne" nedenfor — målingen er lavet, der mangler kun rettelsen og et tjek af om der er flere.
+>
+> **3. Kør beslutningen i [#3762](https://github.com/NicolaiDolmer/CyclingZone/issues/3762)** — dagstype før session. Den blokerer #3759, #3760, trin 2 og #3747. Stil beslutningerne ÉN ad gangen med en anbefaling, ikke som et dossier.
 >
 > Læs i denne rækkefølge: `#3762` (inkl. kommentaren med prod-målingen) · dette dokument · `#3741`s beskrivelse · specens §8.1 **inklusive rettelsen nederst** i `docs/superpowers/specs/2026-08-14-3659-rytterudvikling-og-traening-design.md`.
 >
@@ -67,6 +69,27 @@ Den skarpeste test er ikke at køre gaten igen — det er at **prøve at modbevi
 - **Fladen efter trin 4.** `focusTrainability` skifter output: `technique` går fra 64 af 64 `strength` til 55 af 64. Fokus-panelet (merget i dag) oversætter `limited` til **ingen påstand**, så det degraderer sikkert — men verificér det visuelt i stedet for at tro på mig.
 
 ---
+
+## Patch note-datoerne: v7.126 og v7.127 er daterede i fremtiden
+
+Fundet under #3721-sessionens egen dato-oprydning. **Begge er live på main.** Målt ved at holde `date`-feltet op mod commit'en der tilføjede noten:
+
+| version | `date` i noten | commit tilføjet | |
+|---|---|---|---|
+| 7.125 | 2026-08-14 | 2026-08-14 13:42 | ✅ |
+| **7.126** | **2026-08-15** | 2026-08-14 14:40 | ❌ én dag frem |
+| **7.127** | **2026-08-15** | 2026-08-14 16:32 | ❌ én dag frem |
+| 7.128 | 2026-08-14 | 2026-08-14 19:29 | ✅ (rettet 14/8) |
+
+Det er **samme fejlfamilie** som den #3721-sessionen selv lavede: datoen blev udledt af dokumenter i stedet for målt. To sessioner i træk, uafhængigt af hinanden. Postmortem: `.claude/learnings/2026-08-14-datoen-blev-udledt-af-dokumenter-i-stedet-for-maalt.md`.
+
+**Hvad der skal gøres:**
+
+1. Ret `date` til `2026-08-14` for v7.126 og v7.127 i `frontend/src/data/patchNotes.js`.
+2. **Tjek om der er flere.** Kør samme sammenligning bagud gennem historikken — hvis to i træk er forkerte, er der sandsynligvis flere. Sammenlign hver notes `date` med commit-datoen for den commit der tilføjede den.
+3. Overvej en guard. `scripts/check-patch-notes-version.js` validerer versionsnummeret, men ikke datoen. En regel om at en notes `date` ikke må ligge efter commit-datoen ville have fanget alle tre tilfælde og koster få linjer.
+
+Noterne er allerede postet til spillerne, så rettelsen er kosmetisk for dem der læser arkivet — men datoen bruges til gruppering pr. dag på PatchNotesPage, så to noter ligger i dag under en dato der ikke findes.
 
 ## Systemet: fem issues er én model
 
