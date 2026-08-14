@@ -4,6 +4,47 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.124",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training now shows what each ability gained this season",
+          "body": "What changed: Every ability on a rider now shows where he is, how many points he gained this season, and how far he is from the next one. An ability that has reached its ceiling says done.\n\nWhy: The page showed one progress bar for the whole focus, and it always tracked whichever ability was closest to its next point. So an ability that was finished looked perfectly normal while its neighbour moved. The message that a focus was finished also sat on the same rider whose scouting tab said he could still reach much higher.\n\nWhat it means for you: You can see per ability whether your training is landing. On a typical rider about 3 of his 15 abilities have already reached their ceiling, and those are now named instead of hidden."
+        },
+        "da": {
+          "title": "Træningen viser nu hvad hver evne fik i denne sæson",
+          "body": "Hvad ændrede sig: Hver evne på en rytter viser nu hvor han står, hvor mange point han har fået i denne sæson, og hvor langt der er til det næste. En evne der har nået sit loft siger færdig.\n\nHvorfor: Siden viste én fremdriftsbar for hele fokusset, og den fulgte altid den evne der var tættest på sit næste point. En evne der var færdig så derfor helt normal ud, mens naboen rykkede. Beskeden om at et fokus var færdigt stod desuden på den samme rytter, hvis scouting-fane sagde at han kunne nå meget højere.\n\nHvad det betyder for dig: Du kan se pr. evne om din træning lander. På en helt almindelig rytter har cirka 3 af hans 15 evner allerede nået deres loft, og de bliver nu navngivet i stedet for skjult."
+        },
+        "refs": [
+          3709,
+          3649,
+          3651
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "The rider type chart showed average riders as maxed out in everything",
+          "body": "What changed: The eight sided chart on a rider's overview was drawn on a scale that stopped at 40, so any rider above that filled it out completely. It now runs to 85, the highest rating in the game, with marked rings at 10, 30, 60 and 85.\n\nWhy: When the rating scale was rebuilt, the chart got a new scale picked from how high a rider's best role usually reaches. But the chart draws eight roles at once, and a versatile rider can sit above that mark on several of them at the same time.\n\nWhat it means for you: The shape tells you which roles a rider is genuinely strongest in again. Nothing about your riders changed."
+        },
+        "da": {
+          "title": "Ryttertype-diagrammet viste helt almindelige ryttere som maksimale i alt",
+          "body": "Hvad ændrede sig: Det ottekantede diagram på rytterens oversigt blev tegnet på en skala der stoppede ved 40, så enhver rytter over det fyldte den helt ud. Den går nu til 85, den højeste rating i spillet, med mærkede ringe ved 10, 30, 60 og 85.\n\nHvorfor: Da rating-skalaen blev lagt om, fik diagrammet en ny skala valgt ud fra hvor højt en rytters bedste rolle plejer at nå. Men diagrammet tegner otte roller på én gang, og en alsidig rytter kan ligge over det mærke på flere af dem samtidig.\n\nHvad det betyder for dig: Formen fortæller igen hvilke roller en rytter faktisk er stærkest i. Intet ved dine ryttere har ændret sig."
+        },
+        "refs": [
+          3707
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.123",
     "date": "2026-08-14",
     "label": "Beta",
