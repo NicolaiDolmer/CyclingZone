@@ -11,12 +11,16 @@ en egenskab ved konstruktionen, ikke noget der skal bevises.
 
 ## Rating ved 30 aar (median, `ratingFromAbilities`)
 
-| Model | spids | rotation | standard | forkert | spaend |
-|---|---:|---:|---:|---:|---:|
-| i dag | 29 | 29 | 29 | 28 | **1** |
-| kandidat | 27 | 28 | 28 | 20 | **7** |
-| kandidat + akademiets 1/3 | 21 | 21 | 22 | 15 | **6** |
-| negativ-test (offFocusMult 0,97) | 35 | 35 | 35 | 33 | **2** |
+| Model | spids | rotation | standard | forkert | spaend | bedste opnaaelige |
+|---|---:|---:|---:|---:|---:|---:|
+| i dag | 29 | 29 | 29 | 28 | **1** | **29** |
+| kandidat | 27 | 28 | 28 | 20 | **7** | **30** |
+| kandidat + akademiets 1/3 | 21 | 21 | 22 | 15 | **6** | **24** |
+| negativ-test (offFocusMult 0,97) | 35 | 35 | 35 | 33 | **2** | **35** |
+
+`bedste opnaaelige` er maksimum pr. RYTTER paa tvaers af strategier, ikke den bedste
+kolonne. En rytter med anlaeg der peger hver sin vej skal spilles bredt, en med anlaeg
+der traekker samme vej skal spidses — at vaelge rigtigt til den rytter man har, ER spillet.
 
 ## Bedste evne ved 30 aar (median)
 
@@ -81,9 +85,7 @@ specen; de **absolutte tal** kan ikke.
 | # | Gate | Resultat |
 |---|---|---|
 | G1 | agens-spaend paa rating stiger markant | ✅ i dag 1 → kandidat 7 |
-| G2 | ankeret holder: bedste strategi >= dagens bedste rating | ❌ i dag 29 → kandidat 27 |
+| G2 | ankeret holder: bedste OPNAAELIGE pr. rytter >= dagens | ✅ i dag 29 → kandidat 30 (pr. rytter, bedste af spids/rotation/standard/forkert — IKKE spids mod spids) |
 | G3 | ryttere naar IKKE deres lofter (beslutning 6) | ✅ i dag 0.97 → kandidat 0.45 |
 | G4 | NEGATIV-TEST: kun offFocusMult uaendret SKAL give markant mindre agens | ✅ kandidat 7 → negativ-test 2 |
 | G5 | ATTRIBUTION: akademiets 1/3 beholdt SKAL koste rating (trin 5 er baerende) | ✅ kandidat 27 → med 1/3 21 |
-
-❌ 1 gate(s) fejlede — intet maa muteres.

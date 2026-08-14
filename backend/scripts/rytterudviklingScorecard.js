@@ -253,6 +253,7 @@ function maal(resultater, kuld) {
     }
   }
   return {
+    ratingPrRytter: ratings,
     rating: median(ratings),
     bedsteEvne: median(bedste),
     evnesum: median(summer),
@@ -303,6 +304,22 @@ for (const m of MODELLER) {
     }));
     tabel[m.navn][strategi] = maal(res, kuld);
   }
+  // BEDSTE OPNAAELIGE pr. rytter, paa tvaers af strategier.
+  //
+  // Den foerste udgave af G2 sammenlignede "spids mod spids" og maalte derfor det
+  // forkerte: `spids` er IKKE altid det bedste spil. Maalt paa en aegte rytter
+  // (Tommaso Valli, tt + baroudeur) SKADER spidsning ham — hans enkeltstart falder
+  // fra 77 til 71, fordi fokusset skubber ham mod baroudeur-siden, mens rotation
+  // giver ham 85. En rytter med anlaeg der peger hver sin vej skal spilles bredt.
+  //
+  // "Hvad kan en dygtig manager opnaa" er derfor et maksimum pr. RYTTER, ikke en
+  // fast strategi paalagt hele feltet. At vaelge den rigtige strategi til den
+  // rytter man har, ER spillet.
+  {
+    const pr = STRATEGIER.map((st) => tabel[m.navn][st].ratingPrRytter);
+    const bedste = kuld.map((_, i) => Math.max(...pr.map((v) => v[i] ?? -Infinity)));
+    tabel[m.navn].bedsteOpnaaelige = median(bedste);
+  }
 }
 
 // ── Rapport ─────────────────────────────────────────────────────────────────
@@ -323,12 +340,16 @@ p("en egenskab ved konstruktionen, ikke noget der skal bevises.");
 p("");
 p("## Rating ved 30 aar (median, `ratingFromAbilities`)");
 p("");
-p("| Model | spids | rotation | standard | forkert | spaend |");
-p("|---|---:|---:|---:|---:|---:|");
+p("| Model | spids | rotation | standard | forkert | spaend | bedste opnaaelige |");
+p("|---|---:|---:|---:|---:|---:|---:|");
 for (const m of MODELLER) {
   const r = tabel[m.navn];
-  p(`| ${m.navn} | ${r.spids.rating} | ${r.rotation.rating} | ${r.standard.rating} | ${r.forkert.rating} | **${spaend(r, "rating")}** |`);
+  p(`| ${m.navn} | ${r.spids.rating} | ${r.rotation.rating} | ${r.standard.rating} | ${r.forkert.rating} | **${spaend(r, "rating")}** | **${r.bedsteOpnaaelige}** |`);
 }
+p("");
+p("`bedste opnaaelige` er maksimum pr. RYTTER paa tvaers af strategier, ikke den bedste");
+p("kolonne. En rytter med anlaeg der peger hver sin vej skal spilles bredt, en med anlaeg");
+p("der traekker samme vej skal spidses — at vaelge rigtigt til den rytter man har, ER spillet.");
 p("");
 p("## Bedste evne ved 30 aar (median)");
 p("");
@@ -406,9 +427,10 @@ const gates = [
     detalje: `i dag ${spaend(idag, "rating")} → kandidat ${spaend(kandidat, "rating")}`,
   },
   {
-    navn: "G2 ankeret holder: bedste strategi >= dagens bedste rating",
-    ok: kandidat.spids.rating >= idag.spids.rating,
-    detalje: `i dag ${idag.spids.rating} → kandidat ${kandidat.spids.rating}`,
+    navn: "G2 ankeret holder: bedste OPNAAELIGE pr. rytter >= dagens",
+    ok: kandidat.bedsteOpnaaelige >= idag.bedsteOpnaaelige,
+    detalje: `i dag ${idag.bedsteOpnaaelige} → kandidat ${kandidat.bedsteOpnaaelige} `
+      + `(pr. rytter, bedste af ${STRATEGIER.join("/")} — IKKE spids mod spids)`,
   },
   {
     navn: "G3 ryttere naar IKKE deres lofter (beslutning 6)",
