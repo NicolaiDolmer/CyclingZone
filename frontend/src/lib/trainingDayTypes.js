@@ -47,18 +47,11 @@ export function sessionForProgram(program) {
   return program?.focus ?? null;
 }
 
-export function sessionsForDayType(dayType) {
-  if (dayType === "skill") return SKILL_SESSIONS;
-  if (dayType === "training") return TRAINING_LEVELS.flatMap((level) => TRAINING_SESSIONS_BY_LEVEL[level]);
-  return [];
-}
 
-export function levelForSession(session) {
-  for (const level of TRAINING_LEVELS) {
-    if (TRAINING_SESSIONS_BY_LEVEL[level].includes(session)) return level;
-  }
-  return null;
-}
+
+// De tre helpers backend har (sessionsForDayType, levelForSession,
+// isCanonicalProgram) er bevidst IKKE spejlet: fladen har ikke brug for dem, og
+// en frontend-kopi ingen kalder er bare vægt der skal holdes i sync.
 
 // Rækkerne trin 2 tegner for en dagstype, grupperet efter niveau.
 // Returnerer [{ level, sessions:[...] }] — for færdighedsdage er level null,
@@ -69,14 +62,3 @@ export function sessionGroupsForDayType(dayType) {
   return TRAINING_LEVELS.map((level) => ({ level, sessions: [...TRAINING_SESSIONS_BY_LEVEL[level]] }));
 }
 
-// Er en gemt plan allerede på modellens form? Bruges til at markere de planer
-// der endnu ikke er migreret, så fladen kan vise dem som dét de BLIVER.
-export function isCanonicalProgram(program) {
-  const dayType = dayTypeForProgram(program);
-  if (dayType === "rest") return program?.intensity === "rest";
-  if (dayType === "recovery") {
-    return program?.focus === RECOVERY_FOCUS && program?.intensity === RECOVERY_INTENSITY;
-  }
-  const session = sessionForProgram(program);
-  return SESSION_INTENSITY[session] === program?.intensity;
-}
