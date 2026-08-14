@@ -16,7 +16,21 @@
 >
 > **Del 2 er træningssidens struktur** (#3721), som er en selvstændig opgave og ikke må blandes sammen med økonomien.
 >
+> **Stil mange spørgsmål.** Hellere ét ad gangen for mange end at bygge på en antagelse. Gætter du på hvad jeg mener, så sig at du gætter.
+>
 > Vis mig ting visuelt frem for at beskrive dem. Vær kritisk over for dit eget arbejde. Intet merges uden mit go.
+
+---
+
+## Læringer fra 14/8 der SKAL bæres med
+
+Læs [`.claude/learnings/2026-08-14-maal-bygget-paa-et-tal-jeg-ikke-havde-sporet.md`](../../.claude/learnings/2026-08-14-maal-bygget-paa-et-tal-jeg-ikke-havde-sporet.md). Kort:
+
+1. **Spor et tal til sin producent før du giver det en rolle i en gate.** To gates faldt 14/8 fordi de var bygget på tal jeg behandlede som givne. Et forhold hvor tæller og nævner produceres af det samme system måler systemet, ikke virkeligheden. En metrik der bruger systemets eget output som facit måler enighed, ikke sandhed.
+2. **En `git branch`-print er ikke en guard.** Det bed to gange 14/8, anden gang selvom branchen stod på skærmen. Guarden skal stoppe committen: `B=$(git branch --show-current); [ "$B" = "main" ] || exit 1`. Workflow-agenter efterlader hoved-checkoutet på deres egen branch.
+3. **Læs koden før du designer oven på den.** Hele værdi-designet 14/8 handlede om at give markedet mere at sige, uden at nogen havde læst den kodelinje der forbyder markedet at sige noget. Det tog kritikken en time at finde.
+4. **Et bart `#N` er ubrugeligt.** Beskriv altid hvad et issue er.
+5. **Design først, angrib bagefter.** Rækkefølgen var rigtig 14/8. Det der virkede var at sætte kritikere til at modbevise frem for at validere, og derefter modprøve hver kritik mod prod. De fleste kritikker falder på at deres scenarie ikke opstår i den virkelige population.
 
 ---
 
