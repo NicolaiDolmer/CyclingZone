@@ -1,0 +1,203 @@
+{
+  "n": 1200,
+  "seed": 2026,
+  "startRating": 7,
+  "startBedste": 18,
+  "tabel": {
+    "i dag": {
+      "spids": {
+        "rating": 29,
+        "bedsteEvne": 38,
+        "evnesum": 309,
+        "skarphed": 0.99,
+        "andelAfTagNaaet": 0.97,
+        "forskellighed": 0.12,
+        "markedsvaerdiMedian": 27096,
+        "markedsvaerdiSum": 157515734
+      },
+      "rotation": {
+        "rating": 29,
+        "bedsteEvne": 35,
+        "evnesum": 310,
+        "skarphed": 0.99,
+        "andelAfTagNaaet": 1,
+        "forskellighed": 0.12,
+        "markedsvaerdiMedian": 27096,
+        "markedsvaerdiSum": 156671418
+      },
+      "standard": {
+        "rating": 29,
+        "bedsteEvne": 36,
+        "evnesum": 305,
+        "skarphed": 0.99,
+        "andelAfTagNaaet": 0.97,
+        "forskellighed": 0.12,
+        "markedsvaerdiMedian": 25595,
+        "markedsvaerdiSum": 149368237
+      },
+      "forkert": {
+        "rating": 28,
+        "bedsteEvne": 33,
+        "evnesum": 299,
+        "skarphed": 0.99,
+        "andelAfTagNaaet": 0.96,
+        "forskellighed": 0.11,
+        "markedsvaerdiMedian": 23272,
+        "markedsvaerdiSum": 122901770
+      }
+    },
+    "kandidat": {
+      "spids": {
+        "rating": 27,
+        "bedsteEvne": 45,
+        "evnesum": 264,
+        "skarphed": 0.93,
+        "andelAfTagNaaet": 0.45,
+        "forskellighed": 0.26,
+        "markedsvaerdiMedian": 22193,
+        "markedsvaerdiSum": 172038725
+      },
+      "rotation": {
+        "rating": 28,
+        "bedsteEvne": 35,
+        "evnesum": 276,
+        "skarphed": 0.97,
+        "andelAfTagNaaet": 0.55,
+        "forskellighed": 0.19,
+        "markedsvaerdiMedian": 22338,
+        "markedsvaerdiSum": 139087854
+      },
+      "standard": {
+        "rating": 28,
+        "bedsteEvne": 43,
+        "evnesum": 250,
+        "skarphed": 0.93,
+        "andelAfTagNaaet": 0.44,
+        "forskellighed": 0.26,
+        "markedsvaerdiMedian": 24355,
+        "markedsvaerdiSum": 173628636
+      },
+      "forkert": {
+        "rating": 20,
+        "bedsteEvne": 26,
+        "evnesum": 218,
+        "skarphed": 0.97,
+        "andelAfTagNaaet": 0.45,
+        "forskellighed": 0.14,
+        "markedsvaerdiMedian": 9447,
+        "markedsvaerdiSum": 29423927
+      }
+    },
+    "kandidat + akademiets 1/3": {
+      "spids": {
+        "rating": 21,
+        "bedsteEvne": 35,
+        "evnesum": 208,
+        "skarphed": 0.91,
+        "andelAfTagNaaet": 0.34,
+        "forskellighed": 0.27,
+        "markedsvaerdiMedian": 10940,
+        "markedsvaerdiSum": 65505546
+      },
+      "rotation": {
+        "rating": 21,
+        "bedsteEvne": 27,
+        "evnesum": 211,
+        "skarphed": 0.97,
+        "andelAfTagNaaet": 0.4,
+        "forskellighed": 0.18,
+        "markedsvaerdiMedian": 10586,
+        "markedsvaerdiSum": 40115277
+      },
+      "standard": {
+        "rating": 22,
+        "bedsteEvne": 32,
+        "evnesum": 196,
+        "skarphed": 0.92,
+        "andelAfTagNaaet": 0.32,
+        "forskellighed": 0.26,
+        "markedsvaerdiMedian": 12348,
+        "markedsvaerdiSum": 61631287
+      },
+      "forkert": {
+        "rating": 15,
+        "bedsteEvne": 21,
+        "evnesum": 165,
+        "skarphed": 0.93,
+        "andelAfTagNaaet": 0.32,
+        "forskellighed": 0.13,
+        "markedsvaerdiMedian": 5316,
+        "markedsvaerdiSum": 12646407
+      }
+    },
+    "negativ-test (offFocusMult 0,97)": {
+      "spids": {
+        "rating": 35,
+        "bedsteEvne": 46,
+        "evnesum": 351,
+        "skarphed": 0.98,
+        "andelAfTagNaaet": 0.73,
+        "forskellighed": 0.17,
+        "markedsvaerdiMedian": 51845,
+        "markedsvaerdiSum": 577520195
+      },
+      "rotation": {
+        "rating": 35,
+        "bedsteEvne": 42,
+        "evnesum": 353,
+        "skarphed": 0.98,
+        "andelAfTagNaaet": 0.75,
+        "forskellighed": 0.16,
+        "markedsvaerdiMedian": 50001,
+        "markedsvaerdiSum": 542427118
+      },
+      "standard": {
+        "rating": 35,
+        "bedsteEvne": 43,
+        "evnesum": 344,
+        "skarphed": 0.98,
+        "andelAfTagNaaet": 0.72,
+        "forskellighed": 0.17,
+        "markedsvaerdiMedian": 46359,
+        "markedsvaerdiSum": 512483504
+      },
+      "forkert": {
+        "rating": 33,
+        "bedsteEvne": 39,
+        "evnesum": 335,
+        "skarphed": 0.98,
+        "andelAfTagNaaet": 0.72,
+        "forskellighed": 0.16,
+        "markedsvaerdiMedian": 40062,
+        "markedsvaerdiSum": 366552635
+      }
+    }
+  },
+  "gates": [
+    {
+      "navn": "G1 agens-spaend paa rating stiger markant",
+      "ok": true,
+      "detalje": "i dag 1 → kandidat 7"
+    },
+    {
+      "navn": "G2 ankeret holder: bedste strategi >= dagens bedste rating",
+      "ok": false,
+      "detalje": "i dag 29 → kandidat 27"
+    },
+    {
+      "navn": "G3 ryttere naar IKKE deres lofter (beslutning 6)",
+      "ok": true,
+      "detalje": "i dag 0.97 → kandidat 0.45"
+    },
+    {
+      "navn": "G4 NEGATIV-TEST: kun offFocusMult uaendret SKAL give markant mindre agens",
+      "ok": true,
+      "detalje": "kandidat 7 → negativ-test 2"
+    },
+    {
+      "navn": "G5 ATTRIBUTION: akademiets 1/3 beholdt SKAL koste rating (trin 5 er baerende)",
+      "ok": true,
+      "detalje": "kandidat 27 → med 1/3 21"
+    }
+  ]
+}

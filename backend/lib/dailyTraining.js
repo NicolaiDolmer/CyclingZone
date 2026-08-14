@@ -70,12 +70,18 @@ export function growthFractionForAge(age) {
 
 // Multiplikator pr. evne: fokus-evner får intensitetens focusGrowthMult, resten offFocusMult.
 // "rest" → 0 (ingen progress på hviledage).
-export function abilityMult(ability, program) {
+//
+// #3709 trin 4: `cfg` er VALGFRI og defaulter til den frosne TRAINING_CONFIG, så
+// enhver eksisterende caller er bit-identisk. Den findes fordi spec §4.4 kræver en
+// NEGATIV-TEST: kandidaten kørt med `offFocusMult` uændret på 0,97 SKAL fejle
+// gaten, og uden en injicerbar config kunne den test kun køres ved at redigere en
+// frossen konstant. En gate man ikke kan køre er ikke en gate.
+export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   if (program.intensity === "rest") return 0;
   const focusAbilities = TRAINING_FOCUSES[program.focus] ?? [];
   return focusAbilities.includes(ability)
-    ? (TRAINING_CONFIG.focusGrowthMult[program.intensity] ?? 1)
-    : TRAINING_CONFIG.offFocusMult;
+    ? (cfg.focusGrowthMult[program.intensity] ?? 1)
+    : cfg.offFocusMult;
 }
 
 // #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults
@@ -95,11 +101,11 @@ export function abilityMult(ability, program) {
 export function dailyAbilityDelta({
   ability, current, cap, age, program, conditionMult, bonus, noise, potentiale,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
-  primaryType = null, secondaryType = null,
+  primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
 }) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
-  const mult = abilityMult(ability, program);
+  const mult = abilityMult(ability, program, trainingCfg);
   if (mult === 0) return 0;
   const cfg = DAILY_TRAINING_CONFIG;
   const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
@@ -157,7 +163,7 @@ export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps
 export function applyDailyTick({
   riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
-  primaryType = null, secondaryType = null,
+  primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
@@ -171,7 +177,7 @@ export function applyDailyTick({
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
-      staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType,
+      staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
     });
     if (delta <= 0) continue;
     score += delta;
