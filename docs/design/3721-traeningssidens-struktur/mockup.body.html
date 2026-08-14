@@ -1,0 +1,446 @@
+<title>Træningssidens struktur</title>
+<style>
+:root{
+  --canvas:#f4f2ec; --card:#fcfbf7; --raised:#ffffff; --inset:#ece9e1;
+  --line:#e5e0d5; --t1:#0e0f15; --t2:#66637a; --t3:#9896b0;
+  --gold:#e8c547; --goldt:#a07800; --goldtint:rgba(232,197,71,.14);
+  --ok:#15772f; --okbg:rgba(21,119,47,.08);
+  --bad:#a81e1e; --badbg:rgba(168,30,30,.08);
+  --warn:#9a5b00; --warnbg:rgba(154,91,0,.08);
+  --info:#1a47c0;
+  --navy:#1a1f38; --navyfg:#f4f2ec;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --canvas:#0e0f15; --card:#161824; --raised:#1f2233; --inset:#14161e;
+  --line:#2a2d3a; --t1:#ededf2; --t2:#9da0b3; --t3:#888ba0;
+  --gold:#e8c547; --goldt:#ffd966; --goldtint:rgba(232,197,71,.16);
+  --ok:#5fd98a; --okbg:rgba(95,217,138,.12);
+  --bad:#fb8484; --badbg:rgba(251,132,132,.12);
+  --warn:#f0a830; --warnbg:rgba(240,168,48,.12);
+  --info:#7ab0fb;
+  --navy:#1f2233; --navyfg:#ededf2;
+}}
+:root[data-theme="dark"]{
+  --canvas:#0e0f15; --card:#161824; --raised:#1f2233; --inset:#14161e;
+  --line:#2a2d3a; --t1:#ededf2; --t2:#9da0b3; --t3:#888ba0;
+  --gold:#e8c547; --goldt:#ffd966; --goldtint:rgba(232,197,71,.16);
+  --ok:#5fd98a; --okbg:rgba(95,217,138,.12);
+  --bad:#fb8484; --badbg:rgba(251,132,132,.12);
+  --warn:#f0a830; --warnbg:rgba(240,168,48,.12);
+  --info:#7ab0fb;
+  --navy:#1f2233; --navyfg:#ededf2;
+}
+*{box-sizing:border-box}
+body{background:var(--canvas);color:var(--t1);font-family:'DM Sans',system-ui,sans-serif;font-size:15.5px;line-height:1.65;margin:0}
+.wrap{max-width:1060px;margin:0 auto;padding:56px 24px 96px}
+h1,h2,h3{font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;letter-spacing:.015em;text-transform:uppercase;line-height:.94;margin:0;text-wrap:balance}
+h1{font-size:52px}
+h2{font-size:29px}
+h3{font-size:19px}
+p{margin:0 0 14px}
+a{color:var(--goldt)}
+.eyebrow{font-family:'Inter Tight',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:0 0 10px}
+.lede{font-size:18px;color:var(--t2);max-width:64ch;margin:14px 0 0}
+section{margin-top:56px;padding-top:32px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+.sub{color:var(--t2)}
+.data{font-family:'Inter Tight',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.grid{display:grid;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:20px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:14px 16px}
+.stat .k{font-family:'Inter Tight',system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.stat .v{font-family:'Inter Tight',system-ui,sans-serif;font-size:26px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:4px}
+.stat .n{font-size:12.5px;color:var(--t2);line-height:1.45;margin-top:3px}
+table{border-collapse:collapse;width:100%;font-family:'Inter Tight',system-ui,sans-serif;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);padding:0 12px 8px 0;border-bottom:1px solid var(--line)}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;padding-right:0}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;font-family:'Inter Tight',system-ui,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:9999px;border:1px solid}
+.p-bad{color:var(--bad);background:var(--badbg);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.p-ok{color:var(--ok);background:var(--okbg);border-color:color-mix(in srgb,var(--ok) 30%,transparent)}
+.p-warn{color:var(--warn);background:var(--warnbg);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.p-gold{color:var(--goldt);background:var(--goldtint);border-color:color-mix(in srgb,var(--gold) 40%,transparent)}
+.p-quiet{color:var(--t3);background:transparent;border-color:var(--line)}
+.stack{display:flex;flex-direction:column;gap:5px}
+.blk{border:1px solid var(--line);border-radius:5px;padding:8px 11px;font-family:'Inter Tight',system-ui,sans-serif;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card)}
+.blk .h{font-variant-numeric:tabular-nums;color:var(--t3);font-size:11px;flex:none}
+.blk.kill{border-style:dashed;color:var(--t3);background:transparent}
+.blk.kill .lab{text-decoration:line-through;text-decoration-color:var(--t3)}
+.blk.spine{border-color:color-mix(in srgb,var(--gold) 55%,transparent);background:var(--goldtint);color:var(--t1);font-weight:600}
+.blk.dup{border-color:color-mix(in srgb,var(--bad) 35%,transparent);background:var(--badbg)}
+.fold{border:0;border-top:1px dashed color-mix(in srgb,var(--bad) 45%,transparent);margin:2px 0;position:relative;height:0}
+.fold::after{content:attr(data-l);position:absolute;right:0;top:-8px;font-family:'Inter Tight',system-ui,sans-serif;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--bad);background:var(--canvas);padding-left:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.mock{background:var(--card);border:1px solid var(--line);border-radius:5px;overflow:hidden;font-family:'Inter Tight',system-ui,sans-serif}
+.mh{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:14px 16px 12px}
+.mt{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.ms{font-size:11.5px;color:var(--t2);margin-top:3px}
+.btn{font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:5px;border:1px solid var(--line);color:var(--t2);background:transparent;white-space:nowrap}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1a1f38}
+.fbar{display:flex;gap:8px;align-items:center;padding:0 16px 11px;flex-wrap:wrap}
+.fld{font-size:11.5px;color:var(--t3);border:1px solid var(--line);border-radius:5px;padding:4px 9px;background:var(--raised)}
+.cnt{margin-left:auto;font-size:11px;color:var(--t3);font-variant-numeric:tabular-nums}
+.mtab{width:100%;border-collapse:collapse;font-size:11.5px}
+.mtab th{font-size:9.5px;padding:7px 10px;border-bottom:1px solid var(--line);border-top:1px solid var(--line);background:var(--inset)}
+.mtab td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--t2)}
+.mtab td b{color:var(--t1);font-weight:600}
+.rcp{font-size:10px;color:var(--t2);line-height:1.5;white-space:nowrap}
+.bar{display:inline-block;width:26px;height:3px;background:var(--inset);border-radius:9999px;vertical-align:middle;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;height:100%;background:var(--gold);display:block}
+.phone{width:250px;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--card);font-family:'Inter Tight',system-ui,sans-serif}
+.prow{padding:9px 11px;border-bottom:1px solid var(--line)}
+.pname{font-size:12.5px;font-weight:600;color:var(--t1)}
+.pmeta{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--t3);margin-top:1px}
+.pctl{display:flex;gap:5px;margin-top:7px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg span{font-size:10px;padding:3px 6px;color:var(--t3)}
+.seg span.on{background:var(--gold);color:#1a1f38;font-weight:600}
+.faux{background:rgba(14,15,21,.45);border-radius:5px;padding:26px 18px;display:flex;justify-content:center}
+.modal{width:100%;max-width:560px;background:var(--raised);border:1px solid var(--line);border-radius:5px;font-family:'Inter Tight',system-ui,sans-serif;overflow:hidden}
+.mdh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.mdb{padding:4px 16px 14px}
+.frow{display:grid;grid-template-columns:16px 92px 1fr 84px 74px;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:11.5px}
+.frow.hd{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);padding:8px 0 6px;border-bottom:1px solid var(--line)}
+.frow.on{background:var(--goldtint);margin:0 -16px;padding-left:16px;padding-right:16px;grid-template-columns:16px 92px 1fr 84px 74px}
+.dot{width:11px;height:11px;border-radius:9999px;border:1px solid var(--t3);display:inline-block}
+.dot.on{border-color:var(--goldt);background:var(--goldt);box-shadow:inset 0 0 0 2px var(--raised)}
+.mdf{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{background:var(--inset);border-left:2px solid var(--goldt);border-radius:0;padding:13px 16px;font-size:14.5px;color:var(--t2)}
+.note b{color:var(--t1)}
+ul{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:7px}
+.ab{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.opt{border:1px solid var(--line);border-radius:5px;padding:16px;background:var(--card)}
+.opt.rec{border-color:color-mix(in srgb,var(--gold) 55%,transparent);background:var(--goldtint)}
+.opt h3{margin-bottom:8px}
+.q{font-size:12px;color:var(--t3);font-family:'Inter Tight',system-ui,sans-serif}
+@media (max-width:820px){.two,.ab{grid-template-columns:1fr}h1{font-size:40px}.wrap{padding:36px 18px 72px}}
+</style>
+
+<div class="wrap">
+
+<p class="eyebrow">Cycling Zone · designbeslutning · #3721</p>
+<h1>Træningssidens struktur</h1>
+<p class="lede">Siden er aldrig blevet designet, kun fyldt. Her er hvad den måler i dag med en rigtig trup, hvad der er galt strukturelt, og hvad jeg foreslår. Ét spørgsmål til dig nederst.</p>
+
+<section>
+<p class="eyebrow">Målt</p>
+<h2>Med 14 ryttere, ikke én</h2>
+<p>Issuet målte på et skærmbillede med én rytter. Jeg har målt igen med en trup på 14 og i <b>begge</b> tilstande siden har: før dagens træning er kørt, og efter. Assistenten kører den automatisk hver morgen, så “efter” er den tilstand de fleste spillere ser de fleste dage.</p>
+
+<div class="grid three" style="margin:20px 0 6px">
+  <div class="stat"><div class="k">Desktop · efter kørsel</div><div class="v">637 px</div><div class="n">før rosteret begynder. 71 % af første skærm er brugt inden det man kom for.</div></div>
+  <div class="stat"><div class="k">Mobil · efter kørsel</div><div class="v">933 px</div><div class="n">rosteret starter under skærmkanten. Viewporten er 852 px høj.</div></div>
+  <div class="stat"><div class="k">Hele siden, mobil</div><div class="v">4,91</div><div class="n">skærmfulde at scrolle igennem. Desktop: 3,65.</div></div>
+</div>
+
+<div class="scroll" style="margin-top:22px">
+<table class="data">
+<thead><tr><th>Blok på <span style="font-family:inherit">/training</span></th><th class="num">Top, desktop</th><th class="num">Højde</th><th class="num">Top, mobil</th><th class="num">Højde</th></tr></thead>
+<tbody>
+<tr><td>Sidehoved “Daily training”</td><td class="num">28</td><td class="num">54</td><td class="num">65</td><td class="num">54</td></tr>
+<tr><td>Dagens historie</td><td class="num">106</td><td class="num">77</td><td class="num">189</td><td class="num">90</td></tr>
+<tr><td>Tick-noten “træningen er kørt”</td><td class="num">206</td><td class="num">68</td><td class="num">303</td><td class="num">113</td></tr>
+<tr><td>FAQ “Do riders get energy back?”</td><td class="num">298</td><td class="num">126</td><td class="num">440</td><td class="num">209</td></tr>
+<tr><td>Accordion “What each focus trains”</td><td class="num">448</td><td class="num">49</td><td class="num">673</td><td class="num">49</td></tr>
+<tr><td>Accordion “Weekly rhythm”</td><td class="num">520</td><td class="num">49</td><td class="num">745</td><td class="num">49</td></tr>
+<tr><td>Sorterings-kontrol (kun mobil)</td><td class="num">—</td><td class="num">—</td><td class="num">818</td><td class="num">47</td></tr>
+<tr><td>Løs checkbox “Group by type”</td><td class="num">593</td><td class="num">20</td><td class="num">889</td><td class="num">20</td></tr>
+<tr style="background:var(--goldtint)"><td><b>Rosteret</b></td><td class="num"><b>637</b></td><td class="num">1367</td><td class="num"><b>933</b></td><td class="num">1367</td></tr>
+<tr><td>Dagens rapport <span class="pill p-bad">dublet</span></td><td class="num">2067</td><td class="num">925</td><td class="num">2363</td><td class="num">1431</td></tr>
+<tr><td>Træningshistorik, 30 dage</td><td class="num">3017</td><td class="num">207</td><td class="num">3818</td><td class="num">267</td></tr>
+</tbody>
+</table>
+</div>
+<p class="q" style="margin-top:10px">Målt i browseren mod dev-serveren med 14 mockede ryttere, viewports 1440×900 og 393×852. Script: <span class="data">frontend/tests/e2e/3721-training-structure.shots.mjs</span>. Rå tal: <span class="data">pr-screens/3721-before-measurements.json</span>.</p>
+</section>
+
+<section>
+<p class="eyebrow">Diagnosen</p>
+<h2>Tre ting med samme udseende</h2>
+<p>Siden stabler tre helt forskellige slags indhold som om de var det samme, og det er derfor hver ny god idé lander i den samme flade:</p>
+<ul>
+<li><b>Forklaring</b> — “Får ryttere energi tilbage hver dag?”. Læses én gang i hele ens liv som spiller.</li>
+<li><b>Opslag</b> — “hvad træner hvert fokus”. Skal bruges i det sekund man vælger fokus, ikke 400 px længere oppe.</li>
+<li><b>Kontrol</b> — ugerytmen. Det er en indstilling, ikke en forklaring. Den er pakket som en accordion mellem to forklaringer.</li>
+</ul>
+<p>Alle tre ligger over rosteret, i samme korttype, i samme visuelle vægt.</p>
+
+<div class="note" style="margin:20px 0">
+<b>Det skarpeste fund er mobilen, og det stod ikke i issuet.</b> På 393 px er de eneste synlige kolonner Rytter og Fokus. Kvitteringen — hele leverancen fra trin 1, det rytteren rent faktisk fik — ligger uden for skærmen bag vandret scroll. Det eneste der ER synligt ved siden af navnet, er trænbarheds-chippen “This rider type has very little room to grow these abilities”, som #3747 netop har vist er usand for håndværks-evner. Mobilspilleren ser altså kun sidens ene forkerte signal, og ingen af dens rigtige.
+</div>
+
+<h3 style="margin-top:26px">Dubletterne</h3>
+<p>Issuet fandt én. Der er tre.</p>
+<div class="scroll">
+<table class="data">
+<thead><tr><th>Hvad</th><th>Står her</th><th>Og her</th><th class="num">Pris</th></tr></thead>
+<tbody>
+<tr><td>Evnelisten, 15 evner</td><td>Rytterprofil · Overblik</td><td>Rytterprofil · Træning</td><td class="num">Træning er et supersæt</td></tr>
+<tr><td>Rytter · fokus · intensitet · fremdrift</td><td>Rosteret</td><td>Dagens rapport-tabel</td><td class="num">925 / 1431 px</td></tr>
+<tr><td>Fokus → evner</td><td>Accordion på /training</td><td>“Each focus trains” på profilen</td><td class="num">2 steder, samme kilde</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<p class="eyebrow">Forslag 1</p>
+<h2>Rosteret bliver sidens rygrad</h2>
+<div class="two" style="margin-top:20px">
+  <div>
+    <p class="eyebrow" style="margin-bottom:8px">I dag</p>
+    <div class="stack">
+      <div class="blk"><span class="lab">Sidehoved</span><span class="h">54</span></div>
+      <div class="blk"><span class="lab">Dagens historie</span><span class="h">77</span></div>
+      <div class="blk"><span class="lab">Tick-noten</span><span class="h">68</span></div>
+      <div class="blk"><span class="lab">FAQ: energi</span><span class="h">126</span></div>
+      <div class="blk"><span class="lab">Accordion: fokus-guide</span><span class="h">49</span></div>
+      <div class="blk"><span class="lab">Accordion: ugerytme</span><span class="h">49</span></div>
+      <div class="blk"><span class="lab">Løs checkbox</span><span class="h">20</span></div>
+      <hr class="fold" data-l="mobil-kant 852">
+      <div class="blk spine"><span class="lab">Rosteret</span><span class="h">1367</span></div>
+      <div class="blk dup"><span class="lab">Dagens rapport</span><span class="h">925</span></div>
+      <div class="blk"><span class="lab">Historik</span><span class="h">207</span></div>
+    </div>
+  </div>
+  <div>
+    <p class="eyebrow" style="margin-bottom:8px">Foreslået</p>
+    <div class="stack">
+      <div class="blk"><span class="lab">Sidehoved <span class="q">+ status + tick-noten</span></span><span class="h">54</span></div>
+      <div class="blk"><span class="lab">Filterbjælke <span class="q">+ ugerytme + gruppér</span></span><span class="h">36</span></div>
+      <div class="blk"><span class="lab">Dagens historie, én linje</span><span class="h">24</span></div>
+      <div class="blk spine"><span class="lab">Rosteret <span class="q">+ Today-kolonne</span></span><span class="h">~1400</span></div>
+      <div class="blk"><span class="lab">Historik, 30 dage</span><span class="h">207</span></div>
+      <div class="blk"><span class="lab">“Sådan virker træning”, lukket</span><span class="h">44</span></div>
+      <div class="blk kill"><span class="lab">FAQ-blokken</span><span class="h">→ disclosure</span></div>
+      <div class="blk kill"><span class="lab">Fokus-guide</span><span class="h">→ fokus-panel</span></div>
+      <div class="blk kill"><span class="lab">Ugerytme-accordion</span><span class="h">→ modal</span></div>
+      <div class="blk kill"><span class="lab">Dagens rapport-tabel</span><span class="h">→ Today-kolonne</span></div>
+    </div>
+    <p class="q" style="margin-top:12px">Over rosteret: <b class="data" style="color:var(--t1)">114 px</b> i stedet for 637. På mobil ~150 px i stedet for 933, altså rosteret over skærmkanten i begge tilstande.</p>
+  </div>
+</div>
+
+<h3 style="margin-top:32px">Sådan ser den ud</h3>
+<div class="mock" style="margin-top:12px">
+  <div class="mh">
+    <div>
+      <div class="mt">Daily training</div>
+      <div class="ms">Trained today at 06:12 by your assistant. Changes take effect tomorrow.</div>
+    </div>
+    <div style="display:flex;gap:8px"><span class="btn">Group: none</span><span class="btn gold">Train today</span></div>
+  </div>
+  <div class="fbar">
+    <span class="fld">Search riders</span>
+    <span class="fld">Focus: all</span>
+    <span class="fld">Needs a focus</span>
+    <span class="cnt">14 riders &nbsp;·&nbsp; <span style="color:var(--goldt)">Weekly rhythm</span></span>
+  </div>
+  <div style="padding:0 16px 9px;font-size:11px;color:var(--t2)"><span style="color:var(--t3);letter-spacing:.07em;font-size:9.5px;text-transform:uppercase">Today</span> &nbsp; Elias Andersen broke through on Tempo, 41 → 42.</div>
+  <div class="scroll">
+  <table class="mtab">
+    <thead><tr><th style="width:26%">Rider</th><th style="width:16%">Focus</th><th style="width:15%">Intensity</th><th style="width:19%">This season</th><th style="width:12%">Today</th><th style="width:12%">Condition</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Elias Andersen</b><div class="pmeta">Sprinter / Puncheur</div></td>
+        <td><b>Sprint</b><div class="pmeta" style="color:var(--goldt)">change</div></td>
+        <td><span class="seg"><span>Rest</span><span>Easy</span><span class="on">Normal</span><span>Hard</span></span></td>
+        <td class="rcp">Sprint 31 &nbsp;<b style="color:var(--ok)">+4</b>&nbsp; <span class="bar"><i style="width:44%"></i></span><br>Acceleration 29 &nbsp;<b style="color:var(--ok)">+3</b>&nbsp; <span class="bar"><i style="width:90%"></i></span></td>
+        <td><span class="pill p-ok">+1 tempo</span></td>
+        <td class="rcp">Form 71<br>Fatigue 34</td>
+      </tr>
+      <tr>
+        <td><b>Bo Colombo</b><div class="pmeta">Climber</div></td>
+        <td><b>Race craft</b><div class="pmeta" style="color:var(--goldt)">new</div></td>
+        <td><span class="seg"><span>Rest</span><span>Easy</span><span>Normal</span><span class="on">Hard</span></span></td>
+        <td class="rcp">Positioning 27 &nbsp;<b style="color:var(--ok)">+2</b>&nbsp; <span class="bar"><i style="width:44%"></i></span><br>Tactics 25 &nbsp;<b>+0</b>&nbsp; <span class="bar"><i style="width:61%"></i></span></td>
+        <td><span class="pill p-quiet">sharp day</span></td>
+        <td class="rcp">Form 66<br>Fatigue 51</td>
+      </tr>
+      <tr>
+        <td><b>Nuno Duran</b><div class="pmeta">Rouleur / Baroudeur</div></td>
+        <td><span style="color:var(--t3)">Not set</span><div class="pmeta">assistant: endurance</div></td>
+        <td><span style="color:var(--t3)">—</span></td>
+        <td class="rcp">Endurance 24 &nbsp;<b style="color:var(--ok)">+1</b>&nbsp; <span class="bar"><i style="width:66%"></i></span><br>Durability 26 &nbsp;<b>+0</b>&nbsp; <span class="bar"><i style="width:50%"></i></span></td>
+        <td><span class="pill p-quiet">—</span></td>
+        <td class="rcp">Form 58<br>Fatigue 22</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+<p class="q" style="margin-top:10px">Kolonnerne går fra 10 til 6. Type flyttes ind under navnet, form og træthed bliver én kolonne, ugeplan-knappen flytter ind i ugerytme-modalen sammen med holdets rytme, og hele rapport-tabellen bliver til kolonnen “Today”.</p>
+
+<h3 style="margin-top:32px">Mobil er ikke en tilpasning bagefter</h3>
+<div class="two" style="margin-top:12px;align-items:start">
+<div>
+<p>På mobil holder T2’s regel ikke. Skabelonens mobil-regel er skrevet til <em>læse</em>-tabeller: sekundær tekst foldes ind under navnet, tal-kolonner scroller vandret. Men på /training er de to vigtigste kolonner en <b>kontrol</b> (fokus + intensitet) og en <b>kvittering</b> — ingen af dem er sekundær tekst, og ingen af dem tåler at ligge bag vandret scroll.</p>
+<p>Forslaget: under 640 px er rosteret ikke en tabel, men en rækkeliste. Samme data, samme rækkefølge, stablet. Det er den eneste del af forslaget der <b>udvider</b> <span class="data">PAGE_TEMPLATES.md</span> i stedet for at sammensætte den, og derfor er den din at godkende.</p>
+</div>
+<div style="display:flex;justify-content:center">
+<div class="phone">
+  <div style="padding:11px 11px 8px"><div class="mt" style="font-size:14px">Daily training</div><div class="ms" style="font-size:10.5px">Trained 06:12 by assistant</div></div>
+  <div style="padding:0 11px 9px;display:flex;gap:6px"><span class="fld" style="font-size:10px">Search</span><span class="fld" style="font-size:10px">Focus</span><span class="cnt" style="font-size:10px">14</span></div>
+  <div class="prow">
+    <div class="pname">Elias Andersen</div>
+    <div class="pmeta">Sprinter / Puncheur · form 71 · fat 34</div>
+    <div class="pctl"><span class="btn" style="font-size:10px;padding:3px 8px">Sprint</span><span class="seg"><span>R</span><span>E</span><span class="on">N</span><span>H</span></span></div>
+    <div class="rcp" style="margin-top:7px">Sprint 31 <b style="color:var(--ok)">+4</b> <span class="bar"><i style="width:44%"></i></span> &nbsp; Acceleration 29 <b style="color:var(--ok)">+3</b> <span class="bar"><i style="width:90%"></i></span></div>
+  </div>
+  <div class="prow">
+    <div class="pname">Bo Colombo</div>
+    <div class="pmeta">Climber · form 66 · fat 51</div>
+    <div class="pctl"><span class="btn" style="font-size:10px;padding:3px 8px">Race craft</span><span class="seg"><span>R</span><span>E</span><span>N</span><span class="on">H</span></span></div>
+    <div class="rcp" style="margin-top:7px">Positioning 27 <b style="color:var(--ok)">+2</b> <span class="bar"><i style="width:44%"></i></span> &nbsp; Tactics 25 <b>+0</b> <span class="bar"><i style="width:61%"></i></span></div>
+  </div>
+  <div class="prow" style="border-bottom:0">
+    <div class="pname">Nuno Duran</div>
+    <div class="pmeta">Rouleur / Baroudeur · form 58 · fat 22</div>
+    <div class="pctl"><span class="btn" style="font-size:10px;padding:3px 8px;color:var(--t3)">Set focus</span><span class="pmeta">assistant: endurance</span></div>
+  </div>
+</div>
+</div>
+</div>
+</section>
+
+<section>
+<p class="eyebrow">Forslag 2 · det bærende</p>
+<h2>Fokus-vælgeren bliver et panel</h2>
+<p>Dette er den beslutning alt andet hænger på. I dag er fokus en <span class="data">&lt;select&gt;</span> på 184 px der allerede bærer fire signaler: fokussets navn, et trænbarheds-mærke klistret ind i option-teksten (som klipper: “Threshold / TT (X very lir”), en to-linjers advarsels-pille under, og assistentens hint. Trin 2 lægger et syvende fokus i den. Trin 4 lægger fem rækker med point pr. sæson i den. En <span class="data">&lt;select&gt;</span> kan ikke bære det.</p>
+<p>Panelet er stedet hvor <b>alle fem ting bliver til én ting</b>: raten som tal, taget som signal, hvilke evner en retning rammer, det nye fokus som en almindelig række, og assistenten som en synlig standard man vælger fra.</p>
+
+<div class="faux" style="margin-top:20px">
+<div class="modal">
+  <div class="mdh">
+    <div><div class="mt" style="font-size:14.5px">Focus for Bo Colombo</div><div class="ms">Climber · potential 3 · 22 years</div></div>
+    <span style="color:var(--t3);font-size:15px">✕</span>
+  </div>
+  <div class="mdb">
+    <div class="frow hd"><span></span><span>Focus</span><span>Trains</span><span>Per season</span><span>Ceiling · pace</span></div>
+    <div class="frow"><span class="dot"></span><span>VO2max</span><span style="color:var(--t2)">Climbing · Punch · Tempo</span><span class="data">+2.0 +1.4 +0.9</span><span><span class="pill p-quiet">med · slow</span></span></div>
+    <div class="frow"><span class="dot"></span><span>Sprint</span><span style="color:var(--t2)">Sprint · Acceleration</span><span class="data">+0.4 +0.3</span><span><span class="pill p-quiet">low · slow</span></span></div>
+    <div class="frow"><span class="dot"></span><span>Endurance</span><span style="color:var(--t2)">Endurance · Recovery · Durability</span><span class="data">+7.7 +1.2 +9.1</span><span><span class="pill p-ok">high · steady</span></span></div>
+    <div class="frow on"><span class="dot on"></span><span><b>Race craft</b> <span class="pill p-gold">new</span></span><span style="color:var(--t2)">Positioning · Tactics · Aggression</span><span class="data">+3.3 +3.4 +1.6</span><span><span class="pill p-warn">high · slow</span></span></div>
+    <div class="frow"><span class="dot"></span><span>Technique</span><span style="color:var(--t2)">Descending · Cobbles</span><span class="data">+0.9 +0.7</span><span><span class="pill p-quiet">low · slow</span></span></div>
+    <div class="frow"><span class="dot"></span><span>Aero</span><span style="color:var(--t2)">Time trial · Flat</span><span class="data">+1.7 +1.2</span><span><span class="pill p-quiet">med · steady</span></span></div>
+    <div class="frow" style="border-bottom:0"><span class="dot"></span><span>Threshold</span><span style="color:var(--t2)">Time trial · Tempo</span><span class="data">+1.4 +1.4</span><span><span class="pill p-quiet">med · steady</span></span></div>
+  </div>
+  <div class="mdf">
+    <span style="font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--t3)">Intensity</span>
+    <span class="seg"><span>Rest</span><span>Easy</span><span>Normal</span><span class="on">Hard</span></span>
+    <span style="font-size:10.5px;color:var(--t2)">−5 % risk of a setback</span>
+    <span style="margin-left:auto;display:flex;gap:8px"><span class="btn">Cancel</span><span class="btn gold">Save focus</span></span>
+  </div>
+</div>
+</div>
+<p class="q" style="margin-top:10px">Tallene i “per season” er specens §5.2-eksempel, ikke målte for netop denne rytter. Kolonnen kan først fyldes når trin 4 er merget — indtil da står den tom og “ceiling · pace” bærer signalet alene. Strukturen er den samme før og efter, og det er hele pointen: trin 4 fylder en kolonne ud, den designer ikke en side om.</p>
+
+<h3 style="margin-top:30px">Hvad panelet løser, som ikke er struktur</h3>
+<ul>
+<li><b>#3747</b> — “begrænset” forsvinder som ord. To knapper får to mærker: hvor højt (ceiling) og hvor hurtigt (pace). Håndværk læser <span class="pill p-warn">high · slow</span>, anden rolle læser <span class="pill p-quiet">low · slow</span>. De er ikke længere den samme label.</li>
+<li><b>Trin 2</b> — <span class="data">løbslære</span> bliver en række med “high · slow” i stedet for den samme røde pille som i dag ville stå på den. Fokusset der findes for at gøre spillets mest låste evner trænbare, læser ikke længere som listens dårligste valg.</li>
+<li><b>#3743</b> — bundlinjen “No focus set → your assistant picks Endurance” hører hjemme netop her, ved siden af hvad de andre valg giver. Det er dér en spiller kan se hvad han vinder ved at gøre det selv, og dét er den halvdel af #3743 der er min.</li>
+</ul>
+</section>
+
+<section>
+<p class="eyebrow">Forslag 3</p>
+<h2>Dubletten på rytterprofilen</h2>
+<p>Verificeret i koden og på skærmen: Overblik-fanen viser de 15 evner i tre kategorier med værdi og en guld-bjælke mod næste +1. Træning-fanen viser <b>de samme 15 evner i de samme tre kategorier i samme rækkefølge</b>, plus sæsonens point, fremdrift i procent og “done”. Den anden er et rent supersæt af den første.</p>
+<p>Issuet foreslår at Overblik ejer “hvem er rytteren” og Træning ejer “hvad gør træningen”, altså at bjælken på Overblik skal væk, ikke kvitteringen på Træning. <b>Jeg er enig, og der er tre grunde mere end issuet nævner:</b></p>
+<ul>
+<li>Bjælken vises kun for egne ryttere. På den primære brug af Overblik — at kigge på en rytter man overvejer at købe — er den et tomt spor der kun findes for at holde kolonnerne i flugt.</li>
+<li>Den kræver en signaturforklaring under kortet for at kunne læses. Et element der skal have en legend på sidens mest læste kort er et element der er placeret forkert.</li>
+<li>Den måler “mod næste +1”. Det er præcis den indramning specens §5.0 erstattede med point pr. sæson. Den er en rest fra før beslutning 9.</li>
+</ul>
+<p>Overblik står tilbage med tal og farve, uden legend, og med én stille handling: <span class="q">Hvad træningen giver ham →</span></p>
+<div class="two" style="margin-top:18px">
+  <div class="card"><p class="eyebrow" style="margin-bottom:10px">Overblik i dag</p>
+    <div style="font-family:'Inter Tight',system-ui,sans-serif;font-size:12px">
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t2)">Climbing</span><span><span class="bar"><i style="width:12%"></i></span> &nbsp;<b>19</b></span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t2)">Tempo</span><span><span class="bar"><i style="width:81%"></i></span> &nbsp;<b>23</b></span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t2)">Sprint</span><span><span class="bar"><i style="width:44%"></i></span> &nbsp;<b>31</b></span></div>
+      <div class="q" style="margin-top:10px">Number = level 1–99 · <span class="bar"><i style="width:60%"></i></span> training progress to next +1</div>
+    </div>
+  </div>
+  <div class="card"><p class="eyebrow" style="margin-bottom:10px">Overblik foreslået</p>
+    <div style="font-family:'Inter Tight',system-ui,sans-serif;font-size:12px">
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t2)">Climbing</span><b>19</b></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t2)">Tempo</span><b>23</b></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t2)">Sprint</span><b>31</b></div>
+      <div style="margin-top:10px;color:var(--goldt);font-size:11.5px;font-weight:600">What training gives him →</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+<p class="eyebrow">Forslag 4</p>
+<h2>Ni faner bliver til syv</h2>
+<p>Jeg har åbnet alle ni. Ingen af dem er tomme, og ingen af dem er en “på vej”-flade længere — Scouting er bygget nu, 513 linjer. Spørgsmålet er derfor ikke hvad der skal slettes, men hvor to faner svarer på det samme spørgsmål.</p>
+<div class="scroll">
+<table class="data">
+<thead><tr><th>Faner</th><th>Hvorfor</th><th class="num">Sikkerhed</th></tr></thead>
+<tbody>
+<tr><td><b>Resultater + Palmarès</b> → Resultater</td><td>Begge er bygget på den samme <span class="data">seasonRows</span>. Det er ét spørgsmål: hvad har han kørt.</td><td class="num"><span class="pill p-ok">høj</span></td></tr>
+<tr><td><b>Historik + Interesse</b> → Marked</td><td>Begge er tidslinjer for det der er sket <em>omkring</em> rytteren: handler, bud, scouts, følgere.</td><td class="num"><span class="pill p-ok">høj</span></td></tr>
+<tr><td>Træning + Udvikling</td><td><em>Ikke</em> slået sammen. De svarer forskelligt: Træning = hvad jeg styrer nu, Udvikling = den lange bue. Men “vækst denne sæson” står begge steder og skal ét sted.</td><td class="num"><span class="pill p-warn">flyt ét kort</span></td></tr>
+<tr><td>Fysiologi</td><td>312 linjer ægte indhold. Bliver.</td><td class="num"><span class="pill p-quiet">urørt</span></td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin-top:14px">Rækkefølge: Overblik · Træning · Udvikling · Scouting · Fysiologi · Resultater · Marked. Træning rykker frem fra plads tre til plads to, fordi det er den eneste fane hvor man <em>gør</em> noget.</p>
+<p class="note">Det her gater ikke trin 2, og det rører syv filer der ikke har noget med træning at gøre. <b>Anbefaling: eget issue, egen PR, efter trin 2.</b> Jeg foreslår det her fordi issuet spurgte, ikke fordi det skal med i denne leverance.</p>
+</section>
+
+<section>
+<p class="eyebrow">Rækkefølge</p>
+<h2>Tre leverancer, ikke én</h2>
+<div class="scroll">
+<table class="data">
+<thead><tr><th style="width:9%">PR</th><th style="width:47%">Indhold</th><th>Hvorfor adskilt</th></tr></thead>
+<tbody>
+<tr><td><b>1</b></td><td>Blok-rækkefølgen, filterbjælken, kolonnerne 10 → 6, rapport-tabellen → Today-kolonnen, ugerytme-modal, forklaringerne til én disclosure, mobil-rækkelisten. Overblik mister fremdriftsbaren. Fokus er stadig en <span class="data">&lt;select&gt;</span>.</td><td>Ren struktur og frontend-only. Kan ejer-godkendes visuelt uden at noget i motoren rører sig.</td></tr>
+<tr><td><b>2</b></td><td>Fokus-panelet + <span class="data">løbslære</span> (trin 2) + det to-knappede signal (#3747), med kalibrerede fokus-størrelser og egen måling.</td><td>#3747 og trin 2 kan ikke skilles ad uden at shippe en fælde: <span class="data">løbslære</span> består næsten kun af håndværk og anden rolle og ville læse “limited” for alt.</td></tr>
+<tr><td><b>3</b></td><td>Fanerne 9 → 7.</td><td>Rører ikke træning. Eget issue.</td></tr>
+<tr><td class="q">siden</td><td>#3743 assistentens kvalitet.</td><td>Ændrer <span class="data">smartDefaultFocus</span>, som styrer hvilket fokus tusindvis af ryttere trænes med i prod. Egen dry-run, egen ejer-godkendelse, aldrig i en UI-PR.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<p class="eyebrow">Det jeg gætter på</p>
+<h2>Hvor jeg ikke har evidens</h2>
+<ul>
+<li><b>Point pr. sæson pr. fokus kan ikke vises endnu.</b> Trin 4 (#3741) er ikke merget og står <span class="data">CONFLICTING</span>. Tallene i panelet ovenfor er specens eksempel for én rytterprofil, ikke målt pr. rytter. Om backend kan levere dem billigt pr. rytter for hele truppen ved jeg ikke — det skal måles, ikke antages.</li>
+<li><b>“Ceiling · pace” som ordpar er mit valg, ikke et målt valg.</b> Fem rolleklasser skal ned i to akser med tre-fire trin hver. Om “high · slow” faktisk læses rigtigt af en spiller ved jeg ikke. Alternativet er at droppe ord helt og kun vise tal, men det kan først lade sig gøre efter trin 4.</li>
+<li><b>Mobil-rækkelisten udvider skabelonen.</b> Jeg sammensætter ikke T2’s mobil-regel, jeg foreslår en ny. Det er den eneste del hvor jeg går uden om <span class="data">PAGE_TEMPLATES.md</span>, og jeg gør det synligt frem for stille.</li>
+<li><b>Dagens historie som én linje</b> er en nedgradering af en ejer-godkendt feature (#2484). Jeg beholder den, men den bliver 24 px i stedet for 77. Sig til hvis den skal beholde sin vægt.</li>
+</ul>
+</section>
+
+<section>
+<p class="eyebrow">Det ene spørgsmål</p>
+<h2>Skal fokus-vælgeren blive et panel?</h2>
+<p>Alt andet i forslaget er direkte svar på din egen kritik og behøver ikke en beslutning fra dig. Det her gør, fordi det er den eneste del der bygger noget nyt i stedet for at flytte noget eksisterende — og fordi svaret afgør om trin 2 og trin 4 kan lande uden at siden skal designes om igen.</p>
+<div class="ab">
+  <div class="opt rec">
+    <p class="eyebrow" style="margin-bottom:6px">A · min anbefaling</p>
+    <h3>Panel</h3>
+    <p style="font-size:14.5px">Fokus åbnes som et panel med én række pr. fokus: hvad det træner, hvad han ville få, og hvor højt og hvor hurtigt.</p>
+    <p style="font-size:13.5px;color:var(--t2);margin-bottom:0"><b>Pris:</b> en ny komponent og et ekstra klik for at skifte fokus. <b>Gevinst:</b> trin 2 og trin 4 lander som en række og en kolonne, ikke som et redesign. De fem ting bliver ét sted.</p>
+  </div>
+  <div class="opt">
+    <p class="eyebrow" style="margin-bottom:6px">B</p>
+    <h3>Behold selecten</h3>
+    <p style="font-size:14.5px">Fokus bliver en <span class="data">&lt;select&gt;</span>. Trænbarheds-signalet ryddes op i cellen, og trin 4’s tal får deres egen plads et andet sted.</p>
+    <p style="font-size:13.5px;color:var(--t2);margin-bottom:0"><b>Pris:</b> point pr. sæson pr. fokus har ingen plads, så trin 4 skal designe siden om igen. <b>Gevinst:</b> mindre at bygge nu, ingen ny komponent.</p>
+  </div>
+</div>
+</section>
+
+</div>
