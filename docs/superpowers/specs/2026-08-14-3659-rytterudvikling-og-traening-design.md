@@ -256,7 +256,7 @@ Hvert trin kan shippes og måles for sig.
 | Trin | Indhold | Motor-ændring | Gate |
 |---|---|---|---|
 | **0** ✅ | Flow-måling på friskt kuld, korrekt akademi-semantik, rating målt | nej | **kørt 14/8, se §3bis** |
-| **1** | Fladen: kvittering, `nu → tag`, fokusvælger med point pr. sæson. Slet de tre loft-tekster | nej | ejer-godkendt visuelt; #3649, #3651 lukkes |
+| **1** | Fladen — `/training` **og rytterprofilens Træning-fane**: kvittering, `nu → tag`, fremdriftsbar. Slet de tre loft-tekster. Fokusvælgerens fremadrettede tal venter til trin 4 | nej | ejer-godkendt visuelt; #3649, #3651, #3639 lukkes |
 | **2** | Nyt fokus `løbslære` (positioning, tactics, aggression); technique reduceres | lille, isoleret | fokus-størrelser kalibreret, ikke arvet |
 | **3** | Håndværks-taget: positioning + tactics. #3682 er allerede målt (+2,83 potentiel rating for 4.747 ryttere i fire roller) | ja | dry-run-diff med absolutte deltaer, ejer-gated |
 | **4** | Rolleklasser, rater, `offFocusMult` 0,97 → 0,35 | ja, stor | flow-scorecard + negativ-test + snapshot før mutation |
@@ -264,6 +264,12 @@ Hvert trin kan shippes og måles for sig.
 | **6** | *Separat issue:* ingen vokser af tid alene — AI-hold kører den daglige motor, frie agenter får intet eller et minimum | ja | rører 5.258 ryttere; egen måling |
 | **7** | *Separat issue:* potentiale = fart. `rateByPotential` spredes, taget flades ud | ja | scouting, økonomi, #3503's G3-præcision |
 | **8** | *Senere:* træningslejre som betalt, tidsbegrænset handling | ja | bygges oven på et fokus-system der beviseligt virker |
+
+### Trin 1 er mindre end planen antog
+
+Rytterprofilens Træning-fane har **allerede** fremdriftsvisningen — `Tempo 23 → 24 · 44% to next +1`, set på PR #3701's screenshot. Trin 1 skal derfor ikke bygge mekanikken, kun flytte den fra "næste point" til `nu → tag` og lægge sæsonens kvittering ved siden af.
+
+**PR #3701 er sat i draft 14/8** (ejer-beslutning). Den ville vise chippen "Limited upside for this rider type" direkte oven over netop den fremdriftslinje — altså "begrænset potentiale" og "44 % på vej" på samme skærm, hvilket er præcis den modsigelse #3649 rapporterer med tre spillerrapporter fra 11/8. To ting fra PR'en går videre i trin 1: den delte helper `focusTrainabilityNotice` i `frontend/src/lib/trainingReport.js`, og fundet om fremdriftsvisningen ovenfor.
 
 **Rækkefølgen er ikke forhandlelig mellem 3 og 4:** trin 3 kan måles isoleret mod #3682's eksisterende tal, netop fordi trin 4 endnu ikke har flyttet noget andet.
 
