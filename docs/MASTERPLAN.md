@@ -40,6 +40,9 @@ Ejeren 14/8, ordret: *"Det er efter ratings, ryttertyper, potentiale og træning
 
 **Forudsætninger uden for blokken:** [#3719](https://github.com/NicolaiDolmer/CyclingZone/issues/3719) + [#3720](https://github.com/NicolaiDolmer/CyclingZone/issues/3720) måler at præmien pr. hold er 3,7-6,6× fra det upkeep-kalibreringen antog. Et fundament bygget på simuleret præmieindtjening kan ikke kalibreres mens præmien selv er ude af kontrol.
 
+- ✅ **Fordelingen besluttet (ejer 14/8):** præmiepulje-indeks **D1 100 · D2 50 · D3 33 · D4 10**. D2 rammer allerede (52); **D3 mangler +18 %, D4 +30 %**.
+- 🔵 **Én A/B tilbage, PARKERET til egen session** (ejer 14/8). Målet kan ikke nås med de nuværende knapper: game-day-kvoten og prestige-kaskaden (#2276) er låst, så endagsløbs-andelen er eneste håndtag — og 33 i D3 kræver ~0,85, altså mere end de 0,76 ejeren 7/8 kaldte "for mange" i #3327. **A) præmie-multiplikator pr. division** (egen skrue, point forbliver rå, ingen kalender-regenerering) vs **B) åbn klasse-whitelisten** (bryder kaskaden, kræver regenerering). Anbefaling: A. Prompt: [`2026-08-14-praemiefordeling-session-prompt.md`](sessions/2026-08-14-praemiefordeling-session-prompt.md). **A og #3720 er samme skrue set fra to sider** — vælges A, kalibreres upkeep mod de multiplicerede tal.
+
 ## C · Talent-kanalen ind i klubben (ejer-valgt 13/8)
 
 14. **#3657** scoutingmissioner uden targeting — *"they feel useless the way they are now"* (4 spillere 12-13/8) + ejer-direktiv samme dag.
