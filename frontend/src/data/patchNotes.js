@@ -14,14 +14,15 @@ export const PATCHES = [
         "topic": "Academy",
         "en": {
           "title": "Moving a rider to or from the academy cut his contract short",
-          "body": "What changed: Promoting or demoting an academy rider no longer rewrites his contract. It carries over as it is.\n\nWhy: Both moves regenerated the contract from scratch, so a deal running to season 5 came back as season 3 or 4.\n\nWhat it means for you: Contracts that were already shortened have not been repaired yet. If one of your riders lost seasons this way, tell me in Discord and I will put it back."
+          "body": "What changed: Promoting or demoting an academy rider no longer rewrites his contract. It carries over as it is.\n\nWhy: Both moves regenerated the contract from scratch, so a deal running to season 5 came back as season 3 or 4.\n\nWhat it means for you: Contracts that were already shortened have not been repaired. Telling a shortened contract apart from a normal one takes more than the current numbers show, so the repair is tracked as its own job."
         },
         "da": {
           "title": "Flytning til eller fra akademiet forkortede rytterens kontrakt",
-          "body": "Hvad ændrede sig: Rykker du en akademirytter op eller ned, bliver hans kontrakt ikke længere skrevet om. Den fortsætter som den er.\n\nHvorfor: Begge flytninger genskabte kontrakten fra bunden, så en aftale der løb til sæson 5 kom tilbage som sæson 3 eller 4.\n\nHvad det betyder for dig: Kontrakter der allerede er blevet forkortet, er ikke rettet endnu. Har en af dine ryttere mistet sæsoner på den måde, så sig til i Discord, så retter jeg det."
+          "body": "Hvad ændrede sig: Rykker du en akademirytter op eller ned, bliver hans kontrakt ikke længere skrevet om. Den fortsætter som den er.\n\nHvorfor: Begge flytninger genskabte kontrakten fra bunden, så en aftale der løb til sæson 5 kom tilbage som sæson 3 eller 4.\n\nHvad det betyder for dig: Kontrakter der allerede er blevet forkortet, er ikke rettet. At skelne en forkortet kontrakt fra en normal kræver mere end de nuværende tal viser, så reparationen er sporet som sin egen opgave."
         },
         "refs": [
-          3620
+          3620,
+          3715
         ]
       },
       {
