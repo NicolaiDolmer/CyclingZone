@@ -33,11 +33,14 @@ const RESULT_TYPE_TO_RACE_POINTS = {
     points_day: "PointtrojeDag",
     young_day: "UngdomstrojeDag",
   },
+  // #3718 forward-guard: et endagsløb har ingen point-, bjerg- eller ungdomstrøje — hverken
+  // her eller i virkeligheden (ejer-beslutning 14/8). Motoren har aldrig emittet de rækker for
+  // `single` (målt sæson 2: kun `gc` og `team`, nul trøje-rækker), så mappingen var ubrugt —
+  // men den var en åben dør: begyndte simulatoren at emitte `points`/`mountain`/`young` for et
+  // endagsløb, blev de betalt uden en beslutning. Nu falder de på gulvet i stedet.
+  // Rækkerne i race_points bevares: etapeløbs-grenen ovenfor bruger dem og udbetaler dem fuldt.
   single: {
     gc: "Klassiker",
-    points: "Pointtroje",
-    mountain: "Bjergtroje",
-    young: "Ungdomstroje",
     team: "KlassikerHold",
   },
 };
