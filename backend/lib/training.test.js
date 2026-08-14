@@ -10,6 +10,7 @@ import {
   WEEKDAY_KEYS, isValidWeekPlanDays, resolveDayIntensity, cappedVisibleAbilities,
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 
 // ── Taksonomi-integritet ────────────────────────────────────────────────────────
 
@@ -218,7 +219,11 @@ test("focusTrainability: climber (uden sekundær type) — signatur-fokus er 'st
   assert.equal(t.threshold, "strength"); // tempo positiv (time_trial neutral 0.45)
   assert.equal(t.sprint, "limited");     // sprint(-1)→0.12, acceleration uvægtet→0.45 — blanding, ikke alle ≤0.12 (#3325: var 'blocked' da acceleration også var -1)
   assert.equal(t.endurance, "strength"); // endurance positiv
-  assert.equal(t.technique, "limited");  // descending/positioning/cobblestone alle neutrale (factor 0.45)
+  // #3709 trin 3: `technique` = descending + positioning + cobblestone, og
+  // positioning har nu håndværks-gulvet (0,95 ≥ naturalSecondaryFactor 0,82) →
+  // 'strength'. Se TECHNIQUE-noten under smartDefaultFocus-testene for hvorfor det
+  // er sandt, og hvorfor trin 2 gør det midlertidigt.
+  assert.equal(t.technique, "strength");
   assert.equal(t.aero, "limited");       // time_trial neutral (0.45), flat uvægtet→0.45 (#3325: var negativ)
 });
 
@@ -228,7 +233,8 @@ test("focusTrainability: sprinter (uden sekundær type) — sprint-fokus 'streng
   assert.equal(t.sprint, "strength");   // sprint+acceleration begge positive
   assert.equal(t.endurance, "strength"); // durability positiv (endurance selv er -1 → 0.12, men durability≥1 gør fokus 'strength')
   assert.equal(t.vo2max, "limited");    // climbing(-2)→0.12, punch/tempo neutrale (0.45) → ikke alle ≤0.12
-  assert.equal(t.technique, "limited"); // ingen af descending/positioning/cobblestone vægtet
+  // #3682: sprinteren EJER nu positioning (vægt 1) → primær-naturlig 1,0 → 'strength'.
+  assert.equal(t.technique, "strength");
 });
 
 test("focusTrainability: alle TRAINING_FOCUS_KEYS er dækket for enhver kendt type", () => {
@@ -238,13 +244,71 @@ test("focusTrainability: alle TRAINING_FOCUS_KEYS er dækket for enhver kendt ty
   }
 });
 
-test("focusTrainability: ukendt/manglende primary_type → alt 'limited' (sikker neutral)", () => {
-  for (const primaryType of [null, undefined, "", "nonexistent-type"]) {
+test("focusTrainability: null/undefined primary_type → alt 'limited' (sikker neutral)", () => {
+  // null/undefined kortsluttes ØVERST i focusTrainability og rører aldrig
+  // youthRoleFactor — derfor er de upåvirkede af håndværks-gulvet.
+  for (const primaryType of [null, undefined]) {
     const t = focusTrainability(primaryType);
     for (const focusKey of TRAINING_FOCUS_KEYS) {
       assert.equal(t[focusKey], "limited", `${String(primaryType)} → ${focusKey} skulle være 'limited'`);
     }
   }
+});
+
+test("focusTrainability: ukendt type-STRENG rammer håndværks-gulvet, ikke null-kortslutningen", () => {
+  // "" og "nonexistent-type" er IKKE == null, så de går gennem youthRoleFactor og
+  // får den samme model som alle andre: alt neutralt (0,45) undtagen håndværket
+  // (0,95). Det er ærligt — en ukendt type ejer ingen evner, men håndværk kan alle
+  // lære. Sondringen er bevidst dokumenteret her, fordi den før trin 3 var usynlig
+  // (alt gav 'limited' uanset hvilken gren man ramte).
+  for (const primaryType of ["", "nonexistent-type"]) {
+    const t = focusTrainability(primaryType);
+    assert.equal(t.technique, "strength", `${primaryType} → technique (positioning-gulvet)`);
+    for (const focusKey of TRAINING_FOCUS_KEYS.filter((k) => k !== "technique")) {
+      assert.equal(t[focusKey], "limited", `${primaryType} → ${focusKey} skulle være 'limited'`);
+    }
+  }
+});
+
+// ── TECHNIQUE-noten (#3709 trin 3) ──────────────────────────────────────────
+// `technique` = descending + positioning + cobblestone. Fordi positioning nu har
+// håndværks-gulvet, rapporterer focusTrainability 'strength' på technique for
+// HVER eneste ryttertype. Det er sandt om TAGET — men et signal der siger det
+// samme om alle bærer nul information, og labelen læser kun den ene af modellens
+// to knapper (den ser tag, ikke rate).
+//
+// Begge dele forsvinder af sig selv i trin 2, hvor `technique` reduceres til
+// descending + cobblestone og positioning flytter til det nye `løbslære`-fokus.
+// Indtil da er tilstanden midlertidig og ærlig — ikke en regression der skal
+// maskeres i denne fil. Trin 4 skal derudover genbesøge om en tag-baseret label
+// overhovedet er den rigtige, når rate bliver en selvstændig knap.
+test("focusTrainability: technique er 'strength' for ALLE typer indtil trin 2 splitter fokusset", () => {
+  for (const type of RIDER_TYPE_KEYS) {
+    assert.equal(focusTrainability(type).technique, "strength", `${type}`);
+  }
+});
+
+test("#3682/#3709: smartDefaultFocus er UÆNDRET for alle otte typer (ingen rytter skifter fokus i prod)", () => {
+  // Den vigtigste sikkerhedsegenskab i trin 3. smartDefaultFocus afgør hvilket
+  // fokus tusindvis af ryttere UDEN egen plan rent faktisk trænes med hver dag.
+  // Den læser legacyPrimaryTypeTier → signatureFactor, som #3682's nye
+  // positioning-vægt PÅVIRKER (sprinter/brostensrytter/puncheur/rouleur får
+  // technique = 'strength'). At outputtet alligevel ikke flytter sig skyldes at
+  // alle fire allerede har et 'strength'-fokus TIDLIGERE i TRAINING_FOCUS_KEYS —
+  // det er en egenskab ved rækkefølgen, ikke et tilfælde vi må stole på blindt.
+  assert.deepEqual(
+    Object.fromEntries(RIDER_TYPE_KEYS.map((t) => [t, smartDefaultFocus(t)])),
+    {
+      sprinter: "sprint",
+      tt: "threshold",
+      climber: "vo2max",
+      puncheur: "vo2max",
+      brostensrytter: "vo2max",
+      baroudeur: "vo2max",
+      rouleur: "endurance",
+      gc: "vo2max",
+    },
+  );
 });
 
 // ── #3195 rod-årsag: sekundær type skal RESCUE et fokus, ikke ignoreres ────────

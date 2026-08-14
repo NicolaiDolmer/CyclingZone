@@ -180,6 +180,60 @@ export const DRYRUN_FACIT = Object.freeze({
   L1efter2: 7.72,                  // L1 mod knaphedsmålene, alle ryttere, 2 decimaler
 });
 
+/**
+ * MODEL-DRIFT-LEDGER (indført 2026-08-15, #3709 trin 3).
+ *
+ * `DRYRUN_FACIT` ovenfor er et HISTORISK DOKUMENT: de tal ejeren så og godkendte
+ * i `RAPPORT-DRYRUN.md` rev 2 den 10/8. Det tal-sæt rettes ALDRIG — så snart et
+ * felt derinde redigeres, holder sætningen "ejeren godkendte disse tal" op med at
+ * være sand, og selvtesten er ikke længere et bevis.
+ *
+ * Men caps-formlen SKAL flytte sig — det er hele #3709. Selvtestens dokumentation
+ * siger det selv ordret: "Drifter planlæggeren — en ændret vægt, en ændret
+ * baseline, en ændret caps-formel — fejler den her, ikke i produktionen." Den
+ * gjorde nøjagtig dét, og det er en bestået vagt, ikke en fejl.
+ *
+ * Ledgeren er stedet den slags bevidste drift skrives NED i stedet for at blive
+ * redigeret VÆK. Hver post koster en dato, en issue-reference og en begrundelse,
+ * og selvtesten sammenligner mod `facitEfterDrift()` — det oprindelige facit med
+ * ledgeren lagt oven på. Et tal der flytter sig uden en post her fejler stadig
+ * hårdt, præcis som før.
+ *
+ * ⚠ At en post står her betyder IKKE at scriptet må køres igen. Det er frosset
+ * (se filhovedet). Ledgeren holder vagten ærlig, den låser ikke døren op.
+ */
+export const FACIT_MODELDRIFT = Object.freeze([
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3682 + #3709 trin 3",
+    felt: "loftSaenketAntal",
+    fra: 7234,
+    til: 7230,
+    hvorfor:
+      "Håndværks-gulvet (positioning + tactics → 0,95 × loftByPotential for alle) og "
+      + "positioning som signatur-evne hos fire feltkørsels-roller HÆVER lofter. Fire ryttere "
+      + "hvis loft før lå marginalt under deres nuværende evne gør det ikke længere, så de "
+      + "tælles ikke længere som 'loft sænket'. Retningen er den forventede: en ændring der "
+      + "kun kan løfte tag kan kun gøre denne tæller MINDRE. Steg den, var noget galt.",
+  }),
+]);
+
+/** Det godkendte facit med ledgerens bevidste drift lagt oven på. */
+export function facitEfterDrift(facit = DRYRUN_FACIT, drift = FACIT_MODELDRIFT) {
+  const ud = { ...facit };
+  for (const post of drift) {
+    if (ud[post.felt] !== post.fra) {
+      throw new Error(
+        `FACIT_MODELDRIFT[${post.ref}]: forventede ${post.felt}=${post.fra} i det godkendte `
+        + `facit, fandt ${ud[post.felt]}. Ledgeren er skrevet mod et andet facit end det her — `
+        + "ret ikke tallet, find ud af hvorfor de to er kommet ud af trit.",
+      );
+    }
+    ud[post.felt] = post.til;
+  }
+  return Object.freeze(ud);
+}
+
 // ── Små hjælpere ────────────────────────────────────────────────────────────
 export const pct = (n, t) => (t ? (100 * n) / t : 0);
 const f1 = (x) => (x == null ? "—" : Number(x).toFixed(1));
@@ -869,7 +923,7 @@ export function baselinePlan(dir = BASELINE_SNAPSHOT_DIR) {
   return baselinePlanCache.get(dir);
 }
 
-export function runSelvtest({ dir = BASELINE_SNAPSHOT_DIR, facit = DRYRUN_FACIT } = {}) {
+export function runSelvtest({ dir = BASELINE_SNAPSHOT_DIR, facit = facitEfterDrift() } = {}) {
   const { plan } = baselinePlan(dir);
   const t = populationsTal(plan.poster);
   const afvigelser = [];
