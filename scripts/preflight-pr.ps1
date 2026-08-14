@@ -38,6 +38,12 @@ try {
   node scripts/lint-unchecked-supabase-mutation.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "unchecked-supabase-mutation-guard" }
 
+  # fetch() rejecter ved netvaerksudfald: et bart `await fetch` efter setLoading(true)
+  # springer oprydningen over og laaser knappen i "Gemmer...". Ratchet pr. fil (#3628).
+  Write-Host "== unguarded-fetch-guard (await fetch uden try/catch i frontend, #3628) ==" -ForegroundColor Cyan
+  node scripts/lint-unguarded-fetch-in-handler.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "unguarded-fetch-guard" }
+
   Write-Host "== pagination-guard (PostgREST 1000-row cap, #3331) ==" -ForegroundColor Cyan
   node scripts/lint-pagination-guard.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "pagination-guard" }

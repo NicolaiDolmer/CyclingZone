@@ -2391,26 +2391,46 @@ export default function BoardPage() {
     }
   }
 
+  // KONTRAKT (#3628): denne funktion KASTER ALDRIG. Den returnerer enten
+  // proposal-data, `null` (ingen session) eller `{ error }`.
+  //
+  // Hvorfor det er en kontrakt og ikke bare en try/catch: begge kaldere
+  // (loadPreview-effekten og startNegotiation) laver et bart `await` uden egen
+  // catch. loadPreview sætter previewLoading=true FØR kaldet og rydder det først
+  // EFTER — kastede fetch'en på et tabt net, blev flaget aldrig ryddet: wizardens
+  // trin 1 stod med spinner og en permanent disabled "Start forhandling"-knap,
+  // uden ét ord om hvorfor. Samme fejlklasse som #3619. At fange her frem for hos
+  // hver kalder er den ene rettelse der lukker begge veje.
   async function fetchBoardProposal(focus, planType) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return null;
-    const res = await fetch(`${API}/api/board/proposal`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ focus, plan_type: planType }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      // #678 Track 3: resolveApiError foretrækker errorCode → errors:api.* (EN/DA)
-      // og falder tilbage til den lokale t()-streng for u-kodede svar.
-      return {
-        error: resolveApiError(data, t, data?.code === "BOARD_DNA_REQUIRED"
-          ? t("dna.requiredBeforePlan")
-          : t("wizard.errorProposal")),
-      };
+    try {
+      // getSession() går selv på nettet når token'et skal fornyes — derfor inde i try.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return null;
+      const res = await fetch(`${API}/api/board/proposal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ focus, plan_type: planType }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // #678 Track 3: resolveApiError foretrækker errorCode → errors:api.* (EN/DA)
+        // og falder tilbage til den lokale t()-streng for u-kodede svar.
+        return {
+          error: resolveApiError(data, t, data?.code === "BOARD_DNA_REQUIRED"
+            ? t("dna.requiredBeforePlan")
+            : t("wizard.errorProposal")),
+        };
+      }
+      return data;
+    } catch (cause) {
+      reportActionFailure("board_proposal_fetch", {
+        reason: "network",
+        cause,
+        context: { focus, planType },
+      });
+      return { error: t("errors:generic.networkError") };
     }
-    return data;
   }
 
   function openWizard(planType, isSetup = false) {
