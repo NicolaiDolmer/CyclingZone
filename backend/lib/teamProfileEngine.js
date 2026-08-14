@@ -7,6 +7,7 @@ import { isAcademyEnabled } from "./academyFlag.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { captureException as sentryCapture } from "./sentry.js";
+import { ensureMidSeasonSponsor } from "./midSeasonSponsor.js";
 import {
   INITIAL_BALANCE,
   MANAGER_ENTRY_DIVISION,
@@ -560,6 +561,28 @@ export async function upsertOwnTeamProfile({
       sentryCapture(
         calibrationError instanceof Error ? calibrationError : new Error(String(calibrationError)),
         { tags: { component: "team-create-board-goal-calibration" }, extra: { teamId: team.id } },
+      );
+    }
+
+    // #3730: sponsorkontrakt + forholdsmæssig udbetaling for RESTEN af den kørende sæson.
+    // Uden den findes holdet ikke når season_start_sponsor udbetales, og får hverken
+    // kontrakt eller penge før næste sæsonskifte. Målt i sæson 2: 43 af 43 hold oprettet
+    // undervejs fik nul, og 29 af dem havde slet ingen kontrakt. Median-indtægten var
+    // 31.125 mod 326.596 for de hold der var med fra sæsonstart — samme division.
+    //
+    // BEVIDST IKKE-FATAL, samme afvejning som identitets-grundlaget og board-målene
+    // ovenfor: et hold uden sponsor er fattigt, men spilbart, og kan repareres bagefter.
+    // En blokeret signup kan ikke. Fejlen logges + sendes til Sentry, så den ikke er tavs.
+    try {
+      await ensureMidSeasonSponsor({ supabase, team });
+    } catch (sponsorError) {
+      console.error(
+        `[teamProfileEngine] #3730 forholdsmæssig sponsor FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        sponsorError?.message || sponsorError,
+      );
+      sentryCapture(
+        sponsorError instanceof Error ? sponsorError : new Error(String(sponsorError)),
+        { tags: { component: "team-create-midseason-sponsor" }, extra: { teamId: team.id } },
       );
     }
 

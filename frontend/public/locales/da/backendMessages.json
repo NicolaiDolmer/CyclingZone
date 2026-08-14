@@ -7,6 +7,7 @@
       "seasonStartVariablePullout": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier} · sponsor-pullout aktiv)",
       "seasonStartFallback": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier})",
       "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)",
+      "midSeasonProRata": "Sponsorindtægt · Tilmeldt midt i sæsonen ({sponsorName} · {percent} % af sæsonen tilbage)",
       "signingBonus": "Sponsor · Signing-bonus ({sponsorName})",
       "resultBonus": "Sponsor · Resultatbonus ({wins} sejre, {podiums} podier)",
       "objectiveBonus": "Sponsor · Sæsonmål opnået ({sponsorName})"
