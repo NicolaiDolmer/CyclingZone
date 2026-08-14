@@ -114,6 +114,15 @@ export const KNOWN_EVENTS = Object.freeze([
   // Naturligt 0 indtil træningsmotoren er aktiv for spillere.
   "training_focus_set_bulk",
   "training_run_today",
+  // action_rejected (#3767) — fyrer fra actionTelemetry.js når en spiller-
+  // handling bliver afvist af en regel (for lavt bud, kontraktloft nået).
+  // Flyttet hertil fra Sentry, hvor de fem `player action rejected`-issues stod
+  // arkiverede og usete: 51 afvisninger over 30 dage, heriblandt 13 spillere
+  // stoppet af contract_extension_cap_reached. event_data bærer {action, reason,
+  // status} + spil-id'er — aldrig PII. Detector E holder øje med at strømmen
+  // ikke tørrer ud; 0 impressions ville betyde enten at ingen bliver stoppet
+  // eller at instrumenteringen er faldet ud.
+  "action_rejected",
 ]);
 
 async function _logEvent(name, data) {
