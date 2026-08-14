@@ -43,6 +43,7 @@
     "promoteQuestion": "Promote this academy rider to your senior squad:",
     "promoteConfirm": "Promote",
     "promoteNote": "They take a senior place and a senior contract. Their academy salary is replaced by the senior wage shown above.",
+    "promoteNoteKeepsContract": "They take a senior place. Their current contract and wage carry over unchanged.",
     "demoteTitle": "Move to academy",
     "demoteQuestion": "Move this senior rider down to your academy:",
     "demoteConfirm": "Move to academy",

@@ -20,6 +20,7 @@ export function AcademyTransferConfirmModal({
   capLabel = null,      // "12 / 30" → "13 / 30" (promote: senior-cap; demote: akademi 3/8)
   capAfterLabel = null,
   racesCleared = null,  // demote: antal fremtidige løb der fjernes (kan være 0/null)
+  keepsContract = false, // promote: rytteren har allerede en kontrakt (#3620)
   onCancel,
   onConfirm,
   busy = false,
@@ -98,9 +99,15 @@ export function AcademyTransferConfirmModal({
           )}
         </dl>
 
-        {/* Konsekvens-note pr. retning. */}
+        {/* Konsekvens-note pr. retning. Promote har to sandheder efter #3620:
+            har rytteren allerede en kontrakt, regenereres den IKKE, så lønnen
+            bliver hverken erstattet eller genberegnet. */}
         <p className="text-cz-3 text-xs mb-4">
-          {isPromote ? t("academy:transferModal.promoteNote") : t("academy:transferModal.demoteNote")}
+          {!isPromote
+            ? t("academy:transferModal.demoteNote")
+            : keepsContract
+              ? t("academy:transferModal.promoteNoteKeepsContract")
+              : t("academy:transferModal.promoteNote")}
         </p>
 
         <div className="flex gap-2">

@@ -35,6 +35,7 @@ import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfir
 import AcademyPnl from "../components/AcademyPnl.jsx";
 import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable } from "../components/ui";
 import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
+import { keepsExistingContractOnPromote } from "../lib/academyPromoteContract.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
@@ -266,7 +267,13 @@ export default function AcademyPage() {
       // #2796: division manglede, så salaryFromProduction faldt tilbage på den
       // globale sats OG på base-fallbacken 1000 (current_production_value var
       // ikke i payloaden) → dialogen viste 161 CZ$ for ENHVER rytter.
-      newSalary: projectSeniorSalary(rider, { division }),
+      // #3620: har rytteren allerede en kontrakt, regenereres den ikke, så
+      // lønnen ændrer sig ikke. Så viser vi den rigtige løn i stedet for en
+      // projektion der aldrig bliver skrevet.
+      newSalary: keepsExistingContractOnPromote(rider)
+        ? rider.salary
+        : projectSeniorSalary(rider, { division }),
+      keepsContract: keepsExistingContractOnPromote(rider),
     });
   }
 
@@ -574,6 +581,7 @@ export default function AcademyPage() {
         direction="promote"
         riderName={promoteConfirm?.riderName}
         newSalary={promoteConfirm?.newSalary}
+        keepsContract={!!promoteConfirm?.keepsContract}
         capLabel={`${seniorCount} / ${seniorMax}`}
         capAfterLabel={`${seniorCount + 1} / ${seniorMax}`}
         busy={promoteConfirm ? actionState[promoteConfirm.riderId] === "promoting" : false}

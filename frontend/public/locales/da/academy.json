@@ -43,6 +43,7 @@
     "promoteQuestion": "Ryk denne akademi-rytter op i din senior-trup:",
     "promoteConfirm": "Ryk op",
     "promoteNote": "Rytteren optager en senior-plads og får en senior-kontrakt. Akademi-lønnen erstattes af senior-lønnen vist ovenfor.",
+    "promoteNoteKeepsContract": "Rytteren optager en senior-plads. Den nuværende kontrakt og løn fortsætter uændret.",
     "demoteTitle": "Flyt til akademi",
     "demoteQuestion": "Flyt denne senior-rytter ned i dit akademi:",
     "demoteConfirm": "Flyt til akademi",
