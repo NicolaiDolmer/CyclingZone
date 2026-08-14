@@ -1,0 +1,150 @@
+name: Security grants audit
+
+# Vagt mod klient-eksekverbare SECURITY DEFINER-funktioner (#2858).
+#
+# Hændelsen der gjorde den nødvendig (#3765): apply_race_results_batch stod
+# EXECUTE-bar for anon i ni dage. Funktionen er SECURITY DEFINER uden intern
+# gate og sletter + indsætter i race_results — enhver med den publicerbare
+# anon-nøgle kunne have omskrevet ethvert løbs resultater.
+#
+# Hvorfor intet fangede det:
+#   1. auto-migrate.yml kører kun `database/*.sql` (maxdepth 1). Funktionen kom
+#      fra database/proposals/ og blev anvendt i hånden — kun CREATE-delen kom
+#      med, REVOKE-linjerne nederst i filen blev aldrig kørt.
+#   2. rls-audit.yml dækker TABEL-grants (#2830), ikke FUNKTIONS-grants.
+#   3. Intet kaldte Supabase-advisoren (0028/0029) eller læste pg_proc.proacl.
+#
+# To lag, fordi ingen af dem kan stå alene:
+#   lint  (PR, ændrede filer)  — spærrer nye fejl ved review-tid.
+#   live  (hver 6. time)       — ser den FAKTISKE database, og fanger derfor
+#                                også SQL anvendt i hånden via MCP/Studio, som
+#                                aldrig har været en fil i dette repo. Det var
+#                                præcis den sti #3765 kom ind ad.
+
+on:
+  pull_request:
+    paths:
+      - 'database/**'
+      - 'scripts/check-secdef-revoke-lint.mjs'
+      - 'scripts/security-grants.sql'
+      - '.github/workflows/security-grants-audit.yml'
+  schedule:
+    - cron: '15 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: security-grants-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lint:
+    name: Statisk REVOKE-lint (ændrede SQL-filer)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Selvtest af linten
+        run: node --test scripts/check-secdef-revoke-lint.test.mjs
+
+      - name: Lint ændrede SQL-filer
+        run: |
+          set -euo pipefail
+          BASE="origin/${{ github.base_ref }}"
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only --diff-filter=d "$BASE...HEAD" -- 'database/**/*.sql' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "✅ Ingen ændrede SQL-filer i database/ — intet at tjekke."
+            exit 0
+          fi
+          echo "Ændrede SQL-filer:"
+          printf '  %s\n' $CHANGED
+          echo ""
+          node scripts/check-secdef-revoke-lint.mjs $CHANGED
+
+  live:
+    name: Live grant-tjek mod prod
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify SUPABASE_DB_URL is configured
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "${DB_URL:-}" ]; then
+            echo "❌ SUPABASE_DB_URL secret missing — se docs/AUTO_MIGRATION_SETUP.md"
+            exit 1
+          fi
+
+      - name: Kør grant-tjek
+        id: check
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/security-grants.sql | sed '/^$/d')
+          if [ -z "$FINDINGS" ]; then
+            echo "✅ Ingen klient-eksekverbare SECURITY DEFINER-funktioner uden for allowlisten."
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ Fund:"
+            printf '%s\n' "$FINDINGS"
+            echo "has_findings=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "findings<<SECGRANTS_EOF"
+              printf '%s\n' "$FINDINGS"
+              echo "SECGRANTS_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Opret eller opdatér issue ved fund
+        if: steps.check.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.check.outputs.findings }}
+        run: |
+          set -euo pipefail
+          TITLE="[security-grants] Klient-eksekverbar SECURITY DEFINER-funktion i prod"
+          {
+            echo "Det automatiske grant-tjek (\`scripts/security-grants.sql\`) fandt SECURITY DEFINER-funktioner i \`public\` som \`anon\` eller \`authenticated\` kan kalde over PostgREST."
+            echo ""
+            echo '```'
+            printf '%s\n' "$FINDINGS"
+            echo '```'
+            echo ""
+            echo "Format: severity | check | detail"
+            echo ""
+            echo "**CRITICAL** = funktionen skriver i databasen. Behandl som et åbent hul indtil andet er bevist:"
+            echo "kør den foreslåede REVOKE, og tjek derefter om noget legitimt kaldte den (backend bruger service_role og rammes ikke)."
+            echo ""
+            echo "**WARN** = read-only. Bekræft at klient-adgangen er tilsigtet; er den det, tilføjes funktionen til allowlisten i \`scripts/security-grants.sql\` MED begrundelse."
+            echo ""
+            echo "Baggrund: #2858 (klassen) · #3765 (hændelsen — ni dages eksponering)."
+            echo "Workflow: .github/workflows/security-grants-audit.yml"
+          } > security-grants-body.md
+          EXISTING=$(gh issue list --state open --search "security-grants in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "↳ Åbent issue #$EXISTING findes — tilføjer kommentar."
+            gh issue comment "$EXISTING" --body-file security-grants-body.md
+          else
+            echo "↳ Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file security-grants-body.md --label "claude:todo" --label "security"
+          fi
+
+      - name: Fejl ved fund
+        if: steps.check.outputs.has_findings == 'true'
+        run: |
+          echo "::error::Grant-tjekket fandt klient-eksekverbare SECURITY DEFINER-funktioner. Se issue."
+          exit 1
