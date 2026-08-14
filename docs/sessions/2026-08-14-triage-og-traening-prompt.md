@@ -1,4 +1,4 @@
-# Session-prompt: triage, patch notes-hul og træningen i mål
+# Session-prompt (14/8, samme dag): triage, patch notes-hul og træningen i mål
 
 **Model:** Opus 5 i hovedtråden · **Indsats:** high · **Form:** workflow-session med parallelle spor
 **Subagenter:** Sonnet til mekaniske spor, Opus til trænings-sporet (design-tro implementering)
