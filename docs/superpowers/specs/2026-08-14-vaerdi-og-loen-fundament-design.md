@@ -62,6 +62,13 @@ Med 129 mio. i kontanter mod 360 mio. i ryttere kan et fuldt kronedrevet marked 
 | 1 | Skal spillerdata bestemme forholdet mellem ryttere, eller også hvor mange kroner der står? | **Forholdet nu, begge dele på sigt.** Markedet sætter strukturen; simuleringen sætter niveauet. Vi bevæger os gradvist mod fuldt dynamisk |
 | 2 | Hvor tit må værdier ændre sig? | **Kun om søndagen.** Aldrig dagligt |
 | 3 | Hvad afgør hvornår markedet også får kroneniveauet? | **To målinger, begge skal være grønne.** Ikke en dato, ikke en fornemmelse |
+| 4 | Hvad begrænser en løn i toppen? | **Intet loft. Fladere kurve.** Og et princip der overtrumfer: **lønnen udregnes af rytteren, ikke af holdet** |
+
+### Beslutning 4, og hvorfor coordinatorens forslag blev afvist
+
+Coordinatoren anbefalede et loft som andel af holdets indtægt. Ejeren afviste det med et princip der er stærkere end forslaget: **et lønkrav er en egenskab ved rytteren, ikke ved den der spørger.**
+
+Bindes lønnen til køberens indtægt, koster den samme rytter forskelligt alt efter hvem der forhandler. Så er det ikke længere et krav, det er en rabat, og en auktion bliver umulig at læse for den der byder. Loftet skal derfor komme fra kurvens form, ikke fra modpartens pengepung.
 
 ### 3.1 Beslutning 1, konkret
 
