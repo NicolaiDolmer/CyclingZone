@@ -204,7 +204,8 @@ Sænkes signatur-raten til 0,30 lander spidsen tæt på dagens 36, men rating fa
 | 5 | Taget klipper ved 99 for potentiale ≥ 5 | **åben** — løses af trin 7 (potentiale = fart) |
 | 6 | Markedsværdi ikke målt direkte | **åben** — evnesummen (input) er målt; `predictBaseValue`-outputtet ikke |
 | 7 | Staff-stien uverificeret | **åben** — `facilityTrainingMultiplier` målt til maks +8,3 % ved tier 5; `staffTrainingBonus` gav 1,0 mod en syntetisk profil, hvilket lige så godt kan være forkert input |
-| 8 | Spidsen stiger 36 → 44 ved bedste spil | **afgjort** — beslutning 14: ankr rating, ikke spidsen. Race-balance i toppen måles om før trin 4 |
+| 8 | Spidsen stiger 36 → 44 ved bedste spil | **lukket 15/8** — race-balancen målt om på tre seeds: `maxSeasonWinRate` går fra uden for båndet til inden for. En højere top gav MINDRE dominans, fordi den bedste rytter bliver specialist frem for bedst til alt. `docs/audits/2026-08-15-3709-race-balance-mod-hoejere-top.md` |
+| 9 | Ankeret målte 29 → 27 i stedet for specens 27 → 28 | **accepteret som uafklaret 15/8** (beslutning 17, §8.1). Trin 0's harness fra 14/8 blev aldrig committet, så afvigelsen kan ikke efterprøves — kun genmåles fra bunden. Ejeren valgte at acceptere frem for at bruge dage på det |
 
 ---
 
@@ -309,7 +310,7 @@ Udkast skrives til copy-paste. **Ejeren poster selv.**
 
 ---
 
-## 8. De 14 beslutninger
+## 8. De 17 beslutninger
 
 | # | Spørgsmål | Valg |
 |---|---|---|
@@ -329,6 +330,27 @@ Udkast skrives til copy-paste. **Ejeren poster selv.**
 | 14 | Ankr rating eller spidsen? | Rating — signatur-rate 0,45 |
 | 15 | Skal taget vises i trin 1? | Nej. Flyttet til trin 3 (#1162, se §5.0) |
 | 16 | Sæson eller uge på kvitteringen? | Sæson |
+| 17 | Ankeret holdt ikke i genmålingen — accepter eller genåbn raten? | **Accepter.** Se §8.1 |
+
+### 8.1 Beslutning 17, ejer 15/8: ankeret accepteres som det måles
+
+Trin 4's implementering (PR [#3741](https://github.com/NicolaiDolmer/CyclingZone/pull/3741)) genmålte beslutning 7 og 14 på 1.200 friske ryttere og fandt at **ankeret vender den forkerte vej**:
+
+| | specen (§3bis) | genmålt 15/8 |
+|---|---:|---:|
+| I dag, bedste strategi | 27 | **29** |
+| Kandidat, bedste strategi | **28** | **27** |
+| Agens-spænd på rating | 10 | 7 |
+
+Specen lovede at fremragende træning holder dagens niveau. Målt lander selv den bedst ledede rytter **~2 point under** i dag, og den samlede evnesum falder ~22 % (276 → 214).
+
+**Ejeren har accepteret det.** Signatur-raten på 0,45 står, beslutning 14 genåbnes ikke, og trin 0's harness bygges ikke om for at jagte de to point. Prisen er bevidst: alle ender lidt lavere, og til gengæld går agens-spændet fra 1 til 7 ratingpoint, mens spidsevnen ved bedste spil stiger fra 38 til 45.
+
+Ejerens ramme for valget, 15/8: *et spil hvor alle ryttere bliver lidt bedre men manageren ikke har indflydelse, mod et hvor de bliver lidt dårligere i snit men hvor det manageren gør afgør hvad rytteren bliver.* Han valgte det sidste.
+
+**Afvigelsen mellem 27→28 og 29→27 lukkes som uafklaret, ikke som løst.** Den skyldes formodentlig harness-forskelle der ikke kan efterprøves: trin 0's harness fra 14/8 blev aldrig committet, og specen definerer hverken de fire strategier, condition-multiplikatoren eller om manager-bonussen gælder. Det står som kendt hul nr. 9 i §4, ikke som en åben opgave.
+
+**Følge:** race-balancen ER målt om (`docs/audits/2026-08-15-3709-race-balance-mod-hoejere-top.md`) og blokerer ikke — `maxSeasonWinRate` går fra uden for båndet til inden for på alle tre seeds. Præmissen om #2731 i session-prompten var forældet: issuet blev lukket 3/8, og 0,67-0,75 var et oppustet punktestimat mod et korrekt målt 0,359.
 
 ---
 
