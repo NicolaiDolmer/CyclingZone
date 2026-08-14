@@ -800,7 +800,9 @@ test("#3709 trin 3: model-drift-ledgeren er skrevet mod DET godkendte facit", ()
   // DRYRUN_FACIT. Det er vagten mod at nogen retter facit OG ledgeren i samme
   // ombæring og dermed mister det historiske dokument.
   assert.equal(DRYRUN_FACIT.loftSaenketAntal, 7234, "det godkendte 10/8-tal må aldrig redigeres");
-  assert.equal(facitEfterDrift().loftSaenketAntal, 7230, "ledgeren skal flytte tallet til #3682-modellens");
+  assert.equal(DRYRUN_FACIT.saenkningMedian, 30, "det godkendte 10/8-tal må aldrig redigeres");
+  assert.equal(facitEfterDrift().loftSaenketAntal, 6641, "ledgeren skal flytte tallet til modellen efter trin 4");
+  assert.equal(facitEfterDrift().saenkningMedian, 22, "ledgeren skal flytte tallet til modellen efter trin 4");
   assert.throws(
     () => facitEfterDrift({ ...DRYRUN_FACIT, loftSaenketAntal: 9999 }),
     /Ledgeren er skrevet mod et andet facit/,

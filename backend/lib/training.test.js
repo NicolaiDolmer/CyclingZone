@@ -11,6 +11,7 @@ import {
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
+import { YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
 
 // ── Taksonomi-integritet ────────────────────────────────────────────────────────
 
@@ -219,11 +220,11 @@ test("focusTrainability: climber (uden sekundær type) — signatur-fokus er 'st
   assert.equal(t.threshold, "strength"); // tempo positiv (time_trial neutral 0.45)
   assert.equal(t.sprint, "limited");     // sprint(-1)→0.12, acceleration uvægtet→0.45 — blanding, ikke alle ≤0.12 (#3325: var 'blocked' da acceleration også var -1)
   assert.equal(t.endurance, "strength"); // endurance positiv
-  // #3709 trin 3: `technique` = descending + positioning + cobblestone, og
-  // positioning har nu håndværks-gulvet (0,95 ≥ naturalSecondaryFactor 0,82) →
-  // 'strength'. Se TECHNIQUE-noten under smartDefaultFocus-testene for hvorfor det
-  // er sandt, og hvorfor trin 2 gør det midlertidigt.
-  assert.equal(t.technique, "strength");
+  // #3709 trin 4: haandvaerks-taget (0,95) ligger nu UNDER sekundaer-taerskelen
+  // (1,10), saa climberens positioning laeses som 'limited' — samme tier som en
+  // helt neutral evne paa 0,70. Se HAANDVAERK-noten nedenfor: labelen kan ikke
+  // skelne 0,95 fra 0,70, og det er en kendt begraensning, ikke et resultat.
+  assert.equal(t.technique, "limited");
   assert.equal(t.aero, "limited");       // time_trial neutral (0.45), flat uvægtet→0.45 (#3325: var negativ)
 });
 
@@ -233,7 +234,7 @@ test("focusTrainability: sprinter (uden sekundær type) — sprint-fokus 'streng
   assert.equal(t.sprint, "strength");   // sprint+acceleration begge positive
   assert.equal(t.endurance, "strength"); // durability positiv (endurance selv er -1 → 0.12, men durability≥1 gør fokus 'strength')
   assert.equal(t.vo2max, "limited");    // climbing(-2)→0.12, punch/tempo neutrale (0.45) → ikke alle ≤0.12
-  // #3682: sprinteren EJER nu positioning (vægt 1) → primær-naturlig 1,0 → 'strength'.
+  // #3682: sprinteren EJER nu positioning (vaegt 1) → signatur → 'strength'.
   assert.equal(t.technique, "strength");
 });
 
@@ -255,37 +256,48 @@ test("focusTrainability: null/undefined primary_type → alt 'limited' (sikker n
   }
 });
 
-test("focusTrainability: ukendt type-STRENG rammer håndværks-gulvet, ikke null-kortslutningen", () => {
-  // "" og "nonexistent-type" er IKKE == null, så de går gennem youthRoleFactor og
-  // får den samme model som alle andre: alt neutralt (0,45) undtagen håndværket
-  // (0,95). Det er ærligt — en ukendt type ejer ingen evner, men håndværk kan alle
-  // lære. Sondringen er bevidst dokumenteret her, fordi den før trin 3 var usynlig
-  // (alt gav 'limited' uanset hvilken gren man ramte).
+test("focusTrainability: ukendt type-STRENG giver alt 'limited', ligesom null", () => {
+  // "" og "nonexistent-type" er IKKE == null, saa de gaar gennem youthRoleFactor i
+  // stedet for null-kortslutningen oeverst i funktionen. Efter trin 4 lander begge
+  // veje samme sted: en ukendt type ejer ingen evner (0,70 andenRolle) og
+  // haandvaerks-taget (0,95) naar ikke op over sekundaer-taerskelen (1,10).
+  // De to grene giver altsaa samme svar — men af FORSKELLIGE grunde, og det er
+  // vaerd at pinne, for aendres taallene igen, skilles de ad uden varsel.
   for (const primaryType of ["", "nonexistent-type"]) {
     const t = focusTrainability(primaryType);
-    assert.equal(t.technique, "strength", `${primaryType} → technique (positioning-gulvet)`);
-    for (const focusKey of TRAINING_FOCUS_KEYS.filter((k) => k !== "technique")) {
-      assert.equal(t[focusKey], "limited", `${primaryType} → ${focusKey} skulle være 'limited'`);
+    for (const focusKey of TRAINING_FOCUS_KEYS) {
+      assert.equal(t[focusKey], "limited", `${primaryType} → ${focusKey}`);
     }
   }
 });
 
-// ── TECHNIQUE-noten (#3709 trin 3) ──────────────────────────────────────────
-// `technique` = descending + positioning + cobblestone. Fordi positioning nu har
-// håndværks-gulvet, rapporterer focusTrainability 'strength' på technique for
-// HVER eneste ryttertype. Det er sandt om TAGET — men et signal der siger det
-// samme om alle bærer nul information, og labelen læser kun den ene af modellens
-// to knapper (den ser tag, ikke rate).
+// ── HAANDVAERK-noten (#3709 trin 4) ─────────────────────────────────────────
+// focusTrainability laeser KUN taget. Modellen har efter trin 4 TO knapper, og
+// labelen kan ikke se den anden:
 //
-// Begge dele forsvinder af sig selv i trin 2, hvor `technique` reduceres til
-// descending + cobblestone og positioning flytter til det nye `løbslære`-fokus.
-// Indtil da er tilstanden midlertidig og ærlig — ikke en regression der skal
-// maskeres i denne fil. Trin 4 skal derudover genbesøge om en tag-baseret label
-// overhovedet er den rigtige, når rate bliver en selvstændig knap.
-test("focusTrainability: technique er 'strength' for ALLE typer indtil trin 2 splitter fokusset", () => {
-  for (const type of RIDER_TYPE_KEYS) {
-    assert.equal(focusTrainability(type).technique, "strength", `${type}`);
-  }
+//   klasse       tag     rate    label
+//   signatur     1,30    0,45    strength
+//   sekundaer    1,10    0,36    strength
+//   haandvaerk   0,95    0,22    limited   ← hoejt tag, næstlavest rate
+//   andenRolle   0,70    0,15    limited
+//   svaghed      0,20    0,05    blocked (kun hvis ALLE fokus-evner er svagheder)
+//
+// Haandvaerk og andenRolle faar samme label selvom taget er 36 % hoejere paa den
+// ene. For positioning og tactics betyder det at spilleren faar at vide at det er
+// "begraenset", mens loftet i virkeligheden er taet paa en sekundaer evnes.
+//
+// Det er en KENDT begraensning, ikke et resultat. En label der skal vaere aerlig
+// om to knapper skal laese begge — og hvordan den skal se ud er en designbeslutning
+// paa traeningsfladen, som ejes af #3721. Trin 2 flytter desuden positioning ud af
+// `technique` og over i `loebslaere`, saa fokus-inddelingen selv aendrer sig.
+// Denne test pinner den nuvaerende, tag-only adfaerd saa aendringen bliver et VALG.
+test("focusTrainability: haandvaerk og andenRolle er UMULIGE at skelne i labelen (kendt begraensning)", () => {
+  const cfg = YOUTH_PROGRESSION_CONFIG;
+  assert.ok(cfg.craftFactor > cfg.neutralFactor, "haandvaerk HAR et hoejere tag ...");
+  assert.ok(cfg.craftFactor < cfg.naturalSecondaryFactor, "... men naar ikke op over 'strength'-taerskelen");
+  // climber ejer hverken positioning (haandvaerk 0,95) eller descending (andenRolle 0,70)
+  // — begge lander paa 'limited'.
+  assert.equal(focusTrainability("climber").technique, "limited");
 });
 
 test("#3682/#3709: smartDefaultFocus er UÆNDRET for alle otte typer (ingen rytter skifter fokus i prod)", () => {

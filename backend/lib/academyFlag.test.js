@@ -36,8 +36,17 @@ test("academySeasonFracForAge: uden for akademi-alder er ligegyldig (bruges aldr
   assert.ok(Number.isFinite(academySeasonFracForAge(30)));
 });
 
-test("ACADEMY.HARD_DAILY_CAP er 1 evne-point/dag (ejer-forslag 5/7, #2082)", () => {
-  assert.equal(ACADEMY.HARD_DAILY_CAP, 1);
+test("#3709 trin 5: HARD_DAILY_CAP og INTERIM_RATE_MULT er FJERNET (beslutning 13)", () => {
+  // De var 1 evne-point/dag og 1/3-daempning for akademi-alder. Begge fandtes kun
+  // for at bremse en model der maettede; trin 4 fjerner maetningen ved roden via
+  // rolle-raten. Testen er vendt om med vilje: den vogter nu at knapperne IKKE
+  // sniger sig tilbage, for genindfoeres de oven paa trin 4, falder
+  // rating-medianen fra 28 til 22 — under dagens 27, for alle.
+  assert.equal(ACADEMY.HARD_DAILY_CAP, undefined);
+  assert.equal(ACADEMY.INTERIM_RATE_MULT, undefined);
+  // Akademiet adskiller sig herefter KUN ved youthMultiplier.
+  assert.equal(youthMultiplier(16), ACADEMY.YOUTH_MULT);
+  assert.equal(youthMultiplier(22), 1.0);
 });
 
 test("isAcademyEnabled: fail-safe false ved fejl/fravær", async () => {

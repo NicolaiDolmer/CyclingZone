@@ -19,7 +19,6 @@ import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RAC
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { isAcademyAge, ACADEMY } from "./academyFlag.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { riderLevelBand } from "./staffAbilityConstants.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
@@ -314,20 +313,10 @@ export async function runTeamTrainingDay({
     const caps = buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type);
     const capsChanged = !sameCaps(abRow.ability_caps, caps);
 
-    // #2437 — MIDLERTIDIG INTERIM (ejer-godkendt 15/7), fjernes igen når den rigtige
-    // model (jævn alders-taper, egen session) lander. Rod-årsag (verificeret, IKKE
-    // issue-tekstens diagnose): #2202 lod akademi-alder få et SÆSON-loft
-    // (computeAcademySeasonCeiling/SEASON_FRAC_BY_AGE, #2082/#1938) sendt som `caps`
-    // til applyDailyTick i stedet for livstids-loftet. dailyAbilityDelta's gap
-    // (=cap−current) faldt fra ~17,9 til ~2,0 → dagsraten kollapsede ~9x og aftog
-    // derefter eksponentielt resten af sæsonen. Det var IKKE pulje-udtømning —
-    // sæson-budgettet stod 83% ubrugt i prod, fordi raten MOD budgettet selv aftog
-    // for hurtigt til nogensinde at nå det.
-    // Interim: INTET sæson-loft — tickCaps = livstids-loftet (`caps`) for ALLE
-    // ryttere. I stedet dæmpes akademi-alderens daglige rate direkte via
-    // ACADEMY.INTERIM_RATE_MULT (=1/3, kalibreret i careerCurveSimulation.js mod
-    // ægte prod-population). hardDailyCap (#2082/#1938-sikkerhedsnettet) er uændret.
-    const inAcademy = isAcademyAge(age);
+    // #2437's interim-knapper er FJERNET i #3709 trin 5 — se sharedTickArgs
+    // nedenfor for hvorfor (kort: de bremsede en model der maettede, og trin 4
+    // fjerner maetningen ved roden). tickCaps = livstids-loftet for ALLE aldre,
+    // uaendret siden #2437; det er nu den eneste semantik der findes.
     const tickCaps = caps;
 
     // Er rytteren skadet i dag?
@@ -370,10 +359,27 @@ export async function runTeamTrainingDay({
         conditionMult: condMult,
         bonus,
         potentiale: rider.potentiale,
-        hardDailyCap: inAcademy ? ACADEMY.HARD_DAILY_CAP : undefined,
-        // #2437 interim: akademi-alderens rate dæmpes direkte (se blok-kommentaren
-        // ved tickCaps ovenfor); voksne uændret (1.0 = bit-identisk).
-        academyRateMult: inAcademy ? ACADEMY.INTERIM_RATE_MULT : 1.0,
+        // ── TRIN 5 (#3709, beslutning 13, ejer 14/8): ÉN MODEL ────────────────
+        // `hardDailyCap` og `academyRateMult` er FJERNET. Begge fandtes kun for
+        // at bremse en model der mættede: da hver evne nåede sit loft inden for
+        // karrieren under alle indstillinger, var akademi-alderens høje rate en
+        // spike der skulle dæmpes. Trin 4 fjerner mætningen ved roden — rolle-
+        // raten gør at ryttere ikke længere NÅR deres lofter — og så bremser de
+        // to knapper ikke længere en fejl, de bremser bare væksten.
+        //
+        // ATTRIBUTIONEN GØR DETTE BÆRENDE, IKKE OPRYDNING. Målt: beholdes
+        // akademiets 1/3-dæmpning oven på trin 4, falder kandidatens
+        // rating-median fra 28 til 22 — altså langt UNDER dagens 27, for alle.
+        // Trin 4 og 5 er derfor ét ship; trin 5 kan ikke udskydes uden at ramme
+        // spillerne med et midlertidigt fald.
+        //
+        // Akademiet adskiller sig herefter KUN ved `youthMultiplier` (1,50 ved
+        // 16 år, aftagende til 1,00 ved 22) — som `dailyAbilityDelta` allerede
+        // ganger ind selv. `computeAcademySeasonCeiling` var i forvejen ude af
+        // produktionsstien (#2437 satte tickCaps = caps).
+        // #3709 trin 4: anlægget sendes med, så rolle-raten kan slås op pr. evne.
+        primaryType: rider.primary_type,
+        secondaryType: rider.secondary_type,
         // Plan B (#1441): facilitets-magnitude + chef-specialisering. riderLevel
         // (u23/senior — #2529) styrer chefens niveau-affinitets-match pr. rytter.
         staff: trainingStaff,

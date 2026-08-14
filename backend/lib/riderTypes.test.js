@@ -232,13 +232,33 @@ test("#3570: LØKKEN ER SELVBEKRÆFTENDE — en forkert type cementeres for evig
   const ctx = { potentiale: 5, age: null };
 
   // Rytteren ER trukket som gc, men bærer en gammel fejl-label: sprinter.
+  //
+  // #3709 trin 4 ændrede HVILKET fikspunkt løkken lander på, ikke AT den lander
+  // på et. Før trin 4 cementeredes fejl-labelen selv ("sprinter" for evigt). Med
+  // de nye, mere sammentrykkede rolle-faktorer (1,30/1,10/0,95/0,70/0,20 mod
+  // tidligere 1,00/0,82/0,45/0,12) bærer lofterne mindre type-signal, så løkken
+  // glider ét skridt væk fra fejl-labelen — og står så stille et NYT forkert sted.
+  //
+  // Bemærk hvor den lander: `baroudeur`. Det er præcis den type #3570 målte at
+  // populationen drev imod (76,7 % af ejede unge). Løkken er altså ikke blevet
+  // ufarlig af at blive svagere — den peger stadig samme vej. Det er forankringen
+  // (archetype_draw, nedenfor) der løser den, og den er live.
+  //
+  // Påstanden testen beviser er derfor uændret: UDEN forankring finder rytteren
+  // aldrig tilbage til sit anlæg, uanset hvor mange runder man giver ham.
   let forkert = { primary: { key: "sprinter" }, secondary: { key: "rouleur" } };
+  const spor = [];
   for (let runde = 0; runde < 10; runde++) {
     const caps = buildCapsForRider(start, ctx, forkert.primary.key, forkert.secondary.key);
     forkert = computeRiderTypes(caps, BASELINE);
+    spor.push(forkert.primary.key);
   }
-  assert.equal(forkert.primary.key, "sprinter",
-    "uden forankring er fejl-labelen et fikspunkt — rytteren finder aldrig tilbage til sit anlæg");
+  assert.notEqual(forkert.primary.key, "gc",
+    "uden forankring finder rytteren aldrig tilbage til sit anlæg (gc)");
+  assert.equal(forkert.primary.key, spor[spor.length - 2],
+    "løkken skal stå stille på ET fikspunkt — driver den stadig efter 10 runder, er defekten en anden");
+  assert.equal(forkert.primary.key, "baroudeur",
+    "fikspunktet efter trin 4 er baroudeur — samme retning #3570 målte i prod");
 
   // Med forankring finder han tilbage i FØRSTE runde og bliver der.
   const draw = { primary: "gc", secondary: null, isHybrid: false };

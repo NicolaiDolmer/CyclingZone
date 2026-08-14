@@ -42,20 +42,29 @@ export const ACADEMY = Object.freeze({
     { maxAge: 19, frac: 0.11 },
     { maxAge: 99, frac: 0.08 },
   ]),
-  // Hård dags-cap: maks +1 evne-point/dag pr. evne for akademi-alder — sikkerhedsnet
-  // mod enkelt-dags-spikes (prod-empiri #2082: værste +156 pt/10 dage for én rytter).
-  HARD_DAILY_CAP: 1,
-
-  // #2437 — MIDLERTIDIG interim, fjernes igen når den rigtige model (jævn alders-taper,
-  // egen session) lander. #2202 lod dailyTrainingEngine.js sende sæson-loftet
-  // (SEASON_FRAC_BY_AGE/computeAcademySeasonCeiling) som `caps` i stedet for livstids-
-  // loftet — gappet i dailyAbilityDelta kollapsede ~9x og raten aftog eksponentielt
-  // derefter. Sæson-budgettet var IKKE opbrugt (83% ubrugt i prod): puljen var
-  // uopnåelig, ikke tømt. 1/3 er kalibreret i careerCurveSimulation.js mod den ægte
-  // prod-population (16-21 år) og ejer-godkendt 15/7: akademi-raten går fra
-  // 0,58 → 1,18 pt/dag/rytter, og 22-års-springet falder fra +102 til +51 point
-  // (mindre af det låste sæson-loft frigives på én gang).
-  INTERIM_RATE_MULT: 1 / 3,
+  // ── HARD_DAILY_CAP + INTERIM_RATE_MULT ER FJERNET (#3709 trin 5, beslutning 13) ──
+  //
+  // De var:
+  //   HARD_DAILY_CAP: 1         maks +1 evne-point/dag/evne for akademi-alder
+  //   INTERIM_RATE_MULT: 1/3    dæmpning af akademi-alderens daglige rate
+  //
+  // Begge fandtes kun for at bremse en model der MÆTTEDE. #2082's prod-empiri
+  // (værste tilfælde +156 point på 10 dage) og #2437's interim var symptomer på
+  // det samme: når hver evne når sit loft inden for karrieren under alle
+  // indstillinger, er en høj ungdoms-rate en spike der skal klippes. Trin 4
+  // fjerner mætningen ved roden via rolle-raten, og så bremser de to knapper
+  // ikke længere en fejl — de bremser bare væksten.
+  //
+  // Det er IKKE oprydning, det er bærende. Målt: beholdes 1/3-dæmpningen oven på
+  // trin 4, falder kandidatens rating-median fra 28 til 22, altså langt under
+  // dagens 27, for alle. Derfor er trin 4 og 5 ét ship.
+  //
+  // Akademiet adskiller sig herefter KUN ved `youthMultiplier` nedenfor.
+  //
+  // ⚠ `SEASON_FRAC_BY_AGE` + `academySeasonFracForAge` er BEVARET fordi
+  //   careerCurveSimulation.js modellerer den GAMLE adfærd med dem i sine
+  //   før/efter-sammenligninger. De er ikke i produktionsstien og har ikke
+  //   været det siden #2437.
 });
 
 export function isAcademyAge(age) {
