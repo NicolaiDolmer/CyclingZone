@@ -152,6 +152,54 @@ test('stripCommentsKeepStrings preserves string contents and length', () => {
   assert.ok(!out.includes('teams'));
 });
 
+// A regex literal containing a quote used to desync the tokeniser: the quote
+// opened a phantom string, so every later // comment stopped being blanked.
+// Real occurrence: backend/lib/emailTemplates.js does .replace(/"/g, "&quot;").
+test('a regex containing a quote does not desync the tokeniser', () => {
+  const src = `const esc = (s) => s.replace(/"/g, "&quot;");\n`
+    + `// await supabase.from("riders").select("id, ghost_column");\n`
+    + `await supabase.from("riders").select("id");`;
+  const out = stripCommentsKeepStrings(src);
+  assert.equal(out.length, src.length);
+  assert.ok(!out.includes('ghost_column'), 'the commented-out select must still be blanked');
+  assert.equal(run(src).findings.length, 0);
+});
+
+test('a select commented out after a quote-carrying regex is not scanned', () => {
+  const src = `const esc = (s) => s.replace(/'/g, "&#39;");\n`
+    + `// await supabase.from("riders").select("id, not_a_column");\n`
+    + `await supabase.from("riders").select("firstname");`;
+  assert.equal(run(src).findings.length, 0);
+});
+
+test('division is not mistaken for a regex literal', () => {
+  const src = `const share = total / count; const pct = share / 100;\n`
+    + `// from("riders").select("ghost")\n`
+    + `await supabase.from("riders").select("id");`;
+  const out = stripCommentsKeepStrings(src);
+  assert.equal(out.length, src.length);
+  assert.ok(out.includes('total'), 'code before the division survives');
+  assert.ok(out.includes('count'), 'code after the division survives');
+  assert.ok(!out.includes('ghost'), 'the comment is still blanked');
+  assert.equal(run(src).findings.length, 0);
+});
+
+test('a slash inside a regex character class does not close the regex', () => {
+  const src = `const seg = path.split(/[/\\\\]/).pop();\n`
+    + `await supabase.from("riders").select("id");`;
+  const out = stripCommentsKeepStrings(src);
+  assert.equal(out.length, src.length);
+  assert.equal(run(src).findings.length, 0);
+});
+
+test('a real select is still caught on the line after a regex', () => {
+  const src = `const esc = (s) => s.replace(/"/g, "&quot;");\n`
+    + `await supabase.from("riders").select("id, ghost_column");`;
+  const findings = run(src).findings;
+  assert.equal(findings.length, 1, 'the guard must not go blind after a regex');
+  assert.ok(findings[0].column === 'ghost_column' || JSON.stringify(findings[0]).includes('ghost_column'));
+});
+
 // ---------------------------------------------------------------------------
 // Escape hatch.
 // ---------------------------------------------------------------------------

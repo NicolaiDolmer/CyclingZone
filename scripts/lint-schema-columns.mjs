@@ -128,18 +128,52 @@ export const KNOWN_FINDINGS = {
 // lint-rankings-raceresults-fetch.mjs. Length and newlines are preserved so
 // offsets and line numbers still point at the raw source.
 // ---------------------------------------------------------------------------
+// A `/` opens a regex literal only in operand position. Getting this wrong in
+// the SAFE direction (reading a regex as division) just restores the old
+// behaviour for that one token; the unsafe direction would swallow real code,
+// so anything ambiguous — identifiers, `)`, `]`, digits — is division.
+const REGEX_PRECEDERS = new Set(
+  ['=', '(', ',', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '^', '~', '<', '>']
+);
+const REGEX_KEYWORDS = new Set(
+  ['return', 'typeof', 'instanceof', 'in', 'of', 'case', 'do', 'else', 'yield', 'await', 'void', 'delete', 'new', 'throw']
+);
+
+function regexCanStartAfter(out) {
+  let j = out.length - 1;
+  while (j >= 0 && /\s/.test(out[j])) j--;
+  if (j < 0) return true;
+  const c = out[j];
+  if (REGEX_PRECEDERS.has(c)) return true;
+  if (/[A-Za-z0-9_$]/.test(c)) {
+    let k = j;
+    while (k >= 0 && /[A-Za-z0-9_$]/.test(out[k])) k--;
+    return REGEX_KEYWORDS.has(out.slice(k + 1, j + 1));
+  }
+  return false;
+}
+
 export function stripCommentsKeepStrings(src) {
   const n = src.length;
   let out = '';
   let i = 0;
-  // 0 code · 1 line-comment · 2 block-comment · 3 '..' · 4 ".." · 5 `..`
+  // 0 code · 1 line-comment · 2 block-comment · 3 '..' · 4 ".." · 5 `..` · 6 /../
   let state = 0;
+  let inCharClass = false;
   while (i < n) {
     const c = src[i];
     const c2 = src.slice(i, i + 2);
     if (state === 0) {
       if (c2 === '//') { state = 1; out += '  '; i += 2; continue; }
       if (c2 === '/*') { state = 2; out += '  '; i += 2; continue; }
+      // Regex literal. Without this the quote in `.replace(/"/g, "&quot;")`
+      // opens a phantom string and every later // comment in the file stops
+      // being blanked — a select inside one of them would be scanned as real
+      // code. Blanked rather than kept: nothing inside a regex is ever a
+      // select argument, so this removes the whole false-positive class.
+      if (c === '/' && regexCanStartAfter(out)) {
+        state = 6; inCharClass = false; out += ' '; i++; continue;
+      }
       if (c === "'") { state = 3; out += c; i++; continue; }
       if (c === '"') { state = 4; out += c; i++; continue; }
       if (c === '`') { state = 5; out += c; i++; continue; }
@@ -152,6 +186,17 @@ export function stripCommentsKeepStrings(src) {
     if (state === 2) {
       if (c2 === '*/') { state = 0; out += '  '; i += 2; continue; }
       out += (c === '\n' ? '\n' : ' '); i++; continue;
+    }
+    if (state === 6) {
+      if (c === '\\') { out += ' '.repeat(c2.length); i += c2.length; continue; }
+      // A regex literal cannot span lines. An unterminated one means the
+      // heuristic misread a division, so fall back to code rather than eat
+      // the rest of the file.
+      if (c === '\n') { state = 0; out += '\n'; i++; continue; }
+      if (c === '[') inCharClass = true;
+      else if (c === ']') inCharClass = false;
+      else if (c === '/' && !inCharClass) state = 0;
+      out += ' '; i++; continue;
     }
     if (c === '\\') { out += src.slice(i, i + 2); i += 2; continue; }
     if ((state === 3 && c === "'") || (state === 4 && c === '"') || (state === 5 && c === '`')) {
