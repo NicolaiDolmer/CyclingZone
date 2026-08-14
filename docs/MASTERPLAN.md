@@ -74,7 +74,7 @@ Verdensklasse **bølge 2** (Race Centre, Peloton Post, klubhus/rivaler, palmarè
 
 ## Stående (viger aldrig)
 
-**Balance:** #2731 maxRiderWinRate 0,67-0,75 vs. mål 0,45 · #2557 hold-dominans · #3015 AI-ryttere restituerer aldrig · #3009 scorecards exiter grønt trods FAIL.
+**Balance:** #2557 hold-dominans er det ENESTE åbne. #2731, #3015 og #3009 blev lukket 3/8 men stod her som "stående" i 12 dage — og fik 15/8 en session til at bygge på et forældet tal (rettet). #2731's 0,67-0,75 var et oppustet punktestimat; Wilson-lower-bound måler 0,359 og grønt (`docs/audits/2026-08-03-race-balance-2731.md`).
 **Doktrin:** styrke straffes ALDRIG, balance = struktur · overlap intended, 1 rytter = 1 løb/dag · simulér-før-ship for alt balance-følsomt.
 
 ## 2027-horisont (bevidst ikke i kø)
