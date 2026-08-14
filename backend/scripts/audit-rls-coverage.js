@@ -23,9 +23,9 @@
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role required)
 // Requires: RPC public.audit_rls_coverage() — see database/2026-05-10-audit-rls-helper.sql
-// Requires (write-grant checks, #2830 — degrades gracefully if unapplied):
+// Requires (write-grant checks, #2830 — a missing RPC is now CRITICAL, not silent):
 //   RPCs public.audit_write_grants() + public.audit_default_privileges() —
-//   see database/proposals/2026-08-05-audit-write-grants-helper.sql
+//   see database/2026-08-05-audit-write-grants-helper.sql
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -94,10 +94,11 @@ async function fetchRlsState() {
 
 // #2830: table-level write-grant state (anon/authenticated INSERT/UPDATE/
 // DELETE/TRUNCATE, RLS state, and whether a covering write policy exists).
-// Returns null (not []) when the helper RPC isn't applied yet, so the caller
-// can degrade to an info-only note instead of crashing the whole audit —
-// this script must keep working for the SELECT-coverage checks even before
-// the owner applies the #2830 proposal.
+// Returns null (not []) when the helper RPC is missing, så SELECT-coverage-
+// tjekkene stadig kan køre i stedet for at hele auditten crasher. Kalderen
+// omsætter null til et CRITICAL-fund (#2830, 14/8) — ikke et info-notat, som
+// det var før: RPC'en havde svaret 404 ~92 gange i døgnet siden 5/8, mens
+// rls-audit.yml rapporterede grønt på halvdelen af sit scope.
 async function fetchWriteGrantState() {
   const { data, error } = await supabase.rpc("audit_write_grants");
   if (error) {
@@ -106,7 +107,7 @@ async function fetchWriteGrantState() {
     throw new Error(formatSupabaseAuditError(
       "audit_write_grants RPC",
       error,
-      "Apply database/proposals/2026-08-05-audit-write-grants-helper.sql first (#2830)."
+      "Apply database/2026-08-05-audit-write-grants-helper.sql first (#2830)."
     ));
   }
   return data || [];
@@ -124,7 +125,7 @@ async function fetchDefaultPrivilegeState() {
     throw new Error(formatSupabaseAuditError(
       "audit_default_privileges RPC",
       error,
-      "Apply database/proposals/2026-08-05-audit-write-grants-helper.sql first (#2830)."
+      "Apply database/2026-08-05-audit-write-grants-helper.sql first (#2830)."
     ));
   }
   return data || [];
@@ -286,11 +287,16 @@ if (isMain) {
   ]);
   const findings = classify(tables, frontendRefs);
   const guardFindings = classifyPolicyGuard(tables);
+  // En manglende RPC er `critical`, ikke `info` (#2830, ændret 14/8). Da den var
+  // `info`, kørte rls-audit.yml grønt hver uge på HALVDELEN af sit scope: begge
+  // helper-RPC'er svarede 404 (målt 92 kald/døgn hver i edge-loggen), fordi
+  // migrationen aldrig var anvendt. En audit der ikke kan køre må ikke se ud som
+  // en audit der intet fandt — grøn skal betyde dækket, ikke bare fejlfri.
   const writeGrantFindings = writeGrantRows === null
-    ? [{ table: "(audit_write_grants)", severity: "info", reason: "Write-grant audit RPC not applied yet — see database/proposals/2026-08-05-audit-write-grants-helper.sql (#2830)", policy_names: [] }]
+    ? [{ table: "(audit_write_grants)", severity: "critical", reason: "Write-grant audit RPC svarer ikke — auditten kan ikke køre og dækker derfor IKKE write-grants. Anvend database/2026-08-05-audit-write-grants-helper.sql (#2830)", policy_names: [] }]
     : classifyWriteGrants(writeGrantRows);
   const defaultPrivilegeFindings = defaultPrivilegeRows === null
-    ? [{ table: "(audit_default_privileges)", severity: "info", reason: "Default-privilege audit RPC not applied yet — see database/proposals/2026-08-05-audit-write-grants-helper.sql (#2830)", policy_names: [] }]
+    ? [{ table: "(audit_default_privileges)", severity: "critical", reason: "Default-privilege audit RPC svarer ikke — forward-guarden mod at nye tabeller fødes klient-skrivbare er ude af drift. Anvend database/2026-08-05-audit-write-grants-helper.sql (#2830)", policy_names: [] }]
     : classifyDefaultPrivileges(defaultPrivilegeRows);
   const allFindings = [...findings, ...guardFindings, ...writeGrantFindings, ...defaultPrivilegeFindings];
   const critical = allFindings.filter((f) => f.severity === "critical");

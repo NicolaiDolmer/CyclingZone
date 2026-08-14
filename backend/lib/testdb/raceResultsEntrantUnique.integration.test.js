@@ -2,7 +2,7 @@
 // via PGlite (in-memory, ingen Docker, ingen cost) — samme mønster som
 // fictionalRiderGenerator.integration.test.js.
 //
-// Kører de TO ÆGTE, COMMITTEDE migrations-filer (database/proposals/2026-08-05-*.sql)
+// Kører de TO ÆGTE, COMMITTEDE migrations-filer (database/2026-08-05-*.sql)
 // mod et prod-tro race_results-skema — IKKE en re-typet kopi. Beviser:
 //   1. entrant_key-kolonnen beregnes af DB'en 1:1 som backend/lib/raceResultEntrantKey.js
 //      forudsiger (de to sider bevises ENIGE her, ikke bare "burde matche").
@@ -69,11 +69,8 @@ CREATE TABLE race_results (
 );
 `;
 
-function loadProposal(filename) {
-  const raw = readFileSync(join(DATABASE_DIR, "proposals", filename), "utf8");
-  return sanitizeForPglite(raw);
-}
-
+// Begge filer blev forfremmet fra database/proposals/ til top-niveau 14/8
+// (#3777) — de var anvendt i prod for længst, men lå stadig som udkast.
 function loadMigration(filename) {
   const raw = readFileSync(join(DATABASE_DIR, filename), "utf8");
   return sanitizeForPglite(raw);
@@ -83,8 +80,8 @@ let db;
 before(async () => {
   db = new PGlite();
   await db.exec(BASE_DDL);
-  await db.exec(loadProposal("2026-08-05-race-results-entrant-key-unique-constraint.sql"));
-  await db.exec(loadProposal("2026-08-05-race-results-batch-write-atomic-rpc.sql"));
+  await db.exec(loadMigration("2026-08-05-race-results-entrant-key-unique-constraint.sql"));
+  await db.exec(loadMigration("2026-08-05-race-results-batch-write-atomic-rpc.sql"));
   // #3416: entrant_uid-migrationen ovenpå — præcis som prod-apply-rækkefølgen.
   await db.exec(loadMigration("2026-08-06-race-results-entrant-uid.sql"));
 });
