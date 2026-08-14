@@ -13,7 +13,35 @@
 //
 // GDPR: kun spil-id'er (rider/auction/team) og backend-fejlkoder. Aldrig email,
 // holdnavn eller anden PII — samme linje som setSentryUser i sentry.jsx (#621).
+//
+// ── #3767: afvisninger er produktdata, ikke hændelser ────────────────────────
+//
+// Oprindeligt gik BEGGE udfald til Sentry som issues. Det gav en flade der
+// hverken virkede som drift eller som analyse: de fem `player action rejected`-
+// issues stod `archived_until_escalating`, kunne pr. definition ikke udløse
+// projektets eneste alarmregel (kun high-priority), og blev derfor aldrig set.
+// 51 afvisninger over 30 dage — heriblandt 13 spillere stoppet af
+// `contract_extension_cap_reached` — lå usete i arkivet.
+//
+// De to udfald er forskellige ting og hører derfor to forskellige steder:
+//
+//   rejected — backend/UI sagde nej til en gyldig forespørgsel (for lavt bud,
+//              loft nået). Det er ikke en fejl; det er en spiller der rammer en
+//              væg. → player_events, hvor det kan tælles og krydses med resten
+//              af produktanalysen. Sentry får kun en breadcrumb, så konteksten
+//              stadig følger med hvis der SENERE sker en ægte fejl i samme
+//              session. Breadcrumbs opretter ingen issues og larmer derfor ikke.
+//
+//   threw    — en Error slap ud (netværk, uventet tilstand). Det ER en
+//              hændelse. → Sentry som exception, uændret.
+//
+// Konsekvensen er at Sentrys issue-liste igen kun indeholder rigtige fejl, så
+// en bred alarmregel ("giv besked ved nye unresolved issues") bliver brugbar i
+// stedet for at spamme. Prisen: player_events er consent-gated, så afvisninger
+// fra spillere uden analytics-samtykke tælles ikke. Det er den rigtige GDPR-
+// position for adfærdsdata, og undertællingen er ensartet på tværs af events.
 import * as Sentry from "@sentry/react";
+import { logEvent } from "./logEvent.js";
 
 const ENABLED = import.meta.env.PROD && Boolean(import.meta.env.VITE_SENTRY_DSN);
 
@@ -37,20 +65,40 @@ function trim(value, max = 200) {
  * @param {object} [detail.context] Spil-id'er, fx { riderId, auctionId }.
  */
 export function reportActionFailure(action, detail = {}) {
-  if (!ENABLED || !action) return;
+  if (!action) return;
   const { reason, status, cause, context } = detail;
-  const scope = {
-    level: "warning",
-    tags: { player_action: action },
-    extra: { reason: trim(reason), status, ...context },
-  };
+  const trimmedReason = trim(reason);
+
+  // threw: en ægte Error slap ud → Sentry-exception, uændret adfærd.
   if (cause instanceof Error) {
-    scope.tags.player_action_kind = "threw";
-    Sentry.captureException(cause, scope);
+    if (!ENABLED) return;
+    Sentry.captureException(cause, {
+      level: "warning",
+      tags: { player_action: action, player_action_kind: "threw" },
+      extra: { reason: trimmedReason, status, ...context },
+    });
     return;
   }
-  scope.tags.player_action_kind = "rejected";
-  Sentry.captureMessage(`player action rejected: ${action}`, scope);
+
+  // rejected: spilleren blev stoppet af en regel. Produktdata (#3767).
+  // logEvent har sine egne gates (samtykke + auth) og er fire-and-forget —
+  // instrumentering må aldrig vælte spillerens flow.
+  logEvent("action_rejected", {
+    action,
+    reason: trimmedReason,
+    status,
+    ...context,
+  });
+
+  // Breadcrumb, ikke captureMessage: giver konteksten videre til en eventuel
+  // senere exception i samme session uden at oprette et issue.
+  if (!ENABLED) return;
+  Sentry.addBreadcrumb({
+    category: "player_action",
+    level: "warning",
+    message: `player action rejected: ${action}`,
+    data: { reason: trimmedReason, status, ...context },
+  });
 }
 
 // Kun til test — lader unit-tests verificere trim-adfærden uden Sentry-runtime.
