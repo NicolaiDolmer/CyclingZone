@@ -4,6 +4,46 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.128",
+    "date": "2026-08-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Picking a training focus now shows what each one trains",
+          "body": "What changed: The focus dropdown is now a panel. Every focus gets its own line with the abilities it trains, so you can compare them side by side instead of guessing from the name.\n\nWhy: The dropdown cut off long names, and the guide explaining what each focus trains sat far above the rider you were setting it for.\n\nWhat it means for you: One click more to change a focus, and you can see what you are choosing between while you choose."
+        },
+        "da": {
+          "title": "Når du vælger træningsfokus, kan du nu se hvad hvert enkelt træner",
+          "body": "Hvad ændrede sig: Fokus-menuen er blevet et panel. Hvert fokus har sin egen linje med de evner det træner, så du kan sammenligne dem side om side i stedet for at gætte ud fra navnet.\n\nHvorfor: Menuen klippede lange navne af, og guiden der forklarede hvad hvert fokus træner, lå langt over den rytter du satte det på.\n\nHvad det betyder for dig: Ét klik mere for at skifte fokus, og du kan se hvad du vælger imellem mens du vælger."
+        },
+        "refs": [
+          3721
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "A misleading warning about limited potential is gone",
+          "body": "What changed: The orange mark reading \"limited upside for this rider type\" no longer appears on the training page.\n\nWhy: It could not tell apart two very different cases. An ability your rider can take almost as high as a natural one, and an ability he genuinely has little room in, both got the same warning.\n\nWhat it means for you: You will not be talked out of a focus that was worth picking. Where a focus clearly suits the rider, the panel still says so."
+        },
+        "da": {
+          "title": "En misvisende advarsel om begrænset potentiale er væk",
+          "body": "Hvad ændrede sig: Det orange mærke med teksten \"begrænset potentiale for denne ryttertype\" vises ikke længere på træningssiden.\n\nHvorfor: Det kunne ikke skelne mellem to meget forskellige tilfælde. En evne din rytter kan tage næsten lige så højt som en naturlig, og en evne han reelt har lidt plads i, fik begge den samme advarsel.\n\nHvad det betyder for dig: Du bliver ikke talt fra et fokus der var værd at vælge. Hvor et fokus tydeligt passer til rytteren, siger panelet det stadig."
+        },
+        "refs": [
+          3721,
+          3747
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.127",
     "date": "2026-08-15",
     "label": "Beta",
