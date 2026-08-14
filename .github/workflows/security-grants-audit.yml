@@ -20,12 +20,22 @@ name: Security grants audit
 #                                også SQL anvendt i hånden via MCP/Studio, som
 #                                aldrig har været en fil i dette repo. Det var
 #                                præcis den sti #3765 kom ind ad.
+#
+# Live-jobbet kører to uafhængige drift-tjek mod samme forbindelse:
+#   security-grants.sql        — hvilke SECURITY DEFINER-funktioner kan klienten kalde?
+#   proposals-reconcile.mjs    — ligger der forslag i database/proposals/ som ER
+#                                anvendt i prod uden at være flyttet til top-niveau?
+#                                Måling 14/8: 6 af 10. En anvendt fil der stadig
+#                                står som udkast gør et HALVT anvendt forslag
+#                                umuligt at skelne fra et uanvendt — og det var
+#                                nøjagtig den blindhed #3765 gemte sig i.
 
 on:
   pull_request:
     paths:
       - 'database/**'
       - 'scripts/check-secdef-revoke-lint.mjs'
+      - 'scripts/proposals-reconcile.mjs'
       - 'scripts/security-grants.sql'
       - '.github/workflows/security-grants-audit.yml'
   schedule:
@@ -54,8 +64,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: Selvtest af linten
-        run: node --test scripts/check-secdef-revoke-lint.test.mjs
+      - name: Selvtest af vagternes egen parsing
+        run: |
+          node --test scripts/check-secdef-revoke-lint.test.mjs
+          node --test scripts/proposals-reconcile.test.mjs
 
       - name: Lint ændrede SQL-filer
         shell: bash
@@ -87,6 +99,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
       - name: Verify SUPABASE_DB_URL is configured
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -115,6 +131,66 @@ jobs:
               printf '%s\n' "$FINDINGS"
               echo "SECGRANTS_EOF"
             } >> "$GITHUB_OUTPUT"
+          fi
+
+      # Anden drift-akse: et forslag i database/proposals/ der ER anvendt i prod,
+      # men aldrig blev flyttet til top-niveau. Mappen holder dermed op med at
+      # fortælle sandheden, og et halvt anvendt forslag bliver umuligt at skelne
+      # fra et uanvendt udkast — præcis den tilstand #3765 opstod i.
+      - name: Kør proposals-reconcile
+        id: proposals
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          node --test scripts/proposals-reconcile.test.mjs
+          node scripts/proposals-reconcile.mjs > /tmp/proposals-reconcile.sql
+          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f /tmp/proposals-reconcile.sql | sed '/^$/d' | grep -v '^INFO|' || true)
+          if [ -z "$FINDINGS" ]; then
+            echo "✅ Ingen forslag i database/proposals/ er anvendt i prod uden at være forfremmet."
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ Fund:"
+            printf '%s\n' "$FINDINGS"
+            echo "has_findings=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "findings<<PROPOSALS_EOF"
+              printf '%s\n' "$FINDINGS"
+              echo "PROPOSALS_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Opret eller opdatér proposals-issue ved fund
+        if: steps.proposals.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.proposals.outputs.findings }}
+        run: |
+          set -euo pipefail
+          TITLE="[proposals-drift] Forslag er anvendt i prod uden at være forfremmet"
+          {
+            echo "\`scripts/proposals-reconcile.mjs\` fandt filer i \`database/proposals/\` hvis objekter findes i prod. Mappen betyder \"afventer ejer-beslutning\" — så længe en anvendt fil ligger der, passer den beskrivelse ikke."
+            echo ""
+            echo '```'
+            printf '%s\n' "$FINDINGS"
+            echo '```'
+            echo ""
+            echo "Format: severity | check | detail"
+            echo ""
+            echo "**CRITICAL / \`proposal_partially_applied\`** = kun nogle af filens objekter lever. Det var #3765's tilstand. Afgør om resten skal køres, eller om det anvendte skal rulles tilbage."
+            echo ""
+            echo "**WARN / \`proposal_applied_not_promoted\`** = hele filen er anvendt. Flyt den til \`database/<navn>.sql\` og indsæt en \`schema_migrations\`-række med samme filnavn, så \`auto-migrate.yml\` springer den over i stedet for at køre den igen. Rækkefølgen er vigtig: registrér FØRST, flyt derefter."
+            echo ""
+            echo "Reglen står i \`database/proposals/README.md\`; det er håndhævelsen der manglede."
+            echo "Workflow: .github/workflows/security-grants-audit.yml"
+          } > proposals-body.md
+          EXISTING=$(gh issue list --state open --search "proposals-drift in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "↳ Åbent issue #$EXISTING findes — tilføjer kommentar."
+            gh issue comment "$EXISTING" --body-file proposals-body.md
+          else
+            echo "↳ Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file proposals-body.md --label "claude:todo"
           fi
 
       - name: Opret eller opdatér issue ved fund
@@ -152,7 +228,12 @@ jobs:
           fi
 
       - name: Fejl ved fund
-        if: steps.check.outputs.has_findings == 'true'
+        if: steps.check.outputs.has_findings == 'true' || steps.proposals.outputs.has_findings == 'true'
         run: |
-          echo "::error::Grant-tjekket fandt klient-eksekverbare SECURITY DEFINER-funktioner. Se issue."
+          if [ "${{ steps.check.outputs.has_findings }}" = "true" ]; then
+            echo "::error::Grant-tjekket fandt klient-eksekverbare SECURITY DEFINER-funktioner. Se issue."
+          fi
+          if [ "${{ steps.proposals.outputs.has_findings }}" = "true" ]; then
+            echo "::error::Forslag i database/proposals/ er anvendt i prod uden at være forfremmet. Se issue."
+          fi
           exit 1
