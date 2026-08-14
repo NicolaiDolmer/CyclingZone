@@ -2,15 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  SWAP_WITHDRAWABLE_STATUSES,
   confirmSwapOffer,
   confirmTransferOffer,
   getListingCancelIssue,
   getListingPriceUpdateIssue,
   getSwapCancelIssue,
   getSwapExecutionIssue,
+  getSwapWithdrawIssue,
   getTransferCancelIssue,
   getTransferExecutionIssue,
 } from "./transferExecution.js";
+import { OPEN_SWAP_STATUSES } from "./auctionRules.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 
 test("getTransferExecutionIssue rejects a buyer that would exceed the squad max", () => {
@@ -324,6 +327,90 @@ test("getSwapCancelIssue blocks manager cancel after both parties accepted", () 
       receiving_confirmed: false,
     }),
     null
+  );
+});
+
+// ── #3669: afvis et FORHANDLET bytte ─────────────────────────────────────────
+// En spiller sendte et bytte-med-kontanter, modtageren bød tilbage (status
+// "countered"), og "Afvis"-knappen svarede "Ugyldig handling": routens
+// withdraw-gren accepterede kun status "pending". Et forhandlet bytte kunne
+// derfor hverken gennemføres eller droppes. Testene låser BEGGE levende
+// forhandlings-tilstande fast, ikke kun den der blev rapporteret.
+
+// Præcis det tilbud fra bug-rapporten: rytter-mod-rytter MED kontant-komponent,
+// modbudt af modtageren. `counter_cash` er sat, `cash_adjustment` er det
+// oprindelige beløb — status er dét der afgør afvisningen.
+const NEGOTIATED_SWAP = {
+  id: "swap-3669",
+  proposing_team_id: "T-proposing",
+  receiving_team_id: "T-receiving",
+  status: "countered",
+  cash_adjustment: 250_000,
+  counter_cash: 400_000,
+};
+
+test("#3669: forslagsstilleren kan afvise et FORHANDLET bytte (countered) — ikke længere invalid_action", () => {
+  assert.equal(getSwapWithdrawIssue(NEGOTIATED_SWAP, { teamId: "T-proposing" }), null);
+});
+
+test("#3669: et ikke-forhandlet (pending) bytte kan stadig trækkes — ingen regression", () => {
+  assert.equal(
+    getSwapWithdrawIssue(
+      { ...NEGOTIATED_SWAP, status: "pending", counter_cash: null },
+      { teamId: "T-proposing" },
+    ),
+    null,
+  );
+});
+
+test("#3669: modtageren må IKKE trække forslagsstillerens bytte — heller ikke det forhandlede", () => {
+  assert.equal(
+    getSwapWithdrawIssue(NEGOTIATED_SWAP, { teamId: "T-receiving" })?.code,
+    "not_proposing_team",
+  );
+  // Et helt uvedkommende hold afvises på samme kode (routen svarer 403 før
+  // withdraw-grenen, men guarden må ikke selv åbne en dør).
+  assert.equal(
+    getSwapWithdrawIssue(NEGOTIATED_SWAP, { teamId: "T-outsider" })?.code,
+    "not_proposing_team",
+  );
+  assert.equal(getSwapWithdrawIssue(NEGOTIATED_SWAP, {})?.code, "not_proposing_team");
+  assert.equal(getSwapWithdrawIssue(null, { teamId: "T-proposing" })?.code, "swap_not_found");
+});
+
+test("#3669: withdraw åbner IKKE afsluttede eller bekræftelses-tilstande (dér ejer cancel/admin flowet)", () => {
+  for (const status of ["awaiting_confirmation", "window_pending", "accepted", "rejected", "withdrawn"]) {
+    assert.equal(
+      getSwapWithdrawIssue({ ...NEGOTIATED_SWAP, status }, { teamId: "T-proposing" })?.code,
+      "swap_not_withdrawable",
+      `status "${status}" må ikke kunne trækkes via withdraw`,
+    );
+  }
+});
+
+test("#3669: tilstands-maskinen er komplet — hver ÅBEN bytte-tilstand har en udvej for forslagsstilleren", () => {
+  // OPEN_SWAP_STATUSES er domænets sandhed om hvad "åben" betyder. Enhver åben
+  // tilstand skal enten kunne trækkes (withdraw) eller annulleres (cancel, som
+  // ejer awaiting_confirmation via getSwapCancelIssue). Falder en ny tilstand
+  // ind uden udvej, fejler denne test i stedet for at ramme en spiller.
+  const cancelOwned = ["awaiting_confirmation"];
+  for (const status of OPEN_SWAP_STATUSES) {
+    const withdrawable = SWAP_WITHDRAWABLE_STATUSES.includes(status);
+    assert.ok(
+      withdrawable || cancelOwned.includes(status),
+      `åben bytte-tilstand "${status}" har ingen udvej for forslagsstilleren`,
+    );
+  }
+
+  // Cancel-siden skal faktisk stå åben for den tilstand den ejer (ingen
+  // dobbelt-lås når kun den ene part har bekræftet).
+  assert.equal(
+    getSwapCancelIssue({
+      status: "awaiting_confirmation",
+      proposing_confirmed: true,
+      receiving_confirmed: false,
+    }),
+    null,
   );
 });
 
