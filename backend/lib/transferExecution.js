@@ -685,12 +685,17 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   const cash = getSwapCash(swap);
   // #1309: salary/base_value/prize_earnings_bonus med så contract-on-acquire kan
   // afgøre create-if-missing vs. inherit-if-present for BEGGE ryttere.
+  // #3620: contract_end_season SKAL med — uden den ser guarden i
+  // contractOnAcquirePatch en `undefined` og regenererer begge byttede ryttere
+  // til en 2-sæsoners standardkontrakt i stedet for at arve deres egne. Køb-
+  // stien (executeTransferOffer) har hentet kolonnen siden #1836; swap-stien
+  // blev aldrig rettet med.
   const [offered, requested] = await Promise.all([
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value").eq("id", swap.offered_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", swap.offered_rider_id)
     ),
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value").eq("id", swap.requested_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", swap.requested_rider_id)
     ),
   ]);
   const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([

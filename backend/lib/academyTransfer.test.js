@@ -10,16 +10,40 @@ import { ACADEMY } from "./academyFlag.js";
 // (maybeSingle load + update), getMarketState (injiceret). demote bruger: riders
 // (maybeSingle load), rpc("demote_rider_to_academy"). notify injiceres som spy.
 
+// #3620: mocken PROJEKTERER fixturen ned til de kolonner kalderen faktisk
+// SELECT'er — som PostgREST gør. Før returnerede den hele fixturen uanset
+// kolonne-liste, og DERFOR kunne #2881-regressionstesten stå grøn i et helt år
+// mens produktionens SELECT manglede contract_end_season: testen fodrede
+// contractOnAcquirePatch et felt som prod aldrig hentede. En mock der ignorerer
+// kolonne-listen kan ikke bevise en SELECT-kontrakt — den beviser kun logikken
+// oven på et objekt ingen rute nogensinde bygger.
+// En kolonne der er SELECT'et men mangler i fixturen bliver `null` (= NULL i DB),
+// ikke `undefined` — det er forskellen guarden i contractOnAcquirePatch lever af.
+function projectSelect(row, columns) {
+  if (!row) return row;
+  const wanted = String(columns ?? "").split(",").map((c) => c.trim()).filter(Boolean);
+  if (wanted.length === 0 || wanted.includes("*")) return row;
+  const out = {};
+  for (const col of wanted) out[col] = col in row ? row[col] : null;
+  return out;
+}
+
 function makeSupabase(cfg = {}) {
-  const rec = { riderUpdates: [], gradUpdates: [], gradSelects: [], rpcCalls: [] };
+  const rec = { riderUpdates: [], gradUpdates: [], gradSelects: [], rpcCalls: [], riderSelects: [] };
   const supabase = {
     from(table) {
       if (table === "riders") {
         return {
-          select() {
+          select(columns) {
+            rec.riderSelects.push(columns);
             const api = {
               eq() { return api; },
-              maybeSingle() { return Promise.resolve({ data: cfg.rider ?? null, error: cfg.riderError ?? null }); },
+              maybeSingle() {
+                return Promise.resolve({
+                  data: cfg.riderError ? null : projectSelect(cfg.rider ?? null, columns),
+                  error: cfg.riderError ?? null,
+                });
+              },
             };
             return api;
           },
@@ -106,6 +130,14 @@ const SENIOR_U23 = {
   id: "r2", team_id: "t1", firstname: "Young", lastname: "Senior",
   is_academy: false, current_production_value: 50_000, birthdate: "2005-06-15", salary: 3350,
 };
+// #3620: U23-senior manageren har FORLÆNGET (udløb sæson 5, aktiv sæson 2) —
+// præcis den rytter spillerne rapporterede kom ud af akademiet med udløb i
+// sæson 4. Demote må ikke røre termen.
+const SENIOR_U23_WITH_EXTENDED_CONTRACT = {
+  id: "r5", team_id: "t1", firstname: "Extended", lastname: "Senior",
+  is_academy: false, current_production_value: 50_000, birthdate: "2005-06-15",
+  salary: 9_000, contract_length: 3, contract_end_season: 5,
+};
 
 // ─── demoteSalary helper ──────────────────────────────────────────────────────
 // #2594: demoteSalary er nu en ren delegation til computeFrozenSalary —
@@ -152,6 +184,22 @@ test("promote: #2881 — eksisterende kontrakt (3 sæsoner) overlever UÆNDRET, 
   assert.equal(rec.riderUpdates.length, 1);
   assert.deepEqual(rec.riderUpdates[0], { is_academy: false }, "salary/contract_length/contract_end_season slet ikke i patchen");
   assert.equal(res.salary, ACADEMY_RIDER_WITH_SURVIVING_CONTRACT.salary, "returneret løn = den overlevede kontraktløn, ikke en ny beregning");
+});
+
+// #3620 regression: #2881-testen ovenfor stod grøn mens prod var i stykker, fordi
+// mocken ignorerede kolonne-listen. Nu projekteres fixturen, så testen ovenfor
+// KUN kan passere hvis SELECTen faktisk henter contract_end_season. Denne test
+// låser kolonne-kontrakten eksplicit fast, så et fremtidigt trim af listen fejler
+// med en læsbar besked i stedet for som en tavs kontrakt-regenerering i prod.
+test("promote: #3620 — SELECTen henter kontrakt-kolonnerne (ellers regenererer guarden i blinde)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER_WITH_SURVIVING_CONTRACT, gradRow: null });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 2 });
+  await promote(supabase, { teamId: "t1", riderId: "r4", seasonNumber: 2, getMarketState, notify: spyNotify() });
+
+  assert.equal(rec.riderSelects.length, 1);
+  assert.match(rec.riderSelects[0], /\bcontract_end_season\b/);
+  assert.match(rec.riderSelects[0], /\bcontract_length\b/);
+  assert.match(rec.riderSelects[0], /\bsalary\b/);
 });
 
 test("promote: resolver pending academy_graduation-row til 'promoted'", async () => {
@@ -245,6 +293,73 @@ test("demote: kalder RPC med korrekt løn + sæson-år + kontrakt; notify; retur
   assert.equal(res.racesCleared, 3);
   assert.equal(notify.calls.length, 1);
   assert.equal(notify.calls[0].type, "academy_demoted");
+});
+
+// #3620 regression: demote skrev UBETINGET en frisk akademi-kontrakt forankret i
+// den aktuelle sæson. En rytter forlænget til sæson 5, demoted i sæson 2, kom ud
+// med udløb sæson 4 (2 + 3 - 1) — rapporteret i prod 10/8. Kontrakt-termen skal
+// arves uændret; kun lønnen gen-beregnes.
+test("demote: #3620 — eksisterende kontrakt-term arves uændret (sæson 5 forbliver sæson 5)", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: SENIOR_U23_WITH_EXTENDED_CONTRACT,
+    rpcResult: { ok: true, new_salary: 7_405, rows_deleted: 0 },
+  });
+  await demote(supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
+
+  const a = rec.rpcCalls[0].args;
+  assert.equal(a.p_contract_end, 5, "udløbssæsonen må ikke rykkes frem af et akademi-ophold");
+  assert.equal(a.p_contract_length, 3);
+  assert.notEqual(
+    a.p_contract_end,
+    computeContractEndSeason(2, ACADEMY.CONTRACT_LENGTH),
+    "må IKKE forankres i den aktuelle sæson (det var netop bug'en)",
+  );
+});
+
+// Modstykket: en kontraktløs rytter (ingen komplet kontrakt) skal stadig få
+// akademi-aftalen — create-if-missing, præcis som contractOnAcquirePatch.
+test("demote: #3620 — kontraktløs rytter får stadig akademi-aftalen (create-if-missing)", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: { ...SENIOR_U23, salary: null },
+    rpcResult: { ok: true, new_salary: 161, rows_deleted: 0 },
+  });
+  await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
+
+  const a = rec.rpcCalls[0].args;
+  assert.equal(a.p_contract_length, ACADEMY.CONTRACT_LENGTH);
+  assert.equal(a.p_contract_end, computeContractEndSeason(2, ACADEMY.CONTRACT_LENGTH));
+});
+
+// Promote/demote skal være hinandens inverse på kontrakt-termen: en tur ned og op
+// igen må hverken forkorte ELLER forlænge kontrakten (ellers er demote+promote et
+// gratis forlængelses-loop uden om #3143-loftet).
+test("demote → promote: #3620 — rundturen efterlader kontrakt-termen urørt", async () => {
+  const down = makeSupabase({
+    rider: SENIOR_U23_WITH_EXTENDED_CONTRACT,
+    rpcResult: { ok: true, new_salary: 7_405, rows_deleted: 0 },
+  });
+  await demote(down.supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
+  const afterDemote = down.rec.rpcCalls[0].args;
+
+  const up = makeSupabase({
+    rider: {
+      ...SENIOR_U23_WITH_EXTENDED_CONTRACT,
+      is_academy: true,
+      salary: afterDemote.p_new_salary,
+      contract_length: afterDemote.p_contract_length,
+      contract_end_season: afterDemote.p_contract_end,
+    },
+    gradRow: null,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 3 });
+  await promote(up.supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, getMarketState, notify: spyNotify() });
+
+  assert.deepEqual(
+    up.rec.riderUpdates[0],
+    { is_academy: false },
+    "promote må ikke røre kontraktfelterne på vej op igen",
+  );
+  assert.equal(afterDemote.p_contract_end, SENIOR_U23_WITH_EXTENDED_CONTRACT.contract_end_season);
 });
 
 test("demote: p_season_start_year følger seasonNumber (sæson 3 → 2028)", async () => {

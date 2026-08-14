@@ -123,9 +123,13 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
 
   // "Billigst" = laveste market_value — samme felt som prisen der betales
   // (SQUAD_PURCHASE_MARKUP), #1205. uci_points er frosset/afkoblet (#1101).
+  // #3620: contract_end_season med i BEGGE kandidat-SELECTs — executeAutoPurchase
+  // sender kandidaten videre til contractOnAcquirePatch, og uden kolonnen kan
+  // guarden ikke skelne "kontraktløs" fra "ikke hentet" og regenererer en
+  // AI-ejet rytters eksisterende kontrakt ved auto-købet.
   const { data: freeAgents, error: faError } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value")
+    .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season")
     .is("team_id", null)
     .eq("is_retired", false)
     .order("market_value", { ascending: true })
@@ -137,7 +141,7 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   if (pool.length < count && aiTeamIds.size > 0) {
     const { data: aiOwned, error: aiOwnedError } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value")
+      .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season")
       .in("team_id", [...aiTeamIds])
       .eq("is_retired", false)
       .order("market_value", { ascending: true })

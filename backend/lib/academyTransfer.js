@@ -11,9 +11,20 @@
 //
 //   • demote(...)   — flyt en U23-senior-rytter NED i akademiet (D5-berettigelse).
 //     Kører via demote_rider_to_academy-RPC'en under advisory-lås (akademi-8-cap +
-//     atomisk sletning af fremtidige race_entries). Løn gen-beregnes til ungdomsrate.
+//     atomisk sletning af fremtidige race_entries). Løn gen-beregnes til ungdomsrate,
+//     men kontrakt-TERMEN arves uændret hvis rytteren allerede har en komplet
+//     kontrakt (#3620) — kun en kontraktløs rytter får akademi-aftalen.
 //
 // Spec: docs/superpowers/specs/2026-06-25-race-hub-program-design.md §5 S7 + D5.
+//
+// #3620 (14/8) — begge retninger tabte kontrakt-sæsoner, af TO forskellige grunde:
+//   1) promote(): SELECTen hentede aldrig contract_end_season. Så længe guarden i
+//      contractOnAcquirePatch kun så på salary (#2929) var det harmløst; da #2902
+//      tilføjede `contract_end_season != null` til guarden, blev den permanent
+//      falsk her (`undefined != null` === false) og promote regenererede DERFOR
+//      hver eneste kontrakt: længde 3 → 2, udløb → aktiv sæson + 1.
+//   2) demote(): skrev ubetinget en frisk akademi-kontrakt forankret i den
+//      aktuelle sæson og forkortede dermed enhver kontrakt med udløb længere ude.
 
 import { notifyTeamOwner } from "./notificationService.js";
 import { computeFrozenSalary, computeContractEndSeason, contractOnAcquirePatch } from "./contractSeed.js";
@@ -55,8 +66,12 @@ export async function promote(supabase, {
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
+  // #3620: contract_length + contract_end_season SKAL med i SELECTen. Uden
+  // contract_end_season ser contractOnAcquirePatch en `undefined` og kan ikke
+  // skelne "ingen kontrakt" fra "kolonnen blev ikke hentet" — det var præcis
+  // regressionen der genopstod da #2902 udvidede guarden (se filens header).
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, is_academy, base_value, prize_earnings_bonus, current_production_value, salary")
+    .select("id, team_id, firstname, lastname, is_academy, base_value, prize_earnings_bonus, current_production_value, salary, contract_length, contract_end_season")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
   if (rider.team_id !== teamId) throw new Error("not_owned");
@@ -131,7 +146,7 @@ export async function demote(supabase, {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, is_academy, base_value, current_production_value, birthdate")
+    .select("id, team_id, firstname, lastname, is_academy, base_value, current_production_value, birthdate, salary, contract_length, contract_end_season")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 
@@ -139,8 +154,23 @@ export async function demote(supabase, {
     .from("teams").select("id, division").eq("id", teamId).maybeSingle();
   const newSalary = demoteSalary({ ...rider, division: demoteTeam?.division });
   const seasonStartYear = LAUNCH_REFERENCE_YEAR + (Number(seasonNumber) - 1);
-  const contractLength = ACADEMY.CONTRACT_LENGTH;
-  const contractEnd = computeContractEndSeason(seasonNumber, contractLength);
+
+  // #3620: KONTRAKT-TERMEN følger rytteren ned i akademiet. Før skrev demote
+  // ubetinget en frisk 3-sæsoners akademi-aftale forankret i den AKTUELLE sæson
+  // — så en rytter manageren havde forlænget til sæson 5 kom ud af akademiet med
+  // udløb i sæson 4 (rapporteret i prod 10/8). Samme create-if-missing /
+  // inherit-if-present-invariant som contractOnAcquirePatch og promote(): kun en
+  // rytter UDEN komplet kontrakt får akademi-aftalen. Dermed er promote/demote
+  // hinandens inverse på kontrakt-termen, og en tur gennem akademiet kan hverken
+  // forkorte eller forlænge en kontrakt.
+  // NB: lønnen gen-beregnes stadig (uændret, #2083/#2594) — kun udløbet er fredet.
+  const hasContract = rider.salary != null
+    && rider.contract_end_season != null
+    && rider.contract_length != null;
+  const contractLength = hasContract ? rider.contract_length : ACADEMY.CONTRACT_LENGTH;
+  const contractEnd = hasContract
+    ? rider.contract_end_season
+    : computeContractEndSeason(seasonNumber, ACADEMY.CONTRACT_LENGTH);
 
   const { data, error } = await supabase.rpc("demote_rider_to_academy", {
     p_team_id: teamId,
