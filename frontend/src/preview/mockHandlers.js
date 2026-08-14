@@ -574,16 +574,77 @@ export function apiResponse(pathname, search = "") {
     };
   }
 
+  // #3621: payloaden matcher nu computeFinanceForecast's faktiske felter. Den
+  // gamle mock brugte navne endpointet aldrig har returneret (sponsor_income,
+  // salary_cost, prize_estimate), så FinanceForecastCard rendrede en tom
+  // pladsholder i hver række og faldt tilbage til sponsorDetail.fallback.
+  // Prognose-kortet kunne altså slet ikke gennemklikkes på preview.
+  // Tallene er sammenhængende med preview-holdet: division 2 (upkeep
+  // 140.000), ingen lån, og samme kontrakt som /api/sponsor/contract nedenfor
+  // (Vesna Robotics, garanteret base 180.000, start sæson 2). Preview-sæsonen
+  // er nr. 1, så prognosen gælder sæson 2, og næste sæsons sponsor er her den
+  // samme som den nuværende.
   if (pathname.endsWith("/api/me/finance-forecast")) {
-    return {
-      projected_net: 148000,
-      projected_balance: 948000,
-      risk_tier: "healthy",
-      sponsor_income: 240000,
-      salary_cost: 42000,
-      loan_interest_due: 0,
-      prize_estimate: 0,
+    const forecast = {
+      projected_sponsor: 180000,
+      projected_prize: 210000,
+      projected_salary: -180000,
+      projected_loan_interest: 0,
+      projected_upkeep: -140000,
+      projected_facility_upkeep: 0,
+      projected_staff_salary: 0,
+      projected_academy_drift: 0,
+      projected_net: 70000,
+      confidence_low: 28000,
+      confidence_high: 112000,
+      risk_tier: "green",
       warnings: [],
+      inputs: {
+        sponsor_base: 180000,
+        sponsor_variable: 0,
+        sponsor_mode: "contract",
+        sponsor_gross: 180000,
+        sponsor_breakdown: {
+          mode: "contract",
+          season_number: 2,
+          base: 180000,
+          variable: 0,
+          gross_sponsor: 180000,
+          capped: false,
+          per_race_day_rate: 450,
+          sponsor_name: "Vesna Robotics",
+        },
+        board_modifier: 1.0,
+        pullout_factor: 1.0,
+        prize_basis: "rolling_avg",
+        current_season_number: 1,
+        target_season_number: 2,
+      },
+    };
+    return {
+      ...forecast,
+      season_number: 2,
+      is_estimate: false,
+      estimate_basis: "actual_state",
+      starting_balance: 500000,
+      ending_balance: 570000,
+      forecasts: [
+        {
+          ...forecast,
+          season_number: 2,
+          is_estimate: false,
+          estimate_basis: "actual_state",
+          starting_balance: 500000,
+          ending_balance: 570000,
+        },
+      ],
+      summary: {
+        from_season: 2,
+        to_season: 2,
+        total_net: 70000,
+        ending_balance: 570000,
+        worst_risk_tier: "green",
+      },
     };
   }
 
