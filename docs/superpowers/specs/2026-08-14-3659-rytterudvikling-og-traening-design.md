@@ -80,9 +80,11 @@ De øvrige fem fokus står uændret. **Bemærk:** fokusene er allerede ulige sto
 
 ### 2.4 Akademi og senior bliver én model
 
-`ACADEMY.INTERIM_RATE_MULT` (1/3) og `computeAcademySeasonCeiling` (sæson-loft 16 %/11 %/8 % efter alder) fjernes. De fandtes kun for at bremse en model, der mættede. Akademiet adskiller sig herefter **kun** ved `youthMultiplier` — 1,50 ved 16 år, aftagende til 1,00 ved 22.
+`ACADEMY.INTERIM_RATE_MULT` (1/3) og `ACADEMY.HARD_DAILY_CAP` (1) fjernes. De fandtes kun for at bremse en model, der mættede. (`computeAcademySeasonCeiling` er **allerede** ude af produktionsstien — #2437 satte `tickCaps = caps`; funktionen lever kun i harnesses og tests.) Akademiet adskiller sig herefter **kun** ved `youthMultiplier` — 1,50 ved 16 år, aftagende til 1,00 ved 22.
 
 Akademiet var i praksis allerede den model, vi nu vælger. Den midlertidige knap fra #2437 forsvinder efter at have løst sit problem permanent.
+
+**Målt i §3bis:** fjernelsen er ikke oprydning, den er bærende. Beholdes 1/3-dæmpningen, falder kandidatens rating-median fra 28 til 22 — altså langt under dagens 27. Trin 5 kan derfor ikke ligge efter trin 4 i tid.
 
 ### 2.5 Ingen rytter når sit tag
 
@@ -122,11 +124,11 @@ Kandidaten kørt med `offFocusMult` uændret på 0,97:
 
 Gaten fejler beviseligt på den defekte konfiguration. De to håndtag skal begge drejes, og målingen kan se forskellen.
 
-### 3.2 Arketype-skarpheden falder — og hvorfor det er acceptabelt
+### 3.2 Arketype-skarpheden falder på stock — men ikke på flow
 
 0,84 → 0,78 går imod #3503's mål om skarpere arketyper. Forklaringen: dagens høje skarphed skyldes, at loftet bestemmer alt. Hver rytter mætter et loft, der er formet af hans type, så hans top-3 evner **er** hans type. Når manageren får indflydelse, bliver skarpheden noget, der skal opnås — se spændet, 0,03 → 0,19. Og den skarpeste strategi (rotation, 0,78) er også den, der udvikler flest signatur-evner: god ledelse og skarp identitet peger samme vej.
 
-Det er stadig et fald. Det skal måles igen på et friskt kuld, før det accepteres endeligt.
+**Flow-målingen i §3bis ophæver dette fund:** på et friskt kuld rammer kandidaten under rotation 0,87 mod dagens 0,87. Faldet var et artefakt af at simulere allerede mættede ryttere fremad.
 
 ---
 
