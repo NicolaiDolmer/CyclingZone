@@ -24,6 +24,7 @@ import {
 } from "../../../lib/training.js";
 import {
   focusProgress, riderHistoryFromRuns, breakthroughJumps, isBreakthrough, focusCapState,
+  focusTrainabilityNotice,
 } from "../../../lib/trainingReport.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
 
@@ -80,7 +81,7 @@ function FocusCard({ rider, training, progress, t }) {
   // nosyaras sag opstod. Genbruger nøjagtig samme tekst i stedet for at opfinde
   // ny (TrainingPage.jsx linje ~656 er referencen).
   const { t: tTraining } = useTranslation("training");
-  const { slots, planFor, setPlan, clearPlan, savingId, capped } = training;
+  const { slots, planFor, setPlan, clearPlan, savingId, capped, trainability } = training;
   const plan = planFor(rider.id);
   const focus = plan?.focus ?? null;
   const intensity = plan?.intensity ?? "normal";
@@ -125,6 +126,14 @@ function FocusCard({ rider, training, progress, t }) {
   const cappedForRider = capped?.[rider.id];
   const focusCap = focus && !isRest ? focusCapState(focus, cappedForRider) : null;
   const fullyCapped = focusCap?.state === "capped";
+  // #3651: type-tendensen for det VALGTE fokus — samme betingelse og samme ordlyd
+  // som TrainingPage's roster-tabel, via focusTrainabilityNotice. @cybersimon
+  // (Discord 11/8) valgte fokus HER og fik aldrig at vide at typen loftede
+  // udbyttet; hovedrums-signalet (#3639) sad allerede på denne flade, tier-signalet
+  // (#1974/#3195) gjorde ikke. Bevidst IKKE gated på isRest — roster-tabellen viser
+  // den også på hviledage, og en divergerende regel er præcis det #3651 beder om at
+  // undgå.
+  const trainabilityNotice = focusTrainabilityNotice(focus, trainability?.[rider.id]);
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -169,6 +178,24 @@ function FocusCard({ rider, training, progress, t }) {
           );
         })}
       </div>
+
+      {/* #3651: samme chip som TrainingPage's fokus-celle — samme nøgler (training-
+          navnerummet), samme farvekodning, samme tooltip. Den sidder direkte under
+          fokus-valget, altså dér hvor beslutningen træffes. */}
+      {trainabilityNotice && (
+        <div className="-mt-1 mb-3">
+          <span
+            className={`inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border cursor-help ${
+              trainabilityNotice.level === "blocked"
+                ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
+                : "bg-cz-warning/10 text-cz-warning border-cz-warning/20"
+            }`}
+            title={tTraining(trainabilityNotice.titleKey)}
+          >
+            {tTraining(trainabilityNotice.key)}
+          </span>
+        </div>
+      )}
 
       {/* Intensitet (segmenteret). Kræver et valgt fokus for at kunne sættes. */}
       <div className="flex items-center gap-2.5 mb-[11px]">

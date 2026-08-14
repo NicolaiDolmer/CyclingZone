@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   focusProgress, isBreakthrough, daySummary, breakthroughJumps, riderHistoryFromRuns,
-  isFocusFullyCapped, focusCapState, todayGainTotal,
+  isFocusFullyCapped, focusCapState, focusTrainabilityNotice, todayGainTotal,
   PEAK_FORM_THRESHOLD, NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
 
@@ -145,6 +145,34 @@ test("focusCapState: null uden fokus eller ved ukendt fokus", () => {
 test("isFocusFullyCapped: uændret kontrakt oven på focusCapState (#2578 regressions-vagt)", () => {
   assert.equal(isFocusFullyCapped("vo2max", ["climbing"]), false, "delvist ≠ fuldt");
   assert.equal(isFocusFullyCapped("vo2max", ["climbing", "punch", "tempo"]), true);
+});
+
+// ── #3651: focusTrainabilityNotice — ÉN betingelse + ÉN ordlyd for begge flader ──
+
+test("focusTrainabilityNotice: kun de to lave tiers giver en chip", () => {
+  const t = { sprint: "strength", vo2max: "limited", threshold: "blocked" };
+  assert.equal(focusTrainabilityNotice("sprint", t), null, "strength er tavst");
+  assert.deepEqual(focusTrainabilityNotice("vo2max", t), {
+    level: "limited",
+    key: "trainabilityChipLimited",
+    titleKey: "trainabilityChipLimitedTitle",
+  });
+  assert.deepEqual(focusTrainabilityNotice("threshold", t), {
+    level: "blocked",
+    key: "trainabilityChipBlocked",
+    titleKey: "trainabilityChipBlockedTitle",
+  });
+});
+
+test("focusTrainabilityNotice: intet fokus / ukendt tier / manglende data → null", () => {
+  assert.equal(focusTrainabilityNotice(null, { sprint: "limited" }), null);
+  assert.equal(focusTrainabilityNotice("", { sprint: "limited" }), null);
+  assert.equal(focusTrainabilityNotice("sprint", null), null);
+  assert.equal(focusTrainabilityNotice("sprint", undefined), null);
+  assert.equal(focusTrainabilityNotice("sprint", {}), null, "fokus uden tier");
+  // "high" er IKKE backendens vokabular (se seedData-kommentaren) — et ukendt
+  // niveau må aldrig fabrikere en chip.
+  assert.equal(focusTrainabilityNotice("sprint", { sprint: "high" }), null);
 });
 
 test("todayGainTotal: summerer dagens hele point; tomt/negativt/korrupt → 0", () => {

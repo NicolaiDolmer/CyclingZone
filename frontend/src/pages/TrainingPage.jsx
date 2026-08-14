@@ -15,7 +15,7 @@ import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, focusCapState, todayGainTotal, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, focusCapState, focusTrainabilityNotice, todayGainTotal, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
@@ -428,8 +428,11 @@ export default function TrainingPage() {
     const busy = savingId === rider.id || bulkApplying;
     const isSelected = selected.has(rider.id);
     // #1974: coarse type-derived trainability-signal — hvorfor et fokus ikke rykker.
+    // #3651: hvornår chippen vises + hvilken tekst den bruger ligger nu i
+    // focusTrainabilityNotice, så rytterprofilens Trænings-fane kan genbruge nøjagtig
+    // samme betingelse og ordlyd i stedet for en parallel kopi der kan drive fra hinanden.
     const riderTrainability = trainability[rider.id] ?? {};
-    const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
+    const trainabilityNotice = focusTrainabilityNotice(plan?.focus, riderTrainability);
 
     // #3639: hovedrum pr. evne i fokusset. Trainability ovenfor siger hvor HURTIGT
     // et fokus vokser (tier-%'en fra #3234), aldrig om der er noget tilbage at
@@ -592,16 +595,16 @@ export default function TrainingPage() {
               {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
             </div>
           )}
-          {(currentTrainability === "limited" || currentTrainability === "blocked") && (
+          {trainabilityNotice && (
             <span
               className={`ms-1 inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border ${
-                currentTrainability === "blocked"
+                trainabilityNotice.level === "blocked"
                   ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
                   : "bg-cz-warning/10 text-cz-warning border-cz-warning/20"
               }`}
-              title={t(currentTrainability === "blocked" ? "trainabilityChipBlockedTitle" : "trainabilityChipLimitedTitle")}
+              title={t(trainabilityNotice.titleKey)}
             >
-              {t(currentTrainability === "blocked" ? "trainabilityChipBlocked" : "trainabilityChipLimited")}
+              {t(trainabilityNotice.key)}
             </span>
           )}
           {/* #2465: fejl-overflade for denne rytters seneste fokus/intensitet/clear-handling. */}

@@ -73,6 +73,33 @@ export function focusCapState(focus, cappedForRider) {
   return { state, capped: cappedAbilities, open: openAbilities };
 }
 
+// #3651: hvilken trainability-chip hører til et fokus — ÉN kilde for begge flader.
+//
+// Signalet (#1974/#3195) er backend-leveret: trainability[riderId] = { <focus>:
+// "strength" | "limited" | "blocked" } fra focusTrainability i backend/lib/training.js.
+// Kun de to LAVE tiers har en chip; "strength" (og et ukendt/manglende niveau) er
+// tavst — præcis som TrainingPage's roster-tabel altid har opført sig.
+//
+// Chippen fandtes før KUN på TrainingPage, altså ikke på rytterprofilens
+// Trænings-fane, hvor fokusset i praksis vælges (@cybersimon, Discord 11/8). Ved
+// at flytte både betingelsen OG nøglevalget herind kan de to flader ikke drive fra
+// hinanden og sige forskellige ting om samme rytter.
+//
+//   focus                 : fokus-nøgle eller null/undefined
+//   trainabilityForRider  : { [focus]: tier } eller null/undefined
+// Returnerer null (ingen chip) eller { level, key, titleKey } — nøglerne slås op i
+// "training"-navnerummet (frontend/public/locales/*/training.json).
+export function focusTrainabilityNotice(focus, trainabilityForRider) {
+  if (!focus) return null;
+  const level = trainabilityForRider?.[focus];
+  if (level !== "limited" && level !== "blocked") return null;
+  return {
+    level,
+    key: level === "blocked" ? "trainabilityChipBlocked" : "trainabilityChipLimited",
+    titleKey: level === "blocked" ? "trainabilityChipBlockedTitle" : "trainabilityChipLimitedTitle",
+  };
+}
+
 // #2578: samlet antal hele point vundet i dagens kørsel for én rapport-række.
 // Bruges til "+N i dag"-chippen på roster-rækken, så en progress-bar der netop
 // har wrappet efter et gennembrud ikke fejllæses som "ingen fremgang".
