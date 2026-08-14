@@ -1,6 +1,6 @@
 name: Lighthouse CI
 
-# Perf/SEO-loop Del 2 — regressions-gate pr. PR.
+# Perf/SEO-loop Del 2 — regressions-gate pr. PR + drift-vagt på main.
 #   - HARD gate: bundle-size (gzipped JS) via scripts/check-bundle-budget.mjs.
 #     Deterministisk → blokerer merge ved regression over budget+margin.
 #   - ADVISORY: Lighthouse-scores (perf/a11y/best-practices/SEO) på den byggede
@@ -9,9 +9,35 @@ name: Lighthouse CI
 #     (perf-seo-review.yml) + field-CWV i GA4 (web-vitals).
 # Mønster genbrugt fra feature-liveness-audit.yml (Node 24, checkout@v7,
 # setup-node@v6, github-script@v9, Dependabot-skip).
+#
+# Refs #2511 — hvorfor der OGSÅ er en push-trigger på main:
+#   pull_request-runnet måler PR-branchen ISOLERET. Når flere PR'er hver
+#   tilføjer vægt, er SUMMEN på main ubevogtet: hver PR grøn, main rød uden
+#   at nogen gate siger fra. Målt gentagne gange (bundle-budget.json's _note
+#   har 25+ "forenings"-entries): 23/7 lå main på 900,9 KB mod et 900,9 KB
+#   loft = 0,0 KB margin, og 13/8 lå main 0,1 KB OVER loftet, så perf-gaten
+#   fejlede på enhver frontend-PR uanset indhold. Push-triggeren måler main
+#   SELV efter merge, så driften opdages ved KILDEN i stedet for på næste
+#   uskyldige PR.
+#
+#   Invariant der skal holdes (jf. lighthouse-ci-skip-stub.yml):
+#   PRÆCIS ÉT workflow må rapportere check-contexten `perf-gate` pr. PR.
+#   Push-triggeren rører ikke den invariant — den rapporterer på main-commits,
+#   ikke på PR-heads, og stubben har bevidst INGEN push-trigger (på main er
+#   der ingen required check at holde grøn, så der er intet at rapportere
+#   når bundlen er upåvirket). paths-listen holdes identisk med
+#   pull_request-triggerens, som stubbens paths-ignore også spejler.
 
 on:
   pull_request:
+    paths:
+      - 'frontend/**'
+      - 'scripts/check-bundle-budget.mjs'
+      - 'lighthouserc.json'
+      - '.github/workflows/lighthouse-ci.yml'
+  push:
+    branches:
+      - main
     paths:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
@@ -26,17 +52,24 @@ permissions:
 jobs:
   perf-gate:
     runs-on: ubuntu-latest
+    env:
+      # Dependabot-PR'er har ikke adgang til secrets → hele kæden springes over.
+      # Skrevet EKSPLICIT med github.event_name, fordi `github.event.pull_request`
+      # slet ikke findes på push/workflow_dispatch; den gamle form
+      # (`github.event.pull_request.user.login != 'dependabot[bot]'`) var kun
+      # sand dér ved null-coercion, hvilket er en fælde at læne sig på. Refs #2511.
+      IS_DEPENDABOT_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' }}
     steps:
       - name: Skip secret-backed steps for Dependabot PRs
-        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        if: env.IS_DEPENDABOT_PR == 'true'
         run: echo "Skipping Lighthouse CI for Dependabot PR (secrets unavailable to Dependabot-triggered workflows)."
 
       - name: Check out repository
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        if: env.IS_DEPENDABOT_PR != 'true'
         uses: actions/checkout@v7
 
       - name: Set up Node.js
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        if: env.IS_DEPENDABOT_PR != 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -44,25 +77,29 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        if: env.IS_DEPENDABOT_PR != 'true'
         run: npm ci
         working-directory: frontend
 
       - name: Build frontend
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        if: env.IS_DEPENDABOT_PR != 'true'
         run: npm run build
         working-directory: frontend
 
-      # HARD GATE — fejler jobbet (og blokerer merge) ved bundle-regression.
+      # HARD GATE — fejler jobbet ved bundle-regression. På pull_request blokerer
+      # det merge; på push til main markerer det main-commit'en rød, så additiv
+      # drift ses ved kilden (#2511).
       - name: Bundle-size budget (hard gate)
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        if: env.IS_DEPENDABOT_PR != 'true'
         run: node scripts/check-bundle-budget.mjs
 
       # ADVISORY — må aldrig blokere; continue-on-error så et flaky Lighthouse-run
-      # ikke fejler jobbet.
+      # ikke fejler jobbet. Springes over på push til main: scoren kan alligevel
+      # ikke postes nogen steder dér (kommentar-steppet er PR-only), og det er kun
+      # bundle-målingen main-vagten er til for (#2511).
       - name: Lighthouse (advisory)
         id: lighthouse
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        if: env.IS_DEPENDABOT_PR != 'true' && github.event_name != 'push'
         continue-on-error: true
         uses: treosh/lighthouse-ci-action@v12
         with:
@@ -70,8 +107,9 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
 
+      # PR-only: der er ingen issue-tråd at kommentere i på et push til main.
       - name: Comment Lighthouse scores (advisory, idempotent)
-        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        if: github.event_name == 'pull_request' && env.IS_DEPENDABOT_PR != 'true'
         continue-on-error: true
         uses: actions/github-script@v9
         with:
