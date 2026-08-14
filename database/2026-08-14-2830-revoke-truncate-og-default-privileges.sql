@@ -1,0 +1,80 @@
+-- #2830 — de to dele issuet faktisk hedder: "systematisk audit + default-privileges-guard".
+--
+-- Massrevoke af INSERT/UPDATE/DELETE på de RLS-låste tabeller er IKKE med her.
+-- Den hører til #2901 og er bevidst planlagt til EFTER 23/8-cutover, fordi den
+-- kan bryde legitime klient-skrivninger. Denne migration rører kun de to klasser
+-- der er beviseligt risikofrie, og som er dem der gør auditten brugbar.
+--
+-- ── Del 1: TRUNCATE på eksisterende tabeller ─────────────────────────────────
+--
+-- Målt 14/8: 149 tabeller i public har TRUNCATE grantet til anon/authenticated.
+-- Alle 149 ville give en `critical` i rls-auditten (regel 1 i classifyWriteGrants).
+--
+-- Hvorfor det er risikofrit: PostgREST eksponerer ingen verb der mapper til
+-- TRUNCATE — DELETE-verbet bliver til SQL DELETE, aldrig TRUNCATE. Privilegiet
+-- kan altså ikke bruges gennem API'et overhovedet. Og TRUNCATE filtreres ikke af
+-- RLS (Postgres har ingen TRUNCATE-policy), så det er samtidig det farligste
+-- privilegium at efterlade. Verificeret 14/8: den eneste TRUNCATE i kodebasen
+-- står i to integrationstests mod lokale PGlite-databaser
+-- (fictionalRiderGenerator.integration.test.js, raceResultsEntrantUnique.integration.test.js)
+-- — aldrig mod prod, aldrig som anon/authenticated. Backend kører service_role
+-- og rammes ikke.
+--
+-- ── Del 2: default privileges for FREMTIDIGE tabeller ────────────────────────
+--
+-- Supabase' `ALTER DEFAULT PRIVILEGES` giver enhver ny tabel i public fulde
+-- write-grants til anon + authenticated. Det er rod-årsagen til at #2830 findes,
+-- og til at klassen bliver ved med at vokse: hver ny tabel fødes med hullet.
+--
+-- Dette ændrer KUN hvad fremtidige tabeller arver. Eksisterende tabeller røres
+-- ikke af en ALTER DEFAULT PRIVILEGES. SELECT revokes ikke — frontend-læsninger
+-- fortsætter uændret. En ny tabel der skal kunne skrives fra klienten får
+-- fremover en eksplicit GRANT i sin egen migration, hvilket er hele pointen.
+--
+-- Bemærk: der findes en tilsvarende default-ACL med grantor `supabase_admin`.
+-- Den kan vi ikke røre — denne database's `postgres`-rolle er ikke medlem af
+-- supabase_admin. `audit_default_privileges()` filtrerer derfor bevidst på
+-- grantor='postgres', så auditten måler det vi faktisk kan styre.
+--
+-- Idempotent: REVOKE på en allerede-fjernet rettighed er en no-op.
+
+REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+  ON TABLES FROM anon, authenticated;
+
+-- =============================================================================
+-- Verifikation efter migration (forventet output)
+-- =============================================================================
+--
+-- 1) Ingen tabeller med TRUNCATE til klient-roller:
+--
+--    select count(*) from information_schema.role_table_grants
+--    where table_schema='public' and grantee in ('anon','authenticated')
+--      and privilege_type='TRUNCATE';
+--    → forventet: 0   (var 149 den 14/8)
+--
+-- 2) Ingen postgres-default-ACL med write-grants til klient-roller:
+--
+--    select pg_get_userbyid(a.grantee), a.privilege_type
+--    from pg_default_acl d
+--    join pg_namespace n on n.oid = d.defaclnamespace
+--    cross join lateral aclexplode(d.defaclacl) a
+--    where d.defaclobjtype='r' and n.nspname='public'
+--      and pg_get_userbyid(d.defaclrole)='postgres'
+--      and pg_get_userbyid(a.grantee) in ('anon','authenticated')
+--      and a.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE');
+--    → forventet: 0 rækker  (supabase_admin-rækkerne bliver — de kan ikke aendres herfra)
+--
+-- 3) SELECT er urørt (frontend-læsninger virker):
+--
+--    select count(*) from information_schema.role_table_grants
+--    where table_schema='public' and grantee='authenticated' and privilege_type='SELECT';
+--    → forventet: uændret, langt over 0
+--
+-- Rollback (kun hvis noget mod forventning brød):
+--   GRANT TRUNCATE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+--   ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+--     GRANT INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+--     ON TABLES TO anon, authenticated;
