@@ -38,23 +38,23 @@
     "format:check": "prettier --check --ignore-unknown ."
   },
   "dependencies": {
-    "@sentry/node": "^10.69.0",
-    "@supabase/supabase-js": "^2.112.0",
+    "@sentry/node": "^10.70.0",
+    "@supabase/supabase-js": "^2.112.2",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
-    "express-rate-limit": "^8.6.1",
+    "express-rate-limit": "^8.6.2",
     "fast-xml-parser": "^5.10.1",
     "helmet": "^8.3.0",
     "multer": "^2.2.0",
     "node-fetch": "^3.3.2",
-    "resend": "^6.18.1",
-    "ws": "^8.21.2"
+    "resend": "^6.19.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.8.0",
+    "eslint": "^10.8.1",
     "globals": "^17.9.0",
     "prettier": "^3.9.6"
   },
