@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.122",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "The promotion dialog described a wage change that does not happen",
+          "body": "Promoting an academy rider who already has a contract keeps that contract, wage and all. The dialog said his academy salary would be replaced by a senior wage, and showed a projected number. It now says the contract carries over, and shows the wage he actually has."
+        },
+        "da": {
+          "title": "Oprykningsdialogen beskrev en lønændring der ikke sker",
+          "body": "Rykker du en akademirytter op, og har han allerede en kontrakt, fortsætter den uændret med sin løn. Dialogen sagde at akademilønnen blev erstattet af en senior-løn, og viste et beregnet tal. Nu siger den at kontrakten fortsætter, og viser den løn han faktisk har."
+        },
+        "refs": [
+          3620
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.121",
     "date": "2026-08-14",
     "label": "Beta",

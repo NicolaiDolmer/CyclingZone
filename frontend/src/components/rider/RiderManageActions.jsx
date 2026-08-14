@@ -24,6 +24,7 @@ import { formatNumber } from "../../lib/intl.js";
 import { resolveApiError } from "../../lib/apiError.js";
 import { isU23 } from "../../lib/riderAge.js";
 import { projectSeniorSalary, projectYouthSalary } from "../../lib/marketValues.js";
+import { keepsExistingContractOnPromote } from "../../lib/academyPromoteContract.js";
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
 import { extendCapGate } from "../../lib/extendCapGate.js";
 import { useAcademy } from "../../lib/useAcademy.js";
@@ -70,9 +71,14 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   const riderName = `${rider.firstname} ${rider.lastname}`;
 
   function openPromote() {
+    // #3620: en rytter der allerede har en kontrakt beholder den ved oprykning
+    // — så lønnen bliver hverken erstattet eller genberegnet, og modalen skal
+    // hverken love det ene eller vise et projiceret tal der aldrig skrives.
+    const keepsContract = keepsExistingContractOnPromote(rider);
     setAcademyModal({
       direction: "promote",
-      newSalary: projectSeniorSalary(rider, { division: academy.division }),
+      newSalary: keepsContract ? rider.salary : projectSeniorSalary(rider, { division: academy.division }),
+      keepsContract,
       currentSalary: null,
       capLabel: `${academy.seniorCount} / ${academy.seniorMax}`,
       capAfterLabel: `${academy.seniorCount + 1} / ${academy.seniorMax}`,
@@ -145,6 +151,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
         capLabel={academyModal?.capLabel}
         capAfterLabel={academyModal?.capAfterLabel}
         racesCleared={academyModal?.racesCleared}
+        keepsContract={!!academyModal?.keepsContract}
         busy={academyBusy}
         onCancel={() => { if (!academyBusy) setAcademyModal(null); }}
         onConfirm={confirmAcademy}
