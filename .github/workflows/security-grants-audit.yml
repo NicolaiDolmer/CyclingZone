@@ -58,19 +58,27 @@ jobs:
         run: node --test scripts/check-secdef-revoke-lint.test.mjs
 
       - name: Lint ændrede SQL-filer
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          BASE="origin/${{ github.base_ref }}"
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
-          CHANGED=$(git diff --name-only --diff-filter=d "$BASE...HEAD" -- 'database/**/*.sql' || true)
-          if [ -z "$CHANGED" ]; then
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          # Pathspec = mappen, .sql-filtret sker bagefter: git's default-pathspec
+          # matcher '*' hen over '/', så 'database/**/*.sql' er både overflødigt
+          # og let at tage fejl af. mapfile+array holder filnavnene citerede.
+          mapfile -t FILES < <(
+            git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" -- database \
+              | grep -E '\.sql$' || true
+          )
+          if [ ${#FILES[@]} -eq 0 ]; then
             echo "✅ Ingen ændrede SQL-filer i database/ — intet at tjekke."
             exit 0
           fi
           echo "Ændrede SQL-filer:"
-          printf '  %s\n' $CHANGED
+          printf '  %s\n' "${FILES[@]}"
           echo ""
-          node scripts/check-secdef-revoke-lint.mjs $CHANGED
+          node scripts/check-secdef-revoke-lint.mjs "${FILES[@]}"
 
   live:
     name: Live grant-tjek mod prod
