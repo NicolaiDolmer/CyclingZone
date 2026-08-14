@@ -19,15 +19,23 @@ const strategyPage = read("../pages/StrategyPage.jsx");
 const trainingPage = read("../pages/TrainingPage.jsx");
 const stageRoleMatrix = read("../components/race/StageRoleMatrix.jsx");
 
-test("RiderTrainingTab: pickFocus/pickIntensity await setPlan/clearPlan and surface {ok:false}", () => {
-  assert.match(riderTrainingTab, /const pickFocus = async \(f\) => \{/);
-  assert.match(riderTrainingTab, /await clearPlan\(rider\.id\)/);
-  assert.match(riderTrainingTab, /await setPlan\(rider\.id, f, intensity\)/);
-  assert.match(riderTrainingTab, /const pickIntensity = async \(i\) => \{/);
+// #3721: the focus chips + intensity segment moved into the shared FocusPanel,
+// so the call sites are now handlePanelSave/handlePanelClear. The CONTRACT is
+// unchanged and pinned at least as tightly as before.
+test("RiderTrainingTab: panel save/clear await setPlan/clearPlan and surface {ok:false}", () => {
+  assert.match(riderTrainingTab, /async function handlePanelSave\(focus, intensity\)/);
+  assert.match(riderTrainingTab, /const result = await training\.setPlan\(rider\.id, focus, intensity\)/);
+  assert.match(riderTrainingTab, /async function handlePanelClear\(\)/);
+  assert.match(riderTrainingTab, /const result = await training\.clearPlan\(rider\.id\)/);
   assert.match(riderTrainingTab, /if \(result && !result\.ok\) setActionError\(result\.error \|\| "failed"\)/);
   // The error state must actually be rendered (role=alert, i18n fallback array).
   assert.match(riderTrainingTab, /\{actionError && \(/);
   assert.match(riderTrainingTab, /role="alert"/);
+  // #3721: the panel must RECEIVE the error too, or a failed save would only be
+  // visible on the card behind the open panel.
+  assert.match(riderTrainingTab, /error=\{actionError\}/);
+  // A failed save must not close the panel — the manager has to see it failed.
+  assert.match(riderTrainingTab, /else setPanelOpen\(false\)/);
 });
 
 test("RiderScoutingTab: handleScout awaits scout() and surfaces r.error on failure", () => {
@@ -64,11 +72,20 @@ test("TrainingPage: roster-row focus/intensity/clear handlers await setPlan/clea
   assert.match(trainingPage, /async function handleClearPlan\(riderId\)/);
   assert.match(trainingPage, /const result = await setPlan\(riderId, focus, intensity\)/);
   assert.match(trainingPage, /const result = await clearPlan\(riderId\)/);
-  // The select/clear-button/intensity-buttons must call the wrappers, not the raw hook fns.
-  assert.match(trainingPage, /handlePlanChange\(rider\.id, newFocus, plan\?\.intensity \?\? "normal"\)/);
-  assert.match(trainingPage, /onClick=\{\(\) => handleClearPlan\(rider\.id\)\}/);
+  // The intensity buttons in the roster row still call the wrapper, not the raw hook fn.
   assert.match(trainingPage, /onClick=\{\(\) => handlePlanChange\(rider\.id, plan\.focus, k\)\}/);
   assert.match(trainingPage, /planActionError\?\.riderId === rider\.id/);
+
+  // #3721: the focus <select> + its clear button became the focus PANEL, so
+  // set/clear now route through handleFocusPanelSave/handleFocusPanelClear.
+  // Both must go through the wrappers (never the raw hook fns) and must only
+  // close the panel when the write actually succeeded — hence the wrappers now
+  // return a boolean instead of undefined.
+  assert.match(trainingPage, /if \(await handlePlanChange\(focusPanelRiderId, focus, intensity\)\) setFocusPanelRiderId\(null\)/);
+  assert.match(trainingPage, /if \(await handleClearPlan\(focusPanelRiderId\)\) setFocusPanelRiderId\(null\)/);
+  assert.match(trainingPage, /setPlanActionError\(\{ riderId, error: result\.error \|\| "failed" \}\);\s*\n\s*return false;/);
+  // The panel must receive the error for the rider it is open for.
+  assert.match(trainingPage, /error=\{planActionError\?\.riderId === focusPanelRiderId \? planActionError\.error : null\}/);
 });
 
 test("StageRoleMatrix: shows a short direction hint per role (not raw tuning numbers)", () => {

@@ -1,0 +1,290 @@
+{
+  "desktop": {
+    "viewport": {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "trained": false
+    },
+    "pageHeight": 2032,
+    "screens": 2.26,
+    "measurements": [
+      {
+        "label": "PageHeader",
+        "top": 28,
+        "height": 54,
+        "text": "Daily Training Not trained yet today"
+      },
+      {
+        "label": "blok",
+        "top": 106,
+        "height": 126,
+        "text": "Do riders get energy back every day? Yes. Every night around"
+      },
+      {
+        "label": "blok",
+        "top": 256,
+        "height": 49,
+        "text": "What each focus trains"
+      },
+      {
+        "label": "blok",
+        "top": 328,
+        "height": 49,
+        "text": "Weekly rhythm"
+      },
+      {
+        "label": "blok",
+        "top": 401,
+        "height": 20,
+        "text": "Group by type"
+      },
+      {
+        "label": "blok",
+        "top": 445,
+        "height": 1252,
+        "text": " RIDER TYPE FOCUS INTENSITY THIS SEASON FORM FATIGUE STATUS "
+      },
+      {
+        "label": "blok",
+        "top": 1721,
+        "height": 16,
+        "text": "14 riders"
+      },
+      {
+        "label": "blok",
+        "top": 1761,
+        "height": 207,
+        "text": "Training history YOUR LAST 30 DAYS OF DAILY TRAINING No trai"
+      }
+    ]
+  },
+  "mobile": {
+    "viewport": {
+      "name": "mobile",
+      "width": 393,
+      "height": 852,
+      "trained": false
+    },
+    "pageHeight": 2360,
+    "screens": 2.77,
+    "measurements": [
+      {
+        "label": "PageHeader",
+        "top": 65,
+        "height": 54,
+        "text": "Daily Training Not trained yet today"
+      },
+      {
+        "label": "blok",
+        "top": 189,
+        "height": 209,
+        "text": "Do riders get energy back every day? Yes. Every night around"
+      },
+      {
+        "label": "blok",
+        "top": 422,
+        "height": 49,
+        "text": "What each focus trains"
+      },
+      {
+        "label": "blok",
+        "top": 494,
+        "height": 49,
+        "text": "Weekly rhythm"
+      },
+      {
+        "label": "blok",
+        "top": 567,
+        "height": 47,
+        "text": "SORT BY Rider Type Form Fatigue Status"
+      },
+      {
+        "label": "blok",
+        "top": 638,
+        "height": 20,
+        "text": "Group by type"
+      },
+      {
+        "label": "blok",
+        "top": 682,
+        "height": 1252,
+        "text": " RIDER FOCUS INTENSITY THIS SEASON STATUS WEEKLY PLAN Rytter"
+      },
+      {
+        "label": "blok",
+        "top": 1958,
+        "height": 16,
+        "text": "14 riders"
+      },
+      {
+        "label": "blok",
+        "top": 1998,
+        "height": 267,
+        "text": "Training history YOUR LAST 30 DAYS OF DAILY TRAINING No trai"
+      }
+    ]
+  },
+  "desktop-trained": {
+    "viewport": {
+      "name": "desktop-trained",
+      "width": 1440,
+      "height": 900,
+      "trained": true
+    },
+    "pageHeight": 3288,
+    "screens": 3.65,
+    "measurements": [
+      {
+        "label": "PageHeader",
+        "top": 28,
+        "height": 54,
+        "text": "Daily Training Trained today at 06:12 (by assistant)"
+      },
+      {
+        "label": "blok",
+        "top": 106,
+        "height": 77,
+        "text": "TODAY'S STORY Rytter1 Andersen breaks through on Tempo: 41 →"
+      },
+      {
+        "label": "blok",
+        "top": 206,
+        "height": 68,
+        "text": "Today's training has already run. Changes to focus or intens"
+      },
+      {
+        "label": "blok",
+        "top": 298,
+        "height": 126,
+        "text": "Do riders get energy back every day? Yes. Every night around"
+      },
+      {
+        "label": "blok",
+        "top": 448,
+        "height": 49,
+        "text": "What each focus trains"
+      },
+      {
+        "label": "blok",
+        "top": 520,
+        "height": 49,
+        "text": "Weekly rhythm"
+      },
+      {
+        "label": "blok",
+        "top": 593,
+        "height": 20,
+        "text": "Group by type"
+      },
+      {
+        "label": "blok",
+        "top": 637,
+        "height": 1367,
+        "text": " RIDER TYPE FOCUS INTENSITY THIS SEASON FORM FATIGUE STATUS "
+      },
+      {
+        "label": "blok",
+        "top": 2027,
+        "height": 16,
+        "text": "14 riders"
+      },
+      {
+        "label": "blok",
+        "top": 2067,
+        "height": 925,
+        "text": "Today's training report Consistency bonus applied: +25% gain"
+      },
+      {
+        "label": "blok",
+        "top": 3017,
+        "height": 207,
+        "text": "Training history YOUR LAST 30 DAYS OF DAILY TRAINING No trai"
+      }
+    ]
+  },
+  "mobile-trained": {
+    "viewport": {
+      "name": "mobile-trained",
+      "width": 393,
+      "height": 852,
+      "trained": true
+    },
+    "pageHeight": 4181,
+    "screens": 4.91,
+    "measurements": [
+      {
+        "label": "PageHeader",
+        "top": 65,
+        "height": 54,
+        "text": "Daily Training Trained today at 06:12 (by assistant)"
+      },
+      {
+        "label": "blok",
+        "top": 189,
+        "height": 90,
+        "text": "TODAY'S STORY Rytter1 Andersen breaks through on Tempo: 41 →"
+      },
+      {
+        "label": "blok",
+        "top": 303,
+        "height": 113,
+        "text": "Today's training has already run. Changes to focus or intens"
+      },
+      {
+        "label": "blok",
+        "top": 440,
+        "height": 209,
+        "text": "Do riders get energy back every day? Yes. Every night around"
+      },
+      {
+        "label": "blok",
+        "top": 673,
+        "height": 49,
+        "text": "What each focus trains"
+      },
+      {
+        "label": "blok",
+        "top": 745,
+        "height": 49,
+        "text": "Weekly rhythm"
+      },
+      {
+        "label": "blok",
+        "top": 818,
+        "height": 47,
+        "text": "SORT BY Rider Type Form Fatigue Status"
+      },
+      {
+        "label": "blok",
+        "top": 889,
+        "height": 20,
+        "text": "Group by type"
+      },
+      {
+        "label": "blok",
+        "top": 933,
+        "height": 1367,
+        "text": " RIDER FOCUS INTENSITY THIS SEASON STATUS WEEKLY PLAN Rytter"
+      },
+      {
+        "label": "blok",
+        "top": 2323,
+        "height": 16,
+        "text": "14 riders"
+      },
+      {
+        "label": "blok",
+        "top": 2363,
+        "height": 1431,
+        "text": "Today's training report Consistency bonus applied: +25% gain"
+      },
+      {
+        "label": "blok",
+        "top": 3818,
+        "height": 267,
+        "text": "Training history YOUR LAST 30 DAYS OF DAILY TRAINING No trai"
+      }
+    ]
+  }
+}
