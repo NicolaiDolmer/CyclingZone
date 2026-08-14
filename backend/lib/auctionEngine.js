@@ -141,6 +141,64 @@ export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG) {
   throw new Error("Cannot calculate auction end within 14 days");
 }
 
+// ── Spiller-valgt sluttidspunkt (#2884) ──────────────────────────────────────
+// Sælgeren vælger et KONKRET klokkeslæt i stedet for en varighed. Vælger han
+// 20.44, slutter auktionen 20.44 — der akkumuleres ikke aktive timer.
+//
+// Ejer-beslutning 15/8: spændet er 1-48 timer frem, og sluttidspunktet skal
+// ligge inde i det åbne vindue. Natten gråtones i vælgeren og rulles IKKE til
+// næste åbning: et valgt klokkeslæt der ikke er sandt, støder mod doktrinen om
+// at spilleren skal kunne stole på det han ser. Og en auktion der lukker kl. 04
+// kan kun nås af den der har aftalt den på forhånd (fair play, #3131).
+export const CUSTOM_END_MIN_HOURS = 1;
+export const CUSTOM_END_MAX_HOURS = 48;
+
+// Vindues-grænserne som et sluttidspunkt hører til. Spejler windowForEnd's
+// re-ankring: når close_hour=24 lander lukketid på 00:00 den NÆSTE kalenderdag,
+// og et sluttidspunkt præcis dér hører stadig til den FORRIGE dags vindue (#1904).
+function windowBoundsForEnd(end, cfg) {
+  const openToday = windowOpenTime(end, cfg);
+  if (end >= openToday) {
+    return { open: openToday, close: windowCloseTime(end, cfg) };
+  }
+  const prevDay = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  return { open: windowOpenTime(prevDay, cfg), close: windowCloseTime(prevDay, cfg) };
+}
+
+/**
+ * Validér et spiller-valgt sluttidspunkt. Returnerer null når det er gyldigt.
+ *
+ * @param {Date|string} endsAt - det valgte sluttidspunkt
+ * @param {Date} now - referencetidspunkt (oprettelsen)
+ * @param {object} cfg - auktions-timing-config
+ * @returns {{code: string} & Record<string, unknown> | null}
+ */
+export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT_AUCTION_CONFIG) {
+  // `new Date(null)` er epoch 1970, ikke en ugyldig dato — så tomme værdier skal
+  // afvises eksplicit, ellers slipper de igennem som "for tidligt".
+  if (endsAt === null || endsAt === undefined || endsAt === "") {
+    return { code: "invalid_end_time" };
+  }
+  const end = endsAt instanceof Date ? new Date(endsAt.getTime()) : new Date(endsAt);
+  if (Number.isNaN(end.getTime())) return { code: "invalid_end_time" };
+
+  const aheadMs = end.getTime() - new Date(now).getTime();
+  if (aheadMs < CUSTOM_END_MIN_HOURS * 60 * 60 * 1000) {
+    return { code: "end_too_soon", minHours: CUSTOM_END_MIN_HOURS };
+  }
+  if (aheadMs > CUSTOM_END_MAX_HOURS * 60 * 60 * 1000) {
+    return { code: "end_too_late", maxHours: CUSTOM_END_MAX_HOURS };
+  }
+
+  const { open, close } = windowBoundsForEnd(end, cfg);
+  if (end < open || end > close) {
+    const { openHour, closeHour } = windowHours(end >= open ? end : new Date(end.getTime() - 24 * 60 * 60 * 1000), cfg);
+    return { code: "end_outside_window", openHour, closeHour };
+  }
+
+  return null;
+}
+
 /**
  * Check whether a new bid triggers an extension.
  *

@@ -4,6 +4,77 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.127",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Positioning and tactics can finally be trained properly",
+          "body": "What changed: Positioning and tactics now have a real ceiling for every rider, more than twice as high as before. Sprinters, cobbles riders, puncheurs and rouleurs get positioning as a signature ability on top of that.\n\nWhy: No rider type had any affinity for those two, so every rider in the game was locked to the same low ceiling on them, and nothing you did could change it.\n\nWhat it means for you: Nobody loses anything. Ceilings only went up. Riders in those four roles gain 2 to 4 points of potential rating, some up to 8."
+        },
+        "da": {
+          "title": "Positionering og taktik kan endelig trænes ordentligt",
+          "body": "Hvad ændrede sig: Positionering og taktik har nu et rigtigt loft for hver eneste rytter, mere end dobbelt så højt som før. Sprintere, brostensryttere, punchére og rouleurer får derudover positionering som signatur-evne.\n\nHvorfor: Ingen ryttertype havde anlæg for de to, så alle ryttere i spillet var låst til det samme lave loft på dem, og intet du gjorde kunne ændre det.\n\nHvad det betyder for dig: Ingen mister noget. Lofterne er kun gået op. Ryttere i de fire roller får 2 til 4 point mere i potentiel rating, enkelte op til 8."
+        },
+        "refs": [
+          3682,
+          3709
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.126",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "You now pick when your auction ends",
+          "body": "What changed: When you put a rider up for auction you choose the exact time it ends, from 1 to 48 hours ahead. It has to land while the market is open, 08:00 to 24:00 game time.\n\nWhy: Auctions ran for one hour. Of 1.698 player-listed auctions, 1.585 never got a single bid, and only 16 have ever had two bidders at once. An hour is not long enough for anyone to see your rider.\n\nWhat it means for you: Pick a time when people are around. A rider nobody sees cannot be bid on, and a price only moves when two managers want the same rider."
+        },
+        "da": {
+          "title": "Du vælger nu selv hvornår din auktion slutter",
+          "body": "Hvad ændrede sig: Når du sætter en rytter på auktion, vælger du det præcise tidspunkt den slutter, fra 1 til 48 timer frem. Det skal ligge mens markedet er åbent, 08:00 til 24:00 spiltid.\n\nHvorfor: Auktioner kørte i én time. Af 1.698 spillerudbudte auktioner fik 1.585 aldrig et eneste bud, og kun 16 har nogensinde haft to budgivere på samme tid. En time er ikke længe nok til at nogen når at se din rytter.\n\nHvad det betyder for dig: Vælg et tidspunkt hvor der er nogen. En rytter ingen ser, kan der ikke bydes på, og en pris flytter sig kun når to managere vil have den samme rytter."
+        },
+        "refs": [
+          2884,
+          1905
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.125",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "One-day races showed a prize pool they could never pay",
+          "body": "What changed: The expected prize shown for a one-day race counted the points, mountain and youth classifications. Those classifications do not exist in a one-day race, so the number was up to 39 % higher than anything the race could actually pay out. It now shows only what is on the line.\n\nWhy: The calculation was shared with stage races, where all three classifications are real and are paid in full. Nobody had separated the two.\n\nWhat it means for you: The number on the calendar and in the season report is now the real pool. Nothing you have already earned changed, and stage races are unaffected."
+        },
+        "da": {
+          "title": "Endagsløb viste en præmiepulje de aldrig kunne betale",
+          "body": "Hvad ændrede sig: Den forventede præmie på et endagsløb talte point-, bjerg- og ungdomstrøjen med. De klassementer findes ikke i et endagsløb, så tallet lå op til 39 % over hvad løbet faktisk kunne udbetale. Det viser nu kun det der er på spil.\n\nHvorfor: Beregningen var delt med etapeløbene, hvor alle tre klassementer er ægte og bliver udbetalt fuldt ud. Ingen havde skilt de to ad.\n\nHvad det betyder for dig: Tallet på kalenderen og i sæsonrapporten er nu den rigtige pulje. Intet du allerede har tjent er ændret, og etapeløb er upåvirkede."
+        },
+        "refs": [
+          3718
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.124",
     "date": "2026-08-14",
     "label": "Beta",

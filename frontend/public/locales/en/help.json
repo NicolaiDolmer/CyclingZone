@@ -151,7 +151,7 @@
       },
       "whenExpires": {
         "title": "When does an auction expire?",
-        "text": "An auction runs for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day, and trading pauses 00:00 to 08:00. If you bid at 19:40, the auction ends the same evening at 20:40. If you bid at 23:30, the remaining time carries over the night and the auction ends the next morning at 08:30."
+        "text": "When you list your own rider you pick the exact time the auction ends, from 1 to 48 hours ahead. Auctions started by the bank run for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day, and trading pauses 00:00 to 08:00. If you bid at 19:40, the auction ends the same evening at 20:40. If you bid at 23:30, the remaining time carries over the night and the auction ends the next morning at 08:30."
       },
       "flashAuction": {
         "title": "Flash Auction (Deadline Day)",
@@ -1176,7 +1176,7 @@
     },
     "auctionExpiry": {
       "q": "When does an auction expire?",
-      "a": "An auction runs for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
+      "a": "When you list your own rider you pick the exact time the auction ends, from 1 to 48 hours ahead. Auctions started by the bank run for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
     },
     "flashAuction": {
       "q": "What is a Flash Auction?",

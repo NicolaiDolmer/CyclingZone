@@ -122,6 +122,29 @@ test("buildRacePointsLookup maps race_points rows to English result_type keys by
   assert.equal(singleLookup["team__1"], 50);
 });
 
+// #3718 forward-guard: et endagsløb må ikke kunne udbetale trøje-klassementer, heller ikke hvis
+// simulatoren en dag begynder at emitte `points`/`mountain`/`young` for et `single`-løb.
+// Etapeløb SKAL stadig kunne — de samme race_points-rækker deles af begge stier.
+test("#3718 buildRacePointsLookup — trøje-klassementer findes kun for etapeløb", () => {
+  const racePoints = [
+    { result_type: "Klassement", rank: 1, points: 100 },
+    { result_type: "Klassiker", rank: 1, points: 125 },
+    { result_type: "Pointtroje", rank: 1, points: 32 },
+    { result_type: "Bjergtroje", rank: 1, points: 32 },
+    { result_type: "Ungdomstroje", rank: 1, points: 16 },
+  ];
+
+  const singleLookup = buildRacePointsLookup({ racePoints, raceType: "single" });
+  assert.equal(singleLookup["points__1"], undefined);
+  assert.equal(singleLookup["mountain__1"], undefined);
+  assert.equal(singleLookup["young__1"], undefined);
+
+  const stageLookup = buildRacePointsLookup({ racePoints, raceType: "stage_race" });
+  assert.equal(stageLookup["points__1"], 32);
+  assert.equal(stageLookup["mountain__1"], 32);
+  assert.equal(stageLookup["young__1"], 16);
+});
+
 test("buildRacePointsLookup returns empty lookup when no race_class data", () => {
   const lookup = buildRacePointsLookup({ racePoints: [], raceType: "stage_race" });
   assert.equal(lookup["gc__1"], undefined);

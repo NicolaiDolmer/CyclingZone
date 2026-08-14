@@ -26,7 +26,7 @@ import {
   runRepair3570, buildPlan, runSelvtest, bevisIdempotens, diffModBaseline,
   parseArgs, backupDDL, backupTabeller, cphDateStamp, quotasFromPct, solveAssignment,
   recoverBirthArchetype, segmentOf, postVerify, sikreBackup, rollbackSQL,
-  DRYRUN_FACIT, MAAL, BACKUP_SKEMA, KANONISK_BACKUP_SUFFIX, FORSVUNDNE_GRAENSE_MIN,
+  DRYRUN_FACIT, facitEfterDrift, MAAL, BACKUP_SKEMA, KANONISK_BACKUP_SUFFIX, FORSVUNDNE_GRAENSE_MIN,
   laesPlanFil, paalaegPlanFil, runPlanFilSelvtest, baselinePlan, hentFriskPopulation,
   BASELINE_SNAPSHOT_DIR, PLAN_SNAPSHOT_TAGET, foerPlanen,
 } from "./repair3570Apply.mjs";
@@ -786,9 +786,25 @@ test("selvtest: planlæggeren reproducerer det godkendte dry-run præcist", () =
 });
 
 test("NEGATIV: selvtesten fyrer hvis planlæggeren driver væk fra facit", () => {
-  const res = runSelvtest({ facit: { ...DRYRUN_FACIT, primaerSkift: 5964 } });
+  // Perturbér det DRIFT-JUSTEREDE facit (facitEfterDrift), ikke rå DRYRUN_FACIT:
+  // det er dét selvtesten sammenligner mod efter #3709 trin 3. Bruges rå-facit her,
+  // fejler testen på to afvigelser i stedet for én — den bevidste model-drift OG
+  // perturbationen — og beviser dermed ikke længere at ÉN drift giver ÉN afvigelse.
+  const res = runSelvtest({ facit: { ...facitEfterDrift(), primaerSkift: 5964 } });
   assert.equal(res.bestaaet, false);
   assert.deepEqual(res.afvigelser, [{ navn: "primær-skift", faktisk: 5965, forventet: 5964 }]);
+});
+
+test("#3709 trin 3: model-drift-ledgeren er skrevet mod DET godkendte facit", () => {
+  // facitEfterDrift kaster hvis en ledger-post ikke matcher `fra`-værdien i
+  // DRYRUN_FACIT. Det er vagten mod at nogen retter facit OG ledgeren i samme
+  // ombæring og dermed mister det historiske dokument.
+  assert.equal(DRYRUN_FACIT.loftSaenketAntal, 7234, "det godkendte 10/8-tal må aldrig redigeres");
+  assert.equal(facitEfterDrift().loftSaenketAntal, 7230, "ledgeren skal flytte tallet til #3682-modellens");
+  assert.throws(
+    () => facitEfterDrift({ ...DRYRUN_FACIT, loftSaenketAntal: 9999 }),
+    /Ledgeren er skrevet mod et andet facit/,
+  );
 });
 
 test("runRepair3570 stopper før DB-adgang hvis selvtesten ikke kan køre", async () => {

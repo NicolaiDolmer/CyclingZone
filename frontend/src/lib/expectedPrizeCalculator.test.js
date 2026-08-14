@@ -69,7 +69,7 @@ function fixturePoints() {
 
 // ---------- computeExpectedRacePoints ----------
 
-test("ProSeries one-day → 1308 points (matches audit baseline)", () => {
+test("ProSeries one-day → 1130 points (Klassiker + KlassikerHold, ingen trøjer)", () => {
   const racePoints = fixturePoints();
   const result = computeExpectedRacePoints({
     raceClass: "ProSeries",
@@ -77,7 +77,40 @@ test("ProSeries one-day → 1308 points (matches audit baseline)", () => {
     stages: 1,
     racePoints,
   });
-  assert.equal(result, 1308);
+  // #3718: var 1308 før fixet. Klassiker 1120 + KlassikerHold 10 = 1130.
+  // De 178 der forsvandt er Pointtroje 73 + Bjergtroje 73 + Ungdomstroje 32 — trøjer
+  // et endagsløb aldrig har uddelt.
+  assert.equal(result, 1130);
+});
+
+// #3718 regressions-lås: fladen må ALDRIG love et trøje-klassement på et endagsløb igen.
+// Fixturen har point på alle tre trøjer for både ProSeries og Monuments, så hvis en af dem
+// sniger sig tilbage i SINGLE_RACE_RESULT_TYPES, stiger tallet og testen fejler.
+test("#3718 — endagsløb tæller ingen point-/bjerg-/ungdomstrøje", () => {
+  const racePoints = fixturePoints();
+  const withJerseys = racePoints;
+  const withoutJerseys = racePoints.filter(
+    (row) => !["Pointtroje", "Bjergtroje", "Ungdomstroje"].includes(row.result_type),
+  );
+  for (const raceClass of ["ProSeries", "Monuments"]) {
+    const a = computeExpectedRacePoints({ raceClass, raceType: "single", stages: 1, racePoints: withJerseys });
+    const b = computeExpectedRacePoints({ raceClass, raceType: "single", stages: 1, racePoints: withoutJerseys });
+    assert.equal(a, b, `${raceClass}: trøje-rækker må ikke påvirke et endagsløbs forventede pulje`);
+  }
+});
+
+// Modstykket: etapeløb SKAL stadig tælle trøjerne — race_points-rækkerne er delt mellem de
+// to stier, og motoren udbetaler dem fuldt ud for etapeløb (verificeret mod prod, sæson 2).
+test("#3718 — etapeløb tæller stadig point-/bjerg-/ungdomstrøje", () => {
+  const racePoints = fixturePoints();
+  const withoutJerseys = racePoints.filter(
+    (row) => !["Pointtroje", "Bjergtroje", "Ungdomstroje"].includes(row.result_type),
+  );
+  const a = computeExpectedRacePoints({ raceClass: "ProSeries", raceType: "stage_race", stages: 5, racePoints });
+  const b = computeExpectedRacePoints({
+    raceClass: "ProSeries", raceType: "stage_race", stages: 5, racePoints: withoutJerseys,
+  });
+  assert.equal(a - b, 178);
 });
 
 test("ProSeries 5-stage race → 1643 points (matches audit baseline)", () => {
@@ -139,9 +172,9 @@ test("Monuments one-day Klassiker → finals only (no per-stage)", () => {
     racePoints,
   });
   // Klassiker = first 20 sum 4435 + 30×10 + 15×20 + 10×5 + 5×5 = 5110
-  // Pointtroje 182 + Bjergtroje 182 + Ungdomstroje 80 + KlassikerHold 40
-  // Total = 5110 + 182 + 182 + 80 + 40 = 5594
-  assert.equal(result, 5594);
+  // + KlassikerHold 40. Trøjerne (182 + 182 + 80) tælles IKKE, jf. #3718.
+  // Total = 5110 + 40 = 5150
+  assert.equal(result, 5150);
 });
 
 test("missing race_class returns 0", () => {
@@ -189,7 +222,7 @@ test("computeExpectedRacePrize multiplies points by PRIZE_PER_POINT", () => {
     stages: 1,
     racePoints,
   });
-  assert.equal(result, 1308 * PRIZE_PER_POINT); // 1308 point × 75 = 98.100 CZ$ (#1819 ÷20)
+  assert.equal(result, 1130 * PRIZE_PER_POINT); // 1130 point × 75 = 84.750 CZ$ (#1819 ÷20, #3718)
 });
 
 test("PRIZE_PER_POINT is 75", () => {

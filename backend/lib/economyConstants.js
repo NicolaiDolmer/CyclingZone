@@ -323,6 +323,12 @@ export const FINANCE_REASON = Object.freeze({
   SEASON_START_UPKEEP: "season_start_upkeep",
   // #1980 · nedrykningsfaldskærm — engangsudbetaling ved sæson-start efter nedrykning.
   SEASON_START_PARACHUTE: "season_start_parachute",
+  // #3730 · forholdsmæssig sponsor til et hold der oprettes MIDT i en sæson. Sponsoren
+  // udbetales ellers kun ved sæsonstart, så et hold oprettet undervejs fik nul resten af
+  // sæsonen (målt sæson 2: 43 af 43 nye hold, median-indtægt 31.125 mod 326.596 for de
+  // hold der var med fra start). Ingen migration nødvendig — reason_code har bevidst
+  // ingen CHECK-constraint, se noten over FINANCE_REASON.
+  MIDSEASON_SPONSOR_PRORATA: "midseason_sponsor_prorata",
   SEASON_START_ACADEMY_DRIFT: "season_start_academy_drift",
   // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
   SEASON_START_FACILITY_UPKEEP: "season_start_facility_upkeep",
