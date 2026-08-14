@@ -13,11 +13,12 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
-import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
+import { TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt } from "../lib/trainingReport.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
+import FocusPanel from "../components/training/FocusPanel.jsx";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
@@ -25,7 +26,7 @@ import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Section, SectionHeader, Button, Select, Checkbox,
-  PageLoader, EmptyState, ChevronDownIcon, TeamIcon, XIcon,
+  PageLoader, EmptyState, ChevronDownIcon, TeamIcon,
   ArrowUpIcon, ArrowDownIcon, FlagIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
@@ -220,12 +221,32 @@ export default function TrainingPage() {
   async function handlePlanChange(riderId, focus, intensity) {
     setPlanActionError(null);
     const result = await setPlan(riderId, focus, intensity);
-    if (result && !result.ok) setPlanActionError({ riderId, error: result.error || "failed" });
+    if (result && !result.ok) {
+      setPlanActionError({ riderId, error: result.error || "failed" });
+      return false;
+    }
+    return true;
   }
   async function handleClearPlan(riderId) {
     setPlanActionError(null);
     const result = await clearPlan(riderId);
-    if (result && !result.ok) setPlanActionError({ riderId, error: result.error || "failed" });
+    if (result && !result.ok) {
+      setPlanActionError({ riderId, error: result.error || "failed" });
+      return false;
+    }
+    return true;
+  }
+
+  // #3721: fokus-panelet — hvilken rytters panel er åbent (null = ingen). Kun
+  // ÉT ad gangen; panelet ejer intet state der overlever lukning.
+  const [focusPanelRiderId, setFocusPanelRiderId] = useState(null);
+  const focusPanelRider = focusPanelRiderId ? riders.find((r) => r.id === focusPanelRiderId) ?? null : null;
+
+  async function handleFocusPanelSave(focus, intensity) {
+    if (await handlePlanChange(focusPanelRiderId, focus, intensity)) setFocusPanelRiderId(null);
+  }
+  async function handleFocusPanelClear() {
+    if (await handleClearPlan(focusPanelRiderId)) setFocusPanelRiderId(null);
   }
 
   // Gruppering + multi-select + bulk-apply (#1480).
@@ -466,10 +487,6 @@ export default function TrainingPage() {
     const highRisk = !injured && (cond.risk ?? 0) >= 0.05;
     const busy = savingId === rider.id || bulkApplying;
     const isSelected = selected.has(rider.id);
-    // #1974: coarse type-derived trainability-signal — hvorfor et fokus ikke rykker.
-    const riderTrainability = trainability[rider.id] ?? {};
-    const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
-
     // #3709 trin 1: kvitteringen for fokussets 2-3 evner. Erstatter den ene
     // aggregerede progress-bar, som var rod-årsagen bag #3639: baren viste kun
     // evnen tættest på gennembrud, så en låst evne ved siden af var usynlig.
@@ -578,75 +595,42 @@ export default function TrainingPage() {
           <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
         </td>
 
-        {/* Fokus. Ejer-kvalitetspas 24/7 (#2849): select bred nok til fulde
-            fokus-labels (før: max-w-[150px] klippede til "Thr…"), clear-knap er
-            et rigtigt XIcon-ghost-target på samme linje (før: løst "×"-glyf-
-            tegn under selecten — anti-slop). */}
+        {/* #3721: fokus-vælgeren er et panel, ikke en <select> (ejer-godkendt
+            16/8). Cellen bar før fire signaler i 184 px — fokussets navn, et
+            trænbarheds-mærke klistret ind i option-teksten (som klippede:
+            "Threshold / TT (X very lir"), en to-linjers chip, og assistentens
+            hint. Trin 2 lægger et syvende fokus i den og trin 4 point pr. sæson
+            pr. fokus; en <select> kan ikke bære det. Cellen er nu én knap der
+            åbner panelet, hvor hvert fokus har sin egen række.
+
+            Trænbarheds-chippen er VÆK herfra, ikke flyttet. Den røde
+            "blocked"-variant er målt uopnåelig (0 af 384 type-kombinationer på
+            både main og #3741), og den gule "limited" er den tvetydige bucket
+            #3747 beskriver, hvor håndværk (tag 0,95) og anden rolle (0,70)
+            lander sammen. Panelet viser kun de påstande der kan efterprøves. */}
         <td className={tdClass({})} data-tour={isFirst ? "training-focus" : undefined}>
-          <div className="flex items-center gap-1">
-            <div className="w-[184px]">
-              <Select
-                size="sm"
-                value={plan?.focus ?? ""}
-                disabled={busy}
-                aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
-                onChange={(e) => {
-                  const newFocus = e.target.value;
-                  if (!newFocus) return;
-                  handlePlanChange(rider.id, newFocus, plan?.intensity ?? "normal");
-                }}
-              >
-                <option value="">—</option>
-                {TRAINING_FOCUS_KEYS.map((k) => {
-                  const level = riderTrainability[k];
-                  // #3709 trin 1: "loft nået"-markøren (focusOptionCapped) er
-                  // slettet. Den lovede spilleren at et fokus var færdigt for
-                  // altid, hvilket bliver usandt under den nye model. Sandheden
-                  // pr. evne står nu i kvitterings-kolonnen, hvor den er
-                  // efterprøvelig. Tier-markøren (#3234) er uændret.
-                  const marker = level ? t(`trainability_${level}`) : "";
-                  return (
-                    <option key={k} value={k}>
-                      {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
-                    </option>
-                  );
-                })}
-              </Select>
-            </div>
-            {plan?.focus && (
-              <button
-                type="button"
-                onClick={() => handleClearPlan(rider.id)}
-                disabled={busy}
-                className="inline-flex h-6 w-6 flex-none items-center justify-center rounded-cz text-cz-3 transition-colors hover:bg-cz-subtle hover:text-cz-danger disabled:opacity-40"
-                title={tRider("training.remove")}
-                aria-label={tRider("training.remove")}
-              >
-                <XIcon size={12} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-          {/* #1894 variant 1: for ryttere UDEN plan, vis hvilket fokus assistenten
-              rent faktisk træner dem med (backend-leveret, samme regel som bulk-
-              smart-mode og dailyTraining.js' resolveProgram — INGEN frontend-dublet
-              af type→fokus-mappingen). */}
-          {!plan?.focus && smartDefaultFocus[rider.id] && (
-            <div className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-              {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
-            </div>
-          )}
-          {(currentTrainability === "limited" || currentTrainability === "blocked") && (
-            <span
-              className={`ms-1 inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border ${
-                currentTrainability === "blocked"
-                  ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
-                  : "bg-cz-warning/10 text-cz-warning border-cz-warning/20"
-              }`}
-              title={t(currentTrainability === "blocked" ? "trainabilityChipBlockedTitle" : "trainabilityChipLimitedTitle")}
-            >
-              {t(currentTrainability === "blocked" ? "trainabilityChipBlocked" : "trainabilityChipLimited")}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setFocusPanelRiderId(rider.id)}
+            aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
+            className="flex w-full max-w-[184px] items-center justify-between gap-2 rounded-cz border border-cz-border px-2.5 py-1.5 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle disabled:opacity-40"
+          >
+            <span className="min-w-0">
+              <span className={`block truncate text-[13px] ${plan?.focus ? "font-medium text-cz-1" : "text-cz-3"}`}>
+                {plan?.focus ? tRider(`training.focus_${plan.focus}`) : t("focusPanel.open")}
+              </span>
+              {/* #1894 variant 1: for ryttere UDEN plan, vis hvilket fokus
+                  assistenten rent faktisk træner dem med (backend-leveret,
+                  INGEN frontend-dublet af type→fokus-mappingen). */}
+              {!plan?.focus && smartDefaultFocus[rider.id] && (
+                <span className="mt-0.5 block truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">
+                  {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
+                </span>
+              )}
             </span>
-          )}
+            <ChevronDownIcon size={13} className="shrink-0 text-cz-3" aria-hidden="true" />
+          </button>
           {/* #2465: fejl-overflade for denne rytters seneste fokus/intensitet/clear-handling. */}
           {planActionError?.riderId === rider.id && (
             <div role="alert" className="mt-0.5 text-3xs text-cz-danger">
@@ -971,37 +955,11 @@ export default function TrainingPage() {
           <p className="text-sm text-cz-2 leading-relaxed">{t("recoveryNote")}</p>
         </Section>
 
-        {/* Fokus-guide (#1908) — hvad træner hvert fokus. Svarer den gentagne spiller-
-            forvirring ("Teknik = brosten? Aero = nedkørsel?"). Bygges fra den delte
-            TRAINING_FOCUS_ABILITIES + eksisterende i18n, så det aldrig driver fra motoren.
-            Native <details>/<summary> (samme "group-open:"-mønster som LandingPage's FAQ)
-            — bevarer collapse-adfærd + tilgængelighed uden ekstra React-state, men på
-            kanonisk Card-chrome i stedet for browser-default disclosure-udseende. */}
-        <Card className="overflow-hidden">
-          <details className="group">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
-              <span className="text-[15px] font-semibold text-cz-1">{t("focusGuideTitle")}</span>
-              <ChevronDownIcon size={16} className="shrink-0 text-cz-3 transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
-            </summary>
-            <div className="border-t border-cz-border px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-              <p className="text-sm text-cz-3 leading-relaxed">{t("focusGuideIntro")}</p>
-              <ul className="mt-2 space-y-1">
-                {TRAINING_FOCUS_KEYS.map((k) => (
-                  <li key={k} className="text-sm text-cz-2">
-                    <span className="font-medium text-cz-1">{tRider(`training.focus_${k}`)}:</span>{" "}
-                    <span className="text-cz-3">
-                      {(TRAINING_FOCUS_ABILITIES[k] ?? [])
-                        .map((a) => tRider(`racePreview.derived.${a}`))
-                        .join(" · ")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideIntensity")}</p>
-              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideGating")}</p>
-            </div>
-          </details>
-        </Card>
+        {/* #3721: fokus-guide-accordionen (#1908) er slettet. Den svarede
+            "hvad træner hvert fokus" 400 px OVER det sted man vælger fokus.
+            Nu står svaret i fokus-panelets Træner-kolonne, altså i det sekund
+            valget træffes, og bygget på den samme TRAINING_FOCUS_ABILITIES.
+            Intensitets- og gating-teksterne flytter med til panelets note. */}
 
         {/* Ugentlig træningsrytme (#1895 PR 1) — holdets ønskede intensitet pr.
             ugedag. Rører ALDRIG fokus (bor kun i training_plans + smartDefaultFocus).
@@ -1355,6 +1313,35 @@ export default function TrainingPage() {
         {/* Træningsrapport-historik (#1533) — seneste 30 dage */}
         <TrainingHistory history={history} />
       </div>
+
+      {/* #3721: fokus-panelet. Ét ad gangen, uden for tabellen (Modal
+          portaler selv), så rosterets sticky-kolonner og vandrette scroller
+          ikke kan klippe det. `perSeason` sendes bevidst ikke: trin 4 (#3741)
+          er ikke merget, og panelet udelader kolonnen frem for at vise et
+          opfundet tal. */}
+      <FocusPanel
+        open={!!focusPanelRider}
+        onClose={() => setFocusPanelRiderId(null)}
+        rider={focusPanelRider}
+        // Ejer-krav 16/8: samme badge-sæt som rosterets Status-kolonne, via de
+        // samme komponenter. Panelet må ikke opfinde sin egen status-visning.
+        badges={
+          focusPanelRider
+            ? [
+                focusPanelRider.is_academy && "academy",
+                injuryDaysLeft(condition[focusPanelRider.id]?.injured_until, today) > 0 && "injured",
+              ]
+            : []
+        }
+        focus={focusPanelRider ? planFor(focusPanelRider.id)?.focus ?? null : null}
+        intensity={focusPanelRider ? planFor(focusPanelRider.id)?.intensity ?? "normal" : "normal"}
+        trainability={focusPanelRider ? trainability[focusPanelRider.id] ?? null : null}
+        assistantFocus={focusPanelRider ? smartDefaultFocus[focusPanelRider.id] ?? null : null}
+        saving={savingId === focusPanelRiderId}
+        error={planActionError?.riderId === focusPanelRiderId ? planActionError.error : null}
+        onSave={handleFocusPanelSave}
+        onClear={handleFocusPanelClear}
+      />
     </div>
   );
 }

@@ -103,7 +103,6 @@
       "noRiskNote": "Easy intensity grows steadily with no setback risk.",
       "restNote": "No ability growth on a rest day; fatigue recovers.",
       "emptyFocus": "Pick a focus to assign training.",
-      "focusRefTitle": "Each focus trains",
       "actionErrorGeneric": "Could not save. Try again in a moment.",
       "actionErrors": {
         "no_slots": "No training slots left.",
@@ -138,7 +137,9 @@
       "retired": {
         "title": "Retired rider",
         "body": "Retired riders aren't trained, so there's no active program, form or fatigue to show."
-      }
+      },
+      "changeFocus": "Change",
+      "chooseFocus": "Choose"
     },
     "tabs": {
       "overview": "Overview",

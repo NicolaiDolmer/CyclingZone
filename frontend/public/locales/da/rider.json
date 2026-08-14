@@ -103,7 +103,6 @@
       "noRiskNote": "Let intensitet vokser støt uden risiko for tilbageslag.",
       "restNote": "Ingen evne-vækst på en hviledag; træthed falder.",
       "emptyFocus": "Vælg et fokus for at tildele træning.",
-      "focusRefTitle": "Hvert fokus træner",
       "actionErrorGeneric": "Kunne ikke gemme. Prøv igen om lidt.",
       "actionErrors": {
         "no_slots": "Ingen trænings-slots tilbage.",
@@ -138,7 +137,9 @@
       "retired": {
         "title": "Pensioneret rytter",
         "body": "Pensionerede ryttere trænes ikke, så der er intet aktivt program, form eller træthed at vise."
-      }
+      },
+      "changeFocus": "Skift",
+      "chooseFocus": "Vælg"
     },
     "tabs": {
       "overview": "Overblik",

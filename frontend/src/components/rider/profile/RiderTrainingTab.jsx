@@ -19,10 +19,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES,
-  TRAINING_SETBACK_PCT, injuryDaysLeft,
-} from "../../../lib/training.js";
+import { TRAINING_FOCUS_ABILITIES, TRAINING_SETBACK_PCT, injuryDaysLeft } from "../../../lib/training.js";
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
@@ -30,6 +27,7 @@ import {
 import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
 import { formatDate } from "../../../lib/intl.js";
 import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
+import FocusPanel from "../../training/FocusPanel.jsx";
 import IconBase from "../../ui/icons/IconBase.jsx";
 
 const LOG_DAYS = 7;
@@ -78,34 +76,21 @@ function fatigueColor(fatigue) {
 }
 
 // ── Fokus + intensitet + aktivt fokus ───────────────────────────────────────────
-function FocusCard({ rider, training, t }) {
-  const { slots, planFor, setPlan, clearPlan, savingId } = training;
+//
+// #3721: fokus-chipsene og intensitets-segmentet er flyttet ind i det delte
+// FocusPanel, så profilen og /training-rosteret vælger fokus på PRÆCIS samme
+// flade. Kortet her er nu status ("hvad trænes han med lige nu") plus knappen
+// der åbner panelet. "Hvert fokus træner …"-referencen er slettet: den stod som
+// et opslagsværk et sted man ikke vælger noget, og står nu i panelets
+// Træner-kolonne i det sekund valget træffes.
+function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
+  const { slots, planFor } = training;
   const plan = planFor(rider.id);
   const focus = plan?.focus ?? null;
   const intensity = plan?.intensity ?? "normal";
-  const busy = savingId === rider.id;
 
   const total = slots?.total ?? null; // null = ubegrænset (TRAINING_CONFIG.unlimitedSlots)
   const used = slots?.used ?? 0;
-
-  // #2465: setPlan/clearPlan returnerer eksplicit {ok, error} — kaldes nu async +
-  // await'et, så en fejl (udløbet session, netværk, backend-afvisning) vises i
-  // stedet for at forsvinde stille (chippen opdaterede tidligere KUN ved success).
-  const [actionError, setActionError] = useState(null);
-
-  // Enkelt-valg med toggle: klik på det aktive fokus rydder planen (frigør slottet).
-  const pickFocus = async (f) => {
-    if (busy) return;
-    setActionError(null);
-    const result = focus === f ? await clearPlan(rider.id) : await setPlan(rider.id, f, intensity);
-    if (result && !result.ok) setActionError(result.error || "failed");
-  };
-  const pickIntensity = async (i) => {
-    if (busy || !focus) return;
-    setActionError(null);
-    const result = await setPlan(rider.id, focus, i);
-    if (result && !result.ok) setActionError(result.error || "failed");
-  };
 
   const isRest = intensity === "rest";
   const abilitiesLabel = focus
@@ -124,60 +109,29 @@ function FocusCard({ rider, training, t }) {
         )}
       </div>
 
-      {/* Fokus-chips (enkelt-valg, aria-pressed). Aktiv = guld; inaktiv = stiplet. */}
-      <div className="flex flex-wrap gap-[7px] mb-3">
-        {/* #3709 trin 1: "loft nået"-markøren på chippen er slettet sammen med
-            focusOptionCapped/focusCappedTitle. Den lovede at et fokus var færdigt
-            for altid, hvilket bliver usandt under den nye model. Sandheden pr.
-            evne står i kvitteringen ovenfor, hvor den kan efterprøves. */}
-        {TRAINING_FOCUS_KEYS.map((f) => {
-          const on = focus === f;
-          return (
-            <button
-              key={f}
-              type="button"
-              onClick={() => pickFocus(f)}
-              disabled={busy}
-              aria-pressed={on}
-              className={`inline-flex items-center min-h-[44px] px-[13px] rounded-full text-[12px] transition-colors disabled:opacity-50 ${
-                on
-                  ? "border border-cz-accent bg-cz-accent/15 text-cz-accent-t font-semibold"
-                  : "border border-dashed border-cz-border text-cz-3 hover:text-cz-2 hover:border-cz-2/40"
-              }`}
-            >
-              {t(`profile.training.focus.${f}`)}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Intensitet (segmenteret). Kræver et valgt fokus for at kunne sættes. */}
-      <div className="flex items-center gap-2.5 mb-[11px]">
-        <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3 flex-none">
-          {t("training.intensity")}
+      {/* #3721: én knap i stedet for syv chips + et segment. Valget træffes i
+          panelet, hvor hvert fokus står med hvad det træner ved siden af. */}
+      <button
+        type="button"
+        onClick={onOpenPanel}
+        className="mb-3 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-cz border border-cz-border px-3 py-2 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle"
+      >
+        <span className="min-w-0">
+          <span className={`block truncate text-[13px] ${focus ? "font-semibold text-cz-1" : "text-cz-3"}`}>
+            {focus ? t(`profile.training.focus.${focus}`) : t("profile.training.emptyFocus")}
+          </span>
+          {focus && (
+            <span className="mt-0.5 block font-mono text-3xs uppercase tracking-[0.06em] text-cz-3">
+              {t(`training.intensity_${intensity}`)}
+            </span>
+          )}
         </span>
-        <div className="inline-flex gap-0.5 bg-cz-subtle border border-cz-border rounded-lg p-[3px]">
-          {TRAINING_INTENSITIES.map((i) => {
-            const on = intensity === i && !!focus;
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => pickIntensity(i)}
-                disabled={busy || !focus}
-                aria-pressed={on}
-                className={`min-h-[44px] px-3 rounded-[6px] text-2xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  on ? "bg-cz-card text-cz-1 shadow-sm" : "text-cz-3 hover:text-cz-2"
-                }`}
-              >
-                {t(`training.intensity_${i}`)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+        <span className="flex-none text-2xs font-semibold text-cz-accent-t">
+          {focus ? t("profile.training.changeFocus") : t("profile.training.chooseFocus")}
+        </span>
+      </button>
 
-      {/* #2465: fejl-overflade for pickFocus/pickIntensity — tidligere tavs. */}
+      {/* #2465: fejl-overflade for gem/ryd af fokus — tidligere tavs. */}
       {actionError && (
         <div role="alert" className="mb-[11px] px-2.5 py-1.5 rounded-cz border border-cz-danger/30 bg-cz-danger/10 text-2xs text-cz-danger">
           {t([`profile.training.actionErrors.${actionError}`, "profile.training.actionErrorGeneric"])}
@@ -226,22 +180,10 @@ function FocusCard({ rider, training, t }) {
           </>
         )}
 
-        {/* "Hvert fokus træner …" — fokus → evner (altid synlig som reference). */}
-        <div className="mt-[11px] pt-2.5 border-t border-cz-border">
-          <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
-            {t("profile.training.focusRefTitle")}
-          </span>
-          <div className="grid grid-cols-2 gap-x-[14px] gap-y-1 mt-[7px]">
-            {TRAINING_FOCUS_KEYS.map((f) => (
-              <div key={f} className="flex justify-between gap-2">
-                <span className="text-2xs text-cz-1 font-semibold">{t(`profile.training.focus.${f}`)}</span>
-                <span className="text-3xs text-cz-3 text-right">
-                  {TRAINING_FOCUS_ABILITIES[f].map((a) => t(`racePreview.derived.${a}`)).join(" · ")}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* #3721: "Hvert fokus træner …"-referencen er slettet herfra. Den var
+            det tredje sted den samme fokus→evne-tabel stod (de to andre var
+            /training's accordion og selve valget), og den stod et sted man ikke
+            vælger noget. Den lever nu i fokus-panelets Træner-kolonne. */}
       </div>
     </div>
   );
@@ -484,6 +426,27 @@ function NoticeCard({ title, body }) {
 export default function RiderTrainingTab({ rider, training, trainingHistory, progress = {}, viewer = "own", isRetired = false }) {
   const { t } = useTranslation("rider");
 
+  // #3721: fokus-panelet. Hooks skal stå FØR de tidlige returns nedenfor
+  // (låst/pensioneret/loading), ellers ændrer hook-rækkefølgen sig mellem
+  // renders og React fejler.
+  const [panelOpen, setPanelOpen] = useState(false);
+  // #2465: setPlan/clearPlan returnerer eksplicit {ok, error} — en fejl
+  // (udløbet session, netværk, backend-afvisning) skal vises, ikke forsvinde.
+  const [actionError, setActionError] = useState(null);
+
+  async function handlePanelSave(focus, intensity) {
+    setActionError(null);
+    const result = await training.setPlan(rider.id, focus, intensity);
+    if (result && !result.ok) setActionError(result.error || "failed");
+    else setPanelOpen(false);
+  }
+  async function handlePanelClear() {
+    setActionError(null);
+    const result = await training.clearPlan(rider.id);
+    if (result && !result.ok) setActionError(result.error || "failed");
+    else setPanelOpen(false);
+  }
+
   if (viewer !== "own") {
     return <NoticeCard title={t("profile.training.locked.title")} body={t("profile.training.locked.body")} />;
   }
@@ -503,6 +466,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
 
   const runs = trainingHistory?.runs ?? [];
   const condition = training.condition?.[rider.id] ?? null;
+  const plan = training.planFor(rider.id);
 
   return (
     <div className="flex flex-col gap-[13px]">
@@ -518,7 +482,13 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
       />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[13px] items-start">
         <div className="flex flex-col gap-[13px] min-w-0">
-          <FocusCard rider={rider} training={training} t={t} />
+          <FocusCard
+            rider={rider}
+            training={training}
+            t={t}
+            actionError={actionError}
+            onOpenPanel={() => setPanelOpen(true)}
+          />
           <DailyLogCard riderId={rider.id} runs={runs} t={t} />
         </div>
         <div className="flex flex-col gap-[13px] min-w-0">
@@ -526,6 +496,25 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
           <FormCard condition={condition} t={t} />
         </div>
       </div>
+
+      {/* #3721: samme panel som /training-rosteret bruger — én komponent, så de
+          to flader ikke kan sige forskellige ting om samme rytter. `perSeason`
+          sendes ikke: trin 4 (#3741) er ikke merget, og panelet udelader
+          kolonnen frem for at vise et opfundet tal. */}
+      <FocusPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        rider={rider}
+        badges={[rider.is_academy && "academy", injuryDaysLeft(condition?.injured_until ?? null) > 0 && "injured"]}
+        focus={plan?.focus ?? null}
+        intensity={plan?.intensity ?? "normal"}
+        trainability={training.trainability?.[rider.id] ?? null}
+        assistantFocus={training.smartDefaultFocus?.[rider.id] ?? null}
+        saving={training.savingId === rider.id}
+        error={actionError}
+        onSave={handlePanelSave}
+        onClear={handlePanelClear}
+      />
     </div>
   );
 }
