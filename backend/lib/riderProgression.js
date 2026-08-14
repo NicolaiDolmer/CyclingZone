@@ -71,18 +71,55 @@ export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
   oppositeFactor: 0.12,
   // Potentiale → træningsfart-multiplikator (Fase B).
   rateByPotential: Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 }),
+
+  // ── HÅNDVÆRKS-GULVET (#3709 trin 3, spec §2.1 + beslutning 3, ejer 14/8) ──
+  // `positioning` og `tactics` havde positiv vægt hos NUL af de otte typer i
+  // capsShapingWeights. Konsekvensen var ikke "de er svære at blive god til" —
+  // den var at hver eneste rytter i spillet stod på neutralFactor (0,45 ×
+  // loftByPotential) på dem, for altid, uden at nogen managers valg kunne røre
+  // det. `tactics` var værst: ingen type ejede den, og INTET fokus trænede den.
+  //
+  // Håndværk er evner alle kan lære og ingen fødes med. De får derfor et tag
+  // mellem sekundær-naturlig (0,82) og primær-naturlig (1,00) — højt, fordi en
+  // rytter der arbejder på sit håndværk skal kunne blive god til det, men uden
+  // at gøre det gratis: trin 4 giver klassen den næstlaveste RATE (0,22), så
+  // taget er noget der opnås over en karriere, ikke noget man ankommer til.
+  // Det er hele modellens princip — tag og rate er to knapper, ikke én.
+  //
+  // KUN disse to (beslutning 3, ejer 14/8). Ikke `aggression`: den ER ejet, af
+  // baroudeuren, med vægt 3 — dens problem er at intet fokus træner den, og det
+  // løser trin 2's `løbslære`-fokus, ikke et tag.
+  craftFactor: 0.95,
 });
+
+// Evner ingen ryttertype fødes med, men alle kan lære (spec §2.1 "håndværk").
+// Se craftFactor i YOUTH_PROGRESSION_CONFIG for hvorfor listen er præcis disse to.
+export const CRAFT_ABILITIES = Object.freeze(["positioning", "tactics"]);
 
 // Rolle-faktor for én evne givet primær+sekundær type. Positiv vægt i primary →
 // primær-naturlig; ellers positiv i secondary → sekundær-naturlig; negativ i primary
 // (eller secondary uden positiv) → modsat; ellers neutral.
+//
+// Håndværks-gulvet lægges til SIDST og som `max`, aldrig som erstatning (#3682's
+// eksplicitte krav: "skal implementeres som gulv-løft, ikke erstatning"). Gulvet
+// kan derfor kun løfte et tag, aldrig sænke et — hvilket er præcis gate B1.
+// Rækkefølgen betyder noget i to retninger:
+//   • en sprinter EJER nu positioning (#3682) → 1,00 vinder over gulvets 0,95
+//   • en rytter med sprinter som SEKUNDÆR ville uden `max` få 0,82 — altså et
+//     LAVERE positionerings-tag end en rytter uden nogen relation til evnen.
+//     Netop den slags inversion er det gulvet findes for at gøre umulig.
 export function youthRoleFactor(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG) {
   const wp = WEIGHTS_BY_TYPE[primaryType]?.[ability];
   const ws = WEIGHTS_BY_TYPE[secondaryType]?.[ability];
-  if (wp > 0) return cfg.naturalPrimaryFactor;
-  if (ws > 0) return cfg.naturalSecondaryFactor;
-  if (wp < 0 || ws < 0) return cfg.oppositeFactor;
-  return cfg.neutralFactor;
+  let factor;
+  if (wp > 0) factor = cfg.naturalPrimaryFactor;
+  else if (ws > 0) factor = cfg.naturalSecondaryFactor;
+  else if (wp < 0 || ws < 0) factor = cfg.oppositeFactor;
+  else factor = cfg.neutralFactor;
+  if (CRAFT_ABILITIES.includes(ability) && Number.isFinite(cfg?.craftFactor)) {
+    return Math.max(factor, cfg.craftFactor);
+  }
+  return factor;
 }
 
 // ── Determinisme: FNV-1a → [0,1) fra en streng-nøgle (samme familie som

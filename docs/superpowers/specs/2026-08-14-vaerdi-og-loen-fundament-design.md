@@ -82,7 +82,7 @@ Begge mål beregnes automatisk hver søndag og vises i admin. Blandingen rykker 
 
 | Gate | Måler | Status 14/8 |
 |---|---|---|
-| **Likviditet** | kontanter / samlet rytterværdi | 35,8 %, tærskel ikke fastsat (§6) |
+| **Likviditet** | kontanter / samlet rytterværdi | 35,8 %, tærskel ikke fastsat (§6), og **gaten kan tilfredsstilles af inflation, se nedenfor** |
 | **Præcision** | ~~markedsmodellens MAE mod simuleringsmodellens~~ **UGYLDIG, se nedenfor** | skal omdefineres før den kan bruges |
 
 > ### ⚠️ Gate 2 er ugyldig som først formuleret (rettet 14/8 samme dag)
@@ -94,6 +94,18 @@ Begge mål beregnes automatisk hver søndag og vises i admin. Blandingen rykker 
 > To tredjedele af observationerne måler dermed ikke markedet, men hvor tæt en model ligger på v4's eget anker. Både argumentet for og imod #3449 var udledt af den metrik.
 >
 > **Gate 2 skal omdefineres før den kan bruges.** Retning, ikke besluttet: mål kun på det **konkurrenceprissatte delsæt**, altså handler hvor budgivning faktisk flyttede prisen væk fra ankeret, og rapportér median-absolut-fejl ved siden af MAE (median er 4.801 til 7.355 mod MAE 33.000 til 45.000, så få store handler bestemmer i dag rangordenen alene).
+
+> ### ⚠️ Gate 1 kan tilfredsstilles af inflation (fundet 14/8 af parallel session)
+>
+> Coordinatoren skrev at gate 1 er "et håndtag ejeren kan dreje bevidst ved at hæve præmiepenge, sponsorer og budgetter". Det er sandt, og det er netop problemet: **håndtaget står allerede og drejer af sig selv.**
+>
+> [#3720](https://github.com/NicolaiDolmer/CyclingZone/issues/3720) måler at `UPKEEP_BY_DIVISION` (#1441 A6) blev kalibreret mod en antaget præmie pr. hold på 160k/70k/25k, mens den målte præmie er **586k/220k/188k**, altså 3,7 til 6,6 gange højere. Nettoen pr. hold pr. sæson er derfor 376k til 775k mod et målbånd på ±30k, altså 18 til 26 gange over. Ved S3-cutoveren rykker 24 menneskehold op i D1 og tilfører alene cirka 14 mio. til de præmiepenge mennesker kan nå.
+>
+> Median holdsaldo er i dag 733.410 CZ$ (§2.2). Et hold tjener altså omtrent sin egen saldo i netto hver sæson. Likviditets-forholdet stiger dermed kraftigt uden at markedet bliver mere modent, og gate 1 ville gå grøn af **inflation** frem for af modenhed.
+>
+> **Følge:** gate 1 må ikke måle kontanter mod rytterværdi alene. Den skal måle om markedet faktisk **prissætter**, ikke om spillerne har penge. Kandidat, ikke besluttet: andelen af handler hvor budgivning flytter prisen væk fra ankeret (i dag 34,6 %, altså 79 af 228, se gate 2-advarslen), eventuelt kombineret med et krav om at pengemængden er stabil frem for voksende.
+>
+> Det gør #3720 og #3719 til **forudsætninger** for værdi-sporet, ikke til sideløbende økonomi-oprydning. Et fundament der er bygget på simuleret præmieindtjening kan ikke kalibreres mens præmien selv er ude af kontrol.
 
 Gate 2 er selvkorrigerende: jo flere handler der findes, jo bedre bliver den markedsdrevne model, og jo mere retfærdigt bliver det at give den mere vægt. Gate 1 er et håndtag ejeren kan dreje bevidst ved at hæve præmiepenge, sponsorer og budgetter. Det er samtidig vejen til at nå fuldt dynamisk: økonomien skal vokse, ikke værdierne falde.
 

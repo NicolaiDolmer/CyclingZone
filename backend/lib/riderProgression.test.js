@@ -9,8 +9,10 @@ import {
   youthAbilityCap, buildYouthCaps,
   buildCapsForRider, buildProgressInit,
   taperedAbsoluteCap, CAP_TAPER_CONFIG,
+  CRAFT_ABILITIES,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 
 // ── Determinisme ──────────────────────────────────────────────────────────────
 
@@ -283,15 +285,72 @@ test("skipGrowth false/udeladt → identisk med default-adfærd (golden test)", 
 
 test("youthRoleFactor: primær-naturlig > sekundær-naturlig > neutral > modsat", () => {
   // climber primary, tt secondary. climbing er primær-naturlig (climber.weights.climbing=3>0).
+  // #3709 trin 3: neutral-eksemplet var `positioning`, men den er nu HÅNDVÆRK og har
+  // sit eget gulv (0,95). `descending` er neutral for begge typer og er derfor det
+  // rene neutral-eksempel nu — se håndværks-testene nedenfor for den nye klasse.
   const primary = youthRoleFactor("climber", "tt", "climbing");
   const secondary = youthRoleFactor("climber", "tt", "time_trial"); // tt.weights.time_trial=3>0, men kun secondary
-  const neutral = youthRoleFactor("climber", "tt", "positioning");  // ingen type-vægt
+  const neutral = youthRoleFactor("climber", "tt", "descending");   // ingen type-vægt, ikke håndværk
   const opposite = youthRoleFactor("climber", "tt", "sprint");      // climber.weights.sprint=-2<0
   assert.equal(primary, YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor);
   assert.equal(secondary, YOUTH_PROGRESSION_CONFIG.naturalSecondaryFactor);
   assert.equal(neutral, YOUTH_PROGRESSION_CONFIG.neutralFactor);
   assert.equal(opposite, YOUTH_PROGRESSION_CONFIG.oppositeFactor);
   assert.ok(primary > secondary && secondary > neutral && neutral > opposite);
+});
+
+// ── Håndværks-gulvet (#3709 trin 3, spec §2.1 + beslutning 3) ────────────────
+
+test("håndværk: positioning + tactics er de ENESTE to evner med gulv (beslutning 3)", () => {
+  assert.deepEqual([...CRAFT_ABILITIES], ["positioning", "tactics"]);
+  // `aggression` hører BEVIDST ikke til: den ER ejet (baroudeur, vægt 3). Dens
+  // problem er at intet fokus træner den — det løser trin 2, ikke et tag.
+  assert.ok(!CRAFT_ABILITIES.includes("aggression"));
+});
+
+test("håndværk: en type der hverken ejer eller modarbejder evnen får gulvet, ikke neutral", () => {
+  // gc ejer hverken positioning eller tactics — før trin 3 stod begge på 0,45.
+  for (const ability of CRAFT_ABILITIES) {
+    assert.equal(youthRoleFactor("gc", "climber", ability), YOUTH_PROGRESSION_CONFIG.craftFactor);
+  }
+  assert.ok(YOUTH_PROGRESSION_CONFIG.craftFactor > YOUTH_PROGRESSION_CONFIG.neutralFactor);
+});
+
+test("håndværk: gulvet LØFTER, det erstatter aldrig — signatur slår gulvet (#3682's gulv-løft-krav)", () => {
+  // Sprinteren ejer nu positioning (#3682) → primær-naturlig 1,00 vinder over 0,95.
+  assert.equal(
+    youthRoleFactor("sprinter", "climber", "positioning"),
+    YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor,
+  );
+  // ... og en rytter med sprinter som SEKUNDÆR ville uden `max` få 0,82 — altså et
+  // LAVERE tag end en rytter uden nogen relation til evnen. Den inversion er præcis
+  // hvad gulvet gør umulig, og den er gate B1 i miniature.
+  assert.equal(
+    youthRoleFactor("climber", "sprinter", "positioning"),
+    YOUTH_PROGRESSION_CONFIG.craftFactor,
+  );
+  assert.ok(YOUTH_PROGRESSION_CONFIG.craftFactor > YOUTH_PROGRESSION_CONFIG.naturalSecondaryFactor);
+});
+
+test("håndværk B1: intet loft falder for NOGEN kombination af type, evne og potentiale", () => {
+  // Gate B1 udtømmende over hele parameterrummet i stedet for på stikprøver:
+  // 8 primære × 8 sekundære × 15 evner × 6 potentialer. Uden håndværks-gulvet
+  // (craftFactor udeladt) er faktoren den gamle model — hver ny faktor skal være ≥.
+  const udenGulv = { ...YOUTH_PROGRESSION_CONFIG, craftFactor: undefined };
+  for (const primary of RIDER_TYPE_KEYS) {
+    for (const secondary of RIDER_TYPE_KEYS) {
+      for (const ability of VISIBLE_ABILITIES) {
+        for (const pot of [1, 2, 3, 4, 5, 6]) {
+          const foer = youthAbilityCap(pot, primary, secondary, ability, udenGulv);
+          const efter = youthAbilityCap(pot, primary, secondary, ability, YOUTH_PROGRESSION_CONFIG);
+          assert.ok(
+            efter >= foer,
+            `${primary}/${secondary} ${ability} pot${pot}: loft faldt ${foer} → ${efter}`,
+          );
+        }
+      }
+    }
+  }
 });
 
 // ── Afkoblet ungdoms-loft (#1791 A2) ─────────────────────────────────────────

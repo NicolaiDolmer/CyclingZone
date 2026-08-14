@@ -14,6 +14,9 @@ import { FINANCE_REASON } from "./economyConstants.js";
 // så backend-output er self-describing i logs/admin.
 export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.SEASON_START_SPONSOR]: "Sponsor",
+  // #3730: egen label frem for at falde sammen med "Sponsor" — et hold der kom ind midt
+  // i sæsonen skal kunne se HVORFOR dets sponsor er mindre end de andres.
+  [FINANCE_REASON.MIDSEASON_SPONSOR_PRORATA]: "Sponsor (joined mid-season)",
   [FINANCE_REASON.SPONSOR_RACE_DAY]: "Sponsor (race day)",
   [FINANCE_REASON.SEASON_END_SALARY]: "Salaries",
   [FINANCE_REASON.SEASON_END_DIVISION_BONUS]: "Division bonus",

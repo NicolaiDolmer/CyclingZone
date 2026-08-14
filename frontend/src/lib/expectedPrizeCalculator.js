@@ -3,7 +3,20 @@
 //
 // Stage races: finals counted once (Klassement/Pointtroje/Bjergtroje/Ungdomstroje/EtapelobHold)
 //   + per-stage types × stages (Etapeplacering/Forertroje/BjergtrojeDag/PointtrojeDag/UngdomstrojeDag).
-// Single races: finals counted once (Klassiker/Pointtroje/Bjergtroje/Ungdomstroje/KlassikerHold).
+// Single races: finals counted once (Klassiker/KlassikerHold) — ingen trøje-klassementer.
+//
+// #3718: et endagsløb uddeler ikke point-, bjerg- eller ungdomstrøje, hverken i spillet eller i
+// virkeligheden (ejer-beslutning 14/8: "vi følger virkeligheden"). Motoren har altid opført sig
+// sådan — målt over hele sæson 2 producerede endagsløb kun `gc` (22.133 rækker) og `team` (3.680
+// rækker), og ikke én eneste trøje-række. Denne beregner talte dem med alligevel, så hvert
+// endagsløb lovede op til 39 % mere end det nogensinde kunne udbetale (ProSeries-endagsløb:
+// 1.518 lovet mod 924 uddelt). Over sæson 2's kalender var det 10,07 M CZ$ vist til spillerne
+// og aldrig betalt.
+//
+// Trøje-rækkerne i `race_points` er IKKE død data og må ikke slettes: tabellen er nøglet på
+// (race_class, result_type, rank) uden en race_type-dimension, og etapeløbs-stien udbetaler
+// præcis de rækker fuldt ud (verificeret: ProSeries-etapeløb forudsiger 594 trøjepoint,
+// uddeler 594). Det var kun endagsløbs-konsumenten der var forkert.
 //
 // All sums multiplied by PRIZE_PER_POINT (75 CZ$/point).
 
@@ -17,8 +30,11 @@ const STAGE_RACE_RESULT_TYPES = {
   perStage: ["Etapeplacering", "Forertroje", "BjergtrojeDag", "PointtrojeDag", "UngdomstrojeDag"],
 };
 
+// #3718: KUN Klassiker + KlassikerHold. Tilføj aldrig et trøje-klassement her uden at
+// raceResultsEngine.RESULT_TYPE_TO_RACE_POINTS.single og race-motoren kan uddele det —
+// ellers lover fladen point igen som spillet ikke betaler.
 const SINGLE_RACE_RESULT_TYPES = {
-  finals: ["Klassiker", "Pointtroje", "Bjergtroje", "Ungdomstroje", "KlassikerHold"],
+  finals: ["Klassiker", "KlassikerHold"],
   perStage: [],
 };
 

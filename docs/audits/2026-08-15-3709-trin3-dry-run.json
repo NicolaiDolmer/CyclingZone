@@ -1,0 +1,94 @@
+{
+  "snapshot": "C:\\Dev\\CyclingZone\\docs\\snapshots\\3591\\riders_full.json",
+  "n": 8717,
+  "gates": {
+    "B1": 0,
+    "B2": 0,
+    "B3": 0
+  },
+  "capsHaevet": 14552,
+  "capsUaendret": 116203,
+  "evnepladser": 130755,
+  "perRolle": {
+    "sprinter": {
+      "n": 1563,
+      "posFoer": 22,
+      "posEfter": 48,
+      "tacFoer": 38,
+      "tacEfter": 52.44,
+      "ratFoer": 44,
+      "ratEfter": 48,
+      "snitDelta": 4.005
+    },
+    "rouleur": {
+      "n": 1421,
+      "posFoer": 22,
+      "posEfter": 48,
+      "tacFoer": 36,
+      "tacEfter": 52.08,
+      "ratFoer": 37,
+      "ratEfter": 39,
+      "snitDelta": 2.093
+    },
+    "climber": {
+      "n": 1383,
+      "posFoer": 24,
+      "posEfter": 51,
+      "tacFoer": 37,
+      "tacEfter": 57,
+      "ratFoer": 49,
+      "ratEfter": 49,
+      "snitDelta": 0
+    },
+    "puncheur": {
+      "n": 1013,
+      "posFoer": 22,
+      "posEfter": 48,
+      "tacFoer": 32,
+      "tacEfter": 51,
+      "ratFoer": 41,
+      "ratEfter": 43,
+      "snitDelta": 2.411
+    },
+    "baroudeur": {
+      "n": 991,
+      "posFoer": 22,
+      "posEfter": 42.839999999999996,
+      "tacFoer": 37,
+      "tacEfter": 52.44,
+      "ratFoer": 46,
+      "ratEfter": 46,
+      "snitDelta": 1.421
+    },
+    "tt": {
+      "n": 810,
+      "posFoer": 24,
+      "posEfter": 51,
+      "tacFoer": 36,
+      "tacEfter": 57,
+      "ratFoer": 47,
+      "ratEfter": 50,
+      "snitDelta": 2.552
+    },
+    "gc": {
+      "n": 804,
+      "posFoer": 27,
+      "posEfter": 57,
+      "tacFoer": 37,
+      "tacEfter": 61,
+      "ratFoer": 58,
+      "ratEfter": 58,
+      "snitDelta": 0
+    },
+    "brostensrytter": {
+      "n": 732,
+      "posFoer": 22,
+      "posEfter": 48,
+      "tacFoer": 33,
+      "tacEfter": 52,
+      "ratFoer": 43,
+      "ratEfter": 45,
+      "snitDelta": 2.15
+    }
+  }
+}

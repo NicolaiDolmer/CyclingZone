@@ -203,6 +203,11 @@
     "forum_target_not_found": "Det rapporterede indhold blev ikke fundet. Det kan være blevet fjernet.",
     "forum_reason_too_long": "Begrundelsen er for lang",
     "forum_report_not_found": "Rapporten blev ikke fundet",
-    "forum_invalid_pinned": "Ugyldig pin-værdi"
+    "forum_invalid_pinned": "Ugyldig pin-værdi",
+    "flash_custom_end_conflict": "Flash-auktioner varer fast 30 minutter og kan ikke få et valgt sluttidspunkt",
+    "auction_end_invalid": "Vælg et gyldigt sluttidspunkt for auktionen",
+    "auction_end_too_soon": "En auktion skal køre i mindst {minHours} time",
+    "auction_end_too_late": "En auktion kan højst køre i {maxHours} timer",
+    "auction_end_outside_window": "Auktioner kan kun slutte mens markedet er åbent, mellem {openHour} og {closeHour}"
   }
 }
