@@ -93,11 +93,7 @@
       "priceError": "Startpris skal være mellem 0 og Værdi ({amount} CZ$)",
       "endLabel": "Auktionen slutter",
       "endHint": "{min}-{max} timer frem, spillets tid (København).",
-      "endWindowHint": "Markedet er åbent {open}-{close}.",
-      "endTooSoon": "En auktion skal køre i mindst {min} time.",
-      "endTooLate": "En auktion kan højst køre i {max} timer.",
-      "endOutsideWindow": "Auktioner kan kun slutte mens markedet er åbent, mellem {open} og {close}.",
-      "endInvalid": "Vælg et gyldigt sluttidspunkt."
+      "endWindowHint": "Markedet er åbent {open}-{close}."
     },
     "transfer": {
       "description": "Sæt til salg med fast pris.",

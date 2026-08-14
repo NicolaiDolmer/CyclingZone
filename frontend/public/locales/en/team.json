@@ -93,11 +93,7 @@
       "priceError": "Start price must be between 0 and Value ({amount} CZ$)",
       "endLabel": "Auction ends",
       "endHint": "{min}-{max} hours from now, game time (Copenhagen).",
-      "endWindowHint": "The market is open {open}-{close}.",
-      "endTooSoon": "An auction must run for at least {min} hour.",
-      "endTooLate": "An auction can't run for more than {max} hours.",
-      "endOutsideWindow": "Auctions can only end while the market is open, between {open} and {close}.",
-      "endInvalid": "Pick a valid end time."
+      "endWindowHint": "The market is open {open}-{close}."
     },
     "transfer": {
       "description": "List for sale at a fixed price.",

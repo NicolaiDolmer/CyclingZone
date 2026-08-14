@@ -360,12 +360,18 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
                     {t("actionModal.auction.endHint", { min: auctionWindow.min_hours, max: auctionWindow.max_hours })}
                     {endHours && ` ${t("actionModal.auction.endWindowHint", { open: formatHour(endHours.openHour), close: formatHour(endHours.closeHour) })}`}
                   </p>
+                  {/* #2884: samme fire beskeder som serveren afviser med, hentet fra
+                      errors:api.* i stedet for en kopi i team.json. Ét sted at rette,
+                      og spilleren ser samme ordlyd uanset om fejlen fanges før eller
+                      efter POST'en. */}
                   {endTimeIssue && (
                     <p className="text-cz-danger text-xs mt-1" data-testid="team-auction-end-time-error">
-                      {endTimeIssue.code === "end_too_soon" && t("actionModal.auction.endTooSoon", { min: endTimeIssue.minHours })}
-                      {endTimeIssue.code === "end_too_late" && t("actionModal.auction.endTooLate", { max: endTimeIssue.maxHours })}
-                      {endTimeIssue.code === "end_outside_window" && t("actionModal.auction.endOutsideWindow", { open: formatHour(endTimeIssue.openHour), close: formatHour(endTimeIssue.closeHour) })}
-                      {endTimeIssue.code === "invalid_end_time" && t("actionModal.auction.endInvalid")}
+                      {t(`errors:api.auction_${endTimeIssue.code === "invalid_end_time" ? "end_invalid" : endTimeIssue.code}`, {
+                        minHours: endTimeIssue.minHours,
+                        maxHours: endTimeIssue.maxHours,
+                        openHour: formatHour(endTimeIssue.openHour),
+                        closeHour: formatHour(endTimeIssue.closeHour),
+                      })}
                     </p>
                   )}
                 </div>

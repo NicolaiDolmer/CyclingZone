@@ -5176,10 +5176,14 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       if (endIssue.code === "end_too_late") {
         return res.status(400).json({ error: `An auction can't run for more than ${endIssue.maxHours} hours`, errorCode: "auction_end_too_late", errorParams: { maxHours: endIssue.maxHours } });
       }
+      // Timerne sendes praeformaterede ("08:00"), saa errors.json-strengen er
+      // identisk for server- og klient-stien og spilleren ser samme ordlyd
+      // uanset hvor fejlen fanges (#2884).
+      const padHour = (h) => `${String(h).padStart(2, "0")}:00`;
       return res.status(400).json({
-        error: `Auctions can only end while the market is open, between ${endIssue.openHour}:00 and ${endIssue.closeHour}:00`,
+        error: `Auctions can only end while the market is open, between ${padHour(endIssue.openHour)} and ${padHour(endIssue.closeHour)}`,
         errorCode: "auction_end_outside_window",
-        errorParams: { openHour: endIssue.openHour, closeHour: endIssue.closeHour },
+        errorParams: { openHour: padHour(endIssue.openHour), closeHour: padHour(endIssue.closeHour) },
       });
     }
   }

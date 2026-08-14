@@ -55,8 +55,25 @@ test("team.json har sluttidspunkt-nøgler i både en og da (#2884)", () => {
   const localesDir = join(__dirname, "..", "..", "public", "locales");
   for (const lng of ["en", "da"]) {
     const auction = JSON.parse(readFileSync(join(localesDir, lng, "team.json"), "utf8"))?.actionModal?.auction;
-    for (const key of ["endLabel", "endHint", "endWindowHint", "endTooSoon", "endTooLate", "endOutsideWindow", "endInvalid"]) {
+    for (const key of ["endLabel", "endHint", "endWindowHint"]) {
       assert.equal(typeof auction?.[key], "string", `${lng}/team.json mangler actionModal.auction.${key}`);
+    }
+  }
+});
+
+test("fejlbeskederne for sluttidspunkt bor KUN i errors.json (#2884)", () => {
+  // Fladen validerer før POST, serveren efter. Begge veje viser samme streng —
+  // en kopi i team.json ville lade de to drive fra hinanden, og den vejer i
+  // language-chunken fordi alle namespaces bundles inline (#412).
+  const localesDir = join(__dirname, "..", "..", "public", "locales");
+  for (const lng of ["en", "da"]) {
+    const api = JSON.parse(readFileSync(join(localesDir, lng, "errors.json"), "utf8"))?.api;
+    for (const key of ["auction_end_too_soon", "auction_end_too_late", "auction_end_outside_window", "auction_end_invalid"]) {
+      assert.equal(typeof api?.[key], "string", `${lng}/errors.json mangler api.${key}`);
+    }
+    const auction = JSON.parse(readFileSync(join(localesDir, lng, "team.json"), "utf8"))?.actionModal?.auction;
+    for (const key of ["endTooSoon", "endTooLate", "endOutsideWindow", "endInvalid"]) {
+      assert.equal(auction?.[key], undefined, `${lng}/team.json har en dublet af api.${key}`);
     }
   }
 });
