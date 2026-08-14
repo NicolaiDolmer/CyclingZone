@@ -7,6 +7,7 @@
       "seasonStartVariablePullout": "Sponsor income · Season start (base {base} + variable {variable} ×{modifier} · sponsor pullout active)",
       "seasonStartFallback": "Sponsor income · Season start (fallback {amount} ×{modifier})",
       "seasonStartFallbackPullout": "Sponsor income · Season start (fallback {amount} ×{modifier} · sponsor pullout active)",
+      "midSeasonProRata": "Sponsor income · Joined mid-season ({sponsorName} · {percent} % of the season left)",
       "signingBonus": "Sponsor · Signing bonus ({sponsorName})",
       "resultBonus": "Sponsor · Result bonus ({wins} wins, {podiums} podiums)",
       "objectiveBonus": "Sponsor · Season objective met ({sponsorName})"
