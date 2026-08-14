@@ -4,6 +4,30 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.127",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Positioning and tactics can finally be trained properly",
+          "body": "What changed: Positioning and tactics now have a real ceiling for every rider, more than twice as high as before. Sprinters, cobbles riders, puncheurs and rouleurs get positioning as a signature ability on top of that.\n\nWhy: No rider type had any affinity for those two, so every rider in the game was locked to the same low ceiling on them, and nothing you did could change it.\n\nWhat it means for you: Nobody loses anything. Ceilings only went up. Riders in those four roles gain 2 to 4 points of potential rating, some up to 8."
+        },
+        "da": {
+          "title": "Positionering og taktik kan endelig trænes ordentligt",
+          "body": "Hvad ændrede sig: Positionering og taktik har nu et rigtigt loft for hver eneste rytter, mere end dobbelt så højt som før. Sprintere, brostensryttere, punchére og rouleurer får derudover positionering som signatur-evne.\n\nHvorfor: Ingen ryttertype havde anlæg for de to, så alle ryttere i spillet var låst til det samme lave loft på dem, og intet du gjorde kunne ændre det.\n\nHvad det betyder for dig: Ingen mister noget. Lofterne er kun gået op. Ryttere i de fire roller får 2 til 4 point mere i potentiel rating, enkelte op til 8."
+        },
+        "refs": [
+          3682,
+          3709
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.126",
     "date": "2026-08-15",
     "label": "Beta",
