@@ -61,14 +61,40 @@ export const PROGRESSION_CONFIG = Object.freeze({
 });
 
 // ── Ungdoms-loft (#akademi-rework 2026-06-23) — START-værdier, kalibreres i Fase D ──
+//
+// ══ TO KNAPPER I STEDET FOR ÉN (#3709 trin 4, spec §2.2, ejer 14/8) ══
+//
+// Loftet gjorde indtil nu TO ting på én gang: det satte både hvor HØJT en evne
+// kunne komme og hvor HURTIGT den voksede derhen — fordi væksten er
+// gap-proportional (`dailyAbilityDelta`: base = gap × frac / dage). Konsekvensen
+// blev målt over en hel karriere: forskellen mellem at træne rigtigt og forkert
+// var 3 point ud af 60, og intensiteten var 1 point værd. Hver evne mættede sit
+// loft under ALLE indstillinger, så raten bestemte kun HVORNÅR rytteren ankom,
+// og ti sæsoner var rigeligt uanset hvad manageren gjorde. Udfaldet var afgjort
+// ved genereringen. Managers kunne stole fuldstændig på rytterudviklingen — den
+// var bare ikke deres.
+//
+// De to knapper skilles derfor ad. Hver (rytter, evne) hører til én af fem
+// ROLLEKLASSER, og klassen giver både et TAG (hvor højt) og en RATE (hvor
+// hurtigt). Klassen udledes ÉT sted — `abilityRoleClass` nedenfor — så tag og
+// rate umuligt kan komme ud af trit med hinanden.
+//
+// TAGENE STIGER ALLE SAMMEN. Det er ikke en fejl: hvert eneste tag er højere end
+// før (1,00→1,30 · 0,82→1,10 · 0,45→0,70 · 0,12→0,20, plus håndværkets 0,95 fra
+// trin 3). Modvægten er raten, som falder hårdt. Resultatet er at ryttere holder
+// op med at NÅ deres lofter — andelen af taget nået falder fra median 1,00 til
+// 0,82 (beslutning 6, og det er meningen). Taget bliver "hvad han kunne være
+// blevet"; manageren afgør hvor tæt han kommer, og på hvilke evner.
 export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
   // Mål-niveau på en PRIMÆR naturlig evne ved fuldt indfriet potentiale.
   loftByPotential: Object.freeze({ 1: 35, 2: 48, 3: 60, 4: 70, 5: 80, 6: 88 }),
   // Andel af loftet en evne får efter dens rolle ift. de 2 anlægs-retninger.
-  naturalPrimaryFactor: 1.0,
-  naturalSecondaryFactor: 0.82,
-  neutralFactor: 0.45,
-  oppositeFactor: 0.12,
+  // Navnene er bevaret fra før trin 4 (focusTrainability sammenligner mod dem);
+  // det er VÆRDIERNE der er ejer-besluttede 14/8.
+  naturalPrimaryFactor: 1.30,
+  naturalSecondaryFactor: 1.10,
+  neutralFactor: 0.70,
+  oppositeFactor: 0.20,
   // Potentiale → træningsfart-multiplikator (Fase B).
   rateByPotential: Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 }),
 
@@ -96,30 +122,79 @@ export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
 // Se craftFactor i YOUTH_PROGRESSION_CONFIG for hvorfor listen er præcis disse to.
 export const CRAFT_ABILITIES = Object.freeze(["positioning", "tactics"]);
 
-// Rolle-faktor for én evne givet primær+sekundær type. Positiv vægt i primary →
-// primær-naturlig; ellers positiv i secondary → sekundær-naturlig; negativ i primary
-// (eller secondary uden positiv) → modsat; ellers neutral.
+// De fem rolleklasser (spec §2.1). Rækkefølgen er faldende tag og er den
+// rækkefølge `abilityRoleClass` afgør dem i.
+export const ROLE_CLASSES = Object.freeze(["signatur", "sekundaer", "haandvaerk", "andenRolle", "svaghed"]);
+
+// Klassens RATE — hvor hurtigt evnen lukker sit gap, som multiplikator på den
+// daglige vækst (`dailyAbilityDelta`). Ejer-besluttet 14/8, spec §2.2.
 //
-// Håndværks-gulvet lægges til SIDST og som `max`, aldrig som erstatning (#3682's
-// eksplicitte krav: "skal implementeres som gulv-løft, ikke erstatning"). Gulvet
-// kan derfor kun løfte et tag, aldrig sænke et — hvilket er præcis gate B1.
-// Rækkefølgen betyder noget i to retninger:
-//   • en sprinter EJER nu positioning (#3682) → 1,00 vinder over gulvets 0,95
-//   • en rytter med sprinter som SEKUNDÆR ville uden `max` få 0,82 — altså et
-//     LAVERE positionerings-tag end en rytter uden nogen relation til evnen.
-//     Netop den slags inversion er det gulvet findes for at gøre umulig.
-export function youthRoleFactor(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG) {
+// SIGNATUR-RATEN 0,45 ER ANKERET (beslutning 14). Den er ikke valgt for at ramme
+// et bestemt slutniveau på den bedste evne, men for at holde RATINGEN på dagens
+// niveau: 28 mod dagens 27 ved fremragende træning. Måles der på spidsen i
+// stedet, stiger den til 44 mod dagens 36 — og de to kan beviseligt ikke ankres
+// samtidig. Sænkes raten til 0,30 lander spidsen tæt på dagens 36, men ratingen
+// falder til 24, altså UNDER dagens 27 for alle, også dem der spiller godt.
+// Rating vandt fordi det er dét spilleren ser, økonomien prissætter, og som
+// netop er kalibreret i #3666.
+export const ROLE_CLASS_RATE = Object.freeze({
+  signatur: 0.45,
+  sekundaer: 0.36,
+  haandvaerk: 0.22,
+  andenRolle: 0.15,
+  svaghed: 0.05,
+});
+
+// Hvilken rolleklasse hører (rytter, evne) til? ÉN kilde til klassen, så tag og
+// rate ikke kan komme ud af trit — det er hele pointen med at skille dem ad.
+//
+// Rækkefølgen er ikke vilkårlig. Håndværks-gulvet lægges til SIDST og som en
+// OPGRADERING, aldrig som erstatning (#3682's eksplicitte krav: "gulv-løft, ikke
+// erstatning"). Det betyder noget i to retninger:
+//   • en sprinter EJER nu positioning (#3682) → `signatur` vinder over håndværk
+//   • en rytter med sprinter som SEKUNDÆR ville uden opgraderingen lande i
+//     `sekundaer`. I dagens tal er det højere end håndværk (1,10 > 0,95), men
+//     det er en egenskab ved tallene, ikke ved modellen — derfor sammenlignes
+//     der på FAKTOREN, ikke på klasse-navnet. Ændres tallene i morgen, kan
+//     gulvet stadig ikke sænke nogens tag.
+export function abilityRoleClass(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG) {
   const wp = WEIGHTS_BY_TYPE[primaryType]?.[ability];
   const ws = WEIGHTS_BY_TYPE[secondaryType]?.[ability];
-  let factor;
-  if (wp > 0) factor = cfg.naturalPrimaryFactor;
-  else if (ws > 0) factor = cfg.naturalSecondaryFactor;
-  else if (wp < 0 || ws < 0) factor = cfg.oppositeFactor;
-  else factor = cfg.neutralFactor;
-  if (CRAFT_ABILITIES.includes(ability) && Number.isFinite(cfg?.craftFactor)) {
-    return Math.max(factor, cfg.craftFactor);
+  let klasse;
+  if (wp > 0) klasse = "signatur";
+  else if (ws > 0) klasse = "sekundaer";
+  else if (wp < 0 || ws < 0) klasse = "svaghed";
+  else klasse = "andenRolle";
+
+  if (CRAFT_ABILITIES.includes(ability) && Number.isFinite(cfg?.craftFactor)
+      && cfg.craftFactor > tagForClass(klasse, cfg)) {
+    return "haandvaerk";
   }
-  return factor;
+  return klasse;
+}
+
+function tagForClass(klasse, cfg) {
+  switch (klasse) {
+    case "signatur": return cfg.naturalPrimaryFactor;
+    case "sekundaer": return cfg.naturalSecondaryFactor;
+    case "haandvaerk": return cfg.craftFactor;
+    case "svaghed": return cfg.oppositeFactor;
+    default: return cfg.neutralFactor;
+  }
+}
+
+// Rolle-faktor (TAGET) for én evne givet primær+sekundær type — klassens andel af
+// `loftByPotential`. Signaturen er bevaret fra før trin 4; det er kroppen der nu
+// går gennem `abilityRoleClass` i stedet for at gentage klassifikationen.
+export function youthRoleFactor(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG) {
+  return tagForClass(abilityRoleClass(primaryType, secondaryType, ability, cfg), cfg);
+}
+
+// Rolle-faktor (RATEN) for én evne — den anden knap. Multiplikator på den daglige
+// vækst, IKKE på loftet. Ukendt/manglende type falder tilbage på `andenRolle`,
+// samme sikre neutral som taget bruger.
+export function roleRateFactor(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG, rates = ROLE_CLASS_RATE) {
+  return rates[abilityRoleClass(primaryType, secondaryType, ability, cfg)] ?? rates.andenRolle;
 }
 
 // ── Determinisme: FNV-1a → [0,1) fra en streng-nøgle (samme familie som

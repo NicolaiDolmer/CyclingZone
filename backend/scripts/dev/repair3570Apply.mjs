@@ -216,6 +216,42 @@ export const FACIT_MODELDRIFT = Object.freeze([
       + "tælles ikke længere som 'loft sænket'. Retningen er den forventede: en ændring der "
       + "kun kan løfte tag kan kun gøre denne tæller MINDRE. Steg den, var noget galt.",
   }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4",
+    felt: "loftSaenketAntal",
+    fra: 7230,
+    til: 6641,
+    hvorfor:
+      "Rolleklassernes tag hæves ALLE (1,00→1,30 signatur · 0,82→1,10 sekundær · "
+      + "0,45→0,70 anden rolle · 0,12→0,20 svaghed). 589 flere ryttere har derfor et "
+      + "formel-loft der ikke længere ligger under deres nuværende evne. Samme retning "
+      + "som posten ovenfor og af samme grund.",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4",
+    felt: "saenkningMedian",
+    fra: 30,
+    til: 22,
+    hvorfor: "Følger direkte af de hævede tag: sænkningerne der er tilbage er mindre.",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4",
+    felt: "saenkningP90",
+    fra: 47,
+    til: 43,
+    hvorfor: "Samme årsag som sænkning-medianen.",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4",
+    felt: "saenkningMax",
+    fra: 77,
+    til: 71,
+    hvorfor: "Samme årsag som sænkning-medianen.",
+  }),
 ]);
 
 /** Det godkendte facit med ledgerens bevidste drift lagt oven på. */

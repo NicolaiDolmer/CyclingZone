@@ -86,12 +86,25 @@ SELECT
 --   duplikeres i SQL — to kopier af caps-formlen der driver fra hinanden er
 --   nøjagtig rod-årsagen bag #3591 og #2001.
 --
---   Skrivningen sker derfor gennem produktionens egen sti. Den korte version:
---   deploy koden, og lad `dailyTrainingEngine` skrive lofterne for hold-ryttere;
---   frie agenter kræver et backfill-kald af den SAMME funktion
---   (`scripts/backfillAbilityProgressCaps.js` bruger den allerede).
+--   Skrivningen sker derfor gennem produktionens egen sti: deploy koden, og lad
+--   `dailyTrainingEngine` skrive lofterne for hold-ryttere ved næste daglige tick.
 --
---   Denne fil er derfor SIKKERHEDSNETTET omkring skrivningen, ikke skrivningen.
+--   ⚠ RETTET 15/8: FOR DE FRIE AGENTER FINDES DER INTET VÆRKTØJ ENDNU.
+--   En tidligere udgave af denne fil henviste til
+--   `scripts/backfillAbilityProgressCaps.js`. Det er forkert. Det script filtrerer
+--   på `.or("ability_caps.is.null,ability_progress.is.null")` og springer altså
+--   enhver rytter over der ALLEREDE har et loft — hvilket alle 1.840 frie agenter
+--   har. Det healer NULL-rækker, ikke forældede rækker.
+--
+--   Der skal derfor skrives et nyt, idempotent script der:
+--     • læser alle ryttere uden team_id (eller alle, hvis ejeren vælger (a) nedenfor)
+--     • genberegner `buildCapsForRider(abilities, {potentiale, age}, primary, secondary)`
+--       med SAMME kaldform som dailyTrainingEngine.js (alder eksplicit, jf. #3591)
+--     • skriver kun når `sameCaps` er falsk
+--     • kører dry-run som default og kræver `--live` + ejer-godkendelse
+--   Det er en forudsætning for PART B, ikke en detalje.
+--
+--   Denne fil er SIKKERHEDSNETTET omkring skrivningen, ikke skrivningen.
 -- ███████████████████████████████████████████████████████████████████████████████
 
 

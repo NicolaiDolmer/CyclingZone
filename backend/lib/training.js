@@ -32,13 +32,25 @@ export const TRAINING_CONFIG = Object.freeze({
   // Startgæt — dry-run'es mod population før un-gating af progression.
   focusGrowthMult: Object.freeze({ easy: 1.15, normal: 1.35, hard: 1.60 }),
 
-  // Ikke-fokus-evner lukker en ANELSE mindre samme sæson (fokus-trade-off): du
-  // specialiserer mod X frem for breddevækst. Bevidst MILD (0,97) — dry-run
-  // (#1163) viste at 0,90 ramte alle ~13 ikke-fokus-evner så hårdt at træning
-  // blev netto-negativ (rytteren samlet dårligere → ingen ville træne). Den
-  // ægte pris bæres af slot-knaphed + setback-risiko, ikke en bredde-straf der
-  // gør træning til en fælde.
-  offFocusMult: 0.97,
+  // Ikke-fokus-evner lukker mindre samme sæson (fokus-trade-off): du
+  // specialiserer mod X frem for breddevækst.
+  //
+  // ── 0,97 → 0,35 (#3709 trin 4, spec §2.2, ejer 14/8) ──────────────────────
+  // Den gamle værdi var bevidst MILD, og begrundelsen var god på sin tid: en
+  // dry-run i #1163 viste at 0,90 ramte alle ~13 ikke-fokus-evner så hårdt at
+  // træning blev netto-negativ, så ingen ville træne. Men 0,97 betød i praksis
+  // at fokusvalget ikke betød noget: forskellen mellem at træne rigtigt og
+  // forkert gennem en hel karriere blev målt til 3 point ud af 60.
+  //
+  // Grunden til at 0,35 nu er sikkert, hvor 0,90 dengang var farligt, er at
+  // ROLLE-RATEN er kommet til (riderProgression.ROLE_CLASS_RATE). I #1163 var
+  // off-fokus-straffen den ENESTE bremse, så den ramte signatur-evner og
+  // svagheder lige hårdt. Nu bærer rolleklassen forskellen, og off-fokus
+  // afgør kun hvad manageren PRIORITERER inden for den. De to håndtag er
+  // begge nødvendige — negativ-testen beviser det: køres kandidaten med
+  // offFocusMult uændret på 0,97, falder agens-spændet fra 13 til 7 point og
+  // arketype-spændet tilbage til 0,03, altså uændret fra i dag.
+  offFocusMult: 0.35,
 
   // Seeded risiko for tilbageslag (overtraining → tabt vækst), pr. intensitet.
   // Let = ingen risiko; hård = mærkbar. Varsles tydeligt i UI.

@@ -1,0 +1,96 @@
+# Flow-scorecard — #3709 trin 4 + 5
+
+Kuld: 1200 ryttere genereret gennem produktionens EGEN intake-sti
+(`generateAcademyCandidates` → `seedPhysiologyFromLegacy` → `deriveAbilities`),
+simuleret dag for dag fra 16 til 30 aar gennem `applyDailyTick`. Seed 2026.
+Start ved 16 aar: rating-median 7, bedste evne 18.
+
+**Harnessen har ingen egen vaekstformel.** Den kalder produktionens `applyDailyTick`
+direkte med de parametre `dailyTrainingEngine.js` sender. "Bit-identisk" er derfor
+en egenskab ved konstruktionen, ikke noget der skal bevises.
+
+## Rating ved 30 aar (median, `ratingFromAbilities`)
+
+| Model | spids | rotation | standard | forkert | spaend | bedste opnaaelige |
+|---|---:|---:|---:|---:|---:|---:|
+| i dag | 29 | 29 | 29 | 28 | **1** | **29** |
+| kandidat | 27 | 28 | 28 | 20 | **7** | **30** |
+| kandidat + akademiets 1/3 | 21 | 21 | 22 | 15 | **6** | **24** |
+| negativ-test (offFocusMult 0,97) | 35 | 35 | 35 | 33 | **2** | **35** |
+
+`bedste opnaaelige` er maksimum pr. RYTTER paa tvaers af strategier, ikke den bedste
+kolonne. En rytter med anlaeg der peger hver sin vej skal spilles bredt, en med anlaeg
+der traekker samme vej skal spidses — at vaelge rigtigt til den rytter man har, ER spillet.
+
+## Bedste evne ved 30 aar (median)
+
+| Model | spids | rotation | standard | forkert |
+|---|---:|---:|---:|---:|
+| i dag | 38 | 35 | 36 | 33 |
+| kandidat | 45 | 35 | 43 | 26 |
+| kandidat + akademiets 1/3 | 35 | 27 | 32 | 21 |
+| negativ-test (offFocusMult 0,97) | 46 | 42 | 43 | 39 |
+
+## Andel af taget naaet (median) — beslutning 6
+
+Evner hvor GULVET vandt (`max(tapered, current)` giver `cap === current`) er UDELADT,
+ejer-godkendt 15/8. De har ikke et tag rytteren naermer sig, men et frosset tal, og
+ville taelle som 1,00 per konstruktion. Gulvet selv er urortt. Se
+`docs/audits/2026-08-15-3709-hul4-arvede-ryttere-over-formel-loftet.md`.
+
+| Model | spids | rotation | standard | forkert |
+|---|---:|---:|---:|---:|
+| i dag | 0.94 | 0.95 | 0.92 | 0.94 |
+| kandidat | 0.42 | 0.52 | 0.43 | 0.44 |
+| kandidat + akademiets 1/3 | 0.34 | 0.4 | 0.32 | 0.31 |
+| negativ-test (offFocusMult 0,97) | 0.68 | 0.72 | 0.7 | 0.7 |
+
+## Evnesum ved 30 aar (median)
+
+| Model | spids | rotation | standard | forkert |
+|---|---:|---:|---:|---:|
+| i dag | 309 | 310 | 305 | 299 |
+| kandidat | 264 | 276 | 250 | 218 |
+| kandidat + akademiets 1/3 | 208 | 211 | 196 | 165 |
+| negativ-test (offFocusMult 0,97) | 351 | 353 | 344 | 335 |
+
+## Markedsvaerdi ved 30 aar (hul 6) — `predictBaseValue` paa de simulerede evner
+
+Trin 4 flytter INGEN markedsvaerdier ved deploy: modellen laeser `abilities`, og de er
+urortt. Tabellen her er den LANGE effekt — hvor evnerne lander efter en hel karriere.
+
+| Model | spids | rotation | standard | forkert |
+|---|---:|---:|---:|---:|
+| i dag | 27096 | 27096 | 25595 | 23272 |
+| kandidat | 22193 | 22338 | 24355 | 9447 |
+| kandidat + akademiets 1/3 | 10940 | 10586 | 12348 | 5316 |
+| negativ-test (offFocusMult 0,97) | 51845 | 50001 | 46359 | 40062 |
+
+**Delta ved bedste spil: -18.1 %** (median, 27096 → 22193).
+**Delta ved standard-spil: -4.8 %** (median, 25595 → 24355) — det er tallet oekonomien reelt vil se.
+
+## ⚠ Mål med REKONSTRUEREDE definitioner
+
+Specen opgiver tal for de to nedenfor, men ikke formlerne — trin 0's harness blev
+aldrig committet. Definitionerne her er MINE. **Retningen** kan sammenlignes med
+specen; de **absolutte tal** kan ikke.
+
+- *Arketype-skarphed*: rytterens rating i SIN EGEN rolle / hans bedste rating i nogen rolle.
+- *Feltets forskellighed*: gennemsnitlig parvis cosinus-afstand mellem normaliserede evne-vektorer.
+
+| Model | skarphed spids | skarphed rotation | skarphed forkert | skarphed-spaend | forskellighed (bedste) |
+|---|---:|---:|---:|---:|---:|
+| i dag | 0.99 | 0.99 | 0.99 | **0.00** | 0.12 |
+| kandidat | 0.93 | 0.97 | 0.97 | **-0.04** | 0.26 |
+| kandidat + akademiets 1/3 | 0.91 | 0.97 | 0.93 | **-0.02** | 0.27 |
+| negativ-test (offFocusMult 0,97) | 0.98 | 0.98 | 0.98 | **0.00** | 0.17 |
+
+## Gates
+
+| # | Gate | Resultat |
+|---|---|---|
+| G1 | agens-spaend paa rating stiger markant | ✅ i dag 1 → kandidat 7 |
+| G2 | ankeret holder: bedste OPNAAELIGE pr. rytter >= dagens | ✅ i dag 29 → kandidat 30 (pr. rytter, bedste af spids/rotation/standard/forkert — IKKE spids mod spids) |
+| G3 | ryttere naar IKKE deres lofter (beslutning 6) | ✅ i dag 0.94 → kandidat 0.42 |
+| G4 | NEGATIV-TEST: kun offFocusMult uaendret SKAL give markant mindre agens | ✅ kandidat 7 → negativ-test 2 |
+| G5 | ATTRIBUTION: akademiets 1/3 beholdt SKAL koste rating (trin 5 er baerende) | ✅ kandidat 27 → med 1/3 21 |

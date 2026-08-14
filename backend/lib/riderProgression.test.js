@@ -9,7 +9,7 @@ import {
   youthAbilityCap, buildYouthCaps,
   buildCapsForRider, buildProgressInit,
   taperedAbsoluteCap, CAP_TAPER_CONFIG,
-  CRAFT_ABILITIES,
+  CRAFT_ABILITIES, abilityRoleClass, roleRateFactor, ROLE_CLASSES, ROLE_CLASS_RATE,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
@@ -317,19 +317,86 @@ test("håndværk: en type der hverken ejer eller modarbejder evnen får gulvet, 
 });
 
 test("håndværk: gulvet LØFTER, det erstatter aldrig — signatur slår gulvet (#3682's gulv-løft-krav)", () => {
-  // Sprinteren ejer nu positioning (#3682) → primær-naturlig 1,00 vinder over 0,95.
+  // Sprinteren ejer nu positioning (#3682) → signatur-klassen vinder over gulvet.
+  assert.equal(abilityRoleClass("sprinter", "climber", "positioning"), "signatur");
   assert.equal(
     youthRoleFactor("sprinter", "climber", "positioning"),
     YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor,
   );
-  // ... og en rytter med sprinter som SEKUNDÆR ville uden `max` få 0,82 — altså et
-  // LAVERE tag end en rytter uden nogen relation til evnen. Den inversion er præcis
-  // hvad gulvet gør umulig, og den er gate B1 i miniature.
-  assert.equal(
-    youthRoleFactor("climber", "sprinter", "positioning"),
-    YOUTH_PROGRESSION_CONFIG.craftFactor,
+  // Gulvet sammenligner på FAKTOREN, ikke på klasse-navnet. Efter trin 4 er
+  // sekundær (1,10) højere end håndværk (0,95), så en rytter med sprinter som
+  // sekundær bliver `sekundaer` — ikke fordi navnet rangerer højere, men fordi
+  // tallet gør. Før trin 4 var forholdet omvendt (0,82 < 0,95) og samme kode gav
+  // `haandvaerk`. Det er hele grunden til at sammenligningen står på faktorer:
+  // ændres tallene igen, kan gulvet stadig ikke sænke nogens tag.
+  assert.equal(abilityRoleClass("climber", "sprinter", "positioning"), "sekundaer");
+  assert.ok(
+    youthRoleFactor("climber", "sprinter", "positioning") >= YOUTH_PROGRESSION_CONFIG.craftFactor,
+    "gulvet må aldrig give et LAVERE tag end håndværks-faktoren",
   );
-  assert.ok(YOUTH_PROGRESSION_CONFIG.craftFactor > YOUTH_PROGRESSION_CONFIG.naturalSecondaryFactor);
+});
+
+test("håndværk: gulvet kan ALDRIG sænke et tag, uanset hvordan faktorerne kalibreres", () => {
+  // Invarianten der skal overleve enhver fremtidig kalibrering. Kør hele
+  // parameterrummet med en RÆKKE forskellige craftFactor-værdier — også nogle
+  // der er lavere end alle andre klasser — og kræv at gulvet aldrig trækker ned.
+  for (const craftFactor of [0.05, 0.45, 0.95, 1.2, 2.0]) {
+    const medGulv = { ...YOUTH_PROGRESSION_CONFIG, craftFactor };
+    const udenGulv = { ...YOUTH_PROGRESSION_CONFIG, craftFactor: undefined };
+    for (const primary of RIDER_TYPE_KEYS) {
+      for (const secondary of RIDER_TYPE_KEYS) {
+        for (const ability of CRAFT_ABILITIES) {
+          assert.ok(
+            youthRoleFactor(primary, secondary, ability, medGulv)
+              >= youthRoleFactor(primary, secondary, ability, udenGulv),
+            `craftFactor=${craftFactor} ${primary}/${secondary} ${ability}: gulvet sænkede taget`,
+          );
+        }
+      }
+    }
+  }
+});
+
+// ── Rolleklasser: to knapper (#3709 trin 4, spec §2.2) ──────────────────────
+
+test("rolleklasser: tag og rate kommer fra SAMME klassifikation", () => {
+  // Hele pointen med at skille tag og rate ad er at de ikke må drive fra hinanden.
+  // Begge slås op via abilityRoleClass — denne test er vagten mod at nogen
+  // senere giver den ene sin egen kopi af klassifikationen.
+  for (const primary of RIDER_TYPE_KEYS) {
+    for (const secondary of RIDER_TYPE_KEYS) {
+      for (const ability of VISIBLE_ABILITIES) {
+        const klasse = abilityRoleClass(primary, secondary, ability);
+        assert.ok(ROLE_CLASSES.includes(klasse), `ukendt klasse ${klasse}`);
+        assert.equal(roleRateFactor(primary, secondary, ability), ROLE_CLASS_RATE[klasse]);
+      }
+    }
+  }
+});
+
+test("rolleklasser: raterne er ejer-besluttede 14/8 og falder monotont med klassen", () => {
+  assert.deepEqual(ROLE_CLASS_RATE, {
+    signatur: 0.45, sekundaer: 0.36, haandvaerk: 0.22, andenRolle: 0.15, svaghed: 0.05,
+  });
+  // Signatur-raten 0,45 er ANKERET (beslutning 14): valgt for at holde ratingen på
+  // dagens niveau, ikke spidsen. Ændres den, ændres hele scorecardet.
+  assert.equal(ROLE_CLASS_RATE.signatur, 0.45);
+  const rater = ROLE_CLASSES.map((k) => ROLE_CLASS_RATE[k]);
+  for (let i = 1; i < rater.length; i++) {
+    assert.ok(rater[i] < rater[i - 1], `${ROLE_CLASSES[i]} skal have lavere rate end ${ROLE_CLASSES[i - 1]}`);
+  }
+});
+
+test("rolleklasser: tagene er ALLE højere end før trin 4 (loftet er hævet, raten bremser)", () => {
+  // Modellens vigtigste egenskab, og den der gør beslutning 6 mulig: hvert eneste
+  // tag stiger, og det er raten der sørger for at ryttere alligevel ikke NÅR dem.
+  const foer = { naturalPrimaryFactor: 1.0, naturalSecondaryFactor: 0.82, neutralFactor: 0.45, oppositeFactor: 0.12 };
+  for (const [key, gammel] of Object.entries(foer)) {
+    assert.ok(
+      YOUTH_PROGRESSION_CONFIG[key] > gammel,
+      `${key}: ${YOUTH_PROGRESSION_CONFIG[key]} skal være HØJERE end den gamle ${gammel}`,
+    );
+  }
 });
 
 test("håndværk B1: intet loft falder for NOGEN kombination af type, evne og potentiale", () => {

@@ -2,7 +2,7 @@
 // Genbruger L0'ens budget (growthFractionByAge) delt i daglige bidder med compounding:
 // dag-rate = residual-gap × f(age)/daysPerSeason. Over en sæson ≈ gap×e^(−f) ~ L0's gap×(1−f).
 // dailyBudgetBoost kalibreres i scripts/previewDailyTraining.js så peak rammer 27-28 (spec 5.2).
-import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential } from "./riderProgression.js";
+import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential, roleRateFactor } from "./riderProgression.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES, smartDefaultFocus } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
@@ -70,12 +70,18 @@ export function growthFractionForAge(age) {
 
 // Multiplikator pr. evne: fokus-evner får intensitetens focusGrowthMult, resten offFocusMult.
 // "rest" → 0 (ingen progress på hviledage).
-export function abilityMult(ability, program) {
+//
+// #3709 trin 4: `cfg` er VALGFRI og defaulter til den frosne TRAINING_CONFIG, så
+// enhver eksisterende caller er bit-identisk. Den findes fordi spec §4.4 kræver en
+// NEGATIV-TEST: kandidaten kørt med `offFocusMult` uændret på 0,97 SKAL fejle
+// gaten, og uden en injicerbar config kunne den test kun køres ved at redigere en
+// frossen konstant. En gate man ikke kan køre er ikke en gate.
+export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   if (program.intensity === "rest") return 0;
   const focusAbilities = TRAINING_FOCUSES[program.focus] ?? [];
   return focusAbilities.includes(ability)
-    ? (TRAINING_CONFIG.focusGrowthMult[program.intensity] ?? 1)
-    : TRAINING_CONFIG.offFocusMult;
+    ? (cfg.focusGrowthMult[program.intensity] ?? 1)
+    : cfg.offFocusMult;
 }
 
 // #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults
@@ -86,16 +92,32 @@ export function abilityMult(ability, program) {
 // VALGFRI med sikker default 1.0 (bit-identisk, samme kontrakt som staff-parametrene
 // ovenfor); dailyTrainingEngine.js sender den IKKE endnu — rør ingen prod-adfærd før
 // ejeren har godkendt en model ud fra careerCurveSimulation.js.
+// #3709 trin 4: `primaryType`/`secondaryType` er VALGFRIE med samme
+// "udeladt = 1.0 = bit-identisk"-kontrakt som staff/facility/academy ovenfor.
+// Udelades de, får evnen rolle-rate 1.0 — altså den gap-proportionale model fra
+// før trin 4. Det er BEVIDST: harnesses og fixtures der måler noget andet end
+// rolleklasser skal kunne køre uden at kende rytterens anlæg, og produktionens
+// sti (dailyTrainingEngine.js) sender dem altid.
 export function dailyAbilityDelta({
   ability, current, cap, age, program, conditionMult, bonus, noise, potentiale,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
+  primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
 }) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
-  const mult = abilityMult(ability, program);
+  const mult = abilityMult(ability, program, trainingCfg);
   if (mult === 0) return 0;
   const cfg = DAILY_TRAINING_CONFIG;
   const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
+  // ── DEN ANDEN KNAP (#3709 trin 4, spec §2.2) ──────────────────────────────
+  // Indtil nu satte loftet både hvor højt en evne kunne komme OG hvor hurtigt,
+  // fordi `base` er gap-proportional. Rolle-raten er den knap der skiller de to
+  // ad: en signatur-evne lukker sit gap 9x hurtigere end en svaghed (0,45 mod
+  // 0,05), uden at nogen af dem har fået et andet loft af den grund.
+  // Udeladt type ⇒ 1.0 ⇒ præcis den gamle model (se docblokken ovenfor).
+  const roleRate = primaryType == null
+    ? 1
+    : roleRateFactor(primaryType, secondaryType, ability);
   // Staff-trænings-bonus (dimension×niveau): ét ekstra multiplikator-led SIDST i kæden,
   // efter manager-klik-bonussen (cfg.bonusMult) og noise. ≥ 1.0 og = 1.0 uden staff, så
   // rækkefølgen er ligegyldig for regression men dokumenteres eksplicit for læsbarhed.
@@ -108,7 +130,7 @@ export function dailyAbilityDelta({
   // academyRateMult (#2437) ganges SIDST i kæden — samme "ekstra multiplikator-led,
   // default 1.0" kontrakt som staffBonus/facilityMult. Interim-knap: ingen kalder i
   // dagens prod sender den, så udeladt = uændret adfærd.
-  return base * mult * conditionMult * youthMultiplier(age) * youthRateForPotential(potentiale)
+  return base * mult * roleRate * conditionMult * youthMultiplier(age) * youthRateForPotential(potentiale)
     * (bonus ? cfg.bonusMult : 1) * noise * staffBonus * facilityMult * academyRateMult;
 }
 
@@ -141,6 +163,7 @@ export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps
 export function applyDailyTick({
   riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
+  primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
@@ -154,7 +177,7 @@ export function applyDailyTick({
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
-      staff, facilityTier, riderLevel, academyRateMult,
+      staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
     });
     if (delta <= 0) continue;
     score += delta;
@@ -206,6 +229,7 @@ export function applyDailyTick({
 export function applyRaceDevelopmentTick({
   riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap,
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
+  primaryType = null, secondaryType = null,
   profileType, devMult = RACE_DEV_CONFIG.devMult,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
@@ -226,7 +250,7 @@ export function applyRaceDevelopmentTick({
     if (!Number.isFinite(current)) continue;
     replacedTotal += dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
-      staff, facilityTier, riderLevel, academyRateMult,
+      staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType,
     });
   }
 

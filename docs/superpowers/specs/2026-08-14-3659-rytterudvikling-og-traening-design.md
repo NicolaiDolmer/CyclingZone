@@ -350,6 +350,27 @@ Ejerens ramme for valget, 15/8: *et spil hvor alle ryttere bliver lidt bedre men
 
 **Afvigelsen mellem 27→28 og 29→27 lukkes som uafklaret, ikke som løst.** Den skyldes formodentlig harness-forskelle der ikke kan efterprøves: trin 0's harness fra 14/8 blev aldrig committet, og specen definerer hverken de fire strategier, condition-multiplikatoren eller om manager-bonussen gælder. Det står som kendt hul nr. 9 i §4, ikke som en åben opgave.
 
+---
+
+### ⚠ RETTELSE 2, 14/8 ved merge-vurderingen: rettelsen ovenfor er selv målt mod en base der ikke findes
+
+Gaten kræver en `--baseline` der er "i dag"-modellen. Rettelsen ovenfor brugte worktreen
+`ref-3709-baseline` (`d5477c67`), og **trin 3 er ikke i den commit**. Trin 3 er merget siden, så
+dagens niveau er steget mens kandidaten står stille. Samme script, samme seed, to baselines:
+
+| baseline | G2 | exit |
+|---|---|---|
+| `d5477c67` (uden trin 3) | ✅ i dag 29 → kandidat 30 | 0 |
+| `origin/main` (med trin 3) | ❌ **i dag 31 → kandidat 30** | 1 |
+
+Bag medianen: 500 ryttere stiger, 153 er uændrede, **547 falder** (median 0, p10 −5, p90 +3).
+Der findes altså en pris igen, men den er 1 ratingpoint, ikke 2, og lofterne stiger for alle
+(8.649 af 8.717, 0 falder). **Ejeren har 14/8 valgt at merge på det grundlag.** Beslutning 14 og 17
+står; kun begrundelsen er nu tredje udgave: prisen er lille, ikke fraværende.
+
+Fuld måling, inkl. loft-dry-run, 99-klippet i toppen og de to afviste risici:
+`docs/audits/2026-08-14-3741-gates-paa-ny-base.md`.
+
 **Følge:** race-balancen ER målt om (`docs/audits/2026-08-15-3709-race-balance-mod-hoejere-top.md`) og blokerer ikke — `maxSeasonWinRate` går fra uden for båndet til inden for på alle tre seeds. Præmissen om #2731 i session-prompten var forældet: issuet blev lukket 3/8, og 0,67-0,75 var et oppustet punktestimat mod et korrekt målt 0,359.
 
 ---

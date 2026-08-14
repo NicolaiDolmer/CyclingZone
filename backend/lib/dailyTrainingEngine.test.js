@@ -6,7 +6,6 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
 import { conditionMultiplier, nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { RACE_DAY_ENGINE_FLAG_KEY } from "./raceDayEngineFlag.js";
-import { ACADEMY } from "./academyFlag.js";
 import { buildCapsForRider } from "./riderProgression.js";
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
@@ -362,7 +361,7 @@ test("akademirytter med abilities-row trænes (ikke sprunget over) — #1478 bug
 // motoren genberegner det hver tick via buildCapsForRider. Referencerne herunder
 // beregner derfor loftet samme vej. Seeden beholder bevidst et forkert persisteret
 // loft (alle 90), så testen samtidig beviser at den værdi IKKE længere styrer ticket.
-test("akademi-alder (18): tickCaps=genberegnet livstidsloft (intet sæson-loft) + academyRateMult=1/3 (#2437 interim + #2471)", async () => {
+test("akademi-alder (18): tickCaps=genberegnet livstidsloft, ÉN model — ingen dags-cap, ingen rate-daempning (#3709 trin 5)", async () => {
   const riderAbilities = { ...BASE_ABILITIES, climbing: 40 };
   const staleCaps = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 90]));
   const rider = makeRider({ id: "ar4", is_academy: true, potentiale: 4, birthdate: "2008-01-01" }); // 18 år
@@ -391,13 +390,16 @@ test("akademi-alder (18): tickCaps=genberegnet livstidsloft (intet sæson-loft) 
     abilities: riderAbilities, caps: lifetimeCaps, progress: {},
     program: { focus: "vo2max", intensity: "hard" },
     conditionMult: conditionMultiplier({ form: 50, fatigue: 10 }),
-    bonus: true, potentiale: 4, hardDailyCap: ACADEMY.HARD_DAILY_CAP,
-    academyRateMult: ACADEMY.INTERIM_RATE_MULT,
+    bonus: true, potentiale: 4,
+    // #3709 trin 5: hverken hardDailyCap eller academyRateMult sendes laengere.
+    // Akademi-alder og senior koerer den SAMME model; forskellen er youthMultiplier,
+    // som dailyAbilityDelta selv ganger ind ud fra alderen.
     staff: null, facilityTier: 0, riderLevel: "u23",
+    primaryType: rider.primary_type, secondaryType: rider.secondary_type,
   });
 
   const rr = result.report.riders[0];
-  assert.equal(rr.score, expected.score, "score bit-identisk med direkte beregning (tickCaps=genberegnet livstidsloft, rate/3)");
+  assert.equal(rr.score, expected.score, "score bit-identisk med direkte beregning (tickCaps=genberegnet livstidsloft, én model)");
   assert.deepEqual(rr.gains, expected.gains, "gains bit-identisk med direkte beregning");
 
   const ab = state.rider_derived_abilities.find((a) => a.rider_id === "ar4");
@@ -406,7 +408,7 @@ test("akademi-alder (18): tickCaps=genberegnet livstidsloft (intet sæson-loft) 
   assert.equal(ab.season_budget_season, undefined, "intet sæson-loft skrives længere (#2437)");
 });
 
-test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-mult-parameteren (ingen regression)", async () => {
+test("voksen (25 aar): samme model som akademiet — motoren sender anlaegget, ingen akademi-knapper (#3709 trin 5)", async () => {
   const riderAbilities = { ...BASE_ABILITIES, climbing: 40 };
   const staleCaps = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 90]));
   const rider = makeRider({ id: "adult1", potentiale: 4, birthdate: "2001-01-01" }); // 25 år
@@ -423,11 +425,13 @@ test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-m
     executedBy: "manager", now: NOW,
   });
 
-  // Reference UDEN academyRateMult-parameteren overhovedet (default 1.0) — beviser at
-  // motoren rent faktisk sender 1.0 for voksne, ikke bare et tal der tilfældigvis
-  // regner ud til det samme. riderLevel="u23": riderLevelBand(age=25) (#2529: <26 = u23).
+  // Reference UDEN akademi-knapper overhovedet — efter #3709 trin 5 findes de ikke
+  // laengere for NOGEN alder, saa denne reference og akademi-testens reference er nu
+  // den SAMME kaldform. Det er praecis beslutning 13: én model.
+  // riderLevel="u23": riderLevelBand(age=25) (#2529: <26 = u23).
   // #2471: caps = det genberegnede loft (samme formel for voksne som for ungdom).
   // #3591: samme kaldform som motoren — alderen eksplicit med (jf. testen ovenfor).
+  // #3709 trin 4: anlaegget sendes med, saa rolle-raten kan slaas op pr. evne.
   const lifetimeCaps = buildCapsForRider(riderAbilities, { ...rider, age: 25 }, rider.primary_type, rider.secondary_type);
   const expected = applyDailyTick({
     riderId: "adult1", dateStr: "2026-06-12", age: 25,
@@ -436,6 +440,7 @@ test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-m
     conditionMult: conditionMultiplier({ form: 50, fatigue: 10 }),
     bonus: true, potentiale: 4, hardDailyCap: undefined,
     staff: null, facilityTier: 0, riderLevel: "u23",
+    primaryType: rider.primary_type, secondaryType: rider.secondary_type,
   });
 
   const rr = result.report.riders[0];

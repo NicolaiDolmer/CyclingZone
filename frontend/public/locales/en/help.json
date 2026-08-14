@@ -844,12 +844,12 @@
         "text": "Each focus develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Everyone develops across the board, just fastest in the chosen direction. The directions are: VO2max trains Climbing, Punch and Tempo. Threshold/TT trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Endurance trains Endurance, Recovery and Durability. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. Intensity sets the pace: Easy is slowest but safe, Normal is the balanced default with a small setback risk, and Hard is fastest but risks a setback or injury when a rider's fatigue is already high."
       },
       "typeGating": {
-        "title": "Why doesn't a focus grow for some riders?",
-        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. A training focus only speeds abilities toward their ceiling when the rider's type supports them, and either type counts: a strong match (primary or secondary) reaches close to the full ceiling, a neutral fit reaches roughly 45% of it, and a type actively opposed to the ability reaches only around 12% (still not zero, but slow, and for an older or already well-developed rider it may already be there). Check both of a rider's type badges before picking a focus, and the focus dropdown marks each option so you can see at a glance whether it's a strong fit, limited, or very limited for that rider."
+        "title": "Why does a focus grow faster for some riders?",
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. Two separate things decide what an ability becomes: how high it can reach, and how fast it gets there. His type sets both. An ability his primary type is built for reaches highest and builds fastest. His secondary type is close behind, around 85% as high. Positioning and tactics are craft: nobody is born with them, so every rider can reach around 73% as high, but they build slowly. An ability outside both his roles reaches around half as high and builds slowly. An ability his type actively works against barely moves at all. Check both type badges before picking a focus, and note that reaching high and getting there quickly are no longer the same thing: an ability can have plenty of room left and still take years to fill it."
       },
       "ceilingReached": {
-        "title": "My rider's ability has stopped rising completely",
-        "text": "Then it has reached its lifetime ceiling. Every ability has one, set by the rider's type and potential, and once an ability arrives there it never rises again no matter how it is trained. This is different from slow growth: it is finished. Because a focus trains more than one ability at a time, one of them can be finished while the others keep climbing. Both the Daily Training page and the rider profile now give every ability its own line, and a finished one reads 'done' where the others show progress, so you can always tell which is which. If it is the finished ability you were training for, switch focus: that rider is as good as they will get in it. An older rider with several finished abilities is not broken, it is a rider at their peak."
+        "title": "My rider's ability has stopped rising",
+        "text": "That is now unusual. Every ability still has a lifetime ceiling set by type and potential, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type and potential would build on their own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress."
       },
       "trainToday": {
         "title": "Train today and the +25% boost",
@@ -873,7 +873,7 @@
       },
       "longTermGrowth": {
         "title": "Long-term growth",
-        "text": "Daily Training fits within the same long-term growth model as season transitions: young riders peak around age 27-28 and then gradually decline. Daily training accelerates progress toward each ability's ceiling but cannot push a rider beyond their potential."
+        "text": "Two separate things decide where an ability ends up: how high it can reach, and how fast it gets there. Both come from the rider's type. This is why a rider no longer arrives at his ceiling just by existing long enough. The ceiling is what he could have become; your training decides how close he gets, and which abilities he gets close on. Riders still peak around age 27-28 and decline after that, and training can never push anyone past their potential."
       },
       "readingReport": {
         "title": "Reading the training report",
@@ -979,8 +979,8 @@
         "text": "Your Academy holds up to {academySlots} riders. These {academySlots} places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
       },
       "dailyTrainingBoost": {
-        "title": "Daily training and the youth boost",
-        "text": "Academy riders are young and start with low, raw stats, not finished pros. Their potential sets both how high their abilities can ultimately reach and how fast they improve: a bigger talent develops quicker and tops out higher, while a smaller talent grows into a solid domestique. They also get an extra youth boost while young that fades toward their mid-twenties. The same Daily Training rules apply: set a focus and intensity for each rider, and gains accumulate day by day toward their potential."
+        "title": "Daily training in the academy",
+        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system and no hidden brake on how fast they improve: set a focus and an intensity, and gains accumulate day by day in the same way. The one real difference is age. Riders under 22 get an extra youth boost that fades as they approach 22. Their potential sets both how high their abilities can ultimately reach and how fast they get there, so a bigger talent develops quicker and tops out higher, while a smaller talent grows into a solid domestique."
       },
       "youthAuctions": {
         "title": "Youth auctions",
