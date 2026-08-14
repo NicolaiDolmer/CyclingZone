@@ -41,7 +41,9 @@ Under sessionen:
 Ved session-slut:
 - git status: rent (commit + push alt)
 - pwsh -File scripts/cross-pc-forensic-audit.ps1: [clean]
-- cross-pc-stop-check.sh kører automatisk og advarer
+- cross-pc-stop-check.sh kører automatisk og advarer. Den er tavs indtil den
+  anden PC har synket til OneDrive indenfor 14 dage. Sæt CROSS_PC_STOP_CHECK=always
+  hvis du vil have advarslen uanset hvad (#3654).
 ```
 
 ---
