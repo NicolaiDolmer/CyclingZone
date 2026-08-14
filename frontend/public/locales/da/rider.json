@@ -836,7 +836,12 @@
     "scoutToReveal": "Potentialet er skjult, indtil du scouter rytteren",
     "pendingTitle": "Din spejder arbejder allerede på denne rytter",
     "pendingShort": "Rapport om ~{minutes} min",
+    "pendingShortCountdown": "Rapport om {minutes, plural, one {1 min} other {# min}}",
+    "pendingShortDue": "Rapport klar",
     "pendingJob": "Spejderen arbejder, rapport om ~{minutes} min",
+    "pendingJobCountdown": "Spejderen arbejder, rapport om {minutes, plural, one {1 min} other {# min}}",
+    "pendingJobDue": "Rapporten er klar. Genindlæs for at åbne den.",
+    "pendingReadyAtTitle": "Rapporten er klar kl. {time} dansk tid",
     "sendScoutJob": "Send spejder (~{minutes} min, {cost, number})"
   },
   "condition": {

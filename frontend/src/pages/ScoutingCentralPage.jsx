@@ -32,6 +32,7 @@ import RiderLink from "../components/RiderLink";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { useRiderNames } from "../lib/useRiderNames";
 import { daysUntil, missionCriteriaLabel } from "../lib/scoutingCentralDisplay";
+import { useScoutCountdown, scoutReadyClock } from "../lib/scoutCountdown";
 import { getCountryName } from "../lib/countryUtils";
 import { ISO2_TO_IOC } from "../lib/countryCodes";
 import { formatDate } from "../lib/intl";
@@ -74,6 +75,75 @@ function ScoutCard({ scout, capacity, t }) {
   );
 }
 
+// Én række i opgavekøen. Egen komponent fordi målrettede opgaver nu tæller ned
+// (#3548) og useScoutCountdown derfor skal kaldes pr. række — en hook kan ikke
+// kaldes inde i en .map()-callback.
+function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobConfig, t }) {
+  // #3548: serveren leverer ready_at (created_at + etaMinutes) på aktive
+  // målrettede opgaver. Missioner har intet minut-granulært klar-tidspunkt —
+  // de modnes af den natlige 22-sweep — så de sender null ind og beholder den
+  // dags-baserede copy nedenfor.
+  const countdown = useScoutCountdown(a.kind === "target" ? (a.ready_at ?? null) : null);
+  const readyClock = a.kind === "target" ? scoutReadyClock(a.ready_at) : null;
+
+  const label = a.kind === "target"
+    ? (riderNames[a.rider_id] ?? t("queue.loadingRider"))
+    : missionCriteriaLabel(a.mission_criteria, {
+        translateScope: (s) => t(`mission.scope.${s}`),
+        translateCountry: (code) => getCountryName(code),
+      });
+
+  // #2644: målrettede undersøgelser svarer på ~30 min uanset niveau — den
+  // dags-baserede reportIn/-Today bruges stadig til missioner (2 dage).
+  // #3548: har rækken et ready_at, tæller den ned mod det; ellers falder den
+  // tilbage til den gamle flade ETA-copy (ældre payload uden feltet).
+  let reportLabel;
+  if (a.kind !== "target") {
+    reportLabel = daysUntil(a.ready_on) > 0
+      ? t("queue.reportIn", { days: daysUntil(a.ready_on) })
+      : t("queue.reportToday");
+  } else if (!countdown) {
+    reportLabel = t("queue.targetReportIn", { minutes: jobConfig?.targetEtaMinutes ?? 30 });
+  } else if (countdown.state === "due") {
+    reportLabel = t("queue.targetReportDue");
+  } else {
+    reportLabel = t("queue.targetReportCountdown", { minutes: countdown.minutes });
+  }
+
+  return (
+    <li className="flex items-center justify-between gap-3 flex-wrap border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
+      <div>
+        <span className="text-3xs font-mono uppercase tracking-[0.1em] text-cz-3">
+          {t(a.kind === "target" ? "queue.kindTarget" : "queue.kindMission")}
+        </span>
+        {/* #3046: målrettede opgaver kender rytterens id — link til profilen
+            i stedet for statisk tekst. Missioner har intet enkelt rytter-id
+            (kriteriet er et scope), så de forbliver ren tekst. */}
+        <p className="text-cz-1 text-[13px] m-0 mt-0.5">
+          {a.kind === "target" ? (
+            <RiderLink id={a.rider_id} className="hover:text-cz-accent-t transition-colors">
+              {label}
+            </RiderLink>
+          ) : label}
+        </p>
+        <p
+          className="text-cz-2 text-2xs m-0 mt-0.5 tabular-nums"
+          title={readyClock ? t("queue.targetReadyAtTitle", { time: readyClock }) : undefined}
+        >
+          {reportLabel}
+        </p>
+      </div>
+      <Button
+        variant="ghost" size="sm"
+        loading={cancellingId === a.id}
+        onClick={() => onCancel(a.id)}
+      >
+        {t("queue.cancel")}
+      </Button>
+    </li>
+  );
+}
+
 function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t }) {
   if (active.length === 0) {
     return (
@@ -87,49 +157,17 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t 
     <Section>
       <SectionHeader title={t("queue.title")} />
       <ul className="list-none p-0 m-0 space-y-2.5">
-        {active.map((a) => {
-          const label = a.kind === "target"
-            ? (riderNames[a.rider_id] ?? t("queue.loadingRider"))
-            : missionCriteriaLabel(a.mission_criteria, {
-                translateScope: (s) => t(`mission.scope.${s}`),
-                translateCountry: (code) => getCountryName(code),
-              });
-          // #2644: målrettede undersøgelser svarer på ~30 min uanset niveau —
-          // vis den flade ETA-copy i stedet for den dags-baserede reportIn/-Today,
-          // som stadig bruges til missioner (2 dage).
-          const reportLabel = a.kind === "target"
-            ? t("queue.targetReportIn", { minutes: jobConfig?.targetEtaMinutes ?? 30 })
-            : (daysUntil(a.ready_on) > 0
-                ? t("queue.reportIn", { days: daysUntil(a.ready_on) })
-                : t("queue.reportToday"));
-          return (
-            <li key={a.id} className="flex items-center justify-between gap-3 flex-wrap border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
-              <div>
-                <span className="text-3xs font-mono uppercase tracking-[0.1em] text-cz-3">
-                  {t(a.kind === "target" ? "queue.kindTarget" : "queue.kindMission")}
-                </span>
-                {/* #3046: målrettede opgaver kender rytterens id — link til profilen
-                    i stedet for statisk tekst. Missioner har intet enkelt rytter-id
-                    (kriteriet er et scope), så de forbliver ren tekst. */}
-                <p className="text-cz-1 text-[13px] m-0 mt-0.5">
-                  {a.kind === "target" ? (
-                    <RiderLink id={a.rider_id} className="hover:text-cz-accent-t transition-colors">
-                      {label}
-                    </RiderLink>
-                  ) : label}
-                </p>
-                <p className="text-cz-2 text-2xs m-0 mt-0.5">{reportLabel}</p>
-              </div>
-              <Button
-                variant="ghost" size="sm"
-                loading={cancellingId === a.id}
-                onClick={() => onCancel(a.id)}
-              >
-                {t("queue.cancel")}
-              </Button>
-            </li>
-          );
-        })}
+        {active.map((a) => (
+          <ActiveJobRow
+            key={a.id}
+            assignment={a}
+            riderNames={riderNames}
+            onCancel={onCancel}
+            cancellingId={cancellingId}
+            jobConfig={jobConfig}
+            t={t}
+          />
+        ))}
       </ul>
     </Section>
   );

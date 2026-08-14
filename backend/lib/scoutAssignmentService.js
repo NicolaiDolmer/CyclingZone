@@ -5,7 +5,7 @@
 // Scout-opslag: aktiv team_staff-row med role='scouting' + dens
 // staff_derived_abilities (roleSkills: evaluation/reach). Ingen hyret spejder →
 // DEFAULT_SCOUT (overall 40) — systemet skal virke for alle hold fra dag 1.
-import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, canStartAssignment } from "./scoutEngine.js";
+import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, targetReadyAt, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
 import { FINANCE_REASON } from "./economyConstants.js";
 import { hydrateCompletedVisibility } from "./scoutReportVisibility.js";
@@ -59,6 +59,19 @@ export async function loadScout(teamId, supabaseClient) {
   };
 }
 
+// #3548: aktive målrettede undersøgelser får `ready_at` (ISO UTC) med ud.
+// Serveren ejer reglen (created_at + etaMinutes, se targetReadyAt) — frontend
+// skal kun tælle ned til tidspunktet, ikke udlede det. Missioner beholder
+// `ready_on` alene: de modnes af den natlige 22-sweep (scoutSweep.js) og er
+// derfor dags-granulære, ikke minut-granulære.
+function withTargetReadyAt(rows) {
+  return (rows ?? []).map((row) => {
+    if (row?.kind !== "target") return row;
+    const readyAt = targetReadyAt(row.created_at);
+    return readyAt ? { ...row, ready_at: readyAt.toISOString() } : row;
+  });
+}
+
 async function loadActiveAssignments(teamId, supabaseClient) {
   const { data, error } = await supabaseClient
     .from("scout_assignments")
@@ -66,7 +79,7 @@ async function loadActiveAssignments(teamId, supabaseClient) {
     .eq("team_id", teamId)
     .eq("status", "active");
   if (error) throw new Error(`scoutAssignmentService: could not load active assignments for ${teamId}: ${error.message}`);
-  return data ?? [];
+  return withTargetReadyAt(data ?? []);
 }
 
 async function loadCompletedAssignments(teamId, supabaseClient) {
@@ -186,7 +199,10 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
       ready_on: readyOn,
       season_id: seasonId ?? null,
     })
-    .select("id")
+    // #3548: created_at læses tilbage fra DB'en (ikke fra `now`), så det
+    // klar-tidspunkt klienten viser er udledt af PRÆCIS den timestamp
+    // lazyCompleteDueTargetAssignments senere måler deadline'en mod.
+    .select("id, created_at")
     .single();
   if (insertError) throw new Error(`scoutAssignmentService: target insert failed for ${teamId}/${riderId}: ${insertError.message}`);
 
@@ -201,11 +217,16 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
     },
   });
 
+  const readyAt = targetReadyAt(inserted.created_at ?? now);
+
   return {
     ok: true,
     assignment: {
       id: inserted.id, kind: "target", riderId, targetLevel: toLevel,
       travelCost: cost, startedOn, readyOn,
+      // #3548: nedtællingen kan starte med det samme efter POST, uden at vente
+      // på næste GET /scouting/me.
+      readyAt: readyAt ? readyAt.toISOString() : null,
     },
     ...(debit.skipped ? { skipped: true } : {}),
   };

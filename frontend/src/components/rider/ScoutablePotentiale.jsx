@@ -27,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import PotentialeStars from "../PotentialeStars";
 import { SearchIcon } from "../ui";
 import { potentialLabelKey } from "../../lib/scouting";
+import { useScoutCountdown, scoutReadyClock } from "../../lib/scoutCountdown";
 
 // #2796: `labelAsTitle` videresendes til PotentialeStars — tætte tabel-celler
 // (akademi-rosteret) viser stjernerne alene og lægger den kvalitative label i
@@ -90,6 +91,12 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   // fejl skal vises. Hook skal stå FØR de tidlige returns nedenfor (rules-of-hooks).
   const [scoutError, setScoutError] = useState(null);
 
+  // #3548: nedtælling til rapporten. Både `pending` og hooken skal stå FØR de
+  // tidlige returns nedenfor (rules-of-hooks) — derfor er pending flyttet op hertil.
+  const pending = scoutSystemEnabled ? pendingFor?.(riderId) : undefined;
+  const pendingCountdown = useScoutCountdown(pending?.readyAt ?? null);
+  const pendingReadyClock = scoutReadyClock(pending?.readyAt);
+
   const estimate = estimateFor(riderId);
 
   // undefined = ikke hentet endnu, null = rytter uden potentiale → begge "—".
@@ -104,7 +111,6 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
 
   const level = estimate.level ?? 0;
   const busy = scoutingId === riderId;
-  const pending = scoutSystemEnabled ? pendingFor?.(riderId) : undefined;
   const remaining = scoutSystemEnabled ? Math.max(0, jobCapacity - jobActiveCount) : (slots?.remaining ?? 0);
   const canScout = remaining > 0 && level < maxLevel && !busy && !pending;
 
@@ -128,9 +134,21 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
     </span>
   );
 
+  // #3548: tæl ned mod serverens ready_at når det findes; ellers den gamle
+  // flade ETA-copy (ældre payload uden feltet).
+  const pendingLabel = !pendingCountdown
+    ? t("rider:scouting.pendingShort", { minutes: targetEtaMinutes })
+    : pendingCountdown.state === "due"
+      ? t("rider:scouting.pendingShortDue")
+      : t("rider:scouting.pendingShortCountdown", { minutes: pendingCountdown.minutes });
+  const pendingBadgeTitle = [
+    t("rider:scouting.pendingTitle"),
+    pendingReadyClock ? t("rider:scouting.pendingReadyAtTitle", { time: pendingReadyClock }) : null,
+  ].filter(Boolean).join(" · ");
+
   const pendingBadge = scoutSystemEnabled && pending && (
-    <span className="text-2xs text-cz-3 whitespace-nowrap" title={t("rider:scouting.pendingTitle")}>
-      {t("rider:scouting.pendingShort", { minutes: targetEtaMinutes })}
+    <span className="text-2xs text-cz-3 whitespace-nowrap tabular-nums" title={pendingBadgeTitle}>
+      {pendingLabel}
     </span>
   );
 

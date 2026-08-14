@@ -24,6 +24,9 @@
     "reportIn": "Rapport om {days, plural, one {1 dag} other {# dage}}",
     "reportToday": "Rapport klar i dag",
     "targetReportIn": "Rapport om ~{minutes} min",
+    "targetReportCountdown": "Rapport om {minutes, plural, one {1 min} other {# min}}",
+    "targetReportDue": "Rapporten er klar. Genindlæs for at åbne den.",
+    "targetReadyAtTitle": "Rapporten er klar kl. {time} dansk tid",
     "loadingRider": "Indlæser rytter…",
     "cancel": "Annullér"
   },

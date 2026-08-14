@@ -140,12 +140,21 @@ function createScoutSupabase({
             return chain;
           },
           insert(payload) {
-            const row = { id: `assign-${state.assignments.length + 1}`, status: "active", ...clone(payload) };
+            // created_at spejler Postgres' default (#3548: startTargetAssignment
+            // læser den tilbage og udleder klar-tidspunktet af den).
+            const row = {
+              id: `assign-${state.assignments.length + 1}`,
+              status: "active",
+              created_at: new Date().toISOString(),
+              ...clone(payload),
+            };
             state.assignments.push(row);
             return {
               error: null,
               then(resolve) { return resolve({ error: null }); },
-              select() { return { single: () => Promise.resolve({ data: { id: row.id }, error: null }) }; },
+              select() {
+                return { single: () => Promise.resolve({ data: { id: row.id, created_at: row.created_at }, error: null }) };
+              },
             };
           },
           update(payload) {
@@ -277,6 +286,42 @@ test("getScoutState: returns active + completed (capped 20) assignments", async 
   assert.deepEqual(result.completed.map((r) => r.id), ["a3", "a2"]); // nyeste først
 });
 
+// #3548: nedtællingen i frontend må ikke udlede klar-tidspunktet selv — serveren
+// leverer det på aktive målrettede opgaver, udledt af PRÆCIS den regel
+// lazyCompleteDueTargetAssignments håndhæver (created_at + targetEtaMinutes).
+test("getScoutState: aktiv målrettet opgave bærer ready_at = created_at + targetEtaMinutes", async () => {
+  // Startet for 5 min siden mod ægte ur: opgaven er stadig aktiv (ikke due), så
+  // lazyCompleteDueTargetAssignments lader den ligge og vi kan se ready_at.
+  const createdAt = new Date(Date.now() - 5 * 60_000).toISOString();
+  const assignments = [
+    { id: "a1", team_id: "team-1", status: "active", kind: "target", created_at: createdAt },
+  ];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments });
+  const result = await getScoutState("team-1", supabase);
+  assert.equal(result.active.length, 1);
+  assert.equal(
+    result.active[0].ready_at,
+    new Date(Date.parse(createdAt) + SCOUT_JOB_CONFIG.target.etaMinutes * 60_000).toISOString(),
+  );
+});
+
+test("getScoutState: missioner får IKKE ready_at (de modnes af den natlige sweep, ikke på minuttet)", async () => {
+  const assignments = [
+    { id: "m1", team_id: "team-1", status: "active", kind: "mission", created_at: "2026-07-10T11:55:00.000Z", ready_on: "2026-07-12" },
+  ];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments });
+  const result = await getScoutState("team-1", supabase);
+  assert.equal(result.active[0].ready_at, undefined);
+  assert.equal(result.active[0].ready_on, "2026-07-12");
+});
+
+test("getScoutState: målrettet opgave uden created_at får intet ready_at (UI falder tilbage til flad ETA)", async () => {
+  const assignments = [{ id: "a1", team_id: "team-1", status: "active", kind: "target" }];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments });
+  const result = await getScoutState("team-1", supabase);
+  assert.equal(result.active[0].ready_at, undefined);
+});
+
 // ─── getScoutState: #2644 synligheds-guard (scoutReportVisibility.js) ────────
 // Test der låser klassen (#2623/#2644): en rapport må ALDRIG afsløre en rytter
 // der lige nu er skjult/utilgængelig — hverken via et åbent akademi-intake-
@@ -390,6 +435,22 @@ test("startTargetAssignment: happy path (level 0→1) inserts + debits travel co
   // #3198-fund-8: reason_code manglede før denne fix.
   assert.equal(tx.reason_code, "scout_travel");
   assert.equal(supabase.state.assignments[0].staff_id, null); // default-spejder
+});
+
+// #3548: POST-svaret bærer klar-tidspunktet, så nedtællingen kan starte med det
+// samme i stedet for først ved næste GET /scouting/me.
+test("startTargetAssignment: svaret bærer readyAt udledt af rækkens EGEN created_at", async () => {
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 } });
+  const result = await startTargetAssignment(
+    { teamId: "team-1", riderId: "rider-1", seasonId: "season-1" }, supabase, NOW
+  );
+  assert.equal(result.ok, true);
+  const inserted = supabase.state.assignments[0];
+  assert.ok(inserted.created_at, "insert-rækken mangler created_at");
+  assert.equal(
+    result.assignment.readyAt,
+    new Date(Date.parse(inserted.created_at) + SCOUT_JOB_CONFIG.target.etaMinutes * 60_000).toISOString(),
+  );
 });
 
 test("startTargetAssignment: existing scout_actions level advances fromLevel/toLevel + cost", async () => {

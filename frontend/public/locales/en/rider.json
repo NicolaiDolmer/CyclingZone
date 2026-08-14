@@ -836,7 +836,12 @@
     "scoutToReveal": "Potential is hidden until you scout this rider",
     "pendingTitle": "Your scout is already working on this rider",
     "pendingShort": "Report in ~{minutes} min",
+    "pendingShortCountdown": "Report in {minutes, plural, one {1 min} other {# min}}",
+    "pendingShortDue": "Report ready",
     "pendingJob": "Scout working, report in ~{minutes} min",
+    "pendingJobCountdown": "Scout working, report in {minutes, plural, one {1 min} other {# min}}",
+    "pendingJobDue": "Report ready. Refresh to open it.",
+    "pendingReadyAtTitle": "Report ready at {time} Danish time",
     "sendScoutJob": "Send scout (~{minutes} min, {cost, number})"
   },
   "condition": {

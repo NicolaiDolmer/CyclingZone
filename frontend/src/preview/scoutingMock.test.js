@@ -13,6 +13,11 @@ test("scouting/me: scoutSystemEnabled=true + gamle slots-felter bevaret", () => 
   assert.equal(res.body.scoutSystemEnabled, true);
   assert.deepEqual(res.body.slots, { total: 3, used: 0, remaining: 3 });
   assert.equal(res.body.maxLevel, 3);
+  // #3548: jobModel spejler getScoutState-formen, så useScouting kan se aktive
+  // opgaver (rytterprofilens "Spejderen arbejder"-tilstand + nedtællingen).
+  assert.equal(res.body.jobModel.capacity, 1);
+  assert.deepEqual(res.body.jobModel.active, []);
+  assert.equal(res.body.jobModel.jobConfig.targetEtaMinutes, 30);
 });
 
 test("scouting/central: fuld side-payload (scout, capacity, jobConfig, seed-shortlist)", () => {
@@ -68,6 +73,26 @@ test("cancel: fjerner fra køen; ukendt id → 404", () => {
 
   const missing = scoutingMockRoute("POST", "/api/scouting/assignments/nope/cancel", null);
   assert.equal(missing.status, 404);
+});
+
+// #3548: en målrettet opgave skal bære ready_at, ellers har nedtællingen intet
+// at tælle ned til i preview (og ejeren kan ikke gennemklikke den).
+test("start target → ready_at ligger targetEtaMinutes ude i fremtiden", () => {
+  const before = Date.now();
+  const start = scoutingMockRoute("POST", "/api/scouting/assignments", { kind: "target", riderId: RIDERS[1].id });
+  assert.equal(start.status, 200);
+  const { ready_at: readyAt } = start.body.assignment;
+  assert.ok(readyAt, "target-opgaven mangler ready_at");
+  const remainingMs = new Date(readyAt).getTime() - before;
+  assert.ok(remainingMs > 29 * 60_000 && remainingMs <= 31 * 60_000, `ready_at ligger ${remainingMs} ms ude, forventede ~30 min`);
+
+  // Samme felt skal følge med ud af både /central og /me, som er de to kilder
+  // nedtællingen læses fra.
+  assert.equal(scoutingMockRoute("GET", "/api/scouting/central", null).body.active[0].ready_at, readyAt);
+  assert.equal(scoutingMockRoute("GET", "/api/scouting/me", null).body.jobModel.active[0].ready_at, readyAt);
+
+  scoutingMockRoute("POST", `/api/scouting/assignments/${start.body.assignment.id}/cancel`, null);
+  assert.equal(scoutingMockRoute("GET", "/api/scouting/central", null).body.active.length, 0);
 });
 
 test("uhåndterede paths (fx estimates) → null, så generisk /api-blok tager over", () => {

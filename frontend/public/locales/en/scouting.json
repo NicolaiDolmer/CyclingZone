@@ -24,6 +24,9 @@
     "reportIn": "Report in {days, plural, one {1 day} other {# days}}",
     "reportToday": "Report due today",
     "targetReportIn": "Report in ~{minutes} min",
+    "targetReportCountdown": "Report in {minutes, plural, one {1 min} other {# min}}",
+    "targetReportDue": "Report ready. Refresh to open it.",
+    "targetReadyAtTitle": "Report ready at {time} Danish time",
     "loadingRider": "Loading rider…",
     "cancel": "Cancel"
   },
