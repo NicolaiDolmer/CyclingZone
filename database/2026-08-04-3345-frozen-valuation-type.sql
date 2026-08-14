@@ -35,6 +35,13 @@
 -- (fanger den forkerte tilstand). Se Post-verify #2 nedenfor for hvordan det
 -- opdages hvis rækkefølgen alligevel blev byttet om.
 
+-- Server-only felt: valuation_type laeses udelukkende af backend'en
+-- (riderValuation.js, riderCareerNpv.js, backfillCores.js,
+-- riderProgressionEngine.js) med service_role. Verificeret 14/8 at INGEN
+-- frontend-fil refererer kolonnen, og at prod matcher: primary_type,
+-- market_value og popularity er grantet paa kolonne-niveau, valuation_type er
+-- det ikke. Fail-closed er det oenskede resultat her, ikke en forglemmelse.
+-- riders-column-grant-ok: server-only felt, se noten ovenfor (#3345)
 ALTER TABLE public.riders
   ADD COLUMN IF NOT EXISTS valuation_type TEXT;
 
