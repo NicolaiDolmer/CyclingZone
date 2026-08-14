@@ -83,13 +83,32 @@ Begge mål beregnes automatisk hver søndag og vises i admin. Blandingen rykker 
 | Gate | Måler | Status 14/8 |
 |---|---|---|
 | **Likviditet** | kontanter / samlet rytterværdi | 35,8 %, tærskel ikke fastsat (§6) |
-| **Præcision** | markedsmodellens MAE mod simuleringsmodellens | 38.176 mod 28.968, altså rød |
+| **Præcision** | ~~markedsmodellens MAE mod simuleringsmodellens~~ **UGYLDIG, se nedenfor** | skal omdefineres før den kan bruges |
+
+> ### ⚠️ Gate 2 er ugyldig som først formuleret (rettet 14/8 samme dag)
+>
+> Coordinatoren foreslog at måle den markedsdrevne models MAE mod salgspris og sammenligne med simuleringsmodellens. **Den sammenligning er cirkulær.**
+>
+> En auktions startpris defaulter til rytterens listede værdi, som er v4's eget output (`backend/routes/api.js:5116-5118` → `calculateRiderMarketValue` i `backend/lib/marketUtils.js:133-137`). Målt på completed auctions med køber og startpris > 0 afsluttet 3/8 eller senere: **149 af 228 (65,4 %) sælges til nøjagtig startprisen**, og den trivielle model "brug den listede værdi" giver MAE **8.115**, altså bedre end begge rigtige modeller.
+>
+> To tredjedele af observationerne måler dermed ikke markedet, men hvor tæt en model ligger på v4's eget anker. Både argumentet for og imod #3449 var udledt af den metrik.
+>
+> **Gate 2 skal omdefineres før den kan bruges.** Retning, ikke besluttet: mål kun på det **konkurrenceprissatte delsæt**, altså handler hvor budgivning faktisk flyttede prisen væk fra ankeret, og rapportér median-absolut-fejl ved siden af MAE (median er 4.801 til 7.355 mod MAE 33.000 til 45.000, så få store handler bestemmer i dag rangordenen alene).
 
 Gate 2 er selvkorrigerende: jo flere handler der findes, jo bedre bliver den markedsdrevne model, og jo mere retfærdigt bliver det at give den mere vægt. Gate 1 er et håndtag ejeren kan dreje bevidst ved at hæve præmiepenge, sponsorer og budgetter. Det er samtidig vejen til at nå fuldt dynamisk: økonomien skal vokse, ikke værdierne falde.
 
-## 4. Målinger fra oplåsnings-workflowet
+## 4. Målinger fra oplåsnings-workflowet (landet 14/8)
 
-_Indsættes når workflow `unblock-values-and-promises` er færdig: frisk MAE-sammenligning, typevalget (`primary_type` mod `valuation_type`) med populationsdeltaer, og konflikt-analysen af #3449 mod main._
+Fuld rapport: [`docs/audits/2026-08-14-oplaas-vaerdier-og-loefter.md`](../../audits/2026-08-14-oplaas-vaerdier-og-loefter.md), PR #3725. Fire fund der ændrer forudsætningerne:
+
+1. **Sweepet er søndags-gated.** `runMarketValueSundaySweep` returnerer `skipped: "not_sunday"`. Løftet "mellem i dag og fredag" (11/8) kunne aldrig holdes ordret, uanset modelkvalitet. MASTERPLAN-linjen "merge + kør 14.-15/8" var aldrig forenelig med koden.
+2. **Metrikken er cirkulær.** Se advarslen ved gate 2 ovenfor.
+3. **Sweepet straffer styrke.** De to dyreste deciler rammer bundloftet på -25 % med det samme, hver uge, under **begge** typevalg. Ved konvergens -73 %. Doktrinen siger at styrke aldrig straffes. Nuancen der skal afgøres: et fald i toppen er legitimt hvis tallet selv stammer fra anker-løkken, men sweepet kan ikke skelne det fra reel elite. En korrektion af toppen skal derfor være **en engangs-korrektion ejeren har set og godkendt**, ikke en ugentlig kværn.
+4. **Artefaktet er fittet på en fordeling der ikke findes.** `marketValueModelV1.json` er fittet 6/8 på 5/8-typefordelingen. Divergensen mellem `primary_type` og `valuation_type` er vokset fra 62,4 % (10/8) til **74,8 %** (4.811 af 6.429, målt 14/8).
+
+**Anbefaling fra rapporten: udskyd sweepet.** Rebase branchen, behold koden og de 49 unit-tests, **slet modelartefaktet**, hold PR'en som draft, og refit efter typebeslutningen mod en ikke-cirkulær metrik.
+
+**Populationsnote:** rapporten måler 3.136 spillerejede ryttere til 252,2 mio. CZ$ med sweepets egen afgrænsning (`defaultFetchPopulation`: team_id sat, ikke test/frosset/bank, ikke retired, ikke academy). §2.2's 3.585 ryttere til 360,3 mio. tæller også akademiryttere. Begge er rigtige for hver sit formål; forveksl dem ikke.
 
 ## 5. Lønnen
 
