@@ -30,20 +30,56 @@ const CY = 112;
 const R = 82;
 const angleAt = (i, n) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
 
-// #3666: akse-domænet er 0-40, ikke 0-99.
+// #3707: akse-domænet er 0-85, ikke 0-40.
 //
-// Den gamle model normaliserede mod populations-ankre og fyldte hele 1-99. Den
-// nye er absolut, og målt read-only mod prod 13/8 (n=8.747) er p90 for en
-// rolle-rating 29 — kun 10 ryttere i hele spillet ligger over 40 i deres bedste
-// rolle. Med et 0-99-domæne ville polygonen kollapse til under en tredjedel af
-// radius for stort set alle, og de to yderste ringe ville aldrig blive nået af
-// nogen. Domænet er FAST og ikke per-rytter, så to ryttere fortsat kan holdes
-// op mod hinanden: en større polygon betyder faktisk en bedre rytter.
-const AXIS_DOMAIN = 40;
-// Ringene ligger på evne-ankrene fra statColor, så afstanden mellem to ringe
-// betyder det samme som farveskiftet gør i evne-badgene. Ejer-beslutning 14/8.
-const RING_VALUES = [12, 21, 32];
-const radiusFor = (v) => (R * Math.max(0, Math.min(AXIS_DOMAIN, Number(v) || 0))) / AXIS_DOMAIN;
+// #3666 satte domænet til 40 ud fra p90 for en rytters BEDSTE rolle (29). Den
+// målestok så kun på ét tal pr. rytter — men radaren tegner otte akser pr.
+// rytter, og en alsidig toprytter kan ligge højt på flere af dem samtidig, ikke
+// kun sin egen rolle. Målt read-only mod prod 14/8 (n=8.763, samme otte
+// opskrifter som her): 80 ryttere får ALLE otte akser klampet til 40 (polygonen
+// rammer yderringen på hvert eneste hjørne — "maksimal i alt"), og 245 får det
+// på mindst fire ud af otte. Det er præcis symptomet i #3707: rytterens tal er
+// tydeligvis ikke maksimale, men figuren tegner som om de er. Konkret eksempel
+// (Aitor Iglesias, gc): climbing 91, time_trial 89, tempo 86 — ingen enkelt evne
+// rører 99 — men opskrifternes vægtede snit gav sprinter 64, puncheur 70, gc
+// 82 osv.: alle otte over 40, så domæne-40 tegnede ham identisk med en rytter
+// der reelt var maksimal overalt.
+//
+// 85 er ikke arbitrært: det ER spillets nuværende højeste tal (samme faktum som
+// #3666 lagde til grund andetsteds), og målt er det også nøjagtig det højeste
+// nogen rytter rammer på nogen af de otte akser i den nuværende bestand
+// (n=8.763, 14/8) — ingen rytter klampes falsk.
+//
+// #3707 opfølgning (ejer 14/8): et FLADT (lineært) 0-85-domæne løser klampningen,
+// men skaber et nyt problem. Målt på 3.585 spillerejede ryttere er medianens
+// BEDSTE akse 21 og p90 er 36 — mens spillets højeste akse nogensinde er 85.
+// Spændet er altså en faktor ~28 (85/3, hvor 3 er en typisk lav akse for en
+// smal rytter). Lineært fylder medianens bedste akse kun 25% af radius, og de
+// øvrige syv akser for samme rytter ligger på 4-16% — polygonen bliver en
+// ulæselig prik for langt de fleste, præcis den defekt #3666 selv advarede om,
+// bare flyttet fra 99 til 85.
+//
+// Et fælles LINEÆRT domæne kan ikke dække et spænd på faktor 28 uden enten at
+// klampe toppen (løgn) eller flade bunden (ulæseligt). Løsningen er ikke endnu
+// en domæne-konstant, men en ikke-lineær radius-mapping: radius = R *
+// sqrt(v / 85). Kvadratrod komprimerer toppen af skalaen og strækker bunden,
+// så en medianrytters bedste akse (21) nu fylder ~50% af radius i stedet for
+// 25%, mens Koen Peeters (målt topsprinter, bedste akse 72) rykker fra 85% til
+// ~92% i stedet for at blive klampet til 100% som ved domæne 40. Domænet
+// (85, spillets faktiske loft) er UÆNDRET og stadig fælles for alle ryttere —
+// kun MAPPINGEN fra værdi til radius er ikke-lineær, så to profiler stadig kan
+// holdes op mod hinanden (en større polygon er stadig en bedre rytter, sqrt er
+// monoton). RING_VALUES nedenfor er valgt til at gøre denne ikke-lineære skala
+// AFLÆSELIG (uden dem er en ikke-lineær akse vildledende, hvilket er hele
+// grunden til at #3707 findes) — se ring-labels i SVG'en.
+const AXIS_DOMAIN = 85;
+// Ringene sidder IKKE jævnt fordelt (10/30/60/85, ikke fx 21/43/64/85), fordi
+// den ikke-lineære skala selv gør fordelingen ulæselig uden faste, mærkede
+// pejlemærker: 10 = svag, 30 = median-til-god (p50 bedste akse er 21, p90 36),
+// 60 = stærk (kun de bedste ryttere i spillet), 85 = spillets loft. Hver ring
+// har en tabular-nums label langs top-spoken (se SVG'en).
+const RING_VALUES = [10, 30, 60, 85];
+const radiusFor = (v) => R * Math.sqrt(Math.max(0, Math.min(AXIS_DOMAIN, Number(v) || 0)) / AXIS_DOMAIN);
 
 export default function RiderTypeRadar({ rider, onGoScouting }) {
   const { t } = useTranslation("rider");
@@ -65,6 +101,15 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
     y: (CY + Math.sin(angleAt(i, n)) * R).toFixed(1),
   }));
   const rings = RING_VALUES.map((v) => radiusFor(v).toFixed(1));
+  // #3707: ring-tal langs top-spoken (samme spor som "Spurt"-aksen), lige til
+  // højre for aksestregen så de ikke krydser den. Uden dem er den ikke-lineære
+  // (sqrt) skala vildledende, for afstanden mellem to ringe betyder ikke
+  // længere det samme antal rating-point to steder på aksen.
+  const ringLabels = RING_VALUES.map((v) => ({
+    value: v,
+    x: (CX + 3).toFixed(1),
+    y: (CY - radiusFor(v) - 1.5).toFixed(1),
+  }));
 
   // #3666: guld-aksen markerer rytterens EGEN rolle, ikke den højest ratede.
   //
@@ -122,6 +167,27 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           strokeWidth="2"
           strokeLinejoin="round"
         />
+        {ringLabels.map((rl) => (
+          <text
+            key={`ring-label-${rl.value}`}
+            x={rl.x}
+            y={rl.y}
+            fontSize="6.5"
+            fill="var(--text-3)"
+            // Halo mod kort-baggrunden (samme farve som selve kortet, ikke en
+            // form) — en høj-ratet rytters polygon-fyld kan række helt op til
+            // ydre ring, og uden halo ville tallet forsvinde i fyldet netop
+            // der hvor det er vigtigst at kunne læse det (#3707).
+            stroke="var(--bg-card)"
+            strokeWidth="3"
+            paintOrder="stroke"
+            fontFamily='"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif'
+            className="tabular-nums"
+            textAnchor="start"
+          >
+            {rl.value}
+          </text>
+        ))}
         {labels.map((l) => (
           <text
             key={`label-${l.key}`}

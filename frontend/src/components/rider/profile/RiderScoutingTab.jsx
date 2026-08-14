@@ -58,10 +58,16 @@ function Eyebrow({ children }) {
 // ellers flytter en rytters bar sig fordi ANDRE ryttere har ændret sig, hvilket
 // er præcis den egenskab omlægningen fjernede fra selve ratingen.
 //
-// Overblik-radaren bruger bevidst 0-40 i stedet. Det er ikke en modsigelse:
-// radaren sammenligner otte rollers FORM mod hinanden på én rytter, hvor en
-// fælles 0-99-akse ville klemme polygonen sammen til en prik. Baren her
-// sammenligner niveau mod loft på én akse hvor loftet skal kunne være med.
+// Overblik-radaren bruger 0-85 med en IKKE-LINEÆR (sqrt) mapping i stedet
+// (#3707, ikke 99, men heller ikke det tidligere lineære 0-40, som klampede
+// alsidige toprytteres akser falsk til "maksimal i alt"). Det er ikke en
+// modsigelse: radaren sammenligner otte rollers FORM mod hinanden på én
+// rytter, hvor et fælles LINEÆRT 0-99-domæne enten ville klemme polygonen
+// sammen til en prik for de fleste (spændet mellem en typisk lav akse og
+// spillets loft er en faktor ~28) eller klampe toppen falsk. Baren her
+// sammenligner niveau mod loft på én lineær akse hvor loftet skal kunne
+// være med, og der er kun én værdi pr. rytter, ikke otte samtidig, så
+// samme spænd-problem opstår ikke her.
 const BAR_SCALE_MAX = 99;
 const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MAX) * 100}%`;
 
