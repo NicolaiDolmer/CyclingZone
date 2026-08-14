@@ -1212,7 +1212,8 @@
         "bedsteEvne": 38,
         "evnesum": 309,
         "skarphed": 0.99,
-        "andelAfTagNaaet": 0.97,
+        "andelAfTagNaaet": 0.94,
+        "gulvVundnePladser": 9390,
         "forskellighed": 0.12,
         "markedsvaerdiMedian": 27096,
         "markedsvaerdiSum": 157515734
@@ -2424,7 +2425,8 @@
         "bedsteEvne": 35,
         "evnesum": 310,
         "skarphed": 0.99,
-        "andelAfTagNaaet": 1,
+        "andelAfTagNaaet": 0.95,
+        "gulvVundnePladser": 9339,
         "forskellighed": 0.12,
         "markedsvaerdiMedian": 27096,
         "markedsvaerdiSum": 156671418
@@ -3636,7 +3638,8 @@
         "bedsteEvne": 36,
         "evnesum": 305,
         "skarphed": 0.99,
-        "andelAfTagNaaet": 0.97,
+        "andelAfTagNaaet": 0.92,
+        "gulvVundnePladser": 8266,
         "forskellighed": 0.12,
         "markedsvaerdiMedian": 25595,
         "markedsvaerdiSum": 149368237
@@ -4848,7 +4851,8 @@
         "bedsteEvne": 33,
         "evnesum": 299,
         "skarphed": 0.99,
-        "andelAfTagNaaet": 0.96,
+        "andelAfTagNaaet": 0.94,
+        "gulvVundnePladser": 7140,
         "forskellighed": 0.11,
         "markedsvaerdiMedian": 23272,
         "markedsvaerdiSum": 122901770
@@ -6063,7 +6067,8 @@
         "bedsteEvne": 45,
         "evnesum": 264,
         "skarphed": 0.93,
-        "andelAfTagNaaet": 0.45,
+        "andelAfTagNaaet": 0.42,
+        "gulvVundnePladser": 2142,
         "forskellighed": 0.26,
         "markedsvaerdiMedian": 22193,
         "markedsvaerdiSum": 172038725
@@ -7275,7 +7280,8 @@
         "bedsteEvne": 35,
         "evnesum": 276,
         "skarphed": 0.97,
-        "andelAfTagNaaet": 0.55,
+        "andelAfTagNaaet": 0.52,
+        "gulvVundnePladser": 672,
         "forskellighed": 0.19,
         "markedsvaerdiMedian": 22338,
         "markedsvaerdiSum": 139087854
@@ -8487,7 +8493,8 @@
         "bedsteEvne": 43,
         "evnesum": 250,
         "skarphed": 0.93,
-        "andelAfTagNaaet": 0.44,
+        "andelAfTagNaaet": 0.43,
+        "gulvVundnePladser": 1163,
         "forskellighed": 0.26,
         "markedsvaerdiMedian": 24355,
         "markedsvaerdiSum": 173628636
@@ -9699,7 +9706,8 @@
         "bedsteEvne": 26,
         "evnesum": 218,
         "skarphed": 0.97,
-        "andelAfTagNaaet": 0.45,
+        "andelAfTagNaaet": 0.44,
+        "gulvVundnePladser": 652,
         "forskellighed": 0.14,
         "markedsvaerdiMedian": 9447,
         "markedsvaerdiSum": 29423927
@@ -10915,6 +10923,7 @@
         "evnesum": 208,
         "skarphed": 0.91,
         "andelAfTagNaaet": 0.34,
+        "gulvVundnePladser": 662,
         "forskellighed": 0.27,
         "markedsvaerdiMedian": 10940,
         "markedsvaerdiSum": 65505546
@@ -12127,6 +12136,7 @@
         "evnesum": 211,
         "skarphed": 0.97,
         "andelAfTagNaaet": 0.4,
+        "gulvVundnePladser": 650,
         "forskellighed": 0.18,
         "markedsvaerdiMedian": 10586,
         "markedsvaerdiSum": 40115277
@@ -13339,6 +13349,7 @@
         "evnesum": 196,
         "skarphed": 0.92,
         "andelAfTagNaaet": 0.32,
+        "gulvVundnePladser": 650,
         "forskellighed": 0.26,
         "markedsvaerdiMedian": 12348,
         "markedsvaerdiSum": 61631287
@@ -14550,7 +14561,8 @@
         "bedsteEvne": 21,
         "evnesum": 165,
         "skarphed": 0.93,
-        "andelAfTagNaaet": 0.32,
+        "andelAfTagNaaet": 0.31,
+        "gulvVundnePladser": 650,
         "forskellighed": 0.13,
         "markedsvaerdiMedian": 5316,
         "markedsvaerdiSum": 12646407
@@ -15765,7 +15777,8 @@
         "bedsteEvne": 46,
         "evnesum": 351,
         "skarphed": 0.98,
-        "andelAfTagNaaet": 0.73,
+        "andelAfTagNaaet": 0.68,
+        "gulvVundnePladser": 2244,
         "forskellighed": 0.17,
         "markedsvaerdiMedian": 51845,
         "markedsvaerdiSum": 577520195
@@ -16977,7 +16990,8 @@
         "bedsteEvne": 42,
         "evnesum": 353,
         "skarphed": 0.98,
-        "andelAfTagNaaet": 0.75,
+        "andelAfTagNaaet": 0.72,
+        "gulvVundnePladser": 1324,
         "forskellighed": 0.16,
         "markedsvaerdiMedian": 50001,
         "markedsvaerdiSum": 542427118
@@ -18189,7 +18203,8 @@
         "bedsteEvne": 43,
         "evnesum": 344,
         "skarphed": 0.98,
-        "andelAfTagNaaet": 0.72,
+        "andelAfTagNaaet": 0.7,
+        "gulvVundnePladser": 1267,
         "forskellighed": 0.17,
         "markedsvaerdiMedian": 46359,
         "markedsvaerdiSum": 512483504
@@ -19401,7 +19416,8 @@
         "bedsteEvne": 39,
         "evnesum": 335,
         "skarphed": 0.98,
-        "andelAfTagNaaet": 0.72,
+        "andelAfTagNaaet": 0.7,
+        "gulvVundnePladser": 795,
         "forskellighed": 0.16,
         "markedsvaerdiMedian": 40062,
         "markedsvaerdiSum": 366552635
@@ -19423,7 +19439,7 @@
     {
       "navn": "G3 ryttere naar IKKE deres lofter (beslutning 6)",
       "ok": true,
-      "detalje": "i dag 0.97 → kandidat 0.45"
+      "detalje": "i dag 0.94 → kandidat 0.42"
     },
     {
       "navn": "G4 NEGATIV-TEST: kun offFocusMult uaendret SKAL give markant mindre agens",

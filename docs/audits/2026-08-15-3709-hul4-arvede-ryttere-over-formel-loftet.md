@@ -1,6 +1,6 @@
 # Hul 4: arvede ryttere over deres formel-loft
 
-**#3709 · 2026-08-15 · kræver ejer-beslutning før trin 4 merges**
+**#3709 · 2026-08-15 · EJER-GODKENDT 15/8 (A + B + C)**
 
 Specens §4 lister dette som blokerende: `buildCapsForRider` returnerer
 `max(tapered, current)`, så for en rytter hvis nuværende evne ligger over
@@ -76,10 +76,20 @@ væk over tid, så rytteren konvergerer ned mod sit formel-loft. **Det tager evn
 fra spillere** og hører under de indgreb der kræver at ejeren har set live-tilstand
 først. Det anbefales ikke, og det er ikke bygget.
 
-## Hvad ejeren skal tage stilling til
+## Status: godkendt og implementeret
 
-1. Accepteres A + B + C? (anbefalet)
-2. Hvis nej til A: enhver anden regel fjerner evne fra spillere og skal behandles
-   som et destruktivt prod-indgreb med egen dry-run, backup og ejer-gate.
+**Ejeren godkendte A + B + C den 15/8.** Hullet er dermed lukket.
 
-Indtil punkt 1 er besvaret, er hul 4 **åbent**, og specens §4 blokerer trin 4.
+Implementeret:
+
+- **A** — gulvet er urørt. Der er ingen kodeændring, og det er pointen: reglen er
+  at vi IKKE rører det.
+- **B** — `scripts/rytterudviklingScorecard.js` udelader nu gulv-vundne evner af
+  "andel af taget nået". Effekten på tallene: dagens model går fra 0,97 til 0,94,
+  kandidaten fra 0,45 til 0,42. Begge bliver altså en anelse LAVERE, fordi de
+  udeladte pladser talte som 1,00 og trak medianen op. Gate G3 består stadig.
+- **C** — fladen siger allerede *færdig* på låste evner (leveret i trin 1). Ordet
+  er sandt for begge tilfælde og er ikke ændret. Hjælpeteksten
+  `dailytraining.ceilingReached` er skrevet om, så den forklarer de to tilfælde
+  der er tilbage: rytteren er forbi sit højdepunkt, eller evnen ligger allerede
+  over hvad hans type og potentiale ville bygge op af sig selv.

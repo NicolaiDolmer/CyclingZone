@@ -33,12 +33,17 @@ der traekker samme vej skal spidses — at vaelge rigtigt til den rytter man har
 
 ## Andel af taget naaet (median) — beslutning 6
 
+Evner hvor GULVET vandt (`max(tapered, current)` giver `cap === current`) er UDELADT,
+ejer-godkendt 15/8. De har ikke et tag rytteren naermer sig, men et frosset tal, og
+ville taelle som 1,00 per konstruktion. Gulvet selv er urortt. Se
+`docs/audits/2026-08-15-3709-hul4-arvede-ryttere-over-formel-loftet.md`.
+
 | Model | spids | rotation | standard | forkert |
 |---|---:|---:|---:|---:|
-| i dag | 0.97 | 1 | 0.97 | 0.96 |
-| kandidat | 0.45 | 0.55 | 0.44 | 0.45 |
-| kandidat + akademiets 1/3 | 0.34 | 0.4 | 0.32 | 0.32 |
-| negativ-test (offFocusMult 0,97) | 0.73 | 0.75 | 0.72 | 0.72 |
+| i dag | 0.94 | 0.95 | 0.92 | 0.94 |
+| kandidat | 0.42 | 0.52 | 0.43 | 0.44 |
+| kandidat + akademiets 1/3 | 0.34 | 0.4 | 0.32 | 0.31 |
+| negativ-test (offFocusMult 0,97) | 0.68 | 0.72 | 0.7 | 0.7 |
 
 ## Evnesum ved 30 aar (median)
 
@@ -86,6 +91,6 @@ specen; de **absolutte tal** kan ikke.
 |---|---|---|
 | G1 | agens-spaend paa rating stiger markant | ✅ i dag 1 → kandidat 7 |
 | G2 | ankeret holder: bedste OPNAAELIGE pr. rytter >= dagens | ✅ i dag 29 → kandidat 30 (pr. rytter, bedste af spids/rotation/standard/forkert — IKKE spids mod spids) |
-| G3 | ryttere naar IKKE deres lofter (beslutning 6) | ✅ i dag 0.97 → kandidat 0.45 |
+| G3 | ryttere naar IKKE deres lofter (beslutning 6) | ✅ i dag 0.94 → kandidat 0.42 |
 | G4 | NEGATIV-TEST: kun offFocusMult uaendret SKAL give markant mindre agens | ✅ kandidat 7 → negativ-test 2 |
 | G5 | ATTRIBUTION: akademiets 1/3 beholdt SKAL koste rating (trin 5 er baerende) | ✅ kandidat 27 → med 1/3 21 |

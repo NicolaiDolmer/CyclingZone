@@ -4,6 +4,47 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.129",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Your training now decides what a rider becomes",
+          "body": "What changed: An ability's ceiling and how fast it climbs are now two separate things. Ceilings went up across the board, but riders no longer simply arrive at them. Two identical talents under two managers will end up different riders.\n\nWhy: Measured over a full career, the difference between training a rider right and training him wrong was 3 points out of 60. The ceiling decided everything and you arrived there whatever you did.\n\nWhat it means for you: Riders you leave alone develop more slowly than before. Nobody loses anything they already have. Pick a direction and stay with it, and your best rider ends up sharper than anything possible today."
+        },
+        "da": {
+          "title": "Din træning afgør nu hvad en rytter bliver",
+          "body": "Hvad ændrede sig: En evnes loft og hvor hurtigt den stiger er nu to forskellige ting. Lofterne er hævet hele vejen rundt, men ryttere ankommer ikke længere bare til dem. To ens talenter under to managere ender som forskellige ryttere.\n\nHvorfor: Målt over en hel karriere var forskellen mellem at træne en rytter rigtigt og forkert 3 point ud af 60. Loftet afgjorde alt, og du ankom der uanset hvad du gjorde.\n\nHvad det betyder for dig: Ryttere du lader ligge udvikler sig langsommere end før. Ingen mister noget de allerede har. Vælg en retning og bliv ved den, så ender din bedste rytter skarpere end noget der er muligt i dag."
+        },
+        "refs": [
+          3709,
+          3659
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "The academy and your senior squad now train the same way",
+          "body": "What changed: Academy riders no longer have a separate, slower development model. They follow exactly the same rules as your senior squad.\n\nWhy: The academy brake existed to hold back a model where every ability filled up on its own. That model is gone, so the brake was only slowing young riders down for no reason.\n\nWhat it means for you: Young riders develop noticeably faster than yesterday. The only remaining difference is age: riders under 22 still get a youth boost that fades as they approach 22."
+        },
+        "da": {
+          "title": "Akademiet og seniortruppen træner nu ens",
+          "body": "Hvad ændrede sig: Akademi-ryttere har ikke længere en separat, langsommere udviklingsmodel. De følger nøjagtig samme regler som din seniortrup.\n\nHvorfor: Akademi-bremsen fandtes for at holde igen på en model hvor hver evne fyldte sig selv op. Den model er væk, så bremsen sinkede kun de unge uden grund.\n\nHvad det betyder for dig: Unge ryttere udvikler sig mærkbart hurtigere end i går. Den eneste forskel der er tilbage er alder: ryttere under 22 får stadig et ungdoms-boost der aftager frem mod 22."
+        },
+        "refs": [
+          3709,
+          3583
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.128",
     "date": "2026-08-14",
     "label": "Beta",

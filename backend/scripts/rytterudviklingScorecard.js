@@ -229,8 +229,9 @@ function feltetsForskellighed(alle) {
   return n ? sum / n : 0;
 }
 
-function maal(resultater, kuld) {
+function maal(resultater, kuld, mod) {
   const ratings = [], bedste = [], summer = [], skarphed = [], andelAfTag = [], vaerdier = [];
+  let gulvVundne = 0;
   for (let i = 0; i < resultater.length; i++) {
     const { abilities, caps } = resultater[i];
     const rytter = kuld[i];
@@ -240,10 +241,31 @@ function maal(resultater, kuld) {
     summer.push(vals.reduce((a, b) => a + b, 0));
     const s = arketypeSkarphed(abilities, rytter.primary_type);
     if (s != null) skarphed.push(s);
-    const forhold = VISIBLE_ABILITIES
-      .map((k) => (caps[k] > 0 ? (Number(abilities[k]) || 0) / caps[k] : null))
-      .filter((x) => x != null);
-    andelAfTag.push(median(forhold));
+    // ── HUL 4, MAALE-REGLEN (ejer-godkendt 15/8) ─────────────────────────────
+    // buildCapsForRider returnerer max(tapered, current). Ligger rytterens
+    // nuvaerende evne OVER det tapered absolutte loft, vinder GULVET, og cap
+    // bliver lig current. Forholdet er saa 1,00 per konstruktion — ikke fordi
+    // rytteren naaede noget, men fordi der ikke var noget at naa.
+    //
+    // Saadan en evne har ikke et tag rytteren naermer sig; den har et FROSSET
+    // tal. Den udelades derfor af "andel af taget naaet". Gulvet selv er URORTT
+    // (ejer-beslutning 15/7: ingen rytter mister evne han ejer) — det er
+    // maalingen der rettes, ikke modellen.
+    //
+    // Maalt paa snapshottet rammer det 0,58 evne pr. rytter i vaekstalder efter
+    // trin 4, og 53 % af alle gulv-vundne pladser sidder hos ryttere over 30,
+    // hvor cap === current er DESIGNET (#2472's taper faar med vilje gulvet til
+    // at vinde saa vaeksten stopper og declinen dominerer alene).
+    const absolut = mod.progression.buildYouthCaps(rytter.potentiale, rytter.primary_type, rytter.secondary_type);
+    const peakAge = mod.progression.peakAgeForType(rytter.primary_type);
+    const forhold = VISIBLE_ABILITIES.map((k) => {
+      if (!(caps[k] > 0)) return null;
+      const tapered = mod.progression.taperedAbsoluteCap(absolut[k] ?? 0, SLUT_AGE, peakAge);
+      if ((Number(abilities[k]) || 0) > tapered) return null; // gulvet vandt
+      return (Number(abilities[k]) || 0) / caps[k];
+    }).filter((x) => x != null);
+    andelAfTag.push(forhold.length ? median(forhold) : null);
+    gulvVundne += VISIBLE_ABILITIES.length - forhold.length;
     if (VAERDI_MODEL) {
       const v = predictBaseValue(
         { primary_type: rytter.primary_type, valuation_type: rytter.primary_type, age: SLUT_AGE, potentiale: rytter.potentiale },
@@ -258,7 +280,8 @@ function maal(resultater, kuld) {
     bedsteEvne: median(bedste),
     evnesum: median(summer),
     skarphed: +mean(skarphed).toFixed(2),
-    andelAfTagNaaet: +median(andelAfTag).toFixed(2),
+    andelAfTagNaaet: +median(andelAfTag.filter((x) => x != null)).toFixed(2),
+    gulvVundnePladser: gulvVundne,
     forskellighed: +feltetsForskellighed(resultater.map((r) => r.abilities)).toFixed(2),
     markedsvaerdiMedian: median(vaerdier),
     markedsvaerdiSum: vaerdier.reduce((a, b) => a + b, 0),
@@ -302,7 +325,7 @@ for (const m of MODELLER) {
     const res = kuld.map((r) => simulerKarriere(m.mod, r, strategi, {
       akademi: m.akademi, trainingCfg: m.trainingCfg,
     }));
-    tabel[m.navn][strategi] = maal(res, kuld);
+    tabel[m.navn][strategi] = maal(res, kuld, m.mod);
   }
   // BEDSTE OPNAAELIGE pr. rytter, paa tvaers af strategier.
   //
@@ -361,6 +384,11 @@ for (const m of MODELLER) {
 }
 p("");
 p("## Andel af taget naaet (median) — beslutning 6");
+p("");
+p("Evner hvor GULVET vandt (`max(tapered, current)` giver `cap === current`) er UDELADT,");
+p("ejer-godkendt 15/8. De har ikke et tag rytteren naermer sig, men et frosset tal, og");
+p("ville taelle som 1,00 per konstruktion. Gulvet selv er urortt. Se");
+p("`docs/audits/2026-08-15-3709-hul4-arvede-ryttere-over-formel-loftet.md`.");
 p("");
 p("| Model | spids | rotation | standard | forkert |");
 p("|---|---:|---:|---:|---:|");
