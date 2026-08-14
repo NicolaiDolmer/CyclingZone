@@ -82,7 +82,7 @@ Begge mål beregnes automatisk hver søndag og vises i admin. Blandingen rykker 
 
 | Gate | Måler | Status 14/8 |
 |---|---|---|
-| **Likviditet** | kontanter / samlet rytterværdi | 35,8 %, **men gaten kan tilfredsstilles af inflation, se nedenfor** |
+| **Likviditet** | kontanter / samlet rytterværdi | 35,8 %, tærskel ikke fastsat (§6), og **gaten kan tilfredsstilles af inflation, se nedenfor** |
 | **Præcision** | ~~markedsmodellens MAE mod simuleringsmodellens~~ **UGYLDIG, se nedenfor** | skal omdefineres før den kan bruges |
 
 > ### ⚠️ Gate 2 er ugyldig som først formuleret (rettet 14/8 samme dag)
