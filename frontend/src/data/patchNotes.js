@@ -4,6 +4,30 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.126",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "You now pick when your auction ends",
+          "body": "What changed: When you put a rider up for auction you choose the exact time it ends, from 1 to 48 hours ahead. It has to land while the market is open, 08:00 to 24:00 game time.\n\nWhy: Auctions ran for one hour. Of 1.698 player-listed auctions, 1.585 never got a single bid, and only 16 have ever had two bidders at once. An hour is not long enough for anyone to see your rider.\n\nWhat it means for you: Pick a time when people are around. A rider nobody sees cannot be bid on, and a price only moves when two managers want the same rider."
+        },
+        "da": {
+          "title": "Du vælger nu selv hvornår din auktion slutter",
+          "body": "Hvad ændrede sig: Når du sætter en rytter på auktion, vælger du det præcise tidspunkt den slutter, fra 1 til 48 timer frem. Det skal ligge mens markedet er åbent, 08:00 til 24:00 spiltid.\n\nHvorfor: Auktioner kørte i én time. Af 1.698 spillerudbudte auktioner fik 1.585 aldrig et eneste bud, og kun 16 har nogensinde haft to budgivere på samme tid. En time er ikke længe nok til at nogen når at se din rytter.\n\nHvad det betyder for dig: Vælg et tidspunkt hvor der er nogen. En rytter ingen ser, kan der ikke bydes på, og en pris flytter sig kun når to managere vil have den samme rytter."
+        },
+        "refs": [
+          2884,
+          1905
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.125",
     "date": "2026-08-14",
     "label": "Beta",
