@@ -252,6 +252,50 @@ export const FACIT_MODELDRIFT = Object.freeze([
     til: 71,
     hvorfor: "Samme årsag som sænkning-medianen.",
   }),
+  // ── TILBAGERULNING 15/8 (ejer-beslutning) ───────────────────────────────────
+  // Trin 4's poster ovenfor SLETTES IKKE. De skete, ejeren så tallene, og
+  // ledgeren er et historisk spor på linje med DRYRUN_FACIT selv. Tilbage-
+  // rulningen er derfor fire NYE poster der fører hvert felt tilbage til præcis
+  // trin 3's værdi, hvilket er hvad tag-faktorerne står på igen.
+  //
+  // Årsag: trin 4's tag satte 748 ryttere over 95 og 1.840 evne-pladser på 99,
+  // mod løftet i Discord 11/8 om at "det bliver voldsomt få, der lander deroppe".
+  // Efter tilbagerulningen er begge tal 0, målt af scripts/spillervendteGates3709.mjs.
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 tilbagerulning af trin 4's tag",
+    felt: "loftSaenketAntal",
+    fra: 6641,
+    til: 7230,
+    hvorfor:
+      "Tagene er tilbage på trin 3's værdier (1,00 / 0,82 / 0,45 / 0,12 + håndværk 0,95), "
+      + "så tælleren lander eksakt på trin 3-posten ovenfor. At den rammer 7.230 præcist, "
+      + "og ikke et tal i nærheden, er selv beviset for at tilbagerulningen er fuldstændig.",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 tilbagerulning af trin 4's tag",
+    felt: "saenkningMedian",
+    fra: 22,
+    til: 30,
+    hvorfor: "Samme årsag: eksakt tilbage på trin 3's værdi.",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 tilbagerulning af trin 4's tag",
+    felt: "saenkningP90",
+    fra: 43,
+    til: 47,
+    hvorfor: "Samme årsag: eksakt tilbage på trin 3's værdi.",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 tilbagerulning af trin 4's tag",
+    felt: "saenkningMax",
+    fra: 71,
+    til: 77,
+    hvorfor: "Samme årsag: eksakt tilbage på trin 3's værdi.",
+  }),
 ]);
 
 /** Det godkendte facit med ledgerens bevidste drift lagt oven på. */
