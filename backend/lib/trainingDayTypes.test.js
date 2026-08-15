@@ -186,7 +186,9 @@ test("migration: `changed` er sand netop når parret flytter sig", () => {
 });
 
 test("en ukendt session lander på Lang tur i stedet for at kaste", () => {
-  const out = normalizeProgram({ focus: "loebslaere", intensity: "normal" });
+  // trin 2 (16/8): "loebslaere" er nu en KENDT skill-session (#3746) og kan
+  // ikke længere bruges som eksempel på en ukendt en — brug en opdigtet nøgle.
+  const out = normalizeProgram({ focus: "fremtidigt_fokus", intensity: "normal" });
   assert.equal(out.dayType, "training");
   assert.equal(out.session, "endurance");
   assert.equal(out.changed, true);

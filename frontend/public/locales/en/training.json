@@ -207,6 +207,7 @@
     "session_sprint": "Sprint",
     "session_technique": "Technique",
     "session_aero": "Aero",
+    "session_loebslaere": "Race craft",
     "note": "A session carries its own effort, so you no longer set that separately. Skill days build craft at a fixed, slower rate, whatever the rider is built for.",
     "colDay": "Day",
     "colChangeDay": "Change day",

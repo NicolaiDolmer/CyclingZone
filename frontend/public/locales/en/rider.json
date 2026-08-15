@@ -104,7 +104,8 @@
         "technique": "Technique",
         "aero": "Aero",
         "tempo": "Tempo",
-        "restitution": "Active recovery"
+        "restitution": "Active recovery",
+        "loebslaere": "Race craft"
       },
       "active": "Active: {focus} · {intensity} · trains {abilities}",
       "activeRest": "Resting ({focus} focus paused)",
@@ -880,6 +881,7 @@
     "focus_endurance": "Endurance (Zone 2)",
     "focus_technique": "Technique",
     "focus_aero": "Aero",
+    "focus_loebslaere": "Race craft",
     "intensity_rest": "Rest",
     "intensity_easy": "Easy",
     "intensity_normal": "Normal",

@@ -172,7 +172,8 @@
     "sprint": "Spurt",
     "endurance": "Udholdenhed",
     "technique": "Teknik",
-    "aero": "Aero"
+    "aero": "Aero",
+    "loebslaere": "Løbslære"
   },
   "error": {
     "max_reached": "Denne rytter har allerede det maksimale antal på {max} peaks.",
