@@ -4,6 +4,30 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.133",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "New riders are born with a second type that stays put",
+          "body": "Every rider you get from now on is born with both a main type and a second type, and both are locked in from day one. Before, only the main type was set at birth. The second type was worked out from the rider's stats every night, so it could quietly change from one day to the next.\n\nThe second type is also spread properly now. It used to pile up on two or three types while cobbles and breakaway riders were nearly impossible to find as a second type. All eight now show up about as often as they should.\n\nRiders you already own are not changed by this."
+        },
+        "da": {
+          "title": "Nye ryttere fødes med en andentype der bliver hvor den er",
+          "body": "Hver rytter du får fra nu af, fødes med både en hovedtype og en andentype, og begge ligger fast fra dag ét. Før blev kun hovedtypen sat ved fødslen. Andentypen blev regnet ud fra rytterens stats hver nat, så den kunne skifte stille og roligt fra dag til dag.\n\nAndentypen er også fordelt ordentligt nu. Før klumpede den sig på to eller tre typer, mens brostens- og udbrudsryttere var næsten umulige at finde som andentype. Alle otte dukker nu op omtrent så ofte som de skal.\n\nRyttere du allerede ejer, ændres ikke af det her."
+        },
+        "refs": [
+          3634,
+          3631
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.131",
     "date": "2026-08-15",
     "label": "Beta",

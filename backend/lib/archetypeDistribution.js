@@ -250,6 +250,30 @@ export function drawArchetypePair(rng, {
   types = ARCHETYPE_TYPES,
 } = {}) {
   const primary = drawArchetype(rng, distribution, types);
+  const secondary = drawSecondaryArchetype(rng, primary, { distribution, types });
+  return { primary, secondary };
+}
+
+/**
+ * Træk KUN sekundæren til en primær der allerede er givet — samme kilde
+ * (`distribution`) og samme ét-rng-kald som `drawArchetypePair`s anden halvdel.
+ *
+ * #3634: voksen-generatoren (`fictionalRiderGenerator.js`) kan ikke bruge
+ * `drawArchetypePair` helt: dens PRIMÆRE type kommer fra en tier-aware vægtning
+ * (ledere i toppen, hjælpere i bunden) plus de skalerede gulve i
+ * `ENSURE_MIN_TYPES` — begge dele ville forsvinde hvis primæren blev trukket her
+ * i stedet. Det er kun SEKUNDÆREN der manglede en kilde, og det er præcis den
+ * halvdel denne funktion er. `drawArchetypePair` kalder den nu selv, så akademi-
+ * stien og voksen-stien beviseligt trækker sekundæren ad samme vej.
+ *
+ * @param {() => number} rng     mulberry32-kompatibel seeded rng
+ * @param {string} primary       den allerede valgte primære arketype
+ * @returns {string} sekundær arketype, altid ≠ primary
+ */
+export function drawSecondaryArchetype(rng, primary, {
+  distribution = DEFAULT_DISTRIBUTION,
+  types = ARCHETYPE_TYPES,
+} = {}) {
   const remaining = types.filter((t) => t !== primary);
   const secondary = drawArchetype(rng, distribution, remaining);
   // VAGT (#3632): et anlæg uden sekundær — eller med sekundær = primær — er den
@@ -258,9 +282,9 @@ export function drawArchetypePair(rng, {
   // uden anker. Kalderen kan ikke gøre noget fornuftigt ved den alligevel.
   if (!secondary || secondary === primary) {
     throw new Error(
-      `drawArchetypePair: ugyldigt anlæg (primary=${primary}, secondary=${secondary}) — ` +
+      `drawSecondaryArchetype: ugyldigt anlæg (primary=${primary}, secondary=${secondary}) — ` +
       "alle ryttere skal have en sekundær arketype forskellig fra den primære (#3632)"
     );
   }
-  return { primary, secondary };
+  return secondary;
 }
