@@ -45,8 +45,11 @@ import { useScoutCountdown, scoutReadyClock } from "../../lib/scoutCountdown";
 // enhed, er intervallet "kan nå 40-48" direkte sammenligneligt med "han er 29 nu"
 // — og luften mellem dem bliver et tal spilleren kan handle på.
 //
-// Serveren leverer båndet (POST /scouting/estimates → `ceil`), regnet med samme
-// funktion som Scouting-fanens kort. Rå lofter forlader stadig aldrig serveren.
+// Serveren leverer båndet (POST /scouting/estimates → `prog`, alias `ceil`),
+// regnet med samme funktion som Scouting-fanens kort. #3746: båndet er en
+// PROGNOSE (hvor rytteren realistisk ender med træning), ikke et loft (hvor
+// højt han teoretisk kan nå) — rå potentiale/lofter forlader stadig aldrig
+// serveren.
 //
 // ALTID et interval, aldrig ét tal (#1543 beslutning 3): ingen spejder kender en
 // rytter præcist, heller ikke på egne ryttere.
@@ -55,19 +58,25 @@ import { useScoutCountdown, scoutReadyClock } from "../../lib/scoutCountdown";
 // kvalitative label ("Højt potentiale") stod som synlig tekst på Auktioner,
 // Ønskelisten og Sammenlign, hvor den både fyldte og sagde mindre end tallet.
 // Den ligger nu i tooltip'en alle steder. Kaldere kan stadig sætte false.
-function PotentialBand({ ceil, role, label, large, t }) {
+//
+// #3746: `band` er PROGNOSEN, ikke længere et loft — "hvor ender han realistisk
+// med din træning", ikke "hvor højt kan han teoretisk nå". Tooltip-copyen er
+// derfor en title/subtitle-parre ("Projected level" / "Where he realistically
+// lands with your training") frem for ét loft-sprogs sætning.
+function PotentialBand({ band, role, label, large, t }) {
   const roleName = role ? t(`riderTypes:types.${role}`) : null;
   const bandTitle = roleName
-    ? t("rider:scouting.potentialBandTitle", { role: roleName, lo: ceil.lo, hi: ceil.hi })
+    ? t("rider:scouting.potentialBandTitle", { role: roleName, lo: band.lo, hi: band.hi })
     : null;
-  const title = [label, bandTitle].filter(Boolean).join(" · ") || undefined;
+  const bandSubtitle = roleName ? t("rider:scouting.potentialBandSubtitle") : null;
+  const title = [label, bandTitle, bandSubtitle].filter(Boolean).join(" · ") || undefined;
   return (
     <span
       title={title}
       className={`font-mono tabular-nums whitespace-nowrap text-cz-1 ${large ? "text-[17px]" : "text-[13px]"}`}
-      data-potential-band={`${ceil.lo}-${ceil.hi}`}
+      data-potential-band={`${band.lo}-${band.hi}`}
     >
-      {ceil.lo}–{ceil.hi}
+      {band.lo}–{band.hi}
     </span>
   );
 }
@@ -188,15 +197,18 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const labelKey = potentialLabelKey(estimate);
   const label = labelKey ? t(`rider:scouting.label_${labelKey}`) : null;
 
-  // #2454: serveren har leveret et rating-bånd → det er visningen. Stjernerne
-  // bliver stående som fallback for payloads uden `ceil` (ældre klient-cache,
-  // eller den defensive gren hvor rytteren mangler lofter). Målt 14/8 mod prod:
-  // 0 af 8.782 ryttere mangler primary_type, evne-række eller ability_caps, så
-  // fallbacken er defensiv — ikke en tilstand spillere reelt møder.
-  if (estimate.ceil) {
+  // #2454/#3746: serveren har leveret et rating-bånd → det er visningen. `prog`
+  // er prognose-båndets navn; `ceil` er en midlertidig alias (samme tal) for
+  // ældre klient-cache, se backend/routes/api.js. Stjernerne bliver stående som
+  // fallback for payloads uden bånd (den defensive gren hvor rytteren mangler
+  // evne-data). Målt 14/8 mod prod: 0 af 8.782 ryttere mangler primary_type,
+  // evne-række eller ability_caps, så fallbacken er defensiv — ikke en tilstand
+  // spillere reelt møder.
+  const band = estimate.prog ?? estimate.ceil;
+  if (band) {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        <PotentialBand ceil={estimate.ceil} role={estimate.role} label={labelAsTitle ? label : null}
+        <PotentialBand band={band} role={estimate.role} label={labelAsTitle ? label : null}
           large={large} t={t} />
         {!labelAsTitle && label && <span className="text-2xs text-cz-3">{label}</span>}
         {!hideLevel && level > 0 && (

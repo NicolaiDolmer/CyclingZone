@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.145",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider development",
+        "en": {
+          "title": "Potential now means speed, not height",
+          "body": "Every ability now has the same ceiling for every rider in the same role. What potential decides is how FAST a rider climbs toward it. A top talent trained well moves about three times faster than a modest one, and reaching the very top takes a full career of good choices.\n\nYour riders keep every point they have. Some inherited riders sit above their new ceiling on a few abilities; they simply stay there."
+        },
+        "da": {
+          "title": "Potentiale betyder nu fart, ikke højde",
+          "body": "Alle evner har nu det samme loft for alle ryttere i samme rolle. Det potentiale afgør er hvor HURTIGT en rytter klatrer mod det. Et toptalent der trænes rigtigt bevæger sig cirka tre gange hurtigere end et beskedent talent, og det tager en hel karriere med gode valg at nå helt til tops.\n\nDine ryttere beholder hvert eneste point de har. Nogle overtagne ryttere ligger over deres nye loft på et par evner; de bliver bare stående der."
+        },
+        "refs": [3746, 3709]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The profile now shows a projection, not a ceiling",
+          "body": "The scouting numbers show where a rider is realistically heading with the training you give him: the bottom of the band is steady but unfocused work, the top is dedicated focus every day. A better chief scout narrows the band. It is an estimate, not a guarantee."
+        },
+        "da": {
+          "title": "Profilen viser nu en prognose, ikke et loft",
+          "body": "Scouting-tallene viser hvor en rytter realistisk er på vej hen med den træning du giver ham: bunden af båndet er jævnt men ufokuseret arbejde, toppen er dedikeret fokus hver dag. En bedre chefscout gør båndet skarpere. Det er et estimat, ikke en garanti."
+        },
+        "refs": [3746, 3651, 3787, 3679, 1162, 3714]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "New training focus: Race craft",
+          "body": "Positioning, tactics and aggression can now be trained. Race craft is a skill day: low strain, steady gains, same pace for every rider."
+        },
+        "da": {
+          "title": "Nyt træningsfokus: Løbslære",
+          "body": "Positioning, taktik og aggression kan nu trænes. Løbslære er en færdighedsdag: lav belastning, jævn fremgang, samme tempo for alle ryttere."
+        },
+        "refs": [3746]
+      }
+    ]
+  },
+  {
     "version": "7.144",
     "date": "2026-08-18",
     "label": "Beta",

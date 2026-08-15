@@ -436,8 +436,12 @@ export function youthRateForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG
 }
 
 // SUPERSEDERET (trin 7): den gamle models potentiale-ankrede loft. Læses ikke
-// af motoren; beholdt for committede dev-scripts og historiske målinger.
-function youthLoftForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
+// af motoren; beholdt for historiske målinger (ingen levende kaldested — kun
+// kommentar-referencer i backend/scripts/*, ikke reelle imports). `_`-præfiks
+// er den lokale eslint-konvention for bevidst-unused (#3746 warning-budget-fund,
+// pre-eksisterende siden commit d02b524b — rettet her, ikke omfattet af
+// arkitektens "kun ændres ved defekt"-klausul for riderPrognosis/scoutingReport).
+function _youthLoftForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
   const p = clamp(Number(potentiale) || 1, 1, 6);
   const lo = Math.floor(p), hi = Math.ceil(p);
   const a = cfg.loftByPotential[lo] ?? 0;

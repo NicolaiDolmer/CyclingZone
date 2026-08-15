@@ -97,7 +97,9 @@ test("scouting-report returnerer aldrig rå potentiale eller ability_caps (#1543
     /res\.json\([^)]*\b(potentiale|ability_caps)\b/,
     "rå potentiale/ability_caps må ikke indgå i payloaden",
   );
-  assert.match(block, /buildTypeCeilingBands\(/, "skal bruge bånd-beregningen");
+  // #3746: loft-båndet er afløst af prognose-båndet — samme maskerings-kontrakt,
+  // ny beregning (se buildTypePrognosisBands i scoutingReport.js).
+  assert.match(block, /buildTypePrognosisBands\(/, "skal bruge prognose-bånd-beregningen");
   assert.match(block, /buildScoutEstimate\(/, "stjerne-båndet skal komme fra buildScoutEstimate");
 });
 

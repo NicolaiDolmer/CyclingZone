@@ -159,6 +159,7 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estima
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo, ceilingBandForRole, ceilingHalfWidth,
+  buildTypePrognosisBands,
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
@@ -1652,11 +1653,12 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
     // ikke beregnes for tabel- og kort-fladerne — de fik kun stjerne-enheder, og
     // rating-point-båndet fandtes udelukkende på de to enkelt-rytter-endpoints.
     // Caps forlader stadig ALDRIG serveren (#1162): kun det maskerede bånd gør.
-    const [{ state }, scout, { data: riders, error }, { data: abilityRows, error: abErr }] = await Promise.all([
+    const [{ state }, scout, { data: riders, error }, { data: abilityRows, error: abErr }, seasonNumber] = await Promise.all([
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
-      supabase.from("riders").select("id, potentiale, birthdate, team_id, primary_type").in("id", ids),
+      supabase.from("riders").select("id, potentiale, birthdate, team_id, primary_type, secondary_type").in("id", ids),
       supabase.from("rider_derived_abilities").select("*").in("rider_id", ids),
+      getActiveSeasonNumber(),
     ]);
     if (error) throw new Error(error.message);
     if (abErr) throw new Error(abErr.message);
@@ -1668,29 +1670,37 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
     for (const rider of riders ?? []) {
       const level = state.levels[rider.id] ?? 0;
       const estimate = buildScoutEstimate(rider, level, req.team.id, SCOUTING_CONFIG, currentYear, scout);
-      // #2454: potentiel rating for rytterens EGEN rolle, i rating-point og som
-      // interval. Beregnes med præcis samme funktion som Scouting-fanens kort
-      // bruger, så de to flader ikke kan vise forskellige loft-bånd for samme
-      // rytter. Skjulte estimater (ikke-egen, uscoutet) får INTET bånd — ellers
-      // ville #1543's skjulning være omgået via en ny kanal.
+      // #2454/#3746: potentiel prognose for rytterens EGEN rolle, i rating-point
+      // og som bånd. Beregnes med præcis samme funktion som Scouting-fanens kort
+      // bruger, så de to flader ikke kan vise forskellige bånd for samme rytter.
+      // Skjulte estimater (ikke-egen, uscoutet) får INTET bånd — ellers ville
+      // #1543's skjulning være omgået via en ny kanal.
       if (estimate && !estimate.hidden && rider.primary_type) {
         const ab = abilitiesByRider.get(rider.id);
-        const caps = ab?.ability_caps && typeof ab.ability_caps === "object" ? ab.ability_caps : null;
-        if (caps && ab) {
+        if (ab) {
           // Egne ryttere ses altid på maxLevel — samme regel som buildScoutEstimate.
           const isOwn = rider.team_id != null && rider.team_id === req.team.id;
-          const band = ceilingBandForRole({
+          const age = ageForSeason(rider.birthdate, seasonNumber);
+          const bands = buildTypePrognosisBands({
             nowAbilities: ab,
-            caps,
-            key: rider.primary_type,
-            half: ceilingHalfWidth(isOwn ? SCOUTING_CONFIG.maxLevel : level, scout),
+            age,
+            primaryType: rider.primary_type,
+            secondaryType: rider.secondary_type,
+            potentiale: rider.potentiale,
+            level: isOwn ? SCOUTING_CONFIG.maxLevel : level,
             riderId: rider.id,
             teamId: req.team.id,
+            scout,
           });
-          if (band.ceilLo != null) {
+          const band = bands.find((b) => b.key === rider.primary_type) ?? null;
+          if (band && band.progLo != null) {
             estimate.role = band.key;
             estimate.now = band.now;
-            estimate.ceil = { lo: band.ceilLo, hi: band.ceilHi };
+            // #3746: `ceil` er en ALIAS for prognose-båndet (samme tal som `prog`)
+            // — kun for at holde ældre klient-kald kompatible. Kilden er ikke
+            // længere et loft; se `prog` for det navn der matcher betydningen.
+            estimate.ceil = { lo: band.progLo, hi: band.progHi };
+            estimate.prog = { lo: band.progLo, hi: band.progHi };
           }
         }
       }
@@ -1859,7 +1869,8 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         .from("riders")
         // #3345: valuation_type med — predictBaseValue nedenfor læser den FØR
         // primary_type (frosset værdisætning, se riderValuation.js).
-        .select("id, team_id, potentiale, birthdate, primary_type, valuation_type, market_value")
+        // #3746: secondary_type med — prognose-båndet fremskriver begge roller.
+        .select("id, team_id, potentiale, birthdate, primary_type, secondary_type, valuation_type, market_value")
         .eq("id", req.params.id)
         .maybeSingle(),
     ]);
@@ -1890,28 +1901,37 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
     const starsMasked = stars && !stars.hidden ? { lo: stars.lo, hi: stars.hi } : null;
 
     // Data-gap (#2001-backfill dækker aktive ryttere, men vær defensiv): uden
-    // caps kan loft-bånd ikke beregnes — rapporten degraderer til stjerner alene.
-    const caps = ab?.ability_caps && typeof ab.ability_caps === "object" ? ab.ability_caps : null;
+    // evner kan prognose-bånd ikke beregnes — rapporten degraderer til stjerner alene.
     let types = [];
     let verdict = null;
-    if (caps && ab) {
-      types = buildTypeCeilingBands({
-        nowAbilities: ab, caps, level, riderId: rider.id, teamId: req.team.id, scout,
-      });
+    if (ab && rider.birthdate) {
+      const seasonNumber = await getActiveSeasonNumber();
+      const age = ageForSeason(rider.birthdate, seasonNumber);
+      // #3746: prognose-bånd afløser loft-båndet — `buildTypePrognosisBands`
+      // fremskriver rytterens NUVÆRENDE evner mod peak-alderen under det
+      // scoutede potentiale-interval (bias + halvbredde, se scoutingReport.js).
+      types = buildTypePrognosisBands({
+        nowAbilities: ab, age, primaryType: rider.primary_type, secondaryType: rider.secondary_type,
+        potentiale: rider.potentiale, level, riderId: rider.id, teamId: req.team.id, scout,
+      }).map((t) => ({
+        ...t,
+        // #3746: `ceilLo/ceilHi` er en ALIAS for prognose-båndet (kompatibilitet
+        // med ældre klient-kald der stadig læser ceil-navnet) — samme tal som
+        // `progLo/progHi`. Kilden er ikke længere et loft.
+        ceilLo: t.progLo, ceilHi: t.progHi,
+      }));
       const best = types.reduce((a, b) => (b.now > a.now ? b : a), types[0]);
-      const bestCeil = types.reduce((a, b) => ((b.ceilLo + b.ceilHi) > (a.ceilLo + a.ceilHi) ? b : a), types[0]);
-      const age = rider.birthdate
-        ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
-        : null;
+      const bestProg = types.reduce(
+        (a, b) => ((b.progLo + b.progHi) > (a.progLo + a.progHi) ? b : a), types[0],
+      );
       // Forventet værdi fra SYNLIGE evner (ingen potentiale-input → ingen lækage).
       // #2594: v4 kræver alder (sæson-forankret); potentiale strippes EKSPLICIT så
       // det maskerede "expected"-tal ikke lækker skjult potentiale via NPV'en.
       let expected = null;
       if (VALUATION_MODEL_V4) {
         try {
-          const seasonNumber = await getActiveSeasonNumber();
           expected = predictBaseValue(
-            { ...rider, potentiale: undefined, age: ageForSeason(rider.birthdate, seasonNumber) },
+            { ...rider, potentiale: undefined, age },
             ab,
             VALUATION_MODEL_V4
           );
@@ -1924,7 +1944,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       verdict = buildVerdict({
         age, own, level, maxLevel: state.maxLevel,
         bestNow: best.now,
-        bestCeilMid: (bestCeil.ceilLo + bestCeil.ceilHi) / 2,
+        bestCeilMid: (bestProg.progLo + bestProg.progHi) / 2,
         valueGap,
       });
       // #3666: kalibreringen er VÆK. `types` sendes nu i visnings-opskriftens egen
