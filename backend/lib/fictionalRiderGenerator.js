@@ -270,8 +270,8 @@ const STAT_CEIL = 85;
 //   vægt | krop→sekundær | krop→primær | mindste margin på de 6 bestående
 //        |  (aflæselig?) | (identitet) | generator-gates | seeds der FEJLER
 //   -----|---------------|-------------|-----------------|------------------
-//   0    |      18,2 %   |    58,5 %   |  4,16 (p10 4,55)|  0/40   ← før #3634
-//   0,10 |      27,4 %   |    53,9 %   |  0,71 (p10 1,27)|  0/40   ← valgt
+//   0    |      18,2 %   |    58,5 %   |  4,16 (p10 4,55)|  0/40   ← VALGT (se nedenfor)
+//   0,10 |      27,4 %   |    53,9 %   |  0,71 (p10 1,27)|  0/40   ← separations-loftet
 //   0,15 |         —     |       —     | −0,25 (p10 0,37)|  1/40
 //   0,20 |      32,8 %   |    49,1 %   | −1,03 (p10−0,41)| 14/40
 //   0,25 |         —     |       —     | −1,85           | 32/40
@@ -281,14 +281,44 @@ const STAT_CEIL = 85;
 // hvad et tilfældigt anlæg giver, hvilket ER problemet: rytteren fik et evne-loft
 // (naturalSecondaryFactor 0,82) i en retning kroppen ikke pegede.
 //
-// LOFTET ER SAT AF ÉN GATE: `sprinter.stat_sp > sprinter.stat_bj + 10`
+// Separations-loftet er sat af ÉN gate: `sprinter.stat_sp > sprinter.stat_bj + 10`
 // (fictionalRiderGenerator.test.js, "rolle-svagheder dæmper off-type-stats"). En
 // sprinter med klatrer-bitype får netop stat_bj løftet i stedet for dæmpet — det
 // er den tilsigtede fysik, og gaten er formuleret i en verden hvor ryttere kun
-// havde ÉT anlæg. Skal bi-typen fylde mere end 0,10, er det den gate der først
-// skal genforhandles bevidst (ejer-beslutning) — ikke sænkes for at få et tal til
-// at passe. Jf. .claude/learnings/2026-08-11-guard-premise-decay-archetype-draw.md.
-export const SECONDARY_SIGNATURE_WEIGHT = 0.1;
+// havde ÉT anlæg.
+//
+// ── HVORFOR VÆRDIEN ER 0 OG IKKE 0,10 ────────────────────────────────────────
+//
+// `npm run race:gate` (backend/scripts/raceGate.js, #1102) er GRØN på 3/3 seeds
+// før denne ændring og fejler ved ENHVER vægt over 0 — målt:
+//
+//   vægt  | race:gate     | hvilke bånd falder
+//   ------|---------------|-------------------------------------------------
+//   0     | 3/3 pass      | (bit-identisk population — kan ikke fejle)
+//   0,02  | 2/3 pass      | cobbles: brostensrytter 78 % mod ≥80 %
+//   0,05  | 2/3 pass      | do.
+//   0,075 | 1/3 pass      | + itt: tt 59 % mod ≥60 %
+//   0,10  | 1/3 pass      | + itt_tempo, favoriteWinRate 52,8-57,2 % mod [25,40]
+//
+// Gatens kalibrerings-bånd er i praksis en GOLDEN-POPULATION-fixture: de er tunet
+// mod præcis den population generatoren producerer i dag, så enhver ændring af
+// kroppen tripper dem — også en på 2 %. Det er ikke et argument for at bi-typen
+// er forkert; det er en måling af at gaten ikke kan skelne "populationen blev
+// bevidst ændret" fra "motoren gik i stykker".
+//
+// Derfor er vægten 0: ALT det presserende i #3634/#3631 (anlægget forankres,
+// sekundæren trækkes fra DEFAULT_DISTRIBUTION i stedet for at blive gættet) er
+// UAFHÆNGIGT af vægten og virker fuldt ud ved 0. Med 0 er populationen desuden
+// bit-identisk med før, så hverken race:gate, balance-snapshottet eller
+// rytterøkonomien flytter sig overhovedet.
+//
+// Blandingen nedenfor er BEVIDST bevaret og målt, ikke død kode: den er den ene
+// konstant der mangler, hvis ejeren beslutter at bi-typen også skal forme kroppen.
+// Prisen for at hæve den er målt og står i PR #3800 — kort: ~11 % lavere
+// medianværdi på nyfødte ryttere, og race:gate's bånd skal rekalibreres FØRST.
+// Sænk aldrig en af de to gates for at få et tal til at passe.
+// Jf. .claude/learnings/2026-08-11-guard-premise-decay-archetype-draw.md.
+export const SECONDARY_SIGNATURE_WEIGHT = 0;
 
 // Blandt de to anlæg til ÉN syntetisk signatur — samme model som akademi-stiens
 // `blendArchetypeSignature` (academyGenerator.js), oversat til voksen-mekanikken

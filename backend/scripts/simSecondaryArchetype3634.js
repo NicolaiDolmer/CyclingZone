@@ -347,7 +347,7 @@ const gates = [
   ["G-E  ingen sekundær type over 20 % (mod 33,7 % i prod før)", S.secMaxShare <= 20, `${S.secMaxShare.toFixed(2)} %`],
   ["G-F  stat-skala holder [50,85]", P.statMin >= 50 && P.statMax <= 85, `${P.statMin}-${P.statMax}`],
   ["G-G  bestående generator-gates: mindste margin ≥ 2,0 point", minMargin >= 2, `margin ${minMargin.toFixed(2)}`],
-  ["G-H  bi-typen er aflæselig i kroppen (krop→sekundær over w=0)", P.kropSekundaer > pop[0].kropSekundaer, `${P.kropSekundaer.toFixed(1)} % mod ${pop[0].kropSekundaer.toFixed(1)} %`],
+  ["G-H  kroppen er ikke blevet mindre kohærent med anlægget", P.kropSekundaer >= pop[0].kropSekundaer, `${P.kropSekundaer.toFixed(1)} % mod referencearmens ${pop[0].kropSekundaer.toFixed(1)} %`],
   ["G-I  S2: distinkte arketyper pr. træk over porten", S.meanDistinct >= S.distinctFloor, `${S.meanDistinct.toFixed(2)} ≥ ${S.distinctFloor.toFixed(2)}`],
   ["G-J  S2: L1 mod knaphedsmålene under porten (40 pp)", S.s2l1 <= S2_GATES.maxL1, `${S.s2l1.toFixed(1)} pp`],
   ["G-K  S2: ingen primær arketype under 3 %", S.s2minShare >= S2_GATES.minSharePct, `${S.s2minShare.toFixed(2)} %`],
@@ -361,8 +361,14 @@ for (const [navn, ok, tal] of gates) {
 }
 console.log(`\n  Samlet: ${alleGroenne ? "ALLE GATES GRØNNE" : "MINDST ÉN GATE RØD — vægten kan ikke shippes"}`);
 console.log(
-  "\nLæsning: G1 striks falder når bi-typen får en større andel af kroppen (profilen bliver\n" +
-  "mindre spids), mens G1 løs stiger — kroppen peger da på ét af de to anlæg i stedet for ét.\n" +
-  "Det er hele pointen: identiteten er anlægget, og anlægget skal kunne ses i kroppen.\n" +
-  "Referencearmen w=0 er koden før #3634 og har ingen bi-type i kroppen overhovedet.\n",
+  "\nLæsning: kolonnen 'krop→sekundær' stiger med vægten — det er dér bi-typen bliver\n" +
+  "aflæselig i kroppen. Prisen står i margin-tabellen ovenfor.\n" +
+  "\n" +
+  "VIGTIGT — denne harness er IKKE den bindende gate. `npm run race:gate` (#1102) er\n" +
+  "grøn på 3/3 seeds ved vægt 0 og fejler ved ENHVER vægt derover, også 0,02\n" +
+  "(cobbles: brostensrytter 78 % mod ≥80 %). Dens kalibrerings-bånd er i praksis en\n" +
+  "golden-population-fixture, tunet mod præcis den population generatoren laver i dag.\n" +
+  "Derfor er produktionsvægten 0: forankringen og fordelings-fixet (G-A til G-E) er\n" +
+  "uafhængige af vægten og virker fuldt ud, mens populationen forbliver bit-identisk.\n" +
+  "Kør ALTID race:gate, ikke kun denne harness, før vægten røres.\n",
 );
