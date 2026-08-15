@@ -451,7 +451,18 @@ test("voksen (25 aar): samme model som akademiet — motoren sender anlaegget, i
   assert.equal(ab.season_budget_baseline, undefined, "ingen sæson-budget for voksne (uændret, #2437)");
 });
 
-test("akademi-alder: hård dags-cap (+1) gælder stadig efter fjernelse af sæson-loftet (#2437)", async () => {
+// OMSKREVET 15/8. Testen hed "hård dags-cap (+1) gælder stadig" og påstod at
+// #2082/#1938-sikkerhedsnettet var urørt. Det var ikke sandt længere: trin 5
+// FJERNEDE `ACADEMY.HARD_DAILY_CAP`, og motoren sender den ikke (`hardDailyCap`
+// er undefined i kaldet ovenfor). Testen bestod udelukkende fordi rate 0,45
+// tilfældigvis holdt den rå delta under 2 i netop dette scenarie — den målte en
+// egenskab ved et tal, ikke ved en mekanisme. Da raten gik til 0,58 gav samme
+// scenarie +2, og "cappen" viste sig aldrig at have været der.
+//
+// Den pinner nu det den faktisk kan bevise: hvor stor ÉN dags gevinst maksimalt
+// bliver i det mest ekstreme lovlige scenarie (17 år, pot 6, gap 1→99, hard,
+// bonus). Ændrer det tal sig, er det en balance-beslutning der skal ses på.
+test("akademi-alder: største dagsgevinst i det mest ekstreme scenarie er +2 (ingen dags-cap efter trin 5)", async () => {
   const state = seedState({
     riders: [makeRider({ id: "ar5", is_academy: true, potentiale: 6, birthdate: "2009-01-01" })], // 17 år
     abilities: [makeAbilityRow("ar5", {
@@ -469,7 +480,10 @@ test("akademi-alder: hård dags-cap (+1) gælder stadig efter fjernelse af sæso
   });
 
   const rr = result.report.riders[0];
-  assert.equal(rr.gains.climbing, 1, "maks +1/dag selv med stort gap + pot6 + bonus (#2082/#1938-sikkerhedsnettet uændret)");
+  assert.equal(rr.gains.climbing, 2,
+    "største dagsgevinst med gap 1→99 + pot6 + bonus + hard. Der er INGEN dags-cap "
+    + "(trin 5 fjernede den); dette tal er ren konsekvens af rate og gap. Stiger det "
+    + "yderligere, er hovedrummet i toppen ved at forsvinde.");
 });
 
 test("akademi-alder: væksten mætter IKKE længere ved et sæson-loft — fortsætter forbi den gamle ~31-grænse over flere dage", async () => {
@@ -491,7 +505,19 @@ test("akademi-alder: væksten mætter IKKE længere ved et sæson-loft — forts
   }
   const ab = state.rider_derived_abilities.find((a) => a.rider_id === "ar6");
   assert.ok(ab.climbing > 32, `climbing (${ab.climbing}) skal vokse FORBI det gamle sæson-loft (~31.2) — intet loft længere`);
-  assert.ok(ab.climbing < 90, `climbing (${ab.climbing}) skal stadig være under livstids-loftet 90 efter kun 90 dage`);
+  // Testens EGENTLIGE påstand er linjen ovenfor: der findes ikke noget sæson-loft
+  // mere. Den havde også en løs overgrænse ("< 90 efter 90 dage") som sikkerheds-
+  // margin. Den margin er brugt op efter rate-justeringen 15/8: 90 dage UAFBRUDT
+  // hård træning med pot 6, alder 17, manager-bonus hver eneste dag og ingen
+  // træthedsomkostning når nu livstids-loftet præcist.
+  //
+  // Målt isoleret på `dailyAbilityDelta` (gap 20→90) er det 176 dage mod 228 før,
+  // altså ca. 6 sæsoner mod 8 under perfekt spil. På karriereniveau er forskellen
+  // langt mindre: scorecardets G3 (andel af taget nået) er 0,47 mod 0,43 på main
+  // og 0,94 på modellen før trin 3. Loftet nås altså stadig ikke i praksis.
+  // Grænsen er sat ved loftet selv, så testen fanger det hvis en fremtidig
+  // kalibrering begynder at KLIPPE i stedet for at nærme sig.
+  assert.ok(ab.climbing <= 90, `climbing (${ab.climbing}) må aldrig overskride livstids-loftet 90`);
   assert.equal(ab.season_budget_baseline, undefined, "intet sæson-loft-felt skrives (#2437)");
 });
 

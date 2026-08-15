@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.130",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Potential ceilings were set too high yesterday",
+          "body": "Yesterday's update raised every ceiling too far. 751 riders ended up with an ability above 95, where the promise was that very few would ever get there. Ceilings have been brought back down: 79 riders now have an ability above 95, and exactly one sits at 99.\n\nDevelopment speed went up to compensate, so riders still end up roughly where yesterday's update intended. Nobody loses an ability they already have. Your riders' shown potential will drop over the next day as each one trains."
+        },
+        "da": {
+          "title": "Potentiale-lofterne blev sat for højt i går",
+          "body": "Gårsdagens opdatering hævede alle lofter for meget. 751 ryttere endte med en evne over 95, hvor løftet var at meget få nogensinde ville nå derop. Lofterne er sat ned igen: 79 ryttere har nu en evne over 95, og præcis én ligger på 99.\n\nUdviklingsfarten er sat op til gengæld, så ryttere ender omtrent hvor gårsdagens opdatering havde tænkt sig. Ingen mister en evne de allerede har. Dine rytteres viste potentiale falder over det næste døgn, efterhånden som de trænes."
+        },
+        "refs": [
+          3709
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.129",
     "date": "2026-08-14",
     "label": "Beta",

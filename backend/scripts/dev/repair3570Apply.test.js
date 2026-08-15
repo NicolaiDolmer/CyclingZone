@@ -795,14 +795,19 @@ test("NEGATIV: selvtesten fyrer hvis planlæggeren driver væk fra facit", () =>
   assert.deepEqual(res.afvigelser, [{ navn: "primær-skift", faktisk: 5965, forventet: 5964 }]);
 });
 
-test("#3709 trin 3: model-drift-ledgeren er skrevet mod DET godkendte facit", () => {
+test("#3709: model-drift-ledgeren er skrevet mod DET godkendte facit", () => {
   // facitEfterDrift kaster hvis en ledger-post ikke matcher `fra`-værdien i
   // DRYRUN_FACIT. Det er vagten mod at nogen retter facit OG ledgeren i samme
   // ombæring og dermed mister det historiske dokument.
   assert.equal(DRYRUN_FACIT.loftSaenketAntal, 7234, "det godkendte 10/8-tal må aldrig redigeres");
   assert.equal(DRYRUN_FACIT.saenkningMedian, 30, "det godkendte 10/8-tal må aldrig redigeres");
-  assert.equal(facitEfterDrift().loftSaenketAntal, 6641, "ledgeren skal flytte tallet til modellen efter trin 4");
-  assert.equal(facitEfterDrift().saenkningMedian, 22, "ledgeren skal flytte tallet til modellen efter trin 4");
+  // Efter nedjusteringen 15/8 (signatur 1,30 → 1,10) skal ledgeren lande MELLEM
+  // trin 3 (7.230 / 30) og trin 4 (6.641 / 22): et tag mellem de to kan ikke give
+  // andet. Falder tallene uden for det spænd, er ledgeren og modellen ude af trit.
+  assert.equal(facitEfterDrift().loftSaenketAntal, 7162, "ledgeren skal flytte tallet til modellen efter nedjusteringen");
+  assert.equal(facitEfterDrift().saenkningMedian, 28, "ledgeren skal flytte tallet til modellen efter nedjusteringen");
+  assert.ok(facitEfterDrift().loftSaenketAntal > 6641 && facitEfterDrift().loftSaenketAntal < 7230,
+    "nedjusteringen skal ligge mellem trin 4 og trin 3, ikke uden for spændet");
   assert.throws(
     () => facitEfterDrift({ ...DRYRUN_FACIT, loftSaenketAntal: 9999 }),
     /Ledgeren er skrevet mod et andet facit/,

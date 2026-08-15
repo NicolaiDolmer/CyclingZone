@@ -11,7 +11,7 @@
 // isoleret og køres deterministisk i season-transition (genbruger seededUnit fra
 // riderProgression for reproducerbar risiko).
 
-import { seededUnit, signatureFactor, PROGRESSION_CONFIG, youthRoleFactor, YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
+import { seededUnit, signatureFactor, PROGRESSION_CONFIG, abilityRoleClass, YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i scripts/previewTraining.js) ────────
@@ -226,6 +226,13 @@ export function partitionSmartBulkTargets({ riderIds, plannedRiderIds = [] } = {
 //                tier, men IKKE nul; se trainabilityChipBlockedTitle)
 //   "limited"  — resten (neutral blanding, factor === neutralFactor, ~45%)
 // Ukendt/manglende primærtype → alt "limited" (sikker neutral, ingen falsk positiv/negativ).
+// LABELEN LÆSER KLASSEN, IKKE FAKTOREN (rettet 15/8). Tærsklen var
+// `factor >= naturalSecondaryFactor`, og det holdt kun så længe håndværks-taget
+// lå UNDER sekundær. Nedjusteringen 15/8 satte sekundær til 0,90, altså under
+// håndværkets 0,95, og så blev positioning og tactics pludselig "strength" for
+// HVER eneste rytter i spillet — håndværk er per definition det alle kan lære
+// lidt af, aldrig et anlæg. At læse klassen i stedet gør labelen uafhængig af
+// hvordan tagene kalibreres næste gang.
 export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH_PROGRESSION_CONFIG) {
   const out = {};
   for (const [focusKey, abilities] of Object.entries(TRAINING_FOCUSES)) {
@@ -233,9 +240,9 @@ export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH
       out[focusKey] = "limited";
       continue;
     }
-    const factors = abilities.map((ability) => youthRoleFactor(primaryType, secondaryType, ability, cfg));
-    if (factors.some((f) => f >= cfg.naturalSecondaryFactor)) out[focusKey] = "strength";
-    else if (factors.every((f) => f <= cfg.oppositeFactor)) out[focusKey] = "blocked";
+    const klasser = abilities.map((ability) => abilityRoleClass(primaryType, secondaryType, ability, cfg));
+    if (klasser.some((k) => k === "signatur" || k === "sekundaer")) out[focusKey] = "strength";
+    else if (klasser.every((k) => k === "svaghed")) out[focusKey] = "blocked";
     else out[focusKey] = "limited";
   }
   return out;

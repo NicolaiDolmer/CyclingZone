@@ -323,13 +323,14 @@ test("håndværk: gulvet LØFTER, det erstatter aldrig — signatur slår gulvet
     youthRoleFactor("sprinter", "climber", "positioning"),
     YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor,
   );
-  // Gulvet sammenligner på FAKTOREN, ikke på klasse-navnet. Efter trin 4 er
-  // sekundær (1,10) højere end håndværk (0,95), så en rytter med sprinter som
-  // sekundær bliver `sekundaer` — ikke fordi navnet rangerer højere, men fordi
-  // tallet gør. Før trin 4 var forholdet omvendt (0,82 < 0,95) og samme kode gav
-  // `haandvaerk`. Det er hele grunden til at sammenligningen står på faktorer:
-  // ændres tallene igen, kan gulvet stadig ikke sænke nogens tag.
-  assert.equal(abilityRoleClass("climber", "sprinter", "positioning"), "sekundaer");
+  // Gulvet sammenligner på FAKTOREN, ikke på klasse-navnet, og resultatet skifter
+  // med kalibreringen — det er meningen. Trin 4 satte sekundær til 1,10, altså over
+  // håndværk (0,95), og så blev en rytter med sprinter som sekundær `sekundaer`.
+  // Nedjusteringen 15/8 satte sekundær til 0,90, altså UNDER håndværk, og så vinder
+  // gulvet igen — præcis som før trin 4 (0,82 < 0,95). Klasse-navnet er derfor ikke
+  // en konstant der kan pinnes; invarianten er at gulvet aldrig sænker et tag, og
+  // den bevises over hele parameterrummet i næste test.
+  assert.equal(abilityRoleClass("climber", "sprinter", "positioning"), "haandvaerk");
   assert.ok(
     youthRoleFactor("climber", "sprinter", "positioning") >= YOUTH_PROGRESSION_CONFIG.craftFactor,
     "gulvet må aldrig give et LAVERE tag end håndværks-faktoren",
@@ -374,13 +375,20 @@ test("rolleklasser: tag og rate kommer fra SAMME klassifikation", () => {
   }
 });
 
-test("rolleklasser: raterne er ejer-besluttede 14/8 og falder monotont med klassen", () => {
+test("rolleklasser: raterne er ejer-besluttede og falder monotont med klassen", () => {
   assert.deepEqual(ROLE_CLASS_RATE, {
-    signatur: 0.45, sekundaer: 0.36, haandvaerk: 0.22, andenRolle: 0.15, svaghed: 0.05,
+    signatur: 0.58, sekundaer: 0.46, haandvaerk: 0.28, andenRolle: 0.19, svaghed: 0.065,
   });
-  // Signatur-raten 0,45 er ANKERET (beslutning 14): valgt for at holde ratingen på
-  // dagens niveau, ikke spidsen. Ændres den, ændres hele scorecardet.
-  assert.equal(ROLE_CLASS_RATE.signatur, 0.45);
+  // Signatur-raten er ANKERET (beslutning 14): valgt for at holde ratingen på dagens
+  // niveau, ikke spidsen. Ændres den, ændres hele scorecardet.
+  //
+  // 15/8: 0,45 → 0,58, fordi RATEN OG TAGET IKKE KAN KALIBRERES HVER FOR SIG.
+  // Væksten er gap-proportional (`dailyAbilityDelta`: base = gap × ... / dage), så
+  // raten er en ANDEL af den resterende afstand op til loftet, ikke point pr. dag.
+  // Da taget faldt fra 1,30 til 1,10, skrumpede gappet, og samme rate gav mindre
+  // fremgang: bedste opnåelige rating faldt 29 → 26, altså UNDER modellen før trin 3.
+  // Raten er skaleret med 1,29 for at bringe ankeret tilbage til 29.
+  assert.equal(ROLE_CLASS_RATE.signatur, 0.58);
   const rater = ROLE_CLASSES.map((k) => ROLE_CLASS_RATE[k]);
   for (let i = 1; i < rater.length; i++) {
     assert.ok(rater[i] < rater[i - 1], `${ROLE_CLASSES[i]} skal have lavere rate end ${ROLE_CLASSES[i - 1]}`);

@@ -90,11 +90,35 @@ export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
   loftByPotential: Object.freeze({ 1: 35, 2: 48, 3: 60, 4: 70, 5: 80, 6: 88 }),
   // Andel af loftet en evne får efter dens rolle ift. de 2 anlægs-retninger.
   // Navnene er bevaret fra før trin 4 (focusTrainability sammenligner mod dem);
-  // det er VÆRDIERNE der er ejer-besluttede 14/8.
-  naturalPrimaryFactor: 1.30,
-  naturalSecondaryFactor: 1.10,
-  neutralFactor: 0.70,
-  oppositeFactor: 0.20,
+  // det er VÆRDIERNE der er ejer-besluttede.
+  //
+  // ══ NEDJUSTERET 15/8 (#3709 trin 4 efterjustering, ejer-besluttet) ══
+  //
+  // Trin 4's tal var 1,30 / 1,10 / 0,70 / 0,20. De brød et løfte givet til
+  // spillerne i Discord 11/8: "Havde man fået 6 i potentiale, så er man ikke
+  // garanteret 99 i potentiale i det nye system. Det bliver voldsomt få, der
+  // lander deroppe." Målt på docs/snapshots/3591/riders_full.json (8.717 ryttere):
+  //
+  //   signatur  ryttere m. evne ≥95   evne-pladser på 99
+  //   1,00                        3                    1   ← før trin 3+4
+  //   1,10                       79                    1   ← her
+  //   1,20                      440                  924
+  //   1,30                      751                1.841   ← brød løftet
+  //
+  // Årsagen til klippet er at 1,30 × loftByPotential overstiger 99 for
+  // potentiale 5 (80) og 6 (88), så toppen holdt op med at kunne skelnes.
+  // 1,10 × 88 = 96,8 holder sig under, og kun én enkelt plads rammer 99.
+  //
+  // TAGET RULLER IKKE HELE VEJEN TILBAGE TIL 1,00, og det er bevidst. Trin 4
+  // sænkede samtidig raten (ROLE_CLASS_RATE, signatur 0,45). Sættes taget
+  // tilbage til 1,00 mens raten bliver, får spilleren det gamle loft med under
+  // halv fart, og så er forum-tråden "Is Development dead now?" (12/8) tilbage
+  // og værre. 1,10 lader taget blive lidt højere end før, så den langsommere
+  // rate har noget at arbejde imod.
+  naturalPrimaryFactor: 1.10,
+  naturalSecondaryFactor: 0.90,
+  neutralFactor: 0.50,
+  oppositeFactor: 0.14,
   // Potentiale → træningsfart-multiplikator (Fase B).
   rateByPotential: Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 }),
 
@@ -137,12 +161,17 @@ export const ROLE_CLASSES = Object.freeze(["signatur", "sekundaer", "haandvaerk"
 // falder til 24, altså UNDER dagens 27 for alle, også dem der spiller godt.
 // Rating vandt fordi det er dét spilleren ser, økonomien prissætter, og som
 // netop er kalibreret i #3666.
+// RATEN FØLGER TAGET (justeret 15/8). Trin 4's rater blev kalibreret mod et tag på
+// 1,30. Sænkes taget til 1,10 uden at røre raterne, falder bedste opnåelige rating
+// fra 29 til 26 — altså UNDER den model spillerne kendte før trin 3, og dermed
+// direkte tilbage i forum-tråden "Is Development dead now?". Raterne skaleres
+// derfor med 1,29 for at holde ankeret. Målt med rytterudviklingScorecard.js.
 export const ROLE_CLASS_RATE = Object.freeze({
-  signatur: 0.45,
-  sekundaer: 0.36,
-  haandvaerk: 0.22,
-  andenRolle: 0.15,
-  svaghed: 0.05,
+  signatur: 0.58,
+  sekundaer: 0.46,
+  haandvaerk: 0.28,
+  andenRolle: 0.19,
+  svaghed: 0.065,
 });
 
 // Hvilken rolleklasse hører (rytter, evne) til? ÉN kilde til klassen, så tag og

@@ -252,6 +252,50 @@ export const FACIT_MODELDRIFT = Object.freeze([
     til: 71,
     hvorfor: "Samme årsag som sænkning-medianen.",
   }),
+  // ── Nedjusteringen 15/8: tagene sænkes igen, så posterne peger MODSAT ────────
+  // Trin 4's tag brød et løfte givet spillerne i Discord 11/8 ("det bliver
+  // voldsomt få der lander deroppe"): 751 ryttere fik mindst én evne over 95 mod
+  // 3 før. Signatur går derfor 1,30 → 1,10 (sekundær 1,10 → 0,90 · anden rolle
+  // 0,70 → 0,50 · svaghed 0,20 → 0,14). Alle fire tællere bevæger sig tilbage mod
+  // trin 3-niveauet og lander MELLEM trin 3 og trin 4, hvilket er den eneste
+  // retning et tag mellem de to kan give. Havde de bevæget sig forbi trin 3's
+  // tal, var noget galt.
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4 nedjustering",
+    felt: "loftSaenketAntal",
+    fra: 6641,
+    til: 7162,
+    hvorfor:
+      "521 ryttere har igen et formel-loft der ligger under deres nuværende evne, fordi "
+      + "tagene er sænket. Ingen af dem MISTER noget: gulvet er max(tag, nuværende), så "
+      + "tælleren beskriver hvor mange der står over deres formel-tag, ikke et tab. "
+      + "Ligger mellem trin 3 (7.230) og trin 4 (6.641) som et tag mellem 0,95 og 1,30 skal.",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4 nedjustering",
+    felt: "saenkningMedian",
+    fra: 22,
+    til: 28,
+    hvorfor: "Lavere tag ⇒ afstanden ned til taget bliver større igen. Mellem 30 (trin 3) og 22 (trin 4).",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4 nedjustering",
+    felt: "saenkningP90",
+    fra: 43,
+    til: 46,
+    hvorfor: "Samme årsag som sænkning-medianen. Mellem 47 (trin 3) og 43 (trin 4).",
+  }),
+  Object.freeze({
+    dato: "2026-08-15",
+    ref: "#3709 trin 4 nedjustering",
+    felt: "saenkningMax",
+    fra: 71,
+    til: 76,
+    hvorfor: "Samme årsag som sænkning-medianen. Mellem 77 (trin 3) og 71 (trin 4).",
+  }),
 ]);
 
 /** Det godkendte facit med ledgerens bevidste drift lagt oven på. */
