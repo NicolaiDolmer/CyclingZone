@@ -4,6 +4,30 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.134",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "60 riders have been given a proper second type",
+          "body": "Yesterday's update made sure new riders are born with a second type that stays put. This finishes the job for the riders who were already born without one.\n\n72 riders across the game had a main type but no second type recorded. The game filled the gap by guessing from their stats every night, and that guess leaned hard: it handed out breakaway and cobbles riders again and again, and never once picked a time trialist or a puncheur. We have drawn them a real second type instead, from the same spread every new rider uses.\n\nFor 60 of those riders the second type you see will change. That is a one time correction, and it is the last time it moves on its own. Their main type, stats and value are untouched."
+        },
+        "da": {
+          "title": "60 ryttere har fået en rigtig andentype",
+          "body": "Gårsdagens opdatering sørgede for at nye ryttere fødes med en andentype der bliver hvor den er. Det her gør arbejdet færdigt for de ryttere der allerede var født uden.\n\n72 ryttere i spillet havde en hovedtype, men ingen andentype registreret. Spillet udfyldte hullet ved at gætte ud fra deres tal hver nat, og det gæt var skævt: det uddelte udbruds- og brostensryttere igen og igen, og valgte ikke én eneste gang en enkeltstartsrytter eller en puncheur. Vi har trukket dem en rigtig andentype i stedet, fra samme fordeling som alle nye ryttere bruger.\n\nFor 60 af de ryttere skifter den andentype du ser. Det er en engangsrettelse, og det er sidste gang den flytter sig af sig selv. Deres hovedtype, tal og værdi er urørt."
+        },
+        "refs": [
+          3634,
+          3631
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.133",
     "date": "2026-08-15",
     "label": "Beta",
