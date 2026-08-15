@@ -4,7 +4,7 @@
 
 **Ejer-mandat 13/8, ordret:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3. Det er altoverskyggende vigtigt."* Alt andet viger for spor B — undtagen det der er bundet til en dato.
 
-**Målt:** åbne issues **546**, done-pukkel **23** (13/8) · 217 brugere, 1 abonnement (14/8) · **S2 slutter søn 23/8 — 8 dage.**
+**Målt:** åbne issues **570** (15/8; +190 alene i august) · 217 brugere, 1 abonnement (14/8) · **S2 slutter søn 23/8 — 8 dage.**
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
@@ -65,6 +65,15 @@ Ejer 13/8: *"skal prioriteres snarligt, når der er lidt mere styr på store bug
 23. Gæld: 23 done-men-åbne lukkes · #2223 og #3513 opsluger reelt deres løse issues på GitHub (#3496/#3491/#3493/#3439 hhv. #2442/#2583/#2445) · #3094 lukkes som duplikat af #2883.
 24. **#3661** design-/kvalitetsprocessen → konkrete regler i `AGENTS.md`, ikke en hensigt.
 25. Ops-sidestrøm: **#3486** `VERCEL_TOKEN` (2 min ejer-klik, låser #1784) · #2758 · #3487 · #691 service-key-rotation.
+
+## F · Backlog-bølger (ejer-godkendt 15/8, plan-session — mål: 570 → ~200, [#3154](https://github.com/NicolaiDolmer/CyclingZone/issues/3154))
+
+Natbølger/sidesessioner; hovedsporet taber ikke tempo. **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 til ejeren. Visuel udgave af hele 30-punkts-planen: masterplan-artifacten.
+
+- **W1 integritet:** #3580 #2982 #2836 #3594 #3582 #2086 · **W2 ny-spiller:** #3037(forward-regel) #3751 #3008 · **W3 observability:** #3653 #3695 #3696 #3684 #3638 · **W4 hærdning:** #3420 #3415 #2847 · **W5 marked:** #3066 #3067 #3787 #3786 #3783 #3708 #2403 #2400 · **W6 indbakke:** #3496 #3493 #3491 #3549 #3098 #3439 · **W7 hjælp/transparens:** #3714 #3623 #3551 #3456 #3412 #2889 · **W8 beslutnings-sessioner:** 54 needs-decision i bundter a 10-15 · **W9 housekeeping-audit XL.**
+- **E-mail-kæden før flip:** #3585 + #3600 + #2085 → derefter #2853.
+- **S3-kalender-finpuds FØR 23/8:** kalenderen ER genbygget (v7.105) — mål den mod #3546/#3547/#3471/#3349/#3328 og beslut kun resterne.
+- Verificeret 15/8: #3548 lukket · #3632 merged (venter prod-fødsel) · #3396 bygget, kun genafspilnings-hul åbent · #3037 make-good udført 26/7 · #2022 ejes af #3514.
 
 ## Parkeret — genbesøges når B og C er leveret
 
