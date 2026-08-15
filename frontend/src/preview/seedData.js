@@ -200,14 +200,17 @@ export const SEED_ABILITY_CAPS = Object.freeze({
 // mock-konsumenter (Playwright-fixturen og runtime-preview-mocken) — de havde
 // hver sin kopi, og kun den ene ville have fået rating-båndet.
 //
-// `ceil` er rytterens egen rolles loft-bånd i RATING-point, og det er BEVIDST de
-// samme tal som SEED_SCOUTING_REPORT's primærrolle-række: en rytter må ikke vise
-// ét loft i tabellen og et andet på sin Scouting-fane. Konsistens-testen
-// håndhæver det. Rivalen er uscoutet og får `hidden` — intet bånd, ingen rolle,
-// ingen lækage (#1543).
+// `prog` er rytterens egen rolles PROGNOSE-bånd i RATING-point (#3746: hvor han
+// realistisk lander med træning, ikke et loft), og det er BEVIDST de samme tal
+// som SEED_SCOUTING_REPORT's primærrolle-række: en rytter må ikke vise ét bånd
+// i tabellen og et andet på sin Scouting-fane. Konsistens-testen håndhæver det.
+// `ceil` er en ALIAS af `prog` (samme tal) for ældre klient-cache, se
+// backend/routes/api.js. Rivalen er uscoutet og får `hidden` — intet bånd,
+// ingen rolle, ingen lækage (#1543).
 export const SEED_SCOUT_ESTIMATES = Object.freeze({
   "rider-1": Object.freeze({
     lo: 4.5, hi: 5, level: 3, role: "sprinter", now: 29,
+    prog: Object.freeze({ lo: 40, hi: 48 }),
     ceil: Object.freeze({ lo: 40, hi: 48 }),
   }),
   "rider-2": Object.freeze({ hidden: true, level: 0 }),
@@ -1504,15 +1507,17 @@ export const SEED_SCOUTING_REPORT = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
   primaryKey: "sprinter",
   stars: { lo: 4.5, hi: 5 },
+  // #3746: progLo/progHi er prognose-båndets navn; ceilLo/ceilHi er en alias
+  // (samme tal) for ældre klient-cache, se backend/routes/api.js.
   types: [
-    { key: "sprinter", now: 29, ceilLo: 40, ceilHi: 48 },
-    { key: "tt", now: 23, ceilLo: 28, ceilHi: 37 },
-    { key: "climber", now: 22, ceilLo: 26, ceilHi: 35 },
-    { key: "puncheur", now: 25, ceilLo: 28, ceilHi: 36 },
-    { key: "brostensrytter", now: 24, ceilLo: 30, ceilHi: 39 },
-    { key: "baroudeur", now: 24, ceilLo: 29, ceilHi: 37 },
-    { key: "rouleur", now: 27, ceilLo: 33, ceilHi: 42 },
-    { key: "gc", now: 23, ceilLo: 26, ceilHi: 35 },
+    { key: "sprinter", now: 29, progLo: 40, progHi: 48, ceilLo: 40, ceilHi: 48 },
+    { key: "tt", now: 23, progLo: 28, progHi: 37, ceilLo: 28, ceilHi: 37 },
+    { key: "climber", now: 22, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35 },
+    { key: "puncheur", now: 25, progLo: 28, progHi: 36, ceilLo: 28, ceilHi: 36 },
+    { key: "brostensrytter", now: 24, progLo: 30, progHi: 39, ceilLo: 30, ceilHi: 39 },
+    { key: "baroudeur", now: 24, progLo: 29, progHi: 37, ceilLo: 29, ceilHi: 37 },
+    { key: "rouleur", now: 27, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42 },
+    { key: "gc", now: 23, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35 },
   ],
   verdict: { headlineKey: "monitor", confidence: "high", factorKeys: ["ceiling_gap", "value_gap", "type_match", "form_unknown"] },
   precision: { halfWidth: 4.29, nextHalfWidth: null, nextGain: 0, nextLevelIsUseless: false, maxUsefulLevel: 3, limitedByScout: false },

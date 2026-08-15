@@ -158,7 +158,7 @@ import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js"
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import {
-  buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo, ceilingBandForRole, ceilingHalfWidth,
+  buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands,
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
@@ -14473,8 +14473,9 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     let potentialeByRider = {};
     let abilitiesByCandidate = new Map();
     if (candidateIds.length > 0) {
+      // #3746: secondary_type med — prognose-båndet fremskriver begge roller.
       const [{ data: potRows }, { data: abRows }] = await Promise.all([
-        supabase.from("riders").select("id, potentiale, birthdate, team_id, primary_type").in("id", candidateIds),
+        supabase.from("riders").select("id, potentiale, birthdate, team_id, primary_type, secondary_type").in("id", candidateIds),
         supabase.from("rider_derived_abilities").select("*").in("rider_id", candidateIds),
       ]);
       for (const r of potRows ?? []) {
@@ -14482,6 +14483,12 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       }
       abilitiesByCandidate = new Map((abRows ?? []).map((row) => [row.rider_id, row]));
     }
+    // #3746/#3213: prognose-motoren kræver sæson-alder + holdets ÆGTE spejder
+    // (samme mønster som estimates/scouting-report-ruterne, der begge sender
+    // scout eksplicit) — én hentning hver, genbruges for alle kandidater.
+    const [prognosisSeasonNumber, prognosisScout] = candidateIds.length > 0
+      ? await Promise.all([getActiveSeasonNumber(), loadScout(teamId, supabase)])
+      : [null, null];
 
     // #1748 (b): en 'offered' intake-kandidat der i mellemtiden er blevet anskaffet
     // ad en anden vej (vundet på ungdomsauktion af et andet hold → is_academy=true /
@@ -14510,25 +14517,33 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         teamId,
         SCOUTING_CONFIG.maxLevel,
       );
-      // #2454: samme loft-bånd i rating-point som resten af spillet viser.
-      // Akademi-klubben ejer kandidaten og ser ham derfor på maxLevel, præcis som
-      // stjerne-estimatet ovenfor allerede antog.
+      // #2454/#3746: samme prognose-bånd i rating-point som resten af spillet
+      // viser. Akademi-klubben ejer kandidaten og ser ham derfor på maxLevel,
+      // præcis som stjerne-estimatet ovenfor allerede antog.
       const candidateAb = abilitiesByCandidate.get(row.rider_id);
-      const candidateCaps = candidateAb?.ability_caps && typeof candidateAb.ability_caps === "object"
-        ? candidateAb.ability_caps
-        : null;
+      const progAge = ageForSeason(potRow.birthdate ?? rider.birthdate, prognosisSeasonNumber);
       let potentialBand = null;
-      if (candidateCaps && candidateAb && potRow.primary_type) {
-        const band = ceilingBandForRole({
+      if (candidateAb && potRow.primary_type && progAge != null) {
+        const bands = buildTypePrognosisBands({
           nowAbilities: candidateAb,
-          caps: candidateCaps,
-          key: potRow.primary_type,
-          half: ceilingHalfWidth(SCOUTING_CONFIG.maxLevel),
+          age: progAge,
+          primaryType: potRow.primary_type,
+          secondaryType: potRow.secondary_type,
+          potentiale: potRow.potentiale,
+          level: SCOUTING_CONFIG.maxLevel,
           riderId: row.rider_id,
           teamId,
+          scout: prognosisScout,
         });
-        if (band.ceilLo != null) {
-          potentialBand = { role: band.key, now: band.now, ceil: { lo: band.ceilLo, hi: band.ceilHi } };
+        const band = bands.find((b) => b.key === potRow.primary_type) ?? null;
+        if (band && band.progLo != null) {
+          // #3746: `ceil` er en ALIAS for prognose-båndet (samme tal som `prog`)
+          // — kompatibilitet for ældre klient-kald. Kilden er ikke længere et loft.
+          potentialBand = {
+            role: band.key, now: band.now,
+            ceil: { lo: band.progLo, hi: band.progHi },
+            prog: { lo: band.progLo, hi: band.progHi },
+          };
         }
       }
       // #2796: kandidat-kortet bad om et irreversibelt valg (Signér/Afvis) uden

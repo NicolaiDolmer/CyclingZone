@@ -3,8 +3,9 @@
 // Viser den server-beregnede scouting-rapport (GET /api/riders/:id/scouting-report):
 //   • Scout verdict — klart sprog ("Din spejders vurdering" / "Talentspejder-
 //     rapport"), confidence-chip og 4 understøttende faktorer. Ingen jargon.
-//   • Potentiale pr. ryttertype — nuværende rating + skraveret LOFT-BÅND pr. type.
-//     Loftet er ALTID et bånd (#1543 beslutning 3: ingen når 100% præcision, heller
+//   • Potentiale pr. ryttertype — nuværende rating + skraveret PROGNOSE-BÅND pr. type
+//     (#3746: hvor rytteren realistisk lander med træning, ikke et loft). Prognosen
+//     er ALTID et bånd (#1543 beslutning 3: ingen når 100% præcision, heller
 //     ikke på egne ryttere — beslutning 4).
 //   • Røverkøb? — markedsværdi vs. modellens forventede værdi; kun sammenligningen
 //     og en one-line read, INGEN verdict-label (design-SSOT).
@@ -71,8 +72,10 @@ function Eyebrow({ children }) {
 const BAR_SCALE_MAX = 99;
 const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MAX) * 100}%`;
 
-// Én ryttertype-række: navn · bar (nu-fyld + skraveret loft-bånd) · nu / loft-tal.
-function TypeRow({ typeKey, now, ceilLo, ceilHi, label }) {
+// Én ryttertype-række: navn · bar (nu-fyld + skraveret prognose-bånd) · nu / prognose-tal.
+// #3746: progLo/progHi er prognose-båndets navn; ceilLo/ceilHi er en alias
+// (samme tal) for ældre klient-cache — se backend/routes/api.js.
+function TypeRow({ typeKey, now, progLo, progHi, label }) {
   return (
     <div className="flex items-center gap-3" data-type={typeKey}>
       <span className="w-[110px] flex-shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
@@ -80,12 +83,12 @@ function TypeRow({ typeKey, now, ceilLo, ceilHi, label }) {
         <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: barPct(now) }} />
         <div
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
-          style={{ left: barPct(ceilLo), width: `calc(${barPct(ceilHi)} - ${barPct(ceilLo)})` }}
+          style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
       </div>
       <span className="w-[86px] flex-shrink-0 text-right font-mono tabular-nums text-2xs">
         <span className="text-cz-1 font-bold">{now}</span>
-        <span className="text-cz-3"> · {ceilLo}–{ceilHi}</span>
+        <span className="text-cz-3"> · {progLo}–{progHi}</span>
       </span>
     </div>
   );
@@ -95,7 +98,8 @@ function TypeRow({ typeKey, now, ceilLo, ceilHi, label }) {
 // svaret på "hvor god er han, og hvor god kan han blive". Ratingen bruger den
 // DELTE statPlateStyle, så tallet her og tallet i heroen er samme plade — de er
 // samme tal, og må ikke kunne se forskellige ud.
-function PrimaryTypeRow({ typeKey, now, ceilLo, ceilHi, label, roleLabel, ceilingLabel }) {
+// #3746: progLo/progHi + progressionLabel — se TypeRow.
+function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progressionLabel }) {
   return (
     <div data-type={typeKey} className="border-b border-cz-border pb-3.5 mb-3.5">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
@@ -113,10 +117,10 @@ function PrimaryTypeRow({ typeKey, now, ceilLo, ceilHi, label, roleLabel, ceilin
         </span>
         <span className="ms-auto text-right">
           <span className="block font-mono text-3xs uppercase tracking-[0.12em] text-cz-3">
-            {ceilingLabel}
+            {progressionLabel}
           </span>
           <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
-            {ceilLo}–{ceilHi}
+            {progLo}–{progHi}
           </span>
         </span>
       </div>
@@ -124,7 +128,7 @@ function PrimaryTypeRow({ typeKey, now, ceilLo, ceilHi, label, roleLabel, ceilin
         <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: barPct(now) }} />
         <div
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
-          style={{ left: barPct(ceilLo), width: `calc(${barPct(ceilHi)} - ${barPct(ceilLo)})` }}
+          style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
       </div>
     </div>
@@ -383,15 +387,16 @@ export default function RiderScoutingTab({ rider, scouting }) {
             <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
               {t("profile.scouting.potentialLabel")}
             </span>
-            {/* #2454: potentialet står i RATING-point, samme enhed som ratingen
-                selv og som de otte tabel-flader. Stjernerne var en egen skala
+            {/* #2454/#3746: potentialet står i RATING-point, samme enhed som
+                ratingen selv og som de otte tabel-flader — nu som PROGNOSE
+                (progLo/progHi), ikke et loft. Stjernerne var en egen skala
                 (1-6) som intet andet i spillet brugte, så tallet her kunne ikke
                 holdes op mod noget. Faldbacken beholder dem for payloads uden
-                loft-bånd. */}
+                prognose-bånd. */}
             <div className="mt-1">
               {primaryRow ? (
                 <span className="font-mono tabular-nums text-[17px] text-cz-1">
-                  {primaryRow.ceilLo}–{primaryRow.ceilHi}
+                  {primaryRow.progLo ?? primaryRow.ceilLo}–{primaryRow.progHi ?? primaryRow.ceilHi}
                 </span>
               ) : stars ? (
                 <PotentialeStars range={stars} />
@@ -439,7 +444,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
         )}
       </SectionCard>
 
-      {/* Potentiale pr. ryttertype — nu + skraveret loft-bånd. */}
+      {/* Potentiale pr. ryttertype — nu + skraveret prognose-bånd. */}
       {orderedTypes.length > 0 && (
         <SectionCard>
           <div className="flex items-baseline justify-between gap-2 mb-3">
@@ -452,11 +457,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
             <PrimaryTypeRow
               typeKey={primaryRow.key}
               now={primaryRow.now}
-              ceilLo={primaryRow.ceilLo}
-              ceilHi={primaryRow.ceilHi}
+              progLo={primaryRow.progLo ?? primaryRow.ceilLo}
+              progHi={primaryRow.progHi ?? primaryRow.ceilHi}
               label={tTypes(`types.${primaryRow.key}`)}
               roleLabel={t("profile.scouting.primaryRoleLabel")}
-              ceilingLabel={t("profile.scouting.primaryCeilingLabel")}
+              progressionLabel={t("profile.scouting.primaryProgressionLabel")}
             />
           )}
           {primaryRow && secondaryRows.length > 0 && (
@@ -466,7 +471,8 @@ export default function RiderScoutingTab({ rider, scouting }) {
           )}
           <div className="space-y-2">
             {secondaryRows.map((row) => (
-              <TypeRow key={row.key} typeKey={row.key} now={row.now} ceilLo={row.ceilLo} ceilHi={row.ceilHi}
+              <TypeRow key={row.key} typeKey={row.key} now={row.now}
+                progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
                 label={tTypes(`types.${row.key}`)} />
             ))}
           </div>
