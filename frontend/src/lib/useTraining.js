@@ -69,21 +69,29 @@ export function useTraining() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Sæt/ændr en træningsfokus på en egen rytter. Returnerer { ok, error? }.
-  const setPlan = useCallback(async (riderId, focus, intensity) => {
+  // Sæt/ændr rytterens DAG (#3762). Returnerer { ok, error? }.
+  //   dayType : "rest" | "recovery" | "skill" | "training"
+  //   session : sessionens nøgle, eller null på hvile-/restitutionsdage
+  // Serveren udleder (focus, intensity) — intensiteten er ikke længere et frit
+  // valg, den er en egenskab ved sessionen. Vi sender derfor ALDRIG en
+  // intensitet herfra; ellers ville fladen kunne bede om et par der ikke findes.
+  const setPlan = useCallback(async (riderId, dayType, session = null) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     setSavingId(riderId);
     try {
       const res = await fetch(`${API}/api/training/${riderId}`, {
-        method: "POST", headers, body: JSON.stringify({ focus, intensity }),
+        method: "POST", headers, body: JSON.stringify({ dayType, session }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);
-      setPlans((prev) => ({ ...prev, [riderId]: data.plan ?? { focus, intensity } }));
+      // Serveren returnerer det par den faktisk skrev — vi gætter ikke på det
+      // lokalt, netop fordi udledningen (fx hvilket fokus en hviledag bevarer)
+      // bor server-side.
+      if (data.plan) setPlans((prev) => ({ ...prev, [riderId]: data.plan }));
       // Pillar-event (#1168): trænings-funnellen til go/no-go. Consent-gated i logEvent.
-      logEvent("training_focus_set", { focus, intensity });
+      logEvent("training_focus_set", { dayType, session });
       return { ok: true };
     } catch {
       return { ok: false, error: "network" };
@@ -118,7 +126,10 @@ export function useTraining() {
   // sidste ryttere fik 429 og blev tabt ("det åd den ikke"). Returnerer
   // { ok, applied, failed: [{ riderId, error }] } — uændret kontrakt mod
   // TrainingPage, hvor failed = de oversprungne (ikke-ejet / ingen slots).
-  const setPlanBulk = useCallback(async (riderIds, focus, intensity) => {
+  // #3762: bulk saetter DAGEN paa en markering. `session` er enten en session,
+  // null (hvile/restitution har ingen) eller "smart" (assistenten vaelger pr.
+  // rytter, server-side, og roerer aldrig en rytter der har sit eget valg).
+  const setPlanBulk = useCallback(async (riderIds, dayType, session = null) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, applied: 0, failed: [], error: "auth" };
     const ids = Array.isArray(riderIds) ? riderIds : [];
@@ -126,7 +137,7 @@ export function useTraining() {
     setBulkApplying(true);
     try {
       const res = await fetch(`${API}/api/training/bulk`, {
-        method: "POST", headers, body: JSON.stringify({ riderIds: ids, focus, intensity }),
+        method: "POST", headers, body: JSON.stringify({ riderIds: ids, dayType, session }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -144,7 +155,7 @@ export function useTraining() {
         ...((data.skipped?.noSlots) ?? []),
       ];
       const failed = skipped.map((riderId) => ({ riderId, error: "skipped" }));
-      if (applied > 0) logEvent("training_focus_set_bulk", { focus, intensity, applied });
+      if (applied > 0) logEvent("training_focus_set_bulk", { dayType, session, applied });
       return { ok: failed.length === 0, applied, failed, skippedHasPlan };
     } catch {
       return { ok: false, applied: 0, failed: ids.map((riderId) => ({ riderId, error: "network" })), error: "network" };

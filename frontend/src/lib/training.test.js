@@ -8,7 +8,8 @@ import {
 
 test("fokus-nøgler matcher abilities-mappens nøgler", () => {
   assert.deepEqual(TRAINING_FOCUS_KEYS, Object.keys(TRAINING_FOCUS_ABILITIES));
-  assert.equal(TRAINING_FOCUS_KEYS.length, 6);
+  // #3762: `tempo` og `restitution` kom til som sessioner i dagstype-modellen.
+  assert.equal(TRAINING_FOCUS_KEYS.length, 8);
 });
 
 test("hvert fokus peger på mindst én evne", () => {
@@ -18,8 +19,10 @@ test("hvert fokus peger på mindst én evne", () => {
 });
 
 test("intensiteter inkluderer rest + setback-procenter er konsistente", () => {
-  assert.deepEqual(TRAINING_INTENSITIES, ["rest", "easy", "normal", "hard"]);
+  // #3762: `recovery` (aktiv restitution) er kommet til mellem hvile og let.
+  assert.deepEqual(TRAINING_INTENSITIES, ["rest", "recovery", "easy", "normal", "hard"]);
   assert.equal(TRAINING_SETBACK_PCT.easy, 0);
+  assert.equal(TRAINING_SETBACK_PCT.recovery, 0, "en restitutionsdag kan ikke give tilbageslag");
   assert.ok(TRAINING_SETBACK_PCT.hard > TRAINING_SETBACK_PCT.normal);
   assert.ok(TRAINING_SETBACK_PCT.normal > TRAINING_SETBACK_PCT.easy);
 });

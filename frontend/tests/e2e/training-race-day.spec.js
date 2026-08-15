@@ -58,14 +58,16 @@ test("#3459 racingToday sat: badge + dæmpede men AKTIVE intensitets-knapper, to
   await expect(badgeLine).toHaveAttribute("title", /Trofeo Ligure/);
   await expect(row.getByText(/^I dag:/)).toHaveCount(0);
 
-  // Planen er urørt: intensitets-knapperne er stadig synlige og AKTIVE (ikke
-  // disabled) — racedagen dæmper visuelt (opacity), den låser ikke.
-  const intensityGroup = row.locator('[role="group"]');
-  await expect(intensityGroup).toHaveClass(/opacity-\[0\.55\]/);
-  const hardBtn = row.getByRole("button", { name: "Hård" });
-  await expect(hardBtn).toBeVisible();
-  await expect(hardBtn).toBeEnabled();
-  await expect(hardBtn).toHaveAttribute("aria-pressed", "true");
+  // Planen er urørt: dags-knapperne er stadig synlige og AKTIVE (ikke disabled)
+  // — racedagen dæmper visuelt (opacity), den låser ikke.
+  // #3762: knapperne skifter nu DAGEN, ikke intensiteten. Rytterens plan er
+  // `endurance` (Lang tur), så sessions-knappen bærer det navn og er trykket.
+  const dayGroup = row.locator('[role="group"]');
+  await expect(dayGroup).toHaveClass(/opacity-\[0\.55\]/);
+  const sessionBtn = row.getByRole("button", { name: "Lang tur" });
+  await expect(sessionBtn).toBeVisible();
+  await expect(sessionBtn).toBeEnabled();
+  await expect(sessionBtn).toHaveAttribute("aria-pressed", "true");
 
   // Ægte Playwright-screenshot til PR-body (#3459 — flag off i prod pt., derfor
   // mocket tilstand). Kun ét skud pr. viewport-klasse, taget fra de faktiske
@@ -117,9 +119,9 @@ test("#3459 racingToday fraværende (samme kontrakt som flag off): ingen badge, 
 
   await expect(row.getByText("Løbsdag")).toHaveCount(0);
 
-  const intensityGroup = row.locator('[role="group"]');
-  await expect(intensityGroup).not.toHaveClass(/opacity-\[0\.55\]/);
-  const hardBtn = row.getByRole("button", { name: "Hård" });
-  await expect(hardBtn).toBeVisible();
-  await expect(hardBtn).toBeEnabled();
+  const dayGroup = row.locator('[role="group"]');
+  await expect(dayGroup).not.toHaveClass(/opacity-\[0\.55\]/);
+  const sessionBtn = row.getByRole("button", { name: "Lang tur" });
+  await expect(sessionBtn).toBeVisible();
+  await expect(sessionBtn).toBeEnabled();
 });

@@ -832,16 +832,20 @@
       "programs": {
         "title": "Sæt programmer",
         "steps": [
-          "Gå til Daglig træning i navigationen.",
-          "Find en rytter og vælg et fokus: VO2max, Tærskel, Sprint, Udholdenhed, Teknik eller Aero.",
-          "Vælg en intensitet: Hvile, Let, Normal eller Hård.",
-          "Gem. Programmet kører hver dag indtil du ændrer det.",
-          "Der er ingen cap på hvor mange ryttere der kan have et program: du kan sætte ét for hele troppen."
+          "Gå til Daglig træning i menuen.",
+          "Find en rytter og vælg hvad det er for en dag: Hvile, Aktiv restitution, en Færdighedsdag eller Træning.",
+          "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Intervaller, Tærskel eller Sprint (hård). På en færdighedsdag: Teknik eller Aero.",
+          "Gem. Dagen kører hver dag, indtil du ændrer den.",
+          "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen."
         ]
       },
+      "dayTypes": {
+        "title": "De fire slags dage",
+        "text": "Hvile trækker trætheden mest ned og udvikler ingenting. Aktiv restitution trækker den lidt mindre ned og giver en smule på Restitution, hvilket gør den til den eneste dag der gør begge dele. En færdighedsdag er lav belastning og bygger kun håndværk, med en fast langsommere fart uanset hvad rytteren er bygget til, så den kan aldrig slå en hård dag på hans eget speciale. Træning udvikler fysiske evner på niveauet for den session du vælger."
+      },
       "focusAbilities": {
-        "title": "Hvad hvert fokus træner",
-        "text": "Hvert fokus udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner stadig forbedres en smule langsommere. Alle udvikler sig bredt, bare hurtigst i den valgte retning. Retningerne er: VO2max træner Klatring, Punch og Tempo. Tærskel/TT træner Enkeltstart og Tempo. Spurt træner Spurt og Acceleration. Udholdenhed træner Udholdenhed, Restitution og Modstandskraft. Teknik træner Nedkørsel, Positionering og Brosten. Aero træner Enkeltstart og Fladt. Intensitet sætter tempoet: Let er langsomst men sikker, Normal er den balancerede standard med en lille risiko for tilbageslag, og Hård er hurtigst men risikerer et tilbageslag eller en skade når rytterens træthed allerede er høj."
+        "title": "Hvad hver session træner",
+        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Intervaller træner Bjerg, Punch og Tempo. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Teknik træner Nedkørsel, Positionering og Brosten. Aero træner Enkeltstart og Fladt. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel og sprint er hårde. Hårde sessioner har risiko for tilbageslag, lette har ikke."
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",

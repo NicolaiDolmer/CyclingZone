@@ -4,6 +4,46 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.130",
+    "date": "2026-08-14",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "You now pick the day first, then the session",
+          "body": "What changed: Training starts with what kind of day it is: rest, active recovery, a skill day or training. Then you pick a session that exists on that day. Intervals, threshold and sprint are hard days. A long ride is easy, tempo is medium. Effort is no longer a separate setting, because it was already part of the session.\n\nWhy: Focus and effort were two free lists, and a third of the combinations did nothing. More than one in eight plans in the game was a focus set to rest, where the focus was ignored every single day.\n\nWhat it means for you: You can no longer pick a combination that quietly does nothing. Your existing plans keep training the same abilities, and a rest day remembers the session your rider was on, so one click puts him back on it."
+        },
+        "da": {
+          "title": "Du vælger nu dagen først og sessionen bagefter",
+          "body": "Hvad ændrede sig: Træning starter med hvad det er for en dag: hvile, aktiv restitution, en færdighedsdag eller træning. Derefter vælger du en session der findes på den dag. Intervaller, tærskel og sprint er hårde dage. En lang tur er let, tempo er mellem. Belastningen er ikke længere en separat indstilling, for den var i forvejen en del af sessionen.\n\nHvorfor: Fokus og belastning var to frie lister, og en tredjedel af kombinationerne gjorde ingenting. Mere end hver ottende plan i spillet var et fokus sat til hvile, hvor fokusset blev ignoreret hver eneste dag.\n\nHvad det betyder for dig: Du kan ikke længere vælge en kombination der stille gør ingenting. Dine eksisterende planer træner de samme evner, og en hviledag husker den session din rytter stod på, så ét klik sætter ham tilbage på den."
+        },
+        "refs": [
+          3762
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Active recovery is a day you can pick",
+          "body": "What changed: Between rest and training there is now active recovery. Fatigue comes down, though less than on a full rest day, and your rider gains a little on recovery.\n\nWhy: It is the only day that both lowers fatigue and still develops something, and it was missing.\n\nWhat it means for you: A rider who is too tired to train hard no longer has to choose between doing nothing and doing too much."
+        },
+        "da": {
+          "title": "Aktiv restitution er blevet en dag du kan vælge",
+          "body": "Hvad ændrede sig: Mellem hvile og træning er der nu aktiv restitution. Trætheden falder, dog mindre end på en hel hviledag, og din rytter får en smule på restitution.\n\nHvorfor: Det er den eneste dag der både sænker træthed og stadig udvikler noget, og den manglede.\n\nHvad det betyder for dig: En rytter der er for træt til at træne hårdt skal ikke længere vælge mellem at gøre ingenting og at gøre for meget."
+        },
+        "refs": [
+          3762,
+          3760
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.129",
     "date": "2026-08-14",
     "label": "Beta",

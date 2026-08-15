@@ -352,3 +352,47 @@ test("#3681 · STEP_TARGETS matcher ruterne i onboarding-tour-spec'en", () => {
     "frontend/src/components/OnboardingProgressCard.jsx STEP_TARGETS skal matche STEP_ROUTE_AND_FIRST_ANCHOR-ruterne i frontend/tests/e2e/onboarding-tour-coverage.spec.js",
   );
 });
+
+// ── #3762 · dagstype-modellen findes to steder og skal ikke kunne drive ──────
+// Fladen bygger trin 2 af sin egen kopi, og serveren validerer imod sin. Hvis
+// de to lister divergerer, kan panelet tilbyde en session serveren afviser —
+// præcis den klasse fejl #3681-familien findes for at fange.
+import * as beDayTypes from "./trainingDayTypes.js";
+import * as feDayTypes from "../../frontend/src/lib/trainingDayTypes.js";
+
+test("#3762 · dagstyper, sessioner og deres intensiteter er identiske i frontend og backend", () => {
+  assert.deepEqual([...feDayTypes.DAY_TYPES], [...beDayTypes.DAY_TYPES], "DAY_TYPES");
+  assert.deepEqual([...feDayTypes.SKILL_SESSIONS], [...beDayTypes.SKILL_SESSIONS], "SKILL_SESSIONS");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(feDayTypes.TRAINING_SESSIONS_BY_LEVEL)),
+    JSON.parse(JSON.stringify(beDayTypes.TRAINING_SESSIONS_BY_LEVEL)),
+    "TRAINING_SESSIONS_BY_LEVEL",
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(feDayTypes.SESSION_INTENSITY)),
+    JSON.parse(JSON.stringify(beDayTypes.SESSION_INTENSITY)),
+    "SESSION_INTENSITY",
+  );
+  assert.equal(feDayTypes.RECOVERY_FOCUS, beDayTypes.RECOVERY_FOCUS);
+  assert.equal(feDayTypes.RECOVERY_INTENSITY, beDayTypes.RECOVERY_INTENSITY);
+});
+
+test("#3762 · de to dayTypeForProgram-implementeringer er enige om ALLE par", () => {
+  const focuses = [...Object.keys(beDayTypes.SESSION_INTENSITY), beDayTypes.RECOVERY_FOCUS, "opfundet"];
+  const intensities = ["easy", "normal", "hard", "rest", "recovery"];
+  for (const focus of focuses) {
+    for (const intensity of intensities) {
+      const program = { focus, intensity };
+      assert.equal(
+        feDayTypes.dayTypeForProgram(program),
+        beDayTypes.dayTypeForProgram(program),
+        `${focus} + ${intensity}`,
+      );
+      assert.equal(
+        feDayTypes.sessionForProgram(program),
+        beDayTypes.sessionForProgram(program),
+        `${focus} + ${intensity} (session)`,
+      );
+    }
+  }
+});

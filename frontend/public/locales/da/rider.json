@@ -94,7 +94,9 @@
         "sprint": "Spurt",
         "endurance": "Udholdenhed",
         "technique": "Teknik",
-        "aero": "Aero"
+        "aero": "Aero",
+        "tempo": "Tempo",
+        "restitution": "Aktiv restitution"
       },
       "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
       "activeRest": "Hviler ({focus}-fokus på pause)",
@@ -873,6 +875,7 @@
     "current": "Nuværende fokus",
     "assistantNoRisk": "Hurtigere målrettet vækst, ingen risiko for tilbageslag.",
     "assistantRisk": "Hurtigere målrettet vækst, men ~{risk}% risiko for tilbageslag (tabt fremgang) denne sæson.",
-    "tradeoff": "Andre evner vokser en anelse langsommere."
+    "tradeoff": "Andre evner vokser en anelse langsommere.",
+    "intensity_recovery": "Restitution"
   }
 }

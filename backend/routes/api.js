@@ -161,6 +161,7 @@ import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo, ceilingBandForRole, ceilingHalfWidth,
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
+import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
@@ -1934,6 +1935,30 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
 // TRÆNING (#1163 — progression L2 teaser: sæson-granulær træningsfokus)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// #3762: ÉN indgang for alt der skriver en træningsplan. Fladen sender den nye
+// form { dayType, session }; det gamle { focus, intensity } accepteres stadig,
+// men LEGALISERES gennem normalizeProgram i stedet for at blive skrevet råt.
+//
+// Hvorfor legalisere frem for at afvise: en spiller med et cachet bundle skal
+// ikke få en 400 midt i en session. Og hvorfor overhovedet: 623 planer i prod
+// stod på fokus + hvile, hvor motoren gav 0 vækst — den skrivning skal ikke
+// kunne ske igen, uanset hvilken klient der forsøger.
+//
+//   body          : request-body
+//   previousFocus : rytterens hidtidige fokus (bevares hen over en hviledag)
+// Returnerer { ok, focus, intensity } eller { ok:false, reason }.
+function resolveTrainingWrite(body, previousFocus = null) {
+  const { dayType, session, focus, intensity } = body ?? {};
+  if (dayType != null) {
+    const out = programForChoice({ dayType, session: session ?? null, previousFocus });
+    return out.ok ? { ok: true, focus: out.focus, intensity: out.intensity } : { ok: false, reason: out.reason };
+  }
+  if (!isValidFocus(focus)) return { ok: false, reason: "invalid_focus" };
+  if (!isValidIntensity(intensity)) return { ok: false, reason: "invalid_intensity" };
+  const normalized = normalizeProgram({ focus, intensity });
+  return { ok: true, focus: normalized.focus, intensity: normalized.intensity };
+}
+
 // Hjælper: hent aktiv sæson (id + number) + holdets træningsstate (ledger → slots + planer).
 async function loadTrainingState(teamId) {
   const { data: season } = await supabase
@@ -2125,7 +2150,7 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
 // matcher "bulk" som et :riderId (samme rækkefølge-regel som run-today, #1479).
 router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
-  const { riderIds, focus, intensity } = req.body ?? {};
+  const { riderIds, focus, session } = req.body ?? {};
   if (!Array.isArray(riderIds) || riderIds.length === 0) {
     return res.status(400).json({ error: "no_riders" });
   }
@@ -2142,9 +2167,17 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
   // en gyldig plan-fokus-nøgle. Resolves pr. rytter fra primary_type (smartDefaultFocus)
   // og anvendes KUN på ryttere UDEN eksisterende plan — smart-mode må ALDRIG overskrive
   // en managers eget valg (håndhævet her, ikke i frontend).
-  const isSmartMode = focus === "smart";
-  if (!isSmartMode && !isValidFocus(focus)) return res.status(400).json({ error: "invalid_focus" });
-  if (!isValidIntensity(intensity)) return res.status(400).json({ error: "invalid_intensity" });
+  const isSmartMode = focus === "smart" || session === "smart";
+  // #3762: samme legalisering som enkelt-rytter-stien. Smart-mode har ingen fast
+  // session (den vælges pr. rytter nedenfor), så den springer resolveren over.
+  let bulkFocus = null;
+  let bulkIntensity = null;
+  if (!isSmartMode) {
+    const resolved = resolveTrainingWrite(req.body, null);
+    if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
+    bulkFocus = resolved.focus;
+    bulkIntensity = resolved.intensity;
+  }
   try {
     const { activeSeasonId, state } = await loadTrainingState(req.team.id);
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
@@ -2178,14 +2211,21 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
       let rows;
       if (isSmartMode) {
         const primaryTypeById = new Map((ownedRows ?? []).map((r) => [r.id, r.primary_type ?? null]));
-        rows = toApply.map(rider_id => ({
-          team_id: req.team.id, rider_id, season_id: activeSeasonId,
-          focus: smartDefaultFocus(primaryTypeById.get(rider_id) ?? null),
-          intensity, updated_at: now,
-        }));
+        rows = toApply.map(rider_id => {
+          // #3762: intensiteten er en EGENSKAB ved sessionen, ikke et frit valg.
+          // Smart-mode vælger sessionen pr. rytter, så intensiteten følger med
+          // derfra — ellers kunne assistenten skrive et par der ikke findes.
+          const smartFocus = smartDefaultFocus(primaryTypeById.get(rider_id) ?? null);
+          return {
+            team_id: req.team.id, rider_id, season_id: activeSeasonId,
+            focus: smartFocus, intensity: SESSION_INTENSITY[smartFocus] ?? "normal",
+            updated_at: now,
+          };
+        });
       } else {
         rows = toApply.map(rider_id => ({
-          team_id: req.team.id, rider_id, season_id: activeSeasonId, focus, intensity, updated_at: now,
+          team_id: req.team.id, rider_id, season_id: activeSeasonId,
+          focus: bulkFocus, intensity: bulkIntensity, updated_at: now,
         }));
       }
       const { error: upErr } = await supabase
@@ -2350,11 +2390,16 @@ router.delete("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, a
 router.post("/training/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
-  const { focus, intensity } = req.body ?? {};
-  if (!isValidFocus(focus)) return res.status(400).json({ error: "invalid_focus" });
-  if (!isValidIntensity(intensity)) return res.status(400).json({ error: "invalid_intensity" });
   try {
     const { activeSeasonId, state } = await loadTrainingState(req.team.id);
+    // #3762: fladen sender { dayType, session }. Det gamle { focus, intensity }-par
+    // accepteres stadig — en spiller med et cachet bundle skal ikke få en 400 — men
+    // det LEGALISERES, så en kombination der beviseligt intet gør (fx vo2max +
+    // hvile, 252 planer i prod) ikke kan skrives igen ad bagvejen.
+    // previousFocus bevarer spillerens sidste session hen over en hviledag.
+    const resolved = resolveTrainingWrite(req.body, state.plans[riderId]?.focus ?? null);
+    if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
+    const { focus, intensity } = resolved;
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
 
     // Træning er KUN for egne ryttere (du former din egen trup).

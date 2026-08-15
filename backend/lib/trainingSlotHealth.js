@@ -19,7 +19,8 @@
 // Ren JS uden DB/Date/Math.random (samme kontrakt som training.js) — I/O og
 // cron-wiring ligger i trainingSlotHealthWatch.js.
 
-import { TRAINING_FOCUSES, TRAINING_FOCUS_KEYS, cappedVisibleAbilities, smartDefaultFocus } from "./training.js";
+import { TRAINING_FOCUSES, cappedVisibleAbilities, smartDefaultFocus } from "./training.js";
+import { ALL_SESSIONS } from "./trainingDayTypes.js";
 
 // Nøgle for total-rækken i training_slot_health_daily. Ikke et gyldigt fokus, så
 // den kan aldrig kollidere med TRAINING_FOCUS_KEYS.
@@ -65,6 +66,11 @@ export function focusSlotState(focus, cappedAbilityKeys) {
 // Returnerer { rows: [{ focus, ridersInTraining, deadSlots, partialSlots }], totals }
 // hvor rows indeholder ét fokus pr. TRAINING_FOCUS_KEYS (også med nul-tal, så en
 // tom dag ikke ligner manglende data) og totals er summen på tværs.
+//
+// #3762: rækkerne følger ALL_SESSIONS (de sessioner en rytter kan trænes MED),
+// ikke TRAINING_FOCUS_KEYS. Forskellen er `restitution`, som er en hel dagstype
+// og ikke skubber nogen evne mod sit loft — en slot-helbreds-række for den ville
+// altid være tom og fortynde vagtens signal.
 export function computeTrainingSlotHealth({ riders = [], planByRiderId = {}, abilityRows = [] } = {}) {
   const cappedByRider = new Map();
   for (const row of abilityRows) {
@@ -72,7 +78,7 @@ export function computeTrainingSlotHealth({ riders = [], planByRiderId = {}, abi
     cappedByRider.set(row.rider_id, cappedVisibleAbilities(row));
   }
 
-  const tally = new Map(TRAINING_FOCUS_KEYS.map((k) => [k, { ridersInTraining: 0, deadSlots: 0, partialSlots: 0 }]));
+  const tally = new Map(ALL_SESSIONS.map((k) => [k, { ridersInTraining: 0, deadSlots: 0, partialSlots: 0 }]));
 
   for (const rider of riders) {
     if (rider?.id == null) continue;
@@ -88,7 +94,7 @@ export function computeTrainingSlotHealth({ riders = [], planByRiderId = {}, abi
     else if (state === "partial") bucket.partialSlots++;
   }
 
-  const rows = TRAINING_FOCUS_KEYS.map((focus) => ({ focus, ...tally.get(focus) }));
+  const rows = ALL_SESSIONS.map((focus) => ({ focus, ...tally.get(focus) }));
   const totals = rows.reduce(
     (acc, r) => ({
       ridersInTraining: acc.ridersInTraining + r.ridersInTraining,

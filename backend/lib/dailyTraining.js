@@ -2,8 +2,9 @@
 // Genbruger L0'ens budget (growthFractionByAge) delt i daglige bidder med compounding:
 // dag-rate = residual-gap × f(age)/daysPerSeason. Over en sæson ≈ gap×e^(−f) ~ L0's gap×(1−f).
 // dailyBudgetBoost kalibreres i scripts/previewDailyTraining.js så peak rammer 27-28 (spec 5.2).
-import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential, roleRateFactor } from "./riderProgression.js";
+import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential, roleRateFactor, ROLE_CLASS_RATE } from "./riderProgression.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES, smartDefaultFocus } from "./training.js";
+import { dayTypeForProgram, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
@@ -13,9 +14,13 @@ export const DAILY_TRAINING_CONFIG = Object.freeze({
   dailyBudgetBoost: 1.0,    // kompenserer compounding-tabet; kalibreres i sim
   bonusMult: 1.25,          // aktivt manager-klik (spec 6.3)
   noiseSpan: 0.15,          // ±15 % dagsform-støj, seeded pr. (rytter, dato)
-  intensities: Object.freeze(["rest", "easy", "normal", "hard"]),
-  // Trætheds-belastning pr. intensitet (bruges af riderCondition.js, Task A5)
-  fatigueLoad: Object.freeze({ rest: -14, easy: 4, normal: 9, hard: 16 }),
+  intensities: Object.freeze(["rest", "recovery", "easy", "normal", "hard"]),
+  // Trætheds-belastning pr. intensitet (bruges af riderCondition.js, Task A5).
+  // `recovery` (#3762) ligger MELLEM hvile og let: en aktiv restitutionsdag
+  // trækker træthed ned, men langsommere end at holde helt fri. Det er den
+  // eneste dagstype der både sænker træthed og giver vækst, og prisen for det
+  // er at den sænker mindre end hvile.
+  fatigueLoad: Object.freeze({ rest: -14, recovery: -8, easy: 4, normal: 9, hard: 16 }),
 });
 
 export const DEFAULT_PROGRAM = Object.freeze({ focus: "endurance", intensity: "normal" });
@@ -79,7 +84,14 @@ export function growthFractionForAge(age) {
 export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   if (program.intensity === "rest") return 0;
   const focusAbilities = TRAINING_FOCUSES[program.focus] ?? [];
-  return focusAbilities.includes(ability)
+  const inFocus = focusAbilities.includes(ability);
+  // #3762 aktiv restitution: KUN sessionens egen evne rører sig. Uden denne gren
+  // ville off-fokus-multiplikatoren give hele resten af kroppen en smule vækst
+  // på en dag der er defineret ved at kroppen hviler.
+  if (program.intensity === RECOVERY_INTENSITY) {
+    return inFocus ? (cfg.focusGrowthMult[RECOVERY_INTENSITY] ?? 0) : 0;
+  }
+  return inFocus
     ? (cfg.focusGrowthMult[program.intensity] ?? 1)
     : cfg.offFocusMult;
 }
@@ -115,9 +127,21 @@ export function dailyAbilityDelta({
   // ad: en signatur-evne lukker sit gap 9x hurtigere end en svaghed (0,45 mod
   // 0,05), uden at nogen af dem har fået et andet loft af den grund.
   // Udeladt type ⇒ 1.0 ⇒ præcis den gamle model (se docblokken ovenfor).
-  const roleRate = primaryType == null
+  const baseRoleRate = primaryType == null
     ? 1
     : roleRateFactor(primaryType, secondaryType, ability);
+  // ── PRISEN FOR EN FÆRDIGHEDSDAG (#3762, ejer-besluttet 14/8) ──────────────
+  // En færdighedsdag træner ALTID til håndværks-raten, også når evnen er
+  // rytterens signatur. Uden loftet er en lavbelastnings-færdighedsdag strengt
+  // bedre end en hård dag for de to roller hvor færdigheds-evner bærer
+  // halvdelen af ratingen: målt på en ægte baroudeur (aggression 4 af 12 i hans
+  // opskrift, og hans egen signatur-evne) gav en løbslære-dag 211 ratingpoint
+  // pr. dag mod 192 for hans bedste lange tur og 147 for intervaller. Med
+  // loftet falder den til 145, og den lange tur er hans bedste dag igen.
+  // Færdighedsdagen bliver dermed et VALG, ikke et genvejstræk.
+  const roleRate = dayTypeForProgram(program) === "skill"
+    ? Math.min(baseRoleRate, ROLE_CLASS_RATE.haandvaerk)
+    : baseRoleRate;
   // Staff-trænings-bonus (dimension×niveau): ét ekstra multiplikator-led SIDST i kæden,
   // efter manager-klik-bonussen (cfg.bonusMult) og noise. ≥ 1.0 og = 1.0 uden staff, så
   // rækkefølgen er ligegyldig for regression men dokumenteres eksplicit for læsbarhed.

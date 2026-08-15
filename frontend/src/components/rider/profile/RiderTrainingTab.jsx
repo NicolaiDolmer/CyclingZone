@@ -28,6 +28,7 @@ import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
 import { formatDate } from "../../../lib/intl.js";
 import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
 import FocusPanel from "../../training/FocusPanel.jsx";
+import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
 
 const LOG_DAYS = 7;
@@ -84,10 +85,17 @@ function fatigueColor(fatigue) {
 // et opslagsværk et sted man ikke vælger noget, og står nu i panelets
 // Træner-kolonne i det sekund valget træffes.
 function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
+  // Dagstype-navnene bor i `training`-namespacet (samme kilde som panelet), så
+  // profilen og /training ikke kan komme til at kalde den samme dag to ting.
+  const { t: tTraining } = useTranslation("training");
   const { slots, planFor } = training;
   const plan = planFor(rider.id);
   const focus = plan?.focus ?? null;
   const intensity = plan?.intensity ?? "normal";
+  // #3762: dagen udledes af det gemte par — også for en umigreret plan, så
+  // kortet aldrig viser en tilstand modellen ikke tilbyder.
+  const dayType = dayTypeForProgram(plan ?? null);
+  const session = sessionForProgram(plan ?? null);
 
   const total = slots?.total ?? null; // null = ubegrænset (TRAINING_CONFIG.unlimitedSlots)
   const used = slots?.used ?? 0;
@@ -117,12 +125,15 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
         className="mb-3 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-cz border border-cz-border px-3 py-2 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle"
       >
         <span className="min-w-0">
+          {/* #3762: kortet siger hvad det er for en DAG. Før stod der et
+              fokusnavn med en intensitet under — to linjer der kunne modsige
+              hinanden (fx "VO2max" over "Hvile", hvor motoren gav 0 vækst). */}
           <span className={`block truncate text-[13px] ${focus ? "font-semibold text-cz-1" : "text-cz-3"}`}>
-            {focus ? t(`profile.training.focus.${focus}`) : t("profile.training.emptyFocus")}
+            {focus ? tTraining(`dayPanel.dayType_${dayType}`) : t("profile.training.emptyFocus")}
           </span>
-          {focus && (
+          {focus && session && (
             <span className="mt-0.5 block font-mono text-3xs uppercase tracking-[0.06em] text-cz-3">
-              {t(`training.intensity_${intensity}`)}
+              {tTraining(`dayPanel.session_${session}`)}
             </span>
           )}
         </span>
@@ -142,6 +153,20 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
       <div className="border-t border-cz-border pt-[11px]">
         {!focus ? (
           <p className="text-[12px] text-cz-2 leading-snug">{t("profile.training.emptyFocus")}</p>
+        ) : dayType === "recovery" ? (
+          /* #3762: en restitutionsdag har ingen session, så "træner X med
+             intensitet Y" ville være tomgang. Dagen forklarer sig selv. */
+          <>
+            <div className="flex items-center gap-2 mb-[7px]">
+              <span className="text-cz-3 flex flex-none">
+                <IconBase size={15}>{PENCIL_PATH}</IconBase>
+              </span>
+              <span className="text-[13px] text-cz-1 font-semibold">
+                {tTraining("dayPanel.dayType_recovery")}
+              </span>
+            </div>
+            <p className="mt-1 text-2xs text-cz-2 leading-snug">{tTraining("dayPanel.noSession_recovery")}</p>
+          </>
         ) : isRest ? (
           <>
             <div className="flex items-center gap-2 mb-[7px]">
@@ -434,9 +459,9 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   // (udløbet session, netværk, backend-afvisning) skal vises, ikke forsvinde.
   const [actionError, setActionError] = useState(null);
 
-  async function handlePanelSave(focus, intensity) {
+  async function handlePanelSave(dayType, session) {
     setActionError(null);
-    const result = await training.setPlan(rider.id, focus, intensity);
+    const result = await training.setPlan(rider.id, dayType, session);
     if (result && !result.ok) setActionError(result.error || "failed");
     else setPanelOpen(false);
   }
