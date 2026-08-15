@@ -11,9 +11,10 @@ import {
   ARCHETYPES,
   ARCHETYPE_BY_TYPE,
   scaleMinTypes,
+  SECONDARY_SIGNATURE_WEIGHT,
 } from "./fictionalRiderGenerator.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
-import { drawArchetypePair } from "./archetypeDistribution.js";
+import { drawArchetypePair, DEFAULT_DISTRIBUTION, ARCHETYPE_TYPES } from "./archetypeDistribution.js";
 
 const REF_YEAR = 2026;
 const FORBIDDEN_FIELDS = ["id", "price", "market_value", "salary", "team_id", "ai_team_id", "prize_earnings_bonus"];
@@ -417,13 +418,128 @@ test("#3606 anlæggets form matcher akademi-stiens præcist (primary/secondary)"
       Object.keys(row.archetype_draw).sort(), Object.keys(academyShape).sort(),
       "archetype_draw's nøglesæt afviger fra akademi-stiens",
     );
-    // Voksen-generatoren trækker ÉN arketype og former stats efter den alene —
-    // der er ingen anden arketype i kroppen at persistere. Siden #3632 er den
-    // ALENE om det (akademi-stien har altid to), og det er en kendt mangel med
-    // eget issue + eget sim-krav: #3634. Testen låser den nuværende sandhed, så
-    // #3634 SKAL røre den her linje for at lande.
-    assert.equal(row.archetype_draw.secondary, null);
+    // #3634: sekundæren er ikke længere null — kroppen formes nu efter BEGGE
+    // anlæg (blendArchetypeShape), så der ER en anden arketype at persistere.
+    assert.ok(
+      ARCHETYPE_BY_TYPE[row.archetype_draw.secondary],
+      `ukendt sekundær arketype '${row.archetype_draw.secondary}'`,
+    );
+    assert.notEqual(row.archetype_draw.secondary, row.archetype_draw.primary);
   }
+});
+
+// ── #3634: voksen-stiens anlæg er FULDT (den lækage der fyldte 24 ryttere/døgn) ──
+//
+// Indtil 16/8 skrev generatoren `secondary: null`. Klassifikatoren udfyldte
+// `riders.secondary_type` alligevel, så kolonnen var aldrig NULL — det korrekte
+// mål er `archetype_draw->>'secondary'`. 72 ryttere blev født uden anker på tre
+// døgn, alle via startholds-stien til nye menneskeejede hold. Samme rod driver
+// #3631's skævhed: gættet trak mod alrounder-stats (rouleur 29,5 % + sprinter
+// 24,2 % = 53,7 % mod tilsigtet 30,3 %).
+//
+// 100 %, ingen tolerance — nøjagtig samme invariant akademi-stien fik i #3632.
+
+test("#3634-invariant: ALLE voksen-genererede ryttere fødes med en sekundær ≠ primær", () => {
+  const { riders } = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const uden = riders.filter((r) => {
+    const d = r._meta.archetypeDraw;
+    return !d?.secondary || d.secondary === d.primary;
+  });
+  assert.equal(
+    uden.length, 0,
+    `${uden.length}/${riders.length} ryttere født uden gyldigt sekundært anlæg ` +
+    `(fx ${JSON.stringify(uden[0]?._meta?.archetypeDraw)}) — se #3634`,
+  );
+});
+
+test("#3634-invariant: gælder også de SMÅ træk (start-trup count=8, AI-hale count=4)", () => {
+  // Den faktiske lækage-sti: buildWeakStarterPool kalder med count 4/8, ikke 800.
+  // Gulv-håndhævelsen (ENSURE_MIN_TYPES) kan overskrive en primær type EFTER
+  // trækket, så sekundæren skal trækkes bagefter — ellers kan de to falde sammen.
+  for (const count of [4, 8, 16]) {
+    for (let seed = 1; seed <= 50; seed++) {
+      const { riders } = generateFictionalRiders({ seed, count, referenceYear: REF_YEAR });
+      for (const r of riders) {
+        const d = r._meta.archetypeDraw;
+        assert.ok(d?.secondary, `count=${count} seed=${seed}: rytter uden sekundær`);
+        assert.notEqual(d.secondary, d.primary, `count=${count} seed=${seed}: sekundær = primær`);
+      }
+    }
+  }
+});
+
+// #3631: sekundæren trækkes fra DEFAULT_DISTRIBUTION (samme kilde som akademiet),
+// ikke af klassifikator-gættet. Målt i prod FØR fixet: sprinter 33,7 % / rouleur
+// 24,8 % i toppen mod brostensrytter 3,1 % i bunden — en faktor 11. Porten her er
+// et BÅND, ikke et punkt: fordelingen er betinget af "≠ primær" og renormaliseret,
+// så den kan ikke ramme DEFAULT_DISTRIBUTION eksakt.
+test("#3631: sekundær-fordelingen følger DEFAULT_DISTRIBUTION (ingen type under 3 % eller over 20 %)", () => {
+  const pooled = {};
+  let n = 0;
+  for (let k = 0; k < 400; k++) {
+    const { riders } = generateFictionalRiders({ seed: (2026 + k * 7919) >>> 0, count: 8, referenceYear: REF_YEAR });
+    for (const r of riders) {
+      pooled[r._meta.archetypeDraw.secondary] = (pooled[r._meta.archetypeDraw.secondary] || 0) + 1;
+      n++;
+    }
+  }
+  let l1 = 0;
+  for (const t of ARCHETYPE_TYPES) {
+    const pct = (100 * (pooled[t] || 0)) / n;
+    l1 += Math.abs(pct - DEFAULT_DISTRIBUTION[t]);
+    assert.ok(pct >= 3, `sekundær '${t}' fylder kun ${pct.toFixed(2)} % (port 3 %; prod før fixet: brostensrytter 3,1 %)`);
+    assert.ok(pct <= 20, `sekundær '${t}' fylder ${pct.toFixed(2)} % (port 20 %; prod før fixet: sprinter 33,7 %)`);
+  }
+  assert.ok(l1 <= 8, `L1 mod DEFAULT_DISTRIBUTION er ${l1.toFixed(1)} pp (port 8 pp)`);
+});
+
+// FORWARD-GUARD for vægten. `SECONDARY_SIGNATURE_WEIGHT` er MÅLT til det højeste
+// tal der holder alle seks separations-gates positive på HVER af 40 målte seeds
+// (0,15 fejlede 1/40, 0,20 fejlede 14/40 — se konstantens kommentar). Gaten her
+// måler den bindende margin direkte, så en hævet vægt fejler med det samme i
+// stedet for at bide i en tilfældig seed senere.
+test("#3634 forward-guard: bi-type-vægten æder ikke rolle-svagheden (bindende margin > 0 på flere seeds)", () => {
+  const SEPARATIONER = [
+    ["sprinter", "stat_sp", "sprinter", "stat_bj", 10],
+    ["climber", "stat_bj", "climber", "stat_sp", 10],
+    ["sprinter", "stat_sp", "climber", "stat_sp", 5],
+    ["climber", "stat_bj", "sprinter", "stat_bj", 5],
+  ];
+  for (const seed of [5, 17, 2026]) {
+    const { riders } = generateFictionalRiders({ seed, count: 800, referenceYear: REF_YEAR });
+    const avg = (arche, key) => {
+      const sub = riders.filter((r) => r._meta.archetype === arche);
+      return sub.reduce((s, r) => s + r[key], 0) / sub.length;
+    };
+    for (const [aType, aKey, bType, bKey, krav] of SEPARATIONER) {
+      const margin = avg(aType, aKey) - avg(bType, bKey) - krav;
+      assert.ok(
+        margin > 0,
+        `seed ${seed}: ${aType}.${aKey} − ${bType}.${bKey} har margin ${margin.toFixed(2)} mod kravet +${krav}. ` +
+        `Er SECONDARY_SIGNATURE_WEIGHT (${SECONDARY_SIGNATURE_WEIGHT}) hævet? Kør scripts/simSecondaryArchetype3634.js først — se #3634.`,
+      );
+    }
+  }
+});
+
+// Negativ-test (designprincip: en gate skal kunne SE forskellen den bevogter).
+// Vægten skal faktisk forme kroppen — er optionen tavst ignoreret, er hele
+// #3634-rettelsen reduceret til at skrive en løsrevet sekundær ind i anlægget,
+// præcis det issuet advarer imod ("et evne-loft i en retning kroppen ikke peger").
+test("#3634 NEGATIV-TEST: secondarySignatureWeight former faktisk statsene", () => {
+  const uden = generateFictionalRiders({ seed: 5, count: 400, referenceYear: REF_YEAR, secondarySignatureWeight: 0 });
+  const med = generateFictionalRiders({ seed: 5, count: 400, referenceYear: REF_YEAR, secondarySignatureWeight: 0.5 });
+  // Anlægget er det SAMME (sekundæren trækkes fra en egen rng-understrøm), så
+  // enhver forskel i statsene kommer fra vægten alene.
+  assert.deepEqual(
+    med.riders.map((r) => r._meta.archetypeDraw), uden.riders.map((r) => r._meta.archetypeDraw),
+    "vægten må ikke ændre selve trækket — kun hvordan kroppen formes efter det",
+  );
+  const forskelle = med.riders.filter((r, i) => STAT_KEYS.some((k) => r[k] !== uden.riders[i][k]));
+  assert.ok(
+    forskelle.length > med.riders.length * 0.5,
+    `kun ${forskelle.length}/${med.riders.length} ryttere fik andre stats af vægten — er optionen ignoreret?`,
+  );
 });
 
 test("#3606 kaldere med et _meta UDEN archetypeDraw er uændrede (bagudkompatibel)", () => {

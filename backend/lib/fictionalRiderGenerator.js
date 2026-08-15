@@ -14,6 +14,7 @@
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { NAME_CLUSTERS, clusterForNationality } from "./fictionalRiderNames.js";
 import { seedArchetypePhysiology } from "./archetypePhysiology.js";
+import { drawSecondaryArchetype } from "./archetypeDistribution.js";
 
 // ── Seeded PRNG (mulberry32) ──────────────────────────────────────────────────
 export function makeRng(seed) {
@@ -256,14 +257,111 @@ const STAT_CEIL = 85;
 // sikkerhedsnet for de sjældne gaussiske haler (ikke en aktiv stat-grænse, som
 // det gamle [40,88] var). Specialisering bevares: rolle-primær løftes mærkbart
 // over base, så sprintere ≫ klatrere i sprint osv.
-function buildStats(rng, tier, archetype) {
+// #3634: hvor meget af BI-typens signatur der blandes ind i voksen-statsene.
+//
+// Akademi-stien har den samme knap (YOUTH_GEN_CONFIG.secondarySignatureWeight,
+// 0,10) — men dens mekanik er en anden (vægtet klassifikator-profil mod et smalt
+// ungdomsbånd, ikke ARCHETYPES' boost-punkter mod [50,85]), så tallet kan IKKE
+// lånes. Voksen-vægten er MÅLT for sig med scripts/simSecondaryArchetype3634.js.
+// At de to lander på samme tal er et sammentræf, ikke en kobling.
+//
+// MÅLINGEN (16/8, n=3.000 + margin-sweep over 40 seeds à 800 ryttere):
+//
+//   vægt | krop→sekundær | krop→primær | mindste margin på de 6 bestående
+//        |  (aflæselig?) | (identitet) | generator-gates | seeds der FEJLER
+//   -----|---------------|-------------|-----------------|------------------
+//   0    |      18,2 %   |    58,5 %   |  4,16 (p10 4,55)|  0/40   ← VALGT (se nedenfor)
+//   0,10 |      27,4 %   |    53,9 %   |  0,71 (p10 1,27)|  0/40   ← separations-loftet
+//   0,15 |         —     |       —     | −0,25 (p10 0,37)|  1/40
+//   0,20 |      32,8 %   |    49,1 %   | −1,03 (p10−0,41)| 14/40
+//   0,25 |         —     |       —     | −1,85           | 32/40
+//
+// "krop→sekundær" = andelen hvor bi-typen kan AFLÆSES i de rå afledte evner
+// (klassificeret UDEN de anlægs-formede caps). Ved w = 0 er den 18,2 % — omtrent
+// hvad et tilfældigt anlæg giver, hvilket ER problemet: rytteren fik et evne-loft
+// (naturalSecondaryFactor 0,82) i en retning kroppen ikke pegede.
+//
+// Separations-loftet er sat af ÉN gate: `sprinter.stat_sp > sprinter.stat_bj + 10`
+// (fictionalRiderGenerator.test.js, "rolle-svagheder dæmper off-type-stats"). En
+// sprinter med klatrer-bitype får netop stat_bj løftet i stedet for dæmpet — det
+// er den tilsigtede fysik, og gaten er formuleret i en verden hvor ryttere kun
+// havde ÉT anlæg.
+//
+// ── HVORFOR VÆRDIEN ER 0 OG IKKE 0,10 ────────────────────────────────────────
+//
+// `npm run race:gate` (backend/scripts/raceGate.js, #1102) er GRØN på 3/3 seeds
+// før denne ændring og fejler ved ENHVER vægt over 0 — målt:
+//
+//   vægt  | race:gate     | hvilke bånd falder
+//   ------|---------------|-------------------------------------------------
+//   0     | 3/3 pass      | (bit-identisk population — kan ikke fejle)
+//   0,02  | 2/3 pass      | cobbles: brostensrytter 78 % mod ≥80 %
+//   0,05  | 2/3 pass      | do.
+//   0,075 | 1/3 pass      | + itt: tt 59 % mod ≥60 %
+//   0,10  | 1/3 pass      | + itt_tempo, favoriteWinRate 52,8-57,2 % mod [25,40]
+//
+// Gatens kalibrerings-bånd er i praksis en GOLDEN-POPULATION-fixture: de er tunet
+// mod præcis den population generatoren producerer i dag, så enhver ændring af
+// kroppen tripper dem — også en på 2 %. Det er ikke et argument for at bi-typen
+// er forkert; det er en måling af at gaten ikke kan skelne "populationen blev
+// bevidst ændret" fra "motoren gik i stykker".
+//
+// Derfor er vægten 0: ALT det presserende i #3634/#3631 (anlægget forankres,
+// sekundæren trækkes fra DEFAULT_DISTRIBUTION i stedet for at blive gættet) er
+// UAFHÆNGIGT af vægten og virker fuldt ud ved 0. Med 0 er populationen desuden
+// bit-identisk med før, så hverken race:gate, balance-snapshottet eller
+// rytterøkonomien flytter sig overhovedet.
+//
+// Blandingen nedenfor er BEVIDST bevaret og målt, ikke død kode: den er den ene
+// konstant der mangler, hvis ejeren beslutter at bi-typen også skal forme kroppen.
+// Prisen for at hæve den er målt og står i PR #3800 — kort: ~11 % lavere
+// medianværdi på nyfødte ryttere, og race:gate's bånd skal rekalibreres FØRST.
+// Sænk aldrig en af de to gates for at få et tal til at passe.
+// Jf. .claude/learnings/2026-08-11-guard-premise-decay-archetype-draw.md.
+export const SECONDARY_SIGNATURE_WEIGHT = 0;
+
+// Blandt de to anlæg til ÉN syntetisk signatur — samme model som akademi-stiens
+// `blendArchetypeSignature` (academyGenerator.js), oversat til voksen-mekanikken
+// (ARCHETYPES' boost-punkter + damp-liste i stedet for klassifikator-vægte):
+//
+//   boost  konvekst snit over UNIONEN af de to anlægs boosts: (1−w)·primær + w·sekundær.
+//   damp   en SKALA i [0,1] i stedet for en liste: (1−w) hvis primæren dæmper,
+//          + w hvis sekundæren gør. En stat der er ét af anlæggenes SIGNATUR
+//          (boost > 0) dæmpes ikke — akademi-stiens "kun de FÆLLES svagheder"-
+//          regel, her udtrykt via boost-grenen: en climber+puncheur må ikke
+//          dæmpes på punch.
+//
+// Ved w = 0 reducerer begge linjer PRÆCIS til primærens egne tal, og boost/damp
+// er da gensidigt udelukkende (ingen enkelt arketype både booster og dæmper samme
+// stat). Kaldet er derfor bit-identisk med koden før #3634 ved w = 0 — det er dét,
+// sim-scorecardets referencearm hviler på.
+function blendArchetypeShape(primary, secondary, weight) {
+  const w = secondary && secondary !== primary ? clamp(Number(weight) || 0, 0, 0.5) : 0;
+  const boost = {};
+  for (const key of new Set([...Object.keys(primary.boost), ...Object.keys(secondary?.boost ?? {})])) {
+    const v = (primary.boost[key] ?? 0) * (1 - w) + (secondary?.boost[key] ?? 0) * w;
+    if (v > 0) boost[key] = v;
+  }
+  const damp = {};
+  for (const key of STAT_KEYS) {
+    const v = (primary.damp?.includes(key) ? 1 - w : 0) + (secondary?.damp?.includes(key) ? w : 0);
+    if (v > 0) damp[key] = v;
+  }
+  return { boost, damp };
+}
+
+function buildStats(rng, tier, archetype, secondary = null, secondaryWeight = 0) {
   const stats = {};
+  // TYPE_MEAN_ADJUST følger PRIMÆREN alene: den modvirker værdimodellens
+  // type-offset for den type rytteren rent faktisk bliver klassificeret som, og
+  // det er primæren (bi-typen flytter formen, ikke prisskiltet).
   const base = tier.statMean + (TYPE_MEAN_ADJUST[archetype.type] ?? 0);
   const dampScale = tier.dampScale ?? 1;
+  const shape = blendArchetypeShape(archetype, secondary, secondaryWeight);
   for (const key of STAT_KEYS) {
     let v = gaussian(rng, base, tier.sd ?? 3.5);
-    if (archetype.boost[key]) v += archetype.boost[key] + intBetween(rng, -2, 2);
-    else if (archetype.damp?.includes(key)) v -= intBetween(rng, 5, 10) * dampScale;
+    if (shape.boost[key]) v += shape.boost[key] + intBetween(rng, -2, 2);
+    else if (shape.damp[key]) v -= intBetween(rng, 5, 10) * dampScale * shape.damp[key];
     stats[key] = Math.round(clamp(v, STAT_FLOOR, STAT_CEIL));
   }
   // Hårdt gulv → opfyld type-GUARDS ved alle tiers (fx gc's climbing/tt/recovery).
@@ -279,7 +377,7 @@ function buildStats(rng, tier, archetype) {
   return stats;
 }
 
-function buildDemographics(rng, tier, archetype, referenceYear) {
+function buildDemographics(rng, tier, archetype, referenceYear, secondary = null, secondaryWeight = 0) {
   const age = Math.round(clamp(gaussian(rng, 27, 4.5), 18, 39));
   const birthYear = referenceYear - age;
   const birthMonth = intBetween(rng, 1, 12);
@@ -288,8 +386,14 @@ function buildDemographics(rng, tier, archetype, referenceYear) {
   // U25 = under 25 ved referenceåret (matcher import_riders.py-logikken).
   const is_u25 = birthYear > referenceYear - 25;
 
-  const height = Math.round(clamp(gaussian(rng, archetype.heightMean, 5), 165, 196));
-  const weight = Math.round(archetype.bmi * (height / 100) ** 2);
+  // #3634: KROPPEN formes af begge anlæg — samme konvekse vægt som statsene, så
+  // en climber/brostensrytter ikke længere fødes med en ren klatrekrop. Ved w = 0
+  // er begge udtryk primærens egne tal (bit-identisk med koden før #3634).
+  const w = secondary && secondary !== archetype ? clamp(Number(secondaryWeight) || 0, 0, 0.5) : 0;
+  const heightMean = archetype.heightMean * (1 - w) + (secondary?.heightMean ?? archetype.heightMean) * w;
+  const bmi = archetype.bmi * (1 - w) + (secondary?.bmi ?? archetype.bmi) * w;
+  const height = Math.round(clamp(gaussian(rng, heightMean, 5), 165, 196));
+  const weight = Math.round(bmi * (height / 100) ** 2);
 
   // Potentiale: tier-interval, løftet for unge, sænket for ældre; 0.5-trin.
   const [pLo, pHi] = tier.potential;
@@ -343,6 +447,10 @@ export function makeUniqueName(rng, cluster, usedFolded) {
  *        map tier→andel (superstar/star/solid); domestique er altid rest. null = DEFAULT_TIER_FRACTIONS.
  * @param {Object<string,Object<string,number>>} [opts.tierTypeWeights]  override af per-tier
  *        arketype-vægte (#1420); null = DEFAULT_TIER_TYPE_WEIGHTS. Default på begge → uændret adfærd.
+ * @param {number} [opts.secondarySignatureWeight]  #3634: hvor meget bi-typen former krop+stats.
+ *        Kun til sim-sweepet (scripts/simSecondaryArchetype3634.js); produktionen bruger
+ *        modul-konstanten SECONDARY_SIGNATURE_WEIGHT. 0 = kroppen formes af primæren alene
+ *        (referencearmen — bit-identisk med koden før #3634).
  * @returns {{ riders: object[], coverage: object, seed: number }}
  */
 export function generateFictionalRiders({
@@ -353,6 +461,7 @@ export function generateFictionalRiders({
   nationalityWeights = DEFAULT_NATIONALITY_WEIGHTS,
   tierFractions = null,
   tierTypeWeights = null,
+  secondarySignatureWeight = SECONDARY_SIGNATURE_WEIGHT,
 }) {
   if (!Number.isInteger(seed)) throw new Error("seed skal være et heltal");
   if (!Number.isInteger(count) || count < 1) throw new Error("count skal være et positivt heltal");
@@ -408,6 +517,21 @@ export function generateFictionalRiders({
     }
   }
 
+  // ── Sekundær-sekvens (#3634) ────────────────────────────────────────────────
+  // Trækkes EFTER gulv-håndhævelsen: gulvene kan overskrive en rytters primære
+  // type, og en sekundær trukket før ville kunne ende identisk med den nye primær.
+  //
+  // EGEN rng-understrøm (seed + 2^32/φ, samme splitte-konstant som i mulberry32'ens
+  // egen inkrementering) — bevidst, ikke en genvej: hovedstrømmen er den der former
+  // hver eneste stat, krop, alder og navn i hele launch-populationen. Trak vi
+  // sekundæren fra den, ville selve DET at forankre anlægget flytte 800 ryttere,
+  // og enhver diff i balance-baselinen ville blande to ting sammen: forankringen
+  // og bi-typens vægt. Med en egen understrøm er `secondarySignatureWeight: 0`
+  // BIT-IDENTISK med koden før #3634, og vægten er dermed den eneste variabel i
+  // sim-scorecardet. Determinismen er uændret: understrømmen er ren funktion af seed.
+  const secondaryRng = makeRng((seed + 0x9e3779b9) >>> 0);
+  const secondarySeq = typeSeq.map((primary) => drawSecondaryArchetype(secondaryRng, primary));
+
   // Byg nationalitets-sekvens: garanterede nationer først, resten vægtet, så
   // deterministisk blandet, så garanterede ikke altid klumper i starten.
   const nationalities = [];
@@ -438,10 +562,11 @@ export function generateFictionalRiders({
 
     const tier = tierSeq[i];
     const archetype = ARCHETYPE_BY_TYPE[typeSeq[i]];
+    const secondaryArchetype = ARCHETYPE_BY_TYPE[secondarySeq[i]];
 
     const { firstname, lastname } = makeUniqueName(rng, cluster, usedFolded);
-    const stats = buildStats(rng, tier, archetype);
-    const demo = buildDemographics(rng, tier, archetype, referenceYear);
+    const stats = buildStats(rng, tier, archetype, secondaryArchetype, secondarySignatureWeight);
+    const demo = buildDemographics(rng, tier, archetype, referenceYear, secondaryArchetype, secondarySignatureWeight);
     const physiology = seedArchetypePhysiology({
       archetype: archetype.type,
       tierLevel: TIER_PHYSIOLOGY_LEVEL[tier.value] ?? 0.5,
@@ -475,21 +600,21 @@ export function generateFictionalRiders({
         // (academyGenerator.js' drawArchetypePair → academyIntake.js:
         // { primary, secondary }). toInsertPayload løfter det til riders.archetype_draw.
         //
-        // secondary er STADIG null her efter #3632, og det er en KENDT mangel, ikke
-        // et designvalg der er blevet bekræftet: voksen-generatoren trækker ÉN
-        // arketype (typeSeq ovenfor) og former stats + krop efter den alene, så der
-        // er ingen anden arketype i kroppen at persistere. At skrive en tilfældig
-        // sekundær ville give rytteren et loft (youthRoleFactor 0,82) i en retning
-        // kroppen ikke peger, og at skrive klassifikatorens bedste gæt ville fryse
-        // netop gættet — rodårsagen — ind som identitet.
+        // #3634 (16/8): secondary er ikke længere null. Indtil da trak voksen-
+        // generatoren ÉN arketype og formede stats + krop efter den alene, så der
+        // var ingen anden arketype i kroppen at persistere — og følgen var at
+        // AI-hold- og startholds-ryttere (aiTeamGenerator, starterSquadAllocator)
+        // fik deres secondary_type udpeget af klassifikatoren ved hver natlige
+        // genberegning, præcis som akademi-ryttere gjorde før #3632. Målt: 72
+        // ryttere født uden anlægs-sekundær på tre døgn (24/døgn), alle via
+        // startholds-stien til nye menneskeejede hold.
         //
-        // Følgen er at AI-hold- og startholds-ryttere (aiTeamGenerator,
-        // starterSquadAllocator) fortsat har en secondary_type der kan drifte ved
-        // den natlige genberegning, præcis som akademi-ryttere gjorde før #3632.
-        // At lukke det kræver at voksen-stien former kroppen efter to anlæg —
-        // hvilket flytter hele launch-populationens balance-snapshot og derfor er
-        // sit eget issue med sit eget sim-scorecard: #3634.
-        archetypeDraw: { primary: archetype.type, secondary: null },
+        // Rettelsen er IKKE at skrive en løsrevet sekundær ind (det ville give
+        // rytteren et evne-loft — youthRoleFactor 0,82 — i en retning kroppen ikke
+        // peger) og heller ikke klassifikatorens gæt (det ville fryse netop gættet,
+        // rodårsagen bag #3570, ind som identitet). Kroppen formes nu efter BEGGE
+        // anlæg, med SECONDARY_SIGNATURE_WEIGHT som vægt — se blendArchetypeShape.
+        archetypeDraw: { primary: archetype.type, secondary: secondaryArchetype.type },
         age: demo.age,
         cluster: clusterKey,
         physiology,
