@@ -40,8 +40,26 @@ test.describe("Auction custom end time (#2884)", () => {
   test("et sluttidspunkt om natten afvises og spærrer Start", async ({ page }) => {
     const input = page.getByTestId("team-auction-end-time-input");
     const current = await input.inputValue();
-    // Samme dato som forslaget, men kl. 03:44 — uden for det åbne vindue.
-    await input.fill(`${current.slice(0, 11)}03:44`);
+    // #3792: DATOEN SKAL RULLE MED, ellers tester den her noget andet end den tror.
+    //
+    // `getEndTimeIssue` validerer i rækkefølgen for-tidligt → for-sent → uden-for-
+    // vindue, og returnerer ved FØRSTE brud. Den gamle udgave satte 03:44 på
+    // forslagets EGEN dato. Forslaget er 12 timer frem, så dets dato er typisk i
+    // dag, og 03:44 i dag ligger dermed i fortiden — testen fik `end_too_soon` i
+    // stedet for `end_outside_window` og fejlede, uden at vindue-reglen
+    // overhovedet var blevet afprøvet. Om den bestod afhang af hvad klokken var
+    // da CI kørte, så den blokerede vilkårlige PR'er om morgenen.
+    //
+    // Dagen EFTER forslaget rammer altid 1-48-timers-vinduet (ca. 4-32 timer
+    // frem, uanset hvor forslaget lander), så den første regel er tilfredsstillet
+    // og valideringen når frem til den regel testen faktisk handler om.
+    const night = new Date(`${current}:00`);
+    night.setDate(night.getDate() + 1);
+    const pad = (n) => String(n).padStart(2, "0");
+    // Lokale getters, ikke toISOString(): sidstnævnte konverterer til UTC og kan
+    // flytte datoen en dag alt efter tidszone og klokkeslæt.
+    const nightWall = `${night.getFullYear()}-${pad(night.getMonth() + 1)}-${pad(night.getDate())}T03:44`;
+    await input.fill(nightWall);
 
     const error = page.getByTestId("team-auction-end-time-error");
     await expect(error).toBeVisible();
@@ -56,7 +74,12 @@ test.describe("Auction custom end time (#2884)", () => {
     const current = await input.inputValue();
     const far = new Date(`${current}:00`);
     far.setDate(far.getDate() + 5);
-    await input.fill(`${far.toISOString().slice(0, 10)}T20:00`);
+    // Samme rettelse som nat-testen (#3792): lokale getters, ikke toISOString(),
+    // som konverterer til UTC og kan flytte datoen en dag. Her ville ±1 dag ikke
+    // ændre udfaldet (5 dage er 120 timer, langt over 48), men den skrøbelighed
+    // hører ikke hjemme i en test der skal kunne stoles på uanset tidszone.
+    const pad = (n) => String(n).padStart(2, "0");
+    await input.fill(`${far.getFullYear()}-${pad(far.getMonth() + 1)}-${pad(far.getDate())}T20:00`);
 
     const error = page.getByTestId("team-auction-end-time-error");
     await expect(error).toBeVisible();
