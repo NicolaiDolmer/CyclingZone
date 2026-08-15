@@ -136,3 +136,48 @@ Det betyder også noget vigtigt for S4: fordi man altid kun lukker en andel af r
 5. **Stil spørgsmål A til E med visuals, før du skriver kode.**
 
 Ejerens ord ved close-out 15/8: *"Ikke noget mere med at designe noget, som aldrig bliver lavet. Hvis vi designer en fed løsning, så skal den laves."*
+
+---
+
+## TILFØJET 15/8 ved close-out. Læs dette som en del af kontrakten.
+
+### Et fund der ændrer opgavens omfang: gulvet ([#3794](https://github.com/NicolaiDolmer/CyclingZone/issues/3794))
+
+`buildCapsForRider` sætter loftet til `max(tapered, current)`. Begrundelsen i koden er "ingen spiller mister evne han ejer". **Det tab kan ikke ske, gulv eller ej.** Verificeret 15/8:
+
+- `dailyTraining.js` lægger kun til; et loft under evnen giver `gap = 0`, altså nul vækst, ikke tab.
+- `stepAbility` returnerer uændret når `gap <= 0`. Fald sker kun efter peak-alder via `declineByYearsPastPeak`, og den læser slet ikke loftet.
+- Eneste nedad-clamp mod caps ligger i `scripts/dev/curveHarness3564.mjs`, et harness.
+
+Konsekvensen af gulvet er derimod stor: **6.800 af 8.717 ryttere (78 %) har mindst én evne på eller over deres formel-tag.** For dem er loftet lig evnen, så det viste potentiale stiger hver gang de trænes. Selv hvis ingen rørte en konstant igen, ville potentialet altså bevæge sig dagligt for de fleste ryttere.
+
+Det skal besluttes **sammen med** det flade tag, ikke bagefter: fjernes gulvet samtidig med udfladningen, ender mange ryttere over deres nye loft. Mekanisk uskadeligt (de står stille), men en stor synlig ændring der kræver spillerkommunikation.
+
+Ejerens model, ordret 15/8: ryttere skal kun miste evner ved aldring, og et gradvist nedgangs-system designes særskilt når det bliver aktuelt.
+
+### Tre issues hører til trin 7 og må ikke løses isoleret
+
+- [#3787](https://github.com/NicolaiDolmer/CyclingZone/issues/3787) potentiale-sortering. Med fladt tag bliver potentiel rating ens for alle af samme type, så sorteringen skal alligevel bygge på noget andet. Løses den nu, bygges den på et tal der forsvinder.
+- [#3788](https://github.com/NicolaiDolmer/CyclingZone/issues/3788) loftet kan ligge midt i et niveau. Et fladt tag pr. rolle gør det trivielt at lægge det på et helt niveau.
+- [#3651](https://github.com/NicolaiDolmer/CyclingZone/issues/3651) "Limited upside"-labelen. #3791 har netop ændret hvad der udløser den (læser klassen, ikke faktoren). Branchen `feat/3651-limited-upside-training` er 279 filer bagud og må ikke genbruges.
+
+### [#3785](https://github.com/NicolaiDolmer/CyclingZone/issues/3785) har en forkert hypotese i selve issue-teksten
+
+Den mistænker "en automatisk kørsel der skulle have været slået fra". **Der findes ingen sådan kørsel.** Årsagen var trin 4's tag, der slår igennem ved hvert daglige tick. Diagnosen står i en kommentar på issuet. Brug ikke tid på at lede efter en cron.
+
+### Parallelle sessioner er reelle lige nu
+
+Under 15/8-sessionen tog en anden session patch note-version 7.130, og en rebase droppede en fil med "patch contents already upstream" fordi den samme fil var bragt til main andetsteds fra. Tjek `docs/NOW.md` for aktive sessioner, og tjek `origin/main` lige før push.
+
+### Verifikationsdisciplin der kostede dyrt 15/8
+
+- `gh pr checks --watch` gav **exit 0 mens PR'en ikke var merget og en check var fejlet**. Verificér altid med `gh pr view --json mergedAt` og læs indholdet på main, ikke kun merge-status.
+- Hent aldrig en hel fil fra en anden branch med `git checkout <branch> -- <fil>`. Det rullede hele #3762 tilbage, inklusive `recovery`-intensiteten, og blev kun fanget af en diff mod main.
+- Bash-værktøjets cwd sprang tilbage til hoved-checkoutet midt i sessionen, så en `git checkout -b` skiftede branch i hovedrepoet og en `grep` med relativ sti læste den forkerte fil. **Brug `git -C <sti>` og absolutte stier.**
+- Da en test blev fikset, blev både den gamle og den nye udgave kørt på samme maskine inden for få minutter. Uden målingen af den gamle ville et grønt resultat blot betyde at klokken var blevet en anden. Gør det samme.
+
+### Ejerens ord ved close-out
+
+> "Jeg har brugt dagevis på at fikse lofterne sådan de virker ordentligt, så skal du sku da ikke lave dem om hver eneste dag."
+
+> "Ikke noget mere med at designe noget, som aldrig bliver lavet. Hvis vi designer en fed løsning, så skal den laves."
