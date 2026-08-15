@@ -91,10 +91,27 @@ export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
   // Andel af loftet en evne får efter dens rolle ift. de 2 anlægs-retninger.
   // Navnene er bevaret fra før trin 4 (focusTrainability sammenligner mod dem);
   // det er VÆRDIERNE der er ejer-besluttede 14/8.
-  naturalPrimaryFactor: 1.30,
-  naturalSecondaryFactor: 1.10,
-  neutralFactor: 0.70,
-  oppositeFactor: 0.20,
+  // ══ RULLET TILBAGE 15/8 (ejer-beslutning) ══
+  //
+  // Trin 4 satte disse til 1,30 / 1,10 / 0,70 / 0,20. Det brød et løfte givet
+  // spillerne i Discord 11/8: "Havde man fået 6 i potentiale, så er man ikke
+  // garanteret 99 i potentiale i det nye system. Det bliver voldsomt få, der
+  // lander deroppe." Målt på snapshottet gik ryttere med mindst én evne over 95
+  // fra 3 til 748, og evne-pladser på 99 fra 1 til 1.840.
+  //
+  // Værdierne herunder er PRÆCIS trin 3's, altså den tilstand spillerne kendte
+  // 14/8 om morgenen. Det er bevidst en tilbagerulning til noget kendt frem for
+  // en tredje ny kalibrering på tre døgn.
+  //
+  // ⚠ DETTE ER IKKE SLUTMODELLEN. Rolle-tagene skal helt ud af potentiale-
+  // formlen i trin 7 (#3746): taget flades ud og sættes af rollen alene, mens
+  // potentiale bliver FART. Så kan 95+ ikke opstå fra taget uanset kalibrering,
+  // i stedet for at afhænge af at nogen rammer de rigtige tal. `scripts/
+  // spillervendteGates3709.mjs` er facit for den model.
+  naturalPrimaryFactor: 1.00,
+  naturalSecondaryFactor: 0.82,
+  neutralFactor: 0.45,
+  oppositeFactor: 0.12,
   // Potentiale → træningsfart-multiplikator (Fase B).
   rateByPotential: Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 }),
 

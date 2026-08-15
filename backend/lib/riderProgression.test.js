@@ -329,7 +329,13 @@ test("håndværk: gulvet LØFTER, det erstatter aldrig — signatur slår gulvet
   // tallet gør. Før trin 4 var forholdet omvendt (0,82 < 0,95) og samme kode gav
   // `haandvaerk`. Det er hele grunden til at sammenligningen står på faktorer:
   // ændres tallene igen, kan gulvet stadig ikke sænke nogens tag.
-  assert.equal(abilityRoleClass("climber", "sprinter", "positioning"), "sekundaer");
+  // Klasse-navnet er IKKE en konstant der kan pinnes: det følger kalibreringen.
+  // Trin 4 satte sekundær til 1,10, altså over håndværkets 0,95, og så vandt
+  // `sekundaer`. Efter tilbagerulningen 15/8 er sekundær 0,82 igen, altså UNDER
+  // håndværk, og gulvet vinder. Begge dele er korrekte; det er netop derfor
+  // sammenligningen står på faktorer og ikke på navne. Invarianten der SKAL
+  // holde uanset tal er den næste test: gulvet må aldrig sænke et tag.
+  assert.equal(abilityRoleClass("climber", "sprinter", "positioning"), "haandvaerk");
   assert.ok(
     youthRoleFactor("climber", "sprinter", "positioning") >= YOUTH_PROGRESSION_CONFIG.craftFactor,
     "gulvet må aldrig give et LAVERE tag end håndværks-faktoren",
@@ -387,16 +393,29 @@ test("rolleklasser: raterne er ejer-besluttede 14/8 og falder monotont med klass
   }
 });
 
-test("rolleklasser: tagene er ALLE højere end før trin 4 (loftet er hævet, raten bremser)", () => {
-  // Modellens vigtigste egenskab, og den der gør beslutning 6 mulig: hvert eneste
-  // tag stiger, og det er raten der sørger for at ryttere alligevel ikke NÅR dem.
-  const foer = { naturalPrimaryFactor: 1.0, naturalSecondaryFactor: 0.82, neutralFactor: 0.45, oppositeFactor: 0.12 };
-  for (const [key, gammel] of Object.entries(foer)) {
-    assert.ok(
-      YOUTH_PROGRESSION_CONFIG[key] > gammel,
-      `${key}: ${YOUTH_PROGRESSION_CONFIG[key]} skal være HØJERE end den gamle ${gammel}`,
-    );
-  }
+// OMSKREVET 15/8 ved tilbagerulningen af trin 4's tag.
+//
+// Testen hed "tagene er ALLE højere end før trin 4" og vogtede at hvert tag var
+// hævet. Den påstand er trukket tilbage af ejeren: de hævede tag satte 748
+// ryttere over 95 og brød løftet fra Discord 11/8 om at "voldsomt få lander
+// deroppe". Tagene står nu på trin 3's værdier igen.
+//
+// Det der SKAL vogtes er ikke længere en retning, men en grænse: taget må aldrig
+// i sig selv kunne sætte en rytter over 95, uanset potentiale og rolle. Det er
+// ejerens krav fra 15/8, og `scripts/spillervendteGates3709.mjs` måler det på
+// hele populationen. Her pinnes invarianten på selve formlen.
+test("rolleklasser: taget kan ALDRIG i sig selv sætte en evne over 95", () => {
+  const cfg = YOUTH_PROGRESSION_CONFIG;
+  const maksLoft = Math.max(...Object.values(cfg.loftByPotential));
+  const maksFaktor = Math.max(
+    cfg.naturalPrimaryFactor, cfg.naturalSecondaryFactor,
+    cfg.neutralFactor, cfg.oppositeFactor, cfg.craftFactor ?? 0,
+  );
+  assert.ok(
+    maksLoft * maksFaktor < 95,
+    `maks tag ${maksLoft} × ${maksFaktor} = ${maksLoft * maksFaktor} skal være under 95 `
+    + "(ejer-krav 15/8: taget må aldrig alene sætte nogen over 95 — kun træning må)",
+  );
 });
 
 test("håndværk B1: intet loft falder for NOGEN kombination af type, evne og potentiale", () => {

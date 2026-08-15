@@ -293,9 +293,20 @@ test("focusTrainability: ukendt type-STRENG giver alt 'limited', ligesom null", 
 // Denne test pinner den nuvaerende, tag-only adfaerd saa aendringen bliver et VALG.
 test("focusTrainability: haandvaerk og andenRolle er UMULIGE at skelne i labelen (kendt begraensning)", () => {
   const cfg = YOUTH_PROGRESSION_CONFIG;
-  assert.ok(cfg.craftFactor > cfg.neutralFactor, "haandvaerk HAR et hoejere tag ...");
-  assert.ok(cfg.craftFactor < cfg.naturalSecondaryFactor, "... men naar ikke op over 'strength'-taerskelen");
-  // climber ejer hverken positioning (haandvaerk 0,95) eller descending (andenRolle 0,70)
+  assert.ok(cfg.craftFactor > cfg.neutralFactor, "haandvaerk HAR et hoejere tag end andenRolle ...");
+  // ... men labelen kan stadig ikke se forskel, og BEGRUNDELSEN aendrede sig 15/8.
+  //
+  // Den gamle regel laeste FAKTOREN og satte graensen ved naturalSecondaryFactor.
+  // Den holdt kun saa laenge haandvaerks-taget laa under sekundaer, og det gjorde
+  // det aldrig: trin 3 indfoerte craftFactor 0,95 mod sekundaerens 0,82. Reglen
+  // ville derfor have gjort positioning og tactics til "strength" for HVER eneste
+  // rytter i spillet — assertionen herunder er netop den inversion.
+  //
+  // Labelen laeser klassen nu, og BAADE haandvaerk og andenRolle mapper bevidst
+  // til 'limited'. Samme kendte begraensning, men uafhaengig af kalibreringen.
+  assert.ok(cfg.craftFactor > cfg.naturalSecondaryFactor,
+    "inversionen der braekkede den gamle faktor-baserede taerskel");
+  // climber ejer hverken positioning (haandvaerk) eller descending (andenRolle)
   // — begge lander paa 'limited'.
   assert.equal(focusTrainability("climber").technique, "limited");
 });

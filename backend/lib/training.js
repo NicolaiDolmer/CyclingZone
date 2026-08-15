@@ -11,7 +11,7 @@
 // isoleret og køres deterministisk i season-transition (genbruger seededUnit fra
 // riderProgression for reproducerbar risiko).
 
-import { seededUnit, signatureFactor, PROGRESSION_CONFIG, youthRoleFactor, YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
+import { seededUnit, signatureFactor, PROGRESSION_CONFIG, abilityRoleClass, YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i scripts/previewTraining.js) ────────
@@ -259,9 +259,15 @@ export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH
       out[focusKey] = "limited";
       continue;
     }
-    const factors = abilities.map((ability) => youthRoleFactor(primaryType, secondaryType, ability, cfg));
-    if (factors.some((f) => f >= cfg.naturalSecondaryFactor)) out[focusKey] = "strength";
-    else if (factors.every((f) => f <= cfg.oppositeFactor)) out[focusKey] = "blocked";
+    // LABELEN LÆSER KLASSEN, IKKE FAKTOREN (rettet 15/8). Tærsklen var
+    // `factor >= naturalSecondaryFactor`, og den holdt kun så længe håndværks-
+    // taget (0,95) lå UNDER sekundær. Det gør det ikke: trin 3 indførte 0,95
+    // mens sekundær er 0,82, så positioning og tactics ville stå som "strength"
+    // for HVER eneste rytter i spillet. Håndværk er per definition det alle kan
+    // lære lidt af, aldrig et anlæg. Klassen er uafhængig af kalibreringen.
+    const klasser = abilities.map((ability) => abilityRoleClass(primaryType, secondaryType, ability, cfg));
+    if (klasser.some((k) => k === "signatur" || k === "sekundaer")) out[focusKey] = "strength";
+    else if (klasser.every((k) => k === "svaghed")) out[focusKey] = "blocked";
     else out[focusKey] = "limited";
   }
   return out;

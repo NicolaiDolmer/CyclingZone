@@ -5,6 +5,30 @@
 export const PATCHES = [
   {
     "version": "7.130",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Yesterday's ceiling change has been rolled back",
+          "body": "Yesterday's update raised every ability ceiling far more than intended. 748 riders ended up able to reach above 95, where the promise was that very few would ever get there. Ceilings are now back exactly where they were yesterday morning: nobody can reach above 95 from their ceiling alone.\n\nNobody loses an ability they already have. If a rider already sits above his ceiling he keeps every point, he just stops growing on that one. Your riders' shown potential returns to its earlier value over the next day, as each one trains.\n\nThis is a rollback, not a new model. The real fix, where potential decides how fast a rider develops rather than how high he can reach, is being built now."
+        },
+        "da": {
+          "title": "Gårdagens loftændring er rullet tilbage",
+          "body": "Gårsdagens opdatering hævede alle evne-lofter langt mere end tilsigtet. 748 ryttere endte med at kunne nå over 95, hvor løftet var at meget få nogensinde ville komme derop. Lofterne er nu præcis tilbage hvor de var i går morges: ingen kan nå over 95 alene på grund af sit loft.\n\nIngen mister en evne de allerede har. Ligger en rytter allerede over sit loft, beholder han hvert eneste point, han vokser bare ikke videre på den ene. Dine rytteres viste potentiale går tilbage til sin tidligere værdi over det næste døgn, efterhånden som de trænes.\n\nDet her er en tilbagerulning, ikke en ny model. Den rigtige løsning, hvor potentiale afgør hvor hurtigt en rytter udvikler sig i stedet for hvor højt han kan nå, er under opbygning nu."
+        },
+        "refs": [
+          3709,
+          3746
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.130",
     "date": "2026-08-14",
     "label": "Beta",
     "changes": [
