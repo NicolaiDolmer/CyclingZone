@@ -51,6 +51,50 @@ with open(os.path.join(TMP, 'audit-pr-merged.json'), encoding='utf-8') as f:
 with open(os.path.join(TMP, 'audit-open-all.json'), encoding='utf-8') as f:
     open_issues = json.load(f)
 
+
+# === Direkte commits på main (lektion 2026-08-15) ===
+# crossref matchede oprindeligt KUN mod PR'er. Men docs/chore må gå direkte på main i dette repo
+# (hard rule: kun feat/fix/refactor kræver branch+PR), så et issue leveret i en direkte commit var
+# usynligt for Kategori K. #3662 blev leveret i commit 91646dff og blev kun fundet ved manuel
+# efterprøvning af en agents begrundelse. Vi læser derfor git-log ved siden af PR-listen.
+COMMIT_LOG_LIMIT = 800
+_REC, _FLD = '\x1e', '\x1f'
+
+
+def load_main_commits():
+    """(sha, subject, body)-tupler fra main. Prøver git direkte, falder tilbage til cache-fil."""
+    raw = ''
+    try:
+        import subprocess
+        repo = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', '..'))
+        res = subprocess.run(
+            ['git', 'log', '-n', str(COMMIT_LOG_LIMIT), f'--format=%H{_FLD}%s{_FLD}%b{_REC}', 'origin/main'],
+            cwd=repo, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60,
+        )
+        raw = res.stdout or ''
+    except Exception:
+        raw = ''
+    if not raw.strip():
+        # Fallback: $TEMP/audit-commits-main.txt genereret med samme --format
+        try:
+            with open(os.path.join(TMP, 'audit-commits-main.txt'), encoding='utf-8') as f:
+                raw = f.read()
+        except FileNotFoundError:
+            return []
+    out = []
+    for rec in raw.split(_REC):
+        rec = rec.strip('\n\r ')
+        if not rec:
+            continue
+        parts = rec.split(_FLD)
+        if len(parts) < 2:
+            continue
+        out.append((parts[0], parts[1], parts[2] if len(parts) > 2 else ''))
+    return out
+
+
+main_commits = load_main_commits()
+
 open_nums = {i['number']: [l['name'] for l in i.get('labels',[])] for i in open_issues}
 open_title = {i['number']: i.get('title','') for i in open_issues}
 
@@ -133,6 +177,51 @@ for pr in prs:
     bv_stats[cat] += 1
 
 
+# === Direkte-commit-refs: kun commits der IKKE hører til en kendt merged PR ===
+# Squash-merges bærer "(#<pr>)" i subject; merge-commits bærer "Merge pull request #<pr>".
+# Alt andet der nævner et åbent issue er en direkte leverance på main.
+known_prs = {p['number'] for p in prs}
+commit_refs = {}   # {issue#: [sha7]}
+commit_subj = {}   # {sha7: subject}
+PR_MERGE_RE = re.compile(r'Merge pull request #(\d+)')
+PR_SQUASH_RE = re.compile(r'\(#(\d+)\)\s*$')
+
+
+def is_incidental_commit(subject):
+    """Commit-typer der nævner #N uden at levere det."""
+    s = (subject or '').lower()
+    if s.startswith(('chore(deps', 'build(deps', 'merge ', 'revert ')) or 'dependabot' in s:
+        return True
+    # `docs(now)` / `docs(now+masterplan)` / `docs(NOW)` er status-commits: NOW.md's close-out-blokke
+    # NAVNGIVER 3-8 issues pr. commit uden at levere nogen af dem. Største enkeltstøjkilde i
+    # subject-scanningen (22 af 26 kun-commit-kandidater 15/8).
+    if s.startswith('docs(now'):
+        return True
+    return False
+
+
+for sha, subj, body in main_commits:
+    # Repoets squash-konvention hænger ALTID PR-nummeret bagpå: "... (#3105)". Et trailing (#N)
+    # eller "Merge pull request #N" betyder derfor PR-afledt, uanset om PR'en ligger i 200-vinduet.
+    if PR_MERGE_RE.search(subj) or PR_SQUASH_RE.search(subj):
+        continue
+    if is_incidental_commit(subj):
+        continue
+    # Kun SUBJECT scannes, ikke body (lektion 2026-08-15). Close-out- og masterplan-commits
+    # opremser 5-15 issuenumre i deres body som status; det er ikke leverance. Står nummeret
+    # derimod i selve overskriften — scope (`docs(3659):`) eller tekst ("omskriv efter #3662")
+    # — er commit'en skrevet OM det issue. Body-scanning gav 63 kandidater, subject-scanning 9.
+    short = sha[:8]
+    hits = set(int(x) for x in ANY_RE.findall(subj))
+    scope = re.match(r'^\w+\(([^)]*)\)', subj)
+    if scope:
+        hits |= set(int(x) for x in re.findall(r'\d+', scope.group(1)))
+    for n in hits:
+        if n in open_nums:
+            commit_subj[short] = subj
+            commit_refs.setdefault(n, []).append(short)
+
+
 # === Kategori K: glemt-done cross-ref (lektion 2026-06-02) ===
 # Åbne ikke-done-issues med en KVALIFICERENDE merged PR via enhver #N-ref.
 # Bruger ALLE 200 merged PRs (ikke kun 14d) — glemt-done akkumulerer over tid.
@@ -158,7 +247,8 @@ for n, labels in open_nums.items():
     if title.lower().startswith('[epic]') or '[epic]' in title.lower():
         continue
     quals = sorted(set(p for p in forgotten_refs.get(n, []) if not is_incidental_pr(pr_title.get(p, ''))))
-    if quals:
+    cquals = sorted(set(commit_refs.get(n, [])))
+    if quals or cquals:
         # Carry-forward-diff: er dette allerede verificeret legitimt-åbent i en tidligere audit?
         cached = legit_cache.get(str(n))
         prev_legit = False
@@ -167,15 +257,21 @@ for n, labels in open_nums.items():
         if cached:
             prev_date = cached.get('date')
             seen_prs = set(cached.get('prs', []))
-            if set(quals) <= seen_prs:
+            # Legacy-entries (skrevet før commit-scanningen 15/8) har ingen 'commits'-nøgle. De må
+            # IKKE flagges stale bare fordi commit-evidens nu er synlig for første gang — ellers
+            # ryger hele cachen til re-verify på én gang. De seedes i stedet ved næste --mark-legit.
+            seen_commits = set(cached['commits']) if 'commits' in cached else set(cquals)
+            if set(quals) <= seen_prs and set(cquals) <= seen_commits:
                 prev_legit = True       # intet nyt siden verify → spring re-dispatch over
             else:
-                prev_stale = True       # NY PR dukket op → re-verificér
+                prev_stale = True       # NY PR eller NY commit dukket op → re-verificér
         forgotten_done.append({
             'issue': n, 'title': title, 'labels': labels,
             'pr_candidates': quals,
+            'commit_candidates': cquals,
+            'commit_subjects': {c: commit_subj.get(c, '') for c in cquals},
             'prev_legit': prev_legit, 'prev_legit_date': prev_date, 'prev_legit_stale': prev_stale,
-            'note': 'VERIFICÉR scope mod PR — levering vs delvis/incidentel',
+            'note': 'VERIFICÉR scope mod PR/commit — levering vs delvis/incidentel',
         })
 forgotten_done.sort(key=lambda x: -x['issue'])
 
@@ -187,7 +283,7 @@ if '--mark-legit' in sys.argv:
     today = now.strftime('%Y-%m-%d')
     for n in nums:
         quals = sorted(set(p for p in forgotten_refs.get(n, []) if not is_incidental_pr(pr_title.get(p, ''))))
-        legit_cache[str(n)] = {'date': today, 'prs': quals}
+        legit_cache[str(n)] = {'date': today, 'prs': quals, 'commits': sorted(set(commit_refs.get(n, [])))}
     # Ryd cache-entries der ikke længere er åbne K-kandidater (lukket / nu claude:done).
     still_open = {str(x['issue']) for x in forgotten_done}
     for k in list(legit_cache.keys()):
@@ -224,9 +320,12 @@ else:
         if x['prev_legit']:
             continue  # vises samlet nedenfor — fokus på det der kræver verify
         st = ','.join(l for l in x['labels'] if l.startswith('claude:')) or 'NO-STATE'
-        prs_str = ' '.join(f"#{p}" for p in x['pr_candidates'])
-        tag = ' [RE-VERIFY: ny PR]' if x['prev_legit_stale'] else ''
-        print(f"  #{x['issue']} [{st}]{tag} {x['title'][:48]}\n       PRs: {prs_str}")
+        tag = ' [RE-VERIFY: ny evidens]' if x['prev_legit_stale'] else ''
+        print(f"  #{x['issue']} [{st}]{tag} {x['title'][:48]}")
+        if x['pr_candidates']:
+            print(f"       PRs: {' '.join(f'#{p}' for p in x['pr_candidates'])}")
+        for c in x['commit_candidates']:
+            print(f"       COMMIT {c}: {x['commit_subjects'].get(c, '')[:64]}")
     if n_prev:
         prev_list = ' '.join(f"#{x['issue']}" for x in forgotten_done if x['prev_legit'])
         print(f"  --- prev-verified-legit (skip): {prev_list}")
