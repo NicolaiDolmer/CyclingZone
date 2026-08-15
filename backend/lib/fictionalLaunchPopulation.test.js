@@ -14,7 +14,7 @@ import {
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities } from "./abilityDerivation.js";
-import { computeRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 
@@ -46,16 +46,25 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   for (let i = 0; i < riders.length; i++) {
     const riderRow = { ...riders[i], id: `fic-test-${i}` };
     const abilities = deriveAbilities({}, riderRow, { asOfYear: LAUNCH_POPULATION.referenceYear });
-    // #3325: spejler deriveForRiderIds' to-trins kæde — en helt ny rytter har intet
-    // forudgående primary_type, så caps' rolle-faktor seedes med en BOOTSTRAP-type
-    // (live abilities mod NEUTRAL_BASELINE), og DEN ENDELIGE type klassificeres mod
-    // ability_caps + den rigtige (caps-fittede) baseline — samme sti som produktion.
-    const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
+    // TRIN 7 (16/8): kæden spejler deriveForRiderIds' DRAW-FØRSTE sti. Generatoren
+    // persisterer sit trukne anlæg (_meta.archetypeDraw → riders.archetype_draw),
+    // og #3570's anker gælder: anlægget ER sandheden, caps formes af det, og den
+    // endelige type resolves forankret i draw (resolveRiderTypes). Den gamle
+    // kæde her (bootstrap → klassificér mod caps) var korrekt så længe caps bar
+    // magnitude-information — under det flade rolle-tag kan caps-rummet ikke
+    // længere skelne alle 8 typer (målt: puncheur emergerer 0 % ved ren caps-
+    // klassifikation), hvilket er BEVIDST: taget røber ikke længere anlægget.
+    // Draw-løs klassifikation findes stadig som fallback (bootstrap nedenfor),
+    // præcis som i deriveForRiderIds.
+    const draw = riderRow._meta?.archetypeDraw ?? null;
+    const bootstrap = draw?.primary
+      ? { primary: { key: draw.primary }, secondary: { key: draw.secondary ?? null } }
+      : computeRiderTypes(abilities, NEUTRAL_BASELINE);
     // #3591: alderen med, som produktionens derive-sti gør. Samme reference-år som
     // deriveAbilities ovenfor, så hele kæden regner mod ét årstal.
     const age = LAUNCH_POPULATION.referenceYear - Number(String(riderRow.birthdate).slice(0, 4));
     const caps = buildCapsForRider(abilities, { potentiale: riderRow.potentiale, age }, bootstrap.primary.key, bootstrap.secondary.key);
-    const { primary } = computeRiderTypes(caps, baseline);
+    const { primary } = resolveRiderTypes(draw, caps, baseline);
     typeSet.add(primary.key);
     const bv = predictBaseValue({ ...riderRow, primary_type: primary.key }, abilities, model);
     assert.ok(bv != null && bv >= 1, "hver rytter skal kunne værdisættes");
