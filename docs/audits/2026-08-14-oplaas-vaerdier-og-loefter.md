@@ -126,7 +126,7 @@ To ting bevidst udeladt af udkastet, som du skal beslutte om du vil have med: at
 
 # Del 2: Løfte-hovedbogen
 
-14 af 42 undersøgte løfter er ikke eller kun delvist indfriet. Sorteret efter hvor længe spilleren har ventet, ældst først. "Ventet" er dage fra løftet blev givet til i dag, 14/8.
+15 af 43 undersøgte løfter er ikke eller kun delvist indfriet (række 15 tilføjet i audit 15/8). Sorteret efter hvor længe spilleren har ventet, ældst først. "Ventet" er dage fra løftet blev givet til i dag, 14/8.
 
 | # | Hvad blev lovet | Hvornår | Ventet | Status | Hvad mangler konkret |
 |---|---|---|---:|---|---|
@@ -145,7 +145,9 @@ To ting bevidst udeladt af udkastet, som du skal beslutte om du vil have med: at
 | 13 | Flere ungdomsryttere på auktionsmarkedet, og ubesvarede tilbud forlader indbakken tæt på de syv dage | 11/8, i app | 3 dage | Delvist | Anden halvdel. Første halvdel er leveret og målt (ungdomsauktioner fra 30/dag til 61-66/dag siden 11/8). Men tilbud udløber efter 10,8 til 11,8 dage i gennemsnit, 160 tilbud er over deres syv dage, og køen er vokset fra de 368 der stod i patch noten til **772**, fordi 60/dag-kvoten bruges fuldt ud hver eneste dag. Indstrømningen overstiger kapaciteten. #3618 |
 | 14 | Allerede forkortede akademi-kontrakter er ikke repareret, og reparationen spores som sin egen opgave | 14/8, i app | 0 dage | Delvist | Reparationen. Sporingsdelen er indfriet samme dag (#3715 er oprettet, åben og beskriver afgrænsningsproblemet plus en 4-trins plan). Selve reparationen findes ikke: ingen repair-fil i `database/proposals/`, og prod-data er uændret (1.297 ryttere på længde 2 / udløb 3, 1.162 på 3/4). Rod-årsagen #3620 er stadig åben |
 
-**Fodnote til hovedbogen:** løftet fra 11/8, "værdier og lønninger mellem i dag og fredag", står ikke i de 42 undersøgte, men det brydes i dag. Det behandles i Del 1. Det bringer tallet til 15.
+| 15 | "Fjorten emner der blev født for stærke er sat tilbage i niveau" | 11/8, i app (v7.112) | 4 dage | Ikke leveret | Hele konverteringen. [PR #3617](https://github.com/NicolaiDolmer/CyclingZone/pull/3617) ændrer kun `frontend/src/data/patchNotes.js` — ingen backend-fil, intet script, ingen migration. Ejer-beslutningen 30/7 på #2699 var **udskudt**; hverken option A, B eller C blev valgt, og ingen senere kommentar bekræfter en kørsel. Dette er den alvorligste type på listen: ikke et løfte om noget fremtidigt, men en melding om noget der allerede var sket. #2699 åben. Fundet i audit 15/8 |
+
+**Fodnote til hovedbogen:** løftet fra 11/8, "værdier og lønninger mellem i dag og fredag", står ikke i de 42 undersøgte, men det brydes i dag. Det behandles i Del 1. Det bringer tallet til 16 (række 15 tilføjet 15/8, se ovenfor).
 
 ## De tre jeg vil tage først
 
