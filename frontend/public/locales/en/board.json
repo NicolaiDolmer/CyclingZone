@@ -415,6 +415,7 @@
     "horizonDuration": "The plan spans {count, plural, one {1 season} other {# seasons}}, targets evaluated continuously",
     "requirementsHeading": "The board's requirements",
     "startNegotiation": "Start negotiation →",
+    "startBlockedNoRequirements": "No requirements were generated for this focus. Try a different focus.",
     "errorProposal": "Could not fetch the board's proposal.",
     "errorSign": "Could not sign the board plan.",
     "step2Title": "Negotiation",

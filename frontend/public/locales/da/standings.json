@@ -59,7 +59,9 @@
     "select": "Vælg {team} til sammenligning",
     "selectHint": "Vælg op til 2 hold at sammenligne",
     "drawerTitle": "Head-to-head",
-    "close": "Luk sammenligning"
+    "close": "Luk sammenligning",
+    "blockedNone": "Vælg 2 hold at sammenligne",
+    "blockedOne": "Vælg 1 hold mere at sammenligne"
   },
   "preview": {
     "title": "Sæson Preview",

@@ -25,6 +25,8 @@
   "startAuction": "Start auction",
   "inAuction": "In auction",
   "auctionError": "Could not start the auction. Please try again.",
+  "removeFailed": "Could not remove the rider from your watchlist. Please try again.",
+  "noteSaveFailed": "Could not save the note. Please try again.",
   "pagination": "Showing {from}–{to} of {total}",
   "prev": "← Previous",
   "next": "Next →",

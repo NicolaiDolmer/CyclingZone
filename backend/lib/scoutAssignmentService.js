@@ -26,35 +26,53 @@ async function loadTeamBalance(teamId, supabaseClient) {
 // Aktivt hyret talentspejder (staff-rollen fra #2216) eller DEFAULT_SCOUT.
 // Eksporteret (#3213): api.js' display-endpoints bruger samme opslag så
 // spejder-ratingen driver bånd-gulvet i buildScoutEstimate/buildTypeCeilingBands.
+//
+// #3489 (flere spejdere samtidigt — vertikal skive): holdet kan nu have op til
+// MAX_STAFF_SLOTS_PER_ROLE (2) aktive scouting-staff. Motoren her vælger den
+// STÆRKESTE (højeste overall) af dem som "den handlende spejder" for kapacitet/
+// præcision — samme "bedste-af-flere"-valg som trainingStaffContext.js og
+// facilityRoutesHandlers.getClubFacilitiesHandler. Ved 0 eller 1 aktiv er
+// adfærden UÆNDRET. Ægte PR-KAPACITETSUDVIDELSE (2 scouts = 2 SAMTIDIGE
+// missioner/undersøgelser, hver spejder ruter sine egne opgaver) kræver at
+// scoutEngine.canStartAssignment/scoutCapacity og scout_assignments.staff_id
+// bliver PR-scout-specifikke i stedet for pr.-hold — bevidst UDENFOR denne
+// slice, se opfølgnings-punkt i PR-beskrivelsen.
 export async function loadScout(teamId, supabaseClient) {
-  const { data: staffRow, error: staffError } = await supabaseClient
+  const { data: staffRows, error: staffError } = await supabaseClient
     .from("team_staff")
     .select("id, name, role, tier, salary, status, created_at")
     .eq("team_id", teamId)
     .eq("role", "scouting")
-    .eq("status", "active")
-    .maybeSingle();
+    .eq("status", "active");
   if (staffError) throw new Error(`scoutAssignmentService: could not load scouting staff for ${teamId}: ${staffError.message}`);
-  if (!staffRow) return { ...DEFAULT_SCOUT };
+  if (!staffRows?.length) return { ...DEFAULT_SCOUT };
 
-  const { data: abilities, error: abilityError } = await supabaseClient
+  const staffIds = staffRows.map((r) => r.id);
+  const { data: abilityRows, error: abilityError } = await supabaseClient
     .from("staff_derived_abilities")
-    .select("overall, role_skills")
-    .eq("staff_id", staffRow.id)
-    .maybeSingle();
-  if (abilityError) throw new Error(`scoutAssignmentService: could not load staff abilities for ${staffRow.id}: ${abilityError.message}`);
-  if (!abilities) return { ...DEFAULT_SCOUT };
+    .select("staff_id, overall, role_skills")
+    .in("staff_id", staffIds);
+  if (abilityError) throw new Error(`scoutAssignmentService: could not load staff abilities for ${teamId}: ${abilityError.message}`);
+  const abilityByStaffId = new Map((abilityRows ?? []).map((a) => [a.staff_id, a]));
+
+  let best = null;
+  for (const staffRow of staffRows) {
+    const abilities = abilityByStaffId.get(staffRow.id);
+    if (!abilities) continue; // #2216 A4 self-heal-scope: ingen ability-row → udelades, ikke crash.
+    if (!best || abilities.overall > best.abilities.overall) best = { staffRow, abilities };
+  }
+  if (!best) return { ...DEFAULT_SCOUT };
 
   return {
-    id: staffRow.id,
-    name: staffRow.name,
-    tier: staffRow.tier,
+    id: best.staffRow.id,
+    name: best.staffRow.name,
+    tier: best.staffRow.tier,
     // #3334: hvornår DENNE scout blev ansat — bruges af scouting-report-provenance
     // (frontend "assessed by X, since <dato>") så rapport-omskrivning ved scout-
     // skift ikke opleves som en uforklaret rytter-forringelse.
-    hiredAt: staffRow.created_at ?? null,
-    overall: abilities.overall,
-    roleSkills: abilities.role_skills ?? DEFAULT_SCOUT.roleSkills,
+    hiredAt: best.staffRow.created_at ?? null,
+    overall: best.abilities.overall,
+    roleSkills: best.abilities.role_skills ?? DEFAULT_SCOUT.roleSkills,
     isDefault: false,
   };
 }
@@ -149,7 +167,35 @@ export async function loadScoutHistory({ teamId, staffId }, supabaseClient) {
   return hydrateCompletedVisibility(supabaseClient, rows);
 }
 
-// {scout, active, completed, capacity, jobConfig} — al frontend-tilstand for Scouting-central.
+// #2721 — det REELLE gap efter #3369's "TeamScoutHistory"-sektion (audit
+// 2026-08-15 flyttede issuet tilbage til claude:todo): frontend-sektionen
+// genbrugte `completed` fra getScoutState, som er BEGRÆNSET til 20 rækker OG
+// deler den grænse med mission-fund (loadCompletedAssignments, COMPLETED_LIMIT
+// ovenfor). Målrettede undersøgelser modner på ~30 min (#2644) — en aktiv
+// spiller kan sagtens nå at skubbe sine egne ældre undersøgelser ud af top-20
+// i løbet af én session, præcis den "jeg har spejdet nogle ryttere, men kan
+// ikke finde dem igen"-oplevelse issuet blev oprettet for. Pr.-scout-historikken
+// (#3203, loadScoutHistory ovenfor) undgår allerede fælden ved at bruge sin
+// EGEN target-only forespørgsel med et 50-loft; denne funktion giver
+// hold-historikken (på tværs af scouts) samme afkobling og samme loft, i
+// stedet for at dele completed's blandede 20-cap.
+const TEAM_HISTORY_LIMIT = 50;
+
+export async function loadTeamScoutHistory(teamId, supabaseClient) {
+  const { data, error } = await supabaseClient
+    .from("scout_assignments")
+    .select("id, rider_id, target_level, completed_at")
+    .eq("team_id", teamId)
+    .eq("kind", "target")
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(TEAM_HISTORY_LIMIT);
+  if (error) throw new Error(`scoutAssignmentService: could not load team scout history for ${teamId}: ${error.message}`);
+  const rows = (data ?? []).map((r) => ({ ...r, kind: "target" }));
+  return hydrateCompletedVisibility(supabaseClient, rows);
+}
+
+// {scout, active, completed, teamHistory, capacity, jobConfig} — al frontend-tilstand for Scouting-central.
 // #2644 beslutning 2/3: completed-rapporter hydreres med en server-side synligheds-
 // guard (scoutReportVisibility.js) FØR de forlader serveren — en rapport må aldrig
 // afsløre en rytter der lige nu er skjult/utilgængelig, uanset hvad den var på
@@ -160,13 +206,14 @@ export async function getScoutState(teamId, supabaseClient) {
   // åbner siden. Skal ske FØR active/completed loades, så en netop-due
   // undersøgelse dukker op som færdig rapport i samme svar.
   await lazyCompleteDueTargetAssignments({ supabase: supabaseClient, teamId });
-  const [scout, active, completedRaw] = await Promise.all([
+  const [scout, active, completedRaw, teamHistory] = await Promise.all([
     loadScout(teamId, supabaseClient),
     loadActiveAssignments(teamId, supabaseClient),
     loadCompletedAssignments(teamId, supabaseClient),
+    loadTeamScoutHistory(teamId, supabaseClient),
   ]);
   const completed = await hydrateCompletedVisibility(supabaseClient, completedRaw);
-  return { scout, active, completed, capacity: scoutCapacity(scout), jobConfig: JOB_CONFIG_RESPONSE };
+  return { scout, active, completed, teamHistory, capacity: scoutCapacity(scout), jobConfig: JOB_CONFIG_RESPONSE };
 }
 
 export async function startTargetAssignment({ teamId, riderId, seasonId }, supabaseClient, now = new Date()) {

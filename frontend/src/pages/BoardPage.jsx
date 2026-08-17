@@ -59,7 +59,9 @@ import {
   StarIcon,
   ClipboardIcon,
   FlagIcon,
+  BlockedNote,
 } from "../components/ui";
+import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -1894,6 +1896,10 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
   const { t } = useTranslation("board");
   const duration = getPlanDuration(planType);
   const preview = previewGoals || [];
+  // #3012: knappen var disabled ved preview.length===0 uden nogen synlig
+  // grund — kan ske selv uden previewError (proposal.goals var reelt tomt).
+  const noRequirements = !previewLoading && !previewError && preview.length === 0;
+  const startBlock = useBlockedAction(noRequirements ? t("wizard.startBlockedNoRequirements") : null);
   return (
     <div>
       <div className="text-center mb-8">
@@ -1973,13 +1979,19 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
       </Section>
 
       <button
-        onClick={onStart}
-        disabled={previewLoading || preview.length === 0}
+        onClick={startBlock.guard(onStart)}
+        disabled={previewLoading}
+        {...startBlock.blockedProps}
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110
           disabled:opacity-50 transition-all"
       >
         {t("wizard.startNegotiation")}
       </button>
+      {startBlock.blocked && (
+        <BlockedNote id={startBlock.reasonId} pulseKey={startBlock.pulseKey} className="text-xs justify-center mt-2">
+          {startBlock.reason}
+        </BlockedNote>
+      )}
     </div>
   );
 }

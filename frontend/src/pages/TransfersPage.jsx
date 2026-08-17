@@ -20,8 +20,9 @@ import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
 import {
   AmountInput, EmptyState, ExchangeIcon, InboxIcon, PageLoader,
-  PageHeader, Section, Button, Tabs, TabList, Tab,
+  PageHeader, Section, Button, Tabs, TabList, Tab, BlockedNote,
 } from "../components/ui";
+import { useBlockedAction } from "../lib/useBlockedAction.js";
 // #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
 // men tabellen konverteres IKKE til <DataTable> — se kommentar ved MarketTable
 // (bulk-select-checkbokse + en expander-handlingsrække pr. listing er uden for
@@ -680,6 +681,9 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
   const [busy, setBusy] = useState(false);
 
   const priceInvalid = !Number.isInteger(price) || price <= 0;
+  // #3012: knappen var disabled uden nogen synlig grund — spilleren kunne ikke
+  // se HVAD der gjorde prisen ugyldig.
+  const priceBlock = useBlockedAction(!busy && priceInvalid ? t("transferCard.priceInvalid") : null);
 
   async function savePrice() {
     setBusy(true);
@@ -714,7 +718,8 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
             className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
           <div className="flex gap-2">
             <Button variant="primary" size="sm" className="flex-1 sm:flex-none"
-              onClick={savePrice} loading={busy} disabled={priceInvalid}>
+              onClick={priceBlock.guard(savePrice)} loading={busy}
+              disabled={busy} {...priceBlock.blockedProps}>
               {t("transferCard.savePrice")}
             </Button>
             <Button variant="secondary" size="sm" className="flex-1 sm:flex-none"
@@ -723,6 +728,11 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
             </Button>
           </div>
         </div>
+        {priceBlock.blocked && (
+          <BlockedNote id={priceBlock.reasonId} pulseKey={priceBlock.pulseKey} className="text-2xs">
+            {priceBlock.reason}
+          </BlockedNote>
+        )}
       </div>
     );
   }
@@ -797,6 +807,9 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
     }
   }
 
+  // #3012: knappen var disabled ved offerAmt<=0 uden nogen synlig grund.
+  const offerBlock = useBlockedAction(!loading && offerAmt <= 0 ? t("offerCard.form.offerAmountBlocked") : null);
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col sm:flex-row gap-2">
@@ -806,11 +819,16 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
           wrapperClassName="min-w-0 flex-1"
           className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
         <Button variant="primary" size="sm"
-          onClick={() => { if (offerAmt > 0) setConfirmOpen(true); }}
-          loading={loading} disabled={offerAmt <= 0}>
+          onClick={offerBlock.guard(() => setConfirmOpen(true))}
+          loading={loading} disabled={loading} {...offerBlock.blockedProps}>
           {t("transferCard.send")}
         </Button>
       </div>
+      {offerBlock.blocked && (
+        <BlockedNote id={offerBlock.reasonId} pulseKey={offerBlock.pulseKey} className="text-2xs">
+          {offerBlock.reason}
+        </BlockedNote>
+      )}
       <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
         placeholder={t("transferCard.messagePlaceholder")}
         className="bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-xs focus:outline-none focus:border-cz-accent" />

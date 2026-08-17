@@ -17,6 +17,7 @@ import { riderOverallRating } from "../lib/riderRating";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
 import { cycleSortState } from "../lib/riderSort";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import {
   ExchangeIcon, CheckIcon, PageLoader, ToastViewport,
   PageHeader, Button, DataTable, EmptyState, StarIcon, FilterIcon,
@@ -111,15 +112,33 @@ export default function WatchlistPage() {
 
   useEffect(() => { loadWatchlist(); }, []);
 
+  function pushToast(tone, title) {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts(prev => [...prev, { id, tone, title }]);
+  }
+
+  // #3012: begge writes ignorerede tidligere { error } og flippede UI'et før
+  // svaret overhovedet var kendt — en afvist delete/update lod raekken/noten
+  // stå forkert indtil reload uden nogen feedback.
   async function removeFromWatchlist(riderId) {
-    await supabase.from("rider_watchlist")
+    const { error } = await supabase.from("rider_watchlist")
       .delete().eq("user_id", userId).eq("rider_id", riderId);
+    if (error) {
+      pushToast("danger", t("removeFailed"));
+      reportActionFailure("watchlist_rider_remove", { reason: error.message, context: { riderId } });
+      return;
+    }
     setEntries(prev => prev.filter(e => e.rider.id !== riderId));
   }
 
   async function saveNote(entryId) {
-    await supabase.from("rider_watchlist")
+    const { error } = await supabase.from("rider_watchlist")
       .update({ note: noteText }).eq("id", entryId);
+    if (error) {
+      pushToast("danger", t("noteSaveFailed"));
+      reportActionFailure("watchlist_note_save", { reason: error.message, context: { entryId } });
+      return;
+    }
     setEntries(prev => prev.map(e => e.id === entryId ? { ...e, note: noteText } : e));
     setEditingNote(null);
   }

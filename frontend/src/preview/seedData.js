@@ -1352,13 +1352,17 @@ export const SEED_CALENDAR = {
 };
 
 // #1441 A3 — start-tilstand for Klub-preview (mid-game D2-hold). Muteres af clubMock.
+// #3489: staffSlots er nu et fast 2-langt array (slot 1, slot 2) i stedet for ét
+// `staff`-felt — spejler backend/lib/facilityConstants.js' MAX_STAFF_SLOTS_PER_ROLE.
+// Training seedes MED begge slots besat, så ejeren kan se/klikke den nye
+// "2 samtidige staff i samme rolle"-tilstand uden selv at ansætte først.
 export const SEED_CLUB = {
   facilities: {
-    training: { tier: 2, staff: { name: "Sofie Lindqvist", tier: 2 } },
-    scouting: { tier: 1, staff: null },
-    medical: { tier: 0, staff: null },
-    academy: { tier: 3, staff: { name: "Aldo Terranova", tier: 1 } },
-    commercial: { tier: 0, staff: null },
+    training: { tier: 2, staffSlots: [{ name: "Sofie Lindqvist", tier: 2 }, { name: "Bjarne Holmqvist", tier: 3 }] },
+    scouting: { tier: 1, staffSlots: [null, null] },
+    medical: { tier: 0, staffSlots: [null, null] },
+    academy: { tier: 3, staffSlots: [{ name: "Aldo Terranova", tier: 1 }, null] },
+    commercial: { tier: 0, staffSlots: [null, null] },
   },
 };
 

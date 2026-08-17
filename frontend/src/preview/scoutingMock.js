@@ -92,12 +92,22 @@ function targetReadyAtIso(startedAtMs = Date.now()) {
   return new Date(startedAtMs + JOB_CONFIG.targetEtaMinutes * 60_000).toISOString();
 }
 
+// #2721: `teamHistory` spejler backend's loadTeamScoutHistory — egen target-only
+// visning, afkoblet fra `completed`'s mission-delte cap (se scoutAssignmentService.js).
+// I mocken er der ingen reel cap-kollision (seed er lille), men feltet skal
+// stadig eksistere så ScoutingCentralPage/useScoutingCentral-kontrakten holder
+// i preview, ikke kun mod det rigtige API.
+function teamHistoryPayload() {
+  return state.completed.filter((c) => c.kind === "target");
+}
+
 function centralPayload() {
   return {
     teamId: TEST_TEAM.id,
     scout: { ...DEFAULT_SCOUT },
     active: state.active,
     completed: state.completed,
+    teamHistory: teamHistoryPayload(),
     capacity: CAPACITY,
     jobConfig: { ...JOB_CONFIG },
   };

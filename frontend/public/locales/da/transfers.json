@@ -75,7 +75,8 @@
       "counterLabel": "Dit modbud (CZ$)",
       "newOfferLabel": "Nyt tilbud (CZ$)",
       "messageBuyer": "Valgfri besked til køber...",
-      "messagePlaceholder": "Valgfri besked..."
+      "messagePlaceholder": "Valgfri besked...",
+      "offerAmountBlocked": "Angiv et tilbud over 0 CZ$"
     },
     "awaiting": {
       "sellerAccepted": "Du har accepteret · afventer købers bekræftelse",
@@ -121,6 +122,7 @@
     "editPriceAria": "Redigér prisen på {riderName}",
     "editPriceLabel": "Ny pris (CZ$)",
     "savePrice": "Gem",
+    "priceInvalid": "Angiv et helt tal over 0 CZ$",
     "cancel": "Annullér",
     "confirmRemoveButton": "Ja, fjern"
   },

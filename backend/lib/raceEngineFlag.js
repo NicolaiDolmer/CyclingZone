@@ -43,3 +43,17 @@ export const PEAK_PLANNER_FLAG_KEY = "peak_planner_enabled";
 export async function isPeakPlannerEnabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, PEAK_PLANNER_FLAG_KEY), opts);
 }
+
+// Event-loggen S1 (#2410) — kill-switch for etape-tidslinje-generatoren
+// (backend/lib/raceTimeline.js). Samme mønster som ovenstående flag: dormant
+// default OFF, ét app_config-opslag pr. afvikling. flag-off = raceRunner kalder
+// hverken buildStageTimeline eller persistStageTimelines — INGEN ekstra DB-kald,
+// bit-identisk med motoren før dette slice (spec §2.1: "additiv observation").
+// UAFHÆNGIGT af race_engine_v3_scoring — tidslinjen degraderer gracefully til et
+// tyndere artefakt (kun stage_start/passages/finish) når v3 er OFF, fordi moments/
+// incidents da altid er tomme lister.
+export const RACE_STAGE_TIMELINE_FLAG_KEY = "race_stage_timeline";
+
+export async function isRaceStageTimelineEnabled(supabase, opts = {}) {
+  return evaluateFlagStage(await readFlagStage(supabase, RACE_STAGE_TIMELINE_FLAG_KEY), opts);
+}

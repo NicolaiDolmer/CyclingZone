@@ -66,7 +66,8 @@
   },
   "watchlist": {
     "goToFull": "Go to full watchlist →",
-    "freeAgent": "Free agent"
+    "freeAgent": "Free agent",
+    "removeFailed": "Could not remove the rider from your watchlist. Please try again."
   },
   "loadError": {
     "message": "Could not load your activity. Please try again.",

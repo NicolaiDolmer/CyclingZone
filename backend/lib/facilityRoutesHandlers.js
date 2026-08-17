@@ -9,6 +9,7 @@ import {
   FACILITY_TIER_UPKEEP,
   EFFECT_LIVE_BY_TRACK,
   MAX_FACILITY_TIER,
+  MAX_STAFF_SLOTS_PER_ROLE,
 } from "./facilityConstants.js";
 import { getUpgradePrice, effectiveBonus } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
@@ -20,6 +21,7 @@ import {
   fireStaff as defaultFire,
   releaseStaff as defaultRelease,
   loadFiredStaffNames,
+  loadActiveStaffNames,
 } from "./facilityService.js";
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
@@ -56,43 +58,63 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
 
   const { data: staffRows, error: staffError } = await supabaseClient
     .from("team_staff")
-    .select("id, name, role, tier, salary")
+    .select("id, name, role, tier, salary, slot")
     .eq("team_id", teamId)
     .eq("status", "active");
   if (staffError) throw new Error(`facilityRoutes: could not load staff for ${teamId}: ${staffError.message}`);
 
   const tierByTrack = new Map((facilityRows ?? []).map((r) => [r.track, r.tier]));
-  const staffByRole = new Map((staffRows ?? []).map((s) => [s.role, s]));
+  // #3489: op til MAX_STAFF_SLOTS_PER_ROLE aktive rækker pr. rolle nu — gruppér
+  // i lister (sorteret på slot) i stedet for at overskrive med den sidst sete.
+  const staffByRole = new Map();
+  for (const s of staffRows ?? []) {
+    const list = staffByRole.get(s.role) ?? [];
+    list.push(s);
+    staffByRole.set(s.role, list);
+  }
+  for (const list of staffByRole.values()) list.sort((a, b) => (a.slot ?? 1) - (b.slot ?? 1));
 
   const facilities = FACILITY_TRACKS.map((track) => {
     const tier = tierByTrack.get(track) ?? 0;
-    const staff = staffByRole.get(track) ?? null;
+    const staffRowsForTrack = staffByRole.get(track) ?? [];
     const upgradePrice = getUpgradePrice(tier);
     // #2216 A4: overall afledes på læsning fra (role,tier,name) — deterministisk,
     // så vi ikke behøver et join for facilitets-oversigten (fuld profil = /club/staff/:id).
-    const staffOut = staff
-      ? {
-          id: staff.id,
-          name: staff.name,
-          tier: staff.tier,
-          salary: staff.salary,
-          overall: deriveStaffAbilities({ role: staff.role, tier: staff.tier, name: staff.name }).overall,
-        }
+    const staffOutList = staffRowsForTrack.map((staff) => ({
+      id: staff.id,
+      name: staff.name,
+      tier: staff.tier,
+      salary: staff.salary,
+      slot: staff.slot ?? 1,
+      overall: deriveStaffAbilities({ role: staff.role, tier: staff.tier, name: staff.name }).overall,
+    }));
+    // #3489: motor-effekten (og dens preview) bruger den STÆRKESTE aktive staff i
+    // rollen (samme "bedste-af-flere"-valg som trainingStaffContext.js/
+    // scoutAssignmentService.loadScout — ét deterministisk "hvem tæller for
+    // effekten"-svar på tværs af hele staff-laget). Ved 0 eller 1 aktiv er
+    // adfærden UÆNDRET.
+    const primaryStaffOut = staffOutList.length
+      ? staffOutList.reduce((best, s) => (s.overall > best.overall ? s : best))
       : null;
     return {
       track,
       tier,
       upgradePrice,
       tierUpkeep: FACILITY_TIER_UPKEEP[tier] ?? 0,
-      staff: staffOut,
+      // Bagudkompatibel: primær (stærkeste) staff, som før #3489 (da der kun
+      // kunne være 1). staffList (nedenfor) er den fulde liste, op til 2.
+      staff: primaryStaffOut,
+      staffList: staffOutList,
+      staffSlotsUsed: staffOutList.length,
+      staffSlotsMax: MAX_STAFF_SLOTS_PER_ROLE,
       // #2216 A4 (Task 6): display-magnitude = base × staffEffectFactor(staff) — ability-
       // drevet (overall), IKKE tier-skalaren. staffOut bærer overall (eller null = gulv).
-      effectiveBonus: effectiveBonus(track, tier, staffOut),
+      effectiveBonus: effectiveBonus(track, tier, primaryStaffOut),
       effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
       // #2311 (Slice 2): tier-preview før køb — hvad NÆSTE tier giver, samme staff
       // holdt konstant (spejler kilden effectiveBonus bruger). null ved max tier
       // (ingen "undefined"-preview i UI).
-      nextTierBonus: tier >= MAX_FACILITY_TIER ? null : effectiveBonus(track, tier + 1, staffOut),
+      nextTierBonus: tier >= MAX_FACILITY_TIER ? null : effectiveBonus(track, tier + 1, primaryStaffOut),
     };
   });
 
@@ -139,30 +161,51 @@ export async function getStaffCandidatesHandler(
 
   // #2887: udelukker holdets egne tidligere fyrede staff i denne rolle, så UI'et
   // aldrig viser den samme fyrede kandidat igen (rehire-loop-guard, samme filter
-  // som hireStaff bruger til at validere candidateName).
-  const firedNames = await loadFiredStaffNames(teamId, role, supabaseClient);
-  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames: firedNames });
+  // som hireStaff bruger til at validere candidateName). #3489 kandidatflow-
+  // stramning: udelukker OGSÅ holdets NUVÆRENDE aktive staff i rollen (begge
+  // slots), så en allerede ansat kandidat forsvinder fra listen i stedet for at
+  // vises uden en fungerende Hire-knap — SAMME excludeNames-sammensætning som
+  // hireStaff bruger til at validere candidateName, så listen der vises og listen
+  // der valideres imod altid er enige. generateStaffCandidates' while-loop fylder
+  // automatisk puljen op til 3 igen når et navn udelukkes.
+  const [firedNames, activeNames] = await Promise.all([
+    loadFiredStaffNames(teamId, role, supabaseClient),
+    loadActiveStaffNames(teamId, role, supabaseClient),
+  ]);
+  const excludeNames = new Set([...firedNames, ...activeNames]);
+  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames });
   return { status: 200, body: { role, facilityTier, candidates } };
 }
 
 // POST /api/club/staff/hire — body { role, candidateName }. role_occupied → 409.
+// #3489: candidate_already_hired → 409 også (samme "konflikt med nuværende
+// tilstand"-semantik som role_occupied — kandidaten er allerede taget af den
+// anden slot, ikke en ugyldig request).
 export async function postStaffHireHandler(
   { teamId, role, candidateName, seasonId, seasonNumber },
   supabaseClient,
   { flags = DEFAULT_FLAGS, hireStaff = defaultHire } = {}
 ) {
   const result = await hireStaff({ teamId, role, candidateName, seasonId, seasonNumber }, supabaseClient, flags);
-  if (!result.ok) return { status: statusForError(result.error, { role_occupied: 409 }), body: { error: result.error } };
+  if (!result.ok) {
+    return {
+      status: statusForError(result.error, { role_occupied: 409, candidate_already_hired: 409 }),
+      body: { error: result.error },
+    };
+  }
   return { status: 200, body: result };
 }
 
-// POST /api/club/staff/fire — body { role }. no_active_staff → 404.
+// POST /api/club/staff/fire — body { role, staffId? }. no_active_staff → 404.
+// #3489: staffId er valgfri — udelades den, fyres slot 1 (bagudkompatibelt).
+// Angives den, målrettes netop DEN aktive staff i rollen (fx en bestemt slot
+// ud af 2). fireStaff selv håndhæver at staffId (hvis givet) tilhører teamId+role.
 export async function postStaffFireHandler(
-  { teamId, role, seasonId, seasonNumber },
+  { teamId, role, staffId, seasonId, seasonNumber },
   supabaseClient,
   { flags = DEFAULT_FLAGS, fireStaff = defaultFire } = {}
 ) {
-  const result = await fireStaff({ teamId, role, seasonId, seasonNumber }, supabaseClient, flags);
+  const result = await fireStaff({ teamId, role, staffId, seasonId, seasonNumber }, supabaseClient, flags);
   if (!result.ok) return { status: statusForError(result.error, { no_active_staff: 404 }), body: { error: result.error } };
   return { status: 200, body: result };
 }

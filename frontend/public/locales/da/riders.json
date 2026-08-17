@@ -7,6 +7,7 @@
   },
   "loadError": "Kunne ikke indlæse rytterne. Prøv igen.",
   "retry": "Prøv igen",
+  "watchlistToggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen.",
   "table": {
     "nation": "Nation",
     "rider": "Rytter",

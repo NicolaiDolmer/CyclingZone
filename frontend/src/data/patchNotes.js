@@ -25,6 +25,111 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.137",
+    "date": "2026-08-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting missions you can aim",
+          "body": "Missions can now target a rider type, and every rider on the shortlist gets a free level 1 report, not just the top find. Missions take 1 day instead of 2. Your club also keeps its own scouting history, so a rider you scouted stays findable."
+        },
+        "da": {
+          "title": "Scouting-missioner du kan sigte med",
+          "body": "Missioner kan nu målrettes en ryttertype, og alle ryttere på shortlisten får en gratis niveau 1-rapport, ikke kun topfundet. Missioner tager 1 dag i stedet for 2. Din klub beholder også sin egen scouting-historik, så en rytter du har spejdet kan findes igen."
+        },
+        "refs": [3657, 3652, 2721]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Sell academy riders directly",
+          "body": "Academy riders can now be listed on the transfer market or put up for auction while still in the academy. The buyer receives them as seniors with contract and salary unchanged."
+        },
+        "da": {
+          "title": "Sælg akademi-ryttere direkte",
+          "body": "Akademi-ryttere kan nu sættes på transferlisten eller på auktion mens de stadig er på akademiet. Køberen modtager dem som seniorer med kontrakt og løn uændret."
+        },
+        "refs": [3650]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Two staff per role",
+          "body": "Each staff role now has two slots, so you can run two scouts or two coaches at once. The strongest of the two drives your bonus. Candidates are always visible, and you only need to fire someone when both slots are full."
+        },
+        "da": {
+          "title": "To staff pr. rolle",
+          "body": "Hver staff-rolle har nu to pladser, så du kan have to spejdere eller to trænere samtidigt. Den stærkeste af de to driver din bonus. Kandidater er altid synlige, og du skal kun fyre nogen når begge pladser er fyldt."
+        },
+        "refs": [3489, 3658]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Retirement warning before you bid",
+          "body": "The bid confirmation now warns you when a rider is in the retirement window (age 36-40) or certain to retire (40+), everywhere you can bid."
+        },
+        "da": {
+          "title": "Pensions-advarsel før du byder",
+          "body": "Bud-bekræftelsen advarer dig nu når en rytter er i pensionsvinduet (36-40 år) eller stopper med sikkerhed (40+), alle steder du kan byde."
+        },
+        "refs": [2700]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Upcoming races are your races",
+          "body": "The dashboard no longer counts down to races your team is not entered in. New teams saw this most."
+        },
+        "da": {
+          "title": "Kommende løb er dine løb",
+          "body": "Dashboardet tæller ikke længere ned til løb dit hold ikke er tilmeldt. Nye hold så det mest."
+        },
+        "refs": [3751]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Market",
+        "en": {
+          "title": "Potential sorts like it reads",
+          "body": "Sorting by potential now follows the band you actually see, instead of silently falling back to market value."
+        },
+        "da": {
+          "title": "Potentiale sorterer som det læses",
+          "body": "Sortering på potentiale følger nu det bånd du faktisk ser, i stedet for tavst at falde tilbage til markedsværdi."
+        },
+        "refs": [3787]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "UX",
+        "en": {
+          "title": "Buttons explain themselves",
+          "body": "Disabled buttons now say why, rejected actions show an error instead of nothing, selection errors always name the rider and race, and the guided tour tooltip no longer covers what it points at on small screens."
+        },
+        "da": {
+          "title": "Knapper forklarer sig selv",
+          "body": "Deaktiverede knapper siger nu hvorfor, afviste handlinger viser en fejl i stedet for ingenting, udtagelses-fejl navngiver altid rytter og løb, og rundvisningens tooltip dækker ikke længere det den peger på, på små skærme."
+        },
+        "refs": [3012, 3098, 3008]
+      }
+    ]
+  },
+  {
     "version": "7.136",
     "date": "2026-08-17",
     "label": "Beta",

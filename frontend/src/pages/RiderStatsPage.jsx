@@ -853,6 +853,10 @@ export default function RiderStatsPage() {
   const [academyCount, setAcademyCount]     = useState(null);
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
+  // #3012: separat fra auctionError da watchlist-toggle og auktionsbud er to
+  // uafhængige handlinger på siden — en watchlist-fejl skal ikke overskrive
+  // en igangværende auktionsfejl eller omvendt.
+  const [watchlistError, setWatchlistError] = useState(null);
   // #2000 Historik: null = loader — [] betyder ægte "ingen handelshistorik".
   const [history, setHistory]               = useState(null);
   const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
@@ -968,15 +972,31 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: TrendSub/summary håndterer visits=null */ }
   }
 
+  // #3012: begge writes ignorerede tidligere { error } — en afvist
+  // insert/delete lod stjernen (og watchlistId) stå i en tilstand serveren
+  // aldrig så, uden feedback til spilleren.
   async function toggleWatchlist() {
     const user = await getAuthedUser();
     if (!user) return;
+    setWatchlistError(null);
     if (onWatchlist) {
-      await supabase.from("rider_watchlist").delete().eq("id", watchlistId);
+      const { error } = await supabase.from("rider_watchlist").delete().eq("id", watchlistId);
+      if (error) {
+        setWatchlistError(t("header.watchlistToggleFailed"));
+        setTimeout(() => setWatchlistError(null), 4000);
+        reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId: id, op: "delete" } });
+        return;
+      }
       setOnWatchlist(false); setWatchlistId(null);
     } else {
-      const { data } = await supabase.from("rider_watchlist")
+      const { data, error } = await supabase.from("rider_watchlist")
         .insert({ user_id: user.id, rider_id: id }).select("id").single();
+      if (error) {
+        setWatchlistError(t("header.watchlistToggleFailed"));
+        setTimeout(() => setWatchlistError(null), 4000);
+        reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId: id, op: "insert" } });
+        return;
+      }
       setOnWatchlist(true); setWatchlistId(data?.id);
       // Achievement check
       const h = await authHeaders();
@@ -1720,6 +1740,11 @@ export default function RiderStatsPage() {
                 {auctionError && (
                   <div className="w-full px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm">
                     {auctionError}
+                  </div>
+                )}
+                {watchlistError && (
+                  <div role="alert" className="w-full px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm">
+                    {watchlistError}
                   </div>
                 )}
                 {pendingOfferOnRider && (

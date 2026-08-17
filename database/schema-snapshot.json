@@ -2359,7 +2359,8 @@
         "hired_season",
         "status",
         "fired_season",
-        "created_at"
+        "created_at",
+        "slot"
       ]
     },
     "team_standings_ext_mv": {

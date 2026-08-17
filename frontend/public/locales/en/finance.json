@@ -85,6 +85,7 @@
       "seasonsRemaining": "Seasons left",
       "accruedInterest": "Interest accrued",
       "startRepay": "Pay installment →",
+      "startRepayBlocked": "Nothing to repay right now: your available balance is tied up in active bids.",
       "startRepayMaxPlaceholder": "Max {value}",
       "repayPlaceholder": "0",
       "repayBtn": "Pay",

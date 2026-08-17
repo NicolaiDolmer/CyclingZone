@@ -30,6 +30,14 @@ export const FACILITIES_ENABLED = false;
 export const FACILITY_TRACKS = Object.freeze(["training", "scouting", "medical", "academy", "commercial"]);
 export const MAX_FACILITY_TIER = 5;
 
+// #3489 (flere spejdere/trænere samtidigt): maks. samtidige AKTIVE staff pr.
+// (team, rolle). 1→2 flytter "ansæt en ny chef" fra en destruktiv fyr-først-
+// handling til en ren udvidelse — matcher unik-indekset i migrationen
+// database/2026-08-17-3489-staff-multi-slot.sql (team_id, role, slot). Hver
+// ekstra staff koster fuld sæsonløn (staffSalaryFor, uændret kurve nedenfor) —
+// INGEN løn-/pris-konstant er ændret her, kapaciteten er blot udvidet.
+export const MAX_STAFF_SLOTS_PER_ROLE = 2;
+
 // Engangs-pris pr. tier (kumulativ opgradering: man betaler ét trin ad gangen).
 // Tid-som-valuta-ankre (spec §2.4, kumulativ pris i sæsoners repræsentativ
 // PRÆMIE-indkomst D1 160k / D2 70k / D3 25k): T1/D3 = 0,48 · T3-kum/D2 = 1,26 ·

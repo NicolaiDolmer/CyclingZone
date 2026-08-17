@@ -35,18 +35,29 @@ export async function loadTrainingStaffContext(supabase, teamId) {
     if (staffRes.error) throw new Error(`team_staff load: ${staffRes.error.message}`);
 
     const facilityTier = facRes.data?.[0]?.tier ?? 0;
-    const staffRow = staffRes.data?.[0] ?? null;
-    if (facilityTier <= 0 && !staffRow) return NEUTRAL;
+    // #3489: op til MAX_STAFF_SLOTS_PER_ROLE (2) aktive trænings-staff nu (fx en
+    // U23- + en senior-træner). Motorens dagsbonus er stadig ÉN team-bred
+    // multiplikator (spec §2.2) — den bruger den STÆRKESTE (højeste overall) af
+    // dem, samme "bedste-af-flere"-valg som scoutAssignmentService.loadScout.
+    // ÆGTE per-rytter-routing (U23-ryttere trænes af U23-træneren, senior-
+    // ryttere af senior-træneren) er bevidst UDENFOR denne slice — se
+    // opfølgnings-punkt i PR-beskrivelsen for #3489.
+    const staffRows = staffRes.data ?? [];
+    if (facilityTier <= 0 && staffRows.length === 0) return NEUTRAL;
 
     let staff = null;
-    if (staffRow) {
+    if (staffRows.length > 0) {
       const { data: abilityRows, error: abilityError } = await supabase
         .from("staff_derived_abilities")
         .select("staff_id, overall, dimensions, levels")
-        .eq("staff_id", staffRow.id);
+        .in("staff_id", staffRows.map((r) => r.id));
       if (abilityError) throw new Error(`staff_derived_abilities load: ${abilityError.message}`);
-      const ab = abilityRows?.[0]
-        ?? deriveStaffAbilities({ role: staffRow.role, tier: staffRow.tier, name: staffRow.name });
+      const abilityByStaffId = new Map((abilityRows ?? []).map((a) => [a.staff_id, a]));
+      const profiles = staffRows.map((staffRow) =>
+        abilityByStaffId.get(staffRow.id)
+          ?? deriveStaffAbilities({ role: staffRow.role, tier: staffRow.tier, name: staffRow.name })
+      );
+      const ab = profiles.reduce((best, p) => ((p.overall ?? 0) > (best.overall ?? 0) ? p : best));
       staff = {
         overall: ab.overall,
         dimensions: ab.dimensions ?? {},

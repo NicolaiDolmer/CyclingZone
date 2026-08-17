@@ -95,11 +95,20 @@ function createChainSupabase({ team }) {
         return {
           select() {
             const filters = {};
+            const inFilters = {};
+            const matching = () => state.staff.filter((r) =>
+              Object.entries(filters).every(([k, v]) => r[k] === v) &&
+              Object.entries(inFilters).every(([k, values]) => values.includes(r[k])));
             const chain = {
               eq(column, value) { filters[column] = value; return chain; },
+              in(column, values) { inFilters[column] = values; return chain; },
               maybeSingle() {
-                const row = state.staff.find((r) => Object.entries(filters).every(([k, v]) => r[k] === v)) || null;
-                return Promise.resolve({ data: row ? clone(row) : null, error: null });
+                return Promise.resolve({ data: matching()[0] ? clone(matching()[0]) : null, error: null });
+              },
+              // #2887/#3489: loadFiredStaffNames + loadActiveStaffList/loadScout awaiter
+              // kæden direkte (listeforespørgsler) i stedet for .maybeSingle().
+              then(resolve, reject) {
+                return Promise.resolve({ data: matching().map(clone), error: null }).then(resolve, reject);
               },
             };
             return chain;
@@ -120,11 +129,20 @@ function createChainSupabase({ team }) {
         return {
           select() {
             const filters = {};
+            const inFilters = {};
+            const matching = () => state.abilities.filter((r) =>
+              Object.entries(filters).every(([k, v]) => r[k] === v) &&
+              Object.entries(inFilters).every(([k, values]) => values.includes(r[k])));
             const chain = {
               eq(column, value) { filters[column] = value; return chain; },
+              in(column, values) { inFilters[column] = values; return chain; },
               maybeSingle() {
-                const row = state.abilities.find((r) => Object.entries(filters).every(([k, v]) => r[k] === v)) || null;
-                return Promise.resolve({ data: row ? clone(row) : null, error: null });
+                return Promise.resolve({ data: matching()[0] ? clone(matching()[0]) : null, error: null });
+              },
+              // #3489: loadScout henter alle ability-rækker for de aktive scouting-
+              // staff-id'er via .in(...) og awaiter direkte (listeforespørgsel).
+              then(resolve, reject) {
+                return Promise.resolve({ data: matching().map(clone), error: null }).then(resolve, reject);
               },
             };
             return chain;
