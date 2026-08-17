@@ -30,6 +30,7 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { logEvent } from "../lib/logEvent";
 import { computeBidRoom } from "../lib/auctionBidRoom";
+import { BidRoomBlockNotice, BidDestinationHint } from "../components/AuctionBidRoomNotice";
 import {
   isOverbidEvent,
   shouldFlashPrice,
@@ -166,23 +167,9 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-// #2701 bud-gate: forklaring når truppen ingen egnet plads har (bud deaktiveret).
-function BidRoomBlockNotice({ reason, t }) {
-  return (
-    <div className="text-2xs text-cz-warning bg-cz-warning-bg rounded px-2 py-1 leading-snug">
-      {t(reason === "both_full" ? "auctions:bidGate.bothFull" : "auctions:bidGate.seniorFull")}
-    </div>
-  );
-}
-
-// #2701: hint på ungdomsauktioner om hvor rytteren lander (senior-først).
-function BidDestinationHint({ destination, t }) {
-  return (
-    <span className="text-3xs text-cz-accent-t whitespace-nowrap">
-      {t(destination === "academy" ? "auctions:bidGate.toAcademy" : "auctions:bidGate.toSenior")}
-    </span>
-  );
-}
+// #3066: BidRoomBlockNotice/BidDestinationHint flyttet til delt komponent
+// (components/AuctionBidRoomNotice.jsx) så rytterprofilens bud-panel kan bruge
+// nøjagtig samme forklaring — se filens header for hvorfor.
 
 // #3099: "hvem fører?" må ikke kræve en mus. Desktop-rækken bar fører-navnet i en
 // title-tooltip efter #228-kompakteringen — ingen visuel affordance for at beløbet

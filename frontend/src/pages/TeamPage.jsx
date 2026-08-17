@@ -14,7 +14,8 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, projectYouthSalary, detectStartPriceTypo } from "../lib/marketValues";
-import { defaultEndWallClock, gameWallClockToUTC, getEndTimeIssue, windowHoursForWallClock } from "../lib/auctionEndTime.js";
+import { formatHour } from "../lib/auctionEndTime.js";
+import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
 import { StartPriceTypoGuardModal } from "../components/StartPriceTypoGuardModal";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { riderOverallRating } from "../lib/riderRating";
@@ -38,10 +39,6 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
-// #2884: vindues-timerne står som tal i configen (8, 24). Vist rå bliver det
-// "8:00-24:00" ved siden af tabular tal — nul-udfyldt matcher resten af fladen.
-const formatHour = (h) => `${String(h).padStart(2, "0")}:00`;
-
 function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive, seasonYear }) {
   const { t } = useTranslation("team");
   // #932 S7: demote (senior → akademi) er kun muligt for U23-seniorer (alder ≤ 22,
@@ -59,11 +56,11 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   // #778: flash-auktion (30 min) på egne ryttere — kun synlig under aktivt
   // Deadline Day (samme gating som RiderStatsPage's AuctionButton).
   const [flash, setFlash] = useState(false);
-  // #2884: sælgeren vælger et konkret sluttidspunkt i stedet for at arve den
-  // globale varighed. Vinduet hentes fra serveren — hardkodede åbningstider
-  // ville drifte fra auction_timing_config uden at noget fejler.
-  const [auctionWindow, setAuctionWindow] = useState(null);
-  const [endWall, setEndWall] = useState("");
+  // #2884/#3786: sælgeren vælger et konkret sluttidspunkt i stedet for at arve
+  // den globale varighed. Delt hook (useAuctionEndTimeSelector) — samme
+  // vindues-fetch + validering som rytterprofilens AuctionButton bruger.
+  const { auctionWindow, endWall, setEndWall, endTimeIssue, endHours, endsAtIso } =
+    useAuctionEndTimeSelector();
   // #3184: tastefejl-værn — ciffer-drop-mønster mellem startpris og Værdi.
   // { suspected, pattern, suggestedValue } fra detectStartPriceTypo, eller null
   // når dialogen ikke er vist. Non-blocking: sælgeren kan altid fortsætte.
@@ -122,32 +119,6 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
     capInfo: extendCapInfo,
     capSeason: extendCapSeason,
   });
-
-  // #2884: hent markedets åbningsvindue og sæt standard-sluttidspunktet. Fejler
-  // kaldet, falder vi tilbage til serverens globale varighed (endWall bliver
-  // tom → ends_at sendes ikke), i stedet for at blokere salget.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions/window`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok || cancelled) return;
-        const cfg = await res.json();
-        if (cancelled) return;
-        setAuctionWindow(cfg);
-        setEndWall(defaultEndWallClock(new Date(), cfg));
-      } catch { /* stille — auktionen kan stadig oprettes med den globale varighed */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const endTimeIssue = auctionWindow && endWall
-    ? getEndTimeIssue(endWall, new Date(), auctionWindow)
-    : null;
-  const endHours = endWall ? windowHoursForWallClock(endWall, auctionWindow || {}) : null;
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   // auctionPrice === null (ugyldigt/ikke-parsbart format, #3495) tælles altid som fejl.
@@ -228,9 +199,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
           flash_auction: ddActive && flash,
           // #2884: kun med når sælgeren faktisk har valgt et tidspunkt og det er
           // gyldigt. Flash har sin egen faste længde og må ikke kombineres.
-          ...(!(ddActive && flash) && endWall && !endTimeIssue
-            ? { ends_at: gameWallClockToUTC(endWall).toISOString() }
-            : {}),
+          ...(!(ddActive && flash) && endsAtIso ? { ends_at: endsAtIso } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
