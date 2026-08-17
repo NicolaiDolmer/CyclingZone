@@ -25,6 +25,14 @@ test("defaultSortDir: tekst/kategori asc, numerisk desc", () => {
   assert.equal(defaultSortDir("birthdate"), "desc");
 });
 
+// #3067: AuctionsPage's Sælger-kolonne (auktions-niveau, ikke rytter-niveau)
+// bruger samme delte cycleSortState — samme tekst-kategori som firstname, så
+// første klik skal starte A→Å, ikke Å→A.
+test("defaultSortDir: seller (auktionens Sælger-kolonne) starter asc som de andre tekst-kolonner (#3067)", () => {
+  assert.equal(defaultSortDir("seller"), "asc");
+  assert.deepEqual(cycleSortState({ sort: "current_price", dir: "desc" }, "seller"), { sort: "seller", dir: "asc" });
+});
+
 test("tom/undefined current-state håndteres som ny nøgle", () => {
   assert.deepEqual(cycleSortState(undefined, "value"), { sort: "value", dir: "desc" });
   assert.deepEqual(cycleSortState({}, "firstname"), { sort: "firstname", dir: "asc" });

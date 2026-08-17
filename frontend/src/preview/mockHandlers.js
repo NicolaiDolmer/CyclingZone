@@ -40,6 +40,7 @@ import {
   SEED_PROJECTION,
   SEED_SCOUTING_REPORT,
   SEED_MANAGER_TRANSFERS,
+  SEED_TRANSFER_HISTORY,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
   SEED_GLOBAL_RANK,
@@ -712,6 +713,10 @@ export function apiResponse(pathname, search = "") {
     };
   }
 
+  // #2400: teamets egen transferhistorik (TeamTransferHistoryTab). Skal ligge
+  // FØR de generiske /api/transfers*-grene nedenfor (disjunkt sti, men holder
+  // rækkefølgen eksplicit robust hvis stien ændrer sig).
+  if (pathname.match(/\/api\/teams\/[^/]+\/transfer-history$/)) return SEED_TRANSFER_HISTORY;
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
   if (pathname.endsWith("/api/notifications")) return [];
   // #2884: skal ligge FØR /api/auctions — endsWith("/api/auctions") ville ellers

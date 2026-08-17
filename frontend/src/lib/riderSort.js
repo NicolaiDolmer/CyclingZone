@@ -33,7 +33,10 @@ export const RIDER_SORT_KEYS = Object.freeze({
 // Tekst-/kategori-nøgler der giver mest mening stigende først (A→Å, ung→gammel
 // håndteres i comparatoren). Resten (værdi, løn, evner) er numeriske og starter
 // faldende, så "bedst/dyrest øverst" er default-klik.
-const ASC_FIRST_KEYS = new Set(["firstname", "nationality_code", "primary_type"]);
+// #3067: "seller" er AuctionsPage's auktions-niveau tekst-kolonne (sælgernavn/
+// "AI") — samme tekst-kategori som firstname/nationality_code/primary_type,
+// så første klik skal starte A→Å, ikke Å→A.
+const ASC_FIRST_KEYS = new Set(["firstname", "nationality_code", "primary_type", "seller"]);
 
 /**
  * Standard-retning ved FØRSTE klik på en ny sort-nøgle.

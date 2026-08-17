@@ -41,7 +41,6 @@ import {
   computeWorstCaseCommitment,
   getAuctionBidIssue,
   getAuctionBidRoomBlock,
-  getAuctionBidSquadBlock,
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
   getAuctionStartIssue,
@@ -5766,7 +5765,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
 
   const { data: auction } = await supabase
     .from("auctions")
-    .select("id, current_price, current_bidder_id, status, calculated_end, seller_team_id, rider_id, extension_count, created_at, rider:rider_id(firstname, lastname, team_id)")
+    .select("id, current_price, current_bidder_id, status, calculated_end, seller_team_id, rider_id, extension_count, created_at, is_youth, rider:rider_id(firstname, lastname, team_id)")
     .eq("id", req.params.id)
     .single();
 
@@ -5849,13 +5848,30 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   // manageren til fører → reservér en plads, samme hard-cap som direkte bud. Et
   // autobud sat MENS man allerede fører (openingBidAmount === null) højner kun
   // loftet og fylder ingen ny plads, så det gates ikke.
+  // #3826: brug samme delte helper som POST /auctions/:id/bid (getAuctionBidRoomBlock),
+  // som tilføjer akademi-fallbacken for ungdomsauktioner. Uden den kunne en manager
+  // med fuld seniortrup men ledig akademiplads afgive et almindeligt bud, men ikke
+  // sætte et proxy-loft på samme auktion.
   if (openingBidAmount !== null) {
-    const squadBlock = getAuctionBidSquadBlock({
+    const proxyAcademyCount = auction.is_youth
+      ? await getTeamAcademyCount(supabase, req.team.id)
+      : 0;
+    const squadBlock = getAuctionBidRoomBlock({
+      isYouth: auction.is_youth,
       teamState,
+      academyCount: proxyAcademyCount,
+      academySlots: ACADEMY.SLOTS,
       activeLeadingCount: leadingAuctions.filter((row) => row.id !== req.params.id).length,
       alreadyLeadingThisAuction: false,
     });
-    if (squadBlock) {
+    if (squadBlock?.code === "no_eligible_room_bid") {
+      return res.status(400).json({
+        error: `No room in your academy (${squadBlock.maxAcademy}/${squadBlock.maxAcademy}) or senior squad (${squadBlock.maxRiders}/${squadBlock.maxRiders}). Sell a rider before you bid.`,
+        errorCode: "no_eligible_room_bid",
+        errorParams: { maxAcademy: squadBlock.maxAcademy, maxRiders: squadBlock.maxRiders },
+      });
+    }
+    if (squadBlock?.code === "squad_full_bid") {
       return res.status(400).json({
         error: `Your squad is full (${squadBlock.maxRiders} riders). Sell a rider before you bid on a new one.`,
         errorCode: "squad_full_bid",
