@@ -29,8 +29,9 @@ import {
   SELECTION_SORT_KEYS,
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
-import { ArrowUpIcon, ArrowDownIcon } from "../ui/index.js";
+import { ArrowUpIcon, ArrowDownIcon, BlockedNote } from "../ui/index.js";
 import RiderMiniProfileModal from "../rider/RiderMiniProfileModal.jsx";
+import { useBlockedAction } from "../../lib/useBlockedAction.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -87,6 +88,21 @@ export default function RaceSelectionPanel({
   // #3520: rytteren hvis profil-popup er åben (klik på navn) — ren visning, rører
   // ALDRIG sel/udtagelsen. null = lukket. Checkboxen forbliver den ENESTE vælger.
   const [profileRider, setProfileRider] = useState(null);
+
+  // #3012: useBlockedAction er et hook og SKAL kaldes ubetinget FØR panelets
+  // tidlige returns (linje ~155/161 nedenfor) — ellers rules-of-hooks brydes på
+  // renders hvor `data` endnu er null. Reason-beregningen guardes derfor selv
+  // (data kan være null her), og den "rigtige" clientErrors genberegnes efter
+  // returnsene nedenfor til selve visningen (touched-listen).
+  const earlySaving = status === "saving";
+  const earlyBusy = earlySaving || autoStatus === "loading";
+  const earlyClientErrors = data
+    ? validateSelectionClient({ ...sel, size: data.size, availableCount: data.availableCount, requireFull: !data.selection })
+    : [];
+  const earlySaveBlockReason = earlyClientErrors.length > 0
+    ? t(`selection.errors.${earlyClientErrors[0]}`, { min: data?.size?.min, max: data?.size?.max })
+    : null;
+  const saveBlock = useBlockedAction(earlyBusy ? null : earlySaveBlockReason);
 
   // #3310: udtrukket til en genbrugelig loader — kaldes fra effekten ved raceId-skift
   // OG fra autoSelect() efter et vellykket assistent-kald, så panelet reflekterer den
@@ -678,14 +694,23 @@ export default function RaceSelectionPanel({
             </button>
             <button
               type="button"
-              onClick={save}
-              disabled={clientErrors.length > 0 || busy}
+              onClick={saveBlock.guard(save)}
+              disabled={busy}
+              {...saveBlock.blockedProps}
               className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
               {saving ? t("selection.saving") : t("selection.save")}
             </button>
           </div>
         </div>
+        {/* #3012: den samme note vises altid (ikke kun efter `touched`) og bærer
+            reasonId, så aria-describedby på Gem-knappen peger på et rigtigt
+            element uanset om formen er rørt endnu. */}
+        {saveBlock.blocked && (
+          <BlockedNote id={saveBlock.reasonId} pulseKey={saveBlock.pulseKey} className="text-xs justify-end">
+            {saveBlock.reason}
+          </BlockedNote>
+        )}
       </div>
 
       {/* S5 (Lag 3): forklar jæger-rollen + terræn-bevidst udbruds-styrke + bedste

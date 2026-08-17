@@ -84,6 +84,7 @@
   "error": {
     "notifications": "Kunne ikke indlæse dine notifikationer. Intet gik tabt. Prøv igen.",
     "feed": "Kunne ikke indlæse liga-feedet. Intet gik tabt. Prøv igen.",
-    "retry": "Prøv igen"
+    "retry": "Prøv igen",
+    "mutationFailed": "Kunne ikke opdatere dine notifikationer. Prøv igen."
   }
 }

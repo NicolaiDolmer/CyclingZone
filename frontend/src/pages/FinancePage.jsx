@@ -19,14 +19,40 @@ import { computeLoanRiskSummary } from "../lib/loanRisk";
 import { computeReservedBalance } from "../lib/availableBalance";
 import { useTableSort } from "../lib/useTableSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
+import { useBlockedAction } from "../lib/useBlockedAction.js";
 import {
   AmountInput, Tabs, TabList, Tab, TabPanel,
-  Card, Button, Select, ProgressMeter, PageLoader,
+  Card, Button, Select, ProgressMeter, PageLoader, BlockedNote,
   ChevronRightIcon, XIcon,
 } from "../components/ui";
 import { controlClass } from "../components/ui/fieldStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
+
+// #3012: egen komponent (ikke inline i .map()) fordi useBlockedAction er et
+// hook — kan ikke kaldes betinget/per-iteration inde i en liste uden at bryde
+// rules-of-hooks. Hvert lån får sin egen instans, så hver knap har sin egen
+// reasonId/pulseKey.
+function RepayButton({ maxRepay, onStart, t }) {
+  const blocked = maxRepay <= 0;
+  const block = useBlockedAction(blocked ? t("loans.active.startRepayBlocked") : null);
+  return (
+    <div className="flex flex-col items-stretch gap-1">
+      <Button
+        variant="secondary" size="sm" fullWidth
+        {...block.blockedProps}
+        onClick={block.guard(onStart)}
+      >
+        {t("loans.active.startRepay")}
+      </Button>
+      {block.blocked && (
+        <BlockedNote id={block.reasonId} pulseKey={block.pulseKey} className="text-3xs text-center">
+          {block.reason}
+        </BlockedNote>
+      )}
+    </div>
+  );
+}
 
 const FINANCE_TABS = ["overview", "loans", "sponsors", "history"];
 // #2306: sentinel-værdi for "ingen sæson valgt" i Historik-fanens sæsonvælger —
@@ -704,11 +730,11 @@ export default function FinancePage() {
                           </Button>
                         </div>
                       ) : (
-                        <Button variant="secondary" size="sm" fullWidth
-                          onClick={() => { setRepayId(loan.id); setRepayAmount(maxRepay > 0 ? maxRepay : null); }}
-                          disabled={maxRepay <= 0}>
-                          {t("loans.active.startRepay")}
-                        </Button>
+                        <RepayButton
+                          maxRepay={maxRepay}
+                          t={t}
+                          onStart={() => { setRepayId(loan.id); setRepayAmount(maxRepay > 0 ? maxRepay : null); }}
+                        />
                       )}
                     </Card>
                   );

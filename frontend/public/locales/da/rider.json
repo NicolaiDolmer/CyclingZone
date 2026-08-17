@@ -39,6 +39,7 @@
   "header": {
     "watchlistAdd": "Tilføj til ønskeliste",
     "watchlistRemove": "Fjern fra ønskeliste",
+    "watchlistToggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen.",
     "compare": "⇄ Sammenlign",
     "compareTitle": "Sammenlign med andre ryttere",
     "watchlistCount": "👁 {count, plural, one {1 manager følger denne rytter} other {# managers følger denne rytter}}",

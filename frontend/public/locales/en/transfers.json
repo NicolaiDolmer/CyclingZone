@@ -75,7 +75,8 @@
       "counterLabel": "Your counter (CZ$)",
       "newOfferLabel": "New offer (CZ$)",
       "messageBuyer": "Optional message to buyer...",
-      "messagePlaceholder": "Optional message..."
+      "messagePlaceholder": "Optional message...",
+      "offerAmountBlocked": "Enter an offer above 0 CZ$"
     },
     "awaiting": {
       "sellerAccepted": "You accepted · awaiting buyer's confirmation",
@@ -121,6 +122,7 @@
     "editPriceAria": "Edit asking price for {riderName}",
     "editPriceLabel": "New asking price (CZ$)",
     "savePrice": "Save",
+    "priceInvalid": "Enter a whole number above 0 CZ$",
     "cancel": "Cancel",
     "confirmRemoveButton": "Yes, remove"
   },

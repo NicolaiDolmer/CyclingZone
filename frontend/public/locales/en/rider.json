@@ -39,6 +39,7 @@
   "header": {
     "watchlistAdd": "Add to watchlist",
     "watchlistRemove": "Remove from watchlist",
+    "watchlistToggleFailed": "Could not update your watchlist. Please try again.",
     "compare": "⇄ Compare",
     "compareTitle": "Compare with other riders",
     "watchlistCount": "👁 {count, plural, one {1 manager follows this rider} other {# managers follow this rider}}",

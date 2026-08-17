@@ -29,6 +29,7 @@ import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
 import { cycleSortState } from "../lib/riderSort";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import {
   ExchangeIcon,
   ArrowUpIcon,
@@ -43,6 +44,7 @@ import {
   ErrorState,
   SkeletonLines,
   BikeIcon,
+  ToastViewport,
 } from "../components/ui";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 
@@ -193,6 +195,20 @@ export default function RidersPage() {
   const [myTeam, setMyTeam] = useState(null);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
+  // #3012: fejl-feedback når en watchlist-toggle fejler, så den ikke tavst
+  // divergerer fra serveren (spilleren så en stjerne der ikke rørte sig ved
+  // næste reload, uden nogensinde at få at vide hvorfor — samme klasse fejl
+  // som AuctionsPage.toggleWatchlist, #1351).
+  const [toasts, setToasts] = useState([]);
+
+  function dismissToast(id) {
+    setToasts(prev => prev.filter(item => item.id !== id));
+  }
+
+  function showWatchlistError() {
+    const id = `watchlist-error-${Date.now()}`;
+    setToasts(prev => [...prev, { id, tone: "danger", title: t("watchlistToggleFailed") }]);
+  }
 
   // #1006: skjul/vis stats-kolonner — samme mønster som auktionssiden, men
   // "omvendt" default: alle stats er synlige, og man klikker dem FRA.
@@ -259,13 +275,26 @@ export default function RidersPage() {
       });
   }, []);
 
+  // #3012: læs { error } fra begge writes. Var tidligere en tavs fejl — UI'et
+  // flippede stjernen kun EFTER den awaitede skrivning, men ignorerede om den
+  // fejlede, så en afvist insert/delete lod stjernen stå forkert indtil reload.
   async function toggleWatchlist(riderId) {
     if (!userId) return;
     if (watchlist.has(riderId)) {
-      await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId);
+      const { error } = await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId);
+      if (error) {
+        showWatchlistError();
+        reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId, op: "delete" } });
+        return;
+      }
       setWatchlist(prev => { const s = new Set(prev); s.delete(riderId); return s; });
     } else {
-      await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
+      const { error } = await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
+      if (error) {
+        showWatchlistError();
+        reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId, op: "insert" } });
+        return;
+      }
       setWatchlist(prev => new Set([...prev, riderId]));
     }
   }
@@ -617,6 +646,7 @@ export default function RidersPage() {
       </div>
 
       <CompareBar ids={compareIds} onClear={() => setCompareIds([])} />
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

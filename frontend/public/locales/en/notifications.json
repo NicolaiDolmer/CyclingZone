@@ -84,6 +84,7 @@
   "error": {
     "notifications": "Couldn't load your notifications. Nothing was lost. Try again.",
     "feed": "Couldn't load the league feed. Nothing was lost. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "mutationFailed": "Could not update your notifications. Please try again."
   }
 }

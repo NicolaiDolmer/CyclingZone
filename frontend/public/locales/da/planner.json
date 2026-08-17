@@ -140,7 +140,8 @@
       "alreadyPeaking": "Topper her",
       "suggestedHere": "Assistenten foreslår her",
       "viewPage": "Se løbsside",
-      "peaksLocked": "Division afventer"
+      "peaksLocked": "Division afventer",
+      "maxedReached": "Peak-grænsen er nået (maks {max} pr. rytter)"
     },
     "rider": {
       "abilities": "Evner",

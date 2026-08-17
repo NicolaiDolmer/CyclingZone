@@ -59,7 +59,9 @@
     "select": "Select {team} for comparison",
     "selectHint": "Select up to 2 teams to compare",
     "drawerTitle": "Head-to-head",
-    "close": "Close comparison"
+    "close": "Close comparison",
+    "blockedNone": "Select 2 teams to compare",
+    "blockedOne": "Select 1 more team to compare"
   },
   "preview": {
     "title": "Season Preview",

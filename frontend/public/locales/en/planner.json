@@ -140,7 +140,8 @@
       "alreadyPeaking": "Peaking here",
       "suggestedHere": "Assistant suggests here",
       "viewPage": "View race page",
-      "peaksLocked": "Division pending"
+      "peaksLocked": "Division pending",
+      "maxedReached": "Peak limit reached (max {max} per rider)"
     },
     "rider": {
       "abilities": "Abilities",
