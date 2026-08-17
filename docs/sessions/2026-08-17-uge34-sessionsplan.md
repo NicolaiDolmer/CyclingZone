@@ -1,8 +1,16 @@
-# Uge 34-sessionsplan (ejer-designet 17/8 via 8 spørgsmål, race-oplevelses-sessionen)
+# Uge 34-sessionsplan (ejer-designet 17/8 via 12 spørgsmål, race-oplevelses-sessionen)
 
-> Cutover søndag 23/8. Tre fokuserede sessioner i rækkefølge (ejer-valgt), derefter cutover
-> hvor ejer + Claude sidder sammen hele forløbet (ejer-valgt). Motor v4-design (#3855) og
-> pressen ligger i S3 uge 1 (ejer-valgt). Denne fil er de næste sessioners startprompter.
+> Cutover søndag 23/8. Tre fokuserede sessioner + indklemt værdi/løn-beslutningssession
+> (ejer-valgt), derefter cutover hvor ejer + Claude sidder sammen hele forløbet. Motor
+> v4-design (#3855) og pressen ligger i S3 uge 1. Denne fil er de næste sessioners
+> startprompter.
+>
+> **Logistik (ejer 17/8):** spørg om tid/varighed VED HVER sessions start — ejeren er som
+> regel til rådighed, undtagen om natten. Beslutnings-gates lægges først i sessionen.
+> **Natbølger: FULDT TRYK (ejer-valgt 17/8)** — natbølge hver nat på W-bølgerne (start
+> med W1 integritet), lanceret fra aftensessionens close-out med ejer-go pr. runbook
+> (`docs/NIGHT_WAVE_RUNBOOK.md`). Første bølge natten 18→19/8 (17/8-natten droppet pga.
+> GitHub-hændelsens Actions-efterslæb — evidens i sessionen 17/8).
 
 ## Session 1 (tir/ons): S3-kalenderen — scorecard-go + store forbedringer
 
@@ -29,6 +37,14 @@ målingen. Derefter A0-beslutningerne (merge-go for PR #3798 + Potentiale-omdøb
 A1 → A2-A5. Bemærk: trin 7-flip SAMMEN med/lige efter cutover er nu muligheden ejeren
 har åbnet — flip-beslutningen er stadig ejer-gated.
 
+## Indklemt (ons/tor, kort beslutnings-session): Værdi/løn (ejer-valgt 17/8)
+
+Sporet var ejet af den nu-lukkede parallelsession. Indhold: #3757 beslutning 7 ·
+niveau-korrektionen efter RØD refit-gate (nøglefund: kørende × 0,422) · værdi-beskedens
+retning (begge udkast venter) · #3550 signing fee (anbefaling B foreligger) · evt.
+præmiefordelings-A/B (prompt: 2026-08-14-praemiefordeling-session-prompt.md).
+Beslutninger enkeltvist med tal + anbefaling; værdi-beskeden kan så nå ud før/ved cutover.
+
 ## Session 3 (tor/fre): Race-oplevelsen til S3-start
 
 **Mål:** S3's første løbsdage FØLES nye. Forudsætning: #2410 S1 merged + migration
@@ -38,6 +54,9 @@ applied + flag ON (ejer-go 17/8: "ON straks efter verify").
    draft-PR + screenshots til ejer-go; lazy-loaded, bundle-vagt ~6 KB).
 2. #3858 Race Centre hvis tid (kontrakt godkendt; "Around the divisions"-strippen må udgå).
 3. De 6 godkendte renderer-forbedringer verificeres i S1-generatorens output mod ægte data.
+4. **S3-åbningspakken (ejer-valgt 17/8):** udkast til annoncerings-besked (EN+DA),
+   patch notes-opsamling og season start guide-opdatering — klar FØR søndag, ejeren
+   poster selv. Nævn løbsfilmen hvis den når med.
 
 ## Cutover søndag 23/8
 
