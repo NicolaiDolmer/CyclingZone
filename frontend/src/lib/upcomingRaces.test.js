@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pickUpcomingRaces } from "./upcomingRaces.js";
+import { pickUpcomingRaces, filterTeamEnteredRaces } from "./upcomingRaces.js";
 
 function race(id, dateText) {
   return { id, pool_race: dateText == null ? null : { date_text: dateText } };
@@ -54,4 +54,66 @@ test("tom / ugyldig liste giver tom liste", () => {
   assert.deepEqual(pickUpcomingRaces([], {}), []);
   assert.deepEqual(pickUpcomingRaces(undefined, {}), []);
   assert.deepEqual(pickUpcomingRaces(null, {}), []);
+});
+
+// #3751 — filterTeamEnteredRaces + pickUpcomingRaces sammen reproducerer det
+// målte prod-scenarie (nyt hold "Jean-Luc", 14/8): tilmeldt i et igangværende
+// etapeløb den ikke er en del af, men allerede tilmeldt hvert løb derefter.
+// FØR fixet ville det igangværende løbs snarlige næste-etape-tid vinde
+// sorteringen og vises øverst; kortet skal i stedet vise holdets EGET
+// nærmeste løb.
+test("nyt hold midt i et etapeløb: kortet viser holdets EGET nærmeste løb, ikke puljens igangværende løb (#3751)", () => {
+  const races = [
+    race("tour-du-jura"), // igangværende — holdet er IKKE tilmeldt (kom til midt i løbet)
+    race("coppa-appenninica"),
+    race("kempen"),
+    race("cevennes"),
+  ];
+  const nextStageMsById = {
+    "tour-du-jura": 1000, // næste etape om 1 time — vandt FØR fixet
+    "coppa-appenninica": 90000,
+    kempen: 96000,
+    cevennes: 150000,
+  };
+  const enteredRaceIds = new Set(["coppa-appenninica", "kempen", "cevennes"]);
+
+  const filtered = filterTeamEnteredRaces(races, enteredRaceIds);
+  const ids = pickUpcomingRaces(filtered, nextStageMsById, 3).map((r) => r.id);
+
+  assert.deepEqual(ids, ["coppa-appenninica", "kempen", "cevennes"]);
+});
+
+// Etableret hold — filteret er en no-op fordi holdet ER tilmeldt det
+// igangværende løb (accept-kriterie: "et etableret hold ser præcis det
+// samme som i dag").
+test("etableret hold: filteret ændrer intet (holdet ER tilmeldt det igangværende løb)", () => {
+  const races = [race("live-race"), race("next-race")];
+  const nextStageMsById = { "live-race": 1000, "next-race": 90000 };
+  const enteredRaceIds = new Set(["live-race", "next-race"]);
+
+  const filtered = filterTeamEnteredRaces(races, enteredRaceIds);
+  const ids = pickUpcomingRaces(filtered, nextStageMsById, 3).map((r) => r.id);
+
+  assert.deepEqual(ids, ["live-race", "next-race"]);
+});
+
+test("filterTeamEnteredRaces: accepterer både Set og almindeligt array", () => {
+  const races = [race("a"), race("b")];
+  assert.deepEqual(filterTeamEnteredRaces(races, ["a"]).map((r) => r.id), ["a"]);
+  assert.deepEqual(filterTeamEnteredRaces(races, new Set(["a"])).map((r) => r.id), ["a"]);
+});
+
+test("filterTeamEnteredRaces: tom/ugyldig liste giver tom liste", () => {
+  assert.deepEqual(filterTeamEnteredRaces([], new Set(["a"])), []);
+  assert.deepEqual(filterTeamEnteredRaces(undefined, new Set(["a"])), []);
+  assert.deepEqual(filterTeamEnteredRaces(null, new Set(["a"])), []);
+  assert.deepEqual(filterTeamEnteredRaces([race("a")], undefined), []);
+});
+
+test("filterTeamEnteredRaces: muterer ikke input-arrayet", () => {
+  const races = [race("a"), race("b")];
+  const snapshot = races.map((r) => r.id);
+  const filtered = filterTeamEnteredRaces(races, new Set(["a"]));
+  assert.deepEqual(races.map((r) => r.id), snapshot);
+  assert.notEqual(filtered, races);
 });

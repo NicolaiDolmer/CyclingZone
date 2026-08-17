@@ -29,7 +29,7 @@ import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
-import { pickUpcomingRaces } from "../lib/upcomingRaces";
+import { pickUpcomingRaces, filterTeamEnteredRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
 import RaceLink from "../components/RaceLink";
 import { recentResultStage } from "../lib/recentResultLink.js";
@@ -102,6 +102,11 @@ export default function DashboardPage() {
   // aldrig kan vise et højere disponibelt tal end Finance-siden.
   const [reservedBalance, setReservedBalance] = useState(0);
   const [nextRaces, setNextRaces] = useState([]);
+  // #3751 — race-id'er holdet faktisk er tilmeldt (mindst én race_entries-
+  // række). Bruges KUN til at filtrere "Kommende løb"-kortet, ikke nextRaces
+  // selv — squadSelectionMissingRace/nextStageByRace skal fortsat se ALLE
+  // puljens løb (selectableRaces filtrerer allerede korrekt på trup-lås).
+  const [teamRaceIds, setTeamRaceIds] = useState(() => new Set());
   const [standings, setStandings] = useState([]);
   // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
   // at afgøre om egen tier har >1 pulje (hasPoolSubtabs) + puljens label i titlen.
@@ -301,6 +306,23 @@ export default function DashboardPage() {
       fetchReservedBalance(supabase, teamData.id),
     ]);
 
+    // #3751: holdets EGNE race_entries — kun for de løb Dashboard rent faktisk
+    // viser (racesRes' <=50 rækker), IKKE holdets fulde entry-historik. race_entries
+    // står på pagination-guardens deny-liste (#3331, PostgREST 1000-rækkers-loft) —
+    // et hold akkumulerer én entries-række pr. rytter pr. løb over sæsoner, så et
+    // uafgrænset `.eq("team_id", …)`-opslag kunne rammes af loftet og give et
+    // FALSK "ikke tilmeldt" for et gammelt hold. `.in("race_id", …)` afgrænser
+    // opslaget til netop de kendte, allerede-hentede løb — sekventiel EFTER
+    // Promise.all'et, da racesRes' id-liste er forudsætningen.
+    const racesForTeamCheck = (racesRes.data || []).map((r) => r.id);
+    const teamRaceEntriesRes = racesForTeamCheck.length
+      // pagination-safe: dobbelt afgrænset — ét hold (RLS-scoped team_id) OG
+      // højst 50 race_id'er (racesRes' .limit(50) ovenfor), så rækketallet er
+      // højst 50 × en løbstrups størrelse, langt under PostgREST's 1000-loft.
+      ? await supabase.from("race_entries").select("race_id")
+          .eq("team_id", teamData.id).in("race_id", racesForTeamCheck)
+      : { data: [] };
+
     setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
     setPools(poolsRes.data || []);
@@ -317,6 +339,8 @@ export default function DashboardPage() {
     const sortedRaces = [...(racesRes.data || [])]
       .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text));
     setNextRaces(sortedRaces);
+    // #3751: distinkte race_id'er holdet har mindst én entry i.
+    setTeamRaceIds(new Set((teamRaceEntriesRes.data || []).map((e) => e.race_id)));
     const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
     setBoard(activePlan?.board || null);
     // #1830 · tilfredsheds-tallet aggregeres på tværs af ALLE planer (samme delte
@@ -785,7 +809,14 @@ export default function DashboardPage() {
   // #2328 — "Kommende løb"-kortet: de 3 faktisk kommende løb efter ægte
   // race_stage_schedule-tid (nextStageByRace), ikke den statiske PCM-dato som
   // det tidligere top-3-udvalg blev sorteret på FØR den ægte tid var kendt.
-  const displayedRaces = pickUpcomingRaces(nextRaces, nextStageByRace, 3);
+  // #3751 — filtreret til holdets EGNE løb først: et hold der tilmelder sig
+  // midt i et etapeløb er ikke med i det løb (trup låst), og skal ikke se en
+  // nedtælling til det. No-op for etablerede hold (de ER tilmeldt).
+  const displayedRaces = pickUpcomingRaces(
+    filterTeamEnteredRaces(nextRaces, teamRaceIds),
+    nextStageByRace,
+    3
+  );
 
   // My division+pool standings (#2182 — default er spillerens egen division OG
   // pulje, ikke hele tieren; en tier kan have op til 8 puljer, se
