@@ -4,6 +4,69 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.136",
+    "date": "2026-08-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "Inbox messages take you to the right place",
+          "body": "Clicking a transfer offer now lands on the decision itself, and a rider with an open offer shows a shortcut on their profile. Scout reports open the report directly. Stage notifications are about your own riders. Winning your own resale auction no longer sends two messages."
+        },
+        "da": {
+          "title": "Indbakkens beskeder fører dig det rigtige sted hen",
+          "body": "Et klik på et transfertilbud lander nu på selve beslutningen, og en rytter med et åbent tilbud viser en genvej på sin profil. Scout-rapporter åbner rapporten direkte. Etape-beskeder handler om dine egne ryttere. At vinde sin egen gensalgs-auktion giver ikke længere to beskeder."
+        },
+        "refs": [3496, 3493, 3491, 3549]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Market",
+        "en": {
+          "title": "Market cleanups",
+          "body": "The seller column on auctions is sortable. Transfer history hides no-sale auctions by default, with a toggle to show them. Proxy bids on youth auctions now accept a free academy slot, just like normal bids."
+        },
+        "da": {
+          "title": "Marked-oprydning",
+          "body": "Sælger-kolonnen på auktioner kan sorteres. Transferhistorikken skjuler auktioner uden salg som standard, med en knap der viser dem. Proxy-bud på ungdomsauktioner accepterer nu en ledig akademiplads, ligesom almindelige bud."
+        },
+        "refs": [3067, 2400, 3826]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Injury days agree with themselves, and 11 contracts repaired",
+          "body": "Injury days showed different numbers in three places; all three now use the same calculation. We also repaired 11 riders whose contracts lost a year during an academy promotion bug in late July: 5 got their promised season back, 6 had a bookkeeping number corrected."
+        },
+        "da": {
+          "title": "Skadedage er enige med sig selv, og 11 kontrakter repareret",
+          "body": "Skadedage viste forskellige tal tre steder; alle tre bruger nu samme beregning. Vi har også repareret 11 ryttere hvis kontrakter mistede et år under en akademi-forfremmelses-fejl i slutningen af juli: 5 fik deres lovede sæson tilbage, 6 fik rettet et bogholderi-tal."
+        },
+        "refs": [3541, 3715]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help explains where riders come from and how season money works",
+          "body": "New help sections cover where auction and free-agent riders come from, and what happens to salaries and sponsor money when the season changes. We also fixed outdated claims about AI riders being available for auctions and direct offers."
+        },
+        "da": {
+          "title": "Hjælpen forklarer hvor ryttere kommer fra og sæsonens økonomi",
+          "body": "Nye hjælpe-afsnit dækker hvor auktions- og frie-agent-ryttere kommer fra, og hvad der sker med løn og sponsorpenge ved sæsonskiftet. Vi har også rettet forældede påstande om at AI-ryttere kan komme på auktion eller modtage direkte bud."
+        },
+        "refs": [3551, 2889]
+      }
+    ]
+  },
+  {
     "version": "7.135",
     "date": "2026-08-17",
     "label": "Beta",
