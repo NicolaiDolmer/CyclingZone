@@ -49,20 +49,23 @@
       "existenceGuarantee": "Hver rapport indeholder kun ryttere der findes og kan søges frem.",
       "scopeLabel": "Omfang",
       "countryLabel": "Land",
+      "typeLabel": "Ryttertype",
       "submit": "Start mission",
-      "costNote": "Missioner varer {days} dage og koster {cost, number} i rejseomkostninger fra din kasse. Ingen refusion ved annullering."
+      "costNote": "Missioner varer {days, plural, one {1 dag} other {# dage}} og koster {cost, number} i rejseomkostninger fra din kasse. Ingen refusion ved annullering."
     },
     "scope": {
       "u23": "U23-ryttere",
       "country": "Land",
       "nm": "Nationale mesterskaber",
-      "division": "Min division"
+      "division": "Min division",
+      "type": "Ryttertype"
     }
   },
   "shortlist": {
     "title": "Missions-shortlister",
     "empty": "Ingen mission har meldt sig endnu.",
-    "topFind": "Topfund · gratis rapport",
+    "allReportedNote": "Hver rytter herunder får en gratis niveau 1-rapport. Åbn deres profils Spejder-fane for at se den.",
+    "topFind": "Bedste match",
     "statusFreeAgent": "Kontraktfri"
   },
   "teamHistory": {

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Søndags-kvittering, skelet A (ejer-valgt 17/8, #3733)</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f4f2ec; margin: 0; padding: 32px; color: #1c1c1a; }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 18px; font-weight: 500; }
+  p.note { font-size: 13px; color: #5f5e5a; }
+  .card { background: #fff; border: 1px solid #d9d6cc; border-radius: 5px; padding: 14px 16px; margin: 12px 0; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .name { font-size: 14px; font-weight: 500; }
+  .meta { color: #8a887f; font-weight: 400; }
+  .val { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .up { color: #2f6b1d; font-size: 13px; }
+  .down { color: #a32d2d; font-size: 13px; }
+  .headline { font-size: 13px; color: #44443f; margin: 6px 0 0; }
+  details { margin-top: 8px; font-size: 12px; color: #8a887f; }
+  summary { cursor: pointer; }
+  table { width: 100%; font-size: 12.5px; margin-top: 8px; border-top: 1px solid #e6e3da; font-variant-numeric: tabular-nums; color: #1c1c1a; }
+  td { padding: 4px 0; }
+  td.lbl { color: #5f5e5a; }
+  td.num { text-align: right; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Søndags-kvittering på værdien, skelet A (ejer-valgt 17/8)</h1>
+  <p class="note">Klar tekst som headline, tal bag fold-ud. Tre årsagstyper. Ingen kvittering når intet flyttede sig, ingen forudsigelser. Værdierne er ægte prod-tal 17/8; ændringer og handelstal er illustrative. Fravalgt alternativ (fuld tabel altid synlig) ville vise "Market (0 trades), no evidence, 0 %" på de fleste ryttere i månedsvis. Se #3733-kommentaren 17/8 for den fulde beslutning.</p>
+
+  <div class="card">
+    <div class="row">
+      <span class="name">Florian Wolf <span class="meta">· 17 · climber</span></span>
+      <span class="val">4,082,400 <span class="up">+2.0%</span></span>
+    </div>
+    <p class="headline">Value followed his development: climbing and stamina improved this week.</p>
+    <details><summary>Details</summary>
+      <table>
+        <tr><td class="lbl">Anchor (simulated prize potential)</td><td class="num">4,000,916</td></tr>
+        <tr><td class="lbl">Development this week</td><td class="num">climbing +2, stamina +1</td></tr>
+      </table>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <span class="name">Andrea Riva <span class="meta">· 22 · gc</span></span>
+      <span class="val">16,867,000 <span class="down">-29.0%</span></span>
+    </div>
+    <p class="headline">One-time level adjustment, all riders. Values now match what riders actually trade for. Your rider is not getting worse.</p>
+    <details><summary>Details</summary>
+      <table>
+        <tr><td class="lbl">Value before</td><td class="num">23,756,219</td></tr>
+        <tr><td class="lbl">Adjustment factor (all riders)</td><td class="num">0.71</td></tr>
+      </table>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <span class="name">Haruto Yoshida <span class="meta">· 23 · sprinter</span></span>
+      <span class="val">9,650 <span class="up">+7.4%</span></span>
+    </div>
+    <p class="headline">Value followed the market: 4 comparable riders were traded above his level this week.</p>
+    <details open><summary>Details (vist udfoldet)</summary>
+      <table>
+        <tr><td class="lbl">Anchor (simulated prize potential)</td><td class="num">8,987</td></tr>
+        <tr><td class="lbl">Market (4 comparable trades, 180 days)</td><td class="num">11,900</td></tr>
+        <tr><td class="lbl">Weight on market</td><td class="num">25%</td></tr>
+      </table>
+    </details>
+  </div>
+</div>
+</body>
+</html>

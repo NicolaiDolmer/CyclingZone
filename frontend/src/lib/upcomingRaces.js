@@ -16,6 +16,29 @@
 
 import { dateTextToDayOfYear } from "./raceCalendar.js";
 
+// #3751 — "Kommende løb"-kortet viste puljens løb, ikke holdets EGNE løb. Et
+// hold der tilmelder sig midt i et etapeløb er korrekt holdt ude af det løb
+// (trup låst, se nextSelectableRace.js), men det igangværende løbs snarlige
+// næste-etape-tid vandt alligevel sorteringen i pickUpcomingRaces — kortet
+// viste dermed en nedtælling til noget holdet ikke deltog i (nye hold, målt
+// prod 14/8: 7 hold ramt, alle oprettet midt i sæsonen).
+//
+// Filtreringen sker FØR sortering/limit, som et selvstændigt trin — sorterings-
+// logikken i pickUpcomingRaces selv er uændret (#2328, må ikke rulles tilbage).
+// Filteret er en no-op for etablerede hold: de ER tilmeldt det igangværende
+// løb (mindst én race_entries-række), så ingenting fjernes for dem.
+/**
+ * @param {Array<{id:string}>} races
+ * @param {Set<string>|Array<string>} enteredRaceIds - race-id'er holdet har
+ *   mindst én race_entries-række i
+ * @returns {Array} ny array, muterer ikke input
+ */
+export function filterTeamEnteredRaces(races, enteredRaceIds) {
+  if (!Array.isArray(races)) return [];
+  const entered = enteredRaceIds instanceof Set ? enteredRaceIds : new Set(enteredRaceIds || []);
+  return races.filter((race) => entered.has(race?.id));
+}
+
 /**
  * @param {Array<{id:string, pool_race?:{date_text?:string|null}|null}>} races
  * @param {Record<string, number>} nextStageMsById - race id -> ms (Date.parse af
