@@ -345,18 +345,20 @@ function ShortlistFeed({ completed, riderNames, t }) {
 
 // #2721 — samlet liste over ryttere HOLDET har scoutet, uafhængigt af hvilken
 // scout der gjorde det (ejer-løfte 4/8, Discord: "so you can see all riders
-// scouted by your team in there as well"). Historik PR. scout findes allerede
+// scouted by your team in there as well"). Historik pr. scout findes allerede
 // (#3203, StaffScoutHistoryTab); dette er den holds-brede pendant.
 //
-// Ingen ny fetch nødvendig — `completed` er ALLEREDE hentet holds-bredt af
-// GET /api/scouting/central (getScoutState → loadCompletedAssignments, capped
-// til 20 nyeste, samme grænse som resten af siden bruger), og
-// hydrateCompletedVisibility har allerede fjernet ryttere der er blevet
-// skjulte/utilgængelige siden rapporten blev lavet (#2644). Vi filtrerer blot
-// til kind==='target' (individuel-rytter-undersøgelser) — mission-shortlists
-// vises allerede ovenfor i ShortlistFeed.
-function TeamScoutHistory({ completed, riderNames, t }) {
-  const investigations = completed.filter((c) => c.kind === "target");
+// #3369 fødte denne sektion, men fyldte den fra `completed` — samme kilde som
+// ShortlistFeed, delt 20-cap PÅ TVÆRS af mission- og target-fuldførelser
+// (loadCompletedAssignments). Audit 2026-08-15 flyttede #2721 tilbage til
+// claude:todo, fordi det gap stadig består: en aktiv spiller kan skubbe egne
+// ældre undersøgelser ud af top-20 med et par missioner, og historikken har
+// præcis samme "kan ikke finde rytteren igen"-symptom issuet blev åbnet for.
+// `teamHistory` (loadTeamScoutHistory, backend) er en EGEN target-only
+// forespørgsel med 50-loft, afkoblet fra mission-completions — samme mønster
+// pr.-scout-historikken (#3203) allerede bruger.
+function TeamScoutHistory({ teamHistory, riderNames, t }) {
+  const investigations = teamHistory;
   if (investigations.length === 0) {
     return (
       <Section>
@@ -404,8 +406,8 @@ export default function ScoutingCentralPage() {
     .filter((c) => c.kind === "mission")
     .flatMap((c) => c.result?.shortlist ?? []);
   // #2721: team-historikkens rytter-id'er skal med i samme batch-navneopslag.
-  const historyRiderIds = central.completed
-    .filter((c) => c.kind === "target")
+  // Kilde er `teamHistory` (egen target-only forespørgsel), ikke `completed`.
+  const historyRiderIds = (central.teamHistory ?? [])
     .map((c) => c.rider_id)
     .filter(Boolean);
   const riderNames = useRiderNames([...new Set([...targetRiderIds, ...shortlistRiderIds, ...historyRiderIds])]);
@@ -467,7 +469,7 @@ export default function ScoutingCentralPage() {
         <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} jobConfig={central.jobConfig} t={t} />
         <MissionForm onSubmit={central.startMission} busy={central.busy} jobConfig={central.jobConfig} t={t} />
         <ShortlistFeed completed={central.completed} riderNames={riderNames} t={t} />
-        <TeamScoutHistory completed={central.completed} riderNames={riderNames} t={t} />
+        <TeamScoutHistory teamHistory={central.teamHistory ?? []} riderNames={riderNames} t={t} />
       </SectionStack>
     </div>
   );
