@@ -406,6 +406,81 @@ test("hire: 1 active staff in role → hires into free 2nd slot (no longer role_
   assert.equal(supabase.state.staffInserts[0].slot, 2, "skal lande i den frie 2. slot");
 });
 
+// #3489 kandidatflow-stramning (ejer-godkendt 17/8, PR #3851): eksplicit guard
+// mod at ansætte SAMME kandidat-navn ind i begge slots — dedikeret fejlkode
+// (candidate_already_hired) i stedet for det uigennemsigtige generiske
+// invalid_candidate, så frontenden kan forklare PRÆCIS hvorfor.
+test("hire: candidateName matches an already-active staff in the OTHER slot → candidate_already_hired, no insert", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
+    staff: [{ id: "staff-existing", team_id: "team-1", role: "training", status: "active", salary: 10_000, tier: 1, slot: 1, name: "Marc Vandenbroucke" }],
+  });
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: "Marc Vandenbroucke" },
+    supabase,
+    ENABLED
+  );
+  assert.deepEqual(result, { ok: false, error: "candidate_already_hired" });
+  assert.equal(supabase.state.staffInserts.length, 0);
+});
+
+test("hire: active staff' names are excluded from the regenerated candidate pool, alongside fired names (#3489)", async () => {
+  const facilityTier = 5;
+  const full = generateStaffCandidates({ teamId: "team-1", seasonNumber: 7, role: "training", facilityTier });
+  const active = full[0]; // allerede ansat i slot 1 — må ikke kunne matches til slot 2
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: facilityTier }],
+    staff: [{ id: "staff-existing", team_id: "team-1", role: "training", status: "active", salary: 10_000, tier: 1, slot: 1, name: active.name }],
+  });
+
+  // candidate_already_hired-guarden fanger dette FØR kandidat-regenereringen —
+  // testen beviser at samme navn ikke kan "smugles ind" via candidateName heller.
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: active.name },
+    supabase,
+    ENABLED
+  );
+  assert.deepEqual(result, { ok: false, error: "candidate_already_hired" });
+  assert.equal(supabase.state.staffInserts.length, 0);
+});
+
+test("hire: concurrent insert hits the active-role-NAME unique index (23505) → candidate_already_hired, no throw", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "training", facilityTier: 5,
+  })[0];
+
+  // Simulér race: BEGGE hires læste "ingen aktiv med dette navn" FØR nogen
+  // skrev — det andet kald vandt, dette insert taber til
+  // idx_team_staff_active_role_name (database/2026-08-17-3489-staff-candidate-name-guard.sql).
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const chain = originalFrom(table);
+    if (table === "team_staff") {
+      const dup = { code: "23505", message: 'duplicate key value violates unique constraint "idx_team_staff_active_role_name"' };
+      chain.insert = () => ({
+        error: dup,
+        then(resolve) { return resolve({ error: dup }); },
+        select() { return { single: () => Promise.resolve({ data: null, error: dup }) }; },
+      });
+    }
+    return chain;
+  };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: candidate.name },
+    supabase,
+    ENABLED
+  );
+  assert.deepEqual(result, { ok: false, error: "candidate_already_hired" });
+});
+
 test("hire: role occupied (BEGGE slots besat) → role_occupied, no insert", async () => {
   const supabase = createFacilitySupabase({
     team: { id: "team-1", balance: 1_000_000 },

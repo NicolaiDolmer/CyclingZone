@@ -21,6 +21,7 @@ import {
   fireStaff as defaultFire,
   releaseStaff as defaultRelease,
   loadFiredStaffNames,
+  loadActiveStaffNames,
 } from "./facilityService.js";
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
@@ -160,20 +161,38 @@ export async function getStaffCandidatesHandler(
 
   // #2887: udelukker holdets egne tidligere fyrede staff i denne rolle, så UI'et
   // aldrig viser den samme fyrede kandidat igen (rehire-loop-guard, samme filter
-  // som hireStaff bruger til at validere candidateName).
-  const firedNames = await loadFiredStaffNames(teamId, role, supabaseClient);
-  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames: firedNames });
+  // som hireStaff bruger til at validere candidateName). #3489 kandidatflow-
+  // stramning: udelukker OGSÅ holdets NUVÆRENDE aktive staff i rollen (begge
+  // slots), så en allerede ansat kandidat forsvinder fra listen i stedet for at
+  // vises uden en fungerende Hire-knap — SAMME excludeNames-sammensætning som
+  // hireStaff bruger til at validere candidateName, så listen der vises og listen
+  // der valideres imod altid er enige. generateStaffCandidates' while-loop fylder
+  // automatisk puljen op til 3 igen når et navn udelukkes.
+  const [firedNames, activeNames] = await Promise.all([
+    loadFiredStaffNames(teamId, role, supabaseClient),
+    loadActiveStaffNames(teamId, role, supabaseClient),
+  ]);
+  const excludeNames = new Set([...firedNames, ...activeNames]);
+  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames });
   return { status: 200, body: { role, facilityTier, candidates } };
 }
 
 // POST /api/club/staff/hire — body { role, candidateName }. role_occupied → 409.
+// #3489: candidate_already_hired → 409 også (samme "konflikt med nuværende
+// tilstand"-semantik som role_occupied — kandidaten er allerede taget af den
+// anden slot, ikke en ugyldig request).
 export async function postStaffHireHandler(
   { teamId, role, candidateName, seasonId, seasonNumber },
   supabaseClient,
   { flags = DEFAULT_FLAGS, hireStaff = defaultHire } = {}
 ) {
   const result = await hireStaff({ teamId, role, candidateName, seasonId, seasonNumber }, supabaseClient, flags);
-  if (!result.ok) return { status: statusForError(result.error, { role_occupied: 409 }), body: { error: result.error } };
+  if (!result.ok) {
+    return {
+      status: statusForError(result.error, { role_occupied: 409, candidate_already_hired: 409 }),
+      body: { error: result.error },
+    };
+  }
   return { status: 200, body: result };
 }
 

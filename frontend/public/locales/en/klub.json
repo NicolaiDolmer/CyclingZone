@@ -97,6 +97,7 @@
     "role_occupied": "You already have staff in this role.",
     "staff_tier_exceeds_facility": "Upgrade the facility before hiring a higher-tier chief.",
     "invalid_candidate": "That candidate is no longer available.",
+    "candidate_already_hired": "That candidate is already hired in the other slot.",
     "failed": "Something went wrong. Try again.",
     "network": "Couldn't reach the server. Try again."
   },

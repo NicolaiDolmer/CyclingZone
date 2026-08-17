@@ -42,7 +42,19 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
   const doHire = async (name) => {
     setBusy(true); setError(null);
     const r = await onHire(track, name);
-    if (!r.ok) setError(t(`errors.${r.error}`, { defaultValue: t("errors.failed") }));
+    if (!r.ok) {
+      setError(t(`errors.${r.error}`, { defaultValue: t("errors.failed") }));
+      setBusy(false);
+      return;
+    }
+    // #3489 kandidatflow-stramning: onHire's facility-refresh opdaterer kun
+    // staffList/slots (useFacilities.refresh) — candidates er panel-lokal state,
+    // så uden dette genindlæs ville den lige ansatte kandidat blive stående i
+    // listen (uden en fungerende Hire-knap) indtil panelet lukkes og genåbnes.
+    // Backend udelukker nu aktive navne fra puljen OG fylder den automatisk op
+    // igen, så denne genindlæsning både fjerner den ansatte OG viser erstatningen.
+    const refreshed = await loadCandidates(track);
+    if (refreshed.ok) setCandidates(refreshed.candidates);
     setBusy(false);
   };
   const doFire = async () => {

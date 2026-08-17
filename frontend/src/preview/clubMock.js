@@ -119,9 +119,19 @@ function facilitiesPayload() {
   return { facilities, seasonCost: { totalUpkeep, totalPayroll, balance: 500000 } };
 }
 
+// #3489 kandidatflow-stramning (ejer-godkendt 17/8, PR #3851): udelukker
+// holdets NUVÆRENDE aktive staff-navne i rollen (begge slots) — spejler
+// backend/lib/facilityRoutesHandlers.js's getStaffCandidatesHandler, som nu
+// gør det samme (excludeNames = fired ∪ active). Uden filteret viste preview'et
+// den samme faste NAME_POOL uanset hvem der lige var ansat (dubletten synlig i
+// pr-screens/3489-desktop-staffpanel-scouting-after-hire1.png) — NAME_POOL har
+// 6 navne, så filtrering af op til 2 aktive stadig efterlader >= 4 til slice(0,3),
+// puljen fyldes altid op igen.
 function candidatesFor(role) {
   const facTier = Math.max(1, state.facilities[role]?.tier || 0);
-  return NAME_POOL.slice(0, 3).map((name, i) => {
+  const activeNames = new Set((state.facilities[role]?.staffSlots || []).filter(Boolean).map((s) => s.name));
+  const available = NAME_POOL.filter((name) => !activeNames.has(name));
+  return available.slice(0, 3).map((name, i) => {
     const tier = 1 + (i % facTier);
     // #2220 A4b: kandidater bærer overall + topSpecialization til sammenligning.
     const ab = abilitiesFor(role, tier, name);
@@ -216,6 +226,9 @@ export function clubMockRoute(method, pathname, search, body) {
     if (!f) return { status: 400, body: { error: "invalid_role" } };
     const freeSlot = f.staffSlots.findIndex((s) => s == null);
     if (freeSlot === -1) return { status: 409, body: { error: "role_occupied" } };
+    // #3489 kandidatflow-stramning: eksplicit guard mod at ansætte den samme
+    // kandidat ind i begge slots — spejler backend/lib/facilityService.js hireStaff.
+    if (f.staffSlots.some((s) => s?.name === candidateName)) return { status: 409, body: { error: "candidate_already_hired" } };
     const cand = candidatesFor(role).find((c) => c.name === candidateName);
     if (!cand) return { status: 400, body: { error: "invalid_candidate" } };
     if (cand.tier > f.tier) return { status: 400, body: { error: "staff_tier_exceeds_facility" } };

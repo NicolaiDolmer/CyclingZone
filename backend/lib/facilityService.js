@@ -64,6 +64,23 @@ export async function loadFiredStaffNames(teamId, role, supabaseClient) {
   return new Set((data ?? []).map((r) => r.name).filter(Boolean));
 }
 
+// #3489 kandidatflow-stramning (ejer-godkendt 17/8, PR #3851): navne på ALLE
+// AKTIVE staff holdet allerede har i denne rolle (begge slots) — bruges (sammen
+// med loadFiredStaffNames) til at udelukke allerede-ansatte kandidater fra
+// visnings-puljen (getStaffCandidatesHandler), så en ansat kandidat aldrig kan
+// vises igen i den anden (frie) slot. hireStaff selv genbruger den allerede
+// indlæste activeStaff-liste i stedet for at kalde denne (undgår en ekstra query).
+export async function loadActiveStaffNames(teamId, role, supabaseClient) {
+  const { data, error } = await supabaseClient
+    .from("team_staff")
+    .select("name")
+    .eq("team_id", teamId)
+    .eq("role", role)
+    .eq("status", "active");
+  if (error) throw new Error(`facilityService: could not load active staff names for ${teamId}/${role}: ${error.message}`);
+  return new Set((data ?? []).map((r) => r.name).filter(Boolean));
+}
+
 // #2649: opslag på staffId (i stedet for role) TIL ejerskabs-guarden i releaseStaff.
 // .eq("team_id", teamId) håndhæves i APPLIKATIONS-koden her (ikke kun RLS) — en
 // staff-række der findes, men tilhører et andet hold, matcher aldrig denne query
@@ -149,6 +166,15 @@ export async function hireStaff(
   // senior-træner, eller en 2. spejder med et andet speciale).
   const activeStaff = await loadActiveStaffList(teamId, role, supabaseClient);
   if (activeStaff.length >= MAX_STAFF_SLOTS_PER_ROLE) return { ok: false, error: "role_occupied" };
+  // #3489 kandidatflow-stramning: eksplicit, tydelig guard MOD at ansætte den
+  // samme kandidat ind i begge slots (fx en stale kandidatliste i klienten, eller
+  // et hurtigt dobbelt-klik der rammer to forskellige panel-instanser) — afvises
+  // med en dedikeret fejlkode (candidate_already_hired) FØR insert, i stedet for
+  // det uigennemsigtige generiske invalid_candidate. Sekventiel guard; den ægte
+  // samtidigheds-race (begge kald læser activeStaff FØR nogen skriver) lukkes af
+  // det unikke DB-indeks idx_team_staff_active_role_name (se 23505-håndtering
+  // nedenfor + database/2026-08-17-3489-staff-candidate-name-guard.sql).
+  if (activeStaff.some((s) => s.name === candidateName)) return { ok: false, error: "candidate_already_hired" };
   const takenSlots = new Set(activeStaff.map((s) => s.slot ?? 1));
   let slot = 1;
   while (takenSlots.has(slot) && slot <= MAX_STAFF_SLOTS_PER_ROLE) slot += 1;
@@ -161,9 +187,15 @@ export async function hireStaff(
 
   // Kandidater regenereres SERVER-SIDE (deterministisk seed) og matches på navn —
   // klienten må aldrig selv levere tier/salary. #2887: udelukker holdets egne
-  // tidligere fyrede staff i denne rolle (rehire-loop-guard).
+  // tidligere fyrede staff i denne rolle (rehire-loop-guard). #3489: udelukker
+  // OGSÅ holdets NUVÆRENDE aktive staff i rollen (begge slots) — samme excludeNames
+  // som getStaffCandidatesHandler bruger til visning, så de to ALTID er enige om
+  // hvilke 3 kandidater der findes lige nu (candidateName matcher garanteret,
+  // eller er reelt ugyldig). generateStaffCandidates' while-loop fylder automatisk
+  // puljen op til 3 igen når et navn udelukkes (kravet om at puljen ikke tømmes).
   const firedNames = await loadFiredStaffNames(teamId, role, supabaseClient);
-  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames: firedNames });
+  const excludeNames = new Set([...firedNames, ...activeStaff.map((s) => s.name)]);
+  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames });
   const candidate = candidates.find((c) => c.name === candidateName);
   if (!candidate) return { ok: false, error: "invalid_candidate" };
 
@@ -194,8 +226,15 @@ export async function hireStaff(
     .single();
   if (insertError) {
     // Race: samtidig hire til SAMME slot vandt insertet — partial unique index på
-    // (team_id, role, slot) WHERE status='active' afviser med 23505.
-    if (insertError.code === "23505") return { ok: false, error: "role_occupied" };
+    // (team_id, role, slot) WHERE status='active' afviser med 23505. #3489: et
+    // ANDET unikt indeks (idx_team_staff_active_role_name, se database/2026-08-17-
+    // 3489-staff-candidate-name-guard.sql) dækker den ægte samtidigheds-race hvor
+    // to hires begge passerede activeStaff-guarden ovenfor med samme candidateName
+    // FØR nogen skrev — den giver candidate_already_hired i stedet for role_occupied.
+    if (insertError.code === "23505") {
+      if (insertError.message?.includes("idx_team_staff_active_role_name")) return { ok: false, error: "candidate_already_hired" };
+      return { ok: false, error: "role_occupied" };
+    }
     throw new Error(`facilityService: staff insert failed for ${teamId}/${role}: ${insertError.message}`);
   }
 
