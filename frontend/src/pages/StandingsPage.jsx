@@ -13,8 +13,9 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
 import {
-  EmptyState, ErrorState, Input, Select, Button, DataTable, ZonePill, SkeletonLines, PodiumIcon,
+  EmptyState, ErrorState, Input, Select, Button, DataTable, ZonePill, SkeletonLines, PodiumIcon, BlockedNote,
 } from "../components/ui";
+import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
@@ -336,6 +337,15 @@ export default function StandingsPage() {
     };
     setCompareTeams({ a: lookup(selected[0]), b: lookup(selected[1]) });
   }
+
+  // #3012: "Sammenlign"-knappen krævede altid præcis 2 valgte hold uden at sige
+  // det — en spiller der klikkede med 0 eller 1 valgt fik intet svar.
+  const compareBlockedReason = selected.length === 2
+    ? null
+    : selected.length === 1
+      ? t("compare.blockedOne")
+      : t("compare.blockedNone");
+  const compareBlock = useBlockedAction(compareBlockedReason);
 
   const effectivePts = (s) => ((s?.total_points || 0) - (s?.penalty_points || 0));
   const matchesSearch = (s) => !search || (s.team?.name || "").toLowerCase().includes(search.toLowerCase());
@@ -666,12 +676,20 @@ export default function StandingsPage() {
             placeholder={t("searchPlaceholder")}
           />
         </div>
-        <Button
-          variant="secondary" size="sm" className="ms-auto"
-          onClick={openCompare} disabled={selected.length !== 2}
-        >
-          {t("compare.action", { count: selected.length })}
-        </Button>
+        <div className="ms-auto flex flex-col items-end gap-1">
+          <Button
+            variant="secondary" size="sm"
+            onClick={compareBlock.guard(openCompare)}
+            {...compareBlock.blockedProps}
+          >
+            {t("compare.action", { count: selected.length })}
+          </Button>
+          {compareBlock.blocked && (
+            <BlockedNote id={compareBlock.reasonId} pulseKey={compareBlock.pulseKey} className="text-3xs">
+              {compareBlock.reason}
+            </BlockedNote>
+          )}
+        </div>
       </div>
 
       {/* #1745/#1760: entydig op-/nedryknings-summarie. Tallene er antal i den aktuelle

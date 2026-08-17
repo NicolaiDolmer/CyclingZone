@@ -19,6 +19,7 @@ import { scoutingNavItem } from "../lib/scoutingNavVisibility";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { pathMatchesNavItem } from "../lib/navMatching.js";
 import { buildNavBadgeCounts, resolveNavBadgeCount, formatNavBadgeCount } from "../lib/navBadges.js";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import {
   loadPatchNotesMeta, isPatchNotesUnread, readLastSeenPatchNotes, writeLastSeenPatchNotes,
   buildNavDotFlags, resolveNavDot,
@@ -589,8 +590,15 @@ export default function Layout() {
     return () => clearInterval(heartbeatRef.current);
   }, [session]);
 
+  // #3012: supabase-js's signOut({ scope: "global" }, default) rydder ALTID
+  // den lokale session først, selv når server-siden revoke fejler (fx
+  // netværksfejl) — se GoTrueClient._signOut. Spilleren bliver derfor korrekt
+  // logget ud lokalt uanset, så der er intet UI at rulle tilbage og ingen
+  // besked der ville nå frem (siden skifter med det samme). Fejlen skal dog
+  // stadig kunne ses — før forsvandt den sporløst.
   async function signOut() {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) reportActionFailure("auth_sign_out", { reason: error.message });
     navigate("/login");
   }
 

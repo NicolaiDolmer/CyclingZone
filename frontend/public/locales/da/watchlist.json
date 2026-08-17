@@ -25,6 +25,8 @@
   "startAuction": "Start auktion",
   "inAuction": "I auktion",
   "auctionError": "Kunne ikke starte auktionen. Prøv igen.",
+  "removeFailed": "Kunne ikke fjerne rytteren fra din ønskeliste. Prøv igen.",
+  "noteSaveFailed": "Kunne ikke gemme noten. Prøv igen.",
   "pagination": "Viser {from}–{to} af {total}",
   "prev": "← Forrige",
   "next": "Næste →",

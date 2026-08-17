@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -6,6 +6,7 @@ import RiderLink from "../components/RiderLink";
 import { getRiderMarketValue } from "../lib/marketValues";
 import WatchlistStar from "../components/WatchlistStar";
 import { formatNumber, formatDate, formatRelativeTime } from "../lib/intl";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import {
   CheckIcon,
   LightningIcon,
@@ -22,6 +23,7 @@ import {
   EmptyState,
   ErrorState,
   SkeletonLines,
+  ToastViewport,
 } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -134,6 +136,20 @@ export default function ActivityPage() {
   const [sentOffers, setSentOffers]             = useState([]);
   const [receivedOffers, setReceivedOffers]     = useState([]);
   const [watchlist, setWatchlist]               = useState([]);
+  // #3012: lokaliseret fejl-feedback for watchlist-fjernelse — samme klasse
+  // som RidersPage/WatchlistPage's toggle (tavs { error }, delete-status kun i
+  // konsollen indtil reload).
+  const [toasts, setToasts] = useState([]);
+  function dismissToast(id) { setToasts(prev => prev.filter(item => item.id !== id)); }
+  // #3012: monotont tælle-ref i stedet for Date.now() — react-hooks/purity
+  // flager impure globals (Date.now/Math.random) uanset kaldested, så en ref-
+  // baseret tæller undgår problemet helt og bevarer unikke toast-id'er.
+  const toastIdRef = useRef(0);
+  function pushWatchlistRemoveErrorToast() {
+    toastIdRef.current += 1;
+    const id = `watchlist-remove-error-${toastIdRef.current}`;
+    setToasts(prev => [...prev, { id, tone: "danger", title: t("watchlist.removeFailed") }]);
+  }
 
   async function loadAll({ silent = false } = {}) {
     if (silent) setRefreshing(true); else setLoading(true);
@@ -207,8 +223,13 @@ export default function ActivityPage() {
   async function removeFromWatchlist(riderId) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("rider_watchlist")
+    const { error } = await supabase.from("rider_watchlist")
       .delete().eq("user_id", user.id).eq("rider_id", riderId);
+    if (error) {
+      pushWatchlistRemoveErrorToast();
+      reportActionFailure("watchlist_rider_remove", { reason: error.message, context: { riderId } });
+      return;
+    }
     setWatchlist(prev => prev.filter(e => e.rider?.id !== riderId));
   }
 
@@ -583,6 +604,7 @@ export default function ActivityPage() {
       )}
       </>
       )}
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

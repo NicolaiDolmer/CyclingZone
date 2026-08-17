@@ -415,6 +415,7 @@
     "horizonDuration": "Planen løber over {count, plural, one {1 sæson} other {# sæsoner}}, mål evalueres løbende",
     "requirementsHeading": "Bestyrelsens krav",
     "startNegotiation": "Start forhandling →",
+    "startBlockedNoRequirements": "Der blev ikke genereret nogen krav til dette fokus. Prøv et andet fokus.",
     "errorProposal": "Kunne ikke hente bestyrelsens forslag.",
     "errorSign": "Kunne ikke signere bestyrelsesplanen.",
     "step2Title": "Forhandling",

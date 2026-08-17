@@ -11,9 +11,10 @@ import { resolveNotificationLink } from "../lib/notificationLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { useActionSummary } from "../hooks/useActionSummary";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import {
   Button, EmptyState, ErrorState, PageHeader, Section, Select, SkeletonLines,
-  Tabs, TabList, Tab,
+  Tabs, TabList, Tab, ToastViewport,
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
   ClipboardIcon, PodiumIcon, BellIcon, SearchIcon, InboxIcon,
@@ -237,6 +238,21 @@ export default function NotificationsPage() {
   const [markingAll, setMarkingAll] = useState(false);
   const [expandedAggregates, setExpandedAggregates] = useState(() => new Set());
   const userIdRef = useRef(null);
+  // #3012: markRead/markManyRead/deleteMany/deleteNotif/deleteAllRead
+  // ignorerede tidligere { error } — optimistiske opdateringer der divergerede
+  // fra serveren i stilhed indtil næste reload. markAllRead (nedenfor) gjorde
+  // det allerede rigtigt (ruller tilbage via loadNotifications) og er skabelonen.
+  const [toasts, setToasts] = useState([]);
+
+  function dismissToast(id) {
+    setToasts(prev => prev.filter(item => item.id !== id));
+  }
+
+  function notifyMutationFailed(action, error, context) {
+    const id = `notif-error-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts(prev => [...prev, { id, tone: "danger", title: t("error.mutationFailed") }]);
+    reportActionFailure(action, { reason: error?.message, context });
+  }
 
   // Ligaen tab
   const [events, setEvents] = useState([]);
@@ -313,22 +329,38 @@ export default function NotificationsPage() {
 
 
   async function markRead(id) {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    const prev = notifications;
+    setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n));
+    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    if (error) {
+      setNotifications(prev);
+      notifyMutationFailed("notification_mark_read", error, { notificationId: id });
+    }
   }
 
   async function markManyRead(ids) {
     if (!ids?.length) return;
+    const prev = notifications;
     const idSet = new Set(ids);
-    setNotifications(prev => prev.map(n => idSet.has(n.id) ? { ...n, is_read: true } : n));
-    await supabase.from("notifications").update({ is_read: true }).in("id", ids);
+    setNotifications(p => p.map(n => idSet.has(n.id) ? { ...n, is_read: true } : n));
+    const { error } = await supabase.from("notifications").update({ is_read: true }).in("id", ids);
+    if (error) {
+      setNotifications(prev);
+      notifyMutationFailed("notification_mark_many_read", error, { count: ids.length });
+    }
   }
 
   async function deleteMany(ids) {
     if (!ids?.length) return;
+    const prev = notifications;
     const idSet = new Set(ids);
-    setNotifications(prev => prev.filter(n => !idSet.has(n.id)));
-    await supabase.from("notifications").delete().in("id", ids);
+    setNotifications(p => p.filter(n => !idSet.has(n.id)));
+    const { error } = await supabase.from("notifications").delete().in("id", ids);
+    if (error) {
+      setNotifications(prev);
+      notifyMutationFailed("notification_delete_many", error, { count: ids.length });
+      return;
+    }
     window.dispatchEvent(new Event("cz:notif-deleted"));
   }
 
@@ -351,17 +383,29 @@ export default function NotificationsPage() {
   }
 
   async function deleteNotif(id) {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    await supabase.from("notifications").delete().eq("id", id);
+    const prev = notifications;
+    setNotifications(p => p.filter(n => n.id !== id));
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) {
+      setNotifications(prev);
+      notifyMutationFailed("notification_delete", error, { notificationId: id });
+      return;
+    }
     window.dispatchEvent(new Event("cz:notif-deleted"));
   }
 
   async function deleteAllRead() {
     const readIds = notifications.filter(n => n.is_read).map(n => n.id);
     if (!readIds.length) return;
-    setNotifications(prev => prev.filter(n => !n.is_read));
-    await supabase.from("notifications").delete()
+    const prev = notifications;
+    setNotifications(p => p.filter(n => !n.is_read));
+    const { error } = await supabase.from("notifications").delete()
       .eq("user_id", userIdRef.current).eq("is_read", true);
+    if (error) {
+      setNotifications(prev);
+      notifyMutationFailed("notification_delete_all_read", error, { count: readIds.length });
+      return;
+    }
     window.dispatchEvent(new Event("cz:notif-deleted"));
   }
 
@@ -772,6 +816,7 @@ export default function NotificationsPage() {
           )}
         </>
       )}
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

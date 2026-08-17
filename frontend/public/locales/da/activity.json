@@ -66,7 +66,8 @@
   },
   "watchlist": {
     "goToFull": "Gå til fuld Ønskeliste →",
-    "freeAgent": "Fri agent"
+    "freeAgent": "Fri agent",
+    "removeFailed": "Kunne ikke fjerne rytteren fra din ønskeliste. Prøv igen."
   },
   "loadError": {
     "message": "Kunne ikke hente din aktivitet. Prøv igen.",

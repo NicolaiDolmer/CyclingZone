@@ -85,6 +85,7 @@
       "seasonsRemaining": "Sæsoner tilbage",
       "accruedInterest": "Påløbet rente",
       "startRepay": "Betal rate →",
+      "startRepayBlocked": "Intet at afdrage lige nu: din tilgængelige saldo er bundet i aktive bud.",
       "startRepayMaxPlaceholder": "Max {value}",
       "repayPlaceholder": "0",
       "repayBtn": "Betal",

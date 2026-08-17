@@ -13,11 +13,34 @@ import { riderOverallRating } from "../../lib/riderRating";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
+import { useBlockedAction } from "../../lib/useBlockedAction.js";
 import {
   Section, StarIcon, ExternalLinkIcon, ChartLineIcon, ChevronUpIcon, ChevronDownIcon,
-  XIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon,
+  XIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, BlockedNote,
 } from "../ui";
 import { formatOrdinalShort, formatRaceDateLabel, statusMeta, riderShortName, dateToOrdinal } from "./plannerShared";
+
+// #3012: egen komponent — useBlockedAction er et hook og kan ikke kaldes
+// betinget inde i .map()/en renderet-gren uden at bryde rules-of-hooks. Hver
+// rytterrække får sin egen instans, så knappen har sin egen reasonId/pulseKey.
+function PeakButton({ maxed, maxPerRider, busy, onCreatePeak, t }) {
+  const block = useBlockedAction(maxed ? t("drawer.race.maxedReached", { max: maxPerRider }) : null);
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <button
+        className="text-3xs border border-cz-border rounded-cz px-2 py-1 hover:bg-cz-subtle disabled:opacity-40"
+        disabled={busy}
+        {...block.blockedProps}
+        onClick={block.guard(onCreatePeak)}
+      >{t("drawer.race.setPeak")}</button>
+      {block.blocked && (
+        <BlockedNote id={block.reasonId} pulseKey={block.pulseKey} className="text-3xs max-w-[110px] text-end">
+          {block.reason}
+        </BlockedNote>
+      )}
+    </div>
+  );
+}
 
 function StageMini({ terrain, summit }) {
   const ink = "var(--text-1)", gold = "rgb(var(--accent-t))";
@@ -143,16 +166,19 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy, divisionPen
                 // ægte information at orientere sig i.
                 <span className="text-3xs text-cz-3 w-[74px] text-right">{t("drawer.race.peaksLocked")}</span>
               ) : (
-                <div className="flex flex-col items-end gap-0.5 w-[74px]">
+                <div className="flex flex-col items-end gap-0.5 w-[110px]">
                   {suggestingHere && (
                     <span className="inline-flex items-center gap-0.5 text-3xs text-cz-3">
                       <StarIcon size={9} aria-hidden="true" />{t("drawer.race.suggestedHere")}
                     </span>
                   )}
-                  <button
-                    className="text-3xs border border-cz-border rounded-cz px-2 py-1 hover:bg-cz-subtle disabled:opacity-40"
-                    disabled={busy || maxed} onClick={() => onCreatePeak(rider.id, race.id)}
-                  >{t("drawer.race.setPeak")}</button>
+                  <PeakButton
+                    maxed={maxed}
+                    maxPerRider={maxPerRider}
+                    busy={busy}
+                    onCreatePeak={() => onCreatePeak(rider.id, race.id)}
+                    t={t}
+                  />
                 </div>
               )}
             </div>
