@@ -340,6 +340,25 @@ export const SEED_RACES = [
   { id: "race-done-2", season_id: ACTIVE_SEASON.id, name: "Giro di Preview", race_type: "stage_race", race_class: "GiroVuelta", stages: 2, stages_completed: 2, status: "completed", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "10 May" } },
 ];
 
+// #3751 — race_entries for TEST_TEAM (etableret hold). Dashboardets "Kommende
+// løb"-kort filtrerer nu displayedRaces på holdets EGNE entries
+// (filterTeamEnteredRaces, lib/upcomingRaces.js) — uden disse rækker ville
+// preview-mocken vise et etableret hold som om det ikke var tilmeldt NOGET
+// løb (default: return [] i mockHandlers.js), hvilket ikke matcher prod.
+// Alle 4 SEED_RACES-id'er med, INKL. de afsluttede (race-done-1/2): mockens
+// "races"-handler filtrerer (bevidst, se #1906-kommentaren ovenfor) ikke
+// status=completed fra som den ægte Dashboard-query gør, så uden entries her
+// ville filteret fjerne dem fra "Kommende løb" og ændre kortets række-antal —
+// et layout-skred i dashboard.png-snapshottet, ikke en reel #3751-adfærd.
+// Samme "etableret hold ER tilmeldt ALT" som accept-kriteriet kræver uændret
+// visning for.
+export const SEED_RACE_ENTRIES = [
+  { race_id: "race-up-1", rider_id: RIDERS[0].id, team_id: TEST_TEAM.id, is_auto_filled: false, race_role: "leader" },
+  { race_id: "race-live-1", rider_id: RIDERS[0].id, team_id: TEST_TEAM.id, is_auto_filled: false, race_role: "leader" },
+  { race_id: "race-done-1", rider_id: RIDERS[0].id, team_id: TEST_TEAM.id, is_auto_filled: false, race_role: "leader" },
+  { race_id: "race-done-2", rider_id: RIDERS[0].id, team_id: TEST_TEAM.id, is_auto_filled: false, race_role: "leader" },
+];
+
 // race_stage_profiles — ≥1 pr. etape. demand_vector summerer til [0.97, 1.03].
 // Sub-4 (#2448): rutefelter (distance_km/elevation_gain_m/climbs/sprints/sectors)
 // tilføjet så en Vercel-preview kan klikkes igennem UDEN en migreret prod-DB

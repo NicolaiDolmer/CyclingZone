@@ -8,6 +8,7 @@ import {
   SEED_STAGE_PROFILES,
   SEED_STAGE_SCHEDULE,
   SEED_RACE_RESULTS,
+  SEED_RACE_ENTRIES,
 } from "./seedData.js";
 
 test("hver rider har et id og et navn", () => {
@@ -72,5 +73,29 @@ test("schedule-rækker peger kun på kendte løb", () => {
   const raceIds = new Set(SEED_RACES.map(r => r.id));
   for (const s of SEED_STAGE_SCHEDULE) {
     assert.ok(raceIds.has(s.race_id), `schedule peger på ukendt race ${s.race_id}`);
+  }
+});
+
+// #3751 — SEED_RACE_ENTRIES driver Dashboardets nye "Kommende løb"-filter
+// (filterTeamEnteredRaces). TEST_TEAM skal have en entry i ALLE SEED_RACES,
+// ellers bliver filteret ikke et no-op på preview/e2e og dashboard.png-
+// snapshottet skrider (se kommentaren ved SEED_RACE_ENTRIES i seedData.js).
+test("race_entries peger kun på kendte løb/ryttere/hold", () => {
+  const raceIds = new Set(SEED_RACES.map(r => r.id));
+  const riderIds = new Set(RIDERS.map(r => r.id));
+  const teamIds = new Set([TEST_TEAM.id, RIVAL_TEAM.id]);
+  for (const e of SEED_RACE_ENTRIES) {
+    assert.ok(raceIds.has(e.race_id), `entry peger på ukendt race ${e.race_id}`);
+    assert.ok(riderIds.has(e.rider_id), `entry peger på ukendt rider ${e.rider_id}`);
+    assert.ok(teamIds.has(e.team_id), `entry peger på ukendt team ${e.team_id}`);
+  }
+});
+
+test("TEST_TEAM har mindst én race_entries-række i HVERT SEED_RACES-løb (no-op-garanti for #3751-filteret)", () => {
+  const enteredRaceIds = new Set(
+    SEED_RACE_ENTRIES.filter(e => e.team_id === TEST_TEAM.id).map(e => e.race_id)
+  );
+  for (const r of SEED_RACES) {
+    assert.ok(enteredRaceIds.has(r.id), `TEST_TEAM mangler race_entries-række for ${r.id}`);
   }
 });
