@@ -4,6 +4,7 @@ import {
   getRiderAge, ageBadgeKey, isU23, isU25, ageForSeason, seasonReferenceYear,
   isRetirementRisk, retirementRiskBadgeKey, RETIREMENT_WARNING_AGE, LAUNCH_REFERENCE_YEAR,
   seasonNumberFromReferenceYear, isContractExpiringAtTransition, contractExpiringBadgeKey,
+  retirementBidWarningTier, RETIREMENT_WINDOW_START_AGE, RETIREMENT_GUARANTEED_AGE,
 } from "./riderAge.js";
 
 // #3071: sæson 1 (launch-året) = LAUNCH_REFERENCE_YEAR selv, så de fleste ældre
@@ -212,6 +213,37 @@ test("retirementRiskBadgeKey og ageBadgeKey er aldrig samtidig sat", () => {
   const youngRider = { birthdate: "2010-01-01" }; // 16
   assert.equal(ageBadgeKey(youngRider, S1), "u23");
   assert.equal(retirementRiskBadgeKey(youngRider, S1), null);
+});
+
+// ── #2700: retirementBidWarningTier — bud-bekræftelses-advarsel ─────────────
+// Ejer-accept 22/7 på #2700: "ved alder ≥ guaranteedAge skal teksten sige at
+// pension er SIKKER, ikke sandsynlig" — modsat retirementRiskBadgeKey (ét fladt
+// badge for hele vinduet), har bud-modalen derfor TO niveauer.
+
+test("RETIREMENT_WINDOW_START_AGE/RETIREMENT_GUARANTEED_AGE matcher SSOT (backend/lib/riderProgression.js)", () => {
+  assert.equal(RETIREMENT_WINDOW_START_AGE, 36);
+  assert.equal(RETIREMENT_GUARANTEED_AGE, 40);
+});
+
+test("retirementBidWarningTier — null under advarsels-alderen (35)", () => {
+  assert.equal(retirementBidWarningTier("1992-01-01", S1), null); // 34
+});
+
+test("retirementBidWarningTier — 'risk' fra advarsels-alderen (35) til lige under guaranteedAge (39)", () => {
+  assert.equal(retirementBidWarningTier("1991-01-01", S1), "risk"); // 35
+  assert.equal(retirementBidWarningTier("1990-01-01", S1), "risk"); // 36 (windowStartAge)
+  assert.equal(retirementBidWarningTier("1987-01-01", S1), "risk"); // 39
+});
+
+test("retirementBidWarningTier — 'certain' fra guaranteedAge (40) og opefter", () => {
+  assert.equal(retirementBidWarningTier("1986-01-01", S1), "certain"); // 40
+  assert.equal(retirementBidWarningTier("1980-01-01", S1), "certain"); // 46
+});
+
+test("retirementBidWarningTier — robust ved manglende fødselsdato/sæson-år", () => {
+  assert.equal(retirementBidWarningTier(null, S1), null);
+  assert.equal(retirementBidWarningTier(undefined, S1), null);
+  assert.equal(retirementBidWarningTier("1991-01-01", null), null);
 });
 
 // ── #3097: seasonNumberFromReferenceYear (inverse af seasonReferenceYear) ────

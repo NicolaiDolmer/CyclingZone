@@ -36,7 +36,7 @@ import { formatHour } from "../lib/auctionEndTime.js";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
-import { ageForSeason } from "../lib/riderAge.js";
+import { ageForSeason, retirementBidWarningTier } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useActionSummary } from "../hooks/useActionSummary.js";
 import { AmountInput, BlockedNote, Button, Card, CheckIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
@@ -198,7 +198,7 @@ function SwapOfferButton({ rider, myTeamId }) {
   );
 }
 
-function DirectOfferButton({ rider }) {
+function DirectOfferButton({ rider, seasonYear }) {
   const { t } = useTranslation("rider");
   const [show, setShow]       = useState(false);
   const [amount, setAmount]   = useState(getRiderMarketValue(rider));
@@ -268,6 +268,7 @@ function DirectOfferButton({ rider }) {
         mode="transfer"
         riderName={`${rider.firstname} ${rider.lastname}`}
         amount={amount}
+        retirementTier={retirementBidWarningTier(rider.birthdate, seasonYear)}
         busy={loading}
         onCancel={() => { if (!loading) setConfirmOpen(false); }}
         onConfirm={performSendOffer}
@@ -466,7 +467,7 @@ function AuctionCountdown({ end, status }) {
   );
 }
 
-function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
+function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing, seasonYear }) {
   // "auctions" loades med så hookets fejltekst (auctions:error.insufficientBalance)
   // kan resolves — uden den kastede klient-gaten TypeError (t var ikke givet videre)
   // og spilleren så ingen fejl overhovedet (#1184).
@@ -494,6 +495,8 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm,
     riderName: riderName || t("auctionPanel.riderNameFallback"),
+    // #2700: pensions-advarsel i bud-bekræftelsen — se useAuctionBidding.js.
+    birthdate: r?.birthdate, seasonYear,
     t,
   });
 
@@ -1631,6 +1634,7 @@ export default function RiderStatsPage() {
         mode={bidConfirm?.mode}
         riderName={bidConfirm?.riderName}
         amount={bidConfirm?.amount}
+        retirementTier={bidConfirm?.retirementTier}
         busy={bidConfirmBusy}
         onCancel={() => { if (!bidConfirmBusy) setBidConfirm(null); }}
         onConfirm={handleBidConfirm}
@@ -1753,6 +1757,7 @@ export default function RiderStatsPage() {
                     onRemoveProxy={handleRemoveProxy}
                     requestBidConfirm={requestBidConfirm}
                     isFlashing={priceFlash}
+                    seasonYear={seasonYear}
                   />
                 </div>
               )}
@@ -1779,7 +1784,7 @@ export default function RiderStatsPage() {
               ) : (
                 canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />
               )}
-              {canDirectOffer && <DirectOfferButton rider={rider} />}
+              {canDirectOffer && <DirectOfferButton rider={rider} seasonYear={seasonYear} />}
               {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
             </div>
           }

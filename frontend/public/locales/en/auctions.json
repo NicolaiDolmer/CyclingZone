@@ -228,6 +228,10 @@
     "transferAction": "Send bid",
     "questionPrefix": "Are you sure you want to",
     "onLabel": "on",
+    "retirementWarning": {
+      "risk": "Nearing the end of his career: this rider is in the retirement window (age {windowStart}-{guaranteedAge}) and may retire after this season.",
+      "certain": "This rider is {guaranteedAge} or older and will retire after this season."
+    },
     "typoGuard": {
       "title": "Check your price",
       "body": "You're listing <strong>{riderName}</strong> for sale at <strong>{price} CZ$</strong>.",

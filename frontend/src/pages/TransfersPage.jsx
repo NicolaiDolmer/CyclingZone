@@ -28,7 +28,7 @@ import {
 // DataTable's API, ligesom AuctionsPage's sticky bud-kolonne i bølge 1).
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
-import { getRiderAge } from "../lib/riderAge";
+import { getRiderAge, retirementBidWarningTier } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -779,7 +779,7 @@ function MarketStatBar({ value }) {
 }
 
 // Bud-form (ikke-egen listing) — samme felter/validering som TransferCard.
-function MarketOfferForm({ listing, onOffer }) {
+function MarketOfferForm({ listing, onOffer, seasonYear }) {
   const { t } = useTranslation("transfers");
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
@@ -819,6 +819,7 @@ function MarketOfferForm({ listing, onOffer }) {
         mode="transfer"
         riderName={riderName}
         amount={offerAmt}
+        retirementTier={retirementBidWarningTier(listing.rider?.birthdate, seasonYear)}
         busy={loading}
         onCancel={() => { if (!loading) setConfirmOpen(false); }}
         onConfirm={performSendOffer}
@@ -925,7 +926,7 @@ function MarketRow({
                   onUpdatePrice={onUpdatePrice}
                 />
               ) : (
-                <MarketOfferForm listing={listing} onOffer={onOffer} />
+                <MarketOfferForm listing={listing} onOffer={onOffer} seasonYear={seasonYear} />
               )}
             </div>
           </td>

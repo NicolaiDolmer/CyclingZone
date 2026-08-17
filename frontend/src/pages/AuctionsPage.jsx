@@ -211,6 +211,8 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
+    // #2700: pensions-advarsel i bud-bekræftelsen — se useAuctionBidding.js.
+    birthdate: r?.birthdate, seasonYear,
   });
 
   // #3071: sæson-år (fra seasonYear-prop, useActiveSeasonYear i AuctionsPage), ikke wall-clock.
@@ -538,6 +540,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
+    // #2700: pensions-advarsel i bud-bekræftelsen — se useAuctionBidding.js.
+    birthdate: r?.birthdate, seasonYear,
   });
 
   // #2849 bølge 6: "du fører"-markeringen var dobbelt død — guldkanten tabte
@@ -1523,6 +1527,7 @@ export default function AuctionsPage() {
         mode={bidConfirm?.mode}
         riderName={bidConfirm?.riderName}
         amount={bidConfirm?.amount}
+        retirementTier={bidConfirm?.retirementTier}
         busy={bidConfirmBusy}
         onCancel={() => { if (!bidConfirmBusy) setBidConfirm(null); }}
         onConfirm={handleBidConfirm}

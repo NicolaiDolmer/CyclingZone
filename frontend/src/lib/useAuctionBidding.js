@@ -5,6 +5,7 @@ import { logEvent, logFirstEvent } from "./logEvent";
 import { formatNumber } from "./intl";
 import { useBlockedAction } from "./useBlockedAction.js";
 import { reportActionFailure } from "./actionTelemetry.js";
+import { retirementBidWarningTier } from "./riderAge";
 
 // Delt bid + autobud-loft state-machine. Bruges af AuctionRow (desktop tabel),
 // AuctionCard (mobil card) og RiderStatsPage (rytter-profil) — så vi har ÉN kilde
@@ -37,11 +38,18 @@ export function useAuctionBidding({
   onRemoveProxy,
   requestBidConfirm,
   riderName,
+  // #2700: rytterens fødselsdato + aktive sæson-referenceår — kun brugt til at
+  // afgøre retirementTier for bud-bekræftelses-advarslen. Begge er valgfrie
+  // (kaldere uden dem får blot ingen advarsel, samme null-over-gæt-kontrakt
+  // som resten af riderAge.js).
+  birthdate,
+  seasonYear,
   t,
 }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0, {
     hasActiveBid: Boolean(auction.current_bidder_id),
   });
+  const retirementTier = retirementBidWarningTier(birthdate, seasonYear);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
@@ -113,6 +121,7 @@ export function useAuctionBidding({
       mode: "bid",
       riderName,
       amount: bidAmount,
+      retirementTier,
       onConfirm: async () => {
         setBidStatus("loading");
         let result;
@@ -167,6 +176,7 @@ export function useAuctionBidding({
       mode: "proxy",
       riderName,
       amount: proxyInput,
+      retirementTier,
       onConfirm: async () => {
         setProxyStatus("loading");
         setProxyErrorText("");
