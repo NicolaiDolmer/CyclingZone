@@ -42,5 +42,5 @@
       ]
     }
   ],
-  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*) exit 0;; main) git diff --quiet HEAD^ HEAD -- .;; *) git fetch -q --depth=100 origin main || exit 1; b=$(git merge-base HEAD FETCH_HEAD) || exit 1; git diff --quiet $b HEAD -- .;; esac"
+  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*) exit 0;; main) git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- .;; *) git fetch -q --depth=50 origin main||exit 1;b=$(git merge-base HEAD FETCH_HEAD)||exit 1;git diff --quiet $b HEAD -- .;;esac"
 }
