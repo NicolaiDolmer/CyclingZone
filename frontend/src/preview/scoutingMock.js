@@ -15,7 +15,7 @@ import { RIDERS, TEST_TEAM, RIVAL_TEAM } from "./seedData.js";
 const JOB_CONFIG = Object.freeze({
   targetEtaMinutes: 30,
   targetCostPerLevel: 1000,
-  missionDays: 2,
+  missionDays: 1, // #3652: 2→1 (co-SSOT med backend/lib/scoutEngine.js SCOUT_JOB_CONFIG)
   missionCost: 6000,
 });
 

@@ -1,7 +1,7 @@
 // Talentspejder Fase 3 (#2244) — mission-shortlist-generator. RENE funktioner,
 // ingen I/O (candidate-listen leveres af kalderen, typisk scoutSweep.js).
 //
-// Udvælgelse: kandidat-pool fra mission_criteria (division/land/U23/NM) →
+// Udvælgelse: kandidat-pool fra mission_criteria (division/land/U23/NM/ryttertype) →
 // score = ægte potentiale-rang BLANDET med spejder-bias (seededUnit-mønster fra
 // scouting.js), så shortlist-MEDLEMSKAB skævvrides mod bedre spejdere men
 // output-RÆKKEFØLGEN shuffles deterministisk med en seed der er uafhængig af
@@ -11,6 +11,14 @@
 // reach (spejder-roleSkill) → større pool-dækning (flere kandidater i betragtning).
 // evaluation (spejder-roleSkill) → mindre bias-vægt (bedre spejder finder de
 // rigtige emner oftere, men afslører det aldrig via rækkefølgen).
+//
+// #3657 (spillerønske 12-13/8, samlet Discord-tråd): missioner filtrerede før
+// kun på geografi/alder (division/land/U23/NM) — "targeting" der ikke fangede
+// nogen ryttertype, selvom det var netop det spillerne efterspurgte
+// ("a rider from that nationality that had some kind of skills"). `type`-scope
+// tilføjet her genbruger riders.primary_type (allerede beregnet af
+// backend/lib/riderTypes.js for hver rytter, ingen ny datamodel nødvendig) —
+// rider-formen nedenfor udvidet med `primaryType` (mappet af scoutSweep.js).
 import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG } from "./scoutEngine.js";
 import { seededUnit } from "./scouting.js";
 
@@ -41,8 +49,8 @@ export function biasWeightFor(evaluation) {
 }
 
 // Kandidat-pool for en mission ud fra mission_criteria. rider-form: forventer
-// { id, potentiale, divisionId, country, age, isNmEligible } — kalderen mapper
-// den rå DB-række til denne form.
+// { id, potentiale, divisionId, country, age, isNmEligible, primaryType } —
+// kalderen mapper den rå DB-række til denne form.
 export function filterCandidatePool(riders, criteria) {
   if (!criteria || !Array.isArray(riders)) return [];
   const { scope, value } = criteria;
@@ -51,6 +59,12 @@ export function filterCandidatePool(riders, criteria) {
     if (scope === "country") return r.country === value;
     if (scope === "u23") return r.age != null && r.age <= 23;
     if (scope === "nm") return r.country === value && r.isNmEligible !== false;
+    // #3657: ryttertype-targeting — matcher rytterens PRIMÆRE type (samme
+    // klassificering som resten af spillet viser, backend/lib/riderTypes.js).
+    // Sekundær type indgår bevidst ikke: en mission der leder efter "klatrere"
+    // skal finde ryttere hvis stærkeste identitet ER klatring, ikke enhver
+    // rytter der blot har det som biegenskab.
+    if (scope === "type") return r.primaryType === value;
     return false;
   });
 }

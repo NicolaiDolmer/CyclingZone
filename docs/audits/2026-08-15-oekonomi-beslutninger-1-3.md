@@ -121,4 +121,17 @@ Det giver **68 kvalificerede observationer** mod 16, med et værn der beviseligt
 
 ## Tilbage
 
-Beslutning **4, 5, 6 og 7** i designkritikkens §7 er ikke truffet. 6 (løft D4's indtægt før #3393) er den eneste der er blokerende for noget.
+~~Beslutning **4, 5, 6 og 7** i designkritikkens §7 er ikke truffet. 6 (løft D4's indtægt før #3393) er den eneste der er blokerende for noget.~~
+
+**Opdatering 17/8: alle syv beslutninger er nu truffet.** 6 blev løst af #3730 (rod-årsag var en bug). 4+5 truffet 17/8 i bølge 2 (ankerværdi + globalt A, logget på #3757). Design-sessionen 17/8 traf resten:
+
+| Beslutning | Valg | Logget på |
+|---|---|---|
+| Niveau-korrektionen (v4 × c) | Gate-styret engangs-korrektion fra 30/8, IKKE 23/8 og IKKE 0,422 råt. Fyrer første søndag de to frie evidenskanaler er enige ±0,15 + ejer-godkendt dry-run. Bundles dræn-neutral (bank-rate 0,25→0,25/c) og løn-neutral (A × c^-0,55) | [#3750](https://github.com/NicolaiDolmer/CyclingZone/issues/3750) |
+| Lønnens A (første kalibrering) | **A = 23.300** — 35 % af rå målt S2-indtægt (112,5M), bevidst blød landing på ~25 % af S3-indtægten (S3 har 60 løbsdage mod S2's 28). Fast regel fra S4: 35 % af sidste sæsons indtægt, normaliseret pr. løbsdag, skaleret til kommende kalender | [#3393](https://github.com/NicolaiDolmer/CyclingZone/pull/3393) |
+| Løn flipper 23/8 trods RØD komponent 1 | Ja — ankerværdi-grundlaget afkobler (drejebogens åbne spørgsmål besvaret) | #3393 + #3750 |
+| Beslutning 7 (transferskat) | Afvist for nu; gate = rytterkøbs-dræn < 40 % af alle dræn (drænvagt i #3732). #3757 lukket | [#3757](https://github.com/NicolaiDolmer/CyclingZone/issues/3757) |
+| Spillerbeskederne | To nye beskeder før 23/8 (værdier står stille + lønreformen); grøn-gate-varianten og 30/8-fallbacken kasseret | [`2026-08-17-cutover-beskeder.md`](../discord/2026-08-17-cutover-beskeder.md) |
+| Søndags-kvitteringens skelet (#3733) | Klar tekst + fold-ud-tal (valgt på mockup). Trin 1 (korrektions-kvittering) er ny hård forudsætning for at korrektions-gaten kan fyre | [#3733](https://github.com/NicolaiDolmer/CyclingZone/issues/3733) |
+
+Bonus-målinger 17/8: `forced_debt_sale` = 0 transaktioner nogensinde (designkritikkens ukendt nr. 5 lukket); forhandlet kanal 180 d: n=81, median pris/værdi 0,76 (0,65 uden >3x, IQR 0,34-1,02).

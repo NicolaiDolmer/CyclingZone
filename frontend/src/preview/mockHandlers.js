@@ -14,6 +14,7 @@ import {
   ROADMAP_ITEMS,
   AUCTIONS,
   SEED_RACES,
+  SEED_RACE_ENTRIES,
   SEED_STAGE_PROFILES,
   SEED_STAGE_SCHEDULE,
   SEED_LEAGUE_DIVISIONS,
@@ -213,6 +214,18 @@ export function restRows(table, requestUrl = "") {
         return SEED_RACES.filter(r => r.status === "completed");
       }
       return SEED_RACES;
+    }
+    // #3751 — Dashboardets "Kommende løb"-kort filtrerer nu på holdets egne
+    // race_entries (filterTeamEnteredRaces). team_id=eq er den eneste form
+    // Dashboard bruger (ét hold ad gangen); ubetinget spørgsmål falder tilbage
+    // til hele seedet, samme mønster som "races" ovenfor.
+    case "race_entries": {
+      const teamIdMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (teamIdMatch) {
+        const teamId = decodeURIComponent(teamIdMatch[1]);
+        return SEED_RACE_ENTRIES.filter(e => e.team_id === teamId);
+      }
+      return SEED_RACE_ENTRIES;
     }
     case "race_stage_profiles": {
       const idMatch = url.search.match(/race_id=eq\.([^&]+)/);

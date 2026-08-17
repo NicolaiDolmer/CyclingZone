@@ -27,13 +27,35 @@ test("potentialLabelKey: skjult (uscoutet) estimat → ingen label (#1543)", () 
 
 // ── Sortering ─────────────────────────────────────────────────────────────────
 
-test("scoutSortValue: midtpunkt af estimatet; manglende estimat → 0", () => {
+test("scoutSortValue: midtpunkt af stjerneskalaen (fallback uden ceil); manglende estimat → null", () => {
   assert.equal(scoutSortValue({ lo: 3, hi: 5 }), 4);
   assert.equal(scoutSortValue({ lo: 4.5, hi: 4.5, exact: true }), 4.5);
-  assert.equal(scoutSortValue(null), 0);
-  assert.equal(scoutSortValue(undefined), 0);
+  assert.equal(scoutSortValue(null), null);
+  assert.equal(scoutSortValue(undefined), null);
 });
 
-test("scoutSortValue: skjult (uscoutet) estimat → 0 (sorterer nederst, #1543)", () => {
-  assert.equal(scoutSortValue({ hidden: true, level: 0 }), 0);
+test("scoutSortValue: skjult (uscoutet) estimat → null, IKKE 0 (#3787, #1543)", () => {
+  assert.equal(scoutSortValue({ hidden: true, level: 0 }), null);
+});
+
+// #3787: reproducerer thelambas rapport. Serveren leverer et rating-bånd
+// (`ceil`, #2454) som er det spilleren FAKTISK ser i ScoutablePotentiale — men
+// sorteringen brugte den gamle 1-6-stjerneskala (lo/hi), som er en helt
+// anden akse. To ryttere kan derfor bytte plads mellem det viste bånd og den
+// gamle sorteringsnøgle.
+test("scoutSortValue: sorterer på det VISTE ceil-bånd, ikke den skjulte stjerneskala (#3787)", () => {
+  // Niklas: lavt vist bånd (66-74, midtpunkt 70) men højt stjerne-midtpunkt (5).
+  const niklas = { lo: 4.5, hi: 5.5, level: 2, ceil: { lo: 66, hi: 74 } };
+  // Anden rytter: højere vist bånd (78-84, midtpunkt 81) men lavere stjerne-midtpunkt (3.5).
+  const other = { lo: 3, hi: 4, level: 2, ceil: { lo: 78, hi: 84 } };
+
+  assert.equal(scoutSortValue(niklas), 70);
+  assert.equal(scoutSortValue(other), 81);
+  // Den gamle stjerneskala ville have rangeret Niklas (5) over den anden (3.5) —
+  // det viste bånd (70 < 81) skal vinde.
+  assert.ok(scoutSortValue(niklas) < scoutSortValue(other));
+});
+
+test("scoutSortValue: falder til stjerneskalaen når `ceil` mangler (defensiv, ældre payload)", () => {
+  assert.equal(scoutSortValue({ lo: 3, hi: 5, level: 1 }), 4);
 });
