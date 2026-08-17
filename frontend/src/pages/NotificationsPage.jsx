@@ -7,6 +7,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
+import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink } from "../lib/notificationLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -508,7 +509,7 @@ export default function NotificationsPage() {
               {tt.label}
               {tt.badge > 0 && (
                 <span className="px-1.5 py-0.5 text-xs font-bold rounded-cz-pill bg-cz-accent text-cz-on-accent leading-none">
-                  {tt.badge > 9 ? "9+" : tt.badge}
+                  {formatNavBadgeCount(tt.badge)}
                 </span>
               )}
             </Tab>
