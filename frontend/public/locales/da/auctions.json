@@ -10,6 +10,11 @@
   "watchlist": {
     "toggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen."
   },
+  "mobileSort": {
+    "label": "Sortér efter",
+    "ascAria": "Sorterer stigende, tryk for faldende",
+    "descAria": "Sorterer faldende, tryk for stigende"
+  },
   "tour": {
     "placeBid": {
       "title": "Afgiv et bud",
