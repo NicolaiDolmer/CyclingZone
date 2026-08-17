@@ -7,10 +7,22 @@
 //   default-spejder overall 40 · kapacitet 1 (2 ved overall≥80)
 //   target: 1.000/niveau-step, ~30 min svartid UANSET niveau (ejer-beslutning 18/7,
 //   #2644 — se targetEtaMinutes nedenfor for hvorfor "30 min" og "0 dage" er samme ting)
-//   mission: 2 dage, 6.000 flat
+//   mission: 1 dag, 6.000 flat
 //   (rekalibreret 10/7 fra 15.000/60.000 efter scoutTravelScorecard-FAIL:
 //    85-177% af sæsonindkomst ved aktiv kadence, mål [2%,15%] —
 //    se docs/audits/2026-07-10-talentspejder-gates.md)
+//   #3652 (spillerforslag 11/8, jeppek: "maybe the 2-day trip should be a bit
+//   shorter... maybe just 1 day", ejer-direktiv 12-13/8-tråden): dage 2→1.
+//   scoutTravelScorecard.js's gate er UÆNDRET PASS (D1 6,3% / D2 10,3% /
+//   D3 13,2% af [2%,15%]) fordi dens model-profil bruger en FAST kadence
+//   (1 mission/måned), ikke en varigheds-afledt en — cost pr. mission er
+//   uændret 6.000. Modellen fanger derfor IKKE at kapacitets-loftet (1 aktiv
+//   opgave ad gangen for de fleste hold) nu frigiver et missions-slot dobbelt
+//   så hurtigt, så det TEORETISKE spend-loft for en spiller der konstant
+//   genkøer også fordobles — D3 lå allerede tættest på 15%-loftet. Ikke
+//   kørt gennem en kadence-opdateret scorecard-variant; flaget eksplicit i
+//   PR'en til ejer-review, ikke et selvstændigt merge-argument her.
+//   mission: 6.000 flat, uændret (se ovenfor)
 //   gulv: lineær interp overall 40→5.0, 99→3.0 (rating-point-skala, CEIL_HALF_WIDTH_BY_LEVEL[3]=3)
 //   loft: middelmådig spejder (overall<60) kommer ALDRIG under gulv 4.5
 
@@ -35,7 +47,8 @@ export const DEFAULT_SCOUT = Object.freeze({
 // åbner siden inden da.
 export const SCOUT_JOB_CONFIG = Object.freeze({
   target: Object.freeze({ daysPerLevel: 0, costPerLevel: 1000, etaMinutes: 30 }),
-  mission: Object.freeze({ days: 2, cost: 6000, shortlistMin: 3, shortlistMax: 5 }),
+  // #3652: days 2→1 (spillerforslag 11/8). Se kommentaren ovenfor.
+  mission: Object.freeze({ days: 1, cost: 6000, shortlistMin: 3, shortlistMax: 5 }),
 });
 
 const CAPACITY_HIGH_THRESHOLD = 80;

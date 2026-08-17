@@ -35,6 +35,7 @@ import { daysUntil, missionCriteriaLabel } from "../lib/scoutingCentralDisplay";
 import { useScoutCountdown, scoutReadyClock } from "../lib/scoutCountdown";
 import { getCountryName } from "../lib/countryUtils";
 import { ISO2_TO_IOC } from "../lib/countryCodes";
+import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
 import { formatDate } from "../lib/intl";
 
 const COUNTRY_CODES = Object.keys(ISO2_TO_IOC);
@@ -78,7 +79,7 @@ function ScoutCard({ scout, capacity, t }) {
 // Én række i opgavekøen. Egen komponent fordi målrettede opgaver nu tæller ned
 // (#3548) og useScoutCountdown derfor skal kaldes pr. række — en hook kan ikke
 // kaldes inde i en .map()-callback.
-function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobConfig, t }) {
+function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobConfig, t, tTypes }) {
   // #3548: serveren leverer ready_at (created_at + etaMinutes) på aktive
   // målrettede opgaver. Missioner har intet minut-granulært klar-tidspunkt —
   // de modnes af den natlige 22-sweep — så de sender null ind og beholder den
@@ -91,6 +92,7 @@ function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobCo
     : missionCriteriaLabel(a.mission_criteria, {
         translateScope: (s) => t(`mission.scope.${s}`),
         translateCountry: (code) => getCountryName(code),
+        translateType: (key) => tTypes(`types.${key}`),
       });
 
   // #2644: målrettede undersøgelser svarer på ~30 min uanset niveau — den
@@ -144,7 +146,7 @@ function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobCo
   );
 }
 
-function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t }) {
+function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t, tTypes }) {
   if (active.length === 0) {
     return (
       <Section>
@@ -166,6 +168,7 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t 
             cancellingId={cancellingId}
             jobConfig={jobConfig}
             t={t}
+            tTypes={tTypes}
           />
         ))}
       </ul>
@@ -205,18 +208,26 @@ function TargetPoolCard({ id, name, title, subtitle, recommended, selected, onSe
   );
 }
 
-function MissionForm({ onSubmit, busy, jobConfig, t }) {
+function MissionForm({ onSubmit, busy, jobConfig, t, tTypes }) {
   const [scope, setScope] = useState("u23");
   const [country, setCountry] = useState(COUNTRY_CODES[0] ?? "dk");
+  // #3657: ryttertype-targeting — genbruger riders.primary_type (samme
+  // klassificering som RiderFilters/RiderScoutingTab), ingen nyt datafelt.
+  const [riderType, setRiderType] = useState(RIDER_TYPE_KEYS[0]);
   const [targetPool, setTargetPool] = useState("free_agents");
   const [result, setResult] = useState(null);
 
   const needsCountry = scope === "country" || scope === "nm";
+  const needsType = scope === "type";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setResult(null);
-    const criteria = needsCountry ? { scope, value: country, targetPool } : { scope, targetPool };
+    const criteria = needsCountry
+      ? { scope, value: country, targetPool }
+      : needsType
+        ? { scope, value: riderType, targetPool }
+        : { scope, targetPool };
     const r = await onSubmit(criteria);
     setResult(r);
   };
@@ -257,6 +268,7 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
             <option value="u23">{t("mission.scope.u23")}</option>
             <option value="country">{t("mission.scope.country")}</option>
             <option value="nm">{t("mission.scope.nm")}</option>
+            <option value="type">{t("mission.scope.type")}</option>
           </Select>
         </div>
         {needsCountry && (
@@ -269,13 +281,26 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
             </Select>
           </div>
         )}
+        {needsType && (
+          <div>
+            <label className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("mission.form.typeLabel")}</label>
+            <Select value={riderType} onChange={(e) => setRiderType(e.target.value)}>
+              {RIDER_TYPE_KEYS.map((key) => (
+                <option key={key} value={key}>{tTypes(`types.${key}`)}</option>
+              ))}
+            </Select>
+          </div>
+        )}
         <Button type="submit" variant="primary" size="sm" loading={busy}>
           {t("mission.form.submit")}
         </Button>
       </form>
       {/* Varighed/pris fra jobConfig (SSOT: backend scoutEngine.SCOUT_JOB_CONFIG); fallbacks dækker kun før første fetch. */}
       <p className="text-cz-3 text-3xs mt-2.5 mb-0">
-        {t("mission.form.costNote", { days: jobConfig?.missionDays ?? 14, cost: jobConfig?.missionCost ?? 6000 })}
+        {/* #3652: fallback rettet 14→1 (var stale siden #2458's 14→2-rebalance i
+            juli, aldrig opdateret dengang — reelt kun synlig i vinduet før
+            første /scouting/me-fetch). SSOT er stadig jobConfig fra serveren. */}
+        {t("mission.form.costNote", { days: jobConfig?.missionDays ?? 1, cost: jobConfig?.missionCost ?? 6000 })}
       </p>
       {result && !result.ok && (
         <p className="text-cz-warning text-[12px] mt-2 mb-0">
@@ -286,7 +311,7 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
   );
 }
 
-function ShortlistFeed({ completed, riderNames, t }) {
+function ShortlistFeed({ completed, riderNames, t, tTypes }) {
   const missions = completed.filter((c) => c.kind === "mission" && c.result?.shortlist?.length);
   if (missions.length === 0) {
     return (
@@ -299,6 +324,10 @@ function ShortlistFeed({ completed, riderNames, t }) {
   return (
     <Section>
       <SectionHeader title={t("shortlist.title")} />
+      {/* #3652 (spillerønske 11/8): HELE shortlisten får nu et gratis niveau-1-
+          rapport, ikke kun topfundet (backend/lib/scoutSweep.js) — sagt højt her
+          så listen ikke aflæses som "kun navne, ingen data". */}
+      <p className="text-cz-3 text-2xs mt-1 mb-2.5">{t("shortlist.allReportedNote")}</p>
       <ul className="list-none p-0 m-0 space-y-3">
         {missions.slice(0, 10).map((m) => (
           <li key={m.id} className="border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
@@ -306,6 +335,7 @@ function ShortlistFeed({ completed, riderNames, t }) {
               {missionCriteriaLabel(m.mission_criteria, {
                 translateScope: (s) => t(`mission.scope.${s}`),
                 translateCountry: (code) => getCountryName(code),
+                translateType: (key) => tTypes(`types.${key}`),
               })}
             </p>
             <ul className="list-none p-0 m-0 mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
@@ -395,6 +425,9 @@ function TeamScoutHistory({ completed, riderNames, t }) {
 
 export default function ScoutingCentralPage() {
   const { t } = useTranslation("scouting");
+  // #3657: ryttertype-navne (samme namespace som RiderFilters/RiderScoutingTab)
+  // til mission-scope "type" — både i formens dropdown og i queue/shortlist-labels.
+  const { t: tTypes } = useTranslation("riderTypes");
   const navigate = useNavigate();
   const central = useScoutingCentral();
   const [cancellingId, setCancellingId] = useState(null);
@@ -464,9 +497,9 @@ export default function ScoutingCentralPage() {
 
       <SectionStack>
         <ScoutCard scout={central.scout} capacity={central.capacity} t={t} />
-        <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} jobConfig={central.jobConfig} t={t} />
-        <MissionForm onSubmit={central.startMission} busy={central.busy} jobConfig={central.jobConfig} t={t} />
-        <ShortlistFeed completed={central.completed} riderNames={riderNames} t={t} />
+        <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} jobConfig={central.jobConfig} t={t} tTypes={tTypes} />
+        <MissionForm onSubmit={central.startMission} busy={central.busy} jobConfig={central.jobConfig} t={t} tTypes={tTypes} />
+        <ShortlistFeed completed={central.completed} riderNames={riderNames} t={t} tTypes={tTypes} />
         <TeamScoutHistory completed={central.completed} riderNames={riderNames} t={t} />
       </SectionStack>
     </div>

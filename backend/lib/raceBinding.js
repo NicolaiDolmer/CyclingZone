@@ -232,6 +232,35 @@ export function classifyBindingConflicts({ boundRiderIds = [], details, raceMeta
   return { resolvable, blocking };
 }
 
+// #3098: DB-tur der slår detaljer op for en allerede-fundet liste bundne rytter-ids
+// (mapRiderBindingDetails → hvilket løb; races/race_entries → løbs-navn, om løbet er
+// startet, om den konfliktende entry er auto-genereret) og klassificerer dem
+// (classifyBindingConflicts). Fælles for PUT /selection's pre-flight-tjek OG dens
+// RPC-fallback-catch (samme 409-payload {bound_rider_ids, conflicts} begge veje) —
+// før denne udtræk levede opslaget kun i pre-flight-grenen, så RPC-fallbacken (der
+// rammes ved et TOCTOU-tab under advisory-låsen, #2256) svarede med en tom fejl uden
+// rytter/løb-navn, og UI'et faldt tilbage til den generiske (ikke-navngivne) copy —
+// selvom races.json's "selection_rider_bound_named" allerede findes og bruges af den
+// anden vej. Ren I/O-wrapper: klassifikationslogikken er stadig i classifyBindingConflicts.
+export async function resolveBindingConflictDetails({ supabase, teamId, boundRiderIds, thisWindow, otherRaces, riders = [] }) {
+  const details = mapRiderBindingDetails({ riderIds: boundRiderIds, thisWindow, otherRaces });
+  const conflictRaceIds = [...new Set(details.values())];
+  const [{ data: conflictRaces, error: crErr }, { data: conflictEntries, error: ceErr }] = await Promise.all([
+    supabase.from("races").select("id, name, stages_completed").in("id", conflictRaceIds),
+    // pagination-safe: bounded af conflictRaceIds × boundRiderIds (begge små in-lists, ≤ trupstørrelse)
+    supabase.from("race_entries").select("race_id, rider_id, is_auto_filled")
+      .eq("team_id", teamId).in("race_id", conflictRaceIds).in("rider_id", boundRiderIds),
+  ]);
+  if (crErr) throw new Error(`races (binding conflict details): ${crErr.message}`);
+  if (ceErr) throw new Error(`race_entries (binding conflict details): ${ceErr.message}`);
+  const raceMetaById = new Map((conflictRaces || []).map((r) => [r.id, r]));
+  const autoFilledKeys = new Set(
+    (conflictEntries || []).filter((e) => e.is_auto_filled).map((e) => `${e.race_id}|${e.rider_id}`)
+  );
+  const riderNameById = new Map(riders.map((r) => [r.id, r.name]));
+  return classifyBindingConflicts({ boundRiderIds, details, raceMetaById, autoFilledKeys, riderNameById });
+}
+
 // Efter en reschedule der introducerer overlap: find ryttere udtaget (manuelt) til to
 // tidsoverlappende løb. Pure + deterministisk. Returnerer ét par pr. konflikt med det
 // kronologisk TIDLIGSTE løb som "keep" og det senere som "drop" (resolve = fjern

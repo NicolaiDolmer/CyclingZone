@@ -19,12 +19,25 @@ export function potentialLabelKey(range) {
   return "limited";
 }
 
-// Sorteringsværdi for potentiale-kolonner: estimatets midtpunkt. Bruges til at
-// dekorere rytter-rækker (fx `_scoutMid`) så klient-side tabel-sortering virker
-// uden adgang til den rå potentiale. undefined/null (ikke hentet / intet
-// potentiale) ELLER skjult/uscoutet (#1543) → 0, så ryttere uden synligt
-// estimat sorterer nederst.
+// Sorteringsværdi for potentiale-kolonner: SAMME tal spilleren rent faktisk
+// læser. Bruges til at dekorere rytter-rækker (fx `_scoutMid`) så klient-side
+// tabel-sortering virker uden adgang til den rå potentiale.
+//
+// #3787: prioritetsrækkefølgen matcher PRÆCIS ScoutablePotentiale.jsx's
+// render-gren (der er visningen, ikke denne funktion, der er sandheden):
+//   1) `estimate.ceil` — rating-båndet ("kan nå 40-48"), det #2454 gjorde til
+//      den faktiske skærm-visning. Sorteringen brugte stadig den GAMLE
+//      1-6-stjerneskala (lo/hi) efter den omlægning, så rækkefølgen ikke
+//      længere matchede det viste tal — det var selve bug'en (#3787).
+//   2) lo/hi (stjerneskalaen) som fallback for payloads uden `ceil` (ældre
+//      klient-cache, eller den defensive gren i ScoutablePotentiale).
+// undefined/null (ikke hentet) ELLER skjult/uscoutet (#1543) → `null`,
+// EKSPLICIT adskilt fra 0 (som ville kollidere med en reel lav rating og
+// give indtryk af en vurdering der ikke findes). Sorterings-komparatorerne
+// (riderColumnSort.js / useTableSort.js) placerer `null` sidst uanset
+// sorteringsretning.
 export function scoutSortValue(estimate) {
-  if (!estimate || estimate.hidden) return 0;
+  if (!estimate || estimate.hidden) return null;
+  if (estimate.ceil) return (estimate.ceil.lo + estimate.ceil.hi) / 2;
   return (estimate.lo + estimate.hi) / 2;
 }

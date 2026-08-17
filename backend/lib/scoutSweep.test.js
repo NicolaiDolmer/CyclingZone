@@ -75,9 +75,16 @@ function makeMockSupabase({
       if (table === "scout_actions") {
         return {
           select: () => queryBuilder(state.scoutActions),
+          // #3652: mission-sweepen indsætter nu ÉN række PR. shortlist-rytter i ét
+          // insert()-kald (bulk) i stedet for kun topfundet — mock skal derfor
+          // acceptere både et enkelt objekt (target-sweep) og et array (mission-sweep),
+          // ligesom det rigtige supabase-js-klientbibliotek gør.
           insert(payload) {
-            state.scoutActions.push({ ...payload });
-            state.inserts.scout_actions.push(payload);
+            const rows = Array.isArray(payload) ? payload : [payload];
+            for (const row of rows) {
+              state.scoutActions.push({ ...row });
+              state.inserts.scout_actions.push(row);
+            }
             return { then(resolve) { return resolve({ error: null }); } };
           },
         };
@@ -160,6 +167,17 @@ describe("defaultLoadCandidates (#2581)", () => {
     const candidates = await defaultLoadCandidates(supabase);
     assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
     assert.equal(candidates.find((c) => c.id === "r2").ownerTeamId, null);
+  });
+
+  // #3657: primary_type mappes til primaryType (scope:"type"-targeting læser dette felt).
+  it("mapper primary_type til primaryType (#3657 ryttertype-targeting)", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1", primary_type: "climber" }), riderRow({ id: "r2", primary_type: null })],
+      offeredIntake: [],
+    });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.equal(candidates.find((c) => c.id === "r1").primaryType, "climber");
+    assert.equal(candidates.find((c) => c.id === "r2").primaryType, null);
   });
 
   it("ekskluderer ryttere med pending_team_id sat (midt i et handelsflow, #2644)", async () => {
@@ -290,9 +308,14 @@ describe("runScoutSweep", () => {
     const res = supabase.state.assignments[0].result;
     assert.ok(res.shortlist.length >= 3 && res.shortlist.length <= 5);
     assert.ok(res.shortlist.includes(res.top_rider_id));
-    // Gratis L1-rapport: én scout_actions-række på topfundet.
-    assert.equal(supabase.state.inserts.scout_actions.length, 1);
-    assert.equal(supabase.state.inserts.scout_actions[0].rider_id, res.top_rider_id);
+    // #3652: gratis L1-rapport på HELE shortlisten, ikke kun topfundet — én
+    // scout_actions-række pr. shortlist-rytter, bulk-indsat i ét insert()-kald.
+    assert.equal(supabase.state.inserts.scout_actions.length, res.shortlist.length);
+    assert.deepEqual(
+      supabase.state.inserts.scout_actions.map((r) => r.rider_id).sort(),
+      [...res.shortlist].sort(),
+    );
+    assert.ok(supabase.state.inserts.scout_actions.some((r) => r.rider_id === res.top_rider_id));
   });
 
   // #2644 del 2: sweepen bruger IKKE en injiceret loadCandidates her — den

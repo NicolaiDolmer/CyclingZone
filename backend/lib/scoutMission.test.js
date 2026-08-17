@@ -46,6 +46,15 @@ test("filterCandidatePool: nm scope requires country match + isNmEligible !== fa
   assert.deepEqual(filterCandidatePool(pool, { scope: "nm", value: "DK" }).map((r) => r.id), ["a"]);
 });
 
+test("filterCandidatePool: type scope matches primaryType (#3657)", () => {
+  const pool = [
+    { id: "a", primaryType: "climber" },
+    { id: "b", primaryType: "sprinter" },
+    { id: "c", primaryType: null },
+  ];
+  assert.deepEqual(filterCandidatePool(pool, { scope: "type", value: "climber" }).map((r) => r.id), ["a"]);
+});
+
 test("filterCandidatePool: no criteria or non-array riders → empty", () => {
   assert.deepEqual(filterCandidatePool([{ id: "a" }], null), []);
   assert.deepEqual(filterCandidatePool(null, { scope: "division", value: "x" }), []);
