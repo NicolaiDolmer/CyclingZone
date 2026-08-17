@@ -26,7 +26,8 @@
       "injured": "INJ",
       "academy": "ACAD",
       "retireRisk": "35+",
-      "contractExpiring": "EXP"
+      "contractExpiring": "EXP",
+      "listed": "LIST"
     }
   },
   "page": {
@@ -708,6 +709,11 @@
     "flash": {
       "label": "⚡ Flash auction (30 min)",
       "hint": "Deadline Day: ends exactly 30 minutes after start"
+    },
+    "end": {
+      "label": "Auction ends",
+      "hint": "{min}-{max} hours from now, game time (Copenhagen).",
+      "windowHint": "The market is open {open}-{close}."
     },
     "buttons": {
       "start": "Start auction",

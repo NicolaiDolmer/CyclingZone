@@ -72,7 +72,8 @@
     },
     "count": "{count, plural, one {1 rider} other {# riders}}",
     "actionButton": "Sell / Auction",
-    "ownAuctionTooltip": "In auction · highest bid {price} CZ$ · ends in {timeLeft}"
+    "ownAuctionTooltip": "In auction · highest bid {price} CZ$ · ends in {timeLeft}",
+    "ownTransferListingTooltip": "Listed for transfer · asking {price} CZ$"
   },
   "actionModal": {
     "potentialLabel": "Potential",

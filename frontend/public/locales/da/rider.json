@@ -26,7 +26,8 @@
       "injured": "SKD",
       "academy": "AKAD",
       "retireRisk": "35+",
-      "contractExpiring": "UDLØB"
+      "contractExpiring": "UDLØB",
+      "listed": "LISTE"
     }
   },
   "page": {
@@ -708,6 +709,11 @@
     "flash": {
       "label": "⚡ Flash Auktion (30 min)",
       "hint": "Deadline Day: afsluttes præcis 30 min efter start"
+    },
+    "end": {
+      "label": "Auktionen slutter",
+      "hint": "{min}-{max} timer frem, spillets tid (København).",
+      "windowHint": "Markedet er åbent {open}-{close}."
     },
     "buttons": {
       "start": "Start auktion",

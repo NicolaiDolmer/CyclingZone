@@ -9,6 +9,19 @@
       "autoPort": true
     },
     {
+      "name": "staging-backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/Nicolai/AppData/Local/Temp/claude/C--Dev-CyclingZone/a36b4828-f8a9-4ea8-85bc-6ea5df817b43/scratchpad/start-staging-backend.mjs"],
+      "port": 3001
+    },
+    {
+      "name": "staging-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone-worktrees/3746-trin7/frontend"],
+      "port": 5173,
+      "autoPort": true
+    },
+    {
       "name": "frontend-mock",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "frontend"],

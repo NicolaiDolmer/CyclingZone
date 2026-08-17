@@ -16,6 +16,10 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const teamPageSource = readFileSync(join(__dirname, "TeamPage.jsx"), "utf8");
+// #3786: sluttidspunkt-vælgeren (window-fetch + endWall/endTimeIssue-validering)
+// flyttede til et delt hook (useAuctionEndTimeSelector.js) så rytterprofilens
+// AuctionButton kan bruge nøjagtig samme regler — se hookets filhoved.
+const endTimeSelectorSource = readFileSync(join(__dirname, "..", "lib", "useAuctionEndTimeSelector.js"), "utf8");
 
 // #2884: den oprindelige regex matchede POST-body'en med `[^}]*`, altså "frem
 // til første krøllede slutparentes". Da body'en fik et nested objekt (spread af
@@ -41,13 +45,20 @@ test("TeamPage auktions-POST sender flash_auction (#778) og ends_at (#2884)", ()
   );
 });
 
-test("TeamPage sender ikke ends_at sammen med flash_auction (#2884)", () => {
+test("TeamPage sender ikke ends_at sammen med flash_auction (#2884/#3786)", () => {
   // Backend afviser kombinationen med 400 (flash har fast 30 min). UI'et skal
   // aldrig kunne sende begge — ellers ser sælgeren en fejl han ikke kan forstå.
+  // #3786: gaten er nu delt over to filer — TeamPage udelukker flash-kombinationen,
+  // det delte hook udelukker et ugyldigt/tomt tidspunkt (endsAtIso = null).
   assert.match(
     teamPageSource,
-    /!\(ddActive && flash\) && endWall && !endTimeIssue/,
-    "ends_at må kun sendes når flash IKKE er valgt og tidspunktet er gyldigt",
+    /!\(ddActive && flash\) && endsAtIso/,
+    "ends_at må kun sendes når flash IKKE er valgt",
+  );
+  assert.match(
+    endTimeSelectorSource,
+    /endWall && !endTimeIssue\s*\?\s*gameWallClockToUTC\(endWall\)\.toISOString\(\)\s*:\s*null/,
+    "endsAtIso må kun være sat når tidspunktet er gyldigt — ellers sender kalderen et ugyldigt ends_at",
   );
 });
 

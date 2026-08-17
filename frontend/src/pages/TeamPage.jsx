@@ -14,7 +14,8 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, projectYouthSalary, detectStartPriceTypo } from "../lib/marketValues";
-import { defaultEndWallClock, gameWallClockToUTC, getEndTimeIssue, windowHoursForWallClock } from "../lib/auctionEndTime.js";
+import { formatHour } from "../lib/auctionEndTime.js";
+import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
 import { StartPriceTypoGuardModal } from "../components/StartPriceTypoGuardModal";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { riderOverallRating } from "../lib/riderRating";
@@ -38,10 +39,6 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
-// #2884: vindues-timerne står som tal i configen (8, 24). Vist rå bliver det
-// "8:00-24:00" ved siden af tabular tal — nul-udfyldt matcher resten af fladen.
-const formatHour = (h) => `${String(h).padStart(2, "0")}:00`;
-
 function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive, seasonYear }) {
   const { t } = useTranslation("team");
   // #932 S7: demote (senior → akademi) er kun muligt for U23-seniorer (alder ≤ 22,
@@ -59,11 +56,11 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   // #778: flash-auktion (30 min) på egne ryttere — kun synlig under aktivt
   // Deadline Day (samme gating som RiderStatsPage's AuctionButton).
   const [flash, setFlash] = useState(false);
-  // #2884: sælgeren vælger et konkret sluttidspunkt i stedet for at arve den
-  // globale varighed. Vinduet hentes fra serveren — hardkodede åbningstider
-  // ville drifte fra auction_timing_config uden at noget fejler.
-  const [auctionWindow, setAuctionWindow] = useState(null);
-  const [endWall, setEndWall] = useState("");
+  // #2884/#3786: sælgeren vælger et konkret sluttidspunkt i stedet for at arve
+  // den globale varighed. Delt hook (useAuctionEndTimeSelector) — samme
+  // vindues-fetch + validering som rytterprofilens AuctionButton bruger.
+  const { auctionWindow, endWall, setEndWall, endTimeIssue, endHours, endsAtIso } =
+    useAuctionEndTimeSelector();
   // #3184: tastefejl-værn — ciffer-drop-mønster mellem startpris og Værdi.
   // { suspected, pattern, suggestedValue } fra detectStartPriceTypo, eller null
   // når dialogen ikke er vist. Non-blocking: sælgeren kan altid fortsætte.
@@ -122,32 +119,6 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
     capInfo: extendCapInfo,
     capSeason: extendCapSeason,
   });
-
-  // #2884: hent markedets åbningsvindue og sæt standard-sluttidspunktet. Fejler
-  // kaldet, falder vi tilbage til serverens globale varighed (endWall bliver
-  // tom → ends_at sendes ikke), i stedet for at blokere salget.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions/window`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok || cancelled) return;
-        const cfg = await res.json();
-        if (cancelled) return;
-        setAuctionWindow(cfg);
-        setEndWall(defaultEndWallClock(new Date(), cfg));
-      } catch { /* stille — auktionen kan stadig oprettes med den globale varighed */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const endTimeIssue = auctionWindow && endWall
-    ? getEndTimeIssue(endWall, new Date(), auctionWindow)
-    : null;
-  const endHours = endWall ? windowHoursForWallClock(endWall, auctionWindow || {}) : null;
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   // auctionPrice === null (ugyldigt/ikke-parsbart format, #3495) tælles altid som fejl.
@@ -228,9 +199,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
           flash_auction: ddActive && flash,
           // #2884: kun med når sælgeren faktisk har valgt et tidspunkt og det er
           // gyldigt. Flash har sin egen faste længde og må ikke kombineres.
-          ...(!(ddActive && flash) && endWall && !endTimeIssue
-            ? { ends_at: gameWallClockToUTC(endWall).toISOString() }
-            : {}),
+          ...(!(ddActive && flash) && endsAtIso ? { ends_at: endsAtIso } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -582,7 +551,28 @@ function OwnAuctionBadge({ auction }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, activeSeasonNumber }) {
+// #3810 (spillerforslag @thelamba/@jeppek): samme kompakte badge-mønster som
+// OwnAuctionBadge ovenfor, men for egne ryttere der er sat på transferlisten.
+// Udbudsprisen er med direkte i badget (@jeppek: "maybe price on the team
+// sheet too") — prisen er den information der gør markøren handlingsbar uden
+// at klikke ind på hver rytter. Ingen live-countdown (asking_price ændrer sig
+// ikke i realtid som et bud gør), så komponenten er ren og uden egen timer.
+function OwnTransferListingBadge({ listing }) {
+  const { t } = useTranslation(["team", "rider"]);
+  return (
+    <Link
+      to="/transfers?tab=market"
+      onClick={e => e.stopPropagation()}
+      title={t("team:squad.ownTransferListingTooltip", { price: formatNumber(listing.asking_price) })}
+      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
+    >
+      {t("rider:badges.label.listed")}
+      <span className="font-mono normal-case tracking-normal">{formatNumber(listing.asking_price)}</span>
+    </Link>
+  );
+}
+
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -790,6 +780,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, ac
           ]} />
           {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
           {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
+          {/* #3810: egen aktiv transferliste-annonce — badge + udbudspris, link til markedet. */}
+          {!r._isIncoming && ownTransferListings[r.id] && <OwnTransferListingBadge listing={ownTransferListings[r.id]} />}
         </div>
       ),
     },
@@ -990,6 +982,12 @@ export function TeamPage() {
   // Genindlæses ved hver loadAll() (dvs. også efter en handling i RiderActionModal
   // starter en ny auktion) + holdes friskt via realtime-subscription nedenfor.
   const [ownAuctions, setOwnAuctions] = useState({});
+  // #3810: egne ryttere der lige nu har en aktiv transferliste-annonce —
+  // { [riderId]: transferListingRow }. Samme load-mønster som ownAuctions
+  // ovenfor (genindlæses ved hver loadAll()), men uden realtime-subscription:
+  // asking_price ændrer sig ikke live som et bud, kun via managerens egen
+  // handling (som allerede trigger loadAll() via RiderActionModal's onAction).
+  const [ownTransferListings, setOwnTransferListings] = useState({});
   // Ref'en holder ID'erne på nuværende (ikke-indgående) egne ryttere, så
   // realtime-callbacket kan filtrere uden at skulle re-subscribe ved hver rytter-ændring.
   const ownRiderIdsRef = useRef(new Set());
@@ -1024,30 +1022,36 @@ export function TeamPage() {
   // ved hvert besøg på holdsiden uden at noget længere brugte svaret.
   // Bevægelsen vises fortsat på rytterprofilens hero, som henter sin egen.
 
-  // Åbn demote-bekræftelsen: tæl fremtidige løb rytteren ville blive fjernet fra
-  // (scheduled + stages_completed=0), så dialogen kan vise konsekvensen FØR confirm.
+  // Åbn demote-bekræftelsen. #3784/#3805: newSalary/racesCleared/racesOngoing
+  // kommer fra backendens academy-demote-quote-route — SAMME funktioner
+  // (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries) som selve
+  // demote() bruger til at udføre flyttet, se RiderManageActions.jsx's
+  // openDemote() for den fulde root-cause-forklaring. Akademi-cap-tællingen
+  // (8-cap-effekten) er uafhængig af quoten og hentes stadig direkte.
   async function handleDemote(rider) {
     setDemoteError(null);
-    let racesCleared = 0;
+    let quote = null;
     let academyCount = null;
     try {
-      const [entriesRes, academyRes] = await Promise.all([
-        supabase
-          .from("race_entries")
-          .select("race_id, races!inner(status, stages_completed)")
-          .eq("rider_id", rider.id)
-          .eq("races.status", "scheduled")
-          .eq("races.stages_completed", 0),
+      const [quoteRes, academyRes] = await Promise.all([
+        fetchRiderQuote(rider.id, "academy-demote-quote"),
         // Akademi-cap-effekt: tæl holdets nuværende akademiryttere (8-cap).
         team?.id
           ? supabase.from("riders").select("id", { count: "exact", head: true })
               .eq("team_id", team.id).eq("is_academy", true)
           : Promise.resolve({ count: null }),
       ]);
-      racesCleared = (entriesRes.data || []).length;
+      if (quoteRes.ok) quote = quoteRes.data;
       academyCount = academyRes.count ?? null;
-    } catch { /* count er nice-to-have; vis dialogen uanset */ }
-    setDemoteConfirm({ rider, racesCleared, academyCount });
+    } catch { /* fallback nedenfor; vis dialogen uanset */ }
+    setDemoteConfirm({
+      rider,
+      newSalary: quote?.newSalary ?? null,
+      currentSalary: quote?.currentSalary ?? rider.salary ?? null,
+      racesCleared: quote?.racesCleared ?? 0,
+      racesOngoing: quote?.racesOngoing ?? 0,
+      academyCount,
+    });
   }
 
   async function confirmDemote() {
@@ -1110,6 +1114,26 @@ export function TeamPage() {
     }
   }
 
+  // #3810: aktive transferliste-annoncer for holdets EGNE ryttere ("open" eller
+  // "negotiating" — samme aktiv-definition som POST /api/transfers' #247-tjek
+  // for "allerede listet"). transfer_listings er offentligt læsbar (RLS "Public
+  // read", database/schema.sql) — samme direkte klient-forespørgsel som
+  // loadOwnAuctions ovenfor, ingen ny endpoint nødvendig.
+  async function loadOwnTransferListings(riderIds) {
+    if (!riderIds.length) { setOwnTransferListings({}); return; }
+    try {
+      const { data, error } = await supabase
+        .from("transfer_listings")
+        .select("id, rider_id, asking_price, status")
+        .in("rider_id", riderIds)
+        .in("status", ["open", "negotiating"]);
+      if (error) return;
+      setOwnTransferListings(Object.fromEntries((data || []).map(l => [l.rider_id, l])));
+    } catch {
+      // non-critical — badget falder bare væk
+    }
+  }
+
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -1147,6 +1171,7 @@ export function TeamPage() {
 
     setRiders([...currentRiders, ...incomingRiders]);
     loadOwnAuctions(currentRiders.map(r => r.id));
+    loadOwnTransferListings(currentRiders.map(r => r.id));
     setLoading(false);
   }
 
@@ -1239,7 +1264,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
       )}
       {activeTab === "stats" && (
         <TeamStatsTab riders={currentRiders} />
@@ -1253,18 +1278,21 @@ export function TeamPage() {
       )}
 
       {/* #932 S7: Demote-bekræftelse (senior → akademi) — løn-delta + akademi-cap +
-          fremtidige løb der ryddes. Genbruger den delte AcademyTransferConfirmModal.
-          #2796: division SKAL med til projectYouthSalary — uden den bruges den
-          globale sats i stedet for holdets, så den viste ungdomsløn er forkert. */}
+          løb-konsekvens. Genbruger den delte AcademyTransferConfirmModal.
+          #3784/#3805: newSalary/racesCleared/racesOngoing kommer nu fra
+          backendens academy-demote-quote (handleDemote ovenfor) — IKKE længere
+          en frontend-JS-kopi af løn-formlen (projectYouthSalary er droppet
+          her). Se RiderManageActions.jsx's openDemote() for root-cause. */}
       <AcademyTransferConfirmModal
         show={!!demoteConfirm}
         direction="demote"
         riderName={demoteConfirm ? `${demoteConfirm.rider.firstname} ${demoteConfirm.rider.lastname}`.trim() : ""}
-        newSalary={demoteConfirm ? projectYouthSalary(demoteConfirm.rider, { division: team?.division }) : 0}
-        currentSalary={demoteConfirm?.rider?.salary ?? 0}
+        newSalary={demoteConfirm?.newSalary ?? null}
+        currentSalary={demoteConfirm?.currentSalary ?? 0}
         capLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount} / 8` : null}
         capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
         racesCleared={demoteConfirm?.racesCleared ?? 0}
+        racesOngoing={demoteConfirm?.racesOngoing ?? 0}
         busy={demoteBusy}
         onCancel={() => { if (!demoteBusy) { setDemoteConfirm(null); setDemoteError(null); } }}
         onConfirm={confirmDemote}

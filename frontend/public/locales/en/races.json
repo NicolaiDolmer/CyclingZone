@@ -353,6 +353,10 @@
     "noRole": "None",
     "thRider": "Rider",
     "type": "Type",
+    "mode": {
+      "current": "Current",
+      "abilities": "Abilities"
+    },
     "suitabilityHelp": "Suitability (0-100) rates how well a rider fits this race's terrain. Higher is a better match.",
     "hideInjured": "Hide injured",
     "suitability": "Suitability",

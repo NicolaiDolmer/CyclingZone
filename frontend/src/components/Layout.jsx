@@ -19,6 +19,10 @@ import { scoutingNavItem } from "../lib/scoutingNavVisibility";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { pathMatchesNavItem } from "../lib/navMatching.js";
 import { buildNavBadgeCounts, resolveNavBadgeCount, formatNavBadgeCount } from "../lib/navBadges.js";
+import {
+  loadPatchNotesMeta, isPatchNotesUnread, readLastSeenPatchNotes, writeLastSeenPatchNotes,
+  buildNavDotFlags, resolveNavDot,
+} from "../lib/patchNotesUnread.js";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
@@ -76,7 +80,10 @@ function buildBottomItems(t, team) {
     { to: "/help",        label: t("nav.item.help") },
     { to: "/rules",       label: t("nav.item.rules") },
     { to: "/roadmap",     label: t("nav.item.roadmap") },
-    { to: "/patch-notes", label: t("nav.item.patchNotes") },
+    // #3811: guld-prik når nyeste patch note-dato er nyere end spillerens
+    // localStorage-lastSeen — se lib/patchNotesUnread.js + Layout()'s egne
+    // useEffects nedenfor. dotFlags løses op i NavItem, samme recipe som badge.
+    { to: "/patch-notes", label: t("nav.item.patchNotes"), dot: true, dotLabel: t("a11y.unreadPatchNotes") },
   ];
 }
 
@@ -197,12 +204,15 @@ async function fetchUnreadCount(userId) {
   return count || 0;
 }
 
-function NavItem({ to, label, badge, onClick, location, badgeCounts, exact, excludeQuery, excludePaths, title }) {
+function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCounts, dotFlags, exact, excludeQuery, excludePaths, title }) {
   const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
   // #3521: badge-tallet er nu item-specifikt (Indbakke ≠ Transfers) — se
   // navBadges.js. resolveNavBadgeCount returnerer 0 for items uden badge: true.
   const badgeValue = resolveNavBadgeCount({ to, badge }, badgeCounts);
   const showBadge = badgeValue > 0;
+  // #3811: ulæst-prik (Patch Notes) — samme item-specifikke opslags-recipe som
+  // badge ovenfor, men boolean i stedet for tal (ingen "hvor mange", kun "nyt").
+  const showDot = resolveNavDot({ to, dot }, dotFlags);
   // #3102: Link, ikke NavLink. NavLink beregner selv aktiv-tilstand på et rent
   // prefix-match og sætter aria-current="page" ud fra DEN — den kender hverken
   // excludeQuery eller excludePaths. Med tre nav-items under /races-prefixet
@@ -227,6 +237,15 @@ function NavItem({ to, label, badge, onClick, location, badgeCounts, exact, excl
           {formatNavBadgeCount(badgeValue)}
         </span>
       )}
+      {/* #3811: ulæst-prik — bevidst en ren prik (ikke et tal, "hvor mange nye
+          patch notes" er ikke en meningsfuld optælling for spilleren), samme
+          guld som badgen ovenfor. Forsvinder når /patch-notes åbnes (Layout()). */}
+      {showDot && (
+        <span className="flex-shrink-0" title={dotLabel}>
+          <span aria-hidden="true" className="block w-2 h-2 rounded-full bg-cz-accent" />
+          <span className="sr-only">{dotLabel}</span>
+        </span>
+      )}
       {/* #481 PR-2: hover indicator — the wordmark's short thick accent-dash, scales
           in from the left on hover (inactive only; active needs no affordance). Decorative. */}
       {!isActive && (
@@ -237,7 +256,7 @@ function NavItem({ to, label, badge, onClick, location, badgeCounts, exact, excl
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, logoutLabel, onOpenFeedback, contactLabel }) {
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, logoutLabel, onOpenFeedback, contactLabel }) {
   const { t } = useTranslation("common");
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
@@ -304,7 +323,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               {isOpen && (
                 <div className="py-0.5">
                   {group.items.map(item => (
-                    <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} />
+                    <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} />
                   ))}
                 </div>
               )}
@@ -315,7 +334,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
         {bottomItems.map(item => (
-          <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} />
+          <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} />
         ))}
 
         {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
@@ -357,6 +376,11 @@ export default function Layout() {
   const [team, setTeam]                     = useState(null);
   const [balance, setBalance]               = useState(null);
   const [unread, setUnread]   = useState(0);
+  // #3811: ulæst-prik ved "Patch Notes" — patchNotesLatestDate er nyeste patch-
+  // dato (fra den lette patch-notes-meta.json), patchNotesUnread er den afledte
+  // boolean NavItem viser prikken ud fra. Se effekten nederst i komponenten.
+  const [patchNotesLatestDate, setPatchNotesLatestDate] = useState(null);
+  const [patchNotesUnread, setPatchNotesUnread]         = useState(false);
   const [isAdmin, setIsAdmin]               = useState(false);
   const [mobileOpen, setMobileOpen]         = useState(false);
   const [feedbackOpen, setFeedbackOpen]     = useState(false);
@@ -527,6 +551,33 @@ export default function Layout() {
     return () => window.removeEventListener("cz:notif-deleted", handleNotifDeleted);
   }, [session]);
 
+  // #3811: henter kun den lette patch-notes-meta.json (ikke hele changelog'en) —
+  // uafhængig af session, statisk asset, ingen auth nødvendig. Fejl (netværk/404
+  // i et miljø uden build-emittet asset) lader prikken forblive skjult i stedet
+  // for at fejle synligt — den er ikke-kritisk UI.
+  useEffect(() => {
+    let active = true;
+    loadPatchNotesMeta()
+      .then((meta) => { if (active && meta?.date) setPatchNotesLatestDate(meta.date); })
+      .catch(() => { /* netværksfejl: prikken forbliver skjult */ });
+    return () => { active = false; };
+  }, []);
+
+  // #3811: markér som læst med det samme /patch-notes åbnes (ingen genindlæsning
+  // krævet) + genberegn ulæst-status hver gang nyeste dato bliver kendt ELLER
+  // ruten skifter. Samme localStorage-nøgle som PatchNotesPage.jsx's egen
+  // mark-as-read-effekt (LAST_SEEN_KEY i lib/patchNotesUnread.js), så de to
+  // aldrig kan komme ud af sync.
+  useEffect(() => {
+    if (!patchNotesLatestDate) return;
+    if (location.pathname.startsWith("/patch-notes")) {
+      writeLastSeenPatchNotes(patchNotesLatestDate);
+      setPatchNotesUnread(false);
+    } else {
+      setPatchNotesUnread(isPatchNotesUnread(patchNotesLatestDate, readLastSeenPatchNotes()));
+    }
+  }, [patchNotesLatestDate, location.pathname]);
+
   useEffect(() => {
     if (!session) return;
     heartbeatRef.current = setInterval(async () => {
@@ -555,8 +606,10 @@ export default function Layout() {
   const bottomItems = buildBottomItems(t, team);
 
   const needsSetup = teamLoaded && !team?.manager_name;
+  // #3811: ulæst-prik-flag pr. `to` — samme recipe som badgeCounts ovenfor.
+  const dotFlags = buildNavDotFlags({ patchNotesUnread });
   const sidebarProps = {
-    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts,
+    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags,
     logoutLabel: t("nav.item.logout"),
     onOpenFeedback: () => setFeedbackOpen(true),
     contactLabel: t("nav.item.contact"),

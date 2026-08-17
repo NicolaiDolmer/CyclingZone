@@ -353,6 +353,10 @@
     "noRole": "Ingen",
     "thRider": "Rytter",
     "type": "Type",
+    "mode": {
+      "current": "Nuværende",
+      "abilities": "Evner"
+    },
     "suitabilityHelp": "Egnethed (0-100) angiver hvor godt en rytter passer til løbets terræn. Højere er et bedre match.",
     "hideInjured": "Skjul skadede",
     "suitability": "Egnethed",

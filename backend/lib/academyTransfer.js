@@ -31,6 +31,7 @@ import { computeFrozenSalary, computeContractEndSeason, contractOnAcquirePatch }
 import { getTeamMarketState } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
+import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
 
 /**
  * Demote-løn (#2594): samme delte formel som al anden løn —
@@ -138,7 +139,7 @@ const DEMOTE_ERROR_CODES = new Set([
  *
  * @throws 'rider_not_found' | 'not_owned' | 'already_academy' | 'not_u23'
  *         | 'rider_on_market' | 'rider_listed' | 'academy_full'
- * @returns {Promise<{riderId:string, action:'demoted', newSalary:number, racesCleared:number}>}
+ * @returns {Promise<{riderId:string, action:'demoted', newSalary:number, racesCleared:number, racesOngoing:number}>}
  */
 export async function demote(supabase, {
   teamId, riderId, seasonNumber, notify = notifyTeamOwner,
@@ -201,10 +202,19 @@ export async function demote(supabase, {
     },
   });
 
+  // #3805: races.status='scheduled'+stages_completed=0-entries er lige blevet
+  // ryddet af RPC'en (rows_deleted); IGANGVÆRENDE løb (stages_completed>0)
+  // rører RPC'en aldrig, men rytteren er nu is_academy=true og dermed ikke
+  // løbsberettiget (riderEligibility.js) — så han falder reelt ud af dem.
+  // SAMME funktion (countOngoingRaceEntries) bruges af academy-demote-quote-
+  // routen til at vise tallet FØR bekræftelse — se raceEntryCleanup.js.
+  const racesOngoing = await countOngoingRaceEntries(supabase, riderId);
+
   return {
     riderId,
     action: "demoted",
     newSalary: data.new_salary ?? newSalary,
     racesCleared: data.rows_deleted ?? 0,
+    racesOngoing,
   };
 }

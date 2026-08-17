@@ -265,6 +265,13 @@ test("buildRiderRows: hver rytter får stageSuitability-array (længde = antal e
   assert.equal(typeof rows[0].suitability, "number"); // løb-snit bevaret
   assert.equal(rows[0].aggression, 73); // S5: aggression surfaced til jæger-rangering
   assert.equal(rows[0].tactics, 55); // #3115: tactics surfaced til selectionDrivers-bånd
+  // #3809: abilities-objektet indeholder ALLE 15 evne-nøgler, ikke kun de fire
+  // testede — manglende kolonner (fx climbing er sat, sprint er sat, resten
+  // mangler i mock'en) skal falde tilbage til null pr. nøgle, ikke undefined/kastet.
+  assert.equal(rows[0].abilities.climbing, 90);
+  assert.equal(rows[0].abilities.sprint, 20);
+  assert.equal(rows[0].abilities.tactics, 55);
+  assert.equal(rows[0].abilities.punch, null); // ikke sat i mock'en → null, ikke undefined
 });
 
 test("buildRiderRows: ingen evner → suitability null + stageSuitability null", () => {
@@ -277,4 +284,5 @@ test("buildRiderRows: ingen evner → suitability null + stageSuitability null",
   assert.equal(rows[0].stageSuitability, null);
   assert.equal(rows[0].aggression, null); // ingen evner → aggression null
   assert.equal(rows[0].tactics, null); // ingen evner → tactics null
+  assert.equal(rows[0].abilities, null); // #3809: ingen evner → hele abilities-objektet null
 });
