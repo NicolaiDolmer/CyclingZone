@@ -205,11 +205,11 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 console.log("=== #3746 trin 7 — genberegning af gemte udviklingslofter ===");
 console.log(APPLY ? "TILSTAND: APPLY (skriver til prod)" : "TILSTAND: DRY-RUN (skriver intet)");
 
-async function fetchAllRange(table, cols, filterFn) {
+async function fetchAllRange(table, cols, orderCol, filterFn) {
   const out = [];
   const PAGE = 1000;
   for (let from = 0; ; from += PAGE) {
-    let q = sb.from(table).select(cols).range(from, from + PAGE - 1).order("rider_id", { ascending: true });
+    let q = sb.from(table).select(cols).range(from, from + PAGE - 1).order(orderCol, { ascending: true });
     if (filterFn) q = filterFn(q);
     const { data, error } = await q;
     if (error) throw new Error(`${table}: ${error.message}`);
@@ -229,7 +229,7 @@ async function readAllIn(table, cols, inCol, ids) {
   return out;
 }
 
-const seasons = await fetchAllRange("seasons", "number, status", (q) => q.order("number", { ascending: true }));
+const seasons = await fetchAllRange("seasons", "number, status", "number");
 const activeSeason = seasons.find((s) => s.status === "active");
 if (!activeSeason) throw new Error("Ingen aktiv sæson — sæson-alder kan ikke regnes.");
 const seasonNumber = activeSeason.number;
@@ -238,7 +238,7 @@ console.log(`Aktiv sæson: ${seasonNumber}`);
 // SCOPE (#3746): ALLE ryttere med en rider_derived_abilities-række — bredere
 // end #3591's søster-script, som kun dækkede en afgrænset fejlgruppe.
 const derivedCols = ["rider_id", "ability_caps", ...VISIBLE_ABILITIES].join(", ");
-const derived = await fetchAllRange("rider_derived_abilities", derivedCols);
+const derived = await fetchAllRange("rider_derived_abilities", derivedCols, "rider_id");
 console.log(`Ryttere med en rider_derived_abilities-række: ${derived.length}`);
 
 const riderIds = derived.map((d) => d.rider_id);
