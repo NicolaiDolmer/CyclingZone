@@ -118,20 +118,17 @@ En rød verifikation her stopper OGSÅ komponent 1/2/4 samme dag.
 
 ---
 
-## Komponent 1 — markedsvægt (forsøges, gated)
+## Komponent 1 — markedsvægt (GATE MÅLT RØD 17/8 — UDGÅR 23/8)
 
-Var blokeret i 15/8-udkastet; ejeren valgte 17/8 at den forsøges. Det kræver at ALLE disse falder på plads senest 22/8:
+Bølge 2 spor 9 (PR #3836, merged) kørte hele klargøringen: #3750-filteret (1.288 rå handler → 391 kvalificerede), refit med evidensvægt pr. rytter, inert config-migration (nøglerne findes nu i prod: sweep off, vægt 0), staging-dry-run. **Gaten er RØD:** refittet måler dårligere end den kørende model på alle tre mål (MAE 29.831 mod 20.572 CZ$, holdout n=78). Per gate-reglen udgår komponenten 23/8.
 
-1. **#3750-fixet:** modellen trænes i dag på en konstant — det skal rettes før et refit betyder noget.
-2. **Refit** af værdimodellen på nuværende typefordeling (den gamle er 74,8 % divergent) — og refittet skal måle MINDST lige så godt som den kørende model. Auditten 14/8 målte den gamle dårligere; det krav står ved magt.
-3. **Config-migration:** `market_value*`-nøglerne findes ikke i prod (målt 15/8: 0 rækker). Idempotent migration skrives + reviewes før merge.
-4. **Dry-run** af søndags-sweepet (`marketValueSundaySweep.js`) mod staging med refittet artefakt; tal fremlægges for ejeren.
+**Nøglefundet der ændrer den videre vej:** den kørende model × én konstant (0,422) slår både sig selv og refittet — markedet er enigt om RANGORDENEN og uenigt om NIVEAUET med faktor ~2,4 (bank-auktioner clearer 0,33×, spillerauktioner 0,26×, forhandlede 0,78×). Dertil bekræftede tørkørslen audittens grund 3: blend-sweepet omfordeler monotont fra dyre til billige ryttere (doktrin-brud: straffer styrke). **Anbefalet vej: niveau-korrektion (én konstant), ikke modelskifte** — egen beslutning + måling, hører i værdi/løn-design-sessionen. Scorecard: `docs/audits/2026-08-17-vaerdimodel-refit-scorecard.md`.
 
-23/8 er en søndag, så sweepets søndags-gate er ikke et problem. **Spillerbeskeden:** ejerens udkast fra 14/8 melder værdi-blandingen udskudt til 30/8 — det SKAL omskrives før posting, ellers modsiger beskeden cutoveren (håndteres i bølge 2).
+**Spillerbeskeden:** hverken 23/8-varianten ELLER 30/8-fallbacken (75/25-løftet) kan postes som de står — begge afventer design-sessionens retning.
 
-**Når gaten ikke grøn:** komponent 1 OG 2 udskydes sammen (rækkefølgen værdier-før-løn er bindende), race-day flipper stadig.
+## Komponent 2 — løn (#3393, afventer fælles design — flipper ikke 23/8)
 
-## Komponent 2 — løn (#3393, forsøges, gated)
+**Ejer-valg 17/8 i bølge 2:** #3393 designes færdig SAMMEN med ejeren før den bygges om. Dertil: under den bindende rækkefølge (værdier før løn) kan den ikke flippe når komponent 1 er RØD — medmindre ankerværdi-grundlaget (beslutning Ø4) afkobler den fra markedsvægten; det spørgsmål ejes af design-sessionen.
 
 Beslutning 4+5 er truffet 17/8 (Ø4+Ø5 ovenfor): **ankerværdien som grundlag, ét globalt A kalibreret mod ~35 % af målt indtægt.** Det afblokerer PR'en, som skal:
 
@@ -255,7 +252,7 @@ Scriptet kører selv 1-3 og stopper med exit 1 hvis noget fejler.
 Før skrivning:
 1. Selvtest: 6 kendte regnestykker + 2.000 tilfældige monotoni-tjek. Fejler den, røres databasen aldrig.
 2. Backup-tabellen findes og har mindst lige så mange rækker som `board_profiles`.
-3. Scorecardet viser **0 hold der krydser en ny konsekvens-tærskel**. Ét eneste = stop.
+3. Scorecardet viser **0 hold der krydser en ny konsekvens-tærskel**. Ét eneste = stop. **Baseline-definition (afgjort 17/8 efter to-agenters-uenighed, se learning `2026-08-17-to-agenter-to-baselines-samme-tal.md`): baseline er de AKTIVE rækker i `board_consequences`, aldrig en genberegning af hvad reglerne burde have produceret.** Målt facit 17/8: 0 nye negative konsekvenser, 34 lettelser, 3 hold (Indeso, Purple Rain, Xtreme Noob) mister bonus-berettigelse — deres IGANGVÆRENDE tilbud løber til naturligt udløb (grandfather; teknisk valg 17/8, ejer informeret). De 22 aldrig-underskrevne 3/5-års-forhandlinger (satisfaction præcis 50 = default-støj) indgår ikke i confidence.
 
 Efter skrivning:
 4. Én relation pr. hold, ingen dubletter.
@@ -287,11 +284,16 @@ En rød verifikation her stopper **kun** komponent 4. Den er sidst på dagen og 
 
 ---
 
+## Status efter bølge 2 (17/8 aften): 23/8 = race-day + mandat-backfill
+
+Komponent 1 RØD (udgår), komponent 2 afventer design-session, komponent 3 KLAR, komponent 4 GRØN for backfillen. Værktøjet (PR #3835) er merged og bevist mod staging.
+
 ## Huller pr. 17/8
 
 - Det daglige ticks tidspunkt i forhold til etape-scheduleren er ikke målt.
-- Gendannelses-/snapshot-scripts findes ikke endnu (bygges i bølge 2 spor 1). Komponent 4's tabel-liste står klar til det værktøj.
-- Løn-effekten er ikke genmålt med ankerværdi-grundlag.
+- **Komponent 3's stop-grænse (Δ −29) står i før-#3666-rating-enheden og kan ikke bruges som gate uden genmåling** (spor 1-fund 17/8); gendannelses-værktøjet rapporterer i rå loft-enheder — genmål grænsen FØR 23/8.
+- Mandat: script-apply mod staging med ejerens egen nøgle udestår (agent-sessionen havde ikke stagings service-nøgle).
+- Løn-effekten er ikke genmålt med ankerværdi-grundlag (hører i design-sessionen).
 - Om `processSeasonStart` rører `board_profiles` mellem migrationen og UI-flippet er ikke målt (komponent 4).
 
 Refs #3645 #3459 #3449 #3393 #3514 #3591 #3709 #3757

@@ -30,6 +30,14 @@
       "env": { "VITE_PREVIEW_MOCK": "1" }
     },
     {
+      "name": "w6-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone-worktrees/feat-w6-indbakke/frontend"],
+      "port": 5201,
+      "autoPort": true,
+      "env": { "VITE_PREVIEW_MOCK": "1" }
+    },
+    {
       "name": "frontend-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--prefix", "frontend", "--", "--port", "4180", "--strictPort"],
