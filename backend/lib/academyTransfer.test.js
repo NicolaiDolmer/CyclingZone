@@ -89,6 +89,23 @@ function makeSupabase(cfg = {}) {
           },
         };
       }
+      if (table === "race_entries") {
+        // #3805: demote() slår countOngoingRaceEntries op EFTER selve RPC'en —
+        // default [] (racesOngoing=0), overstyr via cfg.raceEntries i tests der
+        // skal dække den igangværende-løb-sag.
+        return {
+          select() {
+            const api = {
+              eq() { return api; },
+              gt() { return api; },
+              then(resolve, reject) {
+                return Promise.resolve({ data: cfg.raceEntries ?? [], error: null }).then(resolve, reject);
+              },
+            };
+            return api;
+          },
+        };
+      }
       throw new Error(`unexpected table ${table}`);
     },
     rpc(fn, args) {
@@ -291,8 +308,69 @@ test("demote: kalder RPC med korrekt løn + sæson-år + kontrakt; notify; retur
   assert.equal(res.riderId, "r2");
   assert.equal(res.newSalary, expectedSalary);
   assert.equal(res.racesCleared, 3);
+  assert.equal(res.racesOngoing, 0, "ingen igangværende løb konfigureret i denne fixture");
   assert.equal(notify.calls.length, 1);
   assert.equal(notify.calls[0].type, "academy_demoted");
+});
+
+// #3805 regression: rytteren rapporterede faldt ud af et IGANGVÆRENDE løb
+// (races.status='scheduled' AND stages_completed>0) mens dialogen kun talte
+// "kommende løb ryddet" (0, fordi RPC'en bevidst ikke rører igangværende
+// entries). demote() skal nu selv rapportere racesOngoing > 0 for netop denne
+// sag, så kalderen (notification/UI) aldrig kan gentage underrapporteringen.
+test("demote: #3805 — racesOngoing tæller igangværende løb (entries IKKE slettet af RPC'en)", async () => {
+  const { supabase } = makeSupabase({
+    rider: SENIOR_U23,
+    rpcResult: { ok: true, new_salary: 7_405, rows_deleted: 0 }, // ingen fremtidige løb ryddet
+    raceEntries: [
+      { race_id: "race-ongoing-1", races: { status: "scheduled", stages_completed: 2 } },
+    ],
+  });
+  const res = await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 1, notify: spyNotify() });
+
+  assert.equal(res.racesCleared, 0, "RPC'en rørte ingen fremtidige entries");
+  assert.equal(res.racesOngoing, 1, "rytteren falder alligevel ud af det igangværende løb");
+});
+
+// ─── #3784 regression: preview (dialog) og udførelse må ALDRIG kunne divergere ──
+//
+// Root cause (verificeret i backend/routes/api.js's nye GET
+// /riders/:id/academy-demote-quote): dialogen brugte tidligere en frontend-
+// JS-kopi af løn-formlen (marketValues.projectYouthSalary) fodret med
+// rytter-objektet fra siden der åbnede dialogen. RiderStatsPage.jsx's SELECT
+// hentede ALDRIG current_production_value, så formlen faldt tilbage til
+// BASE_VALUE_FALLBACK (1000) og viste 1000×0,3238≈324 (division 2) — mens
+// selve flyttet (demote() → demoteSalary(), denne fil) regnede på rytterens
+// FAKTISKE current_production_value og landede på 5.191 (rapporteret i #3784).
+// Fixet fjerner den frontend-JS-kopi: quote-routen kalder NU demoteSalary()
+// direkte, samme funktion som demote() selv bruger. Denne test låser at de to
+// altid regner det SAMME for samme input — og dokumenterer eksplicit hvor galt
+// det gik med den gamle (manglende-data) formel.
+test("demote: #3784 — demoteSalary() (bruges af BÅDE quote-preview og selve demote()) giver samme tal for samme rytter-data", () => {
+  // Rytterens FAKTISKE current_production_value — division 2 (0,3238) — giver
+  // netop den løn (5.191) spilleren så efter flyttet.
+  const rider = { current_production_value: 16_032, division: 2 };
+  const previewSalary = demoteSalary(rider); // det quote-routen nu viser i dialogen
+  const executedSalary = demoteSalary(rider); // det demote() rent faktisk skriver til DB'en
+  assert.equal(previewSalary, executedSalary, "preview og udførelse SKAL bruge samme funktion/input");
+  assert.equal(executedSalary, 5_191, "matcher den rapporterede faktiske løn i #3784");
+});
+
+test("demote: #3784 — den GAMLE frontend-formel (manglende current_production_value) reproducerer den rapporterede bug (324 ≠ 5.191)", () => {
+  // Dokumentation af selve bug'en: RiderStatsPage.jsx's rider-objekt manglede
+  // current_production_value, så `Number(undefined) > 0` er false og formlen
+  // faldt tilbage til BASE_VALUE_FALLBACK (1000) — uanset rytterens faktiske
+  // produktion. Denne test beviser hvorfor "samme formel, forkert data" stadig
+  // er en bug, og hvorfor fixet må hente data server-side (ikke bare stole på
+  // at frontend-objektet har feltet).
+  const riderMissingField = { division: 2 }; // current_production_value slet ikke SELECT'et
+  const buggyPreviewSalary = demoteSalary(riderMissingField);
+  assert.equal(buggyPreviewSalary, 324, "matcher den forkerte løn dialogen viste (324) i #3784");
+
+  const rider = { current_production_value: 16_032, division: 2 };
+  const actualSalary = demoteSalary(rider);
+  assert.equal(actualSalary, 5_191, "matcher den faktiske løn rytteren endte på i #3784");
+  assert.notEqual(buggyPreviewSalary, actualSalary, "netop divergensen #3784 rapporterede");
 });
 
 // #3620 regression: demote skrev UBETINGET en frisk akademi-kontrakt forankret i
