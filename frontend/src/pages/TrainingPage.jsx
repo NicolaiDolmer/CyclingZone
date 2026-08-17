@@ -1322,6 +1322,15 @@ export default function TrainingPage() {
                     const fatigueDelta = row.fatigue_delta ?? 0;
                     const fatigueSign = fatigueDelta > 0 ? "+" : "";
                     const prog = focusProgress(row.focus, progress[row.rider_id]);
+                    // #3541: rapportens egne skadefelter på denne række er en
+                    // engangs-snapshot fra selve dagens tick og opdateres aldrig
+                    // efterfølgende (0 for en rytter der allerede var skadet FØR i dag,
+                    // jf. dailyTrainingEngine.js hvor snapshot-tallet kun sættes i den
+                    // nyligt-skadet-gren). injuryDaysLeft på den samme condition-state
+                    // som roster-rækken (linje ~548) og ConditionChips på rytterprofilen
+                    // er ÉN kanonisk kilde, så de tre visninger ikke kan divergere.
+                    const reportDaysLeft = injuryDaysLeft(condition[row.rider_id]?.injured_until, today);
+                    const reportInjured = reportDaysLeft > 0;
                     return (
                       <tr
                         key={row.rider_id}
@@ -1331,11 +1340,11 @@ export default function TrainingPage() {
                           <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
                             {row.name}
                           </RiderLink>
-                          {row.injured && (
+                          {reportInjured && (
                             <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
-                              {row.injury_days === 1
-                                ? t("injured", { days: row.injury_days })
-                                : t("injured_plural", { days: row.injury_days })}
+                              {reportDaysLeft === 1
+                                ? t("injured", { days: reportDaysLeft })
+                                : t("injured_plural", { days: reportDaysLeft })}
                             </span>
                           )}
                         </td>
