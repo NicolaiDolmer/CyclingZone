@@ -10,11 +10,19 @@
 // current_production_value ikke har ændret sig siden #2746's kørsel).
 //
 // Genbruger SAMME formel/PRNG-konventioner som contractSeed.js' "andre ejede hold:
-// blandet 1-3"-gren (runContractSeed's non-founder-sti, samme sti som fixet i
-// starterSquadAllocator.js bruger fremadrettet): pickContractLength (seeded rng,
-// ~1/3 hver af 1,2,3) + computeFrozenSalary (current_production_value × per-division-
-// sats) + computeContractEndSeason (startSeason + length - 1). Duplikerer ALDRIG
-// formlen — importerer de eksporterede pure helpers direkte.
+// blandet 1-3"-gren (runContractSeed's non-founder-sti): computeFrozenSalary
+// (current_production_value × per-division-sats) + computeContractEndSeason
+// (startSeason + length - 1). Duplikerer ALDRIG formlen — importerer de
+// eksporterede pure helpers direkte.
+//
+// #3037 forward-guard: længden vælges med pickStarterContractLength (min. 2), IKKE
+// pickContractLength. Denne population ER starter-squad-allokeringen (100%
+// co-occurrence med starter_squad_allocated_at != null, se ovenfor) — for disse
+// ryttere er dette den FØRSTE contract_end_season de nogensinde får sat, præcis
+// samme situation som en frisk starterSquadAllocator-kørsel. Kører backfillet med
+// den gamle pickContractLength (1-3), risikerer nogle af de 138 hold at få
+// contract_length=1 og miste ryttere ved førstkommende sæsonskifte — samme bug som
+// Easy Riders (#3037-issuetråden), bare forsinket til backfill-tidspunktet.
 //
 // IDEMPOTENS (kan køres flere gange / genkøres trygt):
 //   1) SELECTen er selv filtreret til contract_end_season IS NULL — en allerede
@@ -41,7 +49,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { computeFrozenSalary, pickContractLength, computeContractEndSeason } from "../lib/contractSeed.js";
+import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "../lib/contractSeed.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -104,7 +112,7 @@ async function main() {
 
   const rng = makeRng(SEED);
   const patches = owned.map((r) => {
-    const length = pickContractLength(rng);
+    const length = pickStarterContractLength(rng);
     return {
       id: r.id,
       patch: {
