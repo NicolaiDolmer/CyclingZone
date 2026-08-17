@@ -88,6 +88,15 @@ const SPECIAL_ROLES = new Set(["captain", "sprint_captain", "hunter"]);
 function isUqRaceEntriesViolation(err) {
   return !!err && /uq_race_entries_(captain|sprint_captain|hunter)/.test(String(err.message || ""));
 }
+
+// #3482 (Sentry CYCLINGZONE-32): samme TOCTOU-klasse, anden constraint. Bliver et holds
+// ryttere slettet (AI-trim/removeAiTeams) i vinduet mellem trup-læsningen og skrivningen,
+// peger insert-batchen på rider_id'er der ikke findes længere → FK-brud (Postgres 23503)
+// på HELE enhedens upsert. Prod 15/7 + 5/8: 28 enheder = ét slettet hold × 28 løb.
+// Matcher KUN denne ene FK — ingen generel 23503-slugning.
+function isRiderFkViolation(err) {
+  return !!err && /race_entries_rider_id_fkey/.test(String(err.message || ""));
+}
 async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null, orderBy = null }) {
   const out = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
@@ -589,6 +598,36 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     return { inserted: unitInserted, removed: unitRemoved, roleUpdated: unitRoleUpdated };
   }
 
+  // #3482 (CYCLINGZONE-32): en samtidig rytter-sletning gjorde insert-batchen ugyldig.
+  // Kun de NYE rækker (desired \ existing) kan bryde rider-FK'en — rækker der allerede
+  // STÅR i race_entries har pr. definition en levende rytter (FK'en er ON DELETE CASCADE,
+  // så en slettet rytters entries forsvinder med ham). Derfor filtreres UDELUKKENDE
+  // insert-siden: hver existing-rytter beholdes i `desired`, så `toDelete` strukturelt
+  // ikke kan vokse ift. originalkørslen. Aldrig-tommere-garantien holder — et fejlramt
+  // eller tomt eksistens-opslag kan ikke rive en trup ned, kun undlade at fylde den op.
+  // Kaldes PRÆCIS ÉN gang pr. enhed, som #2436's retry.
+  async function regenerateUnitAfterRiderDeletion({ raceId, teamId, desired, existing }) {
+    const candidates = [...desired.keys()].filter((riderId) => !existing.has(riderId));
+    if (!candidates.length) {
+      // FK-brud uden nye rækker giver ingen mening — ægte bug, bevar signalet.
+      throw new Error("race_entries_rider_id_fkey with no new rows to filter");
+    }
+    const { data: aliveRows, error: aliveErr } = await selectInChunks({
+      supabase, table: "riders", columns: "id", inColumn: "id", ids: candidates, orderBy: ["id"],
+    });
+    if (aliveErr) throw new Error(`riders (existence re-scan): ${aliveErr.message}`);
+    const alive = new Set((aliveRows || []).map((r) => r.id));
+    const survivors = new Map(
+      [...desired].filter(([riderId]) => existing.has(riderId) || alive.has(riderId))
+    );
+    // Alle ønskede ryttere findes stadig → FK-bruddet skyldtes IKKE en sletning.
+    // Så er det en ægte bug (fx et rider_id fra en fremmed sæson) og må ikke slugges.
+    if (survivors.size === desired.size) {
+      throw new Error("race_entries_rider_id_fkey but every desired rider still exists");
+    }
+    return applyUnitDiff({ raceId, teamId, desired: survivors, existing });
+  }
+
   // #2436 (CYCLINGZONE-32): genlæs ENHEDENS manuelle + eksisterende auto-rækker friskt
   // fra DB (den oprindelige manual-scan i trin 6 var team/sæson-bred og kan være
   // forældet af en manager-gem der landede undervejs) og kør enheden om — samme kerne
@@ -696,6 +735,31 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
           inserted += retryResult.inserted;
           removed += retryResult.removed;
           roleUpdated += retryResult.roleUpdated;
+          continue;
+        } catch (retryErr) {
+          // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
+          // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
+          failedUnits += 1;
+          if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
+          continue;
+        }
+      }
+      // #3482: en samtidig rytter-sletning ramte insert-batchen. Filtrér de forsvundne
+      // ryttere fra insert-siden og kør enheden om PRÆCIS ÉN gang. Lykkes det, var det en
+      // forventet-og-håndteret race (holdet er væk — der er intet at udtage) og skal ikke
+      // fyre en Sentry-alarm; men den logges, så oprydningen stadig kan ses i Railway.
+      // Fejler retry'en: signalet bevares som en fejlet enhed, præcis som #2436.
+      if (isRiderFkViolation(err)) {
+        try {
+          const retryResult = await regenerateUnitAfterRiderDeletion({
+            raceId: race_id, teamId: team_id, desired, existing,
+          });
+          inserted += retryResult.inserted;
+          removed += retryResult.removed;
+          roleUpdated += retryResult.roleUpdated;
+          console.warn(
+            `⚠️  Entry-generator ${race_id}/${team_id}: rytter(e) slettet under kørslen — enheden kørt om uden dem`
+          );
           continue;
         } catch (retryErr) {
           // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
