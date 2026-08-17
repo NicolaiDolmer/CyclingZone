@@ -16,7 +16,7 @@
     "descAria": "Sorting descending, tap for ascending"
   },
   "recoveryNoteTitle": "Do riders get energy back every day?",
-  "recoveryNote": "Yes. Every night around midnight each rider recovers some fatigue, so it never gets stuck at 100. Rest and easy days recover the most; normal training settles at a sustainable level; hard training still builds fatigue up over the day. A high Recovery rating speeds it up.",
+  "recoveryNote": "Yes. Every night around midnight each rider recovers some fatigue. Rest and easy days recover the most; normal training settles at a sustainable level; hard training still builds fatigue up over the day. With a packed race calendar and heavy workloads, fatigue can still cluster near 100. A high Recovery rating speeds up the nightly recovery.",
   "injuryRisk": "High injury risk",
   "injured": "Injured: {days} day left",
   "injured_plural": "Injured: {days} days left",
