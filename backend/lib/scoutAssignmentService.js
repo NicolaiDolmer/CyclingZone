@@ -149,7 +149,35 @@ export async function loadScoutHistory({ teamId, staffId }, supabaseClient) {
   return hydrateCompletedVisibility(supabaseClient, rows);
 }
 
-// {scout, active, completed, capacity, jobConfig} — al frontend-tilstand for Scouting-central.
+// #2721 — det REELLE gap efter #3369's "TeamScoutHistory"-sektion (audit
+// 2026-08-15 flyttede issuet tilbage til claude:todo): frontend-sektionen
+// genbrugte `completed` fra getScoutState, som er BEGRÆNSET til 20 rækker OG
+// deler den grænse med mission-fund (loadCompletedAssignments, COMPLETED_LIMIT
+// ovenfor). Målrettede undersøgelser modner på ~30 min (#2644) — en aktiv
+// spiller kan sagtens nå at skubbe sine egne ældre undersøgelser ud af top-20
+// i løbet af én session, præcis den "jeg har spejdet nogle ryttere, men kan
+// ikke finde dem igen"-oplevelse issuet blev oprettet for. Pr.-scout-historikken
+// (#3203, loadScoutHistory ovenfor) undgår allerede fælden ved at bruge sin
+// EGEN target-only forespørgsel med et 50-loft; denne funktion giver
+// hold-historikken (på tværs af scouts) samme afkobling og samme loft, i
+// stedet for at dele completed's blandede 20-cap.
+const TEAM_HISTORY_LIMIT = 50;
+
+export async function loadTeamScoutHistory(teamId, supabaseClient) {
+  const { data, error } = await supabaseClient
+    .from("scout_assignments")
+    .select("id, rider_id, target_level, completed_at")
+    .eq("team_id", teamId)
+    .eq("kind", "target")
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(TEAM_HISTORY_LIMIT);
+  if (error) throw new Error(`scoutAssignmentService: could not load team scout history for ${teamId}: ${error.message}`);
+  const rows = (data ?? []).map((r) => ({ ...r, kind: "target" }));
+  return hydrateCompletedVisibility(supabaseClient, rows);
+}
+
+// {scout, active, completed, teamHistory, capacity, jobConfig} — al frontend-tilstand for Scouting-central.
 // #2644 beslutning 2/3: completed-rapporter hydreres med en server-side synligheds-
 // guard (scoutReportVisibility.js) FØR de forlader serveren — en rapport må aldrig
 // afsløre en rytter der lige nu er skjult/utilgængelig, uanset hvad den var på
@@ -160,13 +188,14 @@ export async function getScoutState(teamId, supabaseClient) {
   // åbner siden. Skal ske FØR active/completed loades, så en netop-due
   // undersøgelse dukker op som færdig rapport i samme svar.
   await lazyCompleteDueTargetAssignments({ supabase: supabaseClient, teamId });
-  const [scout, active, completedRaw] = await Promise.all([
+  const [scout, active, completedRaw, teamHistory] = await Promise.all([
     loadScout(teamId, supabaseClient),
     loadActiveAssignments(teamId, supabaseClient),
     loadCompletedAssignments(teamId, supabaseClient),
+    loadTeamScoutHistory(teamId, supabaseClient),
   ]);
   const completed = await hydrateCompletedVisibility(supabaseClient, completedRaw);
-  return { scout, active, completed, capacity: scoutCapacity(scout), jobConfig: JOB_CONFIG_RESPONSE };
+  return { scout, active, completed, teamHistory, capacity: scoutCapacity(scout), jobConfig: JOB_CONFIG_RESPONSE };
 }
 
 export async function startTargetAssignment({ teamId, riderId, seasonId }, supabaseClient, now = new Date()) {

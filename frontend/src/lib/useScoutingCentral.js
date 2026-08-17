@@ -25,6 +25,9 @@ export function useScoutingCentral() {
   const [scout, setScout] = useState(null);
   const [active, setActive] = useState([]);
   const [completed, setCompleted] = useState([]);
+  // #2721: holds-bred target-historik, afkoblet fra completed's mission-delte
+  // 20-cap (se scoutAssignmentService.loadTeamScoutHistory for hvorfor).
+  const [teamHistory, setTeamHistory] = useState([]);
   const [capacity, setCapacity] = useState(1);
   const [jobConfig, setJobConfig] = useState(null); // { targetEtaMinutes, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
   const [loading, setLoading] = useState(true);
@@ -53,6 +56,7 @@ export function useScoutingCentral() {
       setScout(data.scout ?? null);
       setActive(data.active ?? []);
       setCompleted(data.completed ?? []);
+      setTeamHistory(data.teamHistory ?? []);
       setCapacity(data.capacity ?? 1);
       setJobConfig(data.jobConfig ?? null);
       setError(null);
@@ -120,7 +124,7 @@ export function useScoutingCentral() {
   }, [refresh]);
 
   return {
-    enabled, scout, active, completed, capacity, jobConfig, loading, error, busy,
+    enabled, scout, active, completed, teamHistory, capacity, jobConfig, loading, error, busy,
     refresh, startTarget, startMission, cancelAssignment,
   };
 }

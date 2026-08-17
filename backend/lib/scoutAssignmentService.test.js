@@ -8,7 +8,7 @@ process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
 const {
-  getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScoutHistory,
+  getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScoutHistory, loadTeamScoutHistory,
 } = await import("./scoutAssignmentService.js");
 const { DEFAULT_SCOUT, SCOUT_JOB_CONFIG } = await import("./scoutEngine.js");
 
@@ -284,6 +284,36 @@ test("getScoutState: returns active + completed (capped 20) assignments", async 
   assert.equal(result.active.length, 1);
   assert.equal(result.active[0].id, "a1");
   assert.deepEqual(result.completed.map((r) => r.id), ["a3", "a2"]); // nyeste først
+});
+
+// #2721 — det REELLE gap efter #3369: `teamHistory` skal IKKE forsvinde bare
+// fordi mission-completions fylder completed's blandede 20-cap op. Simulerer
+// præcis symptomet issuet blev genåbnet for (audit 2026-08-15): en target-
+// undersøgelse fra før 20 senere mission-fund er stadig synlig i teamHistory,
+// selvom den er røget ud af `completed`.
+test("getScoutState: teamHistory er afkoblet fra completed's blandede 20-cap (#2721)", async () => {
+  const oldTarget = {
+    id: "t-old", team_id: "team-1", status: "completed", kind: "target",
+    rider_id: "rider-old", target_level: 1, completed_at: "2026-01-01T00:00:00Z",
+  };
+  const laterMissions = Array.from({ length: 20 }, (_, i) => ({
+    id: `m${i}`, team_id: "team-1", status: "completed", kind: "mission",
+    completed_at: `2026-02-${String(i + 1).padStart(2, "0")}T00:00:00Z`,
+    result: { shortlist: [] },
+  }));
+  const riders = [{ id: "rider-old", team_id: null, pending_team_id: null, is_academy: false, owner_is_ai: false, team: null }];
+  const supabase = createScoutSupabase({
+    team: { id: "team-1", balance: 100_000 },
+    assignments: [oldTarget, ...laterMissions],
+    riders,
+  });
+  const result = await getScoutState("team-1", supabase);
+  // completed er stadig 20-cap og har skubbet den gamle target-undersøgelse ud.
+  assert.equal(result.completed.length, 20);
+  assert.ok(!result.completed.some((r) => r.id === "t-old"));
+  // ...men teamHistory (egen target-only forespørgsel) har den stadig.
+  assert.deepEqual(result.teamHistory.map((r) => r.id), ["t-old"]);
+  assert.equal(result.teamHistory[0].rider_id, "rider-old");
 });
 
 // #3548: nedtællingen i frontend må ikke udlede klar-tidspunktet selv — serveren
@@ -674,6 +704,41 @@ test("loadScoutHistory: hides rider_id if the rider has become unavailable since
   const riders = [{ id: "rider-hidden", team_id: null, pending_team_id: "team-9", is_academy: false, team: null }];
   const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
   const history = await loadScoutHistory({ teamId: "team-1", staffId: "staff-1" }, supabase);
+  assert.equal(history[0].rider_id, null);
+  assert.deepEqual(history[0].riderStatus, {});
+});
+
+// ─── loadTeamScoutHistory (#2721 — team-bred pendant til #3203) ──────────────
+
+test("loadTeamScoutHistory: returns team's completed target jobs across ALL scouts, newest first", async () => {
+  const assignments = [
+    { id: "t1", team_id: "team-1", staff_id: "staff-1", status: "completed", kind: "target", rider_id: "rider-1", target_level: 1, completed_at: "2026-07-01T00:00:00Z" },
+    // en ANDEN scout end t1 — team-historikken skal IKKE filtrere på staff_id,
+    // i modsætning til loadScoutHistory (#3203, pr.-scout).
+    { id: "t2", team_id: "team-1", staff_id: "staff-2", status: "completed", kind: "target", rider_id: "rider-2", target_level: 2, completed_at: "2026-07-15T00:00:00Z" },
+    // andre kind/status/team — skal alle ekskluderes
+    { id: "t3", team_id: "team-1", staff_id: "staff-1", status: "active", kind: "target", rider_id: "rider-3", completed_at: null },
+    { id: "m1", team_id: "team-1", staff_id: "staff-1", status: "completed", kind: "mission", completed_at: "2026-07-20T00:00:00Z", result: { shortlist: [] } },
+    { id: "t4", team_id: "team-2", staff_id: "staff-1", status: "completed", kind: "target", rider_id: "rider-4", completed_at: "2026-07-19T00:00:00Z" },
+  ];
+  const riders = [
+    { id: "rider-1", team_id: null, pending_team_id: null, is_academy: false, owner_is_ai: false, team: null },
+    { id: "rider-2", team_id: null, pending_team_id: null, is_academy: false, owner_is_ai: false, team: null },
+  ];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const history = await loadTeamScoutHistory("team-1", supabase);
+  assert.deepEqual(history.map((r) => r.id), ["t2", "t1"]); // nyeste først, uafhængigt af scout
+  assert.equal(history[0].rider_id, "rider-2");
+});
+
+test("loadTeamScoutHistory: hides rider_id if the rider has become unavailable since the report matured (#2644 guard)", async () => {
+  const assignments = [{
+    id: "t1", team_id: "team-1", staff_id: "staff-1", status: "completed", kind: "target",
+    rider_id: "rider-hidden", target_level: 2, completed_at: "2026-07-18T00:00:00Z",
+  }];
+  const riders = [{ id: "rider-hidden", team_id: null, pending_team_id: "team-9", is_academy: false, team: null }];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const history = await loadTeamScoutHistory("team-1", supabase);
   assert.equal(history[0].rider_id, null);
   assert.deepEqual(history[0].riderStatus, {});
 });
