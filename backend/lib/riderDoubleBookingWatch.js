@@ -43,13 +43,67 @@
 //
 // READ-ONLY: ingen writes, ingen ny tabel, ingen migration. Én Sentry-capture pr. tick med
 // FAST fingerprint (mirror ownershipInvariantWatch #2647) — ét issue uanset antal fund.
-
+//
+// #3415: to rod-årsager fundet ved forensik af 5/8 (0→3) og 11/8 (14→0) oscillationen.
+// (1) VAGTEN kørte kun hver 24. time, mens den proces der rent faktisk skriver
+// race_entries — entry-generator-sweepen (raceEntryGeneratorSweep.js) — kører hver
+// TIME (+ ved hver boot). #3185's lukkekriterie ("15 ticks i træk med count=4,
+// actionable=0") målte derfor 15 DAGE, mens brud både opstod og forsvandt inden for
+// TIMER i takt med sweep-kørsler (11/8: 14 par kl. 15:22 → 0 kl. 21:43, samme dags
+// sweep kl. 20:45). En 24-timers-prøve kan strukturelt ikke se det. cron.js kæder nu
+// vagten direkte efter enhver sweep-kørsel der rent faktisk skrev noget, så vagtens
+// kadence matcher den proces den overvåger — se runRiderDoubleBookingWatchCron i
+// cron.js. (2) Vagten havde INGEN hukommelse mellem ticks (kun aggregat-tal), så en
+// triage kunne aldrig se HVILKE par der kom og gik — kun at et tal ændrede sig
+// ("bruddene forsvandt uden spor", issuets egen ordlyd). diffLiveConflictKeys +
+// trackConflictChurn nedenfor giver vagten et let, in-memory (proces-levetid, ingen
+// tabel) churn-spor: par der er NYE siden sidste tick, og par der er RESOLVEREDE
+// siden sidste tick, begge logget med rytter/løb-detaljer i stedet for blot et tal.
 import { fetchAllRows } from "./supabasePagination.js";
 import { fetchAllPaged, IN_CHUNK_SIZE } from "./dbChunk.js";
 import { raceBindingWindow, windowsOverlap } from "./raceBinding.js";
 import { filterEligibleEntries } from "./riderEligibility.js";
 
 const SAMPLE_LIMIT = 25;
+
+// Stabil nøgle pr. par — samme rækkefølge som findDoubleBookedRiders allerede
+// garanterer (raceA = kronologisk tidligste). Bruges KUN til churn-diffing, aldrig
+// til visning (Sentry-samplet bruger stadig løbsnavne, se runRiderDoubleBookingWatch).
+function conflictKey(c) {
+  return `${c.rider_id}|${c.raceA}|${c.raceB}`;
+}
+
+/**
+ * Sammenlign dette ticks levende par mod forrige ticks. Pure + deterministisk.
+ * @param {{ previous: Map<string, object>, live: Array<object> }} args
+ * @returns {{ currentByKey: Map<string,object>, appeared: Array<object>, resolved: Array<object> }}
+ */
+export function diffLiveConflictKeys({ previous = new Map(), live = [] }) {
+  const currentByKey = new Map(live.map((c) => [conflictKey(c), c]));
+  const appeared = [...currentByKey.entries()].filter(([k]) => !previous.has(k)).map(([, c]) => c);
+  const resolved = [...previous.entries()].filter(([k]) => !currentByKey.has(k)).map(([, c]) => c);
+  return { currentByKey, appeared, resolved };
+}
+
+// Proces-levetid churn-hukommelse (READ-ONLY-princippet ovenfor: intet skrives til DB).
+// Nulstilles ved hver deploy/restart — det er acceptabelt: en fejlagtig "ny"-markering
+// lige efter en genstart er harmløs støj, mens selve alarm-betingelsen (live.length>0,
+// splitLiveConflicts) er upåvirket og forbliver korrekt uanset denne hukommelse.
+let previousLiveByKey = new Map();
+
+/**
+ * Opdatér og returnér churn siden sidste kald i DENNE proces. Ekstraheret fra
+ * runRiderDoubleBookingWatch så testene kan injicere deres eget state-map i stedet
+ * for at dele det globale (ellers ville test-rækkefølge påvirke hinandens resultater).
+ * @param {{ live: Array<object>, stateStore?: { get: () => Map, set: (m: Map) => void } }} args
+ * @returns {{ appeared: Array<object>, resolved: Array<object> }}
+ */
+export function trackConflictChurn({ live = [], stateStore } = {}) {
+  const store = stateStore ?? { get: () => previousLiveByKey, set: (m) => { previousLiveByKey = m; } };
+  const { currentByKey, appeared, resolved } = diffLiveConflictKeys({ previous: store.get(), live });
+  store.set(currentByKey);
+  return { appeared, resolved };
+}
 
 // Chunket .in() (URL-længde, #1307) KOMBINERET med range-paginering (PostgREST's 1000-
 // rækkers cap trunkerer ellers TAVST — #2375/#1839). dbChunk.selectInChunks gør kun det
@@ -144,11 +198,16 @@ export function splitLiveConflicts({ conflicts = [], raceById = new Map() } = {}
  * (stages_completed === 0) — dem kan man stadig nå at rette uden at rulle resultater
  * tilbage. Resten kræver en ejer-gated datareparation.
  *
- * @param {{ supabase: object, captureExceptionFn?: (err:Error, ctx:object)=>void }} args
+ * @param {{ supabase: object, captureExceptionFn?: (err:Error, ctx:object)=>void,
+ *           churnStateStore?: { get: () => Map, set: (m: Map) => void } }} args
+ *   churnStateStore er kun til tests (isolerer churn-hukommelsen fra det globale
+ *   proces-state) — udelades i prod-kald, hvor trackConflictChurn falder tilbage til
+ *   modulets eget state.
  * @returns {Promise<{skipped?:string, seasonId?:string, races:number, entries:number,
- *   conflicts:number, live:number, historical:number, actionable:number, alerted:boolean}>}
+ *   conflicts:number, live:number, historical:number, actionable:number, alerted:boolean,
+ *   appeared?:Array<object>, resolved?:Array<object>}>}
  */
-export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn } = {}) {
+export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn, churnStateStore } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const { data: season, error: seasonErr } = await supabase
@@ -226,6 +285,19 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
     (c) => (raceById.get(c.raceA)?.stages_completed ?? 0) === 0 || (raceById.get(c.raceB)?.stages_completed ?? 0) === 0
   );
 
+  const describe = (c) => ({
+    riderId: c.rider_id,
+    teamId: c.team_id,
+    raceA: raceById.get(c.raceA)?.name ?? c.raceA,
+    raceB: raceById.get(c.raceB)?.name ?? c.raceB,
+  });
+
+  // #3415: churn siden sidste tick i DENNE proces — hvilke par er NYE, og hvilke er
+  // RESOLVEREDE (ikke længere levende, uanset om de blev rettet eller nu er historiske).
+  // Se modul-kommentaren: dette er den direkte reaktion på "bruddene forsvandt uden
+  // spor" — issuets kerneklage.
+  const { appeared, resolved } = trackConflictChurn({ live, stateStore: churnStateStore });
+
   let alerted = false;
   if (live.length > 0) {
     alerted = true;
@@ -244,12 +316,10 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
           // Historik-tælleren følger med i alarmen, så triage kan se om et gammelt,
           // ikke-reparerbart par stadig ligger i data (det alarmerer ikke selv).
           historical: historical.length,
-          sample: (actionable.length ? actionable : live).slice(0, SAMPLE_LIMIT).map((c) => ({
-            riderId: c.rider_id,
-            teamId: c.team_id,
-            raceA: raceById.get(c.raceA)?.name ?? c.raceA,
-            raceB: raceById.get(c.raceB)?.name ?? c.raceB,
-          })),
+          sample: (actionable.length ? actionable : live).slice(0, SAMPLE_LIMIT).map(describe),
+          // #3415: par-id'er ved opståen — hvilke af de levende par er NYE siden
+          // sidste tick i denne proces (tomt ved første tick efter en genstart).
+          newlyAppeared: appeared.slice(0, SAMPLE_LIMIT).map(describe),
         },
       }
     );
@@ -263,6 +333,11 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
     live: live.length,
     historical: historical.length,
     actionable: actionable.length,
+    // #3415: rå churn-lister (ikke kun tal) så kalderen (cron.js) kan LOGGE hvilke
+    // konkrete par der kom og gik — selv når resolved.length>0 men live.length===0
+    // (dvs. INGEN alarm ville fyre, og forsvinden tidligere var helt usynlig).
+    appeared: appeared.map(describe),
+    resolved: resolved.map(describe),
     alerted,
   };
 }
