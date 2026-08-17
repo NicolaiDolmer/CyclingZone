@@ -16,7 +16,7 @@
     "descAria": "Sorterer faldende, tryk for stigende"
   },
   "recoveryNoteTitle": "Får man energi tilbage hver dag?",
-  "recoveryNote": "Ja. Hver nat omkring midnat restituerer hver rytter noget træthed, så den aldrig sidder fast på 100. Hvile- og rolige dage restituerer mest; normal træning lander på et bæredygtigt niveau; hård træning bygger stadig træthed op i løbet af dagen. En høj Recovery-evne gør det hurtigere.",
+  "recoveryNote": "Ja. Hver nat omkring midnat restituerer hver rytter noget træthed. Hvile- og rolige dage restituerer mest; normal træning lander på et bæredygtigt niveau; hård træning bygger stadig træthed op i løbet af dagen. Ved tæt løbskalender og hård belastning kan træthed alligevel klumpe tæt på 100. En høj Restitution gør den daglige genopretning hurtigere.",
   "injuryRisk": "Høj skaderisiko",
   "injured": "Skadet: {days} dag tilbage",
   "injured_plural": "Skadet: {days} dage tilbage",
