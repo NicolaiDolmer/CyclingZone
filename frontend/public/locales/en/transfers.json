@@ -145,6 +145,7 @@
     "swapZero": "0 CZ$",
     "noBids": "No bids",
     "academySource": "Academy",
+    "aiTeamFallback": "AI team",
     "loadError": "Could not load transfer history",
     "noSaleToggle": "Show auctions with no bids",
     "noSaleHiddenNote": "{count, plural, one {# auction with no bids is} other {# auctions with no bids are}} hidden. No rider changed hands.",

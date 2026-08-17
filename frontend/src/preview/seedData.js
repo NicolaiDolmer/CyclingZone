@@ -892,6 +892,55 @@ export const SEED_TRANSFER_HISTORY = [
   },
 ];
 
+// GET /api/riders/:id/history — #3708: rytterens egen offentlige historik
+// (RiderHistoryTab). Samme event-shape som backendens buildRiderHistory
+// (backend/lib/riderHistory.js). Holder BÅDE en no_sale-auktion (skal
+// filtreres helt fra, se lib/riderHistoryTable.js) og en garanteret AI-salg
+// uden buyer (buyer: null, no_sale: false → "AI team", ikke "Unknown"), så
+// begge #3708-rettelser har noget reelt at bevise på preview/e2e.
+export const SEED_RIDER_HISTORY = [
+  {
+    type: "auction",
+    date: "2026-07-20T18:00:00.000Z",
+    price: 210000,
+    seller: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false },
+    buyer: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+    no_sale: false,
+    is_ai_sale: false,
+    is_guaranteed_sale: false,
+  },
+  // Gennemført auktion uden bud — må IKKE optræde i den rendrede historik.
+  {
+    type: "auction",
+    date: "2026-07-05T09:00:00.000Z",
+    price: null,
+    seller: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false },
+    buyer: null,
+    no_sale: true,
+    is_ai_sale: false,
+    is_guaranteed_sale: false,
+  },
+  // Garanteret AI-salg: current_bidder_id (buyer) er tomt, men no_sale er
+  // false — det ER et salg, bare uden en menneske-modpart.
+  {
+    type: "auction",
+    date: "2026-06-28T12:00:00.000Z",
+    price: 95000,
+    seller: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false },
+    buyer: null,
+    no_sale: false,
+    is_ai_sale: false,
+    is_guaranteed_sale: true,
+  },
+  {
+    type: "transfer",
+    date: "2026-06-15T10:00:00.000Z",
+    price: 150000,
+    seller: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    buyer: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+  },
+];
+
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
 // kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
 // roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).

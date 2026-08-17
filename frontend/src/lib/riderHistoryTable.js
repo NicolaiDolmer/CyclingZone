@@ -14,7 +14,7 @@
 // datalag endnu (kontraktændringer logges ikke historisk) — de kan tilføjes
 // når/hvis et event-lag findes, frem for at opfinde rækker.
 
-export const HISTORY_KINDS = ["auction", "auction_no_sale", "bid", "transfer", "swap"];
+export const HISTORY_KINDS = ["auction", "bid", "transfer", "swap"];
 
 // Beløbet pr. kind — null → "—" i tabellen.
 export function historyRowAmount(row) {
@@ -31,7 +31,12 @@ export function buildHistoryRows({ events = [], bidTimeline = null } = {}) {
   const rows = [];
   for (const e of events || []) {
     if (!e || typeof e !== "object") continue;
-    const kind = e.type === "auction" ? (e.no_sale ? "auction_no_sale" : "auction") : e.type;
+    // #3708: en gennemført auktion uden bud er ikke en handel — bare støj i
+    // rytterens offentlige historik (samme princip som TeamTransferHistoryTab
+    // /#2400, blot uden toggle her: denne fane er ikke ejerens egen, og der er
+    // ingen grund til at kunne slå "ingen bud"-rækker til igen).
+    if (e.type === "auction" && e.no_sale) continue;
+    const kind = e.type;
     if (!HISTORY_KINDS.includes(kind)) continue;
     rows.push({ ...e, kind });
   }

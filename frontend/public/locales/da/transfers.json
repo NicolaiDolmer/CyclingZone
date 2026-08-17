@@ -145,6 +145,7 @@
     "swapZero": "0 CZ$",
     "noBids": "Ingen bud",
     "academySource": "Akademi",
+    "aiTeamFallback": "AI-hold",
     "loadError": "Kunne ikke hente transferhistorik",
     "noSaleToggle": "Vis auktioner uden bud",
     "noSaleHiddenNote": "{count, plural, one {# auktion uden bud er skjult} other {# auktioner uden bud er skjult}}. Ingen rytter skiftede ejer.",

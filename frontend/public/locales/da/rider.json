@@ -639,10 +639,9 @@
       "labelDefault": "Auktion",
       "wonBy": "vandt af",
       "buyerFallback": "Ukendt",
+      "buyerFallbackAi": "AI-hold",
       "sellerFallbackAi": "AI-hold",
-      "sellerFallback": "Ukendt",
-      "noSaleTag": "Intet salg",
-      "noSaleBody": "modtog ingen bud (rytteren blev ikke solgt)"
+      "sellerFallback": "Ukendt"
     },
     "transfer": {
       "label": "Transfer",
