@@ -5122,12 +5122,13 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #1447: #669-auktions-gaten fjernet — efter relaunch (#1105) er fiktive ryttere
   // den aktive bestand og skal kunne auktioneres/handles af alle managere.
 
-  // Block: retired / academy / rider awaits transfer to a previous auction winner.
-  // #1824: akademiryttere hører IKKE på det åbne auktionsmarked — de ejes/udvikles
-  // via akademi-flowet og må først rykkes til senior-truppen (graduation) før de kan
-  // handles. getAuctionStartIssue fanger det (rider_is_academy) før den human-only
-  // ejer-check nedenfor, så et AI-/frit akademi-prospekt ikke længere slipper forbi.
-  const auctionStartIssue = getAuctionStartIssue({ rider });
+  // Block: retired / academy (not own) / rider awaits transfer to a previous auction winner.
+  // #3650 (ejer-direktiv 17/8): egne akademi-ryttere må NU sættes på auktion —
+  // #1824's is_academy-GUARD er lempet til kun at ramme riders der IKKE ejes af
+  // den anmodende manager (getAuctionStartIssue fanger det med requestingTeamId),
+  // så et AI-/frit akademi-prospekt stadig ikke slipper forbi den human-only
+  // ejer-check nedenfor.
+  const auctionStartIssue = getAuctionStartIssue({ rider, requestingTeamId: req.team.id });
   if (auctionStartIssue) {
     if (auctionStartIssue.code === "rider_retired") {
       return res.status(409).json({ error: "This rider has retired and can't be put up for auction", errorCode: "rider_retired_auction" });

@@ -1520,11 +1520,12 @@ export default function RiderStatsPage() {
   const developmentTypes = RIDER_TYPE_KEYS.map((key, i) => ({ key, label: tTypes(`types.${key}`), color: chartColor(i) }));
   const isMyRider  = rider.team_id === myTeamId;
   // #2007: en egen AKADEMI-rytter har sit eget flow (promovér) og kan ikke
-  // sættes på auktion eller fyres (backend afviser rider_is_academy).
-  // #3650: transferliste er IKKE længere udelukket — akademi-ryttere kan
-  // listes direkte (se TransferListButton-brugen nedenfor).
+  // fyres (backend afviser rider_is_academy).
+  // #3650 (ejer-direktiv 17/8): akademi-ryttere kan nu sættes BÅDE på
+  // transferlisten OG på auktion direkte (se TransferListButton/AuctionButton-
+  // brugen nedenfor) — salget graduerer dem atomisk til senior hos køberen ved
+  // handlens gennemførelse. Kun promovér/fyr er fortsat akademi-flowets egne.
   const isAcademyRider = Boolean(rider.is_academy);
-  const isMySeniorRider = isMyRider && !isAcademyRider;
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
   const isAiRider = Boolean(rider.team?.is_ai);
@@ -1546,11 +1547,12 @@ export default function RiderStatsPage() {
       overviewProgress[key] = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
     }
   }
-  // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter og egne
-  // SENIOR-ryttere kan sættes på auktion). #2264: bank/AI-ryttere er fjernet —
-  // backend har blokeret dem siden 2026-06-30 (ai_rider_no_auction), så knappen
-  // gav kun en fejl.
-  const canAuction  = (isFreeAgent || isMySeniorRider) && !isPendingTransfer && !isRetired;
+  // #3650 (ejer-direktiv 17/8): egne akademi-ryttere kan nu OGSÅ sættes på
+  // auktion — samme direkte-salg som transferlisten. isMyRider dækker både
+  // senior og akademi for eget hold, så isMySeniorRider-udelukkelsen er væk.
+  // #2264: bank/AI-ryttere er fjernet — backend har blokeret dem siden
+  // 2026-06-30 (ai_rider_no_auction), så knappen gav kun en fejl.
+  const canAuction  = (isFreeAgent || isMyRider) && !isPendingTransfer && !isRetired;
   const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer && !isRetired;
   const auctionLabel = isMyRider
     ? t("auctionStart.label.myRider")
@@ -1765,9 +1767,10 @@ export default function RiderStatsPage() {
                   marketActions={
                     <>
                       {/* #1185: egne ryttere kan sættes til salg direkte herfra.
-                          #3650: akademi-ryttere listes nu OGSÅ direkte — salget
-                          graduerer dem atomisk til senior hos køberen ved handlens
-                          gennemførelse (backend: executeTransferOffer). */}
+                          #3650: akademi-ryttere kan nu OGSÅ sættes til salg ELLER
+                          på auktion direkte — salget graduerer dem atomisk til
+                          senior hos køberen ved handlens gennemførelse (backend:
+                          executeTransferOffer / auctionFinalization.js). */}
                       {isMyRider && <TransferListButton rider={rider} />}
                       {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
                     </>
