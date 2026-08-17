@@ -72,7 +72,8 @@
     },
     "count": "{count, plural, one {1 rytter} other {# ryttere}}",
     "actionButton": "Sælg / Auktion",
-    "ownAuctionTooltip": "På auktion · højeste bud {price} CZ$ · slutter om {timeLeft}"
+    "ownAuctionTooltip": "På auktion · højeste bud {price} CZ$ · slutter om {timeLeft}",
+    "ownTransferListingTooltip": "På transferlisten · udbudspris {price} CZ$"
   },
   "actionModal": {
     "potentialLabel": "Potentiale",

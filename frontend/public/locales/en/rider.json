@@ -26,7 +26,8 @@
       "injured": "INJ",
       "academy": "ACAD",
       "retireRisk": "35+",
-      "contractExpiring": "EXP"
+      "contractExpiring": "EXP",
+      "listed": "LIST"
     }
   },
   "page": {
