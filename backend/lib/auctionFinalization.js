@@ -1178,10 +1178,22 @@ async function finalizeAuctionRecord({
       teamId: effectiveBidderId,
     }).catch(() => {});
 
-    if (auction.seller_team_id) {
+    // #3549: sælgeren (auction.seller_team_id) og køberen (effectiveBidderId) kan
+    // være SAMME hold — fx et hold der byder på en auktion, hvor de selv står som
+    // seller_team_id, men rytteren imens er overgået til en anden faktisk ejer
+    // (AI/free-agent-gensalg af egen tidligere rytter — udtrykkeligt tilladt af
+    // #194-bid-reglen i routes/api.js: "Allow bidding on own auction ONLY for
+    // AI/free rider auctions"). Uden denne guard fik holdet BÅDE "Du vandt
+    // auktionen!"-beskeden ovenfor OG denne sælger-besked — to næsten identiske
+    // notifikationer om samme hammerslag (#3549, samme symptom som #1693).
+    // Modtageren har allerede fået hele historien via købs-beskeden, så
+    // sælger-beskeden er ren støj i det tilfælde.
+    if (auction.seller_team_id && auction.seller_team_id !== effectiveBidderId) {
       await notifyTeamOwner(
         auction.seller_team_id,
-        "auction_won",
+        // #3549 forward-guard: egen type (ikke "auction_won") så købers og
+        // sælgers besked aldrig igen kan kollidere på type alene.
+        "auction_sold",
         "Auktion afsluttet",
         sellerOwned
           ? `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${price} CZ$`
@@ -1291,7 +1303,9 @@ async function finalizeAuctionRecord({
 
     await notifyTeamOwner(
       auction.seller_team_id,
-      "auction_won",
+      // #3549 forward-guard: samme sælger-type som den almindelige sælger-besked
+      // ovenfor — "solgt" er den semantisk korrekte type, ikke "vundet".
+      "auction_sold",
       "Rytter solgt til AI",
       `${auction.rider.firstname} ${auction.rider.lastname} er solgt til AI for ${salePrice} CZ$ (garanteret pris)`,
       auction.id,

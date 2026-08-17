@@ -7,9 +7,15 @@
 // endelige "solgt for X CZ$"), ikke bud-støjen der førte dertil.
 const AGGREGATABLE_TYPES = new Set(["auction_outbid", "bid_received"]);
 
+// #3549: sælgerens "afsluttet"-besked skiftede type fra "auction_won" til
+// "auction_sold" (sælgeren er selv ikke KØBER, så "won" var forkert delt type
+// med køberens besked — se auctionFinalization.js). bid_received er
+// SÆLGERENS aggregerede bud-støj, så dens terminator skal matche sælgerens
+// faktiske afsluttet-type, ellers "hænger" bud-aggregatet uendeligt hos
+// sælgeren efter et salg.
 const TERMINATING_TYPES = {
   auction_outbid: new Set(["auction_won", "auction_lost"]),
-  bid_received: new Set(["auction_won", "auction_lost"]),
+  bid_received: new Set(["auction_won", "auction_lost", "auction_sold"]),
 };
 
 export function aggregateKey(type, relatedId) {

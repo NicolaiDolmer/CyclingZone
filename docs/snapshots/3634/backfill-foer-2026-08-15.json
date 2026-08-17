@@ -1,0 +1,872 @@
+{
+  "issue": 3634,
+  "kandidat": "B",
+  "taget": "2026-08-15T13:28:31.514Z",
+  "antal": 72,
+  "raekker": [
+    {
+      "id": "03b927c9-f195-490d-90a4-54e7d77b0130",
+      "firstname": "Sergio J.",
+      "lastname": "Castro",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "09a257af-d075-4645-8538-9b3234567be0",
+      "firstname": "Yuto",
+      "lastname": "Yamada",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "brostensrytter",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "0a8deb0d-dbef-47ce-806d-a736998f5dd8",
+      "firstname": "Carlos A.",
+      "lastname": "Quintero",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "0d7f819a-e366-4426-a2ba-20e2ae86da60",
+      "firstname": "Hoyeon T.",
+      "lastname": "Jang",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "brostensrytter",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "0ff9d876-339b-4bf3-b26e-4b9092cdc2e6",
+      "firstname": "Ethan O.",
+      "lastname": "Smith",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "baroudeur",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "184eb558-0f4a-4580-b996-57886a6cabf9",
+      "firstname": "Yang J.",
+      "lastname": "Liu",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "1df98415-f079-4bb6-9850-22ab16c12a08",
+      "firstname": "Henok",
+      "lastname": "Kidane",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "brostensrytter",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "23052534-a2e9-472f-9a06-a6615d49afd9",
+      "firstname": "Amine",
+      "lastname": "Haddad",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "2424fed5-bdd7-48de-a8e3-d968555396d9",
+      "firstname": "Jun Y.",
+      "lastname": "Yang",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "baroudeur",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "2685e718-0375-445e-aa5b-4188fb345d2d",
+      "firstname": "Raúl",
+      "lastname": "Aguilar",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "brostensrytter",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "290cc83b-e998-43b0-912d-ff20af5794df",
+      "firstname": "Kai J.",
+      "lastname": "Zhao",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "baroudeur",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "2d4857ea-9b35-4770-a691-210ebc6e3bfd",
+      "firstname": "Wei C.",
+      "lastname": "Liang",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "baroudeur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "2ec2b571-0255-4772-9e99-cc028d6e293c",
+      "firstname": "Yuki H.",
+      "lastname": "Maeda",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "34512a23-c0b8-4672-b70a-ca66e401f187",
+      "firstname": "Hao F.",
+      "lastname": "Xie",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "34aee4ae-2240-4138-9ff0-0af4eaf2eba1",
+      "firstname": "Kaito T.",
+      "lastname": "Yamada",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "38d51c5a-f027-47cc-9841-6b1c92e4efbc",
+      "firstname": "Doyun W.",
+      "lastname": "Hwang",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "40e2f68e-8ffb-490d-b2e6-aa1ded69379c",
+      "firstname": "Sho R.",
+      "lastname": "Watanabe",
+      "archetype_draw": {
+        "primary": "brostensrytter",
+        "secondary": null
+      },
+      "primary_type": "brostensrytter",
+      "secondary_type": "rouleur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "418a618c-8c08-4765-b5f0-7bbf87f61db3",
+      "firstname": "Yeonjun",
+      "lastname": "Seo",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "brostensrytter",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "42d10817-fcc9-4cd7-9196-9e858ee419a5",
+      "firstname": "Owen",
+      "lastname": "Pearce",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "45f3314a-d489-48dd-92f8-d58c6d241977",
+      "firstname": "Ryo R.",
+      "lastname": "Okada",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "46246e8d-3627-40a7-bc43-06001cc9b2c2",
+      "firstname": "Gonzalo",
+      "lastname": "Sánchez",
+      "archetype_draw": {
+        "primary": "brostensrytter",
+        "secondary": null
+      },
+      "primary_type": "brostensrytter",
+      "secondary_type": "rouleur",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "4cfc9063-bc61-4463-be8f-3262a53a1e58",
+      "firstname": "Marek",
+      "lastname": "Procházka",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "4e950ca3-a742-4e6b-bcf0-d13cf9a79e13",
+      "firstname": "Lei Q.",
+      "lastname": "Luo",
+      "archetype_draw": {
+        "primary": "tt",
+        "secondary": null
+      },
+      "primary_type": "tt",
+      "secondary_type": "sprinter",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "4f47c3cf-f341-407c-a5de-6f8c65b7a2ef",
+      "firstname": "Daiki",
+      "lastname": "Nakamura",
+      "archetype_draw": {
+        "primary": "brostensrytter",
+        "secondary": null
+      },
+      "primary_type": "brostensrytter",
+      "secondary_type": "rouleur",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "54e21df7-74a2-4ee7-8bd2-29288e99f542",
+      "firstname": "Robel",
+      "lastname": "Ndayisenga",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "brostensrytter",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "566e610e-acde-486e-af15-314ea37f7107",
+      "firstname": "Hajun D.",
+      "lastname": "Cho",
+      "archetype_draw": {
+        "primary": "gc",
+        "secondary": null
+      },
+      "primary_type": "gc",
+      "secondary_type": "climber",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "664a9a78-c9bc-467c-bd32-a5e2aef98d52",
+      "firstname": "Kenta S.",
+      "lastname": "Sasaki",
+      "archetype_draw": {
+        "primary": "gc",
+        "secondary": null
+      },
+      "primary_type": "gc",
+      "secondary_type": "climber",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "67f40d0a-9ea2-41c1-9db5-97ddd912eb93",
+      "firstname": "Ismail R.",
+      "lastname": "Ferhat",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "681d3f2e-0bd8-42e7-87f6-00f390cac183",
+      "firstname": "Nabil A.",
+      "lastname": "Bakkali",
+      "archetype_draw": {
+        "primary": "gc",
+        "secondary": null
+      },
+      "primary_type": "gc",
+      "secondary_type": "climber",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "6b301d04-952c-44ee-b9a7-245e44de4d0d",
+      "firstname": "Doyun S.",
+      "lastname": "Choi",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "6c1c2786-a732-4b52-bfe9-e02cc98a6437",
+      "firstname": "Mekseb",
+      "lastname": "Nsengimana",
+      "archetype_draw": {
+        "primary": "brostensrytter",
+        "secondary": null
+      },
+      "primary_type": "brostensrytter",
+      "secondary_type": "rouleur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "72e574da-2237-4c34-8c1b-f4ec63bc75e3",
+      "firstname": "Chen F.",
+      "lastname": "Hu",
+      "archetype_draw": {
+        "primary": "tt",
+        "secondary": null
+      },
+      "primary_type": "tt",
+      "secondary_type": "brostensrytter",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "7a84f62f-e0e8-476f-8e9e-724c30916f7a",
+      "firstname": "Raúl H.",
+      "lastname": "Martínez",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "81a61e39-df1c-4b67-9fff-9c30cde03405",
+      "firstname": "Wessel J.",
+      "lastname": "Lenaerts",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "88ce2720-9ffa-4843-84e5-46a620da31b8",
+      "firstname": "Hugo P.",
+      "lastname": "Rubio",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "89521897-77fd-4942-904b-e15ee2416d54",
+      "firstname": "Doyun",
+      "lastname": "Song",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "brostensrytter",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "8a392a58-111b-4df2-8f30-3e3c8c619552",
+      "firstname": "Ruben J.",
+      "lastname": "Van Loon",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "8b6262bf-6fda-462d-9209-01b212ead681",
+      "firstname": "Adel",
+      "lastname": "Haddad",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "9038041d-c738-4b60-954d-d0b44b80a9b2",
+      "firstname": "Jakub",
+      "lastname": "Kaminski",
+      "archetype_draw": {
+        "primary": "tt",
+        "secondary": null
+      },
+      "primary_type": "tt",
+      "secondary_type": "sprinter",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "903b0e27-0c21-44eb-9788-09909797091d",
+      "firstname": "Hao M.",
+      "lastname": "Hu",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "brostensrytter",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "949cf6fb-bb87-4be5-8081-156b498322dd",
+      "firstname": "Ming M.",
+      "lastname": "Xu",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "brostensrytter",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "9596bc5f-782b-41a0-91fc-65f0af6ff40b",
+      "firstname": "Didier",
+      "lastname": "Girmay",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "gc",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "95d95c7b-c4f6-4dc7-8e48-a97f0ebd80c0",
+      "firstname": "Maxime",
+      "lastname": "Moreau",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "baroudeur",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "98eb04f0-897e-49e2-ac66-e383667f9260",
+      "firstname": "Yeonjun S.",
+      "lastname": "Kwon",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "brostensrytter",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "9c885448-a2a4-48cb-ac75-6ce26393245c",
+      "firstname": "Oliver H.",
+      "lastname": "Crawford",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "9cf6a0f9-1458-42b1-ab47-b4631fc42890",
+      "firstname": "Bonaventure",
+      "lastname": "Uwizeyimana",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "9d1b88fe-a349-4383-a6b9-25135f827e1f",
+      "firstname": "Yuto R.",
+      "lastname": "Yamada",
+      "archetype_draw": {
+        "primary": "tt",
+        "secondary": null
+      },
+      "primary_type": "tt",
+      "secondary_type": "brostensrytter",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "a3960f66-4334-43bb-8dca-8e545c8fbc52",
+      "firstname": "Harry C.",
+      "lastname": "Hayes",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "brostensrytter",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "a3a23f37-e4f6-4e85-903d-8ad3467e1ac3",
+      "firstname": "Peng T.",
+      "lastname": "Han",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "baroudeur",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "aba2dab1-d4a6-4946-aac5-3663514f3f39",
+      "firstname": "Sofiane",
+      "lastname": "Guerrouj",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "brostensrytter",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "ac1eef33-5605-428c-b138-b8f10b56d1da",
+      "firstname": "Marcos J.",
+      "lastname": "Bravo",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "baroudeur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "aec8351f-40bf-4794-8a69-4589c11f49a7",
+      "firstname": "Jiho E.",
+      "lastname": "Hwang",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "gc",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "af0ae99d-908c-4c7f-a59f-e8dec7a65c1e",
+      "firstname": "Henok",
+      "lastname": "Habtom",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "b7979e7b-7bc2-4e24-8bc2-cd615d432a25",
+      "firstname": "Gonzalo Ó.",
+      "lastname": "Carmona",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "b882e16a-222e-4a28-9916-ff31ac127617",
+      "firstname": "Jun L.",
+      "lastname": "Zhao",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "baroudeur",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "c42b9c51-a555-48f5-9310-c0feab2f2a9c",
+      "firstname": "Naoki",
+      "lastname": "Yoshida",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "c69e4de2-95f8-4a79-88fd-70954f3d4325",
+      "firstname": "Hyun K.",
+      "lastname": "Kang",
+      "archetype_draw": {
+        "primary": "puncheur",
+        "secondary": null
+      },
+      "primary_type": "puncheur",
+      "secondary_type": "baroudeur",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "cb2c9f94-bd02-4150-a7a8-186f6c9ea976",
+      "firstname": "Pablo R.",
+      "lastname": "Iglesias",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "cb655f32-df4c-4480-8c31-4b2fb1150552",
+      "firstname": "Emmanuel",
+      "lastname": "Girmay",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "brostensrytter",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "cc736c54-85ae-48e0-8a1d-c555327cada2",
+      "firstname": "Kaito H.",
+      "lastname": "Nakamura",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "baroudeur",
+      "team_id": "6c448c17-cb34-40f3-9a7e-8188abb9935b"
+    },
+    {
+      "id": "cfb84439-bf3c-48f7-b865-d505677c846f",
+      "firstname": "Ren S.",
+      "lastname": "Okada",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "403919d5-e7d2-49e2-8212-664b5e6ac3f9"
+    },
+    {
+      "id": "d61f9475-b93a-436a-9833-8905f254611f",
+      "firstname": "Yuto K.",
+      "lastname": "Shimizu",
+      "archetype_draw": {
+        "primary": "sprinter",
+        "secondary": null
+      },
+      "primary_type": "sprinter",
+      "secondary_type": "baroudeur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "d83ba0f4-c89e-41c8-8d43-4729f7926cd0",
+      "firstname": "Minjun J.",
+      "lastname": "Oh",
+      "archetype_draw": {
+        "primary": "rouleur",
+        "secondary": null
+      },
+      "primary_type": "rouleur",
+      "secondary_type": "brostensrytter",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "d893e91b-dab5-44d4-8ba4-0523a83a3b83",
+      "firstname": "Hiroto R.",
+      "lastname": "Kimura",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "d9c8c9d1-33e9-4f4f-bc4a-e2c16cc9fc16",
+      "firstname": "Pablo",
+      "lastname": "Torres",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "e4add4e6-5511-4dd2-a35a-0297d7719630",
+      "firstname": "Kai",
+      "lastname": "Yang",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "rouleur",
+      "team_id": "5fcc7cc8-be27-4623-9c97-51efd7959e59"
+    },
+    {
+      "id": "e5da591c-ba33-42d3-8732-43cc60cb03a2",
+      "firstname": "Javier D.",
+      "lastname": "Torres",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "gc",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "e66933b1-6024-4ae5-a236-2d82f617fe34",
+      "firstname": "Jiho",
+      "lastname": "Hwang",
+      "archetype_draw": {
+        "primary": "tt",
+        "secondary": null
+      },
+      "primary_type": "tt",
+      "secondary_type": "brostensrytter",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "e9a35574-2d87-4d84-a061-6c97b29a9008",
+      "firstname": "Pablo A.",
+      "lastname": "Lozano",
+      "archetype_draw": {
+        "primary": "baroudeur",
+        "secondary": null
+      },
+      "primary_type": "baroudeur",
+      "secondary_type": "climber",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    },
+    {
+      "id": "ee5726e0-5ac2-41be-a0f9-8ef523f22ad2",
+      "firstname": "Ming",
+      "lastname": "Huang",
+      "archetype_draw": {
+        "primary": "tt",
+        "secondary": null
+      },
+      "primary_type": "tt",
+      "secondary_type": "brostensrytter",
+      "team_id": "4a526528-dcf5-4769-bdae-3b572734ce44"
+    },
+    {
+      "id": "f9ac2ea8-1b56-440f-8324-27030cc3a156",
+      "firstname": "Eunwoo M.",
+      "lastname": "Jang",
+      "archetype_draw": {
+        "primary": "climber",
+        "secondary": null
+      },
+      "primary_type": "climber",
+      "secondary_type": "baroudeur",
+      "team_id": "6444a9e6-c241-4901-b6f1-f4d4a080b2dd"
+    },
+    {
+      "id": "fc07e913-6f8c-4f7f-a15f-19b6505581f1",
+      "firstname": "Nabil R.",
+      "lastname": "Ferhat",
+      "archetype_draw": {
+        "primary": "gc",
+        "secondary": null
+      },
+      "primary_type": "gc",
+      "secondary_type": "climber",
+      "team_id": "0c319fed-e27d-4298-b5fd-4dc6d0d918bc"
+    }
+  ]
+}

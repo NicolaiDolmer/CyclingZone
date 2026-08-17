@@ -1,0 +1,285 @@
+{
+  "generated_at": "2026-08-17T12:10:03.827Z",
+  "read_only": true,
+  "project_ref": "ghwvkxzhsbbltzfnuhhz",
+  "model": {
+    "version": "market_v2",
+    "fitted_at": "2026-08-17T12:09:45.762Z",
+    "type_column": "valuation_type",
+    "path": "C:\\Dev\\CyclingZone-worktrees\\feat-3750-vaerdimodel-refit\\backend\\lib\\marketValueModelV2.json"
+  },
+  "params": {
+    "global_weight": 1,
+    "weekly_cap": 0.25,
+    "weeks": 4,
+    "K": 12,
+    "o_window": 5,
+    "age_window": 3
+  },
+  "evidence_funnel": {
+    "raw": 1288,
+    "dropped_guaranteed_sale": 0,
+    "dropped_auction_no_competition": 881,
+    "dropped_auction_price_not_raised": 0,
+    "dropped_transfer_not_human_to_human": 2,
+    "dropped_over_price_multiple": 5,
+    "dropped_repeat_pair": 9,
+    "qualified": 391,
+    "banned_pairs": [
+      "435fd0ed-60c7-4093-b08d-50c69b3c8e55|b323c0dc-ab53-4bad-ae92-90bbb7b19f4b"
+    ]
+  },
+  "population": {
+    "n": 6348,
+    "skipped": 0
+  },
+  "weeks": [
+    {
+      "week": 1,
+      "changed": 5720,
+      "unchanged": 628,
+      "p10_rel": -0.07283117514742538,
+      "p50_rel": 0.24993477665300262,
+      "p90_rel": 0.25012321340561855,
+      "losers_over_10pct": 587,
+      "losers_over_25pct": 165,
+      "gainers_over_10pct": 4541,
+      "total_value_before": 286671436,
+      "total_value_after": 263541502,
+      "total_value_change_rel": -0.0806844739145898
+    },
+    {
+      "week": 2,
+      "changed": 5720,
+      "unchanged": 628,
+      "p10_rel": -0.1130083288979674,
+      "p50_rel": 0.4974601576092218,
+      "p90_rel": 0.5626898047722343,
+      "losers_over_10pct": 659,
+      "losers_over_25pct": 430,
+      "gainers_over_10pct": 4698,
+      "total_value_before": 286671436,
+      "total_value_after": 249712220,
+      "total_value_change_rel": -0.1289253527163411
+    },
+    {
+      "week": 3,
+      "changed": 5720,
+      "unchanged": 628,
+      "p10_rel": -0.14260328742780987,
+      "p50_rel": 0.6838215690752054,
+      "p90_rel": 0.9533180778032037,
+      "losers_over_10pct": 681,
+      "losers_over_25pct": 488,
+      "gainers_over_10pct": 4725,
+      "total_value_before": 286671436,
+      "total_value_after": 242430060,
+      "total_value_change_rel": -0.1543278138112093
+    },
+    {
+      "week": 4,
+      "changed": 5720,
+      "unchanged": 628,
+      "p10_rel": -0.15243775284647787,
+      "p50_rel": 0.8189004887554232,
+      "p90_rel": 1.4415259537210756,
+      "losers_over_10pct": 702,
+      "losers_over_25pct": 511,
+      "gainers_over_10pct": 4743,
+      "total_value_before": 286671436,
+      "total_value_after": 239102368,
+      "total_value_change_rel": -0.1659358485928818
+    }
+  ],
+  "z_distribution": {
+    "p10": 0.07692307692307693,
+    "p50": 0.25,
+    "p90": 0.7272727272727273,
+    "zero_share": 0.09892879647132956
+  },
+  "top_movers": [
+    {
+      "rider_id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+      "division": 4,
+      "type": "puncheur",
+      "age": 21,
+      "n": 3,
+      "Z": 0.2,
+      "before": 3998681,
+      "after": 1688966,
+      "delta": -2309715
+    },
+    {
+      "rider_id": "d99e3ef9-1ba8-490e-808d-7405b07d7df7",
+      "division": 3,
+      "type": "tt",
+      "age": 17,
+      "n": 25,
+      "Z": 0.6756756756756757,
+      "before": 3069762,
+      "after": 971293,
+      "delta": -2098469
+    },
+    {
+      "rider_id": "e82e5daf-375e-4809-8d47-0e6db582cb56",
+      "division": 2,
+      "type": "tt",
+      "age": 19,
+      "n": 12,
+      "Z": 0.5,
+      "before": 2819900,
+      "after": 892235,
+      "delta": -1927665
+    },
+    {
+      "rider_id": "aa0450c0-6158-43c8-9cfc-78c91c638e3f",
+      "division": 2,
+      "type": "climber",
+      "age": 24,
+      "n": 3,
+      "Z": 0.2,
+      "before": 3094274,
+      "after": 1535219,
+      "delta": -1559055
+    },
+    {
+      "rider_id": "99000300-cf79-4461-b62f-753bc6e70529",
+      "division": 2,
+      "type": "climber",
+      "age": 17,
+      "n": 24,
+      "Z": 0.6666666666666666,
+      "before": 2279658,
+      "after": 721298,
+      "delta": -1558360
+    },
+    {
+      "rider_id": "14c5570b-15c5-4086-aecf-a4b306dc4792",
+      "division": 3,
+      "type": "tt",
+      "age": 19,
+      "n": 18,
+      "Z": 0.6,
+      "before": 2003742,
+      "after": 633997,
+      "delta": -1369745
+    },
+    {
+      "rider_id": "2ed812cd-959f-41ac-a43c-8929c5dfe0d4",
+      "division": 2,
+      "type": "climber",
+      "age": 17,
+      "n": 32,
+      "Z": 0.7272727272727273,
+      "before": 1961105,
+      "after": 620507,
+      "delta": -1340598
+    },
+    {
+      "rider_id": "392cdc33-0485-43d9-b292-5c3bf4672b48",
+      "division": 2,
+      "type": "tt",
+      "age": 17,
+      "n": 6,
+      "Z": 0.3333333333333333,
+      "before": 1904905,
+      "after": 602838,
+      "delta": -1302067
+    },
+    {
+      "rider_id": "8e7cb072-1ab4-4224-9ed0-588b27f0df8f",
+      "division": 2,
+      "type": "climber",
+      "age": 23,
+      "n": 5,
+      "Z": 0.29411764705882354,
+      "before": 1908065,
+      "after": 726297,
+      "delta": -1181768
+    },
+    {
+      "rider_id": "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "division": 2,
+      "type": "climber",
+      "age": 19,
+      "n": 40,
+      "Z": 0.7692307692307693,
+      "before": 1715016,
+      "after": 542642,
+      "delta": -1172374
+    },
+    {
+      "rider_id": "8fb7cff3-1f0d-43ec-a26a-2236c39e994a",
+      "division": 2,
+      "type": "climber",
+      "age": 24,
+      "n": 4,
+      "Z": 0.25,
+      "before": 2132805,
+      "after": 976583,
+      "delta": -1156222
+    },
+    {
+      "rider_id": "e8c7faa3-08ff-4fb6-922e-ed742e7f2378",
+      "division": 2,
+      "type": "puncheur",
+      "age": 24,
+      "n": 3,
+      "Z": 0.2,
+      "before": 1861932,
+      "after": 822869,
+      "delta": -1039063
+    },
+    {
+      "rider_id": "c32f047a-e3bc-4075-8344-f135371089fb",
+      "division": 2,
+      "type": "climber",
+      "age": 17,
+      "n": 22,
+      "Z": 0.6470588235294118,
+      "before": 1499610,
+      "after": 474486,
+      "delta": -1025124
+    },
+    {
+      "rider_id": "7a21130e-07fc-4a0a-ad65-ea0db1f17777",
+      "division": 2,
+      "type": "climber",
+      "age": 22,
+      "n": 5,
+      "Z": 0.29411764705882354,
+      "before": 1723277,
+      "after": 720516,
+      "delta": -1002761
+    },
+    {
+      "rider_id": "95e53d09-34a9-43c2-a1b2-f13545603670",
+      "division": 2,
+      "type": "climber",
+      "age": 22,
+      "n": 5,
+      "Z": 0.29411764705882354,
+      "before": 1591637,
+      "after": 594799,
+      "delta": -996838
+    }
+  ],
+  "division_medians": {
+    "1": {
+      "n": 503,
+      "median_rel": 0.6633768064857244
+    },
+    "2": {
+      "n": 1058,
+      "median_rel": 0.03232980864559812
+    },
+    "3": {
+      "n": 1283,
+      "median_rel": 0.7824756606397775
+    },
+    "4": {
+      "n": 3504,
+      "median_rel": 1.006011318202025
+    }
+  }
+}

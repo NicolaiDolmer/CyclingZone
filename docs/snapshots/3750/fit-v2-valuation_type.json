@@ -1,0 +1,219 @@
+{
+  "fitted_at": "2026-08-17T12:09:45.762Z",
+  "type_column": "valuation_type",
+  "evidence_filter": {
+    "description": "#3750 + beslutning 3 (15/8): kun kvalificeret evidens træner modellen.",
+    "criteria": [
+      "auktion: mindst 2 FORSKELLIGE budgivere (auction_bids.team_id) OG current_price > starting_price",
+      "transfer_offer: status=accepted mellem to menneskehold (ikke AI/bank/test/frosset)",
+      "ekskluderet: is_guaranteed_sale",
+      "ekskluderet: pris > 3x rytterens ankerværdi (riders.market_value på fit-tidspunktet)",
+      "ekskluderet: handler i par med 3+ handler i vinduet"
+    ],
+    "funnel": {
+      "raw": 1288,
+      "dropped_guaranteed_sale": 0,
+      "dropped_auction_no_competition": 881,
+      "dropped_auction_price_not_raised": 0,
+      "dropped_transfer_not_human_to_human": 2,
+      "dropped_over_price_multiple": 5,
+      "dropped_repeat_pair": 9,
+      "qualified": 391,
+      "banned_pairs": [
+        "435fd0ed-60c7-4093-b08d-50c69b3c8e55|b323c0dc-ab53-4bad-ae92-90bbb7b19f4b"
+      ]
+    },
+    "n_qualified_rows": 391,
+    "n_auction": 325,
+    "n_transfer": 66,
+    "type_counts": {
+      "puncheur": 11,
+      "sprinter": 29,
+      "tt": 97,
+      "climber": 218,
+      "brostensrytter": 5,
+      "rouleur": 15,
+      "baroudeur": 14,
+      "gc": 2
+    },
+    "anchor_value_caveat": "3x-værnet bruger rytterens NUVÆRENDE market_value; der findes ingen historik over listet værdi pr. salgsdag.",
+    "abilities_source": {
+      "historical_snapshot": 298,
+      "current_fallback": 93
+    },
+    "weighting": "1x for alle kvalificerede handler. v1's 2:1-vægtning er væk - efter filteret er alt tilbageværende auktions-evidens konkurrenceprissat."
+  },
+  "coefficients": {
+    "smearing": 1.52567420742642,
+    "a": 4.9699847395146435,
+    "b": 0.13016803592153822,
+    "c": -0.0007725453107517062,
+    "d_age": 0.13477897490936927,
+    "e_age2": -0.0029610751422385864,
+    "f_potentiale": 0.22389051426049092,
+    "g_popularity": 0,
+    "popularity_mode": "dropped",
+    "h_is_youth": -0.22850043195589015,
+    "offset": {
+      "sprinter": 1.713383430676126,
+      "tt": 0.5629417938320677,
+      "climber": 0.612840288495824,
+      "puncheur": 0.7847517622226204,
+      "brostensrytter": 1.1168617972783728,
+      "baroudeur": 0,
+      "rouleur": 0.5144620175423338,
+      "gc": 1.0177685074761906
+    }
+  },
+  "holdout": {
+    "holdout_frac": 0.2,
+    "n_train": 313,
+    "n_holdout": 78,
+    "window": {
+      "from": "2026-08-08T08:27:26.024+00:00",
+      "to": "2026-08-17T11:05:49.330608+00:00"
+    },
+    "train_r2_log": 0.500289444991531,
+    "scorecard": {
+      "market_v2": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 29831,
+        "median_ae_czk": 8814,
+        "mape": 33.806290061786385,
+        "median_ape": 0.7410526109840717,
+        "mae_ln": 1.017808690685255
+      },
+      "market_v2_no_smearing": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 30629,
+        "median_ae_czk": 6345,
+        "mape": 22.5775729894264,
+        "median_ape": 0.6595064932969853,
+        "mae_ln": 0.9627900807962274
+      },
+      "v4_live": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 20572,
+        "median_ae_czk": 7792,
+        "mape": 14.499881022016949,
+        "median_ape": 0.6719409915411408,
+        "mae_ln": 0.8009454023071354
+      },
+      "anchor_listed_value": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 20376,
+        "median_ae_czk": 7569,
+        "mape": 14.52739998507735,
+        "median_ape": 0.6328523102310231,
+        "mae_ln": 0.8019017844769445
+      },
+      "v4_live_scaled": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 22841,
+        "median_ae_czk": 5830,
+        "mape": 6.110177773564058,
+        "median_ape": 0.6231329520169354,
+        "mae_ln": 0.7593031963197147
+      },
+      "anchor_scaled": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 26135,
+        "median_ae_czk": 6325,
+        "mape": 4.836235766888537,
+        "median_ape": 0.5314699946504491,
+        "mae_ln": 0.8339001720669749
+      }
+    },
+    "scale_factors": {
+      "v4_live": 0.42156062068453487,
+      "anchor": 0.3284483486780978
+    },
+    "gate_vs_running_v4": "ROED",
+    "gate_checks": {
+      "mae_czk": false,
+      "median_ae_czk": false,
+      "mae_ln": false
+    },
+    "method_note": "MAE og median-absolut-fejl rapporteres side om side (audit 14/8: få store handler bestemmer ellers rangordenen). Ankeret er den trivielle 'brug den værdi rytteren var listet til'-model."
+  },
+  "variants": {
+    "chosen": "base_no_popularity",
+    "selection_rule": "popularity beholdes kun hvis koefficienten er POSITIV og holdout-MAE forbedres over 2 %. v1.1's regel så kun på MAE og valgte derfor en model med negativ popularity-koefficient.",
+    "base_no_popularity": {
+      "train_r2": 0.500289444991531,
+      "holdout": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 29831,
+        "median_ae_czk": 8814,
+        "mape": 33.806290061786385,
+        "median_ape": 0.7410526109840717,
+        "mae_ln": 1.017808690685255
+      }
+    },
+    "raw_popularity": {
+      "train_r2": 0.5373296639086476,
+      "holdout": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 25943,
+        "median_ae_czk": 7686,
+        "mape": 28.794710284676896,
+        "median_ape": 0.7161866787562965,
+        "mae_ln": 0.9456062600045347
+      },
+      "coefficient_train": -0.02294862464814085,
+      "sign_ok": false
+    },
+    "channel_dummy_diagnostic": {
+      "is_auction_coefficient": -0.44424894548574734,
+      "implied_auction_discount": -0.35869424921806503,
+      "holdout": {
+        "n": 78,
+        "skipped": 0,
+        "mae_czk": 30067,
+        "median_ae_czk": 6858,
+        "mape": 30.209503595783474,
+        "median_ape": 0.7028171302343608,
+        "mae_ln": 0.9979751204290918
+      }
+    }
+  },
+  "guard": {
+    "support_mode": "evidence_ratio_n_over_n_plus_k",
+    "formula": "Z_rider = n / (n + K); w_rider = market_value_global_weight * Z_rider",
+    "K": 12,
+    "O_window": 5,
+    "age_window": 3,
+    "description": "Beslutning 3 (15/8): værdien følger markedet i præcis den grad der findes kvalificerede handler med sammenlignelige ryttere. n = kvalificerede handler med samme type inden for ±O_window O-point og ±age_window år.",
+    "incompatible_with": "min(1, n/K) (v1.1's computeSupport). En runtime der bruger den formel må IKKE læse dette artefakt.",
+    "zero_evidence_share": 0.09373030875866414,
+    "z_percentiles": {
+      "p10": 0.07692307692307693,
+      "p50": 0.29411764705882354,
+      "p90": 0.7446808510638298
+    }
+  },
+  "population_snapshot": {
+    "n": 6348,
+    "skipped": 0,
+    "count_nearby_percentiles": {
+      "p10": 1,
+      "p50": 5,
+      "p90": 35
+    },
+    "median_Z_by_age_band": {
+      "<23": 0.7446808510638298,
+      "23-25": 0.42857142857142855,
+      "26-28": 0.3333333333333333,
+      "29-31": 0.2,
+      "32+": 0.07692307692307693
+    }
+  }
+}
