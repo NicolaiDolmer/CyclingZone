@@ -16,6 +16,11 @@ import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
 import RiderFitInsight from "./RiderFitInsight.jsx";
 import { hunterBreakawayStrength } from "../../lib/roleHint.js";
+// #3809: toggle mellem den nuværende kolonne-visning og rytternes evner —
+// samme evne-config + farve-gradient som Mit Hold's "Evner"-tilstand (#2906),
+// genbrugt her i stedet for en ny visning opfundet fra bunden.
+import { ABILITY_STATS as STATS } from "../../lib/abilities.js";
+import { statStyle } from "../../lib/statColor.js";
 import {
   effectiveStageFit,
   bestFitRiderId,
@@ -50,6 +55,9 @@ export default function RaceSelectionPanel({
   selectedStageFinaleType = null,
 }) {
   const { t } = useTranslation("races");
+  // #3809: fulde evne-navne til kolonne-tooltips (samme mønster som TeamPage's
+  // SquadTab tRider-brug til de forkortede kolonne-headers).
+  const { t: tRider } = useTranslation("rider");
   const [data, setData] = useState(null);
   const [sel, setSel] = useState(EMPTY_SELECTION);
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
@@ -61,6 +69,12 @@ export default function RaceSelectionPanel({
   // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
   // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
   const [hideInjured, setHideInjured] = useState(false);
+  // #3809 (spillerforslag @zootne): knap der skifter mellem den nuværende
+  // kolonne-visning ("current" — type/rutematch/form/træthed) og rytternes 15
+  // evner ("abilities") — så manageren kan vurdere hvem der passer til etapen
+  // uden at forlade siden. Samme to-tilstands-mønster som TeamPage's SquadTab
+  // tableMode (#2906).
+  const [viewMode, setViewMode] = useState("current");
   // #1951: klient-sortering af rytterlisten. Sortering er REN opt-in: default er
   // ingen aktiv nøgle, så listen står i backendens oprindelige rækkefølge indtil
   // manageren selv vælger en sortering (en auto-sort ved load ændrede den
@@ -313,6 +327,27 @@ export default function RaceSelectionPanel({
         </span>
       </div>
 
+      {/* #3809: kolonne-tilstand — "Current" viser rutematch/form/træthed (dagens
+          visning), "Abilities" viser de 15 evner (samme rå tal som Mit Hold's
+          evne-tilstand). Segmenteret knap-bånd, samme mønster/styling som
+          TeamPage's SquadTab tableMode-toggle (#2906). */}
+      <div className="px-4 py-2 border-b border-cz-border flex justify-end">
+        <div className="flex rounded-cz border border-cz-border overflow-hidden">
+          {[
+            { key: "current", label: t("selection.mode.current") },
+            { key: "abilities", label: t("selection.mode.abilities") },
+          ].map((m) => (
+            <button key={m.key} type="button" onClick={() => setViewMode(m.key)} aria-pressed={viewMode === m.key}
+              className={`px-3 py-1.5 text-xs font-medium transition-all
+                ${viewMode === m.key
+                  ? "bg-cz-accent/10 text-cz-accent-t"
+                  : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* #1747: forklaring af egnethedstallet (det "uklare element") + skjul-skadede-toggle. */}
       <div className="px-4 py-2 border-b border-cz-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-cz-subtle">
         <p className="text-cz-3 text-2xs leading-snug">{t("selection.suitabilityHelp")}</p>
@@ -421,24 +456,40 @@ export default function RaceSelectionPanel({
                     )}
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </div>
-                  <div className="mt-1.5 flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-cz-2">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="text-cz-3 uppercase text-3xs tracking-wide">{fitLabel}</span>
-                      {rider.id === bestId && (
-                        <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
-                      )}
-                      <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
-                      <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.form")}</span>
-                      <span className="font-mono tabular-nums text-cz-2">{rider.form ?? "—"}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.fatigue")}</span>
-                      <span className="font-mono tabular-nums text-cz-2">{rider.fatigue ?? "—"}</span>
-                    </span>
-                  </div>
+                  {/* #3809: mobil-listen viser enten dagens fit/form/træthed-linje,
+                      eller (viewMode="abilities") et kompakt gitter med alle 15 evner. */}
+                  {viewMode === "abilities" ? (
+                    <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-1">
+                      {STATS.map(({ key, label }) => (
+                        <div key={key} className="flex items-center justify-between gap-1">
+                          <span className="text-cz-3 uppercase text-3xs tracking-wide" title={tRider(`racePreview.derived.${key}`)}>{label}</span>
+                          <span className="inline-block min-w-[22px] text-center text-2xs font-mono px-1 py-0.5 rounded"
+                            style={statStyle(rider.abilities?.[key] || 0)}>
+                            {rider.abilities?.[key] ?? "-"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-cz-2">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-cz-3 uppercase text-3xs tracking-wide">{fitLabel}</span>
+                        {rider.id === bestId && (
+                          <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
+                        )}
+                        <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                        <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.form")}</span>
+                        <span className="font-mono tabular-nums text-cz-2">{rider.form ?? "—"}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.fatigue")}</span>
+                        <span className="font-mono tabular-nums text-cz-2">{rider.fatigue ?? "—"}</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </li>
@@ -455,12 +506,27 @@ export default function RaceSelectionPanel({
                 className="px-4 py-3 text-left font-medium text-xs uppercase">{t("selection.thRider")}</SortTh>
               <SortTh sortKey="primaryType" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
                 className="px-4 py-3 text-left font-medium text-xs uppercase">{t("selection.type")}</SortTh>
-              <SortTh sortKey="routeMatch" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
-                className="px-4 py-3 text-right font-medium text-xs uppercase">{fitSortLabel}</SortTh>
-              <SortTh sortKey="form" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
-                className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.form")}</SortTh>
-              <SortTh sortKey="fatigue" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
-                className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.fatigue")}</SortTh>
+              {/* #3809: "Abilities"-tilstanden erstatter rutematch/form/træthed med de
+                  15 evne-kolonner (samme korte labels + tooltip-mønster som TeamPage's
+                  SquadTab abilityColumns). Ikke sorterbare her — kun toggle, ingen ny
+                  sorterings-nøgle i scope. */}
+              {viewMode === "abilities" ? (
+                STATS.map(({ key, label }) => (
+                  <th key={key} title={tRider(`racePreview.derived.${key}`)}
+                    className="px-1.5 py-3 text-center font-medium text-3xs uppercase text-cz-2">
+                    {label}
+                  </th>
+                ))
+              ) : (
+                <>
+                  <SortTh sortKey="routeMatch" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                    className="px-4 py-3 text-right font-medium text-xs uppercase">{fitSortLabel}</SortTh>
+                  <SortTh sortKey="form" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                    className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.form")}</SortTh>
+                  <SortTh sortKey="fatigue" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                    className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.fatigue")}</SortTh>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -516,17 +582,30 @@ export default function RaceSelectionPanel({
                   <td className="px-4 py-2.5">
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <span className="inline-flex items-center gap-2 justify-end">
-                      {rider.id === bestId && (
-                        <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
-                      )}
-                      <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
-                      <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.form ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.fatigue ?? "—"}</td>
+                  {viewMode === "abilities" ? (
+                    STATS.map(({ key }) => (
+                      <td key={key} className="px-1.5 py-2.5 text-center">
+                        <span className="inline-block min-w-[24px] text-center text-xs font-mono px-1 py-0.5 rounded"
+                          style={statStyle(rider.abilities?.[key] || 0)}>
+                          {rider.abilities?.[key] ?? "-"}
+                        </span>
+                      </td>
+                    ))
+                  ) : (
+                    <>
+                      <td className="px-4 py-2.5 text-right">
+                        <span className="inline-flex items-center gap-2 justify-end">
+                          {rider.id === bestId && (
+                            <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
+                          )}
+                          <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                          <RiderFitInsight rider={rider} profileType={selectedStageProfileType} breakawayStrength={breakawayStrength} />
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.form ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.fatigue ?? "—"}</td>
+                    </>
+                  )}
                 </tr>
               );
             })}

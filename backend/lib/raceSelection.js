@@ -137,6 +137,13 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
       injured: !!(cond?.injured_until && cond.injured_until >= todayStr),
+      // #3809: alle 15 rå evne-værdier — driver holdudtagelsens "Evner"-visning
+      // (toggle mellem nuværende kolonner og attributter, samme rå tal som
+      // Mit Hold's evne-tilstand, #2906). Egne ryttere → ingen fog-of-war på
+      // disse tal (fog gælder kun scouting af ANDRES ryttere/potentiale).
+      // Nested objekt (ikke fladt spredt på rækken) så feltet er selvforklarende
+      // og ikke kan forveksles med aggression/tactics-felterne ovenfor.
+      abilities: ab ? Object.fromEntries(ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
     };
   });
 }

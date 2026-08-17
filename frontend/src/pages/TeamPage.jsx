@@ -582,7 +582,28 @@ function OwnAuctionBadge({ auction }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, activeSeasonNumber }) {
+// #3810 (spillerforslag @thelamba/@jeppek): samme kompakte badge-mønster som
+// OwnAuctionBadge ovenfor, men for egne ryttere der er sat på transferlisten.
+// Udbudsprisen er med direkte i badget (@jeppek: "maybe price on the team
+// sheet too") — prisen er den information der gør markøren handlingsbar uden
+// at klikke ind på hver rytter. Ingen live-countdown (asking_price ændrer sig
+// ikke i realtid som et bud gør), så komponenten er ren og uden egen timer.
+function OwnTransferListingBadge({ listing }) {
+  const { t } = useTranslation(["team", "rider"]);
+  return (
+    <Link
+      to="/transfers?tab=market"
+      onClick={e => e.stopPropagation()}
+      title={t("team:squad.ownTransferListingTooltip", { price: formatNumber(listing.asking_price) })}
+      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
+    >
+      {t("rider:badges.label.listed")}
+      <span className="font-mono normal-case tracking-normal">{formatNumber(listing.asking_price)}</span>
+    </Link>
+  );
+}
+
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -790,6 +811,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, ac
           ]} />
           {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
           {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
+          {/* #3810: egen aktiv transferliste-annonce — badge + udbudspris, link til markedet. */}
+          {!r._isIncoming && ownTransferListings[r.id] && <OwnTransferListingBadge listing={ownTransferListings[r.id]} />}
         </div>
       ),
     },
@@ -990,6 +1013,12 @@ export function TeamPage() {
   // Genindlæses ved hver loadAll() (dvs. også efter en handling i RiderActionModal
   // starter en ny auktion) + holdes friskt via realtime-subscription nedenfor.
   const [ownAuctions, setOwnAuctions] = useState({});
+  // #3810: egne ryttere der lige nu har en aktiv transferliste-annonce —
+  // { [riderId]: transferListingRow }. Samme load-mønster som ownAuctions
+  // ovenfor (genindlæses ved hver loadAll()), men uden realtime-subscription:
+  // asking_price ændrer sig ikke live som et bud, kun via managerens egen
+  // handling (som allerede trigger loadAll() via RiderActionModal's onAction).
+  const [ownTransferListings, setOwnTransferListings] = useState({});
   // Ref'en holder ID'erne på nuværende (ikke-indgående) egne ryttere, så
   // realtime-callbacket kan filtrere uden at skulle re-subscribe ved hver rytter-ændring.
   const ownRiderIdsRef = useRef(new Set());
@@ -1110,6 +1139,26 @@ export function TeamPage() {
     }
   }
 
+  // #3810: aktive transferliste-annoncer for holdets EGNE ryttere ("open" eller
+  // "negotiating" — samme aktiv-definition som POST /api/transfers' #247-tjek
+  // for "allerede listet"). transfer_listings er offentligt læsbar (RLS "Public
+  // read", database/schema.sql) — samme direkte klient-forespørgsel som
+  // loadOwnAuctions ovenfor, ingen ny endpoint nødvendig.
+  async function loadOwnTransferListings(riderIds) {
+    if (!riderIds.length) { setOwnTransferListings({}); return; }
+    try {
+      const { data, error } = await supabase
+        .from("transfer_listings")
+        .select("id, rider_id, asking_price, status")
+        .in("rider_id", riderIds)
+        .in("status", ["open", "negotiating"]);
+      if (error) return;
+      setOwnTransferListings(Object.fromEntries((data || []).map(l => [l.rider_id, l])));
+    } catch {
+      // non-critical — badget falder bare væk
+    }
+  }
+
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -1147,6 +1196,7 @@ export function TeamPage() {
 
     setRiders([...currentRiders, ...incomingRiders]);
     loadOwnAuctions(currentRiders.map(r => r.id));
+    loadOwnTransferListings(currentRiders.map(r => r.id));
     setLoading(false);
   }
 
@@ -1239,7 +1289,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
       )}
       {activeTab === "stats" && (
         <TeamStatsTab riders={currentRiders} />
