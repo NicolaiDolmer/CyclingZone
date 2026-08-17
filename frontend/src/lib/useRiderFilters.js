@@ -6,11 +6,22 @@ import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
 import { getRiderMarketValue, getRiderSalary } from "./marketValues";
 import { buildSalaryFilterOr } from "./salaryFilter.js";
 import { getRiderAge, isU23, isU25 } from "./riderAge";
-import { compareNationality } from "./countryUtils";
 import { applyNameSearch } from "./riderNameSearch";
 import {
   ABILITY_KEYS, ABILITY_SELECT, ABILITY_SELECT_INNER, ABILITY_TABLE, flattenAbilities,
 } from "./abilities";
+// #2403/#803: komparator + merge-logik lever i et rent (ikke-JSX) modul, så
+// node --test kan importere den direkte — se riderColumnSort.js's header-
+// kommentar. Re-eksporteres herfra så eksisterende importer af
+// useRiderFilters.js uændret kan bruge dem.
+import { compareRidersByFilter, mergeSalarySortedIds } from "./riderColumnSort.js";
+// #3331: riders er en deny-listed tabel (kan overstige PostgREST's stille
+// 1000-rækkers-loft — prod har ~8.700 ryttere). Løn-sorteringens to grene
+// (fetchRidersSortedBySalary) SKAL hente ALLE matchende rækker, ikke kun de
+// første 1000, ellers giver merge'et et forkert (stille afkortet) resultat.
+import { fetchAllRows } from "./supabasePagination.js";
+
+export { compareRidersByFilter, mergeSalarySortedIds };
 
 // Evner spænder 1-99 (mod PCM's klumpede 50-85). Et evne-filter er kun "aktivt"
 // når en grænse afviger fra fuld skala.
@@ -98,50 +109,7 @@ export function useClientRiderFilters(riders = [], seasonYear = null) {
     }
 
     // Sort
-    result.sort((a, b) => {
-      if (filters.sort === "firstname") {
-        const aName = `${a.lastname} ${a.firstname}`.toLowerCase();
-        const bName = `${b.lastname} ${b.firstname}`.toLowerCase();
-        // #1950: pin to 'en' so the client-side name sort matches the server
-        // path (applyRiderColumnSort → Postgres .order('lastname'), literal
-        // 'aa'). Bare localeCompare() resolves to da-DK in a Danish browser and
-        // treats 'aa' as 'å', so the server-vs-client split disagreed on order.
-        return filters.sort_dir === "desc" ? bName.localeCompare(aName, "en") : aName.localeCompare(bName, "en");
-      }
-      // Nation sorteres på den viste IOC-kode (#802) — den generiske numeriske
-      // gren ville give NaN på strenge og dermed ustabil rækkefølge.
-      if (filters.sort === "nationality_code") {
-        const cmp = compareNationality(a.nationality_code, b.nationality_code);
-        return filters.sort_dir === "desc" ? -cmp : cmp;
-      }
-      // Ryttertype (#1482) sorteres alfabetisk på den primære type — samme fælde
-      // som nationality_code: strenge i den numeriske gren nedenfor ville give NaN.
-      // Ryttere uden type ("") samles i hver sin ende afhængigt af retning.
-      if (filters.sort === "primary_type") {
-        const cmp = (a.primary_type || "").localeCompare(b.primary_type || "");
-        return filters.sort_dir === "desc" ? -cmp : cmp;
-      }
-      // Hold (#1755): team_id er en UUID-streng → den numeriske gren nedenfor
-      // ville give NaN og en død "Hold"-header. Sortér på holdnavn via team-
-      // relationen (hentet som team:team_id(id,name)); frie ryttere (intet hold)
-      // samles i hver sin ende afhængigt af retning.
-      if (filters.sort === "team_id") {
-        const cmp = (a.team?.name || "").localeCompare(b.team?.name || "");
-        return filters.sort_dir === "desc" ? -cmp : cmp;
-      }
-      let aVal, bVal;
-      if (filters.sort === "birthdate") {
-        aVal = a.birthdate ? new Date(a.birthdate).getFullYear() : 1970;
-        bVal = b.birthdate ? new Date(b.birthdate).getFullYear() : 1970;
-      } else if (filters.sort === "value") {
-        aVal = getRiderMarketValue(a);
-        bVal = getRiderMarketValue(b);
-      } else {
-        aVal = a[filters.sort] || 0;
-        bVal = b[filters.sort] || 0;
-      }
-      return filters.sort_dir === "desc" ? bVal - aVal : aVal - bVal;
-    });
+    result.sort((a, b) => compareRidersByFilter(a, b, filters));
 
     return result;
   }, [riders, filters, seasonYear]);
@@ -254,6 +222,61 @@ function applyRiderColumnSort(query, filters) {
   return query.order(filters.sort, { ascending: sortAsc, nullsFirst: false });
 }
 
+// #2403: rytter-DB'ens rå `salary`-kolonne matcher ikke altid den VISTE løn
+// (getRiderSalary: frossen kontrakt-løn hvis sat, ellers current_production_value
+// × global sats — marketValues.js). PostgREST kan ikke ORDER BY et COALESCE-
+// udtryk, så løn-sortering diverteres FØR applyRiderColumnSort (som ellers ville
+// falde ned i den generiske `query.order("salary", …)`-gren og klumpe alle
+// salary=NULL-ryttere i bunden, jf. #1827's samme fælde for løn-FILTERET).
+//
+// Løsningen bruger samme to-grens-mønster som løn-filteret (buildSalaryFilterOr):
+// hent ID + sammenligningsværdi letvægts fra begge grene (salary IS NOT NULL /
+// IS NULL) og flet dem til én global rækkefølge via mergeSalarySortedIds
+// (riderColumnSort.js — ren funktion, testbar uden Supabase, se
+// riderSalarySort.test.js), og udsnit siden derfra. Ingen generated kolonne/
+// migration nødvendig, men prisen er at HELE det filtrerede id+værdi-sæt
+// hentes pr. side-forespørgsel (letvægts payload — kun id + ét tal pr.
+// rytter) i stedet for kun 50 rækker.
+async function fetchRidersSortedBySalary(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear }) {
+  const needsAbilityJoin = anyAbilityFilterActive(filters);
+  const abilFilterFragment = needsAbilityJoin ? `, ${ABILITY_TABLE}!inner()` : "";
+
+  // #3331: fetchAllRows kræver en stabil .order() i buildQuery — riders.id
+  // (PK) — ellers kan sider overlappe/springe rækker over flere .range()-kald.
+  function buildBranchQuery(column, applyNullFilter) {
+    return () => {
+      let q = supabase.from("riders").select(`id, ${column}${abilFilterFragment}`);
+      q = applyRiderColumnFilters(q, filters, { prefix: "" }, seasonYear);
+      q = applyAbilityFilters(q, filters, { prefix: `${ABILITY_TABLE}.` });
+      q = applyNullFilter(q);
+      return q.order("id", { ascending: true });
+    };
+  }
+
+  const [withSalary, withoutSalary] = await Promise.all([
+    fetchAllRows(buildBranchQuery("salary", (q) => q.not("salary", "is", null))),
+    fetchAllRows(buildBranchQuery("current_production_value", (q) => q.is("salary", null))),
+  ]);
+
+  const ascending = filters.sort_dir === "asc";
+  const orderedIds = mergeSalarySortedIds(withSalary, withoutSalary, ascending);
+  const pageIds = orderedIds.slice(from, to + 1);
+  if (pageIds.length === 0) return { rows: [], count: orderedIds.length };
+
+  const { data, error } = await supabase
+    .from("riders")
+    // pagination-safe: pageIds er allerede udsnittet til side-størrelsen
+    // (typisk 50) ovenfor — kan strukturelt aldrig nærme sig 1000-loftet.
+    .select(`${riderSelect}, ${abilSelect}`)
+    .in("id", pageIds);
+  if (error) throw error;
+
+  // .in() garanterer ikke rækkefølge — reorder efter den flettede rækkefølge.
+  const byId = new Map((data || []).map(flattenAbilities).map(r => [r.id, r]));
+  const rows = pageIds.map(id => byId.get(id)).filter(Boolean);
+  return { rows, count: orderedIds.length };
+}
+
 // Henter én side af rytter-DB'en (server-pagineret). Sortering på en EVNE-kolonne
 // driver fra rider_derived_abilities (native order — PostgREST kan IKKE re-ordne
 // parent-rækker via et embedded to-one; verificeret 2026-06-19) med riders som
@@ -284,6 +307,14 @@ export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, 
   }
 
   const abilSelect = anyAbilityFilterActive(filters) ? ABILITY_SELECT_INNER : ABILITY_SELECT;
+
+  // #2403: se mergeSalarySortedIds/fetchRidersSortedBySalary ovenfor — løn
+  // kan ikke ORDER BY direkte (COALESCE-udtryk), så den diverteres FØR
+  // applyRiderColumnSort til en to-grens fetch+merge i stedet.
+  if (filters.sort === "salary") {
+    return fetchRidersSortedBySalary(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });
+  }
+
   let q = supabase
     .from("riders")
     .select(`${riderSelect}, ${abilSelect}`, { count: "exact" })

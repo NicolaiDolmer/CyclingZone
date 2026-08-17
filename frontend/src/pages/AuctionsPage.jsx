@@ -58,6 +58,7 @@ import { cycleSortState } from "../lib/riderSort";
 import {
   AmountInput, Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
   PageHeader, Section, EmptyState, ErrorState, BlockedNote, XIcon,
+  Select, ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
 // #2849 bølge 1: tabel-wrap-radius/border deles med cz-table-recipen (T2), men
 // selve tabellen konverteres IKKE til DataTable — se kommentar ved AuctionList.
@@ -1830,6 +1831,61 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
   );
 }
 
+// #3783: mobil-sorterings-kontrol for auktionslisten. Sorterings-TILSTANDEN
+// (auctionSort/riderFilters) fandtes allerede og virkede på mobil-kortlisten —
+// det var kun KONTROLLEN der manglede, fordi den boede i desktop-tabelhovedet
+// (AuctionTableHead), som forsvinder under md-breakpointet. Genbruger NØJAGTIG
+// samme handleSort/activeSort/activeSortDir-abstraktion som headeren (#1755) —
+// ingen ny sort-logik — og samme Select+retningsknap-mønster som RidersPage's
+// MobileSortControl (#9). Sluttidspunkt (calculated_end) er første mulighed
+// efter navn, jf. issue-rapportens konkrete ønske ("sort for time").
+function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
+  const { t } = useTranslation("auctions");
+  const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
+  const options = [
+    { key: "firstname", label: t("table.rider") },
+    { key: "calculated_end", label: t("table.timeLeft") },
+    { key: "current_price", label: t("table.highestBid") },
+    { key: "nationality_code", label: t("table.nation") },
+    { key: "is_u25", label: t("table.status") },
+    { key: "primary_type", label: t("table.type") },
+    { key: "birthdate", label: t("table.age") },
+    { key: "salary", label: t("table.salary") },
+    { key: "value", label: t("table.value") },
+    { key: "_ovr", label: t("table.ovr") },
+    { key: "_scoutMid", label: t("table.potential") },
+    ...visibleStatsArr.map((key) => ({ key, label: STAT_LABEL_BY_KEY[key] })),
+  ];
+  const currentKey = auctionSort.key || riderFiltersSort;
+  const currentDir = activeSortDir(currentKey);
+  const dirAria = currentDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
+
+  return (
+    <div className="md:hidden flex items-end gap-2 mb-3">
+      <label className="flex-1 min-w-0">
+        <span className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("mobileSort.label")}</span>
+        <Select size="sm" value={currentKey} onChange={(e) => handleSort(e.target.value)} className="w-full">
+          {options.map(({ key, label }) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </Select>
+      </label>
+      <button
+        type="button"
+        onClick={() => handleSort(currentKey)}
+        aria-label={dirAria}
+        title={dirAria}
+        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
+          bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
+      >
+        {currentDir === "desc"
+          ? <ArrowDownIcon size={16} aria-hidden="true" />
+          : <ArrowUpIcon size={16} aria-hidden="true" />}
+      </button>
+    </div>
+  );
+}
+
 // #2849 bølge 1: DENNE tabel konverteres bevidst IKKE til <DataTable> (T2's
 // kanoniske komponent). DataTable-API'et understøtter kun ét sticky-hjørne
 // (venstre navnekolonne) — auktionstabellen har OGSÅ en sticky HØJRE bud-
@@ -1842,6 +1898,13 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
   const sorted = applyAuctionSort(auctions, sharedProps.auctionSort);
   return (
     <>
+      <AuctionMobileSortControl
+        visibleStats={sharedProps.visibleStats}
+        activeSortDir={sharedProps.activeSortDir}
+        handleSort={sharedProps.handleSort}
+        riderFiltersSort={sharedProps.riderFiltersSort}
+        auctionSort={sharedProps.auctionSort}
+      />
       <div className="md:hidden flex flex-col gap-3">
         {sorted.map((a, i) => (
           <AuctionCard

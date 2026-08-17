@@ -10,6 +10,11 @@
   "watchlist": {
     "toggleFailed": "Could not update your watchlist. Please try again."
   },
+  "mobileSort": {
+    "label": "Sort by",
+    "ascAria": "Sorting ascending, tap for descending",
+    "descAria": "Sorting descending, tap for ascending"
+  },
   "tour": {
     "placeBid": {
       "title": "Place a bid",
