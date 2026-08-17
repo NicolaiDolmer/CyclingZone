@@ -34,7 +34,7 @@ function StoryRow({ event, riderNameById, teamNameById, t }) {
   );
 }
 
-export default function StoryOfTheStageSection({ raceId, stageNumber, distanceKm, riderNameById, teamNameById, stageLabel }) {
+export default function StoryOfTheStageSection({ raceId, stageNumber, profile, riderNameById, teamNameById, stageLabel }) {
   const { t } = useTranslation("races");
   const { timeline } = useStageTimeline(raceId, stageNumber);
   const [playerOpen, setPlayerOpen] = useState(false);
@@ -62,7 +62,7 @@ export default function StoryOfTheStageSection({ raceId, stageNumber, distanceKm
             open={playerOpen}
             onClose={() => setPlayerOpen(false)}
             timeline={timeline}
-            distanceKm={distanceKm}
+            profile={profile}
             riderNameById={riderNameById}
             teamNameById={teamNameById}
             stageLabel={stageLabel}

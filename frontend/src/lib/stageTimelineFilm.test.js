@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  kmToX, xToKm, buildFilmTimeline, eventsPlayedUpTo, describeEvent, climbMarkerHeight,
+  kmToX, xToKm, buildFilmTimeline, eventsPlayedUpTo, describeEvent, climbMarkerHeight, altitudeAtKm,
 } from "./stageTimelineFilm.js";
-import { MOUNTAIN_TIMELINE, BREAKAWAY_WIN_TIMELINE, riderNameByIdFixture } from "./stageTimelineFixtures.js";
+import { buildProfileSeries } from "./stageRouteProfile.js";
+import {
+  MOUNTAIN_TIMELINE, BREAKAWAY_WIN_TIMELINE, MOUNTAIN_STAGE_PROFILE, BUNCH_SPRINT_STAGE_PROFILE,
+  riderNameByIdFixture,
+} from "./stageTimelineFixtures.js";
 
 // ── scrubber-tidsmapning (km ⇄ pixel) ──────────────────────────────────────
 
@@ -131,4 +135,47 @@ test("describeEvent: breakaway_formed samler flere rytternavne kommasepareret", 
   const d = describeEvent(event, { riderNameById: riderNameByIdFixture() });
   assert.equal(d.params.riders, "Mikkel Hansen, Sofie Lund");
   assert.equal(d.params.count, 2);
+});
+
+// ── altitudeAtKm (ejer-fix 17/8: events forankres PÅ den ægte rute-silhuet) ──
+
+test("altitudeAtKm: km 0 og km distance_km rammer seriens første/sidste sample", () => {
+  const series = buildProfileSeries(MOUNTAIN_STAGE_PROFILE);
+  assert.equal(altitudeAtKm(series, 0), series.ys[0]);
+  assert.equal(altitudeAtKm(series, series.xs[series.xs.length - 1]), series.ys[series.ys.length - 1]);
+});
+
+test("altitudeAtKm: km uden for [0, distance_km] clamper i stedet for at ekstrapolere", () => {
+  const series = buildProfileSeries(MOUNTAIN_STAGE_PROFILE);
+  assert.equal(altitudeAtKm(series, -20), series.ys[0]);
+  assert.equal(altitudeAtKm(series, 999), series.ys[series.ys.length - 1]);
+});
+
+test("altitudeAtKm: en stignings crest_km rammer nær seriens lokale maksimum omkring den km (ikke en tilfældig lav værdi)", () => {
+  const series = buildProfileSeries(MOUNTAIN_STAGE_PROFILE);
+  const [climb] = MOUNTAIN_STAGE_PROFILE.climbs;
+  const atCrest = altitudeAtKm(series, climb.crest_km);
+  const nearby = series.ys.filter((_, i) => Math.abs(series.xs[i] - climb.crest_km) <= 4);
+  assert.ok(atCrest >= Math.max(...nearby) - 1, "crest-højden bør være omkring det lokale maksimum, ikke en dalhøjde");
+});
+
+test("altitudeAtKm: interpolerer mellem to samplepunkter (ikke bare nærmeste nabo)", () => {
+  const series = buildProfileSeries(MOUNTAIN_STAGE_PROFILE);
+  const midKm = (series.xs[10] + series.xs[11]) / 2;
+  const mid = altitudeAtKm(series, midKm);
+  const lo = Math.min(series.ys[10], series.ys[11]);
+  const hi = Math.max(series.ys[10], series.ys[11]);
+  assert.ok(mid >= lo - 1e-6 && mid <= hi + 1e-6);
+});
+
+test("altitudeAtKm: en flad etape uden stigninger giver stadig en gyldig (ikke-syntetisk-bjergrig) serie", () => {
+  const series = buildProfileSeries(BUNCH_SPRINT_STAGE_PROFILE);
+  assert.equal(series.climbs.length, 0);
+  const mid = altitudeAtKm(series, BUNCH_SPRINT_STAGE_PROFILE.distance_km / 2);
+  assert.ok(Number.isFinite(mid));
+});
+
+test("altitudeAtKm: manglende/tom serie degraderer til null, ikke et kast", () => {
+  assert.equal(altitudeAtKm(null, 50), null);
+  assert.equal(altitudeAtKm({ xs: [], ys: [] }, 50), null);
 });

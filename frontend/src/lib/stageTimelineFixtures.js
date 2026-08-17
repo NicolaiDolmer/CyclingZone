@@ -98,3 +98,49 @@ export const TIMELINE_FIXTURES = {
   breakawayWin: BREAKAWAY_WIN_TIMELINE,
   bunchSprint: BUNCH_SPRINT_TIMELINE,
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ejer-fix 17/8: scrubberen skal tegne den ÆGTE ruteprofil-silhuet
+// (stageRouteProfile.buildProfileSeries), ikke en flad skema-linje. Disse er
+// `race_stage_profiles`-formede fixtures (samme felter StageProfileGraph.jsx
+// bruger: distance_km, climbs[].{crest_km, category, avg_gradient, length_km,
+// name, summit_finish}, elevation_gain_m) — PARRET med tidslinjerne ovenfor,
+// så en kom_passage-events km matcher en ægte crest_km i profilen (samme
+// waypoint set som backend racePassages.js ville udlede fra samme profil).
+export const MOUNTAIN_STAGE_PROFILE = {
+  race_id: "fixture-race", stage_number: 3, distance_km: 168, elevation_gain_m: 3400,
+  profile_type: "mountain", finale_type: "descent",
+  climbs: [
+    { crest_km: 62, category: "1", avg_gradient: 6.8, length_km: 9.5, name: "Col du Test", summit_finish: false },
+    { crest_km: 128, category: "HC", avg_gradient: 7.9, length_km: 14.2, name: "Mont Fixture", summit_finish: false },
+  ],
+  sprints: [], sectors: [],
+};
+
+export const BREAKAWAY_WIN_STAGE_PROFILE = {
+  race_id: "fixture-race", stage_number: 7, distance_km: 182, elevation_gain_m: 1450,
+  profile_type: "hilly", finale_type: "rolling",
+  climbs: [
+    { crest_km: 130, category: "3", avg_gradient: 4.8, length_km: 3.6, name: "Cote Fixture", summit_finish: false },
+  ],
+  sprints: [], sectors: [],
+};
+
+// Massespurt: fladt, INGEN stigninger — stadig ægte rutedata (silhuetten er
+// bare rullende terræn uden kategoriserede kamme), til forskel fra en helt
+// legacy etape uden profil overhovedet (som falder tilbage til den simple
+// km-akse, se STAGE_PROFILE_FIXTURES.legacy).
+export const BUNCH_SPRINT_STAGE_PROFILE = {
+  race_id: "fixture-race", stage_number: 12, distance_km: 174, elevation_gain_m: 320,
+  profile_type: "flat", finale_type: "bunch_sprint",
+  climbs: [], sprints: [], sectors: [],
+};
+
+export const STAGE_PROFILE_FIXTURES = {
+  mountain: MOUNTAIN_STAGE_PROFILE,
+  breakawayWin: BREAKAWAY_WIN_STAGE_PROFILE,
+  bunchSprint: BUNCH_SPRINT_STAGE_PROFILE,
+  // Legacy/PCM-løb uden rutedata (`hasRouteData` false) — scrubberen falder
+  // tilbage til den simple km-akse.
+  legacy: null,
+};

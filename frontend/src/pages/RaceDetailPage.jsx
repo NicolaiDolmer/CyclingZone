@@ -1255,7 +1255,7 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
               3-5 kuraterede nøgle-events + gold "Watch the race film". Gater
               selv på tidslinje-data (renderer intet for løb uden #2410 S1-data). */}
           <StoryOfTheStageSection
-            raceId={raceId} stageNumber={stage} distanceKm={profile?.distance_km ?? null}
+            raceId={raceId} stageNumber={stage} profile={profile}
             riderNameById={riderNameById} teamNameById={teamNameById}
             stageLabel={t("detail.tabStage", { number: stage })}
           />

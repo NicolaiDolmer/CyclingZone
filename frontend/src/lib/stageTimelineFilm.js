@@ -40,6 +40,31 @@ export function xToKm(x, distanceKm, plotWidth) {
 }
 
 /**
+ * Ejer-fix 17/8 ("det ligner ikke ruteprofilen"): scrubberen skal tegnes OVEN
+ * PÅ etapens ÆGTE højdeprofil-silhuet (stageRouteProfile.buildProfileSeries),
+ * ikke en flad linje. Denne funktion interpolerer højden (meter) ved et givet
+ * km-punkt fra `series.xs`/`series.ys` (samme `series`-objekt som StageProfile-
+ * Graph tegner) — så event-markører og fremdrifts-punktet kan forankres PÅ
+ * silhuet-linjen i stedet for at svæve frit over en flad bjælke. Binær søgning
+ * (xs er allerede km-sorteret af buildProfileSeries) + lineær interpolation
+ * mellem de to nærmeste samplepunkter.
+ */
+export function altitudeAtKm(series, km) {
+  if (!series?.xs?.length || !series?.ys?.length) return null;
+  const { xs, ys } = series;
+  const clamped = Math.max(xs[0], Math.min(km ?? 0, xs[xs.length - 1]));
+  if (clamped <= xs[0]) return ys[0];
+  if (clamped >= xs[xs.length - 1]) return ys[ys.length - 1];
+  let lo = 0, hi = xs.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (xs[mid] <= clamped) lo = mid; else hi = mid;
+  }
+  const [x0, x1, y0, y1] = [xs[lo], xs[hi], ys[lo], ys[hi]];
+  return x1 === x0 ? y0 : y0 + ((y1 - y0) * (clamped - x0)) / (x1 - x0);
+}
+
+/**
  * Strukturerer den rå events-liste (spec §2.4-kontraktens `events`) til det
  * scrubberen/feedet/kurven skal bruge: sorteret narrativ-feed (excl. gap_update),
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle

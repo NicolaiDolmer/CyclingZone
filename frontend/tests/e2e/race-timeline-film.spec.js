@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
-import { MOUNTAIN_TIMELINE } from "../../src/lib/stageTimelineFixtures.js";
+import { MOUNTAIN_TIMELINE, MOUNTAIN_STAGE_PROFILE } from "../../src/lib/stageTimelineFixtures.js";
 
 // #3859 (bølge 2 — løbsfilm-afspiller + "The story of the stage", EFTER-
 // tilstanden). Mocker spec §2.4's afspilnings-API (`GET /api/races/:raceId/
@@ -55,8 +55,13 @@ const RESULTS = [
 // test.js) — stage_number overstyres til 1 så den matcher det étetapes-løb
 // e2e-fixturet her bruger.
 const TIMELINE = { ...MOUNTAIN_TIMELINE, stage_number: 1 };
+// Ejer-fix 17/8: scrubberen skal tegne den ÆGTE rute-silhuet — mock derfor
+// race_stage_profiles med rigtige climbs (crest_km/kategori/distance) i
+// stedet for en tom liste, ellers falder StageFilmScrubber tilbage til den
+// simple km-akse og testen dækker aldrig silhuet-stien.
+const PROFILE = { ...MOUNTAIN_STAGE_PROFILE, stage_number: 1 };
 
-async function mockRace(page, { withTimeline = true } = {}) {
+async function mockRace(page, { withTimeline = true, withProfile = true } = {}) {
   await stabilizePage(page);
   await installNetworkMocks(page);
 
@@ -65,7 +70,7 @@ async function mockRace(page, { withTimeline = true } = {}) {
     return json(route, wantsObject ? RACE : [RACE]);
   });
   await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
-  await page.route("**/rest/v1/race_stage_profiles**", route => json(route, []));
+  await page.route("**/rest/v1/race_stage_profiles**", route => json(route, withProfile ? [PROFILE] : []));
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
 
   if (withTimeline) {
@@ -130,4 +135,39 @@ test("race without timeline data renders nothing (404 degrades honestly)", async
   await expect(page.getByRole("heading", { name: "Etape 1" })).toBeVisible();
   await expect(page.getByText("Etapens historie")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Se løbsfilmen" })).toHaveCount(0);
+});
+
+// Ejer-fix 17/8: scrubberen skal tegne etapens ÆGTE rute-silhuet (climbs fra
+// race_stage_profiles), ikke en flad skema-linje.
+test("race film draws the real route silhouette with climb chips anchored on it", async ({ page }) => {
+  await mockRace(page);
+  await page.goto("/races/race-timeline-1?stage=1");
+
+  await page.getByRole("button", { name: "Se løbsfilmen" }).click();
+  const dialog = page.getByRole("dialog");
+  const svgs = dialog.locator("svg");
+  await expect(svgs.first()).toBeVisible();
+
+  // Kategori-chippene (kategori + navn) er ANKRET på silhuetten, samme
+  // visuelle sprog som rute-kortet (StageProfileGraph) — ikke fritsvævende
+  // trekanter.
+  await expect(dialog.getByText("COL DU TEST", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("MONT FIXTURE", { exact: true })).toBeVisible();
+});
+
+// Ejer-fix 17/8, punkt 5: legacy-etaper uden rutedata falder tilbage til den
+// simple km-akse — fallback, ikke standard, men skal stadig virke.
+test("stage without route data falls back to the simple km axis, feed still works", async ({ page }) => {
+  await mockRace(page, { withProfile: false });
+  await page.goto("/races/race-timeline-1?stage=1");
+
+  await page.getByRole("button", { name: "Se løbsfilmen" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Løbsfilm" })).toBeVisible();
+
+  const scrubber = dialog.getByRole("slider", { name: "Scrub gennem etapen" });
+  await scrubber.fill("168");
+  await expect(dialog.getByText("Ada Pedersen soloer til etapesejr.")).toBeVisible();
+  // Ingen klima-chips uden rutedata (fallback-stien tegner ikke silhuet-navne).
+  await expect(dialog.getByText("COL DU TEST", { exact: true })).toHaveCount(0);
 });
