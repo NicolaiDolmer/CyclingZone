@@ -61,12 +61,16 @@ test("TeamPage selects må IKKE selecte gamle PCM stat_*-felter (#1529)", () => 
   }
 });
 
-// #1482 — Type-kolonnen er sortérbar (sortKey="primary_type"). useRiderFilters
-// SKAL sortere den som en streng (localeCompare); den generiske numeriske gren
-// (bVal - aVal) giver NaN på strenge, så pilen toggler uden at sortere.
-const filtersSource = readFileSync(join(__dirname, "..", "lib", "useRiderFilters.js"), "utf8");
+// #1482 — Type-kolonnen er sortérbar (sortKey="primary_type"). Klient-sort-
+// komparatoren SKAL sortere den som en streng (localeCompare); den generiske
+// numeriske gren (bVal - aVal) giver NaN på strenge, så pilen toggler uden at
+// sortere. #2403: komparatoren blev udskilt fra useRiderFilters.js til det
+// rene riderColumnSort.js (#803-node-test-mønster, se dens header-kommentar)
+// — denne guard peger derfor nu på riderColumnSort.js, hvor logikken rent
+// faktisk lever (useRiderFilters.js re-eksporterer den blot).
+const filtersSource = readFileSync(join(__dirname, "..", "lib", "riderColumnSort.js"), "utf8");
 
-test("useRiderFilters sorterer primary_type som streng, ikke numerisk (#1482)", () => {
+test("riderColumnSort sorterer primary_type som streng, ikke numerisk (#1482)", () => {
   assert.match(
     filtersSource,
     /filters\.sort === "primary_type"[\s\S]{0,200}?localeCompare/,
