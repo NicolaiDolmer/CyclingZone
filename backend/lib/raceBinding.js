@@ -247,6 +247,7 @@ export async function resolveBindingConflictDetails({ supabase, teamId, boundRid
   const conflictRaceIds = [...new Set(details.values())];
   const [{ data: conflictRaces, error: crErr }, { data: conflictEntries, error: ceErr }] = await Promise.all([
     supabase.from("races").select("id, name, stages_completed").in("id", conflictRaceIds),
+    // pagination-safe: bounded af conflictRaceIds × boundRiderIds (begge små in-lists, ≤ trupstørrelse)
     supabase.from("race_entries").select("race_id, rider_id, is_auto_filled")
       .eq("team_id", teamId).in("race_id", conflictRaceIds).in("rider_id", boundRiderIds),
   ]);
