@@ -107,6 +107,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "Bestyrelsesplanen forhandles på ny hver sæson (negotiation_status → pending). Det ER spilmekanikken, ikke et tab af opsætning.",
   },
   {
+    table: "board_mandates",
+    disposition: CARRY_OVER_DISPOSITION.RESET_BY_DESIGN,
+    why: "#3514 'Mandatet': mandatet ER 1-årigt og forhandles forfra på årsmødet ved hvert sæsonskifte. En kopi til den nye sæson ville netop fjerne det årsmøde spillet er bygget om for at få. Selve relationen (board_relations.confidence) og visionen (board_vision_milestones) er IKKE sæson-scopede og overlever af sig selv, så manageren mister ingen historik. Tabellen er tom og ulæst indtil kill-switchen board_mandate_model_enabled flippes.",
+  },
+  {
     table: "team_race_strategy",
     disposition: CARRY_OVER_DISPOSITION.REVALIDATE,
     why: "Ikke sæson-scoped i skemaet (PK=team_id), så a_chain/captain_priorities overlever skiftet af sig selv og roster-filtreres allerede ved læsning (raceStrategy.normalizeStrategy filtrerer mod rosterIds). Men target_race_ids peger på konkrete race_id'er, som ER sæson-scoped — raceEntryGenerator's isTargetRace-tjek matcher aldrig et race_id fra en afsluttet sæson, så holdets 'prioritér dette løb'-valg forsvinder lydløst uden fejl (samme mønster som rider_peak_plans, blot i en tabel scanneren ikke fanger fordi den mangler season_id). Verificeret i prod 2026-08-05: 44 af 115 target_race_ids-referencer peger allerede på S1-løb efter S1→S2-skiftet 27/7. Vi tæller; sletning er ejer-gated.",
