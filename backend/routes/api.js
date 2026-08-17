@@ -173,7 +173,7 @@ import { validateSelection, saveSelection, getSelectionContext } from "../lib/ra
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
