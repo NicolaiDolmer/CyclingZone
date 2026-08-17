@@ -38,7 +38,8 @@ import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { ageForSeason } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
-import { AmountInput, BlockedNote, Button, Card, CheckIcon, ErrorState, PageLoader, XIcon } from "../components/ui";
+import { useActionSummary } from "../hooks/useActionSummary.js";
+import { AmountInput, BlockedNote, Button, Card, CheckIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
@@ -813,6 +814,11 @@ export default function RiderStatsPage() {
   const training = useTraining();
   // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
   const trainingHistory = useTrainingHistory();
+  // #3496 punkt 3: genvej til et åbent transfer-tilbud på DENNE rytter, på
+  // samme måde som en aktiv auktion allerede vises på rytter-siden (se
+  // activeAuction/RiderBidPanel nedenfor). Samme kanoniske "skal handles"-kilde
+  // som Indbakken/Dashboard (#271 Slice A) — ingen dupliceret pending-logik.
+  const { pending: pendingActions } = useActionSummary();
   const [rider, setRider]                   = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
@@ -1522,6 +1528,11 @@ export default function RiderStatsPage() {
   const isAiRider = Boolean(rider.team?.is_ai);
   const isPendingTransfer = Boolean(rider.pending_team_id);
   const isRetired = Boolean(rider.is_retired);
+  // #3496 punkt 3: åbent transfer-tilbud PÅ denne rytter, hvor jeg (ejeren) skal
+  // tage stilling — samme genvejs-idé som den aktive auktion herunder.
+  const pendingOfferOnRider = isMyRider
+    ? pendingActions.transfer_offers.find(o => o.rider_id === rider.id) || null
+    : null;
 
   // #2000 stykke 2: progress-fraktion pr. evne til Overblik-evnekolonnerne.
   // Egne ryttere foretrækker den friske training.progress (optimistisk efter et
@@ -1702,6 +1713,26 @@ export default function RiderStatsPage() {
                   <div className="w-full px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm">
                     {auctionError}
                   </div>
+                )}
+                {pendingOfferOnRider && (
+                  <button type="button" onClick={() => navigate("/transfers")}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2.5 bg-cz-accent/8
+                      border border-cz-accent/20 rounded-cz text-left hover:bg-cz-accent/12 transition-colors">
+                    <span className="flex items-center gap-2 text-cz-1 text-sm min-w-0">
+                      <ExchangeIcon size={16} className="text-cz-accent-t flex-shrink-0" aria-hidden="true" />
+                      <span className="truncate">
+                        {pendingOfferOnRider.price != null
+                          ? t("offerShortcut.textWithPrice", {
+                              price: formatNumber(pendingOfferOnRider.price),
+                              team: pendingOfferOnRider.counterparty_team_name || t("offerShortcut.unknownTeam"),
+                            })
+                          : t("offerShortcut.text", {
+                              team: pendingOfferOnRider.counterparty_team_name || t("offerShortcut.unknownTeam"),
+                            })}
+                      </span>
+                    </span>
+                    <span className="text-cz-accent-t text-xs font-medium flex-shrink-0">{t("offerShortcut.cta")}</span>
+                  </button>
                 )}
                 {activeAuction && (
                 <div className="w-full">

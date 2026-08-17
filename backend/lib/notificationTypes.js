@@ -55,6 +55,10 @@ export const NOTIFICATION_TYPES = [
   "welcome",
   "scout_changed",
   "career_milestone",
+  // #3549: sælger-siden af en afsluttet auktion — udskilt fra "auction_won"
+  // (køberens type) så de to aldrig igen kan kollidere på type alene når
+  // køber og sælger er samme hold. Se auctionFinalization.js.
+  "auction_sold",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

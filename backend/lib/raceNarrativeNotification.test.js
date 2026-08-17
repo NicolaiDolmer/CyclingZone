@@ -10,6 +10,7 @@ const {
   summarizeRaceResultRows,
   buildRaceResultNarrative,
   buildStageResultNarrative,
+  isHeadlineAboutOwnRiders,
 } = await import("./raceNarrativeNotification.js");
 
 // ─── ordinal ────────────────────────────────────────────────────────────────
@@ -158,12 +159,44 @@ test("summarizeRaceResultRows: rytternavne fra ALLE raekker, ranks kun for menne
     { rider_id: "r3", rider_name: "Frozen Rider", rank: 3, team: { user_id: "u-frozen", is_ai: false, is_frozen: true } },
     { rider_id: "r4", rider_name: "Second Rider", rank: 5, team: { user_id: "u1", is_ai: false, is_frozen: false } },
   ];
-  const { riderNameById, ranksByUser } = summarizeRaceResultRows(rows);
+  const { riderNameById, ranksByUser, riderIdsByUser } = summarizeRaceResultRows(rows);
   assert.equal(riderNameById.get("r1"), "Krogh");
   assert.equal(riderNameById.get("r2"), "AI Rider", "rytternavne indeholder ogsaa AI-holds ryttere (rubrikkens vinder kan vaere paa et AI-hold)");
   assert.deepEqual(ranksByUser.get("u1"), [1, 5], "flere ryttere paa samme menneske-hold akkumuleres");
   assert.equal(ranksByUser.has("u-ai"), false, "AI-hold tælles ikke som en notificerbar manager");
   assert.equal(ranksByUser.has("u-frozen"), false, "frosne hold tælles ikke som en notificerbar manager");
+  // #3493: riderIdsByUser bruges af isHeadlineAboutOwnRiders til relevans-tjek.
+  assert.deepEqual(riderIdsByUser.get("u1"), new Set(["r1", "r4"]), "begge u1-ryttere indgaar");
+  assert.equal(riderIdsByUser.has("u-ai"), false);
+  assert.equal(riderIdsByUser.has("u-frozen"), false);
+});
+
+// ─── isHeadlineAboutOwnRiders (#3493) ──────────────────────────────────────
+
+test("isHeadlineAboutOwnRiders: true naar rubrik-momentets rytter er blandt modtagerens egne", () => {
+  const narrative = {
+    riderIdsByUser: new Map([["u1", new Set(["r-krogh"])]]),
+    headlineRiderIds: ["r-krogh"],
+  };
+  assert.equal(isHeadlineAboutOwnRiders(narrative, "u1"), true);
+});
+
+test("isHeadlineAboutOwnRiders: false naar rubrikken handler om en ANDEN rytter end modtagerens egne", () => {
+  const narrative = {
+    riderIdsByUser: new Map([["u1", new Set(["r-mine"])]]),
+    headlineRiderIds: ["r-rival"],
+  };
+  assert.equal(isHeadlineAboutOwnRiders(narrative, "u1"), false);
+});
+
+test("isHeadlineAboutOwnRiders: false naar modtageren ikke har nogen egne ryttere i denne race_results-slice", () => {
+  const narrative = { riderIdsByUser: new Map(), headlineRiderIds: ["r-rival"] };
+  assert.equal(isHeadlineAboutOwnRiders(narrative, "u1"), false);
+});
+
+test("isHeadlineAboutOwnRiders: false naar narrativet mangler headlineRiderIds (aerlig degradering, ikke kast)", () => {
+  assert.equal(isHeadlineAboutOwnRiders({ riderIdsByUser: new Map([["u1", new Set(["r1"])]]) }, "u1"), false);
+  assert.equal(isHeadlineAboutOwnRiders(null, "u1"), false);
 });
 
 // ─── buildRaceResultNarrative / buildStageResultNarrative (data-opslag) ────
@@ -257,6 +290,10 @@ test("buildRaceResultNarrative: bygger rubrik fra sidste etapes momenter + ranks
   assert.ok(result, "narrativ bygget");
   assert.equal(result.headlineText, "Krogh wins Vuelta a Castilla", "final_gc fra stage 2 (ikke stage 1's sprint_win)");
   assert.deepEqual(result.ranksByUser.get("u1"), [1, 5]);
+  // #3493: rubrikkens rytter (Krogh) + hvem der ejer hvilke ryttere — bruges
+  // af isHeadlineAboutOwnRiders til at afgøre om rubrikken vises til u1.
+  assert.deepEqual(result.headlineRiderIds, ["r-krogh"]);
+  assert.deepEqual(result.riderIdsByUser.get("u1"), new Set(["r-krogh", "r-second"]));
 });
 
 test("buildStageResultNarrative: mangler stageNumber => null", async () => {
@@ -274,4 +311,7 @@ test("buildStageResultNarrative: bygger rubrik for DENNE etape", async () => {
   const result = await buildStageResultNarrative({ supabase, race: { id: "race-1" }, stageNumber: 3 });
   assert.equal(result.headlineText, "Krogh wins by 0:08");
   assert.deepEqual(result.ranksByUser.get("u1"), [2]);
+  // #3493: se buildRaceResultNarrative-testens tilsvarende assertion.
+  assert.deepEqual(result.headlineRiderIds, ["r-krogh"]);
+  assert.deepEqual(result.riderIdsByUser.get("u1"), new Set(["r-krogh"]));
 });
