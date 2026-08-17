@@ -5150,12 +5150,13 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #1447: #669-auktions-gaten fjernet — efter relaunch (#1105) er fiktive ryttere
   // den aktive bestand og skal kunne auktioneres/handles af alle managere.
 
-  // Block: retired / academy / rider awaits transfer to a previous auction winner.
-  // #1824: akademiryttere hører IKKE på det åbne auktionsmarked — de ejes/udvikles
-  // via akademi-flowet og må først rykkes til senior-truppen (graduation) før de kan
-  // handles. getAuctionStartIssue fanger det (rider_is_academy) før den human-only
-  // ejer-check nedenfor, så et AI-/frit akademi-prospekt ikke længere slipper forbi.
-  const auctionStartIssue = getAuctionStartIssue({ rider });
+  // Block: retired / academy (not own) / rider awaits transfer to a previous auction winner.
+  // #3650 (ejer-direktiv 17/8): egne akademi-ryttere må NU sættes på auktion —
+  // #1824's is_academy-GUARD er lempet til kun at ramme riders der IKKE ejes af
+  // den anmodende manager (getAuctionStartIssue fanger det med requestingTeamId),
+  // så et AI-/frit akademi-prospekt stadig ikke slipper forbi den human-only
+  // ejer-check nedenfor.
+  const auctionStartIssue = getAuctionStartIssue({ rider, requestingTeamId: req.team.id });
   if (auctionStartIssue) {
     if (auctionStartIssue.code === "rider_retired") {
       return res.status(409).json({ error: "This rider has retired and can't be put up for auction", errorCode: "rider_retired_auction" });
@@ -6131,11 +6132,14 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(403).json({ error: "Du ejer ikke denne rytter", errorCode: "rider_not_owned" });
   if (rider.is_retired)
     return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
-  // #1824: akademiryttere må ikke sælges på det åbne transfermarked — de ejes/
-  // udvikles via akademi-flowet og skal først rykkes til senior-truppen (graduation)
-  // før de kan handles. Spejler is_academy-GUARD i POST /auctions + rider-actions.
-  if (rider.is_academy)
-    return res.status(400).json({ error: "Academy riders can't be listed for sale. Graduate them to your senior squad first.", errorCode: "rider_is_academy" });
+  // #3650 (ejer-løfte i Discord 11/8): akademiryttere må NU listes direkte —
+  // #1824's is_academy-GUARD er fjernet HER (blokerer stadig auktion, se POST
+  // /auctions). Ingen manuel graduation krævet længere: salget graduerer
+  // rytteren atomisk ved handlens gennemførelse (executeTransferOffer sætter
+  // is_academy=false), samme mønster som en graduate-sælg-auktion
+  // (academyGraduation.js createGraduateAuction) allerede bruger — rytteren
+  // forbliver is_academy=true (og tæller stadig mod sælgerens 8-cap) indtil
+  // handlen rent faktisk lukkes.
 
   // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
   // partial unique index (uniq_transfer_listings_one_active_per_rider) fanger
