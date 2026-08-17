@@ -12,7 +12,17 @@
 > (`docs/NIGHT_WAVE_RUNBOOK.md`). Første bølge natten 18→19/8 (17/8-natten droppet pga.
 > GitHub-hændelsens Actions-efterslæb — evidens i sessionen 17/8).
 
-## Session 1 (tir/ons): S3-kalenderen — scorecard-go + store forbedringer
+## Session 1 (tir/ons): S3-kalenderen — interleaving-ombygningen + regenerering
+
+**STATUS EFTER 17/8-NATTEN:** pakken (PR #3862, draft) har kørt 3 runder; 7 ejer-beslutninger
+bygget + leverance H (max-spænd, thelambas fund løst: 14→5 og 13→4 dage). REST: Giro 10 dage
++ 4 døde dage kolliderer med ejerens megathread-løfte (post 17/8 20:17). **Ejer-besluttet
+(nat): sessionen STARTER med interleaving-ombygningen af lane-packeren** (flet rest-fyld med
+GT-placering) under hårde gates: alle 9 scorecard-målinger + invarianter grønne, ellers
+fallback til runde 3-tilstanden. Derefter: +endagsløb-beslutning (2/4, efter nyt døde-dage-
+kort) → ejer-review → merge → regenerering (ejer overværer) → delbart kalender-billede +
+svar-udkast til megathreaden (thelamba + smukkethomsen; #dansk-snak-svarene 17/8 21:52-53).
+Ejer-liveness-tjek: første race_stage_timelines-rows efter dagens etaper (flag ON 17/8).
 
 **Mål:** S3-kalenderen står færdig og ejer-godkendt FØR 23/8.
 
