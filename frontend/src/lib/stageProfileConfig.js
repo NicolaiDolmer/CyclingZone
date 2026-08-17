@@ -13,8 +13,9 @@
 
 // profile_type-værdier (CHECK-constraint i database/2026-06-06-race-stage-profiles.sql
 // + PROFILE_TYPES i backend/lib/raceStageProfileGenerator.js). Holdes i sync med dem.
+// itt_hilly (#3546 D): kuperet enkeltstart: GT'ens ANDEN tidskørsel.
 export const PROFILE_TYPE_KEYS = Object.freeze([
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "ttt", "cobbles", "classic",
+  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "classic",
 ]);
 
 // finale_type-værdier (samme kilder). Bruges til labels, ikke til silhuet.
@@ -47,6 +48,10 @@ const SHAPES = Object.freeze({
   // aero-streg. Rampe-spidsen findes i intet terræn-profil → skelnes tydeligt fra flad
   // sprint (#1953). En af de ejer-foreslåede løsninger ("rytter-mod-uret med startrampe").
   itt:           [5, 11, 17, 20, 20, 20, 20, 20],
+  // Kuperet enkeltstart (itt_hilly, #3546 D): samme startrampe-signatur som ITT (rytter mod
+  // uret), men med en bump midtvejs (den lille kat 3/4-stigning) i stedet for en dead-flat
+  // aero-streg: skelner den visuelt fra den flade ITT uden at miste rampe-identiteten.
+  itt_hilly:     [5, 11, 17, 14, 18, 20, 20, 20],
   // Holdstart (TTT): TO startramper (et hold der ruller ud i formation, én rytter ad
   // gangen), ellers samme aero-streg. To spidser adskiller den fra ITT (én rampe) og fra
   // flad sprint (#1953).

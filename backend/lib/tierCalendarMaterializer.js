@@ -12,7 +12,7 @@
 
 import { poolHasCalendar } from "./divisionCalendarGenerator.js";
 import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
-import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
@@ -319,7 +319,13 @@ export function buildTierMaterializationPlan({
     // restDays er kun meningsfuld på stageRaces (kun etapeløb kan være GT'er), men beriges
     // harmløst med 0 på oneDayRaces også for et ensartet enrich-mønster.
     const enrichedStageRaces = withGrandTourRestDays(withSeasonFraction(sel.stageRaces));
-    const enrichedOneDayRaces = withSeasonFraction(sel.oneDayRaces);
+    // #3546 F: brostens-endagsløbenes (cobbled_classic) fraction omformes til to vinduer
+    // (tidligt + sent i sæsonen) i stedet for deres rå, monotont-faldende date_text-
+    // fordeling: se reshapeCobblesFractionToTwoWindows' docstring. isCobbles kigger op i
+    // catalogById (denne funktions egen scope), så den rene shaping-funktion i
+    // raceCalendarLanePacker.js forbliver katalog-uafhængig.
+    const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic";
+    const enrichedOneDayRaces = reshapeCobblesFractionToTwoWindows(withSeasonFraction(sel.oneDayRaces), isCobbledClassic);
     const packed = packLaneCalendar({
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
       density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
@@ -379,6 +385,10 @@ export function buildTierMaterializationPlan({
       overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
       straddleGameDays: packed.straddleGameDays,
       gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
+      // #3546 C: dage uden afgørelse: forward fra packLaneCalendar's diagnostik, samme
+      // "rapportér, gater ikke her"-princip som de øvrige dry-run-tal ovenfor.
+      daysWithoutDecision: packed.daysWithoutDecision ?? [],
+      daysWithoutDecisionCount: packed.daysWithoutDecisionCount ?? 0,
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       grandTourRestDays: packed.grandTourRestDays, // #3470: dry-run-diagnostik, se packLaneCalendar's docstring.

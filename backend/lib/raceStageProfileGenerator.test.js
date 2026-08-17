@@ -21,6 +21,7 @@ import {
   applyOrderArchetype,
   applyOpeningVariety,
   SPRINT_FINALE_EARLY_DECIDER_CHANCE,
+  markSecondIttAsHilly,
 } from "./raceStageProfileGenerator.js";
 import {
   ORDER_ARCHETYPES,
@@ -186,7 +187,10 @@ test("arketype etapeløb: grand_tour (21) har ≥2 high_mountain + ≥1 itt", ()
 });
 
 // ── #2029: TT-loft — Grand Tour må ikke få 5 enkeltstarter ───────────────────
-const countTT = (types) => types.filter((t) => t === "itt" || t === "ttt").length;
+// #3546 D: itt_hilly er en TT-familie-profil (se TIME_TRIAL_PROFILES): tælles med her,
+// ellers ville et renamet "anden ITT→itt_hilly" (GT-arketypen) usynliggøre en reel TT for
+// et loft der netop skal måle TOTAL TT-belastning, ikke den rå streng "itt".
+const countTT = (types) => types.filter((t) => t === "itt" || t === "itt_hilly" || t === "ttt").length;
 
 test("#2029 DEFAULT_TT_CAP er 2 (konservativ balance-default, flaget til ejer)", () => {
   assert.equal(DEFAULT_TT_CAP, 2);
@@ -634,11 +638,67 @@ test("#3326-korrektion grand_tour (21): finalen er flad/rullende eller enkeltsta
       { seed }
     );
     const last = stages[stages.length - 1].profile_type;
-    assert.ok(["flat", "rolling", "itt"].includes(last), `seed ${seed}: uventet GT-finale ${last}`);
+    // #3546 D: en enkeltstart-finale er ALTID den GT'ens ANDEN itt (den første er
+    // åbnings-ITT'en på etape 1) → markSecondIttAsHilly har omdøbt den til itt_hilly.
+    assert.ok(["flat", "rolling", "itt_hilly"].includes(last), `seed ${seed}: uventet GT-finale ${last}`);
     finales.add(last);
   }
   assert.ok(finales.has("flat") || finales.has("rolling"), "forventede mindst én flad/rullende GT-finale");
-  assert.ok(finales.has("itt"), "forventede mindst én enkeltstart-GT-finale (~22% i researchen)");
+  assert.ok(finales.has("itt_hilly"), "forventede mindst én enkeltstart-GT-finale (~22% i researchen)");
+});
+
+// ── #3546 D: itt_hilly: GT's ANDEN enkeltstart er kuperet, ikke en identisk flad itt ──
+test("#3546 grand_tour: etape 1 (åbnings-ITT) er ALTID itt, ALDRIG itt_hilly", () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    const stages = generateRaceStageProfiles(
+      { id: `gtitt-${seed}`, race_type: "stage_race", stages: 21, pool_race_id: `pool-gtitt-${seed}`, terrain_archetype: "grand_tour" },
+      { seed },
+    );
+    assert.equal(stages[0].profile_type, "itt", `seed ${seed}: etape 1 skal forblive den flade åbnings-itt`);
+  }
+});
+
+test("#3546 grand_tour: NÅR der er 2 tidskørsler, er den anden itt_hilly (aldrig 2×flad itt)", () => {
+  let sawTwoTT = false;
+  for (let seed = 1; seed <= 400; seed++) {
+    const types = generateRaceStageProfiles(
+      { id: `gt2tt-${seed}`, race_type: "stage_race", stages: 21, pool_race_id: `pool-gt2tt-${seed}`, terrain_archetype: "grand_tour" },
+      { seed },
+    ).map((p) => p.profile_type);
+    const ittCount = types.filter((t) => t === "itt").length;
+    const ittHillyCount = types.filter((t) => t === "itt_hilly").length;
+    assert.ok(ittCount <= 1, `seed ${seed}: mere end 1 flad itt (${ittCount}): anden burde være itt_hilly`);
+    assert.ok(ittHillyCount <= 1, `seed ${seed}: mere end 1 itt_hilly`);
+    if (ittHillyCount === 1) sawTwoTT = true;
+  }
+  assert.ok(sawTwoTT, "forventede mindst én seed med 2 tidskørsler (itt + itt_hilly) over 400 seeds");
+});
+
+test("#3546 grand_tour (7): ingen anden itt muligt (kun 1 garanteret): no-op, ingen itt_hilly", () => {
+  // stages=7 = præcis guarantees.length; ingen filler-plads til en ekstra itt.
+  for (let seed = 1; seed <= 30; seed++) {
+    const types = generateRaceStageProfiles(
+      { id: `gt7-${seed}`, race_type: "stage_race", stages: 7, pool_race_id: `pool-gt7-${seed}`, terrain_archetype: "grand_tour" },
+      { seed },
+    ).map((p) => p.profile_type);
+    assert.ok(!types.includes("itt_hilly"), `seed ${seed}: uventet itt_hilly uden filler-plads`);
+  }
+});
+
+test("#3546 andre stage-arketyper (ikke grand_tour) genererer ALDRIG itt_hilly (kun GT-regel)", () => {
+  const stageArchetypes = Object.entries(ARCHETYPE_PROFILES).filter(([k, c]) => c.kind === "stage" && k !== "grand_tour").map(([k]) => k);
+  for (const arch of stageArchetypes) {
+    for (let seed = 1; seed <= 30; seed++) {
+      const types = generateRaceStageProfiles({ id: "r", external_id: `${arch}-${seed}`, terrain_archetype: arch, race_type: "stage_race", stages: 8 }, { seed }).map((p) => p.profile_type);
+      assert.ok(!types.includes("itt_hilly"), `${arch} seed ${seed}: uventet itt_hilly (kun grand_tour skal have reglen)`);
+    }
+  }
+});
+
+test("#3546 markSecondIttAsHilly (ren funktion): omdøber præcis anden forekomst, resten uændret", () => {
+  assert.deepEqual(markSecondIttAsHilly(["itt", "flat", "mountain"]), ["itt", "flat", "mountain"], "kun 1 itt → no-op");
+  assert.deepEqual(markSecondIttAsHilly(["itt", "flat", "itt", "mountain"]), ["itt", "flat", "itt_hilly", "mountain"]);
+  assert.deepEqual(markSecondIttAsHilly(["flat", "mountain"]), ["flat", "mountain"], "0 itt → no-op");
 });
 
 // ── #3326-korrektion 2026-08-04: sprint_finale's "tredjesidste sker praktisk taget

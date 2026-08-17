@@ -61,7 +61,9 @@ const PROFILE_TO_CATEGORY = Object.freeze({
   flat: "flat",
   rolling: "hilly", hilly: "hilly", classic: "hilly",
   mountain: "mountain", high_mountain: "mountain",
-  itt: "itt",
+  // itt_hilly (#3546 D): stadig en TIDSKØRSEL for K-B-budgetteringens formål (den er en
+  // GT's ANDEN enkeltstart, ikke en ny kategori spilleren oplever anderledes i budgettet).
+  itt: "itt", itt_hilly: "itt",
   cobbles: "cobbles",
   ttt: "ttt",
 });
