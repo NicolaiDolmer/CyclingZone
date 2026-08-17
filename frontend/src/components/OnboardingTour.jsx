@@ -1,7 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { readTour, advanceTour, endTour } from "../lib/onboardingTour";
 import { findVisibleTarget } from "../lib/onboardingTourTarget.js";
+import { computeTooltipPlacement } from "../lib/onboardingTourPlacement.js";
+
+// #3008: MobileQuickNav (fixed bund-nav, kun < md) er 56px høj — tooltip'en må
+// ikke lægge sig bag den på mobil. Samme breakpoint som Tailwinds md:hidden.
+const MOBILE_BOTTOM_NAV_HEIGHT = 56;
+const MOBILE_BREAKPOINT = 768;
+// Gæt brugt kun til placerings-beslutningen (over/under) FØR tooltip'en er målt
+// første gang for et nyt trin — erstattes synkront af den faktiske højde (se
+// useLayoutEffect-målingen nedenfor) inden browseren når at male noget.
+const FALLBACK_HEIGHT_ESTIMATE = 160;
 
 // Onboarding v2 Slice 1b — peg-pil-tooltip overlay.
 // Mounted på de sider hvor tour-trin findes (RidersPage, AuctionsPage).
@@ -15,9 +25,46 @@ export default function OnboardingTour({ pageKey, steps }) {
   const { t } = useTranslation("auth");
   const [tour, setTour] = useState(() => readTour());
   const [rect, setRect] = useState(null);
+  // #3008: målt tooltip-højde (synkron layout-læsning, se useLayoutEffect
+  // nedenfor), erstatter et fast gæt der på 360px ikke stemte overens med den
+  // faktiske, tekst-ombrudte højde.
+  const [measuredHeight, setMeasuredHeight] = useState(null);
 
   const isActive = !!tour && tour.page === pageKey && tour.step >= 0 && tour.step < steps.length;
   const current = isActive ? steps[tour.step] : null;
+
+  // Nulstil målingen når selve trinnet skifter (ny tekst → ny højde). Nøglen
+  // er tour.step/tour.page, IKKE `current`-objektet — det er en ny reference
+  // på hvert forældre-render for sider der ikke useMemo'er deres steps-array
+  // (RidersPage/BoardPage), hvilket ellers ville nulstille målingen konstant.
+  useEffect(() => {
+    setMeasuredHeight(null);
+  }, [tour?.step, tour?.page]);
+
+  // #3008: mål tooltip'ens FAKTISKE renderede højde synkront efter hver commit
+  // (useLayoutEffect kører FØR browseren maler noget), i stedet for at gætte.
+  // getBoundingClientRect() er en synkron layout-læsning — virker uafhængigt
+  // af om ResizeObserver/rAF bliver udskudt af browseren (fx baggrunds-faner).
+  // Første render af et nyt trin bruger FALLBACK_HEIGHT_ESTIMATE til placerings-
+  // beslutningen; denne effekt korrigerer straks til den rigtige højde, og
+  // React når at committe den korrigerede position FØR første maling — ingen
+  // synligt "hop". Kører ved hvert render mens tooltip'en er synlig (rect,
+  // trin-tekst eller viewport kan alle ændre den reelle højde); no-op når
+  // målingen allerede matcher (samme værdi ⇒ ingen ny render).
+  const tooltipRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = tooltipRef.current;
+    if (!el) return;
+    const measured = el.getBoundingClientRect().height;
+    if (measured && measured !== measuredHeight) {
+      setMeasuredHeight(measured);
+    }
+    // Deps er bevidst bredere end det effekten selv læser: `rect` opdateres
+    // hvert 250ms (target kan flytte sig/rewrappe pga. resize) og `current?.target`
+    // ved trinskift, så en reel indholds-/layout-ændring altid udløser et nyt
+    // måleforsøg — ikke kun når measuredHeight (den eneste variabel effekten
+    // rent faktisk læser) selv ændrer sig.
+  }, [rect, current?.target, measuredHeight]);
 
   const updateRect = useCallback(() => {
     if (!current) {
@@ -87,20 +134,20 @@ export default function OnboardingTour({ pageKey, steps }) {
     );
   }
 
-  // Smart placering: under target hvis der er plads, ellers over
+  // Smart placering: under target hvis der er plads, ellers over. #3008: brug
+  // den MÅLTE tooltip-højde når den findes (sat via useLayoutEffect ovenfor)
+  // — kun allerførste render af et nyt trin (før layout-effekten har kørt)
+  // falder tilbage til gættet. computeTooltipPlacement klemmer altid
+  // resultatet ind i viewport minus mobilens bund-nav.
   const tooltipWidth = 300;
-  const heightEstimate = 160;
+  const height = measuredHeight ?? FALLBACK_HEIGHT_ESTIMATE;
   const margin = 12;
+  const viewportW = window.innerWidth;
   const viewportH = window.innerHeight;
-  const placeBelow = (rect.bottom + heightEstimate + margin) <= viewportH || rect.top < heightEstimate + margin;
-
-  const tooltipTop = placeBelow ? rect.bottom + 12 : Math.max(margin, rect.top - heightEstimate - 12);
-  const targetCenterX = rect.left + rect.width / 2;
-  const tooltipLeft = Math.max(
-    margin,
-    Math.min(window.innerWidth - tooltipWidth - margin, targetCenterX - tooltipWidth / 2),
-  );
-  const arrowOffset = Math.max(20, Math.min(tooltipWidth - 20, targetCenterX - tooltipLeft));
+  const bottomReserve = viewportW < MOBILE_BREAKPOINT ? MOBILE_BOTTOM_NAV_HEIGHT : 0;
+  const { placeBelow, tooltipTop, tooltipLeft, arrowOffset } = computeTooltipPlacement({
+    rect, height, viewportW, viewportH, tooltipWidth, margin, bottomReserve,
+  });
 
   const isLast = tour.step + 1 >= steps.length;
 
@@ -124,7 +171,7 @@ export default function OnboardingTour({ pageKey, steps }) {
         className="fixed z-overlay pointer-events-none"
         style={{
           left: tooltipLeft + arrowOffset - 8,
-          top: placeBelow ? tooltipTop - 8 : tooltipTop + heightEstimate,
+          top: placeBelow ? tooltipTop - 8 : tooltipTop + height,
           width: 0,
           height: 0,
           borderLeft: "8px solid transparent",
@@ -135,6 +182,7 @@ export default function OnboardingTour({ pageKey, steps }) {
 
       {/* Tooltip */}
       <div
+        ref={tooltipRef}
         role="dialog"
         aria-label={t("onboardingTour.ariaLabel")}
         className="fixed z-overlay bg-cz-card border border-cz-accent/40 rounded-cz shadow-xl p-4 pointer-events-auto"
