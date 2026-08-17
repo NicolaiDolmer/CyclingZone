@@ -379,6 +379,46 @@ function canMoveTo(idx, newPos, events, racePositions) {
   return newPos > prevPos && newPos < nextPos;
 }
 
+// #3546 H (ejer-valgt 17/8 sen aften: spillerfeedback fandt samme strækningspatologi på
+// ikke-GT-etapeløb som B fiksede for GT'erne): mål et løbs FULDE kalender-spænd (maks-min
+// real_day over ALLE dets stagesPlaced-positioner), givet en HYPOTETISK positions-ændring
+// for netop ÉN idx (til newPos): bruges til at afvise et C-bytte FØR det committes, hvis
+// det ville strække løbet ud over det hårde loft. Rod-årsag verificeret ved instrumenteret
+// dry-run: C's bytte-mekanisme (enforceDailyDecisions) flytter typisk et løbs FØRSTE etape
+// (ingen "forrige"-nabo-begrænsning) eller SIDSTE etape (decision-donor-kandidat) langt væk
+// for at dække en dag uden afgørelse et andet sted i kalenderen: sekventielt SIKKERT
+// (canMoveTo tillader det), men skaber netop den strækningspatologi H retter (fx Tour du
+// Massif Central målt 6 etaper over 14 dage FØR denne guard, 5 dage EFTER).
+function raceSpanAfterMove(raceId, racePositions, dayOfIdx, movedIdx, newPos) {
+  const list = racePositions.get(raceId);
+  if (!list || list.length < 2) return 0; // endagsløb har intet "spænd"-koncept
+  let lo = Infinity, hi = -Infinity;
+  for (const e of list) {
+    const day = e.idx === movedIdx ? dayOfIdx[newPos] : dayOfIdx[e.idx];
+    if (day < lo) lo = day;
+    if (day > hi) hi = day;
+  }
+  return hi - lo + 1;
+}
+
+// Hård grænse (#3546 H, ejer-beslutning 17/8 sen aften): stages + 3 dage. Målet (stages + 2)
+// håndhæves IKKE hårdt her (ville afvise for mange ellers gyldige C-bytter og genskabe #3546
+// C's egen "0 er umuligt uden katalog-ændring"-begrænsning): den HÅRDE grænse er hvad H
+// eksplicit specificerede som constraint; stages+2 er target/rapporterings-niveau (scorecard
+// måling 9), ikke en hård afvisnings-tærskel i selve bytte-logikken.
+const NON_GT_STAGE_RACE_SPAN_HARD_SLACK = 3;
+
+// Er et bytte af idx (tilhørende race) til newPos sikkert for #3546 H's spænd-grænse? Kun
+// relevant for IKKE-GT etapeløb (2 <= stages < spineMinStages): endagsløb har intet spænd,
+// GT'er er eksplicit undtaget ("ingen ændring for endagsløb/GT'er", H's egen specifikation).
+function spanMoveOk(idx, newPos, events, racePositions, dayOfIdx, spineMinStages) {
+  const race = events[idx].race;
+  const stages = lenOf(race);
+  if (stages < 2 || (spineMinStages != null && stages >= spineMinStages)) return true; // undtaget
+  const span = raceSpanAfterMove(race.id, racePositions, dayOfIdx, idx, newPos);
+  return span <= stages + NON_GT_STAGE_RACE_SPAN_HARD_SLACK;
+}
+
 // #3546 C: placerings-prioritet: bytter array-POSITIONEN af to `events`-entries (ALDRIG
 // deres game_day/stage_number/race-identitet) så en afgørelse lander på en dag der ellers
 // ikke ville have nogen. Positionel, fordi dag-tildelingen (buildDayChunks) er en REN
@@ -395,7 +435,7 @@ function canMoveTo(idx, newPos, events, racePositions) {
 // ærligt af diagnose()'s daysWithoutDecision i stedet for at blive gemt væk.
 //
 // Muterer `events` in-place (byttet er det eneste sted output ændres); ingen returværdi.
-function enforceDailyDecisions(events, monSlot, days, D) {
+function enforceDailyDecisions(events, monSlot, days, D, spineMinStages) {
   if (!events.length || days < 1) return;
   const { dayOfIdx, chunkByDay, monumentDay } = buildDayChunks(events, monSlot, days, D);
   const racePositions = buildRacePositions(events);
@@ -426,8 +466,22 @@ function enforceDailyDecisions(events, monSlot, days, D) {
             // Samme løb på begge sider: udelukkes defensivt (positions-checket nedenfor
             // afviser det allerede korrekt i praksis, men eksplicit er billigere at læse).
             if (events[i].race.id === events[j].race.id) continue;
+            // #3546 H-fund (regression opdaget under implementeringen, IKKE en del af H's
+            // egen ask): et GT-løb er ALDRIG en bytte-kandidat, hverken som donor (i) eller
+            // offer (j). canMoveTo alene sikrer kun GT'ens EGEN interne etape-rækkefølge  - 
+            // den ved intet om #3472 v3's SEPARATE "ingen delt kalenderdag mellem to GT'er"-
+            // garanti, som et bytte af en GT-etape kan bryde (verificeret: uden denne
+            // udelukkelse delte 2 GT'er en kalenderdag, både i en test-fixture og mod det
+            // ægte katalog). GT'er er allerede eksplicit undtaget spænd-tjekket (H's egen
+            // "ingen ændring for GT'er"): denne udelukkelse er den samme undtagelse ført
+            // konsekvent igennem til HELE swap-kandidaturen, ikke kun spænd-målingen.
+            if (spineMinStages != null && (lenOf(events[i].race) >= spineMinStages || lenOf(events[j].race) >= spineMinStages)) continue;
             if (!canMoveTo(i, j, events, racePositions)) continue;
             if (!canMoveTo(j, i, events, racePositions)) continue;
+            // #3546 H: afvis bytter der ville strække et ikke-GT-etapeløb ud over dets
+            // hårde spænd-loft (stages+3): se spanMoveOk/raceSpanAfterMove ovenfor.
+            if (!spanMoveOk(i, j, events, racePositions, dayOfIdx, spineMinStages)) continue;
+            if (!spanMoveOk(j, i, events, racePositions, dayOfIdx, spineMinStages)) continue;
             // Commit: byt array-POSITIONERNE i/j. dayOfIdx pr. POSITION er uændret (i hører
             // stadig til dag d2, j til dag d): det er netop det der flytter events[i]s
             // OBJEKT til dag d og events[j]s OBJEKT til dag d2.
@@ -616,6 +670,14 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
 
         // Trin 2: fase-target ≈ fraction × (totalSlots − resterende GT-fodaftryk INKL. denne)
         // — fyldes LEAST-LOADED over alle streams (bevarer overlap, jf. #3472 runde 1).
+        // #3546 H-forsøg (ejer-mål samme aften, "Giroen ≤9, helst ≤8 dage"): et forsøg på at
+        // skalere den FØRSTE GT's target opad (empirisk sweep, faktor 2,3-3,0 gav Giro-spænd
+        // 10→7) blev AFPRØVET og FORKASTET: det brød #3472 v3's GT-real-day-separations-
+        // invariant (2 GT'er delte kalenderdag, verificeret BÅDE i test-fixturen og mod det
+        // ægte katalog: "gt-1 slutter dag 19, gt-2 starter dag 19"). Denne invariant er en
+        // HÅRD, ikke-forhandlingsbar garanti (#3472 v3, "ingen delt dag > præcist anker").
+        // IKKE forsøgt yderligere her: se scorecardets "Fund og begrænsninger" for det
+        // fulde forsøgs-referat + tal. target-formlen er derfor UÆNDRET fra B v2.
         const target = Math.min(ceiling, Math.max(placedCount, Math.round(gt.seasonFraction * (totalSlots - remainingGtLen))));
         while (ri < rest.length && placedCount < target) {
           let s = pickLeastLoadedStreamAwayFromZero(streamCursor, cap);
@@ -694,7 +756,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   // kalenderdag: se enforceDailyDecisions' docstring. Kører EFTER events er sorteret og
   // monSlot kendt (monument-dage tæller automatisk som en afgørelse), FØR slot-
   // konsumeringsloopet nedenfor fordeler dem til real_day.
-  enforceDailyDecisions(events, monSlot, days, D);
+  enforceDailyDecisions(events, monSlot, days, D, spineMinStages);
 
   const placementsById = new Map();
   const ensure = (race, type, stages) => { if (!placementsById.has(race.id)) placementsById.set(race.id, { id: race.id, type, race_class: race.race_class ?? null, stages, startRealDay: Infinity, stagesPlaced: [] }); return placementsById.get(race.id); };

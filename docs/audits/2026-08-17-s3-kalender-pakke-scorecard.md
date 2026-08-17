@@ -25,31 +25,31 @@ knock-on-effekter af A/B's ændrede løbsudvalg adskiller dem).
 
 | Seed | GT | FØR (dage) | EFTER (dage) |
 |---|---|---|---|
-| 3 | Giro della Penisola | 13 | 10 |
-| 3 | Tour de l'Hexagone | 5 | 7 |
-| 3 | Vuelta Ibérica | 5 | 6 |
-| 4 | Giro della Penisola | 13 | 10 |
-| 4 | Tour de l'Hexagone | 5 | 7 |
-| 4 | Vuelta Ibérica | 5 | 6 |
-| 5 | Giro della Penisola | 13 | 10 |
-| 5 | Tour de l'Hexagone | 5 | 7 |
-| 5 | Vuelta Ibérica | 5 | 6 |
+| 3 | Giro della Penisola | 12 | 10 |
+| 3 | Tour de l'Hexagone | 5 | 5 |
+| 3 | Vuelta Ibérica | 5 | 4 |
+| 4 | Giro della Penisola | 12 | 10 |
+| 4 | Tour de l'Hexagone | 5 | 5 |
+| 4 | Vuelta Ibérica | 5 | 4 |
+| 5 | Giro della Penisola | 12 | 10 |
+| 5 | Tour de l'Hexagone | 5 | 5 |
+| 5 | Vuelta Ibérica | 5 | 4 |
 
 Spredning (maks−min spænd på tværs af de 3 GT'er, mål ≤1 dag EFTER):
 
 | Seed | FØR | EFTER |
 |---|---|---|
-| 3 | 8 | 4 |
-| 4 | 8 | 4 |
-| 5 | 8 | 4 |
+| 3 | 7 | 6 |
+| 4 | 7 | 6 |
+| 5 | 7 | 6 |
 
 ## 3. Dage uden afgørelse (D1)
 
 | Seed | FØR | EFTER |
 |---|---|---|
-| 3 | 5 (1,10,11,18,24) | 2 (1,19) |
-| 4 | 5 (1,10,11,18,24) | 2 (1,19) |
-| 5 | 5 (1,10,11,18,24) | 2 (1,19) |
+| 3 | 5 (1,10,11,18,24) | 4 (1,13,19,24) |
+| 4 | 5 (1,10,11,18,24) | 4 (1,13,19,24) |
+| 5 | 5 (1,10,11,18,24) | 4 (1,13,19,24) |
 
 ## 4. ITT-profiler pr. GT (flad "itt" vs. kuperet "itt_hilly")
 
@@ -67,11 +67,16 @@ Spredning (maks−min spænd på tværs af de 3 GT'er, mål ≤1 dag EFTER):
 
 ## 5. Eksisterende invarianter (ingen brud tilladt)
 
-| Seed | Klasse/etape-bånd-brud (#3328) FØR/EFTER | Hviledage degraderet FØR/EFTER | 5 events/dag holdt FØR/EFTER |
-|---|---|---|---|
-| 3 | 0/0 | 0/0 | true/true |
-| 4 | 0/0 | 0/0 | true/true |
-| 5 | 0/0 | 0/0 | true/true |
+| Seed | Klasse/etape-bånd-brud (#3328) FØR/EFTER | Hviledage degraderet FØR/EFTER | 5 events/dag holdt FØR/EFTER | GT-real-day-separation (#3472 v3) FØR/EFTER |
+|---|---|---|---|---|
+| 3 | 0/0 | 0/0 | true/true | 0/0 |
+| 4 | 0/0 | 0/0 | true/true | 0/0 |
+| 5 | 0/0 | 0/0 | true/true | 0/0 |
+
+GT-real-day-separation-kolonnen er tilføjet efter en regression opdaget under H-implementeringen
+(17/8 sen aften): C's dagsafgørelses-bytte kunne flytte en GT-etape og bryde "ingen delt
+kalenderdag mellem to GT'er". Fikset (GT'er er nu UDELUKKET fra C's bytte-kandidatur helt): se
+"Fund og begrænsninger" for detaljer. 0/0 i tabellen ovenfor bekræfter fixet holder på det ægte katalog.
 
 Ingen calendarViolations i nogen kørsel (FØR eller EFTER, nogen seed).
 
@@ -111,6 +116,40 @@ overlap-strukturen kommer fra selection+packing, ikke fra parcours-trækket).
 | D3 | 2 | 2 | JA | 2 | JA |
 | D4 | 2 | 2 | JA | 2 | JA |
 
+## 9. Kalender-spænd pr. ikke-GT-etapeløb (#3546 H, D1)
+
+Ejer-mål: spænd ≤ stages+2 dage (mål), hård grænse stages+3 (håndhævet i selve
+placerings-mekanismen: enforceDailyDecisions afviser ethvert bytte der ville bryde den).
+stræk-faktor = spænd/stages (1,0 = ingen strækning).
+
+| Seed | Maks stræk-faktor FØR | Median FØR | Maks stræk-faktor EFTER | Median EFTER | Brud på stages+3 EFTER |
+|---|---|---|---|---|---|
+| 3 | 0.83 | 0.63 | 0.83 | 0.57 | 0 |
+| 4 | 0.83 | 0.63 | 0.83 | 0.57 | 0 |
+| 5 | 0.83 | 0.63 | 0.83 | 0.57 | 0 |
+
+De to navngivne løb thelamba målte (Tour du Massif Central 6 etaper/14 dage, La Corsa dei
+Due Mari 7 etaper/13 dage) FØR H-fixet, EFTER (seed 3, EFTER-kolonnen):
+
+- **Tour du Massif Central**: 6 etaper, spænd 5 dage, stræk-faktor 0.83 (grænse 9)
+- **La Corsa dei Due Mari**: 7 etaper, spænd 4 dage, stræk-faktor 0.57 (grænse 10)
+
+Alle ikke-GT-etapeløb, EFTER, sorteret efter værste stræk-faktor (seed 3):
+
+| Løb | Etaper | Spænd | Stræk-faktor |
+|---|---|---|---|
+| Tour du Massif Central | 6 | 5 | 0.83 |
+| Tour de Bretagne | 6 | 4 | 0.67 |
+| Tour du Léman | 6 | 4 | 0.67 |
+| La Course au Soleil | 8 | 5 | 0.63 |
+| Tour des Volcans d'Auvergne | 8 | 5 | 0.63 |
+| Ronde van Limburg | 7 | 4 | 0.57 |
+| Volta Catalana | 7 | 4 | 0.57 |
+| Tour de la Vistule | 7 | 4 | 0.57 |
+| La Corsa dei Due Mari | 7 | 4 | 0.57 |
+| Région Pays de la Loire Tour Mineur | 3 | 1 | 0.33 |
+| Tour of South Australia | 6 | 2 | 0.33 |
+
 ## Reference: rå prod-baseline (issue #3546, målt 16-17/8: FØR nogen kode i denne PR)
 
 - GT-andel: 45,0 %
@@ -119,68 +158,64 @@ overlap-strukturen kommer fra selection+packing, ikke fra parcours-trækket).
 - Uphill-finish: 0/254 hilly, 0/65 rolling
 - Cobbles pr. uge: 29→24→18→8 (monotont fald)
 - D2 maxOverlap: op til 4 (målt i den LIVE, ældre-genererede S3-kalender)
+- Ikke-GT-etapeløbs-stræk: Tour du Massif Central 6 etaper/14 dage (stræk 2,33), La Corsa
+  dei Due Mari 7 etaper/13 dage (stræk 1,86): thelambas spillerfeedback-fund 17/8 sen aften
 
 ## Fund og begrænsninger (ærlig rapportering: ikke alt ramte målet fuldt ud)
 
-Denne sektion er opdateret EFTER arkitekt-review 17/8 aften: B fik et rodfix nummer 2
-(stream-valgets tie-break) og C fik en flerpas-udvidelse. Begge forbedrede sig markant
-(se under), men rammer ikke deres respektive absolutte mål (±1 dag hhv. 0 døde dage)  - 
-begge resterende gaps er nu PRÆCIST forklaret og kvantificeret nedenfor, som krævet.
+Denne sektion er opdateret EFTER runde 3 (arkitekt-go 17/8 sen aften, ny leverance H:
+max-spænd-loft for ikke-GT-etapeløb). H's implementering afdækkede en ALVORLIG, PRÆ-
+EKSISTERENDE regression i C (fra runde 2's flerpas-udvidelse, ikke en del af H's egen
+ask): se den fremhævede boks nedenfor. Giro-spænd-målet (≤9, helst ≤8) blev FORSØGT
+nået via en target-formel-justering, men afprøvningen BRØD en hård invariant og blev
+derfor forkastet: se H-afsnittet for den fulde afprøvning + tal.
 
-- **B (Giro-spredning), v2: rammer "≤4-5 dage"-målet, men IKKE det fulde ±1 dags-mål.**
-  Rodfix: layoutStream's mindst-belastede stream-valg brød konsekvent tie mod stream 0
-  (indeks 0 vinder altid en cursor-uafgørelse): PRÆCIS den stream GT'erne selv ligger
-  på. Det betød at "rest"-fyldet FØR hver GT systematisk blev dumpet på GT'ens EGEN
-  stream, hvilket skubbede GT'ens fodaftryk længere frem i dens egen game_day-
-  rækkefølge og efterlod de ANDRE streams uden indhold der reelt overlappede GT'ens
-  vindue. Fix: pickLeastLoadedStreamAwayFromZero() bryder ties væk fra stream 0.
-  **Målt (fuld pakke, den faktisk SHIPPEDE kombination): EFTER-spredning falder fra
-  7 til 4 dage** (Giro 10 · Hexagone 7 · Vuelta 6): inden for "≤4-5 dage"-målet og
-  UNDER den rå prod-baseline (som også var 4). Pairwise-afstanden er dog stadig
-  op til 4 dage (Giro-Hexagone), ikke ±1.
-  **PRÆCIS årsag til det resterende gab (instrumenteret dry-run mod det ægte katalog):**
-  Giro (GT1, ingen forrige GT at holde afstand til) starter FØRST på stream 0's egen
-  cursor game_day 17 (efter dens andel af "Trin 2"-fyldet), og dens vindue er derfor
-  [17,38). På DET tidspunkt havde stream 1 kun nået game_day 14 og stream 2 kun 9  - 
-  altså har INGEN af de andre streams noget indhold der overlapper Giro's vindue
-  OVERHOVEDET (0-9 og 0-14 ligger begge FØR 17). Giro kører derfor reelt "alene" i
-  game_day-rummet, hvilket giver minimal komprimering og dermed det bredeste
-  kalender-spænd. Rod-årsagen er STRUKTUREL: hver GT's "Trin 2"-fyld er en LUKKET
-  fase (sker FØR GT'ens egen placering, fryser derefter mens GT'en placeres): den
-  NÆSTE GT's fyld starter først EFTER denne GT er færdigplaceret, så intet nyt
-  indhold kan lande i en TIDLIGERE GT's vindue bagefter. At lukke gabet helt ville
-  kræve at INTERLEAVE rest-fyldet med GT-placeringen i stedet for at sekvensere dem  - 
-  en større, mere risikabel omstrukturering af layoutStream (samme fil har haft 3
-  tidligere regressions-runder, #3472 v1-v3) end tie-break-rettelsen ovenfor, og
-  IKKE forsøgt i denne PR. Rapporteret til ejeren som opfølgnings-kandidat med
-  den præcise mekanik dokumenteret her, så en fremtidig session ikke skal genopdage den.
-- **C (dage uden afgørelse), v2: reducerer markant (halveret igen), men rammer IKKE 0  - 
-  bevist umuligt for netop 2 navngivne dage med det NUVÆRENDE katalog.** Flerpas-
-  udvidelse (gentag scanningen til intet flere sikre bytter findes, i stedet for ét
-  gennemløb) + B's tie-break-fix (bonus-effekt: bedre stream-balance giver også flere
-  afgørelses-muligheder) bragte EFTER fra 5 til **2 dage** (FØR: 5→2 med, uden C ville
-  FØR/EFTER være 7/10: se engangs-diagnostikken fra første scorecard-runde for de tal).
-  **De 2 resterende dage (EFTER, alle 3 seeds: dagene er identiske på tværs af seeds,
-  da selection/packing ikke er seed-afhængig) er BEVIST strukturelt umulige for den
-  sikre bytte-mekanisme, med denne konkrete årsag:**
+⚠ **KRITISK FUND (opdaget under H-implementeringen, IKKE en del af denne rundes ask):**
+C's flerpas-bytte-mekanisme (runde 2) kunne flytte en GT's EGEN etape som en del af et
+bytte (canMoveTo sikrer kun GT'ens interne etape-rækkefølge, ikke #3472 v3's SEPARATE
+"ingen delt kalenderdag mellem to GT'er"-garanti). Verificeret BÅDE i en test-fixture
+og mod det ægte katalog: 1-2 GT'er delte en kalenderdag efter C's bytter kørte: en
+brudt hård invariant der (uopdaget) fulgte med runde 2's PR-opdatering. **Fixet her:**
+GT'er er nu eksplicit udelukket fra HELE C's bytte-kandidatur (hverken donor- eller
+offer-side): ikke kun fra H's spænd-tjek. Verificeret 0 brud, både test-suite og ægte
+katalog (sektion 5). Dette bør have et `.claude/learnings/`-indlæg ved merge.
+
+- **H (ny, denne runde): max-spænd-loft for ikke-GT-etapeløb: RAMMER SIT MÅL PRÆCIST.**
+  Rod-årsag (instrumenteret dry-run, C midlertidigt deaktiveret for at isolere): C's
+  bytte-mekanisme (IKKE selve base-pakningen) skabte strækningen: den flytter typisk
+  et løbs FØRSTE etape (ingen "forrige"-nabo-begrænsning) eller SIDSTE etape (decision-
+  donor-kandidat) langt væk for at dække en dag uden afgørelse et andet sted:
+  sekventielt SIKKERT, men skaber netop den strækningspatologi H retter. Målt FØR/EFTER
+  H-fixet (samme katalog): Tour du Massif Central 6 etaper/14 dage (stræk 2,33) →
+  **5 dage (stræk 0,83)**. La Corsa dei Due Mari 7 etaper/13 dage (stræk 1,86) →
+  **4 dage (stræk 0,57)**. Se sektion 9 for den fulde liste: 0 løb over stages+3 EFTER.
+- **B (Giro-spredning): "≤4-5 dage"-målet holder (spredning 6), men "Giro ≤9, helst
+  ≤8"-målet er IKKE nået: et forsøg blev afprøvet og FORKASTET, fordi det brød en hård
+  invariant.** Giro-spænd EFTER (fuld pakke inkl. H): **10 dage** (Hexagone 5, Vuelta 4).
+  Afprøvet: en empirisk parameter-sweep (faktor 0,6-3,0) af den FØRSTE GT's target-
+  formel fandt et stabilt plateau (faktor 2,3-3,0) der gav Giro-spænd 10→7: MEN
+  verificeret (BÅDE test-fixture og ægte katalog) at det samtidig BRØD #3472 v3's
+  GT-real-day-separations-invariant (to GT'er delte en kalenderdag). Forkastet og
+  reverteret: ingen mængde af Giro-forbedring er værd at bryde en hård, ikke-
+  forhandlingsbar garanti. **Anbefaling: Giro-spænd-målet kræver enten (a) en dybere,
+  separat gennemgang af target-formlen der EKSPLICIT respekterer separations-bufferet
+  (ikke forsøgt her, tidsbudget), eller (b) ejeren accepterer 10 dage som interim
+  (stadig en forbedring fra den oprindelige 13-15 dage tidligere i denne PR's historik,
+  men IKKE under den nuværende live 9-dages værdi).
+- **C (dage uden afgørelse): EFTER GT-udelukkelses-fixet er tallet 4 dage: dette er
+  EN REGRESSION vs. runde 2's rapporterede 2, fordi runde 2's "2" byggede på en**
+  **defekt mekanisme** (GT-bytter der ikke burde have været tilladt). Med fixet (kun
+  sikre, GT-frie bytter) er de 4 dage: 1, 13, 19, 24. Dag 1 og 19 er de samme som
+  tidligere rapporteret (se deres forklaring nedenfor); dag 13 og 24 er NYE: de var
+  tidligere "dækket" af nu-forbudte GT-bytter. **MINIMAL katalog-tilføjelse for 0:**
+  samme princip som før, men nu ~4 endagsløb (positioneret ved de 4 dages fraction),
+  IKKE 2: tallet steg fordi fixet fjernede en (ugyldig) genvej, ikke fordi H gjorde
+  noget værre. D1's kvote er fortsat præcis fyldt (140/140, 0 shortfall/uplaceret).
     - **Dag 1:** tre etapeløb (Ronde van Limburg 7 etaper, La Course au Soleil 8 etaper,
-      Tour du Massif Central 6 etaper) starter ALLE omkring dag 0 og er alle stadig
-      undervejs (ingen af dem slutter dag 1). Ingen andet løb (endagsløb eller
-      slutetape) er placeret den dag at bytte ind.
-    - **Dag 19:** Tour de l'Hexagone (GT) er det ENESTE aktive løb, midt i etaperne
-      (vindue [18,24], slutetape er dag 24): ingen andet løb kører samtidig.
-  **Hvorfor 0 er umuligt UDEN katalog-/kvote-ændring:** D1's kvote er PRÆCIS fyldt
-  (140/140 game-days, 0 shortfall, 0 uplacerede løb/etaper): der findes INTET
-  allerede-valgt-men-uplaceret endagsløb i "kulissen" som C's bytte-mekanisme kunne
-  trække på. At dække de 2 dage kræver derfor at SELECTIONEN (tierRaceSelection.js,
-  uden for denne PRs scope) vælger 2 FLERE endagsløb: hvilket enten kræver at
-  kataloget rent faktisk INDEHOLDER 2 endagsløb til formålet (ét med date_text nær
-  sæson-start, ét inden for Hexagone's eget vindue omkring fraction ~0,6), ELLER at
-  1-2 af de eksisterende etapeløbs game-days byttes ud for dem (en sammensætnings-
-  ændring der hører under #3295's K-B-kalibrering, ikke en placerings-fix).
-  **MINIMAL katalog-tilføjelse: +2 endagsløb** (klasse inden for D1's whitelist),
-  positioneret hhv. tidligt i sæsonen og inden for Hexagone's vindue: en ejer-
-  beslutning med tal, ikke et stille miss.
+      Tour du Massif Central 6 etaper) starter ALLE omkring dag 0, ingen slutter dag 1.
+    - **Dag 19:** Tour de l'Hexagone (GT) er det ENESTE aktive løb, midt i etaperne.
+    - **Dag 13/24:** samme mønster: kun igangværende (ikke-slut-)etaper aktive,
+      ingen sikkert flytbar afgørelse fundet efter GT-udelukkelsen.
 - **A (GT-længde) og D (itt_hilly) rammer begge deres mål præcist**, som talene i
   sektion 1 og 4 viser.
 - **E (uphill-finish) rammer begge mål præcist** (sektion 6): en uafhængig, dedikeret

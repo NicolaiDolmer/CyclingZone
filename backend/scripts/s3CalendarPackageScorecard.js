@@ -183,6 +183,20 @@ export function measureOnce({ pools, catalog, seasonNumber }) {
   }
   const cobblesByWeek = [...cobblesWeeks.entries()].sort((a, b) => a[0] - b[0]).map(([week, count]) => ({ week, count }));
 
+  // (9) Kalender-spænd pr. IKKE-GT-etapeløb (#3546 H, ejer-mål 17/8 sen aften: spillere
+  // målte samme strækningspatologi på småløb som B fiksede for GT'erne). stretch = spænd
+  // / stages: 1.0 = ingen strækning (etaperne kører uafbrudt), >1 = huller. Mål: intet
+  // ikke-GT-løb over stages+3 (H's hårde grænse, håndhævet i enforceDailyDecisions).
+  const nonGtStageRaces = (tier1.chronologyRaces ?? []).filter((r) => (r.stages ?? 1) >= 2 && r.stages < GRAND_TOUR_MIN_STAGES);
+  const stageRaceSpans = nonGtStageRaces.map((r) => {
+    const span = Number.isFinite(r.real_day_end) && Number.isFinite(r.game_day_start) ? r.real_day_end - r.game_day_start + 1 : null;
+    return { id: r.id, name: seedRacesById.get(r.id)?.name ?? null, stages: r.stages, span, stretch: span != null ? span / r.stages : null, overHardLimit: span != null ? span > r.stages + 3 : null };
+  }).sort((a, b) => (b.stretch ?? 0) - (a.stretch ?? 0));
+  const stretchValues = stageRaceSpans.map((r) => r.stretch).filter(Number.isFinite).sort((a, b) => a - b);
+  const stretchMax = stretchValues.length ? stretchValues[stretchValues.length - 1] : null;
+  const stretchMedian = stretchValues.length ? stretchValues[Math.floor(stretchValues.length / 2)] : null;
+  const stretchOverHardLimitCount = stageRaceSpans.filter((r) => r.overHardLimit).length;
+
   return {
     seasonNumber,
     quota: tier1.quota, density: tier1.density,
@@ -196,6 +210,8 @@ export function measureOnce({ pools, catalog, seasonNumber }) {
     densityOk,
     uphillFinishStats, uphillFinishShare,
     cobblesByWeek,
+    stageRaceSpans, stretchMax, stretchMedian, stretchOverHardLimitCount,
+    gtRealDaySeparationViolations: tier1.gtRealDaySeparationViolations ?? [],
   };
 }
 
@@ -303,15 +319,21 @@ export function formatMarkdown({ before, after, overlapBefore, overlapAfter }) {
 
   lines.push(`## 5. Eksisterende invarianter (ingen brud tilladt)`);
   lines.push(``);
-  lines.push(`| Seed | Klasse/etape-bånd-brud (#3328) FØR/EFTER | Hviledage degraderet FØR/EFTER | 5 events/dag holdt FØR/EFTER |`);
-  lines.push(`|---|---|---|---|`);
+  lines.push(`| Seed | Klasse/etape-bånd-brud (#3328) FØR/EFTER | Hviledage degraderet FØR/EFTER | 5 events/dag holdt FØR/EFTER | GT-real-day-separation (#3472 v3) FØR/EFTER |`);
+  lines.push(`|---|---|---|---|---|`);
   for (let i = 0; i < SEEDS.length; i++) {
     lines.push(
       `| ${SEEDS[i]} | ${before[i]?.classBandViolationsCount ?? "?"}/${after[i]?.classBandViolationsCount ?? "?"} | ` +
       `${before[i]?.restDaysDegraded ?? "?"}/${after[i]?.restDaysDegraded ?? "?"} | ` +
-      `${before[i]?.densityOk ?? "?"}/${after[i]?.densityOk ?? "?"} |`
+      `${before[i]?.densityOk ?? "?"}/${after[i]?.densityOk ?? "?"} | ` +
+      `${(before[i]?.gtRealDaySeparationViolations ?? []).length}/${(after[i]?.gtRealDaySeparationViolations ?? []).length} |`
     );
   }
+  lines.push(``);
+  lines.push(`GT-real-day-separation-kolonnen er tilføjet efter en regression opdaget under H-implementeringen`);
+  lines.push(`(17/8 sen aften): C's dagsafgørelses-bytte kunne flytte en GT-etape og bryde "ingen delt`);
+  lines.push(`kalenderdag mellem to GT'er". Fikset (GT'er er nu UDELUKKET fra C's bytte-kandidatur helt): se`);
+  lines.push(`"Fund og begrænsninger" for detaljer. 0/0 i tabellen ovenfor bekræfter fixet holder på det ægte katalog.`);
   lines.push(``);
 
   const allViolations = [...before, ...after].flatMap((e) => e?.calendarViolations ?? []);
@@ -369,6 +391,40 @@ export function formatMarkdown({ before, after, overlapBefore, overlapAfter }) {
   }
   lines.push(``);
 
+  lines.push(`## 9. Kalender-spænd pr. ikke-GT-etapeløb (#3546 H, D1)`);
+  lines.push(``);
+  lines.push(`Ejer-mål: spænd ≤ stages+2 dage (mål), hård grænse stages+3 (håndhævet i selve`);
+  lines.push(`placerings-mekanismen: enforceDailyDecisions afviser ethvert bytte der ville bryde den).`);
+  lines.push(`stræk-faktor = spænd/stages (1,0 = ingen strækning).`);
+  lines.push(``);
+  lines.push(`| Seed | Maks stræk-faktor FØR | Median FØR | Maks stræk-faktor EFTER | Median EFTER | Brud på stages+3 EFTER |`);
+  lines.push(`|---|---|---|---|---|---|`);
+  for (let i = 0; i < SEEDS.length; i++) {
+    const b = before[i], a = after[i];
+    lines.push(
+      `| ${SEEDS[i]} | ${fmtNum(b?.stretchMax, 2)} | ${fmtNum(b?.stretchMedian, 2)} | ${fmtNum(a?.stretchMax, 2)} | ${fmtNum(a?.stretchMedian, 2)} | ${a?.stretchOverHardLimitCount ?? "?"} |`
+    );
+  }
+  lines.push(``);
+  lines.push(`De to navngivne løb thelamba målte (Tour du Massif Central 6 etaper/14 dage, La Corsa dei`);
+  lines.push(`Due Mari 7 etaper/13 dage) FØR H-fixet, EFTER (seed 3, EFTER-kolonnen):`);
+  lines.push(``);
+  const namedRaces = ["Tour du Massif Central", "La Corsa dei Due Mari"];
+  for (const name of namedRaces) {
+    const row = after[0]?.stageRaceSpans?.find((r) => r.name === name);
+    if (row) lines.push(`- **${name}**: ${row.stages} etaper, spænd ${row.span} dage, stræk-faktor ${row.stretch.toFixed(2)} (grænse ${row.stages + 3})`);
+    else lines.push(`- ${name}: ikke fundet i D1's selektion denne kørsel (selection er ikke seed-afhængig, men kan skifte hvis kataloget ændres)`);
+  }
+  lines.push(``);
+  lines.push(`Alle ikke-GT-etapeløb, EFTER, sorteret efter værste stræk-faktor (seed 3):`);
+  lines.push(``);
+  lines.push(`| Løb | Etaper | Spænd | Stræk-faktor |`);
+  lines.push(`|---|---|---|---|`);
+  for (const row of (after[0]?.stageRaceSpans ?? [])) {
+    lines.push(`| ${row.name ?? row.id} | ${row.stages} | ${row.span} | ${row.stretch?.toFixed(2) ?? "?"} |`);
+  }
+  lines.push(``);
+
   lines.push(`## Reference: rå prod-baseline (issue #3546, målt 16-17/8: FØR nogen kode i denne PR)`);
   lines.push(``);
   lines.push(`- GT-andel: 45,0 %`);
@@ -377,69 +433,65 @@ export function formatMarkdown({ before, after, overlapBefore, overlapAfter }) {
   lines.push(`- Uphill-finish: 0/254 hilly, 0/65 rolling`);
   lines.push(`- Cobbles pr. uge: 29→24→18→8 (monotont fald)`);
   lines.push(`- D2 maxOverlap: op til 4 (målt i den LIVE, ældre-genererede S3-kalender)`);
+  lines.push(`- Ikke-GT-etapeløbs-stræk: Tour du Massif Central 6 etaper/14 dage (stræk 2,33), La Corsa`);
+  lines.push(`  dei Due Mari 7 etaper/13 dage (stræk 1,86): thelambas spillerfeedback-fund 17/8 sen aften`);
   lines.push(``);
 
   lines.push(`## Fund og begrænsninger (ærlig rapportering: ikke alt ramte målet fuldt ud)`);
   lines.push(``);
-  lines.push(`Denne sektion er opdateret EFTER arkitekt-review 17/8 aften: B fik et rodfix nummer 2`);
-  lines.push(`(stream-valgets tie-break) og C fik en flerpas-udvidelse. Begge forbedrede sig markant`);
-  lines.push(`(se under), men rammer ikke deres respektive absolutte mål (±1 dag hhv. 0 døde dage)  - `);
-  lines.push(`begge resterende gaps er nu PRÆCIST forklaret og kvantificeret nedenfor, som krævet.`);
+  lines.push(`Denne sektion er opdateret EFTER runde 3 (arkitekt-go 17/8 sen aften, ny leverance H:`);
+  lines.push(`max-spænd-loft for ikke-GT-etapeløb). H's implementering afdækkede en ALVORLIG, PRÆ-`);
+  lines.push(`EKSISTERENDE regression i C (fra runde 2's flerpas-udvidelse, ikke en del af H's egen`);
+  lines.push(`ask): se den fremhævede boks nedenfor. Giro-spænd-målet (≤9, helst ≤8) blev FORSØGT`);
+  lines.push(`nået via en target-formel-justering, men afprøvningen BRØD en hård invariant og blev`);
+  lines.push(`derfor forkastet: se H-afsnittet for den fulde afprøvning + tal.`);
   lines.push(``);
-  lines.push(`- **B (Giro-spredning), v2: rammer "≤4-5 dage"-målet, men IKKE det fulde ±1 dags-mål.**`);
-  lines.push(`  Rodfix: layoutStream's mindst-belastede stream-valg brød konsekvent tie mod stream 0`);
-  lines.push(`  (indeks 0 vinder altid en cursor-uafgørelse): PRÆCIS den stream GT'erne selv ligger`);
-  lines.push(`  på. Det betød at "rest"-fyldet FØR hver GT systematisk blev dumpet på GT'ens EGEN`);
-  lines.push(`  stream, hvilket skubbede GT'ens fodaftryk længere frem i dens egen game_day-`);
-  lines.push(`  rækkefølge og efterlod de ANDRE streams uden indhold der reelt overlappede GT'ens`);
-  lines.push(`  vindue. Fix: pickLeastLoadedStreamAwayFromZero() bryder ties væk fra stream 0.`);
-  lines.push(`  **Målt (fuld pakke, den faktisk SHIPPEDE kombination): EFTER-spredning falder fra`);
-  lines.push(`  7 til 4 dage** (Giro 10 · Hexagone 7 · Vuelta 6): inden for "≤4-5 dage"-målet og`);
-  lines.push(`  UNDER den rå prod-baseline (som også var 4). Pairwise-afstanden er dog stadig`);
-  lines.push(`  op til 4 dage (Giro-Hexagone), ikke ±1.`);
-  lines.push(`  **PRÆCIS årsag til det resterende gab (instrumenteret dry-run mod det ægte katalog):**`);
-  lines.push(`  Giro (GT1, ingen forrige GT at holde afstand til) starter FØRST på stream 0's egen`);
-  lines.push(`  cursor game_day 17 (efter dens andel af "Trin 2"-fyldet), og dens vindue er derfor`);
-  lines.push(`  [17,38). På DET tidspunkt havde stream 1 kun nået game_day 14 og stream 2 kun 9  - `);
-  lines.push(`  altså har INGEN af de andre streams noget indhold der overlapper Giro's vindue`);
-  lines.push(`  OVERHOVEDET (0-9 og 0-14 ligger begge FØR 17). Giro kører derfor reelt "alene" i`);
-  lines.push(`  game_day-rummet, hvilket giver minimal komprimering og dermed det bredeste`);
-  lines.push(`  kalender-spænd. Rod-årsagen er STRUKTUREL: hver GT's "Trin 2"-fyld er en LUKKET`);
-  lines.push(`  fase (sker FØR GT'ens egen placering, fryser derefter mens GT'en placeres): den`);
-  lines.push(`  NÆSTE GT's fyld starter først EFTER denne GT er færdigplaceret, så intet nyt`);
-  lines.push(`  indhold kan lande i en TIDLIGERE GT's vindue bagefter. At lukke gabet helt ville`);
-  lines.push(`  kræve at INTERLEAVE rest-fyldet med GT-placeringen i stedet for at sekvensere dem  - `);
-  lines.push(`  en større, mere risikabel omstrukturering af layoutStream (samme fil har haft 3`);
-  lines.push(`  tidligere regressions-runder, #3472 v1-v3) end tie-break-rettelsen ovenfor, og`);
-  lines.push(`  IKKE forsøgt i denne PR. Rapporteret til ejeren som opfølgnings-kandidat med`);
-  lines.push(`  den præcise mekanik dokumenteret her, så en fremtidig session ikke skal genopdage den.`);
-  lines.push(`- **C (dage uden afgørelse), v2: reducerer markant (halveret igen), men rammer IKKE 0  - `);
-  lines.push(`  bevist umuligt for netop 2 navngivne dage med det NUVÆRENDE katalog.** Flerpas-`);
-  lines.push(`  udvidelse (gentag scanningen til intet flere sikre bytter findes, i stedet for ét`);
-  lines.push(`  gennemløb) + B's tie-break-fix (bonus-effekt: bedre stream-balance giver også flere`);
-  lines.push(`  afgørelses-muligheder) bragte EFTER fra 5 til **2 dage** (FØR: 5→2 med, uden C ville`);
-  lines.push(`  FØR/EFTER være 7/10: se engangs-diagnostikken fra første scorecard-runde for de tal).`);
-  lines.push(`  **De 2 resterende dage (EFTER, alle 3 seeds: dagene er identiske på tværs af seeds,`);
-  lines.push(`  da selection/packing ikke er seed-afhængig) er BEVIST strukturelt umulige for den`);
-  lines.push(`  sikre bytte-mekanisme, med denne konkrete årsag:**`);
+  lines.push(`⚠ **KRITISK FUND (opdaget under H-implementeringen, IKKE en del af denne rundes ask):**`);
+  lines.push(`C's flerpas-bytte-mekanisme (runde 2) kunne flytte en GT's EGEN etape som en del af et`);
+  lines.push(`bytte (canMoveTo sikrer kun GT'ens interne etape-rækkefølge, ikke #3472 v3's SEPARATE`);
+  lines.push(`"ingen delt kalenderdag mellem to GT'er"-garanti). Verificeret BÅDE i en test-fixture`);
+  lines.push(`og mod det ægte katalog: 1-2 GT'er delte en kalenderdag efter C's bytter kørte: en`);
+  lines.push(`brudt hård invariant der (uopdaget) fulgte med runde 2's PR-opdatering. **Fixet her:**`);
+  lines.push(`GT'er er nu eksplicit udelukket fra HELE C's bytte-kandidatur (hverken donor- eller`);
+  lines.push(`offer-side): ikke kun fra H's spænd-tjek. Verificeret 0 brud, både test-suite og ægte`);
+  lines.push(`katalog (sektion 5). Dette bør have et \`.claude/learnings/\`-indlæg ved merge.`);
+  lines.push(``);
+  lines.push(`- **H (ny, denne runde): max-spænd-loft for ikke-GT-etapeløb: RAMMER SIT MÅL PRÆCIST.**`);
+  lines.push(`  Rod-årsag (instrumenteret dry-run, C midlertidigt deaktiveret for at isolere): C's`);
+  lines.push(`  bytte-mekanisme (IKKE selve base-pakningen) skabte strækningen: den flytter typisk`);
+  lines.push(`  et løbs FØRSTE etape (ingen "forrige"-nabo-begrænsning) eller SIDSTE etape (decision-`);
+  lines.push(`  donor-kandidat) langt væk for at dække en dag uden afgørelse et andet sted:`);
+  lines.push(`  sekventielt SIKKERT, men skaber netop den strækningspatologi H retter. Målt FØR/EFTER`);
+  lines.push(`  H-fixet (samme katalog): Tour du Massif Central 6 etaper/14 dage (stræk 2,33) →`);
+  lines.push(`  **5 dage (stræk 0,83)**. La Corsa dei Due Mari 7 etaper/13 dage (stræk 1,86) →`);
+  lines.push(`  **4 dage (stræk 0,57)**. Se sektion 9 for den fulde liste: 0 løb over stages+3 EFTER.`);
+  lines.push(`- **B (Giro-spredning): "≤4-5 dage"-målet holder (spredning 6), men "Giro ≤9, helst`);
+  lines.push(`  ≤8"-målet er IKKE nået: et forsøg blev afprøvet og FORKASTET, fordi det brød en hård`);
+  lines.push(`  invariant.** Giro-spænd EFTER (fuld pakke inkl. H): **10 dage** (Hexagone 5, Vuelta 4).`);
+  lines.push(`  Afprøvet: en empirisk parameter-sweep (faktor 0,6-3,0) af den FØRSTE GT's target-`);
+  lines.push(`  formel fandt et stabilt plateau (faktor 2,3-3,0) der gav Giro-spænd 10→7: MEN`);
+  lines.push(`  verificeret (BÅDE test-fixture og ægte katalog) at det samtidig BRØD #3472 v3's`);
+  lines.push(`  GT-real-day-separations-invariant (to GT'er delte en kalenderdag). Forkastet og`);
+  lines.push(`  reverteret: ingen mængde af Giro-forbedring er værd at bryde en hård, ikke-`);
+  lines.push(`  forhandlingsbar garanti. **Anbefaling: Giro-spænd-målet kræver enten (a) en dybere,`);
+  lines.push(`  separat gennemgang af target-formlen der EKSPLICIT respekterer separations-bufferet`);
+  lines.push(`  (ikke forsøgt her, tidsbudget), eller (b) ejeren accepterer 10 dage som interim`);
+  lines.push(`  (stadig en forbedring fra den oprindelige 13-15 dage tidligere i denne PR's historik,`);
+  lines.push(`  men IKKE under den nuværende live 9-dages værdi).`);
+  lines.push(`- **C (dage uden afgørelse): EFTER GT-udelukkelses-fixet er tallet 4 dage: dette er`);
+  lines.push(`  EN REGRESSION vs. runde 2's rapporterede 2, fordi runde 2's "2" byggede på en**`);
+  lines.push(`  **defekt mekanisme** (GT-bytter der ikke burde have været tilladt). Med fixet (kun`);
+  lines.push(`  sikre, GT-frie bytter) er de 4 dage: 1, 13, 19, 24. Dag 1 og 19 er de samme som`);
+  lines.push(`  tidligere rapporteret (se deres forklaring nedenfor); dag 13 og 24 er NYE: de var`);
+  lines.push(`  tidligere "dækket" af nu-forbudte GT-bytter. **MINIMAL katalog-tilføjelse for 0:**`);
+  lines.push(`  samme princip som før, men nu ~4 endagsløb (positioneret ved de 4 dages fraction),`);
+  lines.push(`  IKKE 2: tallet steg fordi fixet fjernede en (ugyldig) genvej, ikke fordi H gjorde`);
+  lines.push(`  noget værre. D1's kvote er fortsat præcis fyldt (140/140, 0 shortfall/uplaceret).`);
   lines.push(`    - **Dag 1:** tre etapeløb (Ronde van Limburg 7 etaper, La Course au Soleil 8 etaper,`);
-  lines.push(`      Tour du Massif Central 6 etaper) starter ALLE omkring dag 0 og er alle stadig`);
-  lines.push(`      undervejs (ingen af dem slutter dag 1). Ingen andet løb (endagsløb eller`);
-  lines.push(`      slutetape) er placeret den dag at bytte ind.`);
-  lines.push(`    - **Dag 19:** Tour de l'Hexagone (GT) er det ENESTE aktive løb, midt i etaperne`);
-  lines.push(`      (vindue [18,24], slutetape er dag 24): ingen andet løb kører samtidig.`);
-  lines.push(`  **Hvorfor 0 er umuligt UDEN katalog-/kvote-ændring:** D1's kvote er PRÆCIS fyldt`);
-  lines.push(`  (140/140 game-days, 0 shortfall, 0 uplacerede løb/etaper): der findes INTET`);
-  lines.push(`  allerede-valgt-men-uplaceret endagsløb i "kulissen" som C's bytte-mekanisme kunne`);
-  lines.push(`  trække på. At dække de 2 dage kræver derfor at SELECTIONEN (tierRaceSelection.js,`);
-  lines.push(`  uden for denne PRs scope) vælger 2 FLERE endagsløb: hvilket enten kræver at`);
-  lines.push(`  kataloget rent faktisk INDEHOLDER 2 endagsløb til formålet (ét med date_text nær`);
-  lines.push(`  sæson-start, ét inden for Hexagone's eget vindue omkring fraction ~0,6), ELLER at`);
-  lines.push(`  1-2 af de eksisterende etapeløbs game-days byttes ud for dem (en sammensætnings-`);
-  lines.push(`  ændring der hører under #3295's K-B-kalibrering, ikke en placerings-fix).`);
-  lines.push(`  **MINIMAL katalog-tilføjelse: +2 endagsløb** (klasse inden for D1's whitelist),`);
-  lines.push(`  positioneret hhv. tidligt i sæsonen og inden for Hexagone's vindue: en ejer-`);
-  lines.push(`  beslutning med tal, ikke et stille miss.`);
+  lines.push(`      Tour du Massif Central 6 etaper) starter ALLE omkring dag 0, ingen slutter dag 1.`);
+  lines.push(`    - **Dag 19:** Tour de l'Hexagone (GT) er det ENESTE aktive løb, midt i etaperne.`);
+  lines.push(`    - **Dag 13/24:** samme mønster: kun igangværende (ikke-slut-)etaper aktive,`);
+  lines.push(`      ingen sikkert flytbar afgørelse fundet efter GT-udelukkelsen.`);
   lines.push(`- **A (GT-længde) og D (itt_hilly) rammer begge deres mål præcist**, som talene i`);
   lines.push(`  sektion 1 og 4 viser.`);
   lines.push(`- **E (uphill-finish) rammer begge mål præcist** (sektion 6): en uafhængig, dedikeret`);

@@ -784,3 +784,34 @@ test("#3546 B v2: GT-spredning forbedres mærkbart mod en asymmetrisk fase-forde
   // et præcisionskrav på denne syntetiske fixture.
   assert.ok(spread <= 12, `forventede en begrænset spredning på denne fixture (fik ${spread}, spans=${spans.join(",")})`);
 });
+
+// ── #3546 H: max-spænd-loft for ikke-GT-etapeløb (stages+3, hård grænse) ────────────
+test("#3546 H: ikke-GT-etapeløb strækkes ALDRIG ud over stages+3 kalenderdage, selv med mange konkurrerende dage-uden-afgørelse", () => {
+  const stageRaces = [
+    { id: "sr-1", stages: 6, race_class: "ProSeries", seasonFraction: 0.1 },
+    { id: "sr-2", stages: 5, race_class: "ProSeries", seasonFraction: 0.3 },
+    { id: "sr-3", stages: 7, race_class: "ProSeries", seasonFraction: 0.6 },
+  ];
+  const oneDayRaces = [
+    { id: "mon-1", race_class: "Monuments", seasonFraction: 0.02 }, // tvinger stream-layout
+    ...Array.from({ length: 6 }, (_, i) => ({ id: `od-${i}`, race_class: "ProSeries", seasonFraction: 0.05 + i * 0.15 })),
+  ];
+  const r = packLaneCalendar({ stageRaces, oneDayRaces, density: 3, days: 28, overlapCap: 2, spineMinStages: 15 });
+  for (const p of r.placements) {
+    if ((p.stages ?? 1) < 2 || p.stages >= 15) continue; // kun ikke-GT-etapeløb
+    const days = p.stagesPlaced.map((s) => s.real_day);
+    const span = Math.max(...days) - Math.min(...days) + 1;
+    assert.ok(span <= p.stages + 3, `${p.id}: spænd ${span} > stages(${p.stages})+3`);
+  }
+});
+
+test("#3546 H: GT'er er ALDRIG en bytte-kandidat i C's dagsafgørelses-mekanisme (regressionsvagt: fundet under H-implementeringen, et GT-bytte brød #3472 v3's GT-real-day-separation)", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  const r = packLaneCalendar(cfg);
+  assert.deepEqual(r.gtRealDaySeparationViolations, [], "GT-real-day-separation skal ALDRIG brydes, heller ikke af C's bytte-mekanisme");
+});
