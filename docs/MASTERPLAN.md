@@ -8,11 +8,11 @@
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-1. ⛔ **#3449 markedssweep — SKAL IKKE MERGES** (målt 14/8, [audit](audits/2026-08-14-oplaas-vaerdier-og-loefter.md)). Sweepet er **søndags-gated**, så ejer-løftet "mellem i dag og fredag" var strukturelt umuligt uanset modelkvalitet. Dertil: modellen måler dårligere end den der kører, metrikken er cirkulær (65,4 % af auktioner lukker på modellens eget anker), og artefaktet er fittet på en typefordeling hvor divergensen nu er 74,8 %. **Anbefaling: rebase, behold koden, slet artefaktet, hold draft.** Refit først efter typebeslutningen **og efter [#3750](https://github.com/NicolaiDolmer/CyclingZone/issues/3750)** — 739 bank-salg til en mekanisk 25 % indgår i dag i fittet som markedsevidens. Spillerbesked er ejer-handling.
-2. 🔴 **#3645 rollback-drejebog + backup-tabeller.** Ejer-valg 13/8: **backup + genberegnings-script for BÅDE løn og mandat**, ikke kun en skreven plan. Intet skrevet pr. 14/8.
-3. 🔵 **#3514 mandat fase 1a/1b — ANBEFALES DROPPET fra cutoveren** per sin egen regel: hård frist 19/8, og intet er bygget pr. 14/8. Ejer-beslutning mangler. Efter cutover får den plads til at blive god i stedet for presset.
-4. 🔴 **#3393 løn** — ✅ **#3730 er løst** (rod-årsagen var en fejl: hold oprettet midt i en sæson fik nul sponsor; merget + 7,95 M udbetalt). Blokeret nu **kun af beslutning 4+5** ([#3757](https://github.com/NicolaiDolmer/CyclingZone/issues/3757)). Lønkurvens konkave form er målt god og skal ikke laves om — den fjerner 8/9 af alders-inversionen.
-5. ✅ **#3459 race-day-flip** — komplet i main, `race_day_engine_enabled` verificeret `off` i prod. Kun selve flippet mangler.
+1. ⛔ **#3449 markedssweep — refit-gaten målt RØD 17/8** (bølge 2 spor 9, PR #3836 merged: #3750-filter + refit-værktøj + inert config). Refittet måler dårligere end kørende på alle mål (MAE 29.831 mod 20.572). **Nøglefund: kørende model × 0,422 slår alt** — niveau-korrektion (én konstant), ikke modelskifte, er den anbefalede vej; blend-sweepets omfordeling er bekræftet doktrin-brud. Beslutning + måling hører i **værdi/løn-design-sessionen**. #3449 forbliver draft.
+2. ✅ **#3645 drejebog + værktøj LEVERET 17/8** — drejebog ejer-besluttet + merged; snapshot/caps-rollback/backup/genberegnings-scripts merged (PR #3835) og BEVIST mod staging (netto-nul-test).
+3. 🟠 **#3514 mandat — GENOPLIVET af ejeren 17/8; fase 1a/1b MERGED inert** (PR #3834). Backfill 23/8 ejer-gated, gate GRØN; UI-flip har egen gate senere. Rest: staging-script-apply med ejer-nøgle.
+4. 🔵 **#3393 løn — beslutning 4+5 TRUFFET 17/8** (ankerværdi + ét globalt A mod 35 % af genmålt indtægt). Ejer-valg: designes færdig SAMMEN før ombygning (design-session). Lønkurvens konkave form er fredet. Flipper ikke 23/8.
+5. ✅ **#3459 race-day-flip** — komplet, flag `off` i prod, rollback-værktøj bevist, spillerbesked-udkast klar (post før søndag). **23/8 = race-day + mandat-backfill.**
 6. 🔵 **Auto-accept-floor 15/8 bliver stående** (ejer 13/8, ingen handling). Fair-window (#3584) er i main, så 20/8 rammer kun inaktive hold; aktive først 25/8.
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE, startet 13/8)
@@ -70,7 +70,7 @@ Ejer 13/8: *"skal prioriteres snarligt, når der er lidt mere styr på store bug
 
 Natbølger/sidesessioner; hovedsporet taber ikke tempo. **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 til ejeren. Visuel udgave af hele 30-punkts-planen: masterplan-artifacten.
 
-- **W1 integritet:** #3580 #2982 #2836 #3594 #3582 #2086 · **W2 ny-spiller:** #3037(forward-regel) #3751 #3008 · **W3 observability:** #3653 #3695 #3696 #3684 #3638 · **W4 hærdning:** #3420 #3415 #2847 · **W5 marked:** #3066 #3067 #3787 #3786 #3783 #3708 #2403 #2400 · **W6 indbakke:** #3496 #3493 #3491 #3549 #3098 #3439 · **W7 hjælp/transparens:** #3714 #3623 #3551 #3456 #3412 #2889 · **W8 beslutnings-sessioner:** 54 needs-decision i bundter a 10-15 · **W9 housekeeping-audit XL.**
+- **W1 integritet:** #3580 #2982 #2836 #3594 #3582 #2086 · **W2 ny-spiller:** #3037(forward-regel) #3751 #3008 · **W3 observability:** #3653 #3695 #3696 #3684 #3638 (✅ #3819 17/8) · **W4 hærdning:** #3420 #3415 #2847 · **W5 marked:** rest #3787 #3708 (✅ 17/8: #3066 #3067 #3786 #3783 #2403 #2400 #3826) · **W6 indbakke:** rest #3098 #3439 (✅ 17/8: #3496 #3493 #3491 #3549) · **W7 hjælp/transparens:** rest #3714 (✅ 17/8: #3551 #2889; #3623/#3456/#3412 venter bevidst på trin 7) · **W8 beslutnings-sessioner:** 54 needs-decision i bundter a 10-15 · **W9 housekeeping-audit XL.**
 - **E-mail-kæden før flip:** #3585 + #3600 + #2085 → derefter #2853.
 - **S3-kalender-finpuds FØR 23/8:** kalenderen ER genbygget (v7.105) — mål den mod #3546/#3547/#3471/#3349/#3328 og beslut kun resterne.
 - Verificeret 15/8: #3548 lukket · #3632 merged (venter prod-fødsel) · #3396 bygget, kun genafspilnings-hul åbent · #3037 make-good udført 26/7 · #2022 ejes af #3514.

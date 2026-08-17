@@ -630,6 +630,10 @@ test("emitRaceResultNotifications: bruger narrativ rubrik + personligt resultat 
     return {
       headlineText: "Krogh takes the sprint",
       ranksByUser: new Map([["u1", [2, 5]]]),
+      // #3493: rubrikken handler om u1's EGEN rytter (Krogh) — relevans-guarden
+      // skal derfor lade narrativet stå.
+      riderIdsByUser: new Map([["u1", new Set(["r-krogh"])]]),
+      headlineRiderIds: ["r-krogh"],
     };
   };
 
@@ -643,6 +647,28 @@ test("emitRaceResultNotifications: bruger narrativ rubrik + personligt resultat 
   assert.equal(call.title, "Krogh takes the sprint");
   assert.equal(call.message, "Clásica de Prueba has been run. You placed 2nd and 5th.");
   assert.deepEqual(call.metadata, { raceId: "race-1", narrative: true }, "ingen titleCode/messageCode — legacy title+message-gren bruges bevidst for dynamisk narrativ tekst");
+});
+
+// #3493: spillerreaktion på #3399 — rubrikken må IKKE handle om en RIVAL-rytter
+// i modtagerens egen indbakke, selvom modtageren har et personligt resultat.
+test("emitRaceResultNotifications: degraderer til standard-copy naar rubrikken handler om en ANDEN rytter end modtagerens egne (#3493)", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  const fetchRaceNarrative = async () => ({
+    headlineText: "Rival Rider wins the sprint",
+    ranksByUser: new Map([["u1", [7]]]),
+    riderIdsByUser: new Map([["u1", new Set(["r-mine"])]]), // u1's egen rytter er IKKE rubrikkens rytter
+    headlineRiderIds: ["r-rival"],
+  });
+
+  await emitRaceResultNotifications({
+    supabase: {}, race: RACE, notify,
+    fetchParticipatingManagers: async () => ["u1"],
+    fetchRaceNarrative,
+  });
+
+  const call = calls[0];
+  assert.equal(call.title, "Race result is in", "rubrik om en rival degraderer helt til standard-copy — ikke en fortælling om andre holds ryttere i egen indbakke");
+  assert.equal(call.metadata.titleCode, "notif.raceResult.title");
 });
 
 test("emitRaceResultNotifications: degraderer til standard-copy naar narrativ mangler ranks for DENNE manager", async () => {
@@ -687,7 +713,13 @@ test("#2523 emitStageResult: bruger narrativ rubrik + personligt resultat naar b
   const fetchStageNarrative = async ({ race, stageNumber }) => {
     assert.equal(race.id, "race-2");
     assert.equal(stageNumber, 2);
-    return { headlineText: "Krogh wins by 0:08", ranksByUser: new Map() };
+    return {
+      headlineText: "Krogh wins by 0:08",
+      ranksByUser: new Map(),
+      // #3493: rubrikken handler om u1's EGEN rytter (Krogh).
+      riderIdsByUser: new Map([["u1", new Set(["r-krogh"])]]),
+      headlineRiderIds: ["r-krogh"],
+    };
   };
 
   await emitStageResultNotifications({
@@ -703,6 +735,27 @@ test("#2523 emitStageResult: bruger narrativ rubrik + personligt resultat naar b
   assert.equal(call.title, "Krogh wins by 0:08");
   assert.equal(call.message, "Stage 2 of Tour du Tyrol. You placed 2nd and 5th.", "begge ryttere paa holdet indgaar i det personlige resultat, ikke kun den bedste");
   assert.deepEqual(call.metadata, { raceId: "race-2", stageNumber: 2, totalStages: 5, narrative: true });
+});
+
+// #3493: samme relevans-guard for etape-notifikationer — se emitRaceResultNotifications' tilsvarende test.
+test("#2523/#3493 emitStageResult: degraderer til standard-copy naar rubrikken handler om en ANDEN rytter end modtagerens egne", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  const fetchStageNarrative = async () => ({
+    headlineText: "Rival Rider wins by 0:08",
+    ranksByUser: new Map(),
+    riderIdsByUser: new Map([["u1", new Set(["r-mine"])]]),
+    headlineRiderIds: ["r-rival"],
+  });
+
+  await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 2, totalStages: 5, notify,
+    fetchStageParticipants: async () => [{ userId: "u1", rank: 4, riderName: "Rider A" }],
+    fetchStageNarrative,
+  });
+
+  const call = calls[0];
+  assert.equal(call.title, "Stage result is in", "rubrik om en rival degraderer helt til standard-copy");
+  assert.equal(call.metadata.titleCode, "notif.stageResult.title");
 });
 
 test("#2523 emitStageResult: degraderer til standard-copy naar fetchStageNarrative returnerer null", async () => {

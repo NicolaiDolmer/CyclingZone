@@ -3,9 +3,13 @@
 // den generiske config.link ("/resultater"). For et etapeløb er en ny spillers
 // FØRSTE resultat-notifikation ofte en stage_result (etape 1 er kørt, GC/samlet
 // resultat kommer senere) — den ekstra klik-friktion ramte altså præcis
-// funnellens sværeste trin. Kildekode-struktur-guard, samme mønster som
-// MyLatestResultCard.seenServerFlag.test.js — repoet kører node --test uden
-// DOM-renderer.
+// funnellens sværeste trin.
+//
+// #3496/#3491: link-udledningen boede oprindeligt inline i NotificationsPage.jsx's
+// click-handler; flyttet til lib/notificationLink.js (ren funktion) for at kunne
+// dedup'e den mod tilbuds-/scout-deep-link-reglerne uden en kæmpe komponent-fil.
+// Kildekode-struktur-guard, samme mønster som MyLatestResultCard.seenServerFlag.test.js
+// — repoet kører node --test uden DOM-renderer.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -14,12 +18,13 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "NotificationsPage.jsx"), "utf8");
+const linkLibSource = readFileSync(join(__dirname, "../lib/notificationLink.js"), "utf8");
 
 test("#3243 race_result OG stage_result deep-linker begge direkte til /races/:raceId", () => {
   assert.match(
-    source,
-    /\(n\.type === "race_result" \|\| n\.type === "stage_result"\) && \(n\.metadata\?\.raceId \|\| n\.related_id\)/,
-    "click-handleren skal route begge notifikationstyper til den specifikke løbsside",
+    linkLibSource,
+    /\(n\.type === "race_result" \|\| n\.type === "stage_result"\) && \(meta\.raceId \|\| n\.related_id\)/,
+    "resolveNotificationLink skal route begge notifikationstyper til den specifikke løbsside",
   );
 });
 
@@ -27,14 +32,14 @@ test("#3243 stage_result har stadig en generisk fallback i TYPE_CONFIG (uændret
   assert.match(
     source,
     /stage_result:\s*\{[^}]*link:\s*"\/resultater"/,
-    "TYPE_CONFIG.stage_result.link forbliver den sikre fallback — kun click-handlerens deep-link-regel ændres",
+    "TYPE_CONFIG.stage_result.link forbliver den sikre fallback — kun resolveNotificationLink's deep-link-regel ændres",
   );
 });
 
 // #2180/#3310: selection_warning havde backend live (#3280) men manglede sin
 // TYPE_CONFIG-entry — faldt til DEFAULT_TYPE_CONFIG (generisk klokke, intet
 // link). Kalender-boardet er en sikker fallback (uden raceId ingen deep-link
-// mulig); click-handleren deep-linker til løbets selection-anker når
+// mulig); resolveNotificationLink deep-linker til løbets selection-anker når
 // metadata.raceId/related_id findes, samme mønster som race_result/stage_result.
 test("selection_warning har TYPE_CONFIG-entry med kalender-fallback", () => {
   assert.match(
@@ -46,8 +51,8 @@ test("selection_warning har TYPE_CONFIG-entry med kalender-fallback", () => {
 
 test("selection_warning deep-linker til løbets selection-anker", () => {
   assert.match(
-    source,
+    linkLibSource,
     /selection_warning[\s\S]{0,120}\/races\/\$\{[^}]+\}#selection/,
-    "click-handleren skal route selection_warning til /races/:raceId#selection når raceId/related_id findes",
+    "resolveNotificationLink skal route selection_warning til /races/:raceId#selection når raceId/related_id findes",
   );
 });

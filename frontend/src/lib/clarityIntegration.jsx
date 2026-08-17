@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
 import { getAnonymousId } from "./anonymousId.js";
 import { CLARITY_CONSENT_V2_PAYLOAD } from "./clarityConsent.js";
+import { isLikelyAutomation, isPrerendering, isSelfReferralEntry } from "./clarityBotSignals.js";
 
 // import.meta.env optional-chained så modulet kan importeres i node --test,
 // jf. konventionen i trafficBeacon.js.
@@ -23,8 +24,23 @@ function loadClarity() {
   return clarityPromise;
 }
 
+// #3819: known automation frameworks (Selenium/Puppeteer/Playwright m.fl.)
+// sætter navigator.webdriver — ægte browsere gør aldrig. Billig, false-
+// positive-fri filtrering; fanger ikke nødvendigvis #3819-spikens trafik
+// (den undgik allerede Clarity's egen IsBot-heuristik) men er god praksis.
+function shouldSkipForAutomation() {
+  return typeof navigator !== "undefined" && isLikelyAutomation(navigator);
+}
+
 async function startClarity() {
   if (clarityStarted || !ENABLED) return;
+  if (shouldSkipForAutomation()) return;
+  if (typeof document !== "undefined" && isPrerendering(document)) {
+    // Siden bliver måske aldrig aktiveret (Speculation Rules-prerender) —
+    // udskyd init til den faktisk bliver et rigtigt besøg.
+    document.addEventListener("prerenderingchange", () => { startClarity(); }, { once: true });
+    return;
+  }
   try {
     const Clarity = await loadClarity();
     if (clarityStarted) return; // re-entry guard
@@ -33,6 +49,15 @@ async function startClarity() {
     // can be recorded, so Clarity never processes a page as "unconsented".
     Clarity.consentV2(CLARITY_CONSENT_V2_PAYLOAD);
     clarityStarted = true;
+    // #3819: tag self-referral entries (cyclingzone.org → cyclingzone.org,
+    // det dominerende signal i den syntetiske spike, 2.929/~4.000 sessions)
+    // så ejeren kan ekskludere dem i Clarity's dashboard-filtre uden at
+    // blokere optagelsen — ægte selv-referral (fx target="_blank" fra en
+    // intern side) findes og skal stadig kunne ses/inkluderes ved behov.
+    if (typeof document !== "undefined" && typeof window !== "undefined"
+      && isSelfReferralEntry(document.referrer, window.location.origin)) {
+      setClarityTag("entry_referrer", "self");
+    }
   } catch (err) {
     console.error("clarity init failed:", err);
   }

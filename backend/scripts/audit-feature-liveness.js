@@ -188,6 +188,14 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
   // isFlagOff hvilke værdier der tæller som off. Flippes til "daily" (tidligst
   // S3-cutover 23/8) og tabellen forbliver tom, flager Detector A som normalt.
   ["wage_daily_runs", { flagKey: "wage_deduction_mode", offValues: ["season_upfront"] }],
+  // Mandat-modellen (#3514, PR #3834 merged 17/8 bevidst inert): de tre tabeller
+  // SKAL være tomme indtil backfillen køres ejer-gated 23/8 (cutover-drejebogen
+  // komponent 4). board_mandate_model_enabled = "off" er seedet af migrationen.
+  // Flippes flaget uden at backfillen har fyldt tabellerne, er det en ægte bug,
+  // og Detector A skal flage som normalt.
+  ["board_relations", { flagKey: "board_mandate_model_enabled" }],
+  ["board_mandates", { flagKey: "board_mandate_model_enabled" }],
+  ["board_vision_milestones", { flagKey: "board_mandate_model_enabled" }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)

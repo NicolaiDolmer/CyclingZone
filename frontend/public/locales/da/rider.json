@@ -76,6 +76,12 @@
     "retired": "Rytteren er pensioneret og kan ikke handles.",
     "errorFallback": "Noget gik galt"
   },
+  "offerShortcut": {
+    "textWithPrice": "Åbent tilbud: {price} CZ$ fra {team}",
+    "text": "Åbent tilbud fra {team}",
+    "unknownTeam": "en anden manager",
+    "cta": "Tag stilling"
+  },
   "tabs": {
     "stats": "Evner",
     "season": "Sæsonhistorik",

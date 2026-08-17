@@ -7,6 +7,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
+import { resolveNotificationLink } from "../lib/notificationLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { useActionSummary } from "../hooks/useActionSummary";
@@ -40,6 +41,10 @@ const TYPE_CONFIG = {
   bid_received:              { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
   bid_placed:                { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
   auction_won:               { Icon: TrophyIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/auctions" },
+  // #3549: sælgerens "afsluttet"-besked — udskilt fra auction_won (købers type)
+  // så de to notifikationer aldrig igen kan kollidere når køber og sælger er
+  // samme hold. Se auctionFinalization.js.
+  auction_sold:              { Icon: CoinIcon,         color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/auctions" },
   auction_lost:              { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/auctions" },
   auction_outbid:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/auctions" },
   watchlist_rider_auction:   { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
@@ -97,7 +102,7 @@ const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-sub
 const MINE_FILTER_TYPES = {
   all:       null,
   unread:    null,
-  auctions:  ["bid_received","bid_placed","auction_won","auction_lost","auction_outbid","watchlist_rider_auction"],
+  auctions:  ["bid_received","bid_placed","auction_won","auction_sold","auction_lost","auction_outbid","watchlist_rider_auction"],
   transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed","watchlist_departed","contract_expiring"],
   board:     ["board_update", "board_critical"],
   finance:   ["salary_paid","sponsor_paid","loan_created","emergency_loan","loan_paid_off"],
@@ -525,35 +530,11 @@ export default function NotificationsPage() {
                           : config.bg}`}
                       onClick={() => {
                         if (!n.is_read) markRead(n.id);
-                        // #1486: rytter-centrerede notifikationer bærer riderId i metadata
-                        // og deep-linker direkte til rytterprofilen. #921: legacy
-                        // "Transferrygte" bruger related_id (ingen metadata). Begge falder
-                        // ellers tilbage til den generiske config.link.
-                        const link = n.metadata?.riderId
-                          ? `/riders/${n.metadata.riderId}`
-                          : n.type === "transfer_interest" && n.related_id
-                            ? `/riders/${n.related_id}`
-                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside.
-                            // #3243: stage_result bar SAMME metadata.raceId (#2523) men manglede denne
-                            // regel og faldt til den generiske /resultater — ekstra klik lige på det
-                            // trin (første etaperesultat) hvor en ny spiller allerede er tilbøjelig til
-                            // at give op.
-                            : (n.type === "race_result" || n.type === "stage_result") && (n.metadata?.raceId || n.related_id)
-                              ? `/races/${n.metadata?.raceId || n.related_id}`
-                              // #2180/#3310: selection_warning bærer raceId (samme mønster som
-                              // race_result/stage_result) og deep-linker til løbets
-                              // selection-panel i stedet for det generiske kalender-board.
-                              : n.type === "selection_warning" && (n.metadata?.raceId || n.related_id)
-                                ? `/races/${n.metadata?.raceId || n.related_id}#selection`
-                              // #2832-review (ejer-merge-krav): season_ended bærer den AFSLUTTEDE
-                              // sæsons id i related_id (emitSeasonEndedNotifications). Uden dette
-                              // pegede beskeden på det generiske /seasons, som defaulter til den
-                              // AKTIVE (nye, tomme) sæson lige efter en transition — stik modsat af
-                              // hvad beskeden faktisk handler om. /seasons/:seasonId er allerede
-                              // wired til at vise netop dén sæsons opsamling/stilling.
-                              : n.type === "season_ended" && n.related_id
-                                ? `/seasons/${n.related_id}`
-                                : config.link;
+                        // #3496/#3491: udtrukket til lib/notificationLink.js (ren funktion,
+                        // testbar uden DOM) — se dens header for hvorfor tilbuds-/scout-
+                        // notifikationer ikke længere altid overstyres af den generiske
+                        // rytterprofil-regel.
+                        const link = resolveNotificationLink(n, config.link);
                         if (link) navigate(link);
                       }}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center

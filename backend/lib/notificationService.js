@@ -1,7 +1,7 @@
 import { isKnownNotificationType } from "./notificationTypes.js";
 import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
-import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize } from "./raceNarrativeNotification.js";
+import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize, isHeadlineAboutOwnRiders } from "./raceNarrativeNotification.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -290,7 +290,11 @@ export async function emitRaceResultNotifications({
     // for DENNE manager — delvis data (fx rubrik uden ranks) degraderer helt
     // til standard-copy i stedet for en halv/inkonsistent besked.
     const personalText = buildPersonalResultText(narrative?.ranksByUser?.get(userId));
-    const useNarrative = Boolean(narrative?.headlineText && personalText);
+    // #3493: rubrikken bruges KUN når den rent faktisk handler om modtagerens
+    // egne ryttere — ellers degraderer vi ærligt til standard-copy i stedet
+    // for at fortælle spilleren om en rival-rytters sejr i egen indbakke
+    // (spillerreaktion på #3399, se isHeadlineAboutOwnRiders' doc-comment).
+    const useNarrative = Boolean(narrative?.headlineText && personalText && isHeadlineAboutOwnRiders(narrative, userId));
     try {
       const res = await notify({
         supabase,
@@ -583,7 +587,8 @@ export async function emitStageResultNotifications({
     const riderName = best.riderName ?? "your rider";
     const position = best.rank ?? null;
     const personalText = buildPersonalResultText(ranksByManager.get(userId));
-    const useNarrative = Boolean(narrative?.headlineText && personalText);
+    // #3493: samme relevans-guard som emitRaceResultNotifications ovenfor.
+    const useNarrative = Boolean(narrative?.headlineText && personalText && isHeadlineAboutOwnRiders(narrative, userId));
     try {
       const res = await notify({
         supabase,

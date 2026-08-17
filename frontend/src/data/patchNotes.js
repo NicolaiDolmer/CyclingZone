@@ -4,6 +4,170 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.136",
+    "date": "2026-08-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "Inbox messages take you to the right place",
+          "body": "Clicking a transfer offer now lands on the decision itself, and a rider with an open offer shows a shortcut on their profile. Scout reports open the report directly. Stage notifications are about your own riders. Winning your own resale auction no longer sends two messages."
+        },
+        "da": {
+          "title": "Indbakkens beskeder fører dig det rigtige sted hen",
+          "body": "Et klik på et transfertilbud lander nu på selve beslutningen, og en rytter med et åbent tilbud viser en genvej på sin profil. Scout-rapporter åbner rapporten direkte. Etape-beskeder handler om dine egne ryttere. At vinde sin egen gensalgs-auktion giver ikke længere to beskeder."
+        },
+        "refs": [3496, 3493, 3491, 3549]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Market",
+        "en": {
+          "title": "Market cleanups",
+          "body": "The seller column on auctions is sortable. Transfer history hides no-sale auctions by default, with a toggle to show them. Proxy bids on youth auctions now accept a free academy slot, just like normal bids."
+        },
+        "da": {
+          "title": "Marked-oprydning",
+          "body": "Sælger-kolonnen på auktioner kan sorteres. Transferhistorikken skjuler auktioner uden salg som standard, med en knap der viser dem. Proxy-bud på ungdomsauktioner accepterer nu en ledig akademiplads, ligesom almindelige bud."
+        },
+        "refs": [3067, 2400, 3826]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Injury days agree with themselves, and 11 contracts repaired",
+          "body": "Injury days showed different numbers in three places; all three now use the same calculation. We also repaired 11 riders whose contracts lost a year during an academy promotion bug in late July: 5 got their promised season back, 6 had a bookkeeping number corrected."
+        },
+        "da": {
+          "title": "Skadedage er enige med sig selv, og 11 kontrakter repareret",
+          "body": "Skadedage viste forskellige tal tre steder; alle tre bruger nu samme beregning. Vi har også repareret 11 ryttere hvis kontrakter mistede et år under en akademi-forfremmelses-fejl i slutningen af juli: 5 fik deres lovede sæson tilbage, 6 fik rettet et bogholderi-tal."
+        },
+        "refs": [3541, 3715]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help explains where riders come from and how season money works",
+          "body": "New help sections cover where auction and free-agent riders come from, and what happens to salaries and sponsor money when the season changes. We also fixed outdated claims about AI riders being available for auctions and direct offers."
+        },
+        "da": {
+          "title": "Hjælpen forklarer hvor ryttere kommer fra og sæsonens økonomi",
+          "body": "Nye hjælpe-afsnit dækker hvor auktions- og frie-agent-ryttere kommer fra, og hvad der sker med løn og sponsorpenge ved sæsonskiftet. Vi har også rettet forældede påstande om at AI-ryttere kan komme på auktion eller modtage direkte bud."
+        },
+        "refs": [3551, 2889]
+      }
+    ]
+  },
+  {
+    "version": "7.135",
+    "date": "2026-08-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions are easier to use",
+          "body": "You can now sort auctions on mobile, and sorting by salary finally follows the numbers you see on screen. Starting an auction from a rider's profile lets you pick the duration, and the bid panel tells you up front when your squad is full instead of letting the server reject the bid."
+        },
+        "da": {
+          "title": "Auktioner er lettere at bruge",
+          "body": "Auktioner kan nu sorteres på mobil, og sortering efter løn følger endelig de tal du ser på skærmen. Starter du en auktion fra rytterprofilen, kan du vælge varigheden, og bud-panelet siger på forhånd når din trup er fuld i stedet for at lade serveren afvise buddet."
+        },
+        "refs": [3783, 2403, 3786, 3066]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "More at a glance on your team pages",
+          "body": "Riders you have listed for transfer show a badge with the asking price on your team page. Race selection has a toggle that shows all 15 abilities. The season planner shows each race's class when you pick target races."
+        },
+        "da": {
+          "title": "Mere at se på dine holdsider",
+          "body": "Ryttere du har sat til salg viser et badge med udbudsprisen på holdsiden. Holdudtagelsen har fået en knap der viser alle 15 evner. Sæsonplanlæggeren viser løbets klasse når du vælger mål-løb."
+        },
+        "refs": [3810, 3809, 3807]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "The academy move dialog tells the truth",
+          "body": "Moving a senior to the academy showed a wrong salary preview; the dialog now asks the server for the exact number. It also says honestly that the rider drops out of races in progress."
+        },
+        "da": {
+          "title": "Akademi-dialogen fortæller sandheden",
+          "body": "Flyt af en senior til akademiet viste en forkert løn; dialogen spørger nu serveren om det præcise tal. Den siger også ærligt at rytteren udgår af igangværende løb."
+        },
+        "refs": [3805, 3784]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Prizes sort by date",
+          "body": "The prize list under Finance shows the newest prizes first, and the columns are sortable."
+        },
+        "da": {
+          "title": "Præmier sorteres efter dato",
+          "body": "Præmielisten under Økonomi viser nyeste præmier først, og kolonnerne kan sorteres."
+        },
+        "refs": [3808]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Patch notes",
+        "en": {
+          "title": "A dot marks unread patch notes",
+          "body": "The menu shows a small dot when patch notes you have not read are out. It disappears when you open the page."
+        },
+        "da": {
+          "title": "En prik viser ulæste patch notes",
+          "body": "Menuen viser en lille prik når der er patch notes du ikke har læst. Den forsvinder når du åbner siden."
+        },
+        "refs": [3811]
+      }
+    ]
+  },
+  {
+    "version": "7.134",
+    "date": "2026-08-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "60 riders have been given a proper second type",
+          "body": "Yesterday's update made sure new riders are born with a second type that stays put. This finishes the job for the riders who were already born without one.\n\n72 riders across the game had a main type but no second type recorded. The game filled the gap by guessing from their stats every night, and that guess leaned hard: it handed out breakaway and cobbles riders again and again, and never once picked a time trialist or a puncheur. We have drawn them a real second type instead, from the same spread every new rider uses.\n\nFor 60 of those riders the second type you see will change. That is a one time correction, and it is the last time it moves on its own. Their main type, current abilities and value are untouched.\n\nOne thing does move. A rider's second type helps decide how far he can still develop, and a second type that is properly recorded counts for more than one the game was only guessing at. So these riders' ceilings shift to line up with the new second type: they rise in that direction and can drop in the direction of the old guess. Nobody loses an ability he already has. Your rider is exactly as good today as he was yesterday."
+        },
+        "da": {
+          "title": "60 ryttere har fået en rigtig andentype",
+          "body": "Gårsdagens opdatering sørgede for at nye ryttere fødes med en andentype der bliver hvor den er. Det her gør arbejdet færdigt for de ryttere der allerede var født uden.\n\n72 ryttere i spillet havde en hovedtype, men ingen andentype registreret. Spillet udfyldte hullet ved at gætte ud fra deres tal hver nat, og det gæt var skævt: det uddelte udbruds- og brostensryttere igen og igen, og valgte ikke én eneste gang en enkeltstartsrytter eller en puncheur. Vi har trukket dem en rigtig andentype i stedet, fra samme fordeling som alle nye ryttere bruger.\n\nFor 60 af de ryttere skifter den andentype du ser. Det er en engangsrettelse, og det er sidste gang den flytter sig af sig selv. Deres hovedtype, nuværende evner og værdi er urørt.\n\nÉn ting flytter sig. En rytters andentype er med til at bestemme hvor langt han kan udvikle sig, og en andentype der er ordentligt registreret tæller mere end en spillet kun gættede sig til. Derfor flytter de her rytteres lofter sig, så de passer til den nye andentype: de stiger i den retning og kan falde i retning af det gamle gæt. Ingen mister en evne han allerede har. Din rytter er præcis lige så god i dag som i går."
+        },
+        "refs": [
+          3634,
+          3631
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.133",
     "date": "2026-08-15",
     "label": "Beta",

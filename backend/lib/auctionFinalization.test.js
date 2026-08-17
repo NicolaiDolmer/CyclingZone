@@ -1168,6 +1168,53 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
   ]);
 });
 
+// #3549: køber og sælger er FORSKELLIGE hold (normal handel) — begge skal
+// stadig have deres egen besked, men med hver deres type. Forward-guard mod at
+// en fremtidig ændring utilsigtet slår de to typer sammen igen.
+test("finalizeAuctionById sends auction_won to the buyer and auction_sold (own type) to the seller when they differ (#3549)", async () => {
+  const notifications = [];
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+
+  await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-types",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 100,
+        seller_team_id: "seller-team",
+        rider: { id: "rider-types", firstname: "Type", lastname: "Check", team_id: "seller-team" },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 100, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: { "buyer-team": { riderCount: 5, pendingCount: 0, activeLoanCount: 0 } },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-types",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-08-17T10:00:00.000Z"),
+  });
+
+  assert.equal(notifications.length, 2);
+  assert.deepEqual(
+    notifications.map((n) => ({ teamId: n.teamId, type: n.type })),
+    [
+      { teamId: "buyer-team", type: "auction_won" },
+      { teamId: "seller-team", type: "auction_sold" },
+    ],
+  );
+});
+
 // #3401: post-hammerslag-reveal — hver tabende budgiver får ÉN "auction_lost"
 // med vinderens navn + delta over deres eget højeste REALISEREDE bud. Testen
 // dækker BÅDE: (a) korrekt delta pr. taber, (b) at teams uden en eneste
@@ -1666,10 +1713,14 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
   assert.deepEqual(xpAwards, [
     { teamId: "initiator-team", action: "auction_won" },
   ]);
-  assert.equal(notifications.length, 2);
+  // #3549: initiator-team er BÅDE effektiv køber OG auction.seller_team_id her
+  // (samme hold byder på sin egen auktion for en rytter en anden faktisk ejer
+  // — #194-reglen tillader det). Før fixet fik holdet BÅDE denne "Du vandt
+  // auktionen!"-besked OG en ekstra "Auktion afsluttet"-besked til sig selv —
+  // to næsten identiske notifikationer om samme hammerslag. Nu: kun ÉN.
+  assert.equal(notifications.length, 1, "#3549: sælger-beskeden skal IKKE dubleres når køber og sælger er samme hold");
   assert.equal(notifications[0].teamId, "initiator-team");
   assert.match(notifications[0].title, /vandt/i);
-  assert.equal(notifications[1].teamId, "initiator-team");
 });
 
 test("finalizeAuctionById completes when the initiator is the sole bidder on a free-agent auction", async () => {
@@ -1766,10 +1817,11 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
   assert.deepEqual(xpAwards, [
     { teamId: "initiator-team", action: "auction_won" },
   ]);
-  assert.equal(notifications.length, 2);
+  // #3549: samme dedup som AI-rider-selvbud-testen ovenfor — seller_team_id
+  // (uden nogen reel sælger, fri agent) === effektiv køber her.
+  assert.equal(notifications.length, 1, "#3549: sælger-beskeden skal IKKE dubleres når køber og sælger er samme hold");
   assert.equal(notifications[0].teamId, "initiator-team");
   assert.match(notifications[0].title, /vandt/i);
-  assert.equal(notifications[1].teamId, "initiator-team");
 });
 
 test("finalizeAuctionById treats legacy non-owned auctions without current_bidder as initiator wins", async () => {
@@ -1858,6 +1910,8 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     related_entity_id: "auction-legacy-free",
     idempotency_key: "auction_winner:auction-legacy-free",
   }]);
+  // #3549: samme dedup — ingen ekstra "Auktion afsluttet"-besked til sig selv.
+  assert.equal(notifications.length, 1, "#3549: sælger-beskeden skal IKKE dubleres når køber og sælger er samme hold");
   assert.equal(notifications[0].teamId, "initiator-team");
   assert.match(notifications[0].title, /vandt/i);
 });
