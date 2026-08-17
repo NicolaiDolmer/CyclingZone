@@ -1,5 +1,7 @@
 # Discord-udkast · værdi-beskeden (14/8)
 
+> ⛔ **OVERHALET 17/8, blev aldrig postet. Må ikke bruges.** Refittet er kørt og målte dårligere (gate RØD, scorecard 17/8), og 30/8-datoen er erstattet af en gate-styret niveau-korrektion (ejer-beslutning 17/8, #3750). Aktuel besked: [`2026-08-17-cutover-beskeder.md`](2026-08-17-cutover-beskeder.md) besked 2.
+
 > **Klar til copy-paste. Ejeren poster selv.** Kopiér fra RÅteksten, ellers falder linjeskift ud.
 >
 > **Kanal:** #the-roadbook (EN), hvor 11/8-værdibeskeden ligger. DA til de danske kanaler.
