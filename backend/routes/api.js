@@ -4513,6 +4513,40 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
   }
 });
 
+// GET /api/races/:raceId/timeline?stage=N — #2410 (event-log S1), spec §2.4.
+// Spillervendt: RLS bærer adgangskontrollen (race_stage_timelines_read, samme
+// model som race_stage_moments_read — SELECT for alle authenticated) — kræver
+// derfor blot en autentificeret bruger, IKKE et hold (spejler ikke stage-roles'
+// req.team-krav, som er ejer-scopet taktik-data). Frontend-afspillere (Race
+// Centre/løbsfilm) scrubber over `events`.
+router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
+  try {
+    const stageNumber = Number(req.query.stage);
+    if (!Number.isInteger(stageNumber) || stageNumber < 1) {
+      return res.status(400).json({ error: "stage_query_param_required" });
+    }
+    const { data, error } = await supabase
+      .from("race_stage_timelines")
+      .select("timeline_version, stage_number, events")
+      .eq("race_id", req.params.raceId)
+      .eq("stage_number", stageNumber)
+      .maybeSingle();
+    if (error) {
+      // #2410: samme graceful-degradation-vindue som persistStageTimelines'
+      // skrivesti (raceRunner.js) — migrationen applies manuelt post-merge
+      // (#2642-rammer), så tabellen kan mangle. En manglende tabel skal 404'e
+      // for spilleren (ingen tidslinje endnu), ikke 500'e.
+      if (error.code === "42P01") return res.status(404).json({ error: "timeline_not_found" });
+      return res.status(500).json({ error: error.message });
+    }
+    if (!data) return res.status(404).json({ error: "timeline_not_found" });
+    res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // (POST /api/races/lineup/move udgået 28/6: flyt er nu en ren kladde-operation i board'et —
 // fjern fra kilde + tilføj til mål lokalt, persistér binding-sikkert via "Gem ændringer".
 // `move_race_entry`-RPC'en ligger uberørt i DB som ubrugt levn, kan ryddes i en senere migration.)

@@ -201,6 +201,11 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
 // Match-form: HTTP method + path-pattern (samme som routes-listen).
 const WHITELIST_ORPHANED_ENDPOINTS = new Set([
+  // Event-loggen S1 (#2410, PR #3860): tidslinje-API'et lander bevidst FØR sin
+  // frontend-forbruger — afspiller-UI'et bygges i #3859 (draft-PR samme dag) og
+  // wirer useStageTimeline mod dette endpoint. Intentional orphaned indtil #3859
+  // merges; fjern denne linje i dét PR.
+  "GET /races/:raceId/timeline",
   // #2455 planner-assistent (PR #2506): HAR en frontend-kalder — usePlanner.js:96
   // kalder mutate("/dismiss-suggestions", "POST") hvor helperen prefikser
   // /peak-plans, så den statiske path-scan kan ikke matche det fulde endpoint.
