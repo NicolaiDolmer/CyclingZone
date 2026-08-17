@@ -48,7 +48,7 @@
     "demoteQuestion": "Move this senior rider down to your academy:",
     "demoteConfirm": "Move to academy",
     "demoteNote": "They free a senior place and stop counting toward your senior squad. They are pulled from any upcoming races they were entered in.",
-    "demoteNoteOngoing": "They free a senior place and stop counting toward your senior squad. They are pulled from any upcoming races they were entered in — and because academy riders aren't race-eligible, they will also drop out of the race currently underway shown above.",
+    "demoteNoteOngoing": "They free a senior place and stop counting toward your senior squad. They are pulled from any upcoming races they were entered in. Because academy riders aren't race-eligible, they will also drop out of the race currently underway shown above.",
     "seniorSalaryLabel": "Senior salary",
     "youthSalaryLabel": "Youth salary",
     "currentSalaryLabel": "Current salary",

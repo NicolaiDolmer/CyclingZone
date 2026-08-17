@@ -33,15 +33,23 @@ export async function clearFutureRaceEntries({ supabase, riderId }) {
 // #3805/#3784: read-only variant af ovenstående SELECT (samme prædikat,
 // INGEN delete) — bruges af academy-demote-quote-routen til at vise "N
 // kommende løb ryddes" FØR bekræftelse, med samme forudsigelse som selve
-// sletningen ovenfor rent faktisk udfører.
+// sletningen ovenfor rent faktisk udfører. Best-effort ligesom
+// clearFutureRaceEntries ovenfor: en query-fejl her er en preview-tæller,
+// ikke en mutation — 0 er en sikker fallback.
 export async function countFutureRaceEntries(supabase, riderId) {
   if (!riderId) return 0;
-  const { data } = await supabase
+  // pagination-safe: bundet til ÉT rider_id — en enkelt rytter kan aldrig
+  // have tæt på 1000 race_entries (et helt sæson-kalenderår er en brøkdel af det).
+  const { data, error } = await supabase
     .from("race_entries")
     .select("race_id, races!inner(status, stages_completed)")
     .eq("rider_id", riderId)
     .eq("races.status", "scheduled")
     .eq("races.stages_completed", 0);
+  if (error) {
+    console.warn(`[raceEntryCleanup] countFutureRaceEntries: count failed for rider ${riderId}: ${error.message}`);
+    return 0;
+  }
   return new Set((data || []).map((r) => r.race_id)).size;
 }
 
@@ -57,14 +65,20 @@ export async function countFutureRaceEntries(supabase, riderId) {
 // faktiske konsekvens, logget/returneret efter flyttet) og af
 // academy-demote-quote-routen (preview FØR bekræftelse) — ingen JS-kopi,
 // ingen mulighed for at de to tal driver fra hinanden.
+// pagination-safe: bundet til ÉT rider_id, se countFutureRaceEntries ovenfor.
+// Best-effort af samme grund: en preview-tæller, ikke en mutation.
 export async function countOngoingRaceEntries(supabase, riderId) {
   if (!riderId) return 0;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("race_entries")
     .select("race_id, races!inner(status, stages_completed)")
     .eq("rider_id", riderId)
     .eq("races.status", "scheduled")
     .gt("races.stages_completed", 0);
+  if (error) {
+    console.warn(`[raceEntryCleanup] countOngoingRaceEntries: count failed for rider ${riderId}: ${error.message}`);
+    return 0;
+  }
   return new Set((data || []).map((r) => r.race_id)).size;
 }
 
