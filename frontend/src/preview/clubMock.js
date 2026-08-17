@@ -24,7 +24,10 @@ const NAME_POOL = ["Marc Vandenbroucke", "Henrik Sørensen", "Luca Bertolini", "
 // #2220 A4b: preview-repræsentative evner. Overall-bånd pr. tier (spejler backendens
 // TIER_OVERALL_BAND-midtpunkter groft) + rolle-akser (spejler lib/staffAbilities.js).
 // Ikke backendens deterministiske derivation — kun plausible tal så profil-flowet kan
-// klikkes igennem i preview. staff.id = `staff-<track>` (1 aktiv pr. spor).
+// klikkes igennem i preview. #3489: staff.id = `staff-<track>-<slot>` (op til 2
+// samtidige aktive slots pr. spor, spejler backend/lib/facilityConstants.js'
+// MAX_STAFF_SLOTS_PER_ROLE).
+const MAX_STAFF_SLOTS_PER_ROLE = 2;
 const OVERALL_BY_TIER = { 1: 36, 2: 52, 3: 63, 4: 74, 5: 82 };
 const DIMENSIONS = ["physical", "mental", "technical"];
 const LEVELS = ["u23", "senior"]; // #2529: youth+junior kollapset til u23
@@ -72,18 +75,35 @@ function topAxisKey(ab) {
   return entries[0][0];
 }
 
+// #3489: alle besatte slots for ét spor, som {id, name, tier, salary, slot, overall}
+// — samme shape som facilityRoutesHandlers.getClubFacilitiesHandler's staffList.
+function staffListFor(track) {
+  return state.facilities[track].staffSlots
+    .map((s, i) => (s ? { id: `staff-${track}-${i + 1}`, name: s.name, tier: s.tier, salary: SALARY[s.tier], slot: i + 1, overall: OVERALL_BY_TIER[s.tier] } : null))
+    .filter(Boolean);
+}
+
 function facilitiesPayload() {
   const facilities = TRACKS.map((track) => {
     const f = state.facilities[track];
     const upgradePrice = f.tier >= 5 ? null : PRICE[f.tier + 1];
-    const staffTier = f.staff?.tier ?? null;
+    const staffList = staffListFor(track);
+    // #3489: den STÆRKESTE (højeste overall) af op til 2 aktive staff driver
+    // motor-effekten — spejler backend "bedste-af-flere"-valget (facilityRoutesHandlers.js/
+    // trainingStaffContext.js/scoutAssignmentService.loadScout).
+    const primaryStaff = staffList.length ? staffList.reduce((best, s) => (s.overall > best.overall ? s : best)) : null;
+    const staffTier = primaryStaff?.tier ?? null;
     // #2311 (Slice 2): tier-preview før køb — samme formel som backend (base[tier+1] × util),
     // null ved max tier (co-SSOT med facilityRoutesHandlers.js, dækket af parity-test).
     const nextTierBonus = f.tier >= 5 ? null : (BASE_EFFECT[track][f.tier + 1] || 0) * util(staffTier);
     return {
       track, tier: f.tier, upgradePrice, tierUpkeep: UPKEEP[f.tier],
       // #2220 A4b: staff bærer nu id (dyb-link) + overall (rating-cirkel/sammenligning).
-      staff: f.staff ? { id: `staff-${track}`, name: f.staff.name, tier: f.staff.tier, salary: SALARY[f.staff.tier], overall: OVERALL_BY_TIER[f.staff.tier] } : null,
+      // #3489: staff = den primære (stærkeste); staffList = den fulde liste (op til 2).
+      staff: primaryStaff,
+      staffList,
+      staffSlotsUsed: staffList.length,
+      staffSlotsMax: MAX_STAFF_SLOTS_PER_ROLE,
       effectiveBonus: (BASE_EFFECT[track][f.tier] || 0) * util(staffTier),
       nextTierBonus,
       // Plan B (#1441) + #2530: training + scouting er wired i deres respektive
@@ -95,7 +115,7 @@ function facilitiesPayload() {
   });
   // #2220 A4b: sæson-omkostnings-resume (upkeep + payroll vs. saldo).
   const totalUpkeep = facilities.reduce((s, fac) => s + (fac.tierUpkeep || 0), 0);
-  const totalPayroll = facilities.reduce((s, fac) => s + (fac.staff ? fac.staff.salary : 0), 0);
+  const totalPayroll = facilities.reduce((s, fac) => s + fac.staffList.reduce((sum, st) => sum + st.salary, 0), 0);
   return { facilities, seasonCost: { totalUpkeep, totalPayroll, balance: 500000 } };
 }
 
@@ -128,12 +148,12 @@ const OTHER_STAFF_SEED = [
 ];
 
 function directoryPayload() {
-  const own = TRACKS.map((track) => {
-    const f = state.facilities[track];
-    if (!f.staff) return null;
-    const ab = abilitiesFor(track, f.staff.tier, f.staff.name);
+  // #3489: op til 2 besatte slots pr. spor nu — flatMap over staffListFor i
+  // stedet for ét felt pr. track, ellers forsvinder den 2. staff fra oversigten.
+  const own = TRACKS.flatMap((track) => staffListFor(track).map((s) => {
+    const ab = abilitiesFor(track, s.tier, s.name);
     return {
-      id: `staff-${track}`, name: f.staff.name, role: track, tier: f.staff.tier, salary: SALARY[f.staff.tier],
+      id: s.id, name: s.name, role: track, tier: s.tier, salary: s.salary,
       overall: ab.overall, topSpecialization: topAxisKey(ab),
       // #2649-verifikationsfund: brugte tidligere en fiktiv "own-team"-streng
       // der ALDRIG matchede den ægte TEST_TEAM.id — så StaffOverviewPage's
@@ -142,7 +162,7 @@ function directoryPayload() {
       // klikkes igennem. TEST_TEAM.id er samme kilde som fixtures/øvrig preview-state.
       teamId: TEST_TEAM.id, teamName: "Dit hold", division: 2, isAiTeam: false,
     };
-  }).filter(Boolean);
+  }));
   const others = OTHER_STAFF_SEED.map((s, i) => {
     const ab = abilitiesFor(s.role, s.tier, s.name);
     return {
@@ -188,58 +208,76 @@ export function clubMockRoute(method, pathname, search, body) {
     if (!TRACKS.includes(role)) return { status: 400, body: { error: "invalid_role" } };
     return { status: 200, body: { role, facilityTier: state.facilities[role].tier, candidates: candidatesFor(role) } };
   }
+  // #3489: role_occupied kun når BEGGE slots er besat; ny ansættelse lander i
+  // den frie (parses ud fra det returnerede staff-array — se staffListFor).
   if (pathname.endsWith("/api/club/staff/hire") && method === "POST") {
     const { role, candidateName } = body || {};
     const f = state.facilities[role];
     if (!f) return { status: 400, body: { error: "invalid_role" } };
-    if (f.staff) return { status: 409, body: { error: "role_occupied" } };
+    const freeSlot = f.staffSlots.findIndex((s) => s == null);
+    if (freeSlot === -1) return { status: 409, body: { error: "role_occupied" } };
     const cand = candidatesFor(role).find((c) => c.name === candidateName);
     if (!cand) return { status: 400, body: { error: "invalid_candidate" } };
     if (cand.tier > f.tier) return { status: 400, body: { error: "staff_tier_exceeds_facility" } };
-    f.staff = { name: cand.name, tier: cand.tier };
+    f.staffSlots[freeSlot] = { name: cand.name, tier: cand.tier };
     return { status: 200, body: { ok: true, staff: { ...cand, salary: SALARY[cand.tier] } } };
   }
+  // #3489: staffId er valgfri — udelades den, fyres slot 1 (bagudkompatibelt).
+  // id-format `staff-<track>-<slot>` (samme konvention som staffListFor).
   if (pathname.endsWith("/api/club/staff/fire") && method === "POST") {
-    const { role } = body || {};
+    const { role, staffId } = body || {};
     const f = state.facilities[role];
-    if (!f?.staff) return { status: 404, body: { error: "no_active_staff" } };
-    const severance = Math.round(SALARY[f.staff.tier] * 0.5);
-    f.staff = null;
+    if (!f) return { status: 404, body: { error: "no_active_staff" } };
+    const slotIdx = staffId
+      ? Number(staffId.match(/-(\d+)$/)?.[1] ?? 0) - 1
+      : f.staffSlots.findIndex((s) => s != null);
+    const target = slotIdx >= 0 ? f.staffSlots[slotIdx] : null;
+    if (!target) return { status: 404, body: { error: "no_active_staff" } };
+    const severance = Math.round(SALARY[target.tier] * 0.5);
+    f.staffSlots[slotIdx] = null;
     return { status: 200, body: { ok: true, severance } };
   }
   // #2649: POST /api/club/staff/:id/release — severance = 4 × ugentlig løn
   // (samme formel som backend/lib/facilityConstants.js staffReleaseSeverance,
-  // 11 = sæson-uger). id = `staff-<track>` (samme preview-id-konvention som
-  // resten af filen). Kun EGEN staff kan matches her — `other-staff-N`-id'er
-  // rammer ikke `state.facilities` og giver korrekt staff_not_found.
+  // 11 = sæson-uger). id = `staff-<track>-<slot>` (#3489, samme preview-id-
+  // konvention som resten af filen). Kun EGEN staff kan matches her —
+  // `other-staff-N`-id'er rammer ikke `state.facilities` og giver korrekt
+  // staff_not_found.
   if (/\/api\/club\/staff\/([^/]+)\/release$/.test(pathname) && method === "POST") {
     const id = pathname.match(/\/api\/club\/staff\/([^/]+)\/release$/)[1];
-    const track = id.replace(/^staff-/, "");
-    const f = state.facilities[track];
-    if (!f?.staff) return { status: 404, body: { error: "staff_not_found" } };
-    const weeklyWage = Math.round(SALARY[f.staff.tier] / 11);
+    const m = id.match(/^staff-([a-z]+)-(\d+)$/);
+    const track = m?.[1];
+    const slotIdx = m ? Number(m[2]) - 1 : -1;
+    const f = track ? state.facilities[track] : null;
+    const target = f?.staffSlots?.[slotIdx];
+    if (!target) return { status: 404, body: { error: "staff_not_found" } };
+    const weeklyWage = Math.round(SALARY[target.tier] / 11);
     const severance = weeklyWage * 4;
     const role = track;
-    const name = f.staff.name;
-    f.staff = null;
+    const name = target.name;
+    f.staffSlots[slotIdx] = null;
     return { status: 200, body: { ok: true, severance, role, name } };
   }
-  // #2220 A4b: GET /api/club/staff/:id — fuld evne-profil (id = `staff-<track>`).
+  // #2220 A4b: GET /api/club/staff/:id — fuld evne-profil (id = `staff-<track>-<slot>`, #3489).
   // Efter candidates-tjekket ovenfor, så /candidates ikke fanges her.
   if (/\/api\/club\/staff\/[^/]+$/.test(pathname) && !pathname.endsWith("/candidates") && method === "GET") {
     const id = pathname.split("/").pop();
-    const track = id.replace(/^staff-/, "");
-    const f = state.facilities[track];
-    if (!f?.staff) return { status: 404, body: { error: "staff_not_found" } };
-    const abilities = abilitiesFor(track, f.staff.tier, f.staff.name);
-    return { status: 200, body: { role: track, tier: f.staff.tier, salary: SALARY[f.staff.tier], name: f.staff.name, abilities } };
+    const m = id.match(/^staff-([a-z]+)-(\d+)$/);
+    const track = m?.[1];
+    const slotIdx = m ? Number(m[2]) - 1 : -1;
+    const f = track ? state.facilities[track] : null;
+    const target = f?.staffSlots?.[slotIdx];
+    if (!target) return { status: 404, body: { error: "staff_not_found" } };
+    const abilities = abilitiesFor(track, target.tier, target.name);
+    return { status: 200, body: { role: track, tier: target.tier, salary: SALARY[target.tier], name: target.name, abilities } };
   }
-  // #3203: GET /api/club/staff/:id/scouting-history — kun staff-scouting (den
-  // hyrede chefspejder) har et seed; øvrige id'er/roller giver en ægte tom
-  // liste (matcher backendens adfærd for en spejder uden fuldførte opgaver).
+  // #3203: GET /api/club/staff/:id/scouting-history — kun den FØRSTE hyrede
+  // chefspejder (staff-scouting-1) har et seed; øvrige id'er/roller giver en
+  // ægte tom liste (matcher backendens adfærd for en spejder uden fuldførte
+  // opgaver).
   if (/\/api\/club\/staff\/([^/]+)\/scouting-history$/.test(pathname) && method === "GET") {
     const id = pathname.match(/\/api\/club\/staff\/([^/]+)\/scouting-history$/)[1];
-    const history = id === "staff-scouting" && state.facilities.scouting.staff ? SEED_SCOUT_HISTORY : [];
+    const history = id === "staff-scouting-1" && state.facilities.scouting.staffSlots[0] ? SEED_SCOUT_HISTORY : [];
     return { status: 200, body: { history, maxLevel: 3 } };
   }
   return null; // ikke en club-route

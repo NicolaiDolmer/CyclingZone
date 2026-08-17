@@ -383,11 +383,37 @@ test("hire: role training AFTER a prior fired training-staff → INGEN scout_cha
   assert.equal(notifyCalls.length, 0, "kun scouting-rollens skift skal udløse rapport-genberegnings-beskeden");
 });
 
-test("hire: role occupied → role_occupied, no insert", async () => {
+// #3489: 1 aktiv staff i rollen blokerer IKKE længere en hire — der er nu op til
+// MAX_STAFF_SLOTS_PER_ROLE (2) samtidige slots. role_occupied udløses først når
+// BEGGE er besat.
+test("hire: 1 active staff in role → hires into free 2nd slot (no longer role_occupied)", async () => {
   const supabase = createFacilitySupabase({
     team: { id: "team-1", balance: 1_000_000 },
     facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
-    staff: [{ id: "staff-existing", team_id: "team-1", role: "training", status: "active", salary: 10_000, tier: 1 }],
+    staff: [{ id: "staff-existing", team_id: "team-1", role: "training", status: "active", salary: 10_000, tier: 1, slot: 1 }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "training", facilityTier: 5,
+  })[0];
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: candidate.name },
+    supabase,
+    ENABLED
+  );
+  assert.equal(result.ok, true);
+  assert.equal(supabase.state.staffInserts.length, 1);
+  assert.equal(supabase.state.staffInserts[0].slot, 2, "skal lande i den frie 2. slot");
+});
+
+test("hire: role occupied (BEGGE slots besat) → role_occupied, no insert", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
+    staff: [
+      { id: "staff-1", team_id: "team-1", role: "training", status: "active", salary: 10_000, tier: 1, slot: 1 },
+      { id: "staff-2", team_id: "team-1", role: "training", status: "active", salary: 10_000, tier: 1, slot: 2 },
+    ],
   });
 
   const result = await hireStaff(
@@ -614,6 +640,49 @@ test("fire: no active staff → no_active_staff, no debit", async () => {
   const result = await fireStaff({ ...BASE_ARGS, role: "training" }, supabase, ENABLED);
   assert.deepEqual(result, { ok: false, error: "no_active_staff" });
   assert.equal(supabase.state.finance_transactions.length, 0);
+  assert.equal(supabase.state.staffUpdates.length, 0);
+});
+
+// #3489: 2 aktive staff i samme rolle — uden staffId ramtes slot 1 (bagudkompatibel
+// default); med staffId ramtes NETOP den angivne, uanset slot.
+test("fire: no staffId + 2 active in role → targets slot 1", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 100_000 },
+    staff: [
+      { id: "staff-slot1", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, slot: 1 },
+      { id: "staff-slot2", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, slot: 2 },
+    ],
+  });
+
+  const result = await fireStaff({ ...BASE_ARGS, role: "training" }, supabase, ENABLED);
+  assert.equal(result.ok, true);
+  assert.equal(supabase.state.staff.find((s) => s.id === "staff-slot1").status, "fired");
+  assert.equal(supabase.state.staff.find((s) => s.id === "staff-slot2").status, "active");
+});
+
+test("fire: explicit staffId → targets that staff, other slot untouched", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 100_000 },
+    staff: [
+      { id: "staff-slot1", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, slot: 1 },
+      { id: "staff-slot2", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, slot: 2 },
+    ],
+  });
+
+  const result = await fireStaff({ ...BASE_ARGS, role: "training", staffId: "staff-slot2" }, supabase, ENABLED);
+  assert.equal(result.ok, true);
+  assert.equal(supabase.state.staff.find((s) => s.id === "staff-slot1").status, "active");
+  assert.equal(supabase.state.staff.find((s) => s.id === "staff-slot2").status, "fired");
+});
+
+test("fire: staffId matching another team's/role's staff (not in active list) → no_active_staff", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 100_000 },
+    staff: [{ id: "staff-1", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, slot: 1 }],
+  });
+
+  const result = await fireStaff({ ...BASE_ARGS, role: "training", staffId: "staff-unknown" }, supabase, ENABLED);
+  assert.deepEqual(result, { ok: false, error: "no_active_staff" });
   assert.equal(supabase.state.staffUpdates.length, 0);
 });
 

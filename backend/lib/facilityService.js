@@ -3,7 +3,7 @@
 // Hård gate: alle funktioner er no-ops mens FACILITIES_ENABLED=false; tests
 // injicerer flags-parameteren ({ facilitiesEnabled: true }) — prod-callsites
 // udelader den så koden følger kode-konstanten.
-import { FACILITIES_ENABLED, FACILITY_TRACKS, staffSalaryFor, staffReleaseSeverance } from "./facilityConstants.js";
+import { FACILITIES_ENABLED, FACILITY_TRACKS, MAX_STAFF_SLOTS_PER_ROLE, staffSalaryFor, staffReleaseSeverance } from "./facilityConstants.js";
 import { validateUpgrade, validateHire, getUpgradePrice, severanceCost } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
@@ -35,16 +35,17 @@ async function loadFacilityTier(teamId, track, supabaseClient) {
   return data?.tier ?? 0;
 }
 
-async function loadActiveStaff(teamId, role, supabaseClient) {
+// #3489: op til MAX_STAFF_SLOTS_PER_ROLE aktive rækker pr. (team, rolle) nu —
+// returnerer ALLE, sorteret på slot (1 først), i stedet for .maybeSingle().
+async function loadActiveStaffList(teamId, role, supabaseClient) {
   const { data, error } = await supabaseClient
     .from("team_staff")
-    .select("id, name, role, tier, salary, status")
+    .select("id, name, role, tier, salary, status, slot")
     .eq("team_id", teamId)
     .eq("role", role)
-    .eq("status", "active")
-    .maybeSingle();
+    .eq("status", "active");
   if (error) throw new Error(`facilityService: could not load active staff for ${teamId}/${role}: ${error.message}`);
-  return data;
+  return (data ?? []).slice().sort((a, b) => (a.slot ?? 1) - (b.slot ?? 1));
 }
 
 // #2887: ALLE navne holdet har fyret i denne rolle nogensinde (ikke kun
@@ -143,8 +144,17 @@ export async function hireStaff(
   if (!FACILITY_TRACKS.includes(role)) return { ok: false, error: "invalid_role" };
   void seasonId; // ingen upfront debit — sæsonløn opkræves af payroll (Task 6)
 
-  const existing = await loadActiveStaff(teamId, role, supabaseClient);
-  if (existing) return { ok: false, error: "role_occupied" };
+  // #3489: rollen er kun "occupied" når ALLE slots er besat — 1 aktiv staff
+  // blokerer ikke længere en 2. ansættelse (fx en U23- ved siden af en
+  // senior-træner, eller en 2. spejder med et andet speciale).
+  const activeStaff = await loadActiveStaffList(teamId, role, supabaseClient);
+  if (activeStaff.length >= MAX_STAFF_SLOTS_PER_ROLE) return { ok: false, error: "role_occupied" };
+  const takenSlots = new Set(activeStaff.map((s) => s.slot ?? 1));
+  let slot = 1;
+  while (takenSlots.has(slot) && slot <= MAX_STAFF_SLOTS_PER_ROLE) slot += 1;
+  // Utænkeligt givet length-tjekket ovenfor, men fail-closed frem for at indsætte
+  // uden for det gyldige slot-interval (matcher DB'ens CHECK slot BETWEEN 1 AND 2).
+  if (slot > MAX_STAFF_SLOTS_PER_ROLE) return { ok: false, error: "role_occupied" };
 
   const balance = await loadTeamBalance(teamId, supabaseClient);
   const facilityTier = await loadFacilityTier(teamId, role, supabaseClient);
@@ -178,12 +188,13 @@ export async function hireStaff(
       salary,
       hired_season: seasonNumber,
       status: "active",
+      slot,
     })
     .select("id")
     .single();
   if (insertError) {
-    // Race: samtidig hire vandt insertet — partial unique index på
-    // (team_id, role) WHERE status='active' afviser med 23505.
+    // Race: samtidig hire til SAMME slot vandt insertet — partial unique index på
+    // (team_id, role, slot) WHERE status='active' afviser med 23505.
     if (insertError.code === "23505") return { ok: false, error: "role_occupied" };
     throw new Error(`facilityService: staff insert failed for ${teamId}/${role}: ${insertError.message}`);
   }
@@ -223,14 +234,20 @@ export async function hireStaff(
   };
 }
 
+// #3489: staffId er nu VALGFRI — med op til 2 aktive rækker pr. rolle er "den
+// aktive" ikke længere entydig. Angiv staffId for at ramme en bestemt (fx en
+// specifik trænings-slot); udelades den, fyres slot 1 (bagudkompatibelt: hold
+// med kun 1 aktiv staff pr. rolle opfører sig UÆNDRET). Ejerskab (rollen matcher
+// OG rækken tilhører teamId) håndhæves altid uanset staffId-parameteren.
 export async function fireStaff(
-  { teamId, role, seasonId, seasonNumber },
+  { teamId, role, staffId, seasonId, seasonNumber },
   supabaseClient,
   flags = DEFAULT_FLAGS
 ) {
   if (!flags.facilitiesEnabled) return { ok: false, error: "facilities_disabled" };
 
-  const staff = await loadActiveStaff(teamId, role, supabaseClient);
+  const activeStaff = await loadActiveStaffList(teamId, role, supabaseClient);
+  const staff = staffId ? activeStaff.find((s) => s.id === staffId) : activeStaff[0];
   if (!staff) return { ok: false, error: "no_active_staff" };
 
   // BEVIDST ingen balance-validering: fyring er tilladt selv om balancen går

@@ -147,8 +147,13 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(training.upgradePrice, FACILITY_TIER_PRICE[3]);
   assert.equal(training.tierUpkeep, FACILITY_TIER_UPKEEP[2]);
   // #2216 A4: staff-objektet inkluderer nu overall (afledt på læsning). #2220 A4b: + id.
+  // #3489: + slot. staff = den (eneste, her) aktive; staffList er den fulde liste.
   const trainingOverall = deriveStaffAbilities({ role: "training", tier: 2, name: "Sofie Lindqvist" }).overall;
-  assert.deepEqual(training.staff, { id: "staff-1", name: "Sofie Lindqvist", tier: 2, salary: 22_000, overall: trainingOverall });
+  const expectedStaff = { id: "staff-1", name: "Sofie Lindqvist", tier: 2, salary: 22_000, slot: 1, overall: trainingOverall };
+  assert.deepEqual(training.staff, expectedStaff);
+  assert.deepEqual(training.staffList, [expectedStaff]);
+  assert.equal(training.staffSlotsUsed, 1);
+  assert.equal(training.staffSlotsMax, 2);
   // #2216 A4 (Task 6): display-magnitude er nu ability-drevet (base × staffEffectFactor(staff)),
   // dvs. faktoren afhænger af staffens overall — ikke længere tier-skalaren.
   assert.equal(training.effectiveBonus, effectiveBonus("training", 2, training.staff));
@@ -158,6 +163,8 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   const commercial = body.facilities.find((f) => f.track === "commercial");
   assert.equal(commercial.upgradePrice, null); // max tier
   assert.equal(commercial.staff, null);
+  assert.deepEqual(commercial.staffList, []);
+  assert.equal(commercial.staffSlotsUsed, 0);
   assert.equal(commercial.effectiveBonus, effectiveBonus("commercial", 5, null)); // 50% uden staff
   assert.equal(commercial.effectLive, false);
 
@@ -166,6 +173,32 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(scouting.upgradePrice, FACILITY_TIER_PRICE[1]);
   assert.equal(scouting.tierUpkeep, 0);
   assert.equal(scouting.effectiveBonus, 0);
+});
+
+// #3489: 2 aktive staff i samme rolle — staffList bærer BEGGE (sorteret på slot),
+// mens staff (bagudkompatibelt "primær") er den STÆRKESTE af de to, og
+// effectiveBonus/nextTierBonus følger den primære (spejler trainingStaffContext/
+// scoutAssignmentService.loadScout's "bedste-af-flere"-valg).
+test("GET facilities: 2 active staff in one role → staffList has both, staff = strongest (highest overall)", async () => {
+  const supabase = createSupabaseMock({
+    facilities: [{ track: "training", tier: 3 }],
+    staff: [
+      { id: "staff-weak", name: "Weak Coach", role: "training", tier: 1, salary: 5_000, slot: 1 },
+      { id: "staff-strong", name: "Strong Coach", role: "training", tier: 5, salary: 40_000, slot: 2 },
+    ],
+  });
+  const { body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
+  const training = body.facilities.find((f) => f.track === "training");
+
+  assert.equal(training.staffSlotsUsed, 2);
+  assert.equal(training.staffSlotsMax, 2);
+  assert.deepEqual(training.staffList.map((s) => s.id), ["staff-weak", "staff-strong"], "sorteret på slot");
+
+  const weakOverall = deriveStaffAbilities({ role: "training", tier: 1, name: "Weak Coach" }).overall;
+  const strongOverall = deriveStaffAbilities({ role: "training", tier: 5, name: "Strong Coach" }).overall;
+  assert.ok(strongOverall > weakOverall, "test-fixture skal have en entydigt stærkere kandidat");
+  assert.equal(training.staff.id, "staff-strong");
+  assert.equal(training.effectiveBonus, effectiveBonus("training", 3, training.staff));
 });
 
 test("GET facilities: nextTierBonus = effectiveBonus ved tier+1 (samme staff), null ved max tier (#2311)", async () => {
