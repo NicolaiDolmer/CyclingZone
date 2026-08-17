@@ -26,7 +26,7 @@ test("scouting/central: fuld side-payload (scout, capacity, jobConfig, seed-shor
   const { scout, active, completed, capacity, jobConfig } = res.body;
   assert.equal(scout.isDefault, true);
   assert.equal(capacity, 1);
-  assert.deepEqual(jobConfig, { targetEtaMinutes: 30, targetCostPerLevel: 1000, missionDays: 2, missionCost: 6000 });
+  assert.deepEqual(jobConfig, { targetEtaMinutes: 30, targetCostPerLevel: 1000, missionDays: 1, missionCost: 6000 });
   assert.deepEqual(active, []);
   // Seed-mission med #2644-status-labels: mindst én free_agent + én med holdnavn.
   const mission = completed.find((c) => c.kind === "mission");

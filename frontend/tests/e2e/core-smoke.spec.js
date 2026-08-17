@@ -467,6 +467,15 @@ test("dashboard marks an in-progress stage race as Live with stage progress (#18
     if (request.method() !== "GET") return route.fallback();
     return json(route, [LIVE_RACE]);
   });
+  // #3751: "Kommende løb"-kortet filtrerer nu på holdets egne race_entries —
+  // holdet ER tilmeldt dette synteticerede igangværende løb (etableret hold,
+  // testen dækker Live-badge + etape-fremdrift, ikke tilmeldings-filteret).
+  await page.route("**/rest/v1/race_entries?**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    if (request.method() !== "GET") return route.fallback();
+    return json(route, [{ race_id: LIVE_RACE.id, rider_id: "rider-1", team_id: TEST_TEAM.id, is_auto_filled: false, race_role: "leader" }]);
+  });
   // Næste etape (4) langt ude i fremtiden → countdown rendrer uden at være tids-skørt.
   await page.route("**/rest/v1/race_stage_schedule?**", (route) => {
     const request = route.request();

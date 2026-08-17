@@ -61,7 +61,10 @@ export function shouldSweepNow(now = new Date()) {
 export async function defaultLoadCandidates(supabase, targetPool = "free_agents") {
   let ridersQuery = supabase
     .from("riders")
-    .select("id, potentiale, birthdate, nationality_code, team_id, is_retired, team:team_id(league_division_id)")
+    // #3657: primary_type tilføjet — driver den nye scope:"type"-targeting i
+    // scoutMission.filterCandidatePool (allerede beregnet af riderTypes.js,
+    // ingen ny kolonne).
+    .select("id, potentiale, birthdate, nationality_code, team_id, primary_type, is_retired, team:team_id(league_division_id)")
     .eq("is_retired", false)
     .eq("owner_is_ai", false) // #2581: AI-ejede ryttere er skjulte for spillere i RidersPage
     .not("potentiale", "is", null)
@@ -88,6 +91,7 @@ export async function defaultLoadCandidates(supabase, targetPool = "free_agents"
       country: r.nationality_code ?? null,
       age: r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null,
       isNmEligible: true,
+      primaryType: r.primary_type ?? null, // #3657: scope:"type"-targeting
       // #2581/#2644: for free_agents er ownerTeamId ALTID null (kandidat-poolen
       // er begrænset til kontraktfrie ryttere ovenfor); for other_teams er det
       // rytterens FAKTISKE ejerhold — generateShortlist bruger det til at
@@ -121,11 +125,23 @@ async function completeMissionAssignment({ supabase, assignment, loadCandidates,
     missionId: assignment.id,
   });
 
-  if (topRiderId) {
-    const { error: insErr } = await supabase
-      .from("scout_actions")
-      .insert({ team_id: assignment.team_id, rider_id: topRiderId, season_id: assignment.season_id ?? null });
-    if (insErr) throw new Error(`scout_actions insert (mission top-find): ${insErr.message}`);
+  // #3652 (spillerønske 11/8, jeppek: "get a scoutreport on the other 4 guys
+  // he finds"): FØR fik kun topRiderId en gratis niveau-1-rapport (scout_actions-
+  // række), og resten af shortlisten viste kun et navn — klik ind og mødte
+  // "ikke scoutet endnu" (RiderScoutingTab.report.hidden ved niveau 0). Nu får
+  // HELE shortlisten (3-5 ryttere, samme scout_actions-mekanik som den
+  // eksisterende gratis rapport altid har brugt) niveau-1-rapporter — samme
+  // tur, samme pris, mere udbytte pr. mission. Ingen ny maskerings-mekanik:
+  // niveau 1 er allerede det bredeste synlige bånd (CEIL_HALF_WIDTH_BY_LEVEL[1]),
+  // så inversions-gatet (#1162) er uændret.
+  if (shortlist.length > 0) {
+    const rows = shortlist.map((riderId) => ({
+      team_id: assignment.team_id,
+      rider_id: riderId,
+      season_id: assignment.season_id ?? null,
+    }));
+    const { error: insErr } = await supabase.from("scout_actions").insert(rows);
+    if (insErr) throw new Error(`scout_actions insert (mission shortlist reports): ${insErr.message}`);
   }
 
   const result = { shortlist, top_rider_id: topRiderId };

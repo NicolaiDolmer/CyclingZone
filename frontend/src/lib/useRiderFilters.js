@@ -14,14 +14,14 @@ import {
 // node --test kan importere den direkte — se riderColumnSort.js's header-
 // kommentar. Re-eksporteres herfra så eksisterende importer af
 // useRiderFilters.js uændret kan bruge dem.
-import { compareRidersByFilter, mergeSalarySortedIds } from "./riderColumnSort.js";
+import { compareRidersByFilter, mergeSalarySortedIds, applyRiderColumnSort } from "./riderColumnSort.js";
 // #3331: riders er en deny-listed tabel (kan overstige PostgREST's stille
 // 1000-rækkers-loft — prod har ~8.700 ryttere). Løn-sorteringens to grene
 // (fetchRidersSortedBySalary) SKAL hente ALLE matchende rækker, ikke kun de
 // første 1000, ellers giver merge'et et forkert (stille afkortet) resultat.
 import { fetchAllRows } from "./supabasePagination.js";
 
-export { compareRidersByFilter, mergeSalarySortedIds };
+export { compareRidersByFilter, mergeSalarySortedIds, applyRiderColumnSort };
 
 // Evner spænder 1-99 (mod PCM's klumpede 50-85). Et evne-filter er kun "aktivt"
 // når en grænse afviger fra fuld skala.
@@ -207,19 +207,6 @@ function applyAbilityFilters(query, filters, { prefix = "" } = {}) {
     if (Number.isFinite(maxVal) && maxVal < STAT_MAX_DEFAULT) query = query.lte(`${prefix}${key}`, maxVal);
   }
   return query;
-}
-
-function applyRiderColumnSort(query, filters) {
-  if (filters.sort === "firstname") {
-    return query.order("lastname", { ascending: filters.sort_dir === "asc", nullsFirst: false });
-  }
-  if (filters.sort === "value" || filters.sort === "potentiale" || filters.sort === "_scoutMid") {
-    // potentiale/_scoutMid: stale URL/sessionStorage kan bære den gamle sort-nøgle —
-    // ikke klient-læsbar (#1162). Fald tilbage til værdi-sortering.
-    return query.order("market_value", { ascending: filters.sort_dir === "asc", nullsFirst: false });
-  }
-  const sortAsc = filters.sort === "birthdate" ? filters.sort_dir === "desc" : filters.sort_dir === "asc";
-  return query.order(filters.sort, { ascending: sortAsc, nullsFirst: false });
 }
 
 // #2403: rytter-DB'ens rå `salary`-kolonne matcher ikke altid den VISTE løn
