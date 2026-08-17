@@ -10822,14 +10822,15 @@ router.post("/club/staff/hire", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/club/staff/fire — body { role }. no_active_staff → 404.
+// POST /api/club/staff/fire — body { role, staffId? }. #3489: staffId er
+// valgfri (op til 2 aktive staff pr. rolle nu) — no_active_staff → 404.
 router.post("/club/staff/fire", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
     const { status, body } = await postStaffFireHandler(
-      { teamId: req.team.id, role: req.body?.role, seasonId, seasonNumber },
+      { teamId: req.team.id, role: req.body?.role, staffId: req.body?.staffId, seasonId, seasonNumber },
       supabase,
       { flags: { facilitiesEnabled } }
     );
