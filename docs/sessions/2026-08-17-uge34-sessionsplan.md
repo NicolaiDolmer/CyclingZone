@@ -28,14 +28,16 @@
 3. Regenererings-protokol: ejeren ser live-kalenderen + scorecardet før den "atombombe"
    (ejer-review-reglen). Backup/rollback-værktøjet fra PR #3835 genbruges.
 
-## Session 2 (ons/tor): Trin 7-overgangssessionen (FØR cutover, ejer-valgt 17/8)
+## Session 2 (ons/tor): Trin 7-overgangssessionen (udrulning FØR sæsonskiftet, ejer-valgt 17/8 x2)
 
-Følg NOW.md's definerede treer: (1) mål på staging (`staging-3746-trin7`) hvor stor den
-OPLEVEDE ændring er pr. spiller (prognose-bånd-flytninger pr. gennemsnitshold), (2) byg
-engangspanelet "Hvad ændrede sig for dine ryttere?", (3) finpuds spillerbeskeden ud fra
-målingen. Derefter A0-beslutningerne (merge-go for PR #3798 + Potentiale-omdøbning) →
-A1 → A2-A5. Bemærk: trin 7-flip SAMMEN med/lige efter cutover er nu muligheden ejeren
-har åbnet — flip-beslutningen er stadig ejer-gated.
+**Punkt 1 (målingen) ER KØRT 17/8** — og den væltede præmissen (#3746-kommentar 17/8):
+87 % af et typisk holds ryttere får NEDjusteret prognose-visning (99,2 % af alle
+flytninger er ned; Sho-punktmålingen modsagt). Ejer-beslutning på den nye evidens:
+**udrulning stadig FØR sæsonskiftet** — sessionen skal derfor levere: (2) engangspanelet
+"Hvad ændrede sig for dine ryttere?" designet til virkeligheden "røde pile på næsten hele
+truppen, ingen bliver reelt dårligere", (3) spillerbesked + FAQ på samme præmis, i HØJ
+kvalitet FØR søndag. Derefter A0 (merge-go PR #3798 + Potentiale-omdøbning) → A1 → A2-A5.
+Flip-beslutningen er fortsat ejer-gated.
 
 ## Indklemt (ons/tor, kort beslutnings-session): Værdi/løn (ejer-valgt 17/8)
 
