@@ -39,6 +39,20 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Two staff per role",
+          "body": "Each staff role now has two slots, so you can run two scouts or two coaches at once. The strongest of the two drives your bonus. Candidates are always visible, and you only need to fire someone when both slots are full."
+        },
+        "da": {
+          "title": "To staff pr. rolle",
+          "body": "Hver staff-rolle har nu to pladser, så du kan have to spejdere eller to trænere samtidigt. Den stærkeste af de to driver din bonus. Kandidater er altid synlige, og du skal kun fyre nogen når begge pladser er fyldt."
+        },
+        "refs": [3489, 3658]
+      },
+      {
+        "category": "new",
+        "audience": "player",
         "topic": "Auctions",
         "en": {
           "title": "Retirement warning before you bid",
