@@ -43,6 +43,7 @@ import { hasRouteData } from "../lib/stageRouteProfile.js";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import FinalKilometrePlayback from "../components/race/FinalKilometrePlayback.jsx";
+import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -1250,6 +1251,14 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>
         <SectionStack>
+          {/* #3859 (bølge 2, mockup godkendt 17/8): "The story of the stage" —
+              3-5 kuraterede nøgle-events + gold "Watch the race film". Gater
+              selv på tidslinje-data (renderer intet for løb uden #2410 S1-data). */}
+          <StoryOfTheStageSection
+            raceId={raceId} stageNumber={stage} distanceKm={profile?.distance_km ?? null}
+            riderNameById={riderNameById} teamNameById={teamNameById}
+            stageLabel={t("detail.tabStage", { number: stage })}
+          />
           <RaceReportPanel
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={results} incidents={incidents} myTeamId={myTeamId}

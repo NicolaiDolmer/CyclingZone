@@ -629,6 +629,36 @@
         "solo_win": "Solosejr"
       }
     },
+    "film": {
+      "storyTitle": "Etapens historie",
+      "watchButton": "Se løbsfilmen",
+      "title": "Løbsfilm",
+      "km": "km {value}",
+      "gapCurveTitle": "Forspring til feltet",
+      "scrubberLabel": "Scrub gennem etapen",
+      "replay": "Afspil igen",
+      "play": "Afspil",
+      "pause": "Pause",
+      "feedEmpty": "Scrub fremad for at se hvad der skete.",
+      "event": {
+        "stage_start": "{count} ryttere ruller ud på {distance} km.",
+        "breakaway_formed": "{riders} rykker væk fra feltet.",
+        "kom_passage": "{name} (kat. {category}): {rider} fører over toppen.",
+        "intermediate_sprint": "{name}: {rider} tager mellemsprinten.",
+        "breakaway_caught": "{riders} bliver indhentet af feltet.",
+        "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
+        "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
+        "favorite_crack": "{rider} sprækker og mister kontakten til front.",
+        "finale_attack": "{rider} angriber i finalen.",
+        "sprint_decided": "Det bliver tæt mellem {rider} og forfølgerne.",
+        "sprint_decided_photo": "Fotofinish: det er tæt for {rider}.",
+        "finish": "{rider} tager etapesejren.",
+        "finish_sprint_win": "{rider} vinder massespurten.",
+        "finish_close_win": "{rider} vinder en tæt finish.",
+        "finish_solo_win": "{rider} soloer til etapesejr.",
+        "gc_change": "{rider} overtager den samlede føring fra {previousLeader}."
+      }
+    },
     "recap": {
       "title": "Løbsreferat",
       "win": "{rider} tog sejren.",

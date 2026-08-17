@@ -629,6 +629,36 @@
         "solo_win": "Solo victory"
       }
     },
+    "film": {
+      "storyTitle": "The story of the stage",
+      "watchButton": "Watch the race film",
+      "title": "Race film",
+      "km": "km {value}",
+      "gapCurveTitle": "Gap to the peloton",
+      "scrubberLabel": "Scrub through the stage",
+      "replay": "Replay",
+      "play": "Play",
+      "pause": "Pause",
+      "feedEmpty": "Scrub forward to see what happened.",
+      "event": {
+        "stage_start": "{count} riders roll out for {distance} km.",
+        "breakaway_formed": "{riders} {count, plural, one {goes} other {go}} clear off the front.",
+        "kom_passage": "{name} (cat. {category}): {rider} leads over the top.",
+        "intermediate_sprint": "{name}: {rider} takes the intermediate sprint.",
+        "breakaway_caught": "{riders} {count, plural, one {is} other {are}} caught by the bunch.",
+        "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
+        "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
+        "favorite_crack": "{rider} cracks and loses contact with the front.",
+        "finale_attack": "{rider} attacks in the finale.",
+        "sprint_decided": "It comes down to the wire between {rider} and the chasers.",
+        "sprint_decided_photo": "Photo finish: it comes down to the wire for {rider}.",
+        "finish": "{rider} takes the stage win.",
+        "finish_sprint_win": "{rider} wins the bunch sprint.",
+        "finish_close_win": "{rider} wins in a close finish.",
+        "finish_solo_win": "{rider} solos to the stage win.",
+        "gc_change": "{rider} takes over the overall lead from {previousLeader}."
+      }
+    },
     "recap": {
       "title": "Race recap",
       "win": "{rider} took the win.",
