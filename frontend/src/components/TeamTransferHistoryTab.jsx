@@ -5,9 +5,10 @@ import RiderLink from "./RiderLink";
 import TeamLink from "./TeamLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
+import { filterTransferHistoryNoSale } from "../lib/transferHistoryNoSale.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import SortableTh from "./ui/SortableTh.jsx";
-import { Card, Select, ExchangeIcon, ArrowDownIcon, ArrowUpIcon } from "./ui";
+import { Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon } from "./ui";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", academy: "type.academy" };
 
@@ -181,6 +182,13 @@ export default function TeamTransferHistoryTab({ teamId }) {
   const [error, setError] = useState(null);
   const [seasonFilter, setSeasonFilter] = useState("current");
   const [currentSeason, setCurrentSeason] = useState(null);
+  // #2400: en gennemført auktion uden bud ("ingen salg") er ikke en faktisk
+  // handel — rytteren blev bare på holdet. Historikken viste den alligevel,
+  // hvilket gjorde den svær at bruge til det den er tiltænkt (se hvornår
+  // ryttere faktisk blev signet/solgt/frigivet). Skjult som DEFAULT, men
+  // tilgængelig via toggle (ikke slettet — kan stadig være nyttigt at se at
+  // en auktion ikke fandt en køber).
+  const [showNoSale, setShowNoSale] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,9 +238,18 @@ export default function TeamTransferHistoryTab({ teamId }) {
     return list;
   }, [events, seasonFilter, currentSeason]);
 
+  // #2400: no_sale-auktioner skjules som default (se filterTransferHistoryNoSale).
+  // noSaleHiddenCount bruges til info-linjen ("N auktioner uden bud er skjult")
+  // og til at kunne vise en mere præcis tom-tilstand når hele sæsonen kun
+  // bestod af no_sale.
+  const { visible: visibleEvents, hiddenCount: noSaleHiddenCount } = useMemo(
+    () => filterTransferHistoryNoSale(seasonFiltered, showNoSale),
+    [seasonFiltered, showNoSale],
+  );
+
   // #2329: kanonisk sort-state — historik-tabellen HAVDE allerede denne
   // sortering, blot bag et lokalt SortTh + forkert data-sort-*-flag.
-  const { rows: filtered, sort: sortKey, sortDir, handleSort } = useTableSort(seasonFiltered, HISTORY_SORT_ACCESSORS, {
+  const { rows: filtered, sort: sortKey, sortDir, handleSort } = useTableSort(visibleEvents, HISTORY_SORT_ACCESSORS, {
     initialSort: "date",
     initialDir: "desc",
     descFirstKeys: HISTORY_SORT_DESC_FIRST_KEYS,
@@ -251,29 +268,51 @@ export default function TeamTransferHistoryTab({ teamId }) {
 
   const noFilteredResults = filtered.length === 0 && events.length > 0;
   const noResults = events.length === 0;
+  // #2400: mere præcis tom-besked når sæsonen kun indeholdt no_sale-auktioner
+  // (skjult af toggle'en) — ellers ser "ingen transfers" vildledende ud når
+  // der reelt VAR auktioner, bare ingen der endte i et salg.
+  const emptyDueToHiddenNoSaleOnly = noFilteredResults && !showNoSale
+    && seasonFiltered.length > 0 && noSaleHiddenCount === seasonFiltered.length;
 
   return (
     <div className="space-y-4">
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
         <h2 className="text-cz-1 font-semibold text-sm">{t("history.title")}</h2>
-        <Select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)} size="sm">
-          <option value="all">{t("history.seasonFilterAll")}</option>
-          {currentSeason != null && (
-            <option value="current">{t("history.seasonFilterCurrent", { n: currentSeason })}</option>
-          )}
-          {availableSeasons.filter((n) => n !== currentSeason).map((n) => (
-            <option key={n} value={n}>{t("history.seasonOption", { n })}</option>
-          ))}
-        </Select>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Checkbox
+            id="transfer-history-show-no-sale"
+            checked={showNoSale}
+            onChange={(e) => setShowNoSale(e.target.checked)}
+            label={t("history.noSaleToggle")}
+            className="text-cz-2"
+          />
+          <Select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)} size="sm">
+            <option value="all">{t("history.seasonFilterAll")}</option>
+            {currentSeason != null && (
+              <option value="current">{t("history.seasonFilterCurrent", { n: currentSeason })}</option>
+            )}
+            {availableSeasons.filter((n) => n !== currentSeason).map((n) => (
+              <option key={n} value={n}>{t("history.seasonOption", { n })}</option>
+            ))}
+          </Select>
+        </div>
       </div>
+
+      {!showNoSale && noSaleHiddenCount > 0 && (
+        <p className="text-cz-3 text-2xs mb-3">
+          {t("history.noSaleHiddenNote", { count: noSaleHiddenCount })}
+        </p>
+      )}
 
       {noResults && (
         <p className="text-cz-3 text-sm py-4">{t("history.emptyAll")}</p>
       )}
 
       {noFilteredResults && (
-        <p className="text-cz-3 text-sm py-4">{t("history.emptyFiltered")}</p>
+        <p className="text-cz-3 text-sm py-4">
+          {emptyDueToHiddenNoSaleOnly ? t("history.emptyFilteredNoSaleOnly") : t("history.emptyFiltered")}
+        </p>
       )}
 
       {filtered.length > 0 && (

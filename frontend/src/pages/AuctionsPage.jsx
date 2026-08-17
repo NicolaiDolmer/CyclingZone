@@ -963,11 +963,15 @@ export default function AuctionsPage() {
   }
 
   function handleSort(key) {
-    // #1755: delt cyklus-logik for begge sort-domæner. current_price/calculated_end
-    // er AUKTIONS-niveau (bor på auktionen, ikke rytteren) og styres af auctionSort;
-    // alt andet er rytter-niveau og styres af riderFilters. Begge bruger nu samme
-    // klik-cyklus så retning + nøgle-skift opfører sig ens overalt.
-    if (key === "current_price" || key === "calculated_end") {
+    // #1755: delt cyklus-logik for begge sort-domæner. current_price/calculated_end/
+    // seller er AUKTIONS-niveau (bor på auktionen, ikke rytteren) og styres af
+    // auctionSort; alt andet er rytter-niveau og styres af riderFilters. Begge bruger
+    // nu samme klik-cyklus så retning + nøgle-skift opfører sig ens overalt.
+    // #3067: seller tilføjet — "Sælger"-headeren var før en almindelig <th> midt i
+    // rækken af sorterbare headers (samme TH_BASE-typografi), uden onSort. Det gav
+    // 12 rage clicks i Clarity (spillerne prøvede at sortere på sælger som de andre
+    // kolonner). Sorterer på getAuctionSellerLabel (samme tekst som cellen viser).
+    if (key === "current_price" || key === "calculated_end" || key === "seller") {
       setAuctionSort(s => {
         const next = cycleSortState({ sort: s.key, dir: s.dir }, key);
         return { key: next.sort, dir: next.dir };
@@ -984,11 +988,11 @@ export default function AuctionsPage() {
   }
 
   function activeSort(key) {
-    if (key === "current_price" || key === "calculated_end") return auctionSort.key === key;
+    if (key === "current_price" || key === "calculated_end" || key === "seller") return auctionSort.key === key;
     return !auctionSort.key && riderFilters.filters.sort === key;
   }
   function activeSortDir(key) {
-    if (key === "current_price" || key === "calculated_end") return auctionSort.dir;
+    if (key === "current_price" || key === "calculated_end" || key === "seller") return auctionSort.dir;
     return riderFilters.filters.sort_dir;
   }
 
@@ -1744,6 +1748,15 @@ export default function AuctionsPage() {
 
 function applyAuctionSort(list, auctionSort) {
   if (!auctionSort.key) return list;
+  // #3067: seller sorterer alfabetisk på samme tekst som Sælger-kolonnen viser
+  // (getAuctionSellerLabel — holdnavn eller "AI"), ikke numerisk som de to andre
+  // auktions-niveau-nøgler.
+  if (auctionSort.key === "seller") {
+    return [...list].sort((a, b) => {
+      const cmp = getAuctionSellerLabel(a).localeCompare(getAuctionSellerLabel(b), "da");
+      return auctionSort.dir === "desc" ? -cmp : cmp;
+    });
+  }
   return [...list].sort((a, b) => {
     const av = auctionSort.key === "calculated_end"
       ? new Date(a.calculated_end).getTime()
@@ -1816,7 +1829,12 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
           sort={activeSort("_scoutMid") ? "_scoutMid" : riderFiltersSort}
           sortDir={activeSortDir("_scoutMid")} onSort={handleSort}
           className={`px-3 py-3 text-left whitespace-nowrap ${TH_BASE}`}>{t("table.potential")}</SortTh>
-        <th className={`px-3 py-3 text-left text-cz-3 hidden xl:table-cell ${TH_BASE}`}>{t("table.seller")}</th>
+        {/* #3067: var en almindelig <th> uden onSort, men brugte samme TH_BASE-
+            typografi som de sorterbare headers omkring den — spillerne prøvede at
+            sortere på den og fik intet respons (12 rage clicks, Clarity 21-27/7).
+            Nu en rigtig SortTh (sorterer alfabetisk på sælgernavn/"AI"). */}
+        <SortTh sortKey="seller" sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
+          className={`px-3 py-3 text-left hidden xl:table-cell ${TH_BASE}`}>{t("table.seller")}</SortTh>
         {visibleStatsArr.map(key => (
           <SortTh key={key} sortKey={key}
             sort={activeSort(key) ? key : riderFiltersSort}

@@ -826,6 +826,53 @@ export const SEED_MANAGER_TRANSFERS = [
   },
 ];
 
+// GET /api/teams/:id/transfer-history — #2400: holder BÅDE en faktisk handel
+// og en no_sale-auktion, så toggle'en (TeamTransferHistoryTab, filterTransferHistoryNoSale)
+// har noget reelt at skjule/vise på preview. Samme event-shape som backendens
+// buildTeamTransferHistory (backend/lib/teamTransferHistory.js).
+export const SEED_TRANSFER_HISTORY = [
+  {
+    id: "auction:tx-e2e-1",
+    type: "auction",
+    direction: "out",
+    cash_flow: "in",
+    date: "2026-07-09T14:02:00.000Z",
+    rider: { id: "rider-3", firstname: "Sofie", lastname: "Lund" },
+    counterparty: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false },
+    amount: 640000,
+    no_sale: false,
+    is_guaranteed_sale: false,
+    season_number: ACTIVE_SEASON.season_number,
+  },
+  // #2400: en gennemført auktion uden bud — dette er events der ELLER ville
+  // fylde historikken med "intet skete". Skjules som default via toggle'en.
+  {
+    id: "auction:tx-e2e-2",
+    type: "auction",
+    direction: "out",
+    cash_flow: null,
+    date: "2026-07-15T09:30:00.000Z",
+    rider: { id: "rider-4", firstname: "Jonas", lastname: "Brandt" },
+    counterparty: null,
+    amount: null,
+    no_sale: true,
+    is_guaranteed_sale: false,
+    season_number: ACTIVE_SEASON.season_number,
+  },
+  {
+    id: "transfer:tx-e2e-3",
+    type: "transfer",
+    direction: "in",
+    cash_flow: "out",
+    date: "2026-06-28T11:20:00.000Z",
+    rider: { id: "rider-5", firstname: "Emil", lastname: "Kjær" },
+    counterparty: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false },
+    amount: 415000,
+    status: "accepted",
+    season_number: ACTIVE_SEASON.season_number,
+  },
+];
+
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
 // kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
 // roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).
