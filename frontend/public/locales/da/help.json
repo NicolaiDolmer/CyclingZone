@@ -117,15 +117,15 @@
       "label": "Auktioner",
       "whatAuctions": {
         "title": "Hvad er auktioner?",
-        "text": "Auktioner bruges primært til at købe frie ryttere (ryttere uden hold). Du sætter en rytter til auktion, alle managers kan byde, og højeste bud vinder. Du kan også sætte dine egne ryttere til auktion. Starter du en auktion på en fri eller AI-ejet rytter, er du kun initiator af auktionen. Du får ikke salgsprovenuet, medmindre rytteren faktisk var på dit hold."
+        "text": "Auktioner bruges primært til at købe frie ryttere (ryttere uden hold). Du sætter en rytter til auktion, alle managers kan byde, og højeste bud vinder. Du kan også sætte dine egne ryttere til auktion. Starter du en auktion på en fri rytter, er du kun initiator af auktionen: du får ikke salgsprovenuet, medmindre rytteren faktisk var på dit hold. Ryttere på et AI-styret hold kan slet ikke sættes til auktion; kun frie ryttere og ryttere på en anden managers hold kan listes."
       },
       "howToStart": {
         "title": "Sådan starter du en auktion",
         "steps": [
-          "Gå til Ryttere og find en fri eller AI-rytter.",
+          "Gå til Ryttere og find en fri rytter (uden hold).",
           "Klik på rytterens navn for at åbne statistiksiden.",
           "Klik 'Start auktion' og sæt en startpris. Minimum svarer til rytterens Værdi.",
-          "På fri og AI-ryttere er startprisen dit første bud, så du fører auktionen med det samme.",
+          "På en fri rytter er startprisen dit første bud, så du fører auktionen med det samme.",
           "Auktionen er nu synlig for alle under Auktioner."
         ]
       },
@@ -191,7 +191,7 @@
           "Klik 'Send transfertilbud' nederst på siden.",
           "Indtast dit tilbud i CZ$ og en valgfri besked.",
           "Klik 'Send tilbud'. Sælger modtager en notifikation.",
-          "AI-ryttere kan ikke modtage direkte tilbud; de skal købes via auktion."
+          "AI-ryttere kan slet ikke købes, hverken via direkte tilbud eller auktion."
         ]
       },
       "proposeSwap": {
@@ -956,7 +956,7 @@
       },
       "freeAgents": {
         "title": "Free agents",
-        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (baseret på rytterens forventede produktion denne sæson) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres."
+        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (baseret på rytterens forventede produktion denne sæson) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres. Frie agenter opstår mest ved at en rytters kontrakt udløber og ikke bliver fornyet ved sæsonskiftet: i praksis er det næsten altid et menneskestyret hold, for AI-styrede hold fornyer selv deres udløbende kontrakter automatisk ved samme skifte. Resten er ryttere frigivet af deres gamle klub, enten ved akademi-graduering eller fra et akademi-intake-tilbud der udløb ubesvaret og ikke fandt en køber på auktion (se 'Udløber akademi-intake-tilbud?')."
       }
     },
     "academy": {
@@ -1176,7 +1176,7 @@
     },
     "aiDirectOffers": {
       "q": "Kan jeg købe AI-ryttere med direkte tilbud?",
-      "a": "Nej. AI-ryttere kan ikke modtage direkte transfer- eller byttetilbud. De skal købes via auktion."
+      "a": "Nej. Ryttere på et AI-styret hold kan slet ikke erhverves: hverken via direkte transfer- eller byttetilbud, og heller ikke via auktion. Kun frie ryttere (uden hold) og ryttere på en anden managers hold kan skifte hold."
     },
     "auctionExpiry": {
       "q": "Hvornår udløber en auktion?",
@@ -1252,7 +1252,7 @@
     },
     "seasonChangeMoneyFaq": {
       "q": "Hvad sker der med min økonomi ved sæsonskiftet?",
-      "a": "Alt sker ved starten af den nye sæson, i én omgang. Din sponsorkontrakt fornys først, derefter udbetales sponsorpengene, og lige efter følger sæsonens betalinger: lånerenter, rytterlønninger og facilitets-driftsomkostninger plus staff-lønninger, i den rækkefølge. Der trækkes ikke noget når den gamle sæson slutter; løn og renter blev flyttet til sæsonstart i v3.78. Hvis din sponsorindtægt og balance ikke dækker betalingerne, optager systemet automatisk et nødlån for det manglende beløb (se 'Hvad sker der hvis jeg ikke kan betale lønninger?'). Har din sponsoraftale også en løbsdags-rate, udbetales den del separat efterhånden som du kører løb i sæsonen; den indgår ikke i sæsonskiftets omgang."
+      "a": "Alt sker ved starten af den nye sæson, i én omgang. Din sponsorkontrakt fornys først, derefter udbetales sponsorpengene, og lige efter følger sæsonens betalinger: lånerenter, rytterlønninger, rente af en balance der stadig er negativ derefter, akademi-drift (hvis du har akademiryttere), drift og vedligehold, facilitets-vedligehold og staff-lønninger, i den rækkefølge. Der trækkes ikke noget når den gamle sæson slutter; løn og renter blev flyttet til sæsonstart i v3.78. Hvis din sponsorindtægt og balance ikke dækker betalingerne, optager systemet automatisk et nødlån for det manglende beløb (se 'Hvad sker der hvis jeg ikke kan betale lønninger?'). Har din sponsoraftale også en løbsdags-rate, udbetales den del separat efterhånden som du kører løb i sæsonen; den indgår ikke i sæsonskiftets omgang."
     },
     "salaryShortfall": {
       "q": "Hvad sker der hvis jeg ikke kan betale lønninger?",
@@ -1472,7 +1472,7 @@
     },
     "academyIntakeExpiryFaq": {
       "q": "Udløber akademi-intake-tilbud?",
-      "a": "Ja. Et åbent intake-tilbud udløber automatisk efter 7 dage, hvis du hverken underskriver eller afviser det. Det forhindrer at et emne bliver ved med at stå skjult på et tilbud, ingen tager stilling til. Udløber dit tilbud, sættes emnet til salg for andre klubber på en ungdomsauktion, der løber et helt døgn (normale auktioner er meget kortere), så det kan betale sig at beslutte inden fristen. Ender auktionen med et salg, modtager du hele det vindende bud som kompensation for den udeblevne beslutning. Byder ingen, bliver rytteren i spillet som fri agent og kan hentes igen senere."
+      "a": "Ja. Et åbent intake-tilbud udløber automatisk efter 7 dage, hvis du hverken underskriver eller afviser det. Det forhindrer at et emne bliver ved med at stå skjult på et tilbud, ingen tager stilling til. Udløber dit tilbud, sættes emnet til salg for andre klubber på en ungdomsauktion, der løber et helt døgn (normale auktioner er meget kortere), så det kan betale sig at beslutte inden fristen. Ender auktionen med et salg, modtager du hele det vindende bud som kompensation for den udeblevne beslutning. Byder ingen, bliver rytteren i spillet som fri agent og kan hentes igen senere. Det er anderledes end selv at afvise et emne aktivt: det sender ham i stedet på en ungdomsauktion med den normale varighed på 1 time, og en usolgt rytter dér forlader spillet for godt, så auktionens længde i sig selv fortæller om et emne blev afvist eller bare overset. Under alle omstændigheder er det at vinde en ungdomsauktion en reel anden vej til en høj-potentiale ung rytter ud over din egen ugentlige intake, for ethvert emne på en sådan auktion er genereret af det samme akademisystem som dit eget kuld."
     },
     "fatigueInjuryThresholdFaq": {
       "q": "Hvor højt kan jeg presse trætheden, før træning risikerer en skade?",
