@@ -325,6 +325,11 @@ async function runBoardAutoAcceptCron() {
       console.log(
         `🪑 Board auto-accept: ${result.teams_checked} hold tjekket — ${result.reminders_sent} reminders, ${result.auto_accepted} auto-accepted, ${result.errors} fejl`
       );
+    } else {
+      // #3587: heartbeat ved 0 handlinger — ellers ser "kører fint, intet at
+      // gøre" identisk ud med "kører ikke" i Railway-loggen (samme blinde
+      // vinkel som #3502). Billig linje pr. 30. minut, matcher mid-season-mønstret.
+      console.log(`🪑 Board auto-accept: ${result.teams_checked} hold tjekket — intet at gøre`);
     }
   } catch (err) {
     // #2389 A2: den ydre catch sluger top-level-fejl (window/season/teams-queries)
