@@ -7812,19 +7812,28 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
       .limit(14);
     if (error) throw error;
 
-    const ascRows = [...(rows || [])].reverse().map(r => ({ date: r.metric_date, statuses: r.statuses }));
-    const breaches = findConsecutiveBreaches(ascRows, { minConsecutiveDays: 3 });
+    // #3696: rows kommer faldende (nyeste først) fra queryen ovenfor, men
+    // konsumenterne — frontend (BalanceDriftWatchSection læser
+    // days[days.length - 1] som "seneste") og findConsecutiveBreaches
+    // (kræver stigende for at "consecutive" giver mening) — forventer alle
+    // stigende dato-orden. ascRows er derfor SSOT for "days" i responset;
+    // den faldende `rows` bruges ikke direkte til noget klient-vendt.
+    const ascRows = [...(rows || [])].reverse();
+    const breaches = findConsecutiveBreaches(
+      ascRows.map(r => ({ date: r.metric_date, statuses: r.statuses })),
+      { minConsecutiveDays: 3 }
+    );
     // #2557/#3250-opfølgning (spor B1, del B): per-tier-brud, IKKE koblet til
     // Discord-alarmen (se findConsecutiveTierBreaches()'s header) — kun
     // forespørgelsesbar her, så fx tier3 kan vises som brudt selvom
     // `breaches` ovenfor (det globale aggregat) er tomt.
-    const tierBreachRows = ascRows.map(r => ({ date: r.date, tierStatuses: r.statuses?.byTier || {} }));
+    const tierBreachRows = ascRows.map(r => ({ date: r.metric_date, tierStatuses: r.statuses?.byTier || {} }));
     const tierBreaches = findConsecutiveTierBreaches(tierBreachRows, { minConsecutiveDays: 3 });
 
     res.json({
       bands: BALANCE_DRIFT_BANDS,
       alarmEligibleMetrics: ALARM_ELIGIBLE_METRICS,
-      days: (rows || []).map(r => ({
+      days: ascRows.map(r => ({
         date: r.metric_date,
         metrics: r.metrics,
         statuses: r.statuses,
