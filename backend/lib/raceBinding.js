@@ -156,6 +156,24 @@ export function deriveMonumentBindingWindow(scheduleRows, cetToGameDaySpan) {
   return Number.isFinite(start) && Number.isFinite(end) ? { start, end } : null;
 }
 
+// #3420: race_entries.binding_span + no_rider_double_booking (EXCLUDE USING gist,
+// database/2026-08-18-3420-race-entries-rider-day-invariant.sql) er DB-backstoppet
+// mod "1 rytter = 1 løb pr. in-game-dag" — den sidste linje hvis en af de FIRE
+// separate skriveres pre-flight-tjek alligevel skulle tage fejl (den klasse bugs
+// #3420 findes for at gøre umulig, jf. #3113/#3119/#3122/5-8-Team-Fakta). Postgres
+// afviser med SQLSTATE 23P01 (exclusion_violation); supabase-js/PostgREST sætter
+// error.code til den rå Postgres-kode for et almindeligt insert/upsert (i modsætning
+// til en RPC's egen RAISE EXCEPTION-besked, som replace_race_selection allerede
+// oversætter til 'selection_rider_bound' INDE i SQL'en, se migrationen). Kaldere af
+// et RÅT race_entries.insert/upsert (raceEntryGenerator.js, raceRunner.js,
+// api.js's auto-select + regenerate) bruger dette til at give en navngiven fejl
+// i stedet for en opak 500 (#3098-mønsteret).
+export function isRiderDayInvariantViolation(error) {
+  if (!error) return false;
+  if (error.code === "23P01") return true;
+  return String(error.message || "").includes("no_rider_double_booking");
+}
+
 // To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
 // to løb der starter samtidig overlapper). Defensiv mod null.
 export function windowsOverlap(a, b) {

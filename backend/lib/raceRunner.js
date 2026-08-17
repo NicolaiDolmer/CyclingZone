@@ -78,7 +78,7 @@ import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { captureException } from "./sentry.js";
-import { raceBindingWindow } from "./raceBinding.js";
+import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
@@ -916,7 +916,20 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
 
   if (persist && rows.length) {
     const { error: insErr } = await supabase.from("race_entries").insert(rows);
-    if (insErr) throw new Error(`race_entries insert: ${insErr.message}`);
+    if (insErr) {
+      // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
+      // loadFieldBindingContext/excludeBoundRiders ovenfor alligevel skulle overse
+      // en konflikt ved race-start — det ville afsløre en bug i selve runtime-
+      // autofillet, ikke bare en enkelt spillerhandling, så fejlen skal være
+      // tydelig i loggen (ikke maskeret som en generisk Postgres-tekst).
+      if (isRiderDayInvariantViolation(insErr)) {
+        throw new Error(
+          `race_entries insert: rider-day invariant (#3420) rejected the race-start autofill for race ${race.id} — ` +
+          `the runtime autofill's own binding exclusion missed a double-booking (${insErr.message})`
+        );
+      }
+      throw new Error(`race_entries insert: ${insErr.message}`);
+    }
   }
   return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
 }
