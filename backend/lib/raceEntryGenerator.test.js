@@ -1028,6 +1028,119 @@ test("#2436: uq_race_entries_captain kolliderer BEGGE forsøg → ægte bug, fej
   assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 0, "intet skrevet — enheden fejlede rent");
 });
 
+// ── #3482 (CYCLINGZONE-32): FK-retry når en rytter slettes under kørslen ─────
+// Samme TOCTOU-klasse som #2436, anden constraint. AI-trim/removeAiTeams sletter et
+// holds ryttere i vinduet mellem trup-læsningen og skrivningen → insert-batchen peger
+// på rider_id'er der ikke findes længere → race_entries_rider_id_fkey afviser HELE
+// enheden (prod 15/7 + 5/8: 28 enheder = ét slettet hold × 28 løb). Mocken simulerer
+// racet via failUpsert, der fjerner rytteren fra state og returnerer Postgres' FK-fejl.
+const RIDER_FK_ERROR =
+  'insert or update on table "race_entries" violates foreign key constraint "race_entries_rider_id_fkey"';
+
+test("#3482: rytter slettet i skrive-vinduet → enheden køres om uden ham → INGEN capture", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+
+  const deleted = ["t1-r0", "t1-r1"];
+  let injected = false;
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table, rows }) => {
+      if (table !== "race_entries" || injected) return false;
+      if (!rows.some((r) => deleted.includes(r.rider_id))) return false;
+      injected = true;
+      // Holdets to bedste ryttere slettes PRÆCIS her. FK'en er ON DELETE CASCADE, så
+      // de forsvinder fra riders — næste insert-forsøg må ikke referere dem.
+      state.riders = state.riders.filter((r) => !deleted.includes(r.id));
+      return RIDER_FK_ERROR;
+    },
+  });
+
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.ok(injected, "sanity: sletningen udløste rent faktisk");
+  assert.equal(res.failed_units, 0, `retry burde have reddet enheden (fejl: ${res.errors.join("; ")})`);
+  assert.equal(res.errors.length, 0, "ingen Sentry-capture ved en lykkedes retry");
+
+  const aEntries = state.race_entries.filter((e) => e.race_id === "A");
+  assert.ok(aEntries.length > 0, "enheden blev fyldt med de overlevende (ikke stående tom)");
+  for (const e of aEntries) {
+    assert.ok(!deleted.includes(e.rider_id), `slettet rytter ${e.rider_id} blev indsat alligevel`);
+  }
+});
+
+test("#3482: FK-brud men alle ryttere findes stadig → ægte bug, fejl captures", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+
+  // FK-brud UDEN at nogen rytter er væk — så er årsagen ikke et sletnings-race, men en
+  // ægte bug (fx et rider_id fra en fremmed sæson). Guarden må ikke sluge det signal.
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table }) => (table === "race_entries" ? RIDER_FK_ERROR : false),
+  });
+
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 1, "enheden rapporteres som fejlet");
+  assert.equal(res.errors.length, 1, "præcis én fejl captured (ikke slugget)");
+  assert.match(res.errors[0], /every desired rider still exists/, "fejlen forklarer hvorfor retry'en gav op");
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 0, "intet skrevet — enheden fejlede rent");
+});
+
+test("#3482: retry'en må ALDRIG rive en eksisterende trup ned (aldrig-tommere)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+
+  // 1. kørsel fylder truppen normalt.
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false });
+  const before = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  assert.ok(before.length > 0, "sanity: 1. kørsel fyldte truppen");
+
+  // En ny stjerne-rytter ankommer (bedre end alle → autopick vil have ham) og bliver
+  // slettet i skrive-vinduet. Retry'en må ikke efterlade truppen tom.
+  state.riders.push({ id: "t1-new", team_id: "t1", is_retired: false, is_academy: false });
+  state.rider_derived_abilities.push({ rider_id: "t1-new", ...ab(99) });
+  state.rider_condition.push({ rider_id: "t1-new", fatigue: 0 });
+
+  let injected = false;
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table, rows }) => {
+      if (table !== "race_entries" || injected) return false;
+      if (!rows.some((r) => r.rider_id === "t1-new")) return false;
+      injected = true;
+      state.riders = state.riders.filter((r) => r.id !== "t1-new");
+      return RIDER_FK_ERROR;
+    },
+  });
+
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.ok(injected, "sanity: den nye rytter blev forsøgt indsat og derefter slettet");
+  assert.equal(res.failed_units, 0, `retry burde have reddet enheden (fejl: ${res.errors.join("; ")})`);
+  const after = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  assert.ok(!after.includes("t1-new"), "den slettede rytter blev ikke indsat");
+  // Truppen må højst miste den plads stjernen skulle have haft (næste tick fylder den
+  // op igen) — den må ALDRIG kollapse, hvilket var status quo før guarden (0 skrevet).
+  assert.ok(
+    after.length >= before.length - 1,
+    `truppen skrumpede fra ${before.length} til ${after.length} — retry'en rev den ned`
+  );
+});
+
 test("runRaceEntryGenerator: hold UDEN strategi-row → uændret (strategy=null)", async () => {
   const state = emptyState();
   const seasonId = "season1";
