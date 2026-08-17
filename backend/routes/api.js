@@ -428,6 +428,20 @@ config({ path: join(__dirname, "../.env"), quiet: true });
 
 const router = express.Router();
 
+// #3653 — shared capture-and-tag helper for the generic 500-fallback catch
+// blocks below. A 500 leaving this router without a Sentry event means Sentry
+// is no longer the source of truth for prod errors (see #3578, found 3 days
+// late because of this exact gap). Tags each event with route + method for
+// triage; pure observability — never changes the response or control flow.
+function captureApiRouteError(e, req) {
+  captureException(e, {
+    tags: {
+      route: req?.route?.path || req?.originalUrl || req?.path,
+      method: req?.method,
+    },
+  });
+}
+
 // Grov DoS-guard på hele /admin-fladen, mountet FØR requireAdmin — nøglen er
 // derfor klient-IP, så uautoriseret hammering mod selve auth-laget også dæmpes.
 // Bevidst et direkte rateLimit()-kald og ikke buildLimiter-factory'en:
@@ -896,7 +910,7 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
       return res.json({ active: false, phase: null, closes_at: closesAt, seconds_remaining, override });
     }
     res.json({ active: true, phase, closes_at: closesAt, seconds_remaining, override });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7325,6 +7339,7 @@ router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (re
       rows_imported: result.rowsImported,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -8278,6 +8293,7 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     const first = multi.forecasts[0] || {};
     res.json({ ...first, ...multi });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -8393,6 +8409,7 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
       viewer: { is_admin: isAdmin, is_owner: isOwner },
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -8776,6 +8793,7 @@ router.post("/admin/transfers/offers/:id/cancel", requireAdmin, adminWriteLimite
 
     res.json({ success: true, rider_name: riderName, message: `Handel annulleret: ${riderName}` });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -8821,6 +8839,7 @@ router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, adminWriteLimiter
 
     res.json({ success: true, offered_name: offeredName, requested_name: requestedName, message: `Byttehandel annulleret: ${offeredName} ↔ ${requestedName}` });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -8860,6 +8879,7 @@ router.post("/admin/seasons", requireAdmin, adminWriteLimiter, async (req, res) 
 
     res.status(201).json(createdSeason);
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -8952,6 +8972,7 @@ router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (
       prev_transfer_window: prevWindowResult,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9070,6 +9091,7 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       season_ended_notifications: seasonEndedNotifications,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9115,6 +9137,7 @@ router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, adminWriteLimi
       start_date_missing: !season.start_date,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9159,6 +9182,7 @@ router.post("/admin/seasons/:id/rederive-points", requireAdmin, adminWriteLimite
       ...result,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9197,6 +9221,7 @@ router.post("/admin/seasons/:id/generate-entries", requireAdmin, adminWriteLimit
 
     res.json({ success: true, season_id: season.id, number: season.number, ...result });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9291,6 +9316,7 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
       pools: outPools,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9334,6 +9360,7 @@ router.post("/admin/seasons/:id/generate-calendar", requireAdmin, adminWriteLimi
 
     res.json({ success: true, season_id: season.id, number: season.number, ...summary });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9421,6 +9448,7 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
     invalidateNamespace("calendar");
     res.status(201).json({ ...createdRace, stage_profiles_created: stageProfilesCreated });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9518,6 +9546,7 @@ router.put("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (req, 
     invalidateNamespace("calendar");
     res.json({ race: updated });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9534,6 +9563,7 @@ router.get("/race-pool", cached({ namespace: "race-pool", ttlMs: CACHE_TTL.raceP
     if (error) return res.status(500).json({ error: error.message });
     res.json({ pool: data || [], summary: summarizePool(data || []) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 }));
@@ -9555,6 +9585,7 @@ router.get("/admin/race-pool", requireAdmin, async (req, res) => {
       total_race_days: pool.reduce((sum, r) => sum + (Number(r.stages) || 0), 0),
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9586,6 +9617,7 @@ router.post("/admin/race-pool/import-csv", requireAdmin, adminWriteLimiter, asyn
       parse_errors: errors,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9666,6 +9698,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
       whitelist_source: Array.isArray(stage_race_priority) ? "request" : "season",
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9739,6 +9772,7 @@ router.put("/admin/seasons/:seasonId/race-priority", requireAdmin, adminWriteLim
 
     res.json({ season: updated });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9762,6 +9796,7 @@ router.get("/admin/seasons/:seasonId/race-priority", requireAdmin, async (req, r
       single_race_boost: season.single_race_boost || [],
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9787,6 +9822,7 @@ router.get("/admin/race-points", requireAdmin, async (req, res) => {
       result_types: UCI_MEN_RESULT_TYPES,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9798,6 +9834,7 @@ router.get("/admin/race-points/baseline", requireAdmin, async (req, res) => {
     const rows = buildUciMenRacePointRows();
     res.json({ rows });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9850,6 +9887,7 @@ router.put("/admin/race-points/:id", requireAdmin, adminWriteLimiter, async (req
 
     res.json({ row: updated });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9881,6 +9919,7 @@ router.get("/admin/race-point-model", requireAdmin, async (req, res) => {
       result_types: UCI_MEN_RESULT_TYPES,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9917,6 +9956,7 @@ router.put("/admin/race-point-model/master/:result_type", requireAdmin, adminWri
 
     res.json({ row: updated });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9954,6 +9994,7 @@ router.put("/admin/race-point-model/factor/:race_class/:result_type", requireAdm
 
     res.json({ row: updated });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -9975,6 +10016,7 @@ router.post("/admin/race-point-model/generate", requireAdmin, adminWriteLimiter,
 
     res.json({ changed });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -10100,6 +10142,7 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
       skipped_already_present: (poolRaces?.length || 0) - (created?.length || 0),
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -10117,6 +10160,7 @@ router.get("/race-points", requireAuth, cached({ namespace: "race-points", ttlMs
     if (error) return res.status(500).json({ error: error.message });
     res.json(data || []);
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 }));
@@ -10160,6 +10204,7 @@ router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.
     if (error) return res.status(500).json({ error: error.message });
     res.json(data || []);
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 }));
@@ -10255,6 +10300,7 @@ router.get("/dashboard/recent-results", requireAuth, cached({
     out.sort((a, b) => String(b.last_import || "").localeCompare(String(a.last_import || "")));
     res.json({ races: out.slice(0, 5) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 }));
@@ -10306,6 +10352,7 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
     });
     res.json({ riders: splitGcWins(riders, gcRows) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 }));
@@ -10491,6 +10538,7 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       },
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 }));
@@ -10582,7 +10630,7 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
       total_debt: debt,
       debt_ceiling: configs[0]?.debt_ceiling,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/finance/loans — optag nyt finanslån
@@ -10747,7 +10795,7 @@ router.get("/sponsor/contract", requireAuth, async (req, res) => {
       }
     }
     res.json({ contract, earnings, season });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/sponsor/offers — forhandlings-tilstand for den kommende sæson:
@@ -10766,7 +10814,7 @@ router.get("/sponsor/offers", requireAuth, async (req, res) => {
       stageCounts = { byTier: counts.byTier, fallbackDays: counts.fallbackDays };
     }
     res.json({ ...state, stageCounts, teamDivision: req.team.division ?? null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/sponsor/offers/accept — manager vælger et tilbud. body: { variant }.
@@ -10808,7 +10856,7 @@ router.get("/club/facilities", requireAuth, async (req, res) => {
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase, { flags: { facilitiesEnabled } });
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/club/facilities/upgrade — body { track }. Domænefejl → 400 (flag off → 403).
@@ -10823,7 +10871,7 @@ router.post("/club/facilities/upgrade", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/club/staff/candidates?role=training — deterministiske kandidater for sporet.
@@ -10838,7 +10886,7 @@ router.get("/club/staff/candidates", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/club/staff/hire — body { role, candidateName }. role_occupied → 409.
@@ -10853,7 +10901,7 @@ router.post("/club/staff/hire", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/club/staff/fire — body { role, staffId? }. #3489: staffId er
@@ -10869,7 +10917,7 @@ router.post("/club/staff/fire", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/club/staff/:id — fuld evne-profil for en ejet staff. staff_not_found → 404.
@@ -10884,7 +10932,7 @@ router.get("/club/staff/:id", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/club/staff/:id/scouting-history — #3203: hvilke ryttere har DENNE
@@ -10920,7 +10968,7 @@ router.post("/club/staff/:id/release", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // ── Personale-oversigt på tværs af hold (#2450) ─────────────────────────────
@@ -10941,7 +10989,7 @@ router.get("/staff/directory", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/staff/:id/public — candidate-niveau profil for vilkårlig aktiv staff
@@ -10956,7 +11004,7 @@ router.get("/staff/:id/public", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/teams/:id/public-profile — #2601: saniteret staff + faciliteter for
@@ -10972,7 +11020,7 @@ router.get("/teams/:id/public-profile", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // PATCH /api/admin/loan-config — opdater lånekonfiguration
@@ -10986,7 +11034,7 @@ router.patch("/admin/loan-config", requireAdmin, adminWriteLimiter, async (req, 
       .select().single();
     if (error) throw error;
     res.json({ success: true, config: data });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/auction-config — hent auktionskonfiguration
@@ -10994,7 +11042,7 @@ router.get("/admin/auction-config", requireAdmin, async (req, res) => {
   try {
     const cfg = await getAuctionConfig();
     res.json({ config: cfg });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // PUT /api/admin/auction-config — opdater auktionskonfiguration
@@ -11021,7 +11069,7 @@ router.put("/admin/auction-config", requireAdmin, adminWriteLimiter, async (req,
       meta: { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes },
     });
     res.json({ success: true, config: data });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/market/pause — hent pause-state (level + paused_at + reason)
@@ -11029,7 +11077,7 @@ router.get("/admin/market/pause", requireAdmin, async (req, res) => {
   try {
     const state = await getMarketPauseState(supabase);
     res.json(state);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/market/pause — pause auktioner eller hele markedet
@@ -11060,7 +11108,7 @@ router.post("/admin/market/pause", requireAdmin, adminWriteLimiter, async (req, 
       meta: { level, reason: trimmedReason || null, paused_at: pausedAt },
     });
     res.json({ success: true, level, paused_at: pausedAt, reason: trimmedReason || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/market/resume — genoptag marked og skub auktioners calculated_end frem
@@ -11127,7 +11175,7 @@ router.post("/admin/market/resume", requireAdmin, adminWriteLimiter, async (req,
       auctions_shifted: auctionsShifted,
       elapsed_minutes: elapsedMinutes,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // Slice 08 — sæson-cyklus
@@ -11147,7 +11195,7 @@ router.get("/admin/season-transition/preview", requireAdmin, async (req, res) =>
     // disable knappen med konkrete årsager uden at drive fra server-gaten.
     const readiness = await assessTransitionReadiness({ supabase, fromSeasonId: fromSeason.id });
     res.json({ ok: true, plan, readiness });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/season-transition — udfør sæson-skifte
@@ -11230,6 +11278,7 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
         error: e.message,
       });
     }
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -11269,7 +11318,7 @@ router.post("/admin/adjust-balance", requireAdmin, adminWriteLimiter, async (req
       meta: { amount, reason },
     });
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // #1996: admin transfer-window/open + close-endpoints fjernet. Markedet er altid
@@ -11292,7 +11341,7 @@ router.put("/admin/deadline-day/override", requireAdmin, adminWriteLimiter, asyn
       .eq("id", 1);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true, override });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/deadline-readiness — "Klar til deadline?"-overblik
@@ -11408,7 +11457,7 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
         no_squad_violations: { ok: squadViolations.length === 0, critical: false },
       },
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // PUT /api/admin/transfer-window/closes-at — opdater lukketidspunkt på seneste vindue
@@ -11423,7 +11472,7 @@ router.put("/admin/transfer-window/closes-at", requireAdmin, adminWriteLimiter, 
       .update({ closes_at }).eq("id", tw.id);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true, closes_at });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/season-end-preview/:seasonId — preview af sæsonafslutning
@@ -11451,7 +11500,7 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     const preview = buildSeasonEndPreviewRows({ teams, standings, loanData });
 
     res.json({ preview });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // #517: discord_settings ejes nu af backend (service_role bypasser RLS, public-read
@@ -11715,7 +11764,7 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
       .order("created_at", { ascending: false });
     if (error) throw error;
     res.json({ users: data || [] });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /api/admin/users/:userId — slet bruger permanent
@@ -11762,7 +11811,7 @@ router.delete("/admin/users/:userId", requireAdmin, adminWriteLimiter, async (re
     });
 
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // PATCH /api/admin/users/:userId/role — skift brugerrolle
@@ -11785,7 +11834,7 @@ router.patch("/admin/users/:userId/role", requireAdmin, adminWriteLimiter, async
     });
 
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // ── Slice 07e · Admin økonomi-dashboard ──────────────────────────────────────
@@ -11854,6 +11903,7 @@ router.get("/admin/economy-overview", requireAdmin, async (req, res) => {
 
     res.json({ teams: enriched });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -11890,6 +11940,7 @@ router.post("/admin/teams/:teamId/freeze", requireAdmin, adminWriteLimiter, asyn
 
     res.json({ success: true, team_id: teamId, is_frozen: true });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -11923,6 +11974,7 @@ router.post("/admin/teams/:teamId/unfreeze", requireAdmin, adminWriteLimiter, as
 
     res.json({ success: true, team_id: teamId, is_frozen: false });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -11977,6 +12029,7 @@ router.get("/admin/finance-transactions", requireAdmin, async (req, res) => {
       offset,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -12058,6 +12111,7 @@ router.get("/admin/economy-health", requireAdmin, async (req, res) => {
       deploy_cutoff: PHASE_B_DEPLOY_CUTOFF,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -12094,6 +12148,7 @@ router.get("/admin/admin-log", requireAdmin, async (req, res) => {
 
     res.json({ entries: data || [], total: count ?? 0, limit, offset });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -12132,6 +12187,7 @@ router.get("/admin/cron-runs", requireAdmin, async (req, res) => {
       date_from: date_from || fromDefault,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -12155,7 +12211,7 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
     });
 
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -13266,6 +13322,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
       bonus_offer: bonusOffer,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13348,6 +13405,7 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
       test_mode: boardTestMode,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13364,6 +13422,7 @@ router.post("/board/bonus-offer/decline", requireAuth, boardWriteLimiter, async 
     }
     res.json({ success: true });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13427,6 +13486,7 @@ router.get("/board/dna-suggestions", requireAuth, async (req, res) => {
       suggestions,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13473,6 +13533,7 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
       team_members: decorateTeamBoardMembers(result.members || []),
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13518,6 +13579,7 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
 
     res.json({ ok: true, ...proposal, tradeoff_applied: Boolean(board?.tradeoff_payload) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13643,6 +13705,7 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       negotiation_indexes: negotiationIndexes,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13867,6 +13930,7 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
       request_options: requestOptions,
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13910,6 +13974,7 @@ router.post("/board/renew", requireAuth, boardWriteLimiter, async (req, res) => 
 
     res.json({ ok: true, board });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13921,6 +13986,7 @@ router.post("/admin/beta/cancel-market", requireAdmin, adminWriteLimiter, async 
   try {
     res.json({ ok: true, cancelled: await cancelBetaMarket(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13930,6 +13996,7 @@ router.post("/admin/beta/reset-rosters", requireAdmin, adminWriteLimiter, async 
   try {
     res.json({ ok: true, ...(await resetBetaRosters(supabase)) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13940,6 +14007,7 @@ router.post("/admin/beta/reset-balances", requireAdmin, adminWriteLimiter, async
     const { clear_transactions = false } = req.body || {};
     res.json({ ok: true, ...(await resetBetaBalances(supabase, { clearTransactions: clear_transactions })) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13951,6 +14019,7 @@ router.post("/admin/beta/reset-divisions", requireAdmin, adminWriteLimiter, asyn
   try {
     res.json({ ok: true, divisions: await allocateLeaguePools(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13960,6 +14029,7 @@ router.post("/admin/beta/reset-board", requireAdmin, adminWriteLimiter, async (r
   try {
     res.json({ ok: true, board_profiles: await resetBetaBoardProfiles(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13970,6 +14040,7 @@ router.post("/admin/board/open-test", requireAdmin, adminWriteLimiter, async (re
   try {
     res.json(await openBoardTestMode(supabase));
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13980,6 +14051,7 @@ router.post("/admin/board/open-live", requireAdmin, adminWriteLimiter, async (re
   try {
     res.json(await openBoardLive(supabase));
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13989,6 +14061,7 @@ router.post("/admin/board/close-test", requireAdmin, adminWriteLimiter, async (r
   try {
     res.json(await closeBoardTestMode(supabase));
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -13998,6 +14071,7 @@ router.get("/admin/board/test-status", requireAdmin, async (req, res) => {
   try {
     res.json({ board_test_mode: await isBoardTestModeActive(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14007,6 +14081,7 @@ router.post("/admin/beta/reset-calendar", requireAdmin, adminWriteLimiter, async
   try {
     res.json({ ok: true, race_calendar: await resetBetaRaceCalendar(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14018,6 +14093,7 @@ router.post("/admin/beta/reset-rider-history", requireAdmin, adminWriteLimiter, 
   try {
     res.json({ ok: true, rider_history: await resetBetaRiderHistory(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14027,6 +14103,7 @@ router.post("/admin/beta/reset-transfer-archive", requireAdmin, adminWriteLimite
   try {
     res.json({ ok: true, transfer_archive: await resetBetaTransferArchive(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14036,6 +14113,7 @@ router.post("/admin/beta/reset-loans", requireAdmin, adminWriteLimiter, async (r
   try {
     res.json({ ok: true, loans: await resetBetaLoans(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14045,6 +14123,7 @@ router.post("/admin/beta/reset-notifications", requireAdmin, adminWriteLimiter, 
   try {
     res.json({ ok: true, notifications: await resetBetaNotifications(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14054,6 +14133,7 @@ router.post("/admin/beta/reset-seasons", requireAdmin, adminWriteLimiter, async 
   try {
     res.json({ ok: true, seasons: await resetBetaSeasons(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14063,6 +14143,7 @@ router.post("/admin/beta/reset-manager-progress", requireAdmin, adminWriteLimite
   try {
     res.json({ ok: true, manager_progress: await resetBetaManagerProgress(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14072,6 +14153,7 @@ router.post("/admin/beta/reset-achievements", requireAdmin, adminWriteLimiter, a
   try {
     res.json({ ok: true, achievements: await resetBetaAchievements(supabase) });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
@@ -14088,6 +14170,7 @@ router.post("/admin/beta/full-reset", requireAdmin, adminWriteLimiter, async (re
       })),
     });
   } catch (e) {
+    captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
 });
