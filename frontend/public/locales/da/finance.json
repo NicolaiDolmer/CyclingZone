@@ -62,7 +62,12 @@
   "prizeList": {
     "title": "Løbspræmier",
     "fallbackName": "Præmiepenge",
-    "viewRace": "Se løbet"
+    "viewRace": "Se løbet",
+    "header": {
+      "race": "Løb",
+      "date": "Dato",
+      "amount": "Præmie"
+    }
   },
   "loans": {
     "types": {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useSearchParams, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
@@ -17,6 +17,8 @@ import { logEvent } from "../lib/logEvent";
 import { FINANCE_CATEGORIES, buildCategoryOrFilter } from "../lib/financeCategories";
 import { computeLoanRiskSummary } from "../lib/loanRisk";
 import { computeReservedBalance } from "../lib/availableBalance";
+import { useTableSort } from "../lib/useTableSort.js";
+import SortableTh from "../components/ui/SortableTh.jsx";
 import {
   AmountInput, Tabs, TabList, Tab, TabPanel,
   Card, Button, Select, ProgressMeter, PageLoader,
@@ -32,6 +34,17 @@ const FINANCE_TABS = ["overview", "loans", "sponsors", "history"];
 // (loading-tilstand før sæsonlisten er hentet).
 const ALL_SEASONS = "all";
 const TX_PAGE_SIZE = 30;
+
+// #3808: Løbspræmier-kortet (Overblik-fanen) manglede eksplicit sortering —
+// backend leverede rows i beløbs-orden, ikke dato-orden, hvilket modsagde
+// Historik-fanens dato-sortering (samme data, to modstridende ordener).
+// Kanonisk sort-mønster (useTableSort/SortableTh, #1755/#2290): default
+// nyeste-først, begge kolonner klik-sorterbare.
+const PRIZE_SORT_DESC_FIRST_KEYS = new Set(["date", "amount"]);
+const PRIZE_SORT_ACCESSORS = {
+  date: (tx) => (tx.created_at ? new Date(tx.created_at).getTime() : null),
+  amount: (tx) => (typeof tx.amount === "number" ? tx.amount : null),
+};
 
 function useTimeAgo(t) {
   return (d) => {
@@ -52,6 +65,7 @@ export default function FinancePage() {
   // #666: tx.metadata.{code,params} renderes via backendMessages-namespace.
   const { t: tBackend } = useTranslation("backendMessages");
   const timeAgo = useTimeAgo(t);
+  const navigate = useNavigate();
 
   // #986: faner (Overblik/Lån/Historik) synkroniseret til ?tab= så dyb-links
   // og repointede sæsonrapport-knapper lander rigtigt.
@@ -299,6 +313,16 @@ export default function FinancePage() {
     fetchTxPage(txPage + 1, true);
   }
 
+  // #3808: sorterbare kolonner på Løbspræmier-kortet, default nyeste først —
+  // hook FØR de tidlige loading/error-returns nedenfor, ellers brydes
+  // hook-rækkefølgen mellem renders.
+  const { rows: sortedPrizeRows, sort: prizeSort, sortDir: prizeSortDir, handleSort: handlePrizeSort } =
+    useTableSort(prizeSummary.rows, PRIZE_SORT_ACCESSORS, {
+      initialSort: "date",
+      initialDir: "desc",
+      descFirstKeys: PRIZE_SORT_DESC_FIRST_KEYS,
+    });
+
   function showMsg(text, type = "success") {
     setMsg({ text, type });
     setTimeout(() => setMsg({ text: "" }), 5000);
@@ -545,39 +569,57 @@ export default function FinancePage() {
             }}
           />
 
-          {/* Løbspræmier */}
+          {/* Løbspræmier — #3808: sorterbar tabel, default nyeste først (matcher
+              Historik-fanens dato-orden i stedet for at modsige den med beløbs-orden). */}
           {prizeSummary.rows.length > 0 && (
             <Card className="p-5 mb-4">
               <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("prizeList.title")}</h2>
-              <div className="flex flex-col divide-y divide-cz-border">
-                {/* #1131: løbsnavne fik 690+ dead clicks (Clarity 5/6-12/6) — spillere forventer
-                    navigation. Hele rækken er ét klikmål til løbet når race_id findes. */}
-                {prizeSummary.rows.map(tx => {
-                  const rowInner = (
-                    <>
-                      <div className="flex-1 min-w-0 pe-3">
-                        <p className="text-cz-2 text-xs font-medium truncate">
-                          {tx.race_name || tx.description || t("prizeList.fallbackName")}
-                        </p>
-                        <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
-                      </div>
-                      <p className="font-mono text-sm font-bold text-cz-success flex-shrink-0">
-                        +{formatNumber(tx.amount || 0)} CZ$
-                      </p>
-                    </>
-                  );
-                  return tx.race_id ? (
-                    <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
-                      className="flex items-center justify-between py-2 group hover:bg-cz-subtle/60 transition-colors">
-                      {rowInner}
-                      <ChevronRightIcon size={16} aria-hidden className="text-cz-3 group-hover:text-cz-2 ms-2 flex-shrink-0 transition-colors" />
-                    </Link>
-                  ) : (
-                    <div key={tx.id} className="flex items-center justify-between py-2">
-                      {rowInner}
-                    </div>
-                  );
-                })}
+              <div className="overflow-x-auto">
+                <table data-sortable className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-cz-border">
+                      <th className="px-3 py-2 text-start text-cz-3 font-normal">{t("prizeList.header.race")}</th>
+                      <SortableTh sortKey="date" sort={prizeSort} sortDir={prizeSortDir} onSort={handlePrizeSort}
+                        className="px-3 py-2 text-start">{t("prizeList.header.date")}</SortableTh>
+                      <SortableTh sortKey="amount" sort={prizeSort} sortDir={prizeSortDir} onSort={handlePrizeSort}
+                        className="px-3 py-2 text-end">{t("prizeList.header.amount")}</SortableTh>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* #1131: løbsnavne fik 690+ dead clicks (Clarity 5/6-12/6) — spillere forventer
+                        navigation. Hele rækken er stadig ét klikmål til løbet når race_id findes
+                        (bevaret uændret ved konverteringen til sorterbar tabel). */}
+                    {sortedPrizeRows.map(tx => {
+                      const clickable = Boolean(tx.race_id);
+                      return (
+                        <tr
+                          key={tx.id}
+                          onClick={clickable ? () => navigate(`/races/${tx.race_id}`) : undefined}
+                          onKeyDown={clickable ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              navigate(`/races/${tx.race_id}`);
+                            }
+                          } : undefined}
+                          tabIndex={clickable ? 0 : undefined}
+                          role={clickable ? "link" : undefined}
+                          title={clickable ? t("prizeList.viewRace") : undefined}
+                          className={`border-b border-cz-border last:border-0 ${clickable
+                            ? "cursor-pointer hover:bg-cz-subtle/60 focus-visible:bg-cz-subtle/60 focus-visible:outline-none"
+                            : ""}`}
+                        >
+                          <td className="px-3 py-2 text-cz-2 font-medium max-w-0 w-full truncate">
+                            {tx.race_name || tx.description || t("prizeList.fallbackName")}
+                          </td>
+                          <td className="px-3 py-2 text-cz-3 whitespace-nowrap">{timeAgo(tx.created_at)}</td>
+                          <td className="px-3 py-2 text-end font-mono font-bold text-cz-success whitespace-nowrap">
+                            +{formatNumber(tx.amount || 0)} CZ$
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </Card>
           )}

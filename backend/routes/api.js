@@ -8215,13 +8215,17 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
       // løbsnavn embedded via FK så klienten slipper for et ekstra opslag).
       // pagination-safe: one team, one season, prize/bonus only — a subset of
       // the already-verified 236-row per-team-per-season max (#3331 audit).
+      // #3808: default-orden er dato (nyeste først), IKKE beløb — matcher
+      // Historik-fanens rækkefølge (samme "hvad forventer en pengeliste"-
+      // konvention). Klienten sorterer videre lokalt via SortableTh/useTableSort,
+      // så dette er blot den korrekte ufiltrerede default.
       supabase
         .from("finance_transactions")
         .select("id, amount, race_id, description, created_at, race:race_id(name)")
         .eq("team_id", teamId)
         .eq("season_id", seasonId)
         .in("type", ["prize", "bonus"])
-        .order("amount", { ascending: false }),
+        .order("created_at", { ascending: false }),
       // #2305: all-time-sum — henter KUN amount-kolonnen og summerer server-side.
       // pagination-safe: one team, prize/bonus only, ALL seasons — verified
       // max 55 rows repo-wide (#3331 audit, 2026-08-05).
