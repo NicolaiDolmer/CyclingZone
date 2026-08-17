@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.138",
+    "date": "2026-08-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The Final Kilometre follows the stage tab you're on",
+          "body": "Opening an earlier stage's tab used to still replay the most recently run stage's finish. It now replays that stage's own finish."
+        },
+        "da": {
+          "title": "Den sidste kilometer følger den etape-fane du er på",
+          "body": "At åbne en tidligere etapes fane afspillede før stadig den seneste kørte etapes mål. Nu afspiller den etapens eget mål."
+        },
+        "refs": [3396]
+      }
+    ]
+  },
+  {
     "version": "7.136",
     "date": "2026-08-17",
     "label": "Beta",

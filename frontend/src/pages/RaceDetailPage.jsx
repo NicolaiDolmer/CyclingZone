@@ -385,12 +385,15 @@ export default function RaceDetailPage() {
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
 
-  // #3396 (bølge 1): "The Final Kilometre" dramatiserer altid den SENESTE kørte
-  // etape (eller etape 1 for endagsløb) — samme "seneste etape"-kontekst som
-  // WhyPanel/RaceReportPanel bruger på "samlet"-fanen, uafhængig af hvilken fane
-  // brugeren står på. Ingen nyt kald: filtrerer allerede-hentede `results`.
+  // #3396 (bølge 2): "The Final Kilometre" følger nu den valgte etape-fane —
+  // activeTab === "samlet" viser stadig den SENESTE kørte etape (samme
+  // "seneste etape"-kontekst som WhyPanel/RaceReportPanel på "samlet"-fanen),
+  // men activeTab === "stage-N" afspiller etape N's finale. Endagsløb: uændret
+  // (altid etape 1). Ingen nyt kald: filtrerer allerede-hentede `results`.
   const finalKmStageNumber = isStageRace
-    ? (stageNumbers.length ? stageNumbers[stageNumbers.length - 1] : null)
+    ? (activeTab.startsWith("stage-")
+        ? Number(activeTab.slice("stage-".length))
+        : (stageNumbers.length ? stageNumbers[stageNumbers.length - 1] : null))
     : 1;
   const finalKmRows = useMemo(
     () => results.filter(r => r.result_type === "stage" && (r.stage_number ?? 1) === finalKmStageNumber),
@@ -698,13 +701,16 @@ export default function RaceDetailPage() {
       <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
         <div className="flex flex-col gap-[14px]">
 
-          {/* #3396 (bølge 1) — "The Final Kilometre": 90s finale-afspilning af
-              den seneste kørte etapes sidste ~3 km, øverst og fane-uafhængigt.
+          {/* #3396 (bølge 2) — "The Final Kilometre": 90s finale-afspilning af
+              den valgte fanes etapes sidste ~3 km, øverst. "samlet"-fanen viser
+              den seneste kørte etape; en etape-fane viser den etapes egen finale.
               Bygget udelukkende af `results`/`moments` siden allerede har hentet;
               renderer intet hvis feltet er for tyndt (<2 rytter-rækker) eller
-              løbet slet ikke er startet endnu — se FinalKilometrePlayback. */}
+              løbet slet ikke er startet endnu — se FinalKilometrePlayback.
+              `key` genstarter afspilningen (mount-baseret timing) ved faneskift. */}
           {hasAnyResults && (
             <FinalKilometrePlayback
+              key={finalKmStageNumber}
               rows={finalKmRows}
               moments={moments}
               stageNumber={finalKmStageNumber}

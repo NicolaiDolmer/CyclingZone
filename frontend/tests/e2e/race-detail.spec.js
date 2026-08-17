@@ -163,3 +163,50 @@ test("race detail page renders KOM and intermediate sprint passages under stage 
   await page.getByRole("button", { name: "Etape 2" }).click();
   await expect(page.getByText("Mellemresultater")).toHaveCount(0);
 });
+
+// #3396 (bølge 2): "The Final Kilometre" skal følge den valgte etape-fane,
+// ikke altid dramatisere den seneste kørte etape. RESULTS' etape 1 har begge
+// ryttere sat som in_breakaway (ADA holdt hjem → "breakawaySurvived"-beat),
+// etape 2 har ingen breakaway-flag → intet beat. Meta-labelen ("Etape N")
+// verificerer stageNumber-propen direkte; breakaway-beatet verificerer at
+// finalKmRows/moments rent faktisk filtreres pr. valgt fane.
+test("Final Kilometre playback follows the selected stage tab, not always the latest", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", route => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? RACE : [RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
+  await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
+
+  await login(page);
+  await page.goto("/races/race-e2e-1");
+
+  // FinalKilometrePlayback renderer i et Card (div.rounded-cz) — scope til DEN
+  // for at undgå kollision med "Etape N"-tekst andre steder på siden (fane-
+  // knapper, etape-måltavlens overskrift, mv.).
+  const finalKm = page.locator('div.rounded-cz:has-text("Den sidste kilometer")');
+
+  // Samlet-fanen (default) = seneste kørte etape (etape 2, uændret adfærd) →
+  // ingen breakaway-beat (etape 2-rækkerne har ingen breakaway-flag).
+  await expect(finalKm.getByText("Etape 2")).toBeVisible();
+  await expect(finalKm.getByText(/udbrud/i)).toHaveCount(0);
+
+  // Etape 1-fanen: playback følger fanen → label + breakaway-beat for etape 1.
+  await page.getByRole("button", { name: "Etape 1" }).click();
+  await expect(finalKm.getByText("Etape 1")).toBeVisible();
+  await expect(finalKm.getByText("Et udbrud på 2 ryttere holdt hjem til mål.")).toBeVisible();
+
+  // Tilbage til Etape 2-fanen: playback skifter med det samme (ingen "hængende"
+  // etape 1-state) → label opdateres, breakaway-beatet forsvinder igen.
+  await page.getByRole("button", { name: "Etape 2" }).click();
+  await expect(finalKm.getByText("Etape 2")).toBeVisible();
+  await expect(finalKm.getByText(/udbrud/i)).toHaveCount(0);
+
+  // Samlet-fanen igen: matcher stadig etape 2 (seneste kørte etape).
+  await page.getByRole("button", { name: "Samlet" }).click();
+  await expect(finalKm.getByText("Etape 2")).toBeVisible();
+});
