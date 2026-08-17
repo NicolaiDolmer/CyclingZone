@@ -220,8 +220,13 @@ export default function RiderProfileHero({
 
       <StatusBanner banner={banner} />
 
-      {/* Stat-række — HeroStat-anatomien (T3), grid så den wrapper sikkert på mobil. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 mt-5 pt-4 border-t border-cz-border">
+      {/* Stat-række — HeroStat-anatomien (T3), grid så den wrapper sikkert på mobil.
+          #3622: popularitet var kun synlig i bestyrelsen (star-score-blandingen,
+          boardIdentity.calculateRiderStarScore); den rå værdi (samme kolonne, 0-100)
+          vises nu som 6. hero-stat — plain tal, samme anatomi som Value/Salary/
+          Kontrakt (ingen ability-farveplade — populationen er ikke evne-kalibreret,
+          jf. statColor.js's fire-skala-advarsel). */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4 mt-5 pt-4 border-t border-cz-border">
         <HeroStat
           label={t("profile.hero.ratingEyebrow")}
           value={hasRating ? (
@@ -253,6 +258,11 @@ export default function RiderProfileHero({
           sub={<RiderValueTrendBadge window={valueTrendWindow} className="mt-1" />}
         />
         <HeroStat label={t("profile.hero.salary")} value={salaryText ?? "—"} valueClassName="text-[20px] font-[650] truncate" />
+        <HeroStat
+          label={t("profile.hero.popularityEyebrow")}
+          value={Number.isFinite(rider.popularity) ? rider.popularity : "—"}
+          valueClassName="text-[20px] font-[650]"
+        />
         <HeroStat
           label={t("profile.hero.contract")}
           value={<span className={rider.contract_end_season != null ? "text-cz-accent-t" : undefined}>{contractText}</span>}

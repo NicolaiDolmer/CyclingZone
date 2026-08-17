@@ -19,6 +19,8 @@
     "type": "Type",
     "value": "Value",
     "salary": "Salary",
+    "popularity": "Popularity",
+    "popularityTitle": "Fan popularity (0-100). Used by the board's 5-year plan star-rider goal.",
     "compareTooltip": "Select for comparison",
     "teamFree": "Free",
     "pendingTransfer": "Transfer pending: joining {team} once his current stage race finishes"
