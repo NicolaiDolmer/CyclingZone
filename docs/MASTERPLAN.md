@@ -43,14 +43,13 @@ Ejeren 14/8, ordret: *"Det er efter ratings, ryttertyper, potentiale og træning
 - ✅ **Fordelingen besluttet (ejer 14/8):** præmiepulje-indeks **D1 100 · D2 50 · D3 33 · D4 10**. D2 rammer allerede (52); **D3 mangler +18 %, D4 +30 %**.
 - 🔵 **Én A/B tilbage, PARKERET til egen session** (ejer 14/8). Målet kan ikke nås med de nuværende knapper: game-day-kvoten og prestige-kaskaden (#2276) er låst, så endagsløbs-andelen er eneste håndtag — og 33 i D3 kræver ~0,85, altså mere end de 0,76 ejeren 7/8 kaldte "for mange" i #3327. **A) præmie-multiplikator pr. division** (egen skrue, point forbliver rå, ingen kalender-regenerering) vs **B) åbn klasse-whitelisten** (bryder kaskaden, kræver regenerering). Anbefaling: A. Prompt: [`2026-08-14-praemiefordeling-session-prompt.md`](sessions/2026-08-14-praemiefordeling-session-prompt.md). **A og #3720 er samme skrue set fra to sider** — vælges A, kalibreres upkeep mod de multiplicerede tal.
 
-## C · Talent-kanalen ind i klubben (ejer-valgt 13/8)
+## C · Talent-kanalen ind i klubben (ejer-valgt 13/8) — LEVERET i bølge 3 (17/8)
 
-14. **#3657** scoutingmissioner uden targeting — *"they feel useless the way they are now"* (4 spillere 12-13/8) + ejer-direktiv samme dag.
-15. **#3652** rapport på øvrige fundne ryttere + kortere scout-tur · **#3548** nedtælling.
-16. **#3489** flere spejdere og trænere samtidigt, hver med sit speciale.
-17. **#3658** staff-kandidater.
-18. **#3550** akademi signing fee 760k-1M for 2-stjernede. *Løfte 10/8 ("on the list").*
-19. **#3650** akademiryttere på transferlisten. *Ejer-lovet 11/8.*
+14. ✅ **#3657+#3652** scouting-targeting (ryttertype) + rapport til HELE shortlisten + 1-dags mission (PR #3846) · ✅ **#2721** klub-scouting-historik (PR #3844) · #3548 lukket 15/8.
+15. 🟠 **#3489+#3658** staff: 2 slots pr. rolle + kandidater uden fyring (PR #3851, bag `FACILITIES_ENABLED`). Rest: **#3854** (per-scout kapacitet, per-rytter routing, facility-harness-rekalibrering FØR flag-flip).
+16. ✅ **#3650** akademiryttere på transferliste OG auktion (PR #3845) — begge Discord-løfter indfriet.
+17. 🔵 **#3550** signing fee MÅLT 17/8: roden er typedrevet markedsværdi-skævhed (puncheur-median 24.194 mod 2.898-8.200), ikke stjerneniveau; anbefaling B (afkobl fee fra markedsværdi) — beslutning i værdi/løn-design-sessionen.
+18. ⚪ **#3853** scout-kadence-måling efter 1-dags-missionen (balance-efterregulering af #3846).
 
 ## D · Penge og vækst — betinget
 
@@ -61,7 +60,7 @@ Ejer 13/8: *"skal prioriteres snarligt, når der er lidt mere styr på store bug
 
 ## E · Løbende (aldrig hovedspor)
 
-22. Bug-blok: **#3620** kontraktår forsvinder ved akademi-forfremmelse (regression af lukkede #2881, åben siden 24/7) · **#3541** skadedage vist forskelligt tre steder · **#3669** forhandlet byttetilbud kan ikke afvises.
+22. Bug-blok ✅ TØMT i bølge 3 (17/8): #3751 kommende-løb · #3787 potentiale-sortering · #3098 udtagelses-copy · #3008 onboarding-tooltip · #3012 døde klik · #2700 pensions-varsel — alle shipped. #3620/#3669/#3066/#3634/#3541 var allerede lukket (planen var stale).
 23. Gæld: 23 done-men-åbne lukkes · #2223 og #3513 opsluger reelt deres løse issues på GitHub (#3496/#3491/#3493/#3439 hhv. #2442/#2583/#2445) · #3094 lukkes som duplikat af #2883.
 24. **#3661** design-/kvalitetsprocessen → konkrete regler i `AGENTS.md`, ikke en hensigt.
 25. Ops-sidestrøm: **#3486** `VERCEL_TOKEN` (2 min ejer-klik, låser #1784) · #2758 · #3487 · #691 service-key-rotation.
