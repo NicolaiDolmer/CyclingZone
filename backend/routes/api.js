@@ -173,7 +173,7 @@ import { validateSelection, saveSelection, getSelectionContext } from "../lib/ra
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
@@ -4147,12 +4147,18 @@ async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, cur
 // PUT /api/races/:raceId/selection — gem managerens udtagelse (6-8 + roller).
 router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  // #3098: hoistet (let, ikke const-i-try) så catch-blokkens RPC-fallback kan genbruge
+  // dem til at genopbygge den navngivne selection_rider_bound-payload — try/catch er
+  // to adskilte lexical scopes, så en const inde i try ville IKKE være synlig i catch.
+  let race = null;
+  let riderIds = [];
+  let ctx = null;
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
 
-    const { data: race, error } = await supabase
+    const { data: raceRow, error } = await supabase
       .from("races")
       // #3070: season_id SKAL med — loadTeamBindingContext bruger den til at
       // udelukke forrige-sæsons entries fra binding (game_day er sæson-relativt).
@@ -4160,7 +4166,8 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
-    if (!race) return res.status(404).json({ error: "race_not_found" });
+    if (!raceRow) return res.status(404).json({ error: "race_not_found" });
+    race = raceRow;
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
 
     // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje. Backend-
@@ -4174,13 +4181,14 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
     // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
-    const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [] } = req.body || {};
+    const { rider_ids: riderIdsBody = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [] } = req.body || {};
 
-    if (!Array.isArray(riderIds) || !Array.isArray(freeRoleIds)) {
+    if (!Array.isArray(riderIdsBody) || !Array.isArray(freeRoleIds)) {
       return res.status(400).json({ error: "selection_invalid_body" });
     }
+    riderIds = riderIdsBody;
 
-    const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+    ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
 
     // Frys (#1825): når et etapeløb er i gang (≥1 etape kørt, ikke alle) må truppen som
     // udgangspunkt IKKE ændres — buildRaceResults re-simulerer fra etape 1 med faste
@@ -4227,22 +4235,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       // afvis med en NAVNGIVET fejl (rytter + løb), så spilleren selv kan rydde den.
       // "1 rytter = 1 løb pr. løbsdag" brydes aldrig: enten frigiver vi FØR vi gemmer,
       // eller vi gemmer slet ikke.
-      const details = mapRiderBindingDetails({ riderIds: bound, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
-      const conflictRaceIds = [...new Set(details.values())];
-      const [{ data: conflictRaces, error: crErr }, { data: conflictEntries, error: ceErr }] = await Promise.all([
-        supabase.from("races").select("id, name, stages_completed").in("id", conflictRaceIds),
-        supabase.from("race_entries").select("race_id, rider_id, is_auto_filled")
-          .eq("team_id", req.team.id).in("race_id", conflictRaceIds).in("rider_id", bound),
-      ]);
-      if (crErr) return res.status(500).json({ error: crErr.message });
-      if (ceErr) return res.status(500).json({ error: ceErr.message });
-      const raceMetaById = new Map((conflictRaces || []).map((r) => [r.id, r]));
-      const autoFilledKeys = new Set(
-        (conflictEntries || []).filter((e) => e.is_auto_filled).map((e) => `${e.race_id}|${e.rider_id}`)
-      );
-      const riderNameById = new Map(ctx.riders.map((r) => [r.id, r.name]));
-      const { resolvable, blocking } = classifyBindingConflicts({
-        boundRiderIds: bound, details, raceMetaById, autoFilledKeys, riderNameById,
+      // #3098: delt med RPC-fallbackens catch-blok nedenfor (samme 409-payload begge veje).
+      const { resolvable, blocking } = await resolveBindingConflictDetails({
+        supabase, teamId: req.team.id, boundRiderIds: bound,
+        thisWindow: binding.thisWindow, otherRaces: binding.otherRaces, riders: ctx.riders,
       });
 
       // #2637 (bug 3): navngiv fejlen (rytter + konkret løb) — spilleren kunne tidligere
@@ -4281,7 +4277,39 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     res.json({ ok: true });
   } catch (err) {
     // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.
+    // #3098: RPC'ens EXCEPTION-besked bærer ikke hvilke ryttere/løb der konflikter (kun
+    // koden), så pre-flightens NAVNGIVNE 409 ({bound_rider_ids, conflicts}) tabtes her —
+    // frontend faldt tilbage til den generiske (ikke-navngivne) i18n-nøgle, selvom den
+    // navngivne allerede findes og bruges af pre-flight-vejen. Fix: genkør samme
+    // detalje-opslag (loadTeamBindingContext + resolveBindingConflictDetails) mod den
+    // AKTUELLE DB-tilstand (transaktionen der fejlede er allerede rullet tilbage, så
+    // dette er en frisk læsning, ikke et gæt) og svar med samme payload-form som
+    // pre-flight. race/riderIds/ctx er hoistet ovenfor netop til dette formål.
     if (err?.code === "selection_rider_bound") {
+      if (race && ctx) {
+        try {
+          const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
+          const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
+          if (bound.length) {
+            const { resolvable, blocking } = await resolveBindingConflictDetails({
+              supabase, teamId: req.team.id, boundRiderIds: bound,
+              thisWindow: binding.thisWindow, otherRaces: binding.otherRaces, riders: ctx.riders,
+            });
+            // Samme forrang som pre-flight: navngivne blokerende konflikter først; er ALLE
+            // konflikter løsbare (usandsynligt her — pre-flight frigav dem allerede før RPC-
+            // kaldet — men muligt hvis en anden samtidig skrivning ramte i selve mellemrummet),
+            // navngiv dem alligevel i stedet for at falde tilbage til den generiske fejl.
+            const conflicts = blocking.length ? blocking : resolvable;
+            if (conflicts.length) {
+              return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts });
+            }
+          }
+        } catch (lookupErr) {
+          // Best-effort navngivning — kan detalje-opslaget ikke genskabes, falder vi tilbage
+          // til den generiske 409 nedenfor i stedet for at eskalere til en 500 for spilleren.
+          captureException(lookupErr);
+        }
+      }
       return res.status(409).json({ error: "selection_rider_bound" });
     }
     captureException(err);
@@ -5122,12 +5150,13 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #1447: #669-auktions-gaten fjernet — efter relaunch (#1105) er fiktive ryttere
   // den aktive bestand og skal kunne auktioneres/handles af alle managere.
 
-  // Block: retired / academy / rider awaits transfer to a previous auction winner.
-  // #1824: akademiryttere hører IKKE på det åbne auktionsmarked — de ejes/udvikles
-  // via akademi-flowet og må først rykkes til senior-truppen (graduation) før de kan
-  // handles. getAuctionStartIssue fanger det (rider_is_academy) før den human-only
-  // ejer-check nedenfor, så et AI-/frit akademi-prospekt ikke længere slipper forbi.
-  const auctionStartIssue = getAuctionStartIssue({ rider });
+  // Block: retired / academy (not own) / rider awaits transfer to a previous auction winner.
+  // #3650 (ejer-direktiv 17/8): egne akademi-ryttere må NU sættes på auktion —
+  // #1824's is_academy-GUARD er lempet til kun at ramme riders der IKKE ejes af
+  // den anmodende manager (getAuctionStartIssue fanger det med requestingTeamId),
+  // så et AI-/frit akademi-prospekt stadig ikke slipper forbi den human-only
+  // ejer-check nedenfor.
+  const auctionStartIssue = getAuctionStartIssue({ rider, requestingTeamId: req.team.id });
   if (auctionStartIssue) {
     if (auctionStartIssue.code === "rider_retired") {
       return res.status(409).json({ error: "This rider has retired and can't be put up for auction", errorCode: "rider_retired_auction" });
@@ -6103,11 +6132,14 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(403).json({ error: "Du ejer ikke denne rytter", errorCode: "rider_not_owned" });
   if (rider.is_retired)
     return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
-  // #1824: akademiryttere må ikke sælges på det åbne transfermarked — de ejes/
-  // udvikles via akademi-flowet og skal først rykkes til senior-truppen (graduation)
-  // før de kan handles. Spejler is_academy-GUARD i POST /auctions + rider-actions.
-  if (rider.is_academy)
-    return res.status(400).json({ error: "Academy riders can't be listed for sale. Graduate them to your senior squad first.", errorCode: "rider_is_academy" });
+  // #3650 (ejer-løfte i Discord 11/8): akademiryttere må NU listes direkte —
+  // #1824's is_academy-GUARD er fjernet HER (blokerer stadig auktion, se POST
+  // /auctions). Ingen manuel graduation krævet længere: salget graduerer
+  // rytteren atomisk ved handlens gennemførelse (executeTransferOffer sætter
+  // is_academy=false), samme mønster som en graduate-sælg-auktion
+  // (academyGraduation.js createGraduateAuction) allerede bruger — rytteren
+  // forbliver is_academy=true (og tæller stadig mod sælgerens 8-cap) indtil
+  // handlen rent faktisk lukkes.
 
   // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
   // partial unique index (uniq_transfer_listings_one_active_per_rider) fanger

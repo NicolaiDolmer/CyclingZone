@@ -45,6 +45,23 @@ export function compareRidersByFilter(a, b, filters) {
     const cmp = (a.team?.name || "").localeCompare(b.team?.name || "");
     return filters.sort_dir === "desc" ? -cmp : cmp;
   }
+  // Potentiale (#3787): `_scoutMid` (scoutSortValue, scouting.js) er `null` for
+  // ryttere uden synligt estimat (ikke hentet / skjult-uscoutet). Den generiske
+  // numeriske gren nedenfor (`a[filters.sort] || 0`) ville kollidere null med en
+  // reel lav rating og give indtryk af en vurdering der ikke findes — i stedet
+  // placeres `null` EKSPLICIT sidst, uanset sorteringsretning (samme kontrakt
+  // som useTableSort.js's sortRows for de tabeller der ikke driver herfra).
+  if (filters.sort === "_scoutMid") {
+    const aVal = a._scoutMid;
+    const bVal = b._scoutMid;
+    const aNil = aVal == null;
+    const bNil = bVal == null;
+    if (aNil || bNil) {
+      if (aNil && bNil) return 0;
+      return aNil ? 1 : -1;
+    }
+    return filters.sort_dir === "desc" ? bVal - aVal : aVal - bVal;
+  }
   let aVal, bVal;
   if (filters.sort === "birthdate") {
     aVal = a.birthdate ? new Date(a.birthdate).getFullYear() : 1970;
@@ -65,6 +82,36 @@ export function compareRidersByFilter(a, b, filters) {
     bVal = b[filters.sort] || 0;
   }
   return filters.sort_dir === "desc" ? bVal - aVal : aVal - bVal;
+}
+
+// #3787: udskilt fra useRiderFilters.js (samme #803/#2403-testbarheds-mønster
+// som compareRidersByFilter/mergeSalarySortedIds ovenfor — useRiderFilters.js
+// trækker RiderFilters.jsx (ægte JSX) ind transitivt, som Node's ESM-loader
+// ikke kan parse i `node --test`). Bygger et Supabase PostgREST-query-kæde-kald
+// (query.order(...)); ren funktion i den forstand at den ikke selv kender til
+// Supabase-klienten, kun den fluent .order()-metode.
+//
+// #1162/#1537: rytter-DB'en (RidersPage) har HVERKEN en potentiale-kolonne
+// (fjernet #1537 — doktrin #1138: potentiale skjules helt i den server-
+// paginerede visning) ELLER adgang til den rå potentiale (skjult server-side,
+// #1162). "potentiale"/"_scoutMid" som sort-nøgle her kan derfor KUN være en
+// forældet URL/sessionStorage-værdi fra før #1537. Faldt tidligere STILLE
+// tilbage til market_value-sortering — præcis den invertérbare sidekanal
+// #2798 handler om at undgå (spilleren læser "sorter efter potentiale" og får
+// reelt "sorter efter værdi", som afslører potentialet omvendt). Falder nu i
+// stedet til den neutrale navne-sortering, der ikke lækker noget (#3787).
+export function applyRiderColumnSort(query, filters) {
+  if (filters.sort === "firstname") {
+    return query.order("lastname", { ascending: filters.sort_dir === "asc", nullsFirst: false });
+  }
+  if (filters.sort === "value") {
+    return query.order("market_value", { ascending: filters.sort_dir === "asc", nullsFirst: false });
+  }
+  if (filters.sort === "potentiale" || filters.sort === "_scoutMid") {
+    return query.order("lastname", { ascending: true, nullsFirst: false });
+  }
+  const sortAsc = filters.sort === "birthdate" ? filters.sort_dir === "desc" : filters.sort_dir === "asc";
+  return query.order(filters.sort, { ascending: sortAsc, nullsFirst: false });
 }
 
 // #2403: rytter-DB'ens rå `salary`-kolonne matcher ikke altid den VISTE løn

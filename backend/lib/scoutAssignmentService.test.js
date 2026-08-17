@@ -570,7 +570,7 @@ test("startMission: happy path inserts flat-cost mission + debits, defaults targ
   const result = await startMission({ teamId: "team-1", criteria, seasonId: "season-1" }, supabase, NOW);
   assert.equal(result.ok, true);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.mission.cost);
-  assert.equal(result.assignment.readyOn, "2026-07-12"); // +2 dage (mission.days)
+  assert.equal(result.assignment.readyOn, "2026-07-11"); // +1 dag (mission.days, #3652)
   // #2644 del 2: ingen targetPool i input-criteria → normaliseret til "free_agents"
   // (bagudkompatibel default, ikke en kontraktændring for eksisterende kaldere).
   assert.deepEqual(supabase.state.assignments[0].mission_criteria, { ...criteria, targetPool: "free_agents" });

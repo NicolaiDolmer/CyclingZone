@@ -9,16 +9,21 @@ import { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS } from "./squadEnforcement.js";
 //
 // Rammer alle managers (også winneren selv) — rytteren er ikke fysisk på noget
 // hold endnu og kan ikke sælges videre før transfervinduet flusher pending → team_id.
-export function getAuctionStartIssue({ rider } = {}) {
+export function getAuctionStartIssue({ rider, requestingTeamId } = {}) {
   if (rider?.is_retired) {
     return { code: "rider_retired" };
   }
-  // #1824: akademiryttere hører ikke på det åbne auktionsmarked — de ejes/udvikles
-  // via akademi-flowet og skal først rykkes til senior-truppen (graduation) før de
-  // kan handles. Uden denne gate slap et frit/AI-akademi-prospekt forbi den human-
-  // only ejer-check i route-handleren og kunne auktioneres af enhver. Spejler is_-
-  // academy-GUARD i POST /transfers + loadOwnedSeniorRiderForAction.
-  if (rider?.is_academy) {
+  // #3650 (ejer-direktiv 17/8): akademi-ryttere kan nu sættes PÅ AUKTION af
+  // deres EGET hold — samme direkte-salg som transferlisten allerede tillader
+  // (#1824-guarden lempet i POST /transfers). Salget graduerer atomisk til
+  // senior hos køberen ved handlens gennemførelse (auctionFinalization.js'
+  // graduatePatch, samme mønster som en graduate-sælg-auktion "#932" allerede
+  // bruger). Et frit/AI-ejet akademi-prospekt (IKKE ejet af den anmodende
+  // manager) er stadig blokeret — det hører til intake-/graduation-flowet, ikke
+  // det åbne marked. Uden own-team-undtagelsen kunne enhver manager auktionere
+  // et andet holds akademi-prospekt. Spejler is_academy-GUARD-lempelsen i
+  // POST /transfers + loadOwnedSeniorRiderForAction (transfer/fyr-flow uændret).
+  if (rider?.is_academy && rider?.team_id !== requestingTeamId) {
     return { code: "rider_is_academy" };
   }
   if (rider?.pending_team_id) {

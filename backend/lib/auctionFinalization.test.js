@@ -2046,6 +2046,143 @@ test("finalizeAuctionById inherits an existing contract unchanged on a won aucti
   }]);
 });
 
+// ── #3650 (ejer-direktiv 17/8): akademi-ryttere kan nu sættes DIREKTE på
+// auktion af deres eget hold (POST /auctions, is_youth=false — ikke en
+// createGraduateAuction fra academyGraduation.js). Finalization-koden er
+// UÆNDRET generisk (#932-graduatePatch), så det samme is_academy=false-flip
+// skal ske ved handlens gennemførelse uanset hvordan auktionen blev oprettet.
+test("finalizeAuctionById graduates an own-team academy rider to senior for the buyer and inherits the existing contract unchanged (#3650)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-academy-own",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 300,
+        seller_team_id: "seller-team",
+        is_youth: false,
+        rider: {
+          id: "rider-academy-own",
+          firstname: "Theo",
+          lastname: "Talent",
+          team_id: "seller-team",
+          is_academy: true,
+          salary: 5_000, // eksisterende kontrakt
+          contract_length: 2,
+          contract_end_season: 3,
+          base_value: 50_000,
+          prize_earnings_bonus: 0,
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 250,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+    }),
+    auctionId: "auction-academy-own",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-08-17T11:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  // Graduerer til senior (is_academy=false) — kontrakten arves UÆNDRET, samme
+  // #2881/#3620-invariant som transfer-delen (#3650, PR #3845).
+  assert.deepEqual(riderUpdates, [{
+    team_id: "buyer-team",
+    pending_team_id: null,
+    acquired_at: "2026-08-17T11:00:00.000Z",
+    is_academy: false,
+  }]);
+});
+
+// Kontraktløs akademi-rytter → samme create-if-missing-gate som en normal
+// vinder (#1309), PLUS graduering (#3650) i samme opdatering.
+test("finalizeAuctionById graduates a contractless own-team academy rider and gives it a fresh contract on sale (#3650)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-academy-fresh",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 150,
+        seller_team_id: "seller-team",
+        is_youth: false,
+        rider: {
+          id: "rider-academy-fresh",
+          firstname: "Nora",
+          lastname: "Ny",
+          team_id: "seller-team",
+          is_academy: true,
+          salary: null, // kontraktløs
+          current_production_value: 500_000,
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500000,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 250,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+    }),
+    auctionId: "auction-academy-fresh",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-08-17T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.deepEqual(riderUpdates, [{
+    team_id: "buyer-team",
+    pending_team_id: null,
+    acquired_at: "2026-08-17T10:00:00.000Z",
+    salary: 74_050, // 500_000 × 0.1481 (buyer-team division 3)
+    contract_length: 2,
+    contract_end_season: 2,
+    is_academy: false,
+  }]);
+});
+
 // ─── #1308 Fase B: ungdomsauktion-finalization ────────────────────────────────
 // En youth-auktion (is_youth=true) har INGEN sælger (seller_team_id=NULL) og
 // rytteren er fri (team_id=NULL). Vinderen placeres i sit akademi (is_academy=true,

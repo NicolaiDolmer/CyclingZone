@@ -106,7 +106,8 @@ export function ageBadgeKey(rider, seasonYear) {
 // undgå at frontend importerer et backend-modul. Varslet vises ÉT sæson-varsel
 // (noticeSeasons=1) FØR selve vinduet — altså alder ≥ windowStartAge − 1 = 35,
 // jf. #2943's egen ordlyd ("byde på 35+ ryttere") og #2700 (windowStartAge=36).
-const RETIREMENT_WINDOW_START_AGE = 36;
+export const RETIREMENT_WINDOW_START_AGE = 36;
+export const RETIREMENT_GUARANTEED_AGE = 40;
 const RETIREMENT_NOTICE_SEASONS = 1;
 export const RETIREMENT_WARNING_AGE = RETIREMENT_WINDOW_START_AGE - RETIREMENT_NOTICE_SEASONS; // 35
 
@@ -124,6 +125,20 @@ export function isRetirementRisk(birthdate, seasonYear) {
 // gensidigt udelukkende felt). Returnerer null ved manglende fødselsdato/sæson-år.
 export function retirementRiskBadgeKey(rider, seasonYear) {
   return isRetirementRisk(rider?.birthdate, seasonYear) ? "retireRisk" : null;
+}
+
+// #2700: bud-bekræftelses-advarsel (auktion/autobud/transfer) — samme SSOT-
+// tærskler som badget ovenfor, men to-niveau i stedet for ét, fordi ejerens
+// egen accept-kriterie (#2700-kommentar 22/7) kræver at teksten skelner
+// mellem RISIKO (alder 35-39, seeded sandsynlighed) og SIKKER pension (alder
+// ≥ guaranteedAge=40 — retirementDecision() i backend/lib/riderProgression.js
+// returnerer altid retire:true derfra). Returnerer null under advarsels-
+// alderen, ellers "risk" | "certain" til modal-copy-nøglen
+// auctions:modal.retirementWarning.<tier>.
+export function retirementBidWarningTier(birthdate, seasonYear) {
+  const age = getRiderAge(birthdate, seasonYear);
+  if (age == null || age < RETIREMENT_WARNING_AGE) return null;
+  return age >= RETIREMENT_GUARANTEED_AGE ? "certain" : "risk";
 }
 
 // #3097: kontrakt-udløb-ved-næste-transition — SAMME regel som backend's

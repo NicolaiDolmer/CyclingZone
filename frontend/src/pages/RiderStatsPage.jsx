@@ -36,7 +36,7 @@ import { formatHour } from "../lib/auctionEndTime.js";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
-import { ageForSeason } from "../lib/riderAge.js";
+import { ageForSeason, retirementBidWarningTier } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useActionSummary } from "../hooks/useActionSummary.js";
 import { AmountInput, BlockedNote, Button, Card, CheckIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
@@ -198,7 +198,7 @@ function SwapOfferButton({ rider, myTeamId }) {
   );
 }
 
-function DirectOfferButton({ rider }) {
+function DirectOfferButton({ rider, seasonYear }) {
   const { t } = useTranslation("rider");
   const [show, setShow]       = useState(false);
   const [amount, setAmount]   = useState(getRiderMarketValue(rider));
@@ -268,6 +268,7 @@ function DirectOfferButton({ rider }) {
         mode="transfer"
         riderName={`${rider.firstname} ${rider.lastname}`}
         amount={amount}
+        retirementTier={retirementBidWarningTier(rider.birthdate, seasonYear)}
         busy={loading}
         onCancel={() => { if (!loading) setConfirmOpen(false); }}
         onConfirm={performSendOffer}
@@ -466,7 +467,7 @@ function AuctionCountdown({ end, status }) {
   );
 }
 
-function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
+function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing, seasonYear }) {
   // "auctions" loades med så hookets fejltekst (auctions:error.insufficientBalance)
   // kan resolves — uden den kastede klient-gaten TypeError (t var ikke givet videre)
   // og spilleren så ingen fejl overhovedet (#1184).
@@ -494,6 +495,8 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm,
     riderName: riderName || t("auctionPanel.riderNameFallback"),
+    // #2700: pensions-advarsel i bud-bekræftelsen — se useAuctionBidding.js.
+    birthdate: r?.birthdate, seasonYear,
     t,
   });
 
@@ -1519,10 +1522,13 @@ export default function RiderStatsPage() {
   // RIDER_TYPE_KEYS; rating beregnes i tabben.
   const developmentTypes = RIDER_TYPE_KEYS.map((key, i) => ({ key, label: tTypes(`types.${key}`), color: chartColor(i) }));
   const isMyRider  = rider.team_id === myTeamId;
-  // #2007: en egen AKADEMI-rytter har sit eget flow (promovér) — den kan ikke
-  // sættes på auktion/transferliste/fyres (backend afviser rider_is_academy).
+  // #2007: en egen AKADEMI-rytter har sit eget flow (promovér) og kan ikke
+  // fyres (backend afviser rider_is_academy).
+  // #3650 (ejer-direktiv 17/8): akademi-ryttere kan nu sættes BÅDE på
+  // transferlisten OG på auktion direkte (se TransferListButton/AuctionButton-
+  // brugen nedenfor) — salget graduerer dem atomisk til senior hos køberen ved
+  // handlens gennemførelse. Kun promovér/fyr er fortsat akademi-flowets egne.
   const isAcademyRider = Boolean(rider.is_academy);
-  const isMySeniorRider = isMyRider && !isAcademyRider;
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
   const isAiRider = Boolean(rider.team?.is_ai);
@@ -1544,11 +1550,12 @@ export default function RiderStatsPage() {
       overviewProgress[key] = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
     }
   }
-  // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter og egne
-  // SENIOR-ryttere kan sættes på auktion). #2264: bank/AI-ryttere er fjernet —
-  // backend har blokeret dem siden 2026-06-30 (ai_rider_no_auction), så knappen
-  // gav kun en fejl.
-  const canAuction  = (isFreeAgent || isMySeniorRider) && !isPendingTransfer && !isRetired;
+  // #3650 (ejer-direktiv 17/8): egne akademi-ryttere kan nu OGSÅ sættes på
+  // auktion — samme direkte-salg som transferlisten. isMyRider dækker både
+  // senior og akademi for eget hold, så isMySeniorRider-udelukkelsen er væk.
+  // #2264: bank/AI-ryttere er fjernet — backend har blokeret dem siden
+  // 2026-06-30 (ai_rider_no_auction), så knappen gav kun en fejl.
+  const canAuction  = (isFreeAgent || isMyRider) && !isPendingTransfer && !isRetired;
   const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer && !isRetired;
   const auctionLabel = isMyRider
     ? t("auctionStart.label.myRider")
@@ -1627,6 +1634,7 @@ export default function RiderStatsPage() {
         mode={bidConfirm?.mode}
         riderName={bidConfirm?.riderName}
         amount={bidConfirm?.amount}
+        retirementTier={bidConfirm?.retirementTier}
         busy={bidConfirmBusy}
         onCancel={() => { if (!bidConfirmBusy) setBidConfirm(null); }}
         onConfirm={handleBidConfirm}
@@ -1749,6 +1757,7 @@ export default function RiderStatsPage() {
                     onRemoveProxy={handleRemoveProxy}
                     requestBidConfirm={requestBidConfirm}
                     isFlashing={priceFlash}
+                    seasonYear={seasonYear}
                   />
                 </div>
               )}
@@ -1762,8 +1771,12 @@ export default function RiderStatsPage() {
                   seasonYear={seasonYear}
                   marketActions={
                     <>
-                      {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
-                      {isMySeniorRider && <TransferListButton rider={rider} />}
+                      {/* #1185: egne ryttere kan sættes til salg direkte herfra.
+                          #3650: akademi-ryttere kan nu OGSÅ sættes til salg ELLER
+                          på auktion direkte — salget graduerer dem atomisk til
+                          senior hos køberen ved handlens gennemførelse (backend:
+                          executeTransferOffer / auctionFinalization.js). */}
+                      {isMyRider && <TransferListButton rider={rider} />}
                       {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
                     </>
                   }
@@ -1771,7 +1784,7 @@ export default function RiderStatsPage() {
               ) : (
                 canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />
               )}
-              {canDirectOffer && <DirectOfferButton rider={rider} />}
+              {canDirectOffer && <DirectOfferButton rider={rider} seasonYear={seasonYear} />}
               {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
             </div>
           }

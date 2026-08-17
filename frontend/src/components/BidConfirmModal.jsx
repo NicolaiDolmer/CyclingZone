@@ -3,13 +3,25 @@
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { GavelIcon, AlertTriangleIcon, BriefcaseIcon } from "./ui/icons";
+import { RETIREMENT_WINDOW_START_AGE, RETIREMENT_GUARANTEED_AGE } from "../lib/riderAge";
 
 // Ikonet er ikke oversættelig tekst — det vælges af mode, ikke i18n.
 const MODE_ICON = { bid: GavelIcon, proxy: AlertTriangleIcon, transfer: BriefcaseIcon };
 
-export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCancel, onConfirm, busy = false }) {
+// #2700: pensions-advarsel i selve bekræftelses-modalen, ikke kun som badge på
+// kortet (ejer-accept 22/7: "i bekræftelses-modalen, ikke kun som badge").
+// retirementTier kommer fra riderAge.js' retirementBidWarningTier (SSOT for
+// tærskler er backend/lib/riderProgression.js PROGRESSION_CONFIG.retirement).
+export function BidConfirmModal({ show, mode = "bid", riderName, amount, retirementTier = null, onCancel, onConfirm, busy = false }) {
   const { t } = useTranslation(["auctions", "common"]);
   if (!show) return null;
+
+  const retirementText = retirementTier
+    ? t(`auctions:modal.retirementWarning.${retirementTier}`, {
+        windowStart: RETIREMENT_WINDOW_START_AGE,
+        guaranteedAge: RETIREMENT_GUARANTEED_AGE,
+      })
+    : null;
 
   const modeKey = ["bid", "proxy", "transfer"].includes(mode) ? mode : "bid";
   const Icon = MODE_ICON[modeKey];
@@ -40,6 +52,15 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCance
             <> {t("auctions:modal.onLabel")} <span className="font-bold text-cz-1">{riderName}</span></>
           ) : null}?
         </p>
+        {retirementText && (
+          <div
+            role="alert"
+            className="mb-4 -mt-2 flex items-start gap-2 rounded-cz border border-cz-warning/30 bg-cz-warning-bg/40 px-3 py-2 text-left text-xs text-cz-warning"
+          >
+            <AlertTriangleIcon size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{retirementText}</span>
+          </div>
+        )}
         <div className="flex gap-2">
           <button
             onClick={onCancel}

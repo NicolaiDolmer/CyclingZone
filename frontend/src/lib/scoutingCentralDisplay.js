@@ -12,10 +12,11 @@ export function daysUntil(readyOn, now = new Date()) {
   return Math.max(0, Math.ceil(diffMs / 86400000));
 }
 
-// Menneskelæsbart kriterie-label for en mission (scope + value). `translateScope`
-// og `translateCountry` injiceres af kalderen (i18n/nationality-navn-opslag) så
-// denne fil forbliver ren.
-export function missionCriteriaLabel(criteria, { translateScope, translateCountry } = {}) {
+// Menneskelæsbart kriterie-label for en mission (scope + value). `translateScope`,
+// `translateCountry` og `translateType` (#3657 — ryttertype-scope) injiceres af
+// kalderen (i18n/nationality-navn-opslag/riderTypes-navn-opslag) så denne fil
+// forbliver ren.
+export function missionCriteriaLabel(criteria, { translateScope, translateCountry, translateType } = {}) {
   if (!criteria?.scope) return "";
   const scope = criteria.scope;
   if (scope === "u23") return translateScope ? translateScope("u23") : "U23";
@@ -23,6 +24,11 @@ export function missionCriteriaLabel(criteria, { translateScope, translateCountr
     const countryLabel = criteria.value && translateCountry ? translateCountry(criteria.value) : criteria.value;
     const scopeLabel = translateScope ? translateScope(scope) : scope;
     return countryLabel ? `${scopeLabel} · ${countryLabel}` : scopeLabel;
+  }
+  if (scope === "type") {
+    const typeLabel = criteria.value && translateType ? translateType(criteria.value) : criteria.value;
+    const scopeLabel = translateScope ? translateScope("type") : "Rider type";
+    return typeLabel ? `${scopeLabel} · ${typeLabel}` : scopeLabel;
   }
   if (scope === "division") {
     return translateScope ? translateScope("division") : `Division ${criteria.value ?? ""}`;

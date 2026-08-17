@@ -44,24 +44,37 @@ test("getAuctionStartIssue blocks retired rider", () => {
   assert.deepEqual(issue, { code: "rider_retired" });
 });
 
-// #1824: akademiryttere må aldrig på auktion — heller ikke et frit/AI-akademi-
-// prospekt (det slap ellers forbi den human-only ejer-check i route-handleren).
-test("getAuctionStartIssue blocks academy rider (own team)", () => {
+// #3650 (ejer-direktiv 17/8): akademi-ryttere kan nu sættes på auktion af
+// deres EGET hold — samme direkte-salg som transferlisten (#1824-guarden
+// lempet, ikke fjernet: den blokerer stadig ryttere der IKKE ejes af den
+// anmodende manager, se testene nedenfor).
+test("getAuctionStartIssue allows an own academy rider (#3650)", () => {
   const issue = getAuctionStartIssue({
     rider: { id: "r1", team_id: "my-team", pending_team_id: null, is_retired: false, is_academy: true },
+    requestingTeamId: "my-team",
   });
-  assert.deepEqual(issue, { code: "rider_is_academy" });
+  assert.equal(issue, null);
 });
 
 test("getAuctionStartIssue blocks academy rider that is a free agent / AI-owned prospect", () => {
   assert.deepEqual(
-    getAuctionStartIssue({ rider: { id: "r1", team_id: null, pending_team_id: null, is_retired: false, is_academy: true } }),
+    getAuctionStartIssue({ rider: { id: "r1", team_id: null, pending_team_id: null, is_retired: false, is_academy: true }, requestingTeamId: "my-team" }),
     { code: "rider_is_academy" },
   );
   assert.deepEqual(
-    getAuctionStartIssue({ rider: { id: "r1", team_id: "ai-team", pending_team_id: null, is_retired: false, is_academy: true } }),
+    getAuctionStartIssue({ rider: { id: "r1", team_id: "ai-team", pending_team_id: null, is_retired: false, is_academy: true }, requestingTeamId: "my-team" }),
     { code: "rider_is_academy" },
   );
+});
+
+// #3650: en akademi-rytter ejet af ET ANDET hold er STADIG blokeret — kun
+// EGET hold kan sætte sit eget akademi-prospekt på auktion.
+test("getAuctionStartIssue blocks academy rider owned by another manager's team", () => {
+  const issue = getAuctionStartIssue({
+    rider: { id: "r1", team_id: "other-team", pending_team_id: null, is_retired: false, is_academy: true },
+    requestingTeamId: "my-team",
+  });
+  assert.deepEqual(issue, { code: "rider_is_academy" });
 });
 
 test("getAuctionStartIssue allows a senior (non-academy) rider", () => {

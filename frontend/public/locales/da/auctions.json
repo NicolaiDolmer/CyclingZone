@@ -228,6 +228,10 @@
     "transferAction": "Send bud",
     "questionPrefix": "Er du sikker på at du vil",
     "onLabel": "på",
+    "retirementWarning": {
+      "risk": "Nærmer sig karrierens slutning: rytteren er i pensionsvinduet (alder {windowStart}-{guaranteedAge}) og kan stoppe efter denne sæson.",
+      "certain": "Rytteren er {guaranteedAge} år eller ældre og stopper med sikkerhed efter denne sæson."
+    },
     "typoGuard": {
       "title": "Tjek din pris",
       "body": "Du sætter <strong>{riderName}</strong> til salg for <strong>{price} CZ$</strong>.",
