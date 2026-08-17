@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import router, { assertTeamNotTransferFrozen } from "./api.js";
+import router, { assertTeamNotTransferFrozen, claimSeasonEndOrReject } from "./api.js";
 
 // Minimal fake res der opfanger status + json
 function fakeRes() {
@@ -63,6 +63,58 @@ test("assertTeamNotTransferFrozen — returnerer true og svarer IKKE når req.te
   assert.equal(result, true, "null team = ikke frosset (eksisterende guard håndterer det)");
   assert.equal(res.code, null);
   assert.equal(res.body, null);
+});
+
+// ── claimSeasonEndOrReject (#2847 — dobbelt-POST-garanti) ────────────────────
+// Minimal fake supabase der kun implementerer .from("season_end_claims").insert(...).
+function fakeSupabaseForClaim(insertResult) {
+  const calls = [];
+  return {
+    calls,
+    client: {
+      from(table) {
+        return {
+          insert(row) {
+            calls.push({ table, row });
+            return Promise.resolve(insertResult);
+          },
+        };
+      },
+    },
+  };
+}
+
+test("claimSeasonEndOrReject — vinder claim'et (INSERT lykkes) → returnerer true, rører ikke res", async () => {
+  const { client, calls } = fakeSupabaseForClaim({ error: null });
+  const res = fakeRes();
+
+  const result = await claimSeasonEndOrReject(client, "season-1", res);
+
+  assert.equal(result, true);
+  assert.equal(res.code, null, "må ikke kalde status() ved vundet claim");
+  assert.deepEqual(calls, [{ table: "season_end_claims", row: { season_id: "season-1" } }]);
+});
+
+test("claimSeasonEndOrReject — taber claim'et (23505 unique_violation) → 409 + false", async () => {
+  const { client } = fakeSupabaseForClaim({ error: { code: "23505", message: "duplicate key" } });
+  const res = fakeRes();
+
+  const result = await claimSeasonEndOrReject(client, "season-1", res);
+
+  assert.equal(result, false);
+  assert.equal(res.code, 409);
+  assert.ok(typeof res.body?.error === "string" && res.body.error.length > 0);
+});
+
+test("claimSeasonEndOrReject — anden DB-fejl (ikke 23505) → 500 + false", async () => {
+  const { client } = fakeSupabaseForClaim({ error: { code: "42P01", message: "relation does not exist" } });
+  const res = fakeRes();
+
+  const result = await claimSeasonEndOrReject(client, "season-1", res);
+
+  assert.equal(result, false);
+  assert.equal(res.code, 500);
+  assert.equal(res.body?.error, "relation does not exist");
 });
 
 // ── Route-rækkefølge: statiske stier før parametriserede (#1479) ──────────────

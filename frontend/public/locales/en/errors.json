@@ -208,6 +208,7 @@
     "auction_end_invalid": "Pick a valid end time for the auction",
     "auction_end_too_soon": "An auction must run for at least {minHours} hour",
     "auction_end_too_late": "An auction can't run for more than {maxHours} hours",
-    "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}"
+    "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}",
+    "season_end_already_claimed": "Season end already in progress or already completed"
   }
 }

@@ -208,6 +208,7 @@
     "auction_end_invalid": "Vælg et gyldigt sluttidspunkt for auktionen",
     "auction_end_too_soon": "En auktion skal køre i mindst {minHours} time",
     "auction_end_too_late": "En auktion kan højst køre i {maxHours} timer",
-    "auction_end_outside_window": "Auktioner kan kun slutte mens markedet er åbent, mellem {openHour} og {closeHour}"
+    "auction_end_outside_window": "Auktioner kan kun slutte mens markedet er åbent, mellem {openHour} og {closeHour}",
+    "season_end_already_claimed": "Sæsonen er allerede ved at blive afsluttet eller er allerede afsluttet"
   }
 }
