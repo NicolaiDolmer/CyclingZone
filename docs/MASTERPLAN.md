@@ -71,12 +71,16 @@ Natbølger/sidesessioner; hovedsporet taber ikke tempo. **Lukkemandat:** done/du
 
 - **W1 integritet:** #3580 #2982 #2836 #3594 #3582 #2086 #2797 #2793 (de to sidste flyttet ind 17/8: akademi-salg åbnet i bølge 3 gør cap-bypass og akademi-regnskab reelle) · **W2 ny-spiller:** #3037(forward-regel) #3751 #3008 · **W3 observability:** #3653 #3695 #3696 #3684 #3638 (✅ #3819 17/8) · **W4 hærdning:** #3420 #3415 #2847 · **W5 marked:** rest #3787 #3708 (✅ 17/8: #3066 #3067 #3786 #3783 #2403 #2400 #3826) · **W6 indbakke:** rest #3098 #3439 (✅ 17/8: #3496 #3493 #3491 #3549) · **W7 hjælp/transparens:** rest #3714 (✅ 17/8: #3551 #2889; #3623/#3456/#3412 venter bevidst på trin 7) · **W8 beslutnings-sessioner:** 54 needs-decision i bundter a 10-15 · **W9 housekeeping-audit XL.**
 - **E-mail-kæden før flip:** #3585 + #3600 + #2085 → derefter #2853.
-- **S3-kalender-finpuds FØR 23/8:** kalenderen ER genbygget (v7.105) — mål den mod #3546/#3547/#3471/#3349/#3328 og beslut kun resterne.
-- Verificeret 15/8: #3548 lukket · #3632 merged (venter prod-fødsel) · #3396 bygget, kun genafspilnings-hul åbent · #3037 make-good udført 26/7 · #2022 ejes af #3514.
+- **S3-kalender-finpuds: alle 4 restbeslutninger TRUFFET 17/8** (#3546-kommentar): 3 GT à 17-18 · Giro-sprednings-rodfix i selection · "mindst én afgørelse pr. D1-dag"-invariant · `itt_hilly`-arketype. Samlet pakke i byg (worktree) m. dry-run-scorecard; regenerering ejer-gated på scorecardet. FØR 23/8.
+- Verificeret 15/8: #3548 lukket · #3632 merged (venter prod-fødsel) · #3037 make-good udført 26/7 · #2022 ejes af #3514. **#3396: fix bygget 17/8 (PR #3857, afventer CI).**
+
+## E2 · Race-oplevelsen (ejer-startet 17/8 — bølge 2's teater-kerne åbnet før tid)
+
+Session 17/8 (ejer + arkitekt): **#2410 event-log-spec ejer-besluttet** (JSONB-artefakt pr. etape, kontrakt-først, forward-only fra S3; prototype-gate BESTÅET + 6 renderer-forbedringer godkendt) — S1 (lager+generator+API bag flag) i byg. **Mockup-kontrakter godkendt:** #3858 Race Centre · #3859 etapeside før/under/efter + afspiller (begge blokeret af S1). **#3855 intra-etape-motor (v4)** = ejer-retningen; design-spor højt prioriteret EFTER cutover. #3856 backfill efter S3-bevis. Spec: [`2026-08-17-race-event-log-stage-timeline-design.md`](superpowers/specs/2026-08-17-race-event-log-stage-timeline-design.md).
 
 ## Parkeret — genbesøges når B og C er leveret
 
-Verdensklasse **bølge 2** (Race Centre, Peloton Post, klubhus/rivaler, palmarès, PWA, observatorium — plan: [`2026-08-05-verdensklasse-game-plan.md`](superpowers/specs/2026-08-05-verdensklasse-game-plan.md), bølge 1 er komplet) · rework-køen **#2223** indbakke og **#3513** dashboard · forum-forbedringer (reaktioner, ulæst-markering, svar-på-indlæg) · små ønsker (asking price på transferlisten, rytterstats ved hover) · vækst-sporet #2822/#1369/#1140/#2824/#2823 · **#2960** React 19 frosset til uge 1 sept.
+Verdensklasse **bølge 2's REST** (Peloton Post, klubhus/rivaler, palmarès, PWA, observatorium — plan: [`2026-08-05-verdensklasse-game-plan.md`](superpowers/specs/2026-08-05-verdensklasse-game-plan.md), bølge 1 er komplet; Race Centre-delen er åbnet, se E2) · rework-køen **#2223** indbakke og **#3513** dashboard · forum-forbedringer (reaktioner, ulæst-markering, svar-på-indlæg) · små ønsker (asking price på transferlisten, rytterstats ved hover) · vækst-sporet #2822/#1369/#1140/#2824/#2823 · **#2960** React 19 frosset til uge 1 sept.
 
 **FROSSET:** #2217/#2218. **Parkeret siden før:** #1712 (≥300 brugere) · #1941 · #450 · live-taktik/replay (genåbnes som broadcast-teater i bølge 2).
 
