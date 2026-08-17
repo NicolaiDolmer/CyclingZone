@@ -11,6 +11,10 @@
 // - dev + preview: middleware serverer /patch-notes.json så npm run dev og den
 //   e2e-preview-server (playwright kører mod vite preview) begge kan fetche den.
 //
+// #3811: emitterer OGSÅ en ultra-let dist/patch-notes-meta.json ({version, date}
+// for nyeste patch) — sidebarens ulæst-prik (Layout.jsx) skal IKKE hente hele
+// ~945 KB-changelog'en bare for at sammenligne én dato mod localStorage.
+//
 // SSOT-disciplin: JSON'en genereres altid fra PATCHES — der committes ALDRIG en
 // håndredigeret patch-notes.json. CI-gaten scripts/check-patch-notes-version.js
 // læser stadig src/data/patchNotes.js direkte, så version-bump-gaten er uændret.
@@ -21,6 +25,8 @@ const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.resolve(PLUGIN_DIR, "..", "src", "data", "patchNotes.js");
 export const PATCH_NOTES_ASSET = "patch-notes.json";
 const PATCH_NOTES_ROUTE = `/${PATCH_NOTES_ASSET}`;
+export const PATCH_NOTES_META_ASSET = "patch-notes-meta.json";
+const PATCH_NOTES_META_ROUTE = `/${PATCH_NOTES_META_ASSET}`;
 
 async function loadPatches() {
   // Cache-bust import'en så en edit i data-filen afspejles ved re-build (dev-watch
@@ -39,6 +45,22 @@ function serializePatches(patches) {
   // Kompakt JSON (ingen pretty-print) — den skal fetches, ikke læses af mennesker;
   // SSOT'en er den formaterede .js-fil.
   return JSON.stringify(patches);
+}
+
+// #3811: nyeste = højeste `date` (ISO, sorterer korrekt som streng), IKKE
+// patches[0] — PATCHES-arrayets rækkefølge er redaktionel (samme antagelse
+// groupByDay i src/lib/patchNotes.js gør, som selv re-sorterer i stedet for
+// at stole på kilde-rækkefølgen).
+function computeLatestMeta(patches) {
+  const latest = (patches || []).reduce(
+    (acc, p) => (!acc || (p.date && p.date > acc.date) ? p : acc),
+    null,
+  );
+  return { version: latest?.version ?? null, date: latest?.date ?? null };
+}
+
+function serializeMeta(patches) {
+  return JSON.stringify(computeLatestMeta(patches));
 }
 
 export function patchNotesJsonPlugin() {
@@ -63,6 +85,11 @@ export function patchNotesJsonPlugin() {
         fileName: PATCH_NOTES_ASSET,
         source: serializePatches(patches),
       });
+      this.emitFile({
+        type: "asset",
+        fileName: PATCH_NOTES_META_ASSET,
+        source: serializeMeta(patches),
+      });
     },
 
     // dev-server (npm run dev): server JSON'en fra hukommelsen.
@@ -72,6 +99,15 @@ export function patchNotesJsonPlugin() {
           const patches = await loadPatches();
           res.setHeader("Content-Type", "application/json; charset=utf-8");
           res.end(serializePatches(patches));
+        } catch (err) {
+          next(err);
+        }
+      });
+      server.middlewares.use(PATCH_NOTES_META_ROUTE, async (req, res, next) => {
+        try {
+          const patches = await loadPatches();
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(serializeMeta(patches));
         } catch (err) {
           next(err);
         }
