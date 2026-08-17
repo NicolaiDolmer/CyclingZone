@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow, loadPoolLocalCetSpans } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow, loadPoolLocalCetSpans } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -579,6 +579,80 @@ test("classifyBindingConflicts: blandet — nogle løsbare, nogle blocking, klas
   });
   assert.deepEqual(resolvable.map((r) => r.rider_id), ["r1"]);
   assert.deepEqual(blocking.map((r) => r.rider_id), ["r2"]);
+});
+
+// #3098: resolveBindingConflictDetails — fælles DB-opslag+klassifikation for PUT
+// /selection's pre-flight-tjek OG dens replace_race_selection-RPC-fallback (catch-
+// blokken, api.js). Rod-årsag: RPC-fallbacken svarede FØR uden rytter/løb-navn (kun
+// {error: "selection_rider_bound"}), selvom races.json's navngivne copy
+// ("selection_rider_bound_named") allerede findes og bruges af pre-flight-vejen —
+// frontend faldt derfor tilbage til den generiske, ikke-navngivne besked.
+function makeConflictDetailsSupabase({ races = [], entries = [] } = {}) {
+  function from(table) {
+    const f = {};
+    const b = {
+      select() { return b; },
+      eq(col, val) { f[col] = val; return b; },
+      in(col, vals) { f["in_" + col] = vals; return b; },
+      then(resolve, reject) {
+        let data = [];
+        if (table === "races") {
+          const ids = f.in_id || [];
+          data = races.filter((r) => ids.includes(r.id));
+        } else if (table === "race_entries") {
+          const raceIds = f.in_race_id || [];
+          const riderIds = f.in_rider_id || [];
+          data = entries.filter(
+            (e) => e.team_id === f.team_id && raceIds.includes(e.race_id) && riderIds.includes(e.rider_id)
+          );
+        }
+        return Promise.resolve({ data, error: null }).then(resolve, reject);
+      },
+    };
+    return b;
+  }
+  return { from };
+}
+
+test("resolveBindingConflictDetails: auto-genereret + ikke-startet konfliktløb → resolvable med rytter-/løbsnavn", async () => {
+  const supabase = makeConflictDetailsSupabase({
+    races: [{ id: "race-a", name: "Volta", stages_completed: 0 }],
+    entries: [{ team_id: "team-1", race_id: "race-a", rider_id: "r1", is_auto_filled: true }],
+  });
+  const { resolvable, blocking } = await resolveBindingConflictDetails({
+    supabase, teamId: "team-1", boundRiderIds: ["r1"],
+    thisWindow: { start: 5, end: 5 },
+    otherRaces: [{ raceId: "race-a", window: { start: 5, end: 6 }, riderIds: ["r1"] }],
+    riders: [{ id: "r1", name: "Rider One" }],
+  });
+  assert.equal(blocking.length, 0);
+  assert.deepEqual(resolvable, [{ rider_id: "r1", rider_name: "Rider One", race_id: "race-a", race_name: "Volta" }]);
+});
+
+// Dette er den nøjagtige situation fra #3098: TOCTOU-taberen rammer RPC-fallbacken (ikke
+// pre-flight), og payloaden skal STADIG bære rytter-/løbsnavn — ikke kun fejlkoden.
+test("resolveBindingConflictDetails: manuel entry i et allerede-startet løb → blocking, navngivet (RPC-fallback-scenariet, #3098)", async () => {
+  const supabase = makeConflictDetailsSupabase({
+    races: [{ id: "race-b", name: "Roubaix", stages_completed: 2 }],
+    entries: [], // ingen is_auto_filled-række → manuel entry
+  });
+  const { resolvable, blocking } = await resolveBindingConflictDetails({
+    supabase, teamId: "team-1", boundRiderIds: ["r9"],
+    thisWindow: { start: 5, end: 5 },
+    otherRaces: [{ raceId: "race-b", window: { start: 5, end: 6 }, riderIds: ["r9"] }],
+    riders: [{ id: "r9", name: "Rider Nine" }],
+  });
+  assert.equal(resolvable.length, 0);
+  assert.deepEqual(blocking, [{ rider_id: "r9", rider_name: "Rider Nine", race_id: "race-b", race_name: "Roubaix" }]);
+});
+
+test("resolveBindingConflictDetails: ingen bundne ryttere → tomme resolvable/blocking, ingen DB-opslag nødvendigt", async () => {
+  const supabase = makeConflictDetailsSupabase();
+  const { resolvable, blocking } = await resolveBindingConflictDetails({
+    supabase, teamId: "team-1", boundRiderIds: [], thisWindow: { start: 5, end: 5 }, otherRaces: [], riders: [],
+  });
+  assert.deepEqual(resolvable, []);
+  assert.deepEqual(blocking, []);
 });
 
 // ── Monument-bånd (#3114/#3119) ───────────────────────────────────────────────
