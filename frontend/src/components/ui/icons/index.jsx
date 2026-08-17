@@ -557,3 +557,22 @@ export function GripVerticalIcon(props) {
     </IconBase>
   );
 }
+
+// #3859 (løbsfilm-afspilleren): "Watch the race film"-knappen + scrubberens
+// play/pause-kontrol. Fyldt trekant/to bjælker (stroke-ikonsæt, samme IconBase
+// som resten — ingen emoji, jf. sidedoktrinen).
+export function PlayIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M7 5l12 7-12 7V5z" strokeLinejoin="round" />
+    </IconBase>
+  );
+}
+
+export function PauseIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M8 5v14M16 5v14" />
+    </IconBase>
+  );
+}
