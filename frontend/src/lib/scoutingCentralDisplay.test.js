@@ -23,6 +23,14 @@ test("missionCriteriaLabel: country/nm kombinerer scope + landenavn", () => {
   assert.equal(label, "Country · DK");
 });
 
+test("missionCriteriaLabel: type-scope kombinerer scope + ryttertype-navn (#3657)", () => {
+  const label = missionCriteriaLabel(
+    { scope: "type", value: "climber" },
+    { translateScope: (s) => (s === "type" ? "Rider type" : s), translateType: (t) => t.toUpperCase() },
+  );
+  assert.equal(label, "Rider type · CLIMBER");
+});
+
 test("missionCriteriaLabel: ukendt/tom criteria giver tom streng", () => {
   assert.equal(missionCriteriaLabel(null), "");
   assert.equal(missionCriteriaLabel({}), "");
