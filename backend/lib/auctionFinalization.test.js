@@ -99,6 +99,7 @@ function createFinalizeAuctionSupabase({
   riderUpdateHitsZeroRows = false, // #3580: simulér en riders.update() der rammer 0 rækker
   academyGraduationRow = null, // #2793: pending academy_graduation-row for sælgeren (resolvePendingGraduationOnSale), default ingen
   academyGraduationUpdates = [],
+  ownershipEvents = [], // #3582: rider_ownership_events-inserts
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -473,6 +474,16 @@ function createFinalizeAuctionSupabase({
                 return Promise.resolve({ error: null });
               },
             };
+          },
+        };
+      }
+
+      // #3582: rider_ownership_events — best-effort audit-skrivning.
+      if (table === "rider_ownership_events") {
+        return {
+          insert(payload) {
+            ownershipEvents.push(payload);
+            return Promise.resolve({ error: null });
           },
         };
       }
@@ -1107,9 +1118,11 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
   const riderUpdates = [];
   const financeInserts = [];
   const xpAwards = [];
+  const ownershipEvents = [];
 
   const result = await finalizeAuctionById({
     supabase: createFinalizeAuctionSupabase({
+      ownershipEvents,
       auction: {
         id: "auction-owned",
         status: "active",
@@ -1216,6 +1229,68 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     { teamId: "buyer-team", action: "auction_won" },
     { teamId: "seller-team", action: "auction_sold" },
   ]);
+  // #3582: bevægelses-log skrevet for det umiddelbare (ikke-parkerede) skifte.
+  assert.deepEqual(ownershipEvents, [{
+    rider_id: "rider-owned",
+    rider_firstname: "Owned",
+    rider_lastname: "Seller",
+    from_team_id: "seller-team",
+    to_team_id: "buyer-team",
+    reason: "auction_win",
+    related_entity_type: "auction",
+    related_entity_id: "auction-owned",
+    actor_type: "cron",
+    actor_id: null,
+    idempotency_key: "ownership:auction_winner:auction-owned",
+    occurred_at: "2026-04-22T10:00:00.000Z",
+  }]);
+});
+
+// #3582 forward-guard: ved en #1995-parkering (deferTeamChange) må auktions-
+// finaliseringen IKKE skrive en bevægelses-hændelse — team_id ændrer sig
+// endnu ikke (rytteren bliver hos sælgeren til løbet er kørt). Hændelsen
+// skrives i stedet af stageRaceTransferDefer.js's flushParkedRider, når
+// ejerskabet FAKTISK flytter. Ville denne test fejle, ville en parkeret
+// handel få TO rækker (én for tidligt, én ved flush) — eller en forkert
+// "flyttet nu"-hændelse for en rytter der reelt stadig er hos sælgeren.
+test("finalizeAuctionById skriver INGEN bevægelses-hændelse ved #1995-parkering — flush-tidspunktet ejer den", async () => {
+  const ownershipEvents = [];
+  const auctionUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      ownershipEvents,
+      auctionUpdates,
+      auction: {
+        id: "auction-defer-audit",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 100,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-defer-audit",
+          firstname: "Mid",
+          lastname: "Race",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500000, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      activeStageRaceRiderIds: ["rider-defer-audit"],
+    }),
+    auctionId: "auction-defer-audit",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-07-03T11:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed", "auktionen fuldføres straks (Model B) — kun overdragelsen parkeres");
+  assert.deepEqual(ownershipEvents, []);
 });
 
 // #3580: root-cause forward-guard. Beviset for det 9/8-ramte tilfælde
@@ -2395,6 +2470,7 @@ function makeYouthFinalizeSupabase({
   const notifications = [];
   const riderDeleteAttempts = [];
   const riderDeletions = [];
+  const ownershipEvents = [];
 
   const buyer = { id: auction.current_bidder_id, name: "Buyer FC", balance: buyerBalance };
 
@@ -2617,11 +2693,21 @@ function makeYouthFinalizeSupabase({
           }),
         };
       }
+      // #3582: rider_ownership_events — best-effort audit-skrivning.
+      if (table === "rider_ownership_events") {
+        return {
+          insert(payload) {
+            ownershipEvents.push(payload);
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
     _riderUpdates: riderUpdates,
     _auctionUpdates: auctionUpdates,
     _financeInserts: financeInserts,
+    _ownershipEvents: ownershipEvents,
     _compensationInserts: compensationInserts,
     _notifications: notifications,
     _riderDeleteAttempts: riderDeleteAttempts,
@@ -2684,6 +2770,12 @@ test("youth-auktion MED bud + senior-plads + balance: vinder placeres på SENIOR
 
   // Auktion lukket completed
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+
+  // #3582: bevægelses-log — fromTeamId=null (ungdomsauktion har ingen sælger).
+  assert.equal(supabase._ownershipEvents.length, 1);
+  assert.equal(supabase._ownershipEvents[0].from_team_id, null);
+  assert.equal(supabase._ownershipEvents[0].to_team_id, "buyer-team");
+  assert.equal(supabase._ownershipEvents[0].reason, "auction_win");
 });
 
 // #3580: samme forward-guard som den almindelige auktionssti — rammer
