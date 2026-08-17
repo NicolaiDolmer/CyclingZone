@@ -117,15 +117,15 @@
       "label": "Auctions",
       "whatAuctions": {
         "title": "What are auctions?",
-        "text": "Auctions are primarily used to buy free riders (riders without a team). You list a rider for auction, all managers can bid, and the highest bid wins. You can also list your own riders for auction. If you start an auction on a free or AI-owned rider, you are only the auction initiator. You don't receive the sale proceeds unless the rider was actually on your team."
+        "text": "Auctions are primarily used to buy free riders (riders without a team). You list a rider for auction, all managers can bid, and the highest bid wins. You can also list your own riders for auction. If you start an auction on a free rider, you are only the auction initiator: you don't receive the sale proceeds unless the rider was actually on your team. Riders on an AI-controlled team can't be auctioned at all; only free riders and riders on another manager's team can be listed."
       },
       "howToStart": {
         "title": "How to start an auction",
         "steps": [
-          "Go to Riders and find a free or AI rider.",
+          "Go to Riders and find a free rider (no team).",
           "Click the rider's name to open the stats page.",
           "Click 'Start auction' and set a starting price. Minimum equals the rider's Value.",
-          "On free and AI riders the starting price is your first bid, so you lead the auction immediately.",
+          "On a free rider the starting price is your first bid, so you lead the auction immediately.",
           "The auction is now visible to everyone under Auctions."
         ]
       },
@@ -191,7 +191,7 @@
           "Click 'Send transfer offer' at the bottom of the page.",
           "Enter your offer in CZ$ and an optional message.",
           "Click 'Send offer'. The seller gets a notification.",
-          "AI riders cannot receive direct offers; they must be bought via auction."
+          "AI riders can't be bought at all, neither by direct offer nor by auction."
         ]
       },
       "proposeSwap": {
@@ -956,7 +956,7 @@
       },
       "freeAgents": {
         "title": "Free agents",
-        "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing."
+        "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing. Free agents mostly appear when a rider's contract runs out and isn't renewed at the season change: in practice this is almost always a human-managed squad, since AI-controlled teams renew their own expiring contracts automatically at the same transition. The rest are riders released by their old club, either at Academy graduation or from an Academy intake offer that expired unanswered and found no buyer at auction (see 'Do Academy intake offers expire?')."
       }
     },
     "academy": {
@@ -1176,7 +1176,7 @@
     },
     "aiDirectOffers": {
       "q": "Can I buy AI riders with a direct offer?",
-      "a": "No. AI riders cannot receive direct transfer or swap offers. They must be bought via auction."
+      "a": "No. Riders on an AI-controlled team can't be acquired at all: not by direct transfer or swap offer, and not by auction either. Only free riders (no team) and riders on another manager's team can change hands."
     },
     "auctionExpiry": {
       "q": "When does an auction expire?",
@@ -1252,7 +1252,7 @@
     },
     "seasonChangeMoneyFaq": {
       "q": "What happens to my money at the season change?",
-      "a": "Everything happens at the start of the new season, in one batch. Your sponsor contract renews first, then sponsor money is paid out, and right after that the season's payroll follows: loan interest, rider salaries, and facility upkeep plus staff salaries, in that order. Nothing is deducted when the old season ends; salaries and interest moved to season start in v3.78. If your sponsor income and balance can't cover the payroll, the system automatically takes an emergency loan for the shortfall (see 'What happens if I can't pay the salaries?'). If your sponsor deal also has a per-race-day rate, that part is paid separately as you complete races during the season; it is not part of the season-change batch."
+      "a": "Everything happens at the start of the new season, in one batch. Your sponsor contract renews first, then sponsor money is paid out, and right after that the season's payroll follows: loan interest, rider salaries, interest on any balance still negative after that, academy upkeep (if you have academy riders), club upkeep, facility upkeep and staff salaries, in that order. Nothing is deducted when the old season ends; salaries and interest moved to season start in v3.78. If your sponsor income and balance can't cover the payroll, the system automatically takes an emergency loan for the shortfall (see 'What happens if I can't pay the salaries?'). If your sponsor deal also has a per-race-day rate, that part is paid separately as you complete races during the season; it is not part of the season-change batch."
     },
     "salaryShortfall": {
       "q": "What happens if I can't pay the salaries?",
@@ -1472,7 +1472,7 @@
     },
     "academyIntakeExpiryFaq": {
       "q": "Do Academy intake offers expire?",
-      "a": "Yes. An open intake offer expires automatically after 7 days if you neither sign nor reject it. This keeps prospects from sitting hidden forever on an offer nobody acts on. If your offer expires, the prospect is put up for other clubs in a youth auction that runs a full 24 hours (regular auctions run much shorter), so it is worth deciding within the window. If the auction ends in a sale, you receive the full winning bid as compensation for the missed decision. If nobody bids, the rider stays in the game as a free agent and can be picked up again later."
+      "a": "Yes. An open intake offer expires automatically after 7 days if you neither sign nor reject it. This keeps prospects from sitting hidden forever on an offer nobody acts on. If your offer expires, the prospect is put up for other clubs in a youth auction that runs a full 24 hours (regular auctions run much shorter), so it is worth deciding within the window. If the auction ends in a sale, you receive the full winning bid as compensation for the missed decision. If nobody bids, the rider stays in the game as a free agent and can be picked up again later. This is different from actively rejecting a prospect yourself: that sends him to a Youth auction at the normal 1-hour duration instead, and an unsold rider there leaves the game for good, so the auction length itself tells you whether a prospect was rejected or simply missed. Either way, winning a Youth auction is a real second route to a high-potential young rider beyond your own weekly intake, since every prospect on one was generated by the same Academy system as your own cohort."
     },
     "fatigueInjuryThresholdFaq": {
       "q": "How high can I push fatigue before training risks an injury?",
