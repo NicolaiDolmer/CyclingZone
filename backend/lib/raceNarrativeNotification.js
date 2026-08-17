@@ -205,24 +205,55 @@ async function fetchRaceResultsSlice({ supabase, raceId, resultType, stageNumber
 
 /**
  * Reducér en race_results-slice til (a) et rytternavne-opslag (ALLE rækker,
- * uanset holdtype — rubrikkens rytter kan sagtens sidde på et AI-hold) og (b)
+ * uanset holdtype — rubrikkens rytter kan sagtens sidde på et AI-hold), (b)
  * ranks pr. menneske-manager (kun is_ai=false/is_frozen=false, samme
- * diskriminator som resten af notificationService.js).
+ * diskriminator som resten af notificationService.js), og (c) hvilke
+ * rider_ids der er DENNE managers egne i denne race_results-slice (#3493 —
+ * bruges til at afgøre om rubrik-momentet overhovedet involverer managerens
+ * eget hold, se isHeadlineAboutOwnRiders nedenfor).
  *
  * @param {Array} rows
- * @returns {{riderNameById: Map<string,string>, ranksByUser: Map<string,number[]>}}
+ * @returns {{riderNameById: Map<string,string>, ranksByUser: Map<string,number[]>, riderIdsByUser: Map<string,Set<string>>}}
  */
 export function summarizeRaceResultRows(rows) {
   const riderNameById = new Map();
   const ranksByUser = new Map();
+  const riderIdsByUser = new Map();
   for (const row of rows || []) {
     if (row.rider_id && row.rider_name) riderNameById.set(row.rider_id, row.rider_name);
     const userId = row.team?.user_id;
     if (!userId || row.team?.is_ai || row.team?.is_frozen || row.rank == null) continue;
     if (!ranksByUser.has(userId)) ranksByUser.set(userId, []);
     ranksByUser.get(userId).push(row.rank);
+    if (row.rider_id) {
+      if (!riderIdsByUser.has(userId)) riderIdsByUser.set(userId, new Set());
+      riderIdsByUser.get(userId).add(row.rider_id);
+    }
   }
-  return { riderNameById, ranksByUser };
+  return { riderNameById, ranksByUser, riderIdsByUser };
+}
+
+/**
+ * #3493 · Spillerreaktion på #3399: etape-/løbsnotifikationens rubrik
+ * (selectHeadlineMoment) er bevidst den STØRSTE historie i løbet — ofte en
+ * rival-rytter, ikke modtagerens egen. "I like to now about my own rider,
+ * and not for other teams riders in my own inbox" (Discord, #3493). Denne
+ * relevans-guard afgør om rubrik-momentet rent faktisk involverer MODTAGERENS
+ * egne ryttere i denne race/etape — bruges af notificationService.js til at
+ * afgøre om rubrikken skal vises, eller om beskeden skal degradere ærligt til
+ * den flade personlige sætning ("Etape 4 er kørt. Du placerede X."). Selve
+ * løbsrapporten (frontend/src/lib/raceReport.js) er UÆNDRET — den brede
+ * rubrik for HELE løbet hører fortsat hjemme dér.
+ *
+ * @param {{riderIdsByUser?: Map<string,Set<string>>, headlineRiderIds?: string[]}} narrative
+ * @param {string} userId
+ * @returns {boolean}
+ */
+export function isHeadlineAboutOwnRiders(narrative, userId) {
+  const ownRiderIds = narrative?.riderIdsByUser?.get(userId);
+  const headlineRiderIds = narrative?.headlineRiderIds;
+  if (!ownRiderIds?.size || !headlineRiderIds?.length) return false;
+  return headlineRiderIds.some((id) => ownRiderIds.has(id));
 }
 
 function logNarrativeFailure(err, { raceId, stageNumber, stage }) {
@@ -262,12 +293,15 @@ export async function buildRaceResultNarrative({ supabase, race }) {
     if (!headline) return null;
 
     const rows = await fetchRaceResultsSlice({ supabase, raceId: race.id, resultType: "gc" });
-    const { riderNameById, ranksByUser } = summarizeRaceResultRows(rows);
+    const { riderNameById, ranksByUser, riderIdsByUser } = summarizeRaceResultRows(rows);
     const riderName = (id) => (id ? riderNameById.get(id) || "the rider" : "the rider");
     const headlineText = buildHeadlineText(headline, { riderName, raceName: race.name ?? "your race" });
     if (!headlineText) return null;
 
-    return { headlineText, ranksByUser };
+    // #3493: hvilke rider_ids rubrik-momentet handler om — bruges af
+    // isHeadlineAboutOwnRiders til at afgøre om DENNE rubrik er relevant for
+    // en given modtager.
+    return { headlineText, ranksByUser, riderIdsByUser, headlineRiderIds: headline.rider_ids || [] };
   } catch (err) {
     // best-effort: logNarrativeFailure() below calls captureException internally
     // (single choke-point shared with buildStageResultNarrative's catch).
@@ -299,12 +333,13 @@ export async function buildStageResultNarrative({ supabase, race, stageNumber })
     if (!headline) return null;
 
     const rows = await fetchRaceResultsSlice({ supabase, raceId: race.id, resultType: "stage", stageNumber });
-    const { riderNameById, ranksByUser } = summarizeRaceResultRows(rows);
+    const { riderNameById, ranksByUser, riderIdsByUser } = summarizeRaceResultRows(rows);
     const riderName = (id) => (id ? riderNameById.get(id) || "the rider" : "the rider");
     const headlineText = buildHeadlineText(headline, { riderName, raceName: race.name ?? "your race" });
     if (!headlineText) return null;
 
-    return { headlineText, ranksByUser };
+    // #3493: se buildRaceResultNarrative's tilsvarende kommentar.
+    return { headlineText, ranksByUser, riderIdsByUser, headlineRiderIds: headline.rider_ids || [] };
   } catch (err) {
     // best-effort: logNarrativeFailure() calls captureException internally (see
     // buildRaceResultNarrative's catch above).

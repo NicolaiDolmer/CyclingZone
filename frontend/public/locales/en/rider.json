@@ -76,6 +76,12 @@
     "retired": "The rider is retired and cannot be traded.",
     "errorFallback": "Something went wrong"
   },
+  "offerShortcut": {
+    "textWithPrice": "Open offer: {price} CZ$ from {team}",
+    "text": "Open offer from {team}",
+    "unknownTeam": "another manager",
+    "cta": "Decide"
+  },
   "tabs": {
     "stats": "Skills",
     "season": "Season history",
