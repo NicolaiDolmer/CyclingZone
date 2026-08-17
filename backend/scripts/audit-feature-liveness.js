@@ -90,6 +90,12 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // race_stage_timelines (#2410 S1, PR #3860 merged 17/8 aften): flag
+  // race_stage_timeline flippet ON 17/8 ~20:45, men ingen etaper kører før næste
+  // dags cron — første tidslinjer fødes ved første etape-finalization efter
+  // deploy. Samme klasse som race_stage_passages-entryen i sin tid: fjern denne
+  // linje når tabellen har rows (forventet 18/8), så Detector A dækker normalt.
+  "race_stage_timelines",
   // discord_race_digest_log: fjernet 7/8 — digestens første kl. 20-kørsel 6/8
   // aften skrev 32 rækker (fix #3475 verificeret), auditen dækker tabellen igen.
   // Forum v1 (#3199): alle fem entries fjernet 7/8 — spillerne tog forummet i
