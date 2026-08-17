@@ -457,7 +457,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       .from("riders")
       // #1836: contract_end_season med så køb-trigger kan afgøre om kontrakten
       // udløber i indeværende sæson.
-      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season")
+      // #3650: is_academy med så et salg af en akademi-rytter (listet direkte
+      // fra akademiet) kan graduere ham atomisk ved handlens gennemførelse.
+      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy")
       .eq("id", offer.rider_id)
   );
   const [buyerState, sellerState, buyerCommitment, activeSeasonNumber] = await Promise.all([
@@ -537,6 +539,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // generiske pending-flush ved vindue-åbning kun flytter team_id.
   // activeSeasonNumber er allerede hentet ovenfor (delt med #2748-risikotjekket).
   const transferContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, { division: buyerState.division });
+  // #3650: en akademi-rytter solgt via transferliste/direkte tilbud graduerer
+  // atomisk ved handlens gennemførelse — lander hos køberen som SENIOR, ikke i
+  // købers akademi. Samme graduatePatch-mønster som auktions-finalization
+  // bruger for en graduate-sælg-auktion (auctionFinalization.js: "#932").
+  const graduatePatch = rider.is_academy ? { is_academy: false } : {};
 
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er
   // reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -547,7 +554,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: offer.buyer_team_id, updated_at: new Date().toISOString(), ...transferContractPatch })
+          .update({ pending_team_id: offer.buyer_team_id, updated_at: new Date().toISOString(), ...transferContractPatch, ...graduatePatch })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)
           .is("pending_team_id", null)
@@ -561,6 +568,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
             pending_team_id: null,
             acquired_at: new Date().toISOString(),
             ...transferContractPatch,
+            ...graduatePatch,
           })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)

@@ -712,6 +712,113 @@ test("#19: confirmTransferOffer flytter team_id med det samme når vinduet er å
   assert.equal(db.teams.find((t) => t.id === "buyer").balance, 800);
 });
 
+// ── #3650: akademi-ryttere listes direkte på transfermarkedet (ejer-løfte i
+// Discord 11/8) — salget graduerer atomisk til senior hos køberen ved handlens
+// gennemførelse, samme graduatePatch-mønster som en graduate-sælg-auktion
+// (academyGraduation.js) allerede bruger. #2881/#3620-invarianten (en
+// EKSISTERENDE kontrakt arves UÆNDRET, aldrig regenereret) skal holde uændret
+// gennem den nye vej.
+
+test("#3650: confirmTransferOffer graduerer en akademi-rytter til senior hos køberen og arver den eksisterende kontrakt uændret", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.riders.push({
+    id: "academy-rider-1", firstname: "Theo", lastname: "Talent",
+    team_id: "seller", pending_team_id: null, is_academy: true,
+    salary: 5_000, base_value: 50_000, prize_earnings_bonus: 0,
+    current_production_value: 20_000, contract_length: 2, contract_end_season: 3,
+  });
+  db.transfer_offers.push({
+    id: "offer-academy-1", rider_id: "academy-rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 300, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-academy-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.action, "accepted");
+
+  const rider = db.riders.find((r) => r.id === "academy-rider-1");
+  assert.equal(rider.team_id, "buyer", "rytteren flyttes til køberen");
+  assert.equal(rider.is_academy, false, "graduerer til senior ved salget — lander IKKE i købers akademi");
+  // #2881/#3620: en EKSISTERENDE kontrakt arves uændret — aldrig regenereret.
+  assert.equal(rider.salary, 5_000, "eksisterende løn bevares uændret");
+  assert.equal(rider.contract_length, 2, "eksisterende kontraktlængde bevares uændret");
+  assert.equal(rider.contract_end_season, 3, "eksisterende udløbssæson bevares uændret");
+
+  assert.equal(db.teams.find((t) => t.id === "buyer").balance, 700, "køber betaler prisen");
+  assert.equal(db.teams.find((t) => t.id === "seller").balance, 800, "sælger modtager prisen");
+});
+
+test("#3650: confirmTransferOffer giver en kontraktløs akademi-rytter en frisk standard-kontrakt ved salg (samme create-if-missing-gate som promote())", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.riders.push({
+    id: "academy-rider-2", firstname: "Nora", lastname: "Ny",
+    team_id: "seller", pending_team_id: null, is_academy: true,
+    salary: null, base_value: 40_000, prize_earnings_bonus: 0,
+    current_production_value: 15_000, contract_length: null, contract_end_season: null,
+  });
+  db.transfer_offers.push({
+    id: "offer-academy-2", rider_id: "academy-rider-2", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 150, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-academy-2", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, true);
+  const rider = db.riders.find((r) => r.id === "academy-rider-2");
+  assert.equal(rider.team_id, "buyer");
+  assert.equal(rider.is_academy, false, "graduerer til senior");
+  assert.ok(rider.salary > 0, "kontraktløs rytter får en frisk standard-kontrakt (create-if-missing)");
+  assert.equal(rider.contract_length, 2, "CONTRACT.DEFAULT_ACQUIRE_LENGTH");
+  assert.equal(rider.contract_end_season, 2, "aktiv sæson (1) + længde (2) - 1");
+});
+
+test("#3650: confirmTransferOffer graduerer akademi-rytteren OGSÅ når holdskiftet parkeres (Model B, aktivt etapeløb) — handlen er fuldført uanset defer", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.riders.push({
+    id: "academy-rider-3", firstname: "Iris", lastname: "Ung",
+    team_id: "seller", pending_team_id: null, is_academy: true,
+    salary: 3_000, base_value: 30_000, prize_earnings_bonus: 0,
+    current_production_value: 10_000, contract_length: 1, contract_end_season: 1,
+  });
+  putRiderInActiveStageRace(db, "academy-rider-3");
+  db.transfer_offers.push({
+    id: "offer-academy-3", rider_id: "academy-rider-3", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 300, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-academy-3", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.action, "deferred_stage_race");
+
+  const rider = db.riders.find((r) => r.id === "academy-rider-3");
+  assert.equal(rider.team_id, "seller", "den fysiske flytning er parkeret til race-slut");
+  assert.equal(rider.pending_team_id, "buyer");
+  // #1995 Model B: handlen er FULDFØRT (penge + graduering) med det samme —
+  // kun selve team_id-flytningen venter. Uden dette ville rytteren stå i
+  // limbo som is_academy=true på et hold han er ved at forlade.
+  assert.equal(rider.is_academy, false, "graduerer STRAKS, ikke først ved race-slut");
+  assert.equal(rider.contract_length, 1, "eksisterende kontrakt uændret");
+  assert.equal(rider.contract_end_season, 1, "eksisterende kontrakt uændret");
+  assert.equal(db.teams.find((t) => t.id === "buyer").balance, 700, "penge flyttes straks");
+});
+
 // ── #3134: ung-konto-cooldown på store udgående transfers/swaps ───────────────
 
 test("#3134: confirmTransferOffer blokerer en stor betaling fra en helt ny konto og annullerer handlen", async () => {

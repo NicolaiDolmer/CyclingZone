@@ -1519,8 +1519,10 @@ export default function RiderStatsPage() {
   // RIDER_TYPE_KEYS; rating beregnes i tabben.
   const developmentTypes = RIDER_TYPE_KEYS.map((key, i) => ({ key, label: tTypes(`types.${key}`), color: chartColor(i) }));
   const isMyRider  = rider.team_id === myTeamId;
-  // #2007: en egen AKADEMI-rytter har sit eget flow (promovér) — den kan ikke
-  // sættes på auktion/transferliste/fyres (backend afviser rider_is_academy).
+  // #2007: en egen AKADEMI-rytter har sit eget flow (promovér) og kan ikke
+  // sættes på auktion eller fyres (backend afviser rider_is_academy).
+  // #3650: transferliste er IKKE længere udelukket — akademi-ryttere kan
+  // listes direkte (se TransferListButton-brugen nedenfor).
   const isAcademyRider = Boolean(rider.is_academy);
   const isMySeniorRider = isMyRider && !isAcademyRider;
   const isFreeAgent = !rider.team_id;
@@ -1762,8 +1764,11 @@ export default function RiderStatsPage() {
                   seasonYear={seasonYear}
                   marketActions={
                     <>
-                      {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
-                      {isMySeniorRider && <TransferListButton rider={rider} />}
+                      {/* #1185: egne ryttere kan sættes til salg direkte herfra.
+                          #3650: akademi-ryttere listes nu OGSÅ direkte — salget
+                          graduerer dem atomisk til senior hos køberen ved handlens
+                          gennemførelse (backend: executeTransferOffer). */}
+                      {isMyRider && <TransferListButton rider={rider} />}
                       {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
                     </>
                   }
