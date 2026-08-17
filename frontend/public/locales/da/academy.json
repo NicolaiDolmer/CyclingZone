@@ -48,12 +48,14 @@
     "demoteQuestion": "Flyt denne senior-rytter ned i dit akademi:",
     "demoteConfirm": "Flyt til akademi",
     "demoteNote": "Rytteren frigør en senior-plads og tæller ikke længere mod din senior-trup. Rytteren fjernes fra alle kommende løb, vedkommende var udtaget til.",
+    "demoteNoteOngoing": "Rytteren frigør en senior-plads og tæller ikke længere mod din senior-trup. Rytteren fjernes fra alle kommende løb, vedkommende var udtaget til. Fordi akademiryttere ikke er løbsberettigede, udgår rytteren også af det løb der er i gang, vist ovenfor.",
     "seniorSalaryLabel": "Senior-løn",
     "youthSalaryLabel": "Ungdomsløn",
     "currentSalaryLabel": "Nuværende løn",
     "seniorCapLabel": "Senior-trup",
     "academyCapLabel": "Akademi-pladser",
-    "racesClearedLabel": "Kommende løb ryddet"
+    "racesClearedLabel": "Kommende løb ryddet",
+    "racesOngoingLabel": "Løb rytteren udgår af"
   },
   "error": {
     "academyFull": "Akademiet er fuldt. Kan ikke signere endnu en rytter.",

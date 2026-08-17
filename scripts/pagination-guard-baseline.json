@@ -159,9 +159,6 @@
     "frontend/src/components/race/StageScheduleCard.jsx": {
       "race_stage_schedule": 1
     },
-    "frontend/src/components/rider/RiderManageActions.jsx": {
-      "race_entries": 1
-    },
     "frontend/src/pages/DashboardPage.jsx": {
       "race_stage_schedule": 1
     },
@@ -183,7 +180,6 @@
       "riders": 1
     },
     "frontend/src/pages/TeamPage.jsx": {
-      "race_entries": 1,
       "riders": 2
     },
     "frontend/src/pages/TrainingPage.jsx": {

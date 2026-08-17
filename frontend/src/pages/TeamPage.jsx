@@ -1022,30 +1022,36 @@ export function TeamPage() {
   // ved hvert besøg på holdsiden uden at noget længere brugte svaret.
   // Bevægelsen vises fortsat på rytterprofilens hero, som henter sin egen.
 
-  // Åbn demote-bekræftelsen: tæl fremtidige løb rytteren ville blive fjernet fra
-  // (scheduled + stages_completed=0), så dialogen kan vise konsekvensen FØR confirm.
+  // Åbn demote-bekræftelsen. #3784/#3805: newSalary/racesCleared/racesOngoing
+  // kommer fra backendens academy-demote-quote-route — SAMME funktioner
+  // (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries) som selve
+  // demote() bruger til at udføre flyttet, se RiderManageActions.jsx's
+  // openDemote() for den fulde root-cause-forklaring. Akademi-cap-tællingen
+  // (8-cap-effekten) er uafhængig af quoten og hentes stadig direkte.
   async function handleDemote(rider) {
     setDemoteError(null);
-    let racesCleared = 0;
+    let quote = null;
     let academyCount = null;
     try {
-      const [entriesRes, academyRes] = await Promise.all([
-        supabase
-          .from("race_entries")
-          .select("race_id, races!inner(status, stages_completed)")
-          .eq("rider_id", rider.id)
-          .eq("races.status", "scheduled")
-          .eq("races.stages_completed", 0),
+      const [quoteRes, academyRes] = await Promise.all([
+        fetchRiderQuote(rider.id, "academy-demote-quote"),
         // Akademi-cap-effekt: tæl holdets nuværende akademiryttere (8-cap).
         team?.id
           ? supabase.from("riders").select("id", { count: "exact", head: true })
               .eq("team_id", team.id).eq("is_academy", true)
           : Promise.resolve({ count: null }),
       ]);
-      racesCleared = (entriesRes.data || []).length;
+      if (quoteRes.ok) quote = quoteRes.data;
       academyCount = academyRes.count ?? null;
-    } catch { /* count er nice-to-have; vis dialogen uanset */ }
-    setDemoteConfirm({ rider, racesCleared, academyCount });
+    } catch { /* fallback nedenfor; vis dialogen uanset */ }
+    setDemoteConfirm({
+      rider,
+      newSalary: quote?.newSalary ?? null,
+      currentSalary: quote?.currentSalary ?? rider.salary ?? null,
+      racesCleared: quote?.racesCleared ?? 0,
+      racesOngoing: quote?.racesOngoing ?? 0,
+      academyCount,
+    });
   }
 
   async function confirmDemote() {
@@ -1272,18 +1278,21 @@ export function TeamPage() {
       )}
 
       {/* #932 S7: Demote-bekræftelse (senior → akademi) — løn-delta + akademi-cap +
-          fremtidige løb der ryddes. Genbruger den delte AcademyTransferConfirmModal.
-          #2796: division SKAL med til projectYouthSalary — uden den bruges den
-          globale sats i stedet for holdets, så den viste ungdomsløn er forkert. */}
+          løb-konsekvens. Genbruger den delte AcademyTransferConfirmModal.
+          #3784/#3805: newSalary/racesCleared/racesOngoing kommer nu fra
+          backendens academy-demote-quote (handleDemote ovenfor) — IKKE længere
+          en frontend-JS-kopi af løn-formlen (projectYouthSalary er droppet
+          her). Se RiderManageActions.jsx's openDemote() for root-cause. */}
       <AcademyTransferConfirmModal
         show={!!demoteConfirm}
         direction="demote"
         riderName={demoteConfirm ? `${demoteConfirm.rider.firstname} ${demoteConfirm.rider.lastname}`.trim() : ""}
-        newSalary={demoteConfirm ? projectYouthSalary(demoteConfirm.rider, { division: team?.division }) : 0}
-        currentSalary={demoteConfirm?.rider?.salary ?? 0}
+        newSalary={demoteConfirm?.newSalary ?? null}
+        currentSalary={demoteConfirm?.currentSalary ?? 0}
         capLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount} / 8` : null}
         capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
         racesCleared={demoteConfirm?.racesCleared ?? 0}
+        racesOngoing={demoteConfirm?.racesOngoing ?? 0}
         busy={demoteBusy}
         onCancel={() => { if (!demoteBusy) { setDemoteConfirm(null); setDemoteError(null); } }}
         onConfirm={confirmDemote}

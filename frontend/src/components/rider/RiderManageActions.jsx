@@ -23,14 +23,13 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../lib/intl.js";
 import { resolveApiError } from "../../lib/apiError.js";
 import { isU23 } from "../../lib/riderAge.js";
-import { projectSeniorSalary, projectYouthSalary } from "../../lib/marketValues.js";
+import { projectSeniorSalary } from "../../lib/marketValues.js";
 import { keepsExistingContractOnPromote } from "../../lib/academyPromoteContract.js";
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
 import { extendCapGate } from "../../lib/extendCapGate.js";
 import { useAcademy } from "../../lib/useAcademy.js";
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
 import { AcademyTransferConfirmModal } from "../AcademyTransferConfirmModal.jsx";
-import { supabase } from "../../lib/supabase.js";
 import { buttonClass } from "../ui/buttonStyles.js";
 
 // Trigger-knapper (ejer-feedback 3/7): appens delte buttonStyles, kompakt
@@ -87,27 +86,31 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   }
 
   async function openDemote() {
-    // Tæl fremtidige løb der ryddes (scheduled + stages_completed=0) — spejler
-    // TeamPage.handleDemote — så modalen kan vise konsekvensen før bekræftelse.
-    let racesCleared = 0;
+    // #3784/#3805: newSalary + racesCleared + racesOngoing kommer ALLE fra
+    // backendens academy-demote-quote-route, som kalder LIGE PRÆCIS de samme
+    // funktioner (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries)
+    // som selve demote() bruger til at udføre flyttet. Ingen frontend-JS-kopi
+    // af løn-formlen tilbage her — det tidligere projectYouthSalary-kald
+    // brugte rider-objektet fra RiderStatsPage's SELECT, som ALDRIG hentede
+    // current_production_value, så formlen faldt tilbage til base 1000 og viste
+    // en løn der intet havde med rytterens faktiske produktion at gøre (#3784:
+    // dialog lovede 324, rytteren endte på 5.191). Fallback ved netværksfejl:
+    // vis dialogen med newSalary=null (modalen viser "..." fremfor et forkert tal).
+    let quote = null;
     try {
-      const { data } = await supabase
-        .from("race_entries")
-        .select("race_id, races!inner(status, stages_completed)")
-        .eq("rider_id", rider.id)
-        .eq("races.status", "scheduled")
-        .eq("races.stages_completed", 0);
-      racesCleared = (data || []).length;
-    } catch { /* count er nice-to-have; vis dialogen uanset */ }
+      const { ok, data } = await fetchRiderQuote(rider.id, "academy-demote-quote");
+      if (ok) quote = data;
+    } catch { /* fallback nedenfor */ }
     const used = academy.slots?.used ?? 0;
     const max = academy.slots?.max ?? 8;
     setAcademyModal({
       direction: "demote",
-      newSalary: projectYouthSalary(rider, { division: academy.division }),
-      currentSalary: rider.salary ?? null,
+      newSalary: quote?.newSalary ?? null,
+      currentSalary: quote?.currentSalary ?? rider.salary ?? null,
       capLabel: `${used} / ${max}`,
       capAfterLabel: `${used + 1} / ${max}`,
-      racesCleared,
+      racesCleared: quote?.racesCleared ?? 0,
+      racesOngoing: quote?.racesOngoing ?? 0,
     });
   }
 
@@ -151,6 +154,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
         capLabel={academyModal?.capLabel}
         capAfterLabel={academyModal?.capAfterLabel}
         racesCleared={academyModal?.racesCleared}
+        racesOngoing={academyModal?.racesOngoing}
         keepsContract={!!academyModal?.keepsContract}
         busy={academyBusy}
         onCancel={() => { if (!academyBusy) setAcademyModal(null); }}

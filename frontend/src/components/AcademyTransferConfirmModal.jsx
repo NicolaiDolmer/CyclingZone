@@ -15,11 +15,13 @@ export function AcademyTransferConfirmModal({
   show,
   direction,            // 'promote' | 'demote'
   riderName,
-  newSalary,            // promote: frossen senior-løn; demote: ungdomsløn
+  newSalary,            // promote: frossen senior-løn; demote: ungdomsløn. null = stadig indlæses.
   currentSalary = null, // vises som delta (demote)
   capLabel = null,      // "12 / 30" → "13 / 30" (promote: senior-cap; demote: akademi 3/8)
   capAfterLabel = null,
-  racesCleared = null,  // demote: antal fremtidige løb der fjernes (kan være 0/null)
+  racesCleared = null,  // demote: antal KOMMENDE løb der ryddes (entries slettes; kan være 0/null)
+  racesOngoing = null,  // #3805: demote: antal IGANGVÆRENDE løb rytteren falder ud af (entry
+                         // bevares, men rytteren er ikke længere løbsberettiget — kan være 0/null)
   keepsContract = false, // promote: rytteren har allerede en kontrakt (#3620)
   onCancel,
   onConfirm,
@@ -37,11 +39,17 @@ export function AcademyTransferConfirmModal({
   const questionKey = isPromote ? "transferModal.promoteQuestion" : "transferModal.demoteQuestion";
   const confirmKey = isPromote ? "transferModal.promoteConfirm" : "transferModal.demoteConfirm";
 
+  // #3784: newSalary er null mens quoten (backend academy-demote-quote) stadig
+  // hentes — vis "..." i stedet for et forkert 0/NaN-tal, og lås bekræft-knappen
+  // så spilleren ikke kan bekræfte på et tal der endnu ikke er beregnet.
+  const salaryLoading = newSalary == null;
   const newSalaryNum = Number(newSalary);
   const curSalaryNum = currentSalary != null ? Number(currentSalary) : null;
   const hasSalaryDelta = curSalaryNum != null && Number.isFinite(newSalaryNum);
   const racesNum = Number(racesCleared);
   const showRaces = !isPromote && Number.isFinite(racesNum) && racesNum > 0;
+  const ongoingNum = Number(racesOngoing);
+  const showOngoing = !isPromote && Number.isFinite(ongoingNum) && ongoingNum > 0;
 
   return (
     <div className="fixed inset-0 z-modal flex items-center justify-center" onClick={busy ? undefined : onCancel}>
@@ -70,7 +78,9 @@ export function AcademyTransferConfirmModal({
             <dt className="text-cz-3">
               {isPromote ? t("academy:transferModal.seniorSalaryLabel") : t("academy:transferModal.youthSalaryLabel")}
             </dt>
-            <dd className="font-mono font-bold text-cz-1">{formatNumber(newSalaryNum)} CZ$</dd>
+            <dd className="font-mono font-bold text-cz-1">
+              {salaryLoading ? "..." : `${formatNumber(newSalaryNum)} CZ$`}
+            </dd>
           </div>
           {hasSalaryDelta && (
             <div className="flex items-center justify-between px-3 py-2">
@@ -90,21 +100,35 @@ export function AcademyTransferConfirmModal({
               </dd>
             </div>
           )}
-          {/* Demote: fremtidige løb der ryddes. */}
+          {/* Demote: kommende løb der ryddes (entries slettet). */}
           {showRaces && (
             <div className="flex items-center justify-between px-3 py-2">
               <dt className="text-cz-3">{t("academy:transferModal.racesClearedLabel")}</dt>
               <dd className="font-mono font-bold text-cz-warning">{formatNumber(racesNum)}</dd>
             </div>
           )}
+          {/* #3805: demote — igangværende løb rytteren falder ud af. Entry'en
+              slettes IKKE (resultat-/snapshot-invarians), men rytteren er ikke
+              længere løbsberettiget som akademi-rytter, så han udgår reelt af
+              feltet. Dialogen skal sige det i stedet for kun at nævne
+              "kommende løb ryddet" (som er 0 for netop denne sag — #3805). */}
+          {showOngoing && (
+            <div className="flex items-center justify-between px-3 py-2">
+              <dt className="text-cz-3">{t("academy:transferModal.racesOngoingLabel")}</dt>
+              <dd className="font-mono font-bold text-cz-danger">{formatNumber(ongoingNum)}</dd>
+            </div>
+          )}
         </dl>
 
         {/* Konsekvens-note pr. retning. Promote har to sandheder efter #3620:
             har rytteren allerede en kontrakt, regenereres den IKKE, så lønnen
-            bliver hverken erstattet eller genberegnet. */}
+            bliver hverken erstattet eller genberegnet. #3805: demote har nu to
+            sandheder også — er rytteren midt i et løb, må teksten sige at han
+            udgår af DET løb (ikke kun "kommende løb"), ellers underrapporterer
+            den præcis som den bug der blev rapporteret. */}
         <p className="text-cz-3 text-xs mb-4">
           {!isPromote
-            ? t("academy:transferModal.demoteNote")
+            ? (showOngoing ? t("academy:transferModal.demoteNoteOngoing") : t("academy:transferModal.demoteNote"))
             : keepsContract
               ? t("academy:transferModal.promoteNoteKeepsContract")
               : t("academy:transferModal.promoteNote")}
@@ -123,12 +147,12 @@ export function AcademyTransferConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || salaryLoading}
             className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-cz-on-accent transition-all
               disabled:opacity-60 disabled:cursor-not-allowed
               ${isPromote ? "bg-cz-accent hover:brightness-110" : "bg-cz-warning hover:brightness-110"}`}
           >
-            {busy ? t("common:actions.loadingShort") : t(`academy:${confirmKey}`)}
+            {busy || salaryLoading ? t("common:actions.loadingShort") : t(`academy:${confirmKey}`)}
           </button>
         </div>
         <style>{`

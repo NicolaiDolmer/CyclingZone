@@ -192,7 +192,8 @@ import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation } from "../lib/academyGraduation.js";
-import { promote as promoteAcademyRider, demote as demoteAcademyRider } from "../lib/academyTransfer.js";
+import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteSalary } from "../lib/academyTransfer.js";
+import { countFutureRaceEntries, countOngoingRaceEntries } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
@@ -1340,6 +1341,49 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
     contract_end_season: next.contract_end_season,
     contract_length: next.contract_length,
     extensionCap,
+  });
+});
+
+// GET /api/riders/:id/academy-demote-quote — preview af en akademi-demote
+// (senior → ungdom) FØR bekræftelse (#3784/#3805).
+//
+// #3784 root cause: dialogen brugte en frontend-JS-kopi af løn-formlen
+// (marketValues.projectYouthSalary) fodret med rytter-objektet fra siden der
+// åbnede dialogen. På rytterprofilen (RiderStatsPage.jsx) SELECT'ede den
+// aldrig current_production_value — så formlen faldt tilbage til
+// BASE_VALUE_FALLBACK (1000) og viste en løn der intet havde med rytterens
+// faktiske produktion at gøre (324 i den rapporterede sag), mens selve
+// flyttet (demote() → demoteSalary()) regnede med den ægte, friskhentede
+// current_production_value og landede et helt andet sted (5.191). Samme
+// rate-tabel, samme formel — forskellen var UDELUKKENDE hvilken data den fik.
+// Fix: denne route kalder LIGE PRÆCIS demoteSalary() — den samme funktion
+// demote() selv bruger til at sætte den faktiske løn — på en fuldt frisk
+// server-side SELECT. Ingen frontend-kopi af formlen tilbage i demote-stien.
+//
+// #3805: samme route leverer racesCleared (kommende løb der reelt ryddes) OG
+// racesOngoing (igangværende løb rytteren falder ud af uden at nogen entry
+// slettes, se raceEntryCleanup.countOngoingRaceEntries) — SAMME funktioner
+// demote() selv bruger, så dialogen aldrig kan love noget andet end det der
+// sker.
+router.get("/riders/:id/academy-demote-quote", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const { rider } = result;
+
+  const [racesCleared, racesOngoing] = await Promise.all([
+    countFutureRaceEntries(supabase, rider.id),
+    countOngoingRaceEntries(supabase, rider.id),
+  ]);
+
+  res.json({
+    currentSalary: rider.salary ?? null,
+    newSalary: demoteSalary({
+      current_production_value: rider.current_production_value,
+      division: req.team.division,
+    }),
+    racesCleared,
+    racesOngoing,
   });
 });
 
