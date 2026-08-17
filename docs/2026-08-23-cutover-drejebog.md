@@ -77,7 +77,7 @@ Ingen rytter kan miste *evne* (`buildCapsForRider` returnerer `max(tapered, curr
 | `riders` | `id, primary_type, secondary_type, archetype_draw, potentiale, birthdate` | Klassifikations-grundlaget caps afledes af |
 | `app_config` | hele tabellen | Flag-tilstand før |
 
-Hvor det gemmes: `docs/snapshots/3459/` efter samme mønster som `docs/snapshots/3591/`. Snapshot-script + gendannelses-script bygges i bølge 2 spor 1 (ejer-beslutning 3) og tør-køres mod `staging-3746-trin7`.
+Hvor det gemmes: `docs/snapshots/3459/` efter samme mønster som `docs/snapshots/3591/`. Snapshot-script + gendannelses-script er bygget og tør-kørt mod `staging-3746-trin7` 17/8 (#3645) — kommandoerne står i afsnittet "Værktøj" nedenfor.
 
 ### Rollback: konkret
 
@@ -86,7 +86,7 @@ Hvor det gemmes: `docs/snapshots/3459/` efter samme mønster som `docs/snapshots
 update app_config set value = 'off' where key = 'race_day_engine_enabled';
 ```
 
-Det stopper motoren. Det gendanner **ikke** caps. Trin 2 (gendan caps fra snapshot) er en population-mutation — scriptet bygges og tør-køres i bølge 2 spor 1 FØR flippet. Et rollback man ikke har prøvet, er ikke et rollback.
+Det stopper motoren. Det gendanner **ikke** caps. Trin 2 (gendan caps fra snapshot) er en population-mutation — `restoreCaps3459.mjs`, tør-kørt mod staging 17/8 med et bevidst indført afvig og en verificeret gendannelse. Et rollback man ikke har prøvet, er ikke et rollback; dette er prøvet.
 
 ### Hvor længe er vinduet
 
@@ -155,11 +155,59 @@ Ejeren omgjorde drop-anbefalingen 17/8. Intet er bygget pr. 17/8, så komponente
 
 ---
 
+## Værktøj (bygget i bølge 2, #3645)
+
+Alle scripts ligger i `backend/scripts/dev/` og køres fra `backend/`. **Dry-run er
+default overalt.** Ingen af dem skriver noget uden BÅDE et flag på kommandolinjen
+OG en miljøvariabel — to bekræftelser, hvoraf den ene ikke kan komme fra en
+shell-historik. Den rene logik ligger i `backend/scripts/lib/cutover3645.js` med
+tests i `cutover3645.test.js`.
+
+| Trin | Kommando |
+|---|---|
+| **1. Snapshot** (kun SELECT, ingen apply-form) | `infisical run --env=prod -- node scripts/dev/snapshot3459.mjs ../docs/snapshots/3459` |
+| **2. Verificér snapshottet læsbart** | `infisical run --env=prod -- node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459` |
+| **3. Backup af løn-/mandat-tabeller** | dry-run: `… node scripts/dev/cutoverBackup3645.mjs`<br>apply: `CONFIRM_BACKUP=yes … node scripts/dev/cutoverBackup3645.mjs --apply`<br>efterprøv: `… node scripts/dev/cutoverBackup3645.mjs --verify` |
+| **4. Løn-genberegning** | dry-run: `… node scripts/dev/salaryRecompute3645.mjs --basis market`<br>apply: `CONFIRM_SALARY_RECOMPUTE=yes … node scripts/dev/salaryRecompute3645.mjs --basis market --apply` |
+| **5. Mandat-genberegning** | dry-run: `… node scripts/dev/mandateRecompute3645.mjs`<br>apply: `CONFIRM_MANDATE_RECOMPUTE=yes … node scripts/dev/mandateRecompute3645.mjs --apply` |
+| **Rollback af lofter** | `CONFIRM_RESTORE=yes … node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459 --apply` |
+
+Backup-tabellen `cutover_3645_backup_20260823` oprettes af
+`database/2026-08-23-3645-cutover-backup-table.sql` (idempotent, kun `CREATE TABLE
+IF NOT EXISTS`). Rollback-SQL for løn og mandat står i samme fil.
+
+**Porte der stopper en fejlkørsel før den sker:**
+
+- Gendannelsen nægter at skrive et snapshot ind i et andet Supabase-projekt end
+  det er taget i (`--tillad-andet-miljo` kræves for at krydse bevidst).
+- Løn- og mandat-genberegningen nægter at skrive hvis backuppen ikke dækker de
+  rækker de er ved at røre.
+- Mandat-genberegningen nægter at skrive hvis #3514-migrationens mål-kolonne ikke
+  findes — den gætter ikke på hvor tallet skal hen.
+- Løn-genberegningen med `--basis market` stopper hvis `lib/salaryBasis.js` ikke
+  findes (dvs. #3393 ikke merged). Formlen designes med ejeren; scriptet har ingen
+  egen udgave af den. Indtil da kan hele kæden tør-køres med `--basis production`.
+- Gendannelsen skriver et før-billede (`pre-restore-<tidsstempel>.json`) i
+  snapshot-mappen FØR den rører noget, så selve gendannelsen også kan rulles tilbage.
+
+Alle fem scripts er idempotente: anden kørsel skriver nul rækker.
+
+**Tør-kørt mod staging `staging-3746-trin7` 17/8** (tallene står i PR'en for #3645):
+snapshot af 9.048 rækker taget, 197 rækker bevidst ændret, gendannet, og
+felt-lighed efterprøvet uafhængigt i SQL (samlet loft-sum identisk, 0 rester af
+prøve-nøglen). Rollback-vejen er dermed prøvet, ikke bare skrevet.
+
+**Enheden i rapporterne er rå loft, ikke rating.** `ratingFromAbilities` skiftede
+enhed 14/8 (#3666), så et rating-delta i dag ikke kan sammenlignes med de tal
+drejebogen blev godkendt på. Stop-grænsen i verifikationspunkt 4 skal derfor
+omregnes til loft-enheder eller genmåles, før den kan bruges som gate.
+
 ## Huller pr. 17/8
 
 - Det daglige ticks tidspunkt i forhold til etape-scheduleren er ikke målt.
-- Gendannelses-/snapshot-scripts findes ikke endnu (bygges i bølge 2 spor 1).
 - Komponent 4's syv-punkts-sektion mangler (bygges af mandat-sporet).
-- Løn-effekten er ikke genmålt med ankerværdi-grundlag.
+- Løn-effekten er ikke genmålt med ankerværdi-grundlag — værktøjet står klar, men
+  `--basis market` kan først køre når #3393 er merged.
+- Verifikationspunkt 4's stop-grænse (Δ −29) står stadig i den gamle rating-enhed.
 
 Refs #3645 #3459 #3449 #3393 #3514 #3591 #3709 #3757
