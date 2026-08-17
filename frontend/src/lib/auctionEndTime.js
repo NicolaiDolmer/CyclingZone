@@ -12,6 +12,12 @@ export const GAME_TIMEZONE = "Europe/Copenhagen";
 export const DEFAULT_MIN_HOURS = 1;
 export const DEFAULT_MAX_HOURS = 48;
 
+// #2884: vindues-timerne står som tal i configen (8, 24). Vist rå bliver det
+// "8:00-24:00" ved siden af tabular tal — nul-udfyldt matcher resten af fladen.
+// #3786: flyttet hertil fra TeamPage.jsx så rytterprofilens vælger (samme
+// useAuctionEndTimeSelector-forbruger) kan bruge den uden en anden kopi.
+export const formatHour = (h) => `${String(h).padStart(2, "0")}:00`;
+
 // "2026-08-15T20:44" læst som Copenhagen-vægur → Date i UTC.
 // Samme offset-trick som backendens gameHourToUTC: fortolk strengen som UTC, mål
 // hvor langt Copenhagen ligger fra den, og træk forskellen fra. Håndterer CEST/CET.

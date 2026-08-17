@@ -29,6 +29,10 @@ import {
   computeWorstCaseReservation,
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
+import { computeBidRoom } from "../lib/auctionBidRoom";
+import { BidRoomBlockNotice, BidDestinationHint } from "../components/AuctionBidRoomNotice";
+import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
+import { formatHour } from "../lib/auctionEndTime.js";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
@@ -461,7 +465,7 @@ function AuctionCountdown({ end, status }) {
   );
 }
 
-function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
+function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
   // "auctions" loades med så hookets fejltekst (auctions:error.insufficientBalance)
   // kan resolves — uden den kastede klient-gaten TypeError (t var ikke givet videre)
   // og spilleren så ingen fejl overhovedet (#1184).
@@ -473,6 +477,12 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid    = !isMyRider && auction.status !== "completed";
   const wasOverbid = !imWinning && !isSeller && auction.myHighestBid != null && auction.current_bidder_id != null;
+  // #3066: samme bud-plads-gate som AuctionsPage.jsx (AuctionRow/AuctionCard) —
+  // rytterprofilens bud-panel manglede den helt, så et bud der er GARANTERET
+  // afvist af serveren (fuld trup) kunne sendes uden forklaring. Et forsvars-
+  // bud (imWinning) blokeres aldrig — du fører allerede.
+  const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
+  const roomBlocked = canBid && !imWinning && bidRoom.blocked;
 
   const {
     minBid, myProxy,
@@ -520,8 +530,13 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
         <p className="text-cz-3 text-xs text-center py-2">
           {isSeller ? t("auctionPanel.cannotBidOwn") : t("auctionPanel.fallbackDash")}
         </p>
+      ) : roomBlocked ? (
+        <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
       ) : (
         <div className="flex flex-col gap-2">
+          {auction.is_youth && bidRoom.destination && (
+            <BidDestinationHint destination={bidRoom.destination} t={t} />
+          )}
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <AmountInput
               value={bidAmount}
@@ -635,7 +650,9 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
 }
 
 function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
-  const { t } = useTranslation("rider");
+  // "errors" tilføjet til de fire delte errors:api.auction_end_*-tekster —
+  // samme strenge som holdsidens vælger (#2884), ikke en ny kopi.
+  const { t } = useTranslation(["rider", "errors"]);
   const riderValue      = getRiderMarketValue(rider);
   // Ejer-feedback 3/7: pris-formularen var altid udfoldet og fyldte hero'en —
   // nu en kompakt trigger-knap der folder formularen ud (samme mønster som
@@ -648,6 +665,13 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   // Kun relevant for egne ryttere: AI/fri-rytter-gulvet (price >= riderValue,
   // se priceError herunder) udelukker allerede enhver "for lidt"-pris.
   const [typoWarning, setTypoWarning] = useState(null);
+  // #3786: samme sluttidspunkt-vælger som holdsidens RiderActionModal (#2884)
+  // — manglede HELT her, så en auktion startet fra rytterprofilen altid fik
+  // serverens globale standard-varighed uden at spilleren kunne se eller
+  // vælge den. active=open: intet netværkskald før panelet rent faktisk er
+  // foldet ud.
+  const { auctionWindow, endWall, setEndWall, endTimeIssue, endHours, endsAtIso } =
+    useAuctionEndTimeSelector({ active: open });
 
   // Egne ryttere: pris må være mellem 0 og Værdi (ikke over). AI/fri rytter: Værdi er gulvet.
   // price === null (ugyldigt/ikke-parsbart format, #3495) tælles altid som fejl
@@ -660,10 +684,15 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   // igen. Fejlbeskeden hører hjemme hos onStart (der ejer auctionError-fladen);
   // her ejer vi kun loading-flaget, så her ryddes kun det. Samme rollefordeling
   // som useAuctionBidding fik i #3619.
+  // #3786: kun med når spilleren faktisk har valgt et gyldigt tidspunkt — flash
+  // har sin egen faste 30-min-længde og må ikke kombineres (samme betingelse
+  // som TeamPage.jsx's startAuction).
+  const endsAtForSubmit = !(ddActive && flash) ? endsAtIso : null;
+
   async function submitAuction() {
     setLoading(true);
     try {
-      await onStart(price, flash);
+      await onStart(price, flash, endsAtForSubmit);
     } finally {
       setLoading(false);
     }
@@ -694,6 +723,42 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
               <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
             </label>
           )}
+          {/* #3786: skjult under flash-auktion, som har sin egen faste 30-min-
+              længde — samme betingelse som holdsidens vælger. */}
+          {auctionWindow && !(ddActive && flash) && (
+            <div className="mb-3">
+              <label htmlFor="rider-auction-end-time" className="block text-cz-2 text-xs mb-1">
+                {t("auctionStart.end.label")}
+              </label>
+              <input
+                id="rider-auction-end-time"
+                type="datetime-local"
+                value={endWall}
+                onChange={e => setEndWall(e.target.value)}
+                data-testid="rider-auction-end-time-input"
+                className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
+                  ${endTimeIssue
+                    ? "border-cz-danger/40 focus:border-cz-danger"
+                    : "border-cz-border focus:border-cz-accent"}`} />
+              <p className="text-cz-3 text-xs mt-1">
+                {t("auctionStart.end.hint", { min: auctionWindow.min_hours, max: auctionWindow.max_hours })}
+                {endHours && ` ${t("auctionStart.end.windowHint", { open: formatHour(endHours.openHour), close: formatHour(endHours.closeHour) })}`}
+              </p>
+              {/* #2884/#3786: samme fire beskeder som serveren afviser med
+                  (errors:api.*) — ét sted at rette, samme ordlyd før og efter
+                  POST'en, uanset hvilket flow spilleren startede auktionen fra. */}
+              {endTimeIssue && (
+                <p className="text-cz-danger text-xs mt-1" data-testid="rider-auction-end-time-error">
+                  {t(`errors:api.auction_${endTimeIssue.code === "invalid_end_time" ? "end_invalid" : endTimeIssue.code}`, {
+                    minHours: endTimeIssue.minHours,
+                    maxHours: endTimeIssue.maxHours,
+                    openHour: formatHour(endTimeIssue.openHour),
+                    closeHour: formatHour(endTimeIssue.closeHour),
+                  })}
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row sm:items-start gap-2">
             <AmountInput
               value={price}
@@ -707,7 +772,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
             />
             <button
               onClick={handleSubmit}
-              disabled={loading || priceError}
+              disabled={loading || priceError || Boolean(!(ddActive && flash) && endTimeIssue)}
               className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-cz text-sm transition-all disabled:opacity-50
                 ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
               {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
@@ -772,6 +837,11 @@ export default function RiderStatsPage() {
   const [myTeamId, setMyTeamId]             = useState(null);
   const [myBalance, setMyBalance]           = useState(0);
   const [myReservedBalance, setMyReservedBalance] = useState(0);
+  // #3066: senior-/akademi-optælling til bud-plads-gaten (computeBidRoom) —
+  // null = endnu ikke hentet (behandles som "ikke fuld", se auctionBidRoom.js).
+  // Samme kilder som AuctionsPage.jsx's loadAll (#1308/#2701/#2748).
+  const [seniorCount, setSeniorCount]       = useState(null);
+  const [academyCount, setAcademyCount]     = useState(null);
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   // #2000 Historik: null = loader — [] betyder ægte "ingen handelshistorik".
@@ -1035,6 +1105,19 @@ export default function RiderStatsPage() {
     const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).single();
     if (t) { setMyTeamId(t.id); setMyBalance(t.balance || 0); }
 
+    // #3066: samme to tællinger som AuctionsPage.jsx's loadAll — akademiryttere
+    // tæller ikke mod senior-cap (#1308), pensionerede tæller ikke med (#2748).
+    if (t?.id) {
+      const [seniorCountRes, academyCountRes] = await Promise.all([
+        supabase.from("riders").select("id", { count: "exact", head: true })
+          .eq("team_id", t.id).eq("is_academy", false).eq("is_retired", false),
+        supabase.from("riders").select("id", { count: "exact", head: true })
+          .eq("team_id", t.id).eq("is_academy", true),
+      ]);
+      if (seniorCountRes.count !== null && seniorCountRes.count !== undefined) setSeniorCount(seniorCountRes.count);
+      if (academyCountRes.count !== null && academyCountRes.count !== undefined) setAcademyCount(academyCountRes.count);
+    }
+
     // #1184: hent worst-case commitment (førende auktioner + autobud-lofter) så
     // bid-panelets klient-gate validerer mod TILGÆNGELIG saldo — samme semantik
     // som auktionssiden og backend-gaten (auctionRules.js).
@@ -1073,7 +1156,7 @@ export default function RiderStatsPage() {
   async function loadActiveAuctionFull(riderObj) {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: auctionData } = await supabase.from("auctions")
-      .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
+      .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
         seller_team_id, current_bidder_id,
         seller:seller_team_id(id, name),
         current_bidder:current_bidder_id(id, name)`)
@@ -1351,14 +1434,23 @@ export default function RiderStatsPage() {
   // når token'et skal fornyes, og res.json() i fejl-grenen kastede på et non-JSON
   // svar (fx 502 fra proxy'en) — begge landede før i samme unhandled rejection som
   // fetch'en, og AuctionButton'ens loading-flag blev aldrig ryddet.
-  async function startAuction(startPrice, isFlash = false) {
+  // #3786: endsAtIso — spillerens valgte sluttidspunkt fra AuctionButton's
+  // vælger (useAuctionEndTimeSelector), null hvis intet valgt/gyldigt. Samme
+  // param som TeamPage.jsx's startAuction sender, blot navngivet efter kilden
+  // (hooket har allerede udelukket flash-kombinationen, se AuctionButton).
+  async function startAuction(startPrice, isFlash = false, endsAtIso = null) {
     setAuctionError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${API}/api/auctions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ rider_id: id, starting_price: startPrice, flash_auction: isFlash }),
+        body: JSON.stringify({
+          rider_id: id,
+          starting_price: startPrice,
+          flash_auction: isFlash,
+          ...(endsAtIso ? { ends_at: endsAtIso } : {}),
+        }),
       });
       if (res.ok) {
         // Squad-cap-warning er non-blocking siden #29 — vis besked hvis manager går over max.
@@ -1618,6 +1710,8 @@ export default function RiderStatsPage() {
                     myTeamId={myTeamId}
                     myBalance={myBalance}
                     reservedBalance={myReservedBalance}
+                    seniorCount={seniorCount}
+                    academyCount={academyCount}
                     riderName={`${rider.firstname} ${rider.lastname}`}
                     onBid={handleAuctionBid}
                     onSetProxy={handleSetProxy}
