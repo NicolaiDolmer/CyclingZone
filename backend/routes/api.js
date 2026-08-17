@@ -302,7 +302,8 @@ import {
   getTransferCancelIssue,
 } from "../lib/transferExecution.js";
 import {
-  acceptBonusOffer,
+  loadActiveBonusOffer,
+  finalizeBonusOfferAccept,
   assertSalaryIncreaseAllowed,
   assertSigningAllowed,
   declineBonusOffer,
@@ -13339,14 +13340,24 @@ router.get("/board/status", requireAuth, async (req, res) => {
 // S-02e · Bonus-offer accept/decline (lag 6).
 // Accept: krediterer 200K + tilføjer ekstra-mål til 1yr-board's current_goals.
 // Decline: markerer row 'declined' uden side-effects.
+//
+// #3578: accept-flowet er bevidst i DENNE rækkefølge — load (read-only) →
+// kreditér → flip status til 'accepted'. Den gamle version flippede status
+// FØR krediteringen; fejlede krediteringen var tilbuddet allerede brændt
+// (væk fra UI, ingen penge, og status='active'-kravet gjorde retry umuligt,
+// 404). Med kreditering først forbliver et tilbud 'active' (retry-bart) hvis
+// krediteringen fejler. idempotency_key på finance-transaktionen + den
+// status='active'-betingede flip gør et samtidigt dobbeltklik/retry sikkert:
+// anden kreditering rammer 23505 på idempotency_key → skipped (allerede
+// betalt), og anden status-flip rammer 0 rækker → already_resolved (no-op).
 router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const { offer_id } = req.body || {};
     if (!offer_id) return res.status(400).json({ error: "offer_id is required", errorCode: "offer_id_required" });
 
-    const result = await acceptBonusOffer({ supabase, teamId: req.team.id, offerId: offer_id });
-    if (!result.ok) {
+    const loaded = await loadActiveBonusOffer({ supabase, teamId: req.team.id, offerId: offer_id });
+    if (!loaded.ok) {
       return res.status(404).json({ error: "Tilbud ikke fundet eller allerede behandlet" });
     }
 
@@ -13356,61 +13367,87 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
     const boardTestMode = await isBoardTestModeActive(supabase);
 
     // Krediter holdets balance via samme finance-kontrakt som sponsor (type='bonus').
-    const { data: team } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
-    if (team && !boardTestMode) {
-      const { data: activeSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
-      // Slice 07c: balance + finance_transactions atomic via RPC.
-      // 07d Fase B: api-actor — manager accepterer bonus-tilbud.
-      await incrementBalanceWithAudit(supabase, {
-        teamId: req.team.id,
-        delta: result.bonus_amount,
-        payload: {
-          type: "bonus",
-          amount: result.bonus_amount,
-          description: `Bestyrelsens bonus-tilbud accepteret (mod ekstra-mål: ${result.extra_goal.label})`,
-          season_id: activeSeason?.id ?? null,
-          actor_type: FINANCE_ACTOR_TYPE.API,
-          actor_id: req.user.id,
-          source_path: "api.board.bonusOffer.accept",
-          reason_code: FINANCE_REASON.BOARD_BONUS_ACCEPTED,
-          related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
-          related_entity_id: activeSeason?.id ?? null,
-        },
-      });
+    if (!boardTestMode) {
+      const { data: team } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
+      if (team) {
+        const { data: activeSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+        try {
+          // Slice 07c: balance + finance_transactions atomic via RPC.
+          // 07d Fase B: api-actor — manager accepterer bonus-tilbud.
+          // allowDuplicate: idempotency_key gør et retry efter net-fejl/dobbeltklik
+          // sikkert — anden INSERT rammer 23505 og skippes i stedet for at fejle.
+          await incrementBalanceWithAudit(supabase, {
+            teamId: req.team.id,
+            delta: loaded.bonus_amount,
+            payload: {
+              type: "bonus",
+              amount: loaded.bonus_amount,
+              description: `Bestyrelsens bonus-tilbud accepteret (mod ekstra-mål: ${loaded.extra_goal.label})`,
+              season_id: activeSeason?.id ?? null,
+              actor_type: FINANCE_ACTOR_TYPE.API,
+              actor_id: req.user.id,
+              source_path: "api.board.bonusOffer.accept",
+              reason_code: FINANCE_REASON.BOARD_BONUS_ACCEPTED,
+              related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
+              related_entity_id: activeSeason?.id ?? null,
+              idempotency_key: `board_bonus_offer:${loaded.offer.id}`,
+            },
+          }, { allowDuplicate: true });
+        } catch (creditError) {
+          // #3578: krediteringen fejlede — status flippes IKKE, så tilbuddet
+          // forbliver 'active' og kan forsøges igen i stedet for at gå tabt.
+          captureException(creditError);
+          return res.status(500).json({
+            error: "Could not credit the bonus. The offer was not changed, please try again.",
+            errorCode: "board_bonus_credit_failed",
+          });
+        }
+      }
     }
 
-    // Tilføj ekstra-mål til 1yr-board's current_goals.
-    if (result.source_board_id) {
-      const { data: oneYrBoard } = await supabase
-        .from("board_profiles")
-        .select("id, current_goals, plan_type")
-        .eq("team_id", req.team.id)
-        .eq("plan_type", "1yr")
-        .eq("negotiation_status", "completed")
-        .maybeSingle();
+    // Kreditering bekræftet (eller sprunget over i test-mode) — flip status nu.
+    await finalizeBonusOfferAccept({ supabase, offerId: loaded.offer.id });
 
-      if (oneYrBoard) {
-        const existingGoals = typeof oneYrBoard.current_goals === "string"
-          ? JSON.parse(oneYrBoard.current_goals)
-          : (oneYrBoard.current_goals || []);
-        const extraGoal = {
-          type: result.extra_goal.type,
-          target: result.extra_goal.target,
-          cumulative: false,
-          source: "bonus_offer",
-          label: result.extra_goal.label,
-        };
-        const updatedGoals = [...existingGoals, extraGoal];
-        await supabase.from("board_profiles")
-          .update({ current_goals: JSON.stringify(updatedGoals), updated_at: new Date().toISOString() })
-          .eq("id", oneYrBoard.id);
+    // Tilføj ekstra-mål til 1yr-board's current_goals. Best-effort: pengene +
+    // status er allerede den atomiske kerne af #3578-fixet; fejler dette,
+    // captures vi til Sentry men lader svaret forblive success, så en
+    // sekundær fejl her ikke gør en allerede-krediteret bonus umulig at
+    // genforsøge (offer'et er nu 'accepted', et retry ville 404'e).
+    if (loaded.source_board_id) {
+      try {
+        const { data: oneYrBoard } = await supabase
+          .from("board_profiles")
+          .select("id, current_goals, plan_type")
+          .eq("team_id", req.team.id)
+          .eq("plan_type", "1yr")
+          .eq("negotiation_status", "completed")
+          .maybeSingle();
+
+        if (oneYrBoard) {
+          const existingGoals = typeof oneYrBoard.current_goals === "string"
+            ? JSON.parse(oneYrBoard.current_goals)
+            : (oneYrBoard.current_goals || []);
+          const extraGoal = {
+            type: loaded.extra_goal.type,
+            target: loaded.extra_goal.target,
+            cumulative: false,
+            source: "bonus_offer",
+            label: loaded.extra_goal.label,
+          };
+          const updatedGoals = [...existingGoals, extraGoal];
+          await supabase.from("board_profiles")
+            .update({ current_goals: JSON.stringify(updatedGoals), updated_at: new Date().toISOString() })
+            .eq("id", oneYrBoard.id);
+        }
+      } catch (goalError) {
+        captureException(goalError);
       }
     }
 
     res.json({
       success: true,
-      bonus_amount: boardTestMode ? 0 : result.bonus_amount,
-      extra_goal: result.extra_goal,
+      bonus_amount: boardTestMode ? 0 : loaded.bonus_amount,
+      extra_goal: loaded.extra_goal,
       test_mode: boardTestMode,
     });
   } catch (e) {
