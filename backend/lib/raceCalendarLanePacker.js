@@ -401,46 +401,79 @@ function enforceDailyDecisions(events, monSlot, days, D) {
   const racePositions = buildRacePositions(events);
   const decisionCountOf = (day) => chunkByDay[day].reduce((n, idx) => n + (isDecisionEvent(events[idx]) ? 1 : 0), 0);
 
-  for (let d = 0; d < days; d++) {
-    if (monumentDay[d] || decisionCountOf(d) > 0) continue; // allerede tilfredsstillet
+  // #3546 C v2 (arkitekt-retur 17/8 aften: invarianten skal ramme 0, ikke kun forbedres):
+  // FLERE PASSES over dagene, ikke kun én. Et bytte der lykkes for dag X kan ÅBNE en ny
+  // sikker donor-mulighed for en dag Y der fejlede i et TIDLIGERE pass (fx X's nye donor-
+  // status, eller en kæde af to bytter der hver isoleret var usikre). Bundet til `days`
+  // gennemløb (langt mere end nogensinde nødvendigt: hvert gennemløb fjerner mindst ét
+  // problem eller stopper, så det kan aldrig løkke uendeligt: se `anyFixedThisPass`-vagten).
+  for (let pass = 0; pass < days; pass++) {
+    let anyFixedThisPass = false;
+    for (let d = 0; d < days; d++) {
+      if (monumentDay[d] || decisionCountOf(d) > 0) continue; // allerede tilfredsstillet
 
-    // Donor-dage sorteret efter nærhed (tættest først, lige afstand → lavest dagindeks)  - 
-    // minimerer hvor langt en afgørelse "rejser" væk fra sin oprindelige fase-placering.
-    const donors = [];
-    for (let d2 = 0; d2 < days; d2++) if (d2 !== d && decisionCountOf(d2) >= 2) donors.push(d2);
-    donors.sort((a, b) => Math.abs(a - d) - Math.abs(b - d) || a - b);
+      // Donor-dage sorteret efter nærhed (tættest først, lige afstand → lavest dagindeks)  -
+      // minimerer hvor langt en afgørelse "rejser" væk fra sin oprindelige fase-placering.
+      const donors = [];
+      for (let d2 = 0; d2 < days; d2++) if (d2 !== d && decisionCountOf(d2) >= 2) donors.push(d2);
+      donors.sort((a, b) => Math.abs(a - d) - Math.abs(b - d) || a - b);
 
-    let fixed = false;
-    for (const d2 of donors) {
-      const decisionIdxs = chunkByDay[d2].filter((idx) => isDecisionEvent(events[idx]));
-      for (const i of decisionIdxs) {
-        for (const j of chunkByDay[d]) {
-          // Samme løb på begge sider: udelukkes defensivt (positions-checket nedenfor
-          // afviser det allerede korrekt i praksis, men eksplicit er billigere at læse).
-          if (events[i].race.id === events[j].race.id) continue;
-          if (!canMoveTo(i, j, events, racePositions)) continue;
-          if (!canMoveTo(j, i, events, racePositions)) continue;
-          // Commit: byt array-POSITIONERNE i/j. dayOfIdx pr. POSITION er uændret (i hører
-          // stadig til dag d2, j til dag d): det er netop det der flytter events[i]s
-          // OBJEKT til dag d og events[j]s OBJEKT til dag d2.
-          const movedToD = events[i], movedToD2 = events[j];
-          events[j] = movedToD;
-          events[i] = movedToD2;
-          const listA = racePositions.get(movedToD.race.id);
-          const eA = listA.find((e) => e.idx === i);
-          if (eA) eA.idx = j;
-          const listB = racePositions.get(movedToD2.race.id);
-          const eB = listB.find((e) => e.idx === j);
-          if (eB) eB.idx = i;
-          fixed = true;
-          break;
+      let fixed = false;
+      for (const d2 of donors) {
+        const decisionIdxs = chunkByDay[d2].filter((idx) => isDecisionEvent(events[idx]));
+        for (const i of decisionIdxs) {
+          for (const j of chunkByDay[d]) {
+            // Samme løb på begge sider: udelukkes defensivt (positions-checket nedenfor
+            // afviser det allerede korrekt i praksis, men eksplicit er billigere at læse).
+            if (events[i].race.id === events[j].race.id) continue;
+            if (!canMoveTo(i, j, events, racePositions)) continue;
+            if (!canMoveTo(j, i, events, racePositions)) continue;
+            // Commit: byt array-POSITIONERNE i/j. dayOfIdx pr. POSITION er uændret (i hører
+            // stadig til dag d2, j til dag d): det er netop det der flytter events[i]s
+            // OBJEKT til dag d og events[j]s OBJEKT til dag d2.
+            const movedToD = events[i], movedToD2 = events[j];
+            events[j] = movedToD;
+            events[i] = movedToD2;
+            const listA = racePositions.get(movedToD.race.id);
+            const eA = listA.find((e) => e.idx === i);
+            if (eA) eA.idx = j;
+            const listB = racePositions.get(movedToD2.race.id);
+            const eB = listB.find((e) => e.idx === j);
+            if (eB) eB.idx = i;
+            fixed = true;
+            break;
+          }
+          if (fixed) break;
         }
         if (fixed) break;
       }
-      if (fixed) break;
+      if (fixed) anyFixedThisPass = true;
+      // Intet sikkert bytte fundet: dagen forbliver uden afgørelse (se docstring ovenfor) -
+      // MEDMINDRE et SENERE pass åbner en ny mulighed (derfor gentages hele scanningen).
     }
-    // Intet sikkert bytte fundet: dagen forbliver uden afgørelse (se docstring ovenfor).
+    if (!anyFixedThisPass) break; // fixpunkt nået: yderligere gennemløb ville ikke ændre noget
   }
+}
+
+// #3546 B v2 (arkitekt-retur 17/8 aften: B's GT-spredning skulle skalere med spine-
+// længden, ikke kun med rå fraction): mindst-belastede stream, MEN med tie-break VÆK fra
+// stream 0. Rod-årsag (fundet ved instrumenteret dry-run mod det ægte katalog): cursorerne
+// starter [0,0,0,...], og en almindelig "første strengt mindre vinder"-tie-break
+// favoriserer LAVESTE indeks: så "rest"-fyldet FØR hver GT's egen placering blev
+// systematisk dumpet på stream 0, PRÆCIS den stream GT'en selv ligger på. Det skubbede
+// GT'ens eget fodaftryk længere frem i dens EGEN game_day-rækkefølge OG sultede de ANDRE
+// streams for indhold der reelt overlappede TIDSMÆSSIGT med GT'ens vindue: mindre
+// samtidighed under GT'en, større kalender-spænd. Effekten var størst for den FØRSTE GT
+// (ingen tidligere fyld til at bryde tien), hvilket matchede det målte mønster (Giro
+// konsekvent længst spændt, uanset GT-etapeantal). Ren funktion: samme sikre invarianter
+// som før (ceiling/cap er stadig kaldestedets ansvar); ændrer KUN hvilken stream der
+// vælges ved præcis lige cursor-værdier, aldrig HVOR MEGET der fyldes.
+export function pickLeastLoadedStreamAwayFromZero(streamCursor, cap) {
+  let s = -1;
+  for (let t = cap - 1; t >= 0; t--) {
+    if (s === -1 || streamCursor[t] < streamCursor[s]) s = t;
+  }
+  return s;
 }
 
 // ---- STREAM: least-loaded på `cap` spor + game-dag-ordnet komprimering (håndterer GT + monumenter) ----
@@ -585,8 +618,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
         // — fyldes LEAST-LOADED over alle streams (bevarer overlap, jf. #3472 runde 1).
         const target = Math.min(ceiling, Math.max(placedCount, Math.round(gt.seasonFraction * (totalSlots - remainingGtLen))));
         while (ri < rest.length && placedCount < target) {
-          let s = 0;
-          for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t;
+          let s = pickLeastLoadedStreamAwayFromZero(streamCursor, cap);
           if (s === 0 && streamCursor[0] + lenOf(rest[ri]) > stream0Ceiling) {
             let alt = -1;
             for (let t = 1; t < cap; t++) if (alt === -1 || streamCursor[t] < streamCursor[alt]) alt = t;
@@ -612,7 +644,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
         remainingGtLen -= footprintOf(gt); // klar til NÆSTE gt's target-beregning (nu ekskl. denne)
         requiredStream0Buffer = GT_SEPARATION_BUFFER_DAYS * D; // gælder NÆSTE gt (0 hvis der ikke er flere)
       }
-      for (; ri < rest.length; ri++) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, rest[ri]); }
+      for (; ri < rest.length; ri++) { placeStream(pickLeastLoadedStreamAwayFromZero(streamCursor, cap), rest[ri]); }
     } else {
       const perGap = Math.floor(Math.floor(rest.length / 2) / gts.length);
       let ri = 0;

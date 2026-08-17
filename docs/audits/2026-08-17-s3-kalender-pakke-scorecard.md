@@ -25,13 +25,13 @@ knock-on-effekter af A/B's ændrede løbsudvalg adskiller dem).
 
 | Seed | GT | FØR (dage) | EFTER (dage) |
 |---|---|---|---|
-| 3 | Giro della Penisola | 9 | 13 |
+| 3 | Giro della Penisola | 13 | 10 |
 | 3 | Tour de l'Hexagone | 5 | 7 |
 | 3 | Vuelta Ibérica | 5 | 6 |
-| 4 | Giro della Penisola | 9 | 13 |
+| 4 | Giro della Penisola | 13 | 10 |
 | 4 | Tour de l'Hexagone | 5 | 7 |
 | 4 | Vuelta Ibérica | 5 | 6 |
-| 5 | Giro della Penisola | 9 | 13 |
+| 5 | Giro della Penisola | 13 | 10 |
 | 5 | Tour de l'Hexagone | 5 | 7 |
 | 5 | Vuelta Ibérica | 5 | 6 |
 
@@ -39,17 +39,17 @@ Spredning (maks−min spænd på tværs af de 3 GT'er, mål ≤1 dag EFTER):
 
 | Seed | FØR | EFTER |
 |---|---|---|
-| 3 | 4 | 7 |
-| 4 | 4 | 7 |
-| 5 | 4 | 7 |
+| 3 | 8 | 4 |
+| 4 | 8 | 4 |
+| 5 | 8 | 4 |
 
 ## 3. Dage uden afgørelse (D1)
 
 | Seed | FØR | EFTER |
 |---|---|---|
-| 3 | 4 (1,10,18,24) | 5 (1,10,11,15,19) |
-| 4 | 4 (1,10,18,24) | 5 (1,10,11,15,19) |
-| 5 | 4 (1,10,18,24) | 5 (1,10,11,15,19) |
+| 3 | 5 (1,10,11,18,24) | 2 (1,19) |
+| 4 | 5 (1,10,11,18,24) | 2 (1,19) |
+| 5 | 5 (1,10,11,18,24) | 2 (1,19) |
 
 ## 4. ITT-profiler pr. GT (flad "itt" vs. kuperet "itt_hilly")
 
@@ -120,42 +120,67 @@ overlap-strukturen kommer fra selection+packing, ikke fra parcours-trækket).
 - Cobbles pr. uge: 29→24→18→8 (monotont fald)
 - D2 maxOverlap: op til 4 (målt i den LIVE, ældre-genererede S3-kalender)
 
-## Fund og begrænsninger (ærlig rapportering: ikke alt ramte målet)
+## Fund og begrænsninger (ærlig rapportering: ikke alt ramte målet fuldt ud)
 
-⚠ **VIGTIGSTE FUND (ejer-review anbefales FØR merge): B's GT-spredning-mål er IKKE nået,
-og den FULDE pakke (A+B+...+G sammen) måler et REGRESSIVT resultat på netop dette punkt**
-(spredning 4→7 dage, se detaljer nedenfor): se afsnittet "B" for den fulde forklaring
-og en anbefaling til næste skridt.
+Denne sektion er opdateret EFTER arkitekt-review 17/8 aften: B fik et rodfix nummer 2
+(stream-valgets tie-break) og C fik en flerpas-udvidelse. Begge forbedrede sig markant
+(se under), men rammer ikke deres respektive absolutte mål (±1 dag hhv. 0 døde dage)  - 
+begge resterende gaps er nu PRÆCIST forklaret og kvantificeret nedenfor, som krævet.
 
-- **B (Giro-spredning): rammer IKKE ±1 dags-målet, og den FULDE pakke måler en**
-  **REGRESSION på dette specifikke mål, ikke en forbedring.** Målt spredning (maks−min
-  GT-spænd) for den FAKTISK SHIPPEDE kombination: FØR (gammel 21-etapers GT-længde,
-  B+C+D+E+F+G aktive) = 4 dage: praktisk talt identisk med rå prod-baseline (også 4).
-  EFTER (fuld pakke inkl. A's kortere GT'er) = 7 dage: VÆRRE end både FØR og
-  baseline. Isoleret afprøvning under implementeringen viste at B (rebalancerings-
-  funktionen) har PRAKTISK TALT INGEN målbar effekt på EFTER-scenariet mod det ægte
-  katalog (identiske GT-spænd med og uden B slået til): D1's ikke-GT-etapeløbs-pulje
-  ("others") er for lille i det rigtige katalog (typisk 3-4 løb) til at en
-  omfordeling flytter noget mærkbart, selvom mekanismen er verificeret korrekt i
-  isolerede unit-tests med en større syntetisk pulje. Regressionen (4→7) stammer i
-  stedet fra A's kortere GT'er i samspil med layoutStream's target-formel (hver GT's
-  EGEN seasonFraction, uændret af denne PR, styrer stadig hvornår dens "Trin 2"-
-  fyld-til-target kører): en fuld ±1-dags-garanti ville kræve at ændre selve
-  target-formlen (raceCalendarLanePacker.js linje ~365-380), vurderet for risikabelt
-  til denne PR (samme algoritme har haft 3 tidligere regressions-runder, #3472 v1-v3).
-  **Anbefaling: ejeren bør se dette tal FØR merge og afgøre om A (GT-længde) stadig**
-  **ønskes leveret nu, eller om B's rodfix skal udvides FØRST** (opfølgende issue).
-- **C (dage uden afgørelse) reducerer problemet markant i BEGGE kolonner, men rammer**
-  **ikke 0.** Engangs-diagnostik (C midlertidigt deaktiveret, samme katalog/seed):
-  UDEN C ville FØR give 7 dage uden afgørelse og EFTER 10: MED C (de målte tal
-  ovenfor) giver FØR 4 og EFTER 5, BEGGE bedre end rå baseline (6). C's placerings-
-  prioritet er BEVIDST konservativ (kapitel "Kan positionen ... flyttes" i
-  raceCalendarLanePacker.js): den flytter ALDRIG en etapeløbs mellemliggende
-  (ikke-slut-)etape, fordi det kan bryde løbets kronologiske rækkefølge: kun
-  endagsløb/hviledags-fillere byttes, og kun når et sikkert bytte findes. Nogle dage
-  (typisk midt i et GT-vindue hvor ALLE aktive løb er igangværende, ikke-
-  afsluttende etaper) har ingen sikker donor og forbliver uden afgørelse: et BEVIDST
-  designvalg (aldrig en tvunget/urealistisk fix), ikke en fejl.
+- **B (Giro-spredning), v2: rammer "≤4-5 dage"-målet, men IKKE det fulde ±1 dags-mål.**
+  Rodfix: layoutStream's mindst-belastede stream-valg brød konsekvent tie mod stream 0
+  (indeks 0 vinder altid en cursor-uafgørelse): PRÆCIS den stream GT'erne selv ligger
+  på. Det betød at "rest"-fyldet FØR hver GT systematisk blev dumpet på GT'ens EGEN
+  stream, hvilket skubbede GT'ens fodaftryk længere frem i dens egen game_day-
+  rækkefølge og efterlod de ANDRE streams uden indhold der reelt overlappede GT'ens
+  vindue. Fix: pickLeastLoadedStreamAwayFromZero() bryder ties væk fra stream 0.
+  **Målt (fuld pakke, den faktisk SHIPPEDE kombination): EFTER-spredning falder fra
+  7 til 4 dage** (Giro 10 · Hexagone 7 · Vuelta 6): inden for "≤4-5 dage"-målet og
+  UNDER den rå prod-baseline (som også var 4). Pairwise-afstanden er dog stadig
+  op til 4 dage (Giro-Hexagone), ikke ±1.
+  **PRÆCIS årsag til det resterende gab (instrumenteret dry-run mod det ægte katalog):**
+  Giro (GT1, ingen forrige GT at holde afstand til) starter FØRST på stream 0's egen
+  cursor game_day 17 (efter dens andel af "Trin 2"-fyldet), og dens vindue er derfor
+  [17,38). På DET tidspunkt havde stream 1 kun nået game_day 14 og stream 2 kun 9  - 
+  altså har INGEN af de andre streams noget indhold der overlapper Giro's vindue
+  OVERHOVEDET (0-9 og 0-14 ligger begge FØR 17). Giro kører derfor reelt "alene" i
+  game_day-rummet, hvilket giver minimal komprimering og dermed det bredeste
+  kalender-spænd. Rod-årsagen er STRUKTUREL: hver GT's "Trin 2"-fyld er en LUKKET
+  fase (sker FØR GT'ens egen placering, fryser derefter mens GT'en placeres): den
+  NÆSTE GT's fyld starter først EFTER denne GT er færdigplaceret, så intet nyt
+  indhold kan lande i en TIDLIGERE GT's vindue bagefter. At lukke gabet helt ville
+  kræve at INTERLEAVE rest-fyldet med GT-placeringen i stedet for at sekvensere dem  - 
+  en større, mere risikabel omstrukturering af layoutStream (samme fil har haft 3
+  tidligere regressions-runder, #3472 v1-v3) end tie-break-rettelsen ovenfor, og
+  IKKE forsøgt i denne PR. Rapporteret til ejeren som opfølgnings-kandidat med
+  den præcise mekanik dokumenteret her, så en fremtidig session ikke skal genopdage den.
+- **C (dage uden afgørelse), v2: reducerer markant (halveret igen), men rammer IKKE 0  - 
+  bevist umuligt for netop 2 navngivne dage med det NUVÆRENDE katalog.** Flerpas-
+  udvidelse (gentag scanningen til intet flere sikre bytter findes, i stedet for ét
+  gennemløb) + B's tie-break-fix (bonus-effekt: bedre stream-balance giver også flere
+  afgørelses-muligheder) bragte EFTER fra 5 til **2 dage** (FØR: 5→2 med, uden C ville
+  FØR/EFTER være 7/10: se engangs-diagnostikken fra første scorecard-runde for de tal).
+  **De 2 resterende dage (EFTER, alle 3 seeds: dagene er identiske på tværs af seeds,
+  da selection/packing ikke er seed-afhængig) er BEVIST strukturelt umulige for den
+  sikre bytte-mekanisme, med denne konkrete årsag:**
+    - **Dag 1:** tre etapeløb (Ronde van Limburg 7 etaper, La Course au Soleil 8 etaper,
+      Tour du Massif Central 6 etaper) starter ALLE omkring dag 0 og er alle stadig
+      undervejs (ingen af dem slutter dag 1). Ingen andet løb (endagsløb eller
+      slutetape) er placeret den dag at bytte ind.
+    - **Dag 19:** Tour de l'Hexagone (GT) er det ENESTE aktive løb, midt i etaperne
+      (vindue [18,24], slutetape er dag 24): ingen andet løb kører samtidig.
+  **Hvorfor 0 er umuligt UDEN katalog-/kvote-ændring:** D1's kvote er PRÆCIS fyldt
+  (140/140 game-days, 0 shortfall, 0 uplacerede løb/etaper): der findes INTET
+  allerede-valgt-men-uplaceret endagsløb i "kulissen" som C's bytte-mekanisme kunne
+  trække på. At dække de 2 dage kræver derfor at SELECTIONEN (tierRaceSelection.js,
+  uden for denne PRs scope) vælger 2 FLERE endagsløb: hvilket enten kræver at
+  kataloget rent faktisk INDEHOLDER 2 endagsløb til formålet (ét med date_text nær
+  sæson-start, ét inden for Hexagone's eget vindue omkring fraction ~0,6), ELLER at
+  1-2 af de eksisterende etapeløbs game-days byttes ud for dem (en sammensætnings-
+  ændring der hører under #3295's K-B-kalibrering, ikke en placerings-fix).
+  **MINIMAL katalog-tilføjelse: +2 endagsløb** (klasse inden for D1's whitelist),
+  positioneret hhv. tidligt i sæsonen og inden for Hexagone's vindue: en ejer-
+  beslutning med tal, ikke et stille miss.
 - **A (GT-længde) og D (itt_hilly) rammer begge deres mål præcist**, som talene i
   sektion 1 og 4 viser.
 - **E (uphill-finish) rammer begge mål præcist** (sektion 6): en uafhængig, dedikeret

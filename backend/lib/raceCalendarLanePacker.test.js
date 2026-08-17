@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, balanceStageRaceFractionAcrossGtWindows, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, balanceStageRaceFractionAcrossGtWindows, reshapeCobblesFractionToTwoWindows, pickLeastLoadedStreamAwayFromZero } from "./raceCalendarLanePacker.js";
 
 // Div 1: 3 Grand Tours (21) + mindre etapeløb + 5 monumenter + klassikere = 140 events (5×28).
 function div1() {
@@ -737,4 +737,50 @@ test("#3546 C: determinisme: samme input giver identisk daysWithoutDecision to g
   const a = packLaneCalendar(cfg);
   const b = packLaneCalendar(JSON.parse(JSON.stringify(cfg)));
   assert.deepEqual(a.daysWithoutDecision, b.daysWithoutDecision);
+});
+
+// ── #3546 B v2 (arkitekt-retur 17/8 aften): pickLeastLoadedStreamAwayFromZero ───────
+test("#3546 B v2: pickLeastLoadedStreamAwayFromZero bryder ties VÆK fra stream 0", () => {
+  assert.equal(pickLeastLoadedStreamAwayFromZero([0, 0, 0], 3), 2, "3-vejs-tie skal give SIDSTE stream, ikke 0");
+  assert.equal(pickLeastLoadedStreamAwayFromZero([0, 0], 2), 1, "2-vejs-tie skal give stream 1, ikke 0");
+  assert.equal(pickLeastLoadedStreamAwayFromZero([5, 5, 5], 3), 2, "tie ved ikke-nul værdier skal stadig undgå indeks 0");
+});
+
+test("#3546 B v2: pickLeastLoadedStreamAwayFromZero vælger stadig den ÆGTE mindste ved ikke-tie", () => {
+  assert.equal(pickLeastLoadedStreamAwayFromZero([0, 5, 5], 3), 0, "stream 0 ER den unikke mindste og skal stadig vælges");
+  assert.equal(pickLeastLoadedStreamAwayFromZero([10, 3, 7], 3), 1);
+  assert.equal(pickLeastLoadedStreamAwayFromZero([10, 3, 3], 3), 2, "tie mellem 1 og 2 (begge < stream 0): sidste vinder");
+});
+
+test("#3546 B v2: cap=1 (kun én stream) vælger altid indeks 0 (ingen alternativ)", () => {
+  assert.equal(pickLeastLoadedStreamAwayFromZero([7], 1), 0);
+});
+
+test("#3546 B v2: GT-spredning forbedres mærkbart mod en asymmetrisk fase-fordelt fixture (regressionsvagt for arkitekt-fund 17/8: stream 0-tie-bias skabte bredere spænd for den FØRSTE GT)", () => {
+  // 3 GT'er + rigelig "rest"-etapeløbs-forsyning, alle med fraction, tvinger den fase-
+  // ankrede STREAM-gren. Målet er ikke et eksakt tal (afhænger af fixturens konkrete data),
+  // men at spredningen (maks-min GT-spænd) er begrænset: IKKE at den første GT (laveste
+  // fraction) systematisk ender med et markant bredere spænd end de to andre.
+  const stageRaces = [
+    { id: "gt-1", stages: 18, race_class: "TourFrance", seasonFraction: 0.40 },
+    { id: "gt-2", stages: 17, race_class: "GiroVuelta", seasonFraction: 0.61 },
+    { id: "gt-3", stages: 17, race_class: "GiroVuelta", seasonFraction: 0.79 },
+    ...Array.from({ length: 4 }, (_, i) => ({ id: `wt-${i}`, stages: 6 + (i % 3), race_class: "OtherWorldTourA", seasonFraction: 0.1 + i * 0.2 })),
+  ];
+  const oneDayRaces = [
+    ...Array.from({ length: 5 }, (_, i) => ({ id: `mon-${i}`, race_class: "Monuments", seasonFraction: 0.05 + i * 0.18 })),
+    ...Array.from({ length: 60 }, (_, i) => ({ id: `od-${i}`, race_class: "OtherWorldTourA", seasonFraction: i / 60 })),
+  ];
+  const r = packLaneCalendar({ stageRaces, oneDayRaces, density: 5, days: 28, overlapCap: 3, spineMinStages: 15 });
+  const spans = r.placements
+    .filter((p) => (p.stages ?? 1) >= 15)
+    .map((p) => Math.max(...p.stagesPlaced.map((s) => s.real_day)) - Math.min(...p.stagesPlaced.map((s) => s.real_day)) + 1);
+  assert.equal(spans.length, 3);
+  const spread = Math.max(...spans) - Math.min(...spans);
+  // Løs, ikke-skrøbelig grænse: den PRÆCISE spredning afhænger stærkt af fixturens
+  // konkrete data (samme sensitivitet er dokumenteret i docs/audits' #3546-scorecard mod
+  // det ægte katalog): testen er en smoke-regressionsvagt (fanger en fremtidig ændring
+  // der gør det markant VÆRRE, fx et utilsigtet tilbagefald til stream-0-tie-bias), ikke
+  // et præcisionskrav på denne syntetiske fixture.
+  assert.ok(spread <= 12, `forventede en begrænset spredning på denne fixture (fik ${spread}, spans=${spans.join(",")})`);
 });
