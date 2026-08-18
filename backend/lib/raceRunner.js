@@ -1324,6 +1324,7 @@ async function persistStageMoments({ supabase, race, moments, stageNumbers }) {
     // tabellen kan mangle i vinduet. Et fejlet moment-persist må ALDRIG vælte
     // selve løbs-finaliseringen; fladen degraderer til ingen momenter.
     console.warn(`  ⚠️  race_stage_moments persist failed for race ${race.id} (table may not be migrated yet — why-rapport degraderer til ingen momenter): ${err.message}`);
+    captureException(err, { tags: { flow: "race-finalization", stage: "persist-stage-moments" }, raceId: race.id });
   }
 }
 
@@ -1360,6 +1361,7 @@ async function persistStageTimelines({ supabase, race, timelines, stageNumbers }
     // §2.1) — en fejlet persist må ALDRIG vælte selve løbs-finaliseringen;
     // fladen degraderer til ingen tidslinje (samme regel som race_stage_moments).
     console.warn(`  ⚠️  race_stage_timelines persist failed for race ${race.id} (table may not be migrated yet — tidslinjen degraderer til ingen tidslinje): ${err.message}`);
+    captureException(err, { tags: { flow: "race-finalization", stage: "persist-stage-timelines" }, raceId: race.id });
   }
 }
 
