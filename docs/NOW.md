@@ -14,7 +14,8 @@
 
 > **📌 Opfølgninger:** #3661 er REELT ÅBEN (falsk done — de 4 design-proces-regler mangler i AGENTS.md; fanget af KS3's adversarielle verifikation) · #2884 anti-snipe mangler · sparkline-komponenten ligger klar til #3721-strukturdesignet (rytterprofil+træningsside designes SAMLET, ejer-krav 18/8) · #3592→trin 7 · W7 efter trin 7 · W8-bundter (54 needs-decision) · #3796/#3797 growth. Ops-gæld: 500 åbne.
 
-> **🤖 Aktive sessioner: Ingen aktiv session.** (Parallel chip-session kørte på `fix/3934-sweep-batch-rpc`/PR #3937 — hoved-checkoutet kan stå på dens branch; commit KUN bag guard eller via temp-worktree.) KS3's to sidste workers parkeret som drafts (recap + etapeside) med afslut-nu-ordre; deres PR'er afventer ejer-go 19/8.
+> **🚨 Incident 18/8 LØST (#3934, PR #3937 merged + migration applied):** #3420-constrainten gjorde sweepens rytter-swaps til 23P01-dødvande (~350 enheder/tick; Avesnois kørte m. 23 underfyldte hold). Fix: constraint DEFERRABLE + batch-RPC pr. hold + completion-trigger på binding_span. Verificeret i prod: 0 fejlede enheder. Opfølgning: raceRunner/regenerate på samme RPC (én writer). v7.143 patch note skrevet.
+> **🤖 Aktive sessioner: Ingen aktiv session.** (Hoved-checkoutet står på `main`.) KS3's to sidste workers parkeret som drafts (recap + etapeside) med afslut-nu-ordre; deres PR'er afventer ejer-go 19/8.
 
 ## Standing context (forever-relaunch)
 
