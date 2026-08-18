@@ -9,6 +9,22 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A transfer offer can no longer be accepted while the rider is on auction",
+          "body": "Accepting an offer or counter-offer on a rider who is meanwhile up for auction is now blocked with a clear message instead of silently colliding with the auction. The auction always wins the channel."
+        },
+        "da": {
+          "title": "Et transfertilbud kan ikke længere accepteres mens rytteren står på auktion",
+          "body": "Accept af et tilbud eller modbud på en rytter der i mellemtiden er sat på auktion bliver nu blokeret med en klar besked i stedet for at kollidere stille med auktionen. Auktionen vinder altid kanalen."
+        },
+        "refs": [
+          3940
+        ]
+      },
+      {
         "category": "improved",
         "audience": "player",
         "topic": "Training",

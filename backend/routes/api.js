@@ -6419,6 +6419,54 @@ router.patch("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res)
   res.json(data);
 });
 
+// #3940: fælles guard, brugt ved BÅDE "accept" og "accept_counter" på et
+// transfer-tilbud. En rytter der i mellemtiden er kommet på en aktiv auktion
+// må ikke accepteres via transfer (samme regel som ved tilbuds-oprettelse,
+// #1748 (a), linje ~6457). executeTransferOffer har stadig sin egen TOCTOU-
+// guard ved confirm/execute (sidste værn hvis auktionen starter EFTER accept),
+// men her gives sælgeren/køberen øjeblikkelig, ikke-stille feedback i stedet
+// for at opdage kollisionen først ved confirm-forsøget. Returnerer true hvis
+// tilladt; false hvis blokeret (svaret er allerede sendt), samme kontrakt som
+// assertMarketOpen/assertTeamNotTransferFrozen.
+async function assertTransferOfferNotOnAuction(supabase, riderId, res) {
+  const conflict = getTransferAuctionConflict({
+    riderId,
+    activeAuctionRiderIds: await getActiveAuctionRiderIds(supabase, [riderId]),
+  });
+  if (conflict) {
+    res.status(409).json({
+      error: "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
+      errorCode: "rider_on_auction_transfer",
+    });
+    return false;
+  }
+  return true;
+}
+
+// #3940: samme mønster for et swap-tilbud. Genbruger getSwapAuctionConflict
+// (samme funktion swap-oprettelsen bruger, #1089, linje ~6988).
+async function assertSwapOfferNotOnAuction(supabase, swap, res) {
+  const { data: conflictAuctions } = await supabase
+    .from("auctions")
+    .select("rider_id")
+    .in("rider_id", [swap.offered_rider_id, swap.requested_rider_id])
+    .in("status", ACTIVE_AUCTION_STATUSES);
+  const conflict = getSwapAuctionConflict({
+    offeredRiderId: swap.offered_rider_id,
+    requestedRiderId: swap.requested_rider_id,
+    activeAuctionRiderIds: (conflictAuctions || []).map((a) => a.rider_id),
+  });
+  if (conflict) {
+    if (conflict.code === "offered_rider_on_auction") {
+      res.status(409).json({ error: "Your offered rider is in an active auction and can't be offered in a swap until the auction has ended", errorCode: "offered_rider_on_auction" });
+    } else {
+      res.status(409).json({ error: "The target rider is in an active auction and can't be part of a swap until the auction has ended", errorCode: "requested_rider_on_auction" });
+    }
+    return false;
+  }
+  return true;
+}
+
 // POST /api/transfers/offer — direct offer on any rider (no listing needed)
 // #19: tilbud kan sendes uanset transfervindue. Ved bekræftelse betales der med
 // det samme, men rytter-registreringen udskydes til vinduet åbner (lukket vindue).
@@ -6627,6 +6675,10 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
   if (action === "accept" && isSeller && offer.status === "pending") {
     const price = offer.counter_amount || offer.offer_amount;
 
+    // #3940: rytteren må ikke kunne accepteres via transfer mens han står på
+    // en aktiv auktion, se assertTransferOfferNotOnAuction-kommentaren ovenfor.
+    if (!(await assertTransferOfferNotOnAuction(supabase, offer.rider_id, res))) return;
+
     // #3133: fair-play prisbånd — håndhæves HER (server-side), ikke kun i UI
     // (jf. #2803). Default OFF (floor_pct=0/cap_multiple=null via app_config)
     // → getPriceBandViolation returnerer altid null i dag, ingen adfærdsændring.
@@ -6716,6 +6768,10 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
   // ACCEPT COUNTER — buyer accepts seller's counteroffer → awaiting seller confirmation
   if (action === "accept_counter" && isBuyer && offer.status === "countered") {
     const price = offer.counter_amount;
+
+    // #3940: samme auktions-konflikt-guard som "accept". Modbuddet må ikke
+    // accepteres mens rytteren står på en aktiv auktion.
+    if (!(await assertTransferOfferNotOnAuction(supabase, offer.rider_id, res))) return;
 
     // #3133: samme prisbånd-håndhævelse som "accept" — en counter-offer låser
     // prisen lige så bindende som den oprindelige accept.
@@ -7050,6 +7106,10 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
 
   // ACCEPT — receiving team accepts → awaiting proposing confirmation
   if (action === "accept" && isReceiving && swap.status === "pending") {
+    // #3940: ingen af de to ryttere må accepteres via bytte mens de står på en
+    // aktiv auktion, se assertSwapOfferNotOnAuction-kommentaren ovenfor.
+    if (!(await assertSwapOfferNotOnAuction(supabase, swap, res))) return;
+
     // #3133: fair-play prisbånd på SAMLET værdi (begge ryttere + cash_adjustment).
     // Default OFF (floor_pct=0/cap_multiple=null) → ingen adfærdsændring i dag.
     const swapAcceptBandConfig = await readTransferPriceBandConfig(supabase);
@@ -7139,6 +7199,10 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
   // ACCEPT COUNTER — proposing team accepts receiver's counter → awaiting receiving confirmation
   if (action === "accept_counter" && isProposing && swap.status === "countered") {
     const effectiveCash = swap.counter_cash;
+
+    // #3940: samme auktions-konflikt-guard som "accept". Modbuddet må ikke
+    // accepteres mens en af rytterne står på en aktiv auktion.
+    if (!(await assertSwapOfferNotOnAuction(supabase, swap, res))) return;
 
     // #3133: samme prisbånd-håndhævelse som "accept" — en modtaget counter_cash
     // låser den SAMLEDE værdi lige så bindende som den oprindelige cash_adjustment.
