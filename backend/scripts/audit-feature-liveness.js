@@ -90,12 +90,10 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // race_stage_timelines (#2410 S1, PR #3860 merged 17/8 aften): flag
-  // race_stage_timeline flippet ON 17/8 ~20:45, men ingen etaper kører før næste
-  // dags cron — første tidslinjer fødes ved første etape-finalization efter
-  // deploy. Samme klasse som race_stage_passages-entryen i sin tid: fjern denne
-  // linje når tabellen har rows (forventet 18/8), så Detector A dækker normalt.
-  "race_stage_timelines",
+  // race_stage_timelines-suppressionen fjernet 18/8 ~11:10: første etape efter
+  // flag-ON skrev sin tidslinje (1 row, 9 events, timeline_version 1 — #2410 S1
+  // bevist end-to-end). Detector A dækker tabellen normalt igen.
+  //
   // rider_ownership_events (#3582, PR #3881 merged 18/8 ~09:20, migration
   // applied 18/8 ~09:45): ejerskabs-audit-log. Skrives først ved NÆSTE
   // ejerskabsskifte EFTER Railway-deployet — målt 18/8: den ene auktion siden
