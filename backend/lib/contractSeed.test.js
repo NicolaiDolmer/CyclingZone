@@ -5,6 +5,7 @@ import {
   CONTRACT,
   computeFrozenSalary,
   pickContractLength,
+  pickStarterContractLength,
   computeContractEndSeason,
   contractOnAcquirePatch,
   computeReleaseBuyoutFee,
@@ -34,6 +35,32 @@ test("pickContractLength giver 1-3, ~1/3 fordeling, deterministisk pr. seed", ()
   }
   // determinisme: samme seed → samme første træk
   assert.equal(pickContractLength(makeRng(7)), pickContractLength(makeRng(7)));
+});
+
+test("#3037: pickStarterContractLength giver 2-3, ~1/2 fordeling, aldrig 1", () => {
+  const rng = makeRng(2026);
+  const counts = { 2: 0, 3: 0 };
+  for (let i = 0; i < 3000; i++) {
+    const len = pickStarterContractLength(rng);
+    assert.ok(len === 2 || len === 3, `len ${len} udenfor 2-3 (starter-kontrakter må aldrig få length 1)`);
+    counts[len]++;
+  }
+  for (const len of [2, 3]) {
+    assert.ok(counts[len] >= 1350 && counts[len] <= 1650, `len ${len}: ${counts[len]} udenfor ~1/2`);
+  }
+  // determinisme: samme seed → samme første træk
+  assert.equal(pickStarterContractLength(makeRng(7)), pickStarterContractLength(makeRng(7)));
+});
+
+test("#3037: pickStarterContractLength → contract_end_season altid > startSeason (overlever den sæson holdet allokeres i)", () => {
+  const rng = makeRng(2026);
+  for (const startSeason of [1, 2, 5]) {
+    for (let i = 0; i < 500; i++) {
+      const length = pickStarterContractLength(rng);
+      const end = computeContractEndSeason(startSeason, length);
+      assert.ok(end > startSeason, `startSeason ${startSeason}, length ${length} → end ${end} skulle være > startSeason`);
+    }
+  }
 });
 
 test("computeContractEndSeason = start + length - 1", () => {

@@ -32,7 +32,7 @@ import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderT
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
-import { computeFrozenSalary, pickContractLength, computeContractEndSeason } from "./contractSeed.js";
+import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -481,7 +481,10 @@ async function fetchActiveSeasonNumber(supabase) {
 // 138 hold pr. 25/7, ~1 nyt hold/dag). Denne helper sætter kontrakt-felterne EFTER
 // derive (current_production_value findes først når derive-kæden har kørt) via
 // SAMME formel/PRNG-konventioner som contractSeed.js' "andre ejede hold: blandet
-// 1-3"-gren (runContractSeed non-founder-sti): pickContractLength (seeded rng) +
+// 1-3"-gren (runContractSeed non-founder-sti), MEN #3037 forward-guard: brug
+// pickStarterContractLength (seeded rng, min. 2 — se contractSeed.js) i stedet for
+// pickContractLength, så en START-kontrakt aldrig ender ved holdets egen
+// allokerings-sæson og bliver frigivet ved næste sæsonovergang. +
 // computeFrozenSalary (current_production_value × per-division-sats) +
 // computeContractEndSeason (startSeason + length - 1). Genbruger de eksporterede
 // pure helpers direkte — duplikerer ALDRIG formlen.
@@ -493,7 +496,7 @@ async function applyContractFieldsForRiders(supabase, riderIds, { division, star
   for (let i = 0; i < rows.length; i += WRITE_CONCURRENCY) {
     const batch = rows.slice(i, i + WRITE_CONCURRENCY);
     await Promise.all(batch.map((r) => {
-      const length = pickContractLength(rng);
+      const length = pickStarterContractLength(rng);
       const patch = {
         salary: computeFrozenSalary({ current_production_value: r.current_production_value, division }),
         contract_length: length,
@@ -706,8 +709,10 @@ export async function runStarterSquadAllocation(supabase, {
   for (const t of teamIds) assignments[t].push(...tailAssignments[t]);
 
   // #2894/#2902: kontrakt-felter kræver aktiv sæson + hver managers division —
-  // SAMME formel/PRNG-konventioner som contractSeed.js' non-founder-gren
-  // (pickContractLength seedet rng + computeFrozenSalary + computeContractEndSeason).
+  // SAMME formel/PRNG-konventioner som contractSeed.js' non-founder-gren, MEN
+  // #3037: pickStarterContractLength (min. 2) i stedet for pickContractLength —
+  // denne pulje ER en start-trup-allokering (launch/relaunch), så samme
+  // forward-guard mod øjeblikkelig frigivelse ved næste sæsonovergang gælder her.
   const startSeason = await fetchActiveSeasonNumber(supabase);
   const teamRows = await fetchAllRows(() =>
     supabase.from("teams").select("id, division").in("id", teamIds).order("id"));
@@ -717,7 +722,7 @@ export async function runStarterSquadAllocation(supabase, {
 
   const pairs = Object.entries(assignments).flatMap(([teamId, ids]) =>
     ids.map((id) => {
-      const length = pickContractLength(contractRng);
+      const length = pickStarterContractLength(contractRng);
       return {
         id,
         team_id: teamId,
