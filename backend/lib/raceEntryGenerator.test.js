@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { assignTeamAcrossRaces, runRaceEntryGenerator } from "./raceEntryGenerator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
+import { raceBindingWindow, windowsOverlap } from "./raceBinding.js";
 
 const ab = (v) => ({
   climbing: v, time_trial: v, sprint: v, punch: v, endurance: v,
@@ -58,8 +59,15 @@ test("assignTeamAcrossRaces: hvert pick har en kaptajn-rolle", () => {
 // tværs af manuel/auto) som Postgres — regressioner til rå insert med dublet ELLER
 // dobbelt special-rolle (CYCLINGZONE-2D) fejler testen (#2375).
 // opts.failUpsert(ctx) → injicér upsert-fejl (never-emptier-/isolations-tests).
+// opts.enforceDayInvariant → simulér #3420's DB-backstop (no_rider_double_booking,
+// EXCLUDE USING gist rider_id/binding_span) OVEN PÅ PK/uq'en ovenfor: afviser (23P01)
+// ethvert insert/upsert der ville give SAMME rider_id to race_entries-rækker i
+// FORSKELLIGE løb med overlappende binding-vindue (raceBindingWindow, samme afledning
+// som appen bruger). Slået FRA som default så eksisterende tests (der ikke øver
+// binding-scenarier) er upåvirkede; #3906-testene nedenfor slår den til for at bevise
+// at retry-stien reelt aldrig FORSØGER en dobbeltbooking, ikke kun at den ikke crasher.
 const MOCK_SPECIAL_ROLES = ["captain", "sprint_captain", "hunter"];
-function makeSupabase(state, { failUpsert = null } = {}) {
+function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false } = {}) {
   const calls = [];
   const entryKey = (r) => `${r.race_id}|${r.rider_id}`;
   // uq_race_entries_*: returnér den krænkede rolle hvis `rows` (samlet tabel-billede)
@@ -77,11 +85,42 @@ function makeSupabase(state, { failUpsert = null } = {}) {
   const roleUqError = (role) => ({
     error: { message: `duplicate key value violates unique constraint "uq_race_entries_${role}"` },
   });
+  const windowCache = new Map();
+  const windowForRace = (raceId) => {
+    if (!windowCache.has(raceId)) {
+      windowCache.set(raceId, raceBindingWindow((state.race_stage_schedule || []).filter((r) => r.race_id === raceId)));
+    }
+    return windowCache.get(raceId);
+  };
+  // #3906: rider_id genbrugt på tværs af to forskellige løb med overlappende vindue.
+  const violatesDayInvariant = (existingRows, candidateRows) => {
+    windowCache.clear();
+    const byRider = new Map();
+    for (const r of [...existingRows, ...candidateRows]) {
+      if (!byRider.has(r.rider_id)) byRider.set(r.rider_id, new Set());
+      byRider.get(r.rider_id).add(r.race_id);
+    }
+    for (const raceIds of byRider.values()) {
+      const ids = [...raceIds];
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const wa = windowForRace(ids[i]);
+          const wb = windowForRace(ids[j]);
+          if (wa && wb && windowsOverlap(wa, wb)) return true;
+        }
+      }
+    }
+    return false;
+  };
+  const dayInvariantError = () => ({
+    error: { code: "23P01", message: 'conflicting key value violates exclusion constraint "no_rider_double_booking"' },
+  });
   function builder(table) {
     const q = { table, filters: [], op: "select", values: null };
     const api = {
       select() { return api; },
       eq(col, val) { q.filters.push(["eq", col, val]); return api; },
+      neq(col, val) { q.filters.push(["neq", col, val]); return api; },
       in(col, vals) { q.filters.push(["in", col, vals]); return api; },
       or() { return api; },
       is(col, val) { q.filters.push(["is", col, val]); return api; },
@@ -102,6 +141,7 @@ function makeSupabase(state, { failUpsert = null } = {}) {
           }
           const violated = violatedRoleUq([...(state[table] || []), ...rows]);
           if (violated) return Promise.resolve(roleUqError(violated));
+          if (enforceDayInvariant && violatesDayInvariant(state[table] || [], rows)) return Promise.resolve(dayInvariantError());
         }
         calls.push({ table, insert: rows });
         state[table] = [...(state[table] || []), ...rows];
@@ -130,12 +170,14 @@ function makeSupabase(state, { failUpsert = null } = {}) {
           }
           const violated = violatedRoleUq([...(state[table] || []), ...accepted]);
           if (violated) return Promise.resolve(roleUqError(violated));
+          if (enforceDayInvariant && violatesDayInvariant(state[table] || [], accepted)) return Promise.resolve(dayInvariantError());
           state[table] = [...(state[table] || []), ...accepted];
           return Promise.resolve({ error: null });
         }
         if (table === "race_entries") {
           const violated = violatedRoleUq([...(state[table] || []), ...rows]);
           if (violated) return Promise.resolve(roleUqError(violated));
+          if (enforceDayInvariant && violatesDayInvariant(state[table] || [], rows)) return Promise.resolve(dayInvariantError());
         }
         state[table] = [...(state[table] || []), ...rows];
         return Promise.resolve({ error: null });
@@ -144,6 +186,7 @@ function makeSupabase(state, { failUpsert = null } = {}) {
         let rows = [...(state[table] || [])];
         for (const [op, col, val] of q.filters) {
           if (op === "eq") rows = rows.filter((r) => r[col] === val);
+          if (op === "neq") rows = rows.filter((r) => r[col] !== val);
           if (op === "in") rows = rows.filter((r) => val.includes(r[col]));
           if (op === "gte") rows = rows.filter((r) => r[col] != null && r[col] >= val);
           if (op === "is") rows = rows.filter((r) => (r[col] ?? null) === val);
@@ -1367,4 +1410,119 @@ test("CYCLINGZONE-44: residual auto-række i fuld-manuel løb dobbeltbooker IKKE
     assert.ok(!aRiders.has(r), `${r} står i BEGGE overlappende løb (binding-invariant-brud)`);
   }
   assert.equal(aRiders.size, 6, "A står tilbage med præcis den manuelle trup");
+});
+
+// ── #3906 (CYCLINGZONE-2D, prod 18/8 — Koben Racing) ──────────────────────────
+// Rod-årsag: regenerateUnitAfterConcurrentManualSave (uq_race_entries_*-retry-stien)
+// kaldte assignTeamAcrossRaces med KUN det ENE ramte løb i `races` — ingen hukommelse
+// om holdets ANDRE, tidsoverlappende løb i samme pulje/batch. Ramte uq-kollisionen ét
+// af to overlappende løb for SAMME hold (Koben Racing var tilmeldt to instanser af
+// "Famenne-Ardenne"/"Vuelta a Cantabria" i samme pulje), kunne retry'en derfor
+// (uvidende) genvælge en rytter der allerede kørte søsterløbet — fanget af DB'ens
+// no_rider_double_booking (#3420) som et SENERE insert-forsøg der selv fejlede, og
+// enheden stod stuck (sweepen "heler ikke selv", jf. issuets egen beskrivelse).
+//
+// Testen replikerer PRÆCIS Koben-formen: ét hold, to Class2-løb i samme pulje med
+// overlappende game_day-vindue (A: [23,23], B: [23,25]). enforceDayInvariant: true
+// får mocken til at simulere #3420's DB-backstop oven på PK/uq'en, så testen beviser
+// at sweepen nu EKSKLUDERER kandidat-ryttere bundet i søsterløbet FØR insert — ikke
+// bare at den ikke crasher.
+test("#3906: Koben-scenario — retry på det SENERE overlappende løb ekskluderer allerede committede søsterløbs-ryttere", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [
+    { id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 5 }, // Famenne-Ardenne
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 5 }, // Vuelta a Cantabria Menor
+  ];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-08-19T10:00:00Z", game_day: 23 },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-08-19T10:00:00Z", game_day: 23 },
+    { race_id: "B", stage_number: 2, scheduled_at: "2026-08-20T10:00:00Z", game_day: 24 },
+    { race_id: "B", stage_number: 3, scheduled_at: "2026-08-21T10:00:00Z", game_day: 25 },
+  ];
+  state.race_stage_profiles = [
+    { race_id: "A", ...flatProfile(1) },
+    { race_id: "B", ...flatProfile(1) }, { race_id: "B", ...flatProfile(2) }, { race_id: "B", ...flatProfile(3) },
+  ];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 5 }];
+  seedTeamRiders(state, "t1", 8); // kun 8 ryttere → 2 Class2-hold (6+6) kan IKKE begge fyldes helt
+
+  // Simulér en konkurrerende uq_race_entries_captain-kollision PRÆCIS på løb B's
+  // FØRSTE insert-forsøg (mirror #2436's TOCTOU-mønster) — udløser
+  // regenerateUnitAfterConcurrentManualSave for B, EFTER A allerede er committet.
+  let bAttempts = 0;
+  const supabase = makeSupabase(state, {
+    enforceDayInvariant: true,
+    failUpsert: ({ table, rows }) => {
+      if (table !== "race_entries" || !rows.length || rows[0].race_id !== "B") return false;
+      bAttempts += 1;
+      if (bAttempts > 1) return false; // kun 1. forsøg kolliderer, som #2436
+      return 'duplicate key value violates unique constraint "uq_race_entries_captain"';
+    },
+  });
+
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, `retry burde have reddet enheden uden dobbeltbooking (fejl: ${res.errors.join("; ")})`);
+  assert.equal(res.errors.length, 0, "ingen Sentry-capture — no_rider_double_booking blev aldrig forsøgt");
+
+  const aRiders = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  const bRiders = state.race_entries.filter((e) => e.race_id === "B").map((e) => e.rider_id);
+  assert.equal(aRiders.length, 6, "A (tidligst i vindue) fik sin fulde trup");
+  const aSet = new Set(aRiders);
+  for (const r of bRiders) assert.ok(!aSet.has(r), `${r} står i BEGGE overlappende løb efter retry (dobbeltbooking)`);
+  // Kun 2 ryttere tilbage (8 - 6) → B fyldes PARTIELT, ikke crasher, ikke tomt.
+  assert.equal(bRiders.length, 2, "B splittes til de resterende 2 ledige ryttere (partiel fyldning)");
+  assert.equal(bAttempts, 2, "sanity: uq-injektionen udløste rent faktisk retry'en (2 forsøg for B)");
+});
+
+// Samme form, men roster stor nok til at BEGGE løb kan fyldes HELT (12 ledige pladser,
+// 14 ryttere) — beviser at splitningen ikke bare er en nødløsning ved for lille roster,
+// men den forventede adfærd også ved fuld kapacitet: ingen delt rytter, begge 6/6.
+test("#3906: Koben-scenario — retry med roster stor nok til at fylde BEGGE overlappende løb helt", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [
+    { id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 5 },
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 5 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-08-19T10:00:00Z", game_day: 23 },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-08-19T10:00:00Z", game_day: 23 },
+    { race_id: "B", stage_number: 2, scheduled_at: "2026-08-20T10:00:00Z", game_day: 24 },
+    { race_id: "B", stage_number: 3, scheduled_at: "2026-08-21T10:00:00Z", game_day: 25 },
+  ];
+  state.race_stage_profiles = [
+    { race_id: "A", ...flatProfile(1) },
+    { race_id: "B", ...flatProfile(1) }, { race_id: "B", ...flatProfile(2) }, { race_id: "B", ...flatProfile(3) },
+  ];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 5 }];
+  seedTeamRiders(state, "t1", 14); // 14 ryttere → nok til 6+6 uden partiel fyldning
+
+  let bAttempts = 0;
+  const supabase = makeSupabase(state, {
+    enforceDayInvariant: true,
+    failUpsert: ({ table, rows }) => {
+      if (table !== "race_entries" || !rows.length || rows[0].race_id !== "B") return false;
+      bAttempts += 1;
+      if (bAttempts > 1) return false;
+      return 'duplicate key value violates unique constraint "uq_race_entries_captain"';
+    },
+  });
+
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, `retry burde have reddet enheden (fejl: ${res.errors.join("; ")})`);
+  assert.equal(res.errors.length, 0, "ingen Sentry-capture");
+
+  const aRiders = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  const bRiders = state.race_entries.filter((e) => e.race_id === "B").map((e) => e.rider_id);
+  assert.equal(aRiders.length, 6, "A fyldt helt");
+  assert.equal(bRiders.length, 6, "B fyldt helt EFTER split — nok ryttere til begge");
+  const aSet = new Set(aRiders);
+  for (const r of bRiders) assert.ok(!aSet.has(r), `${r} står i BEGGE overlappende løb efter retry (dobbeltbooking)`);
+  assert.equal(
+    state.race_entries.filter((e) => e.race_role === "captain" && e.race_id === "B").length, 1,
+    "B fik sin egen kaptajn efter split (ikke tom rolle-tildeling)"
+  );
 });

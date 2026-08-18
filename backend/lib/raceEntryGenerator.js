@@ -643,6 +643,62 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     return applyUnitDiff({ raceId, teamId, desired: survivors, existing });
   }
 
+  // #3906 (CYCLINGZONE-2D, prod 18/8 — Koben Racing): regenerateUnitAfterConcurrentManualSave
+  // (nedenfor) kalder assignTeamAcrossRaces med KUN dette ene løb i `races` — den har derfor
+  // INGEN hukommelse om holdets ANDRE løb i samme pulje/batch. Rammer uq-kollisionen ét af to
+  // tidsoverlappende løb for SAMME hold (fx to instanser af "Famenne-Ardenne" + "Vuelta a
+  // Cantabria" i samme pulje, begge Koben-tilmeldt), kan retry'en derfor uvidende vælge en
+  // rytter der allerede kører søsterløbet — nøjagtig den dobbeltbooking no_rider_double_booking
+  // (#3420) findes for at forhindre, nu fanget som et SENERE insert-forsøg der selv fejler.
+  // Byg derfor et komplet locked-windows-billede for enhedens søsterløb, filtreret til dem
+  // hvis vindue RENT FAKTISK overlapper dette løbs: (a) holdets allerede COMMITTEDE entries i
+  // andre løb (frisk DB-scan, mirror loadTeamBindingContext/raceBinding.js), og (b) holdets
+  // andre STAGEDE (beregnet denne kørsel, men endnu ikke skrevet — staged processeres i
+  // vindue-rækkefølge, så et senere søsterløb kan mangle fra (a) på retry-tidspunktet)
+  // enheder for SAMME hold. Ryttere i disse vinduer EKSKLUDERES fra kandidatlisten, så
+  // assignTeamAcrossRaces/autopick SPLITTER truppen over de overlappende løb i stedet for at
+  // gense samme rytter; er roster for lille til at dække begge, giver autopick naturligt
+  // færre picks (partiel fyldning, se autopickTeamSelection — aldrig en crash).
+  async function siblingLockedWindows({ raceId, teamId, window }) {
+    if (!window) return [];
+    const locked = [];
+    // pagination-safe: bounded by ÉT holds SAMLEDE sæson-entries (typisk et par
+    // hundrede rækker — antal-løb × trupstørrelse), langt under PostgREST's 1000-cap.
+    const { data: otherRows, error: oErr } = await supabase
+      .from("race_entries").select("race_id, rider_id")
+      .eq("team_id", teamId).neq("race_id", raceId);
+    if (oErr) throw new Error(`race_entries (sibling binding re-scan): ${oErr.message}`);
+    const otherRidersByRace = new Map();
+    for (const e of otherRows || []) {
+      if (!otherRidersByRace.has(e.race_id)) otherRidersByRace.set(e.race_id, []);
+      otherRidersByRace.get(e.race_id).push(e.rider_id);
+    }
+    let committedLockedRiders = 0;
+    for (const [otherRaceId, riderIds] of otherRidersByRace) {
+      const otherWindow = windowByRace.get(otherRaceId);
+      if (!otherWindow || !windowsOverlap(window, otherWindow)) continue;
+      locked.push({ window: otherWindow, riderIds });
+      committedLockedRiders += riderIds.length;
+    }
+    let stagedLockedRiders = 0;
+    for (const unit of staged) {
+      if (unit.team_id !== teamId || unit.race_id === raceId) continue;
+      const otherWindow = windowByRace.get(unit.race_id);
+      if (!otherWindow || !windowsOverlap(window, otherWindow)) continue;
+      const riderIds = (unit.picks || []).map((p) => p.rider_id);
+      if (!riderIds.length) continue;
+      locked.push({ window: otherWindow, riderIds });
+      stagedLockedRiders += riderIds.length;
+    }
+    if (committedLockedRiders || stagedLockedRiders) {
+      console.warn(
+        `⚠️  Entry-generator ${raceId}/${teamId}: søsterløb-binding fundet under retry — ` +
+        `${committedLockedRiders} committede + ${stagedLockedRiders} stagede rytter(e) ekskluderet fra kandidatlisten (#3906)`
+      );
+    }
+    return locked;
+  }
+
   // #2436 (CYCLINGZONE-32): genlæs ENHEDENS manuelle + eksisterende auto-rækker friskt
   // fra DB (den oprindelige manual-scan i trin 6 var team/sæson-bred og kan være
   // forældet af en manager-gem der landede undervejs) og kør enheden om — samme kerne
@@ -679,6 +735,9 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
 
     const adjSizeRule = { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length };
     const lockedWindows = manualRiders.length ? [{ window, riderIds: manualRiders }] : [];
+    // #3906: ekskludér ryttere bundet i et overlappende søsterløb FØR autopick vælger,
+    // så truppen splittes i stedet for at gense en allerede-bundet rytter.
+    lockedWindows.push(...(await siblingLockedWindows({ raceId, teamId, window })));
     const teamRaces = [{ race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule }];
     const assignment = assignTeamAcrossRaces({
       riders: ridersByTeam.get(teamId) || [], races: teamRaces, lockedWindows,
@@ -688,6 +747,13 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     // Top-up (delvis manuel trup): den manuelle trup ejer special-rollerne → auto-picks
     // neutraliseres til helper (mirror topUpKeys-logikken i step 9).
     if (manualRiders.length) picks = picks.map((p) => ({ ...p, race_role: "helper" }));
+    // #3906: partiel fyldning er en gyldig, forventet udfald (ikke en fejl) — log det
+    // korrekte resultat i stedet for at lade enheden stå tavst underbemandet.
+    if (picks.length < adjSizeRule.max) {
+      console.warn(
+        `⚠️  Entry-generator ${raceId}/${teamId}: partiel fyldning efter binding-splitting — ${picks.length}/${adjSizeRule.max} auto-pladser (#3906)`
+      );
+    }
 
     const desired = new Map();
     for (const p of picks) if (!desired.has(p.rider_id)) desired.set(p.rider_id, p.race_role);
