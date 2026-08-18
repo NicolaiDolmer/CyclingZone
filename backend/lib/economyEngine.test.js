@@ -5916,7 +5916,13 @@ test("#2920 · dobbeltkørsel bogfører IKKE tvangssalget to gange", async () =>
   // Delt idempotency-state mellem de to kørsler (som en rigtig DB).
   const ctx = createDebtClusterSupabase({ teamId, enforceIdempotency: true });
 
-  const makeTeam = () => ({
+  // #2982: kørsel 1 gennemfører BÅDE kreditering og disposition (ingen crash),
+  // så kørsel 2's roster-snapshot afspejler den ægte DB-tilstand bagefter —
+  // rytteren er væk fra holdet, akkurat som en frisk loadHumanSeasonEndTeams-
+  // forespørgsel ville vise det. Se testen nedenfor (#2982 resume) for det
+  // andet tilfælde: kørsel 1 crasher FØR dispositionen når igennem, og
+  // rytteren er derfor STADIG på holdet ved kørsel 2.
+  const makeTeamStillOwned = () => ({
     id: teamId,
     name: "Double Run D3",
     division: 3,
@@ -5927,6 +5933,10 @@ test("#2920 · dobbeltkørsel bogfører IKKE tvangssalget to gange", async () =>
       { id: "rider-a", firstname: "Sold", lastname: "Twice", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
     ],
   });
+  const makeTeamAlreadyDisposed = () => ({
+    ...makeTeamStillOwned(),
+    riders: [], // rytteren forlod holdet i kørsel 1 og hentes derfor ikke med igen
+  });
 
   const deps = {
     supabase: ctx.supabase,
@@ -5936,9 +5946,10 @@ test("#2920 · dobbeltkørsel bogfører IKKE tvangssalget to gange", async () =>
     repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
   };
 
-  // Kørsel 1 + kørsel 2 (cron-genkørsel af samme sæson, samme roster-snapshot).
-  await processTeamSeasonPayroll(makeTeam(), seasonId, deps);
-  await processTeamSeasonPayroll(makeTeam(), seasonId, deps);
+  // Kørsel 1 (fuldt gennemført) + kørsel 2 (cron-genkørsel af samme sæson,
+  // frisk roster-snapshot der afspejler kørsel 1's resultat).
+  await processTeamSeasonPayroll(makeTeamStillOwned(), seasonId, deps);
+  await processTeamSeasonPayroll(makeTeamAlreadyDisposed(), seasonId, deps);
 
   const forcedSaleRows = ctx.financeRows.filter(r => r.type === "forced_debt_sale");
   assert.equal(forcedSaleRows.length, 1, "præcis én forced_debt_sale-postering trods to kørsler");
@@ -5946,6 +5957,95 @@ test("#2920 · dobbeltkørsel bogfører IKKE tvangssalget to gange", async () =>
   // Dispositionen køres heller ikke igen: rytteren flyttes kun i den kørsel der
   // faktisk bogførte pengene.
   assert.equal(ctx.riderUpdates.length, 1, "rytteren må ikke dispositioneres to gange");
+});
+
+test("#2982 · crash mellem kreditering og rytterflyt: næste kørsel fuldfører dispositionen (lån afdraget), uden at bogføre penge to gange", async () => {
+  const teamId = "team-forced-crash-resume";
+  const seasonId = "season-2982-resume";
+  // Delt idempotency-state mellem de to kørsler (som en rigtig DB).
+  const ctx = createDebtClusterSupabase({ teamId, enforceIdempotency: true });
+
+  // #2982: simulér at rytterflytningen kaster i FØRSTE kald (netværks-
+  // hikke/DB-fejl lige efter creditTeam er landet — den præcise crash issuet
+  // beskriver), men opfører sig normalt derefter (kørsel 2's retry).
+  let riderUpdateAttempts = 0;
+  const baseFrom = ctx.supabase.from.bind(ctx.supabase);
+  const originalRidersHandle = baseFrom("riders");
+  ctx.supabase.from = (table) => {
+    if (table !== "riders") return baseFrom(table);
+    return {
+      ...originalRidersHandle,
+      update(payload) {
+        riderUpdateAttempts += 1;
+        if (riderUpdateAttempts === 1) {
+          return { eq: () => Promise.resolve({ error: { message: "simulated crash mid-disposition" } }) };
+        }
+        return originalRidersHandle.update(payload);
+      },
+    };
+  };
+
+  // Rytteren er STADIG på holdet begge gange: kørsel 1's rytterflyt fejlede
+  // reelt, så DB'en (og dermed roster-snapshot'et) aldrig blev opdateret.
+  const makeTeam = () => ({
+    id: teamId,
+    name: "Crash Resume D3",
+    division: 3,
+    balance: 0,
+    debt_breach_streak: 1,
+    transfer_frozen: false,
+    riders: [
+      { id: "rider-a", firstname: "Crash", lastname: "Resume", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  });
+
+  const repayLoansCalls = [];
+  const deps = {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async (...args) => {
+      repayLoansCalls.push(args);
+      return { totalRepaid: 500_000, loans: [{ loan_id: "loan-1", paid: 500_000, remaining: 0, paid_off: true }] };
+    },
+  };
+
+  // Kørsel 1: krediteringen lykkes, men rytterflyt kaster → fejlen propagerer,
+  // akkurat som en ægte crash mellem de to trin ville gøre.
+  await assert.rejects(() => processTeamSeasonPayroll(makeTeam(), seasonId, deps));
+
+  // Pengene ER bogført, selvom kørsel 1 crashede lige bagefter.
+  assert.equal(
+    ctx.financeRows.filter(r => r.type === "forced_debt_sale").length,
+    1,
+    "krediteringen skal stå ved magt selvom kørsel 1 crashede i næste trin",
+  );
+  assert.equal(ctx.riderUpdates.length, 0, "det fejlede rytterflyt-forsøg i kørsel 1 må ikke tælle som gennemført");
+  assert.equal(repayLoansCalls.length, 0, "lånafdraget nås aldrig i kørsel 1 — crashet sker FØR det trin");
+
+  // Kørsel 2 (retry af samme sæson): samme roster, for rytteren er FAKTISK
+  // stadig på holdet i DB — kørsel 1 nåede aldrig at flytte den.
+  await processTeamSeasonPayroll(makeTeam(), seasonId, deps);
+
+  // (1) Pengene bogføres IKKE igen — idempotency-nøglen fanger dubletten.
+  assert.equal(
+    ctx.financeRows.filter(r => r.type === "forced_debt_sale").length,
+    1,
+    "kørsel 2 må ikke kreditere holdet igen for samme salg",
+  );
+
+  // (2) ...MEN dispositionen fuldføres nu, hvor den fejlede i kørsel 1 (#2982
+  // kerne-fix): rytteren flyttes, uden at pengene bogføres to gange.
+  assert.equal(ctx.riderUpdates.length, 1, "kørsel 2 skal fuldføre den uafsluttede rytterflytning");
+  assert.equal(ctx.riderUpdates[0].id, "rider-a");
+
+  // (3) ...og lånet afdrages, som acceptkriteriet i #2982 kræver — resten af
+  // dispositionen (oprydning + lånafdrag) er ikke betinget af en frisk
+  // kreditering, kun af at rytteren stadig var uafklaret.
+  assert.equal(repayLoansCalls.length, 1, "lånafdraget skal nu nås i den fuldførende kørsel");
+  assert.equal(repayLoansCalls[0][0], teamId);
+  assert.equal(repayLoansCalls[0][1], 500_000);
 });
 
 // ─── #2976 · Tvangssalg + varsel må ikke være tavse ───────────────────────────
@@ -6168,12 +6268,15 @@ test("#2976 · cron-genkørsel sender ikke salgs-beskeden to gange", async () =>
   assert.equal(ctx.notifications.length, 1, "kørsel 1 skal sende salgs-beskeden");
   assert.equal(ctx.notifications[0].metadata.titleCode, "notif.debtCeilingForcedSale.title");
 
-  // Kørsel 2: worst case for dublet-risikoen — krediteringen afvises af
-  // idempotency-nøglen mens rytteren stadig ligger i snapshottet. Beskeden må
-  // ikke sendes igen, og "vi solgte X" må slet ikke gentages for en rytter der
-  // ikke forlod holdet i denne kørsel.
+  // Kørsel 2: en ægte cron-genkørsel af den SAMME (allerede fuldt gennemførte)
+  // sæson henter et FRISK roster-snapshot — rytteren er væk fra holdet, for
+  // kørsel 1 nåede både at kreditere OG dispositionere den. #2982: hvis
+  // rytteren stadig LÅ i snapshottet her (fordi kørsel 1 crashede FØR
+  // dispositionen nåede igennem), er det den anden, adskilte "resume"-sag —
+  // se testen "#2982 · crash mellem kreditering og rytterflyt" — og der SKAL
+  // beskeden (og dispositionen) fuldføres, ikke undertrykkes.
   await processTeamSeasonPayroll(
-    { id: teamId, name: "Rerun D3", division: 3, balance: 999_999, debt_breach_streak: 2, transfer_frozen: true, riders: [rider] },
+    { id: teamId, name: "Rerun D3", division: 3, balance: 999_999, debt_breach_streak: 2, transfer_frozen: true, riders: [] },
     seasonId,
     deps,
   );
