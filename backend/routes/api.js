@@ -80,6 +80,7 @@ import {
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
+import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
   PAUSE_LEVELS,
@@ -3910,18 +3911,39 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // #3102 PR 2: holdets peak-planer for sæsonen → peaks/payback-overlay pr.
     // løbskort (hvem topper her, hvem betaler payback her). Samme deterministiske
     // dag-enhed som planneren (CET-dag-ordinal), så de to flader aldrig divergerer.
-    const { data: teamRiderRows, error: teamRiderErr } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_retired", false);
-    if (teamRiderErr) throw new Error(`riders (peak overlay): ${teamRiderErr.message}`);
+    // #3953: begge kald wrappet i withSupabaseRetry — rene SELECTs, samme
+    // request/fejlklasse (peak overlay-hentning ramt af Cloudflare 525-blip
+    // 18/8, CYCLINGZONE-4J). Den rå fejl kastes ind i retry-laget (samme mønster
+    // som fetchAllRows/achievementEngine); kontekst-præfikset og normaliseringen
+    // sker først på den ENDELIGE fejl, så Sentry-grupperingen er uændret.
+    let teamRiderRows;
+    try {
+      teamRiderRows = await withSupabaseRetry(async () => {
+        const { data, error } = await supabase
+          .from("riders").select("id").eq("team_id", req.team.id).eq("is_retired", false);
+        if (error) throw error;
+        return data;
+      });
+    } catch (error) {
+      throw new Error(`riders (peak overlay): ${normalizeSupabaseErrorMessage(error.message)}`, { cause: error });
+    }
     const teamRiderIds = (teamRiderRows || []).map((r) => r.id);
     let teamPeakPlans = [];
     if (teamRiderIds.length) {
-      const { data: planRows, error: planErr } = await supabase
-        .from("rider_peak_plans")
-        .select("rider_id, target_race_id, window_end")
-        .eq("season_id", season.id)
-        .in("rider_id", teamRiderIds);
-      if (planErr) throw new Error(`rider_peak_plans (peak overlay): ${planErr.message}`);
+      let planRows;
+      try {
+        planRows = await withSupabaseRetry(async () => {
+          const { data, error } = await supabase
+            .from("rider_peak_plans")
+            .select("rider_id, target_race_id, window_end")
+            .eq("season_id", season.id)
+            .in("rider_id", teamRiderIds);
+          if (error) throw error;
+          return data;
+        });
+      } catch (error) {
+        throw new Error(`rider_peak_plans (peak overlay): ${normalizeSupabaseErrorMessage(error.message)}`, { cause: error });
+      }
       teamPeakPlans = (planRows || []).map((p) => ({
         riderId: p.rider_id,
         targetRaceId: p.target_race_id ?? null,
