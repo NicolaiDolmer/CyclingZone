@@ -125,7 +125,9 @@ async function fetchAll(supabase, table, apply) {
   return out;
 }
 
-function parseGoals(currentGoals) {
+// Ubrugt efter at ekstra-måls-varianten blev fravalgt (ejer-anbefaling #3655);
+// beholdt med _-prefix som dokumentation af den fravalgte gren.
+function _parseGoals(currentGoals) {
   if (!currentGoals) return [];
   if (typeof currentGoals === "string") {
     try { return JSON.parse(currentGoals); } catch { return []; }
