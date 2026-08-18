@@ -14,6 +14,7 @@ import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
+import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { buildContractExpiringNotification } from "./notificationService.js";
 import {
@@ -583,6 +584,16 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     await notifyTeamOwner(offer.buyer_team_id, stalePayload.type, stalePayload.title, stalePayload.message, offer.id, stalePayload.metadata);
     await notifyTeamOwner(offer.seller_team_id, stalePayload.type, stalePayload.title, stalePayload.message, offer.id, stalePayload.metadata);
     return failure(409, "The rider changed status during confirmation. The deal was cancelled", "stale_rider_state");
+  }
+
+  // #2793 (bølge 3-følgefund): rytteren graduerede lige (graduatePatch ovenfor)
+  // via et DIREKTE salg på transfermarkedet (#3845) — resolver en evt. hængende
+  // PENDING academy_graduation-row hos sælgeren så academyGraduationSweep ikke
+  // senere finder den og forsøger at auto-resolve en rytter der allerede er solgt.
+  if (graduatePatch.is_academy === false && offer.seller_team_id) {
+    await resolvePendingGraduationOnSale(supabase, {
+      teamId: offer.seller_team_id, riderId: rider.id,
+    });
   }
 
   // #1906 defense-in-depth: ryd rytterens fremtidige ghost-race_entries med det

@@ -97,6 +97,8 @@ function createFinalizeAuctionSupabase({
   activeStageRaceRiderIds = [], // #1995: ryttere i et aktivt fleretape-løb → defer
   auctionBids = [], // #3401: realiserede bud (team_id, amount) — bruges KUN til losing-bidder-reveal, ALDRIG auction_proxy_bids
   riderUpdateHitsZeroRows = false, // #3580: simulér en riders.update() der rammer 0 rækker
+  academyGraduationRow = null, // #2793: pending academy_graduation-row for sælgeren (resolvePendingGraduationOnSale), default ingen
+  academyGraduationUpdates = [],
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -438,6 +440,37 @@ function createFinalizeAuctionSupabase({
                 assert.equal(column, "auction_id");
                 assert.equal(value, auction.id);
                 return Promise.resolve({ data: auctionBids, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      // #2793: resolvePendingGraduationOnSale — kaldes kun når en OWN-team
+      // akademi-rytter graduerer via et direkte salg (#3650/#3845). Simplere
+      // fixture-styret mock: default ingen pending row (no-op).
+      if (table === "academy_graduation") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  eq() {
+                    return {
+                      maybeSingle() {
+                        return Promise.resolve({ data: academyGraduationRow, error: null });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(column, value) {
+                academyGraduationUpdates.push({ payload, column, value });
+                return Promise.resolve({ error: null });
               },
             };
           },
@@ -2270,6 +2303,65 @@ test("finalizeAuctionById graduates a contractless own-team academy rider and gi
     contract_end_season: 2,
     is_academy: false,
   }]);
+});
+
+// #2793 (bølge 3-følgefund): en akademi-rytter der ALLEREDE er turneret 22
+// (pending academy_graduation-row, override-vinduet ikke udløbet endnu) bliver
+// solgt DIREKTE via #3845 i stedet for graduerings-vinduets "sell"-handling.
+// Uden resolvePendingGraduationOnSale ville rækken hænge som 'pending', og
+// academyGraduationSweep ville senere forsøge at auto-resolve en rytter der
+// allerede er solgt (risiko: phantom createGraduateAuction for sælgeren).
+test("finalizeAuctionById resolves a pending academy_graduation row to 'sold' when an own-team academy rider is sold directly (#2793)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const academyGraduationUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-academy-pending-grad",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 200,
+        seller_team_id: "seller-team",
+        is_youth: false,
+        rider: {
+          id: "rider-academy-pending-grad",
+          firstname: "Elin",
+          lastname: "Overdue",
+          team_id: "seller-team",
+          is_academy: true,
+          salary: 4_000,
+          contract_length: 2,
+          contract_end_season: 3,
+          base_value: 40_000,
+          prize_earnings_bonus: 0,
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+      academyGraduationRow: { id: "grad-row-1", status: "pending" },
+      academyGraduationUpdates,
+    }),
+    auctionId: "auction-academy-pending-grad",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-08-17T12:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.equal(academyGraduationUpdates.length, 1, "den hængende pending-row skal resolves");
+  assert.equal(academyGraduationUpdates[0].column, "id");
+  assert.equal(academyGraduationUpdates[0].value, "grad-row-1");
+  assert.equal(academyGraduationUpdates[0].payload.status, "sold");
+  assert.equal(academyGraduationUpdates[0].payload.resolved_at, "2026-08-17T12:00:00.000Z");
 });
 
 // ─── #1308 Fase B: ungdomsauktion-finalization ────────────────────────────────
