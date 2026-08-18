@@ -273,19 +273,26 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       <button
         onClick={() => navigate("/dashboard")}
         aria-label="Cycling Zone"
-        className="flex items-center gap-2.5 px-4 py-4 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
+        className="flex items-center px-4 py-6 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
         {/* #671 Slice B: wordmark = primaer brand-mark (BRAND_BRIEF). Det redundante
             CZ-monogram er fjernet — monogram + wordmark + team-navn var tre identitets-
             elementer i samme hjoerne. Sidebar-canvas altid navy → forceDark wordmark.
-            Bredere nav-header/IA-restructure spores i #1027. */}
-        <div className="min-w-0">
-          <Wordmark forceDark className="h-5 w-auto" alt="" />
-          <div className="flex items-center gap-1.5 mt-1">
-            <p className="text-cz-sidebar-3 text-3xs truncate">{team?.name || "…"}</p>
-            {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
-                plain Pro-badge kræver stadig aktiv Pro. */}
-            {(isPro || isFounder) && <ProBadge isFounder={isFounder} />}
-          </div>
+            #2181: holdnavnet er fjernet fra dette hjørne (det står andre steder på
+            siden). Ejer-godkendt variant A (18/8): wordmarket fylder headeren i
+            stedet for kun at sidde i hjørnet — skaleret til kolonnens fulde
+            indholdsbredde (w-full/h-auto, ikke den gamle faste h-5) minus normal
+            kant-padding (~3x tidligere størrelse), venstrestillet så det flugter
+            med nav-punkternes indryk, med ekstra lodret luft (py-6) så headeren
+            får vægt. Bredere nav-header/IA-restructure spores i #1027. */}
+        <div className="w-full min-w-0">
+          <Wordmark forceDark className="w-full h-auto" alt="" />
+          {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
+              plain Pro-badge kræver stadig aktiv Pro. */}
+          {(isPro || isFounder) && (
+            <div className="mt-2">
+              <ProBadge isFounder={isFounder} />
+            </div>
+          )}
         </div>
       </button>
 

@@ -11,7 +11,7 @@ import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import {
-  Card, Button, EmptyState, ErrorState, GavelIcon,
+  Card, Button, EmptyState, ErrorState, GavelIcon, FlameIcon,
   PageHeader, Section, SkeletonLines, Table, Tr, Th, Td,
   ChevronLeftIcon, ChevronRightIcon,
 } from "../components/ui";
@@ -381,6 +381,16 @@ export default function AuctionHistoryPage() {
                         value: formatNumber(a.rider?.market_value),
                         salary: a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : t("history.salaryNone"),
                       })}</p>
+                      {/* #vk-auction-signals: budkrigs-markør — kun rækker med 2+
+                          FORSKELLIGE budgivere (ikke bare "nogen bød"). Egen linje
+                          (flex, ikke inline-flex) så den altid stables over
+                          "Se budkrigen"-linket i stedet for at flyde ved siden af. */}
+                      {bids && bids.bidders >= 2 && (
+                        <span className="mt-1 flex items-center gap-1 text-3xs uppercase border border-cz-danger/40 bg-cz-danger-bg/50 text-cz-danger px-1.5 py-0.5 rounded-cz-pill w-fit">
+                          <FlameIcon size={11} aria-hidden="true" />
+                          {t("history.bidWarBadge", { bids: bids.bids, teams: bids.bidders })}
+                        </span>
+                      )}
                       {/* #3401: post-hammerslag-reveal — kun for auktioner der reelt
                           havde en budkrig (bids>0). Altid synlig (rider-cellen skjules
                           aldrig på mobil), i modsætning til Bud-kolonnen der er desktop-

@@ -36,13 +36,15 @@ import {
   TeamIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
+import { TEAM_PROFILE_TABS as TABS, resolveTeamProfileTab } from "../lib/teamProfileTabs.js";
 
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
 // #1997 holdside-slice: "palmares" tilføjet efter "results" (spejler rytterprofilens
 // fane-rækkefølge — Resultater → Palmarès).
 // #2601: "club" tilføjet — read-only Staff + Facilities for ETHVERT hold (eget eller
 // andres), samme fane-mønster som results/palmares/transfers (selv-hentende, teamId-prop).
-const TABS = ["squad", "results", "palmares", "transfers", "club"];
+// #3916: listen selv + default-reglen bor nu i lib/teamProfileTabs.js (testbar
+// uden at rendere komponenten) — TABS her er blot et alias for bagudkompatibilitet.
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner. Korte
@@ -65,7 +67,7 @@ function HeroStatBlock({ label, value, sub, last = false }) {
 export default function TeamProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation("team");
   const { t: tGR } = useTranslation("globalRank");
   // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
@@ -87,10 +89,33 @@ export default function TeamProfilePage() {
   const [myTeamId, setMyTeamId] = useState(null);
   const [tableSort, setTableSort] = useState({ key: "market_value", dir: "desc" });
   // #824: ranglistens holdnavn-link åbner resultat-tabben direkte via ?tab=results.
-  const [activeTab, setActiveTab] = useState(() => {
-    const tab = searchParams.get("tab");
-    return TABS.includes(tab) ? tab : "squad";
-  });
+  const [activeTab, setActiveTab] = useState(() => resolveTeamProfileTab(searchParams.get("tab")));
+
+  // #3916 defekt 1: React Router genbruger DENNE komponent-instans når man
+  // navigerer fra ét holds side til et andet (samme /teams/:id-route, andet
+  // id) — useState-initializeren ovenfor kører kun ved FØRSTE mount, så uden
+  // denne effekt "lækker" den forrige holds fane-valg ind på det nye hold i
+  // stedet for at nulstille til trup. Effekten er bevidst kun keyet på `id`
+  // (ikke `searchParams`) — den skal reagere på HOLD-skift, ikke på fane-
+  // skift (det håndteres af changeTab nedenfor, som selv skriver til URL'en).
+  useEffect(() => {
+    setActiveTab(resolveTeamProfileTab(searchParams.get("tab")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // #3916 defekt 2: fane-valget spejles nu i URL'en (?tab=), med replace-
+  // navigation (ingen historik-spam ved almindelige faneskift, samme mønster
+  // som RaceDetailPage.jsx's changeTab for ?stage=N). Det betyder at et link
+  // væk fra siden (fx til en rytterprofil) forlader browseren på en URL der
+  // stadig peger på den fane brugeren var på — browser-tilbage lander derfor
+  // på den rigtige fane igen, uden at kræve en separat "gendan fra URL"-effekt.
+  const changeTab = useCallback((tab) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    if (tab === "squad") next.delete("tab"); // "squad" er default — hold URL'en ren
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   function handleSort(key) {
     // #1755: delt cyklus-logik. tableSort bruger {key,dir}; cycleSortState taler
@@ -302,7 +327,7 @@ export default function TeamProfilePage() {
 
         {/* Tabs UNDER kortet på sidens baggrund — TabList bærer sin egen
             hairline-bundrule (tabsStyles.js); ingen -mb-px-fusion mod kortet. */}
-        <Tabs value={activeTab} onChange={setActiveTab} className="mt-5">
+        <Tabs value={activeTab} onChange={changeTab} className="mt-5">
           <TabList label={t("profile.tabsAriaLabel")}>
             {TABS.map(key => (
               <Tab key={key} value={key}>{TAB_LABELS[key]}</Tab>

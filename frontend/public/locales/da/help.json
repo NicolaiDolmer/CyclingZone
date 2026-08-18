@@ -816,7 +816,7 @@
       },
       "trainingFocus": {
         "title": "Træningsfokus",
-        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik eller Aero) plus en intensitet. De trænede evner udvikler sig så hurtigere mod deres loft, og det slår igennem ved næste sæsonskifte. Højere intensitet træner hurtigere, men har en risiko for tilbageslag (tabt fremgang): Let er sikker, Normal har en lille risiko, Hård en tydelig. Andre evner vokser en anelse langsommere mens et fokus er aktivt. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge."
+        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik eller Aero) plus en intensitet. De trænede evner udvikler sig så hurtigere mod deres loft, og det slår igennem ved næste sæsonskifte. Højere intensitet træner hurtigere, uden risiko for at miste fremgang, men bygger mere træthed op. Andre evner vokser en anelse langsommere mens et fokus er aktivt. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge."
       },
       "scouting": {
         "title": "Scouting af potentiale",
@@ -849,7 +849,7 @@
       },
       "focusAbilities": {
         "title": "Hvad hver session træner",
-        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Intervaller træner Bjerg, Punch og Tempo. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Teknik træner Nedkørsel, Positionering og Brosten. Aero træner Enkeltstart og Fladt. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel og sprint er hårde. Hårde sessioner har risiko for tilbageslag, lette har ikke."
+        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Intervaller træner Bjerg, Punch og Tempo. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Teknik træner Nedkørsel, Positionering og Brosten. Aero træner Enkeltstart og Fladt. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel og sprint er hårde. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
@@ -1236,7 +1236,7 @@
     },
     "trainingFocusFaq": {
       "q": "Hvordan træner jeg en rytter?",
-      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere men risikerer et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
+      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere og bygger mere træthed op, men risikerer aldrig et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
     "restForDevelopedFaq": {
       "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",

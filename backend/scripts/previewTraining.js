@@ -6,8 +6,12 @@
 // kan se at tallene i lib/training.TRAINING_CONFIG er sunde:
 //   • fokus-evner vokser MÆRKBART mere end uden træning (men ikke absurd),
 //   • ikke-fokus betaler en lille pris (fokus-trade-off),
-//   • INGEN rytter bryder sit cap,
-//   • hård intensitet er positiv i forventning, men har reel downside (tilbageslag).
+//   • INGEN rytter bryder sit cap.
+//
+// #3758: setback (risiko for tabt vækst ved hård intensitet) er fjernet fra
+// spillet — målt til 0 udløsninger nogensinde. Hård intensitet er nu altid
+// den hurtigste vækst, uden downside udover den træthed dailyTraining.js
+// allerede lægger på.
 //
 //   node scripts/previewTraining.js               # alle aktive ryttere, sæson 2
 //   node scripts/previewTraining.js --season 3
@@ -72,22 +76,21 @@ async function main() {
 
   console.log(`\n=== Træningsbias dry-run (#1163) — sæson ${SEASON} ===`);
   console.log(`Population: ${pop.length} aktive ryttere (${growth.length} i vækst-fase, ${pop.length - growth.length} forbi peak — uændret af træning)`);
-  console.log(`CONFIG: focusGrowthMult=${JSON.stringify(TRAINING_CONFIG.focusGrowthMult)} offFocusMult=${TRAINING_CONFIG.offFocusMult} setbackChance=${JSON.stringify(TRAINING_CONFIG.setbackChance)} setbackGrowthMult=${TRAINING_CONFIG.setbackGrowthMult}\n`);
+  console.log(`CONFIG: focusGrowthMult=${JSON.stringify(TRAINING_CONFIG.focusGrowthMult)} offFocusMult=${TRAINING_CONFIG.offFocusMult}\n`);
 
   let capBreaches = 0;
 
   for (const intensity of TRAINING_CONFIG.intensities) {
     console.log(`── Intensitet: ${intensity.toUpperCase()} ─────────────────────────────`);
-    console.log("fokus".padEnd(12), "Δfokus".padStart(8), "Δoff".padStart(8), "Δsum".padStart(8), "tilbageslag".padStart(12));
+    console.log("fokus".padEnd(12), "Δfokus".padStart(8), "Δoff".padStart(8), "Δsum".padStart(8));
     for (const focus of TRAINING_FOCUS_KEYS) {
       const focusSet = new Set(TRAINING_FOCUSES[focus]);
-      let extraFocus = 0, extraOff = 0, sumDelta = 0, setbacks = 0, nFocus = 0, nOff = 0;
+      let extraFocus = 0, extraOff = 0, sumDelta = 0, nFocus = 0, nOff = 0;
       for (const p of growth) {
         const rider = { id: p.r.id, primary_type: p.r.primary_type, potentiale: p.r.potentiale, age: p.age };
         const base = developRiderSeason(rider, p.abilities, p.caps, SEASON).next;
         const mod = resolveTrainingModifier({ focus, intensity }, p.r.id, SEASON);
         const trained = developRiderSeason(rider, p.abilities, p.caps, SEASON, undefined, mod).next;
-        if (mod?.setbackHit) setbacks++;
         for (const k of VISIBLE_ABILITIES) {
           if (base[k] == null) continue;
           if (trained[k] > p.caps[k]) capBreaches++;
@@ -102,7 +105,6 @@ async function main() {
         round1(extraFocus / (nFocus || 1)).toString().padStart(8),
         round1(extraOff / (nOff || 1)).toString().padStart(8),
         round1(sumDelta / n).toString().padStart(8),
-        `${Math.round((setbacks / n) * 100)}%`.padStart(12),
       );
     }
     console.log("");
@@ -112,8 +114,7 @@ async function main() {
   console.log(`  Cap-brud:           ${capBreaches}  ${capBreaches === 0 ? "✅" : "❌ BØR VÆRE 0"}`);
   console.log(`  Δfokus = ekstra ability-point/sæson på fokus-evner vs. uden træning`);
   console.log(`  Δoff   = pris på ikke-fokus-evner (fokus-trade-off, bør være svagt negativ)`);
-  console.log(`  Δsum   = netto ability-sum-ændring vs. baseline (hård bør stadig være > normal i EV)`);
-  console.log(`  tilbageslag% bør ≈ setbackChance (${JSON.stringify(TRAINING_CONFIG.setbackChance)})\n`);
+  console.log(`  Δsum   = netto ability-sum-ændring vs. baseline (hård bør stadig være > normal i EV)\n`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

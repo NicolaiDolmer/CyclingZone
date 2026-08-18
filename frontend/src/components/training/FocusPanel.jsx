@@ -27,11 +27,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TRAINING_SETBACK_PCT } from "../../lib/training.js";
 import {
   DAY_TYPES,
   DAY_TYPES_WITHOUT_SESSION,
-  SESSION_INTENSITY,
   dayTypeForProgram,
   sessionForProgram,
   sessionGroupsForDayType,
@@ -121,9 +119,6 @@ export default function FocusPanel({
   const showSignal = hasAnySignal(allRows);
   const showPerSeason = hasAnyPerSeason(allRows);
 
-  const chosenIntensity = needsSession && draftSession ? SESSION_INTENSITY[draftSession] : null;
-  const risk = chosenIntensity ? (TRAINING_SETBACK_PCT[chosenIntensity] ?? 0) : 0;
-
   const complete = draftDayType != null && (!needsSession || draftSession != null);
   const dirty = draftDayType !== savedDayType || draftSession !== savedSession;
 
@@ -159,11 +154,9 @@ export default function FocusPanel({
       closeLabel={t("focusPanel.close")}
       footer={
         <div className="flex w-full flex-wrap items-center gap-3">
-          {/* Risikoen hører til en valgt session. Uden et valg ville en
-              risiko-procent beskrive noget der ikke sker endnu. */}
           {complete && needsSession && (
             <span className="text-2xs text-cz-2">
-              {risk > 0 ? t("focusPanel.risk", { risk }) : t("focusPanel.noRisk")}
+              {t("focusPanel.noRisk")}
             </span>
           )}
 

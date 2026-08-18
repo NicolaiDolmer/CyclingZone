@@ -23,6 +23,130 @@ export const PATCHES = [
         "refs": [
           3941
         ]
+      },
+      {
+              "category": "fixed",
+              "audience": "player",
+              "topic": "Races",
+              "en": {
+                      "title": "Points and mountains standings now show jersey points",
+                      "body": "The points and mountains classification tables highlighted prize points instead of the actual jersey points. The jersey total is now the clearly labelled main column, prize points moved to a quieter spot."
+              },
+              "da": {
+                      "title": "Point- og bjergklassement viser nu troejepoint",
+                      "body": "Point- og bjergklassementets tabeller fremhaevede praemiepoint i stedet for de faktiske troejepoint. Troeje-totalen er nu den tydeligt maerkede hovedkolonne, praemiepoint staar mere diskret."
+              },
+              "refs": [
+                      3913
+              ]
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Dashboard",
+              "en": {
+                      "title": "Today's stages at the top of your dashboard",
+                      "body": "A new strip at the top of the dashboard shows your races today: stage, terrain, start time in your local time, live status or winner, and your overall position. Tap a card to jump straight to the race."
+              },
+              "da": {
+                      "title": "Dagens etaper oeverst paa dit dashboard",
+                      "body": "En ny stribe oeverst paa dashboardet viser dine loeb i dag: etape, terraen, starttid i din lokale tid, live-status eller vinder, og din samlede placering. Tryk paa et kort for at hoppe direkte til loebet."
+              },
+              "refs": [
+                      3915
+              ]
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Dashboard",
+              "en": {
+                      "title": "See which way your division standing is moving",
+                      "body": "Your division standing on the dashboard now shows movement since the last race day: position change and points change, with the same arrows used elsewhere in the game."
+              },
+              "da": {
+                      "title": "Se hvilken vej din divisionsplacering bevaeger sig",
+                      "body": "Din divisionsstilling paa dashboardet viser nu bevaegelse siden sidste loebsdag: placerings- og point-aendring, med de samme pile som resten af spillet."
+              },
+              "refs": []
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Market",
+              "en": {
+                      "title": "Outbid? Now you can see it",
+                      "body": "Being outbid used to show only as a 4 second toast. Auctions where you are outbid now stay marked until you act, and the auction history marks real bidding wars with 2 or more bidders."
+              },
+              "da": {
+                      "title": "Overbudt? Nu kan du se det",
+                      "body": "At blive overbudt blev kun vist som en 4 sekunders toast. Auktioner hvor du er overbudt er nu markeret indtil du reagerer, og auktionshistorikken markerer aegte budkrige med 2 eller flere budgivere."
+              },
+              "refs": []
+      },
+      {
+              "category": "fixed",
+              "audience": "player",
+              "topic": "Teams",
+              "en": {
+                      "title": "Other teams' pages open on the squad tab again",
+                      "body": "Visiting another team could land you on the tab you used on the previous team, and the back button forgot your tab. Team pages now open on the squad tab, and your tab choice sticks in the address bar."
+              },
+              "da": {
+                      "title": "Andre holds sider aabner paa trup-fanen igen",
+                      "body": "Et besoeg paa et andet hold kunne lande paa fanen fra det forrige hold, og tilbage-knappen glemte dit fanevalg. Holdsider aabner nu paa trup-fanen, og dit fanevalg huskes i adresselinjen."
+              },
+              "refs": [
+                      3916
+              ]
+      },
+      {
+              "category": "improved",
+              "audience": "player",
+              "topic": "UI",
+              "en": {
+                      "title": "Cleaner sidebar header",
+                      "body": "The sidebar corner now shows only the Cycling Zone wordmark. Your team name already lives on the dashboard and My Team, so it no longer doubles up next to the logo."
+              },
+              "da": {
+                      "title": "Renere sidebar-header",
+                      "body": "Sidebar-hjoernet viser nu kun Cycling Zone-wordmarket. Dit holdnavn findes allerede paa dashboardet og Mit Hold, saa det staar ikke laengere dobbelt ved siden af logoet."
+              },
+              "refs": [
+                      2181
+              ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A transfer offer can no longer be accepted while the rider is on auction",
+          "body": "Accepting an offer or counter-offer on a rider who is meanwhile up for auction is now blocked with a clear message instead of silently colliding with the auction. The auction always wins the channel."
+        },
+        "da": {
+          "title": "Et transfertilbud kan ikke længere accepteres mens rytteren står på auktion",
+          "body": "Accept af et tilbud eller modbud på en rytter der i mellemtiden er sat på auktion bliver nu blokeret med en klar besked i stedet for at kollidere stille med auktionen. Auktionen vinder altid kanalen."
+        },
+        "refs": [
+          3940
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training no longer risks a setback",
+          "body": "Higher intensity used to carry a small chance of a setback that slowed a rider's growth for the season. That risk is gone. Hard training still costs more fatigue than easy or normal, so the choice still matters."
+        },
+        "da": {
+          "title": "Træning risikerer ikke længere et tilbageslag",
+          "body": "Højere intensitet gav tidligere en lille chance for et tilbageslag der bremsede en rytters vækst i sæsonen. Den risiko er væk. Hård træning koster stadig mere træthed end let eller normal, så valget betyder stadig noget."
+        },
+        "refs": [
+          3758
+        ]
       }
     ]
   },
@@ -31,6 +155,22 @@ export const PATCHES = [
     "date": "2026-08-18",
     "label": "Beta",
     "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Season start notification now shows your sponsor payout",
+          "body": "The \"new season has started\" notification used to say nothing about money, leaving you guessing whether it had landed. It now states the exact amount your sponsor paid out. Delivery is also more reliable, so a resend can be targeted at any team that missed it."
+        },
+        "da": {
+          "title": "Sæsonstart-notifikationen viser nu din sponsorudbetaling",
+          "body": "\"Ny sæson er begyndt\"-notifikationen nævnte ikke penge, så du måtte gætte om de var landet. Den viser nu det præcise beløb din sponsor udbetalte. Leveringen er også mere pålidelig, så en efter-sendelse kan målrettes hold der manglede den."
+        },
+        "refs": [
+          3101
+        ]
+      },
       {
         "category": "fixed",
         "audience": "player",

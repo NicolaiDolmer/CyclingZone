@@ -1073,6 +1073,44 @@ test("#1748: confirmTransferOffer annullerer handlen når rytteren er kommet på
   assert.ok(notifs.some((n) => n[0] === "seller" && n[1] === "transfer_offer_rejected"));
 });
 
+// #3940 (swap-parallel til #1748(a)): hvis en af de to byttede ryttere kommer
+// på en aktiv auktion mellem swap-oprettelse og bekræftelse, skal
+// bekræftelsen ANNULLERE byttehandlen, samme regel som transfer-siden.
+// Reproducerer forløbet fra #3940: en spiller sendte modbud, satte SAMME
+// rytter på auktion (med bud), og modparten accepterede modbuddet. Denne
+// test dækker det sidste skridt (confirm). Uden guarden ovenfor ville
+// executeSwapOffer gennemføre byttet uden at kende til den aktive auktion.
+test("#3940: confirmSwapOffer annullerer byttehandlen når en af rytterne er kommet på en aktiv auktion", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.swap_offers.push({
+    id: "swap-1", offered_rider_id: "rider-1", requested_rider_id: "buyer-rider-1",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 0, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  // Rytteren tilbudt i byttehandlen er kommet på en aktiv auktion (med bud).
+  db.auctions.push({ id: "auc-1", rider_id: "rider-1", status: "active" });
+  const supabase = makeSupabase(db);
+
+  const notifs = [];
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async (...args) => { notifs.push(args); },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "rider_on_auction_swap");
+  assert.equal(result.status, 409);
+
+  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "seller", "ingen ryttere byttet");
+  assert.equal(db.riders.find((r) => r.id === "buyer-rider-1").team_id, "buyer", "ingen ryttere byttet");
+  assert.equal(db.swap_offers[0].status, "withdrawn", "byttetilbuddet trækkes tilbage");
+  assert.equal(supabase._finance.length, 0, "ingen finance-postering");
+  // Begge parter får en annullerings-notif.
+  assert.ok(notifs.some((n) => n[0] === "seller" && n[1] === "transfer_offer_rejected"));
+  assert.ok(notifs.some((n) => n[0] === "buyer" && n[1] === "transfer_offer_rejected"));
+});
+
 // ── #1309 kontrakt-on-acquire (transfer + swap) ──────────────────────────────
 
 // Kontraktløs rytter (salary == null) der erhverves via transfer → standard-

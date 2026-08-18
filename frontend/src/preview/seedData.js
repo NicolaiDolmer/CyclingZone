@@ -30,12 +30,16 @@ export const TEST_TEAM = {
 // for den rene tæller-query (league_division_id=eq UDEN pool_race-join). Dashboards
 // "næste løb"-liste joiner pool_race og får SEED_RACES (#1906), så den nu — korrekt —
 // viser holdets kommende løb i stedet for en tom tabel.
+// vk-movement-signals: id + game_day_start tilføjet (samme query, 2 ekstra
+// kolonner) — driver findLastCompletedRaceDay(). "pool-race-done-2" har det højeste
+// game_day_start blandt completed-løb og er derfor "sidste løbsdag" (se
+// SEED_TEAM_RACE_POINTS_MV nedenfor for de holdpoint der knytter sig til den).
 export const POOL_RACES = [
-  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
-  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
-  { status: "scheduled", stages: 7, stages_completed: 2, league_division_id: 2 },
-  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
-  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
+  { id: "pool-race-done-1", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 2 },
+  { id: "pool-race-done-2", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 9 },
+  { id: "pool-race-sched-1", status: "scheduled", stages: 7, stages_completed: 2, league_division_id: 2, game_day_start: 15 },
+  { id: "pool-race-sched-2", status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2, game_day_start: 20 },
+  { id: "pool-race-sched-3", status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2, game_day_start: 22 },
 ];
 
 export const RIVAL_TEAM = {
@@ -664,10 +668,34 @@ export const SEED_TEAM_HALL_OF_FAME = [
 // #3197: league_division_id (2 = "Division 2 — A", TEST_TEAM's egen pulje) med
 // på team-joinet, så Resultat-hubbens Tophold-boks kan pulje-filtreres på
 // preview/e2e ligesom den ægte season_standings-query.
+// vk-movement-signals: "team-ai-preview"s total_points er tættere på
+// TEST_TEAM end før (var 4990) — mere realistisk enkelt-løbsdags-afstand.
+// NB: Dashboardets EGEN "teams"-query (restRows case "teams" nedenfor) er
+// hardcodet til KUN [TEST_TEAM, RIVAL_TEAM] uanset filter — "team-ai-preview"
+// vises derfor ALDRIG på dashboardets "My division standings"-modul (kun på
+// /resultater, som læser season_standings direkte). Rank-klatringen kan derfor
+// ikke demonstreres i preview med kun 2 hold (se dashboardMovementSignals.test.js
+// for den unit-testede klatre-sag); "+86" holdpoint-deltaet vises fortsat.
 export const SEED_SEASON_STANDINGS = [
   { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
   { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
-  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2, league_division_id: 2 } },
+  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 5450, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2, league_division_id: 2 } },
+];
+
+// vk-movement-signals — team_race_points_mv: hold-point PR. LØB, samme
+// tabel StandingsPage's progressions-graf allerede læser. "pool-race-done-2"
+// (POOL_RACES ovenfor) er puljens seneste AFSLUTTEDE løbsdag: TEST_TEAM's 86
+// point den dag matcher opgavens "+86"-eksempel og driver dashboardets
+// holdpoint-delta-badge. "pool-race-done-1" er en TIDLIGERE løbsdag og
+// påvirker ikke beregningen (kun sidste dag tæller) — med for realisme/
+// season-total-troværdighed.
+export const SEED_TEAM_RACE_POINTS_MV = [
+  { season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 86 },
+  { season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 10 },
+  { season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 10 },
+  { season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 20 },
+  { season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 15 },
+  { season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 25 },
 ];
 
 // ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────

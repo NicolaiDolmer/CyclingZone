@@ -981,6 +981,10 @@
       "a11y": {
         "graph": "Højdeprofil for etape {number}: {distance} km, {elevation} højdemeter, {climbs} kategoriserede stigninger"
       }
+    },
+    "table": {
+      "prizePoints": "Præmiepoint",
+      "jerseyPoints": "Trøjepoint"
     }
   },
   "history": {

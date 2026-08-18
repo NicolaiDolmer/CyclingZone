@@ -816,7 +816,7 @@
       },
       "trainingFocus": {
         "title": "Training focus",
-        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster but carries a setback risk (lost gains): Easy is safe, Normal has a small risk, Hard a clear one. Other abilities grow a little slower while a focus is active. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money."
+        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster, with no risk of losing progress, but it does build more fatigue. Other abilities grow a little slower while a focus is active. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money."
       },
       "scouting": {
         "title": "Scouting potential",
@@ -849,7 +849,7 @@
       },
       "focusAbilities": {
         "title": "What each session trains",
-        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Intervals train Climbing, Punch and Tempo. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard. Hard sessions carry a risk of a setback, easy ones do not."
+        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Intervals train Climbing, Punch and Tempo. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
@@ -1236,7 +1236,7 @@
     },
     "trainingFocusFaq": {
       "q": "How do I train a rider?",
-      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You can set a focus on as many riders as you like. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
+      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You can set a focus on as many riders as you like. Higher intensity trains faster and builds more fatigue, but never risks losing progress; changing an existing focus costs nothing, and training is free."
     },
     "restForDevelopedFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",

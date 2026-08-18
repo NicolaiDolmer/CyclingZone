@@ -83,6 +83,22 @@ export function formatDateTime(date, options = {}) {
   }
 }
 
+// #3915 — tidspunkt ALENE i spillerens lokale tidszone (browserens default —
+// IKKE en fast game-tidszone som lib/raceCentre.js's København-visning).
+// `date` skal være et absolut tidsstempel (ms/Date/fuld ISO-timestamp),
+// ALDRIG en ren dato-streng — #3724s UTC-midnat-fælde gælder kun toLocalDate's
+// særtilfælde for "YYYY-MM-DD", som race_stage_schedule.scheduled_at aldrig er.
+export function formatLocalTime(date) {
+  if (date == null) return "";
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat(currentLocale(), { hour: "2-digit", minute: "2-digit" }).format(d);
+  } catch {
+    return d.toLocaleTimeString();
+  }
+}
+
 export function formatNumber(n, options = {}) {
   if (n == null || Number.isNaN(n)) return "";
   try {

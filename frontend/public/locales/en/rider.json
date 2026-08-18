@@ -109,8 +109,7 @@
       "active": "Active: {focus} · {intensity} · trains {abilities}",
       "activeRest": "Resting ({focus} focus paused)",
       "effectNote": "updates daily",
-      "riskNote": "Higher intensity grows fastest, but carries ~{risk}% risk of a setback that costs part of the season's progress.",
-      "noRiskNote": "Easy intensity grows steadily with no setback risk.",
+      "noRiskNote": "Higher intensity grows faster, with no risk of losing progress.",
       "restNote": "No ability growth on a rest day; fatigue recovers.",
       "emptyFocus": "Pick a focus to assign training.",
       "actionErrorGeneric": "Could not save. Try again in a moment.",
@@ -178,7 +177,11 @@
       "contractSeason": "Season {season}",
       "aiTag": "AI",
       "valueTrend": "{value} last {days} days",
-      "valueTrendTitle": "Value change since {date}"
+      "valueTrendTitle": "Value change since {date}",
+      "ratingTrendRising": "Rising this season",
+      "ratingTrendSteady": "Steady this season",
+      "ratingTrendDeclining": "Declining this season",
+      "ratingTrendTitle": "Rating {value} since {date}"
     },
     "banner": {
       "listed": "On the transfer list · price {price}",
