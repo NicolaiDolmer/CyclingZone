@@ -113,12 +113,6 @@ export const KNOWN_FINDINGS = {
     + 'would 400 the moment the e-mail loop is switched on. Left as-is here so '
     + 'this PR stays a pure CI-guard change — the fix (imported_at) belongs '
     + 'with the e-mail loop and its tests.',
-  'backend/scripts/driftMonitor.js:riders.name':
-    '#3586 — same class, found by this guard: riders has firstname/lastname, '
-    + 'never name. The orphan-rider drift check therefore 400s and is skipped '
-    + 'silently by its own `if (!orphanError)` guard, so the drift monitor has '
-    + 'been reporting no orphan riders regardless of reality. Backend fix out '
-    + 'of scope for this PR.',
 };
 
 // ---------------------------------------------------------------------------
