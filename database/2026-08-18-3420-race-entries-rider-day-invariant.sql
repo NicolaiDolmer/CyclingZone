@@ -44,13 +44,13 @@
 --         ingen aktive") eksakt. Berørte rytter-id'er: 31b851b6-1864-4dfe-adff-
 --         11ccac10f2c8, c638cb6f-df9f-4fe8-bb9f-2f61dc6d6aff, b90dfce5-bbda-47e3-
 --         8392-db7ae29d7ba4, 7f29fa3f-6805-41a4-97ee-5546eb7dd4ec.
---   Disse 787 rækker (783 S1 + 4 S2) er PRÆCIS hvorfor DO-blokken nedenfor nægter
---   at tilføje constraint'en før de er ryddet/undtaget — se "Ryd/undtag"-opgaven
---   i #3420. Denne migration SÆTTER backfillede binding_span-værdier på alle
---   rækker (inkl. de brudte), men rejser en eksplicit, navngiven fejl i stedet
---   for constraint'ens generiske 23P01 hvis man forsøger at tilføje EXCLUDE-
---   constraint'en mens brud stadig findes — se "no_rider_double_booking"-DO-
---   blokken nedenfor.
+--   OPFØLGNING (ejer-valg 18/8, "A: færdigkørte løb er ikke-bindende"): alle 787
+--   brud ligger på løb med status='completed', og beregningsfunktionen giver nu
+--   NULL for færdigkørte løb — de bliver dermed naturligt ikke-bindende i
+--   backfillen, uden datareparation. DO-blokken nedenfor står tilbage som
+--   sikkerhedsnet: skulle der ALLIGEVEL findes brud blandt bindende (ikke-
+--   færdigkørte) løb ved apply, rejses stadig den eksplicitte, navngivne fejl
+--   frem for constraint'ens generiske 23P01.
 --
 -- Idempotent: extension/kolonne bruger IF NOT EXISTS, funktioner er CREATE OR
 -- REPLACE, triggere droppes+genskabes, constraint-tilføjelsen er guardet af en
@@ -71,9 +71,10 @@ comment on column public.race_entries.binding_span is
   '#3420: løbets in-game-dag-span [min(game_day), max(game_day)] for DENNE entry''s
   race_id, vedligeholdt af triggere (race_entries_set_binding_span,
   race_stage_schedule_resync_binding, race_withdrawals_resync_binding). NULL =
-  ikke-bindende (afmeldt løb, Monument-sentinel game_day>=100000, eller løb uden
-  fuldt game_day-backfillet schedule). Bærer no_rider_double_booking-EXCLUDE-
-  constraint''en (gist, rider_id WITH =, binding_span WITH &&).';
+  ikke-bindende (færdigkørt løb status=completed, afmeldt løb, Monument-sentinel
+  game_day>=100000, eller løb uden fuldt game_day-backfillet schedule). Bærer
+  no_rider_double_booking-EXCLUDE-constraint''en (gist, rider_id WITH =,
+  binding_span WITH &&).';
 
 -- Ren beregningsfunktion: løbets binding_span for ÉT (race_id, team_id)-par.
 -- STABLE (ikke IMMUTABLE — læser andre tabeller), SQL (ingen procedural-logik
@@ -85,6 +86,15 @@ stable
 set search_path to 'public', 'pg_catalog'
 as $$
   select case
+    -- Færdigkørte løb er ikke-bindende (#3420-opfølgning, ejer-valg 18/8):
+    -- constrainten skal beskytte FREMTIDIGE skrivninger; et løb med
+    -- status='completed' kan aldrig få nye dobbeltbookinger, og de 787
+    -- historiske brud (783 S1 + 4 S2, alle på færdigkørte løb) bliver hermed
+    -- naturligt ikke-bindende i backfillen i stedet for at kræve datareparation.
+    when exists (
+      select 1 from public.races r
+       where r.id = p_race_id and r.status = 'completed'
+    ) then null::int4range
     when exists (
       select 1 from public.race_withdrawals w
        where w.race_id = p_race_id and w.team_id = p_team_id
@@ -108,8 +118,9 @@ $$;
 
 comment on function public.race_entries_binding_span(uuid, uuid) is
   '#3420: ren beregning af race_entries.binding_span for ét (race_id, team_id)-par.
-  NULL for afmeldte løb, Monument-sentinel-løb, og løb uden fuldt game_day-
-  backfillet schedule. Ellers int4range(min(game_day), max(game_day), inklusiv).';
+  NULL for færdigkørte løb (status=completed), afmeldte løb, Monument-sentinel-løb,
+  og løb uden fuldt game_day-backfillet schedule. Ellers
+  int4range(min(game_day), max(game_day), inklusiv).';
 
 -- Trigger 1: race_entries selv — sæt binding_span ved INSERT eller ved UPDATE af
 -- race_id/team_id (aldrig ved fx race_role-update, jf. raceEntryGenerator.js'
