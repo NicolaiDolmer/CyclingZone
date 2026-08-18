@@ -36,12 +36,10 @@ import {
 } from "./starterSquadAllocator.js";
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
-import { fetchExistingFoldedNamesForAi, makeAiTeamName, AI_TEAM_NAME_PREFIX } from "./aiTeamNames.js";
+import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { STALL_WATCHDOG_DEFAULT_THRESHOLDS } from "./stallWatchdog.js";
 import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
-
-export { AI_TEAM_NAME_PREFIX };
 
 const INSERT_BATCH = 500;
 
