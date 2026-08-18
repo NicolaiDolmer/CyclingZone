@@ -4,16 +4,15 @@
 
 **Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne.
 
-**Målt:** **532** åbne issues (18/8; KS3-mål net −40) · 217 brugere, 1 abo · **S2 slutter søn 23/8.**
+**Målt:** **500** åbne issues (18/8 efter KS3: net −32) · 217 brugere, 1 abo · **S2 slutter søn 23/8.**
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
 1. ⛔ **#3449 markedssweep — refit-gate RØD 17/8.** Kørende × 0,422 slår alt → niveau-korrektion. Beslutning i løn-design-sessionen; draft.
 3. 🟠 **#3514 mandat** — fase 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-script-apply med ejer-nøgle.
 4. 🔵 **#3393 løn** — beslutning 4+5 truffet; designes færdig i løn-design-sessionen (bookes FØR søndag). Lønkurvens konkave form er fredet. Flipper ikke 23/8.
-5. 🔴 **#3901 sæsonskiftet S2→S3** (ejer-direktiv 17/8): kommunikation, fees, oplevelse, D1-oprykning — design i KS3. **23/8 = race-day-flip + mandat-backfill** (#3459 komplet, rollback bevist).
+5. 🟠 **#3901:** pakke leveret; **D1-plan LÅST+BYGGET** (top 24 → D1, PR #3930, dry-run godkendt). **23/8 = race-day-flip + komprimering + mandat-backfill** (apply ejer-gated). Bufferdag 24/8 besluttet (#3467).
 6. 🔵 Auto-accept-floor bliver stående (ejer 13/8); 20/8 rammer kun inaktive hold (#3584), aktive 25/8.
-7. 🔴 **#3903 ungdomsauktions-kvoten** — beslut FØR 21/8 (60/dag løber hen over cutover-weekenden; måling + A/B i KS3).
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
 
@@ -53,15 +52,15 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 til ejeren.
 
-- W1-W6+W9 leveret ([audit](audits/night-wave-2026-08-18.md)). **Rest:** #2085 → #2853 · **W7** efter trin 7 (#3714 #3623 #3456 #3412) · **W8** beslutnings-bundter (54 needs-decision) · **KS3-backlog-workflow i gang 18/8** (net −40).
+- W1-W6+W9 leveret ([audit](audits/night-wave-2026-08-18.md)). **Rest:** #2085 → #2853 · **W7** efter trin 7 (#3714 #3623 #3456 #3412) · **W8** beslutnings-bundter (54 needs-decision) · KS3-workflow leveret 18/8: net −32 (adversariel verifikation fangede 2 falske done; 20 wontdo ejer-dømt).
 - Småbugs 17/8: #3896 skadet rytter kunne udtages · #3897 Discord-pulje-id · #3898 evne-sortering.
-- DM-kuldet 18/8 (KS3 punkt 6): **#3913 trøjeklassement viser præmiepoint (HIGH)** · #3916 fane-state på andres hold · #3912 digest-deeplink · #3917 sprint-måling (fodrer #3855).
+- DM-kuldet: #3913+#3916 i merge-kø, #3912 merget, #3917-analyse leveret (fodrer #3855).
 - S3-kalender-finpuds (#3546): PR #3862 draft, regenerering ejer-gated — kalender-session FØR 23/8.
 - #2022 ejes af #3514.
 
 ## E2 · Race-oplevelsen
 
-**#2410 event-loggen SHIPPET + bevist i prod 18/8 11:08** · **#3858 Race Centre LIVE** (v7.140). **Rest:** #3859 etapeside + afspiller v2 (PR #3863 draft — KS3-design-blok; #3914 designes med etapesiden) · **#3855 motor v4** = ejer-retningen EFTER cutover (#3917 fodrer den) · #3856 backfill efter S3-bevis · #3864 klassiker-uge (S4). **#3900 sæson-overblik + #3915 dagens etaper designes SAMLET i KS3.** Spec: [`race-event-log-stage-timeline`](superpowers/specs/2026-08-17-race-event-log-stage-timeline-design.md).
+**#2410 event-loggen SHIPPET + bevist i prod 18/8 11:08** · **#3858 Race Centre LIVE** (v7.140). **Rest:** etapeside-omlægningen #3914 (design godkendt, PR A draft afventer go 19/8; LIVE-broadcast = PR B tor/fre) · **#3855 motor v4** = ejer-retningen EFTER cutover (#3917 fodrer den) · #3856 backfill efter S3-bevis · #3864 klassiker-uge (S4). **#3900 sæson-overblik + #3915 dagens etaper designes SAMLET i KS3.** Spec: [`race-event-log-stage-timeline`](superpowers/specs/2026-08-17-race-event-log-stage-timeline-design.md).
 
 ## Parkeret — genbesøges når B og C er leveret
 
