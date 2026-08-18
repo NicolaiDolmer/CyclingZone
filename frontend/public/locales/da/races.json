@@ -535,6 +535,49 @@
     "bodyOneDay": "{race} venter forude. Vælg dine ryttere, kaptajn og taktik inden start.",
     "action": "Sæt din opstilling"
   },
+  "raceCentre": {
+    "title": "Løbscenter",
+    "subtitle": "Dagens løb, fra første nedtælling til sidste resultat.",
+    "navLabel": "Løbscenter",
+    "stageLabel": "Etape {number} af {total}",
+    "oneDayLabel": "Endagsløb",
+    "divisionLabel": "Div {tier} pulje {pool}",
+    "state": {
+      "live": "Live",
+      "upcoming": "Kommende",
+      "finished": "Afsluttet"
+    },
+    "card": {
+      "yourRider": "Din rytter",
+      "yourBest": "Din bedste: {rank} {rider}",
+      "liveNoFilm": "Etapen er i gang. Resultaterne kommer, så snart rytterne krydser stregen.",
+      "playbackProgress": "Etapens afspilning",
+      "lineupReady": "Opstillingen er klar, {selected} af {max} ryttere valgt.",
+      "lineupIncomplete": "Opstillingen mangler, {selected} af {max} ryttere valgt.",
+      "lineupUnknown": "Opstillings-status er ikke tilgængelig for dette løb.",
+      "noResults": "Der er endnu ikke offentliggjort resultater for denne etape."
+    },
+    "action": {
+      "watchLive": "Se live",
+      "reviewTactics": "Gennemgå taktik",
+      "watchFilm": "Se løbsfilmen",
+      "fullResult": "Fuldt resultat",
+      "viewRace": "Se løbet"
+    },
+    "yours": {
+      "title": "Dine løb i dag",
+      "emptyTitle": "Ingen løb for dit hold i dag",
+      "emptyBody": "Din næste løbsdag står i kalenderen. Gå til planlægningen og sæt truppen op."
+    },
+    "divisions": {
+      "title": "Rundt i divisionerne"
+    },
+    "error": {
+      "title": "Dagens løb kunne ikke hentes",
+      "body": "Intet gik tabt. Dine opstillinger og resultater er sikre.",
+      "retry": "Prøv igen"
+    }
+  },
   "detail": {
     "loadError": {
       "message": "Løbet kunne ikke indlæses. Intet gik tabt. Prøv igen.",

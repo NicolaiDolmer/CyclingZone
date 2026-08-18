@@ -75,6 +75,7 @@ const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 const SeasonExperiencePreviewPage = lazy(() => import("./pages/SeasonExperiencePreviewPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
+const RaceCentrePage = lazy(() => import("./pages/RaceCentrePage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
 const RaceDetailPage = lazy(() => import("./pages/RaceDetailPage"));
 const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
@@ -305,6 +306,12 @@ export default function App() {
             <Route path="seasons/:seasonId" element={<I18nReadyGate ns="seasonEnd"><SeasonEndPage /></I18nReadyGate>} />
             <Route path="season-end" element={<Navigate to="/seasons" replace />} />
             <Route path="resultater" element={<I18nReadyGate ns="results"><ResultaterPage /></I18nReadyGate>} />
+            {/* #3858 — Race Centre: dagens løb som sendeflade. Egen lazy
+                route-chunk (bundle-vagt: ~6 KB luft, issue-krav). "races" er
+                fortsat et inlinet namespace (ikke i INLINE_EXEMPT, se
+                scripts/i18n-check-namespace-inline.mjs) — samme mønster som
+                races/:raceId (RaceDetailPage) lige ovenfor: ingen ready-gate. */}
+            <Route path="race-centre" element={<RaceCentrePage />} />
             {/* #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben
                 — én kalender-sandhed. Siden havde ingen URL-båret indre tilstand
                 (faner/sæson/måned er komponent-state), så redirect'en er statisk. */}
