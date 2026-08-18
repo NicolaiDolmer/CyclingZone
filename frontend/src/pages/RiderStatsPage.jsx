@@ -6,6 +6,7 @@ import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo } from "../lib/marketValues.js";
 import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
 import { riderOverallRating } from "../lib/riderRating";
+import { buildRatingTrajectory, trajectoryTrend } from "../lib/riderRatingTrajectory.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
 import { formatNumber } from "../lib/intl";
@@ -828,6 +829,10 @@ export default function RiderStatsPage() {
   const [watchlistCount, setWatchlistCount] = useState(0);
   const [visits, setVisits]                 = useState(null);
   const [seasonRows, setSeasonRows]         = useState([]);
+  // vk-movement-signals — rå evne-snapshots (rider_derived_ability_history)
+  // til hero'ens trajektorie-sparkline. [] = ingen historik (rytter for ny, eller
+  // fetch fejlede) → sparklinen skjuler sig selv.
+  const [ratingHistoryRows, setRatingHistoryRows] = useState([]);
   // Fejl-flag for resultat-hentningen (#1338-princippet): en query-fejl må ikke
   // ligne "ingen resultater" eller stille trunkerede totaler.
   const [seasonRowsFailed, setSeasonRowsFailed] = useState(false);
@@ -1223,7 +1228,7 @@ export default function RiderStatsPage() {
     const fetchId = id;
     riderFetchIdRef.current = fetchId;
     const safe = async (q) => { try { return await q; } catch { return { data: null }; } };
-    const [riderRes, seasonRowsAll, physRes, abilRes, progressRes] = await Promise.all([
+    const [riderRes, seasonRowsAll, physRes, abilRes, progressRes, ratingHistoryRes] = await Promise.all([
       // #1162: eksplicit kolonneliste — `select=*` på riders afvises efter
       // column-privilege-migrationen (potentiale er server-skjult; klienter får
       // kun det maskerede estimat via POST /api/scouting/estimates).
@@ -1258,6 +1263,14 @@ export default function RiderStatsPage() {
       // er kørt) aldrig brækker hoved-evne-kaldet. Progress vises for ALLE ryttere.
       safe(supabase.from("rider_derived_abilities")
         .select("ability_progress").eq("rider_id", id).maybeSingle()),
+      // vk-movement-signals — evne-snapshots til hero'ens trajektorie-
+      // sparkline (rating-udvikling denne sæson). Samme tabel Udvikling-fanens
+      // historik allerede bygger på; kun de 15 synlige evner ligger i `abilities`
+      // (ingen hidden_potential/ability_caps — verificeret mod schema-snapshot).
+      // fejl-tolerant (safe): en manglende historik må ikke brække hele profilen.
+      safe(supabase.from("rider_derived_ability_history")
+        .select("snapshot_date, season_number, abilities").eq("rider_id", id)
+        .order("snapshot_date", { ascending: true })),
     ]);
     if (riderFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
     setRider(riderRes.data
@@ -1272,6 +1285,7 @@ export default function RiderStatsPage() {
       : riderRes.data);
     setSeasonRows(seasonRowsAll.rows);
     setSeasonRowsFailed(seasonRowsAll.failed);
+    setRatingHistoryRows(ratingHistoryRes.data || []);
 
     await loadActiveAuctionFull(riderRes.data);
     if (riderFetchIdRef.current !== fetchId) return;
@@ -1608,6 +1622,10 @@ export default function RiderStatsPage() {
   const overallRating = rider.abilities
     ? riderOverallRating({ ...rider.abilities, primary_type: rider.primary_type })
     : 0;
+  // vk-movement-signals — trajektorie-sparkline: samme rating-opskrift
+  // som overallRating ovenfor, udledt pr. historik-snapshot (denne sæson).
+  const ratingTrajectory = buildRatingTrajectory(ratingHistoryRows, rider.primary_type);
+  const ratingTrend = trajectoryTrend(ratingTrajectory);
   // ── #2000 redesign — afledte hero-felter (ren visning, ingen ny data) ────────
   const divisionLabel = rider.team?.division != null
     ? t("profile.hero.divisionChip", { division: rider.team.division })
@@ -1718,6 +1736,8 @@ export default function RiderStatsPage() {
             valueAmount={riderValueAmount}
             valueLabel={riderValueLabel}
             valueTrendWindow={riderValueTrendWindow}
+            ratingTrajectory={ratingTrajectory}
+            ratingTrend={ratingTrend}
             salaryText={salaryText}
             isAiTeam={isAiRider}
             pendingTeam={pendingTeam}

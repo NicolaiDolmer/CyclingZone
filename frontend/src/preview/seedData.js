@@ -30,12 +30,16 @@ export const TEST_TEAM = {
 // for den rene tæller-query (league_division_id=eq UDEN pool_race-join). Dashboards
 // "næste løb"-liste joiner pool_race og får SEED_RACES (#1906), så den nu — korrekt —
 // viser holdets kommende løb i stedet for en tom tabel.
+// vk-movement-signals: id + game_day_start tilføjet (samme query, 2 ekstra
+// kolonner) — driver findLastCompletedRaceDay(). "pool-race-done-2" har det højeste
+// game_day_start blandt completed-løb og er derfor "sidste løbsdag" (se
+// SEED_TEAM_RACE_POINTS_MV nedenfor for de holdpoint der knytter sig til den).
 export const POOL_RACES = [
-  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
-  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
-  { status: "scheduled", stages: 7, stages_completed: 2, league_division_id: 2 },
-  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
-  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
+  { id: "pool-race-done-1", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 2 },
+  { id: "pool-race-done-2", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 9 },
+  { id: "pool-race-sched-1", status: "scheduled", stages: 7, stages_completed: 2, league_division_id: 2, game_day_start: 15 },
+  { id: "pool-race-sched-2", status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2, game_day_start: 20 },
+  { id: "pool-race-sched-3", status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2, game_day_start: 22 },
 ];
 
 export const RIVAL_TEAM = {
@@ -159,6 +163,26 @@ export const RIDERS = [
       cobblestone: 16, positioning: 22, aggression: 21, tactics: 24,
     },
   },
+];
+
+// vk-movement-signals — rider_derived_ability_history: evne-snapshots
+// til rytter-heroens trajektorie-sparkline. Kun rider-1 (Ada Pedersen) har
+// seedet historik — rider-2 ser den tilsigtede "ingen historik"-tomtilstand
+// (sparklinen skjuler sig selv). De 5 snapshots stiger jævnt mod Adas
+// NUVÆRENDE rider_derived_abilities ovenfor (sprint 31/acceleration 29/
+// positioning 27/flat 29/durability 26 → sprinter-rating 29), så sidste punkt
+// matcher det tal hero'en allerede viser — "rising this season".
+export const SEED_RIDER_ABILITY_HISTORY = [
+  { rider_id: "rider-1", snapshot_date: "2026-06-05", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
+    abilities: { climbing: 15, time_trial: 18, flat: 23, tempo: 18, sprint: 24, acceleration: 22, punch: 20, endurance: 19, recovery: 20, durability: 21, descending: 18, cobblestone: 16, positioning: 21, aggression: 17, tactics: 19 } },
+  { rider_id: "rider-1", snapshot_date: "2026-06-25", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
+    abilities: { climbing: 16, time_trial: 19, flat: 24, tempo: 19, sprint: 26, acceleration: 24, punch: 21, endurance: 20, recovery: 21, durability: 22, descending: 19, cobblestone: 17, positioning: 22, aggression: 18, tactics: 20 } },
+  { rider_id: "rider-1", snapshot_date: "2026-07-15", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
+    abilities: { climbing: 17, time_trial: 20, flat: 26, tempo: 21, sprint: 28, acceleration: 26, punch: 23, endurance: 22, recovery: 23, durability: 24, descending: 21, cobblestone: 19, positioning: 24, aggression: 20, tactics: 22 } },
+  { rider_id: "rider-1", snapshot_date: "2026-08-01", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
+    abilities: { climbing: 18, time_trial: 21, flat: 28, tempo: 22, sprint: 30, acceleration: 28, punch: 25, endurance: 23, recovery: 24, durability: 25, descending: 22, cobblestone: 20, positioning: 26, aggression: 21, tactics: 24 } },
+  { rider_id: "rider-1", snapshot_date: "2026-08-15", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
+    abilities: { climbing: 19, time_trial: 22, flat: 29, tempo: 23, sprint: 31, acceleration: 29, punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23, cobblestone: 21, positioning: 27, aggression: 22, tactics: 25 } },
 ];
 
 // ── Evne-lofter: SERVER-SANDHED, må ALDRIG serveres til klienten ────────────
@@ -664,10 +688,34 @@ export const SEED_TEAM_HALL_OF_FAME = [
 // #3197: league_division_id (2 = "Division 2 — A", TEST_TEAM's egen pulje) med
 // på team-joinet, så Resultat-hubbens Tophold-boks kan pulje-filtreres på
 // preview/e2e ligesom den ægte season_standings-query.
+// vk-movement-signals: "team-ai-preview"s total_points er tættere på
+// TEST_TEAM end før (var 4990) — mere realistisk enkelt-løbsdags-afstand.
+// NB: Dashboardets EGEN "teams"-query (restRows case "teams" nedenfor) er
+// hardcodet til KUN [TEST_TEAM, RIVAL_TEAM] uanset filter — "team-ai-preview"
+// vises derfor ALDRIG på dashboardets "My division standings"-modul (kun på
+// /resultater, som læser season_standings direkte). Rank-klatringen kan derfor
+// ikke demonstreres i preview med kun 2 hold (se dashboardMovementSignals.test.js
+// for den unit-testede klatre-sag); "+86" holdpoint-deltaet vises fortsat.
 export const SEED_SEASON_STANDINGS = [
   { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
   { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
-  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2, league_division_id: 2 } },
+  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 5450, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2, league_division_id: 2 } },
+];
+
+// vk-movement-signals — team_race_points_mv: hold-point PR. LØB, samme
+// tabel StandingsPage's progressions-graf allerede læser. "pool-race-done-2"
+// (POOL_RACES ovenfor) er puljens seneste AFSLUTTEDE løbsdag: TEST_TEAM's 86
+// point den dag matcher opgavens "+86"-eksempel og driver dashboardets
+// holdpoint-delta-badge. "pool-race-done-1" er en TIDLIGERE løbsdag og
+// påvirker ikke beregningen (kun sidste dag tæller) — med for realisme/
+// season-total-troværdighed.
+export const SEED_TEAM_RACE_POINTS_MV = [
+  { season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 86 },
+  { season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 10 },
+  { season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 10 },
+  { season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 20 },
+  { season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 15 },
+  { season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 25 },
 ];
 
 // ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────

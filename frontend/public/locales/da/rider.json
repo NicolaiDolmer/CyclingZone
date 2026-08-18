@@ -178,7 +178,11 @@
       "contractSeason": "Sæson {season}",
       "aiTag": "AI",
       "valueTrend": "{value} seneste {days} dage",
-      "valueTrendTitle": "Værdiændring siden {date}"
+      "valueTrendTitle": "Værdiændring siden {date}",
+      "ratingTrendRising": "Stigende denne sæson",
+      "ratingTrendSteady": "Stabil denne sæson",
+      "ratingTrendDeclining": "Faldende denne sæson",
+      "ratingTrendTitle": "Rating {value} siden {date}"
     },
     "banner": {
       "listed": "På transferlisten · pris {price}",
