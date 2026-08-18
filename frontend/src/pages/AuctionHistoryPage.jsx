@@ -13,6 +13,7 @@ import { formatNumber, formatDate } from "../lib/intl";
 import {
   Card, Button, EmptyState, ErrorState, GavelIcon,
   PageHeader, Section, SkeletonLines, Table, Tr, Th, Td,
+  ChevronLeftIcon, ChevronRightIcon,
 } from "../components/ui";
 import { useSortState } from "../lib/useTableSort.js";
 import { resolveAuctionHistorySort, DEFAULT_AUCTION_HISTORY_SORT } from "../lib/auctionHistorySort.js";
@@ -456,11 +457,13 @@ export default function AuctionHistoryPage() {
                 {t("history.pageOf", { page, total: Math.ceil(total / PER_PAGE) })}
               </span>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                  ← {t("history.prev")}
+                <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                  iconLeft={<ChevronLeftIcon size={14} aria-hidden="true" />}>
+                  {t("history.prev")}
                 </Button>
-                <Button variant="secondary" size="sm" disabled={page * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}>
-                  {t("history.next")} →
+                <Button variant="secondary" size="sm" disabled={page * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}
+                  iconRight={<ChevronRightIcon size={14} aria-hidden="true" />}>
+                  {t("history.next")}
                 </Button>
               </div>
             </div>

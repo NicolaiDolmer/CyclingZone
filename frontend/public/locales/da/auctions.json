@@ -133,6 +133,9 @@
     "line": "Fører: {name}",
     "none": "Ingen bud endnu"
   },
+  "list": {
+    "countLine": "Viser {shown} af {total} auktioner"
+  },
   "timer": {
     "completed": "Afsluttet",
     "expired": "Udløbet",

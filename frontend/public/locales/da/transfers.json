@@ -57,7 +57,7 @@
     "salary": "Løn",
     "estSalary": "Ansl. løn",
     "contractExpires": "Udl. efter sæson {season}",
-    "noContract": "Free agent",
+    "noContract": "Fri agent",
     "buttons": {
       "accept": "✓ Accepter",
       "counter": "↔ Modbud",
@@ -262,7 +262,8 @@
     "close": "Luk",
     "offerAria": "Send tilbud på {riderName}",
     "manageAria": "Administrér annonce for {riderName}",
-    "selectAria": "Vælg {riderName} til bulk-prisredigering"
+    "selectAria": "Vælg {riderName} til bulk-prisredigering",
+    "countLine": "Viser {shown} af {total} annoncer"
   },
   "bulkPrice": {
     "selected": "{count} markeret",

@@ -262,7 +262,8 @@
     "close": "Close",
     "offerAria": "Send offer on {riderName}",
     "manageAria": "Manage listing for {riderName}",
-    "selectAria": "Select {riderName} for bulk price edit"
+    "selectAria": "Select {riderName} for bulk price edit",
+    "countLine": "Showing {shown} of {total} listings"
   },
   "bulkPrice": {
     "selected": "{count} selected",

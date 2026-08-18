@@ -259,32 +259,32 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       <td className="px-3 py-1.5">
         <div className="flex items-center gap-1 flex-wrap">
           {isRecommended && !imWinning && (
-            <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap font-bold">
+            <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap font-bold">
               {t("auctions:badge.firstBidPick")}
             </span>
           )}
           {imWinning && (
-            <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
               {t("auctions:badge.winning")}
             </span>
           )}
           {isSeller && (
-            <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
               {t("auctions:badge.seller")}
             </span>
           )}
           {isMyRider && !isSeller && (
-            <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
               {t("auctions:badge.mine")}
             </span>
           )}
           {auction.status === "extended" && (
-            <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
               {t("auctions:badge.extended")}
             </span>
           )}
           {auction.is_flash && (
-            <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
               {t("auctions:badge.flash")}
             </span>
           )}
@@ -293,7 +293,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
               som alders-badget lige ovenfor. Advarsel, ikke blokering. */}
           <RiderBadges badges={[ageBadgeKey(r, seasonYear), retirementRiskBadgeKey(r, seasonYear)]} />
           {auction.is_youth && (
-            <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">{t("auctions:badge.youth")}</span>
+            <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">{t("auctions:badge.youth")}</span>
           )}
         </div>
       </td>
@@ -352,7 +352,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       {/* OVR — spillets samlede 1-99-rating (type-vægtet, #2000/#2464) */}
       <td className="px-2 py-1.5 text-center">
         <span
-          className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded"
+          className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded-cz"
           style={statStyle(ovr, { scale: "rating" })}
           title={t("auctions:table.ovrTitle")}
         >
@@ -373,7 +373,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       {/* Stats — kun de toggled */}
       {visibleStatsArr.map(key => (
         <td key={key} className="px-1 py-1.5 text-center">
-          <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r?.[key] || 0)}>
+          <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded-cz" style={statStyle(r?.[key] || 0)}>
             {r?.[key] || "—"}
           </span>
         </td>
@@ -404,7 +404,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 title={t("auctions:bid.minBid", { amount: formatNumber(minBid) })}
                 wrapperClassName="contents"
                 feedbackClassName="text-3xs text-cz-danger max-w-[90px] leading-tight"
-                className="w-20 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
+                className="w-20 bg-cz-subtle border border-cz-border rounded-cz px-2 py-1.5
                   text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
               />
               <button
@@ -413,12 +413,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 disabled={bidStatus === "loading"}
                 {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
-                className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
+                className={`px-3 py-1.5 rounded-cz text-xs font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                    imWinning
-                      ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"
-                      : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
+                    "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"}
                   disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") :
                  bidStatus === "error"   ? t("auctions:bid.buttonError") :
@@ -428,7 +426,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
               {/* Proxy bid section — vandret til højre for bud-knappen, forkortet label så den er plads til */}
               {!proxyExpanded && (myProxy ? (
                 <div className="flex items-center gap-1">
-                  <span className="text-3xs bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
+                  <span className="text-3xs bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
                     {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                   </span>
                   <button type="button" onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-3xs text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
@@ -443,7 +441,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label={t("auctions:bid.proxy.set")}
-                  className="inline-flex min-h-[28px] items-center justify-center rounded border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-3xs font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
+                  className="inline-flex min-h-[28px] items-center justify-center rounded-cz border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-3xs font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
                 >
                   {t("auctions:bid.proxy.buttonAdd")}
                 </button>
@@ -472,7 +470,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     aria-label={t("auctions:bid.proxy.inputAria")}
                     wrapperClassName="contents"
                     feedbackClassName="text-3xs text-cz-danger max-w-[240px] leading-tight"
-                    className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-none focus:border-cz-accent"
+                    className="w-20 bg-cz-subtle border border-cz-border rounded-cz px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     type="button"
@@ -480,7 +478,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     disabled={proxyStatus === "loading"}
                     {...proxyBlock.blockedProps}
                     aria-label={t("auctions:bid.proxy.save")}
-                    className={`px-2 py-1 rounded text-3xs font-bold whitespace-nowrap
+                    className={`px-2 py-1 rounded-cz text-3xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
@@ -576,7 +574,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {/* #2464: OVR + ryttertype — hvad køber jeg, og hvor god er han? */}
               {Number.isFinite(ovr) && (
                 <span
-                  className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
+                  className="text-xs font-mono font-bold px-1.5 py-0.5 rounded-cz"
                   style={statStyle(ovr, { scale: "rating" })}
                   title={t("auctions:card.ovrTitle")}
                 >
@@ -586,16 +584,16 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {r?.primary_type && (
                 <span className="text-cz-3 text-xs">{t(`riderTypes:types.${r.primary_type}`)}</span>
               )}
-              {isRecommended && !imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded font-bold">{t("auctions:badge.firstBidPick")}</span>}
-              {imWinning && <span className="text-3xs uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.winning")}</span>}
-              {isSeller && <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.seller")}</span>}
-              {auction.status === "extended" && <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
-              {auction.is_flash && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
+              {isRecommended && !imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill font-bold">{t("auctions:badge.firstBidPick")}</span>}
+              {imWinning && <span className="text-3xs uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.winning")}</span>}
+              {isSeller && <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.seller")}</span>}
+              {auction.status === "extended" && <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.extended")}</span>}
+              {auction.is_flash && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.flash")}</span>}
               {/* #228/#1824: alders-badge via delt RiderBadges-komponent (samme
                   mønster som de andre rytteroversigter) — ageBadgeKey, ikke rå is_u25. */}
               {/* #2943: samme pensions-risiko-badge som AuctionRow (desktop). */}
               <RiderBadges badges={[ageBadgeKey(r, seasonYear), retirementRiskBadgeKey(r, seasonYear)]} />
-              {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
+              {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
           </div>
@@ -607,7 +605,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className={`bg-cz-subtle rounded-lg px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
+        <div className={`bg-cz-subtle rounded-cz px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.highestBid")}</p>
           <p className="text-cz-1 font-mono font-bold text-sm">
             {formatNumber(auction.current_price ?? 0)} CZ$
@@ -621,7 +619,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             Delta-linjen er den delte ValueDeltaBadge (samme indikator som
             Transferlisten mod asking_price). */}
         {valueDelta && (
-          <div className="bg-cz-subtle rounded-lg px-3 py-2">
+          <div className="bg-cz-subtle rounded-cz px-3 py-2">
             <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.estValue")}</p>
             <p
               className="text-cz-2 font-mono text-sm font-medium"
@@ -632,7 +630,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             <ValueDeltaBadge valueDelta={valueDelta} ns="auctions" as="p" className="text-3xs mt-0.5" />
           </div>
         )}
-        <div className="bg-cz-subtle rounded-lg px-3 py-2">
+        <div className="bg-cz-subtle rounded-cz px-3 py-2">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">
             {r?.contract_length != null ? t("auctions:card.salary") : t("auctions:card.estSalary")}
           </p>
@@ -643,7 +641,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             <p className="text-cz-3 text-3xs mt-0.5">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</p>
           )}
         </div>
-        <div className="bg-cz-subtle rounded-lg px-3 py-2">
+        <div className="bg-cz-subtle rounded-cz px-3 py-2">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.seller")}</p>
           <p className="text-cz-2 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
         </div>
@@ -660,7 +658,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
           {visibleStatsArr.map(key => (
             <div key={key} className="text-center">
               <p className="text-cz-3 text-3xs uppercase mb-0.5">{STAT_LABEL_BY_KEY[key]}</p>
-              <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r?.[key] || 0)}>
+              <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded-cz" style={statStyle(r?.[key] || 0)}>
                 {r?.[key] || "—"}
               </span>
             </div>
@@ -687,7 +685,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 data-tour={isFirst ? "auctions-bid-input" : undefined}
                 aria-label={t("auctions:bid.inputAria")}
                 wrapperClassName="min-w-0 flex-1"
-                className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
               />
               <button
                 type="button"
@@ -695,17 +693,17 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 disabled={bidStatus === "loading"}
                 {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
-                className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+                className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                    imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40" : "bg-cz-accent text-cz-on-accent"}
+                    "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40"}
                   disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctions:bid.buttonError") : bidStatus === "success" ? t("common:actions.success") : imWinning ? t("auctions:bid.buttonRaise") : t("auctions:bid.buttonPlace")}
               </button>
               {/* Proxy bid section — vandret til højre for bud-knappen */}
               {!proxyExpanded && (myProxy ? (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-3xs bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg whitespace-nowrap">
+                  <span className="text-3xs bg-cz-success-bg text-cz-success px-2 py-1 rounded-cz-pill whitespace-nowrap">
                     {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                   </span>
                   <button
@@ -729,7 +727,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label={t("auctions:bid.proxy.set")}
-                  className="min-h-[44px] rounded-lg border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
+                  className="min-h-[44px] rounded-cz border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
                 >
                   {t("auctions:bid.proxy.buttonAddCard")}
                 </button>
@@ -755,7 +753,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     placeholder={t("auctions:bid.proxy.placeholder")}
                     aria-label={t("auctions:bid.proxy.inputAria")}
                     wrapperClassName="min-w-0 w-32"
-                    className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                    className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     type="button"
@@ -763,7 +761,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     disabled={proxyStatus === "loading"}
                     {...proxyBlock.blockedProps}
                     aria-label={t("auctions:bid.proxy.save")}
-                    className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
+                    className={`min-h-[44px] px-3 py-2 rounded-cz text-xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
@@ -1562,7 +1560,7 @@ export default function AuctionsPage() {
           <>
             <NavLink to="/auctions" end
               className={({ isActive }) =>
-                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                `px-3 py-1.5 rounded-cz text-sm font-medium transition-all border ${
                   isActive
                     ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                     : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1570,7 +1568,7 @@ export default function AuctionsPage() {
             </NavLink>
             <NavLink to="/auctions/history"
               className={({ isActive }) =>
-                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                `px-3 py-1.5 rounded-cz text-sm font-medium transition-all border ${
                   isActive
                     ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                     : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1642,7 +1640,7 @@ export default function AuctionsPage() {
         <div className="flex gap-2 flex-wrap items-center">
           {FILTER_TABS.map(tab => (
             <button key={tab.key} onClick={() => pickFilter(tab.key)}
-              className={`inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+              className={`inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
                 ${filter === tab.key
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                   : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1653,7 +1651,7 @@ export default function AuctionsPage() {
             onClick={() => setWishlistOnly(v => !v)}
             aria-pressed={wishlistOnly}
             title={wishlistOnly ? t("auctions:filter.wishlistTitleOn") : t("auctions:filter.wishlistTitleOff")}
-            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
               ${wishlistOnly
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1666,7 +1664,7 @@ export default function AuctionsPage() {
             onClick={() => setShowFeed(v => !v)}
             aria-pressed={showFeed}
             title={showFeed ? t("auctions:filter.feedTitleOn") : t("auctions:filter.feedTitleOff")}
-            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
               ${showFeed
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1710,6 +1708,7 @@ export default function AuctionsPage() {
         <AuctionsContent
           filter={filter}
           filtered={filtered}
+          totalCount={auctions.length}
           scouting={scouting}
           seasonYear={seasonYear}
           wishlistOnly={wishlistOnly}
@@ -2012,7 +2011,7 @@ function MySituationSection({ title, badgeClass, auctions, sectionId, sharedProp
 function AuctionsContent(props) {
   const { t } = useTranslation("auctions");
   const {
-    filter, filtered, wishlistOnly, mySituationBuckets,
+    filter, filtered, totalCount, wishlistOnly, mySituationBuckets,
     feedEvents, auctionsById, myTeamId, now, showFeed, teamNamesById,
     ...rest
   } = props;
@@ -2070,6 +2069,12 @@ function AuctionsContent(props) {
           </>
         ) : (
           <AuctionList auctions={filtered} sectionId="main" sharedProps={sharedProps} />
+        )}
+        {/* #2849 T2-kontrakt: count-linje under auktionslisten (docs/design/PAGE_TEMPLATES.md). */}
+        {!isEmpty && (
+          <p className="mt-2 text-cz-3 text-xs font-data">
+            {t("auctions:list.countLine", { shown: filtered.length, total: totalCount })}
+          </p>
         )}
       </div>
       {showFeed && (
