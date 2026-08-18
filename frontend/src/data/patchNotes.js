@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.139",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "A traded academy rider no longer squeezes past your 8-slot cap",
+          "body": "Swapping for an opponent's academy rider carried his academy flag over untouched, so he could land on your squad on top of a full academy: one team ended up with 9 riders in 8 slots. A traded academy rider now graduates to senior on arrival, the same way a market sale already does, so a swap can never push you over the cap."
+        },
+        "da": {
+          "title": "En byttet akademi-rytter kan ikke længere presse sig forbi din 8-plads-cap",
+          "body": "Byttede du dig til en modstanders akademi-rytter, fulgte hans akademi-flag råt med, så han kunne lande i din trup selvom akademiet var fuldt: ét hold endte med 9 ryttere på 8 pladser. En byttet akademi-rytter graduerer nu til senior ved ankomsten, ligesom et salg på transfermarkedet allerede gør, så et bytte aldrig kan skubbe dig over loftet."
+        },
+        "refs": [2797]
+      }
+    ]
+  },
+  {
     "version": "7.138",
     "date": "2026-08-17",
     "label": "Beta",
