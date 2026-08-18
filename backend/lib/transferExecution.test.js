@@ -1242,3 +1242,97 @@ test("#1995: flushDeferredTransfersForRace flytter parkeret rytter når løbet f
   );
   assert.equal(again.ridersFlushed, 0, "genkørsel er no-op");
 });
+
+// ── #2797: swap-stien graduerer akademi-ryttere til senior, ligesom #3650 gør
+// for direkte transfermarkeds-salg. Uden dette kunne en byttehandel omgå
+// akademiets 8-plads-cap: en akademi-rytter der byttes ind landede som
+// is_academy=true hos modparten, uden om det tjek der ellers kun kører ved
+// intake/auktion/promote/demote → 9/8 (Discord-rapport 21/7, gentaget 10/8).
+
+test("#2797: confirmSwapOffer graduerer en akademi-rytter til senior hos modtageren (offered-side) — modtagerens akademi kan aldrig ende over 8/8 via swap", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  rider.is_academy = true; // sælgerens akademi-rytter tilbydes i byttet
+  // Modtagerens (buyer) akademi er allerede fuld — 8/8 — netop scenariet fra
+  // bug-rapporten. Grunder graduation-fixet håndhæves capen aldrig direkte
+  // her, men riderens is_academy skal EFTER byttet være false, uanset.
+  for (let i = 0; i < 8; i++) {
+    db.riders.push({ id: `academy-full-${i}`, firstname: "A", lastname: `${i}`, team_id: "buyer", pending_team_id: null, is_academy: true });
+  }
+  db.riders.push({ id: "req-rider", firstname: "Req", lastname: "Star", team_id: "buyer", pending_team_id: null, is_academy: false });
+  db.swap_offers.push({
+    id: "swap-academy-1", offered_rider_id: "rider-1", requested_rider_id: "req-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 0, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-academy-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "accepted");
+  const moved = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(moved.team_id, "buyer", "rytteren skiftede hold");
+  assert.equal(moved.is_academy, false, "graduerer til senior ved byttet — lander IKKE i modtagerens akademi (aldrig 9/8)");
+  // Den anden ben af byttet (senior for senior) er upåvirket.
+  assert.equal(db.riders.find((r) => r.id === "req-rider").team_id, "seller");
+  assert.equal(db.riders.find((r) => r.id === "req-rider").is_academy, false);
+  // Modtagerens akademi står stadig på 8 — ikke 9.
+  const buyerAcademyCount = db.riders.filter((r) => r.team_id === "buyer" && r.is_academy === true).length;
+  assert.equal(buyerAcademyCount, 8, "modtagerens akademi forbliver på 8/8 — den byttede rytter talte aldrig med");
+});
+
+test("#2797: confirmSwapOffer graduerer BEGGE sider hvis begge ryttere kommer fra en akademi", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  rider.is_academy = true;
+  db.riders.push({ id: "req-academy-rider", firstname: "Req", lastname: "Talent", team_id: "buyer", pending_team_id: null, is_academy: true });
+  db.swap_offers.push({
+    id: "swap-academy-2", offered_rider_id: "rider-1", requested_rider_id: "req-academy-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 0, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-academy-2", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "accepted");
+  assert.equal(db.riders.find((r) => r.id === "rider-1").is_academy, false, "tilbudt akademi-rytter graduerer hos modtageren");
+  assert.equal(db.riders.find((r) => r.id === "req-academy-rider").is_academy, false, "ønsket akademi-rytter graduerer hos den oprindelige ejer");
+});
+
+// #1995-varianten: når byttet parkeres (pending_team_id) fordi én rytter er i
+// et aktivt etapeløb, skal is_academy graduere med det samme på det ben der
+// parkeres — akademi-status følger tilbuddet, ikke først registreringen.
+test("#2797: confirmSwapOffer graduerer akademi-rytteren ved PARKERING, ikke først ved registrering", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  rider.is_academy = true;
+  for (let i = 0; i < 9; i++) {
+    db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null });
+  }
+  db.riders.push({ id: "req-rider", firstname: "Req", lastname: "Star", team_id: "buyer", pending_team_id: null });
+  putRiderInActiveStageRace(db, "rider-1"); // kun den tilbudte er låst
+  db.swap_offers.push({
+    id: "swap-academy-3", offered_rider_id: "rider-1", requested_rider_id: "req-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 0, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-academy-3", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "deferred_stage_race");
+  const offered = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(offered.team_id, "seller", "endnu ikke flyttet — parkeret");
+  assert.equal(offered.pending_team_id, "buyer");
+  assert.equal(offered.is_academy, false, "graduerer allerede ved parkering, ikke først ved race-flush");
+});

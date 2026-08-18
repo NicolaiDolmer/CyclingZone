@@ -727,12 +727,16 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // til en 2-sæsoners standardkontrakt i stedet for at arve deres egne. Køb-
   // stien (executeTransferOffer) har hentet kolonnen siden #1836; swap-stien
   // blev aldrig rettet med.
+  // #2797: is_academy MED — uden den kan en akademi-rytter bytte til modpartens
+  // hold og forblive is_academy=true dér, uden om akademiets 8-plads-cap (som
+  // ellers kun håndhæves ved intake/auktion/promote/demote). Samme
+  // graduatePatch-mønster som executeTransferOffer (#3650) anvendes nedenfor.
   const [offered, requested] = await Promise.all([
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", swap.offered_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy").eq("id", swap.offered_rider_id)
     ),
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", swap.requested_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy").eq("id", swap.requested_rider_id)
     ),
   ]);
   const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([
@@ -797,6 +801,12 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // Division = det MODTAGENDE holds (offered → receiving, requested → proposing).
   const offeredContractPatch = contractOnAcquirePatch(offered, swapSeasonNumber, { division: receivingState.division });
   const requestedContractPatch = contractOnAcquirePatch(requested, swapSeasonNumber, { division: proposingState.division });
+  // #2797: en akademi-rytter der byttes graduerer atomisk til senior hos
+  // modparten — samme graduatePatch-mønster som executeTransferOffer (#3650).
+  // Uden dette landede rytteren som is_academy=true på modpartens hold, uden om
+  // 8-plads-cap'en (som ellers kun håndhæves ved intake/auktion/promote/demote).
+  const offeredGraduatePatch = offered.is_academy ? { is_academy: false } : {};
+  const requestedGraduatePatch = requested.is_academy ? { is_academy: false } : {};
 
   // #19: parkér = sæt pending_team_id på begge ryttere (kræver at ingen af dem
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -806,7 +816,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.receiving_team_id, updated_at: swapTimestamp, ...offeredContractPatch })
+          .update({ pending_team_id: swap.receiving_team_id, updated_at: swapTimestamp, ...offeredContractPatch, ...offeredGraduatePatch })
           .eq("id", offered.id)
           .eq("team_id", swap.proposing_team_id)
           .is("pending_team_id", null)
@@ -815,7 +825,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     : await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ team_id: swap.receiving_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...offeredContractPatch })
+          .update({ team_id: swap.receiving_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...offeredContractPatch, ...offeredGraduatePatch })
           .eq("id", offered.id)
           .eq("team_id", swap.proposing_team_id)
           .select("id")
@@ -833,7 +843,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.proposing_team_id, updated_at: swapTimestamp, ...requestedContractPatch })
+          .update({ pending_team_id: swap.proposing_team_id, updated_at: swapTimestamp, ...requestedContractPatch, ...requestedGraduatePatch })
           .eq("id", requested.id)
           .eq("team_id", swap.receiving_team_id)
           .is("pending_team_id", null)
@@ -842,7 +852,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     : await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ team_id: swap.proposing_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...requestedContractPatch })
+          .update({ team_id: swap.proposing_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...requestedContractPatch, ...requestedGraduatePatch })
           .eq("id", requested.id)
           .eq("team_id", swap.receiving_team_id)
           .select("id")
@@ -850,13 +860,16 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   if (!movedRequested) {
     // Rul den første ben tilbage så vi ikke efterlader en halv byttehandel.
+    // #2797: is_academy rulles OGSÅ tilbage til den oprindelige værdi — ellers
+    // ville en fejlet swap efterlade en gradueret akademi-rytter hos SIN EGEN
+    // sælger (han bliver aldrig sendt af sted, men mistede sin akademi-plads).
     if (deferRegistration) {
       await expectMutation(
-        supabase.from("riders").update({ pending_team_id: null }).eq("id", offered.id)
+        supabase.from("riders").update({ pending_team_id: null, is_academy: offered.is_academy }).eq("id", offered.id)
       );
     } else {
       await expectMutation(
-        supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp }).eq("id", offered.id)
+        supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp, is_academy: offered.is_academy }).eq("id", offered.id)
       );
     }
     await withdrawSwapOffer(supabase, swap.id);
