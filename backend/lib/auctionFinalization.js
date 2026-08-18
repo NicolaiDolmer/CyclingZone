@@ -3,6 +3,7 @@ import {
   ensureNoError,
   expectMaybeSingle,
   expectMutation,
+  expectMutationAffectingRows,
   getIncomingSquadViolation,
   getTeamMarketState,
   withdrawOpenTransferDealsForRiders,
@@ -14,6 +15,7 @@ import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
+import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -398,7 +400,9 @@ async function tryPlaceYouthWinnerOnSenior({
   const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, {
     division: buyer.division,
   });
-  await expectMutation(
+  // #3580: verificér at ejerskabsskiftet FAKTISK ramte en række, FØR debiten
+  // nedenfor kører — se expectMutationAffectingRows' doc-comment i marketUtils.js.
+  await expectMutationAffectingRows(
     supabase
       .from("riders")
       .update({
@@ -408,7 +412,8 @@ async function tryPlaceYouthWinnerOnSenior({
         is_academy: false,
         ...winnerContractPatch,
       })
-      .eq("id", rider.id)
+      .eq("id", rider.id),
+    { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
   );
 
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "youth_auction_senior_win" });
@@ -1029,7 +1034,13 @@ async function finalizeAuctionRecord({
     // #932: en graduate-salgs-auktion (akademirytter solgt af sit eget hold) skal
     // lande hos vinderen som SENIOR — ikke i vinderens akademi. Flip is_academy=false.
     const graduatePatch = auction.rider?.is_academy ? { is_academy: false } : {};
-    await expectMutation(
+    // #3580: samme verifikation som senior-ungdomsplaceringen ovenfor — en
+    // UPDATE der (fx pga. en samtidig sletning/race) rammer 0 rækker skal
+    // ALDRIG kunne efterlade finance-benet nedenfor til at gennemføre alene.
+    // Gælder BEGGE grene: den umiddelbare overdragelse OG #1995-parkeringen
+    // (pending_team_id) — begge er lige så meget "ejerskabet ændrede sig
+    // faktisk" som den direkte team_id-sti.
+    await expectMutationAffectingRows(
       supabase
         .from("riders")
         .update(
@@ -1051,8 +1062,19 @@ async function finalizeAuctionRecord({
                 ...graduatePatch,
               }
         )
-        .eq("id", auction.rider.id)
+        .eq("id", auction.rider.id),
+      { context: `auction=${auction.id} rider=${auction.rider.id}` }
     );
+
+    // #2793 (bølge 3-følgefund): rytteren graduerede lige (graduatePatch ovenfor)
+    // via et DIREKTE salg (#3845) — resolver en evt. hængende PENDING
+    // academy_graduation-row hos sælgeren så academyGraduationSweep ikke senere
+    // finder den og forsøger at auto-resolve en rytter der allerede er solgt.
+    if (graduatePatch.is_academy === false && auction.seller_team_id) {
+      await resolvePendingGraduationOnSale(supabase, {
+        teamId: auction.seller_team_id, riderId: auction.rider.id, now: new Date(actualEnd),
+      });
+    }
 
     // #1906 defense-in-depth: rytteren er solgt — ryd hans fremtidige race_entries
     // så de ikke hænger ved som ghost og phantom-binder en ægte rytter. #2579: også
@@ -1255,7 +1277,10 @@ async function finalizeAuctionRecord({
     // bank-holdte ryttere en kontrakt hvis kontraktløs, så "ejede ryttere har
     // altid salary != null" holder for ALLE ejede (også bankens), og en senere
     // gen-auktion/handel arver kontrakten uændret.
-    await expectMutation(
+    // #3580: samme verifikation som de øvrige ejerskabsskift ovenfor — bank-
+    // salget krediterer sælgeren nedenfor, så overdragelsen til banken skal
+    // være bekræftet FØRST.
+    await expectMutationAffectingRows(
       supabase
         .from("riders")
         .update({
@@ -1264,7 +1289,8 @@ async function finalizeAuctionRecord({
           acquired_at: actualEnd,
           ...contractOnAcquirePatch(auction.rider, activeSeasonNumber, { division: bankTeam.division }),
         })
-        .eq("id", auction.rider.id)
+        .eq("id", auction.rider.id),
+      { context: `guaranteed_bank_sale auction=${auction.id} rider=${auction.rider.id}` }
     );
 
     // #1906 defense-in-depth: rytteren forlod sælgeren (solgt til banken) — ryd hans

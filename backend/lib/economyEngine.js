@@ -847,16 +847,31 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
             }
           );
 
-          // Krediteringen blev afvist som dublet → salget ER allerede bogført i
-          // en tidligere kørsel. Spring resten af dispositionen over: et nyt
-          // afdrag med "provenu" der aldrig blev krediteret ville slette gæld
-          // uden penge bag.
+          // #2982: en 23505-skip fra creditTeam betyder KUN at krediteringen
+          // allerede er bogført i en tidligere kørsel — IKKE at hele salget er
+          // gennemført. Den gamle kode sprang resten af dispositionen over her
+          // UBETINGET (`continue`), hvilket lod holdet beholde BÅDE pengene OG
+          // rytteren for evigt, hvis en tidligere kørsel crashede (eller
+          // kastede en fejl) mellem kreditering og rytterflyt: enhver senere
+          // kørsel ramte samme idempotency-skip og gav op på præcis det
+          // uafsluttede arbejde, hver gang.
+          //
+          // Fix: brug team-roster-snapshot'et vi allerede har (hentet ved
+          // starten af DENNE payroll-kørsel, se loadHumanSeasonEndTeams) til
+          // at afgøre om rytteren FAKTISK stadig ejes af holdet.
+          //   - Ja → dispositionen er den uafsluttede halvdel af et tidligere
+          //     crashet salg. Fuldfør den nu (rytterflyt + oprydning + evt.
+          //     lånafdrag) UDEN at kreditere igen (credit var netop skipped).
+          //   - Nej → rytteren har allerede forladt holdet, så hele salget
+          //     (kreditering + disposition) nåede i mål i en tidligere
+          //     kørsel. Intet at gøre.
           if (forcedSaleCredit?.skipped) {
-            // #2976: bevidst UDEN notifikation. Skip'et betyder at pengene er
-            // bogført mens dispositionen ikke nåede igennem, altså at rytteren
-            // stadig står på holdet. "Vi solgte X" ville være usandt her.
-            console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede bogført (sæson ${seasonId}) — skip (ingen salgs-notifikation)`);
-            continue;
+            const stillOwnedByTeam = rider.team_id === team.id;
+            if (!stillOwnedByTeam) {
+              console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede fuldført (kreditering + disposition, sæson ${seasonId}) — skip.`);
+              continue;
+            }
+            console.warn(`  🩹  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} var allerede krediteret (sæson ${seasonId}), men rytteren stod stadig på holdet — fuldfører dispositionen nu (#2982 resume, ingen ny kreditering).`);
           }
 
           const { error: riderUpdateError } = await supabaseClient

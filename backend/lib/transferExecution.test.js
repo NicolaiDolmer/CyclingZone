@@ -754,6 +754,44 @@ test("#3650: confirmTransferOffer graduerer en akademi-rytter til senior hos kø
   assert.equal(db.teams.find((t) => t.id === "seller").balance, 800, "sælger modtager prisen");
 });
 
+// #2793 (bølge 3-følgefund): en akademi-rytter der ALLEREDE er turneret 22
+// (pending academy_graduation-row, override-vinduet ikke udløbet endnu) bliver
+// solgt DIREKTE via transfermarkedet (#3845) i stedet for graduerings-vinduets
+// "sell"-handling. Uden resolvePendingGraduationOnSale ville rækken hænge som
+// 'pending', og academyGraduationSweep ville senere finde den efter deadline
+// og forsøge at auto-resolve en rytter der allerede har skiftet ejer.
+test("#2793: confirmTransferOffer resolver en hængende pending academy_graduation-row til 'sold' ved direkte transfer-salg", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.riders.push({
+    id: "academy-rider-grad", firstname: "Elin", lastname: "Overdue",
+    team_id: "seller", pending_team_id: null, is_academy: true,
+    salary: 4_000, base_value: 40_000, prize_earnings_bonus: 0,
+    current_production_value: 18_000, contract_length: 2, contract_end_season: 3,
+  });
+  db.academy_graduation = [
+    { id: "grad-row-1", team_id: "seller", rider_id: "academy-rider-grad", status: "pending", deadline: "2026-08-24T00:00:00.000Z" },
+  ];
+  db.transfer_offers.push({
+    id: "offer-academy-grad", rider_id: "academy-rider-grad", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 300, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-academy-grad", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, true);
+  const rider = db.riders.find((r) => r.id === "academy-rider-grad");
+  assert.equal(rider.is_academy, false, "graduerer til senior ved salget");
+
+  const grad = db.academy_graduation.find((g) => g.id === "grad-row-1");
+  assert.equal(grad.status, "sold", "den hængende pending-row resolves så sweepet ikke dobbelt-kører");
+  assert.ok(grad.resolved_at, "resolved_at stemplet");
+});
+
 test("#3650: confirmTransferOffer giver en kontraktløs akademi-rytter en frisk standard-kontrakt ved salg (samme create-if-missing-gate som promote())", async () => {
   const db = baseDb({ windowStatus: "open" });
   db.riders.push({

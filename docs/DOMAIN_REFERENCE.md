@@ -16,6 +16,49 @@
 
 ---
 
+## Løbs-tidsplan: `races.scheduled_for` vs. `race_stage_schedule`
+
+To felter ligner hinanden men svarer på forskellige spørgsmål. Forveksling af dem gav to
+falske produktions-alarmer på race-motoren samme dag (14/8, [#3730](https://github.com/NicolaiDolmer/CyclingZone/issues/3730) — postmortem:
+[`.claude/learnings/2026-08-14-falsk-alarm-paa-race-motoren-to-gange.md`](../.claude/learnings/2026-08-14-falsk-alarm-paa-race-motoren-to-gange.md)).
+
+| Felt | Betyder | Betyder IKKE |
+|------|---------|---------------|
+| `races.scheduled_for` | Løbets **starttidspunkt** — sat lig løbets FØRSTE etapes `scheduled_at` ved kalender-materialisering (`raceCalendarScheduling.js: buildScheduleRows`) | Hvornår næste etape kører. Feltet opdateres ikke løbende gennem etapeløbet. |
+| `race_stage_schedule.scheduled_at` (pr. `race_id` + `stage_number`, sammen med `game_day`) | Hvornår **den enkelte etape** skal afvikles. Den eneste kilde til om noget er forsinket | — |
+
+`races.status` forbliver `'scheduled'` gennem hele etapeløbets forløb — den flipper først til
+`'completed'` allerførst efter sidste etape ER kørt OG finalization er lykkedes
+(`raceRunner.js`, status sættes SIDST i finalization-stien, ikke pr. etape). `stages_completed`
+er den løbende fremdrift. Et fire-dages løb der kører helt planmæssigt har derfor `status =
+'scheduled'` og en `scheduled_for` der ligger dage tilbage i tiden — det er **normalt**, ikke et
+hængende løb.
+
+En etape er FORFALDEN når `scheduled_at <= now()` OG `stage_number = races.stages_completed + 1`
+(løbets næste uafviklede etape) — det er præcis den logik `stageScheduler.js` selv bruger til at
+udvælge due etaper. Den kanoniske "er noget forfaldent og ikke sket"-forespørgsel:
+
+```sql
+select count(*) from race_stage_schedule ss
+join races r on r.id = ss.race_id
+where r.season_id = <aktiv sæson>
+  and ss.scheduled_at < now()
+  and not exists (
+    select 1 from race_results rr
+    where rr.race_id = ss.race_id and rr.stage_number = ss.stage_number
+  );
+```
+
+`select … from races where scheduled_for < now() and status = 'scheduled'` besvarer IKKE dette
+spørgsmål — den finder ethvert flerdages løb der er i gang, uanset om det følger planen.
+
+**Kadence før alarm:** "timer siden sidste etape" er meningsløst uden løbets kadence. Et løb der
+kører 1 etape/døgn har 23-24 timer mellem etaper som normaltilstand; et løb med tættere
+etape-tæthed har en helt anden kadence. Slå kadencen op i `race_stage_schedule` (afstanden mellem
+på hinanden følgende `scheduled_at`) før noget kaldes forsinket.
+
+---
+
 ## Rytter-stats Forkortelser
 
 | Felt | Dansk | Beskrivelse |

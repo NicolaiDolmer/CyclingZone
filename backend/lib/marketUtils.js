@@ -63,6 +63,35 @@ export async function expectMutation(query) {
   ensureNoError(error);
 }
 
+// #3580: expectMutation() only checks for a Postgres/PostgREST `error` — an
+// UPDATE whose WHERE clause matches ZERO rows returns no error at all (just
+// an empty/absent result), so a caller using expectMutation has no way to
+// detect a silent no-op. For ownership-critical writes (moving a rider
+// between teams) that gap lets the REST of a finalization proceed — finance
+// debits/credits, notifications, closeAuction — as if the transfer had
+// actually happened, when it never did. Root-cause evidence for the 9/8
+// Seojun Choi incident (BPTrain paid 40.000, riders.team_id never moved) is
+// inconclusive (no movement audit trail yet, see #3582), but this gap is real
+// regardless of which path produced that specific case, and is exactly the
+// shape of failure the issue asks to close off.
+//
+// expectMutationAffectingRows requires the query to actually report the rows
+// it touched (`.select(idColumn)`), and throws if that comes back empty —
+// BEFORE any caller-side finance movement runs, since every ownership-write
+// call site in auctionFinalization.js executes its riders.update() first.
+// `context` is a short human string (auction/rider id) folded into the error
+// message so a thrown failure is diagnosable straight from Sentry/logs.
+export async function expectMutationAffectingRows(query, { context, idColumn = "id" } = {}) {
+  const { data, error } = await query.select(idColumn);
+  ensureNoError(error);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `expectMutationAffectingRows: opdatering ramte 0 rækker${context ? ` (${context})` : ""}`
+    );
+  }
+  return data;
+}
+
 export function getSquadLimits(division = DEFAULT_DIVISION) {
   return MARKET_SQUAD_LIMITS[division] || MARKET_SQUAD_LIMITS[DEFAULT_DIVISION];
 }

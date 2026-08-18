@@ -96,6 +96,9 @@ function createFinalizeAuctionSupabase({
   swapWithdrawals = [],
   activeStageRaceRiderIds = [], // #1995: ryttere i et aktivt fleretape-løb → defer
   auctionBids = [], // #3401: realiserede bud (team_id, amount) — bruges KUN til losing-bidder-reveal, ALDRIG auction_proxy_bids
+  riderUpdateHitsZeroRows = false, // #3580: simulér en riders.update() der rammer 0 rækker
+  academyGraduationRow = null, // #2793: pending academy_graduation-row for sælgeren (resolvePendingGraduationOnSale), default ingen
+  academyGraduationUpdates = [],
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -263,8 +266,24 @@ function createFinalizeAuctionSupabase({
                 assert.equal(column, "id");
                 assert.equal(value, auction.rider.id);
                 riderUpdates.push(payload);
-                auction.rider = { ...auction.rider, ...payload };
-                return Promise.resolve({ error: null });
+                if (!riderUpdateHitsZeroRows) {
+                  auction.rider = { ...auction.rider, ...payload };
+                }
+                // #3580: expectMutationAffectingRows chains .select(idColumn)
+                // onto every ownership-critical riders.update() — support both
+                // that AND a bare await (expectMutation, used elsewhere) so
+                // existing callers/tests keep working unchanged.
+                const resolved = riderUpdateHitsZeroRows
+                  ? { data: [], error: null }
+                  : { data: [{ id: value }], error: null };
+                return {
+                  select() {
+                    return Promise.resolve(resolved);
+                  },
+                  then(resolve, reject) {
+                    return Promise.resolve({ error: null }).then(resolve, reject);
+                  },
+                };
               },
             };
           },
@@ -421,6 +440,37 @@ function createFinalizeAuctionSupabase({
                 assert.equal(column, "auction_id");
                 assert.equal(value, auction.id);
                 return Promise.resolve({ data: auctionBids, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      // #2793: resolvePendingGraduationOnSale — kaldes kun når en OWN-team
+      // akademi-rytter graduerer via et direkte salg (#3650/#3845). Simplere
+      // fixture-styret mock: default ingen pending row (no-op).
+      if (table === "academy_graduation") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  eq() {
+                    return {
+                      maybeSingle() {
+                        return Promise.resolve({ data: academyGraduationRow, error: null });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(column, value) {
+                academyGraduationUpdates.push({ payload, column, value });
+                return Promise.resolve({ error: null });
               },
             };
           },
@@ -1168,6 +1218,76 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
   ]);
 });
 
+// #3580: root-cause forward-guard. Beviset for det 9/8-ramte tilfælde
+// (BPTrain betalte, riders.team_id flyttede aldrig) er inkonklusivt uden en
+// bevægelseslog (#3582) — men expectMutation() havde under alle omstændigheder
+// ingen måde at opdage en riders.update() der rammer 0 rækker. Denne test
+// låser den nye adfærd: rammer ejerskabsskiftet 0 rækker, SKAL hele
+// finaliseringen kaste FØR nogen penge flytter eller auktionen lukkes —
+// betaling og overdragelse må aldrig kunne lykkes uafhængigt af hinanden.
+test("finalizeAuctionById throws BEFORE any money moves if the ownership transfer hits 0 rows (#3580)", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+
+  await assert.rejects(
+    finalizeAuctionById({
+      supabase: createFinalizeAuctionSupabase({
+        auction: {
+          id: "auction-zero-rows",
+          status: "active",
+          current_bidder_id: "buyer-team",
+          current_price: 40000,
+          seller_team_id: "seller-team",
+          rider: {
+            id: "rider-zero-rows",
+            firstname: "Seojun",
+            lastname: "Choi",
+            team_id: "seller-team",
+          },
+        },
+        teams: {
+          "buyer-team": {
+            id: "buyer-team",
+            name: "Buyer",
+            balance: 500000,
+            division: 3,
+            user_id: "user-buyer",
+          },
+          "seller-team": {
+            id: "seller-team",
+            name: "Seller",
+            balance: 250,
+            division: 3,
+            user_id: "user-seller",
+            is_ai: false,
+          },
+        },
+        teamMarketCounts: {
+          "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        },
+        auctionUpdates,
+        teamUpdates,
+        riderUpdates,
+        financeInserts,
+        riderUpdateHitsZeroRows: true,
+      }),
+      auctionId: "auction-zero-rows",
+      notifyTeamOwner: async () => {},
+      now: new Date("2026-04-22T10:00:00.000Z"),
+    }),
+    /expectMutationAffectingRows.*0 rækker/
+  );
+
+  // Ejerskabsforsøget blev logget (riderUpdates har payload'et), men fordi
+  // det ramte 0 rækker skal INTET af det følgende have kørt.
+  assert.equal(riderUpdates.length, 1);
+  assert.deepEqual(financeInserts, []);
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(auctionUpdates, []);
+});
+
 // #3549: køber og sælger er FORSKELLIGE hold (normal handel) — begge skal
 // stadig have deres egen besked, men med hver deres type. Forward-guard mod at
 // en fremtidig ændring utilsigtet slår de to typer sammen igen.
@@ -1192,7 +1312,9 @@ test("finalizeAuctionById sends auction_won to the buyer and auction_sold (own t
         "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500, division: 3, user_id: "user-buyer" },
         "seller-team": { id: "seller-team", name: "Seller", balance: 100, division: 3, user_id: "user-seller", is_ai: false },
       },
-      teamMarketCounts: { "buyer-team": { riderCount: 5, pendingCount: 0, activeLoanCount: 0 } },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 5, pendingCount: 0, activeLoanCount: 0 },
+      },
       auctionUpdates,
       teamUpdates,
       riderUpdates,
@@ -2183,6 +2305,65 @@ test("finalizeAuctionById graduates a contractless own-team academy rider and gi
   }]);
 });
 
+// #2793 (bølge 3-følgefund): en akademi-rytter der ALLEREDE er turneret 22
+// (pending academy_graduation-row, override-vinduet ikke udløbet endnu) bliver
+// solgt DIREKTE via #3845 i stedet for graduerings-vinduets "sell"-handling.
+// Uden resolvePendingGraduationOnSale ville rækken hænge som 'pending', og
+// academyGraduationSweep ville senere forsøge at auto-resolve en rytter der
+// allerede er solgt (risiko: phantom createGraduateAuction for sælgeren).
+test("finalizeAuctionById resolves a pending academy_graduation row to 'sold' when an own-team academy rider is sold directly (#2793)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const academyGraduationUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-academy-pending-grad",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 200,
+        seller_team_id: "seller-team",
+        is_youth: false,
+        rider: {
+          id: "rider-academy-pending-grad",
+          firstname: "Elin",
+          lastname: "Overdue",
+          team_id: "seller-team",
+          is_academy: true,
+          salary: 4_000,
+          contract_length: 2,
+          contract_end_season: 3,
+          base_value: 40_000,
+          prize_earnings_bonus: 0,
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+      academyGraduationRow: { id: "grad-row-1", status: "pending" },
+      academyGraduationUpdates,
+    }),
+    auctionId: "auction-academy-pending-grad",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-08-17T12:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.equal(academyGraduationUpdates.length, 1, "den hængende pending-row skal resolves");
+  assert.equal(academyGraduationUpdates[0].column, "id");
+  assert.equal(academyGraduationUpdates[0].value, "grad-row-1");
+  assert.equal(academyGraduationUpdates[0].payload.status, "sold");
+  assert.equal(academyGraduationUpdates[0].payload.resolved_at, "2026-08-17T12:00:00.000Z");
+});
+
 // ─── #1308 Fase B: ungdomsauktion-finalization ────────────────────────────────
 // En youth-auktion (is_youth=true) har INGEN sælger (seller_team_id=NULL) og
 // rytteren er fri (team_id=NULL). Vinderen placeres i sit akademi (is_academy=true,
@@ -2205,6 +2386,7 @@ function makeYouthFinalizeSupabase({
   riderNowOwned = false,   // rytteren har imens fået et hold → conditional DELETE rammer 0 rækker
   riderHasExpiredIntake = false, // #2627: rytterens intake-tilbud UDLØB → usolgt beholdes som fri agent
   compensationDuplicate = false, // #2648: simulér cron-retry af en allerede-krediteret auktion (23505)
+  riderUpdateHitsZeroRows = false, // #3580: simulér en riders.update() der rammer 0 rækker
 }) {
   const riderUpdates = [];
   const auctionUpdates = [];
@@ -2352,14 +2534,26 @@ function makeYouthFinalizeSupabase({
               },
             };
           },
-          // #2754: senior-placeringen (expectMutation på .update().eq()).
+          // #2754: senior-placeringen (expectMutationAffectingRows på .update().eq()).
           update(payload) {
             return {
               eq(column, value) {
                 assert.equal(column, "id");
                 assert.equal(value, auction.rider.id);
                 riderUpdates.push(payload);
-                return Promise.resolve({ error: null });
+                // #3580: support both .select(idColumn) (expectMutationAffectingRows)
+                // and a bare await (legacy expectMutation call sites elsewhere).
+                const resolved = riderUpdateHitsZeroRows
+                  ? { data: [], error: null }
+                  : { data: [{ id: value }], error: null };
+                return {
+                  select() {
+                    return Promise.resolve(resolved);
+                  },
+                  then(resolve, reject) {
+                    return Promise.resolve({ error: null }).then(resolve, reject);
+                  },
+                };
               },
             };
           },
@@ -2490,6 +2684,41 @@ test("youth-auktion MED bud + senior-plads + balance: vinder placeres på SENIOR
 
   // Auktion lukket completed
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+});
+
+// #3580: samme forward-guard som den almindelige auktionssti — rammer
+// senior-placeringens riders.update() 0 rækker, må debiten (og auktions-
+// lukningen) ALDRIG køre.
+test("youth-auktion senior-placering: rammer riders.update() 0 rækker, kastes FØR debit (#3580)", async () => {
+  const auction = {
+    id: "youth-auc-zero-rows",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({
+    auction,
+    buyerBalance: 500000,
+    academyCount: 0,
+    seniorCount: 0,
+    riderUpdateHitsZeroRows: true,
+  });
+
+  await assert.rejects(
+    finalizeAuctionById({
+      supabase,
+      notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+      now: new Date("2026-06-20T12:00:00Z"),
+    }),
+    /expectMutationAffectingRows.*0 rækker/
+  );
+
+  assert.equal(supabase._riderUpdates.length, 1, "forsøget blev logget");
+  assert.deepEqual(supabase._financeInserts, [], "ingen debit uden bekræftet placering");
+  assert.deepEqual(supabase._auctionUpdates, [], "auktionen lukkes ikke");
 });
 
 test("youth-auktion MED bud, senior fyldt (30) MEN akademi har plads: AKADEMI-fallback (is_academy=true, ungdomskontrakt), betaler academy_signing", async () => {

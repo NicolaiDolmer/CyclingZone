@@ -10,6 +10,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Approksimation: tegn / 4 (afrundet op). Ingen ægte tokenizer i pwsh uden eksternt
+# afhaengighed; chars/4 er den samme tommelfingerregel Anthropic bruger til grove estimater
+# og matcher maalingen i issue #3753 ("Malt 14/8 med wc -c divideret med 4"). Det er en
+# approksimation, ikke en praecis tokenizer-taelling - den kan afvige nogle procent fra den
+# rigtige model-tokenizer, men er stabil nok til at fange drift over tid og til at sammenligne
+# mod de tekst-baserede budgetter i CLAUDE.md.
 function Get-ApproxTokens {
   param([string]$Path)
   if (-not (Test-Path $Path)) { return 0 }
@@ -44,14 +50,21 @@ $results = New-Object System.Collections.Generic.List[object]
 $contextFiles = @(
   @{ Name = "CLAUDE.md"; Path = "CLAUDE.md"; Warn = 1200; Fail = 2000 },
   @{ Name = "AGENTS.md"; Path = "AGENTS.md"; Warn = 4500; Fail = 6500; CodexOnly = $true },
-  # NOW.md governes kanonisk på LINJER (now-md-budget: warn 30 / fail 40, jf. CLAUDE.md close-out).
-  # Token-tærsklerne her er kun en sanity-ceiling mod ekstrem tæthed: en linje-compliant
-  # NOW.md med tætte tabel-rækker rammer ~1900-2400 tok ved 30-40 linjer, så Warn=900/Fail=1500
-  # fejlede en fil der overholdt linje-budgettet (cry-wolf, sundhedsaudit 2026-06-02). Hævet så
-  # kun reel density-bloat ud over linje-checken flagges.
-  @{ Name = "NOW.md"; Path = "docs/NOW.md"; Warn = 2000; Fail = 3000 },
+  # NOW.md's PRIMÆRE budget er TOKENS mod ~1.200 (CLAUDE.md close-out punkt 2, #1275).
+  # Linjer (now-md-budget herunder: warn 30 / fail 40) er sekundær. Gaten stod tidligere
+  # omvendt - linjer var reelt eneste håndhævede grænse, mens disse token-tærskler var
+  # hævet til 2000/3000 for at undgå cry-wolf på en linje-compliant fil. Det maskerede
+  # præcis den drift #3753 rapporterede: 18 linjer (grønt), men ~1.815-2.700 tokens reelt,
+  # fordi linjerne var lange. Sat tilbage til det oplyste budget - lidt margin til Warn,
+  # Fail ved selve "maks ~1.200".
+  @{ Name = "NOW.md"; Path = "docs/NOW.md"; Warn = 1000; Fail = 1200 },
   @{ Name = "GUARDRAILS_CORE.md"; Path = "docs/GUARDRAILS_CORE.md"; Warn = 1300; Fail = 2200 },
-  @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200; OptionalCache = $true; CodexOnly = $true }
+  @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200; OptionalCache = $true; CodexOnly = $true },
+  # MASTERPLAN.md er IKKE auto-loaded ved session-start (den er under "On-demand docs" i
+  # CLAUDE.md, ikke "Start"), så den tæller ikke med i cold-start-aggregatet (ExcludeFromColdStart).
+  # Egen gate mod CLAUDE.md close-out punkt 3: "budget ≤1.500 tok" (#3753 - gaten manglede
+  # denne helt før nu).
+  @{ Name = "MASTERPLAN.md"; Path = "docs/MASTERPLAN.md"; Warn = 1300; Fail = 1500; ExcludeFromColdStart = $true }
 )
 
 $claudeFileTotal = 0
@@ -66,8 +79,11 @@ foreach ($item in $contextFiles) {
   }
   $tokens = Get-ApproxTokens $item.Path
   $isCodexOnly = $item.ContainsKey("CodexOnly") -and $item.CodexOnly
-  $codexFileTotal += $tokens
-  if (-not $isCodexOnly) { $claudeFileTotal += $tokens }
+  $excludeFromColdStart = $item.ContainsKey("ExcludeFromColdStart") -and $item.ExcludeFromColdStart
+  if (-not $excludeFromColdStart) {
+    $codexFileTotal += $tokens
+    if (-not $isCodexOnly) { $claudeFileTotal += $tokens }
+  }
   $lines = (Get-Content $item.Path | Measure-Object -Line).Lines
   $status = if ($tokens -gt $item.Fail) { "FAIL" } elseif ($tokens -gt $item.Warn) { "WARN" } else { "OK" }
   $scope = if ($isCodexOnly) { " [Codex-only]" } else { "" }

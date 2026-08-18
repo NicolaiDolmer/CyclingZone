@@ -109,6 +109,25 @@ test("buildAcademySales: signet akademi-rytter solgt på almindelig auktion uden
   assert.equal(sales[0].source, "auction");
 });
 
+// #3845 (17/8): en akademi-rytter kan nu sælges DIREKTE (auktion/transfer)
+// mens han stadig er is_academy=true på oprettelsestidspunktet — graduerer
+// atomisk ved handlens gennemførelse. buildAcademySales kigger aldrig på
+// is_academy (kun academy_intake.status='signed' + gennemført salg), så
+// dette kræver ingen kode-ændring — testen låser den påstand fast.
+test("buildAcademySales: akademi-rytter solgt DIREKTE via auktion mens han stadig var is_academy=true tælles med (#3845)", () => {
+  const riderById = new Map([["rider-direct", { firstname: "Direct", lastname: "Sale" }]]);
+  const auctions = [
+    // is_youth ikke sat her — matcher POST /auctions' default (false), som en
+    // direkte akademi-auktion (#3845) rent faktisk får.
+    { rider_id: "rider-direct", current_price: 30000, starting_price: 22000, current_bidder_id: "team-buyer", is_guaranteed_sale: false, actual_end: "2026-08-17T18:00:00Z" },
+  ];
+  const sales = buildAcademySales(auctions, [], riderById);
+  assert.equal(sales.length, 1);
+  assert.equal(sales[0].price, 30000);
+  assert.equal(sales[0].premium, 8000);
+  assert.equal(sales[0].source, "auction");
+});
+
 test("buildAcademySales: signet akademi-rytter solgt via transfermarkedet tælles med, premium er null (ingen baseline)", () => {
   const riderById = new Map([["rider-2", { firstname: "Trans", lastname: "Fer" }]]);
   const transfers = [

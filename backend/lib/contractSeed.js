@@ -42,6 +42,26 @@ export function pickContractLength(rng) {
   return CONTRACT.MIN_LENGTH + Math.floor(rng() * (CONTRACT.MAX_LENGTH - CONTRACT.MIN_LENGTH + 1));
 }
 
+// #3037 fremadrettet regel (ejer-retning på issuet): START-truppens kontrakter
+// (nye hold — signup ELLER relaunch/launch-populationen, som deler samme
+// formel) må ALDRIG ende ved den sæson holdet allokeres i. computeContractEndSeason
+// = startSeason + length - 1, så en almindelig pickContractLength()-udfald på 1
+// giver contract_end_season == startSeason — og releaseExpiredContractRiders
+// frigiver ryttere med contract_end_season <= den AFSLUTTEDE sæson, altså ved
+// selve den FØRSTE sæsonovergang efter signup, uanset hvor sent i sæsonen holdet
+// meldte sig (Easy Riders mistede 9/12 ryttere dagen efter signup 26/7 —
+// make-good kørt, se issue-tråden; #3037 er kodefixet der forhindrer gentagelse).
+// Løftet MIN til MIN_LENGTH+1 (2) garanterer holdet mindst én HEL sæson efter
+// den de blev oprettet i, uanset signup-tidspunkt. Uniform over det resterende
+// interval (2..MAX_LENGTH) — IKKE Math.max(2, pickContractLength(rng)), som ville
+// skævvride 1'ere til 2'ere og gøre 2 dobbelt så hyppig som 3.
+// KUN start-truppens formel — rører ALDRIG runContractSeed (founders/andre ejede
+// hold) eller eksisterende kontrakter (ejer-beslutning, se issue-tråden).
+export function pickStarterContractLength(rng) {
+  const MIN = CONTRACT.MIN_LENGTH + 1;
+  return MIN + Math.floor(rng() * (CONTRACT.MAX_LENGTH - MIN + 1));
+}
+
 // Sidste aktive sæson = startSeason + length - 1.
 export function computeContractEndSeason(startSeasonNumber, length) {
   return startSeasonNumber + length - 1;

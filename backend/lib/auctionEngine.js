@@ -22,6 +22,13 @@
  *   (hard cap = close + grace). If the extension would push past the hard cap, the
  *   auction rolls over to the next day's window open, carrying the overflow minutes.
  *
+ *   Owner decision 2026-07-03 (#1941, #3309, #2150): the grace period itself is a
+ *   REJECTED feature ("too complicated for new players"). Production config has no
+ *   `extension_grace_minutes` column, so `checkBidExtension` treats it as 0 — the
+ *   hard cap collapses to close, and any bid within the extension window past close
+ *   rolls straight over to the next window's open. Grace stays a config knob for the
+ *   examples below and for tests exercising the rollover algorithm, but is not live.
+ *
  * Examples (weekday close 22:00, grace 60 → hard cap 23:00):
  *   Bid 21:55 → ends 22:05      (extends past close, within grace)
  *   Bid 22:50 → ends 23:00      (lands at cap, no overflow)
@@ -37,7 +44,11 @@ export const DEFAULT_AUCTION_CONFIG = {
   weekend_open_hour: 8,
   weekend_close_hour: 23,
   extension_minutes: 10,
-  extension_grace_minutes: 60,
+  // Grace period is a REJECTED feature (owner 2026-07-03, #1941/#3309/#2150) — it
+  // must stay 0 so this fallback (used when `auction_timing_config` is missing or
+  // the DB lookup fails, see academyGraduation.js/youthMarket.js/routes/api.js)
+  // matches live prod behaviour instead of silently reviving 60-min grace (#3740).
+  extension_grace_minutes: 0,
 };
 
 // Returns 0=Sun, 1=Mon, ..., 6=Sat for a UTC Date in Copenhagen timezone.
@@ -205,6 +216,11 @@ export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT
  * Cap-with-rollover: extended end may pass the day's window close by up to
  * `extension_grace_minutes`. If the extension would land past that hard cap,
  * the overflow minutes carry over to the next day's window open.
+ *
+ * Default/prod config has `extension_grace_minutes: 0` (grace is a rejected
+ * feature, see DEFAULT_AUCTION_CONFIG above) — so in practice the hard cap
+ * equals close, and rollover is the normal outcome for any bid inside the
+ * extension window when the auction is already at/past close.
  *
  * @param {Date} bidTime
  * @param {Date} currentEnd

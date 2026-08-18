@@ -325,6 +325,11 @@ async function runBoardAutoAcceptCron() {
       console.log(
         `🪑 Board auto-accept: ${result.teams_checked} hold tjekket — ${result.reminders_sent} reminders, ${result.auto_accepted} auto-accepted, ${result.errors} fejl`
       );
+    } else {
+      // #3587: heartbeat ved 0 handlinger — ellers ser "kører fint, intet at
+      // gøre" identisk ud med "kører ikke" i Railway-loggen (samme blinde
+      // vinkel som #3502). Billig linje pr. 30. minut, matcher mid-season-mønstret.
+      console.log(`🪑 Board auto-accept: ${result.teams_checked} hold tjekket — intet at gøre`);
     }
   } catch (err) {
     // #2389 A2: den ydre catch sluger top-level-fejl (window/season/teams-queries)
@@ -787,6 +792,26 @@ async function runRaceEntryGeneratorSweepCron() {
       extra: { errors: result.errors, seasonId: result.seasonId },
     });
   }
+  // #3415 rod-årsag: binding-invariant-vagten (nedenfor) kørte kun hver 24. time, mens
+  // DENNE sweep — den ENESTE proces der proaktivt skriver race_entries og dermed kan
+  // introducere ELLER fjerne et binding-brud — kører hver TIME. #3185's lukkekriterie
+  // ("15 ticks i træk med count=4, actionable=0") målte derfor 15 DAGE ved en vagt-
+  // kadence der reelt havde brug for time-opløsning: prod 11/8 viste 14 levende par
+  // kl. 15:22 og 0 kl. 21:43, ren funktion af sweep-kørslen kl. 20:45 — en oscillation
+  // vagtens egen 24h-cyklus strukturelt ikke kunne have fanget. Kæd derfor vagten
+  // DIREKTE efter enhver sweep-kørsel der rent faktisk skrev noget (insert ELLER
+  // delete — begge kan ændre binding-tilstanden), så vagtens sample-rate matcher den
+  // proces den overvåger. Den uafhængige 24h+boot-run-planlægning nedenfor bevares
+  // uændret som bagstopper (fanger fx en manuel manager-gem der aldrig rammer sweepen).
+  // Best-effort: en fejl her må ALDRIG vælte selve entry-generator-tick'et.
+  if (result.ran && ((result.inserted ?? 0) > 0 || (result.removed ?? 0) > 0)) {
+    try {
+      await runRiderDoubleBookingWatchCron();
+    } catch (err) {
+      console.error("Cron error (rider-double-booking-watch, post-sweep):", err.message);
+      sentryCapture(err, { tags: { cron: "rider-double-booking-watch-post-sweep" } });
+    }
+  }
 }
 
 // ─── Akademi-intake-udløb (#2627) ─────────────────────────────────────────────
@@ -1047,6 +1072,12 @@ async function runOwnershipInvariantWatchCron() {
 // fanger et brud uanset hvilken kodevej der måtte introducere det næste gang.
 // Reparerer INTET — alarmerer.
 
+// #3415: par-niveau-formatering til churn-loggen — samme "rytter i løb A + løb B"-form
+// begge veje (opstået/resolveret), så Railway-loggen kan læses direkte uden opslag.
+function formatChurnPair(c) {
+  return `rytter ${c.riderId} (hold ${c.teamId}) i "${c.raceA}" + "${c.raceB}"`;
+}
+
 async function runRiderDoubleBookingWatchCron() {
   const result = await runRiderDoubleBookingWatch({ supabase, captureExceptionFn: sentryCapture });
   if (result.alerted) {
@@ -1060,6 +1091,23 @@ async function runRiderDoubleBookingWatchCron() {
     console.log(
       `ℹ️  Binding-invariant-vagt: 0 aktive brud, ${result.historical} historiske par ` +
       `(begge løb afviklet) alarmerer ikke (#3113)`
+    );
+  }
+  // #3415: churn er UAFHÆNGIGT af alarm-tilstanden — et par kan opstå og forsvinde
+  // uden at nogen af de to grene ovenfor kører (fx alerted=false fordi resolutionen
+  // allerede skete FØR dette tick). Logges altid der er noget at se, ellers ingenting
+  // (issuets kerneklage var netop at forsvinden var usynlig: "bruddene forsvandt uden
+  // spor" — 0 Sentry-signal, 0 log-linje).
+  if (result.appeared?.length) {
+    console.error(
+      `🆕 Binding-invariant-vagt: ${result.appeared.length} par OPSTÅET siden sidste tjek — ` +
+      result.appeared.map(formatChurnPair).join("; ")
+    );
+  }
+  if (result.resolved?.length) {
+    console.log(
+      `✅ Binding-invariant-vagt: ${result.resolved.length} par RESOLVERET siden sidste tjek — ` +
+      result.resolved.map(formatChurnPair).join("; ")
     );
   }
 }
