@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.141",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "A more consistent look on auctions, dashboard and rider profiles",
+          "body": "Three of the most used pages now follow the same design rules: one clear primary button per page, matching corners and icons everywhere, proper progress bars and empty states, and new \"Showing X of Y\" lines under the auction and market lists."
+        },
+        "da": {
+          "title": "Mere ensartet udseende på auktioner, dashboard og rytterprofiler",
+          "body": "Tre af de mest brugte sider følger nu de samme designregler: én tydelig primærknap pr. side, ens hjørner og ikoner overalt, rigtige progress-bars og tom-tilstande, og nye \"Viser X af Y\"-linjer under auktions- og markedslisterne."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.140",
     "date": "2026-08-18",
     "label": "Beta",
