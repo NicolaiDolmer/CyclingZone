@@ -23,6 +23,15 @@
 // branch can deep-link the CTA straight to the manager's latest race
 // (buildDay1Email's latestRaceId) instead of the generic dashboard.
 //
+// #3912: the lookup also selects stage_number from that same latest row and
+// passes it through as latestStageNumber, so the CTA deep-links to the
+// specific stage (?stage=N) instead of just the race as a whole. No extra
+// query — stage_number lives on the same race_results row already fetched
+// for latestRaceId. buildDay1Email falls back to the plain race link when
+// stage_number is null (verified against database/schema-snapshot.json;
+// the race-results engine always writes stage_number || 1, but legacy/PCM
+// rows can still lack it).
+//
 // #3585: race_results has no created_at column (it has imported_at — the
 // timestamp the import job wrote the row, verified against
 // database/schema-snapshot.json). The lookup below used to select/order on
@@ -82,16 +91,17 @@ export async function runEmailDay1Sweep({
 
       const { data: resultRows, error: resultsError } = await supabase
         .from("race_results")
-        .select("id, race_id, imported_at")
+        .select("id, race_id, stage_number, imported_at")
         .eq("team_id", team.id)
         .order("imported_at", { ascending: false })
         .limit(1);
       if (resultsError) throw new Error(`race_results lookup: ${resultsError.message}`);
       const hasResults = (resultRows || []).length > 0;
       const latestRaceId = resultRows?.[0]?.race_id ?? null;
+      const latestStageNumber = resultRows?.[0]?.stage_number ?? null;
 
       const unsubscribeUrl = unsubscribeUrlFor(team.user_id, unsubSecret);
-      const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, latestRaceId, unsubscribeUrl });
+      const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, latestRaceId, latestStageNumber, unsubscribeUrl });
       const result = await send({
         supabase,
         userId: team.user_id,
