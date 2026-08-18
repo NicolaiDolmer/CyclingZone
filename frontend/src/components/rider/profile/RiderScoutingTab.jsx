@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PotentialeStars from "../../PotentialeStars";
-import { SearchIcon } from "../../ui";
+import { SearchIcon, CheckIcon } from "../../ui";
 import { getSession } from "../../../lib/supabase";
 import { formatCz } from "../../../lib/marketValues";
 import { statPlateStyle } from "../../../lib/statColor";
@@ -410,7 +410,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-3.5 pt-3 border-t border-cz-border list-none p-0 m-0">
             {verdict.factorKeys.map((k) => (
               <li key={k} className="flex items-start gap-2 text-[12px] text-cz-2">
-                <span className="text-cz-success mt-px flex-shrink-0" aria-hidden="true">✓</span>
+                <CheckIcon size={14} aria-hidden="true" className="text-cz-success mt-px flex-shrink-0" />
                 {t(`profile.scouting.factor_${k}`)}
               </li>
             ))}

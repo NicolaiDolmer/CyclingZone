@@ -30,7 +30,7 @@ import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
 import { retirementRiskBadgeKey } from "../../../lib/riderAge";
-import { AlertTriangleIcon, CategoryTag, StarIcon } from "../../ui";
+import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
@@ -184,7 +184,7 @@ export default function RiderProfileHero({
             {/* Kommende hold (handel til næste sæson) */}
             {pendingTeam && (
               <p className="text-cz-2 text-xs mt-1.5 inline-flex items-center gap-1.5">
-                <span aria-hidden="true" className="text-cz-accent-t">→</span>
+                <ChevronRightIcon size={13} aria-hidden="true" className="text-cz-accent-t" />
                 <span className="text-cz-3">{t("header.nextSeasonPrefix")}</span>
                 <TeamLink id={pendingTeam.id} className="font-semibold text-cz-accent-t hover:underline">{pendingTeam.name}</TeamLink>
               </p>

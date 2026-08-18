@@ -111,14 +111,14 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
           </h3>
           {/* Bevidst IKKE role="tablist": det ville love ARIA-tabs' tastaturkontrakt
               (piletaster + tabpanel). Et filter er en toggle-gruppe — aria-pressed. */}
-          <div className="flex gap-1 bg-cz-subtle rounded-lg p-0.5" role="group" aria-label={t("profile.results.filterLabel")}>
+          <div className="flex gap-1 bg-cz-subtle rounded-cz-pill p-0.5" role="group" aria-label={t("profile.results.filterLabel")}>
             {[...seasons.map((n) => ({ n, label: t("season.row", { n }) })), { n: null, label: t("profile.results.filterAll") }].map((opt) => (
               <button
                 key={opt.n ?? "all"}
                 type="button"
                 aria-pressed={season === opt.n}
                 onClick={() => setSeason(opt.n)}
-                className={`min-h-[44px] px-3.5 py-1 rounded-md text-2xs font-semibold transition-colors
+                className={`min-h-[44px] px-3.5 py-1 rounded-cz-pill text-2xs font-semibold transition-colors
                   ${season === opt.n ? "bg-cz-card text-cz-1 border border-cz-border" : "border border-transparent text-cz-3 hover:text-cz-1"}`}
               >
                 {opt.label}

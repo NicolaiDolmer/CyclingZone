@@ -39,7 +39,7 @@ import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { ageForSeason, retirementBidWarningTier } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useActionSummary } from "../hooks/useActionSummary.js";
-import { AmountInput, BlockedNote, Button, Card, CheckIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
+import { AmountInput, BlockedNote, Button, Card, CheckIcon, ChevronLeftIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
@@ -1530,8 +1530,8 @@ export default function RiderStatsPage() {
   // loadRider-kald som useEffect'en bruger, ingen ny hente-logik).
   if (!rider) return (
     <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
-      {/* t("page.back") bærer allerede sin egen "←"-glyf (rider.json) — intet ekstra ikon. */}
       <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-4">
+        <ChevronLeftIcon size={13} aria-hidden="true" />
         {t("page.back")}
       </button>
       <ErrorState
@@ -1689,6 +1689,7 @@ export default function RiderStatsPage() {
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"
         >
+          <ChevronLeftIcon size={13} aria-hidden="true" />
           {t("page.back")}
         </button>
 

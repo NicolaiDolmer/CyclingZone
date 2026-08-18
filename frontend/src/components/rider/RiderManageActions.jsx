@@ -39,7 +39,7 @@ import { buttonClass } from "../ui/buttonStyles.js";
 // ACTION_PANEL) — den tintede/ring-markerede trigger viser tilhørsforholdet.
 const ACTION_PANEL = "order-2 w-full";
 // Bekræft-knap inde i udfoldede paneler (fuld bredde i panelet).
-const BTN_PRIMARY = "w-full min-h-[44px] py-2 rounded-lg text-sm font-bold transition-all bg-cz-accent text-cz-on-accent hover:brightness-110 disabled:opacity-50 inline-flex items-center justify-center gap-2";
+const BTN_PRIMARY = "w-full min-h-[44px] py-2 rounded-cz text-sm font-bold transition-all bg-cz-accent text-cz-on-accent hover:brightness-110 disabled:opacity-50 inline-flex items-center justify-center gap-2";
 
 // #2718: en knap der arbejder skal SE ud som om den arbejder. Den bare "..." vi
 // viste før er ikke et arbejds-signal — spilleren tror knappen er død og trykker
@@ -61,13 +61,25 @@ function academyError(code, t, fallback) {
 
 // Akademi op/ned. Egen sub-komponent så useAcademy (/api/academy/me) kun hentes
 // når relevant. Kalder onResult(ok, msg) for den delte feedback-boks i forælderen.
-function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onChanged }) {
+//
+// #2849 KS2: forælderen skal vide om promote-knappen rent faktisk bliver vist
+// (afhænger af academy.enabled, som kun denne sub-komponent kender), for at
+// kunne demotere Forlæng-knappen til secondary — ellers står to gold-primærer
+// side om side (kontrakt-brud, PAGE_TEMPLATES.md "one gold primary per view").
+// onPromoteVisibleChange er valgfri (den senior-demote-mount nedenfor sender
+// den ikke — der er intet promote-tilfælde at koordinere med der).
+function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onChanged, onPromoteVisibleChange }) {
   const { t } = useTranslation("rider");
   const academy = useAcademy();
   // { direction, newSalary, currentSalary, capLabel, capAfterLabel, racesCleared } | null
   const [academyModal, setAcademyModal] = useState(null);
   const [academyBusy, setAcademyBusy] = useState(false);
   const riderName = `${rider.firstname} ${rider.lastname}`;
+
+  useEffect(() => {
+    onPromoteVisibleChange?.(isAcademyRider && academy.enabled);
+    return () => onPromoteVisibleChange?.(false);
+  }, [isAcademyRider, academy.enabled, onPromoteVisibleChange]);
 
   function openPromote() {
     // #3620: en rytter der allerede har en kontrakt beholder den ved oprykning
@@ -219,6 +231,12 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     capInfo: extendCapInfo,
     capSeason: extendCapSeason,
   });
+
+  // #2849 KS2: akademi-rytterens promote-knap er den sjældnere/vigtigere
+  // handling — når den er synlig demoteres Forlæng-triggeren til secondary, så
+  // der aldrig står to gold-primærer i rækken samtidig (én gold pr. view).
+  const [promoteVisible, setPromoteVisible] = useState(false);
+  const extendVariant = promoteVisible ? "secondary" : "primary";
 
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseQuote, setReleaseQuote] = useState(null);
@@ -414,7 +432,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
           knappen klikbar igen efter den forlængelse der brugte sidste sæson. */}
       <button type="button" onClick={openExtend} disabled={extendCap.atCap || extendLoading}
         aria-busy={extendLoading || undefined}
-        className={`${buttonClass({ variant: "primary" })} ${extendOpen ? "ring-1 ring-cz-accent/60" : ""}`}>
+        className={`${buttonClass({ variant: extendVariant })} ${extendOpen && extendVariant === "primary" ? "ring-1 ring-cz-accent/60" : ""}`}>
         {extendLoading && <BusyDot />}
         {t("manage.extend.button")}
       </button>
@@ -491,7 +509,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
           den også fanges når den skifter uden remount (#2718). */}
       {result && (
         <div role="status" aria-live="polite"
-          className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
+          className={`${ACTION_PANEL} px-3 py-2 rounded-cz text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
@@ -502,7 +520,13 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
            (egen flow) · evt. markeds-handlinger fra parent. */
         <>
           {extendPanel}
-          <RiderAcademyActions rider={rider} isAcademyRider onResult={flashResult} onChanged={onChanged} />
+          <RiderAcademyActions
+            rider={rider}
+            isAcademyRider
+            onResult={flashResult}
+            onChanged={onChanged}
+            onPromoteVisibleChange={setPromoteVisible}
+          />
           {marketActions}
         </>
       ) : (
@@ -558,7 +582,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
                       <button type="button" onClick={confirmReleaseAction}
                         disabled={releaseBusy || !releaseQuote || releaseQuote.affordable === false}
                         aria-busy={releaseBusy || releaseLoading || undefined}
-                        className="flex-1 min-h-[44px] py-2 bg-cz-danger text-white font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2">
+                        className="flex-1 min-h-[44px] py-2 bg-cz-danger text-white font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2">
                         {(releaseBusy || !releaseQuote) && <BusyDot />}
                         {releaseBusy
                           ? t("manage.release.working")
@@ -567,7 +591,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
                             : t("manage.release.confirm")}
                       </button>
                       <button type="button" onClick={() => setReleaseOpen(false)} disabled={releaseBusy}
-                        className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+                        className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
                         {t("manage.release.cancel")}
                       </button>
                     </div>

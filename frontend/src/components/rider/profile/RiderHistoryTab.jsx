@@ -14,6 +14,8 @@ import { useTranslation } from "react-i18next";
 import { buildHistoryRows, historyRowAmount } from "../../../lib/riderHistoryTable.js";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 import TeamLink from "../../TeamLink";
+import { SkeletonLines } from "../../ui/Skeleton.jsx";
+import { ExchangeIcon } from "../../ui/icons/index.jsx";
 
 const GRID = "grid grid-cols-[58px_64px_minmax(0,1fr)_78px] sm:grid-cols-[84px_88px_minmax(0,1fr)_116px] gap-2.5 px-4 items-center";
 
@@ -84,7 +86,7 @@ function EventCell({ row, t }) {
       return (
         <>
           {link(row.proposing_team, t("history.swap.teamFallback"))}
-          <span className="text-cz-3"> ⇄ </span>
+          <ExchangeIcon size={12} aria-hidden="true" className="inline-block mx-1 text-cz-3 align-[-1px]" />
           {link(row.receiving_team, t("history.swap.teamFallback"))}
         </>
       );
@@ -101,8 +103,8 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
   // aria-label er prohibited) og annoncerer load-tilstanden for skærmlæsere.
   if (events == null) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 flex items-center justify-center py-10">
-        <div role="status" className="w-5 h-5 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" aria-label={t("profile.history.loading")} />
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5" role="status" aria-label={t("profile.history.loading")}>
+        <SkeletonLines lines={4} />
       </div>
     );
   }
