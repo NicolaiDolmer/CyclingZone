@@ -15,6 +15,7 @@ import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
+import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -1064,6 +1065,16 @@ async function finalizeAuctionRecord({
         .eq("id", auction.rider.id),
       { context: `auction=${auction.id} rider=${auction.rider.id}` }
     );
+
+    // #2793 (bølge 3-følgefund): rytteren graduerede lige (graduatePatch ovenfor)
+    // via et DIREKTE salg (#3845) — resolver en evt. hængende PENDING
+    // academy_graduation-row hos sælgeren så academyGraduationSweep ikke senere
+    // finder den og forsøger at auto-resolve en rytter der allerede er solgt.
+    if (graduatePatch.is_academy === false && auction.seller_team_id) {
+      await resolvePendingGraduationOnSale(supabase, {
+        teamId: auction.seller_team_id, riderId: auction.rider.id, now: new Date(actualEnd),
+      });
+    }
 
     // #1906 defense-in-depth: rytteren er solgt — ryd hans fremtidige race_entries
     // så de ikke hænger ved som ghost og phantom-binder en ægte rytter. #2579: også
