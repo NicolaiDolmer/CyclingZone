@@ -657,6 +657,7 @@
     "team": {
       "winner": "Winner"
     },
+    "youBadge": "You",
     "finalKm": {
       "title": "The Final Kilometre",
       "replay": "Replay",
@@ -884,7 +885,8 @@
     },
     "stageProfile": {
       "label": "Terrain",
-      "note": "Indicative terrain category based on each stage's difficulty."
+      "note": "Indicative terrain category based on each stage's difficulty.",
+      "sectionTitle": "Stage profile"
     },
     "stageSchedule": {
       "title": "Stage schedule",

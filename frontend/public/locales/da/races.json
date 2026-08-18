@@ -657,6 +657,7 @@
     "team": {
       "winner": "Vinder"
     },
+    "youBadge": "Dig",
     "finalKm": {
       "title": "Den sidste kilometer",
       "replay": "Afspil igen",
@@ -884,7 +885,8 @@
     },
     "stageProfile": {
       "label": "Terræn",
-      "note": "Vejledende terrænkategori baseret på etapens sværhedsgrad."
+      "note": "Vejledende terrænkategori baseret på etapens sværhedsgrad.",
+      "sectionTitle": "Etapeprofil"
     },
     "stageSchedule": {
       "title": "Etapeplan",

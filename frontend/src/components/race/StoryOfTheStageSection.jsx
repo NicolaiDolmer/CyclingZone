@@ -9,9 +9,19 @@
 // TimelineFilmPlayer er LAZY-loaded (React.lazy + eget chunk, samme mønster som
 // Layout.jsx's FeedbackModal) — kun hentet når "Watch the race film" klikkes,
 // så bundle-vagtens ~6 KB luft holder uanset hvor mange der besøger etape-fanen.
+//
+// #3914 (bølge 3, ejer-godkendt 18/8): "The Final Kilometre" flyttet hertil fra
+// en altid-øverst-sektion på RaceDetailPage — nu en stille (ghost) sekundær-
+// knap ved siden af "Watch the race film". Egen data-kilde (race_results, IKKE
+// tidslinjen) med sin EGEN availability — derfor gater komponenten nu på
+// `story.length || finalKmAvailable` i stedet for kun på tidslinjedata. Uden
+// dette ville løb uden #2410-tidslinjedata (dagens virkelighed for de fleste
+// løb, se useStageTimeline.js's kommentar) miste adgangen til Final Kilometre
+// helt — kun narrativ-listen og "Watch the race film" er fortsat tidslinje-
+// gatede.
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Section, SectionHeader, Button, PlayIcon } from "../ui";
+import { Section, SectionHeader, Button, PlayIcon, StopwatchIcon } from "../ui";
 import { formatNumber } from "../../lib/intl.js";
 import { useStageTimeline } from "../../hooks/useStageTimeline.js";
 import { selectStoryEvents } from "../../lib/stageTimelineStory.js";
@@ -34,27 +44,38 @@ function StoryRow({ event, riderNameById, teamNameById, t }) {
   );
 }
 
-export default function StoryOfTheStageSection({ raceId, stageNumber, profile, riderNameById, teamNameById, stageLabel }) {
+export default function StoryOfTheStageSection({
+  raceId, stageNumber, profile, riderNameById, teamNameById, stageLabel,
+  finalKmAvailable = false, finalKmOpen = false, onToggleFinalKm,
+}) {
   const { t } = useTranslation("races");
   const { timeline } = useStageTimeline(raceId, stageNumber);
   const [playerOpen, setPlayerOpen] = useState(false);
 
-  if (!timeline?.events?.length) return null;
-  const story = selectStoryEvents(timeline.events);
-  if (!story.length) return null;
+  const story = timeline?.events?.length ? selectStoryEvents(timeline.events) : [];
+  if (!story.length && !finalKmAvailable) return null;
 
   return (
     <Section>
       <SectionHeader title={t("detail.film.storyTitle")} />
-      <ul>
-        {story.map((event, i) => (
-          <StoryRow key={`${event.type}-${event.km}-${i}`} event={event} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
-        ))}
-      </ul>
-      <div className="mt-3 flex justify-end">
-        <Button size="sm" variant="primary" iconLeft={<PlayIcon size={14} aria-hidden="true" />} onClick={() => setPlayerOpen(true)}>
-          {t("detail.film.watchButton")}
-        </Button>
+      {story.length > 0 && (
+        <ul>
+          {story.map((event, i) => (
+            <StoryRow key={`${event.type}-${event.km}-${i}`} event={event} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex justify-end gap-2">
+        {finalKmAvailable && (
+          <Button size="sm" variant="ghost" iconLeft={<StopwatchIcon size={14} aria-hidden="true" />} onClick={onToggleFinalKm} aria-expanded={finalKmOpen}>
+            {t("detail.finalKm.title")}
+          </Button>
+        )}
+        {story.length > 0 && (
+          <Button size="sm" variant="primary" iconLeft={<PlayIcon size={14} aria-hidden="true" />} onClick={() => setPlayerOpen(true)}>
+            {t("detail.film.watchButton")}
+          </Button>
+        )}
       </div>
       {playerOpen && (
         <Suspense fallback={null}>
