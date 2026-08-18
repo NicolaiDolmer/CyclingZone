@@ -8,6 +8,7 @@ import SetupWizardModal from "./SetupWizardModal";
 // skal ikke belaste hovedbundlet (perf-gate: 888 KB > 885 KB-loftet uden lazy).
 const FeedbackModal = lazy(() => import("./FeedbackModal"));
 import MobileQuickNav from "./MobileQuickNav";
+import RaceControlBanner from "./RaceControlBanner";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
@@ -662,6 +663,11 @@ export default function Layout() {
           horizontal overflow + shrink-to-fit-skalering → klikpunkter rammer
           nabolayout (#1872). */}
       <main className="flex-1 min-w-0 md:ms-52 min-h-screen">
+        {/* #3941 — Race Control driftsbanner: øverst på ALLE manager-sider, under
+            den (mobile) top-nav og over den paddede indholds-wrapper. Renderer
+            intet når der ingen aktive ops_notices er (fetch fejler stille). */}
+        <RaceControlBanner />
+
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">

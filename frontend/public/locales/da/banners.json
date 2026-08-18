@@ -39,5 +39,10 @@
         "desc": "Sjældne nyhedsmails om store sæsonopdateringer eller events. Transaktionelle mails (auktion vundet osv.) afhænger ikke af dette valg."
       }
     }
+  },
+  "opsNotice": {
+    "regionAriaLabel": "Driftsstatus",
+    "dismissAriaLabel": "Luk besked",
+    "knownIssuesLink": "Kendte problemer"
   }
 }

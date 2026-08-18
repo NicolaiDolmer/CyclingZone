@@ -50,6 +50,7 @@ import {
   SEED_GLOBAL_RANK_SEASON_START,
   COMPLETED_AUCTIONS,
   COMPLETED_AUCTION_BIDS,
+  SEED_OPS_NOTICES,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -181,6 +182,12 @@ export function restRows(table, requestUrl = "") {
     }
     case "roadmap_items":
       return ROADMAP_ITEMS;
+    // #3941: driftsbanneret (RaceControlBanner) + Hjælp-sidens "Kendte
+    // problemer" begge forespørger denne tabel med forskellige filtre (active-
+    // vindue vs. seneste 14 dage) — mocken filtrerer ikke selv, seedet er
+    // allerede formet så begge forbrugere ser meningsfuldt indhold.
+    case "ops_notices":
+      return SEED_OPS_NOTICES;
     case "races": {
       // Per-pulje tæller-query (#1829) → puljens løb (uændret, holder dashboard-
       // snapshots stabile). id=eq.<id> → ét seed-løb (RaceDetailPage .single()).
