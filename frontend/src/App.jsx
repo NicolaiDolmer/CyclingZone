@@ -18,6 +18,7 @@ import { safeNextPath } from "./lib/safeNextPath.js";
 // (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
 // SDK'er i main-bundlen. Analytics-komponenterne er allerede consent-gated så ingen
 // netværkskald før samtykke; lazy-load tager dem også ud af cold-start payload.
+import I18nReadyGate from "./components/I18nReadyGate.jsx"; // #3697
 const Layout = lazy(() => import("./components/Layout"));
 const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
 const WebVitalsIntegration = lazy(() => import("./lib/webVitalsIntegration.jsx"));
@@ -240,9 +241,9 @@ export default function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
           <Route path="/handelsbetingelser" element={<TermsPage />} />
           <Route path="/terms" element={<TermsPageEn />} />
-          <Route path="/founder-supporter" element={<FounderSupporterPage />} />
+          <Route path="/founder-supporter" element={<I18nReadyGate ns="founder"><FounderSupporterPage /></I18nReadyGate>} />
           <Route path="/ui" element={<KitchenSinkPage />} />
-          <Route path="/ui/season-experience" element={<SeasonExperiencePreviewPage />} />
+          <Route path="/ui/season-experience" element={<I18nReadyGate ns="seasonEnd"><SeasonExperiencePreviewPage /></I18nReadyGate>} />
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
               loggede-ind ryger til appen. */}
           <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
@@ -270,22 +271,22 @@ export default function App() {
             {/* #3104 etape C: /standings er Ranglister-hubben (Liga & rangliste ·
                 Rytterrangliste · Global Rank som faner). ?view=/?compare=-dybe
                 links lander uændret på liga-fanen (default). */}
-            <Route path="standings" element={<RankingsHubPage />} />
-            <Route path="board" element={<BoardPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="standings" element={<I18nReadyGate ns="standings"><RankingsHubPage /></I18nReadyGate>} />
+            <Route path="board" element={<I18nReadyGate ns="board"><BoardPage /></I18nReadyGate>} />
+            <Route path="notifications" element={<I18nReadyGate ns="notifications"><NotificationsPage /></I18nReadyGate>} />
             {/* #3199: forum (opslag + tråd-detalje). */}
-            <Route path="forum" element={<ForumPage />} />
-            <Route path="forum/:postId" element={<ForumPostPage />} />
+            <Route path="forum" element={<I18nReadyGate ns="forum"><ForumPage /></I18nReadyGate>} />
+            <Route path="forum/:postId" element={<I18nReadyGate ns="forum"><ForumPostPage /></I18nReadyGate>} />
             <Route path="compare" element={<RiderComparePage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="pro" element={<ProUpgradePage />} />
-            <Route path="pro/success" element={<ProUpgradePage />} />
+            <Route path="profile" element={<I18nReadyGate ns="profile"><ProfilePage /></I18nReadyGate>} />
+            <Route path="pro" element={<I18nReadyGate ns="pro"><ProUpgradePage /></I18nReadyGate>} />
+            <Route path="pro/success" element={<I18nReadyGate ns="pro"><ProUpgradePage /></I18nReadyGate>} />
             {/* #3104 etape C: Min Aktivitet (<245 sessions/30 dage) er en fane i
                 Indbakken (6.152) nu — markeds-handlingscentret bor hvor spillerne
                 allerede kigger efter "hvad kræver min opmærksomhed". */}
             <Route path="activity" element={<Navigate to="/notifications?tab=activity" replace />} />
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
-            <Route path="watchlist" element={<WatchlistPage />} />
+            <Route path="watchlist" element={<I18nReadyGate ns="watchlist"><WatchlistPage /></I18nReadyGate>} />
             {/* #2042 A: help/rules/patch-notes/roadmap flyttet ud herunder — de er
                 nu offentlige (se den ubeskyttede Layout-gruppe nedenfor). */}
             {/* #2359: HoF-fladen afløses af verdenshistorik (S3); route redirecter, side-kode
@@ -300,10 +301,10 @@ export default function App() {
             <Route path="races" element={<RacesLegacyRedirect />} />
             <Route path="races/strategy" element={<Navigate to="/planning?tab=strategy" replace />} />
             <Route path="races/:raceId" element={<RaceDetailPage />} />
-            <Route path="seasons" element={<SeasonEndPage />} />
-            <Route path="seasons/:seasonId" element={<SeasonEndPage />} />
+            <Route path="seasons" element={<I18nReadyGate ns="seasonEnd"><SeasonEndPage /></I18nReadyGate>} />
+            <Route path="seasons/:seasonId" element={<I18nReadyGate ns="seasonEnd"><SeasonEndPage /></I18nReadyGate>} />
             <Route path="season-end" element={<Navigate to="/seasons" replace />} />
-            <Route path="resultater" element={<ResultaterPage />} />
+            <Route path="resultater" element={<I18nReadyGate ns="results"><ResultaterPage /></I18nReadyGate>} />
             {/* #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben
                 — én kalender-sandhed. Siden havde ingen URL-båret indre tilstand
                 (faner/sæson/måned er komponent-state), så redirect'en er statisk. */}
@@ -321,7 +322,7 @@ export default function App() {
                 redirect-mønster som /race-archive ovenfor (siden selv lever
                 videre som tab-indhold). Etape 2: fanen bor i Resultat-hubben nu. */}
             <Route path="race-points" element={<Navigate to="/resultater?tab=points" replace />} />
-            <Route path="managers/:teamId" element={<ManagerProfilePage />} />
+            <Route path="managers/:teamId" element={<I18nReadyGate ns="achievements"><ManagerProfilePage /></I18nReadyGate>} />
             {/* Redirect-målene er ABSOLUTTE med vilje. React Router v7 opløser relative
                 paths inde i en splat-route mod HELE den matchede location (splat
                 inklusive), ikke mod route-path'en uden splat som v6 gjorde. Et relativt
@@ -350,7 +351,7 @@ export default function App() {
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="klub" element={<KlubPage />} />
-            <Route path="scouting" element={<ScoutingCentralPage />} />
+            <Route path="scouting" element={<I18nReadyGate ns="scouting"><ScoutingCentralPage /></I18nReadyGate>} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
@@ -366,7 +367,7 @@ export default function App() {
             <Route path="help" element={<HelpPage />} />
             <Route path="rules" element={<RulesPage />} />
             <Route path="patch-notes" element={<PatchNotesPage />} />
-            <Route path="roadmap" element={<RoadmapPage />} />
+            <Route path="roadmap" element={<I18nReadyGate ns="roadmap"><RoadmapPage /></I18nReadyGate>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

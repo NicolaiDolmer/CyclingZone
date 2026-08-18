@@ -93,6 +93,12 @@ function MiniBar({ value, max, color = "rgb(var(--accent))" }) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation(["dashboard", "common"]);
+  // #3697: board.json (55 KB rå pr. sprogpar) lazy-loades via HttpBackend i
+  // stedet for at ligge inline i language-chunken. Dashboardets bestyrelseskort
+  // er den ENESTE forbruger uden for BoardPage, og feedback-blokken er den
+  // eneste del der resolver board:-nøgler (resolveBoardFeedback*/resolveCategoryLabel),
+  // så den vises først når namespacet er hentet — ellers rå nøgler (useSuspense: false).
+  const { ready: boardCopyReady } = useTranslation("board");
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
@@ -1416,7 +1422,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              {boardOutlook?.feedback && (
+              {boardOutlook?.feedback && boardCopyReady && (
                 <div className="mt-4 pt-4 border-t border-cz-border">
                   <p className="text-cz-1 text-sm font-medium">{resolveBoardFeedbackHeadline(t, boardOutlook.feedback)}</p>
                   <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>

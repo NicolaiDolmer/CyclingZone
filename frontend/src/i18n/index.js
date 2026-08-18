@@ -5,11 +5,16 @@
 //   • HTTP backend lazy-loader namespaces fra /locales/{lng}/{ns}.json
 //     (filer i frontend/public/locales/ — served af Vite på begge
 //      dev og prod via samme URL)
-//   • Alle namespaces der bruges på authenticated-pages bundles INLINE
+//   • Namespaces der kan ramme first paint bundles INLINE
 //     (FOUC-fri first paint — Refs #411, #412, #470).
 //     React renderer med `useSuspense: false`, så ikke-inlinet namespace =
 //     t() returnerer raw key på first paint ("dashboard:stats.balance" i UI).
-//     Forward-guard: `scripts/check-i18n-namespace-inline.mjs` (kører pre-build).
+//     Forward-guard: `scripts/i18n-check-namespace-inline.mjs` (kører i CI).
+//   • #3697: namespaces hvis eneste forbrugere ligger bag en lazy route med
+//     en `ready`-gate lazy-loades via HttpBackend i stedet. JSON-filerne
+//     shippes allerede statisk i dist/locales/, så det fjerner ren JS-vægt
+//     fra language-chunken uden at tilføje ny payload. Listen (og kravet om
+//     ready-gate) håndhæves af INLINE_EXEMPT i guard-scriptet.
 //   • supportedLngs: ['en','da','en-XA'] — pseudo-locale aktiveres
 //     ved at sætte ?pseudo=1 i URL (kun dev/preview, ikke production-safe)
 //
@@ -42,18 +47,12 @@ import bannersDa from "../../public/locales/da/banners.json";
 import bannersEn from "../../public/locales/en/banners.json";
 import feedbackDa from "../../public/locales/da/feedback.json";
 import feedbackEn from "../../public/locales/en/feedback.json";
-import boardDa from "../../public/locales/da/board.json";
-import boardEn from "../../public/locales/en/board.json";
-import adminDa from "../../public/locales/da/admin.json";
-import adminEn from "../../public/locales/en/admin.json";
 import riderDa from "../../public/locales/da/rider.json";
 import riderEn from "../../public/locales/en/rider.json";
 import ridersDa from "../../public/locales/da/riders.json";
 import ridersEn from "../../public/locales/en/riders.json";
 import riderFiltersDa from "../../public/locales/da/riderFilters.json";
 import riderFiltersEn from "../../public/locales/en/riderFilters.json";
-import notificationsDa from "../../public/locales/da/notifications.json";
-import notificationsEn from "../../public/locales/en/notifications.json";
 import teamDa from "../../public/locales/da/team.json";
 import teamEn from "../../public/locales/en/team.json";
 import financeDa from "../../public/locales/da/finance.json";
@@ -62,32 +61,14 @@ import sponsorDa from "../../public/locales/da/sponsor.json";
 import sponsorEn from "../../public/locales/en/sponsor.json";
 import backendMessagesDa from "../../public/locales/da/backendMessages.json";
 import backendMessagesEn from "../../public/locales/en/backendMessages.json";
-import profileDa from "../../public/locales/da/profile.json";
-import profileEn from "../../public/locales/en/profile.json";
-import activityDa from "../../public/locales/da/activity.json";
-import activityEn from "../../public/locales/en/activity.json";
-import standingsDa from "../../public/locales/da/standings.json";
-import standingsEn from "../../public/locales/en/standings.json";
 import headtoheadDa from "../../public/locales/da/headtohead.json";
 import headtoheadEn from "../../public/locales/en/headtohead.json";
-import watchlistDa from "../../public/locales/da/watchlist.json";
-import watchlistEn from "../../public/locales/en/watchlist.json";
 import halloffameDa from "../../public/locales/da/halloffame.json";
 import halloffameEn from "../../public/locales/en/halloffame.json";
 import riderTypesDa from "../../public/locales/da/riderTypes.json";
 import riderTypesEn from "../../public/locales/en/riderTypes.json";
 import racesDa from "../../public/locales/da/races.json";
 import racesEn from "../../public/locales/en/races.json";
-import resultsDa from "../../public/locales/da/results.json";
-import resultsEn from "../../public/locales/en/results.json";
-import seasonEndDa from "../../public/locales/da/seasonEnd.json";
-import seasonEndEn from "../../public/locales/en/seasonEnd.json";
-import founderDa from "../../public/locales/da/founder.json";
-import founderEn from "../../public/locales/en/founder.json";
-import achievementsDa from "../../public/locales/da/achievements.json";
-import achievementsEn from "../../public/locales/en/achievements.json";
-import roadmapDa from "../../public/locales/da/roadmap.json";
-import roadmapEn from "../../public/locales/en/roadmap.json";
 import trainingDa from "../../public/locales/da/training.json";
 import trainingEn from "../../public/locales/en/training.json";
 import academyDa from "../../public/locales/da/academy.json";
@@ -96,22 +77,10 @@ import klubDa from "../../public/locales/da/klub.json";
 import klubEn from "../../public/locales/en/klub.json";
 import staffDa from "../../public/locales/da/staff.json";
 import staffEn from "../../public/locales/en/staff.json";
-import staffOverviewDa from "../../public/locales/da/staffOverview.json";
-import staffOverviewEn from "../../public/locales/en/staffOverview.json";
 import landingDa from "../../public/locales/da/landing.json";
 import landingEn from "../../public/locales/en/landing.json";
-import proDa from "../../public/locales/da/pro.json";
-import proEn from "../../public/locales/en/pro.json";
-import calendarDa from "../../public/locales/da/calendar.json";
-import calendarEn from "../../public/locales/en/calendar.json";
-import scoutingDa from "../../public/locales/da/scouting.json";
-import scoutingEn from "../../public/locales/en/scouting.json";
-import plannerDa from "../../public/locales/da/planner.json";
-import plannerEn from "../../public/locales/en/planner.json";
 import globalRankDa from "../../public/locales/da/globalRank.json";
 import globalRankEn from "../../public/locales/en/globalRank.json";
-import forumDa from "../../public/locales/da/forum.json";
-import forumEn from "../../public/locales/en/forum.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -134,22 +103,27 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    // NB: help/rules/patchnotes står BEVIDST ikke i init-listen — de lazy-loades
-    // først når deres side mountes (react-i18next kalder loadNamespaces via
-    // useTranslation). Stod de her, ville init vente på 6 HTTP-loads ved boot
-    // (da + en-fallback × 3) og forsinke alt der køer på init (fx changeLanguage).
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "banners", "feedback", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "sponsor", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements", "roadmap", "training", "academy", "klub", "staff", "staffOverview", "landing", "calendar", "pro", "scouting", "planner", "globalRank", "forum"],
+    // NB: de route-gatede namespaces (INLINE_EXEMPT i
+    // scripts/i18n-check-namespace-inline.mjs) står BEVIDST ikke i init-listen —
+    // de lazy-loades først når deres side mountes (react-i18next kalder
+    // loadNamespaces via useTranslation). Stod de her, ville init vente på 2
+    // HTTP-loads pr. namespace ved boot (da + en-fallback) og forsinke alt der
+    // køer på init (fx changeLanguage).
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "errors", "banners", "feedback", "rider", "riders", "riderFilters", "riderTypes", "team", "finance", "sponsor", "backendMessages", "headtohead", "halloffame", "races", "training", "academy", "klub", "staff", "landing", "globalRank"],
     defaultNS: "common",
-    // #2849 bølge 4: help/rules/patchnotes er IKKE i resources (lazy via
-    // HttpBackend, se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs).
+    // #2849 bølge 4 + #3697: de sjældent besøgte namespaces er IKKE i resources
+    // (lazy via HttpBackend fra /locales/{lng}/{ns}.json — filerne ligger
+    // allerede i dist/, så det er ren fjernelse af JS-vægt, ikke ny payload).
+    // Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs for listen +
+    // kravet om at forbruger-fladen har en `ready`-gate.
     // KRITISK: uden partialBundledLanguages kalder i18next ALDRIG backenden når
     // `resources` er sat — de lazy namespaces "loader" så som tomme, `ready`
     // flipper true og siderne renderer rå nøgler (help crashede på
     // returnObjects). Fanget af ejeren på Vercel-preview 24/7.
     partialBundledLanguages: true,
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, feedback: feedbackDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, sponsor: sponsorDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa, races: racesDa, results: resultsDa, seasonEnd: seasonEndDa, founder: founderDa, achievements: achievementsDa, roadmap: roadmapDa, training: trainingDa, academy: academyDa, klub: klubDa, staff: staffDa, staffOverview: staffOverviewDa, landing: landingDa, calendar: calendarDa, pro: proDa, scouting: scoutingDa, planner: plannerDa, globalRank: globalRankDa, forum: forumDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, notifications: notificationsEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, backendMessages: backendMessagesEn, profile: profileEn, activity: activityEn, standings: standingsEn, headtohead: headtoheadEn, watchlist: watchlistEn, halloffame: halloffameEn, races: racesEn, results: resultsEn, seasonEnd: seasonEndEn, founder: founderEn, achievements: achievementsEn, roadmap: roadmapEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, staffOverview: staffOverviewEn, landing: landingEn, calendar: calendarEn, pro: proEn, scouting: scoutingEn, planner: plannerEn, globalRank: globalRankEn, forum: forumEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, feedback: feedbackDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, team: teamDa, finance: financeDa, sponsor: sponsorDa, backendMessages: backendMessagesDa, headtohead: headtoheadDa, halloffame: halloffameDa, races: racesDa, training: trainingDa, academy: academyDa, klub: klubDa, staff: staffDa, landing: landingDa, globalRank: globalRankDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, backendMessages: backendMessagesEn, headtohead: headtoheadEn, halloffame: halloffameEn, races: racesEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, landing: landingEn, globalRank: globalRankEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

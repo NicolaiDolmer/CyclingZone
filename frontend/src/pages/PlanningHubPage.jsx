@@ -7,6 +7,7 @@ import OnboardingTour from "../components/OnboardingTour.jsx";
 import SeasonPlannerPage from "./SeasonPlannerPage.jsx";
 import StrategyPage from "./StrategyPage.jsx";
 import CalendarPage from "./CalendarPage.jsx";
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 
 // #3102 etape 3 (PR 1) — Planlægnings-hubben: Holdudtagelse (11.254 sessions/30
 // dage på /races), Formplan (planneren) og Strategi samlet under ét nav-punkt
@@ -84,9 +85,9 @@ export default function PlanningHubPage() {
       </Tabs>
 
       {tab === "selection" && <RaceHubBoard />}
-      {tab === "form" && <SeasonPlannerPage />}
+      {tab === "form" && <I18nReadyGate ns="planner"><SeasonPlannerPage /></I18nReadyGate>}
       {tab === "strategy" && <StrategyPage />}
-      {tab === "calendar" && <CalendarPage />}
+      {tab === "calendar" && <I18nReadyGate ns="calendar"><CalendarPage /></I18nReadyGate>}
     </div>
   );
 }
