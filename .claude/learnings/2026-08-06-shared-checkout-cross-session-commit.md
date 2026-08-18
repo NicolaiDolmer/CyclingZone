@@ -20,3 +20,29 @@ Under verdensklasse-bølge 1 (epic #3395) skulle orkestratoren committe patch no
 - Samme bølge viste også instruks-bogstav-problemet: "rør ikke PatchNotesPage.jssx" stoppede ikke agenter i at redigere `patchNotes.js` (data-SSOT). Forbud skal nævne alle konkrete filer.
 
 Refs: `feedback_verify_branch_before_commit_shared_checkout` (bid 1-3: 11/6, 12/6, 13/6) · natbølge-artifact `docs/audits/night-wave-2026-08-06.md`.
+
+---
+
+## 5. bid: 2026-08-18 (samme klasse, ny variant)
+
+Under en DM-triage-session skulle en `docs/NOW.md`-close-out committes paa `main`. Kaeden var:
+
+```bash
+git branch --show-current && git add docs/NOW.md && git commit -F msg.txt
+```
+
+Branchen var skiftet til en parallel sessions `chore/v7140-patch-note` mellem to tool-kald. Commiten landede der og blev pushet som ny remote branch.
+
+**Det nye i denne forekomst:** guarden var ikke tavs, den var **virkningsloes**. `git branch --show-current` printer branchen og exiter ALTID 0. Den saa ud som en guard i kaeden, men kunne per konstruktion ikke stoppe noget. Bid 4 handlede om at ignorere en blokerende guard; bid 5 handlede om at bruge en kommando der aldrig blokerer.
+
+Branchen skiftede desuden tilbage til `main` igen faa minutter senere, mens den anden sessions ucommitterede `help.json`/`patchNotes.js`-arbejde laa i traeet. Ejerskabet af hoved-checkoutet skiftede altsaa to gange inden for én session.
+
+## Fix bygget 18/8
+
+`scripts/guard-commit-branch.sh` exiter 1 ved mismatch og ved detached HEAD, med besked der peger paa worktree-opskriften ovenfor. Verificeret i alle tre tilstande: mismatch blokerer, match er tavs, manglende argument giver exit 2.
+
+```bash
+bash scripts/guard-commit-branch.sh main && git commit -F msg.txt
+```
+
+Wiret ind i `.claude/skills/discord-dm/SKILL.md`. Bør bredes ud til oevrige skills og natboelge-prompts, da fejlklassen ikke er DM-specifik.

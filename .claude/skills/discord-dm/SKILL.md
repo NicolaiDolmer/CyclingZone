@@ -115,6 +115,32 @@ Udkastet må ikke:
 
 Er sagen en dublet af noget kendt, så sig det ligeud i udkastet. At en anden allerede har rapporteret det er et fint svar.
 
+## Commits fra denne skill
+
+Rutinen skriver normalt kun til GitHub via `gh` og rører ikke git. Men en DM-triage ender ofte med en close-out der opdaterer `docs/NOW.md`, og der gælder følgende.
+
+**Brug altid den blokerende guard før commit:**
+
+```bash
+bash scripts/guard-commit-branch.sh main && git commit -F <msg-fil>
+```
+
+`git branch --show-current` er IKKE en guard. Den printer branchen og exiter altid 0, så en `&&`-kæde fortsætter uanset hvad der står. Det er præcis sådan fejlen skete 18-08-2026.
+
+**Blokerer guarden, så gentag ikke uden den.** En blokeret guard er signalet om at checkoutet står forkert, ikke støj. Hoved-checkoutet deles med parallelle sessioner, og branchen kan skifte mellem to af dine egne tool-kald.
+
+**Er der fremmed ucommitteret arbejde, så skift aldrig branch.** Et `git checkout` bærer deres filer med over. Brug et midlertidigt worktree i stedet:
+
+```bash
+git worktree add /tmp/cz-main main
+cd /tmp/cz-main && git commit -F <msg-fil> && git push origin main
+cd - && git worktree remove /tmp/cz-main
+```
+
+Tjek for fremmed arbejde med `git status --porcelain | grep -v '^??'` og for aktive sessioner i `docs/NOW.md`.
+
+Fejlklassen har bidt fem gange (11/6, 12/6, 13/6, 6/8, 18/8). Se `.claude/learnings/2026-08-06-shared-checkout-cross-session-commit.md`.
+
 ## Anonymisering
 
 Repoet er publicly viewable. Alt der ryger i et issue er offentligt læsbart permanent.
