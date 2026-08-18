@@ -680,14 +680,28 @@ export async function evaluateAndApplyConsequences({
 // ─── Manager actions på lag 6 (accept/decline) ────────────────────────────────
 
 /**
- * Manager accepterer bonus-tilbuddet.
- * - Markerer row 'accepted' + resolved_at
- * - Returnerer { ok, bonus_amount, extra_goal } så caller kan kreditere + tilføje mål
+ * #3578 · Manager accepterer bonus-tilbuddet — TO-TRINS flow, bevidst adskilt
+ * (loadActiveBonusOffer + finalizeBonusOfferAccept) i stedet for én funktion
+ * der flipper status og lader caller kreditere bagefter.
  *
- * Caller (api.js) er ansvarlig for credit + at tilføje extra_goal til 1yr-board's
- * current_goals — vi vil ikke duplicere finance-tx-kontrakter her.
+ * Rod-årsag til #3578: den gamle `acceptBonusOffer` flippede row'en til
+ * 'accepted' FØR caller (api.js) krediterede beløbet. Fejlede krediteringen
+ * (fx unique_violation fra en finance_transactions-konflikt) var tilbuddet
+ * allerede brændt — væk fra UI, ingen penge, og `status='active'`-kravet
+ * gjorde det umuligt at forsøge igen (404 ved retry).
+ *
+ * Ny kontrakt: api.js SKAL kalde loadActiveBonusOffer → kreditere → og først
+ * derefter finalizeBonusOfferAccept. Lykkes krediteringen ikke, kaldes
+ * finalizeBonusOfferAccept aldrig, og tilbuddet forbliver 'active' (retry-bart)
+ * i stedet for tabt.
  */
-export async function acceptBonusOffer({ supabase, teamId, offerId }) {
+
+/**
+ * Læser (uden at mutere) et aktivt bonus-tilbud til validering + de data
+ * caller skal bruge for at kreditere. Returnerer { ok:false, code:'not_found' }
+ * hvis intet aktivt tilbud matcher — samme som før.
+ */
+export async function loadActiveBonusOffer({ supabase, teamId, offerId }) {
   ensureSupabase(supabase);
   const { data: offer, error: offerError } = await supabase
     .from("board_consequences")
@@ -700,14 +714,9 @@ export async function acceptBonusOffer({ supabase, teamId, offerId }) {
   if (offerError) throw new Error(`Could not load bonus offer: ${offerError.message}`);
   if (!offer) return { ok: false, code: "not_found" };
 
-  const { error: updateError } = await supabase
-    .from("board_consequences")
-    .update({ status: "accepted", resolved_at: new Date().toISOString() })
-    .eq("id", offer.id);
-  if (updateError) throw new Error(`Could not accept bonus offer: ${updateError.message}`);
-
   return {
     ok: true,
+    offer,
     bonus_amount: offer.severity,
     extra_goal: {
       type: offer.payload?.extra_goal_type,
@@ -716,6 +725,27 @@ export async function acceptBonusOffer({ supabase, teamId, offerId }) {
     },
     source_board_id: offer.source_board_id,
   };
+}
+
+/**
+ * Flipper tilbuddet til 'accepted' — kald KUN efter krediteringen er bekræftet
+ * (eller bevidst sprunget over i board test-mode). Betinget på
+ * `.eq("status", "active")` så et samtidigt dobbelt-accept (dobbeltklik/retry)
+ * ikke flipper to gange: returnerer { ok:false, code:'already_resolved' } hvis
+ * en anden request nåede det først — det er en idempotent no-op for caller,
+ * ikke en fejl (pengene er allerede krediteret idempotent af den anden request).
+ */
+export async function finalizeBonusOfferAccept({ supabase, offerId }) {
+  ensureSupabase(supabase);
+  const { data, error: updateError } = await supabase
+    .from("board_consequences")
+    .update({ status: "accepted", resolved_at: new Date().toISOString() })
+    .eq("id", offerId)
+    .eq("status", "active")
+    .select("id");
+  if (updateError) throw new Error(`Could not accept bonus offer: ${updateError.message}`);
+  if (!data || data.length === 0) return { ok: false, code: "already_resolved" };
+  return { ok: true };
 }
 
 export async function declineBonusOffer({ supabase, teamId, offerId }) {
