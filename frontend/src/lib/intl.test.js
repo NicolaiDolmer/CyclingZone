@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { currencyForLocale, formatCurrency, formatDate } from "./intl.js";
+import { currencyForLocale, formatCurrency, formatDate, formatLocalTime } from "./intl.js";
 
 // i18n er IKKE initialiseret i node:test → currentLocale() falder tilbage
 // til "en", så default-stien kan testes deterministisk.
@@ -62,4 +62,24 @@ test("formatDate — Date-instans og fuld ISO-timestamp er upåvirket af #3724-f
   } finally {
     env.TZ = originalTz;
   }
+});
+
+// #3915 — dashboardets "Today's stages"-strip: starttidspunkt konverteret til
+// SPILLERENS lokale tidszone (proces-TZ i node:test), ikke en fast game-zone.
+// 14:30 UTC − 7t (PDT) = 07:30 lokalt.
+test("formatLocalTime — absolut tidsstempel konverteres til lokal tid (#3915)", () => {
+  const env = globalThis.process.env;
+  const originalTz = env.TZ;
+  env.TZ = "America/Los_Angeles"; // UTC-7 om sommeren (PDT)
+  try {
+    assert.match(normalize(formatLocalTime("2026-08-18T14:30:00Z")), /07:30/);
+  } finally {
+    env.TZ = originalTz;
+  }
+});
+
+test("formatLocalTime — ugyldig/manglende dato giver tom streng", () => {
+  assert.equal(formatLocalTime(null), "");
+  assert.equal(formatLocalTime(undefined), "");
+  assert.equal(formatLocalTime("not-a-date"), "");
 });
