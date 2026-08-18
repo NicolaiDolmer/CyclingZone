@@ -31,10 +31,12 @@ test("resolveNavBadgeCount er 0 for et badge-item uden en nøgle i kortet", () =
   assert.equal(resolveNavBadgeCount({ to: "/unknown", badge: true }, {}), 0);
 });
 
-test("formatNavBadgeCount capper ved 10+ (#3439-loftet), viser ellers det rå tal", () => {
+test("formatNavBadgeCount capper ved 100+ (#3439: hævet fra 9+ til 99+), viser ellers det rå tal", () => {
   assert.equal(formatNavBadgeCount(0), "0");
   assert.equal(formatNavBadgeCount(1), "1");
   assert.equal(formatNavBadgeCount(9), "9");
-  assert.equal(formatNavBadgeCount(10), "9+");
-  assert.equal(formatNavBadgeCount(42), "9+");
+  assert.equal(formatNavBadgeCount(10), "10");
+  assert.equal(formatNavBadgeCount(99), "99");
+  assert.equal(formatNavBadgeCount(100), "99+");
+  assert.equal(formatNavBadgeCount(142), "99+");
 });

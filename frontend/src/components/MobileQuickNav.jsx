@@ -92,7 +92,7 @@ export default function MobileQuickNav({ unread }) {
               <div className="relative">
                 {icon}
                 {showBadge && (
-                  <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none tabular-nums">
+                  <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none tabular-nums">
                     {formatNavBadgeCount(unread)}
                   </span>
                 )}
