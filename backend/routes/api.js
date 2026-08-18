@@ -78,6 +78,7 @@ import {
   TRANSITION_PHASE_STATUS,
 } from "../lib/seasonTransitionPhaseLog.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
+import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
@@ -8758,6 +8759,43 @@ router.post("/admin/auctions/:id/cancel", requireAdmin, adminWriteLimiter, async
     bidder_count: result.bidder_count,
     rider_name: result.rider_name,
     message: `Auktion annulleret. ${result.bidder_count} budgivere notificeret.`,
+  });
+});
+
+// POST /api/admin/riders/:id/delete-with-cleanup — #3594: den ENESTE sikre
+// sletnings-sti for en defekt rytter. Annullerer først alle aktive/udvidede
+// auktioner på rytteren (samme logik + notifikationer som
+// /admin/auctions/:id/cancel ovenfor), afviser sletningen hvis en
+// annullering fejler, rydder rider_watchlist, og sletter til sidst
+// rytter-rækken. Erstatter rå SQL-sletning af defekte ryttere — root cause
+// for at ramte budgivere ikke fik besked ved 9/8-oprydningen.
+router.post("/admin/riders/:id/delete-with-cleanup", requireAdmin, adminWriteLimiter, async (req, res) => {
+  const result = await deleteRiderWithCleanup({
+    supabase,
+    riderId: req.params.id,
+    adminUserId: req.user.id,
+    notifyTeamOwner,
+    logActivity,
+    now: new Date(),
+  });
+
+  if (!result.ok) {
+    if (result.code === "not_found") return res.status(404).json({ error: "Rytter ikke fundet" });
+    if (result.code === "missing_rider_id") return res.status(400).json({ error: "Rytter-id mangler" });
+    if (result.code === "auction_cancel_failed") {
+      return res.status(409).json({
+        error: "Kan ikke slette rytteren — en aktiv auktion kunne ikke annulleres.",
+        detail: result.detail,
+      });
+    }
+    return res.status(500).json({ error: "Sletning fejlede" });
+  }
+
+  res.json({
+    success: true,
+    rider_name: result.rider_name,
+    cancelled_auctions: result.cancelled_auctions,
+    message: `Rytter slettet. ${result.cancelled_auctions} auktion(er) annulleret og budgivere notificeret.`,
   });
 });
 
