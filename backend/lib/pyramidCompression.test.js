@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   rankTeamsGlobally,
+  rankTeamsByGlobalRank,
   snakeAssign,
   distributeCompression,
   summarizeMovements,
@@ -322,5 +323,155 @@ test("re-run-determinisme: samme input giver bit-identisk fordeling (idempotens-
   const { teams, standings } = makeRankedField(150);
   const run1 = distributeCompression(rankTeamsGlobally({ teams, standings }), pools);
   const run2 = distributeCompression(rankTeamsGlobally({ teams, standings }), pools);
+  assert.deepEqual(run1.assignments, run2.assignments);
+});
+
+// ─── #3901 · rankTeamsByGlobalRank (S2→S3, synlig global rangliste) ─────────
+
+test("rankTeamsByGlobalRank sorterer på global_points (matcher global_rank_mv's RANK()-orden)", () => {
+  const teams = [
+    { id: "a", name: "Alfa", division: 3, league_division_id: "d3-a" },
+    { id: "b", name: "Beta", division: 2, league_division_id: "d2-a" },
+    { id: "c", name: "Gamma", division: 4, league_division_id: "d4-a" },
+  ];
+  const globalRankRows = [
+    { team_id: "a", global_points: 500, global_rank: 2, active_recent: true },
+    { team_id: "b", global_points: 900, global_rank: 1, active_recent: true },
+    { team_id: "c", global_points: 100, global_rank: 3, active_recent: true },
+  ];
+  const ranked = rankTeamsByGlobalRank({ teams, globalRankRows });
+  assert.deepEqual(ranked.map((r) => r.teamId), ["b", "a", "c"]);
+  assert.deepEqual(ranked.map((r) => r.rank), [1, 2, 3]);
+  assert.equal(ranked[0].visibleGlobalRank, 1);
+  assert.equal(ranked[0].activeRecent, true);
+});
+
+test("rankTeamsByGlobalRank: hold uden global_rank_mv-række rangeres som 0 point, nederst, flaget", () => {
+  const teams = [
+    { id: "with", name: "Med", division: 3, league_division_id: null },
+    { id: "without", name: "Uden", division: 3, league_division_id: null },
+  ];
+  const globalRankRows = [{ team_id: "with", global_points: 10, global_rank: 1, active_recent: true }];
+  const ranked = rankTeamsByGlobalRank({ teams, globalRankRows });
+  assert.equal(ranked[1].teamId, "without");
+  assert.equal(ranked[1].missingGlobalRank, true);
+  assert.equal(ranked[1].globalPoints, 0);
+  assert.equal(ranked[1].visibleGlobalRank, null);
+});
+
+test("rankTeamsByGlobalRank: inaktive hold (active_recent=false, skjult i UI) BEHOLDES i fordelingen", () => {
+  // #3901: UI'ets useGlobalRank.js filtrerer active_recent=false fra visningen,
+  // men komprimeringen skal stadig placere ALLE managerhold et sted — kun
+  // visnings-filtreringen springes over, ikke selve pladsen i pyramiden.
+  const teams = [
+    { id: "active", name: "Aktiv", division: 3, league_division_id: null },
+    { id: "dormant", name: "Sovende", division: 3, league_division_id: null },
+  ];
+  const globalRankRows = [
+    { team_id: "active", global_points: 50, global_rank: 1, active_recent: true },
+    { team_id: "dormant", global_points: 200, global_rank: null, active_recent: false },
+  ];
+  const ranked = rankTeamsByGlobalRank({ teams, globalRankRows });
+  // Sovende har flere point og er stadig med i sorteringen — kun UI'et skjuler den.
+  assert.deepEqual(ranked.map((r) => r.teamId), ["dormant", "active"]);
+  assert.equal(ranked[0].activeRecent, false);
+  assert.equal(ranked[0].visibleGlobalRank, null);
+});
+
+test("rankTeamsByGlobalRank: #3036-countback afgør rækkefølgen ved lige global_points (RANK() deler ellers rang)", () => {
+  const teams = [
+    { id: "hwt-rockets", name: "HWT Rockets", division: 1, league_division_id: "d1-a" },
+    { id: "guds-hand", name: "Guds hånd", division: 1, league_division_id: "d1-a" },
+  ];
+  const globalRankRows = [
+    { team_id: "hwt-rockets", global_points: 610, global_rank: 5, active_recent: true },
+    { team_id: "guds-hand", global_points: 610, global_rank: 5, active_recent: true },
+  ];
+  const countback = new Map([
+    ["guds-hand", { classificationWins: 4, stagePodiums: 2, bestStageRank: 2, bestGcRank: 7 }],
+    ["hwt-rockets", { classificationWins: 0, stagePodiums: 0, bestStageRank: 15, bestGcRank: 11 }],
+  ]);
+  const ranked = rankTeamsByGlobalRank({ teams, globalRankRows, countback });
+  assert.deepEqual(ranked.map((r) => r.teamId), ["guds-hand", "hwt-rockets"]);
+  // Begge viser stadig visibleGlobalRank=5 (den delte rang spillerne faktisk ser) —
+  // countback afgør kun VORES interne pulje-fordeling, ikke den viste rangliste.
+  assert.equal(ranked[0].visibleGlobalRank, 5);
+  assert.equal(ranked[1].visibleGlobalRank, 5);
+});
+
+// ─── #3901 · distributeCompression med d1Capacity (D1-inklusion S2→S3) ──────
+
+function makeGlobalRankedField(count, { d1Seed = false } = {}) {
+  // count managerhold rangeret på global_points, jævnt fordelt over D2/D3/D4
+  // (matcher prod-formen: D1 er 100% AI før S2→S3, ingen ægte hold sidder der
+  // allerede — d1Seed er kun til at bevise at fromTier=1 stadig klassificeres
+  // korrekt hvis det nogensinde skulle forekomme).
+  const teams = [];
+  const globalRankRows = [];
+  for (let i = 0; i < count; i++) {
+    const id = `team-${String(i).padStart(3, "0")}`;
+    const fromTier = d1Seed && i === 0 ? 1 : [2, 3, 4][i % 3];
+    teams.push({
+      id,
+      name: `Team ${String(i).padStart(3, "0")}`,
+      division: fromTier,
+      league_division_id: `d${fromTier}-${"abcdefgh"[i % 8] ?? "a"}`,
+    });
+    globalRankRows.push({ team_id: id, global_points: 10000 - i * 10, global_rank: i + 1, active_recent: true });
+  }
+  return { teams, globalRankRows };
+}
+
+test("#3901: d1Capacity=0 (default) er bit-identisk med S1→S2-scriptets adfærd — D1 røres ikke", () => {
+  const pools = makePools();
+  const { teams, standings } = makeRankedField(150);
+  const ranked = rankTeamsGlobally({ teams, standings });
+  const withoutD1 = distributeCompression(ranked, pools);
+  const explicitZero = distributeCompression(ranked, pools, { d1Capacity: 0 });
+  assert.deepEqual(withoutD1.assignments, explicitZero.assignments);
+  assert.equal(withoutD1.assignments.some((a) => a.toTier === 1), false);
+});
+
+test("#3901: d1Capacity=24 → top 24 (global rank) i D1's ene pulje, resten forskudt 24/48/96/rest", () => {
+  const pools = makePools();
+  const { teams, globalRankRows } = makeGlobalRankedField(206); // 24+48+96+38, prod-formen 18/8
+  const ranked = rankTeamsByGlobalRank({ teams, globalRankRows });
+  const { assignments, byPool } = distributeCompression(ranked, pools, { d1Capacity: 24 });
+
+  assert.equal(assignments.length, 206);
+  assert.equal(assignments.filter((a) => a.toTier === 1).length, 24);
+  assert.equal(assignments.filter((a) => a.toTier === 2).length, 48);
+  assert.equal(assignments.filter((a) => a.toTier === 3).length, 96);
+  assert.equal(assignments.filter((a) => a.toTier === 4).length, 38);
+  assert.equal(byPool.get("d1-a"), 24);
+  assert.equal(byPool.get("d2-a"), 24);
+  assert.equal(byPool.get("d2-b"), 24);
+
+  // Rank-grænserne rykker 24 pladser: rank 24 → D1, rank 25 → D2, rank 72 → D2, rank 73 → D3.
+  const byRank = new Map(assignments.map((a) => [a.rank, a]));
+  assert.equal(byRank.get(24).toTier, 1);
+  assert.equal(byRank.get(25).toTier, 2);
+  assert.equal(byRank.get(72).toTier, 2);
+  assert.equal(byRank.get(73).toTier, 3);
+  assert.equal(byRank.get(168).toTier, 3);
+  assert.equal(byRank.get(169).toTier, 4);
+
+  // Alle 24 der flytter til D1 kommer fra en lavere tier (2/3/4) → "promoted".
+  const toD1 = assignments.filter((a) => a.toTier === 1);
+  assert.ok(toD1.every((a) => a.movement === "promoted"));
+});
+
+test("#3901: distributeCompression kaster hvis d1Capacity>0 men D1 ikke har præcis 1 pulje", () => {
+  const pools = makePools().filter((p) => p.tier !== 1); // ingen tier 1-pulje
+  const { teams, globalRankRows } = makeGlobalRankedField(206);
+  const ranked = rankTeamsByGlobalRank({ teams, globalRankRows });
+  assert.throws(() => distributeCompression(ranked, pools, { d1Capacity: 24 }), /expected 1 tier 1 pool/);
+});
+
+test("#3901: re-run-determinisme gælder også D1-varianten", () => {
+  const pools = makePools();
+  const { teams, globalRankRows } = makeGlobalRankedField(206);
+  const run1 = distributeCompression(rankTeamsByGlobalRank({ teams, globalRankRows }), pools, { d1Capacity: 24 });
+  const run2 = distributeCompression(rankTeamsByGlobalRank({ teams, globalRankRows }), pools, { d1Capacity: 24 });
   assert.deepEqual(run1.assignments, run2.assignments);
 });
