@@ -4,6 +4,30 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.143",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Lineups fill up correctly again",
+          "body": "A safety rule added this morning accidentally blocked the automatic lineup filler from moving riders between overlapping races. Some teams started races with 4 or 5 riders instead of 6. Lineups now fill and update as they should."
+        },
+        "da": {
+          "title": "Startfelter fyldes korrekt op igen",
+          "body": "En sikkerhedsregel tilføjet i morges blokerede ved et uheld den automatiske opstilling fra at flytte ryttere mellem overlappende løb. Nogle hold startede løb med 4 eller 5 ryttere i stedet for 6. Felterne fyldes og opdateres nu som de skal."
+        },
+        "refs": [
+          3934,
+          3420
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.142",
     "date": "2026-08-18",
     "label": "Beta",
