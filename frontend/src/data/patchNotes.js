@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.143",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Season start notification now shows your sponsor payout",
+          "body": "The \"new season has started\" notification used to say nothing about money, leaving you guessing whether it had landed. It now states the exact amount your sponsor paid out. Delivery is also more reliable, so a resend can be targeted at any team that missed it."
+        },
+        "da": {
+          "title": "Sæsonstart-notifikationen viser nu din sponsorudbetaling",
+          "body": "\"Ny sæson er begyndt\"-notifikationen nævnte ikke penge, så du måtte gætte om de var landet. Den viser nu det præcise beløb din sponsor udbetalte. Leveringen er også mere pålidelig, så en efter-sendelse kan målrettes hold der manglede den."
+        },
+        "refs": [
+          3101
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.142",
     "date": "2026-08-18",
     "label": "Beta",

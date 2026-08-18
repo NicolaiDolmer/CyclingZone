@@ -37,6 +37,7 @@
 
 import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
 import { notifySeasonEvent as defaultNotifySeasonEvent } from "./discordNotifier.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import {
   buildSponsorStandingsContext,
   computeSponsorForSeason,
@@ -124,22 +125,72 @@ async function getRunRaceEntryGenerator() {
 const SEASON_STARTED_FALLBACK_MESSAGE =
   "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead.";
 
+// #3101 · Når det faktiske sponsorbeløb for sæsonen er kendt, medtages det i
+// EN-fallback-beskeden (metadata.messageCode styrer den lokaliserede rendering,
+// men den rå tekst SKAL også være informativ — se notifyUser-docstringen).
+function buildSeasonStartedFallbackMessage(sponsorAmount) {
+  if (typeof sponsorAmount !== "number" || !Number.isFinite(sponsorAmount)) {
+    return SEASON_STARTED_FALLBACK_MESSAGE;
+  }
+  return `A new season has begun. Your sponsor paid out ${sponsorAmount} CZ$ for the season. Check your dashboard for your board's goals and your squad for the season ahead.`;
+}
+
+// #3101 · Bulk-hent det faktiske sponsorbeløb (finance_transactions type='sponsor',
+// samme season_id) pr. hold — "sponsor" krediteres udelukkende af
+// economyEngine.processSeasonStart (idempotencyKey sponsor:{team}:{season}), så
+// præcis én række pr. hold pr. sæson er den forventede form. Mangler holdet en
+// række (fx sæson-1-uberørt-startkapital-gaten der springer sponsoren helt over),
+// udelades beløbet i stedet for at gætte.
+async function loadSeasonStartedSponsorPayouts({ supabase, teamIds, seasonId }) {
+  const map = new Map();
+  if (!teamIds.length) return map;
+  // #3331 · finance_transactions er deny-listed for et bart .select()/.in() —
+  // PostgREST capper stille ved 1000 rækker. fetchAllRowsChunkedIn chunker
+  // team_id-listen (#3030: lange .in()-lister kan i sig selv sprænge gateway-
+  // linjebegrænsningen) OG paginerer hver chunk.
+  const rows = await fetchAllRowsChunkedIn(
+    teamIds,
+    (chunk) =>
+      supabase
+        .from("finance_transactions")
+        .select("team_id, amount")
+        .eq("type", "sponsor")
+        .eq("season_id", seasonId)
+        .in("team_id", chunk)
+        .order("team_id"),
+  );
+  for (const row of rows) {
+    if (row?.team_id != null && typeof row.amount === "number") {
+      map.set(row.team_id, row.amount);
+    }
+  }
+  return map;
+}
+
 /**
- * #1357 · Indsæt in-app season_started-notifikationer til alle berettigede
- * menneske-managers (humanTeams = is_ai=false, is_bank=false, is_frozen=false, is_test_account=false). Idempotent:
- * notifyUser dedup'er på (type, title, message, related_id) inden for 24t, og
- * related_id = toSeason.id gør dedup per manager+sæson, så retries/genoptagne
- * transitions ikke dublerer. Fejl pr. manager isoleres (tælles, stopper ikke
- * resten). `notify` er injicerbar for test.
+ * #1357 + #3101 · Indsæt in-app season_started-notifikationer til alle
+ * berettigede menneske-managers (humanTeams = is_ai=false, is_bank=false,
+ * is_frozen=false, is_test_account=false), inkl. det faktiske sponsorbeløb
+ * holdet fik for sæsonen når det kan findes. Idempotent: notifyUser dedup'er
+ * på (type, title, message, related_id) inden for 24t, og related_id =
+ * toSeason.id gør dedup per manager+sæson, så retries/genoptagne transitions
+ * (eller et bevidst re-run for at efter-sende til hold der manglede
+ * beskeden — #3101) ikke dublerer, fordi beløbet er deterministisk hentet fra
+ * den allerede-committede finance_transactions-række hver gang. Fejl pr.
+ * manager isoleres (tælles + user_id samles i failedUserIds, stopper ikke
+ * resten — de kan efter-sendes ved at kalde funktionen igen med
+ * `humanTeams` sat til kun de manglende hold). `notify`/`loadSponsorPayouts`
+ * er injicerbare for test.
  */
 export async function emitSeasonStartedNotifications({
   supabase,
   toSeason,
   humanTeams = null,
   notify = notifyUser,
+  loadSponsorPayouts = loadSeasonStartedSponsorPayouts,
 }) {
   const seasonNumber = toSeason.number;
-  const stats = { delivered: 0, deduped: 0, failed: 0 };
+  const stats = { delivered: 0, deduped: 0, failed: 0, failedUserIds: [] };
   // #2832-review (fund 4) · fulde menneske-manager-diskriminator som resten af
   // motoren (is_ai=false, is_bank=false, is_frozen=false, is_test_account=false —
   // se fx boardWeekendFinalization.js) — den forkortede is_ai/is_frozen-udgave
@@ -149,7 +200,7 @@ export async function emitSeasonStartedNotifications({
   if (!managers) {
     const { data, error } = await supabase
       .from("teams")
-      .select("user_id")
+      .select("id, user_id")
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
@@ -162,21 +213,47 @@ export async function emitSeasonStartedNotifications({
     managers = data;
   }
   const eligible = (managers || []).filter((team) => team.user_id);
+
+  let sponsorPayoutByTeamId = new Map();
+  if (eligible.length > 0) {
+    try {
+      sponsorPayoutByTeamId = await loadSponsorPayouts({
+        supabase,
+        teamIds: eligible.map((team) => team.id).filter((id) => id != null),
+        seasonId: toSeason.id,
+      });
+    } catch (err) {
+      // best-effort: uden beløb falder ALLE tilbage til den beløbsfrie besked —
+      // selve notifikationen skal stadig ud, en fejl her må aldrig blokere den.
+      console.error("season_started: sponsor payout lookup failed, falling back to the generic message for all:", err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "season_started_sponsor_lookup" }, extra: { seasonNumber } });
+    }
+  }
+
   for (const team of eligible) {
+    const sponsorAmount = sponsorPayoutByTeamId.get(team.id);
+    const hasSponsorAmount = typeof sponsorAmount === "number" && Number.isFinite(sponsorAmount);
     try {
       const res = await notify({
         supabase,
         userId: team.user_id,
         type: "season_started",
         title: `Season ${seasonNumber} has started`,
-        message: SEASON_STARTED_FALLBACK_MESSAGE,
+        message: buildSeasonStartedFallbackMessage(hasSponsorAmount ? sponsorAmount : undefined),
         relatedId: toSeason.id,
-        metadata: {
-          titleCode: "notif.seasonStarted.title",
-          titleParams: { number: seasonNumber },
-          messageCode: "notif.seasonStarted.message",
-          messageParams: { number: seasonNumber },
-        },
+        metadata: hasSponsorAmount
+          ? {
+              titleCode: "notif.seasonStarted.title",
+              titleParams: { number: seasonNumber },
+              messageCode: "notif.seasonStarted.messageWithSponsor",
+              messageParams: { number: seasonNumber, amount: sponsorAmount },
+            }
+          : {
+              titleCode: "notif.seasonStarted.title",
+              titleParams: { number: seasonNumber },
+              messageCode: "notif.seasonStarted.message",
+              messageParams: { number: seasonNumber },
+            },
       });
       if (res?.delivered) stats.delivered += 1;
       else if (res?.deduped) stats.deduped += 1;
@@ -185,7 +262,11 @@ export async function emitSeasonStartedNotifications({
       // problem (fx dedup-query fejler for alle) kunne kun ses som faldende
       // delivered-tal, som ingen overvåger. Samme mønster som
       // emitContractExpiringNotifications i notificationService.js.
+      // #3101 · failedUserIds gør det muligt at målrette et efter-sende-kald
+      // (emitSeasonStartedNotifications med humanTeams=kun disse) frem for at
+      // gætte på hvem der manglede.
       stats.failed += 1;
+      stats.failedUserIds.push(team.user_id);
       console.error(`  ❌ season_started-notifikation fejlede (manager ${team.user_id}):`, err?.message || err);
       captureException(err, { tags: { flow: "notifications", stage: "season_started" }, extra: { userId: team.user_id, seasonNumber } });
     }
@@ -1321,18 +1402,30 @@ export async function transitionToNextSeason({
     log.push({ phase: "discord_broadcast", sent: false, error: err.message });
   }
 
-  // Phase 7b: in-app season_started-notifikationer til menneske-managers (#1357).
-  // Tidligere fik managers KUN en Discord-broadcast; transition-motoren indsatte
-  // ingen notification-rows, så in-app-inboxen var tom ved sæsonstart.
+  // Phase 7b: in-app season_started-notifikationer til menneske-managers (#1357,
+  // #3101). Tidligere fik managers KUN en Discord-broadcast; transition-motoren
+  // indsatte ingen notification-rows, så in-app-inboxen var tom ved sæsonstart.
+  // #3101 · try/catch her (samme disciplin som contract_expiring_notifications
+  // nedenfor) — en total svigt i emitSeasonStarted (fx managers-query fejler)
+  // må ikke vælte resten af transitionen/completion-loggen; isolerede pr.-
+  // manager-fejl fanges allerede INDE i funktionen (stats.failed/failedUserIds).
   const emitSeasonStarted =
     deps.emitSeasonStartedNotifications ?? emitSeasonStartedNotifications;
-  log.push({
-    phase: "season_started_notifications",
-    ...(await emitSeasonStarted({
-      supabase,
-      toSeason: plan.to_season,
-    })),
-  });
+  try {
+    log.push({
+      phase: "season_started_notifications",
+      ...(await emitSeasonStarted({
+        supabase,
+        toSeason: plan.to_season,
+      })),
+    });
+  } catch (err) {
+    log.push({ phase: "season_started_notifications", error: err.message });
+    captureException(err, {
+      tags: { flow: "notifications", stage: "season_started_notifications" },
+      extra: { toSeasonId: plan.to_season.id, seasonNumber: plan.to_season.number },
+    });
+  }
 
   // Phase 7c: #1836 · kontraktudløb-notifikationer. For hver ejet rytter hvis
   // contract_end_season = den KOMMENDE sæson får ejeren en advarsel om at
