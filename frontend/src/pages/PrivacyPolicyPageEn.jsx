@@ -66,7 +66,7 @@ export default function PrivacyPolicyPageEn() {
                 <li><strong>Game data:</strong> your team&apos;s economy, riders, auctions, board status, season results (everything created by playing).</li>
                 <li><strong>Optional:</strong> your Discord ID if you add it to receive DM notifications.</li>
                 <li><strong>Technical:</strong> IP address in access logs for up to 30 days, used for operations and security.</li>
-                <li><strong>Analytics (consent only):</strong> anonymous behavioural data via Microsoft Clarity (e.g. where users click in vain or scroll in frustration) and anonymous traffic/source statistics via Google Analytics (e.g. which page you arrived from). Used only to fix bad UX and understand where players find the game.</li>
+                <li><strong>Analytics (consent only):</strong> anonymous behavioural data via Microsoft Clarity (e.g. where users click in vain or scroll in frustration), anonymous traffic/source statistics via Google Analytics (e.g. which page you arrived from) and anonymous page views via Vercel Web Analytics (e.g. how many people visit a page). Used only to fix bad UX and understand where players find the game.</li>
                 <li><strong>Acquisition source (legitimate interest):</strong> when you create an account we record how you first reached the site (a referring link, any campaign tags in the URL, and the page you landed on) so we can see which channels bring new players. First-party only, no cross-site tracking, and you can object at any time.</li>
                 <li><strong>Aggregate traffic statistics (no consent needed):</strong> we count anonymous, aggregated page views and engagement (e.g. how many visitors a page received and whether they engaged) without cookies and without storing IP addresses or any data that can identify you. Because it cannot be linked to you, this requires no consent.</li>
                 {/* #3132: fair-play telemetry (identity_events, live 31/7) — owner-approved wording 3/8. */}
@@ -109,6 +109,7 @@ export default function PrivacyPolicyPageEn() {
                 <li><strong>Railway:</strong> backend hosting.</li>
                 <li><strong>Microsoft Clarity:</strong> only loaded if you have accepted the &quot;Analytics&quot; category.</li>
                 <li><strong>Google Analytics:</strong> only loaded if you have accepted the &quot;Analytics&quot; category. Ad signals are turned off.</li>
+                <li><strong>Vercel Web Analytics:</strong> only loaded if you have accepted the &quot;Analytics&quot; category.</li>
                 <li><strong>Discord (via Discord Inc.):</strong> only if you voluntarily add your Discord ID, or contact us on Discord. Discord is an independent data controller for any content you send us there.</li>
               </ul>
               <p className="mt-2 text-cz-3 text-xs">
@@ -167,7 +168,7 @@ export default function PrivacyPolicyPageEn() {
                 <li><strong>Consent choices</strong> (<code className="text-xs">cz_consent_v1</code> in localStorage): so we remember your selection and don&apos;t ask again.</li>
               </ul>
               <p className="mt-2">
-                These do not require consent under the ePrivacy directive (strictly necessary). <strong>Microsoft Clarity</strong> and <strong>Google Analytics</strong> are only loaded if you have actively accepted the &quot;Analytics&quot; category. You can change your choice on this page at any time.
+                These do not require consent under the ePrivacy directive (strictly necessary). <strong>Microsoft Clarity</strong>, <strong>Google Analytics</strong> and <strong>Vercel Web Analytics</strong> are only loaded if you have actively accepted the &quot;Analytics&quot; category. You can change your choice on this page at any time.
               </p>
             </div>
           </Section>
