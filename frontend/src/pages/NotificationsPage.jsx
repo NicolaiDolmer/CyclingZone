@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams } from "react-router";
 import ActivityPage from "./ActivityPage.jsx";
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
@@ -735,7 +736,7 @@ export default function NotificationsPage() {
         // #3104 etape C: hele markeds-handlingscentret (egne under-faner +
         // refresh) som fane-indhold — samme mønster som RacePointsPage i
         // Resultat-hubben (#3102 etape 2).
-        <ActivityPage />
+        <I18nReadyGate ns="activity"><ActivityPage /></I18nReadyGate>
       ) : (
         <>
           {/* Ligaen — feed-filter, samme idiom (ui/Select) som Mine-fanen ovenfor. */}

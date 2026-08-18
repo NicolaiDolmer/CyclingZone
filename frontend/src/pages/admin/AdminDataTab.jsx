@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase";
 import { RACE_CLASSES, getRaceClassLabel } from "../../lib/uciRaceClasses";
 import RacePoolSection from "../../components/admin/RacePoolSection";
 import RacePointsAdminSection from "../../components/admin/RacePointsAdminSection";
+import I18nReadyGate from "../../components/I18nReadyGate.jsx"; // #3697
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
@@ -395,7 +396,7 @@ export default function AdminDataTab() {
       </AdminSection>
 
       <AdminSection title="Pointtabel per løbsklasse">
-        <RacePointsAdminSection getAuth={getAuth} onMsg={showMsg} />
+        <I18nReadyGate ns="admin"><RacePointsAdminSection getAuth={getAuth} onMsg={showMsg} /></I18nReadyGate>
       </AdminSection>
 
       <AdminSection title={<span className="inline-flex items-center gap-1.5"><FlagIcon size={14} aria-hidden="true" />Race-motor V2 (#1102)</span>}>
