@@ -93,7 +93,8 @@ export async function recordRiderOwnershipEvent(supabase, event) {
     // kastes videre til en kalder der allerede har committet den rigtige
     // ejerskabsmutation.
     console.error(
-      `  ⚠️  recordRiderOwnershipEvent fejlede for rytter ${event?.riderId} (ikke-fatal, #3582):`,
+      "  ⚠️  recordRiderOwnershipEvent fejlede for rytter %s (ikke-fatal, #3582):",
+      event?.riderId,
       e.message
     );
     return { ok: false, skipped: false };
