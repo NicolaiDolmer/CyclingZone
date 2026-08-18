@@ -84,6 +84,49 @@ test("day1 uden latestRaceId falder tilbage til dashboard-URL", () => {
   assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard"/);
 });
 
+// ─── #3912 · CTA deep-links to the specific stage's result ────────────────
+
+test("day1 med latestRaceId og latestStageNumber deep-linker CTA til etapens resultat", () => {
+  const t = buildDay1Email({
+    teamName: "Team X",
+    hasResults: true,
+    latestRaceId: "race-42",
+    latestStageNumber: 3,
+    unsubscribeUrl: UNSUB_URL,
+  });
+  // Pin hele href'en (samme sanitization-begrundelse som testen ovenfor):
+  // includes() ville også passere for en href med vores URL som præfiks på
+  // et fremmed host.
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42\?stage=3"/);
+  assert.match(t.text, /^See your results and auctions: https:\/\/cyclingzone\.org\/races\/race-42\?stage=3$/m);
+  assertNoEmDash(t, "day1 latestStageNumber");
+});
+
+test("day1 med latestRaceId men uden latestStageNumber (single-day race/legacy data) falder tilbage til det rene løbslink", () => {
+  const t = buildDay1Email({
+    teamName: "Team X",
+    hasResults: true,
+    latestRaceId: "race-42",
+    latestStageNumber: null,
+    unsubscribeUrl: UNSUB_URL,
+  });
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42"/);
+  assert.ok(!t.html.includes("?stage="));
+});
+
+test("day1 ignorerer et ugyldigt latestStageNumber (0/negativt/ikke-heltal) i stedet for at bygge en korrupt URL", () => {
+  for (const bad of [0, -1, 1.5, "3", NaN]) {
+    const t = buildDay1Email({
+      teamName: "Team X",
+      hasResults: true,
+      latestRaceId: "race-42",
+      latestStageNumber: bad,
+      unsubscribeUrl: UNSUB_URL,
+    });
+    assert.ok(!t.html.includes("?stage="), `latestStageNumber=${bad} must not produce a ?stage= param`);
+  }
+});
+
 test("race_digest email: subject, results link, unsubscribe link, no em-dash", () => {
   const t = buildRaceDigestEmail({
     teamName: "Team Velodrome",
