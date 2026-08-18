@@ -96,6 +96,13 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // deploy. Samme klasse som race_stage_passages-entryen i sin tid: fjern denne
   // linje når tabellen har rows (forventet 18/8), så Detector A dækker normalt.
   "race_stage_timelines",
+  // rider_ownership_events (#3582, PR #3881 merged 18/8 ~09:20, migration
+  // applied 18/8 ~09:45): ejerskabs-audit-log. Skrives først ved NÆSTE
+  // ejerskabsskifte EFTER Railway-deployet — målt 18/8: den ene auktion siden
+  // merge finaliserede 07:23Z (før deployet var live) og er desuden #1995-
+  // parkeret (row skrives ved flush). Fjern denne linje når tabellen har rows
+  // (forventet inden for 1-2 døgn via auktions-drippen).
+  "rider_ownership_events",
   // discord_race_digest_log: fjernet 7/8 — digestens første kl. 20-kørsel 6/8
   // aften skrev 32 rækker (fix #3475 verificeret), auditen dækker tabellen igen.
   // Forum v1 (#3199): alle fem entries fjernet 7/8 — spillerne tog forummet i
