@@ -981,6 +981,10 @@
       "a11y": {
         "graph": "Elevation profile for stage {number}: {distance} km, {elevation} m of climbing, {climbs} categorised climbs"
       }
+    },
+    "table": {
+      "prizePoints": "Prize points",
+      "jerseyPoints": "Jersey points"
     }
   },
   "history": {
