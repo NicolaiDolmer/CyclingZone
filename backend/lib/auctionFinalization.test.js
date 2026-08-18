@@ -99,6 +99,8 @@ function createFinalizeAuctionSupabase({
   riderUpdateHitsZeroRows = false, // #3580: simulér en riders.update() der rammer 0 rækker
   academyGraduationRow = null, // #2793: pending academy_graduation-row for sælgeren (resolvePendingGraduationOnSale), default ingen
   academyGraduationUpdates = [],
+  ownershipEvents = [], // #3582: rider_ownership_events-inserts
+  atRiskRiderRowsByTeam = {}, // #2836: fetchAtRiskCount's fetchTeamRiskRows-svar pr. sælger-team-id (default: ingen risiko)
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -200,6 +202,32 @@ function createFinalizeAuctionSupabase({
       if (table === "riders") {
         return {
           select(columns, options) {
+            // #2836: fetchTeamRiskRows (squadRiskGuard.fetchAtRiskCount) selecter
+            // rider-KOLONNER uden count-options — en helt anden forespørgsel end
+            // getTeamMarketState's count-queries nedenfor. Skelnes på options'
+            // fravær, ikke på columns (begge kan i teorien starte med "id").
+            if (options === undefined) {
+              assert.equal(
+                columns,
+                "id, firstname, lastname, birthdate, contract_end_season, is_retired, pending_team_id"
+              );
+              return {
+                eq(column, teamId) {
+                  assert.equal(column, "team_id");
+                  return {
+                    eq(col2, val2) {
+                      assert.equal(col2, "is_academy");
+                      assert.equal(val2, false);
+                      return Promise.resolve({
+                        data: atRiskRiderRowsByTeam[teamId] || [],
+                        error: null,
+                      });
+                    },
+                  };
+                },
+              };
+            }
+
             assert.equal(columns, "id");
             assert.deepEqual(options, { count: "exact", head: true });
 
@@ -477,6 +505,16 @@ function createFinalizeAuctionSupabase({
         };
       }
 
+      // #3582: rider_ownership_events — best-effort audit-skrivning.
+      if (table === "rider_ownership_events") {
+        return {
+          insert(payload) {
+            ownershipEvents.push(payload);
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
+
       throw new Error(`Unexpected table: ${table}`);
     },
   };
@@ -647,6 +685,8 @@ test("finalizeAuctionById allows a winner up to the hard cap + registers immedia
           pendingCount: 0,
           activeLoanCount: 0,
         },
+        // #2836: sælger skal blive over løbs-minimummet (8) EFTER salget — ikke det denne test måler.
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       teamUpdates,
@@ -731,6 +771,7 @@ test("finalizeAuctionById completes even if the contract-expiring notification t
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 5, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       teamUpdates,
@@ -1107,9 +1148,11 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
   const riderUpdates = [];
   const financeInserts = [];
   const xpAwards = [];
+  const ownershipEvents = [];
 
   const result = await finalizeAuctionById({
     supabase: createFinalizeAuctionSupabase({
+      ownershipEvents,
       auction: {
         id: "auction-owned",
         status: "active",
@@ -1146,6 +1189,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
           pendingCount: 0,
           activeLoanCount: 0,
         },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       teamUpdates,
@@ -1216,6 +1260,71 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     { teamId: "buyer-team", action: "auction_won" },
     { teamId: "seller-team", action: "auction_sold" },
   ]);
+  // #3582: bevægelses-log skrevet for det umiddelbare (ikke-parkerede) skifte.
+  assert.deepEqual(ownershipEvents, [{
+    rider_id: "rider-owned",
+    rider_firstname: "Owned",
+    rider_lastname: "Seller",
+    from_team_id: "seller-team",
+    to_team_id: "buyer-team",
+    reason: "auction_win",
+    related_entity_type: "auction",
+    related_entity_id: "auction-owned",
+    actor_type: "cron",
+    actor_id: null,
+    idempotency_key: "ownership:auction_winner:auction-owned",
+    occurred_at: "2026-04-22T10:00:00.000Z",
+  }]);
+});
+
+// #3582 forward-guard: ved en #1995-parkering (deferTeamChange) må auktions-
+// finaliseringen IKKE skrive en bevægelses-hændelse — team_id ændrer sig
+// endnu ikke (rytteren bliver hos sælgeren til løbet er kørt). Hændelsen
+// skrives i stedet af stageRaceTransferDefer.js's flushParkedRider, når
+// ejerskabet FAKTISK flytter. Ville denne test fejle, ville en parkeret
+// handel få TO rækker (én for tidligt, én ved flush) — eller en forkert
+// "flyttet nu"-hændelse for en rytter der reelt stadig er hos sælgeren.
+test("finalizeAuctionById skriver INGEN bevægelses-hændelse ved #1995-parkering — flush-tidspunktet ejer den", async () => {
+  const ownershipEvents = [];
+  const auctionUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      ownershipEvents,
+      auctionUpdates,
+      auction: {
+        id: "auction-defer-audit",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 100,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-defer-audit",
+          firstname: "Mid",
+          lastname: "Race",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500000, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        // #2836: over løbs-minimummet, så sælger-gulv-tjekket ikke forstyrrer
+        // denne tests egentlige fokus (#1995-parkering, ingen bevægelses-log).
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
+      },
+      activeStageRaceRiderIds: ["rider-defer-audit"],
+    }),
+    auctionId: "auction-defer-audit",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-07-03T11:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed", "auktionen fuldføres straks (Model B) — kun overdragelsen parkeres");
+  assert.deepEqual(ownershipEvents, []);
 });
 
 // #3580: root-cause forward-guard. Beviset for det 9/8-ramte tilfælde
@@ -1266,6 +1375,9 @@ test("finalizeAuctionById throws BEFORE any money moves if the ownership transfe
         },
         teamMarketCounts: {
           "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+          // #2836: over løbs-minimummet, så sælger-gulv-tjekket ikke forstyrrer
+          // denne tests egentlige fokus (0-rows-guarden).
+          "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
         },
         auctionUpdates,
         teamUpdates,
@@ -1286,6 +1398,121 @@ test("finalizeAuctionById throws BEFORE any money moves if the ownership transfe
   assert.deepEqual(financeInserts, []);
   assert.deepEqual(teamUpdates, []);
   assert.deepEqual(auctionUpdates, []);
+});
+
+// #2836: sælger-gulvet (MIN_RIDERS_FOR_RACE=8, samme diskriminator som
+// auktions-OPRETTELSEN i api.js #2748/#2834) tjekkes hidtil kun ved
+// oprettelse, aldrig ved finalisering. Sælgeren har kun 8 senior-ryttere
+// TILBAGE (efter denne auktion ville han falde til 7) — finaliseringen skal
+// annullere overdragelsen i stedet for at lade holdet falde under
+// løbs-minimummet. INGEN penge må flytte, og rytteren bliver hos sælgeren.
+test("finalizeAuctionById annullerer overdragelsen hvis sælgeren ville falde under løbs-minimummet (8) (#2836)", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-seller-floor",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 150,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-seller-floor",
+          firstname: "Floor",
+          lastname: "Case",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        // Sælgeren har PRÆCIST 8 (løbs-minimum) — denne auktion ville tage ham til 7.
+        "seller-team": { riderCount: 8, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-seller-floor",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-08-17T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "seller_squad_floor");
+  // Ejerskabet rørt ikke, ingen penge flyttede, auktionen lukkes uden vinder.
+  assert.deepEqual(riderUpdates, []);
+  assert.deepEqual(financeInserts, []);
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(auctionUpdates, [{
+    status: "completed",
+    actual_end: "2026-08-17T10:00:00.000Z",
+    seller_team_id: "seller-team",
+  }]);
+  // Begge parter informeres.
+  assert.ok(notifications.some((n) => n.teamId === "buyer-team"));
+  const sellerNotif = notifications.find((n) => n.teamId === "seller-team");
+  assert.ok(sellerNotif, "sælgeren skal have besked om hvorfor salget blev annulleret");
+  assert.match(sellerNotif.message, /8/);
+});
+
+// #2836 kontrol: sælgeren har PLADS (9 → 8 efter salget, stadig ≥ minimum) —
+// overdragelsen SKAL gennemføres normalt. Forward-guard mod at gulv-tjekket
+// bliver for stramt og blokerer legitime salg.
+test("finalizeAuctionById gennemfører normalt når sælgeren forbliver på/over løbs-minimummet (#2836)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-seller-floor-ok",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 150,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-seller-floor-ok",
+          firstname: "Floor",
+          lastname: "Ok",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        // 9 → 8 efter salget = PRÆCIS på minimummet, ikke under → skal tillades.
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-seller-floor-ok",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-08-17T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.equal(riderUpdates.length, 1);
+  assert.equal(riderUpdates[0].team_id, "buyer-team");
+  assert.equal(financeInserts.length, 2, "både køber-debit og sælger-kredit gennemført");
 });
 
 // #3549: køber og sælger er FORSKELLIGE hold (normal handel) — begge skal
@@ -1314,6 +1541,7 @@ test("finalizeAuctionById sends auction_won to the buyer and auction_sold (own t
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 5, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       teamUpdates,
@@ -1369,6 +1597,7 @@ test("finalizeAuctionById reveals the winner's name to losing bidders with their
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       // Realiserede bud: buyer-team vandt for 300. rival-a's højeste bud var 260
       // (to rækker — kun den højeste tæller). rival-b bød aldrig (ingen rækker).
@@ -1452,6 +1681,7 @@ test("finalizeAuctionById closes open transfer listings when the rider is sold a
           pendingCount: 0,
           activeLoanCount: 0,
         },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,
@@ -1524,6 +1754,7 @@ test("finalizeAuctionById closes open transfer listings on finalization (#822)",
           pendingCount: 0,
           activeLoanCount: 0,
         },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       transferWindowStatus: "closed",
       auctionUpdates: [],
@@ -2083,6 +2314,7 @@ test("finalizeAuctionById creates a default contract for a contractless winner (
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,
@@ -2149,6 +2381,7 @@ test("finalizeAuctionById inherits an existing contract unchanged on a won aucti
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,
@@ -2218,6 +2451,7 @@ test("finalizeAuctionById graduates an own-team academy rider to senior for the 
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,
@@ -2283,6 +2517,7 @@ test("finalizeAuctionById graduates a contractless own-team academy rider and gi
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,
@@ -2344,6 +2579,9 @@ test("finalizeAuctionById resolves a pending academy_graduation row to 'sold' wh
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        // #2836: over løbs-minimummet, så sælger-gulv-tjekket ikke forstyrrer
+        // denne tests egentlige fokus (graduation-resolve).
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,
@@ -2395,6 +2633,7 @@ function makeYouthFinalizeSupabase({
   const notifications = [];
   const riderDeleteAttempts = [];
   const riderDeletions = [];
+  const ownershipEvents = [];
 
   const buyer = { id: auction.current_bidder_id, name: "Buyer FC", balance: buyerBalance };
 
@@ -2617,11 +2856,21 @@ function makeYouthFinalizeSupabase({
           }),
         };
       }
+      // #3582: rider_ownership_events — best-effort audit-skrivning.
+      if (table === "rider_ownership_events") {
+        return {
+          insert(payload) {
+            ownershipEvents.push(payload);
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
     _riderUpdates: riderUpdates,
     _auctionUpdates: auctionUpdates,
     _financeInserts: financeInserts,
+    _ownershipEvents: ownershipEvents,
     _compensationInserts: compensationInserts,
     _notifications: notifications,
     _riderDeleteAttempts: riderDeleteAttempts,
@@ -2684,6 +2933,12 @@ test("youth-auktion MED bud + senior-plads + balance: vinder placeres på SENIOR
 
   // Auktion lukket completed
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+
+  // #3582: bevægelses-log — fromTeamId=null (ungdomsauktion har ingen sælger).
+  assert.equal(supabase._ownershipEvents.length, 1);
+  assert.equal(supabase._ownershipEvents[0].from_team_id, null);
+  assert.equal(supabase._ownershipEvents[0].to_team_id, "buyer-team");
+  assert.equal(supabase._ownershipEvents[0].reason, "auction_win");
 });
 
 // #3580: samme forward-guard som den almindelige auktionssti — rammer
@@ -3241,6 +3496,7 @@ test("finalizeAuctionById parkerer holdskiftet når rytteren er i et aktivt etap
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,

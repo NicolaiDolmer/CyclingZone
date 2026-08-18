@@ -18,6 +18,7 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 
 const NOOP = () => {};
 
@@ -94,6 +95,8 @@ export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flush
   // Captur målholdet FØR update — rider-objektet kan være samme reference som
   // rækken der muteres (in-memory doubles), og notify skal bruge værdien bagefter.
   const targetTeamId = rider.pending_team_id;
+  // #3582: samme grund — captur AFGIVER-holdet før update, til bevægelses-loggen.
+  const sourceTeamId = rider.team_id ?? null;
   // TOCTOU/idempotency-guard: flush KUN hvis pending_team_id stadig peger hvor vi
   // læste. En genkørsel (recovery/heal-sweep) finder pending_team_id=null → 0 rows → skip.
   const { data: moved, error: mErr } = await supabase
@@ -108,6 +111,24 @@ export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flush
   // Rytteren forlod sælgeren for fremtidige løb — ryd hans ghost-entries så de
   // ikke phantom-binder en plads (samme forsvar som transfer/auktions-stierne, #1906).
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "stage_race_deferred_flush" });
+
+  // #3582: bevægelses-log — HER, ikke ved parkeringen, fordi det er HER
+  // team_id faktisk ændrer sig (#1995-parkeringen holder rytteren hos
+  // sælgeren indtil løbet er kørt færdigt). Dækker uanset om parkeringen
+  // stammer fra en auktion, en handel eller et bytte — den oprindelige
+  // udløsende entitet er ikke sporet på selve pending_team_id-parkeringen,
+  // så related_entity er bevidst udeladt her. Best-effort, kaster aldrig.
+  await recordRiderOwnershipEvent(supabase, {
+    riderId: rider.id,
+    riderFirstname: rider.firstname,
+    riderLastname: rider.lastname,
+    fromTeamId: sourceTeamId,
+    toTeamId: targetTeamId,
+    reason: RIDER_OWNERSHIP_REASON.STAGE_RACE_DEFERRED_FLUSH,
+    actorType: "cron",
+    occurredAt: flushedAt,
+    idempotencyKey: `ownership:stage_race_deferred_flush:${rider.id}:${flushedAt}`,
+  });
 
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   await notifyTeamOwner(

@@ -535,6 +535,49 @@
     "bodyOneDay": "{race} is coming up. Choose your riders, captain and tactics before the start.",
     "action": "Set your line-up"
   },
+  "raceCentre": {
+    "title": "Race Centre",
+    "subtitle": "Today's racing, from first countdown to final result.",
+    "navLabel": "Race Centre",
+    "stageLabel": "Stage {number} of {total}",
+    "oneDayLabel": "One day race",
+    "divisionLabel": "Div {tier} pool {pool}",
+    "state": {
+      "live": "Live",
+      "upcoming": "Upcoming",
+      "finished": "Finished"
+    },
+    "card": {
+      "yourRider": "Your rider",
+      "yourBest": "Your best: {rank} {rider}",
+      "liveNoFilm": "The stage is under way. Results land as soon as the riders cross the line.",
+      "playbackProgress": "Stage playback progress",
+      "lineupReady": "Line-up ready, {selected} of {max} riders picked.",
+      "lineupIncomplete": "Line-up incomplete, {selected} of {max} riders picked.",
+      "lineupUnknown": "Line-up status is not available for this race.",
+      "noResults": "No results have been published for this stage yet."
+    },
+    "action": {
+      "watchLive": "Watch live",
+      "reviewTactics": "Review tactics",
+      "watchFilm": "Watch the race film",
+      "fullResult": "Full result",
+      "viewRace": "View race"
+    },
+    "yours": {
+      "title": "Your races today",
+      "emptyTitle": "No races for your team today",
+      "emptyBody": "Your next race day is on the calendar. Check the planning hub to line up your squad."
+    },
+    "divisions": {
+      "title": "Around the divisions"
+    },
+    "error": {
+      "title": "Today's races could not be loaded",
+      "body": "Nothing was lost. Your line-ups and results are safe.",
+      "retry": "Try again"
+    }
+  },
   "detail": {
     "loadError": {
       "message": "Couldn't load the race. Nothing was lost. Try again.",

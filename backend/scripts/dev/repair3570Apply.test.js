@@ -470,7 +470,7 @@ test("rollbackSQL bager skæringspunktet ind i BEGGE spærrer, og afviser et ugy
   const a0 = sql.slice(sql.indexOf("-- A0."), sql.indexOf("-- A1."));
   const b0 = sql.slice(sql.indexOf("-- B0."), sql.indexOf("-- B1."));
   for (const [navn, blok] of [["A0", a0], ["B0", b0]]) {
-    assert.match(blok, new RegExp(`created_at < '${cutoff.replace(/[.]/g, "\\.")}'::timestamptz`), `${navn} mangler skæringspunktet`);
+    assert.match(blok, new RegExp(`created_at < '${cutoff.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}'::timestamptz`), `${navn} mangler skæringspunktet`);
   }
   // Operatøren må ikke kunne komme til at køre A0 og B0 med hver sit skæringspunkt.
   assert.equal(a0.match(/'2026-[^']+Z'::timestamptz/g).length, b0.match(/'2026-[^']+Z'::timestamptz/g).length);
