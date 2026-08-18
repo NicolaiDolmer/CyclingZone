@@ -159,7 +159,7 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estima
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
-  buildTypePrognosisBands,
+  buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
@@ -1701,12 +1701,121 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
             // længere et loft; se `prog` for det navn der matcher betydningen.
             estimate.ceil = { lo: band.progLo, hi: band.progHi };
             estimate.prog = { lo: band.progLo, hi: band.progHi };
+            // Overgangs-designet (ejer 18/8): rollens loft vises VED SIDEN AF
+            // prognosen, så det gamle tal ikke opleves som slettet. Rå værdi er
+            // OK her — loftet er rolle+alder-bestemt, ikke rytter-hemmeligt
+            // (se roleCeilRating/buildTypePrognosisBands i scoutingReport.js).
+            estimate.loft = band.loft ?? null;
           }
         }
       }
       estimates[rider.id] = estimate;
     }
     res.json({ teamId: req.team.id, maxLevel: state.maxLevel, estimates });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══ Overgangs-panelet (trin 7-udrulningen, ejer-design 18/8) ════════════════
+// "Udviklingsvisningen er lagt om" — engangspanel på dashboardet efter loft-
+// backfillen (#3803). FØR-tallet kommer fra backup-tabellen som backfillen
+// fylder inden den skriver (database/2026-08-16-3746-recompute-ability-caps.sql)
+// — panelet er altså KUN aktivt når backfillen faktisk har kørt for holdets
+// ryttere; før da findes der ingen overgang at forklare, og responsen er
+// { active: false } uden fejl (samme gælder hvis tabellen slet ikke findes,
+// 42P01). Dismiss er server-persisteret pr. hold (#2439-mønsteret:
+// sessionStorage nulstiller sig selv, localStorage følger ikke spilleren på
+// tværs af devices); manglende kolonne (42703) er graceful indtil migrationen
+// er applied.
+const DEV_TRANSITION_BACKUP_TABLE = "rider_caps_3746_backup_20260816";
+router.get("/development/transition", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { data: teamRow, error: teamErr } = await supabase
+      .from("teams").select("dev_transition_dismissed_at").eq("id", req.team.id).maybeSingle();
+    if (teamErr && teamErr.code !== "42703") throw new Error(`teams (transition dismiss): ${teamErr.message}`);
+    if (teamRow?.dev_transition_dismissed_at) return res.json({ active: false, dismissed: true });
+
+    const { data: riders, error: rErr } = await supabase
+      .from("riders")
+      .select("id, potentiale, firstname, lastname, birthdate, primary_type, secondary_type")
+      .eq("team_id", req.team.id);
+    if (rErr) throw new Error(`riders (transition): ${rErr.message}`);
+    const ids = (riders ?? []).map((r) => r.id);
+    if (!ids.length) return res.json({ active: false });
+
+    const { data: backupRows, error: bErr } = await supabase
+      .from(DEV_TRANSITION_BACKUP_TABLE)
+      .select("rider_id, ability_caps_before, captured_at")
+      .in("rider_id", ids);
+    if (bErr) {
+      // 42P01 = tabellen findes ikke (rå SQL-kode); PGRST205 = PostgREST's
+      // schema-cache kender den ikke (det REST-laget reelt svarer). Begge
+      // betyder "backfillen er ikke kørt endnu" — panelet er bare inaktivt.
+      if (bErr.code === "42P01" || bErr.code === "PGRST205") return res.json({ active: false });
+      throw new Error(`caps backup (transition): ${bErr.message}`);
+    }
+    if (!backupRows?.length) return res.json({ active: false });
+
+    const [{ data: abilityRows, error: abErr }, seasonNumber, scout] = await Promise.all([
+      supabase.from("rider_derived_abilities").select("*").in("rider_id", ids),
+      getActiveSeasonNumber(),
+      loadScout(req.team.id, supabase),
+    ]);
+    if (abErr) throw new Error(`rider_derived_abilities (transition): ${abErr.message}`);
+
+    const beforeById = new Map(backupRows.map((b) => [b.rider_id, b]));
+    const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
+    let capturedAt = null;
+    const rows = [];
+    for (const rider of riders) {
+      const before = beforeById.get(rider.id);
+      const ab = abilitiesByRider.get(rider.id);
+      if (!before || !ab || !rider.primary_type) continue;
+      const age = ageForSeason(rider.birthdate, seasonNumber);
+      const rating = ratingFromAbilities(ab, rider.primary_type);
+      // FØR = rating-vægtet loft over de gemte caps — præcis det tal den gamle
+      // visning kredsede om. NU = det flade rolle-loft (samme formel som
+      // backfillen skriver). Prognosen er den NYE information ved siden af.
+      const loftFoer = ratingFromAbilities(before.ability_caps_before ?? {}, rider.primary_type);
+      const loftNu = roleCeilRating({ age, primaryType: rider.primary_type, secondaryType: rider.secondary_type });
+      const bands = buildTypePrognosisBands({
+        nowAbilities: ab, age,
+        primaryType: rider.primary_type, secondaryType: rider.secondary_type,
+        potentiale: rider.potentiale,
+        level: SCOUTING_CONFIG.maxLevel, riderId: rider.id, teamId: req.team.id, scout,
+      });
+      const band = bands.find((x) => x.key === rider.primary_type) ?? null;
+      if (before.captured_at && (!capturedAt || before.captured_at > capturedAt)) capturedAt = before.captured_at;
+      rows.push({
+        riderId: rider.id,
+        name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
+        rating: rating == null ? null : Math.round(rating),
+        loftFoer: loftFoer == null ? null : Math.round(loftFoer),
+        loftNu,
+        prog: band && band.progLo != null ? { lo: band.progLo, hi: band.progHi } : null,
+      });
+    }
+    if (!rows.length) return res.json({ active: false });
+    rows.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+    const up = rows.filter((r) => r.loftFoer != null && r.loftNu != null && r.loftNu > r.loftFoer).length;
+    const down = rows.filter((r) => r.loftFoer != null && r.loftNu != null && r.loftNu < r.loftFoer).length;
+    res.json({ active: true, capturedAt, up, down, total: rows.length, rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/development/transition/dismiss", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { error } = await supabase
+      .from("teams")
+      .update({ dev_transition_dismissed_at: new Date().toISOString() })
+      .eq("id", req.team.id);
+    if (error && error.code !== "42703") throw new Error(`teams (transition dismiss): ${error.message}`);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

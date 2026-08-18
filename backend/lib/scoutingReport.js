@@ -19,6 +19,7 @@ import { seededUnit } from "./scouting.js";
 import { DEFAULT_SCOUT, scoutHalfWidth, scoutQualityFactor } from "./scoutEngine.js";
 import { ratingForRole } from "./weights/displayRecipes.js";
 import { prognoseAbilityBands } from "./riderPrognosis.js";
+import { buildCapsForRider } from "./riderProgression.js";
 
 // Halvbredde i rating-punkter pr. scout-level (index = level; egen rytter
 // behandles som maxLevel).
@@ -162,6 +163,21 @@ export function potentialeIntervalFor({ potentiale, level, riderId, teamId, scou
 //   nowAbilities/age/primaryType/secondaryType : rytterens ægte tilstand
 //   potentiale : rytterens ÆGTE potentiale (forlader aldrig serveren rå)
 //   level/riderId/teamId/scout : viewer-kontekst, som loft-båndet bruger i dag
+// Rollens loft i rating-punkter — det TAL den gamle visning kredsede om, nu
+// bevaret ved siden af prognosen (ejer-krav 18/8, overgangs-designet): spilleren
+// skal kunne se at loftet ikke er "forsvundet" bag det nye bånd. Under det
+// flade rolle-tag (#3746) er loftet en ren funktion af (rolle, andenrolle,
+// alder) — potentiale indgår IKKE (youthAbilityCap ignorerer argumentet), så
+// tallet røber intet skjult og må vises råt uden bånd-maskering (#1162 holder).
+// `age: null` udelader alders-taperen bevidst ikke — kalderen sender sæson-
+// alderen, så en 32-årigs loft ærligt viser taperingen.
+export function roleCeilRating({ age, primaryType, secondaryType }) {
+  if (!primaryType) return null;
+  const caps = buildCapsForRider(null, { age }, primaryType, secondaryType);
+  const rating = ratingFromAbilities(caps, primaryType);
+  return rating == null ? null : clampInt(rating, 0, 99);
+}
+
 export function buildTypePrognosisBands({
   nowAbilities, age, primaryType, secondaryType, potentiale, level, riderId, teamId, scout = DEFAULT_SCOUT,
 }) {
@@ -169,16 +185,23 @@ export function buildTypePrognosisBands({
   const bands = prognoseAbilityBands({ nowAbilities, age, primaryType, secondaryType, potLo, potHi });
   const loAb = {}, hiAb = {};
   for (const [ability, b] of Object.entries(bands)) { loAb[ability] = b.lo; hiAb[ability] = b.hi; }
+  // Overgangs-designet (ejer 18/8): rollens loft leveres SAMMEN MED prognosen
+  // pr. rolle, så fladerne kan vise "hvor kan han nå til" ved siden af "hvor
+  // lander han realistisk" — det gamle tal må ikke opleves som slettet. Under
+  // det flade tag er loftet rolle+alder-bestemt, intet rytter-hemmeligt (#1162).
+  const capsAb = primaryType ? buildCapsForRider(null, { age }, primaryType, secondaryType) : null;
   return RIDER_TYPE_KEYS.map((key) => {
     const now = ratingFromAbilities(nowAbilities, key);
     const lo = ratingFromAbilities(loAb, key);
     const hi = ratingFromAbilities(hiAb, key);
-    if (now == null || lo == null || hi == null) return { key, now: null, progLo: null, progHi: null };
+    if (now == null || lo == null || hi == null) return { key, now: null, progLo: null, progHi: null, loft: null };
+    const loft = capsAb ? ratingFromAbilities(capsAb, key) : null;
     return {
       key,
       now: clampInt(now, 0, 99),
       progLo: clampInt(Math.min(lo, hi), 0, 99),
       progHi: clampInt(Math.max(lo, hi), 0, 99),
+      loft: loft == null ? null : clampInt(loft, 0, 99),
     };
   });
 }

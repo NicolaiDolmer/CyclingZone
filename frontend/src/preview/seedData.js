@@ -212,8 +212,28 @@ export const SEED_SCOUT_ESTIMATES = Object.freeze({
     lo: 4.5, hi: 5, level: 3, role: "sprinter", now: 29,
     prog: Object.freeze({ lo: 40, hi: 48 }),
     ceil: Object.freeze({ lo: 40, hi: 48 }),
+    loft: 93,
   }),
   "rider-2": Object.freeze({ hidden: true, level: 0 }),
+});
+
+// Overgangs-panelet (trin 7, #3746/#3803, ejer-design 18/8) — samme form som
+// GET /api/development/transition. Loft før-tallene svarer til det gamle
+// potentiale-baserede loft-bånd (midtpunkt), loft nu til det flade rolle-tag,
+// så panelet på preview fortæller præcis den historie backfillen skriver:
+// lofterne HÆVES for de fleste, prognosen er ny information ved siden af.
+export const SEED_DEV_TRANSITION = Object.freeze({
+  active: true,
+  capturedAt: "2026-08-19T05:00:00.000Z",
+  up: 1,
+  down: 0,
+  total: 1,
+  rows: Object.freeze([
+    Object.freeze({
+      riderId: "rider-1", name: "Ada Pedersen", rating: 29,
+      loftFoer: 74, loftNu: 93, prog: Object.freeze({ lo: 40, hi: 48 }),
+    }),
+  ]),
 });
 
 // Roadmap-voting (#954): to godkendte items så /roadmap rendrer den DB-drevne
@@ -1509,15 +1529,18 @@ export const SEED_SCOUTING_REPORT = {
   stars: { lo: 4.5, hi: 5 },
   // #3746: progLo/progHi er prognose-båndets navn; ceilLo/ceilHi er en alias
   // (samme tal) for ældre klient-cache, se backend/routes/api.js.
+  // `loft` (overgangs-designet, ejer 18/8): rollens loft pr. visnings-rolle —
+  // tallene her er beregnet med den ÆGTE roleCeilRating/buildCapsForRider for
+  // en 24-årig sprinter/rouleur (ikke håndopfundne), så preview matcher drift.
   types: [
-    { key: "sprinter", now: 29, progLo: 40, progHi: 48, ceilLo: 40, ceilHi: 48 },
-    { key: "tt", now: 23, progLo: 28, progHi: 37, ceilLo: 28, ceilHi: 37 },
-    { key: "climber", now: 22, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35 },
-    { key: "puncheur", now: 25, progLo: 28, progHi: 36, ceilLo: 28, ceilHi: 36 },
-    { key: "brostensrytter", now: 24, progLo: 30, progHi: 39, ceilLo: 30, ceilHi: 39 },
-    { key: "baroudeur", now: 24, progLo: 29, progHi: 37, ceilLo: 29, ceilHi: 37 },
-    { key: "rouleur", now: 27, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42 },
-    { key: "gc", now: 23, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35 },
+    { key: "sprinter", now: 29, progLo: 40, progHi: 48, ceilLo: 40, ceilHi: 48, loft: 93 },
+    { key: "tt", now: 23, progLo: 28, progHi: 37, ceilLo: 28, ceilHi: 37, loft: 65 },
+    { key: "climber", now: 22, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35, loft: 50 },
+    { key: "puncheur", now: 25, progLo: 28, progHi: 36, ceilLo: 28, ceilHi: 36, loft: 61 },
+    { key: "brostensrytter", now: 24, progLo: 30, progHi: 39, ceilLo: 30, ceilHi: 39, loft: 73 },
+    { key: "baroudeur", now: 24, progLo: 29, progHi: 37, ceilLo: 29, ceilHi: 37, loft: 64 },
+    { key: "rouleur", now: 27, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42, loft: 81 },
+    { key: "gc", now: 23, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35, loft: 55 },
   ],
   verdict: { headlineKey: "monitor", confidence: "high", factorKeys: ["ceiling_gap", "value_gap", "type_match", "form_unknown"] },
   precision: { halfWidth: 4.29, nextHalfWidth: null, nextGain: 0, nextLevelIsUseless: false, maxUsefulLevel: 3, limitedByScout: false },

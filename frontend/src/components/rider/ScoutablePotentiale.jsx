@@ -63,13 +63,22 @@ import { useScoutCountdown, scoutReadyClock } from "../../lib/scoutCountdown";
 // med din træning", ikke "hvor højt kan han teoretisk nå". Tooltip-copyen er
 // derfor en title/subtitle-parre ("Projected level" / "Where he realistically
 // lands with your training") frem for ét loft-sprogs sætning.
-function PotentialBand({ band, role, label, large, t }) {
+// Overgangs-designet (ejer 18/8): rollens loft vises SAMMEN MED prognosen, så
+// det tal spillerne kendte før trin 7 ikke opleves som slettet. I store
+// kontekster (large: hero/detalje) står loftet synligt som dæmpet suffiks; i
+// tætte tabeller bor det i tooltip'en, hvor labelen i forvejen flyttede hen
+// (#2796). Loftet kommer fra serveren (`estimate.loft`, roleCeilRating) og er
+// rolle+alder-bestemt — intet rytter-hemmeligt (#1162 holder).
+function PotentialBand({ band, role, loft, label, large, t }) {
   const roleName = role ? t(`riderTypes:types.${role}`) : null;
   const bandTitle = roleName
     ? t("rider:scouting.potentialBandTitle", { role: roleName, lo: band.lo, hi: band.hi })
     : null;
   const bandSubtitle = roleName ? t("rider:scouting.potentialBandSubtitle") : null;
-  const title = [label, bandTitle, bandSubtitle].filter(Boolean).join(" · ") || undefined;
+  const loftTitle = roleName && Number.isFinite(loft)
+    ? t("rider:scouting.loftTitle", { role: roleName, value: loft })
+    : null;
+  const title = [label, bandTitle, bandSubtitle, loftTitle].filter(Boolean).join(" · ") || undefined;
   return (
     <span
       title={title}
@@ -77,6 +86,11 @@ function PotentialBand({ band, role, label, large, t }) {
       data-potential-band={`${band.lo}-${band.hi}`}
     >
       {band.lo}–{band.hi}
+      {large && Number.isFinite(loft) && (
+        <span className="ms-1.5 text-[12px] text-cz-3 font-normal" data-potential-loft={loft}>
+          · {t("rider:scouting.loftShort", { value: loft })}
+        </span>
+      )}
     </span>
   );
 }
@@ -208,7 +222,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   if (band) {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        <PotentialBand band={band} role={estimate.role} label={labelAsTitle ? label : null}
+        <PotentialBand band={band} role={estimate.role} loft={estimate.loft} label={labelAsTitle ? label : null}
           large={large} t={t} />
         {!labelAsTitle && label && <span className="text-2xs text-cz-3">{label}</span>}
         {!hideLevel && level > 0 && (

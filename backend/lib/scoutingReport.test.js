@@ -9,6 +9,7 @@ import {
   potentialeIntervalFor,
   potentialeHalfWidth,
   POT_HALF_WIDTH_BY_LEVEL,
+  roleCeilRating,
 } from "./scoutingReport.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { ratingForRole } from "./weights/displayRecipes.js";
@@ -230,4 +231,32 @@ test("buildTypePrognosisBands: bånd indsnævres med scout-level, men lukker ald
     return b.progHi - b.progLo;
   };
   assert.ok(width(0) >= width(1) && width(1) >= width(2) && width(2) >= width(3), "bredde skal ikke vokse med level");
+});
+
+// ═══ Loft ved siden af prognosen (overgangs-designet, ejer 18/8) ═════════════
+
+test("roleCeilRating: rolle+alder-bestemt, potentiale indgår ikke, taper sænker med alderen", () => {
+  const ung = roleCeilRating({ age: 22, primaryType: "sprinter", secondaryType: "rouleur" });
+  const gammel = roleCeilRating({ age: 31, primaryType: "sprinter", secondaryType: "rouleur" });
+  assert.ok(Number.isFinite(ung) && Number.isFinite(gammel), "begge skal være tal");
+  assert.ok(gammel < ung, "alders-taperen skal sænke loftet efter peak");
+  assert.equal(roleCeilRating({ age: 22, primaryType: null }), null, "uden rolle → null");
+});
+
+test("buildTypePrognosisBands: hvert bånd bærer rollens loft, og prognosen ligger aldrig over det", () => {
+  const bands = buildTypePrognosisBands({
+    nowAbilities: NOW_ALL, age: 21, primaryType: "sprinter", secondaryType: "puncheur",
+    potentiale: 4, level: 2, riderId: "r-loft", teamId: "t-loft",
+  });
+  for (const b of bands) {
+    if (b.now == null) continue;
+    assert.ok(Number.isFinite(b.loft), `${b.key} skal have loft`);
+    assert.ok(b.progHi <= b.loft, `${b.key}: prognosen (${b.progHi}) må ikke overstige loftet (${b.loft})`);
+  }
+  const primary = bands.find((b) => b.key === "sprinter");
+  assert.equal(
+    primary.loft,
+    roleCeilRating({ age: 21, primaryType: "sprinter", secondaryType: "puncheur" }),
+    "primær-rollens loft skal matche roleCeilRating (samme kilde, ingen drift)",
+  );
 });

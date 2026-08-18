@@ -75,7 +75,22 @@ const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MA
 // Én ryttertype-række: navn · bar (nu-fyld + skraveret prognose-bånd) · nu / prognose-tal.
 // #3746: progLo/progHi er prognose-båndets navn; ceilLo/ceilHi er en alias
 // (samme tal) for ældre klient-cache — se backend/routes/api.js.
-function TypeRow({ typeKey, now, progLo, progHi, label }) {
+// Overgangs-designet (ejer 18/8): loft-mærket (lodret streg) markerer rollens
+// loft på samme lineære akse som nu-fyldet og prognose-båndet — det gamle tal
+// er bevaret i fladen, prognosen er det nye ved siden af. `loft` kan mangle i
+// ældre payloads → intet mærke (graceful).
+function LoftTick({ loft }) {
+  if (!Number.isFinite(loft)) return null;
+  return (
+    <div
+      className="absolute inset-y-0 w-[2px] bg-cz-2"
+      style={{ left: `calc(${barPct(loft)} - 1px)` }}
+      data-loft-tick={loft}
+    />
+  );
+}
+
+function TypeRow({ typeKey, now, progLo, progHi, loft, label }) {
   return (
     <div className="flex items-center gap-3" data-type={typeKey}>
       <span className="w-[110px] flex-shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
@@ -85,6 +100,7 @@ function TypeRow({ typeKey, now, progLo, progHi, label }) {
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
           style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
+        <LoftTick loft={loft} />
       </div>
       <span className="w-[86px] flex-shrink-0 text-right font-mono tabular-nums text-2xs">
         <span className="text-cz-1 font-bold">{now}</span>
@@ -99,7 +115,7 @@ function TypeRow({ typeKey, now, progLo, progHi, label }) {
 // DELTE statPlateStyle, så tallet her og tallet i heroen er samme plade — de er
 // samme tal, og må ikke kunne se forskellige ud.
 // #3746: progLo/progHi + progressionLabel — se TypeRow.
-function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progressionLabel }) {
+function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, progressionLabel, loftLabel }) {
   return (
     <div data-type={typeKey} className="border-b border-cz-border pb-3.5 mb-3.5">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
@@ -121,6 +137,9 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progre
           </span>
           <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
             {progLo}–{progHi}
+            {Number.isFinite(loft) && (
+              <span className="text-cz-3 text-2xs" data-testid="scouting-primary-loft"> · {loftLabel}</span>
+            )}
           </span>
         </span>
       </div>
@@ -130,6 +149,7 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progre
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
           style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
+        <LoftTick loft={loft} />
       </div>
     </div>
   );
@@ -459,9 +479,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
               now={primaryRow.now}
               progLo={primaryRow.progLo ?? primaryRow.ceilLo}
               progHi={primaryRow.progHi ?? primaryRow.ceilHi}
+              loft={primaryRow.loft}
               label={tTypes(`types.${primaryRow.key}`)}
               roleLabel={t("profile.scouting.primaryRoleLabel")}
               progressionLabel={t("profile.scouting.primaryProgressionLabel")}
+              loftLabel={t("scouting.loftShort", { value: primaryRow.loft })}
             />
           )}
           {primaryRow && secondaryRows.length > 0 && (
@@ -473,7 +495,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
             {secondaryRows.map((row) => (
               <TypeRow key={row.key} typeKey={row.key} now={row.now}
                 progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
-                label={tTypes(`types.${row.key}`)} />
+                loft={row.loft} label={tTypes(`types.${row.key}`)} />
             ))}
           </div>
           <p className="text-cz-3 text-3xs mt-3 mb-0">{t("profile.scouting.typesLegend")}</p>

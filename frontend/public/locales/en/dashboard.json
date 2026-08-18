@@ -144,7 +144,11 @@
     "heroAgony": {
       "title": "Hero & Agony",
       "linkFull": "Open race →",
-      "eyebrow": { "hero": "Hero", "agony": "Agony", "moment": "Moment" },
+      "eyebrow": {
+        "hero": "Hero",
+        "agony": "Agony",
+        "moment": "Moment"
+      },
       "meta": "{race}, stage {stage}",
       "metaOneDay": "{race}",
       "exportCta": "Share as image",
@@ -381,5 +385,23 @@
       }
     },
     "dismissAria": "Hide"
+  },
+  "devTransition": {
+    "title": "The development view has changed",
+    "intro": "Your riders have not changed. Abilities, ratings and results are exactly as yesterday. What is new is what the number shows: before, the profile showed a theoretical ceiling. Now it shows both the ceiling and where each rider realistically lands with your training.",
+    "factAbilitiesTitle": "Abilities and results",
+    "factAbilitiesSub": "unchanged for every rider",
+    "factCeilingsTitle": "Ceilings raised",
+    "factCeilingsSub": "for {up} of your {total} riders",
+    "factForecastTitle": "New: projected level",
+    "factForecastSub": "the forecast your training steers",
+    "colRider": "Rider",
+    "colRating": "Rating",
+    "colCeilBefore": "Ceiling before",
+    "colCeilNow": "Ceiling now",
+    "colForecast": "Projected level (new)",
+    "loweredNote": "Some riders sit above their new ceiling on a few abilities. They keep everything and simply hold there. No rider loses a single point.",
+    "helpLink": "How development works",
+    "dismiss": "Got it"
   }
 }
