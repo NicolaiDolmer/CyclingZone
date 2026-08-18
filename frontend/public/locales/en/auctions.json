@@ -87,6 +87,7 @@
     "noBids": "No bids",
     "bidsCount": "{count, plural, one {1 bid} other {# bids}}",
     "bidsUniqueBidders": "{count, plural, one {1 team} other {# teams}}",
+    "bidWarBadge": "Bid war · {bids, plural, one {1 bid} other {# bids}}, {teams, plural, one {1 team} other {# teams}}",
     "riderMeta": "Value: {value} CZ$ · Salary: {salary}",
     "salaryNone": "—",
     "pageOf": "Page {page} of {total}",
@@ -152,7 +153,8 @@
     "u23": "U23",
     "u25": "U25",
     "youth": "Youth",
-    "firstBidPick": "First pick"
+    "firstBidPick": "First pick",
+    "outbid": "Outbid · yours {amount}"
   },
   "bidGate": {
     "bothFull": "No room in your academy (8/8) or senior squad (30/30). Sell a rider to bid.",
