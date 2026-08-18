@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Card } from "./ui";
+import { buttonClass } from "./ui/buttonStyles.js";
 import RiderLink from "./RiderLink";
 import { Flag } from "./Flag";
 import { formatNumber } from "../lib/intl";
@@ -386,7 +387,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
               <Link
                 to={`/races/${race.id}`}
                 state={{ from: "dashboard" }}
-                className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 transition-opacity"
+                className={buttonClass({ variant: "primary", size: "sm" })}
               >
                 {t("dashboard:cards.myResult.firstRaceCta")}
               </Link>

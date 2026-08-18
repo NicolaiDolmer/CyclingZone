@@ -56,9 +56,11 @@ import { fetchReservedBalance, computeAvailableBalance } from "../lib/availableB
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
-  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
-  PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState, SkeletonLines,
+  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, CheckIcon, DiscordIcon,
+  PageLoader, PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
+  SkeletonLines, EmptyState, ProgressMeter,
 } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -76,18 +78,6 @@ function getAuctionLeaderId(auction) {
     return auction.seller_team_id;
   }
   return null;
-}
-
-function MiniBar({ value, max, color = "rgb(var(--accent))" }) {
-  const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 bg-cz-subtle rounded-full h-1.5">
-        <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-      </div>
-      <span className="text-xs font-mono text-cz-2 w-8 text-right">{value}</span>
-    </div>
-  );
 }
 
 export default function DashboardPage() {
@@ -1058,16 +1048,23 @@ export default function DashboardPage() {
           nudge-banner ad gangen"-reglen. */}
       {showDiscordNudgeBanner && (
         <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-cz-discord text-sm font-bold">D</span>
+          <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
+            <DiscordIcon size={16} className="text-cz-discord" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-cz-1 text-sm font-medium">{t("dashboard:discordNudge.title")}</p>
             <p className="text-cz-3 text-xs mt-0.5">{t("dashboard:discordNudge.subtitle")}</p>
           </div>
+          {/* Discord-branded knap — bevidst IKKE gold/accent (viewets ene guld-
+              knap er styret af computeDashboardGoldCta). Bruger buttonClass'
+              BASE+size-sm-form (px-3 py-1.5 text-xs, rounded-cz) uden dens
+              farve-variant: at lægge et diskret-farve-override oveni
+              buttonClass({variant}) risikerer samme tavse cascade-tab som
+              Card.jsx's borderClass-fælde (to bg-*-klasser på samme property,
+              vinderen afgøres af CSS-bundle-rækkefølge, ikke JSX). */}
           <Link
             to="/profile"
-            className="px-3 py-1.5 bg-cz-discord text-white rounded-lg text-xs font-bold hover:bg-cz-discord-hover transition-all flex-shrink-0">
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-cz border border-transparent text-xs font-semibold bg-cz-discord text-white transition-colors duration-150 ease-out hover:bg-cz-discord-hover flex-shrink-0">
             {t("dashboard:discordNudge.cta")}
           </Link>
           <button
@@ -1089,7 +1086,10 @@ export default function DashboardPage() {
           #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben. */}
       {seasonInfo && (
         <Link to="/planning?tab=calendar" className="group block">
-        <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 group-hover:border-cz-accent/30 transition-colors">
+        <Card
+          borderClass="border-cz-border group-hover:border-cz-accent/30"
+          className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 transition-colors"
+        >
           <div className="flex items-center gap-2">
             <span className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
             <span className={`text-3xs px-1.5 py-0.5 rounded-full font-medium border
@@ -1121,10 +1121,14 @@ export default function DashboardPage() {
                   <span className="text-cz-accent-t ms-1">· {t("dashboard:seasonBanner.raceDaysLive", { count: poolRaceDays.inProgress })}</span>
                 )}
               </span>
-              <div className="w-20 bg-cz-subtle rounded-full h-1.5">
-                <div className="h-1.5 rounded-full bg-cz-accent transition-all"
-                  style={{ width: `${Math.min(100, (poolRaceDays.completed / poolRaceDays.total) * 100)}%` }} />
-              </div>
+              <ProgressMeter
+                value={poolRaceDays.completed}
+                max={poolRaceDays.total}
+                tone="accent"
+                className="w-20"
+                trackClassName="h-1.5"
+                ariaLabel={t("dashboard:seasonBanner.raceDays", { completed: poolRaceDays.completed, total: poolRaceDays.total })}
+              />
             </div>
           )}
 
@@ -1175,10 +1179,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/auctions">{t("dashboard:cards.auctions.linkAll")}</SectionAction>}
           />
           {myActiveAuctions.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.auctions.empty")}</p>
-              <Link to="/auctions" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.auctions.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.auctions.empty")}
+              action={
+                <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.auctions.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {[...winningAuctions, ...myAuctions.filter(a => getAuctionLeaderId(a) !== team?.id)]
@@ -1227,10 +1235,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/transfers">{t("dashboard:cards.transfers.linkAll")}</SectionAction>}
           />
           {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.transfers.empty")}</p>
-              <Link to="/transfers" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.transfers.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.transfers.empty")}
+              action={
+                <Link to="/transfers" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.transfers.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {pendingIncoming > 0 && (
@@ -1276,10 +1288,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/planning">{t("dashboard:cards.races.linkAll")}</SectionAction>}
           />
           {displayedRaces.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.races.empty")}</p>
-              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.races.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.races.empty")}
+              action={
+                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.races.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {displayedRaces.map((race) => (
@@ -1332,10 +1348,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/standings">{t("dashboard:cards.standings.linkAll")}</SectionAction>}
           />
           {divStandings.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.standings.empty")}</p>
-              <Link to="/standings" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.standings.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.standings.empty")}
+              action={
+                <Link to="/standings" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.standings.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-1">
               {divStandings.map((s) => {
@@ -1377,8 +1397,16 @@ export default function DashboardPage() {
                           </p>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <MiniBar value={s.total_points || 0} max={maxPts} color={isLeader ? "rgb(var(--accent))" : "var(--text-3)"} />
+                      <div className="flex-1 flex items-center gap-2">
+                        <ProgressMeter
+                          value={s.total_points || 0}
+                          max={maxPts}
+                          tone="accent"
+                          className="flex-1"
+                          trackClassName="h-1.5"
+                          ariaLabel={t("dashboard:cards.standings.title", { division: team?.division })}
+                        />
+                        <span className="font-data text-xs text-cz-2 w-8 text-right tabular-nums">{s.total_points || 0}</span>
                       </div>
                     </Link>
                   </Fragment>
@@ -1401,22 +1429,24 @@ export default function DashboardPage() {
           <div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("dashboard:cards.board.satisfaction")}</p>
+                  <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.satisfaction")}</p>
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-cz-subtle rounded-full h-2">
-                      <div className={`h-2 rounded-full transition-all
-                        ${displaySatisfaction >= 70 ? "bg-cz-success" : displaySatisfaction >= 40 ? "bg-cz-accent" : "bg-cz-danger"}`}
-                        style={{ width: `${displaySatisfaction}%` }} />
-                    </div>
+                    <ProgressMeter
+                      value={displaySatisfaction}
+                      max={100}
+                      tone={displaySatisfaction >= 70 ? "success" : displaySatisfaction >= 40 ? "accent" : "danger"}
+                      className="flex-1"
+                      ariaLabel={t("dashboard:cards.board.satisfaction")}
+                    />
                     <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{displaySatisfaction}%</span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("dashboard:cards.board.focus")}</p>
+                  <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.focus")}</p>
                   <p className="text-cz-1 text-sm">{board.focus ? t(`dashboard:board.focus.${board.focus}`, { defaultValue: board.focus }) : "—"}</p>
                 </div>
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("dashboard:cards.board.budgetMultiplier")}</p>
+                  <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.budgetMultiplier")}</p>
                   <p className={`font-mono font-bold text-sm ${board.budget_modifier >= 1 ? "text-cz-success" : "text-cz-danger"}`}>
                     ×{board.budget_modifier?.toFixed(2) || "1.00"}
                   </p>
@@ -1428,27 +1458,28 @@ export default function DashboardPage() {
                   <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>
                   <div className="grid sm:grid-cols-4 gap-3 mt-3">
                     {Object.values(boardOutlook.score_breakdown?.categories || {}).map((category) => (
-                      <div key={category.key} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
+                      <div key={category.key} className="bg-cz-subtle rounded-cz p-3 border border-cz-border">
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <p className="text-cz-3 text-3xs uppercase tracking-wider truncate">{resolveCategoryLabel(t, category)}</p>
+                          <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 truncate">{resolveCategoryLabel(t, category)}</p>
                           <span className="flex items-center gap-1 flex-shrink-0">
                             {category.score_pct > 100 && (
                               <span
-                                className="text-3xs font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
+                                className="inline-flex items-center gap-0.5 text-3xs font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
                                 title={t("dashboard:cards.board.exceedsTitle")}
                               >
-                                ✓ {t("dashboard:cards.board.exceeds")}
+                                <CheckIcon size={10} aria-hidden="true" /> {t("dashboard:cards.board.exceeds")}
                               </span>
                             )}
                             <span className="text-cz-2 text-3xs font-mono">{Math.min(100, category.score_pct)}%</span>
                           </span>
                         </div>
-                        <div className="bg-cz-subtle rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full ${category.score_pct >= 75 ? "bg-cz-success" : category.score_pct >= 55 ? "bg-cz-accent" : "bg-cz-danger"}`}
-                            style={{ width: `${Math.min(100, category.score_pct)}%` }}
-                          />
-                        </div>
+                        <ProgressMeter
+                          value={Math.min(100, category.score_pct)}
+                          max={100}
+                          tone={category.score_pct >= 75 ? "success" : category.score_pct >= 55 ? "accent" : "danger"}
+                          trackClassName="h-1.5"
+                          ariaLabel={resolveCategoryLabel(t, category)}
+                        />
                       </div>
                     ))}
                   </div>
@@ -1470,10 +1501,14 @@ export default function DashboardPage() {
             // et falsk "ingen resultater"-empty-state (false-empty flash).
             <SkeletonLines lines={3} />
           ) : recentResults.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.recentResults.empty")}</p>
-              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.recentResults.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.recentResults.empty")}
+              action={
+                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.recentResults.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {recentResults.map(race => (
@@ -1547,10 +1582,14 @@ export default function DashboardPage() {
           {riderRanking === null ? (
             <SkeletonLines lines={3} />
           ) : riderRanking.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.riderRanking.empty")}</p>
-              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.riderRanking.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.riderRanking.empty")}
+              action={
+                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.riderRanking.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-1">
               {riderRanking.map((r, i) => (

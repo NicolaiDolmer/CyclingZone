@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Card, ExchangeIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon } from "./ui";
+import { Card, ExchangeIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon, ChevronRightIcon } from "./ui";
 
 /**
  * "Næste træk" — prioriteret liste over hvad der venter på manageren, samlet
@@ -51,8 +51,14 @@ export default function NextActionsCard({
 
   return (
     <Card className="mb-4 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-cz-1 text-sm">{t("nextActions.title")}</h2>
+      {/* #2849 — titlen følger SectionHeader-opskriften (15px/600), ikke den
+          14px h2 (`text-sm`) kortet arvede fra før kontrakten (docs/design/
+          PAGE_TEMPLATES.md § card meta-label/header). Selve <SectionHeader>
+          bruges ikke direkte: højre-slotten her er et antalsbadge, ikke en
+          quiet action/uppercase meta-label (SectionHeader's action/meta er
+          gensidigt udelukkende og passer ikke badge-formen 1:1). */}
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-[15px] font-semibold text-cz-1">{t("nextActions.title")}</h2>
         {items.length > 0 && (
           <span className="text-3xs font-mono bg-cz-accent/15 text-cz-accent-t rounded-full px-2 py-0.5 leading-5">
             {items.length}
@@ -77,7 +83,7 @@ export default function NextActionsCard({
                   hover:bg-cz-accent/10 hover:border-cz-accent/30 transition-colors group">
                 <item.Icon size={16} className="flex-shrink-0 text-cz-2" />
                 <span className="text-cz-1 text-sm flex-1">{item.label}</span>
-                <span className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0">→</span>
+                <ChevronRightIcon size={13} className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0" aria-hidden="true" />
               </Link>
             </li>
           ))}

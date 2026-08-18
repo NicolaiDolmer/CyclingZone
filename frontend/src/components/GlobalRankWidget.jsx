@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
-import { Card } from "./ui";
+import { Card, ArrowUpIcon, ArrowDownIcon } from "./ui";
 
 // #2453: lille dashboard-widget — "#N ▲x · point" → linker til /global-rank
 // (godkendt mockup). Egen let fetch (kun eget hold) i stedet for hele
@@ -51,7 +51,7 @@ export default function GlobalRankWidget() {
         <span className="font-mono font-bold text-2xl text-cz-accent-t">#{row.global_rank}</span>
         {row.movement != null && row.movement !== 0 && (
           <span className={`font-mono text-sm font-bold inline-flex items-center gap-0.5 ${up ? "text-cz-success" : "text-cz-danger"}`}>
-            {up ? "▲" : "▼"} {Math.abs(row.movement)}
+            {up ? <ArrowUpIcon size={13} aria-hidden="true" /> : <ArrowDownIcon size={13} aria-hidden="true" />} {Math.abs(row.movement)}
           </span>
         )}
         <span className="font-mono text-cz-2 text-sm ms-auto">{formatNumber(row.global_points)} {t("scoreUnit")}</span>

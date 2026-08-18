@@ -125,11 +125,16 @@ test("#3510 en fejlet/ikke-ok post-paint-fetch falder eksplicit tilbage til [] (
 });
 
 test("#3510 ErrorState/Button/SkeletonLines er importeret fra den kanoniske ui-barrel", () => {
-  assert.match(
-    source,
-    /import \{\s*Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,\s*PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState, SkeletonLines,\s*\} from "\.\.\/components\/ui";/,
-    "skal importere Button/ErrorState/SkeletonLines fra ../components/ui, ikke opfinde ny markup",
-  );
+  const uiImportMatch = source.match(/import \{([\s\S]*?)\} from "\.\.\/components\/ui";/);
+  assert.ok(uiImportMatch, "skal have et import { ... } from \"../components/ui\"");
+  const imported = uiImportMatch[1];
+  for (const name of ["Button", "ErrorState", "SkeletonLines"]) {
+    assert.match(
+      imported,
+      new RegExp(`\\b${name}\\b`),
+      `skal importere ${name} fra ../components/ui, ikke opfinde ny markup`,
+    );
+  }
 });
 
 test("locale keys referenced by the new dashboard error surface exist in both en + da (key-parity)", () => {
