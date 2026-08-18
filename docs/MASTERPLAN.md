@@ -11,9 +11,8 @@
 1. ⛔ **#3449 markedssweep — refit-gate RØD 17/8.** Kørende × 0,422 slår alt → niveau-korrektion. Beslutning i løn-design-sessionen; draft.
 3. 🟠 **#3514 mandat** — fase 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-script-apply med ejer-nøgle.
 4. 🔵 **#3393 løn** — beslutning 4+5 truffet; designes færdig i løn-design-sessionen (bookes FØR søndag). Lønkurvens konkave form er fredet. Flipper ikke 23/8.
-5. 🟠 **#3901 sæsonskiftet S2→S3:** pakke leveret + **D1-plan LÅST+BYGGET 18/8** (global komprimering, top 24 → D1, PR #3930 merged, dry-run godkendt). **23/8 = race-day-flip + D1-komprimering + mandat-backfill** (apply ejer-gated, frosset snapshot). Bufferdag 24/8 besluttet (#3467, kalender-sessionen).
+5. 🟠 **#3901:** pakke leveret; **D1-plan LÅST+BYGGET** (top 24 → D1, PR #3930, dry-run godkendt). **23/8 = race-day-flip + komprimering + mandat-backfill** (apply ejer-gated). Bufferdag 24/8 besluttet (#3467).
 6. 🔵 Auto-accept-floor bliver stående (ejer 13/8); 20/8 rammer kun inaktive hold (#3584), aktive 25/8.
-7. ✔ #3903 dømt 18/8: ingen ændring (efterspørgsel, ikke kvote, er flaskehalsen — pris-håndtaget → løn-sessionen). Lukket.
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
 
