@@ -69,16 +69,25 @@ test("#3667 loftet vises som tal og ALTID som et interval, aldrig ét loft-tal",
   await expect(page.locator('[data-type="sprinter"]')).toHaveText(/\d+[\s\S]*\d+[–-]\d+/);
   await expect(page.locator('[data-type="climber"]')).toHaveText(/\d+\s*·\s*\d+[–-]\d+/);
 
-  // #1543/#1162 anti-inversion: loftet må aldrig kollapse til ét tal. Hver række
-  // skal have lo < hi, ellers er sandheden aflæselig direkte fra skærmen.
+  // #1543/#1162 anti-inversion: PROGNOSE-båndet må aldrig kollapse til ét tal.
+  // Hver række skal have lo < hi, ellers er sandheden aflæselig direkte fra
+  // skærmen. Overgangs-designet (ejer 18/8, #3746): rækken kan nu OGSÅ bære
+  // rollens loft som ét enkelt tal ("· loft 93") — det er bevidst og sikkert,
+  // for under det flade rolle-tag er loftet rolle+alder-bestemt og røber intet
+  // rytterspecifikt. Derfor tages det SIDSTE interval på rækken (prognosen),
+  // ikke et $-anchored match, som suffikset ellers ville skygge for.
   const bounds = await rows.evaluateAll((nodes) => nodes.map((n) => {
-    const m = n.textContent.match(/(\d+)\s*[–-]\s*(\d+)\s*$/);
+    const ms = [...n.textContent.matchAll(/(\d+)\s*[–-]\s*(\d+)/g)];
+    const m = ms.at(-1);
     return m ? [Number(m[1]), Number(m[2])] : null;
   }));
   expect(bounds.filter(Boolean)).toHaveLength(8);
   for (const [lo, hi] of bounds) {
-    expect(hi, `loft-båndet kollapsede til ét tal (${lo}), hvilket gør det inverterbart`).toBeGreaterThan(lo);
+    expect(hi, `prognose-båndet kollapsede til ét tal (${lo}), hvilket gør det inverterbart`).toBeGreaterThan(lo);
   }
+
+  // Overgangs-designet: primær-rollen viser loftet ved siden af prognosen.
+  await expect(page.locator('[data-testid="scouting-primary-loft"]')).toHaveText(/loft\s+\d+|ceiling\s+\d+/i);
 });
 
 // Denne test navigerer til en RIGTIG rival-rytter. Det kunne den ikke før:
