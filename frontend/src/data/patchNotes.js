@@ -4,6 +4,95 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.142",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Watch the story of the stage",
+          "body": "Finished stages now have a race film. Scrub through the stage on its real profile, follow the event feed as it plays, and read 3 to 5 key moments picked out for you."
+        },
+        "da": {
+          "title": "Se etapens historie",
+          "body": "Færdige etaper har nu en løbsfilm. Scrub gennem etapen på dens rigtige profil, følg begivenheds-feedet mens det spiller, og læs 3 til 5 udvalgte nøgleøjeblikke."
+        },
+        "refs": [
+          3859,
+          2410
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The scout button no longer offers a useless upgrade",
+          "body": "If scouting a rider further would not improve the precision you already have, the button is now dimmed and explains why, instead of letting you spend on nothing."
+        },
+        "da": {
+          "title": "Scout-knappen tilbyder ikke længere en ubrugelig opgradering",
+          "body": "Hvis mere scouting af en rytter ikke ville forbedre præcisionen du allerede har, er knappen nu dæmpet og forklarer hvorfor, i stedet for at lade dig bruge penge på ingenting."
+        },
+        "refs": [
+          3671
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Teams created mid season now get their share of sponsor money",
+          "body": "A team created after season start used to get no season sponsor payout and no contract until the next season change. New teams now get a fair share, measured in race days."
+        },
+        "da": {
+          "title": "Hold oprettet midt i sæsonen får nu deres andel af sponsorpengene",
+          "body": "Et hold oprettet efter sæsonstart fik hverken sæson-sponsorudbetaling eller kontrakt før næste sæsonskifte. Nye hold får nu en fair andel, målt i løbsdage."
+        },
+        "refs": [
+          3730
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A defective rider's auction can no longer vanish without notice",
+          "body": "Deleting a broken rider now cancels their active auctions first, so bidders get the normal cancellation notice instead of the auction just disappearing. Auction finalization also double checks that ownership actually changed hands before any money moves."
+        },
+        "da": {
+          "title": "En defekt rytters auktion kan ikke længere forsvinde uden besked",
+          "body": "Sletning af en defekt rytter annullerer nu deres aktive auktioner først, så budgivere får den normale annulleringsbesked i stedet for at auktionen bare forsvinder. Auktionsafslutning tjekker nu også at ejerskabet reelt skiftede hænder før nogen penge flyttes."
+        },
+        "refs": [
+          3594,
+          3580
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A race lineup no longer fails entirely over one deleted rider",
+          "body": "If a rider was deleted while the day's race entries were being built, the whole team's entry could fail. The generator now retries without the missing rider instead of dropping the entire lineup."
+        },
+        "da": {
+          "title": "En løbsopstilling fejler ikke længere helt pga. én slettet rytter",
+          "body": "Hvis en rytter blev slettet mens dagens løbstilmeldinger blev bygget, kunne hele holdets tilmelding fejle. Generatoren prøver nu igen uden den manglende rytter, i stedet for at hele opstillingen dropper."
+        },
+        "refs": [
+          3482
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.141",
     "date": "2026-08-18",
     "label": "Beta",
