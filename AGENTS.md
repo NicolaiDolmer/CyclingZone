@@ -9,7 +9,7 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
 ## Hard rules
 
 > **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor — ikke pr.-PR-gate).
+> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor — ikke pr.-PR-gate) · 18 🔒 (`scripts/guard-commit-branch.sh`, blokerende) · 19-23 ✍️ (kvalitetsproces-regler, ejer-godkendt 18/8 pr. [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)).
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
@@ -62,7 +62,15 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 18. **Commit i hoved-checkoutet kun bag den blokerende branch-guard.** Kør `bash scripts/guard-commit-branch.sh <forventet-branch> && git commit ...`. Guarden exiter 1 ved mismatch og ved detached HEAD. `git branch --show-current` er IKKE en guard: den printer branchen og exiter altid 0, så en `&&`-kæde fortsætter uanset hvad. Blokerer guarden, så gentag ALDRIG uden den; en blokeret guard er signalet om at checkoutet står forkert. Er der fremmed ucommitteret arbejde i træet, så skift ikke branch (et `checkout` bærer deres filer med) men commit via `git worktree add <tmp> <branch>`. _Fejlklassen har bidt 5 gange (11/6, 12/6, 13/6, 6/8, 18/8). Sidste gang skiftede hoved-checkoutets branch tre gange inden for én session, mens en parallel session havde ucommitteret arbejde i træet. Se `.claude/learnings/2026-08-06-shared-checkout-cross-session-commit.md`._
 
-**Dispatch-forfilter (obligatorisk før et spor sendes af sted):** `gh issue view N --json state` — plus tjek om der findes en merged PR med `Refs #N`. _Fire spor i natbølgen var allerede løst. `MASTERPLAN.md` og issue-teksterne halter efter hvad der faktisk er shippet; ét kald pr. kandidat havde sparet fire spor._
+19. **Aldrig skip-logik på prod-deploy-grenen.** main bygger ALTID. Enhver "spring buildet over"-optimering (ignoreCommand, diff-gates) hører til på branches, aldrig på main. _To hændelser på to dage: 17/8 mistede prod-deploys (skip-logikken åd ægte ændringer); 18/8 stod alle prod-deploys i ERROR fordi `VERCEL_GIT_PREVIOUS_SHA` lå uden for Vercels shallow clone og exit 128 tolkes som deploy-fejl ([#3838](https://github.com/NicolaiDolmer/CyclingZone/issues/3838))._
+
+20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out. _18/8: prod-frontend sad fast på sidste gode deploy i timevis mens merges fortsatte ovenpå den knækkede ignoreCommand._
+
+21. **Per-agent-timeout dimensioneres efter samtidighed.** En timeout der er rimelig for én agent alene er forkert under fuldt tryk: skalér med antal samtidige agenter eller launch i forskudte chunks. _Natbølge XL 18/8: 110 min klippede 15 af 32 agenter under 26+ samtidige; e-mail-kæden blev klippet to gange ved 110/150 og leverede på 16 min da maskinen var ledig._
+
+22. **Dispatch-forfilter før HVER spawn.** `gh issue view N --json state,labels` + tjek om en merged PR allerede dækker scopet. Masterplan-/NOW-/promptlinjer er KILDER, ikke facts. _Natbølgen 4.-5./8: fire spor allerede løst. 18/8 formiddag: #3682 lukket 3 dage før. 18/8 eftermiddag: #3066 stod som priority:high-punkt i sessionsprompten men var shipped+lukket 17/8 — ét kald sparede en hel worker._
+
+23. **Post-merge guard-tjek af main.** Efter en salve verificeres at required checks OG de bløde vagter (warning-budget, feature-liveness, patch-note-guard) stadig er grønne på main-HEAD — en PR kan være grøn på egen base og alligevel knække main i kombination. _18/8 morgen: to vagter knækkede på main efter formiddagens merges og blokerede hele merge-køen (fix `6d5a232c`)._
 
 ### §LOKAL lokal-only-state (legacy — Codex-æra)
 
