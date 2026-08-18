@@ -15,7 +15,12 @@ import {
 // Alle test-tidspunkter er i CEST-perioden (maj) hvor Copenhagen = UTC+2.
 // Hverdag close=22:00 CEST → 20:00 UTC. Hard cap = close + 60 min grace = 23:00 CEST.
 // Weekend close=23:00 CEST → 21:00 UTC. Hard cap = 24:00 CEST = 00:00 next-day UTC+2.
-const CFG = DEFAULT_AUCTION_CONFIG;
+//
+// Grace er sat EKSPLICIT til 60 her (ikke arvet fra DEFAULT_AUCTION_CONFIG) for at
+// teste checkBidExtension's cap-with-rollover-mekanik isoleret fra prod-fallbacken.
+// DEFAULT_AUCTION_CONFIG.extension_grace_minutes er 0 i prod (#3740 — grace er en
+// afvist feature).
+const CFG = { ...DEFAULT_AUCTION_CONFIG, extension_grace_minutes: 60 };
 
 const iso = (s) => new Date(s);
 
