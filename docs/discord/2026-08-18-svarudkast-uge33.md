@@ -21,9 +21,9 @@ Udkast (kraever at du beslutter kompensation foerst):
 ### A5. 1/8, ide: "form" som traeningsfokus (DA) - KLAR
 > God tanke. Formen drives i dag af hvile og traethed (hvile giver form, haard traening koster), saa et rent form-fokus ville overlappe med hvile. Traeningssystemet er netop lagt om, saa kig paa det igen naar ugens opdatering er ude, og sig til hvis der stadig mangler noget til faerdigudviklede ryttere.
 
-### A6. 30/7, board-plan taeller ikke etapesejr (EN) - VERIFICER
-Skal reproduceres foer svar (taeller 1-aars-planen etapesejre korrekt?). Udkast naar verificeret:
-> You were right, this was a real counting bug / This one actually works as intended because [X]. [Afhaengigt af fund.]
+### A6. 30/7, board-plan taeller ikke etapesejr (EN) - KLAR (verificeret 18/8: korrekt adfaerd, ikke en bug)
+Fakta: sejren dagen foer var en samlet sejr i et ENDAGSLOEB (gc-resultat), og "stage win"-maalet taeller kun etapesejre i etapeloeb. Holdets foerste aegte etapesejr blev foerst processeret 6 timer efter beskeden. Udkast:
+> Good question, and I checked the data. The win you got the day before was the overall win in a one day race, and the board goal "at least 1 stage win" only counts stages in stage races. Your first real stage win landed later that same day, so the goal should show as met now. I can see why the wording is confusing, so the goal text is getting clearer about what counts.
 
 ### A7. 27/7, resultat-notifikation aabner samlet stilling, ikke etapen (EN) - KLAR
 > This was a real bug and it was fixed today: result messages and the race digest email now deep link straight to the stage result. Thanks for reporting it.
@@ -31,8 +31,8 @@ Skal reproduceres foer svar (taeller 1-aars-planen etapesejre korrekt?). Udkast 
 ### A8. 27/7, "riders are booked for other race" ved gem af opstilling (EN) - KLAR
 > This was part of a deeper scheduling bug that was properly fixed today: rider swaps between overlapping races were being blocked by a safety rule, which could leave lineups short and throw this error. Lineups now fill and update as they should. Thanks for the detailed report, it helped pin it down.
 
-### A9. 23/7, modbud vender fortegnet paa betaling (EN) - VERIFICER
-Undersoeges som del af forhandlings-gennemgangen (#3940). Udkast naar verificeret.
+### A9. 23/7, modbud vender fortegnet paa betaling (EN) - KLAR (verificeret 18/8: fixet 25/7, regressionstest paa plads)
+> You were completely right, this was a real bug: a counter offer flipped the direction of the cash amount when it was sent, even though the text said positive means you receive. It was fixed on July 25, two days after your report, and there is now a dedicated regression test so it cannot quietly come back. Thanks for catching it before it cost anyone money.
 
 ## B. Discord, ubesvarede spoergsmaal
 
@@ -71,8 +71,9 @@ Anbefalet aerligt svar (uden at doemme nogen):
 
 ## C. Forum
 
-### C1. "Question: Profile riders and Popularity" (18/8, EN) - VERIFICER
-En medspiller svarede "det er det samme". Skal verificeres i koden foer du bekraefter (popularity-scoren vs profile riders-visningen). Udkast naar verificeret.
+### C1. "Question: Profile riders and Popularity" (18/8, EN) - KLAR (verificeret 18/8: to forskellige men relaterede ting)
+NB: medspillerens svar i traaden ("I'm pretty sure it's the same") er IKKE korrekt, saa dit svar boer rette det venligt. Udkast:
+> Close, but they are two different things. Popularity is a raw 0 to 100 stat on each rider. A "profile rider" is a rider whose combined score of popularity (70 percent) and UCI results (30 percent) clears the star threshold. So a very popular rider with modest results can qualify, while a strong but unknown rider usually will not. Same answer is in the FAQ under "Who are my team's profile riders?"
 
 ### C2. Forum-forbedringstraaden (statusopdatering, EN) - KLAR
 > Quick update on this: forum improvements are tracked and coming in waves. First up: search, unread markers, quote replies with notifications, and reactions. Reporting a post will also require a short reason. Keep the ideas coming.
