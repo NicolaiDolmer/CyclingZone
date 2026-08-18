@@ -62,6 +62,13 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const APPLY = args.apply === true;
 const THRESHOLD = Number(args.threshold ?? 15); // bedste fysiske evne over dette = outlier
+// #3614: samme reparation for UDLØBNE tilbud (team-løse fri agenter fra gamle
+// kuld). Default er uændret 'offered' (#2699-adfærden); --status=expired tager
+// #3614-populationen; --status=both tager begge. Ryttere i AKTIV auktion
+// ekskluderes altid ved expired (auktionen skal løbe færdig på de vilkår
+// budgiverne så — de tages i en senere kørsel).
+const STATUS = String(args.status ?? "offered");
+const STATUSES = STATUS === "both" ? ["offered", "expired"] : [STATUS];
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -80,27 +87,59 @@ async function main() {
   const season = await fetchActiveSeason(sb);
   if (!season) throw new Error("ingen aktiv sæson");
 
-  // Alle ventende tilbud med ejerskabs-verificeret team-løs rytter.
+  // Alle tilbud i de valgte statusser med ejerskabs-verificeret team-løs rytter.
   const { data: rows, error } = await sb
     .from("academy_intake")
     .select("id, team_id, rider_id, status, riders!inner(id, firstname, lastname, birthdate, potentiale, height, weight, nationality_code, primary_type, secondary_type, archetype_draw, market_value, team_id, pending_team_id, valuation_type), teams(name)")
-    .eq("status", "offered");
+    .in("status", STATUSES);
   if (error) throw new Error(`intake lookup: ${error.message}`);
 
-  const free = (rows || []).filter((r) => r.riders?.team_id === null && r.riders?.pending_team_id === null);
-  const riderIds = free.map((r) => r.rider_id);
+  // #3614: en rytter kan have flere intake-rækker (fx expired hos to hold) —
+  // dedupe pr. rytter så reparationen kun planlægges én gang.
+  const seenRider = new Set();
+  const free = (rows || []).filter((r) => {
+    if (r.riders?.team_id !== null || r.riders?.pending_team_id !== null) return false;
+    if (seenRider.has(r.rider_id)) return false;
+    seenRider.add(r.rider_id);
+    return true;
+  });
+  let riderIds = free.map((r) => r.rider_id);
 
-  const { data: abRows, error: abErr } = await sb
-    .from("rider_derived_abilities").select("*").in("rider_id", riderIds);
-  if (abErr) throw new Error(`abilities lookup: ${abErr.message}`);
-  const abById = new Map((abRows || []).map((a) => [a.rider_id, a]));
+  // #3614: ekskludér ryttere i AKTIV/FORLÆNGET auktion — budgiverne skal have
+  // den profil de bød på; resten tages når auktionen er afgjort.
+  let iAuktion = new Set();
+  if (STATUSES.includes("expired") && riderIds.length) {
+    // Chunket: .in() med mange hundrede UUID'er spraenger URL-laengden (fetch failed).
+    for (let i = 0; i < riderIds.length; i += 100) {
+      const chunk = riderIds.slice(i, i + 100);
+      const { data: aucRows, error: aucErr } = await sb
+        .from("auctions").select("rider_id, status")
+        .in("rider_id", chunk)
+        .in("status", ["active", "extended"]);
+      if (aucErr) throw new Error(`auction lookup (chunk ${i / 100}): ${aucErr.message}`);
+      for (const a of aucRows || []) iAuktion.add(a.rider_id);
+    }
+    riderIds = riderIds.filter((id) => !iAuktion.has(id));
+  }
+  const kandidater = free.filter((r) => !iAuktion.has(r.rider_id));
 
-  const outliers = free.filter((r) => {
+  const abById = new Map();
+  for (let i = 0; i < riderIds.length; i += 100) {
+    const chunk = riderIds.slice(i, i + 100);
+    const { data: abRows, error: abErr } = await sb
+      .from("rider_derived_abilities").select("*").in("rider_id", chunk);
+    if (abErr) throw new Error(`abilities lookup (chunk ${i / 100}): ${abErr.message}`);
+    for (const a of abRows || []) abById.set(a.rider_id, a);
+  }
+
+  const outliers = kandidater.filter((r) => {
     const ab = abById.get(r.rider_id);
     return ab && bestOf(ab) > THRESHOLD;
   });
 
-  console.log(`Ventende tilbud (team-løse): ${free.length}`);
+  console.log(`Statusser: ${STATUSES.join(", ")}`);
+  console.log(`Tilbud (team-løse, dedupet): ${free.length}`);
+  if (iAuktion.size) console.log(`Ekskluderet pga. aktiv auktion: ${iAuktion.size}`);
   console.log(`Heraf over ungdomsbåndet: ${outliers.length}\n`);
   if (!outliers.length) { console.log("Intet at gøre.\n"); return; }
 
@@ -184,7 +223,7 @@ async function main() {
   console.log(`Stadig over båndet efter:  ${stadigOver.length} ${stadigOver.length === 0 ? "✅" : "❌"}`);
   console.log(`Samlet værdi før:          ${kr(plans.reduce((s, p) => s + (p.foerVaerdi ?? 0), 0))}`);
   console.log(`Samlet værdi efter:        ${kr(plans.reduce((s, p) => s + (p.efterVaerdi ?? 0), 0))}`);
-  console.log(`Ingen manager har betalt for dem — alle er stadig 'offered', ingen bud, intet ejerskab.`);
+  console.log(`Ingen manager har betalt for dem — alle er team-loese (${STATUSES.join("/")}), ingen bud, intet ejerskab.`);
 
   if (!APPLY) {
     console.log("\nDRY-RUN — ingen writes. Kør igen med --apply.\n");
@@ -201,6 +240,18 @@ async function main() {
     if (!fresh || fresh.team_id !== null || fresh.pending_team_id !== null) {
       console.log(`  ⏭  ${p.navn}: ejet siden måling — springes over`);
       continue;
+    }
+    // #3614: banken dripper løbende expired-puljen ud i auktioner (~60/dag) —
+    // re-verificér også auktions-status lige før write.
+    if (STATUSES.includes("expired")) {
+      const { data: aucNow, error: aErr } = await sb
+        .from("auctions").select("id").eq("rider_id", p.riderId)
+        .in("status", ["active", "extended"]).limit(1);
+      if (aErr) throw new Error(`auction re-verify ${p.riderId}: ${aErr.message}`);
+      if (aucNow?.length) {
+        console.log(`  ⏭  ${p.navn}: i aktiv auktion siden måling — springes over`);
+        continue;
+      }
     }
     const { error: uErr } = await sb
       .from("riders")
