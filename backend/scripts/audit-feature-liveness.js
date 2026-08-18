@@ -238,6 +238,10 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   "GET /admin/fictional-rider-preview",
   // Health / probe
   "GET /health",
+  // Sikker rytter-sletning (#3594, PR #3886): erstatter rå SQL ved hændelses-
+  // oprydning — annullerer aktive auktioner m. budgiver-notifikation FØR delete.
+  // Kaldes via curl/ops ved incidents; ingen frontend-kalder by design.
+  "POST /admin/riders/:id/delete-with-cleanup",
   // Admin-only via curl/admin-page-future-wiring (cancel-tools fra adminRouteOwnership-kontrakt #97)
   "POST /admin/transfers/offers/:id/cancel",
   "POST /admin/transfers/swaps/:id/cancel",
