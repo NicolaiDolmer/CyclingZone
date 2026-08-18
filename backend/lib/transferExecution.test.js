@@ -710,6 +710,16 @@ test("#19: confirmTransferOffer flytter team_id med det samme når vinduet er å
   assert.equal(rider.pending_team_id, null);
   assert.equal(db.transfer_offers[0].status, "accepted");
   assert.equal(db.teams.find((t) => t.id === "buyer").balance, 800);
+
+  // #3582: bevægelses-log skrevet for det umiddelbare (ikke-parkerede) skifte.
+  assert.equal(db.rider_ownership_events.length, 1);
+  const event = db.rider_ownership_events[0];
+  assert.equal(event.rider_id, "rider-1");
+  assert.equal(event.from_team_id, "seller");
+  assert.equal(event.to_team_id, "buyer");
+  assert.equal(event.reason, "trade");
+  assert.equal(event.related_entity_type, "transfer");
+  assert.equal(event.related_entity_id, "offer-1");
 });
 
 // ── #3650: akademi-ryttere listes direkte på transfermarkedet (ejer-løfte i
@@ -1014,6 +1024,18 @@ test("#16: confirmSwapOffer registrerer begge ryttere med det samme (altid-åben
   assert.equal(db.riders.find((r) => r.id === "req-rider").team_id, "seller", "ønsket rytter flyttet straks");
   assert.equal(db.riders.find((r) => r.id === "req-rider").pending_team_id, null);
   assert.equal(db.swap_offers[0].status, "accepted");
+
+  // #3582: bevægelses-log skrevet for BEGGE byttede ryttere.
+  assert.equal(db.rider_ownership_events.length, 2);
+  const offeredEvent = db.rider_ownership_events.find((e) => e.rider_id === "rider-1");
+  assert.equal(offeredEvent.from_team_id, "seller");
+  assert.equal(offeredEvent.to_team_id, "buyer");
+  assert.equal(offeredEvent.reason, "swap");
+  assert.equal(offeredEvent.related_entity_id, "swap-1");
+  const requestedEvent = db.rider_ownership_events.find((e) => e.rider_id === "req-rider");
+  assert.equal(requestedEvent.from_team_id, "buyer");
+  assert.equal(requestedEvent.to_team_id, "seller");
+  assert.equal(requestedEvent.reason, "swap");
 });
 
 // #1748 (a) TOCTOU-guard: hvis rytteren kommer på en aktiv auktion mellem

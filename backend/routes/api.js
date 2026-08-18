@@ -251,6 +251,7 @@ import {
 } from "../lib/economyConstants.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.js";
 import {
   getPriceBandViolation,
   getSwapPriceBandViolation,
@@ -7251,7 +7252,8 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
   // #3620: contract_end_season med — uden kolonnen læser contractOnAcquirePatch
   // en `undefined` og regenererer en eksisterende kontrakt i stedet for at arve den.
-  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", rider_id).single();
+  // #3582: team_id med — bevægelses-loggen skal vide hvem rytteren blev flyttet FRA.
+  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, team_id").eq("id", rider_id).single();
   if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
   // #1309: kontrakt-on-acquire — ved admin-tildeling til et hold sættes kontrakt
   // hvis rytteren er kontraktløs (salary=null), så invarianten "ejede har altid løn" holdes.
@@ -7272,6 +7274,20 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";
   invalidateNamespace("riders");
+  // #3582: bevægelses-log — den ENESTE admin-drevne ejerskabs-mutationsvej.
+  // Best-effort, kaster aldrig (se modul-header) — awaites for at holde
+  // rækkefølgen deterministisk, men blokerer aldrig svaret unødigt længe.
+  await recordRiderOwnershipEvent(supabase, {
+    riderId: rider_id,
+    riderFirstname: rider.firstname,
+    riderLastname: rider.lastname,
+    fromTeamId: rider.team_id,
+    toTeamId: team_id || null,
+    reason: RIDER_OWNERSHIP_REASON.ADMIN,
+    relatedEntityType: "manual",
+    actorType: "admin",
+    actorId: req.user?.id ?? null,
+  });
   res.json({ success: true, message: `${rider.firstname} ${rider.lastname} flyttet til ${teamName}` });
 });
 

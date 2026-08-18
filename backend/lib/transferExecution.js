@@ -12,6 +12,7 @@ import {
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
@@ -607,6 +608,24 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // parkeringen) er strukturelt udelukket — den entry røres aldrig her.
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "transfer" });
 
+  // #3582: bevægelses-log — KUN når ejerskabet faktisk flyttede (team_id).
+  // Ved #1995-parkering (deferRegistration) logges i stedet af
+  // stageRaceTransferDefer.js's flushParkedRider, som er hvor team_id faktisk
+  // ændrer sig. Best-effort, kaster aldrig (se modul-header).
+  if (!deferRegistration) {
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: rider.id,
+      riderFirstname: rider.firstname,
+      riderLastname: rider.lastname,
+      fromTeamId: offer.seller_team_id,
+      toTeamId: offer.buyer_team_id,
+      reason: RIDER_OWNERSHIP_REASON.TRADE,
+      relatedEntityType: "transfer",
+      relatedEntityId: offer.id,
+      actorType: "api",
+    });
+  }
+
   // Slice 07c: balance + finance_transactions atomic via RPC.
   // 07d Fase B / #240: actor flyder gennem auditCtx (api fra confirmTransferOffer,
   // cron fra flushWindowPendingOffers). season_id sættes eksplicit fra activeSeason.
@@ -895,6 +914,35 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // byttehandlen er accepteret HER, uanset om selve team_id-flytningen parkeres.
   await clearFutureRaceEntriesSafe({ supabase, riderId: offered.id, label: "swap" });
   await clearFutureRaceEntriesSafe({ supabase, riderId: requested.id, label: "swap" });
+
+  // #3582: bevægelses-log for BEGGE ryttere — KUN når ejerskabet faktisk
+  // flyttede (team_id). Ved #1995-parkering (deferRegistration) logges i
+  // stedet af stageRaceTransferDefer.js's flushParkedRider. Best-effort,
+  // kaster aldrig (se modul-header).
+  if (!deferRegistration) {
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: offered.id,
+      riderFirstname: offered.firstname,
+      riderLastname: offered.lastname,
+      fromTeamId: swap.proposing_team_id,
+      toTeamId: swap.receiving_team_id,
+      reason: RIDER_OWNERSHIP_REASON.SWAP,
+      relatedEntityType: "swap",
+      relatedEntityId: swap.id,
+      actorType: "api",
+    });
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: requested.id,
+      riderFirstname: requested.firstname,
+      riderLastname: requested.lastname,
+      fromTeamId: swap.receiving_team_id,
+      toTeamId: swap.proposing_team_id,
+      reason: RIDER_OWNERSHIP_REASON.SWAP,
+      relatedEntityType: "swap",
+      relatedEntityId: swap.id,
+      actorType: "api",
+    });
+  }
 
   if (cash !== 0) {
     // Slice 07c: balance + finance_transactions atomic via RPC.

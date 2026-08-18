@@ -10,7 +10,7 @@ import {
 // Chainable Supabase-mock. cfg styrer svar pr. (tabel, operations); en spy samler
 // riders-updates + notify-kald til assertions.
 function makeSupabase(cfg = {}) {
-  const spy = { updates: [], notifies: [] };
+  const spy = { updates: [], notifies: [], ownershipEvents: [] };
   function builder() {
     const st = { table: null, ops: [] };
     const b = {
@@ -24,6 +24,14 @@ function makeSupabase(cfg = {}) {
       order(...a) { st.ops.push(["order", a]); return b; },
       delete(...a) { st.ops.push(["delete", a]); return b; },
       update(...a) { st.ops.push(["update", a]); return b; },
+      // #3582: rider_ownership_events — best-effort audit-skrivning.
+      insert(payload) {
+        if (st.table === "rider_ownership_events") {
+          spy.ownershipEvents.push(payload);
+          return Promise.resolve({ error: null });
+        }
+        throw new Error(`Unexpected insert on table: ${st.table}`);
+      },
       range(...a) { st.ops.push(["range", a]); return Promise.resolve(resolve(st)); },
       then(f, r) { return Promise.resolve(resolve(st)).then(f, r); },
     };
@@ -132,6 +140,13 @@ test("flush: parkeret deltager flyttes pending_team_id → team_id + notificeres
   assert.equal(supa._spy.updates[0].payload.pending_team_id, null);
   assert.equal(supa._spy.notifies.length, 1);
   assert.equal(supa._spy.notifies[0][0], "T2"); // notificér den nye ejer
+
+  // #3582: bevægelses-log skrevet HER — det er hvor team_id faktisk flytter.
+  assert.equal(supa._spy.ownershipEvents.length, 1);
+  const event = supa._spy.ownershipEvents[0];
+  assert.equal(event.rider_id, "A");
+  assert.equal(event.to_team_id, "T2");
+  assert.equal(event.reason, "stage_race_deferred_flush");
 });
 
 test("flush: overlap-guard — rytter stadig i et ANDET aktivt etapeløb flushes IKKE", async () => {
