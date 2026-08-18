@@ -1,9 +1,9 @@
 // Progression L2 — træning (teaser) (#1163) — frontend display-helpers.
 //
-// Ren visning: hvilke evner et fokus træner + en kvalitativ risiko-label pr.
-// intensitet, så assistenten kan forklare trade-off'en. Tallene SPEJLER backend
-// (backend/lib/training.TRAINING_CONFIG) men er display-only — den faktiske bias
-// beregnes server-side ved sæson-skift (og er gated bag #1137-flaget).
+// Ren visning: hvilke evner et fokus træner, så assistenten kan forklare
+// trade-off'en. Tallene SPEJLER backend (backend/lib/training.TRAINING_CONFIG)
+// men er display-only — den faktiske bias beregnes server-side ved
+// sæson-skift (og er gated bag #1137-flaget).
 
 // Fokus-nøgle → evner det skubber mod cap (matcher backend TRAINING_FOCUSES).
 export const TRAINING_FOCUS_ABILITIES = Object.freeze({
@@ -23,9 +23,6 @@ export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUS_ABIL
 // sessionen (se trainingDayTypes.js). Listen bevares fordi ugerytmen (#1895)
 // stadig sætter en intensitet pr. ugedag.
 export const TRAINING_INTENSITIES = Object.freeze(["rest", "recovery", "easy", "normal", "hard"]);
-
-// Display-risiko pr. intensitet (spejler backend setbackChance, i procent).
-export const TRAINING_SETBACK_PCT = Object.freeze({ easy: 0, normal: 5, hard: 18, recovery: 0 });
 
 // #1895 PR 1: ugentlig træningsrytme — display-helpers. Spejrer backend
 // (backend/lib/training.js WEEKDAY_KEYS/isValidWeekPlanDays/resolveDayIntensity)

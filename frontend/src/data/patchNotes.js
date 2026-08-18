@@ -23,6 +23,22 @@ export const PATCHES = [
         "refs": [
           3940
         ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training no longer risks a setback",
+          "body": "Higher intensity used to carry a small chance of a setback that slowed a rider's growth for the season. That risk is gone. Hard training still costs more fatigue than easy or normal, so the choice still matters."
+        },
+        "da": {
+          "title": "Træning risikerer ikke længere et tilbageslag",
+          "body": "Højere intensitet gav tidligere en lille chance for et tilbageslag der bremsede en rytters vækst i sæsonen. Den risiko er væk. Hård træning koster stadig mere træthed end let eller normal, så valget betyder stadig noget."
+        },
+        "refs": [
+          3758
+        ]
       }
     ]
   },
@@ -31,6 +47,22 @@ export const PATCHES = [
     "date": "2026-08-18",
     "label": "Beta",
     "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Season start notification now shows your sponsor payout",
+          "body": "The \"new season has started\" notification used to say nothing about money, leaving you guessing whether it had landed. It now states the exact amount your sponsor paid out. Delivery is also more reliable, so a resend can be targeted at any team that missed it."
+        },
+        "da": {
+          "title": "Sæsonstart-notifikationen viser nu din sponsorudbetaling",
+          "body": "\"Ny sæson er begyndt\"-notifikationen nævnte ikke penge, så du måtte gætte om de var landet. Den viser nu det præcise beløb din sponsor udbetalte. Leveringen er også mere pålidelig, så en efter-sendelse kan målrettes hold der manglede den."
+        },
+        "refs": [
+          3101
+        ]
+      },
       {
         "category": "fixed",
         "audience": "player",

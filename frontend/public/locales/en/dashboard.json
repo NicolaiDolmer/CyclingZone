@@ -1,6 +1,13 @@
 {
   "loadError": "Couldn't load the dashboard. Please try again.",
   "retry": "Try again",
+  "todayStages": {
+    "title": "Today's stages",
+    "winner": "Winner: {name}",
+    "standing": "#{rank} of {total} overall",
+    "standingPending": "Overall position not settled yet",
+    "entries": "{count, plural, one {# rider entered} other {# riders entered}}"
+  },
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rider} other {# riders}}",
     "incoming": "+{count} in",
@@ -211,7 +218,9 @@
       "empty": "No season data yet",
       "emptyCta": "View full standings →",
       "aiBadge": "AI",
-      "managerRank": "#{rank} among managers"
+      "managerRank": "#{rank} among managers",
+      "movementTitle": "Division placement since last race day",
+      "pointsDeltaTitle": "Points earned on the last race day"
     },
     "board": {
       "title": "Board Status",

@@ -1,6 +1,13 @@
 {
   "loadError": "Kunne ikke indlæse dashboardet. Prøv igen.",
   "retry": "Prøv igen",
+  "todayStages": {
+    "title": "Dagens etaper",
+    "winner": "Vinder: {name}",
+    "standing": "#{rank} af {total} samlet",
+    "standingPending": "Samlet stilling er endnu ikke afgjort",
+    "entries": "{count, plural, one {# rytter tilmeldt} other {# ryttere tilmeldt}}"
+  },
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rytter} other {# ryttere}}",
     "incoming": "+{count} ind",
@@ -211,7 +218,9 @@
       "empty": "Ingen sæsondata endnu",
       "emptyCta": "Se den fulde rangliste →",
       "aiBadge": "AI",
-      "managerRank": "#{rank} blandt managere"
+      "managerRank": "#{rank} blandt managere",
+      "movementTitle": "Divisionsplacering siden sidste løbsdag",
+      "pointsDeltaTitle": "Point optjent på sidste løbsdag"
     },
     "board": {
       "title": "Bestyrelsens Status",

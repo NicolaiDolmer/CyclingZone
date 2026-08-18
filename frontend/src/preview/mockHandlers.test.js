@@ -39,6 +39,19 @@ test("race_results uden race_id-filter → tom (uændret dashboard-adfærd)", ()
   assert.equal(rows.length, 0);
 });
 
+// vk-movement-signals — team_race_points_mv race_id=in.(...) scoping.
+test("team_race_points_mv race_id=in.(...) filtrerer til de angivne løb", () => {
+  const rows = restRows("team_race_points_mv", "https://x/rest/v1/team_race_points_mv?race_id=in.(pool-race-done-2)");
+  assert.ok(rows.length >= 1, "forventede seed for pool-race-done-2");
+  assert.ok(rows.every((r) => r.race_id === "pool-race-done-2"));
+  assert.ok(rows.some((r) => r.team_id === TEST_TEAM.id && r.race_points === 86), "TEST_TEAM's +86 skal findes");
+});
+
+test("team_race_points_mv uden race_id-filter → hele seedet (StandingsPage-mønster)", () => {
+  const rows = restRows("team_race_points_mv", "https://x/rest/v1/team_race_points_mv?season_id=eq.season-e2e");
+  assert.ok(rows.length >= 4);
+});
+
 // #1997 S1 — Palmarès-fanens rytter-scopede query (RiderStatsPage.fetchAllRiderSeasonRows).
 test("race_results rider_id=eq.rider-1 → palmarès-seed med race:-embed + team_name", () => {
   const rows = restRows("race_results", "https://x/rest/v1/race_results?rider_id=eq.rider-1&select=rank,team_name");

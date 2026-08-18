@@ -172,7 +172,8 @@
     },
     "seasonStarted": {
       "title": "Sæson {number} er begyndt",
-      "message": "En ny sæson er begyndt. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson."
+      "message": "En ny sæson er begyndt. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson.",
+      "messageWithSponsor": "En ny sæson er begyndt. Din sponsor udbetalte {amount} CZ$ til sæsonen. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson."
     },
     "seasonEnded": {
       "title": "Sæson {number} er afsluttet",

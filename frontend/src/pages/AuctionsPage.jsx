@@ -44,6 +44,7 @@ import {
   getAuctionLeaderName,
   getAuctionSellerLabel,
   computeWorstCaseReservation,
+  isOverbidForMe,
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
@@ -194,6 +195,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   const isMyRider = r?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
+  // #vk-auction-signals: vedvarende overbudt-markering — erstatter den rene
+  // 4s-toast (OverbidToast) med en blivende rad-tilstand, så manageren stadig
+  // kan se det efter toasten er væk uden at skulle huske det selv.
+  const isOverbid = isOverbidForMe(auction, myTeamId);
   const canBid    = !isMyRider && auction.status !== "completed";
   // #2701 bud-gate: ung rytter egnet til både senior og akademi. Et forsvars-bud
   // (imWinning) blokeres aldrig — du fører allerede.
@@ -224,7 +229,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
   return (
     <tr data-auction-row={auction.id} className={`group border-b border-cz-border hover:bg-cz-subtle transition-colors
-      ${imWinning ? "bg-cz-accent/[0.08]" : isRecommended ? "bg-cz-accent/[0.05] outline outline-1 -outline-offset-1 outline-cz-accent/40" : ""}`}>
+      ${imWinning ? "bg-cz-accent/[0.08]" : isOverbid ? "bg-cz-warning/[0.05]" : isRecommended ? "bg-cz-accent/[0.05] outline outline-1 -outline-offset-1 outline-cz-accent/40" : ""}`}>
 
       {/* Rytter — sticky left. #228: rent navn, hverken land eller alders-/
           statusbadges blandes ind i navnecellen — begge har nu egen kolonne. */}
@@ -266,6 +271,14 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
           {imWinning && (
             <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
               {t("auctions:badge.winning")}
+            </span>
+          )}
+          {/* #vk-auction-signals: hairline, IKKE solid fyld — border-bærende chip
+              adskiller sig bevidst fra de andre solid-tonede badges herover, så
+              "du er overbudt" læses som en advarsel snarere end en statuslabel. */}
+          {isOverbid && (
+            <span className="text-3xs uppercase border border-cz-warning/40 bg-cz-warning-bg/50 text-cz-warning px-1.5 py-0.5 rounded-cz-pill whitespace-nowrap">
+              {t("auctions:badge.outbid", { amount: formatNumber(auction.myHighestBid) })}
             </span>
           )}
           {isSeller && (
@@ -517,6 +530,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
+  // #vk-auction-signals: samme vedvarende overbudt-tilstand som desktop-rækken.
+  const isOverbid = isOverbidForMe(auction, myTeamId);
   const canBid = !isMyRider && auction.status !== "completed";
   // #2701 bud-gate (samme logik som AuctionRow).
   const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
@@ -548,8 +563,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
   return (
     <Card
       data-auction-row={auction.id}
-      borderClass={imWinning ? "border-cz-accent/40" : isRecommended ? "border-cz-accent/40" : "border-cz-border"}
-      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : isRecommended ? "bg-cz-accent/5" : ""}`}
+      borderClass={imWinning ? "border-cz-accent/40" : isOverbid ? "border-cz-warning/40" : isRecommended ? "border-cz-accent/40" : "border-cz-border"}
+      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : isOverbid ? "bg-cz-warning/[0.05]" : isRecommended ? "bg-cz-accent/5" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
@@ -586,6 +601,12 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               )}
               {isRecommended && !imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill font-bold">{t("auctions:badge.firstBidPick")}</span>}
               {imWinning && <span className="text-3xs uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.winning")}</span>}
+              {/* #vk-auction-signals: samme hairline-chip-mønster som desktop-rækken. */}
+              {isOverbid && (
+                <span className="text-3xs uppercase border border-cz-warning/40 bg-cz-warning-bg/50 text-cz-warning px-1.5 py-0.5 rounded-cz-pill">
+                  {t("auctions:badge.outbid", { amount: formatNumber(auction.myHighestBid) })}
+                </span>
+              )}
               {isSeller && <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.seller")}</span>}
               {auction.status === "extended" && <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.extended")}</span>}
               {auction.is_flash && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.flash")}</span>}
@@ -1438,11 +1459,10 @@ export default function AuctionsPage() {
   const myLeadingAuctions = auctions.filter(a =>
     getAuctionLeaderId(a) === myTeamId && !isManagerSeller(a, myTeamId)
   );
-  const myOverbidAuctions = auctions.filter(a => {
-    if (isManagerSeller(a, myTeamId)) return false;
-    const leaderId = getAuctionLeaderId(a);
-    return a.myHighestBid && leaderId !== null && leaderId !== myTeamId;
-  });
+  // #vk-auction-signals: samme diskriminator som rad-/kort-chippen (isOverbidForMe,
+  // auctionLogic.js) — én kilde til sandhed for "Min situation"-tælleren og den
+  // vedvarende overbudt-markering, så de aldrig kan komme ud af trit.
+  const myOverbidAuctions = auctions.filter(a => isOverbidForMe(a, myTeamId));
   const mySituationIds = new Set([
     ...myLeadingAuctions.map(a => a.id),
     ...myOverbidAuctions.map(a => a.id),

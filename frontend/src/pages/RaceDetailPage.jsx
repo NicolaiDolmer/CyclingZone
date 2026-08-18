@@ -1388,12 +1388,17 @@ function ResultEntityCell({ row, highlightWinner, t, moments, stageNumber }) {
 function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
+  // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
+  // (fx top-3 i point- eller bjergkonkurrencen), ikke antallet af trøje-point
+  // rytteren faktisk har samlet i jagten på trøjen. Uden kolonneoverskrifter
+  // læste spillere dette tal som trøje-stillingen — se #3913. Kolonnen hedder
+  // nu eksplicit "Præmiepoint" og er nedtonet i styling.
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
-  // #3519: mountain/points-klassementernes FAKTISKE løbende total (hvorfor er
-  // rangen X? — se raceClassificationTotals.js). Egen kolonne, adskilt fra
-  // showPoints/points_earned ovenfor (præmiepoint for at ramme podiet i denne
-  // klassement — en helt anden pointskala, ofte 0 hvis ejeren ikke har
-  // konfigureret race_points for disse result_types).
+  // #3519: mountain/points-klassementernes FAKTISKE løbende total (sprint_points/
+  // kom_points summeret pr. rytter, raceClassificationTotals.js) — DETTE er
+  // tallet der forklarer rangordenen i point-/bjergkonkurrencen, altså trøje-
+  // point. Vises nu som "Trøjepoint", med den fremhævede accent-styling der
+  // tidligere fejlagtigt sad på præmiepoint-kolonnen (#3913).
   const showPointsTotal = pointsTotalByRider != null && rows.some(r => (pointsTotalByRider.get(r.rider_id) ?? 0) > 0);
   // Gap-kolonne kun når motoren har skrevet tider (stage/gc fra Race Engine v2);
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
@@ -1421,6 +1426,29 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
         <div className={WRAP}>
           <div className={SCROLLER}>
             <table data-sort-exempt="Loebsresultat, sorteret paa placering (rank)" className="w-full text-sm">
+              {(showPoints || showPointsTotal) && (
+                // #3913: kun de to point-kolonner har brug for en overskrift —
+                // det er dem der ellers er umulige at kende fra hinanden.
+                // Rank/navn/hold/tid er selvforklarende ved deres placering.
+                <thead>
+                  <tr className="text-3xs uppercase tracking-wide text-cz-3">
+                    <th className="px-4 py-1 font-medium" scope="col"></th>
+                    <th className="px-2 py-1 font-medium" scope="col"></th>
+                    {showTeamCol && <th className="px-2 py-1 font-medium" scope="col"></th>}
+                    {showTime && <th className="px-3 py-1 font-medium" scope="col"></th>}
+                    {showPointsTotal && (
+                      <th className="px-4 py-1 text-right font-medium whitespace-nowrap" scope="col">
+                        {t("detail.table.jerseyPoints")}
+                      </th>
+                    )}
+                    {showPoints && (
+                      <th className="px-4 py-1 text-right font-medium whitespace-nowrap" scope="col">
+                        {t("detail.table.prizePoints")}
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+              )}
               <tbody className="divide-y divide-cz-border">
                 {visibleRows.map(r => {
                   const isWinner = highlightWinner && r.rank === 1;
@@ -1445,16 +1473,16 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                         {r.finish_time || ""}
                       </td>
                     )}
-                    {showPoints && (
-                      <td className="px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap">
-                        {(r.points_earned ?? 0) > 0 ? `${formatNumber(r.points_earned)} pt` : ""}
-                      </td>
-                    )}
                     {showPointsTotal && (
-                      <td className="px-4 py-2 text-right text-cz-1 font-mono text-xs whitespace-nowrap tabular-nums">
+                      <td className="px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap tabular-nums">
                         {(pointsTotalByRider.get(r.rider_id) ?? 0) > 0
                           ? t("detail.passages.points", { count: pointsTotalByRider.get(r.rider_id) })
                           : ""}
+                      </td>
+                    )}
+                    {showPoints && (
+                      <td className="px-4 py-2 text-right text-cz-3 font-mono text-xs whitespace-nowrap">
+                        {(r.points_earned ?? 0) > 0 ? `${formatNumber(r.points_earned)} pt` : ""}
                       </td>
                     )}
                   </tr>

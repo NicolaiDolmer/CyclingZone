@@ -190,7 +190,7 @@ test("developRiderSeason: træningsfokus vokser fokus-evne mere end uden trænin
   const caps = buildCaps(ab, "climber", 5);
   const training = {
     focusAbilities: new Set(["climbing"]),
-    focusMult: 1.6, offFocusMult: 0.9, setbackHit: false,
+    focusMult: 1.6, offFocusMult: 0.9,
   };
   const plain = developRiderSeason(rider, ab, caps, 1).next;
   const trained = developRiderSeason(rider, ab, caps, 1, undefined, training).next;

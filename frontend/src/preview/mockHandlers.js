@@ -50,6 +50,7 @@ import {
   SEED_GLOBAL_RANK_SEASON_START,
   COMPLETED_AUCTIONS,
   COMPLETED_AUCTION_BIDS,
+  SEED_TEAM_RACE_POINTS_MV,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -387,6 +388,23 @@ export function restRows(table, requestUrl = "") {
     // #3102 etape 2: pointtabellen bag Point & præmier-fanen.
     case "race_points":
       return SEED_RACE_POINTS;
+    // vk-movement-signals — hold-point PR. LØB. Dashboardets
+    // bevægelses-signaler filtrerer på race_id=in.(...) (sidste løbsdags
+    // race_id'er); StandingsPage's progressions-graf henter uscopet (kun
+    // season_id, ingen race_id-filter) → hele seedet.
+    case "team_race_points_mv": {
+      const inMatch = decodeURIComponent(url.search).match(/race_id=in\.\(([^)]*)\)/);
+      if (inMatch) {
+        const ids = new Set(inMatch[1].split(",").map((s) => s.trim().replace(/^"|"$/g, "")));
+        return SEED_TEAM_RACE_POINTS_MV.filter((r) => ids.has(r.race_id));
+      }
+      const eqMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (eqMatch) {
+        const id = decodeURIComponent(eqMatch[1]);
+        return SEED_TEAM_RACE_POINTS_MV.filter((r) => r.race_id === id);
+      }
+      return SEED_TEAM_RACE_POINTS_MV;
+    }
     case "hall_of_fame": {
       const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
       if (idMatch) {
