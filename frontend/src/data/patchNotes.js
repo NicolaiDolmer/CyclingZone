@@ -9,6 +9,98 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+              "category": "fixed",
+              "audience": "player",
+              "topic": "Races",
+              "en": {
+                      "title": "Points and mountains standings now show jersey points",
+                      "body": "The points and mountains classification tables highlighted prize points instead of the actual jersey points. The jersey total is now the clearly labelled main column, prize points moved to a quieter spot."
+              },
+              "da": {
+                      "title": "Point- og bjergklassement viser nu troejepoint",
+                      "body": "Point- og bjergklassementets tabeller fremhaevede praemiepoint i stedet for de faktiske troejepoint. Troeje-totalen er nu den tydeligt maerkede hovedkolonne, praemiepoint staar mere diskret."
+              },
+              "refs": [
+                      3913
+              ]
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Dashboard",
+              "en": {
+                      "title": "Today's stages at the top of your dashboard",
+                      "body": "A new strip at the top of the dashboard shows your races today: stage, terrain, start time in your local time, live status or winner, and your overall position. Tap a card to jump straight to the race."
+              },
+              "da": {
+                      "title": "Dagens etaper oeverst paa dit dashboard",
+                      "body": "En ny stribe oeverst paa dashboardet viser dine loeb i dag: etape, terraen, starttid i din lokale tid, live-status eller vinder, og din samlede placering. Tryk paa et kort for at hoppe direkte til loebet."
+              },
+              "refs": [
+                      3915
+              ]
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Dashboard",
+              "en": {
+                      "title": "See which way your division standing is moving",
+                      "body": "Your division standing on the dashboard now shows movement since the last race day: position change and points change, with the same arrows used elsewhere in the game."
+              },
+              "da": {
+                      "title": "Se hvilken vej din divisionsplacering bevaeger sig",
+                      "body": "Din divisionsstilling paa dashboardet viser nu bevaegelse siden sidste loebsdag: placerings- og point-aendring, med de samme pile som resten af spillet."
+              },
+              "refs": []
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Market",
+              "en": {
+                      "title": "Outbid? Now you can see it",
+                      "body": "Being outbid used to show only as a 4 second toast. Auctions where you are outbid now stay marked until you act, and the auction history marks real bidding wars with 2 or more bidders."
+              },
+              "da": {
+                      "title": "Overbudt? Nu kan du se det",
+                      "body": "At blive overbudt blev kun vist som en 4 sekunders toast. Auktioner hvor du er overbudt er nu markeret indtil du reagerer, og auktionshistorikken markerer aegte budkrige med 2 eller flere budgivere."
+              },
+              "refs": []
+      },
+      {
+              "category": "fixed",
+              "audience": "player",
+              "topic": "Teams",
+              "en": {
+                      "title": "Other teams' pages open on the squad tab again",
+                      "body": "Visiting another team could land you on the tab you used on the previous team, and the back button forgot your tab. Team pages now open on the squad tab, and your tab choice sticks in the address bar."
+              },
+              "da": {
+                      "title": "Andre holds sider aabner paa trup-fanen igen",
+                      "body": "Et besoeg paa et andet hold kunne lande paa fanen fra det forrige hold, og tilbage-knappen glemte dit fanevalg. Holdsider aabner nu paa trup-fanen, og dit fanevalg huskes i adresselinjen."
+              },
+              "refs": [
+                      3916
+              ]
+      },
+      {
+              "category": "improved",
+              "audience": "player",
+              "topic": "UI",
+              "en": {
+                      "title": "Cleaner sidebar header",
+                      "body": "The sidebar corner now shows only the Cycling Zone wordmark. Your team name already lives on the dashboard and My Team, so it no longer doubles up next to the logo."
+              },
+              "da": {
+                      "title": "Renere sidebar-header",
+                      "body": "Sidebar-hjoernet viser nu kun Cycling Zone-wordmarket. Dit holdnavn findes allerede paa dashboardet og Mit Hold, saa det staar ikke laengere dobbelt ved siden af logoet."
+              },
+              "refs": [
+                      2181
+              ]
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "topic": "Auctions",
