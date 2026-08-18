@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.144",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training no longer risks a setback",
+          "body": "Higher intensity used to carry a small chance of a setback that slowed a rider's growth for the season. That risk is gone. Hard training still costs more fatigue than easy or normal, so the choice still matters."
+        },
+        "da": {
+          "title": "Træning risikerer ikke længere et tilbageslag",
+          "body": "Højere intensitet gav tidligere en lille chance for et tilbageslag der bremsede en rytters vækst i sæsonen. Den risiko er væk. Hård træning koster stadig mere træthed end let eller normal, så valget betyder stadig noget."
+        },
+        "refs": [
+          3758
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.143",
     "date": "2026-08-18",
     "label": "Beta",
