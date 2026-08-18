@@ -21,6 +21,7 @@ import { buildContractExpiringNotification } from "./notificationService.js";
 import {
   buildSwapCancelledStaleNotification,
   buildSwapCompletedNotification,
+  buildSwapOnAuctionCancelledNotification,
   buildTransferOnAuctionCancelledNotification,
   buildTransferStaleCancelledNotification,
   buildTransferCompletedNotification,
@@ -775,6 +776,29 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     fetchTeamAuctionCommitment(supabase, swap.proposing_team_id),
     fetchTeamAuctionCommitment(supabase, swap.receiving_team_id),
   ]);
+
+  // #3940 TOCTOU-guard, swap-parallel til executeTransferOffer's #1748(a)-guard
+  // ovenfor: hvis en af de to byttede ryttere er kommet på en AKTIV auktion
+  // EFTER byttehandlen blev indgået (oprettelses-gaten i api.js, #1089,
+  // fanger kun konflikten der findes VED oprettelse), må byttehandlen ikke
+  // gennemføres. Uden dette kunne samme rytter både vindes på auktionen OG
+  // byttes væk her. executeTransferOffer har haft denne guard siden #1748,
+  // executeSwapOffer manglede den (bug rapporteret via #3940). Auktionen er
+  // den vindende kanal, samme regel som transfer-siden.
+  const onAuctionRiderIds = await getActiveAuctionRiderIds(supabase, [
+    swap.offered_rider_id,
+    swap.requested_rider_id,
+  ]);
+  if (onAuctionRiderIds.length > 0) {
+    await withdrawSwapOffer(supabase, swap.id);
+    const conflictedRider = onAuctionRiderIds.includes(swap.offered_rider_id) ? offered : requested;
+    const onAuctionPayload = buildSwapOnAuctionCancelledNotification({
+      riderName: `${conflictedRider.firstname} ${conflictedRider.lastname}`,
+    });
+    await notifyTeamOwner(swap.proposing_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, swap.id, onAuctionPayload.metadata);
+    await notifyTeamOwner(swap.receiving_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, swap.id, onAuctionPayload.metadata);
+    return failure(409, "One of the swapped riders is on an active auction. The swap was cancelled. Bid on the auction instead.", "rider_on_auction_swap");
+  }
 
   // #3134 · ung-konto-cooldown, samme håndhævelse som executeTransferOffer —
   // gates den side der reelt BETALER kontant (payerId, ikke nødvendigvis

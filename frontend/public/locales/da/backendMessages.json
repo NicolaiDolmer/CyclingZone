@@ -399,6 +399,10 @@
         "title": "Byttehandel annulleret",
         "message": "{riderName} ændrede status under bekræftelsen."
       },
+      "swapOnAuctionCancelled": {
+        "title": "Byttehandel annulleret",
+        "message": "{riderName} kom på en aktiv auktion. Byttehandlen blev annulleret. Byd på auktionen i stedet."
+      },
       "swapPulledOut": {
         "title": "Byttehandel annulleret",
         "message": "{actorName} har trukket sig fra byttehandlen."
