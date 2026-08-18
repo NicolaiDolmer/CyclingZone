@@ -119,6 +119,19 @@ export async function installNetworkMocks(page) {
 // eller i18n-ændringer. Indhold valideres via expect-assertions + i18n-key-coverage,
 // ikke pixel-diff. Forward-guard mod #412 i18n-snapshot-treadmill — se
 // `.claude/learnings/2026-05-17-visual-snapshots-layout-only.md`.
+//
+// #3684: den brede tag-liste rammer OGSÅ farve-/badge-bærende elementer (fx
+// rating-pladen — statPlateStyle/statStyle sætter farven som span'ets egen
+// inline background-color), så farve-regressioner kan ikke fejle i de maskede
+// side-snapshots. En selector-undtagelse (`:not([style*="background"])`) blev
+// AFPRØVET 18/8 og målt inert: Playwright maler hele det maskede elements
+// bounding box, og pladerne sidder inde i `td`-celler der selv er i tag-listen
+// — forælderens maske maler barnet over uanset. Empirisk: fuld snapshot-refresh
+// med undtagelsen gav 0 ændrede filer. Farve-dækningen bor derfor i stedet i
+// det UMASKEREDE kitchen-sink-snapshot: "Stat colours"-sektionen på /ui viser
+// statStyle-chippen + statPlateStyle-pladen over hele rampen, så et tabt fyld,
+// en forkert flyttet skala eller manglende kontrast-blæk HAR et sted at fejle
+// (issuets løsning 2). Se `.claude/learnings/2026-08-18-pixel-mask-hid-badge-colors.md`.
 export const TEXT_MASK_SELECTOR =
   "main :is(h1,h2,h3,h4,h5,h6,p,span,a,button,li,td,th,label,time,strong,em,dt,dd)";
 
