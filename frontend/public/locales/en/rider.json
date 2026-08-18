@@ -640,10 +640,9 @@
       "labelDefault": "Auction",
       "wonBy": "won from",
       "buyerFallback": "Unknown",
+      "buyerFallbackAi": "AI team",
       "sellerFallbackAi": "AI team",
-      "sellerFallback": "Unknown",
-      "noSaleTag": "No sale",
-      "noSaleBody": "received no bids (the rider was not sold)"
+      "sellerFallback": "Unknown"
     },
     "transfer": {
       "label": "Transfer",

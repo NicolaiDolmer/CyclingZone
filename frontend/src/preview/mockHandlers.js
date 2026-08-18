@@ -42,6 +42,7 @@ import {
   SEED_SCOUTING_REPORT,
   SEED_MANAGER_TRANSFERS,
   SEED_TRANSFER_HISTORY,
+  SEED_RIDER_HISTORY,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
   SEED_GLOBAL_RANK,
@@ -881,6 +882,13 @@ export function apiResponse(pathname, search = "") {
   // tjekkes FØR /development (endsWith er disjunkt, men rækkefølgen holder intentionen klar).
   if (pathname.endsWith("/development-projection")) return SEED_PROJECTION;
   if (pathname.endsWith("/development")) return SEED_DEVELOPMENT;
+
+  // #3708: rytterens egen historik (RiderHistoryTab, "History (Players)").
+  // Uden denne faldt fladen tilbage til den generiske {} nedenfor → tom
+  // historik på preview/e2e, selvom no_sale-filtreringen og AI-fallback'en
+  // netop skal bevises her. Statisk fixture (samme mønster som SEED_DEVELOPMENT
+  // ovenfor) — ikke id-filtreret, ægte backend filtrerer på rider_id.
+  if (pathname.endsWith("/history") && /\/api\/riders\/[^/]+\/history$/.test(pathname)) return SEED_RIDER_HISTORY;
 
   // #3334: Scouting-fanens rapport — provenance (navngiven scout + tier) +
   // loft-bånd. Tjekkes FØR /scouting (disjunkt endsWith, samme mønster som

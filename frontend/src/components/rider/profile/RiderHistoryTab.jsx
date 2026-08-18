@@ -19,7 +19,6 @@ const GRID = "grid grid-cols-[58px_64px_minmax(0,1fr)_78px] sm:grid-cols-[84px_8
 
 const CHIP_TONE = {
   auction: "text-cz-accent-t",
-  auction_no_sale: "text-cz-3",
   bid: "text-cz-info",
   transfer: "text-cz-accent-t",
   swap: "text-cz-info",
@@ -28,7 +27,6 @@ const CHIP_TONE = {
 function chipLabel(kind, row, t) {
   switch (kind) {
     case "auction":
-    case "auction_no_sale":
       return row.is_ai_sale ? t("history.auction.labelAi")
         : row.is_guaranteed_sale ? t("history.auction.labelGuaranteed")
         : t("history.auction.labelDefault");
@@ -58,16 +56,12 @@ function EventCell({ row, t }) {
     case "auction":
       return (
         <>
-          {link(row.buyer, t("history.auction.buyerFallback"))}
+          {/* #3708: garanteret AI-salg sætter ikke current_bidder_id (winner er
+              tom), men er stadig et reelt salg — "AI team" i stedet for det
+              generiske "Unknown", som gav indtryk af en datafejl. */}
+          {link(row.buyer, row.is_guaranteed_sale ? t("history.auction.buyerFallbackAi") : t("history.auction.buyerFallback"))}
           <span className="text-cz-3"> {t("history.auction.wonBy")} </span>
           {link(row.seller, row.is_ai_sale ? t("history.auction.sellerFallbackAi") : t("history.auction.sellerFallback"))}
-        </>
-      );
-    case "auction_no_sale":
-      return (
-        <>
-          {link(row.seller, t("history.auction.sellerFallback"))}
-          <span className="text-cz-3"> {t("history.auction.noSaleBody")}</span>
         </>
       );
     case "bid":
