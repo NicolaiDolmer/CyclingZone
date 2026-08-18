@@ -54,7 +54,10 @@ const API = import.meta.env.VITE_API_URL;
 // (T2-recipe, sticky navnekolonne) og var fejlagtigt fanget i shellens
 // max-w-6xl selvom sidens egen container allerede stod på max-w-[1600px]
 // (samme fejlklasse som #1675/#1186/#2446 — se PAGE_TEMPLATES.md).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/academy"]);
+// #3858: "/race-centre" er en T2 wide data-side (sendefladen skal have plads til
+// tre kort-kolonner) — den capper selv på 1600px, shellen må bare ikke klemme
+// den ned i max-w-6xl.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/race-centre", "/academy"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -173,6 +176,9 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       // genvejene (holdudtagelse, kalender) er flyttet til Planlægning ovenfor.
       key: "resultater", label: t("nav.group.resultater"),
       items: [
+        // #3858: Race Centre er dagens sendeflade og står ØVERST i gruppen —
+        // "hvad sker der lige nu" kommer før "hvad er sket".
+        { to: "/race-centre",    label: t("nav.item.raceCentre") },
         { to: "/resultater",     label: t("nav.item.results") },
         // #3102 etape 3: "Løb"-punktet udgik — /races er opløst (kalenderen bor
         // i Planlægnings-hubben, verdens-kataloget + de afsluttede løb i
