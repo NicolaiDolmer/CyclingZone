@@ -6,7 +6,7 @@
 // af serveren sendes uden forklaring).
 export function BidRoomBlockNotice({ reason, t }) {
   return (
-    <div className="text-2xs text-cz-warning bg-cz-warning-bg rounded px-2 py-1 leading-snug">
+    <div className="text-2xs text-cz-warning bg-cz-warning-bg rounded-cz px-2 py-1 leading-snug">
       {t(reason === "both_full" ? "auctions:bidGate.bothFull" : "auctions:bidGate.seniorFull")}
     </div>
   );

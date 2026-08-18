@@ -133,6 +133,9 @@
     "line": "Leading: {name}",
     "none": "No bids yet"
   },
+  "list": {
+    "countLine": "Showing {shown} of {total} auctions"
+  },
   "timer": {
     "completed": "Completed",
     "expired": "Expired",

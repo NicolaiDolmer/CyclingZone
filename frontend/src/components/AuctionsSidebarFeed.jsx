@@ -5,6 +5,7 @@
 
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { EmptyState, InboxIcon } from "./ui";
 
 // #3401: teamNamesById er en best-effort snapshot af AuctionsPage's egen
 // teamNameCacheRef (ingen ekstra fetch herfra). Bruges KUN til at berige et
@@ -38,9 +39,11 @@ export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, no
       </div>
       <div className="overflow-auto max-h-[60vh] md:max-h-[calc(100vh-260px)]">
         {visible.length === 0 ? (
-          <p className="px-4 py-6 text-cz-3 text-xs text-center">
-            {t("feed.empty")}
-          </p>
+          <EmptyState
+            icon={<InboxIcon size={20} aria-hidden="true" />}
+            title={t("feed.empty")}
+            className="border-0 bg-transparent px-4 py-6"
+          />
         ) : (
           <ul className="divide-y divide-cz-border">
             {visible.map(e => {
