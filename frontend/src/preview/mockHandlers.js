@@ -50,7 +50,6 @@ import {
   SEED_GLOBAL_RANK_SEASON_START,
   COMPLETED_AUCTIONS,
   COMPLETED_AUCTION_BIDS,
-  SEED_OPS_NOTICES,
   SEED_TEAM_RACE_POINTS_MV,
 } from "./seedData.js";
 
@@ -183,12 +182,11 @@ export function restRows(table, requestUrl = "") {
     }
     case "roadmap_items":
       return ROADMAP_ITEMS;
-    // #3941: driftsbanneret (RaceControlBanner) + Hjælp-sidens "Kendte
-    // problemer" begge forespørger denne tabel med forskellige filtre (active-
-    // vindue vs. seneste 14 dage) — mocken filtrerer ikke selv, seedet er
-    // allerede formet så begge forbrugere ser meningsfuldt indhold.
+    // #3941: tom som standard — en aktiv notice ville ellers vise banneret i
+    // ALLE siders visuelle snapshots (frontend-smoke rød 18/8). Shots-scriptet
+    // 3941-race-control-banner.shots.mjs overlejrer selv SEED_OPS_NOTICES.
     case "ops_notices":
-      return SEED_OPS_NOTICES;
+      return [];
     case "races": {
       // Per-pulje tæller-query (#1829) → puljens løb (uændret, holder dashboard-
       // snapshots stabile). id=eq.<id> → ét seed-løb (RaceDetailPage .single()).

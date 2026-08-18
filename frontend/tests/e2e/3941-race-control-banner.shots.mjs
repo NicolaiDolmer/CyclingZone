@@ -19,6 +19,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const { installNetworkMocks, login, stabilizePage, TEST_TEAM } = await import(
   pathToFileURL(resolve(__dirname, "fixtures.js")).href
 );
+const { SEED_OPS_NOTICES } = await import(
+  pathToFileURL(resolve(__dirname, "../../src/preview/seedData.js")).href
+);
+
+// mockHandlers' "ops_notices"-case er BEVIDST tom (en aktiv notice ville vise
+// banneret i alle siders snapshots). Dette script overlejrer derfor sit eget
+// route-svar; routes registreret EFTER installNetworkMocks vinder i Playwright.
+async function overlayOpsNotices(page) {
+  await page.route(/\/rest\/v1\/ops_notices/, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(SEED_OPS_NOTICES),
+    })
+  );
+}
 
 const BASE = process.argv[2] || "http://127.0.0.1:4636";
 const OUT = resolve(process.argv[3] || resolve(__dirname, "../../../pr-screens"));
@@ -39,6 +55,7 @@ for (const vp of VIEWPORTS) {
   });
   const page = await context.newPage();
   await installNetworkMocks(page);
+  await overlayOpsNotices(page);
   await stabilizePage(page);
   await login(page);
 
@@ -61,6 +78,7 @@ for (const vp of VIEWPORTS) {
   });
   const page = await context.newPage();
   await installNetworkMocks(page);
+  await overlayOpsNotices(page);
   await stabilizePage(page);
   await login(page);
 
