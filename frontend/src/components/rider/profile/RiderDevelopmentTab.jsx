@@ -29,6 +29,7 @@ import { riderHistoryFromRuns } from "../../../lib/trainingReport.js";
 import { HISTORY_DAYS } from "../../../lib/useTrainingHistory.js";
 import { chartColor } from "../../../lib/chartPalette.js";
 import { formatDate } from "../../../lib/intl.js";
+import { SkeletonLines } from "../../ui/Skeleton.jsx";
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
 
@@ -350,8 +351,8 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
   // påstand (samme mønster som Trænings-fanens loading-gate).
   if (history == null) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 flex items-center justify-center py-10">
-        <div className="w-5 h-5 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" aria-label={t("profile.development.loading")} />
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5" role="status" aria-label={t("profile.development.loading")}>
+        <SkeletonLines lines={4} />
       </div>
     );
   }
