@@ -5,10 +5,13 @@ import {
   expectMutation,
   expectMutationAffectingRows,
   getIncomingSquadViolation,
+  getOutgoingSquadViolation,
+  getSquadRiskViolation,
   getTeamMarketState,
   withdrawOpenTransferDealsForRiders,
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
+import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
@@ -1054,6 +1057,65 @@ async function finalizeAuctionRecord({
         code: "squad_full",
         auction_id: auction.id,
       };
+    }
+
+    // #2836: sælger-gulvet (MIN_RIDERS_FOR_RACE=8) tjekkes hidtil KUN ved
+    // auktions-OPRETTELSE (#2748/#2834, api.js "isOwnRider"-grenen). Mellem
+    // oprettelse og finalisering kan der gå dage — sælgeren kan i mellemtiden
+    // miste ryttere ad andre veje (kontraktudløb/pension ved sæsonskifte,
+    // andre salg/handler), så holdet kan ende under minimummet ved selve
+    // overdragelsen uden nogen kontrol. Genbruger PRÆCIS samme diskriminator
+    // som oprettelses-gaten og transferExecution's sælger-tjek
+    // (getOutgoingSquadViolation + getSquadRiskViolation), så invarianten er
+    // én kilde, ikke to divergerende implementationer.
+    //
+    // Kun relevant når sælgeren FAKTISK ejer rytteren (sellerOwned) — en
+    // AI/fri-agent-sælger eller banken har intet løbs-hold at beskytte.
+    // Kører FØR ejerskabsskiftet og FØR nogen penge flytter (samme placering
+    // som buyer-squad_full ovenfor), så et brud aldrig kan kræve refundering
+    // — pengene har simpelthen ikke bevæget sig endnu.
+    if (sellerOwned) {
+      const sellerState = await getTeamMarketState(supabase, actualSellerTeamId);
+      sellerState.at_risk_count = await fetchAtRiskCount(supabase, actualSellerTeamId, activeSeasonNumber, {
+        excludeRiderIds: [auction.rider.id],
+      });
+      const sellerFloorViolation =
+        getOutgoingSquadViolation(sellerState) ||
+        getSquadRiskViolation(sellerState, { outgoingCount: 1 });
+
+      if (sellerFloorViolation) {
+        await closeAuction({
+          supabase,
+          auction,
+          status: "completed",
+          actualEnd,
+          sellerOwned,
+        });
+
+        await notifyTeamOwner(
+          effectiveBidderId,
+          "auction_lost",
+          "Auktion annulleret",
+          `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi sælgerens hold ville falde under løbs-minimummet (${sellerFloorViolation.minRiders}).`,
+          auction.id,
+          { riderId: auction.rider.id }
+        );
+
+        await notifyTeamOwner(
+          actualSellerTeamId,
+          "auction_lost",
+          "Auktion annulleret — dit hold ville falde under minimum",
+          `${auction.rider.firstname} ${auction.rider.lastname} blev ikke overdraget, fordi dit hold ville falde under ${sellerFloorViolation.minRiders} ryttere (løbs-minimum) ved salget. Sælg ham igen når din trup har plads til det.`,
+          auction.id,
+          { riderId: auction.rider.id }
+        );
+
+        return {
+          ok: true,
+          code: "seller_squad_floor",
+          auction_id: auction.id,
+        };
+      }
     }
 
     // #1309 kontrakt-on-acquire: vinderen erhverver rytteren → opret standard-
