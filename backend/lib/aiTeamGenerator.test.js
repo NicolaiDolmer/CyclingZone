@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, deleteAiTeamById, AI_TEAM_NAME_PREFIX, __testables } from "./aiTeamGenerator.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, deleteAiTeamById, __testables } from "./aiTeamGenerator.js";
 import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { AI_SQUAD, AI_TIER_STAT_WINDOWS, AI_TIER_VALUE_CAP } from "./starterSquadAllocator.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
@@ -278,7 +278,7 @@ test("reconcile: tier-3-pulje der mister sin sidste manager tømmes for AI", asy
   assert.equal(countTeamsInPool(supabase.state, t3a.id), 0, "puljen tom (politik: tier 3/4 uden manager = ingen AI)");
 });
 
-test("AI-hold får is_ai=true, division=pool.tier og pulje-id; navn har AI-præfiks", async () => {
+test("AI-hold får is_ai=true, division=pool.tier og pulje-id; navn har intet AI-præfiks", async () => {
   const pools = seedPools();
   const t1 = poolByTierIndex(pools, 1, 0);
   const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
@@ -292,8 +292,10 @@ test("AI-hold får is_ai=true, division=pool.tier og pulje-id; navn har AI-præf
     assert.equal(t.division, 1, "division = pool.tier");
     assert.equal(t.league_division_id, t1.id, "league_division_id = pool.id");
     assert.ok(typeof t.name === "string" && t.name.length > 0, "navn sat");
+    // #1775: identifikation sker via is_ai, aldrig via navnet — holdnavnet må
+    // ikke starte med "AI" (badget i UI'en er den skelnelige markør).
+    assert.ok(!t.name.startsWith("AI "), `navn har intet AI-præfiks: ${t.name}`);
   }
-  assert.ok(aiTeams.some((t) => t.name.startsWith(AI_TEAM_NAME_PREFIX)), "AI-navn har præfiks");
 });
 
 test("determinisme: samme seed → samme AI-holdnavne", async () => {
