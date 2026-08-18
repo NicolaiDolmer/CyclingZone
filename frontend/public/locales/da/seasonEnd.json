@@ -90,10 +90,21 @@
       "prizeLeader": "Præmie-fører i division {division}",
       "biggestSale": "Sæsonens største salg",
       "stageKing": "Holdets etapekonge: {name}",
-      "stageKingValue": "{count, plural, one {# sejr} other {# sejre}}"
+      "stageKingValue": "{count, plural, one {# sejr} other {# sejre}}",
+      "turningPoint": "Sæsonens bedste dag",
+      "turningPointValue": "{race} · {points} point",
+      "biggestResult": "Bedste individuelle resultat",
+      "biggestResultValue": "{rider} · {race}",
+      "rival": "Tætteste rival: {team}",
+      "rivalBeatenBy": "slået med {n} point",
+      "rivalBehindBy": "{n} point bagud"
     },
-    "share": "Kopiér link til opsummering",
-    "shareCopied": "Link kopieret"
+    "copyLink": "Kopiér link til opsummering",
+    "linkCopied": "Link kopieret",
+    "downloadCard": "Download delekort",
+    "downloading": "Forbereder…",
+    "downloadError": "Kunne ikke lave billedet. Prøv igen.",
+    "shareCardMeta": "Division {division} · #{rank} af {size}"
   },
   "documentary": {
     "heading": "Dokumentaren",
@@ -102,15 +113,12 @@
     "error": "Kunne ikke indlæse sæsondokumentaren.",
     "sourceLlm": "AI-poleret fortælling",
     "sourceDeterministic": "Sæsonfortælling",
-    "export": "Download delekort",
-    "exporting": "Forbereder…",
-    "exportError": "Kunne ikke lave billedet. Prøv igen.",
     "card": {
       "eyebrow": "Sæson {number}-dokumentar",
-      "signing": "Sæsonens signing",
+      "turningPoint": "Vendepunkt",
+      "pts": "point",
       "result": "Største resultat",
       "rival": "Tætteste rival",
-      "points": "point",
       "finalPoints": "Slutpoint"
     }
   }
