@@ -9,6 +9,48 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "See rider popularity before you buy",
+          "body": "Rider popularity (0 to 100) now shows on the rider profile and as a sortable column in the market. Your board sets popularity goals, and now you can actually shop for them."
+        },
+        "da": {
+          "title": "Se rytterens popularitet før du køber",
+          "body": "Rytter-popularitet (0 til 100) vises nu på rytterprofilen og som sortérbar kolonne i markedet. Bestyrelsen stiller popularitetsmål, og nu kan du faktisk handle efter dem."
+        },
+        "refs": [3622]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Accepted bonus offers can no longer vanish",
+          "body": "Accepting a board bonus offer is now a single safe step. Four teams hit the old bug and have each been credited the missing 200,000."
+        },
+        "da": {
+          "title": "Accepterede bonus-tilbud kan ikke længere forsvinde",
+          "body": "Accept af et bonus-tilbud fra bestyrelsen er nu ét sikkert skridt. Fire hold ramte den gamle fejl og har hver fået de manglende 200.000 godskrevet."
+        },
+        "refs": [3578, 3655]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "New teams keep their starting squad",
+          "body": "Starter contracts now always run 2 to 3 seasons. A team created late in a season no longer loses most of its riders at the first season end."
+        },
+        "da": {
+          "title": "Nye hold beholder deres starttrup",
+          "body": "Starter-kontrakter løber nu altid 2 til 3 sæsoner. Et hold oprettet sent i en sæson mister ikke længere størstedelen af truppen ved førstkommende sæsonslut."
+        },
+        "refs": [3037]
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "topic": "Transfers",
@@ -21,6 +63,62 @@ export const PATCHES = [
           "body": "Byttede du dig til en modstanders akademi-rytter, fulgte hans akademi-flag råt med, så han kunne lande i din trup selvom akademiet var fuldt: ét hold endte med 9 ryttere på 8 pladser. En byttet akademi-rytter graduerer nu til senior ved ankomsten, ligesom et salg på transfermarkedet allerede gør, så et bytte aldrig kan skubbe dig over loftet."
         },
         "refs": [2797]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Cleaner transfer history",
+          "body": "Auctions that ended without bids no longer clutter the history, and AI teams are named instead of showing a dash or Unknown."
+        },
+        "da": {
+          "title": "Renere transferhistorik",
+          "body": "Auktioner uden bud fylder ikke længere historikken, og AI-hold navngives i stedet for en streg eller Unknown."
+        },
+        "refs": [3708]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Old youth free agents recalibrated",
+          "body": "139 unowned youth riders from old academy batches carried stats from an outdated calibration. They now match the youth band, with values to match."
+        },
+        "da": {
+          "title": "Gamle frie ungdomsryttere rekalibreret",
+          "body": "139 uejede ungdomsryttere fra gamle akademi-kuld bar stats fra en forældet kalibrering. De matcher nu ungdomsbåndet, med tilsvarende værdier."
+        },
+        "refs": [3614]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Small fixes",
+          "body": "The notification badge now counts up to 99+. Season dates no longer show the previous day for players west of UTC. The app loads noticeably faster on first visit."
+        },
+        "da": {
+          "title": "Små forbedringer",
+          "body": "Notifikations-badgen tæller nu op til 99+. Sæson-datoer viser ikke længere dagen før for spillere vest for UTC. Appen loader mærkbart hurtigere ved første besøg."
+        },
+        "refs": [3439, 3724, 3697]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Under the hood",
+          "body": "A database level guard now makes rider double-booking impossible, forced sales complete safely after interruptions, and academy sales count correctly in the academy overview going forward."
+        },
+        "da": {
+          "title": "Under motorhjelmen",
+          "body": "En vagt på database-niveau gør dobbeltbooking af ryttere umulig, tvangssalg gennemføres sikkert efter afbrydelser, og akademi-salg tæller fremadrettet korrekt i akademi-overblikket."
+        },
+        "refs": [3420, 2982, 2793]
       }
     ]
   },
