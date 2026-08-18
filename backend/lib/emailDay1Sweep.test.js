@@ -48,16 +48,26 @@ function makeSupabase(
       if (table === "race_results") {
         let teamId = null;
         return {
-          select() { return this; },
+          // #3585: race_results has no created_at column — pin the exact
+          // select/order strings so a regression to the wrong column name
+          // fails this mock loudly instead of silently ignoring it.
+          select(cols) {
+            assert.equal(cols, "id, race_id, imported_at");
+            return this;
+          },
           eq(_col, id) { teamId = id; return this; },
-          order() { return this; },
+          order(col, opts) {
+            assert.equal(col, "imported_at");
+            assert.deepEqual(opts, { ascending: false });
+            return this;
+          },
           limit: async () => {
             if (resultsErrorForTeamIds.includes(teamId)) {
               return { data: null, error: { message: "connection reset" } };
             }
             return {
               data: resultTeamIds.includes(teamId)
-                ? [{ id: `result-${teamId}`, race_id: raceIdByTeamId[teamId] ?? null, created_at: "2026-07-19T00:00:00Z" }]
+                ? [{ id: `result-${teamId}`, race_id: raceIdByTeamId[teamId] ?? null, imported_at: "2026-07-19T00:00:00Z" }]
                 : [],
               error: null,
             };

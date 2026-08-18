@@ -155,6 +155,9 @@ export const ALL_CRON_MONITORS = [
   ["email-welcome", CRON_MONITOR_5MIN],
   ["email-day1", CRON_MONITOR_60MIN],
   ["email-race-digest", CRON_MONITOR_60MIN],
+  // #3600: retry-drain for e-mails der fejlede med en retryable Resend-fejl —
+  // samme kadence som discord-dm-outbox-drain/discord-webhook-outbox-drain.
+  ["email-retry-drain", CRON_MONITOR_5MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_24H],
   // #3402: sæsondokumentar-sweep — polleren der fylder season_documentaries op

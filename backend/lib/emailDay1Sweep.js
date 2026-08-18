@@ -19,9 +19,17 @@
 // does not block the rest of the sweep).
 //
 // #3310 (dormant, flag stays off / #2853 unchanged): the same lookup also
-// orders by created_at desc and selects race_id, so the hasResults=true
+// orders by imported_at desc and selects race_id, so the hasResults=true
 // branch can deep-link the CTA straight to the manager's latest race
 // (buildDay1Email's latestRaceId) instead of the generic dashboard.
+//
+// #3585: race_results has no created_at column (it has imported_at — the
+// timestamp the import job wrote the row, verified against
+// database/schema-snapshot.json). The lookup below used to select/order on
+// created_at, which PostgREST rejects for every team the instant the email
+// loop is switched on. Latent until then because isEmailLoopActive() short-
+// circuits the whole sweep while the flag is off (see #3572 for the same
+// shape of bug).
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
@@ -74,9 +82,9 @@ export async function runEmailDay1Sweep({
 
       const { data: resultRows, error: resultsError } = await supabase
         .from("race_results")
-        .select("id, race_id, created_at")
+        .select("id, race_id, imported_at")
         .eq("team_id", team.id)
-        .order("created_at", { ascending: false })
+        .order("imported_at", { ascending: false })
         .limit(1);
       if (resultsError) throw new Error(`race_results lookup: ${resultsError.message}`);
       const hasResults = (resultRows || []).length > 0;

@@ -79,6 +79,7 @@ import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; /
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
+import { processEmailRetryDrain } from "./lib/emailRetrySweep.js"; // #3600
 import { runDiscordRaceDigestSweep } from "./lib/discordRaceDigestSweep.js"; // #3400
 import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // #3402
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
@@ -1090,6 +1091,17 @@ async function runEmailRaceDigestSweepCron() {
   if (r.sent) console.log(`✉️  Email-race-digest: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
 }
 
+// #3600 — retry af Resend-sends der fejlede med en retryable fejl
+// (5xx/rate-limit/netværk). Samme mønster som Discord DM-/webhook-outbox
+// (#1115/#3545): dormant sammen med resten af e-mail-loopet (no-op mens
+// email_loop_enabled ikke er "on"), så den er sikker at have kørende.
+async function runEmailRetryDrainCron() {
+  const r = await processEmailRetryDrain({ supabase, now: new Date() });
+  if (r.processed) {
+    console.log(`✉️  Email retry-drain: ${r.processed} behandlet — ${r.sent} sendt, ${r.rescheduled} replanlagt, ${r.dead} opgivet`);
+  }
+}
+
 // #3400: Discord-DM-digest for race_result/stage_result (max 1/manager/dag,
 // egen time-gate — se discordRaceDigestSweep.js's header for begrundelsen).
 async function runDiscordRaceDigestSweepCron() {
@@ -1516,6 +1528,12 @@ export function startCron() {
     trackedTick("email-race-digest sweep", monitorCron("email-race-digest", runEmailRaceDigestSweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
   );
+  // #3600 — retry-drain for fejlede sends, samme 5-min-kadence som Discords
+  // DM-/webhook-outbox-drains.
+  setInterval(
+    trackedTick("email retry-drain", monitorCron("email-retry-drain", runEmailRetryDrainCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
   setInterval(
     trackedTick("discord-race-digest sweep", monitorCron("discord-race-digest", runDiscordRaceDigestSweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
@@ -1558,6 +1576,9 @@ export function startCron() {
   trackedTick("discord bot-token check", runDiscordBotTokenCheck)();
   trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain)();
   trackedTick("discord webhook-outbox drain", runDiscordWebhookOutboxDrain)();
+  // #3600: safe boot-run — no-op unless email_loop_enabled is "on" (dormant
+  // in prod today), and idempotent when it is (dedupe_key stays unique).
+  trackedTick("email retry-drain", runEmailRetryDrainCron)();
   // #2375: kør entry-generatoren straks ved boot, så et deploy fylder mid-sæson-
   // genskabte 0-entry-løb med det samme frem for at vente op til en time.
   trackedTick("entry-generator sweep", runRaceEntryGeneratorSweepCron)();
