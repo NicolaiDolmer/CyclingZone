@@ -1732,6 +1732,8 @@ const DEV_TRANSITION_BACKUP_TABLE = "rider_caps_3746_backup_20260816";
 router.get("/development/transition", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    // schema-columns-ok: kolonnen tilføjes af database/2026-08-18-3746-dev-
+    // transition-dismiss.sql (applies post-merge under #2642); 42703-graceful indtil da
     const { data: teamRow, error: teamErr } = await supabase
       .from("teams").select("dev_transition_dismissed_at").eq("id", req.team.id).maybeSingle();
     if (teamErr && teamErr.code !== "42703") throw new Error(`teams (transition dismiss): ${teamErr.message}`);
@@ -1739,6 +1741,7 @@ router.get("/development/transition", requireAuth, async (req, res) => {
 
     const { data: riders, error: rErr } = await supabase
       .from("riders")
+      // pagination-safe: ét holds trup er bounded af rostergrænsen (~30 ryttere)
       .select("id, potentiale, firstname, lastname, birthdate, primary_type, secondary_type")
       .eq("team_id", req.team.id);
     if (rErr) throw new Error(`riders (transition): ${rErr.message}`);
@@ -1803,6 +1806,7 @@ router.get("/development/transition", requireAuth, async (req, res) => {
     const down = rows.filter((r) => r.loftFoer != null && r.loftNu != null && r.loftNu < r.loftFoer).length;
     res.json({ active: true, capturedAt, up, down, total: rows.length, rows });
   } catch (err) {
+    captureException(err, { tags: { route: "/development/transition" } });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1817,6 +1821,7 @@ router.post("/development/transition/dismiss", requireAuth, async (req, res) => 
     if (error && error.code !== "42703") throw new Error(`teams (transition dismiss): ${error.message}`);
     res.json({ ok: true });
   } catch (err) {
+    captureException(err, { tags: { route: "/development/transition/dismiss" } });
     res.status(500).json({ error: err.message });
   }
 });
