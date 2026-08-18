@@ -1230,9 +1230,13 @@ export default function RiderStatsPage() {
       // #2000: PCM stat_* droppet fra denne select — typeLabel afleder nu af de
       // udledte evner (rider_derived_abilities, hentet nedenfor). Ingen andre
       // visnings-flader på rytterprofilen læser riders.stat_* længere.
+      // #3622: popularity tilføjet — samme rå kolonne som bestyrelsens star-score
+      // (boardIdentity.calculateRiderStarScore) læser; klient-grant findes allerede
+      // (2026-06-10-riders-potentiale-column-privilege.sql grantede alt undtagen
+      // potentiale), så ingen ny migration er nødvendig.
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
         market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, pending_team_id,
-        nationality_code, primary_type, secondary_type, team_id, acquired_at,
+        nationality_code, primary_type, secondary_type, team_id, acquired_at, popularity,
         team:team_id(id, name, is_ai, is_bank, division),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
       // ALLE rækker (pagineret) til Resultater-fanen — både PCS-tabellen og

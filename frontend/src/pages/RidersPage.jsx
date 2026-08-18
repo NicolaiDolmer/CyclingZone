@@ -134,6 +134,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
     { key: "primary_type", label: t("table.type") },
     { key: "value", label: t("table.value") },
     { key: "salary", label: t("table.salary") },
+    { key: "popularity", label: t("table.popularity") },
   ];
   const options = [...baseOptions, ...statCols.map(({ key, label }) => ({ key, label }))];
   const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
@@ -302,7 +303,11 @@ export default function RidersPage() {
   async function loadRiders({ silent = false } = {}) {
     if (!silent) { setLoading(true); setError(null); }
     // Evnerne hentes via join + flades op på rytter-objektet i fetchRidersPage (#1529).
-    const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, team:team_id(id, name), pending_team:pending_team_id(id, name)";
+    // #3622: popularity tilføjet — samme rå kolonne som bestyrelsens star-score
+    // (boardIdentity.calculateRiderStarScore) læser. Klient-grant findes allerede
+    // (2026-06-10-riders-potentiale-column-privilege.sql grantede alt undtagen
+    // potentiale), så ingen ny migration er nødvendig.
+    const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, popularity, team:team_id(id, name), pending_team:pending_team_id(id, name)";
     try {
       const [{ rows, count }, { data: auctionData }] = await Promise.all([
         fetchRidersPage(supabase, { filters, page: filters.page, pageSize: 50, riderSelect, seasonYear }),
@@ -526,6 +531,26 @@ export default function RidersPage() {
       sortKey: "salary",
       numeric: true,
       render: (r) => <span className="text-cz-2">{formatNumber(getRiderSalary(r))}</span>,
+    },
+    // #3622: popularitet var kun synlig i bestyrelsen (star-score-blandingen,
+    // boardIdentity.calculateRiderStarScore); den rå værdi (samme kolonne, 0-100)
+    // vises nu i markedet så en spiller kan finde ryttere over bestyrelsens
+    // tærskel FØR køb. Plain tal (ikke ability-farvepladen — populationen er ikke
+    // evne-kalibreret, statColor.js's fire-skala-advarsel). Sortérbar: rå
+    // riders.popularity-kolonne, samme mønster som value/salary (applyRiderColumnSort).
+    {
+      key: "popularity",
+      header: <span title={t("table.popularityTitle")}>{t("table.popularity")}</span>,
+      sortKey: "popularity",
+      numeric: true,
+      compact: true,
+      fold: true,
+      foldValue: (r) => Number.isFinite(r.popularity) ? String(r.popularity) : "—",
+      render: (r) => (
+        <span className="text-cz-2 font-mono text-xs">
+          {Number.isFinite(r.popularity) ? r.popularity : "—"}
+        </span>
+      ),
     },
     ...visibleStatCols.map(({ key, label }) => ({
       key,

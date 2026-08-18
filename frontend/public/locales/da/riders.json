@@ -19,6 +19,8 @@
     "type": "Type",
     "value": "Værdi",
     "salary": "Løn",
+    "popularity": "Popularitet",
+    "popularityTitle": "Fan-popularitet (0-100). Bruges af bestyrelsens 5-års-plan-mål om stjerneryttere.",
     "compareTooltip": "Vælg til sammenligning",
     "teamFree": "Fri",
     "pendingTransfer": "Holdskifte på vej: skifter til {team}, når hans igangværende etapeløb er kørt færdigt"
