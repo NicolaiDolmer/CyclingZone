@@ -8,6 +8,7 @@ import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import {
   windowsOverlap, raceBindingWindow,
   isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow,
+  isRiderDayInvariantViolation,
 } from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
@@ -567,7 +568,21 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       const { error: insErr } = await supabase
         .from("race_entries")
         .upsert(toInsert, { onConflict: "race_id,rider_id", ignoreDuplicates: true });
-      if (insErr) throw new Error(`race_entries upsert: ${insErr.message}`);
+      if (insErr) {
+        // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
+        // sweepets egen kronologiske binding-tildeling (findManualOverlapConflicts/
+        // windowsOverlap ovenfor) alligevel skulle overse en konflikt — det ville
+        // afsløre en bug i SELVE sweepet, ikke bare en enkelt spillerhandling, så
+        // fejlen skal være tydelig i loggen (ikke tavs) uden at maskeres som en
+        // generisk Postgres-tekst.
+        if (isRiderDayInvariantViolation(insErr)) {
+          throw new Error(
+            `race_entries upsert: rider-day invariant (#3420) rejected this unit's insert for race ${raceId}/team ${teamId} — ` +
+            `the sweep's own binding assignment missed a double-booking (${insErr.message})`
+          );
+        }
+        throw new Error(`race_entries upsert: ${insErr.message}`);
+      }
       unitInserted += toInsert.length;
     }
     if (toDelete.length) {

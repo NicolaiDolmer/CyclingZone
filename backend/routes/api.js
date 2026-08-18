@@ -174,7 +174,7 @@ import { validateSelection, saveSelection, getSelectionContext } from "../lib/ra
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
@@ -4469,7 +4469,16 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
     const { error: insErr } = await supabase.from("race_entries").insert(rows);
-    if (insErr) return res.status(500).json({ error: insErr.message });
+    if (insErr) {
+      // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
+      // loadTeamBindingContext ovenfor alligevel skulle overse en konflikt — giv
+      // samme navngivne 409 som PUT /selection i stedet for en opak 500 (#3098).
+      if (isRiderDayInvariantViolation(insErr)) {
+        captureException(new Error(`race_entries auto-select: DB-invariant (#3420) afviste insert — ${insErr.message}`));
+        return res.status(409).json({ error: "selection_rider_bound" });
+      }
+      return res.status(500).json({ error: insErr.message });
+    }
 
     res.json({
       ok: true,
@@ -4772,12 +4781,24 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
       if (delErr) throw new Error(`race_entries delete (${race.id}): ${delErr.message}`);
       const { error: insErr } = await supabase.from("race_entries").insert(rows);
-      if (insErr) throw new Error(`race_entries insert (${race.id}): ${insErr.message}`);
+      if (insErr) {
+        // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
+        // bindingWindowByRace/lockedWindows ovenfor alligevel skulle overse en
+        // konflikt — tag samme navngivne fejlkode som PUT /selection i stedet for
+        // at lade en rå exclusion_violation nå kalderen som en opak 500 (#3098).
+        if (isRiderDayInvariantViolation(insErr)) {
+          const err = new Error(`race_entries insert (${race.id}): DB-invariant (#3420) afviste insert — ${insErr.message}`);
+          err.code = "selection_rider_bound";
+          throw err;
+        }
+        throw new Error(`race_entries insert (${race.id}): ${insErr.message}`);
+      }
       regenerated++;
     }
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
     captureException(err);
+    if (err.code === "selection_rider_bound") return res.status(409).json({ error: "selection_rider_bound" });
     res.status(500).json({ error: err.message });
   }
 });
