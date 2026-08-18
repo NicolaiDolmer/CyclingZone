@@ -1622,3 +1622,34 @@ export const SEED_SEASON_HONOURS = {
     { rider_id: "rider-honours-4", firstname: "Owen", lastname: "Delaney", nationality_code: "ie", team_id: "team-honours-4", team_name: "Harbour Racing", is_ai: false, points: "2103", wins: "4" },
   ],
 };
+
+// ── #3941 · Race Control ops-notices ────────────────────────────────────────
+// Én dismissable "warning" (viser dismiss-knappen) + én "incident" (viser at
+// incident IKKE kan dismisses) — begge active:true, saa preview/e2e ser begge
+// banner-strimler stakket + begge rækker i Hjælp-sidens "Kendte problemer".
+export const SEED_OPS_NOTICES = [
+  {
+    id: "opsnotice-1",
+    severity: "warning",
+    title_en: "Live auction bidding may lag",
+    title_da: "Bud i live-auktioner kan opdatere langsomt",
+    body_en: "We are investigating delayed bid updates. No bids are lost.",
+    body_da: "Vi undersøger forsinkede budopdateringer. Ingen bud går tabt.",
+    active: true,
+    starts_at: "2026-08-18T07:00:00Z",
+    ends_at: null,
+    created_at: "2026-08-18T07:00:00Z",
+  },
+  {
+    id: "opsnotice-2",
+    severity: "incident",
+    title_en: "Lineups are not filling automatically",
+    title_da: "Startfelter fyldes ikke automatisk op",
+    body_en: "We are actively fixing this. Manual lineup changes still work.",
+    body_da: "Vi arbejder på at rette det. Manuelle ændringer af startfeltet virker stadig.",
+    active: true,
+    starts_at: "2026-08-18T05:00:00Z",
+    ends_at: null,
+    created_at: "2026-08-18T05:00:00Z",
+  },
+];

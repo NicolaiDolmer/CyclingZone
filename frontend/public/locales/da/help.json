@@ -1526,5 +1526,13 @@
       "q": "Hvordan rapporterer jeg et opslag eller svar i forummet?",
       "a": "Brug Rapportér-knappen på opslaget eller svaret. Rapporten går direkte til admin, som kan fjerne indhold der ikke hører hjemme. Rapporterer du det samme to gange, opdateres blot din begrundelse."
     }
+  },
+  "knownIssues": {
+    "label": "Kendte problemer",
+    "heading": "Kendte problemer",
+    "emptyTitle": "Ingen kendte problemer",
+    "emptyDescription": "Intet at melde lige nu. Aktive og nylige hændelser vises her.",
+    "activeLabel": "Aktiv",
+    "resolvedLabel": "Løst"
   }
 }

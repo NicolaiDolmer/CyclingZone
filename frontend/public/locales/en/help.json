@@ -1526,5 +1526,13 @@
       "q": "How do I report a forum post or reply?",
       "a": "Use the Report button on the post or reply. The report goes straight to the admin, who can remove content that does not belong. Reporting the same thing twice just updates your reason."
     }
+  },
+  "knownIssues": {
+    "label": "Known issues",
+    "heading": "Known issues",
+    "emptyTitle": "No known issues",
+    "emptyDescription": "Nothing to report right now. Active and recent incidents will show up here.",
+    "activeLabel": "Active",
+    "resolvedLabel": "Resolved"
   }
 }

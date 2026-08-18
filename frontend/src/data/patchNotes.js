@@ -9,6 +9,22 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "new",
+        "audience": "player",
+        "topic": "Ops",
+        "en": {
+          "title": "Service status banner",
+          "body": "A short status banner now shows at the top of the app during ongoing issues or maintenance. See it and past notices any time on the Help page under \"Known issues\"."
+        },
+        "da": {
+          "title": "Driftsbanner",
+          "body": "En kort statuslinje vises nu øverst i appen ved igangværende problemer eller vedligehold. Se den og tidligere beskeder når som helst på Hjælp-siden under \"Kendte problemer\"."
+        },
+        "refs": [
+          3941
+        ]
+      },
+      {
               "category": "fixed",
               "audience": "player",
               "topic": "Races",

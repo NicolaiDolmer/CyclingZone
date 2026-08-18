@@ -182,6 +182,11 @@ export function restRows(table, requestUrl = "") {
     }
     case "roadmap_items":
       return ROADMAP_ITEMS;
+    // #3941: tom som standard — en aktiv notice ville ellers vise banneret i
+    // ALLE siders visuelle snapshots (frontend-smoke rød 18/8). Shots-scriptet
+    // 3941-race-control-banner.shots.mjs overlejrer selv SEED_OPS_NOTICES.
+    case "ops_notices":
+      return [];
     case "races": {
       // Per-pulje tæller-query (#1829) → puljens løb (uændret, holder dashboard-
       // snapshots stabile). id=eq.<id> → ét seed-løb (RaceDetailPage .single()).

@@ -39,5 +39,10 @@
         "desc": "Occasional newsletters about major season updates or events. Transactional emails (auction won, etc.) do not depend on this choice."
       }
     }
+  },
+  "opsNotice": {
+    "regionAriaLabel": "Service status",
+    "dismissAriaLabel": "Dismiss notice",
+    "knownIssuesLink": "Known issues"
   }
 }
