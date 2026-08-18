@@ -276,15 +276,18 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* #671 Slice B: wordmark = primaer brand-mark (BRAND_BRIEF). Det redundante
             CZ-monogram er fjernet — monogram + wordmark + team-navn var tre identitets-
             elementer i samme hjoerne. Sidebar-canvas altid navy → forceDark wordmark.
+            #2181: holdnavnet er fjernet fra dette hjørne (det står andre steder på
+            siden) — kun logoet skal være i header-hjørnet, jf. anti-slop-reglen.
             Bredere nav-header/IA-restructure spores i #1027. */}
         <div className="min-w-0">
           <Wordmark forceDark className="h-5 w-auto" alt="" />
-          <div className="flex items-center gap-1.5 mt-1">
-            <p className="text-cz-sidebar-3 text-3xs truncate">{team?.name || "…"}</p>
-            {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
-                plain Pro-badge kræver stadig aktiv Pro. */}
-            {(isPro || isFounder) && <ProBadge isFounder={isFounder} />}
-          </div>
+          {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
+              plain Pro-badge kræver stadig aktiv Pro. */}
+          {(isPro || isFounder) && (
+            <div className="mt-1">
+              <ProBadge isFounder={isFounder} />
+            </div>
+          )}
         </div>
       </button>
 
