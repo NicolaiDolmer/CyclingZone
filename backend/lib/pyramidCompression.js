@@ -136,6 +136,71 @@ export function rankTeamsGlobally({ teams, standings, countback }) {
 }
 
 /**
+ * #3901 · S2→S3-variant af rankTeamsGlobally: rangerer efter den SYNLIGE
+ * globale rangliste (global_rank_mv, cyclingzone.org/standings?tab=global)
+ * i stedet for den afsluttede sæsons season_standings.total_points. Ejer-
+ * beslutning 18/8 (KS3, #3901): "Rangliste = den synlige globale rangliste
+ * ... så dry-run matcher det spillerne ser."
+ *
+ * global_rank_mv er allerede den kanoniske menneske-diskriminator
+ * (is_ai/is_bank/is_frozen/is_test_account, #2792) og rangerer med Postgres
+ * RANK() på global_points DESC — INGEN tiebreak ud over det (ties deler rang).
+ * Til pulje-FORDELING skal hvert hold have en unik plads, så vi lægger #3036-
+ * countback-kæden (samme led som rankTeamsGlobally) OVENPÅ global_points som
+ * en deterministisk sekundær sortering — den ÆNDRER ikke hvad spillerne ser
+ * (global_rank/visibleGlobalRank bevares uændret i output), den afgør kun
+ * rækkefølgen NÅR to hold reelt er lige på global_points.
+ *
+ * @param {Array<{id, name, division, league_division_id}>} teams  Managerhold
+ *        (caller filtrerer med den fulde menneske-diskriminator).
+ * @param {Array<{team_id, global_points, global_rank, active_recent}>} globalRankRows
+ *        Rækker fra global_rank_mv (samme forespørgsel som useGlobalRank.js).
+ * @param {Map|Object} [countback]  Se rankTeamsGlobally.
+ * @returns {Array} Samme rank-form som rankTeamsGlobally, plus:
+ *        { globalPoints, visibleGlobalRank, activeRecent, missingGlobalRank }.
+ *        Hold uden global_rank_mv-række (ikke muligt i dag — mv dækker alle
+ *        menneskehold, aktive eller ej — men fail-safe) rangeres som 0 point,
+ *        nederst, flaget missingGlobalRank, ligesom missingStanding ovenfor.
+ *        Inaktive hold (active_recent=false, skjult i UI'et) BEHOLDES i
+ *        fordelingen — komprimeringen skal placere ALLE managerhold et sted i
+ *        pyramiden; UI'ets "skjul inaktive" er kun en visnings-filtrering.
+ */
+export function rankTeamsByGlobalRank({ teams, globalRankRows, countback }) {
+  const byTeamId = new Map();
+  for (const g of globalRankRows || []) {
+    if (g?.team_id != null) byTeamId.set(g.team_id, g);
+  }
+  const rows = (teams || []).map((team) => {
+    const g = byTeamId.get(team.id) || null;
+    const cb = countback instanceof Map ? countback.get(team.id) : countback?.[team.id];
+    return {
+      teamId: team.id,
+      name: team.name ?? "",
+      globalPoints: Math.max(0, Number(g?.global_points) || 0),
+      visibleGlobalRank: Number.isFinite(g?.global_rank) ? g.global_rank : null,
+      activeRecent: !!g?.active_recent,
+      classificationWins: Math.max(0, Number(cb?.classificationWins) || 0),
+      stagePodiums: Math.max(0, Number(cb?.stagePodiums) || 0),
+      bestStageRank: Number.isFinite(cb?.bestStageRank) ? cb.bestStageRank : NO_COUNTBACK_RANK,
+      bestGcRank: Number.isFinite(cb?.bestGcRank) ? cb.bestGcRank : NO_COUNTBACK_RANK,
+      fromTier: team.division ?? null,
+      fromPoolId: team.league_division_id ?? null,
+      missingGlobalRank: !g,
+    };
+  });
+  rows.sort((a, b) =>
+    (b.globalPoints - a.globalPoints)
+    || (b.classificationWins - a.classificationWins)
+    || (b.stagePodiums - a.stagePodiums)
+    || (a.bestStageRank - b.bestStageRank)
+    || (a.bestGcRank - b.bestGcRank)
+    || String(a.name).localeCompare(String(b.name), "en")
+    || String(a.teamId).localeCompare(String(b.teamId), "en"),
+  );
+  return rows.map((row, i) => ({ ...row, rank: i + 1 }));
+}
+
+/**
  * Snake-fordeling af en ordnet liste over P puljer (boustrofedon):
  * række 0 → A,B,..,P · række 1 → P,..,B,A · osv. Balancerer styrke, så pulje A
  * ikke støvsuger alle top-seeds.
@@ -153,23 +218,38 @@ export function snakeAssign(orderedItems, pools) {
 
 /**
  * Fordel den globale rangering på pyramiden (ejer-låst model):
- *   rank 1..d2Capacity            → tier 2-puljer (snake)
+ *   rank 1..d1Capacity            → den ENE tier 1-pulje (KUN når d1Capacity
+ *                                   > 0 — se #3901 nedenfor; default 0 = D1
+ *                                   røres IKKE, S1→S2-scriptets historiske
+ *                                   adfærd er 100% uændret).
+ *   næste d2Capacity              → tier 2-puljer (snake)
  *   næste d3Capacity              → tier 3-puljer (snake)
  *   resten                        → de FØRSTE d4PoolCount tier 4-puljer
  *                                   (pool_index-orden, snake) — samles i A/B
  *                                   så de får medspillere; øvrige D4-puljer
  *                                   forbliver AI/nye signups.
  *
- * @param {Array} rankedTeams  output fra rankTeamsGlobally (rank-orden).
+ * #3901 (S2→S3, ejer-låst 18/8): d1Capacity=24 inkluderer Division 1 i
+ * komprimeringen for FØRSTE gang — top 24 (nu rangeret via
+ * rankTeamsByGlobalRank, se ovenfor) flytter til D1's ene pulje; de
+ * AI-hold der sad der viger (reconcileAiTeamsForPool efterregulerer til
+ * POOL_TARGET_SIZE, uændret mekanik). d1Capacity default 0 bevarer S1→S2-
+ * scriptets (compressPyramid.js) eksisterende, testede adfærd bit-for-bit.
+ *
+ * @param {Array} rankedTeams  output fra rankTeamsGlobally ELLER
+ *        rankTeamsByGlobalRank (rank-orden).
  * @param {Array<{id, tier, pool_index}>} pools  league_divisions-rækker.
+ * @param {number} [d1Capacity=0]  >0 aktiverer D1-segmentet (#3901).
  * @returns {{ assignments, byPool }} assignments =
  *   { teamId, name, rank, totalPoints, fromTier, fromPoolId, toTier, toPoolId,
  *     movement: 'promoted'|'relegated'|'unchanged'|'pool-move' }.
  *
- * Kaster ved strukturbrud (forkert antal tier 2/3-puljer, kapacitet der ikke
- * går op i puljerne) — fordelingen må aldrig gætte sig gennem en skæv pyramide.
+ * Kaster ved strukturbrud (forkert antal tier 1/2/3-puljer, kapacitet der
+ * ikke går op i puljerne) — fordelingen må aldrig gætte sig gennem en skæv
+ * pyramide.
  */
 export function distributeCompression(rankedTeams, pools, {
+  d1Capacity = 0,
   d2Capacity = 48,
   d3Capacity = 96,
   d4PoolCount = 2,
@@ -181,9 +261,11 @@ export function distributeCompression(rankedTeams, pools, {
   }
   for (const list of byTier.values()) list.sort((a, b) => a.pool_index - b.pool_index);
 
+  const d1Pools = byTier.get(1) || [];
   const d2Pools = byTier.get(2) || [];
   const d3Pools = byTier.get(3) || [];
   const d4Pools = (byTier.get(4) || []).slice(0, d4PoolCount);
+  if (d1Capacity > 0 && d1Pools.length !== 1) throw new Error(`distributeCompression: expected 1 tier 1 pool when d1Capacity is set, found ${d1Pools.length}`);
   if (d2Pools.length !== 2) throw new Error(`distributeCompression: expected 2 tier 2 pools, found ${d2Pools.length}`);
   if (d3Pools.length !== 4) throw new Error(`distributeCompression: expected 4 tier 3 pools, found ${d3Pools.length}`);
   if (d4Pools.length < 1) throw new Error("distributeCompression: no tier 4 pools for remainder distribution");
@@ -191,11 +273,12 @@ export function distributeCompression(rankedTeams, pools, {
   if (d3Capacity % d3Pools.length !== 0) throw new Error(`d3Capacity ${d3Capacity} does not divide evenly across ${d3Pools.length} pools`);
 
   const ranked = [...(rankedTeams || [])];
-  const segments = [
-    { teams: ranked.slice(0, d2Capacity), pools: d2Pools, tier: 2 },
-    { teams: ranked.slice(d2Capacity, d2Capacity + d3Capacity), pools: d3Pools, tier: 3 },
-    { teams: ranked.slice(d2Capacity + d3Capacity), pools: d4Pools, tier: 4 },
-  ];
+  const d2Start = d1Capacity > 0 ? d1Capacity : 0;
+  const segments = [];
+  if (d1Capacity > 0) segments.push({ teams: ranked.slice(0, d1Capacity), pools: d1Pools, tier: 1 });
+  segments.push({ teams: ranked.slice(d2Start, d2Start + d2Capacity), pools: d2Pools, tier: 2 });
+  segments.push({ teams: ranked.slice(d2Start + d2Capacity, d2Start + d2Capacity + d3Capacity), pools: d3Pools, tier: 3 });
+  segments.push({ teams: ranked.slice(d2Start + d2Capacity + d3Capacity), pools: d4Pools, tier: 4 });
 
   const assignments = [];
   const byPool = new Map();
