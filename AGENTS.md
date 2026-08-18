@@ -116,6 +116,8 @@ Kritiske facts:
 
 ---
 
+24. **Orkestratoren ejer e2e-slottet ved parallelle workers.** Ved 2+ samtidige frontend-workers på samme PC tildeles verifikations-niveauet i SPAWN-prompten: workers kører unit-tests + lint + check:i18n + verify-affected + build + screenshots — ALDRIG den fulde lokale e2e-suite (CI bærer den på PR'en; fravalget noteres i PR-body med henvisning til denne regel). Max 3 samtidige tunge frontend-workers; backend-workers er billige og undtaget. Fuld lokal suite er kravet igen ved SERIELT arbejde (én worker ad gangen) i TIER FULL. _18/8 (KS3): 7 frontend-workers kørte hver fuld suite samtidig og serialiserede på CPU'en — timers spild før orkestratoren omdirigerede midt i bølgen. Ejer-mandat 18/8: må ikke gentages._
+
 ## Worktree-disciplin (Claude-specifik)
 
 - Worktrees i `.claude/worktrees/<navn>/` cleanes efter ship via SessionStart-hook
