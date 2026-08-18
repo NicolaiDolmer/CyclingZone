@@ -786,6 +786,36 @@ export function assertTeamNotTransferFrozen(req, res) {
   return true;
 }
 
+// ── Season-end dobbelt-POST-guard (#2847) ────────────────────────────────────
+// Forsøger at claime season-end-behandlingen for `seasonId` via et INSERT med
+// PRIMARY KEY på season_id (database/2026-08-18-2847-season-end-idempotency.sql).
+// Kun ét kald (concurrent eller gentaget) kan vinde INSERT'et — resten taber med
+// 23505 unique_violation og afvises FØR den tunge/irreversible sæson-slut-
+// bearbejdning starter. Returns true hvis kaldet vandt claim'et (fortsæt); hvis
+// false er responsen allerede sendt (409 dobbelt-POST / 500 DB-fejl).
+// Exported for unit-testing (api.test.js).
+export async function claimSeasonEndOrReject(supabaseClient, seasonId, res) {
+  const { error } = await supabaseClient
+    .from("season_end_claims")
+    .insert({ season_id: seasonId });
+  if (error) {
+    if (error.code === "23505") {
+      // #3016 (i18n-leak-ratchet): EN-first — admin-panelet oversætter ikke
+      // error-strenge (readAdminJson/adminErrorMessage viser data.error rå,
+      // se frontend/src/components/admin/shared/useAdminAuth.js), men et NYT
+      // dansk fund øger leak-guardens ratchet uden grund.
+      res.status(409).json({
+        error: "Season end already in progress or already completed",
+        errorCode: "season_end_already_claimed",
+      });
+      return false;
+    }
+    res.status(500).json({ error: error.message });
+    return false;
+  }
+  return true;
+}
+
 // ── Fair-play prisbånd (#3133) — delt fejlsvar ───────────────────────────────
 // Bruges af transfer_offers-accept, swap_offers-accept og auktions-oprettelse
 // (POST /auctions). `issue` kommer fra getPriceBandViolation/getSwapPriceBandViolation
@@ -9073,6 +9103,16 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
         last_unfinished_stage_at: seasonEndBlockers.last_unfinished_stage_at,
       });
     }
+
+    // #2847 · DB-niveau-garanti mod concurrent dobbelt-POST. De foregående checks
+    // (status/pending-results/blockers) er check-then-act uden constraint — to
+    // samtidige requests kan begge bestå dem og begge nå hertil. Herfra og ned er
+    // arbejdet tungt/irreversibelt (division-flytning, lønkørsel, præmier,
+    // notifikationer, Discord-broadcast) og kører over mange separate DB-kald, så
+    // det kan IKKE beskyttes af én transaktion/advisory-lock (se migrationens
+    // kommentar). claimSeasonEndOrReject claimer sæsonen atomisk — taber vi
+    // claim'et, er responsen allerede sendt.
+    if (!(await claimSeasonEndOrReject(supabase, seasonId, res))) return;
 
     // #532 — skip processSeasonEnd for sæson 0 (open-beta-fase uden løb/standings/lønninger).
     // seasonTransition-engine har samme special-case (se backend/lib/seasonTransition.js linje 17-21).

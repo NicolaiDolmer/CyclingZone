@@ -60,10 +60,18 @@ async function defaultFetchExpiredContractRiders({ supabase, seasonNumber }) {
   return fetchAllRows(() =>
     supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen)")
+      // #2847 · ejendomsfilter (is_bank/is_frozen/is_test_account) — samme
+      // diskriminator som aiContractAutoRenewal.js' defaultFetchExpiringAiContractRiders.
+      // Uden den ville frigivelsen også ramme ryttere ejet af ikke-gameplay-hold
+      // (harmløst i dag: 0 sådanne rækker med contract_end_season=1 i prod 23/7,
+      // men uindskrænket for fremtidige sæsoners kørsler).
+      .select("id, firstname, lastname, team_id, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen, is_bank, is_test_account)")
       .not("team_id", "is", null)
       .eq("is_academy", false)
       .lte("contract_end_season", seasonNumber)
+      .eq("team.is_bank", false)
+      .eq("team.is_frozen", false)
+      .eq("team.is_test_account", false)
       .order("id")
   );
 }
