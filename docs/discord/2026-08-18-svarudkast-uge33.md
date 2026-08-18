@@ -14,9 +14,9 @@
 ### A3. 9/8, "8 timer og jeg ved stadig intet" (DA) - KLAR
 > Du har helt ret, og det var ikke godt nok. Der bygges lige nu et statusbanner direkte i spillet: naar noget er i stykker, vil du kunne se det i appen med det samme, med hvad vi ved og hvad vi goer. Tak fordi du sagde det direkte i stedet for bare at logge af.
 
-### A4. 9/8, laan optaget til koeb der blev annulleret (DA) - DIN BESLUTNING
-Udkast (kraever at du beslutter kompensation foerst):
-> Det var en rigtig traels kaede at staa i, og jeg forstaar frustrationen. [HVIS KOMPENSATION: Jeg har set paa dit forloeb og saetter X ind paa din konto som kompensation for laaneomkostningerne.] [HVIS IKKE: Selve koebet blev annulleret som del af fejlrettelsen, men laanet og de andre beslutninger kan jeg ikke rulle tilbage uden at skabe nye skaevheder. Det er ikke det svar du haabede paa, men det er det aerlige svar.] Tak for taalmodigheden den dag.
+### A4. 9/8, laan optaget til koeb der blev annulleret (DA) - KLAR (kompensation UDBETALT 18/8, ejer-godkendt 15.000)
+Fakta: laanets oprettelsesgebyr var 14.850; 15.000 CZ$ er krediteret 18/8 (verificeret: saldo 59.013 -> 74.013, admin_adjustment, idempotent). Udkast:
+> Det var en rigtig traels kaede at staa i, og jeg forstaar frustrationen. Jeg har set paa dit forloeb: laanet du optog til det annullerede koeb kostede dig et oprettelsesgebyr paa 14.850. Jeg har sat 15.000 ind paa din konto som kompensation for det, du kan se posteringen under OEkonomi. Selve laanet staar stadig, saa du kan frit bruge det eller betale det ud. Tak for taalmodigheden den dag.
 
 ### A5. 1/8, ide: "form" som traeningsfokus (DA) - KLAR
 > God tanke. Formen drives i dag af hvile og traethed (hvile giver form, haard traening koster), saa et rent form-fokus ville overlappe med hvile. Traeningssystemet er netop lagt om, saa kig paa det igen naar ugens opdatering er ude, og sig til hvis der stadig mangler noget til faerdigudviklede ryttere.
