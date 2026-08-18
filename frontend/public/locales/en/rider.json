@@ -178,7 +178,11 @@
       "contractSeason": "Season {season}",
       "aiTag": "AI",
       "valueTrend": "{value} last {days} days",
-      "valueTrendTitle": "Value change since {date}"
+      "valueTrendTitle": "Value change since {date}",
+      "ratingTrendRising": "Rising this season",
+      "ratingTrendSteady": "Steady this season",
+      "ratingTrendDeclining": "Declining this season",
+      "ratingTrendTitle": "Rating {value} since {date}"
     },
     "banner": {
       "listed": "On the transfer list · price {price}",

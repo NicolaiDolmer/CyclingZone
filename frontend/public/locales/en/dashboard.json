@@ -218,7 +218,9 @@
       "empty": "No season data yet",
       "emptyCta": "View full standings →",
       "aiBadge": "AI",
-      "managerRank": "#{rank} among managers"
+      "managerRank": "#{rank} among managers",
+      "movementTitle": "Division placement since last race day",
+      "pointsDeltaTitle": "Points earned on the last race day"
     },
     "board": {
       "title": "Board Status",

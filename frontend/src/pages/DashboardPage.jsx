@@ -56,11 +56,14 @@ import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
 import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { computeSeasonMovement } from "../lib/seasonRecapData.js";
+// vk-movement-signals — bevægelses-signaler på "My division standings":
+// divisionsplacering + holdpoint siden sidste afsluttede løbsdag i egen pulje.
+import { findLastCompletedRaceDay, sumPointsByTeam, computeDivisionMovement } from "../lib/dashboardMovementSignals.js";
 import { fetchReservedBalance, computeAvailableBalance } from "../lib/availableBalance.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
-  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, CheckIcon, DiscordIcon,
+  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, CheckIcon, DiscordIcon,
   PageLoader, PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
   SkeletonLines, EmptyState, ProgressMeter,
 } from "../components/ui";
@@ -108,6 +111,10 @@ export default function DashboardPage() {
   // puljens løb (selectableRaces filtrerer allerede korrekt på trup-lås).
   const [teamRaceIds, setTeamRaceIds] = useState(() => new Set());
   const [standings, setStandings] = useState([]);
+  // vk-movement-signals — hold-point pr. hold for SIDSTE afsluttede
+  // løbsdag i egen pulje (team_id → sum af race_points). {} = ingen data endnu
+  // (før hentet, eller ingen afsluttet løbsdag) → movement-badges vises ikke.
+  const [lastRaceDayPoints, setLastRaceDayPoints] = useState({});
   // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
   // at afgøre om egen tier har >1 pulje (hasPoolSubtabs) + puljens label i titlen.
   const [pools, setPools] = useState([]);
@@ -237,8 +244,11 @@ export default function DashboardPage() {
     // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
     // så vi kan vise kørt/muligt for puljen i stedet for det sæson-globale tal. Klient-side
     // (races er public-read via RLS); ingen migration.
+    // vk-movement-signals: id + game_day_start tilføjet til selectet (2 ekstra kolonner, SAMME
+    // query — ingen ny round-trip) — genbruges af findLastCompletedRaceDay til at
+    // finde sidste afsluttede løbsdag i puljen (movement-signalerne nedenfor).
     const poolRacesPromise = activeSeason && teamData.league_division_id != null
-      ? supabase.from("races").select("stages, stages_completed, status")
+      ? supabase.from("races").select("id, stages, stages_completed, status, game_day_start")
           .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
       : Promise.resolve({ data: [] });
 
@@ -323,6 +333,17 @@ export default function DashboardPage() {
           .eq("team_id", teamData.id).in("race_id", racesForTeamCheck)
       : { data: [] };
 
+    // vk-movement-signals — ÉN ekstra query (sekventiel EFTER
+    // Promise.all'et, da den kræver poolRacesRes' race_id'er): sidste
+    // afsluttede løbsdags hold-point i egen pulje, til divisionsplacering- +
+    // holdpoint-deltaerne på "My division standings"-modulet. Ingen
+    // afsluttet løbsdag endnu → ingen query, {} forbliver ({}=intet at vise).
+    const lastRaceDay = findLastCompletedRaceDay(poolRacesRes.data || []);
+    const lastRaceDayPointsRes = lastRaceDay?.raceIds.length
+      ? await supabase.from("team_race_points_mv").select("team_id, race_points")
+          .in("race_id", lastRaceDay.raceIds)
+      : { data: [] };
+
     setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
     setPools(poolsRes.data || []);
@@ -381,6 +402,8 @@ export default function DashboardPage() {
     // i stedet for en parallel hand-rullet merge — samme 0-punkts-fallback-shape,
     // der bærer team-objektet (inkl. league_division_id) videre til rangliste-filteret.
     setStandings(mergeStandings(teamsRes.data || [], standingsMap));
+    // vk-movement-signals: se lastRaceDayPointsRes-kommentaren ovenfor.
+    setLastRaceDayPoints(sumPointsByTeam(lastRaceDayPointsRes.data || []));
 
     // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
     // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
@@ -831,8 +854,15 @@ export default function DashboardPage() {
   // #3506: _rank er nu det kanoniske, Standings-konsistente tal (AI-hold med
   // i rangberegningen, jf. #1718). myManagerRank er det sekundære "blandt
   // managere"-tal (kun menneskehold), vist som lille tillægslinje på egen række.
-  const { hasPoolSubtabs, ownPoolRow, divStandingsTop, divStandings, myManagerRank } =
+  const { hasPoolSubtabs, ownPoolRow, divStandingsAll, divStandingsTop, divStandings, myManagerRank } =
     computeMyDivisionStandings(standings, team, pools);
+
+  // vk-movement-signals — divisionsplacering + holdpoint siden sidste
+  // afsluttede løbsdag i egen pulje. null/0 → ingen badge (ingen "0"-støj,
+  // samme konvention som GlobalRankWidget's movement != null && movement !== 0).
+  const { rankMovement, pointsDelta } = computeDivisionMovement({
+    divStandingsAll, myTeamId: team?.id, pointsByTeam: lastRaceDayPoints,
+  });
 
   const pendingIncoming = pendingIncomingCount;
   const activeMarketOffers = activeOffers.filter(o =>
@@ -1383,6 +1413,21 @@ export default function DashboardPage() {
                       style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
                       className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
+                      {/* vk-movement-signals — divisionsplacerings-bevægelse siden
+                          sidste løbsdag, KUN på egen række. null/0 = ingen løbsdag endnu
+                          eller uændret placering → ingen badge (ingen "0"-støj, samme
+                          konvention som GlobalRankWidget). */}
+                      {isMe && rankMovement != null && rankMovement !== 0 && (
+                        <span
+                          title={t("dashboard:cards.standings.movementTitle")}
+                          className={`font-mono text-3xs font-bold inline-flex items-center gap-0.5 flex-shrink-0 ${rankMovement > 0 ? "text-cz-success" : "text-cz-danger"}`}
+                        >
+                          {rankMovement > 0
+                            ? <ArrowUpIcon size={11} aria-hidden="true" />
+                            : <ArrowDownIcon size={11} aria-hidden="true" />}
+                          {Math.abs(rankMovement)}
+                        </span>
+                      )}
                       <div className="w-28 flex-shrink-0 min-w-0">
                         <div className="flex items-center gap-1 min-w-0">
                           <p className={`text-sm truncate ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
@@ -1416,6 +1461,16 @@ export default function DashboardPage() {
                           ariaLabel={t("dashboard:cards.standings.title", { division: team?.division })}
                         />
                         <span className="font-data text-xs text-cz-2 w-8 text-right tabular-nums">{s.total_points || 0}</span>
+                        {/* vk-movement-signals — holdpoint siden sidste løbsdag ("+86"), KUN på egen
+                            række. 0 point den dag = ingen badge (ingen "0"-støj). */}
+                        {isMe && pointsDelta != null && pointsDelta !== 0 && (
+                          <span
+                            title={t("dashboard:cards.standings.pointsDeltaTitle")}
+                            className={`font-mono text-3xs font-bold tabular-nums flex-shrink-0 ${pointsDelta > 0 ? "text-cz-success" : "text-cz-danger"}`}
+                          >
+                            {formatNumber(pointsDelta, { signDisplay: "exceptZero" })}
+                          </span>
+                        )}
                       </div>
                     </Link>
                   </Fragment>

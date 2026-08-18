@@ -218,7 +218,9 @@
       "empty": "Ingen sæsondata endnu",
       "emptyCta": "Se den fulde rangliste →",
       "aiBadge": "AI",
-      "managerRank": "#{rank} blandt managere"
+      "managerRank": "#{rank} blandt managere",
+      "movementTitle": "Divisionsplacering siden sidste løbsdag",
+      "pointsDeltaTitle": "Point optjent på sidste løbsdag"
     },
     "board": {
       "title": "Bestyrelsens Status",
