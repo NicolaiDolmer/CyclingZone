@@ -172,7 +172,8 @@
     },
     "seasonStarted": {
       "title": "Season {number} has started",
-      "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead."
+      "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead.",
+      "messageWithSponsor": "A new season has begun. Your sponsor paid out {amount} CZ$ for the season. Check your dashboard for your board's goals and your squad for the season ahead."
     },
     "seasonEnded": {
       "title": "Season {number} has ended",
