@@ -13,6 +13,10 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "TeamProfilePage.jsx"), "utf8");
+// #3916: fane-listen (TABS) + default-reglen flyttede til lib/teamProfileTabs.js
+// (testbar uden at rendere komponenten) — TeamProfilePage.jsx importerer den nu
+// i stedet for at deklarere den inline.
+const tabsLibSource = readFileSync(join(__dirname, "..", "lib", "teamProfileTabs.js"), "utf8");
 
 test("TeamProfilePage henter evnerne via rider_derived_abilities-join (#1529)", () => {
   assert.match(
@@ -57,7 +61,13 @@ test("TeamProfilePage refererer IKKE længere de gamle PCM stat_*-kolonner (#152
 // ind i TABS + tab-listen + rendres via TeamClubTab, samme mønster som transfers/
 // palmares/results.
 test("TeamProfilePage har 'club' i TABS og rendrer TeamClubTab med teamId (#2601)", () => {
-  assert.match(source, /const TABS = \[[^\]]*"club"[^\]]*\]/, "TABS skal inkludere 'club'");
+  // #3916: TABS-arrayet bor nu i lib/teamProfileTabs.js — siden importerer det.
+  assert.match(
+    tabsLibSource,
+    /TEAM_PROFILE_TABS = \[[^\]]*"club"[^\]]*\]/,
+    "TEAM_PROFILE_TABS skal inkludere 'club'",
+  );
+  assert.match(source, /TEAM_PROFILE_TABS as TABS.*from "\.\.\/lib\/teamProfileTabs\.js"/);
   assert.match(source, /import TeamClubTab from "\.\.\/components\/TeamClubTab"/);
   assert.match(source, /activeTab === "club" && \(\s*<TeamClubTab teamId=\{id\} \/>/);
   // #2849 bølge 5: fane-listen blev data-drevet (TAB_LABELS-objekt renderet via
