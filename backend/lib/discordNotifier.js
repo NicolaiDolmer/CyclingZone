@@ -28,6 +28,37 @@ config({ path: join(__dirname, "../.env"), quiet: true });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// ── Live-messaging-guard (incident 18/8-2026, #3961) ─────────────────────────
+// En lokal staging-backend (Supabase-branch hvor discord_settings/webhook-URLs
+// var kopieret med i datasættet) afviklede snapshot-løb og postede 60 re-
+// simulerede resultat-embeds til de RIGTIGE spillerkanaler over 75 min. Al
+// udgående Discord-kontakt (webhook-posts, DM'er, bot-API) kræver derfor at
+// processen beviseligt kører mod prod-databasen — alle andre miljøer no-op'er
+// med én advarsel pr. proces. Bevidst override (fx en fremtidig test-guild):
+// DISCORD_LIVE_MESSAGING=allow. Guarden sidder i DENNE fils chokepoints
+// (sendWebhook/getBotToken/sendDM/webhook-outbox-drain) og IKKE i leverings-
+// bibliotekerne (discordWebhookDelivery/-Outbox), så deres injektions-baserede
+// tests forbliver guard-frie.
+const PROD_SUPABASE_REF = "ghwvkxzhsbbltzfnuhhz";
+let liveGuardWarned = false;
+
+/** Pure check — env-injektion KUN til unit-tests; produktion bruger process.env. */
+export function isLiveDiscordAllowed(env = process.env) {
+  if (env.DISCORD_LIVE_MESSAGING === "allow") return true;
+  return (env.SUPABASE_URL || "").includes(PROD_SUPABASE_REF);
+}
+
+function liveDiscordBlocked(kind) {
+  if (isLiveDiscordAllowed()) return false;
+  if (!liveGuardWarned) {
+    liveGuardWarned = true;
+    console.warn(
+      `[discord:live-guard] SUPABASE_URL er ikke prod — ${kind} og al anden udgående Discord er slået fra i dette miljø (sæt DISCORD_LIVE_MESSAGING=allow for bevidst override)`
+    );
+  }
+  return true;
+}
+
 // Color codes for different event types
 const COLORS = {
   auction_new:          0xe8c547, // gold
@@ -162,6 +193,7 @@ export async function sendWebhook(webhookUrl, payload, {
   enqueueWebhookFn = enqueueWebhook,
 } = {}) {
   if (!webhookUrl) return;
+  if (liveDiscordBlocked("webhook-post")) return;
   try {
     const safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
     // #2882: kø'et pr. URL, så samtidige kaldere (overlappende cron-ticks,
@@ -256,6 +288,9 @@ const DISCORD_API = "https://discord.com/api/v10";
 // under ét navn virker overalt — uden navne-mismatch der tavst dræber DMs
 // (2026-06-03: prod-DMs fejlede med 401 fordi token lå under forkert navn).
 export function getBotToken() {
+  // Live-guard: uden prod-DB må bot-API'et (DM'er, rolle-sync, token-check)
+  // ikke røres — null-token-stierne håndterer det gracefully hos alle kaldere.
+  if (liveDiscordBlocked("bot-API")) return null;
   return process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN || null;
 }
 
@@ -340,6 +375,9 @@ async function postDm(channelId, botToken, payload) {
  *   udfald i stedet for at antage levering blot fordi en modtager blev fundet.
  */
 export async function sendDM(discordId, payload) {
+  // Live-guard FØR token-tjekket: i et blokeret miljø skal en DM droppes stille
+  // (én procesvid advarsel), ikke udløse per-kald token-warns eller outbox-kø.
+  if (liveDiscordBlocked("DM")) return false;
   const botToken = getBotToken();
   if (!botToken) {
     console.warn("[discord-dm:skip] DISCORD_BOT_TOKEN/DISCORD_TOKEN ikke sat — DM ikke sendt", { discordId: discordId ? "set" : "missing" });
@@ -482,6 +520,11 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
  * SAMME webhook aldrig rammer Discord som en samtidig byge (#2882).
  */
 export async function drainDiscordWebhookOutbox({ now = new Date() } = {}) {
+  // Live-guard: en ikke-prod-backend må heller ikke levere parkerede prod-
+  // webhook-payloads (drain'en går udenom sendWebhook, direkte til delivery).
+  if (liveDiscordBlocked("webhook-outbox-drain")) {
+    return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
+  }
   return processWebhookOutboxDrain({
     supabase,
     deliverFn: ({ webhookUrl, payload }) =>
