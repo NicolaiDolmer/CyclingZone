@@ -115,15 +115,26 @@ export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
  * would be an invented claim for the other ~2/3 — the caller
  * (emailDay1Sweep.js) checks race_results per team and passes the real
  * answer in.
- * @param {{teamName: string, hasResults: boolean, latestRaceId?: string|null, unsubscribeUrl: string}} args
+ * #3912: the CTA additionally deep-links to the specific stage the results
+ * are for (`?stage=N`, a contract RaceDetailPage.jsx already reads to open
+ * on that stage's tab) when the caller (emailDay1Sweep.js) has a stage
+ * number for the latest race_results row. `latestStageNumber` is OPTIONAL
+ * and purely additive: omitting it (or a non-positive-integer value) falls
+ * back to the pre-#3912 `/races/<id>` link with no stage context, which is
+ * also the correct behaviour for single-day races or legacy rows without a
+ * stage number.
+ * @param {{teamName: string, hasResults: boolean, latestRaceId?: string|null, latestStageNumber?: number|null, unsubscribeUrl: string}} args
  */
-export function buildDay1Email({ teamName, hasResults, latestRaceId = null, unsubscribeUrl }) {
+export function buildDay1Email({ teamName, hasResults, latestRaceId = null, latestStageNumber = null, unsubscribeUrl }) {
   const name = escapeHtml(teamName) || "Your team";
   const plainName = teamName || "Your team";
 
   if (hasResults) {
     const subject = "Day 1: your first results are in";
-    const ctaUrl = latestRaceId ? `${RACES_URL}/${latestRaceId}` : DASHBOARD_URL;
+    const hasStage = Number.isInteger(latestStageNumber) && latestStageNumber > 0;
+    const ctaUrl = latestRaceId
+      ? `${RACES_URL}/${latestRaceId}${hasStage ? `?stage=${latestStageNumber}` : ""}`
+      : DASHBOARD_URL;
 
     const bodyHtml = `
       <p style="margin:0 0 16px;">Hi,</p>
