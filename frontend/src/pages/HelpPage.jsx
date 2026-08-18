@@ -175,6 +175,8 @@ const SECTION_DEFS = [
     blocks: [
       { id: "seasonFlow", kind: "steps" },
       { id: "racesAndResults", kind: "text" },
+      // #3858: Race Centre-siden (v7.140) — dagens løb samlet ét sted.
+      { id: "raceCentre", kind: "text" },
       // #2756: stage-ending-typerne (Summit/Downhill/Breakaway/…) var uforklarede i
       // kalender-/løbsvisningen — Discord-feedback, thelamba 20/7 ("There's 'summit'
       // and 'downhill', clear as day, but 'breakaway'?"). Tooltips på badget'et

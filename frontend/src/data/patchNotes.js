@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.140",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race Centre: today's racing in one place",
+          "body": "New page under Races. Your own races come first: live races show the latest action and a Watch live button, upcoming races show a countdown and your lineup status, finished races show the podium and your best rider. Below that, a strip with today's results from the other divisions."
+        },
+        "da": {
+          "title": "Race Centre: dagens løb ét sted",
+          "body": "Ny side under løb. Dine egne løb står øverst: live-løb viser seneste aktion og en Watch live-knap, kommende løb viser nedtælling og din opstillings-status, færdige løb viser podiet og din bedste rytter. Nedenunder en stribe med dagens resultater fra de andre divisioner."
+        },
+        "refs": [3858]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stuck race lineups heal themselves again",
+          "body": "When two of your races overlapped on the same day, the automatic lineup repair could pick a rider who was already racing the other one, and the lineup got stuck. The repair now checks your other races first."
+        },
+        "da": {
+          "title": "Fastlåste opstillinger heler sig selv igen",
+          "body": "Når to af dine løb overlappede samme dag, kunne den automatiske opstillings-reparation vælge en rytter der allerede kørte det andet løb, og opstillingen sad fast. Reparationen tjekker nu dine andre løb først."
+        },
+        "refs": [3906]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A sale can no longer leave the seller below 8 riders",
+          "body": "The squad minimum was only checked when an auction was created, not when it closed. If the seller lost riders in the meantime, the sale is now cancelled instead of leaving the team unable to race, and both parties are notified."
+        },
+        "da": {
+          "title": "Et salg kan ikke længere efterlade sælgeren under 8 ryttere",
+          "body": "Trup-minimum blev kun tjekket da auktionen blev oprettet, ikke da den lukkede. Har sælgeren mistet ryttere i mellemtiden, annulleres salget nu i stedet for at efterlade holdet ude af stand til at stille op, og begge parter får besked."
+        },
+        "refs": [2836]
+      }
+    ]
+  },
+  {
     "version": "7.139",
     "date": "2026-08-18",
     "label": "Beta",
