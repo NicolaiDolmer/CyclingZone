@@ -1,5 +1,7 @@
 # KVALITETSSESSION 3 — 18/8 (masterplan + backlog + design-blokke)
 
+> **Model + indsats (anbefalet):** Hovedtråd = **Fable, effort high** (orkestrering + mange ejer-design-domme; xhigh/max giver ikke merværdi på denne opgaveform). Workers/workflow-agenter = **Sonnet, effort medium** (mekaniske kontrakt-/bug-fixes med aftalt scope). Undtagelser på **Sonnet high**: adversarielle verifikations-agenter i backlog-workflowet + #3917-motor-målingen. Haiku bruges ikke (kvalitetssession).
+
 Ejer-designet 18/8 via 12 struktur-spørgsmål i kvalitetssession 2 (KS2). Arkitekt i hovedtråden, sonnet-workers i worktrees, **Workflow-funktionen til backlog-bølgen** (~15 agenter pr. bølge, adversariel verifikation). Ejeren er ved computeren. Beslutninger stilles ENKELTVIST med anbefaling; **alt nyt design VISES og GODKENDES før byg** (mockup/show_widget — ejer-krav 18/8).
 
 LÆS FØRST: `docs/NOW.md` + `docs/MASTERPLAN.md`. Claim dig i NOW.md (KS2 er lukket eller i close-out — kollidér ikke med dens 3 kvalitets-PR'er, de overdrages hertil, se punkt 2). KS2-kontekst: `docs/audits/` (session-audit 18/8) + git-log.
