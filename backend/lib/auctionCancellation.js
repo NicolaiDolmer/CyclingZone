@@ -121,3 +121,45 @@ export async function cancelAuctionByAdmin({
     rider_name: riderName,
   };
 }
+
+// #3594: oprydningen 9/8 slettede fire defekte akademi-ryttere direkte (rå
+// SQL, uden om denne fil) mens de havde aktive auktioner — cascade fjernede
+// `auctions`/`auction_bids` sammen med rytteren, så ingen budgiver nogensinde
+// fik en `auction_cancelled`-notifikation (spilleroplevelse: auktionen
+// forsvandt "uden en lyd"). Denne funktion er den manglende bro: find alle
+// aktive/udvidede auktioner på rytteren og annullér HVER via
+// cancelAuctionByAdmin — SAMME notifikations-/frigivelses-logik som en
+// almindelig admin-annullering — FØR selve rytter-sletningen udføres af
+// kalderen (se deleteRiderWithCleanup i riderCleanupDeletion.js). Returnerer
+// ét cancelAuctionByAdmin-resultat pr. auktion, så kalderen kan afvise
+// sletningen hvis en annullering ikke lykkes (guarden ejeren efterspurgte).
+export async function cancelActiveAuctionsForRider({
+  supabase,
+  riderId,
+  adminUserId,
+  notifyTeamOwner,
+  logActivity = NOOP,
+  now = new Date(),
+}) {
+  const { data: auctionRows, error } = await supabase
+    .from("auctions")
+    .select("id")
+    .eq("rider_id", riderId)
+    .in("status", CANCELLABLE_STATUSES);
+  ensureNoError(error);
+
+  const results = [];
+  for (const row of auctionRows || []) {
+    results.push(
+      await cancelAuctionByAdmin({
+        supabase,
+        auctionId: row.id,
+        adminUserId,
+        notifyTeamOwner,
+        logActivity,
+        now,
+      })
+    );
+  }
+  return results;
+}
