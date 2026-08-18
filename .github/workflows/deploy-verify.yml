@@ -66,9 +66,10 @@ jobs:
       - name: Determine required deployments (path-based)
         id: required
         # Backend-only commits: Vercel canceller bevidst via Ignored Build Step
-        # (frontend/vercel.json ignoreCommand skipper når HEAD^..HEAD ikke rører
-        # frontend/) — så en Vercel-deployment kommer ALDRIG, og at vente på den
-        # gav falske ❌-kommentarer (fx a7c63d41 / PR #2545, 2026-07-17).
+        # (frontend/vercel.json ignoreCommand skipper når diffen siden sidste
+        # deploy — VERCEL_GIT_PREVIOUS_SHA, fix #3838 — ikke rører frontend/) —
+        # så en Vercel-deployment kommer ALDRIG, og at vente på den gav falske
+        # ❌-kommentarer (fx a7c63d41 / PR #2545, 2026-07-17).
         # Spejl ignoreCommand-logikken: kræv kun Vercel når frontend/ er ændret,
         # og kun Railway når backend/ er ændret. Kan fil-listen ikke hentes →
         # kræv begge (konservativ fallback).
