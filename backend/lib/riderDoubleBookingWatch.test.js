@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findDoubleBookedRiders, runRiderDoubleBookingWatch, splitLiveConflicts } from "./riderDoubleBookingWatch.js";
+import {
+  diffLiveConflictKeys, findDoubleBookedRiders, runRiderDoubleBookingWatch,
+  splitLiveConflicts, trackConflictChurn,
+} from "./riderDoubleBookingWatch.js";
 
 const w = (start, end = start) => ({ start, end });
 
@@ -346,4 +349,115 @@ test("runRiderDoubleBookingWatch: ingen aktiv sæson → skip uden alarm", async
 
 test("runRiderDoubleBookingWatch: kræver en supabase-klient", async () => {
   await assert.rejects(() => runRiderDoubleBookingWatch({}), /Supabase client required/);
+});
+
+// ── diffLiveConflictKeys + trackConflictChurn (#3415) ─────────────────────────
+// Forensik: vagten kunne kun sige "tallet ændrede sig", aldrig HVILKE par der kom
+// og gik ("bruddene forsvandt uden spor" — issuets egen ordlyd). Disse to funktioner
+// giver vagten den hukommelse.
+
+const pair = (riderId, raceA, raceB, teamId = "t1") => ({ rider_id: riderId, team_id: teamId, raceA, raceB });
+
+test("diffLiveConflictKeys: tomt forrige state → alle levende par er 'appeared'", () => {
+  const live = [pair("r1", "A", "B")];
+  const { appeared, resolved, currentByKey } = diffLiveConflictKeys({ live });
+  assert.equal(appeared.length, 1);
+  assert.equal(resolved.length, 0);
+  assert.equal(currentByKey.size, 1);
+});
+
+test("diffLiveConflictKeys: samme par i to ticks → hverken appeared eller resolved", () => {
+  const first = diffLiveConflictKeys({ live: [pair("r1", "A", "B")] });
+  const second = diffLiveConflictKeys({ previous: first.currentByKey, live: [pair("r1", "A", "B")] });
+  assert.equal(second.appeared.length, 0);
+  assert.equal(second.resolved.length, 0);
+});
+
+test("diffLiveConflictKeys: par forsvinder mellem ticks → resolved, ikke appeared", () => {
+  const first = diffLiveConflictKeys({ live: [pair("r1", "A", "B")] });
+  const second = diffLiveConflictKeys({ previous: first.currentByKey, live: [] });
+  assert.equal(second.appeared.length, 0);
+  assert.equal(second.resolved.length, 1);
+  assert.deepEqual(second.resolved[0], pair("r1", "A", "B"));
+});
+
+test("diffLiveConflictKeys: ét par forsvinder, ét nyt opstår, ét forbliver — alle tre kategorier korrekte", () => {
+  const first = diffLiveConflictKeys({ live: [pair("r1", "A", "B"), pair("r2", "C", "D")] });
+  const second = diffLiveConflictKeys({
+    previous: first.currentByKey,
+    live: [pair("r2", "C", "D"), pair("r3", "E", "F")], // r1's par væk, r3's par nyt
+  });
+  assert.equal(second.appeared.length, 1);
+  assert.equal(second.appeared[0].rider_id, "r3");
+  assert.equal(second.resolved.length, 1);
+  assert.equal(second.resolved[0].rider_id, "r1");
+});
+
+test("trackConflictChurn: injiceret stateStore isolerer churn fra det globale proces-state", () => {
+  let stored = new Map();
+  const stateStore = { get: () => stored, set: (m) => { stored = m; } };
+
+  const t1 = trackConflictChurn({ live: [pair("r1", "A", "B")], stateStore });
+  assert.equal(t1.appeared.length, 1, "første tick med et par → nyt");
+
+  const t2 = trackConflictChurn({ live: [pair("r1", "A", "B")], stateStore });
+  assert.equal(t2.appeared.length, 0, "samme par igen → ikke nyt");
+  assert.equal(t2.resolved.length, 0);
+
+  const t3 = trackConflictChurn({ live: [], stateStore });
+  assert.equal(t3.resolved.length, 1, "parret er væk → resolveret");
+});
+
+// ── runRiderDoubleBookingWatch: churn på tværs af to på hinanden følgende kald ────
+// Simulerer to sweep-udløste ticks (#3415): et brud opstår, så forsvinder igen —
+// præcis prod-mønsteret 11/8 (14 par → 0, drevet af sweep-skrivninger, ikke af en
+// stabil datafejl).
+
+test("runRiderDoubleBookingWatch: brud opstået i tick 1, resolveret i tick 2 → begge synlige i churn", async () => {
+  let stored = new Map();
+  const churnStateStore = { get: () => stored, set: (m) => { stored = m; } };
+
+  const stateWithBreach = seedState({
+    entries: [
+      { race_id: "A", team_id: "t1", rider_id: "r1" },
+      { race_id: "B", team_id: "t1", rider_id: "r1" },
+    ],
+  });
+  const tick1 = await runRiderDoubleBookingWatch({
+    supabase: makeSupabase(stateWithBreach), captureExceptionFn: () => {}, churnStateStore,
+  });
+  assert.equal(tick1.live, 1);
+  assert.equal(tick1.appeared.length, 1, "første tick med bruddet → opstået");
+  assert.equal(tick1.resolved.length, 0);
+
+  // Sweepen rettede det (fjernede r1 fra B) inden næste tick.
+  const stateFixed = seedState({
+    entries: [{ race_id: "A", team_id: "t1", rider_id: "r1" }],
+  });
+  const tick2 = await runRiderDoubleBookingWatch({
+    supabase: makeSupabase(stateFixed), captureExceptionFn: () => {}, churnStateStore,
+  });
+  assert.equal(tick2.live, 0);
+  assert.equal(tick2.alerted, false, "ingen alarm — men forsvinden må stadig være synlig");
+  assert.equal(tick2.resolved.length, 1, "parret der var levende i tick 1 er nu resolveret");
+  assert.equal(tick2.resolved[0].riderId, "r1");
+  assert.equal(tick2.appeared.length, 0);
+});
+
+test("runRiderDoubleBookingWatch: newlyAppeared følger med i Sentry-extra ved et NYT brud", async () => {
+  let stored = new Map();
+  const churnStateStore = { get: () => stored, set: (m) => { stored = m; } };
+  const state = seedState({
+    entries: [
+      { race_id: "A", team_id: "t1", rider_id: "r1" },
+      { race_id: "B", team_id: "t1", rider_id: "r1" },
+    ],
+  });
+  const captured = [];
+  await runRiderDoubleBookingWatch({
+    supabase: makeSupabase(state), captureExceptionFn: (e, ctx) => captured.push([e, ctx]), churnStateStore,
+  });
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0][1].extra.newlyAppeared.length, 1);
+  assert.equal(captured[0][1].extra.newlyAppeared[0].raceA, "Tour des Hauts Plateaux");
 });
