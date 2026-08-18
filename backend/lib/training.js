@@ -8,10 +8,9 @@
 //
 // Backend ejer KUN ledgeren (training_plans): én aktiv row pr. (hold, rytter,
 // sæson). Denne fil er ren JS uden DB/Date/Math.random, så den kan unit-testes
-// isoleret og køres deterministisk i season-transition (genbruger seededUnit fra
-// riderProgression for reproducerbar risiko).
+// isoleret og køres deterministisk i season-transition.
 
-import { seededUnit, signatureFactor, PROGRESSION_CONFIG, abilityRoleClass, YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
+import { signatureFactor, PROGRESSION_CONFIG, abilityRoleClass, YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i scripts/previewTraining.js) ────────
@@ -56,14 +55,6 @@ export const TRAINING_CONFIG = Object.freeze({
   // offFocusMult uændret på 0,97, falder agens-spændet fra 13 til 7 point og
   // arketype-spændet tilbage til 0,03, altså uændret fra i dag.
   offFocusMult: 0.35,
-
-  // Seeded risiko for tilbageslag (overtraining → tabt vækst), pr. intensitet.
-  // Let = ingen risiko; hård = mærkbar. Varsles tydeligt i UI.
-  // `recovery` har ingen risiko — en restitutionsdag der kan give tilbageslag
-  // ville være selvmodsigende.
-  setbackChance: Object.freeze({ easy: 0, normal: 0.05, hard: 0.18, recovery: 0 }),
-  // Når tilbageslag rammer: sæsonens samlede vækst skaleres med denne faktor.
-  setbackGrowthMult: 0.5,
 });
 
 // Fokus-nøgle → de evner (rider_derived_abilities) fokus skubber mod cap.
@@ -212,12 +203,12 @@ export function partitionSmartBulkTargets({ riderIds, plannedRiderIds = [] } = {
 }
 
 // Resolvér en plan til en bias-modifier som riderProgression.developRiderSeason
-// konsumerer. Seeder tilbageslags-rullet deterministisk pr. (rytter, sæson, plan).
+// konsumerer.
 //   plan         : { focus, intensity } | null
-//   riderId      : seed-komponent
-//   seasonNumber : seed-komponent (samme sæson → samme udfald)
+//   riderId      : seed-komponent (bevaret i signaturen for bagudkompatibilitet)
+//   seasonNumber : seed-komponent (bevaret i signaturen for bagudkompatibilitet)
 // Returnerer null hvis ingen/ugyldig plan, ellers
-//   { focusAbilities:Set<string>, focusMult:number, offFocusMult:number, setbackHit:boolean }.
+//   { focusAbilities:Set<string>, focusMult:number, offFocusMult:number }.
 // #1974: coarse, type-derived trainability-signal pr. fokus — UI-hint om HVORFOR
 // et fokus knap ikke rykker en given rytter.
 //
@@ -415,18 +406,13 @@ export function cappedVisibleAbilities(abilityRow) {
 export function resolveTrainingModifier(plan, riderId, seasonNumber, cfg = TRAINING_CONFIG) {
   if (!plan || !isValidFocus(plan.focus) || !isValidIntensity(plan.intensity, cfg)) return null;
   const focusAbilities = new Set(TRAINING_FOCUSES[plan.focus]);
-  // "rest" i den sæsonale sti behandles som "easy": ingen vækst-boost, aldrig setback.
+  // "rest" i den sæsonale sti behandles som "easy": ingen vækst-boost.
   // Den daglige sti (dailyTraining.js/abilityMult) håndterer rest-semantikken selvstændigt.
   const effectiveIntensity = plan.intensity === "rest" ? "easy" : plan.intensity;
   const baseFocus = cfg.focusGrowthMult[effectiveIntensity] ?? 1;
-  const chance = plan.intensity === "rest" ? 0 : (cfg.setbackChance[effectiveIntensity] ?? 0);
-  const roll = seededUnit(`train:${riderId}:${seasonNumber}:${plan.focus}:${plan.intensity}`);
-  const setbackHit = roll < chance;
-  const dampen = setbackHit ? cfg.setbackGrowthMult : 1;
   return {
     focusAbilities,
-    focusMult: baseFocus * dampen,
-    offFocusMult: cfg.offFocusMult * dampen,
-    setbackHit,
+    focusMult: baseFocus,
+    offFocusMult: cfg.offFocusMult,
   };
 }

@@ -156,7 +156,7 @@ export async function developRidersForSeason({
     season_id: seasonId, season_number: seasonNumber,
     candidates: 0, skipped_already_done: 0, developed: 0,
     grew: 0, declined: 0, retired: 0, caps_initialised: 0,
-    trained: 0, training_setbacks: 0,
+    trained: 0,
     growth_skipped: 0,  // ryttere hvis vækst-trin springes over (anti-double-dip #1305)
   };
 
@@ -192,7 +192,7 @@ export async function developRidersForSeason({
     // så vi sætter training=undefined for at undgå en stille bias der intet gør.
     const plan = (!skipGrowth && r.team_id) ? trainingByTeamRider.get(`${r.team_id}:${r.id}`) : null;
     const training = resolveTrainingModifier(plan, r.id, seasonNumber);
-    if (training) { summary.trained++; if (training.setbackHit) summary.training_setbacks++; }
+    if (training) summary.trained++;
 
     const { next, retirement } = developRiderSeason(
       { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age },

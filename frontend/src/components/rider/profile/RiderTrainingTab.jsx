@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TRAINING_FOCUS_ABILITIES, TRAINING_SETBACK_PCT, injuryDaysLeft } from "../../../lib/training.js";
+import { TRAINING_FOCUS_ABILITIES, injuryDaysLeft } from "../../../lib/training.js";
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
@@ -105,7 +105,6 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
   const abilitiesLabel = focus
     ? TRAINING_FOCUS_ABILITIES[focus].map((a) => t(`racePreview.derived.${a}`)).join(" + ")
     : null;
-  const risk = TRAINING_SETBACK_PCT[intensity] ?? 0;
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -201,7 +200,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
                 den kan holdes op mod hvad rytteren faktisk fik i sæsonen. */}
             <p className="text-3xs text-cz-3">{t("profile.training.effectNote")}</p>
             <p className="mt-2 text-2xs text-cz-2 leading-snug">
-              {risk > 0 ? t("profile.training.riskNote", { risk }) : t("profile.training.noRiskNote")}
+              {t("profile.training.noRiskNote")}
             </p>
           </>
         )}

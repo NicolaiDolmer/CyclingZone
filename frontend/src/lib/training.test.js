@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   TRAINING_FOCUS_ABILITIES, TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES,
-  TRAINING_SETBACK_PCT, isValidFocus, isValidIntensity, injuryDaysLeft,
+  isValidFocus, isValidIntensity, injuryDaysLeft,
   isRiderInjured, flattenCondition, CONDITION_SELECT,
 } from "./training.js";
 
@@ -18,13 +18,9 @@ test("hvert fokus peger på mindst én evne", () => {
   }
 });
 
-test("intensiteter inkluderer rest + setback-procenter er konsistente", () => {
+test("intensiteter inkluderer rest", () => {
   // #3762: `recovery` (aktiv restitution) er kommet til mellem hvile og let.
   assert.deepEqual(TRAINING_INTENSITIES, ["rest", "recovery", "easy", "normal", "hard"]);
-  assert.equal(TRAINING_SETBACK_PCT.easy, 0);
-  assert.equal(TRAINING_SETBACK_PCT.recovery, 0, "en restitutionsdag kan ikke give tilbageslag");
-  assert.ok(TRAINING_SETBACK_PCT.hard > TRAINING_SETBACK_PCT.normal);
-  assert.ok(TRAINING_SETBACK_PCT.normal > TRAINING_SETBACK_PCT.easy);
 });
 
 test("validatorer afviser ukendte værdier + accepterer rest", () => {
