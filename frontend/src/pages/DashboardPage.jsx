@@ -25,6 +25,10 @@ import MyLatestResultCard from "../components/MyLatestResultCard";
 // #3397 (epic #3395 bølge 1): Hero & Agony moment-kort. Selv-hentende
 // komponent (kun team-props) med vilje — se komponentfilens kommentar.
 import HeroAgonyCard from "../components/HeroAgonyCard";
+// #3915 — "Today's stages"-stribe (dagens etaper/løb for holdet). Selv-
+// hentende komponentfil (kun teamId som prop), samme isolations-princip som
+// HeroAgonyCard ovenfor — se komponentfilens kommentar.
+import TodayStagesStrip from "../components/TodayStagesStrip";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
@@ -937,6 +941,11 @@ export default function DashboardPage() {
           </>
         }
       />
+
+      {/* #3915 — dagens etaper/løb for holdet, ALLERØVERST i indholdsflowet
+          (under page-header, over sæson-wrap/sæsonstart-blokken). Skjuler sig
+          selv når holdet ingen løb har i dag (mindst-støj-valg, ejer 18/8). */}
+      <TodayStagesStrip teamId={team?.id} />
 
       {/* #3310: første-løbs-øjeblikket ejer toppen indtil resultatet er set. */}
       {firstRaceMomentActive && (
