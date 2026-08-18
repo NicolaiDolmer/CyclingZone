@@ -28,7 +28,6 @@ import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
-import RiderRatingTrajectory from "../RiderRatingTrajectory.jsx";
 import RiderBadges from "../RiderBadges";
 import { retirementRiskBadgeKey } from "../../../lib/riderAge";
 import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
@@ -99,8 +98,6 @@ export default function RiderProfileHero({
   valueAmount,                    // "4.366" (uden CZ$-suffix)
   valueLabel,                     // fuld label til title
   valueTrendWindow = null,        // #2499: { delta, pct, actualDaysAgo, snapshotDate } | null
-  ratingTrajectory = [],          // vk-movement-signals: [{ date, rating }] denne sæson, kronologisk | []
-  ratingTrend = null,             // vk-movement-signals: "rising" | "declining" | "steady" | null
   salaryText,                     // præ-formateret løn, fx "CZ$ 293/år"
   isAiTeam = false,
   pendingTeam = null,             // kommende hold (handel til næste sæson) | null
@@ -245,7 +242,6 @@ export default function RiderProfileHero({
               {overallRating}
             </span>
           ) : "—"}
-          sub={<RiderRatingTrajectory trajectory={ratingTrajectory} trend={ratingTrend} className="mt-1" />}
         />
         <HeroStat
           label={potentialEyebrow}

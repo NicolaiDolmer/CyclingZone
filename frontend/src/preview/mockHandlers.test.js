@@ -52,19 +52,6 @@ test("team_race_points_mv uden race_id-filter → hele seedet (StandingsPage-mø
   assert.ok(rows.length >= 4);
 });
 
-// vk-movement-signals — rider_derived_ability_history: kun rider-1 har seedet historik.
-test("rider_derived_ability_history rider_id=eq.rider-1 → kronologisk stigende sprint-evne", () => {
-  const rows = restRows("rider_derived_ability_history", "https://x/rest/v1/rider_derived_ability_history?rider_id=eq.rider-1");
-  assert.ok(rows.length >= 3, "forventede flere snapshots for rider-1");
-  assert.ok(rows.every((r) => r.rider_id === "rider-1"));
-  assert.ok(rows[rows.length - 1].abilities.sprint > rows[0].abilities.sprint, "stigende trend");
-});
-
-test("rider_derived_ability_history rider_id=eq.rider-2 → tom (ingen seedet historik)", () => {
-  const rows = restRows("rider_derived_ability_history", "https://x/rest/v1/rider_derived_ability_history?rider_id=eq.rider-2");
-  assert.equal(rows.length, 0);
-});
-
 // #1997 S1 — Palmarès-fanens rytter-scopede query (RiderStatsPage.fetchAllRiderSeasonRows).
 test("race_results rider_id=eq.rider-1 → palmarès-seed med race:-embed + team_name", () => {
   const rows = restRows("race_results", "https://x/rest/v1/race_results?rider_id=eq.rider-1&select=rank,team_name");

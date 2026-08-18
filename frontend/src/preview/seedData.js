@@ -165,26 +165,6 @@ export const RIDERS = [
   },
 ];
 
-// vk-movement-signals — rider_derived_ability_history: evne-snapshots
-// til rytter-heroens trajektorie-sparkline. Kun rider-1 (Ada Pedersen) har
-// seedet historik — rider-2 ser den tilsigtede "ingen historik"-tomtilstand
-// (sparklinen skjuler sig selv). De 5 snapshots stiger jævnt mod Adas
-// NUVÆRENDE rider_derived_abilities ovenfor (sprint 31/acceleration 29/
-// positioning 27/flat 29/durability 26 → sprinter-rating 29), så sidste punkt
-// matcher det tal hero'en allerede viser — "rising this season".
-export const SEED_RIDER_ABILITY_HISTORY = [
-  { rider_id: "rider-1", snapshot_date: "2026-06-05", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
-    abilities: { climbing: 15, time_trial: 18, flat: 23, tempo: 18, sprint: 24, acceleration: 22, punch: 20, endurance: 19, recovery: 20, durability: 21, descending: 18, cobblestone: 16, positioning: 21, aggression: 17, tactics: 19 } },
-  { rider_id: "rider-1", snapshot_date: "2026-06-25", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
-    abilities: { climbing: 16, time_trial: 19, flat: 24, tempo: 19, sprint: 26, acceleration: 24, punch: 21, endurance: 20, recovery: 21, durability: 22, descending: 19, cobblestone: 17, positioning: 22, aggression: 18, tactics: 20 } },
-  { rider_id: "rider-1", snapshot_date: "2026-07-15", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
-    abilities: { climbing: 17, time_trial: 20, flat: 26, tempo: 21, sprint: 28, acceleration: 26, punch: 23, endurance: 22, recovery: 23, durability: 24, descending: 21, cobblestone: 19, positioning: 24, aggression: 20, tactics: 22 } },
-  { rider_id: "rider-1", snapshot_date: "2026-08-01", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
-    abilities: { climbing: 18, time_trial: 21, flat: 28, tempo: 22, sprint: 30, acceleration: 28, punch: 25, endurance: 23, recovery: 24, durability: 25, descending: 22, cobblestone: 20, positioning: 26, aggression: 21, tactics: 24 } },
-  { rider_id: "rider-1", snapshot_date: "2026-08-15", season_number: ACTIVE_SEASON.season_number, source: "daily_training",
-    abilities: { climbing: 19, time_trial: 22, flat: 29, tempo: 23, sprint: 31, acceleration: 29, punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23, cobblestone: 21, positioning: 27, aggression: 22, tactics: 25 } },
-];
-
 // ── Evne-lofter: SERVER-SANDHED, må ALDRIG serveres til klienten ────────────
 //
 // #3666: seedet havde ingen lofter overhovedet, så hverken potentiel rating
