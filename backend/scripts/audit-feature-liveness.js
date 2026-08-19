@@ -203,6 +203,15 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
   ["board_relations", { flagKey: "board_mandate_model_enabled" }],
   ["board_mandates", { flagKey: "board_mandate_model_enabled" }],
   ["board_vision_milestones", { flagKey: "board_mandate_model_enabled" }],
+  // Niveau-korrektionen (#3449, migration 2026-08-19-3449-level-correction-gate.sql):
+  // de to log-tabeller skrives KUN af marketValueLevelCorrectionApply.js
+  // --confirm-apply, og gaten står RØD ved seed (stabilitets-båndet binder).
+  // youth_auction_start_rate-nøglen er NULL indtil første apply og skrives af
+  // selvsamme kørsel der fylder tabellerne — så NULL (= off for isFlagOff) er
+  // præcis "tomme tabeller er forventet", og en fremtidig apply uden log-rows
+  // flages automatisk som ægte fund.
+  ["market_value_level_correction_apply_log", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
+  ["market_value_level_correction_rider_receipts", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
