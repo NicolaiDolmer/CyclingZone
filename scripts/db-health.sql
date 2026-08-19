@@ -42,6 +42,12 @@ WHERE calls > 0
   -- ekskluderet på en unik streng fra selve queryen, IKKE et bredt mønster,
   -- så et NYT tungt forensik-kald stadig ville trigge WARN.
   AND query !~* 'violating_pairs'
+  -- 19/8-2026: bevidste maintenance-kommandoer (VACUUM FULL, REINDEX, CLUSTER)
+  -- skriver ALTID stor temp pr. design og er ejer-godkendte engangs-operationer,
+  -- ikke query-moenstre der kan fixes. pg_stat_statements-raekken lever ellers
+  -- for evigt som falsk positiv (samme mekanik som #3205). Almindelige queries
+  -- med temp-spill rammes stadig fuldt ud af tjekket.
+  AND query !~* '^\s*(VACUUM|REINDEX|CLUSTER)'
 
 UNION ALL
 
