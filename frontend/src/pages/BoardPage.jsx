@@ -67,9 +67,13 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
 // #2307 · stabil reference til useRealtimeRefetch (SKAL være modul-konstant,
-// se hookens JSDoc). board_profiles = bestyrelsestal/mål/modifier; seasons +
-// race_results = trigger ved løbs-finalisering (samme tabeller som Dashboard).
-const BOARD_REALTIME_TABLES = ["board_profiles", "seasons", "race_results"];
+// se hookens JSDoc). seasons + races = trigger ved løbs-finalisering (samme
+// tabeller som Dashboard). #3035: race_results er ude af publikationen (34k
+// masseskrivninger/vindue); races-rækken bumpes pr. etape og dækker samme UX.
+// board_profiles fjernet fra listen: den var ALDRIG i publikationen (død
+// subscription, audit 19/8), og bestyrelsestal ændres netop ved finalisering,
+// som races-eventet allerede dækker (8k updates/vindue holdes ude af realtime).
+const BOARD_REALTIME_TABLES = ["seasons", "races"];
 
 function buildBoardTourSteps(t) {
   return [
