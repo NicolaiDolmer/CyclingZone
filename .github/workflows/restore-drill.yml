@@ -1,0 +1,128 @@
+name: Restore drill
+
+# Månedlig gendannelses-øvelse: pg_dump af prod (public-skemaet) → restore i en
+# frisk Postgres 17-container i runneren → verifikation af at nøgletabeller er
+# intakte. Beviser at "vi har backup" reelt betyder "vi kan gendanne", og måler
+# hvor lang tid en logisk gendannelse tager (vores reelle RTO for spildata).
+#
+# Kontekst: PITR-add-on fravalgt 19/8-2026 (ejer-beslutning, $100/md. uden
+# omsætning). Kompenserende kontrol: Supabases daglige backups (dashboard) +
+# denne drill + tabel-snapshots før risikable operationer. Fuld procedure:
+# docs/DB_RESTORE_RUNBOOK.md.
+#
+# SIKKERHED: repoet er offentligt læsbart — dumpet må ALDRIG uploades som
+# artifact eller printes. Det lever kun i runnerens disk og slettes med runneren.
+
+on:
+  schedule:
+    - cron: '0 5 1 * *'   # den 1. i måneden, 05:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: restore-drill
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Verify SUPABASE_DB_URL is configured
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "${DB_URL:-}" ]; then
+            echo "❌ SUPABASE_DB_URL secret missing — see docs/AUTO_MIGRATION_SETUP.md"
+            exit 1
+          fi
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump prod (public schema, custom format)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          echo "dump_start=$(date -u +%s)" >> "$GITHUB_ENV"
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" \
+            --schema=public --format=custom --no-owner --no-privileges \
+            --file=/tmp/drill.dump
+          ls -la /tmp/drill.dump | awk '{print "dump size:", $5, "bytes"}'
+
+      - name: Restore into fresh Postgres 17
+        run: |
+          set -euo pipefail
+          export PGPASSWORD=drill
+          /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -c "CREATE DATABASE drill_restore;"
+          # RLS-policies refererer auth.uid()/is_admin(); skab minimal auth-stub så
+          # policy-DDL kan gendannes udenfor Supabase.
+          /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d drill_restore -c \
+            "CREATE SCHEMA IF NOT EXISTS auth;
+             CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS 'SELECT NULL::uuid';
+             CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS 'SELECT NULL::text';
+             CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql AS 'SELECT NULL::jsonb';"
+          # --exit-on-error bevidst FRA: enkelte objekter (fx grants til Supabase-
+          # roller) fejler forventeligt udenfor Supabase; verifikationen nedenfor
+          # er den reelle gate. Fejlantal logges.
+          /usr/lib/postgresql/17/bin/pg_restore -h localhost -U postgres -d drill_restore \
+            --no-owner --no-privileges /tmp/drill.dump 2> /tmp/restore-errors.log || true
+          echo "pg_restore stderr-linjer: $(wc -l < /tmp/restore-errors.log)"
+          tail -5 /tmp/restore-errors.log || true
+
+      - name: Verify restored data
+        run: |
+          set -euo pipefail
+          export PGPASSWORD=drill
+          Q() { /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d drill_restore -tAc "$1"; }
+          TABLES=$(Q "SELECT count(*) FROM pg_tables WHERE schemaname='public'")
+          RIDERS=$(Q "SELECT count(*) FROM public.riders")
+          TEAMS=$(Q "SELECT count(*) FROM public.teams")
+          RESULTS=$(Q "SELECT count(*) FROM public.race_results")
+          RACES=$(Q "SELECT count(*) FROM public.races")
+          DUR=$(( $(date -u +%s) - dump_start ))
+          echo "== Drill-resultat =="
+          echo "tabeller gendannet: $TABLES"
+          echo "riders: $RIDERS · teams: $TEAMS · race_results: $RESULTS · races: $RACES"
+          echo "samlet dump+restore-tid (målt RTO for spildata): ${DUR}s"
+          FAIL=0
+          [ "$TABLES"  -ge 100 ]    || { echo "❌ under 100 tabeller gendannet"; FAIL=1; }
+          [ "$RIDERS"  -ge 1000 ]   || { echo "❌ riders under 1000"; FAIL=1; }
+          [ "$TEAMS"   -ge 50 ]     || { echo "❌ teams under 50"; FAIL=1; }
+          [ "$RESULTS" -ge 100000 ] || { echo "❌ race_results under 100000"; FAIL=1; }
+          [ "$RACES"   -ge 100 ]    || { echo "❌ races under 100"; FAIL=1; }
+          exit $FAIL
+
+      - name: Open issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "[restore-drill] Gendannelses-øvelse FEJLEDE" \
+            --label "claude:todo" \
+            --body "Den månedlige restore-drill fejlede: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — det betyder at vi IKKE kan stole på at spildata kan gendannes. Undersøg med det samme. Procedure: docs/DB_RESTORE_RUNBOOK.md"

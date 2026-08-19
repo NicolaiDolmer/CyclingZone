@@ -146,3 +146,13 @@ SELECT. Alle fund trianguleret mod eksisterende issues/beslutninger. Ejer-godken
 
 - **OTP-expiry sættes til 1800 s (30 min)** — dashboard-klik (Authentication → Sign In / Providers
   → Email → "Email OTP Expiration"), jf. §3 ovenfor. Verifikation: gen-kør advisors bagefter.
+  **Udført + verificeret samme dag:** sat til 1800 s; `auth_otp_long_expiry` væk fra advisor-listen.
+
+### Beslutning 19/8: PITR fravalgt (pris), kompenserende kontroller etableret
+
+Ejer-beslutning: PITR-add-on ($100/md. pr. 7 dages retention + Small compute-krav) står ikke
+mål med et spil uden omsætning. I stedet: Supabases daglige backups + **månedlig restore-drill**
+(`.github/workflows/restore-drill.yml`: pg_dump af prod → restore i frisk PG17 → verifikation,
+målt RTO) + obligatorisk tabel-snapshot-ritual før risikable operationer. Fuld procedure:
+[`docs/DB_RESTORE_RUNBOOK.md`](../DB_RESTORE_RUNBOOK.md). **Revurdér PITR når spillet får
+omsætning eller ved abonnements-lancering.**
