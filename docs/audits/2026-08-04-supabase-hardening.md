@@ -100,3 +100,49 @@ where n.nspname = 'public' and p.proname = 'identity_events_set_ip_prefix';
 
 Og efter en eventuel dashboard-ændring af OTP-expiry: gen-kør `get_advisors(type=security)` — punkt
 `auth_otp_long_expiry` skal være væk fra listen.
+
+---
+
+## Status 2026-08-19 — fuld advisor-triage (perf + security), PR `fix/2677-supabase-perf-advisors`
+
+Kilde: ejer-pastet advisor-dump 19/8 + `pg_stat_statements`, verificeret mod prod med read-only
+SELECT. Alle fund trianguleret mod eksisterende issues/beslutninger. Ejer-godkendt plan 19/8.
+
+### Fixet i denne PR
+
+- **`auth_rls_initplan` (8 policies) + `multiple_permissive_policies` (7 tabeller)** — [#2677](https://github.com/NicolaiDolmer/CyclingZone/issues/2677)
+  udvidet med 4 fund nye siden 19/7 (`wage_daily_runs`, `race_stage_timelines`,
+  `rider_career_events`, `season_documentaries`). Migration:
+  `database/2026-08-19-2677-rls-initplan-permissive-split.sql`.
+- **Index på `race_results(imported_at)`** — `pg_stat_statements` viste seq-scans over 1,03 mio.
+  rækker (304 ms-1,8 s gns. på to service_role-queries). Genåbner #2188-beslutningen med ny
+  evidens (skalaen er vokset siden juli). Migration:
+  `database/2026-08-19-2677-race-results-imported-at-index.sql`.
+
+### Ops-handling udført direkte 19/8 (ejer-go, stille vindue ml. race-batches)
+
+- **`VACUUM (FULL, ANALYZE) race_results`** kørt 10:58 UTC. Vigtigste fund: `pg_stat`-statistikken
+  var **helt stale** (`n_live_tup` viste 16.829; reelt tal 1.027.575, `last_autoanalyze` var aldrig
+  sat). Tabellen var altså IKKE bloated (kun ~40 MB genvundet, mest index-bloat) — men planneren
+  har arbejdet med 60x forkerte rækkeantal indtil nu. Efter ANALYZE er statistikken korrekt.
+  Hold øje med at autovacuum/autoanalyze kører fremadrettet (`pg_stat_user_tables.last_autoanalyze`).
+
+### Nye permanent accepterede undtagelser (ud over §2's)
+
+- **`extension_in_public` (`btree_gist`)** — flytning kræver drop/genskabelse af extensionen og
+  alle afhængige constraints (bl.a. exclusion constraints). Risiko klart større end gevinst for en
+  ren perf/namespace-kosmetik. **Accepteret permanent 19/8.**
+- **`materialized_view_in_api` (4 matviews)** — ejer-beslutning 23/7 i
+  [#2678](https://github.com/NicolaiDolmer/CyclingZone/issues/2678): ranglister/standings er
+  offentlig spil-information. `anon`-SELECT revoked 3/8 (#3124); `authenticated`-SELECT er
+  tilsigtet. Advisoren vil blive ved at flage dette. **Accepteret.**
+- **`authenticated_security_definer_function_executable` for `get_cohort_retention`,
+  `get_retention_scorecard_activity`, `get_sprint_metrics`** — funktionskroppene verificeret i
+  prod 19/8: alle tre har `IF NOT (public.is_admin() OR auth.role() = 'service_role') THEN RAISE
+  EXCEPTION 'forbidden' (42501)`-guard. Authenticated kan kalde, men får afvist. **Accepteret**
+  (guard-mønstret er selve designet, jf. #476/#928).
+
+### Ejer-handling besluttet 19/8
+
+- **OTP-expiry sættes til 1800 s (30 min)** — dashboard-klik (Authentication → Sign In / Providers
+  → Email → "Email OTP Expiration"), jf. §3 ovenfor. Verifikation: gen-kør advisors bagefter.
