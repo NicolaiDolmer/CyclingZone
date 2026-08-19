@@ -253,6 +253,14 @@ const SECTION_DEFS = [
       { id: "progressBars", kind: "text" },
       { id: "longTermGrowth", kind: "text" },
       { id: "readingReport", kind: "text" },
+      // #3721: wired in — the copy already lived in help.json (translated,
+      // en+da) but was never listed here, so the "Weekly rhythm" panel and its
+      // per-rider override had no reachable documentation. The Training page's
+      // "How training works" link (?section=dailytraining) is the first thing
+      // that actually surfaces it.
+      { id: "weeklyRhythm", kind: "text" },
+      { id: "individualWeeklyPlan", kind: "text" },
+      { id: "trainingHistory", kind: "text" },
     ],
   },
   {
