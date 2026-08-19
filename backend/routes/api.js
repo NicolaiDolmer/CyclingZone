@@ -14548,9 +14548,20 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       //     Sweepet har en dagskvote, så et tilbud kan overleve en dag eller to
       //     ekstra ved kø — datoen er "tidligst", ikke en garanti (copy afspejler det).
       const signingFee = Math.round(calculateRiderMarketValue(rider) * ACADEMY.SIGNING_FEE_RATE);
-      // #3550 punkt 4: løn-forhåndsvisning på kortet, SAMME formel som
-      // signAcademyCandidate bruger ved selve signeringen (uændret — rører
-      // ikke lønformlen). Vises FØR klikket, ligesom signingFee allerede gør.
+      // #3550 punkt 4: løn-forhåndsvisning på kortet, SAMME delte funktion som
+      // signAcademyCandidate bruger ved selve signeringen (uændret - rører ikke
+      // lønformlen). Vises FØR klikket, ligesom signingFee allerede gør.
+      //
+      // FUND (kræver ejer-review, se PR-body): computeFrozenSalary prissætter i
+      // dag UDELUKKENDE fra current_production_value, aldrig fra market_value -
+      // så den symbolske intake-pull-værdi (punkt 2) giver IKKE automatisk en
+      // symbolsk løn her. #3393 (løn-reformen, egen branch/PR, IKKE rørt af denne
+      // PR) introducerer SALARY_BASIS_MODE="market" ved cutover 23/8, hvor denne
+      // samme funktion vil læse markedsværdien i stedet. Fordi kaldet her går
+      // gennem DEN DELTE funktion (ikke en lokal kopi af formlen), følger
+      // wagePreview automatisk med når #3393 lander - ingen ændring PÅKRÆVET her,
+      // MEN verificér computeFrozenSalary's parameternavne igen efter merge (kan
+      // være udvidet til også at tage market_value/base_value som input).
       const wagePreview = computeFrozenSalary({
         current_production_value: rider.current_production_value,
         division: req.team.division,

@@ -682,22 +682,24 @@ function makeSignRejectSupabase({
   return supabase;
 }
 
-test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salary, contract_length=3, contract_end_season=seasonNumber+2", async () => {
+test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salary, contract_length=1 (#3550 punkt 3), contract_end_season=seasonNumber", async () => {
   const supabase = makeSignRejectSupabase({ riderBaseValue: 100000, teamAcademyCount: 0 });
   const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
 
   assert.equal(result.riderId, "rider-X");
   assert.ok(result.salary > 0, "salary > 0");
   assert.ok(result.fee > 0, "fee > 0");
-  assert.equal(result.contractEndSeason, 3, "contractEndSeason = 1 + 3 - 1 = 3");
+  // #3550 punkt 3: intake-signeringer bruger INTAKE_CONTRACT_LENGTH (1), IKKE den
+  // delte CONTRACT_LENGTH (3) - contractEndSeason = 1 + 1 - 1 = 1 (seasonNumber selv).
+  assert.equal(result.contractEndSeason, 1, "contractEndSeason = 1 + 1 - 1 = 1 (1-sæsons intro-kontrakt)");
 
-  // Rider update: is_academy=true, team_id, salary, contract_length=3, contract_end_season
+  // Rider update: is_academy=true, team_id, salary, contract_length=1, contract_end_season
   assert.equal(supabase._riderUpdates.length, 1, "præcis én rider-update");
   const upd = supabase._riderUpdates[0];
   assert.equal(upd.is_academy, true, "is_academy=true");
   assert.equal(upd.team_id, "team-A");
-  assert.equal(upd.contract_length, 3);
-  assert.equal(upd.contract_end_season, 3);
+  assert.equal(upd.contract_length, 1, "#3550 punkt 3: 1-sæsons intro-kontrakt for intake-signeringer");
+  assert.equal(upd.contract_end_season, 1);
   assert.ok(typeof upd.salary === "number" && upd.salary >= 1, "salary er tal >= 1");
 
   // #1558: cap + rider-update + finance-debit via den atomære RPC.
@@ -728,6 +730,15 @@ test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salar
   assert.ok(supabase._intakeUpdates[0].resolved_at, "resolved_at sat");
   // #2793: signing_fee persisteres som rytterens kostbasis ved signing.
   assert.equal(supabase._intakeUpdates[0].signing_fee, result.fee, "signing_fee = den beregnede fee");
+});
+
+// #3550 punkt 3 (ejer-beslutning 19/8): intake-signeringer er ISOLERET fra den
+// delte akademi-kontrakt-længde. demote-stien (academyTransfer.js) og youth-
+// auktionsvinderen (auctionFinalization.js) deler fortsat ACADEMY.CONTRACT_LENGTH
+// (3, uændret) - kun signAcademyCandidate bruger den nye INTAKE_CONTRACT_LENGTH (1).
+test("#3550 punkt 3: ACADEMY.INTAKE_CONTRACT_LENGTH (1) er ISOLERET fra ACADEMY.CONTRACT_LENGTH (3, uændret, delt af demote + youth-auktionsvinder)", () => {
+  assert.equal(ACADEMY.INTAKE_CONTRACT_LENGTH, 1, "intake-signering: 1-sæsons intro-kontrakt");
+  assert.equal(ACADEMY.CONTRACT_LENGTH, 3, "den DELTE konstant er uændret - demote/auktionsvinder-stierne må ikke korte utilsigtet");
 });
 
 // ── #3550 punkt 2+4 (ejer-beslutning 19/8, ungdomspakken) ─────────────────────
