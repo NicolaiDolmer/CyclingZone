@@ -31,6 +31,7 @@ function makeSupabase(initial = {}) {
     if (!state[table]) state[table] = [];
     const rows = () => state[table];
     const filters = [];
+    let pendingUpdate = null;
     const matches = (row) => filters.every((f) =>
       f.t === "eq" ? row[f.c] === f.v : f.t === "in" ? f.v.includes(row[f.c]) : true);
     const builder = {
@@ -38,6 +39,10 @@ function makeSupabase(initial = {}) {
       eq(c, v) { filters.push({ t: "eq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       order() { return builder; },
+      // #3959 · recomputeSeasonRaceDays() skriver seasons.race_days_completed/
+      // race_days_total via .update(payload).eq(...) — mocken merger payload'en ind i
+      // rækker der matcher de efterfølgende eq-filtre, samme lazy-apply-mønster som insert.
+      update(payload) { pendingUpdate = payload; return builder; },
       // #2962 · materializeTierCalendars' teams-select pagineres nu via fetchAllRows
       // (.order("id").range()) — mocken slicer den filtrerede tabel som en enkelt side.
       range(from, to) { return Promise.resolve({ data: rows().filter(matches).slice(from, to + 1), error: null }); },
@@ -51,7 +56,13 @@ function makeSupabase(initial = {}) {
           then(res, rej) { return Promise.resolve({ data: null, error: null }).then(res, rej); },
         };
       },
-      then(res, rej) { return Promise.resolve({ data: rows().filter(matches), error: null }).then(res, rej); },
+      then(res, rej) {
+        if (pendingUpdate) {
+          for (const row of rows()) if (matches(row)) Object.assign(row, pendingUpdate);
+          return Promise.resolve({ data: null, error: null }).then(res, rej);
+        }
+        return Promise.resolve({ data: rows().filter(matches), error: null }).then(res, rej);
+      },
     };
     return builder;
   }
@@ -421,6 +432,61 @@ test("apply: arketype driver parcours (cobbled_classic endagsløb → brosten do
   const cobbles = oneDayProfiles.filter((p) => p.profile_type === "cobbles").length;
   assert.ok(oneDayProfiles.length > 0, "der skal være endagsløb");
   assert.ok(cobbles >= oneDayProfiles.length * 0.6, `forventede brosten-dominans, fik ${cobbles}/${oneDayProfiles.length}`);
+});
+
+// #3959 (lønbasis-cutover, 19/8, jf. ejer-note): seasons.race_days_total stod i prod på
+// SCHEMA-DEFAULTEN (60) for en sæson med en allerede-materialiseret, RIGTIG kalender på 28
+// dage — fordi race_days_total kun blev genberegnet REAKTIVT (raceRunner.js/
+// pcmResultsImport.js efter et resultat-import), aldrig da kalenderen selv blev skrevet.
+// wageDeductionSweep dividerer dagslønnen med race_days_total, så et sådant hul ville
+// opkræve ~halv dagsløn indtil første resultat-import. Testen låser at
+// materializeTierCalendars nu selv materialiserer feltet fra den FAKTISKE kalender
+// (distinkte game_day_start, samme sandhed som seasonRaceDays.js), så en frisk sæsons
+// dagsløn er korrekt fra dag 1 — ikke først efter et løb er kørt.
+test("#3959 apply: materialiserer seasons.race_days_total fra den faktiske kalender (28 distinkte dage), ikke schema-defaulten (60)", async () => {
+  const league_divisions = [
+    { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" },
+    { id: 5, tier: 3, pool_index: 1, label: "Division 3 — B" },
+  ];
+  const mgr = (id, pool) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: pool });
+  const teams = [mgr("a1", 4), mgr("a2", 4), mgr("a3", 4), mgr("b1", 5), mgr("b2", 5), mgr("b3", 5)];
+  // Schema-defaulten (database/schema.sql: race_days_total INTEGER DEFAULT 60) — netop
+  // den stale værdi #3959 fandt i prod for en sæson med en allerede-bygget kalender.
+  const seasons = [{ id: "s1", number: 3, status: "upcoming", race_days_total: 60, race_days_completed: 0 }];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: tier3Catalog(), seasons });
+
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
+
+  assert.ok(summary.racesInserted > 0, "der skal indsættes løb");
+  assert.equal(summary.raceDaysTotalError, undefined, "recompute må ikke fejle når seasons-tabellen findes");
+  const season = sb.state.seasons.find((s) => s.id === "s1");
+  assert.equal(season.race_days_total, 28, "S3-invarianten: alle sæsoner er 28 kalenderdage, ikke 60-defaulten");
+  assert.equal(season.race_days_completed, 0, "ingen løb er kørt endnu — kun kalenderen er materialiseret");
+});
+
+// Fallback-guard: en fejlende race_days_total-recompute (fx en flaky seasons-write) må
+// ALDRIG vælte selve kalender-materialiseringen — løbene er allerede skrevet, og en
+// efterfølgende re-kørsel/backfill kan lukke hullet idempotent (samme fail-safe-disciplin
+// som resten af #2642-fixes). wageDeductionSweep har desuden sin egen uafhængige fallback
+// (DEFAULT_SEASON_LENGTH_DAYS=60, se wageDeductionSweep.js) hvis feltet forbliver stale.
+test("#3959 apply: fejlende race_days_total-recompute vælter ALDRIG selve kalender-materialiseringen", async () => {
+  const league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
+  const mgr = (id, pool) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: pool });
+  const teams = [mgr("a1", 4), mgr("a2", 4), mgr("a3", 4)];
+  const seasons = [{ id: "s1", number: 3, status: "upcoming", race_days_total: 60, race_days_completed: 0 }];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: tier3Catalog(), seasons });
+  const realFrom = sb.from;
+  // Simulér en fejlende seasons-write (fx netværk/RLS) — races/race_pool/etc. uændret.
+  sb.from = (table) => {
+    if (table !== "seasons") return realFrom(table);
+    return { update: () => ({ eq: () => Promise.resolve({ error: { message: "boom (simuleret seasons-write-fejl)" } }) }) };
+  };
+
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX });
+
+  assert.ok(summary.racesInserted > 0, "kalenderen skal stadig materialiseres selvom recompute fejler");
+  assert.ok(String(summary.raceDaysTotalError || "").includes("boom"), "fejlen rapporteres i summary til debugging/Sentry, men kastes ikke");
+  assert.equal(sb.state.seasons[0].race_days_total, 60, "stale værdi bevares urørt — næste materialisering/backfill retter den selv-helende");
 });
 
 test("forceTiers: en tier-4-pulje uden rigtige managers får alligevel en kalender, når tier 4 er i forceTiers", () => {

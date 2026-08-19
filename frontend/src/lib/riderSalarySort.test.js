@@ -1,12 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { compareRidersByFilter, mergeSalarySortedIds } from "./riderColumnSort.js";
+import { getRiderSalary, SALARY_ESTIMATE_COLUMN } from "./marketValues.js";
 
 // #2403 regression: løn-sortering (rytterdatabase server-side + auktioner/
 // transfermarked/hold/watchlist klient-side) skal følge den VISTE løn
-// (getRiderSalary: frossen kontrakt-løn hvis sat, ellers current_production_value
-// × global sats), ikke den rå `salary`-kolonne — som klumpede alle salary=NULL-
-// ryttere (free agents m.fl.) i bunden uanset deres faktisk viste estimat-løn.
+// (getRiderSalary: frossen kontrakt-løn hvis sat, ellers grundlags-estimatet —
+// SALARY_ESTIMATE_COLUMN, #3360 = market_value), ikke den rå `salary`-kolonne —
+// som klumpede alle salary=NULL-ryttere (free agents m.fl.) i bunden uanset
+// deres faktisk viste estimat-løn.
+//
+// #3959-fund (lønbasis-cutover 19/8): fixturerne herunder brugte tidligere
+// current_production_value (CPV-æraens grundlag). Under SALARY_BASIS_MODE=
+// "market" bruger getRiderSalary IKKE current_production_value længere — kun
+// market_value/base_value — så fixturerne er flyttet til SALARY_ESTIMATE_COLUMN,
+// som altid følger det AKTIVE grundlag i stedet for et hardkodet feltnavn.
 
 // ---- Klient-side: compareRidersByFilter (useClientRiderFilters — auktioner,
 // transfermarkedets riderFilters, eget hold, watchlist) ----
@@ -16,12 +24,20 @@ const mixedRiders = [
   { id: "low-frozen", firstname: "A", lastname: "Low", salary: 5000 },
   // Frossen kontrakt-løn, høj.
   { id: "high-frozen", firstname: "B", lastname: "High", salary: 50000 },
-  // Free agent uden frossen løn — estimat = current_production_value × 0.1606
-  // (global sats). 300000 × 0.1606 ≈ 48180 — skal ligge LIGE UNDER "high-frozen".
-  { id: "free-agent-mid", firstname: "C", lastname: "Mid", salary: null, current_production_value: 300000 },
-  // Free agent med meget lav produktionsværdi → estimat ~161 (gulv 1000×0.1606).
-  { id: "free-agent-low", firstname: "D", lastname: "Floor", salary: null, current_production_value: 0 },
+  // Free agent uden frossen løn — estimat via SALARY_ESTIMATE_COLUMN, valgt så
+  // estimatet ligger LIGE UNDER "high-frozen" (verificeret nedenfor, ikke antaget).
+  { id: "free-agent-mid", firstname: "C", lastname: "Mid", salary: null, [SALARY_ESTIMATE_COLUMN]: 800000 },
+  // Free agent med værdi 0 → falder til estimat-gulvet (base-fallback).
+  { id: "free-agent-low", firstname: "D", lastname: "Floor", salary: null, [SALARY_ESTIMATE_COLUMN]: 0 },
 ];
+
+// Låser selve fixture-forudsætningen (i stedet for at antage den): estimatet for
+// "free-agent-mid" skal ligge strengt mellem de to frosne lønninger, ellers siger
+// rækkefølge-testerne nedenfor ingenting om den rigtige bug.
+test("fixture-forudsætning: free-agent-mid's estimat ligger mellem low-frozen og high-frozen", () => {
+  const midEstimate = getRiderSalary({ [SALARY_ESTIMATE_COLUMN]: 800000 });
+  assert.ok(midEstimate > 5000 && midEstimate < 50000, `estimat ${midEstimate} skal ligge mellem 5000 og 50000`);
+});
 
 test("compareRidersByFilter salary desc — følger VIST løn, blander frossen + estimat korrekt", () => {
   const sorted = [...mixedRiders].sort((a, b) =>
@@ -38,7 +54,7 @@ test("compareRidersByFilter salary asc — omvendt rækkefølge, free agents IKK
 test("compareRidersByFilter salary — salary:0 er en gyldig gratis-kontrakt, ikke NULL", () => {
   const riders = [
     { id: "free-zero", firstname: "Z", lastname: "Zero", salary: 0 },
-    { id: "estimate", firstname: "E", lastname: "Est", salary: null, current_production_value: 5000 },
+    { id: "estimate", firstname: "E", lastname: "Est", salary: null, [SALARY_ESTIMATE_COLUMN]: 5000 },
   ];
   const sorted = [...riders].sort((a, b) => compareRidersByFilter(a, b, { sort: "salary", sort_dir: "asc" }));
   assert.equal(sorted[0].id, "free-zero");
@@ -52,8 +68,8 @@ test("mergeSalarySortedIds desc — fletter to letvægts-grene til én global r�
     { id: "high-frozen", salary: 50000 },
   ];
   const withoutSalary = [
-    { id: "free-agent-mid", current_production_value: 300000 },
-    { id: "free-agent-low", current_production_value: 0 },
+    { id: "free-agent-mid", [SALARY_ESTIMATE_COLUMN]: 800000 },
+    { id: "free-agent-low", [SALARY_ESTIMATE_COLUMN]: 0 },
   ];
   const ids = mergeSalarySortedIds(withSalary, withoutSalary, false);
   assert.deepEqual(ids, ["high-frozen", "free-agent-mid", "low-frozen", "free-agent-low"]);
@@ -65,8 +81,8 @@ test("mergeSalarySortedIds asc — omvendt rækkefølge", () => {
     { id: "high-frozen", salary: 50000 },
   ];
   const withoutSalary = [
-    { id: "free-agent-mid", current_production_value: 300000 },
-    { id: "free-agent-low", current_production_value: 0 },
+    { id: "free-agent-mid", [SALARY_ESTIMATE_COLUMN]: 800000 },
+    { id: "free-agent-low", [SALARY_ESTIMATE_COLUMN]: 0 },
   ];
   const ids = mergeSalarySortedIds(withSalary, withoutSalary, true);
   assert.deepEqual(ids, ["free-agent-low", "low-frozen", "free-agent-mid", "high-frozen"]);
@@ -74,7 +90,7 @@ test("mergeSalarySortedIds asc — omvendt rækkefølge", () => {
 
 test("mergeSalarySortedIds — paginering: side 2 fortsætter rækkefølgen fra side 1 (ingen huller/dubletter)", () => {
   const withSalary = Array.from({ length: 5 }, (_, i) => ({ id: `s${i}`, salary: (i + 1) * 1000 }));
-  const withoutSalary = Array.from({ length: 5 }, (_, i) => ({ id: `f${i}`, current_production_value: (i + 1) * 2000 }));
+  const withoutSalary = Array.from({ length: 5 }, (_, i) => ({ id: `f${i}`, [SALARY_ESTIMATE_COLUMN]: (i + 1) * 2000 }));
   const fullOrder = mergeSalarySortedIds(withSalary, withoutSalary, false);
   assert.equal(fullOrder.length, 10);
   assert.equal(new Set(fullOrder).size, 10, "ingen dubletter på tværs af de to grene");
@@ -92,10 +108,10 @@ test("mergeSalarySortedIds — tom liste giver tom rækkefølge", () => {
 });
 
 test("mergeSalarySortedIds — stabil tie-break på id når estimeret løn er lige (fælles gulv)", () => {
-  // To free agents uden produktionsværdi rammer begge estimat-gulvet (1000 × sats).
+  // To free agents uden en gyldig værdi rammer begge samme fallback-estimat.
   const withoutSalary = [
-    { id: "z-agent", current_production_value: 0 },
-    { id: "a-agent", current_production_value: -5 },
+    { id: "z-agent", [SALARY_ESTIMATE_COLUMN]: 0 },
+    { id: "a-agent", [SALARY_ESTIMATE_COLUMN]: -5 },
   ];
   const ids = mergeSalarySortedIds([], withoutSalary, false);
   assert.deepEqual(ids, ["a-agent", "z-agent"], "tie-break er id-rækkefølge, deterministisk uanset side");

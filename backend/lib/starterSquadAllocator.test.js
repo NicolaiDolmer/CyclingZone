@@ -406,7 +406,7 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
           if (cols && cols.includes("firstname")) return Promise.resolve({ data: [], error: null }); // navne-fetch
           if (inIds) {
             return Promise.resolve({
-              data: inIds.map((id) => ({ id, birthdate: "2000-01-01", potentiale: 3, base_value: 5000, current_production_value: 40000 })),
+              data: inIds.map((id) => ({ id, birthdate: "2000-01-01", potentiale: 3, base_value: 5000, market_value: 5000, current_production_value: 40000 })),
               error: null,
             });
           }
@@ -454,15 +454,17 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
     assert.ok(u.contract_length >= 2 && u.contract_length <= 3, `contract_length ${u.contract_length} ude af 2-3 (#3037: min. 2)`);
     assert.equal(u.contract_end_season, ACTIVE_SEASON + u.contract_length - 1, "end = aktiv sæson + length - 1 (aldrig hardcodet sæson 1)");
     assert.ok(u.contract_end_season > ACTIVE_SEASON, "#3037: contract_end_season > aktiv sæson (overlever allokerings-sæsonens slut)");
-    const expectedSalary = computeFrozenSalary({ current_production_value: 40000, division: teamDivisions[u.team_id] });
+    const expectedSalary = computeFrozenSalary({
+      current_production_value: 40000, market_value: 5000, base_value: 5000,
+      division: teamDivisions[u.team_id],
+    });
     assert.equal(u.salary, expectedSalary, `salary matcher computeFrozenSalary for hold ${u.team_id}s division`);
     assert.ok(u.salary > 0, "salary aldrig 0/NULL");
+    // #3360 forward-guard: allokeringen SKAL læse værdi-feltet, ikke lande på
+    // fallback-basen (den fejl gav 1.326 ryttere identisk løn i #2894/#3389).
+    assert.notEqual(u.salary, computeFrozenSalary({}),
+      "salary må ikke være fallback-lønnen — kaldestedet mangler et værdi-felt");
   }
-  // De to divisioner (1 og 3) har forskellig sats → salary skal reelt variere med
-  // holdets division, ikke bare være en flad konstant.
-  const t1Salary = teamIdUpdates.find((u) => u.team_id === "t1").salary;
-  const t2Salary = teamIdUpdates.find((u) => u.team_id === "t2").salary;
-  assert.notEqual(t1Salary, t2Salary, "division 1 og 3 har forskellige satser → forskellig salary");
 });
 
 // ── #1560 · allocateStarterSquadForTeam (single-team-bootstrap) ────────────────
@@ -521,8 +523,11 @@ test("#2894/#2902 single-team: allokering sætter salary + contract_length + con
     assert.equal(r.contract_end_season, ACTIVE_SEASON + r.contract_length - 1,
       `rytter ${r.id} contract_end_season skal følge den AKTIVE sæson (${ACTIVE_SEASON}), ikke en hardcodet sæson 1`);
     assert.ok(r.contract_end_season > ACTIVE_SEASON, `rytter ${r.id} #3037: contract_end_season skal være > aktiv sæson (${ACTIVE_SEASON})`);
-    const expectedSalary = computeFrozenSalary({ current_production_value: r.current_production_value, division: 2 });
+    // #3360: hele værdi-trioen — kaldestedet skal læse det felt det AKTIVE grundlag bruger.
+    const expectedSalary = computeFrozenSalary({ ...r, division: 2 });
     assert.equal(r.salary, expectedSalary, `rytter ${r.id} salary matcher computeFrozenSalary (division 2)`);
+    assert.notEqual(r.salary, computeFrozenSalary({}),
+      `rytter ${r.id} fik fallback-lønnen — kaldestedet mangler et værdi-felt`);
   }
 });
 

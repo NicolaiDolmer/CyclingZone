@@ -719,7 +719,7 @@
       },
       "salary": {
         "title": "Løn",
-        "text": "Hver rytters årsløn fastsættes ved signering ud fra hvad rytteren forventes at producere i indeværende sæson, og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Værdi og løn svarer på to forskellige spørgsmål: værdien er prisen på rytterens fremtid, lønnen er omkostningen ved det han leverer lige nu. Unge talenter er derfor billige at have på lønningslisten, mens etablerede stjerner får løn der matcher deres niveau. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
+        "text": "Hver rytters årsløn fastsættes ved signering ud fra rytterens markedsværdi, og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Du betaler for det du ejer, så jo mere en rytter er værd, jo dyrere er han at beholde. Kurven er bevidst fladet ud i toppen: en dobbelt så værdifuld rytter koster ikke dobbelt så meget i løn, og en trup fuld af dyre ryttere er en reel driftsomkostning frem for en øjeblikkelig konkurs. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
       "abilitiesExplained": {
         "title": "De 15 evner, og hvor de betyder noget",
@@ -948,7 +948,7 @@
       },
       "frozenSalary": {
         "title": "Hvorfor lønnen er frossen (guldkontrakter og byrder)",
-        "text": "Fordi lønnen låses ved signering, bliver en ung rytter der udvikler sig til en stærkere spiller et røverkøb: du betaler en tidlig-karriere-løn for en nu-stærkere rytter. Det er en 'guldkontrakt'. Det modsatte gælder også: en falmende stjerne signeret på toppens løn forbliver på høj løn selv om evnerne falder, og bliver en økonomisk byrde. At spotte disse situationer tidligt er en central del af holdledelsen."
+        "text": "Fordi lønnen låses ved signering, bliver en ung rytter der udvikler sig til en stærkere spiller et røverkøb: du betaler en tidlig-karriere-løn for en nu-stærkere rytter. Det er en 'guldkontrakt'. Det modsatte gælder også: en falmende stjerne signeret på toppens løn forbliver på høj løn selv om værdien falder, og bliver en økonomisk byrde. At spotte disse situationer tidligt er en central del af holdledelsen."
       },
       "contractOnTrade": {
         "title": "Kontrakter følger rytteren",
@@ -956,11 +956,11 @@
       },
       "extendContract": {
         "title": "Forlængelse af en kontrakt",
-        "text": "Forlænger du en rytters kontrakt fra profil-siden, lægges én sæson til kontraktlængden, og udløbssæsonen rykker én sæson længere ud, til en genforhandlet løn baseret på rytterens nuværende produktion. Du kan forlænge lige så ofte du vil, men udløbssæsonen kan aldrig rykkes forbi 3 sæsoner fra den nuværende: når en rytters kontrakt allerede rækker så langt frem, blokeres yderligere forlængelser indtil den aktuelle sæson rykker frem."
+        "text": "Forlænger du en rytters kontrakt fra profil-siden, lægges én sæson til kontraktlængden, og udløbssæsonen rykker én sæson længere ud, til en genforhandlet løn baseret på rytterens nuværende markedsværdi: en rytter der er blevet mere værd, bliver også dyrere at beholde. Du kan forlænge lige så ofte du vil, men udløbssæsonen kan aldrig rykkes forbi 3 sæsoner fra den nuværende: når en rytters kontrakt allerede rækker så langt frem, blokeres yderligere forlængelser indtil den aktuelle sæson rykker frem."
       },
       "freeAgents": {
         "title": "Free agents",
-        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (baseret på rytterens forventede produktion denne sæson) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres. Frie agenter opstår mest ved at en rytters kontrakt udløber og ikke bliver fornyet ved sæsonskiftet: i praksis er det næsten altid et menneskestyret hold, for AI-styrede hold fornyer selv deres udløbende kontrakter automatisk ved samme skifte. Resten er ryttere frigivet af deres gamle klub, enten ved akademi-graduering eller fra et akademi-intake-tilbud der udløb ubesvaret og ikke fandt en køber på auktion (se 'Udløber akademi-intake-tilbud?')."
+        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (baseret på rytterens markedsværdi) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres. Frie agenter opstår mest ved at en rytters kontrakt udløber og ikke bliver fornyet ved sæsonskiftet: i praksis er det næsten altid et menneskestyret hold, for AI-styrede hold fornyer selv deres udløbende kontrakter automatisk ved samme skifte. Resten er ryttere frigivet af deres gamle klub, enten ved akademi-graduering eller fra et akademi-intake-tilbud der udløb ubesvaret og ikke fandt en køber på auktion (se 'Udløber akademi-intake-tilbud?')."
       }
     },
     "academy": {

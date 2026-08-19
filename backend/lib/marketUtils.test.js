@@ -15,6 +15,7 @@ import {
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
   withdrawOpenTransferDealsForRiders,
 } from "./marketUtils.js";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 // #1748 (a): getActiveAuctionRiderIds — delmængden af riderIds der er på en aktiv
 // auktion. Minimal mock for auctions.select().in("rider_id").in("status").
@@ -469,20 +470,30 @@ test("resolveRiderSalary: frossen salary vinder over estimat", () => {
   assert.equal(resolveRiderSalary({ salary: 12345, base_value: 1_000_000 }), 12345);
 });
 
-test("resolveRiderSalary: NULL salary → current_production_value × global prod-sats (#2594)", () => {
-  // free agent-estimat bruger ALTID global sats (0.1606) — ingen erhvervende hold-division kendt.
-  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 500_000 }), 80_300); // 500_000 × 0.1606
-  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 50_000 }), 8_030); // 50_000 × 0.1606
+// #3360: free agent-estimatet skal MATCHE den løn rytteren faktisk fryses til ved
+// signering — ellers viser markedet ét tal og kontrakten et andet. Testen sammenligner
+// derfor mod computeFrozenSalary i stedet for at pinne ét grundlags konstant.
+test("resolveRiderSalary: NULL salary → samme estimat som computeFrozenSalary (uden division)", () => {
+  for (const v of [500_000, 50_000, 1_000]) {
+    const rider = { salary: null, current_production_value: v, market_value: v };
+    assert.equal(resolveRiderSalary(rider), computeFrozenSalary(rider),
+      `estimatet for en free agent til ${v} skal matche signerings-lønnen`);
+  }
+  // Monotont: en dyrere free agent skal vises med en højere løn.
+  assert.ok(
+    resolveRiderSalary({ salary: null, current_production_value: 500_000, market_value: 500_000 }) >
+    resolveRiderSalary({ salary: null, current_production_value: 50_000, market_value: 50_000 }),
+  );
 });
 
 test("resolveRiderSalary: salary 0 bevares (gratis kontrakt, ikke estimat)", () => {
   assert.equal(resolveRiderSalary({ salary: 0, base_value: 1_000_000 }), 0);
 });
 
-test("resolveRiderSalary: NULL salary + NULL current_production_value → fallback 1000 → 161", () => {
-  assert.equal(resolveRiderSalary({ salary: null, current_production_value: null }), 161);
+test("resolveRiderSalary: NULL salary + ingen værdi-felter → fallback-basen", () => {
+  assert.equal(resolveRiderSalary({ salary: null, current_production_value: null }), computeFrozenSalary({}));
   // undefined salary behandles som free agent (== null loose)
-  assert.equal(resolveRiderSalary({}), 161);
+  assert.equal(resolveRiderSalary({}), computeFrozenSalary({}));
 });
 
 // #1308: akademiryttere tæller IKKE mod senior-cap i getTeamMarketState.

@@ -8,6 +8,7 @@ import {
   SQUAD_PENALTY_POINTS,
   SQUAD_PURCHASE_MARKUP,
 } from "./squadEnforcement.js";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 // ─── Mock-fabrik ─────────────────────────────────────────────────────────────
 //
@@ -1094,9 +1095,13 @@ test("#1309: auto-køb af kontraktløs free agent sætter kontrakt (salary, cont
   // Kontrakt-invarianten: salary != null efter auto-køb
   assert.ok(fa1.salary != null, "salary må ikke være null efter auto-køb");
 
-  // computeFrozenSalary({ current_production_value: 10_000, division: 3 })
-  // = Math.max(1, Math.round(10_000 * 0.1481)) = 1_481 (t1 er division 3)
-  assert.equal(fa1.salary, 1_481, "salary = computeFrozenSalary(cpv=10_000, division=3)");
+  // #3360: lønnen kommer fra det aktive grundlag. Fixturen har market_value 20_000
+  // og current_production_value 10_000, så begge grene har et ægte tal at regne på.
+  assert.equal(
+    fa1.salary,
+    computeFrozenSalary({ market_value: 20_000, current_production_value: 10_000, division: 3 }),
+    "salary = computeFrozenSalary via det aktive SALARY_BASIS_MODE",
+  );
   assert.equal(fa1.contract_length, 2, "DEFAULT_ACQUIRE_LENGTH = 2");
   // contract_end_season = startSeason + length - 1 = 3 + 2 - 1 = 4
   assert.equal(fa1.contract_end_season, 4, "contract_end_season = activeSeasonNumber(3) + length(2) - 1 = 4");

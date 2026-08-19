@@ -9,7 +9,10 @@ import {
   getRiderMarketValue,
   getRiderSalary,
   salaryBoundToValueBound,
+  SALARY_MARKET_MODEL,
+  SALARY_RATE_PROD,
 } from "./marketValues.js";
+import { SALARY_MARKET_MODEL as BACKEND_SALARY_MARKET_MODEL, SALARY_RATE_PROD as BACKEND_SALARY_RATE_PROD } from "../../../backend/lib/economyConstants.js";
 
 async function setLanguage(language) {
   if (!i18n.isInitialized) {
@@ -68,30 +71,46 @@ test("getRiderSalary — frossen salary vinder over estimat", () => {
   assert.equal(getRiderSalary({ salary: 12345, base_value: 1000000 }), 12345);
 });
 
-// #2594: NULL-salary-estimat = current_production_value × global prod-sats (0.1606) —
-// ikke længere market_value × 0.067 (løn prissætter nutiden, ikke fremtiden).
-test("getRiderSalary — NULL salary → current_production_value × global prod-sats", () => {
-  assert.equal(getRiderSalary({ salary: null, current_production_value: 500000 }), 80300);
-  assert.equal(getRiderSalary({ salary: null, current_production_value: 50000 }), 8030);
+// #3360: NULL-salary-estimatet følger det aktive løn-grundlag. I "market"-mode er
+// det den konkave kurve på markedsværdien (spejl af backend salaryBasis.js), i
+// "production"-mode current_production_value × global prod-sats. Testen pinner
+// egenskaberne (monotoni + kurveform), ikke ét grundlags konstanter — ellers låser
+// den kalibreringen fast i en frontend-fil.
+test("getRiderSalary — NULL salary → estimat der vokser med værdien", () => {
+  const lav = getRiderSalary({ salary: null, market_value: 50000, current_production_value: 50000 });
+  const hoej = getRiderSalary({ salary: null, market_value: 500000, current_production_value: 500000 });
+  assert.ok(hoej > lav, `estimatet skal vokse med værdien (${lav} vs ${hoej})`);
+  assert.ok(lav > 0);
+});
+
+// Kernen i #3360: et dyrt ungt talent må ikke vises billigere end en billig veteran.
+test("getRiderSalary — inversionen er væk i det viste estimat", () => {
+  const talent = getRiderSalary({ salary: null, market_value: 180000, current_production_value: 7288 });
+  const veteran = getRiderSalary({ salary: null, market_value: 20000, current_production_value: 10796 });
+  assert.ok(talent > veteran, `talent ${talent} skal vises dyrere end veteran ${veteran}`);
 });
 
 test("getRiderSalary — salary 0 bevares (gratis kontrakt)", () => {
   assert.equal(getRiderSalary({ salary: 0, base_value: 1000000 }), 0);
 });
 
-test("getRiderSalary — NULL salary + NULL current_production_value → fallback 1000 → 161", () => {
-  assert.equal(getRiderSalary({ salary: null, current_production_value: null }), 161);
-  assert.equal(getRiderSalary({}), 161);
+test("getRiderSalary — NULL salary + ingen værdi-felter → samme fallback for begge former", () => {
+  const fallback = getRiderSalary({});
+  assert.equal(getRiderSalary({ salary: null, current_production_value: null, market_value: null }), fallback);
+  assert.ok(fallback > 0);
 });
 
-// #1827/#2594: løn-grænse → current_production_value-grænse (invers af den globale
-// prod-sats 0.1606) til estimat-grenen i server-filteret. Holder filteret konsistent
-// med getRiderSalary for de free agents der har salary == NULL.
-test("salaryBoundToValueBound — invers af SALARY_RATE_PROD.global", () => {
-  // round(5000 / 0.1606) = round(31133.25) = 31133
-  assert.equal(salaryBoundToValueBound(5000), 31133);
-  assert.equal(salaryBoundToValueBound("5000"), 31133);
+// #1827/#3360: løn-grænse → værdi-grænse (invers af den AKTIVE løn-formel) til
+// estimat-grenen i server-filteret. Holder filteret konsistent med getRiderSalary
+// for de free agents der har salary == NULL.
+test("salaryBoundToValueBound — invers af den aktive løn-formel", () => {
+  assert.equal(salaryBoundToValueBound(5000), salaryBoundToValueBound("5000"));
   assert.equal(salaryBoundToValueBound(0), 0);
+  // Monoton: en højere løn-grænse skal give en højere værdi-grænse.
+  assert.ok(salaryBoundToValueBound(20000) > salaryBoundToValueBound(5000));
+  // Round-trip: en rytter præcis på værdi-grænsen vises med ~den løn (±1 afrunding).
+  const bound = salaryBoundToValueBound(5000);
+  assert.ok(Math.abs(getRiderSalary({ salary: null, market_value: bound, current_production_value: bound }) - 5000) <= 1);
 });
 
 test("salaryBoundToValueBound — ikke-sat grænse → null (springes over)", () => {
@@ -245,11 +264,30 @@ test("computeValueDeviationPct — pris 0 giver stadig -100%", () => {
 // current_production_value ≤ value-bound — round-trip-konsistens mellem filter og visning.
 test("salaryBoundToValueBound — round-trip mod getRiderSalary", () => {
   const maxSalary = 5000;
-  const valueBound = salaryBoundToValueBound(maxSalary); // 31133
+  const valueBound = salaryBoundToValueBound(maxSalary);
   // En free agent lige under value-grænsen har en vist løn ≤ max (med afrunding).
-  const riderAtBound = { salary: null, current_production_value: valueBound };
-  assert.ok(getRiderSalary(riderAtBound) <= maxSalary + 1);
-  // En free agent over value-grænsen har en vist løn > max.
-  const riderAbove = { salary: null, current_production_value: valueBound + 20000 };
-  assert.ok(getRiderSalary(riderAbove) > maxSalary);
+  const at = { salary: null, current_production_value: valueBound, market_value: valueBound };
+  assert.ok(getRiderSalary(at) <= maxSalary + 1);
+  // En free agent klart over value-grænsen har en vist løn > max.
+  const above = { salary: null, current_production_value: valueBound * 2, market_value: valueBound * 2 };
+  assert.ok(getRiderSalary(above) > maxSalary);
+});
+
+// ─── #3959 drift-guard ───────────────────────────────────────────────────────
+//
+// marketValues.js har INGEN runtime-mekanisme til at hente løn-konstanterne fra
+// backend — de er literal mirrors med en "SKAL spejle backend"-kommentar (ejer-
+// accepteret mønster, samme som resten af de klient-side økonomi-konstanter).
+// A (anchorSalary) er pr. 19/8 under genberegning (17/8-tallet 23.300 byggede på
+// en falsk 60-dages-præmis), og ejer-kravet er at A forbliver ÉT konfigurationspunkt
+// der kan opdateres ét sted. Denne test er DET håndhævede "ét sted": den kører i
+// samme process som backend/lib/economyConstants.js (ren konstant-fil, ingen
+// backend-only imports) og fejler højlydt hvis nogen opdaterer den ene fil uden
+// den anden — i stedet for at driften siver stille ud i prod.
+test("#3959 SALARY_MARKET_MODEL matcher backend/lib/economyConstants.js byte-for-byte (drift-guard)", () => {
+  assert.deepEqual(SALARY_MARKET_MODEL, BACKEND_SALARY_MARKET_MODEL);
+});
+
+test("#3959 SALARY_RATE_PROD (rollback-stiens sats) matcher backend/lib/economyConstants.js (drift-guard)", () => {
+  assert.deepEqual(SALARY_RATE_PROD, BACKEND_SALARY_RATE_PROD);
 });

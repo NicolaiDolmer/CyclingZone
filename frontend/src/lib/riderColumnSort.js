@@ -7,7 +7,7 @@
 // useRiderFilters.js direkte fra en node --test-fil fejler derfor med
 // ERR_MODULE_NOT_FOUND. Denne fil har KUN rene imports (marketValues.js,
 // countryUtils.js) og kan importeres frit fra tests.
-import { getRiderMarketValue, getRiderSalary } from "./marketValues.js";
+import { getRiderMarketValue, getRiderSalary, SALARY_ESTIMATE_COLUMN } from "./marketValues.js";
 import { compareNationality } from "./countryUtils.js";
 
 // #2403: delt rytter-sort-komparator for KLIENT-sortering (auktioner, transfer-
@@ -115,18 +115,27 @@ export function applyRiderColumnSort(query, filters) {
 }
 
 // #2403: rytter-DB'ens rå `salary`-kolonne matcher ikke altid den VISTE løn
-// (getRiderSalary: frossen kontrakt-løn hvis sat, ellers current_production_value
-// × global sats — marketValues.js). PostgREST kan ikke ORDER BY et COALESCE-
-// udtryk, så løn-sortering diverteres i fetchRidersPage (useRiderFilters.js) FØR
+// (getRiderSalary: frossen kontrakt-løn hvis sat, ellers grundlags-estimatet —
+// marketValues.js). PostgREST kan ikke ORDER BY et COALESCE-udtryk, så løn-
+// sortering diverteres i fetchRidersPage (useRiderFilters.js) FØR
 // applyRiderColumnSort til en to-grens fetch+merge (samme mønster som løn-
 // FILTERET, buildSalaryFilterOr, #1827): hent ID + sammenligningsværdi
 // letvægts fra begge grene (salary IS NOT NULL / IS NULL), flet dem til én
 // global rækkefølge HER med den ÆGTE getRiderSalary-formel, og udsnit siden
 // derfra. Ingen generated kolonne/migration nødvendig.
+//
+// #3959-fund (lønbasis-cutover 19/8): denne gren var stadig hardkodet til
+// current_production_value efter #3360's skifte til SALARY_BASIS_MODE="market"
+// — under market-grundlaget bruger getRiderSalary slet ikke current_production_
+// value, så alle free agents faldt tavst til det samme estimat-gulv og
+// "sortér efter løn" degenererede til id-rækkefølgen for hele NULL-løn-grenen.
+// Fikset ved at følge SALARY_ESTIMATE_COLUMN (samme kilde som salaryFilter.js
+// allerede brugte for løn-FILTERET) i stedet for et hardkodet kolonnenavn, så
+// sort/filter altid peger på det AKTIVE grundlag uden at kunne divergere.
 export function mergeSalarySortedIds(withSalaryRows = [], withoutSalaryRows = [], ascending = false) {
   const effectiveValue = (row, hasFrozenSalary) => hasFrozenSalary
     ? Number(row.salary)
-    : getRiderSalary({ current_production_value: row.current_production_value });
+    : getRiderSalary({ [SALARY_ESTIMATE_COLUMN]: row[SALARY_ESTIMATE_COLUMN] });
 
   const merged = [
     ...withSalaryRows.map(r => ({ id: r.id, value: effectiveValue(r, true) })),

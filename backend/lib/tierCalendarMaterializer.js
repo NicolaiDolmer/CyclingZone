@@ -27,6 +27,8 @@ import { computeCompositionStats } from "./calendarCompositionTargets.js";
 import { computeStageOrderStats } from "./stageOrderMetrics.js";
 import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPhaseProfiles.js";
 import { grandTourRestDayCount } from "./grandTourRestDays.js";
+import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
+import { captureException } from "./sentry.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -608,6 +610,34 @@ export async function materializeTierCalendars({
     }
     summary.tiers.push(tLine);
   }
+
+  // #3959-følge (lønbasis-cutover, 19/8): materialisér seasons.race_days_total fra
+  // den FAKTISKE kalender så snart den skrives, i stedet for at vente på at
+  // recomputeSeasonRaceDays() rammes reaktivt af det første resultat-import/løb-run
+  // (raceRunner.js/pcmResultsImport.js). Uden dette stod en helt ny sæson (fx S3,
+  // 28 reelle kalenderdage) med schema-defaulten (60) indtil dag 1's resultater —
+  // og wageDeductionSweep (dagsløn = salary / race_days_total) ville i mellemtiden
+  // opkræve ~halv dagsløn. recomputeSeasonRaceDays er idempotent + selv-helende
+  // (tæller distinkte game_day_start på tværs af ALLE løb for sæsonen, ikke kun
+  // dem der lige blev indsat), så et redundant kald her (fx en no-op-materialisering
+  // eller reconcilePoolCalendarOnActivation der kun rammer ÉN pulje/tier) er harmløst
+  // og retter fejl-tilstande over tid. FAIL-SAFE: fejler recompute (fx netværk),
+  // vælter det ALDRIG selve kalender-materialiseringen — samme disciplin som
+  // resten af additive #2642-fixes. dryRun skriver intet, så springes helt over.
+  if (!dryRun) {
+    try {
+      // Returnerer race_days_completed (skalar-kontrakten fra seasonRaceDays.js) —
+      // race_days_total skrives til seasons-rækken af selve kaldet, ikke returværdien.
+      summary.raceDaysCompletedAfterRecompute = await recomputeSeasonRaceDays({ supabase, seasonId });
+    } catch (err) {
+      summary.raceDaysTotalError = err.message;
+      captureException(err, {
+        tags: { phase: "season_calendar_race_days" },
+        extra: { seasonId },
+      });
+    }
+  }
+
   return summary;
 }
 

@@ -1,5 +1,19 @@
 # Økonomi Fase 2 — kalibrerings-rapport (2026-06-21)
 
+> # ⛔ FORÆLDET — MÅ IKKE CITERES SOM BEVIS (markeret 2026-08-05, [#3360](https://github.com/NicolaiDolmer/CyclingZone/issues/3360))
+>
+> **Denne rapport erklærer fresh-gaten grøn ("D1 +3,6k · D2 +13,6k · D3 +8,6k, alle ✅"). Det tal er ikke sandt længere, og det var ikke sandt da det blev skrevet ned.**
+>
+> Tre ting har flyttet sig siden:
+>
+> 1. **Tallene er fra FØR [#2594](https://github.com/NicolaiDolmer/CyclingZone/issues/2594)** (løn-decoupling, 18/7). Rapporten regner løn som `base_value × 0,067`. Efter #2594 er lønnen `current_production_value × SALARY_RATE_PROD` — et helt andet grundlag.
+> 2. **Selve harnessen var i stykker fra 18/7 til 5/8** ([#3389](https://github.com/NicolaiDolmer/CyclingZone/issues/3389)): `freshPopulationBurden.js` sendte `{ base_value }` til `computeFrozenSalary`, som kun læste `current_production_value`. Feltet var `undefined`, hver rytter fik samme fallback-løn på 161 CZ$, og begge scorecards undervurderede lønbyrden med to størrelsesordener. Alt der blev "verificeret grønt" i det vindue er uden bevisværdi.
+> 3. **Rettet giver den samme gate FAIL**, ikke pass: D1 −147.787 · D2 −137.787 · D3 −142.787 (målt 5/8). Og efter #3360 (markedsværdi som løn-grundlag) FAIL'er den på den anden side: D1 +93.252 · D2 +103.252 · D3 +98.252.
+>
+> **Hvad der stadig gælder:** de shippede ændringer (flatten 0.5 i præmie-fordelingen) og beslutningsbegrundelserne for hvorfor sponsor og `PRIZE_PER_POINT` blev stående. Dem er der ikke rørt ved.
+>
+> **Hvad du skal bruge i stedet:** `node backend/scripts/salaryBasisScorecard.js` (kalibrerer mod den ÆGTE population, 181 hold) og den rettede `moneySupplyScorecard --synthetic-only`. Bemærk at den syntetiske gate ikke kan skelne de to løn-grundlag overhovedet — i den syntetiske population er `base_value === current_production_value === market_value`, mens de i prod ligger 11× fra hinanden.
+
 > Refs #1441 (epic), #1607 (præmie). Ejer-godkendt design: `docs/superpowers/specs/2026-06-21-economy-coherence-design.md` + `2026-06-17-okonomi-redesign-1441-design.md`.
 > **Status: SHIPPED — flatten 0.5 bagt ind i prod-defaulten** (`backend/lib/uciRacePointDefaults.js` via `backend/lib/racePointFlatten.js`, ejer-godkendt). Sponsor + `PRIZE_PER_POINT` står UÆNDREDE per konklusionen nedenfor. Harnessen genbruger samme transform, så scorecardet ved PROD (override flatten 0) matcher den shippede kurve bit-for-bit.
 > Mål (ejer-låst 2026-06-21): et KOMPETENT hold ~break-even, MÅLT af den ægte syntetiske scorecard — ikke gættet. Net-mål D1≈0 (|median|≤30k) · D2 +0–20k · D3 +0–30k (progressiv, anti-snowball). 5-sæsons saldo i 0,8×–1,3× start. Fladere præmie-fordeling for at skære divergens.

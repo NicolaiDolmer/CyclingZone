@@ -455,8 +455,12 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   const { data: signingTeam } = await supabase
     .from("teams").select("id, division").eq("id", teamId).maybeSingle();
   const value = calculateRiderMarketValue(rider);
+  // #3360: market_value/base_value er løn-basen når SALARY_BASIS_MODE er "market";
+  // current_production_value + division bevares for "production"-rollback-stien.
   const salary = computeFrozenSalary({
     current_production_value: rider.current_production_value,
+    market_value: rider.market_value,
+    base_value: rider.base_value,
     division: signingTeam?.division,
   });
   const fee = Math.round(value * ACADEMY.SIGNING_FEE_RATE);
