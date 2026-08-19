@@ -68,6 +68,12 @@ logges som vores reelle RTO for spildata. Fejler den, oprettes automatisk et
 `claude:todo`-issue. Dumpet forlader aldrig runneren (repoet er offentligt
 læsbart — aldrig artifacts med spillerdata).
 
+**Baseline fra første grønne drill (19/8-2026, run 32249356613):** 167 tabeller,
+8.981 riders, 365 teams, 1.028.420 race_results, 1.308 races gendannet på
+**97 sekunder** (dump + restore, ekskl. dashboard-flow). ~105 forventede
+stderr-linjer fra grants/matview-refresh udenfor Supabase-miljøet er normalt;
+verifikations-gaten er den reelle dom.
+
 ## Post-verify efter enhver restore
 
 ```sql
