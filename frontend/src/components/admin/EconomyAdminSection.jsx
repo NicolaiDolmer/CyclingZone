@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatCz } from "../../lib/marketValues";
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../ui/SortableTh.jsx";
+import { CheckIcon, AlertTriangleIcon } from "../ui";
 
 // Økonomi-oversigt (OverviewView) — sorterbare kolonner (#2294). Filtrene
 // (division/søgning/AI/frosne) bestemmer HVILKE rækker der vises via
@@ -1073,9 +1074,10 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
 // engangs-mutation af hele populationens værdier, og en CLI-kørsel (ejer
 // skriver kommandoen selv, kan ikke rammes af et fejlklik) er den rigtige
 // friktion for den handling. Se backend/scripts/marketValueLevelCorrectionApply.js.
+// #671/#1578 UI anti-drift-guard: stroke-ikon i stedet for emoji-som-status-dot.
 const GATE_STATUS_LABEL = {
-  green: { label: "🟢 GRØN — kanal stabil", className: "text-cz-success" },
-  red: { label: "🔴 RØD — ikke klar", className: "text-cz-danger" },
+  green: { label: "GRØN — kanal stabil", className: "text-cz-success", Icon: CheckIcon },
+  red: { label: "RØD — ikke klar", className: "text-cz-danger", Icon: AlertTriangleIcon },
 };
 
 function LevelCorrectionView({ getAuth, onMsg }) {
@@ -1095,7 +1097,9 @@ function LevelCorrectionView({ getAuth, onMsg }) {
       setGateMsg(body.message || null);
       setReport(null);
     } catch (e) {
-      onMsg(`❌ ${e.message}`, "error");
+      // #671/#1578 UI anti-drift-guard: ingen emoji-som-ikon i JSX — AdminMessageBanner
+      // farvelægger allerede efter "error"-typen, prefikset var kun dekorativt.
+      onMsg(e.message, "error");
     } finally {
       setLoading(false);
     }
@@ -1109,7 +1113,7 @@ function LevelCorrectionView({ getAuth, onMsg }) {
       if (!res.ok) throw new Error(body.error || "Kunne ikke køre dry-run");
       setReport(body.report);
     } catch (e) {
-      onMsg(`❌ ${e.message}`, "error");
+      onMsg(e.message, "error");
     } finally {
       setDryRunLoading(false);
     }
@@ -1138,7 +1142,12 @@ function LevelCorrectionView({ getAuth, onMsg }) {
         <div className="bg-cz-subtle rounded-cz p-4 border border-cz-border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-cz-1 font-semibold text-sm">Søndags-gate — {gate.measured_date}</h3>
-            {statusInfo && <span className={`text-xs font-semibold ${statusInfo.className}`}>{statusInfo.label}</span>}
+            {statusInfo && (
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold ${statusInfo.className}`}>
+                <statusInfo.Icon size={13} aria-hidden="true" />
+                {statusInfo.label}
+              </span>
+            )}
           </div>
           <p className="text-cz-2 text-xs mb-3">{gate.gate_reason_text}</p>
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
