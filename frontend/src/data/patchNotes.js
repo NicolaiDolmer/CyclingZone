@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.146",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Finance forecast now breaks down income and expenses",
+          "body": "The next-season forecast shows one line per source instead of one total: sponsor base, sponsor variable, prize money, salary, and staff & facilities. Prize money is now a range, not a single number, since it's the least predictable line. From season 3, salary uses the new market-value wage system."
+        },
+        "da": {
+          "title": "Prognosen viser nu indtægter og udgifter hver for sig",
+          "body": "Næste sæsons prognose viser en linje pr. kilde i stedet for et samlet tal: sponsor base, sponsor variabel, præmiepenge, løn og stab & faciliteter. Præmiepenge er nu et spænd, ikke et enkelt tal, fordi det er den mindst forudsigelige linje. Fra sæson 3 bruger lønnen det nye markedsværdi-lønsystem."
+        },
+        "refs": [
+          3899
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.145",
     "date": "2026-08-19",
     "label": "Beta",

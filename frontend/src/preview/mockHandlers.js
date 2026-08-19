@@ -623,65 +623,104 @@ export function apiResponse(pathname, search = "") {
   // er nr. 1, så prognosen gælder sæson 2, og næste sæsons sponsor er her den
   // samme som den nuværende.
   if (pathname.endsWith("/api/me/finance-forecast")) {
-    const forecast = {
-      projected_sponsor: 180000,
-      projected_prize: 210000,
-      projected_salary: -180000,
-      projected_loan_interest: 0,
-      projected_upkeep: -140000,
-      projected_facility_upkeep: 0,
-      projected_staff_salary: 0,
-      projected_academy_drift: 0,
-      projected_net: 70000,
-      confidence_low: 28000,
-      confidence_high: 112000,
-      risk_tier: "green",
-      warnings: [],
-      inputs: {
-        sponsor_base: 180000,
-        sponsor_variable: 0,
-        sponsor_mode: "contract",
-        sponsor_gross: 180000,
-        sponsor_breakdown: {
-          mode: "contract",
-          season_number: 2,
-          base: 180000,
-          variable: 0,
-          gross_sponsor: 180000,
-          capped: false,
-          per_race_day_rate: 450,
-          sponsor_name: "Vesna Robotics",
+    // #3899 (regnskabsopstilling): payloaden matcher nu computeFinanceForecast's
+    // udvidede felter — sponsor split i base/variabel, præmie som interval
+    // (prize_low/prize_high), staff/faciliteter aggregeret, og et lønsystem-
+    // skifte fra sæson 3 (season 3-lønsystemet). seasonsAhead-param bygger en
+    // rullende multi-sæson-serie ligesom den ægte route, så horisont-vælgeren
+    // + multi-sæson-tabellens interval-kolonne kan ses på preview (#3721).
+    const seasonsAhead = Math.max(
+      1,
+      Math.min(5, Number.parseInt(new URLSearchParams(search).get("seasonsAhead") ?? "1", 10) || 1)
+    );
+    const currentSeasonNumber = 1; // preview-sæsonen
+    let balance = 500000;
+    const forecasts = [];
+    for (let i = 0; i < seasonsAhead; i++) {
+      const seasonNumber = currentSeasonNumber + 1 + i;
+      const usesMarketS3 = seasonNumber >= 3;
+      // Sæson 3+ prissættes efter markedsværdi-kurven — den demo-trup her
+      // bliver (bevidst) en smule billigere end status quo, samme retning
+      // som #3899-forecast-testene viser for en lav-til-middel markedsværdi-trup.
+      const projectedSalary = usesMarketS3 ? -152000 - i * 4000 : -180000;
+      const sponsorBase = 180000;
+      const sponsorVariable = seasonNumber === 2 ? 0 : 12000 * i; // kontrakt dækker sæson 2-3, variabel derefter
+      const projectedSponsor = sponsorBase + sponsorVariable;
+      const prizePoint = 210000 + i * 6000;
+      const prizeLow = Math.round(prizePoint * (0.82 - i * 0.01));
+      const prizeHigh = Math.round(prizePoint * (1.24 + i * 0.02));
+      const staffFacilities = -140000;
+      const projectedNet = projectedSponsor + prizePoint + projectedSalary + staffFacilities;
+      const startingBalance = balance;
+      const endingBalance = startingBalance + projectedNet;
+      balance = endingBalance;
+
+      forecasts.push({
+        projected_sponsor: projectedSponsor,
+        projected_sponsor_base: sponsorBase,
+        projected_sponsor_variable: sponsorVariable,
+        projected_prize: prizePoint,
+        prize_low: prizeLow,
+        prize_high: prizeHigh,
+        projected_salary: projectedSalary,
+        projected_loan_interest: 0,
+        projected_upkeep: -140000,
+        projected_facility_upkeep: 0,
+        projected_staff_salary: 0,
+        projected_staff_facilities: staffFacilities,
+        projected_academy_drift: 0,
+        projected_net: projectedNet,
+        confidence_low: projectedNet - (prizePoint - prizeLow),
+        confidence_high: projectedNet + (prizeHigh - prizePoint),
+        risk_tier: projectedNet >= 50000 ? "green" : projectedNet >= -50000 ? "yellow" : "red",
+        warnings: [],
+        season_number: seasonNumber,
+        is_estimate: i > 0,
+        estimate_basis: i === 0 ? "actual_state" : "rolling_status_quo",
+        starting_balance: startingBalance,
+        ending_balance: endingBalance,
+        inputs: {
+          sponsor_base: sponsorBase,
+          sponsor_variable: sponsorVariable,
+          sponsor_mode: seasonNumber <= 3 ? "contract" : "variable",
+          sponsor_gross: projectedSponsor,
+          sponsor_breakdown: {
+            mode: seasonNumber <= 3 ? "contract" : "variable",
+            season_number: seasonNumber,
+            base: sponsorBase,
+            variable: sponsorVariable,
+            gross_sponsor: projectedSponsor,
+            capped: false,
+            per_race_day_rate: 450,
+            sponsor_name: "Vesna Robotics",
+          },
+          board_modifier: 1.0,
+          pullout_factor: 1.0,
+          prize_basis: "rolling_avg",
+          prize_interval_method: "division_quartile_band",
+          prize_interval_sample_size: 18,
+          salary_basis: usesMarketS3 ? "market_s3" : "status_quo",
+          current_season_number: currentSeasonNumber + i,
+          target_season_number: seasonNumber,
         },
-        board_modifier: 1.0,
-        pullout_factor: 1.0,
-        prize_basis: "rolling_avg",
-        current_season_number: 1,
-        target_season_number: 2,
-      },
-    };
+      });
+    }
+
+    const tierOrder = { green: 0, yellow: 1, red: 2 };
+    const worstRiskTier = forecasts.reduce(
+      (worst, f) => (tierOrder[f.risk_tier] > tierOrder[worst] ? f.risk_tier : worst),
+      "green"
+    );
+
     return {
-      ...forecast,
-      season_number: 2,
-      is_estimate: false,
-      estimate_basis: "actual_state",
-      starting_balance: 500000,
-      ending_balance: 570000,
-      forecasts: [
-        {
-          ...forecast,
-          season_number: 2,
-          is_estimate: false,
-          estimate_basis: "actual_state",
-          starting_balance: 500000,
-          ending_balance: 570000,
-        },
-      ],
+      ...forecasts[0],
+      forecasts,
       summary: {
-        from_season: 2,
-        to_season: 2,
-        total_net: 70000,
-        ending_balance: 570000,
-        worst_risk_tier: "green",
+        from_season: forecasts[0].season_number,
+        to_season: forecasts[forecasts.length - 1].season_number,
+        total_net: forecasts.reduce((sum, f) => sum + f.projected_net, 0),
+        ending_balance: forecasts[forecasts.length - 1].ending_balance,
+        worst_risk_tier: worstRiskTier,
       },
     };
   }
