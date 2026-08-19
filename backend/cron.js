@@ -1571,7 +1571,10 @@ export function startCron() {
   // Every 60 minutes: niveau-korrektionens søndags-gate (#3449/#3750) — modulet
   // er selv søndags-gated + claim-idempotent (måle-dedup pr. dato), samme
   // begrundelse som sunday-intake-drip ovenfor. Ren måling, ingen mutation.
-  setInterval(trackedTick("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron), 60 * 60 * 1000);
+  setInterval(
+    trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
 
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
@@ -1690,7 +1693,7 @@ export function startCron() {
   // gør 24h-monitoren ærlig uden risiko for dubletter eller støj.
   trackedTick("fairplay scoring-sweep", runFairplayScoringCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
-  trackedTick("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron)(); // boot-run: samme, ren måling
+  trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN))(); // boot-run: samme, ren måling
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

@@ -165,6 +165,14 @@ export const ALL_CRON_MONITORS = [
   // discord-race-digest). Idempotent no-op når intet mangler.
   ["season-documentary", CRON_MONITOR_60MIN],
   ["fairplay-scoring", CRON_MONITOR_24H],
+  // #3449/#3750: niveau-korrektionens søndags-gate-måling — samme 60min-kadence
+  // som entry-generator/season-documentary. Tikket kalder gennem hver time og
+  // returnerer normalt (ran:false, skipped:"not_sunday") på ikke-søndage — det
+  // er en gyldig "ok"-check-in, ikke en fejl, så CRON_MONITOR_60MIN false-
+  // positiver ikke resten af ugen (modsat sunday-intake-drip, se
+  // UNMONITORED_CRON_TICKS: den forskel er en tidligere designbeslutning, ikke
+  // en regel om at søndags-gatede jobs aldrig kan monitoreres).
+  ["market-value-level-correction-gate", CRON_MONITOR_60MIN],
 ];
 
 // ─── UNMONITORED_CRON_TICKS ────────────────────────────────────────────────
