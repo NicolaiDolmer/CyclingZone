@@ -73,7 +73,10 @@ import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEve
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
 // opdatere uden hård reload når et løb finaliseres (#783).
-const REALTIME_TABLES = ["seasons", "race_results"];
+// #3035: races (72 updates/vindue) erstatter race_results (34k writes/vindue) som
+// finaliserings-signal — hver etape/løbs-afslutning bumper races-rækken, så UX er
+// identisk, men realtime slipper for at WAL-dekode masseskrivningerne.
+const REALTIME_TABLES = ["seasons", "races"];
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;

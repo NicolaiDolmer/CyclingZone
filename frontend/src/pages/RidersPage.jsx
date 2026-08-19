@@ -334,16 +334,20 @@ export default function RidersPage() {
 
   useEffect(() => { loadRiders(); }, [filters, seasonYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // #916: realtime — opdatér listen når en rytter ændres (fx solgt til AI-hold →
-  // team_id skifter), så TeamCell ikke bliver ved at vise "Fri" på stale data.
+  // #916: realtime — opdatér listen når en rytter skifter hold (fx solgt til AI-
+  // hold), så TeamCell ikke bliver ved at vise "Fri" på stale data.
+  // #3035 (audit 19/8): riders-subscriptionen var DØD — tabellen har aldrig været
+  // i realtime-publikationen, og med 63k progression-updates/vindue skal den
+  // heller ikke ind. Signalet er i stedet auctions-UPDATE (allerede publiceret,
+  // offentligt læsbar): en auktion der lukker er præcis dér team_id skifter.
   // Stille refetch (ingen spinner), debounced fordi auktions-finalisering kan
-  // opdatere mange ryttere i én burst. Ref undgår stale filters-closure.
+  // opdatere mange rækker i én burst. Ref undgår stale filters-closure.
   const loadRidersRef = useRef(loadRiders);
   useEffect(() => { loadRidersRef.current = loadRiders; });
   useEffect(() => {
     let timer;
     const channel = supabase.channel("riders-page-live")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "riders" }, () => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "auctions" }, () => {
         clearTimeout(timer);
         timer = setTimeout(() => loadRidersRef.current?.({ silent: true }), 400);
       })
