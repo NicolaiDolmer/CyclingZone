@@ -25,6 +25,18 @@
   "expiryDays": "{days}d tilbage",
   "expiryToday": "Udløber i dag",
   "expiryTooltip": "Et kandidat-tilbud løber i 7 dage. Når det udløber, ryger rytteren på 24-timers ungdomsauktion, og du får salgssummen, hvis nogen køber ham.",
+  "intakePull": {
+    "title": "Ungdoms-intake",
+    "description": "Dit akademi har et nyt kuld kandidater klar. Scout dem inden ugen slutter.",
+    "deadlineNote": "Tilgængelig indtil søndag kl. 23:59",
+    "pullBtn": "Scout denne uges kuld",
+    "pulling": "Scouter...",
+    "provisionalValue": "Provisorisk værdi",
+    "wageOneSeason": "Løn (1 sæson)",
+    "valuationNote": "Fuld værdisætning søndag",
+    "emptyAfterPull": "Ingen kandidater tilbage at tage stilling til. Næste uges kuld åbner mandag.",
+    "errorFailed": "Kunne ikke scoute denne uges kuld. Prøv igen."
+  },
   "loading": "...",
   "fullTooltip": "Akademiet er fuldt ({max}/{max}). Frigør en plads først.",
   "fullNote": "Akademiet er fuldt. Signér først når en plads bliver ledig.",

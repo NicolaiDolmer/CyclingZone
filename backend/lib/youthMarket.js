@@ -11,6 +11,15 @@ import { calculateRiderMarketValue } from "./marketUtils.js";
 // skal være billige at samle op, men ikke gratis. Gulv 1.
 export const YOUTH_AUCTION_START_RATE = 0.25;
 
+// #3550 (ejer-beslutning 19/8, punkt 6): BÅDE den manager-initierede afvisning
+// (rejectAcademyCandidate → defaultListYouthAuction, IKKE tidligere sat) og
+// academyIntakeExpirySweep-stien (allerede 24 via egen konstant) skal give en
+// afvist/udløbet kandidat 24 timers liggetid — en bevidst REVERSERING af #2627's
+// (dengang uparametriserede) længere-end-standard-liggetid til netop dette tal,
+// nu ens for begge veje ind i en ungdomsauktion. Default herunder gør reject-
+// stien konsistent UDEN at hver kalder skal huske at sende parameteren.
+export const REJECTED_CANDIDATE_AUCTION_DURATION_HOURS = 24;
+
 /**
  * Slå auktions-timing-config op (samme kilde som api.js' getAuctionConfig).
  * Kan injiceres i tests via opts.auctionConfig for at undgå tabel-mock.
@@ -67,7 +76,7 @@ async function findActiveAuctionForRider(supabase, riderId) {
  *   rejectAcademyCandidate (manager-initieret afvisning er ikke udløb).
  * @returns {Promise<object>} den oprettede (eller allerede eksisterende) auktion
  */
-export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig, durationHours, expiredIntakeTeamId } = {}) {
+export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig, durationHours = REJECTED_CANDIDATE_AUCTION_DURATION_HOURS, expiredIntakeTeamId } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!riderId) throw new Error("listRejectedAsYouthAuction: riderId required");
 

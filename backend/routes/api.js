@@ -202,6 +202,9 @@ import {
   signAcademyCandidate,
   rejectAcademyCandidate,
 } from "../lib/academyIntake.js";
+import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
+import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
+import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -14452,7 +14455,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // Tilbudte intake-kandidater for dette hold (display-safe felter, INGEN potentiale i join).
     const { data: intakeRows, error: intakeErr } = await supabase
       .from("academy_intake")
-      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id, primary_type, secondary_type)")
+      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id, primary_type, secondary_type, current_production_value)")
       .eq("team_id", teamId)
       .eq("status", "offered");
     if (intakeErr) throw new Error(intakeErr.message);
@@ -14545,6 +14548,24 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       //     Sweepet har en dagskvote, så et tilbud kan overleve en dag eller to
       //     ekstra ved kø — datoen er "tidligst", ikke en garanti (copy afspejler det).
       const signingFee = Math.round(calculateRiderMarketValue(rider) * ACADEMY.SIGNING_FEE_RATE);
+      // #3550 punkt 4: løn-forhåndsvisning på kortet, SAMME delte funktion som
+      // signAcademyCandidate bruger ved selve signeringen (uændret - rører ikke
+      // lønformlen). Vises FØR klikket, ligesom signingFee allerede gør.
+      //
+      // FUND (kræver ejer-review, se PR-body): computeFrozenSalary prissætter i
+      // dag UDELUKKENDE fra current_production_value, aldrig fra market_value -
+      // så den symbolske intake-pull-værdi (punkt 2) giver IKKE automatisk en
+      // symbolsk løn her. #3393 (løn-reformen, egen branch/PR, IKKE rørt af denne
+      // PR) introducerer SALARY_BASIS_MODE="market" ved cutover 23/8, hvor denne
+      // samme funktion vil læse markedsværdien i stedet. Fordi kaldet her går
+      // gennem DEN DELTE funktion (ikke en lokal kopi af formlen), følger
+      // wagePreview automatisk med når #3393 lander - ingen ændring PÅKRÆVET her,
+      // MEN verificér computeFrozenSalary's parameternavne igen efter merge (kan
+      // være udvidet til også at tage market_value/base_value som input).
+      const wagePreview = computeFrozenSalary({
+        current_production_value: rider.current_production_value,
+        division: req.team.division,
+      });
       const expiresAt = row.created_at
         ? new Date(new Date(row.created_at).getTime() + INTAKE_OFFER_EXPIRY_DAYS * 86_400_000).toISOString()
         : null;
@@ -14556,6 +14577,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         created_at: row.created_at,
         expiresAt,
         signingFee,
+        wagePreview,
         rider, // display-safe, ingen potentiale
         potentialEstimate,
         potentialBand,
@@ -14608,6 +14630,15 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       };
     });
 
+    // #3550: pull-baseret intake — flag-status + "hentet denne uge"-markør, så
+    // frontend'en kan vise knap-tilstanden vs. kandidat-kortene uden en ekstra
+    // roundtrip. Flag OFF (default indtil cutover) → intakePull.enabled=false,
+    // og frontend'en falder tilbage til den uændrede (auto-drip) visning.
+    const intakePullEnabled = await isAcademyIntakePullEnabled(supabase);
+    const intakePulledThisWeek = intakePullEnabled
+      ? await hasPulledThisWeek(supabase, { teamId })
+      : false;
+
     res.json({
       enabled: true,
       slots: { used, max: ACADEMY.SLOTS },
@@ -14616,6 +14647,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       roster,
       intake,
       graduations,
+      intakePull: { enabled: intakePullEnabled, pulledThisWeek: intakePulledThisWeek },
     });
   } catch (err) {
     captureException(err);
@@ -14718,6 +14750,30 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
       enabled: true,
       ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
     });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/academy/intake/pull — #3550: hent ugens akademi-kuld (pull-mekanik).
+// Manager-udløst erstatning for søndags-drippet; flag-gated (academy_intake_pull_
+// enabled). Idempotent pr. (hold, uge) — et andet kald samme uge er et no-op
+// (alreadyPulled:true), IKKE en fejl.
+router.post("/academy/intake/pull", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const pullEnabled = await isAcademyIntakePullEnabled(supabase);
+    if (!pullEnabled) return res.status(409).json({ error: "intake_pull_disabled" });
+
+    const result = await pullWeeklyAcademyIntake(supabase, { teamId: req.team.id });
+    if (!result.ok) return res.status(409).json({ error: result.reason });
+
+    res.json(result);
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

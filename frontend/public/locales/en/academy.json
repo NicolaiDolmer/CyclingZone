@@ -25,6 +25,18 @@
   "expiryDays": "{days}d left",
   "expiryToday": "Expires today",
   "expiryTooltip": "Intake offers run for 7 days. Once an offer lapses the rider goes to a 24h youth auction, and you get the sale money if someone buys him.",
+  "intakePull": {
+    "title": "Youth intake",
+    "description": "Your academy has a new group of candidates ready. Scout them before the week ends.",
+    "deadlineNote": "Available until Sunday 23:59",
+    "pullBtn": "Scout this week's intake",
+    "pulling": "Scouting...",
+    "provisionalValue": "Provisional value",
+    "wageOneSeason": "Wage (1 season)",
+    "valuationNote": "Full valuation on Sunday",
+    "emptyAfterPull": "No candidates left to review. Next week's intake opens Monday.",
+    "errorFailed": "Could not scout this week's intake. Please try again."
+  },
   "loading": "...",
   "fullTooltip": "Academy is full ({max}/{max}). Release a rider first.",
   "fullNote": "Academy is full. Sign only after a spot opens.",

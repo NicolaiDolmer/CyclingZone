@@ -452,6 +452,13 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
 
   // #2594: løn = current_production_value × per-division-sats (holdets division).
   // Signing-fee er derimod en KØBSPRIS og bliver korrekt på markedsværdien.
+  //
+  // #3550: den symbolske intake-pull-værdi (punkt 2, academyIntakePull.js) ligger
+  // i market_value/base_value og påvirker DERFOR IKKE denne løn (decoupling siden
+  // #2594) - se FUND i PR-body. computeFrozenSalary er den DELTE funktion #3393
+  // (løn-reform, egen branch) vil ændre internt ved SALARY_BASIS_MODE="market";
+  // dette kald behøver ingen ændring når det sker, men verificér parametrene efter
+  // #3393 merger.
   const { data: signingTeam } = await supabase
     .from("teams").select("id, division").eq("id", teamId).maybeSingle();
   const value = calculateRiderMarketValue(rider);
@@ -460,7 +467,10 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     division: signingTeam?.division,
   });
   const fee = Math.round(value * ACADEMY.SIGNING_FEE_RATE);
-  const contractEndSeason = seasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
+  // #3550 punkt 3: intake-signeringer bruger INTAKE_CONTRACT_LENGTH (1 sæson),
+  // isoleret fra den delte CONTRACT_LENGTH (3) som demote-stien (academyTransfer.js)
+  // og youth-auktionsvinderen (auctionFinalization.js) fortsat bruger uændret.
+  const contractEndSeason = seasonNumber + ACADEMY.INTAKE_CONTRACT_LENGTH - 1;
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   const acquiredAt = new Date().toISOString();
 
@@ -478,7 +488,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     p_rider_id: riderId,
     p_price: fee,
     p_salary: salary,
-    p_contract_length: ACADEMY.CONTRACT_LENGTH,
+    p_contract_length: ACADEMY.INTAKE_CONTRACT_LENGTH,
     p_contract_end_season: contractEndSeason,
     p_acquired_at: acquiredAt,
     p_finance_payload: {

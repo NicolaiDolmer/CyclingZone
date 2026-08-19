@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
-import { listRejectedAsYouthAuction, YOUTH_AUCTION_START_RATE } from "./youthMarket.js";
+import { listRejectedAsYouthAuction, YOUTH_AUCTION_START_RATE, REJECTED_CANDIDATE_AUCTION_DURATION_HOURS } from "./youthMarket.js";
 
 // ─── Mock-supabase ────────────────────────────────────────────────────────────
 
@@ -102,6 +102,35 @@ test("listRejectedAsYouthAuction: opretter is_youth-auktion uden sælger, lav st
   assert.ok(ins.calculated_end, "calculated_end sat");
 
   assert.equal(auction.id, "youth-auction-1");
+});
+
+// #3550 punkt 6 (ejer-beslutning 19/8): REJECTED_CANDIDATE_AUCTION_DURATION_HOURS
+// (24) er nu DEFAULT — ikke kun academyIntakeExpirySweep's eksplicitte 24h, men
+// også rejectAcademyCandidate-stien (manager-initieret afvisning), der FØR faldt
+// tilbage til den korte standard-auktionsvarighed når durationHours ikke blev sendt.
+test("listRejectedAsYouthAuction: UDEN durationHours falder tilbage til REJECTED_CANDIDATE_AUCTION_DURATION_HOURS (24), ikke standard-varigheden", async () => {
+  assert.equal(REJECTED_CANDIDATE_AUCTION_DURATION_HOURS, 24);
+
+  const now = new Date("2026-06-20T12:00:00Z");
+  const supabaseDefault = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabaseDefault, { riderId: "rider-Y", now, auctionConfig: DEFAULT_AUCTION_CONFIG });
+  const defaultEnd = new Date(supabaseDefault._auctionInserts[0].calculated_end);
+
+  const supabaseExplicit24 = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabaseExplicit24, {
+    riderId: "rider-Y", now, auctionConfig: DEFAULT_AUCTION_CONFIG, durationHours: 24,
+  });
+  const explicit24End = new Date(supabaseExplicit24._auctionInserts[0].calculated_end);
+
+  const supabaseStandard = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabaseStandard, {
+    riderId: "rider-Y", now, auctionConfig: DEFAULT_AUCTION_CONFIG, durationHours: DEFAULT_AUCTION_CONFIG.duration_hours,
+  });
+  const standardEnd = new Date(supabaseStandard._auctionInserts[0].calculated_end);
+
+  assert.equal(defaultEnd.getTime(), explicit24End.getTime(), "ingen durationHours-argument = samme resultat som eksplicit 24h");
+  assert.notEqual(defaultEnd.getTime(), standardEnd.getTime(), "24h er LÆNGERE end standard-varigheden (6h) — reject-stien får ikke længere den korte default");
+  assert.ok(defaultEnd.getTime() > standardEnd.getTime(), "24h-slutfrist ligger senere end standard-varighedens");
 });
 
 test("listRejectedAsYouthAuction: startpris = lav andel af markedsværdi (YOUTH_AUCTION_START_RATE)", async () => {

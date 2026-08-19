@@ -72,6 +72,7 @@ import { runDeferredTransferHealSweep } from "./lib/deferredTransferHealSweep.js
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
+import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
@@ -836,6 +837,11 @@ async function runIntakeOfferExpirySweepCron() {
 // idempotent, så timelig polling + boot-run er sikre.
 async function runSundayIntakeTickCron() {
   try {
+    // #3550 (ejer-beslutning 19/8): pull-mekanikken erstatter det løbende drip —
+    // når flaget flippes til "on" i cutover-drejebogen, bliver denne cron en no-op
+    // og holdene henter i stedet selv via POST /api/academy/intake/pull. Fail-safe
+    // OFF (seedet), så uændret adfærd indtil flippet (punkt 7).
+    if (await isAcademyIntakePullEnabled(supabase)) return;
     const r = await runSundayIntakeTick({ supabase, now: new Date() });
     if (r.ran && r.candidates > 0) {
       console.log(`🎓 Søndags-drip: ${r.candidates} akademi-kandidater til ${r.teams} hold (${r.tickDate})`);
