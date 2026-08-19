@@ -1,6 +1,9 @@
 name: DB Health
 
-# Ugentligt disk-IO / performance-helbredstjek mod prod-DB.
+# Ugentligt DB-helbredstjek mod prod: disk-IO/performance + planner-statistik
+# (never-analyzed/analyze-lagging) + RLS-hygiejne (naked auth.*(), dobbelte
+# permissive policies) + invalide indexes. Udvidet 19/8-2026 (ejer-direktiv:
+# ugentlig overvaagning; baggrund #2677-sessionen, stale stats paa race_results).
 # scripts/db-health.sql returnerer kun tærskel-brud; ikke-tomt output →
 # opretter (eller kommenterer på) et GitHub-issue med label claude:todo.
 # Genbruger SUPABASE_DB_URL-secret (samme som auto-migrate.yml).
