@@ -13,9 +13,10 @@ const src = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
 test("#1480.1 roster-query henter ryttertype-kolonnerne", () => {
   assert.match(
     src,
-    /\.select\(`id, firstname, lastname, primary_type, secondary_type, is_academy, \$\{ABILITY_SELECT\}`\)/,
+    /\.select\(`id, firstname, lastname, birthdate, primary_type, secondary_type, is_academy, \$\{ABILITY_SELECT\}`\)/,
     "querien skal hente primary_type/secondary_type så typen kan vises, + is_academy (#3300)"
-      + " + evne-kolonnerne via det delte ABILITY_SELECT-embed (#3709 trin 1: kvitteringens 'nu'-tal)",
+      + " + evne-kolonnerne via det delte ABILITY_SELECT-embed (#3709 trin 1: kvitteringens 'nu'-tal)"
+      + " + birthdate (#3721: Development-fanens alders-kolonne)",
   );
   // #3709 trin 1: evnerne skal fladtgøres med den DELTE helper, ikke håndrulles,
   // så embed-formen (array vs objekt) håndteres ét sted.
@@ -99,10 +100,16 @@ test("#1480.3 multi-select + bulk-apply via setPlanBulk", () => {
 // #1894 variant 1: hint under fokus-dropdown for ryttere UDEN plan — viser hvilket
 // fokus assistenten rent faktisk træner dem med (backend-leveret smartDefaultFocus,
 // ingen frontend-dublet af type→fokus-reglen).
+// #3721: fokus-knappen (og dermed hint-betingelsen) er ekstraheret til den
+// delte FocusOpenButton-komponent (genbrugt af Development-fanen) — betingelsen
+// bruger nu den generiske `smartFocus`-prop i stedet for det inlinede
+// `smartDefaultFocus[rider.id]`-udtryk, men VÆRDIEN kommer stadig UÆNDRET fra
+// smartDefaultFocus ved kaldestedet (samme guard, kun flyttet).
 test("#1894.1 smart-fokus-hint vises for ryttere uden plan, kun fra backend-leveret data", () => {
   assert.match(src, /smartDefaultFocus/, "skal bruge useTraining's smartDefaultFocus-map");
   assert.match(src, /t\("smartFocusHint"/);
-  assert.match(src, /!plan\?\.focus\s*&&\s*smartDefaultFocus\[rider\.id\]/, "hint kun uden aktiv plan");
+  assert.match(src, /!plan\?\.focus\s*&&\s*smartFocus/, "hint kun uden aktiv plan (FocusOpenButton-props)");
+  assert.match(src, /smartFocus=\{smartDefaultFocus\[rider\.id\]\}/, "roster-rækken skal sende smartDefaultFocus[rider.id] uændret ind i FocusOpenButton");
 });
 
 // #1894 variant 3: bulk-barens fokus-select har en "smart"-mode-mulighed der

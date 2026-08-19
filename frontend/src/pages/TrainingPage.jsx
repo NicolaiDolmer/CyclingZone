@@ -7,12 +7,17 @@
 
 import { useState, useEffect, useMemo, Fragment } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
+import { useScouting } from "../lib/useScouting.js";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
+import { ageForSeason } from "../lib/riderAge.js";
+import { riderStatRating } from "../lib/riderRating.js";
 import { TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
@@ -30,25 +35,35 @@ import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
 import FocusPanel from "../components/training/FocusPanel.jsx";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
+import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
-  PageHeader, Card, Section, SectionHeader, Button, Select, Checkbox,
+  PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, ChevronDownIcon, TeamIcon,
   ArrowUpIcon, ArrowDownIcon, FlagIcon,
+  Tabs, TabList, Tab, TabPanel,
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
+// #3721: siden er nu 3 faner (Train today / Development / History), ?tab=-
+// synkroniseret efter samme mønster som FinancePage/RiderStatsPage. Ukendt
+// eller manglende param falder tilbage til "today".
+const TRAINING_TABS = ["today", "development", "history"];
+
 // #2849 bølge 4 — migreret til T2 wide-data-skabelonen (docs/design/PAGE_TEMPLATES.md):
 // PageHeader-recipe (status i subtitle, "Train today" som sidens ene gold CTA),
-// max-w-[1600px]-container, PageLoader ved initial load, kanonisk Section/Card-chrome
-// for de to accordions + recovery-note, ui/DataTable-recepten (dataTableStyles: WRAP/
-// SCROLLER/thClass/tdClass/trClass) på begge tabeller. Roster-tabellen bruger dataTableStyles-
+// max-w-[1600px]-container, PageLoader ved initial load, kanonisk Card-chrome for
+// ugerytme-accordionen, ui/DataTable-recepten (dataTableStyles: WRAP/SCROLLER/
+// thClass/tdClass/trClass) på begge tabeller. Roster-tabellen bruger dataTableStyles-
 // chrome i stedet for <DataTable> direkte, fordi den har multi-select-checkbox +
 // group-header-rækker + en per-rytter udvidelig ugeplan-række, som DataTable's
-// 1-række-pr-row-kolonnemodel ikke understøtter. Ren layout-migrering — INGEN ændringer
-// i fetches/beregninger/save-handlers/state-maskiner (useTraining/useTrainingHistory uændret).
+// 1-række-pr-row-kolonnemodel ikke understøtter.
+// #3721 (ejer-godkendt design 19/8): siden er nu 3 faner i stedet for én lang
+// flade — se TRAINING_TABS. Den åbne FAQ er slettet (indhold levede allerede i
+// help.json). Fetches/beregninger/save-handlers/state-maskiner er UÆNDREDE
+// (useTraining/useTrainingHistory rører ingen af de to omlægninger).
 
 // Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed/status
 // (tal, desc-først: "hvem er mest træt/i bedst form / hvem er akademi?" med ét klik).
@@ -161,6 +176,42 @@ function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
   );
 }
 
+// #3721: fokus-åbne-knappen — DELT mellem roster-rækken og Development-fanens
+// rækker, så de to flader bruger samme komponent/mutation (FocusPanel via
+// onOpen) i stedet for at Development opfinder sin egen fokus-visning. Ren
+// visning: al state (plan, busy, fejl) ejes stadig af TrainingPage.
+function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, dataTour }) {
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onOpen}
+        data-tour={dataTour}
+        aria-label={`${t("dayPanel.colDay")} — ${rider.firstname} ${rider.lastname}`}
+        className="flex w-full max-w-[184px] items-center justify-between gap-2 rounded-cz border border-cz-border px-2.5 py-1.5 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle disabled:opacity-40"
+      >
+        <span className="min-w-0">
+          <span className={`block truncate text-[13px] ${plan?.focus ? "font-medium text-cz-1" : "text-cz-3"}`}>
+            {plan?.focus ? dayLabel(plan, t) : t("dayPanel.chooseDay")}
+          </span>
+          {!plan?.focus && smartFocus && (
+            <span className="mt-0.5 block truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">
+              {t("smartFocusHint", { focus: t(`dayPanel.session_${smartFocus}`) })}
+            </span>
+          )}
+        </span>
+        <ChevronDownIcon size={13} className="shrink-0 text-cz-3" aria-hidden="true" />
+      </button>
+      {error && (
+        <div role="alert" className="mt-0.5 text-3xs text-cz-danger">
+          {t([`planActionError_${error}`, "planActionErrorGeneric"])}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // #3299: mobil-sorterings-kontrol — Type/Form/Træthed-headerne er skjult i portræt
 // (#3045-kolonnekontrakten, "hidden sm:table-cell"), og træthed er netop den
 // kolonne spillere sorterer på for at afgøre hvem der skal have hvile (restsymptom
@@ -215,6 +266,26 @@ export default function TrainingPage() {
 
   // #2819: guidet rundvisning for onboarding-trin 2 (first_training_run).
   const trainingTourSteps = useMemo(() => getTrainingTourSteps(t), [t]);
+
+  // #3721: tre faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
+  // RiderStatsPage (VALID_TABS-fallback). Kun læst ved mount for den initiale
+  // fane; skift derefter styres af setTab (skriver `replace`, ingen historik-
+  // spam pr. fane-klik).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = TRAINING_TABS.includes(searchParams.get("tab")) ? searchParams.get("tab") : "today";
+  const setTab = (tab) =>
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("tab", tab);
+      return p;
+    }, { replace: true });
+
+  // #3721: Development-fanens prognose-bånd — samme kilde som spejder-fladerne
+  // (POST /api/scouting/estimates via useScouting). Egne ryttere er altid et
+  // bånd (isOwn i backend/lib/scouting.js), så INGEN scout-knap/slots er
+  // relevante her — kun requestEstimates + estimateFor bruges.
+  const { requestEstimates, estimateFor } = useScouting();
+  const seasonYear = useActiveSeasonYear();
 
   const training = useTraining();
   const {
@@ -341,9 +412,11 @@ export default function TrainingPage() {
         // evnen står på NU, og uden dette embed havde rækken kun fremdrifts-
         // procenten. Ingen ny query og ingen loft-tal: ability_caps er ikke med i
         // ABILITY_KEYS og forlader aldrig serveren (#1162).
+        // #3721: + birthdate — Development-fanens navn+alder-række har brug for
+        // det (samme ageForSeason-helper som rytterprofilen). Ingen ny query.
         const { data } = await supabase
           .from("riders")
-          .select(`id, firstname, lastname, primary_type, secondary_type, is_academy, ${ABILITY_SELECT}`)
+          .select(`id, firstname, lastname, birthdate, primary_type, secondary_type, is_academy, ${ABILITY_SELECT}`)
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders((data || []).map(flattenAbilities));
@@ -353,6 +426,16 @@ export default function TrainingPage() {
     }
     loadRiders();
   }, []);
+
+  // #3721: Development-fanens estimater hentes lazy — kun når fanen faktisk
+  // besøges, så et besøg der aldrig åbner Development ikke sender et ekstra
+  // POST /api/scouting/estimates for hele truppen. Hooken dedupliserer selv
+  // (requestedRef), så et tab-skift frem og tilbage aldrig genspørger.
+  useEffect(() => {
+    if (activeTab === "development" && riders.length > 0) {
+      requestEstimates(riders.map((r) => r.id));
+    }
+  }, [activeTab, riders, requestEstimates]);
 
   async function handleRunToday() {
     setRunError(null);
@@ -671,38 +754,19 @@ export default function TrainingPage() {
             både main og #3741), og den gule "limited" er den tvetydige bucket
             #3747 beskriver, hvor håndværk (tag 0,95) og anden rolle (0,70)
             lander sammen. Panelet viser kun de påstande der kan efterprøves. */}
-        <td className={tdClass({})} data-tour={isFirst ? "training-focus" : undefined}>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => setFocusPanelRiderId(rider.id)}
-            aria-label={`${t("dayPanel.colDay")} — ${rider.firstname} ${rider.lastname}`}
-            className="flex w-full max-w-[184px] items-center justify-between gap-2 rounded-cz border border-cz-border px-2.5 py-1.5 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle disabled:opacity-40"
-          >
-            <span className="min-w-0">
-              {/* #3762: cellen viser DAGEN, ikke et fokusnavn. En hviledag hedder
-                  "Hvile" — ikke "VO2max", som den gjorde da 252 planer stod på
-                  vo2max + hvile og fokusset ikke gjorde noget. */}
-              <span className={`block truncate text-[13px] ${plan?.focus ? "font-medium text-cz-1" : "text-cz-3"}`}>
-                {plan?.focus ? dayLabel(plan, t) : t("dayPanel.chooseDay")}
-              </span>
-              {/* #1894 variant 1: for ryttere UDEN plan, vis hvilket fokus
-                  assistenten rent faktisk træner dem med (backend-leveret,
-                  INGEN frontend-dublet af type→fokus-mappingen). */}
-              {!plan?.focus && smartDefaultFocus[rider.id] && (
-                <span className="mt-0.5 block truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-                  {t("smartFocusHint", { focus: t(`dayPanel.session_${smartDefaultFocus[rider.id]}`) })}
-                </span>
-              )}
-            </span>
-            <ChevronDownIcon size={13} className="shrink-0 text-cz-3" aria-hidden="true" />
-          </button>
-          {/* #2465: fejl-overflade for denne rytters seneste fokus/intensitet/clear-handling. */}
-          {planActionError?.riderId === rider.id && (
-            <div role="alert" className="mt-0.5 text-3xs text-cz-danger">
-              {t([`planActionError_${planActionError.error}`, "planActionErrorGeneric"])}
-            </div>
-          )}
+        <td className={tdClass({})}>
+          {/* #3721: DELT FocusOpenButton — samme komponent/mutation som
+              Development-fanens rækker bruger (ingen forgrenet fokus-logik). */}
+          <FocusOpenButton
+            rider={rider}
+            plan={plan}
+            busy={busy}
+            smartFocus={smartDefaultFocus[rider.id]}
+            error={planActionError?.riderId === rider.id ? planActionError.error : null}
+            onOpen={() => setFocusPanelRiderId(rider.id)}
+            t={t}
+            dataTour={isFirst ? "training-focus" : undefined}
+          />
         </td>
 
         {/* Intensitet */}
@@ -1003,6 +1067,17 @@ export default function TrainingPage() {
         }
       />
 
+      {/* #3721: 3 faner (Train today / Development / History), ?tab=-
+          synkroniseret. Én gold primary-knap pr. view (#trainToday i headeren)
+          — fanebjælken bærer ingen egen primary. */}
+      <Tabs value={activeTab} onChange={setTab} className="mt-1">
+        <TabList label={t("title")} className="mb-4">
+          <Tab value="today">{t("tabs.today")}</Tab>
+          <Tab value="development">{t("tabs.development")}</Tab>
+          <Tab value="history">{t("tabs.history")}</Tab>
+        </TabList>
+
+      <TabPanel value="today">
       <div className="space-y-6">
         {runError && (
           <p className="text-cz-danger text-sm">{runError}</p>
@@ -1027,74 +1102,15 @@ export default function TrainingPage() {
           </div>
         )}
 
-        {/* Daglig recovery-forklaring (#1676) — svarer "Får man energi tilbage hver dag?" */}
-        <Section>
-          <SectionHeader title={t("recoveryNoteTitle")} />
-          <p className="text-sm text-cz-2 leading-relaxed">{t("recoveryNote")}</p>
-        </Section>
-
-        {/* #3721: fokus-guide-accordionen (#1908) er slettet. Den svarede
-            "hvad træner hvert fokus" 400 px OVER det sted man vælger fokus.
-            Nu står svaret i fokus-panelets Træner-kolonne, altså i det sekund
-            valget træffes, og bygget på den samme TRAINING_FOCUS_ABILITIES.
-            Intensitets- og gating-teksterne flytter med til panelets note. */}
-
-        {/* Ugentlig træningsrytme (#1895 PR 1) — holdets ønskede intensitet pr.
-            ugedag. Rører ALDRIG fokus (bor kun i training_plans + smartDefaultFocus).
-            Hold uden gemt rytme = flad "normal" hver dag = bit-identisk med i dag. */}
-        <Card className="overflow-hidden">
-          <details className="group">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
-              <span className="text-[15px] font-semibold text-cz-1">{t("weekRhythmTitle")}</span>
-              <ChevronDownIcon size={16} className="shrink-0 text-cz-3 transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
-            </summary>
-            <div className="border-t border-cz-border px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-              <p className="text-sm text-cz-3 leading-relaxed">{t("weekRhythmIntro")}</p>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {WEEKDAY_KEYS.map((weekday) => {
-                  const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
-                  return (
-                    <div key={weekday} className="flex flex-col items-center gap-1">
-                      <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
-                      <div className="w-[92px]">
-                        <Select
-                          size="sm"
-                          value={current}
-                          disabled={savingWeekPlan}
-                          aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
-                          onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
-                        >
-                          {TRAINING_INTENSITIES.map((k) => (
-                            <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <Button type="button" variant="secondary" size="sm" onClick={handleSaveWeekPlan} disabled={savingWeekPlan}>
-                  {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
-                </Button>
-                {weekPlan && (
-                  <Button type="button" variant="danger" size="sm" onClick={handleResetWeekPlan} disabled={savingWeekPlan}>
-                    {t("weekRhythmResetButton")}
-                  </Button>
-                )}
-                {weekPlanMsg && (
-                  <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
-                    {weekPlanMsg.text}
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
-            </div>
-          </details>
-        </Card>
+        {/* #3721 (ejer-godkendt design 19/8, #3721): den åbne FAQ ("Får man
+            energi tilbage hver dag?") + fokus-guide-accordionen (#1908) er
+            begge slettet fra siden. Fokus-guiden svarede "hvad træner hvert
+            fokus" i fokus-panelets Træner-kolonne i stedet (uændret). Recovery-
+            svaret findes uændret i Hjælp (help.json dailytraining.formFatigue,
+            allerede ordret dækkende) — nået via toolbar-linket nedenfor
+            ("How training works" → /help?section=dailytraining), ikke gentaget
+            her. Ingen kopi gik tabt: begge afsnits indhold levede allerede i
+            help.json før denne ændring. */}
 
         {/* #3299: mobil-sortering — Form/Træthed sorteres via kolonne-headers på
             desktop, men headerne er skjult i portræt (#3045-kolonnekontrakten).
@@ -1110,16 +1126,25 @@ export default function TrainingPage() {
           />
         )}
 
-        {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
-        {riders.length > 0 && (
-          <div className="flex flex-wrap items-center justify-end gap-3">
+        {/* Roster-værktøjslinje (#1480 gruppér-toggle + #3721 stille Hjælp-link).
+            #3721: erstatter den slettede FAQ/accordion-forklaring ovenfor —
+            i stedet for prosa på siden, ét dæmpet link til Hjælpens Daglig
+            Træning-afsnit (recovery, ugerytme, kvitteringen, alt sammen). */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {riders.length > 0 ? (
             <Checkbox
               checked={groupByType}
               onChange={(e) => setGroupByType(e.target.checked)}
               label={t("groupByType")}
             />
-          </div>
-        )}
+          ) : <span />}
+          <Link
+            to="/help?section=dailytraining"
+            className="text-2xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
+          >
+            {t("howTrainingWorksLink")}
+          </Link>
+        </div>
 
         {/* Bulk-apply bjælke — vises kun når ryttere er valgt (#1480) */}
         {selected.size > 0 && (
@@ -1400,9 +1425,148 @@ export default function TrainingPage() {
           </div>
         )}
 
-        {/* Træningsrapport-historik (#1533) — seneste 30 dage */}
-        <TrainingHistory history={history} />
+        {/* Ugentlig træningsrytme (#1895 PR 1) — holdets ønskede intensitet pr.
+            ugedag. Rører ALDRIG fokus (bor kun i training_plans + smartDefaultFocus).
+            Hold uden gemt rytme = flad "normal" hver dag = bit-identisk med i dag.
+            #3721: flyttet fra oversiden af rosteret til under kvitteringen — den
+            var en af to accordions ejeren pegede på som "forklaringer over det man
+            kom for" (#3721, issue-teksten). Selve funktionen er UÆNDRET (samme
+            useTraining-wiring, samme handlers) — kun placeringen ændrede sig, den
+            blev ikke fjernet: en spiller der først vil sætte sin fokus-plan på
+            rosteret rammer nu det uden at scrolle forbi en holdindstilling han
+            sjældent rører, men rytmen er stadig ét klik væk, ikke gemt i Hjælp. */}
+        <Card className="overflow-hidden">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <span className="text-[15px] font-semibold text-cz-1">{t("weekRhythmTitle")}</span>
+              <ChevronDownIcon size={16} className="shrink-0 text-cz-3 transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="border-t border-cz-border px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+              <p className="text-sm text-cz-3 leading-relaxed">{t("weekRhythmIntro")}</p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {WEEKDAY_KEYS.map((weekday) => {
+                  const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
+                  return (
+                    <div key={weekday} className="flex flex-col items-center gap-1">
+                      <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                      <div className="w-[92px]">
+                        <Select
+                          size="sm"
+                          value={current}
+                          disabled={savingWeekPlan}
+                          aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
+                          onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
+                        >
+                          {TRAINING_INTENSITIES.map((k) => (
+                            <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button type="button" variant="secondary" size="sm" onClick={handleSaveWeekPlan} disabled={savingWeekPlan}>
+                  {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
+                </Button>
+                {weekPlan && (
+                  <Button type="button" variant="danger" size="sm" onClick={handleResetWeekPlan} disabled={savingWeekPlan}>
+                    {t("weekRhythmResetButton")}
+                  </Button>
+                )}
+                {weekPlanMsg && (
+                  <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
+                    {weekPlanMsg.text}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
+            </div>
+          </details>
+        </Card>
       </div>
+      </TabPanel>
+
+      {/* #3721: Development-fanen — én række pr. rytter i truppen: navn+alder,
+          udviklings-glyffen (DevelopmentGlyph, FAST 0-99-skala), tallene
+          "now · lo-hi · loft", og den SAMME FocusOpenButton/FocusPanel-mutation
+          som Train today's roster-række bruger (ingen ny fokus-logik). Estimatet
+          kommer fra useScouting (POST /api/scouting/estimates, samme kilde som
+          spejder-fladerne) — egne ryttere er altid et bånd, så der er ingen
+          scout-knap eller slots-tilstand at vise her. */}
+      <TabPanel value="development">
+        {riders.length === 0 ? (
+          <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
+        ) : (
+          <Card className="p-0 overflow-hidden">
+            <div className="divide-y divide-cz-border">
+              {riders.map((rider) => {
+                const age = ageForSeason(rider.birthdate, seasonYear);
+                const estimate = estimateFor(rider.id);
+                const plan = planFor(rider.id);
+                const busy = savingId === rider.id || bulkApplying;
+                const hasBand = estimate && estimate.now != null && estimate.prog
+                  && Number.isFinite(estimate.prog.lo) && Number.isFinite(estimate.prog.hi);
+                return (
+                  <div key={rider.id} className="flex flex-wrap items-center gap-4 px-4 py-[13px] sm:px-5">
+                    <div className="min-w-[160px] flex-1">
+                      <RiderLink id={rider.id} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent transition-colors">
+                        {rider.firstname} {rider.lastname}
+                      </RiderLink>
+                      <div className="mt-0.5 font-data text-3xs uppercase tracking-[.05em] text-cz-3">
+                        {age != null ? t("development.ageLine", { age }) : "—"}
+                      </div>
+                    </div>
+
+                    <div className="min-w-[180px] max-w-[260px] flex-1">
+                      {estimate === undefined ? (
+                        <span className="text-cz-3 text-xs">{t("loading")}</span>
+                      ) : hasBand ? (
+                        <>
+                          <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />
+                          <div className="mt-1 font-mono tabular-nums text-2xs text-cz-2">
+                            {Number.isFinite(estimate.loft)
+                              ? t("development.numbers", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi, loft: estimate.loft })
+                              : t("development.numbersNoLoft", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono tabular-nums text-2xs text-cz-1">{riderStatRating(rider) || "—"}</span>
+                          <span className="text-cz-3 text-3xs italic">{t("development.noForecastYet")}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-none">
+                      <FocusOpenButton
+                        rider={rider}
+                        plan={plan}
+                        busy={busy}
+                        smartFocus={smartDefaultFocus[rider.id]}
+                        error={planActionError?.riderId === rider.id ? planActionError.error : null}
+                        onOpen={() => setFocusPanelRiderId(rider.id)}
+                        t={t}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+      </TabPanel>
+
+      <TabPanel value="history">
+        {/* Træningsrapport-historik (#1533) — seneste 30 dage. Uændret indhold,
+            kun flyttet fra bunden af Train today til sin egen fane (#3721). */}
+        <TrainingHistory history={history} />
+      </TabPanel>
+      </Tabs>
 
       {/* #3721: fokus-panelet. Ét ad gangen, uden for tabellen (Modal
           portaler selv), så rosterets sticky-kolonner og vandrette scroller
