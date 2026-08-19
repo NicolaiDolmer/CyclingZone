@@ -302,15 +302,14 @@
       }
     },
     "projectedLabel": "Forventet net næste sæson",
-    "rangeLine": "Spænd: {low} til {high} (±20% på præmie-estimat)",
+    "rangeLine": "Spænd: {low} til {high} (baseret på præmie-estimatets usikkerhed)",
     "row": {
-      "sponsor": "Sponsor",
-      "prize": "Præmiepenge (estimat)",
+      "sponsorBase": "Sponsor (base)",
+      "sponsorVariable": "Sponsor (variabel)",
+      "prize": "Præmiepenge",
       "salary": "Løn",
+      "staffFacilities": "Stab & faciliteter",
       "loanInterest": "Lånerenter",
-      "upkeep": "Vedligehold",
-      "facilityUpkeep": "Facilitets-vedligehold",
-      "staffSalary": "Stab-lønninger",
       "academyDrift": "Akademi-drift"
     },
     "sponsorDetail": {
@@ -320,8 +319,13 @@
       "fallback": "Fallback: mangler standings for forrige sæson"
     },
     "prizeDetail": {
-      "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson"
+      "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson",
+      "divisionInterval": "Spænd baseret på målt præmiesum blandt hold i din division"
     },
+    "salaryDetail": {
+      "marketS3": "Sæson 3+: prissat efter markedsværdi, ikke det nuværende lønsystem"
+    },
+    "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson 3's lønsystem.",
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",
     "footnoteLink": "Hvordan beregnes prognosen?",
     "badge": {
