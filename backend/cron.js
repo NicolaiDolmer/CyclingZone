@@ -73,6 +73,7 @@ import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
+import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
@@ -858,6 +859,21 @@ async function runSundayIntakeTickCron() {
   }
 }
 
+// ─── Niveau-korrektionens søndags-gate (#3449/#3750) ───────────────────────────
+// Ren MÅLING — skriver ALDRIG riders.market_value (se marketValueLevelCorrectionGate.js's
+// header). Selv-gated (søndag + claim-dedup), så timelig polling + boot-run er sikre.
+async function runMarketValueLevelCorrectionGateSweepCron() {
+  try {
+    const r = await runMarketValueLevelCorrectionGateSweep({ supabase, now: new Date() });
+    if (r.ran) {
+      console.log(`📐 Niveau-korrektions-gate: ${r.status?.toUpperCase()} (${r.reason}) — n90=${r.n90}, median90=${r.median90?.toFixed(3) ?? "n/a"}`);
+    }
+  } catch (err) {
+    console.error("Cron error (market-value-level-correction-gate):", err.message);
+    sentryCapture(err, { tags: { cron: "market-value-level-correction-gate" } });
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -1552,6 +1568,14 @@ export function startCron() {
   // (den forventer succes hvert vindue; denne tick er bevidst søndags-only).
   setInterval(trackedTick("sunday-intake-drip", runSundayIntakeTickCron), 60 * 60 * 1000);
 
+  // Every 60 minutes: niveau-korrektionens søndags-gate (#3449/#3750) — modulet
+  // er selv søndags-gated + claim-idempotent (måle-dedup pr. dato), samme
+  // begrundelse som sunday-intake-drip ovenfor. Ren måling, ingen mutation.
+  setInterval(
+    trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
+
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
   // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
@@ -1617,6 +1641,13 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // #3448 — markedsdrevet værdi-eftersyn har BEVIDST ingen selvstændig tick her.
+  // Den køres som sidste skridt i søndagens værdi-pipeline inde i
+  // trainingSweep.js (efter refreshChangedRiderValues), fordi en uafhængig
+  // timeligt tick tidligere på søndagen ville få kl.-22-v4-refresh'en til at
+  // skrive markedsblendet væk igen. Se marketValueSundaySweep.js's
+  // "RÆKKEFØLGE PÅ SØNDAGE" og trainingSweep.js's kald.
+
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
@@ -1662,6 +1693,7 @@ export function startCron() {
   // gør 24h-monitoren ærlig uden risiko for dubletter eller støj.
   trackedTick("fairplay scoring-sweep", runFairplayScoringCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
+  trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN))(); // boot-run: samme, ren måling
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

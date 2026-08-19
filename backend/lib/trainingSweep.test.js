@@ -196,15 +196,75 @@ describe("runTrainingSweep", () => {
     assert.equal("failed" in result, false);
   });
 
-  it("kalder value-refresh efter sweep (enabled + teams)", async () => {
+  it("kalder value-refresh efter sweep på en søndag (enabled + teams, #3448)", async () => {
+    // 2026-06-21 er søndag (2026-06-20 = lørdag, samme vindue 22:30 CEST).
+    const sundayAfterWindow = new Date("2026-06-21T20:30:00Z");
     const teams = [{ id: "t1" }];
     const runs = [];
     const supabase = makeFullMockSupabase({ teams, runs });
     let refreshCalled = 0;
     const runDay = async () => ({ alreadyRan: false });
     const refreshValues = async () => { refreshCalled++; return { scanned: 1, changed: 0, written: 0 }; };
-    await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues });
+    await runTrainingSweep({
+      supabase, now: sundayAfterWindow, runDay, refreshValues,
+      runMarketValueSweep: async () => ({ ran: false, skipped: "flag_off" }),
+    });
     assert.equal(refreshCalled, 1);
+  });
+
+  it("kører markedsblendet EFTER v4-refresh'en på søndage (#3448 rækkefølge)", async () => {
+    // Rækkefølgen er hele pointen: kørte blendet først, ville refreshValues
+    // genberegne base_value rent fra v4 og skrive blendet væk igen.
+    const sundayAfterWindow = new Date("2026-06-21T20:30:00Z");
+    const supabase = makeFullMockSupabase({ teams: [{ id: "t1" }], runs: [] });
+    const order = [];
+    const runDay = async () => ({ alreadyRan: false });
+    const refreshValues = async () => { order.push("v4-refresh"); return { scanned: 1, changed: 0, written: 0 }; };
+    const runMarketValueSweep = async ({ now }) => {
+      order.push("market-blend");
+      assert.equal(now, sundayAfterWindow, "sweepen skal have det injicerede `now`, ikke vægur-tiden");
+      return { ran: true, scanned: 1, changed: 1, written: 1 };
+    };
+    const result = await runTrainingSweep({ supabase, now: sundayAfterWindow, runDay, refreshValues, runMarketValueSweep });
+    assert.deepEqual(order, ["v4-refresh", "market-blend"]);
+    assert.equal(result.marketValueSweep.ran, true);
+  });
+
+  it("kalder IKKE markedsblendet på en ikke-søndag", async () => {
+    const supabase = makeFullMockSupabase({ teams: [{ id: "t1" }], runs: [] });
+    let called = 0;
+    const result = await runTrainingSweep({
+      supabase, now: afterWindow, runDay: async () => ({ alreadyRan: false }),
+      refreshValues: async () => null,
+      runMarketValueSweep: async () => { called++; return { ran: false }; },
+    });
+    assert.equal(called, 0);
+    assert.equal("marketValueSweep" in result, false);
+  });
+
+  it("et fejlende markedsblend vælter IKKE trænings-sweepen", async () => {
+    const sundayAfterWindow = new Date("2026-06-21T20:30:00Z");
+    const supabase = makeFullMockSupabase({ teams: [{ id: "t1" }], runs: [] });
+    const result = await runTrainingSweep({
+      supabase, now: sundayAfterWindow, runDay: async () => ({ alreadyRan: false }),
+      refreshValues: async () => ({ scanned: 1, changed: 0, written: 0 }),
+      runMarketValueSweep: async () => { throw new Error("markedsblend fejlede"); },
+    });
+    assert.equal(result.swept, 1);
+    assert.equal("marketValueSweep" in result, false);
+  });
+
+  it("kalder IKKE value-refresh på en ikke-søndag (#3448 kadence-omlægning — søndag-only)", async () => {
+    // afterWindow = 2026-06-20, en LØRDAG.
+    const teams = [{ id: "t1" }];
+    const runs = [];
+    const supabase = makeFullMockSupabase({ teams, runs });
+    let refreshCalled = 0;
+    const runDay = async () => ({ alreadyRan: false });
+    const refreshValues = async () => { refreshCalled++; return { scanned: 1, changed: 0, written: 0 }; };
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues });
+    assert.equal(refreshCalled, 0);
+    assert.equal("valueRefresh" in result, false);
   });
 
   it("kalder IKKE value-refresh når flag er slukket (flag_off early-return)", async () => {
