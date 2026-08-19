@@ -70,6 +70,10 @@
     "admin": {
       "feedbackReply": {
         "title": "Svar på din besked"
+      },
+      "devTransition": {
+        "title": "Udviklingsvisningen er ændret",
+        "message": "Dine ryttere har ikke ændret sig. Evner, ratings og resultater er præcis som i går. Det gamle bånd viste bund til loft. Det nye bånd er rytterens forventede niveau: der hvor han realistisk lander med din træning. Lofterne blev hævet for de fleste ryttere samtidig, så et bånd der ser lavere ud betyder ikke en svagere rytter. Potentiale afgør nu hvor hurtigt en rytter udvikler sig, ikke hvor han stopper. Dit dashboard viser dine egne ryttere før og efter."
       }
     },
     "loanCreatedShort": {

@@ -3,7 +3,7 @@
 // Viser den server-beregnede scouting-rapport (GET /api/riders/:id/scouting-report):
 //   • Scout verdict — klart sprog ("Din spejders vurdering" / "Talentspejder-
 //     rapport"), confidence-chip og 4 understøttende faktorer. Ingen jargon.
-//   • Potentiale pr. ryttertype — nuværende rating + skraveret PROGNOSE-BÅND pr. type
+//   • Prognose pr. ryttertype — nuværende rating + skraveret PROGNOSE-BÅND pr. type
 //     (#3746: hvor rytteren realistisk lander med træning, ikke et loft). Prognosen
 //     er ALTID et bånd (#1543 beslutning 3: ingen når 100% præcision, heller
 //     ikke på egne ryttere — beslutning 4).
@@ -464,7 +464,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
         )}
       </SectionCard>
 
-      {/* Potentiale pr. ryttertype — nu + skraveret prognose-bånd. */}
+      {/* Prognose pr. ryttertype — nu + skraveret prognose-bånd. */}
       {orderedTypes.length > 0 && (
         <SectionCard>
           <div className="flex items-baseline justify-between gap-2 mb-3">
