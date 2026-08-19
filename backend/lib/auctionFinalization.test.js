@@ -2540,7 +2540,7 @@ test("finalizeAuctionById graduates a contractless own-team academy rider and gi
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-08-17T10:00:00.000Z",
-    salary: 74_050, // 500_000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: 500_000, division: 3 }),
     contract_length: 2,
     contract_end_season: 2,
     is_academy: false,

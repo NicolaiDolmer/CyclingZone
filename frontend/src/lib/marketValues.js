@@ -19,16 +19,25 @@ export function getRiderMarketValue(rider = {}) {
 // spænder ~400× mens indtægten spænder ~1,25×.
 //
 // Rollback: sæt SALARY_BASIS_MODE = "production" HER OG i backend samtidig.
-const SALARY_BASIS_MODE = "market";
+export const SALARY_BASIS_MODE = "market";
 
-// #2594-grundlaget (rollback-sti). Spejler backend SALARY_RATE_PROD.
-const SALARY_RATE_PROD = { byDiv: { 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 }, global: 0.1606 };
+// #2594-grundlaget (rollback-sti). Spejler backend SALARY_RATE_PROD. Eksporteret
+// KUN så marketValues.test.js kan drift-guarde den mod backend/lib/economyConstants.js
+// i samme test-process (#3959) — der findes ingen runtime fetch-fra-backend-mekanisme
+// i frontenden i dag (ejer-accepteret: literal mirror + CI-håndhævet lighed, ikke en
+// ny netværksafhængighed for et tal der sjældent ændrer sig).
+export const SALARY_RATE_PROD = { byDiv: { 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 }, global: 0.1606 };
 export function salaryRateForDivision(division) {
   return SALARY_RATE_PROD.byDiv[Number(division)] ?? SALARY_RATE_PROD.global;
 }
 
-// #3360-grundlaget. Spejler backend SALARY_MARKET_MODEL.
-const SALARY_MARKET_MODEL = { anchorValue: 100000, anchorSalary: 15000, exponent: 0.55, floor: 250 };
+// #3360-grundlaget. Spejler backend SALARY_MARKET_MODEL (backend/lib/economyConstants.js).
+// A = anchorSalary er UNDER GENBEREGNING (19/8-notat: 17/8-tallet 23.300 byggede på en
+// falsk præmis om 60 løbsdage — sæsonen er 28). Dette ER konfigurationspunktet — ÉT
+// literal her, ÉT i backend — begge sider drift-guardet af marketValues.test.js
+// ("SALARY_MARKET_MODEL matcher backend byte-for-byte"), så en fremtidig opdatering af A
+// der KUN rammer den ene fil fejler testen i stedet for at sive stille ud i prod.
+export const SALARY_MARKET_MODEL = { anchorValue: 100000, anchorSalary: 15000, exponent: 0.55, floor: 250, ceiling: null };
 
 function salaryFromProduction(rider, division) {
   const cpv = Number(rider?.current_production_value);
@@ -40,8 +49,10 @@ function salaryFromMarket(rider) {
   const mv = Number(rider?.market_value);
   const bv = Number(rider?.base_value);
   const base = mv > 0 ? mv : (bv > 0 ? bv : RIDER_BASE_VALUE_FALLBACK);
-  const { anchorValue, anchorSalary, exponent, floor } = SALARY_MARKET_MODEL;
-  return Math.max(floor, Math.round(anchorSalary * Math.pow(base / anchorValue, exponent)));
+  const { anchorValue, anchorSalary, exponent, floor, ceiling } = SALARY_MARKET_MODEL;
+  const withFloor = Math.max(floor, Math.round(anchorSalary * Math.pow(base / anchorValue, exponent)));
+  const cap = Number(ceiling);
+  return Number.isFinite(cap) && cap > 0 ? Math.min(cap, withFloor) : withFloor;
 }
 
 // Delt indgang: den løn et grundlag ville give. `division` bruges kun af

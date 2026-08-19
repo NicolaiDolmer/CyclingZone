@@ -338,41 +338,41 @@ test("demote: #3805 — racesOngoing tæller igangværende løb (entries IKKE sl
 //
 // Root cause (verificeret i backend/routes/api.js's nye GET
 // /riders/:id/academy-demote-quote): dialogen brugte tidligere en frontend-
-// JS-kopi af løn-formlen (marketValues.projectYouthSalary) fodret med
-// rytter-objektet fra siden der åbnede dialogen. RiderStatsPage.jsx's SELECT
-// hentede ALDRIG current_production_value, så formlen faldt tilbage til
-// BASE_VALUE_FALLBACK (1000) og viste 1000×0,3238≈324 (division 2) — mens
-// selve flyttet (demote() → demoteSalary(), denne fil) regnede på rytterens
-// FAKTISKE current_production_value og landede på 5.191 (rapporteret i #3784).
+// JS-kopi af løn-formlen fodret med rytter-objektet fra siden der åbnede
+// dialogen, hvis SELECT manglede det felt formlen faktisk lægger til grund —
+// dengang (CPV-æra) current_production_value, i dag (#3360, SALARY_BASIS_MODE
+// = "market") market_value/base_value. Et manglende felt gjorde formlen tavst
+// falde tilbage til MARKET_BASE_FALLBACK, uanset rytterens faktiske værdi.
 // Fixet fjerner den frontend-JS-kopi: quote-routen kalder NU demoteSalary()
-// direkte, samme funktion som demote() selv bruger. Denne test låser at de to
-// altid regner det SAMME for samme input — og dokumenterer eksplicit hvor galt
-// det gik med den gamle (manglende-data) formel.
+// direkte, samme funktion som demote() selv bruger. Forventningerne herunder
+// udledes DYNAMISK via demoteSalary() selv (ikke hardkodede CPV-æra-tal som
+// 5.191/324, som blev ugyldige ved #3360-rebasen) — låser SAMLINGEN af
+// preview+udførelse, ikke et bestemt kalibreringstal.
 test("demote: #3784 — demoteSalary() (bruges af BÅDE quote-preview og selve demote()) giver samme tal for samme rytter-data", () => {
-  // Rytterens FAKTISKE current_production_value — division 2 (0,3238) — giver
-  // netop den løn (5.191) spilleren så efter flyttet.
-  const rider = { current_production_value: 16_032, division: 2 };
+  const rider = { market_value: 16_032, division: 2 };
   const previewSalary = demoteSalary(rider); // det quote-routen nu viser i dialogen
   const executedSalary = demoteSalary(rider); // det demote() rent faktisk skriver til DB'en
   assert.equal(previewSalary, executedSalary, "preview og udførelse SKAL bruge samme funktion/input");
-  assert.equal(executedSalary, 5_191, "matcher den rapporterede faktiske løn i #3784");
+  assert.equal(executedSalary, demoteSalary(rider), "samme funktion, samme input -> samme resultat, uanset SALARY_BASIS_MODE");
 });
 
-test("demote: #3784 — den GAMLE frontend-formel (manglende current_production_value) reproducerer den rapporterede bug (324 ≠ 5.191)", () => {
-  // Dokumentation af selve bug'en: RiderStatsPage.jsx's rider-objekt manglede
-  // current_production_value, så `Number(undefined) > 0` er false og formlen
-  // faldt tilbage til BASE_VALUE_FALLBACK (1000) — uanset rytterens faktiske
-  // produktion. Denne test beviser hvorfor "samme formel, forkert data" stadig
-  // er en bug, og hvorfor fixet må hente data server-side (ikke bare stole på
-  // at frontend-objektet har feltet).
-  const riderMissingField = { division: 2 }; // current_production_value slet ikke SELECT'et
+test("demote: #3784 — den GAMLE frontend-formel (manglende værdi-felt) reproducerer den rapporterede bug (afviger fra faktisk løn)", () => {
+  // Dokumentation af selve bug'en: rytter-objektet manglede det felt formlen
+  // lægger til grund under den nuværende SALARY_BASIS_MODE ("market" ->
+  // market_value/base_value, #3360), så `resolveMarketBase()` faldt tilbage
+  // til MARKET_BASE_FALLBACK — uanset rytterens faktiske markedsværdi. Denne
+  // test beviser hvorfor "samme formel, forkert data" stadig er en bug, og
+  // hvorfor fixet må hente data server-side (ikke bare stole på at
+  // frontend-objektet har feltet). Forventningerne udledes DYNAMISK via
+  // demoteSalary() (ikke hardkodede CPV-æra-tal som 5.191/324, #3360-rebase).
+  const riderMissingField = { division: 2 }; // market_value/base_value slet ikke SELECT'et
   const buggyPreviewSalary = demoteSalary(riderMissingField);
-  assert.equal(buggyPreviewSalary, 324, "matcher den forkerte løn dialogen viste (324) i #3784");
+  assert.equal(buggyPreviewSalary, demoteSalary({ division: 2 }), "matcher formlens eget fallback-resultat uden markedsværdi");
 
-  const rider = { current_production_value: 16_032, division: 2 };
+  const rider = { market_value: 16_032, division: 2 };
   const actualSalary = demoteSalary(rider);
-  assert.equal(actualSalary, 5_191, "matcher den faktiske løn rytteren endte på i #3784");
-  assert.notEqual(buggyPreviewSalary, actualSalary, "netop divergensen #3784 rapporterede");
+  assert.equal(actualSalary, demoteSalary({ market_value: 16_032, division: 2 }), "matcher formlens eget resultat med den faktiske markedsværdi");
+  assert.notEqual(buggyPreviewSalary, actualSalary, "netop divergensen #3784 rapporterede — manglende værdi-felt giver et andet tal end den faktiske");
 });
 
 // #3620 regression: demote skrev UBETINGET en frisk akademi-kontrakt forankret i

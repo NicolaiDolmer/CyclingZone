@@ -3,7 +3,7 @@
  */
 import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
-import { getRiderMarketValue, getRiderSalary } from "./marketValues";
+import { getRiderMarketValue, getRiderSalary, SALARY_ESTIMATE_COLUMN } from "./marketValues";
 import { buildSalaryFilterOr } from "./salaryFilter.js";
 import { getRiderAge, isU23, isU25 } from "./riderAge";
 import { applyNameSearch } from "./riderNameSearch";
@@ -242,7 +242,11 @@ async function fetchRidersSortedBySalary(supabase, { filters, from, to, riderSel
 
   const [withSalary, withoutSalary] = await Promise.all([
     fetchAllRows(buildBranchQuery("salary", (q) => q.not("salary", "is", null))),
-    fetchAllRows(buildBranchQuery("current_production_value", (q) => q.is("salary", null))),
+    // #3959-fund: SKAL følge SALARY_ESTIMATE_COLUMN (samme kilde som løn-FILTERET,
+    // buildSalaryFilterOr) — et hardkodet "current_production_value" her blev dødt
+    // vægt under SALARY_BASIS_MODE="market" (#3360), se mergeSalarySortedIds'
+    // kommentar i riderColumnSort.js.
+    fetchAllRows(buildBranchQuery(SALARY_ESTIMATE_COLUMN, (q) => q.is("salary", null))),
   ]);
 
   const ascending = filters.sort_dir === "asc";

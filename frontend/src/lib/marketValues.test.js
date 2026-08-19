@@ -9,7 +9,10 @@ import {
   getRiderMarketValue,
   getRiderSalary,
   salaryBoundToValueBound,
+  SALARY_MARKET_MODEL,
+  SALARY_RATE_PROD,
 } from "./marketValues.js";
+import { SALARY_MARKET_MODEL as BACKEND_SALARY_MARKET_MODEL, SALARY_RATE_PROD as BACKEND_SALARY_RATE_PROD } from "../../../backend/lib/economyConstants.js";
 
 async function setLanguage(language) {
   if (!i18n.isInitialized) {
@@ -268,4 +271,23 @@ test("salaryBoundToValueBound — round-trip mod getRiderSalary", () => {
   // En free agent klart over value-grænsen har en vist løn > max.
   const above = { salary: null, current_production_value: valueBound * 2, market_value: valueBound * 2 };
   assert.ok(getRiderSalary(above) > maxSalary);
+});
+
+// ─── #3959 drift-guard ───────────────────────────────────────────────────────
+//
+// marketValues.js har INGEN runtime-mekanisme til at hente løn-konstanterne fra
+// backend — de er literal mirrors med en "SKAL spejle backend"-kommentar (ejer-
+// accepteret mønster, samme som resten af de klient-side økonomi-konstanter).
+// A (anchorSalary) er pr. 19/8 under genberegning (17/8-tallet 23.300 byggede på
+// en falsk 60-dages-præmis), og ejer-kravet er at A forbliver ÉT konfigurationspunkt
+// der kan opdateres ét sted. Denne test er DET håndhævede "ét sted": den kører i
+// samme process som backend/lib/economyConstants.js (ren konstant-fil, ingen
+// backend-only imports) og fejler højlydt hvis nogen opdaterer den ene fil uden
+// den anden — i stedet for at driften siver stille ud i prod.
+test("#3959 SALARY_MARKET_MODEL matcher backend/lib/economyConstants.js byte-for-byte (drift-guard)", () => {
+  assert.deepEqual(SALARY_MARKET_MODEL, BACKEND_SALARY_MARKET_MODEL);
+});
+
+test("#3959 SALARY_RATE_PROD (rollback-stiens sats) matcher backend/lib/economyConstants.js (drift-guard)", () => {
+  assert.deepEqual(SALARY_RATE_PROD, BACKEND_SALARY_RATE_PROD);
 });
