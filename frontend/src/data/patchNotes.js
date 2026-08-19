@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.145",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "Offers and activity feed now update live",
+          "body": "The pending actions badge and the activity feed did not refresh on their own; new transfer and swap offers only appeared after a reload. Both now update in real time."
+        },
+        "da": {
+          "title": "Tilbud og aktivitetsfeed opdaterer nu live",
+          "body": "Badgen for afventende handlinger og aktivitetsfeedet opdaterede ikke af sig selv; nye købs- og byttetilbud dukkede først op efter en genindlæsning. Begge opdaterer nu i realtid."
+        },
+        "refs": [
+          3035
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.144",
     "date": "2026-08-18",
     "label": "Beta",
