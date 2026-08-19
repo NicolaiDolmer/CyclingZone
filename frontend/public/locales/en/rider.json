@@ -184,6 +184,16 @@
       "ratingTrendDeclining": "Declining this season",
       "ratingTrendTitle": "Rating {value} since {date}"
     },
+    "levelCorrectionReceipt": {
+      "developmentLine": "Development: no change from training this week.",
+      "marketLine": "Market: one-time level adjustment, all riders. Values now match what riders actually trade for. Your rider is not getting worse.",
+      "detailsToggle": "Show numbers",
+      "detailsHide": "Hide numbers",
+      "anchorBefore": "Value before",
+      "anchorAfter": "Value after",
+      "factor": "Correction factor",
+      "appliedAt": "Applied {date}"
+    },
     "banner": {
       "listed": "On the transfer list · price {price}",
       "auction": "In auction · ends in {endsIn} · highest bid {highBid}",

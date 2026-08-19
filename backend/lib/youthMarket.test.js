@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
-import { listRejectedAsYouthAuction, YOUTH_AUCTION_START_RATE } from "./youthMarket.js";
+import { listRejectedAsYouthAuction, YOUTH_AUCTION_START_RATE, REJECTED_CANDIDATE_AUCTION_DURATION_HOURS } from "./youthMarket.js";
 
 // ─── Mock-supabase ────────────────────────────────────────────────────────────
 
@@ -104,6 +104,35 @@ test("listRejectedAsYouthAuction: opretter is_youth-auktion uden sælger, lav st
   assert.equal(auction.id, "youth-auction-1");
 });
 
+// #3550 punkt 6 (ejer-beslutning 19/8): REJECTED_CANDIDATE_AUCTION_DURATION_HOURS
+// (24) er nu DEFAULT — ikke kun academyIntakeExpirySweep's eksplicitte 24h, men
+// også rejectAcademyCandidate-stien (manager-initieret afvisning), der FØR faldt
+// tilbage til den korte standard-auktionsvarighed når durationHours ikke blev sendt.
+test("listRejectedAsYouthAuction: UDEN durationHours falder tilbage til REJECTED_CANDIDATE_AUCTION_DURATION_HOURS (24), ikke standard-varigheden", async () => {
+  assert.equal(REJECTED_CANDIDATE_AUCTION_DURATION_HOURS, 24);
+
+  const now = new Date("2026-06-20T12:00:00Z");
+  const supabaseDefault = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabaseDefault, { riderId: "rider-Y", now, auctionConfig: DEFAULT_AUCTION_CONFIG });
+  const defaultEnd = new Date(supabaseDefault._auctionInserts[0].calculated_end);
+
+  const supabaseExplicit24 = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabaseExplicit24, {
+    riderId: "rider-Y", now, auctionConfig: DEFAULT_AUCTION_CONFIG, durationHours: 24,
+  });
+  const explicit24End = new Date(supabaseExplicit24._auctionInserts[0].calculated_end);
+
+  const supabaseStandard = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabaseStandard, {
+    riderId: "rider-Y", now, auctionConfig: DEFAULT_AUCTION_CONFIG, durationHours: DEFAULT_AUCTION_CONFIG.duration_hours,
+  });
+  const standardEnd = new Date(supabaseStandard._auctionInserts[0].calculated_end);
+
+  assert.equal(defaultEnd.getTime(), explicit24End.getTime(), "ingen durationHours-argument = samme resultat som eksplicit 24h");
+  assert.notEqual(defaultEnd.getTime(), standardEnd.getTime(), "24h er LÆNGERE end standard-varigheden (6h) — reject-stien får ikke længere den korte default");
+  assert.ok(defaultEnd.getTime() > standardEnd.getTime(), "24h-slutfrist ligger senere end standard-varighedens");
+});
+
 test("listRejectedAsYouthAuction: startpris = lav andel af markedsværdi (YOUTH_AUCTION_START_RATE)", async () => {
   const supabase = makeYouthMarketSupabase({
     rider: { id: "rider-Y", firstname: "A", lastname: "B", base_value: 200000, market_value: 200000, prize_earnings_bonus: 0, team_id: null },
@@ -116,6 +145,43 @@ test("listRejectedAsYouthAuction: startpris = lav andel af markedsværdi (YOUTH_
   const ins = supabase._auctionInserts[0];
   assert.equal(ins.starting_price, Math.round(200000 * YOUTH_AUCTION_START_RATE));
   assert.ok(YOUTH_AUCTION_START_RATE < 1, "startpris-rate er lav (< 1)");
+});
+
+// #3449 neutralitets-bundt (a): dræn-neutral bankrate-override.
+test("listRejectedAsYouthAuction: NULL override (ingen korrektion kørt) ⇒ bruger konstanten uændret", async () => {
+  const supabase = makeYouthMarketSupabase({
+    rider: { id: "rider-Y", firstname: "A", lastname: "B", base_value: 200000, market_value: 200000, prize_earnings_bonus: 0, team_id: null },
+  });
+  await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-06-20T12:00:00Z"),
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+    readStartRateOverride: async () => null,
+  });
+  const ins = supabase._auctionInserts[0];
+  assert.equal(ins.starting_price, Math.round(200000 * YOUTH_AUCTION_START_RATE));
+});
+
+test("listRejectedAsYouthAuction: konfigureret override (efter niveau-korrektion) ⇒ startpris i kroner uændret for c×værdi", async () => {
+  // c = 0,6918 (scratchpad-facit 19/8) ⇒ effectiveRate = 0,25/0,6918 ≈ 0,3614.
+  const c = 0.6918;
+  const effectiveRate = YOUTH_AUCTION_START_RATE / c;
+  const oldValue = 200000;
+  const newValue = oldValue * c; // riders.market_value ER allerede skaleret ved korrektionen
+  const supabase = makeYouthMarketSupabase({
+    rider: { id: "rider-Y", firstname: "A", lastname: "B", base_value: newValue, market_value: newValue, prize_earnings_bonus: 0, team_id: null },
+  });
+  await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-06-20T12:00:00Z"),
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+    readStartRateOverride: async () => effectiveRate,
+  });
+  const ins = supabase._auctionInserts[0];
+  const startPriceBeforeCorrection = Math.round(oldValue * YOUTH_AUCTION_START_RATE);
+  // Op til afrunding: startprisen i kroner skal matche hvad den var FØR korrektionen.
+  assert.ok(Math.abs(ins.starting_price - startPriceBeforeCorrection) <= 1,
+    `startpris efter korrektion (${ins.starting_price}) skal matche startpris før (${startPriceBeforeCorrection})`);
 });
 
 test("listRejectedAsYouthAuction: kaster når rytter mangler", async () => {

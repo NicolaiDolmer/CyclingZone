@@ -24,7 +24,15 @@ export const ACADEMY = Object.freeze({
   SALARY_RATE,              // #2083: ungdoms-/akademi-løn ensrettet til den delte senior-rate
                             // (economyConstants.SALARY_RATE = 0.067). Youth har ikke længere en
                             // separat rate — ét fælles løn-system for alle ryttere (ejer-valgt 3/7).
-  CONTRACT_LENGTH: 3,       // akademi-kontrakt-længde (sæsoner)
+  CONTRACT_LENGTH: 3,       // akademi-kontrakt-længde (sæsoner). Delt af demote-stien
+                            // (academyTransfer.js, senior→akademi) og youth-auktionsvinderen
+                            // (auctionFinalization.js). IKKE for intake-signeringer, se næste.
+  // #3550 (ejer-beslutning 19/8, ungdomspakken punkt 3): akademi-INTAKE-signeringer
+  // (signAcademyCandidate, pull-flowet) får en kortere intro-kontrakt end resten af
+  // akademiet. Bevidst isoleret fra CONTRACT_LENGTH ovenfor, som demote-stien
+  // (academyTransfer.js) fortsat bruger uændret (3) - en global sænkning af
+  // CONTRACT_LENGTH ville have kortet demote-kontrakter urelateret til intake.
+  INTAKE_CONTRACT_LENGTH: 1, // akademi-intake-signering: 1 sæsons intro-kontrakt (kun signAcademyCandidate)
 
   // #2082/#1938 (ejer-godkendt 5/7): daglig træning for akademi-alder brugte KUN
   // livstids-loftet direkte + en dage-baseret rate → ubegrænset vækst så længe

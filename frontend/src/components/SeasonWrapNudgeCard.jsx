@@ -4,12 +4,12 @@ import { formatNumber } from "../lib/intl";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/seasonRecapCopy.js";
 
-// #2752 (design draft, PR pending owner approval) — the ACTIVE season-transition
-// nudge for the dashboard: today a manager "falls into" the next season with no
-// closure moment for the one that just ended. This card is that moment — it
-// surfaces automatically right after a season ends (dashboard, same slot as
-// SeasonStartGuideCard.jsx) and bridges backward ("Season N wrapped — you
-// finished #Y") into forward ("Season N+1 starts now — here's your goal").
+// #2752 — the ACTIVE season-transition nudge for the dashboard: today a
+// manager "falls into" the next season with no closure moment for the one
+// that just ended. This card is that moment — it surfaces automatically
+// right after a season ends (dashboard, same slot as SeasonStartGuideCard.jsx)
+// and bridges backward ("Season N wrapped — you finished #Y") into forward
+// ("Season N+1 starts now — here's your goal").
 //
 // Deliberately a SEPARATE card from SeasonStartGuideCard (the decisions
 // checklist): this one is the emotional beat (result + goal), that one is the
@@ -17,13 +17,16 @@ import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/season
 // competing — this card's CTA leads to SeasonRecapHero (the yearbook), the
 // checklist's items lead to squad/training/board/academy.
 //
-// PRESENTATIONAL ONLY (props-in, no fetch) — same reasoning as SeasonRecapHero.
+// PRESENTATIONAL ONLY (props-in, no fetch) — DashboardPage.jsx computes
+// `movement` via the SAME resolveSeasonMovement() helper SeasonEndPage.jsx
+// uses for the recap hero (seasonRecapData.js, season-recap-polish 18/8) —
+// one movement calculation shared by both surfaces, not two that could drift.
 //
 // DESIGN: canonical Section/SectionHeader recipe, dismiss-X mirrors
-// SeasonStartGuideCard's own dismiss affordance (dismissal should be
-// per-season, same localStorage pattern as seasonStartGuide.js — left to the
-// real-wiring follow-up). ONE gold primary CTA ("view recap") — but only when
-// no higher-priority moment already owns the gold slot; see `primary` prop.
+// SeasonStartGuideCard's own dismiss affordance — dismissal is per-season,
+// same localStorage pattern as seasonStartGuide.js (see lib/seasonWrapNudge.js).
+// ONE gold primary CTA ("view recap") — but only when no higher-priority
+// moment already owns the gold slot; see `primary` prop.
 //
 // #3509 — this card used to always render its CTA as gold, which could stack
 // with TeamSelectionCtaCard's own gold CTA right after a season switch (recap

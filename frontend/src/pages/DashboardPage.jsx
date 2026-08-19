@@ -56,7 +56,7 @@ import {
 import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
 import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
-import { computeSeasonMovement } from "../lib/seasonRecapData.js";
+import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
 // vk-movement-signals — bevægelses-signaler på "My division standings":
 // divisionsplacering + holdpoint siden sidste afsluttede løbsdag i egen pulje.
 import { findLastCompletedRaceDay, sumPointsByTeam, computeDivisionMovement } from "../lib/dashboardMovementSignals.js";
@@ -74,7 +74,10 @@ import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEve
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
 // opdatere uden hård reload når et løb finaliseres (#783).
-const REALTIME_TABLES = ["seasons", "race_results"];
+// #3035: races (72 updates/vindue) erstatter race_results (34k writes/vindue) som
+// finaliserings-signal — hver etape/løbs-afslutning bumper races-rækken, så UX er
+// identisk, men realtime slipper for at WAL-dekode masseskrivningerne.
+const REALTIME_TABLES = ["seasons", "races"];
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -630,19 +633,38 @@ export default function DashboardPage() {
       const divisionSize = (divTeams || [])
         .filter(r => !r.team?.is_ai && !r.team?.is_test_account && !r.team?.is_frozen).length;
 
+      // #season-recap-polish (18/8) — samme robuste sti som SeasonEndPage.jsx's
+      // recap-hero (resolveSeasonMovement, seasonRecapData.js): foretrækker en
+      // RIGTIG season_standings-række for seasonInfo (efterfølgersæsonen — den
+      // er allerede verificeret ovenfor til at være DEN sæson completedSeason
+      // overgik til), falder kun tilbage til team.division hvis den rækken
+      // ikke findes endnu. Før kaldte kortet computeSeasonMovement direkte med
+      // team.division — to stier til "samme" tal der kunne drifte fra
+      // hinanden (fx en admin-korrektion af division EFTER transitionen).
+      const { data: nextRow } = await supabase
+        .from("season_standings")
+        .select("division")
+        .eq("team_id", team.id).eq("season_id", seasonInfo.id).maybeSingle();
+      if (cancelled) return;
+
       setCompletedSeasonRecap({
         seasonId: completedSeason.id,
         seasonNumber: completedSeason.number,
         division: standingsRow.division,
         divisionSize,
         rank: standingsRow.rank_in_division,
-        movement: computeSeasonMovement(standingsRow.division, team.division),
+        movement: resolveSeasonMovement({
+          finishedDivision: standingsRow.division,
+          nextSeasonStandingDivision: nextRow?.division ?? null,
+          nextSeasonStatus: seasonInfo.status ?? null,
+          currentTeamDivision: team.division,
+        }),
         points: standingsRow.total_points,
         wins: standingsRow.stage_wins,
       });
     })();
     return () => { cancelled = true; };
-  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, seasonInfo?.number, team?.division]);
+  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, seasonInfo?.number, seasonInfo?.status, team?.division]);
 
   // #2752/#2361 — dismiss huskes PR. AFSLUTTET SÆSON (ikke pr. aktiv, som
   // seasonStartDismissed ovenfor) — se lib/seasonWrapNudge.js.

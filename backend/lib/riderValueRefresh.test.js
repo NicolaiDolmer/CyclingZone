@@ -56,6 +56,34 @@ test("selectChangedValueUpdates: skriver KUN ryttere hvor værdi/type ændrede s
   assert.deepEqual(Object.keys(u2).sort(), ["base_value", "current_production_value", "id", "primary_type", "secondary_type"]);
 });
 
+// ── #3550 punkt 5: intake-pull-kandidater med provisorisk værdi ───────────────
+// (ejer-beslutning 19/8, ungdomspakken): den normale værdi-sweep (kører natligt,
+// altså under alle omstændigheder inden førstkommende søndag) skal samle akademi-
+// intake-ryttere med symbolsk startværdi op. Ingen kode-ændring var nødvendig HER
+// — sweepet filtrerer ikke på is_academy/status/provisorisk-flag i forvejen — men
+// adfærden var udokumenteret for netop dette scenarie.
+
+test("#3550 punkt 5: en akademi-intake-kandidat med provisorisk (symbolsk) base_value INKLUDERES i sweepet og får den RIGTIGE evne-afledte værdi", () => {
+  const real = recomputeRiderValue({ id: "academy-r1" }, ABIL, baseline, model);
+  const provisionalRider = {
+    id: "academy-r1",
+    primary_type: real.primary_type,
+    secondary_type: real.secondary_type,
+    base_value: 3000, // #3550: provisorisk værdi trukket uniformt 1.000-5.000 ved intake-pull
+    current_production_value: null,
+  };
+  const abilityByRider = new Map([["academy-r1", ABIL]]);
+  const updates = selectChangedValueUpdates([provisionalRider], abilityByRider, baseline, model);
+
+  assert.equal(updates.length, 1, "ingen filter i selectChangedValueUpdates udelukker intake-/akademi-ryttere");
+  assert.equal(updates[0].id, "academy-r1");
+  assert.notEqual(updates[0].base_value, 3000, "den symbolske startværdi overskrives");
+  assert.equal(updates[0].base_value, real.base_value, "erstattes af den RIGTIGE, evne-afledte værdi — samme som enhver anden rytter ville få");
+  // Lønnen (riders.salary) er FROSSEN ved signering og indgår aldrig i denne
+  // patch — se testen ovenfor ("skriver KUN...") for keys-listen uden 'salary'.
+  assert.ok(!("salary" in updates[0]), "sweepet rører ALDRIG salary — den symbolske løn forbliver frosset uanset værdi-genberegningen");
+});
+
 // ── #3570: nattens sweep omdøber ikke længere en rytter med fast identitet ────
 
 test("#3570: recomputeRiderValue bruger archetype_draw som identitet — nattens sweep overskriver den ikke", () => {

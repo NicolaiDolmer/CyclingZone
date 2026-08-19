@@ -85,12 +85,17 @@ export default function AcademyPage() {
   const seasonYear = useActiveSeasonYear();
   const {
     enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division,
-    loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider,
+    intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider,
+    pullIntake,
   } = useAcademy();
 
   // Per-kandidat in-flight state + fejlbeskeder.
   const [actionState, setActionState] = useState({}); // { [riderId]: "signing"|"rejecting"|null }
   const [actionErrors, setActionErrors] = useState({}); // { [riderId]: string | null }
+
+  // #3550: pull-knappens egen in-flight/fejl-state (ikke per-kandidat).
+  const [pullBusy, setPullBusy] = useState(false);
+  const [pullError, setPullError] = useState(null);
 
   // #932 S7: promote-bekræftelse (akademi → senior). Konsekvens-bevidst: viser
   // senior-cap-effekt + projiceret senior-løn. { riderId, riderName, newSalary } | null.
@@ -246,6 +251,17 @@ export default function AcademyPage() {
       setActionErrors(prev => ({ ...prev, [riderId]: mapActionError(result.error) }));
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));
+  }
+
+  // #3550: hent ugens akademi-kuld (pull-intake).
+  async function handlePullIntake() {
+    setPullBusy(true);
+    setPullError(null);
+    const result = await pullIntake();
+    if (!result.ok) {
+      setPullError(t("intakePull.errorFailed"));
+    }
+    setPullBusy(false);
   }
 
   async function handleGraduate(riderId, action) {
@@ -432,7 +448,24 @@ export default function AcademyPage() {
       <section>
         <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("intakeHeading")}</h2>
 
-        {intake.length === 0 ? (
+        {/* #3550 (ejer-beslutning 19/8, ungdomspakken): pull-baseret intake.
+            intakePull.enabled=false (default indtil cutover-flip 23/8) → uændret
+            visning (auto-drip-tomtilstand nedenfor). enabled=true bytter tomme-
+            tilstanden ud med en hent-knap (tilstand a) medmindre ugens kuld
+            allerede er hentet OG opbrugt (tilstand b var kandidat-kortene). */}
+        {intake.length === 0 && intakePull.enabled && !intakePull.pulledThisWeek ? (
+          <Card className="p-5 flex flex-col items-start gap-3">
+            <h3 className="text-sm font-semibold text-cz-1">{t("intakePull.title")}</h3>
+            <p className="text-xs text-cz-2 max-w-md">{t("intakePull.description")}</p>
+            <p className="text-3xs uppercase tracking-wide text-cz-3">{t("intakePull.deadlineNote")}</p>
+            {pullError && <p className="text-xs text-cz-danger">{pullError}</p>}
+            <Button size="sm" variant="primary" onClick={handlePullIntake} disabled={pullBusy} loading={pullBusy}>
+              {t("intakePull.pullBtn")}
+            </Button>
+          </Card>
+        ) : intake.length === 0 && intakePull.enabled ? (
+          <EmptyState title={t("emptyIntakeTitle")} description={t("intakePull.emptyAfterPull")} />
+        ) : intake.length === 0 ? (
           <EmptyState title={t("emptyIntakeTitle")} description={t("emptyIntake")} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -510,15 +543,28 @@ export default function AcademyPage() {
                     </div>
                   )}
 
-                  {/* #2796: Signér var et irreversibelt køb uden synlig pris. */}
+                  {/* #2796: Signér var et irreversibelt køb uden synlig pris.
+                      #3550: pull-mode viser markedsværdien som PROVISORISK (symbolsk
+                      startværdi, ejer-beslutning 19/8 punkt 2) + en lønforhåndsvisning
+                      (1 sæsons intro-kontrakt), og forklarer at den rigtige værdi
+                      sættes ved førstkommende søndags-opdatering (punkt 5). */}
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border-t border-cz-border pt-2">
-                    <dt className="text-cz-3">{t("colValue")}</dt>
+                    <dt className="text-cz-3">{intakePull.enabled ? t("intakePull.provisionalValue") : t("colValue")}</dt>
                     <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(getRiderMarketValue(rider))} CZ$</dd>
                     <dt className="text-cz-3">{t("signingFee")}</dt>
                     <dd className={`text-right font-data tabular-nums font-semibold ${tooExpensive ? "text-cz-danger" : "text-cz-1"}`}>
                       {formatMoney(fee)} CZ$
                     </dd>
+                    {intakePull.enabled && (
+                      <>
+                        <dt className="text-cz-3">{t("intakePull.wageOneSeason")}</dt>
+                        <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(item.wagePreview)} CZ$</dd>
+                      </>
+                    )}
                   </dl>
+                  {intakePull.enabled && (
+                    <p className="text-3xs text-cz-3">{t("intakePull.valuationNote")}</p>
+                  )}
 
                   {/* Fejlbesked */}
                   {err && <p className="text-xs text-cz-danger">{err}</p>}

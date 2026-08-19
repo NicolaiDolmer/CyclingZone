@@ -39,7 +39,9 @@ import {
 } from "../components/ui";
 
 // Realtime: opdatér seneste løb + top-hold/-ryttere live efter en resultat-import (#783).
-const REALTIME_TABLES = ["season_standings", "race_results"];
+// #3035: races er finaliserings-signalet (bumpes pr. etape/løb) i stedet for den
+// masseskrevne race_results, som er taget ud af realtime-publikationen.
+const REALTIME_TABLES = ["season_standings", "races"];
 
 const VALID_TABS = ["latest", "archive", "points"];
 

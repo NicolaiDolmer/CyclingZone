@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.145",
-    "date": "2026-08-18",
+    "version": "7.148",
+    "date": "2026-08-19",
     "label": "Beta",
     "changes": [
       {
@@ -66,6 +66,151 @@ export const PATCHES = [
           "body": "Positioning, taktik og aggression kan nu trænes. Løbslære er en færdighedsdag: lav belastning, jævn fremgang, samme tempo for alle ryttere."
         },
         "refs": [3746]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "The training page got tabs, and the roster comes first",
+          "body": "Train today, Development and History are now three tabs. Your riders sit at the top of the first one, and the explanations moved behind a single How training works link.\n\nThe new Development tab shows every rider as one bar: level today, projected level, and the role's ceiling, with the focus picker right on the row."
+        },
+        "da": {
+          "title": "Træningssiden fik faner, og rytterne står øverst",
+          "body": "Træn i dag, Udvikling og Historik er nu tre faner. Dine ryttere ligger øverst på den første, og forklaringerne er flyttet bag ét enkelt link.\n\nDen nye Udviklings-fane viser hver rytter som én bjælke: niveau i dag, forventet niveau og rollens loft, med fokusvælgeren lige på rækken."
+        },
+        "refs": [3721]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "A Development tab on your team page",
+          "body": "Your team page has a new sortable table: rating today, projected level and ceiling for every rider, side by side. The rider profile's Overview tab now shows plain ability numbers; season progress lives on the Training tab where it always belonged."
+        },
+        "da": {
+          "title": "En Udviklings-fane på holdsiden",
+          "body": "Holdsiden har fået en ny sorterbar tabel: rating i dag, forventet niveau og loft for hver rytter, side om side. Rytterprofilens Overblik-fane viser nu rene evne-tal; sæsonens fremgang bor på Trænings-fanen, hvor den altid har hørt hjemme."
+        },
+        "refs": [3721, 3979]
+      }
+    ]
+  },
+  {
+    "version": "7.147",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Finished stages show the result first",
+          "body": "Open a finished stage and the result is at the top: standings on the overall tab, the finish on each stage tab. Lineup, tactics and the stage profile are still there, tucked into collapsible sections, and The Final Kilometre is now a quiet button next to the result."
+        },
+        "da": {
+          "title": "Kørte etaper viser resultatet først",
+          "body": "Åbner du en kørt etape, står resultatet øverst: stillingen på samlet-fanen, opløbet på hver etape-fane. Opstilling, taktik og etapeprofilen er der stadig, foldet sammen i sektioner, og Den sidste kilometer er nu en stille knap ved siden af resultatet."
+        },
+        "refs": [
+          3914
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Your season recap always has highlights",
+          "body": "The season recap now guarantees three real moments for every team, including mid-table and relegated seasons, and the share card carries your turning point and season facts. One clear download button on the hero."
+        },
+        "da": {
+          "title": "Din sæson-recap har altid højdepunkter",
+          "body": "Sæson-recappen garanterer nu tre ægte øjeblikke for alle hold, også midterfelts- og nedrykningssæsoner, og delekortet bærer dit vendepunkt og sæsonfakta. Én tydelig download-knap i toppen."
+        },
+        "refs": [
+          2752
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Transfer-listed riders are marked in squad selection",
+          "body": "Riders you have listed for transfer now show a badge in squad selection, and you can toggle which ability column the list shows."
+        },
+        "da": {
+          "title": "Transferlistede ryttere er markeret i holdudtagelsen",
+          "body": "Ryttere du har sat til salg viser nu et mærke i holdudtagelsen, og du kan selv vælge hvilken evne-kolonne listen viser."
+        },
+        "refs": [
+          3824
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Teams",
+        "en": {
+          "title": "AI team names dropped their AI prefix",
+          "body": "Computer-run teams now use their plain team name everywhere instead of an AI prefix."
+        },
+        "da": {
+          "title": "AI-holdnavne har mistet deres AI-præfiks",
+          "body": "Computerstyrede hold bruger nu deres rene holdnavn overalt i stedet for et AI-præfiks."
+        },
+        "refs": [
+          3926
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.146",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Finance forecast now breaks down income and expenses",
+          "body": "The next-season forecast shows one line per source instead of one total: sponsor base, sponsor variable, prize money, salary, and staff & facilities. Prize money is now a range, not a single number, since it's the least predictable line. From season 3, salary uses the new market-value wage system."
+        },
+        "da": {
+          "title": "Prognosen viser nu indtægter og udgifter hver for sig",
+          "body": "Næste sæsons prognose viser en linje pr. kilde i stedet for et samlet tal: sponsor base, sponsor variabel, præmiepenge, løn og stab & faciliteter. Præmiepenge er nu et spænd, ikke et enkelt tal, fordi det er den mindst forudsigelige linje. Fra sæson 3 bruger lønnen det nye markedsværdi-lønsystem."
+        },
+        "refs": [
+          3899
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.145",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "Offers and activity feed now update live",
+          "body": "The pending actions badge and the activity feed did not refresh on their own; new transfer and swap offers only appeared after a reload. Both now update in real time."
+        },
+        "da": {
+          "title": "Tilbud og aktivitetsfeed opdaterer nu live",
+          "body": "Badgen for afventende handlinger og aktivitetsfeedet opdaterede ikke af sig selv; nye købs- og byttetilbud dukkede først op efter en genindlæsning. Begge opdaterer nu i realtid."
+        },
+        "refs": [
+          3035
+        ]
       }
     ]
   },

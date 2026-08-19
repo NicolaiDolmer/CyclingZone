@@ -8,9 +8,9 @@
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-1. ⛔ **#3449 markedssweep — refit-gate RØD 17/8.** Kørende × 0,422 slår alt → niveau-korrektion. Beslutning i løn-design-sessionen; draft.
+1. 🟠 **#3449 niveau-korrektion — besluttet 19/8** (forhandlet kanal, én konstant, gate-styret efter cutover; gate seeder RØD, maskineri + #3733 trin 1 BYGGET på PR'en). Merges sidst i løn-pakken (#3393 → #3972/#3974 → #3449); apply ejer-gated, tidligst 30/8.
 3. 🟠 **#3514 mandat** — fase 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-script-apply med ejer-nøgle.
-4. 🔵 **#3393 løn** — beslutning 4+5 truffet; designes færdig i løn-design-sessionen (bookes FØR søndag). Lønkurvens konkave form er fredet. Flipper ikke 23/8.
+4. 🟠 **#3393 løn — FÆRDIGDESIGNET + BYGGET 19/8** ([audit](audits/2026-08-19-loen-design-session.md)): A bekræftet på korrigeret 28-dages-præmis, dagsløns-divisor-bug fixet, testfejl lukket. Klar til merge (først i løn-pakken); genberegning + dagsløn flipper 23/8 i drejebogen.
 5. 🟠 **#3901:** pakke leveret; **D1-plan LÅST+BYGGET** (top 24 → D1, PR #3930, dry-run godkendt). **23/8 = race-day-flip + komprimering + mandat-backfill** (apply ejer-gated). Bufferdag 24/8 besluttet (#3467).
 6. 🔵 Auto-accept-floor bliver stående (ejer 13/8); 20/8 rammer kun inaktive hold (#3584), aktive 25/8.
 
@@ -26,16 +26,13 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 ## B2 · Værdi og løn (ejer-ramme 14/8)
 
-- Beslutning 1-5+7 truffet ([log](audits/2026-08-15-oekonomi-beslutninger-1-3.md) + specs 14/8). **#3393 kun gated af løn-design-sessionen** (FØR søndag, med #2840 dagsløn) · ⚪ #3755 28-dages-måling (gate for gebyret) · ⚪ #3756 gebyret · 🔴 #3750 modellen trænes på en konstant.
-- 🔵 **#3899 økonomi-forecast-redesign** (ejer-direktiv 17/8): design i KS3; tal-delen gated af løn-design-sessionen.
-- 🔴 **#3732 værdien er pengepolitik** (netto rytterkøb 53,3 % af alle pengedræn, løn 3,1 %). Sammen med #3360.
-- 🔴 **#3733 søndags-kvitteringen — design LÅST 18/8**; bygges når værdi-sporet er besluttet.
-- **#3719+#3720:** præmie-indeks besluttet (100/50/33/10; D3 +18 %, D4 +30 % mangler). A/B udskudt til løn-design-sessionen (A = anbefalingen).
+- **Løn-design-sessionen LEVERET 19/8** ([audit](audits/2026-08-19-loen-design-session.md)): alle beslutninger truffet, pakken bygget (#3393 · #3972 ungdom · #3974 forecast · #3449 gate+kvittering-trin-1), merge-rækkefølge bindende. Rest: ⚪ #3755 28-dages-måling (gate for gebyret) · ⚪ #3756 gebyret · 🔴 #3732 pengepolitik (sammen med #3360).
+- **#3719+#3720: D3/D4-løft + upkeep-rekalibrering udskudt til kalibrerings-session EFTER cutover** (ejer 19/8) på ægte S3-tal.
 
 ## C · Talent-kanalen (rest)
 
 15. 🟠 **#3854 staff-rest** (per-scout kapacitet, routing, harness-rekalibrering FØR flag-flip; 2 slots/rolle merged bag flag).
-17. 🔵 **#3550 signing fee:** rod = typedrevet markedsværdi-skævhed; anbefaling B (afkobl fee fra værdi) — beslutning i løn-design-sessionen.
+17. 🟠 **#3550 signing fee: LØST VED DESIGN 19/8** — ungdomspakken (PR #3972: symbolsk intake-værdi, pull-intake, 1-sæsons intro). Flippes i drejebogen efter #3393. Fremtid: #3970.
 18. ⚪ **#3853** scout-kadence-måling (balance-efterregulering af #3846).
 
 ## D · Penge og vækst — gate: spor B leveret (ikke en dato)

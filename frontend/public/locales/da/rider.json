@@ -184,6 +184,16 @@
       "ratingTrendDeclining": "Faldende denne sæson",
       "ratingTrendTitle": "Rating {value} siden {date}"
     },
+    "levelCorrectionReceipt": {
+      "developmentLine": "Udvikling: ingen ændring fra træning denne uge.",
+      "marketLine": "Marked: engangs niveau-korrektion, alle ryttere. Værdier matcher nu hvad ryttere reelt handles for. Din rytter bliver ikke dårligere.",
+      "detailsToggle": "Vis tal",
+      "detailsHide": "Skjul tal",
+      "anchorBefore": "Værdi før",
+      "anchorAfter": "Værdi efter",
+      "factor": "Korrektionsfaktor",
+      "appliedAt": "Anvendt {date}"
+    },
     "banner": {
       "listed": "På transferlisten · pris {price}",
       "auction": "I auktion · slutter om {endsIn} · højeste bud {highBid}",

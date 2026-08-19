@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeFinanceForecast, computeMultiSeasonForecast, FORECAST_THRESHOLDS } from "./financeForecast.js";
+import {
+  computeFinanceForecast,
+  computeMultiSeasonForecast,
+  FORECAST_THRESHOLDS,
+  NEW_WAGE_SYSTEM_SEASON,
+} from "./financeForecast.js";
+import { marketBasisSalary, resolveMarketBase, SALARY_MARKET_MODEL } from "./salaryBasis.js";
 
 // 4 manager-arketyper fra spec'en (07g · verification path).
 const ARCHETYPES = {
@@ -610,4 +616,214 @@ test("FORECAST_THRESHOLDS er frosset og matcher 07g-spec", () => {
   assert.throws(() => {
     FORECAST_THRESHOLDS.RISK_NET_GREEN_THRESHOLD = 999;
   });
+});
+
+// ─── #3899 · Regnskabsopstilling: sponsor-opsplitning ─────────────────────────
+
+test("computeFinanceForecast (#3899): sponsor base + variabel summerer PRÆCIST til projected_sponsor (variable mode)", () => {
+  const result = computeFinanceForecast({
+    team: { id: "team-2", division: 3, sponsor_income: 240_000 },
+    boardModifier: 0.93, // ikke-runde modifier for at eksponere afrundingsdrift
+    pulloutFactor: 0.97,
+    currentSeasonNumber: 1,
+    lastSeasonStandings: [
+      { team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
+      { team_id: "team-2", division: 3, total_points: 120, rank_in_division: 2 },
+      { team_id: "team-3", division: 3, total_points: 60, rank_in_division: 3 },
+    ],
+    riders: [],
+    debtCeiling: 900_000,
+  });
+  assert.equal(result.inputs.sponsor_mode, "variable");
+  assert.equal(
+    result.projected_sponsor_base + result.projected_sponsor_variable,
+    result.projected_sponsor,
+    "base + variabel skal summere præcist (residual-metode, ingen selvstændig afrundingsdrift)"
+  );
+  assert.ok(result.projected_sponsor_variable > 0, "variabel skal være > 0 for et hold med points/rank");
+});
+
+test("computeFinanceForecast (#3899): kontrakt-mode har variabel = 0, base = hele beløbet", () => {
+  const result = computeFinanceForecast({
+    team: { id: "team-1", division: 2, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    activeContract: { guaranteed_base: 500_000, expires_after_season: 5, sponsor_name: "Acme" },
+  });
+  assert.equal(result.inputs.sponsor_mode, "contract");
+  assert.equal(result.projected_sponsor_variable, 0);
+  assert.equal(result.projected_sponsor_base, result.projected_sponsor);
+  assert.equal(result.projected_sponsor_base, 500_000);
+});
+
+// ─── #3899 · Løn: sæson 3-markedsformlen ──────────────────────────────────────
+
+test("computeFinanceForecast (#3899): sæson < 3 bruger status quo (sum af riders.salary)", () => {
+  const result = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 240_000 },
+    riders: [
+      { salary: 12_000, prize_earnings_bonus: 0, market_value: 999_999 }, // market_value ignoreres < S3
+      { salary: 8_000, prize_earnings_bonus: 0, market_value: 999_999 },
+    ],
+    debtCeiling: 900_000,
+    targetSeasonNumber: 2,
+  });
+  assert.equal(result.projected_salary, -20_000);
+  assert.equal(result.inputs.salary_basis, "status_quo");
+});
+
+test("computeFinanceForecast (#3899): sæson >= 3 bruger markedsværdi-kurven, ikke riders.salary", () => {
+  const marketValue = 200_000;
+  const expectedPerRider = marketBasisSalary(marketValue, SALARY_MARKET_MODEL);
+  const result = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 240_000 },
+    riders: [
+      { salary: 999_999, prize_earnings_bonus: 0, market_value: marketValue }, // salary ignoreres >= S3
+      { salary: 999_999, prize_earnings_bonus: 0, market_value: marketValue },
+    ],
+    debtCeiling: 900_000,
+    targetSeasonNumber: NEW_WAGE_SYSTEM_SEASON,
+  });
+  assert.equal(result.inputs.salary_basis, "market_s3");
+  assert.equal(result.projected_salary, -2 * expectedPerRider);
+  assert.notEqual(result.projected_salary, -2 * 999_999, "må IKKE bruge riders.salary i sæson 3+");
+});
+
+test("computeFinanceForecast (#3899): manglende market_value falder tilbage til base_value, så MARKET_BASE_FALLBACK", () => {
+  const withBaseValue = computeFinanceForecast({
+    team: { division: 2 },
+    riders: [{ base_value: 50_000 }],
+    debtCeiling: 900_000,
+    targetSeasonNumber: 3,
+  });
+  assert.equal(withBaseValue.projected_salary, -marketBasisSalary(50_000, SALARY_MARKET_MODEL));
+
+  const withNeither = computeFinanceForecast({
+    team: { division: 2 },
+    riders: [{}],
+    debtCeiling: 900_000,
+    targetSeasonNumber: 3,
+  });
+  assert.equal(withNeither.projected_salary, -marketBasisSalary(resolveMarketBase({}).base, SALARY_MARKET_MODEL));
+});
+
+test("computeFinanceForecast (#3899): markedsværdi-kurven er monotont voksende og respekterer gulvet (250)", () => {
+  const low = marketBasisSalary(100, SALARY_MARKET_MODEL);
+  const mid = marketBasisSalary(100_000, SALARY_MARKET_MODEL);
+  const high = marketBasisSalary(10_000_000, SALARY_MARKET_MODEL);
+  assert.ok(low >= SALARY_MARKET_MODEL.floor, "gulv på 250 skal respekteres");
+  assert.ok(mid > low && high > mid, "dyrere rytter skal ALTID koste mere (monotont voksende)");
+  // Anchor: rytter til præcis anchorValue koster præcis anchorSalary (23.300).
+  assert.equal(mid, SALARY_MARKET_MODEL.anchorSalary);
+});
+
+// ─── #3899 · Præmie-interval (kvartilbånd af divisionens målte per-hold-præmie) ─
+
+test("computeFinanceForecast (#3899): for lille division-stikprøve → ±20%-fallback", () => {
+  const result = computeFinanceForecast({
+    team: { sponsor_income: 240_000 },
+    riders: [{ salary: 10_000, prize_earnings_bonus: 100_000 }],
+    debtCeiling: 900_000,
+    divisionPrizeSamples: [90_000, 110_000], // kun 2 hold < MIN_DIVISION_PRIZE_SAMPLE
+  });
+  assert.equal(result.inputs.prize_interval_method, "flat_pct_fallback");
+  assert.equal(result.prize_low, Math.round(100_000 * 0.8));
+  assert.equal(result.prize_high, Math.round(100_000 * 1.2));
+});
+
+test("computeFinanceForecast (#3899): tilstrækkelig division-stikprøve → kvartilbånd, centreret på eget punktestimat", () => {
+  // 8 hold, jævnt spredt 50K → 400K. P25/P50/P75 er veldefinerede.
+  const samples = [50_000, 100_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000];
+  const result = computeFinanceForecast({
+    team: { sponsor_income: 240_000 },
+    riders: [{ salary: 10_000, prize_earnings_bonus: 210_000 }], // eget punktestimat
+    debtCeiling: 900_000,
+    divisionPrizeSamples: samples,
+  });
+  assert.equal(result.inputs.prize_interval_method, "division_quartile_band");
+  assert.equal(result.inputs.prize_interval_sample_size, 8);
+  // Intervallet er centreret på HOLDETS eget estimat (210.000), ikke divisionens median.
+  assert.ok(result.prize_low < 210_000, "low skal ligge under eget estimat");
+  assert.ok(result.prize_high > 210_000, "high skal ligge over eget estimat");
+  assert.ok(result.prize_low >= 0, "low må aldrig blive negativ");
+});
+
+test("computeFinanceForecast (#3899): confidence_low/high følger PRÆCIS samme spredning som prize_low/high", () => {
+  const samples = [50_000, 100_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000];
+  const result = computeFinanceForecast({
+    team: { sponsor_income: 240_000 },
+    riders: [{ salary: 10_000, prize_earnings_bonus: 210_000 }],
+    debtCeiling: 900_000,
+    divisionPrizeSamples: samples,
+  });
+  const lowSpread = result.projected_prize - result.prize_low;
+  const highSpread = result.prize_high - result.projected_prize;
+  assert.equal(result.projected_net - result.confidence_low, lowSpread);
+  assert.equal(result.confidence_high - result.projected_net, highSpread);
+});
+
+test("computeFinanceForecast (#3899): division-median = 0 undgår division-by-zero (falder tilbage til ±20%)", () => {
+  const result = computeFinanceForecast({
+    team: { sponsor_income: 240_000 },
+    riders: [{ salary: 10_000, prize_earnings_bonus: 50_000 }],
+    debtCeiling: 900_000,
+    divisionPrizeSamples: [0, 0, 0, 0, 0],
+  });
+  assert.equal(result.inputs.prize_interval_method, "flat_pct_fallback");
+  assert.ok(Number.isFinite(result.prize_low) && Number.isFinite(result.prize_high));
+});
+
+// ─── #3899 · Staff/faciliteter (upkeep) — UI-aggregat ─────────────────────────
+
+test("computeFinanceForecast (#3899): projected_staff_facilities = upkeep + facility_upkeep + staff_salary", () => {
+  const result = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    facilityTracks: [{ track: "training", tier: 2 }],
+    activeStaffSalaries: [{ salary: 10_000 }],
+    facilitiesEnabled: true,
+  });
+  assert.equal(
+    result.projected_staff_facilities,
+    result.projected_upkeep + result.projected_facility_upkeep + result.projected_staff_salary
+  );
+  // Akademi-drift er IKKE en del af aggregatet (separat linje, ikke navngivet i #3899 punkt 1).
+  assert.equal(result.inputs.academy_rider_count, 0);
+});
+
+// ─── #3899 · Multi-sæson: division-stikprøve threades gennem hele horisonten ──
+
+test("computeMultiSeasonForecast (#3899): divisionPrizeSamples er status-quo (samme stikprøve) over hele horisonten", () => {
+  const samples = [50_000, 100_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000];
+  const result = computeMultiSeasonForecast({
+    ...ARCHETYPES.healthy,
+    seasonsAhead: 3,
+    divisionPrizeSamples: samples,
+  });
+  for (const f of result.forecasts) {
+    assert.equal(f.inputs.prize_interval_method, "division_quartile_band");
+    assert.equal(f.inputs.prize_interval_sample_size, samples.length);
+  }
+});
+
+test("computeMultiSeasonForecast (#3899): lønsystemet skifter til markedsformlen fra sæson 3, ikke før", () => {
+  const result = computeMultiSeasonForecast({
+    team: { id: "t-wage", division: 2, balance: 500_000 },
+    riders: [{ salary: 10_000, prize_earnings_bonus: 0, market_value: 100_000 }],
+    currentSeasonNumber: 1, // target sæsoner: 2, 3, 4
+    seasonsAhead: 3,
+    debtCeiling: 900_000,
+  });
+  const [s2, s3, s4] = result.forecasts;
+  assert.equal(s2.season_number, 2);
+  assert.equal(s2.inputs.salary_basis, "status_quo");
+  assert.equal(s3.season_number, 3);
+  assert.equal(s3.inputs.salary_basis, "market_s3");
+  assert.equal(s4.season_number, 4);
+  assert.equal(s4.inputs.salary_basis, "market_s3");
+  // Ved market_value = anchorValue (100.000) koster rytteren PRÆCIS anchorSalary.
+  assert.equal(s3.projected_salary, -SALARY_MARKET_MODEL.anchorSalary);
 });

@@ -36,6 +36,14 @@ function formatSigned(value) {
   return `${sign}${formatNumber(Math.abs(value))} CZ$`;
 }
 
+// #3899 (låst design punkt 2): kompakt "low–high"-formattering til intervaller
+// (præmie-linjen). En-dash (–), ikke em-dash — samme konvention som den
+// eksisterende horizon.rangeSuffix-nøgle ("({from}–{to})").
+function formatRange(low, high) {
+  if (low == null || high == null) return "—";
+  return `${formatNumber(low)}–${formatNumber(high)} CZ$`;
+}
+
 function Row({ label, value, accent, detail }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0">
@@ -45,6 +53,23 @@ function Row({ label, value, accent, detail }) {
       </div>
       <p className={`font-mono text-sm font-bold ${accent}`}>
         {formatSigned(value)}
+      </p>
+    </div>
+  );
+}
+
+// #3899 (låst design punkt 2): "INTERVAL for det usikre (præmier)" — egen
+// row-variant der viser low–high i stedet for ét punkttal. Samme anatomi som
+// Row (label + detail venstre, tal højre) så statement-linjerne læses ens.
+function RangeRow({ label, low, high, accent, detail }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0">
+      <div className="min-w-0 pr-3">
+        <p className="text-cz-2 text-xs">{label}</p>
+        {detail && <p className="text-cz-3 text-2xs mt-0.5 truncate">{detail}</p>}
+      </div>
+      <p className={`font-mono text-sm font-bold tabular-nums ${accent}`}>
+        {formatRange(low, high)}
       </p>
     </div>
   );
@@ -79,21 +104,25 @@ export default function FinanceForecastCard({
   const netAccent =
     forecast.projected_net >= 0 ? "text-cz-success" : "text-cz-danger";
   const sponsorBreakdown = forecast.inputs?.sponsor_breakdown;
-  // #2948: en aktiv/pending kontrakt vinder over intro/variable-modellen — vis
-  // kontraktens garanterede base i stedet for fallback-teksten.
-  const sponsorDetail = sponsorBreakdown?.mode === "contract"
+  // #3899 (låst design punkt 1): sponsor-linjen er nu TO rows (base + variabel)
+  // i stedet for én kombineret. Base-detaljen navngiver kontrakten når der er
+  // én (#2948); variabel-detaljen forklarer rang/point-kilden når den findes.
+  const sponsorBaseDetail = sponsorBreakdown?.mode === "contract"
     ? t("forecast.sponsorDetail.contract", {
         sponsor: sponsorBreakdown.sponsor_name ?? "",
         base: formatNumber(sponsorBreakdown.base),
       })
-    : sponsorBreakdown?.mode === "variable"
-      ? t("forecast.sponsorDetail.variable", {
-          base: formatNumber(sponsorBreakdown.base),
-          variable: formatNumber(sponsorBreakdown.variable),
-        })
-      : sponsorBreakdown?.mode === "intro"
-        ? t("forecast.sponsorDetail.intro")
+    : sponsorBreakdown?.mode === "intro"
+      ? t("forecast.sponsorDetail.intro")
+      : sponsorBreakdown?.mode
+        ? undefined
         : t("forecast.sponsorDetail.fallback");
+  const sponsorVariableDetail = sponsorBreakdown?.mode === "variable"
+    ? t("forecast.sponsorDetail.variable", {
+        base: formatNumber(sponsorBreakdown.base),
+        variable: formatNumber(sponsorBreakdown.variable),
+      })
+    : undefined;
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
@@ -152,57 +181,56 @@ export default function FinanceForecastCard({
         </p>
       </div>
 
+      {/* #3899 (låst design punkt 1): regnskabsopstilling — én linje pr. kilde
+          i stedet for ét kombineret sponsor-tal. De 5 kernelinjer vises altid
+          (også ved 0, fx et hold uden faciliteter/staff) så opstillingen er
+          komplet; lånerente + akademi-drift forbliver betingede ekstra-linjer
+          som før (uændret adfærd, ikke en del af de 5 navngivne kilder). */}
       <div className="mb-3">
         <Row
-          label={t("forecast.row.sponsor")}
-          value={forecast.projected_sponsor}
+          label={t("forecast.row.sponsorBase")}
+          value={forecast.projected_sponsor_base}
           accent="text-cz-success"
-          detail={sponsorDetail}
+          detail={sponsorBaseDetail}
         />
         <Row
+          label={t("forecast.row.sponsorVariable")}
+          value={forecast.projected_sponsor_variable}
+          accent="text-cz-success"
+          detail={sponsorVariableDetail}
+        />
+        <RangeRow
           label={t("forecast.row.prize")}
-          value={forecast.projected_prize}
+          low={forecast.prize_low}
+          high={forecast.prize_high}
           accent="text-cz-success"
           detail={
             /* #981: gulv = realiseret sæson-præmie når rolling avg er lavere */
             forecast.inputs?.prize_basis === "realized_season_floor"
               ? t("forecast.prizeDetail.realizedFloor")
-              : undefined
+              : t("forecast.prizeDetail.divisionInterval")
           }
         />
         <Row
           label={t("forecast.row.salary")}
           value={forecast.projected_salary}
           accent="text-cz-danger"
+          detail={
+            /* #3899: S3+ prissættes efter markedsværdi, ikke riders.salary. */
+            forecast.inputs?.salary_basis === "market_s3"
+              ? t("forecast.salaryDetail.marketS3")
+              : undefined
+          }
+        />
+        <Row
+          label={t("forecast.row.staffFacilities")}
+          value={forecast.projected_staff_facilities}
+          accent="text-cz-danger"
         />
         {forecast.projected_loan_interest !== 0 && (
           <Row
             label={t("forecast.row.loanInterest")}
             value={forecast.projected_loan_interest}
-            accent="text-cz-danger"
-          />
-        )}
-        {/* #3236: upkeep + facilitets-/stab-udgifter + akademi-drift — tidligere
-            helt fraværende fra forecastet (audit #3198, fund #1). Skjules når 0
-            (fx D4-upkeep eller intet akademi), samme mønster som loanInterest. */}
-        {forecast.projected_upkeep !== 0 && (
-          <Row
-            label={t("forecast.row.upkeep")}
-            value={forecast.projected_upkeep}
-            accent="text-cz-danger"
-          />
-        )}
-        {forecast.projected_facility_upkeep !== 0 && (
-          <Row
-            label={t("forecast.row.facilityUpkeep")}
-            value={forecast.projected_facility_upkeep}
-            accent="text-cz-danger"
-          />
-        )}
-        {forecast.projected_staff_salary !== 0 && (
-          <Row
-            label={t("forecast.row.staffSalary")}
-            value={forecast.projected_staff_salary}
             accent="text-cz-danger"
           />
         )}
@@ -214,6 +242,11 @@ export default function FinanceForecastCard({
           />
         )}
       </div>
+
+      {/* #3899 (låst design punkt 3): erklæret antagelses-linje, ordret. */}
+      <p className="text-cz-3 text-2xs mb-3 leading-snug">
+        {t("forecast.assumption")}
+      </p>
 
       {multiSeason && (
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 mb-3">
@@ -248,8 +281,9 @@ export default function FinanceForecastCard({
                       <td className="py-1 px-2 text-end font-mono text-cz-success">
                         {formatSigned(row.projected_sponsor)}
                       </td>
-                      <td className="py-1 px-2 text-end font-mono text-cz-success">
-                        {formatSigned(row.projected_prize)}
+                      <td className="py-1 px-2 text-end font-mono tabular-nums text-cz-success">
+                        {/* #3899 (låst design punkt 4): horisont-vælgeren skal bære interval pr. sæson. */}
+                        {formatRange(row.prize_low, row.prize_high)}
                       </td>
                       <td className="py-1 px-2 text-end font-mono text-cz-danger">
                         {formatSigned(row.projected_salary)}

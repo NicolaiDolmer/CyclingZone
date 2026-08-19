@@ -1,5 +1,5 @@
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
-import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "./supabaseErrorNormalize.js";
 import {
   GRAND_TOUR_MIN_STAGES,
   SEASON_TOP3_STREAK_TARGET,
@@ -80,16 +80,37 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-async function readMany(query) {
-  const { data, error } = await query;
-  if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
-  return data || [];
+// #3953: buildQuery er en FACTORY (() => supabase.from(...)...), ikke et allerede
+// awaited query-objekt. En PostgREST-builder er kun thenable én gang — ved retry
+// skal requesten genopbygges fra bunden, ellers genudsendes den ikke. Samme mønster
+// som fetchAllRows (supabasePagination.js) og updateStandings' RPC-kald
+// (economyEngine.js): den rå fejl kastes ind i withSupabaseRetry, som selv afgør
+// transient vs. ikke-transient; her normaliseres kun den ENDELIGE besked, så
+// Sentry-grupperingen er uændret ift. før retry-wrapping.
+async function readMany(buildQuery) {
+  try {
+    const data = await withSupabaseRetry(async () => {
+      const { data, error } = await buildQuery();
+      if (error) throw error;
+      return data;
+    });
+    return data || [];
+  } catch (error) {
+    throw new Error(normalizeSupabaseErrorMessage(error.message), { cause: error });
+  }
 }
 
-async function readMaybeSingle(query) {
-  const { data, error } = await query;
-  if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
-  return data || null;
+async function readMaybeSingle(buildQuery) {
+  try {
+    const data = await withSupabaseRetry(async () => {
+      const { data, error } = await buildQuery();
+      if (error) throw error;
+      return data;
+    });
+    return data || null;
+  } catch (error) {
+    throw new Error(normalizeSupabaseErrorMessage(error.message), { cause: error });
+  }
 }
 
 function addThresholdUnlocks({ unlock, thresholds, value }) {
@@ -218,21 +239,21 @@ export async function getAchievementProgressMap({ supabase, userId, teamId, unlo
 
 async function loadTeamId({ supabase, userId }) {
   const team = await readMaybeSingle(
-    supabase.from("teams").select("id").eq("user_id", userId).maybeSingle()
+    () => supabase.from("teams").select("id").eq("user_id", userId).maybeSingle()
   );
   return team?.id || null;
 }
 
 async function loadWatchlistCount({ supabase, userId }) {
   const rows = await readMany(
-    supabase.from("rider_watchlist").select("id").eq("user_id", userId)
+    () => supabase.from("rider_watchlist").select("id").eq("user_id", userId)
   );
   return rows.length;
 }
 
 async function loadLoginStreak({ supabase, userId }) {
   const user = await readMaybeSingle(
-    supabase.from("users").select("login_streak").eq("id", userId).maybeSingle()
+    () => supabase.from("users").select("login_streak").eq("id", userId).maybeSingle()
   );
   return toNumber(user?.login_streak);
 }
@@ -249,10 +270,10 @@ async function loadTeamStats({ supabase, teamId }) {
 
   const [riders, boardProfiles] = await Promise.all([
     readMany(
-      supabase.from("riders").select("id, is_u25, market_value").eq("team_id", teamId)
+      () => supabase.from("riders").select("id, is_u25, market_value").eq("team_id", teamId)
     ),
     readMany(
-      supabase
+      () => supabase
         .from("board_profiles")
         .select("satisfaction, plan_type, negotiation_status, is_baseline")
         .eq("team_id", teamId)
@@ -290,10 +311,10 @@ async function loadAuctionStats({ supabase, teamId }) {
 
   const [bids, wins] = await Promise.all([
     readMany(
-      supabase.from("auction_bids").select("id, amount").eq("team_id", teamId)
+      () => supabase.from("auction_bids").select("id, amount").eq("team_id", teamId)
     ),
     readMany(
-      supabase
+      () => supabase
         .from("auctions")
         .select("id, starting_price, current_price, extension_count")
         .eq("current_bidder_id", teamId)
@@ -323,14 +344,14 @@ async function loadTransferStats({ supabase, teamId }) {
 
   const [buyerTransfers, sellerTransfers] = await Promise.all([
     readMany(
-      supabase
+      () => supabase
         .from("transfer_offers")
         .select("id, rider_id, offer_amount, round")
         .eq("buyer_team_id", teamId)
         .eq("status", "accepted")
     ),
     readMany(
-      supabase
+      () => supabase
         .from("transfer_offers")
         .select("id, rider_id, offer_amount, round")
         .eq("seller_team_id", teamId)
@@ -346,7 +367,7 @@ async function loadTransferStats({ supabase, teamId }) {
   const riderIds = [...new Set(buyerTransfers.map(transfer => transfer.rider_id).filter(Boolean))];
   const riders = riderIds.length
     ? await readMany(
-        supabase.from("riders").select("id, market_value").in("id", riderIds)
+        () => supabase.from("riders").select("id, market_value").in("id", riderIds)
       )
     : [];
   const riderValueById = new Map(riders.map(rider => [rider.id, toNumber(rider.market_value)]));
@@ -372,7 +393,7 @@ async function loadRaceResultStats({ supabase, teamId }) {
 
   // Eksistens-tjek, ikke optælling — hold kan have mange hundrede resultater.
   const rows = await readMany(
-    supabase.from("race_results").select("id").eq("team_id", teamId).limit(1)
+    () => supabase.from("race_results").select("id").eq("team_id", teamId).limit(1)
   );
   return { hasRaceResult: rows.length > 0 };
 }
@@ -387,7 +408,7 @@ async function loadGrandTourStats({ supabase, teamId }) {
   if (!teamId) return { hasGrandTourRider: false };
 
   const grandTours = await readMany(
-    supabase.from("races").select("id").gte("stages", GRAND_TOUR_MIN_STAGES)
+    () => supabase.from("races").select("id").gte("stages", GRAND_TOUR_MIN_STAGES)
   );
   const raceIds = grandTours.map(race => race.id).filter(Boolean);
   if (!raceIds.length) return { hasGrandTourRider: false };
@@ -395,7 +416,7 @@ async function loadGrandTourStats({ supabase, teamId }) {
   // race_entries har PK (race_id, rider_id) — INGEN id-kolonne. Vi selecter
   // race_id (eksistens-tjek, ikke optælling).
   const entries = await readMany(
-    supabase
+    () => supabase
       .from("race_entries")
       .select("race_id")
       .eq("team_id", teamId)
@@ -424,7 +445,7 @@ async function loadSeasonStats({ supabase, teamId }) {
   if (!teamId) return empty;
 
   const ownStandings = await readMany(
-    supabase
+    () => supabase
       .from("season_standings")
       .select("season_id, league_division_id")
       .eq("team_id", teamId)
@@ -436,15 +457,15 @@ async function loadSeasonStats({ supabase, teamId }) {
   if (!seasonIds.length || !poolIds.length) return empty;
 
   const [seasons, standings, team] = await Promise.all([
-    readMany(supabase.from("seasons").select("id, number, status").in("id", seasonIds)),
+    readMany(() => supabase.from("seasons").select("id, number, status").in("id", seasonIds)),
     readMany(
-      supabase
+      () => supabase
         .from("season_standings")
         .select("season_id, team_id, division, league_division_id, rank_in_division")
         .in("season_id", seasonIds)
         .in("league_division_id", poolIds)
     ),
-    readMaybeSingle(supabase.from("teams").select("division").eq("id", teamId).maybeSingle()),
+    readMaybeSingle(() => supabase.from("teams").select("division").eq("id", teamId).maybeSingle()),
   ]);
 
   const seasonRows = buildSeasonRowsForTeam({
@@ -495,9 +516,9 @@ export async function checkAchievements({
   userId,
 }) {
   const [achievements, unlockedRows, teamId] = await Promise.all([
-    readMany(supabase.from("achievements").select("*")),
+    readMany(() => supabase.from("achievements").select("*")),
     readMany(
-      supabase.from("manager_achievements").select("achievement_id").eq("user_id", userId)
+      () => supabase.from("manager_achievements").select("achievement_id").eq("user_id", userId)
     ),
     loadTeamId({ supabase, userId }),
   ]);

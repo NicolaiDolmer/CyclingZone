@@ -80,6 +80,7 @@ import {
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
+import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
   PAUSE_LEVELS,
@@ -202,6 +203,9 @@ import {
   signAcademyCandidate,
   rejectAcademyCandidate,
 } from "../lib/academyIntake.js";
+import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
+import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
+import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -404,6 +408,7 @@ import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
+import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -1214,6 +1219,34 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
     });
     res.json({ windows });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/level-correction-receipt — #3733 trin 1: den seneste
+// niveau-korrektions-kvittering for DENNE rytter, eller null hvis rytteren
+// aldrig er blevet korrigeret (eller ejeren ikke har set korrektionen køre).
+// RLS begrænser allerede til rytterens ejer (se migrationens owner-policy);
+// requireAuth er kun det almindelige "er du logget ind"-lag.
+router.get("/riders/:id/level-correction-receipt", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from("market_value_level_correction_rider_receipts")
+      .select("old_value, new_value, c, applied_at")
+      .eq("rider_id", id)
+      .order("applied_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      if (error.code === "42P01" || /does not exist|schema cache/i.test(String(error.message || ""))) {
+        return res.json({ receipt: null });
+      }
+      throw new Error(error.message);
+    }
+    res.json({ receipt: data || null });
+  } catch (err) {
+    captureApiRouteError(err, req);
     res.status(500).json({ error: err.message });
   }
 });
@@ -4044,18 +4077,39 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // #3102 PR 2: holdets peak-planer for sæsonen → peaks/payback-overlay pr.
     // løbskort (hvem topper her, hvem betaler payback her). Samme deterministiske
     // dag-enhed som planneren (CET-dag-ordinal), så de to flader aldrig divergerer.
-    const { data: teamRiderRows, error: teamRiderErr } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_retired", false);
-    if (teamRiderErr) throw new Error(`riders (peak overlay): ${teamRiderErr.message}`);
+    // #3953: begge kald wrappet i withSupabaseRetry — rene SELECTs, samme
+    // request/fejlklasse (peak overlay-hentning ramt af Cloudflare 525-blip
+    // 18/8, CYCLINGZONE-4J). Den rå fejl kastes ind i retry-laget (samme mønster
+    // som fetchAllRows/achievementEngine); kontekst-præfikset og normaliseringen
+    // sker først på den ENDELIGE fejl, så Sentry-grupperingen er uændret.
+    let teamRiderRows;
+    try {
+      teamRiderRows = await withSupabaseRetry(async () => {
+        const { data, error } = await supabase
+          .from("riders").select("id").eq("team_id", req.team.id).eq("is_retired", false);
+        if (error) throw error;
+        return data;
+      });
+    } catch (error) {
+      throw new Error(`riders (peak overlay): ${normalizeSupabaseErrorMessage(error.message)}`, { cause: error });
+    }
     const teamRiderIds = (teamRiderRows || []).map((r) => r.id);
     let teamPeakPlans = [];
     if (teamRiderIds.length) {
-      const { data: planRows, error: planErr } = await supabase
-        .from("rider_peak_plans")
-        .select("rider_id, target_race_id, window_end")
-        .eq("season_id", season.id)
-        .in("rider_id", teamRiderIds);
-      if (planErr) throw new Error(`rider_peak_plans (peak overlay): ${planErr.message}`);
+      let planRows;
+      try {
+        planRows = await withSupabaseRetry(async () => {
+          const { data, error } = await supabase
+            .from("rider_peak_plans")
+            .select("rider_id, target_race_id, window_end")
+            .eq("season_id", season.id)
+            .in("rider_id", teamRiderIds);
+          if (error) throw error;
+          return data;
+        });
+      } catch (error) {
+        throw new Error(`rider_peak_plans (peak overlay): ${normalizeSupabaseErrorMessage(error.message)}`, { cause: error });
+      }
       teamPeakPlans = (planRows || []).map((p) => ({
         riderId: p.rider_id,
         targetRaceId: p.target_race_id ?? null,
@@ -8408,8 +8462,10 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         .eq("id", teamId)
         .single(),
       supabase
+        // #3899: market_value/base_value tilføjet — sæson 3+-lønprognosen
+        // bruger markedsværdi-kurven (salaryBasis.js), ikke riders.salary.
         .from("riders")
-        .select("id, salary, prize_earnings_bonus")
+        .select("id, salary, prize_earnings_bonus, market_value, base_value")
         .eq("team_id", teamId),
       supabase
         .from("loans")
@@ -8461,6 +8517,40 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     // køb/ansæt-routerne + economyEngine's sæson-start-opkrævning
     // (defaultRunSeasonPayroll). Fail-safe null → false via evaluateFlagStage.
     const facilitiesEnabled = evaluateFlagStage(facilitiesEnabledStage);
+
+    // #3899 (låst design punkt 2): præmie-intervallets kvartilbånd baseres på
+    // MÅLT per-hold-præmie blandt peers i samme division. Stikprøven bruger
+    // riders.prize_earnings_bonus (samme rullende-avg-felt som holdets eget
+    // punktestimat ovenfor) summeret pr. hold — ikke finance_transactions
+    // (mange rækker pr. hold pr. sæson). Holdantal begrænses til 40 peers
+    // (rigeligt for et kvartilbånd), men selv 40 hold kan bære >1000 ryttere
+    // (D3 ~1460 ryttere totalt i prod, jf. races/distribution-routen ovenfor)
+    // — riders-loadet SKAL derfor paginere (fetchAllRows), ikke et nøgent
+    // .select(), ellers trunkerer PostgREST stille ved 1000 og skævvrider
+    // kvartilbåndet mod de først-returnerede rækker (#3331-mønstret).
+    const DIVISION_PRIZE_SAMPLE_TEAM_CAP = 40;
+    const divisionTeamsRes = await supabase
+      .from("teams")
+      .select("id")
+      .eq("division", team.division)
+      .limit(DIVISION_PRIZE_SAMPLE_TEAM_CAP);
+    if (divisionTeamsRes.error) throw divisionTeamsRes.error;
+    const divisionTeamIds = (divisionTeamsRes.data || []).map((t) => t.id);
+    let divisionPrizeSamples = [];
+    if (divisionTeamIds.length >= 1) {
+      const divisionRiderRows = await fetchAllRows(() =>
+        supabase
+          .from("riders")
+          .select("team_id, prize_earnings_bonus")
+          .in("team_id", divisionTeamIds)
+          .order("id"));
+      const perTeamPrize = new Map();
+      for (const r of divisionRiderRows) {
+        const prev = perTeamPrize.get(r.team_id) || 0;
+        perTeamPrize.set(r.team_id, prev + (r.prize_earnings_bonus || 0));
+      }
+      divisionPrizeSamples = [...perTeamPrize.values()];
+    }
 
     // Board-modifier = avg af completed plans (matcher economyEngine.processSeasonStart).
     // #1187: budget_modifier følger nu satisfaction LIVE pr. løbsweekend, så
@@ -8563,6 +8653,8 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       activeStaffSalaries,
       academyRiderCount,
       facilitiesEnabled,
+      // #3899: kvartilbånd-stikprøven for præmie-intervallet.
+      divisionPrizeSamples,
     });
 
     // Backward-compat: spred det første (præcise) forecast på root.
@@ -11392,6 +11484,40 @@ router.put("/admin/auction-config", requireAdmin, adminWriteLimiter, async (req,
       meta: { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes },
     });
     res.json({ success: true, config: data });
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/market-value-level-correction/gate — #3449/#3750: seneste
+// søndags-gate-måling (forhandlet kanal stabil?). Read-only, kalder ALDRIG
+// selve målingen (den er cron-gated, se marketValueLevelCorrectionGate.js).
+router.get("/admin/market-value-level-correction/gate", requireAdmin, async (req, res) => {
+  try {
+    const gate = await fetchLatestLevelCorrectionGate({ supabase });
+    if (!gate) return res.json({ gate: null, message: "No measurement yet - the Sunday gate runs for the first time next Danish Sunday." });
+    res.json({ gate });
+  } catch (e) {
+    if (e?.code === "42P01" || /does not exist|schema cache/i.test(String(e?.message || ""))) {
+      return res.json({ gate: null, message: "Measurement table does not exist yet (migration not applied)." });
+    }
+    captureApiRouteError(e, req); res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/market-value-level-correction/dry-run — #3449/#3750: fuld
+// populations-delta-rapport for den SENESTE grønne gate-måling. 100% read-only
+// (bruger buildDryRunReport, skriver intet) — selve apply er CLI-only
+// (backend/scripts/marketValueLevelCorrectionApply.js --confirm-apply), en
+// bevidst sikkerhedsafvejning for en engangs-mutation af hele populationen.
+router.get("/admin/market-value-level-correction/dry-run", requireAdmin, async (req, res) => {
+  try {
+    const { status, gate, report } = await getLevelCorrectionDryRunReport({ supabase });
+    if (status !== "ok") {
+      return res.status(409).json({
+        error: "Gate is not green - no dry-run report available.",
+        gate,
+      });
+    }
+    res.json({ gate, report });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
@@ -14564,7 +14690,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // Tilbudte intake-kandidater for dette hold (display-safe felter, INGEN potentiale i join).
     const { data: intakeRows, error: intakeErr } = await supabase
       .from("academy_intake")
-      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id, primary_type, secondary_type)")
+      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id, primary_type, secondary_type, current_production_value)")
       .eq("team_id", teamId)
       .eq("status", "offered");
     if (intakeErr) throw new Error(intakeErr.message);
@@ -14672,6 +14798,24 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       //     Sweepet har en dagskvote, så et tilbud kan overleve en dag eller to
       //     ekstra ved kø — datoen er "tidligst", ikke en garanti (copy afspejler det).
       const signingFee = Math.round(calculateRiderMarketValue(rider) * ACADEMY.SIGNING_FEE_RATE);
+      // #3550 punkt 4: løn-forhåndsvisning på kortet, SAMME delte funktion som
+      // signAcademyCandidate bruger ved selve signeringen (uændret - rører ikke
+      // lønformlen). Vises FØR klikket, ligesom signingFee allerede gør.
+      //
+      // FUND (kræver ejer-review, se PR-body): computeFrozenSalary prissætter i
+      // dag UDELUKKENDE fra current_production_value, aldrig fra market_value -
+      // så den symbolske intake-pull-værdi (punkt 2) giver IKKE automatisk en
+      // symbolsk løn her. #3393 (løn-reformen, egen branch/PR, IKKE rørt af denne
+      // PR) introducerer SALARY_BASIS_MODE="market" ved cutover 23/8, hvor denne
+      // samme funktion vil læse markedsværdien i stedet. Fordi kaldet her går
+      // gennem DEN DELTE funktion (ikke en lokal kopi af formlen), følger
+      // wagePreview automatisk med når #3393 lander - ingen ændring PÅKRÆVET her,
+      // MEN verificér computeFrozenSalary's parameternavne igen efter merge (kan
+      // være udvidet til også at tage market_value/base_value som input).
+      const wagePreview = computeFrozenSalary({
+        current_production_value: rider.current_production_value,
+        division: req.team.division,
+      });
       const expiresAt = row.created_at
         ? new Date(new Date(row.created_at).getTime() + INTAKE_OFFER_EXPIRY_DAYS * 86_400_000).toISOString()
         : null;
@@ -14683,6 +14827,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         created_at: row.created_at,
         expiresAt,
         signingFee,
+        wagePreview,
         rider, // display-safe, ingen potentiale
         potentialEstimate,
         potentialBand,
@@ -14735,6 +14880,15 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       };
     });
 
+    // #3550: pull-baseret intake — flag-status + "hentet denne uge"-markør, så
+    // frontend'en kan vise knap-tilstanden vs. kandidat-kortene uden en ekstra
+    // roundtrip. Flag OFF (default indtil cutover) → intakePull.enabled=false,
+    // og frontend'en falder tilbage til den uændrede (auto-drip) visning.
+    const intakePullEnabled = await isAcademyIntakePullEnabled(supabase);
+    const intakePulledThisWeek = intakePullEnabled
+      ? await hasPulledThisWeek(supabase, { teamId })
+      : false;
+
     res.json({
       enabled: true,
       slots: { used, max: ACADEMY.SLOTS },
@@ -14743,6 +14897,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       roster,
       intake,
       graduations,
+      intakePull: { enabled: intakePullEnabled, pulledThisWeek: intakePulledThisWeek },
     });
   } catch (err) {
     captureException(err);
@@ -14845,6 +15000,30 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
       enabled: true,
       ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
     });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/academy/intake/pull — #3550: hent ugens akademi-kuld (pull-mekanik).
+// Manager-udløst erstatning for søndags-drippet; flag-gated (academy_intake_pull_
+// enabled). Idempotent pr. (hold, uge) — et andet kald samme uge er et no-op
+// (alreadyPulled:true), IKKE en fejl.
+router.post("/academy/intake/pull", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const pullEnabled = await isAcademyIntakePullEnabled(supabase);
+    if (!pullEnabled) return res.status(409).json({ error: "intake_pull_disabled" });
+
+    const result = await pullWeeklyAcademyIntake(supabase, { teamId: req.team.id });
+    if (!result.ok) return res.status(409).json({ error: result.reason });
+
+    res.json(result);
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

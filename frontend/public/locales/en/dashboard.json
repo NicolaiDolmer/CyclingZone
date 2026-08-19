@@ -306,15 +306,14 @@
       }
     },
     "projectedLabel": "Expected net next season",
-    "rangeLine": "Range: {low} to {high} (±20% on prize estimate)",
+    "rangeLine": "Range: {low} to {high} (based on the prize estimate's uncertainty)",
     "row": {
-      "sponsor": "Sponsor",
-      "prize": "Prize money (estimate)",
+      "sponsorBase": "Sponsor (base)",
+      "sponsorVariable": "Sponsor (variable)",
+      "prize": "Prize money",
       "salary": "Salary",
+      "staffFacilities": "Staff & facilities",
       "loanInterest": "Loan interest",
-      "upkeep": "Upkeep",
-      "facilityUpkeep": "Facility upkeep",
-      "staffSalary": "Staff salaries",
       "academyDrift": "Academy upkeep"
     },
     "sponsorDetail": {
@@ -324,8 +323,13 @@
       "fallback": "Fallback: missing standings for the previous season"
     },
     "prizeDetail": {
-      "realizedFloor": "Matches what your roster has already earned this season"
+      "realizedFloor": "Matches what your roster has already earned this season",
+      "divisionInterval": "Range based on measured prize money among division peers"
     },
+    "salaryDetail": {
+      "marketS3": "Season 3+: priced by market value, not the current salary system"
+    },
+    "assumption": "Assumes your current squad, no transfers, and the season 3 wage system.",
     "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",
     "footnoteLink": "How is the forecast calculated?",
     "badge": {
