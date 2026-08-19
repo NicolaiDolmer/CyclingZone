@@ -147,6 +147,43 @@ test("listRejectedAsYouthAuction: startpris = lav andel af markedsværdi (YOUTH_
   assert.ok(YOUTH_AUCTION_START_RATE < 1, "startpris-rate er lav (< 1)");
 });
 
+// #3449 neutralitets-bundt (a): dræn-neutral bankrate-override.
+test("listRejectedAsYouthAuction: NULL override (ingen korrektion kørt) ⇒ bruger konstanten uændret", async () => {
+  const supabase = makeYouthMarketSupabase({
+    rider: { id: "rider-Y", firstname: "A", lastname: "B", base_value: 200000, market_value: 200000, prize_earnings_bonus: 0, team_id: null },
+  });
+  await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-06-20T12:00:00Z"),
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+    readStartRateOverride: async () => null,
+  });
+  const ins = supabase._auctionInserts[0];
+  assert.equal(ins.starting_price, Math.round(200000 * YOUTH_AUCTION_START_RATE));
+});
+
+test("listRejectedAsYouthAuction: konfigureret override (efter niveau-korrektion) ⇒ startpris i kroner uændret for c×værdi", async () => {
+  // c = 0,6918 (scratchpad-facit 19/8) ⇒ effectiveRate = 0,25/0,6918 ≈ 0,3614.
+  const c = 0.6918;
+  const effectiveRate = YOUTH_AUCTION_START_RATE / c;
+  const oldValue = 200000;
+  const newValue = oldValue * c; // riders.market_value ER allerede skaleret ved korrektionen
+  const supabase = makeYouthMarketSupabase({
+    rider: { id: "rider-Y", firstname: "A", lastname: "B", base_value: newValue, market_value: newValue, prize_earnings_bonus: 0, team_id: null },
+  });
+  await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-06-20T12:00:00Z"),
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+    readStartRateOverride: async () => effectiveRate,
+  });
+  const ins = supabase._auctionInserts[0];
+  const startPriceBeforeCorrection = Math.round(oldValue * YOUTH_AUCTION_START_RATE);
+  // Op til afrunding: startprisen i kroner skal matche hvad den var FØR korrektionen.
+  assert.ok(Math.abs(ins.starting_price - startPriceBeforeCorrection) <= 1,
+    `startpris efter korrektion (${ins.starting_price}) skal matche startpris før (${startPriceBeforeCorrection})`);
+});
+
 test("listRejectedAsYouthAuction: kaster når rytter mangler", async () => {
   const supabase = makeYouthMarketSupabase({ riderMissing: true });
   await assert.rejects(

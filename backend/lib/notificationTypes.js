@@ -59,6 +59,10 @@ export const NOTIFICATION_TYPES = [
   // (køberens type) så de to aldrig igen kan kollidere på type alene når
   // køber og sælger er samme hold. Se auctionFinalization.js.
   "auction_sold",
+  // #3449/#3733 trin 1: ÉN søndags-notifikation pr. hold når niveau-
+  // korrektionen har kørt ("Sunday value update: N riders moved"). Se
+  // backend/scripts/marketValueLevelCorrectionApply.js.
+  "market_value_level_correction",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

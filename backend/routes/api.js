@@ -407,6 +407,7 @@ import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
+import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -1217,6 +1218,34 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
     });
     res.json({ windows });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/level-correction-receipt — #3733 trin 1: den seneste
+// niveau-korrektions-kvittering for DENNE rytter, eller null hvis rytteren
+// aldrig er blevet korrigeret (eller ejeren ikke har set korrektionen køre).
+// RLS begrænser allerede til rytterens ejer (se migrationens owner-policy);
+// requireAuth er kun det almindelige "er du logget ind"-lag.
+router.get("/riders/:id/level-correction-receipt", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from("market_value_level_correction_rider_receipts")
+      .select("old_value, new_value, c, applied_at")
+      .eq("rider_id", id)
+      .order("applied_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      if (error.code === "42P01" || /does not exist|schema cache/i.test(String(error.message || ""))) {
+        return res.json({ receipt: null });
+      }
+      throw new Error(error.message);
+    }
+    res.json({ receipt: data || null });
+  } catch (err) {
+    captureApiRouteError(err, req);
     res.status(500).json({ error: err.message });
   }
 });
@@ -11283,6 +11312,40 @@ router.put("/admin/auction-config", requireAdmin, adminWriteLimiter, async (req,
       meta: { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes },
     });
     res.json({ success: true, config: data });
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/market-value-level-correction/gate — #3449/#3750: seneste
+// søndags-gate-måling (forhandlet kanal stabil?). Read-only, kalder ALDRIG
+// selve målingen (den er cron-gated, se marketValueLevelCorrectionGate.js).
+router.get("/admin/market-value-level-correction/gate", requireAdmin, async (req, res) => {
+  try {
+    const gate = await fetchLatestLevelCorrectionGate({ supabase });
+    if (!gate) return res.json({ gate: null, message: "No measurement yet - the Sunday gate runs for the first time next Danish Sunday." });
+    res.json({ gate });
+  } catch (e) {
+    if (e?.code === "42P01" || /does not exist|schema cache/i.test(String(e?.message || ""))) {
+      return res.json({ gate: null, message: "Measurement table does not exist yet (migration not applied)." });
+    }
+    captureApiRouteError(e, req); res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/market-value-level-correction/dry-run — #3449/#3750: fuld
+// populations-delta-rapport for den SENESTE grønne gate-måling. 100% read-only
+// (bruger buildDryRunReport, skriver intet) — selve apply er CLI-only
+// (backend/scripts/marketValueLevelCorrectionApply.js --confirm-apply), en
+// bevidst sikkerhedsafvejning for en engangs-mutation af hele populationen.
+router.get("/admin/market-value-level-correction/dry-run", requireAdmin, async (req, res) => {
+  try {
+    const { status, gate, report } = await getLevelCorrectionDryRunReport({ supabase });
+    if (status !== "ok") {
+      return res.status(409).json({
+        error: "Gate is not green - no dry-run report available.",
+        gate,
+      });
+    }
+    res.json({ gate, report });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 

@@ -30,6 +30,7 @@ const SUB_TABS = [
   { key: "transactions", label: "Transaktioner" },
   { key: "admin_log", label: "Admin-handlinger" },
   { key: "correlation", label: "Korrelering" },
+  { key: "level_correction", label: "Niveau-korrektion" },
 ];
 
 // Visnings-labels for raw enum-værdier fra DB. Raw value bevares i API + filtre — kun UI vises på dansk.
@@ -1067,6 +1068,201 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
   );
 }
 
+// #3449/#3750 — niveau-korrektionens søndags-gate + read-only dry-run-rapport.
+// Selve apply ("--confirm-apply") er BEVIDST ikke en UI-knap her — det er en
+// engangs-mutation af hele populationens værdier, og en CLI-kørsel (ejer
+// skriver kommandoen selv, kan ikke rammes af et fejlklik) er den rigtige
+// friktion for den handling. Se backend/scripts/marketValueLevelCorrectionApply.js.
+const GATE_STATUS_LABEL = {
+  green: { label: "🟢 GRØN — kanal stabil", className: "text-cz-success" },
+  red: { label: "🔴 RØD — ikke klar", className: "text-cz-danger" },
+};
+
+function LevelCorrectionView({ getAuth, onMsg }) {
+  const [gate, setGate] = useState(null);
+  const [gateMsg, setGateMsg] = useState(null);
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [dryRunLoading, setDryRunLoading] = useState(false);
+
+  async function refreshGate() {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/admin/market-value-level-correction/gate`, { headers: await getAuth() });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Kunne ikke hente gate-status");
+      setGate(body.gate || null);
+      setGateMsg(body.message || null);
+      setReport(null);
+    } catch (e) {
+      onMsg(`❌ ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runDryRun() {
+    setDryRunLoading(true);
+    try {
+      const res = await fetch(`${API}/api/admin/market-value-level-correction/dry-run`, { headers: await getAuth() });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Kunne ikke køre dry-run");
+      setReport(body.report);
+    } catch (e) {
+      onMsg(`❌ ${e.message}`, "error");
+    } finally {
+      setDryRunLoading(false);
+    }
+  }
+
+  useEffect(() => { refreshGate(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+
+  const statusInfo = gate ? (GATE_STATUS_LABEL[gate.gate_status] || GATE_STATUS_LABEL.red) : null;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-cz-3 text-xs">
+        Måles automatisk hver søndag (dansk tid). Gaten fyrer ALDRIG korrektionen selv —
+        den foreslår kun. Selve korrektionen er en ejer-gated engangs-kørsel via CLI
+        (<code className="font-mono text-2xs">node scripts/marketValueLevelCorrectionApply.js --confirm-apply</code>),
+        tidligst 30/8.
+      </p>
+
+      {!gate && !loading && (
+        <div className="bg-cz-subtle rounded-cz p-4 border border-cz-border text-cz-3 text-sm">
+          {gateMsg || "Ingen måling endnu."}
+        </div>
+      )}
+
+      {gate && (
+        <div className="bg-cz-subtle rounded-cz p-4 border border-cz-border">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-cz-1 font-semibold text-sm">Søndags-gate — {gate.measured_date}</h3>
+            {statusInfo && <span className={`text-xs font-semibold ${statusInfo.className}`}>{statusInfo.label}</span>}
+          </div>
+          <p className="text-cz-2 text-xs mb-3">{gate.gate_reason_text}</p>
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <dt className="text-cz-3">Kvalificerede handler (90d)</dt>
+              <dd className="font-mono text-cz-1">{gate.n_qualified_90d} <span className="text-cz-3">(min {gate.min_qualified_trades})</span></dd>
+            </div>
+            <div>
+              <dt className="text-cz-3">Median pris/anker (90d)</dt>
+              <dd className="font-mono text-cz-1">{gate.median_price_over_anchor_90d != null ? Number(gate.median_price_over_anchor_90d).toFixed(3) : "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-cz-3">Stabilitetsbånd</dt>
+              <dd className="font-mono text-cz-1">±{gate.stability_band}</dd>
+            </div>
+            <div>
+              <dt className="text-cz-3">c-kandidat</dt>
+              <dd className="font-mono text-cz-1">{gate.c_candidate != null ? Number(gate.c_candidate).toFixed(4) : "— (kun sat når grøn)"}</dd>
+            </div>
+          </dl>
+          {Array.isArray(gate.rolling_medians) && (
+            <div className="mt-3">
+              <p className="text-cz-3 text-2xs mb-1">Rullende 30-dages-medianer (seneste 3, ældst→nyest):</p>
+              <div className="flex gap-3 text-xs font-mono text-cz-2">
+                {gate.rolling_medians.map((p, i) => (
+                  <span key={i}>{p.window_end}: {p.median != null ? p.median.toFixed(3) : "n/a"} (n={p.n})</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button onClick={refreshGate} disabled={loading}
+          className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs font-medium hover:bg-cz-card disabled:opacity-50">
+          {loading ? "Opdaterer..." : "↻ Genindlæs gate"}
+        </button>
+        {gate?.gate_status === "green" && (
+          <button onClick={runDryRun} disabled={dryRunLoading}
+            className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-xs hover:brightness-110 disabled:opacity-50">
+            {dryRunLoading ? "Beregner..." : "Kør dry-run-rapport"}
+          </button>
+        )}
+      </div>
+
+      {report && (
+        <div className="bg-cz-subtle rounded-cz p-4 border border-cz-border space-y-3">
+          <h3 className="text-cz-1 font-semibold text-sm">Dry-run — c = {report.c}</h3>
+          <p className="text-cz-2 text-xs">
+            Population {report.populationSize} · Σ {formatCz(report.totalBefore)} → {formatCz(report.totalAfter)}
+            {" "}(<span className={report.totalDeltaPct < 0 ? "text-cz-danger" : "text-cz-success"}>{(report.totalDeltaPct * 100).toFixed(1)}%</span>)
+          </p>
+          <div className="overflow-x-auto">
+            <table data-sort-exempt="Niveau-korrektion dry-run pr. division; lille rapport-tabel, ingen sortering" className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-cz-border">
+                  <th className="px-2 py-1 text-left text-cz-3 font-medium">Division</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">n</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">Før</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">Efter</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">Delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.byDivision.map((d) => (
+                  <tr key={d.division} className="border-b border-cz-border last:border-0">
+                    <td className="px-2 py-1 text-cz-1">D{d.division}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-2">{d.n}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-2">{formatCz(d.before)}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-2">{formatCz(d.after)}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-danger">{(d.deltaPct * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="overflow-x-auto">
+            <table data-sort-exempt="Niveau-korrektion dry-run pr. aldersbånd; lille rapport-tabel, ingen sortering" className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-cz-border">
+                  <th className="px-2 py-1 text-left text-cz-3 font-medium">Aldersbånd</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">n</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">Før</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">Efter</th>
+                  <th className="px-2 py-1 text-right text-cz-3 font-medium">Delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.byAgeBand.map((b) => (
+                  <tr key={b.band} className="border-b border-cz-border last:border-0">
+                    <td className="px-2 py-1 text-cz-1">{b.band}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-2">{b.n}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-2">{formatCz(b.before)}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-2">{formatCz(b.after)}</td>
+                    <td className="px-2 py-1 text-right font-mono text-cz-danger">{(b.deltaPct * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <p className="text-cz-3 text-2xs mb-1">10 største absolutte fald:</p>
+            <div className="overflow-x-auto">
+              <table data-sort-exempt="Niveau-korrektion dry-run top 10 fald; server-ordnet" className="w-full text-xs">
+                <tbody>
+                  {report.top10Drops.map((t) => (
+                    <tr key={t.id} className="border-b border-cz-border last:border-0">
+                      <td className="px-2 py-1 text-cz-3 font-mono text-2xs">{t.id.slice(0, 8)}</td>
+                      <td className="px-2 py-1 text-right font-mono text-cz-2">{formatCz(t.before)}</td>
+                      <td className="px-2 py-1 text-right font-mono text-cz-2">{formatCz(t.after)}</td>
+                      <td className="px-2 py-1 text-right font-mono text-cz-danger">{formatCz(t.delta)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EconomyAdminSection({ getAuth, onMsg }) {
   const [tab, setTab] = useState("health");
   const [txInitialFilters, setTxInitialFilters] = useState(null);
@@ -1106,6 +1302,7 @@ export default function EconomyAdminSection({ getAuth, onMsg }) {
       {tab === "correlation" && (
         <CorrelationView getAuth={getAuth} onMsg={onMsg} onDrillDown={drillIntoTransactions} />
       )}
+      {tab === "level_correction" && <LevelCorrectionView getAuth={getAuth} onMsg={onMsg} />}
     </div>
   );
 }
