@@ -79,13 +79,26 @@ jobs:
           set -euo pipefail
           export PGPASSWORD=drill
           /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -c "CREATE DATABASE drill_restore;"
-          # RLS-policies refererer auth.uid()/is_admin(); skab minimal auth-stub så
-          # policy-DDL kan gendannes udenfor Supabase.
-          /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d drill_restore -c \
-            "CREATE SCHEMA IF NOT EXISTS auth;
+          # Supabase-lignende miljø-stub: pg_dump --schema=public medtager IKKE
+          # CREATE EXTENSION/CREATE ROLE, men tabellernes DDL afhænger af dem
+          # (btree_gist-exclusion-constraints, uuid-defaults fra extensions-skemaet,
+          # policies med TO anon/authenticated, auth.uid()/jwt() i policy-udtryk).
+          # Uden stubben kaskade-fejler CREATE TABLE (fanget i første drill 19/8:
+          # 695 fejl, 0 tabeller gendannet).
+          /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d drill_restore -v ON_ERROR_STOP=1 -c \
+            "CREATE ROLE anon NOLOGIN;
+             CREATE ROLE authenticated NOLOGIN;
+             CREATE ROLE service_role NOLOGIN;
+             CREATE SCHEMA IF NOT EXISTS extensions;
+             CREATE EXTENSION IF NOT EXISTS btree_gist;
+             CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+             CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" WITH SCHEMA extensions;
+             GRANT USAGE ON SCHEMA extensions TO PUBLIC;
+             CREATE SCHEMA IF NOT EXISTS auth;
              CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS 'SELECT NULL::uuid';
              CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS 'SELECT NULL::text';
-             CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql AS 'SELECT NULL::jsonb';"
+             CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql AS 'SELECT NULL::jsonb';
+             ALTER DATABASE drill_restore SET search_path TO public, extensions;"
           # --exit-on-error bevidst FRA: enkelte objekter (fx grants til Supabase-
           # roller) fejler forventeligt udenfor Supabase; verifikationen nedenfor
           # er den reelle gate. Fejlantal logges.
