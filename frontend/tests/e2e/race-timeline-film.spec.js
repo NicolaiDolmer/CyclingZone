@@ -128,13 +128,24 @@ test("race film opens and the event feed follows the scrubber", async ({ page })
   await expect(dialog.getByText("Mikkel Hansen, Sofie Lund rykker væk fra feltet.")).toBeVisible();
 });
 
-test("race without timeline data renders nothing (404 degrades honestly)", async ({ page }) => {
+// #3914 (bølge 3): "The Final Kilometre" flyttede ind i StoryOfTheStageSection
+// med sin EGEN data-kilde (race_results, ikke tidslinjen) — komponenten gater
+// derfor nu på `story.length || finalKmAvailable`, ikke kun på tidslinjedata.
+// RESULTS her har 5 finishers (>= de 2 buildFinalKilometrePlayback kræver), så
+// et løb uden #2410-tidslinjedata degraderer IKKE længere til "helt intet":
+// kun den kuraterede historie-liste + "Se løbsfilmen"-knappen forsvinder,
+// Final Km-knappen forbliver synlig. Se StoryOfTheStageSection.jsx's
+// filhoved-kommentar for den fulde begrundelse.
+test("race without timeline data drops the story list + film button, but keeps Final Kilometre (own data source)", async ({ page }) => {
   await mockRace(page, { withTimeline: false });
   await page.goto("/races/race-timeline-1?stage=1");
 
   await expect(page.getByRole("heading", { name: "Etape 1" })).toBeVisible();
-  await expect(page.getByText("Etapens historie")).toHaveCount(0);
+  // Ingen tidslinje-data → ingen kuraterede events, ingen "Se løbsfilmen"-knap.
+  await expect(page.getByText("Ada Pedersen angriber i finalen.")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Se løbsfilmen" })).toHaveCount(0);
+  // Final Km har sin egen availability (race_results) og forbliver tilgængelig.
+  await expect(page.getByRole("button", { name: "Den sidste kilometer" })).toBeVisible();
 });
 
 // Ejer-fix 17/8: scrubberen skal tegne etapens ÆGTE rute-silhuet (climbs fra

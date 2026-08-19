@@ -126,13 +126,20 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByTitle("Udbrud — holdt hjem til mål")).toBeVisible();
   await expect(page.getByTitle("Udbrud — indhentet af feltet")).toBeVisible();
 
-  // #1484 terræn-indikator: etape 1 = fladt + massespurt.
+  // #3914: den fulde profilgraf (inkl. #1484-terræn-indikatoren) er flyttet ned
+  // i en default-lukket CollapsibleSection ("Etapeprofil") nederst på etape-
+  // fanen — resultatet er etapens vigtigste indhold nu, ikke ruten. Udfold den
+  // via <summary> (native <details>, ingen ekstra ARIA) før vi kan verificere
+  // terræn-badges. Etape 1 = fladt + massespurt.
+  await page.locator("summary", { hasText: "Etapeprofil" }).click();
   await expect(page.getByText("Terræn", { exact: true })).toBeVisible();
   await expect(page.getByText("Fladt")).toBeVisible();
   await expect(page.getByRole("button", { name: "Massespurt" })).toBeVisible();
 
-  // Etape 2 = bjerge + bjergfinale (skifter med fanen).
+  // Etape 2 = bjerge + bjergfinale (skifter med fanen). StageTab remountes pr.
+  // etape (key={n}) → "Etapeprofil"-sektionen er lukket igen og skal udfoldes på ny.
   await page.getByRole("button", { name: "Etape 2" }).click();
+  await page.locator("summary", { hasText: "Etapeprofil" }).click();
   await expect(page.getByText("Bjerge")).toBeVisible();
   await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 
@@ -169,12 +176,17 @@ test("race detail page renders KOM and intermediate sprint passages under stage 
   await expect(page.getByText("Mellemresultater")).toHaveCount(0);
 });
 
-// #3396 (bølge 2): "The Final Kilometre" skal følge den valgte etape-fane,
-// ikke altid dramatisere den seneste kørte etape. RESULTS' etape 1 har begge
-// ryttere sat som in_breakaway (ADA holdt hjem → "breakawaySurvived"-beat),
-// etape 2 har ingen breakaway-flag → intet beat. Meta-labelen ("Etape N")
-// verificerer stageNumber-propen direkte; breakaway-beatet verificerer at
-// finalKmRows/moments rent faktisk filtreres pr. valgt fane.
+// #3396/#3914: "The Final Kilometre" skal følge den valgte etape-fane, ikke
+// altid dramatisere den seneste kørte etape — og er nu (#3914, bølge 3) en
+// stille (ghost) sekundærknap i StoryOfTheStageSection i stedet for en altid-
+// synlig sektion, KUN til stede på etape-faner (ikke på Samlet-fanen, som ikke
+// er etape-scopet indhold). RESULTS' etape 1 har begge ryttere sat som
+// in_breakaway (ADA holdt hjem → "breakawaySurvived"-beat), etape 2 har ingen
+// breakaway-flag → intet beat. Meta-labelen ("Etape N") verificerer
+// stageNumber-propen direkte; breakaway-beatet verificerer at finalKmRows/
+// moments rent faktisk filtreres pr. valgt fane. StageTab remountes pr. etape
+// (key={n} i RaceDetailPage), så knappen skal klikkes på ny for hver fane —
+// ingen "hængende" åben-state fra en tidligere etape.
 test("Final Kilometre playback follows the selected stage tab, not always the latest", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
@@ -190,30 +202,38 @@ test("Final Kilometre playback follows the selected stage tab, not always the la
   await login(page);
   await page.goto("/races/race-e2e-1");
 
-  // FinalKilometrePlayback renderer i et Card (div.rounded-cz) — scope til DEN
-  // for at undgå kollision med "Etape N"-tekst andre steder på siden (fane-
-  // knapper, etape-måltavlens overskrift, mv.).
-  const finalKm = page.locator('div.rounded-cz:has-text("Den sidste kilometer")');
+  // FinalKilometrePlayback renderer i sit eget Card (div.rounded-cz) med
+  // "Den sidste kilometer" som <h2> (SectionHeader). Samme streng er ALSO
+  // knappens label i StoryOfTheStageSection — scope derfor på headingen
+  // (ikke bare :has-text) så de to elementer ikke kolliderer.
+  const finalKmCard = page.locator("div.rounded-cz").filter({
+    has: page.getByRole("heading", { name: "Den sidste kilometer" }),
+  });
+  const finalKmButton = page.getByRole("button", { name: "Den sidste kilometer" });
 
-  // Samlet-fanen (default) = seneste kørte etape (etape 2, uændret adfærd) →
-  // ingen breakaway-beat (etape 2-rækkerne har ingen breakaway-flag).
-  await expect(finalKm.getByText("Etape 2")).toBeVisible();
-  await expect(finalKm.getByText(/udbrud/i)).toHaveCount(0);
+  // Samlet-fanen (default): Final Km er etape-scopet indhold — hverken
+  // knappen eller playbacken findes her.
+  await expect(finalKmButton).toHaveCount(0);
+  await expect(finalKmCard).toHaveCount(0);
 
-  // Etape 1-fanen: playback følger fanen → label + breakaway-beat for etape 1.
+  // Etape 1-fanen: åbn playbacken via den stille knap → label + breakaway-
+  // beat for etape 1.
   await page.getByRole("button", { name: "Etape 1" }).click();
-  await expect(finalKm.getByText("Etape 1")).toBeVisible();
-  await expect(finalKm.getByText("Et udbrud på 2 ryttere holdt hjem til mål.")).toBeVisible();
+  await finalKmButton.click();
+  await expect(finalKmCard.getByText("Etape 1")).toBeVisible();
+  await expect(finalKmCard.getByText("Et udbrud på 2 ryttere holdt hjem til mål.")).toBeVisible();
 
-  // Tilbage til Etape 2-fanen: playback skifter med det samme (ingen "hængende"
-  // etape 1-state) → label opdateres, breakaway-beatet forsvinder igen.
+  // Etape 2-fanen: StageTab remountes → playbacken er lukket igen (ny knap-
+  // klik nødvendig), label + fravær af breakaway-beat opdateres for etape 2.
   await page.getByRole("button", { name: "Etape 2" }).click();
-  await expect(finalKm.getByText("Etape 2")).toBeVisible();
-  await expect(finalKm.getByText(/udbrud/i)).toHaveCount(0);
+  await expect(finalKmCard).toHaveCount(0);
+  await finalKmButton.click();
+  await expect(finalKmCard.getByText("Etape 2")).toBeVisible();
+  await expect(finalKmCard.getByText(/udbrud/i)).toHaveCount(0);
 
-  // Samlet-fanen igen: matcher stadig etape 2 (seneste kørte etape).
+  // Tilbage til Samlet-fanen: Final Km forsvinder helt igen.
   await page.getByRole("button", { name: "Samlet" }).click();
-  await expect(finalKm.getByText("Etape 2")).toBeVisible();
+  await expect(finalKmButton).toHaveCount(0);
 });
 
 // #3913: point-/bjergkonkurrencens klassement-tabel viste points_earned
