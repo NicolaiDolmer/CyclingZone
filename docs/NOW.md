@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Næste action: MERGE-DAG 19/8** ([prompt](sessions/2026-08-19-merge-dag-session-prompt.md)) — ejer-test + merge-go på trin 7 (PR #3798), derefter PR-køen. Løn-pakken (ejer-dom 19/8 eftermiddag): **#3972 MERGED · #3974/#3449/#3968/#3969 merger i dag når grønne · #3393 merges FØRST 23/8 i drejebogen** (kodekonstant-flip; rebaser over #3974's salaryBasis ved merge). Derefter ugen: trin 7-udrulning ons → kalender → race-UI PR B → cutover sø 23/8.
+> **🎯 Næste action: STOR UDVIKLINGS-OPDATERING (ejer-valg 19/8 ~16:45)** — trin 7 (PR #3798) BUNDLES med hele #3721: 3 sonnet-workers bygger på stacked branches (træningssidens 3 faner + Development-glyf-fane · holdsidens Development-tabel · profil-dedup), mockups ejer-godkendt. Derefter: integration → rebase på dagens main → fuld verifikation → ejer-visuelt go → ÉN merge → udrulningskæden (migration → backfill-dry-run → refit → indbakke-besked #3980 → Discord). #3393 merges FØRST 23/8 i drejebogen (løn-dom). Derefter: kalender → race-UI PR B → cutover sø 23/8.
 
 > **✅ KS3 LUKKET 18/8** ([audit](audits/2026-08-18-kvalitetssession-3.md)): **D1-plan LÅST+BYGGET** (PR #3930 merged, dry-run godkendt — apply ejer-gated søndag m. frosset snapshot) · designs låst: #3899/#3900/#3924 · backlog net −32 (500 åbne). Merge-køen fra KS3 er landet og v7.144 skrevet (se session-linjen nedenfor).
 
@@ -17,7 +17,7 @@
 
 > **🚨 Incident 18/8 LØST (#3934):** fixet+verificeret i prod; rest: raceRunner/regenerate på samme RPC (én writer). Detaljer i issuet.
 > **🚨 Incident 18/8 aften LØST (#3961, PR #3962 auto-merger):** en efterladt lokal staging-backend (trin 7-scriptet, mod branch-klonen med kopieret `discord_settings`) re-simulerede snapshot-løb og postede 60 falske resultat-embeds til rigtige spillerkanaler 20:32–21:41. Proces dræbt, live-guard bygget (Discord kræver prod-DB), evidens+slette-script klar. **👤 Ejer-klik: kør slette-scriptet (60 opslag) + evt. kort spillerbesked.** Postmortem: `.claude/learnings/2026-08-18-staging-backend-poster-til-prod-discord.md`.
-> **🤖 Aktive sessioner (1):** **MERGE-DAG** — ejer trin 7-kæden (#3798), PR-køen og merge-to-main-koordination; delt staging live på web-production-aea1d.up.railway.app, testere inviteret. PR #3798 rebase't på main 19/8 (tager #3962 Discord-live-guard med; 0 konflikter; discordNotifier-tests ✓ lokalt) og CI kører om. Branch-DB'ens `discord_settings` webhooks nullet (defense-in-depth nr. 2 fra postmortem). Staging kører igen: :3001 (guarded backend) + :5173, panel verificeret på ægte data post-rebase. Venter ejer-test + merge-go. Spilleroplevelses-promptens Blok 1+2+3 fortsat IKKE påbegyndt. Kør IKKE radius-bølgen uden ejer-go. **LØN-DESIGN-sessionen er LUKKET 19/8** (leverancer i 💰-linjen; #3968/#3969 auto-merger CI-gated, patch note skrives ved merge, #3974 bumper version ved rebase).
+> **🤖 Aktive sessioner (1):** **MERGE-DAG/BUNDLE** — ejer trin 7-kæden (#3798), #3721-bundlet (3 workers på stack/3721-* fra 0a2a3cfb) og e2e-slottet. Staging live: web-production-aea1d.up.railway.app (testere inde; klub-500 fixet = manglende team_staff.slot i klonen, applied). #3798 har fået udrulnings-komms oveni (prognose-overskrift + indbakke-script #3980, commit 0a2a3cfb) — kræver ny rebase på dagens main før merge. Dagens triage: #3979-#3985 oprettet, #3959 merged+lukket. Kør IKKE radius-bølgen uden ejer-go. **LØN-DESIGN-sessionen er LUKKET 19/8** (leverancer i 💰-linjen; #3968/#3969 auto-merger CI-gated, patch note skrives ved merge, #3974 bumper version ved rebase).
 
 ## Standing context (forever-relaunch)
 
