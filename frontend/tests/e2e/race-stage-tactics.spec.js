@@ -106,6 +106,13 @@ test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje
   // fjernes under live løb — selection-panelet renderer nu selv i frozen-tilstand).
   // Testens ærinde er matrixen; det gamle frysnings-assert var bundet til den
   // fjernede besked og er derfor udgået (fejlede i CI efter #2653-merget).
+  //
+  // #3914: mens løbet stadig køres (race.status==="scheduled") ligger etape-
+  // taktik-matrixen nu i en default-lukket CollapsibleSection ("Etape-taktik")
+  // sammen med holdudtagelsen — udfold den via <summary>-klik (native <details>,
+  // ingen ekstra ARIA) før vi kan interagere med matrixen.
+  await page.locator("summary", { hasText: "Etape-taktik" }).click();
+
   const matrix = page.getByTestId("stage-role-matrix");
   await expect(matrix).toBeVisible();
 
