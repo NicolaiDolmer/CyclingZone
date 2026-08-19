@@ -376,10 +376,6 @@
     },
     "overview": {
       "skillCount": "{count} evner",
-      "legend": {
-        "level": "Tal = niveau 1–99",
-        "progress": "træningsfremgang mod næste +1"
-      },
       "radar": {
         "title": "Ryttertyper",
         "subtitle": "rating pr. type",
@@ -625,9 +621,6 @@
   "results": {
     "empty": "Ingen løbsresultater endnu",
     "fallbackDash": "-"
-  },
-  "development": {
-    "progressHint": "Fremskridt mod næste point"
   },
   "bids": {
     "row": {

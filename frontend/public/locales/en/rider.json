@@ -376,10 +376,6 @@
     },
     "overview": {
       "skillCount": "{count} abilities",
-      "legend": {
-        "level": "Number = level 1–99",
-        "progress": "training progress to next +1"
-      },
       "radar": {
         "title": "Rider types",
         "subtitle": "rating per type",
@@ -625,9 +621,6 @@
   "results": {
     "empty": "No race results yet",
     "fallbackDash": "-"
-  },
-  "development": {
-    "progressHint": "Progress toward next point"
   },
   "bids": {
     "row": {
