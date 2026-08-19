@@ -1,9 +1,18 @@
-# Runbook — Supabase backup restore drill
+# Runbook — Supabase backup restore drill (manuel dashboard-path)
+
+> **⚠️ 19/8-2026: [`DB_RESTORE_RUNBOOK.md`](DB_RESTORE_RUNBOOK.md) er nu SSOT** for
+> restore-beredskab: PITR-status er AFKLARET (fravalgt, pris; revurdér ved omsætning),
+> og den månedlige drill er AUTOMATISERET i `.github/workflows/restore-drill.yml`
+> (første grønne kørsel 19/8: 167 tabeller / 1,03 mio. race_results på 97 s).
+> Denne fil beholdes for den MANUELLE dashboard-restore-procedure + smoke-tests
+> nedenfor, som stadig er proceduren ved et RIGTIGT restore-behov (scenarie 2 i SSOT).
+> Pre-req-afsnittets Path A/B-valg er forældet: Path B-tooling (psql/pg_restore 18)
+> er installeret og bevist i CI-drillen.
 
 **Issue:** [#332](https://github.com/NicolaiDolmer/CyclingZone/issues/332)
 **Parent:** [#323](https://github.com/NicolaiDolmer/CyclingZone/issues/323)
-**Owner:** Nicolai (executor) · Claude/Manus (drill-assist)
-**Sidste drill:** 2026-05-15 — **AFBRUDT i pre-req-stage** (Drill 1, attempt 1). 9 runbook-bugs fundet og rettet inline. Næste forsøg: efter pre-req-tools installeret + PITR-status afklaret. Rapport: [#332 comment](https://github.com/NicolaiDolmer/CyclingZone/issues/332).
+**Owner:** Nicolai (executor) · Claude (drill-assist)
+**Sidste drill:** 2026-08-19 — **GRØN** (automatiseret CI-drill, run 32249356613). Historik: 2026-05-15 afbrudt i pre-req-stage (Drill 1, attempt 1; 9 runbook-bugs rettet inline, rapport: [#332 comment](https://github.com/NicolaiDolmer/CyclingZone/issues/332)).
 
 > Formålet er at bevise at vi kan restore production til en kendt-god tilstand HURTIGT og UDEN at korrumpere spil-state. En backup der aldrig er restored er en antagelse, ikke resiliens.
 

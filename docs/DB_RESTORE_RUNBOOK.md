@@ -33,7 +33,8 @@ hvor risikoen faktisk er forhøjet.
 ## Scenarie 2: Fuldt tab / korrupt instans
 
 1. Supabase Dashboard → Database → Backups → vælg seneste daglige backup → Restore.
-   (Restore sker in-place på projektet; følg dashboardets flow.)
+   (Restore sker in-place på projektet; følg dashboardets flow.) Detaljeret manuel
+   procedure + smoke-tests: [`RUNBOOK_RESTORE_DRILL.md`](RUNBOOK_RESTORE_DRILL.md).
 2. Efter restore: kør post-verify (nedenfor), gen-applicér migrationer nyere end
    backuppen (`schema_migrations`-tabellen viser hvad der var applied; sammenlign
    med `database/2026-*.sql` i git).
