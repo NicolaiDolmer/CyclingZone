@@ -4,6 +4,77 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.147",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Finished stages show the result first",
+          "body": "Open a finished stage and the result is at the top: standings on the overall tab, the finish on each stage tab. Lineup, tactics and the stage profile are still there, tucked into collapsible sections, and The Final Kilometre is now a quiet button next to the result."
+        },
+        "da": {
+          "title": "Kørte etaper viser resultatet først",
+          "body": "Åbner du en kørt etape, står resultatet øverst: stillingen på samlet-fanen, opløbet på hver etape-fane. Opstilling, taktik og etapeprofilen er der stadig, foldet sammen i sektioner, og Den sidste kilometer er nu en stille knap ved siden af resultatet."
+        },
+        "refs": [
+          3914
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Your season recap always has highlights",
+          "body": "The season recap now guarantees three real moments for every team, including mid-table and relegated seasons, and the share card carries your turning point and season facts. One clear download button on the hero."
+        },
+        "da": {
+          "title": "Din sæson-recap har altid højdepunkter",
+          "body": "Sæson-recappen garanterer nu tre ægte øjeblikke for alle hold, også midterfelts- og nedrykningssæsoner, og delekortet bærer dit vendepunkt og sæsonfakta. Én tydelig download-knap i toppen."
+        },
+        "refs": [
+          2752
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Transfer-listed riders are marked in squad selection",
+          "body": "Riders you have listed for transfer now show a badge in squad selection, and you can toggle which ability column the list shows."
+        },
+        "da": {
+          "title": "Transferlistede ryttere er markeret i holdudtagelsen",
+          "body": "Ryttere du har sat til salg viser nu et mærke i holdudtagelsen, og du kan selv vælge hvilken evne-kolonne listen viser."
+        },
+        "refs": [
+          3824
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Teams",
+        "en": {
+          "title": "AI team names dropped their AI prefix",
+          "body": "Computer-run teams now use their plain team name everywhere instead of an AI prefix."
+        },
+        "da": {
+          "title": "AI-holdnavne har mistet deres AI-præfiks",
+          "body": "Computerstyrede hold bruger nu deres rene holdnavn overalt i stedet for et AI-præfiks."
+        },
+        "refs": [
+          3926
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.146",
     "date": "2026-08-19",
     "label": "Beta",
