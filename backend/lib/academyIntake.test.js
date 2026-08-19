@@ -6,6 +6,7 @@ import { makeRng } from "./fictionalRiderGenerator.js";
 import { generateAcademyCandidates } from "./academyGenerator.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { ACADEMY } from "./academyFlag.js";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 // ─── Mock-supabase helpers ────────────────────────────────────────────────────
 
@@ -553,6 +554,8 @@ function makeSignRejectSupabase({
   teamAcademyCount = 0,
   riderBaseValue = 100000,
   notifyError = null,
+  currentProductionValue, // #3550: undefined bevarer eksisterende adfærd (feltet udelades)
+  division = 1,
 } = {}) {
   const riderUpdates = [];
   const intakeUpdates = [];
@@ -595,7 +598,11 @@ function makeSignRejectSupabase({
               eq() { return readApi; },
               maybeSingle() {
                 return Promise.resolve({
-                  data: { id: "rider-X", firstname: "Sander", lastname: "Akademi", market_value: riderBaseValue, base_value: riderBaseValue, prize_earnings_bonus: 0 },
+                  data: {
+                    id: "rider-X", firstname: "Sander", lastname: "Akademi",
+                    market_value: riderBaseValue, base_value: riderBaseValue, prize_earnings_bonus: 0,
+                    ...(currentProductionValue !== undefined ? { current_production_value: currentProductionValue } : {}),
+                  },
                   error: null,
                 });
               },
@@ -633,7 +640,7 @@ function makeSignRejectSupabase({
           // #2594: signAcademyCandidate slår holdets division op for at prissætte
           // lønnen (per-division sats).
           maybeSingle() {
-            return Promise.resolve({ data: { id: "team-A", division: 1 }, error: null });
+            return Promise.resolve({ data: { id: "team-A", division }, error: null });
           },
         };
         return teamsApi;
@@ -721,6 +728,59 @@ test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salar
   assert.ok(supabase._intakeUpdates[0].resolved_at, "resolved_at sat");
   // #2793: signing_fee persisteres som rytterens kostbasis ved signing.
   assert.equal(supabase._intakeUpdates[0].signing_fee, result.fee, "signing_fee = den beregnede fee");
+});
+
+// ── #3550 punkt 2+4 (ejer-beslutning 19/8, ungdomspakken) ─────────────────────
+// Punkt 2: "symbolsk start" — market_value trukket 1.000-5.000 ved intake-pull
+// (backend/lib/academyIntakePull.js). signAcademyCandidate rører intet nyt her:
+// den bruger allerede rider.market_value/base_value som de står i DB, så en
+// provisorisk lav værdi gør fee'en symbolsk AF SIG SELV via den UÆNDREDE 25 %-
+// formel. Testen nedenfor beviser rækkefølgen (værdi før fee) ved at signere en
+// kandidat med en provisorisk værdi og verificere fee = 25 % af NETOP den værdi.
+test("#3550 punkt 2: signeringsprisen er 25 % af den PROVISORISKE (symbolske) markedsværdi — uændret formel, symbolsk af sig selv", async () => {
+  const provisionalValue = 3200; // repræsentativ trukket værdi i [1.000, 5.000]
+  const supabase = makeSignRejectSupabase({ riderBaseValue: provisionalValue });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+
+  assert.equal(result.fee, Math.round(provisionalValue * ACADEMY.SIGNING_FEE_RATE));
+  assert.ok(result.fee < 1000, "en provisorisk 1.000-5.000-værdi giver en TYVens fee, ikke de 190-1.000k som eksploderende akademiværdier gav (#3550-issuet)");
+});
+
+// Punkt 4: "symbolsk løn" — DENNE test dokumenterer et FUND til ejer-review, ikke
+// bygget adfærd (opgaven forbød at røre lønformlen). computeFrozenSalary prissætter
+// UDELUKKENDE fra current_production_value (#2594-decouplingen) — ALDRIG fra
+// market_value/base_value. Intake-pull-punkt 2 overskriver kun base_value, ikke
+// current_production_value, så en symbolsk markedsværdi giver IKKE automatisk en
+// symbolsk løn: en kandidat med en almindelig (ikke-provisorisk) current_production_
+// value får en almindelig løn, uanset hvor lav den provisoriske markedsværdi er.
+test("#3550 punkt 4 (FUND — kræver ejer-review): lønnen er UPÅVIRKET af den symbolske markedsværdi (current_production_value er IKKE overskrevet af intake-pull)", async () => {
+  const provisionalValue = 2000; // symbolsk markedsværdi (punkt 2)
+  const normalProduction = 45000; // en almindelig, evne-afledt current_production_value — IKKE provisorisk
+  const supabase = makeSignRejectSupabase({
+    riderBaseValue: provisionalValue,
+    currentProductionValue: normalProduction,
+    division: 1,
+  });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+
+  // Lønnen matcher den NORMALE produktionsværdi × divisionens sats — ikke noget
+  // afledt af den lave provisoriske markedsværdi.
+  assert.equal(result.salary, computeFrozenSalary({ current_production_value: normalProduction, division: 1 }));
+  assert.ok(result.salary > 10_000, "lønnen er IKKE 'nær gulvet' her — den følger produktionsværdien, ikke den symbolske markedsværdi");
+});
+
+// Fallback-stien (current_production_value mangler/0) lander til gengæld faktisk
+// lavt — det er formentlig DEN sti ejerens "nær gulvet 250"-forventning beskriver,
+// men den rammer kun kandidater UDEN en current_production_value, ikke enhver
+// intake-pull-kandidat i almindelighed.
+test("#3550 punkt 4: fallback-stien (current_production_value mangler) giver en LAV løn pr. division — dette er formentlig den sti 'nær gulvet' -forventningen sigter til", async () => {
+  const rates = { 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 };
+  for (const [division, rate] of Object.entries(rates)) {
+    const supabase = makeSignRejectSupabase({ riderBaseValue: 3000, division: Number(division) }); // currentProductionValue udeladt → fallback
+    const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+    assert.equal(result.salary, Math.max(1, Math.round(1000 * rate)), `division ${division}: fallback-gulvet (1000) × sats`);
+    assert.ok(result.salary < 350, `division ${division}: lønnen er lav (${result.salary}), i omegnen af den forventede "nær 250"`);
+  }
 });
 
 test("signAcademyCandidate: kaster 'academy_full' når cap er opfyldt (8 ryttere), ingen rider-update, ingen RPC-debit", async () => {
