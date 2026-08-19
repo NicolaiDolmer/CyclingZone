@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeSeasonMovement, resolveNextDivision, pickRecapHighlights } from "./seasonRecapData.js";
+import { computeSeasonMovement, resolveNextDivision, resolveSeasonMovement, pickRecapHighlights } from "./seasonRecapData.js";
 
 // ─── computeSeasonMovement ──────────────────────────────────────────────────
 
@@ -49,6 +49,29 @@ test("resolveNextDivision: does NOT use current team division when next season i
 
 test("resolveNextDivision: next season does not exist at all -> null", () => {
   assert.equal(resolveNextDivision({}), null);
+});
+
+// ─── resolveSeasonMovement (shared helper, DashboardPage + SeasonEndPage) ────
+
+test("resolveSeasonMovement: combines resolveNextDivision + computeSeasonMovement (real next-season standings row)", () => {
+  assert.equal(
+    resolveSeasonMovement({ finishedDivision: 3, nextSeasonStandingDivision: 2, nextSeasonStatus: "active", currentTeamDivision: 3 }),
+    "promoted"
+  );
+});
+
+test("resolveSeasonMovement: falls back to current team division when next season is active with no standings row yet", () => {
+  assert.equal(
+    resolveSeasonMovement({ finishedDivision: 3, nextSeasonStandingDivision: null, nextSeasonStatus: "active", currentTeamDivision: 3 }),
+    "maintained"
+  );
+});
+
+test("resolveSeasonMovement: unknown next division -> null (not 'maintained')", () => {
+  assert.equal(
+    resolveSeasonMovement({ finishedDivision: 3, nextSeasonStandingDivision: null, nextSeasonStatus: "completed", currentTeamDivision: 3 }),
+    null
+  );
 });
 
 // ─── pickRecapHighlights ─────────────────────────────────────────────────────
@@ -119,4 +142,68 @@ test("pickRecapHighlights: myBiggestSale with amount 0 is ignored", () => {
     myBiggestSale: { amount: 0, description: "Free transfer" },
   });
   assert.deepEqual(highlights, []);
+});
+
+// ─── pickRecapHighlights: guaranteed-3 fallback (documentaryFacts) ──────────
+
+test("pickRecapHighlights: mid-table team with none of the first three falls back to all 3 documentary facts", () => {
+  const highlights = pickRecapHighlights({
+    myTeamId: "t1",
+    divisionStandings: [{ team_id: "t1" }, { team_id: "t2" }],
+    prizeByTeam: { t1: 0, t2: 500000 },
+    documentaryFacts: {
+      bestRaceDay: { race_id: "r1", race_name: "Tour de Test", total_points: 240, riders_scoring: 3 },
+      biggestResult: { rider_name: "Rider One", race_name: "Grand Prix" },
+      rival: { team_name: "Rival FC", total_points: 900, gap: 15 },
+      myStanding: { total_points: 885 },
+    },
+  });
+  assert.deepEqual(highlights.map((h) => h.kind), ["turningPoint", "biggestResult", "rival"]);
+});
+
+test("pickRecapHighlights: only fills the REMAINING slots when some of the first three are already present", () => {
+  const highlights = pickRecapHighlights({
+    myTeamId: "t1",
+    myStageKing: { riderId: "r1", name: "Marco Bittner", wins: 4 },
+    documentaryFacts: {
+      bestRaceDay: { race_id: "r1", race_name: "Tour de Test", total_points: 240, riders_scoring: 3 },
+      biggestResult: { rider_name: "Rider One", race_name: "Grand Prix" },
+      rival: { team_name: "Rival FC", total_points: 900, gap: 15 },
+      myStanding: { total_points: 885 },
+    },
+  });
+  assert.deepEqual(highlights.map((h) => h.kind), ["stageKing", "turningPoint", "biggestResult"]);
+});
+
+test("pickRecapHighlights: rival fallback marks 'ahead' correctly from myStanding vs rival points", () => {
+  const behind = pickRecapHighlights({
+    myTeamId: "t1",
+    documentaryFacts: { rival: { team_name: "Rival FC", total_points: 900, gap: 15 }, myStanding: { total_points: 885 } },
+  });
+  assert.equal(behind[0].kind, "rival");
+  assert.equal(behind[0].ahead, false);
+
+  const ahead = pickRecapHighlights({
+    myTeamId: "t1",
+    documentaryFacts: { rival: { team_name: "Rival FC", total_points: 800, gap: 15 }, myStanding: { total_points: 815 } },
+  });
+  assert.equal(ahead[0].ahead, true);
+});
+
+test("pickRecapHighlights: missing documentaryFacts entirely -> still degrades to whatever the first three gave (no crash)", () => {
+  const highlights = pickRecapHighlights({ myTeamId: "t1" });
+  assert.deepEqual(highlights, []);
+});
+
+test("pickRecapHighlights: partial documentaryFacts (no rival, e.g. alone in division) fills only what exists", () => {
+  const highlights = pickRecapHighlights({
+    myTeamId: "t1",
+    documentaryFacts: {
+      bestRaceDay: { race_id: "r1", race_name: "Tour de Test", total_points: 240, riders_scoring: 3 },
+      biggestResult: { rider_name: "Rider One", race_name: "Grand Prix" },
+      rival: null,
+      myStanding: { total_points: 885 },
+    },
+  });
+  assert.deepEqual(highlights.map((h) => h.kind), ["turningPoint", "biggestResult"]);
 });

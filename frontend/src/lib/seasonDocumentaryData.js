@@ -47,37 +47,62 @@ export function pickDocumentaryText(row, lang) {
   return { paragraphs: det, source: "deterministic" };
 }
 
-function fmtAmount(n, formatNumber) {
-  return `${formatNumber(Math.abs(Number(n) || 0))} CZ$`;
-}
-
 /**
- * Bygger op til 3 label/value-rækker til det delbare kort ud fra
- * `row.facts` (get_season_documentary_facts' rå output) — SAMME struktur
- * grammatikken læste, så kortet aldrig kan sige noget andet end teksten.
+ * Bygger de delbare kort-rækker ud fra `row.facts` (get_season_documentary_facts'
+ * rå output) — SAMME struktur grammatikken læste, så kortet aldrig kan sige
+ * noget andet end teksten.
  *
- * @param {object} facts
+ * #season-recap-polish (18/8, ejer-godkendt mockup) — PRÆCIS 4 rækker i FAST
+ * rækkefølge (ikke længere "op til 4, i den rækkefølge facts tilfældigvis har
+ * data"): Turning point (bedste løbsdag) → Biggest result → Closest rival →
+ * Final points. "Signing" droppet fra kortet — dét tal stod allerede i
+ * dokumentar-teksten (afsnit 2), og kortet har kun plads til 4 rækker.
+ * Final points læses fra facts.myStanding, med teamRecap.standingsRow.
+ * total_points som fallback — kortets download-knap sidder nu på
+ * SeasonRecapHero (som ALTID har standingsRow), ikke længere på selve
+ * dokumentar-sektionen (som kan mangle helt, fx lige efter en cutover), så
+ * kortet skal kunne bygges selv når dokumentar-facts endnu ikke er klar.
+ *
+ * @param {object|null} facts  get_season_documentary_facts' output, eller null hvis
+ *   dokumentaren (endnu) ikke er tilgængelig — kortet degraderer da til kun
+ *   "Final points" (fra standingsRow) i stedet for at fejle.
+ * @param {{total_points?:number}|null} [standingsRow]  season_standings-rækken for
+ *   MIT hold denne sæson (SeasonEndPage's teamRecap.standingsRow) — fallback-kilde
+ *   til "Final points" når facts.myStanding mangler.
  * @param {(n:number)=>string} formatNumber  lib/intl.js's formatNumber (locale-korrekt)
  * @param {(key:string, params?:object)=>string} t  i18next t() bundet til seasonEnd
+ * @param {{turningPointDateLabel?:string|null}} [extras]  allerede-formateret dato for
+ *   "Turning point"-rækken (afledt af race_stage_schedule.scheduled_at, IKKE den rå
+ *   pool_race.date_text — se raceCompletionDate.js #3197). Falder tilbage til
+ *   løbsnavnet når datoen (endnu) ikke er hentet/tilgængelig.
  * @returns {Array<{label:string, value:string}>}
  */
-export function buildDocumentaryCardStats(facts, formatNumber, t) {
+export function buildDocumentaryCardStats(facts, standingsRow, formatNumber, t, extras = {}) {
   const rows = [];
-  const signing = facts?.signings?.[0];
-  if (signing?.riderName) {
-    rows.push({ label: t("documentary.card.signing"), value: `${signing.riderName} · ${fmtAmount(signing.amount, formatNumber)}` });
+
+  const bestRaceDay = facts?.bestRaceDay;
+  if (bestRaceDay?.race_name && bestRaceDay?.total_points != null) {
+    const points = `${formatNumber(bestRaceDay.total_points)} ${t("documentary.card.pts")}`;
+    const dateOrRace = extras.turningPointDateLabel || bestRaceDay.race_name;
+    rows.push({ label: t("documentary.card.turningPoint"), value: `${points} · ${dateOrRace}` });
   }
+
   const biggest = facts?.biggestResult;
   if (biggest?.rider_name && biggest?.race_name) {
     rows.push({ label: t("documentary.card.result"), value: `${biggest.rider_name} · ${biggest.race_name}` });
   }
+
+  const standingPoints = facts?.myStanding?.total_points ?? standingsRow?.total_points ?? null;
   const rival = facts?.rival;
-  if (rival?.team_name) {
-    rows.push({ label: t("documentary.card.rival"), value: `${rival.team_name} · ${formatNumber(rival.gap)} ${t("documentary.card.points")}` });
+  if (rival?.team_name && rival?.gap != null) {
+    const iAmAhead = standingPoints != null && standingPoints > rival.total_points;
+    const sign = iAmAhead ? "+" : "-";
+    rows.push({ label: t("documentary.card.rival"), value: `${rival.team_name} · ${sign}${formatNumber(rival.gap)}` });
   }
-  const standing = facts?.myStanding;
-  if (standing?.total_points != null) {
-    rows.push({ label: t("documentary.card.finalPoints"), value: formatNumber(standing.total_points) });
+
+  if (standingPoints != null) {
+    rows.push({ label: t("documentary.card.finalPoints"), value: formatNumber(standingPoints) });
   }
+
   return rows.slice(0, 4);
 }

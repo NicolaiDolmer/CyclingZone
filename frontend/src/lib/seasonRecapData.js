@@ -51,16 +51,48 @@ export function resolveNextDivision({
 }
 
 /**
- * Sæson-recap-highlights for ÉT hold — bygget UDELUKKENDE af data SeasonEndPage
- * allerede henter til andre formål (sæson-vinderne, standings, transaktioner),
- * ingen nye tunge kald. Rækkefølge matcher draft-mock'en (#2752 PR #3283):
- * præmie → transfer → etapekonge. Maks 3 punkter (samme loft som mock'en) — en
- * 4. highlight ville aldrig blive vist alligevel (SeasonRecapHero renderer alle
- * den får, men designet er tre kort-linjer, ikke en scrollende liste).
+ * #3341-ish shared helper (season recap polish) — computeSeasonMovement +
+ * resolveNextDivision, ét kald. SeasonEndPage.jsx brugte allerede den robuste
+ * resolveNextDivision-sti (rigtig season_standings-række for næste sæson,
+ * kun fallback til teams.division), mens DashboardPage.jsx's dashboard-nudge
+ * kaldte computeSeasonMovement direkte med team.division — to stier til
+ * "samme" tal der kunne drifte fra hinanden. Denne funktion er den ENE sti,
+ * så begge overflader deler nøjagtig samme logik.
  *
- * Ingen af de tre punkter er GARANTERET til stede — et midterfelt-hold uden
- * salg og uden division-føring i hverken præmie eller etaper får en tom liste,
- * præcis som "held position"-scenariet i preview-mock'en.
+ * @param {object} p
+ * @param {number|null|undefined} p.finishedDivision  division holdet SLUTTEDE sæsonen i
+ * @param {number|null} [p.nextSeasonStandingDivision]
+ * @param {string|null} [p.nextSeasonStatus]
+ * @param {number|null} [p.currentTeamDivision]
+ * @returns {"promoted"|"relegated"|"maintained"|null}
+ */
+export function resolveSeasonMovement({
+  finishedDivision,
+  nextSeasonStandingDivision = null,
+  nextSeasonStatus = null,
+  currentTeamDivision = null,
+} = {}) {
+  const nextDivision = resolveNextDivision({ nextSeasonStandingDivision, nextSeasonStatus, currentTeamDivision });
+  return computeSeasonMovement(finishedDivision, nextDivision);
+}
+
+/**
+ * Sæson-recap-highlights for ÉT hold — bygget UDELUKKENDE af data SeasonEndPage
+ * allerede henter til andre formål (sæson-vinderne, standings, transaktioner,
+ * og nu også #3402's dokumentar-facts), ingen nye tunge kald. Maks 3 punkter.
+ *
+ * #season-recap-polish (18/8, ejer-godkendt mockup): "0 highlights er
+ * normaltilfældet" var IKKE godt nok — et midterfelt-hold fik en tom liste.
+ * Rækkefølgen er nu en GARANTI-kæde, ikke bare tre uafhængige tjek: de tre
+ * oprindelige (præmie → salg → etapekonge, division-/sæson-brede tal) prøves
+ * først; hvis det ikke fylder 3 pladser, falder vi tilbage til holdets EGEN
+ * dokumentar-facts (samme rå tal #3402-kortet allerede bruger) i fast
+ * rækkefølge: bedste løbsdag (vendepunkt) → bedste enkeltresultat → tætteste
+ * rival. Disse tre er UDEN division-/sæson-førerskabs-betingelse (facts er
+ * allerede "MIT holds bedste", ikke "bedst i divisionen"), så de fylder
+ * pladserne ud for langt de fleste hold — en 4. fallback (rival) er der
+ * bevidst ikke, for et hold helt alene i sin division har reelt intet der
+ * matcher "tætteste rival".
  *
  * @param {object} p
  * @param {string} p.myTeamId
@@ -69,7 +101,14 @@ export function resolveNextDivision({
  * @param {{amount:number, description?:string}|null} [p.myBiggestSale]  min STØRSTE transfer_in
  * @param {{riderId:string, name:string, wins:number}|null} [p.myStageKing]  min bedste
  *   etapevinder blandt sæsonens top-5 (findes ved at joine stage_kings mod riders.team_id)
- * @returns {Array<{kind:"prizeLeader"|"biggestSale"|"stageKing", amount?:number, wins?:number, name?:string}>}
+ * @param {object|null} [p.documentaryFacts]  get_season_documentary_facts()-outputtet
+ *   (samme nøgler som #3402's season_documentaries.facts: bestRaceDay/biggestResult/
+ *   rival/myStanding) — kan ankomme SENERE end de øvrige args (egen async fetch,
+ *   samme isolations-mønster som SeasonEndPage's loadDocumentary), derfor et
+ *   selvstændigt, valgfrit argument i stedet for forudsat til stede.
+ * @returns {Array<{kind:"prizeLeader"|"biggestSale"|"stageKing"|"turningPoint"|"biggestResult"|"rival",
+ *   amount?:number, wins?:number, name?:string, points?:number, race?:string, rider?:string,
+ *   team?:string, gap?:number, ahead?:boolean}>}
  */
 export function pickRecapHighlights({
   myTeamId,
@@ -77,6 +116,7 @@ export function pickRecapHighlights({
   prizeByTeam = {},
   myBiggestSale = null,
   myStageKing = null,
+  documentaryFacts = null,
 } = {}) {
   const highlights = [];
 
@@ -97,6 +137,26 @@ export function pickRecapHighlights({
 
   if (myStageKing?.wins > 0) {
     highlights.push({ kind: "stageKing", wins: myStageKing.wins, name: myStageKing.name });
+  }
+
+  if (highlights.length < 3 && documentaryFacts) {
+    const standingPoints = documentaryFacts.myStanding?.total_points ?? null;
+
+    const bestRaceDay = documentaryFacts.bestRaceDay;
+    if (highlights.length < 3 && bestRaceDay?.race_name && bestRaceDay?.total_points != null) {
+      highlights.push({ kind: "turningPoint", points: bestRaceDay.total_points, race: bestRaceDay.race_name });
+    }
+
+    const biggestResult = documentaryFacts.biggestResult;
+    if (highlights.length < 3 && biggestResult?.rider_name && biggestResult?.race_name) {
+      highlights.push({ kind: "biggestResult", rider: biggestResult.rider_name, race: biggestResult.race_name });
+    }
+
+    const rival = documentaryFacts.rival;
+    if (highlights.length < 3 && rival?.team_name && rival?.gap != null) {
+      const ahead = standingPoints != null && standingPoints > rival.total_points;
+      highlights.push({ kind: "rival", team: rival.team_name, gap: rival.gap, ahead });
+    }
   }
 
   return highlights.slice(0, 3);

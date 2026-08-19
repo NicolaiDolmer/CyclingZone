@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
-import { formatNumber } from "../lib/intl";
+import { formatNumber, formatDate } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
+import { latestScheduledMsByRace } from "../lib/raceCompletionDate.js";
 import LeaderBadge from "../components/LeaderBadge";
 import SeasonHonours from "../components/SeasonHonours";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -12,14 +13,15 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { divColor } from "../lib/divisionColors.js";
 import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
 import { pickDefaultSeason } from "../lib/seasonEndDefault.js";
-import { computeSeasonMovement, resolveNextDivision, pickRecapHighlights } from "../lib/seasonRecapData.js";
-import { isMissingTableError } from "../lib/seasonDocumentaryData.js";
+import { resolveSeasonMovement, pickRecapHighlights } from "../lib/seasonRecapData.js";
+import { isMissingTableError, buildDocumentaryCardStats } from "../lib/seasonDocumentaryData.js";
+import { exportSeasonDocumentaryPng, downloadBlob } from "../lib/seasonDocumentaryExport.js";
 import SeasonRecapHero from "../components/SeasonRecapHero.jsx";
 import SeasonDocumentary from "../components/SeasonDocumentary.jsx";
 import {
   CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
-  Button, Select, ZonePill,
+  Button, Select, ZonePill, FlameIcon, PodiumIcon, LightningIcon,
 } from "../components/ui";
 
 // #2908: division-farven kommer nu fra den delte anti-drift-vokabular
@@ -52,6 +54,13 @@ function formatCZ(amount) {
 // {id, icon, label, value}-kontrakt. i18n/format-lag hører hjemme HER (siden),
 // ikke i det rene lib — samme adskillelse som resten af filen (movement-tone/
 // -nøgle bor i seasonRecapCopy.js, teksten hentes her via t()).
+//
+// #season-recap-polish (18/8) — tre NYE kinds ("turningPoint"/"biggestResult"/
+// "rival") er pickRecapHighlights' garanti-fallback, bygget af #3402's
+// dokumentar-facts i stedet for division-/sæson-brede tal. Ikonerne er bevidst
+// FORSKELLIGE fra de tre oprindelige (CoinIcon/ExchangeIcon/TrophyIcon), så et
+// hold der ser en blanding af "rigtige" og fallback-highlights ikke tror det
+// samme bedrift er nævnt to gange.
 function mapRecapHighlight(h, t, myDivision) {
   if (h.kind === "prizeLeader") {
     return { id: "prizeLeader", icon: CoinIcon, label: t("recap.highlight.prizeLeader", { division: myDivision }), value: formatCZ(h.amount) };
@@ -59,11 +68,32 @@ function mapRecapHighlight(h, t, myDivision) {
   if (h.kind === "biggestSale") {
     return { id: "biggestSale", icon: ExchangeIcon, label: t("recap.highlight.biggestSale"), value: formatCZ(h.amount) };
   }
-  // stageKing
+  if (h.kind === "stageKing") {
+    return {
+      id: "stageKing", icon: TrophyIcon,
+      label: t("recap.highlight.stageKing", { name: h.name }),
+      value: t("recap.highlight.stageKingValue", { count: h.wins }),
+    };
+  }
+  if (h.kind === "turningPoint") {
+    return {
+      id: "turningPoint", icon: FlameIcon,
+      label: t("recap.highlight.turningPoint"),
+      value: t("recap.highlight.turningPointValue", { race: h.race, points: formatNumber(h.points) }),
+    };
+  }
+  if (h.kind === "biggestResult") {
+    return {
+      id: "biggestResult", icon: PodiumIcon,
+      label: t("recap.highlight.biggestResult"),
+      value: t("recap.highlight.biggestResultValue", { rider: h.rider, race: h.race }),
+    };
+  }
+  // rival
   return {
-    id: "stageKing", icon: TrophyIcon,
-    label: t("recap.highlight.stageKing", { name: h.name }),
-    value: t("recap.highlight.stageKingValue", { count: h.wins }),
+    id: "rival", icon: LightningIcon,
+    label: t("recap.highlight.rival", { team: h.team }),
+    value: t(h.ahead ? "recap.highlight.rivalBeatenBy" : "recap.highlight.rivalBehindBy", { n: formatNumber(h.gap) }),
   };
 }
 
@@ -112,6 +142,15 @@ export default function SeasonEndPage() {
   // endnu" og "sweepen har ikke nået dette hold endnu" — begge er "intet at
   // vise", ikke en fejl.
   const [documentary, setDocumentary] = useState({ status: "loading", data: null });
+  // #season-recap-polish (18/8) — "Turning point"-rækken på delekortet vil vise
+  // en RIGTIG kalenderdato (ikke facts.bestRaceDay's rå race_id), afledt af
+  // race_stage_schedule.scheduled_at — SAMME kilde/mønster som "Seneste"-
+  // kortenes dato (raceCompletionDate.js #3197: rå pool_race.date_text har
+  // intet årstal og blev eksplicit flagget forvirrende af ejeren). Egen,
+  // isoleret, best-effort fetch: en fejl her degraderer bare kortets
+  // turning-point-værdi til løbsnavnet i stedet for datoen (buildDocumentaryCardStats),
+  // den må ALDRIG kunne vælte resten af siden.
+  const [turningPointDate, setTurningPointDate] = useState(null);
   const [myTeamId, setMyTeamId] = useState(null);
   // #2752/#2361 — nutids-division + navn på MIT hold. division bruges KUN som
   // fallback-kilde til "hvilken division fik jeg næste sæson" (resolveNextDivision),
@@ -364,12 +403,12 @@ export default function SeasonEndPage() {
             .maybeSingle();
           nextSeasonStandingDivision = nextRow?.division ?? null;
         }
-        const nextDivision = resolveNextDivision({
+        const movement = resolveSeasonMovement({
+          finishedDivision: myStandingsRow.division,
           nextSeasonStandingDivision,
           nextSeasonStatus: nextSeasonMeta?.status ?? null,
           currentTeamDivision: myTeamDivision,
         });
-        const movement = computeSeasonMovement(myStandingsRow.division, nextDivision);
 
         // Min egen største salg denne sæson — samme `sells`-liste sæsonens
         // transfer-vinder allerede er fundet i. Egen reduce (ikke afhængig af
@@ -399,20 +438,25 @@ export default function SeasonEndPage() {
           if (mine) myStageKing = { riderId: mine.rider_id, name: `${mine.firstname} ${mine.lastname}`, wins: mine.wins };
         }
 
-        const highlights = pickRecapHighlights({
-          myTeamId,
-          divisionStandings: standings.filter(s => s.division === myStandingsRow.division),
-          prizeByTeam,
-          myBiggestSale,
-          myStageKing,
-        });
-
+        // #season-recap-polish (18/8) — de rene INPUTS til pickRecapHighlights
+        // gemmes i stedet for det FÆRDIGE resultat: dokumentar-facts (den
+        // garanterede fallback-kilde) ankommer via loadDocumentary's egen,
+        // separate async fetch og kan derfor være klar FØR, SAMTIDIG med
+        // eller (typisk) LIDT EFTER denne blok — se teamRecapHighlights-
+        // useMemo'en nedenfor, som kombinerer disse inputs med
+        // documentary.data?.facts hver gang ét af dem ændrer sig.
         setTeamRecap({
           standingsRow: myStandingsRow,
           divisionSize: standings.filter(s => s.division === myStandingsRow.division).length,
           movement,
           prizeWon: prizeByTeam[myTeamId] || 0,
-          highlights,
+          highlightInputs: {
+            myTeamId,
+            divisionStandings: standings.filter(s => s.division === myStandingsRow.division),
+            prizeByTeam,
+            myBiggestSale,
+            myStageKing,
+          },
         });
       }
     } catch (e) {
@@ -448,6 +492,72 @@ export default function SeasonEndPage() {
   const retryHonours = () => { if (selectedSeason) loadHonours(selectedSeason); };
   // #3402 — samme "retry KUN sit eget kald"-mønster som retryHonours.
   const retryDocumentary = () => { if (selectedSeason) loadDocumentary(selectedSeason); };
+
+  // #season-recap-polish (18/8) — de tre garanti-fallback-highlights (og
+  // delekortets "Turning point"-række) genberegnes hver gang enten teamRecap's
+  // rå inputs ELLER documentary.data ændrer sig, i stedet for at blive låst
+  // fast på det øjeblik loadSeason kørte (documentary ankommer via sin egen,
+  // senere async fetch — se loadDocumentary ovenfor).
+  const teamRecapHighlights = useMemo(() => {
+    if (!teamRecap?.highlightInputs) return [];
+    return pickRecapHighlights({
+      ...teamRecap.highlightInputs,
+      documentaryFacts: documentary.data?.facts || null,
+    });
+  }, [teamRecap, documentary.data]);
+
+  // #season-recap-polish (18/8) — "Turning point"-rækkens rigtige kalenderdato
+  // (race_stage_schedule.scheduled_at for facts.bestRaceDay.race_id, IKKE den
+  // rå pool_race.date_text — se raceCompletionDate.js #3197). Egen, isoleret,
+  // best-effort fetch: nøjagtig samme "visnings-bonus, fejl må aldrig vælte
+  // resten"-mønster som ResultaterPage.jsx's egen race_stage_schedule-opslag.
+  useEffect(() => {
+    const raceId = documentary.data?.facts?.bestRaceDay?.race_id;
+    if (!raceId) { setTurningPointDate(null); return undefined; }
+    let cancelled = false;
+    (async () => {
+      // pagination-safe: .eq() på ÉT race_id — max ~21 etaper pr. løb
+      // (#3331-audit-tallet ResultaterPage.jsx's egen race_stage_schedule-
+      // opslag bruger), langt under PostgREST's 1000-loft.
+      const { data, error: scheduleError } = await supabase
+        .from("race_stage_schedule")
+        .select("race_id, scheduled_at")
+        .eq("race_id", raceId);
+      if (cancelled) return;
+      if (scheduleError) { setTurningPointDate(null); return; }
+      const map = latestScheduledMsByRace(data || []);
+      setTurningPointDate(map.get(raceId) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [documentary.data]);
+
+  const turningPointDateLabel = turningPointDate
+    ? formatDate(new Date(turningPointDate), "medium", { timeZone: "Europe/Copenhagen" })
+    : null;
+
+  // #season-recap-polish (18/8) — heroens ene gold-CTA. Bygger det SAMME
+  // delbare PNG-kort som SeasonDocumentary.jsx's (nu fjernede) egen download-
+  // knap gjorde, samme filnavn-mønster — bare med data fra siden i stedet for
+  // dokumentar-sektionen, så knappen virker selv når dokumentaren (endnu) er
+  // "unavailable"/"failed" (kortet degraderer da til kun "Final points").
+  const handleDownloadShareCard = async () => {
+    if (!teamRecap) return;
+    const facts = documentary.data?.facts || null;
+    const stats = buildDocumentaryCardStats(facts, teamRecap.standingsRow, formatNumber, t, {
+      turningPointDateLabel,
+    });
+    const blob = await exportSeasonDocumentaryPng({
+      eyebrow: t("documentary.card.eyebrow", { number: selectedSeason?.number }),
+      teamName: myTeamName || "—",
+      meta: t("recap.shareCardMeta", {
+        division: teamRecap.standingsRow.division,
+        rank: teamRecap.standingsRow.rank_in_division,
+        size: teamRecap.divisionSize,
+      }),
+      stats,
+    });
+    downloadBlob(blob, `cycling-zone-season-${selectedSeason?.number ?? "x"}-documentary.png`);
+  };
 
   const seasonExpectedTotal = useMemo(() => {
     if (!races.length || !racePoints.length) return 0;
@@ -545,7 +655,8 @@ export default function SeasonEndPage() {
               points={teamRecap.standingsRow.total_points}
               stageWins={teamRecap.standingsRow.stage_wins}
               prizeWon={teamRecap.prizeWon}
-              highlights={teamRecap.highlights.map(h => mapRecapHighlight(h, t, teamRecap.standingsRow.division))}
+              highlights={teamRecapHighlights.map(h => mapRecapHighlight(h, t, teamRecap.standingsRow.division))}
+              onDownloadCard={handleDownloadShareCard}
             />
           )}
 
@@ -560,7 +671,6 @@ export default function SeasonEndPage() {
               data={documentary.data}
               onRetry={retryDocumentary}
               seasonNumber={selectedSeason?.number}
-              teamName={myTeamName}
             />
           )}
 
