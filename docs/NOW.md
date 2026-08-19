@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Næste action: MERGE-DAG 19/8** ([prompt](sessions/2026-08-19-merge-dag-session-prompt.md)) — ejer-test + merge-go på trin 7 (PR #3798), derefter PR-køen inkl. løn-sessionens klar-til-merge-pakke: **#3393 → #3972/#3974 → #3449** (rækkefølge bindende, ejer-godkendt visuelt). Derefter ugen: trin 7-udrulning ons → kalender → race-UI PR B → cutover sø 23/8.
+> **🎯 Næste action: MERGE-DAG 19/8** ([prompt](sessions/2026-08-19-merge-dag-session-prompt.md)) — ejer-test + merge-go på trin 7 (PR #3798), derefter PR-køen. Løn-pakken (ejer-dom 19/8 eftermiddag): **#3972 MERGED · #3974/#3449/#3968/#3969 merger i dag når grønne · #3393 merges FØRST 23/8 i drejebogen** (kodekonstant-flip; rebaser over #3974's salaryBasis ved merge). Derefter ugen: trin 7-udrulning ons → kalender → race-UI PR B → cutover sø 23/8.
 
 > **✅ KS3 LUKKET 18/8** ([audit](audits/2026-08-18-kvalitetssession-3.md)): **D1-plan LÅST+BYGGET** (PR #3930 merged, dry-run godkendt — apply ejer-gated søndag m. frosset snapshot) · designs låst: #3899/#3900/#3924 · backlog net −32 (500 åbne). Merge-køen fra KS3 er landet og v7.144 skrevet (se session-linjen nedenfor).
 
