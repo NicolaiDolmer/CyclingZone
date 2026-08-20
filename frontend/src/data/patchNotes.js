@@ -229,12 +229,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Races",
         "en": {
-          "title": "The season 3 calendar is in place",
-          "body": "27 race days, starting Tuesday 25 August. Monday 24 August is a quiet buffer day after the season switch. Grand tours now have proper length, the Giro is spread out, and the season is seeded with hilly time trials, uphill finishes and cobbled windows."
+          "title": "A first draft of the season 3 calendar is live",
+          "body": "27 race days, starting Tuesday 25 August. Monday 24 August is a quiet buffer day after the season switch. What you see is a draft: your feedback is already driving corrections, and the calendar will be revised and locked before the season starts."
         },
         "da": {
-          "title": "Sæson 3-kalenderen er på plads",
-          "body": "27 løbsdage fra tirsdag den 25. august. Mandag den 24. august er en stille bufferdag efter sæsonskiftet. Grand tours har nu rigtig længde, Giroen er spredt ud, og sæsonen er fordelt med bakkede enkeltstarter, uphill-finishes og brostens-vinduer."
+          "title": "Første udkast til sæson 3-kalenderen er ude",
+          "body": "27 løbsdage fra tirsdag den 25. august. Mandag den 24. august er en stille bufferdag efter sæsonskiftet. Det du ser er et udkast: jeres feedback driver allerede rettelser, og kalenderen justeres og låses inden sæsonstart."
         },
         "refs": [
           3546

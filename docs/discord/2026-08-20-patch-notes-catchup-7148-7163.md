@@ -27,7 +27,7 @@ Economy
 - The economy page now shows the season switch in advance, with this season and next side by side
 
 Races & season
-- The season 3 calendar is in place
+- A first draft of the season 3 calendar is live. It is rough, and your feedback is already driving corrections: expect changes tomorrow before it locks
 - The stage type is back on the stage tab
 - Race Centre live ticker shows rider names again
 
