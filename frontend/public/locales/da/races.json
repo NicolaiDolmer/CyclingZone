@@ -593,7 +593,9 @@
     "back": "← Tilbage",
     "raceDnaLabel": "Dette løb:",
     "terrainDna": {
-      "label": "Terræn-DNA · hvad etapen belønner"
+      "label": "Terræn-DNA · hvad etapen belønner",
+      "rest": "Andre faktorer",
+      "finaleFactor": "+ op til ±{pct}%: nedkørsel og positionering afgør finalen"
     },
     "ability": {
       "climbing": "Klatring",

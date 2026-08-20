@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../../lib/stageProfileConfig.js";
-import { hasRouteData } from "../../lib/stageRouteProfile.js";
+import { hasRouteData, finaleFactorPct } from "../../lib/stageRouteProfile.js";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import TerrainDNABar from "./TerrainDNABar.jsx";
 import Tooltip from "../ui/Tooltip.jsx";
@@ -62,7 +62,7 @@ export default function StageDetailPanel({ profile, stageLabel }) {
         )}
       </div>
       <div className="mt-3">
-        <TerrainDNABar demandVector={profile.demand_vector} />
+        <TerrainDNABar demandVector={profile.demand_vector} finaleFactorPct={finaleFactorPct(profile)} />
       </div>
       <p className="text-cz-3 text-2xs mt-2">{t("detail.stageProfile.note")}</p>
     </div>

@@ -215,6 +215,14 @@ export const INTERMEDIATE_BONUS_SECONDS = Object.freeze([3, 2, 1]);
 // Fra backend/lib/raceSimulator.js (Sub-3, #2771 rute-bevidst gap-model).
 export const TECHNICAL_DESCENT_WINDOW_KM = Object.freeze([3, 12]);
 export const VALLEY_MIN_DESCENT_KM = 3;
+// #3149: finale-modifierens VÆGT (ikke bare dens betingelse) — duplikeret fra
+// backend/lib/raceSimulator.js's DESCENDING_FINALE_WEIGHT/TECHNICAL_FINALE_WEIGHT,
+// drift-guardet i stageRouteProfile.test.js. Bruges KUN til at oplyse spilleren om
+// et ±udsving oveni terræn-DNA'et — IKKE til at ændre den 100%-normaliserede sum
+// (finale-modifieren er et separat, signeret lag oven på terrain-scoren, ikke en
+// del af DEMAND_VECTORS' vægt-budget — at blande dem ville selv give et forkert tal).
+export const DESCENDING_FINALE_WEIGHT = 0.018;
+export const TECHNICAL_FINALE_WEIGHT = 0.035;
 export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
   flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
   cobbles: 160, classic: 230, itt: 27.5, ttt: 35,
@@ -286,6 +294,24 @@ export function routeReadKeys(profile) {
   if (sectors.length > 0) keys.push({ key: "cobbles", params: { count: sectors.length } });
 
   return keys;
+}
+
+/**
+ * #3149: hvor meget svinger nedkørsel/positionering finalen — OVENI terræn-DNA'et,
+ * ikke som en del af dets 100%-sum (se DESCENDING_FINALE_WEIGHT/TECHNICAL_FINALE_WEIGHT
+ * ovenfor). Genbruger routeReadKeys' "technical"-betingelse (rutedata) for at undgå en
+ * TREDJE kopi af isTechnicalFinale's rutegeometri; uden rutedata falder den tilbage til
+ * PRÆCIS raceSimulator.finaleModifier's egen fallback (kun finale_type === "descent").
+ * @returns {number} 0 hvis ingen finale-modifier gælder, ellers procentpoint (fx 3.5).
+ */
+export function finaleFactorPct(profile) {
+  if (!profile) return 0;
+  if (hasRouteData(profile)) {
+    return routeReadKeys(profile).some((r) => r.key === "technical")
+      ? TECHNICAL_FINALE_WEIGHT * 100
+      : 0;
+  }
+  return profile.finale_type === "descent" ? DESCENDING_FINALE_WEIGHT * 100 : 0;
 }
 
 /**

@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   hasRouteData, buildProfileSeries, sharedYMax,
-  komPointsForClimb, routeReadKeys, waypointsFor,
+  komPointsForClimb, routeReadKeys, waypointsFor, finaleFactorPct,
   KOM_SCALES, GREEN_FINISH_SCALES, INTERMEDIATE_SPRINT_SCALE,
   FINISH_BONUS_SECONDS, INTERMEDIATE_BONUS_SECONDS,
   TECHNICAL_DESCENT_WINDOW_KM, VALLEY_MIN_DESCENT_KM, DISTANCE_BAND_MIDPOINTS,
+  DESCENDING_FINALE_WEIGHT, TECHNICAL_FINALE_WEIGHT,
 } from "./stageRouteProfile.js";
 
 const PICOS_S4 = {
@@ -287,4 +288,25 @@ test("DRIFT-GUARD: rute-konstanter i frontend matcher backend/lib/raceSimulator.
   assert.deepEqual(TECHNICAL_DESCENT_WINDOW_KM, backend.TECHNICAL_DESCENT_WINDOW_KM, "TECHNICAL_DESCENT_WINDOW_KM afveget fra motoren");
   assert.equal(VALLEY_MIN_DESCENT_KM, backend.VALLEY_MIN_DESCENT_KM, "VALLEY_MIN_DESCENT_KM afveget fra motoren");
   assert.deepEqual(DISTANCE_BAND_MIDPOINTS, backend.DISTANCE_BAND_MIDPOINTS, "DISTANCE_BAND_MIDPOINTS afveget fra motoren");
+  // #3149: finale-faktor-vægtene der oplyses i terrain-DNA'ets "+X%"-note.
+  assert.equal(DESCENDING_FINALE_WEIGHT, backend.DESCENDING_FINALE_WEIGHT, "DESCENDING_FINALE_WEIGHT afveget fra motoren");
+  assert.equal(TECHNICAL_FINALE_WEIGHT, backend.TECHNICAL_FINALE_WEIGHT, "TECHNICAL_FINALE_WEIGHT afveget fra motoren");
+});
+
+// #3149: finaleFactorPct — oplyser spilleren om finale-modifierens ±udsving.
+test("finaleFactorPct: rutedata + descent-finale → TECHNICAL_FINALE_WEIGHT (3.5)", () => {
+  assert.equal(finaleFactorPct(PICOS_S4), TECHNICAL_FINALE_WEIGHT * 100);
+});
+
+test("finaleFactorPct: rutedata uden teknisk finale (summit) → 0", () => {
+  assert.equal(finaleFactorPct(IBERICA_S20), 0);
+});
+
+test("finaleFactorPct: ingen rutedata, finale_type=descent → DESCENDING_FINALE_WEIGHT (1.8), motorens fallback-sti", () => {
+  assert.equal(finaleFactorPct({ profile_type: "mountain", finale_type: "descent" }), DESCENDING_FINALE_WEIGHT * 100);
+});
+
+test("finaleFactorPct: ingen rutedata, ingen descent-finale → 0", () => {
+  assert.equal(finaleFactorPct({ profile_type: "flat", finale_type: "bunch_sprint" }), 0);
+  assert.equal(finaleFactorPct(null), 0);
 });

@@ -593,7 +593,9 @@
     "back": "← Back",
     "raceDnaLabel": "This race:",
     "terrainDna": {
-      "label": "Terrain DNA · what the stage rewards"
+      "label": "Terrain DNA · what the stage rewards",
+      "rest": "Other factors",
+      "finaleFactor": "+ up to ±{pct}%: descending & positioning decide the finale"
     },
     "ability": {
       "climbing": "Climbing",
