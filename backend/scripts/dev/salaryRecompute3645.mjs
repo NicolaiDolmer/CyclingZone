@@ -1,27 +1,25 @@
 #!/usr/bin/env node
-// #3645 / #3393 — GENBEREGNING AF LØN. DRY-RUN ER DEFAULT.
+// #3645 / #3989 — GENBEREGNING AF LØN. DRY-RUN ER DEFAULT.
 //
 // HVAD DETTE SCRIPT ER, OG HVAD DET IKKE ER.
 // Det ER værktøjet der læser populationen, kører den GÆLDENDE løn-formel over den,
 // og fremlægger før/efter-tallene så ejeren kan se hvad en genberegning ville gøre.
-// Det er IKKE stedet hvor formlen bor. Formlen designes separat med ejeren
-// (beslutning Ø4/Ø5 17/8: ankerværdien som grundlag, ét globalt A kalibreret mod
-// ~35 % af målt indtægt) og lever i `backend/lib/salaryBasis.js` + `contractSeed.js`.
-// Scriptet KALDER dem. Det ændrer dem aldrig, og det har ingen egen kopi af dem.
+// Det er IKKE stedet hvor formlen bor. Formlen lever i `computeFrozenSalary`
+// (backend/lib/contractSeed.js) + SALARY_RATE_PRODUCTION (backend/lib/economyConstants.js).
+// Scriptet KALDER den. Det ændrer den aldrig, og det har ingen egen kopi af den.
 //
-// TO GRUNDLAG, ÉT VÆRKTØJ.
-//   --basis production  (default) — den løn der kører i dag: computeFrozenSalary,
-//                       altså current_production_value × divisions-satsen (#2594).
-//   --basis market      — #3393's grundlag. Kræver at `lib/salaryBasis.js` og
-//                       `SALARY_MARKET_MODEL` findes, dvs. at #3393 er merged.
-//                       Er de der ikke, stopper scriptet og siger hvorfor i stedet
-//                       for at gætte en model.
+// ÉT GRUNDLAG, ÉT VÆRKTØJ (siden #3989, ejer-beslutning 20/8).
+//   --basis production  (default, eneste gyldige værdi) — computeFrozenSalary:
+//                       current_production_value × 0,35 (SALARY_RATE_PRODUCTION),
+//                       ÉN global sats. Division indgår IKKE — #3989 fjernede
+//                       den strukturelt fra computeFrozenSalary's signatur.
 //
-// Grunden til at begge findes: drejebogens gate for komponent 2 er "genberegnings-
-// script dry-run mod staging". Den gate skal kunne passeres FØR #3393 merges, ellers
-// er værktøjet først klar samtidig med det det skal sikre. Med `production` kan
-// hele kæden (læsning, rapport, apply-porte, backup-krav) tør-køres i dag, og
-// `market` slår til af sig selv den dag modulet er der.
+// HISTORIK. Scriptet havde tidligere også et `--basis market`-grundlag for
+// #3393 (backend/lib/salaryBasis.js + SALARY_MARKET_MODEL). #3393 er PARKERET:
+// målt mod prod 20/8 genindførte den markedsværdi-baserede formel præcis den
+// alders/evne-inversion løn-decouplingen (#2594) fjernede. #3989 erstattede
+// begge grundlag med ÉT globalt, og #3992 SLETTEDE salaryBasis.js ved merge.
+// `--basis market` er derfor fjernet herfra (#3645) — der er intet at pege på.
 //
 // APPLY.
 //   Kræver BEGGE dele: CONFIRM_SALARY_RECOMPUTE=yes i miljøet OG --apply.
@@ -38,16 +36,16 @@
 //   dry-run mod staging:
 //     cd backend && node scripts/dev/salaryRecompute3645.mjs
 //   dry-run mod prod (read-only):
-//     cd backend && infisical run --env=prod -- node scripts/dev/salaryRecompute3645.mjs --basis market
+//     cd backend && infisical run --env=prod -- node scripts/dev/salaryRecompute3645.mjs
 //   skrivning (ejer-gated på dagen):
-//     CONFIRM_SALARY_RECOMPUTE=yes infisical run --env=prod -- node scripts/dev/salaryRecompute3645.mjs --basis market --apply
+//     CONFIRM_SALARY_RECOMPUTE=yes infisical run --env=prod -- node scripts/dev/salaryRecompute3645.mjs --apply
 //
-// Refs #3645 #3393 #3757 #2594 #2083.
+// Refs #3645 #3989 #3393 #2594 #2083.
 
 import { createClient } from "@supabase/supabase-js";
 
 import { computeFrozenSalary } from "../../lib/contractSeed.js";
-import { backupTableName, fmtInt, fmtSigned, percentileSummary } from "../lib/cutover3645.js";
+import { assertValidSalaryBasis, backupTableName, buildTeamSalaryReport, fmtInt, fmtSigned, percentileSummary } from "../lib/cutover3645.js";
 
 const BACKUP_TABLE = backupTableName("cutover", 3645, "2026-08-23");
 const WRITE_BATCH = 100;
@@ -60,8 +58,10 @@ const BASIS = val("--basis") || "production";
 const APPLY = flag("--apply");
 const CONFIRMED = process.env.CONFIRM_SALARY_RECOMPUTE === "yes";
 
-if (!["production", "market"].includes(BASIS)) {
-  console.error(`Ukendt --basis "${BASIS}". Gyldige: production, market.`);
+try {
+  assertValidSalaryBasis(BASIS);
+} catch (err) {
+  console.error(err.message);
   process.exit(1);
 }
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
@@ -77,34 +77,12 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const projectRef = (SUPABASE_URL.match(/https:\/\/([a-z0-9]+)\.supabase\./) || [])[1] || "ukendt";
 
 // ── Løn-funktionen hentes, den skrives ikke ─────────────────────────────────
-// `market`-grundlaget lever i #3393. Er PR'en ikke merged, findes modulet ikke, og
-// så stopper vi højlydt i stedet for at bygge en andenudgave af formlen her.
-let salaryFn = null;
-let basisNote = "";
-if (BASIS === "production") {
-  salaryFn = (rider, division) => computeFrozenSalary({ current_production_value: rider.current_production_value, division });
-  basisNote = "computeFrozenSalary (contractSeed.js) — current_production_value × divisions-sats, #2594.";
-} else {
-  let basisMod = null;
-  let konst = null;
-  try {
-    basisMod = await import("../../lib/salaryBasis.js");
-    konst = await import("../../lib/economyConstants.js");
-  } catch {
-    basisMod = null;
-  }
-  if (!basisMod?.marketBasisSalary || !basisMod?.resolveMarketBase || !konst?.SALARY_MARKET_MODEL) {
-    console.error("STOP — --basis market kræver backend/lib/salaryBasis.js + SALARY_MARKET_MODEL i economyConstants.js.");
-    console.error("De findes først når #3393 er merged. Kør indtil da med --basis production.");
-    console.error("Scriptet bygger IKKE sin egen udgave af formlen — den designes med ejeren (beslutning Ø4/Ø5).");
-    process.exit(1);
-  }
-  const model = konst.SALARY_MARKET_MODEL;
-  salaryFn = (rider) => basisMod.marketBasisSalary(basisMod.resolveMarketBase(rider).base, model);
-  basisNote = `marketBasisSalary (salaryBasis.js) med SALARY_MARKET_MODEL fra economyConstants.js.`;
-}
+// Ét globalt grundlag: computeFrozenSalary bruger IKKE division (#3989 fjernede
+// parameteren fra signaturen), så den kaldes udelukkende på current_production_value.
+const salaryFn = (rider) => computeFrozenSalary({ current_production_value: rider.current_production_value });
+const basisNote = "computeFrozenSalary (contractSeed.js) — current_production_value × SALARY_RATE_PRODUCTION (0,35, global sats, #3989).";
 
-console.log("=== #3393 løn-genberegning ===");
+console.log("=== #3645 løn-genberegning (#3989-formel) ===");
 console.log(APPLY ? "TILSTAND: APPLY (skriver riders.salary)" : "TILSTAND: DRY-RUN (skriver intet)");
 console.log(`Database : ${projectRef}`);
 console.log(`Grundlag : ${BASIS} — ${basisNote}`);
@@ -138,6 +116,7 @@ console.log(`\nRyttere på et hold med frossen løn: ${fmtInt(riders.length)}`);
 const plan = [];
 const deltas = [];
 const perDivision = new Map();
+const perTeamInput = [];
 let sumFoer = 0;
 let sumEfter = 0;
 let uaendret = 0;
@@ -146,7 +125,7 @@ for (const r of riders) {
   const team = teamById.get(r.team_id) || null;
   const division = team?.division ?? null;
   const foer = Number(r.salary);
-  const efter = salaryFn(r, division);
+  const efter = salaryFn(r);
   sumFoer += foer;
   sumEfter += efter;
 
@@ -157,6 +136,8 @@ for (const r of riders) {
   d.efter += efter;
   if (team?.is_ai) d.ai++; else d.menneske++;
   perDivision.set(key, d);
+
+  perTeamInput.push({ teamId: r.team_id, teamName: team?.name ?? "(ukendt)", isAi: !!team?.is_ai, foer, efter });
 
   if (efter === foer) { uaendret++; continue; }
   deltas.push(efter - foer);
@@ -189,11 +170,29 @@ for (const [key, d] of [...perDivision.entries()].sort()) {
   console.log(`   ${key.padEnd(8)} n ${fmtInt(d.n).padStart(6)} (AI ${fmtInt(d.ai)} / menneske ${fmtInt(d.menneske)})  ${fmtInt(d.foer).padStart(12)} → ${fmtInt(d.efter).padStart(12)}  (${pct >= 0 ? "+" : ""}${pct} %)`);
 }
 
-// Menneske-ejede hold er dem spillerne mærker. De vises for sig, aldrig gemt i
-// et samlet snit sammen med AI-holdene.
+// ── Pr. hold — sammenligningsgrundlaget for den ejer-godkendte hold-for-hold-
+// måling fra 20/8 (#3989: medianholdets prognose ×2,2 af dagens frosne løn).
+const teamReportAll = buildTeamSalaryReport(perTeamInput);
+const teamReportHuman = buildTeamSalaryReport(perTeamInput.filter((r) => !r.isAi));
+console.log(`\nPr. hold — lønsum FØR → EFTER, ratio:`);
+console.log(`   Alle hold (n=${fmtInt(teamReportAll.teams.length)})      · medianhold ${fmtInt(teamReportAll.medianFoer)} → ${fmtInt(teamReportAll.medianEfter)} CZ$  (×${teamReportAll.medianRatio == null ? "—" : teamReportAll.medianRatio.toFixed(2)})`);
+console.log(`   Menneske-hold (n=${fmtInt(teamReportHuman.teams.length)}) · medianhold ${fmtInt(teamReportHuman.medianFoer)} → ${fmtInt(teamReportHuman.medianEfter)} CZ$  (×${teamReportHuman.medianRatio == null ? "—" : teamReportHuman.medianRatio.toFixed(2)})`);
+if (teamReportHuman.ratioSummary.n) {
+  const rs = teamReportHuman.ratioSummary;
+  console.log(`   Ratio-spredning (menneske-hold): min ×${rs.min.toFixed(2)} · p10 ×${rs.p10.toFixed(2)} · p50 ×${rs.p50.toFixed(2)} · p90 ×${rs.p90.toFixed(2)} · max ×${rs.max.toFixed(2)}`);
+}
+console.log(`   Sammenlign med den ejer-godkendte måling 20/8 (#3989, PR #3992-commit): medianhold ×2,2.`);
+console.log(`\nHold, menneske-ejede (navn · n · før → efter · ratio):`);
+for (const t of teamReportHuman.teams) {
+  console.log(`   ${t.teamName.padEnd(28)} n ${fmtInt(t.n).padStart(3)}  ${fmtInt(t.foer).padStart(10)} → ${fmtInt(t.efter).padStart(10)}  (×${t.ratio == null ? "—" : t.ratio.toFixed(2)})`);
+}
+
+// De 10 største per-rytter-ændringer på menneske-ejede hold. AI-hold vises
+// aldrig i toppen — det er menneske-ejede hold spillerne mærker.
 const menneske = plan.filter((p) => !p.erAi);
 console.log(`\nMenneske-ejede hold: ${fmtInt(menneske.length)} ryttere ændres.`);
-const stoerste = menneske.slice().sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 15);
+const stoerste = menneske.slice().sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 10);
+console.log(`\nDe 10 største per-rytter-ændringer (menneske-ejede hold):`);
 for (const p of stoerste) {
   console.log(`   ${p.navn.padEnd(28)} ${p.hold.padEnd(22)} ${fmtInt(p.foer).padStart(9)} → ${fmtInt(p.efter).padStart(9)}  (${p.delta >= 0 ? "+" : ""}${fmtInt(p.delta)})`);
 }
