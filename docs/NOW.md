@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Næste action: TRIN 7-MERGE efter kl. 20** (ejer tjekker i ro og orden; aften-sessionen kører kæden ved go). Merge-toget står klart i NUMMER-orden: trin 7 (PR #3798, 7.158) → #4013 (7.159) → #4012 etapetype variant C, ejer-valgt (7.160) → #4021 pension-banner, ejer-godkendt visuelt (7.161). Alle fire MERGEABLE + fuld e2e kørt på trin 7 (527 grønne). Efter trin 7-merge: migration → backfill-dry-run m. EJER-STOP → refit → indbakke → W7 hjælpetekst-fan-out (#3714 #3623 #3456 #3412). Merged i aften: #4019 spejder-modning (7.157, #3997 done, PR #4008 lukket) · #4020 mark-alle-læst (#4017 done). PR #4018 (finance): afventer fix-workerens push; uafhængig revision fandt KRITISK hul (sponsor-performance-puljen op til 150k mangler i afregningen + S2/S3-kolonner sammenligner forskellige størrelser) — skal rettes før merge, økonomien skal være perfekt.
+> **🎯 Næste action: MERGE-TOGET ved ejer-go efter kl. 20** ([prompt](sessions/2026-08-20-aften-merge-tog-fortsaettelse-prompt.md) — ALT verificeret og staged). Orden er BINDENDE (patch note-numre): trin 7 PR #3798 (7.158, ejer-go er gaten) → #4013 (7.159, + index-SQL post-merge) → #4012 variant C (7.160) → #4021 pension (7.161) → #4018 finance (7.162, tjek CI-e2e først). Serielle patchNotes-konflikter pr. vogn er forventede — mekanisk løsning i prompten. Efter trin 7: migration → backfill-dry-run m. EJER-STOP → refit → indbakke → W7-fan-out. Merged 20/8 aften: #4019 (7.157) · #4020 · #4003. Ejer-go'er ER givet på #4012/#4021/#4018; kun trin 7 venter. Nye opfølgninger: #4023 #4024 #4025 (tekst-trim, ejer-princip: kort på fladen, manualer i Hjælp).
 
 > **✅ Supabase-sessionen 20/8 LUKKET** (#4010 → PR #4013, patch note v7.159). Målt over 23 t: realtime var reelt dødt (7.727 `MalformedJWT`/døgn, 97 % af realtime-loggen — `sb_publishable_…` er ikke en JWT) · sponsor-sweep læste `race_results` 203.849×/døgn · `balanceDriftWatch` 376.260 buffere pr. side → **16.669 målt efter** · `getUser()` = ~515k DB-queries/døgn. Nye: **#4014** log-vagt · **#4015** request-budget · **#4016** session-lås · **#4017** mark-alle-læst. Advisor-accept-listen genverificeret mod prod (matviews: `anon` kan IKKE læse; `is_admin()` svarer altid `false` til anon) — skrevet ind i [4/8-auditten](audits/2026-08-04-supabase-hardening.md) så den ikke genrejses.
 
@@ -20,6 +20,6 @@
 - **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 27 løbsdage.
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Skalering:** #323.
 
-> **🤖 Aktive sessioner:** AFTEN-SESSIONEN (trin 7-finale + merge-tog) er AKTIV og står standby til ejer-go efter kl. 20 (Claude Code, hoved-checkout). Rør ikke merge-togets brancher eller feat/4011-finance-opgoerelse-afregning (fix-worker fra design-sessionen pusher stadig).
+> **🤖 Aktive sessioner: Ingen aktiv session.** (Race-planning-prototype-sessionen kan holde hoved-checkoutet på egen branch — arbejd i worktrees.)
 
 _Historik i git-log, issue-tråde + docs/audits/._

@@ -4,7 +4,7 @@
 
 **Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne.
 
-**Målt:** **529** åbne issues (20/8) · 232 brugere, 1 abo · **S2-finale søn 23/8 kl. 19; cutover 19:30-22:30; S3-løb fra tir 25/8.** Næste session: [trin 7-finale + merge-tog](sessions/2026-08-20-aften-trin7-finale-merge-session-prompt.md).
+**Målt:** **529** åbne issues (20/8) · 232 brugere, 1 abo · **S2-finale søn 23/8 kl. 19; cutover 19:30-22:30; S3-løb fra tir 25/8.** Næste session: [merge-togets fortsættelse](sessions/2026-08-20-aften-merge-tog-fortsaettelse-prompt.md) ved ejer-go efter kl. 20.
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
@@ -52,8 +52,8 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20.
 
 - **Rest:** #2085 → #2853 · **W7** efter trin 7 (#3714 #3623 #3456 #3412) · **W8**: 53 needs-decision tilbage (bundt 2 = økonomi, efter cutover).
-- **Fra design-sessionen 20/8:** #4011 finance A+C ships FØR søndag · #3924 kompakt kvittering efter trin 7-merge · #2748 pension-minimum (evt. før søndag) · #4009 · PR #4008 klar.
-- Småbugs: **#4017** (mark-alle-læst omskriver ALLE notifikationer → 92.560 WAL-events/døgn; én linje, før 25/8) · #3896 · #3897 · #3898 · #3917-analyse leveret (fodrer #3855).
+- **Fra design-sessionen 20/8:** #4011 finance-PR #4018 fix-runde done + ejer-go, merges sidst i toget · #2748 pension-PR #4021 bygget + ejer-godkendt · #4009 · #4025 tekst-trim på økonomiflader (senere). #3997 spejder-modning SHIPPET (7.157); #3924-kvittering ligger I trin 7-PR'en.
+- Småbugs: #3896 · #3897 · #3898 · #3917-analyse leveret (fodrer #3855).
 
 ## E2 · Race-oplevelsen
 
