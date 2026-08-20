@@ -8578,6 +8578,7 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
       supabase.from("teams").select("id, division, balance, sponsor_income").eq("id", teamId).single(),
       // #3989: current_production_value + salary — samme to felter S3-lønnen
       // (computeFrozenSalary) og S2-kontraktlønnen udledes af.
+      // pagination-safe: one team's own roster, bounded by squad cap (<40)
       supabase
         .from("riders")
         .select("id, firstname, lastname, salary, prize_earnings_bonus, current_production_value")

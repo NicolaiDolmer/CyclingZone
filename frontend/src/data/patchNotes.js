@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.162",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "The economy page shows the season switch in advance",
+          "body": "The Overview tab now shows season 2 and season 3 side by side for every income and cost line, plus a settlement receipt that walks through the season switch step by step: sponsor money in, loan interest, the new wage bill, upkeep, facilities and staff. The receipt uses the same numbers the switch will actually charge, and a note lists the few items that cannot be known in advance."
+        },
+        "da": {
+          "title": "Økonomisiden viser sæsonskiftet på forhånd",
+          "body": "Overblik-fanen viser nu sæson 2 og sæson 3 side om side for hver indtægts- og udgiftslinje, plus en afregnings-kvittering der gennemgår sæsonskiftet trin for trin: sponsorpenge ind, lånerente, den nye lønregning, upkeep, faciliteter og stab. Kvitteringen bruger de samme tal som skiftet faktisk trækker, og en note nævner de få poster der ikke kan kendes på forhånd."
+        },
+        "refs": [
+          4011
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.157",
     "date": "2026-08-20",
     "label": "Beta",
