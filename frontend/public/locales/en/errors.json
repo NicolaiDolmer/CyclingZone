@@ -27,6 +27,7 @@
     "rider_in_open_swap_auction": "This rider is offered in an open swap. Withdraw the swap offer before starting an auction",
     "rider_on_auction_transfer": "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
     "rider_on_auction_swap": "One of the swapped riders is on an active auction. The swap was cancelled. Bid on the auction instead.",
+    "rider_on_auction_release": "This rider is currently on auction and can't be released. Wait for the auction to end first",
     "invalid_start_price": "Invalid starting price",
     "invalid_offer_amount": "Invalid amount",
     "invalid_loan_amount": "Invalid amount",

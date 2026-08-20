@@ -89,6 +89,43 @@ test("release-routen kalder den delte owner/retired/akademi-guard", () => {
   assert.match(block, /loadOwnedSeniorRiderForAction/, "release skal bruge den delte guard-helper");
 });
 
+// #3963: en rytter der ligger på en aktiv/udvidet auktion må ikke kunne
+// fyres — ellers kører auktionen videre uden ejer og "vindes" (før denne
+// fix) af et implicit selv-bud fra fyreren selv ved finalize.
+
+test("release-routen og release-quote-routen blokerer via assertRiderNotOnActiveAuction (#3963)", () => {
+  const releaseBlock = routeBlock("post", "/riders/:id/release");
+  assert.match(releaseBlock, /assertRiderNotOnActiveAuction/, "release skal afvise en rytter der ligger på auktion");
+
+  const quoteBlock = routeBlock("get", "/riders/:id/release-quote");
+  assert.match(quoteBlock, /assertRiderNotOnActiveAuction/, "release-quote skal spejle samme guard som POST-routen");
+});
+
+test("assertRiderNotOnActiveAuction bruger den delte getActiveAuctionRiderIds/getReleaseAuctionConflict-kilde og afviser med 409", () => {
+  const block = helperBlock("assertRiderNotOnActiveAuction");
+  assert.match(block, /getReleaseAuctionConflict/, "guarden skal bruge den delte konflikt-helper (samme kilde som transfer/swap-gates, #1748(a))");
+  assert.match(block, /getActiveAuctionRiderIds/, "guarden skal hente aktive auktioner via den delte single-source-of-truth");
+  assert.match(block, /status:\s*409/, "afvisningen skal svare med 409");
+  assert.match(block, /rider_on_auction_release/, "afvisningen skal bruge den dedikerede fejlkode");
+});
+
+test("getReleaseAuctionConflict (auctionRules.js) matcher konflikt-koden fra de øvrige 'kun én vej ad gangen'-gates", () => {
+  const marker = "export function getReleaseAuctionConflict(";
+  const authSource = readFileSync(resolve(__dirname, "./auctionRules.js"), "utf8");
+  const start = authSource.indexOf(marker);
+  assert.notEqual(start, -1, "getReleaseAuctionConflict skal findes i auctionRules.js");
+  const block = authSource.slice(start, start + 400);
+  assert.match(block, /rider_on_auction/, "konflikt-koden skal matche getTransferAuctionConflict/getSwapAuctionConflict-familien");
+});
+
+test("guarden mod aktiv auktion kaldes FØR release-routens balance-tjek (afvisning, ikke stille debitering)", () => {
+  const block = routeBlock("post", "/riders/:id/release");
+  const auctionGuardIdx = block.indexOf("assertRiderNotOnActiveAuction");
+  const balanceCheckIdx = block.indexOf("cannot_afford_release");
+  assert.ok(auctionGuardIdx !== -1 && balanceCheckIdx !== -1, "begge markører skal findes i routen");
+  assert.ok(auctionGuardIdx < balanceCheckIdx, "auktions-guarden skal køre FØR balance-tjekket");
+});
+
 test("release-routen beregner gebyret via computeReleaseBuyoutFee + blokerer ved manglende balance", () => {
   const block = routeBlock("post", "/riders/:id/release");
   assert.match(block, /computeReleaseBuyoutFee/, "release skal bruge computeReleaseBuyoutFee-helperen");

@@ -2178,7 +2178,17 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
   assert.match(notifications[0].title, /vandt/i);
 });
 
-test("finalizeAuctionById treats legacy non-owned auctions without current_bidder as initiator wins", async () => {
+// #3963: en manager fyrede sin EGEN rytter (POST /riders/:id/release) mens
+// han stadig lå på en auktion manageren selv havde startet. release rører
+// aldrig auktionsrækken, så den løb videre uden bud — og "implicit first
+// bid"-fallbacket herunder (fjernet ved denne fix) gjorde tidligere fyreren
+// til sin egen (eneste) byder på en rytter han netop havde fyret, uden
+// nogensinde at have budt, debiterede ham for "købet" og lagde rytteren
+// tilbage på hans trup uden om squad-loftet. Denne test hed tidligere
+// "... as initiator wins" og assertede PRÆCIS det — nu skal auktionen i
+// stedet annulleres stille (ingen penge, ingen ejerskabsskift), samme
+// no-op-cancel-semantik som #2918 (pensioneret rytter mens auktionen kører).
+test("finalizeAuctionById refuses an implicit self-bid when the rider has no owner at finalization (#3963)", async () => {
   const auctionUpdates = [];
   const teamUpdates = [];
   const riderUpdates = [];
@@ -2188,16 +2198,16 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
   const result = await finalizeAuctionById({
     supabase: createFinalizeAuctionSupabase({
       auction: {
-        id: "auction-legacy-free",
+        id: "auction-fired-mid-auction",
         status: "active",
         current_bidder_id: null,
         current_price: 48,
         seller_team_id: "initiator-team",
         is_guaranteed_sale: false,
         rider: {
-          id: "rider-legacy-free",
-          firstname: "Legacy",
-          lastname: "Free",
+          id: "rider-fired-mid-auction",
+          firstname: "Fired",
+          lastname: "Rider",
           team_id: null,
         },
       },
@@ -2223,7 +2233,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
       riderUpdates,
       financeInserts,
     }),
-    auctionId: "auction-legacy-free",
+    auctionId: "auction-fired-mid-auction",
     notifyTeamOwner: async (teamId, type, title, message, entityId) => {
       notifications.push({ teamId, type, title, message, entityId });
     },
@@ -2231,43 +2241,24 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.code, "completed");
+  // #3963: IKKE "completed" med initiator som køber — auktionen slutter som
+  // en almindelig usolgt auktion (ingen effektiv byder).
+  assert.equal(result.code, "no_bids");
   assert.deepEqual(auctionUpdates, [{
     status: "completed",
     actual_end: "2026-04-29T17:00:00.000Z",
     seller_team_id: null,
-    current_bidder_id: "initiator-team",
   }]);
-  assert.deepEqual(teamUpdates, [
-    { teamId: "initiator-team", payload: { balance: 252 } },
-  ]);
-  assert.deepEqual(riderUpdates, [{
-    team_id: "initiator-team",
-    pending_team_id: null,
-    acquired_at: "2026-04-29T17:00:00.000Z",
-    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
-    contract_length: 2,
-    contract_end_season: 2,
-  }]);
-  assert.deepEqual(financeInserts, [{
-    team_id: "initiator-team",
-    type: "transfer_out",
-    amount: -48,
-    description: "Købt Legacy Free på auktion",
-    metadata: { code: "tx.auctionBuy", params: { riderName: "Legacy Free" } },
-    season_id: "season-active-mock",
-    actor_type: "cron",
-    actor_id: null,
-    source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
-    reason_code: "auction_winner_payment",
-    related_entity_type: "auction",
-    related_entity_id: "auction-legacy-free",
-    idempotency_key: "auction_winner:auction-legacy-free",
-  }]);
-  // #3549: samme dedup — ingen ekstra "Auktion afsluttet"-besked til sig selv.
-  assert.equal(notifications.length, 1, "#3549: sælger-beskeden skal IKKE dubleres når køber og sælger er samme hold");
+  // Money-risk fuldt lukket: ingen balance-RPC-kald, ingen ejerskabsskift —
+  // fyreren bliver ALDRIG debiteret for sin egen fyrede rytter.
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(riderUpdates, []);
+  assert.deepEqual(financeInserts, []);
+  // Sælgeren (fyreren) får besked om at auktionen sluttede uden bud — ikke at
+  // han "vandt" sin egen rytter.
+  assert.equal(notifications.length, 1);
   assert.equal(notifications[0].teamId, "initiator-team");
-  assert.match(notifications[0].title, /vandt/i);
+  assert.doesNotMatch(notifications[0].title, /vandt/i);
 });
 
 // ── #1309 kontrakt-on-acquire ────────────────────────────────────────────────
