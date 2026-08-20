@@ -235,6 +235,10 @@ async function fetchRidersSortedBySalary(supabase, { filters, from, to, riderSel
   // (PK) — ellers kan sider overlappe/springe rækker over flere .range()-kald.
   function buildBranchQuery(column, applyNullFilter) {
     return () => {
+      // pagination-safe: denne funktion delegeres til fetchAllRows (kaldet som
+      // `fetchAllRows(buildBranchQuery(...))` nedenfor) — henter ALLE matchende
+      // rækker på tværs af sider via .range()-loopet i fetchAllRows, ikke
+      // afgrænset i selve dette statement.
       let q = supabase.from("riders").select(`id, ${column}${abilFilterFragment}`);
       q = applyRiderColumnFilters(q, filters, { prefix: "" }, seasonYear);
       q = applyAbilityFilters(q, filters, { prefix: `${ABILITY_TABLE}.` });
@@ -279,6 +283,9 @@ async function fetchRidersSortedByRating(supabase, { filters, from, to, riderSel
   function buildQuery() {
     // #3331: fetchAllRows kræver en stabil .order() i buildQuery — riders.id
     // (PK) — ellers kan sider overlappe/springe rækker over flere .range()-kald.
+    // pagination-safe: denne funktion delegeres til fetchAllRows (kaldet som
+    // `fetchAllRows(buildQuery)` nedenfor) — henter ALLE matchende rækker på
+    // tværs af sider via .range()-loopet i fetchAllRows, ikke afgrænset her.
     let q = supabase.from("riders").select(`id, primary_type, ${abilSelect}`);
     q = applyRiderColumnFilters(q, filters, { prefix: "" }, seasonYear);
     q = applyAbilityFilters(q, filters, { prefix: `${ABILITY_TABLE}.` });
