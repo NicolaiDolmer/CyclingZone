@@ -27,6 +27,8 @@ import { computeCompositionStats } from "./calendarCompositionTargets.js";
 import { computeStageOrderStats } from "./stageOrderMetrics.js";
 import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPhaseProfiles.js";
 import { grandTourRestDayCount } from "./grandTourRestDays.js";
+import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
+import { captureException } from "./sentry.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -608,6 +610,38 @@ export async function materializeTierCalendars({
     }
     summary.tiers.push(tLine);
   }
+
+  // #3990: materialisér seasons.race_days_total fra den FAKTISKE kalender så snart
+  // den er skrevet. Uden dette står en frisk sæson med schema-defaulten (60) indtil
+  // recomputeSeasonRaceDays rammes REAKTIVT af det første resultat-import
+  // (raceRunner.js/pcmResultsImport.js) — og wageDeductionSweep, der beregner
+  // dagslønnen som salary / race_days_total, ville i mellemtiden opkræve ~47 % af
+  // den tiltænkte dagsløn (målt i prod 20/8: sæson 3 stod med 60 mod kalenderens 28).
+  //
+  // Ét sted dækker ALLE materialiserings-stier: seasonTransition, manuel
+  // buildSeasonCalendar.js, relaunch og reconcilePoolCalendarOnActivation.
+  // recomputeSeasonRaceDays er idempotent + selv-helende (tæller distinkte
+  // game_day_start på tværs af ALLE løb for sæsonen, ikke kun de netop indsatte),
+  // så et redundant kald — fx en no-op-materialisering eller en aktivering der kun
+  // rammer ÉN pulje — er harmløst og retter drift over tid.
+  //
+  // FAIL-SAFE: en fejlende recompute (fx netværk) må ALDRIG vælte selve
+  // kalender-materialiseringen. Fejlen logges på summary + Sentry, og næste
+  // materialisering retter sig selv. dryRun skriver intet og springes helt over.
+  if (!dryRun) {
+    try {
+      // Returværdien er race_days_completed (skalar-kontrakten fra seasonRaceDays.js);
+      // race_days_total skrives til seasons-rækken af selve kaldet.
+      summary.raceDaysCompletedAfterRecompute = await recomputeSeasonRaceDays({ supabase, seasonId });
+    } catch (err) {
+      summary.raceDaysTotalError = err.message;
+      captureException(err, {
+        tags: { phase: "season_calendar_race_days" },
+        extra: { seasonId },
+      });
+    }
+  }
+
   return summary;
 }
 

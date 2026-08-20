@@ -42,6 +42,30 @@ function makeSupabase(initial = {}) {
       // (.order("id").range()) — mocken slicer den filtrerede tabel som en enkelt side.
       range(from, to) { return Promise.resolve({ data: rows().filter(matches).slice(from, to + 1), error: null }); },
       maybeSingle() { return Promise.resolve({ data: rows().filter(matches)[0] ?? null, error: null }); },
+      // #3990: recomputeSeasonRaceDays skriver seasons.race_days_total via
+      // .update(patch).eq("id", seasonId). Mutationen UDSKYDES til await-tidspunktet,
+      // så alle .eq()-filtre er registreret først — ellers ville et update før .eq
+      // ramme hele tabellen.
+      update(patch) {
+        const apply = () => {
+          if (state.__updateThrows === table) {
+            return { data: null, error: { message: `simuleret ${table}-skrivefejl` } };
+          }
+          const touched = [];
+          for (const row of rows()) {
+            if (!matches(row)) continue;
+            Object.assign(row, JSON.parse(JSON.stringify(patch)));
+            touched.push(row);
+          }
+          return { data: touched, error: null };
+        };
+        const chain = {
+          eq(c, v) { filters.push({ t: "eq", c, v }); return chain; },
+          in(c, v) { filters.push({ t: "in", c, v }); return chain; },
+          then(res, rej) { return Promise.resolve(apply()).then(res, rej); },
+        };
+        return chain;
+      },
       insert(payload) {
         const arr = Array.isArray(payload) ? payload : [payload];
         const inserted = arr.map((r) => ({ id: `${table}-${idSeq++}`, ...r }));
@@ -915,4 +939,61 @@ test("#3469 nedre tier (ingen senere tier reserverer arketypen) kan stadig frit 
   const tier4 = tierPlans.find((t) => t.tier === 4);
   const cobbledCount = tier4.pools[0].raceRows.filter((r) => r.pool_race_id === "ps-cob-1" || r.pool_race_id === "ps-cob-2").length;
   assert.equal(cobbledCount, 2, "den eneste tier der reserverer arketypen skal frit kunne tage begge — intet nedstrøms at beskytte");
+});
+
+// ---------------------------------------------------------------------------
+// #3990 — seasons.race_days_total materialiseres sammen med kalenderen.
+// ---------------------------------------------------------------------------
+
+function raceDaysState() {
+  const catalog = tier3Catalog();
+  const league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
+  const mgr = (id) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: 4 });
+  return {
+    league_divisions,
+    teams: [mgr("a1"), mgr("a2"), mgr("a3")],
+    race_pool: catalog,
+    // Schema-defaulten, præcis som sæson 3 stod i prod 20/8 før fixet.
+    seasons: [{ id: "s1", number: 3, status: "upcoming", race_days_total: 60, race_days_completed: 0 }],
+  };
+}
+
+test("#3990 apply: race_days_total materialiseres fra kalenderen (28), ikke schema-defaulten (60)", async () => {
+  const sb = makeSupabase(raceDaysState());
+
+  const summary = await materializeTierCalendars({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX,
+  });
+
+  assert.ok(summary.racesInserted > 0, "forudsætning: der skal indsættes løb");
+  assert.equal(summary.raceDaysTotalError, undefined, "recompute må ikke fejle");
+
+  const faktiskeDage = new Set(sb.state.races.map((r) => r.game_day_start)).size;
+  const season = sb.state.seasons.find((s) => s.id === "s1");
+  assert.equal(season.race_days_total, faktiskeDage, "race_days_total skal spejle kalenderens distinkte løbsdage");
+  assert.equal(season.race_days_total, 28, "S3-invarianten: 28 kalenderdage");
+  assert.notEqual(season.race_days_total, 60, "schema-defaulten må ikke overleve materialiseringen");
+  // Ingen løb er kørt endnu — completed skal stå på 0, ikke arve totalen.
+  assert.equal(season.race_days_completed, 0);
+});
+
+test("#3990 dryRun rører ALDRIG seasons-rækken", async () => {
+  const sb = makeSupabase(raceDaysState());
+
+  await materializeTierCalendars({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: true, ...LEGACY_MIX,
+  });
+
+  assert.equal(sb.state.seasons.find((s) => s.id === "s1").race_days_total, 60, "dryRun skriver intet");
+});
+
+test("#3990 fail-safe: en fejlende seasons-skrivning vælter ikke kalender-materialiseringen", async () => {
+  const sb = makeSupabase({ ...raceDaysState(), __updateThrows: "seasons" });
+
+  const summary = await materializeTierCalendars({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false, ...LEGACY_MIX,
+  });
+
+  assert.ok(summary.racesInserted > 0, "kalenderen skal stå selvom race-day-recompute fejler");
+  assert.match(summary.raceDaysTotalError ?? "", /race_days/, "fejlen skal rapporteres på summary");
 });
