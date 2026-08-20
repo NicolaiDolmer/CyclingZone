@@ -374,6 +374,7 @@ const FAQ_KEYS = [
   "sponsorBoardModifierScope",
   "seasonFinanceReport",
   "forecastCalculation",
+  "seasonSwitchSettlement",
   "standingsUpdate",
   "adminFinishWithPending",
   "boardSatisfaction",

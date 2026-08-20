@@ -307,13 +307,24 @@
     },
     "projectedLabel": "Forventet net næste sæson",
     "rangeLine": "Spænd: {low} til {high} (baseret på præmie-estimatets usikkerhed)",
+    "columns": {
+      "s2": "Denne sæson (S{number})",
+      "s3": "Næste sæson (S{number})",
+      "toggleAria": "Vælg hvilken sæsons kolonne der skal vises"
+    },
+    "chip": {
+      "signedContracts": "Underskrevne kontrakter"
+    },
     "row": {
       "sponsorBase": "Sponsor (base)",
       "sponsorVariable": "Sponsor (variabel)",
+      "sponsorInSeasonBonus": "Sponsor (løbende bonusser)",
       "prize": "Præmiepenge",
       "salary": "Løn",
       "upkeep": "Divisions-upkeep",
       "staffFacilities": "Stab & faciliteter",
+      "facilityUpkeep": "Facilitets-upkeep",
+      "staffSalary": "Stab-løn",
       "loanInterest": "Lånerenter",
       "academyDrift": "Akademi-drift"
     },
@@ -321,7 +332,9 @@
       "contract": "Næste sæsons sponsor: {sponsor} · garanteret base {base}, løbsdags-indtægt oveni",
       "variable": "Base {base} + variabel {variable} fra sidste sæsons rang/point",
       "intro": "Introsæson: variabel sponsor starter fra sæson 2",
-      "fallback": "Fallback: mangler standings for forrige sæson"
+      "fallback": "Fallback: mangler standings for forrige sæson",
+      "s2Combined": "Denne sæson viser hele beløbet krediteret i én betaling, base og performance-bonus samlet. Næste sæson splitter de to nedenfor.",
+      "inSeasonBonus": "Løbsdags-, resultat-, mål- og underskriftsbonusser rent faktisk tjent denne sæson. Ikke forecastet for næste sæson, da det afhænger af resultater der endnu ikke er kørt."
     },
     "prizeDetail": {
       "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson",
@@ -331,7 +344,8 @@
       "byDivision": "Bestemt af din division, ikke din trup"
     },
     "salaryDetail": {
-      "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede."
+      "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede.",
+      "seasonSwitch": "Sæson {next} genberegner al løn ud fra leverance ved sæsonskiftet. Dine nuværende kontrakter er allerede underskrevet, så dette sæsons tal ligger fast indtil da."
     },
     "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson 3's lønsystem.",
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",

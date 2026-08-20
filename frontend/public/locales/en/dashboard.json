@@ -307,13 +307,24 @@
     },
     "projectedLabel": "Expected net next season",
     "rangeLine": "Range: {low} to {high} (based on the prize estimate's uncertainty)",
+    "columns": {
+      "s2": "This season (S{number})",
+      "s3": "Next season (S{number})",
+      "toggleAria": "Choose which season's column to show"
+    },
+    "chip": {
+      "signedContracts": "Signed contracts"
+    },
     "row": {
       "sponsorBase": "Sponsor (base)",
       "sponsorVariable": "Sponsor (variable)",
+      "sponsorInSeasonBonus": "Sponsor (in-season bonuses)",
       "prize": "Prize money",
       "salary": "Salary",
       "upkeep": "Division upkeep",
       "staffFacilities": "Staff & facilities",
+      "facilityUpkeep": "Facility upkeep",
+      "staffSalary": "Staff salaries",
       "loanInterest": "Loan interest",
       "academyDrift": "Academy upkeep"
     },
@@ -321,7 +332,9 @@
       "contract": "Next season's sponsor: {sponsor} · guaranteed base {base}, race-day income on top",
       "variable": "Base {base} + variable {variable} from last season's rank/points",
       "intro": "Intro season: variable sponsor starts from season 2",
-      "fallback": "Fallback: missing standings for the previous season"
+      "fallback": "Fallback: missing standings for the previous season",
+      "s2Combined": "This season shows the full amount credited in one payment, base and performance bonus combined. Next season splits the two below.",
+      "inSeasonBonus": "Race-day, result, objective, and signing bonuses actually earned this season. Not forecasted for next season, since it depends on results not yet run."
     },
     "prizeDetail": {
       "realizedFloor": "Matches what your roster has already earned this season",
@@ -331,7 +344,8 @@
       "byDivision": "Set by your division, not your squad"
     },
     "salaryDetail": {
-      "productionS3": "Season 3 wage system. Your current contracts are locked and unchanged."
+      "productionS3": "Season 3 wage system. Your current contracts are locked and unchanged.",
+      "seasonSwitch": "Season {next} recalculates every wage from delivery at cutover. Your current contracts are already signed, so this season's number stays locked until then."
     },
     "assumption": "Assumes your current squad, no transfers, and the season 3 wage system.",
     "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",

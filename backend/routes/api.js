@@ -210,8 +210,9 @@ import {
   computeDebtRatio,
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
-import { computeMultiSeasonForecast } from "../lib/financeForecast.js";
+import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
+import { buildSeasonSwitchPreview } from "../lib/seasonSwitchPreview.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import { payRaceDaySponsorsToDate } from "../lib/sponsorRaceDayIncome.js";
@@ -8670,6 +8671,174 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     const first = multi.forecasts[0] || {};
     res.json({ ...first, ...multi });
   } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/finance/season-switch-preview — #4011 sæsonskifte-afregningen
+// (Finance-siden, sektion "C" — kvitterings-flow + løn-tabel pr. rytter).
+//
+// LÆS-KUN. Ingen mutationer, ingen migrationer. Leverer:
+//   (a) S2 — REALISEREDE kildetal fra indeværende sæsons finance_transactions
+//       (samme aggregeringsprincip som seasonFinanceReport.js's donut,
+//       aggregateS2RealizedSources i seasonSwitchPreview.js).
+//   (b) S3 — projektion pr. kilde. Genbruger computeFinanceForecast (SAMME
+//       pure function som /me/finance-forecast) med target = næste sæson —
+//       ingen selvstændig kopi af forecast-formlen.
+//   (c) settlement — den ordnede kvittering (books close → sponsor base →
+//       upkeep → stab/faciliteter → akademi → løn-regelskifte → slutbalance),
+//       udelukkende opsummering af (b)'s felter.
+//   (d) riders — pr.-rytter {contract_salary, s3_salary_projection}, samme
+//       computeFrozenSalary-kald som salaryRecompute3645.mjs (cutover-
+//       værktøjet) og financeForecast.js's S3-gren bruger.
+router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const teamId = req.team.id;
+
+    const [
+      teamRes,
+      ridersRes,
+      activeLoansRes,
+      boardsRes,
+      pulloutRes,
+      activeSeasonRes,
+      configsRes,
+      facilitiesRes,
+      staffRes,
+      facilitiesEnabledStage,
+      academyRiderCount,
+    ] = await Promise.all([
+      supabase.from("teams").select("id, division, balance, sponsor_income").eq("id", teamId).single(),
+      // #3989: current_production_value + salary — samme to felter S3-lønnen
+      // (computeFrozenSalary) og S2-kontraktlønnen udledes af.
+      // pagination-safe: one team's own roster, bounded by squad cap (<40)
+      supabase
+        .from("riders")
+        .select("id, firstname, lastname, salary, prize_earnings_bonus, current_production_value")
+        .eq("team_id", teamId)
+        .or("is_retired.is.null,is_retired.eq.false"),
+      supabase.from("loans").select("amount_remaining, interest_rate").eq("team_id", teamId).eq("status", "active"),
+      supabase.from("board_profiles").select("budget_modifier, negotiation_status").eq("team_id", teamId),
+      supabase
+        .from("board_consequences")
+        .select("severity")
+        .eq("team_id", teamId)
+        .eq("layer", 5)
+        .eq("status", "active"),
+      supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
+      supabase.from("loan_config").select("debt_ceiling").eq("division", req.team.division),
+      supabase.from("team_facilities").select("track, tier").eq("team_id", teamId),
+      supabase.from("team_staff").select("salary").eq("team_id", teamId).eq("status", "active"),
+      readFlagStage(supabase, "facilities_enabled"),
+      getTeamAcademyCount(supabase, teamId),
+    ]);
+
+    if (teamRes.error) throw teamRes.error;
+    const team = teamRes.data;
+    if (!team) return res.status(404).json({ error: "Team not found" });
+    if (ridersRes.error) throw ridersRes.error;
+    if (activeLoansRes.error) throw activeLoansRes.error;
+    if (facilitiesRes.error) throw facilitiesRes.error;
+    if (staffRes.error) throw staffRes.error;
+
+    const riders = ridersRes.data || [];
+    const activeLoans = activeLoansRes.data || [];
+    const facilityTracks = facilitiesRes.data || [];
+    const activeStaffSalaries = staffRes.data || [];
+    const facilitiesEnabled = evaluateFlagStage(facilitiesEnabledStage);
+
+    const completedBoards = (boardsRes.data || []).filter((b) => b.negotiation_status === "completed");
+    const liveBoardModifier =
+      completedBoards.length > 0
+        ? completedBoards.reduce((sum, b) => sum + (b.budget_modifier ?? 1.0), 0) / completedBoards.length
+        : 1.0;
+    const seasonSwitchBoardTestMode = await isBoardTestModeActive(supabase);
+    const boardModifier = seasonSwitchBoardTestMode ? 1.0 : liveBoardModifier;
+    const pulloutFactor = seasonSwitchBoardTestMode
+      ? 1.0
+      : (pulloutRes.data || []).length > 0
+        ? Math.min(...pulloutRes.data.map((row) => (row.severity || 1000) / 1000))
+        : 1.0;
+
+    const totalDebt = activeLoans.reduce((sum, l) => sum + (l.amount_remaining || 0), 0);
+    const debtCeiling = configsRes.data?.[0]?.debt_ceiling ?? null;
+    const currentSeasonNumber = activeSeasonRes.data?.number ?? null;
+
+    let lastSeasonStandings = [];
+    let realizedSeasonPrize = 0;
+    let seasonTransactions = [];
+    if (activeSeasonRes.data?.id) {
+      const [standingsRes, txRes] = await Promise.all([
+        supabase
+          .from("season_standings")
+          .select("team_id, division, rank_in_division, total_points")
+          .eq("season_id", activeSeasonRes.data.id),
+        // #4011 (a): S2's REALISEREDE kildetal — hele sæsonens transaktioner for
+        // dette hold, samme pre-filtered pattern som finance-report-routen
+        // ovenfor.
+        // pagination-safe: one team, one season, all transaction types — same
+        // query shape as the finance-report route above, verified max 236 rows
+        // repo-wide (#3331 audit, 2026-08-05).
+        supabase
+          .from("finance_transactions")
+          .select("amount, reason_code")
+          .eq("team_id", teamId)
+          .eq("season_id", activeSeasonRes.data.id),
+      ]);
+      if (standingsRes.error) throw standingsRes.error;
+      lastSeasonStandings = standingsRes.data || [];
+      if (txRes.error) throw txRes.error;
+      seasonTransactions = txRes.data || [];
+      realizedSeasonPrize = seasonTransactions
+        .filter((r) => r.reason_code === FINANCE_REASON.RACE_PRIZE_PAYOUT || r.reason_code === FINANCE_REASON.SEASON_END_DIVISION_BONUS)
+        .reduce((sum, row) => sum + Math.max(0, row.amount || 0), 0);
+    }
+
+    const [activeContract, pendingContract] = await Promise.all([
+      getActiveContract({ supabase, teamId }),
+      getPendingContract({ supabase, teamId }),
+    ]);
+
+    // (b) S3-projektion — SAMME pure function som /me/finance-forecast,
+    // target = næste sæson. Ingen ny formel.
+    const s3 = computeFinanceForecast({
+      team,
+      boardModifier,
+      pulloutFactor,
+      riders,
+      activeLoans,
+      totalDebt,
+      debtCeiling,
+      currentSeasonNumber,
+      lastSeasonStandings,
+      realizedSeasonPrize,
+      activeContract,
+      pendingContract,
+      facilityTracks,
+      activeStaffSalaries,
+      academyRiderCount,
+      facilitiesEnabled,
+    });
+
+    const preview = buildSeasonSwitchPreview({
+      transactions: seasonTransactions,
+      riders,
+      startingBalance: team.balance,
+      s3,
+    });
+
+    res.json({
+      season: {
+        current_number: currentSeasonNumber,
+        next_number: Number.isInteger(currentSeasonNumber) ? currentSeasonNumber + 1 : null,
+      },
+      ...preview,
+    });
+  } catch (e) {
+    // catch-ok: captureApiRouteError calls captureException internally (line 446)
+    // — the swallowed-catch guard's text-scan can't see through the wrapper.
     captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
