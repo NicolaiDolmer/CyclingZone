@@ -87,7 +87,10 @@ test("training report shows day summary, progress and breakthrough jump", async 
   await expect(page.getByText("I topform")).toBeVisible();
 
   // Gennembrud vist som faktisk tal-spring (71 → 72), ikke flad "+1".
-  await expect(page.getByText(/71\s*→\s*72/)).toBeVisible();
+  // #3924: samme spring findes nu OGSÅ i den sammenfoldede kvitteringslinje
+  // ("Landede et point i Klatring: 71 → 72."), så locatoren matcher rapportens
+  // rækkefølge ("71 → 72 Klatring") for at ramme den synlige Resultat-celle.
+  await expect(page.getByText(/71\s*→\s*72\s*Klatring/)).toBeVisible();
 
   // Result-kolonnen har erstattet rå score: ingen "Score"-kolonne mere.
   await expect(page.getByRole("columnheader", { name: "Resultat" }).first()).toBeVisible();
@@ -98,7 +101,8 @@ test("training report shows day summary, progress and breakthrough jump", async 
 
   // #1937: en hviledags-rytter MED valgt fokus vises som "Hviledag" i Næste +1,
   // ikke som "Intet fokus valgt". Fokus-kolonnen viser stadig fokusset.
-  await expect(page.getByText("Hviledag")).toBeVisible();
+  // #3924: exact, så kvitteringens "Hviledag. Træthed …"-linje ikke rammer strict mode.
+  await expect(page.getByText("Hviledag", { exact: true })).toBeVisible();
   await expect(page.getByText("Intet fokus valgt")).toHaveCount(0);
 });
 

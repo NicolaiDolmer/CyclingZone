@@ -86,54 +86,61 @@ export const PROGRESSION_CONFIG = Object.freeze({
 // 0,82 (beslutning 6, og det er meningen). Taget bliver "hvad han kunne være
 // blevet"; manageren afgør hvor tæt han kommer, og på hvilke evner.
 export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
-  // Mål-niveau på en PRIMÆR naturlig evne ved fuldt indfriet potentiale.
+  // ══ TRIN 7 (#3746, ejer 16/8): TAGET ER FLADT OG SÆTTES AF ROLLEN ALENE ══
+  //
+  // Potentiale er HELT ude af tag-formlen. Hver rolleklasse har ét absolut tag,
+  // ens for alle ryttere i klassen, uanset potentiale. Potentiale styrer KUN
+  // farten (rateByPotential nedenfor). Konsekvensen er strukturel, ikke
+  // kalibreret: taget kan aldrig sætte nogen over 95 (S1) eller ramme 99 (S2),
+  // uanset hvilke tal nogen fremover drejer på.
+  //
+  // Signatur-taget ligger på 93, ikke 90: væksten er gap-proportional, så en
+  // evne nærmer sig taget asymptotisk og ankommer aldrig. Skal 90 kunne nås af
+  // spillets bedste (S4), skal taget ligge et stykke over 90 — og S1 kræver at
+  // det ligger under 95. Vinduet er 92-94; 93 er målt til at give S4 = 311
+  // dage (11,1 sæsoner) for et pot 6-akademitalent med fuld støtte.
+  //
+  // Rækkefølgen signatur > sekundær > håndværk > andenRolle > svaghed er
+  // trin 4's ejer-besluttede ordning (14/8). Bemærk at håndværk (70) nu ligger
+  // UNDER sekundær (80) — i den gamle faktormodel lå craft (0,95) over sekundær
+  // (0,82). Det betyder at en rytter hvis positioning er sekundær-ejet BEHOLDER
+  // sekundær-klassen (tag 80, rate 0,36) frem for at blive "opgraderet" ned.
+  // abilityRoleClass' gulv-løft-invariant håndhæver det uanset værdierne.
+  roleTags: Object.freeze({ signatur: 93, sekundaer: 80, haandvaerk: 70, andenRolle: 55, svaghed: 25 }),
+
+  // Potentiale → træningsfart-multiplikator. ══ SPREDT I TRIN 7 (ejer 16/8) ══
+  //
+  // Kalibreret mod S4/S5 målt på en ÆGTE KARRIERE (ejer-go 16/8: "det skal være
+  // muligt at bedømme disse ting fx udfra en 16-årig og hele vejen til 40-årig"
+  // — rytteren ældes, vækstbudgettet falder ved 20/23/26 år):
+  //   • pot 6 fra 16 år med fuld støtte (facilitet 5, dedikeret hård træning,
+  //     bonus): 20 → 90 på 311 dage = 11,1 sæsoner (S4-bånd 286-386).
+  //     Uden topfacilitet: topper 89. Fra 17 år: topper 88. "Kun de bedste af
+  //     de bedste" er bogstaveligt.
+  //   • pot 1 når ~1/3 af pot 6's fremgang på samme tid (S5 = 3,0x).
+  //
+  // Det nominelle forhold er ~8x, ikke 3x — gap-proportionaliteten æder
+  // forskellen, fordi den hurtige bremser op nær taget mens den langsomme
+  // stadig vokser frit. Det er derfor den gamle spredning (0,6-1,35 = 2,25x)
+  // kun målte 1,13x i praksis. Rør ikke tallene uden at køre
+  // scripts/spillervendteGates3709.mjs — den er facit.
+  rateByPotential: Object.freeze({ 1: 0.11, 2: 0.27, 3: 0.42, 4: 0.58, 5: 0.73, 6: 0.89 }),
+
+  // ── SUPERSEDERET AF roleTags (trin 7) — LÆSES IKKE AF MOTOREN ──────────────
+  // Beholdt fordi committede engangs-/dev-scripts og historiske audits refererer
+  // felterne (lofterDryRun3591, capSemanticsComparison m.fl.). De beskriver den
+  // GAMLE model (tag = loftByPotential × faktor) og må ikke bruges i ny kode.
   loftByPotential: Object.freeze({ 1: 35, 2: 48, 3: 60, 4: 70, 5: 80, 6: 88 }),
-  // Andel af loftet en evne får efter dens rolle ift. de 2 anlægs-retninger.
-  // Navnene er bevaret fra før trin 4 (focusTrainability sammenligner mod dem);
-  // det er VÆRDIERNE der er ejer-besluttede 14/8.
-  // ══ RULLET TILBAGE 15/8 (ejer-beslutning) ══
-  //
-  // Trin 4 satte disse til 1,30 / 1,10 / 0,70 / 0,20. Det brød et løfte givet
-  // spillerne i Discord 11/8: "Havde man fået 6 i potentiale, så er man ikke
-  // garanteret 99 i potentiale i det nye system. Det bliver voldsomt få, der
-  // lander deroppe." Målt på snapshottet gik ryttere med mindst én evne over 95
-  // fra 3 til 748, og evne-pladser på 99 fra 1 til 1.840.
-  //
-  // Værdierne herunder er PRÆCIS trin 3's, altså den tilstand spillerne kendte
-  // 14/8 om morgenen. Det er bevidst en tilbagerulning til noget kendt frem for
-  // en tredje ny kalibrering på tre døgn.
-  //
-  // ⚠ DETTE ER IKKE SLUTMODELLEN. Rolle-tagene skal helt ud af potentiale-
-  // formlen i trin 7 (#3746): taget flades ud og sættes af rollen alene, mens
-  // potentiale bliver FART. Så kan 95+ ikke opstå fra taget uanset kalibrering,
-  // i stedet for at afhænge af at nogen rammer de rigtige tal. `scripts/
-  // spillervendteGates3709.mjs` er facit for den model.
   naturalPrimaryFactor: 1.00,
   naturalSecondaryFactor: 0.82,
   neutralFactor: 0.45,
   oppositeFactor: 0.12,
-  // Potentiale → træningsfart-multiplikator (Fase B).
-  rateByPotential: Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 }),
-
-  // ── HÅNDVÆRKS-GULVET (#3709 trin 3, spec §2.1 + beslutning 3, ejer 14/8) ──
-  // `positioning` og `tactics` havde positiv vægt hos NUL af de otte typer i
-  // capsShapingWeights. Konsekvensen var ikke "de er svære at blive god til" —
-  // den var at hver eneste rytter i spillet stod på neutralFactor (0,45 ×
-  // loftByPotential) på dem, for altid, uden at nogen managers valg kunne røre
-  // det. `tactics` var værst: ingen type ejede den, og INTET fokus trænede den.
-  //
-  // Håndværk er evner alle kan lære og ingen fødes med. De får derfor et tag
-  // mellem sekundær-naturlig (0,82) og primær-naturlig (1,00) — højt, fordi en
-  // rytter der arbejder på sit håndværk skal kunne blive god til det, men uden
-  // at gøre det gratis: trin 4 giver klassen den næstlaveste RATE (0,22), så
-  // taget er noget der opnås over en karriere, ikke noget man ankommer til.
-  // Det er hele modellens princip — tag og rate er to knapper, ikke én.
-  //
-  // KUN disse to (beslutning 3, ejer 14/8). Ikke `aggression`: den ER ejet, af
-  // baroudeuren, med vægt 3 — dens problem er at intet fokus træner den, og det
-  // løser trin 2's `løbslære`-fokus, ikke et tag.
   craftFactor: 0.95,
 });
+
+// Klassens TAG — absolut loft for evnen, uafhængigt af potentiale (trin 7).
+// Eksporteret ved siden af ROLE_CLASS_RATE så de to knapper står side om side.
+export const ROLE_CLASS_TAG = YOUTH_PROGRESSION_CONFIG.roleTags;
 
 // Evner ingen ryttertype fødes med, men alle kan lære (spec §2.1 "håndværk").
 // Se craftFactor i YOUTH_PROGRESSION_CONFIG for hvorfor listen er præcis disse to.
@@ -169,11 +176,11 @@ export const ROLE_CLASS_RATE = Object.freeze({
 // OPGRADERING, aldrig som erstatning (#3682's eksplicitte krav: "gulv-løft, ikke
 // erstatning"). Det betyder noget i to retninger:
 //   • en sprinter EJER nu positioning (#3682) → `signatur` vinder over håndværk
-//   • en rytter med sprinter som SEKUNDÆR ville uden opgraderingen lande i
-//     `sekundaer`. I dagens tal er det højere end håndværk (1,10 > 0,95), men
-//     det er en egenskab ved tallene, ikke ved modellen — derfor sammenlignes
-//     der på FAKTOREN, ikke på klasse-navnet. Ændres tallene i morgen, kan
-//     gulvet stadig ikke sænke nogens tag.
+//   • en rytter med sprinter som SEKUNDÆR beholder `sekundaer`: under trin 7's
+//     absolutte tag ligger håndværk (70) UNDER sekundær (80), så "opgraderingen"
+//     ville være en sænkning — derfor sammenlignes der på TAGET, ikke på
+//     klasse-navnet. Ændres tallene i morgen, kan gulvet stadig ikke sænke
+//     nogens tag.
 export function abilityRoleClass(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG) {
   const wp = WEIGHTS_BY_TYPE[primaryType]?.[ability];
   const ws = WEIGHTS_BY_TYPE[secondaryType]?.[ability];
@@ -183,28 +190,26 @@ export function abilityRoleClass(primaryType, secondaryType, ability, cfg = YOUT
   else if (wp < 0 || ws < 0) klasse = "svaghed";
   else klasse = "andenRolle";
 
-  if (CRAFT_ABILITIES.includes(ability) && Number.isFinite(cfg?.craftFactor)
-      && cfg.craftFactor > tagForClass(klasse, cfg)) {
+  if (CRAFT_ABILITIES.includes(ability) && Number.isFinite(cfg?.roleTags?.haandvaerk)
+      && cfg.roleTags.haandvaerk > tagForClass(klasse, cfg)) {
     return "haandvaerk";
   }
   return klasse;
 }
 
+// Klassens absolutte tag (trin 7). En klasse uden defineret tag falder tilbage
+// på andenRolle — samme sikre neutral som roleRateFactor bruger.
 function tagForClass(klasse, cfg) {
-  switch (klasse) {
-    case "signatur": return cfg.naturalPrimaryFactor;
-    case "sekundaer": return cfg.naturalSecondaryFactor;
-    case "haandvaerk": return cfg.craftFactor;
-    case "svaghed": return cfg.oppositeFactor;
-    default: return cfg.neutralFactor;
-  }
+  return cfg.roleTags?.[klasse] ?? cfg.roleTags?.andenRolle ?? 0;
 }
 
-// Rolle-faktor (TAGET) for én evne givet primær+sekundær type — klassens andel af
-// `loftByPotential`. Signaturen er bevaret fra før trin 4; det er kroppen der nu
-// går gennem `abilityRoleClass` i stedet for at gentage klassifikationen.
+// SUPERSEDERET (trin 7): "faktoren" var klassens andel af loftByPotential i den
+// gamle model. Beholdt for committede dev-scripts; returnerer nu klassens tag
+// som andel af signatur-taget, så relative sammenligninger stadig giver mening.
+// Ny kode skal bruge abilityRoleClass + roleTags direkte.
 export function youthRoleFactor(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG) {
-  return tagForClass(abilityRoleClass(primaryType, secondaryType, ability, cfg), cfg);
+  const signatur = cfg.roleTags?.signatur || 1;
+  return tagForClass(abilityRoleClass(primaryType, secondaryType, ability, cfg), cfg) / signatur;
 }
 
 // Rolle-faktor (RATEN) for én evne — den anden knap. Multiplikator på den daglige
@@ -268,11 +273,12 @@ export function peakAgeForType(primaryType, cfg = PROGRESSION_CONFIG) {
 // den overhalede sæson-declinen.
 //
 // Denne taper løser det ved at aftrappe det ABSOLUTTE loftets bidrag efter
-// peakAge — IKKE gulvet (max(absolut, current)), som forbliver urørt: ingen
-// spiller mister evne han ejer, taperen begrænser kun fremtidig VÆKST. Når det
-// tapered absolutte loft falder til/under current, vinder gulvet og
-// gap = max(0, cap − current) = 0 → ingen daglig vækst tilbage, og sæsonens
-// decline (stepAbility) dominerer igen alene.
+// peakAge. Ingen spiller mister evne af den grund — taperen begrænser kun
+// fremtidig VÆKST: falder det tapered loft til/under current, giver
+// dailyAbilityDelta gap = max(0, cap − current) = 0 → ingen daglig vækst
+// tilbage, og sæsonens decline (stepAbility) dominerer igen alene. (Gulvet
+// max(tapered, current), som tidligere gav samme nettoresultat ad en omvej,
+// er fjernet i trin 7 — se buildCapsForRider, #3794.)
 //
 // Allerede skrevet som den rigtige plan i academyFlag.js's #2437-interim-
 // kommentar: "jævn alders-taper, egen session". Denne funktion ER den session.
@@ -429,8 +435,13 @@ export function youthRateForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG
   return a + (b - a) * (p - lo);
 }
 
-// Lineær interpolation af ungdoms-loft-ankret på potentiale (1..6).
-function youthLoftForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
+// SUPERSEDERET (trin 7): den gamle models potentiale-ankrede loft. Læses ikke
+// af motoren; beholdt for historiske målinger (ingen levende kaldested — kun
+// kommentar-referencer i backend/scripts/*, ikke reelle imports). `_`-præfiks
+// er den lokale eslint-konvention for bevidst-unused (#3746 warning-budget-fund,
+// pre-eksisterende siden commit d02b524b — rettet her, ikke omfattet af
+// arkitektens "kun ændres ved defekt"-klausul for riderPrognosis/scoutingReport).
+function _youthLoftForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
   const p = clamp(Number(potentiale) || 1, 1, 6);
   const lo = Math.floor(p), hi = Math.ceil(p);
   const a = cfg.loftByPotential[lo] ?? 0;
@@ -438,13 +449,13 @@ function youthLoftForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
   return a + (b - a) * (p - lo);
 }
 
-// Afkoblet ungdoms-loft for én evne: potentiale-ankret niveau × rolle-faktor.
-// IKKE en funktion af start-evnen (det er hele pointen — den lange rejse).
-// cfg er påkrævet (ingen default) så .length === 5 og ingen skjult baseline-param.
+// Loftet for én evne = rolleklassens absolutte tag (trin 7, #3746, ejer 16/8).
+// `potentiale` indgår IKKE længere — det styrer kun farten (rateByPotential).
+// Parameteren beholdes i signaturen: (a) alle callers sender den allerede, og
+// (b) .length === 5-kontrakten (ingen skjult baseline-param) er pinnet i test.
 export function youthAbilityCap(potentiale, primaryType, secondaryType, ability, cfg) {
   const c = cfg ?? YOUTH_PROGRESSION_CONFIG;
-  const target = youthLoftForPotential(potentiale, c) * youthRoleFactor(primaryType, secondaryType, ability, c);
-  return clamp(Math.round(target), 0, 99);
+  return clamp(Math.round(tagForClass(abilityRoleClass(primaryType, secondaryType, ability, c), c)), 0, 99);
 }
 
 // Byg caps-sættet for en ung over alle synlige evner.
@@ -477,34 +488,25 @@ export function buildCaps(baselineAbilities, primaryType, potentiale, cfg = PROG
 
 // Det fulde caps-sæt for EN VILKÅRLIG rytter — ÉN semantik for alle aldre.
 //
-//   loft = max( absolut_loft(potentiale, anlæg) , nuværende evne )
+//   loft = afrundet( tapered( rolleklassens tag ) )        (trin 7, #3746)
 //
-// EJER-BESLUTTET 2026-07-15. Før da levede to uforenelige semantikker side om side —
-// afkoblet ungdoms-loft (potentiale = slutniveau) og baseline+headroom (potentiale =
-// forbedring) — og hvilken en rytter fik var et møntkast afgjort af hvilken kodesti
-// der først skrev ability_caps (feltet skrives KUN når NULL). Prod-følgen: en pot-4,5-
-// rytter havde et højere livstidsloft (813) end den bedste pot-6-rytter (737), dvs.
-// potentiale styrede IKKE hvor god en rytter kunne blive.
-//
-// GULVET er det der gør konsolideringen mulig: specs/2026-06-23-ungdoms-rytter-evner-
-// rework-design.md §4.2 afviste netop én fælles formel med begrundelsen "en voksen med
-// høj current ville ellers få et loft under sin current" — gulvet løser præcis det, og
-// ingen spiller får frataget evne han allerede ejer. Denne funktion supersederer
-// derfor §4.2/§8/§10 i den spec (dens §10 kaldte selv to-formel-modellen bevidst gæld
-// der skulle konsolideres senere).
+// Konsolideringen til ÉN semantik er EJER-BESLUTTET 2026-07-15 (to uforenelige
+// loft-modeller levede før side om side, og hvilken en rytter fik var et
+// møntkast). Trin 7 (ejer 16/8) fjernede potentiale fra formlen: taget sættes
+// af rolleklassen alene, potentiale styrer kun farten.
 //
 // ALDERS-UAFHÆNGIG med vilje: en semantik der skiftede ved 21→22 ville flytte rytterens
 // livstidsloft på fødselsdagen — den bombe var kun udetoneret fordi sæson 1 stadig kører.
 //
 // Returnerer et 15-nøgle objekt (alle VISIBLE_ABILITIES).
-//   abilities : { climbing, sprint, ... } nuværende/afledte evner (gulvet)
+//   abilities : { climbing, sprint, ... } nuværende/afledte evner (bruges ikke
+//               i formlen efter #3794 — se gulv-blokken nedenfor)
 //   rider     : { potentiale, age } — age er PÅKRÆVET, se kontrakten nedenfor
 //   primaryType/secondaryType : ryttertype-nøgler (anlæggets to retninger)
 //
 // #2472 (16/7, ejer-valg B): det absolutte loft aftrappes efter peakAge via
 // taperedAbsoluteCap — se den funktion for hvorfor (blocker-fund: uden taper
-// ophæver #2472's konsolidering aldringen for post-peak-ryttere). Gulvet
-// (max(tapered, current)) er URØRT — ingen spiller mister evne han ejer.
+// ophæver #2472's konsolidering aldringen for post-peak-ryttere).
 //
 // ── ALDERS-KONTRAKTEN (#3591, 13/8): `age` SKAL angives eksplicit ────────────
 // `age` var indtil nu dokumenteret som VALGFRI ("udeladt ⇒ intet taper,
@@ -529,6 +531,24 @@ export function buildCaps(baselineAbilities, primaryType, potentiale, cfg = PROG
 // `null` er stadig lovligt fordi «ingen alder» er en ægte, meningsfuld tilstand
 // for harnesses der måler netop taper-effekten. Forskellen er at den nu skal
 // SKRIVES, og dermed ses i et review, i stedet for at opstå ved udeladelse.
+// ── GULVET ER FJERNET (trin 7, #3794, ejer 16/8) ─────────────────────────────
+// Loftet var `max(tapered, current)`. Begrundelsen i koden var "ingen spiller
+// mister evne han ejer" — men det tab kan ikke ske, gulv eller ej (verificeret
+// 15/8 på #3794): dailyTraining lægger kun til (loft under evnen giver gap = 0,
+// altså nul vækst, ikke tab), stepAbility returnerer uændret ved gap <= 0, og
+// declineByYearsPastPeak læser slet ikke loftet. Gulvets reelle virkning var at
+// binde loftet til evnen for 78 % af rytterne, så det viste potentiale flyttede
+// sig hver gang de trænede. Uden gulvet er ability_caps rent formel-bestemt og
+// dermed STABILT mellem kalibreringer. En rytter med en evne over sit tag
+// beholder evnen og står stille dér (ejer-beslutning 8, 15/8).
+//
+// Afrundingen til heltal er #3788: taperingen kunne give et loft midt i et
+// niveau (fx 80,25), så træningsbaren viste fremgang mod et niveau rytteren
+// aldrig kunne nå.
+//
+// `abilities` beholdes i signaturen: alle callers sender den, og den bevarer
+// muligheden for fremtidige abilities-afhængige regler uden endnu et #3591-
+// kaldeform-skisma.
 export function buildCapsForRider(abilities, { potentiale, age } = {}, primaryType, secondaryType) {
   if (age === undefined) {
     throw new TypeError(
@@ -540,9 +560,8 @@ export function buildCapsForRider(abilities, { potentiale, age } = {}, primaryTy
   const peakAge = peakAgeForType(primaryType);
   const caps = {};
   for (const ability of VISIBLE_ABILITIES) {
-    const current = Math.round(Number(abilities?.[ability]) || 0);
     const tapered = taperedAbsoluteCap(absolute[ability] ?? 0, age, peakAge);
-    caps[ability] = clamp(Math.max(tapered, current), 0, 99);
+    caps[ability] = clamp(Math.round(tapered), 0, 99);
   }
   return caps;
 }

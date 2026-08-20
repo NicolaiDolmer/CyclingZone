@@ -238,7 +238,15 @@ test("#3591: deriveForRiderIds aftrapper loftet efter peakAge — samme kaldform
   // race_day_engine_enabled='off') fik aldrig deres loft aftrappet.
   //
   // Fixturen er en veteran langt forbi peakAge, så taperen faktisk bider.
-  const veteran = { ...makeRider("vet"), birthdate: "1988-01-01" }; // sæson-alder 38
+  // Trin 7: fixturen får et PERSISTERET archetype_draw, så typerne der former
+  // caps er deterministiske. Uden gulvet (#3794) er caps rent formel-bestemte,
+  // og så SES det at pipeline-typerne til caps (draw/bootstrap) kan afvige fra
+  // den persisterede visnings-type — gulvet maskerede den forskel før, fordi
+  // veteranens høje evner vandt over begge formler.
+  const veteran = {
+    ...makeRider("vet"), birthdate: "1988-01-01", // sæson-alder 38
+    archetype_draw: { primary: "climber", secondary: "tt" },
+  };
   const supabase = makeMockSupabase({ riders: [veteran] });
   await deriveForRiderIds(supabase, ["vet"], { dryRun: false });
 
@@ -254,10 +262,10 @@ test("#3591: deriveForRiderIds aftrapper loftet efter peakAge — samme kaldform
   const age = ageForSeason(veteran.birthdate, 1);
   assert.ok(age > 30, `fixturen skal være forbi peakAge (var ${age})`);
 
-  // Den type pipelinen faktisk endte med (skrives på riders i samme kørsel).
-  const patch = supabase.writes.updates.find((u) => u.val === "vet")?.patch;
-  assert.ok(patch?.primary_type, "primary_type skrives");
-  const { primary_type: p, secondary_type: s } = patch;
+  // Caps formes af det TRUKNE anlæg (#3570 fase 2) — ikke af den persisterede
+  // visnings-type. Kontrakten er pinnet i draw-testen længere nede.
+  const p = veteran.archetype_draw.primary;
+  const s = veteran.archetype_draw.secondary;
 
   const medAlder = buildCapsForRider(abilities, { potentiale: veteran.potentiale, age }, p, s);
   // age: null gengiver PRÆCIS den gamle, defekte kaldform (taperedAbsoluteCap
@@ -274,10 +282,9 @@ test("#3591: deriveForRiderIds aftrapper loftet efter peakAge — samme kaldform
     assert.equal(Number(row.ability_caps[a]), Number(medAlder[a]), `${a}: loftet skal være aftrappet (kaldform MED alder)`);
   }
 
-  // Spillerbeskyttelse: gulvet er rytterens nuværende evne — aldrig under.
-  for (const a of VISIBLE_ABILITIES) {
-    assert.ok(Number(row.ability_caps[a]) >= Number(abilities[a] ?? 0), `${a}: loft må aldrig komme under nuværende evne`);
-  }
+  // Spillerbeskyttelse efter #3794 (gulvet fjernet): et loft under evnen er
+  // lovligt — motoren kan kun stå stille dér. At intet konfiskeres er pinnet i
+  // riderProgression.test.js ("et loft under evnen konfiskerer ALDRIG evne").
 });
 
 test("deriveForRiderIds (apply) skriver ability_caps + ability_progress for ALLE ryttere (#2001)", async () => {

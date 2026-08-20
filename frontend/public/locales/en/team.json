@@ -19,8 +19,18 @@
   },
   "tabs": {
     "squad": "Squad ({count})",
+    "development": "Development",
     "stats": "Stats",
     "transfers": "Transfer history"
+  },
+  "development": {
+    "headers": {
+      "projected": "Projected",
+      "projectedTitle": "Projected rating range for his primary role, based on your training. Sorted on the upper bound.",
+      "ceiling": "Ceiling",
+      "ceilingTitle": "The theoretical highest rating his role could reach. Not adjusted for how you train him."
+    },
+    "noForecast": "No forecast yet"
   },
   "stats": {
     "seasonLabel": "Season {n}",

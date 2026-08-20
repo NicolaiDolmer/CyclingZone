@@ -19,8 +19,18 @@
   },
   "tabs": {
     "squad": "Trup ({count})",
+    "development": "Udvikling",
     "stats": "Statistik",
     "transfers": "Transferhistorik"
+  },
+  "development": {
+    "headers": {
+      "projected": "Prognose",
+      "projectedTitle": "Prognoseret rating-interval for hans primære rolle, baseret på din træning. Sorteret på det høje tal.",
+      "ceiling": "Loft",
+      "ceilingTitle": "Det teoretisk højeste niveau rollen kan nå. Ikke justeret for hvordan du træner ham."
+    },
+    "noForecast": "Ingen prognose endnu"
   },
   "stats": {
     "seasonLabel": "Sæson {n}",

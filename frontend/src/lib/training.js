@@ -11,10 +11,13 @@ export const TRAINING_FOCUS_ABILITIES = Object.freeze({
   threshold:   Object.freeze(["time_trial", "tempo"]),
   sprint:      Object.freeze(["sprint", "acceleration"]),
   endurance:   Object.freeze(["endurance", "recovery", "durability"]),
-  technique:   Object.freeze(["descending", "positioning", "cobblestone"]),
+  technique:   Object.freeze(["descending", "cobblestone"]),
   aero:        Object.freeze(["time_trial", "flat"]),
   tempo:       Object.freeze(["tempo", "flat", "durability"]),
   restitution: Object.freeze(["recovery"]),
+  // #3709 trin 2 (spec §2.3, ejer-go 16/8): positioning flytter hertil fra
+  // `technique`. tactics + aggression kunne før ikke trænes af NOGET fokus.
+  loebslaere:  Object.freeze(["positioning", "tactics", "aggression"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUS_ABILITIES));
 
