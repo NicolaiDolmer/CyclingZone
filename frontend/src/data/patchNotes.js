@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.149",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Division upkeep is its own line in the forecast",
+          "body": "The forecast line called Staff and facilities was quietly including your division upkeep, so the number looked far bigger than the staff and facilities you had actually paid for. Upkeep now has its own row, and Staff & facilities shows only what you have hired or built. Your net total is unchanged: the cost moved line, it did not disappear."
+        },
+        "da": {
+          "title": "Divisions-upkeep har sin egen linje i prognosen",
+          "body": "Prognosens linje Stab og faciliteter indeholdt i skjul din divisions-upkeep, så tallet så langt større ud end den stab og de faciliteter du faktisk havde betalt for. Upkeep har nu sin egen række, og Stab & faciliteter viser kun det du har ansat eller bygget. Din nettosum er uændret: udgiften flyttede linje, den forsvandt ikke."
+        },
+        "refs": [
+          3986
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.148",
     "date": "2026-08-20",
     "label": "Beta",

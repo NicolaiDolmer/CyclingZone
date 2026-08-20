@@ -226,11 +226,26 @@ export default function FinanceForecastCard({
               : undefined
           }
         />
-        <Row
-          label={t("forecast.row.staffFacilities")}
-          value={forecast.projected_staff_facilities}
-          accent="text-cz-danger"
-        />
+        {/* #3986: divisions-upkeep laa foer gemt inde i stab/faciliteter-linjen,
+            saa en D2-manager saa 164.910 hvor hans tre ansatte kostede 24.610.
+            Den har nu sin egen raekke. Skjules naar den er 0 (saeson 1 udskyder
+            upkeep, jf. UPKEEP_BEFORE_FIRST_RACE_ENABLED), saa vi ikke viser en
+            nul-linje der ikke betyder noget. */}
+        {forecast.projected_upkeep !== 0 && (
+          <Row
+            label={t("forecast.row.upkeep")}
+            value={forecast.projected_upkeep}
+            accent="text-cz-danger"
+            detail={t("forecast.upkeepDetail.byDivision")}
+          />
+        )}
+        {forecast.projected_staff_facilities !== 0 && (
+          <Row
+            label={t("forecast.row.staffFacilities")}
+            value={forecast.projected_staff_facilities}
+            accent="text-cz-danger"
+          />
+        )}
         {forecast.projected_loan_interest !== 0 && (
           <Row
             label={t("forecast.row.loanInterest")}
