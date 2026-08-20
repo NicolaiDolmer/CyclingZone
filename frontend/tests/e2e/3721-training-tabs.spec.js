@@ -114,9 +114,13 @@ test("Development-fanen viser navn+alder, glyf-tallene og en fungerende fokus-kn
   await expect(page.getByText("Ada Pedersen")).toBeVisible();
   // rider-1 er født 2002-04-12; alderen selv afhænger af aktiv sæsons
   // referenceår, så vi tester KUN at en alders-linje findes, ikke det eksakte tal.
-  await expect(page.getByText(/^Alder \d+$/)).toBeVisible();
+  // Tester-feedback 20/8 (#3798): rollen står PÅ rækken — alders-linjen bærer
+  // estimatets egen rolle (SEED_SCOUT_ESTIMATES.role = "sprinter"), så spilleren
+  // aldrig skal gætte hvilken rolle tallene gælder.
+  await expect(page.getByText(/^Alder \d+ · Sprinter$/)).toBeVisible();
 
-  // Glyf-tallene: now:29, prog:{lo:40,hi:48}, loft:93 (SEED_SCOUT_ESTIMATES).
+  // Glyf-tallene: now:29, prog:{lo:40,hi:48}, loft:93 (SEED_SCOUT_ESTIMATES) —
+  // med rolle-labelen foran i samme linje.
   await expect(page.getByText("29 · 40-48 · loft 93")).toBeVisible();
 
   // Fokus-knappen er DEN SAMME komponent/mutation som rosterets — åbner panelet.

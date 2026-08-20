@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import RiderLink from "./RiderLink";
+import RiderTypeBadge from "./rider/RiderTypeBadge";
 import { statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { getRiderAge } from "../lib/riderAge";
@@ -98,6 +99,16 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       fold: true,
       foldValue: (r) => String(r._age ?? "—"),
       render: (r) => <span className="text-cz-2">{r._age ?? "—"}</span>,
+    },
+    // Tester-feedback 20/8 (#3798): uden typen skal spilleren gætte hvilken
+    // rolle prognosen/loftet gælder. Samme kanoniske kolonne som SquadTab
+    // (ejer 25/7: typen står ALTID i sin egen kolonne, aldrig i navnecellen).
+    {
+      key: "type",
+      header: t("squad.headers.type"),
+      sortKey: "primary_type",
+      compact: true,
+      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
     },
     {
       key: "rating",

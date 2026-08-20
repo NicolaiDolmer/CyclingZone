@@ -16,6 +16,19 @@ export function compareDevRows(a, b, sort, dir) {
     const cmp = aName.localeCompare(bName, "en");
     return dir === "desc" ? -cmp : cmp;
   }
+  // Type-kolonnen (#3798-tester-feedback 20/8): rå nøgle-sortering ("climber" <
+  // "sprinter") er stabil på tværs af sprog — kolonnen grupperer, den rangerer
+  // ikke. null (manglende primary_type, defensiv gren) sidst som de numeriske.
+  if (sort === "primary_type") {
+    const aT = a.primary_type ?? null;
+    const bT = b.primary_type ?? null;
+    if (aT == null || bT == null) {
+      if (aT == null && bT == null) return 0;
+      return aT == null ? 1 : -1;
+    }
+    const cmp = aT.localeCompare(bT, "en");
+    return dir === "desc" ? -cmp : cmp;
+  }
   const aVal = a[sort];
   const bVal = b[sort];
   const aNil = aVal == null;

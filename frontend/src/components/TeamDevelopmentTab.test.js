@@ -101,3 +101,22 @@ test("noForecast-teksten indeholder ikke em-dash (tankestreg-fri per brief)", ()
     assert.doesNotMatch(teamJson.development.noForecast, /—/, `${lng}: noForecast må ikke indeholde em-dash`);
   }
 });
+
+// ── Type-kolonnen (tester-feedback 20/8, #3798) ────────────────────────────
+
+test("compareDevRows: primary_type sorterer alfabetisk paa noeglen, null sidst", () => {
+  const a = { primary_type: "climber" };
+  const b = { primary_type: "sprinter" };
+  const nil = { primary_type: null };
+  assert.ok(compareDevRows(a, b, "primary_type", "asc") < 0, "climber skal staa foer sprinter i asc");
+  assert.ok(compareDevRows(a, b, "primary_type", "desc") > 0, "desc skal vende raekkefoelgen");
+  assert.ok(compareDevRows(a, nil, "primary_type", "asc") < 0, "null skal altid sidst (asc)");
+  assert.ok(compareDevRows(a, nil, "primary_type", "desc") < 0, "null skal altid sidst (desc)");
+  assert.equal(compareDevRows(nil, { primary_type: null }, "primary_type", "asc"), 0, "to null'er er ligestillede");
+});
+
+test("Type-kolonnen findes, sorterer paa primary_type og bruger den kanoniske RiderTypeBadge", () => {
+  assert.match(src, /key: "type"[\s\S]{0,200}?sortKey: "primary_type"/, "type-kolonnen skal sortere paa primary_type");
+  assert.match(src, /<RiderTypeBadge primaryType=\{r\.primary_type\} secondaryType=\{r\.secondary_type\} stacked \/>/,
+    "typen skal renderes af RiderTypeBadge (ejer 25/7: aldrig i navnecellen)");
+});

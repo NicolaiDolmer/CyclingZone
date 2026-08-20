@@ -25,6 +25,7 @@
   "development": {
     "colDevelopment": "Development",
     "ageLine": "Age {age}",
+    "ageRoleLine": "Age {age} · {role}",
     "numbers": "{now} · {lo}-{hi} · ceiling {loft}",
     "numbersNoLoft": "{now} · {lo}-{hi}",
     "noForecastYet": "No forecast yet"

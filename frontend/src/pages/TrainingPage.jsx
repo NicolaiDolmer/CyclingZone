@@ -1671,6 +1671,14 @@ export default function TrainingPage() {
                 const busy = savingId === rider.id || bulkApplying;
                 const hasBand = estimate && estimate.now != null && estimate.prog
                   && Number.isFinite(estimate.prog.lo) && Number.isFinite(estimate.prog.hi);
+                // Tester-feedback 20/8 (#3798): rollen skal stå PÅ rækken —
+                // uden den skal spilleren gætte hvilken evne tallene gælder.
+                // estimate.role er båndets egen nøgle (backend, samme payload
+                // som tallene) og kan derfor aldrig pege på en anden rolle end
+                // den der faktisk er prognosticeret; primary_type er kun
+                // fallback for rækker uden bånd endnu.
+                const roleKey = estimate?.role ?? rider.primary_type ?? null;
+                const roleLabel = roleKey ? tTypes(`types.${roleKey}`) : null;
                 return (
                   <div key={rider.id} className="flex flex-wrap items-center gap-4 px-4 py-[13px] sm:px-5">
                     <div className="min-w-[160px] flex-1">
@@ -1678,7 +1686,11 @@ export default function TrainingPage() {
                         {rider.firstname} {rider.lastname}
                       </RiderLink>
                       <div className="mt-0.5 font-data text-3xs uppercase tracking-[.05em] text-cz-3">
-                        {age != null ? t("development.ageLine", { age }) : "—"}
+                        {age != null
+                          ? (roleLabel
+                            ? t("development.ageRoleLine", { age, role: roleLabel })
+                            : t("development.ageLine", { age }))
+                          : (roleLabel ?? "—")}
                       </div>
                     </div>
 
@@ -1689,6 +1701,9 @@ export default function TrainingPage() {
                         <>
                           <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />
                           <div className="mt-1 font-mono tabular-nums text-2xs text-cz-2">
+                            {roleLabel ? (
+                              <span className="font-data uppercase tracking-[.05em] text-3xs text-cz-1 me-1.5">{roleLabel}</span>
+                            ) : null}
                             {Number.isFinite(estimate.loft)
                               ? t("development.numbers", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi, loft: estimate.loft })
                               : t("development.numbersNoLoft", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi })}
