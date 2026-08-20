@@ -8,7 +8,7 @@
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 type-dæmpning flippes SAMMEN med c** (scorecard klar 20/8, PR #4003 draft: puncheur 7,9x→1,7x, k=100; rækkefølge c FØR #3353 er bindende).
+1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 type-dæmpning k=100 EJER-GODKENDT 20/8**, flippes SAMMEN med c (puncheur 7,9x→1,7x; rækkefølge c FØR #3353 bindende).
 3. 🟠 **#3514 mandat** — fase 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-script-apply med ejer-nøgle.
 4. ✅ **Løn LEVERET 20/8:** hele pakken merged og prod-verificeret (#3992+#3993 20/8; #3972/#3974/#3449-maskineri 19/8; genberegnings-script #3999 dry-run matcher ×2,21). #3393 PARKERET. Rest = søndagens genberegning af frosne kontrakter i drejebogen.
 5. 🟠 **#3901:** D1-plan LÅST+BYGGET (PR #3930, dry-run godkendt). **Cutover = søndag AFTEN 19:30-22:30** (S2-finale kører til 19:00; drejebog rev. 20/8) · **generalprøve mod staging LØRDAG** (ejer-godkendt) · bufferdag 24/8 (#3467).

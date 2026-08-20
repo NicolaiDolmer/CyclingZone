@@ -12,13 +12,40 @@ Læs docs/NOW.md først. Markér dig som aktiv session.
 1. Læs de seneste Discord-beskeder via discord-MCP'en (#dansk-snak, #feedback,
    #beta-test m.fl.) fra de sidste 24 timer + dagens sweep-fil i scripts/discord/
    hvis den findes. Ejeren paster DM'er hvis relevante.
-2. VIGTIG kontekst: trin 7-tester-runden kører (staging-link postet 20/8) - der
+2. **SÆRLIGT fokus (ejer-krav): økonomi, løn og forecast-/finance-siderne.**
+   Løn-omlægningen + upkeep-linjen gik live 20/8 formiddag - find reaktionerne,
+   og de problemer der stadig meldes. Ejeren vil have GODE LØSNINGER fundet i
+   DENNE session, inkl. wireframes af finance-/forecast-fladerne til spillerne.
+3. VIGTIG kontekst: trin 7-tester-runden kører (staging-link postet 20/8) - der
    ligger formentlig frisk feedback på rytter-opdateringen. Den feedback hører
    primært til trin 7-merge-beslutningen (se "Parallelle spor" nedenfor), men kan
    også afsløre wireframe-emner.
-3. Udled: hvilke funktioner/ændringer har spillerne SELV foreslået som egner sig
+4. Udled: hvilke funktioner/ændringer har spillerne SELV foreslået som egner sig
    til wireframes? Præsentér 3-6 fund med citat + dit bud på om de er
    wireframe-værdige, og lad ejeren vælge hvilke der kommer med i puljen.
+
+## Blok 1b: friisisch-sagerne (DM-samtale læst 20/8, issues oprettet)
+
+Fra ejerens DM-samtale med friisisch (den mest aktive tester, betalende founder,
+inviteret til spillergruppen 11/8). Tre issues er oprettet 20/8:
+
+- **#4004 auktions-transparens** (needs-decision): han bød 556k på en rytter der
+  faldt til 288k under/omkring auktionen - evne-/værdiændringer under aktive
+  auktioner er usynlige for bydere. OPLAGT wireframe-emne i denne session
+  (ændrings-markering på budkortet + evt. notifikation). Ejer-beslutning:
+  kompensationspolitik eller kun transparens fremadrettet.
+- **#4005 /pro-billing før åbning** (HIGH): 49 kr skal eksplicit være inkl. moms,
+  pro-rata-første-træk skal FORKLARES i checkout (hans første træk var 13 kr og
+  lignede en fejl), "i nærheden af"-copyen rettes. Hænger sammen med ejerens
+  moms-tjek + CHECKOUT_PAUSED-flippet.
+- **#4006 verify-first** (investigation): Done-vs-Overview-mismatch (14/8+20/8)
+  + gammel form-rapport (28/7) - runtime-verificér før fix. Plus trin 7-feedback:
+  22-årig m. ceiling 91 projiceres kun til 65; vurder om rate-kompensationen
+  (længere fra loft = hurtigere) er stærk nok i tallene.
+
+Positivt (ingen handling, men godt at kende): season planner, %-stats på
+træning og aldersfald fremhæves som det bedste; trin 7-retningen ("potentiale =
+fart, ingen skjulte vægge") er PRÆCIS hvad han selv ønskede sig.
 
 ## Blok 2: Emne-puljen (ejer-valgt 20/8)
 
@@ -61,6 +88,38 @@ For hvert godkendt emne: eksportér den valgte wireframe som billede + skriv et
 kort Discord-opslag PÅ ENGELSK ("Is this the kind of feature you want?" +
 reaktions-afstemning). EJEREN poster selv, når han melder klar - post ALDRIG
 selv (hard rule). Saml opslagene i én fil til copy-paste.
+
+## Blok 5: Eksekvering (sessionen designer IKKE kun - den leverer også)
+
+Ejer-krav 20/8: sessionen skal også få EKSEKVERET på de vigtige opgaver, ikke
+kun designe. Kør disse med workers parallelt med design-arbejdet, i denne orden:
+
+1. **Trin 7-merge-kæden** når ejeren melder tester-runden god: følg
+   udrulnings-prompten (merge → migration → backfill-dry-run m. ejer-stop →
+   refit → indbakke → Discord-udkast). DAGENS VIGTIGSTE eksekvering.
+2. **/pro-åbningen** efter ejerens moms-tjek + support-postkasse: fix #4005's
+   tre punkter (pris-copy, pro-rata-forklaring, "i nærheden af"), flip
+   CHECKOUT_PAUSED (backend/lib/billingCheckout.js + ProUpgradePage.jsx), ét
+   verificerende testkøb, genåbnings-patch-note (udkast ligger i #3104-workerens
+   rapport i planlægningssessionen).
+3. **W7 hjælpetekst-bølgen** LIGE efter trin 7-merge (#3714 #3623 #3456 #3412 +
+   trænings-svarene fra 20/8 ind i help.json EN+DA).
+4. **Generalprøve-forberedelse til lørdag**: verificér at alle scripts i
+   drejebogens kæde kan køre mod staging (staging-guard #3961 respekteres!).
+5. Småfix ved luft: #3985 (etapetype-regression) · #3997 (spejder-tidspunkt i
+   UI) · #3994-mønstret er lukket.
+
+## Blok 6: Patch notes + masterplan-disciplin (ejer-krav 20/8)
+
+- **Patch notes-sync til sidst i sessionen**: verificér at hjemmesidens patch
+  notes dækker ALT spillervendt der er shippet 19-20/8 (løn-omlægning 7.148,
+  upkeep 7.149, risiko-copy 7.150, /pro-indgang 7.151, kalender/bufferdag -
+  har kalenderen en note? Skriv den hvis ikke), og skriv et Discord-patch-
+  notes-opslag (EN) som ejeren poster, så web + Discord er i sync.
+- **Masterplanen opdateres LØBENDE** ved hver leverance i sessionen, ikke kun
+  ved close-out (budget ≤1.500 tok; slet færdigt).
+- **k=100 er EJER-GODKENDT 20/8** (#4000): forbered implementerings-PR ud fra
+  PR #4003's harness; flippes sammen med #3449-niveaukorrektionen.
 
 ## Parallelle spor denne dag (rør dem ikke uden ejer-ord, men kend dem)
 
