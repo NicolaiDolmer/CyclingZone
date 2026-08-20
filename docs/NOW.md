@@ -20,6 +20,6 @@
 - **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 27 løbsdage.
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Skalering:** #323.
 
-> **🤖 Aktive sessioner:** AFTEN-SESSIONEN (trin 7-finale + merge-tog) er AKTIV fra 20/8 aften (Claude Code, hoved-checkout). Overtager #4018-fix-runden og #3997-mekanik-PR'en når workers pusher. Design-sessionens baggrunds-workers kører stadig i worktrees - rør ikke deres brancher.
+> **🤖 Aktive sessioner:** AFTEN-SESSIONEN (trin 7-finale + merge-tog) er AKTIV fra 20/8 aften (Claude Code, hoved-checkout). PR #4019 (#3997-mekanik, patch note 7.157) reviewet og merge-klar ved ejer-go. Overtager #4018-fix-runden når workers pusher. Design-sessionens baggrunds-workers kører stadig i worktrees - rør ikke deres brancher.
 
 _Historik i git-log, issue-tråde + docs/audits/._
