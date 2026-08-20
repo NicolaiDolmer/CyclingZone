@@ -29,6 +29,7 @@ import HeroAgonyCard from "../components/HeroAgonyCard";
 // hentende komponentfil (kun teamId som prop), samme isolations-princip som
 // HeroAgonyCard ovenfor — se komponentfilens kommentar.
 import TodayStagesStrip from "../components/TodayStagesStrip";
+import DevTransitionCard from "../components/DevTransitionCard";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
@@ -998,6 +999,12 @@ export default function DashboardPage() {
           (under page-header, over sæson-wrap/sæsonstart-blokken). Skjuler sig
           selv når holdet ingen løb har i dag (mindst-støj-valg, ejer 18/8). */}
       <TodayStagesStrip teamId={team?.id} />
+
+      {/* Trin 7-overgangspanelet (#3746/#3803, ejer-design 18/8) — engangs-
+          forklaring af loft-omlægningen med holdets egne før/efter-tal.
+          Selv-gatende: renderer kun når backfillen har kørt og holdet ikke
+          har dismissed (server-persisteret). */}
+      <DevTransitionCard />
 
       {/* #3310: første-løbs-øjeblikket ejer toppen indtil resultatet er set. */}
       {firstRaceMomentActive && (

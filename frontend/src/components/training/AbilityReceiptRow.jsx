@@ -14,6 +14,11 @@
 //
 // Rækken er ren visning — al afledning sker i lib/trainingReport.js
 // (abilityReceipt / focusAbilityReceipt), som er unit-testet isoleret.
+//
+// #3924 trin 2 (design-go 20/8): baren bærer et mørkere gold-segment
+// (cz-accent-t, tema-bevidst dyb guld) der viser gårsdagens bidrag til den viste pct — row.yesterdayPct,
+// også afledt (og unit-testet) i trainingReport.js. Løser #3988: 67% af hårde
+// pas viste +0 i dag i gained-kolonnen og blev læst som bugs.
 
 import { useTranslation } from "react-i18next";
 
@@ -22,7 +27,7 @@ import { useTranslation } from "react-i18next";
 export default function AbilityReceiptRow({ row, inFocus = false }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
-  const { ability, value, gained, pct, locked } = row;
+  const { ability, value, gained, pct, locked, yesterdayPct } = row;
   const label = tRider(`racePreview.derived.${ability}`);
 
   return (
@@ -63,12 +68,25 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
       ) : pct == null ? (
         <span className="flex-none w-[72px] text-right font-mono tabular-nums text-3xs text-cz-3">—</span>
       ) : (
-        <span className="flex-none w-[72px] flex items-center gap-1.5">
+        <span
+          className="flex-none w-[72px] flex items-center gap-1.5"
+          title={yesterdayPct > 0 ? t("receipt.yesterdayContribution", { pct: yesterdayPct }) : undefined}
+        >
           <span className="relative h-1 flex-1 rounded-full bg-cz-subtle" aria-hidden="true">
             <span
               className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/85 transition-[width] duration-500"
               style={{ width: `${pct}%` }}
             />
+            {/* #3924 trin 2 (design-go 20/8): gårsdagens bidrag som mørkere segment
+                oven på fylden — #3988-fundet var at et +0-pas er usynligt i baren.
+                Positioneret som HALEN af fylden (segmentet ER den seneste tilvækst),
+                aldrig bredere end selve fylden (yesterdayPct <= pct, se trainingReport.js). */}
+            {yesterdayPct > 0 && (
+              <span
+                className="absolute top-0 h-full rounded-full bg-cz-accent-t transition-[width] duration-500"
+                style={{ left: `${Math.max(0, pct - yesterdayPct)}%`, width: `${Math.min(yesterdayPct, pct)}%` }}
+              />
+            )}
           </span>
           <span className="flex-none w-[24px] text-right font-mono tabular-nums text-3xs text-cz-3">
             {pct}%

@@ -329,6 +329,12 @@ export async function runTeamTrainingDay({
 
     // Pre-tick træthed til skaderisiko-beregning (brug den aktuelle, ikke den næste).
     const preFatigue = Number(cond.fatigue ?? 0);
+    // #3924 trin 2: pre-tick fremdrift, snapshottet FØR tickResult muterer den —
+    // rapport-linjen bærer den videre (progress_before) så frontend kan udlede
+    // hvor meget af DAGENS bar der kom fra netop dette pas (mørkere segment på
+    // "på vej mod næste point"-baren). Samme kilde som sharedTickArgs.progress
+    // nedenfor, ét sted, så de to aldrig kan divergere.
+    const preProgress = abRow.ability_progress ?? {};
     // D1: "race" er bevidst IKKE en gyldig DAILY_TRAINING_CONFIG.intensities-nøgle —
     // DAILY_TRAINING_CONFIG.fatigueLoad["race"] er undefined → nextFatigue's
     // `?? 0`-fallback giver PRÆCIS D1-semantikken (intet trænings-load, IKKE
@@ -354,7 +360,7 @@ export async function runTeamTrainingDay({
         age,
         abilities,
         caps: tickCaps,
-        progress: abRow.ability_progress ?? {},
+        progress: preProgress,
         program,
         conditionMult: condMult,
         bonus,
@@ -501,6 +507,9 @@ export async function runTeamTrainingDay({
       score: tickResult?.score ?? 0,
       gains: tickResult?.gains ?? {},
       gains_detail: gainsDetail,
+      // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens
+      // bidrag til "på vej mod næste point"-baren, aldrig til ny trænings-logik.
+      progress_before: preProgress,
       status: tickResult?.status ?? "rest",
       form: newForm,
       fatigue: newFatigue,

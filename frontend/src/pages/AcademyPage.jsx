@@ -527,15 +527,17 @@ export default function AcademyPage() {
 
                   <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} className="self-start" />
 
-                  {/* #2454: potentiale i RATING-point, samme enhed som resten af
-                      spillet. Stjernerne bliver stående som fallback for ældre
-                      payloads uden bånd. */}
+                  {/* #2454/#3746: potentiale i RATING-point, samme enhed som resten
+                      af spillet. `prog` er prognose-båndets navn; `ceil` er en
+                      alias (samme tal) for ældre klient-cache. Stjernerne bliver
+                      stående som fallback for payloads uden bånd. */}
                   {(item.potentialBand || potential) && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-cz-3">{t("potential")}</span>
                       {item.potentialBand ? (
                         <span className="font-mono tabular-nums text-[13px] text-cz-1">
-                          {item.potentialBand.ceil.lo}–{item.potentialBand.ceil.hi}
+                          {(item.potentialBand.prog ?? item.potentialBand.ceil).lo}
+                          –{(item.potentialBand.prog ?? item.potentialBand.ceil).hi}
                         </span>
                       ) : (
                         <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} />

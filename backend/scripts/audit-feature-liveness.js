@@ -90,6 +90,13 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // race_stage_claims (#4026/PR #4027, merged 20/8): FLYGTIG claim-tabel mod
+  // dobbelt-instans-etapeticks — rækken indsættes ved tick-start og SLETTES
+  // igen ved release (adminSimulateRace.js linje ~94), så 0 rows mellem ticks
+  // ER den sunde tilstand. PERMANENT entry (ikke "fjern når rows"): tabellen
+  // er tom næsten altid per design. En lækket række ryddes af lease-udløbet i
+  // claim-logikken selv — det er ikke Detector A's job at opdage.
+  "race_stage_claims",
   // race_stage_timelines-suppressionen fjernet 18/8 ~11:10: første etape efter
   // flag-ON skrev sin tidslinje (1 row, 9 events, timeline_version 1 — #2410 S1
   // bevist end-to-end). Detector A dækker tabellen normalt igen.
@@ -215,6 +222,15 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
   ["board_relations", { flagKey: "board_mandate_model_enabled" }],
   ["board_mandates", { flagKey: "board_mandate_model_enabled" }],
   ["board_vision_milestones", { flagKey: "board_mandate_model_enabled" }],
+  // Niveau-korrektionen (#3449, migration 2026-08-19-3449-level-correction-gate.sql):
+  // de to log-tabeller skrives KUN af marketValueLevelCorrectionApply.js
+  // --confirm-apply, og gaten står RØD ved seed (stabilitets-båndet binder).
+  // youth_auction_start_rate-nøglen er NULL indtil første apply og skrives af
+  // selvsamme kørsel der fylder tabellerne — så NULL (= off for isFlagOff) er
+  // præcis "tomme tabeller er forventet", og en fremtidig apply uden log-rows
+  // flages automatisk som ægte fund.
+  ["market_value_level_correction_apply_log", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
+  ["market_value_level_correction_rider_receipts", { flagKey: "market_value_level_correction_youth_auction_start_rate" }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)

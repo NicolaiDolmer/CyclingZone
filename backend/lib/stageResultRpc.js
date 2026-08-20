@@ -29,6 +29,7 @@
  */
 
 import { assertValidEntrantRows } from "./raceResultEntrantKey.js";
+import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 
 export async function applyStageResultAtomic(
   client,
@@ -62,6 +63,9 @@ export async function applyStageResultAtomic(
   // RPC returnerer jsonb { lock_won, rows_imported }. supabase-js giver det som objekt.
   const lockWon = data?.lock_won === true;
   const rowsImported = Number(data?.rows_imported) || 0;
+  // #4010: race_results er ændret — tøm sponsor-sweepens snapshot-cache, så den
+  // ikke genbruger deltager-/podie-afledninger fra før skrivningen.
+  if (lockWon && rowsImported > 0) clearRaceResultsSnapshots();
   return { lockWon, rowsImported };
 }
 
@@ -93,5 +97,7 @@ export async function applyRaceResultsBatchAtomic(
 
   const rowsDeleted = Number(data?.rows_deleted) || 0;
   const rowsInserted = Number(data?.rows_inserted) || 0;
+  // #4010: samme invalidering som per-etape-stien ovenfor.
+  if (rowsDeleted > 0 || rowsInserted > 0) clearRaceResultsSnapshots();
   return { rowsDeleted, rowsInserted };
 }

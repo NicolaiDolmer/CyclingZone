@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.163",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race Centre live ticker shows rider names again",
+          "body": "Live race cards could show raw internal IDs instead of rider names in the ticker line. Names are now looked up properly, and a line is hidden rather than shown half-broken."
+        },
+        "da": {
+          "title": "Race Centre-live-tickeren viser rytternavne igen",
+          "body": "Live-løbskort kunne vise rå interne ID'er i stedet for rytternavne i ticker-linjen. Navne slås nu korrekt op, og en linje skjules i stedet for at blive vist halvt i stykker."
+        },
+        "refs": [
+          4026
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.160",
     "date": "2026-08-20",
     "label": "Beta",
@@ -23,6 +46,153 @@ export const PATCHES = [
         "refs": [
           3985
         ]
+      }
+    ]
+  },
+  {
+    "version": "7.159",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Live updates",
+        "en": {
+          "title": "Live updates work again on auctions, notifications and the activity feed",
+          "body": "Some pages stopped updating by themselves and only refreshed when you reloaded. The live connection was being opened before you were signed in, so the server rejected it. It now waits until your session is ready."
+        },
+        "da": {
+          "title": "Live-opdateringer virker igen på auktioner, notifikationer og aktivitetsfeedet",
+          "body": "Nogle sider holdt op med at opdatere sig selv og kom først med igen når du genindlæste. Live-forbindelsen blev åbnet før du var logget ind, så serveren afviste den. Den venter nu på at din session er klar."
+        },
+        "refs": [
+          4010
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "internal",
+        "topic": "Database",
+        "en": {
+          "title": "Supabase load cut across three hot paths",
+          "body": "Sponsor payouts cache each completed race instead of re-reading every result every five minutes, the balance drift watch uses keyset pagination behind a new partial index, and realtime no longer reconnects in a loop. Measured over 23 hours: 203.849 race_results reads, 7.727 MalformedJWT errors and 3,3 TB of buffer traffic removed. The auth change is held back until after the season 3 start."
+        },
+        "da": {
+          "title": "Supabase-belastning skåret på tre varme stier",
+          "body": "Sponsor-udbetalinger cacher hvert completet løb i stedet for at genlæse alle resultater hvert femte minut, balance-drift-vagten bruger keyset-paginering bag et nyt partielt index, og realtime reconnecter ikke længere i ring. Målt over 23 timer: 203.849 race_results-læsninger, 7.727 MalformedJWT-fejl og 3,3 TB buffer-trafik fjernet. Auth-ændringen holdes tilbage til efter sæson 3-starten."
+        },
+        "refs": [
+          4010
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.158",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+      "category": "new",
+      "audience": "player",
+      "topic": "Rider development",
+      "en": {
+      "title": "The ceiling stays visible next to the forecast",
+      "body": "Nothing disappears with the new view. The profile, the scouting tab and the rider tables keep showing the role ceiling right next to the new projected level. For most riders the ceiling was raised, and riders who looked finished can train again.\n\nA one time panel on your dashboard shows each of your riders with ceiling before, ceiling now and the new forecast, so you can see exactly what changed for your team."
+      },
+      "da": {
+      "title": "Loftet bliver stående ved siden af prognosen",
+      "body": "Intet forsvinder med den nye visning. Profilen, scouting-fanen og ryttertabellerne viser fortsat rollens loft lige ved siden af det nye forventede niveau. For de fleste ryttere er loftet hævet, og ryttere der så færdige ud, kan trænes igen.\n\nEt engangspanel på dit dashboard viser hver af dine ryttere med loft før, loft nu og den nye prognose, så du kan se præcis hvad der ændrede sig for dit hold."
+      },
+      "refs": [
+      3746,
+      3803
+      ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider development",
+        "en": {
+          "title": "Potential now means speed, not height",
+          "body": "Every ability now has the same ceiling for every rider in the same role. What potential decides is how FAST a rider climbs toward it. A top talent trained well moves about three times faster than a modest one, and reaching the very top takes a full career of good choices.\n\nYour riders keep every point they have. Some inherited riders sit above their new ceiling on a few abilities; they simply stay there."
+        },
+        "da": {
+          "title": "Potentiale betyder nu fart, ikke højde",
+          "body": "Alle evner har nu det samme loft for alle ryttere i samme rolle. Det potentiale afgør er hvor HURTIGT en rytter klatrer mod det. Et toptalent der trænes rigtigt bevæger sig cirka tre gange hurtigere end et beskedent talent, og det tager en hel karriere med gode valg at nå helt til tops.\n\nDine ryttere beholder hvert eneste point de har. Nogle overtagne ryttere ligger over deres nye loft på et par evner; de bliver bare stående der."
+        },
+        "refs": [3746, 3709]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The profile now shows a projection, not a ceiling",
+          "body": "The scouting numbers show where a rider is realistically heading with the training you give him: the bottom of the band is steady but unfocused work, the top is dedicated focus every day. A better chief scout narrows the band. It is an estimate, not a guarantee."
+        },
+        "da": {
+          "title": "Profilen viser nu en prognose, ikke et loft",
+          "body": "Scouting-tallene viser hvor en rytter realistisk er på vej hen med den træning du giver ham: bunden af båndet er jævnt men ufokuseret arbejde, toppen er dedikeret fokus hver dag. En bedre chefscout gør båndet skarpere. Det er et estimat, ikke en garanti."
+        },
+        "refs": [3746, 3651, 3787, 3679, 1162, 3714]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "New training focus: Race craft",
+          "body": "Positioning, tactics and aggression can now be trained. Race craft is a skill day: low strain, steady gains, same pace for every rider."
+        },
+        "da": {
+          "title": "Nyt træningsfokus: Løbslære",
+          "body": "Positioning, taktik og aggression kan nu trænes. Løbslære er en færdighedsdag: lav belastning, jævn fremgang, samme tempo for alle ryttere."
+        },
+        "refs": [3746]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "The training page got tabs, and the roster comes first",
+          "body": "Train today, Week plan, Development and History are now four tabs. Your riders sit at the top of the first one, and the explanations moved behind a single How training works link.\n\nThe new Development tab shows every rider as one bar: level today, projected level, and the role's ceiling, with the focus picker right on the row."
+        },
+        "da": {
+          "title": "Træningssiden fik faner, og rytterne står øverst",
+          "body": "Træn i dag, Ugeplan, Udvikling og Historik er nu fire faner. Dine ryttere ligger øverst på den første, og forklaringerne er flyttet bag ét enkelt link.\n\nDen nye Udviklings-fane viser hver rytter som én bjælke: niveau i dag, forventet niveau og rollens loft, med fokusvælgeren lige på rækken."
+        },
+        "refs": [3721]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Yesterday's gains, at a glance",
+          "body": "Train today now opens with one line: how many riders trained toward their focus, how many rested, and how many points landed. Open it for a plain sentence per rider, like \"Rest day. Fresh again, fatigue 24 to 9.\"\n\nThe progress bar next to each ability also gets a darker gold segment for yesterday's session, so a hard training day always shows up, even on the many days it doesn't land a whole point."
+        },
+        "da": {
+          "title": "Gårsdagens fremgang på ét blik",
+          "body": "Træn i dag åbner nu med én linje: hvor mange ryttere trænede mod deres fokus, hvor mange hvilede, og hvor mange point der landede. Fold den ud for én almindelig sætning pr. rytter, som \"Hviledag. Frisk igen, træthed 24 til 9.\"\n\nFremdriftsbaren ved hver evne får også et mørkere guld-segment for gårsdagens pas, så en hård træningsdag altid kan ses, også de mange dage den ikke lander et helt point."
+        },
+        "refs": [3924, 3988]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "A Development tab on your team page",
+          "body": "Your team page has a new sortable table: rating today, projected level and ceiling for every rider, side by side. The rider profile's Overview tab now shows plain ability numbers; season progress lives on the Training tab where it always belonged."
+        },
+        "da": {
+          "title": "En Udviklings-fane på holdsiden",
+          "body": "Holdsiden har fået en ny sorterbar tabel: rating i dag, forventet niveau og loft for hver rytter, side om side. Rytterprofilens Overblik-fane viser nu rene evne-tal; sæsonens fremgang bor på Trænings-fanen, hvor den altid har hørt hjemme."
+        },
+        "refs": [3721, 3979]
       }
     ]
   },

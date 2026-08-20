@@ -233,18 +233,19 @@ test("#3570: LØKKEN ER SELVBEKRÆFTENDE — en forkert type cementeres for evig
 
   // Rytteren ER trukket som gc, men bærer en gammel fejl-label: sprinter.
   //
-  // FIKSPUNKTET FØLGER KALIBRERINGEN, og det har flyttet sig to gange:
+  // FIKSPUNKTET FØLGER KALIBRERINGEN, og det har flyttet sig tre gange:
   //
   //   før trin 4 (1,00/0,82/0,45/0,12)  → `sprinter`, altså fejl-labelen selv
   //   trin 4     (1,30/1,10/0,95/0,70/0,20) → `baroudeur`, ét skridt væk
   //   15/8, tilbagerullet til trin 3    → `sprinter` igen
+  //   trin 7 (16/8, fladt tag 93/80/70/55/25) → `baroudeur` igen
   //
-  // ⚠ Tilbagerulningen 15/8 gør altså løkken STÆRKERE igen: mere spredte rolle-
-  // faktorer betyder at lofterne bærer mere type-signal, så en fejl-label
-  // bekræfter sig selv i stedet for at glide. Det er en accepteret omkostning,
-  // fordi forankringen (archetype_draw, testet nedenfor) er live og løser den i
-  // prod. Skulle forankringen nogensinde blive slået fra, er denne løkke igen
-  // den defekt #3570 rapporterede.
+  // Under det flade tag bærer lofterne MINDRE type-signal (magnitude-
+  // information er bevidst fjernet — taget må ikke røbe anlægget), så løkken
+  // glider ét skridt væk fra fejl-labelen men finder stadig aldrig hjem. Det er
+  // en accepteret omkostning, fordi forankringen (archetype_draw, testet
+  // nedenfor) er live og løser den i prod. Skulle forankringen nogensinde blive
+  // slået fra, er denne løkke igen den defekt #3570 rapporterede.
   //
   // Påstanden testen beviser er den samme uanset hvilket navn fikspunktet har.
   //
@@ -261,8 +262,8 @@ test("#3570: LØKKEN ER SELVBEKRÆFTENDE — en forkert type cementeres for evig
     "uden forankring finder rytteren aldrig tilbage til sit anlæg (gc)");
   assert.equal(forkert.primary.key, spor[spor.length - 2],
     "løkken skal stå stille på ET fikspunkt — driver den stadig efter 10 runder, er defekten en anden");
-  assert.equal(forkert.primary.key, "sprinter",
-    "fikspunktet er igen fejl-labelen selv efter tilbagerulningen 15/8 — se noten ovenfor");
+  assert.equal(forkert.primary.key, "baroudeur",
+    "fikspunktet under trin 7's flade tag — se noten ovenfor");
 
   // Med forankring finder han tilbage i FØRSTE runde og bliver der.
   const draw = { primary: "gc", secondary: null, isHybrid: false };

@@ -28,6 +28,7 @@
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { getRaceResultsSnapshot, setRaceResultsSnapshot } from "./raceResultsSnapshotCache.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { captureException } from "./sentry.js";
 
@@ -226,27 +227,51 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
     // resultTimeByTeam (tidligste registrering pr. hold i DETTE løb), så en
     // mid-season-aktiveret kontrakt ikke kan bagudbetale for et løb der reelt
     // blev kørt/completet FØR aktiveringen.
-    const results = await fetchAllRows(() => supabase
-      .from("race_results")
-      .select("team_id, result_type, rank, imported_at")
-      .eq("race_id", race.id)
-      .order("id", { ascending: true }));
+    // #4010: de tre afledte værdier nedenfor er uforanderlige for et completet
+    // løb, så de beregnes én gang og genbruges på tværs af ticks. Uden cachen
+    // hentede hver tick alle race_results for alle completede løb — 203.849
+    // kald, 1.038 s DB-tid og 1,9 TB buffer-trafik i døgnet, næsten udelukkende
+    // for løb der for længst var betalt. Enhver skrivning til race_results
+    // tømmer cachen (raceResultsSnapshotCache.js), så en korrektion eller
+    // omkørsel slår igennem med det samme.
+    let snapshot = race.status === "completed" ? getRaceResultsSnapshot(race.id) : null;
 
-    const participatingTeamIds = [
-      ...new Set((results || []).map((r) => r.team_id).filter(Boolean)),
-    ];
+    if (!snapshot) {
+      const results = await fetchAllRows(() => supabase
+        .from("race_results")
+        .select("team_id, result_type, rank, imported_at")
+        .eq("race_id", race.id)
+        .order("id", { ascending: true }));
 
-    // Konservativt MIN pr. hold: er blot ét af holdets resultater i løbet
-    // ældre end aktiveringen, tæller hele løbet som "før" (ingen delvis
-    // bagudbetaling af et løb der var i gang ved aktiveringstidspunktet).
-    const resultTimeByTeam = {};
-    for (const r of results || []) {
-      if (!r.team_id || !r.imported_at) continue;
-      const existing = resultTimeByTeam[r.team_id];
-      if (!existing || new Date(r.imported_at) < new Date(existing)) {
-        resultTimeByTeam[r.team_id] = r.imported_at;
+      const participatingTeamIds = [
+        ...new Set((results || []).map((r) => r.team_id).filter(Boolean)),
+      ];
+
+      // Konservativt MIN pr. hold: er blot ét af holdets resultater i løbet
+      // ældre end aktiveringen, tæller hele løbet som "før" (ingen delvis
+      // bagudbetaling af et løb der var i gang ved aktiveringstidspunktet).
+      const resultTimeByTeam = {};
+      for (const r of results || []) {
+        if (!r.team_id || !r.imported_at) continue;
+        const existing = resultTimeByTeam[r.team_id];
+        if (!existing || new Date(r.imported_at) < new Date(existing)) {
+          resultTimeByTeam[r.team_id] = r.imported_at;
+        }
       }
+
+      // Kun rank 1-3 gemmes: computeResultBonusCredits tæller sejre (rank 1) og
+      // podier (rank 2-3) og ignorerer alt andet, så snapshottet er semantisk
+      // identisk med det fulde stage-sæt — men fylder ~3 rækker pr. etape i
+      // stedet for ét pr. rytter pr. etape.
+      const podiumResults = (results || []).filter(
+        (r) => r.result_type === "stage" && Number(r.rank) >= 1 && Number(r.rank) <= 3,
+      ).map((r) => ({ team_id: r.team_id, rank: Number(r.rank) }));
+
+      snapshot = { participatingTeamIds, resultTimeByTeam, podiumResults };
+      if (race.status === "completed") setRaceResultsSnapshot(race.id, snapshot);
     }
+
+    const { participatingTeamIds, resultTimeByTeam, podiumResults } = snapshot;
 
     const credits = computeRaceDayCredits({ race, participatingTeamIds, contractsByTeam, resultTimeByTeam });
 
@@ -287,10 +312,11 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
     }
 
     // #2948: resultat-bonusser (kun etape-rækker, rank 1-3).
-    const stageResults = (results || []).filter((r) => r.result_type === "stage");
+    // #4010: podiumResults ER dét filter, allerede anvendt da snapshottet blev
+    // bygget — se kommentaren ved snapshot-opbygningen ovenfor.
     const bonusCredits = computeResultBonusCredits({
       race,
-      stageResults,
+      stageResults: podiumResults,
       contractsByTeam,
       remainingCapByTeam,
       resultTimeByTeam,
