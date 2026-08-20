@@ -3,6 +3,7 @@
     "u23": "Under 23 (U23)",
     "u25": "Under 25 (U25)",
     "auction": "Active auction",
+    "listed": "Listed on the transfer market",
     "ai": "AI team",
     "incoming": "Incoming transfer",
     "outgoing": "Outgoing transfer",
@@ -364,10 +365,12 @@
       },
       "followersSub": "{count, plural, one {manager} other {managers}}",
       "scoutedBySub": "{count, plural, one {rival team} other {rival teams}}",
+      "scoutedBySubNeutral": "{count, plural, one {team} other {teams}}",
+      "selfBadge": "incl. you",
       "summary": {
         "own": "{followers, plural, =0 {No managers follow him yet} one {1 manager follows him} other {# managers follow him}} · scouted by {scouted, plural, =0 {no rivals} one {1 rival team} other {# rival teams}} · {views, plural, =0 {no unique visitors} one {1 unique visitor} other {# unique visitors}} in the last 7 days.",
         "ownQuiet": "No one has shown interest yet. He stays under the radar for now.",
-        "scouting": "{followers, plural, =0 {No managers follow him yet} one {1 manager follows him} other {# managers follow him}} · scouted by {scouted, plural, =0 {no rivals} one {1 rival team} other {# rival teams}} · {views, plural, =0 {no unique visitors} one {1 unique visitor} other {# unique visitors}} in the last 7 days.",
+        "scouting": "{followers, plural, =0 {No managers follow him yet} one {1 manager follows him} other {# managers follow him}} · scouted by {scouted, plural, =0 {no one} one {1 team} other {# teams}} · {views, plural, =0 {no unique visitors} one {1 unique visitor} other {# unique visitors}} in the last 7 days.",
         "scoutingQuiet": "No visible interest yet."
       },
       "whoScouts": {
@@ -380,7 +383,9 @@
         "title": "Activity",
         "scout": "{team} scouted him",
         "scoutAnon": "A rival scouted him",
+        "scoutSelf": "You scouted him",
         "watch": "Added to a manager's watchlist",
+        "watchSelf": "You added him to your watchlist",
         "viewsTrend": "Profile views {pct}% vs the previous 7 days",
         "viewsTrendMeta": "last 7 days",
         "empty": "No activity yet"

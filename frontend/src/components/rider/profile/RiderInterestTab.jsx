@@ -12,6 +12,14 @@
 // fremmede ser anonymiserede events ("En rival scoutede ham") — bevidst afvigelse
 // fra prototypens navngivne feed, jf. scouting-skjulet. Ingen bud-timeline her:
 // bud lever i Historik-fanen (BUD-rækker) og hero'ens bid-panel.
+//
+// #4036 (spiller-rapport 20/8): vieweren skal ALDRIG forveksle sine egne
+// handlinger med en rivals. Backend markerer nu egne scout-/watchlist-events
+// med self:true + viewer_scouted (riderInterest.js) — feedet viser dem som
+// "Du scoutede ham"/"Du tilføjede ham" i stedet for det anonymiserede
+// "En rival scoutede ham", og stat-kortene får en "inkl. dig"-mærkat.
+// viewerWatching kommer fra RiderStatsPage's eksisterende onWatchlist-state
+// (samme kilde som stjerne-knappen) — ingen ny fetch.
 
 import { useTranslation } from "react-i18next";
 import TeamLink from "../../TeamLink";
@@ -36,7 +44,7 @@ function FeedIcon({ type }) {
   return <EyeIcon size={15} aria-hidden="true" className={cls} />;
 }
 
-export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, visits = null, interest }) {
+export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, viewerWatching = false, visits = null, interest }) {
   const { t } = useTranslation("rider");
 
   // null = /interest-fetch undervejs (samme loading-gate som Udvikling-fanen).
@@ -62,16 +70,43 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
   const scoutedBy = interest.scouted_by_count ?? 0;
   const views7d = visits?.views7d ?? 0;
   const trendPct = visits?.isNew ? null : visits?.trend7dPct ?? null;
+  // #4036: er vieweren SELV med i tallene ovenfor? viewer_scouted kommer fra
+  // backend (kan aldrig gælde for isOwn — egen rytter kan ikke scoutes af
+  // ejeren selv); viewerWatching kommer fra den eksisterende stjerne-state.
+  const viewerScouted = !isOwn && interest.viewer_scouted === true;
+  const viewerFollows = !isOwn && viewerWatching;
 
   const hasAnyInterest = watchlistCount > 0 || scoutedBy > 0 || views7d > 0;
   const summary = !hasAnyInterest
     ? t(`profile.interest.summary.${isOwn ? "own" : "scouting"}Quiet`)
     : t(`profile.interest.summary.${isOwn ? "own" : "scouting"}`, { followers: watchlistCount, scouted: scoutedBy, views: views7d });
 
+  const selfBadge = (
+    <span className="text-2xs font-semibold text-cz-accent-t">{t("profile.interest.selfBadge")}</span>
+  );
+
   const statDefs = [
-    { key: "followers", icon: StarIcon, value: watchlistCount, sub: <span className="text-2xs text-cz-3">{t("profile.interest.followersSub", { count: watchlistCount })}</span> },
+    {
+      key: "followers", icon: StarIcon, value: watchlistCount,
+      sub: (
+        <span className="text-2xs text-cz-3 inline-flex items-center gap-1">
+          {t("profile.interest.followersSub", { count: watchlistCount })}
+          {viewerFollows && selfBadge}
+        </span>
+      ),
+    },
     { key: "views7d", icon: EyeIcon, value: views7d, sub: <TrendSub pct={trendPct} t={t} /> },
-    { key: "scoutedBy", icon: SearchIcon, value: scoutedBy, sub: <span className="text-2xs text-cz-3">{t("profile.interest.scoutedBySub", { count: scoutedBy })}</span> },
+    {
+      key: "scoutedBy", icon: SearchIcon, value: scoutedBy,
+      sub: (
+        <span className="text-2xs text-cz-3 inline-flex items-center gap-1">
+          {/* #4036: "rival team(s)" ville være forkert/misvisende hvis vieweren
+              selv er en af de talte — brug den neutrale ordlyd + selfBadge da. */}
+          {t(viewerScouted ? "profile.interest.scoutedBySubNeutral" : "profile.interest.scoutedBySub", { count: scoutedBy })}
+          {viewerScouted && selfBadge}
+        </span>
+      ),
+    },
   ];
 
   // Visnings-trend som øverste feed-linje (beskriver "nu", har ingen event-dato).
@@ -82,11 +117,14 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
     ...(interest.feed ?? []).map((e, i) => ({
       type: e.type,
       key: `${e.type}-${e.date}-${i}`,
+      self: e.self === true,
       text: e.type === "scout"
-        ? (e.team_name
-            ? t("profile.interest.feed.scout", { team: e.team_name })
-            : t("profile.interest.feed.scoutAnon"))
-        : t("profile.interest.feed.watch"),
+        ? (e.self
+            ? t("profile.interest.feed.scoutSelf")
+            : e.team_name
+              ? t("profile.interest.feed.scout", { team: e.team_name })
+              : t("profile.interest.feed.scoutAnon"))
+        : (e.self ? t("profile.interest.feed.watchSelf") : t("profile.interest.feed.watch")),
       meta: [e.season != null ? t("profile.interest.seasonShort", { n: e.season }) : null, e.date ? formatDate(e.date, null, { day: "numeric", month: "short" }) : null]
         .filter(Boolean).join(" · "),
     })),
@@ -154,7 +192,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
           feed.map((e, i) => (
             <div key={e.key} className={`flex items-center gap-3 px-[17px] py-3 ${i > 0 ? "border-t border-cz-border" : ""}`}>
               <FeedIcon type={e.type} />
-              <span className="flex-1 text-[12.5px] text-cz-1 min-w-0 truncate">{e.text}</span>
+              <span className={`flex-1 text-[12.5px] min-w-0 truncate ${e.self ? "text-cz-accent-t font-medium" : "text-cz-1"}`}>{e.text}</span>
               <span className="text-2xs text-cz-3 whitespace-nowrap">{e.meta}</span>
             </div>
           ))

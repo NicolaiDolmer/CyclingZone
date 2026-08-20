@@ -9,13 +9,21 @@
 //   - Team-navne på scout-handlinger er KUN synlige for rytterens ejer
 //     ("Hvem scouter din rytter?" er en ejer-flade i designet). Alle andre får
 //     anonymiserede feed-events (kun dato + sæson) — ellers ville enhver rival
-//     kunne aflæse konkurrenters scouting-strategi.
-//   - Watchlist-events er ALTID anonyme (kun dato): rider_watchlist er knyttet
-//     til brugere, ikke hold, og en managers liste er privat.
+//     kunne aflæse konkurrenters scouting-strategi. UNDTAGELSE: vieweren ser
+//     ALTID sit eget holds handlinger som "selv" (self:true + team_name) —
+//     det er ikke en lækage at vise en manager sine egne handlinger (#4036,
+//     spiller-rapport 20/8: uden dette blev "Scouted by you"/"You follow"
+//     fejlagtigt vist som "A rival scouted him"/"1 manager follows").
+//   - Watchlist-events er ANONYME for alle andre end vieweren selv (kun dato):
+//     rider_watchlist er knyttet til brugere, ikke hold, og en managers liste
+//     er privat. Vierens EGET watch-event får self:true (samme #4036-fix).
 //   - Rytterens NUVÆRENDE ejerhold filtreres ud af scout-listen (et hold der
 //     scoutede ham og siden købte ham er ikke længere "interesse").
 
-export function buildRiderInterest({ scoutRows = [], watchRows = [], isOwner = false, ownerTeamId = null } = {}) {
+export function buildRiderInterest({
+  scoutRows = [], watchRows = [], isOwner = false, ownerTeamId = null,
+  viewerTeamId = null, viewerUserId = null,
+} = {}) {
   const byTeam = new Map();
   for (const row of scoutRows || []) {
     const teamId = row?.team_id ?? row?.team?.id;
@@ -40,22 +48,37 @@ export function buildRiderInterest({ scoutRows = [], watchRows = [], isOwner = f
       const teamId = row?.team_id ?? row?.team?.id;
       return teamId && !(ownerTeamId && teamId === ownerTeamId);
     })
-    .map((row) => ({
-      type: "scout",
-      date: row.created_at ?? null,
-      team_name: isOwner ? row.team?.name ?? null : null,
-      season: row.season?.number ?? null,
-    }));
-  const watchEvents = (watchRows || []).map((row) => ({ type: "watch", date: row?.created_at ?? null }));
+    .map((row) => {
+      const teamId = row?.team_id ?? row?.team?.id;
+      const self = Boolean(viewerTeamId && teamId === viewerTeamId);
+      return {
+        type: "scout",
+        date: row.created_at ?? null,
+        team_name: (isOwner || self) ? row.team?.name ?? null : null,
+        season: row.season?.number ?? null,
+        self,
+      };
+    });
+  const watchEvents = (watchRows || []).map((row) => ({
+    type: "watch",
+    date: row?.created_at ?? null,
+    self: Boolean(viewerUserId && row?.user_id && row.user_id === viewerUserId),
+  }));
 
   const feed = [...scoutEvents, ...watchEvents]
     .filter((e) => e.date)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 8);
 
+  // #4036: vieweren skal kunne se at DE SELV er blandt de talte, uden at
+  // scouting-fog'en (#2798) lækker hvilke RIVALER der scouter — kun et
+  // ja/nej for "er du selv med i tallet ovenfor".
+  const viewerScouted = Boolean(viewerTeamId && byTeam.has(viewerTeamId));
+
   return {
     scouted_by_count: byTeam.size,
     scouts: isOwner ? scouts : null,
     feed,
+    viewer_scouted: viewerScouted,
   };
 }

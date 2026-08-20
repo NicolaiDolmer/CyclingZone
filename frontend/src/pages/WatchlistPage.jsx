@@ -43,6 +43,8 @@ export default function WatchlistPage() {
   const { t } = useTranslation("watchlist");
   // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
   const { t: tTypes } = useTranslation("riderTypes");
+  // #4036: mobil-fold-tekst for markeds-status (RiderBadges' korte labels — se nedenfor).
+  const { t: tRider } = useTranslation("rider");
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
@@ -55,6 +57,11 @@ export default function WatchlistPage() {
   const [compareIds, setCompareIds] = useState([]);
   const [actionError, setActionError] = useState("");
   const [auctionRiderIds, setAuctionRiderIds] = useState(() => new Set());
+  // #4036 (spiller-rapport 20/8): fast-pris transferliste-status pr. rytter,
+  // adskilt fra auktion — samme "open"/"negotiating" aktiv-definition som
+  // TeamPage's loadOwnTransferListings (#3810). transfer_listings er offentligt
+  // læsbar (RLS "Public read"), så ingen ny endpoint nødvendig.
+  const [listedRiderIds, setListedRiderIds] = useState(() => new Set());
   const [toasts, setToasts] = useState([]);
 
   function dismissToast(id) {
@@ -104,8 +111,19 @@ export default function WatchlistPage() {
         .in("status", ["active", "extended"])
         .in("rider_id", riderIds);
       setAuctionRiderIds(new Set((auctions || []).map(a => a.rider_id)));
+
+      // #4036: rytteren kan samtidig være under aktiv fast-pris-liste (uafhængig
+      // af auktion) — vis begge status-ikoner, prisen behøver ikke stå her
+      // (spilleren klikker ind for detaljer).
+      const { data: listings } = await supabase
+        .from("transfer_listings")
+        .select("rider_id")
+        .in("status", ["open", "negotiating"])
+        .in("rider_id", riderIds);
+      setListedRiderIds(new Set((listings || []).map(l => l.rider_id)));
     } else {
       setAuctionRiderIds(new Set());
+      setListedRiderIds(new Set());
     }
     setLoading(false);
   }
@@ -297,9 +315,27 @@ export default function WatchlistPage() {
     },
     {
       key: "badges", header: t("thBadges"), sortKey: "is_u25",
+      // #4036: markeds-status (auktion/transferliste) skal være synlig UDEN
+      // vandret scroll på mobil — ikke kun i desktop-tabellen. fold:true føjer
+      // den derfor til sticky-rytterkolonnens underlinje ≤640px, samme mønster
+      // som rating/type/værdi allerede bruger (PAGE_TEMPLATES-opskriften).
+      fold: true,
+      foldValue: (entry) => {
+        const parts = [];
+        if (auctionRiderIds.has(entry.rider.id)) parts.push(tRider("badges.label.auction"));
+        if (listedRiderIds.has(entry.rider.id)) parts.push(tRider("badges.label.listed"));
+        return parts.join(" · ");
+      },
       render: (entry) => (
         <div className="flex flex-wrap items-center gap-1">
-          <RiderBadges badges={[ageBadgeKey(entry.rider, seasonYear)]} />
+          {/* #4036: auktion/transferliste-status direkte i ønskelisten — spilleren
+              skal se dette UDEN at klikke ind på hver rytter (prisen behøver ikke
+              stå her, kun status). */}
+          <RiderBadges badges={[
+            ageBadgeKey(entry.rider, seasonYear),
+            auctionRiderIds.has(entry.rider.id) && "auction",
+            listedRiderIds.has(entry.rider.id) && "listed",
+          ]} />
         </div>
       ),
     },
