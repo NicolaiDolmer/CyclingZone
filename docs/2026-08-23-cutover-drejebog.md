@@ -366,3 +366,14 @@ Komponent 1 RØD (udgår), komponent 2 afventer design-session, komponent 3 KLAR
 - Om `processSeasonStart` rører `board_profiles` mellem migrationen og UI-flippet er ikke målt (komponent 4).
 
 Refs #3645 #3459 #3449 #3393 #3514 #3591 #3709 #3757
+
+## Tillæg — #2748 pension-minimum (uafhængig af de fire gated komponenter ovenfor)
+
+Rytterprofilens "finalSeason"-banner er live uden yderligere skridt (læser deterministisk fra riderProgression.js, intet gemt state). Efter/ved søndagens sæsonstart-flip: kør indbakke-notifikationen til ramte hold —
+
+```
+node backend/scripts/dev/notifyRetirement2748.mjs           # dry-run (default)
+node backend/scripts/dev/notifyRetirement2748.mjs --apply   # send
+```
+
+Idempotent pr. (bruger, sæson) — sikker at gentage, ingen gate før kørsel (ikke-destruktiv, kun inbox-inserts). Refs #2748

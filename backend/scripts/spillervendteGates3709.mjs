@@ -28,7 +28,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import {
-  YOUTH_PROGRESSION_CONFIG, buildYouthCaps, taperedAbsoluteCap, peakAgeForType,
+  YOUTH_PROGRESSION_CONFIG, PROGRESSION_CONFIG, buildYouthCaps, taperedAbsoluteCap,
+  peakAgeForType, stepAbility, seededUnit,
 } from "../lib/riderProgression.js";
 import { dailyAbilityDelta } from "../lib/dailyTraining.js";
 
@@ -57,6 +58,13 @@ export const KRAV = Object.freeze({
   // "52 uger i virkeligheden er cirka 12 sæsoner. I den periode må kun de bedste
   // af de bedste stige til 90 i en stat." 12 × 28 = 336 dage. Båndet er ±15 %:
   // hurtigere end 286 dage er for hurtigt, langsommere end 386 er for sejt.
+  //
+  // SEMANTIK-ÆNDRING, ejer-go 16/8: målingen følger en ÆGTE KARRIERE (16-årig
+  // med fuld støtte, ældes undervejs, decline efter peak) i stedet for den
+  // oprindelige evig-17-årige speedometer-måling. Ejerens ord: "det skal være
+  // muligt at bedømme disse ting f.eks. udfra en 16-årig og hele vejen til
+  // 40-årig." Kalibreret mod speedometeret ville ingen ægte rytter nogensinde
+  // nå 90 (perfekt karriere toppede på 80). Båndet 286-386 er UÆNDRET.
   dageTil90Min: 286,
   dageTil90Maks: 386,
 
@@ -107,20 +115,67 @@ function gateTag(riders, cfg) {
   return { ryttereOver95, pladserOver95, pladserPaa99, medianLoft: median(potRatings) };
 }
 
-// Simulér én evne dag for dag under BEDST MULIGE spil. Returnerer dage til målet.
-function dageTil(maal, { potentiale, alder, start, tag, primaryType }) {
-  let cur = start, dag = 0;
-  while (cur < maal - 0.5 && dag < 5000) {
-    const d = dailyAbilityDelta({
-      ability: "sprint", current: cur, cap: tag, age: alder,
-      program: { focus: "sprint", intensity: "hard" },
-      conditionMult: 1, bonus: true, noise: 1, potentiale,
-      primaryType, secondaryType: null,
-    });
-    if (d <= 0) break;
-    cur += d; dag++;
+// ═══ KARRIERE-SIMULERING (S4/S5-semantik, ejer-go 16/8) ══════════════════════
+// Ejeren 16/8: "det skal være muligt at bedømme disse ting f.eks. udfra en
+// 16-årig og hele vejen til 40-årig." Den gamle måling holdt rytteren 17 år
+// for evigt (et speedometer) — kalibreret mod DEN ville ingen ægte rytter
+// nogensinde nå 90, fordi vækstbudgettet falder ved 20/23/26 år. Målingen
+// følger nu en ÆGTE karriere: rytteren starter som 16-årig (akademi), ældes
+// én sæson pr. 28 dage, træner gennem produktionens egen dailyAbilityDelta,
+// og efter peak-alderen falder evnen via produktionens egen stepAbility.
+//
+// "Bedst mulige spil" = topfacilitet (tier 5), hård dedikeret træning og
+// manager-bonus hver dag. Staff sendes med men bidrager 1,0 mod syntetisk
+// profil (kendt hul 7 i spec §4 — uændret her).
+function karriere({ potentiale, startAlder = 16, start = 20, tag, primaryType, tilAlder = 40 }) {
+  const peak = peakAgeForType(primaryType);
+  let cur = start, alder = startAlder, dag = 0, dageTil90 = Infinity, vedPeak = null;
+  const vedAlder = {};
+  while (alder < tilAlder) {
+    if (alder <= peak) {
+      for (let d = 0; d < DAGE_PR_SAESON; d++) {
+        const delta = dailyAbilityDelta({
+          ability: "sprint", current: cur, cap: tag, age: alder,
+          program: { focus: "sprint", intensity: "hard" },
+          conditionMult: 1, bonus: true, noise: 1, potentiale,
+          primaryType, secondaryType: null,
+          facilityTier: 5, riderLevel: "u23",
+          staff: { training: { sprint: 5 }, chief: 5 },
+        });
+        cur += delta; dag++;
+        if (dageTil90 === Infinity && cur >= 89.5) dageTil90 = dag;
+      }
+    } else {
+      // Efter peak: sæsonens decline gennem produktionens egen stepAbility.
+      cur = stepAbility(cur, tag, alder, peak, true, seededUnit(`gate:${potentiale}:${alder}`), PROGRESSION_CONFIG, 1);
+    }
+    alder++;
+    if (alder === peak + 1) vedPeak = cur;
+    vedAlder[alder] = cur;
   }
-  return { dage: cur >= maal - 0.5 ? dag : Infinity, slut: cur };
+  return {
+    dageTil90,
+    fremgangEfter: (dage) => {
+      // Fremgang efter N vækst-dage (til S5): kør en frisk sim og aflæs.
+      let c = start, a = startAlder;
+      for (let d = 1; d <= dage && a <= peak; d++) {
+        c += dailyAbilityDelta({
+          ability: "sprint", current: c, cap: tag, age: a,
+          program: { focus: "sprint", intensity: "hard" },
+          conditionMult: 1, bonus: true, noise: 1, potentiale,
+          primaryType, secondaryType: null,
+          facilityTier: 5, riderLevel: "u23",
+          staff: { training: { sprint: 5 }, chief: 5 },
+        });
+        if (d % DAGE_PR_SAESON === 0) a++;
+      }
+      return c - start;
+    },
+    vedPeak: vedPeak == null ? cur : vedPeak,
+    ved33: vedAlder[33] ?? null,
+    ved36: vedAlder[36] ?? null,
+    ved40: vedAlder[40] ?? null,
+  };
 }
 
 // GATE 3. Største spring på ÉN dag, i det mest ekstreme lovlige scenarie:
@@ -152,33 +207,29 @@ function gateSpring(cfg) {
   return { maksRaaDelta: maks, maksHelePoint: Math.floor(maks) };
 }
 
-// GATE 4 + 5. Tid til 90 for spillets bedste, og fart-spændet mod det dårligste.
+// GATE 4 + 5. Tid til 90 for spillets bedste, og fart-spændet mod det dårligste —
+// begge målt på en ÆGTE karriere (16 → 40 år), se karriere() ovenfor.
 function gateFart(cfg) {
-  const bedsteTag = clamp(buildYouthCaps(6, "sprinter", null, cfg).sprint ?? 0, 0, 99);
-  const bedste = dageTil(90, { potentiale: 6, alder: 17, start: 20, tag: Math.max(bedsteTag, 90), primaryType: "sprinter" });
+  const tag = clamp(buildYouthCaps(6, "sprinter", null, cfg).sprint ?? 0, 0, 99);
+  const bedste = karriere({ potentiale: 6, tag, primaryType: "sprinter" });
 
   // Fart-spænd: hvor langt når pot 1 på den tid pot 6 bruger på at nå 90?
-  const svagTag = clamp(buildYouthCaps(1, "sprinter", null, cfg).sprint ?? 0, 0, 99);
-  let cur = 20;
-  const dage = Number.isFinite(bedste.dage) ? bedste.dage : 336;
-  for (let d = 0; d < dage; d++) {
-    const delta = dailyAbilityDelta({
-      ability: "sprint", current: cur, cap: Math.max(svagTag, 90), age: 17,
-      program: { focus: "sprint", intensity: "hard" },
-      conditionMult: 1, bonus: true, noise: 1, potentiale: 1,
-      primaryType: "sprinter", secondaryType: null,
-    });
-    if (delta <= 0) break;
-    cur += delta;
-  }
-  const svagFremgang = cur - 20;
+  const svag = karriere({ potentiale: 1, tag, primaryType: "sprinter" });
+  const dage = Number.isFinite(bedste.dageTil90) ? bedste.dageTil90 : 336;
+  const svagFremgang = svag.fremgangEfter(dage);
   const bedsteFremgang = 70;
   return {
-    dageTil90: bedste.dage,
-    saesonerTil90: Number.isFinite(bedste.dage) ? +(bedste.dage / DAGE_PR_SAESON).toFixed(1) : null,
-    pointPrUge: Number.isFinite(bedste.dage) ? +((70 / bedste.dage) * 7).toFixed(2) : null,
+    dageTil90: bedste.dageTil90,
+    saesonerTil90: Number.isFinite(bedste.dageTil90) ? +(bedste.dageTil90 / DAGE_PR_SAESON).toFixed(1) : null,
+    pointPrUge: Number.isFinite(bedste.dageTil90) ? +((70 / bedste.dageTil90) * 7).toFixed(2) : null,
     svagNaaerTil: +(20 + svagFremgang).toFixed(1),
     fartSpaend: svagFremgang > 0 ? +(bedsteFremgang / svagFremgang).toFixed(2) : Infinity,
+    // Hele livsforløbet (ejer 16/8: "16-årig og hele vejen til 40-årig") —
+    // rapporteres som kontekst under tabellen, gates er S4/S5-båndene.
+    livsforloeb: {
+      pot6: { vedPeak: +bedste.vedPeak.toFixed(1), ved33: +bedste.ved33.toFixed(1), ved36: +bedste.ved36.toFixed(1), ved40: +bedste.ved40.toFixed(1) },
+      pot1: { vedPeak: +svag.vedPeak.toFixed(1), ved36: +svag.ved36.toFixed(1) },
+    },
   };
 }
 
@@ -230,12 +281,14 @@ const gates = [
 ];
 
 console.log("# Spillervendte gates (#3709 / #3746)\n");
-console.log(`Population: ${riders.length} ryttere · signatur-tag ${cfg.naturalPrimaryFactor} · median-loft ${tag.medianLoft}\n`);
+console.log(`Population: ${riders.length} ryttere · signatur-tag ${cfg.roleTags.signatur} · median-loft ${tag.medianLoft}\n`);
 console.log("| # | gate | faktisk | krav | |");
 console.log("|---|---|---|---|---|");
 for (const g of gates) {
   console.log(`| ${g.id} | ${g.navn} | ${g.faktisk} | ${g.krav} | ${g.ok ? "OK" : "FEJL"} |`);
 }
+
+console.log(`\nLivsforloeb (karriere-sim, fuld stoette): pot 6 peak ${fart.livsforloeb.pot6.vedPeak} · 33 aar ${fart.livsforloeb.pot6.ved33} · 36 aar ${fart.livsforloeb.pot6.ved36} · 40 aar ${fart.livsforloeb.pot6.ved40} — pot 1 peak ${fart.livsforloeb.pot1.vedPeak} · 36 aar ${fart.livsforloeb.pot1.ved36}`);
 
 const fejlede = gates.filter((g) => !g.ok);
 console.log(`\n${fejlede.length === 0 ? "Alle gates groenne." : `${fejlede.length} gate(s) fejlede: ${fejlede.map((g) => g.id).join(", ")}`}`);

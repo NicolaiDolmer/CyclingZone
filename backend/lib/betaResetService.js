@@ -2,6 +2,7 @@ import { createBaselineProfile } from "./boardEngine.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
 import { MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
+import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 
 export const DEFAULT_BETA_BALANCE = 500000; // #1717: sænket 800000 → 500000 (matcher INITIAL_BALANCE)
 
@@ -369,6 +370,9 @@ export async function resetBetaRaceCalendar(supabase) {
     supabase.from("season_standings").delete().not("id", "is", null).select("id"),
   ]);
   [pending, results, standings].forEach(ensureOk);
+  // #4010: hele race_results er væk — sponsor-sweepens snapshot-cache må ikke
+  // overleve en beta-reset.
+  clearRaceResultsSnapshots();
 
   // finance_transactions.race_id: NO ACTION FK til races — null for alle hold (også
   // AI/bank), ellers blokerer FK-constraint races-delete (FK-audit, relaunch 18/6).

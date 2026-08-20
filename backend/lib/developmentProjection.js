@@ -29,21 +29,32 @@ export const MAX_PROJECTION_SEASONS = 12;  // timing-søgnings-horisont (til-lof
 export const DISPLAY_SEASONS = 6;          // tegnet bånd-horisont (længere = ren støj)
 
 // Tempo-usikkerhed: den ægte motor skalerer vækst-fraktionen med en potentiale-afhængig
-// rate (riderProgression.youthRateForPotential ∈ [0.6, 1.35]). Vi kender IKKE rytterens
-// potentiale (og må ikke lække den) → projektionen bracketterer HELE spændet med to
-// ærlige envelopes. Fordi de SAMME globale parametre bruges for ALLE ryttere, afslører
-// bredden intet om DENNE rytters potentiale — men rytterens faktiske trajektorie ligger
-// i intervallet per konstruktion. Kalibreret empirisk mod den ægte motor i
-// scripts/developmentProjectionHarness.js (coverage-gate).
+// rate (riderProgression.youthRateForPotential — trin 7, #3746, ejer 16/8: rateByPotential
+// ∈ [0.11, 0.89], se YOUTH_PROGRESSION_CONFIG). Vi kender IKKE rytterens potentiale (og må
+// ikke lække den) → projektionen bracketterer HELE spændet med to ærlige envelopes. Fordi
+// de SAMME globale parametre bruges for ALLE ryttere, afslører bredden intet om DENNE
+// rytters potentiale — men rytterens faktiske trajektorie ligger i intervallet per
+// konstruktion.
 //
-// Nedre envelope (pessimistisk): den langsomste rytter vokser LANGSOMT (rate 0.5 <
-// motorens min-rate 0.6 → nedre kant forbliver under reality = 0% over-lovende, men
-// stiger så båndet viser forventet vækst frem for et fladt gulv). Efter peak falder han.
-// Øvre envelope (optimistisk): hurtig vækst mod ceilHi; efter peak falder han mildt.
-// Ejer-valgt "smalt" bånd (2026-07-09): tættere/mere informativt end det flade gulv,
-// samme sikkerhed (validér i developmentProjectionHarness.js: median 1.0, 0% over-lovende).
-export const RATE_GROWTH_LO = 0.5;   // nedre: langsom-men-reel vækst (< motorens min 0.6)
-export const RATE_GROWTH_HI = 1.15;  // øvre: lidt under max-rate → strammere top
+// #3746: rekalibreret fra [0.5, 1.15], som var pinnet mod DEN GAMLE motors rate-spænd
+// (0.6-1.35, før trin 7 flyttede taget til rolleklassen og komprimerede raten). Den
+// oprindelige kommentar hævdede en empirisk kalibrering mod
+// scripts/developmentProjectionHarness.js — den fil findes IKKE i repoet (hverken
+// DB-bundet eller ej; kun scripts/spillervendteGates3709.mjs og
+// scripts/previewRiderProgression.js relaterer sig til motorens kurver, og ingen af
+// dem måler coverage for DENNE projektion), så referencen var allerede stale før
+// dette trin. Rapporteret til ejeren ved denne rekalibrering. LO/HI er derfor et
+// bevidst KONSERVATIVT bracket om det nye rateByPotential-spænd (0.08 < 0.11,
+// 0.95 > 0.89) frem for en målt coverage-garanti — næste session der rører denne
+// fil bør enten genskabe harnesset eller fjerne referencen helt.
+//
+// Nedre envelope (pessimistisk): den langsomste rytter vokser LANGSOMT (rate 0.08 <
+// motorens min-rate 0.11 → nedre kant forbliver under reality, men stiger så båndet viser
+// forventet vækst frem for et fladt gulv). Efter peak falder han.
+// Øvre envelope (optimistisk): hurtig vækst mod ceilHi (rate 0.95 > motorens max 0.89 →
+// øvre kant forbliver over reality); efter peak falder han mildt.
+export const RATE_GROWTH_LO = 0.08;  // nedre: under motorens nye min-rate 0.11
+export const RATE_GROWTH_HI = 0.95;  // øvre: over motorens nye max-rate 0.89
 
 // Rating-niveau decline pr. sæson efter peak.
 //

@@ -605,7 +605,8 @@ document.getElementById("tbody").addEventListener("click", e => {
 document.getElementById("timeline").addEventListener("click", e => {
   const bar = e.target.closest("[data-jump]");
   if (!bar) return;
-  const el = document.querySelector('th.racehead[data-race="' + bar.getAttribute("data-jump").replace(/"/g, '\\"') + '"]');
+  const name = bar.getAttribute("data-jump");
+  const el = Array.from(document.querySelectorAll("th.racehead")).find(th => th.getAttribute("data-race") === name);
   const sc = document.getElementById("tablewrap");
   if (el && sc) sc.scrollTo({ left: el.offsetLeft - 320, behavior: "smooth" });
 });

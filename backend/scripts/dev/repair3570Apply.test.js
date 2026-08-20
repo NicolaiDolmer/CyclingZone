@@ -551,7 +551,10 @@ test("NEGATIV: post-verify fanger en saboteret primary_type", async () => {
   );
 });
 
-test("NEGATIV: post-verify fanger et saboteret loft (under rytterens nuværende evne)", async () => {
+// Trin 7 (#3794, 16/8): gulv-brud-vagten er udgået — "loft ≥ evne" er ikke
+// længere en invariant. Sabotagen fanges stadig, af capsMismatch: sameCaps
+// kræver præcis buildCapsForRider-output uanset retningen der pilles i.
+test("NEGATIV: post-verify fanger et saboteret loft (afviger fra formlen)", async () => {
   const db = nyDb();
   db.saetSaboteur((table, patch) => {
     if (table !== "rider_derived_abilities" || !patch.ability_caps) return null;
@@ -561,7 +564,6 @@ test("NEGATIV: post-verify fanger et saboteret loft (under rytterens nuværende 
     () => runRepair3570(db, APPLY),
     (err) => {
       assert.match(err.message, /POST-VERIFY FEJLEDE/);
-      assert.ok(err.rapport.antal.gulvBrud > 0, "gulv-brud skal fyre");
       assert.ok(err.rapport.antal.capsMismatch > 0, "caps-mismatch skal fyre");
       return true;
     },
@@ -801,8 +803,10 @@ test("#3709 trin 3: model-drift-ledgeren er skrevet mod DET godkendte facit", ()
   // ombæring og dermed mister det historiske dokument.
   assert.equal(DRYRUN_FACIT.loftSaenketAntal, 7234, "det godkendte 10/8-tal må aldrig redigeres");
   assert.equal(DRYRUN_FACIT.saenkningMedian, 30, "det godkendte 10/8-tal må aldrig redigeres");
-  assert.equal(facitEfterDrift().loftSaenketAntal, 7230, "ledgeren skal flytte tallet til den model der faktisk koerer");
-  assert.equal(facitEfterDrift().saenkningMedian, 30, "ledgeren skal flytte tallet til den model der faktisk koerer");
+  // Slutværdierne følger ledgerens seneste poster (trin 7, 16/8): fladt tag +
+  // gulvet fjernet — se FACIT_MODELDRIFT for kæden 7234 → 7230 → 6641 → 7230 → 5783.
+  assert.equal(facitEfterDrift().loftSaenketAntal, 5783, "ledgeren skal flytte tallet til den model der faktisk koerer");
+  assert.equal(facitEfterDrift().saenkningMedian, 19, "ledgeren skal flytte tallet til den model der faktisk koerer");
   assert.throws(
     () => facitEfterDrift({ ...DRYRUN_FACIT, loftSaenketAntal: 9999 }),
     /Ledgeren er skrevet mod et andet facit/,

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   fetchAllRows,
+  fetchAllRowsKeyset,
   fetchAllRowsChunkedIn,
   SUPABASE_IN_CHUNK_SIZE,
 } from "./supabasePagination.js";
@@ -64,4 +65,68 @@ test("#3030 fetchAllRowsChunkedIn med tom id-liste kalder aldrig query-builderen
   });
   assert.deepEqual(out, []);
   assert.equal(calls, 0);
+});
+
+
+// ── #4010 keyset-paginering ─────────────────────────────────────────────────
+//
+// Mock-query der opfører sig som PostgREST med `.gt(key, after)` + `.limit(n)`:
+// rows SKAL være sorteret stigende på nøglen, som keyset-kontrakten kræver.
+function keysetQueryFor(rows, { keyColumn = "id", onCall } = {}) {
+  return (after) => {
+    onCall?.(after);
+    const rest = after == null ? rows : rows.filter((r) => r[keyColumn] > after);
+    return { limit: (n) => Promise.resolve({ data: rest.slice(0, n), error: null }) };
+  };
+}
+
+test("#4010 fetchAllRowsKeyset henter alle rækker uden offset", async () => {
+  const rows = Array.from({ length: 25 }, (_, i) => ({ id: i + 1 }));
+  const out = await fetchAllRowsKeyset(keysetQueryFor(rows), { pageSize: 10 });
+  assert.equal(out.length, 25);
+  assert.deepEqual(out.map((r) => r.id), rows.map((r) => r.id));
+});
+
+test("#4010 fetchAllRowsKeyset rykker markøren frem i stedet for at springe over", async () => {
+  // Kernen i fixet: side 2 må ikke bede databasen om at producere og kassere
+  // side 1 igen. Vi verificerer at hvert kald får forrige sides SIDSTE nøgle med.
+  const rows = Array.from({ length: 25 }, (_, i) => ({ id: i + 1 }));
+  const seen = [];
+  await fetchAllRowsKeyset(keysetQueryFor(rows, { onCall: (a) => seen.push(a) }), { pageSize: 10 });
+  assert.deepEqual(seen, [null, 10, 20]);
+});
+
+test("#4010 fetchAllRowsKeyset stopper på en delvis sidste side", async () => {
+  const rows = Array.from({ length: 20 }, (_, i) => ({ id: i + 1 }));
+  const seen = [];
+  const out = await fetchAllRowsKeyset(keysetQueryFor(rows, { onCall: (a) => seen.push(a) }), { pageSize: 7 });
+  assert.equal(out.length, 20);
+  // 7 + 7 + 6 → fjerde kald er unødvendigt, den korte side afslutter løkken.
+  assert.deepEqual(seen, [null, 7, 14]);
+});
+
+test("#4010 fetchAllRowsKeyset understøtter en anden nøglekolonne", async () => {
+  const rows = Array.from({ length: 12 }, (_, i) => ({ pk: `k${String(i + 1).padStart(2, "0")}` }));
+  const out = await fetchAllRowsKeyset(keysetQueryFor(rows, { keyColumn: "pk" }), {
+    keyColumn: "pk",
+    pageSize: 5,
+  });
+  assert.deepEqual(out.map((r) => r.pk), rows.map((r) => r.pk));
+});
+
+test("#4010 fetchAllRowsKeyset kaster hvis nøglekolonnen mangler i select", async () => {
+  // Uden nøgleværdi kan markøren ikke rykkes, og et nyt kald ville hente samme
+  // side igen i ring. En tydelig fejl er langt bedre end en uendelig løkke.
+  const rows = Array.from({ length: 10 }, () => ({ other: 1 }));
+  await assert.rejects(
+    () => fetchAllRowsKeyset(() => ({ limit: (n) => Promise.resolve({ data: rows.slice(0, n), error: null }) }), { pageSize: 5 }),
+    /mangler brugbar "id"-værdi/,
+  );
+});
+
+test("#4010 fetchAllRowsKeyset returnerer tomt array uden kald ud over det første", async () => {
+  const seen = [];
+  const out = await fetchAllRowsKeyset(keysetQueryFor([], { onCall: (a) => seen.push(a) }), { pageSize: 10 });
+  assert.deepEqual(out, []);
+  assert.deepEqual(seen, [null]);
 });
