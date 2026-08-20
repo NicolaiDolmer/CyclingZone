@@ -1321,8 +1321,11 @@ export function startCron() {
 
   // Season auto-transition (#1155): DEAKTIVERET — sæson-skift er nu en bevidst
   // manuel admin-handling (ejer-beslutning 2026-06-08). Den automatiske cron
-  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Vindue-luk, final whistle
-  // og squad-tjek forbliver automatiske ovenfor; kun selve sæson-skiftet er manuelt.
+  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Final whistle og squad-tjek
+  // (deadline day-cron / squad enforcement-cron ovenfor) forbliver automatiske;
+  // kun selve sæson-skiftet er manuelt. (#1996: vindue-AUTO-luk er strukturelt
+  // inaktiv siden markedet blev altid-åbent 2026-06-22 — windows fødes 'closed',
+  // aldrig 'open', så fireAutoCloseIfDue i deadlineDayReport.js har intet at lukke.)
   // Tændes igen ved SEASON_AUTO_TRANSITION_ENABLED=true i economyConstants.js.
   if (SEASON_AUTO_TRANSITION_ENABLED) {
     setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);

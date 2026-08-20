@@ -372,13 +372,22 @@ export async function processDeadlineDayCron({
   // aldrig åbent på dem. Spring helt over så fireFinalWhistle ikke claimer dem og
   // dermed bidrager til sæson-loop-bug'en (rettet 2026-05-21).
   //
-  // Lag 1 (kode-filter) i 3-lags forsvar-i-dybden mod racing-windows: denne guard +
+  // Lag 1 (kode-filter) i 2-lags forsvar-i-dybden mod racing-windows: denne guard +
   // DB CHECK (2026-05-22-transfer-window-racing-guard.sql, strukturelt — final_whistle
-  // kræver closed_at) + kilde-guard i admin-close-endpoint'et (#544: sætter altid
-  // closed_at). Se seasonAutoTransition.js for fuld kæde-beskrivelse.
+  // kræver closed_at). Se seasonAutoTransition.js for fuld kæde-beskrivelse (inkl.
+  // hvorfor en tidligere lag 3 — admin-close-endpointet #544 — er fjernet siden
+  // #1996 del 1 og ikke længere nødvendig).
   if (!window.closes_at && !window.closed_at) {
     return { warnings: 0, errors: 0, whistleSent: false, autoClosed: false };
   }
+
+  // #1996: markedet er altid åbent — windows fødes altid status='closed'
+  // (insertTransferWindowIfMissing), aldrig 'open'. fireAutoCloseIfDue nedenfor
+  // kræver status==='open' og er derfor strukturelt inaktiv i dag; closes_at
+  // sættes udelukkende via den stadig-eksisterende Deadline Day-admin-rute
+  // (PUT /admin/transfer-window/closes-at, separat opfølgnings-issue — ikke
+  // #1996-scope), som ikke rører status. Final whistle nedenfor fyrer derfor
+  // direkte fra 'closed' uden at et auto-close-trin nogensinde er kørt imellem.
 
   let warnings = 0;
   let errors = 0;
