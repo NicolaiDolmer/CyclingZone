@@ -344,7 +344,7 @@ import {
   rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
 import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
-import { getResultWebhooks, sendWebhook } from "../lib/discordNotifier.js";
+import { getResultWebhooksAndLabel, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
@@ -12278,9 +12278,9 @@ router.post(
     const notifyDiscord = dryRun
       ? null
       : async ({ race, preview, resultRows }) => {
-          const urls = await getResultWebhooks(race.league_division_id);
+          const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
           if (!urls.length) return;
-          const embed = buildPcmImportEmbed({ race, preview, resultRows });
+          const embed = buildPcmImportEmbed({ race, preview, resultRows, divisionLabel: label });
           for (const url of urls) {
             await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
           }
@@ -12320,9 +12320,9 @@ router.post("/admin/simulate-race", requireAdmin, adminWriteLimiter, async (req,
   const notifyDiscord = dryRun
     ? null
     : async ({ race, resultRows, incidents }) => {
-        const urls = await getResultWebhooks(race.league_division_id);
+        const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
         if (!urls.length) return;
-        const embed = buildRaceSimEmbed({ race, resultRows, incidents });
+        const embed = buildRaceSimEmbed({ race, resultRows, incidents, divisionLabel: label });
         for (const url of urls) {
           await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
         }
@@ -12346,9 +12346,9 @@ router.post("/admin/races/:id/simulate-stage", requireAdmin, adminWriteLimiter, 
   const notifyDiscord = dryRun
     ? null
     : async ({ race, resultRows, incidents }) => {
-        const urls = await getResultWebhooks(race.league_division_id);
+        const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
         if (!urls.length) return;
-        const embed = buildRaceSimEmbed({ race, resultRows, incidents });
+        const embed = buildRaceSimEmbed({ race, resultRows, incidents, divisionLabel: label });
         for (const url of urls) {
           await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
         }

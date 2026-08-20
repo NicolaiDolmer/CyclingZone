@@ -351,6 +351,38 @@ test("buildRaceSimEmbed: ingen abandons → ingen DNF-linje, ingen crash på man
   assert.ok(!embedTimeLossOnly.description.includes("DNF"), "kun time_loss (ingen abandon) → ingen DNF-linje");
 });
 
+// #3897: samme kanal (samlekanal, eller en gruppekanal der dækker flere puljer
+// i samme tier) kan modtage "finished"-poster for to forskellige puljers
+// afvikling af SAMME løbsnavn samme morgen — uden pulje i titlen læses det som
+// "samme løb, to vindere" (thelamba 17/8, #3897).
+test("buildRaceSimEmbed: divisionLabel sat → titel indeholder puljenavn", () => {
+  const race = { id: "r1", name: "Giro Veneto" };
+  const resultRows = [
+    { result_type: "gc", rank: 1, rider_name: "A", rider_id: "a", stage_number: null },
+  ];
+
+  const embed = buildRaceSimEmbed({ race, resultRows, divisionLabel: "Division 3 — B" });
+
+  assert.ok(
+    embed.title.includes("Division 3 — B"),
+    `titel skal indeholde puljenavnet — fik: ${embed.title}`,
+  );
+  assert.ok(embed.title.includes("Giro Veneto"), `titel skal stadig indeholde løbsnavnet — fik: ${embed.title}`);
+});
+
+// Ingen divisionLabel (fx leagueDivisionId mangler/ikke fundet) → uændret titel,
+// ingen tom "— null"/"— undefined"-hale.
+test("buildRaceSimEmbed: ingen divisionLabel → titel uændret, ingen tom hale", () => {
+  const race = { id: "r1", name: "Giro Veneto" };
+  const resultRows = [
+    { result_type: "gc", rank: 1, rider_name: "A", rider_id: "a", stage_number: null },
+  ];
+
+  const embed = buildRaceSimEmbed({ race, resultRows });
+
+  assert.equal(embed.title, "🏁 Giro Veneto finished");
+});
+
 // ── runAdminSimulateStage (WS1 Fase 3) ────────────────────────────────────────
 
 // stageIndex udledes af stages_completed; flag ON → stub kaldt med korrekt index.

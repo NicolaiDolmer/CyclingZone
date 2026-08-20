@@ -129,8 +129,23 @@ async function getWebhookByType(type) {
  * konfigureret endnu (fx før Fase 3-wiring), så resultater ikke tavst forsvinder.
  */
 export async function getResultWebhooks(leagueDivisionId) {
+  const { urls } = await getResultWebhooksAndLabel(leagueDivisionId);
+  return urls;
+}
+
+/**
+ * #3897: samme routing som getResultWebhooks, men returnerer OGSÅ puljens
+ * spillervendte label (league_divisions.label, fx "Division 3 — A") — én
+ * samlekanal (#results-d3) og hver gruppekanal kan modtage poster fra flere
+ * puljer i samme tier, og uden label i selve embed'et læses to poster i
+ * samme kanal som "samme løb, to vindere" (thelamba 17/8, #3897).
+ * label er null når leagueDivisionId mangler eller ikke findes — kaldere
+ * skal udelade pulje-identifikationen i det tilfælde (ingen tvetydighed).
+ */
+export async function getResultWebhooksAndLabel(leagueDivisionId) {
   let groupUrl = null;
   let summaryUrl = null;
+  let label = null;
   if (leagueDivisionId) {
     const { data: group } = await supabase
       .from("discord_settings")
@@ -142,9 +157,10 @@ export async function getResultWebhooks(leagueDivisionId) {
 
     const { data: ld } = await supabase
       .from("league_divisions")
-      .select("tier")
+      .select("tier, label")
       .eq("id", leagueDivisionId)
       .maybeSingle();
+    label = ld?.label || null;
     if (ld?.tier != null) {
       const { data: summary } = await supabase
         .from("discord_settings")
@@ -156,11 +172,12 @@ export async function getResultWebhooks(leagueDivisionId) {
       summaryUrl = summary?.webhook_url || null;
     }
   }
-  return computeResultWebhookUrls({
+  const urls = computeResultWebhookUrls({
     groupUrl,
     summaryUrl,
     defaultUrl: await getDefaultWebhook(),
   });
+  return { urls, label };
 }
 
 /**
