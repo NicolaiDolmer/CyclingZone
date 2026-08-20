@@ -51,7 +51,7 @@
       "countryLabel": "Land",
       "typeLabel": "Ryttertype",
       "submit": "Start mission",
-      "costNote": "Missioner varer {days, plural, one {1 dag} other {# dage}} og koster {cost, number} i rejseomkostninger fra din kasse. Rapporten lander ved næste natlige spejder-køresel (efter kl. 22), ikke et fast antal timer efter du sender den. Ingen refusion ved annullering."
+      "costNote": "Missioner varer {days, plural, one {1 dag} other {# dage}} og koster {cost, number} i rejseomkostninger fra din kasse. Rapporten lander ved næste natlige spejder-kørsel (efter kl. 22), ikke et fast antal timer efter du sender den. Ingen refusion ved annullering."
     },
     "scope": {
       "u23": "U23-ryttere",
