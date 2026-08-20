@@ -87,7 +87,7 @@ export async function promote(supabase, {
   // #2881/#1309: kun kontraktløse ryttere (salary == null) får en ny kontrakt;
   // en eksisterende kontrakt (fx overlevet fra før et akademi-ophold) arves
   // UÆNDRET — regenerér ALDRIG. {} hvis rider.salary != null.
-  const contractPatch = contractOnAcquirePatch(rider, seasonNumber, { division: state?.division });
+  const contractPatch = contractOnAcquirePatch(rider, seasonNumber);
   const { error } = await supabase.from("riders").update({
     is_academy: false,
     ...contractPatch,

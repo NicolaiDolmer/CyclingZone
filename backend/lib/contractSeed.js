@@ -101,7 +101,9 @@ export function computeContractEndSeason(startSeasonNumber, length) {
 // en programmeringsfejl hos kalderen, og vi kaster i stedet for at gætte.
 // (salary == null → rytteren er kontraktløs uanset udløbssæson, så dér er
 // patchen korrekt selv uden kolonnen — fx ægte free agents.)
-export function contractOnAcquirePatch(rider, currentSeasonNumber, { division } = {}) {
+// #3989: `division` er fjernet fra signaturen — løn-satsen er global. Kaldere
+// behøver ikke længere slå erhververens division op.
+export function contractOnAcquirePatch(rider, currentSeasonNumber) {
   if (rider && rider.salary != null && !("contract_end_season" in rider)) {
     throw new Error(
       "contractOnAcquirePatch: rider mangler feltet contract_end_season — " +
@@ -147,7 +149,6 @@ export function computeReleaseBuyoutFee({ salary, contractEndSeason, currentSeas
 // fremtiden — ikke til en fortidens sæson. contract_length +1 (eller 1 hvis NULL).
 export function computeContractExtension({
   current_production_value,
-  division,
   contract_end_season,
   contract_length,
   currentSeason = 1,
@@ -240,9 +241,7 @@ export async function runContractSeed(supabase, {
       .not("team_id", "is", null)
       .order("id"));
 
-  // #2594: løn-satsen er per-division — slå ejerholdets division op.
-  const teams = await fetchAllRows(() => supabase.from("teams").select("id, division").order("id"));
-  const divisionByTeam = new Map(teams.map((t) => [t.id, t.division]));
+  // #3989: løn-satsen er global, så ejerholdets division skal ikke slås op.
 
   const rng = makeRng(seed);
   const patches = owned.map((r) => {

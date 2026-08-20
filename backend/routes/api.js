@@ -1403,7 +1403,7 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
   const currentSeason = await getActiveSeasonNumber();
-  const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
+  const next = computeContractExtension({ ...rider, currentSeason });
   const capError = contractExtensionCapError(next, currentSeason);
   // #3186: tælleren skal være synlig FØR spilleren handler — udregnet fra
   // rytterens NUVÆRENDE contract_end_season (ikke `next`, som allerede er én
@@ -1579,7 +1579,7 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
   const { rider } = result;
 
   const currentSeason = await getActiveSeasonNumber();
-  const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
+  const next = computeContractExtension({ ...rider, currentSeason });
 
   // #3143: hårdt loft — afvis eksplicit i stedet for at clampe stille (se
   // contractExtensionCapError ovenfor for begrundelsen). #3186: extensionCap
@@ -7377,11 +7377,11 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // hvis rytteren er kontraktløs (salary=null), så invarianten "ejede har altid løn" holdes.
   let contractPatch = {};
   if (team_id) {
-    const [{ data: activeSeason }, { data: destTeam }] = await Promise.all([
-      supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
-      supabase.from("teams").select("division").eq("id", team_id).maybeSingle(),
-    ]);
-    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1, { division: destTeam?.division });
+    // #3989: teams-opslaget hentede kun `division` til løn-satsen, som nu er
+    // global. Kun sæsonnummeret er tilbage at slå op.
+    const { data: activeSeason } = await supabase
+      .from("seasons").select("number").eq("status", "active").maybeSingle();
+    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
   }
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
   // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"

@@ -199,7 +199,7 @@ async function executeAutoPurchase({
   // fetchActiveSeasonNumber giver korrekt contract_end_season; rider-objektet har
   // salary/base_value/prize_earnings_bonus fra candidate-SELECT (tilføjet i #1309).
   const activeSeasonNumber = await fetchActiveSeasonNumber(supabase);
-  const contractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, { division: team.division });
+  const contractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
 
   // #2617: samme #1995-guard som transfer-/swap-/auktions-flowene (#2579) —
   // kandidaten (typisk AI-ejet, kan i sjældne tilfælde være fri agent hvis han

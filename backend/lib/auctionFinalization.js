@@ -401,9 +401,7 @@ async function tryPlaceYouthWinnerOnSenior({
   // behandles som senior), senior-kontrakt (kontraktløs free agent → standard-
   // kontrakt via contractOnAcquirePatch). Ingen defer-logik: en fri ungdomsrytter
   // kan ikke være i et aktivt løb for en sælger (der er ingen sælger).
-  const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, {
-    division: buyer.division,
-  });
+  const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
   // #3580: verificér at ejerskabsskiftet FAKTISK ramte en række, FØR debiten
   // nedenfor kører — se expectMutationAffectingRows' doc-comment i marketUtils.js.
   await expectMutationAffectingRows(
@@ -1122,7 +1120,7 @@ async function finalizeAuctionRecord({
     // Skrives både ved åbent vindue (team_id nu) og lukket vindue (pending_team_id),
     // fordi den generiske pending-flush ved vindue-åbning kun flytter team_id og
     // IKKE rører kontraktfelterne.
-    const winnerContractPatch = contractOnAcquirePatch(auction.rider, activeSeasonNumber, { division: buyer.division });
+    const winnerContractPatch = contractOnAcquirePatch(auction.rider, activeSeasonNumber);
     // #932: en graduate-salgs-auktion (akademirytter solgt af sit eget hold) skal
     // lande hos vinderen som SENIOR — ikke i vinderens akademi. Flip is_academy=false.
     const graduatePatch = auction.rider?.is_academy ? { is_academy: false } : {};
@@ -1403,7 +1401,7 @@ async function finalizeAuctionRecord({
           team_id: bankTeam.id,
           pending_team_id: null,
           acquired_at: actualEnd,
-          ...contractOnAcquirePatch(auction.rider, activeSeasonNumber, { division: bankTeam.division }),
+          ...contractOnAcquirePatch(auction.rider, activeSeasonNumber),
         })
         .eq("id", auction.rider.id),
       { context: `guaranteed_bank_sale auction=${auction.id} rider=${auction.rider.id}` }
