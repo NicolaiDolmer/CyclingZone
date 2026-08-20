@@ -8,10 +8,10 @@
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 type-dæmpning k=100 EJER-GODKENDT 20/8**, flippes SAMMEN med c (puncheur 7,9x→1,7x; rækkefølge c FØR #3353 bindende).
+1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 k=100: implementerings-PR #4007 KLAR (draft, 20/8)** — flag default off, flip = én linje, flippes SAMMEN med c (rækkefølge c FØR #3353 bindende).
 3. 🟠 **#3514 mandat** — fase 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-script-apply med ejer-nøgle.
 4. ✅ **Løn LEVERET 20/8:** hele pakken merged og prod-verificeret (#3992+#3993 20/8; #3972/#3974/#3449-maskineri 19/8; genberegnings-script #3999 dry-run matcher ×2,21). #3393 PARKERET. Rest = søndagens genberegning af frosne kontrakter i drejebogen.
-5. 🟠 **#3901:** D1-plan LÅST+BYGGET (PR #3930, dry-run godkendt). **Cutover = søndag AFTEN 19:30-22:30** (S2-finale kører til 19:00; drejebog rev. 20/8) · **generalprøve mod staging LØRDAG** (ejer-godkendt) · bufferdag 24/8 (#3467).
+5. 🟠 **#3901:** D1-plan LÅST+BYGGET (PR #3930, dry-run godkendt). **Cutover = søndag AFTEN 19:30-22:30** · **generalprøve LØRDAG** · bufferdag 24/8 (#3467). **Drejebog script-verificeret 20/8:** trin 5 rettet til `mandateMigration3514.mjs` (det gamle script kunne ALDRIG skrive) + manuelt backup-tabel-trin 5a tilføjet.
 6. 🔵 Auto-accept-floor bliver stående (ejer 13/8); 20/8 rammer kun inaktive hold (#3584), aktive 25/8.
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
@@ -50,13 +50,14 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 til ejeren.
 
 - **Rest:** #2085 → #2853 · **W7** efter trin 7 (#3714 #3623 #3456 #3412) · **W8**: bundt 1 kørt 20/8, 53 needs-decision tilbage (bundt 2 = økonomi, efter cutover).
+- **Design-session 20/8 leveret:** #4011 finance A+C (design-go, worker bygger, ships FØR søndag) · #3924 design-go (kompakt kvittering, bygges efter trin 7-merge) · fold-disciplin bindende i PAGE_TEMPLATES · #2748 pension-forvarsel aktualiseret (evt. minimum før søndag) · #4009 akademi-fyring (ejer-ja) · PR #4008 (#3997 spejder-copy) klar.
 - Småbugs: #3896 · #3897 · #3898 · #3917-analyse leveret (fodrer #3855).
 - ✅ Kalenderen LANDET 20/8 (#3546 lukket: wipe+regen i prod, første løb tir 25/8, race_days_total=27).
 - #2022 ejes af #3514.
 
 ## E2 · Race-oplevelsen
 
-**Rest:** #3914 PR A MERGED 19/8 (PR #3969); rest = PR B LIVE-broadcast + regression #3985 (etapetypen forsvandt fra etape-fanerne efter sammenfoldningen) · **#3855 motor v4** = ejer-retningen EFTER cutover (#3917 fodrer den) · #3856 backfill efter S3-bevis · #3864 klassiker-uge (S4). **#3900+#3915: designs låst i KS3; valideres i design-sessionen.**
+**Rest:** #3914 PR A MERGED 19/8 (PR #3969); rest = PR B LIVE-broadcast · #3985-fix KLAR (PR #4012, afventer ejer-visuelt go) · **#3855 motor v4** = ejer-retningen EFTER cutover (#3917 fodrer den) · #3856 backfill efter S3-bevis · #3864 klassiker-uge (S4). **#3900+#3915: designs låst i KS3; valideres i design-sessionen.**
 
 ## Parkeret — genbesøges når B og C er leveret
 
