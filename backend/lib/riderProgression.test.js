@@ -10,9 +10,11 @@ import {
   buildCapsForRider, buildProgressInit,
   taperedAbsoluteCap, CAP_TAPER_CONFIG,
   CRAFT_ABILITIES, abilityRoleClass, roleRateFactor, ROLE_CLASSES, ROLE_CLASS_RATE,
+  announcedRetirementAfterSeason,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 // ── Determinisme ──────────────────────────────────────────────────────────────
 
@@ -139,6 +141,59 @@ test("retirement-sandsynlighed stiger med alder (mange ryttere)", () => {
     return n / 500;
   };
   assert.ok(rate(37) > rate(36), "ældre = højere retirement-rate");
+});
+
+// ── #2748 pension-minimum: selektor vs. motor ─────────────────────────────────
+// Beviser at announcedRetirementAfterSeason(rider, A) rammer PRÆCIS samme svar
+// som den motor der rent faktisk afgør pensionen: developRiderSeason() kaldt
+// ved cutover TIL sæson A+1 (samme rider-alder-beregning + samme seed-nøgle
+// som riderProgressionEngine.js's processSeasonStart bruger).
+
+// Simulerer engine-kaldet: age = ageForSeason(birthdate, seasonNumber) (samme
+// linje som riderProgressionEngine.js:166), rider-objektet bygges med den
+// alder, og retirement læses fra developRiderSeason() (riderProgressionEngine.
+// js:197-199) — IKKE en genimplementering af selve beslutningen.
+function engineRetirementAtCutover(riderId, birthdate, seasonNumber) {
+  const age = ageForSeason(birthdate, seasonNumber);
+  const rider = { id: riderId, primary_type: "climber", potentiale: 3, age };
+  const ab = { climbing: 50 };
+  const caps = { climbing: 99 };
+  return developRiderSeason(rider, ab, caps, seasonNumber).retirement.retire;
+}
+
+test("#2748: announcedRetirementAfterSeason matcher motorens faktiske cutover-beslutning (garanteret alder)", () => {
+  // Født så alderen rammer guaranteedAge (40) i aktiv sæson 3 → LAUNCH_REFERENCE_YEAR
+  // (2026) + (3-1) - birthYear = 40 ⇒ birthYear = 1988.
+  const rider = { id: "engine-vs-selector", birthdate: "1988-06-15" };
+  const activeSeason = 3;
+  const predicted = announcedRetirementAfterSeason(rider, activeSeason);
+  const actual = engineRetirementAtCutover(rider.id, rider.birthdate, activeSeason + 1);
+  assert.equal(predicted, true, "garanteret pension ved alder 40 i den aktive sæson");
+  assert.equal(predicted, actual, "selektoren skal ramme PRÆCIS motorens cutover-svar");
+});
+
+test("#2748: announcedRetirementAfterSeason matcher motoren i det seedede vindue (36-39), for mange ryttere", () => {
+  const activeSeason = 4;
+  // Alder 37 i aktiv sæson 4 ⇒ birthYear = 2026 + 3 - 37 = 1992.
+  let mismatches = 0;
+  for (let i = 0; i < 200; i++) {
+    const rider = { id: `bulk-rider-${i}`, birthdate: "1992-03-01" };
+    const predicted = announcedRetirementAfterSeason(rider, activeSeason);
+    const actual = engineRetirementAtCutover(rider.id, rider.birthdate, activeSeason + 1);
+    if (predicted !== actual) mismatches++;
+  }
+  assert.equal(mismatches, 0, "0 uenigheder mellem selektor og motor på tværs af 200 seedede ryttere");
+});
+
+test("#2748: announcedRetirementAfterSeason er false godt under vinduet", () => {
+  // Alder 20 i aktiv sæson 3 (2026+2-2008=20) — langt under windowStartAge=36.
+  const rider = { id: "young-rider", birthdate: "2008-01-01" };
+  assert.equal(announcedRetirementAfterSeason(rider, 3), false);
+});
+
+test("#2748: announcedRetirementAfterSeason returnerer false uden birthdate/id (aldrig et gæt)", () => {
+  assert.equal(announcedRetirementAfterSeason({ id: "r1" }, 3), false);
+  assert.equal(announcedRetirementAfterSeason({ birthdate: "1990-01-01" }, 3), false);
 });
 
 // ── Integration: developRiderSeason ───────────────────────────────────────────

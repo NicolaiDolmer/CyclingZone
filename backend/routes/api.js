@@ -274,6 +274,7 @@ import {
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderProgressionEngine.js";
+import { announcedRetirementAfterSeason } from "../lib/riderProgression.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
   annotateGoalWithIdentityBasis,
@@ -13209,6 +13210,29 @@ router.get("/riders/:id/view-count", requireAuth, async (req, res) => {
     oldestViewedAtMs: oldestIso ? new Date(oldestIso).getTime() : null,
   });
   res.json(agg);
+});
+
+// GET /api/riders/:id/retirement-status — #2748 pension-minimum: DEFINITIVT
+// pensions-varsel (ikke risiko-badget retirementRiskBadgeKey allerede viser).
+// Synligt for ALLE viewere (ingen ejerskabs-check) — hele pointen er at en
+// køber kan se det FØR et bud/handel, ikke kun ejeren. Deterministisk: samme
+// seed som season-transition-motoren rent faktisk vil bruge ved cutover til
+// NÆSTE sæson (announcedRetirementAfterSeason, riderProgression.js — se
+// funktionens kommentar for sporingen af hvorfor de to giver samme svar).
+router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
+  const { data: rider, error } = await supabase
+    .from("riders")
+    .select("id, birthdate")
+    .eq("id", req.params.id)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!rider) return res.status(404).json({ error: "Rider not found" });
+
+  const seasonNumber = await getActiveSeasonNumber();
+  const announced = seasonNumber != null
+    ? announcedRetirementAfterSeason(rider, seasonNumber)
+    : false;
+  res.json({ announced_retirement: announced });
 });
 
 // POST /api/riders/:id/view — vis rytter-profil, log besøg (#963) + trigger evt. transferrygte

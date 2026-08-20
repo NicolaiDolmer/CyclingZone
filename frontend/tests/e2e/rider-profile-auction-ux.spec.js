@@ -113,3 +113,67 @@ test.describe("Rider profile auction UX (#3786 + #3066)", () => {
     await page.screenshot({ path: evidenceShotPath("pr-screens/3066-mobile-rider-profile-squad-full.png") });
   });
 });
+
+// #2748 — pension-minimum: rytterprofilens definitive "final season"-banner.
+// Motoren har allerede besluttet pensionen for rytteren (announcedRetirementAfterSeason,
+// backend/lib/riderProgression.js) — banneret må ALDRIG kun være et risiko-badge.
+// Overrider den dedikerede /retirement-status-fetch direkte (samme princip som
+// #3786-testen ovenfor overrider auctions*) i stedet for at konstruere en ægte
+// 39-årig fødselsdato — selve determinismen er allerede bevist i
+// riderProgression.test.js; her testes kun at UI'et RENDERER svaret korrekt.
+test.describe("Rider profile final-season banner (#2748)", () => {
+  test.beforeEach(async ({ page }) => {
+    await stabilizePage(page);
+    await installNetworkMocks(page);
+  });
+
+  test("#2748 — a rider with announced_retirement=true shows the definitive final-season banner", async ({ page }) => {
+    // Ingen aktiv auktion — banneret skal vises uden at konkurrere med
+    // auction-banneret (prioritet: auction > finalSeason > academy > expiry).
+    await page.route("**/rest/v1/auctions*", route => {
+      const request = route.request();
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+      return json(route, []);
+    });
+    // Simulerer en 39-årig hvis pension motoren allerede har afgjort for den
+    // aktive sæson (seedet i backend, se riderProgression.test.js for beviset).
+    await page.route("**/api/riders/*/retirement-status**", route => {
+      const request = route.request();
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+      return json(route, { announced_retirement: true });
+    });
+
+    await login(page);
+    await page.goto("/riders/rider-1");
+    await expect(page.getByRole("heading", { name: "Ada Pedersen" })).toBeVisible();
+
+    await expect(page.getByText(/Final season|Sidste sæson/i)).toBeVisible();
+    await expect(page.getByText(/Announced his retirement at the season start|Meldte sin pension ved sæsonstart/i)).toBeVisible();
+    // Sæson-fixturet (ACTIVE_SEASON.number=1) skal interpoleres ind i teksten.
+    await expect(page.getByText(/season 1 ends|sæson 1 slutter/i)).toBeVisible();
+
+    await page.screenshot({ path: evidenceShotPath("pr-screens/2748-final-season-banner-desktop.png") });
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.screenshot({ path: evidenceShotPath("pr-screens/2748-final-season-banner-mobile.png") });
+  });
+
+  test("#2748 — a rider without announced_retirement never shows the final-season banner", async ({ page }) => {
+    await page.route("**/rest/v1/auctions*", route => {
+      const request = route.request();
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+      return json(route, []);
+    });
+    await page.route("**/api/riders/*/retirement-status**", route => {
+      const request = route.request();
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+      return json(route, { announced_retirement: false });
+    });
+
+    await login(page);
+    await page.goto("/riders/rider-1");
+    await expect(page.getByRole("heading", { name: "Ada Pedersen" })).toBeVisible();
+
+    await expect(page.getByText(/Final season|Sidste sæson/i)).toHaveCount(0);
+  });
+});

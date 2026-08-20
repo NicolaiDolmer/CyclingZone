@@ -59,9 +59,29 @@ function HeroStat({ label, value, sub, valueClassName = "text-[20px] font-[650]"
 
 // Status-banner (betinget). `banner` = { kind, ...data } fra parent. Gold-tonet for
 // markeds-tilstande, amber for kontrakt-udløb, neutral for akademi.
+//
+// #2748: "finalSeason" er DEFINITIVT (motoren har allerede besluttet pensionen,
+// bare ikke anvendt den endnu), til forskel fra retirementRiskBadgeKey-badget
+// (RiderBadges, se navnetagget ovenfor) der kun viser SANDSYNLIGHED. Den får
+// derfor sin egen visning — eyebrow-titel + brødtekst, guld venstre-kant, samme
+// mønster som RiderDevelopmentTab.jsx's ReadingCard — i stedet for den delte
+// TONES/tekst-linje resten af banner-kinds bruger.
 function StatusBanner({ banner }) {
   const { t } = useTranslation("rider");
   if (!banner) return null;
+
+  if (banner.kind === "finalSeason") {
+    return (
+      <div className="mt-4 bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
+        <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+          {t("profile.banner.finalSeasonTitle")}
+        </span>
+        <p className="mt-[7px] mb-0 text-[12.5px] text-cz-2 leading-[1.55]">
+          {t("profile.banner.finalSeason", { season: banner.season })}
+        </p>
+      </div>
+    );
+  }
 
   const TONES = {
     listed:  "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t",

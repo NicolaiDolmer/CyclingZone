@@ -71,6 +71,10 @@
       "feedbackReply": {
         "title": "Svar på din besked"
       },
+      "retirementAnnounced": {
+        "title": "Sidste sæson for {count} af dine ryttere",
+        "message": "{count} af dine ryttere har meldt at dette er deres sidste sæson: {names}. De stopper når sæson {season} slutter."
+      },
       "devTransition": {
         "title": "Udviklingsvisningen er ændret",
         "message": "Dine ryttere har ikke ændret sig. Evner, ratings og resultater er præcis som i går. Det gamle bånd viste bund til loft. Det nye bånd er rytterens forventede niveau: der hvor han realistisk lander med din træning. Lofterne blev hævet for de fleste ryttere samtidig, så et bånd der ser lavere ud betyder ikke en svagere rytter. Potentiale afgør nu hvor hurtigt en rytter udvikler sig, ikke hvor han stopper. Dit dashboard viser dine egne ryttere før og efter."

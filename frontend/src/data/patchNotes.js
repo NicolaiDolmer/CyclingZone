@@ -27,6 +27,29 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.161",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Riders now announce their retirement",
+          "body": "A rider announces his retirement at the start of his final season. It's visible on the rider profile and in your inbox. Takes effect from season 3."
+        },
+        "da": {
+          "title": "Ryttere melder nu deres pension",
+          "body": "En rytter melder sin pension ved starten af sin sidste sæson. Det er synligt på rytterprofilen og i din indbakke. Gælder fra sæson 3."
+        },
+        "refs": [
+          2748
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.160",
     "date": "2026-08-20",
     "label": "Beta",
