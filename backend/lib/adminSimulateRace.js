@@ -350,7 +350,14 @@ function incidentKindLabel(kind) {
   return kind === "crash" ? "crash" : "mechanical";
 }
 
-export function buildRaceSimEmbed({ race, resultRows, incidents = [] }) {
+// #3897: divisionLabel er puljens spillervendte navn (fx "Division 3 — A"),
+// slået op af kalderen via getResultWebhooksAndLabel — én samlekanal
+// (#results-d3) og hver gruppekanal kan modtage poster fra flere puljer i
+// samme tier, og uden label i titlen læses to poster i samme kanal som
+// "samme løb, to vindere" (thelamba 17/8). Valgfri: udelades helt når
+// leagueDivisionId mangler/ikke findes (Division 1 har kun én pool i praksis,
+// men label vises alligevel når den findes — ingen skade, ingen tvetydighed).
+export function buildRaceSimEmbed({ race, resultRows, incidents = [], divisionLabel = null }) {
   const rows = resultRows || [];
   const gcWinner = rows.find((r) => r.result_type === "gc" && r.rank === 1);
   const stageWinners = rows
@@ -368,7 +375,7 @@ export function buildRaceSimEmbed({ race, resultRows, incidents = [] }) {
   // #2520: spillervendt resultat-webhook på engelsk; "(race-motor V2)"-parentesen
   // var intern jargon og er droppet (ejeren bekræftede den ikke skal med i EN-teksten).
   return {
-    title: `🏁 ${race.name} finished`,
+    title: divisionLabel ? `🏁 ${race.name} finished — ${divisionLabel}` : `🏁 ${race.name} finished`,
     description: [
       gcWinner ? `**Winner:** ${gcWinner.rider_name ?? "Unknown rider"}` : null,
       stageWinners.length > 1

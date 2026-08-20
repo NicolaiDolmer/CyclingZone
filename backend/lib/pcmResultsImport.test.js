@@ -520,3 +520,25 @@ test("buildPcmImportEmbed advarer ved umatchede scorende ryttere", () => {
   });
   assert.match(embed.description, /2 unmatched/);
 });
+
+// #3897: samme kanal-tvetydighed som buildRaceSimEmbed — divisionLabel sat →
+// titlen skelner to import-poster for samme løbsnavn i forskellige puljer.
+test("buildPcmImportEmbed: divisionLabel sat → titel indeholder puljenavn", () => {
+  const embed = buildPcmImportEmbed({
+    race: { name: "Test Tour", race_type: "stage_race" },
+    preview: { rows: 1, unmatched_scoring: 0 },
+    resultRows: [{ result_type: "gc", rank: 1, rider_name: "W" }],
+    divisionLabel: "Division 3 — B",
+  });
+  assert.ok(embed.title.includes("Division 3 — B"), `titel skal indeholde puljenavnet — fik: ${embed.title}`);
+  assert.ok(embed.title.includes("Test Tour"), `titel skal stadig indeholde løbsnavnet — fik: ${embed.title}`);
+});
+
+test("buildPcmImportEmbed: ingen divisionLabel → titel uændret", () => {
+  const embed = buildPcmImportEmbed({
+    race: { name: "Test Tour", race_type: "stage_race" },
+    preview: { rows: 1, unmatched_scoring: 0 },
+    resultRows: [{ result_type: "gc", rank: 1, rider_name: "W" }],
+  });
+  assert.equal(embed.title, "📊 Results: Test Tour");
+});

@@ -27,7 +27,7 @@ import {
   notifyAuctionWon,
   notifyBoardUpdateDM,
   getDefaultWebhook,
-  getResultWebhooks,
+  getResultWebhooksAndLabel,
   sendWebhook,
   getBotToken,
   drainDiscordDmOutbox,
@@ -924,9 +924,9 @@ async function runStageSchedulerCron() {
       seenKeys: stageSchedulerSeenKeys,
       runStageFn: async ({ raceId, stageIndex }) => {
         const notifyDiscord = async ({ race, resultRows, incidents }) => {
-          const urls = await getResultWebhooks(race.league_division_id);
+          const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
           if (!urls.length) return;
-          const embed = buildRaceSimEmbed({ race, resultRows, incidents });
+          const embed = buildRaceSimEmbed({ race, resultRows, incidents, divisionLabel: label });
           for (const url of urls) {
             await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
           }
