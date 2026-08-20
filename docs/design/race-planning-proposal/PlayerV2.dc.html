@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="crossorigin">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0}
+body{background:#F6F7F5;color:#101418;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#0F3D3E}
+a:hover{color:#155e5f}
+input,button{font-family:inherit}
+.sa::-webkit-scrollbar{height:11px;width:11px}
+.sa::-webkit-scrollbar-thumb{background:#CDD2CC;border-radius:6px}
+.sa::-webkit-scrollbar-track{background:#F1F3F0}
+</style>
+</helmet>
+
+<div style="min-height:100vh;padding-bottom:56px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 26px;background:#fff;border-bottom:1px solid #E4E7E4;position:sticky;top:0;z-index:60">
+    <div style="display:flex;align-items:center;gap:11px">
+      <div style="width:25px;height:25px;border-radius:6px;background:#0F3D3E;display:flex;align-items:center;justify-content:center;color:#F4C21A;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;line-height:1">CZ</div>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:19px">Cycling Zone</span>
+      <span style="color:#5B6470;font-size:12.5px;padding-left:11px;border-left:1px solid #CDD2CC">Race Planning</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;font-size:13px;color:#5B6470">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:#0F3D3E">DIVISION 1</span>
+      <span>{{ meta.squadSize }} riders · {{ meta.window }}</span>
+    </div>
+  </div>
+
+  <div style="max-width:1660px;margin:0 auto;padding:24px 26px 0">
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;margin-bottom:18px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#0F3D3E;display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="width:16px;height:2px;background:#F4C21A;display:inline-block"></span>Aug–Sep 2026 block</div>
+        <h1 style="font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-weight:700;font-size:33px;letter-spacing:.01em;margin:0 0 5px">Race planning</h1>
+        <p style="color:#5B6470;font-size:14px;margin:0;max-width:620px;line-height:1.5;text-wrap:pretty">Click a cell to assign a role. Races that share days form an overlap cluster — colour-coded in the header — and any rider you enter in two of them is flagged.</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="background:#fff;border:1px solid #E4E7E4;border-radius:9px;padding:9px 15px;min-width:92px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600">{{ stats.assignments }}</div>
+          <div style="font-size:10.5px;color:#5B6470;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:2px">Entries</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E7E4;border-radius:9px;padding:9px 15px;min-width:92px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600">{{ stats.clusters }}</div>
+          <div style="font-size:10.5px;color:#5B6470;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:2px">Clusters</div>
+        </div>
+        <div style="{{ stats.clashStyle }}">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600">{{ stats.clashes }}</div>
+          <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:2px;opacity:.75">Clashes</div>
+        </div>
+        <div style="{{ stats.unavailStyle }}">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600">{{ stats.unavail }}</div>
+          <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:2px;opacity:.75">Unavailable</div>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{ showTimeline }}" hint-placeholder-val="{{ true }}">
+    <div style="background:#fff;border:1px solid #E4E7E4;border-radius:10px;box-shadow:0 1px 2px rgba(16,20,24,.04);padding:13px 16px 10px;margin-bottom:14px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
+        <div style="font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#5B6470">Calendar · {{ timeline.rangeLabel }}</div>
+        <div style="font-size:11px;color:#8A93A6">Click a bar to jump to its column</div>
+      </div>
+      <div style="padding-bottom:4px">
+        <div style="{{ timeline.canvasStyle }}">
+          <sc-for list="{{ timeline.weeks }}" as="w" hint-placeholder-count="5">
+            <div style="{{ w.style }}"><span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#8A93A6;padding-left:5px">{{ w.label }}</span></div>
+          </sc-for>
+          <sc-for list="{{ timeline.bars }}" as="b" hint-placeholder-count="14">
+            <div style="{{ b.style }}" title="{{ b.title }}" onClick="{{ b.onClick }}">{{ b.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:11px 14px;background:#fff;border:1px solid #E4E7E4;border-radius:10px;box-shadow:0 1px 2px rgba(16,20,24,.04);margin-bottom:14px;font-size:12.5px">
+      <input type="text" placeholder="Find rider" value="{{ query }}" onInput="{{ onQuery }}" style="border:1px solid #E4E7E4;background:#FAFBF9;border-radius:7px;padding:6px 10px;font-size:12.5px;width:140px;outline:none;color:#101418" />
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        <sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="9">
+          <button onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <span style="color:#5B6470;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.07em">Sort</span>
+        <sc-for list="{{ sortChips }}" as="s" hint-placeholder-count="5">
+          <button onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <button onClick="{{ onToggleClashes }}" style="{{ clashToggleStyle }}">Clashes only</button>
+        <button onClick="{{ onToggleAvail }}" style="{{ availToggleStyle }}">Hide unavailable</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:12px;font-size:12px;color:#5B6470">
+      <span style="font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.07em">Roles</span>
+      <sc-for list="{{ legend }}" as="g" hint-placeholder-count="5">
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="{{ g.swatchStyle }}">{{ g.code }}</span>{{ g.label }}
+        </span>
+      </sc-for>
+      <span style="display:inline-flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid #E4E7E4">
+        <span style="width:19px;height:19px;border-radius:5px;background:#EAF6F0;box-shadow:inset 0 -3px 0 #7FC7A4;display:inline-block"></span>Form peak
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:6px">
+        <span style="width:19px;height:19px;border-radius:5px;background:#FBE3DD;box-shadow:inset 0 0 0 2px #E2543A;display:inline-block"></span>Conflict
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:10px;border-left:1px solid #E4E7E4">
+        <sc-for list="{{ tierLegend }}" as="t" hint-placeholder-count="5">
+          <span style="{{ t.style }}">{{ t.label }}</span>
+        </sc-for>
+      </span>
+    </div>
+
+    <div style="background:#fff;border:1px solid #E4E7E4;border-radius:10px;box-shadow:0 1px 2px rgba(16,20,24,.04),0 8px 24px -12px rgba(16,20,24,.10);overflow:hidden;position:relative">
+      <div class="sa" ref="{{ scrollRef }}" style="overflow:auto;max-height:72vh">
+        <table style="border-collapse:separate;border-spacing:0;width:max-content;min-width:100%">
+          <thead>
+            <tr>
+              <th style="position:sticky;left:0;top:0;z-index:30;background:#fff;min-width:288px;max-width:288px;padding:9px 14px;text-align:left;border-right:1px solid #CDD2CC;border-bottom:1px solid #CDD2CC;vertical-align:bottom">
+                <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5B6470">Rider · {{ riderCountLabel }}</div>
+              </th>
+              <sc-for list="{{ racesView }}" as="r" hint-placeholder-count="14">
+                <th data-race="{{ r.name }}" title="{{ r.tip }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ r.onLeave }}" style="{{ r.thStyle }}">
+                  <div style="{{ r.clusterBarStyle }}"></div>
+                  <div style="{{ r.nameStyle }}">{{ r.name }}</div>
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:5px">
+                    <span style="{{ r.tierStyle }}">{{ r.tierShort }}</span>
+                    <span style="{{ r.kindStyle }}">{{ r.kindLabel }}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:#8A93A6;white-space:nowrap">{{ r.dateLabel }}</span>
+                  </div>
+                  <div style="{{ r.tipStyle }}">{{ r.tip }}</div>
+                </th>
+              </sc-for>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ ridersView }}" as="rider" hint-placeholder-count="14">
+              <tr>
+                <th style="{{ rider.rowHeadStyle }}">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:#8A93A6;flex:none;width:26px">{{ rider.nation }}</span>
+                    <span style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">{{ rider.name }}</span>
+                    <span style="{{ rider.ratingStyle }}" title="Rating">{{ rider.rating }}</span>
+                    <span style="{{ rider.clashBadgeStyle }}" title="{{ rider.clashTip }}">!</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:3px;padding-left:33px">
+                    <div style="width:58px;height:5px;border-radius:3px;background:#EDEFEC;overflow:hidden;position:relative">
+                      <div style="{{ rider.potBandStyle }}"></div>
+                      <div style="{{ rider.ratingFillStyle }}"></div>
+                    </div>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#8A93A6">pot {{ rider.potential }}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#8A93A6">· {{ rider.age }}y</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:5px;padding-left:33px">
+                    <span style="font-size:10px;color:#5B6470">{{ rider.types }}</span>
+                    <sc-for list="{{ rider.tags }}" as="t" hint-placeholder-count="2">
+                      <span style="{{ t.style }}">{{ t.label }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="{{ rider.peakStyle }}">{{ rider.peakLabel }}</div>
+                </th>
+                <sc-for list="{{ rider.cells }}" as="cell" hint-placeholder-count="14">
+                  <td style="{{ cell.tdStyle }}" onClick="{{ cell.onClick }}" title="{{ cell.title }}">
+                    <span style="{{ cell.roleStyle }}">{{ cell.code }}</span>
+                  </td>
+                </sc-for>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+
+      <sc-if value="{{ picker.open }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ picker.onClose }}" style="position:fixed;inset:0;z-index:70"></div>
+        <div style="{{ picker.panelStyle }}">
+          <div style="font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-weight:700;font-size:13px;letter-spacing:.03em;line-height:1.15">{{ picker.rider }}</div>
+          <div style="font-size:11px;color:#5B6470;margin:2px 0 9px">{{ picker.race }}</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <sc-for list="{{ picker.options }}" as="o" hint-placeholder-count="6">
+              <button onClick="{{ o.onClick }}" style="{{ o.style }}">
+                <span style="{{ o.swatchStyle }}">{{ o.code }}</span>
+                <span>{{ o.label }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="{{ picker.warnStyle }}">{{ picker.warn }}</div>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:#8A93A6">
+      <span>Squad and calendar transcribed from your screenshots. Race categories are placeholders — send the real values and I'll swap them in.</span>
+      <button onClick="{{ onReset }}" style="background:none;border:1px solid #E4E7E4;color:#5B6470;border-radius:7px;padding:5px 11px;font-size:11.5px;cursor:pointer">Clear all entries</button>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showTimeline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;tintClusterColumns&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;showFormPeaks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;}}">
+/* Calendar block Aug 25 – Sep 21 2026, transcribed from the division calendar.
+   Repeat editions of the same race are suffixed · II. cat values are placeholders. */
+const RACES = [
+  {name:"Giro della Penisola",       start:"2026-08-25", end:"2026-08-31", tier:"Major Tour", stages:21},
+  {name:"La Course au Soleil",       start:"2026-08-26", end:"2026-08-28", tier:"WT A",       stages:8},
+  {name:"De Vlaamse Ronde",          start:"2026-08-27", end:"2026-08-27", tier:"Monument",   stages:1},
+  {name:"Le Mur de Huy",             start:"2026-08-27", end:"2026-08-27", tier:"WT B",       stages:1},
+  {name:"Milano–Riviera",            start:"2026-08-31", end:"2026-08-31", tier:"Monument",   stages:1},
+  {name:"Tour de Bretagne",          start:"2026-08-31", end:"2026-09-01", tier:"WT B",       stages:6},
+  {name:"Giro della Penisola · II",  start:"2026-09-01", end:"2026-09-04", tier:"Major Tour", stages:21},
+  {name:"Tour de l'Hexagone",        start:"2026-09-05", end:"2026-09-09", tier:"Grand Tour", stages:20},
+  {name:"GP du Saint-Laurent",       start:"2026-09-07", end:"2026-09-07", tier:"WT B",       stages:1},
+  {name:"Tour de l'Hexagone · II",   start:"2026-09-10", end:"2026-09-13", tier:"Grand Tour", stages:20},
+  {name:"Vuelta Ibérica",            start:"2026-09-13", end:"2026-09-18", tier:"Major Tour", stages:21},
+  {name:"GP du Mont-Royal",          start:"2026-09-15", end:"2026-09-15", tier:"WT B",       stages:1},
+  {name:"L'Enfer du Nord",           start:"2026-09-17", end:"2026-09-17", tier:"Monument",   stages:1},
+  {name:"Vuelta Ibérica · II",       start:"2026-09-18", end:"2026-09-21", tier:"Major Tour", stages:21}
+];
+
+const TIERS = {
+  "Monument":   {bg:"#0F3D3E", fg:"#F4C21A", short:"MON"},
+  "Grand Tour": {bg:"#F4C21A", fg:"#4A3A00", short:"GT"},
+  "Major Tour": {bg:"#FDF3D2", fg:"#7A5B00", short:"MAJOR"},
+  "WT A":       {bg:"#E3EEEC", fg:"#0F3D3E", short:"WT A"},
+  "WT B":       {bg:"#F1F3F0", fg:"#5B6470", short:"WT B"}
+};
+
+/* Squad transcribed from the team screens: rating, potential band, types, age, status tags */
+const RIDERS = [
+  {nation:"ESP", name:"Rubén Lozano",      rating:70, pot:[70,77], t:["Baroudeur","Rouleur"],            age:23, tags:["U25"]},
+  {nation:"FRA", name:"Hugo Moreau",       rating:69, pot:[69,77], t:["Baroudeur","Rouleur"],            age:25, tags:[]},
+  {nation:"FRA", name:"Lucas Hervé",       rating:43, pot:[85,94], t:["Baroudeur","Rouleur"],            age:22, tags:["ACAD","U23"]},
+  {nation:"FRA", name:"Corentin Vidal",    rating:63, pot:[63,66], t:["Climber","Puncheur"],             age:31, tags:[]},
+  {nation:"FRA", name:"Adrien Lemaire",    rating:57, pot:[57,61], t:["Cobbles specialist","Rouleur"],   age:28, tags:[]},
+  {nation:"FRA", name:"Hugo Mercier",      rating:31, pot:[75,84], t:["Baroudeur","Puncheur"],           age:18, tags:["INJ","ACAD","U23"]},
+  {nation:"GBR", name:"Jack Holland",      rating:67, pot:[67,73], t:["Puncheur","Climber"],             age:29, tags:["LIST"]},
+  {nation:"GBR", name:"Connor Brown",      rating:37, pot:[71,80], t:["Puncheur","Baroudeur"],           age:18, tags:["ACAD","U23"]},
+  {nation:"ESP", name:"Sergio Lozano",     rating:36, pot:[69,78], t:["Puncheur","Climber"],             age:18, tags:["ACAD","U23"]},
+  {nation:"FRA", name:"Julien Faure",      rating:57, pot:[57,63], t:["Baroudeur","Rouleur"],            age:29, tags:[]},
+  {nation:"FRA", name:"Adrien Charpentier",rating:67, pot:[67,73], t:["Puncheur","Climber"],             age:36, tags:["35+"]},
+  {nation:"FRA", name:"Clément Guerin",    rating:34, pot:[62,71], t:["Climber","Puncheur"],             age:19, tags:["ACAD","U23"]},
+  {nation:"GBR", name:"Blake Taylor",      rating:28, pot:[68,77], t:["QC contender","Climber"],         age:17, tags:["ACAD","U23"]},
+  {nation:"BEL", name:"Niels Smit",        rating:38, pot:[41,50], t:["Cobbles specialist","Rouleur"],   age:29, tags:["AUC","LIST"]},
+  {nation:"FRA", name:"Damien Chevalier",  rating:29, pot:[81,90], t:["Baroudeur","Rouleur"],            age:17, tags:["ACAD","U23"]},
+  {nation:"ESP", name:"Iván Bravo",        rating:32, pot:[50,59], t:["Climber","Puncheur"],             age:18, tags:["U23","AUC","LIST"]},
+  {nation:"ITA", name:"Filippo Barbieri",  rating:40, pot:[40,44], t:["Puncheur","Climber"],             age:35, tags:["35+","LIST"]},
+  {nation:"FRA", name:"Loïc Chevalier",    rating:13, pot:[73,82], t:["Cobbles specialist","Rouleur"],   age:19, tags:["ACAD","U23"]},
+  {nation:"KOR", name:"Hyun Oh",           rating:33, pot:[33,40], t:["Climber","Puncheur"],             age:31, tags:[]},
+  {nation:"ITA", name:"Federico Longo",    rating:27, pot:[27,32], t:["Cobbles specialist","Puncheur"],  age:35, tags:["35+","EXP","LIST"]},
+  {nation:"FRA", name:"Mathis Bernard",    rating:26, pot:[33,42], t:["Climber","Puncheur"],             age:24, tags:["U25","LIST"]},
+  {nation:"FRA", name:"Théo Colin",        rating:31, pot:[31,40], t:["Climber","Puncheur"],             age:29, tags:["INJ"]},
+  {nation:"NED", name:"Bart Van Hecke",    rating:27, pot:[49,58], t:["Baroudeur","Rouleur"],            age:20, tags:["U23"]},
+  {nation:"FRA", name:"Lucas Lemaire",     rating:20, pot:[43,52], t:["Climber","QC contender"],         age:19, tags:["U23"]},
+  {nation:"FRA", name:"Lucas Faure",       rating:1,  pot:[45,54], t:["Puncheur","Climber"],             age:16, tags:["U23"]},
+  {nation:"POR", name:"Ricardo Correia",   rating:42, pot:[42,47], t:["Puncheur","Climber"],             age:36, tags:["35+","EXP","LIST"]},
+  {nation:"FRA", name:"Hugo Marchand",     rating:13, pot:[50,59], t:["Baroudeur","QC contender"],       age:18, tags:["U23"]},
+  {nation:"FRA", name:"Romain Renaud",     rating:12, pot:[49,58], t:["Puncheur","Cobbles specialist"],  age:19, tags:["U23"]},
+  {nation:"BEL", name:"Sander De Vries",   rating:22, pot:[30,39], t:["Sprinter","Rouleur"],             age:25, tags:[]},
+  {nation:"ESP", name:"Iván López",        rating:18, pot:[38,47], t:["Baroudeur","Sprinter"],           age:24, tags:["U25","OUT"]},
+  {nation:"KOR", name:"Daehyun Ahn",       rating:19, pot:[19,24], t:["GC contender","Rouleur"],         age:38, tags:["35+","EXP"]}
+];
+
+const ROLES = {
+  l:{label:"Leader",             bg:"#0F3D3E", fg:"#FFFFFF"},
+  h:{label:"Domestique · hard",  bg:"#8A93A6", fg:"#FFFFFF"},
+  k:{label:"Domestique · light", bg:"#C3CAD3", fg:"#2A2F36"},
+  f:{label:"Free role",          bg:"#3D6FE0", fg:"#FFFFFF"},
+  s:{label:"Sprint lead-out",    bg:"#F4C21A", fg:"#4A3A00"}
+};
+const CLUSTER_COLORS = ["#E2543A","#3D6FE0","#B45FCF","#1F9E6B","#D98A2B","#6A5ACD","#C0417A"];
+const TAG_STYLES = {
+  INJ:{bg:"#FBE3DD", fg:"#A33520"}, OUT:{bg:"#FBE3DD", fg:"#A33520"},
+  ACAD:{bg:"#E3EEEC", fg:"#0F3D3E"}, EXP:{bg:"#E3EEEC", fg:"#0F3D3E"},
+  U23:{bg:"#EAF0FE", fg:"#274B9E"}, U25:{bg:"#EAF0FE", fg:"#274B9E"},
+  "35+":{bg:"#F1F3F0", fg:"#5B6470"}, LIST:{bg:"#FDF3D2", fg:"#7A5B00"}, AUC:{bg:"#FDF3D2", fg:"#7A5B00"}
+};
+const DAY = 86400000;
+const COL = 60;
+
+function seed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h ^= h >>> 13; return ((h >>> 0) % 1000) / 1000; };
+}
+RIDERS.forEach(r => {
+  const rnd = seed(r.name);
+  r.peakOffset = Math.round(rnd() * 22) - 2;
+  r.peakDays = 8 + Math.round(rnd() * 9);
+  r.unavailable = r.tags.includes("INJ") || r.tags.includes("OUT");
+});
+
+class Component extends DCLogic {
+  state = { roles: {}, query: "", type: "All", sort: "Rating", clashesOnly: false, hideUnavail: false, editing: null, hoverRace: null };
+  scroller = React.createRef();
+
+  clusters() {
+    const ov = (a, b) => a.start <= b.end && b.start <= a.end;
+    const adj = new Map(RACES.map(r => [r.name, new Set()]));
+    for (let i = 0; i < RACES.length; i++)
+      for (let j = i + 1; j < RACES.length; j++)
+        if (ov(RACES[i], RACES[j])) { adj.get(RACES[i].name).add(RACES[j].name); adj.get(RACES[j].name).add(RACES[i].name); }
+    const seen = new Set(), of = new Map();
+    let id = 0;
+    RACES.forEach(r => {
+      if (seen.has(r.name)) return;
+      const stack = [r.name], members = [];
+      while (stack.length) {
+        const n = stack.pop();
+        if (seen.has(n)) continue;
+        seen.add(n); members.push(n);
+        adj.get(n).forEach(m => stack.push(m));
+      }
+      if (members.length > 1) { members.forEach(m => of.set(m, id)); id++; }
+    });
+    return { adj, of, count: id };
+  }
+
+  overlapDays(a, b) {
+    const s = Math.max(Date.parse(a.start), Date.parse(b.start));
+    const e = Math.min(Date.parse(a.end), Date.parse(b.end));
+    return e < s ? 0 : Math.round((e - s) / DAY) + 1;
+  }
+
+  riderClashes(name, adj) {
+    const roles = this.state.roles[name] || {};
+    const entered = RACES.filter(r => roles[r.name]);
+    const bad = new Map();
+    for (let i = 0; i < entered.length; i++)
+      for (let j = i + 1; j < entered.length; j++)
+        if (adj.get(entered[i].name).has(entered[j].name)) {
+          if (!bad.has(entered[i].name)) bad.set(entered[i].name, new Set());
+          if (!bad.has(entered[j].name)) bad.set(entered[j].name, new Set());
+          bad.get(entered[i].name).add(entered[j].name);
+          bad.get(entered[j].name).add(entered[i].name);
+        }
+    return bad;
+  }
+
+  setRole(riderName, raceName, code) {
+    this.setState(s => {
+      const roles = Object.assign({}, s.roles);
+      const row = Object.assign({}, roles[riderName]);
+      if (code) row[raceName] = code; else delete row[raceName];
+      roles[riderName] = row;
+      return { roles, editing: null };
+    });
+  }
+
+  chipStyle(active) {
+    return "cursor:pointer;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:7px;white-space:nowrap;" +
+      (active ? "background:#0F3D3E;color:#fff;border:1px solid #0F3D3E"
+              : "background:#FAFBF9;color:#5B6470;border:1px solid #E4E7E4");
+  }
+
+  ratingColor(v) { return v >= 65 ? "#1F9E6B" : v >= 40 ? "#C9A215" : "#E2543A"; }
+
+  hexA(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return "rgba(" + [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(",") + "," + a + ")";
+  }
+
+  renderVals() {
+    const { adj, of, count } = this.clusters();
+    const st = this.state;
+    const tint = this.props.tintClusterColumns ?? true;
+    const showTimeline = this.props.showTimeline ?? true;
+    const showPeaks = this.props.showFormPeaks ?? true;
+    const colorOf = n => of.has(n) ? CLUSTER_COLORS[of.get(n) % CLUSTER_COLORS.length] : null;
+    const fmt = t => new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    const min = Math.min(...RACES.map(r => Date.parse(r.start)));
+    const max = Math.max(...RACES.map(r => Date.parse(r.end)));
+
+    const racesView = RACES.map(r => {
+      const c = colorOf(r.name);
+      const partners = [...adj.get(r.name)];
+      const tipText = partners.length
+        ? "Overlaps " + partners.map(p => p + " (" + this.overlapDays(r, RACES.find(x => x.name === p)) + "d)").join(" · ")
+        : "No date overlap";
+      const tier = TIERS[r.tier] || TIERS["WT B"];
+      return {
+        name: r.name, tierShort: tier.short,
+        kindLabel: r.stages > 1 ? r.stages + " STG" : "1 DAY",
+        dateLabel: (() => {
+          const s = new Date(Date.parse(r.start)), e = new Date(Date.parse(r.end));
+          const mon = d => d.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
+          if (r.start === r.end) return s.getUTCDate() + " " + mon(s);
+          return mon(s) === mon(e)
+            ? s.getUTCDate() + "–" + e.getUTCDate() + " " + mon(s)
+            : (s.getUTCDate() + "/" + (s.getUTCMonth() + 1) + "–" + e.getUTCDate() + "/" + (e.getUTCMonth() + 1));
+        })(),
+        thStyle: "position:sticky;top:0;z-index:20;background:" + (tint && c ? this.hexA(c, .05) : "#fff") +
+          ";width:" + COL + "px;min-width:" + COL + "px;padding:9px 3px 7px;border-bottom:1px solid #CDD2CC;border-left:1px solid #F1F3F0;vertical-align:bottom",
+        clusterBarStyle: c ? "position:absolute;left:4px;right:4px;top:0;height:3px;border-radius:0 0 2px 2px;background:" + c : "display:none",
+        nameStyle: "font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12.5px;line-height:1.1;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;height:132px;display:flex;align-items:flex-end;margin:0 auto;color:#101418",
+        tierStyle: "font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;padding:1px 4px;border-radius:3px;white-space:nowrap;background:" + tier.bg + ";color:" + tier.fg,
+        kindStyle: "font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;padding:1px 4px;border-radius:3px;" +
+          (r.stages > 1 ? "background:#EAF0FE;color:#274B9E" : "background:#FDF3D2;color:#7A5B00"),
+        tip: tipText,
+        onEnter: () => this.setState({ hoverRace: r.name }),
+        onLeave: () => { if (this.state.hoverRace === r.name) this.setState({ hoverRace: null }); },
+        tipStyle: st.hoverRace === r.name
+          ? "position:absolute;top:calc(100% - 2px);left:50%;transform:translateX(-50%);z-index:40;width:236px;background:#101418;color:#fff;font-size:11px;font-weight:500;line-height:1.4;text-align:left;padding:7px 9px;border-radius:7px;box-shadow:0 10px 24px -8px rgba(0,0,0,.4);pointer-events:none;white-space:normal"
+          : "display:none"
+      };
+    });
+
+    /* timeline — percentage geometry so it stretches to the page width */
+    const totalDaysAll = Math.round((max - min) / DAY) + 1;
+    const pct = d => (d / totalDaysAll * 100).toFixed(3) + "%";
+    const lanes = [];
+    const bars = RACES.slice().sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map(r => {
+      const s = Date.parse(r.start), e = Date.parse(r.end);
+      let lane = lanes.findIndex(end => end < s - DAY / 2);
+      if (lane === -1) { lanes.push(e); lane = lanes.length - 1; } else lanes[lane] = e;
+      const c = colorOf(r.name) || "#0F3D3E";
+      const days = Math.round((e - s) / DAY) + 1;
+      return {
+        label: days >= 3 ? r.name : "",
+        title: r.name + " · " + r.tier + " · " + r.start + (r.end !== r.start ? " → " + r.end : "") + " · " + (r.stages > 1 ? r.stages + " stages" : "one-day"),
+        style: "position:absolute;left:" + pct(Math.round((s - min) / DAY)) + ";top:" + (24 + lane * 22) +
+          "px;width:calc(" + pct(days) + " - 3px);height:18px;border-radius:4px;background:" + this.hexA(c, .16) +
+          ";border-left:3px solid " + c + ";color:#2A2F36;font-size:9.5px;font-weight:600;line-height:18px;padding:0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer",
+        onClick: () => {
+          const el = document.querySelector('[data-race="' + r.name + '"]');
+          const sc = this.scroller.current;
+          if (el && sc) sc.scrollTo({ left: el.offsetLeft - 300, behavior: "smooth" });
+        }
+      };
+    });
+    const weeks = [];
+    for (let d = 0; d < totalDaysAll; d++) {
+      const t = min + d * DAY;
+      if (new Date(t).getUTCDay() === 1 || d === 0) {
+        weeks.push({
+          label: totalDaysAll - d < 4 ? "" : fmt(t),
+          style: "position:absolute;left:" + pct(d) + ";top:0;bottom:0;width:" + pct(Math.min(7, totalDaysAll - d)) +
+            ";border-left:1px solid #EDEFEC;padding-top:2px"
+        });
+      }
+    }
+
+    /* riders */
+    const typeSet = ["All"];
+    RIDERS.forEach(r => r.t.forEach(t => { if (!typeSet.includes(t)) typeSet.push(t); }));
+    let list = RIDERS.map(r => {
+      const clash = this.riderClashes(r.name, adj);
+      const roles = st.roles[r.name] || {};
+      const raceDays = RACES.reduce((a, x) => a + (roles[x.name] ? x.stages : 0), 0);
+      const pStart = min + r.peakOffset * DAY;
+      return { r, clash, roles, raceDays, pStart, pEnd: pStart + r.peakDays * DAY };
+    });
+    if (st.type !== "All") list = list.filter(x => x.r.t.includes(st.type));
+    if (st.query.trim()) list = list.filter(x => x.r.name.toLowerCase().includes(st.query.trim().toLowerCase()));
+    if (st.clashesOnly) list = list.filter(x => x.clash.size > 0);
+    if (st.hideUnavail) list = list.filter(x => !x.r.unavailable);
+    if (st.sort === "Rating") list.sort((a, b) => b.r.rating - a.r.rating);
+    if (st.sort === "Potential") list.sort((a, b) => b.r.pot[1] - a.r.pot[1]);
+    if (st.sort === "Age") list.sort((a, b) => a.r.age - b.r.age);
+    if (st.sort === "Name") list.sort((a, b) => a.r.name.localeCompare(b.r.name));
+    if (st.sort === "Load") list.sort((a, b) => b.raceDays - a.raceDays);
+
+    const ridersView = list.map(x => ({
+      nation: x.r.nation, name: x.r.name, rating: x.r.rating, age: x.r.age,
+      potential: x.r.pot[0] + "–" + x.r.pot[1],
+      types: x.r.t.join(" / "),
+      tags: x.r.tags.map(t => ({
+        label: t,
+        style: "font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;padding:1px 4px;border-radius:3px;background:" +
+          (TAG_STYLES[t] || TAG_STYLES.LIST).bg + ";color:" + (TAG_STYLES[t] || TAG_STYLES.LIST).fg
+      })),
+      rowHeadStyle: "position:sticky;left:0;z-index:10;background:" + (x.clash.size ? "#FEF7F5" : x.r.unavailable ? "#FAFAF8" : "#fff") +
+        ";min-width:288px;max-width:288px;padding:8px 14px;text-align:left;border-right:1px solid #CDD2CC;border-top:1px solid #EDEFEC;vertical-align:top" +
+        (x.r.unavailable ? ";opacity:.7" : ""),
+      clashTip: x.clash.size ? "Double-booked: " + [...x.clash.keys()].join(" / ") : "",
+      clashBadgeStyle: x.clash.size
+        ? "display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:4px;background:#E2543A;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;flex:none;cursor:help"
+        : "display:none",
+      ratingStyle: "font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;padding:1px 5px;border-radius:4px;flex:none;border:1px solid " +
+        (x.r.rating >= 65 ? "#0F3D3E;background:#0F3D3E;color:#F4C21A" : x.r.rating >= 40 ? "#CFE0DC;background:#E3EEEC;color:#0F3D3E" : "#E4E7E4;background:#FAFBF9;color:#5B6470"),
+      potBandStyle: "position:absolute;height:100%;border-radius:3px;left:" + x.r.pot[0] + "%;width:" + (x.r.pot[1] - x.r.pot[0]) + "%;background:#D6E4DF",
+      ratingFillStyle: "position:absolute;height:100%;border-radius:3px;left:0;width:" + x.r.rating + "%;background:" + this.ratingColor(x.r.rating),
+      peakLabel: showPeaks ? "Peak " + fmt(x.pStart) + " – " + fmt(x.pEnd) : "",
+      peakStyle: showPeaks
+        ? "display:inline-flex;margin:6px 0 0 33px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:#1F7A55;background:#E7F4EE;border-radius:4px;padding:2px 6px"
+        : "display:none",
+      cells: RACES.map(r => {
+        const code = x.roles[r.name] || "";
+        const clashHere = x.clash.has(r.name);
+        const unavail = code && x.r.unavailable;
+        const bad = clashHere || unavail;
+        const c = colorOf(r.name);
+        const peak = showPeaks && Date.parse(r.start) <= x.pEnd && x.pStart <= Date.parse(r.end);
+        return {
+          code,
+          title: x.r.name + " · " + r.name + (code ? " · " + ROLES[code].label : "") + (peak ? " — form peak" : "") +
+            (clashHere ? " — clashes with " + [...x.clash.get(r.name)].join(", ") : "") +
+            (unavail ? " — rider unavailable (" + x.r.tags.filter(t => t === "INJ" || t === "OUT").join("/") + ")" : ""),
+          tdStyle: "width:" + COL + "px;min-width:" + COL + "px;height:41px;text-align:center;cursor:pointer;border-top:1px solid #EDEFEC;border-left:1px solid #F1F3F0;background:" +
+            (bad ? "#FBE3DD" : peak ? "#EAF6F0" : tint && c ? this.hexA(c, .045) : "#fff") +
+            (peak && !bad ? ";box-shadow:inset 0 -3px 0 #7FC7A4" : ""),
+          roleStyle: code
+            ? "display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;background:" +
+              ROLES[code].bg + ";color:" + ROLES[code].fg + (bad ? ";box-shadow:0 0 0 2px #E2543A" : "")
+            : "display:none",
+          onClick: e => {
+            const b = e.currentTarget.getBoundingClientRect();
+            this.setState({ editing: { rider: x.r.name, race: r.name, x: b.left + b.width / 2, y: b.bottom, top: b.top } });
+          }
+        };
+      })
+    }));
+
+    /* picker */
+    const ed = st.editing;
+    let picker = { open: false, options: [] };
+    if (ed) {
+      const race = RACES.find(r => r.name === ed.race);
+      const rider = RIDERS.find(r => r.name === ed.rider);
+      const roles = st.roles[ed.rider] || {};
+      const conflictWith = [...adj.get(ed.race)].filter(n => roles[n]);
+      const warns = [];
+      if (conflictWith.length) warns.push("Overlaps a race they are already in: " + conflictWith.join(", "));
+      if (rider.unavailable) warns.push("Rider is " + rider.tags.filter(t => t === "INJ" || t === "OUT").join("/") + " — not available to start.");
+      const estH = 58 + 6 * 33 + (warns.length ? 90 : 0);
+      const vh = window.innerHeight;
+      const below = ed.y + 6;
+      const top = below + estH + 12 <= vh ? below : Math.max(12, Math.min(ed.top - estH - 6, vh - estH - 12));
+      const maxH = vh - top - 12;
+      picker = {
+        open: true, rider: ed.rider,
+        race: race.name + " · " + race.tier + " · " + (race.stages > 1 ? race.stages + " stages" : "one-day"),
+        panelStyle: "position:fixed;z-index:80;left:" + Math.min(Math.max(ed.x - 112, 12), window.innerWidth - 236) +
+          "px;top:" + top + "px;max-height:" + maxH + "px;overflow-y:auto;overscroll-behavior:contain;width:224px;background:#fff;border:1px solid #CDD2CC;border-radius:10px;box-shadow:0 18px 40px -12px rgba(16,20,24,.3);padding:12px",
+        onClose: () => this.setState({ editing: null }),
+        warn: warns.join(" "),
+        warnStyle: warns.length
+          ? "margin-top:9px;font-size:10.5px;line-height:1.35;color:#A33520;background:#FBE3DD;border-radius:6px;padding:6px 8px"
+          : "display:none",
+        options: [...Object.keys(ROLES).map(code => ({
+          code, label: ROLES[code].label,
+          swatchStyle: "display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;flex:none;background:" + ROLES[code].bg + ";color:" + ROLES[code].fg,
+          style: "display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;font-size:12px;font-weight:500;padding:5px 7px;border-radius:7px;border:1px solid " +
+            (roles[ed.race] === code ? "#0F3D3E;background:#E3EEEC" : "transparent;background:#FAFBF9"),
+          onClick: () => this.setRole(ed.rider, ed.race, code)
+        })), {
+          code: "–", label: "No entry",
+          swatchStyle: "display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;flex:none;background:#F1F3F0;color:#8A93A6",
+          style: "display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;font-size:12px;font-weight:500;padding:5px 7px;border-radius:7px;border:1px solid transparent;background:#FAFBF9;color:#5B6470",
+          onClick: () => this.setRole(ed.rider, ed.race, null)
+        }]
+      };
+    }
+
+    const clashCount = RIDERS.reduce((a, r) => a + (this.riderClashes(r.name, adj).size ? 1 : 0), 0);
+
+    return {
+      showTimeline, racesView, ridersView, picker,
+      query: st.query,
+      riderCountLabel: ridersView.length + " of " + RIDERS.length,
+      meta: { squadSize: RIDERS.length, window: fmt(min) + " – " + fmt(max) },
+      stats: {
+        assignments: Object.values(st.roles).reduce((a, r) => a + Object.keys(r).length, 0),
+        clusters: count,
+        clashes: clashCount,
+        clashStyle: "border-radius:9px;padding:9px 15px;min-width:92px;border:1px solid " +
+          (clashCount ? "#F3C6BA;background:#FBE3DD;color:#A33520" : "#E4E7E4;background:#fff;color:#101418"),
+        unavail: RIDERS.filter(r => r.unavailable).length,
+        unavailStyle: "border-radius:9px;padding:9px 15px;min-width:92px;border:1px solid #E4E7E4;background:#fff;color:#101418"
+      },
+      timeline: {
+        rangeLabel: fmt(min) + " – " + fmt(max),
+        canvasStyle: "position:relative;height:" + (28 + lanes.length * 22) + "px;width:100%",
+        weeks, bars
+      },
+      legend: Object.keys(ROLES).map(code => ({
+        code, label: ROLES[code].label,
+        swatchStyle: "display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;background:" + ROLES[code].bg + ";color:" + ROLES[code].fg
+      })),
+      tierLegend: Object.keys(TIERS).map(k => ({
+        label: TIERS[k].short + " · " + k,
+        style: "font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;padding:2px 5px;border-radius:3px;white-space:nowrap;background:" + TIERS[k].bg + ";color:" + TIERS[k].fg
+      })),
+      typeChips: typeSet.map(t => ({ label: t, style: this.chipStyle(st.type === t), onClick: () => this.setState({ type: t }) })),
+      sortChips: ["Rating", "Potential", "Load", "Age", "Name"].map(s => ({ label: s, style: this.chipStyle(st.sort === s), onClick: () => this.setState({ sort: s }) })),
+      clashToggleStyle: this.chipStyle(st.clashesOnly),
+      availToggleStyle: this.chipStyle(st.hideUnavail),
+      onToggleClashes: () => this.setState(s => ({ clashesOnly: !s.clashesOnly })),
+      onToggleAvail: () => this.setState(s => ({ hideUnavail: !s.hideUnavail })),
+      onQuery: e => this.setState({ query: e.target.value }),
+      onReset: () => this.setState({ roles: {}, editing: null }),
+      scrollRef: this.scroller
+    };
+  }
+}
+
+</script>
+</body>
+</html>
