@@ -12,6 +12,8 @@
 
 > **👤 Ejer-klik:** post tester-opslag EN + 3 spillersvar + løn-Discord + weekendbesked (udkast i planlægningssessionen) · /pro: moms-tjek i Alunta + opret support@cyclingzone.org → derefter CHECKOUT_PAUSED-flip + testkøb (fredag: #2853 e-mail-loop-test) · race-day-besked + Sentry-alarm + #3486 VERCEL_TOKEN + `railway login` · #3961-slette-script (60 Discord-opslag).
 
+> **🚴 Race engine v4 (#3855):** spec EJER-GODKENDT 20/8 (24 beslutninger, §8+8b). Merge-klar EFTER trin 7-toget, ejer merger selv: PR #4028 (F1 rute-SSOT; post-merge: apply `database/2026-08-20-3855-*.sql` + verify) → PR #4029 (#3149, ejer-go 20/8; patch note EN+DA ved merge; flip #3149 done). Næste byg: **#4030 F2**.
+
 > **📌 Opfølgninger:** W7 hjælpetekster LIGE efter trin 7-merge (trin 2/løbslære er allerede I trin 7-PR'en, verificeret 20/8) · W8: bundt 1 kørt 20/8, 53 needs-decision tilbage (bundt 2 = økonomi, efter cutover) · kalibrerings-session efter cutover: #3719/#3720/#3987/#3732/#2650 + D1-løn-sats på målt indtægt · #4001 akademi-værdi modner første søndag (ejer-dom; fremtid: 5 træningspas før auktion) · miljø-audit (ejer-ja 20/8) + #691 key-rotation uge 35 · #3952/#3982 visuals i design-sessionen · race-planning-prototype live til spillerfeedback (cyclingzone.org/race-planning-preview.html; kilder + beslutninger: docs/design/race-planning-proposal/, #1146) — ejer poster Discord-udkast, feedback føres til #1146.
 
 ## Standing context (forever-relaunch)
