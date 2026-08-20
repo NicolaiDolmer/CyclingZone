@@ -1,14 +1,18 @@
-// #3721 — træningssiden omlagt til 3 faner (Train today / Development /
-// History), ejer-godkendt design 19/8. Guarden her holder på:
-//   1) "Train today" er default (ingen ?tab=) og viser rosteret + ugentlig
-//      rytme-accordionen (flyttet, IKKE slettet — se TrainingPage.jsx-kommentar
-//      ved weekRhythm-kortet) — men ALDRIG den slettede åbne FAQ.
+// #3721 — træningssiden omlagt til faner (Train today / Development /
+// History), ejer-godkendt design 19/8. #3746 trin 7 (ejer-beslutning 20/8)
+// tilføjede en ny fane, "Week plan", og flyttede den ugentlige rytme-editor
+// dertil (som en åben sektion, ikke længere en accordion). Guarden her holder på:
+//   1) "Train today" er default (ingen ?tab=) og viser rosteret — men ALDRIG
+//      den slettede åbne FAQ, og IKKE LÆNGERE ugerytme-editoren (flyttet).
 //   2) Toolbaren bærer et stille "How training works"-link til
 //      /help?section=dailytraining i stedet for FAQ-prosaen.
-//   3) Development-fanen viser én række pr. rytter: navn+alder, glyf-tallene
+//   3) "Week plan"-fanen viser ugerytme-editoren åben (ingen <details>) + en
+//      kompakt oversigt over ryttere med individuel ugeplan.
+//   4) Development-fanen viser én række pr. rytter: navn+alder, glyf-tallene
 //      "now · lo-hi · loft", og en fungerende fokus-knap (samme FocusPanel).
-//   4) History-fanen viser den uændrede træningshistorik.
-//   5) ?tab=development er et gyldigt dyb-link (samme mønster som RiderStatsPage).
+//   5) History-fanen viser den uændrede træningshistorik.
+//   6) ?tab=development og ?tab=weekplan er gyldige dyb-links (samme mønster
+//      som RiderStatsPage).
 //
 // riders kommer fra Supabase-mocken uden override: rider-1 = Ada Pedersen
 // (samme fixture-rytter som training-report.spec.js bruger), som har et fuldt
@@ -46,7 +50,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("Train today er default: rosteret er synligt, den slettede FAQ er væk, ugerytmen findes stadig (flyttet, ikke fjernet)", async ({ page }) => {
+test("Train today er default: rosteret er synligt, den slettede FAQ er væk, ugerytmen er flyttet til Week plan", async ({ page }) => {
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
@@ -60,14 +64,40 @@ test("Train today er default: rosteret er synligt, den slettede FAQ er væk, uge
   // #3721: den åbne FAQ ("Får man energi tilbage hver dag?") er slettet.
   await expect(page.getByText("Får man energi tilbage hver dag?")).toHaveCount(0);
 
-  // Ugerytme-accordionen er IKKE slettet, kun flyttet under rosteret/rapporten
-  // (kollapset som før — details uden `open`).
-  await expect(page.getByText("Ugentlig rytme")).toBeVisible();
+  // #3746 trin 7: ugerytme-editoren bor IKKE længere på Train today — den er
+  // flyttet til sin egen fane ("Week plan"), se testen nedenfor.
+  await expect(page.getByText("Ugentlig rytme")).toHaveCount(0);
 
   // Det stille Hjælp-link i toolbaren erstatter FAQ-prosaen.
   const helpLink = page.getByRole("link", { name: "Sådan virker træning" });
   await expect(helpLink).toBeVisible();
   await expect(helpLink).toHaveAttribute("href", "/help?section=dailytraining");
+});
+
+test("Week plan-fanen viser ugerytme-editoren åben (ingen accordion) + den individuelle ugeplan-oversigt", async ({ page }) => {
+  await login(page);
+  await page.goto("/training");
+  await page.locator("table[data-sortable]").waitFor();
+
+  await page.getByRole("tab", { name: "Ugeplan" }).click();
+  await expect(page).toHaveURL(/\/training\?tab=weekplan$/);
+
+  // Rosterets tabel er væk (kun Week plan-fanens indhold rendres).
+  await expect(page.locator("table[data-sortable]")).toHaveCount(0);
+
+  // Ugerytme-editoren er synlig UDEN at skulle åbnes — ingen <details>-element.
+  await expect(page.getByText("Ugentlig rytme")).toBeVisible();
+  await expect(page.locator("details:has-text('Ugentlig rytme')")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Gem rytme" })).toBeVisible();
+
+  // Den individuelle ugeplan-oversigt (tom i denne fixture — riderWeekPlans: {}).
+  await expect(page.getByText("Individuelle ugeplaner")).toBeVisible();
+  await expect(page.getByText("Ingen ryttere har en individuel ugeplan endnu.", { exact: false })).toBeVisible();
+
+  // "Gå til rosteret"-knappen springer tilbage til Train today.
+  await page.getByRole("button", { name: "Gå til rosteret" }).click();
+  await expect(page).toHaveURL(/\/training\?tab=today$/);
+  await expect(page.locator("table[data-sortable]")).toBeVisible();
 });
 
 test("Development-fanen viser navn+alder, glyf-tallene og en fungerende fokus-knap", async ({ page }) => {
@@ -112,4 +142,12 @@ test("?tab=development er et gyldigt dyb-link (samme VALID_TABS-mønster som Rid
 
   await expect(page.getByRole("tab", { name: "Udvikling", selected: true })).toBeVisible();
   await expect(page.getByText("Ada Pedersen")).toBeVisible();
+});
+
+test("?tab=weekplan er et gyldigt dyb-link", async ({ page }) => {
+  await login(page);
+  await page.goto("/training?tab=weekplan");
+
+  await expect(page.getByRole("tab", { name: "Ugeplan", selected: true })).toBeVisible();
+  await expect(page.getByText("Ugentlig rytme")).toBeVisible();
 });

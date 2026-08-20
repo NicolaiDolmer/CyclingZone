@@ -17,6 +17,7 @@
   },
   "tabs": {
     "today": "Train today",
+    "weekplan": "Week plan",
     "development": "Development",
     "history": "History"
   },
@@ -133,6 +134,10 @@
   "individualWeekPlanRemoved": "Individual weekly plan removed: rider follows the team rhythm again.",
   "individualWeekPlanBadge": "Own plan",
   "individualWeekPlanBadgeTitle": "This rider has their own individual weekly plan, which overrides the team's weekly rhythm.",
+  "individualWeekPlanOverviewTitle": "Individual weekly plans",
+  "individualWeekPlanOverviewEmpty": "No riders have an individual weekly plan yet. Set one from a rider's row on Train today.",
+  "individualWeekPlanOverviewOverridesNote": "Overrides team rhythm",
+  "individualWeekPlanOverviewGoToRoster": "Go to roster",
   "momentLabelToday": "Today's story",
   "momentLabelLatest": "Latest training story",
   "momentBreakthrough_0": "{riderName} breaks through on {ability}: {from} → {to}.",

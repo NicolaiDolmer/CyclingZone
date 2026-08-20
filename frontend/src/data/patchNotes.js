@@ -73,11 +73,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "The training page got tabs, and the roster comes first",
-          "body": "Train today, Development and History are now three tabs. Your riders sit at the top of the first one, and the explanations moved behind a single How training works link.\n\nThe new Development tab shows every rider as one bar: level today, projected level, and the role's ceiling, with the focus picker right on the row."
+          "body": "Train today, Week plan, Development and History are now four tabs. Your riders sit at the top of the first one, and the explanations moved behind a single How training works link.\n\nThe new Development tab shows every rider as one bar: level today, projected level, and the role's ceiling, with the focus picker right on the row."
         },
         "da": {
           "title": "Træningssiden fik faner, og rytterne står øverst",
-          "body": "Træn i dag, Udvikling og Historik er nu tre faner. Dine ryttere ligger øverst på den første, og forklaringerne er flyttet bag ét enkelt link.\n\nDen nye Udviklings-fane viser hver rytter som én bjælke: niveau i dag, forventet niveau og rollens loft, med fokusvælgeren lige på rækken."
+          "body": "Træn i dag, Ugeplan, Udvikling og Historik er nu fire faner. Dine ryttere ligger øverst på den første, og forklaringerne er flyttet bag ét enkelt link.\n\nDen nye Udviklings-fane viser hver rytter som én bjælke: niveau i dag, forventet niveau og rollens loft, med fokusvælgeren lige på rækken."
         },
         "refs": [3721]
       },

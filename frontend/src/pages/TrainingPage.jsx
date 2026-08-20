@@ -5,7 +5,7 @@
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
@@ -47,15 +47,19 @@ import {
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
-// #3721: siden er nu 3 faner (Train today / Development / History), ?tab=-
+// #3721: siden fik faner (Train today / Development / History), ?tab=-
 // synkroniseret efter samme mønster som FinancePage/RiderStatsPage. Ukendt
 // eller manglende param falder tilbage til "today".
-const TRAINING_TABS = ["today", "development", "history"];
+// #3746 trin 7 (ejer-beslutning 20/8): "weekplan" er ny fane nr. 2 — den
+// ugentlige rytme-editor flyttet ud af Train today, se TabPanel value="weekplan".
+// Siden er nu 4 faner: today, weekplan, development, history.
+const TRAINING_TABS = ["today", "weekplan", "development", "history"];
 
 // #2849 bølge 4 — migreret til T2 wide-data-skabelonen (docs/design/PAGE_TEMPLATES.md):
 // PageHeader-recipe (status i subtitle, "Train today" som sidens ene gold CTA),
 // max-w-[1600px]-container, PageLoader ved initial load, kanonisk Card-chrome for
-// ugerytme-accordionen, ui/DataTable-recepten (dataTableStyles: WRAP/SCROLLER/
+// ugerytme-sektionen (#3746 trin 7: åben sektion på sin egen fane, ikke længere
+// en accordion), ui/DataTable-recepten (dataTableStyles: WRAP/SCROLLER/
 // thClass/tdClass/trClass) på begge tabeller. Roster-tabellen bruger dataTableStyles-
 // chrome i stedet for <DataTable> direkte, fordi den har multi-select-checkbox +
 // group-header-rækker + en per-rytter udvidelig ugeplan-række, som DataTable's
@@ -279,6 +283,24 @@ export default function TrainingPage() {
       p.set("tab", tab);
       return p;
     }, { replace: true });
+
+  // #3746 trin 7: Week plan-fanens "gå til rosteret"-knap — den simple løsning
+  // for #4 i issuet (ingen ny data/redigering på denne fane, kun link til
+  // rosteret på Train today). Skifter fane og scroller roster-tabellen i
+  // synsfeltet, når today-panelet er mountet igen (TabPanel unmounter inaktive
+  // faner, så scrollet skal vente på næste render efter fane-skiftet).
+  const rosterTableRef = useRef(null);
+  const [scrollToRosterPending, setScrollToRosterPending] = useState(false);
+  function handleGoToRoster() {
+    setScrollToRosterPending(true);
+    setTab("today");
+  }
+  useEffect(() => {
+    if (activeTab === "today" && scrollToRosterPending) {
+      rosterTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setScrollToRosterPending(false);
+    }
+  }, [activeTab, scrollToRosterPending]);
 
   // #3721: Development-fanens prognose-bånd — samme kilde som spejder-fladerne
   // (POST /api/scouting/estimates via useScouting). Egne ryttere er altid et
@@ -569,6 +591,14 @@ export default function TrainingPage() {
     }
     return out;
   }, [riders, history.seasonRuns, history.seasonStart]);
+
+  // #3746 trin 7: Week plan-fanens kompakte oversigt — ryttere med en egen
+  // individuel ugeplan-override. Genbruger riderWeekPlans (allerede hentet af
+  // useTraining til roster-rækkens udvidelige panel), ingen nyt kald.
+  const ridersWithOwnWeekPlan = useMemo(
+    () => riders.filter((r) => riderWeekPlans[r.id] != null),
+    [riders, riderWeekPlans],
+  );
 
   // --- Gruppering + multi-select (#1480) ---
   // Antal kolonner i roster-tabellen (select + type + 7 oprindelige) — bruges til
@@ -1073,6 +1103,7 @@ export default function TrainingPage() {
       <Tabs value={activeTab} onChange={setTab} className="mt-1">
         <TabList label={t("title")} className="mb-4">
           <Tab value="today">{t("tabs.today")}</Tab>
+          <Tab value="weekplan">{t("tabs.weekplan")}</Tab>
           <Tab value="development">{t("tabs.development")}</Tab>
           <Tab value="history">{t("tabs.history")}</Tab>
         </TabList>
@@ -1212,7 +1243,7 @@ export default function TrainingPage() {
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
         ) : (
           <>
-            <div className={WRAP}>
+            <div ref={rosterTableRef} className={WRAP}>
               <div className={SCROLLER}>
                 <table className={TABLE} data-sortable>
                   <thead>
@@ -1425,68 +1456,112 @@ export default function TrainingPage() {
           </div>
         )}
 
-        {/* Ugentlig træningsrytme (#1895 PR 1) — holdets ønskede intensitet pr.
-            ugedag. Rører ALDRIG fokus (bor kun i training_plans + smartDefaultFocus).
-            Hold uden gemt rytme = flad "normal" hver dag = bit-identisk med i dag.
-            #3721: flyttet fra oversiden af rosteret til under kvitteringen — den
-            var en af to accordions ejeren pegede på som "forklaringer over det man
-            kom for" (#3721, issue-teksten). Selve funktionen er UÆNDRET (samme
-            useTraining-wiring, samme handlers) — kun placeringen ændrede sig, den
-            blev ikke fjernet: en spiller der først vil sætte sin fokus-plan på
-            rosteret rammer nu det uden at scrolle forbi en holdindstilling han
-            sjældent rører, men rytmen er stadig ét klik væk, ikke gemt i Hjælp. */}
+        {/* #3746 trin 7 (ejer-beslutning 20/8): ugentlig træningsrytme-editoren
+            er flyttet HERFRA til sin egen fane ("Week plan" / "Ugeplan") — se
+            TabPanel value="weekplan" nedenfor. #3721 flyttede den først fra
+            oversiden af rosteret til en accordion under kvitteringen; nu bor
+            den slet ikke på Train today længere. Selve funktionen (state,
+            useTraining-wiring, gem/nulstil-handlers) er UÆNDRET, kun
+            placeringen + accordion→åben-sektion ændrede sig. weekRhythmTodayShort
+            -hintet på roster-rækken (linje ~841) er UBERØRT — det bliver hvor det er. */}
+      </div>
+      </TabPanel>
+
+      {/* #3746 trin 7: "Week plan"-fanen — den ugentlige rytme-editor som en
+          åben sektion (ikke en accordion), + en kompakt oversigt over ryttere
+          med egen individuel ugeplan. Ingen nye API-kald: riderWeekPlans/
+          weekPlan kommer begge fra useTraining, allerede hentet af siden. */}
+      <TabPanel value="weekplan">
+      <div className="space-y-6">
         <Card className="overflow-hidden">
-          <details className="group">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
-              <span className="text-[15px] font-semibold text-cz-1">{t("weekRhythmTitle")}</span>
-              <ChevronDownIcon size={16} className="shrink-0 text-cz-3 transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
-            </summary>
-            <div className="border-t border-cz-border px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-              <p className="text-sm text-cz-3 leading-relaxed">{t("weekRhythmIntro")}</p>
+          <div className="px-4 py-3 sm:px-5 border-b border-cz-border">
+            <span className="text-[15px] font-semibold text-cz-1">{t("weekRhythmTitle")}</span>
+          </div>
+          <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+            <p className="text-sm text-cz-3 leading-relaxed">{t("weekRhythmIntro")}</p>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {WEEKDAY_KEYS.map((weekday) => {
-                  const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
-                  return (
-                    <div key={weekday} className="flex flex-col items-center gap-1">
-                      <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
-                      <div className="w-[92px]">
-                        <Select
-                          size="sm"
-                          value={current}
-                          disabled={savingWeekPlan}
-                          aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
-                          onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
-                        >
-                          {TRAINING_INTENSITIES.map((k) => (
-                            <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
-                          ))}
-                        </Select>
-                      </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {WEEKDAY_KEYS.map((weekday) => {
+                const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
+                return (
+                  <div key={weekday} className="flex flex-col items-center gap-1">
+                    <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                    <div className="w-[92px]">
+                      <Select
+                        size="sm"
+                        value={current}
+                        disabled={savingWeekPlan}
+                        aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
+                        onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
+                      >
+                        {TRAINING_INTENSITIES.map((k) => (
+                          <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                        ))}
+                      </Select>
                     </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <Button type="button" variant="secondary" size="sm" onClick={handleSaveWeekPlan} disabled={savingWeekPlan}>
-                  {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
-                </Button>
-                {weekPlan && (
-                  <Button type="button" variant="danger" size="sm" onClick={handleResetWeekPlan} disabled={savingWeekPlan}>
-                    {t("weekRhythmResetButton")}
-                  </Button>
-                )}
-                {weekPlanMsg && (
-                  <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
-                    {weekPlanMsg.text}
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
+                  </div>
+                );
+              })}
             </div>
-          </details>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Button type="button" variant="secondary" size="sm" onClick={handleSaveWeekPlan} disabled={savingWeekPlan}>
+                {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
+              </Button>
+              {weekPlan && (
+                <Button type="button" variant="danger" size="sm" onClick={handleResetWeekPlan} disabled={savingWeekPlan}>
+                  {t("weekRhythmResetButton")}
+                </Button>
+              )}
+              {weekPlanMsg && (
+                <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
+                  {weekPlanMsg.text}
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
+          </div>
+        </Card>
+
+        {/* #3746 trin 7: kompakt læse-oversigt over ryttere MED en individuel
+            ugeplan-override. Selve redigeringen bliver på rosteret (Train
+            today) — her genbruges kun riderWeekPlans (allerede på siden, ingen
+            nyt kald) til navn + 7-dages plan i læseform + en note om at den
+            overstyrer holdrytmen, plus en knap der springer til rosteret. */}
+        <Card className="p-4 sm:p-5">
+          <h2 className="text-[15px] font-semibold text-cz-1">{t("individualWeekPlanOverviewTitle")}</h2>
+          {ridersWithOwnWeekPlan.length === 0 ? (
+            <p className="mt-2 text-sm text-cz-3 leading-relaxed">{t("individualWeekPlanOverviewEmpty")}</p>
+          ) : (
+            <div className="mt-2 divide-y divide-cz-border">
+              {ridersWithOwnWeekPlan.map((rider) => (
+                <div key={rider.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0">
+                  <RiderLink id={rider.id} className="min-w-[140px] text-[13px] font-medium text-cz-1 hover:text-cz-accent transition-colors">
+                    {rider.firstname} {rider.lastname}
+                  </RiderLink>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {WEEKDAY_KEYS.map((weekday) => (
+                      <span key={weekday} className="font-data text-3xs uppercase tracking-[.05em] text-cz-3 whitespace-nowrap">
+                        {t(`weekday_${weekday}`)} <span className="text-cz-2">{tRider(`training.intensity_${riderWeekPlans[rider.id]?.[weekday]?.intensity ?? "normal"}`)}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <span
+                    className="ms-auto text-3xs px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30 whitespace-nowrap"
+                    title={t("individualWeekPlanBadgeTitle")}
+                  >
+                    {t("individualWeekPlanOverviewOverridesNote")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-3">
+            <Button type="button" variant="ghost" size="sm" onClick={handleGoToRoster}>
+              {t("individualWeekPlanOverviewGoToRoster")}
+            </Button>
+          </div>
         </Card>
       </div>
       </TabPanel>

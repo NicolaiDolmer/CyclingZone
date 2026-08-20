@@ -17,6 +17,7 @@
   },
   "tabs": {
     "today": "Træn i dag",
+    "weekplan": "Ugeplan",
     "development": "Udvikling",
     "history": "Historik"
   },
@@ -133,6 +134,10 @@
   "individualWeekPlanRemoved": "Individuel ugeplan fjernet: rytteren følger igen holdets rytme.",
   "individualWeekPlanBadge": "Egen plan",
   "individualWeekPlanBadgeTitle": "Denne rytter har sin egen individuelle ugeplan, som overstyrer holdets ugentlige rytme.",
+  "individualWeekPlanOverviewTitle": "Individuelle ugeplaner",
+  "individualWeekPlanOverviewEmpty": "Ingen ryttere har en individuel ugeplan endnu. Sæt en fra en rytters række på Træn i dag.",
+  "individualWeekPlanOverviewOverridesNote": "Overstyrer holdrytmen",
+  "individualWeekPlanOverviewGoToRoster": "Gå til rosteret",
   "momentLabelToday": "Dagens historie",
   "momentLabelLatest": "Seneste træningshistorie",
   "momentBreakthrough_0": "{riderName} gennembryder i {ability}: {from} → {to}.",
