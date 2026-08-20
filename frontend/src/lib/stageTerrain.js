@@ -39,3 +39,16 @@ export function topDemands(demandVector, n = 5) {
     .sort((a, b) => b.weight - a.weight || a.ability.localeCompare(b.ability))
     .slice(0, n);
 }
+
+// #3149: DEMAND_VECTORS summer altid til 1.0 (raceStageProfileGenerator.js) —
+// randomness (motorens støj-skalar, IKKE en evne) og evner uden for top-N'et
+// topDemands viser, tælles her med i "resten". Uden dette summerede den viste
+// procent kun til ~88% på fx enkeltstarter (spillerne på Discord: "hvor er de
+// sidste 12%?") — resten er en ÆGTE afledt sum, aldrig et gættet tal.
+export function remainderWeight(demandVector, shown = []) {
+  if (!demandVector || typeof demandVector !== "object") return 0;
+  const total = Object.values(demandVector).reduce((sum, w) => sum + (Number.isFinite(w) ? w : 0), 0);
+  const shownSum = shown.reduce((sum, d) => sum + (Number.isFinite(d?.weight) ? d.weight : 0), 0);
+  const rest = total - shownSum;
+  return rest > 0.0001 ? rest : 0;
+}
