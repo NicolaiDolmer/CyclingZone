@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { supabase } from "../lib/supabase";
+import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 
 /**
  * Abonnér på Supabase realtime postgres_changes for et sæt tabeller og kald
@@ -14,6 +14,12 @@ import { supabase } from "../lib/supabase";
  * Forudsætter at tabellerne ligger i `supabase_realtime` publication (se
  * database/2026-05-30-realtime-publication-results.sql) og har en SELECT-policy
  * for den indloggede rolle — ellers leverer realtime ingen events.
+ *
+ * #4010: abonnementet er session-gatet via subscribeAuthedChannel. Hook'et
+ * mountes af useActionSummary i Layout, altså på HVER side — også mens auth
+ * stadig initialiserer. Uden gaten connectede det med den opake api-nøgle, som
+ * Realtime afviser med MalformedJWT (7.727 gange i døgnet). Se
+ * lib/realtimeChannel.js for mekanikken.
  *
  * @param {string} channelName  Unikt kanalnavn (én pr. side).
  * @param {string[]} tables     Tabeller at lytte på. SKAL være en stabil
@@ -33,19 +39,20 @@ export function useRealtimeRefetch(channelName, tables, refetch, { debounceMs = 
       timer = setTimeout(() => { refetchRef.current?.(); }, debounceMs);
     };
 
-    let channel = supabase.channel(channelName);
-    for (const table of tables) {
-      channel = channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        schedule,
-      );
-    }
-    channel.subscribe();
+    const unsubscribe = subscribeAuthedChannel(channelName, (channel) => {
+      for (const table of tables) {
+        channel = channel.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table },
+          schedule,
+        );
+      }
+      return channel;
+    });
 
     return () => {
       if (timer) clearTimeout(timer);
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [channelName, debounceMs, tables]);
 }

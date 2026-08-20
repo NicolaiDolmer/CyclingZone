@@ -40,7 +40,7 @@ export const DAY_TYPES = Object.freeze(["rest", "recovery", "skill", "training"]
 // Færdigheds-sessioner: hvad man ØVER, ikke hvor hårdt man kører. De kan trænes
 // på lav belastning, og de er de eneste der rører håndværket.
 // `loebslaere` (positioning, tactics, aggression) lander her med #3709 trin 2.
-export const SKILL_SESSIONS = Object.freeze(["technique", "aero"]);
+export const SKILL_SESSIONS = Object.freeze(["technique", "aero", "loebslaere"]);
 
 // Trænings-sessioner pr. niveau. Niveauet ER intensiteten; en session findes kun
 // på ét niveau, og det er hele pointen.
@@ -57,6 +57,7 @@ export const SESSION_INTENSITY = Object.freeze({
   // færdighedsdage: lav belastning pr. definition
   technique: "easy",
   aero: "easy",
+  loebslaere: "easy",
   // træningsdage: niveauet er indbygget i sessionen
   endurance: "easy",
   tempo: "normal",

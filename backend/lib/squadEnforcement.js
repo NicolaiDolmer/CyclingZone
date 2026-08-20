@@ -543,10 +543,15 @@ export async function processSquadEnforcementCron({
   // Uden dette filter ville squad enforcement fyre på det nyfødte racing-window
   // og dermed bidrage til sæson-loop-bug'en (rettet 2026-05-21).
   //
-  // Lag 1 (kode-filter) i 3-lags forsvar-i-dybden: dette filter + DB CHECK
-  // (2026-05-22-transfer-window-racing-guard.sql, strukturelt) + kilde-guard i
-  // admin-close-endpoint'et (#544: sætter altid closed_at). Se seasonAutoTransition.js
-  // for fuld kæde-beskrivelse.
+  // Lag 1 (kode-filter) i 2-lags forsvar-i-dybden: dette filter + DB CHECK
+  // (2026-05-22-transfer-window-racing-guard.sql, strukturelt). Se seasonAutoTransition.js
+  // for fuld kæde-beskrivelse (inkl. hvorfor en tidligere lag 3 — admin-close-endpointet
+  // #544 — er fjernet siden #1996 del 1 og ikke længere nødvendig).
+  //
+  // Denne cron kører UBETINGET hvert 5. min (cron.js) og fyrer reelt: closePrevTransferWindow
+  // sætter closed_at på det afgående vindue ved hver sæsonstart/-transition (manuel
+  // admin-handling, #1155), hvilket matcher filtret her. Ikke koblet til
+  // SEASON_AUTO_TRANSITION_ENABLED (den flag gælder kun selve sæson-skiftet, #1155).
   const window = await expectMaybeSingle(
     supabase
       .from("transfer_windows")

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
 // #2602 · lazy: modalen aabnes kun ved klik paa Kontakt — dens kode (+i18n-traek)
@@ -78,10 +79,16 @@ function isFullBleedRoute(pathname) {
 // #3104 etape A: Min Managerprofil flyttet hertil fra Klubhus. Den lå midt i
 // spillets daglige arbejdsflade med under 245 sessions/30 dage; den hører til
 // de personlige punkter ved Indstillinger, ikke mellem Økonomi og Indbakke.
+// #3104 etape D: /pro fik ingen indgang nogen steder i frontend'en — ejeren
+// besluttede 27/7 at den skal bo her, gated på at betalingsflowet er
+// færdigtestet. Ejer-go 20/8 om at åbne indgangen selv (linket lander på
+// /pro-siden, som stadig viser sin egen pause-tilstand indtil CHECKOUT_PAUSED
+// flippes separat i backend/lib/billingCheckout.js — de to er bevidst afkoblet).
 function buildBottomItems(t, team) {
   return [
     ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
     { to: "/profile",     label: t("nav.item.profile") },
+    { to: "/pro",         label: t("nav.item.pro") },
     { to: "/help",        label: t("nav.item.help") },
     { to: "/rules",       label: t("nav.item.rules") },
     { to: "/roadmap",     label: t("nav.item.roadmap") },
@@ -546,14 +553,18 @@ export default function Layout() {
 
   useEffect(() => {
     if (!session) return;
-    const channel = supabase.channel("layout-notifs-v2")
-      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
+    // #4010: subscribeAuthedChannel sætter realtime-token'et eksplicit før
+    // subscribe(). Session-tjekket ovenfor er ikke nok i sig selv — supabase-js
+    // slår selv token op og falder tilbage til api-nøglen hvis opslaget kommer
+    // tomt tilbage midt i auth-init.
+    return subscribeAuthedChannel("layout-notifs-v2", channel =>
+      channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async () => {
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).single();
           if (t) setBalance(t.balance);
-        }).subscribe();
-    return () => supabase.removeChannel(channel);
+        })
+    );
   }, [session]);
 
   // Supabase DELETE-events mangler user_id i payload uden REPLICA IDENTITY FULL — lyt på window-event i stedet.

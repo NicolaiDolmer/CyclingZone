@@ -4,11 +4,9 @@
 // (lib/abilities.js → ABILITY_CATEGORIES). Hvert kort: pinned kategori-header
 // (stroke-ikon + Bebas-overskrift + antal, 2px guld-underline) og evne-rækker.
 //
-// To bjælke-/tal-betydninger (spec): TALLET = evne-niveau 1-99 (farvet via
-// statColor-SSOT); den tynde GULD-bjælke = træningsfremgang mod næste +1
-// (ability_progress 0..1). Bjælken vises KUN for egne ryttere (man træner ikke en
-// rival) — for andres ryttere står track'en tom, så kolonnerne flugter. Legend
-// under grid'et forklarer de to betydninger.
+// TALLET = evne-niveau 1-99 (farvet via statColor-SSOT). Overblik ejer "hvem er
+// rytteren" og viser kun tallet; fremdriftsbaren mod næste +1 er Træning-fanens
+// kvittering (RiderTrainingTab, PR #3717) — dubletten er fjernet her (#3721).
 //
 // Token-only: ingen rå hex. Farver via cz-tokens + statColor. Bebas = font-display,
 // tal = font-mono tabular. Dark mode flipper automatisk via tokens.
@@ -33,25 +31,12 @@ const CATEGORY_ICON_PATHS = {
   ),
 };
 
-// Én evne-række: navn · tynd guld-progress-bjælke (egne ryttere) · 1-99-tal.
-function AbilityRow({ label, value, progressFraction, showProgress, progressHint }) {
+// Én evne-række: navn · 1-99-tal.
+function AbilityRow({ label, value }) {
   const color = statColor(value);
-  const rawFrac = Number(progressFraction);
-  const frac = Number.isFinite(rawFrac) ? Math.max(0, Math.min(1, rawFrac)) : 0;
-  const pct = showProgress ? Math.round(frac * 100) : 0;
   return (
     <div className="flex items-center gap-[9px] py-[3.5px]">
       <span className="flex-1 min-w-0 text-2xs text-cz-2 truncate">{label}</span>
-      <div
-        className="relative flex-none w-11 h-1 bg-cz-subtle rounded-full overflow-hidden"
-        title={showProgress ? progressHint : undefined}
-        aria-hidden="true"
-      >
-        <div
-          className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/75 transition-[width] duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
       <span
         className="font-mono tabular-nums font-bold text-[12.5px] text-right flex-none min-w-[19px]"
         style={{ color }}
@@ -62,7 +47,7 @@ function AbilityRow({ label, value, progressFraction, showProgress, progressHint
   );
 }
 
-export default function RiderAbilityColumns({ abilities, progressByKey = {}, isOwnRider = false }) {
+export default function RiderAbilityColumns({ abilities }) {
   const { t } = useTranslation("rider");
 
   return (
@@ -86,24 +71,10 @@ export default function RiderAbilityColumns({ abilities, progressByKey = {}, isO
                 key={key}
                 label={t(`racePreview.derived.${key}`)}
                 value={abilities[key]}
-                progressFraction={progressByKey[key]}
-                showProgress={isOwnRider}
-                progressHint={t("development.progressHint")}
               />
             ))}
           </div>
         ))}
-      </div>
-
-      {/* Legend — de to bjælke/tal-betydninger holdt visuelt adskilt (spec). -mt-1
-          trækker den tæt op under grid'et som en caption (design: margin-top -4px). */}
-      <div className="-mt-1 flex items-center gap-1.5 flex-wrap text-3xs text-cz-3">
-        <span>{t("profile.overview.legend.level")}</span>
-        <span aria-hidden="true">·</span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block w-3.5 h-1 rounded-full bg-cz-accent/75" aria-hidden="true" />
-          {t("profile.overview.legend.progress")}
-        </span>
       </div>
     </div>
   );

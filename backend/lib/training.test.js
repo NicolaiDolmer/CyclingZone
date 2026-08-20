@@ -221,8 +221,13 @@ test("focusTrainability: sprinter (uden sekundær type) — sprint-fokus 'streng
   assert.equal(t.sprint, "strength");   // sprint+acceleration begge positive
   assert.equal(t.endurance, "strength"); // durability positiv (endurance selv er -1 → 0.12, men durability≥1 gør fokus 'strength')
   assert.equal(t.vo2max, "limited");    // climbing(-2)→0.12, punch/tempo neutrale (0.45) → ikke alle ≤0.12
-  // #3682: sprinteren EJER nu positioning (vaegt 1) → signatur → 'strength'.
-  assert.equal(t.technique, "strength");
+  // trin 2 (#3746, 16/8): positioning flyttede fra `technique` til `loebslaere`.
+  // technique er nu kun descending+cobblestone, og sprinteren ejer ingen af de
+  // to (vaegt 0 for begge) → 'limited', ikke laengere 'strength'.
+  assert.equal(t.technique, "limited");
+  // #3682: sprinteren EJER positioning (vaegt 1) → signatur → 'strength' for
+  // loebslaere (der nu baerer positioning).
+  assert.equal(t.loebslaere, "strength");
 });
 
 test("focusTrainability: alle TRAINING_FOCUS_KEYS er dækket for enhver kendt type", () => {

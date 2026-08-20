@@ -92,6 +92,13 @@ function targetReadyAtIso(startedAtMs = Date.now()) {
   return new Date(startedAtMs + JOB_CONFIG.targetEtaMinutes * 60_000).toISOString();
 }
 
+// #3997: samme princip for missioner — serveren sender nu ready_at (created_at
+// + missionDays×24t) i stedet for kun den dags-granulære ready_on, så
+// ScoutingCentralPage kan vise et forventet klokkeslæt (i dag/i morgen).
+function missionReadyAtIso(startedAtMs = Date.now()) {
+  return new Date(startedAtMs + JOB_CONFIG.missionDays * 86_400_000).toISOString();
+}
+
 // #2721: `teamHistory` spejler backend's loadTeamScoutHistory — egen target-only
 // visning, afkoblet fra `completed`'s mission-delte cap (se scoutAssignmentService.js).
 // I mocken er der ingen reel cap-kollision (seed er lille), men feltet skal
@@ -138,6 +145,7 @@ function startAssignment(body) {
       mission_criteria: body.criteria,
       status: "active",
       ready_on: isoDatePlusDays(JOB_CONFIG.missionDays),
+      ready_at: missionReadyAtIso(),
     };
   } else {
     return { status: 400, body: { ok: false, error: "failed" } };

@@ -144,7 +144,11 @@
     "heroAgony": {
       "title": "Hero & Agony",
       "linkFull": "Åbn løb →",
-      "eyebrow": { "hero": "Hero", "agony": "Agony", "moment": "Moment" },
+      "eyebrow": {
+        "hero": "Hero",
+        "agony": "Agony",
+        "moment": "Moment"
+      },
       "meta": "{race}, etape {stage}",
       "metaOneDay": "{race}",
       "exportCta": "Del som billede",
@@ -292,8 +296,8 @@
       },
       "yellow": {
         "label": "Gul",
-        "headline": "Pres på",
-        "summary": "Underskud eller stigende gæld. Overvej salg eller lavere løn."
+        "headline": "Lille margin",
+        "summary": "Ikke meget at gøre godt med. Et dårligt løb eller en dyr kontrakt kan vende det."
       },
       "red": {
         "label": "Rød",
@@ -303,13 +307,24 @@
     },
     "projectedLabel": "Forventet net næste sæson",
     "rangeLine": "Spænd: {low} til {high} (baseret på præmie-estimatets usikkerhed)",
+    "columns": {
+      "s2": "Denne sæson (S{number})",
+      "s3": "Næste sæson (S{number})",
+      "toggleAria": "Vælg hvilken sæsons kolonne der skal vises"
+    },
+    "chip": {
+      "signedContracts": "Underskrevne kontrakter"
+    },
     "row": {
       "sponsorBase": "Sponsor (base)",
       "sponsorVariable": "Sponsor (variabel)",
+      "sponsorInSeasonBonus": "Sponsor (løbende bonusser)",
       "prize": "Præmiepenge",
       "salary": "Løn",
       "upkeep": "Divisions-upkeep",
       "staffFacilities": "Stab & faciliteter",
+      "facilityUpkeep": "Facilitets-upkeep",
+      "staffSalary": "Stab-løn",
       "loanInterest": "Lånerenter",
       "academyDrift": "Akademi-drift"
     },
@@ -317,7 +332,9 @@
       "contract": "Næste sæsons sponsor: {sponsor} · garanteret base {base}, løbsdags-indtægt oveni",
       "variable": "Base {base} + variabel {variable} fra sidste sæsons rang/point",
       "intro": "Introsæson: variabel sponsor starter fra sæson 2",
-      "fallback": "Fallback: mangler standings for forrige sæson"
+      "fallback": "Fallback: mangler standings for forrige sæson",
+      "s2Combined": "Denne sæson viser hele beløbet krediteret i én betaling, base og performance-bonus samlet. Næste sæson splitter de to nedenfor.",
+      "inSeasonBonus": "Løbsdags-, resultat-, mål- og underskriftsbonusser rent faktisk tjent denne sæson. Ikke forecastet for næste sæson, da det afhænger af resultater der endnu ikke er kørt."
     },
     "prizeDetail": {
       "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson",
@@ -327,7 +344,8 @@
       "byDivision": "Bestemt af din division, ikke din trup"
     },
     "salaryDetail": {
-      "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede."
+      "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede.",
+      "seasonSwitch": "Sæson {next} genberegner al løn ud fra leverance ved sæsonskiftet. Dine nuværende kontrakter er allerede underskrevet, så dette sæsons tal ligger fast indtil da."
     },
     "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson 3's lønsystem.",
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",
@@ -389,5 +407,23 @@
       }
     },
     "dismissAria": "Skjul"
+  },
+  "devTransition": {
+    "title": "Udviklingsvisningen er lagt om",
+    "intro": "Dine ryttere er ikke ændret. Evner, ratings og resultater er præcis som i går. Det nye er hvad tallet viser: før viste profilen et teoretisk loft. Nu viser den både loftet og hvor hver rytter realistisk lander med din træning.",
+    "factAbilitiesTitle": "Evner og resultater",
+    "factAbilitiesSub": "uændrede for alle ryttere",
+    "factCeilingsTitle": "Lofterne er hævet",
+    "factCeilingsSub": "for {up} af dine {total} ryttere",
+    "factForecastTitle": "Nyt: forventet niveau",
+    "factForecastSub": "prognosen din træning styrer",
+    "colRider": "Rytter",
+    "colRating": "Rating",
+    "colCeilBefore": "Loft før",
+    "colCeilNow": "Loft nu",
+    "colForecast": "Forventet niveau (nyt)",
+    "loweredNote": "Enkelte ryttere står over deres nye loft på få evner. De beholder alt og bliver stående der. Ingen rytter mister et eneste point.",
+    "helpLink": "Sådan virker udvikling",
+    "dismiss": "Forstået"
   }
 }

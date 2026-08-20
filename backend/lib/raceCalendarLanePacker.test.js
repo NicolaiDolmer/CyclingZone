@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, balanceStageRaceFractionAcrossGtWindows, reshapeCobblesFractionToTwoWindows, pickLeastLoadedStreamAwayFromZero } from "./raceCalendarLanePacker.js";
 
 // Div 1: 3 Grand Tours (21) + mindre etapeløb + 5 monumenter + klassikere = 140 events (5×28).
 function div1() {
@@ -606,4 +606,212 @@ test("packer: #3470 — GT-hviledage: en hviledag tæller IKKE med i overlap (GT
   assert.ok(!gt1.stagesPlaced.some((s) => s.game_day === holeGameDay), "gt-1 må ikke have en etape-entry på hviledagen");
   // Loftet holder stadig hårdt (cap, ikke cap+1).
   assert.ok(r.maxOverlap <= cfg.overlapCap, `maxOverlap ${r.maxOverlap} > cap ${cfg.overlapCap}`);
+});
+
+// ── #3546 B: balanceStageRaceFractionAcrossGtWindows ────────────────────────────────
+test("#3546 B: ingen fraction på GT'er/others ⇒ no-op (bit-identisk input)", () => {
+  const gts = [{ id: "gt-1", stages: 21 }];
+  const others = [{ id: "o-1", stages: 5 }, { id: "o-2", stages: 4 }];
+  assert.deepEqual(balanceStageRaceFractionAcrossGtWindows(gts, others), others);
+  assert.deepEqual(balanceStageRaceFractionAcrossGtWindows([], others), others);
+  assert.deepEqual(balanceStageRaceFractionAcrossGtWindows(gts, []), []);
+});
+
+test("#3546 B: omfordeler others JÆVNT over de GT-centrerede vinduer (ikke deres rå, klumpede fraction)", () => {
+  const gts = [
+    { id: "gt-1", seasonFraction: 0.40 }, // Giro-lignende
+    { id: "gt-2", seasonFraction: 0.61 }, // Hexagone-lignende
+    { id: "gt-3", seasonFraction: 0.79 }, // Vuelta-lignende
+  ];
+  // 9 others, ALLE klumpet omkring fraction 0.75 (simulerer "August-klump"): den rå
+  // fordeling ville lægge næsten alt i gt-3's vindue og intet i gt-1's.
+  const others = Array.from({ length: 9 }, (_, i) => ({ id: `o-${i}`, stages: 4, seasonFraction: 0.75 + i * 0.001 }));
+  const out = balanceStageRaceFractionAcrossGtWindows(gts, others);
+  assert.equal(out.length, others.length, "antal løb uændret");
+  assert.deepEqual(out.map((r) => r.id).sort(), others.map((r) => r.id).sort(), "samme løbs-sæt, kun fraction ændret");
+
+  // Vinduer: [0, mid(.40,.61)=.505], [.505, mid(.61,.79)=.70], [.70, 1].
+  const inWindow = (f, lo, hi) => f >= lo && f <= hi;
+  const w0 = out.filter((r) => inWindow(r.seasonFraction, 0, 0.505)).length;
+  const w1 = out.filter((r) => inWindow(r.seasonFraction, 0.505, 0.70)).length;
+  const w2 = out.filter((r) => inWindow(r.seasonFraction, 0.70, 1)).length;
+  assert.equal(w0 + w1 + w2, 9, "alle 9 tildelt et vindue");
+  // Bredde-proportional kvote: w0 bredde .505 (≈39.7%), w1 bredde .195 (≈15.3%), w2 bredde .30 (≈23.6%)
+  // af totalbredde 1.27 → largest-remainder giver ~4/1/4 eller nærtbeslægtet: under alle
+  // omstændigheder skal FORDELINGEN være markant jævnere end den rå klump (der ville give 0/0/9).
+  assert.ok(w0 >= 2, `forventede mindst 2 løb i vindue 0 (fik ${w0}): rebalanceringen skal sprede klumpen`);
+  assert.ok(w2 < 9, `forventede IKKE alle 9 i vindue 2 (den rå klump): fik ${w2}`);
+});
+
+test("#3546 B: er en REN funktion (ingen mutation af input-arrays)", () => {
+  const gts = [{ id: "gt-1", seasonFraction: 0.4 }, { id: "gt-2", seasonFraction: 0.7 }];
+  const others = [{ id: "o-1", stages: 5, seasonFraction: 0.5 }];
+  const gtsCopy = JSON.parse(JSON.stringify(gts));
+  const othersCopy = JSON.parse(JSON.stringify(others));
+  balanceStageRaceFractionAcrossGtWindows(gts, others);
+  assert.deepEqual(gts, gtsCopy, "gtsByPhase må ikke muteres");
+  assert.deepEqual(others, othersCopy, "others (input-arrayet) må ikke muteres: funktionen returnerer et NYT array");
+});
+
+// ── #3546 F: reshapeCobblesFractionToTwoWindows ─────────────────────────────────────
+test("#3546 F: ingen cobbles-prædikat-match eller ingen fraction ⇒ no-op", () => {
+  const races = [{ id: "o-1", seasonFraction: 0.1 }, { id: "o-2", seasonFraction: 0.2 }];
+  assert.deepEqual(reshapeCobblesFractionToTwoWindows(races, () => false), races);
+  assert.deepEqual(reshapeCobblesFractionToTwoWindows([{ id: "o-1" }], () => true), [{ id: "o-1" }], "uden fraction: no-op");
+  assert.deepEqual(reshapeCobblesFractionToTwoWindows([], () => true), []);
+  assert.deepEqual(reshapeCobblesFractionToTwoWindows(races, null), races, "ikke-funktion isCobbles ⇒ no-op");
+});
+
+test("#3546 F: splitter cobbles-races i to vinduer (tidligt+sent), ikke-cobbles rører den ikke", () => {
+  // Rå fordeling: monotont faldende (klumpet tidligt): simulerer prod-mønstret.
+  const cobbles = Array.from({ length: 8 }, (_, i) => ({ id: `cb-${i}`, seasonFraction: 0.05 + i * 0.03 }));
+  const nonCobbles = [{ id: "nc-1", seasonFraction: 0.5 }, { id: "nc-2", seasonFraction: 0.6 }];
+  const out = reshapeCobblesFractionToTwoWindows([...cobbles, ...nonCobbles], (r) => r.id.startsWith("cb-"));
+  assert.equal(out.length, cobbles.length + nonCobbles.length, "antal uændret");
+
+  const outNonCobbles = out.filter((r) => !r.id.startsWith("cb-"));
+  assert.deepEqual(outNonCobbles, nonCobbles, "ikke-cobbles races er HELT urørte");
+
+  const outCobbles = out.filter((r) => r.id.startsWith("cb-"));
+  const early = outCobbles.filter((r) => r.seasonFraction <= 0.15);
+  const late = outCobbles.filter((r) => r.seasonFraction >= 0.75);
+  assert.equal(early.length + late.length, 8, "alle cobbles-races landede i ét af de to vinduer");
+  assert.ok(early.length >= 3 && late.length >= 3, `forventede en meningsfuld split mellem to vinduer (tidligt=${early.length}, sent=${late.length})`);
+});
+
+test("#3546 F: er en REN funktion (ingen mutation af input)", () => {
+  const races = [{ id: "cb-1", seasonFraction: 0.1 }, { id: "cb-2", seasonFraction: 0.11 }];
+  const copy = JSON.parse(JSON.stringify(races));
+  reshapeCobblesFractionToTwoWindows(races, () => true);
+  assert.deepEqual(races, copy);
+});
+
+test("#3546 F: determinisme: samme input giver identisk output to gange", () => {
+  const races = Array.from({ length: 6 }, (_, i) => ({ id: `cb-${i}`, seasonFraction: 0.1 + i * 0.02 }));
+  const a = reshapeCobblesFractionToTwoWindows(races, () => true);
+  const b = reshapeCobblesFractionToTwoWindows(JSON.parse(JSON.stringify(races)), () => true);
+  assert.deepEqual(a, b);
+});
+
+// ── #3546 C: mindst 1 afgørelse pr. kalenderdag ─────────────────────────────────────
+test("#3546 C: packLaneCalendar rapporterer daysWithoutDecision/-Count for BÅDE banded og stream", () => {
+  const bandedResult = packLaneCalendar(div3());
+  assert.ok(Array.isArray(bandedResult.daysWithoutDecision));
+  assert.equal(bandedResult.daysWithoutDecisionCount, bandedResult.daysWithoutDecision.length);
+  const streamResult = packLaneCalendar(div1());
+  assert.ok(Array.isArray(streamResult.daysWithoutDecision));
+  assert.equal(streamResult.daysWithoutDecisionCount, streamResult.daysWithoutDecision.length);
+});
+
+test("#3546 C: stream: en konstrueret 'ingen afgørelse'-dag rettes når et sikkert donor-bytte findes", () => {
+  // 1 GT (10 etaper, INGEN af dem slutetapen lander alene) + rigeligt med endagsløb spredt
+  // over hele sæsonen (så et sikkert bytte altid findes): overlapCap høj nok til at GT'en
+  // ikke tvinges til at dele dag med ret meget andet.
+  const stageRaces = [{ id: "gt-1", stages: 10, race_class: "GrandTour", seasonFraction: 0.5 }];
+  const oneDayRaces = Array.from({ length: 30 }, (_, i) => ({
+    id: `od-${i}`, race_class: "ProSeries", seasonFraction: i / 30,
+  }));
+  const monuments = [{ id: "mon-1", race_class: "Monuments", seasonFraction: 0.05 }]; // tvinger stream-layout
+  const cfg = { stageRaces, oneDayRaces: [...oneDayRaces, ...monuments], density: 2, days: 20, overlapCap: 3 };
+  const r = packLaneCalendar(cfg);
+  assert.equal(r.layoutMode, "stream");
+  assert.equal(r.daysWithoutDecisionCount, 0, `forventede 0 dage uden afgørelse med rigelig endagsløbs-forsyning (fik ${r.daysWithoutDecisionCount}: ${r.daysWithoutDecision})`);
+});
+
+test("#3546 C: en etapeløbs interne kronologi ER FORTSAT real_day-monoton EFTER enforceDailyDecisions (regressionsvagt for det bytte-bug der blev fanget under implementeringen)", () => {
+  for (const cfg of [div1(), div3()]) {
+    const r = packLaneCalendar(cfg);
+    for (const p of r.placements) {
+      const seq = p.stagesPlaced.slice().sort((a, b) => a.stage_number - b.stage_number);
+      for (let i = 1; i < seq.length; i++) {
+        const prevSlot = seq[i - 1].real_day * cfg.density + seq[i - 1].lane;
+        const curSlot = seq[i].real_day * cfg.density + seq[i].lane;
+        assert.ok(curSlot > prevSlot, `${p.id} etape ${seq[i].stage_number}: slot ${curSlot} ikke efter forrige ${prevSlot}`);
+      }
+    }
+  }
+});
+
+test("#3546 C: determinisme: samme input giver identisk daysWithoutDecision to gange", () => {
+  const cfg = withFraction(div1(), (r) => fractionOfId(r.id));
+  const a = packLaneCalendar(cfg);
+  const b = packLaneCalendar(JSON.parse(JSON.stringify(cfg)));
+  assert.deepEqual(a.daysWithoutDecision, b.daysWithoutDecision);
+});
+
+// ── #3546 B v2 (arkitekt-retur 17/8 aften): pickLeastLoadedStreamAwayFromZero ───────
+test("#3546 B v2: pickLeastLoadedStreamAwayFromZero bryder ties VÆK fra stream 0", () => {
+  assert.equal(pickLeastLoadedStreamAwayFromZero([0, 0, 0], 3), 2, "3-vejs-tie skal give SIDSTE stream, ikke 0");
+  assert.equal(pickLeastLoadedStreamAwayFromZero([0, 0], 2), 1, "2-vejs-tie skal give stream 1, ikke 0");
+  assert.equal(pickLeastLoadedStreamAwayFromZero([5, 5, 5], 3), 2, "tie ved ikke-nul værdier skal stadig undgå indeks 0");
+});
+
+test("#3546 B v2: pickLeastLoadedStreamAwayFromZero vælger stadig den ÆGTE mindste ved ikke-tie", () => {
+  assert.equal(pickLeastLoadedStreamAwayFromZero([0, 5, 5], 3), 0, "stream 0 ER den unikke mindste og skal stadig vælges");
+  assert.equal(pickLeastLoadedStreamAwayFromZero([10, 3, 7], 3), 1);
+  assert.equal(pickLeastLoadedStreamAwayFromZero([10, 3, 3], 3), 2, "tie mellem 1 og 2 (begge < stream 0): sidste vinder");
+});
+
+test("#3546 B v2: cap=1 (kun én stream) vælger altid indeks 0 (ingen alternativ)", () => {
+  assert.equal(pickLeastLoadedStreamAwayFromZero([7], 1), 0);
+});
+
+test("#3546 B v2: GT-spredning forbedres mærkbart mod en asymmetrisk fase-fordelt fixture (regressionsvagt for arkitekt-fund 17/8: stream 0-tie-bias skabte bredere spænd for den FØRSTE GT)", () => {
+  // 3 GT'er + rigelig "rest"-etapeløbs-forsyning, alle med fraction, tvinger den fase-
+  // ankrede STREAM-gren. Målet er ikke et eksakt tal (afhænger af fixturens konkrete data),
+  // men at spredningen (maks-min GT-spænd) er begrænset: IKKE at den første GT (laveste
+  // fraction) systematisk ender med et markant bredere spænd end de to andre.
+  const stageRaces = [
+    { id: "gt-1", stages: 18, race_class: "TourFrance", seasonFraction: 0.40 },
+    { id: "gt-2", stages: 17, race_class: "GiroVuelta", seasonFraction: 0.61 },
+    { id: "gt-3", stages: 17, race_class: "GiroVuelta", seasonFraction: 0.79 },
+    ...Array.from({ length: 4 }, (_, i) => ({ id: `wt-${i}`, stages: 6 + (i % 3), race_class: "OtherWorldTourA", seasonFraction: 0.1 + i * 0.2 })),
+  ];
+  const oneDayRaces = [
+    ...Array.from({ length: 5 }, (_, i) => ({ id: `mon-${i}`, race_class: "Monuments", seasonFraction: 0.05 + i * 0.18 })),
+    ...Array.from({ length: 60 }, (_, i) => ({ id: `od-${i}`, race_class: "OtherWorldTourA", seasonFraction: i / 60 })),
+  ];
+  const r = packLaneCalendar({ stageRaces, oneDayRaces, density: 5, days: 28, overlapCap: 3, spineMinStages: 15 });
+  const spans = r.placements
+    .filter((p) => (p.stages ?? 1) >= 15)
+    .map((p) => Math.max(...p.stagesPlaced.map((s) => s.real_day)) - Math.min(...p.stagesPlaced.map((s) => s.real_day)) + 1);
+  assert.equal(spans.length, 3);
+  const spread = Math.max(...spans) - Math.min(...spans);
+  // Løs, ikke-skrøbelig grænse: den PRÆCISE spredning afhænger stærkt af fixturens
+  // konkrete data (samme sensitivitet er dokumenteret i docs/audits' #3546-scorecard mod
+  // det ægte katalog): testen er en smoke-regressionsvagt (fanger en fremtidig ændring
+  // der gør det markant VÆRRE, fx et utilsigtet tilbagefald til stream-0-tie-bias), ikke
+  // et præcisionskrav på denne syntetiske fixture.
+  assert.ok(spread <= 12, `forventede en begrænset spredning på denne fixture (fik ${spread}, spans=${spans.join(",")})`);
+});
+
+// ── #3546 H: max-spænd-loft for ikke-GT-etapeløb (stages+3, hård grænse) ────────────
+test("#3546 H: ikke-GT-etapeløb strækkes ALDRIG ud over stages+3 kalenderdage, selv med mange konkurrerende dage-uden-afgørelse", () => {
+  const stageRaces = [
+    { id: "sr-1", stages: 6, race_class: "ProSeries", seasonFraction: 0.1 },
+    { id: "sr-2", stages: 5, race_class: "ProSeries", seasonFraction: 0.3 },
+    { id: "sr-3", stages: 7, race_class: "ProSeries", seasonFraction: 0.6 },
+  ];
+  const oneDayRaces = [
+    { id: "mon-1", race_class: "Monuments", seasonFraction: 0.02 }, // tvinger stream-layout
+    ...Array.from({ length: 6 }, (_, i) => ({ id: `od-${i}`, race_class: "ProSeries", seasonFraction: 0.05 + i * 0.15 })),
+  ];
+  const r = packLaneCalendar({ stageRaces, oneDayRaces, density: 3, days: 28, overlapCap: 2, spineMinStages: 15 });
+  for (const p of r.placements) {
+    if ((p.stages ?? 1) < 2 || p.stages >= 15) continue; // kun ikke-GT-etapeløb
+    const days = p.stagesPlaced.map((s) => s.real_day);
+    const span = Math.max(...days) - Math.min(...days) + 1;
+    assert.ok(span <= p.stages + 3, `${p.id}: spænd ${span} > stages(${p.stages})+3`);
+  }
+});
+
+test("#3546 H: GT'er er ALDRIG en bytte-kandidat i C's dagsafgørelses-mekanisme (regressionsvagt: fundet under H-implementeringen, et GT-bytte brød #3472 v3's GT-real-day-separation)", () => {
+  const cfg = withFraction(div1(), (r) => {
+    if (r.id === "gt-1") return 0.37;
+    if (r.id === "gt-2") return 0.54;
+    if (r.id === "gt-3") return 0.79;
+    return fractionOfId(r.id);
+  });
+  const r = packLaneCalendar(cfg);
+  assert.deepEqual(r.gtRealDaySeparationViolations, [], "GT-real-day-separation skal ALDRIG brydes, heller ikke af C's bytte-mekanisme");
 });

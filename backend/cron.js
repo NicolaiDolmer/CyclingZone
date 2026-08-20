@@ -579,7 +579,10 @@ async function runAiRecoverySweepCron() {
 }
 
 // ─── Talentspejder: modner scout_assignments (missioner + målrettede opgaver) (#2244) ──
-// Mirror af trænings-sweepen: kl. 22 dansk tid + team-niveau mutex (scout_sweep_runs).
+// #3997: missioner har INGEN dags-gate mere — de tjekkes på hvert tick (5 min,
+// setInterval nedenfor), og modner ~N×24t efter afsendelse (ikke ved først-
+// kommende kl.22). Target-backstoppet er uændret: kl. 22 dansk tid + team-
+// niveau mutex (scout_sweep_runs) — se scoutSweep.js.
 
 async function runScoutSweepCron() {
   const result = await runScoutSweep({ supabase, now: new Date() });
@@ -1321,8 +1324,11 @@ export function startCron() {
 
   // Season auto-transition (#1155): DEAKTIVERET — sæson-skift er nu en bevidst
   // manuel admin-handling (ejer-beslutning 2026-06-08). Den automatiske cron
-  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Vindue-luk, final whistle
-  // og squad-tjek forbliver automatiske ovenfor; kun selve sæson-skiftet er manuelt.
+  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Final whistle og squad-tjek
+  // (deadline day-cron / squad enforcement-cron ovenfor) forbliver automatiske;
+  // kun selve sæson-skiftet er manuelt. (#1996: vindue-AUTO-luk er strukturelt
+  // inaktiv siden markedet blev altid-åbent 2026-06-22 — windows fødes 'closed',
+  // aldrig 'open', så fireAutoCloseIfDue i deadlineDayReport.js har intet at lukke.)
   // Tændes igen ved SEASON_AUTO_TRANSITION_ENABLED=true i economyConstants.js.
   if (SEASON_AUTO_TRANSITION_ENABLED) {
     setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
@@ -1399,7 +1405,7 @@ export function startCron() {
     5 * 60 * 1000
   );
 
-  // Talentspejder: modner scout_assignments (missioner + målrettede opgaver) efter kl. 22 (#2244)
+  // Talentspejder: modner scout_assignments (missioner hvert tick, #3997; target-backstop efter kl. 22, #2244)
   setInterval(
     trackedTick("scout sweep", monitorCron("scout-sweep", runScoutSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000

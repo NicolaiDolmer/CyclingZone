@@ -156,3 +156,50 @@ mål med et spil uden omsætning. I stedet: Supabases daglige backups + **måned
 målt RTO) + obligatorisk tabel-snapshot-ritual før risikable operationer. Fuld procedure:
 [`docs/DB_RESTORE_RUNBOOK.md`](../DB_RESTORE_RUNBOOK.md). **Revurdér PITR når spillet får
 omsætning eller ved abonnements-lancering.**
+
+---
+
+## Status 2026-08-20 — accept-listen genverificeret mod prod (#4010)
+
+En Supabase-gennemgang 20/8 genrejste tre af de allerede accepterede advisor-fund, fordi
+`get_advisors` bliver ved med at flage dem og denne fil ikke blev læst først. Fundene er nu
+verificeret **i prod** frem for kun i advisor-teksten, så næste session kan afvise dem på data:
+
+```sql
+-- matviews: anon-revoken fra 3/8 (#3124) holder
+SELECT c.relname,
+       has_table_privilege('anon',          c.oid, 'SELECT') AS anon_can_select,
+       has_table_privilege('authenticated', c.oid, 'SELECT') AS auth_can_select
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'm' AND n.nspname = 'public';
+```
+
+Resultat 20/8: `global_rank_mv`, `rider_rankings_mv`, `team_race_points_mv`,
+`team_standings_ext_mv` — alle fire `anon_can_select = false`, `auth_can_select = true`.
+Præcis som ejer-beslutningen 23/7 (#2678) foreskriver. **Uændret accepteret.**
+
+```sql
+-- is_admin(): kaldbar af anon, men returnerer altid false for anon
+SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_exec, p.prosecdef
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname = 'is_admin';
+```
+
+Resultat 20/8: `anon_exec = true`, `prosecdef = true`. Kroppen er
+`SELECT COALESCE((SELECT role = 'admin' FROM public.users WHERE id = auth.uid()), false)`.
+For `anon` er `auth.uid()` NULL, subqueryen giver ingen række, og COALESCE returnerer `false`.
+Funktionen lækker altså intet til en uautentificeret kalder — den svarer kun "nej".
+**Accepteret** i samme familie som de tre `authenticated`-funktioner ovenfor.
+
+### Det auditten IKKE dækker — og hullet der kostede
+
+Denne fil er en **advisor**-audit. Advisors ser skema, RLS, grants og indexes. De ser ikke
+log-strømmen.
+
+Det blev dyrt 20/8: 7.727 `MalformedJWT`-fejl i døgnet i `realtime_logs` (97 % af al
+realtime-log) plus ~1.800 PostgREST-timeouts havde kørt i ukendt tid. Ingen advisor ville
+nogensinde have vist dem, fordi de kun findes i loggen. Sentry så dem heller ikke — et afvist
+WebSocket-handshake er ikke en exception i vores kode.
+
+Vagt på log-strømmen spores i [#4014](https://github.com/NicolaiDolmer/CyclingZone/issues/4014).
+Den skal kende accept-listen i denne fil, ellers larmer den dagligt og bliver ignoreret.

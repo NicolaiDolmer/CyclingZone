@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   kmToX, xToKm, buildFilmTimeline, eventsPlayedUpTo, describeEvent, climbMarkerHeight, altitudeAtKm,
+  collectRiderIds,
 } from "./stageTimelineFilm.js";
 import { buildProfileSeries } from "./stageRouteProfile.js";
 import {
@@ -125,9 +126,40 @@ test("describeEvent: gc_change slår begge rytternavne op fra riderNameById", ()
   assert.equal(d.params.previousLeader, "Ada Pedersen");
 });
 
-test("describeEvent: manglende rytter-opslag degraderer til det rå id, ikke et kast", () => {
+// #4026: rå id'er må ALDRIG lække til fladen (Race Centre viste rytter-UUID'er).
+// Enkeltrytter-events uden opslag skippes (null) — samme ærlig-degraderings-regel
+// som ukendte event-typer; feedet viser forrige linje i stedet.
+test("describeEvent: manglende rytter-opslag skipper linjen (null) — aldrig det rå id", () => {
   const d = describeEvent({ type: "finale_attack", params: { rider_id: "ghost-rider" } }, { riderNameById: new Map() });
-  assert.equal(d.params.rider, "ghost-rider");
+  assert.equal(d, null);
+});
+
+test("describeEvent: gruppe-event viser kun de opløselige navne; count følger den synlige liste", () => {
+  const map = new Map([["rider-2", "Mikkel Hansen"]]);
+  const d = describeEvent(
+    { type: "breakaway_formed", params: { rider_ids: ["rider-2", "ghost-a", "ghost-b"] } },
+    { riderNameById: map },
+  );
+  assert.equal(d.params.riders, "Mikkel Hansen");
+  assert.equal(d.params.count, 1, "count skal matche de VISTE navne (flertalsbøjning i locale-teksten)");
+  assert.ok(!d.params.riders.includes("ghost"), "uopløste id'er må ikke optræde");
+});
+
+test("describeEvent: gruppe-event hvor INGEN navne kan opløses → null (ingen tom linje)", () => {
+  const d = describeEvent(
+    { type: "breakaway_formed", params: { rider_ids: ["ghost-a", "ghost-b"] } },
+    { riderNameById: new Map() },
+  );
+  assert.equal(d, null);
+});
+
+test("describeEvent: gc_change med uopløselig tidligere leder skippes (halve sætninger er værre end ingen)", () => {
+  const map = new Map([["rider-1", "Ada Pedersen"]]);
+  const d = describeEvent(
+    { type: "gc_change", params: { new_leader_id: "rider-1", previous_leader_id: "ghost" } },
+    { riderNameById: map },
+  );
+  assert.equal(d, null);
 });
 
 test("describeEvent: breakaway_formed samler flere rytternavne kommasepareret", () => {
@@ -135,6 +167,39 @@ test("describeEvent: breakaway_formed samler flere rytternavne kommasepareret", 
   const d = describeEvent(event, { riderNameById: riderNameByIdFixture() });
   assert.equal(d.params.riders, "Mikkel Hansen, Sofie Lund");
   assert.equal(d.params.count, 2);
+});
+
+// ── collectRiderIds (#4026: batch-navnehentning før describeEvent) ────────────
+
+test("collectRiderIds: dækker alle param-former describeEvent læser (rider_ids/rider_id/top/gc-ledere)", () => {
+  const ids = collectRiderIds([
+    { type: "breakaway_formed", params: { rider_ids: ["a", "b"] } },
+    { type: "finale_attack", params: { rider_id: "c" } },
+    { type: "kom_passage", params: { name: "Col", top: [{ rider_id: "d" }] } },
+    { type: "gc_change", params: { new_leader_id: "e", previous_leader_id: "f" } },
+    { type: "finish", params: { top: [{ rider_id: "a" }] } }, // dublet → én gang
+    { type: "stage_start", params: { field_count: 120 } },     // ingen ryttere
+  ]);
+  assert.deepEqual([...ids].sort(), ["a", "b", "c", "d", "e", "f"]);
+});
+
+test("collectRiderIds: tom/manglende input degraderer til tom liste", () => {
+  assert.deepEqual(collectRiderIds(null), []);
+  assert.deepEqual(collectRiderIds([]), []);
+  assert.deepEqual(collectRiderIds([{ type: "x" }]), []);
+});
+
+// Forward-guard (#4026): HELE fixture-tidslinjens feed kan navngives af
+// collectRiderIds+map alene — dvs. describeEvent refererer aldrig et rider-id
+// som collectRiderIds ikke opsamler (de to skal holdes i sync ved nye events).
+test("collectRiderIds ∪ navnemap dækker alle describeEvent-linjer i fixtures (ingen skips med fuldt map)", () => {
+  for (const timeline of [MOUNTAIN_TIMELINE, BREAKAWAY_WIN_TIMELINE]) {
+    const described = timeline.events
+      .filter((e) => e.type !== "gap_update")
+      .map((e) => describeEvent(e, { riderNameById: riderNameByIdFixture() }));
+    const skipped = described.filter((d) => d === null).length;
+    assert.equal(skipped, 0, "fuldt navnemap → ingen skippede linjer");
+  }
 });
 
 // ── altitudeAtKm (ejer-fix 17/8: events forankres PÅ den ægte rute-silhuet) ──

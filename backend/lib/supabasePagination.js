@@ -36,6 +36,55 @@ export async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
   return rows;
 }
 
+// #4010: keyset-paginering — brug denne i stedet for fetchAllRows når filteret
+// rammer mange rækker.
+//
+// Offset-paginering betaler for alt den springer over: Postgres skal stadig
+// producere og kassere de første `from` rækker på hver side, så en fuld
+// gennemløbning bliver kvadratisk. Målt på balanceDriftWatch's 14-dages-vindue
+// over race_results (1,05 mio. rækker) kostede ÉN side af 1000 rækker 376.260
+// buffere og 427 ms — 65 sider blev til 594 s DB-tid og 3,3 TB buffer-trafik i
+// døgnet.
+//
+// Keyset starter hver side dér hvor den forrige slap (`WHERE key > sidste`), så
+// prisen er lineær i antal rækker uanset hvor dybt man er nået.
+//
+// KRAV: `keyColumn` skal være UNIK og totalt ordnet (typisk primærnøglen), og
+// buildQuery SKAL sortere stigende på præcis den kolonne. En ikke-unik sortering
+// kan tabe eller duplikere rækker over sidegrænser — det gælder også for
+// offset-varianten ovenfor, men keyset gør kravet ufravigeligt.
+//
+// buildQuery: (after) => query-builder. `after` er sidste sete nøgleværdi, eller
+// null på første side; kaldstedet påfører selv `.gt(keyColumn, after)`.
+export async function fetchAllRowsKeyset(
+  buildQuery,
+  { keyColumn = "id", pageSize = SUPABASE_PAGE_SIZE } = {},
+) {
+  const rows = [];
+  let after = null;
+  for (;;) {
+    const data = await withSupabaseRetry(async () => {
+      const { data, error } = await buildQuery(after).limit(pageSize);
+      if (error) throw error;
+      return data;
+    });
+    if (!data?.length) break;
+    rows.push(...data);
+    if (data.length < pageSize) break;
+    const nextAfter = data[data.length - 1]?.[keyColumn];
+    // Uden en nøgleværdi kan vi ikke rykke markøren, og et nyt kald ville hente
+    // præcis samme side igen. Stop hellere end at loope i ring — kaldstedet har
+    // så en select uden keyColumn, hvilket er en programmeringsfejl.
+    if (nextAfter == null || nextAfter === after) {
+      throw new Error(
+        `fetchAllRowsKeyset: mangler brugbar "${keyColumn}"-værdi i sidste række — er kolonnen med i select() og .order()?`,
+      );
+    }
+    after = nextAfter;
+  }
+  return rows;
+}
+
 // #3030: .in(ids)-lister URL-encodes ind i PostgREST-request-linjen; gatewayen
 // dropper forbindelsen når linjen passerer ~16 KB (≈430 UUID'er) → undici
 // "TypeError: fetch failed" UDEN statuskode. Det væltede auto-prize-sweepen

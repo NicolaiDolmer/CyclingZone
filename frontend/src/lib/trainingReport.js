@@ -101,23 +101,63 @@ export function seasonAbilityGains(runs, riderId, seasonStart) {
 //   pct    : 0-99 fremdrift mod næste point, eller null (låst evne / ingen data)
 //   locked : evnen står på sit loft → fladen skriver "færdig" i stedet for en
 //            død bar. Ordet "aldrig" bruges ALDRIG (spec §5.1).
-export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains } = {}) {
+// #3924 trin 2 (design-go 20/8, ejer-godkendt): gårsdagens bidrag til "på vej
+// mod næste point"-baren, som et mørkere segment oven på fylden. Løser
+// #3988-fundet: 67% af hårde pas viser +0 i dag i kvitteringens gained-kolonne
+// og læses som bugs — segmentet gør et +0-pas synligt i BAREN, uanset om der
+// landede et helt point.
+//
+// Et helt point der landede væltede baren om (mod 1): resten der nu vises ER i
+// sin helhed overløbet fra gårsdagens pas (den gamle, næsten-fulde bar blev
+// brugt op af pointet), så segmentet dækker HELE den viste bar. Ellers er
+// segmentet den rå fremgang siden i går (nu-fraktion minus fraktion FØR
+// gårsdagens tick), med et 1%-gulv så et reelt pas ALDRIG runder ned til et
+// usynligt 0%-segment (den bindende regel i design-go'et).
+//
+//   pct         : rækkens viste fremdrifts-pct (0-99), eller null (låst/ingen data)
+//   locked      : evnen står på loftet — intet segment, der er ingen bar
+//   rawFrac     : rå fremdriftsfraktion NU (samme kilde som pct, før afrunding)
+//   beforeFrac  : fremdriftsfraktion FØR gårsdagens tick (backend: progress_before,
+//                 kun til stede på kørsler kørt efter #3924 trin 2 — ældre kørsler
+//                 giver NaN/undefined, og funktionen svarer null: intet segment,
+//                 ikke et gættet ét)
+//   gainedToday : hele point vundet på DENNE evne i gårsdagens kørsel (report-
+//                 rækkens `gains[ability]`)
+// Returnerer 0-99 (segmentets bredde i pct-point) eller null (intet at vise).
+export function abilityYesterdayPct({ pct, locked, rawFrac, beforeFrac, gainedToday }) {
+  if (locked || pct == null) return null;
+  if (Number(gainedToday) > 0) return pct;
+  if (!Number.isFinite(beforeFrac)) return null;
+  const now = Math.max(0, Math.min(0.999, Number.isFinite(rawFrac) ? rawFrac : 0));
+  const before = Math.max(0, Math.min(0.999, beforeFrac));
+  const delta = now - before;
+  if (delta <= 0) return 0;
+  return Math.min(pct, Math.max(1, Math.round(delta * 100)));
+}
+
+export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains, progressBefore, gainsToday } = {}) {
   const keys = Array.isArray(abilityKeys) ? abilityKeys : [];
   const lockedSet = new Set(Array.isArray(capped) ? capped : []);
   return keys.map((ability) => {
     const rawValue = Number(abilities?.[ability]);
     const rawFrac = Number(progress?.[ability]);
     const locked = lockedSet.has(ability);
+    // Klippet ved 99: en fremdriftsbar der står på "100 %" uden at springe
+    // læses som gået i stå. Point landes af den daglige kørsel, ikke af baren.
+    const pct = locked || !Number.isFinite(rawFrac)
+      ? null
+      : Math.min(99, Math.round(Math.max(0, rawFrac) * 100));
     return {
       ability,
       value: Number.isFinite(rawValue) ? rawValue : null,
       gained: seasonGains ? Number(seasonGains[ability] ?? 0) : null,
-      // Klippet ved 99: en fremdriftsbar der står på "100 %" uden at springe
-      // læses som gået i stå. Point landes af den daglige kørsel, ikke af baren.
-      pct: locked || !Number.isFinite(rawFrac)
-        ? null
-        : Math.min(99, Math.round(Math.max(0, rawFrac) * 100)),
+      pct,
       locked,
+      yesterdayPct: abilityYesterdayPct({
+        pct, locked, rawFrac,
+        beforeFrac: Number(progressBefore?.[ability]),
+        gainedToday: gainsToday?.[ability],
+      }),
     };
   });
 }
@@ -187,6 +227,75 @@ export function breakthroughJumps(reportRow) {
     out.push({ ability, n: Number(n), from, to });
   }
   return out;
+}
+
+// ── #3924 trin 1 (design-go 20/8, ejer-godkendt): "Yesterday's gains" ──────────
+//
+// Kompakt resumé øverst på Train today — ÉN linje ("X trained toward their
+// focus · Y rested · Z point(s) landed"), foldet ud til en kvalitativ linje pr.
+// rytter. "Ingen nyt kort" (bindende, fold-disciplin): ingen ny stat-grid, ingen
+// ny beregning af gårsdagens data — begge funktioner afleder rent af
+// todayRun.report.riders (samme kilde som daySummary ovenfor) + den live
+// progress-state (samme kilde som focusProgress).
+
+// Holdniveau-tallene til resumé-linjen. Adskilt fra daySummary (som tæller
+// "trained" bredt, inkl. ryttere uden fokus) fordi linjen specifikt siger
+// "trained toward their FOCUS" — kun rækker med et sat fokus tæller med.
+// Skadede ryttere tæller hverken som trænet eller hvilet (de valgte det ikke).
+export function yesterdaySummary(reportRiders) {
+  const rows = reportRiders ?? [];
+  let trainedFocus = 0;
+  let rested = 0;
+  let pointsLanded = 0;
+  for (const row of rows) {
+    pointsLanded += todayGainTotal(row);
+    if (row.injured) continue;
+    if (row.intensity === "rest" || row.intensity === "recovery") rested++;
+    else if (row.focus) trainedFocus++;
+  }
+  return { trainedFocus, rested, pointsLanded, total: rows.length };
+}
+
+// Kvalitativ historie pr. rytter til fold-ud'et. Ren klassifikation — selve
+// sætningen/oversættelsen sker i UI'et (i18n); denne funktion afgør KUN hvilken
+// historie der er sand for rækken, og hvilke (fakta-grundede, jf. #1162
+// fog-gate) tal den skal bære. Aldrig lofter/rater, kun det der faktisk skete
+// eller en observerbar fremdriftsfraktion mod næste point (samme regel som
+// trainingMoment.js).
+//
+//   reportRiders    : todayRun.report.riders
+//   progressByRider : useTraining's `progress` (live ability_progress-map)
+// Returnerer [{ riderId, riderName, type, ... }] — samme rækkefølge som input.
+export function riderDayStories(reportRiders, progressByRider) {
+  const rows = reportRiders ?? [];
+  return rows.map((row) => {
+    const riderId = row.rider_id;
+    const riderName = row.name;
+    if (row.injured) return { riderId, riderName, type: "injured" };
+
+    const jumps = isBreakthrough(row) ? breakthroughJumps(row) : [];
+    if (jumps.length > 0) return { riderId, riderName, type: "point", jumps };
+
+    const fatigueTo = Number.isFinite(Number(row.fatigue)) ? Number(row.fatigue) : null;
+    const fatigueFrom = fatigueTo != null ? fatigueTo - Number(row.fatigue_delta ?? 0) : null;
+    if (row.intensity === "rest") {
+      return {
+        riderId, riderName, fatigueFrom, fatigueTo,
+        type: fatigueTo != null && fatigueFrom != null && fatigueTo < fatigueFrom ? "restFresh" : "rest",
+      };
+    }
+    if (row.intensity === "recovery") return { riderId, riderName, type: "recovery", fatigueFrom, fatigueTo };
+
+    if (row.focus) {
+      const prog = focusProgress(row.focus, progressByRider?.[riderId]);
+      if (prog) {
+        const near = prog.pct >= NEAR_BREAKTHROUGH * 100;
+        return { riderId, riderName, type: near ? "nearBreakthrough" : "progressing", ability: prog.ability, pct: prog.pct };
+      }
+      return { riderId, riderName, type: "trained" };
+    }
+    return { riderId, riderName, type: "noFocus" };
+  });
 }
 
 // Træningsrapport-historik for ÉN rytter (#1533). Plukker rytterens linje ud af

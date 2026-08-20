@@ -1,7 +1,7 @@
 // backend/lib/raceTerrain.js
-// Race Hub S3: terræn-buckets. De 9 stage-profiltyper (race_stage_profiles CHECK)
-// mappes til 5 strategi-buckets som kaptajn-prioriteter er rangordnet pr. (L3).
-// Pure — ingen DB. Genbruges senere i S4/S5 (terræn-DNA, rolle-hints).
+// Race Hub S3: terræn-buckets. De 10 stage-profiltyper (race_stage_profiles CHECK,
+// #3546 D: itt_hilly tilføjet) mappes til 5 strategi-buckets som kaptajn-prioriteter er
+// rangordnet pr. (L3). Pure: ingen DB. Genbruges senere i S4/S5 (terræn-DNA, rolle-hints).
 
 export const TERRAIN_BUCKETS = Object.freeze(["flat", "hilly", "mountain", "cobbles", "itt"]);
 
@@ -10,7 +10,7 @@ const PROFILE_TO_BUCKET = Object.freeze({
   hilly: "hilly", classic: "hilly",
   mountain: "mountain", high_mountain: "mountain",
   cobbles: "cobbles",
-  itt: "itt", ttt: "itt",
+  itt: "itt", ttt: "itt", itt_hilly: "itt",
 });
 
 // Ukendt/null → "flat" (defensiv: et løb uden kendt profil behandles som fladt).

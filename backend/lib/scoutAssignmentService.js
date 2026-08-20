@@ -5,7 +5,7 @@
 // Scout-opslag: aktiv team_staff-row med role='scouting' + dens
 // staff_derived_abilities (roleSkills: evaluation/reach). Ingen hyret spejder →
 // DEFAULT_SCOUT (overall 40) — systemet skal virke for alle hold fra dag 1.
-import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, targetReadyAt, canStartAssignment } from "./scoutEngine.js";
+import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, targetReadyAt, missionReadyAt, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
 import { FINANCE_REASON } from "./economyConstants.js";
 import { hydrateCompletedVisibility } from "./scoutReportVisibility.js";
@@ -77,16 +77,24 @@ export async function loadScout(teamId, supabaseClient) {
   };
 }
 
-// #3548: aktive målrettede undersøgelser får `ready_at` (ISO UTC) med ud.
-// Serveren ejer reglen (created_at + etaMinutes, se targetReadyAt) — frontend
-// skal kun tælle ned til tidspunktet, ikke udlede det. Missioner beholder
-// `ready_on` alene: de modnes af den natlige 22-sweep (scoutSweep.js) og er
-// derfor dags-granulære, ikke minut-granulære.
-function withTargetReadyAt(rows) {
+// #3548/#3997: aktive scout_assignments får `ready_at` (ISO UTC) med ud.
+// Serveren ejer reglen — frontend skal kun vise tidspunktet, ikke udlede det.
+// target: created_at + etaMinutes (targetReadyAt, minut-granulær nedtælling).
+// mission: created_at + mission.days×24t (missionReadyAt, #3997 — FØR modnede
+// missioner via den dags-granulære ready_on-kolonne + den natlige 22-sweep,
+// hvilket gjorde en "1-dags" mission til reelt 23-46 timer efter afsendelse;
+// ready_at er nu den ENESTE modnings-regel, se scoutMissionMaturation.js).
+function withReadyAt(rows) {
   return (rows ?? []).map((row) => {
-    if (row?.kind !== "target") return row;
-    const readyAt = targetReadyAt(row.created_at);
-    return readyAt ? { ...row, ready_at: readyAt.toISOString() } : row;
+    if (row?.kind === "target") {
+      const readyAt = targetReadyAt(row.created_at);
+      return readyAt ? { ...row, ready_at: readyAt.toISOString() } : row;
+    }
+    if (row?.kind === "mission") {
+      const readyAt = missionReadyAt(row.created_at);
+      return readyAt ? { ...row, ready_at: readyAt.toISOString() } : row;
+    }
+    return row;
   });
 }
 
@@ -97,7 +105,7 @@ async function loadActiveAssignments(teamId, supabaseClient) {
     .eq("team_id", teamId)
     .eq("status", "active");
   if (error) throw new Error(`scoutAssignmentService: could not load active assignments for ${teamId}: ${error.message}`);
-  return withTargetReadyAt(data ?? []);
+  return withReadyAt(data ?? []);
 }
 
 async function loadCompletedAssignments(teamId, supabaseClient) {
@@ -285,7 +293,7 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
 // IKKE at kollidere med criteria.scope (division/country/u23/nm — det EKSISTERENDE
 // geografiske/aldersmæssige missions-filter, en helt anden akse). Default
 // "free_agents" (bagudkompatibel: gamle assignments uden feltet læses som
-// free_agents af scoutSweep.js' completeMissionAssignment).
+// free_agents af scoutMissionMaturation.js' claimAndCompleteMission, #3997).
 export const VALID_MISSION_TARGET_POOLS = Object.freeze(["free_agents", "other_teams"]);
 
 export async function startMission({ teamId, criteria, seasonId }, supabaseClient, now = new Date()) {
@@ -320,7 +328,10 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
       ready_on: readyOn,
       season_id: seasonId ?? null,
     })
-    .select("id")
+    // #3997: created_at læses tilbage fra DB'en (samme mønster som
+    // startTargetAssignment) — readyAt i svaret er udledt af PRÆCIS den
+    // timestamp completeDueMissionAssignments senere måler deadline'en mod.
+    .select("id, created_at")
     .single();
   if (insertError) throw new Error(`scoutAssignmentService: mission insert failed for ${teamId}: ${insertError.message}`);
 
@@ -335,9 +346,14 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
     },
   });
 
+  const readyAt = missionReadyAt(inserted.created_at ?? now);
+
   return {
     ok: true,
-    assignment: { id: inserted.id, kind: "mission", criteria: normalizedCriteria, travelCost: cost, startedOn, readyOn },
+    assignment: {
+      id: inserted.id, kind: "mission", criteria: normalizedCriteria, travelCost: cost, startedOn, readyOn,
+      readyAt: readyAt ? readyAt.toISOString() : null,
+    },
     ...(debit.skipped ? { skipped: true } : {}),
   };
 }

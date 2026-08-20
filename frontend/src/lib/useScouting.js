@@ -58,7 +58,19 @@ export function useScouting() {
   const pendingRef = useRef(new Set());   // ids der venter på næste batch
   const timerRef = useRef(null);
   const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; clearTimeout(timerRef.current); }, []);
+  // #3746-følgefund: effekten havde INGEN setup-fase, kun cleanup. Under React
+  // StrictMode (dev) kører React setup→cleanup→setup for effekter med tom deps
+  // — cleanup'en satte mountedRef.current = false, men intet satte den tilbage
+  // til true ved gen-mount, så den stod PERMANENT false resten af komponentens
+  // levetid. `flushEstimates`s `while (mountedRef.current && ...)`-loop blev
+  // dermed et evigt no-op: POST /api/scouting/estimates blev aldrig sendt, og
+  // ethvert potentiale-bånd der afhænger af useScouting (hero, ScoutablePotentiale
+  // i tabeller/kort) stod tomt i dev/preview. Rettelsen sætter mountedRef.current
+  // = true i SETUP-fasen, så StrictMode's gen-mount nulstiller flaget korrekt.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; clearTimeout(timerRef.current); };
+  }, []);
 
   const refresh = useCallback(async () => {
     const headers = await authHeaders();

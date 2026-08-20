@@ -296,6 +296,52 @@ export const FACIT_MODELDRIFT = Object.freeze([
     til: 77,
     hvorfor: "Samme årsag: eksakt tilbage på trin 3's værdi.",
   }),
+  // ── TRIN 7 (#3746, ejer 16/8): fladt tag + gulvet fjernet (#3794) ───────────
+  // Taget sættes nu af rolleklassen alene (signatur 93 · sekundær 80 · håndværk
+  // 70 · andenRolle 55 · svaghed 25); potentiale styrer kun farten. Gulvet
+  // max(tag, current) er fjernet fra buildCapsForRider, så planlæggerens lofter
+  // kan nu lovligt ligge under en arvet evne (rytteren beholder evnen og står
+  // stille dér — ejer-beslutning 8, 15/8). Selvtesten fyrede 16/8 med præcis
+  // disse tal, målt mod 10/8-fixturet.
+  Object.freeze({
+    dato: "2026-08-16",
+    ref: "#3746 trin 7 + #3794",
+    felt: "loftSaenketAntal",
+    fra: 7230,
+    til: 5783,
+    hvorfor:
+      "Det flade tag ligger for de fleste (rytter, evne)-par HØJERE end den gamle models "
+      + "potentiale-skalerede tag (fx sprint-tag 48 → 93 for en pot 2-sprinter), så færre "
+      + "ryttere har et formel-loft under deres 10/8-loft.",
+  }),
+  Object.freeze({
+    dato: "2026-08-16",
+    ref: "#3746 trin 7 + #3794",
+    felt: "saenkningMedian",
+    fra: 30,
+    til: 19,
+    hvorfor: "Følger af de generelt højere flade tag: de resterende sænkninger er mindre.",
+  }),
+  Object.freeze({
+    dato: "2026-08-16",
+    ref: "#3746 trin 7 + #3794",
+    felt: "saenkningP90",
+    fra: 47,
+    til: 40,
+    hvorfor: "Samme årsag som medianen.",
+  }),
+  Object.freeze({
+    dato: "2026-08-16",
+    ref: "#3746 trin 7 + #3794",
+    felt: "saenkningMax",
+    fra: 77,
+    til: 80,
+    hvorfor:
+      "Stiger 3 point mens median/p90 falder: svagheds-taget er nu absolut 25 (før 0,12 × "
+      + "loftByPotential, op til ~11), men enkelte evner med meget højt gammelt loft rammer "
+      + "en dybere maksimal sænkning under den flade model. Retningen er forventet for max "
+      + "alene; steg medianen også, var noget galt.",
+  }),
 ]);
 
 /** Det godkendte facit med ledgerens bevidste drift lagt oven på. */
@@ -864,18 +910,20 @@ export function runPlanFilSelvtest({ dir = BASELINE_SNAPSHOT_DIR, planFil }) {
   }
 
   // Invarianterne — de samme som runSelvtest kræver, nu på filens tildeling.
-  let gulvBrud = 0, drift = 0, udenforInterval = 0;
+  // GULV-BRUD-VAGTEN ER UDGÅET 16/8 (#3794, ejer-go): invarianten "loft ≥ evne"
+  // er ophævet i trin 7 — et loft under en arvet evne er nu en lovlig, designet
+  // tilstand. Korrekthedsvagten er facit-tallene + at lofterne er præcis
+  // buildCapsForRider-output (capsCeller-sammenligningen ovenfor).
+  let drift = 0, udenforInterval = 0;
   for (const p of skriver) {
     const model = selectTypesBaseline(p.row.age, ADULT_BASELINE, YOUTH_BASELINE);
     if (resolveRiderTypes(p.draw, p.newCaps, model).primary.key !== p.newPrimary) drift++;
     for (const a of VISIBLE_ABILITIES) {
       const c = Number(p.newCaps[a]);
-      if (c < Number(p.abilities[a] ?? 0)) gulvBrud++;
       if (!(c >= 0 && c <= 99)) udenforInterval++;
     }
   }
   if (drift) afvigelser.push({ navn: "resolveRiderTypes-drift", faktisk: drift, forventet: 0 });
-  if (gulvBrud) afvigelser.push({ navn: "gulv-brud", faktisk: gulvBrud, forventet: 0 });
   if (udenforInterval) afvigelser.push({ navn: "lofter uden for [0,99]", faktisk: udenforInterval, forventet: 0 });
 
   return {
@@ -1030,19 +1078,19 @@ export function runSelvtest({ dir = BASELINE_SNAPSHOT_DIR, facit = facitEfterDri
   }
 
   // Invarianter der skal holde uanset facit-tallene.
-  let gulvBrud = 0, drift = 0, udenforInterval = 0;
+  // GULV-BRUD-VAGTEN ER UDGÅET 16/8 (#3794, ejer-go): "loft ≥ evne" er ophævet
+  // i trin 7. Se kommentaren i plan-fil-verifikationen ovenfor.
+  let drift = 0, udenforInterval = 0;
   for (const p of plan.poster) {
     if (!p.skrives) continue;
     const model = selectTypesBaseline(p.row.age, ADULT_BASELINE, YOUTH_BASELINE);
     if (resolveRiderTypes(p.draw, p.newCaps, model).primary.key !== p.newPrimary) drift++;
     for (const a of VISIBLE_ABILITIES) {
       const c = Number(p.newCaps[a]);
-      if (c < Number(p.abilities[a] ?? 0)) gulvBrud++;
       if (!(c >= 0 && c <= 99)) udenforInterval++;
     }
   }
   if (drift) afvigelser.push({ navn: "resolveRiderTypes-drift", faktisk: drift, forventet: 0 });
-  if (gulvBrud) afvigelser.push({ navn: "gulv-brud", faktisk: gulvBrud, forventet: 0 });
   if (udenforInterval) afvigelser.push({ navn: "lofter uden for [0,99]", faktisk: udenforInterval, forventet: 0 });
 
   return { bestaaet: afvigelser.length === 0, afvigelser, plan, tal: t, sammenligninger: 8 + 4 + 3 + RIDER_TYPE_KEYS.length + plan.poster.length * (1 + VISIBLE_ABILITIES.length * 2) };
@@ -1913,7 +1961,8 @@ export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, s
 
   // Forventede hændelser — de kaster IKKE, men rapporteres.
   const forventet = { forsvundetUnderKoerslen: [], traenetUnderKoerslen: [] };
-  const fejl = { manglerRaekke: [], manglerAbilitiesRaekke: [], udenDraw: [], typeMismatch: [], capsMismatch: [], gulvBrud: [], valuationAendret: [], forsvundneOverGraense: [] };
+  // gulvBrud udgået 16/8 (#3794) — se kommentaren ved capsMismatch-tjekket.
+  const fejl = { manglerRaekke: [], manglerAbilitiesRaekke: [], udenDraw: [], typeMismatch: [], capsMismatch: [], valuationAendret: [], forsvundneOverGraense: [] };
 
   // Trin 1: hvem manglede i det brede opslag? Bekræft med et selvstændigt
   // eksistens-opslag før nogen kaldes "slettet".
@@ -1988,9 +2037,10 @@ export async function postVerify(supabase, plan, { skrevneCaps, foerValuation, s
         (trænet ? forventet.traenetUnderKoerslen : fejl.capsMismatch).push(p.rider_id);
       }
     }
-    for (const k of VISIBLE_ABILITIES) {
-      if (Number(a.ability_caps?.[k] ?? 0) < Number(friskeEvner[k] ?? 0)) { fejl.gulvBrud.push(p.rider_id); break; }
-    }
+    // GULV-BRUD-VAGTEN ER UDGÅET 16/8 (#3794, ejer-go): et gemt loft under den
+    // friske evne er lovligt under trin 7. Et SABOTERET loft fanges stadig af
+    // capsMismatch ovenfor — sameCaps kræver præcis buildCapsForRider-output,
+    // uanset i hvilken retning nogen har pillet.
 
     if ((r.valuation_type ?? null) !== (foerValuation.get(p.rider_id) ?? null)) {
       fejl.valuationAendret.push({ rider_id: p.rider_id, foer: foerValuation.get(p.rider_id) ?? null, efter: r.valuation_type ?? null });

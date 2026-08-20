@@ -7,8 +7,16 @@
 // display-hjælpere der arbejder på det maskerede estimat.
 
 // Kvalitativ label-NØGLE fra estimatets midtpunkt (oversættes via i18n
-// rider:scouting.label_*). Bevidst grov (5 bånd) — flavor, ikke præcision.
+// rider:scouting.label_*). Bevidst grov (4 bånd) — flavor, ikke præcision.
 // #1543: et skjult (uscoutet) estimat har intet midtpunkt → ingen label.
+//
+// #3651: den femte bucket ("limited"/"Limited upside") er FJERNET, ikke
+// erstattet. Den var den bucket hvor håndværks-evner og anden-rolle-evner
+// lander sammen (36 % af loftet mellem dem, se trainingFocus.js's samme
+// beslutning for fokus-panelet, #3747) — en label der derfor kunne sige det
+// samme om to reelt meget forskellige ryttere. Prognose-båndet (rating-point,
+// synligt lige ved siden af labelen) siger det ærligt i stedet; under
+// "rotation"-tærsklen viser vi nu ingen kvalitativ label overhovedet.
 export function potentialLabelKey(range) {
   if (!range || range.hidden) return null;
   const mid = (range.lo + range.hi) / 2;
@@ -16,7 +24,7 @@ export function potentialLabelKey(range) {
   if (mid >= 4.25) return "high";
   if (mid >= 3.25) return "solid";
   if (mid >= 2.25) return "rotation";
-  return "limited";
+  return null;
 }
 
 // Sorteringsværdi for potentiale-kolonner: SAMME tal spilleren rent faktisk
@@ -25,12 +33,13 @@ export function potentialLabelKey(range) {
 //
 // #3787: prioritetsrækkefølgen matcher PRÆCIS ScoutablePotentiale.jsx's
 // render-gren (der er visningen, ikke denne funktion, der er sandheden):
-//   1) `estimate.ceil` — rating-båndet ("kan nå 40-48"), det #2454 gjorde til
-//      den faktiske skærm-visning. Sorteringen brugte stadig den GAMLE
-//      1-6-stjerneskala (lo/hi) efter den omlægning, så rækkefølgen ikke
-//      længere matchede det viste tal — det var selve bug'en (#3787).
-//   2) lo/hi (stjerneskalaen) som fallback for payloads uden `ceil` (ældre
-//      klient-cache, eller den defensive gren i ScoutablePotentiale).
+//   1) `estimate.prog` — prognose-båndet (#3746), alias `estimate.ceil` for
+//      ældre payloads — rating-båndet spilleren ser i tabellen/kortet ved
+//      siden af. Sorteringen brugte tidligere den GAMLE 1-6-stjerneskala
+//      (lo/hi) så rækkefølgen ikke matchede det viste tal — selve #3787-bug'en.
+//   2) lo/hi (stjerneskalaen) som fallback for payloads uden bånd (rytter
+//      mangler primary_type/evne-data — den defensive gren i
+//      ScoutablePotentiale.jsx, eller ældre klient-cache).
 // undefined/null (ikke hentet) ELLER skjult/uscoutet (#1543) → `null`,
 // EKSPLICIT adskilt fra 0 (som ville kollidere med en reel lav rating og
 // give indtryk af en vurdering der ikke findes). Sorterings-komparatorerne
@@ -38,6 +47,10 @@ export function potentialLabelKey(range) {
 // sorteringsretning.
 export function scoutSortValue(estimate) {
   if (!estimate || estimate.hidden) return null;
-  if (estimate.ceil) return (estimate.ceil.lo + estimate.ceil.hi) / 2;
+  const band = estimate.prog ?? estimate.ceil;
+  if (band && Number.isFinite(band.lo) && Number.isFinite(band.hi)) {
+    return (band.lo + band.hi) / 2;
+  }
+  if (!Number.isFinite(estimate.lo) || !Number.isFinite(estimate.hi)) return null;
   return (estimate.lo + estimate.hi) / 2;
 }

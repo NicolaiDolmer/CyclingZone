@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { useNavigate, useSearchParams } from "react-router";
 import ActivityPage from "./ActivityPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
@@ -277,23 +278,20 @@ export default function NotificationsPage() {
   // Realtime: personlige notifikationer
   useEffect(() => {
     if (!userIdRef.current) return;
-    const channel = supabase.channel("notifs-page-v2")
-      .on("postgres_changes", {
+    return subscribeAuthedChannel("notifs-page-v2", channel =>
+      channel.on("postgres_changes", {
         event: "INSERT", schema: "public", table: "notifications",
         filter: `user_id=eq.${userIdRef.current}`,
       }, payload => setNotifications(prev => [payload.new, ...prev]))
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    );
   }, [userIdRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Realtime: aktivitetsfeed
-  useEffect(() => {
-    const channel = supabase.channel("activity-feed-live")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" },
-        payload => setEvents(prev => [payload.new, ...prev].slice(0, 100)))
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, []);
+  // Realtime: aktivitetsfeed. #4010: session-gatet — uden gaten connectede den
+  // med den opake api-nøgle og blev afvist med MalformedJWT.
+  useEffect(() => subscribeAuthedChannel("activity-feed-live", channel =>
+    channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" },
+      payload => setEvents(prev => [payload.new, ...prev].slice(0, 100)))
+  ), []);
 
   // Pending decisions hentes + realtime-opdateres af useActionSummary (#271 Slice A).
 
@@ -378,8 +376,11 @@ export default function NotificationsPage() {
     if (!userIdRef.current) return;
     setMarkingAll(true);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    // #4017: kun ULÆSTE rækker — uden is_read-filteret omskrev hvert klik samtlige
+    // notifikationer brugeren nogensinde har haft (målt: 251 klik → 92.560 rækker),
+    // og hver omskrevet række RLS-tjekkes efterfølgende én for én af Realtime.
     const { error } = await supabase.from("notifications")
-      .update({ is_read: true }).eq("user_id", userIdRef.current);
+      .update({ is_read: true }).eq("user_id", userIdRef.current).eq("is_read", false);
     if (error) await loadNotifications();
     setMarkingAll(false);
   }

@@ -1,0 +1,11 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1880, "h": 1060, "title": "V3 hi-fi (CZ design system)", "expand": "fill" },
+    { "file": "PlayerV2.dc.html", "x": 1960, "y": 0, "w": 1660, "h": 1000, "title": "Spillerens V2", "expand": "fill" },
+    { "file": "V1.dc.html", "x": 3700, "y": 0, "w": 1660, "h": 1000, "title": "Spillerens V1", "expand": "fill" }
+  ],
+  "annotations": [
+    { "id": "note-v3", "x": 0, "y": -170, "w": 620, "text": "V3 hi-fi (venstre): spillerens koncept genopbygget på CZ-designsystemet. T2 wide data-skabelon, Chalk-tokens, DM Sans / Inter Tight, 5px radius, hairline-borders, ægte rating-farverampe, ægte terræn-silhuetter og løbsklasser (GT/MON/WT). Forudfyldt eksempel-plan; Hugo Moreau er bevidst dobbeltbooket for at vise clash-flagget.\nSpillerens V2 og V1 står til højre til sammenligning. Formtoppe er illustrative i alle versioner." }
+  ],
+  "launch": { "view": "focused", "file": "Main.dc.html" }
+}

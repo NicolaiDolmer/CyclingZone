@@ -17,6 +17,7 @@ import { PRIZE_PER_POINT } from "./economyConstants.js";
 export { PRIZE_PER_POINT };
 import { fetchAllRows } from "./supabasePagination.js";
 import { applyRaceResultsBatchAtomic as applyRaceResultsBatchAtomicDefault } from "./stageResultRpc.js";
+import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 import { assertValidEntrantRows } from "./raceResultEntrantKey.js";
 import { captureException } from "./sentry.js";
 
@@ -145,6 +146,9 @@ export async function applyRaceResults({
     const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);
     if (insertError) throw new Error(insertError.message);
     rowsInserted = normalizedRows.length;
+    // #4010: den ikke-atomiske fallback-sti skriver uden om stageResultRpc, så
+    // snapshot-cachen skal tømmes eksplicit her.
+    clearRaceResultsSnapshots();
   }
 
   // #2877: samme kobling som simulateStageByIndex (raceRunner.js) blev ramt af —
