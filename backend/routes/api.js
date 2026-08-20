@@ -8641,8 +8641,10 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
           .eq("season_id", activeSeasonRes.data.id),
         // #4011 (a): S2's REALISEREDE kildetal — hele sæsonens transaktioner for
         // dette hold, samme pre-filtered pattern som finance-report-routen
-        // ovenfor. Bounded af "én sæson, ét hold" (#3331-auditens 236-rækkers
-        // repo-wide max for netop dette query-shape).
+        // ovenfor.
+        // pagination-safe: one team, one season, all transaction types — same
+        // query shape as the finance-report route above, verified max 236 rows
+        // repo-wide (#3331 audit, 2026-08-05).
         supabase
           .from("finance_transactions")
           .select("amount, reason_code")
@@ -8699,6 +8701,8 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
       ...preview,
     });
   } catch (e) {
+    // catch-ok: captureApiRouteError calls captureException internally (line 446)
+    // — the swallowed-catch guard's text-scan can't see through the wrapper.
     captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
   }
