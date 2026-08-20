@@ -23,6 +23,7 @@ import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { computeFrozenSalary } from "./contractSeed.js";
+import { applyTypeDampening } from "./riderValuationTypeDampening.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UPSERT_BATCH = 500;
@@ -219,7 +220,10 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const youthTypesModel = youthTypesBaseline !== undefined
     ? youthTypesBaseline
     : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
-  const valModel = valuationModel || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
+  // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
+  // flippes ved cutover (se riderValuationTypeDampening.js) — ingen
+  // adfærdsændring her i dag.
+  const valModel = valuationModel || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
   // #3570: seasonNumber flyttet HERTIL (var tidligere kun hentet ved trin 5) — trin 4
   // (ENDELIG type) skal nu også kende alderen for at vælge baseline.
   const seasonNumber = await activeSeasonNumber(supabase);
@@ -429,7 +433,10 @@ export async function deriveForRiderIds(supabase, riderIds, {
 
 // ── base_value SHADOW (fra backfillRiderBaseValue.js) ─────────────────────────
 export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
-  const m = model || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
+  // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
+  // flippes ved cutover (se riderValuationTypeDampening.js) — ingen
+  // adfærdsændring her i dag.
+  const m = model || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
   // #3345: valuation_type (den FROSNE type) skal med i selectet — predictBaseValue/
   // currentProductionValue læser den FØR primary_type (se riderValuation.js). Uden
   // den ville denne sweep stille revaluere hele populationen efter enhver

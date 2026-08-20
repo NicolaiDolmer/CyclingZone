@@ -273,6 +273,7 @@ import {
 // bygges parallelt i riderCareerNpv.js (Kontrakt 3); route degraderer til 503 hvis
 // modellen (riderValuationModelV4.json) endnu ikke er fittet — se VALUATION_MODEL_V4.
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
+import { applyTypeDampening } from "../lib/riderValuationTypeDampening.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import { announcedRetirementAfterSeason } from "../lib/riderProgression.js";
@@ -512,9 +513,12 @@ try {
 // GET /admin/rider-valuation-preview-v4, samme mønster som VALUATION_MODEL).
 let VALUATION_MODEL_V4 = null;
 try {
-  VALUATION_MODEL_V4 = JSON.parse(
+  // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
+  // flippes ved cutover (se ../lib/riderValuationTypeDampening.js) — ingen
+  // adfærdsændring her i dag.
+  VALUATION_MODEL_V4 = applyTypeDampening(JSON.parse(
     readFileSync(join(__dirname, "../lib/riderValuationModelV4.json"), "utf8")
-  );
+  ));
 } catch {
   VALUATION_MODEL_V4 = null;
 }

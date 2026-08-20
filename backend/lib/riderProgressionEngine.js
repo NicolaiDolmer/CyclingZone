@@ -36,6 +36,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isAcademyEnabled } from "./academyFlag.js";
 import { detectGraduates } from "./academyGraduation.js";
+import { applyTypeDampening } from "./riderValuationTypeDampening.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -54,7 +55,10 @@ let cachedModel = null;
 function defaultModel() {
   if (!cachedModel) {
     // #2594 cutover: v4-modellen (karriere-NPV) er nu den live værdi-model.
-    cachedModel = JSON.parse(readFileSync(join(__dirname, "riderValuationModelV4.json"), "utf8"));
+    // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
+    // flippes ved cutover (se riderValuationTypeDampening.js) — ingen
+    // adfærdsændring her i dag.
+    cachedModel = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "riderValuationModelV4.json"), "utf8")));
   }
   return cachedModel;
 }

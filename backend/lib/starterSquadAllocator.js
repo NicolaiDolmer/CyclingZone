@@ -33,6 +33,7 @@ import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
+import { applyTypeDampening } from "./riderValuationTypeDampening.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -41,7 +42,10 @@ const YOUTH_TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTyp
 // #2594 cutover: cap-gaten SKAL bruge samme model som deriveForRiderIds persisterer
 // med (v4) — ellers kan en kandidat passere en v3-beregnet gate og lande over
 // tier-loftet når v4-værdien skrives (#2065-klassen, fanget af aiTeamGenerator-testen).
-const VALUATION_MODEL = JSON.parse(readFileSync(join(__dirname, "./riderValuationModelV4.json"), "utf8"));
+// #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
+// flippes ved cutover (se riderValuationTypeDampening.js) — ingen
+// adfærdsændring her i dag.
+const VALUATION_MODEL = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "./riderValuationModelV4.json"), "utf8")));
 
 export const STARTER_SQUAD = Object.freeze({
   CORE_SIZE: MIN_RIDERS_FOR_RACE,         // 8 — den løbsklare kerne (= løbs-minimum)
