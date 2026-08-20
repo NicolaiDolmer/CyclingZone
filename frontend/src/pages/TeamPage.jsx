@@ -734,7 +734,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     ratingColumn,
     {
       key: "potential",
-      header: t("squad.headers.potential"),
+      header: <span title={t("squad.headers.potentialTitle")}>{t("squad.headers.potential")}</span>,
       sortKey: "_scoutMid",
       compact: true,
       // #2849 bølge 6 + #2888: stjernerne alene — den kvalitative label ligger i

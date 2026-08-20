@@ -1745,6 +1745,11 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
             // OK her — loftet er rolle+alder-bestemt, ikke rytter-hemmeligt
             // (se roleCeilRating/buildTypePrognosisBands i scoutingReport.js).
             estimate.loft = band.loft ?? null;
+            // #4039: forbi-peak-flaget klienten dæmper loft-visningen med (samme
+            // PEAK_AGE-kilde som /development-projection's pastPeak, #2645). Loftet
+            // selv forbliver ABSOLUT (ejer-beslutning 20/8) — flaget ændrer kun
+            // hvordan det FORKLARES, ikke tallet.
+            estimate.pastPeak = age > PEAK_AGE;
           }
         }
       }
@@ -2115,6 +2120,9 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         precision: scoutPrecisionInfo(level, state.maxLevel, scout),
         value: expected != null ? { market: rider.market_value, expected } : null,
         capsMissing: false,
+        // #4039: samme forbi-peak-flag som /scouting/estimates — loftet er
+        // rytterens, ikke pr. rolle, så det sidder på top-niveau af rapporten.
+        pastPeak: age > PEAK_AGE,
         scout: scoutMeta, generatedAt,
       });
     }
