@@ -31,6 +31,10 @@ they were yesterday. What changed is what the profile SHOWS.
   changed for your team.
 - New skill day: Race craft. Positioning, tactics and aggression can finally
   be trained.
+- The training page grew up with it: a Week plan tab for your weekly rhythm,
+  a Development tab showing today, projection and ceiling for the whole squad,
+  and a one line receipt of every session, so even a day without a full point
+  is visible on the bars.
 
 This is the model the last three fixes were building toward. The numbers you
 see today are the numbers the system is designed around. If something looks
