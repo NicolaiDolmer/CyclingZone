@@ -156,10 +156,20 @@ export function summarizeRiderSalaryRows(rows) {
 // cash-rækkefølge i economyEngine.processSeasonStart → processTeamSeasonPayroll,
 // ikke en opdigtet parallel rækkefølge):
 //   books close → sponsor (base+performance-bonus, ÉN transaktion, pass A) →
-//   lånerente (pass B trin 1) → løn (pass B trin 2, S3-genberegnet) →
-//   akademi-drift (pass B trin 4, skjult ved 0) → upkeep (pass B trin 5,
-//   skjult ved 0) → facilitets-upkeep (pass B trin 6a, skjult ved 0) →
-//   staff-løn (pass B trin 6b, skjult ved 0) → "du starter næste sæson med".
+//   lånerente (pass B trin 1, IKKE-KONTANT — se #4023 nedenfor) → løn
+//   (pass B trin 2, S3-genberegnet) → akademi-drift (pass B trin 4, skjult
+//   ved 0) → upkeep (pass B trin 5, skjult ved 0) → facilitets-upkeep
+//   (pass B trin 6a, skjult ved 0) → staff-løn (pass B trin 6b, skjult ved 0)
+//   → "du starter næste sæson med".
+//
+// #4023 (rettet 21/8): lånerente-trinnet vises på sin naturlige plads i
+// rækkefølgen (den kronologiske position renten faktisk beregnes i motoren),
+// men er en INFO-linje, ikke en charge — processLoanInterest kapitaliserer
+// renten ind i loans.amount_remaining/accrued_interest og debiterer aldrig
+// teams.balance (samme rodårsag som 2026-07-10-loan-interest-double-count.md
+// — hero-cashflow-nettet i sæsonrapporten havde præcis samme fejl). Trinnets
+// `balance_after` er derfor uændret fra forrige trin; kun `løn` og de
+// efterfølgende drifts-trin rører faktisk `running`.
 //
 // Negativ-balance-rente (pass B trin 3) og eventuelt nødlån er UDELADT: begge
 // er kontingente på om lønnen rent faktisk gør balancen negativ — samme
@@ -189,10 +199,20 @@ export function buildSettlementSteps({ startingBalance, s3Mapped }) {
   const sponsorVariable = Number(s3Mapped?.sponsor_variable) || 0;
   applyStep("sponsor", sponsorBase + sponsorVariable, { base: sponsorBase, variable: sponsorVariable });
 
-  // 2. Lånerente — pass B trin 1. Kun vist når holdet faktisk har et beløb
-  //    (ingen aktive lån ⇒ 0 ⇒ ingen linje, ligesom kortets betingede rækker).
+  // 2. Lånerente — pass B trin 1. #4023: IKKE en cash-debitering — processLoan-
+  //    Interest (loanEngine.js) kapitaliserer renten ind i loans.amount_
+  //    remaining/accrued_interest og rører ALDRIG teams.balance (samme
+  //    rodårsag som .claude/learnings/2026-07-10-loan-interest-double-
+  //    count.md). Linjen vises stadig (beløbet lægges oveni gælden, og
+  //    manageren skal kunne se det), men `running` ændres IKKE af den —
+  //    balance_after er derfor identisk med forrige trins balance_after.
+  //    `cash: false` lader UI'et skelne den fra de øvrige, rigtige charges.
+  //    Kun vist når holdet faktisk har et beløb (ingen aktive lån ⇒ 0 ⇒ ingen
+  //    linje, ligesom kortets betingede rækker).
   const loanInterest = Number(s3Mapped?.loan_interest) || 0;
-  if (loanInterest !== 0) applyStep("loan_interest", loanInterest);
+  if (loanInterest !== 0) {
+    steps.push({ key: "loan_interest", amount: loanInterest, balance_after: running, cash: false });
+  }
 
   // 3. Løn — pass B trin 2. #3999/#3989 (cutover-drejebogen, "Rækkefølgen i
   //    vinduet"): løn-genberegningen kører FØR denne charge søndag, så det

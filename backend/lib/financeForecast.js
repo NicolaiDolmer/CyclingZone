@@ -284,6 +284,15 @@ export function computeFinanceForecast({
   // Lånerente = sum(amount_remaining × interest_rate). Forudsætter at lånet
   // stadig er aktivt næste sæson — afdrag mellem nu og sæsonstart kan reducere
   // den faktiske rente, så rente-estimatet er konservativt.
+  //
+  // #4023: renten er IKKE et cash-udlæg. processLoanInterest (loanEngine.js)
+  // kapitaliserer den ind i loans.amount_remaining/accrued_interest og rører
+  // ALDRIG teams.balance — se .claude/learnings/2026-07-10-loan-interest-
+  // double-count.md (samme rodårsag som sæsonrapportens tidligere dobbelt-
+  // tælling). Feltet holdes i return-værdien som transparens-linje (hvor
+  // meget gælden vokser), men indgår BEVIDST ikke i projectedNet nedenfor —
+  // det ville ellers vise et lavere/falsk cash-underskud end det holdet rent
+  // faktisk oplever ved sæsonskiftet.
   const projectedLoanInterest = -(activeLoans || []).reduce(
     (sum, loan) =>
       sum + Math.round((loan?.amount_remaining || 0) * (loan?.interest_rate || 0)),
@@ -326,11 +335,13 @@ export function computeFinanceForecast({
   // rent faktisk har købt eller ansat sig til.
   const projectedStaffFacilities = projectedFacilityUpkeep + projectedStaffSalary;
 
+  // #4023: projectedLoanInterest er BEVIDST udeladt her — se kommentaren ved
+  // dens beregning ovenfor. Nettet skal matche den faktiske balanceændring
+  // ved sæsonskiftet, og lånerenten rører aldrig teams.balance.
   const projectedNet =
     projectedSponsor +
     projectedPrize +
     projectedSalary +
-    projectedLoanInterest +
     projectedUpkeep +
     projectedFacilityUpkeep +
     projectedStaffSalary +

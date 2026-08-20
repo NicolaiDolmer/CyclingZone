@@ -126,16 +126,20 @@ test("buildSettlementSteps — running balance is correct through the full real 
   const byKey = Object.fromEntries(steps.map((s) => [s.key, s]));
   assert.equal(byKey.books_close.balance_after, 100000);
   assert.equal(byKey.sponsor.balance_after, 100000 + 250000);
-  assert.equal(byKey.loan_interest.balance_after, 350000 - 8000);
-  assert.equal(byKey.salary.balance_after, 342000 - 179550);
-  assert.equal(byKey.academy_drift.balance_after, 162450 - 5000);
-  assert.equal(byKey.upkeep.balance_after, 157450 - 140000);
-  assert.equal(byKey.facility_upkeep.balance_after, 17450 - 12000);
-  assert.equal(byKey.staff_salary.balance_after, 5450 - 19500);
+  // #4023: lånerente er IKKE en cash-debitering (processLoanInterest rører
+  // aldrig teams.balance — den kapitaliseres ind i loans.amount_remaining).
+  // balance_after er derfor UÆNDRET fra sponsor-trinnet.
+  assert.equal(byKey.loan_interest.balance_after, 350000);
+  assert.equal(byKey.loan_interest.cash, false);
+  assert.equal(byKey.salary.balance_after, 350000 - 179550);
+  assert.equal(byKey.academy_drift.balance_after, 170450 - 5000);
+  assert.equal(byKey.upkeep.balance_after, 165450 - 140000);
+  assert.equal(byKey.facility_upkeep.balance_after, 25450 - 12000);
+  assert.equal(byKey.staff_salary.balance_after, 13450 - 19500);
   const last = steps[steps.length - 1];
   assert.equal(last.key, "start_s3");
   assert.equal(last.balance_after, byKey.staff_salary.balance_after);
-  assert.equal(last.balance_after, -14050);
+  assert.equal(last.balance_after, -6050);
 });
 
 test("buildSettlementSteps — zero-amount optional steps are OMITTED (loan interest, academy, upkeep, facility, staff), never a synthetic '0/no-charge' row", () => {
@@ -146,6 +150,17 @@ test("buildSettlementSteps — zero-amount optional steps are OMITTED (loan inte
   assert.deepEqual(steps.map((s) => s.key), ["books_close", "sponsor", "salary", "start_s3"]);
   // #4011 revision: no "salary_switch" step exists any more.
   assert.ok(!steps.some((s) => s.key === "salary_switch"));
+});
+
+test("buildSettlementSteps (#4023) — loan_interest step carries the real amount for display, but never moves `running`", () => {
+  const steps = buildSettlementSteps({ startingBalance: 500000, s3Mapped: S3_MAPPED_FIXTURE });
+  const loanStep = steps.find((s) => s.key === "loan_interest");
+  // Beløbet vises stadig (så manageren kan se hvor meget gælden vokser)...
+  assert.equal(loanStep.amount, -8000);
+  // ...men det er markeret som ikke-kontant, og påvirker ikke saldoen.
+  assert.equal(loanStep.cash, false);
+  const sponsorStep = steps.find((s) => s.key === "sponsor");
+  assert.equal(loanStep.balance_after, sponsorStep.balance_after);
 });
 
 test("buildSettlementSteps — missing s3Mapped fields default to 0 (never throws)", () => {
@@ -200,8 +215,13 @@ test("buildSeasonSwitchPreview — combines s2/s3/settlement/riders into one pay
   assert.equal(salaryStep.amount, result.s3.salary);
   assert.equal(-salaryStep.amount, result.riders.summary.total_s3_salary_projection);
 
-  // Settlement math: sum of all step deltas == ending_balance - starting_balance.
-  const sumOfDeltas = result.settlement.steps.reduce((sum, s) => sum + (s.amount || 0), 0);
+  // Settlement math: sum of all CASH step deltas == ending_balance - starting_balance.
+  // #4023: loan_interest is deliberately excluded — it's a non-cash line
+  // (cash: false), so summing every step's `amount` blindly would double-
+  // count it against a balance it never actually touched.
+  const sumOfDeltas = result.settlement.steps
+    .filter((s) => s.cash !== false)
+    .reduce((sum, s) => sum + (s.amount || 0), 0);
   assert.equal(sumOfDeltas, result.settlement.ending_balance - result.settlement.starting_balance);
 
   assert.equal(result.riders.rows.length, 2);

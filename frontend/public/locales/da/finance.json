@@ -226,7 +226,7 @@
         },
         "loan_interest": {
           "label": "Lånerenter",
-          "detail": "Rente opkrævet på dine aktive låns restgæld, lige efter sponsor-betalingen lander."
+          "detail": "Rente på dine aktive låns restgæld, beregnet lige efter sponsor-betalingen lander. Lægges oveni lånet, trækkes ikke fra din saldo."
         },
         "salary": {
           "label": "Løn for sæson {next} opkræves",

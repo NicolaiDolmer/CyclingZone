@@ -226,7 +226,7 @@
         },
         "loan_interest": {
           "label": "Loan interest",
-          "detail": "Interest charged on your active loans' outstanding debt, right after the sponsor payment lands."
+          "detail": "Interest on your active loans' outstanding debt, calculated right after the sponsor payment lands. Added to the loan itself, not deducted from your balance."
         },
         "salary": {
           "label": "Salaries for season {next} are charged",
