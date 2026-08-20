@@ -26,31 +26,15 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
-        "topic": "Performance",
-        "en": {
-          "title": "The game responds faster",
-          "body": "Every action used to check your login with the auth server before doing anything else. That check now happens locally, which takes a step out of every single request."
-        },
-        "da": {
-          "title": "Spillet svarer hurtigere",
-          "body": "Hver handling tjekkede dit login hos auth-serveren før den gjorde noget som helst. Det tjek sker nu lokalt, hvilket fjerner et led i hver eneste forespørgsel."
-        },
-        "refs": [
-          4010
-        ]
-      },
-      {
-        "category": "improved",
         "audience": "internal",
         "topic": "Database",
         "en": {
-          "title": "Supabase load cut across four hot paths",
-          "body": "Sponsor payouts cache each completed race instead of re-reading every result every five minutes, the balance drift watch uses keyset pagination behind a new partial index, auth verifies tokens locally, and realtime no longer reconnects in a loop. Measured over 23 hours: 203.849 race_results reads, 7.727 MalformedJWT errors and 3,3 TB of buffer traffic removed."
+          "title": "Supabase load cut across three hot paths",
+          "body": "Sponsor payouts cache each completed race instead of re-reading every result every five minutes, the balance drift watch uses keyset pagination behind a new partial index, and realtime no longer reconnects in a loop. Measured over 23 hours: 203.849 race_results reads, 7.727 MalformedJWT errors and 3,3 TB of buffer traffic removed. The auth change is held back until after the season 3 start."
         },
         "da": {
-          "title": "Supabase-belastning skåret på fire varme stier",
-          "body": "Sponsor-udbetalinger cacher hvert completet løb i stedet for at genlæse alle resultater hvert femte minut, balance-drift-vagten bruger keyset-paginering bag et nyt partielt index, auth verificerer tokens lokalt, og realtime reconnecter ikke længere i ring. Målt over 23 timer: 203.849 race_results-læsninger, 7.727 MalformedJWT-fejl og 3,3 TB buffer-trafik fjernet."
+          "title": "Supabase-belastning skåret på tre varme stier",
+          "body": "Sponsor-udbetalinger cacher hvert completet løb i stedet for at genlæse alle resultater hvert femte minut, balance-drift-vagten bruger keyset-paginering bag et nyt partielt index, og realtime reconnecter ikke længere i ring. Målt over 23 timer: 203.849 race_results-læsninger, 7.727 MalformedJWT-fejl og 3,3 TB buffer-trafik fjernet. Auth-ændringen holdes tilbage til efter sæson 3-starten."
         },
         "refs": [
           4010
