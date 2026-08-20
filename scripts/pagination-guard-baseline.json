@@ -67,10 +67,10 @@
     "backend/lib/riderValueRefresh.js": {
       "riders": 1
     },
-    "backend/lib/scoutReportVisibility.js": {
+    "backend/lib/scoutMissionMaturation.js": {
       "riders": 1
     },
-    "backend/lib/scoutSweep.js": {
+    "backend/lib/scoutReportVisibility.js": {
       "riders": 1
     },
     "backend/lib/squadEnforcement.js": {

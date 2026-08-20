@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { msUntilReady, scoutCountdownParts, scoutReadyClock } from "./scoutCountdown.js";
+import { msUntilReady, scoutCountdownParts, scoutReadyClock, missionReadyLabel } from "./scoutCountdown.js";
 
 // #3548 — enheds-test af rest-tid/formatering. Selve tikket (useScoutCountdown)
 // er en tynd setInterval-indpakning omkring scoutCountdownParts og testes ikke
@@ -81,4 +81,38 @@ test("scoutReadyClock: dansk vintertid (CET = UTC+1)", () => {
 test("scoutReadyClock: manglende eller ugyldigt tidspunkt giver null", () => {
   assert.equal(scoutReadyClock(null), null);
   assert.equal(scoutReadyClock("not-a-timestamp"), null);
+});
+
+// #3997 — mission-modning viser nu et forventet klokkeslæt (afledt af
+// afsendelsestidspunktet) i stedet for den gamle dags-granulære copy.
+// NOW = 2026-08-14T10:00:00Z = 12:00 CEST, dansk kalenderdag 2026-08-14.
+
+test("missionReadyLabel: senere i DAG (samme danske kalenderdag)", () => {
+  assert.deepEqual(missionReadyLabel("2026-08-14T18:00:00.000Z", NOW), { state: "today", time: "20:00" });
+});
+
+test("missionReadyLabel: I MORGEN (næste danske kalenderdag)", () => {
+  assert.deepEqual(missionReadyLabel("2026-08-15T09:00:00.000Z", NOW), { state: "tomorrow", time: "11:00" });
+});
+
+test("missionReadyLabel: sent om aftenen dansk tid regnes stadig som I DAG, ikke i morgen (UTC-dato ville ellers skifte)", () => {
+  // 23:30 dansk tid (CEST) = 21:30 UTC, samme danske kalenderdag som NOW.
+  assert.deepEqual(missionReadyLabel("2026-08-14T21:30:00.000Z", NOW), { state: "today", time: "23:30" });
+});
+
+test("missionReadyLabel: deadline passeret giver due-tilstanden", () => {
+  assert.deepEqual(missionReadyLabel("2026-08-14T09:00:00.000Z", NOW), { state: "due" });
+  assert.deepEqual(missionReadyLabel(NOW.toISOString(), NOW), { state: "due" }); // grænsen selv er due
+});
+
+test("missionReadyLabel: længere ude end i morgen (flerdages-mission) giver date-tilstanden", () => {
+  const result = missionReadyLabel("2026-08-17T09:00:00.000Z", NOW);
+  assert.equal(result.state, "date");
+  assert.equal(result.time, "11:00");
+  assert.ok(result.date instanceof Date);
+});
+
+test("missionReadyLabel: manglende eller ugyldigt tidspunkt giver null", () => {
+  assert.equal(missionReadyLabel(null, NOW), null);
+  assert.equal(missionReadyLabel("not-a-timestamp", NOW), null);
 });

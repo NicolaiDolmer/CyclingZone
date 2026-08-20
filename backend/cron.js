@@ -579,7 +579,10 @@ async function runAiRecoverySweepCron() {
 }
 
 // ─── Talentspejder: modner scout_assignments (missioner + målrettede opgaver) (#2244) ──
-// Mirror af trænings-sweepen: kl. 22 dansk tid + team-niveau mutex (scout_sweep_runs).
+// #3997: missioner har INGEN dags-gate mere — de tjekkes på hvert tick (5 min,
+// setInterval nedenfor), og modner ~N×24t efter afsendelse (ikke ved først-
+// kommende kl.22). Target-backstoppet er uændret: kl. 22 dansk tid + team-
+// niveau mutex (scout_sweep_runs) — se scoutSweep.js.
 
 async function runScoutSweepCron() {
   const result = await runScoutSweep({ supabase, now: new Date() });
@@ -1402,7 +1405,7 @@ export function startCron() {
     5 * 60 * 1000
   );
 
-  // Talentspejder: modner scout_assignments (missioner + målrettede opgaver) efter kl. 22 (#2244)
+  // Talentspejder: modner scout_assignments (missioner hvert tick, #3997; target-backstop efter kl. 22, #2244)
   setInterval(
     trackedTick("scout sweep", monitorCron("scout-sweep", runScoutSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
