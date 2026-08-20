@@ -1178,7 +1178,9 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
                   {rider.name || t("identity.starRiderUnnamed")}
                 </span>
                 <span className="text-cz-2 text-xs font-mono flex-shrink-0">
-                  {t("identity.starRiderScore", { score: Math.round(rider.score ?? 0) })}
+                  {/* #3983 · Popularitet — samme tal som rytterprofilens hero-stat,
+                      så bestyrelsens tal og rytterens tal aldrig divergerer igen. */}
+                  {t("identity.starRiderPopularity", { popularity: Math.round(rider.popularity ?? 0) })}
                 </span>
               </li>
             ))}
