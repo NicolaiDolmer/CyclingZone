@@ -84,20 +84,44 @@ const FLAT_ROLLING_POCKET_LEN = [5, 15];
 // Udfyld ét frit interval [fromKm, toKm) med gap-segmenter. For profile_type "flat" er der
 // en seedet chance for at splitte en tilstrækkeligt lang strækning i flat→rolling→flat
 // (en LILLE rolling-lomme), ellers ét sammenhængende gap-segment af GAP_KIND_BY_PROFILE.
+// from_km/to_km er BEVIDST urundede her (rå floats) — afrunding sker ÉN gang, samlet, i
+// roundBoundaries() til sidst i buildSegments. Uafhængig round1() af nabo-grænser (én
+// gang pr. segment-ende) kan lade to meget tætte, men reelt forskellige, grænser runde
+// til SAMME 1-decimal-værdi og dermed skabe et 0-længde "spøgelsessegment" — deferred,
+// delt afrunding eliminerer den klasse af fejl helt.
 function pushGapSegments(rng, out, fromKm, toKm, profileType) {
   const gap = toKm - fromKm;
   if (gap <= 0.01) return;
   const kind = GAP_KIND_BY_PROFILE[profileType] ?? "flat";
   if (profileType === "flat" && kind === "flat" && gap >= FLAT_ROLLING_POCKET_MIN_GAP_KM && rng() < FLAT_ROLLING_POCKET_CHANCE) {
     const pocketLen = clampNum(FLAT_ROLLING_POCKET_LEN[0] + rng() * (FLAT_ROLLING_POCKET_LEN[1] - FLAT_ROLLING_POCKET_LEN[0]), 1, gap - 2);
-    const pocketStart = round1(fromKm + (gap - pocketLen) * (0.3 + rng() * 0.4));
-    const pocketEnd = round1(Math.min(toKm - 1, pocketStart + pocketLen));
-    if (pocketStart > fromKm) out.push({ kind: "flat", from_km: round1(fromKm), to_km: pocketStart });
+    const pocketStart = fromKm + (gap - pocketLen) * (0.3 + rng() * 0.4);
+    const pocketEnd = Math.min(toKm - 1, pocketStart + pocketLen);
+    if (pocketStart > fromKm) out.push({ kind: "flat", from_km: fromKm, to_km: pocketStart });
     if (pocketEnd > pocketStart) out.push({ kind: "rolling", from_km: pocketStart, to_km: pocketEnd });
-    if (toKm > pocketEnd) out.push({ kind: "flat", from_km: pocketEnd, to_km: round1(toKm) });
+    if (toKm > pocketEnd) out.push({ kind: "flat", from_km: pocketEnd, to_km: toKm });
     return;
   }
-  out.push({ kind, from_km: round1(fromKm), to_km: round1(toKm) });
+  out.push({ kind, from_km: fromKm, to_km: toKm });
+}
+
+// Deferred, DELT afrunding af segment-grænser (jf. kommentaren i pushGapSegments): hver
+// interne grænse rundes ÉN gang og genbruges som BÅDE forrigt segments to_km OG næste
+// segments from_km — de kan derfor aldrig divergere. Første from_km tvinges til 0, sidste
+// to_km tvinges til distanceKm (den autoritative værdi, ikke en uafhængig afrunding af
+// den). Segmenter der kollapser til 0-længde efter afrunding (yderst sjældent — kun ved
+// sub-100m rå intervaller) fjernes; kæden forbliver intakt fordi nabo-grænsen allerede er
+// sat FØR filtreringen.
+function roundBoundaries(segments, distanceKm) {
+  if (!segments.length) return segments;
+  segments[0].from_km = 0;
+  for (let i = 0; i < segments.length; i++) {
+    const isLast = i === segments.length - 1;
+    const to = isLast ? distanceKm : round1(segments[i].to_km);
+    segments[i].to_km = to;
+    if (!isLast) segments[i + 1].from_km = to;
+  }
+  return segments.filter((s) => s.to_km > s.from_km);
 }
 
 // Kumuleret højdemeter for climb-segmenternes top_elevation_m — plausibelt stigende
@@ -161,7 +185,7 @@ export function buildSegments(rng, route) {
     if (f.kind === "climb") {
       elevationCum += elevationGainForClimb(f.to - f.from, f.avg_gradient);
       out.push({
-        kind: "climb", from_km: round1(f.from), to_km: round1(f.to),
+        kind: "climb", from_km: f.from, to_km: f.to,
         category: f.category, avg_gradient: f.avg_gradient,
         top_elevation_m: Math.round(elevationCum),
       });
@@ -173,7 +197,7 @@ export function buildSegments(rng, route) {
       // distance_km præcist — også når den "naturlige" descent-længde ville være kortere.
       const forceFullDescent = isLastFeature && finaleType === "descent" && gapAfter > 0.01;
       if (forceFullDescent) {
-        out.push({ kind: "descent", from_km: round1(f.to), to_km: round1(distanceKm), technicality: 1 + Math.floor(rng() * 3) });
+        out.push({ kind: "descent", from_km: f.to, to_km: distanceKm, technicality: 1 + Math.floor(rng() * 3) });
         pos = distanceKm;
         continue;
       }
@@ -182,7 +206,7 @@ export function buildSegments(rng, route) {
         const rawLen = climbLen * (0.5 + rng() * 0.8);
         const descLen = clampNum(rawLen, 1, gapAfter);
         const descTo = f.to + descLen;
-        out.push({ kind: "descent", from_km: round1(f.to), to_km: round1(descTo), technicality: 1 + Math.floor(rng() * 3) });
+        out.push({ kind: "descent", from_km: f.to, to_km: descTo, technicality: 1 + Math.floor(rng() * 3) });
         pos = descTo;
         continue;
       }
@@ -191,12 +215,12 @@ export function buildSegments(rng, route) {
     }
 
     // cobbles
-    out.push({ kind: "cobbles", from_km: round1(f.from), to_km: round1(f.to), sector_name: f.sector_name, stars: 1 + Math.floor(rng() * 5) });
+    out.push({ kind: "cobbles", from_km: f.from, to_km: f.to, sector_name: f.sector_name, stars: 1 + Math.floor(rng() * 5) });
     pos = f.to;
   }
   pushGapSegments(rng, out, pos, distanceKm, profileType);
 
-  return out;
+  return roundBoundaries(out, distanceKm);
 }
 
 // Vejr-fordeling v1 (spec §3.1/§4-M11, ejer-valg 20/8): 55% sol / 25% overskyet /
