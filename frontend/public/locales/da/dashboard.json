@@ -324,7 +324,7 @@
       "divisionInterval": "Spænd baseret på målt præmiesum blandt hold i din division"
     },
     "upkeepDetail": {
-      "byDivision": "Fast driftsudgift bestemt af din division, ikke af din trup"
+      "byDivision": "Bestemt af din division, ikke din trup"
     },
     "salaryDetail": {
       "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede."
