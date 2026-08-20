@@ -8,7 +8,7 @@
 
 - Hoved-checkoutet står på `main`, synkront med origin. Ingen ucommittede
   ændringer fra denne session.
-- `docs/NOW.md` siger stadig "Ingen aktiv session" — markér dig selv.
+- `docs/NOW.md`: aften-sessionen har markeret sig aktiv (`c0a8c350e`).
 - Token-gaten er grøn (MASTERPLAN 1498 tok; den var rød på 1610 før i dag).
 
 ## 1. PR #4013 — klar til merge, anbefales FØR søndag
