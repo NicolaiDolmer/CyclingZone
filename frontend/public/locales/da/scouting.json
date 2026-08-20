@@ -22,11 +22,13 @@
     "kindTarget": "Målrettet opgave",
     "kindMission": "Mission",
     "reportIn": "Rapport om {days, plural, one {1 dag} other {# dage}}",
-    "reportToday": "Rapport klar i dag",
+    "reportOn": "Rapport klar {date} omkring kl. {time}",
+    "reportToday": "Rapport klar omkring kl. {time} i dag",
+    "reportTomorrow": "Rapport klar omkring kl. {time} i morgen",
+    "reportDue": "Rapporten er klar. Genindlæs for at åbne den.",
     "targetReportIn": "Rapport om ~{minutes} min",
     "targetReportCountdown": "Rapport om {minutes, plural, one {1 min} other {# min}}",
-    "targetReportDue": "Rapporten er klar. Genindlæs for at åbne den.",
-    "targetReadyAtTitle": "Rapporten er klar kl. {time} dansk tid",
+    "readyAtTitle": "Rapporten er klar kl. {time} dansk tid",
     "loadingRider": "Indlæser rytter…",
     "cancel": "Annullér"
   },
@@ -51,7 +53,7 @@
       "countryLabel": "Land",
       "typeLabel": "Ryttertype",
       "submit": "Start mission",
-      "costNote": "Missioner varer {days, plural, one {1 dag} other {# dage}} og koster {cost, number} i rejseomkostninger fra din kasse. Ingen refusion ved annullering."
+      "costNote": "Spejderen melder tilbage cirka {hours} timer efter afsendelse, og missionen koster {cost, number} i rejseomkostninger fra din kasse. Ingen refusion ved annullering."
     },
     "scope": {
       "u23": "U23-ryttere",
