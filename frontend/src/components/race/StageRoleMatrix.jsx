@@ -57,6 +57,16 @@ const ROLE_HELP_KEY = {
   free_role: "stageTactics.roleHelp.freeRole",
 };
 
+// #3456: samme mønster som ROLE_HELP_KEY ovenfor, men for indsats-kolonnen
+// (Arbejd/Normal/Spar kræfter). Spillere fandt rolle-forklaringerne men ikke
+// nogen forklaring på indsats (to Discord-spørgsmål 6/8) fordi denne legend
+// kun dækkede roller. Samme rækkefølge som EFFORT_OPTIONS.
+const EFFORT_HELP_KEY = {
+  protect: "stageTactics.effortHelp.protect",
+  normal: "stageTactics.effortHelp.normal",
+  save: "stageTactics.effortHelp.save",
+};
+
 async function authHeaders() {
   const { data } = await getSession();
   const token = data?.session?.access_token;
@@ -177,6 +187,17 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
             <div key={r} className="flex items-baseline gap-1 text-3xs leading-snug">
               <dt className="font-semibold text-cz-2 whitespace-nowrap">{t(ROLE_LABEL_KEY[r])}:</dt>
               <dd className="m-0 text-cz-3">{t(ROLE_HELP_KEY[r])}</dd>
+            </div>
+          ))}
+        </dl>
+        {/* #3456: samme retningsforklaring for indsats-kolonnen. Manglede før
+            (kun rollerne havde en legend), hvilket var præcis hvad to spillere
+            ikke kunne finde ud af på Discord 6/8: hvad "Arbejd" gør. */}
+        <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+          {EFFORT_OPTIONS.map((ef) => (
+            <div key={ef} className="flex items-baseline gap-1 text-3xs leading-snug">
+              <dt className="font-semibold text-cz-2 whitespace-nowrap">{t(`stageTactics.effort.${ef}`)}:</dt>
+              <dd className="m-0 text-cz-3">{t(EFFORT_HELP_KEY[ef])}</dd>
             </div>
           ))}
         </dl>

@@ -454,6 +454,11 @@
       "normal": "Normal",
       "save": "Save legs"
     },
+    "effortHelp": {
+      "protect": "Gives everything for the team today. Builds extra fatigue.",
+      "normal": "Rides at normal effort.",
+      "save": "Holds back to be fresher for the days that count. Less fatigue."
+    },
     "jerseyShortcutHint": "{name} is your rider in the leader's jersey.",
     "jerseyShortcut": "Make {name} captain for the remaining stages",
     "unsaved": "You have unsaved changes",

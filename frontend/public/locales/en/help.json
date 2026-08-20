@@ -810,9 +810,64 @@
         "title": "What rider type actually means",
         "text": "A rider's primary and secondary type (Climber, Sprinter, GC and so on) shows what he can become at his ceiling, not what he happens to be best at today. It's set once and stays the same for the rest of his career, so a young rider's type won't flip every season as his stats develop. That's on purpose: the type is a talent read, not a form report. If you want to know who's best suited for a specific race right now, check the suitability score on the team selection screen; it's calculated fresh from each rider's current abilities and the race's terrain. Type and suitability answer two different questions: type is who a rider is, suitability is who fits this race today."
       },
+      "typeOverview": {
+        "title": "The 8 rider types",
+        "text": "Each type is built around a set of specialty abilities, which grow fastest when you hit them with the right session on a Training or Skill day (see Daily training). The broad GC contender type doesn't have just one right session; he uses several.",
+        "rows": [
+          [
+            "Type",
+            "Covers",
+            "Train with"
+          ],
+          [
+            "Sprinter",
+            "Explosive speed for a flat bunch sprint.",
+            "Sprint (Sprint, Acceleration)"
+          ],
+          [
+            "Time-trialist",
+            "Solo racing against the clock, no help from the peloton.",
+            "Threshold (Time trial, Tempo)"
+          ],
+          [
+            "Climber",
+            "Long climbs and sustained mountain tempo.",
+            "Intervals (Climbing, Punch, Tempo)"
+          ],
+          [
+            "Puncheur",
+            "Short, steep efforts and hilly finales.",
+            "Intervals (Punch, Tempo)"
+          ],
+          [
+            "Cobbles specialist",
+            "Power and handling on cobblestones.",
+            "Technique (Cobbles)"
+          ],
+          [
+            "Baroudeur",
+            "Attacking instinct, in the breakaway all day.",
+            "Race craft (Aggression)"
+          ],
+          [
+            "Rouleur",
+            "Grinds out flat terrain for the team.",
+            "Tempo (Flat)"
+          ],
+          [
+            "GC contender",
+            "The complete package: climbing, time trial and recovery over weeks.",
+            "Intervals and Threshold together"
+          ]
+        ]
+      },
       "development": {
         "title": "Development over time",
         "text": "On a rider's stats page there's a 'Development' tab. Here you can pick an ability, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."
+      },
+      "agingAndDecline": {
+        "title": "Age, peak and decline",
+        "text": "Every rider peaks at 28, regardless of type. From the season after he turns 29, his abilities decline instead of growing, and that only happens at the season change, never during the season itself. The decline isn't fixed: it grows the longer he's past his peak. For the first three years past peak (ages 29 to 31) his signature abilities drop by roughly 1 point per season. From the fourth to the sixth year past peak (32 to 34) that rises to roughly 1.8 points per season, and from the seventh year onward (35+) to roughly 2.6 points per season. Not every ability falls at the same speed: a rider's signature abilities, the ones his primary type is built around, fall at the full rate above. Every other ability, including the craft skills Positioning and Tactics, falls more slowly, roughly 70 percent of that rate. That's a speed difference, not a delayed start: every ability begins declining the same season."
       },
       "trainingFocus": {
         "title": "Training focus",
@@ -820,7 +875,7 @@
       },
       "scouting": {
         "title": "Scouting potential",
-        "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show no estimate at all. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. A better scout narrows his estimates further, and his rating sets a precision limit he cannot go past. Every scouting level still buys some precision, and the Scouting tab tells you exactly how much the next one would add. No scout ever knows a rider exactly: even fully scouted riders, and your own squad, show a narrow range rather than an exact number. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile collects the full report: the verdict, potential per rider type with a ceiling band, and a value comparison. Overall potential is shown as a rating range and a verdict, in the same unit as the rider rating itself, so you can hold the two up against each other. The per-type rows on that tab also show numbers: his level today, and a ceiling band. Read that band as a range his ceiling sits somewhere inside, never as a number he can reach."
+        "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show no estimate at all. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. A better scout narrows his estimates further, and his rating sets a precision limit he cannot go past. Every scouting level still buys some precision, and the Scouting tab tells you exactly how much the next one would add. No scout ever knows a rider exactly: even fully scouted riders, and your own squad, show a narrow range rather than an exact number. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile collects the full report: the verdict, a potential range per rider type, and a value comparison. Overall potential is shown as a rating range and a verdict, in the same unit as the rider rating itself, so you can hold the two up against each other. The per-type rows also show his level today and the role's ceiling: the highest that role allows, the same for every rider in it, never masked. The potential range next to it narrows with a better scout, but it isn't a guarantee: it's a projection built on training outcomes on top of a masked estimate, and for a very well-scouted rider the true value can occasionally sit just outside it, by design."
       },
       "u25u23": {
         "title": "U25 and U23 riders",
@@ -838,7 +893,7 @@
         "steps": [
           "Go to Daily Training in the navigation.",
           "Find a rider and choose what kind of day it is: Rest, Active recovery, a Skill day or Training.",
-          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Intervals, Threshold or Sprint (hard). On a skill day: Technique or Aero.",
+          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Intervals, Threshold or Sprint (hard). On a skill day: Technique, Aero or Race craft.",
           "Save. The day runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
@@ -849,7 +904,7 @@
       },
       "focusAbilities": {
         "title": "What each session trains",
-        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Intervals train Climbing, Punch and Tempo. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
+        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Intervals train Climbing, Punch and Tempo. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
@@ -869,7 +924,7 @@
       },
       "formFatigue": {
         "title": "Form and Fatigue",
-        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day around midnight each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area we're working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day, after 22:00 Danish time (or right away if you click 'Train today' yourself), each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area we're working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
       },
       "injuryRisk": {
         "title": "Injury risk",
@@ -1256,7 +1311,7 @@
     },
     "scoutedBandGuaranteeFaq": {
       "q": "Is the scouted band a guarantee?",
-      "a": "No. The band is your scout's estimate of where the rider realistically lands. The bottom assumes he trains regularly but without focus; the top assumes dedicated focus every day of his career. A rider who is never trained lands below the band, and nobody reaches the top without earning it. A better chief scout narrows the estimate, but the spread between casual and dedicated training can never be scouted away: that part is up to you. The role ceiling shown next to the band is a different thing: it is the highest the role allows, the same for everyone in that role, and potential decides how fast he climbs toward it."
+      "a": "No, for two reasons. The band isn't even trying to pin down one hidden number: the bottom assumes a rider trained regularly but without focus, the top assumes dedicated focus every day of his career. A wide band just means his development is in your hands, not that the scout is unsure. But the potential underneath the band is never known precisely either. A better scout narrows the interval, but the hidden offset that keeps the number secret stays the same size regardless of scout level, on purpose: it stops two scout levels on the same rider from being combined into an exact answer. The result is that a very narrow band, a fully scouted rider, a high-rated scout, or your own squad, can occasionally sit a little off the true value. The role ceiling shown next to the band is a different thing: it's the highest the role allows, the same for everyone in that role, and never masked."
     },
     "seasonChangeMoneyFaq": {
       "q": "What happens to my money at the season change?",
