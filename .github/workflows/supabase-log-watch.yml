@@ -1,0 +1,112 @@
+name: Supabase Log Watch
+
+# Dagligt tjek af Supabase' logflade (#4014): 20/8-2026 kørte 7.727
+# MalformedJWT-fejl + ~1.800 PostgREST-timeouts i døgnet usete — Sentry ser
+# kun exceptions i vores egen kode, get_advisors ser aldrig log-strømmen.
+# scripts/ops/supabase-log-watch.mjs aggregerer fejl-lignende log-linjer pr.
+# (source, fejlklasse) via Supabase Management-API'et og sammenligner mod
+# gårsdagens vindue.
+#
+# Ejer-direktiv i #4014: "Timing: ugen efter cutover (26.-30./8). Ikke før"
+# — cutover-weekenden (fre/lør/søn) er bundet af e-mail-loop, generalprøve
+# og selve cutoveret. Den PLANLAGTE (cron) kørsel respekterer det som et
+# dato-gate nedenfor; manuel workflow_dispatch er IKKE begrænset, så
+# scriptet kan testes når som helst.
+#
+# Kræver SUPABASE_ACCESS_TOKEN som GitHub-secret (personal access token,
+# Supabase Dashboard -> Account -> Access Tokens) — findes IKKE i repo-
+# secrets ved denne PR's merge. Uden den fejler jobbet tidligt med en klar
+# besked i stedet for at fejle stille.
+
+on:
+  schedule:
+    - cron: '20 5 * * *'   # dagligt 05:20 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-log-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cutover date-gate (scheduled runs only, owner directive in #4014)
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            today=$(date -u +%Y-%m-%d)
+            if [[ "$today" < "2026-08-26" ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::Udskudt til efter cutover (issue #4014: 'Timing: ugen efter cutover (26.-30./8). Ikke foer'). Manuel koersel (workflow_dispatch) er ikke paavirket af dette gate."
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify SUPABASE_ACCESS_TOKEN is configured
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN secret mangler. Opret et personal access token i Supabase Dashboard -> Account -> Access Tokens, saet det med 'gh secret set SUPABASE_ACCESS_TOKEN'. Se scripts/ops/supabase-log-watch.mjs header."
+            exit 1
+          fi
+
+      - name: Run log watch
+        if: steps.gate.outputs.skip != 'true'
+        id: check
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node scripts/ops/supabase-log-watch.mjs
+
+      - name: Open or update issue on findings
+        if: steps.gate.outputs.skip != 'true' && steps.check.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.check.outputs.findings }}
+        run: |
+          set -euo pipefail
+          TITLE="[supabase-log-watch] Fejl-terskel-brud eller ny fejlklasse i log-strømmen"
+          {
+            echo "Automatisk logflade-vagt (scripts/ops/supabase-log-watch.mjs, #4014) fandt:"
+            echo ""
+            echo "$FINDINGS"
+            echo ""
+            echo "Kilde: Supabase Management-API \`logs.all\`, seneste 24t vs. foregående 24t."
+            echo "Workflow: .github/workflows/supabase-log-watch.yml"
+          } > log-watch-body.md
+          EXISTING=$(gh issue list --state open --search "supabase-log-watch in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "Aabent issue #$EXISTING findes - tilfoejer kommentar."
+            gh issue comment "$EXISTING" --body-file log-watch-body.md
+          else
+            echo "Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file log-watch-body.md --label "claude:todo"
+          fi
+
+      - name: Notify Discord on findings
+        if: steps.gate.outputs.skip != 'true' && steps.check.outputs.has_findings == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK er ikke konfigureret; sprang notifikation over."
+            exit 0
+          fi
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"content": "⚠️ **Supabase log-watch fandt noget** (#4014)\nSe issue eller kør selv: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+            "$DISCORD_WEBHOOK"

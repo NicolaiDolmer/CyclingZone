@@ -525,3 +525,27 @@ jobs:
 
       - name: Run schema-column guard
         run: node scripts/lint-schema-columns.mjs
+
+  supabase-ops-scripts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Unit-tests for scripts/ops/*.mjs (#4014 logflade-vagt + #3978 advisor-
+    # sweep) — ren klassifikationslogik (spike/ny-fejlklasse-deteketion,
+    # allowlist-diff), ingen netvaerkskald. De to workflows der bruger
+    # scripterne (supabase-log-watch.yml, supabase-advisor-sweep.yml) kalder
+    # Supabase Management-API'et med SUPABASE_ACCESS_TOKEN og koeres ikke her.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test log-watch classification logic
+        run: node --test scripts/ops/supabase-log-watch.test.mjs
+
+      - name: Test advisor-sweep allowlist diff
+        run: node --test scripts/ops/supabase-advisor-sweep.test.mjs
