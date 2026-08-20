@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.163",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race Centre live ticker shows rider names again",
+          "body": "Live race cards could show raw internal IDs instead of rider names in the ticker line. Names are now looked up properly, and a line is hidden rather than shown half-broken."
+        },
+        "da": {
+          "title": "Race Centre-live-tickeren viser rytternavne igen",
+          "body": "Live-løbskort kunne vise rå interne ID'er i stedet for rytternavne i ticker-linjen. Navne slås nu korrekt op, og en linje skjules i stedet for at blive vist halvt i stykker."
+        },
+        "refs": [
+          4026
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.157",
     "date": "2026-08-20",
     "label": "Beta",

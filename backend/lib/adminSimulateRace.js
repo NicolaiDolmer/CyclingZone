@@ -9,6 +9,8 @@
 // N+1-note: getRaceEngineStatus laver 2 count-queries pr. løb. Acceptabel trade-off:
 // sjælden admin-handling, ~10-30 løb pr. sæson — optimer ikke.
 
+import os from "node:os";
+
 import { isRaceEngineV2Enabled, RACE_ENGINE_V2_FLAG_KEY } from "./raceEngineFlag.js";
 import { simulateRace as simulateRaceDefault, simulateStageByIndex as simulateStageByIndexDefault } from "./raceRunner.js";
 
@@ -16,6 +18,86 @@ function httpError(status, message) {
   const e = new Error(message);
   e.status = status;
   return e;
+}
+
+// #4026: en 409 der er et FORVENTET samtidigheds-skip (claim holdt af et andet
+// run / stale tick), ikke en fejl. Scheduleren (stageScheduler.js) logger disse
+// som info-skips uden Sentry-capture; alle andre 409'er captures som foer.
+function benignHttpError(status, message) {
+  const e = httpError(status, message);
+  e.benign = true;
+  return e;
+}
+
+// #4026: cross-process etape-claim. #2090-guarderne (in-process-flag i cron.js +
+// stale-tick-409'eren nedenfor) lukker ikke vinduet hvor TO backend-instanser
+// (zombie-deploy 20/8) begge naar at laese samme stages_completed og simulere
+// samme etape dobbelt — vinduet er minutter langt (simuleringens varighed).
+// Claimet er atomisk via PK-konflikt paa race_stage_claims(race_id, stage_index):
+// kun det run der vinder INSERT'en (eller CAS-stjaeler en udloebet lease) maa
+// simulere.
+// Lease + steal: et crashet run maa ikke laase etapen for evigt — efter
+// STAGE_CLAIM_LEASE_MS maa et nyt run overtage claimet, men KUN via CAS paa den
+// claimed_at det selv laeste (to samtidige stealere → praecis én vinder).
+// Recovery-stien (finalization-pending, P0 2/7) genbruger final-etapens index og
+// rammer dermed det gamle claim → den venter blot leasen ud (5-min-ticks goer
+// forsinkelsen ligegyldig) i stedet for at kunne dobbeltkoere.
+export const STAGE_CLAIM_LEASE_MS = 15 * 60 * 1000;
+
+async function tryClaimStage(supabase, { raceId, stageIndex, now = new Date() }) {
+  const claimedBy = os.hostname();
+  const { data: inserted, error: insErr } = await supabase
+    .from("race_stage_claims")
+    .upsert(
+      { race_id: raceId, stage_index: stageIndex, claimed_at: now.toISOString(), claimed_by: claimedBy },
+      { onConflict: "race_id,stage_index", ignoreDuplicates: true },
+    )
+    .select("race_id");
+  if (insErr) throw new Error(`race_stage_claims insert: ${insErr.message}`);
+  if (inserted?.length) return { claimed: true };
+
+  const { data: existing, error: exErr } = await supabase
+    .from("race_stage_claims")
+    .select("claimed_at, claimed_by")
+    .eq("race_id", raceId)
+    .eq("stage_index", stageIndex)
+    .maybeSingle();
+  if (exErr) throw new Error(`race_stage_claims read: ${exErr.message}`);
+  // Raekken forsvandt mellem insert og read (et andet run released efter fejl) —
+  // behandl som holdt: naeste tick faar claimet rent i stedet for et kaploeb her.
+  if (!existing) return { claimed: false, heldBy: "unknown" };
+
+  const ageMs = now.getTime() - Date.parse(existing.claimed_at);
+  if (!(ageMs >= STAGE_CLAIM_LEASE_MS)) {
+    return { claimed: false, heldBy: existing.claimed_by ?? "unknown" };
+  }
+
+  // Udloebet lease → CAS-steal: opdater KUN hvis claimed_at stadig er den vi
+  // laeste. Taber vi kapoebet til en anden stealer, matcher filteret 0 raekker.
+  const { data: stolen, error: stealErr } = await supabase
+    .from("race_stage_claims")
+    .update({ claimed_at: now.toISOString(), claimed_by: claimedBy })
+    .eq("race_id", raceId)
+    .eq("stage_index", stageIndex)
+    .eq("claimed_at", existing.claimed_at)
+    .select("race_id");
+  if (stealErr) throw new Error(`race_stage_claims steal: ${stealErr.message}`);
+  if (stolen?.length) return { claimed: true };
+  return { claimed: false, heldBy: existing.claimed_by ?? "unknown" };
+}
+
+// Best-effort release ved simuleringsfejl, saa naeste tick kan retry'e straks i
+// stedet for at vente leasen ud. Fejler sletningen, gaelder leasen — aldrig kast.
+async function releaseStageClaim(supabase, { raceId, stageIndex }) {
+  try {
+    await supabase
+      .from("race_stage_claims")
+      .delete()
+      .eq("race_id", raceId)
+      .eq("stage_index", stageIndex);
+  } catch {
+    // lease-udloebet daekker
+  }
 }
 
 export async function getRaceEngineStatus({ supabase }) {
@@ -194,7 +276,9 @@ export async function runAdminSimulateStage({
   // i mellemtiden). Kør ALDRIG en anden etape end den udvalgte — den kan ligge
   // i fremtiden (Volta Algarvia-hændelsen 2/7: 10 etaper kørt før scheduled_at).
   if (expectedStageIndex != null && stageIndex !== expectedStageIndex) {
-    throw httpError(409, `Stale tick: expected stage index ${expectedStageIndex}, race is at ${stageIndex} — skipping`);
+    // benign (#4026): guarden GJORDE sit arbejde — det er et forventet skip ved
+    // overlappende ticks, ikke en haendelse. Scheduleren info-logger uden Sentry.
+    throw benignHttpError(409, `Stale tick: expected stage index ${expectedStageIndex}, race is at ${stageIndex} — skipping`);
   }
 
   // Delvise profiler må ikke kunne afvikles — samme guard som runAdminSimulateRace.
@@ -213,12 +297,41 @@ export async function runAdminSimulateStage({
     }
   }
 
+  // #4026: atomisk claim FOER aegte simulering — sidste guard-lag, og det eneste
+  // der ogsaa daekker to samtidige backend-instanser. dryRun muterer intet og
+  // skal kunne koere frit ved siden af en aegte afvikling → intet claim dér.
+  if (!dryRun) {
+    const claim = await tryClaimStage(supabase, { raceId: race.id, stageIndex });
+    if (!claim.claimed) {
+      throw benignHttpError(409, `Stage ${stageIndex + 1} already claimed by ${claim.heldBy} — skipping`);
+    }
+    try {
+      return await simulateStageByIndex({
+        supabase,
+        race,
+        stageIndex,
+        dryRun,
+        runSource, // 'scheduler' fra cron → tælles i daglig cap (FIX 4); null = admin/manuel
+        ensureSeasonStandings,
+        updateStandings,
+        notifyDiscord,
+        notifyInApp,
+        notifyStageInApp,
+      });
+    } catch (err) {
+      // Simuleringen naaede ikke i maal → frigiv claimet (best-effort), saa
+      // naeste tick kan retry'e straks i stedet for at vente leasen ud.
+      await releaseStageClaim(supabase, { raceId: race.id, stageIndex });
+      throw err;
+    }
+  }
+
   return simulateStageByIndex({
     supabase,
     race,
     stageIndex,
     dryRun,
-    runSource, // 'scheduler' fra cron → tælles i daglig cap (FIX 4); null = admin/manuel
+    runSource,
     ensureSeasonStandings,
     updateStandings,
     notifyDiscord,

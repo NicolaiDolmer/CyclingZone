@@ -492,3 +492,83 @@ test("#2389: vedvarende fejl eskalerer efter 3 timer med escalated-tag — og ku
     console.error = originalConsoleError;
   }
 });
+
+// ── #4026: benign 409 (claim/stale-tick) = info-skip, ikke fejl ─────────────────
+
+test("#4026: benign 409 fra runStageFn → ingen Sentry, ingen error-log, taelles som benignSkips", async () => {
+  const races = [
+    { id: "rClaimed", season_id: "s1", name: "Claimet", stages: 1, stages_completed: 0, status: "scheduled" },
+    { id: "rOk", season_id: "s1", name: "Sundt loeb", stages: 1, stages_completed: 0, status: "scheduled" },
+  ];
+  const schedule = [
+    { race_id: "rClaimed", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" },
+    { race_id: "rOk", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" },
+  ];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }], race_simulation_runs: [], races, race_stage_schedule: () => schedule,
+  });
+  const sentryCalls = [];
+  const errorLines = [];
+  const infoLines = [];
+  const originalError = console.error;
+  const originalLog = console.log;
+  console.error = (l) => errorLines.push(l);
+  console.log = (l) => infoLines.push(l);
+  try {
+    let okRuns = 0;
+    const r = await runStageScheduler({
+      supabase, now: NOW,
+      isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+      captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }),
+      runStageFn: async ({ raceId }) => {
+        if (raceId === "rClaimed") {
+          const e = new Error("Stage 1 already claimed by anden-instans — skipping");
+          e.status = 409;
+          e.benign = true;
+          throw e;
+        }
+        okRuns++; return {};
+      },
+    });
+    assert.equal(okRuns, 1, "rOk skal koere selvom rClaimed blev skippet");
+    assert.equal(r.errors, 0, "benign skip er IKKE en fejl");
+    assert.equal(r.benignSkips, 1, "skippet taelles synligt i resultatet");
+    assert.equal(sentryCalls.length, 0, "ingen Sentry-capture for benign skip");
+    assert.equal(errorLines.filter((l) => String(l).includes("rClaimed")).length, 0, "ingen error-log for benign skip");
+    const skipLine = infoLines.map(String).find((l) => l.includes("stage_scheduler_race_skipped"));
+    assert.ok(skipLine, "skippet skal info-logges struktureret");
+    const parsed = JSON.parse(skipLine);
+    assert.equal(parsed.raceId, "rClaimed");
+    assert.match(parsed.reason, /anden-instans/, "reason baerer claimed_by → zombie-instans synlig i Railway-loggen");
+  } finally {
+    console.error = originalError;
+    console.log = originalLog;
+  }
+});
+
+test("#4026: ikke-benign 409 captures stadig som fejl (kun claim/stale-tick er stoejfri)", async () => {
+  const races = [{ id: "rBad", season_id: "s1", name: "Reelt problem", stages: 1, stages_completed: 0, status: "scheduled" }];
+  const schedule = [{ race_id: "rBad", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }], race_simulation_runs: [], races, race_stage_schedule: () => schedule,
+  });
+  const sentryCalls = [];
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const r = await runStageScheduler({
+      supabase, now: NOW,
+      isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+      captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }),
+      runStageFn: async () => {
+        const e = new Error("Partial stage profiles (1/3) — run backfillRaceStageProfiles before simulation");
+        e.status = 409; // IKKE benign — reel konfigurationsfejl
+        throw e;
+      },
+    });
+    assert.equal(r.errors, 1, "ikke-benign 409 er stadig en fejl");
+    assert.equal(sentryCalls.length, 1, "ikke-benign 409 captures stadig");
+  } finally {
+    console.error = originalError;
+  }
+});

@@ -20,7 +20,7 @@
 // LIVE er deterministisk afspilning (scheduled_at + forløbet tid), ikke realtime
 // — issue-kontrakten forbyder websockets i v1. Et minut-tick driver både
 // nedtælling og afspilnings-position.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import {
@@ -34,7 +34,8 @@ import {
 } from "../components/ui";
 import RaceCentreCard from "../components/race/RaceCentreCard.jsx";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { describeEvent } from "../lib/stageTimelineFilm.js";
+import { useRiderNames } from "../hooks/useRiderNames.js";
+import { collectRiderIds, describeEvent } from "../lib/stageTimelineFilm.js";
 import { RACE_TIMEZONE, formatCountdown } from "../lib/stageScheduleConfig.js";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus.js";
 import {
@@ -60,6 +61,17 @@ const FALLBACK_PROGRESS_SCALE = 100;
 function LiveFilmLine({ card, nowMs, riderNameById, children }) {
   const { timeline } = useStageTimeline(card.raceId, card.stageNumber);
   const events = timeline?.events;
+  // #4026: podie-mappet (riderNameById-prop) dækker kun dagens FÆRDIGE etapers
+  // top-3 — live-tidslinjens udbrydere/angribere findes typisk ikke dér, og
+  // describeEvent viser aldrig rå id'er. Hent derfor navnene for præcis de
+  // rider-ids tidslinjen refererer, og merge (tidslinje-opslag vinder intet
+  // over podiet — samme navn begge steder, podiet er blot et subset).
+  const timelineRiderIds = useMemo(() => collectRiderIds(events), [events]);
+  const timelineNames = useRiderNames(timelineRiderIds);
+  const mergedNames = useMemo(
+    () => new Map([...timelineNames, ...(riderNameById || new Map())]),
+    [timelineNames, riderNameById],
+  );
   const finishKm = Array.isArray(events)
     ? events.reduce((max, e) => (Number.isFinite(e?.km) && e.km > max ? e.km : max), 0)
     : 0;
@@ -69,7 +81,7 @@ function LiveFilmLine({ card, nowMs, riderNameById, children }) {
     distanceKm: finishKm || FALLBACK_PROGRESS_SCALE,
   });
   const event = finishKm ? latestFilmEvent(events, km) : null;
-  const described = event ? describeEvent(event, { riderNameById }) : null;
+  const described = event ? describeEvent(event, { riderNameById: mergedNames }) : null;
   return children(described ? { ...described, km: event.km } : null);
 }
 
