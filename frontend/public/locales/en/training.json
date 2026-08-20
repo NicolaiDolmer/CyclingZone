@@ -121,9 +121,26 @@
     "inFocusTitle": "Trained by the current focus.",
     "since": "Since {date}",
     "note": "Whole points gained since the season started. A gold dot marks the abilities the current focus trains.",
-    "pending": "Season totals appear once the active season is loaded."
+    "pending": "Season totals appear once the active season is loaded.",
+    "yesterdayContribution": "{pct}% of this bar came from yesterday's session."
   },
   "gainedToday": "+{count} today",
+  "yesterdayTrainedLine": "{n} trained toward their focus",
+  "yesterdayRestedLine": "{n} rested",
+  "yesterdayPointsLanded": "{n, plural, =0 {no points landed} one {# point landed} other {# points landed}}",
+  "yesterdayLine": {
+    "injured": "Injured, no training.",
+    "pointOne": "Landed a point in {ability}: {from} → {to}.",
+    "pointOnePlain": "Landed a point in {ability}.",
+    "pointMany": "Landed points in {abilities}.",
+    "rest": "Rest day. Fatigue {from} to {to}.",
+    "restFresh": "Rest day. Fresh again, fatigue {from} to {to}.",
+    "recovery": "Active recovery. Fatigue {from} to {to}.",
+    "nearBreakthrough": "Close to a breakthrough in {ability}.",
+    "progressing": "Progressing toward {ability}.",
+    "trained": "Trained today.",
+    "noFocus": "No focus set."
+  },
   "individualWeekPlanToggleOpen": "Individual weekly plan",
   "individualWeekPlanToggleClose": "Hide individual plan",
   "individualWeekPlanTitle": "Individual weekly plan",

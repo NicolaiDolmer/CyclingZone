@@ -1584,7 +1584,38 @@ export const SEED_TRAINING = {
   enabled: true,
   teamId: TEST_TEAM.id,
   slots: { total: 2, used: 1 },
-  todayRun: null,
+  // #3924 trin 1+2 (design-go 20/8): en gennemført kørsel i går, så preview kan
+  // vise "Yesterday's gains"-resuméet + kvitteringsbarens mørke gårsdags-segment
+  // uden at kræve et klik på "Træn i dag" (mock-serveren implementerer ikke
+  // run-today-endpointet). Ada trænede sprint i går uden at lande et point
+  // (+0-dagen #3988 handler om) — sprint gik 75 % → 82 %, som segmentet viser.
+  todayRun: {
+    executed_by: "manager",
+    bonus_applied: true,
+    tick_date: "2026-08-19",
+    created_at: "2026-08-20T05:00:00Z",
+    report: {
+      riders: [
+        {
+          rider_id: "rider-1",
+          name: "Ada Pedersen",
+          score: 3.1,
+          gains: {},
+          gains_detail: {},
+          progress_before: { sprint: 0.75, acceleration: 0.41 },
+          status: "normal",
+          form: 72,
+          fatigue: 38,
+          fatigue_delta: 4,
+          injured: false,
+          injury_days: 0,
+          focus: "sprint",
+          intensity: "hard",
+          focus_source: "plan",
+        },
+      ],
+    },
+  },
   plans: {
     "rider-1": { focus: "sprint", intensity: "normal" },
   },

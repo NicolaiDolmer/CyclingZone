@@ -29,7 +29,7 @@ import {
   TRAINING_SESSIONS_BY_LEVEL,
   SKILL_SESSIONS,
 } from "../lib/trainingDayTypes.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, yesterdaySummary, riderDayStories } from "../lib/trainingReport.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
 import FocusPanel from "../components/training/FocusPanel.jsx";
@@ -43,7 +43,7 @@ import {
   PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, ChevronDownIcon, TeamIcon,
   ArrowUpIcon, ArrowDownIcon, FlagIcon,
-  Tabs, TabList, Tab, TabPanel,
+  Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
@@ -178,6 +178,42 @@ function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
       </div>
     </div>
   );
+}
+
+// #3924 trin 1 (design-go 20/8): kvalitativ tekst pr. rytter til "Yesterday's
+// gains"-fold-ud'et. Ren i18n-komposition over riderDayStories' klassifikation
+// (trainingReport.js) — ingen ny data, ingen lofter/rater (kun det der faktisk
+// skete, eller en observerbar fremdriftsfraktion, jf. #1162 fog-gate).
+function yesterdayLineText(story, t, tRider) {
+  switch (story.type) {
+    case "injured":
+      return t("yesterdayLine.injured");
+    case "point": {
+      if (story.jumps.length === 1) {
+        const j = story.jumps[0];
+        const ability = tRider(`racePreview.derived.${j.ability}`);
+        return j.from != null && j.to != null
+          ? t("yesterdayLine.pointOne", { ability, from: j.from, to: j.to })
+          : t("yesterdayLine.pointOnePlain", { ability });
+      }
+      const abilities = story.jumps.map((j) => tRider(`racePreview.derived.${j.ability}`)).join(", ");
+      return t("yesterdayLine.pointMany", { abilities });
+    }
+    case "restFresh":
+      return t("yesterdayLine.restFresh", { from: story.fatigueFrom, to: story.fatigueTo });
+    case "rest":
+      return t("yesterdayLine.rest", { from: story.fatigueFrom, to: story.fatigueTo });
+    case "recovery":
+      return t("yesterdayLine.recovery", { from: story.fatigueFrom, to: story.fatigueTo });
+    case "nearBreakthrough":
+      return t("yesterdayLine.nearBreakthrough", { ability: tRider(`racePreview.derived.${story.ability}`) });
+    case "progressing":
+      return t("yesterdayLine.progressing", { ability: tRider(`racePreview.derived.${story.ability}`) });
+    case "trained":
+      return t("yesterdayLine.trained");
+    default:
+      return t("yesterdayLine.noFocus");
+  }
 }
 
 // #3721: fokus-åbne-knappen — DELT mellem roster-rækken og Development-fanens
@@ -329,6 +365,24 @@ export default function TrainingPage() {
     }
     return out;
   }, [todayRun]);
+
+  // #3924 trin 2: rider_id → hele gårsdagens rapport-linje, så roster-rækkens
+  // kvitteringsbar kan udlede gårsdagens bidrag (progress_before + gains pr.
+  // evne). Samme todayRun som alt andet på denne side — intet nyt kald.
+  const todayRowByRider = useMemo(() => {
+    const out = {};
+    for (const row of todayRun?.report?.riders ?? []) out[row.rider_id] = row;
+    return out;
+  }, [todayRun]);
+
+  // #3924 trin 1 (design-go 20/8): "Yesterday's gains"-resuméet øverst på Train
+  // today — holdniveau-tallene til den ÉNE linje + kvitteringens per-rytter-
+  // historier til fold-ud'et. Samme todayRun/progress som resten af siden.
+  const yesterday = todayRun?.report ? yesterdaySummary(todayRun.report.riders) : null;
+  const yesterdayStories = useMemo(
+    () => (todayRun?.report ? riderDayStories(todayRun.report.riders, progress) : []),
+    [todayRun, progress],
+  );
 
   // #1895 PR 1: dagens ugedag (display) + lokalt draft-state for ugerytme-panelet.
   const todayWeekday = useMemo(() => weekdayKeyForDate(new Date()), []);
@@ -674,6 +728,10 @@ export default function TrainingPage() {
       progress: progress[rider.id],
       capped: capped[rider.id],
       seasonGains: seasonGainsByRider[rider.id] ?? null,
+      // #3924 trin 2: gårsdagens bidrag som mørkere segment på baren — begge
+      // fra samme todayRun-linje, null når rytteren ikke indgik i dagens kørsel.
+      progressBefore: todayRowByRider[rider.id]?.progress_before ?? null,
+      gainsToday: todayRowByRider[rider.id]?.gains ?? null,
     });
 
     // #3459 V3: løbsdags-badge — feltet findes KUN når race_day_engine_enabled er
@@ -1112,6 +1170,33 @@ export default function TrainingPage() {
       <div className="space-y-6">
         {runError && (
           <p className="text-cz-danger text-sm">{runError}</p>
+        )}
+
+        {/* #3924 trin 1 (design-go 20/8, ejer-godkendt): "Yesterday's gains" —
+            ÉN resumé-linje øverst på Train today, foldet ud til en kvalitativ
+            linje pr. rytter. "Ingen nyt kort" (fold-disciplin): genbruger
+            CollapsibleSection (#3914's delte fold-primitiv) i stedet for en ny
+            stat-grid; ingen ny beregning — todayRun + live progress, samme
+            kilde som resten af siden. Skjult uden en dagens kørsel. */}
+        {yesterday && (
+          <CollapsibleSection
+            title={[
+              t("yesterdayTrainedLine", { n: yesterday.trainedFocus }),
+              t("yesterdayRestedLine", { n: yesterday.rested }),
+              t("yesterdayPointsLanded", { n: yesterday.pointsLanded }),
+            ].join(" · ")}
+          >
+            <ul className="flex flex-col gap-2">
+              {yesterdayStories.map((story) => (
+                <li key={story.riderId} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                  <RiderLink id={story.riderId} className="font-medium text-cz-1 hover:text-cz-accent transition-colors">
+                    {story.riderName}
+                  </RiderLink>
+                  <span className="text-cz-3">{yesterdayLineText(story, t, tRider)}</span>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleSection>
         )}
 
         {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra

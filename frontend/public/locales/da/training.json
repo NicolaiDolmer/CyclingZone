@@ -121,9 +121,26 @@
     "inFocusTitle": "Trænes af det aktuelle fokus.",
     "since": "Siden {date}",
     "note": "Hele point opnået siden sæsonen startede. En gylden prik markerer de evner det aktuelle fokus træner.",
-    "pending": "Sæsonens tal vises, når den aktive sæson er hentet."
+    "pending": "Sæsonens tal vises, når den aktive sæson er hentet.",
+    "yesterdayContribution": "{pct}% af denne bar kom fra gårsdagens pas."
   },
   "gainedToday": "+{count} i dag",
+  "yesterdayTrainedLine": "{n} trænede mod deres fokus",
+  "yesterdayRestedLine": "{n} hvilede",
+  "yesterdayPointsLanded": "{n, plural, =0 {ingen point landet} one {# point landet} other {# point landet}}",
+  "yesterdayLine": {
+    "injured": "Skadet, ingen træning.",
+    "pointOne": "Landede et point i {ability}: {from} → {to}.",
+    "pointOnePlain": "Landede et point i {ability}.",
+    "pointMany": "Landede point i {abilities}.",
+    "rest": "Hviledag. Træthed {from} til {to}.",
+    "restFresh": "Hviledag. Frisk igen, træthed {from} til {to}.",
+    "recovery": "Aktiv restitution. Træthed {from} til {to}.",
+    "nearBreakthrough": "Tæt på et gennembrud i {ability}.",
+    "progressing": "På vej mod {ability}.",
+    "trained": "Trænede i dag.",
+    "noFocus": "Intet fokus valgt."
+  },
   "individualWeekPlanToggleOpen": "Individuel ugeplan",
   "individualWeekPlanToggleClose": "Skjul individuel plan",
   "individualWeekPlanTitle": "Individuel ugeplan",

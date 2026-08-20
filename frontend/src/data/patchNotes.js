@@ -82,6 +82,20 @@ export const PATCHES = [
         "refs": [3721]
       },
       {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Yesterday's gains, at a glance",
+          "body": "Train today now opens with one line: how many riders trained toward their focus, how many rested, and how many points landed. Open it for a plain sentence per rider, like \"Rest day. Fresh again, fatigue 24 to 9.\"\n\nThe progress bar next to each ability also gets a darker gold segment for yesterday's session, so a hard training day always shows up, even on the many days it doesn't land a whole point."
+        },
+        "da": {
+          "title": "Gårsdagens fremgang på ét blik",
+          "body": "Træn i dag åbner nu med én linje: hvor mange ryttere trænede mod deres fokus, hvor mange hvilede, og hvor mange point der landede. Fold den ud for én almindelig sætning pr. rytter, som \"Hviledag. Frisk igen, træthed 24 til 9.\"\n\nFremdriftsbaren ved hver evne får også et mørkere guld-segment for gårsdagens pas, så en hård træningsdag altid kan ses, også de mange dage den ikke lander et helt point."
+        },
+        "refs": [3924, 3988]
+      },
+      {
         "category": "improved",
         "audience": "player",
         "topic": "Team",
