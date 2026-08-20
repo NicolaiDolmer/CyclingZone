@@ -32,40 +32,40 @@ på 2026-08-25.
 
 | Seed | FØR | EFTER |
 |---|---|---|
-| 3 | 45.0 % (63/140) | 37.1 % (52/140) |
-| 4 | 45.0 % (63/140) | 37.1 % (52/140) |
-| 5 | 45.0 % (63/140) | 37.1 % (52/140) |
-| **gennemsnit** | **45.0 %** | **37.1 %** |
+| 3 | 82.1 % (115/140) | 74.3 % (104/140) |
+| 4 | 82.1 % (115/140) | 74.3 % (104/140) |
+| 5 | 82.1 % (115/140) | 74.3 % (104/140) |
+| **gennemsnit** | **82.1 %** | **74.3 %** |
 
 ## 2. Kalender-spænd pr. GT (kalenderdage)
 
 | Seed | GT | FØR (dage) | EFTER (dage) |
 |---|---|---|---|
-| 3 | Giro della Penisola | 12 | 10 |
+| 3 | Giro della Penisola | 7 | 8 |
 | 3 | Tour de l'Hexagone | 5 | 5 |
-| 3 | Vuelta Ibérica | 5 | 4 |
-| 4 | Giro della Penisola | 12 | 10 |
+| 3 | Vuelta Ibérica | 6 | 4 |
+| 4 | Giro della Penisola | 7 | 8 |
 | 4 | Tour de l'Hexagone | 5 | 5 |
-| 4 | Vuelta Ibérica | 5 | 4 |
-| 5 | Giro della Penisola | 12 | 10 |
+| 4 | Vuelta Ibérica | 6 | 4 |
+| 5 | Giro della Penisola | 7 | 8 |
 | 5 | Tour de l'Hexagone | 5 | 5 |
-| 5 | Vuelta Ibérica | 5 | 4 |
+| 5 | Vuelta Ibérica | 6 | 4 |
 
 Spredning (maks−min spænd på tværs af de 3 GT'er, mål ≤1 dag EFTER):
 
 | Seed | FØR | EFTER |
 |---|---|---|
-| 3 | 7 | 6 |
-| 4 | 7 | 6 |
-| 5 | 7 | 6 |
+| 3 | 3 | 4 |
+| 4 | 3 | 4 |
+| 5 | 3 | 4 |
 
 ## 3. Dage uden afgørelse (D1)
 
 | Seed | FØR | EFTER |
 |---|---|---|
-| 3 | 5 (1,10,11,18,24) | 4 (1,13,19,24) |
-| 4 | 5 (1,10,11,18,24) | 4 (1,13,19,24) |
-| 5 | 5 (1,10,11,18,24) | 4 (1,13,19,24) |
+| 3 | 12 (0,1,4,5,10,12,14,16,18,20,22,25) | 10 (0,1,5,11,13,15,17,20,22,24) |
+| 4 | 12 (0,1,4,5,10,12,14,16,18,20,22,25) | 10 (0,1,5,11,13,15,17,20,22,24) |
+| 5 | 12 (0,1,4,5,10,12,14,16,18,20,22,25) | 10 (0,1,5,11,13,15,17,20,22,24) |
 
 ## 4. ITT-profiler pr. GT (flad "itt" vs. kuperet "itt_hilly")
 
@@ -85,9 +85,9 @@ Spredning (maks−min spænd på tværs af de 3 GT'er, mål ≤1 dag EFTER):
 
 | Seed | Klasse/etape-bånd-brud (#3328) FØR/EFTER | Hviledage degraderet FØR/EFTER | 5 events/dag holdt FØR/EFTER | GT-real-day-separation (#3472 v3) FØR/EFTER |
 |---|---|---|---|---|
-| 3 | 0/0 | 0/0 | true/true | 0/0 |
-| 4 | 0/0 | 0/0 | true/true | 0/0 |
-| 5 | 0/0 | 0/0 | true/true | 0/0 |
+| 3 | 0/0 | 8/5 | false/false | 3/3 |
+| 4 | 0/0 | 8/5 | false/false | 3/3 |
+| 5 | 0/0 | 8/5 | false/false | 3/3 |
 
 GT-real-day-separation-kolonnen er tilføjet efter en regression opdaget under H-implementeringen
 (17/8 sen aften): C's dagsafgørelses-bytte kunne flytte en GT-etape og bryde "ingen delt
@@ -102,10 +102,10 @@ Ejer-mål: ~35 % hilly, ~20 % rolling (prod målte 0 % for begge, 0/254 hhv. 0/6
 
 | Seed | Hilly FØR | Hilly EFTER | Rolling FØR | Rolling EFTER |
 |---|---|---|---|---|
-| 3 | 36.0 % (9/25) | 32.0 % (8/25) | 18.2 % (4/22) | 17.6 % (3/17) |
-| 4 | 30.0 % (6/20) | 40.9 % (9/22) | 15.0 % (3/20) | 21.1 % (4/19) |
-| 5 | 38.5 % (10/26) | 37.0 % (10/27) | 25.0 % (5/20) | 25.0 % (4/16) |
-| **gennemsnit** | **34.8 %** | **36.6 %** | **19.4 %** | **21.2 %** |
+| 3 | 29.6 % (8/27) | 25.9 % (7/27) | 12.0 % (3/25) | 5.0 % (1/20) |
+| 4 | 29.4 % (5/17) | 42.1 % (8/19) | 15.4 % (4/26) | 22.2 % (6/27) |
+| 5 | 20.0 % (5/25) | 24.0 % (6/25) | 29.2 % (7/24) | 31.6 % (6/19) |
+| **gennemsnit** | **26.3 %** | **30.7 %** | **18.9 %** | **19.6 %** |
 
 ## 7. Cobbles-fordeling pr. uge (#3546 F, D1)
 
@@ -127,8 +127,8 @@ overlap-strukturen kommer fra selection+packing, ikke fra parcours-trækket).
 
 | Division (tier) | Cap | FØR maxOverlap | Inden for cap? | EFTER maxOverlap | Inden for cap? |
 |---|---|---|---|---|---|
-| D1 | 3 | 3 | JA | 3 | JA |
-| D2 | 3 | 3 | JA | 3 | JA |
+| D1 | 3 | 2 | JA | 3 | JA |
+| D2 | 3 | 2 | JA | 2 | JA |
 | D3 | 2 | 2 | JA | 2 | JA |
 | D4 | 2 | 2 | JA | 2 | JA |
 
@@ -140,31 +140,23 @@ stræk-faktor = spænd/stages (1,0 = ingen strækning).
 
 | Seed | Maks stræk-faktor FØR | Median FØR | Maks stræk-faktor EFTER | Median EFTER | Brud på stages+3 EFTER |
 |---|---|---|---|---|---|
-| 3 | 0.83 | 0.63 | 0.83 | 0.57 | 0 |
-| 4 | 0.83 | 0.63 | 0.83 | 0.57 | 0 |
-| 5 | 0.83 | 0.63 | 0.83 | 0.57 | 0 |
+| 3 | 0.50 | 0.50 | 0.63 | 0.63 | 0 |
+| 4 | 0.50 | 0.50 | 0.63 | 0.63 | 0 |
+| 5 | 0.50 | 0.50 | 0.63 | 0.63 | 0 |
 
 De to navngivne løb thelamba målte (Tour du Massif Central 6 etaper/14 dage, La Corsa dei
 Due Mari 7 etaper/13 dage) FØR H-fixet, EFTER (seed 3, EFTER-kolonnen):
 
-- **Tour du Massif Central**: 6 etaper, spænd 5 dage, stræk-faktor 0.83 (grænse 9)
-- **La Corsa dei Due Mari**: 7 etaper, spænd 4 dage, stræk-faktor 0.57 (grænse 10)
+- Tour du Massif Central: ikke fundet i D1's selektion denne kørsel (selection er ikke seed-afhængig, men kan skifte hvis kataloget ændres)
+- La Corsa dei Due Mari: ikke fundet i D1's selektion denne kørsel (selection er ikke seed-afhængig, men kan skifte hvis kataloget ændres)
 
 Alle ikke-GT-etapeløb, EFTER, sorteret efter værste stræk-faktor (seed 3):
 
 | Løb | Etaper | Spænd | Stræk-faktor |
 |---|---|---|---|
-| Tour du Massif Central | 6 | 5 | 0.83 |
-| Tour de Bretagne | 6 | 4 | 0.67 |
-| Tour du Léman | 6 | 4 | 0.67 |
-| La Course au Soleil | 8 | 5 | 0.63 |
 | Tour des Volcans d'Auvergne | 8 | 5 | 0.63 |
-| Ronde van Limburg | 7 | 4 | 0.57 |
-| Volta Catalana | 7 | 4 | 0.57 |
-| Tour de la Vistule | 7 | 4 | 0.57 |
-| La Corsa dei Due Mari | 7 | 4 | 0.57 |
-| Région Pays de la Loire Tour Mineur | 3 | 1 | 0.33 |
-| Tour of South Australia | 6 | 2 | 0.33 |
+| La Course au Soleil | 8 | 5 | 0.63 |
+| Tour de Bretagne | 6 | 2 | 0.33 |
 
 ## Reference: rå prod-baseline (issue #3546, målt 16-17/8: FØR nogen kode i denne PR)
 
