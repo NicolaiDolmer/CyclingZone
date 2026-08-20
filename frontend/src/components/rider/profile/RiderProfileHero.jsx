@@ -136,6 +136,13 @@ export default function RiderProfileHero({
     : t("profile.hero.potentialOwn");
   const isU23 = rider.is_u25 != null && age != null && age < 23;
   const hasRating = Number.isFinite(overallRating);
+  // Overgangs-designet (ejer 18/8): rollens loft står som under-linje på
+  // prognose-statten, så det gamle loft-tal er bevaret lige dér spilleren
+  // plejede at kigge. Kommer fra estimates-payloaden (roleCeilRating — rolle+
+  // alder-bestemt, intet rytter-hemmeligt).
+  const potEstimate = scouting?.estimateFor?.(rider.id);
+  const potLoft = Number.isFinite(potEstimate?.loft) ? potEstimate.loft : null;
+  const potLoftRole = potEstimate?.role ? t(`riderTypes:types.${potEstimate.role}`) : null;
   const contractText = rider.contract_end_season != null
     ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
     : t("header.noContract");
@@ -269,6 +276,15 @@ export default function RiderProfileHero({
             ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel />
             : "—"}
           valueClassName="text-[15px] font-semibold"
+          sub={potLoft != null && (
+            <p
+              className="font-data text-2xs text-cz-3 tabular-nums mt-1"
+              title={potLoftRole ? t("scouting.loftTitle", { role: potLoftRole, value: potLoft }) : undefined}
+              data-testid="rider-hero-loft"
+            >
+              {t("scouting.loftShort", { value: potLoft })}
+            </p>
+          )}
         />
         <HeroStat
           label={t("profile.hero.valueEyebrow")}

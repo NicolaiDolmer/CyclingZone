@@ -10,7 +10,7 @@
 // ikke af en kommentar der lover det.
 
 export const DAY_TYPES = Object.freeze(["rest", "recovery", "skill", "training"]);
-export const SKILL_SESSIONS = Object.freeze(["technique", "aero"]);
+export const SKILL_SESSIONS = Object.freeze(["technique", "aero", "loebslaere"]);
 export const TRAINING_SESSIONS_BY_LEVEL = Object.freeze({
   easy: Object.freeze(["endurance"]),
   normal: Object.freeze(["tempo"]),
@@ -20,6 +20,7 @@ export const TRAINING_LEVELS = Object.freeze(Object.keys(TRAINING_SESSIONS_BY_LE
 export const SESSION_INTENSITY = Object.freeze({
   technique: "easy",
   aero: "easy",
+  loebslaere: "easy",
   endurance: "easy",
   tempo: "normal",
   vo2max: "hard",

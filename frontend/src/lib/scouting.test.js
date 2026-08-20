@@ -12,8 +12,14 @@ test("potentialLabelKey mapper midtpunkt til bånd", () => {
   assert.equal(potentialLabelKey({ lo: 4, hi: 5 }), "high");
   assert.equal(potentialLabelKey({ lo: 3, hi: 4 }), "solid");
   assert.equal(potentialLabelKey({ lo: 2, hi: 3 }), "rotation");
-  assert.equal(potentialLabelKey({ lo: 1, hi: 2 }), "limited");
   assert.equal(potentialLabelKey(null), null);
+});
+
+// #3651: "limited"/"Limited upside" er fjernet helt, ikke erstattet — under
+// rotation-tærsklen viser vi nu ingen kvalitativ label.
+test("potentialLabelKey: under rotation-tærsklen → ingen label (#3651, 'limited' fjernet)", () => {
+  assert.equal(potentialLabelKey({ lo: 1, hi: 2 }), null);
+  assert.equal(potentialLabelKey({ lo: 1, hi: 1, exact: true }), null);
 });
 
 test("potentialLabelKey: eksakt estimat (lo == hi) får også label", () => {
@@ -27,7 +33,7 @@ test("potentialLabelKey: skjult (uscoutet) estimat → ingen label (#1543)", () 
 
 // ── Sortering ─────────────────────────────────────────────────────────────────
 
-test("scoutSortValue: midtpunkt af stjerneskalaen (fallback uden ceil); manglende estimat → null", () => {
+test("scoutSortValue: midtpunkt af stjerneskalaen (fallback uden bånd); manglende estimat → null", () => {
   assert.equal(scoutSortValue({ lo: 3, hi: 5 }), 4);
   assert.equal(scoutSortValue({ lo: 4.5, hi: 4.5, exact: true }), 4.5);
   assert.equal(scoutSortValue(null), null);
@@ -58,4 +64,21 @@ test("scoutSortValue: sorterer på det VISTE ceil-bånd, ikke den skjulte stjern
 
 test("scoutSortValue: falder til stjerneskalaen når `ceil` mangler (defensiv, ældre payload)", () => {
   assert.equal(scoutSortValue({ lo: 3, hi: 5, level: 1 }), 4);
+});
+
+// #3787: sortering skal følge PROGNOSE-båndets (rating-point) midtpunkt, som
+// er det tal spilleren ser — ikke stjerne-estimatets midtpunkt (1-6-skala).
+test("scoutSortValue: bruger prog-båndets midtpunkt frem for stjerne-midtpunktet, når begge findes", () => {
+  const estimate = { lo: 4.5, hi: 5, role: "sprinter", now: 29, prog: { lo: 40, hi: 48 } };
+  assert.equal(scoutSortValue(estimate), 44);
+});
+
+test("scoutSortValue: `ceil` er en gyldig alias for `prog` (#3746 kompatibilitet)", () => {
+  const estimate = { lo: 4.5, hi: 5, role: "sprinter", now: 29, ceil: { lo: 40, hi: 48 } };
+  assert.equal(scoutSortValue(estimate), 44);
+});
+
+test("scoutSortValue: `prog` foretrækkes hvis begge `prog` og `ceil` findes", () => {
+  const estimate = { lo: 4.5, hi: 5, prog: { lo: 40, hi: 48 }, ceil: { lo: 10, hi: 12 } };
+  assert.equal(scoutSortValue(estimate), 44);
 });

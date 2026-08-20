@@ -1607,7 +1607,9 @@ export default function RiderStatsPage() {
     ? pendingActions.transfer_offers.find(o => o.rider_id === rider.id) || null
     : null;
 
-  // #2000 stykke 2: progress-fraktion pr. evne til Overblik-evnekolonnerne.
+  // #2000 stykke 2 / #3721: progress-fraktion pr. evne til Træning-fanens
+  // sæson-kvittering (RiderTrainingTab, PR #3717) — Overblik viste den samme
+  // bjælke tidligere, men den dublet er fjernet (#3721; Overblik viser kun tal).
   // Egne ryttere foretrækker den friske training.progress (optimistisk efter et
   // tick); ellers DB'ens ability_progress. Bygges i SSOT-evne-rækkefølge.
   const overviewProgress = {};
@@ -1909,8 +1911,6 @@ export default function RiderStatsPage() {
           <div className="flex flex-col gap-[13px]">
             <RiderAbilityColumns
               abilities={rider.abilities}
-              progressByKey={overviewProgress}
-              isOwnRider={isMyRider}
             />
             <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-[13px] items-start`}>
               <RiderTypeRadar

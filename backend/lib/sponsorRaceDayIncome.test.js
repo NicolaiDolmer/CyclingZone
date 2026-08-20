@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   computeRaceDayCredits,
@@ -6,6 +6,14 @@ import {
   payRaceDaySponsorsToDate,
 } from "./sponsorRaceDayIncome.js";
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from "./economyConstants.js";
+import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
+
+// #4010: snapshot-cachen er modul-global og lever derfor på tvaers af tests i
+// samme fil. Fixtures her genbruger bevidst race-id "r1", saa uden en nulstilling
+// ville test nr. 2 se test nr. 1's deltagere/podier. I produktion invalideres
+// cachen af selve skrivestierne (stageResultRpc.js, raceResultsEngine.js,
+// betaResetService.js) — det er samme API der kaldes her.
+beforeEach(() => clearRaceResultsSnapshots());
 
 test("kreditér per_race_day_rate × stages for hvert deltagende hold", () => {
   const credits = computeRaceDayCredits({
@@ -196,7 +204,7 @@ function makeSupabase({
   teamOwners = {},          // #3315: { [teamId]: userId } — sponsor_paid-notifikation
   failNotificationForUserIds = [], // #3315: simulerer en fejlende notifications-insert
 } = {}) {
-  const state = { rpcCalls: [], updates: [], keyPages: [], notifications: [], notificationInserts: [] };
+  const state = { rpcCalls: [], updates: [], keyPages: [], notifications: [], notificationInserts: [], raceResultsFetches: [] };
   const failNotify = new Set(failNotificationForUserIds);
 
   function thenable(rows) {
@@ -297,6 +305,8 @@ function makeSupabase({
           order: () => b,
           range(from, to) {
             const rows = resultsByRaceId[b._raceId] ?? [];
+            // #4010: tael hver hentning, saa snapshot-cachen kan verificeres.
+            if (from === 0) state.raceResultsFetches.push(b._raceId);
             return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
           },
           // #3315: uden .range() (dvs. et upagineret kald, som buggen så ud før
@@ -875,4 +885,89 @@ test("#3123: nøgle-hentningen paginerer forbi PostgREST's 1000-rækkers loft", 
   assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
   assert.equal(supabase.state.rpcCalls.length, 1, "kun det ene ubetalte løb forsøges");
   assert.equal(supabase.state.rpcCalls[0].payload.idempotency_key, "sponsor_race_day:r1001:t1");
+});
+
+// ─── #4010: snapshot-cache for completede løb ────────────────────────────────
+// Rod-årsag: sweepen kører hvert 5. minut og hentede ALLE race_results for ALLE
+// completede løb ved hver tick — 203.849 kald, 1.038 s DB-tid og 1,9 TB
+// buffer-trafik i døgnet (målt 20/8), næsten udelukkende for løb der for længst
+// var betalt. Et completet løbs resultater er uforanderlige, så de afledte
+// værdier caches. Testene her holder både genbrug OG invalidering fast.
+
+test("#4010 completet løb hentes kun én gang på tværs af ticks", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", stages: 2, status: "completed" }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 1 }] },
+  });
+
+  await payRaceDaySponsorsToDate("s1", supabase);
+  await payRaceDaySponsorsToDate("s1", supabase);
+  await payRaceDaySponsorsToDate("s1", supabase);
+
+  assert.deepEqual(supabase.state.raceResultsFetches, ["r1"],
+    "tick 2 og 3 skal genbruge snapshottet i stedet for at hente race_results igen");
+});
+
+test("#4010 clearRaceResultsSnapshots tvinger en ny hentning", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", stages: 2, status: "completed" }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 1 }] },
+  });
+
+  await payRaceDaySponsorsToDate("s1", supabase);
+  // Svarer til en resultat-skrivning i prod (stageResultRpc/raceResultsEngine/betaReset).
+  clearRaceResultsSnapshots();
+  await payRaceDaySponsorsToDate("s1", supabase);
+
+  assert.deepEqual(supabase.state.raceResultsFetches, ["r1", "r1"]);
+});
+
+test("#4010 et løb der IKKE er completet caches aldrig", async () => {
+  // Kun completede løb har uforanderlige resultater. Et igangværende etapeløb
+  // får nye rækker mellem ticks, så det skal hentes forfra hver gang.
+  const supabase = makeSupabase({
+    races: [{ id: "r1", stages: 2, status: "in_progress" }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 1 }] },
+  });
+
+  await payRaceDaySponsorsToDate("s1", supabase);
+  await payRaceDaySponsorsToDate("s1", supabase);
+
+  assert.deepEqual(supabase.state.raceResultsFetches, ["r1", "r1"]);
+});
+
+test("#4010 snapshottet bevarer sejre og podier på tværs af ticks", async () => {
+  // Semantik-guard: snapshottet gemmer kun rank 1-3, fordi det er alt
+  // computeResultBonusCredits læser. Bonusserne skal derfor være identiske i
+  // tick 2 (fra cache) og tick 1 (fra DB) — her testet ved at nulstille de
+  // betalte nøgler, så tick 2 forsøger den samme kreditering igen.
+  const supabase = makeSupabase({
+    races: [{ id: "r1", stages: 3, status: "completed" }],
+    contracts: [{
+      id: "c1", team_id: "t1", sponsor_name: "Vesna", per_race_day_rate: 0,
+      bonus_clauses: [{ type: "stage_win", amount: 5000 }, { type: "podium", amount: 1000 }],
+      results_bonus_paid: 0,
+    }],
+    resultsByRaceId: {
+      r1: [
+        { team_id: "t1", result_type: "stage", rank: 1 },
+        { team_id: "t1", result_type: "stage", rank: 3 },
+        { team_id: "t1", result_type: "stage", rank: 9 },   // uden for podiet
+        { team_id: "t1", result_type: "gc", rank: 1 },      // ikke 'stage'
+      ],
+    },
+  });
+
+  await payRaceDaySponsorsToDate("s1", supabase);
+  const firstTick = supabase.state.rpcCalls.map((c) => c.delta);
+  supabase.state.rpcCalls.length = 0;
+  await payRaceDaySponsorsToDate("s1", supabase);
+
+  assert.deepEqual(firstTick, [6000], "1 sejr (5000) + 1 podie (1000)");
+  assert.deepEqual(supabase.state.rpcCalls.map((c) => c.delta), firstTick,
+    "cachet tick skal give præcis samme bonus som den DB-hentede");
+  assert.deepEqual(supabase.state.raceResultsFetches, ["r1"]);
 });

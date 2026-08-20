@@ -1,0 +1,88 @@
+-- #3746 trin 7 — GENBEREGNING AF DE GEMTE UDVIKLINGSLOFTER.
+--
+-- Denne fil er DOKUMENTATION + ROLLBACK. Selve skrivningen sker fra
+-- `backend/scripts/dev/lofterApply3746.mjs`, ikke herfra: det nye loft er en
+-- JS-beregning (buildCapsForRider) over 15 evner pr. rytter, ikke et
+-- SQL-udtryk. Værktøjet bygger planen forfra mod en frisk læsning hver gang
+-- det kører (samme princip som #3591's søster-migration).
+--
+-- SCOPE er BREDERE end #3591: dér var det én afgrænset fejlgruppe (516
+-- ryttere). Trin 7 ændrede selve formlen (fladt rolle-tag, ingen potentiale,
+-- gulvet fjernet — se backend/lib/riderProgression.js's buildCapsForRider),
+-- så scriptet dækker ALLE ryttere med en `rider_derived_abilities`-række.
+-- Dry-run mod docs/snapshots/3591 viste 8.717/8.717 ryttere med ændret loft
+-- (se scriptets --snapshot-tilstand og backend/lib/dev/backfill3746Core.js).
+--
+-- ══ GULV-BRUD ER NU LOVLIGT (#3794, ejer-beslutning 16/8) — LÆS DETTE ══
+-- Før trin 7 returnerede `buildCapsForRider` `max(tapered, current)`: et
+-- rytters evne kunne aldrig havne over sit eget loft, fordi loftet blev
+-- trukket op til at møde evnen. Den garanti er FJERNET. Loftet er nu rent
+-- formel-bestemt (rolleklassens tag, aftrappet efter alder, afrundet), og en
+-- rytters evne KAN ligge over sit nye loft. Det er DESIGNET, ikke en fejl:
+--   - ingen spiller mister evne af den grund — dailyTraining lægger kun til,
+--     og et loft under evnen giver gap = 0 (nul videre vækst), ikke tab;
+--   - rytteren "står stille" på den evne, indtil loftet (som IKKE ændrer sig
+--     af hans træning) indhenter ham, eller aldring sænker evnen igen;
+--   - gulvet løste ikke noget reelt problem — det bandt bare det viste
+--     "potentiale" til dagens evne, så det bevægede sig for 78 % af
+--     populationen hver gang de trænede (#3794's rod-årsags-analyse).
+-- Denne migration/backfill må derfor IKKE forsøge at genindføre et gulv, og
+-- et højt "gulv-brud"-tal i dry-run-rapporten er IKKE en grund til at stoppe
+-- kørslen — det er en forventet konsekvens af at fjerne en garanti der aldrig
+-- beskyttede mod noget ægte tab.
+--
+-- FORUDSÆTNING: ingen (i modsætning til #3591 kræver denne IKKE et forudgående
+-- #3593-lignende migration) — type-valget falder tilbage til de persisterede
+-- primary_type/secondary_type for ryttere uden et archetype_draw, hvilket er
+-- den samme semantik `deriveForRiderIds` allerede bruger i prod.
+--
+-- KØRSEL (se scriptets header for fuld sikkerheds-kæde):
+--   offline dry-run mod snapshot (ingen DB):
+--     node backend/scripts/dev/lofterApply3746.mjs --snapshot=docs/snapshots/3591/riders_full.json
+--   dry-run mod prod (default):
+--     infisical run --env=prod -- node backend/scripts/dev/lofterApply3746.mjs
+--   skrivning mod prod (kræver begge flag):
+--     infisical run --env=prod -- node backend/scripts/dev/lofterApply3746.mjs --apply --jeg-har-set-dry-runnet
+--
+-- KOLONNEN DER RØRES: `rider_derived_abilities.ability_caps`. Intet andet —
+-- ikke evner, ikke typer, ikke base_value/market_value, ikke løn.
+
+-- ── Backup-tabellen værktøjet fylder FØR det skriver ────────────────────────
+CREATE TABLE IF NOT EXISTS public.rider_caps_3746_backup_20260816 (
+  rider_id            uuid PRIMARY KEY REFERENCES public.riders(id) ON DELETE CASCADE,
+  ability_caps_before jsonb,
+  captured_at         timestamptz NOT NULL DEFAULT now()
+);
+
+-- ── ROLLBACK ────────────────────────────────────────────────────────────────
+-- Gendanner de gemte lofter præcis som de stod før kørslen. Idempotent: anden
+-- kørsel skriver 0 rækker.
+--
+--   BEGIN;
+--   UPDATE public.rider_derived_abilities d
+--   SET ability_caps = b.ability_caps_before
+--   FROM public.rider_caps_3746_backup_20260816 b
+--   WHERE d.rider_id = b.rider_id
+--     AND d.ability_caps IS DISTINCT FROM b.ability_caps_before;
+--   COMMIT;
+--
+--   -- post-verify (skal give 0):
+--   SELECT count(*) FROM public.rider_derived_abilities d
+--     JOIN public.rider_caps_3746_backup_20260816 b ON b.rider_id = d.rider_id
+--    WHERE d.ability_caps IS DISTINCT FROM b.ability_caps_before;
+--
+-- BEMÆRK: en rollback af DENNE migration genindfører IKKE gulvet (#3794 er en
+-- separat kode-ændring i buildCapsForRider, ikke data). En fuld tilbagerulning
+-- af hele trin 7 kræver også at reverte koden (git revert af d02b524b m.fl.),
+-- ellers vil den daglige trænings-motor øjeblikkeligt genberegne de
+-- tilbagerullede lofter med den NYE formel igen.
+
+-- ── POST-VERIFY efter selve kørslen ─────────────────────────────────────────
+-- Scriptet gør det selv og fejler højlydt (læser tilbage fra DB og
+-- sammenligner mod planen), men tallene kan efterprøves manuelt sådan:
+--
+--   -- backuppen dækker de skrevne rækker:
+--   SELECT count(*) FROM public.rider_caps_3746_backup_20260816;
+--
+--   -- anden kørsel af scriptet (dry-run) bør nu finde 0 ryttere at ændre,
+--   -- da caps-formlen er ren og ikke afhænger af akkumuleret state.

@@ -340,17 +340,18 @@ test("skipGrowth false/udeladt → identisk med default-adfærd (golden test)", 
 
 test("youthRoleFactor: primær-naturlig > sekundær-naturlig > neutral > modsat", () => {
   // climber primary, tt secondary. climbing er primær-naturlig (climber.weights.climbing=3>0).
-  // #3709 trin 3: neutral-eksemplet var `positioning`, men den er nu HÅNDVÆRK og har
-  // sit eget gulv (0,95). `descending` er neutral for begge typer og er derfor det
-  // rene neutral-eksempel nu — se håndværks-testene nedenfor for den nye klasse.
+  // Trin 7: taget er absolut pr. rolleklasse (roleTags); youthRoleFactor er
+  // SUPERSEDERET og returnerer nu klassens tag som andel af signatur-taget, så
+  // ordningen mellem klasserne stadig kan aflæses af gamle scripts.
+  const tags = YOUTH_PROGRESSION_CONFIG.roleTags;
   const primary = youthRoleFactor("climber", "tt", "climbing");
   const secondary = youthRoleFactor("climber", "tt", "time_trial"); // tt.weights.time_trial=3>0, men kun secondary
   const neutral = youthRoleFactor("climber", "tt", "descending");   // ingen type-vægt, ikke håndværk
   const opposite = youthRoleFactor("climber", "tt", "sprint");      // climber.weights.sprint=-2<0
-  assert.equal(primary, YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor);
-  assert.equal(secondary, YOUTH_PROGRESSION_CONFIG.naturalSecondaryFactor);
-  assert.equal(neutral, YOUTH_PROGRESSION_CONFIG.neutralFactor);
-  assert.equal(opposite, YOUTH_PROGRESSION_CONFIG.oppositeFactor);
+  assert.equal(primary, tags.signatur / tags.signatur);
+  assert.equal(secondary, tags.sekundaer / tags.signatur);
+  assert.equal(neutral, tags.andenRolle / tags.signatur);
+  assert.equal(opposite, tags.svaghed / tags.signatur);
   assert.ok(primary > secondary && secondary > neutral && neutral > opposite);
 });
 
@@ -364,53 +365,50 @@ test("håndværk: positioning + tactics er de ENESTE to evner med gulv (beslutni
 });
 
 test("håndværk: en type der hverken ejer eller modarbejder evnen får gulvet, ikke neutral", () => {
-  // gc ejer hverken positioning eller tactics — før trin 3 stod begge på 0,45.
+  // gc ejer hverken positioning eller tactics — uden håndværks-klassen stod
+  // begge som andenRolle. Trin 7: håndværks-taget er absolut (roleTags).
+  const tags = YOUTH_PROGRESSION_CONFIG.roleTags;
   for (const ability of CRAFT_ABILITIES) {
-    assert.equal(youthRoleFactor("gc", "climber", ability), YOUTH_PROGRESSION_CONFIG.craftFactor);
+    assert.equal(abilityRoleClass("gc", "climber", ability), "haandvaerk");
+    assert.equal(youthAbilityCap(3, "gc", "climber", ability), tags.haandvaerk);
   }
-  assert.ok(YOUTH_PROGRESSION_CONFIG.craftFactor > YOUTH_PROGRESSION_CONFIG.neutralFactor);
+  assert.ok(tags.haandvaerk > tags.andenRolle);
 });
 
 test("håndværk: gulvet LØFTER, det erstatter aldrig — signatur slår gulvet (#3682's gulv-løft-krav)", () => {
   // Sprinteren ejer nu positioning (#3682) → signatur-klassen vinder over gulvet.
+  const tags = YOUTH_PROGRESSION_CONFIG.roleTags;
   assert.equal(abilityRoleClass("sprinter", "climber", "positioning"), "signatur");
-  assert.equal(
-    youthRoleFactor("sprinter", "climber", "positioning"),
-    YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor,
-  );
-  // Gulvet sammenligner på FAKTOREN, ikke på klasse-navnet. Efter trin 4 er
-  // sekundær (1,10) højere end håndværk (0,95), så en rytter med sprinter som
-  // sekundær bliver `sekundaer` — ikke fordi navnet rangerer højere, men fordi
-  // tallet gør. Før trin 4 var forholdet omvendt (0,82 < 0,95) og samme kode gav
-  // `haandvaerk`. Det er hele grunden til at sammenligningen står på faktorer:
-  // ændres tallene igen, kan gulvet stadig ikke sænke nogens tag.
-  // Klasse-navnet er IKKE en konstant der kan pinnes: det følger kalibreringen.
-  // Trin 4 satte sekundær til 1,10, altså over håndværkets 0,95, og så vandt
-  // `sekundaer`. Efter tilbagerulningen 15/8 er sekundær 0,82 igen, altså UNDER
-  // håndværk, og gulvet vinder. Begge dele er korrekte; det er netop derfor
-  // sammenligningen står på faktorer og ikke på navne. Invarianten der SKAL
-  // holde uanset tal er den næste test: gulvet må aldrig sænke et tag.
-  assert.equal(abilityRoleClass("climber", "sprinter", "positioning"), "haandvaerk");
+  assert.equal(youthAbilityCap(3, "sprinter", "climber", "positioning"), tags.signatur);
+  // Gulvet sammenligner på TAGET, ikke på klasse-navnet. Under trin 7's
+  // absolutte tag ligger håndværk (70) UNDER sekundær (80), så en rytter med
+  // sprinter som sekundær BEHOLDER `sekundaer` — "opgraderingen" ville være en
+  // sænkning. (Under trin 3's faktorer var forholdet omvendt, 0,95 > 0,82, og
+  // samme kode gav `haandvaerk`.) Klasse-navnet er IKKE en konstant der kan
+  // pinnes: det følger kalibreringen. Invarianten der SKAL holde uanset tal er
+  // den næste test: gulvet må aldrig sænke et tag.
+  assert.equal(abilityRoleClass("climber", "sprinter", "positioning"), "sekundaer");
   assert.ok(
-    youthRoleFactor("climber", "sprinter", "positioning") >= YOUTH_PROGRESSION_CONFIG.craftFactor,
-    "gulvet må aldrig give et LAVERE tag end håndværks-faktoren",
+    youthAbilityCap(3, "climber", "sprinter", "positioning") >= tags.haandvaerk,
+    "gulvet må aldrig give et LAVERE tag end håndværks-taget",
   );
 });
 
-test("håndværk: gulvet kan ALDRIG sænke et tag, uanset hvordan faktorerne kalibreres", () => {
+test("håndværk: gulvet kan ALDRIG sænke et tag, uanset hvordan tagene kalibreres", () => {
   // Invarianten der skal overleve enhver fremtidig kalibrering. Kør hele
-  // parameterrummet med en RÆKKE forskellige craftFactor-værdier — også nogle
-  // der er lavere end alle andre klasser — og kræv at gulvet aldrig trækker ned.
-  for (const craftFactor of [0.05, 0.45, 0.95, 1.2, 2.0]) {
-    const medGulv = { ...YOUTH_PROGRESSION_CONFIG, craftFactor };
-    const udenGulv = { ...YOUTH_PROGRESSION_CONFIG, craftFactor: undefined };
+  // parameterrummet med en RÆKKE forskellige håndværks-tag — også nogle der er
+  // lavere/højere end alle andre klasser — og kræv at gulvet aldrig trækker ned.
+  const base = YOUTH_PROGRESSION_CONFIG.roleTags;
+  for (const haandvaerk of [5, 45, 70, 95, 120]) {
+    const medGulv = { ...YOUTH_PROGRESSION_CONFIG, roleTags: { ...base, haandvaerk } };
+    const udenGulv = { ...YOUTH_PROGRESSION_CONFIG, roleTags: { ...base, haandvaerk: undefined } };
     for (const primary of RIDER_TYPE_KEYS) {
       for (const secondary of RIDER_TYPE_KEYS) {
         for (const ability of CRAFT_ABILITIES) {
           assert.ok(
-            youthRoleFactor(primary, secondary, ability, medGulv)
-              >= youthRoleFactor(primary, secondary, ability, udenGulv),
-            `craftFactor=${craftFactor} ${primary}/${secondary} ${ability}: gulvet sænkede taget`,
+            youthAbilityCap(3, primary, secondary, ability, medGulv)
+              >= youthAbilityCap(3, primary, secondary, ability, udenGulv),
+            `haandvaerk=${haandvaerk} ${primary}/${secondary} ${ability}: gulvet sænkede taget`,
           );
         }
       }
@@ -460,35 +458,38 @@ test("rolleklasser: raterne er ejer-besluttede 14/8 og falder monotont med klass
 // ejerens krav fra 15/8, og `scripts/spillervendteGates3709.mjs` måler det på
 // hele populationen. Her pinnes invarianten på selve formlen.
 test("rolleklasser: taget kan ALDRIG i sig selv sætte en evne over 95", () => {
-  const cfg = YOUTH_PROGRESSION_CONFIG;
-  const maksLoft = Math.max(...Object.values(cfg.loftByPotential));
-  const maksFaktor = Math.max(
-    cfg.naturalPrimaryFactor, cfg.naturalSecondaryFactor,
-    cfg.neutralFactor, cfg.oppositeFactor, cfg.craftFactor ?? 0,
-  );
+  // Trin 7 gjorde denne grænse STRUKTUREL: taget er en flad tabel, så det
+  // højeste mulige tag i hele spillet er ét opslag — ikke et produkt af
+  // kalibreringer der skal ramme hinanden rigtigt.
+  const maksTag = Math.max(...Object.values(YOUTH_PROGRESSION_CONFIG.roleTags));
   assert.ok(
-    maksLoft * maksFaktor < 95,
-    `maks tag ${maksLoft} × ${maksFaktor} = ${maksLoft * maksFaktor} skal være under 95 `
+    maksTag < 95,
+    `maks tag ${maksTag} skal være under 95 `
     + "(ejer-krav 15/8: taget må aldrig alene sætte nogen over 95 — kun træning må)",
   );
+  // Og 90 skal kunne NÅS (S4): gap-proportional vækst ankommer aldrig helt til
+  // taget, så signatur-taget skal ligge over 90 + en margin. Vinduet er 92-94.
+  assert.ok(YOUTH_PROGRESSION_CONFIG.roleTags.signatur >= 92, "signatur-tag under 92 gør 90 uopnåeligt (asymptoten)");
 });
 
-test("håndværk B1: intet loft falder for NOGEN kombination af type, evne og potentiale", () => {
+test("håndværk B1: håndværks-klassen sænker intet loft for NOGEN kombination", () => {
   // Gate B1 udtømmende over hele parameterrummet i stedet for på stikprøver:
-  // 8 primære × 8 sekundære × 15 evner × 6 potentialer. Uden håndværks-gulvet
-  // (craftFactor udeladt) er faktoren den gamle model — hver ny faktor skal være ≥.
-  const udenGulv = { ...YOUTH_PROGRESSION_CONFIG, craftFactor: undefined };
+  // 8 primære × 8 sekundære × 15 evner. Uden håndværks-klassen (haandvaerk-tag
+  // udeladt) er taget den rene fire-klasse-model — hvert tag med klassen skal
+  // være ≥. (Potentiale-dimensionen er udgået: taget er potentiale-uafhængigt.)
+  const udenGulv = {
+    ...YOUTH_PROGRESSION_CONFIG,
+    roleTags: { ...YOUTH_PROGRESSION_CONFIG.roleTags, haandvaerk: undefined },
+  };
   for (const primary of RIDER_TYPE_KEYS) {
     for (const secondary of RIDER_TYPE_KEYS) {
       for (const ability of VISIBLE_ABILITIES) {
-        for (const pot of [1, 2, 3, 4, 5, 6]) {
-          const foer = youthAbilityCap(pot, primary, secondary, ability, udenGulv);
-          const efter = youthAbilityCap(pot, primary, secondary, ability, YOUTH_PROGRESSION_CONFIG);
-          assert.ok(
-            efter >= foer,
-            `${primary}/${secondary} ${ability} pot${pot}: loft faldt ${foer} → ${efter}`,
-          );
-        }
+        const foer = youthAbilityCap(3, primary, secondary, ability, udenGulv);
+        const efter = youthAbilityCap(3, primary, secondary, ability, YOUTH_PROGRESSION_CONFIG);
+        assert.ok(
+          efter >= foer,
+          `${primary}/${secondary} ${ability}: loft faldt ${foer} → ${efter}`,
+        );
       }
     }
   }
@@ -496,12 +497,14 @@ test("håndværk B1: intet loft falder for NOGEN kombination af type, evne og po
 
 // ── Afkoblet ungdoms-loft (#1791 A2) ─────────────────────────────────────────
 
-test("youthAbilityCap: afkoblet fra start-evne, stiger med potentiale", () => {
-  // Samme rytter, to potentialer → højere pot giver højere loft, UANSET baseline.
+test("youthAbilityCap: afkoblet fra start-evne OG fra potentiale (trin 7)", () => {
+  // Trin 7 (#3746, ejer 16/8): potentiale er flyttet fra HØJDE til FART. Samme
+  // rolle giver samme tag uanset potentiale — forskellen ligger i rateByPotential.
   const lowPot = youthAbilityCap(2, "climber", "tt", "climbing");
   const highPot = youthAbilityCap(6, "climber", "tt", "climbing");
-  assert.ok(highPot > lowPot, `pot6 ${highPot} skal > pot2 ${lowPot}`);
-  // Afkobling: loftet afhænger IKKE af en start-evne (ingen baseline-parameter).
+  assert.equal(highPot, lowPot, "taget må ikke afhænge af potentiale");
+  assert.equal(highPot, YOUTH_PROGRESSION_CONFIG.roleTags.signatur);
+  // Afkobling: loftet afhænger heller IKKE af en start-evne (ingen baseline-parameter).
   assert.equal(youthAbilityCap.length, 5); // (potentiale, primary, secondary, ability, cfg)
 });
 
@@ -533,14 +536,13 @@ test("buildProgressInit: nul-fyldt over alle 15 synlige evner", () => {
   for (const k of VISIBLE_ABILITIES) assert.equal(p[k], 0, `${k} skal initialiseres til 0`);
 });
 
-// ── Samlet loft-semantik: absolut loft + gulv (ejer-besluttet 2026-07-15) ────
-// Indtil 15/7 fandtes TO uforenelige loft-semantikker side om side, og hvilken en
-// rytter fik afgjordes af hvilken kodesti der først skrev ability_caps (feltet
-// skrives kun når NULL). Prod-følgen: en pot-4,5-rytter havde et højere livstids-
-// loft (813) end den bedste pot-6-rytter (737) — potentiale styrede ikke hvor god
-// en rytter kunne blive. Nu ét loft for ALLE: potentiale + anlæg bestemmer niveauet,
-// med et gulv ved nuværende evne så ingen spiller får frataget evne han ejer.
-// Supersederer §4.2/§8/§10 i specs/2026-06-23-ungdoms-rytter-evner-rework-design.md.
+// ── Samlet loft-semantik: fladt rolle-tag, INTET gulv (trin 7, 16/8) ─────────
+// 15/7 konsoliderede to uforenelige loft-semantikker til én (potentiale + anlæg
+// + gulv ved nuværende evne). Trin 7 (#3746) fjernede potentiale fra formlen og
+// gulvet fra loftet (#3794): taget er rolleklassens absolutte tag, aftrappet
+// efter peak-alder, afrundet til heltal (#3788). Et loft under en arvet evne er
+// LOVLIGT — rytteren beholder evnen og står stille dér (ingen kodesti kan tage
+// evne: dailyTraining lægger kun til, stepAbility er uændret ved gap ≤ 0).
 
 const allAbilities = (v) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, v]));
 
@@ -553,30 +555,42 @@ test("buildCapsForRider: loftet er alders-uafhængigt FØR peak (21→22 må ikk
   assert.deepEqual(adult, young, "alder må ikke ændre loftet før/på peakAge");
 });
 
-test("buildCapsForRider: loftet er aldrig under nuværende evne (gulvet)", () => {
-  // Voksen med høj current og lavt potentiale: det absolutte loft (pot 1 → 35)
-  // ligger langt under current 85 → gulvet skal vinde, ellers fratages spilleren evne.
-  const caps = buildCapsForRider(allAbilities(85), { potentiale: 1, age: 29 }, "climber", "tt");
-  for (const k of VISIBLE_ABILITIES) {
-    assert.ok(caps[k] >= 85, `${k}: loft ${caps[k]} må ikke ligge under current 85`);
+test("buildCapsForRider: loftet er formel-rent — evnerne indgår IKKE (#3794)", () => {
+  // Gulvet max(tag, current) er fjernet: en voksen med evne 85 og et tag under
+  // beholder evnen (ingen kodesti tager den), men loftet følger IKKE evnen op.
+  // Det er præcis dét der gør det viste potentiale stabilt mellem kalibreringer.
+  const hoej = buildCapsForRider(allAbilities(85), { potentiale: 1, age: 29 }, "climber", "tt");
+  const lav = buildCapsForRider(allAbilities(10), { potentiale: 1, age: 29 }, "climber", "tt");
+  assert.deepEqual(hoej, lav, "samme rytter-parametre skal give samme loft uanset evner");
+  // Og loftet må gerne ligge under evnen — det er den designede tilstand for
+  // arvede ryttere over deres tag (ejer-beslutning 8, 15/8).
+  assert.ok(hoej.sprint < 85, `svagheds-loft ${hoej.sprint} skal ligge under evnen 85`);
+});
+
+test("buildCapsForRider: potentiale ændrer ikke loftet (trin 7)", () => {
+  // Prod-anomalien "pot 4,5 slog pot 6 (813 > 737)" er strukturelt umulig nu:
+  // taget er potentiale-uafhængigt, så der findes ingen rækkefølge at bryde.
+  // Potentiale-forskellen ligger i farten (rateByPotential, testet ovenfor).
+  const ab = allAbilities(10);
+  const reference = buildCapsForRider(ab, { potentiale: 1, age: 18 }, "climber", "tt");
+  for (const p of [2, 3, 4, 4.5, 5, 5.5, 6]) {
+    assert.deepEqual(
+      buildCapsForRider(ab, { potentiale: p, age: 18 }, "climber", "tt"),
+      reference,
+      `pot ${p}: loftet skal være identisk med pot 1's`,
+    );
   }
 });
 
-test("buildCapsForRider: højere potentiale giver aldrig lavere loft", () => {
-  const ab = allAbilities(10);
-  let prev = -1;
-  for (const p of [1, 2, 3, 4, 4.5, 5, 5.5, 6]) {
-    const caps = buildCapsForRider(ab, { potentiale: p, age: 18 }, "climber", "tt");
-    assert.ok(caps.climbing >= prev, `pot ${p}: loft ${caps.climbing} < forrige ${prev}`);
-    prev = caps.climbing;
+test("buildCapsForRider: lofter er hele tal, også efter taper (#3788)", () => {
+  // Taperingen kunne give et loft midt i et niveau (fx 80,25), så træningsbaren
+  // viste fremgang mod et niveau rytteren aldrig kunne nå.
+  for (const age of [18, 29, 31, 34, 37]) {
+    const caps = buildCapsForRider(allAbilities(20), { potentiale: 4, age }, "climber", "tt");
+    for (const k of VISIBLE_ABILITIES) {
+      assert.ok(Number.isInteger(caps[k]), `${k} ved alder ${age}: ${caps[k]} skal være et helt tal`);
+    }
   }
-});
-
-test("buildCapsForRider: pot 6 slår pot 4,5 (prod-anomalien 813 > 737)", () => {
-  const ab = allAbilities(10);
-  const p45 = buildCapsForRider(ab, { potentiale: 4.5, age: 19 }, "climber", "tt");
-  const p6 = buildCapsForRider(ab, { potentiale: 6, age: 19 }, "climber", "tt");
-  assert.ok(p6.climbing > p45.climbing, `pot6 ${p6.climbing} skal slå pot4,5 ${p45.climbing}`);
 });
 
 test("buildCapsForRider: afkoblet fra start-evnen — lav baseline + højt pot når verdensklasse", () => {
@@ -600,7 +614,8 @@ test("buildCapsForRider: cap ≥ baseline for voksen signatur-evne (current kan 
 // Blocker-fund: uden taper er buildYouthCaps alders-uafhængigt, så en post-peak
 // rytters gap (=cap−current) genåbnes og daglig træning overhaler sæson-declinen
 // (dailyAbilityDelta har ingen aldersgate). Taperen aftrapper det ABSOLUTTE loft
-// efter peakAge; gulvet (max(tapered, current)) er urørt — ingen konfiskation.
+// efter peakAge. Gulvet er fjernet i trin 7 (#3794); ingen konfiskation kan ske
+// alligevel — motoren kan kun stå stille under et lavt loft (testet ovenfor).
 
 test("taperedAbsoluteCap: kant 28 (= peakAge) — uændret, retain 1.0", () => {
   assert.equal(taperedAbsoluteCap(80, 28, 28), 80);
@@ -684,21 +699,25 @@ test("#3591 forward-guard: de to lovlige kaldformer ER skelnelige for en post-pe
   assert.notDeepEqual(medTaper, udenTaper, "36-årig skal have et aftrappet loft — ellers måler vagten intet");
 });
 
-test("buildCapsForRider: post-peak taper lukker gappet — cap falder mod current med alderen", () => {
-  // Lavt current, højt potentiale: absolut loft ligger langt over current, så
-  // gulvet ikke binder ved 29 — men skal binde senere når taperen har spist gappet.
+test("buildCapsForRider: post-peak taper lukker gappet — cap falder med alderen", () => {
   const ab = { climbing: 40 };
   const at29 = buildCapsForRider(ab, { potentiale: 6, age: 29 }, "climber", "tt");
   const at36 = buildCapsForRider(ab, { potentiale: 6, age: 36 }, "climber", "tt");
+  const at40 = buildCapsForRider(ab, { potentiale: 6, age: 40 }, "climber", "tt");
   assert.ok(at36.climbing <= at29.climbing, `36 (${at36.climbing}) skal ≤ 29 (${at29.climbing})`);
-  assert.ok(at36.climbing >= 40, "gulvet: loftet må aldrig gå under current (40)");
+  // #3794: intet gulv — langt forbi peak må loftet gerne ende UNDER evnen (og
+  // ved retain 0 på selve 0). Væksten stopper (gap 0), evnen røres ikke.
+  assert.ok(at40.climbing <= at36.climbing, `40 (${at40.climbing}) skal ≤ 36 (${at36.climbing})`);
 });
 
-test("buildCapsForRider: gulvet vinder altid — taper konfiskerer ALDRIG evne rytteren allerede ejer", () => {
-  for (const age of [28, 29, 33, 36, 40, 45]) {
-    const caps = buildCapsForRider(allAbilities(70), { potentiale: 2, age }, "climber", "tt");
-    for (const k of VISIBLE_ABILITIES) {
-      assert.ok(caps[k] >= 70, `alder ${age}, ${k}: loft ${caps[k]} må ikke ligge under current 70`);
-    }
+test("et loft under evnen konfiskerer ALDRIG evne — motoren kan kun stå stille dér (#3794)", () => {
+  // Gulvet er væk, så invarianten "ingen mister noget" bor nu i motoren selv:
+  // et loft under evnen giver gap ≤ 0 → dailyAbilityDelta 0 og stepAbility
+  // uændret. Det er præcis det #3794 verificerede før gulvet blev fjernet.
+  const caps = buildCapsForRider(allAbilities(70), { potentiale: 2, age: 33 }, "climber", "tt");
+  for (const k of VISIBLE_ABILITIES) {
+    if (caps[k] >= 70) continue; // kun pladserne hvor loftet ligger under evnen
+    const efter = stepAbility(70, caps[k], 25, 28, true, 0.5);
+    assert.equal(efter, 70, `${k}: stepAbility må ikke røre en evne over loftet`);
   }
 });

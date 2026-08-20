@@ -71,13 +71,17 @@ test("kun interne selects i api.js læser potentiale-kolonnen (#1162)", () => {
   //      returneres.
   // (den tidligere batch-variant, POST /riders/value-trend, blev fjernet som
   // orphaned endpoint — #2849 bølge 6 fjernede sidste frontend-caller.)
-  // Dukker et syvende select med potentiale op, skal den reviewes bevidst —
+  //   7. GET  /development/transition — overgangs-panelet (trin 7, #3746/#3803):
+  //      potentiale fødes KUN ind i buildTypePrognosisBands (maskeret bånd);
+  //      responset bærer loft-ratings (rolle+alder-bestemte, ikke hemmelige)
+  //      + prognose-bånd, aldrig rå potentiale (egen test nedenfor).
+  // Dukker et ottende select med potentiale op, skal den reviewes bevidst —
   // den må ikke ende i et klient-response.
   const matches = apiSource.match(/\.select\([^)]*\bpotentiale\b[^)]*\)/g) ?? [];
   assert.equal(
     matches.length,
-    6,
-    `forventede præcis 6 interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
+    7,
+    `forventede præcis 7 interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
   );
   for (const m of matches) {
     assert.match(
@@ -86,6 +90,26 @@ test("kun interne selects i api.js læser potentiale-kolonnen (#1162)", () => {
       `uventet potentiale-select: ${m}`,
     );
   }
+});
+
+test("development/transition returnerer aldrig rå potentiale eller ability_caps (#3746 overgangs-panel)", () => {
+  const idx = apiSource.indexOf('router.get("/development/transition"');
+  assert.ok(idx !== -1, "GET /development/transition skal findes");
+  const block = apiSource.slice(idx, idx + 5500);
+  assert.doesNotMatch(
+    block,
+    /res\.json\([^)]*\b(potentiale|ability_caps)\b/,
+    "rå potentiale/ability_caps må ikke indgå i transition-payloaden",
+  );
+  // Prognosen SKAL komme fra den maskerede bånd-beregning; loft-tallene fra
+  // rating-vægtningen (rolle+alder-bestemt under det flade tag, ikke hemmelige).
+  assert.match(block, /buildTypePrognosisBands\(/, "transition skal bruge prognose-bånd-beregningen");
+  assert.match(block, /roleCeilRating\(/, "loft nu skal komme fra roleCeilRating");
+  // Graceful gates: manglende backup-tabel (begge kode-varianter) og manglende
+  // dismiss-kolonne må aldrig 500'e dashboardet.
+  assert.match(block, /42P01/, "manglende backup-tabel (42P01) skal være graceful");
+  assert.match(block, /PGRST205/, "manglende backup-tabel (PGRST205) skal være graceful");
+  assert.match(block, /42703/, "manglende dismiss-kolonne (42703) skal være graceful");
 });
 
 test("scouting-report returnerer aldrig rå potentiale eller ability_caps (#1543)", () => {
@@ -97,7 +121,9 @@ test("scouting-report returnerer aldrig rå potentiale eller ability_caps (#1543
     /res\.json\([^)]*\b(potentiale|ability_caps)\b/,
     "rå potentiale/ability_caps må ikke indgå i payloaden",
   );
-  assert.match(block, /buildTypeCeilingBands\(/, "skal bruge bånd-beregningen");
+  // #3746: loft-båndet er afløst af prognose-båndet — samme maskerings-kontrakt,
+  // ny beregning (se buildTypePrognosisBands i scoutingReport.js).
+  assert.match(block, /buildTypePrognosisBands\(/, "skal bruge prognose-bånd-beregningen");
   assert.match(block, /buildScoutEstimate\(/, "stjerne-båndet skal komme fra buildScoutEstimate");
 });
 

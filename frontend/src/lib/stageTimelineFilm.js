@@ -105,13 +105,36 @@ export function eventsPlayedUpTo(feedEvents, scrubKm) {
 
 const WIN_TYPE_KEY = { sprint_win: "sprint_win", close_win: "close_win", solo_win: "solo_win" };
 
+// #4026: manglende opslag returnerer null — ALDRIG det rå id. Race Centre-live-
+// kortene viste rå rytter-UUID'er ("Hui J. Feng, a2ffc9c9-… rykker væk") fordi
+// den gamle String(id)-fallback lækkede igennem når navne-mappet var ufuldstændigt.
+// Kontrakten er nu: describeEvent SKIPPER linjer den ikke kan navngive ærligt
+// (samme regel som ukendte event-typer) — callers henter navne via collectRiderIds
+// + useRiderNames, så skips kun rammer ægte huller (fx slettet rytter).
 function riderName(id, riderNameById) {
-  if (id == null) return "—";
-  return riderNameById?.get(id) || riderNameById?.get(String(id)) || String(id);
+  if (id == null) return null;
+  return riderNameById?.get(id) || riderNameById?.get(String(id)) || null;
 }
 
-function riderNames(ids, riderNameById) {
-  return (ids || []).map((id) => riderName(id, riderNameById)).join(", ");
+function resolvedRiderNames(ids, riderNameById) {
+  return (ids || []).map((id) => riderName(id, riderNameById)).filter(Boolean);
+}
+
+// #4026: alle rider-ids en tidslinjes events refererer — så callers (LiveFilmLine
+// på Race Centre) kan batch-hente navne FØR describeEvent kaldes. Skal dække
+// præcis de param-former describeEvent læser nedenfor.
+export function collectRiderIds(events) {
+  const out = new Set();
+  const add = (id) => { if (id != null) out.add(id); };
+  for (const event of events || []) {
+    const p = event?.params || {};
+    for (const id of p.rider_ids || []) add(id);
+    add(p.rider_id);
+    add(p.new_leader_id);
+    add(p.previous_leader_id);
+    for (const t of p.top || []) add(t?.rider_id);
+  }
+  return [...out];
 }
 
 /**
@@ -121,62 +144,79 @@ function riderNames(ids, riderNameById) {
  * hardkodet tekst her). Ukendt/uforstået event-type → null (feedet springer den
  * linje over i stedet for at rendere tomt — forward-kompatibelt med spec §2.2's
  * åbne taksonomi).
+ *
+ * #4026: samme null-regel for events hvis rytternavne IKKE kan slås op — en
+ * linje med et råt UUID er værre end ingen linje. Gruppe-events (udbrud) viser
+ * de navne der KAN opløses og skipper kun når ingen kan; count følger de viste
+ * navne så flertalsbøjningen ({count, plural}) matcher den synlige liste.
  */
 export function describeEvent(event, { riderNameById } = {}) {
   if (!event?.type) return null;
   const p = event.params || {};
+  const breakawayParams = () => {
+    const names = resolvedRiderNames(p.rider_ids, riderNameById);
+    if (!names.length) return null;
+    return { riders: names.join(", "), count: names.length };
+  };
   switch (event.type) {
     case "stage_start":
       return { key: "stage_start", params: { count: p.field_count ?? 0, distance: p.distance_km ?? 0 } };
-    case "breakaway_formed":
-      return { key: "breakaway_formed", params: { riders: riderNames(p.rider_ids, riderNameById), count: (p.rider_ids || []).length } };
-    case "kom_passage":
-      return {
-        key: "kom_passage",
-        params: {
-          name: p.name || "—",
-          category: p.category || "",
-          rider: riderName(p.top?.[0]?.rider_id, riderNameById),
-        },
-      };
-    case "intermediate_sprint":
-      return {
-        key: "intermediate_sprint",
-        params: { name: p.name || "—", rider: riderName(p.top?.[0]?.rider_id, riderNameById) },
-      };
-    case "breakaway_caught":
-      return { key: "breakaway_caught", params: { riders: riderNames(p.rider_ids, riderNameById), count: (p.rider_ids || []).length } };
-    case "breakaway_survived":
-      return { key: "breakaway_survived", params: { riders: riderNames(p.rider_ids, riderNameById), count: (p.rider_ids || []).length } };
-    case "incident":
-      return {
-        key: "incident",
-        params: { rider: riderName(p.rider_id, riderNameById), kind: p.kind === "mechanical" ? "mechanical" : "crash" },
-      };
-    case "favorite_crack":
-      return { key: "favorite_crack", params: { rider: riderName(p.rider_id, riderNameById), reason: p.reason || "unexplained" } };
-    case "finale_attack":
-      return { key: "finale_attack", params: { rider: riderName(p.rider_id, riderNameById) } };
-    case "sprint_decided":
-      return {
-        key: p.photo_finish ? "sprint_decided_photo" : "sprint_decided",
-        params: { rider: riderName((p.rider_ids || [])[0], riderNameById) },
-      };
+    case "breakaway_formed": {
+      const params = breakawayParams();
+      return params ? { key: "breakaway_formed", params } : null;
+    }
+    case "kom_passage": {
+      const rider = riderName(p.top?.[0]?.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: "kom_passage", params: { name: p.name || "—", category: p.category || "", rider } };
+    }
+    case "intermediate_sprint": {
+      const rider = riderName(p.top?.[0]?.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: "intermediate_sprint", params: { name: p.name || "—", rider } };
+    }
+    case "breakaway_caught": {
+      const params = breakawayParams();
+      return params ? { key: "breakaway_caught", params } : null;
+    }
+    case "breakaway_survived": {
+      const params = breakawayParams();
+      return params ? { key: "breakaway_survived", params } : null;
+    }
+    case "incident": {
+      const rider = riderName(p.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: "incident", params: { rider, kind: p.kind === "mechanical" ? "mechanical" : "crash" } };
+    }
+    case "favorite_crack": {
+      const rider = riderName(p.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: "favorite_crack", params: { rider, reason: p.reason || "unexplained" } };
+    }
+    case "finale_attack": {
+      const rider = riderName(p.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: "finale_attack", params: { rider } };
+    }
+    case "sprint_decided": {
+      const rider = riderName((p.rider_ids || [])[0], riderNameById);
+      if (!rider) return null;
+      return { key: p.photo_finish ? "sprint_decided_photo" : "sprint_decided", params: { rider } };
+    }
     case "finish": {
-      const winner = p.top?.[0];
+      const rider = riderName(p.top?.[0]?.rider_id, riderNameById);
+      if (!rider) return null;
       return {
         key: WIN_TYPE_KEY[p.win_type] ? `finish_${WIN_TYPE_KEY[p.win_type]}` : "finish",
-        params: { rider: riderName(winner?.rider_id, riderNameById) },
+        params: { rider },
       };
     }
-    case "gc_change":
-      return {
-        key: "gc_change",
-        params: {
-          rider: riderName(p.new_leader_id, riderNameById),
-          previousLeader: riderName(p.previous_leader_id, riderNameById),
-        },
-      };
+    case "gc_change": {
+      const rider = riderName(p.new_leader_id, riderNameById);
+      const previousLeader = riderName(p.previous_leader_id, riderNameById);
+      if (!rider || !previousLeader) return null;
+      return { key: "gc_change", params: { rider, previousLeader } };
+    }
     default:
       return null;
   }
