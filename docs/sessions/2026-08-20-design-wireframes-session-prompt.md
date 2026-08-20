@@ -101,7 +101,12 @@ kun designe. Kør disse med workers parallelt med design-arbejdet, i denne orden
    tre punkter (pris-copy, pro-rata-forklaring, "i nærheden af"), flip
    CHECKOUT_PAUSED (backend/lib/billingCheckout.js + ProUpgradePage.jsx), ét
    verificerende testkøb, genåbnings-patch-note (udkast ligger i #3104-workerens
-   rapport i planlægningssessionen).
+   rapport i planlægningssessionen). **PRIS LÅST 20/8: 49/265 kr ALT inklusive**
+   (moms bæres af prisen; Alunta = 4900/26500 øre m. moms-inkl.).
+2b. **Friisisch-kulancen (#4004, ejer-besluttet 20/8):** engangs-kulance for
+   auktions-sagen - foreslå beløb (fx differencen ~268k CZ$), få ejer-go,
+   udbetal som prod-mutation m. verifikation, og giv ejeren et kort DM-udkast.
+   Politikken er ellers "kun transparens" - wireframe-emnet dækker fremtiden.
 3. **W7 hjælpetekst-bølgen** LIGE efter trin 7-merge (#3714 #3623 #3456 #3412 +
    trænings-svarene fra 20/8 ind i help.json EN+DA).
 4. **Generalprøve-forberedelse til lørdag**: verificér at alle scripts i
