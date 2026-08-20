@@ -1,189 +1,55 @@
-// Talentspejder Fase 3 (#2244) — daglig sweep: modner scout_assignments.
-// Mirror af trainingSweep.js: Copenhagen-hour-gate + INSERT-som-mutex
-// (scout_sweep_runs, UNIQUE(team_id, tick_date)) → idempotent, per-team
-// try/catch isolerer én fejlende assignment fra resten.
+// Talentspejder Fase 3 (#2244) — orkestrerer scout_assignments-modning.
 //
-// Pr. modnet assignment (ready_on <= tick_date, status='active'):
-//   target  → indsætter scout_actions-rækker op til target_level (bevarer
-//             eksisterende level=COUNT-derivation fra scouting.js), status→completed.
-//   mission → kører mission-shortlist-generatoren (scoutMission.js), indsætter
-//             ÉN gratis niveau-1-rapport på topfundet, status→completed.
-
+// #3997 (ejer-ord 20/8, "ret mekanikken, ikke oplysningen"): missioner og
+// målrettede opgaver har nu to UAFHÆNGIGE modnings-stier, hver med sin egen
+// idempotens-mekanik:
+//   · target  — lazyCompleteDueTargetAssignments (scoutTargetMaturation.js),
+//               kaldes her SWEEP-BREDT (uden teamId — alle hold) som backstop
+//               for hold der aldrig åbner Scouting-centralen. Kl.22-gate +
+//               team-dags-mutex (scout_sweep_runs) er UÆNDRET — targets
+//               modner allerede minut-præcist via den lazy on-view-sti
+//               (scoutAssignmentService.getScoutState, ~30 min), så denne
+//               sti er ren backstop, ikke hovedstien.
+//   · mission — completeDueMissionAssignments (scoutMissionMaturation.js).
+//               INGEN dags-gate: kørt på HVERT cron-tick (5 min, cron.js —
+//               langt hyppigere end den time-krævede kadence). FØR modnede
+//               missioner udelukkende via kl.22-sweepen + en team-dags-mutex,
+//               så en "1-dags" mission sendt kl. 09 reelt tog 23-46 timer.
+//               Nu: modenhed = created_at + dage×24t (elapsed real tid), og
+//               idempotens er PR ASSIGNMENT (claim-first UPDATE), ikke en
+//               delt hold-dags-mutex — se scoutMissionMaturation.js.
 import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
-import { generateShortlist } from "./scoutMission.js";
-import { getScoutState } from "./scoutAssignmentService.js";
 import { completeTargetAssignment } from "./scoutTargetMaturation.js";
+import { completeDueMissionAssignments, defaultLoadCandidates } from "./scoutMissionMaturation.js";
 import { notifyScoutReportReady } from "./notificationService.js"; // #2945
 
+// Bagudkompatibelt re-export — defaultLoadCandidates boede her før #3997,
+// flyttet til scoutMissionMaturation.js (mission-modningens eget modul).
+export { defaultLoadCandidates };
+
+// #3997: gælder KUN target-backstoppet nedenfor. Missioner har ingen dags-gate.
 export const SWEEP_FROM_HOUR = 22;
 
 export function shouldSweepNow(now = new Date()) {
   return copenhagenHour(now) >= SWEEP_FROM_HOUR;
 }
 
-// Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
-// kendt potentiale, mappet til scoutMission's forventede rider-form. Scope
-// parametriseret (#2644 del 2, ejer-go 18/7): targetPool "free_agents" (default)
-// eller "other_teams" — SAMME guards (ikke midt i handelsflow, ikke skjult af
-// åbent akademi-intake-tilbud) gælder for begge, kun team_id-filteret vender.
-//
-// free_agents: team_id IS NULL — kontraktfrie ryttere (#2644 del 1, oprindelig
-// scope). En rytter med pending_team_id sat er midt i et handelsflow (#1995/
-// #2579) og derfor ikke reelt tilgængelig lige nu, selvom team_id (endnu) er
-// NULL i overgangen — ekskluderes uanset targetPool.
-// other_teams: team_id IS NOT NULL — ryttere ejet af en (anden) manager.
-// Selve egen-hold-udelukkelsen sker IKKE her (denne loader kender ikke det
-// kaldende holds id) men i scoutMission.js' generateShortlist via
-// candidate.ownerTeamId (sat til r.team_id nedenfor for begge scopes).
-//
-// #2581: to hold på Discord samme morgen rapporterede rytternavne fra en
-// mission-shortlist de ikke kunne søge frem noget sted. Read-only prod-audit
-// (17/7) viste rytterne FAKTISK findes (0 rigtige orphans blandt 46 nogensinde
-// shortlistede) — men 17/46 (37%) er lige nu skjult for ALLE ikke-admins af
-// riders-RLS-policyen "Public read riders" (is_offered_intake_rider): en rytter
-// der står som et UAFKLARET akademi-intake-tilbud (academy_intake.status =
-// 'offered', endnu ikke accepteret/afvist af det tilbudte hold) er globalt
-// usøgbar, ikke kun for det tilbudte hold. defaultLoadCandidates kendte ikke
-// til akademi-intake-tilstanden og kunne derfor lægge sådan en rytter i en
-// shortlist — spilleren fik et navn han reelt ikke kunne slå op nogen steder.
-// Fix: ekskludér 'offered'-intake-ryttere fra kandidat-poolen (samme diskriminator
-// som RLS-policyen), så missioner kun peger på faktisk søgbare ryttere. Denne
-// genererings-tidspunkt-guard suppleres af et UAFHÆNGIGT view-tidspunkt-lag
-// (scoutReportVisibility.js) der genkontrollerer synligheden når rapporten
-// FAKTISK vises (#2623: synligheden kan ændre sig mellem de to tidspunkter).
-//
-// #2581 genåbnet 19/7: en NY klasse slap igennem samme hul — ryttere ejet af
-// AI-hold. RidersPage skjuler dem for spillere som default (useRiderFilters.js
-// .eq('owner_is_ai', false) uden show_ai), men other_teams-poolen filtrerede
-// kun på team_id IS NOT NULL, ikke owner_is_ai. Samme fix-mønster: ekskludér
-// owner_is_ai=true fra kandidat-poolen (no-op for free_agents — kontraktfrie
-// ryttere har altid owner_is_ai=false).
-export async function defaultLoadCandidates(supabase, targetPool = "free_agents") {
-  let ridersQuery = supabase
-    .from("riders")
-    // #3657: primary_type tilføjet — driver den nye scope:"type"-targeting i
-    // scoutMission.filterCandidatePool (allerede beregnet af riderTypes.js,
-    // ingen ny kolonne).
-    .select("id, potentiale, birthdate, nationality_code, team_id, primary_type, is_retired, team:team_id(league_division_id)")
-    .eq("is_retired", false)
-    .eq("owner_is_ai", false) // #2581: AI-ejede ryttere er skjulte for spillere i RidersPage
-    .not("potentiale", "is", null)
-    .is("pending_team_id", null); // #2644: ikke midt i et handelsflow, uanset scope
-
-  ridersQuery = targetPool === "other_teams"
-    ? ridersQuery.not("team_id", "is", null) // #2644 del 2: kun ryttere PÅ et hold
-    : ridersQuery.is("team_id", null); // free_agents (default): kun kontraktfrie
-
-  const [{ data, error }, { data: offered, error: intakeError }] = await Promise.all([
-    ridersQuery,
-    supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
-  ]);
-  if (error) throw new Error(`scoutSweep: candidate riders load failed: ${error.message}`);
-  if (intakeError) throw new Error(`scoutSweep: offered-intake load failed: ${intakeError.message}`);
-  const offeredIntakeRiderIds = new Set((offered ?? []).map((r) => r.rider_id));
-  const currentYear = new Date().getFullYear();
-  return (data ?? [])
-    .filter((r) => !offeredIntakeRiderIds.has(r.id))
-    .map((r) => ({
-      id: r.id,
-      potentiale: r.potentiale,
-      divisionId: r.team?.league_division_id ?? null,
-      country: r.nationality_code ?? null,
-      age: r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null,
-      isNmEligible: true,
-      primaryType: r.primary_type ?? null, // #3657: scope:"type"-targeting
-      // #2581/#2644: for free_agents er ownerTeamId ALTID null (kandidat-poolen
-      // er begrænset til kontraktfrie ryttere ovenfor); for other_teams er det
-      // rytterens FAKTISKE ejerhold — generateShortlist bruger det til at
-      // ekskludere holdets EGNE ryttere fra dets egen mission-shortlist.
-      ownerTeamId: r.team_id ?? null,
-    }));
-}
-
-async function defaultGetScout(supabase, teamId) {
-  const { scout } = await getScoutState(teamId, supabase);
-  return scout;
-}
-
-// completeTargetAssignment flyttet til scoutTargetMaturation.js (#2644):
-// deles med lazy-finaliseringen i scoutAssignmentService.getScoutState.
-
-async function completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now, notify = notifyScoutReportReady }) {
-  // #2644 del 2: sweepen læser targetPool fra selve assignmentens mission_criteria
-  // (sat ved start, scoutAssignmentService.startMission) — bagudkompatibelt
-  // default "free_agents" for assignments der blev startet FØR denne feature.
-  const targetPool = assignment.mission_criteria?.targetPool ?? "free_agents";
-  const [candidates, scout] = await Promise.all([
-    loadCandidates(supabase, targetPool),
-    getScout(supabase, assignment.team_id),
-  ]);
-  const { shortlist, topRiderId } = generateShortlist({
-    candidates,
-    criteria: assignment.mission_criteria,
-    scout,
-    teamId: assignment.team_id,
-    missionId: assignment.id,
-  });
-
-  // #3652 (spillerønske 11/8, jeppek: "get a scoutreport on the other 4 guys
-  // he finds"): FØR fik kun topRiderId en gratis niveau-1-rapport (scout_actions-
-  // række), og resten af shortlisten viste kun et navn — klik ind og mødte
-  // "ikke scoutet endnu" (RiderScoutingTab.report.hidden ved niveau 0). Nu får
-  // HELE shortlisten (3-5 ryttere, samme scout_actions-mekanik som den
-  // eksisterende gratis rapport altid har brugt) niveau-1-rapporter — samme
-  // tur, samme pris, mere udbytte pr. mission. Ingen ny maskerings-mekanik:
-  // niveau 1 er allerede det bredeste synlige bånd (CEIL_HALF_WIDTH_BY_LEVEL[1]),
-  // så inversions-gatet (#1162) er uændret.
-  if (shortlist.length > 0) {
-    const rows = shortlist.map((riderId) => ({
-      team_id: assignment.team_id,
-      rider_id: riderId,
-      season_id: assignment.season_id ?? null,
-    }));
-    const { error: insErr } = await supabase.from("scout_actions").insert(rows);
-    if (insErr) throw new Error(`scout_actions insert (mission shortlist reports): ${insErr.message}`);
-  }
-
-  const result = { shortlist, top_rider_id: topRiderId };
-  const { error: updErr } = await supabase
-    .from("scout_assignments")
-    .update({
-      status: "completed",
-      completed_at: now.toISOString(),
-      result,
-    })
-    .eq("id", assignment.id);
-  if (updErr) throw new Error(`scout_assignments update: ${updErr.message}`);
-
-  // #2945: notify() kaldes EFTER status→completed er bekræftet — notifyScoutReportReady
-  // isolerer selv sine fejl, kaster aldrig. `notify` injicérbar for test.
-  await notify({ supabase, assignment: { ...assignment, status: "completed", result }, now });
-}
-
 /**
- * Kør daglig scout-sweep: modner alle scout_assignments hvis ready_on <=
- * dagens Copenhagen-dato. Team-niveau mutex (scout_sweep_runs INSERT, 23505
- * = allerede swept i dag) sikrer at en genkørt cron-tick er harmløs.
+ * Target-backstop: modner alle 'target'-scout_assignments med ready_on <=
+ * dagens Copenhagen-dato. UÆNDRET adfærd ift. før #3997 (samme kl.22-gate,
+ * team-niveau mutex via scout_sweep_runs-INSERT, completeTargetAssignment) —
+ * blot filtreret til kind='target' alene, siden missioner nu har sin egen sti.
  *
- * @returns {Promise<{swept: number, failed?: number, skipped?: string}>}
+ * @returns {Promise<{swept: number, failed?: number}>}
  */
-export async function runScoutSweep({
-  supabase,
-  now = new Date(),
-  loadCandidates = defaultLoadCandidates,
-  getScout = defaultGetScout,
-  notify = notifyScoutReportReady, // #2945, injicérbar for test
-} = {}) {
-  if (!shouldSweepNow(now)) {
-    return { swept: 0, skipped: "before_window" };
-  }
-
+async function runTargetBackstopSweep({ supabase, now, notify }) {
   const tickDate = copenhagenDateString(now);
 
   const { data: matured, error } = await supabase
     .from("scout_assignments")
     .select("*")
     .eq("status", "active")
+    .eq("kind", "target")
     .lte("ready_on", tickDate);
   if (error) throw new Error(`scout_assignments: ${error.message}`);
   if (!matured) throw new Error("scout_assignments query returned null (unexpected)");
@@ -208,26 +74,50 @@ export async function runScoutSweep({
     if (reserveError) {
       if (reserveError.code === "23505") continue;
       failed += 1;
-      console.error(`  ❌ scout-sweep reservation fejlede for hold ${teamId}:`, reserveError.message);
+      console.error(`  ❌ scout-sweep (target-backstop) reservation fejlede for hold ${teamId}:`, reserveError.message);
       continue;
     }
 
     for (const assignment of assignments) {
       try {
-        if (assignment.kind === "target") {
-          await completeTargetAssignment({ supabase, assignment, notify });
-        } else if (assignment.kind === "mission") {
-          await completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now, notify });
-        }
+        await completeTargetAssignment({ supabase, assignment, notify });
         swept += 1;
       } catch (err) {
         // best-effort pr. assignment: fejlen tælles i `failed`, som runScoutSweepCron
         // capturer AGGREGERET pr. tick (cron.js) — én Sentry-issue frem for pr. rytter.
         failed += 1;
-        console.error(`  ❌ scout-sweep fejlede for assignment ${assignment.id}:`, err.message);
+        console.error(`  ❌ scout-sweep (target-backstop) fejlede for assignment ${assignment.id}:`, err.message);
       }
     }
   }
 
+  return failed > 0 ? { swept, failed } : { swept };
+}
+
+/**
+ * Kør scout-modning: missioner (ingen dags-gate, #3997) + target-backstop
+ * (kl.22-gate, uændret). Kaldt på hvert cron-tick (5 min, cron.js).
+ *
+ * @returns {Promise<{swept: number, failed?: number}>}
+ */
+export async function runScoutSweep({
+  supabase,
+  now = new Date(),
+  loadCandidates = defaultLoadCandidates,
+  getScout, // videresendt til completeDueMissionAssignments — dens EGEN default bruges hvis udeladt
+  notify = notifyScoutReportReady, // #2945, injicérbar for test
+} = {}) {
+  const missionResult = await completeDueMissionAssignments({ supabase, now, loadCandidates, getScout, notify });
+
+  let targetSwept = 0;
+  let targetFailed = 0;
+  if (shouldSweepNow(now)) {
+    const targetResult = await runTargetBackstopSweep({ supabase, now, notify });
+    targetSwept = targetResult.swept;
+    targetFailed = targetResult.failed ?? 0;
+  }
+
+  const swept = missionResult.completed + targetSwept;
+  const failed = (missionResult.failed ?? 0) + targetFailed;
   return failed > 0 ? { swept, failed } : { swept };
 }

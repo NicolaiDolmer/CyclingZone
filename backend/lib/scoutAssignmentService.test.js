@@ -375,14 +375,33 @@ test("getScoutState: aktiv målrettet opgave bærer ready_at = created_at + targ
   );
 });
 
-test("getScoutState: missioner får IKKE ready_at (de modnes af den natlige sweep, ikke på minuttet)", async () => {
+// #3997: missioner bærer nu ready_at = created_at + mission.days×24t — samme
+// "server ejer reglen"-kontrakt som target allerede havde (#3548). FØR modnede
+// missioner udelukkende via den dags-granulære ready_on-kolonne + den natlige
+// 22-sweep (en "1-dags" mission sendt kl. 09 tog derfor reelt 23-46 timer).
+test("getScoutState: aktiv mission bærer ready_at = created_at + mission.days×24t", async () => {
+  const createdAt = "2026-07-10T09:00:00.000Z";
   const assignments = [
-    { id: "m1", team_id: "team-1", status: "active", kind: "mission", created_at: "2026-07-10T11:55:00.000Z", ready_on: "2026-07-12" },
+    { id: "m1", team_id: "team-1", status: "active", kind: "mission", created_at: createdAt, ready_on: "2026-07-12" },
   ];
   const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments });
   const result = await getScoutState("team-1", supabase);
+  assert.equal(
+    result.active[0].ready_at,
+    new Date(Date.parse(createdAt) + SCOUT_JOB_CONFIG.mission.days * 24 * 60 * 60 * 1000).toISOString(),
+  );
+  assert.equal(result.active[0].ready_on, "2026-07-12"); // bevaret til visning/bagudkompatibilitet
+});
+
+test("getScoutState: mission uden created_at får intet ready_at (defensivt)", async () => {
+  const assignments = [{ id: "m1", team_id: "team-1", status: "active", kind: "mission", ready_on: "2026-07-12" }];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments });
+  // createScoutSupabase-mocken stemplet et created_at ved insert, men denne
+  // fixture er sat direkte i state — simulerer en (utænkelig men defensivt
+  // dækket) række uden feltet.
+  supabase.state.assignments[0].created_at = null;
+  const result = await getScoutState("team-1", supabase);
   assert.equal(result.active[0].ready_at, undefined);
-  assert.equal(result.active[0].ready_on, "2026-07-12");
 });
 
 test("getScoutState: målrettet opgave uden created_at får intet ready_at (UI falder tilbage til flad ETA)", async () => {
@@ -601,6 +620,14 @@ test("startMission: happy path inserts flat-cost mission + debits, defaults targ
   assert.equal(result.ok, true);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.mission.cost);
   assert.equal(result.assignment.readyOn, "2026-07-11"); // +1 dag (mission.days, #3652)
+  // #3997: readyAt er den PRÆCISE modnings-deadline (created_at + mission.days×24t)
+  // — samme "server ejer reglen"-kontrakt som startTargetAssignment.readyAt (#3548).
+  assert.ok(result.assignment.readyAt, "startMission-svaret mangler readyAt");
+  const createdAt = Date.parse(supabase.state.assignments[0].created_at);
+  assert.equal(
+    result.assignment.readyAt,
+    new Date(createdAt + SCOUT_JOB_CONFIG.mission.days * 24 * 60 * 60 * 1000).toISOString(),
+  );
   // #2644 del 2: ingen targetPool i input-criteria → normaliseret til "free_agents"
   // (bagudkompatibel default, ikke en kontraktændring for eksisterende kaldere).
   assert.deepEqual(supabase.state.assignments[0].mission_criteria, { ...criteria, targetPool: "free_agents" });
