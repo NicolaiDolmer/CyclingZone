@@ -106,20 +106,10 @@ const toPosix = (p) => p.split(sep).join('/');
 // The guard prints a "can be tightened" line the moment an entry stops
 // matching, so a fix cannot silently leave a stale allow-list behind.
 // ---------------------------------------------------------------------------
-export const KNOWN_FINDINGS = {
-  'backend/lib/emailDay1Sweep.js:race_results.created_at':
-    '#3586 — the Day-1 mail bug the issue was written about. race_results has '
-    + 'imported_at, never created_at; the select (and the .order() next to it) '
-    + 'would 400 the moment the e-mail loop is switched on. Left as-is here so '
-    + 'this PR stays a pure CI-guard change — the fix (imported_at) belongs '
-    + 'with the e-mail loop and its tests.',
-  'backend/scripts/driftMonitor.js:riders.name':
-    '#3586 — same class, found by this guard: riders has firstname/lastname, '
-    + 'never name. The orphan-rider drift check therefore 400s and is skipped '
-    + 'silently by its own `if (!orphanError)` guard, so the drift monitor has '
-    + 'been reporting no orphan riders regardless of reality. Backend fix out '
-    + 'of scope for this PR.',
-};
+// #3585 fixed the one entry this map ever had (race_results.created_at ->
+// imported_at) — kept as an empty map (not deleted) so the ratchet comment
+// above still documents the contract for the next finding.
+export const KNOWN_FINDINGS = {};
 
 // ---------------------------------------------------------------------------
 // Tokeniser. Blank // and /* */ comments while PRESERVING string literals —

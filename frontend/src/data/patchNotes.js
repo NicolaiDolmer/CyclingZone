@@ -4,6 +4,609 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.147",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Finished stages show the result first",
+          "body": "Open a finished stage and the result is at the top: standings on the overall tab, the finish on each stage tab. Lineup, tactics and the stage profile are still there, tucked into collapsible sections, and The Final Kilometre is now a quiet button next to the result."
+        },
+        "da": {
+          "title": "Kørte etaper viser resultatet først",
+          "body": "Åbner du en kørt etape, står resultatet øverst: stillingen på samlet-fanen, opløbet på hver etape-fane. Opstilling, taktik og etapeprofilen er der stadig, foldet sammen i sektioner, og Den sidste kilometer er nu en stille knap ved siden af resultatet."
+        },
+        "refs": [
+          3914
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Your season recap always has highlights",
+          "body": "The season recap now guarantees three real moments for every team, including mid-table and relegated seasons, and the share card carries your turning point and season facts. One clear download button on the hero."
+        },
+        "da": {
+          "title": "Din sæson-recap har altid højdepunkter",
+          "body": "Sæson-recappen garanterer nu tre ægte øjeblikke for alle hold, også midterfelts- og nedrykningssæsoner, og delekortet bærer dit vendepunkt og sæsonfakta. Én tydelig download-knap i toppen."
+        },
+        "refs": [
+          2752
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Transfer-listed riders are marked in squad selection",
+          "body": "Riders you have listed for transfer now show a badge in squad selection, and you can toggle which ability column the list shows."
+        },
+        "da": {
+          "title": "Transferlistede ryttere er markeret i holdudtagelsen",
+          "body": "Ryttere du har sat til salg viser nu et mærke i holdudtagelsen, og du kan selv vælge hvilken evne-kolonne listen viser."
+        },
+        "refs": [
+          3824
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Teams",
+        "en": {
+          "title": "AI team names dropped their AI prefix",
+          "body": "Computer-run teams now use their plain team name everywhere instead of an AI prefix."
+        },
+        "da": {
+          "title": "AI-holdnavne har mistet deres AI-præfiks",
+          "body": "Computerstyrede hold bruger nu deres rene holdnavn overalt i stedet for et AI-præfiks."
+        },
+        "refs": [
+          3926
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.146",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Finance forecast now breaks down income and expenses",
+          "body": "The next-season forecast shows one line per source instead of one total: sponsor base, sponsor variable, prize money, salary, and staff & facilities. Prize money is now a range, not a single number, since it's the least predictable line. From season 3, salary uses the new market-value wage system."
+        },
+        "da": {
+          "title": "Prognosen viser nu indtægter og udgifter hver for sig",
+          "body": "Næste sæsons prognose viser en linje pr. kilde i stedet for et samlet tal: sponsor base, sponsor variabel, præmiepenge, løn og stab & faciliteter. Præmiepenge er nu et spænd, ikke et enkelt tal, fordi det er den mindst forudsigelige linje. Fra sæson 3 bruger lønnen det nye markedsværdi-lønsystem."
+        },
+        "refs": [
+          3899
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.145",
+    "date": "2026-08-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "Offers and activity feed now update live",
+          "body": "The pending actions badge and the activity feed did not refresh on their own; new transfer and swap offers only appeared after a reload. Both now update in real time."
+        },
+        "da": {
+          "title": "Tilbud og aktivitetsfeed opdaterer nu live",
+          "body": "Badgen for afventende handlinger og aktivitetsfeedet opdaterede ikke af sig selv; nye købs- og byttetilbud dukkede først op efter en genindlæsning. Begge opdaterer nu i realtid."
+        },
+        "refs": [
+          3035
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.144",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Ops",
+        "en": {
+          "title": "Service status banner",
+          "body": "A short status banner now shows at the top of the app during ongoing issues or maintenance. See it and past notices any time on the Help page under \"Known issues\"."
+        },
+        "da": {
+          "title": "Driftsbanner",
+          "body": "En kort statuslinje vises nu øverst i appen ved igangværende problemer eller vedligehold. Se den og tidligere beskeder når som helst på Hjælp-siden under \"Kendte problemer\"."
+        },
+        "refs": [
+          3941
+        ]
+      },
+      {
+              "category": "fixed",
+              "audience": "player",
+              "topic": "Races",
+              "en": {
+                      "title": "Points and mountains standings now show jersey points",
+                      "body": "The points and mountains classification tables highlighted prize points instead of the actual jersey points. The jersey total is now the clearly labelled main column, prize points moved to a quieter spot."
+              },
+              "da": {
+                      "title": "Point- og bjergklassement viser nu troejepoint",
+                      "body": "Point- og bjergklassementets tabeller fremhaevede praemiepoint i stedet for de faktiske troejepoint. Troeje-totalen er nu den tydeligt maerkede hovedkolonne, praemiepoint staar mere diskret."
+              },
+              "refs": [
+                      3913
+              ]
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Dashboard",
+              "en": {
+                      "title": "Today's stages at the top of your dashboard",
+                      "body": "A new strip at the top of the dashboard shows your races today: stage, terrain, start time in your local time, live status or winner, and your overall position. Tap a card to jump straight to the race."
+              },
+              "da": {
+                      "title": "Dagens etaper oeverst paa dit dashboard",
+                      "body": "En ny stribe oeverst paa dashboardet viser dine loeb i dag: etape, terraen, starttid i din lokale tid, live-status eller vinder, og din samlede placering. Tryk paa et kort for at hoppe direkte til loebet."
+              },
+              "refs": [
+                      3915
+              ]
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Dashboard",
+              "en": {
+                      "title": "See which way your division standing is moving",
+                      "body": "Your division standing on the dashboard now shows movement since the last race day: position change and points change, with the same arrows used elsewhere in the game."
+              },
+              "da": {
+                      "title": "Se hvilken vej din divisionsplacering bevaeger sig",
+                      "body": "Din divisionsstilling paa dashboardet viser nu bevaegelse siden sidste loebsdag: placerings- og point-aendring, med de samme pile som resten af spillet."
+              },
+              "refs": []
+      },
+      {
+              "category": "new",
+              "audience": "player",
+              "topic": "Market",
+              "en": {
+                      "title": "Outbid? Now you can see it",
+                      "body": "Being outbid used to show only as a 4 second toast. Auctions where you are outbid now stay marked until you act, and the auction history marks real bidding wars with 2 or more bidders."
+              },
+              "da": {
+                      "title": "Overbudt? Nu kan du se det",
+                      "body": "At blive overbudt blev kun vist som en 4 sekunders toast. Auktioner hvor du er overbudt er nu markeret indtil du reagerer, og auktionshistorikken markerer aegte budkrige med 2 eller flere budgivere."
+              },
+              "refs": []
+      },
+      {
+              "category": "fixed",
+              "audience": "player",
+              "topic": "Teams",
+              "en": {
+                      "title": "Other teams' pages open on the squad tab again",
+                      "body": "Visiting another team could land you on the tab you used on the previous team, and the back button forgot your tab. Team pages now open on the squad tab, and your tab choice sticks in the address bar."
+              },
+              "da": {
+                      "title": "Andre holds sider aabner paa trup-fanen igen",
+                      "body": "Et besoeg paa et andet hold kunne lande paa fanen fra det forrige hold, og tilbage-knappen glemte dit fanevalg. Holdsider aabner nu paa trup-fanen, og dit fanevalg huskes i adresselinjen."
+              },
+              "refs": [
+                      3916
+              ]
+      },
+      {
+              "category": "improved",
+              "audience": "player",
+              "topic": "UI",
+              "en": {
+                      "title": "Cleaner sidebar header",
+                      "body": "The sidebar corner now shows only the Cycling Zone wordmark. Your team name already lives on the dashboard and My Team, so it no longer doubles up next to the logo."
+              },
+              "da": {
+                      "title": "Renere sidebar-header",
+                      "body": "Sidebar-hjoernet viser nu kun Cycling Zone-wordmarket. Dit holdnavn findes allerede paa dashboardet og Mit Hold, saa det staar ikke laengere dobbelt ved siden af logoet."
+              },
+              "refs": [
+                      2181
+              ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A transfer offer can no longer be accepted while the rider is on auction",
+          "body": "Accepting an offer or counter-offer on a rider who is meanwhile up for auction is now blocked with a clear message instead of silently colliding with the auction. The auction always wins the channel."
+        },
+        "da": {
+          "title": "Et transfertilbud kan ikke længere accepteres mens rytteren står på auktion",
+          "body": "Accept af et tilbud eller modbud på en rytter der i mellemtiden er sat på auktion bliver nu blokeret med en klar besked i stedet for at kollidere stille med auktionen. Auktionen vinder altid kanalen."
+        },
+        "refs": [
+          3940
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training no longer risks a setback",
+          "body": "Higher intensity used to carry a small chance of a setback that slowed a rider's growth for the season. That risk is gone. Hard training still costs more fatigue than easy or normal, so the choice still matters."
+        },
+        "da": {
+          "title": "Træning risikerer ikke længere et tilbageslag",
+          "body": "Højere intensitet gav tidligere en lille chance for et tilbageslag der bremsede en rytters vækst i sæsonen. Den risiko er væk. Hård træning koster stadig mere træthed end let eller normal, så valget betyder stadig noget."
+        },
+        "refs": [
+          3758
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.143",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Season start notification now shows your sponsor payout",
+          "body": "The \"new season has started\" notification used to say nothing about money, leaving you guessing whether it had landed. It now states the exact amount your sponsor paid out. Delivery is also more reliable, so a resend can be targeted at any team that missed it."
+        },
+        "da": {
+          "title": "Sæsonstart-notifikationen viser nu din sponsorudbetaling",
+          "body": "\"Ny sæson er begyndt\"-notifikationen nævnte ikke penge, så du måtte gætte om de var landet. Den viser nu det præcise beløb din sponsor udbetalte. Leveringen er også mere pålidelig, så en efter-sendelse kan målrettes hold der manglede den."
+        },
+        "refs": [
+          3101
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Lineups fill up correctly again",
+          "body": "A safety rule added this morning accidentally blocked the automatic lineup filler from moving riders between overlapping races. Some teams started races with 4 or 5 riders instead of 6. Lineups now fill and update as they should."
+        },
+        "da": {
+          "title": "Startfelter fyldes korrekt op igen",
+          "body": "En sikkerhedsregel tilføjet i morges blokerede ved et uheld den automatiske opstilling fra at flytte ryttere mellem overlappende løb. Nogle hold startede løb med 4 eller 5 ryttere i stedet for 6. Felterne fyldes og opdateres nu som de skal."
+        },
+        "refs": [
+          3934,
+          3420
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.142",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Watch the story of the stage",
+          "body": "Finished stages now have a race film. Scrub through the stage on its real profile, follow the event feed as it plays, and read 3 to 5 key moments picked out for you."
+        },
+        "da": {
+          "title": "Se etapens historie",
+          "body": "Færdige etaper har nu en løbsfilm. Scrub gennem etapen på dens rigtige profil, følg begivenheds-feedet mens det spiller, og læs 3 til 5 udvalgte nøgleøjeblikke."
+        },
+        "refs": [
+          3859,
+          2410
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The scout button no longer offers a useless upgrade",
+          "body": "If scouting a rider further would not improve the precision you already have, the button is now dimmed and explains why, instead of letting you spend on nothing."
+        },
+        "da": {
+          "title": "Scout-knappen tilbyder ikke længere en ubrugelig opgradering",
+          "body": "Hvis mere scouting af en rytter ikke ville forbedre præcisionen du allerede har, er knappen nu dæmpet og forklarer hvorfor, i stedet for at lade dig bruge penge på ingenting."
+        },
+        "refs": [
+          3671
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Teams created mid season now get their share of sponsor money",
+          "body": "A team created after season start used to get no season sponsor payout and no contract until the next season change. New teams now get a fair share, measured in race days."
+        },
+        "da": {
+          "title": "Hold oprettet midt i sæsonen får nu deres andel af sponsorpengene",
+          "body": "Et hold oprettet efter sæsonstart fik hverken sæson-sponsorudbetaling eller kontrakt før næste sæsonskifte. Nye hold får nu en fair andel, målt i løbsdage."
+        },
+        "refs": [
+          3730
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A defective rider's auction can no longer vanish without notice",
+          "body": "Deleting a broken rider now cancels their active auctions first, so bidders get the normal cancellation notice instead of the auction just disappearing. Auction finalization also double checks that ownership actually changed hands before any money moves."
+        },
+        "da": {
+          "title": "En defekt rytters auktion kan ikke længere forsvinde uden besked",
+          "body": "Sletning af en defekt rytter annullerer nu deres aktive auktioner først, så budgivere får den normale annulleringsbesked i stedet for at auktionen bare forsvinder. Auktionsafslutning tjekker nu også at ejerskabet reelt skiftede hænder før nogen penge flyttes."
+        },
+        "refs": [
+          3594,
+          3580
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A race lineup no longer fails entirely over one deleted rider",
+          "body": "If a rider was deleted while the day's race entries were being built, the whole team's entry could fail. The generator now retries without the missing rider instead of dropping the entire lineup."
+        },
+        "da": {
+          "title": "En løbsopstilling fejler ikke længere helt pga. én slettet rytter",
+          "body": "Hvis en rytter blev slettet mens dagens løbstilmeldinger blev bygget, kunne hele holdets tilmelding fejle. Generatoren prøver nu igen uden den manglende rytter, i stedet for at hele opstillingen dropper."
+        },
+        "refs": [
+          3482
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.141",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "A more consistent look on auctions, dashboard and rider profiles",
+          "body": "Three of the most used pages now follow the same design rules: one clear primary button per page, matching corners and icons everywhere, proper progress bars and empty states, and new \"Showing X of Y\" lines under the auction and market lists."
+        },
+        "da": {
+          "title": "Mere ensartet udseende på auktioner, dashboard og rytterprofiler",
+          "body": "Tre af de mest brugte sider følger nu de samme designregler: én tydelig primærknap pr. side, ens hjørner og ikoner overalt, rigtige progress-bars og tom-tilstande, og nye \"Viser X af Y\"-linjer under auktions- og markedslisterne."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.140",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race Centre: today's racing in one place",
+          "body": "New page under Races. Your own races come first: live races show the latest action and a Watch live button, upcoming races show a countdown and your lineup status, finished races show the podium and your best rider. Below that, a strip with today's results from the other divisions."
+        },
+        "da": {
+          "title": "Race Centre: dagens løb ét sted",
+          "body": "Ny side under løb. Dine egne løb står øverst: live-løb viser seneste aktion og en Watch live-knap, kommende løb viser nedtælling og din opstillings-status, færdige løb viser podiet og din bedste rytter. Nedenunder en stribe med dagens resultater fra de andre divisioner."
+        },
+        "refs": [3858]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stuck race lineups heal themselves again",
+          "body": "When two of your races overlapped on the same day, the automatic lineup repair could pick a rider who was already racing the other one, and the lineup got stuck. The repair now checks your other races first."
+        },
+        "da": {
+          "title": "Fastlåste opstillinger heler sig selv igen",
+          "body": "Når to af dine løb overlappede samme dag, kunne den automatiske opstillings-reparation vælge en rytter der allerede kørte det andet løb, og opstillingen sad fast. Reparationen tjekker nu dine andre løb først."
+        },
+        "refs": [3906]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A sale can no longer leave the seller below 8 riders",
+          "body": "The squad minimum was only checked when an auction was created, not when it closed. If the seller lost riders in the meantime, the sale is now cancelled instead of leaving the team unable to race, and both parties are notified."
+        },
+        "da": {
+          "title": "Et salg kan ikke længere efterlade sælgeren under 8 ryttere",
+          "body": "Trup-minimum blev kun tjekket da auktionen blev oprettet, ikke da den lukkede. Har sælgeren mistet ryttere i mellemtiden, annulleres salget nu i stedet for at efterlade holdet ude af stand til at stille op, og begge parter får besked."
+        },
+        "refs": [2836]
+      }
+    ]
+  },
+  {
+    "version": "7.139",
+    "date": "2026-08-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "See rider popularity before you buy",
+          "body": "Rider popularity (0 to 100) now shows on the rider profile and as a sortable column in the market. Your board sets popularity goals, and now you can actually shop for them."
+        },
+        "da": {
+          "title": "Se rytterens popularitet før du køber",
+          "body": "Rytter-popularitet (0 til 100) vises nu på rytterprofilen og som sortérbar kolonne i markedet. Bestyrelsen stiller popularitetsmål, og nu kan du faktisk handle efter dem."
+        },
+        "refs": [3622]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Accepted bonus offers can no longer vanish",
+          "body": "Accepting a board bonus offer is now a single safe step. Four teams hit the old bug and have each been credited the missing 200,000."
+        },
+        "da": {
+          "title": "Accepterede bonus-tilbud kan ikke længere forsvinde",
+          "body": "Accept af et bonus-tilbud fra bestyrelsen er nu ét sikkert skridt. Fire hold ramte den gamle fejl og har hver fået de manglende 200.000 godskrevet."
+        },
+        "refs": [3578, 3655]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "New teams keep their starting squad",
+          "body": "Starter contracts now always run 2 to 3 seasons. A team created late in a season no longer loses most of its riders at the first season end."
+        },
+        "da": {
+          "title": "Nye hold beholder deres starttrup",
+          "body": "Starter-kontrakter løber nu altid 2 til 3 sæsoner. Et hold oprettet sent i en sæson mister ikke længere størstedelen af truppen ved førstkommende sæsonslut."
+        },
+        "refs": [3037]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "A traded academy rider no longer squeezes past your 8-slot cap",
+          "body": "Swapping for an opponent's academy rider carried his academy flag over untouched, so he could land on your squad on top of a full academy: one team ended up with 9 riders in 8 slots. A traded academy rider now graduates to senior on arrival, the same way a market sale already does, so a swap can never push you over the cap."
+        },
+        "da": {
+          "title": "En byttet akademi-rytter kan ikke længere presse sig forbi din 8-plads-cap",
+          "body": "Byttede du dig til en modstanders akademi-rytter, fulgte hans akademi-flag råt med, så han kunne lande i din trup selvom akademiet var fuldt: ét hold endte med 9 ryttere på 8 pladser. En byttet akademi-rytter graduerer nu til senior ved ankomsten, ligesom et salg på transfermarkedet allerede gør, så et bytte aldrig kan skubbe dig over loftet."
+        },
+        "refs": [2797]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Cleaner transfer history",
+          "body": "Auctions that ended without bids no longer clutter the history, and AI teams are named instead of showing a dash or Unknown."
+        },
+        "da": {
+          "title": "Renere transferhistorik",
+          "body": "Auktioner uden bud fylder ikke længere historikken, og AI-hold navngives i stedet for en streg eller Unknown."
+        },
+        "refs": [3708]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Old youth free agents recalibrated",
+          "body": "139 unowned youth riders from old academy batches carried stats from an outdated calibration. They now match the youth band, with values to match."
+        },
+        "da": {
+          "title": "Gamle frie ungdomsryttere rekalibreret",
+          "body": "139 uejede ungdomsryttere fra gamle akademi-kuld bar stats fra en forældet kalibrering. De matcher nu ungdomsbåndet, med tilsvarende værdier."
+        },
+        "refs": [3614]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Small fixes",
+          "body": "The notification badge now counts up to 99+. Season dates no longer show the previous day for players west of UTC. The app loads noticeably faster on first visit."
+        },
+        "da": {
+          "title": "Små forbedringer",
+          "body": "Notifikations-badgen tæller nu op til 99+. Sæson-datoer viser ikke længere dagen før for spillere vest for UTC. Appen loader mærkbart hurtigere ved første besøg."
+        },
+        "refs": [3439, 3724, 3697]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Under the hood",
+          "body": "A database level guard now makes rider double-booking impossible, forced sales complete safely after interruptions, and academy sales count correctly in the academy overview going forward."
+        },
+        "da": {
+          "title": "Under motorhjelmen",
+          "body": "En vagt på database-niveau gør dobbeltbooking af ryttere umulig, tvangssalg gennemføres sikkert efter afbrydelser, og akademi-salg tæller fremadrettet korrekt i akademi-overblikket."
+        },
+        "refs": [3420, 2982, 2793]
+      }
+    ]
+  },
+  {
+    "version": "7.138",
+    "date": "2026-08-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The Final Kilometre follows the stage tab you're on",
+          "body": "Opening an earlier stage's tab used to still replay the most recently run stage's finish. It now replays that stage's own finish."
+        },
+        "da": {
+          "title": "Den sidste kilometer følger den etape-fane du er på",
+          "body": "At åbne en tidligere etapes fane afspillede før stadig den seneste kørte etapes mål. Nu afspiller den etapens eget mål."
+        },
+        "refs": [3396]
+      }
+    ]
+  },
+  {
     "version": "7.137",
     "date": "2026-08-17",
     "label": "Beta",
@@ -35,6 +638,20 @@ export const PATCHES = [
           "body": "Akademi-ryttere kan nu sættes på transferlisten eller på auktion mens de stadig er på akademiet. Køberen modtager dem som seniorer med kontrakt og løn uændret."
         },
         "refs": [3650]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Two staff per role",
+          "body": "Each staff role now has two slots, so you can run two scouts or two coaches at once. The strongest of the two drives your bonus. Candidates are always visible, and you only need to fire someone when both slots are full."
+        },
+        "da": {
+          "title": "To staff pr. rolle",
+          "body": "Hver staff-rolle har nu to pladser, så du kan have to spejdere eller to trænere samtidigt. Den stærkeste af de to driver din bonus. Kandidater er altid synlige, og du skal kun fyre nogen når begge pladser er fyldt."
+        },
+        "refs": [3489, 3658]
       },
       {
         "category": "new",

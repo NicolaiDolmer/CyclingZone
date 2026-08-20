@@ -45,6 +45,11 @@ function createMockSupabase(initialState = {}) {
     season_standings: initialState.season_standings ? [...initialState.season_standings] : [],
     admin_log: initialState.admin_log ? [...initialState.admin_log] : [],
     notifications: initialState.notifications ? [...initialState.notifications] : [],
+    // #3101 · emitSeasonStartedNotifications' sponsor-beløbs-opslag (finance_
+    // transactions type='sponsor') — tom i disse tests, fordi processSeasonStart
+    // her er stubbet og derfor aldrig selv skriver rækkerne. Emit-funktionen
+    // falder korrekt tilbage til den beløbsfrie besked når intet findes.
+    finance_transactions: initialState.finance_transactions ? [...initialState.finance_transactions] : [],
     sponsor_contracts: initialState.sponsor_contracts ? [...initialState.sponsor_contracts] : [],
     app_config: initialState.app_config ? [...initialState.app_config] : [],
     // #2916 · carry-over-fasen læser disse tabeller. De defaulter til tomme

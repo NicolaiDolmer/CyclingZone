@@ -26,6 +26,7 @@
     "rider_has_active_auction": "This rider already has an active auction",
     "rider_in_open_swap_auction": "This rider is offered in an open swap. Withdraw the swap offer before starting an auction",
     "rider_on_auction_transfer": "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
+    "rider_on_auction_swap": "One of the swapped riders is on an active auction. The swap was cancelled. Bid on the auction instead.",
     "invalid_start_price": "Invalid starting price",
     "invalid_offer_amount": "Invalid amount",
     "invalid_loan_amount": "Invalid amount",
@@ -153,6 +154,7 @@
     "board_renegotiation_locked_window": "The season's final phase has begun. The board plan can't be renegotiated in the last {raceDays} race days.",
     "board_renegotiation_locked_progress": "The board plan can't be renegotiated mid-season (once {percent}% of the season has been raced). Wait until the plan expires or the season ends.",
     "board_unavailable": "Board features aren't available yet",
+    "board_bonus_credit_failed": "Could not credit the bonus. The offer was not changed, please try again.",
     "dna_requires_identity_basis": "Your club identity isn't ready yet. Try again in a moment.",
     "dna_already_chosen": "Your club DNA is already set and can't be changed yet",
     "invalid_asking_price": "The asking price must be a positive whole number",
@@ -208,6 +210,7 @@
     "auction_end_invalid": "Pick a valid end time for the auction",
     "auction_end_too_soon": "An auction must run for at least {minHours} hour",
     "auction_end_too_late": "An auction can't run for more than {maxHours} hours",
-    "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}"
+    "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}",
+    "season_end_already_claimed": "Season end already in progress or already completed"
   }
 }

@@ -15,6 +15,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Card, FlagIcon } from "./ui";
+import { buttonClass } from "./ui/buttonStyles.js";
 import { formatCountdown } from "../lib/stageScheduleConfig.js";
 
 // #3243 — startAtMs/nowMs (valgfri): ægte race_stage_schedule-countdown til
@@ -49,11 +50,7 @@ export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs
           scrolle direkte ned til RaceSelectionPanel ved load. */}
       <Link
         to={`/races/${nextRace.id}#selection`}
-        className={`flex-shrink-0 self-start sm:self-auto px-4 py-2 rounded-lg text-sm font-semibold ${
-          primary
-            ? "bg-cz-accent text-cz-on-accent hover:opacity-90 transition-opacity"
-            : "border border-cz-border bg-transparent text-cz-1 hover:border-cz-3 transition-colors"
-        }`}
+        className={`flex-shrink-0 self-start sm:self-auto ${buttonClass({ variant: primary ? "primary" : "secondary", size: "sm" })}`}
       >
         {t("discoverCta.action")}
       </Link>

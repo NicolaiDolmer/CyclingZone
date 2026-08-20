@@ -30,12 +30,16 @@ export const TEST_TEAM = {
 // for den rene tæller-query (league_division_id=eq UDEN pool_race-join). Dashboards
 // "næste løb"-liste joiner pool_race og får SEED_RACES (#1906), så den nu — korrekt —
 // viser holdets kommende løb i stedet for en tom tabel.
+// vk-movement-signals: id + game_day_start tilføjet (samme query, 2 ekstra
+// kolonner) — driver findLastCompletedRaceDay(). "pool-race-done-2" har det højeste
+// game_day_start blandt completed-løb og er derfor "sidste løbsdag" (se
+// SEED_TEAM_RACE_POINTS_MV nedenfor for de holdpoint der knytter sig til den).
 export const POOL_RACES = [
-  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
-  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
-  { status: "scheduled", stages: 7, stages_completed: 2, league_division_id: 2 },
-  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
-  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
+  { id: "pool-race-done-1", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 2 },
+  { id: "pool-race-done-2", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 9 },
+  { id: "pool-race-sched-1", status: "scheduled", stages: 7, stages_completed: 2, league_division_id: 2, game_day_start: 15 },
+  { id: "pool-race-sched-2", status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2, game_day_start: 20 },
+  { id: "pool-race-sched-3", status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2, game_day_start: 22 },
 ];
 
 export const RIVAL_TEAM = {
@@ -664,10 +668,34 @@ export const SEED_TEAM_HALL_OF_FAME = [
 // #3197: league_division_id (2 = "Division 2 — A", TEST_TEAM's egen pulje) med
 // på team-joinet, så Resultat-hubbens Tophold-boks kan pulje-filtreres på
 // preview/e2e ligesom den ægte season_standings-query.
+// vk-movement-signals: "team-ai-preview"s total_points er tættere på
+// TEST_TEAM end før (var 4990) — mere realistisk enkelt-løbsdags-afstand.
+// NB: Dashboardets EGEN "teams"-query (restRows case "teams" nedenfor) er
+// hardcodet til KUN [TEST_TEAM, RIVAL_TEAM] uanset filter — "team-ai-preview"
+// vises derfor ALDRIG på dashboardets "My division standings"-modul (kun på
+// /resultater, som læser season_standings direkte). Rank-klatringen kan derfor
+// ikke demonstreres i preview med kun 2 hold (se dashboardMovementSignals.test.js
+// for den unit-testede klatre-sag); "+86" holdpoint-deltaet vises fortsat.
 export const SEED_SEASON_STANDINGS = [
   { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
   { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
-  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2, league_division_id: 2 } },
+  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 5450, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2, league_division_id: 2 } },
+];
+
+// vk-movement-signals — team_race_points_mv: hold-point PR. LØB, samme
+// tabel StandingsPage's progressions-graf allerede læser. "pool-race-done-2"
+// (POOL_RACES ovenfor) er puljens seneste AFSLUTTEDE løbsdag: TEST_TEAM's 86
+// point den dag matcher opgavens "+86"-eksempel og driver dashboardets
+// holdpoint-delta-badge. "pool-race-done-1" er en TIDLIGERE løbsdag og
+// påvirker ikke beregningen (kun sidste dag tæller) — med for realisme/
+// season-total-troværdighed.
+export const SEED_TEAM_RACE_POINTS_MV = [
+  { season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 86 },
+  { season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 10 },
+  { season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", race_id: "pool-race-done-2", race_name: "Giro di Preview", race_points: 10 },
+  { season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 20 },
+  { season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 15 },
+  { season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", race_id: "pool-race-done-1", race_name: "Omloop Preview", race_points: 25 },
 ];
 
 // ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────
@@ -889,6 +917,55 @@ export const SEED_TRANSFER_HISTORY = [
     amount: 415000,
     status: "accepted",
     season_number: ACTIVE_SEASON.season_number,
+  },
+];
+
+// GET /api/riders/:id/history — #3708: rytterens egen offentlige historik
+// (RiderHistoryTab). Samme event-shape som backendens buildRiderHistory
+// (backend/lib/riderHistory.js). Holder BÅDE en no_sale-auktion (skal
+// filtreres helt fra, se lib/riderHistoryTable.js) og en garanteret AI-salg
+// uden buyer (buyer: null, no_sale: false → "AI team", ikke "Unknown"), så
+// begge #3708-rettelser har noget reelt at bevise på preview/e2e.
+export const SEED_RIDER_HISTORY = [
+  {
+    type: "auction",
+    date: "2026-07-20T18:00:00.000Z",
+    price: 210000,
+    seller: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false },
+    buyer: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+    no_sale: false,
+    is_ai_sale: false,
+    is_guaranteed_sale: false,
+  },
+  // Gennemført auktion uden bud — må IKKE optræde i den rendrede historik.
+  {
+    type: "auction",
+    date: "2026-07-05T09:00:00.000Z",
+    price: null,
+    seller: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false },
+    buyer: null,
+    no_sale: true,
+    is_ai_sale: false,
+    is_guaranteed_sale: false,
+  },
+  // Garanteret AI-salg: current_bidder_id (buyer) er tomt, men no_sale er
+  // false — det ER et salg, bare uden en menneske-modpart.
+  {
+    type: "auction",
+    date: "2026-06-28T12:00:00.000Z",
+    price: 95000,
+    seller: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false },
+    buyer: null,
+    no_sale: false,
+    is_ai_sale: false,
+    is_guaranteed_sale: true,
+  },
+  {
+    type: "transfer",
+    date: "2026-06-15T10:00:00.000Z",
+    price: 150000,
+    seller: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    buyer: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
   },
 ];
 
@@ -1352,13 +1429,17 @@ export const SEED_CALENDAR = {
 };
 
 // #1441 A3 — start-tilstand for Klub-preview (mid-game D2-hold). Muteres af clubMock.
+// #3489: staffSlots er nu et fast 2-langt array (slot 1, slot 2) i stedet for ét
+// `staff`-felt — spejler backend/lib/facilityConstants.js' MAX_STAFF_SLOTS_PER_ROLE.
+// Training seedes MED begge slots besat, så ejeren kan se/klikke den nye
+// "2 samtidige staff i samme rolle"-tilstand uden selv at ansætte først.
 export const SEED_CLUB = {
   facilities: {
-    training: { tier: 2, staff: { name: "Sofie Lindqvist", tier: 2 } },
-    scouting: { tier: 1, staff: null },
-    medical: { tier: 0, staff: null },
-    academy: { tier: 3, staff: { name: "Aldo Terranova", tier: 1 } },
-    commercial: { tier: 0, staff: null },
+    training: { tier: 2, staffSlots: [{ name: "Sofie Lindqvist", tier: 2 }, { name: "Bjarne Holmqvist", tier: 3 }] },
+    scouting: { tier: 1, staffSlots: [null, null] },
+    medical: { tier: 0, staffSlots: [null, null] },
+    academy: { tier: 3, staffSlots: [{ name: "Aldo Terranova", tier: 1 }, null] },
+    commercial: { tier: 0, staffSlots: [null, null] },
   },
 };
 
@@ -1541,3 +1622,34 @@ export const SEED_SEASON_HONOURS = {
     { rider_id: "rider-honours-4", firstname: "Owen", lastname: "Delaney", nationality_code: "ie", team_id: "team-honours-4", team_name: "Harbour Racing", is_ai: false, points: "2103", wins: "4" },
   ],
 };
+
+// ── #3941 · Race Control ops-notices ────────────────────────────────────────
+// Én dismissable "warning" (viser dismiss-knappen) + én "incident" (viser at
+// incident IKKE kan dismisses) — begge active:true, saa preview/e2e ser begge
+// banner-strimler stakket + begge rækker i Hjælp-sidens "Kendte problemer".
+export const SEED_OPS_NOTICES = [
+  {
+    id: "opsnotice-1",
+    severity: "warning",
+    title_en: "Live auction bidding may lag",
+    title_da: "Bud i live-auktioner kan opdatere langsomt",
+    body_en: "We are investigating delayed bid updates. No bids are lost.",
+    body_da: "Vi undersøger forsinkede budopdateringer. Ingen bud går tabt.",
+    active: true,
+    starts_at: "2026-08-18T07:00:00Z",
+    ends_at: null,
+    created_at: "2026-08-18T07:00:00Z",
+  },
+  {
+    id: "opsnotice-2",
+    severity: "incident",
+    title_en: "Lineups are not filling automatically",
+    title_da: "Startfelter fyldes ikke automatisk op",
+    body_en: "We are actively fixing this. Manual lineup changes still work.",
+    body_da: "Vi arbejder på at rette det. Manuelle ændringer af startfeltet virker stadig.",
+    active: true,
+    starts_at: "2026-08-18T05:00:00Z",
+    ends_at: null,
+    created_at: "2026-08-18T05:00:00Z",
+  },
+];

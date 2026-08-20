@@ -346,8 +346,16 @@ export default function TeamTransferHistoryTab({ teamId }) {
                     ) : ev.type === "academy" ? (
                       // #1525: akademi-intake har ingen modpart — kilden er akademiet.
                       <span className="text-cz-2">{t("history.academySource")}</span>
+                    ) : ev.no_sale ? (
+                      <span className="text-cz-3">{t("history.noBids")}</span>
+                    ) : ev.is_guaranteed_sale ? (
+                      // #3708: garanteret AI-salg sætter ikke current_bidder_id, så
+                      // counterparty-joinet er tomt — det er stadig et reelt salg
+                      // (no_sale er false), bare uden en menneske-modpart. "-" gav
+                      // spillerne indtryk af manglende data i stedet for en AI-handel.
+                      <span className="text-cz-2">{t("history.aiTeamFallback")}</span>
                     ) : (
-                      <span className="text-cz-3">{ev.no_sale ? t("history.noBids") : "—"}</span>
+                      <span className="text-cz-3">—</span>
                     )}
                   </td>
                   <td className="py-2 text-right font-mono whitespace-nowrap">

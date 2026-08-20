@@ -782,7 +782,7 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
 
 function MarketStatBar({ value }) {
   return (
-    <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(value ?? 0)}>
+    <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded-cz" style={statStyle(value ?? 0)}>
       {value ?? "—"}
     </span>
   );
@@ -1802,6 +1802,12 @@ export default function TransfersPage() {
                     </table>
                   </div>
                 </div>
+              )}
+              {/* #2849 T2-kontrakt: count-linje under markeds-tabellen (docs/design/PAGE_TEMPLATES.md). */}
+              {filteredListings.length > 0 && (
+                <p className="mt-2 text-cz-3 text-xs font-data">
+                  {t("marketRow.countLine", { shown: filteredListings.length, total: listings.length })}
+                </p>
               )}
             </div>
           )}

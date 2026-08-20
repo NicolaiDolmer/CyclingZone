@@ -71,9 +71,11 @@ export function useStaffProfile(staffId) {
   }, [staffId]);
 
   // Roster = holdets besatte staff (til ‹ forrige · næste ›), i facilitets-rækkefølge.
+  // #3489: op til 2 aktive staff pr. spor nu — staffList (fulde liste, sorteret på
+  // slot) i stedet for staff (kun den STÆRKESTE af dem), ellers forsvinder den
+  // svageste af to samtidige staff usynligt fra switcher-baren.
   const roster = (facs.facilities || [])
-    .map((f) => f.staff && { id: f.staff.id, role: f.track, name: f.staff.name })
-    .filter(Boolean);
+    .flatMap((f) => (f.staffList ?? (f.staff ? [f.staff] : [])).map((s) => ({ id: s.id, role: f.track, name: s.name })));
 
   return { profile, roster, status, facilitiesLoading: facs.loading };
 }

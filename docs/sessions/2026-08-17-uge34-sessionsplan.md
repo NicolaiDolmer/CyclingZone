@@ -1,0 +1,87 @@
+# Uge 34-sessionsplan (ejer-designet 17/8 via 12 spørgsmål, race-oplevelses-sessionen)
+
+> Cutover søndag 23/8. Tre fokuserede sessioner + indklemt værdi/løn-beslutningssession
+> (ejer-valgt), derefter cutover hvor ejer + Claude sidder sammen hele forløbet. Motor
+> v4-design (#3855) og pressen ligger i S3 uge 1. Denne fil er de næste sessioners
+> startprompter.
+>
+> **Logistik (ejer 17/8):** spørg om tid/varighed VED HVER sessions start — ejeren er som
+> regel til rådighed, undtagen om natten. Beslutnings-gates lægges først i sessionen.
+> **Natbølger: FULDT TRYK (ejer-valgt 17/8)** — natbølge hver nat på W-bølgerne (start
+> med W1 integritet), lanceret fra aftensessionens close-out med ejer-go pr. runbook
+> (`docs/NIGHT_WAVE_RUNBOOK.md`). Første bølge natten 18→19/8 (17/8-natten droppet pga.
+> GitHub-hændelsens Actions-efterslæb — evidens i sessionen 17/8).
+
+## Session 1 (tir/ons): S3-kalenderen — interleaving-ombygningen + regenerering
+
+**STATUS EFTER 17/8-NATTEN:** pakken (PR #3862, draft) har kørt 3 runder; 7 ejer-beslutninger
+bygget + leverance H (max-spænd, thelambas fund løst: 14→5 og 13→4 dage). REST: Giro 10 dage
++ 4 døde dage kolliderer med ejerens megathread-løfte (post 17/8 20:17). **Ejer-besluttet
+(nat): sessionen STARTER med interleaving-ombygningen af lane-packeren** (flet rest-fyld med
+GT-placering) under hårde gates: alle 9 scorecard-målinger + invarianter grønne, ellers
+fallback til runde 3-tilstanden. Derefter: +endagsløb-beslutning (2/4, efter nyt døde-dage-
+kort) → ejer-review → merge → regenerering (ejer overværer) → delbart kalender-billede +
+svar-udkast til megathreaden (thelamba + smukkethomsen; #dansk-snak-svarene 17/8 21:52-53).
+Ejer-liveness-tjek: første race_stage_timelines-rows efter dagens etaper (flag ON 17/8).
+
+**Mål:** S3-kalenderen står færdig og ejer-godkendt FØR 23/8.
+
+1. Gennemgå #3546-pakkens dry-run-scorecard med ejeren (PR fra 17/8-worktree: GT 17-18,
+   Giro-sprednings-rodfix, afgørelses-invariant, itt_hilly). Grønt scorecard → merge →
+   regenerering med ejeren ved tasterne.
+2. **Ejer-udvidelse 17/8: "vi skal lave flere store forbedringer til løbskalenderen for
+   sæson 3. Se gerne forslag fra discord."** Start med Discord-sweep: megathreaden
+   ("Season 3 calendar megathread"), #dansk-snak 8/8, #feedback-and-ideas siden 8/8 +
+   sidepunkterne fra #3547 (triple-overlap-afklaring, reduced-sprint-visualisering,
+   næste-sæsons-kalender-visning) og #3471 (kalender-spor med identitet). Læg forslagene
+   som beslutningsoplæg, ét ad gangen, tal + anbefaling.
+3. Regenererings-protokol: ejeren ser live-kalenderen + scorecardet før den "atombombe"
+   (ejer-review-reglen). Backup/rollback-værktøjet fra PR #3835 genbruges.
+
+## Session 2 (ons/tor): Trin 7-overgangssessionen (udrulning FØR sæsonskiftet, ejer-valgt 17/8 x2)
+
+**Punkt 1 (målingen) ER KØRT 17/8** — og den væltede præmissen (#3746-kommentar 17/8):
+87 % af et typisk holds ryttere får NEDjusteret prognose-visning (99,2 % af alle
+flytninger er ned; Sho-punktmålingen modsagt). Ejer-beslutning på den nye evidens:
+**udrulning stadig FØR sæsonskiftet** — sessionen skal derfor levere: (2) engangspanelet
+"Hvad ændrede sig for dine ryttere?" designet til virkeligheden "røde pile på næsten hele
+truppen, ingen bliver reelt dårligere", (3) spillerbesked + FAQ på samme præmis, i HØJ
+kvalitet FØR søndag. Derefter A0 (merge-go PR #3798 + Potentiale-omdøbning) → A1 → A2-A5.
+Flip-beslutningen er fortsat ejer-gated.
+
+## Indklemt (ons/tor, kort beslutnings-session): Værdi/løn (ejer-valgt 17/8)
+
+Sporet var ejet af den nu-lukkede parallelsession. Indhold: #3757 beslutning 7 ·
+niveau-korrektionen efter RØD refit-gate (nøglefund: kørende × 0,422) · værdi-beskedens
+retning (begge udkast venter) · #3550 signing fee (anbefaling B foreligger) · evt.
+præmiefordelings-A/B (prompt: 2026-08-14-praemiefordeling-session-prompt.md).
+Beslutninger enkeltvist med tal + anbefaling; værdi-beskeden kan så nå ud før/ved cutover.
+
+## Session 3 (tor/fre): Race-oplevelsen til S3-start
+
+**Mål:** S3's første løbsdage FØLES nye. Forudsætning: #2410 S1 merged + migration
+applied + flag ON (ejer-go 17/8: "ON straks efter verify").
+
+1. #3859 etapesiden før/under/efter + løbsfilm-afspilleren (mockup-kontrakt godkendt;
+   draft-PR + screenshots til ejer-go; lazy-loaded, bundle-vagt ~6 KB).
+2. #3858 Race Centre hvis tid (kontrakt godkendt; "Around the divisions"-strippen må udgå).
+3. De 6 godkendte renderer-forbedringer verificeres i S1-generatorens output mod ægte data.
+4. **S3-åbningspakken (ejer-valgt 17/8):** udkast til annoncerings-besked (EN+DA),
+   patch notes-opsamling og season start guide-opdatering — klar FØR søndag, ejeren
+   poster selv. Nævn løbsfilmen hvis den når med.
+
+## Cutover søndag 23/8
+
+Ejer + Claude sammen hele forløbet (ejer-valgt 17/8). Drejebog:
+docs/2026-08-23-cutover-drejebog.md. Indhold: race-day-flip + mandat-backfill.
+Ejer-klik før dagen: post race-day-beskeden (cutover-beskeder besked 1).
+
+## S3 uge 1 (24-31/8)
+
+- **#3855 motor v4 design-spec-session** (ejer-valgt timing) — segment-model, rng-budget,
+  kalibrerings-strategi, simulér-før-ship-harness, cutover-plan. Byg først efter spec-godkendelse.
+- **Pressen** (ejer-formet 17/8): TRE formater — (1) wire-notits 2-3 sætninger ALLE etaper,
+  (2) fuld reportage KUN store løb/afgørende etaper (trigger: løbsklasse/trøjeskift/drama-
+  significance), (3) **optakter** (ejer-prioriteret): preview fra rutedata + startliste + GC,
+  bor i etapesidens FØR-tilstand + Race Centre. Design-session før byg.
+- #3856 backfill-beslutning når filmen har bevist sig.

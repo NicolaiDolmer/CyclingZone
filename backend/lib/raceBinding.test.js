@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow, loadPoolLocalCetSpans } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow, loadPoolLocalCetSpans, isRiderDayInvariantViolation } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -701,4 +701,26 @@ test("deriveMonumentBindingWindow: ingen normale løb på datoen → null (kan i
   assert.equal(deriveMonumentBindingWindow([{ game_day: 100000, scheduled_at: "2026-07-29T17:00:00Z" }], idx), null);
   assert.equal(deriveMonumentBindingWindow([], idx), null);
   assert.equal(deriveMonumentBindingWindow([{ game_day: 100000, scheduled_at: "2026-07-29T17:00:00Z" }], null), null);
+});
+
+// #3420: DB-backstoppet (no_rider_double_booking, EXCLUDE USING gist) afviser med
+// SQLSTATE 23P01 — kaldere af et RÅT race_entries.insert/upsert (raceEntryGenerator.js,
+// raceRunner.js, api.js's auto-select + regenerate) bruger dette til at give en
+// navngiven fejl i stedet for en opak 500 (#3098-mønsteret).
+test("isRiderDayInvariantViolation: genkender Postgres' exclusion_violation (23P01)", () => {
+  assert.equal(isRiderDayInvariantViolation({ code: "23P01", message: "conflicting key value" }), true);
+});
+
+test("isRiderDayInvariantViolation: genkender fejlbesked via constraint-navn (fallback uden .code)", () => {
+  assert.equal(
+    isRiderDayInvariantViolation({ message: 'duplicate key value violates exclusion constraint "no_rider_double_booking"' }),
+    true
+  );
+});
+
+test("isRiderDayInvariantViolation: false for andre fejl / null", () => {
+  assert.equal(isRiderDayInvariantViolation({ code: "23505", message: "duplicate key value violates unique constraint" }), false);
+  assert.equal(isRiderDayInvariantViolation({ message: "connection reset" }), false);
+  assert.equal(isRiderDayInvariantViolation(null), false);
+  assert.equal(isRiderDayInvariantViolation(undefined), false);
 });

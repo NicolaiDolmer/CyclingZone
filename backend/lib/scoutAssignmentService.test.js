@@ -61,11 +61,20 @@ function createScoutSupabase({
         return {
           select() {
             const filters = {};
+            const inFilters = {};
+            const matching = () => state.staff.filter((r) =>
+              Object.entries(filters).every(([k, v]) => r[k] === v) &&
+              Object.entries(inFilters).every(([k, values]) => values.includes(r[k])));
             const chain = {
               eq(column, value) { filters[column] = value; return chain; },
+              in(column, values) { inFilters[column] = values; return chain; },
               maybeSingle() {
-                const row = state.staff.find((r) => Object.entries(filters).every(([k, v]) => r[k] === v)) || null;
-                return Promise.resolve({ data: row ? clone(row) : null, error: null });
+                return Promise.resolve({ data: matching()[0] ? clone(matching()[0]) : null, error: null });
+              },
+              // #3489: loadScout awaiter kæden direkte (listeforespørgsel over op til
+              // MAX_STAFF_SLOTS_PER_ROLE aktive rækker) i stedet for .maybeSingle().
+              then(resolve, reject) {
+                return Promise.resolve({ data: matching().map(clone), error: null }).then(resolve, reject);
               },
             };
             return chain;
@@ -77,11 +86,20 @@ function createScoutSupabase({
         return {
           select() {
             const filters = {};
+            const inFilters = {};
+            const matching = () => state.abilities.filter((r) =>
+              Object.entries(filters).every(([k, v]) => r[k] === v) &&
+              Object.entries(inFilters).every(([k, values]) => values.includes(r[k])));
             const chain = {
               eq(column, value) { filters[column] = value; return chain; },
+              in(column, values) { inFilters[column] = values; return chain; },
               maybeSingle() {
-                const row = state.abilities.find((r) => Object.entries(filters).every(([k, v]) => r[k] === v)) || null;
-                return Promise.resolve({ data: row ? clone(row) : null, error: null });
+                return Promise.resolve({ data: matching()[0] ? clone(matching()[0]) : null, error: null });
+              },
+              // #3489: loadScout henter alle ability-rækker for de aktive scouting-
+              // staff-id'er via .in(...) og awaiter direkte (listeforespørgsel).
+              then(resolve, reject) {
+                return Promise.resolve({ data: matching().map(clone), error: null }).then(resolve, reject);
               },
             };
             return chain;
@@ -261,6 +279,28 @@ test("getScoutState: hired scouting-staff → real overall/roleSkills, capacity 
     overall: 85, roleSkills: { evaluation: 80, reach: 90 }, isDefault: false,
   });
   assert.equal(result.capacity, 2); // overall >= 80
+});
+
+// #3489: op til 2 samtidige aktive scouting-staff nu — loadScout skal vælge
+// den stærkeste (højeste overall) som "den handlende spejder", uanset slot-
+// rækkefølge (denne fixture sætter den svageste i slot 1, den stærkeste i slot 2).
+test("getScoutState: 2 active scouting-staff → picks the strongest (highest overall), not slot order", async () => {
+  const supabase = createScoutSupabase({
+    team: { id: "team-1", balance: 100_000 },
+    staff: [
+      { id: "staff-weak", team_id: "team-1", role: "scouting", status: "active", name: "Weak Scout", tier: 2, slot: 1, created_at: "2026-06-01T00:00:00Z" },
+      { id: "staff-strong", team_id: "team-1", role: "scouting", status: "active", name: "Strong Scout", tier: 5, slot: 2, created_at: "2026-06-20T09:00:00Z" },
+    ],
+    abilities: [
+      { staff_id: "staff-weak", overall: 45, role_skills: { evaluation: 40, reach: 50 } },
+      { staff_id: "staff-strong", overall: 90, role_skills: { evaluation: 88, reach: 92 } },
+    ],
+  });
+  const result = await getScoutState("team-1", supabase);
+  assert.deepEqual(result.scout, {
+    id: "staff-strong", name: "Strong Scout", tier: 5, hiredAt: "2026-06-20T09:00:00Z",
+    overall: 90, roleSkills: { evaluation: 88, reach: 92 }, isDefault: false,
+  });
 });
 
 test("getScoutState: fired scouting-staff does NOT count as hired", async () => {

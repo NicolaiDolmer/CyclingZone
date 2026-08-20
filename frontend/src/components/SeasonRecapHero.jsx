@@ -2,28 +2,28 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Section, SectionHeader, Button, ZonePill,
-  BookOpenIcon, PodiumIcon, TrophyIcon, CoinIcon, ClipboardIcon,
+  BookOpenIcon, PodiumIcon, TrophyIcon, CoinIcon, ClipboardIcon, DownloadIcon,
 } from "./ui";
 import { formatNumber } from "../lib/intl";
 import { movementTone, movementLabelKey } from "../lib/seasonRecapCopy.js";
 
-// #2752 (design draft, PR pending owner approval) — the "yearbook" recap hero:
-// a per-team, shareable summary of a JUST-COMPLETED season. Intended to sit at
-// the TOP of SeasonEndPage (/seasons/:id) for MY team's row, above the season-
-// wide SeasonHonours block — SeasonHonours crowns the season's best RIDERS
-// (anyone's), this hero is about how MY TEAM did.
-//
-// PRESENTATIONAL ONLY (props-in, no fetch) — the draft mock preview feeds it
-// hand-built data; real wiring reads season_standings + the recap RPC data
-// SeasonEndPage already fetches (final rank, points, stage wins, prize) and is
-// intentionally deferred to a follow-up PR once the owner has approved this via
-// the draft's screenshots.
+// #2752 — the "yearbook" recap hero: a per-team, shareable summary of a
+// JUST-COMPLETED season. Sits at the TOP of SeasonEndPage (/seasons/:id) for
+// MY team's row, above the season-wide SeasonHonours block — SeasonHonours
+// crowns the season's best RIDERS (anyone's), this hero is about how MY TEAM
+// did. Wired to real data (season_standings + the recap RPC SeasonEndPage
+// already fetches: final rank, points, stage wins, prize) since PR #3283/
+// follow-ups; the mock preview at /ui/season-experience still feeds it
+// hand-built data for scenario review.
 //
 // DESIGN (docs/design/PAGE_TEMPLATES.md): same gold-keyline Section recipe as
 // SeasonHonours.jsx directly above it on the page (border-t-2 border-t-cz-accent)
 // — the two blocks read as one "season wrapped" moment, not two unrelated cards.
-// ONE gold primary button (share) — the page's Select/finance-report actions in
-// the header are secondary/neutral, so this hero owns the page's one primary CTA.
+// ONE gold primary button (season-recap-polish 18/8, ejer-godkendt mockup):
+// "Download share card" — the canvas-exported PNG that used to live on
+// SeasonDocumentary.jsx's own (now-removed) download button, same card, same
+// filename pattern, just triggered from here so the page keeps exactly one
+// gold CTA. "Copy recap link" moved to a secondary button next to it.
 const STAT_ICONS = { rank: PodiumIcon, stageWins: TrophyIcon, prize: CoinIcon };
 
 function formatCZ(amount) {
@@ -43,6 +43,10 @@ function formatCZ(amount) {
  * @param {number} [p.prizeWon]
  * @param {Array<{id?:string, icon?:Function, label:string, value:string}>} [p.highlights]
  * @param {string} [p.shareUrl]      overstyrer window.location.href (tests/preview)
+ * @param {() => Promise<void>} [p.onDownloadCard]  bygger + downloader delekortet
+ *   (PNG). Selve data-indsamlingen (facts, meta-linje) hører hjemme hos kaldestedet
+ *   (SeasonEndPage.jsx) — heroen ejer kun knap-UI'et (loading/fejl), samme
+ *   ansvarsdeling som resten af filen (i18n/format i siden, ikke her).
  */
 export default function SeasonRecapHero({
   seasonNumber,
@@ -56,9 +60,12 @@ export default function SeasonRecapHero({
   prizeWon = 0,
   highlights = [],
   shareUrl,
+  onDownloadCard,
 }) {
   const { t } = useTranslation("seasonEnd");
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(false);
 
   const handleShare = async () => {
     const url = shareUrl || (typeof window !== "undefined" ? window.location.href : "");
@@ -71,6 +78,20 @@ export default function SeasonRecapHero({
     } catch {
       // Clipboard-adgang nægtet (private mode/permissions) — knappen forbliver
       // bare uden "copied"-feedback; intet at fejle synligt over.
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!onDownloadCard) return;
+    setDownloading(true);
+    setDownloadError(false);
+    try {
+      await onDownloadCard();
+    } catch (e) {
+      console.error("SeasonRecapHero: share card download failed", e);
+      setDownloadError(true);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -136,14 +157,26 @@ export default function SeasonRecapHero({
         </ol>
       )}
 
-      <div className="mt-5 flex justify-end border-t border-cz-border pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-cz-border pt-4">
+        {downloadError && (
+          <span className="text-xs text-cz-danger">{t("recap.downloadError")}</span>
+        )}
         <Button
-          variant="primary"
+          variant="secondary"
           size="sm"
           onClick={handleShare}
           iconLeft={<ClipboardIcon size={14} aria-hidden="true" />}
         >
-          {copied ? t("recap.shareCopied") : t("recap.share")}
+          {copied ? t("recap.linkCopied") : t("recap.copyLink")}
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleDownload}
+          disabled={downloading || !onDownloadCard}
+          iconLeft={<DownloadIcon size={14} aria-hidden="true" />}
+        >
+          {downloading ? t("recap.downloading") : t("recap.downloadCard")}
         </Button>
       </div>
     </Section>

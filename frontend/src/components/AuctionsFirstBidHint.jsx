@@ -11,7 +11,7 @@
 // i18n: Fase 3b — Refs #412, #3007.
 
 import { useTranslation } from "react-i18next";
-import { InfoIcon } from "./ui";
+import { InfoIcon, XIcon } from "./ui";
 
 export default function AuctionsFirstBidHint({ onDismiss, onStartTour, onJumpToRecommendation }) {
   const { t } = useTranslation(["auctions", "common"]);
@@ -35,10 +35,10 @@ export default function AuctionsFirstBidHint({ onDismiss, onStartTour, onJumpToR
         </div>
         <button
           onClick={onDismiss}
-          className="text-cz-3 hover:text-cz-1 text-lg leading-none flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -me-2"
+          className="text-cz-3 hover:text-cz-1 flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -me-2"
           aria-label={t("common:actions.hide")}
         >
-          ×
+          <XIcon size={16} aria-hidden="true" />
         </button>
       </div>
       <div className="mt-2 pl-7 flex flex-wrap items-center gap-x-4 gap-y-1">

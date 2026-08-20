@@ -1,6 +1,13 @@
 {
   "loadError": "Kunne ikke indlæse dashboardet. Prøv igen.",
   "retry": "Prøv igen",
+  "todayStages": {
+    "title": "Dagens etaper",
+    "winner": "Vinder: {name}",
+    "standing": "#{rank} af {total} samlet",
+    "standingPending": "Samlet stilling er endnu ikke afgjort",
+    "entries": "{count, plural, one {# rytter tilmeldt} other {# ryttere tilmeldt}}"
+  },
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rytter} other {# ryttere}}",
     "incoming": "+{count} ind",
@@ -211,7 +218,9 @@
       "empty": "Ingen sæsondata endnu",
       "emptyCta": "Se den fulde rangliste →",
       "aiBadge": "AI",
-      "managerRank": "#{rank} blandt managere"
+      "managerRank": "#{rank} blandt managere",
+      "movementTitle": "Divisionsplacering siden sidste løbsdag",
+      "pointsDeltaTitle": "Point optjent på sidste løbsdag"
     },
     "board": {
       "title": "Bestyrelsens Status",
@@ -293,15 +302,14 @@
       }
     },
     "projectedLabel": "Forventet net næste sæson",
-    "rangeLine": "Spænd: {low} til {high} (±20% på præmie-estimat)",
+    "rangeLine": "Spænd: {low} til {high} (baseret på præmie-estimatets usikkerhed)",
     "row": {
-      "sponsor": "Sponsor",
-      "prize": "Præmiepenge (estimat)",
+      "sponsorBase": "Sponsor (base)",
+      "sponsorVariable": "Sponsor (variabel)",
+      "prize": "Præmiepenge",
       "salary": "Løn",
+      "staffFacilities": "Stab & faciliteter",
       "loanInterest": "Lånerenter",
-      "upkeep": "Vedligehold",
-      "facilityUpkeep": "Facilitets-vedligehold",
-      "staffSalary": "Stab-lønninger",
       "academyDrift": "Akademi-drift"
     },
     "sponsorDetail": {
@@ -311,8 +319,13 @@
       "fallback": "Fallback: mangler standings for forrige sæson"
     },
     "prizeDetail": {
-      "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson"
+      "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson",
+      "divisionInterval": "Spænd baseret på målt præmiesum blandt hold i din division"
     },
+    "salaryDetail": {
+      "marketS3": "Sæson 3+: prissat efter markedsværdi, ikke det nuværende lønsystem"
+    },
+    "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson 3's lønsystem.",
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",
     "footnoteLink": "Hvordan beregnes prognosen?",
     "badge": {

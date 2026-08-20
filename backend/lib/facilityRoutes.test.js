@@ -147,8 +147,13 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(training.upgradePrice, FACILITY_TIER_PRICE[3]);
   assert.equal(training.tierUpkeep, FACILITY_TIER_UPKEEP[2]);
   // #2216 A4: staff-objektet inkluderer nu overall (afledt på læsning). #2220 A4b: + id.
+  // #3489: + slot. staff = den (eneste, her) aktive; staffList er den fulde liste.
   const trainingOverall = deriveStaffAbilities({ role: "training", tier: 2, name: "Sofie Lindqvist" }).overall;
-  assert.deepEqual(training.staff, { id: "staff-1", name: "Sofie Lindqvist", tier: 2, salary: 22_000, overall: trainingOverall });
+  const expectedStaff = { id: "staff-1", name: "Sofie Lindqvist", tier: 2, salary: 22_000, slot: 1, overall: trainingOverall };
+  assert.deepEqual(training.staff, expectedStaff);
+  assert.deepEqual(training.staffList, [expectedStaff]);
+  assert.equal(training.staffSlotsUsed, 1);
+  assert.equal(training.staffSlotsMax, 2);
   // #2216 A4 (Task 6): display-magnitude er nu ability-drevet (base × staffEffectFactor(staff)),
   // dvs. faktoren afhænger af staffens overall — ikke længere tier-skalaren.
   assert.equal(training.effectiveBonus, effectiveBonus("training", 2, training.staff));
@@ -158,6 +163,8 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   const commercial = body.facilities.find((f) => f.track === "commercial");
   assert.equal(commercial.upgradePrice, null); // max tier
   assert.equal(commercial.staff, null);
+  assert.deepEqual(commercial.staffList, []);
+  assert.equal(commercial.staffSlotsUsed, 0);
   assert.equal(commercial.effectiveBonus, effectiveBonus("commercial", 5, null)); // 50% uden staff
   assert.equal(commercial.effectLive, false);
 
@@ -166,6 +173,32 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(scouting.upgradePrice, FACILITY_TIER_PRICE[1]);
   assert.equal(scouting.tierUpkeep, 0);
   assert.equal(scouting.effectiveBonus, 0);
+});
+
+// #3489: 2 aktive staff i samme rolle — staffList bærer BEGGE (sorteret på slot),
+// mens staff (bagudkompatibelt "primær") er den STÆRKESTE af de to, og
+// effectiveBonus/nextTierBonus følger den primære (spejler trainingStaffContext/
+// scoutAssignmentService.loadScout's "bedste-af-flere"-valg).
+test("GET facilities: 2 active staff in one role → staffList has both, staff = strongest (highest overall)", async () => {
+  const supabase = createSupabaseMock({
+    facilities: [{ track: "training", tier: 3 }],
+    staff: [
+      { id: "staff-weak", name: "Weak Coach", role: "training", tier: 1, salary: 5_000, slot: 1 },
+      { id: "staff-strong", name: "Strong Coach", role: "training", tier: 5, salary: 40_000, slot: 2 },
+    ],
+  });
+  const { body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
+  const training = body.facilities.find((f) => f.track === "training");
+
+  assert.equal(training.staffSlotsUsed, 2);
+  assert.equal(training.staffSlotsMax, 2);
+  assert.deepEqual(training.staffList.map((s) => s.id), ["staff-weak", "staff-strong"], "sorteret på slot");
+
+  const weakOverall = deriveStaffAbilities({ role: "training", tier: 1, name: "Weak Coach" }).overall;
+  const strongOverall = deriveStaffAbilities({ role: "training", tier: 5, name: "Strong Coach" }).overall;
+  assert.ok(strongOverall > weakOverall, "test-fixture skal have en entydigt stærkere kandidat");
+  assert.equal(training.staff.id, "staff-strong");
+  assert.equal(training.effectiveBonus, effectiveBonus("training", 3, training.staff));
 });
 
 test("GET facilities: nextTierBonus = effectiveBonus ved tier+1 (samme staff), null ved max tier (#2311)", async () => {
@@ -336,6 +369,57 @@ test("GET candidates: udelukker fyrede navne for samme team+role fra puljen (#28
   assert.equal(body.candidates.some((c) => c.name === fired.name), false, "fyret kandidat må ikke genoptræde i puljen");
 });
 
+// #3489 kandidatflow-stramning (ejer-godkendt 17/8, PR #3851): en allerede-ansat
+// kandidat (i EN af de op til 2 slots) skal forsvinde fra puljen, og puljen
+// skal automatisk fyldes op til 3 igen — spilleren skal aldrig se en tom liste
+// eller en kandidat uden fungerende Hire-knap.
+test("GET candidates: udelukker aktive staff-navne (begge slots) fra puljen, puljen fyldes automatisk op igen (#3489)", async () => {
+  const seasonNumber = 3;
+  const facilityTier = 3;
+  const full = generateStaffCandidates({ teamId: TEAM_ID, seasonNumber, role: "training", facilityTier });
+  const hired = full[0]; // ansat i slot 1 — må ikke genoptræde i puljen
+  const supabase = createSupabaseMock({
+    facilities: [{ track: "training", tier: facilityTier }],
+    staff: [{ team_id: TEAM_ID, role: "training", status: "active", name: hired.name }],
+  });
+
+  const { status, body } = await getStaffCandidatesHandler(
+    { teamId: TEAM_ID, role: "training", seasonNumber },
+    supabase,
+    { flags: ENABLED }
+  );
+
+  assert.equal(status, 200);
+  assert.equal(body.candidates.length, 3, "puljen skal stadig indeholde 3 kandidater (automatisk fyldt op)");
+  assert.equal(body.candidates.some((c) => c.name === hired.name), false, "ansat kandidat må ikke optræde i puljen");
+});
+
+test("GET candidates: kombinerer fyrede OG aktive navne i excludeNames (begge udelukkes samtidig, #3489)", async () => {
+  const seasonNumber = 3;
+  const facilityTier = 3;
+  const full = generateStaffCandidates({ teamId: TEAM_ID, seasonNumber, role: "training", facilityTier });
+  const fired = full[0];
+  const active = full[1];
+  const supabase = createSupabaseMock({
+    facilities: [{ track: "training", tier: facilityTier }],
+    staff: [
+      { team_id: TEAM_ID, role: "training", status: "fired", name: fired.name },
+      { team_id: TEAM_ID, role: "training", status: "active", name: active.name },
+    ],
+  });
+
+  const { status, body } = await getStaffCandidatesHandler(
+    { teamId: TEAM_ID, role: "training", seasonNumber },
+    supabase,
+    { flags: ENABLED }
+  );
+
+  assert.equal(status, 200);
+  assert.equal(body.candidates.length, 3);
+  assert.equal(body.candidates.some((c) => c.name === fired.name), false, "fyret kandidat må ikke optræde");
+  assert.equal(body.candidates.some((c) => c.name === active.name), false, "ansat kandidat må ikke optræde");
+});
+
 test("GET candidates: flag off → 403 facilities_disabled", async () => {
   const { status, body } = await getStaffCandidatesHandler(
     { teamId: TEAM_ID, role: "training", seasonNumber: 3 },
@@ -355,6 +439,19 @@ test("POST hire: role_occupied → 409", async () => {
   );
   assert.equal(status, 409);
   assert.equal(body.error, "role_occupied");
+});
+
+// #3489 kandidatflow-stramning: samme "konflikt med nuværende tilstand"-semantik
+// som role_occupied (409), ikke en generisk 400 — kandidaten er allerede taget
+// af den anden slot.
+test("POST hire: candidate_already_hired → 409", async () => {
+  const { status, body } = await postStaffHireHandler(
+    { teamId: TEAM_ID, role: "training", candidateName: "X" },
+    createSupabaseMock(),
+    { flags: ENABLED, hireStaff: async () => ({ ok: false, error: "candidate_already_hired" }) }
+  );
+  assert.equal(status, 409);
+  assert.equal(body.error, "candidate_already_hired");
 });
 
 for (const err of ["invalid_candidate", "staff_tier_exceeds_facility", "insufficient_funds", "invalid_staff_tier"]) {

@@ -1,89 +1,71 @@
 # MASTERPLAN — prioriteret rækkefølge (SSOT for rækkefølgen)
 
-> **Ejer-godkendt 2026-08-13** i planlægningssessionen ([#3662](https://github.com/NicolaiDolmer/CyclingZone/issues/3662)) — 12 beslutninger, rækkefølgen er sagt ja til punkt for punkt. Erstatter 23/7-udgaven. Status: 🔴 brand/deadline · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. Budget ≤1.500 tok. Visuel udgave: [masterplan-artifact](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
+> **Ejer-godkendt 2026-08-13** (#3662; spørg før omprioritering). Status: 🔴 brand/deadline · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. Budget ≤1.500 tok. Visuel udgave: [masterplan-artifact](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
 
-**Ejer-mandat 13/8, ordret:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3. Det er altoverskyggende vigtigt."* Alt andet viger for spor B — undtagen det der er bundet til en dato.
+**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne.
 
-**Målt:** åbne issues **570** (15/8; +190 alene i august) · 217 brugere, 1 abonnement (14/8) · **S2 slutter søn 23/8 — 8 dage.**
+**Målt:** **527** åbne issues (20/8) · 217 brugere, 1 abo · **S2 slutter søn 23/8.**
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-1. ⛔ **#3449 markedssweep — refit-gaten målt RØD 17/8** (bølge 2 spor 9, PR #3836 merged: #3750-filter + refit-værktøj + inert config). Refittet måler dårligere end kørende på alle mål (MAE 29.831 mod 20.572). **Nøglefund: kørende model × 0,422 slår alt** — niveau-korrektion (én konstant), ikke modelskifte, er den anbefalede vej; blend-sweepets omfordeling er bekræftet doktrin-brud. Beslutning + måling hører i **værdi/løn-design-sessionen**. #3449 forbliver draft.
-2. ✅ **#3645 drejebog + værktøj LEVERET 17/8** — drejebog ejer-besluttet + merged; snapshot/caps-rollback/backup/genberegnings-scripts merged (PR #3835) og BEVIST mod staging (netto-nul-test).
-3. 🟠 **#3514 mandat — GENOPLIVET af ejeren 17/8; fase 1a/1b MERGED inert** (PR #3834). Backfill 23/8 ejer-gated, gate GRØN; UI-flip har egen gate senere. Rest: staging-script-apply med ejer-nøgle.
-4. 🔵 **#3393 løn — beslutning 4+5 TRUFFET 17/8** (ankerværdi + ét globalt A mod 35 % af genmålt indtægt). Ejer-valg: designes færdig SAMMEN før ombygning (design-session). Lønkurvens konkave form er fredet. Flipper ikke 23/8.
-5. ✅ **#3459 race-day-flip** — komplet, flag `off` i prod, rollback-værktøj bevist, spillerbesked-udkast klar (post før søndag). **23/8 = race-day + mandat-backfill.**
-6. 🔵 **Auto-accept-floor 15/8 bliver stående** (ejer 13/8, ingen handling). Fair-window (#3584) er i main, så 20/8 rammer kun inaktive hold; aktive først 25/8.
+1. 🟠 **#3449 niveau-korrektion — besluttet 19/8** (forhandlet kanal, én konstant, gate-styret efter cutover; gate seeder RØD, maskineri + #3733 trin 1 BYGGET på PR'en). Merges sidst i løn-pakken (#3992 → #3993 → #3972/#3974 → #3449); apply ejer-gated, tidligst 30/8.
+3. 🟠 **#3514 mandat** — fase 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-script-apply med ejer-nøgle.
+4. 🟠 **Løn — OMLAGT 20/8 (#3989, PR #3992):** løn = `current_production_value` × **én global sats 0,35**. Ingen divisions-skalering, markedsværdi er IKKE et løngrundlag. **#3393 PARKERET** — målt mod prod genindfører markedsværdi-grundlaget inversionen på evne-aksen (19-årigt talent dyrere end en bedre 27-årig). Dagsløns-divisor-fixet reddet ud i #3991 (merged). Afventer ejer-go; genberegning flipper 23/8 i drejebogen.
+5. 🟠 **#3901:** pakke leveret; **D1-plan LÅST+BYGGET** (top 24 → D1, PR #3930, dry-run godkendt). **23/8 = race-day-flip + komprimering + mandat-backfill** (apply ejer-gated). Bufferdag 24/8 besluttet (#3467).
+6. 🔵 Auto-accept-floor bliver stående (ejer 13/8); 20/8 rammer kun inaktive hold (#3584), aktive 25/8.
 
-## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE, startet 13/8)
+## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
 
-Ejer-ramme: *"Det er loft, potentiale, ryttertyperne, og følelsen af at træning ikke virker vi skal arbejde med."* Spec: [`2026-08-13-rating-fundament-v3-design.md`](superpowers/specs/2026-08-13-rating-fundament-v3-design.md). Samling: [#3664](https://github.com/NicolaiDolmer/CyclingZone/issues/3664).
+Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/specs/2026-08-13-rating-fundament-v3-design.md).
 
-**Designet er LÅST 13/8** — 8 ejer-beslutninger med målinger i [#3664-tråden](https://github.com/NicolaiDolmer/CyclingZone/issues/3664#issuecomment-5281975050). **Tre landinger**, ikke én: kun landing 2 flytter rytterdata.
+9. **#3592 caps-formning → foldes ind i trin 7** (ejer-besluttet 18/8; analyse i `docs/audits/2026-08-18-3592-caps-formning/`). `classifierWeights` frosset.
+10. **Landing 2-rest:** ejer-gated backfill for 1.840 team-løse frie agenter — foldes ind i trin 7-udrulningen ons/tor.
+11. **Landing 3 = #3709.** Rest: **trin 2** (gated af #3762) · **trin 7** BYGGET, parkeret til ons/tor (PR #3798; 99-klippet presser 437 top-talenter).
 
-7. ✅ **#3665** evne-registry + split af vægt-tabellen — merged 13/8, nul synlige ændringer.
-8. ✅ **LANDING 1 leveret 13/8:** #3666 + #2454 + #3667. Halvbredder `[9, 6, 4, 3]`. Restpunkt: gulvet i **#3671** (mekanikken køber stadig intet for 149 hold).
-9. **#3592 — kun caps-formningen.** `classifierWeights` er **frosset**: den klassificerer nul ryttere (alle 8.731 har `archetype_draw`, 100 % match). *Løfte i v7.95.*
-10. **LANDING 2: [#3682](https://github.com/NicolaiDolmer/CyclingZone/issues/3682) positionerings-loftet.** Eneste del der ændrer eksisterende ryttere: prod-mutation, ejer-gated, egen spillerbesked. Målt (n=4.747): loft 22 → 48, potentiel rating **+2,83** i snit. **Fire roller**, tidskøreren taget ud. Skal være **gulv-løft** — 15 ryttere ville ellers miste loft.
-11. **LANDING 3 = [#3709](https://github.com/NicolaiDolmer/CyclingZone/issues/3709)**, 16 ejer-beslutninger, [spec](superpowers/specs/2026-08-14-3659-rytterudvikling-og-traening-design.md). ✅ **Trin 1, 3, 4 og 5 merget 14/8** (PR #3717, #3739, #3741 — rolleklasser, rater og én akademi-model er live, patch note 7.129). Lofterne stiger for 8.649 af 8.717 ryttere, 0 falder; prisen er farten (andel af taget nået 0,94 → 0,42) og 1 ratingpoint i median ved bedste spil. Taget udgår af trin 1 og arves af trin 3 (`ability_caps` forlader aldrig serveren, #1162); enheden er **sæson**. **Trin 2 er nu gated af [#3762](https://github.com/NicolaiDolmer/CyclingZone/issues/3762)** (dagstype før session, alle beslutninger truffet 14/8), ikke af #3721. **Trin 7 er blevet mere presserende:** 99-klippet lægger nu 1.840 evne-pladser på 99 hos 437 top-talenter, så taget skelner dem ikke længere.
+**#3668 → #3512 = ét spor lige efter cutover** (+ transparens-sessionen; #3512 bærer et offentligt løfte fra 10/8).
 
-**#3668 → #3512 = ét spor lige efter cutover** (ejer 13/8), med [transparens-sessionen](sessions/2026-08-13-transparens-session-prompt.md). #3668 først: et baseline-refit uden rettet skala flytter bare problemet. #3512 bærer desuden et åbent offentligt løfte fra 10/8 om nye holds startertrupper, og de rammer kun 36,3 % rigtigt.
+## B2 · Værdi og løn (ejer-ramme 14/8)
 
-## B2 · Værdi og løn — NY BLOK, ejer-ramme 14/8
+- **Løn-pakken bygget** ([audit](audits/2026-08-19-loen-design-session.md) + #3989): #3992 → #3993 → #3972 → #3974 → #3449, rækkefølgen er bindende. Rest: ⚪ #3755 28-dages-måling (gate for gebyret) · ⚪ #3756 gebyret · 🔴 #3732 pengepolitik.
+- **#3719+#3720: D3/D4-løft + upkeep-rekalibrering udskudt til kalibrerings-session EFTER cutover** (ejer 19/8) på ægte S3-tal. Samme session tager **#3987 sponsor-skalering efter division/ranking** (jeppek 19/8 — indtægtssiden skalerer ikke med den divisions- og trupværdi-skalerede udgiftsside) og en evt. hævning af løn-satsen på MÅLT D1-indtægt (D1 har aldrig haft menneskehold, så 0,35 hviler på et ekstrapoleret estimat).
 
-Ejeren 14/8, ordret: *"Det er efter ratings, ryttertyper, potentiale og træning nok det vigtigste vi kan arbejde med."* Designet blev lavet og derefter adversarielt kritiseret samme dag. **To af fire beslutninger faldt.** Spec: [`vaerdi-og-loen-fundament`](superpowers/specs/2026-08-14-vaerdi-og-loen-fundament-design.md) + [`oekonomi-designkritik`](superpowers/specs/2026-08-14-oekonomi-designkritik.md) (syv beslutninger i §7).
+## C · Talent-kanalen (rest)
 
-- ✅ **Beslutning 1-3 truffet 15/8** ([log + målinger](audits/2026-08-15-oekonomi-beslutninger-1-3.md)). **To af tre endte andet sted end kritikken anbefalede**, fordi præmisserne var forkerte: transferlisten har aldrig haft prisloft, og banken sælger allerede til 25 %. Den ægte spærring var **konkurrence** — 16 af 1.698 spillerudbudte auktioner har haft 2+ budgivere → **#2884 merget**. Beslutning 3: værdien følger markedet **pr. rytter efter hvor mange handler der findes**, ikke 75/25 for alle.
-- 🔵 **[#3757](https://github.com/NicolaiDolmer/CyclingZone/issues/3757) beslutning 4+5+7** — 4+5 gater #3393 · ⚪ [#3755](https://github.com/NicolaiDolmer/CyclingZone/issues/3755) 28-dages-måling (gate for gebyret) · ⚪ [#3756](https://github.com/NicolaiDolmer/CyclingZone/issues/3756) gebyret · 🔴 [#3750](https://github.com/NicolaiDolmer/CyclingZone/issues/3750) modellen trænes på en konstant.
-- 🔴 **[#3732](https://github.com/NicolaiDolmer/CyclingZone/issues/3732) værdien er pengepolitik**, ikke en prisseddel. Netto rytterkøb er 53,3 % af alle pengedræn, lønnen 3,1 %. Hører sammen med #3360.
-- 🔴 **[#3733](https://github.com/NicolaiDolmer/CyclingZone/issues/3733) søndags-kvitteringen** er nu en **hård afhængighed**: med evidensvægt pr. rytter flytter nogle ryttere sig om søndagen og andre ikke, og uden en forklaring på skærmen er det uforståeligt.
+15. 🟠 **#3854 staff-rest** (per-scout kapacitet, routing, harness-rekalibrering FØR flag-flip; 2 slots/rolle merged bag flag).
+17. 🟠 **#3550 signing fee** — løst ved ungdomspakken (PR #3972); flippes i drejebogen efter #3992. Fremtid: #3970.
+18. ⚪ **#3853** scout-kadence-måling (balance-efterregulering af #3846).
 
-**Forudsætninger uden for blokken:** [#3719](https://github.com/NicolaiDolmer/CyclingZone/issues/3719) + [#3720](https://github.com/NicolaiDolmer/CyclingZone/issues/3720) måler at præmien pr. hold er 3,7-6,6× fra det upkeep-kalibreringen antog. Et fundament bygget på simuleret præmieindtjening kan ikke kalibreres mens præmien selv er ude af kontrol.
+## D · Penge og vækst — gate: spor B leveret (ikke en dato)
 
-- ✅ **Fordelingen besluttet (ejer 14/8):** præmiepulje-indeks **D1 100 · D2 50 · D3 33 · D4 10**. D2 rammer allerede (52); **D3 mangler +18 %, D4 +30 %**.
-- 🔵 **Én A/B tilbage, PARKERET til egen session** (ejer 14/8). Målet kan ikke nås med de nuværende knapper: game-day-kvoten og prestige-kaskaden (#2276) er låst, så endagsløbs-andelen er eneste håndtag — og 33 i D3 kræver ~0,85, altså mere end de 0,76 ejeren 7/8 kaldte "for mange" i #3327. **A) præmie-multiplikator pr. division** (egen skrue, point forbliver rå, ingen kalender-regenerering) vs **B) åbn klasse-whitelisten** (bryder kaskaden, kræver regenerering). Anbefaling: A. Prompt: [`2026-08-14-praemiefordeling-session-prompt.md`](sessions/2026-08-14-praemiefordeling-session-prompt.md). **A og #3720 er samme skrue set fra to sider** — vælges A, kalibreres upkeep mod de multiplicerede tal.
-
-## C · Talent-kanalen ind i klubben (ejer-valgt 13/8) — LEVERET i bølge 3 (17/8)
-
-14. ✅ **#3657+#3652** scouting-targeting (ryttertype) + rapport til HELE shortlisten + 1-dags mission (PR #3846) · ✅ **#2721** klub-scouting-historik (PR #3844) · #3548 lukket 15/8.
-15. 🟠 **#3489+#3658** staff: 2 slots pr. rolle + kandidater uden fyring (PR #3851, bag `FACILITIES_ENABLED`). Rest: **#3854** (per-scout kapacitet, per-rytter routing, facility-harness-rekalibrering FØR flag-flip).
-16. ✅ **#3650** akademiryttere på transferliste OG auktion (PR #3845) — begge Discord-løfter indfriet.
-17. 🔵 **#3550** signing fee MÅLT 17/8: roden er typedrevet markedsværdi-skævhed (puncheur-median 24.194 mod 2.898-8.200), ikke stjerneniveau; anbefaling B (afkobl fee fra markedsværdi) — beslutning i værdi/løn-design-sessionen.
-18. ⚪ **#3853** scout-kadence-måling efter 1-dags-missionen (balance-efterregulering af #3846).
-
-## D · Penge og vækst — betinget
-
-Ejer 13/8: *"skal prioriteres snarligt, når der er lidt mere styr på store bugs der fylder hos spillerne."* **Gaten er spor B leveret** — ikke en følelse, ikke en dato.
-
-20. **#2853** e-mail-loop (bygget, testet, slukket; kræver Resend-nøgle + 3 tekster). Audits' største enkelthåndtag for fastholdelse.
-21. **#2813** go-live-gates → **#3104** /pro-indgang. *(#2736 fornyelses-webhook er LUKKET 11/8 — den kunde mister ikke Pro.)*
+20. **#2853** e-mail-loop (bygget, slukket; kræver Resend-nøgle + 3 tekster). Største fastholdelses-håndtag.
+21. **#2813** go-live-gates → **#3104** /pro-indgang.
 
 ## E · Løbende (aldrig hovedspor)
 
-22. Bug-blok ✅ TØMT i bølge 3 (17/8): #3751 kommende-løb · #3787 potentiale-sortering · #3098 udtagelses-copy · #3008 onboarding-tooltip · #3012 døde klik · #2700 pensions-varsel — alle shipped. #3620/#3669/#3066/#3634/#3541 var allerede lukket (planen var stale).
-23. Gæld: 23 done-men-åbne lukkes · #2223 og #3513 opsluger reelt deres løse issues på GitHub (#3496/#3491/#3493/#3439 hhv. #2442/#2583/#2445) · #3094 lukkes som duplikat af #2883.
-24. **#3661** design-/kvalitetsprocessen → konkrete regler i `AGENTS.md`, ikke en hensigt.
+23. Gæld: done-men-åbne lukkes løbende (KS3-backlog-workflow bærer resten) · #3513 opsluger #2442/#2583/#2445.
 25. Ops-sidestrøm: **#3486** `VERCEL_TOKEN` (2 min ejer-klik, låser #1784) · #2758 · #3487 · #691 service-key-rotation.
 
-## F · Backlog-bølger (ejer-godkendt 15/8, plan-session — mål: 570 → ~200, [#3154](https://github.com/NicolaiDolmer/CyclingZone/issues/3154))
+## F · Backlog-bølger (mål: 570 → ~200, #3154)
 
-Natbølger/sidesessioner; hovedsporet taber ikke tempo. **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 til ejeren. Visuel udgave af hele 30-punkts-planen: masterplan-artifacten.
+**Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 til ejeren.
 
-- **W1 integritet:** #3580 #2982 #2836 #3594 #3582 #2086 #2797 #2793 (de to sidste flyttet ind 17/8: akademi-salg åbnet i bølge 3 gør cap-bypass og akademi-regnskab reelle) · **W2 ny-spiller:** #3037(forward-regel) #3751 #3008 · **W3 observability:** #3653 #3695 #3696 #3684 #3638 (✅ #3819 17/8) · **W4 hærdning:** #3420 #3415 #2847 · **W5 marked:** rest #3787 #3708 (✅ 17/8: #3066 #3067 #3786 #3783 #2403 #2400 #3826) · **W6 indbakke:** rest #3098 #3439 (✅ 17/8: #3496 #3493 #3491 #3549) · **W7 hjælp/transparens:** rest #3714 (✅ 17/8: #3551 #2889; #3623/#3456/#3412 venter bevidst på trin 7) · **W8 beslutnings-sessioner:** 54 needs-decision i bundter a 10-15 · **W9 housekeeping-audit XL.**
-- **E-mail-kæden før flip:** #3585 + #3600 + #2085 → derefter #2853.
-- **S3-kalender-finpuds FØR 23/8:** kalenderen ER genbygget (v7.105) — mål den mod #3546/#3547/#3471/#3349/#3328 og beslut kun resterne.
-- Verificeret 15/8: #3548 lukket · #3632 merged (venter prod-fødsel) · #3396 bygget, kun genafspilnings-hul åbent · #3037 make-good udført 26/7 · #2022 ejes af #3514.
+- W1-W6+W9 leveret ([audit](audits/night-wave-2026-08-18.md)). **Rest:** #2085 → #2853 · **W7** efter trin 7 (#3714 #3623 #3456 #3412) · **W8** beslutnings-bundter (54 needs-decision) · KS3-workflow leveret 18/8: net −32 (adversariel verifikation fangede 2 falske done; 20 wontdo ejer-dømt).
+- Småbugs 17/8: #3896 skadet rytter kunne udtages · #3897 Discord-pulje-id · #3898 evne-sortering.
+- DM-kuldet: #3913+#3916 i merge-kø, #3912 merget, #3917-analyse leveret (fodrer #3855).
+- S3-kalender-finpuds (#3546): PR #3862 draft, regenerering ejer-gated — kalender-session FØR 23/8.
+- #2022 ejes af #3514.
+
+## E2 · Race-oplevelsen
+
+**Rest:** #3914 PR A MERGED 19/8 (PR #3969); rest = PR B LIVE-broadcast + regression #3985 (etapetypen forsvandt fra etape-fanerne efter sammenfoldningen) · **#3855 motor v4** = ejer-retningen EFTER cutover (#3917 fodrer den) · #3856 backfill efter S3-bevis · #3864 klassiker-uge (S4). **#3900 sæson-overblik + #3915 dagens etaper designes SAMLET i KS3.** Spec: [`race-event-log-stage-timeline`](superpowers/specs/2026-08-17-race-event-log-stage-timeline-design.md).
 
 ## Parkeret — genbesøges når B og C er leveret
 
-Verdensklasse **bølge 2** (Race Centre, Peloton Post, klubhus/rivaler, palmarès, PWA, observatorium — plan: [`2026-08-05-verdensklasse-game-plan.md`](superpowers/specs/2026-08-05-verdensklasse-game-plan.md), bølge 1 er komplet) · rework-køen **#2223** indbakke og **#3513** dashboard · forum-forbedringer (reaktioner, ulæst-markering, svar-på-indlæg) · små ønsker (asking price på transferlisten, rytterstats ved hover) · vækst-sporet #2822/#1369/#1140/#2824/#2823 · **#2960** React 19 frosset til uge 1 sept.
-
-**FROSSET:** #2217/#2218. **Parkeret siden før:** #1712 (≥300 brugere) · #1941 · #450 · live-taktik/replay (genåbnes som broadcast-teater i bølge 2).
+VK bølge 2-rest ([plan](superpowers/specs/2026-08-05-verdensklasse-game-plan.md)) · #2223 indbakke + #3513 dashboard · forum-forbedringer · små ønsker · vækst #2822/#1369/#1140/#2824/#2823 · **#2960** React 19 (uge 1 sept). **FROSSET:** #2217/#2218 · #1712 (≥300 brugere) · #1941 · #450 · live-taktik/replay (→ broadcast-teater).
 
 ## Stående (viger aldrig)
 
-**Balance:** #2557 hold-dominans er det ENESTE åbne. #2731, #3015 og #3009 blev lukket 3/8 men stod her som "stående" i 12 dage — og fik 15/8 en session til at bygge på et forældet tal (rettet). #2731's 0,67-0,75 var et oppustet punktestimat; Wilson-lower-bound måler 0,359 og grønt (`docs/audits/2026-08-03-race-balance-2731.md`).
-**Doktrin:** styrke straffes ALDRIG, balance = struktur · overlap intended, 1 rytter = 1 løb/dag · simulér-før-ship for alt balance-følsomt.
+**Balance:** #2557 hold-dominans er det ENESTE åbne. **Doktrin:** styrke straffes ALDRIG, balance = struktur · overlap intended, 1 rytter = 1 løb/dag · simulér-før-ship.
 
 ## 2027-horisont (bevidst ikke i kø)
 

@@ -12,13 +12,16 @@ import {
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
+import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { buildContractExpiringNotification } from "./notificationService.js";
 import {
   buildSwapCancelledStaleNotification,
   buildSwapCompletedNotification,
+  buildSwapOnAuctionCancelledNotification,
   buildTransferOnAuctionCancelledNotification,
   buildTransferStaleCancelledNotification,
   buildTransferCompletedNotification,
@@ -585,6 +588,16 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     return failure(409, "The rider changed status during confirmation. The deal was cancelled", "stale_rider_state");
   }
 
+  // #2793 (bølge 3-følgefund): rytteren graduerede lige (graduatePatch ovenfor)
+  // via et DIREKTE salg på transfermarkedet (#3845) — resolver en evt. hængende
+  // PENDING academy_graduation-row hos sælgeren så academyGraduationSweep ikke
+  // senere finder den og forsøger at auto-resolve en rytter der allerede er solgt.
+  if (graduatePatch.is_academy === false && offer.seller_team_id) {
+    await resolvePendingGraduationOnSale(supabase, {
+      teamId: offer.seller_team_id, riderId: rider.id,
+    });
+  }
+
   // #1906 defense-in-depth: ryd rytterens fremtidige ghost-race_entries med det
   // samme. #2579: dette gælder OGSÅ i deferRegistration-stien — handlen er
   // accepteret og betalt HER, uanset om selve team_id-flytningen er parkeret pga.
@@ -595,6 +608,24 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // KUN scheduled/stages_completed=0-løb, så det aktive låste løb (grunden til
   // parkeringen) er strukturelt udelukket — den entry røres aldrig her.
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "transfer" });
+
+  // #3582: bevægelses-log — KUN når ejerskabet faktisk flyttede (team_id).
+  // Ved #1995-parkering (deferRegistration) logges i stedet af
+  // stageRaceTransferDefer.js's flushParkedRider, som er hvor team_id faktisk
+  // ændrer sig. Best-effort, kaster aldrig (se modul-header).
+  if (!deferRegistration) {
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: rider.id,
+      riderFirstname: rider.firstname,
+      riderLastname: rider.lastname,
+      fromTeamId: offer.seller_team_id,
+      toTeamId: offer.buyer_team_id,
+      reason: RIDER_OWNERSHIP_REASON.TRADE,
+      relatedEntityType: "transfer",
+      relatedEntityId: offer.id,
+      actorType: "api",
+    });
+  }
 
   // Slice 07c: balance + finance_transactions atomic via RPC.
   // 07d Fase B / #240: actor flyder gennem auditCtx (api fra confirmTransferOffer,
@@ -727,12 +758,16 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // til en 2-sæsoners standardkontrakt i stedet for at arve deres egne. Køb-
   // stien (executeTransferOffer) har hentet kolonnen siden #1836; swap-stien
   // blev aldrig rettet med.
+  // #2797: is_academy MED — uden den kan en akademi-rytter bytte til modpartens
+  // hold og forblive is_academy=true dér, uden om akademiets 8-plads-cap (som
+  // ellers kun håndhæves ved intake/auktion/promote/demote). Samme
+  // graduatePatch-mønster som executeTransferOffer (#3650) anvendes nedenfor.
   const [offered, requested] = await Promise.all([
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", swap.offered_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy").eq("id", swap.offered_rider_id)
     ),
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season").eq("id", swap.requested_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy").eq("id", swap.requested_rider_id)
     ),
   ]);
   const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([
@@ -741,6 +776,29 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     fetchTeamAuctionCommitment(supabase, swap.proposing_team_id),
     fetchTeamAuctionCommitment(supabase, swap.receiving_team_id),
   ]);
+
+  // #3940 TOCTOU-guard, swap-parallel til executeTransferOffer's #1748(a)-guard
+  // ovenfor: hvis en af de to byttede ryttere er kommet på en AKTIV auktion
+  // EFTER byttehandlen blev indgået (oprettelses-gaten i api.js, #1089,
+  // fanger kun konflikten der findes VED oprettelse), må byttehandlen ikke
+  // gennemføres. Uden dette kunne samme rytter både vindes på auktionen OG
+  // byttes væk her. executeTransferOffer har haft denne guard siden #1748,
+  // executeSwapOffer manglede den (bug rapporteret via #3940). Auktionen er
+  // den vindende kanal, samme regel som transfer-siden.
+  const onAuctionRiderIds = await getActiveAuctionRiderIds(supabase, [
+    swap.offered_rider_id,
+    swap.requested_rider_id,
+  ]);
+  if (onAuctionRiderIds.length > 0) {
+    await withdrawSwapOffer(supabase, swap.id);
+    const conflictedRider = onAuctionRiderIds.includes(swap.offered_rider_id) ? offered : requested;
+    const onAuctionPayload = buildSwapOnAuctionCancelledNotification({
+      riderName: `${conflictedRider.firstname} ${conflictedRider.lastname}`,
+    });
+    await notifyTeamOwner(swap.proposing_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, swap.id, onAuctionPayload.metadata);
+    await notifyTeamOwner(swap.receiving_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, swap.id, onAuctionPayload.metadata);
+    return failure(409, "One of the swapped riders is on an active auction. The swap was cancelled. Bid on the auction instead.", "rider_on_auction_swap");
+  }
 
   // #3134 · ung-konto-cooldown, samme håndhævelse som executeTransferOffer —
   // gates den side der reelt BETALER kontant (payerId, ikke nødvendigvis
@@ -797,6 +855,12 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // Division = det MODTAGENDE holds (offered → receiving, requested → proposing).
   const offeredContractPatch = contractOnAcquirePatch(offered, swapSeasonNumber, { division: receivingState.division });
   const requestedContractPatch = contractOnAcquirePatch(requested, swapSeasonNumber, { division: proposingState.division });
+  // #2797: en akademi-rytter der byttes graduerer atomisk til senior hos
+  // modparten — samme graduatePatch-mønster som executeTransferOffer (#3650).
+  // Uden dette landede rytteren som is_academy=true på modpartens hold, uden om
+  // 8-plads-cap'en (som ellers kun håndhæves ved intake/auktion/promote/demote).
+  const offeredGraduatePatch = offered.is_academy ? { is_academy: false } : {};
+  const requestedGraduatePatch = requested.is_academy ? { is_academy: false } : {};
 
   // #19: parkér = sæt pending_team_id på begge ryttere (kræver at ingen af dem
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -806,7 +870,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.receiving_team_id, updated_at: swapTimestamp, ...offeredContractPatch })
+          .update({ pending_team_id: swap.receiving_team_id, updated_at: swapTimestamp, ...offeredContractPatch, ...offeredGraduatePatch })
           .eq("id", offered.id)
           .eq("team_id", swap.proposing_team_id)
           .is("pending_team_id", null)
@@ -815,7 +879,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     : await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ team_id: swap.receiving_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...offeredContractPatch })
+          .update({ team_id: swap.receiving_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...offeredContractPatch, ...offeredGraduatePatch })
           .eq("id", offered.id)
           .eq("team_id", swap.proposing_team_id)
           .select("id")
@@ -833,7 +897,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.proposing_team_id, updated_at: swapTimestamp, ...requestedContractPatch })
+          .update({ pending_team_id: swap.proposing_team_id, updated_at: swapTimestamp, ...requestedContractPatch, ...requestedGraduatePatch })
           .eq("id", requested.id)
           .eq("team_id", swap.receiving_team_id)
           .is("pending_team_id", null)
@@ -842,7 +906,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     : await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ team_id: swap.proposing_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...requestedContractPatch })
+          .update({ team_id: swap.proposing_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...requestedContractPatch, ...requestedGraduatePatch })
           .eq("id", requested.id)
           .eq("team_id", swap.receiving_team_id)
           .select("id")
@@ -850,13 +914,16 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   if (!movedRequested) {
     // Rul den første ben tilbage så vi ikke efterlader en halv byttehandel.
+    // #2797: is_academy rulles OGSÅ tilbage til den oprindelige værdi — ellers
+    // ville en fejlet swap efterlade en gradueret akademi-rytter hos SIN EGEN
+    // sælger (han bliver aldrig sendt af sted, men mistede sin akademi-plads).
     if (deferRegistration) {
       await expectMutation(
-        supabase.from("riders").update({ pending_team_id: null }).eq("id", offered.id)
+        supabase.from("riders").update({ pending_team_id: null, is_academy: offered.is_academy }).eq("id", offered.id)
       );
     } else {
       await expectMutation(
-        supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp }).eq("id", offered.id)
+        supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp, is_academy: offered.is_academy }).eq("id", offered.id)
       );
     }
     await withdrawSwapOffer(supabase, swap.id);
@@ -871,6 +938,35 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // byttehandlen er accepteret HER, uanset om selve team_id-flytningen parkeres.
   await clearFutureRaceEntriesSafe({ supabase, riderId: offered.id, label: "swap" });
   await clearFutureRaceEntriesSafe({ supabase, riderId: requested.id, label: "swap" });
+
+  // #3582: bevægelses-log for BEGGE ryttere — KUN når ejerskabet faktisk
+  // flyttede (team_id). Ved #1995-parkering (deferRegistration) logges i
+  // stedet af stageRaceTransferDefer.js's flushParkedRider. Best-effort,
+  // kaster aldrig (se modul-header).
+  if (!deferRegistration) {
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: offered.id,
+      riderFirstname: offered.firstname,
+      riderLastname: offered.lastname,
+      fromTeamId: swap.proposing_team_id,
+      toTeamId: swap.receiving_team_id,
+      reason: RIDER_OWNERSHIP_REASON.SWAP,
+      relatedEntityType: "swap",
+      relatedEntityId: swap.id,
+      actorType: "api",
+    });
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: requested.id,
+      riderFirstname: requested.firstname,
+      riderLastname: requested.lastname,
+      fromTeamId: swap.receiving_team_id,
+      toTeamId: swap.proposing_team_id,
+      reason: RIDER_OWNERSHIP_REASON.SWAP,
+      relatedEntityType: "swap",
+      relatedEntityId: swap.id,
+      actorType: "api",
+    });
+  }
 
   if (cash !== 0) {
     // Slice 07c: balance + finance_transactions atomic via RPC.

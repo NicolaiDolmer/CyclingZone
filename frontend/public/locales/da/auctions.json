@@ -87,6 +87,7 @@
     "noBids": "Ingen bud",
     "bidsCount": "{count, plural, one {1 bud} other {# bud}}",
     "bidsUniqueBidders": "{count, plural, one {1 hold} other {# hold}}",
+    "bidWarBadge": "Budkrig · {bids, plural, one {1 bud} other {# bud}}, {teams, plural, one {1 hold} other {# hold}}",
     "riderMeta": "Værdi: {value} CZ$ · Løn: {salary}",
     "salaryNone": "—",
     "pageOf": "Side {page} af {total}",
@@ -133,6 +134,9 @@
     "line": "Fører: {name}",
     "none": "Ingen bud endnu"
   },
+  "list": {
+    "countLine": "Viser {shown} af {total} auktioner"
+  },
   "timer": {
     "completed": "Afsluttet",
     "expired": "Udløbet",
@@ -149,7 +153,8 @@
     "u23": "U23",
     "u25": "U25",
     "youth": "Ungdom",
-    "firstBidPick": "Første valg"
+    "firstBidPick": "Første valg",
+    "outbid": "Overbudt · dit {amount}"
   },
   "bidGate": {
     "bothFull": "Ingen plads i dit akademi (8/8) eller din senior-trup (30/30). Sælg en rytter for at byde.",

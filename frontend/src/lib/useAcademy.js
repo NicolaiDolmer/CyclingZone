@@ -29,6 +29,9 @@ export function useAcademy() {
   const [division, setDivision] = useState(null); // #2594: løn-satsen er per-division
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
+  // #3550: pull-baseret intake — { enabled, pulledThisWeek }. enabled=false (default
+  // indtil cutover-flip) betyder uændret adfærd (den gamle auto-drip-visning).
+  const [intakePull, setIntakePull] = useState({ enabled: false, pulledThisWeek: false });
 
   // Holdets saldo hentes direkte fra Supabase (samme mønster som AuctionsPage) — så
   // bekræftelses-modalen (#1744) kan vise saldo-effekt uden en backend-ændring på
@@ -79,6 +82,7 @@ export function useAcademy() {
       setGraduations(data.graduations ?? []);
       setSeniorCount(data.seniorCount ?? 0);
       setSeniorMax(data.seniorMax ?? 30);
+      setIntakePull(data.intakePull ?? { enabled: false, pulledThisWeek: false });
       setError(null);
     } catch {
       /* netværk — behold tidligere state */
@@ -170,6 +174,24 @@ export function useAcademy() {
     }
   }, [refresh]);
 
+  // #3550: hent ugens akademi-kuld (pull-intake). Returnerer { ok, error?, result? }.
+  const pullIntake = useCallback(async () => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    try {
+      const res = await fetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "failed" };
+      }
+      logEvent("academy_intake_pull", { alreadyPulled: Boolean(data.alreadyPulled) });
+      await refresh();
+      return { ok: true, result: data };
+    } catch {
+      return { ok: false, error: "network" };
+    }
+  }, [refresh]);
+
   // Flyt en U23-senior-rytter ned i akademiet (#932 S7). Returnerer { ok, error?, result? }.
   const demoteRider = useCallback(async (riderId) => {
     const headers = await authHeaders();
@@ -190,5 +212,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, refresh };
+  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, pullIntake, refresh };
 }

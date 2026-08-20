@@ -37,6 +37,32 @@ const INLINE_EXEMPT = new Set([
   "help", // kun HelpPage.jsx — ready-gate + PageLoader
   "rules", // kun RulesPage.jsx — ready-gate + PageLoader
   "patchnotes", // kun PatchNotesPage.jsx — ready indgår i eksisterende PageLoader-gate
+
+  // #3697: rod-årsagen bag 26 budget-hævninger. Alle namespaces herunder har
+  // deres ENESTE forbrugere bag en lazy route (React.lazy i App.jsx) hvor
+  // fladen gater render på `ready` bag PageLoader/skeleton. locale-JSON'en
+  // ligger allerede statisk i dist/locales/, så det her fjerner ren JS-vægt
+  // fra language-chunken uden at lægge ny payload på brugeren.
+  // Tilføjer du et namespace her, SKAL forbruger-fladen have en ready-gate —
+  // ellers renderer den rå nøgler på first paint (useSuspense: false).
+  "board", // BoardPage (ready-gate) + DashboardPage (kort-niveau ready-gate)
+  "founder", // FounderSupporterPage — ready-gate + PageLoader
+  "planner", // SeasonPlannerPage (tab i PlanningHubPage) — ready-gate
+  "profile", // ProfilePage — ready-gate
+  "achievements", // ManagerProfilePage — ready-gate
+  "seasonEnd", // SeasonEndPage + SeasonExperiencePreviewPage — ready-gate
+  "scouting", // ScoutingCentralPage — ready-gate
+  "roadmap", // RoadmapPage — ready-gate
+  "admin", // RacePointsAdminSection (AdminDataTab) — ready-gate
+  "notifications", // NotificationsPage — ready-gate
+  "activity", // ActivityPage (tab i NotificationsPage) — ready-gate
+  "forum", // ForumPage + ForumPostPage — ready-gate
+  "results", // ResultaterPage — ready-gate
+  "calendar", // CalendarPage (tab i PlanningHubPage) — ready-gate
+  "pro", // ProUpgradePage — ready-gate
+  "watchlist", // WatchlistPage — ready-gate
+  "staffOverview", // StaffOverviewPage (tab i KlubPage) — ready-gate
+  "standings", // RankingsHubPage + StandingsPage (tab) — ready-gate
 ]);
 
 function walk(dir, files = []) {
@@ -151,6 +177,38 @@ for (const [ns, files] of used) {
   }
 }
 
+// #3697 forward-guard: et exempt namespace UDEN ready-gate er præcis den bug
+// exemptionen påstår er umulig (raw keys på first paint). Kræv derfor at hvert
+// exempt namespace har mindst én gate i src/ — enten
+//   <I18nReadyGate ns="x">          (route-/tab-niveau, components/I18nReadyGate.jsx)
+// eller den ældre in-page-form
+//   const { t, ready } = useTranslation("x")   /   useTranslation("x").ready
+// Uden denne kontrol ville "tilføj til INLINE_EXEMPT" være en tavs måde at
+// genindføre #470 på.
+const gateless = [];
+for (const ns of INLINE_EXEMPT) {
+  if (!used.has(ns)) continue; // ubrugt namespace kan ikke flashe
+  const gateRe = new RegExp(
+    `<I18nReadyGate[^>]*\\bns\\s*=\\s*["'\`]${ns}["'\`]` +
+      `|\\{[^{}]*\\bready\\b[^{}]*\\}\\s*=\\s*useTranslation\\(\\s*(?:\\[[^\\]]*)?["'\`]${ns}["'\`]`
+  );
+  const hasGate = [...used.get(ns)].some((rel) =>
+    gateRe.test(readFileSync(join(ROOT, rel), "utf8"))
+  ) || srcFiles.some((f) => gateRe.test(readFileSync(f, "utf8")));
+  if (!hasGate) gateless.push(ns);
+}
+
+if (gateless.length > 0) {
+  errorCount += gateless.length;
+  console.error(
+    `✗ i18n ready-gate FAILED — ${gateless.length} exempt namespace(s) uden ready-gate: ${gateless.join(", ")}\n` +
+      `  Et INLINE_EXEMPT-namespace lazy-loades via HttpBackend. Uden en gate\n` +
+      `  render fladen rå nøgler på first paint (useSuspense: false, #470).\n` +
+      `  Fix: wrap forbrugeren i <I18nReadyGate ns="…"> (frontend/src/components/I18nReadyGate.jsx)\n` +
+      `  ELLER gate in-page på \`const { t, ready } = useTranslation("…")\`.\n`
+  );
+}
+
 // Dynamic namespace = guarden kan ikke se den. Log warning så det er
 // synligt at filer slipper gennem statisk analyse. Failer ikke buildet —
 // runtime-fejl vil stadig manifestere som raw key i UI.
@@ -160,12 +218,15 @@ if (dynamicWarnings.length > 0) {
 }
 
 if (errorCount === 0) {
-  const usedList = [...used.keys()].sort().join(", ");
-  console.log(`✓ i18n namespace-inline OK — alle ${used.size} brugte namespaces er inlinet (${usedList})`);
+  const inlineCount = used.size - [...used.keys()].filter((ns) => INLINE_EXEMPT.has(ns)).length;
+  const gated = [...used.keys()].filter((ns) => INLINE_EXEMPT.has(ns)).sort();
+  console.log(`✓ i18n namespace-inline OK — ${inlineCount} namespaces inlinet, ${gated.length} lazy bag ready-gate (${gated.join(", ")})`);
   process.exit(0);
 }
 
-console.error(`✗ i18n namespace-inline FAILED — ${errorCount} namespace(s) brugt men ikke inlinet:\n`);
+if (missing.length === 0) process.exit(1);
+
+console.error(`✗ i18n namespace-inline FAILED — ${missing.length} namespace(s) brugt men ikke inlinet:\n`);
 for (const { ns, files, total } of missing) {
   console.error(`  • "${ns}" brugt i ${total} fil(er):`);
   for (const f of files) console.error(`      - ${f}`);

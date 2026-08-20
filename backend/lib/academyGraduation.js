@@ -224,3 +224,42 @@ async function resolveAuctionConfig(supabase) {
   const { data } = await supabase.from("auction_timing_config").select("*").eq("id", 1).single();
   return data || DEFAULT_AUCTION_CONFIG;
 }
+
+/**
+ * #2793 (bølge 3-følgefund): resolver en evt. PENDING academy_graduation-row
+ * når en akademi-rytter forlader akademiet via et DIREKTE salg (auktion eller
+ * transfermarked, #3845 åbnede begge veje for akademi-ryttere UDEN om det
+ * almindelige graduerings-vindue). Kaldes fra auctionFinalization.js og
+ * transferExecution.js's graduatePatch-sti, samme mønster som
+ * academyTransfer.js's promote() allerede bruger for manuel promote.
+ *
+ * Uden dette ville en rytter der turnerede 22 (fik en pending grad-row,
+ * status='pending', is_academy stadig true i override-vinduet) og DEREFTER
+ * blev solgt direkte via #3845 efterlade rækken hængende som 'pending' —
+ * academyGraduationSweep ville senere finde den efter deadline og forsøge at
+ * auto-resolve (promote/sell) en rytter der allerede har skiftet ejer/status,
+ * inkl. risikoen for at oprette en PHANTOM sælg-auktion (createGraduateAuction)
+ * for en rytter sælgerens hold ikke længere ejer.
+ *
+ * Best-effort: en fejl her må ALDRIG vælte selve salget — pengene er allerede
+ * flyttet og rytteren allerede overdraget på dette tidspunkt. Log og fortsæt.
+ */
+export async function resolvePendingGraduationOnSale(supabase, { teamId, riderId, now = new Date() } = {}) {
+  if (!supabase?.from || !teamId || !riderId) return;
+  try {
+    // best-effort: en fejlet SELECT her er samme klasse fejl som resten af
+    // funktionen (se docblok) — sluges bevidst af den ydre catch, aldrig kastet.
+    const { data: grad, error: selectError } = await supabase.from("academy_graduation")
+      .select("id, status").eq("team_id", teamId).eq("rider_id", riderId).maybeSingle();
+    if (selectError) throw new Error(selectError.message);
+    if (!grad || grad.status !== "pending") return;
+    const { error } = await supabase.from("academy_graduation")
+      .update({ status: "sold", resolved_at: now.toISOString() })
+      .eq("id", grad.id);
+    if (error) throw new Error(error.message);
+  } catch (err) {
+    // best-effort: se docblok — en fejl her må ALDRIG vælte det allerede
+    // gennemførte salg, kun logges for synlighed.
+    console.error(`resolvePendingGraduationOnSale failed (${riderId}):`, err.message);
+  }
+}

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cancelAuctionByAdmin } from "./auctionCancellation.js";
+import { cancelAuctionByAdmin, cancelActiveAuctionsForRider } from "./auctionCancellation.js";
 
 function createMockSupabase({
   auction,
@@ -205,4 +205,127 @@ test("cancelAuctionByAdmin skips seller-notify when seller already among bidders
   assert.equal(result.ok, true);
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].teamId, "team-x");
+});
+
+// ── #3594 · cancelActiveAuctionsForRider ────────────────────────────────────
+// Den manglende bro mellem "en rytter skal slettes" og den eksisterende,
+// velafprøvede cancelAuctionByAdmin: find rytterens aktive/udvidede auktioner
+// og annullér HVER via cancelAuctionByAdmin (samme notifikations-/
+// frigivelses-logik), FØR en kalder (riderCleanupDeletion.js) sletter
+// rytteren selv.
+
+function createRiderAuctionsMockSupabase({ auctions = [], bidsByAuction = {} }) {
+  return {
+    from(table) {
+      if (table === "auctions") {
+        return {
+          select(cols) {
+            if (cols === "id") {
+              // cancelActiveAuctionsForRider's opslag: aktive/udvidede auktioner for rytteren.
+              return {
+                eq(_col, riderId) {
+                  return {
+                    in(_col2, statuses) {
+                      const matches = auctions
+                        .filter((a) => a.rider_id === riderId && statuses.includes(a.status))
+                        .map((a) => ({ id: a.id }));
+                      return Promise.resolve({ data: matches, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            // cancelAuctionByAdmin's egen detalje-opslag (join simuleret via seedet `rider`-felt).
+            return {
+              eq(_col, id) {
+                return {
+                  maybeSingle: () => Promise.resolve({ data: auctions.find((a) => a.id === id) ?? null, error: null }),
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(_col, id) {
+                return {
+                  in(_col2, statuses) {
+                    return {
+                      select() {
+                        const row = auctions.find((a) => a.id === id);
+                        if (row && statuses.includes(row.status)) {
+                          Object.assign(row, payload);
+                          return Promise.resolve({ data: [{ id: row.id }], error: null });
+                        }
+                        return Promise.resolve({ data: [], error: null });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+          insert() {
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
+      if (table === "auction_bids") {
+        return {
+          select() {
+            return {
+              eq: (_col, auctionId) => Promise.resolve({ data: bidsByAuction[auctionId] || [], error: null }),
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        return { update: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+      }
+      if (table === "admin_log") {
+        return { insert: () => Promise.resolve({ error: null }) };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+}
+
+test("cancelActiveAuctionsForRider cancels every active/extended auction on the rider and notifies each bidder", async () => {
+  const notifications = [];
+  const auctions = [
+    { id: "a1", status: "active", rider_id: "r1", seller_team_id: null, rider: { id: "r1", firstname: "A", lastname: "B" } },
+    { id: "a2", status: "extended", rider_id: "r1", seller_team_id: null, rider: { id: "r1", firstname: "A", lastname: "B" } },
+    { id: "a3", status: "completed", rider_id: "r1", seller_team_id: null, rider: { id: "r1", firstname: "A", lastname: "B" } },
+  ];
+
+  const results = await cancelActiveAuctionsForRider({
+    supabase: createRiderAuctionsMockSupabase({
+      auctions,
+      bidsByAuction: { a1: [{ team_id: "bidder-a" }], a2: [{ team_id: "bidder-b" }] },
+    }),
+    riderId: "r1",
+    adminUserId: "admin-1",
+    notifyTeamOwner: async (teamId, type) => {
+      notifications.push({ teamId, type });
+    },
+  });
+
+  // a3 (completed) er ikke i CANCELLABLE_STATUSES — kun a1+a2 annulleres.
+  assert.equal(results.length, 2);
+  assert.ok(results.every((r) => r.ok), "begge annulleringer skal lykkes");
+  assert.deepEqual(results.map((r) => r.auction_id).sort(), ["a1", "a2"]);
+  assert.equal(auctions.find((a) => a.id === "a1").status, "cancelled");
+  assert.equal(auctions.find((a) => a.id === "a2").status, "cancelled");
+  assert.equal(auctions.find((a) => a.id === "a3").status, "completed", "completed auktionen røres ikke");
+  assert.deepEqual(notifications.map((n) => n.teamId).sort(), ["bidder-a", "bidder-b"]);
+  assert.ok(notifications.every((n) => n.type === "auction_cancelled"));
+});
+
+test("cancelActiveAuctionsForRider returns an empty list when the rider has no active auctions", async () => {
+  const results = await cancelActiveAuctionsForRider({
+    supabase: createRiderAuctionsMockSupabase({ auctions: [] }),
+    riderId: "r-none",
+    adminUserId: "admin-1",
+    notifyTeamOwner: async () => {},
+  });
+  assert.deepEqual(results, []);
 });

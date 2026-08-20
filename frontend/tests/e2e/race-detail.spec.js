@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath } from "./fixtures.js";
 
 // #959 Etape-resultater V1 — renderer-regression for /races/:raceId.
 // Mocker ét 2-etapers stage-race med etape-resultater, daglige trøjebærere og
@@ -21,7 +21,7 @@ function rider(id, first, last) {
   return { id, firstname: first, lastname: last, nationality_code: "dk", team: { id: "team-x", name: "Team X" } };
 }
 
-function row(id, stage_number, result_type, rank, r, points = 0, finish_time = null, breakaway = {}) {
+function row(id, stage_number, result_type, rank, r, points = 0, finish_time = null, breakaway = {}, passageCols = {}) {
   return {
     id, stage_number, result_type, rank,
     rider_id: r.id, rider_name: `${r.firstname} ${r.lastname}`,
@@ -30,6 +30,11 @@ function row(id, stage_number, result_type, rank, r, points = 0, finish_time = n
     // #1499 deskriptive udbruds-etiketter (default false).
     in_breakaway: breakaway.in_breakaway === true,
     breakaway_caught: breakaway.breakaway_caught === true,
+    // #3913: sprint_points/kom_points pr. etape — grundlaget for trøje-point-
+    // totalen (raceClassificationTotals.js). Kun sat når testen eksplicit
+    // fodrer dem (passageCols), ellers undefined som i produktionsdata for
+    // legacy-løb uden passage-kolonner.
+    ...passageCols,
   };
 }
 
@@ -121,13 +126,20 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByTitle("Udbrud — holdt hjem til mål")).toBeVisible();
   await expect(page.getByTitle("Udbrud — indhentet af feltet")).toBeVisible();
 
-  // #1484 terræn-indikator: etape 1 = fladt + massespurt.
+  // #3914: den fulde profilgraf (inkl. #1484-terræn-indikatoren) er flyttet ned
+  // i en default-lukket CollapsibleSection ("Etapeprofil") nederst på etape-
+  // fanen — resultatet er etapens vigtigste indhold nu, ikke ruten. Udfold den
+  // via <summary> (native <details>, ingen ekstra ARIA) før vi kan verificere
+  // terræn-badges. Etape 1 = fladt + massespurt.
+  await page.locator("summary", { hasText: "Etapeprofil" }).click();
   await expect(page.getByText("Terræn", { exact: true })).toBeVisible();
   await expect(page.getByText("Fladt")).toBeVisible();
   await expect(page.getByRole("button", { name: "Massespurt" })).toBeVisible();
 
-  // Etape 2 = bjerge + bjergfinale (skifter med fanen).
+  // Etape 2 = bjerge + bjergfinale (skifter med fanen). StageTab remountes pr.
+  // etape (key={n}) → "Etapeprofil"-sektionen er lukket igen og skal udfoldes på ny.
   await page.getByRole("button", { name: "Etape 2" }).click();
+  await page.locator("summary", { hasText: "Etapeprofil" }).click();
   await expect(page.getByText("Bjerge")).toBeVisible();
   await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 
@@ -162,4 +174,140 @@ test("race detail page renders KOM and intermediate sprint passages under stage 
   // Etape 2 har ingen passage-data for dette fixture → ingen sektion.
   await page.getByRole("button", { name: "Etape 2" }).click();
   await expect(page.getByText("Mellemresultater")).toHaveCount(0);
+});
+
+// #3396/#3914: "The Final Kilometre" skal følge den valgte etape-fane, ikke
+// altid dramatisere den seneste kørte etape — og er nu (#3914, bølge 3) en
+// stille (ghost) sekundærknap i StoryOfTheStageSection i stedet for en altid-
+// synlig sektion, KUN til stede på etape-faner (ikke på Samlet-fanen, som ikke
+// er etape-scopet indhold). RESULTS' etape 1 har begge ryttere sat som
+// in_breakaway (ADA holdt hjem → "breakawaySurvived"-beat), etape 2 har ingen
+// breakaway-flag → intet beat. Meta-labelen ("Etape N") verificerer
+// stageNumber-propen direkte; breakaway-beatet verificerer at finalKmRows/
+// moments rent faktisk filtreres pr. valgt fane. StageTab remountes pr. etape
+// (key={n} i RaceDetailPage), så knappen skal klikkes på ny for hver fane —
+// ingen "hængende" åben-state fra en tidligere etape.
+test("Final Kilometre playback follows the selected stage tab, not always the latest", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", route => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? RACE : [RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
+  await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
+
+  await login(page);
+  await page.goto("/races/race-e2e-1");
+
+  // FinalKilometrePlayback renderer i sit eget Card (div.rounded-cz) med
+  // "Den sidste kilometer" som <h2> (SectionHeader). Samme streng er ALSO
+  // knappens label i StoryOfTheStageSection — scope derfor på headingen
+  // (ikke bare :has-text) så de to elementer ikke kolliderer.
+  const finalKmCard = page.locator("div.rounded-cz").filter({
+    has: page.getByRole("heading", { name: "Den sidste kilometer" }),
+  });
+  const finalKmButton = page.getByRole("button", { name: "Den sidste kilometer" });
+
+  // Samlet-fanen (default): Final Km er etape-scopet indhold — hverken
+  // knappen eller playbacken findes her.
+  await expect(finalKmButton).toHaveCount(0);
+  await expect(finalKmCard).toHaveCount(0);
+
+  // Etape 1-fanen: åbn playbacken via den stille knap → label + breakaway-
+  // beat for etape 1.
+  await page.getByRole("button", { name: "Etape 1" }).click();
+  await finalKmButton.click();
+  await expect(finalKmCard.getByText("Etape 1")).toBeVisible();
+  await expect(finalKmCard.getByText("Et udbrud på 2 ryttere holdt hjem til mål.")).toBeVisible();
+
+  // Etape 2-fanen: StageTab remountes → playbacken er lukket igen (ny knap-
+  // klik nødvendig), label + fravær af breakaway-beat opdateres for etape 2.
+  await page.getByRole("button", { name: "Etape 2" }).click();
+  await expect(finalKmCard).toHaveCount(0);
+  await finalKmButton.click();
+  await expect(finalKmCard.getByText("Etape 2")).toBeVisible();
+  await expect(finalKmCard.getByText(/udbrud/i)).toHaveCount(0);
+
+  // Tilbage til Samlet-fanen: Final Km forsvinder helt igen.
+  await page.getByRole("button", { name: "Samlet" }).click();
+  await expect(finalKmButton).toHaveCount(0);
+});
+
+// #3913: point-/bjergkonkurrencens klassement-tabel viste points_earned
+// (præmiepoint for at ramme podiet i DEN klassement) uden nogen kolonne-
+// overskrift til at skelne det fra rytterens faktiske trøje-point (sprint_points/
+// kom_points summeret pr. etape, raceClassificationTotals.js). Testen fodrer
+// bevidst forskellige tal på de to skalaer og verificerer at begge kolonner nu
+// har egne, adskilte overskrifter ("Trøjepoint" vs. "Præmiepoint") og at
+// tallene ikke er ombyttede.
+const POINTS_RESULTS = [
+  // Etape 1+2 med passage-kolonner (sprint_points/kom_points) — trøje-totalen
+  // Ada: sprint 20+9=29, kom 5+4=9. Mikkel: sprint 12+15=27, kom 8+10=18.
+  row("ps1", 1, "stage", 1, ADA, 0, "+0:00", {}, { sprint_points: 20, kom_points: 5 }),
+  row("ps2", 1, "stage", 2, MIK, 0, "+0:05", {}, { sprint_points: 12, kom_points: 8 }),
+  row("ps3", 2, "stage", 1, MIK, 0, "+0:00", {}, { sprint_points: 15, kom_points: 10 }),
+  row("ps4", 2, "stage", 2, ADA, 0, "+0:08", {}, { sprint_points: 9, kom_points: 4 }),
+  // Slut-klassementer — points_earned er PRÆMIEpoint for podiet i selve
+  // point-/bjergkonkurrencen, bevidst en HELT anden skala end trøje-totalen
+  // ovenfor, så testen kan skelne dem.
+  row("pp1", 2, "points", 1, ADA, 60),
+  row("pp2", 2, "points", 2, MIK, 40),
+  row("pm1", 2, "mountain", 1, MIK, 30),
+  row("pm2", 2, "mountain", 2, ADA, 20),
+];
+
+test("points and mountain classification show distinct jersey-point vs prize-point columns (#3913)", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", route => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? RACE : [RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", route => json(route, POINTS_RESULTS));
+  await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
+  await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
+
+  await login(page);
+  await page.goto("/races/race-e2e-1");
+
+  // Samlet-fanen (default) viser begge slut-klassementer.
+  const pointsCard = page.locator("div.rounded-cz").filter({ has: page.getByRole("heading", { name: "Pointkonkurrence" }) });
+  const mountainCard = page.locator("div.rounded-cz").filter({ has: page.getByRole("heading", { name: "Bjergkonkurrence" }) });
+  await expect(pointsCard).toBeVisible();
+  await expect(mountainCard).toBeVisible();
+
+  // #3913 PR-bevis (kun desktop-chromium, kun ved bevidst opdatering via
+  // CZ_WRITE_COMMITTED_SHOTS=1 — samme mønster som #3519's evidenceShotPath).
+  // Placeret FØR de skarpe kolonne-assertions nedenfor, så det samme kald kan
+  // køres uændret mod både før- og efter-koden for at dokumentere fixet.
+  if (testInfo.project.name === "desktop-chromium") {
+    await page.addStyleTag({ content: "nav.fixed.bottom-0 { display: none !important; }" });
+    await pointsCard.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: evidenceShotPath("pr-screens/3913-points-classification.png"), fullPage: true });
+  }
+
+  // Kolonne-overskrifter: trøjepoint og præmiepoint er nu tydeligt adskilte,
+  // ikke to unavngivne tal ved siden af hinanden (roden til #3913).
+  await expect(pointsCard.getByText("Trøjepoint")).toBeVisible();
+  await expect(pointsCard.getByText("Præmiepoint")).toBeVisible();
+  await expect(mountainCard.getByText("Trøjepoint")).toBeVisible();
+  await expect(mountainCard.getByText("Præmiepoint")).toBeVisible();
+
+  // Pointkonkurrence: trøje-totalen (sprint_points-sum) — IKKE points_earned.
+  await expect(pointsCard.getByText("29 point")).toBeVisible();
+  await expect(pointsCard.getByText("27 point")).toBeVisible();
+  // Præmiepoint for podiet i pointkonkurrencen — en anden skala, stadig synlig
+  // men under sin egen overskrift.
+  await expect(pointsCard.getByText("60 pt")).toBeVisible();
+  await expect(pointsCard.getByText("40 pt")).toBeVisible();
+
+  // Bjergkonkurrence: trøje-totalen (kom_points-sum).
+  await expect(mountainCard.getByText("18 point")).toBeVisible();
+  await expect(mountainCard.getByText("9 point")).toBeVisible();
+  await expect(mountainCard.getByText("30 pt")).toBeVisible();
+  await expect(mountainCard.getByText("20 pt")).toBeVisible();
 });

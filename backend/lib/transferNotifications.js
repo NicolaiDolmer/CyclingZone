@@ -378,6 +378,23 @@ export function buildSwapCancelledStaleNotification({ riderName }) {
   };
 }
 
+// #3940: swap-parallel til buildTransferOnAuctionCancelledNotification. Sendes
+// når en byttehandel annulleres fordi en af de to ryttere kom på en aktiv
+// auktion mellem forslag og bekræftelse (transferExecution.js's TOCTOU-guard).
+export function buildSwapOnAuctionCancelledNotification({ riderName }) {
+  return {
+    type: "transfer_offer_rejected",
+    title: "Swap cancelled",
+    message: `${riderName} went to an active auction. The swap was cancelled. Bid on the auction instead.`,
+    metadata: {
+      titleCode: "notif.transfer.swapOnAuctionCancelled.title",
+      titleParams: {},
+      messageCode: "notif.transfer.swapOnAuctionCancelled.message",
+      messageParams: { riderName },
+    },
+  };
+}
+
 // ─── Admin-annulleringer ────────────────────────────────────────────────────
 //
 // `reason` er valgfri admin-fritekst; den kan være dansk, men den er admin-

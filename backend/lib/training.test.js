@@ -154,12 +154,10 @@ test("resolveTrainingModifier: null plan → null modifier", () => {
   assert.equal(resolveTrainingModifier({ focus: "vo2max", intensity: "x" }, "r1", 2), null);
 });
 
-test("resolveTrainingModifier: rest giver easy-lignende multiplier + aldrig setback", () => {
+test("resolveTrainingModifier: rest giver easy-lignende multiplier", () => {
   for (let i = 0; i < 50; i++) {
     const m = resolveTrainingModifier({ focus: "endurance", intensity: "rest" }, `r-rest-${i}`, 3);
     assert.ok(m !== null, "rest + gyldig fokus → ikke null");
-    assert.equal(m.setbackHit, false, "rest giver aldrig setback");
-    // focusMult skal svare til easy (ingen dampening)
     assert.equal(m.focusMult, TRAINING_CONFIG.focusGrowthMult.easy);
     assert.equal(m.offFocusMult, TRAINING_CONFIG.offFocusMult);
   }
@@ -170,8 +168,6 @@ test("resolveTrainingModifier: fokus-evner får focusMult, resten offFocusMult",
   assert.ok(m.focusAbilities.has("sprint"));
   assert.ok(m.focusAbilities.has("acceleration"));
   assert.ok(!m.focusAbilities.has("climbing"));
-  // easy har 0 % risiko → ingen dampening
-  assert.equal(m.setbackHit, false);
   assert.equal(m.focusMult, TRAINING_CONFIG.focusGrowthMult.easy);
   assert.equal(m.offFocusMult, TRAINING_CONFIG.offFocusMult);
 });
@@ -179,27 +175,18 @@ test("resolveTrainingModifier: fokus-evner får focusMult, resten offFocusMult",
 test("resolveTrainingModifier: deterministisk pr. (rytter, sæson, plan)", () => {
   const a = resolveTrainingModifier({ focus: "vo2max", intensity: "hard" }, "rider-x", 3);
   const b = resolveTrainingModifier({ focus: "vo2max", intensity: "hard" }, "rider-x", 3);
-  assert.equal(a.setbackHit, b.setbackHit);
   assert.equal(a.focusMult, b.focusMult);
+  assert.equal(a.offFocusMult, b.offFocusMult);
 });
 
-test("resolveTrainingModifier: tilbageslag dæmper vækst-multiplikatorerne", () => {
-  // Find et rider-seed hvor hård intensitet rammer tilbageslag, og bekræft dampening.
-  let hitSeed = null;
-  for (let i = 0; i < 200 && !hitSeed; i++) {
+// #3758: setback (risiko for tabt vækst ved hård intensitet) er fjernet fra
+// spillet — målt til 0 udløsninger nogensinde (se issuet). Hård intensitet
+// giver nu altid sin fulde focusGrowthMult, uden dæmpning.
+test("resolveTrainingModifier: hård intensitet giver fuld focusMult, ingen dæmpning (#3758)", () => {
+  for (let i = 0; i < 200; i++) {
     const m = resolveTrainingModifier({ focus: "vo2max", intensity: "hard" }, `seed-${i}`, 2);
-    if (m.setbackHit) hitSeed = { i, m };
-  }
-  assert.ok(hitSeed, "forventede mindst ét tilbageslag på tværs af 200 seeds (18 % chance)");
-  const { m } = hitSeed;
-  assert.equal(m.focusMult, TRAINING_CONFIG.focusGrowthMult.hard * TRAINING_CONFIG.setbackGrowthMult);
-  assert.equal(m.offFocusMult, TRAINING_CONFIG.offFocusMult * TRAINING_CONFIG.setbackGrowthMult);
-});
-
-test("resolveTrainingModifier: easy rammer aldrig tilbageslag", () => {
-  for (let i = 0; i < 100; i++) {
-    const m = resolveTrainingModifier({ focus: "endurance", intensity: "easy" }, `s-${i}`, 5);
-    assert.equal(m.setbackHit, false);
+    assert.equal(m.focusMult, TRAINING_CONFIG.focusGrowthMult.hard);
+    assert.equal(m.offFocusMult, TRAINING_CONFIG.offFocusMult);
   }
 });
 

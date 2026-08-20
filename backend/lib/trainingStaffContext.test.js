@@ -6,17 +6,21 @@ import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 
 const TEAM_ID = "team-1";
 
-// Minimal thenable query-mock: state = { tabel: rækker[] }; filtre via .eq() på alle kolonner.
+// Minimal thenable query-mock: state = { tabel: rækker[] }; filtre via .eq()/.in() på alle kolonner.
+// #3489: .in() tilføjet — trainingStaffContext henter nu staff_derived_abilities for
+// FLERE staff-id'er ad gangen (op til MAX_STAFF_SLOTS_PER_ROLE aktive trænings-staff).
 function createSupabaseMock(state, opts = {}) {
   function builder(table, filters = []) {
     return {
       select() { return builder(table, filters); },
-      eq(col, val) { return builder(table, [...filters, [col, val]]); },
+      eq(col, val) { return builder(table, [...filters, { col, eq: val }]); },
+      in(col, vals) { return builder(table, [...filters, { col, in: vals }]); },
       then(resolve) {
         if (opts.errorTable === table) {
           return Promise.resolve({ data: null, error: { message: "boom" } }).then(resolve);
         }
-        const rows = (state[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v));
+        const rows = (state[table] ?? []).filter((r) =>
+          filters.every((f) => ("eq" in f ? r[f.col] === f.eq : f.in.includes(r[f.col]))));
         return Promise.resolve({ data: rows, error: null }).then(resolve);
       },
     };
@@ -70,6 +74,26 @@ test("self-heal: manglende ability-række → deterministisk derivation fra (rol
   assert.equal(ctx.staff.overall, expected.overall);
   assert.deepEqual(ctx.staff.dimensions, expected.dimensions);
   assert.deepEqual(ctx.staff.levels, expected.levels);
+});
+
+// #3489: op til 2 samtidige aktive trænings-staff nu (fx en U23- + en senior-
+// træner) — dagsbonussen skal bruge den STÆRKESTE (højeste overall), uanset
+// hvilken kom først i DB-rækkefølgen.
+test("2 aktive trænings-staff → bruger den stærkeste (højeste overall)", async () => {
+  const supabase = createSupabaseMock({
+    team_facilities: [{ team_id: TEAM_ID, track: "training", tier: 4 }],
+    team_staff: [
+      { id: "st-weak", team_id: TEAM_ID, role: "training", status: "active", tier: 2, name: "Weak Coach" },
+      { id: "st-strong", team_id: TEAM_ID, role: "training", status: "active", tier: 5, name: "Strong Coach" },
+    ],
+    staff_derived_abilities: [
+      { staff_id: "st-weak", overall: 40, dimensions: { physical: 45 }, levels: { u23: 50, senior: 40 } },
+      { staff_id: "st-strong", overall: 92, dimensions: { physical: 95 }, levels: { u23: 60, senior: 90 } },
+    ],
+  });
+  const ctx = await loadTrainingStaffContext(supabase, TEAM_ID);
+  assert.equal(ctx.facilityTier, 4);
+  assert.deepEqual(ctx.staff, { overall: 92, dimensions: { physical: 95 }, levels: { u23: 60, senior: 90 } });
 });
 
 test("kun ANDRE spors staff/faciliteter → neutral (training-filter)", async () => {

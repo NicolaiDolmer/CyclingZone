@@ -11,8 +11,9 @@ import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import {
-  Card, Button, EmptyState, ErrorState, GavelIcon,
+  Card, Button, EmptyState, ErrorState, GavelIcon, FlameIcon,
   PageHeader, Section, SkeletonLines, Table, Tr, Th, Td,
+  ChevronLeftIcon, ChevronRightIcon,
 } from "../components/ui";
 import { useSortState } from "../lib/useTableSort.js";
 import { resolveAuctionHistorySort, DEFAULT_AUCTION_HISTORY_SORT } from "../lib/auctionHistorySort.js";
@@ -380,6 +381,16 @@ export default function AuctionHistoryPage() {
                         value: formatNumber(a.rider?.market_value),
                         salary: a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : t("history.salaryNone"),
                       })}</p>
+                      {/* #vk-auction-signals: budkrigs-markør — kun rækker med 2+
+                          FORSKELLIGE budgivere (ikke bare "nogen bød"). Egen linje
+                          (flex, ikke inline-flex) så den altid stables over
+                          "Se budkrigen"-linket i stedet for at flyde ved siden af. */}
+                      {bids && bids.bidders >= 2 && (
+                        <span className="mt-1 flex items-center gap-1 text-3xs uppercase border border-cz-danger/40 bg-cz-danger-bg/50 text-cz-danger px-1.5 py-0.5 rounded-cz-pill w-fit">
+                          <FlameIcon size={11} aria-hidden="true" />
+                          {t("history.bidWarBadge", { bids: bids.bids, teams: bids.bidders })}
+                        </span>
+                      )}
                       {/* #3401: post-hammerslag-reveal — kun for auktioner der reelt
                           havde en budkrig (bids>0). Altid synlig (rider-cellen skjules
                           aldrig på mobil), i modsætning til Bud-kolonnen der er desktop-
@@ -456,11 +467,13 @@ export default function AuctionHistoryPage() {
                 {t("history.pageOf", { page, total: Math.ceil(total / PER_PAGE) })}
               </span>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                  ← {t("history.prev")}
+                <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                  iconLeft={<ChevronLeftIcon size={14} aria-hidden="true" />}>
+                  {t("history.prev")}
                 </Button>
-                <Button variant="secondary" size="sm" disabled={page * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}>
-                  {t("history.next")} →
+                <Button variant="secondary" size="sm" disabled={page * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}
+                  iconRight={<ChevronRightIcon size={14} aria-hidden="true" />}>
+                  {t("history.next")}
                 </Button>
               </div>
             </div>

@@ -3,17 +3,23 @@ import {
   ensureNoError,
   expectMaybeSingle,
   expectMutation,
+  expectMutationAffectingRows,
   getIncomingSquadViolation,
+  getOutgoingSquadViolation,
+  getSquadRiskViolation,
   getTeamMarketState,
   withdrawOpenTransferDealsForRiders,
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
+import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
+import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -398,7 +404,9 @@ async function tryPlaceYouthWinnerOnSenior({
   const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, {
     division: buyer.division,
   });
-  await expectMutation(
+  // #3580: verificér at ejerskabsskiftet FAKTISK ramte en række, FØR debiten
+  // nedenfor kører — se expectMutationAffectingRows' doc-comment i marketUtils.js.
+  await expectMutationAffectingRows(
     supabase
       .from("riders")
       .update({
@@ -408,11 +416,27 @@ async function tryPlaceYouthWinnerOnSenior({
         is_academy: false,
         ...winnerContractPatch,
       })
-      .eq("id", rider.id)
+      .eq("id", rider.id),
+    { context: `youth_senior_placement auction=${auction.id} rider=${rider.id}` }
   );
 
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "youth_auction_senior_win" });
   await closeTransferListingsForRiders(supabase, [rider.id], "sold");
+
+  // #3582: bevægelses-log — best-effort, kaster aldrig (se modul-header).
+  await recordRiderOwnershipEvent(supabase, {
+    riderId: rider.id,
+    riderFirstname: rider.firstname,
+    riderLastname: rider.lastname,
+    fromTeamId: null, // ungdomsauktion: ingen sælger, rytteren var fri
+    toTeamId: bidderId,
+    reason: RIDER_OWNERSHIP_REASON.AUCTION_WIN,
+    relatedEntityType: "auction",
+    relatedEntityId: auction.id,
+    actorType: FINANCE_ACTOR_TYPE.CRON,
+    occurredAt: actualEnd,
+    idempotencyKey: `ownership:youth_auction_winner:${auction.id}`,
+  });
 
   // Debit: bud-summen er et sink (ingen sælger), præcis som akademi-placeringen.
   // SAMME idempotency_key som akademi-vinder-debiten (`youth_auction_winner:<id>`):
@@ -689,6 +713,21 @@ async function finalizeYouthAuctionRecord({
 
   // Defensivt: luk evt. åbne transfer_listings (en fri ungdom bør ikke have nogen).
   await closeTransferListingsForRiders(supabase, [rider.id], "sold");
+
+  // #3582: bevægelses-log — best-effort, kaster aldrig (se modul-header).
+  await recordRiderOwnershipEvent(supabase, {
+    riderId: rider.id,
+    riderFirstname: rider.firstname,
+    riderLastname: rider.lastname,
+    fromTeamId: null, // ungdomsauktion: ingen sælger, rytteren var fri
+    toTeamId: bidderId,
+    reason: RIDER_OWNERSHIP_REASON.AUCTION_WIN,
+    relatedEntityType: "auction",
+    relatedEntityId: auction.id,
+    actorType: FINANCE_ACTOR_TYPE.CRON,
+    occurredAt: actualEnd,
+    idempotencyKey: `ownership:youth_auction_winner:${auction.id}`,
+  });
 
   await awardXP(bidderId, "auction_won");
   await notifyTeamOwner(
@@ -1020,6 +1059,65 @@ async function finalizeAuctionRecord({
       };
     }
 
+    // #2836: sælger-gulvet (MIN_RIDERS_FOR_RACE=8) tjekkes hidtil KUN ved
+    // auktions-OPRETTELSE (#2748/#2834, api.js "isOwnRider"-grenen). Mellem
+    // oprettelse og finalisering kan der gå dage — sælgeren kan i mellemtiden
+    // miste ryttere ad andre veje (kontraktudløb/pension ved sæsonskifte,
+    // andre salg/handler), så holdet kan ende under minimummet ved selve
+    // overdragelsen uden nogen kontrol. Genbruger PRÆCIS samme diskriminator
+    // som oprettelses-gaten og transferExecution's sælger-tjek
+    // (getOutgoingSquadViolation + getSquadRiskViolation), så invarianten er
+    // én kilde, ikke to divergerende implementationer.
+    //
+    // Kun relevant når sælgeren FAKTISK ejer rytteren (sellerOwned) — en
+    // AI/fri-agent-sælger eller banken har intet løbs-hold at beskytte.
+    // Kører FØR ejerskabsskiftet og FØR nogen penge flytter (samme placering
+    // som buyer-squad_full ovenfor), så et brud aldrig kan kræve refundering
+    // — pengene har simpelthen ikke bevæget sig endnu.
+    if (sellerOwned) {
+      const sellerState = await getTeamMarketState(supabase, actualSellerTeamId);
+      sellerState.at_risk_count = await fetchAtRiskCount(supabase, actualSellerTeamId, activeSeasonNumber, {
+        excludeRiderIds: [auction.rider.id],
+      });
+      const sellerFloorViolation =
+        getOutgoingSquadViolation(sellerState) ||
+        getSquadRiskViolation(sellerState, { outgoingCount: 1 });
+
+      if (sellerFloorViolation) {
+        await closeAuction({
+          supabase,
+          auction,
+          status: "completed",
+          actualEnd,
+          sellerOwned,
+        });
+
+        await notifyTeamOwner(
+          effectiveBidderId,
+          "auction_lost",
+          "Auktion annulleret",
+          `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi sælgerens hold ville falde under løbs-minimummet (${sellerFloorViolation.minRiders}).`,
+          auction.id,
+          { riderId: auction.rider.id }
+        );
+
+        await notifyTeamOwner(
+          actualSellerTeamId,
+          "auction_lost",
+          "Auktion annulleret — dit hold ville falde under minimum",
+          `${auction.rider.firstname} ${auction.rider.lastname} blev ikke overdraget, fordi dit hold ville falde under ${sellerFloorViolation.minRiders} ryttere (løbs-minimum) ved salget. Sælg ham igen når din trup har plads til det.`,
+          auction.id,
+          { riderId: auction.rider.id }
+        );
+
+        return {
+          ok: true,
+          code: "seller_squad_floor",
+          auction_id: auction.id,
+        };
+      }
+    }
+
     // #1309 kontrakt-on-acquire: vinderen erhverver rytteren → opret standard-
     // kontrakt hvis kontraktløs (salary == null); ellers arves den uændret.
     // Skrives både ved åbent vindue (team_id nu) og lukket vindue (pending_team_id),
@@ -1029,7 +1127,16 @@ async function finalizeAuctionRecord({
     // #932: en graduate-salgs-auktion (akademirytter solgt af sit eget hold) skal
     // lande hos vinderen som SENIOR — ikke i vinderens akademi. Flip is_academy=false.
     const graduatePatch = auction.rider?.is_academy ? { is_academy: false } : {};
-    await expectMutation(
+    // #3580: samme verifikation som senior-ungdomsplaceringen ovenfor — en
+    // UPDATE der (fx pga. en samtidig sletning/race) rammer 0 rækker skal
+    // ALDRIG kunne efterlade finance-benet nedenfor til at gennemføre alene.
+    // Gælder BEGGE grene: den umiddelbare overdragelse OG #1995-parkeringen
+    // (pending_team_id) — begge er lige så meget "ejerskabet ændrede sig
+    // faktisk" som den direkte team_id-sti.
+    // #3582: capture FØR mutationen — rider_ownership_events skal afspejle
+    // hvem der FAKTISK havde rytteren, ikke den allerede-opdaterede værdi.
+    const ownershipFromTeamId = auction.rider.team_id;
+    await expectMutationAffectingRows(
       supabase
         .from("riders")
         .update(
@@ -1051,8 +1158,19 @@ async function finalizeAuctionRecord({
                 ...graduatePatch,
               }
         )
-        .eq("id", auction.rider.id)
+        .eq("id", auction.rider.id),
+      { context: `auction=${auction.id} rider=${auction.rider.id}` }
     );
+
+    // #2793 (bølge 3-følgefund): rytteren graduerede lige (graduatePatch ovenfor)
+    // via et DIREKTE salg (#3845) — resolver en evt. hængende PENDING
+    // academy_graduation-row hos sælgeren så academyGraduationSweep ikke senere
+    // finder den og forsøger at auto-resolve en rytter der allerede er solgt.
+    if (graduatePatch.is_academy === false && auction.seller_team_id) {
+      await resolvePendingGraduationOnSale(supabase, {
+        teamId: auction.seller_team_id, riderId: auction.rider.id, now: new Date(actualEnd),
+      });
+    }
 
     // #1906 defense-in-depth: rytteren er solgt — ryd hans fremtidige race_entries
     // så de ikke hænger ved som ghost og phantom-binder en ægte rytter. #2579: også
@@ -1062,6 +1180,27 @@ async function finalizeAuctionRecord({
     // scheduled/stages_completed=0-løb, så det aktive låste løb (flushen rydder ved
     // race-slut) er strukturelt udelukket.
     await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_win" });
+
+    // #3582: bevægelses-log — KUN når ejerskabet faktisk flyttede (team_id).
+    // Ved #1995-parkering (deferTeamChange) er rytteren STADIG hos sælgeren —
+    // den hændelse logges i stedet af stageRaceTransferDefer.js's
+    // flushParkedRider, som er hvor team_id faktisk ændrer sig. Best-effort,
+    // kaster aldrig (se modul-header).
+    if (!deferTeamChange) {
+      await recordRiderOwnershipEvent(supabase, {
+        riderId: auction.rider.id,
+        riderFirstname: auction.rider.firstname,
+        riderLastname: auction.rider.lastname,
+        fromTeamId: ownershipFromTeamId,
+        toTeamId: effectiveBidderId,
+        reason: RIDER_OWNERSHIP_REASON.AUCTION_WIN,
+        relatedEntityType: "auction",
+        relatedEntityId: auction.id,
+        actorType: FINANCE_ACTOR_TYPE.CRON,
+        occurredAt: actualEnd,
+        idempotencyKey: `ownership:auction_winner:${auction.id}`,
+      });
+    }
 
     // #822: rytteren er solgt — luk alle åbne transfer_listings så han ikke
     // står som zombie-"til salg" på transfermarkedet. Gælder også ved lukket
@@ -1255,7 +1394,10 @@ async function finalizeAuctionRecord({
     // bank-holdte ryttere en kontrakt hvis kontraktløs, så "ejede ryttere har
     // altid salary != null" holder for ALLE ejede (også bankens), og en senere
     // gen-auktion/handel arver kontrakten uændret.
-    await expectMutation(
+    // #3580: samme verifikation som de øvrige ejerskabsskift ovenfor — bank-
+    // salget krediterer sælgeren nedenfor, så overdragelsen til banken skal
+    // være bekræftet FØRST.
+    await expectMutationAffectingRows(
       supabase
         .from("riders")
         .update({
@@ -1264,12 +1406,28 @@ async function finalizeAuctionRecord({
           acquired_at: actualEnd,
           ...contractOnAcquirePatch(auction.rider, activeSeasonNumber, { division: bankTeam.division }),
         })
-        .eq("id", auction.rider.id)
+        .eq("id", auction.rider.id),
+      { context: `guaranteed_bank_sale auction=${auction.id} rider=${auction.rider.id}` }
     );
 
     // #1906 defense-in-depth: rytteren forlod sælgeren (solgt til banken) — ryd hans
     // fremtidige race_entries så de ikke hænger ved som ghost og phantom-binder en ægte rytter.
     await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_bank_sale" });
+
+    // #3582: bevægelses-log — best-effort, kaster aldrig (se modul-header).
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: auction.rider.id,
+      riderFirstname: auction.rider.firstname,
+      riderLastname: auction.rider.lastname,
+      fromTeamId: auction.seller_team_id,
+      toTeamId: bankTeam.id,
+      reason: RIDER_OWNERSHIP_REASON.GUARANTEED_BANK_SALE,
+      relatedEntityType: "auction",
+      relatedEntityId: auction.id,
+      actorType: FINANCE_ACTOR_TYPE.CRON,
+      occurredAt: actualEnd,
+      idempotencyKey: `ownership:auction_bank_sale:${auction.id}`,
+    });
 
     // #776: guaranteed-sale til banken er også et salg — luk åbne
     // transfer_listings så rytteren ikke står som zombie-"til salg".

@@ -7,10 +7,12 @@ import { runEmailDay1Sweep, DAY1_WINDOW_MIN_MS, DAY1_WINDOW_MAX_MS } from "./ema
 // throws, to exercise the per-team try/catch isolation.
 // raceIdByTeamId: team id -> race_id, drives the #3310 deep-link CTA
 // (latestRaceId) for teams that are also in resultTeamIds.
+// stageNumberByTeamId: team id -> stage_number, drives the #3912 stage
+// deep-link (latestStageNumber) for teams that are also in resultTeamIds.
 function makeSupabase(
   teamRows,
   userEmails = {},
-  { resultTeamIds = [], resultsErrorForTeamIds = [], raceIdByTeamId = {} } = {}
+  { resultTeamIds = [], resultsErrorForTeamIds = [], raceIdByTeamId = {}, stageNumberByTeamId = {} } = {}
 ) {
   return {
     from(table) {
@@ -48,16 +50,33 @@ function makeSupabase(
       if (table === "race_results") {
         let teamId = null;
         return {
-          select() { return this; },
+          // #3585: race_results has no created_at column — pin the exact
+          // select/order strings so a regression to the wrong column name
+          // fails this mock loudly instead of silently ignoring it.
+          // #3912: stage_number joined the select so the CTA can deep-link
+          // to the specific stage, not just the race.
+          select(cols) {
+            assert.equal(cols, "id, race_id, stage_number, imported_at");
+            return this;
+          },
           eq(_col, id) { teamId = id; return this; },
-          order() { return this; },
+          order(col, opts) {
+            assert.equal(col, "imported_at");
+            assert.deepEqual(opts, { ascending: false });
+            return this;
+          },
           limit: async () => {
             if (resultsErrorForTeamIds.includes(teamId)) {
               return { data: null, error: { message: "connection reset" } };
             }
             return {
               data: resultTeamIds.includes(teamId)
-                ? [{ id: `result-${teamId}`, race_id: raceIdByTeamId[teamId] ?? null, created_at: "2026-07-19T00:00:00Z" }]
+                ? [{
+                    id: `result-${teamId}`,
+                    race_id: raceIdByTeamId[teamId] ?? null,
+                    stage_number: stageNumberByTeamId[teamId] ?? null,
+                    imported_at: "2026-07-19T00:00:00Z",
+                  }]
                 : [],
               error: null,
             };
@@ -159,6 +178,40 @@ test("hasResults=true with a race_id deep-links the CTA to that race (#3310, dor
   // Pin href'en, ikke en delstreng: includes() ville også passere hvis
   // deep-linket kun stod som brødtekst, eller pegede på et fremmed host med
   // vores URL som præfiks (CodeQL js/incomplete-url-substring-sanitization).
+  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99"/);
+});
+
+test("hasResults=true with a race_id and stage_number deep-links the CTA to that stage's result (#3912)", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
+  const supabase = makeSupabase(
+    rows,
+    { "user-42": "player@example.com" },
+    { resultTeamIds: ["t1"], raceIdByTeamId: { t1: "race-99" }, stageNumberByTeamId: { t1: 3 } }
+  );
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?stage=3"/);
+});
+
+test("hasResults=true with a race_id but no stage_number falls back to the plain race link (single-day race / legacy data)", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
+  const supabase = makeSupabase(
+    rows,
+    { "user-42": "player@example.com" },
+    { resultTeamIds: ["t1"], raceIdByTeamId: { t1: "race-99" } }
+  );
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
   assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99"/);
 });
 

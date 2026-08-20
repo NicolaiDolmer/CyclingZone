@@ -13,6 +13,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../../TeamLink";
+import { ChevronLeftIcon, ChevronRightIcon } from "../../ui/icons/index.jsx";
 
 // Kort navn: "F. Efternavn" (matcher prototypens ‹ L. Mørk / S. Beck ›).
 function shortName(rider) {
@@ -52,7 +53,7 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamNam
           disabled={!prevRider}
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0"
         >
-          <span aria-hidden="true" className="text-cz-3">‹</span>
+          <ChevronLeftIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
           <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{shortName(prevRider)}</span>
         </button>
 
@@ -83,7 +84,7 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamNam
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0 justify-end"
         >
           <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{shortName(nextRider)}</span>
-          <span aria-hidden="true" className="text-cz-3">›</span>
+          <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
         </button>
       </div>
     </div>

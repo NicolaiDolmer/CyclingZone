@@ -8,7 +8,13 @@ import {
 } from "./achievementEngine.js";
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 
-function createAchievementSupabase(initialState) {
+// #3953: `flaky` lader en enkelt tabel fejle et fast antal gange, før den
+// lykkes (eller aldrig lykkes, hvis failCount er højere end antal forsøg) —
+// bruges til at teste at readMany/readMaybeSingle retry'er via withSupabaseRetry.
+// attemptCounts tælles i `state`, IKKE i createSelectQuery-closuren: hver
+// forsøg genopbygger query'en fra bunden (samme grund til at call-sites nu
+// sender en factory-funktion i stedet for et allerede-awaited query-objekt).
+function createAchievementSupabase(initialState, { flaky = {} } = {}) {
   const state = {
     achievements: (initialState.achievements || []).map(row => ({ ...row })),
     manager_achievements: (initialState.manager_achievements || []).map(row => ({ ...row })),
@@ -27,7 +33,18 @@ function createAchievementSupabase(initialState) {
     races: (initialState.races || []).map(row => ({ ...row })),
     race_entries: (initialState.race_entries || []).map(row => ({ ...row })),
     inserts: [],
+    attemptCounts: {},
   };
+
+  function resolveOutcome(table, successData) {
+    const flakyConfig = flaky[table];
+    if (!flakyConfig) return { data: successData, error: null };
+    state.attemptCounts[table] = (state.attemptCounts[table] || 0) + 1;
+    if (state.attemptCounts[table] <= flakyConfig.failCount) {
+      return { data: null, error: flakyConfig.error };
+    }
+    return { data: successData, error: null };
+  }
 
   function createSelectQuery(table, rows) {
     let filtered = rows.map(row => ({ ...row }));
@@ -58,7 +75,7 @@ function createAchievementSupabase(initialState) {
             error: { message: "JSON object requested, multiple (or no) rows returned" },
           });
         }
-        return Promise.resolve({ data: filtered[0] || null, error: null });
+        return Promise.resolve(resolveOutcome(table, filtered[0] || null));
       },
       single() {
         if (filtered.length !== 1) {
@@ -67,10 +84,10 @@ function createAchievementSupabase(initialState) {
             error: { message: "JSON object requested, multiple (or no) rows returned" },
           });
         }
-        return Promise.resolve({ data: filtered[0] || null, error: null });
+        return Promise.resolve(resolveOutcome(table, filtered[0] || null));
       },
       then(resolve, reject) {
-        return Promise.resolve({ data: filtered, error: null }).then(resolve, reject);
+        return Promise.resolve(resolveOutcome(table, filtered)).then(resolve, reject);
       },
     };
 
@@ -508,4 +525,85 @@ test("getAchievementUnlocks does not re-unlock achievements that are already rec
     unlocked.map(achievement => achievement.id),
     ["transfer_5"]
   );
+});
+
+// ── #3953: readMany/readMaybeSingle går gennem withSupabaseRetry ────────────
+//
+// Fixturen er lavet efter samme opskrift som supabaseErrorNormalize.test.js
+// (CF_525): en forkortet, men realistisk Cloudflare-fejlside som den lander i
+// error.message når PostgREST/supabase-js får et non-JSON-svar fra gatewayen.
+const CF_525 = `<!DOCTYPE html>
+<html class="no-js" lang="en-US"><head>
+<title>supabase.co | 525: SSL handshake failed</title>
+</head><body><div id="cf-error-details">
+<span class="inline-block">SSL handshake failed</span>
+<span class="code-label">Error code 525</span>
+</div></body></html>`;
+
+// checkAchievements henter "teams" (readMaybeSingle via loadTeamId) og
+// "achievements"/"manager_achievements" (readMany) FØR resten af stats-loaderne
+// kører — med tom season_standings-state rammes "teams" kun denne ene gang, så
+// den er et rent mål for retry-adfærden uden at bygge en fuld stats-fixture.
+test("#3953 transient 525 fejler paa forsoeg 1, lykkes paa forsoeg 2 (readMaybeSingle)", async () => {
+  const supabase = createAchievementSupabase(
+    {
+      achievements: [],
+      manager_achievements: [],
+      teams: [{ id: "team-1", user_id: "user-1" }],
+    },
+    { flaky: { teams: { failCount: 1, error: { message: CF_525 } } } }
+  );
+
+  const insertedAchievements = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(insertedAchievements, []);
+  assert.equal(supabase.state.attemptCounts.teams, 2, "skal lykkes på forsøg 2, ikke flere");
+});
+
+test("#3953 ikke-transient fejl kastes straks uden retry (readMany)", async () => {
+  const supabase = createAchievementSupabase(
+    {
+      achievements: [{ id: "auction_first_bid" }],
+      manager_achievements: [],
+      teams: [{ id: "team-1", user_id: "user-1" }],
+    },
+    {
+      flaky: {
+        manager_achievements: {
+          failCount: 999,
+          error: { message: 'permission denied for table "manager_achievements"' },
+        },
+      },
+    }
+  );
+
+  await assert.rejects(
+    () => checkAchievements({ supabase, userId: "user-1" }),
+    /permission denied for table "manager_achievements"/
+  );
+  assert.equal(supabase.state.attemptCounts.manager_achievements, 1, "ikke-transient fejl må IKKE retry'es");
+});
+
+test("#3953 beskedstreng ved endelig fejl er uændret ift. før PR'en (samme normaliserede format)", async () => {
+  const supabase = createAchievementSupabase(
+    {
+      achievements: [],
+      manager_achievements: [],
+      teams: [{ id: "team-1", user_id: "user-1" }],
+    },
+    { flaky: { teams: { failCount: 999, error: { message: CF_525 } } } }
+  );
+
+  // Før PR'en (ingen retry) ville readMaybeSingle kaste
+  // `new Error(normalizeSupabaseErrorMessage(error.message))` med det samme —
+  // dvs. netop denne normaliserede besked. Testen verificerer at formatet er
+  // uændret, selvom der nu sker 2 retries først (attemptCounts.teams === 3).
+  await assert.rejects(
+    () => checkAchievements({ supabase, userId: "user-1" }),
+    (error) => {
+      assert.equal(error.message, "Supabase unavailable (525 SSL handshake failed)");
+      return true;
+    }
+  );
+  assert.equal(supabase.state.attemptCounts.teams, 3, "1 forsøg + 2 retries, alle mislykkede");
 });

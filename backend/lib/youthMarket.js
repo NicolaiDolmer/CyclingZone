@@ -6,10 +6,20 @@
 
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
+import { readYouthAuctionStartRateOverride } from "./marketValueLevelCorrectionConfig.js";
 
 // Startpris for en ungdomsauktion = lav andel af markedsværdi. Afviste prospekter
 // skal være billige at samle op, men ikke gratis. Gulv 1.
 export const YOUTH_AUCTION_START_RATE = 0.25;
+
+// #3550 (ejer-beslutning 19/8, punkt 6): BÅDE den manager-initierede afvisning
+// (rejectAcademyCandidate → defaultListYouthAuction, IKKE tidligere sat) og
+// academyIntakeExpirySweep-stien (allerede 24 via egen konstant) skal give en
+// afvist/udløbet kandidat 24 timers liggetid — en bevidst REVERSERING af #2627's
+// (dengang uparametriserede) længere-end-standard-liggetid til netop dette tal,
+// nu ens for begge veje ind i en ungdomsauktion. Default herunder gør reject-
+// stien konsistent UDEN at hver kalder skal huske at sende parameteren.
+export const REJECTED_CANDIDATE_AUCTION_DURATION_HOURS = 24;
 
 /**
  * Slå auktions-timing-config op (samme kilde som api.js' getAuctionConfig).
@@ -67,7 +77,14 @@ async function findActiveAuctionForRider(supabase, riderId) {
  *   rejectAcademyCandidate (manager-initieret afvisning er ikke udløb).
  * @returns {Promise<object>} den oprettede (eller allerede eksisterende) auktion
  */
-export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig, durationHours, expiredIntakeTeamId } = {}) {
+export async function listRejectedAsYouthAuction(supabase, {
+  riderId, now = new Date(), auctionConfig, durationHours = REJECTED_CANDIDATE_AUCTION_DURATION_HOURS, expiredIntakeTeamId,
+  // #3449 neutralitets-bundt (a): injicerbar override-læser (test-seam, samme
+  // mønster som auctionConfig). Default læser den ægte config-nøgle — NULL
+  // (ingen korrektion har kørt endnu) betyder UÆNDRET adfærd (den hardcodede
+  // konstant), fail-safe i begge retninger (læse-fejl ⇒ også NULL).
+  readStartRateOverride = readYouthAuctionStartRateOverride,
+} = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!riderId) throw new Error("listRejectedAsYouthAuction: riderId required");
 
@@ -98,7 +115,11 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
   if (existing) return existing;
 
   const value = Math.max(1, calculateRiderMarketValue(rider));
-  const startPrice = Math.max(1, Math.round(value * YOUTH_AUCTION_START_RATE));
+  // #3449 (a): dræn-neutral bankrate — hvis niveau-korrektionen har kørt,
+  // effectiveRate = YOUTH_AUCTION_START_RATE / c, så start_pris i kroner er
+  // UÆNDRET for den nye (c×værdi)-skala. Se marketValueLevelCorrectionNeutrality.js.
+  const effectiveRate = (await readStartRateOverride(supabase)) ?? YOUTH_AUCTION_START_RATE;
+  const startPrice = Math.max(1, Math.round(value * effectiveRate));
 
   let cfg = await resolveAuctionConfig(supabase, auctionConfig);
   // #2627/ejer-ønske 18/7: udløbne intake-ryttere skal ligge LÆNGERE på markedet

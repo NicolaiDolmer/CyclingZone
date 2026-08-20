@@ -25,6 +25,10 @@ import MyLatestResultCard from "../components/MyLatestResultCard";
 // #3397 (epic #3395 bølge 1): Hero & Agony moment-kort. Selv-hentende
 // komponent (kun team-props) med vilje — se komponentfilens kommentar.
 import HeroAgonyCard from "../components/HeroAgonyCard";
+// #3915 — "Today's stages"-stribe (dagens etaper/løb for holdet). Selv-
+// hentende komponentfil (kun teamId som prop), samme isolations-princip som
+// HeroAgonyCard ovenfor — se komponentfilens kommentar.
+import TodayStagesStrip from "../components/TodayStagesStrip";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
@@ -51,20 +55,28 @@ import {
 import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
 import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
-import { computeSeasonMovement } from "../lib/seasonRecapData.js";
+import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
+// vk-movement-signals — bevægelses-signaler på "My division standings":
+// divisionsplacering + holdpoint siden sidste afsluttede løbsdag i egen pulje.
+import { findLastCompletedRaceDay, sumPointsByTeam, computeDivisionMovement } from "../lib/dashboardMovementSignals.js";
 import { fetchReservedBalance, computeAvailableBalance } from "../lib/availableBalance.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
-  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
-  PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState, SkeletonLines,
+  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, CheckIcon, DiscordIcon,
+  PageLoader, PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
+  SkeletonLines, EmptyState, ProgressMeter,
 } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
 // opdatere uden hård reload når et løb finaliseres (#783).
-const REALTIME_TABLES = ["seasons", "race_results"];
+// #3035: races (72 updates/vindue) erstatter race_results (34k writes/vindue) som
+// finaliserings-signal — hver etape/løbs-afslutning bumper races-rækken, så UX er
+// identisk, men realtime slipper for at WAL-dekode masseskrivningerne.
+const REALTIME_TABLES = ["seasons", "races"];
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -78,21 +90,15 @@ function getAuctionLeaderId(auction) {
   return null;
 }
 
-function MiniBar({ value, max, color = "rgb(var(--accent))" }) {
-  const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 bg-cz-subtle rounded-full h-1.5">
-        <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-      </div>
-      <span className="text-xs font-mono text-cz-2 w-8 text-right">{value}</span>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation(["dashboard", "common"]);
+  // #3697: board.json (55 KB rå pr. sprogpar) lazy-loades via HttpBackend i
+  // stedet for at ligge inline i language-chunken. Dashboardets bestyrelseskort
+  // er den ENESTE forbruger uden for BoardPage, og feedback-blokken er den
+  // eneste del der resolver board:-nøgler (resolveBoardFeedback*/resolveCategoryLabel),
+  // så den vises først når namespacet er hentet — ellers rå nøgler (useSuspense: false).
+  const { ready: boardCopyReady } = useTranslation("board");
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
@@ -108,6 +114,10 @@ export default function DashboardPage() {
   // puljens løb (selectableRaces filtrerer allerede korrekt på trup-lås).
   const [teamRaceIds, setTeamRaceIds] = useState(() => new Set());
   const [standings, setStandings] = useState([]);
+  // vk-movement-signals — hold-point pr. hold for SIDSTE afsluttede
+  // løbsdag i egen pulje (team_id → sum af race_points). {} = ingen data endnu
+  // (før hentet, eller ingen afsluttet løbsdag) → movement-badges vises ikke.
+  const [lastRaceDayPoints, setLastRaceDayPoints] = useState({});
   // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
   // at afgøre om egen tier har >1 pulje (hasPoolSubtabs) + puljens label i titlen.
   const [pools, setPools] = useState([]);
@@ -237,8 +247,11 @@ export default function DashboardPage() {
     // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
     // så vi kan vise kørt/muligt for puljen i stedet for det sæson-globale tal. Klient-side
     // (races er public-read via RLS); ingen migration.
+    // vk-movement-signals: id + game_day_start tilføjet til selectet (2 ekstra kolonner, SAMME
+    // query — ingen ny round-trip) — genbruges af findLastCompletedRaceDay til at
+    // finde sidste afsluttede løbsdag i puljen (movement-signalerne nedenfor).
     const poolRacesPromise = activeSeason && teamData.league_division_id != null
-      ? supabase.from("races").select("stages, stages_completed, status")
+      ? supabase.from("races").select("id, stages, stages_completed, status, game_day_start")
           .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
       : Promise.resolve({ data: [] });
 
@@ -323,6 +336,17 @@ export default function DashboardPage() {
           .eq("team_id", teamData.id).in("race_id", racesForTeamCheck)
       : { data: [] };
 
+    // vk-movement-signals — ÉN ekstra query (sekventiel EFTER
+    // Promise.all'et, da den kræver poolRacesRes' race_id'er): sidste
+    // afsluttede løbsdags hold-point i egen pulje, til divisionsplacering- +
+    // holdpoint-deltaerne på "My division standings"-modulet. Ingen
+    // afsluttet løbsdag endnu → ingen query, {} forbliver ({}=intet at vise).
+    const lastRaceDay = findLastCompletedRaceDay(poolRacesRes.data || []);
+    const lastRaceDayPointsRes = lastRaceDay?.raceIds.length
+      ? await supabase.from("team_race_points_mv").select("team_id, race_points")
+          .in("race_id", lastRaceDay.raceIds)
+      : { data: [] };
+
     setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
     setPools(poolsRes.data || []);
@@ -381,6 +405,8 @@ export default function DashboardPage() {
     // i stedet for en parallel hand-rullet merge — samme 0-punkts-fallback-shape,
     // der bærer team-objektet (inkl. league_division_id) videre til rangliste-filteret.
     setStandings(mergeStandings(teamsRes.data || [], standingsMap));
+    // vk-movement-signals: se lastRaceDayPointsRes-kommentaren ovenfor.
+    setLastRaceDayPoints(sumPointsByTeam(lastRaceDayPointsRes.data || []));
 
     // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
     // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
@@ -606,19 +632,38 @@ export default function DashboardPage() {
       const divisionSize = (divTeams || [])
         .filter(r => !r.team?.is_ai && !r.team?.is_test_account && !r.team?.is_frozen).length;
 
+      // #season-recap-polish (18/8) — samme robuste sti som SeasonEndPage.jsx's
+      // recap-hero (resolveSeasonMovement, seasonRecapData.js): foretrækker en
+      // RIGTIG season_standings-række for seasonInfo (efterfølgersæsonen — den
+      // er allerede verificeret ovenfor til at være DEN sæson completedSeason
+      // overgik til), falder kun tilbage til team.division hvis den rækken
+      // ikke findes endnu. Før kaldte kortet computeSeasonMovement direkte med
+      // team.division — to stier til "samme" tal der kunne drifte fra
+      // hinanden (fx en admin-korrektion af division EFTER transitionen).
+      const { data: nextRow } = await supabase
+        .from("season_standings")
+        .select("division")
+        .eq("team_id", team.id).eq("season_id", seasonInfo.id).maybeSingle();
+      if (cancelled) return;
+
       setCompletedSeasonRecap({
         seasonId: completedSeason.id,
         seasonNumber: completedSeason.number,
         division: standingsRow.division,
         divisionSize,
         rank: standingsRow.rank_in_division,
-        movement: computeSeasonMovement(standingsRow.division, team.division),
+        movement: resolveSeasonMovement({
+          finishedDivision: standingsRow.division,
+          nextSeasonStandingDivision: nextRow?.division ?? null,
+          nextSeasonStatus: seasonInfo.status ?? null,
+          currentTeamDivision: team.division,
+        }),
         points: standingsRow.total_points,
         wins: standingsRow.stage_wins,
       });
     })();
     return () => { cancelled = true; };
-  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, seasonInfo?.number, team?.division]);
+  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, seasonInfo?.number, seasonInfo?.status, team?.division]);
 
   // #2752/#2361 — dismiss huskes PR. AFSLUTTET SÆSON (ikke pr. aktiv, som
   // seasonStartDismissed ovenfor) — se lib/seasonWrapNudge.js.
@@ -831,8 +876,15 @@ export default function DashboardPage() {
   // #3506: _rank er nu det kanoniske, Standings-konsistente tal (AI-hold med
   // i rangberegningen, jf. #1718). myManagerRank er det sekundære "blandt
   // managere"-tal (kun menneskehold), vist som lille tillægslinje på egen række.
-  const { hasPoolSubtabs, ownPoolRow, divStandingsTop, divStandings, myManagerRank } =
+  const { hasPoolSubtabs, ownPoolRow, divStandingsAll, divStandingsTop, divStandings, myManagerRank } =
     computeMyDivisionStandings(standings, team, pools);
+
+  // vk-movement-signals — divisionsplacering + holdpoint siden sidste
+  // afsluttede løbsdag i egen pulje. null/0 → ingen badge (ingen "0"-støj,
+  // samme konvention som GlobalRankWidget's movement != null && movement !== 0).
+  const { rankMovement, pointsDelta } = computeDivisionMovement({
+    divStandingsAll, myTeamId: team?.id, pointsByTeam: lastRaceDayPoints,
+  });
 
   const pendingIncoming = pendingIncomingCount;
   const activeMarketOffers = activeOffers.filter(o =>
@@ -941,6 +993,11 @@ export default function DashboardPage() {
           </>
         }
       />
+
+      {/* #3915 — dagens etaper/løb for holdet, ALLERØVERST i indholdsflowet
+          (under page-header, over sæson-wrap/sæsonstart-blokken). Skjuler sig
+          selv når holdet ingen løb har i dag (mindst-støj-valg, ejer 18/8). */}
+      <TodayStagesStrip teamId={team?.id} />
 
       {/* #3310: første-løbs-øjeblikket ejer toppen indtil resultatet er set. */}
       {firstRaceMomentActive && (
@@ -1052,16 +1109,23 @@ export default function DashboardPage() {
           nudge-banner ad gangen"-reglen. */}
       {showDiscordNudgeBanner && (
         <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-cz-discord text-sm font-bold">D</span>
+          <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
+            <DiscordIcon size={16} className="text-cz-discord" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-cz-1 text-sm font-medium">{t("dashboard:discordNudge.title")}</p>
             <p className="text-cz-3 text-xs mt-0.5">{t("dashboard:discordNudge.subtitle")}</p>
           </div>
+          {/* Discord-branded knap — bevidst IKKE gold/accent (viewets ene guld-
+              knap er styret af computeDashboardGoldCta). Bruger buttonClass'
+              BASE+size-sm-form (px-3 py-1.5 text-xs, rounded-cz) uden dens
+              farve-variant: at lægge et diskret-farve-override oveni
+              buttonClass({variant}) risikerer samme tavse cascade-tab som
+              Card.jsx's borderClass-fælde (to bg-*-klasser på samme property,
+              vinderen afgøres af CSS-bundle-rækkefølge, ikke JSX). */}
           <Link
             to="/profile"
-            className="px-3 py-1.5 bg-cz-discord text-white rounded-lg text-xs font-bold hover:bg-cz-discord-hover transition-all flex-shrink-0">
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-cz border border-transparent text-xs font-semibold bg-cz-discord text-white transition-colors duration-150 ease-out hover:bg-cz-discord-hover flex-shrink-0">
             {t("dashboard:discordNudge.cta")}
           </Link>
           <button
@@ -1083,7 +1147,10 @@ export default function DashboardPage() {
           #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben. */}
       {seasonInfo && (
         <Link to="/planning?tab=calendar" className="group block">
-        <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 group-hover:border-cz-accent/30 transition-colors">
+        <Card
+          borderClass="border-cz-border group-hover:border-cz-accent/30"
+          className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 transition-colors"
+        >
           <div className="flex items-center gap-2">
             <span className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
             <span className={`text-3xs px-1.5 py-0.5 rounded-full font-medium border
@@ -1115,10 +1182,14 @@ export default function DashboardPage() {
                   <span className="text-cz-accent-t ms-1">· {t("dashboard:seasonBanner.raceDaysLive", { count: poolRaceDays.inProgress })}</span>
                 )}
               </span>
-              <div className="w-20 bg-cz-subtle rounded-full h-1.5">
-                <div className="h-1.5 rounded-full bg-cz-accent transition-all"
-                  style={{ width: `${Math.min(100, (poolRaceDays.completed / poolRaceDays.total) * 100)}%` }} />
-              </div>
+              <ProgressMeter
+                value={poolRaceDays.completed}
+                max={poolRaceDays.total}
+                tone="accent"
+                className="w-20"
+                trackClassName="h-1.5"
+                ariaLabel={t("dashboard:seasonBanner.raceDays", { completed: poolRaceDays.completed, total: poolRaceDays.total })}
+              />
             </div>
           )}
 
@@ -1169,10 +1240,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/auctions">{t("dashboard:cards.auctions.linkAll")}</SectionAction>}
           />
           {myActiveAuctions.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.auctions.empty")}</p>
-              <Link to="/auctions" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.auctions.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.auctions.empty")}
+              action={
+                <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.auctions.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {[...winningAuctions, ...myAuctions.filter(a => getAuctionLeaderId(a) !== team?.id)]
@@ -1221,10 +1296,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/transfers">{t("dashboard:cards.transfers.linkAll")}</SectionAction>}
           />
           {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.transfers.empty")}</p>
-              <Link to="/transfers" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.transfers.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.transfers.empty")}
+              action={
+                <Link to="/transfers" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.transfers.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {pendingIncoming > 0 && (
@@ -1270,10 +1349,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/planning">{t("dashboard:cards.races.linkAll")}</SectionAction>}
           />
           {displayedRaces.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.races.empty")}</p>
-              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.races.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.races.empty")}
+              action={
+                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.races.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {displayedRaces.map((race) => (
@@ -1326,10 +1409,14 @@ export default function DashboardPage() {
             action={<SectionAction as={Link} to="/standings">{t("dashboard:cards.standings.linkAll")}</SectionAction>}
           />
           {divStandings.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.standings.empty")}</p>
-              <Link to="/standings" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.standings.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.standings.empty")}
+              action={
+                <Link to="/standings" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.standings.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-1">
               {divStandings.map((s) => {
@@ -1348,6 +1435,21 @@ export default function DashboardPage() {
                       style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
                       className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
+                      {/* vk-movement-signals — divisionsplacerings-bevægelse siden
+                          sidste løbsdag, KUN på egen række. null/0 = ingen løbsdag endnu
+                          eller uændret placering → ingen badge (ingen "0"-støj, samme
+                          konvention som GlobalRankWidget). */}
+                      {isMe && rankMovement != null && rankMovement !== 0 && (
+                        <span
+                          title={t("dashboard:cards.standings.movementTitle")}
+                          className={`font-mono text-3xs font-bold inline-flex items-center gap-0.5 flex-shrink-0 ${rankMovement > 0 ? "text-cz-success" : "text-cz-danger"}`}
+                        >
+                          {rankMovement > 0
+                            ? <ArrowUpIcon size={11} aria-hidden="true" />
+                            : <ArrowDownIcon size={11} aria-hidden="true" />}
+                          {Math.abs(rankMovement)}
+                        </span>
+                      )}
                       <div className="w-28 flex-shrink-0 min-w-0">
                         <div className="flex items-center gap-1 min-w-0">
                           <p className={`text-sm truncate ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
@@ -1371,8 +1473,26 @@ export default function DashboardPage() {
                           </p>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <MiniBar value={s.total_points || 0} max={maxPts} color={isLeader ? "rgb(var(--accent))" : "var(--text-3)"} />
+                      <div className="flex-1 flex items-center gap-2">
+                        <ProgressMeter
+                          value={s.total_points || 0}
+                          max={maxPts}
+                          tone="accent"
+                          className="flex-1"
+                          trackClassName="h-1.5"
+                          ariaLabel={t("dashboard:cards.standings.title", { division: team?.division })}
+                        />
+                        <span className="font-data text-xs text-cz-2 w-8 text-right tabular-nums">{s.total_points || 0}</span>
+                        {/* vk-movement-signals — holdpoint siden sidste løbsdag ("+86"), KUN på egen
+                            række. 0 point den dag = ingen badge (ingen "0"-støj). */}
+                        {isMe && pointsDelta != null && pointsDelta !== 0 && (
+                          <span
+                            title={t("dashboard:cards.standings.pointsDeltaTitle")}
+                            className={`font-mono text-3xs font-bold tabular-nums flex-shrink-0 ${pointsDelta > 0 ? "text-cz-success" : "text-cz-danger"}`}
+                          >
+                            {formatNumber(pointsDelta, { signDisplay: "exceptZero" })}
+                          </span>
+                        )}
                       </div>
                     </Link>
                   </Fragment>
@@ -1395,54 +1515,57 @@ export default function DashboardPage() {
           <div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("dashboard:cards.board.satisfaction")}</p>
+                  <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.satisfaction")}</p>
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-cz-subtle rounded-full h-2">
-                      <div className={`h-2 rounded-full transition-all
-                        ${displaySatisfaction >= 70 ? "bg-cz-success" : displaySatisfaction >= 40 ? "bg-cz-accent" : "bg-cz-danger"}`}
-                        style={{ width: `${displaySatisfaction}%` }} />
-                    </div>
+                    <ProgressMeter
+                      value={displaySatisfaction}
+                      max={100}
+                      tone={displaySatisfaction >= 70 ? "success" : displaySatisfaction >= 40 ? "accent" : "danger"}
+                      className="flex-1"
+                      ariaLabel={t("dashboard:cards.board.satisfaction")}
+                    />
                     <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{displaySatisfaction}%</span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("dashboard:cards.board.focus")}</p>
+                  <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.focus")}</p>
                   <p className="text-cz-1 text-sm">{board.focus ? t(`dashboard:board.focus.${board.focus}`, { defaultValue: board.focus }) : "—"}</p>
                 </div>
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("dashboard:cards.board.budgetMultiplier")}</p>
+                  <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.budgetMultiplier")}</p>
                   <p className={`font-mono font-bold text-sm ${board.budget_modifier >= 1 ? "text-cz-success" : "text-cz-danger"}`}>
                     ×{board.budget_modifier?.toFixed(2) || "1.00"}
                   </p>
                 </div>
               </div>
-              {boardOutlook?.feedback && (
+              {boardOutlook?.feedback && boardCopyReady && (
                 <div className="mt-4 pt-4 border-t border-cz-border">
                   <p className="text-cz-1 text-sm font-medium">{resolveBoardFeedbackHeadline(t, boardOutlook.feedback)}</p>
                   <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>
                   <div className="grid sm:grid-cols-4 gap-3 mt-3">
                     {Object.values(boardOutlook.score_breakdown?.categories || {}).map((category) => (
-                      <div key={category.key} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
+                      <div key={category.key} className="bg-cz-subtle rounded-cz p-3 border border-cz-border">
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <p className="text-cz-3 text-3xs uppercase tracking-wider truncate">{resolveCategoryLabel(t, category)}</p>
+                          <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 truncate">{resolveCategoryLabel(t, category)}</p>
                           <span className="flex items-center gap-1 flex-shrink-0">
                             {category.score_pct > 100 && (
                               <span
-                                className="text-3xs font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
+                                className="inline-flex items-center gap-0.5 text-3xs font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
                                 title={t("dashboard:cards.board.exceedsTitle")}
                               >
-                                ✓ {t("dashboard:cards.board.exceeds")}
+                                <CheckIcon size={10} aria-hidden="true" /> {t("dashboard:cards.board.exceeds")}
                               </span>
                             )}
                             <span className="text-cz-2 text-3xs font-mono">{Math.min(100, category.score_pct)}%</span>
                           </span>
                         </div>
-                        <div className="bg-cz-subtle rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full ${category.score_pct >= 75 ? "bg-cz-success" : category.score_pct >= 55 ? "bg-cz-accent" : "bg-cz-danger"}`}
-                            style={{ width: `${Math.min(100, category.score_pct)}%` }}
-                          />
-                        </div>
+                        <ProgressMeter
+                          value={Math.min(100, category.score_pct)}
+                          max={100}
+                          tone={category.score_pct >= 75 ? "success" : category.score_pct >= 55 ? "accent" : "danger"}
+                          trackClassName="h-1.5"
+                          ariaLabel={resolveCategoryLabel(t, category)}
+                        />
                       </div>
                     ))}
                   </div>
@@ -1464,10 +1587,14 @@ export default function DashboardPage() {
             // et falsk "ingen resultater"-empty-state (false-empty flash).
             <SkeletonLines lines={3} />
           ) : recentResults.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.recentResults.empty")}</p>
-              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.recentResults.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.recentResults.empty")}
+              action={
+                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.recentResults.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {recentResults.map(race => (
@@ -1541,10 +1668,14 @@ export default function DashboardPage() {
           {riderRanking === null ? (
             <SkeletonLines lines={3} />
           ) : riderRanking.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-cz-3 text-sm">{t("dashboard:cards.riderRanking.empty")}</p>
-              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.riderRanking.emptyCta")}</Link>
-            </div>
+            <EmptyState
+              title={t("dashboard:cards.riderRanking.empty")}
+              action={
+                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("dashboard:cards.riderRanking.emptyCta")}
+                </Link>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-1">
               {riderRanking.map((r, i) => (

@@ -82,7 +82,8 @@
     "hired": "Ansat",
     "salary": "Løn {amount} CZ$/sæson",
     "candidates": "Kandidater",
-    "occupied": "Fyr din nuværende chef for at ansætte en ny.",
+    "addAnother": "+ Ansæt en til",
+    "slotsFull": "Begge pladser er fyldt. Fyr en for at ansætte en ny.",
     "candidate": "Tier {tier} · {amount}/sæson",
     "hire": "Ansæt",
     "release": "Fyr",
@@ -96,6 +97,7 @@
     "role_occupied": "Du har allerede staff i denne rolle.",
     "staff_tier_exceeds_facility": "Opgradér faciliteten før du ansætter en højere-tier chef.",
     "invalid_candidate": "Den kandidat er ikke længere tilgængelig.",
+    "candidate_already_hired": "Den kandidat er allerede ansat i den anden slot.",
     "failed": "Noget gik galt. Prøv igen.",
     "network": "Kunne ikke nå serveren. Prøv igen."
   },

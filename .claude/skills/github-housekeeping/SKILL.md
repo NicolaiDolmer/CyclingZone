@@ -214,6 +214,12 @@ gh issue edit N --add-label "claude:done" --remove-label "claude:todo"
 
 ## Trin 8 — Artifact + diff
 
+> **Commit af audit-filen sker bag den blokerende branch-guard** (hard rule 18):
+> ```bash
+> bash scripts/guard-commit-branch.sh main && git commit -F <msg-fil>
+> ```
+> `git branch --show-current` er IKKE en guard (exiter altid 0). Blokerer guarden, så gentag ikke uden den, og skift ikke branch hvis der ligger fremmed ucommitteret arbejde i træet. Gælder kun den manuelle skill; cloud-routinen er read-only på git (`routine-prompt.md`).
+
 Skriv `.claude/audits/audit-<YYYY-MM-DD>.md`:
 
 ```markdown

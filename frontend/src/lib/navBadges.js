@@ -30,8 +30,11 @@ export function resolveNavBadgeCount(item, badgeCounts) {
   return badgeCounts?.[item.to] ?? 0;
 }
 
-// Genbrugt visnings-recipe (#3439-loftet: "9+" ved 10 eller derover) — hidtil
-// duplikeret tre steder (desktop NavItem, mobil-topbarens klokke, MobileQuickNav).
+// Genbrugt visnings-recipe (#3439: loftet hævet fra "9+" til "99+" — det
+// gamle "9+"-loft underspillede volumen nu hvor narrative resultat-
+// notifikationer fylder mere, jf. #3399. Samme "99+"-mønster som
+// NotificationsPage's aggregat-badge) — hidtil duplikeret tre steder
+// (desktop NavItem, mobil-topbarens klokke, MobileQuickNav).
 export function formatNavBadgeCount(count) {
-  return count > 9 ? "9+" : String(count);
+  return count > 99 ? "99+" : String(count);
 }

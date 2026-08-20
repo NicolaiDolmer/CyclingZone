@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TRAINING_FOCUS_ABILITIES, TRAINING_SETBACK_PCT, injuryDaysLeft } from "../../../lib/training.js";
+import { TRAINING_FOCUS_ABILITIES, injuryDaysLeft } from "../../../lib/training.js";
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
@@ -30,6 +30,7 @@ import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityR
 import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
+import { SkeletonLines } from "../../ui/Skeleton.jsx";
 
 const LOG_DAYS = 7;
 
@@ -104,7 +105,6 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
   const abilitiesLabel = focus
     ? TRAINING_FOCUS_ABILITIES[focus].map((a) => t(`racePreview.derived.${a}`)).join(" + ")
     : null;
-  const risk = TRAINING_SETBACK_PCT[intensity] ?? 0;
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -200,7 +200,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
                 den kan holdes op mod hvad rytteren faktisk fik i sæsonen. */}
             <p className="text-3xs text-cz-3">{t("profile.training.effectNote")}</p>
             <p className="mt-2 text-2xs text-cz-2 leading-snug">
-              {risk > 0 ? t("profile.training.riskNote", { risk }) : t("profile.training.noRiskNote")}
+              {t("profile.training.noRiskNote")}
             </p>
           </>
         )}
@@ -355,7 +355,7 @@ function TrendCard({ riderId, runs, t }) {
     { value: sharp, label: t("profile.training.trend.sharp") },
   ];
   return (
-    <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
+    <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-border rounded-cz py-[15px] px-[17px]">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
         {t("profile.training.trend.title")}
       </span>
@@ -483,8 +483,8 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   // vise misvisende tom-/default-tilstande (fokus ikke sat, 0/0/0, form-defaults).
   if (training.loading || trainingHistory?.loading) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 flex items-center justify-center py-10">
-        <div className="w-5 h-5 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" aria-label={t("profile.training.loading")} />
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5" role="status" aria-label={t("profile.training.loading")}>
+        <SkeletonLines lines={4} />
       </div>
     );
   }

@@ -123,7 +123,13 @@ export function findSwallowedCatches(rawSrc) {
 const BASELINE = {
   // #2897 (26/7): backend/routes/** kom i scope. api.js' 174 svaltede catches er
   // IKKE godkendt — de er frosset, så bunken ikke kan vokse mens den ædes ned.
-  "backend/routes/api.js": 174,
+  // #3449/#3733: +3 for niveau-korrektionens 3 nye admin/rider-endpoints
+  // (GET .../gate, GET .../dry-run, GET riders/:id/level-correction-receipt).
+  // Alle tre capturer via captureApiRouteError (den delte wrapper), som denne
+  // guards regex ikke genkender som "handled" (kun literal captureException/
+  // sentryCapture/captureExceptionFn/throw tælles) — samme kendte gab som
+  // resten af api.js's 174-baseline allerede bærer.
+  "backend/routes/api.js": 177,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,

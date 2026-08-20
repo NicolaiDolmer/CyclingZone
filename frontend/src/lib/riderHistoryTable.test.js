@@ -12,10 +12,15 @@ test("buildHistoryRows normaliserer event-typer og sorterer nyeste først", () =
   assert.deepEqual(rows.map((r) => r.kind), ["auction", "transfer"]);
 });
 
-test("no_sale-auktioner får egen kind (ingen antydet handel)", () => {
-  const rows = buildHistoryRows({ events: [{ type: "auction", date: "2026-06-01", no_sale: true, price: null }] });
-  assert.equal(rows[0].kind, "auction_no_sale");
-  assert.equal(historyRowAmount(rows[0]), null);
+test("no_sale-auktioner filtreres helt fra (#3708 — støj, ingen antydet handel)", () => {
+  const rows = buildHistoryRows({
+    events: [
+      { type: "auction", date: "2026-06-01", no_sale: true, price: null },
+      { type: "auction", date: "2026-06-02", no_sale: false, price: 5000 },
+    ],
+  });
+  assert.deepEqual(rows.map((r) => r.kind), ["auction"], "no_sale-rækken må ikke optræde i historikken");
+  assert.equal(historyRowAmount(rows[0]), 5000);
 });
 
 test("bud fra bid-timelinen flettes ind som bid-rækker", () => {

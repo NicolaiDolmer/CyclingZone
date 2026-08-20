@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PotentialeStars from "../../PotentialeStars";
-import { SearchIcon } from "../../ui";
+import { SearchIcon, CheckIcon } from "../../ui";
 import { getSession } from "../../../lib/supabase";
 import { formatCz } from "../../../lib/marketValues";
 import { statPlateStyle } from "../../../lib/statColor";
@@ -213,7 +213,15 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const level = report?.level ?? 0;
   const remaining = scoutSystemEnabled ? Math.max(0, jobCapacity - jobActiveCount) : (slots?.remaining ?? 0);
   const busy = scoutingId === riderId;
-  const canScout = remaining > 0 && level < maxLevel && !busy && !pending;
+  // #3671: relative gulv (scoutEngine.scoutHalfWidth) betyder at næste niveau
+  // ALTID køber noget for enhver spejder-rating (målt: 0 af 180 kombinationer
+  // under MIN_USEFUL_GAIN). Dæmpningen her er derfor et SIKKERHEDSNET, ikke en
+  // normaltilstand — den fanger regressionen hvis nogen ændrer en konstant i
+  // scoutEngine/scoutingReport igen uden at måle konsekvensen. `precision`
+  // mangler for uscoutede mål (report.hidden) og for capsMissing-payloads —
+  // begge tilfælde falder sikkert tilbage til "ikke dæmpet".
+  const nextLevelUseless = report?.precision?.nextLevelIsUseless === true;
+  const canScout = remaining > 0 && level < maxLevel && !busy && !pending && !nextLevelUseless;
 
   const handleScout = async () => {
     if (!canScout) return;
@@ -264,7 +272,13 @@ export default function RiderScoutingTab({ rider, scouting }) {
         type="button"
         onClick={handleScout}
         disabled={!canScout}
-        title={remaining <= 0 ? t("scouting.noSlots") : t("scouting.scoutTitle")}
+        title={
+          remaining <= 0
+            ? t("scouting.noSlots")
+            : nextLevelUseless
+              ? t("scouting.levelUseless")
+              : t("scouting.scoutTitle")
+        }
         className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-1 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
       >
         <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
@@ -396,7 +410,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-3.5 pt-3 border-t border-cz-border list-none p-0 m-0">
             {verdict.factorKeys.map((k) => (
               <li key={k} className="flex items-start gap-2 text-[12px] text-cz-2">
-                <span className="text-cz-success mt-px flex-shrink-0" aria-hidden="true">✓</span>
+                <CheckIcon size={14} aria-hidden="true" className="text-cz-success mt-px flex-shrink-0" />
                 {t(`profile.scouting.factor_${k}`)}
               </li>
             ))}

@@ -1,6 +1,13 @@
 {
   "loadError": "Couldn't load the dashboard. Please try again.",
   "retry": "Try again",
+  "todayStages": {
+    "title": "Today's stages",
+    "winner": "Winner: {name}",
+    "standing": "#{rank} of {total} overall",
+    "standingPending": "Overall position not settled yet",
+    "entries": "{count, plural, one {# rider entered} other {# riders entered}}"
+  },
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rider} other {# riders}}",
     "incoming": "+{count} in",
@@ -211,7 +218,9 @@
       "empty": "No season data yet",
       "emptyCta": "View full standings →",
       "aiBadge": "AI",
-      "managerRank": "#{rank} among managers"
+      "managerRank": "#{rank} among managers",
+      "movementTitle": "Division placement since last race day",
+      "pointsDeltaTitle": "Points earned on the last race day"
     },
     "board": {
       "title": "Board Status",
@@ -293,15 +302,14 @@
       }
     },
     "projectedLabel": "Expected net next season",
-    "rangeLine": "Range: {low} to {high} (±20% on prize estimate)",
+    "rangeLine": "Range: {low} to {high} (based on the prize estimate's uncertainty)",
     "row": {
-      "sponsor": "Sponsor",
-      "prize": "Prize money (estimate)",
+      "sponsorBase": "Sponsor (base)",
+      "sponsorVariable": "Sponsor (variable)",
+      "prize": "Prize money",
       "salary": "Salary",
+      "staffFacilities": "Staff & facilities",
       "loanInterest": "Loan interest",
-      "upkeep": "Upkeep",
-      "facilityUpkeep": "Facility upkeep",
-      "staffSalary": "Staff salaries",
       "academyDrift": "Academy upkeep"
     },
     "sponsorDetail": {
@@ -311,8 +319,13 @@
       "fallback": "Fallback: missing standings for the previous season"
     },
     "prizeDetail": {
-      "realizedFloor": "Matches what your roster has already earned this season"
+      "realizedFloor": "Matches what your roster has already earned this season",
+      "divisionInterval": "Range based on measured prize money among division peers"
     },
+    "salaryDetail": {
+      "marketS3": "Season 3+: priced by market value, not the current salary system"
+    },
+    "assumption": "Assumes your current squad, no transfers, and the season 3 wage system.",
     "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",
     "footnoteLink": "How is the forecast calculated?",
     "badge": {

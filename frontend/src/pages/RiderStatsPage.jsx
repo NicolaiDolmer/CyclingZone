@@ -39,9 +39,10 @@ import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { ageForSeason, retirementBidWarningTier } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useActionSummary } from "../hooks/useActionSummary.js";
-import { AmountInput, BlockedNote, Button, Card, CheckIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
+import { AmountInput, BlockedNote, Button, Card, CheckIcon, ChevronLeftIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
+import RiderLevelCorrectionReceipt from "../components/rider/RiderLevelCorrectionReceipt.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
 import RiderProfileTabs from "../components/rider/profile/RiderProfileTabs.jsx";
 import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns.jsx";
@@ -862,6 +863,7 @@ export default function RiderStatsPage() {
   const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
   const [projection, setProjection]         = useState(null); // #2100 fuzzy loft-projektion
   const [valueTrend, setValueTrend]         = useState(null); // #2499: { windows: {"7":...,"14":...} } | null
+  const [levelCorrectionReceipt, setLevelCorrectionReceipt] = useState(null); // #3733 trin 1: { old_value, new_value, c, applied_at } | null
   const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
@@ -882,6 +884,7 @@ export default function RiderStatsPage() {
   const developmentFetchIdRef = useRef(null);
   const projectionFetchIdRef = useRef(null); // #2100 samme stale-guard for projektionen
   const valueTrendFetchIdRef = useRef(null); // #2499 samme stale-guard for værdi-deltaet
+  const levelCorrectionReceiptFetchIdRef = useRef(null); // #3733 trin 1 samme stale-guard
   // #2000 sidste faner: samme stale-guards for historik + interesse + de
   // datastroemme fanerne konsumerer (bid-timeline, visits, watchlist-count,
   // rider/seasonRows) — review-fund: uden guards kan hurtig prev/next i
@@ -1127,6 +1130,23 @@ export default function RiderStatsPage() {
     }
   }
 
+  async function loadLevelCorrectionReceipt() {
+    // #3733 trin 1: den seneste niveau-korrektions-kvittering for DENNE rytter,
+    // eller null (ingen korrektion har kørt for ham endnu) — non-critical,
+    // samme mønster som loadValueTrend ovenfor.
+    const fetchId = id;
+    levelCorrectionReceiptFetchIdRef.current = fetchId;
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${fetchId}/level-correction-receipt`, { headers: h });
+      const data = res.ok ? await res.json() : null;
+      if (levelCorrectionReceiptFetchIdRef.current !== fetchId) return; // stale svar
+      setLevelCorrectionReceipt(data?.receipt || null);
+    } catch {
+      if (levelCorrectionReceiptFetchIdRef.current === fetchId) setLevelCorrectionReceipt(null);
+    }
+  }
+
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
@@ -1230,9 +1250,13 @@ export default function RiderStatsPage() {
       // #2000: PCM stat_* droppet fra denne select — typeLabel afleder nu af de
       // udledte evner (rider_derived_abilities, hentet nedenfor). Ingen andre
       // visnings-flader på rytterprofilen læser riders.stat_* længere.
+      // #3622: popularity tilføjet — samme rå kolonne som bestyrelsens star-score
+      // (boardIdentity.calculateRiderStarScore) læser; klient-grant findes allerede
+      // (2026-06-10-riders-potentiale-column-privilege.sql grantede alt undtagen
+      // potentiale), så ingen ny migration er nødvendig.
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
         market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, pending_team_id,
-        nationality_code, primary_type, secondary_type, team_id, acquired_at,
+        nationality_code, primary_type, secondary_type, team_id, acquired_at, popularity,
         team:team_id(id, name, is_ai, is_bank, division),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
       // ALLE rækker (pagineret) til Resultater-fanen — både PCS-tabellen og
@@ -1294,7 +1318,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1526,8 +1550,8 @@ export default function RiderStatsPage() {
   // loadRider-kald som useEffect'en bruger, ingen ny hente-logik).
   if (!rider) return (
     <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
-      {/* t("page.back") bærer allerede sin egen "←"-glyf (rider.json) — intet ekstra ikon. */}
       <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-4">
+        <ChevronLeftIcon size={13} aria-hidden="true" />
         {t("page.back")}
       </button>
       <ErrorState
@@ -1685,6 +1709,7 @@ export default function RiderStatsPage() {
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"
         >
+          <ChevronLeftIcon size={13} aria-hidden="true" />
           {t("page.back")}
         </button>
 
@@ -1814,6 +1839,9 @@ export default function RiderStatsPage() {
             </div>
           }
         />
+        {levelCorrectionReceipt && (
+          <RiderLevelCorrectionReceipt receipt={levelCorrectionReceipt} className="mt-4" />
+        )}
         </section>
 
         <RiderProfileTabs

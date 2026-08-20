@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState, PageLoader, Button, Section, SectionHeader, Tabs, TabList, Tab } from "../components/ui";
 import StaffOverviewPage from "./StaffOverviewPage.jsx";
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import { formatNumber } from "../lib/intl";
 import { useFacilities } from "../lib/useFacilities";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
@@ -130,7 +131,7 @@ export default function KlubPage() {
       </Tabs>
 
       {tab === "staff" ? (
-        <StaffOverviewPage />
+        <I18nReadyGate ns="staffOverview"><StaffOverviewPage /></I18nReadyGate>
       ) : (
         <>
       <p className="text-[13px] text-cz-2 leading-relaxed mb-4 max-w-[56ch]">{t("page.intro")}</p>

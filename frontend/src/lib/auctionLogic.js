@@ -32,6 +32,19 @@ export function getAuctionLeaderId(auction) {
   return null;
 }
 
+// #vk-auction-signals: persistent "outbid" state — samme diskriminator som
+// AuctionsPage's myOverbidAuctions-bucket (Min situation-fanen), centraliseret
+// her så rækken/kortet og fane-tælleren aldrig kan drive fra hinanden. Kræver
+// at manageren FAKTISK har budt (myHighestBid) og at nogen andre end manageren
+// selv fører nu — udelukker sælger (man er aldrig "overbudt" på sin egen
+// rytter) og forsvinder automatisk når manageren fører igen eller auktionen
+// lukker (raderes fra den aktive liste).
+export function isOverbidForMe(auction, teamId) {
+  if (!teamId || isManagerSeller(auction, teamId)) return false;
+  const leaderId = getAuctionLeaderId(auction);
+  return Boolean(auction?.myHighestBid) && leaderId !== null && leaderId !== teamId;
+}
+
 export function getAuctionLeaderName(auction) {
   if (auction?.current_bidder?.name) return auction.current_bidder.name;
   if (getAuctionLeaderId(auction) === auction?.seller_team_id) return auction?.seller?.name;

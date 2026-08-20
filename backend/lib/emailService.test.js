@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sendLoopEmail, FROM_ADDRESS } from "./emailService.js";
+import { sendLoopEmail, FROM_ADDRESS, classifyEmailFailure, nextEmailAttemptDelayMs, MAX_EMAIL_ATTEMPTS } from "./emailService.js";
 
 // Mock supabase covering the three tables sendLoopEmail touches:
 //   app_config (flag read, done by the injected `readStage` normally, but we
@@ -194,7 +194,7 @@ test("stage=on sends via the injected Resend client with idempotencyKey + List-U
   }
 });
 
-test("stage=on: a Resend {error} response logs status failed and does NOT throw", async () => {
+test("stage=on: a permanent Resend failure (4xx) logs status failed, captures immediately, and is NOT queued for retry (#3600)", async () => {
   const oldKey = process.env.RESEND_API_KEY;
   const oldSecret = process.env.EMAIL_UNSUB_SECRET;
   process.env.RESEND_API_KEY = "re_test_key";
@@ -202,7 +202,7 @@ test("stage=on: a Resend {error} response logs status failed and does NOT throw"
   try {
     const supabase = makeSupabase();
     const resendFactory = () => ({
-      emails: { send: async () => ({ data: null, error: { message: "domain not verified" } }) },
+      emails: { send: async () => ({ data: null, error: { message: "domain not verified", statusCode: 403, name: "invalid_from_address" } }) },
     });
     const captured = [];
 
@@ -214,15 +214,91 @@ test("stage=on: a Resend {error} response logs status failed and does NOT throw"
       captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
     });
 
-    assert.deepEqual(result, { status: "failed", error: "domain not verified" });
+    assert.deepEqual(result, { status: "failed", error: "domain not verified", retryable: false });
     assert.equal(supabase.emailLogInserts.length, 1);
-    assert.equal(supabase.emailLogInserts[0].status, "failed");
-    assert.equal(supabase.emailLogInserts[0].error, "domain not verified");
-    assert.equal(captured.length, 1, "Sentry capture called exactly once for the failed send");
+    assert.deepEqual(supabase.emailLogInserts[0], {
+      user_id: "user-1",
+      team_id: "team-1",
+      email_type: "welcome",
+      dedupe_key: "welcome:user-1",
+      status: "failed",
+      error: "domain not verified",
+      attempts: 1,
+      next_attempt_at: null,
+      retry_payload: null,
+    });
+    assert.equal(captured.length, 1, "Sentry capture called exactly once, immediately, for a permanent failure");
   } finally {
     process.env.RESEND_API_KEY = oldKey;
     process.env.EMAIL_UNSUB_SECRET = oldSecret;
   }
+});
+
+test("stage=on: a retryable Resend failure (5xx) logs status failed, queues a retry, and does NOT capture immediately (#3600)", async () => {
+  const oldKey = process.env.RESEND_API_KEY;
+  const oldSecret = process.env.EMAIL_UNSUB_SECRET;
+  process.env.RESEND_API_KEY = "re_test_key";
+  process.env.EMAIL_UNSUB_SECRET = "test-secret";
+  try {
+    const supabase = makeSupabase();
+    const resendFactory = () => ({
+      emails: { send: async () => ({ data: null, error: { message: "internal error", statusCode: 500, name: "internal_server_error" } }) },
+    });
+    const captured = [];
+    const now = new Date("2026-08-18T12:00:00Z");
+
+    const result = await sendLoopEmail({
+      supabase,
+      ...baseArgs,
+      readStage: stageReader("on"),
+      resendFactory,
+      captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+      now,
+    });
+
+    assert.deepEqual(result, { status: "failed", error: "internal error", retryable: true });
+    assert.equal(supabase.emailLogInserts.length, 1);
+    const row = supabase.emailLogInserts[0];
+    assert.equal(row.status, "failed");
+    assert.equal(row.attempts, 1);
+    assert.equal(row.next_attempt_at, new Date(now.getTime() + nextEmailAttemptDelayMs(1)).toISOString());
+    assert.deepEqual(row.retry_payload, {
+      to: baseArgs.to,
+      subject: baseArgs.subject,
+      html: baseArgs.html,
+      text: baseArgs.text,
+      unsubscribeUrl: baseArgs.unsubscribeUrl,
+    });
+    assert.equal(captured.length, 0, "Sentry capture deferred to the retry-drain's dead-alarm, not fired on the first hiccup");
+  } finally {
+    process.env.RESEND_API_KEY = oldKey;
+    process.env.EMAIL_UNSUB_SECRET = oldSecret;
+  }
+});
+
+test("classifyEmailFailure — failure matrix mirrors discordWebhookDelivery.js's classifyWebhookFailure (#3600)", () => {
+  assert.deepEqual(classifyEmailFailure(429), { kind: "retryable", reason: "rate-limited" });
+  assert.deepEqual(classifyEmailFailure(500), { kind: "retryable", reason: "resend-5xx" });
+  assert.deepEqual(classifyEmailFailure(503), { kind: "retryable", reason: "resend-5xx" });
+  assert.deepEqual(classifyEmailFailure(null), { kind: "retryable", reason: "network" });
+  assert.deepEqual(classifyEmailFailure(undefined), { kind: "retryable", reason: "network" });
+
+  assert.deepEqual(classifyEmailFailure(404), { kind: "permanent", reason: "config-error" });
+  assert.deepEqual(classifyEmailFailure(400), { kind: "permanent", reason: "config-error" });
+  assert.deepEqual(classifyEmailFailure(401), { kind: "permanent", reason: "config-error" });
+});
+
+test("nextEmailAttemptDelayMs — increases then plateaus, ~27h horizon across the retryable attempts (#3600)", () => {
+  assert.equal(MAX_EMAIL_ATTEMPTS, 8);
+  // Delays actually consumed on the road to exhaustion: after attempts 1..7
+  // a retry is still scheduled; attempt 8 is where processEmailRetryDrain
+  // marks the row dead (attempts >= MAX_EMAIL_ATTEMPTS), so no 8th delay is
+  // ever used — same accounting as discordWebhookOutbox.js's ~27h comment.
+  const delays = Array.from({ length: MAX_EMAIL_ATTEMPTS - 1 }, (_, i) => nextEmailAttemptDelayMs(i + 1));
+  for (let i = 1; i < delays.length; i++) assert.ok(delays[i] >= delays[i - 1], "backoff must never shrink");
+  assert.equal(delays.at(-1), delays.at(-2), "schedule plateaus at the last step instead of growing forever");
+  const totalMs = delays.reduce((a, b) => a + b, 0);
+  assert.ok(totalMs > 20 * 60 * 60 * 1000 && totalMs < 30 * 60 * 60 * 1000, "total retry horizon should be roughly ~27h");
 });
 
 test("stage=on without RESEND_API_KEY throws before touching Resend", async () => {

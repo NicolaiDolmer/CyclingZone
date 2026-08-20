@@ -26,6 +26,7 @@
     "rider_has_active_auction": "Rytteren har allerede en aktiv auktion",
     "rider_in_open_swap_auction": "Rytteren er tilbudt i en åben byttehandel. Træk byttetilbuddet tilbage, før du starter en auktion",
     "rider_on_auction_transfer": "Rytteren er på en aktiv auktion. Byd på auktionen i stedet for at sende et transfertilbud.",
+    "rider_on_auction_swap": "En af de byttede ryttere er på en aktiv auktion. Byttehandlen blev annulleret. Byd på auktionen i stedet.",
     "invalid_start_price": "Ugyldig startpris",
     "invalid_offer_amount": "Ugyldigt beløb",
     "invalid_loan_amount": "Ugyldigt beløb",
@@ -153,6 +154,7 @@
     "board_renegotiation_locked_window": "Sæsonens slutfase er begyndt. Bestyrelsesplanen kan ikke gen-forhandles de sidste {raceDays} race-days.",
     "board_renegotiation_locked_progress": "Bestyrelsesplanen kan ikke gen-forhandles midt i en igangværende sæson (efter {percent}% af sæsonen er kørt). Vent til planen udløber eller sæsonen slutter.",
     "board_unavailable": "Bestyrelsesfunktioner er ikke tilgængelige endnu",
+    "board_bonus_credit_failed": "Bonussen kunne ikke krediteres. Tilbuddet er ikke ændret, prøv igen.",
     "dna_requires_identity_basis": "Dit holds identitet er ikke klar endnu. Prøv igen om lidt.",
     "dna_already_chosen": "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)",
     "invalid_asking_price": "Prisen skal være et positivt heltal",
@@ -208,6 +210,7 @@
     "auction_end_invalid": "Vælg et gyldigt sluttidspunkt for auktionen",
     "auction_end_too_soon": "En auktion skal køre i mindst {minHours} time",
     "auction_end_too_late": "En auktion kan højst køre i {maxHours} timer",
-    "auction_end_outside_window": "Auktioner kan kun slutte mens markedet er åbent, mellem {openHour} og {closeHour}"
+    "auction_end_outside_window": "Auktioner kan kun slutte mens markedet er åbent, mellem {openHour} og {closeHour}",
+    "season_end_already_claimed": "Sæsonen er allerede ved at blive afsluttet eller er allerede afsluttet"
   }
 }

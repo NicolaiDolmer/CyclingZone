@@ -5,6 +5,11 @@ export const STATUS_TONE = {
   outbid: "danger",
   closing: "warning",
   info: "info",
+  // #3858 (Race Centre): "et loeb koerer NU" er den roede broadcast-markoer i
+  // den godkendte mockup. `live` er allerede optaget af auktions-betydningen
+  // (info-tonet "budrunden er aaben"), saa race-live faar sin egen noegle i
+  // stedet for at omdefinere en eksisterende status.
+  raceLive: "danger",
 };
 
 const TONE_TEXT = {

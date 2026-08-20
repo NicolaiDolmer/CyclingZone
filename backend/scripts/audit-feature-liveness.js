@@ -90,6 +90,13 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // race_stage_timelines-suppressionen fjernet 18/8 ~11:10: første etape efter
+  // flag-ON skrev sin tidslinje (1 row, 9 events, timeline_version 1 — #2410 S1
+  // bevist end-to-end). Detector A dækker tabellen normalt igen.
+  //
+  // rider_ownership_events: fjernet 18/8 ~14:30 — tabellen fik sine første 18
+  // rows samme eftermiddag (ejerskabs-audit-loggen #3582 er live), auditen
+  // dækker tabellen normalt igen.
   // discord_race_digest_log: fjernet 7/8 — digestens første kl. 20-kørsel 6/8
   // aften skrev 32 rækker (fix #3475 verificeret), auditen dækker tabellen igen.
   // Forum v1 (#3199): alle fem entries fjernet 7/8 — spillerne tog forummet i
@@ -130,6 +137,18 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // første rækker — featuren er levende, Detector A overvåger den normalt igen.)
   // (rider_peak_plans (#2224) fjernet 16/7: tabellen fik sine første 4 rows via
   // peak_planner_enabled='beta' — featuren er levende, Detector A overvåger normalt.)
+  //
+  // Niveau-korrektionens EJER-GATEDE ENGANGS-KØRSEL (#3449/#3750/#3733, PR #3449
+  // merged 19/8): marketValueLevelCorrectionApply.js skriver KUN når ejeren selv
+  // kører scriptet med --confirm-apply, OG søndags-gaten er GRØN. Der findes
+  // bevidst ingen persisteret "ejeren har godkendt"-app_config-flag (se scriptets
+  // header-kommentar) — derfor passer den selv-korrigerende FLAG_GATED_EMPTY_TABLES
+  // ikke, kun den statiske whitelist. PR #3449 er desuden selv blokeret af
+  // ryttertype-beslutningen i #3570 (se PR-tråden), så 0 rows er den korrekte,
+  // forventede tilstand indtil ejeren aktivt fyrer korrektionen. Fjern begge
+  // entries den dag scriptet er kørt og tabellerne har rows.
+  "market_value_level_correction_apply_log",
+  "market_value_level_correction_rider_receipts",
 ]);
 
 // PERMANENTE tom-tabel-suppressioner (fjernes ALDRIG ved rows — tom = sund
@@ -232,6 +251,10 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   "GET /admin/fictional-rider-preview",
   // Health / probe
   "GET /health",
+  // Sikker rytter-sletning (#3594, PR #3886): erstatter rå SQL ved hændelses-
+  // oprydning — annullerer aktive auktioner m. budgiver-notifikation FØR delete.
+  // Kaldes via curl/ops ved incidents; ingen frontend-kalder by design.
+  "POST /admin/riders/:id/delete-with-cleanup",
   // Admin-only via curl/admin-page-future-wiring (cancel-tools fra adminRouteOwnership-kontrakt #97)
   "POST /admin/transfers/offers/:id/cancel",
   "POST /admin/transfers/swaps/:id/cancel",

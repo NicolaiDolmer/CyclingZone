@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
+import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
+import { formatDate } from "../lib/intl.js";
 import {
   PageHeader,
   Card,
@@ -9,6 +11,7 @@ import {
   SectionHeader,
   Input,
   EmptyState,
+  StatusBadge,
   Tabs,
   TabList,
   Tab,
@@ -37,6 +40,7 @@ import {
   ChevronDownIcon,
   SettingsIcon,
   SearchIcon,
+  AlertTriangleIcon,
 } from "../components/ui/icons/index.jsx";
 
 const SECTION_DEFS = [
@@ -175,6 +179,8 @@ const SECTION_DEFS = [
     blocks: [
       { id: "seasonFlow", kind: "steps" },
       { id: "racesAndResults", kind: "text" },
+      // #3858: Race Centre-siden (v7.140) — dagens løb samlet ét sted.
+      { id: "raceCentre", kind: "text" },
       // #2756: stage-ending-typerne (Summit/Downhill/Breakaway/…) var uforklarede i
       // kalender-/løbsvisningen — Discord-feedback, thelamba 20/7 ("There's 'summit'
       // and 'downhill', clear as day, but 'breakaway'?"). Tooltips på badget'et
@@ -484,6 +490,7 @@ export default function HelpPage() {
   const sectionParam = searchParams.get("section");
   const [activeSection, setActiveSection] = useState(() => {
     if (faqParam) return "faq";
+    if (sectionParam === "knownIssues") return "knownIssues";
     if (sectionParam && SECTION_DEFS.some((s) => s.key === sectionParam)) return sectionParam;
     return "start";
   });
@@ -493,6 +500,20 @@ export default function HelpPage() {
     const idx = FAQ_KEYS.indexOf(faqParam);
     return idx !== -1 ? idx : null;
   });
+
+  // #3941 — "Kendte problemer": aktive + seneste 14 dages ops_notices, samme
+  // datakilde som driftsbanneret i Layout.jsx. Hooken skal stå FØR den tidlige
+  // `ready`-return nedenfor (rules-of-hooks: samme antal hooks hver render).
+  const [knownIssues, setKnownIssues] = useState([]);
+  const [knownIssuesLoaded, setKnownIssuesLoaded] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetchRecentOpsNotices()
+      .then((data) => { if (active) setKnownIssues(data); })
+      .catch(() => { /* ikke-kritisk: listen forbliver tom */ })
+      .finally(() => { if (active) setKnownIssuesLoaded(true); });
+    return () => { active = false; };
+  }, []);
 
   if (!ready) return <PageLoader />;
 
@@ -611,6 +632,12 @@ export default function HelpPage() {
                     {t("page.faqLabel")}
                   </span>
                 </Tab>
+                <Tab value="knownIssues">
+                  <span className="inline-flex items-center gap-1.5">
+                    <NavIcon Icon={AlertTriangleIcon} />
+                    {t("knownIssues.label")}
+                  </span>
+                </Tab>
               </TabList>
             </Tabs>
           </div>
@@ -646,12 +673,62 @@ export default function HelpPage() {
                 <NavIcon Icon={InfoIcon} />
                 <span>{t("page.faqLabel")}</span>
               </button>
+              <button
+                onClick={() => setActiveSection("knownIssues")}
+                className={`text-left px-3 py-2 rounded-cz text-xs transition-all flex items-center gap-2
+                  ${
+                    activeSection === "knownIssues"
+                      ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30"
+                      : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
+                  }`}
+              >
+                <NavIcon Icon={AlertTriangleIcon} />
+                <span>{t("knownIssues.label")}</span>
+              </button>
             </div>
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            {activeSection === "faq" ? (
+            {activeSection === "knownIssues" ? (
+              <div>
+                <h2 className="text-cz-1 font-bold text-base mb-4">{t("knownIssues.heading")}</h2>
+                {!knownIssuesLoaded ? (
+                  <div className="flex flex-col gap-[14px]">
+                    <Section className="animate-pulse h-16" />
+                    <Section className="animate-pulse h-16" />
+                  </div>
+                ) : knownIssues.length === 0 ? (
+                  <EmptyState
+                    icon={<AlertTriangleIcon size={26} aria-hidden="true" />}
+                    title={t("knownIssues.emptyTitle")}
+                    description={t("knownIssues.emptyDescription")}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-[14px]">
+                    {knownIssues.map((notice) => {
+                      const meta = SEVERITY_META[notice.severity] || SEVERITY_META.info;
+                      const { title, body } = pickNoticeCopy(notice, i18n.language);
+                      return (
+                        <Section key={notice.id}>
+                          <SectionHeader
+                            as="h3"
+                            title={title}
+                            meta={formatDate(notice.starts_at)}
+                          />
+                          {body && <p className="text-cz-2 text-sm leading-relaxed">{body}</p>}
+                          <div className="mt-2">
+                            <StatusBadge state={meta.badgeState}>
+                              {notice.active ? t("knownIssues.activeLabel") : t("knownIssues.resolvedLabel")}
+                            </StatusBadge>
+                          </div>
+                        </Section>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : activeSection === "faq" ? (
               <div>
                 <h2 className="text-cz-1 font-bold text-base mb-4">{t("page.faqHeading")}</h2>
                 <div className="flex flex-col gap-2">

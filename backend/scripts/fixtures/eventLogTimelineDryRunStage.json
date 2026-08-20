@@ -1,0 +1,3478 @@
+{
+  "meta": {
+    "source": "prod read-only select 17/8 (Supabase MCP execute_sql)",
+    "race_id": "406af6a0-b8e6-4e17-b2c4-9eb6261d6633",
+    "race_name": "Tour des Volcans d'Auvergne",
+    "stage_number": 8,
+    "seed": 1861605109
+  },
+  "stageProfile": {
+    "profile_type": "high_mountain",
+    "finale_type": "long_climb",
+    "distance_km": 175,
+    "elevation_gain_m": 3580,
+    "climbs": [
+      {
+        "name": "Mont Beauregard",
+        "category": "1",
+        "crest_km": 92,
+        "length_km": 15.9,
+        "avg_gradient": 7.9,
+        "summit_finish": false
+      },
+      {
+        "name": "Côte de la Colombière",
+        "category": "HC",
+        "crest_km": 175,
+        "length_km": 16.1,
+        "avg_gradient": 7.6,
+        "summit_finish": true
+      }
+    ],
+    "sprints": [
+      {
+        "km": 175,
+        "kind": "finish",
+        "name": "Finish"
+      }
+    ],
+    "sectors": [],
+    "stage_number": 8
+  },
+  "ranked": [
+    {
+      "rider_id": "dba9742c-8136-42b4-9888-32925cf580b6",
+      "team_id": "63af5c88-b9c4-4211-b155-93e1693c717d",
+      "rank": 1,
+      "stageGap": 0,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+      "team_id": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+      "rank": 2,
+      "stageGap": 34,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+      "team_id": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+      "rank": 3,
+      "stageGap": 64,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "928a2d00-ba91-4404-a990-ae000e1ed18a",
+      "team_id": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+      "rank": 4,
+      "stageGap": 76,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "26a12b30-8fe2-4b32-9423-5586d6e5c08e",
+      "team_id": "db9b6987-9482-425d-a54b-d03ac23cfb4f",
+      "rank": 5,
+      "stageGap": 78,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "c2f5f38c-eb3a-48e9-adde-8aee2e64228d",
+      "team_id": "d27d0f47-b2f2-4f4b-a636-d2cb9d540425",
+      "rank": 6,
+      "stageGap": 99,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "b7e60988-d2b8-4541-99e5-586f5f1249ea",
+      "team_id": "85b6a85e-6118-434a-8ae4-92c09b8ddf8c",
+      "rank": 7,
+      "stageGap": 103,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "e54cb996-a8c5-408b-bf7c-41061fa2d067",
+      "team_id": "3aaaa60f-9bc8-492e-871a-909c2a25f34b",
+      "rank": 8,
+      "stageGap": 120,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "dec2dbe0-fb7d-4060-8626-baae9df75661",
+      "team_id": "20772e08-5a8f-4a80-aeeb-6289f19c0c72",
+      "rank": 9,
+      "stageGap": 127,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "1e761082-383a-4ef4-8804-43149e146bc2",
+      "team_id": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+      "rank": 10,
+      "stageGap": 132,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "503b1cbd-9920-4908-886c-1f17e24efb27",
+      "team_id": "85b6a85e-6118-434a-8ae4-92c09b8ddf8c",
+      "rank": 11,
+      "stageGap": 136,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "464dd55e-a934-4f65-8049-a9bba4fa4a9f",
+      "team_id": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+      "rank": 12,
+      "stageGap": 139,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9442808b-25e8-4dfc-873b-ff98085dbe1f",
+      "team_id": "32697963-3af1-4451-a921-778f48ef007a",
+      "rank": 13,
+      "stageGap": 140,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "75bab191-a67e-40c1-a230-2130330ced86",
+      "team_id": "759f086a-4e35-4816-97ec-2bd594fc7862",
+      "rank": 14,
+      "stageGap": 141,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "97f650e5-6bbb-48bc-8c31-0fec0e7b3ca1",
+      "team_id": "dc778310-2583-481b-b7e5-cab5b704c98c",
+      "rank": 15,
+      "stageGap": 143,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "4aa90fb2-d1da-427c-910d-252051f3e7d7",
+      "team_id": "65723125-5e37-4cf3-a009-f098f57a7f73",
+      "rank": 16,
+      "stageGap": 147,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "4ef945f6-a987-44fd-b266-9dec28ab8b7d",
+      "team_id": "09be8677-39a9-4ff2-9617-f0fded8afd52",
+      "rank": 17,
+      "stageGap": 148,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "15cf4920-c75a-46d1-a48f-4b9f106f7d94",
+      "team_id": "32697963-3af1-4451-a921-778f48ef007a",
+      "rank": 18,
+      "stageGap": 157,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "3108105e-963c-4016-85e8-7a6743a94e7a",
+      "team_id": "20772e08-5a8f-4a80-aeeb-6289f19c0c72",
+      "rank": 19,
+      "stageGap": 159,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "2658e6f4-d32b-4207-af0b-c3f1209c6ae1",
+      "team_id": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+      "rank": 20,
+      "stageGap": 160,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "ce05cecd-2606-43f5-b622-25b24b2e0a18",
+      "team_id": "09be8677-39a9-4ff2-9617-f0fded8afd52",
+      "rank": 21,
+      "stageGap": 164,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "47508d0a-3c9d-4ae8-bcc8-6678de0a1863",
+      "team_id": "09be8677-39a9-4ff2-9617-f0fded8afd52",
+      "rank": 22,
+      "stageGap": 164,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9df1096b-fe01-4d79-a2ce-5a96216da6ca",
+      "team_id": "c932f302-1b01-43e1-b7c1-03337aabf00a",
+      "rank": 23,
+      "stageGap": 167,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "19db0e2b-157a-4603-8001-ebb22baef191",
+      "team_id": "c351b1a5-b422-4795-9298-6ccf05c14aa7",
+      "rank": 24,
+      "stageGap": 171,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "2ddf765f-5ae6-4a7c-b8e6-0b9aab1fd438",
+      "team_id": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+      "rank": 25,
+      "stageGap": 174,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "1d9c4f53-2b5a-42ab-9784-d1c823117946",
+      "team_id": "c932f302-1b01-43e1-b7c1-03337aabf00a",
+      "rank": 26,
+      "stageGap": 175,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "ac183b2e-7bba-412b-9f87-6b0adef2121c",
+      "team_id": "759f086a-4e35-4816-97ec-2bd594fc7862",
+      "rank": 27,
+      "stageGap": 181,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "3c801a10-4557-487d-87ff-10a60a24e318",
+      "team_id": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+      "rank": 28,
+      "stageGap": 181,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "2bb4ca5e-892d-40d6-b5c4-66aa4906071c",
+      "team_id": "c2fe9e03-7d79-4da9-a55c-5ad901b72b6f",
+      "rank": 29,
+      "stageGap": 184,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "f2b831ff-02db-452d-bc53-d15e94ce5024",
+      "team_id": "63af5c88-b9c4-4211-b155-93e1693c717d",
+      "rank": 30,
+      "stageGap": 187,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "23eaeef7-dd6e-4729-b982-909c4cd6905f",
+      "team_id": "20772e08-5a8f-4a80-aeeb-6289f19c0c72",
+      "rank": 31,
+      "stageGap": 187,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "4872d2eb-98c8-4577-8cf2-5977133f69de",
+      "team_id": "66305709-5dd1-43e7-baba-7dabbda4cabe",
+      "rank": 32,
+      "stageGap": 188,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "dca92176-7c86-4674-b247-f7609e999496",
+      "team_id": "85b6a85e-6118-434a-8ae4-92c09b8ddf8c",
+      "rank": 33,
+      "stageGap": 189,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "6fb11413-7048-4d92-bf22-7b386c27fdb4",
+      "team_id": "c0d8c655-5d28-4d60-be14-ddc7dfc23638",
+      "rank": 34,
+      "stageGap": 190,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "5292cfba-a94b-4282-90f9-1cae6b9d7b9b",
+      "team_id": "32697963-3af1-4451-a921-778f48ef007a",
+      "rank": 35,
+      "stageGap": 194,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "74cc1266-3f12-4dd2-86ee-5140fd1848a2",
+      "team_id": "db9b6987-9482-425d-a54b-d03ac23cfb4f",
+      "rank": 36,
+      "stageGap": 195,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "181c7907-5511-4dc4-9cf7-f9e33717580b",
+      "team_id": "63af5c88-b9c4-4211-b155-93e1693c717d",
+      "rank": 37,
+      "stageGap": 203,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "562a6c73-1dee-418c-abcf-cb78fd3e0a66",
+      "team_id": "20772e08-5a8f-4a80-aeeb-6289f19c0c72",
+      "rank": 38,
+      "stageGap": 204,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9794cfe8-3daf-4232-a395-181a38a0bbe9",
+      "team_id": "09be8677-39a9-4ff2-9617-f0fded8afd52",
+      "rank": 39,
+      "stageGap": 204,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "881a22f7-5c69-4665-8476-cb21ea03204c",
+      "team_id": "32697963-3af1-4451-a921-778f48ef007a",
+      "rank": 40,
+      "stageGap": 210,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "195004ed-db81-40be-9a2e-eda731449ca7",
+      "team_id": "c0d8c655-5d28-4d60-be14-ddc7dfc23638",
+      "rank": 41,
+      "stageGap": 210,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "5380d93a-0e6a-4bfb-b926-dd62a56c6cce",
+      "team_id": "c2fe9e03-7d79-4da9-a55c-5ad901b72b6f",
+      "rank": 42,
+      "stageGap": 213,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "bd6614d0-5374-43aa-85a3-a51f34fb02c8",
+      "team_id": "c2fe9e03-7d79-4da9-a55c-5ad901b72b6f",
+      "rank": 43,
+      "stageGap": 214,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "0128fe4d-0690-4248-9723-4c456a19a600",
+      "team_id": "759f086a-4e35-4816-97ec-2bd594fc7862",
+      "rank": 44,
+      "stageGap": 215,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "4c06611b-1639-4219-95e9-3c840f07eab8",
+      "team_id": "78aa3bfe-98f3-4278-bae0-51a462f579de",
+      "rank": 45,
+      "stageGap": 215,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "5584b3b0-5ba4-4849-ae00-05579b61592b",
+      "team_id": "20772e08-5a8f-4a80-aeeb-6289f19c0c72",
+      "rank": 46,
+      "stageGap": 217,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "dd177249-8aa5-400e-aa10-5bfce886c44d",
+      "team_id": "d27d0f47-b2f2-4f4b-a636-d2cb9d540425",
+      "rank": 47,
+      "stageGap": 219,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "da17738c-3d81-4423-9aad-81e2340f208a",
+      "team_id": "db9b6987-9482-425d-a54b-d03ac23cfb4f",
+      "rank": 48,
+      "stageGap": 222,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "cad46343-20b2-4683-aa8d-5a329e063bbd",
+      "team_id": "dc778310-2583-481b-b7e5-cab5b704c98c",
+      "rank": 49,
+      "stageGap": 227,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "eccbfb7d-9963-4aec-bc90-a9924862fa06",
+      "team_id": "66305709-5dd1-43e7-baba-7dabbda4cabe",
+      "rank": 50,
+      "stageGap": 228,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "25aa952d-efec-4b57-bf0d-4d6f31227267",
+      "team_id": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+      "rank": 51,
+      "stageGap": 229,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "690d579d-f89d-4103-9c0f-1e946e1fc7d6",
+      "team_id": "65723125-5e37-4cf3-a009-f098f57a7f73",
+      "rank": 52,
+      "stageGap": 231,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "65ed190a-81e4-4e9d-8160-0beaf6a08e56",
+      "team_id": "3aaaa60f-9bc8-492e-871a-909c2a25f34b",
+      "rank": 53,
+      "stageGap": 231,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "8f8858e8-c81f-494b-85a4-195c2e751215",
+      "team_id": "d0b00085-057f-4351-a3ae-ff75a2474708",
+      "rank": 54,
+      "stageGap": 234,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "3a41d5fe-1fd6-41e9-ba07-1e9dae29e37c",
+      "team_id": "c351b1a5-b422-4795-9298-6ccf05c14aa7",
+      "rank": 55,
+      "stageGap": 234,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "629548d3-7714-401f-af33-054ada524f2e",
+      "team_id": "ceb5bd66-e9b1-44e9-80c2-f7e9491bf9b7",
+      "rank": 56,
+      "stageGap": 238,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "fc7f4e07-5c23-4f0d-89d0-42a391a8868a",
+      "team_id": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+      "rank": 57,
+      "stageGap": 246,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9121a520-4248-41e9-aa7c-6b1404c8607b",
+      "team_id": "6ed4a8e8-033d-43f0-85c3-06a5870f2b7c",
+      "rank": 58,
+      "stageGap": 251,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "89857b87-b9ec-4552-b6d6-f68e9ea2baa6",
+      "team_id": "c351b1a5-b422-4795-9298-6ccf05c14aa7",
+      "rank": 59,
+      "stageGap": 252,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "19e8ec8b-5353-4d04-8f98-9e0ff90616eb",
+      "team_id": "3aaaa60f-9bc8-492e-871a-909c2a25f34b",
+      "rank": 60,
+      "stageGap": 255,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "36dc9498-f1b9-4249-ba04-de5ddcb7ed72",
+      "team_id": "db9b6987-9482-425d-a54b-d03ac23cfb4f",
+      "rank": 61,
+      "stageGap": 258,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9086aeab-6bd2-4a4c-adba-86bd15b9f840",
+      "team_id": "d0b00085-057f-4351-a3ae-ff75a2474708",
+      "rank": 62,
+      "stageGap": 258,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "c16a86f1-437a-4240-ad9a-d2e931252f58",
+      "team_id": "ec863814-9b4d-4b84-852d-be8cbcf266b4",
+      "rank": 63,
+      "stageGap": 260,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "a1e11cac-d48d-4a35-b2c6-6c5cf680f7a4",
+      "team_id": "759f086a-4e35-4816-97ec-2bd594fc7862",
+      "rank": 64,
+      "stageGap": 264,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "7e009370-b5d0-415d-98ae-a3a1ec1b9599",
+      "team_id": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+      "rank": 65,
+      "stageGap": 264,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "b1bbee42-f770-4e71-bf35-cc23fd426e00",
+      "team_id": "d27d0f47-b2f2-4f4b-a636-d2cb9d540425",
+      "rank": 66,
+      "stageGap": 267,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "392df0dc-7e62-442b-adce-f297f0a03880",
+      "team_id": "c2fe9e03-7d79-4da9-a55c-5ad901b72b6f",
+      "rank": 67,
+      "stageGap": 272,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9cf18c4a-1dba-4648-9c30-fd950b2ce737",
+      "team_id": "32697963-3af1-4451-a921-778f48ef007a",
+      "rank": 68,
+      "stageGap": 276,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "0c1eb426-89c6-4450-826b-c6b51218dbe0",
+      "team_id": "09be8677-39a9-4ff2-9617-f0fded8afd52",
+      "rank": 69,
+      "stageGap": 280,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "33e4ca3f-d8ed-4ecf-ae3a-d7f2236cb51e",
+      "team_id": "dc778310-2583-481b-b7e5-cab5b704c98c",
+      "rank": 70,
+      "stageGap": 294,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "77417a93-e081-400c-b679-96438f7af18b",
+      "team_id": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+      "rank": 71,
+      "stageGap": 302,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "a4ee7046-493f-4616-98ee-bca74a943495",
+      "team_id": "c351b1a5-b422-4795-9298-6ccf05c14aa7",
+      "rank": 72,
+      "stageGap": 303,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "deae3a03-7a84-4725-a8a5-5cdecfc7aad5",
+      "team_id": "66305709-5dd1-43e7-baba-7dabbda4cabe",
+      "rank": 73,
+      "stageGap": 305,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "c3eec5de-d28e-45ef-9e2a-602f97cefa04",
+      "team_id": "c932f302-1b01-43e1-b7c1-03337aabf00a",
+      "rank": 74,
+      "stageGap": 307,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "204be210-101c-4b14-b3e2-7603d546c563",
+      "team_id": "63af5c88-b9c4-4211-b155-93e1693c717d",
+      "rank": 75,
+      "stageGap": 310,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "8017301a-5bce-43ed-a8e0-b6ec59be1da9",
+      "team_id": "32697963-3af1-4451-a921-778f48ef007a",
+      "rank": 76,
+      "stageGap": 316,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "f916cfd0-8014-483c-ae92-f3fa2f57cf67",
+      "team_id": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+      "rank": 77,
+      "stageGap": 320,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "d86bfc48-fb41-41a0-9ec5-3bed6a51e05a",
+      "team_id": "85b6a85e-6118-434a-8ae4-92c09b8ddf8c",
+      "rank": 78,
+      "stageGap": 320,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "032d1cdc-df00-4d7c-a014-3d6cc7cb2114",
+      "team_id": "d27d0f47-b2f2-4f4b-a636-d2cb9d540425",
+      "rank": 79,
+      "stageGap": 320,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "6158d1b1-c375-4493-a398-f8a1af2394cd",
+      "team_id": "ceb5bd66-e9b1-44e9-80c2-f7e9491bf9b7",
+      "rank": 80,
+      "stageGap": 335,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "6b2ee542-7e6b-4ece-94f9-a6ad7dc2b93a",
+      "team_id": "63af5c88-b9c4-4211-b155-93e1693c717d",
+      "rank": 81,
+      "stageGap": 337,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "65a212be-3141-4767-92f3-00d799082866",
+      "team_id": "d27d0f47-b2f2-4f4b-a636-d2cb9d540425",
+      "rank": 82,
+      "stageGap": 348,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9969c887-89bd-413a-9890-46d841baba40",
+      "team_id": "d0b00085-057f-4351-a3ae-ff75a2474708",
+      "rank": 83,
+      "stageGap": 350,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "7b90ad44-8b79-4a6b-8a82-06c9b3e61321",
+      "team_id": "3aaaa60f-9bc8-492e-871a-909c2a25f34b",
+      "rank": 84,
+      "stageGap": 357,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "317be920-9931-4e7a-a4ee-d5e50e6a6ad6",
+      "team_id": "d27d0f47-b2f2-4f4b-a636-d2cb9d540425",
+      "rank": 85,
+      "stageGap": 362,
+      "components": {
+        "breakaway": 0.2
+      },
+      "in_breakaway": true,
+      "breakaway_caught": true
+    },
+    {
+      "rider_id": "ff5a1f50-8ef5-47a2-8813-c68ababd1485",
+      "team_id": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+      "rank": 86,
+      "stageGap": 365,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "d191b74c-2a30-4c0f-9912-a664bff9d758",
+      "team_id": "85b6a85e-6118-434a-8ae4-92c09b8ddf8c",
+      "rank": 87,
+      "stageGap": 371,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "988b87ae-7a04-43b8-89e0-068f783685d0",
+      "team_id": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+      "rank": 88,
+      "stageGap": 371,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "ff73e280-d3c4-4d7e-ad26-16ca49700961",
+      "team_id": "6ed4a8e8-033d-43f0-85c3-06a5870f2b7c",
+      "rank": 89,
+      "stageGap": 374,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "fb2b2886-6244-4463-810b-657ad0115c7d",
+      "team_id": "65723125-5e37-4cf3-a009-f098f57a7f73",
+      "rank": 90,
+      "stageGap": 375,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "773c9a9d-e2c3-4b6b-84d6-cba55217bc32",
+      "team_id": "65723125-5e37-4cf3-a009-f098f57a7f73",
+      "rank": 91,
+      "stageGap": 378,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "acbd6e9f-5fe0-480a-a2c0-1d2503b623fc",
+      "team_id": "db9b6987-9482-425d-a54b-d03ac23cfb4f",
+      "rank": 92,
+      "stageGap": 380,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "23401031-f87a-4f2b-a2f9-1b9df3b50895",
+      "team_id": "66305709-5dd1-43e7-baba-7dabbda4cabe",
+      "rank": 93,
+      "stageGap": 384,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "d095ec65-3468-4a29-bd75-abb7ac11672c",
+      "team_id": "65723125-5e37-4cf3-a009-f098f57a7f73",
+      "rank": 94,
+      "stageGap": 387,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "f245e66c-7f4b-45bb-be84-05c3973db31d",
+      "team_id": "20772e08-5a8f-4a80-aeeb-6289f19c0c72",
+      "rank": 95,
+      "stageGap": 389,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "1b4b7a54-8567-44d3-a230-abceebece1cf",
+      "team_id": "c2fe9e03-7d79-4da9-a55c-5ad901b72b6f",
+      "rank": 96,
+      "stageGap": 389,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "fb17e390-7cd5-418a-8bfd-8be88f009b43",
+      "team_id": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+      "rank": 97,
+      "stageGap": 390,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "1bac4b54-c538-40c5-8aeb-582436a2431b",
+      "team_id": "c0d8c655-5d28-4d60-be14-ddc7dfc23638",
+      "rank": 98,
+      "stageGap": 391,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "78cb2942-43c6-4cf1-90d4-004c87b23aa9",
+      "team_id": "78aa3bfe-98f3-4278-bae0-51a462f579de",
+      "rank": 99,
+      "stageGap": 394,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "e89fd597-35fa-4347-b19a-72d1fdebe557",
+      "team_id": "09be8677-39a9-4ff2-9617-f0fded8afd52",
+      "rank": 100,
+      "stageGap": 395,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9e6b0337-48ce-4f28-8737-d57759a9cb59",
+      "team_id": "dc778310-2583-481b-b7e5-cab5b704c98c",
+      "rank": 101,
+      "stageGap": 395,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "e4797c7b-4abe-4eb4-8fc8-be1f11557408",
+      "team_id": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+      "rank": 102,
+      "stageGap": 395,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "bcf99227-1135-4804-973e-eb96b207c8cf",
+      "team_id": "c351b1a5-b422-4795-9298-6ccf05c14aa7",
+      "rank": 103,
+      "stageGap": 398,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "d3e80905-f01d-4ea3-b2c5-722e13188d96",
+      "team_id": "c2fe9e03-7d79-4da9-a55c-5ad901b72b6f",
+      "rank": 104,
+      "stageGap": 399,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "5a04012f-7303-46b5-9ef2-d56086a3c45b",
+      "team_id": "ec863814-9b4d-4b84-852d-be8cbcf266b4",
+      "rank": 105,
+      "stageGap": 405,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "018d9f89-3eeb-4cd0-b154-3d3b031d8f62",
+      "team_id": "3aaaa60f-9bc8-492e-871a-909c2a25f34b",
+      "rank": 106,
+      "stageGap": 405,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "b59eb785-0205-47e9-af16-4b824a1ee3a7",
+      "team_id": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+      "rank": 107,
+      "stageGap": 406,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "f2bf12b1-078e-4e7b-8524-6c93b777d6b3",
+      "team_id": "6ed4a8e8-033d-43f0-85c3-06a5870f2b7c",
+      "rank": 108,
+      "stageGap": 406,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "e0fd7ba3-8388-4d04-b6db-0bdf58587755",
+      "team_id": "ceb5bd66-e9b1-44e9-80c2-f7e9491bf9b7",
+      "rank": 109,
+      "stageGap": 408,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "daeb4e83-87e6-4199-b2c7-80452fc521b2",
+      "team_id": "d0b00085-057f-4351-a3ae-ff75a2474708",
+      "rank": 110,
+      "stageGap": 409,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "3c50a0ac-b4c4-4d53-99b6-d80146beb7d3",
+      "team_id": "78aa3bfe-98f3-4278-bae0-51a462f579de",
+      "rank": 111,
+      "stageGap": 409,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9ca285c0-7717-4915-aa04-4cedd6994603",
+      "team_id": "65723125-5e37-4cf3-a009-f098f57a7f73",
+      "rank": 112,
+      "stageGap": 410,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "5a37b9a0-47a9-41c2-a577-160c47024cac",
+      "team_id": "78aa3bfe-98f3-4278-bae0-51a462f579de",
+      "rank": 113,
+      "stageGap": 411,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "17f97457-5419-4d5e-86a5-8b419ac15c19",
+      "team_id": "c0d8c655-5d28-4d60-be14-ddc7dfc23638",
+      "rank": 114,
+      "stageGap": 412,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "7b70662d-7f15-4704-abac-d0500f36e8e7",
+      "team_id": "65723125-5e37-4cf3-a009-f098f57a7f73",
+      "rank": 115,
+      "stageGap": 413,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "e413f8a5-0685-41b1-aee3-59d9871e6abd",
+      "team_id": "c932f302-1b01-43e1-b7c1-03337aabf00a",
+      "rank": 116,
+      "stageGap": 414,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "1fe89ef1-6cef-4903-bb87-9b97f5e23064",
+      "team_id": "ceb5bd66-e9b1-44e9-80c2-f7e9491bf9b7",
+      "rank": 117,
+      "stageGap": 416,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "54fac385-ee77-4f65-b772-86ebe6496866",
+      "team_id": "c932f302-1b01-43e1-b7c1-03337aabf00a",
+      "rank": 118,
+      "stageGap": 417,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "caa6faf9-dcc5-4109-8bb8-899eeed2d11f",
+      "team_id": "66305709-5dd1-43e7-baba-7dabbda4cabe",
+      "rank": 119,
+      "stageGap": 417,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "821c0280-2e32-47e5-bf48-9a7cf0f40302",
+      "team_id": "d0b00085-057f-4351-a3ae-ff75a2474708",
+      "rank": 120,
+      "stageGap": 419,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "ed695758-6dd8-4a42-943e-351dbbb79813",
+      "team_id": "ceb5bd66-e9b1-44e9-80c2-f7e9491bf9b7",
+      "rank": 121,
+      "stageGap": 420,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "team_id": "3aaaa60f-9bc8-492e-871a-909c2a25f34b",
+      "rank": 122,
+      "stageGap": 423,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "6311e0d2-d48c-4327-80af-b8f345d7034b",
+      "team_id": "ec863814-9b4d-4b84-852d-be8cbcf266b4",
+      "rank": 123,
+      "stageGap": 423,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "20f0acbd-3a5f-4a7a-9dfa-24c37e7a1c5a",
+      "team_id": "78aa3bfe-98f3-4278-bae0-51a462f579de",
+      "rank": 124,
+      "stageGap": 426,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "66ca2e7c-8db5-4341-af24-57ef96964977",
+      "team_id": "d27d0f47-b2f2-4f4b-a636-d2cb9d540425",
+      "rank": 125,
+      "stageGap": 428,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "d81e9e5a-16b3-4af1-932e-ffa309157394",
+      "team_id": "dc778310-2583-481b-b7e5-cab5b704c98c",
+      "rank": 126,
+      "stageGap": 428,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9639500e-514c-4da5-8a15-331fc0ca1886",
+      "team_id": "dc778310-2583-481b-b7e5-cab5b704c98c",
+      "rank": 127,
+      "stageGap": 429,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "97b3d9ca-7435-4944-954e-7ff89e8f405d",
+      "team_id": "66305709-5dd1-43e7-baba-7dabbda4cabe",
+      "rank": 128,
+      "stageGap": 429,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "38e8d76c-4fae-4706-b71f-aa33aa7b1b36",
+      "team_id": "759f086a-4e35-4816-97ec-2bd594fc7862",
+      "rank": 129,
+      "stageGap": 430,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "88b43782-0f3a-4f1d-a338-6f1b6dfebba5",
+      "team_id": "c0d8c655-5d28-4d60-be14-ddc7dfc23638",
+      "rank": 130,
+      "stageGap": 431,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "be9567e1-9f91-475b-8f99-7fbc445bafc6",
+      "team_id": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+      "rank": 131,
+      "stageGap": 431,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "6dc0d954-b91c-4e19-927d-b3bb2b7e3747",
+      "team_id": "c0d8c655-5d28-4d60-be14-ddc7dfc23638",
+      "rank": 132,
+      "stageGap": 431,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "cc78a4b0-e02e-42a0-b269-67349fe650c1",
+      "team_id": "85b6a85e-6118-434a-8ae4-92c09b8ddf8c",
+      "rank": 133,
+      "stageGap": 431,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "2309b11d-94e2-496e-9409-b4bd4996b381",
+      "team_id": "c351b1a5-b422-4795-9298-6ccf05c14aa7",
+      "rank": 134,
+      "stageGap": 433,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "739af7f7-3a61-476f-ba89-315700fb62cc",
+      "team_id": "c932f302-1b01-43e1-b7c1-03337aabf00a",
+      "rank": 135,
+      "stageGap": 434,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9e076ee9-b350-4564-b1fe-09a70e58971d",
+      "team_id": "3aaaa60f-9bc8-492e-871a-909c2a25f34b",
+      "rank": 136,
+      "stageGap": 436,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "8b587173-19e4-42d9-b20d-2a3b0f076935",
+      "team_id": "ceb5bd66-e9b1-44e9-80c2-f7e9491bf9b7",
+      "rank": 137,
+      "stageGap": 436,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "4a90b5d5-af07-4f7a-b235-f0f0891b1ae3",
+      "team_id": "63af5c88-b9c4-4211-b155-93e1693c717d",
+      "rank": 138,
+      "stageGap": 436,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "c470a9de-15c4-4c90-aa63-36f30afbaf2a",
+      "team_id": "85b6a85e-6118-434a-8ae4-92c09b8ddf8c",
+      "rank": 139,
+      "stageGap": 439,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "b573bf7f-9b6f-45ae-8874-435e853d6bd7",
+      "team_id": "6ed4a8e8-033d-43f0-85c3-06a5870f2b7c",
+      "rank": 140,
+      "stageGap": 440,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "fc2f8664-043d-4974-bee0-a80a686e2cc8",
+      "team_id": "20772e08-5a8f-4a80-aeeb-6289f19c0c72",
+      "rank": 141,
+      "stageGap": 442,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "86c0b4d5-c221-4b7d-a284-6240d0e1142c",
+      "team_id": "c351b1a5-b422-4795-9298-6ccf05c14aa7",
+      "rank": 142,
+      "stageGap": 444,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "adaf6032-5f27-48a7-8743-9bcc20beabb7",
+      "team_id": "6ed4a8e8-033d-43f0-85c3-06a5870f2b7c",
+      "rank": 143,
+      "stageGap": 444,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "f2930a98-3ec5-4356-89b6-57e84a1e056e",
+      "team_id": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+      "rank": 144,
+      "stageGap": 445,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "2798b0f0-7128-4aa1-a9a9-eb0a41b8e64f",
+      "team_id": "db9b6987-9482-425d-a54b-d03ac23cfb4f",
+      "rank": 145,
+      "stageGap": 449,
+      "components": {
+        "breakaway": 0.2
+      },
+      "in_breakaway": true,
+      "breakaway_caught": true
+    },
+    {
+      "rider_id": "a4900619-9daf-4337-acb2-3df2400647f5",
+      "team_id": "6ed4a8e8-033d-43f0-85c3-06a5870f2b7c",
+      "rank": 146,
+      "stageGap": 449,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "9efa0e6f-cc30-45af-a48d-a041a47c4afe",
+      "team_id": "ec863814-9b4d-4b84-852d-be8cbcf266b4",
+      "rank": 147,
+      "stageGap": 452,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "442c91c4-2576-4e9a-aca9-59dc96f532a7",
+      "team_id": "6ed4a8e8-033d-43f0-85c3-06a5870f2b7c",
+      "rank": 148,
+      "stageGap": 452,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "2b1a5922-74c6-4db6-8a27-33397f8548a1",
+      "team_id": "759f086a-4e35-4816-97ec-2bd594fc7862",
+      "rank": 149,
+      "stageGap": 453,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "22d81bb1-9937-48d4-8915-b309f1185bfe",
+      "team_id": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+      "rank": 150,
+      "stageGap": 456,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "e6e4a38d-094d-4724-aa44-4bd01b945b8e",
+      "team_id": "c2fe9e03-7d79-4da9-a55c-5ad901b72b6f",
+      "rank": 151,
+      "stageGap": 456,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "4474c03c-dd16-4559-8791-790ea8bff286",
+      "team_id": "32697963-3af1-4451-a921-778f48ef007a",
+      "rank": 152,
+      "stageGap": 458,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "11fecc1e-71d6-401f-a5c3-2edd7735bb96",
+      "team_id": "66305709-5dd1-43e7-baba-7dabbda4cabe",
+      "rank": 153,
+      "stageGap": 458,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "2642a357-cd24-4921-82d1-a05794779423",
+      "team_id": "78aa3bfe-98f3-4278-bae0-51a462f579de",
+      "rank": 154,
+      "stageGap": 464,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "d6c7a591-69f6-4a84-8365-a2fedd04c65c",
+      "team_id": "ec863814-9b4d-4b84-852d-be8cbcf266b4",
+      "rank": 155,
+      "stageGap": 464,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "7a2f837e-657b-4f64-93dc-1c554c5685be",
+      "team_id": "ec863814-9b4d-4b84-852d-be8cbcf266b4",
+      "rank": 156,
+      "stageGap": 464,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "ad8aa2fe-50f9-44ae-b947-8036e20bffff",
+      "team_id": "c0d8c655-5d28-4d60-be14-ddc7dfc23638",
+      "rank": 157,
+      "stageGap": 465,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "f961061a-6fe6-4eb3-9747-3b38ea32e7c2",
+      "team_id": "759f086a-4e35-4816-97ec-2bd594fc7862",
+      "rank": 158,
+      "stageGap": 469,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "018b17e8-ced7-4bdc-a083-13ab857de99f",
+      "team_id": "ec863814-9b4d-4b84-852d-be8cbcf266b4",
+      "rank": 159,
+      "stageGap": 473,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "0d45dbfe-4142-454c-9d27-782ca9986129",
+      "team_id": "78aa3bfe-98f3-4278-bae0-51a462f579de",
+      "rank": 160,
+      "stageGap": 491,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "6177f4c7-2d8c-49f7-b4ea-786a081833cb",
+      "team_id": "63af5c88-b9c4-4211-b155-93e1693c717d",
+      "rank": 161,
+      "stageGap": 550,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "b4ae1cd5-2356-4d89-81d7-c7e0d6685422",
+      "team_id": "d0b00085-057f-4351-a3ae-ff75a2474708",
+      "rank": 162,
+      "stageGap": 641,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    },
+    {
+      "rider_id": "b4b4ff46-fd2e-4a2c-bf4e-39ff4f16230e",
+      "team_id": "d0b00085-057f-4351-a3ae-ff75a2474708",
+      "rank": 163,
+      "stageGap": 755,
+      "components": {
+        "breakaway": 0
+      },
+      "in_breakaway": false,
+      "breakaway_caught": false
+    }
+  ],
+  "incidents": [
+    {
+      "rider_id": "b4ae1cd5-2356-4d89-81d7-c7e0d6685422",
+      "kind": "crash",
+      "outcome": "time_loss",
+      "time_loss_seconds": 235
+    },
+    {
+      "rider_id": "b4b4ff46-fd2e-4a2c-bf4e-39ff4f16230e",
+      "kind": "crash",
+      "outcome": "time_loss",
+      "time_loss_seconds": 272
+    }
+  ],
+  "moments": [
+    {
+      "moment_key": "solo_win",
+      "params": {
+        "riderId": "dba9742c-8136-42b4-9888-32925cf580b6",
+        "gapSeconds": 34
+      },
+      "significance": 55,
+      "rider_ids": [
+        "dba9742c-8136-42b4-9888-32925cf580b6"
+      ]
+    },
+    {
+      "moment_key": "breakaway_caught",
+      "params": {
+        "count": 2
+      },
+      "significance": 35,
+      "rider_ids": []
+    },
+    {
+      "moment_key": "team_day",
+      "params": {
+        "count": 2,
+        "teamId": "ce8fa022-6918-4318-a7b4-bce4398e82c3"
+      },
+      "significance": 45,
+      "rider_ids": []
+    },
+    {
+      "moment_key": "gc_takeover",
+      "params": {
+        "riderId": "dba9742c-8136-42b4-9888-32925cf580b6",
+        "previousLeaderId": "c3150c02-b5d1-4462-9a45-a2e3e75492da"
+      },
+      "significance": 80,
+      "rider_ids": [
+        "dba9742c-8136-42b4-9888-32925cf580b6",
+        "c3150c02-b5d1-4462-9a45-a2e3e75492da"
+      ]
+    },
+    {
+      "moment_key": "final_gc",
+      "params": {
+        "riderIds": [
+          "dba9742c-8136-42b4-9888-32925cf580b6",
+          "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+          "c3150c02-b5d1-4462-9a45-a2e3e75492da"
+        ]
+      },
+      "significance": 90,
+      "rider_ids": [
+        "dba9742c-8136-42b4-9888-32925cf580b6",
+        "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+        "c3150c02-b5d1-4462-9a45-a2e3e75492da"
+      ]
+    },
+    {
+      "moment_key": "helper_shift",
+      "params": {
+        "teamId": "63af5c88-b9c4-4211-b155-93e1693c717d",
+        "captainId": "dba9742c-8136-42b4-9888-32925cf580b6",
+        "helperIds": [
+          "f2b831ff-02db-452d-bc53-d15e94ce5024",
+          "181c7907-5511-4dc4-9cf7-f9e33717580b",
+          "204be210-101c-4b14-b3e2-7603d546c563",
+          "6b2ee542-7e6b-4ece-94f9-a6ad7dc2b93a",
+          "6177f4c7-2d8c-49f7-b4ea-786a081833cb"
+        ]
+      },
+      "significance": 60,
+      "rider_ids": [
+        "dba9742c-8136-42b4-9888-32925cf580b6",
+        "f2b831ff-02db-452d-bc53-d15e94ce5024",
+        "181c7907-5511-4dc4-9cf7-f9e33717580b",
+        "204be210-101c-4b14-b3e2-7603d546c563",
+        "6b2ee542-7e6b-4ece-94f9-a6ad7dc2b93a",
+        "6177f4c7-2d8c-49f7-b4ea-786a081833cb"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 37,
+        "riderId": "181c7907-5511-4dc4-9cf7-f9e33717580b",
+        "captainId": "dba9742c-8136-42b4-9888-32925cf580b6"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "181c7907-5511-4dc4-9cf7-f9e33717580b"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 75,
+        "riderId": "204be210-101c-4b14-b3e2-7603d546c563",
+        "captainId": "dba9742c-8136-42b4-9888-32925cf580b6"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "204be210-101c-4b14-b3e2-7603d546c563"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 81,
+        "riderId": "6b2ee542-7e6b-4ece-94f9-a6ad7dc2b93a",
+        "captainId": "dba9742c-8136-42b4-9888-32925cf580b6"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "6b2ee542-7e6b-4ece-94f9-a6ad7dc2b93a"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 161,
+        "riderId": "6177f4c7-2d8c-49f7-b4ea-786a081833cb",
+        "captainId": "dba9742c-8136-42b4-9888-32925cf580b6"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "6177f4c7-2d8c-49f7-b4ea-786a081833cb"
+      ]
+    },
+    {
+      "moment_key": "helper_shift",
+      "params": {
+        "teamId": "37ee7555-04b5-496b-9e39-acf7f44a3513",
+        "captainId": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+        "helperIds": [
+          "3c801a10-4557-487d-87ff-10a60a24e318",
+          "7e009370-b5d0-415d-98ae-a3a1ec1b9599",
+          "ff5a1f50-8ef5-47a2-8813-c68ababd1485",
+          "b59eb785-0205-47e9-af16-4b824a1ee3a7",
+          "f2930a98-3ec5-4356-89b6-57e84a1e056e"
+        ]
+      },
+      "significance": 60,
+      "rider_ids": [
+        "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+        "3c801a10-4557-487d-87ff-10a60a24e318",
+        "7e009370-b5d0-415d-98ae-a3a1ec1b9599",
+        "ff5a1f50-8ef5-47a2-8813-c68ababd1485",
+        "b59eb785-0205-47e9-af16-4b824a1ee3a7",
+        "f2930a98-3ec5-4356-89b6-57e84a1e056e"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 65,
+        "riderId": "7e009370-b5d0-415d-98ae-a3a1ec1b9599",
+        "captainId": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "7e009370-b5d0-415d-98ae-a3a1ec1b9599"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 86,
+        "riderId": "ff5a1f50-8ef5-47a2-8813-c68ababd1485",
+        "captainId": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "ff5a1f50-8ef5-47a2-8813-c68ababd1485"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 107,
+        "riderId": "b59eb785-0205-47e9-af16-4b824a1ee3a7",
+        "captainId": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "b59eb785-0205-47e9-af16-4b824a1ee3a7"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 144,
+        "riderId": "f2930a98-3ec5-4356-89b6-57e84a1e056e",
+        "captainId": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "f2930a98-3ec5-4356-89b6-57e84a1e056e"
+      ]
+    },
+    {
+      "moment_key": "helper_shift",
+      "params": {
+        "teamId": "ce8fa022-6918-4318-a7b4-bce4398e82c3",
+        "captainId": "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+        "helperIds": [
+          "77417a93-e081-400c-b679-96438f7af18b",
+          "e4797c7b-4abe-4eb4-8fc8-be1f11557408",
+          "22d81bb1-9937-48d4-8915-b309f1185bfe"
+        ]
+      },
+      "significance": 60,
+      "rider_ids": [
+        "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+        "77417a93-e081-400c-b679-96438f7af18b",
+        "e4797c7b-4abe-4eb4-8fc8-be1f11557408",
+        "22d81bb1-9937-48d4-8915-b309f1185bfe"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 71,
+        "riderId": "77417a93-e081-400c-b679-96438f7af18b",
+        "captainId": "c3150c02-b5d1-4462-9a45-a2e3e75492da"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "77417a93-e081-400c-b679-96438f7af18b"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 102,
+        "riderId": "e4797c7b-4abe-4eb4-8fc8-be1f11557408",
+        "captainId": "c3150c02-b5d1-4462-9a45-a2e3e75492da"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "e4797c7b-4abe-4eb4-8fc8-be1f11557408"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 150,
+        "riderId": "22d81bb1-9937-48d4-8915-b309f1185bfe",
+        "captainId": "c3150c02-b5d1-4462-9a45-a2e3e75492da"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "22d81bb1-9937-48d4-8915-b309f1185bfe"
+      ]
+    },
+    {
+      "moment_key": "helper_shift",
+      "params": {
+        "teamId": "5ad22c0d-c723-41f2-9b07-6230c53ee8ca",
+        "captainId": "928a2d00-ba91-4404-a990-ae000e1ed18a",
+        "helperIds": [
+          "25aa952d-efec-4b57-bf0d-4d6f31227267",
+          "fc7f4e07-5c23-4f0d-89d0-42a391a8868a",
+          "f916cfd0-8014-483c-ae92-f3fa2f57cf67"
+        ]
+      },
+      "significance": 60,
+      "rider_ids": [
+        "928a2d00-ba91-4404-a990-ae000e1ed18a",
+        "25aa952d-efec-4b57-bf0d-4d6f31227267",
+        "fc7f4e07-5c23-4f0d-89d0-42a391a8868a",
+        "f916cfd0-8014-483c-ae92-f3fa2f57cf67"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 51,
+        "riderId": "25aa952d-efec-4b57-bf0d-4d6f31227267",
+        "captainId": "928a2d00-ba91-4404-a990-ae000e1ed18a"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "25aa952d-efec-4b57-bf0d-4d6f31227267"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 57,
+        "riderId": "fc7f4e07-5c23-4f0d-89d0-42a391a8868a",
+        "captainId": "928a2d00-ba91-4404-a990-ae000e1ed18a"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "fc7f4e07-5c23-4f0d-89d0-42a391a8868a"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 77,
+        "riderId": "f916cfd0-8014-483c-ae92-f3fa2f57cf67",
+        "captainId": "928a2d00-ba91-4404-a990-ae000e1ed18a"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "f916cfd0-8014-483c-ae92-f3fa2f57cf67"
+      ]
+    },
+    {
+      "moment_key": "helper_shift",
+      "params": {
+        "teamId": "db9b6987-9482-425d-a54b-d03ac23cfb4f",
+        "captainId": "26a12b30-8fe2-4b32-9423-5586d6e5c08e",
+        "helperIds": [
+          "74cc1266-3f12-4dd2-86ee-5140fd1848a2",
+          "da17738c-3d81-4423-9aad-81e2340f208a",
+          "36dc9498-f1b9-4249-ba04-de5ddcb7ed72",
+          "acbd6e9f-5fe0-480a-a2c0-1d2503b623fc",
+          "2798b0f0-7128-4aa1-a9a9-eb0a41b8e64f"
+        ]
+      },
+      "significance": 60,
+      "rider_ids": [
+        "26a12b30-8fe2-4b32-9423-5586d6e5c08e",
+        "74cc1266-3f12-4dd2-86ee-5140fd1848a2",
+        "da17738c-3d81-4423-9aad-81e2340f208a",
+        "36dc9498-f1b9-4249-ba04-de5ddcb7ed72",
+        "acbd6e9f-5fe0-480a-a2c0-1d2503b623fc",
+        "2798b0f0-7128-4aa1-a9a9-eb0a41b8e64f"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 36,
+        "riderId": "74cc1266-3f12-4dd2-86ee-5140fd1848a2",
+        "captainId": "26a12b30-8fe2-4b32-9423-5586d6e5c08e"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "74cc1266-3f12-4dd2-86ee-5140fd1848a2"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 48,
+        "riderId": "da17738c-3d81-4423-9aad-81e2340f208a",
+        "captainId": "26a12b30-8fe2-4b32-9423-5586d6e5c08e"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "da17738c-3d81-4423-9aad-81e2340f208a"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 61,
+        "riderId": "36dc9498-f1b9-4249-ba04-de5ddcb7ed72",
+        "captainId": "26a12b30-8fe2-4b32-9423-5586d6e5c08e"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "36dc9498-f1b9-4249-ba04-de5ddcb7ed72"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 92,
+        "riderId": "acbd6e9f-5fe0-480a-a2c0-1d2503b623fc",
+        "captainId": "26a12b30-8fe2-4b32-9423-5586d6e5c08e"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "acbd6e9f-5fe0-480a-a2c0-1d2503b623fc"
+      ]
+    },
+    {
+      "moment_key": "tag_helper_sacrifice",
+      "params": {
+        "rank": 145,
+        "riderId": "2798b0f0-7128-4aa1-a9a9-eb0a41b8e64f",
+        "captainId": "26a12b30-8fe2-4b32-9423-5586d6e5c08e"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "2798b0f0-7128-4aa1-a9a9-eb0a41b8e64f"
+      ]
+    },
+    {
+      "moment_key": "tag_jour_sans",
+      "params": {
+        "riderId": "9969c887-89bd-413a-9890-46d841baba40"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "9969c887-89bd-413a-9890-46d841baba40"
+      ]
+    },
+    {
+      "moment_key": "tag_jour_sans",
+      "params": {
+        "riderId": "6177f4c7-2d8c-49f7-b4ea-786a081833cb"
+      },
+      "significance": 30,
+      "rider_ids": [
+        "6177f4c7-2d8c-49f7-b4ea-786a081833cb"
+      ]
+    },
+    {
+      "moment_key": "incident_time_loss",
+      "params": {
+        "kind": "crash",
+        "riderId": "b4ae1cd5-2356-4d89-81d7-c7e0d6685422",
+        "secondsLost": 235
+      },
+      "significance": 40,
+      "rider_ids": [
+        "b4ae1cd5-2356-4d89-81d7-c7e0d6685422"
+      ]
+    },
+    {
+      "moment_key": "incident_time_loss",
+      "params": {
+        "kind": "crash",
+        "riderId": "b4b4ff46-fd2e-4a2c-bf4e-39ff4f16230e",
+        "secondsLost": 272
+      },
+      "significance": 40,
+      "rider_ids": [
+        "b4b4ff46-fd2e-4a2c-bf4e-39ff4f16230e"
+      ]
+    }
+  ],
+  "passagesFlat": [
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 0,
+      "waypoint_name": "Mont Beauregard",
+      "waypoint_km": 92,
+      "climb_category": "1",
+      "rider_id": "317be920-9931-4e7a-a4ee-d5e50e6a6ad6",
+      "passage_rank": 1,
+      "points": 10,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "dba9742c-8136-42b4-9888-32925cf580b6",
+      "passage_rank": 1,
+      "points": 20,
+      "bonus_seconds": 10
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 0,
+      "waypoint_name": "Mont Beauregard",
+      "waypoint_km": 92,
+      "climb_category": "1",
+      "rider_id": "2798b0f0-7128-4aa1-a9a9-eb0a41b8e64f",
+      "passage_rank": 2,
+      "points": 8,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+      "passage_rank": 2,
+      "points": 17,
+      "bonus_seconds": 6
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 0,
+      "waypoint_name": "Mont Beauregard",
+      "waypoint_km": 92,
+      "climb_category": "1",
+      "rider_id": "dba9742c-8136-42b4-9888-32925cf580b6",
+      "passage_rank": 3,
+      "points": 6,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+      "passage_rank": 3,
+      "points": 15,
+      "bonus_seconds": 4
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 0,
+      "waypoint_name": "Mont Beauregard",
+      "waypoint_km": 92,
+      "climb_category": "1",
+      "rider_id": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+      "passage_rank": 4,
+      "points": 4,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "928a2d00-ba91-4404-a990-ae000e1ed18a",
+      "passage_rank": 4,
+      "points": 13,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "26a12b30-8fe2-4b32-9423-5586d6e5c08e",
+      "passage_rank": 5,
+      "points": 11,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 0,
+      "waypoint_name": "Mont Beauregard",
+      "waypoint_km": 92,
+      "climb_category": "1",
+      "rider_id": "1e761082-383a-4ef4-8804-43149e146bc2",
+      "passage_rank": 5,
+      "points": 2,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 0,
+      "waypoint_name": "Mont Beauregard",
+      "waypoint_km": 92,
+      "climb_category": "1",
+      "rider_id": "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+      "passage_rank": 6,
+      "points": 1,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "c2f5f38c-eb3a-48e9-adde-8aee2e64228d",
+      "passage_rank": 6,
+      "points": 10,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "b7e60988-d2b8-4541-99e5-586f5f1249ea",
+      "passage_rank": 7,
+      "points": 9,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "e54cb996-a8c5-408b-bf7c-41061fa2d067",
+      "passage_rank": 8,
+      "points": 8,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "dec2dbe0-fb7d-4060-8626-baae9df75661",
+      "passage_rank": 9,
+      "points": 7,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "1e761082-383a-4ef4-8804-43149e146bc2",
+      "passage_rank": 10,
+      "points": 6,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "503b1cbd-9920-4908-886c-1f17e24efb27",
+      "passage_rank": 11,
+      "points": 5,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "464dd55e-a934-4f65-8049-a9bba4fa4a9f",
+      "passage_rank": 12,
+      "points": 4,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "9442808b-25e8-4dfc-873b-ff98085dbe1f",
+      "passage_rank": 13,
+      "points": 3,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "75bab191-a67e-40c1-a230-2130330ced86",
+      "passage_rank": 14,
+      "points": 2,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "finish",
+      "waypoint_index": 0,
+      "waypoint_name": "Finish",
+      "waypoint_km": 175,
+      "climb_category": null,
+      "rider_id": "97f650e5-6bbb-48bc-8c31-0fec0e7b3ca1",
+      "passage_rank": 15,
+      "points": 1,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "dba9742c-8136-42b4-9888-32925cf580b6",
+      "passage_rank": 1,
+      "points": 40,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+      "passage_rank": 2,
+      "points": 30,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+      "passage_rank": 3,
+      "points": 24,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "928a2d00-ba91-4404-a990-ae000e1ed18a",
+      "passage_rank": 4,
+      "points": 20,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "26a12b30-8fe2-4b32-9423-5586d6e5c08e",
+      "passage_rank": 5,
+      "points": 16,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "c2f5f38c-eb3a-48e9-adde-8aee2e64228d",
+      "passage_rank": 6,
+      "points": 12,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "b7e60988-d2b8-4541-99e5-586f5f1249ea",
+      "passage_rank": 7,
+      "points": 8,
+      "bonus_seconds": 0
+    },
+    {
+      "waypoint_kind": "kom",
+      "waypoint_index": 1,
+      "waypoint_name": "Côte de la Colombière",
+      "waypoint_km": 175,
+      "climb_category": "HC",
+      "rider_id": "e54cb996-a8c5-408b-bf7c-41061fa2d067",
+      "passage_rank": 8,
+      "points": 4,
+      "bonus_seconds": 0
+    }
+  ],
+  "gc_after": [
+    {
+      "rider_id": "dba9742c-8136-42b4-9888-32925cf580b6",
+      "rank": 1,
+      "time": 0
+    },
+    {
+      "rider_id": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+      "rank": 2,
+      "time": 51
+    },
+    {
+      "rider_id": "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+      "rank": 3,
+      "time": 55
+    },
+    {
+      "rider_id": "c2f5f38c-eb3a-48e9-adde-8aee2e64228d",
+      "rank": 4,
+      "time": 94
+    },
+    {
+      "rider_id": "b7e60988-d2b8-4541-99e5-586f5f1249ea",
+      "rank": 5,
+      "time": 107
+    },
+    {
+      "rider_id": "26a12b30-8fe2-4b32-9423-5586d6e5c08e",
+      "rank": 6,
+      "time": 133
+    },
+    {
+      "rider_id": "9442808b-25e8-4dfc-873b-ff98085dbe1f",
+      "rank": 7,
+      "time": 149
+    },
+    {
+      "rider_id": "928a2d00-ba91-4404-a990-ae000e1ed18a",
+      "rank": 8,
+      "time": 177
+    },
+    {
+      "rider_id": "4ef945f6-a987-44fd-b266-9dec28ab8b7d",
+      "rank": 9,
+      "time": 178
+    },
+    {
+      "rider_id": "dec2dbe0-fb7d-4060-8626-baae9df75661",
+      "rank": 10,
+      "time": 180
+    }
+  ],
+  "gc_before": [
+    {
+      "rider_id": "c3150c02-b5d1-4462-9a45-a2e3e75492da",
+      "rank": 1,
+      "time": 0
+    },
+    {
+      "rider_id": "c2f5f38c-eb3a-48e9-adde-8aee2e64228d",
+      "rank": 2,
+      "time": 0
+    },
+    {
+      "rider_id": "b7e60988-d2b8-4541-99e5-586f5f1249ea",
+      "rank": 3,
+      "time": 9
+    },
+    {
+      "rider_id": "9442808b-25e8-4dfc-873b-ff98085dbe1f",
+      "rank": 4,
+      "time": 14
+    },
+    {
+      "rider_id": "dba9742c-8136-42b4-9888-32925cf580b6",
+      "rank": 5,
+      "time": 15
+    },
+    {
+      "rider_id": "cc4a5ae3-cf48-48aa-b8de-cc0cb5895f86",
+      "rank": 6,
+      "time": 28
+    },
+    {
+      "rider_id": "4ef945f6-a987-44fd-b266-9dec28ab8b7d",
+      "rank": 7,
+      "time": 35
+    },
+    {
+      "rider_id": "19db0e2b-157a-4603-8001-ebb22baef191",
+      "rank": 8,
+      "time": 41
+    },
+    {
+      "rider_id": "97f650e5-6bbb-48bc-8c31-0fec0e7b3ca1",
+      "rank": 9,
+      "time": 52
+    },
+    {
+      "rider_id": "dec2dbe0-fb7d-4060-8626-baae9df75661",
+      "rank": 10,
+      "time": 58
+    },
+    {
+      "rider_id": "26a12b30-8fe2-4b32-9423-5586d6e5c08e",
+      "rank": 11,
+      "time": 60
+    },
+    {
+      "rider_id": "75bab191-a67e-40c1-a230-2130330ced86",
+      "rank": 12,
+      "time": 76
+    },
+    {
+      "rider_id": "e54cb996-a8c5-408b-bf7c-41061fa2d067",
+      "rank": 13,
+      "time": 77
+    },
+    {
+      "rider_id": "6fb11413-7048-4d92-bf22-7b386c27fdb4",
+      "rank": 14,
+      "time": 91
+    },
+    {
+      "rider_id": "ce05cecd-2606-43f5-b622-25b24b2e0a18",
+      "rank": 15,
+      "time": 91
+    },
+    {
+      "rider_id": "1e761082-383a-4ef4-8804-43149e146bc2",
+      "rank": 16,
+      "time": 102
+    },
+    {
+      "rider_id": "928a2d00-ba91-4404-a990-ae000e1ed18a",
+      "rank": 17,
+      "time": 106
+    },
+    {
+      "rider_id": "2bb4ca5e-892d-40d6-b5c4-66aa4906071c",
+      "rank": 18,
+      "time": 108
+    },
+    {
+      "rider_id": "9794cfe8-3daf-4232-a395-181a38a0bbe9",
+      "rank": 19,
+      "time": 113
+    },
+    {
+      "rider_id": "3108105e-963c-4016-85e8-7a6743a94e7a",
+      "rank": 20,
+      "time": 114
+    },
+    {
+      "rider_id": "503b1cbd-9920-4908-886c-1f17e24efb27",
+      "rank": 21,
+      "time": 133
+    },
+    {
+      "rider_id": "4aa90fb2-d1da-427c-910d-252051f3e7d7",
+      "rank": 22,
+      "time": 154
+    },
+    {
+      "rider_id": "3c801a10-4557-487d-87ff-10a60a24e318",
+      "rank": 23,
+      "time": 170
+    },
+    {
+      "rider_id": "23eaeef7-dd6e-4729-b982-909c4cd6905f",
+      "rank": 24,
+      "time": 171
+    },
+    {
+      "rider_id": "2658e6f4-d32b-4207-af0b-c3f1209c6ae1",
+      "rank": 25,
+      "time": 175
+    },
+    {
+      "rider_id": "47508d0a-3c9d-4ae8-bcc8-6678de0a1863",
+      "rank": 26,
+      "time": 177
+    },
+    {
+      "rider_id": "9df1096b-fe01-4d79-a2ce-5a96216da6ca",
+      "rank": 27,
+      "time": 177
+    },
+    {
+      "rider_id": "2ddf765f-5ae6-4a7c-b8e6-0b9aab1fd438",
+      "rank": 28,
+      "time": 183
+    },
+    {
+      "rider_id": "5584b3b0-5ba4-4849-ae00-05579b61592b",
+      "rank": 29,
+      "time": 185
+    },
+    {
+      "rider_id": "881a22f7-5c69-4665-8476-cb21ea03204c",
+      "rank": 30,
+      "time": 195
+    },
+    {
+      "rider_id": "3a41d5fe-1fd6-41e9-ba07-1e9dae29e37c",
+      "rank": 31,
+      "time": 199
+    },
+    {
+      "rider_id": "4872d2eb-98c8-4577-8cf2-5977133f69de",
+      "rank": 32,
+      "time": 199
+    },
+    {
+      "rider_id": "4c06611b-1639-4219-95e9-3c840f07eab8",
+      "rank": 33,
+      "time": 212
+    },
+    {
+      "rider_id": "5292cfba-a94b-4282-90f9-1cae6b9d7b9b",
+      "rank": 34,
+      "time": 216
+    },
+    {
+      "rider_id": "0128fe4d-0690-4248-9723-4c456a19a600",
+      "rank": 35,
+      "time": 216
+    },
+    {
+      "rider_id": "464dd55e-a934-4f65-8049-a9bba4fa4a9f",
+      "rank": 36,
+      "time": 223
+    },
+    {
+      "rider_id": "ac183b2e-7bba-412b-9f87-6b0adef2121c",
+      "rank": 37,
+      "time": 228
+    },
+    {
+      "rider_id": "562a6c73-1dee-418c-abcf-cb78fd3e0a66",
+      "rank": 38,
+      "time": 240
+    },
+    {
+      "rider_id": "5380d93a-0e6a-4bfb-b926-dd62a56c6cce",
+      "rank": 39,
+      "time": 243
+    },
+    {
+      "rider_id": "dca92176-7c86-4674-b247-f7609e999496",
+      "rank": 40,
+      "time": 246
+    },
+    {
+      "rider_id": "181c7907-5511-4dc4-9cf7-f9e33717580b",
+      "rank": 41,
+      "time": 247
+    },
+    {
+      "rider_id": "392df0dc-7e62-442b-adce-f297f0a03880",
+      "rank": 42,
+      "time": 250
+    },
+    {
+      "rider_id": "690d579d-f89d-4103-9c0f-1e946e1fc7d6",
+      "rank": 43,
+      "time": 251
+    },
+    {
+      "rider_id": "33e4ca3f-d8ed-4ecf-ae3a-d7f2236cb51e",
+      "rank": 44,
+      "time": 255
+    },
+    {
+      "rider_id": "c16a86f1-437a-4240-ad9a-d2e931252f58",
+      "rank": 45,
+      "time": 260
+    },
+    {
+      "rider_id": "eccbfb7d-9963-4aec-bc90-a9924862fa06",
+      "rank": 46,
+      "time": 261
+    },
+    {
+      "rider_id": "0c1eb426-89c6-4450-826b-c6b51218dbe0",
+      "rank": 47,
+      "time": 261
+    },
+    {
+      "rider_id": "f2b831ff-02db-452d-bc53-d15e94ce5024",
+      "rank": 48,
+      "time": 261
+    },
+    {
+      "rider_id": "9969c887-89bd-413a-9890-46d841baba40",
+      "rank": 49,
+      "time": 266
+    },
+    {
+      "rider_id": "c3eec5de-d28e-45ef-9e2a-602f97cefa04",
+      "rank": 50,
+      "time": 266
+    },
+    {
+      "rider_id": "89857b87-b9ec-4552-b6d6-f68e9ea2baa6",
+      "rank": 51,
+      "time": 267
+    },
+    {
+      "rider_id": "74cc1266-3f12-4dd2-86ee-5140fd1848a2",
+      "rank": 52,
+      "time": 268
+    },
+    {
+      "rider_id": "dd177249-8aa5-400e-aa10-5bfce886c44d",
+      "rank": 53,
+      "time": 274
+    },
+    {
+      "rider_id": "1d9c4f53-2b5a-42ab-9784-d1c823117946",
+      "rank": 54,
+      "time": 275
+    },
+    {
+      "rider_id": "195004ed-db81-40be-9a2e-eda731449ca7",
+      "rank": 55,
+      "time": 276
+    },
+    {
+      "rider_id": "9121a520-4248-41e9-aa7c-6b1404c8607b",
+      "rank": 56,
+      "time": 279
+    },
+    {
+      "rider_id": "15cf4920-c75a-46d1-a48f-4b9f106f7d94",
+      "rank": 57,
+      "time": 279
+    },
+    {
+      "rider_id": "65ed190a-81e4-4e9d-8160-0beaf6a08e56",
+      "rank": 58,
+      "time": 292
+    },
+    {
+      "rider_id": "36dc9498-f1b9-4249-ba04-de5ddcb7ed72",
+      "rank": 59,
+      "time": 293
+    },
+    {
+      "rider_id": "cad46343-20b2-4683-aa8d-5a329e063bbd",
+      "rank": 60,
+      "time": 294
+    },
+    {
+      "rider_id": "bd6614d0-5374-43aa-85a3-a51f34fb02c8",
+      "rank": 61,
+      "time": 298
+    },
+    {
+      "rider_id": "b1bbee42-f770-4e71-bf35-cc23fd426e00",
+      "rank": 62,
+      "time": 307
+    },
+    {
+      "rider_id": "7e009370-b5d0-415d-98ae-a3a1ec1b9599",
+      "rank": 63,
+      "time": 314
+    },
+    {
+      "rider_id": "8f8858e8-c81f-494b-85a4-195c2e751215",
+      "rank": 64,
+      "time": 321
+    },
+    {
+      "rider_id": "25aa952d-efec-4b57-bf0d-4d6f31227267",
+      "rank": 65,
+      "time": 324
+    },
+    {
+      "rider_id": "629548d3-7714-401f-af33-054ada524f2e",
+      "rank": 66,
+      "time": 365
+    },
+    {
+      "rider_id": "fc7f4e07-5c23-4f0d-89d0-42a391a8868a",
+      "rank": 67,
+      "time": 365
+    },
+    {
+      "rider_id": "9086aeab-6bd2-4a4c-adba-86bd15b9f840",
+      "rank": 68,
+      "time": 372
+    },
+    {
+      "rider_id": "a1e11cac-d48d-4a35-b2c6-6c5cf680f7a4",
+      "rank": 69,
+      "time": 390
+    },
+    {
+      "rider_id": "032d1cdc-df00-4d7c-a014-3d6cc7cb2114",
+      "rank": 70,
+      "time": 392
+    },
+    {
+      "rider_id": "9cf18c4a-1dba-4648-9c30-fd950b2ce737",
+      "rank": 71,
+      "time": 397
+    },
+    {
+      "rider_id": "a4ee7046-493f-4616-98ee-bca74a943495",
+      "rank": 72,
+      "time": 399
+    },
+    {
+      "rider_id": "204be210-101c-4b14-b3e2-7603d546c563",
+      "rank": 73,
+      "time": 424
+    },
+    {
+      "rider_id": "fb17e390-7cd5-418a-8bfd-8be88f009b43",
+      "rank": 74,
+      "time": 426
+    },
+    {
+      "rider_id": "77417a93-e081-400c-b679-96438f7af18b",
+      "rank": 75,
+      "time": 432
+    },
+    {
+      "rider_id": "6b2ee542-7e6b-4ece-94f9-a6ad7dc2b93a",
+      "rank": 76,
+      "time": 442
+    },
+    {
+      "rider_id": "ff73e280-d3c4-4d7e-ad26-16ca49700961",
+      "rank": 77,
+      "time": 475
+    },
+    {
+      "rider_id": "f916cfd0-8014-483c-ae92-f3fa2f57cf67",
+      "rank": 78,
+      "time": 476
+    },
+    {
+      "rider_id": "deae3a03-7a84-4725-a8a5-5cdecfc7aad5",
+      "rank": 79,
+      "time": 483
+    },
+    {
+      "rider_id": "7b90ad44-8b79-4a6b-8a82-06c9b3e61321",
+      "rank": 80,
+      "time": 484
+    },
+    {
+      "rider_id": "65a212be-3141-4767-92f3-00d799082866",
+      "rank": 81,
+      "time": 499
+    },
+    {
+      "rider_id": "daeb4e83-87e6-4199-b2c7-80452fc521b2",
+      "rank": 82,
+      "time": 505
+    },
+    {
+      "rider_id": "f245e66c-7f4b-45bb-be84-05c3973db31d",
+      "rank": 83,
+      "time": 517
+    },
+    {
+      "rider_id": "b4ae1cd5-2356-4d89-81d7-c7e0d6685422",
+      "rank": 84,
+      "time": 519
+    },
+    {
+      "rider_id": "86c0b4d5-c221-4b7d-a284-6240d0e1142c",
+      "rank": 85,
+      "time": 521
+    },
+    {
+      "rider_id": "d86bfc48-fb41-41a0-9ec5-3bed6a51e05a",
+      "rank": 86,
+      "time": 525
+    },
+    {
+      "rider_id": "988b87ae-7a04-43b8-89e0-068f783685d0",
+      "rank": 87,
+      "time": 526
+    },
+    {
+      "rider_id": "773c9a9d-e2c3-4b6b-84d6-cba55217bc32",
+      "rank": 88,
+      "time": 527
+    },
+    {
+      "rider_id": "e89fd597-35fa-4347-b19a-72d1fdebe557",
+      "rank": 89,
+      "time": 530
+    },
+    {
+      "rider_id": "b59eb785-0205-47e9-af16-4b824a1ee3a7",
+      "rank": 90,
+      "time": 531
+    },
+    {
+      "rider_id": "be9567e1-9f91-475b-8f99-7fbc445bafc6",
+      "rank": 91,
+      "time": 538
+    },
+    {
+      "rider_id": "ff5a1f50-8ef5-47a2-8813-c68ababd1485",
+      "rank": 92,
+      "time": 541
+    },
+    {
+      "rider_id": "6158d1b1-c375-4493-a398-f8a1af2394cd",
+      "rank": 93,
+      "time": 542
+    },
+    {
+      "rider_id": "d095ec65-3468-4a29-bd75-abb7ac11672c",
+      "rank": 94,
+      "time": 543
+    },
+    {
+      "rider_id": "7a2f837e-657b-4f64-93dc-1c554c5685be",
+      "rank": 95,
+      "time": 546
+    },
+    {
+      "rider_id": "9e6b0337-48ce-4f28-8737-d57759a9cb59",
+      "rank": 96,
+      "time": 546
+    },
+    {
+      "rider_id": "cc78a4b0-e02e-42a0-b269-67349fe650c1",
+      "rank": 97,
+      "time": 548
+    },
+    {
+      "rider_id": "fb2b2886-6244-4463-810b-657ad0115c7d",
+      "rank": 98,
+      "time": 552
+    },
+    {
+      "rider_id": "8017301a-5bce-43ed-a8e0-b6ec59be1da9",
+      "rank": 99,
+      "time": 552
+    },
+    {
+      "rider_id": "4a90b5d5-af07-4f7a-b235-f0f0891b1ae3",
+      "rank": 100,
+      "time": 554
+    },
+    {
+      "rider_id": "38e8d76c-4fae-4706-b71f-aa33aa7b1b36",
+      "rank": 101,
+      "time": 555
+    },
+    {
+      "rider_id": "78cb2942-43c6-4cf1-90d4-004c87b23aa9",
+      "rank": 102,
+      "time": 555
+    },
+    {
+      "rider_id": "821c0280-2e32-47e5-bf48-9a7cf0f40302",
+      "rank": 103,
+      "time": 557
+    },
+    {
+      "rider_id": "5a37b9a0-47a9-41c2-a577-160c47024cac",
+      "rank": 104,
+      "time": 557
+    },
+    {
+      "rider_id": "a4900619-9daf-4337-acb2-3df2400647f5",
+      "rank": 105,
+      "time": 558
+    },
+    {
+      "rider_id": "739af7f7-3a61-476f-ba89-315700fb62cc",
+      "rank": 106,
+      "time": 568
+    },
+    {
+      "rider_id": "b573bf7f-9b6f-45ae-8874-435e853d6bd7",
+      "rank": 107,
+      "time": 572
+    },
+    {
+      "rider_id": "bcf99227-1135-4804-973e-eb96b207c8cf",
+      "rank": 108,
+      "time": 573
+    },
+    {
+      "rider_id": "d3e80905-f01d-4ea3-b2c5-722e13188d96",
+      "rank": 109,
+      "time": 575
+    },
+    {
+      "rider_id": "317be920-9931-4e7a-a4ee-d5e50e6a6ad6",
+      "rank": 110,
+      "time": 577
+    },
+    {
+      "rider_id": "2798b0f0-7128-4aa1-a9a9-eb0a41b8e64f",
+      "rank": 111,
+      "time": 581
+    },
+    {
+      "rider_id": "d191b74c-2a30-4c0f-9912-a664bff9d758",
+      "rank": 112,
+      "time": 581
+    },
+    {
+      "rider_id": "22d81bb1-9937-48d4-8915-b309f1185bfe",
+      "rank": 113,
+      "time": 582
+    },
+    {
+      "rider_id": "caa6faf9-dcc5-4109-8bb8-899eeed2d11f",
+      "rank": 114,
+      "time": 584
+    },
+    {
+      "rider_id": "9ca285c0-7717-4915-aa04-4cedd6994603",
+      "rank": 115,
+      "time": 585
+    },
+    {
+      "rider_id": "19e8ec8b-5353-4d04-8f98-9e0ff90616eb",
+      "rank": 116,
+      "time": 585
+    },
+    {
+      "rider_id": "1fe89ef1-6cef-4903-bb87-9b97f5e23064",
+      "rank": 117,
+      "time": 587
+    },
+    {
+      "rider_id": "018d9f89-3eeb-4cd0-b154-3d3b031d8f62",
+      "rank": 118,
+      "time": 587
+    },
+    {
+      "rider_id": "7b70662d-7f15-4704-abac-d0500f36e8e7",
+      "rank": 119,
+      "time": 588
+    },
+    {
+      "rider_id": "acbd6e9f-5fe0-480a-a2c0-1d2503b623fc",
+      "rank": 120,
+      "time": 590
+    },
+    {
+      "rider_id": "2b1a5922-74c6-4db6-8a27-33397f8548a1",
+      "rank": 121,
+      "time": 590
+    },
+    {
+      "rider_id": "e4797c7b-4abe-4eb4-8fc8-be1f11557408",
+      "rank": 122,
+      "time": 590
+    },
+    {
+      "rider_id": "e0fd7ba3-8388-4d04-b6db-0bdf58587755",
+      "rank": 123,
+      "time": 591
+    },
+    {
+      "rider_id": "4474c03c-dd16-4559-8791-790ea8bff286",
+      "rank": 124,
+      "time": 593
+    },
+    {
+      "rider_id": "3c50a0ac-b4c4-4d53-99b6-d80146beb7d3",
+      "rank": 125,
+      "time": 593
+    },
+    {
+      "rider_id": "f2930a98-3ec5-4356-89b6-57e84a1e056e",
+      "rank": 126,
+      "time": 596
+    },
+    {
+      "rider_id": "54fac385-ee77-4f65-b772-86ebe6496866",
+      "rank": 127,
+      "time": 597
+    },
+    {
+      "rider_id": "018b17e8-ced7-4bdc-a083-13ab857de99f",
+      "rank": 128,
+      "time": 598
+    },
+    {
+      "rider_id": "f2bf12b1-078e-4e7b-8524-6c93b777d6b3",
+      "rank": 129,
+      "time": 603
+    },
+    {
+      "rider_id": "c470a9de-15c4-4c90-aa63-36f30afbaf2a",
+      "rank": 130,
+      "time": 606
+    },
+    {
+      "rider_id": "1b4b7a54-8567-44d3-a230-abceebece1cf",
+      "rank": 131,
+      "time": 608
+    },
+    {
+      "rider_id": "2309b11d-94e2-496e-9409-b4bd4996b381",
+      "rank": 132,
+      "time": 608
+    },
+    {
+      "rider_id": "5a04012f-7303-46b5-9ef2-d56086a3c45b",
+      "rank": 133,
+      "time": 608
+    },
+    {
+      "rider_id": "ad8aa2fe-50f9-44ae-b947-8036e20bffff",
+      "rank": 134,
+      "time": 618
+    },
+    {
+      "rider_id": "9639500e-514c-4da5-8a15-331fc0ca1886",
+      "rank": 135,
+      "time": 618
+    },
+    {
+      "rider_id": "97b3d9ca-7435-4944-954e-7ff89e8f405d",
+      "rank": 136,
+      "time": 619
+    },
+    {
+      "rider_id": "e413f8a5-0685-41b1-aee3-59d9871e6abd",
+      "rank": 137,
+      "time": 620
+    },
+    {
+      "rider_id": "adaf6032-5f27-48a7-8743-9bcc20beabb7",
+      "rank": 138,
+      "time": 621
+    },
+    {
+      "rider_id": "17f97457-5419-4d5e-86a5-8b419ac15c19",
+      "rank": 139,
+      "time": 621
+    },
+    {
+      "rider_id": "2642a357-cd24-4921-82d1-a05794779423",
+      "rank": 140,
+      "time": 625
+    },
+    {
+      "rider_id": "6311e0d2-d48c-4327-80af-b8f345d7034b",
+      "rank": 141,
+      "time": 626
+    },
+    {
+      "rider_id": "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "rank": 142,
+      "time": 630
+    },
+    {
+      "rider_id": "88b43782-0f3a-4f1d-a338-6f1b6dfebba5",
+      "rank": 143,
+      "time": 631
+    },
+    {
+      "rider_id": "ed695758-6dd8-4a42-943e-351dbbb79813",
+      "rank": 144,
+      "time": 638
+    },
+    {
+      "rider_id": "0d45dbfe-4142-454c-9d27-782ca9986129",
+      "rank": 145,
+      "time": 639
+    },
+    {
+      "rider_id": "66ca2e7c-8db5-4341-af24-57ef96964977",
+      "rank": 146,
+      "time": 640
+    },
+    {
+      "rider_id": "6dc0d954-b91c-4e19-927d-b3bb2b7e3747",
+      "rank": 147,
+      "time": 644
+    },
+    {
+      "rider_id": "11fecc1e-71d6-401f-a5c3-2edd7735bb96",
+      "rank": 148,
+      "time": 646
+    },
+    {
+      "rider_id": "6177f4c7-2d8c-49f7-b4ea-786a081833cb",
+      "rank": 149,
+      "time": 652
+    },
+    {
+      "rider_id": "8b587173-19e4-42d9-b20d-2a3b0f076935",
+      "rank": 150,
+      "time": 660
+    },
+    {
+      "rider_id": "9efa0e6f-cc30-45af-a48d-a041a47c4afe",
+      "rank": 151,
+      "time": 665
+    },
+    {
+      "rider_id": "b4b4ff46-fd2e-4a2c-bf4e-39ff4f16230e",
+      "rank": 152,
+      "time": 666
+    },
+    {
+      "rider_id": "442c91c4-2576-4e9a-aca9-59dc96f532a7",
+      "rank": 153,
+      "time": 667
+    },
+    {
+      "rider_id": "d6c7a591-69f6-4a84-8365-a2fedd04c65c",
+      "rank": 154,
+      "time": 678
+    },
+    {
+      "rider_id": "20f0acbd-3a5f-4a7a-9dfa-24c37e7a1c5a",
+      "rank": 155,
+      "time": 678
+    },
+    {
+      "rider_id": "fc2f8664-043d-4974-bee0-a80a686e2cc8",
+      "rank": 156,
+      "time": 683
+    },
+    {
+      "rider_id": "9e076ee9-b350-4564-b1fe-09a70e58971d",
+      "rank": 157,
+      "time": 684
+    },
+    {
+      "rider_id": "da17738c-3d81-4423-9aad-81e2340f208a",
+      "rank": 158,
+      "time": 688
+    },
+    {
+      "rider_id": "f961061a-6fe6-4eb3-9747-3b38ea32e7c2",
+      "rank": 159,
+      "time": 690
+    },
+    {
+      "rider_id": "d81e9e5a-16b3-4af1-932e-ffa309157394",
+      "rank": 160,
+      "time": 741
+    },
+    {
+      "rider_id": "1bac4b54-c538-40c5-8aeb-582436a2431b",
+      "rank": 161,
+      "time": 828
+    },
+    {
+      "rider_id": "e6e4a38d-094d-4724-aa44-4bd01b945b8e",
+      "rank": 162,
+      "time": 861
+    },
+    {
+      "rider_id": "23401031-f87a-4f2b-a2f9-1b9df3b50895",
+      "rank": 163,
+      "time": 869
+    }
+  ]
+}

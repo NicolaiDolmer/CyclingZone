@@ -2,9 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
-import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook } from "./discordNotifier.js";
+import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook, isLiveDiscordAllowed, getBotToken } from "./discordNotifier.js";
 import { flushDmRunGuard, __resetDmRunGuardForTests } from "./discordDmRateGuard.js";
 import { __resetWebhookQueueForTests } from "./discordWebhookQueue.js";
+
+// Live-guard (#3961): CI kører med SUPABASE_URL=https://example.supabase.co, så
+// uden denne opt-in ville guarden no-op'e alle send-stier og testene herunder
+// ville aldrig nå deres injicerede fetchFn. Guard-adfærden selv testes eksplicit
+// i "live-guard"-blokken nederst (som fjerner denne env-var igen midlertidigt).
+process.env.DISCORD_LIVE_MESSAGING = "allow";
 
 function makeCaptureSpy() {
   const calls = [];
@@ -488,4 +494,55 @@ test("sendWebhook — to samtidige kald mod samme URL sendes sekventielt, ikke s
   // Den 2. POST må ikke starte mens den 1. stadig er i flight.
   assert.equal(maxInFlight, 1, `forventede sekventiel afsendelse (max 1 i flight), fik ${maxInFlight} samtidige`);
   assert.equal(captureExceptionFn.calls.length, 0);
+});
+
+// ── Live-guard (#3961, incident 18/8-2026) ────────────────────────────────────
+// En staging-backend mod en Supabase-branch (med kopieret discord_settings)
+// postede re-simulerede resultater til de rigtige spillerkanaler. Guarden skal:
+// prod-URL → tilladt · alt andet → blokeret · eksplicit allow-override → tilladt.
+
+test("isLiveDiscordAllowed — prod-URL tilladt, staging/tom blokeret, override vinder", () => {
+  assert.equal(isLiveDiscordAllowed({ SUPABASE_URL: "https://ghwvkxzhsbbltzfnuhhz.supabase.co" }), true);
+  assert.equal(isLiveDiscordAllowed({ SUPABASE_URL: "https://bircbxynabqnypdpoovd.supabase.co" }), false);
+  assert.equal(isLiveDiscordAllowed({ SUPABASE_URL: "https://example.supabase.co" }), false);
+  assert.equal(isLiveDiscordAllowed({}), false);
+  assert.equal(isLiveDiscordAllowed({ SUPABASE_URL: "https://example.supabase.co", DISCORD_LIVE_MESSAGING: "allow" }), true);
+});
+
+test("live-guard — sendWebhook no-op'er i ikke-prod-miljø (fetchFn røres aldrig)", async () => {
+  const savedAllow = process.env.DISCORD_LIVE_MESSAGING;
+  const savedUrl = process.env.SUPABASE_URL;
+  delete process.env.DISCORD_LIVE_MESSAGING;
+  process.env.SUPABASE_URL = "https://bircbxynabqnypdpoovd.supabase.co";
+  try {
+    __resetWebhookQueueForTests();
+    let fetchCalls = 0;
+    const captureExceptionFn = makeCaptureSpy();
+    await sendWebhook("https://discord.com/api/webhooks/123/abc", { embeds: [{ title: "Staging-løb" }] }, {
+      fetchFn: async () => { fetchCalls++; return { ok: true, status: 204, text: async () => "" }; },
+      sleepFn: async () => {},
+      captureExceptionFn,
+    });
+    assert.equal(fetchCalls, 0, "blokeret miljø må aldrig nå Discord");
+    assert.equal(captureExceptionFn.calls.length, 0, "et blokeret send er ikke en fejl");
+  } finally {
+    process.env.DISCORD_LIVE_MESSAGING = savedAllow;
+    process.env.SUPABASE_URL = savedUrl;
+  }
+});
+
+test("live-guard — getBotToken returnerer null i ikke-prod-miljø (DM/rolle-sync/token-check no-op'er)", () => {
+  const savedAllow = process.env.DISCORD_LIVE_MESSAGING;
+  const savedUrl = process.env.SUPABASE_URL;
+  const savedToken = process.env.DISCORD_BOT_TOKEN;
+  delete process.env.DISCORD_LIVE_MESSAGING;
+  process.env.SUPABASE_URL = "https://bircbxynabqnypdpoovd.supabase.co";
+  process.env.DISCORD_BOT_TOKEN = "fake-token-til-test";
+  try {
+    assert.equal(getBotToken(), null, "bot-API må ikke eksponeres udenfor prod");
+  } finally {
+    process.env.DISCORD_LIVE_MESSAGING = savedAllow;
+    process.env.SUPABASE_URL = savedUrl;
+    if (savedToken === undefined) delete process.env.DISCORD_BOT_TOKEN; else process.env.DISCORD_BOT_TOKEN = savedToken;
+  }
 });

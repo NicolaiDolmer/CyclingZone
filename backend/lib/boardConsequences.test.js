@@ -9,7 +9,8 @@ import assert from "node:assert/strict";
 import {
   CONSEQUENCE_CONSTANTS,
   CONSEQUENCE_LAYERS,
-  acceptBonusOffer,
+  loadActiveBonusOffer,
+  finalizeBonusOfferAccept,
   assertSalaryIncreaseAllowed,
   assertSigningAllowed,
   declineBonusOffer,
@@ -984,7 +985,7 @@ test("expireSeasonScopedConsequences expires only matching season's pullouts", a
 // Bonus-offer accept/decline flow
 // =====================================================================
 
-test("acceptBonusOffer marks row 'accepted' and returns bonus + extra_goal", async () => {
+test("loadActiveBonusOffer returns offer data without mutating status", async () => {
   const supabase = makeFakeSupabase({
     board_consequences: [
       {
@@ -999,11 +1000,57 @@ test("acceptBonusOffer marks row 'accepted' and returns bonus + extra_goal", asy
     ],
   });
 
-  const result = await acceptBonusOffer({ supabase, teamId: "team-1", offerId: "offer-1" });
+  const result = await loadActiveBonusOffer({ supabase, teamId: "team-1", offerId: "offer-1" });
   assert.equal(result.ok, true);
   assert.equal(result.bonus_amount, 200_000);
   assert.equal(result.extra_goal.type, "monument_podium");
   assert.equal(result.source_board_id, "board-1");
+  // #3578: load er read-only — status forbliver 'active' indtil caller har
+  // bekræftet krediteringen og eksplicit kalder finalizeBonusOfferAccept.
+  assert.equal(supabase.state.board_consequences.find((c) => c.id === "offer-1").status, "active");
+});
+
+test("loadActiveBonusOffer returns not_found for already-resolved row", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "offer-1", team_id: "team-1", layer: 6, status: "declined", payload: {} },
+    ],
+  });
+
+  const result = await loadActiveBonusOffer({ supabase, teamId: "team-1", offerId: "offer-1" });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "not_found");
+});
+
+test("finalizeBonusOfferAccept flips row to 'accepted' when still active", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "offer-1", team_id: "team-1", layer: 6, severity: 200_000, status: "active", payload: {} },
+    ],
+  });
+
+  const result = await finalizeBonusOfferAccept({ supabase, offerId: "offer-1" });
+  assert.equal(result.ok, true);
+  const row = supabase.state.board_consequences.find((c) => c.id === "offer-1");
+  assert.equal(row.status, "accepted");
+  assert.ok(row.resolved_at);
+});
+
+test("finalizeBonusOfferAccept is a no-op (already_resolved) on a concurrent second flip", async () => {
+  // #3578: guards a double-accept race (double-click/retry) — second flip must
+  // not silently succeed twice or throw; the credit was already made idempotent
+  // by the caller's idempotency_key, so this is a benign no-op.
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "offer-1", team_id: "team-1", layer: 6, severity: 200_000, status: "active", payload: {} },
+    ],
+  });
+
+  const first = await finalizeBonusOfferAccept({ supabase, offerId: "offer-1" });
+  const second = await finalizeBonusOfferAccept({ supabase, offerId: "offer-1" });
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, false);
+  assert.equal(second.code, "already_resolved");
   assert.equal(supabase.state.board_consequences.find((c) => c.id === "offer-1").status, "accepted");
 });
 
@@ -1017,18 +1064,6 @@ test("declineBonusOffer marks row 'declined'", async () => {
   const result = await declineBonusOffer({ supabase, teamId: "team-1", offerId: "offer-1" });
   assert.equal(result.ok, true);
   assert.equal(supabase.state.board_consequences.find((c) => c.id === "offer-1").status, "declined");
-});
-
-test("acceptBonusOffer returns not_found for already-resolved row", async () => {
-  const supabase = makeFakeSupabase({
-    board_consequences: [
-      { id: "offer-1", team_id: "team-1", layer: 6, status: "declined", payload: {} },
-    ],
-  });
-
-  const result = await acceptBonusOffer({ supabase, teamId: "team-1", offerId: "offer-1" });
-  assert.equal(result.ok, false);
-  assert.equal(result.code, "not_found");
 });
 
 // =====================================================================

@@ -31,7 +31,7 @@
     }
   },
   "page": {
-    "back": "← Tilbage",
+    "back": "Tilbage",
     "notFound": "Rytter ikke fundet",
     "retry": "Prøv igen",
     "loadingAria": "Indlæser rytter"
@@ -109,8 +109,7 @@
       "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
       "activeRest": "Hviler ({focus}-fokus på pause)",
       "effectNote": "opdateres dagligt",
-      "riskNote": "Højere intensitet vokser hurtigst, men har ~{risk}% risiko for tilbageslag der koster en del af sæsonens fremgang.",
-      "noRiskNote": "Let intensitet vokser støt uden risiko for tilbageslag.",
+      "noRiskNote": "Højere intensitet vokser hurtigere, uden risiko for at miste fremgang.",
       "restNote": "Ingen evne-vækst på en hviledag; træthed falder.",
       "emptyFocus": "Vælg et fokus for at tildele træning.",
       "actionErrorGeneric": "Kunne ikke gemme. Prøv igen om lidt.",
@@ -172,12 +171,27 @@
       "potentialOwn": "Potentiale · loft",
       "potentialScouted": "Scoutet loft",
       "valueEyebrow": "Markedsværdi",
+      "popularityEyebrow": "Popularitet",
       "salary": "Løn",
       "contract": "Kontrakt",
       "contractSeason": "Sæson {season}",
       "aiTag": "AI",
       "valueTrend": "{value} seneste {days} dage",
-      "valueTrendTitle": "Værdiændring siden {date}"
+      "valueTrendTitle": "Værdiændring siden {date}",
+      "ratingTrendRising": "Stigende denne sæson",
+      "ratingTrendSteady": "Stabil denne sæson",
+      "ratingTrendDeclining": "Faldende denne sæson",
+      "ratingTrendTitle": "Rating {value} siden {date}"
+    },
+    "levelCorrectionReceipt": {
+      "developmentLine": "Udvikling: ingen ændring fra træning denne uge.",
+      "marketLine": "Marked: engangs niveau-korrektion, alle ryttere. Værdier matcher nu hvad ryttere reelt handles for. Din rytter bliver ikke dårligere.",
+      "detailsToggle": "Vis tal",
+      "detailsHide": "Skjul tal",
+      "anchorBefore": "Værdi før",
+      "anchorAfter": "Værdi efter",
+      "factor": "Korrektionsfaktor",
+      "appliedAt": "Anvendt {date}"
     },
     "banner": {
       "listed": "På transferlisten · pris {price}",
@@ -639,10 +653,9 @@
       "labelDefault": "Auktion",
       "wonBy": "vandt af",
       "buyerFallback": "Ukendt",
+      "buyerFallbackAi": "AI-hold",
       "sellerFallbackAi": "AI-hold",
-      "sellerFallback": "Ukendt",
-      "noSaleTag": "Intet salg",
-      "noSaleBody": "modtog ingen bud (rytteren blev ikke solgt)"
+      "sellerFallback": "Ukendt"
     },
     "transfer": {
       "label": "Transfer",
@@ -844,6 +857,7 @@
     "scouting": "Scouter…",
     "scoutTitle": "Send din spejder ud for at skærpe rytterens potentiale-estimat. Hvor meget skarpere det bliver afhænger af din spejders rating",
     "noSlots": "Ingen scout-slots tilbage i denne sæson",
+    "levelUseless": "Din chefspejder har nået sin egen præcisionsgrænse: endnu et niveau ville ikke indsnævre estimatet",
     "levelTitle": "Scout-niveau. Højere er mere præcist, op til din egen spejders præcisionsgrænse",
     "potentialBandTitle": "Potentiale som {role}: han kan nå {lo}-{hi}. Altid et interval, ingen spejder kender en rytter præcist.",
     "notScouted": "Ikke scoutet",

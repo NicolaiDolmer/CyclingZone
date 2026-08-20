@@ -31,7 +31,7 @@
     }
   },
   "page": {
-    "back": "← Back",
+    "back": "Back",
     "notFound": "Rider not found",
     "retry": "Try again",
     "loadingAria": "Loading rider"
@@ -109,8 +109,7 @@
       "active": "Active: {focus} · {intensity} · trains {abilities}",
       "activeRest": "Resting ({focus} focus paused)",
       "effectNote": "updates daily",
-      "riskNote": "Higher intensity grows fastest, but carries ~{risk}% risk of a setback that costs part of the season's progress.",
-      "noRiskNote": "Easy intensity grows steadily with no setback risk.",
+      "noRiskNote": "Higher intensity grows faster, with no risk of losing progress.",
       "restNote": "No ability growth on a rest day; fatigue recovers.",
       "emptyFocus": "Pick a focus to assign training.",
       "actionErrorGeneric": "Could not save. Try again in a moment.",
@@ -172,12 +171,27 @@
       "potentialOwn": "Potential · ceiling",
       "potentialScouted": "Scouted ceiling",
       "valueEyebrow": "Market value",
+      "popularityEyebrow": "Popularity",
       "salary": "Salary",
       "contract": "Contract",
       "contractSeason": "Season {season}",
       "aiTag": "AI",
       "valueTrend": "{value} last {days} days",
-      "valueTrendTitle": "Value change since {date}"
+      "valueTrendTitle": "Value change since {date}",
+      "ratingTrendRising": "Rising this season",
+      "ratingTrendSteady": "Steady this season",
+      "ratingTrendDeclining": "Declining this season",
+      "ratingTrendTitle": "Rating {value} since {date}"
+    },
+    "levelCorrectionReceipt": {
+      "developmentLine": "Development: no change from training this week.",
+      "marketLine": "Market: one-time level adjustment, all riders. Values now match what riders actually trade for. Your rider is not getting worse.",
+      "detailsToggle": "Show numbers",
+      "detailsHide": "Hide numbers",
+      "anchorBefore": "Value before",
+      "anchorAfter": "Value after",
+      "factor": "Correction factor",
+      "appliedAt": "Applied {date}"
     },
     "banner": {
       "listed": "On the transfer list · price {price}",
@@ -639,10 +653,9 @@
       "labelDefault": "Auction",
       "wonBy": "won from",
       "buyerFallback": "Unknown",
+      "buyerFallbackAi": "AI team",
       "sellerFallbackAi": "AI team",
-      "sellerFallback": "Unknown",
-      "noSaleTag": "No sale",
-      "noSaleBody": "received no bids (the rider was not sold)"
+      "sellerFallback": "Unknown"
     },
     "transfer": {
       "label": "Transfer",
@@ -844,6 +857,7 @@
     "scouting": "Scouting…",
     "scoutTitle": "Send your scout to sharpen this rider's potential estimate. How much sharper it gets depends on your scout's rating",
     "noSlots": "No scout slots left this season",
+    "levelUseless": "Your chief scout has reached his own precision limit: another level would not narrow the estimate",
     "levelTitle": "Scouting level. Higher is more precise, up to your own scout's precision limit",
     "potentialBandTitle": "Potential as {role}: he can reach {lo}-{hi}. Always a range, no scout knows a rider exactly.",
     "notScouted": "Not scouted",

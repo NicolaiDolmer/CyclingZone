@@ -68,40 +68,65 @@ test("pickDocumentaryText: row with no deterministic data returns empty paragrap
 
 const t = (key) => {
   const map = {
-    "documentary.card.signing": "Signing",
-    "documentary.card.result": "Result",
-    "documentary.card.rival": "Rival",
-    "documentary.card.points": "points",
+    "documentary.card.turningPoint": "Turning point",
+    "documentary.card.result": "Biggest result",
+    "documentary.card.rival": "Closest rival",
+    "documentary.card.pts": "pts",
     "documentary.card.finalPoints": "Final points",
   };
   return map[key] || key;
 };
 const formatNumber = (n) => String(n);
 
-test("buildDocumentaryCardStats: builds up to 4 rows from full facts", () => {
+test("buildDocumentaryCardStats: builds exactly 4 rows in the fixed order (turning point, biggest result, closest rival, final points)", () => {
   const facts = {
-    signings: [{ riderName: "Rider One", amount: 50000 }],
+    bestRaceDay: { race_id: "r1", race_name: "Tour de Test", total_points: 482, riders_scoring: 3 },
     biggestResult: { rider_name: "Rider One", race_name: "Tour de Test" },
-    rival: { team_name: "Rival FC", gap: 12 },
+    rival: { team_name: "Rival FC", total_points: 900, gap: 12 },
     myStanding: { total_points: 999 },
   };
-  const rows = buildDocumentaryCardStats(facts, formatNumber, t);
+  const rows = buildDocumentaryCardStats(facts, null, formatNumber, t);
   assert.equal(rows.length, 4);
-  assert.equal(rows[0].label, "Signing");
-  assert.match(rows[0].value, /Rider One/);
+  assert.equal(rows[0].label, "Turning point");
+  assert.equal(rows[0].value, "482 pts · Tour de Test");
+  assert.equal(rows[1].label, "Biggest result");
+  assert.match(rows[1].value, /Rider One/);
+  assert.equal(rows[2].label, "Closest rival");
   assert.equal(rows[3].label, "Final points");
+  assert.equal(rows[3].value, "999");
+});
+
+test("buildDocumentaryCardStats: turning point value prefers a formatted date over the race name when given", () => {
+  const facts = { bestRaceDay: { race_id: "r1", race_name: "Tour de Test", total_points: 200, riders_scoring: 2 } };
+  const rows = buildDocumentaryCardStats(facts, null, formatNumber, t, { turningPointDateLabel: "12 Aug" });
+  assert.equal(rows[0].value, "200 pts · 12 Aug");
+});
+
+test("buildDocumentaryCardStats: closest rival sign reflects whether I'm ahead or behind", () => {
+  const aheadFacts = { rival: { team_name: "Rival FC", total_points: 500, gap: 40 }, myStanding: { total_points: 540 } };
+  const aheadRows = buildDocumentaryCardStats(aheadFacts, null, formatNumber, t);
+  assert.match(aheadRows.find((r) => r.label === "Closest rival").value, /\+40$/);
+
+  const behindFacts = { rival: { team_name: "Rival FC", total_points: 700, gap: 40 }, myStanding: { total_points: 660 } };
+  const behindRows = buildDocumentaryCardStats(behindFacts, null, formatNumber, t);
+  assert.match(behindRows.find((r) => r.label === "Closest rival").value, /-40$/);
+});
+
+test("buildDocumentaryCardStats: final points falls back to standingsRow when facts.myStanding is missing", () => {
+  const rows = buildDocumentaryCardStats({}, { total_points: 321 }, formatNumber, t);
+  assert.deepEqual(rows, [{ label: "Final points", value: "321" }]);
 });
 
 test("buildDocumentaryCardStats: skips missing facts instead of rendering placeholders", () => {
   const facts = { myStanding: { total_points: 100 } };
-  const rows = buildDocumentaryCardStats(facts, formatNumber, t);
+  const rows = buildDocumentaryCardStats(facts, null, formatNumber, t);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].label, "Final points");
 });
 
-test("buildDocumentaryCardStats: empty facts returns empty array, never throws", () => {
-  const rows = buildDocumentaryCardStats({}, formatNumber, t);
+test("buildDocumentaryCardStats: empty facts and no standingsRow returns empty array, never throws", () => {
+  const rows = buildDocumentaryCardStats({}, null, formatNumber, t);
   assert.deepEqual(rows, []);
-  const rowsNull = buildDocumentaryCardStats(null, formatNumber, t);
+  const rowsNull = buildDocumentaryCardStats(null, null, formatNumber, t);
   assert.deepEqual(rowsNull, []);
 });

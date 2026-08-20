@@ -15,7 +15,7 @@
 
 import { useTranslation } from "react-i18next";
 import TeamLink from "../../TeamLink";
-import { StarIcon, EyeIcon, SearchIcon } from "../../ui";
+import { StarIcon, EyeIcon, SearchIcon, SkeletonLines } from "../../ui";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
 function TrendSub({ pct, t }) {
@@ -43,8 +43,8 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
   // role="status": gyldig aria-label + skærmlæser-annoncering af load-tilstanden.
   if (interest == null) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 flex items-center justify-center py-10">
-        <div role="status" className="w-5 h-5 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" aria-label={t("profile.interest.loading")} />
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5" role="status" aria-label={t("profile.interest.loading")}>
+        <SkeletonLines lines={4} />
       </div>
     );
   }

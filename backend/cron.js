@@ -72,6 +72,8 @@ import { runDeferredTransferHealSweep } from "./lib/deferredTransferHealSweep.js
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
+import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
+import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
@@ -79,6 +81,7 @@ import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; /
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
+import { processEmailRetryDrain } from "./lib/emailRetrySweep.js"; // #3600
 import { runDiscordRaceDigestSweep } from "./lib/discordRaceDigestSweep.js"; // #3400
 import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // #3402
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
@@ -325,6 +328,11 @@ async function runBoardAutoAcceptCron() {
       console.log(
         `🪑 Board auto-accept: ${result.teams_checked} hold tjekket — ${result.reminders_sent} reminders, ${result.auto_accepted} auto-accepted, ${result.errors} fejl`
       );
+    } else {
+      // #3587: heartbeat ved 0 handlinger — ellers ser "kører fint, intet at
+      // gøre" identisk ud med "kører ikke" i Railway-loggen (samme blinde
+      // vinkel som #3502). Billig linje pr. 30. minut, matcher mid-season-mønstret.
+      console.log(`🪑 Board auto-accept: ${result.teams_checked} hold tjekket — intet at gøre`);
     }
   } catch (err) {
     // #2389 A2: den ydre catch sluger top-level-fejl (window/season/teams-queries)
@@ -787,6 +795,26 @@ async function runRaceEntryGeneratorSweepCron() {
       extra: { errors: result.errors, seasonId: result.seasonId },
     });
   }
+  // #3415 rod-årsag: binding-invariant-vagten (nedenfor) kørte kun hver 24. time, mens
+  // DENNE sweep — den ENESTE proces der proaktivt skriver race_entries og dermed kan
+  // introducere ELLER fjerne et binding-brud — kører hver TIME. #3185's lukkekriterie
+  // ("15 ticks i træk med count=4, actionable=0") målte derfor 15 DAGE ved en vagt-
+  // kadence der reelt havde brug for time-opløsning: prod 11/8 viste 14 levende par
+  // kl. 15:22 og 0 kl. 21:43, ren funktion af sweep-kørslen kl. 20:45 — en oscillation
+  // vagtens egen 24h-cyklus strukturelt ikke kunne have fanget. Kæd derfor vagten
+  // DIREKTE efter enhver sweep-kørsel der rent faktisk skrev noget (insert ELLER
+  // delete — begge kan ændre binding-tilstanden), så vagtens sample-rate matcher den
+  // proces den overvåger. Den uafhængige 24h+boot-run-planlægning nedenfor bevares
+  // uændret som bagstopper (fanger fx en manuel manager-gem der aldrig rammer sweepen).
+  // Best-effort: en fejl her må ALDRIG vælte selve entry-generator-tick'et.
+  if (result.ran && ((result.inserted ?? 0) > 0 || (result.removed ?? 0) > 0)) {
+    try {
+      await runRiderDoubleBookingWatchCron();
+    } catch (err) {
+      console.error("Cron error (rider-double-booking-watch, post-sweep):", err.message);
+      sentryCapture(err, { tags: { cron: "rider-double-booking-watch-post-sweep" } });
+    }
+  }
 }
 
 // ─── Akademi-intake-udløb (#2627) ─────────────────────────────────────────────
@@ -810,6 +838,11 @@ async function runIntakeOfferExpirySweepCron() {
 // idempotent, så timelig polling + boot-run er sikre.
 async function runSundayIntakeTickCron() {
   try {
+    // #3550 (ejer-beslutning 19/8): pull-mekanikken erstatter det løbende drip —
+    // når flaget flippes til "on" i cutover-drejebogen, bliver denne cron en no-op
+    // og holdene henter i stedet selv via POST /api/academy/intake/pull. Fail-safe
+    // OFF (seedet), så uændret adfærd indtil flippet (punkt 7).
+    if (await isAcademyIntakePullEnabled(supabase)) return;
     const r = await runSundayIntakeTick({ supabase, now: new Date() });
     if (r.ran && r.candidates > 0) {
       console.log(`🎓 Søndags-drip: ${r.candidates} akademi-kandidater til ${r.teams} hold (${r.tickDate})`);
@@ -823,6 +856,21 @@ async function runSundayIntakeTickCron() {
   } catch (err) {
     console.error("Cron error (sunday intake drip):", err.message);
     sentryCapture(err, { tags: { cron: "sunday intake drip" } });
+  }
+}
+
+// ─── Niveau-korrektionens søndags-gate (#3449/#3750) ───────────────────────────
+// Ren MÅLING — skriver ALDRIG riders.market_value (se marketValueLevelCorrectionGate.js's
+// header). Selv-gated (søndag + claim-dedup), så timelig polling + boot-run er sikre.
+async function runMarketValueLevelCorrectionGateSweepCron() {
+  try {
+    const r = await runMarketValueLevelCorrectionGateSweep({ supabase, now: new Date() });
+    if (r.ran) {
+      console.log(`📐 Niveau-korrektions-gate: ${r.status?.toUpperCase()} (${r.reason}) — n90=${r.n90}, median90=${r.median90?.toFixed(3) ?? "n/a"}`);
+    }
+  } catch (err) {
+    console.error("Cron error (market-value-level-correction-gate):", err.message);
+    sentryCapture(err, { tags: { cron: "market-value-level-correction-gate" } });
   }
 }
 
@@ -1047,6 +1095,12 @@ async function runOwnershipInvariantWatchCron() {
 // fanger et brud uanset hvilken kodevej der måtte introducere det næste gang.
 // Reparerer INTET — alarmerer.
 
+// #3415: par-niveau-formatering til churn-loggen — samme "rytter i løb A + løb B"-form
+// begge veje (opstået/resolveret), så Railway-loggen kan læses direkte uden opslag.
+function formatChurnPair(c) {
+  return `rytter ${c.riderId} (hold ${c.teamId}) i "${c.raceA}" + "${c.raceB}"`;
+}
+
 async function runRiderDoubleBookingWatchCron() {
   const result = await runRiderDoubleBookingWatch({ supabase, captureExceptionFn: sentryCapture });
   if (result.alerted) {
@@ -1060,6 +1114,23 @@ async function runRiderDoubleBookingWatchCron() {
     console.log(
       `ℹ️  Binding-invariant-vagt: 0 aktive brud, ${result.historical} historiske par ` +
       `(begge løb afviklet) alarmerer ikke (#3113)`
+    );
+  }
+  // #3415: churn er UAFHÆNGIGT af alarm-tilstanden — et par kan opstå og forsvinde
+  // uden at nogen af de to grene ovenfor kører (fx alerted=false fordi resolutionen
+  // allerede skete FØR dette tick). Logges altid der er noget at se, ellers ingenting
+  // (issuets kerneklage var netop at forsvinden var usynlig: "bruddene forsvandt uden
+  // spor" — 0 Sentry-signal, 0 log-linje).
+  if (result.appeared?.length) {
+    console.error(
+      `🆕 Binding-invariant-vagt: ${result.appeared.length} par OPSTÅET siden sidste tjek — ` +
+      result.appeared.map(formatChurnPair).join("; ")
+    );
+  }
+  if (result.resolved?.length) {
+    console.log(
+      `✅ Binding-invariant-vagt: ${result.resolved.length} par RESOLVERET siden sidste tjek — ` +
+      result.resolved.map(formatChurnPair).join("; ")
     );
   }
 }
@@ -1083,6 +1154,17 @@ async function runEmailDay1SweepCron() {
 async function runEmailRaceDigestSweepCron() {
   const r = await runEmailRaceDigestSweep({ supabase, now: new Date() });
   if (r.sent) console.log(`✉️  Email-race-digest: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
+}
+
+// #3600 — retry af Resend-sends der fejlede med en retryable fejl
+// (5xx/rate-limit/netværk). Samme mønster som Discord DM-/webhook-outbox
+// (#1115/#3545): dormant sammen med resten af e-mail-loopet (no-op mens
+// email_loop_enabled ikke er "on"), så den er sikker at have kørende.
+async function runEmailRetryDrainCron() {
+  const r = await processEmailRetryDrain({ supabase, now: new Date() });
+  if (r.processed) {
+    console.log(`✉️  Email retry-drain: ${r.processed} behandlet — ${r.sent} sendt, ${r.rescheduled} replanlagt, ${r.dead} opgivet`);
+  }
 }
 
 // #3400: Discord-DM-digest for race_result/stage_result (max 1/manager/dag,
@@ -1486,6 +1568,14 @@ export function startCron() {
   // (den forventer succes hvert vindue; denne tick er bevidst søndags-only).
   setInterval(trackedTick("sunday-intake-drip", runSundayIntakeTickCron), 60 * 60 * 1000);
 
+  // Every 60 minutes: niveau-korrektionens søndags-gate (#3449/#3750) — modulet
+  // er selv søndags-gated + claim-idempotent (måle-dedup pr. dato), samme
+  // begrundelse som sunday-intake-drip ovenfor. Ren måling, ingen mutation.
+  setInterval(
+    trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
+
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
   // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
@@ -1510,6 +1600,12 @@ export function startCron() {
   setInterval(
     trackedTick("email-race-digest sweep", monitorCron("email-race-digest", runEmailRaceDigestSweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
+  );
+  // #3600 — retry-drain for fejlede sends, samme 5-min-kadence som Discords
+  // DM-/webhook-outbox-drains.
+  setInterval(
+    trackedTick("email retry-drain", monitorCron("email-retry-drain", runEmailRetryDrainCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
   );
   setInterval(
     trackedTick("discord-race-digest sweep", monitorCron("discord-race-digest", runDiscordRaceDigestSweepCron, CRON_MONITOR_60MIN)),
@@ -1545,6 +1641,13 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // #3448 — markedsdrevet værdi-eftersyn har BEVIDST ingen selvstændig tick her.
+  // Den køres som sidste skridt i søndagens værdi-pipeline inde i
+  // trainingSweep.js (efter refreshChangedRiderValues), fordi en uafhængig
+  // timeligt tick tidligere på søndagen ville få kl.-22-v4-refresh'en til at
+  // skrive markedsblendet væk igen. Se marketValueSundaySweep.js's
+  // "RÆKKEFØLGE PÅ SØNDAGE" og trainingSweep.js's kald.
+
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
@@ -1553,6 +1656,9 @@ export function startCron() {
   trackedTick("discord bot-token check", runDiscordBotTokenCheck)();
   trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain)();
   trackedTick("discord webhook-outbox drain", runDiscordWebhookOutboxDrain)();
+  // #3600: safe boot-run — no-op unless email_loop_enabled is "on" (dormant
+  // in prod today), and idempotent when it is (dedupe_key stays unique).
+  trackedTick("email retry-drain", runEmailRetryDrainCron)();
   // #2375: kør entry-generatoren straks ved boot, så et deploy fylder mid-sæson-
   // genskabte 0-entry-løb med det samme frem for at vente op til en time.
   trackedTick("entry-generator sweep", runRaceEntryGeneratorSweepCron)();
@@ -1587,6 +1693,7 @@ export function startCron() {
   // gør 24h-monitoren ærlig uden risiko for dubletter eller støj.
   trackedTick("fairplay scoring-sweep", runFairplayScoringCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
+  trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN))(); // boot-run: samme, ren måling
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

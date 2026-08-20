@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams } from "react-router";
 import ActivityPage from "./ActivityPage.jsx";
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
+import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink } from "../lib/notificationLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -508,7 +510,7 @@ export default function NotificationsPage() {
               {tt.label}
               {tt.badge > 0 && (
                 <span className="px-1.5 py-0.5 text-xs font-bold rounded-cz-pill bg-cz-accent text-cz-on-accent leading-none">
-                  {tt.badge > 9 ? "9+" : tt.badge}
+                  {formatNavBadgeCount(tt.badge)}
                 </span>
               )}
             </Tab>
@@ -735,7 +737,7 @@ export default function NotificationsPage() {
         // #3104 etape C: hele markeds-handlingscentret (egne under-faner +
         // refresh) som fane-indhold — samme mønster som RacePointsPage i
         // Resultat-hubben (#3102 etape 2).
-        <ActivityPage />
+        <I18nReadyGate ns="activity"><ActivityPage /></I18nReadyGate>
       ) : (
         <>
           {/* Ligaen — feed-filter, samme idiom (ui/Select) som Mine-fanen ovenfor. */}

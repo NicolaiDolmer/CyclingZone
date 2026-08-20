@@ -449,8 +449,11 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
   // salary + contract_length + contract_end_season — allokeringen må aldrig igen
   // regne ud i team_id-only og efterlade kontrakt-felterne NULL.
   for (const u of teamIdUpdates) {
-    assert.ok(u.contract_length >= 1 && u.contract_length <= 3, `contract_length ${u.contract_length} ude af 1-3`);
+    // #3037: start-kontrakter må ALDRIG have length 1 — de skal overleve den
+    // sæson holdet allokeres i, ellers frigives rytterne ved næste sæsonovergang.
+    assert.ok(u.contract_length >= 2 && u.contract_length <= 3, `contract_length ${u.contract_length} ude af 2-3 (#3037: min. 2)`);
     assert.equal(u.contract_end_season, ACTIVE_SEASON + u.contract_length - 1, "end = aktiv sæson + length - 1 (aldrig hardcodet sæson 1)");
+    assert.ok(u.contract_end_season > ACTIVE_SEASON, "#3037: contract_end_season > aktiv sæson (overlever allokerings-sæsonens slut)");
     const expectedSalary = computeFrozenSalary({ current_production_value: 40000, division: teamDivisions[u.team_id] });
     assert.equal(u.salary, expectedSalary, `salary matcher computeFrozenSalary for hold ${u.team_id}s division`);
     assert.ok(u.salary > 0, "salary aldrig 0/NULL");
@@ -512,9 +515,12 @@ test("#2894/#2902 single-team: allokering sætter salary + contract_length + con
   assert.equal(riders.length, STARTER_SQUAD.TOTAL_SIZE);
   for (const r of riders) {
     assert.ok(r.salary != null && r.salary > 0, `rytter ${r.id} mangler salary`);
-    assert.ok(r.contract_length >= 1 && r.contract_length <= 3, `rytter ${r.id} contract_length ${r.contract_length} ude af 1-3`);
+    // #3037: start-kontrakter må ALDRIG have length 1 — signup sent i sæsonen må
+    // ikke give en kontrakt der udløber ved den næste sæsonovergang.
+    assert.ok(r.contract_length >= 2 && r.contract_length <= 3, `rytter ${r.id} contract_length ${r.contract_length} ude af 2-3 (#3037: min. 2)`);
     assert.equal(r.contract_end_season, ACTIVE_SEASON + r.contract_length - 1,
       `rytter ${r.id} contract_end_season skal følge den AKTIVE sæson (${ACTIVE_SEASON}), ikke en hardcodet sæson 1`);
+    assert.ok(r.contract_end_season > ACTIVE_SEASON, `rytter ${r.id} #3037: contract_end_season skal være > aktiv sæson (${ACTIVE_SEASON})`);
     const expectedSalary = computeFrozenSalary({ current_production_value: r.current_production_value, division: 2 });
     assert.equal(r.salary, expectedSalary, `rytter ${r.id} salary matcher computeFrozenSalary (division 2)`);
   }

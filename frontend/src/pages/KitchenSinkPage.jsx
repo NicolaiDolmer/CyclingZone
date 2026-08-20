@@ -12,6 +12,7 @@ import {
   ChevronRightIcon, TrophyIcon, InboxIcon,
 } from "../components/ui/index.js";
 import * as Icons from "../components/ui/icons/index.jsx";
+import { statStyle, statPlateStyle } from "../lib/statColor.js";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 
 // Hele ikon-saettet, alfabetisk (module-namespace -> sorterede noegler = stabilt snapshot).
@@ -30,9 +31,9 @@ function Boom() {
   throw new Error("Kitchen-sink forced render error (error-boundary demo)");
 }
 
-function Section({ title, children }) {
+function Section({ title, children, testId }) {
   return (
-    <section className="mb-12">
+    <section className="mb-12" data-testid={testId}>
       <h2 className="mb-5 inline-block border-t-2 border-cz-accent pt-3 font-display text-2xl tracking-[.02em] text-cz-1">
         {title}
       </h2>
@@ -75,6 +76,27 @@ export default function KitchenSinkPage() {
         <StatusBadge state="won">Won</StatusBadge>
         <StatusBadge state="outbid">Outbid</StatusBadge>
         <StatusBadge state="closing" emphasis>Closing 0:14</StatusBadge>
+      </Section>
+
+      {/* #3684: farve-dækningens ANKER. Side-snapshottene (core-smoke m.fl.) masker
+          alle tekstbærende tags, og masken maler HELE elementets boks — så rating-
+          plader og evne-chips kan aldrig fejle en pixel-diff dér. Kitchen-sink-
+          snapshottet er umaskeret (maxDiffPixelRatio 0.02), så denne sektion er det
+          ENE sted en tabt fyldfarve, en forkert flyttet rampe eller manglende
+          kontrast-blæk brækker en snapshot-gate. Faste værdier hen over rampen;
+          markup spejler RidersPage' celler 1:1. */}
+      <Section title="Stat colours (#3684)" testId="stat-colours">
+        {[8, 25, 45, 65, 85, 99].map((v) => (
+          <span key={`plate-${v}`} className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+            style={statPlateStyle(v)}>
+            {v}
+          </span>
+        ))}
+        {[8, 25, 45, 65, 85, 99].map((v) => (
+          <span key={`chip-${v}`} className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(v)}>
+            {v}
+          </span>
+        ))}
       </Section>
 
       <Section title="Category tags">

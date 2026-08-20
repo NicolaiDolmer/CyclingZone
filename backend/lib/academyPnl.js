@@ -12,6 +12,16 @@
 // sælges på almindelig auktion eller transfermarkedet UDEN at gå gennem
 // graduering). Salgs-poolen er nu ALLE nogensinde signede academy_intake-rækker
 // for holdet, matchet mod gennemførte auktioner/transfers.
+//
+// #3845 (17/8, "akademi-ryttere kan listes direkte") lukkede sidste hul: en
+// akademi-rytter kan nu SÆLGES uden først at være promoveret til senior — han
+// er stadig is_academy=true på oprettelsestidspunktet, og graduerer atomisk
+// ved handlens gennemførelse (auctionFinalization.js/transferExecution.js's
+// graduatePatch). Kræver INGEN ændring her: matchingen nedenfor er allerede
+// is_academy-agnostisk (kun rider_id ∈ nogensinde-signede academy_intake +
+// completed auction/accepted transfer), og en direkte akademi-auktion får
+// samme is_youth=false-default som enhver anden senior-auktion (POST
+// /auctions sætter den ikke eksplicit). Se academyPnl.test.js.
 
 /**
  * Nuværende akademi-trup: run-rate løn + pladser brugt. Et øjebliksbillede,

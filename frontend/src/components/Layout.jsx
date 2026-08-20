@@ -8,6 +8,7 @@ import SetupWizardModal from "./SetupWizardModal";
 // skal ikke belaste hovedbundlet (perf-gate: 888 KB > 885 KB-loftet uden lazy).
 const FeedbackModal = lazy(() => import("./FeedbackModal"));
 import MobileQuickNav from "./MobileQuickNav";
+import RaceControlBanner from "./RaceControlBanner";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
@@ -54,7 +55,10 @@ const API = import.meta.env.VITE_API_URL;
 // (T2-recipe, sticky navnekolonne) og var fejlagtigt fanget i shellens
 // max-w-6xl selvom sidens egen container allerede stod på max-w-[1600px]
 // (samme fejlklasse som #1675/#1186/#2446 — se PAGE_TEMPLATES.md).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/academy"]);
+// #3858: "/race-centre" er en T2 wide data-side (sendefladen skal have plads til
+// tre kort-kolonner) — den capper selv på 1600px, shellen må bare ikke klemme
+// den ned i max-w-6xl.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/race-centre", "/academy"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -173,6 +177,9 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       // genvejene (holdudtagelse, kalender) er flyttet til Planlægning ovenfor.
       key: "resultater", label: t("nav.group.resultater"),
       items: [
+        // #3858: Race Centre er dagens sendeflade og står ØVERST i gruppen —
+        // "hvad sker der lige nu" kommer før "hvad er sket".
+        { to: "/race-centre",    label: t("nav.item.raceCentre") },
         { to: "/resultater",     label: t("nav.item.results") },
         // #3102 etape 3: "Løb"-punktet udgik — /races er opløst (kalenderen bor
         // i Planlægnings-hubben, verdens-kataloget + de afsluttede løb i
@@ -266,19 +273,26 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       <button
         onClick={() => navigate("/dashboard")}
         aria-label="Cycling Zone"
-        className="flex items-center gap-2.5 px-4 py-4 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
+        className="flex items-center px-4 py-6 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
         {/* #671 Slice B: wordmark = primaer brand-mark (BRAND_BRIEF). Det redundante
             CZ-monogram er fjernet — monogram + wordmark + team-navn var tre identitets-
             elementer i samme hjoerne. Sidebar-canvas altid navy → forceDark wordmark.
-            Bredere nav-header/IA-restructure spores i #1027. */}
-        <div className="min-w-0">
-          <Wordmark forceDark className="h-5 w-auto" alt="" />
-          <div className="flex items-center gap-1.5 mt-1">
-            <p className="text-cz-sidebar-3 text-3xs truncate">{team?.name || "…"}</p>
-            {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
-                plain Pro-badge kræver stadig aktiv Pro. */}
-            {(isPro || isFounder) && <ProBadge isFounder={isFounder} />}
-          </div>
+            #2181: holdnavnet er fjernet fra dette hjørne (det står andre steder på
+            siden). Ejer-godkendt variant A (18/8): wordmarket fylder headeren i
+            stedet for kun at sidde i hjørnet — skaleret til kolonnens fulde
+            indholdsbredde (w-full/h-auto, ikke den gamle faste h-5) minus normal
+            kant-padding (~3x tidligere størrelse), venstrestillet så det flugter
+            med nav-punkternes indryk, med ekstra lodret luft (py-6) så headeren
+            får vægt. Bredere nav-header/IA-restructure spores i #1027. */}
+        <div className="w-full min-w-0">
+          <Wordmark forceDark className="w-full h-auto" alt="" />
+          {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
+              plain Pro-badge kræver stadig aktiv Pro. */}
+          {(isPro || isFounder) && (
+            <div className="mt-2">
+              <ProBadge isFounder={isFounder} />
+            </div>
+          )}
         </div>
       </button>
 
@@ -656,6 +670,11 @@ export default function Layout() {
           horizontal overflow + shrink-to-fit-skalering → klikpunkter rammer
           nabolayout (#1872). */}
       <main className="flex-1 min-w-0 md:ms-52 min-h-screen">
+        {/* #3941 — Race Control driftsbanner: øverst på ALLE manager-sider, under
+            den (mobile) top-nav og over den paddede indholds-wrapper. Renderer
+            intet når der ingen aktive ops_notices er (fetch fejler stille). */}
+        <RaceControlBanner />
+
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">

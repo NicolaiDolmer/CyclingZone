@@ -43,7 +43,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ── Backend-kilder ───────────────────────────────────────────────────────────
-import { TRAINING_FOCUSES, TRAINING_CONFIG } from "./training.js";
+import { TRAINING_FOCUSES } from "./training.js";
 import { BREAKAWAY_BONUS } from "./raceSimulator.js";
 import { PROFILE_TYPES, FINALE_TYPES, DEMAND_VECTORS, ABILITY_DIMENSIONS } from "./raceStageProfileGenerator.js";
 import { RIDER_TYPE_KEYS as BACKEND_RIDER_TYPE_KEYS } from "./riderTypes.js";
@@ -52,7 +52,7 @@ import { computeIsPro as backendComputeIsPro, SUBSCRIPTION_ACTIVE_STATUSES } fro
 import * as backendNameSearch from "./riderNameSearch.js";
 
 // ── Frontend-kopier (afhængighedslette moduler) ──────────────────────────────
-import { TRAINING_FOCUS_ABILITIES, TRAINING_SETBACK_PCT } from "../../frontend/src/lib/training.js";
+import { TRAINING_FOCUS_ABILITIES } from "../../frontend/src/lib/training.js";
 import { BREAKAWAY_STRENGTH, strengthFromBonus } from "../../frontend/src/lib/roleHint.js";
 import { TACTICAL_DEMAND } from "../../frontend/src/lib/selectionDrivers.js";
 import { SUITABILITY_ABILITY_KEYS } from "../../frontend/src/lib/suitability.js";
@@ -109,19 +109,6 @@ test("#3681 · TRAINING_FOCUS_ABILITIES (frontend) matcher TRAINING_FOCUSES (bac
     JSON.parse(JSON.stringify(TRAINING_FOCUS_ABILITIES)),
     JSON.parse(JSON.stringify(TRAINING_FOCUSES)),
     "frontend/src/lib/training.js TRAINING_FOCUS_ABILITIES skal være identisk med backend/lib/training.js TRAINING_FOCUSES",
-  );
-});
-
-// frontend/src/lib/training.js:23 lover "spejler backend setbackChance, i procent".
-test("#3681 · TRAINING_SETBACK_PCT er backendens setbackChance × 100", () => {
-  const expected = {};
-  for (const [intensity, chance] of Object.entries(TRAINING_CONFIG.setbackChance)) {
-    expected[intensity] = Math.round(chance * 100);
-  }
-  assert.deepEqual(
-    { ...TRAINING_SETBACK_PCT },
-    expected,
-    "frontend/src/lib/training.js TRAINING_SETBACK_PCT skal være TRAINING_CONFIG.setbackChance × 100 (backend/lib/training.js)",
   );
 });
 

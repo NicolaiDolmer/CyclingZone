@@ -535,6 +535,49 @@
     "bodyOneDay": "{race} venter forude. Vælg dine ryttere, kaptajn og taktik inden start.",
     "action": "Sæt din opstilling"
   },
+  "raceCentre": {
+    "title": "Løbscenter",
+    "subtitle": "Dagens løb, fra første nedtælling til sidste resultat.",
+    "navLabel": "Løbscenter",
+    "stageLabel": "Etape {number} af {total}",
+    "oneDayLabel": "Endagsløb",
+    "divisionLabel": "Div {tier} pulje {pool}",
+    "state": {
+      "live": "Live",
+      "upcoming": "Kommende",
+      "finished": "Afsluttet"
+    },
+    "card": {
+      "yourRider": "Din rytter",
+      "yourBest": "Din bedste: {rank} {rider}",
+      "liveNoFilm": "Etapen er i gang. Resultaterne kommer, så snart rytterne krydser stregen.",
+      "playbackProgress": "Etapens afspilning",
+      "lineupReady": "Opstillingen er klar, {selected} af {max} ryttere valgt.",
+      "lineupIncomplete": "Opstillingen mangler, {selected} af {max} ryttere valgt.",
+      "lineupUnknown": "Opstillings-status er ikke tilgængelig for dette løb.",
+      "noResults": "Der er endnu ikke offentliggjort resultater for denne etape."
+    },
+    "action": {
+      "watchLive": "Se live",
+      "reviewTactics": "Gennemgå taktik",
+      "watchFilm": "Se løbsfilmen",
+      "fullResult": "Fuldt resultat",
+      "viewRace": "Se løbet"
+    },
+    "yours": {
+      "title": "Dine løb i dag",
+      "emptyTitle": "Ingen løb for dit hold i dag",
+      "emptyBody": "Din næste løbsdag står i kalenderen. Gå til planlægningen og sæt truppen op."
+    },
+    "divisions": {
+      "title": "Rundt i divisionerne"
+    },
+    "error": {
+      "title": "Dagens løb kunne ikke hentes",
+      "body": "Intet gik tabt. Dine opstillinger og resultater er sikre.",
+      "retry": "Prøv igen"
+    }
+  },
   "detail": {
     "loadError": {
       "message": "Løbet kunne ikke indlæses. Intet gik tabt. Prøv igen.",
@@ -614,6 +657,7 @@
     "team": {
       "winner": "Vinder"
     },
+    "youBadge": "Dig",
     "finalKm": {
       "title": "Den sidste kilometer",
       "replay": "Afspil igen",
@@ -627,6 +671,36 @@
         "sprint_win": "Massespurt",
         "close_win": "Tæt finish",
         "solo_win": "Solosejr"
+      }
+    },
+    "film": {
+      "storyTitle": "Etapens historie",
+      "watchButton": "Se løbsfilmen",
+      "title": "Løbsfilm",
+      "km": "km {value}",
+      "gapCurveTitle": "Forspring til feltet",
+      "scrubberLabel": "Scrub gennem etapen",
+      "replay": "Afspil igen",
+      "play": "Afspil",
+      "pause": "Pause",
+      "feedEmpty": "Scrub fremad for at se hvad der skete.",
+      "event": {
+        "stage_start": "{count} ryttere ruller ud på {distance} km.",
+        "breakaway_formed": "{riders} rykker væk fra feltet.",
+        "kom_passage": "{name} (kat. {category}): {rider} fører over toppen.",
+        "intermediate_sprint": "{name}: {rider} tager mellemsprinten.",
+        "breakaway_caught": "{riders} bliver indhentet af feltet.",
+        "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
+        "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
+        "favorite_crack": "{rider} sprækker og mister kontakten til front.",
+        "finale_attack": "{rider} angriber i finalen.",
+        "sprint_decided": "Det bliver tæt mellem {rider} og forfølgerne.",
+        "sprint_decided_photo": "Fotofinish: det er tæt for {rider}.",
+        "finish": "{rider} tager etapesejren.",
+        "finish_sprint_win": "{rider} vinder massespurten.",
+        "finish_close_win": "{rider} vinder en tæt finish.",
+        "finish_solo_win": "{rider} soloer til etapesejr.",
+        "gc_change": "{rider} overtager den samlede føring fra {previousLeader}."
       }
     },
     "recap": {
@@ -811,7 +885,8 @@
     },
     "stageProfile": {
       "label": "Terræn",
-      "note": "Vejledende terrænkategori baseret på etapens sværhedsgrad."
+      "note": "Vejledende terrænkategori baseret på etapens sværhedsgrad.",
+      "sectionTitle": "Etapeprofil"
     },
     "stageSchedule": {
       "title": "Etapeplan",
@@ -909,6 +984,10 @@
       "a11y": {
         "graph": "Højdeprofil for etape {number}: {distance} km, {elevation} højdemeter, {climbs} kategoriserede stigninger"
       }
+    },
+    "table": {
+      "prizePoints": "Præmiepoint",
+      "jerseyPoints": "Trøjepoint"
     }
   },
   "history": {

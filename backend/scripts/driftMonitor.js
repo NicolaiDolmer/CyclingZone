@@ -71,15 +71,22 @@ async function runAudit() {
     // 3. Tjek forældreløse ryttere
     const { data: orphanRiders, error: orphanError } = await supabase
       .from('riders')
-      .select('id, name, team_id')
+      .select('id, firstname, lastname, team_id')
       .not('team_id', 'is', null);
 
-    if (!orphanError) {
+    if (orphanError) {
+      // #3695: en select-fejl her skal larme, ikke forsvinde — en tidligere
+      // version selectede en ikke-eksisterende kolonne og blev 400'et tavst
+      // af denne gren, så monitoren rapporterede nul forældreløse ryttere
+      // uanset virkeligheden.
+      issues.push(`Drift-monitor kunne ikke tjekke forældreløse ryttere: ${orphanError.message}`);
+    } else {
       const { data: allTeams } = await supabase.from('teams').select('id');
       const teamIds = new Set(allTeams.map(t => t.id));
       orphanRiders.forEach(r => {
         if (!teamIds.has(r.team_id)) {
-          issues.push(`Orphan Rider: ${r.name} (${r.id}) points to non-existent team ${r.team_id}`);
+          const name = `${r.firstname ?? ''} ${r.lastname ?? ''}`.trim();
+          issues.push(`Orphan Rider: ${name} (${r.id}) points to non-existent team ${r.team_id}`);
         }
       });
     }

@@ -20,7 +20,10 @@ import TierLadder from "./TierLadder";
 // card-rammer undgås (jf. docs/design/PAGE_TEMPLATES.md's row-list-opskrift).
 export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, busy }) {
   const { t } = useTranslation("klub");
-  const { track, tier, upgradePrice, tierUpkeep, staff, effectiveBonus, effectLive, nextTierBonus } = facility;
+  const { track, tier, upgradePrice, tierUpkeep, effectiveBonus, effectLive, nextTierBonus } = facility;
+  // #3489: op til staffSlotsMax (2) samtidige aktive staff pr. rolle nu.
+  const staffList = facility.staffList ?? (facility.staff ? [facility.staff] : []);
+  const staffSlotsMax = facility.staffSlotsMax ?? 2;
   const isCommercial = track === "commercial";
 
   if (!effectLive) {
@@ -75,11 +78,22 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
             ? <span className="text-cz-1">{roiText}</span>
             : <>{t("effect.label")} <span className="font-data text-cz-1">{formatTrackEffect(track, effectiveBonus)}</span> {t(`tracks.${track}.effect`)}</>}
           {" · "}
-          {staff
-            ? <>Staff <Link to={`/staff/${staff.id}`} className="text-cz-1 hover:text-cz-accent-t underline underline-offset-2">{staff.name}</Link> (T{staff.tier})</>
-            : tier === 0
-              ? <span className="text-cz-3">{t("staff.locked")}</span>
-              : <button type="button" onClick={() => onOpenStaff(track)} className="text-cz-accent-t underline underline-offset-2">{t("staff.none")}</button>}
+          {staffList.length > 0 ? (
+            <>
+              {staffList.map((s, i) => (
+                <span key={s.id}>
+                  {i > 0 && ", "}
+                  <Link to={`/staff/${s.id}`} className="text-cz-1 hover:text-cz-accent-t underline underline-offset-2">{s.name}</Link> (T{s.tier})
+                </span>
+              ))}
+              {/* #3489: en fri 2. slot skal kunne fyldes UDEN at fyre den første. */}
+              {staffList.length < staffSlotsMax && (
+                <> · <button type="button" onClick={() => onOpenStaff(track)} className="text-cz-accent-t underline underline-offset-2">{t("staff.addAnother")}</button></>
+              )}
+            </>
+          ) : tier === 0
+            ? <span className="text-cz-3">{t("staff.locked")}</span>
+            : <button type="button" onClick={() => onOpenStaff(track)} className="text-cz-accent-t underline underline-offset-2">{t("staff.none")}</button>}
         </div>
       </div>
       <div className="text-right">

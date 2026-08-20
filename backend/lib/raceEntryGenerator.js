@@ -8,6 +8,7 @@ import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import {
   windowsOverlap, raceBindingWindow,
   isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow,
+  isRiderDayInvariantViolation,
 } from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
@@ -509,37 +510,52 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     }
   }
 
-  // Anvend diff'et (vacate → insert → delete → promote) for ÉN (race,team)-enhed mod
-  // det givne desired/existing-rollekort. Ekstraheret (#2436) så retry'en efter en
-  // uq_race_entries_*-kollision kan kalde PRÆCIS samme skrivelogik igen med et frisk
-  // billede, uden kodeduplikering.
-  async function applyUnitDiff({ raceId, teamId, desired, existing }) {
+  // #3934: REN diff-beregning for ÉN (race,team)-enhed — delt mellem batch-RPC-vejen
+  // (payload-bygning nedenfor) og per-enheds-vejen (applyUnitDiff), så de to veje
+  // strukturelt ikke kan divergere i HVAD der skal skrives, kun i HVORDAN.
+  // Vacate-semantik (CYCLINGZONE-2D-klassen, se applyUnitDiff): en eksisterende
+  // auto-række der HOLDER en special-rolle men mister den (rolle-skift ELLER stale)
+  // demoteres til helper, så uq_race_entries_*-slottet er frit for den nye holder.
+  // Promotions: blivende rækker hvis ønskede rolle afviger fra deres EFFEKTIVE rolle
+  // (efter vacate = helper for de vacatede). vacateNetHelper: blivende vacatede hvis
+  // ENDELIGE rolle ER helper — de tælles som rolle-opdateret uden yderligere update
+  // (batch-RPC'en tæller kun promotions, så JS-laget lægger dette til selv).
+  function computeUnitDiff({ desired, existing }) {
     const toInsert = [...desired]
       .filter(([riderId]) => !existing.has(riderId))
-      .map(([riderId, role]) => ({
-        race_id: raceId, rider_id: riderId, team_id: teamId, race_role: role, is_auto_filled: true,
-      }));
+      .map(([riderId, role]) => ({ rider_id: riderId, race_role: role }));
     const toDelete = [...existing.keys()].filter((riderId) => !desired.has(riderId));
     const toDeleteSet = new Set(toDelete);
-
-    // Vacate FØR insert (CYCLINGZONE-2D): en eksisterende auto-række der HOLDER en
-    // special-rolle men mister den (rolle-skift ELLER stale) sættes til helper først,
-    // så uq-slottet er frit når den nye holder indsættes/promoveres. Insert af en ny
-    // captain FØR demote af den gamle var præcis prod-kollisionen (31 enheder, Team
-    // UKYO). Vacate er en UPDATE (ikke destruktiv) → aldrig-tommere-garantien holder.
     const toVacate = [...existing]
       .filter(([riderId, role]) =>
         SPECIAL_ROLES.has(role) && (toDeleteSet.has(riderId) || desired.get(riderId) !== role))
       .map(([riderId]) => riderId);
     const vacatedSet = new Set(toVacate);
-    // Promotions: blivende rækker hvis ønskede rolle afviger fra deres EFFEKTIVE rolle
-    // (efter vacate = helper for de vacatede). En vacated rytter hvis mål ER helper,
-    // behøver ingen anden update — vacaten var hans rolle-ændring.
-    const promotions = [...desired].filter(([riderId, role]) => {
-      if (!existing.has(riderId)) return false;
-      const effective = vacatedSet.has(riderId) ? "helper" : existing.get(riderId);
-      return effective !== role;
-    });
+    const promotions = [...desired]
+      .filter(([riderId, role]) => {
+        if (!existing.has(riderId)) return false;
+        const effective = vacatedSet.has(riderId) ? "helper" : existing.get(riderId);
+        return effective !== role;
+      })
+      .map(([riderId, role]) => ({ rider_id: riderId, race_role: role }));
+    const vacateNetHelper = toVacate.filter(
+      (riderId) => !toDeleteSet.has(riderId) && desired.get(riderId) === "helper"
+    ).length;
+    return { toInsert, toDelete, toVacate, promotions, vacateNetHelper };
+  }
+
+  // Anvend diff'et (vacate → insert → delete → promote) for ÉN (race,team)-enhed mod
+  // det givne desired/existing-rollekort. Ekstraheret (#2436) så retry'en efter en
+  // uq_race_entries_*-kollision kan kalde PRÆCIS samme skrivelogik igen med et frisk
+  // billede, uden kodeduplikering. Fra #3934 er dette FALLBACK-vejen (batch-RPC'en
+  // nedenfor er primær) — men stadig eneste vej for retry-grenene #2436/#3482.
+  async function applyUnitDiff({ raceId, teamId, desired, existing }) {
+    const { toInsert: diffInsert, toDelete, toVacate, promotions } =
+      computeUnitDiff({ desired, existing });
+    const toDeleteSet = new Set(toDelete);
+    const toInsert = diffInsert.map(({ rider_id, race_role }) => ({
+      race_id: raceId, rider_id, team_id: teamId, race_role, is_auto_filled: true,
+    }));
 
     let unitInserted = 0;
     let unitRemoved = 0;
@@ -567,7 +583,21 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       const { error: insErr } = await supabase
         .from("race_entries")
         .upsert(toInsert, { onConflict: "race_id,rider_id", ignoreDuplicates: true });
-      if (insErr) throw new Error(`race_entries upsert: ${insErr.message}`);
+      if (insErr) {
+        // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
+        // sweepets egen kronologiske binding-tildeling (findManualOverlapConflicts/
+        // windowsOverlap ovenfor) alligevel skulle overse en konflikt — det ville
+        // afsløre en bug i SELVE sweepet, ikke bare en enkelt spillerhandling, så
+        // fejlen skal være tydelig i loggen (ikke tavs) uden at maskeres som en
+        // generisk Postgres-tekst.
+        if (isRiderDayInvariantViolation(insErr)) {
+          throw new Error(
+            `race_entries upsert: rider-day invariant (#3420) rejected this unit's insert for race ${raceId}/team ${teamId} — ` +
+            `the sweep's own binding assignment missed a double-booking (${insErr.message})`
+          );
+        }
+        throw new Error(`race_entries upsert: ${insErr.message}`);
+      }
       unitInserted += toInsert.length;
     }
     if (toDelete.length) {
@@ -582,7 +612,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       // Grupperet pr. mål-rolle → maks få updates pr. enhed. Kører SIDST: alle gamle
       // special-holdere er vacatet og stale rækker slettet, så slottene er frie.
       const byRole = new Map();
-      for (const [riderId, role] of promotions) {
+      for (const { rider_id: riderId, race_role: role } of promotions) {
         if (!byRole.has(role)) byRole.set(role, []);
         byRole.get(role).push(riderId);
       }
@@ -628,6 +658,62 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     return applyUnitDiff({ raceId, teamId, desired: survivors, existing });
   }
 
+  // #3906 (CYCLINGZONE-2D, prod 18/8 — Koben Racing): regenerateUnitAfterConcurrentManualSave
+  // (nedenfor) kalder assignTeamAcrossRaces med KUN dette ene løb i `races` — den har derfor
+  // INGEN hukommelse om holdets ANDRE løb i samme pulje/batch. Rammer uq-kollisionen ét af to
+  // tidsoverlappende løb for SAMME hold (fx to instanser af "Famenne-Ardenne" + "Vuelta a
+  // Cantabria" i samme pulje, begge Koben-tilmeldt), kan retry'en derfor uvidende vælge en
+  // rytter der allerede kører søsterløbet — nøjagtig den dobbeltbooking no_rider_double_booking
+  // (#3420) findes for at forhindre, nu fanget som et SENERE insert-forsøg der selv fejler.
+  // Byg derfor et komplet locked-windows-billede for enhedens søsterløb, filtreret til dem
+  // hvis vindue RENT FAKTISK overlapper dette løbs: (a) holdets allerede COMMITTEDE entries i
+  // andre løb (frisk DB-scan, mirror loadTeamBindingContext/raceBinding.js), og (b) holdets
+  // andre STAGEDE (beregnet denne kørsel, men endnu ikke skrevet — staged processeres i
+  // vindue-rækkefølge, så et senere søsterløb kan mangle fra (a) på retry-tidspunktet)
+  // enheder for SAMME hold. Ryttere i disse vinduer EKSKLUDERES fra kandidatlisten, så
+  // assignTeamAcrossRaces/autopick SPLITTER truppen over de overlappende løb i stedet for at
+  // gense samme rytter; er roster for lille til at dække begge, giver autopick naturligt
+  // færre picks (partiel fyldning, se autopickTeamSelection — aldrig en crash).
+  async function siblingLockedWindows({ raceId, teamId, window }) {
+    if (!window) return [];
+    const locked = [];
+    // pagination-safe: bounded by ÉT holds SAMLEDE sæson-entries (typisk et par
+    // hundrede rækker — antal-løb × trupstørrelse), langt under PostgREST's 1000-cap.
+    const { data: otherRows, error: oErr } = await supabase
+      .from("race_entries").select("race_id, rider_id")
+      .eq("team_id", teamId).neq("race_id", raceId);
+    if (oErr) throw new Error(`race_entries (sibling binding re-scan): ${oErr.message}`);
+    const otherRidersByRace = new Map();
+    for (const e of otherRows || []) {
+      if (!otherRidersByRace.has(e.race_id)) otherRidersByRace.set(e.race_id, []);
+      otherRidersByRace.get(e.race_id).push(e.rider_id);
+    }
+    let committedLockedRiders = 0;
+    for (const [otherRaceId, riderIds] of otherRidersByRace) {
+      const otherWindow = windowByRace.get(otherRaceId);
+      if (!otherWindow || !windowsOverlap(window, otherWindow)) continue;
+      locked.push({ window: otherWindow, riderIds });
+      committedLockedRiders += riderIds.length;
+    }
+    let stagedLockedRiders = 0;
+    for (const unit of staged) {
+      if (unit.team_id !== teamId || unit.race_id === raceId) continue;
+      const otherWindow = windowByRace.get(unit.race_id);
+      if (!otherWindow || !windowsOverlap(window, otherWindow)) continue;
+      const riderIds = (unit.picks || []).map((p) => p.rider_id);
+      if (!riderIds.length) continue;
+      locked.push({ window: otherWindow, riderIds });
+      stagedLockedRiders += riderIds.length;
+    }
+    if (committedLockedRiders || stagedLockedRiders) {
+      console.warn(
+        `⚠️  Entry-generator ${raceId}/${teamId}: søsterløb-binding fundet under retry — ` +
+        `${committedLockedRiders} committede + ${stagedLockedRiders} stagede rytter(e) ekskluderet fra kandidatlisten (#3906)`
+      );
+    }
+    return locked;
+  }
+
   // #2436 (CYCLINGZONE-32): genlæs ENHEDENS manuelle + eksisterende auto-rækker friskt
   // fra DB (den oprindelige manual-scan i trin 6 var team/sæson-bred og kan være
   // forældet af en manager-gem der landede undervejs) og kør enheden om — samme kerne
@@ -664,6 +750,9 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
 
     const adjSizeRule = { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length };
     const lockedWindows = manualRiders.length ? [{ window, riderIds: manualRiders }] : [];
+    // #3906: ekskludér ryttere bundet i et overlappende søsterløb FØR autopick vælger,
+    // så truppen splittes i stedet for at gense en allerede-bundet rytter.
+    lockedWindows.push(...(await siblingLockedWindows({ raceId, teamId, window })));
     const teamRaces = [{ race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule }];
     const assignment = assignTeamAcrossRaces({
       riders: ridersByTeam.get(teamId) || [], races: teamRaces, lockedWindows,
@@ -673,6 +762,13 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     // Top-up (delvis manuel trup): den manuelle trup ejer special-rollerne → auto-picks
     // neutraliseres til helper (mirror topUpKeys-logikken i step 9).
     if (manualRiders.length) picks = picks.map((p) => ({ ...p, race_role: "helper" }));
+    // #3906: partiel fyldning er en gyldig, forventet udfald (ikke en fejl) — log det
+    // korrekte resultat i stedet for at lade enheden stå tavst underbemandet.
+    if (picks.length < adjSizeRule.max) {
+      console.warn(
+        `⚠️  Entry-generator ${raceId}/${teamId}: partiel fyldning efter binding-splitting — ${picks.length}/${adjSizeRule.max} auto-pladser (#3906)`
+      );
+    }
 
     const desired = new Map();
     for (const p of picks) if (!desired.has(p.rider_id)) desired.set(p.rider_id, p.race_role);
@@ -684,6 +780,69 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     return applyUnitDiff({ raceId, teamId, desired, existing });
   }
 
+  // Per-enheds skrivning med recovery-grene (#2436/#3482) — før #3934 den ENESTE
+  // skrivevej, nu FALLBACK når holdets batch-RPC afvises. Muterer tællerne/errors.
+  async function applyUnitWithRecovery({ race_id, team_id, desired, existing }) {
+    try {
+      const result = await applyUnitDiff({ raceId: race_id, teamId: team_id, desired, existing });
+      inserted += result.inserted;
+      removed += result.removed;
+      roleUpdated += result.roleUpdated;
+    } catch (err) {
+      // best-effort: fejl her aggregeres i failedUnits/errors og captures samlet
+      // opstrøms i cron.js (én Sentry-capture pr. tick, #2375-hotfix) — ikke tavst.
+      // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
+      // i vinduet inden denne skrivning — genlæs enhedens manuelle rækker friskt og
+      // kør enheden om PRÆCIS ÉN gang. Lykkes retry'en (var en samtidig manager-gem):
+      // ingen capture. Fejler den igen: en ægte bug — signalet skal bevares.
+      if (isUqRaceEntriesViolation(err)) {
+        try {
+          const retryResult = await regenerateUnitAfterConcurrentManualSave({ raceId: race_id, teamId: team_id });
+          inserted += retryResult.inserted;
+          removed += retryResult.removed;
+          roleUpdated += retryResult.roleUpdated;
+          return;
+        } catch (retryErr) {
+          // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
+          // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
+          failedUnits += 1;
+          if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
+          return;
+        }
+      }
+      // #3482: en samtidig rytter-sletning ramte insert-batchen. Filtrér de forsvundne
+      // ryttere fra insert-siden og kør enheden om PRÆCIS ÉN gang. Lykkes det, var det en
+      // forventet-og-håndteret race (holdet er væk — der er intet at udtage) og skal ikke
+      // fyre en Sentry-alarm; men den logges, så oprydningen stadig kan ses i Railway.
+      // Fejler retry'en: signalet bevares som en fejlet enhed, præcis som #2436.
+      if (isRiderFkViolation(err)) {
+        try {
+          const retryResult = await regenerateUnitAfterRiderDeletion({
+            raceId: race_id, teamId: team_id, desired, existing,
+          });
+          inserted += retryResult.inserted;
+          removed += retryResult.removed;
+          roleUpdated += retryResult.roleUpdated;
+          console.warn(
+            `⚠️  Entry-generator ${race_id}/${team_id}: rytter(e) slettet under kørslen — enheden kørt om uden dem`
+          );
+          return;
+        } catch (retryErr) {
+          // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
+          // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
+          failedUnits += 1;
+          if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
+          return;
+        }
+      }
+      failedUnits += 1;
+      if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${err.message}`);
+    }
+  }
+
+  // Trin 10a (#3934): forbered enhederne (dedup, frozen-guard, manuel-special-demote)
+  // og gruppér pr. hold — skrivningen sker pr. hold nedenfor.
+  const preparedByTeam = new Map(); // team_id → [{ race_id, team_id, desired, existing }]
   for (const { race_id, team_id, picks } of staged) {
     // Intra-batch-dedup på rider_id (defense-in-depth, #2375): skulle en rytter trods
     // stabil paginering optræde to gange i picks, må batchen ALDRIG indeholde dubletten.
@@ -696,6 +855,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     // Forward-guard (#2074): et igangværende løb (frosset felt) må ALDRIG røres. staged
     // indeholder aldrig startede løb (skip-grenen ovenfor), men invarianten holdes lokal
     // til skrivningen så en fremtidig refaktor ikke kan nulstille et aktivt startfelt.
+    // (RPC'en håndhæver samme guard DB-side: sweep_race_lineup_frozen.)
     if (startedRaceIds.has(race_id)) {
       failedUnits += 1;
       if (errors.length < 5) errors.push(`${race_id}/${team_id}: race_lineup_frozen (refused to touch in-flight race)`);
@@ -717,60 +877,63 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       }
     }
 
+    if (!preparedByTeam.has(team_id)) preparedByTeam.set(team_id, []);
+    preparedByTeam.get(team_id).push({ race_id, team_id, desired, existing });
+  }
+
+  // Trin 10b (#3934): pr. hold — ÉN RPC-transaktion (apply_race_entry_unit_batch) for
+  // alle enheder med ændringer. Inde i transaktionen er no_rider_double_booking
+  // DEFERRED, så en rytter-swap mellem to overlappende løb (insert i det ene + delete
+  // i det andet = TO enheder) er lovlig som helhed — præcis den klasse der under
+  // insert-før-delete pr. enhed var et deterministisk dødvande (prod 18/8, ~350
+  // enheder/tick, CYCLINGZONE-32/-2D). Atomicitet overtager aldrig-tommere-garantien
+  // (crash = rollback). Afvises batchen (samtidig manager-gem, ÆGTE dobbeltbooking i
+  // tildelingen, eller RPC'en findes endnu ikke fordi migrationen ikke er applied),
+  // falder holdet tilbage til per-enheds-vejen med de eksisterende recovery-grene —
+  // én enheds fejl koster så aldrig hele holdets tick.
+  for (const [team_id, units] of preparedByTeam) {
+    const changed = [];
+    let batchVacateNetHelper = 0;
+    for (const unit of units) {
+      const diff = computeUnitDiff({ desired: unit.desired, existing: unit.existing });
+      if (!diff.toInsert.length && !diff.toDelete.length && !diff.toVacate.length && !diff.promotions.length) continue;
+      batchVacateNetHelper += diff.vacateNetHelper;
+      changed.push({ unit, diff });
+    }
+    if (!changed.length) continue;
+
+    let batchResult = null;
+    let batchErr = null;
     try {
-      const result = await applyUnitDiff({ raceId: race_id, teamId: team_id, desired, existing });
-      inserted += result.inserted;
-      removed += result.removed;
-      roleUpdated += result.roleUpdated;
+      const rpcRes = await supabase.rpc("apply_race_entry_unit_batch", {
+        p_team_id: team_id,
+        p_units: changed.map(({ unit, diff }) => ({
+          race_id: unit.race_id,
+          vacate: diff.toVacate,
+          deletes: diff.toDelete,
+          inserts: diff.toInsert,
+          promotions: diff.promotions,
+        })),
+      });
+      batchResult = rpcRes?.data ?? null;
+      batchErr = rpcRes?.error ?? null;
     } catch (err) {
-      // best-effort: fejl her aggregeres i failedUnits/errors og captures samlet
-      // opstrøms i cron.js (én Sentry-capture pr. tick, #2375-hotfix) — ikke tavst.
-      // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
-      // i vinduet inden denne skrivning — genlæs enhedens manuelle rækker friskt og
-      // kør enheden om PRÆCIS ÉN gang. Lykkes retry'en (var en samtidig manager-gem):
-      // ingen capture. Fejler den igen: en ægte bug — signalet skal bevares.
-      if (isUqRaceEntriesViolation(err)) {
-        try {
-          const retryResult = await regenerateUnitAfterConcurrentManualSave({ raceId: race_id, teamId: team_id });
-          inserted += retryResult.inserted;
-          removed += retryResult.removed;
-          roleUpdated += retryResult.roleUpdated;
-          continue;
-        } catch (retryErr) {
-          // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
-          // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
-          failedUnits += 1;
-          if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
-          continue;
-        }
-      }
-      // #3482: en samtidig rytter-sletning ramte insert-batchen. Filtrér de forsvundne
-      // ryttere fra insert-siden og kør enheden om PRÆCIS ÉN gang. Lykkes det, var det en
-      // forventet-og-håndteret race (holdet er væk — der er intet at udtage) og skal ikke
-      // fyre en Sentry-alarm; men den logges, så oprydningen stadig kan ses i Railway.
-      // Fejler retry'en: signalet bevares som en fejlet enhed, præcis som #2436.
-      if (isRiderFkViolation(err)) {
-        try {
-          const retryResult = await regenerateUnitAfterRiderDeletion({
-            raceId: race_id, teamId: team_id, desired, existing,
-          });
-          inserted += retryResult.inserted;
-          removed += retryResult.removed;
-          roleUpdated += retryResult.roleUpdated;
-          console.warn(
-            `⚠️  Entry-generator ${race_id}/${team_id}: rytter(e) slettet under kørslen — enheden kørt om uden dem`
-          );
-          continue;
-        } catch (retryErr) {
-          // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
-          // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
-          failedUnits += 1;
-          if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
-          continue;
-        }
-      }
-      failedUnits += 1;
-      if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${err.message}`);
+      // best-effort: klient uden .rpc (fx ældre mock/script) eller kastet transportfejl
+      // må aldrig vælte hele ticket — fejlen bæres i batchErr, logges nedenfor og
+      // fallback-vejen (per-enhed, med fuld fejlhåndtering) tager over.
+      batchErr = err;
+    }
+    if (!batchErr) {
+      inserted += batchResult?.inserted ?? 0;
+      removed += batchResult?.removed ?? 0;
+      roleUpdated += (batchResult?.role_updated ?? 0) + batchVacateNetHelper;
+      continue;
+    }
+    console.warn(
+      `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
+    );
+    for (const { unit } of changed) {
+      await applyUnitWithRecovery(unit);
     }
   }
 

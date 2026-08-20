@@ -90,10 +90,21 @@
       "prizeLeader": "Prize leader of Division {division}",
       "biggestSale": "Biggest sale of the season",
       "stageKing": "Team stage king: {name}",
-      "stageKingValue": "{count, plural, one {# win} other {# wins}}"
+      "stageKingValue": "{count, plural, one {# win} other {# wins}}",
+      "turningPoint": "Best day of the season",
+      "turningPointValue": "{race} · {points} pts",
+      "biggestResult": "Best individual result",
+      "biggestResultValue": "{rider} · {race}",
+      "rival": "Closest rival: {team}",
+      "rivalBeatenBy": "beaten by {n} pts",
+      "rivalBehindBy": "{n} pts behind"
     },
-    "share": "Copy recap link",
-    "shareCopied": "Link copied"
+    "copyLink": "Copy recap link",
+    "linkCopied": "Link copied",
+    "downloadCard": "Download share card",
+    "downloading": "Preparing…",
+    "downloadError": "Couldn't create the image. Please try again.",
+    "shareCardMeta": "Division {division} · #{rank} of {size}"
   },
   "documentary": {
     "heading": "The documentary",
@@ -102,15 +113,12 @@
     "error": "Couldn't load the season documentary.",
     "sourceLlm": "AI-polished narrative",
     "sourceDeterministic": "Season narrative",
-    "export": "Download share card",
-    "exporting": "Preparing…",
-    "exportError": "Couldn't create the image. Please try again.",
     "card": {
       "eyebrow": "Season {number} documentary",
-      "signing": "Marquee signing",
+      "turningPoint": "Turning point",
+      "pts": "pts",
       "result": "Biggest result",
       "rival": "Closest rival",
-      "points": "points",
       "finalPoints": "Final points"
     }
   }

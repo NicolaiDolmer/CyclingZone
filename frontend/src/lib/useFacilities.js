@@ -79,11 +79,13 @@ export function useFacilities() {
     } catch { return { ok: false, error: "network" }; }
   }, [refresh]);
 
-  const fire = useCallback(async (role) => {
+  // #3489: staffId er valgfri (bagudkompatibel) — angiv den for at ramme en
+  // bestemt af de op til 2 samtidige aktive staff i rollen.
+  const fire = useCallback(async (role, staffId) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/club/staff/fire`, { method: "POST", headers, body: JSON.stringify({ role }) });
+      const res = await fetch(`${API}/api/club/staff/fire`, { method: "POST", headers, body: JSON.stringify({ role, staffId }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       logEvent("staff_fire", { role });

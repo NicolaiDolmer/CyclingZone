@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, deleteAiTeamById, AI_TEAM_NAME_PREFIX, __testables } from "./aiTeamGenerator.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, deleteAiTeamById, __testables } from "./aiTeamGenerator.js";
 import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { AI_SQUAD, AI_TIER_STAT_WINDOWS, AI_TIER_VALUE_CAP } from "./starterSquadAllocator.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
@@ -278,7 +278,7 @@ test("reconcile: tier-3-pulje der mister sin sidste manager tømmes for AI", asy
   assert.equal(countTeamsInPool(supabase.state, t3a.id), 0, "puljen tom (politik: tier 3/4 uden manager = ingen AI)");
 });
 
-test("AI-hold får is_ai=true, division=pool.tier og pulje-id; navn har AI-præfiks", async () => {
+test("AI-hold får is_ai=true, division=pool.tier og pulje-id; navn har intet AI-præfiks", async () => {
   const pools = seedPools();
   const t1 = poolByTierIndex(pools, 1, 0);
   const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
@@ -292,8 +292,10 @@ test("AI-hold får is_ai=true, division=pool.tier og pulje-id; navn har AI-præf
     assert.equal(t.division, 1, "division = pool.tier");
     assert.equal(t.league_division_id, t1.id, "league_division_id = pool.id");
     assert.ok(typeof t.name === "string" && t.name.length > 0, "navn sat");
+    // #1775: identifikation sker via is_ai, aldrig via navnet — holdnavnet må
+    // ikke starte med "AI" (badget i UI'en er den skelnelige markør).
+    assert.ok(!t.name.startsWith("AI "), `navn har intet AI-præfiks: ${t.name}`);
   }
-  assert.ok(aiTeams.some((t) => t.name.startsWith(AI_TEAM_NAME_PREFIX)), "AI-navn har præfiks");
 });
 
 test("determinisme: samme seed → samme AI-holdnavne", async () => {
@@ -774,6 +776,73 @@ test("#2524 clearAllAiTeams: rydder + notificerer rider_watchlist på tværs af 
   assert.equal(res.teams, 2);
   assert.equal(supabase.state.rider_watchlist.length, 0, "begge watchlist-rækker ryddet");
   assert.equal(supabase.state.notifications.length, 2, "begge watchers notificeret");
+});
+
+// ── #2086 · rytter-sletning/-mutation skal blokeres/udskydes mens rytteren er i
+// et IGANGVÆRENDE løb — defense-in-depth mod #2074-DB-triggeren for de to
+// hard-delete-stier der (modsat removeAiTeams, #2269) IKKE allerede pre-tjekker
+// inflight-status: deleteAiTeamById (heal-sweep-retryen) og clearAllAiTeams
+// (relaunchens engangs-wipe). ──────────────────────────────────────────────────
+
+test("#2086 deleteAiTeamById: rytter i igangværende løb udskyder sletningen (holdet bevares, markeret pending_removal_at)", async () => {
+  const supabase = makeSupabase({
+    teams: [{ id: "ai-racing", name: "AI Racing CC", is_ai: true, league_division_id: 1 }],
+    riders: [
+      { id: "rid-racing", team_id: "ai-racing", firstname: "Racing", lastname: "Rytter" },
+      { id: "rid-free", team_id: "ai-racing", firstname: "Free", lastname: "Rytter" },
+    ],
+  });
+  lockTeamInInflightRace(supabase.state, "ai-racing", "race-inflight-1");
+
+  const res = await deleteAiTeamById(supabase, "ai-racing");
+
+  assert.equal(res.deleted, false);
+  assert.equal(res.deferred, true);
+  assert.deepEqual(res.blockedRiderIds, ["rid-racing"]);
+  assert.ok(supabase.state.teams.some((t) => t.id === "ai-racing"), "holdet er IKKE slettet");
+  const team = supabase.state.teams.find((t) => t.id === "ai-racing");
+  assert.ok(team.pending_removal_at, "holdet er markeret pending_removal_at");
+  assert.ok(supabase.state.riders.some((r) => r.id === "rid-racing"), "den racende rytter er bevaret");
+  assert.ok(!supabase.state.riders.some((r) => r.id === "rid-free"), "den ledige holdkammerat ER slettet");
+});
+
+test("#2086 deleteAiTeamById: ingen inflight-entries → uændret adfærd (fuld sletning)", async () => {
+  const supabase = makeSupabase({
+    teams: [{ id: "ai-clear", name: "AI Clear CC", is_ai: true, league_division_id: 1 }],
+    riders: [{ id: "rid-clear", team_id: "ai-clear", firstname: "Clear", lastname: "Rytter" }],
+  });
+
+  const res = await deleteAiTeamById(supabase, "ai-clear");
+
+  assert.equal(res.deleted, true);
+  assert.equal(res.deferred, false);
+  assert.ok(!supabase.state.teams.some((t) => t.id === "ai-clear"));
+  assert.ok(!supabase.state.riders.some((r) => r.id === "rid-clear"));
+});
+
+test("#2086 clearAllAiTeams: hold med rytter i igangværende løb undlades (ikke slettet) og resten af batchen fuldføres", async () => {
+  const supabase = makeSupabase({
+    teams: [
+      { id: "ai-racing", name: "AI Racing CC", is_ai: true, league_division_id: 1 },
+      { id: "ai-safe", name: "AI Safe CC", is_ai: true, league_division_id: 1 },
+    ],
+    riders: [
+      { id: "rid-racing", team_id: "ai-racing", firstname: "Racing", lastname: "Rytter" },
+      { id: "rid-safe", team_id: "ai-safe", firstname: "Safe", lastname: "Rytter" },
+    ],
+  });
+  lockTeamInInflightRace(supabase.state, "ai-racing", "race-inflight-1");
+
+  const res = await clearAllAiTeams(supabase);
+
+  assert.equal(res.teams, 1, "kun det sikre hold talt som slettet");
+  assert.equal(res.deferred, 1, "det racende hold talt som udskudt");
+  assert.ok(supabase.state.teams.some((t) => t.id === "ai-racing"), "det racende hold er IKKE slettet");
+  const team = supabase.state.teams.find((t) => t.id === "ai-racing");
+  assert.ok(team.pending_removal_at, "det racende hold er markeret pending_removal_at");
+  assert.ok(supabase.state.riders.some((r) => r.id === "rid-racing"), "den racende rytter er bevaret");
+  assert.ok(!supabase.state.teams.some((t) => t.id === "ai-safe"), "det sikre hold ER slettet");
+  assert.ok(!supabase.state.riders.some((r) => r.id === "rid-safe"), "den sikre rytter ER slettet");
 });
 
 // ── 2026-06-30 · defaultAllocateSquadForTeam: 24-trup, divisions-kvalitet via

@@ -36,12 +36,10 @@ import {
 } from "./starterSquadAllocator.js";
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
-import { fetchExistingFoldedNamesForAi, makeAiTeamName, AI_TEAM_NAME_PREFIX } from "./aiTeamNames.js";
+import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { STALL_WATCHDOG_DEFAULT_THRESHOLDS } from "./stallWatchdog.js";
 import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
-
-export { AI_TEAM_NAME_PREFIX };
 
 const INSERT_BATCH = 500;
 
@@ -161,6 +159,31 @@ export async function getInflightRaceIds(supabase) {
     .gt("stages_completed", 0);
   if (infErr) throw new Error(`AI-trim (inflight races): ${infErr.message}`);
   return (inflight || []).map((r) => r.id);
+}
+
+// #2086: hvilke af `riderIds` har LIGE NU en entry i et igangværende løb (samme
+// "inflight"-definition som getInflightRaceIds/#2074-DB-triggeren — ingen
+// race_type-filtrering, den matcher trg_block_rider_delete_inflight 1:1)? Delt
+// rytter-niveau-lookup for de to hard-delete-stier i denne fil der (modsat
+// removeAiTeams, #2269) ikke allerede pre-tjekker inflight-status FØR .delete():
+// deleteAiTeamById (heal-sweep-retryen) og clearAllAiTeams (relaunchens
+// engangs-wipe). Uden dette filter ville et bulk-delete blive rullet HELT
+// tilbage af DB-triggeren hvis BARE ÉN rytter er ramt.
+async function getBlockedRiderIds(supabase, riderIds) {
+  const ids = [...new Set((riderIds || []).filter(Boolean))];
+  if (!ids.length) return new Set();
+  const inflightRaceIds = await getInflightRaceIds(supabase);
+  if (!inflightRaceIds.length) return new Set();
+  // #3331: race_entries er deny-listet for ubegrænset .select() (PostgREST'ens
+  // stille 1000-rækkers-loft) — pagineret via fetchAllRows, samme mønster som
+  // flushDeferredTransfersForRace/getRidersInActiveStageRace.
+  const entries = await fetchAllRows(() => supabase
+    .from("race_entries")
+    .select("rider_id")
+    .in("race_id", inflightRaceIds)
+    .in("rider_id", ids)
+    .order("rider_id", { ascending: true }));
+  return new Set(entries.map((e) => e.rider_id));
 }
 
 // #2434: hvilke inflight-løb er REELT STALLEDE? Et løb er stallet når dets NÆSTE
@@ -312,17 +335,49 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
 // #2187: slet ét navngivet AI-hold (rytter+hold). Bruges af heal-sweep-retryen, som
 // (modsat removeAiTeams' kandidat-udvælgelse fra en pulje-liste) allerede kender det
 // præcise hold-id den skal forsøge igen.
+//
+// #2086: defense-in-depth mod #2074-DB-triggeren (trg_block_rider_delete_inflight).
+// aiTeamTrimHealSweep genkontrollerer inflight-status FØR den kalder denne funktion,
+// men et TOCTOU-vindue findes stadig (en etape kan starte imellem check og delete).
+// Uden filteret her ville et bulk .delete().eq("team_id", teamId) blive rullet HELT
+// tilbage af DB-triggeren hvis BARE ÉN af holdets ryttere er ramt — resten af sweep'en
+// ville se en throw i stedet for en ren skip (isoleret af sweep'ens per-hold try/catch,
+// men rapporteret som "failed" i stedet for korrekt udskudt). Filtrér de blokerede
+// ryttere fra FØR delete i stedet.
 export async function deleteAiTeamById(supabase, teamId) {
   // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
   await snapshotRaceResultNamesForTeams(supabase, [teamId]);
   // #2524: hent navn+id FØR delete — rider_watchlist har ingen FK-cascade, så
   // rytteren ville ellers forsvinde tavst fra enhver managers ønskeliste.
   const { data: watchedRiders } = await supabase.from("riders").select("id, firstname, lastname").eq("team_id", teamId);
+  const riders = watchedRiders || [];
+
+  const blockedIds = await getBlockedRiderIds(supabase, riders.map((r) => r.id));
+  const deletable = riders.filter((r) => !blockedIds.has(r.id));
+
+  if (blockedIds.size > 0) {
+    // Holdet kan ikke slettes helt så længe mindst én rytter er i et igangværende
+    // løb (#2074) — slet de øvrige ryttere, lad holdet + den/de blokerede rytter(e)
+    // stå, og udskyd resten via pending_removal_at (samme mekanik som removeAiTeams,
+    // #2187) så en senere sweep fuldfører når løbet er kørt færdigt.
+    if (deletable.length) {
+      const { error: rErr } = await supabase.from("riders").delete().in("id", deletable.map((r) => r.id));
+      if (rErr) throw new Error(`AI-rider delete (${teamId}): ${rErr.message}`);
+      await notifyAndClearWatchlistForRiders({ supabase, riders: deletable });
+    }
+    await markPendingRemoval(supabase, [teamId]);
+    console.warn(
+      `  ⏳ deleteAiTeamById(${teamId}): ${blockedIds.size} rytter(e) i igangværende løb (#2074) — sletning udskudt (#2086), hold markeret pending_removal_at.`
+    );
+    return { deleted: false, deferred: true, blockedRiderIds: [...blockedIds] };
+  }
+
   const { error: rErr } = await supabase.from("riders").delete().eq("team_id", teamId);
   if (rErr) throw new Error(`AI-rider delete (${teamId}): ${rErr.message}`);
-  await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
+  await notifyAndClearWatchlistForRiders({ supabase, riders });
   const { error: tErr } = await supabase.from("teams").delete().eq("id", teamId);
   if (tErr) throw new Error(`AI-team delete (${teamId}): ${tErr.message}`);
+  return { deleted: true, deferred: false, blockedRiderIds: [] };
 }
 
 // Fjern N AI-hold fra en pulje (deterministisk: laveste id først). Sletter holdets
@@ -401,14 +456,25 @@ async function removeAiTeams(supabase, aiTeams, count) {
  * div 1 med 0 ryttere ville blive stående som et tomt felt-medlem. Dette er en bevidst
  * engangs-wipe, IKKE en del af den idempotente reconcile-sti. Idempotent: no-op uden AI-hold.
  *
- * @returns {Promise<{teams:number}>}
+ * #2086: relaunchens engangs-wipe kører normalt mellem sæsoner hvor intet løb er i gang
+ * (blockedTeamIds er tom i det normale tilfælde — INGEN adfærdsændring der). Men skulle
+ * wipen falde sammen med et igangværende etapeløb, ville et ufiltreret bulk-delete blive
+ * rullet HELT tilbage af #2074-DB-triggeren (trg_block_rider_delete_inflight) på FØRSTE
+ * ramte rytter — og abortere resten af batchen (op til 500 hold) i stedet for kun at
+ * springe det ene berørte hold over. Filtrér ryttere i et aktivt fleretape-løb fra FØR
+ * delete: deres hold undlades fra denne omgang og markeres pending_removal_at (samme
+ * udskudt-mekanik som removeAiTeams, #2187) — aiTeamTrimHealSweep fuldfører dem når
+ * løbet er kørt færdigt, i stedet for at relaunchen crasher.
+ *
+ * @returns {Promise<{teams:number, deferred:number}>}
  */
 export async function clearAllAiTeams(supabase) {
   if (!supabase?.from) throw new Error("Supabase client required");
   const { data: aiTeams, error } = await supabase.from("teams").select("id").eq("is_ai", true);
   if (error) throw new Error(`clearAllAiTeams (teams read): ${error.message}`);
   const ids = (aiTeams || []).map((t) => t.id);
-  if (!ids.length) return { teams: 0 };
+  if (!ids.length) return { teams: 0, deferred: 0 };
+  let deferred = 0;
   for (let i = 0; i < ids.length; i += INSERT_BATCH) {
     const batch = ids.slice(i, i + INSERT_BATCH);
     // #2524: hent navn+id FØR delete (rider_watchlist ingen FK-cascade — se
@@ -416,15 +482,34 @@ export async function clearAllAiTeams(supabase) {
     // #3331: batch kan være op til 500 team-id'er × op til 38 ryttere/hold —
     // kan overstige 1000-rækkers-loftet, så pagineret.
     const watchedRiders = await fetchAllRows(() => supabase
-      .from("riders").select("id, firstname, lastname").in("team_id", batch)
+      .from("riders").select("id, firstname, lastname, team_id").in("team_id", batch)
       .order("id", { ascending: true }));
-    const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
-    if (rErr) throw new Error(`clearAllAiTeams (rider delete): ${rErr.message}`);
-    await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
-    const { error: tErr } = await supabase.from("teams").delete().in("id", batch);
-    if (tErr) throw new Error(`clearAllAiTeams (team delete): ${tErr.message}`);
+
+    const blockedRiderIds = await getBlockedRiderIds(supabase, watchedRiders.map((r) => r.id));
+    const blockedTeamIds = new Set(
+      watchedRiders.filter((r) => blockedRiderIds.has(r.id)).map((r) => r.team_id)
+    );
+    const deletableRiders = watchedRiders.filter((r) => !blockedRiderIds.has(r.id));
+    const deletableTeamIds = batch.filter((id) => !blockedTeamIds.has(id));
+
+    if (deletableRiders.length) {
+      const { error: rErr } = await supabase.from("riders").delete().in("id", deletableRiders.map((r) => r.id));
+      if (rErr) throw new Error(`clearAllAiTeams (rider delete): ${rErr.message}`);
+      await notifyAndClearWatchlistForRiders({ supabase, riders: deletableRiders });
+    }
+    if (deletableTeamIds.length) {
+      const { error: tErr } = await supabase.from("teams").delete().in("id", deletableTeamIds);
+      if (tErr) throw new Error(`clearAllAiTeams (team delete): ${tErr.message}`);
+    }
+    if (blockedTeamIds.size) {
+      await markPendingRemoval(supabase, [...blockedTeamIds]);
+      deferred += blockedTeamIds.size;
+      console.warn(
+        `  clearAllAiTeams: ${blockedTeamIds.size} AI-hold har ryttere i igangvaerende loeb (#2074) - sletning udskudt (#2086), markeret pending_removal_at.`
+      );
+    }
   }
-  return { teams: ids.length };
+  return { teams: ids.length - deferred, deferred };
 }
 
 /**

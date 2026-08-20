@@ -32,6 +32,21 @@ export const SPRINT_CAPTAIN_CONTEST_MULTIPLIER = 1.15;
 export const WAYPOINT_NOISE_SD = 0.03;
 export const CATCH_KM_RANGE = Object.freeze([0.55, 0.92]); // andel af distance
 
+// #2410 (event-log S1): catch-km ekstraheret til en delt, eksporteret funktion —
+// ÉN sandhed for "hvor blev udbryderen indhentet", genbrugt bit-identisk af
+// backend/lib/raceTimeline.js's breakaway_caught-event (spec §2.1, note 1: "kan
+// genbruge PRÆCIS denne værdi"). computePassages nedenfor kalder den samme
+// funktion — ingen drift-risiko mellem de to aftagere. Fallback-distance (200)
+// UÆNDRET fra før udtrækket.
+export function computeCatchKm({ stageProfile = {}, seed }) {
+  const rawDistance = stageProfile.distance_km;
+  const distance = rawDistance == null ? NaN : Number(rawDistance);
+  const hasDistance = Number.isFinite(distance) && distance > 0;
+  const dist = hasDistance ? distance : 200;
+  const catchRng = makeRng(stableSeed(`${seed}:catch`));
+  return dist * (CATCH_KM_RANGE[0] + (CATCH_KM_RANGE[1] - CATCH_KM_RANGE[0]) * catchRng());
+}
+
 const KOM_BLEND_BIG = { climbing: 0.75, endurance: 0.25 };            // HC/1/2
 const KOM_BLEND_SMALL = { climbing: 0.5, punch: 0.35, acceleration: 0.15 }; // 3/4
 const SPRINT_BLEND = { sprint: 0.6, acceleration: 0.25, positioning: 0.15 };
@@ -72,10 +87,8 @@ export function computePassages({ ranked = [], stageProfile = {}, entrants = [],
   const roleById = new Map(entrants.map((e) => [e.rider_id, e.race_role || null]));
   const bwStatus = deriveBreakawayStatus(ranked);
 
-  // Catch-punkt: dedikeret strøm — indhentede escapees er i front FØR dette km.
-  const catchRng = makeRng(stableSeed(`${seed}:catch`));
-  const dist = hasDistance ? distance : 200;
-  const catchKm = dist * (CATCH_KM_RANGE[0] + (CATCH_KM_RANGE[1] - CATCH_KM_RANGE[0]) * catchRng());
+  // Catch-punkt: delt funktion (#2410) — indhentede escapees er i front FØR dette km.
+  const catchKm = computeCatchKm({ stageProfile, seed });
 
   const inFront = (riderId, km) => {
     const st = bwStatus.get(riderId);
@@ -84,6 +97,9 @@ export function computePassages({ ranked = [], stageProfile = {}, entrants = [],
   };
 
   // Waypoint-liste: climbs (kom) + intermediate sprints, sorteret på km; mål til sidst.
+  // #2410-refactor: mål-km bruger SAMME 200-km-fallback som computeCatchKm (dist,
+  // ikke rå `distance`) — uændret fra før udtrækket.
+  const dist = hasDistance ? distance : 200;
   const waypoints = [
     ...climbs.map((c, i) => ({ kind: "kom", index: i, name: c.name, km: c.crest_km, category: c.category, summit_finish: !!c.summit_finish })),
     ...sprints.filter((s) => s.kind === "intermediate").map((s, i) => ({ kind: "sprint", index: i, name: s.name, km: s.km })),

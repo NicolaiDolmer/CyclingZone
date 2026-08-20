@@ -1,7 +1,8 @@
 import SeasonRecapHero from "../components/SeasonRecapHero.jsx";
 import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard.jsx";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
-import { TrophyIcon, CoinIcon, ExchangeIcon } from "../components/ui";
+import { TrophyIcon, CoinIcon, ExchangeIcon, FlameIcon, PodiumIcon, LightningIcon } from "../components/ui";
+import { exportSeasonDocumentaryPng, downloadBlob } from "../lib/seasonDocumentaryExport.js";
 
 // #2752 — DRAFT-ONLY mock preview for the season-experience UI slice (season
 // recap "yearbook" + active season-end/start surfacing). Same convention as
@@ -30,15 +31,23 @@ function MockFrame({ label, children }) {
   );
 }
 
-// #2752/#2361 real-wiring follow-up (4/8): `division` betyder KONKRET "den
-// division holdet SLUTTEDE denne sæson i" (matcher SeasonRecapHero.jsx's egen
-// JSDoc + "rankLine"-teksten "#{rank} of {size} in Division {division}") —
-// IKKE destinationsdivisionen efter en evt. oprykning/nedrykning. Draft-
-// mock'en (PR #3283) blandede de to (promoted-scenariet satte division:2 men
-// en highlight der sagde "Division 3") — rettet her efter den rigtige data-
+// #2752/#2361 (4/8): `division` betyder KONKRET "den division holdet SLUTTEDE
+// denne sæson i" (matcher SeasonRecapHero.jsx's egen JSDoc + "rankLine"-
+// teksten "#{rank} of {size} in Division {division}") — IKKE
+// destinationsdivisionen efter en evt. oprykning/nedrykning. Draft-mock'en
+// (PR #3283) blandede de to (promoted-scenariet satte division:2 men en
+// highlight der sagde "Division 3") — rettet her efter den rigtige data-
 // wiring afslørede tvetydigheden (samme rettelse fjernede {division} fra
 // movement.promoted/relegated-copyen i en+da seasonEnd.json/dashboard.json,
 // som ellers ville have vist den FORKERTE division ved en oprykning).
+//
+// #season-recap-polish (18/8, ejer-godkendt mockup) — "relegated" og "held"
+// viste FØR 0 highlights ("0 er normaltilfældet" var netop hvad ejeren bad om
+// at fjerne, pickRecapHighlights' nye garanti-fallback). Alle tre scenarier
+// viser nu 3 highlights: "promoted" beholder de tre oprindelige (præmie/salg/
+// etapekonge), "relegated"/"held" viser #3402-dokumentar-fallback'ene
+// (turningPoint/biggestResult/rival) — de typer et midterfelts- eller
+// nedrykningshold faktisk lander på i praksis.
 const RECAP_SCENARIOS = [
   {
     id: "promoted",
@@ -59,6 +68,18 @@ const RECAP_SCENARIOS = [
         { id: "stage", icon: TrophyIcon, label: "Team stage king: Marco Bittner", value: "6 wins" },
       ],
     },
+    // #season-recap-polish — shareCard er scenariets mock-input til
+    // makeDownloadHandler nedenfor, ADSKILT fra `props` (som spredes direkte
+    // ind i <SeasonRecapHero>) — heroen kender ikke selv til shareCard-formen.
+    shareCard: {
+      meta: "Division 3 · #2 of 20",
+      stats: [
+        { label: "Turning point", value: "410 pts · 14 Jul" },
+        { label: "Biggest result", value: "Marco Bittner · Alpine Grand Tour" },
+        { label: "Closest rival", value: "Skovlund CC · +140" },
+        { label: "Final points", value: "4,820" },
+      ],
+    },
   },
   {
     id: "relegated",
@@ -73,7 +94,20 @@ const RECAP_SCENARIOS = [
       points: 2110,
       stageWins: 2,
       prizeWon: 184000,
-      highlights: [],
+      highlights: [
+        { id: "turningPoint", icon: FlameIcon, label: "Best day of the season", value: "180 pts · Vosges Classic" },
+        { id: "biggestResult", icon: PodiumIcon, label: "Best individual result", value: "Tomas Weber · Vosges Classic" },
+        { id: "rival", icon: LightningIcon, label: "Closest rival: Havneby Racing", value: "18 pts behind" },
+      ],
+    },
+    shareCard: {
+      meta: "Division 3 · #19 of 20",
+      stats: [
+        { label: "Turning point", value: "180 pts · 3 Jun" },
+        { label: "Biggest result", value: "Tomas Weber · Vosges Classic" },
+        { label: "Closest rival", value: "Havneby Racing · -18" },
+        { label: "Final points", value: "2,110" },
+      ],
     },
   },
   {
@@ -89,10 +123,41 @@ const RECAP_SCENARIOS = [
       points: 3340,
       stageWins: 5,
       prizeWon: 398000,
-      highlights: [],
+      highlights: [
+        { id: "turningPoint", icon: FlameIcon, label: "Best day of the season", value: "265 pts · Nordic Circuit" },
+        { id: "biggestResult", icon: PodiumIcon, label: "Best individual result", value: "Elin Aas · Nordic Circuit" },
+        { id: "rival", icon: LightningIcon, label: "Closest rival: Bakketoppen RT", value: "beaten by 9 pts" },
+      ],
+    },
+    shareCard: {
+      meta: "Division 2 · #9 of 18",
+      stats: [
+        { label: "Turning point", value: "265 pts · 22 Jun" },
+        { label: "Biggest result", value: "Elin Aas · Nordic Circuit" },
+        { label: "Closest rival", value: "Bakketoppen RT · +9" },
+        { label: "Final points", value: "3,340" },
+      ],
     },
   },
 ];
+
+// #season-recap-polish (18/8) — heroens ene gold-CTA ("Download share card")
+// kalder nu ind i en rigtig eksport, også her på mock-siden: samme
+// canvas-lib (seasonDocumentaryExport.js) som den ægte SeasonEndPage.jsx-
+// wiring, bare fodret med scenariets håndbyggede shareCard-data i stedet for
+// en Supabase-fetch. Siden er stadig "no fetch, no Supabase" — dette er et
+// rent funktionskald, ingen netværkstur.
+function makeDownloadHandler(scenario) {
+  return async () => {
+    const blob = await exportSeasonDocumentaryPng({
+      eyebrow: `Season ${scenario.props.seasonNumber} documentary`,
+      teamName: scenario.props.teamName,
+      meta: scenario.shareCard.meta,
+      stats: scenario.shareCard.stats,
+    });
+    downloadBlob(blob, `cycling-zone-season-${scenario.props.seasonNumber}-documentary-preview-${scenario.id}.png`);
+  };
+}
 
 const NUDGE_SCENARIOS = [
   {
@@ -188,7 +253,11 @@ export default function SeasonExperiencePreviewPage() {
         {RECAP_SCENARIOS.map((s) => (
           <MockFrame key={s.id} label={s.label}>
             <div className="max-w-2xl">
-              <SeasonRecapHero {...s.props} shareUrl={`https://cyclingzone.org/seasons/preview-${s.id}`} />
+              <SeasonRecapHero
+                {...s.props}
+                shareUrl={`https://cyclingzone.org/seasons/preview-${s.id}`}
+                onDownloadCard={makeDownloadHandler(s)}
+              />
             </div>
           </MockFrame>
         ))}
