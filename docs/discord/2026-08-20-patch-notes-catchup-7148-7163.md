@@ -6,7 +6,7 @@
 > ligger i 2026-08-16-trin7-potentiale-fart.md.
 
 ```
-Catch-up: v7.148 to v7.163 - the development update is live
+Catch-up: v7.148 to v7.164 - the development update is live
 
 Full detail as always at cyclingzone.org/patch-notes.
 
@@ -29,6 +29,7 @@ Economy
 Races & season
 - A first draft of the season 3 calendar is live. It is rough, and your feedback is already driving corrections: expect changes tomorrow before it locks
 - The stage type is back on the stage tab
+- Stage weights now add up to 100 percent, with an Other factors share and a note when descending and positioning decide the finale
 - Race Centre live ticker shows rider names again
 
 Everything else
