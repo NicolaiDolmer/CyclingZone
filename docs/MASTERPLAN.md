@@ -52,7 +52,7 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20.
 
 - **Rest:** #2085 → #2853 · **W7** efter trin 7 (#3714 #3623 #3456 #3412) · **W8**: 53 needs-decision tilbage (bundt 2 = økonomi, efter cutover).
-- **Fra design-sessionen 20/8:** #4011 finance-PR #4018 fix-runde done + ejer-go, merges sidst i toget · #2748 pension-PR #4021 bygget + ejer-godkendt · #4009 · #4025 tekst-trim på økonomiflader (senere). #3997 spejder-modning SHIPPET (7.157); #3924-kvittering ligger I trin 7-PR'en.
+- **Fra design-sessionen 20/8:** #4011 finance-PR #4018 fix-runde done + ejer-go, merges sidst i toget · #2748 pension-PR #4021 bygget + ejer-godkendt · #4009 · #4025 tekst-trim på økonomiflader (senere). #3924-kvittering ligger I trin 7-PR'en.
 - Småbugs: #3896 · #3897 · #3898 · #3917-analyse leveret (fodrer #3855).
 
 ## E2 · Race-oplevelsen
