@@ -212,7 +212,6 @@ import {
 import { computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
-import { verifyAccessToken } from "../lib/accessTokenVerify.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import { payRaceDaySponsorsToDate } from "../lib/sponsorRaceDayIncome.js";
 import {
@@ -667,15 +666,12 @@ async function createRaceRecord(payload) {
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
 
-// #4010: requireAuth verificerer access tokenet LOKALT i stedet for at spørge
-// GoTrue på hver eneste request. Baggrund, måletal og sikkerhedsafvejning står
-// i lib/accessTokenVerify.js.
 async function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
-  const user = await verifyAccessToken(supabase, token, { strict: req.strictAuth === true });
-  if (!user) return res.status(401).json({ error: "Invalid token" });
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return res.status(401).json({ error: "Invalid token" });
 
   // Fetch team for this user
   const { data: team } = await supabase
@@ -694,11 +690,6 @@ async function requireAuth(req, res, next) {
 }
 
 async function requireAdmin(req, res, next) {
-  // #4010: admin-ruter kører fuld server-side token-verifikation (getUser), så
-  // en udlogget admin-session ikke kan nå at bruge sit endnu-ugyldige token i op
-  // til en time. Rolle-tjekket nedenfor er allerede et live DB-opslag, så en
-  // degraderet admin fanges med det samme — hullet var kun tilbagekaldelse.
-  req.strictAuth = true;
   await requireAuth(req, res, async () => {
     const { data: u } = await supabase
       .from("users")
