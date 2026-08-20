@@ -184,6 +184,24 @@ export function targetReadyAt(createdAt, etaMinutes = SCOUT_JOB_CONFIG.target.et
   return new Date(start.getTime() + minutes * 60_000);
 }
 
+// #3997 — samme regel som targetReadyAt ovenfor, blot i dage frem for minutter:
+// en missions klar-tidspunkt er PRÆCIS created_at + dage×24 timer ELAPSED REAL
+// TID (millisekunder, ikke kalenderdage) — DST-robust af sig selv, ligesom
+// targetReadyAt, fordi den aldrig regner i "kalenderdage" (setUTCDate-stil,
+// readyDateFor ovenfor) men i rene millisekunder. FØR modnede missioner via
+// ready_on (en DATE-kolonne, started_on + dage) + den natlige kl.22-sweep —
+// en 1-dags mission sendt kl. 09 tog derfor reelt 23-46 timer (ejer-fund,
+// #3997). Nu er ready_at den ENESTE modnings-regel; ready_on-kolonnen bevares
+// kun til visning/bagudkompatibilitet (scoutAssignmentService.startMission).
+export function missionReadyAt(createdAt, days = SCOUT_JOB_CONFIG.mission.days) {
+  if (!createdAt) return null;
+  const start = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (Number.isNaN(start.getTime())) return null;
+  const d = Number(days);
+  if (!Number.isFinite(d)) return null;
+  return new Date(start.getTime() + d * 24 * 60 * 60 * 1000);
+}
+
 // Kan holdet starte en ny opgave lige nu? Ren guard (mønster: facilityEngine.validateUpgrade).
 //   activeCount : antal aktive opgaver hos spejderen nu
 //   scout       : spejder-objekt (overall driver kapacitet)
