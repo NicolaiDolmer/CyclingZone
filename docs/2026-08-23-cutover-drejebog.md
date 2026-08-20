@@ -309,12 +309,20 @@ tests i `cutover3645.test.js`.
 | **2. Verificér snapshottet læsbart** | `infisical run --env=prod -- node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459` |
 | **3. Backup af løn-/mandat-tabeller** | dry-run: `… node scripts/dev/cutoverBackup3645.mjs`<br>apply: `CONFIRM_BACKUP=yes … node scripts/dev/cutoverBackup3645.mjs --apply`<br>efterprøv: `… node scripts/dev/cutoverBackup3645.mjs --verify` |
 | **4. Løn-genberegning** | dry-run: `… node scripts/dev/salaryRecompute3645.mjs`<br>apply: `CONFIRM_SALARY_RECOMPUTE=yes … node scripts/dev/salaryRecompute3645.mjs --apply` |
-| **5. Mandat-genberegning** | dry-run: `… node scripts/dev/mandateRecompute3645.mjs`<br>apply: `CONFIRM_MANDATE_RECOMPUTE=yes … node scripts/dev/mandateRecompute3645.mjs --apply` |
+| **5a. Mandat-backup (MANUELT, før 5b)** | `create table backup_board_profiles_3514_20260823 as select * from board_profiles;` (via MCP/psql — intet script opretter den, og `mandateMigration3514.mjs` nægter apply uden den) |
+| **5b. Mandat-backfill** | dry-run: `… node scripts/dev/mandateMigration3514.mjs`<br>selvtest: `node scripts/dev/mandateMigration3514.mjs --selvtest`<br>apply: `… node scripts/dev/mandateMigration3514.mjs --apply --jeg-har-set-scorecardet` |
 | **Rollback af lofter** | `CONFIRM_RESTORE=yes … node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459 --apply` |
 
 Backup-tabellen `cutover_3645_backup_20260823` oprettes af
 `database/2026-08-23-3645-cutover-backup-table.sql` (idempotent, kun `CREATE TABLE
-IF NOT EXISTS`). Rollback-SQL for løn og mandat står i samme fil.
+IF NOT EXISTS`). Rollback-SQL for løn står i samme fil; mandat-rollback står i
+Komponent 4-afsnittet ovenfor (kill-switch + truncate), IKKE i SQL-filen.
+
+> **Rettet 20/8 (generalprøve-verifikation):** tidligere pegede trin 5 på
+> `mandateRecompute3645.mjs` — det script skriver til `board_profiles.confidence`,
+> en kolonne der aldrig blev til noget (#3514-migrationen lagde `confidence` på
+> `board_relations`). Det rigtige backfill-script er `mandateMigration3514.mjs`
+> (selvtest kørt grønt 20/8). Brug ALDRIG `mandateRecompute3645.mjs`.
 
 **Porte der stopper en fejlkørsel før den sker:**
 

@@ -59,9 +59,12 @@ ALTER TABLE public.cutover_3645_backup_20260823 ENABLE ROW LEVEL SECURITY;
 --    WHERE r.salary IS DISTINCT FROM (b.row_before ->> 'salary')::bigint;
 
 -- ── ROLLBACK: MANDAT (#3514) ────────────────────────────────────────────────
--- Mandat-migrationen er ikke bygget endnu (17/8), så de præcise kolonner den
--- skriver kendes ikke. Backuppen bærer HELE rækken som jsonb, så rollbacken kan
--- skrives når migrationen findes. Formen er:
+-- STALE PR. 20/8 — brug IKKE dette afsnit. Mandat-migrationen blev bygget som
+-- mandateMigration3514.mjs og skriver til board_relations/board_mandates/
+-- board_vision_milestones, IKKE board_profiles.satisfaction. Den autoritative
+-- rollback (kill-switch + truncate) står i docs/2026-08-23-cutover-drejebog.md,
+-- Komponent 4. Backup-tabellen for mandat er backup_board_profiles_3514_<dato>
+-- (oprettes MANUELT, se drejebogens trin 5a). Historisk udkast bevaret nedenfor:
 --
 --   BEGIN;
 --   UPDATE public.board_profiles p
