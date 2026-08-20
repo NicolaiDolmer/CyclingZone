@@ -40,8 +40,8 @@ export const PATCHES = [
       "body": "Nothing disappears with the new view. The profile, the scouting tab and the rider tables keep showing the role ceiling right next to the new projected level. For most riders the ceiling was raised, and riders who looked finished can train again.\n\nA one time panel on your dashboard shows each of your riders with ceiling before, ceiling now and the new forecast, so you can see exactly what changed for your team."
       },
       "da": {
-      "title": "Loftet bliver staaende ved siden af prognosen",
-      "body": "Intet forsvinder med den nye visning. Profilen, scouting-fanen og ryttertabellerne viser fortsat rollens loft lige ved siden af det nye forventede niveau. For de fleste ryttere er loftet haevet, og ryttere der saa faerdige ud, kan traenes igen.\n\nEt engangspanel paa dit dashboard viser hver af dine ryttere med loft foer, loft nu og den nye prognose, saa du kan se praecis hvad der aendrede sig for dit hold."
+      "title": "Loftet bliver stående ved siden af prognosen",
+      "body": "Intet forsvinder med den nye visning. Profilen, scouting-fanen og ryttertabellerne viser fortsat rollens loft lige ved siden af det nye forventede niveau. For de fleste ryttere er loftet hævet, og ryttere der så færdige ud, kan trænes igen.\n\nEt engangspanel på dit dashboard viser hver af dine ryttere med loft før, loft nu og den nye prognose, så du kan se præcis hvad der ændrede sig for dit hold."
       },
       "refs": [
       3746,
