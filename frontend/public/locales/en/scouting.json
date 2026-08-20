@@ -22,7 +22,7 @@
     "kindTarget": "Targeted job",
     "kindMission": "Mission",
     "reportIn": "Report in {days, plural, one {1 day} other {# days}}",
-    "reportToday": "Report due today",
+    "reportToday": "Report tonight, after 22:00",
     "targetReportIn": "Report in ~{minutes} min",
     "targetReportCountdown": "Report in {minutes, plural, one {1 min} other {# min}}",
     "targetReportDue": "Report ready. Refresh to open it.",
@@ -51,7 +51,7 @@
       "countryLabel": "Country",
       "typeLabel": "Rider type",
       "submit": "Start mission",
-      "costNote": "Missions run {days, plural, one {1 day} other {# days}} and cost {cost, number} in travel money from your budget. No refund if cancelled."
+      "costNote": "Missions run {days, plural, one {1 day} other {# days}} and cost {cost, number} in travel money from your budget. The report lands with the next nightly scout run (after 22:00), not a fixed number of hours after you send it. No refund if cancelled."
     },
     "scope": {
       "u23": "U23 riders",

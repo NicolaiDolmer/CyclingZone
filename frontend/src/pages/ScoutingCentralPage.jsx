@@ -96,7 +96,10 @@ function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobCo
       });
 
   // #2644: målrettede undersøgelser svarer på ~30 min uanset niveau — den
-  // dags-baserede reportIn/-Today bruges stadig til missioner (2 dage).
+  // dags-baserede reportIn/-Today bruges stadig til missioner (#3652: 1 dag).
+  // #3997: "i dag" betyder konkret "ved den natlige sweep efter kl. 22"
+  // (SWEEP_FROM_HOUR i backend/lib/scoutSweep.js), ikke 24 timer efter
+  // afsendelse — copy'en i queue.reportToday siger det eksplicit.
   // #3548: har rækken et ready_at, tæller den ned mod det; ellers falder den
   // tilbage til den gamle flade ETA-copy (ældre payload uden feltet).
   let reportLabel;
