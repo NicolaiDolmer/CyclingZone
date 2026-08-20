@@ -4,6 +4,46 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.148",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Wages follow what a rider delivers, not what he is worth",
+          "body": "A rider's value is the price of who he becomes. His wage is the price of what he delivers this season. Wages are a fixed share of his current production value, and that share is now the same in every division. Better rider, higher wage. Fading rider, lower wage at his next contract. Signed contracts stay frozen."
+        },
+        "da": {
+          "title": "Løn følger hvad en rytter leverer, ikke hvad han er værd",
+          "body": "Din rytters værdi er prisen på hvem han bliver. Hans løn er prisen på hvad han leverer i denne sæson. Løn er en fast andel af hans nuværende produktionsværdi, og den andel er nu den samme i alle divisioner. Bedre rytter, højere løn. Rytter i tilbagegang, lavere løn ved næste kontrakt. Underskrevne kontrakter forbliver frosne."
+        },
+        "refs": [
+          3989
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "The next-season forecast was overstating your wage bill",
+          "body": "The forecast priced next season's wages off market value, so young prospects looked far more expensive than riders who are better right now. It uses the real wage formula again."
+        },
+        "da": {
+          "title": "Prognosen for næste sæson satte lønnen for højt",
+          "body": "Prognosen prissatte næste sæsons løn efter markedsværdi, så unge talenter så langt dyrere ud end ryttere der er bedre lige nu. Den bruger den rigtige lønformel igen."
+        },
+        "refs": [
+          3986,
+          3989
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.147",
     "date": "2026-08-19",
     "label": "Beta",

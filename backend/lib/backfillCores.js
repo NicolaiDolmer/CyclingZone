@@ -434,14 +434,14 @@ export async function runBaseValueBackfill(supabase, { dryRun = true, model, log
   // currentProductionValue læser den FØR primary_type (se riderValuation.js). Uden
   // den ville denne sweep stille revaluere hele populationen efter enhver
   // primary_type-reklassificering (#3325/#3343), præcis det #3345 fryser mod.
-  const [riders, abilities, teams, seasonNumber] = await Promise.all([
+  // #3989: teams-tabellen blev kun læst for at slå `division` op til løn-satsen.
+  // Satsen er global, så hele det fulde tabel-scan er droppet.
+  const [riders, abilities, seasonNumber] = await Promise.all([
     fetchAllRows(() => supabase.from("riders").select("id, primary_type, valuation_type, base_value, market_value, prize_earnings_bonus, is_academy, salary, birthdate, potentiale, team_id").order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
-    fetchAllRows(() => supabase.from("teams").select("id, division").order("id")),
     activeSeasonNumber(supabase),
   ]);
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
-  const divisionByTeam = new Map(teams.map((t) => [t.id, t.division]));
 
   const updates = [];
   let noAbilities = 0;
@@ -461,7 +461,7 @@ export async function runBaseValueBackfill(supabase, { dryRun = true, model, log
     // kontrakt-løn er bevidst frossen ved signering. Kun akademiryttere med en
     // eksisterende løn re-synkes.
     if (r.is_academy && r.salary != null && cpv != null) {
-      update.salary = computeFrozenSalary({ current_production_value: cpv, division: divisionByTeam.get(r.team_id) });
+      update.salary = computeFrozenSalary({ current_production_value: cpv });
       salariesRecomputed++;
     }
     updates.push(update);

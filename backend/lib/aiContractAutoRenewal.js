@@ -99,7 +99,6 @@ export async function renewExpiringAiContracts({
     try {
       const next = computeContractExtension({
         current_production_value: rider.current_production_value,
-        division: rider.team?.division,
         contract_end_season: rider.contract_end_season,
         contract_length: rider.contract_length,
         currentSeason: seasonNumber,

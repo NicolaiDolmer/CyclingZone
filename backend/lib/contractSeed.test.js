@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
 import {
   CONTRACT,
@@ -16,14 +17,31 @@ import {
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
-test("computeFrozenSalary = current_production_value × per-division sats (#2594)", () => {
-  // GREATEST(1, ROUND(COALESCE(current_production_value,1000) × SALARY_RATE_PROD[division]))
-  assert.equal(computeFrozenSalary({ current_production_value: 1_000_000, division: 1 }), 302_900);
-  assert.equal(computeFrozenSalary({ current_production_value: 50_000, division: 3 }), 7_405);
-  // NULL/0 current_production_value → fallback 1000; ukendt division → global sats (0.1606)
-  assert.equal(computeFrozenSalary({ current_production_value: null }), 161);
+test("computeFrozenSalary = current_production_value × den globale sats (#3989)", () => {
+  // GREATEST(1, ROUND(COALESCE(current_production_value, 1000) × SALARY_RATE_PRODUCTION))
+  const at = (cpv) => Math.max(1, Math.round(cpv * SALARY_RATE_PRODUCTION));
+  assert.equal(computeFrozenSalary({ current_production_value: 1_000_000 }), at(1_000_000));
+  assert.equal(computeFrozenSalary({ current_production_value: 50_000 }), at(50_000));
+  // NULL/0 current_production_value → fallback 1000
+  assert.equal(computeFrozenSalary({ current_production_value: null }), at(1000));
   // bundgrænse 1
-  assert.equal(computeFrozenSalary({ current_production_value: 1, division: 1 }), 1);
+  assert.equal(computeFrozenSalary({ current_production_value: 1 }), 1);
+});
+
+test("#3989 · lønnen er division-blind og monotont voksende i leverance", () => {
+  // Kernen i ejer-beslutningen 20/8: samme rytter koster det samme uanset hold.
+  // En `division` der smugles ind i argument-objektet må ikke kunne flytte tallet.
+  const base = computeFrozenSalary({ current_production_value: 250_000 });
+  for (const division of [1, 2, 3, 4, null, undefined, 99]) {
+    assert.equal(
+      computeFrozenSalary({ current_production_value: 250_000, division }), base,
+      `division ${division} flyttede lønnen — løn må KUN skalere med rytterens kvalitet`,
+    );
+  }
+  const ladder = [1_000, 10_000, 100_000, 1_000_000].map((cpv) => computeFrozenSalary({ current_production_value: cpv }));
+  for (let i = 1; i < ladder.length; i++) {
+    assert.ok(ladder[i] > ladder[i - 1], `bedre leverance skal ALTID koste mere: ${JSON.stringify(ladder)}`);
+  }
 });
 
 test("pickContractLength giver 1-3, ~1/3 fordeling, deterministisk pr. seed", () => {
@@ -102,7 +120,8 @@ test("contractOnAcquirePatch: salary sat MEN contract_end_season NULL → heales
     { division: 1 },
   );
   assert.equal(patch.contract_length, 2);
-  assert.equal(patch.salary, 302_900); // genberegnet fra current_production_value, ikke det gamle 42_000
+  // Genberegnet fra current_production_value, ikke det gamle 42_000.
+  assert.equal(patch.salary, Math.round(1_000_000 * SALARY_RATE_PRODUCTION));
   assert.equal(patch.contract_end_season, 2); // 1 + 2 - 1
 });
 
@@ -129,21 +148,21 @@ test("contractOnAcquirePatch: #3620 — eksplicit NULL end-sæson kaster IKKE (d
 test("contractOnAcquirePatch: kontraktløs rytter → standard-kontrakt (length 2, frossen salary, korrekt end)", () => {
   const patch = contractOnAcquirePatch({ salary: null, current_production_value: 1_000_000 }, 1, { division: 1 });
   assert.equal(patch.contract_length, 2);
-  assert.equal(patch.salary, 302_900); // 1_000_000 × 0.3029 (division 1)
+  assert.equal(patch.salary, Math.round(1_000_000 * SALARY_RATE_PRODUCTION));
   assert.equal(patch.contract_end_season, 2); // 1 + 2 - 1
 });
 
 test("contractOnAcquirePatch: undefined salary behandles som kontraktløs (free agent)", () => {
-  // Udeladt division (fx free agent uden erhvervende hold) → global sats.
+  // #3989: satsen er global, så en free agent uden erhvervende hold prissættes ens.
   const patch = contractOnAcquirePatch({ current_production_value: 50_000 }, 3);
   assert.equal(patch.contract_length, 2);
-  assert.equal(patch.salary, 8_030); // 50_000 × 0.1606 (global)
+  assert.equal(patch.salary, Math.round(50_000 * SALARY_RATE_PRODUCTION));
   assert.equal(patch.contract_end_season, 4); // 3 + 2 - 1
 });
 
-test("contractOnAcquirePatch: kontraktløs + NULL current_production_value → fallback 1000 × global-sats", () => {
+test("contractOnAcquirePatch: kontraktløs + NULL current_production_value → fallback 1000 × satsen", () => {
   const patch = contractOnAcquirePatch({ salary: null, current_production_value: null }, 1);
-  assert.equal(patch.salary, 161); // max(1, round(1000 × 0.1606))
+  assert.equal(patch.salary, Math.max(1, Math.round(1000 * SALARY_RATE_PRODUCTION)));
   assert.equal(patch.contract_length, 2);
   assert.equal(patch.contract_end_season, 2);
 });
@@ -194,18 +213,18 @@ test("computeContractExtension: ny løn fra current_production_value, end+1, len
     contract_end_season: 4,
     contract_length: 2,
   });
-  assert.equal(next.salary, 302_900); // 1_000_000 × 0.3029 (= computeFrozenSalary)
+  assert.equal(next.salary, Math.round(1_000_000 * SALARY_RATE_PRODUCTION)); // = computeFrozenSalary
   assert.equal(next.contract_end_season, 5); // 4 + 1
   assert.equal(next.contract_length, 3); // 2 + 1
 });
 
-test("computeContractExtension: udeladt division → global sats", () => {
+test("computeContractExtension: lønnen er den globale sats, uanset division (#3989)", () => {
   const next = computeContractExtension({
     current_production_value: 50_000,
     contract_end_season: 2,
     contract_length: 1,
   });
-  assert.equal(next.salary, 8_030); // 50_000 × 0.1606 (global)
+  assert.equal(next.salary, Math.round(50_000 * SALARY_RATE_PRODUCTION));
   assert.equal(next.contract_end_season, 3);
   assert.equal(next.contract_length, 2);
 });
@@ -220,7 +239,7 @@ test("computeContractExtension: NULL contract-felter → end baseres på current
     contract_length: null,
     currentSeason: 3,
   });
-  assert.equal(next.salary, 41_740); // 200_000 × 0.2087 (division 4)
+  assert.equal(next.salary, Math.round(200_000 * SALARY_RATE_PRODUCTION));
   assert.equal(next.contract_end_season, 4); // currentSeason(3) + 1
   assert.equal(next.contract_length, 1);
 });
@@ -435,21 +454,21 @@ test("runContractSeed: founders → 2 sæsoner, andre ejede → 1-3, free agents
 
   const byId = Object.fromEntries(supabase._updates.map((u) => [u.id, u.patch]));
 
-  // Founder r1 (division 1): length=2, end=2, salary=302_900 (1_000_000 × 0.3029)
+  // Founder r1: length=2, end=2, salary = 1_000_000 × satsen
   assert.equal(byId.r1.contract_length, 2);
   assert.equal(byId.r1.contract_end_season, 2);
-  assert.equal(byId.r1.salary, 302_900);
+  assert.equal(byId.r1.salary, Math.round(1_000_000 * SALARY_RATE_PRODUCTION));
 
-  // Founder r2 (division 1): length=2, end=2, salary=60_580 (200_000 × 0.3029)
+  // Founder r2: length=2, end=2, salary = 200_000 × satsen
   assert.equal(byId.r2.contract_length, 2);
   assert.equal(byId.r2.contract_end_season, 2);
-  assert.equal(byId.r2.salary, 60_580);
+  assert.equal(byId.r2.salary, Math.round(200_000 * SALARY_RATE_PRODUCTION));
 
-  // Non-founder r3 (division 3): length 1-3, end = 1 + length - 1, salary=74_050 (500_000 × 0.1481)
+  // Non-founder r3: length 1-3, end = 1 + length - 1, salary = 500_000 × satsen
   assert.ok(byId.r3.contract_length >= 1 && byId.r3.contract_length <= 3,
     `r3 length=${byId.r3.contract_length} ude af 1-3`);
   assert.equal(byId.r3.contract_end_season, byId.r3.contract_length); // = 1 + length - 1
-  assert.equal(byId.r3.salary, 74_050);
+  assert.equal(byId.r3.salary, Math.round(500_000 * SALARY_RATE_PRODUCTION));
 });
 
 test("runContractSeed (dryRun): ingen writes, kun preview-count", async () => {

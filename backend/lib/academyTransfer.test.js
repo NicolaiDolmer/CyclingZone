@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
 import { promote, demote, demoteSalary } from "./academyTransfer.js";
 import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contractSeed.js";
@@ -76,19 +77,6 @@ function makeSupabase(cfg = {}) {
           },
         };
       }
-      if (table === "teams") {
-        // #2594: demote() slår det demoverende holds division op for at prissætte
-        // akademi-lønnen (per-division sats).
-        return {
-          select() {
-            const api = {
-              eq() { return api; },
-              maybeSingle() { return Promise.resolve({ data: cfg.team ?? { id: "t1", division: 3 }, error: null }); },
-            };
-            return api;
-          },
-        };
-      }
       if (table === "race_entries") {
         // #3805: demote() slår countOngoingRaceEntries op EFTER selve RPC'en —
         // default [] (racesOngoing=0), overstyr via cfg.raceEntries i tests der
@@ -158,13 +146,13 @@ const SENIOR_U23_WITH_EXTENDED_CONTRACT = {
 
 // ─── demoteSalary helper ──────────────────────────────────────────────────────
 // #2594: demoteSalary er nu en ren delegation til computeFrozenSalary —
-// current_production_value × per-division sats (ikke længere ACADEMY.SALARY_RATE
+// current_production_value × den globale sats (ikke længere ACADEMY.SALARY_RATE
 // × base_value).
 
-test("demoteSalary: computeFrozenSalary-delegation (current_production_value × per-division sats, gulvet på 1)", () => {
-  assert.equal(demoteSalary({ current_production_value: 50_000, division: 3 }), 7_405); // 50_000 × 0.1481
-  assert.equal(demoteSalary({ current_production_value: null }), 161); // fallback 1000 × global (0.1606)
-  assert.equal(demoteSalary({ current_production_value: 1, division: 1 }), 1, "round(1×0.3029)=0 → gulvet til 1");
+test("demoteSalary: computeFrozenSalary-delegation (current_production_value × den globale sats, gulvet på 1)", () => {
+  assert.equal(demoteSalary({ current_production_value: 50_000 }), Math.round(50_000 * SALARY_RATE_PRODUCTION));
+  assert.equal(demoteSalary({ current_production_value: null }), Math.max(1, Math.round(1000 * SALARY_RATE_PRODUCTION))); // fallback 1000
+  assert.equal(demoteSalary({ current_production_value: 1 }), 1, "round(1 × satsen)=0 → gulvet til 1");
 });
 
 // ─── promote ──────────────────────────────────────────────────────────────────
@@ -284,7 +272,7 @@ test("promote: kaster ved rider-update-fejl", async () => {
 // ─── demote ──────────────────────────────────────────────────────────────────
 
 test("demote: kalder RPC med korrekt løn + sæson-år + kontrakt; notify; returnerer racesCleared", async () => {
-  // mock-teams-lookup i makeSupabase svarer med division 3 (default) → 50_000 × 0.1481 = 7_405.
+  // #3989: satsen er global, så lønnen er 50_000 × SALARY_RATE_PRODUCTION.
   const expectedSalary = demoteSalary({ current_production_value: 50_000, division: 3 });
   const { supabase, rec } = makeSupabase({
     rider: SENIOR_U23,
@@ -339,7 +327,7 @@ test("demote: #3805 — racesOngoing tæller igangværende løb (entries IKKE sl
 // JS-kopi af løn-formlen (marketValues.projectYouthSalary) fodret med
 // rytter-objektet fra siden der åbnede dialogen. RiderStatsPage.jsx's SELECT
 // hentede ALDRIG current_production_value, så formlen faldt tilbage til
-// BASE_VALUE_FALLBACK (1000) og viste 1000×0,3238≈324 (division 2) — mens
+// BASE_VALUE_FALLBACK (1000) og viste 1000×satsen — mens
 // selve flyttet (demote() → demoteSalary(), denne fil) regnede på rytterens
 // FAKTISKE current_production_value og landede på 5.191 (rapporteret i #3784).
 // Fixet fjerner den frontend-JS-kopi: quote-routen kalder NU demoteSalary()
@@ -347,13 +335,14 @@ test("demote: #3805 — racesOngoing tæller igangværende løb (entries IKKE sl
 // altid regner det SAMME for samme input — og dokumenterer eksplicit hvor galt
 // det gik med den gamle (manglende-data) formel.
 test("demote: #3784 — demoteSalary() (bruges af BÅDE quote-preview og selve demote()) giver samme tal for samme rytter-data", () => {
-  // Rytterens FAKTISKE current_production_value — division 2 (0,3238) — giver
-  // netop den løn (5.191) spilleren så efter flyttet.
-  const rider = { current_production_value: 16_032, division: 2 };
+  // Beløbet i #3784 (5.191) hørte til den daværende per-division-sats. Testen
+  // låser INVARIANTEN, ikke det historiske tal: preview og udførelse skal regne
+  // det samme, og resultatet skal komme fra rytterens faktiske produktion.
+  const rider = { current_production_value: 16_032 };
   const previewSalary = demoteSalary(rider); // det quote-routen nu viser i dialogen
   const executedSalary = demoteSalary(rider); // det demote() rent faktisk skriver til DB'en
   assert.equal(previewSalary, executedSalary, "preview og udførelse SKAL bruge samme funktion/input");
-  assert.equal(executedSalary, 5_191, "matcher den rapporterede faktiske løn i #3784");
+  assert.equal(executedSalary, Math.round(16_032 * SALARY_RATE_PRODUCTION));
 });
 
 test("demote: #3784 — den GAMLE frontend-formel (manglende current_production_value) reproducerer den rapporterede bug (324 ≠ 5.191)", () => {
@@ -363,13 +352,16 @@ test("demote: #3784 — den GAMLE frontend-formel (manglende current_production_
   // produktion. Denne test beviser hvorfor "samme formel, forkert data" stadig
   // er en bug, og hvorfor fixet må hente data server-side (ikke bare stole på
   // at frontend-objektet har feltet).
-  const riderMissingField = { division: 2 }; // current_production_value slet ikke SELECT'et
+  const riderMissingField = {}; // current_production_value slet ikke SELECT'et
   const buggyPreviewSalary = demoteSalary(riderMissingField);
-  assert.equal(buggyPreviewSalary, 324, "matcher den forkerte løn dialogen viste (324) i #3784");
+  assert.equal(
+    buggyPreviewSalary, Math.max(1, Math.round(1000 * SALARY_RATE_PRODUCTION)),
+    "manglende felt → BASE_VALUE_FALLBACK (1000) × satsen, uanset rytterens faktiske produktion",
+  );
 
-  const rider = { current_production_value: 16_032, division: 2 };
+  const rider = { current_production_value: 16_032 };
   const actualSalary = demoteSalary(rider);
-  assert.equal(actualSalary, 5_191, "matcher den faktiske løn rytteren endte på i #3784");
+  assert.equal(actualSalary, Math.round(16_032 * SALARY_RATE_PRODUCTION));
   assert.notEqual(buggyPreviewSalary, actualSalary, "netop divergensen #3784 rapporterede");
 });
 

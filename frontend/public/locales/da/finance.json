@@ -195,7 +195,7 @@
     },
     "salary": {
       "title": "Løn til ryttere",
-      "body": "6,7% af rytterens markedsværdi pr. sæson (baseværdi plus præmiebonus). Trækkes som engangsbeløb ved næste sæsons start, lige efter sponsor lander. Stjerneryttere er dyre at holde på."
+      "body": "En rytters løn er prisen på hvad han leverer i denne sæson, ikke hvad han er værd på markedet. Den er en fast andel af hans nuværende produktionsværdi, samme andel for alle hold i alle divisioner, så en bedre rytter koster altid mere. Lønnen fryses når du skriver under eller forlænger, så den følger ikke rytterens markedsværdi bagefter. Trækkes som engangsbeløb ved næste sæsons start, lige efter sponsor lander."
     },
     "debt": {
       "title": "Gældsloft pr. division",

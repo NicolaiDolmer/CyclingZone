@@ -35,11 +35,11 @@ import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
 
 /**
  * Demote-løn (#2594): samme delte formel som al anden løn —
- * current_production_value × SALARY_RATE_PROD[division] (computeFrozenSalary).
+ * current_production_value × SALARY_RATE_PRODUCTION (computeFrozenSalary, #3989).
  * Ét fælles løn-system (#2083-princippet), nu på produktions-basen.
  */
-export function demoteSalary({ current_production_value, division } = {}) {
-  return computeFrozenSalary({ current_production_value, division });
+export function demoteSalary({ current_production_value } = {}) {
+  return computeFrozenSalary({ current_production_value });
 }
 
 /**
@@ -87,7 +87,7 @@ export async function promote(supabase, {
   // #2881/#1309: kun kontraktløse ryttere (salary == null) får en ny kontrakt;
   // en eksisterende kontrakt (fx overlevet fra før et akademi-ophold) arves
   // UÆNDRET — regenerér ALDRIG. {} hvis rider.salary != null.
-  const contractPatch = contractOnAcquirePatch(rider, seasonNumber, { division: state?.division });
+  const contractPatch = contractOnAcquirePatch(rider, seasonNumber);
   const { error } = await supabase.from("riders").update({
     is_academy: false,
     ...contractPatch,
@@ -130,7 +130,9 @@ const DEMOTE_ERROR_CODES = new Set([
 /**
  * Demote en U23-senior-rytter ned i akademiet (D5).
  *
- * - newSalary = max(1, round(base_value × ACADEMY.SALARY_RATE)) (#2083: delt rate 0.067).
+ * - newSalary = demoteSalary(rider) = max(1, round(current_production_value ×
+ *   SALARY_RATE_PRODUCTION)). Samme delte formel som promote og alle andre
+ *   erhvervelses-stier (#2083-princippet: ét fælles løn-system).
  * - p_season_start_year = LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) (spejler
  *   ageForSeason, så RPC'ens alders-gate matcher motoren).
  * - kalder demote_rider_to_academy-RPC'en (advisory-lås + akademi-cap + atomisk
@@ -151,9 +153,8 @@ export async function demote(supabase, {
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 
-  const { data: demoteTeam } = await supabase
-    .from("teams").select("id, division").eq("id", teamId).maybeSingle();
-  const newSalary = demoteSalary({ ...rider, division: demoteTeam?.division });
+  // #3989: løn-satsen er global, så demote behøver ikke holdets division længere.
+  const newSalary = demoteSalary(rider);
   const seasonStartYear = LAUNCH_REFERENCE_YEAR + (Number(seasonNumber) - 1);
 
   // #3620: KONTRAKT-TERMEN følger rytteren ned i akademiet. Før skrev demote

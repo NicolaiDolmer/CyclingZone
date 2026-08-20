@@ -1,4 +1,4 @@
-import { SALARY_RATE_PROD } from "./economyConstants.js";
+import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 
 // #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30.
@@ -177,7 +177,7 @@ export function resolveRiderSalary(rider = {}) {
   if (rider && rider.salary != null) return Number(rider.salary);
   const cpv = Number(rider?.current_production_value);
   const base = cpv > 0 ? cpv : RIDER_BASE_VALUE_FALLBACK;
-  return Math.max(1, Math.round(base * SALARY_RATE_PROD.global));
+  return Math.max(1, Math.round(base * SALARY_RATE_PRODUCTION));
 }
 
 // Altid-åben handel (launch-checklist punkt 16 · ejer-direktiv 2026-06-22 · #1310 punkt 6):

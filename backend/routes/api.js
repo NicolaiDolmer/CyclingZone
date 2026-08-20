@@ -1403,7 +1403,7 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
   const currentSeason = await getActiveSeasonNumber();
-  const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
+  const next = computeContractExtension({ ...rider, currentSeason });
   const capError = contractExtensionCapError(next, currentSeason);
   // #3186: tælleren skal være synlig FØR spilleren handler — udregnet fra
   // rytterens NUVÆRENDE contract_end_season (ikke `next`, som allerede er én
@@ -1579,7 +1579,7 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
   const { rider } = result;
 
   const currentSeason = await getActiveSeasonNumber();
-  const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
+  const next = computeContractExtension({ ...rider, currentSeason });
 
   // #3143: hårdt loft — afvis eksplicit i stedet for at clampe stille (se
   // contractExtensionCapError ovenfor for begrundelsen). #3186: extensionCap
@@ -7377,11 +7377,16 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // hvis rytteren er kontraktløs (salary=null), så invarianten "ejede har altid løn" holdes.
   let contractPatch = {};
   if (team_id) {
-    const [{ data: activeSeason }, { data: destTeam }] = await Promise.all([
-      supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
-      supabase.from("teams").select("division").eq("id", team_id).maybeSingle(),
-    ]);
-    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1, { division: destTeam?.division });
+    // #3989: teams-opslaget hentede kun `division` til løn-satsen, som nu er
+    // global. Kun sæsonnummeret er tilbage at slå op.
+    //
+    // Fejlen SKAL håndteres: sæsonnummeret bestemmer kontraktens udløbssæson,
+    // og et tavst fald tilbage til 1 ville skrive en allerede-udløbet kontrakt
+    // uden at nogen opdagede det.
+    const { data: activeSeason, error: seasonError } = await supabase
+      .from("seasons").select("number").eq("status", "active").maybeSingle();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
   }
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
   // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"
@@ -8328,10 +8333,13 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         .eq("id", teamId)
         .single(),
       supabase
-        // #3899: market_value/base_value tilføjet — sæson 3+-lønprognosen
-        // bruger markedsværdi-kurven (salaryBasis.js), ikke riders.salary.
+        // #3989: current_production_value er PÅKRÆVET — sæson 3+-lønprognosen
+        // prissætter efter rytterens nuværende leverance (computeFrozenSalary),
+        // ikke efter riders.salary og ikke efter markedsværdi. Uden kolonnen
+        // falder hver rytter tavst tilbage på CONTRACT.BASE_VALUE_FALLBACK og
+        // prognosen viser et velformet, plausibelt og forkert tal.
         .from("riders")
-        .select("id, salary, prize_earnings_bonus, market_value, base_value")
+        .select("id, salary, prize_earnings_bonus, current_production_value")
         .eq("team_id", teamId),
       supabase
         .from("loans")
@@ -14653,19 +14661,13 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       // signAcademyCandidate bruger ved selve signeringen (uændret - rører ikke
       // lønformlen). Vises FØR klikket, ligesom signingFee allerede gør.
       //
-      // FUND (kræver ejer-review, se PR-body): computeFrozenSalary prissætter i
-      // dag UDELUKKENDE fra current_production_value, aldrig fra market_value -
-      // så den symbolske intake-pull-værdi (punkt 2) giver IKKE automatisk en
-      // symbolsk løn her. #3393 (løn-reformen, egen branch/PR, IKKE rørt af denne
-      // PR) introducerer SALARY_BASIS_MODE="market" ved cutover 23/8, hvor denne
-      // samme funktion vil læse markedsværdien i stedet. Fordi kaldet her går
-      // gennem DEN DELTE funktion (ikke en lokal kopi af formlen), følger
-      // wagePreview automatisk med når #3393 lander - ingen ændring PÅKRÆVET her,
-      // MEN verificér computeFrozenSalary's parameternavne igen efter merge (kan
-      // være udvidet til også at tage market_value/base_value som input).
+      // #3989: computeFrozenSalary prissætter UDELUKKENDE fra
+      // current_production_value — aldrig fra market_value. Den symbolske
+      // intake-pull-værdi (punkt 2) giver derfor ikke automatisk en symbolsk løn
+      // her, og det er tilsigtet: løn er prisen på hvad rytteren leverer, ikke på
+      // hvem han bliver. Satsen er global, så holdets division medgives ikke.
       const wagePreview = computeFrozenSalary({
         current_production_value: rider.current_production_value,
-        division: req.team.division,
       });
       const expiresAt = row.created_at
         ? new Date(new Date(row.created_at).getTime() + INTAKE_OFFER_EXPIRY_DAYS * 86_400_000).toISOString()

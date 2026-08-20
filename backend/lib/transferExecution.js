@@ -541,7 +541,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // parkering (lukket vindue) og direkte registrering (åbent vindue), fordi den
   // generiske pending-flush ved vindue-åbning kun flytter team_id.
   // activeSeasonNumber er allerede hentet ovenfor (delt med #2748-risikotjekket).
-  const transferContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, { division: buyerState.division });
+  const transferContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
   // #3650: en akademi-rytter solgt via transferliste/direkte tilbud graduerer
   // atomisk ved handlens gennemførelse — lander hos køberen som SENIOR, ikke i
   // købers akademi. Samme graduatePatch-mønster som auktions-finalization
@@ -853,8 +853,8 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // direkte registrering (pending-flush flytter kun team_id).
   const swapSeasonNumber = await fetchActiveSeasonNumber(supabase);
   // Division = det MODTAGENDE holds (offered → receiving, requested → proposing).
-  const offeredContractPatch = contractOnAcquirePatch(offered, swapSeasonNumber, { division: receivingState.division });
-  const requestedContractPatch = contractOnAcquirePatch(requested, swapSeasonNumber, { division: proposingState.division });
+  const offeredContractPatch = contractOnAcquirePatch(offered, swapSeasonNumber);
+  const requestedContractPatch = contractOnAcquirePatch(requested, swapSeasonNumber);
   // #2797: en akademi-rytter der byttes graduerer atomisk til senior hos
   // modparten — samme graduatePatch-mønster som executeTransferOffer (#3650).
   // Uden dette landede rytteren som is_academy=true på modpartens hold, uden om

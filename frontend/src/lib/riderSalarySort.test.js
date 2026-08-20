@@ -16,10 +16,11 @@ const mixedRiders = [
   { id: "low-frozen", firstname: "A", lastname: "Low", salary: 5000 },
   // Frossen kontrakt-løn, høj.
   { id: "high-frozen", firstname: "B", lastname: "High", salary: 50000 },
-  // Free agent uden frossen løn — estimat = current_production_value × 0.1606
-  // (global sats). 300000 × 0.1606 ≈ 48180 — skal ligge LIGE UNDER "high-frozen".
-  { id: "free-agent-mid", firstname: "C", lastname: "Mid", salary: null, current_production_value: 300000 },
-  // Free agent med meget lav produktionsværdi → estimat ~161 (gulv 1000×0.1606).
+  // Free agent uden frossen løn — estimat = current_production_value × satsen.
+  // Værdien er valgt så estimatet lander MELLEM "low-frozen" (5.000) og
+  // "high-frozen" (50.000); den præcise sats må gerne ændre sig, rækkefølgen ikke.
+  { id: "free-agent-mid", firstname: "C", lastname: "Mid", salary: null, current_production_value: 60000 },
+  // Free agent med produktionsværdi 0 → estimat = fallback 1000 × satsen (lavest).
   { id: "free-agent-low", firstname: "D", lastname: "Floor", salary: null, current_production_value: 0 },
 ];
 
@@ -52,7 +53,8 @@ test("mergeSalarySortedIds desc — fletter to letvægts-grene til én global r�
     { id: "high-frozen", salary: 50000 },
   ];
   const withoutSalary = [
-    { id: "free-agent-mid", current_production_value: 300000 },
+    // Estimat = cpv × satsen; værdien er valgt så den lander mellem de to frosne.
+    { id: "free-agent-mid", current_production_value: 60000 },
     { id: "free-agent-low", current_production_value: 0 },
   ];
   const ids = mergeSalarySortedIds(withSalary, withoutSalary, false);
@@ -65,7 +67,8 @@ test("mergeSalarySortedIds asc — omvendt rækkefølge", () => {
     { id: "high-frozen", salary: 50000 },
   ];
   const withoutSalary = [
-    { id: "free-agent-mid", current_production_value: 300000 },
+    // Estimat = cpv × satsen; værdien er valgt så den lander mellem de to frosne.
+    { id: "free-agent-mid", current_production_value: 60000 },
     { id: "free-agent-low", current_production_value: 0 },
   ];
   const ids = mergeSalarySortedIds(withSalary, withoutSalary, true);

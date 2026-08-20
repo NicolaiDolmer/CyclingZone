@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 import {
   SWAP_WITHDRAWABLE_STATUSES,
@@ -1137,7 +1138,7 @@ test("#1309: confirmTransferOffer opretter standard-kontrakt for kontraktløs ry
   assert.equal(result.action, "accepted");
   const moved = db.riders.find((r) => r.id === "rider-1");
   assert.equal(moved.team_id, "buyer");
-  assert.equal(moved.salary, 148_100, "salary = current_production_value 1_000_000 × 0.1481 (buyer division 3)");
+  assert.equal(moved.salary, computeFrozenSalary({ current_production_value: 1_000_000 }), "salary = cpv 1_000_000 × satsen (#3989: division-blind)");
   assert.equal(moved.contract_length, 2);
   assert.equal(moved.contract_end_season, 2, "aktiv sæson 1 + 2 - 1");
 });
@@ -1204,7 +1205,7 @@ test("#1309: confirmSwapOffer create-if-missing / inherit-if-present pr. rytter"
   // offered (kontraktløs) → ny kontrakt, nu på buyer
   const movedOffered = db.riders.find((r) => r.id === "rider-1");
   assert.equal(movedOffered.team_id, "buyer");
-  assert.equal(movedOffered.salary, 74_050, "current_production_value 500_000 × 0.1481 (receiving-team division 3)");
+  assert.equal(movedOffered.salary, computeFrozenSalary({ current_production_value: 500_000 }), "cpv 500_000 × satsen (#3989: division-blind)");
   assert.equal(movedOffered.contract_length, 2);
   assert.equal(movedOffered.contract_end_season, 2);
   // requested (har kontrakt) → uændret, nu på seller

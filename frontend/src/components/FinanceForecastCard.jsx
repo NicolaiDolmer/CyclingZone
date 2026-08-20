@@ -216,9 +216,13 @@ export default function FinanceForecastCard({
           value={forecast.projected_salary}
           accent="text-cz-danger"
           detail={
-            /* #3899: S3+ prissættes efter markedsværdi, ikke riders.salary. */
-            forecast.inputs?.salary_basis === "market_s3"
-              ? t("forecast.salaryDetail.marketS3")
+            /* #3989: S3+ prissættes efter rytterens nuværende leverance, ikke
+               efter riders.salary — hele populationen genberegnes ved cutover.
+               Teksten skal sige BEGGE dele: at det er S3-systemet, OG at de
+               nuværende kontrakter er låste. Uden den halvdel læste spillerne
+               prognosen som en regning (#3986). */
+            forecast.inputs?.salary_basis === "production_s3"
+              ? t("forecast.salaryDetail.productionS3")
               : undefined
           }
         />

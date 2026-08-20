@@ -28,12 +28,14 @@ import {
 import { UPKEEP_BY_DIVISION, UPKEEP_BEFORE_FIRST_RACE_ENABLED } from "./economyConstants.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
 import { ACADEMY } from "./academyFlag.js";
-// #3899 (forecast-redesign, ejer-beslutning 19/8): fra sæson 3 prissættes løn
-// efter markedsværdi-kurven, uanset hvilket lønsystem der rent faktisk er
-// aktivt LIVE på forecast-tidspunktet (SALARY_BASIS_MODE findes kun på den
-// ikke-mergede #3393-branch). Formlen bor ÉT sted (salaryBasis.js — se filens
-// header for hvorfor den ikke importeres fra #3393 endnu).
-import { marketBasisSalary, resolveMarketBase, SALARY_MARKET_MODEL } from "./salaryBasis.js";
+// #3989 (ejer-beslutning 20/8): fra sæson 3 genberegnes ALLE lønninger ved
+// cutover efter den globale produktions-sats, så prognosen for sæson 3+ skal
+// vise dét tal — ikke de frosne sæson-2-kontrakter. Formlen importeres fra
+// computeFrozenSalary, som er præcis den funktion spillet selv bruger ved enhver
+// signering/genberegning. Prognosen kan dermed ikke drifte fra virkeligheden:
+// der er kun ÉN formel. (#3899's midlertidige salaryBasis.js med
+// markedsværdi-kurven er slettet sammen med denne ændring.)
+import { computeFrozenSalary } from "./contractSeed.js";
 
 const RISK_NET_GREEN_THRESHOLD = 50_000;
 const RISK_NET_RED_THRESHOLD = -50_000;
@@ -260,15 +262,20 @@ export function computeFinanceForecast({
   const realizedPrize = Math.max(0, Math.round(Number(realizedSeasonPrize) || 0));
   const projectedPrize = Math.max(rollingPrize, realizedPrize);
 
-  // #3899 (ejer-beslutning 19/8): fra sæson 3 og frem prissættes lønnen efter
-  // markedsværdi-kurven (A × (market_value/100.000)^0,55, gulv 250) — UANSET
-  // hvilket system riders.salary faktisk afspejler LIVE lige nu. For sæson < 3
-  // bruges status quo: sum(rider.salary), som hidtil. Se salaryBasis.js-header
-  // for hvorfor formlen ikke importeres fra #3393.
+  // #3989 (ejer-beslutning 20/8): fra sæson 3 og frem prissættes lønnen efter
+  // rytterens NUVÆRENDE leverance (current_production_value × den globale sats)
+  // — UANSET hvad riders.salary står på lige nu, fordi hele populationen
+  // genberegnes ved cutover. For sæson < 3 er status quo korrekt: kontrakterne
+  // er frosne ved signering (#1309), så sum(rider.salary) ER det der trækkes.
+  //
+  // Bemærk at prognosen bevidst BRUGER spillets egen computeFrozenSalary frem
+  // for en lokal kopi af formlen. #3899's forrige forsøg havde sin egen
+  // markedsværdi-kurve i et separat modul, og resultatet var en prognose der
+  // viste 3-5x for høje lønninger uden at nogen formel var "forkert" (#3986).
   const usesNewWageSystem = Number.isInteger(seasonNumber) && seasonNumber >= NEW_WAGE_SYSTEM_SEASON;
   const totalSalary = usesNewWageSystem
     ? (riders || []).reduce(
-        (sum, r) => sum + marketBasisSalary(resolveMarketBase(r).base, SALARY_MARKET_MODEL),
+        (sum, r) => sum + computeFrozenSalary({ current_production_value: r?.current_production_value }),
         0
       )
     : (riders || []).reduce((sum, r) => sum + (r?.salary || 0), 0);
@@ -412,7 +419,7 @@ export function computeFinanceForecast({
       team_balance: startingBalance,
       total_salary: totalSalary,
       // #3899: hvilket lønsystem der faktisk blev brugt til denne sæson-projektion.
-      salary_basis: usesNewWageSystem ? "market_s3" : "status_quo",
+      salary_basis: usesNewWageSystem ? "production_s3" : "status_quo",
       total_debt: totalDebt,
       debt_ceiling: debtCeiling,
       debt_ratio: debtRatio,

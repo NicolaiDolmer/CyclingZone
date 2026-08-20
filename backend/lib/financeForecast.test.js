@@ -6,7 +6,8 @@ import {
   FORECAST_THRESHOLDS,
   NEW_WAGE_SYSTEM_SEASON,
 } from "./financeForecast.js";
-import { marketBasisSalary, resolveMarketBase, SALARY_MARKET_MODEL } from "./salaryBasis.js";
+import { computeFrozenSalary } from "./contractSeed.js";
+import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
 // 4 manager-arketyper fra spec'en (07g · verification path).
 const ARCHETYPES = {
@@ -673,49 +674,60 @@ test("computeFinanceForecast (#3899): sæson < 3 bruger status quo (sum af rider
   assert.equal(result.inputs.salary_basis, "status_quo");
 });
 
-test("computeFinanceForecast (#3899): sæson >= 3 bruger markedsværdi-kurven, ikke riders.salary", () => {
-  const marketValue = 200_000;
-  const expectedPerRider = marketBasisSalary(marketValue, SALARY_MARKET_MODEL);
+test("computeFinanceForecast (#3989): sæson >= 3 prissætter efter current_production_value, ikke riders.salary", () => {
+  const cpv = 200_000;
+  const expectedPerRider = computeFrozenSalary({ current_production_value: cpv });
   const result = computeFinanceForecast({
     team: { division: 2, sponsor_income: 240_000 },
     riders: [
-      { salary: 999_999, prize_earnings_bonus: 0, market_value: marketValue }, // salary ignoreres >= S3
-      { salary: 999_999, prize_earnings_bonus: 0, market_value: marketValue },
+      { salary: 999_999, prize_earnings_bonus: 0, current_production_value: cpv }, // salary ignoreres >= S3
+      { salary: 999_999, prize_earnings_bonus: 0, current_production_value: cpv },
     ],
     debtCeiling: 900_000,
     targetSeasonNumber: NEW_WAGE_SYSTEM_SEASON,
   });
-  assert.equal(result.inputs.salary_basis, "market_s3");
+  assert.equal(result.inputs.salary_basis, "production_s3");
   assert.equal(result.projected_salary, -2 * expectedPerRider);
   assert.notEqual(result.projected_salary, -2 * 999_999, "må IKKE bruge riders.salary i sæson 3+");
 });
 
-test("computeFinanceForecast (#3899): manglende market_value falder tilbage til base_value, så MARKET_BASE_FALLBACK", () => {
-  const withBaseValue = computeFinanceForecast({
-    team: { division: 2 },
-    riders: [{ base_value: 50_000 }],
-    debtCeiling: 900_000,
-    targetSeasonNumber: 3,
-  });
-  assert.equal(withBaseValue.projected_salary, -marketBasisSalary(50_000, SALARY_MARKET_MODEL));
+test("computeFinanceForecast (#3989): markedsværdi påvirker IKKE lønprognosen", () => {
+  // Rod-årsagen bag #3986: prognosen prissatte efter market_value, så et ungt
+  // talent med enorm karriere-NPV men lav nuværende leverance så ud til at koste
+  // en formue. To ryttere med SAMME leverance skal koste det samme, uanset hvad
+  // markedet vil give for dem.
+  const talent = { current_production_value: 50_000, market_value: 8_000_000, base_value: 8_000_000 };
+  const veteran = { current_production_value: 50_000, market_value: 20_000, base_value: 20_000 };
+  const args = { team: { division: 2 }, debtCeiling: 900_000, targetSeasonNumber: 3 };
 
+  const a = computeFinanceForecast({ ...args, riders: [talent] });
+  const b = computeFinanceForecast({ ...args, riders: [veteran] });
+  assert.equal(a.projected_salary, b.projected_salary, "løn må ALDRIG afhænge af markedsværdi");
+  assert.equal(a.projected_salary, -computeFrozenSalary({ current_production_value: 50_000 }));
+});
+
+test("computeFinanceForecast (#3989): manglende current_production_value falder tilbage på kontrakt-fallbacken", () => {
   const withNeither = computeFinanceForecast({
     team: { division: 2 },
     riders: [{}],
     debtCeiling: 900_000,
     targetSeasonNumber: 3,
   });
-  assert.equal(withNeither.projected_salary, -marketBasisSalary(resolveMarketBase({}).base, SALARY_MARKET_MODEL));
+  assert.equal(withNeither.projected_salary, -computeFrozenSalary({}));
 });
 
-test("computeFinanceForecast (#3899): markedsværdi-kurven er monotont voksende og respekterer gulvet (250)", () => {
-  const low = marketBasisSalary(100, SALARY_MARKET_MODEL);
-  const mid = marketBasisSalary(100_000, SALARY_MARKET_MODEL);
-  const high = marketBasisSalary(10_000_000, SALARY_MARKET_MODEL);
-  assert.ok(low >= SALARY_MARKET_MODEL.floor, "gulv på 250 skal respekteres");
-  assert.ok(mid > low && high > mid, "dyrere rytter skal ALTID koste mere (monotont voksende)");
-  // Anchor: rytter til præcis anchorValue koster præcis anchorSalary (23.300).
-  assert.equal(mid, SALARY_MARKET_MODEL.anchorSalary);
+test("computeFinanceForecast (#3989): lønnen er monotont voksende i leverance og division-blind", () => {
+  const at = (cpv) => computeFrozenSalary({ current_production_value: cpv });
+  assert.ok(at(200_000) > at(100_000) && at(100_000) > at(10_000), "bedre rytter skal ALTID koste mere");
+  // Ankeret: en rytter der leverer præcis 100.000 koster 100.000 × satsen.
+  assert.equal(at(100_000), Math.round(100_000 * SALARY_RATE_PRODUCTION));
+
+  // Samme trup, fire divisioner → præcis samme lønlinje.
+  const riders = [{ current_production_value: 120_000 }, { current_production_value: 40_000 }];
+  const salaries = [1, 2, 3, 4].map((division) => computeFinanceForecast({
+    team: { division }, riders, debtCeiling: 900_000, targetSeasonNumber: 3,
+  }).projected_salary);
+  assert.equal(new Set(salaries).size, 1, `løn må ikke skalere med division, fik ${JSON.stringify(salaries)}`);
 });
 
 // ─── #3899 · Præmie-interval (kvartilbånd af divisionens målte per-hold-præmie) ─
@@ -812,7 +824,7 @@ test("computeMultiSeasonForecast (#3899): divisionPrizeSamples er status-quo (sa
 test("computeMultiSeasonForecast (#3899): lønsystemet skifter til markedsformlen fra sæson 3, ikke før", () => {
   const result = computeMultiSeasonForecast({
     team: { id: "t-wage", division: 2, balance: 500_000 },
-    riders: [{ salary: 10_000, prize_earnings_bonus: 0, market_value: 100_000 }],
+    riders: [{ salary: 10_000, prize_earnings_bonus: 0, current_production_value: 100_000 }],
     currentSeasonNumber: 1, // target sæsoner: 2, 3, 4
     seasonsAhead: 3,
     debtCeiling: 900_000,
@@ -821,9 +833,9 @@ test("computeMultiSeasonForecast (#3899): lønsystemet skifter til markedsformle
   assert.equal(s2.season_number, 2);
   assert.equal(s2.inputs.salary_basis, "status_quo");
   assert.equal(s3.season_number, 3);
-  assert.equal(s3.inputs.salary_basis, "market_s3");
+  assert.equal(s3.inputs.salary_basis, "production_s3");
   assert.equal(s4.season_number, 4);
-  assert.equal(s4.inputs.salary_basis, "market_s3");
-  // Ved market_value = anchorValue (100.000) koster rytteren PRÆCIS anchorSalary.
-  assert.equal(s3.projected_salary, -SALARY_MARKET_MODEL.anchorSalary);
+  assert.equal(s4.inputs.salary_basis, "production_s3");
+  // Ved cpv = 100.000 koster rytteren præcis 100.000 × den globale sats.
+  assert.equal(s3.projected_salary, -computeFrozenSalary({ current_production_value: 100_000 }));
 });

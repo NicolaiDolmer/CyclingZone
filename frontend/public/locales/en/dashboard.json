@@ -323,7 +323,7 @@
       "divisionInterval": "Range based on measured prize money among division peers"
     },
     "salaryDetail": {
-      "marketS3": "Season 3+: priced by market value, not the current salary system"
+      "productionS3": "Season 3 wage system. Your current contracts are locked and unchanged."
     },
     "assumption": "Assumes your current squad, no transfers, and the season 3 wage system.",
     "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",

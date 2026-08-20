@@ -10,45 +10,49 @@ export function getRiderMarketValue(rider = {}) {
   return base + (Number(rider?.prize_earnings_bonus) || 0);
 }
 
-// #2594 løn-decoupling: løn = current_production_value × SALARY_RATE_PROD[division].
-// Værdi (market_value) prissætter FREMTIDEN (karriere-NPV); løn prissætter NUTIDEN
-// (forventet produktion i indeværende sæson). Spejler backend economyConstants.js
-// (SALARY_RATE_PROD + salaryRateForDivision) — SKAL holdes i sync. Ukendt division
-// (fx free agents) → global sats.
-const SALARY_RATE_PROD = { byDiv: { 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 }, global: 0.1606 };
-export function salaryRateForDivision(division) {
-  return SALARY_RATE_PROD.byDiv[Number(division)] ?? SALARY_RATE_PROD.global;
-}
+// #3989 (ejer-beslutning 20/8): løn = current_production_value × ÉN global sats.
+//
+//   Rytterens VÆRDI er prisen på hvem han bliver.
+//   Rytterens LØN er prisen på hvad han leverer i år.
+//
+// Værdi (market_value) prissætter FREMTIDEN (karriere-NPV + elite-præmie); løn
+// prissætter NUTIDEN. Ingen divisions-skalering: samme rytter koster det samme
+// uanset hvilket hold han er på. De tidligere per-division-satser
+// ({1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087}) er fjernet sammen med
+// `division`-parameteren, så skaleringen ikke kan snige sig ind igen.
+//
+// Spejler backend economyConstants.SALARY_RATE_PRODUCTION — paritet håndhæves af
+// salaryRateParity.test.js, som importerer BEGGE konstanter og sammenligner dem.
+export const SALARY_RATE_PRODUCTION = 0.35;
 
-function salaryFromProduction(rider, division) {
+function salaryFromProduction(rider) {
   const cpv = Number(rider?.current_production_value);
   const base = cpv > 0 ? cpv : RIDER_BASE_VALUE_FALLBACK;
-  return Math.max(1, Math.round(base * salaryRateForDivision(division)));
+  return Math.max(1, Math.round(base * SALARY_RATE_PRODUCTION));
 }
 
-// #1309: frossen kontrakt-løn hvis sat; ellers estimat til VISNING af free agents
-// (global sats — de har intet hold/division; den præcise sats fryses ved signering).
+// #1309: frossen kontrakt-løn hvis sat; ellers estimat til VISNING af free agents.
 // Spejler backend's resolveRiderSalary i marketUtils.js. salary:0 er en gyldig
 // (gratis) kontrakt og bevares som 0.
 export function getRiderSalary(rider = {}) {
   if (rider && rider.salary != null) return Number(rider.salary);
-  return salaryFromProduction(rider, undefined);
+  return salaryFromProduction(rider);
 }
 
 // #932 S7: projektér den SENIOR-løn en akademi-rytter ville fryses til ved en
-// promotion. #2594: cpv × divisions-sats (holdets division medgives af kalderen).
+// promotion. #3989: cpv × den globale sats — holdets division er irrelevant.
 // IGNORERER rytterens nuværende (akademi-)salary — derfor ikke getRiderSalary, som
 // returnerer den eksisterende akademi-løn. Kun til VISNING i promote-dialogen;
 // backend beregner den autoritative værdi.
-export function projectSeniorSalary(rider = {}, { division } = {}) {
-  return salaryFromProduction(rider, division);
+export function projectSeniorSalary(rider = {}) {
+  return salaryFromProduction(rider);
 }
 
-// #932 S7: projektér den løn en senior-rytter ville få ved en demote. #2594: samme
-// delte formel som promotion (ét fælles løn-system, #2083-princippet). Kun til
-// VISNING i demote-dialogen; backend-RPC'en beregner den autoritative værdi.
-export function projectYouthSalary(rider = {}, { division } = {}) {
-  return salaryFromProduction(rider, division);
+// #932 S7: projektér den løn en senior-rytter ville få ved en demote. Samme delte
+// formel som promotion (ét fælles løn-system, #2083-princippet). Kun til VISNING i
+// demote-dialogen; backend-RPC'en beregner den autoritative værdi.
+export function projectYouthSalary(rider = {}) {
+  return salaryFromProduction(rider);
 }
 
 // #1827: løn-filteret gælder den VISTE løn (getRiderSalary): frossen kontrakt-løn
@@ -63,7 +67,7 @@ export function projectYouthSalary(rider = {}, { division } = {}) {
 export function salaryBoundToValueBound(salaryBound) {
   const n = parseInt(salaryBound, 10);
   if (!Number.isFinite(n)) return null;
-  return Math.round(n / SALARY_RATE_PROD.global);
+  return Math.round(n / SALARY_RATE_PRODUCTION);
 }
 
 export function formatCz(value) {
