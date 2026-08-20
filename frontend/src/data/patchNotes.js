@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.150",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Forecast risk text no longer contradicts a positive number",
+          "body": "The yellow risk level used to say \"Deficit or rising debt\" even when your projected net was positive. It now says \"Thin margin\" and explains that a bad race or an expensive contract can flip it."
+        },
+        "da": {
+          "title": "Prognosens risiko-tekst modsagde ikke længere et positivt tal",
+          "body": "Det gule risiko-niveau sagde \"Underskud eller stigende gæld\", selv når dit forventede net var positivt. Det siger nu \"Lille margin\" og forklarer at et dårligt løb eller en dyr kontrakt kan vende det."
+        },
+        "refs": [
+          3994
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.149",
     "date": "2026-08-20",
     "label": "Beta",
