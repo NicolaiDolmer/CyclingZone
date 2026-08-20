@@ -125,6 +125,8 @@ async function main() {
         climbs: p.climbs,
         sprints: p.sprints,
         sectors: p.sectors,
+        segments: p.segments,
+        weather: p.weather,
         generator_version: GENERATOR_VERSION,
         is_manual: false,
       }));

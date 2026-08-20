@@ -3,6 +3,11 @@
 // Bruger en DEDIKERET rng-strøm (seed + ":route:" + stage_number) → forstyrrer ALDRIG
 // pass 1's profile_type/finale_type/demand_vector. Udsender distance_km, elevation_gain_m,
 // climbs[], sprints[], sectors[] jf. spec §3-4. Ingen DB/fs, ingen Math.random/Date.
+//
+// v4 F1 (#3855, 2026-08-20): buildClimbs/buildSectors/makeRegionNamer/regionOf er nu
+// EKSPORTERET (var interne) så routeSegments.js's synthesizeSegments() kan genbruge de
+// SAMME byggeklodser til at syntetisere climbs/sectors for legacy race_stage_profiles-
+// rækker uden gemt rute. Rent additivt — ingen adfærdsændring for attachRoute selv.
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
@@ -110,13 +115,13 @@ const REGION_HINTS = Object.freeze([
   { re: /giro|coppa|trof(e|é)o|piemonte|veneto|emilia|trentino|abruzzo|legnano|peccioli|prato|appenn|ligure|colline|milano/i, region: "it" },
   { re: /tour|france|fran|jura|provence|mayenn|loire|golfe|bess|avesnois|dr[oô]me|touraine|hainaut|flandres|namur|wallonie|criquielion|k[oö]ln|c[eé]vennes|aveyron|ain/i, region: "fr" },
 ]);
-function regionOf(raceName) {
+export function regionOf(raceName) {
   const s = String(raceName || "");
   for (const h of REGION_HINTS) if (h.re.test(s)) return h.region;
   return "default";
 }
 // Namer-factory: deterministisk fra rng + region. Undgår dubletter pr. etape via en brugt-mængde.
-function makeRegionNamer(rng, region) {
+export function makeRegionNamer(rng, region) {
   const prefixes = REGION_PREFIXES[region];
   const places = PLACE_TOKENS[region];
   const used = new Set();
@@ -136,7 +141,7 @@ function makeRegionNamer(rng, region) {
   };
 }
 
-function buildClimbs(rng, profileType, finaleType, distanceKm, namer) {
+export function buildClimbs(rng, profileType, finaleType, distanceKm, namer) {
   const spec = CLIMB_SPEC[profileType] ?? CLIMB_SPEC.flat;
   const n = randInt(rng, spec.count[0], spec.count[1]);
   if (n === 0 || spec.cats.length === 0) return [];
@@ -305,7 +310,7 @@ function buildSprints(rng, profileType, finaleType, distanceKm, isStageRace, cli
   return sprints;
 }
 
-function buildSectors(rng, profileType, distanceKm, namer) {
+export function buildSectors(rng, profileType, distanceKm, namer) {
   let n = 0;
   if (profileType === "cobbles") n = randInt(rng, 3, 6);
   else if (profileType === "classic") n = randInt(rng, 0, 3); // Roubaix-type; typisk 0

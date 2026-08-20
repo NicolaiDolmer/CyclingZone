@@ -23,6 +23,7 @@ import { makeRng } from "./fictionalRiderGenerator.js";
 import { attachRoute } from "./raceRouteGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
+import { attachSegmentsAndWeather } from "./routeSegments.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
@@ -410,7 +411,12 @@ function toStage(rng, profileType, stageNumber, race, isStageRace) {
   };
   // Pass 2: rute-berigelse via DEDIKERET rng-strøm (rører ikke `rng` ovenfor).
   const route = attachRoute(base, race, isStageRace);
-  return { ...base, ...route };
+  const merged = { ...base, ...route };
+  // v4 F1 (#3855): segments + weather via EGNE dedikerede rng-strømme (routeSegments.js)
+  // — rører hverken pass 1's `rng` eller pass 2's route-rng. Additivt: intet eksisterende
+  // felt ændres/fjernes.
+  const { segments, weather } = attachSegmentsAndWeather(merged, race, stageNumber);
+  return { ...merged, segments, weather };
 }
 
 // Endagsløb: ét terræn fra arketypens (eller den generiske) vægtede fordeling.
