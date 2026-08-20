@@ -190,3 +190,54 @@ test("#1238 · podie-query bruger kanonisk klassiker-liste og splitter monument/
   assert.ok(inCall, "podie-queryen skal filtrere races.race_class via .in()");
   assert.deepEqual(inCall[3], CLASSIC_RACE_CLASSES);
 });
+
+// #4034 · Spiller-rapport 20/8: en endagssejr registreres i DB som en 'gc'-række
+// (race_type='single'), ikke en 'stage'-række, og talte derfor aldrig med i
+// stage_wins-bestyrelsesmålet. loadGoalContextForBoard skal nu tælle dem
+// separat (cumulativeOneDayWins/seasonOneDayWins), så boardGoals.js kan lægge
+// dem oveni standing.stage_wins.
+test("#4034 · endagssejre (race_type='single', result_type='gc', rank=1) tælles separat fra etapesejre", async () => {
+  const recorder = [];
+  // NB (samme forbehold som #1238-testen ovenfor): mocken har INGEN reel
+  // server-side filtrering — den returnerer alle race_results-rækker til alle
+  // fire queries. Fixturen indeholder derfor KUN rækker en ægte query allerede
+  // ville have filtreret frem (rank=1, result_type='gc', races.race_type='single'),
+  // så optællingen tester sæson-splittet, ikke selve filtreringen. Filtreringen
+  // verificeres separat nedenfor via recorder-kaldene.
+  const supabase = makeSupabase({
+    board_plan_snapshots: [
+      { season_id: "s-prev", u25_stat_sum: null, u25_count: null, season_within_plan: 1 },
+    ],
+    race_results: [
+      // Endagssejr i en TIDLIGERE sæson i planen → tæller kun kumulativt.
+      { rank: 1, result_type: "gc", races: { race_type: "single", season_id: "s-prev" } },
+      // Endagssejr i INDEVÆRENDE sæson → tæller i begge.
+      { rank: 1, result_type: "gc", races: { race_type: "single", season_id: "s-cur" } },
+    ],
+    finance_transactions: [],
+  }, recorder);
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s-cur",
+  });
+
+  assert.equal(ctx.cumulativeOneDayWins, 2, "s-prev + s-cur endagssejre tæller kumulativt");
+  assert.equal(ctx.seasonOneDayWins, 1, "kun s-cur's endagssejr tæller for indeværende sæson");
+
+  // Selve filtreringen: queryen skal afgrænse til rank=1, result_type='gc' og
+  // races.race_type='single' — ellers ville en etapesejr eller en samlet
+  // GC-sejr i et rigtigt etapeløb lække ind i endagssejr-optællingen i prod.
+  const eqCalls = recorder.filter(([op, tbl]) => op === "eq" && tbl === "race_results");
+  assert.ok(
+    eqCalls.some(([, , col, val]) => col === "races.race_type" && val === "single"),
+    "endagssejr-queryen skal filtrere races.race_type='single'"
+  );
+  assert.ok(
+    eqCalls.some(([, , col, val]) => col === "result_type" && val === "gc"),
+    "endagssejr-queryen skal filtrere result_type='gc'"
+  );
+  assert.ok(
+    eqCalls.some(([, , col, val]) => col === "rank" && val === 1),
+    "endagssejr-queryen skal filtrere rank=1"
+  );
+});

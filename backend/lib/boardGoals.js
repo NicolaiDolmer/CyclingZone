@@ -173,8 +173,8 @@ export function generateBoardGoals({
         type: "stage_wins",
         target: youthStageWinsTarget,
         label: isMultiYear
-          ? `Mindst ${youthStageWinsTarget} etapesejre over planperioden`
-          : `Mindst ${youthStageWinsTarget} etapesejr${youthStageWinsTarget !== 1 ? "er" : ""}`,
+          ? `Mindst ${youthStageWinsTarget} sejre over planperioden`
+          : `Mindst ${youthStageWinsTarget} sejr${youthStageWinsTarget !== 1 ? "e" : ""}`,
         cumulative: isMultiYear,
         satisfaction_bonus: 20,
         satisfaction_penalty: 0,
@@ -276,8 +276,8 @@ export function generateBoardGoals({
         type: "stage_wins",
         target: balancedStageTarget,
         label: isMultiYear
-          ? `Mindst ${balancedStageTarget} etapesejre over planperioden`
-          : `Mindst ${balancedStageTarget} etapesejr${balancedStageTarget !== 1 ? "er" : ""}`,
+          ? `Mindst ${balancedStageTarget} sejre over planperioden`
+          : `Mindst ${balancedStageTarget} sejr${balancedStageTarget !== 1 ? "e" : ""}`,
         cumulative: isMultiYear,
         satisfaction_bonus: 10,
         satisfaction_penalty: 5,
@@ -358,8 +358,8 @@ function relaxGoalTarget(enrichedGoal) {
       return {
         target,
         label: enrichedGoal.cumulative
-          ? `Mindst ${target} etapesejre over planperioden`
-          : `Mindst ${target} etapesejr${target !== 1 ? "er" : ""}`,
+          ? `Mindst ${target} sejre over planperioden`
+          : `Mindst ${target} sejr${target !== 1 ? "e" : ""}`,
       };
     }
     case "gc_wins": {
@@ -762,6 +762,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     cumulativeJerseyWins,
     seasonJerseyWins,
     cumulativeTransferBalance,
+    seasonOneDayWins,
     planStartU25StatSum,
     planStartU25Count,
     divisionManagerCount,
@@ -772,7 +773,10 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       return (standing?.rank_in_division || 99) <= enrichedGoal.target;
     case "stage_wins":
       if (enrichedGoal.cumulative) return null;
-      return (standing?.stage_wins || 0) >= enrichedGoal.target;
+      // #4034 · endagssejre tælles med (result_type 'gc' i et race_type='single'-
+      // løb registreres ellers som en gc-sejr, ikke en etapesejr — spiller-rapport
+      // 20/8). seasonOneDayWins kommer fra loadGoalContextForBoard.
+      return ((standing?.stage_wins || 0) + (seasonOneDayWins || 0)) >= enrichedGoal.target;
     case "gc_wins":
       if (enrichedGoal.cumulative) return null;
       return (standing?.gc_wins || 0) >= enrichedGoal.target;
@@ -952,7 +956,12 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       status = actual <= target ? "ahead" : score >= 0.65 ? "near_miss" : "behind";
       break;
     case "stage_wins":
-      actual = enrichedGoal.cumulative ? cumulativeStageWins : (standing?.stage_wins ?? 0);
+      // #4034 · seasonOneDayWins (endagssejre i indeværende sæson) lægges oveni
+      // standing.stage_wins for den ikke-kumulative variant; cumulativeStageWins
+      // har allerede cumulativeOneDayWins med (buildBoardEvalContext, #4034).
+      actual = enrichedGoal.cumulative
+        ? cumulativeStageWins
+        : (standing?.stage_wins ?? 0) + (context.seasonOneDayWins ?? 0);
       target = enrichedGoal.cumulative
         ? (isFinalSeason
           ? enrichedGoal.target
@@ -1207,8 +1216,8 @@ export function buildGoalLabel(goal = {}) {
         : `Top ${goal.target} i divisionen`;
     case "stage_wins":
       return goal.cumulative
-        ? `Mindst ${goal.target} etapesejre over planperioden`
-        : `Mindst ${goal.target} etapesejr${goal.target !== 1 ? "er" : ""}`;
+        ? `Mindst ${goal.target} sejre over planperioden`
+        : `Mindst ${goal.target} sejr${goal.target !== 1 ? "e" : ""}`;
     case "gc_wins":
       return goal.cumulative
         ? `Mindst ${goal.target} samlede sejre over planperioden`

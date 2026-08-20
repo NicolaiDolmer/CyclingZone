@@ -608,6 +608,41 @@ test("#55 · cumulative stage_wins: met = fuld kumulativ optælling, ikke pro-ra
   assert.equal(fullyMet.met, true);
 });
 
+// #4034 · Spiller-rapport 20/8 (ejer-ja i forum): en endagssejr registreres som
+// en gc-sejr, ikke en etapesejr, og talte derfor aldrig med i stage_wins-målet.
+// context.seasonOneDayWins (ikke-kumulativ) og cumulativeStats.stageWins (som
+// allerede har cumulativeOneDayWins lagt oveni, se buildBoardEvalContext) skal
+// nu gøre en endagssejr >= en etapesejr i målopfyldelse.
+test("#4034 · stage_wins evaluateGoal: endagssejr (seasonOneDayWins) lukker gabet til target", () => {
+  const goal = { type: "stage_wins", target: 2 };
+  const standing = { stage_wins: 1 };
+  // Kun 1 etapesejr → target 2 ikke nået uden endagssejre.
+  assert.equal(evaluateGoal(goal, standing, null, {}), false);
+  // 1 etapesejr + 1 endagssejr = 2 → målet er nået.
+  assert.equal(evaluateGoal(goal, standing, null, { seasonOneDayWins: 1 }), true);
+});
+
+test("#4034 · stage_wins evaluateGoalProgress (ikke-kumulativ): actual lægger seasonOneDayWins oveni standing.stage_wins", () => {
+  const goal = { type: "stage_wins", target: 2 };
+  const progress = evaluateGoalProgress(goal, { stage_wins: 1 }, null, { seasonOneDayWins: 1 });
+  assert.equal(progress.actual, 2);
+  assert.equal(progress.met, true);
+  assert.equal(progress.status, "ahead");
+});
+
+test("#4034 · stage_wins evaluateGoalProgress (kumulativ): cumulativeStats.stageWins bærer allerede endagssejre (buildBoardEvalContext)", () => {
+  // #4034 tilføjer cumulativeOneDayWins i buildBoardEvalContext direkte til
+  // cumulativeStats.stageWins (boardGoalContext.js) — evaluateGoalProgress skal
+  // ikke lægge context.cumulativeOneDayWins oveni en ANDEN gang.
+  const goal = { type: "stage_wins", target: 3, cumulative: true };
+  const progress = evaluateGoalProgress(goal, null, null, {
+    planDuration: 1, seasonsCompleted: 1, isFinalSeason: true,
+    cumulativeStats: { stageWins: 3 }, // 2 ægte etapesejre + 1 endagssejr, allerede summeret
+  });
+  assert.equal(progress.actual, 3);
+  assert.equal(progress.met, true);
+});
+
 // =====================================================================
 // #1238 · monument_podium med race_scope "classics" — klassiker-orienterede
 // boards honorerer hele klassiker-kategorien (Monuments ⊂ klassikere)

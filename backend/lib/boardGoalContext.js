@@ -67,8 +67,16 @@ export function buildBoardEvalContext({
     hasSeasonData: Boolean(standing),
     // #979 · Kumulativ = afsluttede sæsoner (board.cumulative_*, persisteres ved
     // season-end) + indeværende sæsons in-progress wins (standing.*).
+    // #4034 · + goalContext.cumulativeOneDayWins: endagssejre tælles ALDRIG med i
+    // board.cumulative_stage_wins (season-end-persisteringen kender kun
+    // season_standings.stage_wins, som er etapeløb-specifik) eller i
+    // standing.stage_wins for indeværende sæson — de tælles her live oveni, så
+    // stage_wins-målet honorerer "en endagssejr >= en etapesejr" på tværs af
+    // hele planperioden, ikke kun indeværende sæson (se evaluateGoal/
+    // evaluateGoalProgress i boardGoals.js for den ikke-kumulative variant).
     cumulativeStats: {
-      stageWins: (board.cumulative_stage_wins || 0) + (standing?.stage_wins || 0),
+      stageWins: (board.cumulative_stage_wins || 0) + (standing?.stage_wins || 0)
+        + (goalContext.cumulativeOneDayWins || 0),
       gcWins: (board.cumulative_gc_wins || 0) + (standing?.gc_wins || 0),
     },
     ...goalContext,
@@ -127,9 +135,13 @@ export async function loadGoalContextForBoard({
   let cumulativeJerseyWins = null;
   let seasonJerseyWins = null;
   let cumulativeTransferBalance = null;
+  // #4034 · endagssejre (race_type='single', vindes som en 'gc'-række på etape 1,
+  // samme model som riderPalmares.js' oneDayWins-skel #1997) — se query nedenfor.
+  let cumulativeOneDayWins = null;
+  let seasonOneDayWins = null;
 
   if (planSeasonIds.length > 0) {
-    // #2444 · de tre queries herunder er uafhængige af hinanden (samme input:
+    // #2444 · de fire queries herunder er uafhængige af hinanden (samme input:
     // teamId + planSeasonIds) og kørte tidligere sekventielt (3 round-trips
     // efter hinanden pr. plan-type, ×3 plan-typer i /board/status-loopet).
     // Promise.all parallelliserer dem til én round-trip-bredde.
@@ -137,6 +149,7 @@ export async function loadGoalContextForBoard({
       { data: classicResults, error: monErr },
       { data: jerseyResults, error: jerErr },
       { data: transferTxs, error: trxErr },
+      { data: oneDayResults, error: odErr },
     ] = await Promise.all([
       // Podie-placeringer (rank 1-3 i GC) i klassiker-kategorien. #1238: én query
       // over den kanoniske klasse-liste; Monuments-delmængden + den fulde
@@ -174,6 +187,19 @@ export async function loadGoalContextForBoard({
         .eq("team_id", teamId)
         .in("type", ["transfer_in", "transfer_out"])
         .in("season_id", planSeasonIds),
+      // #4034 · Endagssejre — separat fra classicResults ovenfor, som kun dækker
+      // CLASSIC_RACE_CLASSES. En endagssejr skal tælle med i stage_wins-målet
+      // uanset race_class (spiller-rapport 20/8: registreres i dag som en
+      // gc-sejr, ikke en etapesejr, så målet aldrig opfyldes). result_type='gc'
+      // + race_type='single' er samme skel som riderPalmares.js' oneDayWins.
+      supabase
+        .from("race_results")
+        .select("races!inner(season_id)")
+        .eq("team_id", teamId)
+        .eq("result_type", "gc")
+        .eq("rank", 1)
+        .eq("races.race_type", "single")
+        .in("races.season_id", planSeasonIds),
     ]);
     if (!monErr) {
       const podiumRows = classicResults || [];
@@ -189,6 +215,12 @@ export async function loadGoalContextForBoard({
     if (!trxErr) {
       cumulativeTransferBalance = (transferTxs || [])
         .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    }
+    if (!odErr) {
+      cumulativeOneDayWins = (oneDayResults || []).length;
+      seasonOneDayWins = (oneDayResults || [])
+        .filter((r) => r.races?.season_id === currentSeasonId)
+        .length;
     }
   }
 
@@ -248,6 +280,8 @@ export async function loadGoalContextForBoard({
     cumulativeJerseyWins,
     seasonJerseyWins,
     cumulativeTransferBalance,
+    cumulativeOneDayWins,
+    seasonOneDayWins,
     divisionManagerCount,
     divisionTeamCount,
   };
