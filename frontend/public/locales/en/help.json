@@ -1336,7 +1336,7 @@
     },
     "boardProfileRiders": {
       "q": "Who are my team's profile riders?",
-      "a": "The Board page now names them. Under the star profile tile, the board's read of the team lists each rider it counts as a star, with a star score. A rider qualifies as a star when popularity plus UCI points clear the star threshold. Popularity weighs more than results (roughly 70/30), so a well-known rider can be a star even without big point hauls, while a strong but anonymous worker usually is not. The list is your current squad, so it changes as you sign or sell riders. If no rider clears the threshold yet, the card says so instead of listing names."
+      "a": "The Board page now names them. Under the star profile tile, the board's read of the team lists each rider it counts as a star, with the rider's popularity score, the same number shown on their profile. A rider qualifies as a star when popularity plus UCI points clear the star threshold. Popularity weighs more than results (roughly 70/30), so a well-known rider can be a star even without big point hauls, while a strong but anonymous worker usually is not. The list is your current squad, so it changes as you sign or sell riders. If no rider clears the threshold yet, the card says so instead of listing names."
     },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",

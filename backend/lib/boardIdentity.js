@@ -357,6 +357,11 @@ function calculateStarProfile(riders = []) {
     firstname: rider.firstname || "",
     lastname: rider.lastname || "",
     score: calculateRiderStarScore(rider),
+    // #3983 · rå popularity (samme kolonne/skala som rytterprofilen og
+    // markedet, #3622) ved siden af den interne star-score. UI viser DENNE
+    // — score afgør stadig hvem der kvalificerer (uændret tærskel/vægtning,
+    // #1205 out-of-scope), men spilleren skal se ÉT tal, ikke to skalaer.
+    popularity: clamp(Number(rider.popularity || 0), 0, 100),
   }));
   const starScores = scoredRiders.map((rider) => rider.score);
   const headlineScores = [...starScores]
