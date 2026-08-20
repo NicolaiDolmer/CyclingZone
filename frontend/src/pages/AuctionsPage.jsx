@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { NavLink, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
@@ -1206,7 +1207,10 @@ export default function AuctionsPage() {
 
   useEffect(() => {
     loadAll();
-    const channel = supabase.channel("auctions-live")
+    // #4010: session-gatet realtime. Denne effekt kørte ved mount uden nogen
+    // session-check, så den connectede med den opake api-nøgle og blev afvist
+    // med MalformedJWT. Se lib/realtimeChannel.js.
+    return subscribeAuthedChannel("auctions-live", channel => channel
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "auctions" },
         payload => {
           const updated = payload.new;
@@ -1289,8 +1293,7 @@ export default function AuctionsPage() {
             },
           ], t, BID_FEED_WINDOW_MS));
         })
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    );
   }, []);
 
   async function handleBid(auctionId, amount, { skipExpectedPrice = false } = {}) {
