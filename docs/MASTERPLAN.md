@@ -4,7 +4,7 @@
 
 **Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne.
 
-**Målt:** **500** åbne issues (18/8 efter KS3: net −32) · 217 brugere, 1 abo · **S2 slutter søn 23/8.**
+**Målt:** **527** åbne issues (20/8) · 217 brugere, 1 abo · **S2 slutter søn 23/8.**
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
@@ -26,13 +26,13 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 ## B2 · Værdi og løn (ejer-ramme 14/8)
 
-- **Løn-design-sessionen LEVERET 19/8** ([audit](audits/2026-08-19-loen-design-session.md)): alle beslutninger truffet, pakken bygget (#3992 løn-omlægning 20/8 · #3993 upkeep-linje · #3972 ungdom · #3974 forecast · #3449 gate+kvittering-trin-1), merge-rækkefølge bindende. Rest: ⚪ #3755 28-dages-måling (gate for gebyret) · ⚪ #3756 gebyret · 🔴 #3732 pengepolitik (sammen med #3360).
-- **#3719+#3720: D3/D4-løft + upkeep-rekalibrering udskudt til kalibrerings-session EFTER cutover** (ejer 19/8) på ægte S3-tal.
+- **Løn-pakken bygget** ([audit](audits/2026-08-19-loen-design-session.md) + #3989): #3992 → #3993 → #3972 → #3974 → #3449, rækkefølgen er bindende. Rest: ⚪ #3755 28-dages-måling (gate for gebyret) · ⚪ #3756 gebyret · 🔴 #3732 pengepolitik.
+- **#3719+#3720: D3/D4-løft + upkeep-rekalibrering udskudt til kalibrerings-session EFTER cutover** (ejer 19/8) på ægte S3-tal. Samme session tager **#3987 sponsor-skalering efter division/ranking** (jeppek 19/8 — indtægtssiden skalerer ikke med den divisions- og trupværdi-skalerede udgiftsside) og en evt. hævning af løn-satsen på MÅLT D1-indtægt (D1 har aldrig haft menneskehold, så 0,35 hviler på et ekstrapoleret estimat).
 
 ## C · Talent-kanalen (rest)
 
 15. 🟠 **#3854 staff-rest** (per-scout kapacitet, routing, harness-rekalibrering FØR flag-flip; 2 slots/rolle merged bag flag).
-17. 🟠 **#3550 signing fee: LØST VED DESIGN 19/8** — ungdomspakken (PR #3972: symbolsk intake-værdi, pull-intake, 1-sæsons intro). Flippes i drejebogen efter #3992. Fremtid: #3970.
+17. 🟠 **#3550 signing fee** — løst ved ungdomspakken (PR #3972); flippes i drejebogen efter #3992. Fremtid: #3970.
 18. ⚪ **#3853** scout-kadence-måling (balance-efterregulering af #3846).
 
 ## D · Penge og vækst — gate: spor B leveret (ikke en dato)
@@ -57,7 +57,7 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 ## E2 · Race-oplevelsen
 
-**#2410 event-loggen SHIPPET + bevist i prod 18/8 11:08** · **#3858 Race Centre LIVE** (v7.140). **Rest:** etapeside-omlægningen #3914 (design godkendt, PR A draft afventer go 19/8; LIVE-broadcast = PR B tor/fre) · **#3855 motor v4** = ejer-retningen EFTER cutover (#3917 fodrer den) · #3856 backfill efter S3-bevis · #3864 klassiker-uge (S4). **#3900 sæson-overblik + #3915 dagens etaper designes SAMLET i KS3.** Spec: [`race-event-log-stage-timeline`](superpowers/specs/2026-08-17-race-event-log-stage-timeline-design.md).
+**Rest:** #3914 PR A MERGED 19/8 (PR #3969); rest = PR B LIVE-broadcast + regression #3985 (etapetypen forsvandt fra etape-fanerne efter sammenfoldningen) · **#3855 motor v4** = ejer-retningen EFTER cutover (#3917 fodrer den) · #3856 backfill efter S3-bevis · #3864 klassiker-uge (S4). **#3900 sæson-overblik + #3915 dagens etaper designes SAMLET i KS3.** Spec: [`race-event-log-stage-timeline`](superpowers/specs/2026-08-17-race-event-log-stage-timeline-design.md).
 
 ## Parkeret — genbesøges når B og C er leveret
 
