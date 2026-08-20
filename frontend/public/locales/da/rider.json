@@ -196,6 +196,8 @@
     "banner": {
       "listed": "På transferlisten · pris {price}",
       "auction": "I auktion · slutter om {endsIn} · højeste bud {highBid}",
+      "finalSeasonTitle": "Sidste sæson",
+      "finalSeason": "Meldte sin pension ved sæsonstart. Han stopper når sæson {season} slutter.",
       "academy": "Akademirytter",
       "expiry": "Kontrakt udløber efter Sæson {season}."
     },

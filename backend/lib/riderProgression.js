@@ -19,6 +19,7 @@
 
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i previewRiderProgression.js) ────────
 export const PROGRESSION_CONFIG = Object.freeze({
@@ -365,6 +366,30 @@ export function retirementDecision(age, riderId, season, cfg = PROGRESSION_CONFI
   const p = (age - windowStartAge) / (guaranteedAge - windowStartAge);
   const roll = seededUnit(`retire:${riderId}:${season}`);
   return { retire: roll < p, notice: roll < p };
+}
+
+// #2748 pension-minimum: forudsig DETERMINISTISK ved den AKTIVE sæsons START om
+// rytteren pensioneres når sæsonen SLUTTER — uden at vente på season-transition-
+// motoren (som først kører ved NÆSTE sæsons cutover).
+//
+// Skal ramme 100% samme svar som motoren rent faktisk beslutter. Sporet gennem
+// riderProgressionEngine.js: ved processSeasonStart(N) sættes
+//   age = ageForSeason(birthdate, N)
+// og developRiderSeason() kalder derefter
+//   retirementDecision(age − 1, riderId, season=N, cfg)
+// Så: retirering "ved udgangen af sæson A" bliver FAKTISK afgjort når sæson A+1
+// starter (N = A+1), med age − 1 = ageForSeason(birthdate, A+1) − 1. Da
+// ageForSeason er lineær i sæsonnummeret (riderSeasonAge.js: ét sæsonnummer op
+// = ét år op, ingen afrunding/spring), er det PRÆCIS ageForSeason(birthdate, A).
+// Denne funktion regner derfor direkte på (ageForSeason(birthdate, A), season=A+1)
+// — samme seed-nøgle (`retire:${riderId}:${A+1}`) som motoren vil bruge, blot
+// beregnet på forhånd i stedet for at vente på cutover. Se
+// riderProgression.test.js for beviset (samme svar som en simuleret
+// developRiderSeason-kørsel ved A+1).
+export function announcedRetirementAfterSeason(rider, activeSeason, cfg = PROGRESSION_CONFIG) {
+  const age = ageForSeason(rider?.birthdate, activeSeason);
+  if (age == null || rider?.id == null) return false;
+  return retirementDecision(age, rider.id, activeSeason + 1, cfg).retire;
 }
 
 // Beregn én sæsons udvikling for en rytter på tværs af alle synlige evner.

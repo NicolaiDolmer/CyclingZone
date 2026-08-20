@@ -14,6 +14,8 @@
 
 > **📌 Opfølgninger:** W7 hjælpetekster LIGE efter trin 7-merge (trin 2/løbslære er allerede I trin 7-PR'en, verificeret 20/8) · W8: bundt 1 kørt 20/8, 53 needs-decision tilbage (bundt 2 = økonomi, efter cutover) · kalibrerings-session efter cutover: #3719/#3720/#3987/#3732/#2650 + D1-løn-sats på målt indtægt · #4001 akademi-værdi modner første søndag (ejer-dom; fremtid: 5 træningspas før auktion) · miljø-audit (ejer-ja 20/8) + #691 key-rotation uge 35 · #3952/#3982 visuals i design-sessionen.
 
+> **📝 PR #2748** (pension-minimum: rytterprofil-banner + indbakke-varsel) bærer patch note **v7.161** (main's top var 7.157 ved merge; 7.158-7.160 reserveret til andre PR'er i aftenens merge-tog).
+
 ## Standing context (forever-relaunch)
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8; S3: D1 = top 24 rigtige hold. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).

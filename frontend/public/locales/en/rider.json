@@ -196,6 +196,8 @@
     "banner": {
       "listed": "On the transfer list · price {price}",
       "auction": "In auction · ends in {endsIn} · highest bid {highBid}",
+      "finalSeasonTitle": "Final season",
+      "finalSeason": "Announced his retirement at the season start. He retires when season {season} ends.",
       "academy": "Academy rider",
       "expiry": "Contract expires after Season {season}."
     },

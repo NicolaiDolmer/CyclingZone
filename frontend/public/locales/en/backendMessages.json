@@ -70,6 +70,10 @@
     "admin": {
       "feedbackReply": {
         "title": "Reply to your message"
+      },
+      "retirementAnnounced": {
+        "title": "Final season for {count} of your riders",
+        "message": "{count} of your riders announced this is their final season: {names}. They retire when season {season} ends."
       }
     },
     "loanCreatedShort": {

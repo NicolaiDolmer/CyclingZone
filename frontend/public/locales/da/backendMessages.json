@@ -70,6 +70,10 @@
     "admin": {
       "feedbackReply": {
         "title": "Svar på din besked"
+      },
+      "retirementAnnounced": {
+        "title": "Sidste sæson for {count} af dine ryttere",
+        "message": "{count} af dine ryttere har meldt at dette er deres sidste sæson: {names}. De stopper når sæson {season} slutter."
       }
     },
     "loanCreatedShort": {
