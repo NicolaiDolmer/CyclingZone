@@ -27,6 +27,45 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.159",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Live updates",
+        "en": {
+          "title": "Live updates work again on auctions, notifications and the activity feed",
+          "body": "Some pages stopped updating by themselves and only refreshed when you reloaded. The live connection was being opened before you were signed in, so the server rejected it. It now waits until your session is ready."
+        },
+        "da": {
+          "title": "Live-opdateringer virker igen på auktioner, notifikationer og aktivitetsfeedet",
+          "body": "Nogle sider holdt op med at opdatere sig selv og kom først med igen når du genindlæste. Live-forbindelsen blev åbnet før du var logget ind, så serveren afviste den. Den venter nu på at din session er klar."
+        },
+        "refs": [
+          4010
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "internal",
+        "topic": "Database",
+        "en": {
+          "title": "Supabase load cut across three hot paths",
+          "body": "Sponsor payouts cache each completed race instead of re-reading every result every five minutes, the balance drift watch uses keyset pagination behind a new partial index, and realtime no longer reconnects in a loop. Measured over 23 hours: 203.849 race_results reads, 7.727 MalformedJWT errors and 3,3 TB of buffer traffic removed. The auth change is held back until after the season 3 start."
+        },
+        "da": {
+          "title": "Supabase-belastning skåret på tre varme stier",
+          "body": "Sponsor-udbetalinger cacher hvert completet løb i stedet for at genlæse alle resultater hvert femte minut, balance-drift-vagten bruger keyset-paginering bag et nyt partielt index, og realtime reconnecter ikke længere i ring. Målt over 23 timer: 203.849 race_results-læsninger, 7.727 MalformedJWT-fejl og 3,3 TB buffer-trafik fjernet. Auth-ændringen holdes tilbage til efter sæson 3-starten."
+        },
+        "refs": [
+          4010
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.158",
     "date": "2026-08-20",
     "label": "Beta",
