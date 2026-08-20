@@ -24,6 +24,6 @@
 - **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 27 løbsdage.
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Skalering:** #323.
 
-> **🤖 Aktive sessioner: Ingen aktiv session.** (Hoved-checkout står på main.)
+> **🤖 Aktive sessioner: Merge-tog-session (Claude Code, 20/8 aften)** — kører trin 7-toget + Discord-sweep. Hoved-checkout på main; vogne merges fra egne worktrees.
 
 _Historik i git-log, issue-tråde + docs/audits/._
