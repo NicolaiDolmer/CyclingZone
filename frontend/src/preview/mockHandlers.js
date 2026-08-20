@@ -734,6 +734,14 @@ export function apiResponse(pathname, search = "") {
   // godkendte måling 20/8 (#3989/#3645: medianholdets S3-løn ≈ 2,2× dagens
   // frosne kontraktløn) — så preview-fladen viser PRÆCIS den historie
   // designet blev godkendt til, ikke en tilfældig demo-økonomi.
+  //
+  // REVISION 20/8 (read-only kode-revision): payload'en matcher nu den
+  // rettede backend-facon — se backend/lib/seasonSwitchPreview.js's filhoved
+  // for den fulde begrundelse. Sponsor er ÉT kombineret S2-felt
+  // (sponsor_season_start) + en separat løbende-bonus-bucket
+  // (sponsor_in_season_bonus); løn-trinnet er en RIGTIG charge; facility/
+  // staff er to felter; lånerente er 0 her fordi preview-holdet (ligesom
+  // /api/finance/loans-mocken nedenfor) ikke har aktive lån.
   if (pathname.endsWith("/api/finance/season-switch-preview")) {
     const SALARY_RATE_PRODUCTION = 0.35;
     const seasonSwitchRiders = [
@@ -757,50 +765,60 @@ export function apiResponse(pathname, search = "") {
     const totalContract = riderRows.reduce((sum, r) => sum + r.contract_salary, 0);
     const totalProjection = riderRows.reduce((sum, r) => sum + r.s3_salary_projection, 0);
 
-    const s3 = {
+    const s3Mapped = {
       sponsor_base: 180000,
       sponsor_variable: 0,
       prize_low: 172200,
       prize_high: 260400,
       salary: -totalProjection,
+      loan_interest: 0, // ingen aktive lån i preview-holdet (samme facit som /api/finance/loans nedenfor)
       upkeep: -140000,
-      facility_upkeep: 0,
-      staff_salary: -24910,
-      staff_facilities: -24910,
+      facility_upkeep: -9000,
+      staff_salary: -15910,
       academy_drift: 0,
     };
-    s3.net = s3.sponsor_base + s3.sponsor_variable + 210000 + s3.salary + s3.upkeep + s3.staff_facilities + s3.academy_drift;
+    s3Mapped.net = s3Mapped.sponsor_base + s3Mapped.sponsor_variable + 210000 + s3Mapped.salary
+      + s3Mapped.loan_interest + s3Mapped.upkeep + s3Mapped.facility_upkeep + s3Mapped.staff_salary + s3Mapped.academy_drift;
 
+    // Følger den FAKTISKE processTeamSeasonPayroll-rækkefølge (se
+    // buildSettlementSteps i backend/lib/seasonSwitchPreview.js): sponsor →
+    // lånerente → løn → akademi → upkeep → facilitets-upkeep → staff-løn.
     const startingBalance = TEST_TEAM.balance;
     const steps = [];
     let running = startingBalance;
     steps.push({ key: "books_close", amount: null, balance_after: running });
-    const applyStep = (key, amount) => {
+    const applyStep = (key, amount, extra) => {
       running += amount;
-      steps.push({ key, amount, balance_after: running });
+      steps.push({ key, amount, balance_after: running, ...extra });
     };
-    applyStep("sponsor_base", s3.sponsor_base);
-    applyStep("upkeep", s3.upkeep);
-    applyStep("staff_facilities", s3.staff_facilities);
-    applyStep("academy_drift", s3.academy_drift);
-    steps.push({ key: "salary_switch", amount: 0, balance_after: running });
+    applyStep("sponsor", s3Mapped.sponsor_base + s3Mapped.sponsor_variable, { base: s3Mapped.sponsor_base, variable: s3Mapped.sponsor_variable });
+    if (s3Mapped.loan_interest !== 0) applyStep("loan_interest", s3Mapped.loan_interest);
+    applyStep("salary", s3Mapped.salary);
+    if (s3Mapped.academy_drift !== 0) applyStep("academy_drift", s3Mapped.academy_drift);
+    if (s3Mapped.upkeep !== 0) applyStep("upkeep", s3Mapped.upkeep);
+    if (s3Mapped.facility_upkeep !== 0) applyStep("facility_upkeep", s3Mapped.facility_upkeep);
+    if (s3Mapped.staff_salary !== 0) applyStep("staff_salary", s3Mapped.staff_salary);
     steps.push({ key: "start_s3", amount: null, balance_after: running });
 
     return {
       season: { current_number: ACTIVE_SEASON.number, next_number: ACTIVE_SEASON.number + 1 },
       s2: {
-        sponsor_base: 200000,
-        sponsor_variable: 6000,
+        // #4011 REVISION 20/8: ÉT kombineret realiseret sponsor-beløb (base +
+        // rang/point-performance-bonus, som det faktisk blev krediteret) —
+        // aldrig sammenlignet 1:1 med S3's rene `sponsor_base`.
+        sponsor_season_start: 200000,
+        // Løbsdags-/resultat-/mål-/underskriftsbonusser — en HELT ANDEN
+        // strøm end S3's "variable" (rang/point-performance-bonus).
+        sponsor_in_season_bonus: 6000,
         prize: 34000,
         upkeep: 0, // #1678: sæson 1 udskyder upkeep til efter første løb
         facility_upkeep: 0,
         staff_salary: 0,
-        staff_facilities: 0,
         academy_drift: 0,
         salary: -totalContract,
         salary_is_contract: true,
       },
-      s3,
+      s3: s3Mapped,
       settlement: {
         starting_balance: startingBalance,
         ending_balance: running,

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { useTableSort } from "../lib/useTableSort.js";
@@ -6,14 +7,22 @@ import SortableTh from "./ui/SortableTh.jsx";
 import { Card, Button } from "./ui";
 
 // #4011 (design-go 20/8, punkt C) — sæsonskifte-afregningen. Ny sektion på
-// Finance-siden: kvitterings-flow (books close → sponsor base → upkeep →
-// stab/faciliteter → akademi → "løn skifter regelsæt, ingen opkrævning" →
-// slutbalance) + løn-tabel pr. rytter (nuværende kontrakt vs. S3-prognose).
+// Finance-siden: kvitterings-flow (books close → sponsor → lånerente → løn →
+// akademi → upkeep → facilitets-upkeep → staff-løn → slutbalance) + løn-
+// tabel pr. rytter (nuværende kontrakt vs. S3-prognose).
 //
 // Data kommer FÆRDIGBEREGNET fra GET /api/finance/season-switch-preview
 // (backend/lib/seasonSwitchPreview.js) — denne komponent er ren visning,
 // ingen økonomi-logik. S3-lønprognosen er computeFrozenSalary 1:1, samme
 // funktion salaryRecompute3645.mjs (cutover-værktøjet) kalder.
+//
+// REVISION 20/8 (read-only kode-revision, ejer-direktiv "perfekt korrekthed
+// før merge"): kvitteringen følger nu den FAKTISKE cash-rækkefølge fra
+// processSeasonStart → processTeamSeasonPayroll, løn-trinnet er en RIGTIG
+// charge (aldrig "no charge"), sponsor krediteres som ÉT beløb (base +
+// performance-bonus, som det faktisk udbetales), og facilitets-/staff-
+// udgifter er to separate trin. Se seasonSwitchPreview.js's filhoved for den
+// fulde begrundelse pr. punkt.
 
 function formatSigned(value) {
   if (value == null) return "—";
@@ -36,7 +45,12 @@ const COLLAPSED_ROW_COUNT = 8;
 
 function SettlementStep({ step, t, isLast, seasonParams }) {
   const isInfoOnly = step.amount === null;
-  const isZero = step.amount === 0;
+  // #4011 REVISION 20/8: sponsor-trinnet krediterer base + performance-bonus
+  // SAMLET (én reel transaktion) — detail-teksten viser splittet via ekstra
+  // params, uden at det bliver en selvstændig charge-linje der ikke findes.
+  const detailParams = step.key === "sponsor"
+    ? { ...seasonParams, base: formatNumber(step.base ?? 0), variable: formatNumber(step.variable ?? 0) }
+    : seasonParams;
   return (
     <div className={`flex items-center justify-between gap-3 py-2 ${isLast ? "" : "border-b border-cz-border"}`}>
       <div className="min-w-0 pr-3">
@@ -44,15 +58,15 @@ function SettlementStep({ step, t, isLast, seasonParams }) {
           {t(`seasonSwitch.receipt.step.${step.key}.label`, seasonParams)}
         </p>
         <p className="text-cz-3 text-2xs mt-0.5 leading-snug">
-          {t(`seasonSwitch.receipt.step.${step.key}.detail`, seasonParams)}
+          {t(`seasonSwitch.receipt.step.${step.key}.detail`, detailParams)}
         </p>
       </div>
       <div className="text-end flex-shrink-0">
         {!isInfoOnly && (
           <p className={`font-mono text-sm font-bold tabular-nums ${
-            isZero ? "text-cz-3" : step.amount > 0 ? "text-cz-success" : "text-cz-danger"
+            step.amount > 0 ? "text-cz-success" : step.amount < 0 ? "text-cz-danger" : "text-cz-3"
           }`}>
-            {isZero ? t("seasonSwitch.receipt.noCharge") : formatSigned(step.amount)}
+            {formatSigned(step.amount)}
           </p>
         )}
         <p className={`font-mono tabular-nums mt-0.5 ${isLast ? "text-cz-1 font-bold text-base" : "text-cz-3 text-2xs"}`}>
@@ -181,6 +195,17 @@ export default function FinanceSeasonSwitchPanel({ data, loading }) {
           </>
         )}
       </Card>
+
+      {/* #4011 REVISION 20/8 (punkt 5): ærlig udeladelses-fodnote, samme
+          mønster som FinanceForecastCard's footnote/footnoteLink. Skrevet
+          EFTER rettelserne ovenfor, så den beskriver virkeligheden: hvad
+          kvitteringen rent faktisk viser, og hvad den bevidst udelader. */}
+      <p className="text-cz-3 text-xs mt-1 mb-4 leading-snug">
+        {t("seasonSwitch.footnote")}{" "}
+        <Link to="/help?faq=seasonSwitchSettlement" className="underline hover:text-cz-1">
+          {t("seasonSwitch.footnoteLink")}
+        </Link>
+      </p>
     </>
   );
 }

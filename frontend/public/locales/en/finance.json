@@ -213,40 +213,49 @@
     "loading": "Loading the season switch settlement…",
     "receipt": {
       "title": "Season {current} → {next} settlement",
-      "subtitle": "What happens to your balance when the books close and season {next} starts.",
-      "noCharge": "No charge",
+      "subtitle": "What happens to your balance when the books close and season {next} starts, in the same order the game actually charges it.",
       "balanceAfter": "Balance: {value} CZ$",
       "step": {
         "books_close": {
           "label": "Books close",
           "detail": "Your balance as it stands right now, carried into the switch."
         },
-        "sponsor_base": {
-          "label": "Sponsor base lands",
-          "detail": "Next season's guaranteed base, credited at season start."
+        "sponsor": {
+          "label": "Sponsor lands",
+          "detail": "Base {base} + performance bonus {variable} from last season's rank/points, credited together as one payment at season start."
         },
-        "upkeep": {
-          "label": "Division upkeep",
-          "detail": "Flat cost set by your division, charged at season start."
+        "loan_interest": {
+          "label": "Loan interest",
+          "detail": "Interest charged on your active loans' outstanding debt, right after the sponsor payment lands."
         },
-        "staff_facilities": {
-          "label": "Staff & facilities",
-          "detail": "Season-start upkeep for your staff and facility tiers."
+        "salary": {
+          "label": "Salaries for season {next} are charged",
+          "detail": "Recomputed under the season {next} rules from each rider's current production value on the day of the switch, not last season's frozen contract numbers."
         },
         "academy_drift": {
           "label": "Academy upkeep",
           "detail": "Season-start drift cost for your academy slots."
         },
-        "salary_switch": {
-          "label": "Salaries switch to season {next} rules",
-          "detail": "No charge at the switch itself. Your current contracts stay signed and locked. The new formula only applies when a contract is renewed or a rider is signed."
+        "upkeep": {
+          "label": "Division upkeep",
+          "detail": "Flat cost set by your division, charged at season start."
+        },
+        "facility_upkeep": {
+          "label": "Facility upkeep",
+          "detail": "Season-start upkeep for the facility tracks you've built."
+        },
+        "staff_salary": {
+          "label": "Staff salaries",
+          "detail": "Season-start salaries for the staff you've hired."
         },
         "start_s3": {
           "label": "You start next season with",
-          "detail": "Your balance after the season-start charges above. Prize money and variable sponsor income are not included, since they depend on races not yet run."
+          "detail": "Your balance after every season-start charge above."
         }
       }
     },
+    "footnote": "Settlement preview, not a guarantee. Prize money and race-day sponsor bonuses aren't included, since they depend on races not yet run, and neither is anything contingent, like emergency-loan interest if your balance goes negative, or a forced sale if your debt breaks the cap. Scout travel, transfers, facility purchases, staff changes, and academy signings aren't included either, since none of it is known ahead of time.",
+    "footnoteLink": "What exactly is included?",
     "salaryTable": {
       "title": "Salaries: current contract vs. next season",
       "subtitle": "Every signed rider's frozen contract salary next to what the season {next} formula would price them at today.",

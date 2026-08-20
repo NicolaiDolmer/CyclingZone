@@ -203,12 +203,36 @@ export default function FinanceForecastCard({
   const showUpkeepRow = hasSeasonSwitch
     ? forecast.projected_upkeep !== 0 || s2?.upkeep !== 0
     : forecast.projected_upkeep !== 0;
-  const showStaffFacilitiesRow = hasSeasonSwitch
-    ? forecast.projected_staff_facilities !== 0 || s2?.staff_facilities !== 0
-    : forecast.projected_staff_facilities !== 0;
+  // #4011 REVISION 20/8 (read-only kode-revision, punkt 4): "Stab &
+  // faciliteter" er nu TO rækker i dual-column-tilstanden — facilitets-drift
+  // og staff-løn er to forskellige strømme (economyEngine.chargeFacilityCosts
+  // debiterer dem som to separate transaktioner). Enkelt-kolonne-visningen
+  // (fx Dashboard) beholder den oprindelige kombinerede række uændret.
+  const showFacilityUpkeepRow = forecast.projected_facility_upkeep !== 0 || s2?.facility_upkeep !== 0;
+  const showStaffSalaryRow = forecast.projected_staff_salary !== 0 || s2?.staff_salary !== 0;
+  const showStaffFacilitiesRow = forecast.projected_staff_facilities !== 0;
   const showAcademyDriftRow = hasSeasonSwitch
     ? forecast.projected_academy_drift !== 0 || s2?.academy_drift !== 0
     : forecast.projected_academy_drift !== 0;
+  // #4011 REVISION 20/8 (punkt 2): S2's SEASON_START_SPONSOR-transaktion er
+  // base OG rang/point-performance-bonus SAMLET i ét beløb (sponsorEngine.
+  // computeVariableSponsor) — modsat S3's `sponsor_base`-felt, som er
+  // UDELUKKENDE den flade/kontrakt-del. De to tal måler ikke det samme, og et
+  // eksakt tilbageregnet split kræver data denne route ikke pålideligt kan
+  // rekonstruere (forrige sæsons standings + den dengang aktive kontrakt +
+  // den LIVE board-modifier på betalingstidspunktet, #1187). Løsningen er
+  // derfor bevidst den ærlige: S2 vises som ÉT kombineret, faktisk krediteret
+  // beløb under "Sponsor (base)" med en forklarende note, og "Sponsor
+  // (variabel)"-rækkens S2-kolonne viser "—" i stedet for et gættet split.
+  const sponsorBaseS2Detail = hasSeasonSwitch
+    ? t("forecast.sponsorDetail.s2Combined")
+    : undefined;
+  // Løbende løbsdags-/resultat-/mål-/underskriftsbonusser — en HELT ANDEN
+  // indtægtsstrøm end sponsor-basens rang/point-performance-bonus, og S3
+  // forecaster den slet ikke (financeForecast.js's FINANCE_FORECAST_TYPE_
+  // COVERAGE markerer alle fire reason_codes `modeled: false`). Egen række,
+  // aldrig under samme label som "Sponsor (variabel)".
+  const showSponsorInSeasonBonusRow = hasSeasonSwitch && s2?.sponsor_in_season_bonus !== 0;
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
@@ -305,9 +329,11 @@ export default function FinanceForecastCard({
           label={t("forecast.row.sponsorBase")}
           value={forecast.projected_sponsor_base}
           accent="text-cz-success"
-          detail={sponsorBaseDetail}
+          // #4011 REVISION 20/8: dual-column viser den ærlige note i stedet
+          // for kontrakt-/intro-teksten (som stadig kun beskriver S3-siden).
+          detail={hasSeasonSwitch ? sponsorBaseS2Detail : sponsorBaseDetail}
           dualColumn={hasSeasonSwitch}
-          s2Value={s2?.sponsor_base}
+          s2Value={s2?.sponsor_season_start}
           activeCol={activeCol}
         />
         <Row
@@ -316,9 +342,23 @@ export default function FinanceForecastCard({
           accent="text-cz-success"
           detail={sponsorVariableDetail}
           dualColumn={hasSeasonSwitch}
-          s2Value={s2?.sponsor_variable}
+          // #4011 REVISION 20/8: INGEN s2Value her — S2's rang/point-andel er
+          // uadskilleligt foldet ind i rækken ovenfor (se sponsorBaseS2Detail).
+          // Row's formatSigned-fallback viser "—", ikke et gættet tal.
           activeCol={activeCol}
         />
+        {showSponsorInSeasonBonusRow && (
+          <Row
+            label={t("forecast.row.sponsorInSeasonBonus")}
+            // S3 forecaster IKKE denne strøm (result-/løbsdag-afhængig) — value
+            // forbliver undefined, Row viser "—" i S3-kolonnen.
+            accent="text-cz-success"
+            detail={t("forecast.sponsorDetail.inSeasonBonus")}
+            dualColumn={hasSeasonSwitch}
+            s2Value={s2?.sponsor_in_season_bonus}
+            activeCol={activeCol}
+          />
+        )}
         <RangeRow
           label={t("forecast.row.prize")}
           low={forecast.prize_low}
@@ -363,15 +403,40 @@ export default function FinanceForecastCard({
             activeCol={activeCol}
           />
         )}
-        {showStaffFacilitiesRow && (
-          <Row
-            label={t("forecast.row.staffFacilities")}
-            value={forecast.projected_staff_facilities}
-            accent="text-cz-danger"
-            dualColumn={hasSeasonSwitch}
-            s2Value={s2?.staff_facilities}
-            activeCol={activeCol}
-          />
+        {/* #4011 REVISION 20/8 (punkt 4): to separate rækker i dual-column-
+            tilstanden (facility-drift og staff-løn er forskellige strømme);
+            enkelt-kolonne-visningen beholder den kombinerede række uændret. */}
+        {hasSeasonSwitch ? (
+          <>
+            {showFacilityUpkeepRow && (
+              <Row
+                label={t("forecast.row.facilityUpkeep")}
+                value={forecast.projected_facility_upkeep}
+                accent="text-cz-danger"
+                dualColumn
+                s2Value={s2?.facility_upkeep}
+                activeCol={activeCol}
+              />
+            )}
+            {showStaffSalaryRow && (
+              <Row
+                label={t("forecast.row.staffSalary")}
+                value={forecast.projected_staff_salary}
+                accent="text-cz-danger"
+                dualColumn
+                s2Value={s2?.staff_salary}
+                activeCol={activeCol}
+              />
+            )}
+          </>
+        ) : (
+          showStaffFacilitiesRow && (
+            <Row
+              label={t("forecast.row.staffFacilities")}
+              value={forecast.projected_staff_facilities}
+              accent="text-cz-danger"
+            />
+          )
         )}
         {/* #4011: lånerente indgår ikke i sæsonskifte-opgørelsen (kun de 7
             navngivne kildelinjer har et S2-realiseret tal) — s2Value forbliver

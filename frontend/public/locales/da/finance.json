@@ -213,40 +213,49 @@
     "loading": "Henter sæsonskifte-afregningen…",
     "receipt": {
       "title": "Afregning sæson {current} → {next}",
-      "subtitle": "Hvad der sker med din balance når bøgerne lukker, og sæson {next} starter.",
-      "noCharge": "Ingen opkrævning",
+      "subtitle": "Hvad der sker med din balance når bøgerne lukker, og sæson {next} starter, i den rækkefølge spillet rent faktisk opkræver det.",
       "balanceAfter": "Balance: {value} CZ$",
       "step": {
         "books_close": {
           "label": "Bøgerne lukker",
           "detail": "Din balance som den står lige nu, ført med ind i sæsonskiftet."
         },
-        "sponsor_base": {
-          "label": "Sponsor-base lander",
-          "detail": "Næste sæsons garanterede base, krediteret ved sæsonstart."
+        "sponsor": {
+          "label": "Sponsor lander",
+          "detail": "Base {base} + performance-bonus {variable} fra sidste sæsons rang/point, krediteret samlet som én betaling ved sæsonstart."
         },
-        "upkeep": {
-          "label": "Divisions-upkeep",
-          "detail": "Fast udgift bestemt af din division, opkrævet ved sæsonstart."
+        "loan_interest": {
+          "label": "Lånerenter",
+          "detail": "Rente opkrævet på dine aktive låns restgæld, lige efter sponsor-betalingen lander."
         },
-        "staff_facilities": {
-          "label": "Stab & faciliteter",
-          "detail": "Sæsonstarts-upkeep for din stab og dine facilitets-niveauer."
+        "salary": {
+          "label": "Løn for sæson {next} opkræves",
+          "detail": "Genberegnet efter sæson {next}-reglerne fra hver rytters nuværende produktionsværdi på skiftets dag, ikke sidste sæsons frosne kontrakttal."
         },
         "academy_drift": {
           "label": "Akademi-drift",
           "detail": "Sæsonstarts-driftsudgift for dine akademi-pladser."
         },
-        "salary_switch": {
-          "label": "Løn skifter til sæson {next}-reglerne",
-          "detail": "Ingen opkrævning ved selve skiftet. Dine nuværende kontrakter forbliver underskrevne og låste. Den nye formel gælder først når en kontrakt forlænges, eller en ny rytter underskrives."
+        "upkeep": {
+          "label": "Divisions-upkeep",
+          "detail": "Fast udgift bestemt af din division, opkrævet ved sæsonstart."
+        },
+        "facility_upkeep": {
+          "label": "Facilitets-upkeep",
+          "detail": "Sæsonstarts-upkeep for de facilitets-baner du har bygget."
+        },
+        "staff_salary": {
+          "label": "Stab-løn",
+          "detail": "Sæsonstarts-løn for den stab du har ansat."
         },
         "start_s3": {
           "label": "Du starter næste sæson med",
-          "detail": "Din balance efter sæsonstarts-opkrævningerne ovenfor. Præmiepenge og variabel sponsorindtægt er ikke inkluderet, da de afhænger af løb der endnu ikke er kørt."
+          "detail": "Din balance efter alle sæsonstarts-opkrævningerne ovenfor."
         }
       }
     },
+    "footnote": "Afregningen er en forhåndsvisning, ikke en garanti. Præmiepenge og løbsdags-sponsorbonusser er ikke med, da de afhænger af løb der endnu ikke er kørt, og det samme gælder alt kontingent, fx nødlåns-rente hvis din balance går i minus, eller et tvangssalg hvis din gæld bryder loftet. Spejder-rejser, transfers, facilitets-køb, stabsændringer og akademi-underskrifter er heller ikke med, da intet af det er kendt på forhånd.",
+    "footnoteLink": "Hvad er præcis med?",
     "salaryTable": {
       "title": "Løn: nuværende kontrakt vs. næste sæson",
       "subtitle": "Hver underskrevet rytters frosne kontraktløn sammenholdt med hvad sæson {next}-formlen ville prissætte ham til i dag.",

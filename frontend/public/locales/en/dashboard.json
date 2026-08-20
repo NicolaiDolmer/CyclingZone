@@ -314,10 +314,13 @@
     "row": {
       "sponsorBase": "Sponsor (base)",
       "sponsorVariable": "Sponsor (variable)",
+      "sponsorInSeasonBonus": "Sponsor (in-season bonuses)",
       "prize": "Prize money",
       "salary": "Salary",
       "upkeep": "Division upkeep",
       "staffFacilities": "Staff & facilities",
+      "facilityUpkeep": "Facility upkeep",
+      "staffSalary": "Staff salaries",
       "loanInterest": "Loan interest",
       "academyDrift": "Academy upkeep"
     },
@@ -325,7 +328,9 @@
       "contract": "Next season's sponsor: {sponsor} · guaranteed base {base}, race-day income on top",
       "variable": "Base {base} + variable {variable} from last season's rank/points",
       "intro": "Intro season: variable sponsor starts from season 2",
-      "fallback": "Fallback: missing standings for the previous season"
+      "fallback": "Fallback: missing standings for the previous season",
+      "s2Combined": "This season shows the full amount credited in one payment, base and performance bonus combined. Next season splits the two below.",
+      "inSeasonBonus": "Race-day, result, objective, and signing bonuses actually earned this season. Not forecasted for next season, since it depends on results not yet run."
     },
     "prizeDetail": {
       "realizedFloor": "Matches what your roster has already earned this season",
