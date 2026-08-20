@@ -6,6 +6,7 @@ import {
   runAdminSimulateStage,
   getRaceEngineStatus,
   buildRaceSimEmbed,
+  STAGE_CLAIM_LEASE_MS,
 } from "./adminSimulateRace.js";
 
 // ── Mock-supabase ─────────────────────────────────────────────────────────────
@@ -45,8 +46,40 @@ function makeSupabase(canned = {}) {
       update(obj) {
         const rec = { table, op: "update", obj, eqs: [] };
         writes.push(rec);
-        const u = { eq(c, v) { rec.eqs.push([c, v]); return u; }, in() { return u; }, then(r) { return Promise.resolve({ error: null }).then(r); } };
+        const u = {
+          eq(c, v) { rec.eqs.push([c, v]); return u; },
+          in() { return u; },
+          then(r) { return Promise.resolve({ error: null }).then(r); },
+          // #4026: CAS-steal (.update().eq()...select()) — returnér de cannede
+          // rækker der matcher ALLE eq-filtre (0 matches = tabt kapløb).
+          select() {
+            const matched = (canned[table] || []).filter((row) => rec.eqs.every(([c, v]) => row[c] === v));
+            return Promise.resolve({ data: matched, error: null });
+          },
+        };
         return u;
+      },
+      // #4026: claim-upsert (ignoreDuplicates) — konflikt mod canned rækker på
+      // (race_id, stage_index) giver data:[] (PostgREST-adfærd ved DO NOTHING).
+      upsert(row, opts = {}) {
+        const rec = { table, op: "upsert", row, opts };
+        writes.push(rec);
+        return {
+          select() {
+            const conflict = (canned[table] || []).some(
+              (r) => r.race_id === row.race_id && r.stage_index === row.stage_index,
+            );
+            if (conflict && opts.ignoreDuplicates) return Promise.resolve({ data: [], error: null });
+            (canned[table] ||= []).push(row);
+            return Promise.resolve({ data: [row], error: null });
+          },
+        };
+      },
+      delete() {
+        const rec = { table, op: "delete", eqs: [] };
+        writes.push(rec);
+        const d = { eq(c, v) { rec.eqs.push([c, v]); return d; }, then(r, j) { return Promise.resolve({ error: null }).then(r, j); } };
+        return d;
       },
     };
     return b;
@@ -479,4 +512,102 @@ test("runAdminSimulateStage: manglende raceId → 400; ukendt → 404", async ()
   let err2 = null;
   try { await runAdminSimulateStage({ supabase: sb2, raceId: "ukendt", simulateStageByIndex: async () => ({}) }); } catch (e) { err2 = e; }
   assert.equal(err2.status, 404);
+});
+
+// ── #4026: cross-process etape-claim ─────────────────────────────────────────
+
+const CLAIM_RACE = { id: "r1", season_id: "s1", name: "Claim GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 0, status: "scheduled", league_division_id: 4 };
+const CLAIM_PROFILES = [{ id: "p1" }, { id: "p2" }, { id: "p3" }];
+
+test("#4026: aegte run claimer etapen atomisk foer simulering (upsert paa race_stage_claims)", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [CLAIM_RACE],
+    race_stage_profiles: CLAIM_PROFILES,
+  });
+  let captured = null;
+  await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async (args) => { captured = args; return {}; } });
+  assert.ok(captured, "stub skal kaldes naar claimet vindes");
+  const claimWrites = supabase.__writes.filter((w) => w.table === "race_stage_claims" && w.op === "upsert");
+  assert.equal(claimWrites.length, 1, "praecis ét claim-upsert");
+  assert.equal(claimWrites[0].row.race_id, "r1");
+  assert.equal(claimWrites[0].row.stage_index, 0);
+  assert.ok(claimWrites[0].row.claimed_by, "claimed_by (hostname) skal saettes — zombie-synlighed");
+  assert.equal(claimWrites[0].opts.ignoreDuplicates, true, "konflikt maa ikke kaste — DO NOTHING + data:[]");
+});
+
+test("#4026: frisk claim holdt af andet run → benign 409, stub ikke kaldt", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [CLAIM_RACE],
+    race_stage_profiles: CLAIM_PROFILES,
+    race_stage_claims: [{ race_id: "r1", stage_index: 0, claimed_at: new Date().toISOString(), claimed_by: "anden-instans" }],
+  });
+  let stubCalled = false;
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async () => { stubCalled = true; return {}; } });
+  } catch (e) { err = e; }
+  assert.ok(err, "skal kaste");
+  assert.equal(err.status, 409);
+  assert.equal(err.benign, true, "claim-skip skal vaere benign (ingen Sentry-capture i scheduleren)");
+  assert.ok(err.message.includes("anden-instans"), `beskeden skal baere claimed_by (zombie-synlighed), fik: ${err.message}`);
+  assert.equal(stubCalled, false, "stub maa ikke kaldes naar claimet er holdt");
+});
+
+test("#4026: udloebet lease → CAS-steal og simulering koerer (crashet run laaser ikke for evigt)", async () => {
+  const staleClaim = { race_id: "r1", stage_index: 0, claimed_at: new Date(Date.now() - STAGE_CLAIM_LEASE_MS - 60_000).toISOString(), claimed_by: "doed-instans" };
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [CLAIM_RACE],
+    race_stage_profiles: CLAIM_PROFILES,
+    race_stage_claims: [staleClaim],
+  });
+  let captured = null;
+  await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async (args) => { captured = args; return {}; } });
+  assert.ok(captured, "stub SKAL kaldes efter lease-steal");
+  const steal = supabase.__writes.find((w) => w.table === "race_stage_claims" && w.op === "update");
+  assert.ok(steal, "steal skal ske via update (CAS)");
+  assert.ok(steal.eqs.some(([c, v]) => c === "claimed_at" && v === staleClaim.claimed_at), "CAS: update skal filtrere paa den laeste claimed_at");
+});
+
+test("#4026: simuleringsfejl frigiver claimet (delete) og fejlen kastes videre", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [CLAIM_RACE],
+    race_stage_profiles: CLAIM_PROFILES,
+  });
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async () => { throw new Error("motor-boom"); } });
+  } catch (e) { err = e; }
+  assert.ok(err, "sim-fejlen skal kastes videre");
+  assert.match(err.message, /motor-boom/);
+  const release = supabase.__writes.find((w) => w.table === "race_stage_claims" && w.op === "delete");
+  assert.ok(release, "claimet skal releases ved sim-fejl (hurtig retry i stedet for lease-vent)");
+});
+
+test("#4026: dryRun claimer IKKE (preview maa koere frit ved siden af aegte afvikling)", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [CLAIM_RACE],
+    race_stage_profiles: CLAIM_PROFILES,
+  });
+  await runAdminSimulateStage({ supabase, raceId: "r1", dryRun: true, simulateStageByIndex: async () => ({}) });
+  const claimWrites = supabase.__writes.filter((w) => w.table === "race_stage_claims");
+  assert.equal(claimWrites.length, 0, "dryRun maa ikke roere race_stage_claims");
+});
+
+test("#4026: stale-tick-409 er markeret benign", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ ...CLAIM_RACE, stages: 5, stages_completed: 1 }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }, { id: "p4" }, { id: "p5" }],
+  });
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r1", expectedStageIndex: 0, simulateStageByIndex: async () => ({}) });
+  } catch (e) { err = e; }
+  assert.equal(err?.status, 409);
+  assert.equal(err?.benign, true, "stale tick er et forventet skip — benign");
 });

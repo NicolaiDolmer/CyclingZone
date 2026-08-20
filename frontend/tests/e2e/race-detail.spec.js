@@ -126,6 +126,12 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByTitle("Udbrud — holdt hjem til mål")).toBeVisible();
   await expect(page.getByTitle("Udbrud — indhentet af feltet")).toBeVisible();
 
+  // #3985 (regression af #3914): terræn-badget skal være synligt i etape-fanens
+  // metadata-linje UDEN at folde "Etapeprofil"-sektionen ud — det var netop
+  // pointen med spiller-rapporten (badget forsvandt bag et fold-klik). `.first()`
+  // fordi badget sidder øverst i DOM'en, foran den (endnu lukkede) legacy-card-tekst.
+  await expect(page.getByText("Fladt", { exact: true }).first()).toBeVisible();
+
   // #3914: den fulde profilgraf (inkl. #1484-terræn-indikatoren) er flyttet ned
   // i en default-lukket CollapsibleSection ("Etapeprofil") nederst på etape-
   // fanen — resultatet er etapens vigtigste indhold nu, ikke ruten. Udfold den
@@ -133,14 +139,19 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   // terræn-badges. Etape 1 = fladt + massespurt.
   await page.locator("summary", { hasText: "Etapeprofil" }).click();
   await expect(page.getByText("Terræn", { exact: true })).toBeVisible();
-  await expect(page.getByText("Fladt")).toBeVisible();
+  // #3985: "Fladt" matcher nu BÅDE fane-metadata-badget (øverst) og legacy-
+  // profilkortets tekst (i den lige udfoldede sektion) — `.last()` targeter
+  // legacy-kortet, som testen faktisk vil verificere her.
+  await expect(page.getByText("Fladt").last()).toBeVisible();
   await expect(page.getByRole("button", { name: "Massespurt" })).toBeVisible();
 
   // Etape 2 = bjerge + bjergfinale (skifter med fanen). StageTab remountes pr.
   // etape (key={n}) → "Etapeprofil"-sektionen er lukket igen og skal udfoldes på ny.
   await page.getByRole("button", { name: "Etape 2" }).click();
+  // #3985: badget er også synligt for etape 2 (før udfoldning) — samme mønster.
+  await expect(page.getByText("Bjerge", { exact: true }).first()).toBeVisible();
   await page.locator("summary", { hasText: "Etapeprofil" }).click();
-  await expect(page.getByText("Bjerge")).toBeVisible();
+  await expect(page.getByText("Bjerge").last()).toBeVisible();
   await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 
   // Sub-2 (#2770): ingen passage-data mocket → ingen passage-sektion nogen steder.

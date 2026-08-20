@@ -5,9 +5,15 @@ import {
   buildTypeCeilingBands,
   buildVerdict,
   ratingFromAbilities,
+  buildTypePrognosisBands,
+  potentialeIntervalFor,
+  potentialeHalfWidth,
+  POT_HALF_WIDTH_BY_LEVEL,
+  roleCeilRating,
 } from "./scoutingReport.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { ratingForRole } from "./weights/displayRecipes.js";
+import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 
 const CAPS = {
   climbing: 80, time_trial: 60, flat: 55, tempo: 70, sprint: 40, acceleration: 45,
@@ -145,4 +151,112 @@ test("verdict: near_ceiling-faktoren følger samme grænse som past_peak", () =>
   assert.ok(paa.factorKeys.includes("near_ceiling"), "gap 1 er under tærsklen 2");
   const over = buildVerdict({ age: 27, own: true, level: 3, maxLevel: 3, bestNow: 40, bestCeilMid: 42 });
   assert.ok(!over.factorKeys.includes("near_ceiling"), "gap 2 er PÅ tærsklen og tæller ikke");
+});
+
+// ═══ PROGNOSE-BÅND (trin 7, #3746) ══════════════════════════════════════════
+
+const NOW_ALL = Object.fromEntries(REGISTRY_ABILITY_KEYS.map((k, i) => [k, 22 + (i % 6) * 4]));
+
+test("potentialeHalfWidth: clamp [1,6] holder for potentialeIntervalFor ved yderpunkter", () => {
+  const lo = potentialeIntervalFor({ potentiale: 1, level: 0, riderId: "edge1", teamId: "t1" });
+  const hi = potentialeIntervalFor({ potentiale: 6, level: 0, riderId: "edge2", teamId: "t1" });
+  assert.ok(lo.potLo >= 1 && lo.potHi <= 6, `pot 1: [${lo.potLo}, ${lo.potHi}]`);
+  assert.ok(hi.potLo >= 1 && hi.potHi <= 6, `pot 6: [${hi.potLo}, ${hi.potHi}]`);
+  assert.ok(lo.potLo <= lo.potHi && hi.potLo <= hi.potHi);
+});
+
+test("potentialeIntervalFor: samme CENTER for alle scout-niveauer (anti-inversion, #3679's lektie)", () => {
+  // Bias er FAST og niveau-uafhængig med vilje — kun halvbredden (og dermed
+  // bredden af [potLo,potHi]) må ændre sig med level. Kernen i at #3679's
+  // to-ligninger-to-ubekendte-angreb dør: der er ikke en anden ligning at
+  // krydse den mod. potentiale=4 er valgt med margin > POT_HALF_WIDTH_BY_LEVEL[0]
+  // (1,5) til begge kanter, så clamp [1,6] ikke forstyrrer sammenligningen.
+  const centers = [0, 1, 2, 3].map((level) => {
+    const { potLo, potHi } = potentialeIntervalFor({ potentiale: 4, level, riderId: "r-center", teamId: "t-center" });
+    return (potLo + potHi) / 2;
+  });
+  for (const c of centers.slice(1)) {
+    assert.ok(Math.abs(c - centers[0]) < 1e-9, `center skal være identisk på tværs af levels: ${centers}`);
+  }
+});
+
+test("potentialeHalfWidth: falder (eller er lig) med stigende scout-level", () => {
+  const widths = [0, 1, 2, 3].map((level) => potentialeHalfWidth(level, { overall: 99 }));
+  for (let i = 1; i < widths.length; i++) {
+    assert.ok(widths[i] <= widths[i - 1], `halvbredde skal ikke vokse med level: ${widths}`);
+  }
+  assert.equal(widths[0], POT_HALF_WIDTH_BY_LEVEL[0]);
+});
+
+test("buildTypePrognosisBands: alle typer, heltal, clamp [0,99], progLo <= progHi", () => {
+  const bands = buildTypePrognosisBands({
+    nowAbilities: NOW_ALL, age: 20, primaryType: "climber", secondaryType: "gc",
+    potentiale: 4, level: 1, riderId: "r1", teamId: "t1",
+  });
+  assert.equal(bands.length, RIDER_TYPE_KEYS.length);
+  for (const b of bands) {
+    assert.ok(Number.isInteger(b.now) && Number.isInteger(b.progLo) && Number.isInteger(b.progHi), b.key);
+    assert.ok(b.progLo <= b.progHi, `${b.key}: progLo ${b.progLo} > progHi ${b.progHi}`);
+    assert.ok(b.progHi <= 99 && b.progLo >= 0, b.key);
+  }
+});
+
+test("buildTypePrognosisBands er deterministisk (samme input → samme output)", () => {
+  const args = {
+    nowAbilities: NOW_ALL, age: 22, primaryType: "sprinter", secondaryType: "puncheur",
+    potentiale: 5, level: 2, riderId: "r-det", teamId: "t-det",
+  };
+  assert.deepEqual(buildTypePrognosisBands(args), buildTypePrognosisBands({ ...args }));
+});
+
+test("buildTypePrognosisBands: post-peak-rytter giver bånd = nuværende evne (endpoint er allerede sket)", () => {
+  const bands = buildTypePrognosisBands({
+    nowAbilities: NOW_ALL, age: 34, primaryType: "rouleur", secondaryType: null,
+    potentiale: 6, level: 3, riderId: "r-old", teamId: "t-old",
+  });
+  for (const b of bands) {
+    if (b.now == null) continue;
+    assert.equal(b.progLo, b.now, `${b.key} progLo`);
+    assert.equal(b.progHi, b.now, `${b.key} progHi`);
+  }
+});
+
+test("buildTypePrognosisBands: bånd indsnævres med scout-level, men lukker aldrig helt", () => {
+  const width = (level) => {
+    const bands = buildTypePrognosisBands({
+      nowAbilities: NOW_ALL, age: 19, primaryType: "gc", secondaryType: "climber",
+      potentiale: 4, level, riderId: "r-width", teamId: "t-width",
+    });
+    const b = bands.find((x) => x.key === "gc");
+    return b.progHi - b.progLo;
+  };
+  assert.ok(width(0) >= width(1) && width(1) >= width(2) && width(2) >= width(3), "bredde skal ikke vokse med level");
+});
+
+// ═══ Loft ved siden af prognosen (overgangs-designet, ejer 18/8) ═════════════
+
+test("roleCeilRating: rolle+alder-bestemt, potentiale indgår ikke, taper sænker med alderen", () => {
+  const ung = roleCeilRating({ age: 22, primaryType: "sprinter", secondaryType: "rouleur" });
+  const gammel = roleCeilRating({ age: 31, primaryType: "sprinter", secondaryType: "rouleur" });
+  assert.ok(Number.isFinite(ung) && Number.isFinite(gammel), "begge skal være tal");
+  assert.ok(gammel < ung, "alders-taperen skal sænke loftet efter peak");
+  assert.equal(roleCeilRating({ age: 22, primaryType: null }), null, "uden rolle → null");
+});
+
+test("buildTypePrognosisBands: hvert bånd bærer rollens loft, og prognosen ligger aldrig over det", () => {
+  const bands = buildTypePrognosisBands({
+    nowAbilities: NOW_ALL, age: 21, primaryType: "sprinter", secondaryType: "puncheur",
+    potentiale: 4, level: 2, riderId: "r-loft", teamId: "t-loft",
+  });
+  for (const b of bands) {
+    if (b.now == null) continue;
+    assert.ok(Number.isFinite(b.loft), `${b.key} skal have loft`);
+    assert.ok(b.progHi <= b.loft, `${b.key}: prognosen (${b.progHi}) må ikke overstige loftet (${b.loft})`);
+  }
+  const primary = bands.find((b) => b.key === "sprinter");
+  assert.equal(
+    primary.loft,
+    roleCeilRating({ age: 21, primaryType: "sprinter", secondaryType: "puncheur" }),
+    "primær-rollens loft skal matche roleCeilRating (samme kilde, ingen drift)",
+  );
 });

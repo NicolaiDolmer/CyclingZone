@@ -9,7 +9,8 @@ import {
 test("fokus-nøgler matcher abilities-mappens nøgler", () => {
   assert.deepEqual(TRAINING_FOCUS_KEYS, Object.keys(TRAINING_FOCUS_ABILITIES));
   // #3762: `tempo` og `restitution` kom til som sessioner i dagstype-modellen.
-  assert.equal(TRAINING_FOCUS_KEYS.length, 8);
+  // trin 2 (#3746, 16/8): `loebslaere` kom til (positioning/tactics/aggression).
+  assert.equal(TRAINING_FOCUS_KEYS.length, 9);
 });
 
 test("hvert fokus peger på mindst én evne", () => {

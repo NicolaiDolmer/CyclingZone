@@ -16,8 +16,10 @@
 // i scoutingInversionHarness holder ikke længere.
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { seededUnit } from "./scouting.js";
-import { DEFAULT_SCOUT, scoutHalfWidth } from "./scoutEngine.js";
+import { DEFAULT_SCOUT, scoutHalfWidth, scoutQualityFactor } from "./scoutEngine.js";
 import { ratingForRole } from "./weights/displayRecipes.js";
+import { prognoseAbilityBands } from "./riderPrognosis.js";
+import { buildCapsForRider } from "./riderProgression.js";
 
 // Halvbredde i rating-punkter pr. scout-level (index = level; egen rytter
 // behandles som maxLevel).
@@ -99,6 +101,109 @@ export function ceilingBandForRole({ nowAbilities, caps, key, half, riderId, tea
 // CEIL_HALF_WIDTH_BY_LEVEL for at kunne bruge ceilingBandForRole.
 export function ceilingHalfWidth(level, scout = DEFAULT_SCOUT) {
   return scoutHalfWidth(level, scout, CEIL_HALF_WIDTH_BY_LEVEL);
+}
+
+// ═══ PROGNOSE-BÅND (trin 7, #3746, ejer-beslutning B+C+D 16/8) ═══════════════
+//
+// Under det flade tag røber loftet intet rytterspecifikt (samme tag for alle i
+// rollen), så det scouten sælger er ikke længere loftet — det er FARTEN.
+// Scoutens usikkerhed udtrykkes derfor i POTENTIALE-enheder (1-6): et interval
+// [potLo, potHi] omkring et seeded-forskudt center, som prognose-motoren
+// (riderPrognosis.js) fremskriver til et endpoint-bånd pr. evne, aggregeret til
+// rating pr. rolle med samme opskrift som fladen viser.
+//
+// Anti-inversion (#1162's efterfølger): det viste bånd er en deterministisk
+// funktion af (nu-evner, alder, typer, potentiale-INTERVAL). Center-bias med
+// samme mønster som loft-båndet (CEIL_BIAS_FACTOR) gør at midtpunktet ikke er
+// sandheden, og træningsspændet (spredt→dedikeret) ligger oven i og kan aldrig
+// scoutes væk. #3679's inversionsangreb dør her: der er intet skjult loft at
+// regne baglæns til — kun potentialet, og det er beskyttet af bias + bredde.
+//
+// Halvbredder i potentiale-enheder pr. scout-level. Den middelmådige spejder
+// (overall < 60) kommer aldrig under 0,75 — samme "evigt loft"-princip som
+// rating-båndets 4,5 (spec-beslutning 3), skaleret til 1-6-skalaen.
+export const POT_HALF_WIDTH_BY_LEVEL = Object.freeze([1.5, 1.0, 0.6, 0.3]);
+export const POT_MEDIOCRE_HALF_CAP = 0.75;
+const POT_MEDIOCRE_THRESHOLD = 60;
+
+export function potentialeHalfWidth(level, scout = DEFAULT_SCOUT) {
+  const idx = Math.max(0, Math.min(Number(level) || 0, POT_HALF_WIDTH_BY_LEVEL.length - 1));
+  const widest = POT_HALF_WIDTH_BY_LEVEL[0];
+  const base = POT_HALF_WIDTH_BY_LEVEL[idx];
+  const overall = Number(scout?.overall ?? DEFAULT_SCOUT.overall);
+  const half = widest - scoutQualityFactor(overall) * (widest - base);
+  return Number.isFinite(overall) && overall < POT_MEDIOCRE_THRESHOLD
+    ? Math.max(half, Math.min(widest, POT_MEDIOCRE_HALF_CAP))
+    : half;
+}
+
+// Det potentiale-interval vieweren kan se. Seeded center-bias pr. (rytter,
+// hold) så to naboer ikke kan sammenligne sig frem til sandheden, clamp [1,6].
+//
+// BIAS'EN ER NIVEAU-UAFHÆNGIG MED VILJE (#3679's lektie): skalerede bias'en
+// med halvbredden, ville to scout-niveauer give to ligninger med to ubekendte
+// (pot, bias-koefficient) — og så kunne en LSQ på tværs af niveauer isolere
+// potentialet, præcis det angreb #3679 beviste mod loft-båndet. Med FAST
+// absolut bias deler alle niveauer samme ukendte offset: mere scouting køber
+// smallere bånd, men centret bærer for altid det samme seeded fejlled på op
+// til ±(bredeste halvbredde × CEIL_BIAS_FACTOR) = ±0,75 potentiale.
+export function potentialeIntervalFor({ potentiale, level, riderId, teamId, scout = DEFAULT_SCOUT }) {
+  const half = potentialeHalfWidth(level, scout);
+  const bias = (seededUnit(`scout-pot:${riderId}:${teamId}`) * 2 - 1)
+    * POT_HALF_WIDTH_BY_LEVEL[0] * CEIL_BIAS_FACTOR;
+  const center = Number(potentiale) + bias;
+  return {
+    potLo: Math.max(1, Math.min(6, center - half)),
+    potHi: Math.max(1, Math.min(6, center + half)),
+  };
+}
+
+// Prognose-bånd for alle ryttertyper — afløseren for buildTypeCeilingBands på
+// fladen. Returnerer [{ key, now, progLo, progHi }] (heltal, clamp [0,99]).
+//   nowAbilities/age/primaryType/secondaryType : rytterens ægte tilstand
+//   potentiale : rytterens ÆGTE potentiale (forlader aldrig serveren rå)
+//   level/riderId/teamId/scout : viewer-kontekst, som loft-båndet bruger i dag
+// Rollens loft i rating-punkter — det TAL den gamle visning kredsede om, nu
+// bevaret ved siden af prognosen (ejer-krav 18/8, overgangs-designet): spilleren
+// skal kunne se at loftet ikke er "forsvundet" bag det nye bånd. Under det
+// flade rolle-tag (#3746) er loftet en ren funktion af (rolle, andenrolle,
+// alder) — potentiale indgår IKKE (youthAbilityCap ignorerer argumentet), så
+// tallet røber intet skjult og må vises råt uden bånd-maskering (#1162 holder).
+// `age: null` udelader alders-taperen bevidst ikke — kalderen sender sæson-
+// alderen, så en 32-årigs loft ærligt viser taperingen.
+export function roleCeilRating({ age, primaryType, secondaryType }) {
+  if (!primaryType) return null;
+  const caps = buildCapsForRider(null, { age }, primaryType, secondaryType);
+  const rating = ratingFromAbilities(caps, primaryType);
+  return rating == null ? null : clampInt(rating, 0, 99);
+}
+
+export function buildTypePrognosisBands({
+  nowAbilities, age, primaryType, secondaryType, potentiale, level, riderId, teamId, scout = DEFAULT_SCOUT,
+}) {
+  const { potLo, potHi } = potentialeIntervalFor({ potentiale, level, riderId, teamId, scout });
+  const bands = prognoseAbilityBands({ nowAbilities, age, primaryType, secondaryType, potLo, potHi });
+  const loAb = {}, hiAb = {};
+  for (const [ability, b] of Object.entries(bands)) { loAb[ability] = b.lo; hiAb[ability] = b.hi; }
+  // Overgangs-designet (ejer 18/8): rollens loft leveres SAMMEN MED prognosen
+  // pr. rolle, så fladerne kan vise "hvor kan han nå til" ved siden af "hvor
+  // lander han realistisk" — det gamle tal må ikke opleves som slettet. Under
+  // det flade tag er loftet rolle+alder-bestemt, intet rytter-hemmeligt (#1162).
+  const capsAb = primaryType ? buildCapsForRider(null, { age }, primaryType, secondaryType) : null;
+  return RIDER_TYPE_KEYS.map((key) => {
+    const now = ratingFromAbilities(nowAbilities, key);
+    const lo = ratingFromAbilities(loAb, key);
+    const hi = ratingFromAbilities(hiAb, key);
+    if (now == null || lo == null || hi == null) return { key, now: null, progLo: null, progHi: null, loft: null };
+    const loft = capsAb ? ratingFromAbilities(capsAb, key) : null;
+    return {
+      key,
+      now: clampInt(now, 0, 99),
+      progLo: clampInt(Math.min(lo, hi), 0, 99),
+      progHi: clampInt(Math.max(lo, hi), 0, 99),
+      loft: loft == null ? null : clampInt(loft, 0, 99),
+    };
+  });
 }
 
 // Under denne gevinst forsvinder et ekstra scout-niveau i afrundingen til

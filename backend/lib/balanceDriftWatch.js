@@ -17,7 +17,7 @@
 // i balanceDriftMetrics.js så kernen er 100% unit-testbar uden supabase-mock
 // (samme mønster som stallWatchdog.js's evaluateStallFindings/fetchWatchdogState-split).
 
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsKeyset } from "./supabasePagination.js";
 import {
   computeDayMetrics,
   classifyDay,
@@ -199,14 +199,34 @@ export async function fetchDayInputs(supabase, dateStr) {
 
   // ── 14-dages rullende win-rate pr. rytter (maxRiderWinRate) ────────────────
   const windowStart = new Date(Date.parse(start) - (ROLLING_WINDOW_DAYS - 1) * 86_400_000).toISOString();
-  const windowRows = await fetchAllRows(() =>
-    supabase
-      .from("race_results")
-      .select("rider_id, rank")
-      .eq("result_type", "stage")
-      .gte("imported_at", windowStart)
-      .lt("imported_at", end)
-      .order("rider_id")
+  // #4010: keyset-pagineret på `id`, ikke offset-pagineret på `rider_id`.
+  //
+  // To ting var galt. `rider_id` er ikke unik, så offset-paginering over den kan
+  // tabe eller duplikere rækker på tværs af sidegrænser (samme fejlklasse som
+  // sponsorRaceDayIncome.js:42 advarer imod). Og offsettet gjorde gennemløbet
+  // kvadratisk: målt plan for ÉN side af 1000 rækker var 376.260 buffere og
+  // 427 ms, hvilket over 65 sider blev til 594 s DB-tid og 3,3 TB
+  // buffer-trafik i døgnet — 11,4 % af al eksekveringstid på databasen.
+  //
+  // `id` er UUID, unik og NOT NULL, så den er et gyldigt keyset-anker.
+  // foldRiderWindowRows tæller pr. rytter og er rækkefølge-uafhængig, så det
+  // ændrede sorteringsanker påvirker ikke resultatet.
+  //
+  // Indekset der gør sidefiltret billigt:
+  // database/2026-08-20-race-results-stage-window-index.sql
+  const windowRows = await fetchAllRowsKeyset(
+    (after) => {
+      let q = supabase
+        .from("race_results")
+        .select("id, rider_id, rank")
+        .eq("result_type", "stage")
+        .gte("imported_at", windowStart)
+        .lt("imported_at", end)
+        .order("id", { ascending: true });
+      if (after) q = q.gt("id", after);
+      return q;
+    },
+    { keyColumn: "id" },
   );
   // #2731: NULL-rider_id-værnet ligger i den pure lib (unit-testbar uden
   // supabase-mock, samme mønster som resten af filen).

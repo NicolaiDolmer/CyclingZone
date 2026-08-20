@@ -57,9 +57,25 @@ export function hazard(age, cfg = PROGRESSION_CONFIG) {
 // EKSPORTERET så valuationV4Scorecard.js's udvikl-og-sælg-gate fremskriver evner med
 // PRÆCIST samme matematik som predictBaseValueV4 selv bruger internt (ingen drift
 // mellem det scorecardet validerer og det produktionen beregner — #2428 slice 1).
+// ── VÆRDI-FRYS (trin 7, ejer-beslutning 16/8) ────────────────────────────────
+// Trin 7 spredte motorens rateByPotential fra 0,6-1,35 til 0,11-0,89. Fulgte
+// NPV'en med, ville markedsværdierne flytte sig fra deploy-dagen (målt på
+// snapshottet: median −12 %, unge ≤21 −27 %, pot 5,5-6 −33 %) — fremskrevet
+// mod de GAMLE lofter, for buildCaps-stien hernede er legacy-formlen. En
+// kimære af gammel og ny motor, midt i et værdispor med sin egen plan.
+//
+// Ejeren valgte at FRYSE: NPV'en beregner videre med de rater den blev fittet
+// mod, så trin 7 flytter præcis 0 i markedsværdi. Det planlagte refit
+// (#3750 + #3449, i kø efter typebeslutningen) indarbejder den nye motor
+// samlet — fjern denne frysning DÉR, aldrig separat.
+const FROZEN_NPV_RATE_BY_POTENTIAL = Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 });
+function frozenNpvRate(potentiale) {
+  return youthRateForPotential(potentiale, { rateByPotential: FROZEN_NPV_RATE_BY_POTENTIAL });
+}
+
 export function expectedNextAbilities(abilities, caps, { primary_type, potentiale, age }) {
   const peakAge = peakAgeForType(primary_type);
-  const growthMult = youthRateForPotential(potentiale);
+  const growthMult = frozenNpvRate(potentiale);
   const next = {};
   for (const ability of VISIBLE_ABILITIES) {
     const cur = abilities?.[ability];

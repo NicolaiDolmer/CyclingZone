@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { useNavigate, useSearchParams } from "react-router";
 import ActivityPage from "./ActivityPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
@@ -277,23 +278,20 @@ export default function NotificationsPage() {
   // Realtime: personlige notifikationer
   useEffect(() => {
     if (!userIdRef.current) return;
-    const channel = supabase.channel("notifs-page-v2")
-      .on("postgres_changes", {
+    return subscribeAuthedChannel("notifs-page-v2", channel =>
+      channel.on("postgres_changes", {
         event: "INSERT", schema: "public", table: "notifications",
         filter: `user_id=eq.${userIdRef.current}`,
       }, payload => setNotifications(prev => [payload.new, ...prev]))
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    );
   }, [userIdRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Realtime: aktivitetsfeed
-  useEffect(() => {
-    const channel = supabase.channel("activity-feed-live")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" },
-        payload => setEvents(prev => [payload.new, ...prev].slice(0, 100)))
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, []);
+  // Realtime: aktivitetsfeed. #4010: session-gatet — uden gaten connectede den
+  // med den opake api-nøgle og blev afvist med MalformedJWT.
+  useEffect(() => subscribeAuthedChannel("activity-feed-live", channel =>
+    channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" },
+      payload => setEvents(prev => [payload.new, ...prev].slice(0, 100)))
+  ), []);
 
   // Pending decisions hentes + realtime-opdateres af useActionSummary (#271 Slice A).
 
