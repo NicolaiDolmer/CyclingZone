@@ -1,0 +1,4010 @@
+{
+  "measured_at": "2026-08-20T10:24:05.569Z",
+  "snapshot": {
+    "captured_at": "2026-08-20T10:15:36.263Z",
+    "n": 8945,
+    "active_season": 2
+  },
+  "population": {
+    "total": 8945,
+    "valued": 8945,
+    "humanPuncheurs": 87,
+    "humanGc": 32
+  },
+  "monotonicity": {
+    "ok": true,
+    "failures": []
+  },
+  "scenarios": [
+    {
+      "id": "baseline",
+      "label": "Baseline (nuværende live model)",
+      "offsetK": null,
+      "alpha": null,
+      "rawTotal": 1035453345,
+      "rawTotalDeltaPct": 0,
+      "normalizationFactor": 1,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {},
+      "topMovers": [],
+      "humanPuncheurs": null,
+      "humanGc": null
+    },
+    {
+      "id": "offset_k50",
+      "label": "Offset-regularisering k=50",
+      "offsetK": 50,
+      "alpha": null,
+      "rawTotal": 863667174,
+      "rawTotalDeltaPct": -16.59,
+      "normalizationFactor": 1.1989,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 19.351688467162752,
+          "p10": 19.336298921121678,
+          "p90": 19.36741650209692,
+          "mean": 19.352432642772417
+        },
+        "tt": {
+          "n": 3401,
+          "median": 20.202410077105863,
+          "p10": 20.174084808730846,
+          "p90": 20.232375859338113,
+          "mean": 20.202250472017646
+        },
+        "gc": {
+          "n": 134,
+          "median": -8.99820043171325,
+          "p10": -9.006571415308194,
+          "p90": -8.984080897513989,
+          "mean": -8.109314744843852
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 20.278007444371276,
+          "p10": 20.26556430636162,
+          "p90": 20.28995513843624,
+          "mean": 20.276960590221975
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 17.985966761867175,
+          "p10": 17.97344702604848,
+          "p90": 17.99751491444865,
+          "mean": 17.985659068230987
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -73.26079591841672,
+          "p10": -73.26243962892488,
+          "p90": -73.25933837080504,
+          "mean": -73.26080982862702
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 18.869433836598287,
+          "p10": 18.858494076222758,
+          "p90": 18.879340848824377,
+          "mean": 18.873004057261177
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": -18.810766444071902,
+          "p10": -18.817583619284264,
+          "p90": -18.806156850619164,
+          "mean": -18.811367267136763
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 18513672,
+          "pctDelta": -73.26,
+          "absDelta": -50723799
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 6352266,
+          "pctDelta": -73.26,
+          "absDelta": -17403953
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 4100106,
+          "pctDelta": -73.26,
+          "absDelta": -11233479
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 54005845,
+          "pctDelta": 20.2,
+          "absDelta": 9076863
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 67327317,
+          "pctDelta": -9,
+          "absDelta": -6657604
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 58385713,
+          "pctDelta": -9,
+          "absDelta": -5773421
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 30074941,
+          "pctDelta": 20.2,
+          "absDelta": 5054751
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 1115674,
+          "pctDelta": -73.26,
+          "absDelta": -3056728
+        },
+        {
+          "id": "263b0af8-7d5a-43f8-8969-8e40fd86378b",
+          "name": "Javier Vega",
+          "type": "tt",
+          "before": 15034888,
+          "after": 18072339,
+          "pctDelta": 20.2,
+          "absDelta": 3037451
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 14926860,
+          "pctDelta": 20.2,
+          "absDelta": 2508785
+        },
+        {
+          "id": "70d567b1-cc27-4558-b1dc-4d78eb634833",
+          "name": "Aitor Iglesias",
+          "type": "gc",
+          "before": 24693742,
+          "after": 22471652,
+          "pctDelta": -9,
+          "absDelta": -2222090
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 8469582,
+          "pctDelta": -18.81,
+          "absDelta": -1962320
+        },
+        {
+          "id": "b67913f4-dff3-4894-9a3c-ac4289c3f90f",
+          "name": "Tommaso Sorrentino",
+          "type": "puncheur",
+          "before": 2442640,
+          "after": 653147,
+          "pctDelta": -73.26,
+          "absDelta": -1789493
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 10035126,
+          "pctDelta": 20.2,
+          "absDelta": 1686623
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 9969480,
+          "pctDelta": 19.89,
+          "absDelta": 1653980
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 9969480,
+          "pctDelta": 19.89,
+          "absDelta": 1653980
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 9969480,
+          "pctDelta": 19.89,
+          "absDelta": 1653980
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 9969480,
+          "pctDelta": 19.89,
+          "absDelta": 1653980
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 9969480,
+          "pctDelta": 19.89,
+          "absDelta": 1653980
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 9969480,
+          "pctDelta": 19.89,
+          "absDelta": 1653980
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -73.2606163156282,
+        "p10": -73.26244914089139,
+        "p90": -73.25933837080504,
+        "mean": -73.26065564808559
+      },
+      "humanGc": {
+        "n": 32,
+        "median": -8.99820043171325,
+        "p10": -9.001084210914739,
+        "p90": -8.98973187871679,
+        "mean": -8.997180220661424
+      }
+    },
+    {
+      "id": "offset_k100",
+      "label": "Offset-regularisering k=100",
+      "offsetK": 100,
+      "alpha": null,
+      "rawTotal": 841692875,
+      "rawTotalDeltaPct": -18.71,
+      "normalizationFactor": 1.2302,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 21.9442361343243,
+          "p10": 21.93165364052142,
+          "p90": 21.959327642709464,
+          "mean": 21.945890125084336
+        },
+        "tt": {
+          "n": 3401,
+          "median": 23.650431337191698,
+          "p10": 23.620010389535548,
+          "p90": 23.680309425889494,
+          "mean": 23.651580294977347
+        },
+        "gc": {
+          "n": 134,
+          "median": -12.931657270988985,
+          "p10": -12.944296417526346,
+          "p90": -12.923041311718617,
+          "mean": -11.785943666888727
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 23.786303306684484,
+          "p10": 23.772747034558336,
+          "p90": 23.80012329490757,
+          "mean": 23.7851721917418
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 20.575340368895723,
+          "p10": 20.562967056435667,
+          "p90": 20.586370278798654,
+          "mean": 20.574799638469187
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -78.4075552180256,
+          "p10": -78.40919729731101,
+          "p90": -78.40559091943592,
+          "mean": -78.40743796350782
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 21.40077078338443,
+          "p10": 21.384024862726715,
+          "p90": 21.411006574998872,
+          "mean": 21.40469430603072
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": -27.91007806182109,
+          "p10": -27.915999388415674,
+          "p90": -27.9054291654582,
+          "mean": -27.910461908900764
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 14950066,
+          "pctDelta": -78.41,
+          "absDelta": -54287405
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 5129549,
+          "pctDelta": -78.41,
+          "absDelta": -18626670
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 3310897,
+          "pctDelta": -78.41,
+          "absDelta": -12022688
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 55554864,
+          "pctDelta": 23.65,
+          "absDelta": 10625882
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 64417414,
+          "pctDelta": -12.93,
+          "absDelta": -9567507
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 55862269,
+          "pctDelta": -12.93,
+          "absDelta": -8296865
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 30937563,
+          "pctDelta": 23.65,
+          "absDelta": 5917373
+        },
+        {
+          "id": "263b0af8-7d5a-43f8-8969-8e40fd86378b",
+          "name": "Javier Vega",
+          "type": "tt",
+          "before": 15034888,
+          "after": 18590698,
+          "pctDelta": 23.65,
+          "absDelta": 3555810
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 900923,
+          "pctDelta": -78.41,
+          "absDelta": -3271479
+        },
+        {
+          "id": "70d567b1-cc27-4558-b1dc-4d78eb634833",
+          "name": "Aitor Iglesias",
+          "type": "gc",
+          "before": 24693742,
+          "after": 21500422,
+          "pctDelta": -12.93,
+          "absDelta": -3193320
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 15354999,
+          "pctDelta": 23.65,
+          "absDelta": 2936924
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 7520351,
+          "pctDelta": -27.91,
+          "absDelta": -2911551
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 13668797,
+          "pctDelta": -12.93,
+          "absDelta": -2030139
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 10322957,
+          "pctDelta": 23.65,
+          "absDelta": 1974454
+        },
+        {
+          "id": "b67913f4-dff3-4894-9a3c-ac4289c3f90f",
+          "name": "Tommaso Sorrentino",
+          "type": "puncheur",
+          "before": 2442640,
+          "after": 527426,
+          "pctDelta": -78.41,
+          "absDelta": -1915214
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10229755,
+          "pctDelta": 23.02,
+          "absDelta": 1914255
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10229755,
+          "pctDelta": 23.02,
+          "absDelta": 1914255
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10229755,
+          "pctDelta": 23.02,
+          "absDelta": 1914255
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 10229755,
+          "pctDelta": 23.02,
+          "absDelta": 1914255
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 10229755,
+          "pctDelta": 23.02,
+          "absDelta": 1914255
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -78.40751729081165,
+        "p10": -78.40896029562619,
+        "p90": -78.40559091943592,
+        "mean": -78.40733123456708
+      },
+      "humanGc": {
+        "n": 32,
+        "median": -12.93178400992694,
+        "p10": -12.935885413361204,
+        "p90": -12.923169232035479,
+        "mean": -12.931669275828348
+      }
+    },
+    {
+      "id": "offset_k200",
+      "label": "Offset-regularisering k=200",
+      "offsetK": 200,
+      "alpha": null,
+      "rawTotal": 827177111,
+      "rawTotalDeltaPct": -20.11,
+      "normalizationFactor": 1.2518,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 23.09949954822114,
+          "p10": 23.08352504575067,
+          "p90": 23.11328253325338,
+          "mean": 23.10011464029137
+        },
+        "tt": {
+          "n": 3401,
+          "median": 26.418837993255963,
+          "p10": 26.388618742247516,
+          "p90": 26.44470581003155,
+          "mean": 26.417944387529573
+        },
+        "gc": {
+          "n": 134,
+          "median": -15.743513213733523,
+          "p10": -15.757746944044687,
+          "p90": -15.732076638667056,
+          "mean": -14.416493869807137
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 26.62964368802917,
+          "p10": 26.61799917553652,
+          "p90": 26.644081881153326,
+          "mean": 26.62823542687946
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 22.333856717153303,
+          "p10": 22.322372506034522,
+          "p90": 22.34749244898253,
+          "mean": 22.33377289248978
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -81.10720721491951,
+          "p10": -81.10921842937404,
+          "p90": -81.10475698685173,
+          "mean": -81.10714780016512
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 22.9125148980535,
+          "p10": 22.89956948694379,
+          "p90": 22.925679513749902,
+          "mean": 22.91915017184815
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": -35.05331223254082,
+          "p10": -35.058715128669526,
+          "p90": -35.04723299277874,
+          "mean": -35.053349631698445
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 13080894,
+          "pctDelta": -81.11,
+          "absDelta": -56156577
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 4488214,
+          "pctDelta": -81.11,
+          "absDelta": -19268005
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 2896942,
+          "pctDelta": -81.11,
+          "absDelta": -12436643
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 56798727,
+          "pctDelta": 26.42,
+          "absDelta": 11869745
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 62337099,
+          "pctDelta": -15.74,
+          "absDelta": -11647822
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 54058236,
+          "pctDelta": -15.74,
+          "absDelta": -10100898
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 31630250,
+          "pctDelta": 26.42,
+          "absDelta": 6610060
+        },
+        {
+          "id": "263b0af8-7d5a-43f8-8969-8e40fd86378b",
+          "name": "Javier Vega",
+          "type": "tt",
+          "before": 15034888,
+          "after": 19006941,
+          "pctDelta": 26.42,
+          "absDelta": 3972053
+        },
+        {
+          "id": "70d567b1-cc27-4558-b1dc-4d78eb634833",
+          "name": "Aitor Iglesias",
+          "type": "gc",
+          "before": 24693742,
+          "after": 20806080,
+          "pctDelta": -15.74,
+          "absDelta": -3887662
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 6775175,
+          "pctDelta": -35.05,
+          "absDelta": -3656727
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 788283,
+          "pctDelta": -81.11,
+          "absDelta": -3384119
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 15698795,
+          "pctDelta": 26.42,
+          "absDelta": 3280720
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 13227372,
+          "pctDelta": -15.74,
+          "absDelta": -2471564
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 10554086,
+          "pctDelta": 26.42,
+          "absDelta": 2205583
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10409273,
+          "pctDelta": 25.18,
+          "absDelta": 2093773
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10409273,
+          "pctDelta": 25.18,
+          "absDelta": 2093773
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10409273,
+          "pctDelta": 25.18,
+          "absDelta": 2093773
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 10409273,
+          "pctDelta": 25.18,
+          "absDelta": 2093773
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 10409273,
+          "pctDelta": 25.18,
+          "absDelta": 2093773
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 10409273,
+          "pctDelta": 25.18,
+          "absDelta": 2093773
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -81.10723048524302,
+        "p10": -81.10899402817616,
+        "p90": -81.10589750175778,
+        "mean": -81.10730607339319
+      },
+      "humanGc": {
+        "n": 32,
+        "median": -15.743628134354605,
+        "p10": -15.752837700144864,
+        "p90": -15.738071931349834,
+        "mean": -15.743258715373683
+      }
+    },
+    {
+      "id": "alpha_085",
+      "label": "Alpha-sænkning α=0.85",
+      "offsetK": null,
+      "alpha": 0.85,
+      "rawTotal": 794074663,
+      "rawTotalDeltaPct": -23.31,
+      "normalizationFactor": 1.304,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 25.51817366470006,
+          "p10": 3.728800923213034,
+          "p90": 31.725192074013425,
+          "mean": 21.679943570478912
+        },
+        "tt": {
+          "n": 3401,
+          "median": 23.625183478934957,
+          "p10": 5.790177083340751,
+          "p90": 32.17531602222643,
+          "mean": 20.590548188190493
+        },
+        "gc": {
+          "n": 134,
+          "median": 26.08364204789806,
+          "p10": 8.547747311832932,
+          "p90": 30.39747938664555,
+          "mean": 22.69310636087589
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 12.602032491025202,
+          "p10": -2.088769618276632,
+          "p90": 26.905962179024968,
+          "mean": 12.239964767226889
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 18.803972328459757,
+          "p10": 8.81009310892032,
+          "p90": 28.10658902496871,
+          "mean": 18.464061173477514
+        },
+        "puncheur": {
+          "n": 214,
+          "median": 24.0721040809756,
+          "p10": 13.878189808485164,
+          "p90": 29.792273293035183,
+          "mean": 21.891872837684918
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 17.3774091360172,
+          "p10": -4.487663397006684,
+          "p90": 27.189972798137696,
+          "mean": 13.894682443467122
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 21.545361969396723,
+          "p10": -4.124562568373987,
+          "p90": 27.903861678042258,
+          "mean": 16.763101295764894
+        }
+      },
+      "topMovers": [
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 82630524,
+          "pctDelta": 11.69,
+          "absDelta": 8645603
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 68872946,
+          "pctDelta": 7.35,
+          "absDelta": 4713812
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 20815518,
+          "pctDelta": -16.81,
+          "absDelta": -4204672
+        },
+        {
+          "id": "263b0af8-7d5a-43f8-8969-8e40fd86378b",
+          "name": "Javier Vega",
+          "type": "tt",
+          "before": 15034888,
+          "after": 12265616,
+          "pctDelta": -18.42,
+          "absDelta": -2769272
+        },
+        {
+          "id": "70d567b1-cc27-4558-b1dc-4d78eb634833",
+          "name": "Aitor Iglesias",
+          "type": "gc",
+          "before": 24693742,
+          "after": 27246016,
+          "pctDelta": 10.34,
+          "absDelta": 2552274
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 10843202,
+          "pctDelta": 30.4,
+          "absDelta": 2527702
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 10843202,
+          "pctDelta": 29.88,
+          "absDelta": 2494699
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 17531957,
+          "pctDelta": 11.68,
+          "absDelta": 1833021
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 10843202,
+          "pctDelta": -12.68,
+          "absDelta": -1574873
+        },
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 67742423,
+          "pctDelta": -2.16,
+          "absDelta": -1495048
+        },
+        {
+          "id": "a89338ec-61c9-43c3-94fc-ca5360ff0dc0",
+          "name": "Marcos Ortega",
+          "type": "tt",
+          "before": 5992356,
+          "after": 4754691,
+          "pctDelta": -20.65,
+          "absDelta": -1237665
+        },
+        {
+          "id": "8a8dca84-1566-4cbb-aa5e-7135a5515705",
+          "name": "Ryan Newton",
+          "type": "tt",
+          "before": 3730901,
+          "after": 2549087,
+          "pctDelta": -31.68,
+          "absDelta": -1181814
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 22670799,
+          "pctDelta": -4.57,
+          "absDelta": -1085420
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": 21.669138639591708,
+        "p10": -3.745399687231515,
+        "p90": 30.46142061550463,
+        "mean": 19.059579300165154
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 23.775828603880925,
+        "p10": 9.740289196846867,
+        "p90": 30.295709715696788,
+        "mean": 20.792951305353625
+      }
+    },
+    {
+      "id": "alpha_07",
+      "label": "Alpha-sænkning α=0.7",
+      "offsetK": null,
+      "alpha": 0.7,
+      "rawTotal": 627371188,
+      "rawTotalDeltaPct": -39.41,
+      "normalizationFactor": 1.6505,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 52.922229619600124,
+          "p10": 4.271128560259218,
+          "p90": 68.40738390677409,
+          "mean": 44.90727249608242
+        },
+        "tt": {
+          "n": 3401,
+          "median": 48.40507617050196,
+          "p10": 8.678048514072445,
+          "p90": 69.54684338251107,
+          "mean": 42.62706437798539
+        },
+        "gc": {
+          "n": 134,
+          "median": 54.35427524045672,
+          "p10": 14.685795194054139,
+          "p90": 65.04636566128057,
+          "mean": 46.94739783948208
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 23.085501784564162,
+          "p10": -7.141894903188041,
+          "p90": 56.227754190641164,
+          "mean": 23.28681863642298
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 37.0412107886763,
+          "p10": 14.914958313550168,
+          "p90": 59.36311062445504,
+          "mean": 36.70004131744606
+        },
+        "puncheur": {
+          "n": 214,
+          "median": 49.45296524101168,
+          "p10": 26.009492688837412,
+          "p90": 63.53335737968446,
+          "mean": 44.97441367277713
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 33.74733152933753,
+          "p10": -11.660453606600573,
+          "p90": 57.16099057528751,
+          "mean": 27.335137498687956
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 43.420533625597,
+          "p10": -10.993057545778319,
+          "p90": 58.846211184057864,
+          "mean": 33.691505086823305
+        }
+      },
+      "topMovers": [
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 89503991,
+          "pctDelta": 20.98,
+          "absDelta": 15519070
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 16679531,
+          "pctDelta": -33.34,
+          "absDelta": -8340659
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 71666337,
+          "pctDelta": 11.7,
+          "absDelta": 7507203
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13724431,
+          "pctDelta": 65.05,
+          "absDelta": 5408931
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 13724431,
+          "pctDelta": 64.39,
+          "absDelta": 5375928
+        },
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 64148828,
+          "pctDelta": -7.35,
+          "absDelta": -5088643
+        },
+        {
+          "id": "70d567b1-cc27-4558-b1dc-4d78eb634833",
+          "name": "Aitor Iglesias",
+          "type": "gc",
+          "before": 24693742,
+          "after": 29152882,
+          "pctDelta": 18.06,
+          "absDelta": 4459140
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 18989256,
+          "pctDelta": 20.96,
+          "absDelta": 3290320
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 13724431,
+          "pctDelta": 30.01,
+          "absDelta": 3168358
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 20938619,
+          "pctDelta": -11.86,
+          "absDelta": -2817600
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 42411568,
+          "pctDelta": -5.6,
+          "absDelta": -2517414
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 12866351,
+          "pctDelta": -16.09,
+          "absDelta": -2467234
+        },
+        {
+          "id": "a89338ec-61c9-43c3-94fc-ca5360ff0dc0",
+          "name": "Marcos Ortega",
+          "type": "tt",
+          "before": 5992356,
+          "after": 3628183,
+          "pctDelta": -39.45,
+          "absDelta": -2364173
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": 43.73245992966011,
+        "p10": -10.294899546237657,
+        "p90": 65.22171730835451,
+        "mean": 38.806891985987164
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 48.766561233010655,
+        "p10": 16.792598074437297,
+        "p90": 64.77586119871232,
+        "mean": 42.30480182246336
+      }
+    },
+    {
+      "id": "alpha_05",
+      "label": "Alpha-sænkning α=0.5",
+      "offsetK": null,
+      "alpha": 0.5,
+      "rawTotal": 476847454,
+      "rawTotalDeltaPct": -53.95,
+      "normalizationFactor": 2.1715,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 91.34322640640616,
+          "p10": 0.964027475668822,
+          "p90": 124.58256938743646,
+          "mean": 77.74406560117359
+        },
+        "tt": {
+          "n": 3401,
+          "median": 82.01409425117427,
+          "p10": 8.368161938990891,
+          "p90": 127.16597034046777,
+          "mean": 73.68805377040837
+        },
+        "gc": {
+          "n": 134,
+          "median": 94.21454298094349,
+          "p10": 18.098723971266338,
+          "p90": 117.14561676153987,
+          "mean": 80.72465725667634
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 33.143698798445875,
+          "p10": -17.123327104300305,
+          "p90": 98.26338921705813,
+          "mean": 35.96671726355468
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 59.22703001230454,
+          "p10": 18.558248662524548,
+          "p90": 104.78525487982182,
+          "mean": 59.833496964874136
+        },
+        "puncheur": {
+          "n": 214,
+          "median": 84.12506864502842,
+          "p10": 38.84569474762047,
+          "p90": 113.87800997121656,
+          "mean": 76.76717517549105
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 52.86483433489689,
+          "p10": -23.782867942461934,
+          "p90": 100.29988301088113,
+          "mean": 44.25177714817214
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 71.96010312199547,
+          "p10": -22.826191361442316,
+          "p90": 103.88381340981465,
+          "mean": 56.02707742482344
+        }
+      },
+      "topMovers": [
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 95553218,
+          "pctDelta": 29.15,
+          "absDelta": 21568297
+        },
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 57065188,
+          "pctDelta": -17.58,
+          "absDelta": -12172283
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 18056744,
+          "pctDelta": 117.15,
+          "absDelta": 9741244
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 18056744,
+          "pctDelta": 116.29,
+          "absDelta": 9708241
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 72462921,
+          "pctDelta": 12.94,
+          "absDelta": 8303787
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 18056744,
+          "pctDelta": 71.06,
+          "absDelta": 7500671
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 18056744,
+          "pctDelta": -27.83,
+          "absDelta": -6963446
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 38198526,
+          "pctDelta": -14.98,
+          "absDelta": -6730456
+        },
+        {
+          "id": "70d567b1-cc27-4558-b1dc-4d78eb634833",
+          "name": "Aitor Iglesias",
+          "type": "gc",
+          "before": 24693742,
+          "after": 30614090,
+          "pctDelta": 23.98,
+          "absDelta": 5920348
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 18016626,
+          "pctDelta": -24.16,
+          "absDelta": -5739593
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 18056744,
+          "pctDelta": 45.41,
+          "absDelta": 5638669
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 10691032,
+          "pctDelta": -30.28,
+          "absDelta": -4642553
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 20272052,
+          "pctDelta": 29.13,
+          "absDelta": 4573116
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": 72.56449376038059,
+        "p10": -21.834813081559652,
+        "p90": 117.57153166855822,
+        "mean": 65.59363021011787
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 82.79391724205504,
+        "p10": 21.781203312243168,
+        "p90": 116.58635621731675,
+        "mean": 71.35096083272006
+      }
+    },
+    {
+      "id": "combo_k50_a085",
+      "label": "Kombination: offset k=50 + α=0.85",
+      "offsetK": 50,
+      "alpha": 0.85,
+      "rawTotal": 662083931,
+      "rawTotalDeltaPct": -36.06,
+      "normalizationFactor": 1.5639,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 49.85301629428356,
+          "p10": 23.848897014692934,
+          "p90": 57.26164613145547,
+          "mean": 45.28137147812078
+        },
+        "tt": {
+          "n": 3401,
+          "median": 48.67067736485746,
+          "p10": 27.21505348570711,
+          "p90": 58.896465502314946,
+          "mean": 45.00891348959174
+        },
+        "gc": {
+          "n": 134,
+          "median": 14.799170604742939,
+          "p10": -0.9940397910811697,
+          "p90": 19.376196163243264,
+          "mean": 13.032944902521214
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 35.472310139383,
+          "p10": 17.80665216374163,
+          "p90": 52.70648037225776,
+          "mean": 35.05162940366746
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 40.22584839556286,
+          "p10": 28.429014686387816,
+          "p90": 51.22758669579197,
+          "mean": 39.823403289479536
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -66.81053932282367,
+          "p10": -69.53772795751576,
+          "p90": -65.28055046937988,
+          "mean": -67.39472945987544
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 39.592584941059464,
+          "p10": 13.57717608505052,
+          "p90": 51.2884652738282,
+          "mean": 35.4420879383519
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": -1.279415900765877,
+          "p10": -22.130486565248667,
+          "p90": 3.8837675873723443,
+          "mean": -5.164824058270968
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 18120754,
+          "pctDelta": -73.83,
+          "absDelta": -51116717
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 6064324,
+          "pctDelta": -74.47,
+          "absDelta": -17691895
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 3820933,
+          "pctDelta": -75.08,
+          "absDelta": -11512652
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 53356163,
+          "pctDelta": 18.76,
+          "absDelta": 8427181
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13004865,
+          "pctDelta": 56.39,
+          "absDelta": 4689365
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 13004865,
+          "pctDelta": 55.77,
+          "absDelta": 4656362
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 918166,
+          "pctDelta": -77.99,
+          "absDelta": -3254236
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 13004865,
+          "pctDelta": 23.2,
+          "absDelta": 2448792
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 8249754,
+          "pctDelta": -20.92,
+          "absDelta": -2182148
+        },
+        {
+          "id": "b67913f4-dff3-4894-9a3c-ac4289c3f90f",
+          "name": "Tommaso Sorrentino",
+          "type": "puncheur",
+          "before": 2442640,
+          "after": 707344,
+          "pctDelta": -71.04,
+          "absDelta": -1735296
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 62699046,
+          "pctDelta": -2.28,
+          "absDelta": -1460088
+        },
+        {
+          "id": "4ca81f6a-8690-4a42-8056-6feead2540dd",
+          "name": "Maarten Peeters",
+          "type": "puncheur",
+          "before": 2087056,
+          "after": 629412,
+          "pctDelta": -69.84,
+          "absDelta": -1457644
+        },
+        {
+          "id": "2a3e8346-165b-455b-986c-13c65b7deacf",
+          "name": "Philipp Klein",
+          "type": "puncheur",
+          "before": 1943351,
+          "after": 510841,
+          "pctDelta": -73.71,
+          "absDelta": -1432510
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -67.45326828795713,
+        "p10": -74.25230448517854,
+        "p90": -65.10681069537792,
+        "mean": -68.15235197834049
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 12.69025107013132,
+        "p10": -0.09715518035770897,
+        "p90": 18.616076997466696,
+        "mean": 9.965998325004955
+      }
+    },
+    {
+      "id": "combo_k50_a07",
+      "label": "Kombination: offset k=50 + α=0.7",
+      "offsetK": 50,
+      "alpha": 0.7,
+      "rawTotal": 524369913,
+      "rawTotalDeltaPct": -49.36,
+      "normalizationFactor": 1.9747,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 82.1424308195039,
+          "p10": 24.192489883310568,
+          "p90": 100.5735059612916,
+          "mean": 72.59308326812882
+        },
+        "tt": {
+          "n": 3401,
+          "median": 78.02840544671174,
+          "p10": 30.365938233235205,
+          "p90": 103.36844165919901,
+          "mean": 71.08668027293938
+        },
+        "gc": {
+          "n": 134,
+          "median": 40.20202050134554,
+          "p10": 4.1502732008945245,
+          "p90": 51.562557008074805,
+          "mean": 35.148037191670944
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 47.729500855862646,
+          "p10": 11.456277497035364,
+          "p90": 87.53599891726822,
+          "mean": 47.97823437910737
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 61.34143164356468,
+          "p10": 35.30193137349367,
+          "p90": 87.61370582860178,
+          "mean": 60.95576145339213
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -60.118122112883384,
+          "p10": -66.3744456853502,
+          "p90": -56.36150091277734,
+          "mean": -61.314548560729634
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 58.62853248201421,
+          "p10": 4.792305169463605,
+          "p90": 86.35055367402376,
+          "mean": 51.05533270302865
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 16.202613275974407,
+          "p10": -27.88334070819583,
+          "p90": 28.703782988687127,
+          "mean": 8.319830931141077
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 17117597,
+          "pctDelta": -75.28,
+          "absDelta": -52119874
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 5587302,
+          "pctDelta": -76.48,
+          "absDelta": -18168917
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 3433282,
+          "pctDelta": -77.61,
+          "absDelta": -11900303
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 16420302,
+          "pctDelta": 97.47,
+          "absDelta": 8104802
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 16420302,
+          "pctDelta": 96.69,
+          "absDelta": 8071799
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 81281774,
+          "pctDelta": 9.86,
+          "absDelta": 7296853
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 50874623,
+          "pctDelta": 13.23,
+          "absDelta": 5945641
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 16420302,
+          "pctDelta": 55.55,
+          "absDelta": 5864229
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 20007864,
+          "pctDelta": -20.03,
+          "absDelta": -5012326
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 16420302,
+          "pctDelta": 32.23,
+          "absDelta": 4002227
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 727039,
+          "pctDelta": -82.58,
+          "absDelta": -3445363
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 7755035,
+          "pctDelta": -25.66,
+          "absDelta": -2676867
+        },
+        {
+          "id": "70d567b1-cc27-4558-b1dc-4d78eb634833",
+          "name": "Aitor Iglesias",
+          "type": "gc",
+          "before": 24693742,
+          "after": 26474775,
+          "pctDelta": 7.21,
+          "absDelta": 1781033
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -61.647313598859995,
+        "p10": -76.06303833826598,
+        "p90": -55.910619450082656,
+        "mean": -62.96028536277601
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 35.095071465475186,
+        "p10": 6.063650341031615,
+        "p90": 49.64464287361129,
+        "mean": 29.22787622630593
+      }
+    },
+    {
+      "id": "combo_k50_a05",
+      "label": "Kombination: offset k=50 + α=0.5",
+      "offsetK": 50,
+      "alpha": 0.5,
+      "rawTotal": 405893245,
+      "rawTotalDeltaPct": -60.8,
+      "normalizationFactor": 2.551,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 123.78729258319798,
+          "p10": 18.082693961195794,
+          "p90": 162.6611777849122,
+          "mean": 107.87923636934914
+        },
+        "tt": {
+          "n": 3401,
+          "median": 114.39406474656954,
+          "p10": 27.644893410650095,
+          "p90": 167.535804395533,
+          "mean": 104.58053206860787
+        },
+        "gc": {
+          "n": 134,
+          "median": 73.23761791872954,
+          "p10": 5.311791383840313,
+          "p90": 97.25888722726054,
+          "mean": 63.49993395745468
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 56.92832133349155,
+          "p10": -2.323814179551427,
+          "p90": 133.6456075056797,
+          "mean": 60.25184164787241
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 84.06299147058994,
+          "p10": 37.086072714280064,
+          "p90": 136.63977451335967,
+          "mean": 84.78947779206048
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -51.75401439661973,
+          "p10": -63.62004672214168,
+          "p90": -43.96209344614238,
+          "mean": -53.640969305812725
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 78.04727181130677,
+          "p10": -11.226441855771785,
+          "p90": 133.38352682057425,
+          "mean": 68.0316648485023
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 36.806466419396685,
+          "p10": -38.60116319668566,
+          "p90": 62.20271957114689,
+          "mean": 24.13107626420664
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 21213244,
+          "pctDelta": -69.36,
+          "absDelta": -48024227
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 4720720,
+          "pctDelta": -80.13,
+          "absDelta": -19035499
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 21213244,
+          "pctDelta": 155.1,
+          "absDelta": 12897744
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 21213244,
+          "pctDelta": 154.1,
+          "absDelta": 12864741
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 2801268,
+          "pctDelta": -81.73,
+          "absDelta": -12532317
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 85207325,
+          "pctDelta": 15.17,
+          "absDelta": 11222404
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 21213244,
+          "pctDelta": 100.96,
+          "absDelta": 10657171
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 21213244,
+          "pctDelta": 70.83,
+          "absDelta": 8795169
+        },
+        {
+          "id": "263b0af8-7d5a-43f8-8969-8e40fd86378b",
+          "name": "Javier Vega",
+          "type": "tt",
+          "before": 15034888,
+          "after": 21213244,
+          "pctDelta": 41.09,
+          "absDelta": 6178356
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 21213244,
+          "pctDelta": 35.13,
+          "absDelta": 5514308
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 21213244,
+          "pctDelta": -15.22,
+          "absDelta": -3806946
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 6729515,
+          "pctDelta": -35.49,
+          "absDelta": -3702387
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 499659,
+          "pctDelta": -88.02,
+          "absDelta": -3672743
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -54.78385988202222,
+        "p10": -79.51928295105456,
+        "p90": -42.999619650145334,
+        "mean": -56.610477753787336
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 62.99024017509808,
+        "p10": 8.595699720529282,
+        "p90": 93.14540925436096,
+        "mean": 52.79584830914377
+      }
+    },
+    {
+      "id": "combo_k100_a085",
+      "label": "Kombination: offset k=100 + α=0.85",
+      "offsetK": 100,
+      "alpha": 0.85,
+      "rawTotal": 644520910,
+      "rawTotalDeltaPct": -37.75,
+      "normalizationFactor": 1.6065,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 53.28669774046575,
+          "p10": 26.68006272894888,
+          "p90": 60.85301065501505,
+          "mean": 48.603398072699214
+        },
+        "tt": {
+          "n": 3401,
+          "median": 53.11711412337381,
+          "p10": 30.99814976364082,
+          "p90": 63.64732083346537,
+          "mean": 49.33422275646666
+        },
+        "gc": {
+          "n": 134,
+          "median": 9.961505536090794,
+          "p10": -5.167624544007799,
+          "p90": 14.332181288431828,
+          "mean": 8.655059000971054
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 39.58925894768744,
+          "p10": 21.377944718767,
+          "p90": 57.318732762293145,
+          "mean": 39.14391259032649
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 43.46593517731587,
+          "p10": 31.393816552809117,
+          "p90": 54.679453954075484,
+          "mean": 43.05181000724361
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -73.1700272473179,
+          "p10": -75.37427263396131,
+          "p90": -71.93439764723047,
+          "mean": -73.64102500779117
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 42.71441544538542,
+          "p10": 16.12316433100543,
+          "p90": 54.65107899489632,
+          "mean": 38.4810165994144
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": -12.242434589730081,
+          "p10": -30.78063334479207,
+          "p90": -7.662994159741075,
+          "mean": -15.699976490489295
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 14649072,
+          "pctDelta": -78.84,
+          "absDelta": -54588399
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 4902484,
+          "pctDelta": -79.36,
+          "absDelta": -18853735
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 3088896,
+          "pctDelta": -79.86,
+          "absDelta": -12244689
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 54947657,
+          "pctDelta": 22.3,
+          "absDelta": 10018675
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13359244,
+          "pctDelta": 60.65,
+          "absDelta": 5043744
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 13359244,
+          "pctDelta": 60.02,
+          "absDelta": 5010741
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 60055970,
+          "pctDelta": -6.4,
+          "absDelta": -4103164
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 742259,
+          "pctDelta": -82.21,
+          "absDelta": -3430143
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 7333315,
+          "pctDelta": -29.7,
+          "absDelta": -3098587
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 13359244,
+          "pctDelta": 26.56,
+          "absDelta": 2803171
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 72052330,
+          "pctDelta": -2.61,
+          "absDelta": -1932591
+        },
+        {
+          "id": "b67913f4-dff3-4894-9a3c-ac4289c3f90f",
+          "name": "Tommaso Sorrentino",
+          "type": "puncheur",
+          "before": 2442640,
+          "after": 571826,
+          "pctDelta": -76.59,
+          "absDelta": -1870814
+        },
+        {
+          "id": "371fa7cd-ae44-4acf-82e7-78c9cf38321a",
+          "name": "Alejandro Quintero",
+          "type": "brostensrytter",
+          "before": 4873163,
+          "after": 3184921,
+          "pctDelta": -34.64,
+          "absDelta": -1688242
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -73.6873278466862,
+        "p10": -79.18535599217228,
+        "p90": -71.78432326575273,
+        "mean": -74.2535503208714
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 7.935669159210672,
+        "p10": -4.308308752609056,
+        "p90": 13.61059336417982,
+        "mean": 5.332331944985587
+      }
+    },
+    {
+      "id": "combo_k100_a07",
+      "label": "Kombination: offset k=100 + α=0.7",
+      "offsetK": 100,
+      "alpha": 0.7,
+      "rawTotal": 511968134,
+      "rawTotalDeltaPct": -50.56,
+      "normalizationFactor": 2.0225,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 85.75565720526822,
+          "p10": 26.657056117254058,
+          "p90": 104.55849662001127,
+          "mean": 76.01820942007022
+        },
+        "tt": {
+          "n": 3401,
+          "median": 82.78746706028159,
+          "p10": 33.86228642566522,
+          "p90": 108.8250663761499,
+          "mean": 75.67131637512576
+        },
+        "gc": {
+          "n": 134,
+          "median": 33.89003654947974,
+          "p10": -0.5340659962842639,
+          "p90": 44.758561904400516,
+          "mean": 29.574352172793205
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 51.763588401952134,
+          "p10": 14.491120432009383,
+          "p90": 92.71449251581258,
+          "mean": 52.01552211425971
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 64.57921537051516,
+          "p10": 38.01748867360801,
+          "p90": 91.31412554953663,
+          "mean": 64.18471526929154
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -67.85448983675937,
+          "p10": -72.89636744175834,
+          "p90": -64.82540141122765,
+          "mean": -68.79794402711826
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 61.70809361254519,
+          "p10": 6.823967137564489,
+          "p90": 90.00361601428703,
+          "mean": 53.992075513572345
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 2.9900456450663344,
+          "p10": -36.08379716573783,
+          "p90": 14.05775019926359,
+          "mean": -3.9975894663369966
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 16818063,
+          "pctDelta": -75.71,
+          "absDelta": -52419408
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 4503548,
+          "pctDelta": -81.04,
+          "absDelta": -19252671
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 2767336,
+          "pctDelta": -81.95,
+          "absDelta": -12566249
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 16818063,
+          "pctDelta": 102.25,
+          "absDelta": 8502563
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 16818063,
+          "pctDelta": 101.45,
+          "absDelta": 8469560
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 52237765,
+          "pctDelta": 16.27,
+          "absDelta": 7308783
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 16818063,
+          "pctDelta": 59.32,
+          "absDelta": 6261990
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 20543957,
+          "pctDelta": -17.89,
+          "absDelta": -4476233
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 16818063,
+          "pctDelta": 35.43,
+          "absDelta": 4399988
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 77626004,
+          "pctDelta": 4.92,
+          "absDelta": 3641083
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 586016,
+          "pctDelta": -85.95,
+          "absDelta": -3586386
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 6873247,
+          "pctDelta": -34.11,
+          "absDelta": -3558655
+        },
+        {
+          "id": "371fa7cd-ae44-4acf-82e7-78c9cf38321a",
+          "name": "Alejandro Quintero",
+          "type": "brostensrytter",
+          "before": 4873163,
+          "after": 2770916,
+          "pctDelta": -43.14,
+          "absDelta": -2102247
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -69.08382234579308,
+        "p10": -80.70607706493776,
+        "p90": -64.46252259003052,
+        "mean": -70.14500474234319
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 29.02780253366343,
+        "p10": 1.293128126138587,
+        "p90": 42.91482078591159,
+        "mean": 23.416010674307717
+      }
+    },
+    {
+      "id": "combo_k100_a05",
+      "label": "Kombination: offset k=100 + α=0.5",
+      "offsetK": 100,
+      "alpha": 0.5,
+      "rawTotal": 397097286,
+      "rawTotalDeltaPct": -61.65,
+      "normalizationFactor": 2.6076,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 127.7486805381607,
+          "p10": 20.183945788041132,
+          "p90": 167.35291694742267,
+          "mean": 111.57737024772656
+        },
+        "tt": {
+          "n": 3401,
+          "median": 119.71756276788543,
+          "p10": 30.7936698518828,
+          "p90": 174.21715277472686,
+          "mean": 109.63922885427708
+        },
+        "gc": {
+          "n": 134,
+          "median": 65.11506720588278,
+          "p10": 0.37159096679980064,
+          "p90": 88.01626082848142,
+          "mean": 56.53145712195944
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 60.873548998834664,
+          "p10": 0.1379584891463149,
+          "p90": 139.5837052818453,
+          "mean": 64.28839683055158
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 87.43281089337465,
+          "p10": 39.54299909352438,
+          "p90": 140.965279160614,
+          "mean": 88.11847147840473
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -61.19311937108753,
+          "p10": -70.67255886948509,
+          "p90": -54.9208327138344,
+          "mean": -62.67741311930422
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 81.13856174733175,
+          "p10": -9.687733134184068,
+          "p90": 137.44299818076513,
+          "mean": 70.95339849722615
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 20.990020688473226,
+          "p10": -45.6932796663306,
+          "p90": 43.46484444302959,
+          "mean": 9.794088592952356
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 21683131,
+          "pctDelta": -68.68,
+          "absDelta": -47554340
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 3797355,
+          "pctDelta": -84.02,
+          "absDelta": -19958864
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 21683131,
+          "pctDelta": 160.76,
+          "absDelta": 13367631
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 21683131,
+          "pctDelta": 159.72,
+          "absDelta": 13334628
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 2253343,
+          "pctDelta": -85.3,
+          "absDelta": -13080242
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 21683131,
+          "pctDelta": 105.41,
+          "absDelta": 11127058
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 21683131,
+          "pctDelta": 74.61,
+          "absDelta": 9265056
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 81210290,
+          "pctDelta": 9.77,
+          "absDelta": 7225369
+        },
+        {
+          "id": "263b0af8-7d5a-43f8-8969-8e40fd86378b",
+          "name": "Javier Vega",
+          "type": "tt",
+          "before": 15034888,
+          "after": 21683131,
+          "pctDelta": 44.22,
+          "absDelta": 6648243
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 21683131,
+          "pctDelta": 38.12,
+          "absDelta": 5984195
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 5952262,
+          "pctDelta": -42.94,
+          "absDelta": -4479640
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 401926,
+          "pctDelta": -90.37,
+          "absDelta": -3770476
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 21683131,
+          "pctDelta": -13.34,
+          "absDelta": -3337059
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -63.629933694313756,
+        "p10": -83.52527314668437,
+        "p90": -54.13975027796607,
+        "mean": -65.09731269801027
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 55.350594042497534,
+        "p10": 3.501350682910223,
+        "p90": 84.0735387782568,
+        "mean": 45.63232008443018
+      }
+    },
+    {
+      "id": "combo_k200_a085",
+      "label": "Kombination: offset k=200 + α=0.85",
+      "offsetK": 200,
+      "alpha": 0.85,
+      "rawTotal": 633262629,
+      "rawTotalDeltaPct": -38.84,
+      "normalizationFactor": 1.6351,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 54.76864372103719,
+          "p10": 27.909123393737428,
+          "p90": 62.40097097241628,
+          "mean": 50.045266351331534
+        },
+        "tt": {
+          "n": 3401,
+          "median": 56.56283280794819,
+          "p10": 33.97135849863921,
+          "p90": 67.3493910329623,
+          "mean": 52.711040803412594
+        },
+        "gc": {
+          "n": 134,
+          "median": 6.439176509492492,
+          "p10": -8.2094463510591,
+          "p90": 10.681202730486998,
+          "mean": 5.456734577390455
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 42.82830446696586,
+          "p10": 24.19348246761247,
+          "p90": 60.94130835358753,
+          "mean": 42.37211785220497
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 45.622264200347836,
+          "p10": 33.34038305407175,
+          "p90": 56.97553506953034,
+          "mean": 45.16924308118404
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -76.51757161208457,
+          "p10": -78.448638122147,
+          "p90": -75.43730765204604,
+          "mean": -76.92607805363023
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 44.511382982776006,
+          "p10": 17.59911022665417,
+          "p90": 56.627032745827435,
+          "mean": 40.23908168733514
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": -20.93227158386449,
+          "p10": -37.62619065364231,
+          "p90": -16.786182489711376,
+          "mean": -24.035122896468078
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 13596748,
+          "pctDelta": -80.36,
+          "absDelta": -55640723
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 4290506,
+          "pctDelta": -81.94,
+          "absDelta": -19465713
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 2703309,
+          "pctDelta": -82.37,
+          "absDelta": -12630276
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 56190605,
+          "pctDelta": 25.07,
+          "absDelta": 11261623
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 58129622,
+          "pctDelta": -9.4,
+          "absDelta": -6029512
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 13596748,
+          "pctDelta": 63.51,
+          "absDelta": 5281248
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 13596748,
+          "pctDelta": 62.86,
+          "absDelta": 5248245
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 69741187,
+          "pctDelta": -5.74,
+          "absDelta": -4243734
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 6608163,
+          "pctDelta": -36.65,
+          "absDelta": -3823739
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 649603,
+          "pctDelta": -84.43,
+          "absDelta": -3522799
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 13596748,
+          "pctDelta": 28.8,
+          "absDelta": 3040675
+        },
+        {
+          "id": "371fa7cd-ae44-4acf-82e7-78c9cf38321a",
+          "name": "Alejandro Quintero",
+          "type": "brostensrytter",
+          "before": 4873163,
+          "after": 2869981,
+          "pctDelta": -41.11,
+          "absDelta": -2003182
+        },
+        {
+          "id": "b67913f4-dff3-4894-9a3c-ac4289c3f90f",
+          "name": "Tommaso Sorrentino",
+          "type": "puncheur",
+          "before": 2442640,
+          "after": 500446,
+          "pctDelta": -79.51,
+          "absDelta": -1942194
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -76.97303829378855,
+        "p10": -81.78346806760264,
+        "p90": -75.30499181644905,
+        "mean": -77.4674415551346
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 4.470909235968026,
+        "p10": -7.377682384460346,
+        "p90": 9.964357897893455,
+        "mean": 1.9529294629769234
+      }
+    },
+    {
+      "id": "combo_k200_a07",
+      "label": "Kombination: offset k=200 + α=0.7",
+      "offsetK": 200,
+      "alpha": 0.7,
+      "rawTotal": 503853529,
+      "rawTotalDeltaPct": -51.34,
+      "normalizationFactor": 2.0551,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 87.25196472417514,
+          "p10": 27.675812604796807,
+          "p90": 106.2043090997731,
+          "mean": 77.43478108993806
+        },
+        "tt": {
+          "n": 3401,
+          "median": 86.61855974260843,
+          "p10": 36.664168701657175,
+          "p90": 113.21405707492383,
+          "mean": 79.34784653364235
+        },
+        "gc": {
+          "n": 134,
+          "median": 29.381693684648226,
+          "p10": -3.8827900285996786,
+          "p90": 39.88208645444647,
+          "mean": 25.612687587048516
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 55.029071442377756,
+          "p10": 16.958985648254302,
+          "p90": 96.81088654021603,
+          "mean": 55.28555656102719
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 66.73428234018974,
+          "p10": 39.83363598862368,
+          "p90": 93.82484760063404,
+          "mean": 66.3417366953689
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -71.91192742519016,
+          "p10": -76.24382389369771,
+          "p90": -69.27083931944466,
+          "mean": -72.72138580470492
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 63.4854273551247,
+          "p10": 8.0013268544727,
+          "p90": 92.09151774524207,
+          "mean": 55.694694086566216
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": -7.340826210857814,
+          "p10": -42.49806504456954,
+          "p90": 2.6136074695207223,
+          "mean": -13.633080600002392
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 17088919,
+          "pctDelta": -75.32,
+          "absDelta": -52148552
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 3934888,
+          "pctDelta": -83.44,
+          "absDelta": -19821331
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 2417909,
+          "pctDelta": -84.23,
+          "absDelta": -12915676
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 17088919,
+          "pctDelta": 105.51,
+          "absDelta": 8773419
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 17088919,
+          "pctDelta": 104.69,
+          "absDelta": 8740416
+        },
+        {
+          "id": "40194584-4c54-4ccc-97f6-5301ac78534d",
+          "name": "Ayoub Bouazza",
+          "type": "tt",
+          "before": 44928982,
+          "after": 53331598,
+          "pctDelta": 18.7,
+          "absDelta": 8402616
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 17088919,
+          "pctDelta": 61.89,
+          "absDelta": 6532846
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 17088919,
+          "pctDelta": 37.61,
+          "absDelta": 4670844
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 6183406,
+          "pctDelta": -40.73,
+          "absDelta": -4248496
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 60062974,
+          "pctDelta": -6.38,
+          "absDelta": -4096160
+        },
+        {
+          "id": "2d0370d9-ab18-4924-a98e-c6e0bca8d621",
+          "name": "Oliver Newton",
+          "type": "tt",
+          "before": 25020190,
+          "after": 20974137,
+          "pctDelta": -16.17,
+          "absDelta": -4046053
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 512020,
+          "pctDelta": -87.73,
+          "absDelta": -3660382
+        },
+        {
+          "id": "371fa7cd-ae44-4acf-82e7-78c9cf38321a",
+          "name": "Alejandro Quintero",
+          "type": "brostensrytter",
+          "before": 4873163,
+          "after": 2492810,
+          "pctDelta": -48.85,
+          "absDelta": -2380353
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -72.98823453493378,
+        "p10": -83.14234955276568,
+        "p90": -68.94556204027631,
+        "mean": -73.91471716380212
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 24.681550108003528,
+        "p10": -2.1171725892530087,
+        "p90": 38.09519130450182,
+        "mean": 19.263961672746174
+      }
+    },
+    {
+      "id": "combo_k200_a05",
+      "label": "Kombination: offset k=200 + α=0.5",
+      "offsetK": 200,
+      "alpha": 0.5,
+      "rawTotal": 390926698,
+      "rawTotalDeltaPct": -62.25,
+      "normalizationFactor": 2.6487,
+      "normalizedTotal": 1035453345,
+      "normalizedTotalDeltaPct": 0,
+      "byType": {
+        "climber": {
+          "n": 3626,
+          "median": 129.5327126807119,
+          "p10": 21.110681643066947,
+          "p90": 169.44809676452428,
+          "mean": 113.20919200065852
+        },
+        "tt": {
+          "n": 3401,
+          "median": 124.18615661031691,
+          "p10": 33.491848222161344,
+          "p90": 179.87207108905855,
+          "mean": 113.9581789811984
+        },
+        "gc": {
+          "n": 134,
+          "median": 59.50200967981466,
+          "p10": -3.038217639739375,
+          "p90": 81.5860375308856,
+          "mean": 51.726437298694776
+        },
+        "sprinter": {
+          "n": 774,
+          "median": 64.30771677451224,
+          "p10": 2.261699387849757,
+          "p90": 144.61620833180686,
+          "mean": 67.76863583894753
+        },
+        "baroudeur": {
+          "n": 299,
+          "median": 89.83254615248994,
+          "p10": 41.30404240608915,
+          "p90": 144.02425514617886,
+          "mean": 90.53016866241667
+        },
+        "puncheur": {
+          "n": 214,
+          "median": -66.10657444171821,
+          "p10": -74.38207112281106,
+          "p90": -60.62318771904701,
+          "mean": -67.38028851081037
+        },
+        "rouleur": {
+          "n": 311,
+          "median": 83.06509987089554,
+          "p10": -8.720766213769926,
+          "p90": 139.93798070067876,
+          "mean": 72.78702810919667
+        },
+        "brostensrytter": {
+          "n": 186,
+          "median": 8.822045546329282,
+          "p10": -51.15839762303027,
+          "p90": 29.032253375880774,
+          "mean": -1.2564042169064864
+        }
+      },
+      "topMovers": [
+        {
+          "id": "77ff7ada-835d-491f-88e0-9f0c18ae039f",
+          "name": "Joris Coppens",
+          "type": "puncheur",
+          "before": 69237471,
+          "after": 22025388,
+          "pctDelta": -68.19,
+          "absDelta": -47212083
+        },
+        {
+          "id": "80f8890e-44e3-4756-ab64-3898bfeb3f65",
+          "name": "Andrea Riva",
+          "type": "puncheur",
+          "before": 23756219,
+          "after": 3316819,
+          "pctDelta": -86.04,
+          "absDelta": -20439400
+        },
+        {
+          "id": "0ad7bb77-4e2b-43be-9b59-7a6e441628fd",
+          "name": "Loïc Gauthier",
+          "type": "gc",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "0d0b93d5-b718-45d7-a998-e15e81969286",
+          "name": "Julien Moreau",
+          "type": "gc",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "0ff1453e-cd8d-4233-8633-c55dea06011c",
+          "name": "Stefano Orlando",
+          "type": "gc",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "2d61240a-c6ed-4b90-827d-bd7db0a19fef",
+          "name": "Niels Lenaerts",
+          "type": "sprinter",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "72e1a37d-fd72-4ed4-b83d-93320d65351c",
+          "name": "Rubén Lozano",
+          "type": "rouleur",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "8dfe844b-8375-4ee0-80d7-ca0a0811aec4",
+          "name": "Sungmin Jung",
+          "type": "climber",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "b3a7174d-a6cf-4008-a952-9865ac85d50d",
+          "name": "Hélder Pereira",
+          "type": "gc",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "d26e0e3c-8f2c-4340-ab9c-b224c25dd0e5",
+          "name": "Carlos López",
+          "type": "climber",
+          "before": 8315500,
+          "after": 22025388,
+          "pctDelta": 164.87,
+          "absDelta": 13709888
+        },
+        {
+          "id": "e591592d-abb6-4bf8-adc1-b771828cc27f",
+          "name": "Tomáš Kovač",
+          "type": "tt",
+          "before": 8348503,
+          "after": 22025388,
+          "pctDelta": 163.82,
+          "absDelta": 13676885
+        },
+        {
+          "id": "edcc8d0a-da17-485e-ad9a-9b238611363c",
+          "name": "Cooper Dawson",
+          "type": "puncheur",
+          "before": 15333585,
+          "after": 1968194,
+          "pctDelta": -87.16,
+          "absDelta": -13365391
+        },
+        {
+          "id": "3847a1e9-a35e-449c-a4ef-0d44f53447d4",
+          "name": "Théo Chevalier",
+          "type": "gc",
+          "before": 10556073,
+          "after": 22025388,
+          "pctDelta": 108.65,
+          "absDelta": 11469315
+        },
+        {
+          "id": "b2495833-b1e5-4b2a-9895-7cee70ab1253",
+          "name": "Corentin Charpentier",
+          "type": "tt",
+          "before": 12418075,
+          "after": 22025388,
+          "pctDelta": 77.37,
+          "absDelta": 9607313
+        },
+        {
+          "id": "263b0af8-7d5a-43f8-8969-8e40fd86378b",
+          "name": "Javier Vega",
+          "type": "tt",
+          "before": 15034888,
+          "after": 22025388,
+          "pctDelta": 46.5,
+          "absDelta": 6990500
+        },
+        {
+          "id": "d6b52554-8edf-4d29-9c38-429f3ed708cf",
+          "name": "Riku Yamada",
+          "type": "gc",
+          "before": 15698936,
+          "after": 22025388,
+          "pctDelta": 40.3,
+          "absDelta": 6326452
+        },
+        {
+          "id": "11a27255-f078-46c2-a087-3f0648a63690",
+          "name": "Rui Tavares",
+          "type": "brostensrytter",
+          "before": 10431902,
+          "after": 5353167,
+          "pctDelta": -48.68,
+          "absDelta": -5078735
+        },
+        {
+          "id": "a9dce93e-430e-4d91-ab55-0740e2726b28",
+          "name": "Marcos Ramírez",
+          "type": "gc",
+          "before": 64159134,
+          "after": 59493748,
+          "pctDelta": -7.27,
+          "absDelta": -4665386
+        },
+        {
+          "id": "8f33bce8-190b-49a4-adf2-e773da9f4d5d",
+          "name": "Carlos Lozano",
+          "type": "gc",
+          "before": 73984921,
+          "after": 78451419,
+          "pctDelta": 6.04,
+          "absDelta": 4466498
+        },
+        {
+          "id": "680c5974-2de9-4c49-9e8f-45ddd0bd676e",
+          "name": "Shun Kimura",
+          "type": "puncheur",
+          "before": 4172402,
+          "after": 351063,
+          "pctDelta": -91.59,
+          "absDelta": -3821339
+        }
+      ],
+      "humanPuncheurs": {
+        "n": 87,
+        "median": -68.2325140595592,
+        "p10": -85.60976087663961,
+        "p90": -59.95323269339694,
+        "mean": -69.51480304763909
+      },
+      "humanGc": {
+        "n": 32,
+        "median": 50.080504731126815,
+        "p10": -0.014416414958214909,
+        "p90": 77.82131447817756,
+        "mean": 40.684550600358264
+      }
+    }
+  ]
+}
