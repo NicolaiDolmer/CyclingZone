@@ -88,8 +88,8 @@ test("segments/weather rører ALDRIG pass 1 eller pass 2 (bit-identitet bevaret,
   const a = generateRaceStageProfiles(raceFor("balanced_week", "cross-1", 8));
   const b = generateRaceStageProfiles(raceFor("balanced_week", "cross-1", 8));
   for (let i = 0; i < a.length; i++) {
-    const { segments: sA, weather: wA, ...restA } = a[i];
-    const { segments: sB, weather: wB, ...restB } = b[i];
+    const { segments: _sA, weather: _wA, ...restA } = a[i];
+    const { segments: _sB, weather: _wB, ...restB } = b[i];
     assert.deepEqual(restA, restB);
   }
 });
