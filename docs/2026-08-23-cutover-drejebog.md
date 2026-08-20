@@ -307,7 +307,7 @@ tests i `cutover3645.test.js`.
 | **1. Snapshot** (kun SELECT, ingen apply-form) | `infisical run --env=prod -- node scripts/dev/snapshot3459.mjs ../docs/snapshots/3459` |
 | **2. Verificér snapshottet læsbart** | `infisical run --env=prod -- node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459` |
 | **3. Backup af løn-/mandat-tabeller** | dry-run: `… node scripts/dev/cutoverBackup3645.mjs`<br>apply: `CONFIRM_BACKUP=yes … node scripts/dev/cutoverBackup3645.mjs --apply`<br>efterprøv: `… node scripts/dev/cutoverBackup3645.mjs --verify` |
-| **4. Løn-genberegning** | dry-run: `… node scripts/dev/salaryRecompute3645.mjs --basis market`<br>apply: `CONFIRM_SALARY_RECOMPUTE=yes … node scripts/dev/salaryRecompute3645.mjs --basis market --apply` |
+| **4. Løn-genberegning** | dry-run: `… node scripts/dev/salaryRecompute3645.mjs`<br>apply: `CONFIRM_SALARY_RECOMPUTE=yes … node scripts/dev/salaryRecompute3645.mjs --apply` |
 | **5. Mandat-genberegning** | dry-run: `… node scripts/dev/mandateRecompute3645.mjs`<br>apply: `CONFIRM_MANDATE_RECOMPUTE=yes … node scripts/dev/mandateRecompute3645.mjs --apply` |
 | **Rollback af lofter** | `CONFIRM_RESTORE=yes … node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459 --apply` |
 
@@ -323,9 +323,12 @@ IF NOT EXISTS`). Rollback-SQL for løn og mandat står i samme fil.
   rækker de er ved at røre.
 - Mandat-genberegningen nægter at skrive hvis #3514-migrationens mål-kolonne ikke
   findes — den gætter ikke på hvor tallet skal hen.
-- Løn-genberegningen med `--basis market` stopper hvis `lib/salaryBasis.js` ikke
-  findes (dvs. #3393 ikke merged). Formlen designes med ejeren; scriptet har ingen
-  egen udgave af den. Indtil da kan hele kæden tør-køres med `--basis production`.
+- Løn-genberegningen har siden #3989/#3992 kun ét grundlag (`--basis production`,
+  default) — computeFrozenSalary importeres direkte fra `contractSeed.js`, aldrig
+  en egen udgave af formlen. Et ukendt `--basis`-navn (fx det udgåede `market`)
+  stopper scriptet højlydt i stedet for at gætte. Dry-run mod prod 20/8 gav
+  medianhold-menneskehold ×2,21 (4.549 → 11.843 CZ$), i tråd med den
+  ejer-godkendte måling ×2,2 fra #3989.
 - Gendannelsen skriver et før-billede (`pre-restore-<tidsstempel>.json`) i
   snapshot-mappen FØR den rører noget, så selve gendannelsen også kan rulles tilbage.
 

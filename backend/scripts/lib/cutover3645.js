@@ -212,3 +212,63 @@ export function countBy(rows, keyFn) {
   }
   return Object.fromEntries([...out.entries()].sort((a, b) => b[1] - a[1]));
 }
+
+// ── Løn-grundlag (#3645 / #3989) ────────────────────────────────────────────
+// #3989 gjorde løn-formlen til ÉT globalt grundlag (computeFrozenSalary,
+// current_production_value × SALARY_RATE_PRODUCTION, ingen division). Det
+// tidligere `--basis market`-grundlag (#3393, lib/salaryBasis.js) blev
+// parkeret og filen slettet ved merge af #3992 — der er intet at vælge
+// imellem længere, kun ét gyldigt navn. Valideringen er bevidst ren og
+// importerer IKKE computeFrozenSalary selv: scriptet i backend/scripts/dev/
+// importerer og kalder den ægte funktion; denne fil siger kun om
+// --basis-navnet er kendt.
+export const VALID_SALARY_BASIS = Object.freeze(["production"]);
+
+export function assertValidSalaryBasis(basis) {
+  if (!VALID_SALARY_BASIS.includes(basis)) {
+    throw new Error(
+      `Ukendt --basis "${basis}". Gyldig værdi: ${VALID_SALARY_BASIS.join(", ")} (default, eneste model siden #3989).`,
+    );
+  }
+  return basis;
+}
+
+// ── Løn-rapport pr. hold (#3645 / #3989) ────────────────────────────────────
+// Rulle pr.-rytter foer/efter op pr. hold, så en løn-genberegnings-dry-run kan
+// vise "nuværende lønsum → ny lønsum, ratio" pr. hold og et medianhold — det
+// er præcis det tal ejeren godkendte hold-for-hold-målingen mod 20/8 (#3989:
+// medianholdets prognose ×2,2 af dagens frosne løn). Ratio er null når
+// holdets nuværende lønsum er 0 (undgår division med 0).
+export function buildTeamSalaryReport(riderRows) {
+  const byTeam = new Map();
+  for (const r of riderRows || []) {
+    if (r == null || r.teamId == null) continue;
+    const t = byTeam.get(r.teamId) || {
+      teamId: r.teamId,
+      teamName: r.teamName ?? "(ukendt)",
+      isAi: !!r.isAi,
+      n: 0,
+      foer: 0,
+      efter: 0,
+    };
+    t.n++;
+    t.foer += num(r.foer);
+    t.efter += num(r.efter);
+    byTeam.set(r.teamId, t);
+  }
+  const teams = [...byTeam.values()]
+    .map((t) => ({ ...t, ratio: t.foer > 0 ? t.efter / t.foer : null }))
+    .sort((a, b) => a.teamName.localeCompare(b.teamName, "da"));
+
+  const foerVals = teams.map((t) => t.foer).sort((a, b) => a - b);
+  const efterVals = teams.map((t) => t.efter).sort((a, b) => a - b);
+  const ratios = teams.filter((t) => t.ratio != null).map((t) => t.ratio).sort((a, b) => a - b);
+
+  return {
+    teams,
+    medianFoer: percentile(foerVals, 0.5),
+    medianEfter: percentile(efterVals, 0.5),
+    medianRatio: percentile(ratios, 0.5),
+    ratioSummary: percentileSummary(ratios),
+  };
+}
