@@ -6,6 +6,16 @@ Hvor der står **ikke verificeret**, er det fordi det ikke er målt. Der står a
 
 ---
 
+## REVISION 20/8 (ejer-besluttet i planlægningssessionen)
+
+1. **Tidsvinduet er flyttet til søndag AFTEN 19:30-22:30.** Målt 20/8: S2-finalen kører etaper hele søndagen (11:00-19:00, sidste etape "Le Mur de Huy" kl. 19:00), og sæsonafslutning forudsætter at sidste etape er kørt. "Flip tidligt søndag"-rådet nedenfor er dermed overstyret. Rækkefølge i vinduet: snapshot → race-day-flip (#3459) → D1-komprimering (top 24, PR #3930, apply mod frosset snapshot) → løn-genberegning → mandat-backfill (#3514). Ejer-go pr. skridt som beskrevet.
+2. **Rollback-vinduet er større end afsnittet "Hvor længe er vinduet" siger:** bufferdagen 24/8 er besluttet (#3467, KS3 18/8) — mandag er hviledag, første S3-løbsdag er tirsdag 25/8 (indarbejdes i kalender-regenereringen #3546). Fra flip søndag aften til første etape under ny motor er der altså ~36 timer, ikke under et døgn. OBS: det daglige trænings-tick kl. 22 ligger stadig INDE i vinduet — måles i generalprøven.
+3. **Komponent 2 (løn) er OMLAGT og delvist leveret:** #3393 er PARKERET (genindførte inversionen). I stedet: løn = `current_production_value` × én global sats 0,35 (#3989, PR #3992 MERGED 20/8, deployet og verificeret). Prognosen viser rigtige tal nu; det der resterer søndag er KUN genberegningen af eksisterende frosne kontrakter. **Værktøjs-hul:** `salaryRecompute3645.mjs --basis market` er gated på `lib/salaryBasis.js`, som #3992 har SLETTET — scriptet skal opdateres til den nye formel og tør-køres FØR søndag (generalprøve-punkt).
+4. **Generalprøve LØRDAG 22/8 (ejer-godkendt 20/8):** hele søndagskæden køres mod staging i rækkefølge med stopur: (a) frys snapshot + verificér backup, (b) race-day-flip, (c) post-verify `seasons.race_days_total = 28` for S3 (#3990), (d) D1-komprimering mod dry-runnet, (e) mandat-backfill (lukker samtidig hullet "script-apply med ejer-nøgle"), (f) løn-genberegning med NY formel + stikprøve på 5 hold, (g) rollback-test af mindst ét trin, (h) notér samlet tid + mål 22-tickets adfærd. Generalprøvens målte tid justerer søndagsplanen.
+5. **Spillerbesked om weekendplanen** (finale søndag, skifte søndag aften, hviledag mandag, S3-start tirsdag) er udkastet 20/8 — ejeren poster selv.
+
+---
+
 ## Ejer-beslutninger 17/8
 
 | # | Spørgsmål | Beslutning |
