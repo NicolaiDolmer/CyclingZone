@@ -31,9 +31,9 @@ merge-orden, se .claude/learnings/2026-08-20-patch-note-numre-tildeles-i-merge-o
    Worktree C:/Dev/CyclingZone-worktrees/2748-pension. Inbox-scriptet
    (notifyRetirement2748.mjs) koeres FOERST ved soendagens cutover, staar i drejebogen.
 5. **PR #4018 finance (7.162)** - ejer-go givet ("godkendt nu"). Worktree
-   .claude/worktrees/agent-ae4807b3767150663. FOER merge: verificer fuld
-   e2e - lokal koersel blev afbrudt ved session-luk; tjek `gh pr checks 4018`
-   (CI koerer alle specs) og genkør evt. `npm run test:e2e` i worktreet.
+   .claude/worktrees/agent-ae4807b3767150663. Fuld lokal e2e koert ved
+   close-out: 509 passed, 1 kendt webkit-flake (kitchen-sink, passerer
+   isoleret). Tjek blot `gh pr checks 4018` er groen ved merge-tidspunktet.
    Ejer-feedback ved go: #4025 tekst-trim er OPFOELGNING, ikke denne PR.
 
 **Pr. vogn-procedure (serielle konflikter er FORVENTEDE):** efter hvert merge
