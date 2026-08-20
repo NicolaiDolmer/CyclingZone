@@ -258,6 +258,23 @@ export function formatMarkdown({ before, after, overlapBefore, overlapAfter }) {
   lines.push(`knock-on-effekter af A/B's ændrede løbsudvalg adskiller dem).`);
   lines.push(``);
 
+  lines.push(`## 0. #3467 bufferdag (ejer-beslutning 18/8, KS3) — første løbsdag`);
+  lines.push(``);
+  lines.push(`Dette scorecard måler ren KOMPOSITION (GT-længde, spredning, dagsafgørelser, profiltyper,`);
+  lines.push(`overlap) og er bevidst AFKOBLET fra kalenderdatoer — \`FROM\` ovenfor er vilkårlig`);
+  lines.push(`(2026-01-01, kun scheduling-tider, ikke målt). Første løbsdag er derfor IKKE et tal dette`);
+  lines.push(`scorecard kan vise meningsfuldt.`);
+  lines.push(``);
+  lines.push(`Ejer-beslutningen 18/8 (#3467): 24/8 = hviledag (INGEN løb), FØRSTE S3-LØBSDAG = 25/8.`);
+  lines.push(`Den nu wipede prod-kalender havde første etape mandag 24/8 kl. 11 — forældet på præcis`);
+  lines.push(`dette punkt (fra FØR beslutningen). Bufferdagen er implementeret og VERIFICERET som en`);
+  lines.push(`caller-leveret \`from\`-værdi (\`resolveCalendarFrom({ firstRaceDate: "2026-08-25" })\`),`);
+  lines.push(`IKKE en ændring i selve kompositions-koden denne PR rører — se`);
+  lines.push(`\`backend/scripts/dev/regenSeason3Calendar.mjs\`, som kører den ÆGTE plan (rigtige datoer,`);
+  lines.push(`100 % read-only dry-run) og STOPPER hvis det tidligste planlagte løb ikke lander præcis`);
+  lines.push(`på 2026-08-25.`);
+  lines.push(``);
+
   lines.push(`## 1. GT-andel af D1-slots`);
   lines.push(``);
   lines.push(`| Seed | FØR | EFTER |`);

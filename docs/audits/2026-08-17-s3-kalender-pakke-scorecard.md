@@ -1,6 +1,6 @@
 # S3-kalender-pakke: dry-run-scorecard (#3546)
 
-Genereret 2026-08-17. 100 % read-only mod prod-kataloget (`race_pool`)  - 
+Genereret 2026-08-20. 100 % read-only mod prod-kataloget (`race_pool`)  - 
 ingen DB-writes, ingen kalender-regenerering. FØR/EFTER kørt over 3 seeds (hypotetiske
 sæson-numre 3/4/5) på tier 1 (D1), som er hvor de fleste af de 7 leverancer er målbare.
 Pakken dækker de 4 oprindelige beslutninger (A-D, 17/8 morgen) + 3 tilføjet samme aften efter en
@@ -11,6 +11,22 @@ stages/date_text patchet in-memory til Giro 18 / Hexagone 17 / Vuelta 17 (matche
 `scripts/race_pool_seed.csv`): samme værdi B/C/D/E/F/G's kode-ændringer kører igennem i begge kolonner
 (E/F/G er ikke gated af A, så de to kolonner ligner hinanden for målene 6-8: kun sekundære
 knock-on-effekter af A/B's ændrede løbsudvalg adskiller dem).
+
+## 0. #3467 bufferdag (ejer-beslutning 18/8, KS3) — første løbsdag
+
+Dette scorecard måler ren KOMPOSITION (GT-længde, spredning, dagsafgørelser, profiltyper,
+overlap) og er bevidst AFKOBLET fra kalenderdatoer — `FROM` ovenfor er vilkårlig
+(2026-01-01, kun scheduling-tider, ikke målt). Første løbsdag er derfor IKKE et tal dette
+scorecard kan vise meningsfuldt.
+
+Ejer-beslutningen 18/8 (#3467): 24/8 = hviledag (INGEN løb), FØRSTE S3-LØBSDAG = 25/8.
+Den nu wipede prod-kalender havde første etape mandag 24/8 kl. 11 — forældet på præcis
+dette punkt (fra FØR beslutningen). Bufferdagen er implementeret og VERIFICERET som en
+caller-leveret `from`-værdi (`resolveCalendarFrom({ firstRaceDate: "2026-08-25" })`),
+IKKE en ændring i selve kompositions-koden denne PR rører — se
+`backend/scripts/dev/regenSeason3Calendar.mjs`, som kører den ÆGTE plan (rigtige datoer,
+100 % read-only dry-run) og STOPPER hvis det tidligste planlagte løb ikke lander præcis
+på 2026-08-25.
 
 ## 1. GT-andel af D1-slots
 
