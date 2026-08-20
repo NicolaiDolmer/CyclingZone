@@ -376,8 +376,11 @@ export default function NotificationsPage() {
     if (!userIdRef.current) return;
     setMarkingAll(true);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    // #4017: kun ULÆSTE rækker — uden is_read-filteret omskrev hvert klik samtlige
+    // notifikationer brugeren nogensinde har haft (målt: 251 klik → 92.560 rækker),
+    // og hver omskrevet række RLS-tjekkes efterfølgende én for én af Realtime.
     const { error } = await supabase.from("notifications")
-      .update({ is_read: true }).eq("user_id", userIdRef.current);
+      .update({ is_read: true }).eq("user_id", userIdRef.current).eq("is_read", false);
     if (error) await loadNotifications();
     setMarkingAll(false);
   }
