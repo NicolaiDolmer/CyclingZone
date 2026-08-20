@@ -9,7 +9,8 @@
     "overview": "Overblik",
     "loans": "Lån",
     "history": "Historik",
-    "sponsors": "Sponsor"
+    "sponsors": "Sponsor",
+    "seasonSwitch": "Sæsonskifte"
   },
   "loanSummary": {
     "active": "{count, plural, one {1 aktivt lån} other {# aktive lån}}",
@@ -207,6 +208,59 @@
     },
     "showTour": "Vis mig rundt",
     "skip": "Spring over"
+  },
+  "seasonSwitch": {
+    "loading": "Henter sæsonskifte-afregningen…",
+    "receipt": {
+      "title": "Afregning sæson {current} → {next}",
+      "subtitle": "Hvad der sker med din balance når bøgerne lukker, og sæson {next} starter.",
+      "noCharge": "Ingen opkrævning",
+      "balanceAfter": "Balance: {value} CZ$",
+      "step": {
+        "books_close": {
+          "label": "Bøgerne lukker",
+          "detail": "Din balance som den står lige nu, ført med ind i sæsonskiftet."
+        },
+        "sponsor_base": {
+          "label": "Sponsor-base lander",
+          "detail": "Næste sæsons garanterede base, krediteret ved sæsonstart."
+        },
+        "upkeep": {
+          "label": "Divisions-upkeep",
+          "detail": "Fast udgift bestemt af din division, opkrævet ved sæsonstart."
+        },
+        "staff_facilities": {
+          "label": "Stab & faciliteter",
+          "detail": "Sæsonstarts-upkeep for din stab og dine facilitets-niveauer."
+        },
+        "academy_drift": {
+          "label": "Akademi-drift",
+          "detail": "Sæsonstarts-driftsudgift for dine akademi-pladser."
+        },
+        "salary_switch": {
+          "label": "Løn skifter til sæson {next}-reglerne",
+          "detail": "Ingen opkrævning ved selve skiftet. Dine nuværende kontrakter forbliver underskrevne og låste. Den nye formel gælder først når en kontrakt forlænges, eller en ny rytter underskrives."
+        },
+        "start_s3": {
+          "label": "Du starter næste sæson med",
+          "detail": "Din balance efter sæsonstarts-opkrævningerne ovenfor. Præmiepenge og variabel sponsorindtægt er ikke inkluderet, da de afhænger af løb der endnu ikke er kørt."
+        }
+      }
+    },
+    "salaryTable": {
+      "title": "Løn: nuværende kontrakt vs. næste sæson",
+      "subtitle": "Hver underskrevet rytters frosne kontraktløn sammenholdt med hvad sæson {next}-formlen ville prissætte ham til i dag.",
+      "empty": "Ingen ryttere under kontrakt.",
+      "header": {
+        "rider": "Rytter",
+        "contract": "Kontrakt (S{current})",
+        "projection": "S{next}-prognose",
+        "delta": "Ændring"
+      },
+      "total": "Total",
+      "viewAll": "Vis alle {count} ryttere",
+      "showLess": "Vis færre"
+    }
   },
   "report": {
     "season": "Sæson {n}",

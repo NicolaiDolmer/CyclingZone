@@ -9,7 +9,8 @@
     "overview": "Overview",
     "loans": "Loans",
     "history": "History",
-    "sponsors": "Sponsor"
+    "sponsors": "Sponsor",
+    "seasonSwitch": "Season switch"
   },
   "loanSummary": {
     "active": "{count, plural, one {1 active loan} other {# active loans}}",
@@ -207,6 +208,59 @@
     },
     "showTour": "Show me around",
     "skip": "Skip"
+  },
+  "seasonSwitch": {
+    "loading": "Loading the season switch settlement…",
+    "receipt": {
+      "title": "Season {current} → {next} settlement",
+      "subtitle": "What happens to your balance when the books close and season {next} starts.",
+      "noCharge": "No charge",
+      "balanceAfter": "Balance: {value} CZ$",
+      "step": {
+        "books_close": {
+          "label": "Books close",
+          "detail": "Your balance as it stands right now, carried into the switch."
+        },
+        "sponsor_base": {
+          "label": "Sponsor base lands",
+          "detail": "Next season's guaranteed base, credited at season start."
+        },
+        "upkeep": {
+          "label": "Division upkeep",
+          "detail": "Flat cost set by your division, charged at season start."
+        },
+        "staff_facilities": {
+          "label": "Staff & facilities",
+          "detail": "Season-start upkeep for your staff and facility tiers."
+        },
+        "academy_drift": {
+          "label": "Academy upkeep",
+          "detail": "Season-start drift cost for your academy slots."
+        },
+        "salary_switch": {
+          "label": "Salaries switch to season {next} rules",
+          "detail": "No charge at the switch itself. Your current contracts stay signed and locked. The new formula only applies when a contract is renewed or a rider is signed."
+        },
+        "start_s3": {
+          "label": "You start next season with",
+          "detail": "Your balance after the season-start charges above. Prize money and variable sponsor income are not included, since they depend on races not yet run."
+        }
+      }
+    },
+    "salaryTable": {
+      "title": "Salaries: current contract vs. next season",
+      "subtitle": "Every signed rider's frozen contract salary next to what the season {next} formula would price them at today.",
+      "empty": "No riders under contract.",
+      "header": {
+        "rider": "Rider",
+        "contract": "Contract (S{current})",
+        "projection": "S{next} projection",
+        "delta": "Change"
+      },
+      "total": "Total",
+      "viewAll": "View all {count} riders",
+      "showLess": "Show fewer"
+    }
   },
   "report": {
     "season": "Season {n}",

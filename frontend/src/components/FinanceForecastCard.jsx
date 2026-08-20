@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
@@ -44,16 +45,48 @@ function formatRange(low, high) {
   return `${formatNumber(low)}–${formatNumber(high)} CZ$`;
 }
 
-function Row({ label, value, accent, detail }) {
+// #4011: sæt uden om label — "signed contracts" på løn-rækken forklarer
+// hvorfor kolonnens tal ikke drifter selvom lønformlen skifter ved cutover.
+function InlineBadge({ children }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full border border-cz-border text-cz-3 text-3xs font-medium ms-1.5 align-middle">
+      {children}
+    </span>
+  );
+}
+
+// #4011 (design-go 20/8, punkt A): når `dualColumn` er sat, viser rækken
+// BEGGE sæsoner (S2 realiseret/kontrakt + S3 prognose) i stedet for ét tal.
+// `s2Value`/value(=S3) er begge valgfrie — en manglende værdi renderer "—"
+// (samme formatSigned-fallback som før), så en linje der ikke findes for én
+// sæson (fx lånerente uden S2-tal) stadig holder de to kolonner justeret.
+// Mobil: kun ÉN kolonne vises ad gangen, styret af forælderens segmenterede
+// toggle (`activeCol`) — layoutet stacker i stedet for at klemme to tal sammen
+// på en smal skærm (issue-krav "kolonner bliver segmenteret toggle").
+function Row({ label, value, accent, detail, badge, dualColumn, s2Value, activeCol }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0 gap-3">
       <div className="min-w-0 pr-3">
-        <p className="text-cz-2 text-xs">{label}</p>
-        {detail && <p className="text-cz-3 text-2xs mt-0.5 truncate">{detail}</p>}
+        <p className="text-cz-2 text-xs">
+          {label}
+          {badge && <InlineBadge>{badge}</InlineBadge>}
+        </p>
+        {detail && <p className="text-cz-3 text-2xs mt-0.5 leading-snug">{detail}</p>}
       </div>
-      <p className={`font-mono text-sm font-bold ${accent}`}>
-        {formatSigned(value)}
-      </p>
+      {dualColumn ? (
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <p className={`font-mono text-sm font-bold tabular-nums w-28 text-end ${accent} ${activeCol === "s3" ? "hidden sm:block" : ""}`}>
+            {formatSigned(s2Value)}
+          </p>
+          <p className={`font-mono text-sm font-bold tabular-nums w-28 text-end ${accent} ${activeCol === "s2" ? "hidden sm:block" : ""}`}>
+            {formatSigned(value)}
+          </p>
+        </div>
+      ) : (
+        <p className={`font-mono text-sm font-bold ${accent}`}>
+          {formatSigned(value)}
+        </p>
+      )}
     </div>
   );
 }
@@ -61,16 +94,30 @@ function Row({ label, value, accent, detail }) {
 // #3899 (låst design punkt 2): "INTERVAL for det usikre (præmier)" — egen
 // row-variant der viser low–high i stedet for ét punkttal. Samme anatomi som
 // Row (label + detail venstre, tal højre) så statement-linjerne læses ens.
-function RangeRow({ label, low, high, accent, detail }) {
+//
+// #4011: dual-column-varianten viser S2 som ét REALISERET punkttal (allerede
+// kendt, intet interval nødvendigt) og S3 som det eksisterende interval.
+function RangeRow({ label, low, high, accent, detail, dualColumn, s2Value, activeCol }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0">
+    <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0 gap-3">
       <div className="min-w-0 pr-3">
         <p className="text-cz-2 text-xs">{label}</p>
-        {detail && <p className="text-cz-3 text-2xs mt-0.5 truncate">{detail}</p>}
+        {detail && <p className="text-cz-3 text-2xs mt-0.5 leading-snug">{detail}</p>}
       </div>
-      <p className={`font-mono text-sm font-bold tabular-nums ${accent}`}>
-        {formatRange(low, high)}
-      </p>
+      {dualColumn ? (
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <p className={`font-mono text-sm font-bold tabular-nums w-28 text-end ${accent} ${activeCol === "s3" ? "hidden sm:block" : ""}`}>
+            {formatSigned(s2Value)}
+          </p>
+          <p className={`font-mono text-sm font-bold tabular-nums w-28 text-end ${accent} ${activeCol === "s2" ? "hidden sm:block" : ""}`}>
+            {formatRange(low, high)}
+          </p>
+        </div>
+      ) : (
+        <p className={`font-mono text-sm font-bold tabular-nums ${accent}`}>
+          {formatRange(low, high)}
+        </p>
+      )}
     </div>
   );
 }
@@ -80,11 +127,22 @@ export default function FinanceForecastCard({
   loading,
   seasonsAhead = 1,
   onSeasonsAheadChange,
+  // #4011 (design-go 20/8, punkt A): valgfri S2/S3-opgørelse fra
+  // GET /api/finance/season-switch-preview. Uden den falder kortet tilbage
+  // til det oprindelige énkolonne-layout (fx Dashboard, eller mens
+  // opgørelsen stadig loader) — ingen af de eksisterende brugssteder skal
+  // ændre adfærd bare fordi denne prop findes i komponenten.
+  seasonSwitch,
 }) {
   const { t } = useTranslation("dashboard");
   // #666: warnings emitter { messageKey, params } fra backend; renderes via
   // backendMessages-namespace for fuld locale-rendering.
   const { t: tBackend } = useTranslation("backendMessages");
+  // #4011: mobil segmenteret toggle — hvilken kolonne der er synlig under
+  // sm-breakpointet (begge er altid synlige fra sm og op). Default S3 (næste
+  // sæson) fordi resten af kortet (hero-tallet, risk-tier) allerede handler
+  // om næste sæson.
+  const [activeCol, setActiveCol] = useState("s3");
 
   if (loading) {
     return (
@@ -123,6 +181,34 @@ export default function FinanceForecastCard({
         variable: formatNumber(sponsorBreakdown.variable),
       })
     : undefined;
+
+  // #4011: kortet viser kun to kolonner når opgørelsen faktisk er hentet —
+  // se prop-kommentaren ovenfor for hvorfor det er en tavs fallback og ikke
+  // en fejltilstand.
+  const hasSeasonSwitch = Boolean(seasonSwitch);
+  const s2 = seasonSwitch?.s2;
+  const currentSeasonNumber = seasonSwitch?.season?.current_number;
+  const nextSeasonNumber = seasonSwitch?.season?.next_number;
+  const s2ColumnLabel = t("forecast.columns.s2", { number: currentSeasonNumber ?? "?" });
+  const s3ColumnLabel = t("forecast.columns.s3", { number: nextSeasonNumber ?? "?" });
+  // #4011 (design-go 20/8, punkt A2): løn-rækken kombinerer den eksisterende
+  // S3-forklaring med "signed contracts"-chippen, og kun i dual-column-
+  // tilstanden — enkelt-kolonne-visningen (Dashboard) beholder den originale
+  // tekst uændret.
+  const salaryDetail = hasSeasonSwitch
+    ? t("forecast.salaryDetail.seasonSwitch", { next: nextSeasonNumber ?? "?" })
+    : forecast.inputs?.salary_basis === "production_s3"
+      ? t("forecast.salaryDetail.productionS3")
+      : undefined;
+  const showUpkeepRow = hasSeasonSwitch
+    ? forecast.projected_upkeep !== 0 || s2?.upkeep !== 0
+    : forecast.projected_upkeep !== 0;
+  const showStaffFacilitiesRow = hasSeasonSwitch
+    ? forecast.projected_staff_facilities !== 0 || s2?.staff_facilities !== 0
+    : forecast.projected_staff_facilities !== 0;
+  const showAcademyDriftRow = hasSeasonSwitch
+    ? forecast.projected_academy_drift !== 0 || s2?.academy_drift !== 0
+    : forecast.projected_academy_drift !== 0;
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
@@ -187,17 +273,51 @@ export default function FinanceForecastCard({
           komplet; lånerente + akademi-drift forbliver betingede ekstra-linjer
           som før (uændret adfærd, ikke en del af de 5 navngivne kilder). */}
       <div className="mb-3">
+        {/* #4011: kolonne-headere (desktop) / segmenteret toggle (mobil) —
+            kun når opgørelsen er hentet. sm:hidden/hidden sm:flex spejler
+            hver Row/RangeRow's egen sm-breakpoint-logik ovenfor. */}
+        {hasSeasonSwitch && (
+          <>
+            <div className="hidden sm:flex items-center justify-end gap-3 mb-1.5">
+              <span className="w-28 text-end text-cz-3 text-3xs uppercase tracking-wider">{s2ColumnLabel}</span>
+              <span className="w-28 text-end text-cz-3 text-3xs uppercase tracking-wider">{s3ColumnLabel}</span>
+            </div>
+            <div className="sm:hidden flex gap-1.5 mb-2" role="tablist" aria-label={t("forecast.columns.toggleAria")}>
+              {[["s2", s2ColumnLabel], ["s3", s3ColumnLabel]].map(([key, colLabel]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCol === key}
+                  onClick={() => setActiveCol(key)}
+                  className={`flex-1 px-2 py-1.5 rounded-cz text-xs font-medium border transition-colors
+                    ${activeCol === key
+                      ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                      : "text-cz-2 border-cz-border"}`}
+                >
+                  {colLabel}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         <Row
           label={t("forecast.row.sponsorBase")}
           value={forecast.projected_sponsor_base}
           accent="text-cz-success"
           detail={sponsorBaseDetail}
+          dualColumn={hasSeasonSwitch}
+          s2Value={s2?.sponsor_base}
+          activeCol={activeCol}
         />
         <Row
           label={t("forecast.row.sponsorVariable")}
           value={forecast.projected_sponsor_variable}
           accent="text-cz-success"
           detail={sponsorVariableDetail}
+          dualColumn={hasSeasonSwitch}
+          s2Value={s2?.sponsor_variable}
+          activeCol={activeCol}
         />
         <RangeRow
           label={t("forecast.row.prize")}
@@ -210,54 +330,70 @@ export default function FinanceForecastCard({
               ? t("forecast.prizeDetail.realizedFloor")
               : t("forecast.prizeDetail.divisionInterval")
           }
+          dualColumn={hasSeasonSwitch}
+          s2Value={s2?.prize}
+          activeCol={activeCol}
         />
         <Row
           label={t("forecast.row.salary")}
           value={forecast.projected_salary}
           accent="text-cz-danger"
-          detail={
-            /* #3989: S3+ prissættes efter rytterens nuværende leverance, ikke
-               efter riders.salary — hele populationen genberegnes ved cutover.
-               Teksten skal sige BEGGE dele: at det er S3-systemet, OG at de
-               nuværende kontrakter er låste. Uden den halvdel læste spillerne
-               prognosen som en regning (#3986). */
-            forecast.inputs?.salary_basis === "production_s3"
-              ? t("forecast.salaryDetail.productionS3")
-              : undefined
-          }
+          detail={salaryDetail}
+          // #4011 (design-go 20/8, punkt A2): "signed contracts"-chip på
+          // løn-rækken, kun i dual-column-tilstanden — den forklarer hvorfor
+          // S2-tallet ikke er en prognose men en allerede underskrevet aftale.
+          badge={hasSeasonSwitch ? t("forecast.chip.signedContracts") : undefined}
+          dualColumn={hasSeasonSwitch}
+          s2Value={s2?.salary}
+          activeCol={activeCol}
         />
         {/* #3986: divisions-upkeep laa foer gemt inde i stab/faciliteter-linjen,
             saa en D2-manager saa 164.910 hvor hans tre ansatte kostede 24.610.
             Den har nu sin egen raekke. Skjules naar den er 0 (saeson 1 udskyder
             upkeep, jf. UPKEEP_BEFORE_FIRST_RACE_ENABLED), saa vi ikke viser en
             nul-linje der ikke betyder noget. */}
-        {forecast.projected_upkeep !== 0 && (
+        {showUpkeepRow && (
           <Row
             label={t("forecast.row.upkeep")}
             value={forecast.projected_upkeep}
             accent="text-cz-danger"
             detail={t("forecast.upkeepDetail.byDivision")}
+            dualColumn={hasSeasonSwitch}
+            s2Value={s2?.upkeep}
+            activeCol={activeCol}
           />
         )}
-        {forecast.projected_staff_facilities !== 0 && (
+        {showStaffFacilitiesRow && (
           <Row
             label={t("forecast.row.staffFacilities")}
             value={forecast.projected_staff_facilities}
             accent="text-cz-danger"
+            dualColumn={hasSeasonSwitch}
+            s2Value={s2?.staff_facilities}
+            activeCol={activeCol}
           />
         )}
+        {/* #4011: lånerente indgår ikke i sæsonskifte-opgørelsen (kun de 7
+            navngivne kildelinjer har et S2-realiseret tal) — s2Value forbliver
+            undefined og Row's formatSigned-fallback viser "—" i S2-kolonnen,
+            så gitteret stadig holder linje med de øvrige rækker. */}
         {forecast.projected_loan_interest !== 0 && (
           <Row
             label={t("forecast.row.loanInterest")}
             value={forecast.projected_loan_interest}
             accent="text-cz-danger"
+            dualColumn={hasSeasonSwitch}
+            activeCol={activeCol}
           />
         )}
-        {forecast.projected_academy_drift !== 0 && (
+        {showAcademyDriftRow && (
           <Row
             label={t("forecast.row.academyDrift")}
             value={forecast.projected_academy_drift}
             accent="text-cz-danger"
+            dualColumn={hasSeasonSwitch}
+            s2Value={s2?.academy_drift}
+            activeCol={activeCol}
           />
         )}
       </div>

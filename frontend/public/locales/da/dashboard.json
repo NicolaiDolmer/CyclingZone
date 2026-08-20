@@ -303,6 +303,14 @@
     },
     "projectedLabel": "Forventet net næste sæson",
     "rangeLine": "Spænd: {low} til {high} (baseret på præmie-estimatets usikkerhed)",
+    "columns": {
+      "s2": "Denne sæson (S{number})",
+      "s3": "Næste sæson (S{number})",
+      "toggleAria": "Vælg hvilken sæsons kolonne der skal vises"
+    },
+    "chip": {
+      "signedContracts": "Underskrevne kontrakter"
+    },
     "row": {
       "sponsorBase": "Sponsor (base)",
       "sponsorVariable": "Sponsor (variabel)",
@@ -327,7 +335,8 @@
       "byDivision": "Bestemt af din division, ikke din trup"
     },
     "salaryDetail": {
-      "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede."
+      "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede.",
+      "seasonSwitch": "Sæson {next} genberegner al løn ud fra leverance ved sæsonskiftet. Dine nuværende kontrakter er allerede underskrevet, så dette sæsons tal ligger fast indtil da."
     },
     "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson 3's lønsystem.",
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",

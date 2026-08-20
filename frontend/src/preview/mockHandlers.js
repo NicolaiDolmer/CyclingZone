@@ -727,6 +727,97 @@ export function apiResponse(pathname, search = "") {
     };
   }
 
+  // #4011 — sæsonskifte-afregningen (Finance-siden, sektion "C"). Fem
+  // synteriske ryttere (uafhængige af RIDERS/TEST_TEAM — kun brugt her, så
+  // andre specs der stoler på RIDERS' facon forbliver upåvirkede) med en
+  // current_production_value der giver samme ×2,2-billede som den ejer-
+  // godkendte måling 20/8 (#3989/#3645: medianholdets S3-løn ≈ 2,2× dagens
+  // frosne kontraktløn) — så preview-fladen viser PRÆCIS den historie
+  // designet blev godkendt til, ikke en tilfældig demo-økonomi.
+  if (pathname.endsWith("/api/finance/season-switch-preview")) {
+    const SALARY_RATE_PRODUCTION = 0.35;
+    const seasonSwitchRiders = [
+      { id: "ss-r1", firstname: "Ada", lastname: "Pedersen", salary: 42000, current_production_value: 264600 },
+      { id: "ss-r2", firstname: "Lucas", lastname: "Berg", salary: 38000, current_production_value: 239400 },
+      { id: "ss-r3", firstname: "Mateo", lastname: "Rossi", salary: 51000, current_production_value: 321300 },
+      { id: "ss-r4", firstname: "Sven", lastname: "Karlsson", salary: 29000, current_production_value: 182700 },
+      { id: "ss-r5", firstname: "Théo", lastname: "Girard", salary: 33000, current_production_value: 207900 },
+    ];
+    const riderRows = seasonSwitchRiders.map((r) => {
+      const s3 = Math.max(1, Math.round(r.current_production_value * SALARY_RATE_PRODUCTION));
+      return {
+        id: r.id,
+        firstname: r.firstname,
+        lastname: r.lastname,
+        contract_salary: r.salary,
+        s3_salary_projection: s3,
+        delta: s3 - r.salary,
+      };
+    });
+    const totalContract = riderRows.reduce((sum, r) => sum + r.contract_salary, 0);
+    const totalProjection = riderRows.reduce((sum, r) => sum + r.s3_salary_projection, 0);
+
+    const s3 = {
+      sponsor_base: 180000,
+      sponsor_variable: 0,
+      prize_low: 172200,
+      prize_high: 260400,
+      salary: -totalProjection,
+      upkeep: -140000,
+      facility_upkeep: 0,
+      staff_salary: -24910,
+      staff_facilities: -24910,
+      academy_drift: 0,
+    };
+    s3.net = s3.sponsor_base + s3.sponsor_variable + 210000 + s3.salary + s3.upkeep + s3.staff_facilities + s3.academy_drift;
+
+    const startingBalance = TEST_TEAM.balance;
+    const steps = [];
+    let running = startingBalance;
+    steps.push({ key: "books_close", amount: null, balance_after: running });
+    const applyStep = (key, amount) => {
+      running += amount;
+      steps.push({ key, amount, balance_after: running });
+    };
+    applyStep("sponsor_base", s3.sponsor_base);
+    applyStep("upkeep", s3.upkeep);
+    applyStep("staff_facilities", s3.staff_facilities);
+    applyStep("academy_drift", s3.academy_drift);
+    steps.push({ key: "salary_switch", amount: 0, balance_after: running });
+    steps.push({ key: "start_s3", amount: null, balance_after: running });
+
+    return {
+      season: { current_number: ACTIVE_SEASON.number, next_number: ACTIVE_SEASON.number + 1 },
+      s2: {
+        sponsor_base: 200000,
+        sponsor_variable: 6000,
+        prize: 34000,
+        upkeep: 0, // #1678: sæson 1 udskyder upkeep til efter første løb
+        facility_upkeep: 0,
+        staff_salary: 0,
+        staff_facilities: 0,
+        academy_drift: 0,
+        salary: -totalContract,
+        salary_is_contract: true,
+      },
+      s3,
+      settlement: {
+        starting_balance: startingBalance,
+        ending_balance: running,
+        steps,
+      },
+      riders: {
+        rows: riderRows,
+        summary: {
+          rider_count: riderRows.length,
+          total_contract_salary: totalContract,
+          total_s3_salary_projection: totalProjection,
+          total_delta: totalProjection - totalContract,
+        },
+      },
+    };
+  }
+
   if (pathname.endsWith("/api/finance/loans")) {
     return {
       loans: [],
