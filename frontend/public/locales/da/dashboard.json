@@ -292,8 +292,8 @@
       },
       "yellow": {
         "label": "Gul",
-        "headline": "Pres på",
-        "summary": "Underskud eller stigende gæld. Overvej salg eller lavere løn."
+        "headline": "Lille margin",
+        "summary": "Ikke meget at gøre godt med. Et dårligt løb eller en dyr kontrakt kan vende det."
       },
       "red": {
         "label": "Rød",

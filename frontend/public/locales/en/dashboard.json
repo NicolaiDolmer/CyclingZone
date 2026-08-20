@@ -292,8 +292,8 @@
       },
       "yellow": {
         "label": "Yellow",
-        "headline": "Under pressure",
-        "summary": "Deficit or rising debt. Consider selling or lowering salary."
+        "headline": "Thin margin",
+        "summary": "Not much room. One bad race or an expensive contract can flip it."
       },
       "red": {
         "label": "Red",
