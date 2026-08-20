@@ -129,6 +129,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
   const baseOptions = [
     { key: "firstname", label: t("table.rider") },
     { key: "nationality_code", label: t("table.nation") },
+    { key: "rating", label: t("table.rating") },
     { key: "team_id", label: t("table.team") },
     { key: "is_u25", label: t("table.badges") },
     { key: "primary_type", label: t("table.type") },
@@ -442,12 +443,15 @@ export default function RidersPage() {
     // #3045: samlet 1-99-rating (samme model + plade-styling som holdsiden/
     // auktionskortet — riderOverallRating). Rytterdatabasen havde ingen
     // rating-kolonne overhovedet; den mangler nu for at kunne fold'es ind i
-    // portræt-underlinjen som #1 af de 3 kontrakt-felter. INGEN sortKey —
-    // rytterdatabasen er server-paginéret (fetchRidersPage), og ratingen er
-    // klient-udregnet (ikke en DB-kolonne der kan ORDER BY'es på tværs af sider).
+    // portræt-underlinjen som #1 af de 3 kontrakt-felter.
+    // #4035: sortKey "rating" — ratingen er klient-udregnet (ikke en DB-kolonne
+    // der kan ORDER BY'es direkte), så fetchRidersPage diverterer denne nøgle
+    // til fetchRidersSortedByRating (useRiderFilters.js) — samme fetch-alt+
+    // beregn+flet-mønster som løn-sorteringen (#2403).
     {
       key: "rating",
       header: <span title={t("table.ratingTitle")}>{t("table.rating")}</span>,
+      sortKey: "rating",
       numeric: true,
       compact: true,
       fold: true,

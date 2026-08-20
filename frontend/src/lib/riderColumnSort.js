@@ -9,6 +9,7 @@
 // countryUtils.js) og kan importeres frit fra tests.
 import { getRiderMarketValue, getRiderSalary } from "./marketValues.js";
 import { compareNationality } from "./countryUtils.js";
+import { riderOverallRating } from "./riderRating.js";
 
 // #2403: delt rytter-sort-komparator for KLIENT-sortering (auktioner, transfer-
 // markedets riderFilters-instans, eget hold, watchlist — alle driver via
@@ -139,4 +140,33 @@ export function mergeSalarySortedIds(withSalaryRows = [], withoutSalaryRows = []
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
   return merged.map(m => m.id);
+}
+
+// #4035: rating-kolonnen (RidersPage) havde INGEN sortKey — samme klasse
+// problem som løn-sorteringen ovenfor. `riderOverallRating` (riderRating.js)
+// er et vægtet snit af evne-kolonner hvor VÆGTENE afhænger af rytterens
+// primary_type (generated/displayRecipes.js), så PostgREST kan ikke ORDER BY
+// det direkte — det er ikke en enkelt DB-kolonne. Samme to-grens-mønster som
+// mergeSalarySortedIds: fetchRidersSortedByRating (useRiderFilters.js) henter
+// ALLE matchende rækker (id + primary_type + evner) letvægts, og denne
+// funktion beregner den ÆGTE rating i JS med samme funktion som visningen
+// bruger, så sorteret rækkefølge og vist tal aldrig kan divergere.
+//
+// Ryttere uden beregnelig rating (ingen opskrift for deres type, eller ingen
+// evner på rækken — riderOverallRating returnerer null) placeres SIDST
+// uanset retning, samme kontrakt som potentiale/_scoutMid-null-håndteringen
+// i compareRidersByFilter ovenfor.
+export function mergeRatingSortedIds(rows = [], ascending = false) {
+  const withRating = rows.map(r => ({ id: r.id, value: riderOverallRating(r) }));
+  withRating.sort((a, b) => {
+    const aNil = a.value == null;
+    const bNil = b.value == null;
+    if (aNil || bNil) {
+      if (aNil && bNil) return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      return aNil ? 1 : -1;
+    }
+    if (a.value !== b.value) return ascending ? a.value - b.value : b.value - a.value;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+  return withRating.map(m => m.id);
 }

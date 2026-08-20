@@ -14,14 +14,17 @@ import {
 // node --test kan importere den direkte — se riderColumnSort.js's header-
 // kommentar. Re-eksporteres herfra så eksisterende importer af
 // useRiderFilters.js uændret kan bruge dem.
-import { compareRidersByFilter, mergeSalarySortedIds, applyRiderColumnSort } from "./riderColumnSort.js";
+import {
+  compareRidersByFilter, mergeSalarySortedIds, mergeRatingSortedIds, applyRiderColumnSort,
+} from "./riderColumnSort.js";
 // #3331: riders er en deny-listed tabel (kan overstige PostgREST's stille
-// 1000-rækkers-loft — prod har ~8.700 ryttere). Løn-sorteringens to grene
-// (fetchRidersSortedBySalary) SKAL hente ALLE matchende rækker, ikke kun de
-// første 1000, ellers giver merge'et et forkert (stille afkortet) resultat.
+// 1000-rækkers-loft — prod har ~8.700 ryttere). Løn-/rating-sorteringens
+// to-grens-fletning (fetchRidersSortedBySalary/fetchRidersSortedByRating) SKAL
+// hente ALLE matchende rækker, ikke kun de første 1000, ellers giver merge'et
+// et forkert (stille afkortet) resultat.
 import { fetchAllRows } from "./supabasePagination.js";
 
-export { compareRidersByFilter, mergeSalarySortedIds, applyRiderColumnSort };
+export { compareRidersByFilter, mergeSalarySortedIds, mergeRatingSortedIds, applyRiderColumnSort };
 
 // Evner spænder 1-99 (mod PCM's klumpede 50-85). Et evne-filter er kun "aktivt"
 // når en grænse afviger fra fuld skala.
@@ -264,6 +267,43 @@ async function fetchRidersSortedBySalary(supabase, { filters, from, to, riderSel
   return { rows, count: orderedIds.length };
 }
 
+// #4035: rating-kolonnen (samlet 1-99, riderOverallRating) har SAMME problem
+// som løn ovenfor — den er ikke en DB-kolonne (vægtet snit af evner, vægtene
+// afhænger af rytterens primary_type, se generated/displayRecipes.js), så
+// PostgREST kan ikke ORDER BY den direkte. Diverteres FØR applyRiderColumnSort
+// til et fetch-alt+beregn+flet-mønster (mergeRatingSortedIds, riderColumnSort.js):
+// hent ALLE matchende rækker letvægts (id + primary_type + evner), beregn den
+// ÆGTE rating i JS med samme funktion som visningen, flet til én global
+// rækkefølge, og udsnit siden derfra — samme struktur som fetchRidersSortedBySalary.
+async function fetchRidersSortedByRating(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear }) {
+  function buildQuery() {
+    // #3331: fetchAllRows kræver en stabil .order() i buildQuery — riders.id
+    // (PK) — ellers kan sider overlappe/springe rækker over flere .range()-kald.
+    let q = supabase.from("riders").select(`id, primary_type, ${abilSelect}`);
+    q = applyRiderColumnFilters(q, filters, { prefix: "" }, seasonYear);
+    q = applyAbilityFilters(q, filters, { prefix: `${ABILITY_TABLE}.` });
+    return q.order("id", { ascending: true });
+  }
+
+  const rows = (await fetchAllRows(buildQuery)).map(flattenAbilities);
+
+  const ascending = filters.sort_dir === "asc";
+  const orderedIds = mergeRatingSortedIds(rows, ascending);
+  const pageIds = orderedIds.slice(from, to + 1);
+  if (pageIds.length === 0) return { rows: [], count: orderedIds.length };
+
+  const { data, error } = await supabase
+    .from("riders")
+    // pagination-safe: pageIds er allerede udsnittet til side-størrelsen ovenfor.
+    .select(`${riderSelect}, ${abilSelect}`)
+    .in("id", pageIds);
+  if (error) throw error;
+
+  const byId = new Map((data || []).map(flattenAbilities).map(r => [r.id, r]));
+  const rowsOut = pageIds.map(id => byId.get(id)).filter(Boolean);
+  return { rows: rowsOut, count: orderedIds.length };
+}
+
 // Henter én side af rytter-DB'en (server-pagineret). Sortering på en EVNE-kolonne
 // driver fra rider_derived_abilities (native order — PostgREST kan IKKE re-ordne
 // parent-rækker via et embedded to-one; verificeret 2026-06-19) med riders som
@@ -300,6 +340,10 @@ export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, 
   // applyRiderColumnSort til en to-grens fetch+merge i stedet.
   if (filters.sort === "salary") {
     return fetchRidersSortedBySalary(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });
+  }
+  // #4035: se fetchRidersSortedByRating ovenfor — rating kan heller ikke ORDER BY'es direkte.
+  if (filters.sort === "rating") {
+    return fetchRidersSortedByRating(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });
   }
 
   let q = supabase
