@@ -58,8 +58,12 @@ export const ABILITY_DIMENSIONS = Object.freeze([
   "flat", "tempo", "durability", "aggression", "descending",
 ]);
 
+// itt_hilly (#3546 D): kuperet enkeltstart-arketype: kun genereret af grand_tour-arketypen
+// (aldrig fra filler-vægte/kataloget selv), se orderAndBuildGrandTour/toGrandTourFinale
+// nedenfor. En GT's ANDEN enkeltstart (hvis filler ruller en) er itt_hilly i stedet for en
+// strukturelt identisk flad itt: retter #3546's "7 D1-løb kører 2 identiske ITT'er".
 export const PROFILE_TYPES = Object.freeze([
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "ttt", "cobbles", "classic",
+  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "classic",
 ]);
 
 export const FINALE_TYPES = Object.freeze([
@@ -79,6 +83,10 @@ export const DEMAND_VECTORS = Object.freeze({
   mountain:      Object.freeze({ climbing: 0.50, tempo: 0.12, endurance: 0.14, recovery: 0.06, punch: 0.04, tactics: 0.02, positioning: 0.02, randomness: 0.10 }),
   high_mountain: Object.freeze({ climbing: 0.52, endurance: 0.18, tempo: 0.08, recovery: 0.06, punch: 0.04, tactics: 0.02, randomness: 0.10 }),
   itt:           Object.freeze({ time_trial: 0.58, positioning: 0.24, flat: 0.06, randomness: 0.12 }),
+  // itt_hilly (#3546 D): genbruger itt's demand-form (time_trial-domineret) med et moderat
+  // climbing-bidrag taget fra positioning/flat (samme "tag fra det mindst kerne-relevante"-
+  // mønster som fx hilly tager fra sprint/positioning relativt til rolling). Sum 1.0.
+  itt_hilly:     Object.freeze({ time_trial: 0.46, climbing: 0.18, positioning: 0.20, flat: 0.04, randomness: 0.12 }),
   ttt:           Object.freeze({ time_trial: 0.50, tactics: 0.18, positioning: 0.14, endurance: 0.12, randomness: 0.06 }),
   cobbles:       Object.freeze({ cobblestone: 0.66, flat: 0.08, punch: 0.06, positioning: 0.06, endurance: 0.06, randomness: 0.08 }),
   classic:       Object.freeze({ endurance: 0.18, punch: 0.16, climbing: 0.12, cobblestone: 0.10, tempo: 0.06, flat: 0.06, positioning: 0.06, tactics: 0.04, sprint: 0.04, randomness: 0.18 }),
@@ -97,6 +105,7 @@ const FINALE_BY_PROFILE = Object.freeze({
   mountain:      ["descent", "breakaway", "long_climb"],
   high_mountain: ["long_climb", "long_climb", "descent"],
   itt:           ["solo_tt"],
+  itt_hilly:     ["solo_tt"],
   ttt:           ["solo_tt"],
   cobbles:       ["reduced_sprint", "breakaway"],
   classic:       ["punch", "reduced_sprint", "long_climb"],
@@ -122,7 +131,7 @@ const STAGE_FILLER_WEIGHTS = Object.freeze([
 // flad altid er stage 1 og bjerg/high_mountain altid sidst — en bevidst (tunbar)
 // grand-tour-form, ikke et tilfælde.
 const STAGE_ORDER_HINT = Object.freeze({
-  flat: 1, rolling: 2, cobbles: 3, hilly: 3, classic: 4, itt: 5, ttt: 5, mountain: 6, high_mountain: 7,
+  flat: 1, rolling: 2, cobbles: 3, hilly: 3, classic: 4, itt: 5, itt_hilly: 5, ttt: 5, mountain: 6, high_mountain: 7,
 });
 
 // Arketype-fordelinger (jf. spec §4). kind:"single" → endagsløbs-profilvægte;
@@ -342,7 +351,7 @@ function weightedPick(rng, items) {
 // Tidskørsels-profiler (ITT + TTT). Et etapeløb må realistisk kun have få —
 // #2029: en Grand Tour blev genereret med 5 enkeltstarter (4 ITT + 1 TTT), fordi
 // hver filler-plads ruller uafhængigt mod itt/ttt-vægte og intet loft samlede dem.
-const TIME_TRIAL_PROFILES = Object.freeze(["itt", "ttt"]);
+const TIME_TRIAL_PROFILES = Object.freeze(["itt", "itt_hilly", "ttt"]);
 const isTimeTrial = (t) => TIME_TRIAL_PROFILES.includes(t);
 
 // Konservativt loft på antal tidskørsler pr. etapeløb (#2029). Balance-default:
@@ -440,7 +449,24 @@ function orderAndBuildGrandTour(rng, types, stages, race, openingType = null) {
   const scaffold = sortByHint(rng, types); // crescendo-scaffold: sidste = hårdeste terræn
   let ordered = toGrandTourFinale(rng, scaffold);
   if (opening) ordered = [opening, ...ordered];
+  ordered = markSecondIttAsHilly(ordered);
   return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true));
+}
+
+// #3546 D: "ANDEN ITT i en GT bliver itt_hilly" (ejer-beslutning 17/8): retter at 7 D1-løb
+// i dag kører 2 STRUKTURELT IDENTISKE enkeltstarter (samme flade itt-arketype to gange).
+// Kører EFTER den fulde etape-rækkefølge er fastlagt (opening + finale), så "anden" er
+// defineret i FAKTISK etape-kronologi (stage 1..N), ikke i scaffold-/trækrækkefølgen. Den
+// FØRSTE itt (typisk åbnings-enkeltstarten, #2771) forbliver altid den flade "itt": kun en
+// evt. ekstra itt (fra filler, op til TT-loftet DEFAULT_TT_CAP=2) omdøbes. 0 eller 1 itt i
+// det endelige types-multisæt ⇒ no-op.
+export function markSecondIttAsHilly(ordered) {
+  const ittIndices = [];
+  for (let i = 0; i < ordered.length; i++) if (ordered[i] === "itt") ittIndices.push(i);
+  if (ittIndices.length < 2) return ordered;
+  const out = ordered.slice();
+  out[ittIndices[1]] = "itt_hilly";
+  return out;
 }
 
 // GT-finale (#3326-korrektion 2026-08-04): flyt hårdeste terræn (crescendo-scaffoldens

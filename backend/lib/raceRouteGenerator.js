@@ -32,11 +32,14 @@ function randFloat(rng, min, max, decimals = 1) {
 function round5(n) { return Math.round(n / 5) * 5; }
 
 // Distance-bånd pr. profil (spec §4.1, WT-kalibreret). [min,max] km.
+// itt_hilly (#3546 D): kuperet enkeltstart-arketype: realistisk KORTERE end en flad ITT
+// (klatring begrænser den opnåelige distance inden for en etapedags rammer; virkelighedens
+// kuperede/bjerg-ITT'er, fx Vueltaens Alto de Arrate-typer, ligger typisk 15-30 km).
 export const DISTANCE_BANDS = Object.freeze({
   flat: [150, 200], rolling: [150, 190], hilly: [160, 210],
   mountain: [150, 190], high_mountain: [140, 180],
   cobbles: [150, 170], classic: [200, 260],
-  itt: [15, 40], ttt: [25, 45],
+  itt: [15, 40], ttt: [25, 45], itt_hilly: [15, 30],
 });
 // Sub-3 (#2771) Task 6: prolog-arketype. profile_type FORBLIVER "itt" (design-
 // beslutning låst i spec §6 + plan Task 6 self-review) — prolog er en DISTANCE-
@@ -57,6 +60,9 @@ const CLIMB_SPEC = Object.freeze({
   classic: { count: [2, 5], cats: ["1", "2", "3"] },
   itt: { count: [0, 0], cats: [] },
   ttt: { count: [0, 0], cats: [] },
+  // itt_hilly (#3546 D): 1-2 SMÅ stigninger (kat 3/4: aldrig HC/1/2, det ville reelt gøre
+  // den til en mountain-etape med kronometer-facit i stedet for en kuperet enkeltstart).
+  itt_hilly: { count: [1, 2], cats: ["3", "4"] },
 });
 // Længde (km) + gns. gradient (%) pr. kategori (WT-typisk).
 const CAT_PROFILE = Object.freeze({
@@ -68,10 +74,16 @@ const CAT_PROFILE = Object.freeze({
 });
 const CAT_ORDER = Object.freeze({ HC: 0, "1": 1, "2": 2, "3": 3, "4": 4 }); // 0 = hårdest
 const SUMMIT_FINALE = new Set(["long_climb"]);
+// #3546 E (ejer-valgt 17/8 aften): andel af hilly/rolling-etaper med uphill-klimaks
+// (summit_finish=true). Prod-mål: ~35% hilly, ~20% rolling (0% målt i dag for begge).
+export const UPHILL_FINISH_SHARE = Object.freeze({ hilly: 0.35, rolling: 0.20 });
 // Basis-højdemeter (ikke-kategoriseret bølgeterræn) pr. profil.
 const BASE_ELEVATION = Object.freeze({
   flat: 200, rolling: 500, hilly: 700, mountain: 900, high_mountain: 1100,
   cobbles: 400, classic: 900, itt: 80, ttt: 120,
+  // itt_hilly (#3546 D): moderat: mere end den flade ITT, men langt under en hel
+  // hilly-etape (kortere distance holder det samlede højdemeter-tal nede).
+  itt_hilly: 350,
 });
 
 // --- Region-flavoured stignings-navne (deterministisk) ---
@@ -132,7 +144,18 @@ function buildClimbs(rng, profileType, finaleType, distanceKm, namer) {
   for (let i = 0; i < n; i++) cats.push(spec.cats[randInt(rng, 0, spec.cats.length - 1)]);
   // "Bygger mod klimaks": easiest først, hårdest sidst (descending CAT_ORDER-værdi).
   cats.sort((a, b) => CAT_ORDER[b] - CAT_ORDER[a]);
-  const summit = SUMMIT_FINALE.has(finaleType);
+  let summit = SUMMIT_FINALE.has(finaleType);
+  // #3546 E (ejer-valgt 17/8 aften): en SEEDET andel af hilly/rolling-etaper skal have et
+  // uphill-klimaks (sidste stigning topper VED målstregen) i stedet for aldrig at gøre det.
+  // Prod målte 0/254 hilly og 0/65 rolling med summit_finish, fordi finale_type-baseret
+  // summit-logik kun dækker mountain-familien (FINALE_BY_PROFILE for hilly/rolling
+  // indeholder aldrig "long_climb"). Denne roll er UAFHÆNGIG af finale_type (rører ALDRIG
+  // motoren/passage-ordenen/KOM-pointene: den genbruger blot summit-boolean'en buildClimbs
+  // allerede havde) og forbruges KUN for hilly/rolling, så alle andre profil-typers rute-
+  // rng-strøm forbliver uændret (bit-identisk).
+  if (!summit && (profileType === "hilly" || profileType === "rolling")) {
+    if (rng() < (UPHILL_FINISH_SHARE[profileType] ?? 0)) summit = true;
+  }
   // En high_mountain-etape UDEN HC er ikke høj-bjerg. Kategorien blev tidligere
   // trukket uniformt fra ["HC","1","2"], så en etape kunne lande på 0 HC — eller
   // fire i træk. Over en grand tour gav lotteriet 1-6 HC mod realisme-båndet 3-8
@@ -266,10 +289,14 @@ export function clampSprintKm(km, climbs, distanceKm) {
   return Math.round(km);
 }
 
+// Tidskørsels-profiler (spejler raceStageProfileGenerator.js's TIME_TRIAL_PROFILES  - 
+// lokal kopi, samme princip som stableSeed ovenfor: selvstændig fil, ingen krydsimport).
+const isTimeTrialProfile = (pt) => pt === "itt" || pt === "ttt" || pt === "itt_hilly";
+
 function buildSprints(rng, profileType, finaleType, distanceKm, isStageRace, climbs = []) {
   const sprints = [];
   const summit = SUMMIT_FINALE.has(finaleType);
-  const wantIntermediate = isStageRace && profileType !== "itt" && profileType !== "ttt" && !(summit && rng() < 0.5);
+  const wantIntermediate = isStageRace && !isTimeTrialProfile(profileType) && !(summit && rng() < 0.5);
   if (wantIntermediate) {
     const rawKm = Math.round(distanceKm * randFloat(rng, 0.4, 0.65, 2));
     sprints.push({ name: "Intermediate Sprint", km: clampSprintKm(rawKm, climbs, distanceKm), kind: "intermediate" });
@@ -319,7 +346,7 @@ export function attachRoute(stage, race, isStageRace) {
   // determinisme: samme race-identitet + etape → samme afgørelse hver gang).
   const isProlog = pt === "itt" && stage.stage_number === 1 && isStageRace && rng() < PROLOGUE_PROBABILITY;
   const [lo, hi] = isProlog ? PROLOGUE_DISTANCE_BAND : (DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
-  let distance_km = pt === "itt" || pt === "ttt" ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
+  let distance_km = isTimeTrialProfile(pt) ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
   if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
   if (distance_km > hi) distance_km = hi;
 
