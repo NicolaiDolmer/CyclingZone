@@ -1,18 +1,24 @@
 // backend/lib/selectionWarningSweep.js
 // #2180 — "Mangler holdudtagelse"-varsel: en indbakke-notifikation til hold der
-// STADIG ikke har en MANUEL holdudtagelse for et løb der starter inden for 36
+// STADIG ikke har en KOMPLET holdudtagelse for et løb der starter inden for 36
 // timer, med et link til løbet.
 //
-// DEFINITION af "mangler udtagelse" (vigtig, empirisk grundlag 4/8): den
-// hver-time-kørende entry-generator (raceEntryGeneratorSweep.js,
-// auto_entry_generator_enabled='on' i prod) fylder proaktivt ALLE holds
-// manglende entries med is_auto_filled=true LÆNGE før 36t-mærket — en
-// prod-stikprøve (races der starter inden for 36t, 4/8) viste rigtige
-// menneske-hold med 0 manuelle ryttere men 6 auto-udfyldte. "Mangler
-// udtagelse" kan derfor IKKE betyde "0 race_entries-rækker" (det ville
-// stort set aldrig ramme) — det betyder "ingen MANUEL entry" (is_auto_filled
-// = false findes ikke for holdet på dette løb), samme diskriminator som
-// regenerate-endpointets `manualRaceIds` (routes/api.js, mode=missing).
+// DEFINITION af "mangler udtagelse" (rettet #4038, se filhoved-historik nedenfor):
+// truppen er FULD når `race_entries`-antallet (manuelle OG auto-udfyldte,
+// samme optælling som løbssidens `getSelectionContext`/`isSquadSelectionMissing`,
+// raceSelection.js) når `selectionSizeForRace(race).max`. Kun hold der stadig
+// mangler entries op til target-størrelsen tæller som "mangler udtagelse".
+//
+// #4038-historik (20/8, spiller-rapport): før denne rettelse brugte sweepet
+// "ingen MANUEL entry" (is_auto_filled=false findes ikke) som diskriminator —
+// samme fejl-klasse som #3042 (Dashboard-nudgen), bare i notifikations-sweepet.
+// Prod-verifikation (20/8, ghwvkxzhsbbltzfnuhhz): 26 selection_warning-notifs
+// for Tour des Fjords (ProSeries, mål 6/6) — næsten alle med total_entries=6,
+// manual_entries=0, dvs. FULDT auto-udfyldte trupper der stadig fik "mangler
+// udtagelse"-beskeden. Det matcher spillerens rapport ordret. Beskeden selv
+// tilbyder "let the assistant auto-select for you" — når assistenten (eller
+// den hver-time-kørende raceEntryGeneratorSweep.js, auto_entry_generator_enabled
+// ='on' i prod) allerede HAR fyldt truppen, er den ikke længere "mangler".
 //
 // Hold ekskluderes hvis de: er AI/bank/frosne/test-konti (humanTeamFilter),
 // ikke har en bruger (user_id null — kan ikke notificeres), er UDENFOR løbets
@@ -27,6 +33,7 @@
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
 import { teamInRacePool } from "./raceBinding.js";
+import { selectionSizeForRace } from "./raceAutopick.js";
 import { notifyTeamOwner as defaultNotifyTeamOwner } from "./notificationService.js";
 import { captureException } from "./sentry.js";
 
@@ -84,11 +91,13 @@ export function racesNeedingSelectionWarning({
 }
 
 // Blandt `eligibleTeams` (allerede pulje-/menneske-filtreret for løbet), hvilke
-// mangler en MANUEL entry? `enteredTeamIds` = Set af team_id med is_auto_filled=false
-// for netop dette løb. `withdrawnTeamIds` = Set af team_id der har meldt sig af.
-// Pure + deterministisk.
-export function teamsMissingSelection({ eligibleTeams = [], enteredTeamIds = new Set(), withdrawnTeamIds = new Set() }) {
-  return eligibleTeams.filter((t) => !enteredTeamIds.has(t.id) && !withdrawnTeamIds.has(t.id));
+// har en trup der IKKE er fuld endnu? `entryCountByTeam` = Map<team_id, antal
+// race_entries (manuelle+auto) for netop dette løb>. `targetSize` = antal
+// ryttere en fuld trup skal have (selectionSizeForRace(race).max). `withdrawnTeamIds`
+// = Set af team_id der har meldt sig af. Pure + deterministisk. Samme kontrakt
+// som getSelectionContext/isSquadSelectionMissing (#4038 — se filhoved).
+export function teamsMissingSelection({ eligibleTeams = [], entryCountByTeam = new Map(), targetSize = Infinity, withdrawnTeamIds = new Set() }) {
+  return eligibleTeams.filter((t) => !withdrawnTeamIds.has(t.id) && (entryCountByTeam.get(t.id) || 0) < targetSize);
 }
 
 async function defaultFetchUpcomingScheduledRaces({ supabase }) {
@@ -100,7 +109,7 @@ async function defaultFetchUpcomingScheduledRaces({ supabase }) {
   const races = await fetchAllRows(() =>
     supabase
       .from("races")
-      .select("id, name, status, stages_completed, league_division_id, season_id")
+      .select("id, name, status, stages_completed, league_division_id, season_id, race_class")
       .eq("season_id", season.id)
       .eq("status", "scheduled")
       .order("id")
@@ -133,21 +142,23 @@ async function defaultFetchHumanTeams({ supabase }) {
   );
 }
 
-// team_id-sæt MED mindst én MANUEL entry, pr. løb ("mangler udtagelse" — se filhoved).
-async function defaultFetchManualEntryTeamIdsByRace({ supabase, raceIds }) {
+// Antal race_entries (manuelle+auto-udfyldte) pr. (løb, hold) — "trup-fylde",
+// samme optælling som getSelectionContext (#4038, se filhoved). Map<race_id,
+// Map<team_id, count>>.
+async function defaultFetchEntryCountsByRace({ supabase, raceIds }) {
   if (!raceIds.length) return new Map();
   const rows = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
     supabase
       .from("race_entries").select("race_id, team_id")
       .in("race_id", chunk)
-      .eq("is_auto_filled", false)
       .order("race_id")
       .order("team_id")
   );
   const byRace = new Map();
   for (const row of rows) {
-    if (!byRace.has(row.race_id)) byRace.set(row.race_id, new Set());
-    byRace.get(row.race_id).add(row.team_id);
+    if (!byRace.has(row.race_id)) byRace.set(row.race_id, new Map());
+    const byTeam = byRace.get(row.race_id);
+    byTeam.set(row.team_id, (byTeam.get(row.team_id) || 0) + 1);
   }
   return byRace;
 }
@@ -184,7 +195,7 @@ async function defaultFetchWithdrawnTeamIdsByRace({ supabase, raceIds }) {
  * @param {Function} [args.fetchUpcomingScheduledRaces]
  * @param {Function} [args.fetchScheduleByRace]
  * @param {Function} [args.fetchHumanTeams]
- * @param {Function} [args.fetchManualEntryTeamIdsByRace]
+ * @param {Function} [args.fetchEntryCountsByRace]
  * @param {Function} [args.fetchWithdrawnTeamIdsByRace]
  * @returns {Promise<{racesChecked:number, racesDue:number, teamsChecked:number, warned:number, deduped:number, failed:number}>}
  */
@@ -196,7 +207,7 @@ export async function runSelectionWarningSweep({
   fetchUpcomingScheduledRaces = defaultFetchUpcomingScheduledRaces,
   fetchScheduleByRace = defaultFetchScheduleByRace,
   fetchHumanTeams = defaultFetchHumanTeams,
-  fetchManualEntryTeamIdsByRace = defaultFetchManualEntryTeamIdsByRace,
+  fetchEntryCountsByRace = defaultFetchEntryCountsByRace,
   fetchWithdrawnTeamIdsByRace = defaultFetchWithdrawnTeamIdsByRace,
 }) {
   const stats = { racesChecked: 0, racesDue: 0, teamsChecked: 0, warned: 0, deduped: 0, failed: 0 };
@@ -212,9 +223,9 @@ export async function runSelectionWarningSweep({
   if (!dueRaces.length) return stats;
 
   const dueRaceIds = dueRaces.map((r) => r.id);
-  const [humanTeams, manualByRace, withdrawnByRace] = await Promise.all([
+  const [humanTeams, entryCountsByRace, withdrawnByRace] = await Promise.all([
     fetchHumanTeams({ supabase }),
-    fetchManualEntryTeamIdsByRace({ supabase, raceIds: dueRaceIds }),
+    fetchEntryCountsByRace({ supabase, raceIds: dueRaceIds }),
     fetchWithdrawnTeamIdsByRace({ supabase, raceIds: dueRaceIds }),
   ]);
 
@@ -225,7 +236,8 @@ export async function runSelectionWarningSweep({
     stats.teamsChecked += eligibleTeams.length;
     const missing = teamsMissingSelection({
       eligibleTeams,
-      enteredTeamIds: manualByRace.get(race.id) || new Set(),
+      entryCountByTeam: entryCountsByRace.get(race.id) || new Map(),
+      targetSize: selectionSizeForRace(race).max,
       withdrawnTeamIds: withdrawnByRace.get(race.id) || new Set(),
     });
     if (!missing.length) continue;
