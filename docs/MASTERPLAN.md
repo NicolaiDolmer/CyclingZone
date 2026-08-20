@@ -9,7 +9,7 @@
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
 1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 k=100: PR #4007 KLAR** (draft, flag off, flip = én linje) — flippes SAMMEN med c; rækkefølge c FØR #3353 bindende.
-2. 🟠 **#4013 Supabase-perf** — 3 målte fixes IND før cutover (sponsor-sweep læser 203.849×/døgn; `balanceDriftWatch` 3,3 TB pr. boot; realtime dødt, 7.727 fejl/døgn — skal virke 25/8). **Auth-commit'en holdes tilbage til efter 25/8** (rører auth for alle ruter). **Restore-drill kører kun d. 1.** → dispatch manuelt LØRDAG med generalprøven.
+2. 🟠 **#4013 Supabase-perf** — 3 målte fixes IND før cutover (sponsor-sweep læser 203.849×/døgn; `balanceDriftWatch` 3,3 TB pr. boot; realtime dødt, 7.727 fejl/døgn — skal virke 25/8). **Auth-commit'en REVERTERET ud af PR'en** (ejer 20/8) → `cherry-pick ac0d81200` i uge 35. **Restore-drill kører kun d. 1.** → dispatch manuelt LØRDAG med generalprøven.
 3. 🟠 **#3514 mandat** — 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-apply med ejer-nøgle.
 4. **Løn:** rest = søndagens genberegning af frosne kontrakter (drejebogen). #3393 PARKERET.
 5. 🟠 **#3901:** D1-plan LÅST+BYGGET (PR #3930, dry-run godkendt). **Cutover = søndag AFTEN 19:30-22:30** · **generalprøve LØRDAG** · bufferdag 24/8 (#3467). Drejebog script-verificeret 20/8 (trin 5 → `mandateMigration3514.mjs`; backup-trin 5a tilføjet).
