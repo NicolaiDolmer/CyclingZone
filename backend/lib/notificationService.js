@@ -750,9 +750,9 @@ export function buildScoutReportReadyNotification({ assignment, riderName }) {
 
 /**
  * #2945 · Notificér holdejeren om en netop fuldført scout_assignments-række.
- * Kaldes EFTER assignment-status allerede er sat til 'completed' (begge
+ * Kaldes EFTER assignment-status allerede er sat til 'completed' (alle
  * modnings-stier: scoutTargetMaturation.js's lazy+sweep-completion,
- * scoutSweep.js's completeMissionAssignment) — en notifikationsfejl må derfor
+ * scoutMissionMaturation.js's claimAndCompleteMission, #3997) — en notifikationsfejl må derfor
  * ALDRIG kunne vælte selve rapport-fuldførelsen. Samme A2-lære som resten af
  * filen (#2389): isolér, log, Sentry, fortsæt (returnér et fejl-resultat i
  * stedet for at kaste).

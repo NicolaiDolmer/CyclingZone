@@ -59,6 +59,47 @@ export function scoutReadyClock(readyAt) {
   });
 }
 
+const CPH_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit",
+});
+
+function copenhagenDateKey(date) {
+  return CPH_DATE_FMT.format(date); // "YYYY-MM-DD"
+}
+
+// #3997 — mission-modning viser nu et forventet klokkeslæt (afledt af
+// afsendelsestidspunktet, samme ready_at-felt som target) i stedet for den
+// gamle dags-granulære "Report in N days"/"Report due today"-copy, der ikke
+// afspejlede hvornår på dagen missionen faktisk blev sendt (ejer-fund #3997:
+// en "1-dags" mission tog reelt 23-46 timer, afhængig af klokkeslæt).
+//
+// Returnerer, alt i DANSK kalenderdag (samme tidszone-håndtering som
+// scoutReadyClock):
+//   null                              — intet brugbart ready_at
+//   { state:"due" }                   — deadline passeret, modnes ved næste tick
+//   { state:"today", time }           — samme danske kalenderdag som `now`
+//   { state:"tomorrow", time }        — næste danske kalenderdag
+//   { state:"date", time, date }      — længere ude (flerdages-missioner)
+export function missionReadyLabel(readyAt, now = new Date()) {
+  if (!readyAt) return null;
+  const ready = readyAt instanceof Date ? readyAt : new Date(readyAt);
+  if (Number.isNaN(ready.getTime())) return null;
+  const reference = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(reference.getTime())) return null;
+
+  if (ready.getTime() <= reference.getTime()) return { state: "due" };
+
+  const time = scoutReadyClock(ready);
+  const readyDay = copenhagenDateKey(ready);
+  const todayDay = copenhagenDateKey(reference);
+  if (readyDay === todayDay) return { state: "today", time };
+
+  const tomorrow = new Date(reference.getTime() + 86_400_000);
+  if (readyDay === copenhagenDateKey(tomorrow)) return { state: "tomorrow", time };
+
+  return { state: "date", time, date: ready };
+}
+
 // Tikkende udgave af scoutCountdownParts.
 //
 // To ting den gør med vilje:
