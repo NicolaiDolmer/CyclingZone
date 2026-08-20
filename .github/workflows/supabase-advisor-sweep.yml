@@ -1,0 +1,91 @@
+name: Supabase Advisor Sweep
+
+# Ugentligt tjek af Supabase' security-advisors via Management-API'et (#3978).
+# db-health.yml (mandage) dækker SQL-målbare advisor-klasser; denne workflow
+# dækker fund der IKKE kan ses fra SQL — bl.a. auth-konfiguration (OTP-
+# udløb, leaked-password-protection) — ved at kalde
+# GET /v1/projects/{ref}/advisors/security direkte og diffe mod den
+# dokumenterede accept-liste i scripts/ops/supabase-advisor-allowlist.json
+# (afledt af docs/audits/2026-08-04-supabase-hardening.md). Kun fund UDEN
+# for accept-listen larmer.
+#
+# Kræver SUPABASE_ACCESS_TOKEN som GitHub-secret (samme token som
+# supabase-log-watch.yml, #4014 — personal access token, Supabase
+# Dashboard -> Account -> Access Tokens).
+
+on:
+  schedule:
+    - cron: '30 6 * * 1'   # mandag 06:30 UTC (30 min efter db-health)
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-advisor-sweep
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify SUPABASE_ACCESS_TOKEN is configured
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN secret mangler. Opret et personal access token i Supabase Dashboard -> Account -> Access Tokens, saet det med 'gh secret set SUPABASE_ACCESS_TOKEN'. Se scripts/ops/supabase-advisor-sweep.mjs header."
+            exit 1
+          fi
+
+      - name: Run advisor sweep
+        id: check
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node scripts/ops/supabase-advisor-sweep.mjs
+
+      - name: Open or update issue on findings
+        if: steps.check.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.check.outputs.findings }}
+        run: |
+          set -euo pipefail
+          TITLE="[supabase-advisor-sweep] Nye advisor-fund uden for accept-listen"
+          {
+            echo "Automatisk advisor-sweep (scripts/ops/supabase-advisor-sweep.mjs, #3978) fandt fund der ikke er dækket af scripts/ops/supabase-advisor-allowlist.json:"
+            echo ""
+            echo "$FINDINGS"
+            echo ""
+            echo "Hvis fundet er en bevidst beslutning: tilføj det til scripts/ops/supabase-advisor-allowlist.json med en note om hvorfor (mønster: docs/audits/2026-08-04-supabase-hardening.md)."
+            echo "Workflow: .github/workflows/supabase-advisor-sweep.yml"
+          } > advisor-sweep-body.md
+          EXISTING=$(gh issue list --state open --search "supabase-advisor-sweep in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "Aabent issue #$EXISTING findes - tilfoejer kommentar."
+            gh issue comment "$EXISTING" --body-file advisor-sweep-body.md
+          else
+            echo "Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file advisor-sweep-body.md --label "claude:todo"
+          fi
+
+      - name: Notify Discord on findings
+        if: steps.check.outputs.has_findings == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK er ikke konfigureret; sprang notifikation over."
+            exit 0
+          fi
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"content": "⚠️ **Supabase advisor-sweep fandt nyt** (#3978)\nSe issue eller kør selv: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+            "$DISCORD_WEBHOOK"

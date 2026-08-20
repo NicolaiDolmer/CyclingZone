@@ -203,3 +203,28 @@ WebSocket-handshake er ikke en exception i vores kode.
 
 Vagt på log-strømmen spores i [#4014](https://github.com/NicolaiDolmer/CyclingZone/issues/4014).
 Den skal kende accept-listen i denne fil, ellers larmer den dagligt og bliver ignoreret.
+
+---
+
+## Status 2026-08-21 — automatiseret opfølgning på begge huller
+
+To automatiske vagter bygget, begge READ-ONLY mod Supabase Management-API'et (kræver
+`SUPABASE_ACCESS_TOKEN` som GitHub-secret — findes ikke endnu ved denne PR's merge):
+
+- **[#4014](https://github.com/NicolaiDolmer/CyclingZone/issues/4014)** —
+  `scripts/ops/supabase-log-watch.mjs` + `.github/workflows/supabase-log-watch.yml`. Dagligt.
+  Aggregerer fejl-lignende log-linjer pr. `(source, fejlklasse)` og sammenligner mod
+  foregående døgn. Respekterer ejer-direktivet i #4014 om ikke at være aktiv før
+  ugen efter cutover (26.-30./8) via et dato-gate på den planlagte kørsel.
+- **[#3978](https://github.com/NicolaiDolmer/CyclingZone/issues/3978)** —
+  `scripts/ops/supabase-advisor-sweep.mjs` + `.github/workflows/supabase-advisor-sweep.yml`.
+  Ugentligt. Kalder `/advisors/security` direkte og diff'er mod
+  `scripts/ops/supabase-advisor-allowlist.json` (denne fils accepterede undtagelser i
+  maskinlæsbar form), så kun fund uden for accept-listen larmer.
+
+Verificeret 21/8 mod prod (read-only, via MCP `get_advisors`/`query_logs` — samme
+underliggende data som Management-API'et): alle 87 nuværende security-advisor-fund matcher
+accept-listen (0 nye). `realtime_logs` viste stadig ~10.250 `MalformedJWT`-fejl i det
+seneste 24t-vindue — #4010s realtime-fix ser ikke ud til at have elimineret problemet endnu;
+ikke undersøgt videre her (uden for denne PR's scope), men værd at tjekke når log-watch
+aktiveres efter cutover.

@@ -1,0 +1,47 @@
+{
+  "_comment": "Accepterede/dokumenterede advisor-fund for scripts/ops/supabase-advisor-sweep.mjs (#3978). Kilde: docs/audits/2026-08-04-supabase-hardening.md (laes HELE filen - flere sektioner er tilfoejet 19/8 og 20/8, ikke kun den oprindelige 8/4-sektion). Match er praecist EN af: cache_key-prefix (specifikt fund) eller name (hele fund-klassen, brug kun for INFO-stoej der er pervasive by design). Tilfoej ALDRIG en ny entry uden at have laest advisoren OG verificeret funktionskroppen/policyen den peger paa.",
+  "acceptedNames": [
+    {
+      "name": "extension_in_public",
+      "note": "btree_gist i public — flytning kraever drop/genskabelse af extension + afhaengige exclusion constraints. Risiko > gevinst. Accepteret permanent 19/8."
+    },
+    {
+      "name": "materialized_view_in_api",
+      "note": "4 matviews (rangliste/standings) — ejer-beslutning 23/7 (#2678): offentlig spil-information. anon-SELECT revoked 3/8 (#3124), authenticated-SELECT tilsigtet. Genverificeret i prod 20/8."
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "note": "RLS enabled uden policy = deny-by-default (sikker retning). Pervasive/tilsigtet moenster paa interne tabeller der kun laeses via service_role. INFO-niveau."
+    }
+  ],
+  "acceptedCacheKeys": [
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_is_beta_tester_",
+      "note": "is_beta_tester() — ingen kendte direkte RPC-kaldesteder i frontend; billig RLS-hjaelper i samme familie som is_admin(). 2026-08-04-audit."
+    },
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_is_offered_intake_rider_",
+      "note": "is_offered_intake_rider(uuid) — bruges i 'Public read riders'-RLS-policyens USING-klausul; revoke ville fejle SELECT for anon/authenticated (samme incident-klasse som #2676). 2026-08-04-audit."
+    },
+    {
+      "cacheKeyPrefix": "anon_security_definer_function_executable_public_is_admin_",
+      "note": "is_admin() kaldbar af anon — verificeret i prod 20/8: auth.uid() er NULL for anon, COALESCE(...) returnerer altid false. Laekker intet. Accepteret."
+    },
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_is_admin_",
+      "note": "is_admin() kaldbar af authenticated — samme funktion/begrundelse som anon-varianten ovenfor. Accepteret."
+    },
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_get_cohort_retention_",
+      "note": "Funktionskrop verificeret i prod 19/8: 'IF NOT (is_admin() OR service_role) THEN RAISE EXCEPTION forbidden (42501)'-guard. Authenticated kan kalde, men afvises. Guard-moenster jf. #476/#928. Accepteret."
+    },
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_get_retention_scorecard_activity_",
+      "note": "Samme admin/service_role-guard som get_cohort_retention ovenfor. Verificeret i prod 19/8. Accepteret."
+    },
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_get_sprint_metrics_",
+      "note": "Samme admin/service_role-guard som get_cohort_retention ovenfor. Verificeret i prod 19/8. Accepteret."
+    }
+  ]
+}
