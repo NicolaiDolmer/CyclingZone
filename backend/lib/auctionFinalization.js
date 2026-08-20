@@ -599,12 +599,11 @@ async function finalizeYouthAuctionRecord({
   // senior.reason === "squad_full" → senior fuldt. AKADEMI-fallback: placér i
   // akademiet med ungdomskontrakt (samme løn-/kontrakt-model som signAcademyCandidate;
   // akademiryttere bypasser senior-cap + transfervindue).
-  // #2594: løn = current_production_value × per-division-sats (vinderens division).
-  const { data: bidderTeam } = await supabase
-    .from("teams").select("id, division").eq("id", bidderId).maybeSingle();
+  // #3989: løn = current_production_value × den globale sats. Vinderens division
+  // er irrelevant — samme rytter koster det samme uanset hvilket hold han lander
+  // på. Det tidligere teams-opslag efter `division` er dermed fjernet.
   const salary = computeFrozenSalary({
     current_production_value: rider.current_production_value,
-    division: bidderTeam?.division,
   });
   const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
 

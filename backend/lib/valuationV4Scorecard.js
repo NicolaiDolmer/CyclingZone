@@ -17,7 +17,7 @@
 // anker-sanity) rapporteres men fejler ALDRIG kørslen.
 
 import { ACADEMY } from "./academyFlag.js";
-import { SALARY_RATE_PROD } from "./economyConstants.js";
+import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 import { percentile } from "./valuationScorecard.js";
 import { buildCaps } from "./riderProgression.js";
 // #2428: fremskrivnings-skridtet deles med predictBaseValueV4 (riderCareerNpv.js) —
@@ -186,7 +186,7 @@ export const MAX_DEVELOP_SELL_ROI = 2.5;
 export function developAndSellPnl({ bvStart, cpvStart, bvAtHorizon, seasons, academy = ACADEMY } = {}) {
   if (![bvStart, bvAtHorizon, seasons].every(finite)) return null;
   const salaryPerSeason = finite(cpvStart)
-    ? Math.max(1, Math.round(cpvStart * SALARY_RATE_PROD.global))
+    ? Math.max(1, Math.round(cpvStart * SALARY_RATE_PRODUCTION))
     : academy.SALARY_RATE * bvStart;
   const cost = academy.SIGNING_FEE_RATE * bvStart + seasons * (academy.DRIFT_PER_SEASON + salaryPerSeason);
   return { pnl: bvAtHorizon - bvStart - cost, cost };

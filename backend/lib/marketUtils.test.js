@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
 import {
   calculateRiderMarketValue,
@@ -469,20 +470,22 @@ test("resolveRiderSalary: frossen salary vinder over estimat", () => {
   assert.equal(resolveRiderSalary({ salary: 12345, base_value: 1_000_000 }), 12345);
 });
 
-test("resolveRiderSalary: NULL salary → current_production_value × global prod-sats (#2594)", () => {
-  // free agent-estimat bruger ALTID global sats (0.1606) — ingen erhvervende hold-division kendt.
-  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 500_000 }), 80_300); // 500_000 × 0.1606
-  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 50_000 }), 8_030); // 50_000 × 0.1606
+test("resolveRiderSalary: NULL salary → current_production_value × satsen (#3989)", () => {
+  // #3989: der findes kun ÉN sats, så free agent-estimatet er samme tal som en
+  // signering på ethvert hold i enhver division.
+  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 500_000 }), Math.round(500_000 * SALARY_RATE_PRODUCTION));
+  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 50_000 }), Math.round(50_000 * SALARY_RATE_PRODUCTION));
 });
 
 test("resolveRiderSalary: salary 0 bevares (gratis kontrakt, ikke estimat)", () => {
   assert.equal(resolveRiderSalary({ salary: 0, base_value: 1_000_000 }), 0);
 });
 
-test("resolveRiderSalary: NULL salary + NULL current_production_value → fallback 1000 → 161", () => {
-  assert.equal(resolveRiderSalary({ salary: null, current_production_value: null }), 161);
+test("resolveRiderSalary: NULL salary + NULL current_production_value → fallback 1000 × satsen", () => {
+  const fallback = Math.max(1, Math.round(1000 * SALARY_RATE_PRODUCTION));
+  assert.equal(resolveRiderSalary({ salary: null, current_production_value: null }), fallback);
   // undefined salary behandles som free agent (== null loose)
-  assert.equal(resolveRiderSalary({}), 161);
+  assert.equal(resolveRiderSalary({}), fallback);
 });
 
 // #1308: akademiryttere tæller IKKE mod senior-cap i getTeamMarketState.

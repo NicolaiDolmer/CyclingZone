@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 import {
   finalizeAuctionById,
@@ -710,7 +711,7 @@ test("finalizeAuctionById allows a winner up to the hard cap + registers immedia
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-05-09T17:20:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -890,7 +891,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T08:00:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1220,7 +1221,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T10:00:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1698,7 +1699,7 @@ test("finalizeAuctionById closes open transfer listings when the rider is sold a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-10T10:00:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1773,7 +1774,7 @@ test("finalizeAuctionById closes open transfer listings on finalization (#822)",
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-10T11:00:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1848,7 +1849,7 @@ test("finalizeAuctionById closes open transfer listings on guaranteed sale to th
     team_id: "bank",
     pending_team_id: null,
     acquired_at: "2026-06-10T12:00:00.000Z",
-    salary: 303, // fallback 1000 × 0.3029 (bank-team division 1)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -2027,7 +2028,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (initiator-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -2146,7 +2147,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (initiator-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -2244,7 +2245,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-29T17:00:00.000Z",
-    salary: 148, // fallback 1000 × 0.1481 (initiator-team division 3)
+    salary: computeFrozenSalary({ current_production_value: null }), // fallback 1000 × satsen
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -2273,7 +2274,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
 
 // Kontraktløs vinder (salary == null) → standard-kontrakt oprettes i samme
 // rider-update som ejerskabsskiftet (salary fra current_production_value ×
-// vinderens divisions-sats, length 2, end = aktiv sæson + 1).
+// den globale sats (#3989), length 2, end = aktiv sæson + 1).
 test("finalizeAuctionById creates a default contract for a contractless winner (#1309)", async () => {
   const auctionUpdates = [];
   const riderUpdates = [];
@@ -2330,7 +2331,7 @@ test("finalizeAuctionById creates a default contract for a contractless winner (
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-13T10:00:00.000Z",
-    salary: 74_050, // 500_000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: 500_000 }),
     contract_length: 2,
     contract_end_season: 2, // aktiv sæson 1 + 2 - 1
   }]);
@@ -2533,7 +2534,7 @@ test("finalizeAuctionById graduates a contractless own-team academy rider and gi
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-08-17T10:00:00.000Z",
-    salary: 74_050, // 500_000 × 0.1481 (buyer-team division 3)
+    salary: computeFrozenSalary({ current_production_value: 500_000 }),
     contract_length: 2,
     contract_end_season: 2,
     is_academy: false,
@@ -2841,7 +2842,7 @@ function makeYouthFinalizeSupabase({
       }
       if (table === "teams") {
         // #2594: finalizeYouthAuctionRecord slår vinderens division op for at
-        // prissætte akademi-lønnen (per-division sats) via .maybeSingle().
+        // prissætte akademi-lønnen (den globale sats, #3989) via .maybeSingle().
         // #2754: getTeamMarketState (senior-fallback) læser balance/division via
         // expectSingle → .single(). Begge understøttes på samme eq()-resultat.
         return {

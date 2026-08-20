@@ -8328,10 +8328,13 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         .eq("id", teamId)
         .single(),
       supabase
-        // #3899: market_value/base_value tilføjet — sæson 3+-lønprognosen
-        // bruger markedsværdi-kurven (salaryBasis.js), ikke riders.salary.
+        // #3989: current_production_value er PÅKRÆVET — sæson 3+-lønprognosen
+        // prissætter efter rytterens nuværende leverance (computeFrozenSalary),
+        // ikke efter riders.salary og ikke efter markedsværdi. Uden kolonnen
+        // falder hver rytter tavst tilbage på CONTRACT.BASE_VALUE_FALLBACK og
+        // prognosen viser et velformet, plausibelt og forkert tal.
         .from("riders")
-        .select("id, salary, prize_earnings_bonus, market_value, base_value")
+        .select("id, salary, prize_earnings_bonus, current_production_value")
         .eq("team_id", teamId),
       supabase
         .from("loans")
@@ -14653,19 +14656,13 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       // signAcademyCandidate bruger ved selve signeringen (uændret - rører ikke
       // lønformlen). Vises FØR klikket, ligesom signingFee allerede gør.
       //
-      // FUND (kræver ejer-review, se PR-body): computeFrozenSalary prissætter i
-      // dag UDELUKKENDE fra current_production_value, aldrig fra market_value -
-      // så den symbolske intake-pull-værdi (punkt 2) giver IKKE automatisk en
-      // symbolsk løn her. #3393 (løn-reformen, egen branch/PR, IKKE rørt af denne
-      // PR) introducerer SALARY_BASIS_MODE="market" ved cutover 23/8, hvor denne
-      // samme funktion vil læse markedsværdien i stedet. Fordi kaldet her går
-      // gennem DEN DELTE funktion (ikke en lokal kopi af formlen), følger
-      // wagePreview automatisk med når #3393 lander - ingen ændring PÅKRÆVET her,
-      // MEN verificér computeFrozenSalary's parameternavne igen efter merge (kan
-      // være udvidet til også at tage market_value/base_value som input).
+      // #3989: computeFrozenSalary prissætter UDELUKKENDE fra
+      // current_production_value — aldrig fra market_value. Den symbolske
+      // intake-pull-værdi (punkt 2) giver derfor ikke automatisk en symbolsk løn
+      // her, og det er tilsigtet: løn er prisen på hvad rytteren leverer, ikke på
+      // hvem han bliver. Satsen er global, så holdets division medgives ikke.
       const wagePreview = computeFrozenSalary({
         current_production_value: rider.current_production_value,
-        division: req.team.division,
       });
       const expiresAt = row.created_at
         ? new Date(new Date(row.created_at).getTime() + INTAKE_OFFER_EXPIRY_DAYS * 86_400_000).toISOString()

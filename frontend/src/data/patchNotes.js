@@ -4,6 +4,46 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.148",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "changed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Wages follow what a rider delivers, not what he is worth",
+          "body": "Your rider's value is the price of who he becomes. His wage is the price of what he delivers this season. Wages are a fixed share of a rider's current production value, and that share is now the same for every team in every division — before, the same rider cost more than twice as much in one division as in another. A rider whose abilities grow gets more expensive at his next contract; one whose abilities fade gets cheaper. Signed contracts are frozen and do not change until you sign or extend again."
+        },
+        "da": {
+          "title": "Løn følger hvad en rytter leverer, ikke hvad han er værd",
+          "body": "Din rytters værdi er prisen på hvem han bliver. Hans løn er prisen på hvad han leverer i denne sæson. Løn er en fast andel af rytterens nuværende produktionsværdi, og den andel er nu den samme for alle hold i alle divisioner — før kostede den samme rytter mere end dobbelt så meget i én division som i en anden. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, en hvis evner falder bliver billigere. Underskrevne kontrakter er frosne og ændrer sig ikke før du skriver under eller forlænger igen."
+        },
+        "refs": [
+          3989
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "The next-season forecast was overstating your wage bill",
+          "body": "The forecast priced next season's wages off market value, which made young prospects look far more expensive than riders who are better right now. It uses the real wage formula again. Help now explains what the salary line is and what it is not."
+        },
+        "da": {
+          "title": "Prognosen for næste sæson satte lønnen for højt",
+          "body": "Prognosen prissatte næste sæsons løn efter markedsværdi, hvilket fik unge talenter til at se langt dyrere ud end ryttere der er bedre lige nu. Den bruger den rigtige lønformel igen. Hjælp forklarer nu hvad lønlinjen er, og hvad den ikke er."
+        },
+        "refs": [
+          3986,
+          3989
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.147",
     "date": "2026-08-19",
     "label": "Beta",

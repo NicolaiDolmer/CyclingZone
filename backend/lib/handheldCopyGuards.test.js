@@ -47,7 +47,7 @@ import { TRAINING_FOCUSES } from "./training.js";
 import { BREAKAWAY_BONUS } from "./raceSimulator.js";
 import { PROFILE_TYPES, FINALE_TYPES, DEMAND_VECTORS, ABILITY_DIMENSIONS } from "./raceStageProfileGenerator.js";
 import { RIDER_TYPE_KEYS as BACKEND_RIDER_TYPE_KEYS } from "./riderTypes.js";
-import { SALARY_RATE_PROD as BACKEND_SALARY_RATE_PROD } from "./economyConstants.js";
+import { SALARY_RATE_PRODUCTION as BACKEND_SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 import { computeIsPro as backendComputeIsPro, SUBSCRIPTION_ACTIVE_STATUSES } from "./entitlement.js";
 import * as backendNameSearch from "./riderNameSearch.js";
 
@@ -195,18 +195,37 @@ test("#3681 · RIDER_TYPE_KEYS er identiske i frontend og backend (inkl. rækkef
   );
 });
 
-// ── 7) Løn-satser (kilde-scan) ──────────────────────────────────────────────
-// frontend/src/lib/marketValues.js:16 skriver "SKAL holdes i sync" om
-// SALARY_RATE_PROD. Modulet importerer ./intl.js → i18next, som ikke findes i
-// backendens node_modules, så tabellen læses som kilde i stedet for at
-// importeres. Tallene prissætter den løn spilleren SER før en signering.
-test("#3681 · marketValues.SALARY_RATE_PROD (frontend) matcher economyConstants (backend)", () => {
-  const frontend = objectLiteral("frontend/src/lib/marketValues.js", "SALARY_RATE_PROD");
-  assert.deepEqual(
+// ── 7) Løn-satsen (kilde-scan) ──────────────────────────────────────────────
+// frontend/src/lib/marketValues.js spejler economyConstants.SALARY_RATE_PRODUCTION.
+// Modulet importerer ./intl.js → i18next, som ikke findes i backendens
+// node_modules, så konstanten læses som kilde i stedet for at importeres.
+// Tallet prissætter den løn spilleren SER før en signering — driver de to fra
+// hinanden, viser markedet ét beløb og trækker banken et andet.
+test("#3989 · marketValues.SALARY_RATE_PRODUCTION (frontend) matcher economyConstants (backend)", () => {
+  const frontend = Number(scalarLiteral("frontend/src/lib/marketValues.js", "SALARY_RATE_PRODUCTION"));
+  assert.equal(
     frontend,
-    JSON.parse(JSON.stringify(BACKEND_SALARY_RATE_PROD)),
-    "frontend/src/lib/marketValues.js SALARY_RATE_PROD skal matche backend/lib/economyConstants.js SALARY_RATE_PROD",
+    BACKEND_SALARY_RATE_PRODUCTION,
+    "frontend/src/lib/marketValues.js SALARY_RATE_PRODUCTION skal matche backend/lib/economyConstants.js",
   );
+});
+
+// #3989 forward-guard: løn må ALDRIG skalere med division igen. De to tidligere
+// bærere af den skalering (backendens SALARY_RATE_PROD.byDiv-tabel og
+// `division`-parameteren på computeFrozenSalary/salaryFromProduction) er fjernet
+// strukturelt; denne vagt fanger en genindførelse i begge ender.
+test("#3989 · hverken frontend eller backend har en per-division løn-sats", () => {
+  for (const relPath of ["backend/lib/economyConstants.js", "frontend/src/lib/marketValues.js"]) {
+    const src = read(relPath);
+    assert.equal(
+      /const\s+SALARY_RATE_PROD\b/.test(src), false,
+      `${relPath}: SALARY_RATE_PROD er genindført — løn må kun skalere med rytterens kvalitet (#3989)`,
+    );
+    assert.equal(
+      /function\s+salaryRateForDivision\b/.test(src), false,
+      `${relPath}: salaryRateForDivision er genindført — løn må kun skalere med rytterens kvalitet (#3989)`,
+    );
+  }
 });
 
 // ── 8) Pro-entitlement ──────────────────────────────────────────────────────
