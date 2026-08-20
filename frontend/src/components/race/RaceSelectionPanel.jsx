@@ -27,6 +27,7 @@ import {
   selectionComparator,
   selectionDefaultSortDir,
   SELECTION_SORT_KEYS,
+  SELECTION_ABILITY_SORT_KEYS,
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
 import { ArrowUpIcon, ArrowDownIcon, BlockedNote } from "../ui/index.js";
@@ -414,7 +415,7 @@ export default function RaceSelectionPanel({
       {/* #1951: mobil-sortering — desktop sorterer via kolonne-headers, men på
           mobil er der ingen header-række. Denne kontrol eksponerer samme sort-
           nøgler og deler handleSort med tabellen (ingen ny sort-logik). */}
-      <SelectionSortControl sort={sort} onSort={handleSort} fitLabel={fitSortLabel} t={t} />
+      <SelectionSortControl sort={sort} onSort={handleSort} fitLabel={fitSortLabel} t={t} viewMode={viewMode} tRider={tRider} />
       <ul className="sm:hidden divide-y divide-cz-border">
         {visibleRiders.map((rider) => {
           const checked = sel.riderIds.includes(rider.id);
@@ -524,14 +525,17 @@ export default function RaceSelectionPanel({
                 className="px-4 py-3 text-left font-medium text-xs uppercase">{t("selection.type")}</SortTh>
               {/* #3809: "Abilities"-tilstanden erstatter rutematch/form/træthed med de
                   15 evne-kolonner (samme korte labels + tooltip-mønster som TeamPage's
-                  SquadTab abilityColumns). Ikke sorterbare her — kun toggle, ingen ny
-                  sorterings-nøgle i scope. */}
+                  SquadTab abilityColumns). #3898: kolonnerne er nu sorterbare — samme
+                  SortTh + delte comparator som resten af panelet, evne-sort-værdien
+                  hentes via selectionSortValue (lineupInsight.js), ikke en ny
+                  sorterings-mekanisme. */}
               {viewMode === "abilities" ? (
                 STATS.map(({ key, label }) => (
-                  <th key={key} title={tRider(`racePreview.derived.${key}`)}
-                    className="px-1.5 py-3 text-center font-medium text-3xs uppercase text-cz-2">
+                  <SortTh key={key} sortKey={key} sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                    title={tRider(`racePreview.derived.${key}`)}
+                    className="px-1.5 py-3 text-center font-medium text-3xs uppercase">
                     {label}
-                  </th>
+                  </SortTh>
                 ))
               ) : (
                 <>
@@ -737,6 +741,9 @@ export default function RaceSelectionPanel({
 
 // #1951: mobil-sort-kontrol. Eksponerer de samme nøgler som desktop-headerne
 // (SELECTION_SORT_KEYS) + en retnings-toggle, og deler onSort med tabellen.
+// #3898: i evne-visningen ("abilities") skifter nøgle-sættet til
+// SELECTION_ABILITY_SORT_KEYS (navn/type + de 15 evner, samme korte labels
+// som kolonne-headerne) — routeMatch/form/fatigue findes ikke som kort dér.
 //
 // Bevidst et segmenteret knap-bånd, IKKE et <select>: et native <select> har
 // rolle "combobox", og holdudtagelses-smoke-testen finder kaptajn-vælgeren via
@@ -746,21 +753,26 @@ export default function RaceSelectionPanel({
 // matcher rytter-tabellernes retnings-toggle-styling og rører ikke combobox-
 // rækkefølgen. Aktiv nøgle highlightes; retnings-toggle er kun aktiv når en
 // nøgle er valgt (sortering er opt-in, default = oprindelig rækkefølge).
-function SelectionSortControl({ sort, onSort, fitLabel, t }) {
-  const labels = {
-    name: t("selection.thRider"),
-    primaryType: t("selection.type"),
-    routeMatch: fitLabel,
-    form: t("selection.form"),
-    fatigue: t("selection.fatigue"),
-  };
+function SelectionSortControl({ sort, onSort, fitLabel, t, viewMode, tRider }) {
+  const abilities = viewMode === "abilities";
+  const sortKeys = abilities ? SELECTION_ABILITY_SORT_KEYS : SELECTION_SORT_KEYS;
+  const abilityLabels = Object.fromEntries(STATS.map(({ key, label }) => [key, label]));
+  const labels = abilities
+    ? { name: t("selection.thRider"), primaryType: t("selection.type"), ...abilityLabels }
+    : {
+        name: t("selection.thRider"),
+        primaryType: t("selection.type"),
+        routeMatch: fitLabel,
+        form: t("selection.form"),
+        fatigue: t("selection.fatigue"),
+      };
   const active = sort.sort != null;
   const dirAria = sort.dir === "desc" ? t("selection.sort.descAria") : t("selection.sort.ascAria");
   return (
     <div className="sm:hidden flex flex-col gap-2 px-4 py-3 border-b border-cz-border">
       <span className="block text-cz-3 text-3xs uppercase tracking-wider">{t("selection.sort.label")}</span>
       <div className="flex flex-wrap items-center gap-1.5">
-        {SELECTION_SORT_KEYS.map((key) => {
+        {sortKeys.map((key) => {
           const on = sort.sort === key;
           return (
             <button
@@ -768,6 +780,12 @@ function SelectionSortControl({ sort, onSort, fitLabel, t }) {
               type="button"
               onClick={() => onSort(key)}
               aria-pressed={on}
+              // #3898: evne-piller genbruger den fulde evne-navn-tooltip fra
+              // kolonne-headerne (samme tRider-nøgle) — korte labels alene er
+              // ikke selvforklarende ("Acc", "Pos") på en lille touch-pille.
+              // name/primaryType har ingen racePreview.derived-nøgle, så de
+              // undtages eksplicit i stedet for at slå en tom tooltip op.
+              title={abilities && key !== "name" && key !== "primaryType" ? tRider(`racePreview.derived.${key}`) : undefined}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-cz border text-xs transition-colors ${
                 on
                   ? "border-cz-accent bg-cz-accent/10 text-cz-1"
