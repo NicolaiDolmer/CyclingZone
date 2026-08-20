@@ -90,6 +90,13 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // race_stage_claims (#4026/PR #4027, merged 20/8): FLYGTIG claim-tabel mod
+  // dobbelt-instans-etapeticks — rækken indsættes ved tick-start og SLETTES
+  // igen ved release (adminSimulateRace.js linje ~94), så 0 rows mellem ticks
+  // ER den sunde tilstand. PERMANENT entry (ikke "fjern når rows"): tabellen
+  // er tom næsten altid per design. En lækket række ryddes af lease-udløbet i
+  // claim-logikken selv — det er ikke Detector A's job at opdage.
+  "race_stage_claims",
   // race_stage_timelines-suppressionen fjernet 18/8 ~11:10: første etape efter
   // flag-ON skrev sin tidslinje (1 row, 9 events, timeline_version 1 — #2410 S1
   // bevist end-to-end). Detector A dækker tabellen normalt igen.
