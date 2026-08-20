@@ -217,7 +217,27 @@ function getEffectiveAuctionBidderId(auction, sellerOwned) {
     return auction.current_bidder_id;
   }
 
-  if (!auction.is_guaranteed_sale && !sellerOwned && auction.seller_team_id) {
+  // #3963: rytteren har lige nu INGEN ejer (auction.rider.team_id === null).
+  // For en almindelig (ikke-ungdoms) auktion kan det kun ske på én måde:
+  // sælgeren ejede rytteren ved oprettelsen (isOwnRider=true → INGEN implicit
+  // startbud, jf. getAuctionInitialBidderId i api.js) og fyrede/frigav ham
+  // siden via POST /riders/:id/release, som ALDRIG rører selve auktionsrækken
+  // — den kører videre uden bud til finalize. En auktion på en rytter
+  // sælgeren IKKE ejede (fx en fri agent, se POST /auctions "rider is a free
+  // agent") får derimod ALTID et rigtigt current_bidder_id fra oprettelsen
+  // (samme getAuctionInitialBidderId sætter manageren som første bud, når
+  // riderTeamId !== managerTeamId) og fanges derfor aldrig af denne gren.
+  //
+  // Fallbacket herunder ("implicit first bid", #932, "Safeguard implicit
+  // auction first bids") var tiltænkt EGTE forældreløse legacy-rækker, men
+  // ramte i praksis også denne fyrings-sti: sælgeren endte som eneste (og
+  // selv-)byder på en rytter han netop havde fyret, blev debiteret for det,
+  // og fik ham tilbage på truppen uden om det normale bud-forløb — uden
+  // nogensinde selv at have budt. Falder IKKE tilbage til sælgeren når
+  // rytteren er ejerløs; behandles i stedet som usolgt (ingen effektiv
+  // byder — closeAuction sætter status "completed", ingen penge flytter, og
+  // rytteren forbliver fri agent, klar til en ny auktion).
+  if (!auction.is_guaranteed_sale && !sellerOwned && auction.seller_team_id && auction.rider?.team_id) {
     return auction.seller_team_id;
   }
 

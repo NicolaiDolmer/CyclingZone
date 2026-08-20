@@ -78,6 +78,25 @@ export function getTransferAuctionConflict({
   return null;
 }
 
+// #3963: en rytter på en AKTIV auktion må ikke kunne fyres (POST
+// /riders/:id/release). release nulstiller kun rider-rækken (team_id = NULL)
+// og rører ALDRIG selve auktionsrækken, så uden denne gate kører auktionen
+// videre uden ejer frem til finalize — hvor "implicit first bid"-fallbacket i
+// getEffectiveAuctionBidderId (auctionFinalization.js) tidligere gjorde
+// fyreren til sin egen (eneste) byder på rytteren han netop havde fyret, uden
+// nogensinde at have budt. Symmetrisk med getTransferAuctionConflict/
+// getSwapAuctionConflict — samme single-source-of-truth
+// (getActiveAuctionRiderIds) som de øvrige "kun ÉN vej ad gangen"-gates.
+export function getReleaseAuctionConflict({
+  riderId,
+  activeAuctionRiderIds = [],
+} = {}) {
+  if (riderId && new Set(activeAuctionRiderIds).has(riderId)) {
+    return { code: "rider_on_auction" };
+  }
+  return null;
+}
+
 // Symmetrisk gate for POST /api/auctions (#1089): en rytter der er TILBUDT i et
 // åbent swap-tilbud kan ikke sættes på auktion — manageren har selv oprettet
 // swap-tilbuddet og må trække det tilbage først. Vi blokerer bevidst IKKE på

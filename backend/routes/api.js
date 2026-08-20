@@ -49,6 +49,7 @@ import {
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
+  getReleaseAuctionConflict,
   getSwapAuctionConflict,
   getTransferAuctionConflict,
   isExpectedPriceStale,
@@ -1338,6 +1339,29 @@ async function loadOwnedSeniorRiderForAction(req, riderId) {
   return { rider };
 }
 
+// #3963: en rytter der ligger på en aktiv/udvidet auktion må ikke kunne
+// fyres — se getReleaseAuctionConflict (auctionRules.js) for hvorfor. Bruges
+// af BÅDE release-quote (preview) og release (selve handlingen), så UI'et
+// aldrig lover en fyring den efterfølgende POST alligevel afviser.
+async function assertRiderNotOnActiveAuction(riderId) {
+  const conflict = getReleaseAuctionConflict({
+    riderId,
+    activeAuctionRiderIds: await getActiveAuctionRiderIds(supabase, [riderId]),
+  });
+  if (conflict) {
+    return {
+      error: {
+        status: 409,
+        body: {
+          error: "This rider is currently on auction and can't be released. Wait for the auction to end first",
+          errorCode: "rider_on_auction_release",
+        },
+      },
+    };
+  }
+  return {};
+}
+
 // #2179: delt guard til kontrakt-FORLÆNGELSE — samme owner/retired-check som
 // loadOwnedSeniorRiderForAction, men UDEN akademi-eksklusionen. Akademi-ryttere
 // har allerede salary/contract_length/contract_end_season sat ved signing
@@ -1393,6 +1417,8 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
+  const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
+  if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
   const currentSeason = await getActiveSeasonNumber();
   const fee = computeReleaseBuyoutFee({
     salary: rider.salary,
@@ -1481,6 +1507,8 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
+  const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
+  if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
 
   const { data: season } = await supabase
     .from("seasons").select("id, number").eq("status", "active").maybeSingle();

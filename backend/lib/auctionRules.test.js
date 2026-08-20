@@ -18,6 +18,7 @@ import {
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
+  getReleaseAuctionConflict,
   getSpendIssue,
   getSwapAuctionConflict,
   getTransferAuctionConflict,
@@ -148,6 +149,23 @@ test("getTransferAuctionConflict allows rider not on any active auction (#1748)"
   assert.equal(getTransferAuctionConflict({ riderId: "r1", activeAuctionRiderIds: [] }), null);
   assert.equal(getTransferAuctionConflict({}), null);
   assert.equal(getTransferAuctionConflict(), null);
+});
+
+// #3963: en rytter på en aktiv auktion må ikke samtidig kunne fyres —
+// symmetrisk med getTransferAuctionConflict/getSwapAuctionConflict.
+test("getReleaseAuctionConflict blocks rider that is on an active auction (#3963)", () => {
+  const issue = getReleaseAuctionConflict({
+    riderId: "r1",
+    activeAuctionRiderIds: ["r1", "r9"],
+  });
+  assert.deepEqual(issue, { code: "rider_on_auction" });
+});
+
+test("getReleaseAuctionConflict allows rider not on any active auction (#3963)", () => {
+  assert.equal(getReleaseAuctionConflict({ riderId: "r1", activeAuctionRiderIds: ["r2"] }), null);
+  assert.equal(getReleaseAuctionConflict({ riderId: "r1", activeAuctionRiderIds: [] }), null);
+  assert.equal(getReleaseAuctionConflict({}), null);
+  assert.equal(getReleaseAuctionConflict(), null);
 });
 
 // #1089 symmetrisk retning: rytter der selv er TILBUDT i et åbent swap-tilbud
