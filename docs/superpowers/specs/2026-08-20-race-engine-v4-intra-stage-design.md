@@ -176,6 +176,23 @@ Golden fixtures mod ægte population + determinisme-tests (bit-identitet ved sam
 | 15 | Cutover | Flag-flip midt i S3 ved grønt scorecard + ejer-go (på hviledag); skygge-kørsel som verifikation |
 | 16 | #3149-transparens | Fix nu på nuværende motor |
 
+## 8b. Addendum: designrunde 2 (ejer, 20/8 aften) — fundament-beslutninger fra GitHub-plan-sweep
+
+Sweep af alle tidligere race-engine-planer fandt fire modne planer der foldes ind i v4, plus fire fundament-valg:
+
+| # | Spørgsmål | Beslutning |
+|---|---|---|
+| 17 | Energimodel | **W'/Critical Power-fysiologi fra dag 1** (#2479 foldes ind som v4's energimodel: CP-tærskel + anaerob reserve, tæring/genopladning i segment-loopet; på sigt spiller-synlig reserve — genre-first) |
+| 18 | Race↔træning | **Løbsdags-kontrakten (#3459) ind fra F2**: v4 emitterer per-rytter belastning (W'-tæring, tid over tærskel) som trænings-/udviklingssystemet forbruger; racing = dagens arbejde; AI kører samme motor |
+| 19 | Live-afvikling | **Byg til live, ship trinvist**: arkitekturen designes til progressiv afvikling (segment-state + afspilnings-API); flippet shipper on-demand-film, live-reveal tændes som opfølgning |
+| 20 | Persistering | **Events + kompakte per-segment gruppe-snapshots** (muliggør live-reveal, replay, karriere-stats som "km i udbrud", motor-vs-faktisk #1294) |
+| 21 | TTT | **M13: ægte TTT i v1** på gruppe-modellen (#2412/#3463 lukkes ind) |
+| 22 | AI-taktik | **M14: adaptiv, forklarlig AI-holdtaktik i v1** (#2478): AI bruger PRÆCIS samme ordre-API som spillere; harness-gate: mere troværdig, ikke stærkere |
+| 23 | Kalibrerings-UI | **Admin-dashboard i F4**: gap-realisme-scorecard (#2415, IRL-målbånd m. kilder) + skygge-sammenligning v4/v3/faktisk + seed-preview (#1294); ML-forslag (#2480) senere |
+| 24 | Kodefundament | **Fuld TypeScript + ren kerne**: engine-pakken (backend/lib/engine/v4/ el. packages/engine) er 100 % ren og IO-fri — én deterministisk funktion (rute, startliste, ordrer, seed) → (tidslinje, resultater, belastninger); al DB/IO i adaptere udenfor. Strict TS, hver mekanik (M1-M14) eget modul m. typet kontrakt + kontrakt-tests, property-based tests af invarianter (determinisme, monotoni, gruppe-tider), worker-thread-parallelisering forberedt. Valgt på "2-3.000 managers / top professionelt"-kriteriet |
+
+Konsekvens for §5: gap-realisme-båndene fra #2415 (GT-vindermargin 1-8 min, bjerg-top-10 ≤ 3-4 min, ITT 1-3 min/40 km, flad = felt-finish) indgår i scorecardet med kilder. Konsekvens for §7: F2 omfatter engine-pakkens TS-skelet + W'-kernen; F4 omfatter dashboardet.
+
 ## 9. Koordinering og afgrænsning
 
 - **Rører ikke:** cutover-drejebogen 23/8, merge-toget 20/8, løn/økonomi-sporet (#4011/#4018), træningssporet (#3709). Skygge-mode-merge først efter cutover.

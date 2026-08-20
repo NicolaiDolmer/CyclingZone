@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
 // #2602 · lazy: modalen aabnes kun ved klik paa Kontakt — dens kode (+i18n-traek)
@@ -552,14 +553,18 @@ export default function Layout() {
 
   useEffect(() => {
     if (!session) return;
-    const channel = supabase.channel("layout-notifs-v2")
-      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
+    // #4010: subscribeAuthedChannel sætter realtime-token'et eksplicit før
+    // subscribe(). Session-tjekket ovenfor er ikke nok i sig selv — supabase-js
+    // slår selv token op og falder tilbage til api-nøglen hvis opslaget kommer
+    // tomt tilbage midt i auth-init.
+    return subscribeAuthedChannel("layout-notifs-v2", channel =>
+      channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async () => {
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).single();
           if (t) setBalance(t.balance);
-        }).subscribe();
-    return () => supabase.removeChannel(channel);
+        })
+    );
   }, [session]);
 
   // Supabase DELETE-events mangler user_id i payload uden REPLICA IDENTITY FULL — lyt på window-event i stedet.

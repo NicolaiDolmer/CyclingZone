@@ -27,6 +27,7 @@ import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
+import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
@@ -1195,6 +1196,10 @@ export function TeamPage() {
     // #1929: squad-fane-tælleren matcher senior-tabellens indhold — akademiryttere
     // er splittet ud i egen sektion, så de tælles ikke i "Squad (N)".
     { key: "squad", label: t("tabs.squad", { count: currentRiders.filter(r => !r.is_academy).length }) },
+    // #3979 (ejer-beslutning 19/8, "Begge, A foerst" superseded samme
+    // eftermiddag af "bundles med #3798"): sorterbar udviklings-status-tabel
+    // ved siden af Squad — samme trup, ny visning (rating/prognose/loft).
+    { key: "development", label: t("tabs.development") },
     { key: "stats", label: t("tabs.stats") },
     { key: "transfers", label: t("tabs.transfers") },
   ];
@@ -1265,6 +1270,9 @@ export function TeamPage() {
 
       {activeTab === "squad" && (
         <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
+      )}
+      {activeTab === "development" && (
+        <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />
       )}
       {activeTab === "stats" && (
         <TeamStatsTab riders={currentRiders} />

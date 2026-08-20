@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   focusProgress, isBreakthrough, daySummary, breakthroughJumps, riderHistoryFromRuns,
   todayGainTotal,
-  seasonAbilityGains, abilityReceipt, focusAbilityReceipt,
+  seasonAbilityGains, abilityReceipt, focusAbilityReceipt, abilityYesterdayPct,
+  yesterdaySummary, riderDayStories,
   PEAK_FORM_THRESHOLD, NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
 
@@ -174,11 +175,11 @@ test("abilityReceipt: nu, sæson og fremdrift pr. evne (Weber, målt i prod 14/8
     seasonGains: { durability: 1 },
   });
   assert.deepEqual(rows, [
-    { ability: "sprint", value: 88, gained: 0, pct: null, locked: true },
-    { ability: "acceleration", value: 54, gained: 0, pct: 87, locked: false },
-    { ability: "tactics", value: 50, gained: 0, pct: null, locked: true },
-    { ability: "durability", value: 44, gained: 1, pct: 2, locked: false },
-    { ability: "climbing", value: 21, gained: 0, pct: null, locked: true },
+    { ability: "sprint", value: 88, gained: 0, pct: null, locked: true, yesterdayPct: null },
+    { ability: "acceleration", value: 54, gained: 0, pct: 87, locked: false, yesterdayPct: null },
+    { ability: "tactics", value: 50, gained: 0, pct: null, locked: true, yesterdayPct: null },
+    { ability: "durability", value: 44, gained: 1, pct: 2, locked: false, yesterdayPct: null },
+    { ability: "climbing", value: 21, gained: 0, pct: null, locked: true, yesterdayPct: null },
   ]);
 });
 
@@ -201,7 +202,7 @@ test("abilityReceipt: fremdrift klippes ved 99 — en fuld bar der ikke springer
 
 test("abilityReceipt: manglende data giver null, ikke nul", () => {
   const [row] = abilityReceipt(["tactics"], { abilities: {}, progress: {}, capped: [], seasonGains: null });
-  assert.deepEqual(row, { ability: "tactics", value: null, gained: null, pct: null, locked: false });
+  assert.deepEqual(row, { ability: "tactics", value: null, gained: null, pct: null, locked: false, yesterdayPct: null });
 });
 
 test("focusAbilityReceipt: fokussets egne evner, i fokussets rækkefølge", () => {
@@ -219,4 +220,124 @@ test("focusAbilityReceipt: fokussets egne evner, i fokussets rækkefølge", () =
 test("focusAbilityReceipt: intet/ukendt fokus → null", () => {
   assert.equal(focusAbilityReceipt(null, {}), null);
   assert.equal(focusAbilityReceipt("ikke-et-fokus", {}), null);
+});
+
+// ── #3924 trin 2: gårsdagens bidrag som mørkere segment ─────────────────────
+
+test("abilityYesterdayPct: låst eller ukendt pct → intet segment", () => {
+  assert.equal(abilityYesterdayPct({ pct: null, locked: false, rawFrac: 0.5, beforeFrac: 0.3 }), null);
+  assert.equal(abilityYesterdayPct({ pct: 40, locked: true, rawFrac: 0.4, beforeFrac: 0.2 }), null);
+});
+
+test("abilityYesterdayPct: point landede i går → hele baren er gårsdagens (wrap kan ikke splittes)", () => {
+  assert.equal(abilityYesterdayPct({ pct: 5, locked: false, rawFrac: 0.05, beforeFrac: 0.95, gainedToday: 1 }), 5);
+});
+
+test("abilityYesterdayPct: manglende progress_before (ældre kørsel) → intet segment, ikke gættet", () => {
+  assert.equal(abilityYesterdayPct({ pct: 62, locked: false, rawFrac: 0.62, beforeFrac: NaN }), null);
+  assert.equal(abilityYesterdayPct({ pct: 62, locked: false, rawFrac: 0.62, beforeFrac: undefined }), null);
+});
+
+test("abilityYesterdayPct: rå fremgang uden wrap, med 1%-gulv så et reelt pas aldrig bliver usynligt", () => {
+  // 55% → 62%: 7 procentpoint reel fremgang.
+  assert.equal(abilityYesterdayPct({ pct: 62, locked: false, rawFrac: 0.62, beforeFrac: 0.55 }), 7);
+  // Et hårdt pas med en meget lille rå delta (0,3 pct-point) runder til 1, ikke 0 —
+  // den bindende "aldrig usynligt"-regel fra design-go'et.
+  assert.equal(abilityYesterdayPct({ pct: 40, locked: false, rawFrac: 0.403, beforeFrac: 0.4 }), 1);
+});
+
+test("abilityYesterdayPct: ingen fremgang siden i går → 0 (intet segment at tegne, men ikke null)", () => {
+  assert.equal(abilityYesterdayPct({ pct: 40, locked: false, rawFrac: 0.4, beforeFrac: 0.4 }), 0);
+  assert.equal(abilityYesterdayPct({ pct: 40, locked: false, rawFrac: 0.38, beforeFrac: 0.4 }), 0);
+});
+
+test("abilityYesterdayPct: segmentet kan aldrig overstige selve baren", () => {
+  assert.equal(abilityYesterdayPct({ pct: 1, locked: false, rawFrac: 0.01, beforeFrac: 0 }), 1);
+});
+
+test("abilityReceipt: yesterdayPct sendes med når progressBefore/gainsToday leveres", () => {
+  const rows = abilityReceipt(["acceleration"], {
+    abilities: { acceleration: 54 },
+    progress: { acceleration: 0.62 },
+    capped: [],
+    seasonGains: {},
+    progressBefore: { acceleration: 0.55 },
+    gainsToday: {},
+  });
+  assert.equal(rows[0].yesterdayPct, 7);
+});
+
+// ── #3924 trin 1: "Yesterday's gains"-resuméet ──────────────────────────────
+
+test("yesterdaySummary: tæller trænet-mod-fokus / hvilet / point landet", () => {
+  const rows = [
+    { focus: "sprint", intensity: "hard", injured: false, gains: { sprint: 1 } },     // trænet + 1 point
+    { focus: "vo2max", intensity: "normal", injured: false, gains: {} },              // trænet, 0 point
+    { focus: null, intensity: "rest", injured: false, gains: {} },                    // hvilet
+    { focus: "sprint", intensity: "recovery", injured: false, gains: {} },            // hvilet (aktiv restitution)
+    { focus: "sprint", intensity: "hard", injured: true, gains: {} },                 // skadet — tæller ingen af delene
+  ];
+  assert.deepEqual(yesterdaySummary(rows), { trainedFocus: 2, rested: 2, pointsLanded: 1, total: 5 });
+});
+
+test("yesterdaySummary: tomt input", () => {
+  assert.deepEqual(yesterdaySummary(null), { trainedFocus: 0, rested: 0, pointsLanded: 0, total: 0 });
+});
+
+test("riderDayStories: skadet rytter", () => {
+  const [story] = riderDayStories([{ rider_id: "r1", name: "Rider One", injured: true }], {});
+  assert.deepEqual(story, { riderId: "r1", riderName: "Rider One", type: "injured" });
+});
+
+test("riderDayStories: point landet vinder over alt andet", () => {
+  const [story] = riderDayStories([
+    { rider_id: "r1", name: "Rider One", intensity: "hard", gains: { sprint: 1 }, gains_detail: { sprint: { from: 54, to: 55 } } },
+  ], {});
+  assert.equal(story.type, "point");
+  assert.deepEqual(story.jumps, [{ ability: "sprint", n: 1, from: 54, to: 55 }]);
+});
+
+test("riderDayStories: hviledag — frisk igen når træthed faldt", () => {
+  const [story] = riderDayStories([
+    { rider_id: "r1", name: "Rider One", intensity: "rest", gains: {}, fatigue: 9, fatigue_delta: -15 },
+  ], {});
+  assert.deepEqual(story, { riderId: "r1", riderName: "Rider One", type: "restFresh", fatigueFrom: 24, fatigueTo: 9 });
+});
+
+test("riderDayStories: hviledag — neutral ordlyd når træthed IKKE faldt", () => {
+  const [story] = riderDayStories([
+    { rider_id: "r1", name: "Rider One", intensity: "rest", gains: {}, fatigue: 20, fatigue_delta: 0 },
+  ], {});
+  assert.equal(story.type, "rest");
+});
+
+test("riderDayStories: aktiv restitution", () => {
+  const [story] = riderDayStories([
+    { rider_id: "r1", name: "Rider One", intensity: "recovery", gains: {}, fatigue: 12, fatigue_delta: -6 },
+  ], {});
+  assert.equal(story.type, "recovery");
+});
+
+test("riderDayStories: tæt på gennembrud vs. almindelig fremdrift (live progress)", () => {
+  const rows = [
+    { rider_id: "r1", name: "Near", focus: "sprint", intensity: "hard", gains: {} },
+    { rider_id: "r2", name: "Far", focus: "sprint", intensity: "hard", gains: {} },
+  ];
+  const progressByRider = {
+    r1: { sprint: 0.95, acceleration: 0.2 },
+    r2: { sprint: 0.3, acceleration: 0.1 },
+  };
+  const [near, far] = riderDayStories(rows, progressByRider);
+  assert.deepEqual(near, { riderId: "r1", riderName: "Near", type: "nearBreakthrough", ability: "sprint", pct: 95 });
+  assert.deepEqual(far, { riderId: "r2", riderName: "Far", type: "progressing", ability: "sprint", pct: 30 });
+});
+
+test("riderDayStories: trænet uden fokus vs. intet fokus valgt", () => {
+  const rows = [
+    { rider_id: "r1", name: "NoProgressData", focus: "sprint", intensity: "hard", gains: {} },
+    { rider_id: "r2", name: "NoFocus", focus: null, intensity: "hard", gains: {} },
+  ];
+  const [trained, noFocus] = riderDayStories(rows, {});
+  assert.equal(trained.type, "trained");
+  assert.equal(noFocus.type, "noFocus");
 });

@@ -36,7 +36,7 @@ import { formatHour } from "../lib/auctionEndTime.js";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
-import { ageForSeason, retirementBidWarningTier } from "../lib/riderAge.js";
+import { ageForSeason, retirementBidWarningTier, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useActionSummary } from "../hooks/useActionSummary.js";
 import { AmountInput, BlockedNote, Button, Card, CheckIcon, ChevronLeftIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
@@ -827,6 +827,12 @@ export default function RiderStatsPage() {
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
   const [watchlistCount, setWatchlistCount] = useState(0);
+  // #2748: definitivt pensions-varsel (motoren har allerede besluttet det, blot
+  // ikke anvendt endnu) — hentet separat fra det direkte Supabase-select ovenfor,
+  // fordi selve beslutningen kræver den SAMME seedede motor-logik som backend
+  // bruger ved cutover (announcedRetirementAfterSeason, riderProgression.js) og
+  // derfor ikke kan genberegnes rent i klienten.
+  const [announcedRetirement, setAnnouncedRetirement] = useState(false);
   const [visits, setVisits]                 = useState(null);
   const [seasonRows, setSeasonRows]         = useState([]);
   // Fejl-flag for resultat-hentningen (#1338-princippet): en query-fejl må ikke
@@ -894,6 +900,7 @@ export default function RiderStatsPage() {
   const bidTimelineFetchIdRef = useRef(null);
   const visitsFetchIdRef = useRef(null);
   const watchlistCountFetchIdRef = useRef(null);
+  const retirementStatusFetchIdRef = useRef(null); // #2748 samme stale-guard-mønster
   const riderFetchIdRef = useRef(null);
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
@@ -973,6 +980,22 @@ export default function RiderStatsPage() {
       if (visitsFetchIdRef.current !== fetchId) return;
       setVisits(data);
     } catch { /* non-critical: TrendSub/summary håndterer visits=null */ }
+  }
+
+  // #2748: definitivt pensions-varsel — synligt for ALLE viewere (ikke kun
+  // ejeren), samme stale-guard-mønster som loadVisits ovenfor. Non-critical:
+  // en fejl skal ikke brække resten af profilen, banneret vises bare ikke.
+  async function loadRetirementStatus() {
+    const fetchId = id;
+    retirementStatusFetchIdRef.current = fetchId;
+    setAnnouncedRetirement(false);
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${fetchId}/retirement-status`, { headers: h });
+      const data = await res.json();
+      if (retirementStatusFetchIdRef.current !== fetchId) return;
+      setAnnouncedRetirement(Boolean(data.announced_retirement));
+    } catch { /* non-critical: banneret vises bare ikke for den nye rytter */ }
   }
 
   // #3012: begge writes ignorerede tidligere { error } — en afvist
@@ -1318,7 +1341,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); loadRetirementStatus(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1584,7 +1607,9 @@ export default function RiderStatsPage() {
     ? pendingActions.transfer_offers.find(o => o.rider_id === rider.id) || null
     : null;
 
-  // #2000 stykke 2: progress-fraktion pr. evne til Overblik-evnekolonnerne.
+  // #2000 stykke 2 / #3721: progress-fraktion pr. evne til Træning-fanens
+  // sæson-kvittering (RiderTrainingTab, PR #3717) — Overblik viste den samme
+  // bjælke tidligere, men den dublet er fjernet (#3721; Overblik viser kun tal).
   // Egne ryttere foretrækker den friske training.progress (optimistisk efter et
   // tick); ellers DB'ens ability_progress. Bygges i SSOT-evne-rækkefølge.
   const overviewProgress = {};
@@ -1643,7 +1668,10 @@ export default function RiderStatsPage() {
   const salaryText = rider.contract_length != null
     ? `${formatNumber(rider.salary)} CZ$`
     : `~${formatNumber(getRiderSalary(rider))} CZ$`;
-  // Status-banner: auktion > akademi > kontrakt-udløb (egne ryttere).
+  // Status-banner: auktion > sidste sæson (pension) > akademi > kontrakt-udløb
+  // (egne ryttere). #2748: "finalSeason" er DEFINITIVT (ikke kun risiko) og
+  // synligt for ALLE viewere — en køber skal kunne se det FØR et bud/handel,
+  // ikke kun ejeren (derfor ingen isMyRider-gate her, i modsætning til expiry).
   let statusBanner = null;
   if (activeAuction) {
     const diff = new Date(activeAuction.calculated_end) - new Date();
@@ -1654,6 +1682,8 @@ export default function RiderStatsPage() {
       endsIn: diff > 0 ? (h > 0 ? `${h}t ${m}m` : `${m}m`) : "—",
       highBid: formatNumber(activeAuction.current_price),
     };
+  } else if (announcedRetirement) {
+    statusBanner = { kind: "finalSeason", season: seasonNumberFromReferenceYear(seasonYear) };
   } else if (isAcademyRider) {
     statusBanner = { kind: "academy" };
   } else if (isMyRider && rider.contract_end_season != null) {
@@ -1881,8 +1911,6 @@ export default function RiderStatsPage() {
           <div className="flex flex-col gap-[13px]">
             <RiderAbilityColumns
               abilities={rider.abilities}
-              progressByKey={overviewProgress}
-              isOwnRider={isMyRider}
             />
             <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-[13px] items-start`}>
               <RiderTypeRadar

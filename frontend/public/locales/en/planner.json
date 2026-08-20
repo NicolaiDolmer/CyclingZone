@@ -172,7 +172,8 @@
     "sprint": "Sprint",
     "endurance": "Endurance",
     "technique": "Technique",
-    "aero": "Aero"
+    "aero": "Aero",
+    "loebslaere": "Race craft"
   },
   "error": {
     "max_reached": "This rider already has the maximum of {max} peaks.",

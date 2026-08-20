@@ -6,10 +6,17 @@
 // udviklingslog (training_day_runs via useTrainingHistory — kun egne ryttere,
 // fremmede ser en forklaring, spejler designets scouting-skjul).
 //
-// LOFT-PROJEKTION (#2100): stiplet projektion mod loft + skraveret loft-bånd +
-// "til loft"/"alder ved loft" kommer FUZZY fra backend (GET /riders/:id/development-
-// projection). Projektionen bygger KUN på nu-rating + det maskerede loft-bånd + den
-// offentlige alderskurve → aldrig invertérbar til det server-skjulte potentiale (#1162).
+// MÅL-PROJEKTION (#2100, copy opdateret #3746): stiplet projektion mod den
+// FLADE rolle-tag (samme tag for alle i rollen, trin 7) + skraveret bånd +
+// "til målet"/"alder ved målet" kommer FUZZY fra backend (GET /riders/:id/
+// development-projection). Feltnavnene i koden (ceil/ceilingRows/atCeiling
+// osv.) er BEVIDST uændrede — endpointet er ikke konverteret til prognose-
+// motoren (det bruger stadig buildTypeCeilingBands/projectCeilingBand mod det
+// absolutte rolle-tag, ikke det potentiale-drevne trænings-bånd resten af
+// scouting-fladen nu viser); kun den spillervendte COPY er skiftet væk fra
+// "loft"-sprog, så de to flader ikke modsiger hinanden i ordvalg. Projektionen
+// bygger KUN på nu-rating + det maskerede rolle-tag-bånd + den offentlige
+// alderskurve → aldrig invertérbar til det server-skjulte potentiale (#1162).
 // hidden/capsMissing (rival uden scouting, eller manglende caps) → fald tilbage til den
 // rene registrerede kurve. Se backend/lib/developmentProjection.js + developmentReport.js.
 //

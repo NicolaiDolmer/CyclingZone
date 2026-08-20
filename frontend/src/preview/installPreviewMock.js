@@ -11,6 +11,7 @@ import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
+  SEED_DEV_TRANSITION,
 } from "./seedData.js";
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
@@ -121,6 +122,19 @@ export function installPreviewMock() {
           if (SEED_SCOUT_ESTIMATES[id]) estimates[id] = SEED_SCOUT_ESTIMATES[id];
         }
         return jsonResponse({ teamId: TEST_TEAM.id, maxLevel: 3, estimates });
+      }
+
+      // Trin 7-overgangspanelet (#3746/#3803, ejer-design 18/8). Bevidst KUN
+      // her og ikke i mockHandlers: Playwright-fixtures deler den fil, og et
+      // synligt panel ville flytte dashboard-snapshots (samme lagdeling som
+      // onboarding-mocken nedenfor). Dismiss svarer ok uden state — panelet
+      // dukker op igen ved reload på preview, hvilket er en FEATURE her: ejeren
+      // skal kunne vise det frem flere gange.
+      if (method === "GET" && /\/api\/development\/transition$/.test(url)) {
+        return jsonResponse(SEED_DEV_TRANSITION);
+      }
+      if (method === "POST" && /\/api\/development\/transition\/dismiss$/.test(url)) {
+        return jsonResponse({ ok: true });
       }
 
       // Statefuld Scouting-central-mock (#2244/#2644): rout /api/scouting/* +

@@ -363,6 +363,21 @@ export function RoadIcon(props) {
   );
 }
 
+// #3985: brostens-etaper (fx Paris-Roubaix) har intet eksisterende ikon i
+// biblioteket — punkt-mønster i samme stroke-stil som de øvrige terræn-ikoner.
+export function CobblesIcon(props) {
+  return (
+    <IconBase {...props}>
+      <circle cx="5" cy="17" r="1.4" />
+      <circle cx="11" cy="17" r="1.4" />
+      <circle cx="17" cy="17" r="1.4" />
+      <circle cx="8" cy="11" r="1.4" />
+      <circle cx="14" cy="11" r="1.4" />
+      <circle cx="11" cy="6" r="1.4" />
+    </IconBase>
+  );
+}
+
 export function PodiumIcon(props) {
   return (
     <IconBase {...props}>

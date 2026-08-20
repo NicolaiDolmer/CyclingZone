@@ -70,6 +70,14 @@
     "admin": {
       "feedbackReply": {
         "title": "Reply to your message"
+      },
+      "retirementAnnounced": {
+        "title": "Final season for {count} of your riders",
+        "message": "{count} of your riders announced this is their final season: {names}. They retire when season {season} ends."
+      },
+      "devTransition": {
+        "title": "The development view has changed",
+        "message": "Your riders have not changed. Abilities, ratings and results are exactly as yesterday. The old range was floor to ceiling. The new range is your rider's projected level: where he realistically lands with your training. Ceilings were raised for most riders at the same time, so a lower-looking range does not mean a weaker rider. Potential now decides how fast a rider develops, not where he stops. Your dashboard shows your own riders before and after."
       }
     },
     "loanCreatedShort": {

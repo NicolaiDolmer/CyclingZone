@@ -400,7 +400,14 @@ test("applyRaceDevelopmentTick: ukendt profil-type falder tilbage til 'rolling' 
 });
 
 test("applyRaceDevelopmentTick: devMult skalerer 'det erstattede pas' lineært", () => {
-  const base = raceDevFixture({ profileType: "mountain" });
+  // Caps hæves til 90 i netop denne test: trin 7's rate-spredning gjorde
+  // deltaerne så små at 1,0- og 1,15-scorerne rundede til samme 2-decimals-
+  // score (score afrundes i applyRaceDevelopmentTick), og sanity-tjekket
+  // nederst blev blindt. Linearitets-målingen bruger progress (uafrundet).
+  const base = raceDevFixture({
+    profileType: "mountain",
+    caps: { climbing: 90, endurance: 90, durability: 90, sprint: 90, flat: 90 },
+  });
   const atOne = applyRaceDevelopmentTick({ ...base, devMult: 1.0 });
   const atDefault = applyRaceDevelopmentTick({ ...base, devMult: RACE_DEV_CONFIG.devMult }); // 1.15
   const atDouble = applyRaceDevelopmentTick({ ...base, devMult: 2.0 });
