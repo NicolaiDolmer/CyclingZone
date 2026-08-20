@@ -10031,6 +10031,13 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
         profile_type: p.profile_type,
         finale_type: p.finale_type,
         demand_vector: p.demand_vector,
+        // v4 F1 (#3855): segments + weather skrives med når generatoren har dem
+        // (samme mønster som de øvrige generator-write-sites). Rute-felterne
+        // (distance_km/climbs/sprints/sectors) er FORTSAT ikke skrevet her — det
+        // er en pre-eksisterende afgrænsning for denne ad-hoc-oprettelsessti, uden
+        // for scope for #3855 F1.
+        segments: p.segments,
+        weather: p.weather,
         generator_version: GENERATOR_VERSION,
         is_manual: false,
       }));
