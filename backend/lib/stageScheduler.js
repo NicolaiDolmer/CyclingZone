@@ -197,7 +197,24 @@ export async function runStageScheduler({
   let ran = 0;
   let errors = 0;
   let recovered = 0;
+  let benignSkips = 0;
   const failRace = (race, err) => {
+    // #4026: benign 409 = forventet samtidigheds-skip (etape claimet af et andet
+    // run / stale tick — begge betyder "en anden koerer/koerte netop denne etape").
+    // Info-log uden Sentry-capture: guarden VIRKEDE, det er ikke en haendelse.
+    // Beskeden baerer claimed_by/index-detaljen, saa en zombie-instans (to
+    // samtidige deploys, 20/8) stadig er synlig i Railway-loggen.
+    if (err?.benign && err?.status === 409) {
+      benignSkips++;
+      console.log(JSON.stringify({
+        event: "stage_scheduler_race_skipped",
+        raceId: race.id,
+        raceName: race.name ?? null,
+        reason: err.message,
+        tick: now.toISOString(),
+      }));
+      return;
+    }
     errors++;
     // #2251: løbet skippes (loopet fortsætter til øvrige due/recovery-løb nedenfor) —
     // men log + Sentry-capture dedupes ÉN gang pr. (løb, dag), så et fastlåst løb
@@ -262,7 +279,7 @@ export async function runStageScheduler({
       failRace(race, err);
     }
   }
-  return { ran, errors, recovered };
+  return { ran, errors, recovered, benignSkips };
 }
 
 export { MAX_STAGES_PER_DAY };
