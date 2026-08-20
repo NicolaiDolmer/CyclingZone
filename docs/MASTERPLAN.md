@@ -4,12 +4,12 @@
 
 **Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne.
 
-**Målt:** **529** åbne issues (20/8) · 232 brugere, 1 abo · **S2-finale søn 23/8 kl. 19; cutover 19:30-22:30; S3-løb fra tir 25/8.** Næste session: [merge-togets fortsættelse](sessions/2026-08-20-aften-merge-tog-fortsaettelse-prompt.md) ved ejer-go efter kl. 20.
+**Målt:** ~535 åbne issues (20/8 aften) · 232 brugere, 1 abo · **S2-finale søn 23/8 kl. 19; cutover 19:30-22:30; S3-løb fra tir 25/8.** 20/8-merge-toget KØRT (12 merges, alt prod-verificeret — se NOW). Næste session: W7 hjælpetekster + #4039 trin 7-fast-follow; ejer retter S3-kalenderen (#3547).
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 k=100: PR #4007 KLAR** (draft, flag off, flip = én linje) — flippes SAMMEN med c; rækkefølge c FØR #3353 bindende.
-2. 🟠 **#4013 Supabase-perf** — 3 målte fixes IND før cutover (sponsor-sweep læser 203.849×/døgn; `balanceDriftWatch` 3,3 TB pr. boot; realtime dødt, 7.727 fejl/døgn — skal virke 25/8). **Auth-commit'en REVERTERET ud af PR'en** (ejer 20/8) → `cherry-pick ac0d81200` i uge 35. **Restore-drill kører kun d. 1.** → dispatch manuelt LØRDAG med generalprøven.
+1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 k=100 MERGED 20/8 (#4007, flag off)** — flip ved cutover SAMMEN med c; rækkefølge c FØR #3353 bindende.
+2. **#4013 Supabase-perf MERGED 20/8** (index+autovacuum applied). Rest: `cherry-pick ac0d81200` (auth-commit) i uge 35 · **restore-drill dispatches manuelt LØRDAG** med generalprøven.
 3. 🟠 **#3514 mandat** — 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-apply med ejer-nøgle.
 4. **Løn:** rest = søndagens genberegning af frosne kontrakter (drejebogen). #3393 PARKERET.
 5. 🟠 **#3901:** D1-plan LÅST+BYGGET (PR #3930, dry-run godkendt). **Cutover = søndag AFTEN 19:30-22:30** · **generalprøve LØRDAG** · bufferdag 24/8 (#3467). Drejebog script-verificeret 20/8 (trin 5 → `mandateMigration3514.mjs`; backup-trin 5a tilføjet).
@@ -19,9 +19,7 @@
 
 Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/specs/2026-08-13-rating-fundament-v3-design.md)
 
-9. **#3592 caps-formning → foldes ind i trin 7** (ejer 18/8; analyse i `docs/audits/2026-08-18-3592-caps-formning/`). `classifierWeights` frosset.
-10. **Landing 2-rest:** ejer-gated backfill, 1.840 team-løse frie agenter — foldes ind i trin 7-udrulningen.
-11. **Landing 3 = #3709.** Trin 2 (løbslære) er ALLEREDE i trin 7-PR'en (verificeret 20/8). **Trin 7** BYGGET + Week plan-fane 20/8; tester-runde kører, merge ved ejer-go.
+9. **Trin 7 SKIBET 20/8** (7.158; backfill 8.980 ryttere inkl. frie agenter, refit, indbakke, panel verificeret). Rest: **#4039 fast-follow** (dæmpet loft forbi peak + scout-verdikt på skrift + tester-verifikationer) · voksen-baseline refittet 20/8.
 
 **#3668 → #3512 = ét spor lige efter cutover** (+ transparens-sessionen; #3512 bærer et offentligt løfte fra 10/8).
 
@@ -51,13 +49,12 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 **Lukkemandat:** done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20.
 
-- **Rest:** #2085 → #2853 · **W7** efter trin 7 (#3714 #3623 #3456 #3412) · **W8**: 53 needs-decision tilbage (bundt 2 = økonomi, efter cutover).
-- **Fra design-sessionen 20/8:** #4011 finance-PR #4018 fix-runde done + ejer-go, merges sidst i toget · #2748 pension-PR #4021 bygget + ejer-godkendt · #4009 · #4025 tekst-trim på økonomiflader (senere). #3924-kvittering ligger I trin 7-PR'en.
+- **Rest:** #2085 → #2853 · **W7 NU** (#3714 #3623 #3456 #3412) · **W8**: 53 needs-decision tilbage (bundt 2 = økonomi, efter cutover) · #4009 · #4025 tekst-trim (senere) · Discord-sweep 20/8: #4031-#4038 nye.
 - Småbugs: #3896 · #3897 · #3898.
 
 ## E2 · Race-oplevelsen
 
-**Rest:** #3914 PR B LIVE-broadcast · #3985-fix (PR #4012, afventer ejer-go) · **#3855 motor v4 spec EJER-GODKENDT 20/8** — PR #4028+#4029 merge-klar (ejer merger), næste = **#4030 F2** · #3856 efter S3-bevis · #3864→v4-sporet · #3900+#3915 låst i KS3.
+**Rest:** #3914 PR B LIVE-broadcast · **#3855 v4: F1 SKIBET 20/8** (#4028 merged + migration applied; #4029/7.164 live) — næste = **#4030 F2** · #3856 efter S3-bevis · #3864→v4-sporet · #3900+#3915 låst i KS3.
 
 ## Parkeret — genbesøges når B og C er leveret
 
