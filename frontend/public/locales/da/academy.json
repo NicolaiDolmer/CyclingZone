@@ -75,9 +75,22 @@
     "insufficientBalance": "Du har ikke råd til signeringsprisen.",
     "alreadyAssigned": "Rytteren er allerede optaget i et akademi.",
     "squadFull": "Senior-truppen er fuld. Frigør en plads for at rykke op, eller sælg eller fyr i stedet.",
+    "riderOnAuction": "Rytteren er på en aktiv auktion og kan ikke fyres, før den slutter.",
+    "cannotAffordRelease": "Du har ikke råd til fyrings-gebyret for denne rytter.",
+    "riderStateChanged": "Rytteren er ikke længere i dit akademi.",
     "generic": "Noget gik galt. Prøv igen.",
     "loadTitle": "Kunne ikke hente dit akademi",
     "loadBody": "Akademi-data kom ikke igennem. Genindlæs siden, og sig til hvis det bliver ved."
+  },
+  "releaseModal": {
+    "title": "Fyr akademi-rytter",
+    "question": "Afslut denne akademi-rytters kontrakt:",
+    "feeLabel": "Fyrings-gebyr",
+    "balanceLabel": "Din saldo",
+    "feeHint": "Fyrings-gebyret er en halv sæsons løn af den resterende kontrakt, samme som for senior-ryttere.",
+    "freeHint": "Rytteren er kontraktløs, så der er intet fyrings-gebyr.",
+    "cannotAfford": "Du har ikke råd til fyrings-gebyret.",
+    "confirm": "Fyr rytter"
   },
   "pnl": {
     "heading": "Akademi-regnskab",

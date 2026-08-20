@@ -57,6 +57,7 @@
     "rate_feedback": "Too many submissions in a short time. Try again shortly.",
     "rider_not_owned": "You don't own this rider",
     "rider_is_academy": "Academy riders are managed in your academy. Graduate them to your senior squad first.",
+    "rider_not_academy": "This rider isn't in your academy",
     "rider_retired": "This rider has retired",
     "rider_state_changed": "This rider is no longer on your team",
     "cannot_afford_release": "You can't afford the buyout fee ({fee} CZ$). Your balance is {balance} CZ$",

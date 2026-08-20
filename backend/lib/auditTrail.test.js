@@ -490,7 +490,10 @@ const CALLSITE_FILES = [
   // #1994: rider-loan agreement routes (GET/POST/PATCH /loans,
   // POST /admin/loans/:id/cancel) removed entirely — dropped from 9 to 3
   // (senior-transfer + admin-adjust + youth-buyout-adjacent callsites remain).
-  { rel: "../routes/api.js", expectedCalls: 3 },
+  // #4009: POST /riders/:id/academy-release added a 4th callsite (academy-fire
+  // buyout fee — same reason_code/RELEASE_BUYOUT as senior release, distinct
+  // source_path "api.academy.release").
+  { rel: "../routes/api.js", expectedCalls: 4 },
   { rel: "./transferExecution.js", expectedCalls: 4 },
   { rel: "./squadEnforcement.js", expectedCalls: 3 },
   { rel: "./prizePayoutEngine.js", expectedCalls: 1 },

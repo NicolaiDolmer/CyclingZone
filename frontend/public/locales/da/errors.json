@@ -57,6 +57,7 @@
     "rate_feedback": "For mange indsendelser på kort tid. Prøv igen om lidt.",
     "rider_not_owned": "Du ejer ikke denne rytter",
     "rider_is_academy": "Akademiryttere styres i dit akademi. Ryk dem op til seniortruppen først.",
+    "rider_not_academy": "Rytteren er ikke i dit akademi",
     "rider_retired": "Rytteren er pensioneret",
     "rider_state_changed": "Rytteren er ikke længere på dit hold",
     "cannot_afford_release": "Du har ikke råd til buyout-gebyret ({fee} CZ$). Din saldo er {balance} CZ$",

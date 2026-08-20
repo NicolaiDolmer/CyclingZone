@@ -71,11 +71,15 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   const [releaseQuote, setReleaseQuote] = useState(null);
   const [extendQuote, setExtendQuote] = useState(null);
   // #1779: hvis quote-kaldet fejler skal feltet vise en forklaring i stedet for
-  // evig "indlæser…". { release, extend }. Fyring/release er stadig akademi-
-  // eksklusiv (egen flow, academyGraduation.js) → akademiryttere kan stadig ramme
-  // dette for "release". Kontraktforlængelse ramte det TIDLIGERE også for
-  // akademiryttere (403 fra extend-quote), men er nu tilladt direkte (#2179).
+  // evig "indlæser…". { release, extend }. Kontraktforlængelse ramte det
+  // TIDLIGERE også for akademiryttere (403 fra extend-quote), men er nu
+  // tilladt direkte (#2179).
   const [quoteError, setQuoteError] = useState({ release: null, extend: null });
+  // #4009: akademi-ryttere fyres via en separat rute (samme gebyr-formel,
+  // egen owner/is_academy-guard backend-side) — samme "release"-fane, kun
+  // stien varierer. Se RiderManageActions.jsx for rytterprofilens ækvivalent.
+  const releasePath = rider.is_academy ? "academy-release-quote" : "release-quote";
+  const releaseActionPath = rider.is_academy ? "academy-release" : "release";
 
   // #3164: samme stille loft-tjek (#3143, current season + 3) som rytter-
   // profilens RiderManageActions — hentet ved modal-mount i stedet for ved
@@ -148,10 +152,10 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
         if (!cancelled) setQuoteError(prev => ({ ...prev, [errKey]: t("auth:error.connectionFailed") }));
       }
     }
-    if (activeTab === "release" && releaseQuote === null && quoteError.release === null) fetchQuote("release-quote", setReleaseQuote, "release");
+    if (activeTab === "release" && releaseQuote === null && quoteError.release === null) fetchQuote(releasePath, setReleaseQuote, "release");
     if (activeTab === "extend" && extendQuote === null && quoteError.extend === null) fetchQuote("extend-quote", setExtendQuote, "extend");
     return () => { cancelled = true; };
-  }, [activeTab, rider.id, releaseQuote, extendQuote, quoteError, t]);
+  }, [activeTab, rider.id, releaseQuote, extendQuote, quoteError, releasePath, t]);
 
   // #1719/#1720: begge handlinger er body-løse POST'er — serveren beregner
   // gebyr/løn fra rytter-state. Delt poster så fejl-/success-håndtering er ens.
@@ -458,7 +462,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
               {releaseQuote && releaseQuote.affordable === false && (
                 <p className="text-cz-danger text-xs mb-3">{t("actionModal.release.cannotAfford")}</p>
               )}
-              <Button onClick={() => postRiderAction("release", "actionModal.release.successMsg")}
+              <Button onClick={() => postRiderAction(releaseActionPath, "actionModal.release.successMsg")}
                 disabled={loading || (releaseQuote && releaseQuote.affordable === false)}
                 className="w-full !bg-cz-danger !text-white hover:brightness-110">
                 {loading ? t("actionModal.loadingShort") : t("actionModal.release.confirmButton")}
