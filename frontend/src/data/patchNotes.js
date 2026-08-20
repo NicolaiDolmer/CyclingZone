@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.151",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro has a way in now",
+          "body": "Cycling Zone Pro is reachable from the bottom of the menu, next to Settings. Purchases are still paused while we finish the terms of sale; the page explains why."
+        },
+        "da": {
+          "title": "Pro har nu en indgang",
+          "body": "Cycling Zone Pro kan nu findes nederst i menuen, ved siden af Indstillinger. Køb er stadig sat på pause mens vi færdiggør handelsbetingelserne; det fremgår af siden."
+        },
+        "refs": [
+          3104
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.150",
     "date": "2026-08-20",
     "label": "Beta",
