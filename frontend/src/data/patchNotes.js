@@ -14,11 +14,11 @@ export const PATCHES = [
         "topic": "Finance",
         "en": {
           "title": "Wages follow what a rider delivers, not what he is worth",
-          "body": "Your rider's value is the price of who he becomes. His wage is the price of what he delivers this season. Wages are a fixed share of a rider's current production value, and that share is now the same for every team in every division. Before, the same rider cost more than twice as much in one division as in another. A rider whose abilities grow gets more expensive at his next contract; one whose abilities fade gets cheaper. Signed contracts are frozen and do not change until you sign or extend again."
+          "body": "A rider's value is the price of who he becomes. His wage is the price of what he delivers this season. Wages are a fixed share of his current production value, and that share is now the same in every division. Better rider, higher wage. Fading rider, lower wage at his next contract. Signed contracts stay frozen."
         },
         "da": {
           "title": "Løn følger hvad en rytter leverer, ikke hvad han er værd",
-          "body": "Din rytters værdi er prisen på hvem han bliver. Hans løn er prisen på hvad han leverer i denne sæson. Løn er en fast andel af rytterens nuværende produktionsværdi, og den andel er nu den samme for alle hold i alle divisioner. Før kostede den samme rytter mere end dobbelt så meget i én division som i en anden. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, en hvis evner falder bliver billigere. Underskrevne kontrakter er frosne og ændrer sig ikke før du skriver under eller forlænger igen."
+          "body": "Din rytters værdi er prisen på hvem han bliver. Hans løn er prisen på hvad han leverer i denne sæson. Løn er en fast andel af hans nuværende produktionsværdi, og den andel er nu den samme i alle divisioner. Bedre rytter, højere løn. Rytter i tilbagegang, lavere løn ved næste kontrakt. Underskrevne kontrakter forbliver frosne."
         },
         "refs": [
           3989
@@ -30,11 +30,11 @@ export const PATCHES = [
         "topic": "Finance",
         "en": {
           "title": "The next-season forecast was overstating your wage bill",
-          "body": "The forecast priced next season's wages off market value, which made young prospects look far more expensive than riders who are better right now. It uses the real wage formula again. Help now explains what the salary line is and what it is not."
+          "body": "The forecast priced next season's wages off market value, so young prospects looked far more expensive than riders who are better right now. It uses the real wage formula again."
         },
         "da": {
           "title": "Prognosen for næste sæson satte lønnen for højt",
-          "body": "Prognosen prissatte næste sæsons løn efter markedsværdi, hvilket fik unge talenter til at se langt dyrere ud end ryttere der er bedre lige nu. Den bruger den rigtige lønformel igen. Hjælp forklarer nu hvad lønlinjen er, og hvad den ikke er."
+          "body": "Prognosen prissatte næste sæsons løn efter markedsværdi, så unge talenter så langt dyrere ud end ryttere der er bedre lige nu. Den bruger den rigtige lønformel igen."
         },
         "refs": [
           3986,

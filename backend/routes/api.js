@@ -7379,8 +7379,13 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   if (team_id) {
     // #3989: teams-opslaget hentede kun `division` til løn-satsen, som nu er
     // global. Kun sæsonnummeret er tilbage at slå op.
-    const { data: activeSeason } = await supabase
+    //
+    // Fejlen SKAL håndteres: sæsonnummeret bestemmer kontraktens udløbssæson,
+    // og et tavst fald tilbage til 1 ville skrive en allerede-udløbet kontrakt
+    // uden at nogen opdagede det.
+    const { data: activeSeason, error: seasonError } = await supabase
       .from("seasons").select("number").eq("status", "active").maybeSingle();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
     contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
   }
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
