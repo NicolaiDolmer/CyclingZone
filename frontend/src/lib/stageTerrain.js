@@ -10,7 +10,7 @@ const PROFILE_TO_BUCKET = {
   hilly: "hilly", classic: "hilly",
   mountain: "mountain", high_mountain: "mountain",
   cobbles: "cobbles",
-  itt: "itt", ttt: "itt",
+  itt: "itt", ttt: "itt", itt_hilly: "itt",
 };
 
 export function terrainBucket(profileType) {

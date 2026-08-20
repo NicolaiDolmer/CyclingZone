@@ -784,13 +784,16 @@ test("#3550 punkt 4 (FUND — kræver ejer-review): lønnen er UPÅVIRKET af den
 // lavt — det er formentlig DEN sti ejerens "nær gulvet 250"-forventning beskriver,
 // men den rammer kun kandidater UDEN en current_production_value, ikke enhver
 // intake-pull-kandidat i almindelighed.
-test("#3550 punkt 4: fallback-stien (current_production_value mangler) giver en LAV løn pr. division — dette er formentlig den sti 'nær gulvet' -forventningen sigter til", async () => {
-  const rates = { 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 };
-  for (const [division, rate] of Object.entries(rates)) {
-    const supabase = makeSignRejectSupabase({ riderBaseValue: 3000, division: Number(division) }); // currentProductionValue udeladt → fallback
+//
+// #3989: satsen er global, så fallback-lønnen er ÉT tal — ikke fire. Testen
+// dækker stadig alle fire divisioner, netop for at bevise at de giver det samme.
+test("#3550 punkt 4: fallback-stien (current_production_value mangler) giver en LAV løn — og den er division-blind (#3989)", async () => {
+  const expected = computeFrozenSalary({ current_production_value: null });
+  for (const division of [1, 2, 3, 4]) {
+    const supabase = makeSignRejectSupabase({ riderBaseValue: 3000, division }); // currentProductionValue udeladt → fallback
     const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
-    assert.equal(result.salary, Math.max(1, Math.round(1000 * rate)), `division ${division}: fallback-gulvet (1000) × sats`);
-    assert.ok(result.salary < 350, `division ${division}: lønnen er lav (${result.salary}), i omegnen af den forventede "nær 250"`);
+    assert.equal(result.salary, expected, `division ${division}: fallback-gulvet (1000) × satsen, uafhængigt af division`);
+    assert.ok(result.salary < 1000, `division ${division}: lønnen er lav (${result.salary}) i forhold til en rigtig kontrakt`);
   }
 });
 

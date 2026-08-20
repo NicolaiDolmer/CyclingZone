@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { SALARY_RATE_PRODUCTION } from "./marketValues.js";
 import { buildSalaryFilterOr } from "./salaryFilter.js";
 
 // #1827: løn-filteret skal ramme den VISTE løn (frossen ELLER estimat), så free
@@ -13,11 +14,12 @@ test("buildSalaryFilterOr — intet løn-filter → null", () => {
 });
 
 test("buildSalaryFilterOr — kun max_salary: estimat-grenen tillader NULL-løn via market_value", () => {
-  // #2594: value-bound = round(5000/0.1606) = 31133 (global prod-sats, ikke længere 0.067)
+  // #3989: value-bound = round(5000 / SALARY_RATE_PRODUCTION)
+  const bound = Math.round(5000 / SALARY_RATE_PRODUCTION);
   const or = buildSalaryFilterOr({ max_salary: "5000" });
   assert.equal(
     or,
-    "and(salary.not.is.null,salary.lte.5000),and(salary.is.null,current_production_value.lte.31133)",
+    `and(salary.not.is.null,salary.lte.5000),and(salary.is.null,current_production_value.lte.${bound})`,
   );
   // Den kritiske rettelse: en gren matcher EKSPLICIT salary.is.null (free agents),
   // som det gamle `salary.lte`-filter ekskluderede.
@@ -26,19 +28,21 @@ test("buildSalaryFilterOr — kun max_salary: estimat-grenen tillader NULL-løn 
 
 test("buildSalaryFilterOr — kun min_salary", () => {
   const or = buildSalaryFilterOr({ min_salary: "1000" });
-  // value-bound = round(1000/0.1606) = 6227
+  const bound = Math.round(1000 / SALARY_RATE_PRODUCTION);
   assert.equal(
     or,
-    "and(salary.not.is.null,salary.gte.1000),and(salary.is.null,current_production_value.gte.6227)",
+    `and(salary.not.is.null,salary.gte.1000),and(salary.is.null,current_production_value.gte.${bound})`,
   );
 });
 
 test("buildSalaryFilterOr — tosidet interval AND'er begge grænser i hver gren", () => {
+  const lo = Math.round(1000 / SALARY_RATE_PRODUCTION);
+  const hi = Math.round(5000 / SALARY_RATE_PRODUCTION);
   const or = buildSalaryFilterOr({ min_salary: "1000", max_salary: "5000" });
   assert.equal(
     or,
     "and(salary.not.is.null,salary.gte.1000,salary.lte.5000)," +
-      "and(salary.is.null,current_production_value.gte.6227,current_production_value.lte.31133)",
+      `and(salary.is.null,current_production_value.gte.${lo},current_production_value.lte.${hi})`,
   );
 });
 

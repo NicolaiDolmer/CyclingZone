@@ -61,6 +61,102 @@ function interleave(a, b) {
   return out;
 }
 
+// #3546 B (ejer-beslutning 17/8, rod-årsag verificeret): "rest"-etapeløbenes (others)
+// EGEN date_text-fraction klumper (August-tungt i det ægte katalog), så GT-vinduerne ikke
+// deler ikke-GT-tætheden ligeligt: Giro-vinduet (laveste GT-fraction) delte de 5 daglige
+// slots med ~3 samtidige løb mod de senere GT'ers ~1-2. Fixet omfordeler KUN de ikke-GT
+// ETAPELØB (den flerdags-belastning der reelt driver samtidighed) til en fraction JÆVNT
+// spredt over de tre GT-CENTREREDE vinduer, i stedet for deres rå, klumpede date_text-
+// fraction: endagsløb (classics) rører vi ikke: ejerens rod-årsag peger specifikt på
+// etapeløbenes date_text, og et endagsløb bidrager kun 1 dag til samtidighed uanset hvor
+// det lander. REN funktion, deterministisk (vægtet round-robin: ingen rng).
+//
+// Vinduer: [0, mid(g0,g1)], [mid(g0,g1), mid(g1,g2)], [mid(g1,g2), 1]: samme "centreret
+// om GT'en"-princip som SEASON_PHASES' First/Second GT Block (seasonPhaseProfiles.js).
+// Fordelingen er RACE-COUNT-vægtet efter vinduets bredde (largest-remainder-metoden,
+// stabil/deterministisk); de STØRSTE løb (mest disruptive for samtidighed) fordeles først,
+// så et enkelt kæmpe-etapeløb ikke ender i det samme vindue som en klump af mindre.
+export function balanceStageRaceFractionAcrossGtWindows(gtsByPhase, others) {
+  if (!gtsByPhase?.length || !others?.length) return others;
+  if (!others.every(hasFraction)) return others; // intet at balancere uden fraction: kalderen har allerede sin fallback
+
+  const gtFractions = [...gtsByPhase].map((g) => g.seasonFraction).sort((a, b) => a - b);
+  const bounds = [0, ...gtFractions.slice(0, -1).map((f, i) => (f + gtFractions[i + 1]) / 2), 1];
+  const windowCount = bounds.length - 1;
+  if (windowCount < 1) return others;
+  const widths = Array.from({ length: windowCount }, (_, i) => bounds[i + 1] - bounds[i]);
+  const totalWidth = widths.reduce((s, w) => s + w, 0) || 1;
+
+  // Largest-remainder: heltals-kvoter der summer til others.length, proportionalt med bredde.
+  const raw = widths.map((w) => (w / totalWidth) * others.length);
+  const quotas = raw.map(Math.floor);
+  let remaining = others.length - quotas.reduce((s, q) => s + q, 0);
+  const remainders = raw.map((r, i) => ({ i, frac: r - Math.floor(r) })).sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (let k = 0; k < remaining; k++) quotas[remainders[k % windowCount].i] += 1;
+
+  // Størst-først (byBigThenId) → de mest disruptive løb får FØRSTE valg af vindue, spredt
+  // round-robin over vinduer med resterende kvote (så to store løb ikke havner i samme
+  // vindue, hvis andre vinduer stadig har plads).
+  const sorted = [...others].sort(byBigThenId);
+  const remainingQuota = quotas.slice();
+  const assigned = Array.from({ length: windowCount }, () => []);
+  let cursor = 0;
+  for (const r of sorted) {
+    let guard = 0;
+    while (remainingQuota[cursor] <= 0 && guard++ < windowCount) cursor = (cursor + 1) % windowCount;
+    if (remainingQuota[cursor] <= 0) cursor = quotas.findIndex((q, i) => assigned[i].length < q); // defensivt fallback
+    if (cursor < 0) cursor = windowCount - 1;
+    assigned[cursor].push(r);
+    remainingQuota[cursor] -= 1;
+    cursor = (cursor + 1) % windowCount;
+  }
+
+  const out = [];
+  for (let w = 0; w < windowCount; w++) {
+    const list = assigned[w];
+    const [lo, hi] = [bounds[w], bounds[w + 1]];
+    const n = list.length;
+    for (let i = 0; i < n; i++) {
+      const fraction = n === 1 ? (lo + hi) / 2 : lo + ((i + 0.5) / n) * (hi - lo);
+      out.push({ ...list[i], seasonFraction: fraction });
+    }
+  }
+  return out;
+}
+
+// #3546 F (ejer-valgt 17/8 aften): brostens-løbenes (cobbled_classic) rå date_text-fraction
+// falder MONOTONT hen over sæsonen i det ægte katalog (målt: 29→24→18→8 pr. uge), så D1's
+// pakkede kalender kun får 3 brostens-etaper, alle tidlige. Ejer-valgt fix: to VINDUER
+// (tidligt + sent i sæsonen) i stedet for det monotone fald. REN funktion, deterministisk
+// (ingen rng): kalderen (tierCalendarMaterializer.js) afgør hvilke races der er "cobbles"
+// via isCobbles-prædikatet, så denne fil forbliver katalog-uafhængig (samme princip som
+// balanceStageRaceFractionAcrossGtWindows ovenfor).
+export function reshapeCobblesFractionToTwoWindows(races, isCobbles, {
+  earlyWindow = [0.02, 0.15], lateWindow = [0.75, 0.90],
+} = {}) {
+  if (!races?.length || typeof isCobbles !== "function") return races;
+  const isEligible = (r) => isCobbles(r) && hasFraction(r);
+  const cobbles = races.filter(isEligible);
+  if (!cobbles.length) return races;
+  const rest = races.filter((r) => !isEligible(r));
+
+  // Deterministisk 50/50-split efter ORIGINAL fraction-rang (stabil id-tiebreak, ingen
+  // rng): de tidligst daterede races i den rå fordeling forbliver i det TIDLIGE vindue,
+  // resten rykker til det SENE. #3546-mønstret ("to vinduer i stedet for monotont fald")
+  // opnås dermed uden at ændre HVILKE races der er cobbles (selectionen rører vi aldrig).
+  const sorted = [...cobbles].sort((a, b) => a.seasonFraction - b.seasonFraction || String(a.id).localeCompare(String(b.id)));
+  const splitAt = Math.ceil(sorted.length / 2);
+  const early = sorted.slice(0, splitAt);
+  const late = sorted.slice(splitAt);
+
+  const spread = (list, [lo, hi]) => list.map((r, i) => ({
+    ...r,
+    seasonFraction: list.length === 1 ? (lo + hi) / 2 : lo + (i / (list.length - 1)) * (hi - lo),
+  }));
+
+  return [...rest, ...spread(early, earlyWindow), ...spread(late, lateWindow)];
+}
+
 // ---- BANDED: B baseline-spor + overlay; hele game-dage pr. IRL-dag (straddle-fri) ----
 // Returnerer { placements, timelineLength } eller null hvis ikke realiserbart.
 function layoutBanded({ stageRaces, classics, density: D, days, cap }) {
@@ -231,10 +327,213 @@ function placeGrandTourSegments({ gt, positions, reserved, manualEvents, streamC
   });
 }
 
+// #3546 C: "mindst 1 afgørelse pr. D1-kalenderdag": en afgørelse er et endagsløb/monument
+// ELLER en etapeløbs SLUTETAPE (stage_number === løbets samlede etapeantal).
+const isDecisionEvent = (ev) => ev.type === "single" || ev.stage_number === lenOf(ev.race);
+
+// Simulerer den PRÆCIS samme slot→dag-forbrugsrækkefølge som den endelige slot-
+// konsumeringsloop i layoutStream (monSlot optager faste slots, events fylder resten
+// sekventielt): UDEN at bygge placeringer. `chunkByDay[d]` = de `events`-array-INDEKSER
+// (ikke race-id'er) der lander på kalenderdag d, i den rækkefølge de konsumeres.
+function buildDayChunks(events, monSlot, days, D) {
+  const dayOfIdx = new Array(events.length);
+  const chunkByDay = Array.from({ length: days }, () => []);
+  const monumentDay = new Array(days).fill(false);
+  const totalSlots = days * D;
+  let ei = 0;
+  for (let slot = 0; slot < totalSlots; slot++) {
+    const real_day = Math.floor(slot / D);
+    if (monSlot.has(slot)) { monumentDay[real_day] = true; continue; }
+    if (ei < events.length) { dayOfIdx[ei] = real_day; chunkByDay[real_day].push(ei); ei++; }
+  }
+  return { dayOfIdx, chunkByDay, monumentDay };
+}
+
+// Pr.-løb, stage_number-sorteret liste af { idx, stage_number }: bruges til at verificere
+// at et bytte ALDRIG bryder et løbs interne etape-rækkefølge (nabo-etapernes dage skal
+// forblive ikke-faldende omkring den flyttede etape).
+function buildRacePositions(events) {
+  const byRace = new Map();
+  events.forEach((ev, idx) => {
+    if (!byRace.has(ev.race.id)) byRace.set(ev.race.id, []);
+    byRace.get(ev.race.id).push({ idx, stage_number: ev.stage_number });
+  });
+  for (const list of byRace.values()) list.sort((a, b) => a.stage_number - b.stage_number);
+  return byRace;
+}
+
+// Kan positionen `idx`s event flyttes til array-POSITIONEN `newPos` uden at bryde dens EGET
+// løbs interne etape-rækkefølge? STRENGT positions-baseret (ikke dag-baseret): array-
+// positionen er selve kilden til BÅDE real_day OG lane (buildDayChunks konsumerer `events`
+// i strengt stigende positions-orden), så en positions-check er den PRÆCISE, nødvendige OG
+// tilstrækkelige betingelse: en dag-niveau-check (tidligere variant) tillod fejlagtigt to
+// etaper af samme løb at lande på SAMME dag i forkert lane-rækkefølge (fundet i test:
+// "et løbs etaper er real_day-monotone"). Naboerne skal forblive STRENGT omkring newPos  - 
+// aldrig lig med (positioner er unikke pr. event).
+function canMoveTo(idx, newPos, events, racePositions) {
+  const ev = events[idx];
+  const list = racePositions.get(ev.race.id);
+  const pos = list.findIndex((e) => e.idx === idx);
+  const prevPos = pos > 0 ? list[pos - 1].idx : -Infinity;
+  const nextPos = pos < list.length - 1 ? list[pos + 1].idx : Infinity;
+  return newPos > prevPos && newPos < nextPos;
+}
+
+// #3546 H (ejer-valgt 17/8 sen aften: spillerfeedback fandt samme strækningspatologi på
+// ikke-GT-etapeløb som B fiksede for GT'erne): mål et løbs FULDE kalender-spænd (maks-min
+// real_day over ALLE dets stagesPlaced-positioner), givet en HYPOTETISK positions-ændring
+// for netop ÉN idx (til newPos): bruges til at afvise et C-bytte FØR det committes, hvis
+// det ville strække løbet ud over det hårde loft. Rod-årsag verificeret ved instrumenteret
+// dry-run: C's bytte-mekanisme (enforceDailyDecisions) flytter typisk et løbs FØRSTE etape
+// (ingen "forrige"-nabo-begrænsning) eller SIDSTE etape (decision-donor-kandidat) langt væk
+// for at dække en dag uden afgørelse et andet sted i kalenderen: sekventielt SIKKERT
+// (canMoveTo tillader det), men skaber netop den strækningspatologi H retter (fx Tour du
+// Massif Central målt 6 etaper over 14 dage FØR denne guard, 5 dage EFTER).
+function raceSpanAfterMove(raceId, racePositions, dayOfIdx, movedIdx, newPos) {
+  const list = racePositions.get(raceId);
+  if (!list || list.length < 2) return 0; // endagsløb har intet "spænd"-koncept
+  let lo = Infinity, hi = -Infinity;
+  for (const e of list) {
+    const day = e.idx === movedIdx ? dayOfIdx[newPos] : dayOfIdx[e.idx];
+    if (day < lo) lo = day;
+    if (day > hi) hi = day;
+  }
+  return hi - lo + 1;
+}
+
+// Hård grænse (#3546 H, ejer-beslutning 17/8 sen aften): stages + 3 dage. Målet (stages + 2)
+// håndhæves IKKE hårdt her (ville afvise for mange ellers gyldige C-bytter og genskabe #3546
+// C's egen "0 er umuligt uden katalog-ændring"-begrænsning): den HÅRDE grænse er hvad H
+// eksplicit specificerede som constraint; stages+2 er target/rapporterings-niveau (scorecard
+// måling 9), ikke en hård afvisnings-tærskel i selve bytte-logikken.
+const NON_GT_STAGE_RACE_SPAN_HARD_SLACK = 3;
+
+// Er et bytte af idx (tilhørende race) til newPos sikkert for #3546 H's spænd-grænse? Kun
+// relevant for IKKE-GT etapeløb (2 <= stages < spineMinStages): endagsløb har intet spænd,
+// GT'er er eksplicit undtaget ("ingen ændring for endagsløb/GT'er", H's egen specifikation).
+function spanMoveOk(idx, newPos, events, racePositions, dayOfIdx, spineMinStages) {
+  const race = events[idx].race;
+  const stages = lenOf(race);
+  if (stages < 2 || (spineMinStages != null && stages >= spineMinStages)) return true; // undtaget
+  const span = raceSpanAfterMove(race.id, racePositions, dayOfIdx, idx, newPos);
+  return span <= stages + NON_GT_STAGE_RACE_SPAN_HARD_SLACK;
+}
+
+// #3546 C: placerings-prioritet: bytter array-POSITIONEN af to `events`-entries (ALDRIG
+// deres game_day/stage_number/race-identitet) så en afgørelse lander på en dag der ellers
+// ikke ville have nogen. Positionel, fordi dag-tildelingen (buildDayChunks) er en REN
+// funktion af array-rækkefølgen: bytter man to positioner, bytter man hvilken dag de to
+// events's OBJEKTER lander på, uden at røre game_day (bruges andetsteds: raceBinding.js  - 
+// og skal forblive den oprindelige stream-cursor-position).
+//
+// Hvert kandidat-bytte verificeres FØR det committes: begge involverede løbs
+// stagesPlaced-dage skal forblive ikke-faldende i stage_number (canMoveTo). Det gør
+// byttet 100% sikkert for etapeløbs-sekventialitet, men betyder også at der IKKE findes en
+// generel garanti: en dag hvis events UDELUKKENDE er mellemliggende (ikke-sidste) etaper
+// af igangværende etapeløb, uden noget donor-bytte der består begge canMoveTo-tjek, kan
+// forblive uden afgørelse. Det er BEVIDST (aldrig en tavs/urealistisk tvang) og rapporteres
+// ærligt af diagnose()'s daysWithoutDecision i stedet for at blive gemt væk.
+//
+// Muterer `events` in-place (byttet er det eneste sted output ændres); ingen returværdi.
+function enforceDailyDecisions(events, monSlot, days, D, spineMinStages) {
+  if (!events.length || days < 1) return;
+  const { dayOfIdx, chunkByDay, monumentDay } = buildDayChunks(events, monSlot, days, D);
+  const racePositions = buildRacePositions(events);
+  const decisionCountOf = (day) => chunkByDay[day].reduce((n, idx) => n + (isDecisionEvent(events[idx]) ? 1 : 0), 0);
+
+  // #3546 C v2 (arkitekt-retur 17/8 aften: invarianten skal ramme 0, ikke kun forbedres):
+  // FLERE PASSES over dagene, ikke kun én. Et bytte der lykkes for dag X kan ÅBNE en ny
+  // sikker donor-mulighed for en dag Y der fejlede i et TIDLIGERE pass (fx X's nye donor-
+  // status, eller en kæde af to bytter der hver isoleret var usikre). Bundet til `days`
+  // gennemløb (langt mere end nogensinde nødvendigt: hvert gennemløb fjerner mindst ét
+  // problem eller stopper, så det kan aldrig løkke uendeligt: se `anyFixedThisPass`-vagten).
+  for (let pass = 0; pass < days; pass++) {
+    let anyFixedThisPass = false;
+    for (let d = 0; d < days; d++) {
+      if (monumentDay[d] || decisionCountOf(d) > 0) continue; // allerede tilfredsstillet
+
+      // Donor-dage sorteret efter nærhed (tættest først, lige afstand → lavest dagindeks)  -
+      // minimerer hvor langt en afgørelse "rejser" væk fra sin oprindelige fase-placering.
+      const donors = [];
+      for (let d2 = 0; d2 < days; d2++) if (d2 !== d && decisionCountOf(d2) >= 2) donors.push(d2);
+      donors.sort((a, b) => Math.abs(a - d) - Math.abs(b - d) || a - b);
+
+      let fixed = false;
+      for (const d2 of donors) {
+        const decisionIdxs = chunkByDay[d2].filter((idx) => isDecisionEvent(events[idx]));
+        for (const i of decisionIdxs) {
+          for (const j of chunkByDay[d]) {
+            // Samme løb på begge sider: udelukkes defensivt (positions-checket nedenfor
+            // afviser det allerede korrekt i praksis, men eksplicit er billigere at læse).
+            if (events[i].race.id === events[j].race.id) continue;
+            // #3546 H-fund (regression opdaget under implementeringen, IKKE en del af H's
+            // egen ask): et GT-løb er ALDRIG en bytte-kandidat, hverken som donor (i) eller
+            // offer (j). canMoveTo alene sikrer kun GT'ens EGEN interne etape-rækkefølge  - 
+            // den ved intet om #3472 v3's SEPARATE "ingen delt kalenderdag mellem to GT'er"-
+            // garanti, som et bytte af en GT-etape kan bryde (verificeret: uden denne
+            // udelukkelse delte 2 GT'er en kalenderdag, både i en test-fixture og mod det
+            // ægte katalog). GT'er er allerede eksplicit undtaget spænd-tjekket (H's egen
+            // "ingen ændring for GT'er"): denne udelukkelse er den samme undtagelse ført
+            // konsekvent igennem til HELE swap-kandidaturen, ikke kun spænd-målingen.
+            if (spineMinStages != null && (lenOf(events[i].race) >= spineMinStages || lenOf(events[j].race) >= spineMinStages)) continue;
+            if (!canMoveTo(i, j, events, racePositions)) continue;
+            if (!canMoveTo(j, i, events, racePositions)) continue;
+            // #3546 H: afvis bytter der ville strække et ikke-GT-etapeløb ud over dets
+            // hårde spænd-loft (stages+3): se spanMoveOk/raceSpanAfterMove ovenfor.
+            if (!spanMoveOk(i, j, events, racePositions, dayOfIdx, spineMinStages)) continue;
+            if (!spanMoveOk(j, i, events, racePositions, dayOfIdx, spineMinStages)) continue;
+            // Commit: byt array-POSITIONERNE i/j. dayOfIdx pr. POSITION er uændret (i hører
+            // stadig til dag d2, j til dag d): det er netop det der flytter events[i]s
+            // OBJEKT til dag d og events[j]s OBJEKT til dag d2.
+            const movedToD = events[i], movedToD2 = events[j];
+            events[j] = movedToD;
+            events[i] = movedToD2;
+            const listA = racePositions.get(movedToD.race.id);
+            const eA = listA.find((e) => e.idx === i);
+            if (eA) eA.idx = j;
+            const listB = racePositions.get(movedToD2.race.id);
+            const eB = listB.find((e) => e.idx === j);
+            if (eB) eB.idx = i;
+            fixed = true;
+            break;
+          }
+          if (fixed) break;
+        }
+        if (fixed) break;
+      }
+      if (fixed) anyFixedThisPass = true;
+      // Intet sikkert bytte fundet: dagen forbliver uden afgørelse (se docstring ovenfor) -
+      // MEDMINDRE et SENERE pass åbner en ny mulighed (derfor gentages hele scanningen).
+    }
+    if (!anyFixedThisPass) break; // fixpunkt nået: yderligere gennemløb ville ikke ændre noget
+  }
+}
+
+// #3546 B v2 (arkitekt-retur 17/8 aften: B's GT-spredning skulle skalere med spine-
+// længden, ikke kun med rå fraction): mindst-belastede stream, MEN med tie-break VÆK fra
+// stream 0. Rod-årsag (fundet ved instrumenteret dry-run mod det ægte katalog): cursorerne
+// starter [0,0,0,...], og en almindelig "første strengt mindre vinder"-tie-break
+// favoriserer LAVESTE indeks: så "rest"-fyldet FØR hver GT's egen placering blev
+// systematisk dumpet på stream 0, PRÆCIS den stream GT'en selv ligger på. Det skubbede
+// GT'ens eget fodaftryk længere frem i dens EGEN game_day-rækkefølge OG sultede de ANDRE
+// streams for indhold der reelt overlappede TIDSMÆSSIGT med GT'ens vindue: mindre
+// samtidighed under GT'en, større kalender-spænd. Effekten var størst for den FØRSTE GT
+// (ingen tidligere fyld til at bryde tien), hvilket matchede det målte mønster (Giro
+// konsekvent længst spændt, uanset GT-etapeantal). Ren funktion: samme sikre invarianter
+// som før (ceiling/cap er stadig kaldestedets ansvar); ændrer KUN hvilken stream der
+// vælges ved præcis lige cursor-værdier, aldrig HVOR MEGET der fyldes.
+export function pickLeastLoadedStreamAwayFromZero(streamCursor, cap) {
+  let s = -1;
+  for (let t = cap - 1; t >= 0; t--) {
+    if (s === -1 || streamCursor[t] < streamCursor[s]) s = t;
+  }
+  return s;
+}
+
 // ---- STREAM: least-loaded på `cap` spor + game-dag-ordnet komprimering (håndterer GT + monumenter) ----
 function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }) {
   const gts = stageRaces.filter((r) => lenOf(r) >= spineMinStages).sort(byBigThenId);
-  const others = stageRaces.filter((r) => lenOf(r) < spineMinStages).sort(byBigThenId);
+  let others = stageRaces.filter((r) => lenOf(r) < spineMinStages).sort(byBigThenId);
   const streamCursor = new Array(cap).fill(0);
   const raceSpan = new Map();
   const placeStream = (s, race) => { const start = streamCursor[s]; streamCursor[s] = start + lenOf(race); raceSpan.set(race.id, { start, len: lenOf(race), stream: s, race }); };
@@ -243,6 +542,13 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   // understøtter ÉT sammenhængende span pr. race-id) og merges ind i `events` nedenfor.
   const manualEvents = [];
   const gtRestDayReport = [];
+
+  // #3469: fase-sortér GT'erne TIDLIGT (før `rest` bygges): #3546 B's rebalancering af
+  // `others` skal ske FØR interleave/merge med classics, men skal kun køre i den samme
+  // fase-ankrede gren som resten af #3469/#3470-logikken nedenfor (gtsByPhase-check
+  // genbruges 1:1, orderByPhase er ren/deterministisk → samme resultat begge steder).
+  const gtsByPhaseEarly = gts.length ? orderByPhase(gts) : null;
+  if (gtsByPhaseEarly) others = balanceStageRaceFractionAcrossGtWindows(gtsByPhaseEarly, others);
 
   // #3469: fase-sortér rest-løbene (fylder ikke-GT-strømmen) når alle har en date_text-
   // fraction; ellers uændret jævn fletning (bit-identisk med før #3469).
@@ -255,7 +561,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
     // (samme cursor, stream 0, sekventiel placering). #3470: hviledage placeres KUN i denne
     // (fase-ankrede) gren — perGap-fallback-grenen nedenfor er UÆNDRET/bit-identisk, for uden
     // date_text kan hviledags-antallet alligevel ikke udledes.
-    const gtsByPhase = orderByPhase(gts);
+    const gtsByPhase = gtsByPhaseEarly; // #3546 B: allerede beregnet ovenfor (samme rene funktion → samme resultat)
     if (gtsByPhase) {
       // #3470 (supply-fix, ejer-krav 6/8 — samme fejlklasse som reservations-fasen i
       // tierRaceSelection.js): reservér fillere FØR padding-loopet nedenfor forbruger
@@ -364,10 +670,17 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
 
         // Trin 2: fase-target ≈ fraction × (totalSlots − resterende GT-fodaftryk INKL. denne)
         // — fyldes LEAST-LOADED over alle streams (bevarer overlap, jf. #3472 runde 1).
+        // #3546 H-forsøg (ejer-mål samme aften, "Giroen ≤9, helst ≤8 dage"): et forsøg på at
+        // skalere den FØRSTE GT's target opad (empirisk sweep, faktor 2,3-3,0 gav Giro-spænd
+        // 10→7) blev AFPRØVET og FORKASTET: det brød #3472 v3's GT-real-day-separations-
+        // invariant (2 GT'er delte kalenderdag, verificeret BÅDE i test-fixturen og mod det
+        // ægte katalog: "gt-1 slutter dag 19, gt-2 starter dag 19"). Denne invariant er en
+        // HÅRD, ikke-forhandlingsbar garanti (#3472 v3, "ingen delt dag > præcist anker").
+        // IKKE forsøgt yderligere her: se scorecardets "Fund og begrænsninger" for det
+        // fulde forsøgs-referat + tal. target-formlen er derfor UÆNDRET fra B v2.
         const target = Math.min(ceiling, Math.max(placedCount, Math.round(gt.seasonFraction * (totalSlots - remainingGtLen))));
         while (ri < rest.length && placedCount < target) {
-          let s = 0;
-          for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t;
+          let s = pickLeastLoadedStreamAwayFromZero(streamCursor, cap);
           if (s === 0 && streamCursor[0] + lenOf(rest[ri]) > stream0Ceiling) {
             let alt = -1;
             for (let t = 1; t < cap; t++) if (alt === -1 || streamCursor[t] < streamCursor[alt]) alt = t;
@@ -393,7 +706,7 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
         remainingGtLen -= footprintOf(gt); // klar til NÆSTE gt's target-beregning (nu ekskl. denne)
         requiredStream0Buffer = GT_SEPARATION_BUFFER_DAYS * D; // gælder NÆSTE gt (0 hvis der ikke er flere)
       }
-      for (; ri < rest.length; ri++) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, rest[ri]); }
+      for (; ri < rest.length; ri++) { placeStream(pickLeastLoadedStreamAwayFromZero(streamCursor, cap), rest[ri]); }
     } else {
       const perGap = Math.floor(Math.floor(rest.length / 2) / gts.length);
       let ri = 0;
@@ -438,6 +751,13 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
       }
     }
   }
+
+  // #3546 C: mindst 1 AFGØRELSE (endagsløb/monument ELLER etapeløbs-SLUTETAPE) pr.
+  // kalenderdag: se enforceDailyDecisions' docstring. Kører EFTER events er sorteret og
+  // monSlot kendt (monument-dage tæller automatisk som en afgørelse), FØR slot-
+  // konsumeringsloopet nedenfor fordeler dem til real_day.
+  enforceDailyDecisions(events, monSlot, days, D, spineMinStages);
+
   const placementsById = new Map();
   const ensure = (race, type, stages) => { if (!placementsById.has(race.id)) placementsById.set(race.id, { id: race.id, type, race_class: race.race_class ?? null, stages, startRealDay: Infinity, stagesPlaced: [] }); return placementsById.get(race.id); };
   let ei = 0, monGameDay = MONUMENT_GAMEDAY_BASE;
@@ -520,6 +840,22 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMin
     }
   }
 
+  // #3546 C: dage UDEN afgørelse (endagsløb/monument eller etapeløbs-slutetape)  - 
+  // rapporteres for BEGGE layouts (banded har ingen aktiv enforceDailyDecisions, men
+  // metrikken måles alligevel, jf. issue-kravet om at kunne MÅLE det). En dag tælles som
+  // havende en afgørelse hvis MINDST ét stagesPlaced-element den dag enten er et
+  // monument/endagsløb (game_day ≥ MONUMENT_GAMEDAY_BASE) eller løbets sidste etape
+  // (stage_number === p.stages).
+  const decisionDaySet = new Set();
+  for (const p of placements) {
+    for (const st of p.stagesPlaced) {
+      const isDecision = st.game_day >= MONUMENT_GAMEDAY_BASE || st.stage_number === (p.stages ?? 1);
+      if (isDecision) decisionDaySet.add(st.real_day);
+    }
+  }
+  const daysWithoutDecision = [];
+  for (let d = 0; d < days; d++) if (!decisionDaySet.has(d)) daysWithoutDecision.push(d);
+
   return {
     load, racesPerDay: racesOnDay.map((s) => s.size), days, density: D, overlapCap: cap, layoutMode, timelineLength,
     emptyDays: load.filter((x) => x === 0).length,
@@ -527,6 +863,7 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMin
     overlapDays: racesOnDay.map((s) => s.size).filter((n) => n >= 2).length,
     maxOverlap, overlapHistogram, straddleGameDays,
     gtRealDaySeparationViolations,
+    daysWithoutDecision, daysWithoutDecisionCount: daysWithoutDecision.length,
   };
 }
 

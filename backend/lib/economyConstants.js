@@ -228,25 +228,49 @@ export const UPKEEP_BEFORE_FIRST_RACE_ENABLED = false;
 // (getRiderSalary + projectYouthSalary, som har sin egen 0.067-konstant).
 export const SALARY_RATE = 0.067;
 
-// #2594 løn-decoupling CUTOVER: løn = current_production_value × SALARY_RATE_PROD.
-// Værdi (market_value) prissætter FREMTIDEN (karriere-NPV, v4); løn prissætter
-// NUTIDEN (forventet produktion i indeværende sæson). Per-division satser
-// kalibreret 18/7 mod ægte population (rate_d = Σløn_d/Σcpv_d — bevarer hver
-// divisions lønbyrde ved konstruktion; ejer-valg 14/7, G1 i
-// docs/audits/2026-07-18-salary-decoupling-cutover-scorecard.md). `global`
-// (Σløn/Σcpv over alle) bruges hvor division er ukendt (fx free-agent-estimat).
-// Ændring her → opdatér frontend-spejlet i marketValues (getRiderSalary +
-// projectYouthSalary). SALARY_RATE (0.067) ovenfor er den GAMLE market_value-
-// kobling — bevares kun til reference/legacy-harnesses, bruges ikke af løn længere.
-export const SALARY_RATE_PROD = Object.freeze({
-  byDiv: Object.freeze({ 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 }),
-  global: 0.1606,
-});
-
-// Slå løn-satsen op for en division (1-4); ukendt/manglende division → global sats.
-export function salaryRateForDivision(division) {
-  return SALARY_RATE_PROD.byDiv[Number(division)] ?? SALARY_RATE_PROD.global;
-}
+// #3989 (ejer-beslutning 20/8) — ÉN global løn-sats på rytterens NUVÆRENDE
+// leverance. Reglen, i én sætning:
+//
+//     Rytterens VÆRDI er prisen på hvem han bliver.
+//     Rytterens LØN er prisen på hvad han leverer i år.
+//
+//     løn = current_production_value × SALARY_RATE_PRODUCTION
+//
+// current_production_value er sæson-0-produktionsleddet ved rytterens NUVÆRENDE
+// evner (riderCareerNpv.currentProductionValue) — uden diskontering, survival
+// eller elite-præmie. Målt mod prod 20/8 er den monoton i evner over hele
+// spektret (6.051 → 232.432 pr. overall-bin) og alders-neutral. Det er præcis
+// hvad en lønbasis skal være.
+//
+// INGEN DIVISIONS-SKALERING. Den tidligere SALARY_RATE_PROD.byDiv
+// ({1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087}) blev kalibreret 18/7 som
+// Σløn_d / Σcpv_d — altså fittet til at BEVARE hver divisions daværende
+// lønbyrde, ikke mod et mål. Konsekvensen var at den samme rytter kostede mere
+// end dobbelt så meget i D2 (0,3238) som i D3 (0,1481). Ejer-direktiv 20/8:
+// løn må KUN skalere med rytterens kvalitet. Satsen er derfor en skalar, og
+// `division` er FJERNET fra computeFrozenSalary's signatur, så skaleringen ikke
+// kan snige sig ind igen ad bagvejen.
+//
+// MARKEDSVÆRDI ER IKKE ET LØNGRUNDLAG. #3393 ville prissætte lønnen efter
+// market_value (karriere-NPV + elite-præmie). Målt mod prod 20/8 genindfører
+// det den inversion løn-decouplingen fjernede — den flytter blot fra alders- til
+// evne-aksen: et 19-årigt talent (overall 32, værdi 711.211) ville koste 62.531,
+// mens en 27-årig der er BEDRE lige nu (overall 47, værdi 719.000) ville koste
+// 59.285. PR'en er parkeret; hele målingen ligger på #3989.
+//
+// KALIBRERING (#3989, målt mod S3-divisionerne inkl. upkeep + stabsløn):
+//   sats 0,25 → D1-løn 154.967 · D1-net værst +218.984 · 1/24 hold i minus
+//   sats 0,35 → D1-løn 216.954 · D1-net værst +156.997 · 1/24 hold i minus  ← valgt
+//   sats 0,45 → D1-løn 278.941 · D1-net værst  +95.011 · 2/24 hold i minus
+//   sats 0,55 → D1-løn 340.928 · D1-net værst  +33.024 · 7/24 hold i minus
+// "værst" = kun garanteret sponsorbase, ingen variabel pulje, ingen board-bonus.
+// D1 har aldrig haft menneskehold, så indtægtssiden dér er ekstrapoleret.
+// Satsen er valgt lavt nok til at kunne HÆVES på målt S3-data.
+//
+// Ændring her → opdatér frontend-spejlet SALARY_RATE_PRODUCTION i
+// frontend/src/lib/marketValues.js. Paritet håndhæves af
+// frontend/src/lib/salaryRateParity.test.js, som importerer BEGGE konstanter.
+export const SALARY_RATE_PRODUCTION = 0.35;
 
 // ============================================================
 // 07d Fase A: audit-trail enums.

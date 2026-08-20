@@ -132,6 +132,80 @@ test("etapeløbs-etape → mellemsprint + målspurt; endagsløb → kun målspur
   assert.ok(oneDay.sprints.every((s) => s.kind === "finish"));
 });
 
+// ── #3546 E: uphill-finish andel for hilly/rolling ────────────────────────────
+test("#3546 E: hilly rammer ~35% summit_finish over mange seeds (prod målte 0%)", () => {
+  let summitCount = 0;
+  const n = 400;
+  for (let i = 0; i < n; i++) {
+    const r = attachRoute(stage("hilly", "punch", 3), { external_id: `uh-${i}` }, true);
+    const last = r.climbs[r.climbs.length - 1];
+    if (last.summit_finish) {
+      summitCount++;
+      assert.equal(last.crest_km, r.distance_km, `${i}: summit_finish men crest (${last.crest_km}) != distance (${r.distance_km})`);
+    }
+  }
+  const share = summitCount / n;
+  assert.ok(share > 0.25 && share < 0.45, `forventede ~35% (målt ${(share * 100).toFixed(1)}%)`);
+});
+
+test("#3546 E: rolling rammer ~20% summit_finish over mange seeds (prod målte 0%)", () => {
+  let summitCount = 0;
+  const n = 400;
+  for (let i = 0; i < n; i++) {
+    const r = attachRoute(stage("rolling", "breakaway", 3), { external_id: `ur-${i}` }, true);
+    if (r.climbs[r.climbs.length - 1].summit_finish) summitCount++;
+  }
+  const share = summitCount / n;
+  assert.ok(share > 0.12 && share < 0.30, `forventede ~20% (målt ${(share * 100).toFixed(1)}%)`);
+});
+
+test("#3546 E: andre profiltyper (flad, cobbles, classic) er UPÅVIRKEDE (kun hilly/rolling får rollen)", () => {
+  for (const pt of ["flat", "cobbles", "classic"]) {
+    let summitCount = 0;
+    for (let i = 0; i < 60; i++) {
+      const r = attachRoute(stage(pt, null, 3), { external_id: `nu-${pt}-${i}` }, true);
+      if (r.climbs.some((c) => c.summit_finish)) summitCount++;
+    }
+    assert.equal(summitCount, 0, `${pt}: fik uventet summit_finish (kun hilly/rolling skal have #3546 E-reglen)`);
+  }
+});
+
+test("#3546 E: en EKSISTERENDE finale-drevet summit (long_climb) er stadig uændret (samme finale_type-sti)", () => {
+  const r = attachRoute(stage("mountain", "long_climb", 3), race, true);
+  assert.equal(r.climbs[r.climbs.length - 1].summit_finish, true);
+});
+
+// ── #3546 D: itt_hilly: kuperet enkeltstart-arketype ─────────────────────────
+test("#3546 itt_hilly: 1-2 småstigninger, kun kat 3/4 (aldrig HC/1/2)", () => {
+  for (let i = 1; i <= 30; i++) {
+    const r = attachRoute(stage("itt_hilly", "solo_tt", 5), { external_id: `ih-${i}` }, true);
+    assert.ok(r.climbs.length >= 1 && r.climbs.length <= 2, `${i}: ${r.climbs.length} climbs`);
+    for (const c of r.climbs) assert.ok(["3", "4"].includes(c.category), `${i}: uventet kategori ${c.category}`);
+  }
+});
+
+test("#3546 itt_hilly: distance IKKE afrundet til nærmeste 5 (samme tidskørsels-regel som itt/ttt)", () => {
+  let sawUnrounded = false;
+  for (let i = 1; i <= 40; i++) {
+    const r = attachRoute(stage("itt_hilly", "solo_tt", 5), { external_id: `ihd-${i}` }, true);
+    assert.ok(r.distance_km >= DISTANCE_BANDS.itt_hilly[0] && r.distance_km <= DISTANCE_BANDS.itt_hilly[1]);
+    if (r.distance_km % 5 !== 0) sawUnrounded = true;
+  }
+  assert.ok(sawUnrounded, "forventede mindst ét ikke-5-afrundet tal over 40 forsøg (itt_hilly er en TT-profil)");
+});
+
+test("#3546 itt_hilly: ingen mellemsprint (samme regel som itt/ttt: kun målspurt)", () => {
+  const r = attachRoute(stage("itt_hilly", "solo_tt", 5), race, true);
+  assert.ok(r.sprints.every((s) => s.kind === "finish"), "itt_hilly-etaper må ikke have en mellemsprint");
+});
+
+test("#3546 itt_hilly: etape 1 trækker ALDRIG en prolog (kun literal 'itt' kan)", () => {
+  for (let i = 1; i <= 20; i++) {
+    const r = attachRoute(stage("itt_hilly", "solo_tt", 1), { external_id: `ihp-${i}` }, true);
+    assert.ok(r.distance_km >= DISTANCE_BANDS.itt_hilly[0], `${i}: ${r.distance_km} under itt_hilly-båndet (uventet prolog-adfærd)`);
+  }
+});
+
 test("climb-navne er region-flavoured + ikke-tomme", () => {
   const es = attachRoute(stage("high_mountain", "long_climb"), { ...race, name: "Vuelta Burgalesa" }, true);
   assert.ok(es.climbs.every((c) => typeof c.name === "string" && c.name.length > 0));

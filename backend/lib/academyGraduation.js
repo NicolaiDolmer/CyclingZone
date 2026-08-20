@@ -120,7 +120,7 @@ export async function resolveGraduation(supabase, {
     // kontrakt (fra intake eller et tidligere demote()-ophold) — den arves
     // UÆNDRET, regenerér ALDRIG (spec-beslutning 3 handlede om HVILKEN
     // løn-formel der bruges til en NY kontrakt, ikke om ubetinget overskrivning).
-    const contractPatch = contractOnAcquirePatch(rider, seasonNumber, { division: state?.division });
+    const contractPatch = contractOnAcquirePatch(rider, seasonNumber);
     const { error } = await supabase.from("riders").update({
       is_academy: false,
       ...contractPatch,

@@ -454,17 +454,15 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // Signing-fee er derimod en KØBSPRIS og bliver korrekt på markedsværdien.
   //
   // #3550: den symbolske intake-pull-værdi (punkt 2, academyIntakePull.js) ligger
-  // i market_value/base_value og påvirker DERFOR IKKE denne løn (decoupling siden
-  // #2594) - se FUND i PR-body. computeFrozenSalary er den DELTE funktion #3393
-  // (løn-reform, egen branch) vil ændre internt ved SALARY_BASIS_MODE="market";
-  // dette kald behøver ingen ændring når det sker, men verificér parametrene efter
-  // #3393 merger.
-  const { data: signingTeam } = await supabase
-    .from("teams").select("id, division").eq("id", teamId).maybeSingle();
+  // i market_value/base_value og påvirker DERFOR IKKE denne løn — løn prissættes
+  // udelukkende fra current_production_value (#2594-decouplingen, bekræftet af
+  // #3989's ejer-beslutning: markedsværdi er IKKE et løngrundlag).
+  //
+  // #3989: teams-opslaget her hentede kun `division` til løn-satsen. Satsen er nu
+  // global, så opslaget er fjernet — ét DB-kald mindre pr. signering.
   const value = calculateRiderMarketValue(rider);
   const salary = computeFrozenSalary({
     current_production_value: rider.current_production_value,
-    division: signingTeam?.division,
   });
   const fee = Math.round(value * ACADEMY.SIGNING_FEE_RATE);
   // #3550 punkt 3: intake-signeringer bruger INTAKE_CONTRACT_LENGTH (1 sæson),

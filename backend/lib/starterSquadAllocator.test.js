@@ -454,15 +454,15 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
     assert.ok(u.contract_length >= 2 && u.contract_length <= 3, `contract_length ${u.contract_length} ude af 2-3 (#3037: min. 2)`);
     assert.equal(u.contract_end_season, ACTIVE_SEASON + u.contract_length - 1, "end = aktiv sæson + length - 1 (aldrig hardcodet sæson 1)");
     assert.ok(u.contract_end_season > ACTIVE_SEASON, "#3037: contract_end_season > aktiv sæson (overlever allokerings-sæsonens slut)");
-    const expectedSalary = computeFrozenSalary({ current_production_value: 40000, division: teamDivisions[u.team_id] });
-    assert.equal(u.salary, expectedSalary, `salary matcher computeFrozenSalary for hold ${u.team_id}s division`);
+    const expectedSalary = computeFrozenSalary({ current_production_value: 40000 });
+    assert.equal(u.salary, expectedSalary, `salary matcher computeFrozenSalary for hold ${u.team_id}`);
     assert.ok(u.salary > 0, "salary aldrig 0/NULL");
   }
-  // De to divisioner (1 og 3) har forskellig sats → salary skal reelt variere med
-  // holdets division, ikke bare være en flad konstant.
+  // #3989: holdene ligger i division 1 og 3, og netop DERFOR skal lønnen være ens.
+  // Samme rytter koster det samme uanset hvilket hold han lander på.
   const t1Salary = teamIdUpdates.find((u) => u.team_id === "t1").salary;
   const t2Salary = teamIdUpdates.find((u) => u.team_id === "t2").salary;
-  assert.notEqual(t1Salary, t2Salary, "division 1 og 3 har forskellige satser → forskellig salary");
+  assert.equal(t1Salary, t2Salary, "løn må IKKE skalere med division (division 1 vs 3)");
 });
 
 // ── #1560 · allocateStarterSquadForTeam (single-team-bootstrap) ────────────────

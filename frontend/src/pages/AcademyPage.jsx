@@ -84,7 +84,7 @@ export default function AcademyPage() {
   // #3071: sæson-referenceår til alders-visning (intake/roster) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
   const {
-    enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division,
+    enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider,
     pullIntake,
   } = useAcademy();
@@ -280,15 +280,17 @@ export default function AcademyPage() {
     setPromoteConfirm({
       riderId: rider.id,
       riderName: `${rider.firstname} ${rider.lastname}`.trim(),
-      // #2796: division manglede, så salaryFromProduction faldt tilbage på den
-      // globale sats OG på base-fallbacken 1000 (current_production_value var
-      // ikke i payloaden) → dialogen viste 161 CZ$ for ENHVER rytter.
+      // #2796: dialogen viste engang 161 CZ$ for ENHVER rytter, fordi to
+      // korrekte defaults ramte samtidig (manglende division → global sats,
+      // manglende current_production_value → base-fallback 1000). #3989 fjernede
+      // division-benet strukturelt; rytterens current_production_value SKAL
+      // stadig være i payloaden, ellers rammer base-fallbacken igen.
       // #3620: har rytteren allerede en kontrakt, regenereres den ikke, så
       // lønnen ændrer sig ikke. Så viser vi den rigtige løn i stedet for en
       // projektion der aldrig bliver skrevet.
       newSalary: keepsExistingContractOnPromote(rider)
         ? rider.salary
-        : projectSeniorSalary(rider, { division }),
+        : projectSeniorSalary(rider),
       keepsContract: keepsExistingContractOnPromote(rider),
     });
   }

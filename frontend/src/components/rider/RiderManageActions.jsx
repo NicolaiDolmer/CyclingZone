@@ -88,7 +88,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
     const keepsContract = keepsExistingContractOnPromote(rider);
     setAcademyModal({
       direction: "promote",
-      newSalary: keepsContract ? rider.salary : projectSeniorSalary(rider, { division: academy.division }),
+      newSalary: keepsContract ? rider.salary : projectSeniorSalary(rider),
       keepsContract,
       currentSalary: null,
       capLabel: `${academy.seniorCount} / ${academy.seniorMax}`,

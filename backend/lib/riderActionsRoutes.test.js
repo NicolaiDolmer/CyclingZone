@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { computeFrozenSalary } from "./contractSeed.js";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -217,5 +218,5 @@ test("extend producerer en højere udløbssæson + frisk løn fra værdi", () =>
   });
   assert.equal(next.contract_end_season, 4); // 3 + 1
   assert.equal(next.contract_length, 2);
-  assert.equal(next.salary, 74_050); // 500_000 × 0.1481 (division 3)
+  assert.equal(next.salary, computeFrozenSalary({ current_production_value: 500_000 }));
 });

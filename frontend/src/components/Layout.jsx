@@ -78,10 +78,16 @@ function isFullBleedRoute(pathname) {
 // #3104 etape A: Min Managerprofil flyttet hertil fra Klubhus. Den lå midt i
 // spillets daglige arbejdsflade med under 245 sessions/30 dage; den hører til
 // de personlige punkter ved Indstillinger, ikke mellem Økonomi og Indbakke.
+// #3104 etape D: /pro fik ingen indgang nogen steder i frontend'en — ejeren
+// besluttede 27/7 at den skal bo her, gated på at betalingsflowet er
+// færdigtestet. Ejer-go 20/8 om at åbne indgangen selv (linket lander på
+// /pro-siden, som stadig viser sin egen pause-tilstand indtil CHECKOUT_PAUSED
+// flippes separat i backend/lib/billingCheckout.js — de to er bevidst afkoblet).
 function buildBottomItems(t, team) {
   return [
     ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
     { to: "/profile",     label: t("nav.item.profile") },
+    { to: "/pro",         label: t("nav.item.pro") },
     { to: "/help",        label: t("nav.item.help") },
     { to: "/rules",       label: t("nav.item.rules") },
     { to: "/roadmap",     label: t("nav.item.roadmap") },

@@ -638,19 +638,21 @@ export function apiResponse(pathname, search = "") {
     const forecasts = [];
     for (let i = 0; i < seasonsAhead; i++) {
       const seasonNumber = currentSeasonNumber + 1 + i;
-      const usesMarketS3 = seasonNumber >= 3;
-      // Sæson 3+ prissættes efter markedsværdi-kurven — den demo-trup her
-      // bliver (bevidst) en smule billigere end status quo, samme retning
-      // som #3899-forecast-testene viser for en lav-til-middel markedsværdi-trup.
-      const projectedSalary = usesMarketS3 ? -152000 - i * 4000 : -180000;
+      const usesProductionS3 = seasonNumber >= 3;
+      // #3989: sæson 3+ prissættes efter rytterens nuværende leverance, og hele
+      // populationen genberegnes ved cutover. Demo-truppen her bliver (bevidst)
+      // en smule billigere end status quo, så preview-fladen viser BEGGE grene.
+      const projectedSalary = usesProductionS3 ? -152000 - i * 4000 : -180000;
       const sponsorBase = 180000;
       const sponsorVariable = seasonNumber === 2 ? 0 : 12000 * i; // kontrakt dækker sæson 2-3, variabel derefter
       const projectedSponsor = sponsorBase + sponsorVariable;
       const prizePoint = 210000 + i * 6000;
       const prizeLow = Math.round(prizePoint * (0.82 - i * 0.01));
       const prizeHigh = Math.round(prizePoint * (1.24 + i * 0.02));
-      const staffFacilities = -140000;
-      const projectedNet = projectedSponsor + prizePoint + projectedSalary + staffFacilities;
+      // #3986: divisions-upkeep og stab/faciliteter er to adskilte linjer.
+      const divisionUpkeep = -140000;
+      const staffFacilities = -24910;
+      const projectedNet = projectedSponsor + prizePoint + projectedSalary + divisionUpkeep + staffFacilities;
       const startingBalance = balance;
       const endingBalance = startingBalance + projectedNet;
       balance = endingBalance;
@@ -664,9 +666,9 @@ export function apiResponse(pathname, search = "") {
         prize_high: prizeHigh,
         projected_salary: projectedSalary,
         projected_loan_interest: 0,
-        projected_upkeep: -140000,
+        projected_upkeep: divisionUpkeep,
         projected_facility_upkeep: 0,
-        projected_staff_salary: 0,
+        projected_staff_salary: staffFacilities,
         projected_staff_facilities: staffFacilities,
         projected_academy_drift: 0,
         projected_net: projectedNet,
@@ -699,7 +701,7 @@ export function apiResponse(pathname, search = "") {
           prize_basis: "rolling_avg",
           prize_interval_method: "division_quartile_band",
           prize_interval_sample_size: 18,
-          salary_basis: usesMarketS3 ? "market_s3" : "status_quo",
+          salary_basis: usesProductionS3 ? "production_s3" : "status_quo",
           current_season_number: currentSeasonNumber + i,
           target_season_number: seasonNumber,
         },

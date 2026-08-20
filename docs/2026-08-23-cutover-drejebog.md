@@ -6,6 +6,17 @@ Hvor der står **ikke verificeret**, er det fordi det ikke er målt. Der står a
 
 ---
 
+## REVISION 20/8 (ejer-besluttet i planlægningssessionen)
+
+1. **Tidsvinduet er flyttet til søndag AFTEN 19:30-22:30.** Målt 20/8: S2-finalen kører etaper hele søndagen (11:00-19:00, sidste etape "Le Mur de Huy" kl. 19:00), og sæsonafslutning forudsætter at sidste etape er kørt. "Flip tidligt søndag"-rådet nedenfor er dermed overstyret. Rækkefølge i vinduet: snapshot → race-day-flip (#3459) → D1-komprimering (top 24, PR #3930, apply mod frosset snapshot) → løn-genberegning → mandat-backfill (#3514). Ejer-go pr. skridt som beskrevet.
+2. **Rollback-vinduet er større end afsnittet "Hvor længe er vinduet" siger:** bufferdagen 24/8 er besluttet (#3467, KS3 18/8) — mandag er hviledag, første S3-løbsdag er tirsdag 25/8 (indarbejdes i kalender-regenereringen #3546). Fra flip søndag aften til første etape under ny motor er der altså ~36 timer, ikke under et døgn. OBS: det daglige trænings-tick kl. 22 ligger stadig INDE i vinduet — måles i generalprøven.
+3. **Komponent 2 (løn) er OMLAGT og delvist leveret:** #3393 er PARKERET (genindførte inversionen). I stedet: løn = `current_production_value` × én global sats 0,35 (#3989, PR #3992 MERGED 20/8, deployet og verificeret). Prognosen viser rigtige tal nu; det der resterer søndag er KUN genberegningen af eksisterende frosne kontrakter. **Værktøjs-hul:** `salaryRecompute3645.mjs --basis market` er gated på `lib/salaryBasis.js`, som #3992 har SLETTET — scriptet skal opdateres til den nye formel og tør-køres FØR søndag (generalprøve-punkt).
+4. **Generalprøve LØRDAG 22/8 (ejer-godkendt 20/8):** hele søndagskæden køres mod staging i rækkefølge med stopur: (a) frys snapshot + verificér backup, (b) race-day-flip, (c) post-verify `seasons.race_days_total` MATCHER kalenderen — efter kalender-regenereringen 20/8 er det **27** (bufferdag 24/8 kostede en løbsdag; #3990/#3991-recompute kørt og verificeret), (d) D1-komprimering mod dry-runnet, (e) mandat-backfill (lukker samtidig hullet "script-apply med ejer-nøgle"), (f) løn-genberegning med NY formel + stikprøve på 5 hold, (g) rollback-test af mindst ét trin, (h) notér samlet tid + mål 22-tickets adfærd. Generalprøvens målte tid justerer søndagsplanen.
+6. **Kalenderen ER LANDET 20/8** (#3546 komplet: PR #3862 merged, itt_hilly-migration applied+verificeret, race_pool seedet 140, wipe 430 løb m. snapshot, regenereret 420 løb/1.139 etaper, første løb TIRSDAG 25/8 kl. 11, 0 løb 24/8, 3 itt_hilly, scorecard genkørt mod live). Kalender-punktet er UDE af søndagens program.
+5. **Spillerbesked om weekendplanen** (finale søndag, skifte søndag aften, hviledag mandag, S3-start tirsdag) er udkastet 20/8 — ejeren poster selv.
+
+---
+
 ## Ejer-beslutninger 17/8
 
 | # | Spørgsmål | Beslutning |
@@ -297,13 +308,21 @@ tests i `cutover3645.test.js`.
 | **1. Snapshot** (kun SELECT, ingen apply-form) | `infisical run --env=prod -- node scripts/dev/snapshot3459.mjs ../docs/snapshots/3459` |
 | **2. Verificér snapshottet læsbart** | `infisical run --env=prod -- node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459` |
 | **3. Backup af løn-/mandat-tabeller** | dry-run: `… node scripts/dev/cutoverBackup3645.mjs`<br>apply: `CONFIRM_BACKUP=yes … node scripts/dev/cutoverBackup3645.mjs --apply`<br>efterprøv: `… node scripts/dev/cutoverBackup3645.mjs --verify` |
-| **4. Løn-genberegning** | dry-run: `… node scripts/dev/salaryRecompute3645.mjs --basis market`<br>apply: `CONFIRM_SALARY_RECOMPUTE=yes … node scripts/dev/salaryRecompute3645.mjs --basis market --apply` |
-| **5. Mandat-genberegning** | dry-run: `… node scripts/dev/mandateRecompute3645.mjs`<br>apply: `CONFIRM_MANDATE_RECOMPUTE=yes … node scripts/dev/mandateRecompute3645.mjs --apply` |
+| **4. Løn-genberegning** | dry-run: `… node scripts/dev/salaryRecompute3645.mjs`<br>apply: `CONFIRM_SALARY_RECOMPUTE=yes … node scripts/dev/salaryRecompute3645.mjs --apply` |
+| **5a. Mandat-backup (MANUELT, før 5b)** | `create table backup_board_profiles_3514_20260823 as select * from board_profiles;` (via MCP/psql — intet script opretter den, og `mandateMigration3514.mjs` nægter apply uden den) |
+| **5b. Mandat-backfill** | dry-run: `… node scripts/dev/mandateMigration3514.mjs`<br>selvtest: `node scripts/dev/mandateMigration3514.mjs --selvtest`<br>apply: `… node scripts/dev/mandateMigration3514.mjs --apply --jeg-har-set-scorecardet` |
 | **Rollback af lofter** | `CONFIRM_RESTORE=yes … node scripts/dev/restoreCaps3459.mjs --snapshot ../docs/snapshots/3459 --apply` |
 
 Backup-tabellen `cutover_3645_backup_20260823` oprettes af
 `database/2026-08-23-3645-cutover-backup-table.sql` (idempotent, kun `CREATE TABLE
-IF NOT EXISTS`). Rollback-SQL for løn og mandat står i samme fil.
+IF NOT EXISTS`). Rollback-SQL for løn står i samme fil; mandat-rollback står i
+Komponent 4-afsnittet ovenfor (kill-switch + truncate), IKKE i SQL-filen.
+
+> **Rettet 20/8 (generalprøve-verifikation):** tidligere pegede trin 5 på
+> `mandateRecompute3645.mjs` — det script skriver til `board_profiles.confidence`,
+> en kolonne der aldrig blev til noget (#3514-migrationen lagde `confidence` på
+> `board_relations`). Det rigtige backfill-script er `mandateMigration3514.mjs`
+> (selvtest kørt grønt 20/8). Brug ALDRIG `mandateRecompute3645.mjs`.
 
 **Porte der stopper en fejlkørsel før den sker:**
 
@@ -313,9 +332,12 @@ IF NOT EXISTS`). Rollback-SQL for løn og mandat står i samme fil.
   rækker de er ved at røre.
 - Mandat-genberegningen nægter at skrive hvis #3514-migrationens mål-kolonne ikke
   findes — den gætter ikke på hvor tallet skal hen.
-- Løn-genberegningen med `--basis market` stopper hvis `lib/salaryBasis.js` ikke
-  findes (dvs. #3393 ikke merged). Formlen designes med ejeren; scriptet har ingen
-  egen udgave af den. Indtil da kan hele kæden tør-køres med `--basis production`.
+- Løn-genberegningen har siden #3989/#3992 kun ét grundlag (`--basis production`,
+  default) — computeFrozenSalary importeres direkte fra `contractSeed.js`, aldrig
+  en egen udgave af formlen. Et ukendt `--basis`-navn (fx det udgåede `market`)
+  stopper scriptet højlydt i stedet for at gætte. Dry-run mod prod 20/8 gav
+  medianhold-menneskehold ×2,21 (4.549 → 11.843 CZ$), i tråd med den
+  ejer-godkendte måling ×2,2 fra #3989.
 - Gendannelsen skriver et før-billede (`pre-restore-<tidsstempel>.json`) i
   snapshot-mappen FØR den rører noget, så selve gendannelsen også kan rulles tilbage.
 

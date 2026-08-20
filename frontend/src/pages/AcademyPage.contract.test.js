@@ -108,11 +108,22 @@ test("AcademyPage skelner backend-fejl fra slukket flag (#2796)", () => {
   );
 });
 
-test("promote-dialogen projicerer lønnen med holdets division (#2796)", () => {
+test("promote-dialogen projicerer lønnen fra rytteren selv (#2796/#3989)", () => {
+  // #3989 fjernede division-parameteren: satsen er global, så halvdelen af
+  // #2796's fejlklasse er væk strukturelt. Tilbage står den anden halvdel —
+  // et rytter-objekt uden current_production_value giver base-fallbacken 1000
+  // og dermed samme plausible, forkerte løn for ENHVER rytter. Vagten kræver
+  // derfor at kaldet sender rytteren selv (ikke et literal-objekt), og at
+  // AcademyPage aldrig igen sender en division ind.
   assert.match(
     pageSource,
-    /projectSeniorSalary\(rider,\s*\{\s*division\s*\}\s*\)/,
-    "uden division falder projectSeniorSalary tilbage på den globale sats og viser samme løn for alle ryttere",
+    /projectSeniorSalary\(rider\)/,
+    "promote-dialogen skal projicere fra rytter-objektet, så current_production_value følger med",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /projectSeniorSalary\([^)]*division/,
+    "løn må ikke skalere med division (#3989) — parameteren findes ikke længere",
   );
 });
 

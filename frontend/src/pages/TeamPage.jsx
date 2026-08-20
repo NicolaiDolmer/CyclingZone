@@ -482,7 +482,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
                       tilbage på den globale sats (0,1606) i stedet for holdets
                       (fx 0,3029 i D1), så den viste ungdomsløn er systematisk forkert.
                       Samme fejl som promote-dialogen på akademi-siden havde. */}
-                  <span className="text-cz-1 font-mono font-bold">{formatNumber(projectYouthSalary(rider, { division: team?.division }))} CZ$</span>
+                  <span className="text-cz-1 font-mono font-bold">{formatNumber(projectYouthSalary(rider))} CZ$</span>
                 </div>
               </div>
               <p className="text-cz-3 text-xs mb-3">{t("actionModal.demote.hint")}</p>

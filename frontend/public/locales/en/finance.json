@@ -195,7 +195,7 @@
     },
     "salary": {
       "title": "Rider salaries",
-      "body": "6.7% of the rider's market value per season (base value plus prize money bonus). Deducted as a lump sum at the start of the next season, right after the sponsor lands. Star riders are expensive to keep."
+      "body": "A rider's wage is the price of what he delivers this season, not what he is worth on the market. It is a fixed share of his current production value, the same share for every team in every division, so a better rider always costs more. Wages are frozen when you sign or extend, so a rider's wage does not move with his market value afterwards. Deducted as a lump sum at the start of the next season, right after the sponsor lands."
     },
     "debt": {
       "title": "Debt cap per division",

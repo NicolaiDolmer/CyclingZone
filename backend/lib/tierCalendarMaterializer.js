@@ -12,7 +12,7 @@
 
 import { poolHasCalendar } from "./divisionCalendarGenerator.js";
 import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
-import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
@@ -27,6 +27,8 @@ import { computeCompositionStats } from "./calendarCompositionTargets.js";
 import { computeStageOrderStats } from "./stageOrderMetrics.js";
 import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPhaseProfiles.js";
 import { grandTourRestDayCount } from "./grandTourRestDays.js";
+import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
+import { captureException } from "./sentry.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -319,7 +321,13 @@ export function buildTierMaterializationPlan({
     // restDays er kun meningsfuld på stageRaces (kun etapeløb kan være GT'er), men beriges
     // harmløst med 0 på oneDayRaces også for et ensartet enrich-mønster.
     const enrichedStageRaces = withGrandTourRestDays(withSeasonFraction(sel.stageRaces));
-    const enrichedOneDayRaces = withSeasonFraction(sel.oneDayRaces);
+    // #3546 F: brostens-endagsløbenes (cobbled_classic) fraction omformes til to vinduer
+    // (tidligt + sent i sæsonen) i stedet for deres rå, monotont-faldende date_text-
+    // fordeling: se reshapeCobblesFractionToTwoWindows' docstring. isCobbles kigger op i
+    // catalogById (denne funktions egen scope), så den rene shaping-funktion i
+    // raceCalendarLanePacker.js forbliver katalog-uafhængig.
+    const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic";
+    const enrichedOneDayRaces = reshapeCobblesFractionToTwoWindows(withSeasonFraction(sel.oneDayRaces), isCobbledClassic);
     const packed = packLaneCalendar({
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
       density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES,
@@ -379,6 +387,10 @@ export function buildTierMaterializationPlan({
       overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
       straddleGameDays: packed.straddleGameDays,
       gtRealDaySeparationViolations: packed.gtRealDaySeparationViolations ?? [], // #3472 v3
+      // #3546 C: dage uden afgørelse: forward fra packLaneCalendar's diagnostik, samme
+      // "rapportér, gater ikke her"-princip som de øvrige dry-run-tal ovenfor.
+      daysWithoutDecision: packed.daysWithoutDecision ?? [],
+      daysWithoutDecisionCount: packed.daysWithoutDecisionCount ?? 0,
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       grandTourRestDays: packed.grandTourRestDays, // #3470: dry-run-diagnostik, se packLaneCalendar's docstring.
@@ -608,6 +620,38 @@ export async function materializeTierCalendars({
     }
     summary.tiers.push(tLine);
   }
+
+  // #3990: materialisér seasons.race_days_total fra den FAKTISKE kalender så snart
+  // den er skrevet. Uden dette står en frisk sæson med schema-defaulten (60) indtil
+  // recomputeSeasonRaceDays rammes REAKTIVT af det første resultat-import
+  // (raceRunner.js/pcmResultsImport.js) — og wageDeductionSweep, der beregner
+  // dagslønnen som salary / race_days_total, ville i mellemtiden opkræve ~47 % af
+  // den tiltænkte dagsløn (målt i prod 20/8: sæson 3 stod med 60 mod kalenderens 28).
+  //
+  // Ét sted dækker ALLE materialiserings-stier: seasonTransition, manuel
+  // buildSeasonCalendar.js, relaunch og reconcilePoolCalendarOnActivation.
+  // recomputeSeasonRaceDays er idempotent + selv-helende (tæller distinkte
+  // game_day_start på tværs af ALLE løb for sæsonen, ikke kun de netop indsatte),
+  // så et redundant kald — fx en no-op-materialisering eller en aktivering der kun
+  // rammer ÉN pulje — er harmløst og retter drift over tid.
+  //
+  // FAIL-SAFE: en fejlende recompute (fx netværk) må ALDRIG vælte selve
+  // kalender-materialiseringen. Fejlen logges på summary + Sentry, og næste
+  // materialisering retter sig selv. dryRun skriver intet og springes helt over.
+  if (!dryRun) {
+    try {
+      // Returværdien er race_days_completed (skalar-kontrakten fra seasonRaceDays.js);
+      // race_days_total skrives til seasons-rækken af selve kaldet.
+      summary.raceDaysCompletedAfterRecompute = await recomputeSeasonRaceDays({ supabase, seasonId });
+    } catch (err) {
+      summary.raceDaysTotalError = err.message;
+      captureException(err, {
+        tags: { phase: "season_calendar_race_days" },
+        extra: { seasonId },
+      });
+    }
+  }
+
   return summary;
 }
 

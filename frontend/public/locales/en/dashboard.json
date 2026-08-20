@@ -296,8 +296,8 @@
       },
       "yellow": {
         "label": "Yellow",
-        "headline": "Under pressure",
-        "summary": "Deficit or rising debt. Consider selling or lowering salary."
+        "headline": "Thin margin",
+        "summary": "Not much room. One bad race or an expensive contract can flip it."
       },
       "red": {
         "label": "Red",
@@ -312,6 +312,7 @@
       "sponsorVariable": "Sponsor (variable)",
       "prize": "Prize money",
       "salary": "Salary",
+      "upkeep": "Division upkeep",
       "staffFacilities": "Staff & facilities",
       "loanInterest": "Loan interest",
       "academyDrift": "Academy upkeep"
@@ -326,8 +327,11 @@
       "realizedFloor": "Matches what your roster has already earned this season",
       "divisionInterval": "Range based on measured prize money among division peers"
     },
+    "upkeepDetail": {
+      "byDivision": "Set by your division, not your squad"
+    },
     "salaryDetail": {
-      "marketS3": "Season 3+: priced by market value, not the current salary system"
+      "productionS3": "Season 3 wage system. Your current contracts are locked and unchanged."
     },
     "assumption": "Assumes your current squad, no transfers, and the season 3 wage system.",
     "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",

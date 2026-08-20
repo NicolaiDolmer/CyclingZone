@@ -216,17 +216,36 @@ export default function FinanceForecastCard({
           value={forecast.projected_salary}
           accent="text-cz-danger"
           detail={
-            /* #3899: S3+ prissættes efter markedsværdi, ikke riders.salary. */
-            forecast.inputs?.salary_basis === "market_s3"
-              ? t("forecast.salaryDetail.marketS3")
+            /* #3989: S3+ prissættes efter rytterens nuværende leverance, ikke
+               efter riders.salary — hele populationen genberegnes ved cutover.
+               Teksten skal sige BEGGE dele: at det er S3-systemet, OG at de
+               nuværende kontrakter er låste. Uden den halvdel læste spillerne
+               prognosen som en regning (#3986). */
+            forecast.inputs?.salary_basis === "production_s3"
+              ? t("forecast.salaryDetail.productionS3")
               : undefined
           }
         />
-        <Row
-          label={t("forecast.row.staffFacilities")}
-          value={forecast.projected_staff_facilities}
-          accent="text-cz-danger"
-        />
+        {/* #3986: divisions-upkeep laa foer gemt inde i stab/faciliteter-linjen,
+            saa en D2-manager saa 164.910 hvor hans tre ansatte kostede 24.610.
+            Den har nu sin egen raekke. Skjules naar den er 0 (saeson 1 udskyder
+            upkeep, jf. UPKEEP_BEFORE_FIRST_RACE_ENABLED), saa vi ikke viser en
+            nul-linje der ikke betyder noget. */}
+        {forecast.projected_upkeep !== 0 && (
+          <Row
+            label={t("forecast.row.upkeep")}
+            value={forecast.projected_upkeep}
+            accent="text-cz-danger"
+            detail={t("forecast.upkeepDetail.byDivision")}
+          />
+        )}
+        {forecast.projected_staff_facilities !== 0 && (
+          <Row
+            label={t("forecast.row.staffFacilities")}
+            value={forecast.projected_staff_facilities}
+            accent="text-cz-danger"
+          />
+        )}
         {forecast.projected_loan_interest !== 0 && (
           <Row
             label={t("forecast.row.loanInterest")}

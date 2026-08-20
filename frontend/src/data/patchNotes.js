@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.148",
-    "date": "2026-08-19",
+    "version": "7.153",
+    "date": "2026-08-20",
     "label": "Beta",
     "changes": [
       {
@@ -108,6 +108,138 @@ export const PATCHES = [
           "body": "Holdsiden har fået en ny sorterbar tabel: rating i dag, forventet niveau og loft for hver rytter, side om side. Rytterprofilens Overblik-fane viser nu rene evne-tal; sæsonens fremgang bor på Trænings-fanen, hvor den altid har hørt hjemme."
         },
         "refs": [3721, 3979]
+      }
+    ]
+  },
+  {
+    "version": "7.152",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The season 3 calendar is in place",
+          "body": "27 race days, starting Tuesday 25 August. Monday 24 August is a quiet buffer day after the season switch. Grand tours now have proper length, the Giro is spread out, and the season is seeded with hilly time trials, uphill finishes and cobbled windows."
+        },
+        "da": {
+          "title": "Sæson 3-kalenderen er på plads",
+          "body": "27 løbsdage fra tirsdag den 25. august. Mandag den 24. august er en stille bufferdag efter sæsonskiftet. Grand tours har nu rigtig længde, Giroen er spredt ud, og sæsonen er fordelt med bakkede enkeltstarter, uphill-finishes og brostens-vinduer."
+        },
+        "refs": [
+          3546
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.151",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro has a way in now",
+          "body": "Cycling Zone Pro is reachable from the bottom of the menu, next to Settings. Purchases are still paused while we finish the terms of sale; the page explains why."
+        },
+        "da": {
+          "title": "Pro har nu en indgang",
+          "body": "Cycling Zone Pro kan nu findes nederst i menuen, ved siden af Indstillinger. Køb er stadig sat på pause mens vi færdiggør handelsbetingelserne; det fremgår af siden."
+        },
+        "refs": [
+          3104
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.150",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Forecast risk text no longer contradicts a positive number",
+          "body": "The yellow risk level used to say \"Deficit or rising debt\" even when your projected net was positive. It now says \"Thin margin\" and explains that a bad race or an expensive contract can flip it."
+        },
+        "da": {
+          "title": "Prognosens risiko-tekst modsagde ikke længere et positivt tal",
+          "body": "Det gule risiko-niveau sagde \"Underskud eller stigende gæld\", selv når dit forventede net var positivt. Det siger nu \"Lille margin\" og forklarer at et dårligt løb eller en dyr kontrakt kan vende det."
+        },
+        "refs": [
+          3994
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.149",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Division upkeep is its own line in the forecast",
+          "body": "The forecast line called Staff and facilities was quietly including your division upkeep, so the number looked far bigger than the staff and facilities you had actually paid for. Upkeep now has its own row, and Staff & facilities shows only what you have hired or built. Your net total is unchanged: the cost moved line, it did not disappear."
+        },
+        "da": {
+          "title": "Divisions-upkeep har sin egen linje i prognosen",
+          "body": "Prognosens linje Stab og faciliteter indeholdt i skjul din divisions-upkeep, så tallet så langt større ud end den stab og de faciliteter du faktisk havde betalt for. Upkeep har nu sin egen række, og Stab & faciliteter viser kun det du har ansat eller bygget. Din nettosum er uændret: udgiften flyttede linje, den forsvandt ikke."
+        },
+        "refs": [
+          3986
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.148",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Wages follow what a rider delivers, not what he is worth",
+          "body": "A rider's value is the price of who he becomes. His wage is the price of what he delivers this season. Wages are a fixed share of his current production value, and that share is now the same in every division. Better rider, higher wage. Fading rider, lower wage at his next contract. Signed contracts stay frozen."
+        },
+        "da": {
+          "title": "Løn følger hvad en rytter leverer, ikke hvad han er værd",
+          "body": "Din rytters værdi er prisen på hvem han bliver. Hans løn er prisen på hvad han leverer i denne sæson. Løn er en fast andel af hans nuværende produktionsværdi, og den andel er nu den samme i alle divisioner. Bedre rytter, højere løn. Rytter i tilbagegang, lavere løn ved næste kontrakt. Underskrevne kontrakter forbliver frosne."
+        },
+        "refs": [
+          3989
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "The next-season forecast was overstating your wage bill",
+          "body": "The forecast priced next season's wages off market value, so young prospects looked far more expensive than riders who are better right now. It uses the real wage formula again."
+        },
+        "da": {
+          "title": "Prognosen for næste sæson satte lønnen for højt",
+          "body": "Prognosen prissatte næste sæsons løn efter markedsværdi, så unge talenter så langt dyrere ud end ryttere der er bedre lige nu. Den bruger den rigtige lønformel igen."
+        },
+        "refs": [
+          3986,
+          3989
+        ]
       }
     ]
   },
