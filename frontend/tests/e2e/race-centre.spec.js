@@ -131,6 +131,57 @@ test("race centre: live, upcoming and finished cards render for today's stages",
   await page.screenshot({ path: "test-results/3858-race-centre.png", fullPage: true });
 });
 
+// #4026: udbrydere på et LIVE-kort står typisk IKKE i race_results endnu —
+// navnene skal hentes via riders-opslaget (useRiderNames), og et rå UUID må
+// ALDRIG nå fladen (incidenten 20/8: "Hui J. Feng, a2ffc9c9-… rykker væk").
+// Fixture-id'erne er ægte UUID'er, fordi navne-hooket kun slår ægte UUID'er op.
+const ESCAPEE_1 = "11111111-1111-4111-8111-111111111111";
+const ESCAPEE_2 = "22222222-2222-4222-8222-222222222222";
+
+const BREAKAWAY_TIMELINE = {
+  timeline_version: 1,
+  stage_number: 5,
+  events: [
+    { km: 0, type: "stage_start", params: { field_count: 138, distance_km: 190 } },
+    // Ved 15/30 min inde i vinduet står afspilningen på km 95 → udbruddet ved
+    // km 80 er den seneste film-linje (ingen af rytterne findes i RESULTS).
+    { km: 80, type: "breakaway_formed", params: { rider_ids: [ESCAPEE_1, ESCAPEE_2] } },
+    { km: 190, type: "finish", params: { win_type: "sprint_win", top: [{ rider_id: "r-live1", rank: 1 }] } },
+  ],
+};
+
+test("race centre: live film line resolves breakaway names via riders lookup — never raw UUIDs (#4026)", async ({ page }) => {
+  await stabilizePage(page);
+  await page.clock.setFixedTime(FROZEN_NOW);
+  await installNetworkMocks(page);
+  await installRaceCentreMocks(page);
+  // Registreret EFTER installRaceCentreMocks → vinder over dens timeline-route.
+  await page.route("**/rest/v1/riders**", (route) => json(route, [
+    { id: ESCAPEE_1, firstname: "Hugo", lastname: "Mercier" },
+    { id: ESCAPEE_2, firstname: "Léo", lastname: "Fontaine" },
+  ]));
+  await page.route("**/api/races/*/timeline**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    if (!request.url().includes("race-live")) {
+      return route.fulfill({ status: 404, headers: corsHeaders(request), contentType: "application/json", body: "{}" });
+    }
+    return json(route, BREAKAWAY_TIMELINE);
+  });
+  await login(page);
+
+  await page.goto("/race-centre");
+
+  const main = page.locator("main");
+  await expect(main.getByText("Tour de Zone")).toBeVisible();
+  // Navnene kommer fra riders-opslaget — ingen af de to står i race_results.
+  await expect(main.getByText(/Hugo Mercier, Léo Fontaine rykker væk fra feltet/)).toBeVisible();
+  // Forward-guard: intet UUID-fragment må nogensinde rendere i main.
+  await expect(main.getByText(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/)).toHaveCount(0);
+
+  await page.screenshot({ path: "test-results/4026-race-centre-breakaway-names.png", fullPage: true });
+});
+
 test("race centre: empty state when the team has no stage today", async ({ page }) => {
   await stabilizePage(page);
   await page.clock.setFixedTime(FROZEN_NOW);
