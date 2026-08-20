@@ -72,6 +72,27 @@ The card header and border stay mounted; only the body swaps between loading / e
 - **Empty:** `EmptyState` — dashed hairline inset; stroke icon 26px `--text-3`; title 15px/600; ONE sentence description (13px `--text-2`, sentence case, e.g. "Draft your first rider in the live auction."); ONE action = the section's primary, size sm.
 - **Error:** `ErrorState` — same anatomy; `alert-triangle` icon in danger (no red fills/panels); message says what is safe ("Nothing was lost. Your bids are safe."); retry = **secondary** sm ("Try again"), never gold. **No em-dash in player-facing copy** — `scripts/tone-check-em-dash.mjs` fails the build; use a full stop, comma or colon (rule: `docs/TONE_OF_VOICE.md` §Punktuation).
 
+## Fold-disciplin (binding — ejer-krav 2026-08-20, design-sessionen)
+
+Sider må ikke vokse i højden ved at nye features stabler nye kort ovenpå. Reglen:
+
+- **Over-folden-budget (T1):** sidehoved + faner + **maks. 2 section cards** før
+  1000px-højden (desktop). Alt derudover bor bag en fold, i en fane eller i en
+  eksisterende række.
+- **Ethvert design-go SKAL angive hvor nyt indhold bor**, i denne prioritet:
+  1. **Inde i et eksisterende element** (ekstra segment/linje i en række der
+     allerede findes) — foretræk altid dette.
+  2. **Bag en fold** (CollapsibleSection-mønsteret fra #3914, eller en
+     én-linjes resumé med fold-ud).
+  3. **I en fane** (sidens eksisterende Tabs-mønster; opret hellere en fane end
+     et tredje kort).
+  4. Et nyt stablet kort er ALDRIG default og kræver eksplicit ejer-ord.
+- Resumé-linjer siger konklusionen uden fold-ud ("4 trained · 1 rested ·
+  1 point landed") — folden er detaljen, ikke meningen.
+- Reference-eksempel: trænings-sidens "Yesterday"-kvittering (#3924, design-go
+  20/8) = resumé-linje + fold + dags-segment i eksisterende roster-rækker,
+  ikke et nyt kort.
+
 ## Hard don'ts
 No gradients · no drop shadows (overlay shadow is for modals/popovers only) · no rounded-2xl (ONE surface radius: 5px `rounded-cz` everywhere — cards, table wraps, modals, state insets; pills use `rounded-cz-pill`, skeleton lines 4px; converged 2026-07-24) · no emoji (stroke icon set only) · no second gold button per view · no per-page header or container inventions · **no arbitrary `text-[Npx]` below 12px** — `text-2xs` / `text-3xs` only (converged 2026-07-25).
 
