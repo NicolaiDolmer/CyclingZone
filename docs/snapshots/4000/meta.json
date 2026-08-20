@@ -1,0 +1,20 @@
+{
+  "issue": 4000,
+  "captured_at": "2026-08-20T10:15:36.263Z",
+  "project_id": "ghwvkxzhsbbltzfnuhhz",
+  "active_season": 2,
+  "population_n": 8945,
+  "source_query": "riders JOIN rider_derived_abilities WHERE is_retired=false, ordered by riders.id",
+  "read_via": "Supabase MCP execute_sql (read-only, no writes)",
+  "type_counts_active": {
+    "climber": { "total": 3626, "human_owned": 1651 },
+    "tt": { "total": 3401, "human_owned": 1317 },
+    "sprinter": { "total": 774, "human_owned": 429 },
+    "rouleur": { "total": 311, "human_owned": 115 },
+    "baroudeur": { "total": 299, "human_owned": 166 },
+    "puncheur": { "total": 214, "human_owned": 87 },
+    "brostensrytter": { "total": 186, "human_owned": 48 },
+    "gc": { "total": 134, "human_owned": 32 }
+  },
+  "note": "human_owned = team_id IS NOT NULL AND owner_is_ai=false (samme definition som driftMonitor.js). Matcher issue #4000's citerede tal (214 puncheurs, 87 på menneskehold)."
+}
