@@ -308,6 +308,7 @@
       "sponsorVariable": "Sponsor (variable)",
       "prize": "Prize money",
       "salary": "Salary",
+      "upkeep": "Division upkeep",
       "staffFacilities": "Staff & facilities",
       "loanInterest": "Loan interest",
       "academyDrift": "Academy upkeep"
@@ -321,6 +322,9 @@
     "prizeDetail": {
       "realizedFloor": "Matches what your roster has already earned this season",
       "divisionInterval": "Range based on measured prize money among division peers"
+    },
+    "upkeepDetail": {
+      "byDivision": "Set by your division, not your squad"
     },
     "salaryDetail": {
       "productionS3": "Season 3 wage system. Your current contracts are locked and unchanged."

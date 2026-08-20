@@ -786,9 +786,9 @@ test("computeFinanceForecast (#3899): division-median = 0 undgår division-by-ze
   assert.ok(Number.isFinite(result.prize_low) && Number.isFinite(result.prize_high));
 });
 
-// ─── #3899 · Staff/faciliteter (upkeep) — UI-aggregat ─────────────────────────
+// ─── #3986 · Stab/faciliteter vs. divisions-upkeep ────────────────────────────
 
-test("computeFinanceForecast (#3899): projected_staff_facilities = upkeep + facility_upkeep + staff_salary", () => {
+test("computeFinanceForecast (#3986): projected_staff_facilities = facility_upkeep + staff_salary — UDEN divisions-upkeep", () => {
   const result = computeFinanceForecast({
     team: { division: 2, sponsor_income: 240_000 },
     riders: [],
@@ -800,10 +800,51 @@ test("computeFinanceForecast (#3899): projected_staff_facilities = upkeep + faci
   });
   assert.equal(
     result.projected_staff_facilities,
-    result.projected_upkeep + result.projected_facility_upkeep + result.projected_staff_salary
+    result.projected_facility_upkeep + result.projected_staff_salary,
   );
-  // Akademi-drift er IKKE en del af aggregatet (separat linje, ikke navngivet i #3899 punkt 1).
+  // Divisions-upkeep er en SELVSTÆNDIG linje og må ikke tælle med to gange.
+  assert.equal(result.projected_upkeep, -140_000);
+  assert.notEqual(result.projected_staff_facilities, 0, "forudsætning: der ER en facilitets-/stabsudgift");
+  assert.ok(
+    Math.abs(result.projected_staff_facilities) < Math.abs(result.projected_upkeep),
+    "aggregatet må ikke længere domineres af upkeep",
+  );
+  // Akademi-drift er heller ikke en del af aggregatet (separat linje).
   assert.equal(result.inputs.academy_rider_count, 0);
+});
+
+test("computeFinanceForecast (#3986): nettoen er uændret — upkeep flyttes, det forsvinder ikke", () => {
+  const args = {
+    team: { division: 2, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    facilityTracks: [{ track: "training", tier: 2 }],
+    activeStaffSalaries: [{ salary: 10_000 }],
+    facilitiesEnabled: true,
+  };
+  const r = computeFinanceForecast(args);
+  // Rapporterings-invariant: summen af de VISTE linjer = projected_net.
+  const visteLinjer =
+    r.projected_sponsor + r.projected_prize + r.projected_salary + r.projected_loan_interest
+    + r.projected_upkeep + r.projected_staff_facilities + r.projected_academy_drift;
+  assert.equal(visteLinjer, r.projected_net, "de viste linjer skal summe til nettoen");
+});
+
+test("computeFinanceForecast (#3986): den rapporterede D2-sag — 164.910 var 140.000 upkeep + 24.910 stab/faciliteter", () => {
+  // @arongreve 19/8: prognosen viste 164.910 mens hans egen hovedregning på tre
+  // stab/faciliteter gav ca. 24.600. Differencen var UPKEEP_BY_DIVISION[2].
+  const r = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+    activeStaffSalaries: [{ salary: 24_910 }],
+    facilitiesEnabled: true,
+  });
+  assert.equal(r.projected_staff_facilities, -24_910, "linjen viser nu kun det manageren selv har ansat/bygget");
+  assert.equal(r.projected_upkeep, -140_000, "upkeep står for sig selv");
+  assert.equal(r.projected_staff_facilities + r.projected_upkeep, -164_910, "det gamle sammenlagte tal");
 });
 
 // ─── #3899 · Multi-sæson: division-stikprøve threades gennem hele horisonten ──

@@ -649,8 +649,10 @@ export function apiResponse(pathname, search = "") {
       const prizePoint = 210000 + i * 6000;
       const prizeLow = Math.round(prizePoint * (0.82 - i * 0.01));
       const prizeHigh = Math.round(prizePoint * (1.24 + i * 0.02));
-      const staffFacilities = -140000;
-      const projectedNet = projectedSponsor + prizePoint + projectedSalary + staffFacilities;
+      // #3986: divisions-upkeep og stab/faciliteter er to adskilte linjer.
+      const divisionUpkeep = -140000;
+      const staffFacilities = -24910;
+      const projectedNet = projectedSponsor + prizePoint + projectedSalary + divisionUpkeep + staffFacilities;
       const startingBalance = balance;
       const endingBalance = startingBalance + projectedNet;
       balance = endingBalance;
@@ -664,9 +666,9 @@ export function apiResponse(pathname, search = "") {
         prize_high: prizeHigh,
         projected_salary: projectedSalary,
         projected_loan_interest: 0,
-        projected_upkeep: -140000,
+        projected_upkeep: divisionUpkeep,
         projected_facility_upkeep: 0,
-        projected_staff_salary: 0,
+        projected_staff_salary: staffFacilities,
         projected_staff_facilities: staffFacilities,
         projected_academy_drift: 0,
         projected_net: projectedNet,

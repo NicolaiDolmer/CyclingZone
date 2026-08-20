@@ -318,11 +318,13 @@ export function computeFinanceForecast({
     ? -(academyCount * ACADEMY.DRIFT_PER_SEASON)
     : 0;
 
-  // #3899 (låst design punkt 1): "staff/faciliteter (upkeep)" er ÉN linje i
-  // regnskabsopstillingen. De tre rå strømme beholdes stadig hver for sig i
-  // return-værdien (transparens, #3236-forward-guard) — dette er kun UI-
-  // aggregatet til den nye linje.
-  const projectedStaffFacilities = projectedUpkeep + projectedFacilityUpkeep + projectedStaffSalary;
+  // #3986: divisions-upkeep er IKKE en stabs- eller facilitetsudgift, og den
+  // hørte aldrig hjemme i den linje. En D2-manager med tre ansatte så 164.910
+  // hvor hans egen hovedregning gav 24.610 — differencen var præcis
+  // UPKEEP_BY_DIVISION[2] = 140.000, gemt inde i en linje der hed noget andet.
+  // Upkeep har nu sin egen række; denne aggregerer kun de to strømme manageren
+  // rent faktisk har købt eller ansat sig til.
+  const projectedStaffFacilities = projectedFacilityUpkeep + projectedStaffSalary;
 
   const projectedNet =
     projectedSponsor +
@@ -393,7 +395,8 @@ export function computeFinanceForecast({
     projected_upkeep: projectedUpkeep,
     projected_facility_upkeep: projectedFacilityUpkeep,
     projected_staff_salary: projectedStaffSalary,
-    // #3899: UI-aggregatet af de tre ovenstående ("staff/faciliteter (upkeep)").
+    // #3986: UI-aggregatet af facilitets-upkeep + stabsløn. Divisions-upkeep
+    // ligger i projected_upkeep og vises som sin egen række.
     projected_staff_facilities: projectedStaffFacilities,
     projected_academy_drift: projectedAcademyDrift,
     projected_net: projectedNet,

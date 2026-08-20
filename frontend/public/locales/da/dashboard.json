@@ -308,6 +308,7 @@
       "sponsorVariable": "Sponsor (variabel)",
       "prize": "Præmiepenge",
       "salary": "Løn",
+      "upkeep": "Divisions-upkeep",
       "staffFacilities": "Stab & faciliteter",
       "loanInterest": "Lånerenter",
       "academyDrift": "Akademi-drift"
@@ -321,6 +322,9 @@
     "prizeDetail": {
       "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson",
       "divisionInterval": "Spænd baseret på målt præmiesum blandt hold i din division"
+    },
+    "upkeepDetail": {
+      "byDivision": "Bestemt af din division, ikke din trup"
     },
     "salaryDetail": {
       "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede."
