@@ -86,10 +86,12 @@ test("computeFinanceForecast: sund manager → grøn", () => {
 
 test("computeFinanceForecast: marginal manager → gul", () => {
   const result = computeFinanceForecast(ARCHETYPES.marginal);
-  // sponsor = 240K × 0.9 = 216K, prize = 14×1500 = 21K, salary = -224K, rente = -20K,
-  // upkeep D3 = -40K (#3236).
-  // net = 216_000 + 21_000 - 224_000 - 20_000 - 40_000 = -47_000 → i [-50K, 50K] → gul.
-  assert.equal(result.projected_net, -47_000);
+  // sponsor = 240K × 0.9 = 216K, prize = 14×1500 = 21K, salary = -224K,
+  // upkeep D3 = -40K (#3236). #4023: rente (-20K) er non-cash og indgår IKKE
+  // i nettoet — den vises kun via projected_loan_interest.
+  // net = 216_000 + 21_000 - 224_000 - 40_000 = -27_000 → i [-50K, 50K] → gul.
+  assert.equal(result.projected_net, -27_000);
+  assert.equal(result.projected_loan_interest, -20_000);
   assert.equal(result.risk_tier, "yellow");
   // debt-ratio = 350K/600K = 0.583 → > 50% giver "debt_growing" warning.
   const debtWarn = result.warnings.find((w) => w.code === "debt_growing");
@@ -109,14 +111,37 @@ test("computeFinanceForecast: gæld-stor manager → rød (debt > 80%)", () => {
 
 test("computeFinanceForecast: konkurs-tæt manager → rød (net + trend)", () => {
   const result = computeFinanceForecast(ARCHETYPES.nearBankrupt);
-  // sponsor = 240K × 0.8 = 192K, prize = 12 × 800 = 9.6K, salary = -264K, rente = -50K,
-  // upkeep D3 = -40K (#3236).
-  // net = 192_000 + 9_600 - 264_000 - 50_000 - 40_000 = -152_400.
-  assert.equal(result.projected_net, -152_400);
+  // sponsor = 240K × 0.8 = 192K, prize = 12 × 800 = 9.6K, salary = -264K,
+  // upkeep D3 = -40K (#3236). #4023: rente (-50K) er non-cash, udenfor nettoet.
+  // net = 192_000 + 9_600 - 264_000 - 40_000 = -102_400.
+  assert.equal(result.projected_net, -102_400);
+  assert.equal(result.projected_loan_interest, -50_000);
   assert.equal(result.risk_tier, "red");
   // Trend består stadig (upkeep gør underskuddet endnu større, ikke mindre).
   const trendWarn = result.warnings.find((w) => w.code === "debt_trend");
   assert.ok(trendWarn, "skal have debt_trend warning");
+});
+
+test("computeFinanceForecast (#4023): lånerente er non-cash — projected_net er UÆNDRET af aktive lån, men projected_loan_interest viser stadig beløbet", () => {
+  const withoutLoan = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 240_000 },
+    riders: [],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  const withLoan = computeFinanceForecast({
+    team: { division: 2, sponsor_income: 240_000 },
+    riders: [],
+    activeLoans: [{ amount_remaining: 300_000, interest_rate: 0.1 }],
+    totalDebt: 300_000,
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  // Selv om lånet påfører 30.000 i rente, er nettoet identisk — renten
+  // kapitaliseres ind i gælden (loanEngine.processLoanInterest), den
+  // debiterer aldrig teams.balance.
+  assert.equal(withLoan.projected_net, withoutLoan.projected_net);
+  assert.equal(withLoan.projected_loan_interest, -30_000);
 });
 
 test("computeFinanceForecast: tomt input giver default grøn med 0-net", () => {

@@ -347,7 +347,8 @@
       "productionS3": "Season 3 wage system. Your current contracts are locked and unchanged.",
       "seasonSwitch": "Season {next} recalculates every wage from delivery at cutover. Your current contracts are already signed, so this season's number stays locked until then."
     },
-    "assumption": "Assumes your current squad, no transfers, and the season 3 wage system.",
+    "loanInterestDetail": "Interest accrued on your active loans' outstanding debt. Added to the loan itself, not deducted from net.",
+    "assumption": "Assumes your current squad, no transfers, and the season {next} wage system.",
     "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",
     "footnoteLink": "How is the forecast calculated?",
     "badge": {
@@ -373,7 +374,7 @@
       "estimateMark": "~",
       "estimateTooltip": "Estimate, assumes status quo",
       "total": "Total",
-      "estimateNote": "~ = estimate based on a status-quo assumption (same roster, sponsor, and 25% loan-decay per season)."
+      "estimateNote": "~ = estimate based on a status-quo assumption (same roster, sponsor, and 25% loan-decay per season). Interest is added to your outstanding debt, not deducted from net."
     }
   },
   "onboardingProgress": {

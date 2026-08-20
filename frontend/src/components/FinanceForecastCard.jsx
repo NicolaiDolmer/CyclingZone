@@ -447,6 +447,10 @@ export default function FinanceForecastCard({
             label={t("forecast.row.loanInterest")}
             value={forecast.projected_loan_interest}
             accent="text-cz-danger"
+            // #4023: renten er kapitaliseret (non-cash) — den lægges oveni
+            // gælden i stedet for at blive trukket fra saldoen, så linjen
+            // her forklarer HVORFOR beløbet ikke indgår i nettoet ovenfor.
+            detail={t("forecast.loanInterestDetail")}
             dualColumn={hasSeasonSwitch}
             activeCol={activeCol}
           />
@@ -463,9 +467,12 @@ export default function FinanceForecastCard({
         )}
       </div>
 
-      {/* #3899 (låst design punkt 3): erklæret antagelses-linje, ordret. */}
+      {/* #3899 (låst design punkt 3): erklæret antagelses-linje, ordret.
+          #4024: sæsonnummeret interpoleres fra DENNE prognoses target-sæson
+          i stedet for at hardcode "sæson 3" — teksten er ellers korrekt
+          NU (næste sæson = 3) men bliver forkert fra S3-start. */}
       <p className="text-cz-3 text-2xs mb-3 leading-snug">
-        {t("forecast.assumption")}
+        {t("forecast.assumption", { next: forecast.inputs?.target_season_number ?? "?" })}
       </p>
 
       {multiSeason && (

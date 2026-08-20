@@ -347,7 +347,8 @@
       "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede.",
       "seasonSwitch": "Sæson {next} genberegner al løn ud fra leverance ved sæsonskiftet. Dine nuværende kontrakter er allerede underskrevet, så dette sæsons tal ligger fast indtil da."
     },
-    "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson 3's lønsystem.",
+    "loanInterestDetail": "Rente tilskrevet dine aktive låns udestående gæld. Lægges oveni lånet, trækkes ikke fra nettoet.",
+    "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson {next}'s lønsystem.",
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",
     "footnoteLink": "Hvordan beregnes prognosen?",
     "badge": {
@@ -373,7 +374,7 @@
       "estimateMark": "~",
       "estimateTooltip": "Estimat, antager status quo",
       "total": "Total",
-      "estimateNote": "~ = estimat baseret på en status quo-antagelse (samme roster, sponsor og 25% lån-decay per sæson)."
+      "estimateNote": "~ = estimat baseret på en status quo-antagelse (samme roster, sponsor og 25% lån-decay per sæson). Rente lægges oveni din udestående gæld, trækkes ikke fra nettoet."
     }
   },
   "onboardingProgress": {
