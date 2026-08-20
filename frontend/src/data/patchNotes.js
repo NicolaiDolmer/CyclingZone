@@ -27,6 +27,29 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.160",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The stage type is back on the stage tab",
+          "body": "Stage type (mountain, cobbles, time trial and so on) is once again shown next to the stage number on the stage tab, now as a quiet icon-and-text badge. It disappeared when the results-first layout shipped."
+        },
+        "da": {
+          "title": "Etapetypen er tilbage på etape-fanen",
+          "body": "Etapetypen (bjerge, brosten, enkeltstart med videre) står igen ved siden af etapenummeret på etape-fanen, nu som et stille ikon- og tekst-mærke. Den forsvandt da resultat-først-layoutet kom."
+        },
+        "refs": [
+          3985
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.159",
     "date": "2026-08-20",
     "label": "Beta",
