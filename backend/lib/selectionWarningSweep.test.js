@@ -75,22 +75,45 @@ test("racesNeedingSelectionWarning: multi-etape-løb bruger TIDLIGSTE etape som 
   assert.equal(due.length, 1);
 });
 
-test("teamsMissingSelection: hold uden manuel entry og uden afmelding mangler udtagelse", () => {
+test("teamsMissingSelection: hold under target-antal og uden afmelding mangler udtagelse", () => {
   const eligibleTeams = [{ id: "t1" }, { id: "t2" }, { id: "t3" }];
   const missing = teamsMissingSelection({
     eligibleTeams,
-    enteredTeamIds: new Set(["t2"]), // t2 har en MANUEL entry
+    entryCountByTeam: new Map([["t2", 6]]), // t2 har fuld trup (6/6)
+    targetSize: 6,
     withdrawnTeamIds: new Set(["t3"]), // t3 har meldt sig af
   });
   assert.deepEqual(missing.map((t) => t.id), ["t1"]);
 });
 
-test("teamsMissingSelection: kun-auto-udfyldt tæller stadig som 'mangler' (empirisk grundlag i filhoved)", () => {
-  // enteredTeamIds afspejler KUN is_auto_filled=false-rækker (kaldeansvaret), så et
-  // hold med udelukkende auto-udfyldte rytter er IKKE i enteredTeamIds.
+test("teamsMissingSelection: #4038 — fuldt AUTO-udfyldt trup (target nået) er IKKE 'mangler'", () => {
+  // Regression for #4038: en trup med 0 manuelle men size.max auto-udfyldte
+  // entries skal IKKE tælle som "mangler udtagelse" — samme kontrakt som
+  // getSelectionContext/isSquadSelectionMissing (#3042).
   const missing = teamsMissingSelection({
     eligibleTeams: [{ id: "t1" }],
-    enteredTeamIds: new Set(),
+    entryCountByTeam: new Map([["t1", 6]]), // 6 auto-udfyldte, 0 manuelle
+    targetSize: 6,
+    withdrawnTeamIds: new Set(),
+  });
+  assert.equal(missing.length, 0);
+});
+
+test("teamsMissingSelection: DELVIST udfyldt trup (under target) mangler stadig udtagelse", () => {
+  const missing = teamsMissingSelection({
+    eligibleTeams: [{ id: "t1" }],
+    entryCountByTeam: new Map([["t1", 4]]), // 4 af 6
+    targetSize: 6,
+    withdrawnTeamIds: new Set(),
+  });
+  assert.equal(missing.length, 1);
+});
+
+test("teamsMissingSelection: hold uden nogen entries overhovedet mangler udtagelse", () => {
+  const missing = teamsMissingSelection({
+    eligibleTeams: [{ id: "t1" }],
+    entryCountByTeam: new Map(),
+    targetSize: 6,
     withdrawnTeamIds: new Set(),
   });
   assert.equal(missing.length, 1);
@@ -141,7 +164,7 @@ test("runSelectionWarningSweep: ingen løb inden for 36t → ingen notifikatione
   assert.equal(notified.length, 0);
 });
 
-test("runSelectionWarningSweep: hold uden manuel udtagelse varsles; hold MED manuel udtagelse springes over", async () => {
+test("runSelectionWarningSweep: hold under target varsles; hold MED fuld trup springes over", async () => {
   const now = new Date("2026-08-04T12:00:00Z");
   const notified = [];
   const stats = await runSelectionWarningSweep({
@@ -150,14 +173,14 @@ test("runSelectionWarningSweep: hold uden manuel udtagelse varsles; hold MED man
     notify: async (p) => { notified.push(p); return { delivered: true }; },
     fetchUpcomingScheduledRaces: async () => ({
       seasonId: "s1",
-      races: [{ id: "r1", name: "Classique du Japon", status: "scheduled", stages_completed: 0, league_division_id: 1 }],
+      races: [{ id: "r1", name: "Classique du Japon", status: "scheduled", stages_completed: 0, league_division_id: 1, race_class: "Class1" }], // target 6
     }),
     fetchScheduleByRace: async () => new Map([["r1", [{ scheduled_at: "2026-08-05T12:00:00Z" }]]]), // +24t
     fetchHumanTeams: async () => [
       { id: "t1", name: "Alpha CC", user_id: "u1", league_division_id: 1 },
       { id: "t2", name: "Beta CC", user_id: "u2", league_division_id: 1 },
     ],
-    fetchManualEntryTeamIdsByRace: async () => new Map([["r1", new Set(["t2"])]]), // t2 har selv valgt
+    fetchEntryCountsByRace: async () => new Map([["r1", new Map([["t2", 6]])]]), // t2 har fuld trup (6/6)
     fetchWithdrawnTeamIdsByRace: async () => new Map(),
   });
   assert.equal(stats.racesDue, 1);
@@ -167,6 +190,27 @@ test("runSelectionWarningSweep: hold uden manuel udtagelse varsles; hold MED man
   assert.equal(notified[0].teamId, "t1");
   assert.equal(notified[0].type, SELECTION_WARNING_TYPE);
   assert.equal(notified[0].relatedId, "r1");
+});
+
+test("runSelectionWarningSweep: #4038 — fuldt auto-udfyldt trup (0 manuelle, target nået) varsles IKKE", async () => {
+  const now = new Date("2026-08-04T12:00:00Z");
+  const notified = [];
+  const stats = await runSelectionWarningSweep({
+    supabase: makeNoopSupabase(),
+    now,
+    notify: async (p) => { notified.push(p); return { delivered: true }; },
+    fetchUpcomingScheduledRaces: async () => ({
+      seasonId: "s1",
+      races: [{ id: "r1", name: "Tour des Fjords", status: "scheduled", stages_completed: 0, league_division_id: 1, race_class: "ProSeries" }], // target 6
+    }),
+    fetchScheduleByRace: async () => new Map([["r1", [{ scheduled_at: "2026-08-05T12:00:00Z" }]]]),
+    fetchHumanTeams: async () => [{ id: "t1", name: "Alpha CC", user_id: "u1", league_division_id: 1 }],
+    fetchEntryCountsByRace: async () => new Map([["r1", new Map([["t1", 6]])]]), // 6 auto-udfyldte, 0 manuelle
+    fetchWithdrawnTeamIdsByRace: async () => new Map(),
+  });
+  assert.equal(stats.racesDue, 1);
+  assert.equal(stats.warned, 0);
+  assert.equal(notified.length, 0);
 });
 
 test("runSelectionWarningSweep: hold i en ANDEN pulje end løbet varsles ikke", async () => {
@@ -182,7 +226,7 @@ test("runSelectionWarningSweep: hold i en ANDEN pulje end løbet varsles ikke", 
     }),
     fetchScheduleByRace: async () => new Map([["r1", [{ scheduled_at: "2026-08-05T12:00:00Z" }]]]),
     fetchHumanTeams: async () => [{ id: "t1", name: "Alpha CC", user_id: "u1", league_division_id: 1 }], // pulje 1 ≠ løbets pulje 2
-    fetchManualEntryTeamIdsByRace: async () => new Map(),
+    fetchEntryCountsByRace: async () => new Map(),
     fetchWithdrawnTeamIdsByRace: async () => new Map(),
   });
   assert.equal(notified.length, 0);
@@ -201,7 +245,7 @@ test("runSelectionWarningSweep: afmeldt hold varsles ikke (bevidst fravalg ≠ m
     }),
     fetchScheduleByRace: async () => new Map([["r1", [{ scheduled_at: "2026-08-05T12:00:00Z" }]]]),
     fetchHumanTeams: async () => [{ id: "t1", name: "Alpha CC", user_id: "u1", league_division_id: 1 }],
-    fetchManualEntryTeamIdsByRace: async () => new Map(),
+    fetchEntryCountsByRace: async () => new Map(),
     fetchWithdrawnTeamIdsByRace: async () => new Map([["r1", new Set(["t1"])]]),
   });
   assert.equal(notified.length, 0);
@@ -227,7 +271,7 @@ test("runSelectionWarningSweep: ét holds notif-fejl stopper ikke resten (isoler
       { id: "t1", name: "Alpha CC", user_id: "u1", league_division_id: 1 },
       { id: "t2", name: "Beta CC", user_id: "u2", league_division_id: 1 },
     ],
-    fetchManualEntryTeamIdsByRace: async () => new Map(),
+    fetchEntryCountsByRace: async () => new Map(),
     fetchWithdrawnTeamIdsByRace: async () => new Map(),
   });
   assert.equal(stats.warned, 1);
