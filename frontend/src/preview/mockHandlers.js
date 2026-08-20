@@ -638,11 +638,11 @@ export function apiResponse(pathname, search = "") {
     const forecasts = [];
     for (let i = 0; i < seasonsAhead; i++) {
       const seasonNumber = currentSeasonNumber + 1 + i;
-      const usesMarketS3 = seasonNumber >= 3;
-      // Sæson 3+ prissættes efter markedsværdi-kurven — den demo-trup her
-      // bliver (bevidst) en smule billigere end status quo, samme retning
-      // som #3899-forecast-testene viser for en lav-til-middel markedsværdi-trup.
-      const projectedSalary = usesMarketS3 ? -152000 - i * 4000 : -180000;
+      const usesProductionS3 = seasonNumber >= 3;
+      // #3989: sæson 3+ prissættes efter rytterens nuværende leverance, og hele
+      // populationen genberegnes ved cutover. Demo-truppen her bliver (bevidst)
+      // en smule billigere end status quo, så preview-fladen viser BEGGE grene.
+      const projectedSalary = usesProductionS3 ? -152000 - i * 4000 : -180000;
       const sponsorBase = 180000;
       const sponsorVariable = seasonNumber === 2 ? 0 : 12000 * i; // kontrakt dækker sæson 2-3, variabel derefter
       const projectedSponsor = sponsorBase + sponsorVariable;
@@ -699,7 +699,7 @@ export function apiResponse(pathname, search = "") {
           prize_basis: "rolling_avg",
           prize_interval_method: "division_quartile_band",
           prize_interval_sample_size: 18,
-          salary_basis: usesMarketS3 ? "market_s3" : "status_quo",
+          salary_basis: usesProductionS3 ? "production_s3" : "status_quo",
           current_season_number: currentSeasonNumber + i,
           target_season_number: seasonNumber,
         },

@@ -14,11 +14,11 @@ export const PATCHES = [
         "topic": "Finance",
         "en": {
           "title": "Wages follow what a rider delivers, not what he is worth",
-          "body": "Your rider's value is the price of who he becomes. His wage is the price of what he delivers this season. Wages are a fixed share of a rider's current production value, and that share is now the same for every team in every division — before, the same rider cost more than twice as much in one division as in another. A rider whose abilities grow gets more expensive at his next contract; one whose abilities fade gets cheaper. Signed contracts are frozen and do not change until you sign or extend again."
+          "body": "Your rider's value is the price of who he becomes. His wage is the price of what he delivers this season. Wages are a fixed share of a rider's current production value, and that share is now the same for every team in every division. Before, the same rider cost more than twice as much in one division as in another. A rider whose abilities grow gets more expensive at his next contract; one whose abilities fade gets cheaper. Signed contracts are frozen and do not change until you sign or extend again."
         },
         "da": {
           "title": "Løn følger hvad en rytter leverer, ikke hvad han er værd",
-          "body": "Din rytters værdi er prisen på hvem han bliver. Hans løn er prisen på hvad han leverer i denne sæson. Løn er en fast andel af rytterens nuværende produktionsværdi, og den andel er nu den samme for alle hold i alle divisioner — før kostede den samme rytter mere end dobbelt så meget i én division som i en anden. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, en hvis evner falder bliver billigere. Underskrevne kontrakter er frosne og ændrer sig ikke før du skriver under eller forlænger igen."
+          "body": "Din rytters værdi er prisen på hvem han bliver. Hans løn er prisen på hvad han leverer i denne sæson. Løn er en fast andel af rytterens nuværende produktionsværdi, og den andel er nu den samme for alle hold i alle divisioner. Før kostede den samme rytter mere end dobbelt så meget i én division som i en anden. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, en hvis evner falder bliver billigere. Underskrevne kontrakter er frosne og ændrer sig ikke før du skriver under eller forlænger igen."
         },
         "refs": [
           3989

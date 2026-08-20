@@ -323,7 +323,7 @@
       "divisionInterval": "Spænd baseret på målt præmiesum blandt hold i din division"
     },
     "salaryDetail": {
-      "marketS3": "Sæson 3+: prissat efter markedsværdi, ikke det nuværende lønsystem"
+      "productionS3": "Sæson 3-lønsystemet. Dine nuværende kontrakter er låste og uændrede."
     },
     "assumption": "Forudsætter din nuværende trup, ingen transfers og sæson 3's lønsystem.",
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",
