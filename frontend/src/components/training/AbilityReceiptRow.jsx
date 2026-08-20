@@ -16,7 +16,7 @@
 // (abilityReceipt / focusAbilityReceipt), som er unit-testet isoleret.
 //
 // #3924 trin 2 (design-go 20/8): baren bærer et mørkere gold-segment
-// (#a07800) der viser gårsdagens bidrag til den viste pct — row.yesterdayPct,
+// (cz-accent-t, tema-bevidst dyb guld) der viser gårsdagens bidrag til den viste pct — row.yesterdayPct,
 // også afledt (og unit-testet) i trainingReport.js. Løser #3988: 67% af hårde
 // pas viste +0 i dag i gained-kolonnen og blev læst som bugs.
 
@@ -83,7 +83,7 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
                 aldrig bredere end selve fylden (yesterdayPct <= pct, se trainingReport.js). */}
             {yesterdayPct > 0 && (
               <span
-                className="absolute top-0 h-full rounded-full bg-[#a07800] transition-[width] duration-500"
+                className="absolute top-0 h-full rounded-full bg-cz-accent-t transition-[width] duration-500"
                 style={{ left: `${Math.max(0, pct - yesterdayPct)}%`, width: `${Math.min(yesterdayPct, pct)}%` }}
               />
             )}
