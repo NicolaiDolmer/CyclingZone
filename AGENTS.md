@@ -72,6 +72,16 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 23. **Post-merge guard-tjek af main.** Efter en salve verificeres at required checks OG de bløde vagter (warning-budget, feature-liveness, patch-note-guard) stadig er grønne på main-HEAD — en PR kan være grøn på egen base og alligevel knække main i kombination. _18/8 morgen: to vagter knækkede på main efter formiddagens merges og blokerede hele merge-køen (fix `6d5a232c`)._
 
+24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd; maks 3 tunge verifikationer samtidig. _KS3 18/8: workers der selv valgte fuld suite spildte timer på et delt slot._
+
+25. **Design-gate før build** (ejer-mandat 13/8, [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)). En ny spillervendt funktion implementeres ALDRIG uden forudgående design-blok med ejeren: problem, løsningsskitse (mockup/show_widget/artboard/preview) og et eksplicit "godkendt til build". Godkendelsen refereres i PR-body ("Design-go: dato/link"). Refactors og bugfixes uden ny adfærd er undtaget.
+
+26. **Visuelt bevis før release** (#3661). Alt brugerrettet vises visuelt for ejeren FØR merge: rigtige screenshots (`pr-screens/`) eller preview-link, mobil OG desktop ved layoutændringer. Ingen tekst-beskrivelser som godkendelsesgrundlag — dette skærper UI-merge-reglen til også at gælde små ændringer (copy-only undtaget når teksten er citeret ordret).
+
+27. **Spørgsmål med anbefaling FØR udarbejdelse** (#3661). Valg med spilleroplevelses-konsekvens forelægges ejeren som beslutningskort (ét ad gangen, kontekst i kortet, A/B + anbefaling) FØR der bygges — ikke efter. Rent tekniske valg uden oplevelses-konsekvens træffes selv.
+
+28. **Testplan er en del af designet** (#3661). Design-blokken afsluttes med en eksplicit verifikationsplan: test-tier (#3556), hvad ejeren skal se på preview/staging, og for store pakker en tester-runde på staging som norm (som trin 7 20/8). En funktion uden testplan er ikke "godkendt til build".
+
 ### §LOKAL lokal-only-state (legacy — Codex-æra)
 
 `.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` blev bygget til at fange lokal-only state Codex efterlod på tværs af PC'er. Med solo Claude-operation er rutinen ikke længere en per-session-gate — kør kun auditen ad hoc hvis du mistænker drift (fx efter længere ophold på en sekundær PC). Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](docs/CROSS_PC_LOCAL_STATE.md).
