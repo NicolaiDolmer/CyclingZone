@@ -31,16 +31,33 @@ test("#3213: alle buildScoutEstimate-kald i api.js sender viewer-holdets spejder
 });
 
 test("#3213: alle buildTypeCeilingBands-kald i api.js sender viewer-holdets spejder med", () => {
+  // #3746: scouting-report bruger nu buildTypePrognosisBands (se test nedenfor);
+  // development-projection er det eneste tilbageværende loft-bånds-kaldsted.
   const calls = apiSource.match(/buildTypeCeilingBands\(\{[\s\S]*?\}\)/g) ?? [];
   assert.ok(
-    calls.length >= 2,
-    `forventede mindst 2 buildTypeCeilingBands-kald i api.js (scouting-report, development-projection), fandt ${calls.length}`,
+    calls.length >= 1,
+    `forventede mindst 1 buildTypeCeilingBands-kald i api.js (development-projection), fandt ${calls.length}`,
   );
   for (const call of calls) {
     assert.match(
       call,
       /\bscout\b/,
       `buildTypeCeilingBands-kald mangler scout-feltet (falder tavst tilbage til DEFAULT_SCOUT): ${call}`,
+    );
+  }
+});
+
+test("#3213/#3746: alle buildTypePrognosisBands-kald i api.js sender viewer-holdets spejder med", () => {
+  const calls = apiSource.match(/buildTypePrognosisBands\(\{[\s\S]*?\}\)/g) ?? [];
+  assert.ok(
+    calls.length >= 2,
+    `forventede mindst 2 buildTypePrognosisBands-kald i api.js (estimates, scouting-report), fandt ${calls.length}`,
+  );
+  for (const call of calls) {
+    assert.match(
+      call,
+      /\bscout\b/,
+      `buildTypePrognosisBands-kald mangler scout-feltet (falder tavst tilbage til DEFAULT_SCOUT): ${call}`,
     );
   }
 });

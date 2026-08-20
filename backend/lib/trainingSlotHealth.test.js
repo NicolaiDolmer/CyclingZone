@@ -42,7 +42,8 @@ test("computeTrainingSlotHealth: tæller dead/partial/open pr. fokus mod ÆGTE c
   const vo2 = rows.find((r) => r.focus === "vo2max");
   assert.deepEqual(vo2, { focus: "vo2max", ridersInTraining: 3, deadSlots: 1, partialSlots: 1 });
   assert.deepEqual(totals, { ridersInTraining: 3, deadSlots: 1, partialSlots: 1 });
-  assert.equal(rows.length, 7, "alle syv sessioner rapporteres, også med nul-tal (#3762: uden restitution)");
+  // trin 2 (#3746, 16/8): "loebslaere" er en ottende skill-session (ALL_SESSIONS).
+  assert.equal(rows.length, 8, "alle otte sessioner rapporteres, også med nul-tal (#3762: uden restitution)");
 });
 
 test("computeTrainingSlotHealth: ryttere UDEN plan tælles under assistentens fokus", () => {
@@ -65,7 +66,8 @@ test("computeTrainingSlotHealth: rytter uden afledte evner tælles slet ikke", (
 
 test("computeTrainingSlotHealth: tomt input giver nul-rækker, ikke tom liste", () => {
   const { rows, totals } = computeTrainingSlotHealth();
-  assert.equal(rows.length, 7);
+  // trin 2 (#3746, 16/8): "loebslaere" er en ottende skill-session.
+  assert.equal(rows.length, 8);
   assert.equal(totals.ridersInTraining, 0);
 });
 

@@ -144,7 +144,11 @@
     "heroAgony": {
       "title": "Hero & Agony",
       "linkFull": "Åbn løb →",
-      "eyebrow": { "hero": "Hero", "agony": "Agony", "moment": "Moment" },
+      "eyebrow": {
+        "hero": "Hero",
+        "agony": "Agony",
+        "moment": "Moment"
+      },
       "meta": "{race}, etape {stage}",
       "metaOneDay": "{race}",
       "exportCta": "Del som billede",
@@ -389,5 +393,23 @@
       }
     },
     "dismissAria": "Skjul"
+  },
+  "devTransition": {
+    "title": "Udviklingsvisningen er lagt om",
+    "intro": "Dine ryttere er ikke ændret. Evner, ratings og resultater er præcis som i går. Det nye er hvad tallet viser: før viste profilen et teoretisk loft. Nu viser den både loftet og hvor hver rytter realistisk lander med din træning.",
+    "factAbilitiesTitle": "Evner og resultater",
+    "factAbilitiesSub": "uændrede for alle ryttere",
+    "factCeilingsTitle": "Lofterne er hævet",
+    "factCeilingsSub": "for {up} af dine {total} ryttere",
+    "factForecastTitle": "Nyt: forventet niveau",
+    "factForecastSub": "prognosen din træning styrer",
+    "colRider": "Rytter",
+    "colRating": "Rating",
+    "colCeilBefore": "Loft før",
+    "colCeilNow": "Loft nu",
+    "colForecast": "Forventet niveau (nyt)",
+    "loweredNote": "Enkelte ryttere står over deres nye loft på få evner. De beholder alt og bliver stående der. Ingen rytter mister et eneste point.",
+    "helpLink": "Sådan virker udvikling",
+    "dismiss": "Forstået"
   }
 }
