@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.152",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The season 3 calendar is in place",
+          "body": "27 race days, starting Tuesday 25 August. Monday 24 August is a quiet buffer day after the season switch. Grand tours now have proper length, the Giro is spread out, and the season is seeded with hilly time trials, uphill finishes and cobbled windows."
+        },
+        "da": {
+          "title": "Sæson 3-kalenderen er på plads",
+          "body": "27 løbsdage fra tirsdag den 25. august. Mandag den 24. august er en stille bufferdag efter sæsonskiftet. Grand tours har nu rigtig længde, Giroen er spredt ud, og sæsonen er fordelt med bakkede enkeltstarter, uphill-finishes og brostens-vinduer."
+        },
+        "refs": [
+          3546
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.151",
     "date": "2026-08-20",
     "label": "Beta",
