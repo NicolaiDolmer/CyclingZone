@@ -37,7 +37,10 @@ export function useRiderNames(riderIds) {
       const { data, error } = await supabase
         .from("riders")
         .select("id, firstname, lastname")
-        .in("id", missing);
+        // pagination-safe: afgrænset af .in på tidslinjens rider-ids (håndfuld
+        // UUID'er pr. live-kort) — aldrig i nærheden af PostgREST's 1000-loft.
+        .in("id", missing)
+        .limit(missing.length);
       // Fejl → ingen cache-skrivning; describeEvent skipper de uopløste linjer
       // (ærlig degradering, aldrig rå UUID'er) og næste mount prøver igen.
       if (!error) {

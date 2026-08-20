@@ -90,13 +90,18 @@ async function tryClaimStage(supabase, { raceId, stageIndex, now = new Date() })
 // stedet for at vente leasen ud. Fejler sletningen, gaelder leasen — aldrig kast.
 async function releaseStageClaim(supabase, { raceId, stageIndex }) {
   try {
-    await supabase
+    const { error } = await supabase
       .from("race_stage_claims")
       .delete()
       .eq("race_id", raceId)
       .eq("stage_index", stageIndex);
-  } catch {
-    // lease-udloebet daekker
+    if (error) {
+      console.error(`race_stage_claims release fejlede (lease-udloebet daekker): ${error.message}`);
+    }
+  } catch (err) {
+    // best-effort: release maa aldrig skygge for den oprindelige sim-fejl —
+    // fejler sletningen, overtager 15-min-leasen blot retry-ansvaret.
+    console.error(`race_stage_claims release kastede (lease-udloebet daekker): ${err.message}`);
   }
 }
 
