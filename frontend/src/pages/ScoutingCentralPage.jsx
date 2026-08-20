@@ -32,7 +32,7 @@ import RiderLink from "../components/RiderLink";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { useRiderNames } from "../lib/useRiderNames";
 import { daysUntil, missionCriteriaLabel } from "../lib/scoutingCentralDisplay";
-import { useScoutCountdown, scoutReadyClock } from "../lib/scoutCountdown";
+import { useScoutCountdown, scoutReadyClock, missionReadyLabel } from "../lib/scoutCountdown";
 import { getCountryName } from "../lib/countryUtils";
 import { ISO2_TO_IOC } from "../lib/countryCodes";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
@@ -80,12 +80,16 @@ function ScoutCard({ scout, capacity, t }) {
 // (#3548) og useScoutCountdown derfor skal kaldes pr. række — en hook kan ikke
 // kaldes inde i en .map()-callback.
 function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobConfig, t, tTypes }) {
-  // #3548: serveren leverer ready_at (created_at + etaMinutes) på aktive
-  // målrettede opgaver. Missioner har intet minut-granulært klar-tidspunkt —
-  // de modnes af den natlige 22-sweep — så de sender null ind og beholder den
-  // dags-baserede copy nedenfor.
+  // #3548/#3997: serveren leverer ready_at på BÅDE målrettede opgaver
+  // (created_at + etaMinutes) og missioner (created_at + mission.days×24t) —
+  // FØR modnede missioner via den dags-granulære ready_on-kolonne + den
+  // natlige 22-sweep, hvilket gjorde en "1-dags" mission til reelt 23-46 timer
+  // efter afsendelse (ejer-fund #3997). Target tæller ned i minutter
+  // (useScoutCountdown); mission viser et forventet klokkeslæt (i dag/i
+  // morgen/en dato — missionReadyLabel, scoutCountdown.js).
   const countdown = useScoutCountdown(a.kind === "target" ? (a.ready_at ?? null) : null);
-  const readyClock = a.kind === "target" ? scoutReadyClock(a.ready_at) : null;
+  const missionLabel = a.kind === "mission" ? missionReadyLabel(a.ready_at) : null;
+  const readyClock = a.ready_at ? scoutReadyClock(a.ready_at) : null;
 
   const label = a.kind === "target"
     ? (riderNames[a.rider_id] ?? t("queue.loadingRider"))
@@ -95,21 +99,31 @@ function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobCo
         translateType: (key) => tTypes(`types.${key}`),
       });
 
-  // #2644: målrettede undersøgelser svarer på ~30 min uanset niveau — den
-  // dags-baserede reportIn/-Today bruges stadig til missioner (2 dage).
-  // #3548: har rækken et ready_at, tæller den ned mod det; ellers falder den
-  // tilbage til den gamle flade ETA-copy (ældre payload uden feltet).
+  // #2644: målrettede undersøgelser svarer på ~30 min uanset niveau.
+  // #3997: missioner viser nu et forventet klokkeslæt frem for et dags-antal
+  // — daysUntil/ready_on-grenen er en ren defensiv fallback for en (efter
+  // #3997 utænkelig) række uden ready_at.
   let reportLabel;
-  if (a.kind !== "target") {
+  if (a.kind === "target") {
+    if (!countdown) {
+      reportLabel = t("queue.targetReportIn", { minutes: jobConfig?.targetEtaMinutes ?? 30 });
+    } else if (countdown.state === "due") {
+      reportLabel = t("queue.reportDue");
+    } else {
+      reportLabel = t("queue.targetReportCountdown", { minutes: countdown.minutes });
+    }
+  } else if (!missionLabel) {
     reportLabel = daysUntil(a.ready_on) > 0
       ? t("queue.reportIn", { days: daysUntil(a.ready_on) })
-      : t("queue.reportToday");
-  } else if (!countdown) {
-    reportLabel = t("queue.targetReportIn", { minutes: jobConfig?.targetEtaMinutes ?? 30 });
-  } else if (countdown.state === "due") {
-    reportLabel = t("queue.targetReportDue");
+      : t("queue.reportDue");
+  } else if (missionLabel.state === "due") {
+    reportLabel = t("queue.reportDue");
+  } else if (missionLabel.state === "today") {
+    reportLabel = t("queue.reportToday", { time: missionLabel.time });
+  } else if (missionLabel.state === "tomorrow") {
+    reportLabel = t("queue.reportTomorrow", { time: missionLabel.time });
   } else {
-    reportLabel = t("queue.targetReportCountdown", { minutes: countdown.minutes });
+    reportLabel = t("queue.reportOn", { date: formatDate(missionLabel.date), time: missionLabel.time });
   }
 
   return (
@@ -130,7 +144,7 @@ function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobCo
         </p>
         <p
           className="text-cz-2 text-2xs m-0 mt-0.5 tabular-nums"
-          title={readyClock ? t("queue.targetReadyAtTitle", { time: readyClock }) : undefined}
+          title={readyClock ? t("queue.readyAtTitle", { time: readyClock }) : undefined}
         >
           {reportLabel}
         </p>
@@ -300,7 +314,8 @@ function MissionForm({ onSubmit, busy, jobConfig, t, tTypes }) {
         {/* #3652: fallback rettet 14→1 (var stale siden #2458's 14→2-rebalance i
             juli, aldrig opdateret dengang — reelt kun synlig i vinduet før
             første /scouting/me-fetch). SSOT er stadig jobConfig fra serveren. */}
-        {t("mission.form.costNote", { days: jobConfig?.missionDays ?? 1, cost: jobConfig?.missionCost ?? 6000 })}
+        {/* #3997: hours (ikke "dage") — den nye sandhed er "N timer efter afsendelse". */}
+        {t("mission.form.costNote", { hours: (jobConfig?.missionDays ?? 1) * 24, cost: jobConfig?.missionCost ?? 6000 })}
       </p>
       {result && !result.ok && (
         <p className="text-cz-warning text-[12px] mt-2 mb-0">

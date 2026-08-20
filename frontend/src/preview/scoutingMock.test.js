@@ -95,6 +95,27 @@ test("start target → ready_at ligger targetEtaMinutes ude i fremtiden", () => 
   assert.equal(scoutingMockRoute("GET", "/api/scouting/central", null).body.active.length, 0);
 });
 
+// #3997: en mission skal bære ready_at (created_at + missionDays×24t), ellers
+// har ScoutingCentralPage intet forventet klokkeslæt at vise i preview.
+test("start mission → ready_at ligger missionDays×24t ude i fremtiden", () => {
+  const before = Date.now();
+  const start = scoutingMockRoute("POST", "/api/scouting/assignments", { kind: "mission", criteria: { scope: "u23" } });
+  assert.equal(start.status, 200);
+  const { ready_at: readyAt } = start.body.assignment;
+  assert.ok(readyAt, "mission-opgaven mangler ready_at");
+  const remainingMs = new Date(readyAt).getTime() - before;
+  const expectedMs = 24 * 60 * 60 * 1000; // JOB_CONFIG.missionDays = 1
+  assert.ok(
+    remainingMs > expectedMs - 60_000 && remainingMs <= expectedMs + 60_000,
+    `ready_at ligger ${remainingMs} ms ude, forventede ~${expectedMs} ms`,
+  );
+
+  assert.equal(scoutingMockRoute("GET", "/api/scouting/central", null).body.active[0].ready_at, readyAt);
+  assert.equal(scoutingMockRoute("GET", "/api/scouting/me", null).body.jobModel.active[0].ready_at, readyAt);
+
+  scoutingMockRoute("POST", `/api/scouting/assignments/${start.body.assignment.id}/cancel`, null);
+});
+
 test("uhåndterede paths (fx estimates) → null, så generisk /api-blok tager over", () => {
   assert.equal(scoutingMockRoute("POST", "/api/scouting/estimates", { riderIds: [] }), null);
   assert.equal(scoutingMockRoute("GET", "/api/riders/rider-1", null), null);

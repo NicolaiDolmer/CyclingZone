@@ -10,6 +10,7 @@ import {
   travelCostFor,
   readyDateFor,
   targetReadyAt,
+  missionReadyAt,
   canStartAssignment,
 } from "./scoutEngine.js";
 
@@ -176,6 +177,59 @@ test("targetReadyAt: manglende/ugyldig created_at giver null (ingen gættet nedt
   assert.equal(targetReadyAt(undefined), null);
   assert.equal(targetReadyAt("not-a-date"), null);
   assert.equal(targetReadyAt("2026-07-10T12:00:00.000Z", "not-a-number"), null);
+});
+
+// ── missionReadyAt (#3997) ──────────────────────────────────────────────────────
+
+test("missionReadyAt: created_at + mission.days×24t", () => {
+  const createdAt = "2026-08-01T09:00:00.000Z";
+  const ready = missionReadyAt(createdAt);
+  assert.equal(ready.getTime() - Date.parse(createdAt), SCOUT_JOB_CONFIG.mission.days * 24 * 60 * 60 * 1000);
+});
+
+test("missionReadyAt: accepterer en eksplicit dage-parameter (flerdages-robusthed)", () => {
+  const createdAt = "2026-08-01T09:00:00.000Z";
+  const ready = missionReadyAt(createdAt, 3);
+  assert.equal(ready.toISOString(), "2026-08-04T09:00:00.000Z");
+});
+
+// Låser den egenskab hele modningen hviler på: klar-tidspunktet er PRÆCIS den
+// grænse completeDueMissionAssignments modner mod (created_at <= now - dage×24t).
+test("missionReadyAt: er præcis den deadline mission-modningen håndhæver", () => {
+  const createdAt = new Date("2026-08-01T09:00:00.000Z");
+  const days = SCOUT_JOB_CONFIG.mission.days;
+  const ready = missionReadyAt(createdAt);
+
+  const justBefore = new Date(ready.getTime() - 1_000);
+  const atDeadline = new Date(ready.getTime());
+  const dueBefore = (now) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  assert.ok(createdAt > dueBefore(justBefore), "må ikke være due et sekund før ready_at");
+  assert.ok(createdAt <= dueBefore(atDeadline), "skal være due præcis på ready_at");
+});
+
+test("missionReadyAt: accepterer Date lige så vel som ISO-streng", () => {
+  const createdAt = new Date("2026-08-01T09:00:00.000Z");
+  assert.equal(missionReadyAt(createdAt).toISOString(), missionReadyAt(createdAt.toISOString()).toISOString());
+});
+
+test("missionReadyAt: manglende/ugyldig created_at giver null", () => {
+  assert.equal(missionReadyAt(null), null);
+  assert.equal(missionReadyAt(undefined), null);
+  assert.equal(missionReadyAt("not-a-date"), null);
+  assert.equal(missionReadyAt("2026-08-01T09:00:00.000Z", "not-a-number"), null);
+});
+
+// #3997 DST-robusthed: ren elapsed-millisekund-aritmetik (getTime() + ms), ALDRIG
+// kalenderdags-aritmetik (setUTCDate-stil, readyDateFor ovenfor) — derfor upåvirket
+// af at Europe/Copenhagens UTC-offset ændrer sig midt i vinduet.
+test("missionReadyAt: DST-forårsspring (CET→CEST, 2026-03-29) — stadig eksakt +24t", () => {
+  const createdAt = "2026-03-28T10:00:00.000Z";
+  assert.equal(missionReadyAt(createdAt, 1).toISOString(), "2026-03-29T10:00:00.000Z");
+});
+
+test("missionReadyAt: DST-efterårsfald (CEST→CET, 2026-10-25) — stadig eksakt +24t", () => {
+  const createdAt = "2026-10-24T10:00:00.000Z";
+  assert.equal(missionReadyAt(createdAt, 1).toISOString(), "2026-10-25T10:00:00.000Z");
 });
 
 // ── canStartAssignment ──────────────────────────────────────────────────────────
