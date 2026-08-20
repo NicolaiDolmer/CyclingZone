@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.157",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout missions now finish on time",
+          "body": "A one day mission is now ready about 24 hours after you send it, at any time of day. Before, reports only landed at the nightly sweep, so a mission could quietly take up to two days. The queue now shows the expected time of day for each report."
+        },
+        "da": {
+          "title": "Spejdermissioner bliver færdige til tiden",
+          "body": "En 1-dags mission er nu klar cirka 24 timer efter du sender den, uanset tidspunkt på døgnet. Før landede rapporter kun ved det natlige sweep, så en mission kunne stille tage op til to dage. Køen viser nu det forventede klokkeslæt for hver rapport."
+        },
+        "refs": [
+          3997
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.152",
     "date": "2026-08-20",
     "label": "Beta",
