@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.164",
+    "date": "2026-08-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage weights now add up to 100 percent",
+          "body": "The terrain DNA bar on the stage tab used to show only the biggest factors, so the numbers stopped at 88 or even 62 percent. It now always adds up to 100, with an Other factors share, and a note tells you when descending and positioning decide the finale."
+        },
+        "da": {
+          "title": "Etape-vægtene summer nu til 100 procent",
+          "body": "Terræn-DNA-baren på etape-fanen viste før kun de største faktorer, så tallene stoppede ved 88 eller helt nede ved 62 procent. Nu summer den altid til 100 med en andel til Andre faktorer, og en note fortæller når nedkørsel og positionering afgør finalen."
+        },
+        "refs": [3149, 4029]
+      }
+    ]
+  },
+  {
     "version": "7.163",
     "date": "2026-08-20",
     "label": "Beta",
