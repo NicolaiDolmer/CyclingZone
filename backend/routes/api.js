@@ -196,7 +196,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteSalary } from "../lib/academyTransfer.js";
-import { countFutureRaceEntries, countOngoingRaceEntries } from "../lib/raceEntryCleanup.js";
+import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
