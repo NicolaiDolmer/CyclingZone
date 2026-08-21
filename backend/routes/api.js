@@ -12099,6 +12099,9 @@ router.get("/admin/value-transition", requireAdmin, async (req, res) => {
       })),
     });
   } catch (e) {
+    // best-effort: manglende preview-tabel (migration ikke applied endnu) er en
+    // forventet tom-tilstand for admin-siden, ikke en fejl — samme mønster som
+    // gate-endpointet ovenfor. Alt andet captures + 500 nedenfor.
     if (e?.code === "42P01" || /does not exist|schema cache/i.test(String(e?.message || ""))) {
       return res.json({ computedAt: null, rows: [], message: "Preview table does not exist yet (migration not applied)." });
     }

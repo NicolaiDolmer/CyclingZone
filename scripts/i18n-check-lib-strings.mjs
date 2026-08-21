@@ -53,6 +53,8 @@ const EXEMPT_FILES = new Map([
   ["frontend/src/pages/TermsPageEn.jsx", "EN-side, men citerer danske klageorganers egennavne (Nævnenes Hus / Center for Klageløsning) i juridisk tekst (#2813)."],
   ["frontend/src/pages/AdminGrowthPage.jsx", "Admin-only samlet vækst-dashboard (#3196) — ikke player-facing."],
   ["frontend/src/pages/AdminFairplayPage.jsx", "Admin-only fair-play review-kø (#3138) — ikke player-facing."],
+  ["frontend/src/pages/AdminValueTransitionPage.jsx", "Admin-only forhåndsvisning af værdi-overgangen (#3750/#4000) — ikke player-facing."],
+  ["frontend/src/pages/adminValueTransitionShape.js", "Ren logik for admin-only værdi-overgangs-siden (#3750/#4000) — ikke player-facing."],
   ["frontend/src/pages/AdminSprintMetricsPage.jsx", "Admin-only intern metrics-side — ikke player-facing."],
   ["frontend/src/pages/AdminWaitlistPage.jsx", "Admin-only waitlist-værktøj — ikke player-facing."],
   ["frontend/src/pages/AdminAttributionPage.jsx", "Admin-only signup-attribution-dashboard (#679) — ikke player-facing."],
