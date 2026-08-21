@@ -152,6 +152,47 @@ const finaleExtra = {
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
 
+// ── M8 (mechanics/cobbles.ts, #4030 #4030-m8-m11) — ADDITIVE cobbles-tuning ──
+// Samme praecedens som finaleExtra ovenfor: SelectionTuning (types.ts) er
+// frosset og daekker kun M2 (klatring); cobbles-selektionen spejler dens form
+// (deficit x vaegt + stoej + splitThreshold) men er sit eget saet konstanter,
+// saa den ikke deler haandtag med M2's kalibrering. cobbles.ts importerer
+// denne direkte (samme moenster som finale.ts's FINALE_EXTRA_TUNING-import).
+const cobblesExtra = {
+  deficitWeight: 1.0, // vaegt paa cobblestone-evne-underskuddet i cobbles-selektions-scoren (spejler tuning.selection.deficitWeight)
+  starWeight: 1.0, // vaegt paa sector.stars/5 i scoren ("sector-stars x rytterens cobblestone-evne", mor-spec M8)
+  noiseSdBase: 0.15, // stoej ~ N(0, sd*|baseScore|) — skalerer KUN magnitude, aldrig fortegn (samme moenster som SelectionTuning, monotoni-invarianten)
+  splitThreshold: 0.12, // score-taerskel der udloeser en cobbles-split (samme start-anker som tuning.selection.splitThreshold)
+  minStarsForRealWeight: 3, // kun sektorer med stars >= denne ("reel vaegt") kan udloese splits — under taersklen er sektoren en kosmetisk passage (F1 rute-bibliotek haandsliber de 4-5-stjernede sektorer, mor-spec §3.1)
+  effectFractionBounds: [0.15, 0.2] as const, // "15-20 % effekt paa udvalgte punch-etaper" (mor-spec §3.1/§4 M8): split-gap'et clampes til denne andel af sektorens forventede krydsningstid (terrain.baseSpeedKmh.cobbles), saa reel-vaegt-sektorer faar bounded men maerkbar effekt
+  punchFinaleMultiplier: 1.15, // ekstra vaegt naar route.finale_type === 'punch' ("udvalgte punch-etaper" — brosten+punch-kombinationen mor-spec §3.1 fremhaever) — multiplicerer effectFractionBounds, stadig clampet til [0,1]-krydsningstidsandel af hook'en
+  incidentRiskBase: 0.008, // basis-styrt-risiko pr. reel-vaegt-cobbles-passage (F3-fundament for brosten-kaos, groups.ts's RaceGroup.cohesion-kommentar), samme stoerrelsesorden som tuning.descent.incidentRiskBase
+  incidentRiskCobblestoneDampening: 0.00012, // daempning pr. cobblestone-evne-point (0-99-skala) — samme subtraktive moenster som tuning.descent.incidentRiskDescendingDampening
+};
+
+/** M8 additiv cobbles-tuning (deep-frosset). Se cobblesExtra-kommentaren ovenfor. */
+export const COBBLES_EXTRA_TUNING = deepFreeze(cobblesExtra);
+
+// ── M11 (mechanics/weather.ts, #4030 #4030-m8-m11) — ADDITIVE vejr-tuning ────
+// Vejr-laget er et RISIKO-LAG i F3 (task-brief: "regn forstaerker T2/T3- og
+// brosten-risiko + descent attack-risiko") — ingen ny EngineTuning-noegle
+// (frosset kontrakt, types.ts, arkitekt-only), samme additiv-praecedens som
+// finaleExtra/cobblesExtra. "vejr-teknik" (ejer-valg 20/8 §4 punkt 13, ny stat
+// der foedes SKJULT) faar her KUN et hook-punkt: weatherTechniqueProxyWeights
+// bruges af weather.ts's weatherTechniqueProxy() til at approksimere stat'en
+// fra EKSISTERENDE evner indtil F4 tilfoejer den rigtige AbilityKey/Entrant-
+// noegle (arkitekt-only, types.ts) — ingen DB-aendring, ingen migration her.
+const weatherExtra = {
+  rainIncidentRiskMultiplier: 1.6, // regn forstaerker T2/T3-/brosten-/descent-attack-risiko markant (mor-spec M11) — multiplikator paa den relevante mekaniks incidentRiskBase
+  windIncidentRiskMultiplier: 1.15, // let forhoejet risiko ved vind (fundament for sidevind/vifter #2476 — IKKE selve vifte-mekanikken, kun basis-risiko-koblingen)
+  sunOvercastIncidentRiskMultiplier: 1.0, // baseline, ingen risiko-effekt ved sol/overskyet
+  weatherTechniqueDampeningPerPoint: 0.00015, // daempning pr. "vejr-teknik"(-proxy)-point — samme stoerrelsesorden/subtraktive moenster som tuning.descent.incidentRiskDescendingDampening
+  weatherTechniqueProxyWeights: { descending: 0.5, durability: 0.5 }, // proxy-vaegte for den endnu-ufoedte "vejr-teknik"-evne (0-99-skala) — F4 erstatter proxy'en med abilities.weather_technique naar noeglen lander i types.ts
+};
+
+/** M11 additiv vejr-tuning (deep-frosset). Se weatherExtra-kommentaren ovenfor. */
+export const WEATHER_EXTRA_TUNING = deepFreeze(weatherExtra);
+
 // ── M12 (mechanics/effortCost.ts, #4030) — ADDITIV effort-cost-tuning ────────
 // Samme moenster som finaleExtra ovenfor: SS2's frosne EngineTuning-type
 // (types.ts) har ingen "effortCost"-noegle (kun arkitekten aendrer den frosne
