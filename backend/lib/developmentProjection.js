@@ -29,8 +29,8 @@ export const MAX_PROJECTION_SEASONS = 12;  // timing-søgnings-horisont (til-lof
 export const DISPLAY_SEASONS = 6;          // tegnet bånd-horisont (længere = ren støj)
 
 // Tempo-usikkerhed: den ægte motor skalerer vækst-fraktionen med en potentiale-afhængig
-// rate (riderProgression.youthRateForPotential — trin 7, #3746, ejer 16/8: rateByPotential
-// ∈ [0.11, 0.89], se YOUTH_PROGRESSION_CONFIG). Vi kender IKKE rytterens potentiale (og må
+// rate (riderProgression.youthRateForPotential — trin 7, #3746, ejer 16/8, rekalibreret
+// #3966 21/8: rateByPotential ∈ [0.135, 0.89], se YOUTH_PROGRESSION_CONFIG). Vi kender IKKE rytterens potentiale (og må
 // ikke lække den) → projektionen bracketterer HELE spændet med to ærlige envelopes. Fordi
 // de SAMME globale parametre bruges for ALLE ryttere, afslører bredden intet om DENNE
 // rytters potentiale — men rytterens faktiske trajektorie ligger i intervallet per
@@ -44,17 +44,23 @@ export const DISPLAY_SEASONS = 6;          // tegnet bånd-horisont (længere = 
 // scripts/previewRiderProgression.js relaterer sig til motorens kurver, og ingen af
 // dem måler coverage for DENNE projektion), så referencen var allerede stale før
 // dette trin. Rapporteret til ejeren ved denne rekalibrering. LO/HI er derfor et
-// bevidst KONSERVATIVT bracket om det nye rateByPotential-spænd (0.08 < 0.11,
+// bevidst KONSERVATIVT bracket om rateByPotential-spændet (0.08 < 0.135,
 // 0.95 > 0.89) frem for en målt coverage-garanti — næste session der rører denne
 // fil bør enten genskabe harnesset eller fjerne referencen helt.
 //
+// #3966 (21/8): rateByPotential's MIN steg fra 0.11 til 0.135 (rekalibrering, se
+// riderProgression.js). LO/HI-konstanterne herunder er UÆNDREDE — 0.08 < 0.135
+// og 0.95 > 0.89 holder stadig (begge envelopes ligger stadig strengt uden for
+// motorens faktiske spænd), så non-invertibilitets-garantien er intakt uden at
+// disse to tal skulle røres.
+//
 // Nedre envelope (pessimistisk): den langsomste rytter vokser LANGSOMT (rate 0.08 <
-// motorens min-rate 0.11 → nedre kant forbliver under reality, men stiger så båndet viser
+// motorens min-rate 0.135 → nedre kant forbliver under reality, men stiger så båndet viser
 // forventet vækst frem for et fladt gulv). Efter peak falder han.
 // Øvre envelope (optimistisk): hurtig vækst mod ceilHi (rate 0.95 > motorens max 0.89 →
 // øvre kant forbliver over reality); efter peak falder han mildt.
-export const RATE_GROWTH_LO = 0.08;  // nedre: under motorens nye min-rate 0.11
-export const RATE_GROWTH_HI = 0.95;  // øvre: over motorens nye max-rate 0.89
+export const RATE_GROWTH_LO = 0.08;  // nedre: under motorens min-rate (0.135 efter #3966)
+export const RATE_GROWTH_HI = 0.95;  // øvre: over motorens max-rate 0.89
 
 // Rating-niveau decline pr. sæson efter peak.
 //
