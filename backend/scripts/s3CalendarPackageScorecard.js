@@ -67,7 +67,8 @@ export async function loadPoolsAndCatalog(supabase) {
   if (tErr) throw new Error(`teams: ${tErr.message}`);
   const { data: catalog, error: cErr } = await supabase
     .from("race_pool")
-    .select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text");
+    .select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text")
+    .is("retired_at", null); // #4075: pensionerede rækker er usynlige for selektionen
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
 
   const isReal = (t) => t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account;

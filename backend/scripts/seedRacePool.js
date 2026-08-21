@@ -57,7 +57,9 @@ if (rows.length === 0) {
 }
 
 const now = new Date().toISOString();
-const payload = rows.map((r) => ({ ...r, updated_at: now }));
+// #4075: retired_at nulstilles ved upsert — en række der genopstår i CSV'en
+// (samme external_id) skal være aktiv igen (revival).
+const payload = rows.map((r) => ({ ...r, updated_at: now, retired_at: null }));
 
 if (DRY_RUN) {
   console.log(`[dry-run] ville upserte ${payload.length} pool-løb (ingen writes)`);
@@ -114,10 +116,27 @@ if (PRUNE) {
       `→ slet=${toDelete.length} bevar-refereret=${skippedReferenced.length}`,
   );
   if (skippedReferenced.length > 0) {
+    // #4075: forældreløse-men-refererede rækker kan ikke slettes (historiske sæsoners
+    // races peger på dem via pool_race_id), men de må heller ALDRIG kunne vælges til
+    // nye kalendere igen — det var rod-årsagen til dublet-GT'erne i S3 (gammel 21-etapers
+    // Giro/Tour/Vuelta valgt SAMMEN med de nye korte). De PENSIONERES (retired_at), og
+    // alle selektions-loadere filtrerer på retired_at IS NULL.
     console.log(
-      `[prune] bevarer ${skippedReferenced.length} forældreløse men refererede rækker:`,
+      `[prune] pensionerer ${skippedReferenced.length} forældreløse men refererede rækker (retired_at):`,
     );
     for (const r of skippedReferenced) console.log(`  - ${r.name} (${r.id})`);
+    if (!DRY_RUN) {
+      const { error: retireError } = await supabase
+        .from("race_pool")
+        .update({ retired_at: now })
+        .in("id", skippedReferenced.map((r) => r.id))
+        .is("retired_at", null);
+      if (retireError) {
+        console.error("Supabase retire-update fejlede:", retireError.message);
+        process.exit(1);
+      }
+      console.log(`✔ Pensionerede ${skippedReferenced.length} rækker`);
+    }
   }
 
   if (toDelete.length === 0) {

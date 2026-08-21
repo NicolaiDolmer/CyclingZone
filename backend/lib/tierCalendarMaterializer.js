@@ -482,7 +482,10 @@ export async function materializeTierCalendars({
   // #3469: date_text tilføjet — race_pool's VIRKELIGE dato, kilden til seasonFraction
   // (se buildTierMaterializationPlan). READ-ONLY overalt: external_id = sha256(name|date_text)
   // er parcours-identitet, mutation ville ændre alle parcours (racePoolImport.js).
-  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text");
+  // #4075: pensionerede katalog-rækker (retired_at sat af seedRacePool --prune, når en
+  // række er ude af CSV'en men stadig FK-refereret af historiske sæsoners races) må
+  // ALDRIG kunne vælges til nye kalendere — det var rod-årsagen til dublet-GT'erne i S3.
+  const { data: dbCatalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text").is("retired_at", null);
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
   // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
   // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig

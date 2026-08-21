@@ -16,7 +16,7 @@ const FROM = new Date("2026-06-28T00:00:00Z"); // real_day 0 = man 29/6
 function isRealManager(t) { return t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account; }
 const { data: divisions } = await supabase.from("league_divisions").select("id, tier, pool_index, label");
 const { data: teams } = await supabase.from("teams").select("league_division_id, is_ai, is_bank, is_frozen, is_test_account");
-const { data: catalog } = await supabase.from("race_pool").select("id, name, race_class, race_type, stages");
+const { data: catalog } = await supabase.from("race_pool").select("id, name, race_class, race_type, stages").is("retired_at", null);
 const realByDiv = new Map();
 for (const t of teams || []) if (isRealManager(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
 const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
