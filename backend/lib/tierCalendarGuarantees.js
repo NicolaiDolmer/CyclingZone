@@ -163,7 +163,16 @@ export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 
 // ny mekanisme. D4 behøvede ingen tilføjelse — dens gulv (1) var allerede dækket af
 // cobbled_tour-garantien alene.
 export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
-  1: Object.freeze({ cobbled_tour: 1, itt_classic: 1, cobbled_classic: 2 }),
+  // #4075 (21/8): cobbled_tour 1→0 for tier 1. Kataloget har kun 2 cobbled_tour-løb, og
+  // det ENESTE som tier 1-3's whitelists kan nå fælles (Danmark Rundt, ProSeries) blev
+  // støvsuget af tier 1's reservation — hvorefter D2's ejer-låste brostens-gulv
+  // (TIER_TERRAIN_FAMILY_MIN[2].cobbles=6, ejer-ask 4/8) IKKE kunne nås og apply blev
+  // afvist (målt 21/8 mod det rensede katalog: 5 < 6).
+  // cobbled_classic 2→4 samtidig: reservations-walket tager prestige-først, så de 2
+  // brostens-MONUMENTER opfylder selv en reservation på 2 (målt: D1-cobbles faldt til
+  // 2 < gulvets 3). 4 reserverer monumenterne + 2 ægte OWTB-brostens-klassikere;
+  // OWTB-supply er 3, så tier 2 beholder mindst 1 + OWTC/ProSeries til sit eget gulv.
+  1: Object.freeze({ itt_classic: 1, cobbled_classic: 4 }),
   // summit_tour 1→2 (#3469, 7/8 catalog-upgrade følge-commit): de 2 nye OWTC summit_tour-
   // løb (Vuelta a los Pirineos + Tour des Grandes Alpes, seedet 7/8) gør D2's
   // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge
