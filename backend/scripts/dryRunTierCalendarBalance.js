@@ -66,7 +66,7 @@ const { data: divisions, error: dErr } = await supabase.from("league_divisions")
 if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
 const { data: teams, error: tErr } = await supabase.from("teams").select("league_division_id, is_ai, is_bank, is_frozen, is_test_account");
 if (tErr) throw new Error(`teams: ${tErr.message}`);
-const { data: catalogRaw, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
+const { data: catalogRaw, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages").is("retired_at", null);
 if (cErr) throw new Error(`race_pool: ${cErr.message}`);
 const catalog = WITH_EXPANSION ? [...(catalogRaw || []), ...CATALOG_EXPANSION] : catalogRaw;
 

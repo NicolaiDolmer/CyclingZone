@@ -17,7 +17,7 @@ function isRealManager(t) { return t.is_ai === false && !t.is_bank && !t.is_froz
 const { data: season } = await supabase.from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
 const { data: divisions } = await supabase.from("league_divisions").select("id, tier, pool_index, label");
 const { data: teams } = await supabase.from("teams").select("league_division_id, is_ai, is_bank, is_frozen, is_test_account");
-const { data: catalog } = await supabase.from("race_pool").select("id, name, race_class, race_type, stages");
+const { data: catalog } = await supabase.from("race_pool").select("id, name, race_class, race_type, stages").is("retired_at", null);
 
 const realByDiv = new Map();
 for (const t of teams || []) if (isRealManager(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
