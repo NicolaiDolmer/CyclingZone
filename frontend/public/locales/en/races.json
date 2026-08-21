@@ -504,6 +504,47 @@
       "generic": "Couldn't save your tactics. Try again."
     }
   },
+  "tacticsOrders": {
+    "title": "Tactics",
+    "locksAt": "Locks {time}",
+    "locked": "Locked",
+    "lockedNote": "Orders are locked for this stage. They were set at the stage start.",
+    "empty": "Save your lineup above to set tactics for it.",
+    "planLabel": "Team plan",
+    "breakawayLabel": "Breakaway",
+    "effortLabel": "Effort",
+    "plan": {
+      "noCaptain": "No captain set yet. Set your lineup above.",
+      "chase": "{captain} leads. The team rides to bring back the breakaway.",
+      "neutral": "{captain} leads. The team reads the race as it unfolds.",
+      "letGo": "{captain} leads. The team lets the early move go."
+    },
+    "breakawayAria": "Team breakaway stance",
+    "breakaway": {
+      "chase": "Chase it down",
+      "neutral": "Neutral",
+      "let_go": "Let it go"
+    },
+    "effortSummary": "{protect} work · {normal} normal · {save} save",
+    "effort": {
+      "protect": "Protect",
+      "normal": "Normal",
+      "save": "Save"
+    },
+    "effortAria": "Effort for {name}",
+    "tryBreak": "Try the break",
+    "tryBreakAria": "{name} tries for the breakaway",
+    "roleLabel": {
+      "captain": "Captain",
+      "sprint_captain": "Sprint captain",
+      "hunter": "Breakaway hunter",
+      "helper": "Rider",
+      "free_role": "Free role"
+    },
+    "save": "Save tactics",
+    "saving": "Saving…",
+    "saved": "Tactics saved."
+  },
   "strategy": {
     "title": "Team strategy",
     "subtitle": "Standing preferences your assistant uses to build every lineup.",
