@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../globals.css";
 
-// Skelet (#4067 S1): brand-fonte (DM Sans / Inter Tight / Bebas) porteres
-// self-hosted fra frontend/ sammen med design-tokens — ingen Google Fonts,
-// samme regel som frontend/index.html (#481 PF1).
+// EN-root-layout (route-group). DA har sit eget root-layout i app/(da)/ så
+// <html lang> er korrekt i den server-leverede HTML for begge sprog.
 export const metadata: Metadata = {
   metadataBase: new URL("https://cyclingzone.org"),
   title: {
@@ -15,6 +14,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Cycling Zone",
+    locale: "en_US",
     images: [
       {
         url: "https://cyclingzone.org/og-cycling-zone.png",
@@ -30,10 +30,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function EnRootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <link
+          rel="preload"
+          href="/fonts/dm-sans-latin-wght-normal.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        {children}
+      </body>
     </html>
   );
 }
