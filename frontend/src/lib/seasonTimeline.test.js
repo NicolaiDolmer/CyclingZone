@@ -9,7 +9,10 @@ import {
   dateToPct,
   buildWeekTicks,
   packLanes,
-  nextOpenRaceDay,
+  bandsCoveringDay,
+  nextFocusDayIso,
+  seasonDayOrdinal,
+  padVisualSpan,
 } from "./seasonTimeline.js";
 
 test("dayIndex/isoOfDayIndex er inverse og TZ-frie", () => {
@@ -98,17 +101,45 @@ test("packLanes: ugyldige datoer filtreres, tom liste er ok", () => {
   assert.equal(packLanes([]).laneCount, 0);
 });
 
-test("nextOpenRaceDay: første kommende dag uden udtagelse vinder", () => {
+test("bandsCoveringDay: inklusivt spænd, GT dækker også hviledage", () => {
   const bands = [
-    { gameDay: 1, startDate: "2026-08-25", hasSelection: true },
-    { gameDay: 2, startDate: "2026-08-26", hasSelection: true },
-    { gameDay: 3, startDate: "2026-08-27", hasSelection: false },
-    { gameDay: 4, startDate: "2026-08-28", hasSelection: false },
+    { id: "gt", startDate: "2026-08-25", endDate: "2026-09-11" },
+    { id: "one", startDate: "2026-09-09", endDate: "2026-09-09" },
   ];
-  assert.equal(nextOpenRaceDay(bands, "2026-08-25"), 3);
-  // Alt udtaget → første kommende dag
+  assert.deepEqual(bandsCoveringDay(bands, "2026-09-09").map((b) => b.id), ["gt", "one"]);
+  assert.deepEqual(bandsCoveringDay(bands, "2026-09-12").map((b) => b.id), []);
+  assert.deepEqual(bandsCoveringDay(bands, "ugyldig"), []);
+});
+
+test("nextFocusDayIso: første kommende dag med et åbent løb vinder", () => {
+  const bands = [
+    { startDate: "2026-08-25", endDate: "2026-08-25", hasSelection: true },
+    { startDate: "2026-08-26", endDate: "2026-08-26", hasSelection: true },
+    { startDate: "2026-08-27", endDate: "2026-08-27", hasSelection: false },
+  ];
+  assert.equal(nextFocusDayIso(bands, "2026-08-25"), "2026-08-27");
+  // Alt udtaget → første kommende dag med løb
   const all = bands.map((b) => ({ ...b, hasSelection: true }));
-  assert.equal(nextOpenRaceDay(all, "2026-08-26"), 2);
+  assert.equal(nextFocusDayIso(all, "2026-08-26"), "2026-08-26");
+  // En IGANGVÆRENDE GT uden udtagelse tæller fra i dag, ikke fra sin startdato
+  const gt = [{ startDate: "2026-08-25", endDate: "2026-09-11", hasSelection: false }];
+  assert.equal(nextFocusDayIso(gt, "2026-09-01"), "2026-09-01");
   // I dag ligger efter alle løb → null
-  assert.equal(nextOpenRaceDay(bands, "2026-10-01"), null);
+  assert.equal(nextFocusDayIso(bands, "2026-10-01"), null);
+});
+
+test("padVisualSpan: endagsløb udvides mod højre, flerdages røres ikke", () => {
+  const padded = padVisualSpan([
+    { id: "one", startDate: "2026-08-27", endDate: "2026-08-27" },
+    { id: "gt", startDate: "2026-08-25", endDate: "2026-09-11" },
+  ], 2);
+  assert.equal(padded.find((b) => b.id === "one").endDate, "2026-08-28");
+  assert.equal(padded.find((b) => b.id === "one").startDate, "2026-08-27");
+  assert.equal(padded.find((b) => b.id === "gt").endDate, "2026-09-11");
+});
+
+test("seasonDayOrdinal: 1-baseret dansk kalenderdag-akse", () => {
+  assert.equal(seasonDayOrdinal("2026-08-25", "2026-08-25"), 1);
+  assert.equal(seasonDayOrdinal("2026-09-09", "2026-08-27"), 14);
+  assert.equal(seasonDayOrdinal("nope", "2026-08-25"), null);
 });

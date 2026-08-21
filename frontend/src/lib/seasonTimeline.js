@@ -110,21 +110,62 @@ export function packLanes(bands) {
   return out;
 }
 
+/** Bænde hvis datospænd (inklusivt) dækker den givne dag. */
+export function bandsCoveringDay(bands, iso) {
+  const d = dayIndex(iso);
+  if (d == null) return [];
+  return (bands || []).filter((b) => {
+    const s = dayIndex(b.startDate), e = dayIndex(b.endDate);
+    return s != null && e != null && s <= d && d <= e;
+  });
+}
+
 /**
- * Første kommende løbsdag med mindst ét løb uden gemt udtagelse — bruges til
- * dag-panelets default-fokus ("Race day N · … · 1 open"). Bænde uden gameDay
- * ignoreres. Ligger alt før `todayIso` eller er alt udtaget → første kommende
- * dag overhovedet → ellers null.
+ * Dag-panelets default-fokus: første dag ≥ `todayIso` hvor mindst ét løb uden
+ * gemt udtagelse er aktivt ("… · 1 open"). Er alt udtaget → første kommende dag
+ * med løb overhovedet. Intet kommende → null. Returnerer "YYYY-MM-DD".
  */
-export function nextOpenRaceDay(bands, todayIso) {
+export function nextFocusDayIso(bands, todayIso) {
   const t = dayIndex(todayIso);
   if (t == null) return null;
-  const upcoming = (bands || []).filter((b) => {
-    const s = dayIndex(b.startDate);
-    return s != null && s >= t && Number.isFinite(b.gameDay);
+  const covered = new Set(), open = new Set();
+  for (const b of bands || []) {
+    const s = dayIndex(b.startDate), e = dayIndex(b.endDate);
+    if (s == null || e == null) continue;
+    for (let d = Math.max(s, t); d <= e; d++) {
+      covered.add(d);
+      if (!b.hasSelection) open.add(d);
+    }
+  }
+  const pick = (set) => (set.size ? Math.min(...set) : null);
+  const day = pick(open) ?? pick(covered);
+  return day == null ? null : isoOfDayIndex(day);
+}
+
+/**
+ * 1-baseret løbsdag-ordinal (boardets `?day=`-akse, jf. backend/lib/seasonDay.js:
+ * dansk KALENDERDAG, dag 1 = sæsonens tidligste etape-dato). `seasonFirstIso`
+ * SKAL være den tidligste dato på tværs af ALLE puljer, ikke kun egen pulje.
+ */
+export function seasonDayOrdinal(iso, seasonFirstIso) {
+  const d = dayIndex(iso), f = dayIndex(seasonFirstIso);
+  if (d == null || f == null) return null;
+  return d - f + 1;
+}
+
+/**
+ * Visuel min-bredde: et endagsløb på en 28-dages lineal er ~3,6 % bredt — for
+ * smalt til sit navn. Spændet UDVIDES (kun mod højre; ankeret er startdatoen)
+ * til mindst `minDays` kalenderdage FØR pakning, så labels kan læses og to
+ * nære endagsløb aldrig overlapper visuelt i samme bane. Stats/dag-panel skal
+ * bruge de RIGTIGE datoer — kald denne kun på render/pakke-vejen.
+ */
+export function padVisualSpan(bands, minDays = 2) {
+  return (bands || []).map((b) => {
+    const s = dayIndex(b.startDate), e = dayIndex(b.endDate);
+    if (s == null || e == null) return b;
+    const spanDays = e - s + 1;
+    if (spanDays >= minDays) return b;
+    return { ...b, endDate: isoOfDayIndex(s + minDays - 1) };
   });
-  if (!upcoming.length) return null;
-  const open = upcoming.filter((b) => !b.hasSelection);
-  const pool = open.length ? open : upcoming;
-  return pool.reduce((min, b) => (min == null || dayIndex(b.startDate) < dayIndex(min.startDate) ? b : min), null)?.gameDay ?? null;
 }
