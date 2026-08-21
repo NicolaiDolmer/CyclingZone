@@ -5,7 +5,7 @@
 import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRiderEligibilityFilter } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, isRiderInjured } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 
 export function validateSelection({
@@ -136,7 +136,10 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       tactics: ab?.tactics ?? null,
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
-      injured: !!(cond?.injured_until && cond.injured_until >= todayStr),
+      // #3896: kanonisk skades-predikat (riderEligibility.isRiderInjured) — ensrettet
+      // mod udtagelses-endpointet og race-motoren, så holdside/udtagelse/motor viser
+      // og håndhæver PRÆCIS samme skadesstatus.
+      injured: isRiderInjured(cond?.injured_until ?? null, todayStr),
       // #3809: alle 15 rå evne-værdier — driver holdudtagelsens "Evner"-visning
       // (toggle mellem nuværende kolonner og attributter, samme rå tal som
       // Mit Hold's evne-tilstand, #2906). Egne ryttere → ingen fog-of-war på

@@ -1,7 +1,10 @@
 // backend/lib/riderEligibility.test.js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isEligibleRider, filterEligibleEntries, applyRiderEligibilityFilter } from "./riderEligibility.js";
+import {
+  isEligibleRider, filterEligibleEntries, applyRiderEligibilityFilter,
+  isRiderInjured, applyInjuredFilter, filterOutInjuredEntries,
+} from "./riderEligibility.js";
 
 test("isEligibleRider: senior på holdet er berettiget", () => {
   assert.equal(isEligibleRider({ team_id: "t1", is_academy: false, is_retired: false }, { teamId: "t1" }), true);
@@ -41,6 +44,39 @@ test("filterEligibleEntries: ghost-entries (akademi/pensioneret/off-team/slettet
   ];
   const live = filterEligibleEntries({ entries, ridersById });
   assert.deepEqual(live.map((e) => e.rider_id), ["ok"]);
+});
+
+// #3896: kanonisk skades-predikat.
+test("isRiderInjured: injured_until >= i dag = skadet; fortid/null = rask", () => {
+  assert.equal(isRiderInjured("2026-08-25", "2026-08-21"), true);
+  // samme dag tæller stadig som skadet (>=, ikke >)
+  assert.equal(isRiderInjured("2026-08-21", "2026-08-21"), true);
+  assert.equal(isRiderInjured("2026-08-20", "2026-08-21"), false);
+  assert.equal(isRiderInjured(null, "2026-08-21"), false);
+  assert.equal(isRiderInjured(undefined, "2026-08-21"), false);
+});
+
+test("applyInjuredFilter: kæder .gte(injured_until, todayStr) på query'en", () => {
+  const calls = [];
+  const q = { gte(col, val) { calls.push(["gte", col, val]); return q; } };
+  const out = applyInjuredFilter(q, "2026-08-21");
+  assert.equal(out, q, "returnerer query'en (kædebar)");
+  assert.deepEqual(calls, [["gte", "injured_until", "2026-08-21"]]);
+});
+
+test("filterOutInjuredEntries: skadede committede entries falder ud; raske/udløbet skade/ingen condition-række består", () => {
+  const injuredUntilByRider = new Map([
+    ["hurt", "2026-08-25"], // stadig skadet
+    ["healed", "2026-08-10"], // skaden er udløbet
+    // "no-condition" mangler bevidst — Map.get() → undefined
+  ]);
+  const entries = [
+    { rider_id: "hurt", team_id: "t1" },
+    { rider_id: "healed", team_id: "t1" },
+    { rider_id: "no-condition", team_id: "t1" },
+  ];
+  const live = filterOutInjuredEntries({ entries, injuredUntilByRider, todayStr: "2026-08-21" });
+  assert.deepEqual(live.map((e) => e.rider_id), ["healed", "no-condition"]);
 });
 
 test("applyRiderEligibilityFilter: kæder akademi- + pensioneret- + ikke-under-handel-filter på query'en", () => {

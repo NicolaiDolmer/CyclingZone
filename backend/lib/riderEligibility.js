@@ -49,3 +49,32 @@ export function filterEligibleEntries({ entries = [], ridersById }) {
   return entries.filter((e) =>
     isEligibleRider(ridersById.get(e.rider_id), { teamId: e.team_id }));
 }
+
+// #3896: ÉN definition af "er rytteren skadet på dato X". Skadesstatus (rider_condition.
+// injured_until, en DATE-streng YYYY-MM-DD eller null) blev tidligere tjekket med let
+// forskellige inline-udtryk mindst 5 steder (udtagelses-panel, udtagelses-endpointets
+// auto-fyld-guard, race-motorens auto-pick/auto-fyld, generator-sweepet) — men ALDRIG
+// mod committede manager-udtagne race_entries i selve motoren (se filterOutInjuredEntries
+// nedenfor), så en rytter der udtoges rask og siden blev skadet FØR løbsstart alligevel
+// kunne starte og score (Discord-bug 17/8, ez4prebren/Cooper Bennett). Skadet = injured_until
+// sat OG >= dagen der tjekkes (samme dag tæller stadig som skadet — spejler #1306/#2637's
+// oprindelige `>=`-semantik).
+export function isRiderInjured(injuredUntil, todayStr) {
+  return !!(injuredUntil && injuredUntil >= todayStr);
+}
+
+// SQL-siden af isRiderInjured: begræns en rider_condition-query til KUN skadede rækker
+// pr. todayStr. Bruges hvor vi henter en kandidat-pool direkte fra DB i stedet for at
+// hente alt og filtrere i app-koden (fx auto-pick/auto-fyld-kandidater).
+export function applyInjuredFilter(query, todayStr) {
+  return query.gte("injured_until", todayStr);
+}
+
+// Frafiltrér skadede committede entries: rytteren ER på holdet/berettiget (allerede
+// passeret filterEligibleEntries), men er skadet på dagen motoren bygger startfeltet.
+// injuredUntilByRider = Map<rider_id, injured_until|null>. Adskilt fra filterEligibleEntries
+// fordi skadestjekket er tidsafhængigt (kræver todayStr) og har sin egen bug-historik —
+// #2637 dækkede kun auto-fyld/auto-pick-kandidatpuljer, aldrig manager-committede entries.
+export function filterOutInjuredEntries({ entries = [], injuredUntilByRider, todayStr }) {
+  return entries.filter((e) => !isRiderInjured(injuredUntilByRider.get(e.rider_id) ?? null, todayStr));
+}
