@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": false,
-    "types": []
+    "types": ["node"]
   },
   "include": ["lib/engine/v4/**/*.ts"]
 }
