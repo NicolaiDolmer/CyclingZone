@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.170",
+    "date": "2026-08-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Two hidden auction help topics",
+          "body": "The help texts about the valuation next to a bid and about anonymous bidding are now visible in the auctions section."
+        },
+        "da": {
+          "title": "To skjulte auktions-hjælpetekster",
+          "body": "Hjælpeteksterne om vurderingen ved siden af et bud og om anonym budgivning vises nu i auktionsafsnittet."
+        },
+        "refs": [4064]
+      }
+    ]
+  },
+  {
     "version": "7.169",
     "date": "2026-08-21",
     "label": "Beta",
