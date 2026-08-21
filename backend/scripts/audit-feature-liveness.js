@@ -90,13 +90,6 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // race_stage_claims (#4026/PR #4027, merged 20/8): FLYGTIG claim-tabel mod
-  // dobbelt-instans-etapeticks — rækken indsættes ved tick-start og SLETTES
-  // igen ved release (adminSimulateRace.js linje ~94), så 0 rows mellem ticks
-  // ER den sunde tilstand. PERMANENT entry (ikke "fjern når rows"): tabellen
-  // er tom næsten altid per design. En lækket række ryddes af lease-udløbet i
-  // claim-logikken selv — det er ikke Detector A's job at opdage.
-  "race_stage_claims",
   // race_stage_timelines-suppressionen fjernet 18/8 ~11:10: første etape efter
   // flag-ON skrev sin tidslinje (1 row, 9 events, timeline_version 1 — #2410 S1
   // bevist end-to-end). Detector A dækker tabellen normalt igen.
@@ -175,6 +168,15 @@ const PERMANENT_EMPTY_TABLES = new Set([
   // "write-but-no-data" i det sekund den blev oprettet, hvilket gjorde `audit`
   // rød på alle PR'er — men en tom outbox er hele pointen med en outbox.
   "discord_webhook_outbox",
+  // race_stage_claims (#4026/PR #4027, merged 20/8): FLYGTIG claim-tabel mod
+  // dobbelt-instans-etapeticks — rækken indsættes ved tick-start og slettes
+  // igen ved release, så 0 rows mellem ticks ER den sunde tilstand — og rows
+  // UNDER et aktivt tick er også sundt. Flyttet hertil fra
+  // WHITELIST_EMPTY_TABLES 21/8 (#4075-sessionen): stale-vagten flagede den
+  // som forfalden i det øjeblik et tick tilfældigvis havde aktive claims
+  // (25 rows under S2-finalens etapedag). En lækket række ryddes af
+  // lease-udløbet i claim-logikken selv.
+  "race_stage_claims",
   // Pending-imports er per-batch state — tomme uden for et aktivt import-run.
   "pending_race_results",
   "pending_race_result_rows",
