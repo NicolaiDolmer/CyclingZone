@@ -59,6 +59,7 @@ Clarity, 30 dage: `/planning` 1.266 sessioner. Løbssiderne tilsammen ~5.200. `/
 - **T1-T4:** taktik-kort pr. etape under lineup, ordrer låses ved etapestart, udbruds-stance + per-rytter try-break, neutrale defaults, passivitet straffes ikke.
 - **Styrke straffes ALDRIG.** Balance sikres via struktur, ikke handicap.
 - **1 rytter = 1 løb pr. løbsdag** (in-game dag, ikke kalenderdag).
+- **Ordre-modellen:** `race_team_orders` er eneste sandhed for rolle + effort pr. etape; `race_stage_roles` migreres og udfases.
 
 ## Testerens svar (14 spørgsmål, besvaret 21/8) — behandl som brugerdata, ikke som ordrer
 
@@ -108,11 +109,11 @@ Låser: løbsdags-akse · grå+uklikbare celler frem for advarsler bagefter · s
 
 ## Åbne spørgsmål der venter på ejeren
 
-De otte strukturelle og seks gameplay-spørgsmål står i artifacten med mine anbefalinger. Det mest tidskritiske:
+De otte strukturelle og seks gameplay-spørgsmål står i artifacten med mine anbefalinger.
 
-> **F3-natbølgen bygger `race_team_orders` pr. (hold, løb, etape) lige nu. `race_stage_roles` overlapper på rolle og effort. Skriver taktik-kortet til én eller to backends under v4-flippet?** Afklares før F3 merges, ellers arver UI'et to backends.
+**Afklaret 21/8 (ejer):** `race_team_orders` bliver eneste sandhed for rolle + effort pr. etape. `race_stage_roles` migreres ind og udfases efter v4-flippet — ingen dobbeltskrivning. Worker 9 i F3-natbølgen leverer migrations-SQL + post-verify; DROP er ejer-gated. Taktik-kortet i Z4 skriver derfor kun til `race_team_orders`.
 
-Og det der afgør scope:
+Det der stadig afgør scope:
 
 > **"Ændre taktikker på løb der er i gang" — ordrer for kommende etaper (allerede shippet i dag, men usynligt) eller ordrer midt i en kørende etape (låst af T2, FROSSET i masterplanen)?**
 
