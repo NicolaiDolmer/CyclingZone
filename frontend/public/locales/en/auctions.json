@@ -233,6 +233,7 @@
     "transferAction": "Send bid",
     "questionPrefix": "Are you sure you want to",
     "onLabel": "on",
+    "settlesAfterValueUpdate": "This auction settles after Sunday's value update. Value and abilities can change before it ends.",
     "retirementWarning": {
       "risk": "Nearing the end of his career: this rider is in the retirement window (age {windowStart}-{guaranteedAge}) and may retire after this season.",
       "certain": "This rider is {guaranteedAge} or older and will retire after this season."

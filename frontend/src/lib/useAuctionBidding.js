@@ -6,6 +6,7 @@ import { formatNumber } from "./intl";
 import { useBlockedAction } from "./useBlockedAction.js";
 import { reportActionFailure } from "./actionTelemetry.js";
 import { retirementBidWarningTier } from "./riderAge";
+import { auctionSettlesAfterValueUpdate } from "./auctionValueUpdateWindow.js";
 
 // Delt bid + autobud-loft state-machine. Bruges af AuctionRow (desktop tabel),
 // AuctionCard (mobil card) og RiderStatsPage (rytter-profil) — så vi har ÉN kilde
@@ -50,6 +51,9 @@ export function useAuctionBidding({
     hasActiveBid: Boolean(auction.current_bidder_id),
   });
   const retirementTier = retirementBidWarningTier(birthdate, seasonYear);
+  // #4004: kort note i bud-bekræftelsen når auktionen slutter EFTER søndagens
+  // værdi-refresh — ren visning, blokerer intet (bud er bindende uanset).
+  const settlesAfterValueUpdate = auctionSettlesAfterValueUpdate(auction.calculated_end);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
@@ -122,6 +126,7 @@ export function useAuctionBidding({
       riderName,
       amount: bidAmount,
       retirementTier,
+      settlesAfterValueUpdate,
       onConfirm: async () => {
         setBidStatus("loading");
         let result;
@@ -177,6 +182,7 @@ export function useAuctionBidding({
       riderName,
       amount: proxyInput,
       retirementTier,
+      settlesAfterValueUpdate,
       onConfirm: async () => {
         setProxyStatus("loading");
         setProxyErrorText("");

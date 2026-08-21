@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.167",
+    "date": "2026-08-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Market",
+        "en": {
+          "title": "A heads up before you bid on a long-running auction",
+          "body": "If an auction settles after Sunday's value update, the bid confirmation now tells you so. Value and abilities can change before the auction ends, and your bid still stands either way. Auctions can no longer be created to run past the transfer window closing, so a sale can't get caught mid-way through a season change."
+        },
+        "da": {
+          "title": "Et praj før du byder på en lang auktion",
+          "body": "Hvis en auktion afsluttes efter søndagens værdi-opdatering, siger bud-bekræftelsen det nu tydeligt. Værdi og evner kan ændre sig inden auktionen lukker, og dit bud står stadig ved magt uanset hvad. Auktioner kan ikke længere oprettes så de løber forbi transfervinduets lukketid, så et salg ikke kan blive fanget midt i et sæsonskifte."
+        },
+        "refs": [4004]
+      }
+    ]
+  },
+  {
     "version": "7.166",
     "date": "2026-08-21",
     "label": "Beta",

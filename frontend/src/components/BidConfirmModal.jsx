@@ -12,7 +12,11 @@ const MODE_ICON = { bid: GavelIcon, proxy: AlertTriangleIcon, transfer: Briefcas
 // kortet (ejer-accept 22/7: "i bekræftelses-modalen, ikke kun som badge").
 // retirementTier kommer fra riderAge.js' retirementBidWarningTier (SSOT for
 // tærskler er backend/lib/riderProgression.js PROGRESSION_CONFIG.retirement).
-export function BidConfirmModal({ show, mode = "bid", riderName, amount, retirementTier = null, onCancel, onConfirm, busy = false }) {
+// #4004 (ejer-beslutning 21/8, revision 2): kort pre-bid-varsel når auktionen
+// slutter EFTER søndagens værdi-refresh — ren information, ingen blokering
+// (bud er bindende uanset, §3 i issue #4004). settlesAfterValueUpdate kommer
+// fra useAuctionBidding.js's auctionSettlesAfterValueUpdate.
+export function BidConfirmModal({ show, mode = "bid", riderName, amount, retirementTier = null, settlesAfterValueUpdate = false, onCancel, onConfirm, busy = false }) {
   const { t } = useTranslation(["auctions", "common"]);
   if (!show) return null;
 
@@ -22,6 +26,7 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, retirem
         guaranteedAge: RETIREMENT_GUARANTEED_AGE,
       })
     : null;
+  const valueUpdateText = settlesAfterValueUpdate ? t("auctions:modal.settlesAfterValueUpdate") : null;
 
   const modeKey = ["bid", "proxy", "transfer"].includes(mode) ? mode : "bid";
   const Icon = MODE_ICON[modeKey];
@@ -52,6 +57,15 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, retirem
             <> {t("auctions:modal.onLabel")} <span className="font-bold text-cz-1">{riderName}</span></>
           ) : null}?
         </p>
+        {valueUpdateText && (
+          <div
+            role="alert"
+            className="mb-4 -mt-2 flex items-start gap-2 rounded-cz border border-cz-warning/30 bg-cz-warning-bg/40 px-3 py-2 text-left text-xs text-cz-warning"
+          >
+            <AlertTriangleIcon size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{valueUpdateText}</span>
+          </div>
+        )}
         {retirementText && (
           <div
             role="alert"

@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import {
   calculateAuctionEnd,
   getCustomAuctionEndIssue,
+  getAuctionSeasonBoundaryIssue,
   isAuctionExpired,
   isLateBidTriggerError,
   applyLeaderShiftExtension,
@@ -5637,18 +5638,25 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(400).json({ error: "Flash auctions run for a fixed 30 minutes and can't take a custom end time", errorCode: "flash_custom_end_conflict" });
   }
 
+  // #4004: seneste transfer_windows-række hentes ÉN gang og genbruges af
+  // både Deadline Day-gaten (flash-auktioner) og sæsonskifte-vindues-guarden
+  // nedenfor — se getAuctionSeasonBoundaryIssue i auctionEngine.js.
+  const { data: boundaryWindow } = await supabase
+    .from("transfer_windows")
+    .select("status, closes_at")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
   // Flash auction guard: only allowed during Deadline Day
   if (flash_auction) {
-    const [{ data: tw }, { data: ddCfg }] = await Promise.all([
-      supabase.from("transfer_windows").select("status, closes_at").order("created_at", { ascending: false }).limit(1).single(),
-      supabase.from("auction_timing_config").select("deadline_day_override").eq("id", 1).single(),
-    ]);
+    const { data: ddCfg } = await supabase.from("auction_timing_config").select("deadline_day_override").eq("id", 1).single();
     const override = ddCfg?.deadline_day_override || "auto";
     let ddActive = false;
     if (override === "on") {
       ddActive = true;
-    } else if (override !== "off" && tw?.status === "open" && tw?.closes_at) {
-      const secs = (new Date(tw.closes_at) - Date.now()) / 1000;
+    } else if (override !== "off" && boundaryWindow?.status === "open" && boundaryWindow?.closes_at) {
+      const secs = (new Date(boundaryWindow.closes_at) - Date.now()) / 1000;
       ddActive = secs > 0 && secs <= 86400;
     }
     if (!ddActive) return res.status(403).json({ error: "Flash auctions are only available during Deadline Day", errorCode: "flash_deadline_day_only" });
@@ -5826,6 +5834,27 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     : ends_at
       ? new Date(ends_at)
       : calculateAuctionEnd(new Date(), auctionCfg);
+
+  // #4004: hård guard — se getAuctionSeasonBoundaryIssue (auctionEngine.js) for
+  // hvorfor transfer-vinduets lukketid er den bedst opnåelige proxy for
+  // sæsonskiftet. Rammer alle tre sluttids-veje (flash/custom/default), da
+  // calculatedEnd er fælles for dem.
+  const boundaryIssue = getAuctionSeasonBoundaryIssue(calculatedEnd, boundaryWindow);
+  if (boundaryIssue) {
+    // Locale-neutral DD/MM HH:mm i dansk tid — samme princip som padHour()
+    // ovenfor (auction_end_outside_window): ingen sprogafhængig dato-tekst,
+    // så errors.json-strengen kan være identisk på tværs af locale.
+    const closesAtDate = new Date(boundaryIssue.closesAt);
+    const closesAtText = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Copenhagen", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(closesAtDate).replace(",", "");
+    return res.status(400).json({
+      error: `Auctions can't end after the transfer window closes (${closesAtText})`,
+      errorCode: "auction_end_crosses_window_close",
+      errorParams: { closesAt: closesAtText },
+    });
+  }
+
   const initialBidderId = getAuctionInitialBidderId({
     riderTeamId: rider.team_id,
     managerTeamId: req.team.id,

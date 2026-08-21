@@ -211,6 +211,38 @@ export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT
 }
 
 /**
+ * #4004 (ejer-beslutning 21/8, revision 2): en auktion må ikke kunne strække
+ * sig forbi transfer-vinduets lukketid. Aldersfald/pension rammer ved
+ * sæsonskiftet, og en løbende auktion på det tidspunkt ville sælge en rytter
+ * på tal der flytter sig under salget.
+ *
+ * VIGTIGT (dokumenteret her, uddybet i PR-body): der findes IKKE en
+ * planlagt "sæson-transition-tidspunkt"-kolonne i skemaet i dag —
+ * sæsonskiftet er en manuel admin-handling (season_auto_transition er
+ * slukket), og `seasons.end_date` sættes retroaktivt FØRST ved selve
+ * skiftet. `transfer_windows.closes_at` er den ENESTE fremadrettede
+ * deadline spillet faktisk gemmer, og sæson-transitionens readiness-gates
+ * kræver at vinduet er lukket FØR transitionen kan ske — så at forbyde
+ * overlap med vinduets lukning er den bedst opnåelige garanti med den
+ * nuværende datamodel (fjerner det forudsigelige, almindelige
+ * overlap-tilfælde; garanterer ikke 100% mod en sen manuel transition
+ * efter vinduet er lukket).
+ *
+ * @param {Date} calculatedEnd - auktionens beregnede sluttidspunkt
+ * @param {{status: string, closes_at: string|null}|null} transferWindow - seneste transfer_windows-række
+ * @returns {{code: "crosses_window_close", closesAt: string} | null}
+ */
+export function getAuctionSeasonBoundaryIssue(calculatedEnd, transferWindow) {
+  if (!transferWindow || transferWindow.status !== "open" || !transferWindow.closes_at) return null;
+  const closesAt = new Date(transferWindow.closes_at);
+  if (Number.isNaN(closesAt.getTime())) return null;
+  if (new Date(calculatedEnd).getTime() >= closesAt.getTime()) {
+    return { code: "crosses_window_close", closesAt: transferWindow.closes_at };
+  }
+  return null;
+}
+
+/**
  * Check whether a new bid triggers an extension.
  *
  * Cap-with-rollover: extended end may pass the day's window close by up to
