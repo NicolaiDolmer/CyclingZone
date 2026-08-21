@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "source": "syntetisk (headToHeadV4.js F2-stub-eksempel, ikke prod-data)",
+  "filters": "8 haandbyggede ryttere, 2 hold — kun til at bevise stubbens kommandolinje koerer fejlfrit",
+  "counts": { "teams": 2, "riders": 8, "dropped_no_abilities": 0 },
+  "teams": [
+    { "id": "team-a", "tier": 1, "league_division_id": null, "is_ai": false },
+    { "id": "team-b", "tier": 1, "league_division_id": null, "is_ai": false }
+  ],
+  "riders": [
+    {
+      "id": "rider-a1", "name": "A Sprinter", "team_id": "team-a", "is_u25": false, "form": 55, "fatigue": 20,
+      "abilities": { "climbing": 30, "time_trial": 40, "flat": 70, "tempo": 45, "sprint": 88, "acceleration": 82, "punch": 40, "endurance": 55, "recovery": 60, "durability": 50, "descending": 45, "cobblestone": 40, "positioning": 65, "aggression": 55, "tactics": 50 }
+    },
+    {
+      "id": "rider-a2", "name": "A Climber", "team_id": "team-a", "is_u25": true, "form": 50, "fatigue": 15,
+      "abilities": { "climbing": 85, "time_trial": 55, "flat": 30, "tempo": 65, "sprint": 25, "acceleration": 40, "punch": 60, "endurance": 80, "recovery": 62, "durability": 58, "descending": 55, "cobblestone": 30, "positioning": 45, "aggression": 50, "tactics": 55 }
+    },
+    {
+      "id": "rider-a3", "name": "A Helper", "team_id": "team-a", "is_u25": false, "form": 48, "fatigue": 25,
+      "abilities": { "climbing": 45, "time_trial": 40, "flat": 50, "tempo": 55, "sprint": 35, "acceleration": 40, "punch": 40, "endurance": 60, "recovery": 50, "durability": 55, "descending": 40, "cobblestone": 45, "positioning": 50, "aggression": 40, "tactics": 40 }
+    },
+    {
+      "id": "rider-a4", "name": "A Rouleur", "team_id": "team-a", "is_u25": false, "form": 52, "fatigue": 18,
+      "abilities": { "climbing": 40, "time_trial": 60, "flat": 60, "tempo": 60, "sprint": 40, "acceleration": 45, "punch": 45, "endurance": 65, "recovery": 55, "durability": 55, "descending": 50, "cobblestone": 50, "positioning": 55, "aggression": 45, "tactics": 45 }
+    },
+    {
+      "id": "rider-b1", "name": "B Sprinter", "team_id": "team-b", "is_u25": false, "form": 58, "fatigue": 22,
+      "abilities": { "climbing": 28, "time_trial": 38, "flat": 68, "tempo": 42, "sprint": 90, "acceleration": 85, "punch": 38, "endurance": 52, "recovery": 58, "durability": 48, "descending": 42, "cobblestone": 38, "positioning": 68, "aggression": 58, "tactics": 48 }
+    },
+    {
+      "id": "rider-b2", "name": "B Climber", "team_id": "team-b", "is_u25": true, "form": 60, "fatigue": 10,
+      "abilities": { "climbing": 90, "time_trial": 58, "flat": 32, "tempo": 68, "sprint": 22, "acceleration": 38, "punch": 65, "endurance": 84, "recovery": 66, "durability": 60, "descending": 58, "cobblestone": 28, "positioning": 42, "aggression": 52, "tactics": 58 }
+    },
+    {
+      "id": "rider-b3", "name": "B Puncheur", "team_id": "team-b", "is_u25": false, "form": 45, "fatigue": 30,
+      "abilities": { "climbing": 60, "time_trial": 45, "flat": 45, "tempo": 55, "sprint": 55, "acceleration": 60, "punch": 78, "endurance": 55, "recovery": 52, "durability": 50, "descending": 55, "cobblestone": 42, "positioning": 55, "aggression": 65, "tactics": 55 }
+    },
+    {
+      "id": "rider-b4", "name": "B Domestique", "team_id": "team-b", "is_u25": false, "form": 40, "fatigue": 35,
+      "abilities": { "climbing": 42, "time_trial": 42, "flat": 48, "tempo": 50, "sprint": 35, "acceleration": 38, "punch": 38, "endurance": 58, "recovery": 48, "durability": 52, "descending": 40, "cobblestone": 40, "positioning": 45, "aggression": 35, "tactics": 38 }
+    }
+  ]
+}
