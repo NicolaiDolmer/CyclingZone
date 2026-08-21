@@ -357,13 +357,13 @@ omregnes til loft-enheder eller genmåles, før den kan bruges som gate.
 
 Komponent 1 RØD (udgår), komponent 2 afventer design-session, komponent 3 KLAR, komponent 4 GRØN for backfillen. Værktøjet (PR #3835) er merged og bevist mod staging.
 
-## Huller pr. 17/8
+## Huller pr. 17/8 (status-opdateret 21/8)
 
-- Det daglige ticks tidspunkt i forhold til etape-scheduleren er ikke målt.
-- **Komponent 3's stop-grænse (Δ −29) står i før-#3666-rating-enheden og kan ikke bruges som gate uden genmåling** (spor 1-fund 17/8); gendannelses-værktøjet rapporterer i rå loft-enheder — genmål grænsen FØR 23/8.
-- Mandat: script-apply mod staging med ejerens egen nøgle udestår (agent-sessionen havde ikke stagings service-nøgle).
+- ~~Det daglige ticks tidspunkt~~ **MÅLT 21/8:** trænings-/AI-recovery-sweeps poller hvert 5. minut (`cron.js:1391-1400`) med gate "efter kl. 22 dansk tid" — første tick efter flip lander **22:00-22:05**, dvs. INDE i søndagsvinduet 19:30-22:30. Post-tick-verifikation (punkt 4-6) kan køre 22:05-22:30. Etape-runneren er ugated (`cron.js:526`), men første S3-etape er tirsdag 11:00 — ~37 timers vindue fra tick til første etape under ny motor.
+- **Komponent 3's stop-grænse (Δ −29) står i før-#3666-rating-enheden og kan ikke bruges som gate uden genmåling** (spor 1-fund 17/8); gendannelses-værktøjet rapporterer i rå loft-enheder — genmål grænsen FØR 23/8. *(21/8: genmålings-opgave sat i kø i sessionen.)*
+- Mandat: script-apply mod staging med ejerens egen nøgle udestår (agent-sessionen havde ikke stagings service-nøgle) — **generalprøve-punkt lørdag**.
 - Løn-effekten er ikke genmålt med ankerværdi-grundlag (hører i design-sessionen); værktøjets `--basis market` kan først køre når #3393 er merged.
-- Om `processSeasonStart` rører `board_profiles` mellem migrationen og UI-flippet er ikke målt (komponent 4).
+- ~~Om `processSeasonStart` rører `board_profiles`~~ **MÅLT 21/8: JA** — sæson-transitionen opdaterer `satisfaction`/`budget_modifier`/`seasons_completed` på `board_profiles` (`economyEngine.js:1756` og `:1826`, capture-tag `flow: "season-transition"`). Bindende følge: **mandat-backfillen køres EFTER sæsonskiftet** (den ligger allerede sidst i rækkefølgen) og genkøres lige før UI-flippet (idempotent, gratis).
 
 Refs #3645 #3459 #3449 #3393 #3514 #3591 #3709 #3757
 
