@@ -4,7 +4,7 @@
 // #2456: usolgte ryttere SLETTES ved finalisering (forlader sporten) — fri-agent-
 // butikken i akademiet (signFreeAgentYouth) er fjernet.
 
-import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS } from "./auctionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { readYouthAuctionStartRateOverride } from "./marketValueLevelCorrectionConfig.js";
 
@@ -128,7 +128,10 @@ export async function listRejectedAsYouthAuction(supabase, {
   // kun varigheden; vindues-/extension-mekanikken er uændret (auktioner slutter
   // stadig aldrig om natten, jf. active-window-modellen).
   if (durationHours) cfg = { ...cfg, duration_hours: durationHours };
-  const calculatedEnd = calculateAuctionEnd(now, cfg);
+  // #4004: free-agent-auktion (ungdomsmarked, ingen sælger) — 12t-gulv, se
+  // FREE_AGENT_MIN_DURATION_HOURS (auctionEngine.js). Sammensætter korrekt med
+  // durationHours-override ovenfor via Math.max i calculateAuctionEnd.
+  const calculatedEnd = calculateAuctionEnd(now, cfg, { minHours: FREE_AGENT_MIN_DURATION_HOURS });
 
   const { data: auction, error: insErr } = await supabase
     .from("auctions")

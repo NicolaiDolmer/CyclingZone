@@ -12,7 +12,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
-import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS } from "./auctionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 
 export const GRADUATION = Object.freeze({
@@ -206,7 +206,9 @@ async function finishGraduation(supabase, { gradId, status, teamId, rider, now, 
 async function createGraduateAuction(supabase, { teamId, rider, now = new Date(), auctionConfig }) {
   const value = Math.max(1, calculateRiderMarketValue(rider));
   const cfg = auctionConfig || await resolveAuctionConfig(supabase);
-  const calculatedEnd = calculateAuctionEnd(now, cfg);
+  // #4004: free-agent-auktion (graduate sælges via "banken") — 12t-gulv, se
+  // FREE_AGENT_MIN_DURATION_HOURS (auctionEngine.js).
+  const calculatedEnd = calculateAuctionEnd(now, cfg, { minHours: FREE_AGENT_MIN_DURATION_HOURS });
   const { error } = await supabase.from("auctions").insert({
     rider_id: rider.id,
     seller_team_id: teamId,

@@ -13,12 +13,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Market",
         "en": {
-          "title": "A heads up before you bid on a long-running auction",
-          "body": "If an auction settles after Sunday's value update, the bid confirmation now tells you so. Value and abilities can change before the auction ends, and your bid still stands either way. Auctions can no longer be created to run past the transfer window closing, so a sale can't get caught mid-way through a season change."
+          "title": "A heads up before you bid, and longer free agent auctions",
+          "body": "If an auction settles after Sunday's value update, the bid confirmation now tells you so. Value and abilities can change before the auction ends, and your bid still stands either way. Auctions can no longer be created to run past the transfer window closing, so a sale can't get caught mid-way through a season change. Free agent auctions (from the bank or the youth market) now run for at least 12 hours instead of 1, so you don't miss a young talent just because you were asleep or at work."
         },
         "da": {
-          "title": "Et praj før du byder på en lang auktion",
-          "body": "Hvis en auktion afsluttes efter søndagens værdi-opdatering, siger bud-bekræftelsen det nu tydeligt. Værdi og evner kan ændre sig inden auktionen lukker, og dit bud står stadig ved magt uanset hvad. Auktioner kan ikke længere oprettes så de løber forbi transfervinduets lukketid, så et salg ikke kan blive fanget midt i et sæsonskifte."
+          "title": "Et praj før du byder, og længere fri-agent-auktioner",
+          "body": "Hvis en auktion afsluttes efter søndagens værdi-opdatering, siger bud-bekræftelsen det nu tydeligt. Værdi og evner kan ændre sig inden auktionen lukker, og dit bud står stadig ved magt uanset hvad. Auktioner kan ikke længere oprettes så de løber forbi transfervinduets lukketid, så et salg ikke kan blive fanget midt i et sæsonskifte. Fri-agent-auktioner (fra banken eller ungdomsmarkedet) løber nu i mindst 12 timer i stedet for 1, så du ikke går glip af et ungt talent bare fordi du sov eller var på arbejde."
         },
         "refs": [4004]
       }

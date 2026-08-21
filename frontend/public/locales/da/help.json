@@ -151,7 +151,7 @@
       },
       "whenExpires": {
         "title": "Hvornår udløber en auktion?",
-        "text": "Når du selv sætter en rytter til salg, vælger du det præcise tidspunkt auktionen slutter, fra 1 til 48 timer frem. Auktioner banken starter løber i 1 aktiv time. Nattetimer tæller ikke med: det aktive vindue er kl. 08 til 24 alle dage, og handel holder pause kl. 00 til 08. Byder du kl. 19:40, slutter auktionen samme aften kl. 20:40. Byder du kl. 23:30, bæres den resterende tid over natten, og auktionen slutter næste morgen kl. 08:30. Auktioner kan heller ikke løbe forbi transfervinduets lukketid, så et salg aldrig kan blive fanget midt i et sæsonskifte."
+        "text": "Når du selv sætter en rytter til salg, vælger du det præcise tidspunkt auktionen slutter, fra 1 til 48 timer frem. Fri-agent-auktioner (startet af banken, eller via ungdomsmarkedet) løber i mindst 12 aktive timer, så du ikke går glip af et ungt talent bare fordi du sov eller var på arbejde. Nattetimer tæller ikke med: det aktive vindue er kl. 08 til 24 alle dage, og handel holder pause kl. 00 til 08. Byder du kl. 19:40, slutter auktionen samme aften kl. 20:40. Byder du kl. 23:30, bæres den resterende tid over natten, og auktionen slutter næste morgen kl. 08:30. Auktioner kan heller ikke løbe forbi transfervinduets lukketid, så et salg aldrig kan blive fanget midt i et sæsonskifte."
       },
       "flashAuction": {
         "title": "Flash Auktion (Deadline Day)",

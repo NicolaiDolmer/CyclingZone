@@ -26,6 +26,7 @@ import {
   CUSTOM_END_MAX_HOURS,
   CUSTOM_END_MIN_HOURS,
   DEFAULT_AUCTION_CONFIG,
+  FREE_AGENT_MIN_DURATION_HOURS,
 } from "../lib/auctionEngine.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { fetchGcClassicSplit, splitGcWins } from "../lib/dashboardRiderRankingGcSplit.js";
@@ -5831,11 +5832,16 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     }
   }
 
+  // #4004: free-agent-auktion (ingen ejer bag rytteren) uden et valgt
+  // sluttidspunkt får samme 12t-gulv som de automatiske free-agent-flows
+  // (academyGraduation.js/youthMarket.js) — se FREE_AGENT_MIN_DURATION_HOURS.
+  // Rammer ikke flash (egen faste 30-min-model) eller et eksplicit valgt
+  // ends_at (spillerens valg respekteres altid).
   const calculatedEnd = flash_auction
     ? new Date(Date.now() + 30 * 60 * 1000)
     : ends_at
       ? new Date(ends_at)
-      : calculateAuctionEnd(new Date(), auctionCfg);
+      : calculateAuctionEnd(new Date(), auctionCfg, rider.team_id ? {} : { minHours: FREE_AGENT_MIN_DURATION_HOURS });
 
   // #4004: hård guard — se getAuctionSeasonBoundaryIssue (auctionEngine.js) for
   // hvorfor transfer-vinduets lukketid er den bedst opnåelige proxy for

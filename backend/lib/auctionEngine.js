@@ -110,16 +110,27 @@ function windowForEnd(end, cfg) {
   return { close: windowCloseTime(prevDay, cfg), nextOpen: openToday };
 }
 
+// #4004 (ejer-beslutning 21/8): free-agent-auktioner (ingen manager bag
+// sælgeren — ungdoms-graduering, ungdomsmarkedet, "bank"-salg) må ikke kunne
+// lande under 12 timer. Spillere der er på arbejde/sover misser ellers unge
+// talenter der sælges igennem på den globale `duration_hours`-config (i dag
+// 1 time i prod — set 18/8, friisisch/thelamba). Kun et GULV: en global
+// config over 12 timer overstyres ikke.
+export const FREE_AGENT_MIN_DURATION_HOURS = 12;
+
 /**
  * Calculate auction end time given a start time.
  * Counts only active-window hours toward the duration.
  *
  * @param {Date} startTime
  * @param {object} cfg - auction timing config (defaults to DEFAULT_AUCTION_CONFIG)
+ * @param {{minHours?: number}} [opts] - #4004: valgfrit gulv for varigheden (timer),
+ *   bruges til FREE_AGENT_MIN_DURATION_HOURS ved free-agent-auktioner.
  * @returns {Date}
  */
-export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG) {
-  const durationMs = cfg.duration_hours * 60 * 60 * 1000;
+export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG, { minHours } = {}) {
+  const effectiveHours = minHours != null ? Math.max(cfg.duration_hours, minHours) : cfg.duration_hours;
+  const durationMs = effectiveHours * 60 * 60 * 1000;
   let current = new Date(startTime);
   let remaining = durationMs;
 

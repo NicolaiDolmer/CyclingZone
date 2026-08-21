@@ -151,7 +151,7 @@
       },
       "whenExpires": {
         "title": "When does an auction expire?",
-        "text": "When you list your own rider you pick the exact time the auction ends, from 1 to 48 hours ahead. Auctions started by the bank run for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day, and trading pauses 00:00 to 08:00. If you bid at 19:40, the auction ends the same evening at 20:40. If you bid at 23:30, the remaining time carries over the night and the auction ends the next morning at 08:30. Auctions also can't run past the transfer window's closing time, so a sale can never get caught mid-way through a season change."
+        "text": "When you list your own rider you pick the exact time the auction ends, from 1 to 48 hours ahead. Free agent auctions (started by the bank, or through the youth market) run for at least 12 active hours, so you don't miss a young talent just because you were asleep or at work. Night hours don't count: the active window is 08:00 to 24:00 every day, and trading pauses 00:00 to 08:00. If you bid at 19:40, the auction ends the same evening at 20:40. If you bid at 23:30, the remaining time carries over the night and the auction ends the next morning at 08:30. Auctions also can't run past the transfer window's closing time, so a sale can never get caught mid-way through a season change."
       },
       "flashAuction": {
         "title": "Flash Auction (Deadline Day)",

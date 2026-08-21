@@ -161,6 +161,38 @@ test("calculateAuctionEnd: default-config (close=22) uændret — Tir 19:40 → 
   assert.equal(cph(calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG)), "2026-05-06 19:40:00");
 });
 
+// ── minHours (#4004, ejer-beslutning 21/8 — free-agent-auktioners 12t-gulv) ──
+
+test("calculateAuctionEnd: uden minHours-opts er adfærden BIT-IDENTISK med før (#4004 additiv)", () => {
+  const withOpts = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG, {});
+  const withoutOpts = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG);
+  assert.equal(cph(withOpts), cph(withoutOpts));
+});
+
+test("calculateAuctionEnd: minHours under cfg.duration_hours er en no-op (config-varigheden vinder)", () => {
+  // CFG.duration_hours = 6 (default). minHours=1 < 6 → uændret resultat.
+  const withMin = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG, { minHours: 1 });
+  const withoutMin = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG);
+  assert.equal(cph(withMin), cph(withoutMin));
+});
+
+test("calculateAuctionEnd: minHours over cfg.duration_hours løfter den effektive varighed", () => {
+  // duration_hours=1 (prod-lignende free-agent-config), minHours=12 → 12t bruges.
+  const cfg1h = { ...CFG, duration_hours: 1 };
+  const withMin = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), cfg1h, { minHours: 12 });
+  const explicit12h = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), { ...CFG, duration_hours: 12 });
+  assert.equal(cph(withMin), cph(explicit12h));
+  assert.notEqual(cph(withMin), cph(calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), cfg1h)));
+});
+
+test("calculateAuctionEnd: minHours sammensætter korrekt med et allerede-hævet duration_hours (Math.max)", () => {
+  // 24t-override (intake-udløb) er allerede over 12t-gulvet → minHours er en no-op.
+  const cfg24h = { ...CFG, duration_hours: 24 };
+  const withMin = calculateAuctionEnd(iso("2026-05-09T20:00:00Z"), cfg24h, { minHours: 12 });
+  const withoutMin = calculateAuctionEnd(iso("2026-05-09T20:00:00Z"), cfg24h);
+  assert.equal(cph(withMin), cph(withoutMin));
+});
+
 // =============================================================================
 // #2648: intake-udløbs-auktioner — 24 AKTIVE timer (respekterer stadig
 // nat-reglen 08–24/pause 00–08, jf. academyIntakeExpirySweep.
