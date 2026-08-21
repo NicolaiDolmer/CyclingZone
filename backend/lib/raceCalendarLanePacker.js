@@ -33,7 +33,10 @@
 
 import { grandTourRestDayPositions } from "./grandTourRestDays.js";
 
-export const MONUMENT_GAMEDAY_BASE = 100000;
+// B2 (#4075, spec §3.4, ejer-låst 21/8): monumenter har en NORMAL game_day i deres eget
+// tidsslot — 100000-sentinelen (MONUMENT_GAMEDAY_BASE) er fjernet. Løbsdagen er EKSKLUSIV
+// (ingen modløb på samme game_day, så alle ryttere kan stille op); andre løb må ligge i
+// datoens øvrige slots. Se slot-konsumeringsloopet i layoutStream for konstruktionen.
 
 const lenOf = (r) => Math.max(1, Number(r.stages) || 1);
 const byBigThenId = (a, b) => lenOf(b) - lenOf(a) || String(a.id).localeCompare(String(b.id));
@@ -760,24 +763,48 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
 
   const placementsById = new Map();
   const ensure = (race, type, stages) => { if (!placementsById.has(race.id)) placementsById.set(race.id, { id: race.id, type, race_class: race.race_class ?? null, stages, startRealDay: Infinity, stagesPlaced: [] }); return placementsById.get(race.id); };
-  let ei = 0, monGameDay = MONUMENT_GAMEDAY_BASE;
+
+  // B2 (#4075): monumenter får en NORMAL, EKSKLUSIV game_day skudt ind i tierens sekvens.
+  // Pas 1 fordeler slots (monument eller næste event) og noterer hvert monuments indskuds-
+  // tærskel: (højeste game_day set i tidligere slots) + 1 — dvs. monumentet lander
+  // kronologisk mellem løbsdagen før og løbsdagen efter sit slot. Pas 2 omnummererer:
+  // monument nr. i (0-indekseret, i slot-orden) får game_day tærskel_i + i, og et normalt
+  // event med game_day g forskydes til g + antal(tærskler ≤ g). Ingen event deler dermed
+  // game_day med et monument (eksklusiv løbsdag: alle ryttere kan stille op), mens events
+  // der deler game_day indbyrdes (overlap-designet) bliver ved med det.
+  const slotAssignments = [];
+  const monumentThresholds = [];
+  let ei = 0, maxSeen = -1;
   for (let slot = 0; slot < totalSlots; slot++) {
-    const real_day = Math.floor(slot / D), lane = slot % D;
     if (monSlot.has(slot)) {
-      const m = monSlot.get(slot);
-      const p = ensure(m, "single", 1);
-      p.stagesPlaced.push({ stage_number: 1, real_day, game_day: monGameDay++, lane }); p.startRealDay = Math.min(p.startRealDay, real_day);
+      monumentThresholds.push(maxSeen + 1);
+      slotAssignments.push({ monument: monSlot.get(slot), slot });
       continue;
     }
     if (ei < events.length) {
       const ev = events[ei++];
-      const p = ensure(ev.race, ev.type, lenOf(ev.race));
-      p.stagesPlaced.push({ stage_number: ev.stage_number, real_day, game_day: ev.game_day, lane }); p.startRealDay = Math.min(p.startRealDay, real_day);
+      if (ev.game_day > maxSeen) maxSeen = ev.game_day;
+      slotAssignments.push({ event: ev, slot });
     }
+  }
+  const shiftFor = (g) => { let n = 0; for (const t of monumentThresholds) { if (t <= g) n++; else break; } return n; };
+  let monIdx = 0;
+  for (const a of slotAssignments) {
+    const real_day = Math.floor(a.slot / D), lane = a.slot % D;
+    if (a.monument) {
+      const p = ensure(a.monument, "single", 1);
+      p.stagesPlaced.push({ stage_number: 1, real_day, game_day: monumentThresholds[monIdx] + monIdx, lane });
+      p.startRealDay = Math.min(p.startRealDay, real_day);
+      monIdx++;
+      continue;
+    }
+    const p = ensure(a.event.race, a.event.type, lenOf(a.event.race));
+    p.stagesPlaced.push({ stage_number: a.event.stage_number, real_day, game_day: a.event.game_day + shiftFor(a.event.game_day), lane });
+    p.startRealDay = Math.min(p.startRealDay, real_day);
   }
   const placements = [...placementsById.values()];
   for (const p of placements) p.stagesPlaced.sort((a, b) => a.stage_number - b.stage_number);
-  return { placements, timelineLength, gtRestDayReport };
+  return { placements, timelineLength: timelineLength + monumentThresholds.length, gtRestDayReport };
 }
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
@@ -795,8 +822,9 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMin
   // SEPARATE, span-baserede systemer og RØRES IKKE her — kun denne diagnostiske optælling
   // ændres. For løb UDEN huller er stage- og span-baseret optælling matematisk identisk
   // (gameDays-sættet ER hele [min,max]-intervallet), så alle andre tal er uændrede.
+  // B2 (#4075): monumenter tæller med som normale løb — deres game_day er nu ægte og
+  // EKSKLUSIV pr. design, så de bidrager korrekt som 1-løbs-game_days i histogrammet.
   const gameDaysByPlacement = placements
-    .filter((p) => p.stagesPlaced.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE))
     .map((p) => new Set(p.stagesPlaced.map((s) => s.game_day)));
   const hi = gameDaysByPlacement.length
     ? Math.max(...gameDaysByPlacement.map((gds) => Math.max(...gds)))
@@ -811,7 +839,6 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMin
 
   const irlByGameDay = new Map();
   for (const p of placements) for (const st of p.stagesPlaced) {
-    if (st.game_day >= MONUMENT_GAMEDAY_BASE) continue;
     if (!irlByGameDay.has(st.game_day)) irlByGameDay.set(st.game_day, new Set());
     irlByGameDay.get(st.game_day).add(st.real_day);
   }
@@ -843,13 +870,13 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMin
   // #3546 C: dage UDEN afgørelse (endagsløb/monument eller etapeløbs-slutetape)  - 
   // rapporteres for BEGGE layouts (banded har ingen aktiv enforceDailyDecisions, men
   // metrikken måles alligevel, jf. issue-kravet om at kunne MÅLE det). En dag tælles som
-  // havende en afgørelse hvis MINDST ét stagesPlaced-element den dag enten er et
-  // monument/endagsløb (game_day ≥ MONUMENT_GAMEDAY_BASE) eller løbets sidste etape
-  // (stage_number === p.stages).
+  // havende en afgørelse hvis MINDST ét stagesPlaced-element den dag er løbets sidste
+  // etape (stage_number === p.stages) — endagsløb og monumenter opfylder det trivielt
+  // (etape 1 af 1; B2/#4075: monumenter har nu normal game_day som alle andre).
   const decisionDaySet = new Set();
   for (const p of placements) {
     for (const st of p.stagesPlaced) {
-      const isDecision = st.game_day >= MONUMENT_GAMEDAY_BASE || st.stage_number === (p.stages ?? 1);
+      const isDecision = st.stage_number === (p.stages ?? 1);
       if (isDecision) decisionDaySet.add(st.real_day);
     }
   }

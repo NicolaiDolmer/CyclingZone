@@ -259,3 +259,19 @@ test("#3469 klasse-bevidst beskyttelse: uden beskyttelse tages BEGGE klasser nor
   const took = (id) => sel.oneDayRaces.some((r) => r.id === id);
   assert.ok(took("owtb-cob") && took("ps-cob"), "fixturen skal gengive at begge klasser normalt konkurrerer frit om budgettet");
 });
+
+
+// ── #4075: within-tier navne-dedup ──
+test("#4075: samme løbsnavn (to katalog-rækker) vælges ALDRIG to gange i én tier", () => {
+  // Rod-årsag 20/8: gammel + ny version af samme løb i kataloget efter seed uden --prune
+  // (forskellige external_id/id, samme navn) — begge blev valgt, alle 3 GT'er lå dobbelt i D1.
+  const catalog = [
+    { id: "gt-old", name: "Giro della Penisola", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 },
+    { id: "gt-new", name: "Giro della Penisola", race_class: "GiroVuelta", race_type: "stage_race", stages: 18 },
+    ...Array.from({ length: 40 }, (_, i) => ({ id: `od-${i}`, name: `Race ${i}`, race_class: "OtherWorldTourA", race_type: "single", stages: 1 })),
+  ];
+  const sel = selectTierRaceSet({ catalog, quota: 40, seed: 1 });
+  const names = [...sel.stageRaces, ...sel.oneDayRaces].map((r) => r.name);
+  assert.equal(names.filter((n) => n === "Giro della Penisola").length, 1, "kun ÉN Giro valgt");
+  assert.equal(new Set(names).size, names.length, "ingen dublet-navne i selektionen");
+});

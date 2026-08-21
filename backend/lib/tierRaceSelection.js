@@ -96,7 +96,7 @@ function compareCandidates(seed, priorityArchetypeSet) {
  * @param {{ranked:Array, reservations:object, budget:number}} args
  * @returns {{taken:Array, takenIds:Set, gameDays:number, unmet:object}}
  */
-export function reserveArchetypes({ ranked = [], reservations = null, budget = Infinity } = {}) {
+export function reserveArchetypes({ ranked = [], reservations = null, budget = Infinity, seenNames = null } = {}) {
   const taken = [];
   const takenIds = new Set();
   const unmet = {};
@@ -109,12 +109,15 @@ export function reserveArchetypes({ ranked = [], reservations = null, budget = I
     for (const r of ranked) {
       if (got >= want) break;
       if (takenIds.has(r.id) || r.terrain_archetype !== archetype) continue;
+      // #4075: within-tier navne-dedup — samme løbsnavn må aldrig vælges to gange i én tier.
+      if (seenNames && r.name != null && seenNames.has(r.name)) continue;
       const st = stagesOf(r);
       // En reservation må ALDRIG sprænge kvoten — så ville kalenderen få flere løbsdage
       // end divisionen har plads til, og pakkeren ville skulle smide noget væk vilkårligt.
       if (gameDays + st > budget) continue;
       taken.push(r);
       takenIds.add(r.id);
+      if (seenNames && r.name != null) seenNames.add(r.name);
       gameDays += st;
       got++;
     }
@@ -126,7 +129,7 @@ export function reserveArchetypes({ ranked = [], reservations = null, budget = I
 // Grådigt prestige-walk over en FÆRDIG-rangeret liste op til et game-day-budget: tag hvert
 // løb der PASSER; et løb der ville skyde over springes (et senere, mindre løb lukker resten
 // præcist). Delt af enkelt-walk og de to-fase-budgetterede walks nedenfor.
-function greedyFill(ranked, budget) {
+function greedyFill(ranked, budget, seenNames = null) {
   const stageRaces = [];
   const oneDayRaces = [];
   let total = 0;
@@ -134,8 +137,13 @@ function greedyFill(ranked, budget) {
     if (total >= budget) break;
     const st = stagesOf(r);
     if (total + st > budget) continue;
+    // #4075: within-tier navne-dedup — kataloget kan (fejlagtigt eller midlertidigt)
+    // indeholde to rækker med samme navn (fx gammel + ny version efter et seed uden
+    // --prune); samme navn må aldrig vælges to gange i én tier.
+    if (seenNames && r.name != null && seenNames.has(r.name)) continue;
     const row = { id: r.id, name: r.name ?? null, race_class: r.race_class, stages: st };
     if (st >= 2) stageRaces.push(row); else oneDayRaces.push(row);
+    if (seenNames && r.name != null) seenNames.add(r.name);
     total += st;
   }
   return { stageRaces, oneDayRaces, total };
@@ -214,7 +222,11 @@ export function selectTierRaceSet({
   // uanset hvad prestige/størrelse-rangeringen ellers ville have valgt. Reservationerne
   // tælles med i totalen og trækkes fra budgetterne nedenfor, så kvoten holder præcist.
   const rankedAll = [...eligible].sort(compare);
-  const reserved = reserveArchetypes({ ranked: rankedAll, reservations: archetypeReservations, budget: quota });
+  // #4075: within-tier navne-dedup — delt navnesæt gennem reservation + alle fill-walks,
+  // så samme løbsnavn aldrig vælges to gange i én tier (rod-årsag: gammel + ny version af
+  // samme løb i kataloget efter seed uden --prune → alle 3 GT'er dobbelt i D1/S3).
+  const seenNames = new Set();
+  const reserved = reserveArchetypes({ ranked: rankedAll, reservations: archetypeReservations, budget: quota, seenNames });
   const reservedRows = reserved.taken.map((r) => ({ id: r.id, name: r.name ?? null, race_class: r.race_class, stages: stagesOf(r) }));
   const reservedSingles = reservedRows.filter((r) => r.stages === 1);
   const reservedStages = reservedRows.filter((r) => r.stages >= 2);
@@ -237,7 +249,7 @@ export function selectTierRaceSet({
   // Uden mix-target: ÉT sammenlagt grådigt walk (uændret historisk adfærd — størrelse
   // afgør rækkefølgen inden for samme prestige, uanset endagsløb/etapeløb).
   if (oneDayShareTarget == null) {
-    const { stageRaces, oneDayRaces, total } = greedyFill(rest, quota - reserved.gameDays);
+    const { stageRaces, oneDayRaces, total } = greedyFill(rest, quota - reserved.gameDays, seenNames);
     const allStage = [...reservedStages, ...stageRaces];
     const allOneDay = [...reservedSingles, ...oneDayRaces];
     const grand = total + reserved.gameDays;
@@ -260,7 +272,9 @@ export function selectTierRaceSet({
   // til at oversætte et RACE-COUNT-mål (oneDayShareTarget måler antal løb, ikke game-days;
   // ejeren taler i antal løb, jf. #3327) til et game-day-budget for endagsløb.
   //   oneDayCount ≈ X, stageCount ≈ (Q-X)/L  ⇒  X = target·Q / (L·(1-target) + target)
-  const probe = greedyFill(stagesRanked, quota);
+  // Proben er kun et længde-estimat — den bruger en KOPI af navnesættet, så den hverken
+  // forurener det rigtige valg eller selv vælger dubletter ind i estimatet.
+  const probe = greedyFill(stagesRanked, quota, new Set(seenNames));
   const avgStageLen = probe.stageRaces.length ? probe.total / probe.stageRaces.length : 1;
   const denom = avgStageLen * (1 - oneDayShareTarget) + oneDayShareTarget;
   const rawOneDayBudget = denom > 0 ? (oneDayShareTarget * quota) / denom : 0;
@@ -274,13 +288,27 @@ export function selectTierRaceSet({
   const remainingQuota = Math.max(0, quota - reserved.gameDays);
   const oneDayBudget = Math.max(0, Math.min(remainingQuota, Math.round(rawOneDayBudget) - reservedOneDayDays));
 
-  const oneDaySel = greedyFill(singlesRanked, oneDayBudget);
+  const oneDaySel = greedyFill(singlesRanked, oneDayBudget, seenNames);
   const stageBudget = remainingQuota - oneDaySel.total;
-  const stageSel = greedyFill(stagesRanked, Math.max(0, stageBudget));
+  const stageSel = greedyFill(stagesRanked, Math.max(0, stageBudget), seenNames);
 
-  const stageRaces = [...reservedStages, ...stageSel.stageRaces];
-  const oneDayRaces = [...reservedSingles, ...oneDaySel.oneDayRaces];
-  const total = reserved.gameDays + oneDaySel.total + stageSel.total;
+  // #4075 top-up: kvoten er HÅRD, mix-målet er kun et TARGET. Det budgetterede to-fase-
+  // walk kan efterlade en rest (målt 21/8: D2 109/112, D3 82/84, D4 54/56 mod det rensede
+  // katalog) fordi budgetterne rundes/eksakt-fittes hver for sig. Fyld resten op med et
+  // sidste prestige-walk over ALLE resterende kandidater (samme navne-dedup), så en tier
+  // aldrig efterlades under kvote når kataloget reelt har forsyning.
+  const chosenIds = new Set([
+    ...oneDaySel.oneDayRaces.map((r) => r.id), ...oneDaySel.stageRaces.map((r) => r.id),
+    ...stageSel.stageRaces.map((r) => r.id), ...stageSel.oneDayRaces.map((r) => r.id),
+  ]);
+  const topUpBudget = remainingQuota - oneDaySel.total - stageSel.total;
+  const topUp = topUpBudget > 0
+    ? greedyFill(rest.filter((r) => !chosenIds.has(r.id)), topUpBudget, seenNames)
+    : { stageRaces: [], oneDayRaces: [], total: 0 };
+
+  const stageRaces = [...reservedStages, ...stageSel.stageRaces, ...topUp.stageRaces];
+  const oneDayRaces = [...reservedSingles, ...oneDaySel.oneDayRaces, ...topUp.oneDayRaces];
+  const total = reserved.gameDays + oneDaySel.total + stageSel.total + topUp.total;
   return {
     stageRaces, oneDayRaces,
     stageGameDays: stageRaces.reduce((s, r) => s + r.stages, 0),

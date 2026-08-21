@@ -6,7 +6,7 @@
 //   - eksempel-uge (etaper pr. IRL-dag med tid + game-dag)
 // Kør: infisical run --env=prod -- node scripts/dev/sim-calendar-chronology.mjs
 import { createClient } from "@supabase/supabase-js";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE } from "../../lib/tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan } from "../../lib/tierCalendarMaterializer.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("Mangler SUPABASE_URL/SERVICE_KEY (infisical run --env=prod)"); process.exit(1); }
@@ -57,7 +57,7 @@ for (const tp of tierPlans) {
   for (const d of days) {
     const evs = byDay.get(d).sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at));
     const distinct = new Set(evs.map((e) => e.pool_race_id)).size;
-    console.log(`    ${d}: ${evs.map((e) => `${cphTime(e.scheduled_at)} ${(nameById.get(e.pool_race_id) || "?").slice(0, 18)}#${e.stage_number}(gd${e.game_day >= MONUMENT_GAMEDAY_BASE ? "M" : e.game_day})`).join(" · ")}  [${distinct} løb]`);
+    console.log(`    ${d}: ${evs.map((e) => `${cphTime(e.scheduled_at)} ${(nameById.get(e.pool_race_id) || "?").slice(0, 18)}#${e.stage_number}(gd${e.game_day})`).join(" · ")}  [${distinct} løb]`);
   }
   summary.push({ tier: tp.tier, quota: tp.quota, density: tp.density, overlapCap: tp.overlapCap, maxOverlap: tp.maxOverlap, capOk, overlapHistogram: tp.overlapHistogram, exactDensity: minL === maxL && minL === tp.density, emptyDays: tp.emptyDays, straddle: tp.straddleGameDays, timelineLength: tp.timelineLength });
 }

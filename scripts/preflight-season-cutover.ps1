@@ -217,7 +217,7 @@ if ($SkipGh) {
 } else {
   $issueChecks = @(
     @{ N = 2164; Desc = "D3->D4-nedrykning: EKSPLICIT regel (ikke kun data-gate). Data 3-4/8 viser ALLE 4 D3-puljer 24/24 aegte -> poolAllReal-gaten fyrer for aegte ved denne cutover, uanset om #2164 er lukket. Destinations-D4-puljer (league_division_id 8-15) havde allerede aegte managere + fulde S2-kalendere maalt 4/8 -- lavere risiko end issuets raa tekst antyder, men acceptkriterierne er stadig utjekkede." }
-    @{ N = 3114; Desc = "game_day=100000-sentinel paa Monuments 'aabner ved D1-oprykning'. D2 var 48/48 aegte 4/8 -> top-2-pr.-pulje rykker for FOERSTE GANG NOGENSINDE op i D1 ved denne cutover -- det er praecis den betingelse issuet advarer om." }
+    @{ N = 3114; Desc = "HISTORISK (#4075, 21/8): monument-sentinelen er fjernet -- monumenter har normal game_day og binder som alle andre loeb. Tjek kun at S3-kalenderen IKKE har game_day >= 100000-raekker." }
     @{ N = 2840; Desc = "Loen pr. dag vs. season_upfront: ejer valgte 'B - vent til foerste payroll observeret' 26/7. wage_deduction_mode='season_upfront' maalt 4/8 (sikker default). Hvis en flip til 'daily' er planlagt TIL netop denne cutover: kraever dry-run + owner-go FOERST, og skiftet maa KUN ske praecis ved saesongraensen (aldrig midt i en sæson, jf. wageDeductionConfig.js's egen advarsel)." }
     @{ N = 3266; Desc = "Claim-guard mod dobbelt decay-koersel i seasonFormReset. season_form_reset_mode='decay' maalt 4/8 (IKKE idempotent ved gen-koersel af transitionen). Er dette issue stadig aabent til cutover-dagen: se sektion 4 ('Idempotens-risiko') ovenfor -- byg guarden, skift mode, eller faa et eksplicit engangs-accept fra ejeren." }
   )

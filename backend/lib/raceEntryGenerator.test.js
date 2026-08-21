@@ -1347,9 +1347,9 @@ test("#3122: hold afmeldt fra løb A med manuelle entries dér → rytterne er f
   assert.equal(state.race_entries.filter((e) => e.race_id === "A" && e.is_auto_filled === false).length, 2);
 });
 
-// ── #3114: Monuments (game_day 100000-bånd) binder via afledt pulje-vindue ────
+// ── B2 (#4075): monumenter har normal game_day og binder direkte ────
 
-test("#3114: monument og normalt løb samme danske dato deler ALDRIG en rytter (afledt vindue)", async () => {
+test("#4075: monument og normalt løb på SAMME game_day deler aldrig en rytter (direkte vindue)", async () => {
   const state = emptyState();
   const seasonId = "season1";
   state.races = [
@@ -1357,7 +1357,7 @@ test("#3114: monument og normalt løb samme danske dato deler ALDRIG en rytter (
     { id: "NORM", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
   ];
   state.race_stage_schedule = [
-    { race_id: "MON", stage_number: 1, scheduled_at: "2026-07-29T15:00:00Z", game_day: 100000 },
+    { race_id: "MON", stage_number: 1, scheduled_at: "2026-07-29T15:00:00Z", game_day: 3 },
     { race_id: "NORM", stage_number: 1, scheduled_at: "2026-07-29T10:00:00Z", game_day: 3 },
   ];
   state.race_stage_profiles = [{ race_id: "MON", ...flatProfile(1) }, { race_id: "NORM", ...flatProfile(1) }];
@@ -1368,40 +1368,30 @@ test("#3114: monument og normalt løb samme danske dato deler ALDRIG en rytter (
 
   const monRiders = new Set(state.race_entries.filter((e) => e.race_id === "MON").map((e) => e.rider_id));
   const normRiders = state.race_entries.filter((e) => e.race_id === "NORM").map((e) => e.rider_id);
-  assert.ok(monRiders.size > 0, "monumentet fyldes (vinduet er afledt, ikke null)");
-  for (const r of normRiders) assert.ok(!monRiders.has(r), `${r} dobbeltbooket monument+normalt løb samme dag`);
+  assert.ok(monRiders.size > 0, "monumentet fyldes (normalt vindue)");
+  for (const r of normRiders) assert.ok(!monRiders.has(r), `${r} dobbeltbooket monument+normalt løb samme løbsdag`);
 });
 
-test("#3114: monument i en ANDEN puljes CET-rum binder ikke på tværs (pulje-lokalt indeks)", async () => {
+test("#4075: monument på EGEN eksklusiv game_day binder ikke ryttere fra andre løbsdage", async () => {
   const state = emptyState();
   const seasonId = "season1";
-  // Pulje 1 har et normalt løb 29/7 (gd 3); monumentet ligger i pulje 2, hvor intet
-  // normalt løb kører 29/7 → monumentets vindue skal være null (ingen binding), ikke
-  // arvet fra pulje 1's kalender.
   state.races = [
-    { id: "NORM1", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
-    { id: "MON2", season_id: seasonId, race_class: "Monument", league_division_id: 2 },
-    { id: "NORM2", season_id: seasonId, race_class: "Class2", league_division_id: 2 },
+    { id: "MON", season_id: seasonId, race_class: "Monument", league_division_id: 1 },
+    { id: "NORM", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
   ];
   state.race_stage_schedule = [
-    { race_id: "NORM1", stage_number: 1, scheduled_at: "2026-07-29T10:00:00Z", game_day: 3 },
-    { race_id: "MON2", stage_number: 1, scheduled_at: "2026-07-29T15:00:00Z", game_day: 100000 },
-    { race_id: "NORM2", stage_number: 1, scheduled_at: "2026-07-30T10:00:00Z", game_day: 9 },
+    { race_id: "MON", stage_number: 1, scheduled_at: "2026-07-29T15:00:00Z", game_day: 4 },
+    { race_id: "NORM", stage_number: 1, scheduled_at: "2026-07-29T10:00:00Z", game_day: 3 },
   ];
-  state.race_stage_profiles = [
-    { race_id: "NORM1", ...flatProfile(1) }, { race_id: "MON2", ...flatProfile(1) }, { race_id: "NORM2", ...flatProfile(1) },
-  ];
-  state.teams = [{ id: "t2", is_test_account: false, is_frozen: false, league_division_id: 2 }];
-  seedTeamRiders(state, "t2", 8);
+  state.race_stage_profiles = [{ race_id: "MON", ...flatProfile(1) }, { race_id: "NORM", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
 
   const res = await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false });
 
-  // MON2 har intet normalt pulje-2-løb på sin dato → vindue null → usable races er
-  // NORM1+NORM2; monumentet auto-fyldes ikke af sweep'en (race-start-autofyldet tager den).
-  assert.equal(state.race_entries.filter((e) => e.race_id === "MON2").length, 0,
-    "monument uden pulje-fæller på datoen sweep-fyldes ikke (konservativt, jf. #3114)");
-  assert.ok(state.race_entries.filter((e) => e.race_id === "NORM2").length > 0, "pulje 2's normale løb fyldes stadig");
-  assert.equal(res.races, 2, "kun løb med brugbart vindue tæller som usable");
+  assert.ok(state.race_entries.filter((e) => e.race_id === "MON").length > 0, "monumentet fyldes");
+  assert.ok(state.race_entries.filter((e) => e.race_id === "NORM").length > 0, "det normale løb fyldes");
+  assert.equal(res.races, 2, "begge løb har brugbart vindue");
 });
 
 // ── CYCLINGZONE-44 (prod 5/8): fuld manuel trup prunes, så residual-auto ikke lækker ──
