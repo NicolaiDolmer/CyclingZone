@@ -152,6 +152,17 @@ const finaleExtra = {
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
 
+// ── M13 (mechanics/teamTimeTrial.ts, #4030) — ADDITIV TTT-tuning ──────────────
+// Samme moenster som finaleExtra ovenfor: TTT er IKKE en del af SS2's frosne
+// EngineTuning-kontrakt (types.ts, arkitekt-only), saa dens haandtag lever
+// separat her. mechanics/teamTimeTrial.ts importerer denne direkte.
+const tttExtra = {
+  countbackRiderRank: 5, // "k'te rytters passage" (#2412-skitsen: "4. eller 5. rytter") saetter holdets officielle tid; clampes til min(rank, holdets startantal) pr. hold
+};
+
+/** M13 additiv TTT-tuning (deep-frosset). Se tttExtra-kommentaren ovenfor. */
+export const TTT_EXTRA_TUNING = deepFreeze(tttExtra);
+
 // ── M6 (mechanics/leadout.ts, #4030) — ADDITIV leadout-tuning ─────────────────
 // Samme begrundelse som finaleExtra ovenfor: M6 er en F3-mekanik der bygger
 // oven paa den frosne EngineTuning-kontrakt uden at aendre den. leadout.ts
