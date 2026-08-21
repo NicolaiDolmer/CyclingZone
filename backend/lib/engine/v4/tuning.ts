@@ -151,3 +151,40 @@ const finaleExtra = {
 
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
+
+// ── M12 (mechanics/effortCost.ts, #4030) — ADDITIV effort-cost-tuning ────────
+// Samme moenster som finaleExtra ovenfor: SS2's frosne EngineTuning-type
+// (types.ts) har ingen "effortCost"-noegle (kun arkitekten aendrer den frosne
+// kontrakt), saa denne er en BEVIDST SEPARAT eksport som mechanics/
+// effortCost.ts importerer direkte. Kontrakt (opgave-brief M12): "effort-
+// niveauet (protect/normal/save fra TeamOrder) modulerer work-cost/W'-forbrug
+// i fysiologi-ticket" — genimplementering af raceRoles.js's
+// effortFatigueMultiplier-MOENSTER (samme tre startvaerdier, ANKRET paa
+// raceRoles.RACE_V3_TUNING.FATIGUE_MULTIPLIER_PROTECT/_SAVE/_NORMAL: v3-
+// tallene er allerede spillet ind mod virkelige etaper) som en ren v4-
+// funktion — v4 importerer ALDRIG raceRoles.js selv (renheds-graensen).
+const effortCostExtra = {
+  demandMultiplierProtect: 1.2, // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
+  demandMultiplierNormal: 1.0, // =1: baseline, ingen modulation
+  demandMultiplierSave: 0.7, // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
+};
+
+/** M12 additiv effort-cost-tuning (deep-frosset). Se effortCostExtra-kommentaren ovenfor. */
+export const EFFORT_COST_EXTRA_TUNING = deepFreeze(effortCostExtra);
+
+// ── M7 (mechanics/distanceFatigue.ts, #4030) — ADDITIV distance-slid-tuning ──
+// Samme moenster som finaleExtra/effortCostExtra ovenfor. Kontrakt (mor-spec
+// §4 M7 + §8 beslutning 12): monument-effekten (250 km+ draener finalen,
+// gradvis/distance-skaleret, "baaret af endurance") + dag-til-dag-slid via
+// Entrant.condition. Alle vaerdier START-KANDIDATER (kalibreres i head-to-
+// head-harnesset, f2-core-design.md §7), ikke gaettet endeligt her.
+const distanceFatigueExtra = {
+  monumentThresholdKm: 220, // km hvor monument-draeningen begynder — sat lidt under "~250 km" (mor-spec §4 M7) saa rampen er godt i gang PAA monument-distancer
+  monumentRampKm: 60, // km-vindue draeningen naar sit maks over, efter threshold (glidende rampe, ikke et spring) — naar maks ved ~280 km (220+60)
+  monumentMaxCpPenalty: 0.12, // maks CP-reduktion (fraktion, 0-1) ved/efter rampens slutning, FOER endurance-mildning — op til 12% for en gennemsnitlig-endurance rytter
+  monumentEnduranceMitigation: 0.6, // 0-1: andel af draeningen fuld endurance-evne (99) mildner — en 99-endurance-rytter oplever kun 40% af den fulde draening
+  conditionFloorMultiplier: 0.85, // CP-multiplikator ved condition=0 (vaerst taenkelige dag-til-dag-slid); condition=1 => multiplikator 1 (ingen straf)
+};
+
+/** M7 additiv distance-slid-tuning (deep-frosset). Se distanceFatigueExtra-kommentaren ovenfor. */
+export const DISTANCE_FATIGUE_EXTRA_TUNING = deepFreeze(distanceFatigueExtra);
