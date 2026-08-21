@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 I AFTEN (frisk session): F3-NATBØLGE-launch** — køreklar plan i [superpowers/plans/2026-08-21-f3-natboelge-plan.md](superpowers/plans/2026-08-21-f3-natboelge-plan.md) (11 workers, 2 chunks; preflight → ejer-go → launch i samme tur → launch-bevis). **Næste arbejds-session: LØBSKALENDEREN** efter spiller-feedback (ejer 21/8): dublet-navne-bug (to løb samme navn i træk) · GT-etapetype-variation lovet "denne update" · `/planning?tab=form&view=season` som forbillede · generatoren "ikke godt nok lært" · **løfte: kalender låst fre/lør**.
+> **🎯 I AFTEN (frisk session): F3-NATBØLGE-launch** — køreklar plan i [superpowers/plans/2026-08-21-f3-natboelge-plan.md](superpowers/plans/2026-08-21-f3-natboelge-plan.md) (11 workers, 2 chunks; preflight → ejer-go → launch i samme tur → launch-bevis). **Næste arbejds-session: LØBSKALENDEREN** (ejer 21/8): dublet-navne #4075 (alle 3 GT'er i D1, data+generator) · **B2 ejer-låst: monument-sentinel fjernes, monument = normal løbsdag i eget slot uden modløb, ALLEREDE i S3** (spec §3.4) · GT-etapetype-variation lovet "denne update" · **løfte: kalender låst fre/lør**; ejer ser live-kalenderen før data-skrivning.
 
 > **✅ 21/8-sessionen SHIPPET:** **F2 MERGED** (PR #4072: TS-kerne, W'/CP, M1-M4, tidslinje v2, fixtures, head-to-head-stub; #4030 done) · **#4063 træningsrater LIVE** (7.166; S4/S5-bånd → kalibrerings-session) · **#4069 MERGED** (7.167: pre-bid-varsel + sæsonskifte-guard (anker: upcoming-season −1 dag kl. 18; transfer_windows var død data) + FA-auktion min. 12t; #4004 done, kant → #4073) · taktik-ordrer v1 ejer-låst (T1-T4, spec) · cutover-drejebog: 3 huller lukket ved måling (22-tick 22:00-22:05 · season-transition SKRIVER board_profiles · caps-delta 0/2.961, gate-script `remeasureGate3459.mjs`) · svar-udkast 12 spillerspørgsmål: [discord/2026-08-21-svar-udkast-ubesvarede.md](discord/2026-08-21-svar-udkast-ubesvarede.md) · nye issues #4070/#4071 (dashboard/indstillinger, efter cutover-ugen).
 
@@ -20,6 +20,8 @@
 - **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 27 løbsdage.
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Skalering:** #323.
 
-> **🤖 Ingen aktiv session** (21/8-dagsessionen lukket efter #4069-merge; parallel-klarering ophævet — normal claim-regel gælder igen).
+> **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (fase 2 af race-hub-SSOT; P0-P5; byg tidligst efter v4-gaten). Åbent: A6 kalenderfanen (spillerfeedback, artifact "Kalender: foer og efter") + off-by-one-økonomi (#3990, ejer-kald ved P0). Ny: #4076 (stående ordrer P3).
+>
+> **🤖 Ingen aktiv session** (Planning Center-designsessionen lukket 21/8 aften).
 
 _Historik i git-log, issue-tråde + docs/audits/._
