@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import SiteHeader from "@/components/site-header";
-import SiteFooter from "@/components/site-footer";
 import "../globals.css";
 
 // EN-root-layout (route-group). DA har sit eget root-layout i app/(da)/ så
 // <html lang> er korrekt i den server-leverede HTML for begge sprog.
+// Landing-siden bringer selv sin header/footer (1:1-port af #672-designet).
 // Title-separator er "·" (em-dash er bandlyst i al copy).
 export const metadata: Metadata = {
   metadataBase: new URL("https://cyclingzone.org"),
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s · Cycling Zone",
   },
   description:
-    "Cycling Zone: fair, browser-based cycling manager MMO. Tactics, long-term planning and community rivalry. No pay-to-win, ever.",
+    "Build a team, bid on riders in live auctions, set your tactics, and race a full season. A free, browser-based cycling manager game. No pay-to-win.",
   openGraph: {
     type: "website",
     siteName: "Cycling Zone",
@@ -77,10 +76,7 @@ export default function EnRootLayout({ children }: LayoutProps<"/">) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
         />
-        <div className="accent-rule" aria-hidden="true" />
-        <SiteHeader lang="en" />
         {children}
-        <SiteFooter lang="en" />
       </body>
     </html>
   );
