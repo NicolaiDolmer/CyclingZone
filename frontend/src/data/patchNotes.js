@@ -4,6 +4,167 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.165",
+    "date": "2026-08-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout verdicts in plain words, and honest ceilings",
+          "body": "The scouting tab now spells out the verdict as a sentence: where your scout sees the rider landing and what the role ceiling is. For riders past their peak, the ceiling is marked past peak so it no longer looks like a target they are still climbing toward. The Help page also gives an honest answer to whether the scouted range is a guarantee: it is not."
+        },
+        "da": {
+          "title": "Scout-vurdering med ord, og ærlige lofter",
+          "body": "Scouting-fanen skriver nu vurderingen som en sætning: hvor din spejder ser rytteren lande, og hvad rollens loft er. For ryttere forbi deres peak markeres loftet forbi peak, så det ikke længere ligner et mål de stadig klatrer imod. Hjælpen svarer også ærligt på om scout-intervallet er en garanti: det er det ikke."
+        },
+        "refs": [4039, 3979, 3714]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help now covers rider types, training times and age decline",
+          "body": "Three often asked questions have proper answers: what the 8 rider types cover and how to train them, when daily training runs (after 22:00 Danish time) and what Work does, and when age decline starts and which abilities it hits. The race selection screen also got a small legend for the effort column."
+        },
+        "da": {
+          "title": "Hjælpen dækker nu ryttertyper, træningstider og aldersnedgang",
+          "body": "Tre ofte stillede spørgsmål har fået rigtige svar: hvad de 8 ryttertyper dækker og hvordan de trænes, hvornår daglig træning kører (efter kl. 22 dansk tid) og hvad Arbejd gør, samt hvornår aldersnedgang starter og hvilke evner den rammer. Udtagelsesskærmen fik også en lille forklaring til indsats-kolonnen."
+        },
+        "refs": [3623, 3456, 3412]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Market",
+        "en": {
+          "title": "Watchlist shows auction status and whose interest it is",
+          "body": "Riders on your watchlist now carry icons for on auction and listed for sale, and the Interest view separates your own actions from rival managers instead of showing everything as an anonymous rival."
+        },
+        "da": {
+          "title": "Watchlisten viser auktionsstatus og hvis interesse det er",
+          "body": "Ryttere på din watchlist har nu ikoner for på auktion og sat til salg, og Interesse-visningen skelner dine egne handlinger fra rivalernes i stedet for at vise alt som en anonym rival."
+        },
+        "refs": [4036]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy riders can be released",
+          "body": "Academy riders can now be released like any other rider, with a confirmation step. Before, the only way out was waiting for the graduation window."
+        },
+        "da": {
+          "title": "Akademi-ryttere kan fyres",
+          "body": "Akademi-ryttere kan nu fyres som alle andre ryttere, med et bekræftelsestrin. Før var den eneste udvej at vente på gradueringsvinduet."
+        },
+        "refs": [4009]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Sort by ability in race selection",
+          "body": "The ability view in race selection can now be sorted by any ability column, the same way the rider database sorts."
+        },
+        "da": {
+          "title": "Sortér på evner i holdudtagelsen",
+          "body": "Evne-visningen i holdudtagelsen kan nu sorteres på enhver evne-kolonne, på samme måde som rytterdatabasen."
+        },
+        "refs": [3898]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Injured riders can no longer start races",
+          "body": "A rider picked while healthy who then got injured before the race could still start and even win. Injury status is now checked the same way everywhere: selection, auto fill and the race engine itself."
+        },
+        "da": {
+          "title": "Skadede ryttere kan ikke længere starte løb",
+          "body": "En rytter udtaget som rask, der siden blev skadet før løbet, kunne stadig starte og endda vinde. Skadesstatus tjekkes nu ens alle steder: udtagelse, auto-udfyldning og selve løbsmotoren."
+        },
+        "refs": [3896]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Releasing a rider on auction no longer backfires",
+          "body": "If you released a rider while their auction was still running, you could end up as the winning bidder on your own former rider without ever bidding. Releasing is now blocked while an auction is active, and an ownerless auction ends unsold."
+        },
+        "da": {
+          "title": "Fyring af en rytter på auktion giver ikke længere bagslag",
+          "body": "Fyrede du en rytter mens hans auktion stadig kørte, kunne du ende som vindende byder på din egen tidligere rytter uden at have budt. Fyring blokeres nu mens en auktion er aktiv, og en ejerløs auktion ender usolgt."
+        },
+        "refs": [3963]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "One day wins count toward the wins board goal",
+          "body": "The board goal for wins only counted stage wins, so one day victories never moved it. They count now, and the goal is labelled wins instead of stage wins. Star rider numbers on the board page also match the popularity score shown elsewhere."
+        },
+        "da": {
+          "title": "Endagssejre tæller med i bestyrelsens sejrs-mål",
+          "body": "Bestyrelsens sejrs-mål talte kun etapesejre, så endagssejre rykkede det aldrig. De tæller nu, og målet hedder sejre i stedet for etapesejre. Stjernerytter-tallene på bestyrelsessiden matcher også popularitets-scoren som vises andre steder."
+        },
+        "refs": [4034, 3983]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider database: rating sort works and search ignores accents",
+          "body": "The rating column can now actually be sorted, and name search finds riders regardless of accents, so Lopez also finds López."
+        },
+        "da": {
+          "title": "Rytterdatabasen: rating-sortering virker og søgning ignorerer accenter",
+          "body": "Rating-kolonnen kan nu faktisk sorteres, og navnesøgning finder ryttere uanset accenter, så Lopez også finder López."
+        },
+        "refs": [4035, 4031]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Forecast treats loan interest as non cash",
+          "body": "Capitalised loan interest was counted as cash in the projected net even though it never leaves your balance. The forecast and the season switch receipt now treat it consistently as non cash, and the footnote names the actual season instead of a hardcoded one."
+        },
+        "da": {
+          "title": "Prognosen behandler lånerente som non-cash",
+          "body": "Kapitaliseret lånerente blev talt som kontanter i forventet netto, selvom den aldrig forlader din saldo. Prognosen og sæsonskifte-kvitteringen behandler den nu ens som non-cash, og fodnoten nævner den faktiske sæson i stedet for en hardcodet."
+        },
+        "refs": [4023, 4024]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "No more false pick your riders warnings",
+          "body": "The reminder that you were missing a race selection also fired for squads that were already fully filled. It now checks the actual squad size instead of only manual picks."
+        },
+        "da": {
+          "title": "Ikke flere falske vælg dine ryttere-varsler",
+          "body": "Påmindelsen om manglende udtagelse blev også sendt til trupper der allerede var fuldt udfyldte. Den tjekker nu den faktiske trupstørrelse i stedet for kun manuelle valg."
+        },
+        "refs": [4038]
+      }
+    ]
+  },
+  {
     "version": "7.164",
     "date": "2026-08-20",
     "label": "Beta",
