@@ -83,7 +83,7 @@ function runCli(args) {
   });
 }
 
-test("CLI: node backend/scripts/headToHeadV4.js --population=... --stages=... koerer med exit 0 og printer sammenligningstabellen", () => {
+test("CLI: node backend/scripts/headToHeadV4.js --population=... --stages=... koerer med exit 0 og printer sammenligningstabellen + scorecard", () => {
   const result = runCli([`--population=${POPULATION_PATH}`, `--stages=${STAGES_PATH}`, "--seed=cli-test"]);
   assert.equal(result.status, 0, `stderr: ${result.stderr}`);
   const lines = result.stdout.trim().split("\n");
@@ -93,12 +93,43 @@ test("CLI: node backend/scripts/headToHeadV4.js --population=... --stages=... ko
   for (const col of ["stage", "profile_type", "v3_win_type", "v3_groups(proxy)", "v3_spread_s", "v4_win_type", "v4_groups", "v4_spread_s"]) {
     assert.ok(headerLine.includes(col), `header mangler kolonnen "${col}": ${headerLine}`);
   }
-  // To datarraekker (én pr. etape).
-  assert.equal(lines.length, 2 + 2);
+  // To datarraekker (én pr. etape) — praecist DISSE to linjer, ikke hele outputtet
+  // (som nu ogsaa baerer scorecardet nedenunder, jf. (e)-udvidelsen).
+  assert.ok(lines[2].startsWith("1\t"));
+  assert.ok(lines[3].startsWith("2\t"));
+  // Scorecardet (e) er printet under sammenligningstabellen, laesbart, med
+  // PASS/FAIL/N-A pr. anker for BAADE v3 og v4.
+  const fullOutput = lines.join("\n");
+  assert.match(fullOutput, /Head-to-Head Scorecard/);
+  assert.match(fullOutput, /Opsummering \(v3\+v4 samlet/);
+  assert.match(fullOutput, /v3: .*(PASS|FAIL|n\/a)/);
+  assert.match(fullOutput, /v4: .*(PASS|FAIL|n\/a)/);
 });
 
 test("CLI: manglende --population/--stages exit'er 2 med usage-besked paa stderr", () => {
   const result = runCli([]);
   assert.equal(result.status, 2);
   assert.ok(result.stderr.includes("Usage:"));
+});
+
+test("CLI: --films skriver 5 haandplukkede v4-tidslinje-tekstfiler til den angivne mappe", () => {
+  const filmsDir = path.join(SCRIPT_DIR, "out", "films-cli-test");
+  const result = runCli([
+    `--population=${POPULATION_PATH}`, `--stages=${STAGES_PATH}`, "--seed=cli-test",
+    `--films=${filmsDir}`,
+  ]);
+  assert.equal(result.status, 0, `stderr: ${result.stderr}`);
+  assert.match(result.stdout, /Film-eksport \(5 haandplukkede scenarier\) skrevet til:/);
+
+  const expectedNames = [
+    "01-bjerg-selektion.txt", "02-flad-massespurt.txt", "03-punch-finale-forspring.txt",
+    "04-nedkoerselsfinale.txt", "05-brosten-syntetisk.txt",
+  ];
+  for (const name of expectedNames) {
+    const filePath = path.join(filmsDir, name);
+    const text = readFileSync(filePath, "utf8");
+    assert.match(text, /v4 etape-tidslinje/);
+    assert.match(text, /-- Tidslinje --/);
+    assert.match(text, /-- Resultat \(top/);
+  }
 });

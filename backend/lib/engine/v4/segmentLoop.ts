@@ -17,6 +17,15 @@
 // og dermed hvor meget grupper trækker fra hinanden. De samme "front"-ryttere
 // betaler tuning.work.frontWorkFactor i fysiologi-tick'et, resten betaler
 // tuning.work.draftFactor (§4 punkt 1).
+//
+// #4030 (natboelge 21/8, fixture-fund): fysiologi-tick'et er SUB-DELT
+// (physiology.tickPhysiologyOverSegment) i stedet for ét Euler-skridt over
+// hele segmentets dtSeconds — se tuning.ts's PHYSIOLOGY_SUBTICK_TUNING-
+// kommentar og physiology.ts's tickPhysiologyOverSegment-docblock for
+// begrundelsen (eksponentiel genopladnings-ODE var naer-binaer ved ét stort
+// skridt). cp/demand/rechargeRate forbliver konstante for hele segmentet
+// (kun sub-tick-skridtstoerrelsen aendres) — segmentets krav-tempo/hastighed
+// genberegnes fortsat kun pr. segment, ikke pr. sub-tick.
 
 import type {
   Entrant,
@@ -34,7 +43,7 @@ import type {
   TimelineEvent,
 } from "./types.ts";
 import { boundRngFor } from "./rng.ts";
-import { deriveCp, deriveRechargeRate, tickPhysiology } from "./physiology.ts";
+import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -119,6 +128,7 @@ function tickGroupRiders(
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
   const baseDemand = tuning.terrain.baseDemand[segment.kind];
+  const segmentLengthKm = Math.max(0, segment.to_km - segment.from_km);
   for (const riderId of group.rider_ids) {
     const entrant = entrantsById[riderId];
     const riderState = riders[riderId];
@@ -129,13 +139,18 @@ function tickGroupRiders(
       : tuning.work.draftFactor[segment.kind];
     const demand = baseDemand * positionFactor;
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
-    const tick = tickPhysiology({
+    // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
+    // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
+    // tickPhysiologyOverSegment-kommentar) — genopladning bliver gradvis
+    // i stedet for naer-binaer; taering er vaerdimaessigt uaendret.
+    const tick = tickPhysiologyOverSegment({
       cp,
       wprimeMax: riderState.wprimeMax,
       wprime: riderState.wprime,
       demand,
       dtSeconds: tempo.dtSeconds,
       rechargeRate,
+      segmentLengthKm,
     });
     next[riderId] = {
       ...riderState,
