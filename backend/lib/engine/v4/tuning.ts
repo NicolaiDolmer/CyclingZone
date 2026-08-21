@@ -151,3 +151,35 @@ const finaleExtra = {
 
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
+
+// ── M5 (mechanics/breakaway.ts, #4030/#3855) — ADDITIV udbruds-tuning ─────────
+// Samme praecedens som finaleExtra ovenfor: SS2's EngineTuning-kontrakt
+// (types.ts) har intet breakaway-felt (frosset, kun arkitekten aendrer den) —
+// disse er de reelt kalibrerbare haandtag for jagt-interesse-modellen (#2416),
+// importeret direkte af breakaway.ts. Lokale, ikke-kalibrerbare struktur-
+// konstanter (MIN/MAX-stoerrelse, score-vaegte) bor i selve mechanics-filen,
+// samme moenster som climbSelection.ts's GRADIENT_NORM_PCT-kommentar.
+const breakawayExtra = {
+  sprinterInterestWeight: 0.5, // vaegt paa jagt-gruppens kollektive sprint-evne i chase-forcen (#2416: "sprinterholds interesse")
+  gcThreatWeight: 0.35, // vaegt paa udbrydernes kollektive climbing/tempo/tt-proxy (#2416: "GC-trussel fra udbryderne")
+  lateRaceUrgencyWeight: 0.25, // vaegt paa hvor langt etapen er naaet (0 ved start, 1 ved maal) i chase-forcen
+  enginePowerResistanceWeight: 0.45, // vaegt paa udbruddets kollektive endurance/tempo i moddstanden (#2416: "udbruddets samlede motorstyrke")
+  countResistanceWeight: 0.2, // vaegt paa udbruds-stoerrelsen (flere ryttere ruller bedre, #2416) i modstanden
+  breakawayReferenceCount: 4, // rytterantal der giver countFactor=1 (skalerer lineaert, clamp [0, 1.5] i computeNetChaseAdvantage)
+  closingSecondsPerKmPerUnit: 25, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
+  stanceEffectWeight: 0.3, // T3 breakaway_stance-signalets vaegt paa netto-fordelen (bounded, se stanceMultiplierBounds)
+  stanceMultiplierBounds: [0.7, 1.3] as readonly [number, number], // clamp paa stance-multiplikatoren — forhindrer at EN holdordre kan vaelte jagtens fortegn (mor-spec §5)
+  finaleTypeChaseWeightDefault: 0.4, // sprinterholds-interesse-vaegt naar finale_type er ukendt/null
+  finaleTypeChaseWeight: {
+    bunch_sprint: 1.0, // massespurt-finale: maksimal sprinterhold-interesse i at koere udbruddet ind
+    reduced_sprint: 0.65, // reduceret spurt: stadig hoej interesse
+    punch: 0.3, // punch-finale: lav sprinter-interesse (sprinterhold jagter sjaeldent punch-finaler haardt)
+    breakaway: 0.1, // breakaway-favoriseret finale: minimal sprinter-interesse (feltet forventer selv et udbrud)
+    descent: 0.15, // nedkoersels-finale: lav sprinter-interesse
+    long_climb: 0.1, // lang klatring: minimal sprinter-interesse
+    solo_tt: 0.05, // enkeltstart: irrelevant (ingen felt-dynamik) men holdt lav i stedet for 0 for robusthed
+  } as Partial<Record<import("./types.ts").FinaleType, number>>, // pr. finale-type sprinterhold-interesse-vaegt (#2416's "terraen + rest-km-proxy")
+};
+
+/** M5 additiv udbruds-tuning (deep-frosset). Se breakawayExtra-kommentaren ovenfor. */
+export const BREAKAWAY_EXTRA_TUNING = deepFreeze(breakawayExtra);
