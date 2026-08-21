@@ -7,6 +7,8 @@
   "monthlyPrice": "49 kr/mo",
   "semiannualPrice": "265 kr",
   "semiannualNote": "≈44 kr/mo · save ~10%",
+  "vatNote": "All prices include Danish VAT (25%).",
+  "prorataNote": "Your first charge covers only the rest of this month, so it may be smaller than the listed price. Full price applies from the 1st.",
   "cta": "Continue to payment",
   "checkoutPaused": "Purchases are temporarily paused while we finish the terms of sale and self-service cancellation. Existing accounts and the free game are unaffected.",
   "error": "Could not start checkout. Please try again.",

@@ -192,6 +192,14 @@ export default function ProUpgradePage() {
                 })}
               </div>
 
+              {/* #4005: pris-transparens (laering fra foerste testkoeb 25/7) — moms
+                  eksplicit + pro-rata-forklaring (foerste traek var 13 kr og lignede
+                  en fejl). Pro-rata kun ved maanedlig, hvor adfaerden er bekraeftet. */}
+              <p className="mt-2 text-2xs leading-relaxed text-cz-3">{t("vatNote")}</p>
+              {interval === "monthly" && (
+                <p className="mt-1 text-2xs leading-relaxed text-cz-3">{t("prorataNote")}</p>
+              )}
+
               {/* #2813: accept-checkbox med link til vilkår + eksplicit
                   straks-leverings-waiver (fortrydelsesretten bortfalder). */}
               <label className="mt-5 flex cursor-pointer items-start gap-2.5">
