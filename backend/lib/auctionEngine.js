@@ -223,32 +223,34 @@ export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT
 
 /**
  * #4004 (ejer-beslutning 21/8, revision 2): en auktion må ikke kunne strække
- * sig forbi transfer-vinduets lukketid. Aldersfald/pension rammer ved
+ * sig forbi selve sæson-transitionen. Aldersfald/pension rammer ved
  * sæsonskiftet, og en løbende auktion på det tidspunkt ville sælge en rytter
  * på tal der flytter sig under salget.
  *
- * VIGTIGT (dokumenteret her, uddybet i PR-body): der findes IKKE en
- * planlagt "sæson-transition-tidspunkt"-kolonne i skemaet i dag —
- * sæsonskiftet er en manuel admin-handling (season_auto_transition er
- * slukket), og `seasons.end_date` sættes retroaktivt FØRST ved selve
- * skiftet. `transfer_windows.closes_at` er den ENESTE fremadrettede
- * deadline spillet faktisk gemmer, og sæson-transitionens readiness-gates
- * kræver at vinduet er lukket FØR transitionen kan ske — så at forbyde
- * overlap med vinduets lukning er den bedst opnåelige garanti med den
- * nuværende datamodel (fjerner det forudsigelige, almindelige
- * overlap-tilfælde; garanterer ikke 100% mod en sen manuel transition
- * efter vinduet er lukket).
+ * MÅLT MOD PROD 21/8 (orkestrator, følgefund): denne funktion brugte
+ * OPRINDELIGT `transfer_windows.closes_at` som anker (samme begrundelse som
+ * stod her før) — men målingen viste at ankeret var DØD DATA: begge rækker i
+ * prod har status='closed' og closes_at=NULL (markedet altid-åbent siden
+ * 22/6), så guarden ville ALDRIG fyre uanset auktionens længde. Ankeret er
+ * derfor omlagt til `getSeasonTransitionBoundary`/`fetchSeasonTransitionBoundary`
+ * (seasonTransitionBoundary.js): en eksplicit planlagt transition
+ * (app_config) eller, i mangel af én, den kommende sæsons start_date minus
+ * én dag kl. 18 dansk tid — se den fils header for fuld begrundelse.
  *
  * @param {Date} calculatedEnd - auktionens beregnede sluttidspunkt
- * @param {{status: string, closes_at: string|null}|null} transferWindow - seneste transfer_windows-række
- * @returns {{code: "crosses_window_close", closesAt: string} | null}
+ * @param {Date|string|null} seasonTransitionBoundary - grænsen fra
+ *   fetchSeasonTransitionBoundary (seasonTransitionBoundary.js), eller null
+ *   hvis ingen grænse er kendt (ingen upcoming sæson) — ingen blokering da.
+ * @returns {{code: "crosses_season_transition", boundary: string} | null}
  */
-export function getAuctionSeasonBoundaryIssue(calculatedEnd, transferWindow) {
-  if (!transferWindow || transferWindow.status !== "open" || !transferWindow.closes_at) return null;
-  const closesAt = new Date(transferWindow.closes_at);
-  if (Number.isNaN(closesAt.getTime())) return null;
-  if (new Date(calculatedEnd).getTime() >= closesAt.getTime()) {
-    return { code: "crosses_window_close", closesAt: transferWindow.closes_at };
+export function getAuctionSeasonBoundaryIssue(calculatedEnd, seasonTransitionBoundary) {
+  if (!seasonTransitionBoundary) return null;
+  const boundary = seasonTransitionBoundary instanceof Date
+    ? seasonTransitionBoundary
+    : new Date(seasonTransitionBoundary);
+  if (Number.isNaN(boundary.getTime())) return null;
+  if (new Date(calculatedEnd).getTime() >= boundary.getTime()) {
+    return { code: "crosses_season_transition", boundary: boundary.toISOString() };
   }
   return null;
 }

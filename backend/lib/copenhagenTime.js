@@ -38,3 +38,17 @@ export function copenhagenMidnightUTC(now = new Date()) {
   const offsetMs = new Date(wall.replace(" ", "T") + "Z").getTime() - approx.getTime();
   return new Date(approx.getTime() - offsetMs);
 }
+
+// UTC-instant for `hour:00:00` dansk tid på en EKSPLICIT dansk kalenderdato
+// ("YYYY-MM-DD"), i modsætning til copenhagenMidnightUTC/auctionEngine.js's
+// gameHourToUTC der begge udleder dagen fra et Date-objekt ("i dag"). Bruges
+// når kalenderdatoen selv er resultatet af en beregning (fx "sæsonstart minus
+// én dag") og derfor ikke kan udtrykkes som "samme dag som et Date". Samme
+// DST-robuste offset-trick som de to ovenfor (#4004).
+export function copenhagenHourToUTC(dateStr, hour) {
+  const h = String(hour).padStart(2, "0");
+  const approx = new Date(`${dateStr}T${h}:00:00Z`); // klokkeslæt på datoen, tolket som UTC
+  const wall = approx.toLocaleString("sv-SE", { timeZone: "Europe/Copenhagen" });
+  const offsetMs = new Date(wall.replace(" ", "T") + "Z").getTime() - approx.getTime();
+  return new Date(approx.getTime() - offsetMs);
+}

@@ -587,47 +587,42 @@ test("getCustomAuctionEndIssue: accepterer ISO-streng lige så vel som Date", ()
   assert.equal(getCustomAuctionEndIssue("2026-05-08T18:44:00.000Z", now, PROD_CFG), null);
 });
 
-// ── getAuctionSeasonBoundaryIssue (#4004, ejer-beslutning 21/8 revision 2) ────
+// ── getAuctionSeasonBoundaryIssue (#4004, ejer-beslutning 21/8 revision 2 —
+// ankeret omlagt fra transfer_windows.closes_at [målt død data i prod 21/8]
+// til seasonTransitionBoundary.js's sæson-transitions-grænse) ───────────────
 
-test("getAuctionSeasonBoundaryIssue: null når intet transfer-vindue findes", () => {
+test("getAuctionSeasonBoundaryIssue: null når ingen grænse er kendt", () => {
   const end = iso("2026-05-08T18:00:00.000Z");
   assert.equal(getAuctionSeasonBoundaryIssue(end, null), null);
 });
 
-test("getAuctionSeasonBoundaryIssue: null når vinduet ikke er åbent", () => {
-  const end = iso("2026-05-08T18:00:00.000Z");
-  const tw = { status: "closed", closes_at: "2026-05-08T12:00:00.000Z" };
-  assert.equal(getAuctionSeasonBoundaryIssue(end, tw), null);
-});
-
-test("getAuctionSeasonBoundaryIssue: null når vinduet er åbent men uden closes_at", () => {
-  const end = iso("2026-05-08T18:00:00.000Z");
-  const tw = { status: "open", closes_at: null };
-  assert.equal(getAuctionSeasonBoundaryIssue(end, tw), null);
-});
-
-test("getAuctionSeasonBoundaryIssue: null når auktionen slutter FØR vinduet lukker", () => {
+test("getAuctionSeasonBoundaryIssue: null når auktionen slutter FØR grænsen", () => {
   const end = iso("2026-05-08T10:00:00.000Z");
-  const tw = { status: "open", closes_at: "2026-05-08T12:00:00.000Z" };
-  assert.equal(getAuctionSeasonBoundaryIssue(end, tw), null);
+  const boundary = iso("2026-05-08T12:00:00.000Z");
+  assert.equal(getAuctionSeasonBoundaryIssue(end, boundary), null);
 });
 
-test("getAuctionSeasonBoundaryIssue: crosses_window_close når auktionen slutter EFTER vinduet lukker", () => {
+test("getAuctionSeasonBoundaryIssue: crosses_season_transition når auktionen slutter EFTER grænsen", () => {
   const end = iso("2026-05-08T14:00:00.000Z");
-  const tw = { status: "open", closes_at: "2026-05-08T12:00:00.000Z" };
-  const issue = getAuctionSeasonBoundaryIssue(end, tw);
-  assert.equal(issue.code, "crosses_window_close");
-  assert.equal(issue.closesAt, "2026-05-08T12:00:00.000Z");
+  const boundary = iso("2026-05-08T12:00:00.000Z");
+  const issue = getAuctionSeasonBoundaryIssue(end, boundary);
+  assert.equal(issue.code, "crosses_season_transition");
+  assert.equal(issue.boundary, "2026-05-08T12:00:00.000Z");
 });
 
-test("getAuctionSeasonBoundaryIssue: grænsen er inklusiv — slut PRÆCIS ved lukketid tælles som krydsning", () => {
+test("getAuctionSeasonBoundaryIssue: accepterer en ISO-streng lige så vel som et Date-objekt som grænse", () => {
+  const end = iso("2026-05-08T14:00:00.000Z");
+  const issue = getAuctionSeasonBoundaryIssue(end, "2026-05-08T12:00:00.000Z");
+  assert.equal(issue.code, "crosses_season_transition");
+});
+
+test("getAuctionSeasonBoundaryIssue: grænsen er inklusiv — slut PRÆCIS ved grænsen tælles som krydsning", () => {
   const end = iso("2026-05-08T12:00:00.000Z");
-  const tw = { status: "open", closes_at: "2026-05-08T12:00:00.000Z" };
-  assert.equal(getAuctionSeasonBoundaryIssue(end, tw).code, "crosses_window_close");
+  const boundary = iso("2026-05-08T12:00:00.000Z");
+  assert.equal(getAuctionSeasonBoundaryIssue(end, boundary).code, "crosses_season_transition");
 });
 
-test("getAuctionSeasonBoundaryIssue: ugyldig closes_at → null (fail-open, ikke en falsk blokering)", () => {
+test("getAuctionSeasonBoundaryIssue: ugyldig grænse → null (fail-open, ikke en falsk blokering)", () => {
   const end = iso("2026-05-08T18:00:00.000Z");
-  const tw = { status: "open", closes_at: "ikke en dato" };
-  assert.equal(getAuctionSeasonBoundaryIssue(end, tw), null);
+  assert.equal(getAuctionSeasonBoundaryIssue(end, "ikke en dato"), null);
 });
