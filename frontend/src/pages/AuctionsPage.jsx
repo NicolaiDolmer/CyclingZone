@@ -1549,6 +1549,7 @@ export default function AuctionsPage() {
         riderName={bidConfirm?.riderName}
         amount={bidConfirm?.amount}
         retirementTier={bidConfirm?.retirementTier}
+        settlesAfterValueUpdate={bidConfirm?.settlesAfterValueUpdate}
         busy={bidConfirmBusy}
         onCancel={() => { if (!bidConfirmBusy) setBidConfirm(null); }}
         onConfirm={handleBidConfirm}

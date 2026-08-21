@@ -12,7 +12,8 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
-import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
+import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 
 export const GRADUATION = Object.freeze({
@@ -132,7 +133,15 @@ export async function resolveGraduation(supabase, {
   }
 
   if (action === "sell") {
-    await createGraduateAuction(supabase, { teamId, rider, now, auctionConfig });
+    const created = await createGraduateAuction(supabase, { teamId, rider, now, auctionConfig });
+    // #4004: beregnede sluttid krydser sæson-transitionen — SPRING oprettelsen
+    // over i dette kald i stedet for at oprette en auktion der ville sælge
+    // rytteren på tal der flytter sig under salget. Grad-rækken forbliver
+    // 'pending' (finishGraduation kaldes IKKE), så et senere kald (næste
+    // sweep-run, eller manageren der prøver "sell" igen) opretter auktionen
+    // naturligt, når sluttiden ikke længere krydser grænsen. Ingen
+    // afvisnings-fejl, ingen kø — se createGraduateAuction.
+    if (!created) return { riderId, action: "sell_deferred_season_boundary" };
     await finishGraduation(supabase, { gradId: grad.id, status: "sold", teamId, rider, now, action, notify });
     return { riderId, action: "sold" };
   }
@@ -203,10 +212,26 @@ async function finishGraduation(supabase, { gradId, status, teamId, rider, now, 
 // Opret en senior-salgs-auktion for en graduate (spejler youthMarket.js, men med
 // seller_team_id=holdet + is_youth=false). Rytteren forbliver is_academy=true til
 // auktions-finalization (Task 6) sætter is_academy=false ved salg / free agent ved ingen bud.
+//
+// #4004: hvis den beregnede sluttid ville krydse sæson-transitionen, springes
+// oprettelsen over (returnerer false, ingen insert, ingen fejl) i stedet for at
+// sælge rytteren på tal der flytter sig under selve salget. Dette er en af de to
+// "automatiserede FA-stier" PR-body'en dokumenterer som scope-afgrænset fra
+// api.js's POST /auctions-guard (findes intet menneske at returnere en 400 til
+// her — se resolveGraduation's kalder for hvordan "sælg igen senere" håndteres).
 async function createGraduateAuction(supabase, { teamId, rider, now = new Date(), auctionConfig }) {
   const value = Math.max(1, calculateRiderMarketValue(rider));
   const cfg = auctionConfig || await resolveAuctionConfig(supabase);
-  const calculatedEnd = calculateAuctionEnd(now, cfg);
+  // #4004: free-agent-auktion (graduate sælges via "banken") — 12t-gulv, se
+  // FREE_AGENT_MIN_DURATION_HOURS (auctionEngine.js).
+  const calculatedEnd = calculateAuctionEnd(now, cfg, { minHours: FREE_AGENT_MIN_DURATION_HOURS });
+
+  const seasonTransitionBoundary = await fetchSeasonTransitionBoundary(supabase);
+  if (getAuctionSeasonBoundaryIssue(calculatedEnd, seasonTransitionBoundary)) {
+    console.log(`createGraduateAuction: skipped rider ${rider.id} — calculated end ${calculatedEnd.toISOString()} crosses season transition boundary ${seasonTransitionBoundary.toISOString()}`);
+    return false;
+  }
+
   const { error } = await supabase.from("auctions").insert({
     rider_id: rider.id,
     seller_team_id: teamId,
@@ -218,6 +243,7 @@ async function createGraduateAuction(supabase, { teamId, rider, now = new Date()
     is_youth: false,
   });
   if (error) throw new Error(`createGraduateAuction: ${error.message}`);
+  return true;
 }
 
 async function resolveAuctionConfig(supabase) {

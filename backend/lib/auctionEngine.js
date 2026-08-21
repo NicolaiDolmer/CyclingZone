@@ -110,16 +110,27 @@ function windowForEnd(end, cfg) {
   return { close: windowCloseTime(prevDay, cfg), nextOpen: openToday };
 }
 
+// #4004 (ejer-beslutning 21/8): free-agent-auktioner (ingen manager bag
+// sælgeren — ungdoms-graduering, ungdomsmarkedet, "bank"-salg) må ikke kunne
+// lande under 12 timer. Spillere der er på arbejde/sover misser ellers unge
+// talenter der sælges igennem på den globale `duration_hours`-config (i dag
+// 1 time i prod — set 18/8, friisisch/thelamba). Kun et GULV: en global
+// config over 12 timer overstyres ikke.
+export const FREE_AGENT_MIN_DURATION_HOURS = 12;
+
 /**
  * Calculate auction end time given a start time.
  * Counts only active-window hours toward the duration.
  *
  * @param {Date} startTime
  * @param {object} cfg - auction timing config (defaults to DEFAULT_AUCTION_CONFIG)
+ * @param {{minHours?: number}} [opts] - #4004: valgfrit gulv for varigheden (timer),
+ *   bruges til FREE_AGENT_MIN_DURATION_HOURS ved free-agent-auktioner.
  * @returns {Date}
  */
-export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG) {
-  const durationMs = cfg.duration_hours * 60 * 60 * 1000;
+export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG, { minHours } = {}) {
+  const effectiveHours = minHours != null ? Math.max(cfg.duration_hours, minHours) : cfg.duration_hours;
+  const durationMs = effectiveHours * 60 * 60 * 1000;
   let current = new Date(startTime);
   let remaining = durationMs;
 
@@ -207,6 +218,40 @@ export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT
     return { code: "end_outside_window", openHour, closeHour };
   }
 
+  return null;
+}
+
+/**
+ * #4004 (ejer-beslutning 21/8, revision 2): en auktion må ikke kunne strække
+ * sig forbi selve sæson-transitionen. Aldersfald/pension rammer ved
+ * sæsonskiftet, og en løbende auktion på det tidspunkt ville sælge en rytter
+ * på tal der flytter sig under salget.
+ *
+ * MÅLT MOD PROD 21/8 (orkestrator, følgefund): denne funktion brugte
+ * OPRINDELIGT `transfer_windows.closes_at` som anker (samme begrundelse som
+ * stod her før) — men målingen viste at ankeret var DØD DATA: begge rækker i
+ * prod har status='closed' og closes_at=NULL (markedet altid-åbent siden
+ * 22/6), så guarden ville ALDRIG fyre uanset auktionens længde. Ankeret er
+ * derfor omlagt til `getSeasonTransitionBoundary`/`fetchSeasonTransitionBoundary`
+ * (seasonTransitionBoundary.js): en eksplicit planlagt transition
+ * (app_config) eller, i mangel af én, den kommende sæsons start_date minus
+ * én dag kl. 18 dansk tid — se den fils header for fuld begrundelse.
+ *
+ * @param {Date} calculatedEnd - auktionens beregnede sluttidspunkt
+ * @param {Date|string|null} seasonTransitionBoundary - grænsen fra
+ *   fetchSeasonTransitionBoundary (seasonTransitionBoundary.js), eller null
+ *   hvis ingen grænse er kendt (ingen upcoming sæson) — ingen blokering da.
+ * @returns {{code: "crosses_season_transition", boundary: string} | null}
+ */
+export function getAuctionSeasonBoundaryIssue(calculatedEnd, seasonTransitionBoundary) {
+  if (!seasonTransitionBoundary) return null;
+  const boundary = seasonTransitionBoundary instanceof Date
+    ? seasonTransitionBoundary
+    : new Date(seasonTransitionBoundary);
+  if (Number.isNaN(boundary.getTime())) return null;
+  if (new Date(calculatedEnd).getTime() >= boundary.getTime()) {
+    return { code: "crosses_season_transition", boundary: boundary.toISOString() };
+  }
   return null;
 }
 

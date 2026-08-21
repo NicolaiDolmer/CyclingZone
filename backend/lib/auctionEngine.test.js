@@ -9,6 +9,7 @@ import {
   CUSTOM_END_MIN_HOURS,
   DEFAULT_AUCTION_CONFIG,
   getCustomAuctionEndIssue,
+  getAuctionSeasonBoundaryIssue,
   isLateBidTriggerError,
 } from "./auctionEngine.js";
 
@@ -158,6 +159,38 @@ test("calculateAuctionEnd: close=24 — 2h fra 23:00 spænder over midnat til n�
 test("calculateAuctionEnd: default-config (close=22) uændret — Tir 19:40 → Ons 19:40", () => {
   // 2h20 Tir (til 22:00) + 3h40 Ons (fra 16:00). Beskytter close≤23-stien mod #1904-fixet.
   assert.equal(cph(calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG)), "2026-05-06 19:40:00");
+});
+
+// ── minHours (#4004, ejer-beslutning 21/8 — free-agent-auktioners 12t-gulv) ──
+
+test("calculateAuctionEnd: uden minHours-opts er adfærden BIT-IDENTISK med før (#4004 additiv)", () => {
+  const withOpts = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG, {});
+  const withoutOpts = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG);
+  assert.equal(cph(withOpts), cph(withoutOpts));
+});
+
+test("calculateAuctionEnd: minHours under cfg.duration_hours er en no-op (config-varigheden vinder)", () => {
+  // CFG.duration_hours = 6 (default). minHours=1 < 6 → uændret resultat.
+  const withMin = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG, { minHours: 1 });
+  const withoutMin = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG);
+  assert.equal(cph(withMin), cph(withoutMin));
+});
+
+test("calculateAuctionEnd: minHours over cfg.duration_hours løfter den effektive varighed", () => {
+  // duration_hours=1 (prod-lignende free-agent-config), minHours=12 → 12t bruges.
+  const cfg1h = { ...CFG, duration_hours: 1 };
+  const withMin = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), cfg1h, { minHours: 12 });
+  const explicit12h = calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), { ...CFG, duration_hours: 12 });
+  assert.equal(cph(withMin), cph(explicit12h));
+  assert.notEqual(cph(withMin), cph(calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), cfg1h)));
+});
+
+test("calculateAuctionEnd: minHours sammensætter korrekt med et allerede-hævet duration_hours (Math.max)", () => {
+  // 24t-override (intake-udløb) er allerede over 12t-gulvet → minHours er en no-op.
+  const cfg24h = { ...CFG, duration_hours: 24 };
+  const withMin = calculateAuctionEnd(iso("2026-05-09T20:00:00Z"), cfg24h, { minHours: 12 });
+  const withoutMin = calculateAuctionEnd(iso("2026-05-09T20:00:00Z"), cfg24h);
+  assert.equal(cph(withMin), cph(withoutMin));
 });
 
 // =============================================================================
@@ -552,4 +585,44 @@ test("getCustomAuctionEndIssue: ugyldig dato → invalid_end_time", () => {
 test("getCustomAuctionEndIssue: accepterer ISO-streng lige så vel som Date", () => {
   const now = iso("2026-05-08T08:00:00.000Z");
   assert.equal(getCustomAuctionEndIssue("2026-05-08T18:44:00.000Z", now, PROD_CFG), null);
+});
+
+// ── getAuctionSeasonBoundaryIssue (#4004, ejer-beslutning 21/8 revision 2 —
+// ankeret omlagt fra transfer_windows.closes_at [målt død data i prod 21/8]
+// til seasonTransitionBoundary.js's sæson-transitions-grænse) ───────────────
+
+test("getAuctionSeasonBoundaryIssue: null når ingen grænse er kendt", () => {
+  const end = iso("2026-05-08T18:00:00.000Z");
+  assert.equal(getAuctionSeasonBoundaryIssue(end, null), null);
+});
+
+test("getAuctionSeasonBoundaryIssue: null når auktionen slutter FØR grænsen", () => {
+  const end = iso("2026-05-08T10:00:00.000Z");
+  const boundary = iso("2026-05-08T12:00:00.000Z");
+  assert.equal(getAuctionSeasonBoundaryIssue(end, boundary), null);
+});
+
+test("getAuctionSeasonBoundaryIssue: crosses_season_transition når auktionen slutter EFTER grænsen", () => {
+  const end = iso("2026-05-08T14:00:00.000Z");
+  const boundary = iso("2026-05-08T12:00:00.000Z");
+  const issue = getAuctionSeasonBoundaryIssue(end, boundary);
+  assert.equal(issue.code, "crosses_season_transition");
+  assert.equal(issue.boundary, "2026-05-08T12:00:00.000Z");
+});
+
+test("getAuctionSeasonBoundaryIssue: accepterer en ISO-streng lige så vel som et Date-objekt som grænse", () => {
+  const end = iso("2026-05-08T14:00:00.000Z");
+  const issue = getAuctionSeasonBoundaryIssue(end, "2026-05-08T12:00:00.000Z");
+  assert.equal(issue.code, "crosses_season_transition");
+});
+
+test("getAuctionSeasonBoundaryIssue: grænsen er inklusiv — slut PRÆCIS ved grænsen tælles som krydsning", () => {
+  const end = iso("2026-05-08T12:00:00.000Z");
+  const boundary = iso("2026-05-08T12:00:00.000Z");
+  assert.equal(getAuctionSeasonBoundaryIssue(end, boundary).code, "crosses_season_transition");
+});
+
+test("getAuctionSeasonBoundaryIssue: ugyldig grænse → null (fail-open, ikke en falsk blokering)", () => {
+  const end = iso("2026-05-08T18:00:00.000Z");
+  assert.equal(getAuctionSeasonBoundaryIssue(end, "ikke en dato"), null);
 });

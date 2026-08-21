@@ -233,6 +233,7 @@
     "transferAction": "Send bud",
     "questionPrefix": "Er du sikker på at du vil",
     "onLabel": "på",
+    "settlesAfterValueUpdate": "Denne auktion afsluttes efter søndagens værdi-opdatering. Værdi og evner kan ændre sig inden den lukker.",
     "retirementWarning": {
       "risk": "Nærmer sig karrierens slutning: rytteren er i pensionsvinduet (alder {windowStart}-{guaranteedAge}) og kan stoppe efter denne sæson.",
       "certain": "Rytteren er {guaranteedAge} år eller ældre og stopper med sikkerhed efter denne sæson."

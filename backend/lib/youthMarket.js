@@ -4,7 +4,8 @@
 // #2456: usolgte ryttere SLETTES ved finalisering (forlader sporten) — fri-agent-
 // butikken i akademiet (signFreeAgentYouth) er fjernet.
 
-import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
+import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { readYouthAuctionStartRateOverride } from "./marketValueLevelCorrectionConfig.js";
 
@@ -75,7 +76,11 @@ async function findActiveAuctionForRider(supabase, riderId) {
  *   udløb (kompensation-mål). Sættes KUN af academyIntakeExpirySweep for
  *   kandidater der bestod ejerskabs-guarden (#2646) — aldrig af
  *   rejectAcademyCandidate (manager-initieret afvisning er ikke udløb).
- * @returns {Promise<object>} den oprettede (eller allerede eksisterende) auktion
+ * @returns {Promise<object|null>} den oprettede (eller allerede eksisterende)
+ *   auktion, eller `null` hvis oprettelsen blev SPRUNGET OVER fordi den
+ *   beregnede sluttid ville krydse sæson-transitionen (#4004) — ingen fejl,
+ *   kaldere skal tolerere en null-auktion (se academyIntakeExpirySweep.js/
+ *   academyIntake.js's rejectAcademyCandidate, der begge allerede gør det).
  */
 export async function listRejectedAsYouthAuction(supabase, {
   riderId, now = new Date(), auctionConfig, durationHours = REJECTED_CANDIDATE_AUCTION_DURATION_HOURS, expiredIntakeTeamId,
@@ -128,7 +133,21 @@ export async function listRejectedAsYouthAuction(supabase, {
   // kun varigheden; vindues-/extension-mekanikken er uændret (auktioner slutter
   // stadig aldrig om natten, jf. active-window-modellen).
   if (durationHours) cfg = { ...cfg, duration_hours: durationHours };
-  const calculatedEnd = calculateAuctionEnd(now, cfg);
+  // #4004: free-agent-auktion (ungdomsmarked, ingen sælger) — 12t-gulv, se
+  // FREE_AGENT_MIN_DURATION_HOURS (auctionEngine.js). Sammensætter korrekt med
+  // durationHours-override ovenfor via Math.max i calculateAuctionEnd.
+  const calculatedEnd = calculateAuctionEnd(now, cfg, { minHours: FREE_AGENT_MIN_DURATION_HOURS });
+
+  // #4004: beregnede sluttid krydser sæson-transitionen — SPRING oprettelsen
+  // over (én af de to "automatiserede FA-stier" PR-body'en dokumenterer som
+  // scope-afgrænset fra api.js's POST /auctions-guard). Ingen afvisnings-fejl:
+  // kaldere tolererer allerede en falsy auction (se JSDoc). Rytteren afvises
+  // ikke permanent — en efterfølgende kørsel efter grænsen opretter naturligt.
+  const seasonTransitionBoundary = await fetchSeasonTransitionBoundary(supabase);
+  if (getAuctionSeasonBoundaryIssue(calculatedEnd, seasonTransitionBoundary)) {
+    console.log(`listRejectedAsYouthAuction: skipped rider ${riderId} — calculated end ${calculatedEnd.toISOString()} crosses season transition boundary ${seasonTransitionBoundary.toISOString()}`);
+    return null;
+  }
 
   const { data: auction, error: insErr } = await supabase
     .from("auctions")
