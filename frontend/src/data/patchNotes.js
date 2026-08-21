@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.168",
+    "date": "2026-08-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season 3 calendar rebuilt: one Giro, one Tour, one Vuelta",
+          "body": "The Season 3 calendar has been regenerated from a cleaned race catalogue. There are now exactly three Grand Tours (Giro 18 stages, Tour and Vuelta 17), and no race appears twice. Division 1 grows from 18 to 33 races, so almost every day offers a real choice between races. Monuments now sit on their own race day in their own time slot, so every rider can line up. Grand Tour stages are properly mixed too: no more than two of the same stage profile in a row, with mountain blocks and sprint chances spread through the race. Four long ProSeries races were shortened to five stages. The calendar locks before the season starts Tuesday."
+        },
+        "da": {
+          "title": "Sæson 3-kalenderen er bygget om: én Giro, én Tour, én Vuelta",
+          "body": "Sæson 3-kalenderen er regenereret fra et oprydt løbskatalog. Der er nu præcis tre Grand Tours (Giro 18 etaper, Tour og Vuelta 17), og intet løb optræder to gange. Division 1 vokser fra 18 til 33 løb, så næsten hver dag byder på et reelt valg mellem løb. Monumenter ligger nu på deres egen løbsdag i deres eget tidsslot, så alle ryttere kan stille op. Grand Tour-etaperne er også blandet ordentligt: højst to ens etapeprofiler i træk, med bjergblokke og spurtchancer fordelt gennem løbet. Fire lange ProSeries-løb er kortet ned til fem etaper. Kalenderen låses inden sæsonstarten tirsdag."
+        },
+        "refs": [4075, 3547]
+      }
+    ]
+  },
+  {
     "version": "7.167",
     "date": "2026-08-21",
     "label": "Beta",
