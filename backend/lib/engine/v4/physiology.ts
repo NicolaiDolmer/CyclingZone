@@ -11,6 +11,7 @@
 
 import type { AbilityKey, DayformTuning, PhysiologyTuning, SegmentKind } from "./types.ts";
 import { gaussian, rngFor } from "./rng.ts";
+import { PHYSIOLOGY_SUBTICK_TUNING } from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -104,6 +105,78 @@ export function tickPhysiology(args: {
   }
   const nextWprime = clamp(wprime + rechargeRate * (wprimeMax - wprime) * dtSeconds, 0, wprimeMax);
   return { wprime: nextWprime, secondsOverCp: 0, workNorm };
+}
+
+export type SubTickPlan = {
+  count: number; // antal sub-tick, altid >= 1
+  dtSubSeconds: number; // segmentets dtSeconds / count (lige store sub-tick)
+};
+
+/**
+ * Sub-tick-plan for ét segment (#4030 fixture-fund, tuning.ts's
+ * physiologySubTick-kommentar): deler segmentets dtSeconds i `count` lige
+ * store bidder, afledt af segmentets km-laengde (`kmPerSubTick`) og clampet
+ * af `maxSubTicksPerSegment` (perf-/determinisme-gulv). Degenererer sikkert
+ * til ét enkelt "sub-tick" (identisk med foer-fixet tickPhysiology-kald) for
+ * 0-laengde/0-varighed segmenter.
+ */
+export function planSubTicks(args: {
+  dtSeconds: number;
+  segmentLengthKm: number;
+  kmPerSubTick: number;
+  maxSubTicksPerSegment: number;
+}): SubTickPlan {
+  const { dtSeconds, segmentLengthKm, kmPerSubTick, maxSubTicksPerSegment } = args;
+  if (!(dtSeconds > 0) || !(segmentLengthKm > 0) || !(kmPerSubTick > 0)) {
+    return { count: 1, dtSubSeconds: Math.max(0, dtSeconds) };
+  }
+  const raw = Math.ceil(segmentLengthKm / kmPerSubTick);
+  const count = clamp(raw, 1, Math.max(1, maxSubTicksPerSegment));
+  return { count, dtSubSeconds: dtSeconds / count };
+}
+
+/**
+ * Fysiologi-tick for ét HELT segment, sub-delt (#4030 fixture-fund: `tickPhysiology`
+ * daekkede foer et helt segment i ét Euler-skridt, hvilket gjorde den
+ * eksponentielle genopladnings-ODE naer-binaer — ét stort skridt overskyder
+ * maalstregen og klampes til wprimeMax. Denne funktion kalder `tickPhysiology`
+ * `plan.count` gange med `plan.dtSubSeconds` og akkumulerer resultatet, saa
+ * genopladningen naermer sig den sande eksponentielle kurve mens taering
+ * forbliver vaerdimaessigt uaendret (lineaer ODE, sub-tick-invariant — se
+ * `physiology.test.ts`'s ligheds-test). `cp`/`demand`/`rechargeRate` er
+ * KONSTANTE for hele segmentet (segmentLoop.ts's kollektiv-CP/tempo-model
+ * genberegnes kun pr. segment, ikke pr. sub-tick) — kun selve Euler-
+ * integrationens skridtstoerrelse aendres.
+ */
+export function tickPhysiologyOverSegment(args: {
+  cp: number;
+  wprimeMax: number;
+  wprime: number;
+  demand: number;
+  dtSeconds: number;
+  rechargeRate: number;
+  segmentLengthKm: number;
+  subTick?: { kmPerSubTick: number; maxSubTicksPerSegment: number };
+}): PhysiologyTickResult {
+  const { cp, wprimeMax, demand, dtSeconds, rechargeRate, segmentLengthKm } = args;
+  const subTick = args.subTick ?? PHYSIOLOGY_SUBTICK_TUNING;
+  const plan = planSubTicks({
+    dtSeconds,
+    segmentLengthKm,
+    kmPerSubTick: subTick.kmPerSubTick,
+    maxSubTicksPerSegment: subTick.maxSubTicksPerSegment,
+  });
+
+  let wprime = args.wprime;
+  let secondsOverCp = 0;
+  let workNorm = 0;
+  for (let i = 0; i < plan.count; i++) {
+    const tick = tickPhysiology({ cp, wprimeMax, wprime, demand, dtSeconds: plan.dtSubSeconds, rechargeRate });
+    wprime = tick.wprime;
+    secondsOverCp += tick.secondsOverCp;
+    workNorm += tick.workNorm;
+  }
+  return { wprime, secondsOverCp, workNorm };
 }
 
 /**

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.169",
+    "date": "2026-08-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season view on the planning board",
+          "body": "Team selection has a new Season/Day switch. The Season view lays out your group's whole calendar on one timeline: Grand Tours as long bars, the monument on its own exclusive race day, and a gold tint on every race where your selection is already saved. Click any race to jump straight to its day board. The calendar tab is unchanged."
+        },
+        "da": {
+          "title": "Sæson-visning på planlægnings-boardet",
+          "body": "Holdudtagelsen har fået en ny Sæson/Dag-knap. Sæson-visningen viser hele din gruppes kalender på én tidslinje: Grand Tours som lange bjælker, monumentet på sin egen eksklusive løbsdag, og en guldtone på hvert løb hvor din udtagelse allerede er gemt. Klik på et løb for at hoppe direkte til dets dags-board. Kalender-fanen er uændret."
+        },
+        "refs": [1146]
+      }
+    ]
+  },
+  {
     "version": "7.168",
     "date": "2026-08-21",
     "label": "Beta",

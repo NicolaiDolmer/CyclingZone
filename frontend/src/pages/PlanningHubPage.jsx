@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { PageHeader, Tabs, TabList, Tab } from "../components/ui";
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
+import SeasonView from "../components/racehub/SeasonView.jsx";
+import SeasonDayToggle from "../components/racehub/SeasonDayToggle.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import SeasonPlannerPage from "./SeasonPlannerPage.jsx";
 import StrategyPage from "./StrategyPage.jsx";
@@ -60,9 +62,28 @@ export default function PlanningHubPage() {
       const params = new URLSearchParams(prev);
       if (next === "selection") params.delete("tab");
       else params.set("tab", next);
-      // Formplanens indre visning (?view=squad|season) hører til form-fanen —
-      // ryd den ved faneskift, så et senere klik tilbage lander på default.
-      if (next !== "form") params.delete("view");
+      // `?view=` er ALTID fane-scopet indre tilstand (form: squad|season,
+      // selection: season, #1146) — ryd den ved ETHVERT faneskift, så en fanes
+      // view aldrig lækker ind i en andens (selection&view=season ville ellers
+      // åbne formplanen i dens egen season-visning). Fanen sætter selv sin
+      // view-param EFTER ankomst; deep-links røres ikke (changeTab kører kun
+      // ved klik).
+      params.delete("view");
+      // #1146: sæson-browse-parametret hører til Season-visningen alene.
+      params.delete("season");
+      return params;
+    }, { replace: true });
+  }
+
+  // Z1 v0 (#1146): Season/Day-visning på Holdudtagelses-fanen. URL'en er
+  // tilstanden (samme princip som fanerne) — `?view=season` viser sæson-aksen,
+  // alt andet viser det urørte dags-board.
+  const selectionView = tab === "selection" && searchParams.get("view") === "season" ? "season" : "day";
+  function changeSelectionView(next) {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (next === "season") params.set("view", "season");
+      else { params.delete("view"); params.delete("season"); }
       return params;
     }, { replace: true });
   }
@@ -84,7 +105,18 @@ export default function PlanningHubPage() {
         </TabList>
       </Tabs>
 
-      {tab === "selection" && <RaceHubBoard />}
+      {tab === "selection" && (
+        selectionView === "season" ? (
+          <SeasonView onSwitchView={changeSelectionView} />
+        ) : (
+          <>
+            <div className="mb-4">
+              <SeasonDayToggle view="day" onChange={changeSelectionView} />
+            </div>
+            <RaceHubBoard />
+          </>
+        )
+      )}
       {tab === "form" && <I18nReadyGate ns="planner"><SeasonPlannerPage /></I18nReadyGate>}
       {tab === "strategy" && <StrategyPage />}
       {tab === "calendar" && <I18nReadyGate ns="calendar"><CalendarPage /></I18nReadyGate>}
