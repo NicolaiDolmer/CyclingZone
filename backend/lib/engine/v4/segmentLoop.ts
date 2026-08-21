@@ -243,6 +243,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     }
     const isLastSegment = segmentIndex === segments.length - 1;
     if (isLastSegment) {
+      // M3-angreb paa selve finale-segmentet giver angrebsgruppen negativt gap
+      // (den rykker FORAN kildegruppens 0). Finale-opgoerets frontPool-filter
+      // (gap_seconds === 0) kraever rebaseline FOER kaldet — ellers falder
+      // angriberne ud af opgoerelsen (fundet af golden fixture 4, 21/8).
+      state = { ...state, groups: rebaselineGroups(state.groups) };
       const result = hooks.finale(state, ctx);
       state = result.state;
       timeline.push(...result.events);
