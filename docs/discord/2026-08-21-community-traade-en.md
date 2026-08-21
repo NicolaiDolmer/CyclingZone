@@ -4,6 +4,9 @@
 > 5 (roadmap) i din stramme #the-roadbook-stemme, fordi de bærer forpligtelser. Resten i din løsere
 > #general-stemme. Stavning korrekt overalt. Ingen em-dash. Ingen løfter ud over det besluttede.
 >
+> **VALUTA-REGEL (ejer 21/8):** engelsk tekst om rigtige penge skriver **euro**, aldrig kroner.
+> Spillets egen valuta er fortsat CZ$.
+>
 > **VERIFICERET MOD LIVE-DB 21/8:** 233 konti · 216 menneskehold · **80 aktive sidste 7 dage** · 134 sidste 30 dage · 67 Discord-medlemmer.
 >
 > **VERIFICERET MOD KODEN (ting der ALLEREDE findes, og som udkastene fejlagtigt bad om):**
@@ -45,10 +48,8 @@
 
 > **RETTET:** tallet er nu det live-målte (233, ikke 232), og påstanden "there is no growth plan,
 > I have never made one" er fjernet. Den er faktuelt forkert: du har attribution-, growth-,
-> waitlist- og retention-sider i admin. Det der ER sandt, og som står nu, er at du aldrig har
-> brugt penge på annoncer. Verificeret: der findes INTET referral-/invite-system i koden.
-> **IKKE verificeret af mig, tjek selv:** "0 kroner ever spent on advertising". Det er din egen
-> oplysning, jeg kan ikke se den nogen steder. Slet sætningen hvis den ikke holder.
+> waitlist- og retention-sider i admin. Verificeret: der findes INTET referral-/invite-system i koden.
+> **RETTET 2. gang (ejer 21/8):** annonce-forbruget er ikke nul. ~1.000 DKK, omregnet til ~130 EUR.
 > **NB om tallet 80:** det er `users.last_seen` inden for 7 dage, altså sidste login, ikke bevist
 > gameplay. Derfor står der "been in the game", ikke "played".
 
@@ -56,7 +57,7 @@
 
 Okay, honest question, and I mean it completely literally 😄 If you had my keyboard for a week, what would you actually do to get more managers in here?
 
-Where I am right now: 233 accounts, 80 of you have been in the game in the last week, 67 people in this Discord, and 0 kroner ever spent on advertising. Everyone who is here found us through word of mouth, or a link somebody dropped somewhere. That is the entire acquisition story.
+Where I am right now: 233 accounts, 80 of you have been in the game in the last week, 67 people in this Discord, and roughly 130 euro ever spent on advertising. Everyone who is here found us through word of mouth, or a link somebody dropped somewhere. That is the entire acquisition story.
 
 So I would rather ask the people who already chose to stay than sit here guessing ✌️
 
