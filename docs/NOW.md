@@ -10,7 +10,7 @@
 
 > **📅 Cutover SØNDAG AFTEN 19:30-22:30** (drejebog rev. 21/8): snapshot → race-day-flip (pre-flip-gate: remeasureGate3459) → D1-komprimering → løn-genberegning (dry-run ×2,21) → mandat-backfill (EFTER sæsonskiftet) → flag-flip #4007+#3449-c. **Generalprøve LØRDAG** + restore-drill dispatch + mandat-apply m. ejer-nøgle. v4-gate MANDAG aften (head-to-head mod virkeligheds-ankre + film) → evt. LIVE tir 25/8, v3-fallback ved rødt (addendum 8c).
 
-> **👤 Ejer-klik:** S3-kalender låses (løfte!) · post #patch-notes-catchup + trin7-roadbook · svar spillerne (udkast klar) · /pro: moms-tjek → CHECKOUT_PAUSED-flip + Resend-nøgle (#2853) · JeppeK-navne (#4039) · #3486 VERCEL_TOKEN.
+> **👤 Ejer-klik:** S3-kalender låses (løfte!) · post #patch-notes-catchup + trin7-roadbook · svar spillerne + **13 community-tråde klar m. postplan** ([discord/2026-08-21-community-traade-en.md](discord/2026-08-21-community-traade-en.md); taktik-tråden KUN hvis v4 flippes) · /pro: moms-tjek → CHECKOUT_PAUSED-flip + Resend (#2853), men **#4074 valuta-mismatch blokerer flippet** · JeppeK-navne (#4039) · #3486 VERCEL_TOKEN.
 
 > **📌 Opfølgninger:** kalibrerings-session efter cutover: #3719/#3720/#3987/#3732/#2650 + D1-løn-sats + #3966-bånd + gradvis aldersnedgang · W8 bundt 2 · #4001 første søndag · miljø-audit + #691 uge 35 · #3952/#3982 visuals · #4037 luk hvis badget · `ceilingBandInversion.test.js` rød lokalt (CI grøn) · #4073 skip-feedback (lav).
 
