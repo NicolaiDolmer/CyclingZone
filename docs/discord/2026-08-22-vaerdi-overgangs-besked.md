@@ -30,6 +30,8 @@ Three things to hold on to:
 - **Every affected team gets a notification**, and the adjustment is logged per rider.
 - **This is a one-time correction, not a new habit.** After it runs, values update only on Sundays, gradually, with weekly limits — and keep moving toward what you actually pay.
 
+One more step follows after the season change: values move onto the corrected rider types from the type rework, as announced earlier. That step gets its own update before it runs.
+
 The direction is unchanged: real actions, real consequences, values anchored in what the market really pays.
 
 ---
@@ -51,6 +53,8 @@ Tre ting at holde fast i:
 - **Ingen lønændringer af dette.** Lønnen styres af sit eget system fra søndag, som beskrevet i løn-opslaget tidligere på ugen.
 - **Alle berørte hold får en notifikation**, og justeringen logges pr. rytter.
 - **Det er en engangs-korrektion, ikke en ny vane.** Efter den kører, opdateres værdier kun om søndagen, gradvist og med ugentlige lofter — og bevæger sig fortsat mod det I faktisk betaler.
+
+Ét skridt mere følger efter sæsonskiftet: værdierne flytter over på de rettede ryttertyper fra type-omlægningen, som tidligere annonceret. Det skridt får sin egen opdatering før det kører.
 
 Retningen er uændret: rigtige handlinger, rigtige konsekvenser, værdier forankret i det markedet faktisk betaler.
 
