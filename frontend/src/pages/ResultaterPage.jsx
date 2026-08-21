@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -173,18 +173,11 @@ export default function ResultaterPage() {
   // #2849 bølge 3 — wrapper med try/catch/finally, så en fejlet query giver
   // en kanonisk fejl-tilstand med retry i stedet for en uendelig spinner
   // (samme mønster som StandingsPage/#2175).
-  async function loadAll() {
-    setError(null);
-    try {
-      await loadAllInner();
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadAllInner() {
+  // #4068: loadAllInner memoized (useCallback) med de tre url-drevne filtre som
+  // deps — samme værdier mount-effekten nedenfor allerede lytter på, så
+  // memoiseringen hverken ændrer kald-hyppigheden eller genindfører et
+  // eslint-disable. loadAll (wrapperen) er stabil så snart loadAllInner er det.
+  const loadAllInner = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
 
     // #3197 — sæson-listen, division/pulje-referencedata og holdets egen pulje er
@@ -362,13 +355,24 @@ export default function ResultaterPage() {
     } else {
       setTopRiders([]);
     }
-  }
+  }, [seasonParam, divisionParam, poolParam]);
+
+  const loadAll = useCallback(async () => {
+    setError(null);
+    try {
+      await loadAllInner();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadAllInner]);
 
   // #3197: sæson/division/pulje er nu del af forespørgslen (ikke kun tab) — et
   // ændret filter skal genindlæse data. tab udelades bevidst: Arkiv/Point ejer
   // deres egen data-hentning (RaceArchiveTable/RacePointsPage), et fane-skift
   // alene skal ikke re-fetche denne sides "Seneste"-forespørgsel.
-  useEffect(() => { loadAll(); }, [seasonParam, divisionParam, poolParam]);
+  useEffect(() => { loadAll(); }, [loadAll]);
   useRealtimeRefetch("resultater-live", REALTIME_TABLES, loadAll);
 
   if (loading) return (

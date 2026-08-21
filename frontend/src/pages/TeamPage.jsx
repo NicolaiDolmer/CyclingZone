@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
@@ -997,7 +997,6 @@ export function TeamPage() {
   // realtime-callbacket kan filtrere uden at skulle re-subscribe ved hver rytter-ændring.
   const ownRiderIdsRef = useRef(new Set());
 
-  useEffect(() => { loadAll(); loadDdStatus(); }, []);
   useEffect(() => {
     ownRiderIdsRef.current = new Set(riders.filter(r => !r._isIncoming).map(r => r.id));
   }, [riders]);
@@ -1085,9 +1084,11 @@ export function TeamPage() {
     }
   }
 
-  // #778: action-modal'en skal vide om Deadline Day er aktiv for at kunne
+  // #778/#4068: action-modal'en skal vide om Deadline Day er aktiv for at kunne
   // tilbyde flash-auktion (30 min) — samme status-endpoint som RiderStatsPage.
-  async function loadDdStatus() {
+  // Memoized (tomme deps, kun stabile setters) så mount-effekten nedenfor kan
+  // liste den korrekt.
+  const loadDdStatus = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deadline-day/status`, {
@@ -1098,13 +1099,13 @@ export function TeamPage() {
         setDdActive(data.active === true);
       }
     } catch { /* non-critical: flash-valget falder bare tilbage til skjult */ }
-  }
+  }, []);
 
-  // #2183: henter aktive/forlængede auktioner på de rytter-id'er der lige er
-  // hentet i loadAll() — kaldes med et eksplicit id-array (ikke `riders`-state)
+  // #2183/#4068: henter aktive/forlængede auktioner på de rytter-id'er der lige
+  // er hentet i loadAll() — kaldes med et eksplicit id-array (ikke `riders`-state)
   // for at undgå at ramme forrige render's trup. Non-critical: fejl efterlader
   // bare ownAuctions uændret/tom → badget forsvinder i stedet for at crashe siden.
-  async function loadOwnAuctions(riderIds) {
+  const loadOwnAuctions = useCallback(async (riderIds) => {
     if (!riderIds.length) { setOwnAuctions({}); return; }
     try {
       const { data, error } = await supabase
@@ -1117,14 +1118,14 @@ export function TeamPage() {
     } catch {
       // non-critical — badget falder bare væk
     }
-  }
+  }, []);
 
-  // #3810: aktive transferliste-annoncer for holdets EGNE ryttere ("open" eller
-  // "negotiating" — samme aktiv-definition som POST /api/transfers' #247-tjek
-  // for "allerede listet"). transfer_listings er offentligt læsbar (RLS "Public
-  // read", database/schema.sql) — samme direkte klient-forespørgsel som
+  // #3810/#4068: aktive transferliste-annoncer for holdets EGNE ryttere ("open"
+  // eller "negotiating" — samme aktiv-definition som POST /api/transfers' #247-
+  // tjek for "allerede listet"). transfer_listings er offentligt læsbar (RLS
+  // "Public read", database/schema.sql) — samme direkte klient-forespørgsel som
   // loadOwnAuctions ovenfor, ingen ny endpoint nødvendig.
-  async function loadOwnTransferListings(riderIds) {
+  const loadOwnTransferListings = useCallback(async (riderIds) => {
     if (!riderIds.length) { setOwnTransferListings({}); return; }
     try {
       const { data, error } = await supabase
@@ -1137,9 +1138,12 @@ export function TeamPage() {
     } catch {
       // non-critical — badget falder bare væk
     }
-  }
+  }, []);
 
-  async function loadAll() {
+  // #4068: loadAll memoized — deps er de to loadere den kalder (selv memoized
+  // ovenfor med tomme deps, altså i praksis stabile), så identiteten er stabil
+  // på tværs af renders og mount-effekten nedenfor kan liste den korrekt.
+  const loadAll = useCallback(async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
@@ -1178,7 +1182,9 @@ export function TeamPage() {
     loadOwnAuctions(currentRiders.map(r => r.id));
     loadOwnTransferListings(currentRiders.map(r => r.id));
     setLoading(false);
-  }
+  }, [loadOwnAuctions, loadOwnTransferListings]);
+
+  useEffect(() => { loadAll(); loadDdStatus(); }, [loadAll, loadDdStatus]);
 
   const currentRiders = riders.filter(r => !r._isIncoming);
   const totalSalary = currentRiders.reduce((s, r) => s + (r.salary || 0), 0);

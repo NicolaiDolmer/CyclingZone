@@ -22,8 +22,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "FinancePage.jsx"), "utf8");
 
 // Isolér loadAll-funktionskroppen så vi kan assert'e PÅ den (ikke på resten af filen).
+// #4068: loadAll blev memoized (useCallback) for at rette react-hooks/exhaustive-deps
+// — matcher derfor både den klassiske `async function name(` form og
+// useCallback-formen `const name = useCallback(async () => {`.
 function extractFn(name) {
-  const start = source.indexOf(`async function ${name}(`);
+  let start = source.indexOf(`async function ${name}(`);
+  if (start === -1) start = source.indexOf(`const ${name} = useCallback(`);
   assert.ok(start !== -1, `kunne ikke finde ${name} i FinancePage.jsx`);
   // Find den matchende afsluttende krølleparentes via dybde-tælling.
   const bodyStart = source.indexOf("{", start);

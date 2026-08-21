@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -115,20 +115,9 @@ export default function StandingsPage() {
   const [selected, setSelected] = useState([]); // op til 2 team_id'er
   const [compareTeams, setCompareTeams] = useState(null); // { a, b } når drawer åben
 
-  // #2175: loadAll pakket i try/catch/finally → en fejlet query viser fejl-UI,
-  // ikke en uendelig spinner. Både useEffect og realtime-refetch kalder wrapperen.
-  async function loadAll() {
-    setError(null);
-    try {
-      await loadAllInner();
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadAllInner() {
+  // #4068: loadAllInner refererer ingen reaktive værdier (kun stabile setters)
+  // — memoized med tomme deps så identiteten er stabil på tværs af renders.
+  const loadAllInner = useCallback(async () => {
     // #2444 · teams- og pools-queryen afhænger hverken af user eller activeSeason
     // (statisk reference-/holddata) — de kørte tidligere sidst i en 4-forespørgsels-
     // Promise.all, EFTER to sekventielle awaits (user → mine → season). Startet
@@ -260,9 +249,23 @@ export default function StandingsPage() {
       });
       setRacePoints(prog);
     }
-  }
+  }, []);
 
-  useEffect(() => { loadAll(); }, []);
+  // #2175/#4068: loadAll pakket i try/catch/finally → en fejlet query viser
+  // fejl-UI, ikke en uendelig spinner. Både useEffect og realtime-refetch
+  // kalder wrapperen. Memoized (stabil så snart loadAllInner er det).
+  const loadAll = useCallback(async () => {
+    setError(null);
+    try {
+      await loadAllInner();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadAllInner]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
   useRealtimeRefetch("standings-live", REALTIME_TABLES, loadAll);
 
   // Lazy squad-styrke-fetch — kun når Linse B er aktiv, og kun én gang (#1609 §3.3).
