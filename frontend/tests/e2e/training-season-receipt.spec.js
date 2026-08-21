@@ -20,8 +20,6 @@ import {
 // capped indeholder kun ability-NØGLER (aldrig cap-TAL — server-hidden, #1162);
 // testen ville fange det med det samme hvis et loft-tal begyndte at lække ud.
 
-const SEASON_START = "2026-05-01"; // samme dato som preview-seedets aktive sæson
-
 const BASE_TRAINING_ME = {
   enabled: true,
   betaTester: true,

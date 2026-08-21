@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -211,9 +211,15 @@ export default function FinancePage() {
     dismissHint();
   }
 
-  useEffect(() => { loadAll(); }, []);
+  // #4068: loadAll er memoized (useCallback) så mount-effekten kan liste den
+  // korrekt i sit dependency-array uden at ændre kald-hyppigheden. ?season=
+  // læses via en ref (opdateret hver render) i stedet for direkte fra
+  // `searchParams`, så loadAll's identitet IKKE ændrer sig — og dermed ikke
+  // re-trigger mount-effekten — hver gang URL'en ændrer sig (fx fane-skift).
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => { searchParamsRef.current = searchParams; });
 
-  async function loadAll() {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
     try {
@@ -254,7 +260,7 @@ export default function FinancePage() {
     // Default Historik-sæson: behold eksisterende valg (loadAll kaldes igen efter
     // lån-handlinger), ellers ?season= hvis gyldig, ellers ALL_SEASONS (#2306:
     // "Alle" er default så transaktionslisten viser alt uden en ekstra klik).
-    const seasonParam = searchParams.get("season");
+    const seasonParam = searchParamsRef.current.get("season");
     setHistorySeasonId((prev) =>
       (prev && prev !== ALL_SEASONS ? prev : null)
         || (seasonParam && allSeasons.some((s) => s.id === seasonParam) ? seasonParam : null)
@@ -310,7 +316,9 @@ export default function FinancePage() {
       setSeasonSwitchLoading(false);
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   // #2306: transaktionslistens fetch er adskilt fra loadAll så sæson-/kategori-
   // filter + "vis flere"-pagination kan genkøre uden at re-hente hele resten af
