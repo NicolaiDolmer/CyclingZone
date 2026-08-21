@@ -26,16 +26,24 @@
 export const TYPE_DAMPENING_OFFSET_K = 100;
 export const TYPE_DAMPENING_ENABLED = false;
 
-// Normaliseringen fra det EJER-GODKENDTE scenarie (scorecard 20/8, kolonne
-// "normalisering ×1,230"): rå k=100-regularisering sænker populations-summen
-// −18,7 %, men doktrinen bag godkendelsen er at dæmpningen flytter
-// FORDELINGEN, ikke NIVEAUET (typeDampeningScenarios4000.mjs's
-// normalizationFactor). Niveauet ejes af #3449-niveaukorrektionen (c) — uden
-// denne konstant ville flippet trække niveauet ~18,7 % UNDER det c netop har
-// kalibreret mod markedet. V4 er log-additiv (predictProductionLn: a + b·O +
-// c·O² + offset), så én global værdi-skalar = ln(faktoren) lagt til hvert
-// offset. Fundet + rettet 21/8 (session-audit på #3750/#4000).
-export const TYPE_DAMPENING_NORMALIZATION = 1.230;
+// Sum-neutraliserings-faktoren. Doktrinen bag ejer-godkendelsen 20/8 er at
+// dæmpningen flytter FORDELINGEN mellem typer, ikke NIVEAUET
+// (typeDampeningScenarios4000.mjs's normalizationFactor) — niveauet ejes af
+// #3449-niveaukorrektionen (c). Uden faktoren ville flippet trække niveauet
+// markant UNDER det c netop har kalibreret mod markedet. V4 er log-additiv
+// (predictProductionLn: a + b·O + c·O² + offset), så én global værdi-skalar =
+// ln(faktoren) lagt til hvert offset.
+//
+// VÆRDIEN er målt 21/8 på KORREKTIONS-populationen (6.342 ejede+AI ryttere,
+// ekskl. bank/test/frosset/retired/academy — samme population som
+// marketValueLevelCorrectionApply): Σ i dag 300.670.817 / Σ rå-dæmpet
+// 261.801.561 = 1,1485. Scorecardets ×1,230 (20/8) var målt på den FULDE
+// 8.945-population inkl. bank/akademi og er derfor +7,1 % for høj på den
+// population korrektionen faktisk gælder. Genmål med
+// scripts/buildValueTransitionPreview.js --dry-run (Σ dæmpet skal ≈ Σ i dag)
+// hvis flippet udskydes mere end få dage. Fundet + rettet 21/8
+// (session-audit på #3750/#4000).
+export const TYPE_DAMPENING_NORMALIZATION = 1.1485;
 
 /**
  * n-vægtet regularisering af ÉN offset-værdi mod 0 (midten).

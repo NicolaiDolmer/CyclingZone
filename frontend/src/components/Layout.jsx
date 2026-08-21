@@ -115,6 +115,7 @@ function buildAdminGroup(t) {
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/growth", label: t("nav.item.growth") },
       { to: "/admin/fairplay", label: t("nav.item.fairplay") },
+      { to: "/admin/value-transition", label: t("nav.item.valueTransition") },
     ],
   };
 }
