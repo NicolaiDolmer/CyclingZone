@@ -108,9 +108,9 @@ for (const vp of VIEWPORTS) {
       status: 400,
       contentType: "application/json",
       body: JSON.stringify({
-        error: "Auctions can't end after the transfer window closes (23/08 22:00)",
-        errorCode: "auction_end_crosses_window_close",
-        errorParams: { closesAt: "23/08 22:00" },
+        error: "Auctions can't end after the season change (23/08 18:00)",
+        errorCode: "auction_end_crosses_season_transition",
+        errorParams: { boundaryAt: "23/08 18:00" },
       }),
     });
   });
@@ -125,7 +125,7 @@ for (const vp of VIEWPORTS) {
   await page.getByRole("button", { name: /^(Start auction|Start auktion)$/ }).first().waitFor();
   await page.getByRole("button", { name: /^(Start auction|Start auktion)$/ }).first().click();
 
-  await page.getByText(/transfer window closes|transfervinduet lukker/i).first().waitFor();
+  await page.getByText(/season change|sæsonskiftet/i).first().waitFor();
   await page.waitForTimeout(150);
   await page.screenshot({ path: resolve(OUT, `4004-season-boundary-guard-error-${vp.name}.png`), fullPage: false });
 
