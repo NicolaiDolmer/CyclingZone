@@ -107,21 +107,132 @@ Låser: løbsdags-akse · grå+uklikbare celler frem for advarsler bagefter · s
 **F4** dybde mod motor v4: #2354 + peak-cockpit · #3459 · #2650 · #3763 · #3543 · #3413 · #2478 · plan mod virkelighed
 **F5** senere: #3719 · #3987 · #2492 · #1106 · #1110 · #1154. Live-taktik er FROSSET indtil live-reveal.
 
-## Åbne spørgsmål der venter på ejeren
+## Spørgsmål du SKAL stille ejeren i denne session
 
-De otte strukturelle og seks gameplay-spørgsmål står i artifacten med mine anbefalinger.
+Ejeren har eksplicit bedt om at få alle spørgsmål her frem for i forarbejds-sessionen. **Stil dem ét ad gangen** via AskUserQuestion, med nøgletal og kontekst *inde i selve spørgsmålet* (ejeren ser ikke altid prosaen omkring kortet), og med din egen anbefaling som første valgmulighed. Gå ikke videre til byg før gruppe A og B er besvaret.
 
-**Afklaret 21/8 (ejer):** `race_team_orders` bliver eneste sandhed for rolle + effort pr. etape. `race_stage_roles` migreres ind og udfases efter v4-flippet — ingen dobbeltskrivning. Worker 9 i F3-natbølgen leverer migrations-SQL + post-verify; DROP er ejer-gated. Taktik-kortet i Z4 skriver derfor kun til `race_team_orders`.
+Rækkefølgen nedenfor er den anbefalede: A afgør hvad der bygges, B afgør hvad spillet er, C afgør hvor meget maskinen må, D afgør hvordan vi ved om det lykkedes.
 
-Det der stadig afgør scope:
+**Afklaret 21/8, spørg ikke igen:** IA-model A (zoom-toggle i `?tab=selection`) · `race_team_orders` som eneste ordre-sandhed, `race_stage_roles` migreres og udfases · T1-T4 · styrke straffes aldrig · 1 rytter = 1 løb pr. løbsdag.
 
-> **"Ændre taktikker på løb der er i gang" — ordrer for kommende etaper (allerede shippet i dag, men usynligt) eller ordrer midt i en kørende etape (låst af T2, FROSSET i masterplanen)?**
+### Gruppe A — struktur (afgør hvad der overhovedet bygges)
+
+**A1. "Ændre taktikker på løb der er i gang" — hvad menes der?**
+Ordrer for *kommende* etaper i et kørende etapeløb virker allerede i dag (`stageTactics.help`: "Changes apply to upcoming stages only", `raceStageRolesApi.js:6-12` tillader det bevidst mens løbet er live) — det er bare usynligt fra Planlægning. Ordrer *midt i* en kørende etape er låst af T2 og står som FROSSET i masterplanen indtil live-reveal.
+*Anbefaling: kommende etaper, men gjort synligt i centret. Hvis ejeren mener midt-i-etape, er det en ændring af v4-planen og skal behandles som sådan.*
+
+**A2. Bliver løbssiden en ren historie-side?**
+Al planlægning flytter ind i centret; `/races/:id` beholder ruteprofil, resultater og fortælling. Løser #2794 strukturelt.
+*Anbefaling: ja. Ellers har vi permanent to steder at planlægge — rod-årsagen til halvdelen af auditens fund.*
+
+**A3. Én mål-løb-model — må vi migrere?**
+`team_race_strategy.target_race_ids` (hold-scopet, ingen `season_id`, 13 hold bruger den) og `rider_peak_plans.target_race_id` (rytter-scopet, sæson-scopet, 61 hold bruger den) smeltes sammen. Kræver migration og rører data hold allerede har lagt.
+*Anbefaling: ja, med `rider_peak_plans` som det bærende — det er den model der faktisk bruges og allerede er sæson-scopet. Blokerer #3087 indtil det er gjort.*
+
+**A4. Skal "Stående ordrer" være en flade man opsøger, eller kun noget der opstår af konkrete valg?**
+18 % har rørt Strategi-fanen; 6 % har markeret et mål-løb — og fladen styrer auto-udtagelsen for alle.
+*Anbefaling: begge, men fladen bliver kvitteringen ("her er de 6 regler du har lavet"), ikke indgangen. Reglerne fødes af "gør det til en regel" på konkrete valg.*
+
+**A5. Hvad er designgrænsen for Z1?**
+D1 har 18 løb; trupperne vokser. 31 ryttere × 18 løb = 558 celler. Testeren mener sortering og grå-udtoning gør tætheden til et ikke-problem — det er en påstand, ikke en måling.
+*Anbefaling: sæt tallet nu — forslag 40 ryttere × 30 løb — og test det på mobil før byg.*
+
+**A6. Kalenderen: datolineal i Z1, egen fane, eller begge?**
+Testeren: kalenderdage er kun til "when to plan in real time". Kalenderfanen har i dag nul URL-tilstand og nul viden om trup eller binding.
+*Anbefaling: datolineal i Z1 plus behold månedsgitteret, men omdefinér det til "hvornår låser hvad" frem for en anden planlægningsflade.*
+
+**A7. Ny spec eller fase 2 af race-hub-master-SSOT'en fra 23/6?**
+Den spec definerer allerede Lag 0-3 og meget af dette.
+*Anbefaling: fase 2 af den eksisterende. Vi har brudt reglen om at læse eksisterende planer én gang for meget.*
+
+**A8. Skal Planning Center være standard-landingssiden efter login?**
+Dashboardet har 6.784 sessioner/30 dage; hele planlægningen har 1.266. Men planlægning er kerneloopet, og #3513/#4070 omdesigner dashboardet parallelt.
+*Anbefaling: nej — men centret skal have en plads i dashboardets faste rygrad med "hvad kræver dig før næste lås".*
+
+**A9. Hedder fladen stadig "Planning" over for spilleren?**
+"Planning Center" er vores interne navn. I dag: EN "Planning", DA "Planlægning".
+*Anbefaling: behold. Nyt navn koster muskelhukommelse uden at give noget.*
+
+### Gruppe B — gameplay (afgør hvad spillet er)
+
+**B1. Skal der være et loft over en rytters løbsdage pr. sæson?**
+#1146 godkendte "~60 løbsdage som øvre arbejdsbyrde" ud af D1's 140. I dag findes intet loft — kun en tæller ingen validerer mod.
+*Anbefaling: ingen hård grænse. Lad træthed være prisen og vis budgettet, så valget bliver synligt.*
+
+**B2. Et monument binder rytteren hele kalenderdagen — er det med vilje?**
+Fire løbsdage, ikke én. Konsekvens af sentinel-båndet (`MONUMENT_GAMEDAY_BASE`) og `deriveMonumentBindingWindow`. Usynligt i dag.
+*Anbefaling: behold, det er sportsligt rigtigt — men skriv det på fladen.*
+
+**B3. Skal endagsløb have hele taktik-kortet eller en reduceret udgave?**
+#3049 (thelamba). I dag har endagsløb ingen taktikflade overhovedet.
+*Anbefaling: hele kortet. En reduceret udgave er en ny asymmetri at forklare.*
+
+**B4. Skal Z1 vise modstandernes udtagelser?**
+Data findes i browse-scope. Ville gøre planlægning til et spil mod nogen frem for mod en kalender.
+*Anbefaling: ja, men først efter fase 3, og kun for løb der er låst.*
+
+**B5. Hvad skal "plan mod virkelighed" vise efter et løb?**
+Rolle mod udført rolle, forventet mod faktisk placering, eller noget tredje?
+*Anbefaling: vent til v4's why-rapport er live og byg ovenpå den frem for at opfinde et parallelt sprog.*
+
+**B6. Hvor meget må assistenten vise af sin begrundelse uden at bryde fog-gaten (#1791)?**
+Regel 3 i strukturen siger at enhver automatisk beslutning skal pege på reglen der forårsagede den. Fog-gaten forbyder at eksponere rå komponenter og vægte.
+*Anbefaling: regler og rangordner må vises ("din A-kæde valgte ham"); tal fra motoren må ikke.*
+
+**B7. Skal Z1 kunne vise næste sæson mens den planlægges?**
+#1106 (multi-sæson-visning). Planneren har allerede en sæsonvælger og en "næste sæson"-nudge.
+*Anbefaling: ja, men read-only indtil kalenderen er genereret.*
+
+**B8. Er der noget i planlægningen du selv synes er decideret forkert i dag — som ikke står i noget issue?**
+*Hvorfor: auditen finder det der er skrevet ned. Den finder ikke det ejeren har irriteret sig over uden at oprette et issue.*
+
+### Gruppe C — assistent og automatik (afgør hvor meget maskinen må)
+
+**C1. Må assistenten handle autonomt, eller kun foreslå?**
+I dag top-fylder `raceEntryGenerator` automatisk ved race-tid, og der er tre forskellige auto-fyld-indgange med tre scopes.
+*Anbefaling: behold auto-fyld ved race-tid (det beskytter passive spillere), men gør det til én indgang med ét scope-valg og en synlig kvittering.*
+
+**C2. Hvad sker der når en løbsdag passerer uden udtagelse?**
+I dag fyldes truppen automatisk. #3374 ønsker et "undlad udtagelse"-flag pr. rytter.
+*Anbefaling: behold auto-fyld som default, tilføj både per-rytter-flag (#3374) og et bevidst "stå over dette løb" pr. løb.*
+
+**C3. Skal "Ryd alt for sæsonen" overleve?**
+Findes i dag med preview-dialog. Destruktiv og sjældent brugt.
+*Anbefaling: behold, men flyt den til stående ordrer — det er en nulstilling af planen, ikke en daglig handling.*
+
+**C4. Skal andre divisioners startlister blive i centret?**
+`DivisionStartLists` bor i dag bag scope-skift i boardet og har sin egen pulje-parameter der taber dagen man stod på.
+*Anbefaling: flyt til Resultater. Det er en kigge-flade, ikke en planlægningsflade — og scope-skiftet er en af auditens ti navigations-fælder.*
+
+**C5. Onboarding-touren er forankret i boardet (tre trin: vælg løb, vælg ryttere, taktik) — hvor hører den til i den nye struktur?**
+*Anbefaling: flyt til Z2, og tilføj et fjerde trin der viser Z1, så sæsonoverblikket bliver opdaget.*
+
+**C6. Hvilke planlægnings-hændelser fortjener en indbakke-besked?**
+I dag: varsel når et løb starter inden for 36 timer uden udtagelse. #2223 vil omorganisere indbakken.
+*Anbefaling: hold det ved det ene varsel plus clash-opdagelse. Centrets attention-bar er stedet for resten.*
+
+### Gruppe D — levering og måling
+
+**D1. Hvad er minimums-mobiloplevelsen?**
+Kan man planlægge en hel sæson på telefon, eller er mobil "se og rette småting"? Træk-og-slip virker ikke på touch i dag, og #3425 (planlægning i mobilbundbaren) venter på en beslutning.
+*Anbefaling: fuld planlægning skal kunne lade sig gøre på mobil, men Z1 får en rytter-først-liste i stedet for et gitter.*
+
+**D2. Hvad er scorecardet for om centret lykkedes?**
+Baseline målt 21/8: etape-taktik 25 %, formplan 29 %, stående ordrer 18 %, mål-løb 6 %.
+*Anbefaling: mål på (a) andel hold der rører taktik mindst én gang pr. sæson, (b) andel udtagelser der er manuelle frem for auto-fyldte, (c) andel hold med mindst én stående ordre. Sæt tallene FØR byg.*
+
+**D3. Skal faserne bygges i rækkefølge, eller må F1 og F2 køre parallelt i natbølger?**
+*Anbefaling: F0 alene efter cutover, derefter F1 og F2 parallelt — de rører forskellige flader.*
+
+**D4. Hvornår må der bygges?**
+Cutover er søndag aften, v4-gate mandag, S3 starter tirsdag.
+*Anbefaling: intet planlægnings-byg før v4-flippet er afgjort. Spec'en kan godkendes i mellemtiden.*
 
 ## Sådan skal sessionen køre
 
 1. **Læs de otte dokumenter først.** Verificér mod kode og prod før du påstår noget. Ingen evidens → sig det eksplicit.
 2. **Kør workflows** til at parallelisere: én til at score strukturforslaget mod alternativer med en dommerpanel, én til at kortlægge migrations- og datakonsekvenser, én til at gennemgå hver fase for skjulte afhængigheder.
-3. **Stil spørgsmål løbende, ét ad gangen**, med kontekst og nøgletal *inde i* selve spørgsmålet og din egen anbefaling først.
+3. **Stil de 27 spørgsmål ovenfor** — ét ad gangen, med kontekst og nøgletal *inde i* selve spørgsmålet og din egen anbefaling først. Ejeren har eksplicit bedt om at få dem her frem for i forarbejds-sessionen, så de skal faktisk stilles, ikke opsummeres. Gruppe A og B skal være besvaret før spec'en skrives færdig; C og D kan afvikles undervejs. Opstår der nye spørgsmål af svarene — og det gør der — så stil dem også.
 4. **Vis visuelt undervejs** — mockups før beslutninger, ikke bagefter. Gated flader skal bygges som widget hvis jeg skal kunne se dem.
 5. **Leverancen** er en ejer-godkendt spec skrevet som næste fase af race-hub-master-SSOT'en, med: låst IA, datamodel-beslutninger (mål-løb, ordrer, løbsdags-begreberne), fase-plan med issue-mapping, og et scorecard der kan afgøre om hver fase er lykkedes.
 6. **Ingen kode før spec'en er godkendt.** Cutover er søndag aften og v4-gaten er mandag — planlægnings-arbejde må ikke røre de spor.
