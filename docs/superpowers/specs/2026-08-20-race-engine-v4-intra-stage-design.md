@@ -193,6 +193,15 @@ Sweep af alle tidligere race-engine-planer fandt fire modne planer der foldes in
 
 Konsekvens for §5: gap-realisme-båndene fra #2415 (GT-vindermargin 1-8 min, bjerg-top-10 ≤ 3-4 min, ITT 1-3 min/40 km, flad = felt-finish) indgår i scorecardet med kilder. Konsekvens for §7: F2 omfatter engine-pakkens TS-skelet + W'-kernen; F4 omfatter dashboardet.
 
+## 8c. Addendum: cutover revideret (ejer, 21/8)
+
+| # | Spørgsmål | Beslutning |
+|---|---|---|
+| 25 | Cutover-timing | **v4 sigter mod LIVE fra S3's første løbsdag (tir 25/8)** i stedet for flip midt i S3. Erstatter beslutning 15's timing; gaten består i komprimeret form: head-to-head-harness (v4 vs v3, hele S3-kalenderen offline, samme seeds/startlister, ægte population) scoret mod §5's virkeligheds-ankre + håndplukkede løbsfilm set af ejer. Grønt scorecard + ejer-go mandag aften → flip. **Rødt/gult → v3 kører tirsdag (fallback), v4 flipper første hviledag når grøn.** Kill-switch består. Ejerens rationale: skyggekørsel sammenligner mod v3, men v3 er ikke målestokken — virkeligheden er; motoren skal være bedre end den nuværende, ikke bare matche den. |
+| 26 | #3965-dæmpning på v3 | Fravalgt — ingen balance-lapning af udbruds-bonus på nuværende motor; kræfterne går til v4 (jf. 25). |
+
+Byggeplan: F2-kerne 21/8 → F3-mekanikbølge (M5-M14) 22/8 → head-to-head 23-24/8 → ejer-gate 24/8 aften.
+
 ## 9. Koordinering og afgrænsning
 
 - **Rører ikke:** cutover-drejebogen 23/8, merge-toget 20/8, løn/økonomi-sporet (#4011/#4018), træningssporet (#3709). Skygge-mode-merge først efter cutover.
