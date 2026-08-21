@@ -57,6 +57,16 @@ function makeSupabase(cfg = {}) {
       if (table === "auctions") {
         return { insert(row) { rec.auctionInserts.push(row); return Promise.resolve({ error: null }); } };
       }
+      // #4004: createGraduateAuction's sæson-transitions-grænse-opslag
+      // (fetchSeasonTransitionBoundary) — cfg.appConfigRow/cfg.upcomingSeason
+      // styrer grænsen; default (begge undefined) = ingen grænse (uændret
+      // adfærd for alle eksisterende tests ovenfor).
+      if (table === "app_config") {
+        return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: cfg.appConfigRow ?? null, error: null }); } }; } }; } };
+      }
+      if (table === "seasons") {
+        return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: cfg.upcomingSeason ?? null, error: null }); } }; } }; } };
+      }
       throw new Error(`unexpected table ${table}`);
     },
   };
@@ -199,6 +209,42 @@ test("resolveGraduation sell: opretter senior-auktion (seller=hold, is_youth=fal
   assert.equal(rec.auctionInserts.length, 1);
   assert.equal(rec.auctionInserts[0].seller_team_id, "t1");
   assert.equal(rec.auctionInserts[0].is_youth, false);
+  assert.equal(rec.gradUpdates[0].status, "sold");
+});
+
+// #4004 (ejer-tillæg 21/8): den automatiserede FA-sti (createGraduateAuction)
+// springer oprettelsen over — INGEN fejl — når den beregnede sluttid ville
+// krydse sæson-transitionen. Grad-rækken forbliver 'pending', så et senere
+// kald (næste sweep-run) opretter auktionen naturligt.
+test("resolveGraduation sell: #4004 — springer auktionsoprettelse over når sluttid krydser sæson-transitionen; grad forbliver pending", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRow: PENDING_GRAD,
+    rider: RIDER,
+    upcomingSeason: { start_date: "2026-08-24" }, // grænse = 2026-08-23T18:00 dansk tid (CEST)
+  });
+  const now = new Date("2026-08-23T10:00:00Z"); // 12t-gulvet presser sluttid forbi grænsen
+  const res = await resolveGraduation(supabase, {
+    teamId: "t1", riderId: "r1", action: "sell", seasonNumber: 1,
+    now, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify(),
+  });
+  assert.equal(res.action, "sell_deferred_season_boundary");
+  assert.equal(rec.auctionInserts.length, 0, "ingen auktion oprettet");
+  assert.equal(rec.gradUpdates.length, 0, "grad-status IKKE flyttet — forbliver pending");
+});
+
+test("resolveGraduation sell: #4004 — opretter normalt når sluttid ligger FØR sæson-transitionen", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRow: PENDING_GRAD,
+    rider: RIDER,
+    upcomingSeason: { start_date: "2026-08-24" }, // grænse = 2026-08-23T18:00 dansk tid (CEST)
+  });
+  const now = new Date("2026-08-01T10:00:00Z"); // langt før grænsen
+  const res = await resolveGraduation(supabase, {
+    teamId: "t1", riderId: "r1", action: "sell", seasonNumber: 1,
+    now, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify(),
+  });
+  assert.equal(res.action, "sold");
+  assert.equal(rec.auctionInserts.length, 1);
   assert.equal(rec.gradUpdates[0].status, "sold");
 });
 

@@ -24,6 +24,10 @@ function makeYouthMarketSupabase({
   // FIFO-kø af resultater for auctions-select .maybeSingle() (findActiveAuctionForRider).
   // Default tom → pre-check finder ingen aktiv auktion (normal afvisning).
   activeAuctionReads = [],
+  // #4004: sæson-transitions-grænse-opslag (fetchSeasonTransitionBoundary) —
+  // begge undefined = ingen grænse (uændret adfærd for eksisterende tests).
+  appConfigRow = undefined,
+  upcomingSeason = undefined,
 } = {}) {
   const auctionInserts = [];
   let readIdx = 0;
@@ -73,6 +77,13 @@ function makeYouthMarketSupabase({
         };
       }
 
+      if (table === "app_config") {
+        return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: appConfigRow ?? null, error: null }); } }; } }; } };
+      }
+      if (table === "seasons") {
+        return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: upcomingSeason ?? null, error: null }); } }; } }; } };
+      }
+
       return {};
     },
     _auctionInserts: auctionInserts,
@@ -101,6 +112,36 @@ test("listRejectedAsYouthAuction: opretter is_youth-auktion uden sælger, lav st
   assert.equal(ins.starting_price, ins.current_price, "current = starting ved oprettelse");
   assert.ok(ins.calculated_end, "calculated_end sat");
 
+  assert.equal(auction.id, "youth-auction-1");
+});
+
+// #4004 (ejer-tillæg 21/8): den automatiserede FA-sti springer oprettelsen
+// over — INGEN fejl, returnerer null — når den beregnede sluttid ville krydse
+// sæson-transitionen. Kaldere (rejectAcademyCandidate, academyIntakeExpirySweep)
+// tolererer allerede en falsy auction.
+test("listRejectedAsYouthAuction: #4004 — springer oprettelse over (returnerer null) når sluttid krydser sæson-transitionen", async () => {
+  const supabase = makeYouthMarketSupabase({
+    upcomingSeason: { start_date: "2026-08-24" }, // grænse = 2026-08-23T18:00 dansk tid (CEST)
+  });
+  const auction = await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-08-23T10:00:00Z"), // 12t-gulvet presser sluttid forbi grænsen
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(auction, null);
+  assert.equal(supabase._auctionInserts.length, 0, "ingen auktion oprettet");
+});
+
+test("listRejectedAsYouthAuction: #4004 — opretter normalt når sluttid ligger FØR sæson-transitionen", async () => {
+  const supabase = makeYouthMarketSupabase({
+    upcomingSeason: { start_date: "2026-08-24" },
+  });
+  const auction = await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-08-01T10:00:00Z"), // langt før grænsen
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(supabase._auctionInserts.length, 1);
   assert.equal(auction.id, "youth-auction-1");
 });
 
