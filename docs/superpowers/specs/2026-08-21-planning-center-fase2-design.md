@@ -127,7 +127,7 @@ Plus gate FØR byg: Z1-tæthedstest på 375px (40×30-grænsen) skal bestås af 
 
 ## 7. Åbne beslutninger
 
-- **A6 — kalenderfanens rolle** (ejer spørger spillerne 21/8): 1 = deadline-radar (anbefalet; hi-fi: artifact "Kalender: foer og efter") · 2 = drop fanen, kun datolineal · 3 = behold uændret + URL-fix. Datolinealen i Z1 er låst uanset. Blokerer intet i P0; skal være afgjort før P1's kalender-arbejde.
+- ~~A6~~ **AFGJORT 21/8 (efter spillerfeedback):** kalender-fanen består UÆNDRET for nu; deadline-radaren er retningen på sigt (flyttet til P5-kandidat). **Z1 v0 bygges STRAKS** (ejer-go 21/8, før v4-gaten — eksplicit undtagelse fra D4): Season/Day-toggle på `?tab=selection`; Season-visning = datolineal + løbs-bænde fra ægte S3-kalender, guld-tint hvor holdet har udtagelse; klik på løbsdag → dags-boardet. Rytter×løb-gitter og linser kommer fortsat i P1 og vokser ind i samme visning. Mockup: artifact "Kalender: foer og efter", nederste artboard.
 - **Off-by-one-økonomien (3.3):** flytter penge — ejer-kald ved P0.
 - **#3425 mobil-bundbar:** A/B på Clarity-tal, tages i P1.
 
@@ -140,7 +140,7 @@ Plus gate FØR byg: Z1-tæthedstest på 375px (40×30-grænsen) skal bestås af 
 | A3 | Mål-løb-model | Én model; `rider_peak_plans` bærende; migration i P3 |
 | A4 | Stående ordrer | Kombination 1+3: kontekstuel fødsel + fuld oprettelse på skinnen; aldrig tomt skema |
 | A5 | Z1-grænse | 40 ryttere × 30 løb; mobil-test før byg; bulk-edit + rytter-rækker som krav |
-| A6 | Kalenderen | ÅBEN (spillerfeedback); datolineal i Z1 låst |
+| A6 | Kalenderen | Fanen består uændret nu; deadline-radar = senere (P5-kandidat); Z1 v0 (Season-visning m. datolineal) bygges straks |
 | A7 | Spec-form | Fase 2 af race-hub-SSOT'en (dette dokument) |
 | A8 | Landing | Dashboard består + "før næste lås"-blok |
 | A9 | Navn | "Planning"/"Planlægning" består |
