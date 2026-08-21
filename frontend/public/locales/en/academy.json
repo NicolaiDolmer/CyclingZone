@@ -75,9 +75,22 @@
     "insufficientBalance": "You cannot afford the signing fee.",
     "alreadyAssigned": "This rider has already joined an academy.",
     "squadFull": "Senior squad is full. Free a spot to promote, or sell or release instead.",
+    "riderOnAuction": "This rider is on an active auction and can't be released until it ends.",
+    "cannotAffordRelease": "You can't afford the buyout fee for this rider.",
+    "riderStateChanged": "This rider is no longer in your academy.",
     "generic": "Something went wrong. Please try again.",
     "loadTitle": "Could not load your academy",
     "loadBody": "The academy data did not come through. Reload the page, and let us know if it keeps happening."
+  },
+  "releaseModal": {
+    "title": "Release academy rider",
+    "question": "End this academy rider's contract:",
+    "feeLabel": "Buyout fee",
+    "balanceLabel": "Your balance",
+    "feeHint": "The buyout fee is half the salary left on the contract, same as for senior riders.",
+    "freeHint": "This rider is out of contract, so there's no buyout fee.",
+    "cannotAfford": "You can't afford the buyout fee.",
+    "confirm": "Release rider"
   },
   "pnl": {
     "heading": "Academy accounts",

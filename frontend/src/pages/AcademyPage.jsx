@@ -32,6 +32,7 @@ import NationCell from "../components/rider/NationCell.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
+import { AcademyReleaseConfirmModal } from "../components/AcademyReleaseConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
 import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable } from "../components/ui";
 import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
@@ -86,6 +87,7 @@ export default function AcademyPage() {
   const {
     enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider,
+    fetchReleaseQuote, releaseRider,
     pullIntake,
   } = useAcademy();
 
@@ -100,6 +102,12 @@ export default function AcademyPage() {
   // #932 S7: promote-bekræftelse (akademi → senior). Konsekvens-bevidst: viser
   // senior-cap-effekt + projiceret senior-løn. { riderId, riderName, newSalary } | null.
   const [promoteConfirm, setPromoteConfirm] = useState(null);
+
+  // #4009: fyr-bekræftelse (akademi-rytter forlader akademiet, samme
+  // buyout-gebyr som senior-fyring). { riderId, riderName, fee, balance,
+  // affordable } | null. fee/balance/affordable er null indtil quoten er hentet.
+  const [releaseConfirm, setReleaseConfirm] = useState(null);
+  const [releaseBusy, setReleaseBusy] = useState(false);
 
   const isFull = slots.used >= slots.max;
   // Senior-truppen er fuld → promote blokeres (en op-rykning ville sprænge cap'en).
@@ -202,22 +210,36 @@ export default function AcademyPage() {
     },
     // #932 S7: promote-handlingen lever HER (på akademi-rosteret), ikke på
     // holdsiden. Blokeres når senior-truppen er fuld.
+    // #4009: Fyr sidder ved siden af Promovér — samme handling som ELLERS kun
+    // var tilgængelig via gradueringsvinduet (ryttere ≥22). Ejer-ja 20/8:
+    // fyring skal virke på alle ryttere, ikke kun graduerede. Sekundær/danger-
+    // variant, ikke gold — én gold primær pr. view (Promovér beholder den).
     {
       key: "action",
       header: t("colAction"),
       render: (r) => {
         const busy = actionState[r.id] != null;
         return (
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => handlePromote(r)}
-            disabled={busy || seniorFull}
-            loading={actionState[r.id] === "promoting"}
-            title={seniorFull ? t("promoteSeniorFullTooltip") : undefined}
-          >
-            {t("promoteBtn")}
-          </Button>
+          <div className="flex gap-1.5 justify-end">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => handlePromote(r)}
+              disabled={busy || seniorFull}
+              loading={actionState[r.id] === "promoting"}
+              title={seniorFull ? t("promoteSeniorFullTooltip") : undefined}
+            >
+              {t("promoteBtn")}
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => handleReleaseOpen(r)}
+              disabled={busy}
+            >
+              {t("releaseBtn")}
+            </Button>
+          </div>
         );
       },
     },
@@ -230,6 +252,10 @@ export default function AcademyPage() {
     if (err === "insufficient_balance") return t("error.insufficientBalance");
     if (err === "already_assigned") return t("error.alreadyAssigned");
     if (err === "squad_cap_violation") return t("error.squadFull");
+    // #4009: fyr-specifikke fejl fra /api/riders/:id/academy-release.
+    if (err === "rider_on_auction_release") return t("error.riderOnAuction");
+    if (err === "cannot_afford_release") return t("error.cannotAffordRelease");
+    if (err === "rider_state_changed" || err === "rider_not_academy") return t("error.riderStateChanged");
     return t("error.generic");
   }
 
@@ -308,6 +334,37 @@ export default function AcademyPage() {
       setPromoteConfirm(null);
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));
+  }
+
+  // #4009: Åbn fyr-bekræftelse — henter gebyr-quoten (samme formel som
+  // senior-fyring) FØR dialogen viser bekræft-knappen aktiv, samme
+  // speed-bump-mønster som rytterprofilens/holdsidens Fyr-panel.
+  async function handleReleaseOpen(rider) {
+    setActionErrors(prev => ({ ...prev, [rider.id]: null }));
+    setReleaseConfirm({
+      riderId: rider.id,
+      riderName: `${rider.firstname} ${rider.lastname}`.trim(),
+      fee: null,
+      balance: null,
+      affordable: null,
+    });
+    const { ok, data } = await fetchReleaseQuote(rider.id);
+    setReleaseConfirm(prev => (prev && prev.riderId === rider.id
+      ? { ...prev, fee: ok ? data.fee : 0, balance: ok ? data.balance : null, affordable: ok ? data.affordable : false }
+      : prev));
+  }
+
+  async function confirmRelease() {
+    if (!releaseConfirm) return;
+    const riderId = releaseConfirm.riderId;
+    setReleaseBusy(true);
+    setActionErrors(prev => ({ ...prev, [riderId]: null }));
+    const result = await releaseRider(riderId);
+    setReleaseBusy(false);
+    setReleaseConfirm(null);
+    if (!result.ok) {
+      setActionErrors(prev => ({ ...prev, [riderId]: mapActionError(result.error) }));
+    }
   }
 
   // Loading — PageLoader reserverer højde (#1794 CLS).
@@ -640,6 +697,19 @@ export default function AcademyPage() {
           setPromoteConfirm(null);
         }}
         onConfirm={confirmPromote}
+      />
+
+      {/* Fyr-bekræftelse (#4009) — buyout-gebyr som speed-bump, samme formel
+          som senior-fyring. */}
+      <AcademyReleaseConfirmModal
+        show={!!releaseConfirm}
+        riderName={releaseConfirm?.riderName}
+        fee={releaseConfirm?.fee}
+        balance={releaseConfirm?.balance}
+        affordable={releaseConfirm?.affordable}
+        busy={releaseBusy}
+        onCancel={() => { if (!releaseBusy) setReleaseConfirm(null); }}
+        onConfirm={confirmRelease}
       />
     </div>
   );

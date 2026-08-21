@@ -367,7 +367,14 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     finally { setExtendBusy(false); inFlight.current = false; }
   }
 
-  // ── Fyr/release (#1719) ─────────────────────────────────────────────────────
+  // ── Fyr/release (#1719 senior + #4009 akademi) ──────────────────────────────
+  // Samme panel/state for begge — kun ruten (release vs. academy-release)
+  // varierer, valgt ud fra isAcademyRider. #4009: akademi-ryttere kunne
+  // hidtil KUN forlade akademiet via graduerings-vinduet; workaround var
+  // promote-til-senior → fyr. Samme gebyr-formel begge veje (backend, #4009).
+  const releasePath = isAcademyRider ? "academy-release-quote" : "release-quote";
+  const releaseActionPath = isAcademyRider ? "academy-release" : "release";
+
   async function openRelease() {
     const next = !releaseOpen;
     setReleaseOpen(next);
@@ -375,18 +382,18 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     if (next && releaseQuote === null && releaseErr === null && !releaseLoading) {
       setReleaseLoading(true);
       try {
-        const { ok, data } = await fetchRiderQuote(rider.id, "release-quote");
+        const { ok, data } = await fetchRiderQuote(rider.id, releasePath);
         if (ok) setReleaseQuote(data);
         else {
           setReleaseErr(resolveApiError(data, t, t("auth:error.connectionFailed")));
           reportActionFailure("rider_release_quote", {
             reason: data?.errorCode || data?.error,
-            context: { riderId: rider.id },
+            context: { riderId: rider.id, academy: isAcademyRider },
           });
         }
       } catch (cause) {
         setReleaseErr(t("auth:error.connectionFailed"));
-        reportActionFailure("rider_release_quote", { cause, context: { riderId: rider.id } });
+        reportActionFailure("rider_release_quote", { cause, context: { riderId: rider.id, academy: isAcademyRider } });
       } finally { setReleaseLoading(false); }
     }
   }
@@ -396,7 +403,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     inFlight.current = true;
     setReleaseBusy(true);
     try {
-      const { ok, data } = await postRiderContractAction(rider.id, "release");
+      const { ok, data } = await postRiderContractAction(rider.id, releaseActionPath);
       if (ok) {
         setReleaseOpen(false);
         setReleaseQuote(null);
@@ -501,6 +508,69 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     </div>
   );
 
+  // Fyr rytter (destruktiv, #1719 senior + #4009 akademi) — udvid (viser gebyr
+  // som speed-bump) → bekræft/annullér. Delt panel for BÅDE senior- og
+  // akademi-ryttere: openRelease/confirmReleaseAction vælger selv ruten
+  // (release vs. academy-release) ud fra isAcademyRider, samme copy begge veje
+  // ("Release rider" dækker lige godt en akademi- som en senior-fyring).
+  const releasePanel = (
+    <div className="contents">
+      <button type="button" onClick={openRelease} aria-busy={releaseLoading || undefined}
+        className={`${buttonClass({ variant: "danger" })} ${releaseOpen ? "ring-1 ring-cz-danger/40" : ""}`}>
+        {releaseLoading && <BusyDot />}
+        {t("manage.release.button")}
+      </button>
+      {releaseOpen && (
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
+          {releaseErr ? (
+            <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2.5 text-cz-danger text-xs">{releaseErr}</div>
+          ) : (
+            <>
+              <p className="text-cz-3 text-xs">{t("manage.release.description")}</p>
+              <div className="space-y-1.5 text-sm rounded-cz border border-cz-border bg-cz-subtle p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("manage.release.fee")}</span>
+                  <span className="text-cz-danger font-mono font-bold">
+                    {releaseQuote ? `${formatNumber(releaseQuote.fee)} CZ$` : "..."}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("manage.release.balance")}</span>
+                  <span className="text-cz-2 font-mono">
+                    {releaseQuote ? `${formatNumber(releaseQuote.balance)} CZ$` : "..."}
+                  </span>
+                </div>
+              </div>
+              <p className="text-cz-3 text-xs">
+                {releaseQuote && releaseQuote.fee === 0 ? t("manage.release.freeHint") : t("manage.release.feeHint")}
+              </p>
+              {releaseQuote && releaseQuote.affordable === false && (
+                <p className="text-cz-danger text-xs">{t("manage.release.cannotAfford")}</p>
+              )}
+              <div className="flex gap-2">
+                <button type="button" onClick={confirmReleaseAction}
+                  disabled={releaseBusy || !releaseQuote || releaseQuote.affordable === false}
+                  aria-busy={releaseBusy || releaseLoading || undefined}
+                  className="flex-1 min-h-[44px] py-2 bg-cz-danger text-white font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2">
+                  {(releaseBusy || !releaseQuote) && <BusyDot />}
+                  {releaseBusy
+                    ? t("manage.release.working")
+                    : !releaseQuote
+                      ? t("manage.release.loadingTerms")
+                      : t("manage.release.confirm")}
+                </button>
+                <button type="button" onClick={() => setReleaseOpen(false)} disabled={releaseBusy}
+                  className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+                  {t("manage.release.cancel")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     /* display:contents — knapperne bliver direkte flex-items i hero'ens
        handlingsrække; paneler/feedback tager selv fuld bredde. */
@@ -517,7 +587,8 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
 
       {isAcademyRider ? (
         /* Akademi-rytter: forlæng (#2179, samme sted/stil som senior) · promovér
-           (egen flow) · evt. markeds-handlinger fra parent. */
+           (egen flow) · evt. markeds-handlinger fra parent · fyr (#4009,
+           destruktiv sidst — samme rækkefølge/placering som senior-fyr). */
         <>
           {extendPanel}
           <RiderAcademyActions
@@ -528,6 +599,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
             onPromoteVisibleChange={setPromoteVisible}
           />
           {marketActions}
+          {releasePanel}
         </>
       ) : (
         /* Senior-rytter, prototypens rækkefølge: forlæng (guld) · flyt til akademi
@@ -544,62 +616,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
               parent så den destruktive Frigiv står SIDST i rækken. */}
           {marketActions}
 
-          {/* Fyr rytter (destruktiv) — udvid (viser gebyr som speed-bump) → bekræft/annullér. */}
-          <div className="contents">
-            <button type="button" onClick={openRelease} aria-busy={releaseLoading || undefined}
-              className={`${buttonClass({ variant: "danger" })} ${releaseOpen ? "ring-1 ring-cz-danger/40" : ""}`}>
-              {releaseLoading && <BusyDot />}
-              {t("manage.release.button")}
-            </button>
-            {releaseOpen && (
-              <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
-                {releaseErr ? (
-                  <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2.5 text-cz-danger text-xs">{releaseErr}</div>
-                ) : (
-                  <>
-                    <p className="text-cz-3 text-xs">{t("manage.release.description")}</p>
-                    <div className="space-y-1.5 text-sm rounded-cz border border-cz-border bg-cz-subtle p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-cz-3 text-xs">{t("manage.release.fee")}</span>
-                        <span className="text-cz-danger font-mono font-bold">
-                          {releaseQuote ? `${formatNumber(releaseQuote.fee)} CZ$` : "..."}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-cz-3 text-xs">{t("manage.release.balance")}</span>
-                        <span className="text-cz-2 font-mono">
-                          {releaseQuote ? `${formatNumber(releaseQuote.balance)} CZ$` : "..."}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-cz-3 text-xs">
-                      {releaseQuote && releaseQuote.fee === 0 ? t("manage.release.freeHint") : t("manage.release.feeHint")}
-                    </p>
-                    {releaseQuote && releaseQuote.affordable === false && (
-                      <p className="text-cz-danger text-xs">{t("manage.release.cannotAfford")}</p>
-                    )}
-                    <div className="flex gap-2">
-                      <button type="button" onClick={confirmReleaseAction}
-                        disabled={releaseBusy || !releaseQuote || releaseQuote.affordable === false}
-                        aria-busy={releaseBusy || releaseLoading || undefined}
-                        className="flex-1 min-h-[44px] py-2 bg-cz-danger text-white font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2">
-                        {(releaseBusy || !releaseQuote) && <BusyDot />}
-                        {releaseBusy
-                          ? t("manage.release.working")
-                          : !releaseQuote
-                            ? t("manage.release.loadingTerms")
-                            : t("manage.release.confirm")}
-                      </button>
-                      <button type="button" onClick={() => setReleaseOpen(false)} disabled={releaseBusy}
-                        className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
-                        {t("manage.release.cancel")}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          {releasePanel}
         </>
       )}
     </div>

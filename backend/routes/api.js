@@ -196,7 +196,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteSalary } from "../lib/academyTransfer.js";
-import { countFutureRaceEntries, countOngoingRaceEntries } from "../lib/raceEntryCleanup.js";
+import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
@@ -1369,6 +1369,32 @@ async function assertRiderNotOnActiveAuction(riderId) {
   return {};
 }
 
+// #4009: delt guard til AKADEMI-fyring — spejler loadOwnedSeniorRiderForAction,
+// men kræver is_academy=true i stedet for at afvise det. Før #4009 kunne en
+// akademirytter kun forlade akademiet via graduerings-vinduet (kun ryttere ≥22
+// med en pending academy_graduation-row, se academyGraduation.js) — en spiller
+// der ville fyre en yngre akademirytter måtte først promovere ham til senior
+// (midlertidig senior-plads) og SÅ fyre. Ejer-bekræftet 20/8 (#4009): fyring
+// skal virke ens for alle ryttere, ikke kun graduerede.
+async function loadOwnedAcademyRiderForAction(req, riderId) {
+  const { data: rider, error: riderErr } = await supabase
+    .from("riders")
+    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season")
+    .eq("id", riderId)
+    .single();
+  if (riderErr) captureException(new Error(`loadOwnedAcademyRiderForAction (${riderId}): ${riderErr.message}`));
+  if (!rider || rider.team_id !== req.team.id) {
+    return { error: { status: 403, body: { error: "You don't own this rider", errorCode: "rider_not_owned" } } };
+  }
+  if (rider.is_retired) {
+    return { error: { status: 409, body: { error: "This rider has retired", errorCode: "rider_retired" } } };
+  }
+  if (!rider.is_academy) {
+    return { error: { status: 400, body: { error: "This rider isn't in your academy", errorCode: "rider_not_academy" } } };
+  }
+  return { rider };
+}
+
 // #2179: delt guard til kontrakt-FORLÆNGELSE — samme owner/retired-check som
 // loadOwnedSeniorRiderForAction, men UDEN akademi-eksklusionen. Akademi-ryttere
 // har allerede salary/contract_length/contract_end_season sat ved signing
@@ -1605,6 +1631,156 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
     .update({ status: "withdrawn" })
     .eq("rider_id", rider.id)
     .in("status", ["open", "negotiating"]);
+
+  invalidateNamespace("riders");
+  res.json({ success: true, fee, riderId: rider.id });
+});
+
+// GET /api/riders/:id/academy-release-quote — preview af buyout-gebyret for en
+// AKADEMI-fyring, før bekræftelse (#4009). Samme gebyr-formel som senior-release
+// (computeReleaseBuyoutFee — købt-blind for is_academy, regner udelukkende ud
+// fra salary/contract_end_season) — fyring skal koste det samme uanset hvor
+// rytteren står, ellers ville "promovér, fyr, spar gebyret" blive den nye
+// workaround i stedet for "promovér for overhovedet at kunne fyre".
+router.get("/riders/:id/academy-release-quote", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const result = await loadOwnedAcademyRiderForAction(req, req.params.id);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const { rider } = result;
+  // #3963/#4048: samme delte auktions-guard som senior-release-quote — en
+  // rytter der lige er sat på (graduerings-)auktion via academy/graduate
+  // action=sell forbliver is_academy=true indtil auktionens finalization, så
+  // den samme entity ellers ville matche her.
+  const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
+  if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
+  const currentSeason = await getActiveSeasonNumber();
+  const fee = computeReleaseBuyoutFee({
+    salary: rider.salary,
+    contractEndSeason: rider.contract_end_season,
+    currentSeason,
+  });
+  res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee });
+});
+
+// POST /api/riders/:id/academy-release — fyr en AKADEMI-rytter mod samme
+// buyout-gebyr som senior-release (#4009, ejer-ja 20/8: "det synes jeg man skal
+// kunne på alle ryttere"). Før dette kunne en akademirytter KUN forlade
+// akademiet via graduerings-vinduet (academy/graduate, kun ryttere ≥22 med en
+// pending academy_graduation-row) — workaround var promote-til-senior → fyr,
+// hvilket midlertidigt brugte en senior-plads for en rytter manageren slet
+// ikke ville beholde.
+//
+// #3963/#4048-bevidst: en rytter der lige er sat på (graduerings-)auktion via
+// academy/graduate action=sell forbliver is_academy=true indtil auktionens
+// finalization — samme entity denne rute ellers ville matche. #4048 (merget
+// 20/8, timet lige før denne PR) tilføjede assertRiderNotOnActiveAuction til
+// senior-release EFTER at en spiller fyrede en rytter midt i sin egen aktive
+// auktion og endte som fantom-selv-byder på ham; samme delte guard genbruges
+// her i stedet for at duplikere logikken.
+router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const result = await loadOwnedAcademyRiderForAction(req, req.params.id);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const { rider } = result;
+
+  const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
+  if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
+
+  const { data: season, error: seasonErr } = await supabase
+    .from("seasons").select("id, number").eq("status", "active").maybeSingle();
+  if (seasonErr) captureException(new Error(`academy-release season lookup (${rider.id}): ${seasonErr.message}`));
+  const currentSeason = season?.number ?? 1;
+  const fee = computeReleaseBuyoutFee({
+    salary: rider.salary,
+    contractEndSeason: rider.contract_end_season,
+    currentSeason,
+  });
+
+  const balance = req.team.balance ?? 0;
+  if (balance < fee) {
+    return res.status(400).json({
+      error: "You can't afford the buyout fee for this rider",
+      errorCode: "cannot_afford_release",
+      errorParams: { fee, balance },
+    });
+  }
+
+  // Frigør rytteren først (concurrency-guard: kun hvis stadig på vores hold og
+  // stadig i akademiet — spejler senior-release), samme fulde kontrakt-nulstilling
+  // (inkl. pending_team_id/acquired_at) som resolveGraduation's release-gren
+  // IKKE nulstiller (den antager en allerede-afklaret ejerstatus) men senior-
+  // release gør — mest forsigtige valg her.
+  const { data: released, error: releaseErr } = await supabase
+    .from("riders")
+    .update({
+      team_id: null,
+      pending_team_id: null,
+      is_academy: false,
+      salary: null,
+      contract_length: null,
+      contract_end_season: null,
+      acquired_at: null,
+    })
+    .eq("id", rider.id)
+    .eq("team_id", req.team.id)
+    .eq("is_academy", true)
+    .select("id");
+  if (releaseErr) {
+    captureException(new Error(`academy-release update (${rider.id}): ${releaseErr.message}`));
+    return res.status(500).json({ error: "Something went wrong releasing this rider" });
+  }
+  if (!released || released.length === 0) {
+    return res.status(409).json({ error: "This rider is no longer in your academy", errorCode: "rider_state_changed" });
+  }
+
+  if (fee > 0) {
+    await incrementBalanceWithAudit(supabase, {
+      teamId: req.team.id,
+      delta: -fee,
+      payload: {
+        type: "transfer_out",
+        amount: -fee,
+        description: `Released ${rider.firstname} ${rider.lastname} (academy buyout fee)`,
+        metadata: {
+          code: "tx.riderRelease",
+          params: { riderName: `${rider.firstname} ${rider.lastname}` },
+        },
+        season_id: season?.id ?? null,
+        actor_type: FINANCE_ACTOR_TYPE.API,
+        actor_id: req.user.id,
+        source_path: "api.academy.release",
+        reason_code: FINANCE_REASON.RIDER_RELEASE_BUYOUT,
+        related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+        related_entity_id: rider.id,
+      },
+    });
+  }
+
+  // #1906 defense-in-depth (samme mønster som academyGraduation.js's release):
+  // ryd fremtidige race_entries så en tidligere demote/promote-tur ikke
+  // efterlader en ghost-entry for en rytter der ikke længere er på holdet.
+  await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "academy_manual_release" });
+
+  // Best-effort: rytteren kan have en PENDING academy_graduation-row (aldrede
+  // ud, stadig i override-vinduet) — resolvér den så academyGraduationSweep
+  // ikke senere forsøger at auto-resolve en rytter der allerede er frigjort
+  // (samme klasse fejl som resolvePendingGraduationOnSale, #2793). Må ALDRIG
+  // vælte selve fyringen — pengene/statusskiftet er allerede gennemført, så en
+  // fejl her logges og sluges bevidst (best-effort, samme mønster som
+  // resolvePendingGraduationOnSale i academyGraduation.js).
+  try {
+    const { data: grad, error: gradErr } = await supabase.from("academy_graduation") // best-effort
+      .select("id, status").eq("team_id", req.team.id).eq("rider_id", rider.id).maybeSingle();
+    if (gradErr) throw new Error(gradErr.message);
+    if (grad && grad.status === "pending") {
+      await supabase.from("academy_graduation") // best-effort
+        .update({ status: "released", resolved_at: new Date().toISOString() })
+        .eq("id", grad.id);
+    }
+  } catch (err) {
+    // best-effort: se docblok ovenfor — må ALDRIG vælte selve fyringen.
+    console.error(`academy-release: resolve pending graduation failed (${rider.id}):`, err.message);
+  }
 
   invalidateNamespace("riders");
   res.json({ success: true, fee, riderId: rider.id });

@@ -212,5 +212,44 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, pullIntake, refresh };
+  // #4009: preview af buyout-gebyret for en akademi-fyring (samme fee-formel som
+  // senior-release, GET-side af /api/riders/:id/academy-release). Returnerer
+  // { ok, data } (samme kontrakt som riderContractActions.js's fetchRiderQuote)
+  // så AcademyPage kan vise gebyret som speed-bump før bekræftelse — samme
+  // mønster som rytterprofilens Fyr-panel.
+  const fetchReleaseQuote = useCallback(async (riderId) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, data: {} };
+    try {
+      const res = await fetch(`${API}/api/riders/${riderId}/academy-release-quote`, { headers });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, data };
+    } catch {
+      return { ok: false, data: {} };
+    }
+  }, []);
+
+  // Fyr en akademi-rytter (#4009, ejer-ja 20/8). Rytteren forlader akademiet
+  // (team_id=NULL) mod samme buyout-gebyr som senior-fyring. Returnerer
+  // { ok, error?, result? } — samme kontrakt som promoteRider/demoteRider.
+  const releaseRider = useCallback(async (riderId) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    try {
+      const res = await fetch(`${API}/api/riders/${riderId}/academy-release`, {
+        method: "POST", headers, body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.errorCode || data.error || "failed" };
+      }
+      logEvent("academy_release", { riderId });
+      await refresh();
+      return { ok: true, result: data };
+    } catch {
+      return { ok: false, error: "network" };
+    }
+  }, [refresh]);
+
+  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, fetchReleaseQuote, releaseRider, pullIntake, refresh };
 }
