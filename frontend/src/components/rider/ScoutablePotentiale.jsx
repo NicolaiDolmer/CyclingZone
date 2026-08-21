@@ -69,14 +69,18 @@ import { useScoutCountdown, scoutReadyClock } from "../../lib/scoutCountdown";
 // tætte tabeller bor det i tooltip'en, hvor labelen i forvejen flyttede hen
 // (#2796). Loftet kommer fra serveren (`estimate.loft`, roleCeilRating) og er
 // rolle+alder-bestemt — intet rytter-hemmeligt (#1162 holder).
-function PotentialBand({ band, role, loft, label, large, t }) {
+function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
   const roleName = role ? t(`riderTypes:types.${role}`) : null;
   const bandTitle = roleName
     ? t("rider:scouting.potentialBandTitle", { role: roleName, lo: band.lo, hi: band.hi })
     : null;
   const bandSubtitle = roleName ? t("rider:scouting.potentialBandSubtitle") : null;
-  const loftTitle = roleName && Number.isFinite(loft)
-    ? t("rider:scouting.loftTitle", { role: roleName, value: loft })
+  // #4039: forbi-peak dæmper FORKLARINGEN, ikke tallet — samme loft, anden
+  // begrundelse for hvorfor han ikke længere klatrer mod det (ejer 20/8).
+  const loftTitle = Number.isFinite(loft)
+    ? (pastPeak
+      ? t("rider:scouting.loftPastPeakTitle", { value: loft })
+      : (roleName ? t("rider:scouting.loftTitle", { role: roleName, value: loft }) : null))
     : null;
   const title = [label, bandTitle, bandSubtitle, loftTitle].filter(Boolean).join(" · ") || undefined;
   return (
@@ -88,7 +92,7 @@ function PotentialBand({ band, role, loft, label, large, t }) {
       {band.lo}–{band.hi}
       {large && Number.isFinite(loft) && (
         <span className="ms-1.5 text-[12px] text-cz-3 font-normal" data-potential-loft={loft}>
-          · {t("rider:scouting.loftShort", { value: loft })}
+          · {pastPeak ? t("rider:scouting.loftPastPeakShort", { value: loft }) : t("rider:scouting.loftShort", { value: loft })}
         </span>
       )}
     </span>
@@ -222,8 +226,8 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   if (band) {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        <PotentialBand band={band} role={estimate.role} loft={estimate.loft} label={labelAsTitle ? label : null}
-          large={large} t={t} />
+        <PotentialBand band={band} role={estimate.role} loft={estimate.loft} pastPeak={estimate.pastPeak === true}
+          label={labelAsTitle ? label : null} large={large} t={t} />
         {!labelAsTitle && label && <span className="text-2xs text-cz-3">{label}</span>}
         {!hideLevel && level > 0 && (
           <span className="text-3xs font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>

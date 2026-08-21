@@ -68,6 +68,7 @@
       "value": "Value",
       "salary": "Salary",
       "potential": "Potential",
+      "potentialTitle": "The projected rating range he's realistically heading toward with your training. Not the same as the role's ceiling (the theoretical highest for his role) - hover the number for both.",
       "badges": "Status",
       "age": "Age",
       "type": "Type",

@@ -69,6 +69,9 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       _band: hasBand ? band : null,
       _progHi: hasBand ? band.hi : null,
       _loft: loft,
+      // #4039: samme forbi-peak-dæmpning som hero/scouting-fanen — loftet er
+      // stadig absolut, kun forklaringen (tooltip) skifter.
+      _pastPeak: estimate?.pastPeak === true,
     };
   }), [riders, scouting, seasonYear]);
 
@@ -141,7 +144,16 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       sortKey: "_loft",
       numeric: true,
       compact: true,
-      render: (r) => <span className="font-mono tabular-nums text-cz-2">{r._loft ?? "—"}</span>,
+      // #4039: samme forbi-peak-dæmpning i tooltippen som hero/scouting-fanen —
+      // tallet er uændret, kun forklaringen af HVORFOR skifter.
+      render: (r) => (
+        <span
+          className="font-mono tabular-nums text-cz-2"
+          title={r._loft != null && r._pastPeak ? t("rider:scouting.loftPastPeakTitle", { value: r._loft }) : undefined}
+        >
+          {r._loft ?? "—"}
+        </span>
+      ),
     },
   ];
 

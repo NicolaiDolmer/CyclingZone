@@ -143,6 +143,11 @@ export default function RiderProfileHero({
   const potEstimate = scouting?.estimateFor?.(rider.id);
   const potLoft = Number.isFinite(potEstimate?.loft) ? potEstimate.loft : null;
   const potLoftRole = potEstimate?.role ? t(`riderTypes:types.${potEstimate.role}`) : null;
+  // #4039 (ejer-beslutning 20/8): forbi peak dæmper loft-VISNINGEN, ikke tallet
+  // — loftet er stadig ABSOLUT (rollens faste tag). Rytteren udvikler sig ikke
+  // længere mod det, så suffikset og forklaringen siger det, i stedet for at
+  // stå ukommenteret ved siden af prognosen.
+  const potPastPeak = potEstimate?.pastPeak === true;
   const contractText = rider.contract_end_season != null
     ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
     : t("header.noContract");
@@ -279,10 +284,12 @@ export default function RiderProfileHero({
           sub={potLoft != null && (
             <p
               className="font-data text-2xs text-cz-3 tabular-nums mt-1"
-              title={potLoftRole ? t("scouting.loftTitle", { role: potLoftRole, value: potLoft }) : undefined}
+              title={potPastPeak
+                ? t("scouting.loftPastPeakTitle", { value: potLoft })
+                : potLoftRole ? t("scouting.loftTitle", { role: potLoftRole, value: potLoft }) : undefined}
               data-testid="rider-hero-loft"
             >
-              {t("scouting.loftShort", { value: potLoft })}
+              {potPastPeak ? t("scouting.loftPastPeakShort", { value: potLoft }) : t("scouting.loftShort", { value: potLoft })}
             </p>
           )}
         />

@@ -79,18 +79,23 @@ const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MA
 // loft på samme lineære akse som nu-fyldet og prognose-båndet — det gamle tal
 // er bevaret i fladen, prognosen er det nye ved siden af. `loft` kan mangle i
 // ældre payloads → intet mærke (graceful).
-function LoftTick({ loft }) {
+// #4039: `title` (forbi-peak-dæmpet forklaring, når rytteren er forbi peak)
+// videresendes som HTML-tooltip på selve mærket — samme dæmpning som hero'ens
+// loft-underlinje og Ceiling-kolonnen på holdsiden, bare i tooltip-form her
+// (den tætte tabel har ikke plads til synlig suffiks-tekst).
+function LoftTick({ loft, title }) {
   if (!Number.isFinite(loft)) return null;
   return (
     <div
       className="absolute inset-y-0 w-[2px] bg-cz-2"
       style={{ left: `calc(${barPct(loft)} - 1px)` }}
       data-loft-tick={loft}
+      title={title}
     />
   );
 }
 
-function TypeRow({ typeKey, now, progLo, progHi, loft, label }) {
+function TypeRow({ typeKey, now, progLo, progHi, loft, loftTitle, label }) {
   return (
     <div className="flex items-center gap-3" data-type={typeKey}>
       <span className="w-[110px] flex-shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
@@ -100,7 +105,7 @@ function TypeRow({ typeKey, now, progLo, progHi, loft, label }) {
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
           style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
-        <LoftTick loft={loft} />
+        <LoftTick loft={loft} title={loftTitle} />
       </div>
       <span className="w-[86px] flex-shrink-0 text-right font-mono tabular-nums text-2xs">
         <span className="text-cz-1 font-bold">{now}</span>
@@ -115,7 +120,7 @@ function TypeRow({ typeKey, now, progLo, progHi, loft, label }) {
 // DELTE statPlateStyle, så tallet her og tallet i heroen er samme plade — de er
 // samme tal, og må ikke kunne se forskellige ud.
 // #3746: progLo/progHi + progressionLabel — se TypeRow.
-function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, progressionLabel, loftLabel }) {
+function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, progressionLabel, loftLabel, loftTitle }) {
   return (
     <div data-type={typeKey} className="border-b border-cz-border pb-3.5 mb-3.5">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
@@ -138,7 +143,7 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, 
           <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
             {progLo}–{progHi}
             {Number.isFinite(loft) && (
-              <span className="text-cz-3 text-2xs" data-testid="scouting-primary-loft"> · {loftLabel}</span>
+              <span className="text-cz-3 text-2xs" data-testid="scouting-primary-loft" title={loftTitle}> · {loftLabel}</span>
             )}
           </span>
         </span>
@@ -149,7 +154,7 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, 
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
           style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
-        <LoftTick loft={loft} />
+        <LoftTick loft={loft} title={loftTitle} />
       </div>
     </div>
   );
@@ -352,7 +357,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
     );
   }
 
-  const { verdict, types, stars, value, own, scout: scoutMeta, precision, primaryKey } = report;
+  const { verdict, types, stars, value, own, scout: scoutMeta, precision, primaryKey, pastPeak } = report;
   const orderedTypes = TYPE_ORDER
     .map((key) => types?.find((x) => x.key === key))
     .filter(Boolean);
@@ -441,6 +446,21 @@ export default function RiderScoutingTab({ rider, scouting }) {
             ))}
           </ul>
         )}
+        {/* #4039 (ejer-godkendt mockup): verdiktet skal stå SOM TEKST, ikke kun
+            som det skraverede bånd nedenfor — samme tal som båndet (progLo/
+            progHi/loft), ingen ny information, ingen #1162-lækage. */}
+        {verdict && primaryRow
+          && Number.isFinite(primaryRow.progLo ?? primaryRow.ceilLo)
+          && Number.isFinite(primaryRow.progHi ?? primaryRow.ceilHi)
+          && Number.isFinite(primaryRow.loft) && (
+          <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-3 mb-0 max-w-prose">
+            {t("profile.scouting.verdictText", {
+              progLo: primaryRow.progLo ?? primaryRow.ceilLo,
+              progHi: primaryRow.progHi ?? primaryRow.ceilHi,
+              loft: primaryRow.loft,
+            })}
+          </p>
+        )}
         {/* #3667: dommen er bygget på båndets MIDTPUNKT, som er bevidst forskudt pr.
             manager (scoutingReport.CEIL_BIAS_FACTOR) — den er altså en vurdering, ikke
             en kendsgerning. Målt 13/8 mod 300 prod-ryttere × 120 simulerede managere:
@@ -483,7 +503,12 @@ export default function RiderScoutingTab({ rider, scouting }) {
               label={tTypes(`types.${primaryRow.key}`)}
               roleLabel={t("profile.scouting.primaryRoleLabel")}
               progressionLabel={t("profile.scouting.primaryProgressionLabel")}
-              loftLabel={t("scouting.loftShort", { value: primaryRow.loft })}
+              loftLabel={pastPeak
+                ? t("scouting.loftPastPeakShort", { value: primaryRow.loft })
+                : t("scouting.loftShort", { value: primaryRow.loft })}
+              loftTitle={pastPeak
+                ? t("scouting.loftPastPeakTitle", { value: primaryRow.loft })
+                : t("scouting.loftTitle", { role: tTypes(`types.${primaryRow.key}`), value: primaryRow.loft })}
             />
           )}
           {primaryRow && secondaryRows.length > 0 && (
@@ -495,7 +520,10 @@ export default function RiderScoutingTab({ rider, scouting }) {
             {secondaryRows.map((row) => (
               <TypeRow key={row.key} typeKey={row.key} now={row.now}
                 progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
-                loft={row.loft} label={tTypes(`types.${row.key}`)} />
+                loft={row.loft} label={tTypes(`types.${row.key}`)}
+                loftTitle={pastPeak
+                  ? t("scouting.loftPastPeakTitle", { value: row.loft })
+                  : t("scouting.loftTitle", { role: tTypes(`types.${row.key}`), value: row.loft })} />
             ))}
           </div>
           <p className="text-cz-3 text-3xs mt-3 mb-0">{t("profile.scouting.typesLegend")}</p>

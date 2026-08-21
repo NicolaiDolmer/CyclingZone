@@ -213,6 +213,8 @@ export const SEED_SCOUT_ESTIMATES = Object.freeze({
     prog: Object.freeze({ lo: 40, hi: 48 }),
     ceil: Object.freeze({ lo: 40, hi: 48 }),
     loft: 93,
+    // #4039: Ada er ung (under PEAK_AGE) - hendes loft-visning er IKKE dæmpet.
+    pastPeak: false,
   }),
   "rider-2": Object.freeze({ hidden: true, level: 0 }),
 });
@@ -1550,6 +1552,9 @@ export const SEED_SCOUTING_REPORT = {
   value: { market: 1680000, expected: 1870000 },
   scout: { isDefault: false, name: "Sofie Lindqvist", tier: 2, overall: 61, hiredAt: "2026-07-20T10:00:00.000Z" },
   generatedAt: "2026-08-05T09:00:00.000Z",
+  // #4039: samme forbi-peak-flag som SEED_SCOUT_ESTIMATES["rider-1"] - Ada er
+  // under PEAK_AGE, så loft-visningen er den udæmpede gren.
+  pastPeak: false,
 };
 
 // #2819 preview-seed: onboarding-progress i den ÆGTE respons-form fra
