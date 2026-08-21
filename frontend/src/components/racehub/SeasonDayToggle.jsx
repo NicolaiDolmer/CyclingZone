@@ -23,7 +23,7 @@ export default function SeasonDayToggle({ view, onChange }) {
     );
   };
   return (
-    <div className="flex overflow-hidden rounded-cz border border-cz-border" role="group" aria-label={t("hub.tabSelection")}>
+    <div className="inline-flex overflow-hidden rounded-cz border border-cz-border" role="group" aria-label={t("hub.tabSelection")}>
       {seg("season", t("seasonView.toggleSeason"))}
       {seg("day", t("seasonView.toggleDay"))}
     </div>

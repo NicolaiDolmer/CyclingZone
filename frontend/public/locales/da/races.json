@@ -14,11 +14,12 @@
     "hint": "Vælg en løbsdag for at åbne dens board",
     "today": "I DAG",
     "stagesGt": "{count} etaper · GT",
+    "stagesOnly": "{count} etaper",
     "monument": "Monument · eksklusiv løbsdag",
     "bandAria": "{name}, løbsdag {day}. Åbn dagens board.",
     "dayPanel": {
       "title": "Løbsdag {day} · {date}",
-      "meta": "{races, plural, one {# løb} other {# løb}} · {saved, plural, one {# udtagelse gemt} other {# udtagelser gemt}} · {open} åbne",
+      "meta": "{races, plural, one {# løb} other {# løb}} · {saved, plural, one {# udtagelse gemt} other {# udtagelser gemt}} · {open, plural, one {# åben} other {# åbne}}",
       "openBoard": "Åbn dagens board →"
     },
     "legend": {

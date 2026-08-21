@@ -14,6 +14,7 @@
     "hint": "Pick a race day to open its board",
     "today": "TODAY",
     "stagesGt": "{count} stages · GT",
+    "stagesOnly": "{count} stages",
     "monument": "Monument · exclusive race day",
     "bandAria": "{name}, race day {day}. Open its day board.",
     "dayPanel": {

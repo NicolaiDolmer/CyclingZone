@@ -279,8 +279,10 @@ export default function SeasonView({ onSwitchView }) {
                   >
                     <p className={`m-0 font-data text-3xs font-semibold truncate ${bandNameClasses(b)}`}>{b.name}</p>
                     {(b.multiDay || b.monument) && (
-                      <p className={`m-0 text-3xs truncate ${b.multiDay ? "text-cz-sidebar-2" : "text-cz-sidebar-2"}`}>
-                        {b.monument ? t("seasonView.monument") : t("seasonView.stagesGt", { count: b.stages })}
+                      <p className="m-0 text-3xs truncate text-cz-sidebar-2">
+                        {b.monument
+                          ? t("seasonView.monument")
+                          : t(b.gt ? "seasonView.stagesGt" : "seasonView.stagesOnly", { count: b.stages })}
                       </p>
                     )}
                   </button>
