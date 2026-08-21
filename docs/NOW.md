@@ -22,6 +22,6 @@
 - **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 27 løbsdage.
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Skalering:** #323.
 
-> **🤖 Aktiv session: Fable i hoved-checkout (21/8, ejer online)** — ejer-beslutninger (#4004/#4001/#4005-p3) → F2-designsession (#4030) → cutover-forberedelse. Andre sessioner: STOP + spørg ejer.
+> **🤖 Aktiv session: Fable (21/8) UNDER AFVIKLING** — venter kun på #4069-merge (#4004-guard) + close-out; rører herefter KUN docs/NOW.md på main. **Parallel session er EJER-GODKENDT:** ny session må starte nu (kalender eller natbølge-launch); arbejd i worktree (`scripts/new-worktree.ps1`), rør ikke auktions-filerne (#4069-branchen), og lad NOW.md-redigering vente til denne claim er nulstillet.
 
 _Historik i git-log, issue-tråde + docs/audits/._
