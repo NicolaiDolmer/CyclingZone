@@ -871,7 +871,7 @@
       },
       "trainingFocus": {
         "title": "Training focus",
-        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster, with no risk of losing progress, but it does build more fatigue. Other abilities grow a little slower while a focus is active. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money."
+        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique, Aero or Race craft). The effort comes with the session type and is not a separate choice: intervals, threshold and sprint are hard, tempo is medium, the rest are easy. Trained abilities develop faster toward their ceiling through the daily training that runs each evening, while other abilities grow a little more slowly. Hard sessions build more fatigue but carry no risk of losing progress. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money."
       },
       "scouting": {
         "title": "Scouting potential",

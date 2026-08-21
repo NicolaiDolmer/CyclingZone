@@ -871,7 +871,7 @@
       },
       "trainingFocus": {
         "title": "Træningsfokus",
-        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik eller Aero) plus en intensitet. De trænede evner udvikler sig så hurtigere mod deres loft, og det slår igennem ved næste sæsonskifte. Højere intensitet træner hurtigere, uden risiko for at miste fremgang, men bygger mere træthed op. Andre evner vokser en anelse langsommere mens et fokus er aktivt. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge."
+        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik, Aero eller Løbslære). Belastningen følger sessionstypen og er ikke et selvstændigt valg: intervaller, tærskel og sprint er hårde, tempo er mellem, resten er lette. Trænede evner udvikler sig hurtigere mod deres loft gennem den daglige træning, der kører hver aften, mens øvrige evner vokser en anelse langsommere. Hårde sessioner bygger mere træthed op, men har ingen risiko for at miste fremgang. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge."
       },
       "scouting": {
         "title": "Scouting af potentiale",
