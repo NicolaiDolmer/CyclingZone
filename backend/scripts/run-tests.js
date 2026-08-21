@@ -53,7 +53,10 @@ function findTestFiles(dir, out) {
     if (entry.isDirectory()) {
       if (IGNORED_DIRS.has(entry.name)) continue;
       findTestFiles(path.join(dir, entry.name), out);
-    } else if (entry.isFile() && entry.name.endsWith(".test.js")) {
+    } else if (entry.isFile() && (entry.name.endsWith(".test.js") || entry.name.endsWith(".test.ts"))) {
+      // .test.ts: kun lib/engine/v4/**/*.test.ts (#4030) — Node 24 koerer .ts
+      // direkte via type stripping, ingen build-step. Andre .ts-testfiler
+      // findes ikke i backend endnu; udvid mønsteret hvis flere kommer.
       out.push(path.join(dir, entry.name));
     }
   }
