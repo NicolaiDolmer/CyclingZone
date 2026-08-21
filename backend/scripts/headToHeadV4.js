@@ -1,38 +1,47 @@
 #!/usr/bin/env node
 // backend/scripts/headToHeadV4.js
-// Race Engine v4 F2 (#4030), Fase B4: head-to-head-harness — CLI-STUB.
+// Race Engine v4 F2/F3-recovery (#4030, #3855): head-to-head-harness.
 // SSOT: docs/superpowers/specs/2026-08-21-race-engine-v4-f2-core-design.md §7
-//   ("Harness-hook: backend/scripts/headToHeadV4.js (F2 leverer stub, fuld
-//   version til 23-24/8): koerer v3 (simulateStage) og v4 (simulateStageV4)
-//   paa samme population-snapshot + S3-kalenderens ruter, scorer BEGGE mod
-//   §5-ankrene i mor-spec'en").
+//   ("Harness-hook: backend/scripts/headToHeadV4.js: koerer v3 (simulateStage)
+//   og v4 (simulateStageV4) paa samme population-snapshot + S3-kalenderens
+//   ruter, scorer BEGGE mod §5-ankrene i mor-spec'en").
+// Mor-spec: docs/superpowers/specs/2026-08-20-race-engine-v4-intra-stage-design.md §5.
 //
-// F2 leverer SKELETTET:
+// Scriptet:
 //   (a) loader en population-snapshot (exportPopulationSnapshot.js-format)
 //   (b) loader etape-profiler (race_stage_profiles-raekke-form) fra JSON
 //   (c) koerer v3 (simulateStage) og v4 (simulateStageV4 via adapters) paa
 //       SAMME input pr. etape
 //   (d) printer en simpel sammenligningstabel (vinder-type, gruppe-antal,
 //       tidsspredning pr. etape)
-// Fuld scorecard-scoring mod mor-spec §5's virkeligheds-ankre er 23-24/8-scope
-// — se TODO-blokken foer main() nedenfor.
+//   (e) scorer BEGGE motorer mod mor-spec §5's virkeligheds-ankre (+ #2415's
+//       gap-realisme-baand) via headToHeadAnchors.js — laesbart PASS/FAIL/N-A-
+//       scorecard, se lib/headToHeadAnchors.js for metodologi-forbehold
+//   (f) --films[=<dir>]: eksporterer 5 haandplukkede v4-etape-tidslinjer
+//       (bjerg/flad massespurt/punch/nedkoersel/brosten) som laesbare .txt-filer
 //
-// 100% READ-ONLY: laeser kun JSON-filer fra disk. Ingen DB/netvaerks-kald.
+// 100% READ-ONLY: laeser kun JSON-filer fra disk (+ skriver kun til --films'
+// output-mappe). Ingen DB/netvaerks-kald, ingen prod-mutationer.
 //
 // Usage:
-//   node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> [--seed=<streng>]
+//   node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> [--seed=<streng>] [--films[=<dir>]]
 //
 // Eksempel (syntetisk mini-input, verificeret af headToHeadV4.test.js):
 //   node backend/scripts/headToHeadV4.js \
 //     --population=backend/scripts/fixtures/headToHeadV4-example/population.json \
-//     --stages=backend/scripts/fixtures/headToHeadV4-example/stages.json
+//     --stages=backend/scripts/fixtures/headToHeadV4-example/stages.json --films
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { simulateStage, stableSeed } from "../lib/raceSimulator.js";
 import { simulateStageV4 } from "../lib/engine/v4/index.ts";
 import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { entrantsFromAbilitiesRows } from "../lib/engine/v4/adapters/entrantAdapter.ts";
 import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter.ts";
+import { buildScorecard, formatScorecard } from "./lib/headToHeadAnchors.js";
+
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
 // ---------------------------------------------------------------------------
 // CLI args (samme moenster som exportPopulationSnapshot.js)
@@ -194,38 +203,153 @@ export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4
       profileType: stageRow.profile_type ?? "?",
       v3: summarizeV3(v3Output.ranked),
       v4: summarizeV4(v4Output),
+      // Raat, u-sammenfattet output pr. etape — konsumeres af
+      // headToHeadAnchors.buildScorecard() (mor-spec §5-scoring). Additiv felt,
+      // aendrer intet ved de eksisterende summary-felter ovenfor (bagudkompatibelt
+      // med F2-stubbens egne tests).
+      raw: { v3Output, v4Output, route, tuning: RACE_V4_TUNING, stageRow },
     });
   }
   return rows;
 }
 
+/** rider_id -> team_id|null (population.riders-format). */
+function buildTeamByRider(riders) {
+  return new Map(riders.map((r) => [r.id, r.team_id ?? null]));
+}
+
+/** rider_id -> abilities-record (population.riders-format). */
+function buildAbilitiesByRider(riders) {
+  return new Map(riders.map((r) => [r.id, r.abilities]));
+}
+
 // ---------------------------------------------------------------------------
-// TODO (23-24/8): fuld scorecard-scoring mod mor-spec §5's virkeligheds-ankre.
-// Denne stub sammenligner ÉN etape ad gangen paa et haandbygget mini-felt —
-// den fulde harness skal:
-//   - koere HELE S3-kalenderens ruter (ikke et enkelt syntetisk eksempel)
-//   - bruge en AEGTE population-snapshot (exportPopulationSnapshot.js mod prod)
-//   - akkumulere resultater over en fuld saeson og scorer BEGGE motorer mod:
-//       * felt-sammenhaeng 80-95% (hvor taet feltet finisher relativt til vinderen)
-//       * nedkoersels-ratio (hvor ofte descent-mekanikken afgoer en etape)
-//       * punch-korrelation (finish-rank vs. punch-evne paa punch-finaler)
-//       * dominans 25-40% (top-holds andel af sejre over en saeson)
-//       * gap-realisme-baand (#2415, gap-fordelinger mod virkelige cykelsports-tal)
-//   - erstatte classifyWinType()-proxyen med den rigtige klassifikator naar
-//     v4s finale.ts (M4, Fase B3) lander et rigtigt win_type (Fase A's
-//     placeholder er "group_finish", jf. index.ts's PLACEHOLDER_WIN_TYPE)
-//   - erstatte v3-"gruppe-antal"-proxyen (distinkte gap-buckets) med en rigtig
-//     sammenligning naar scorecarden findes (proxyen er KUN til denne stubs
-//     overbliksformaal)
-// Se designdoc §7 for kravene i fuld bredde.
+// --films: haandplukkede etape-tidslinjer som laesbare tekstfiler (ejer-
+// gennemsyn, mor-spec §6 punkt 3 "haandplukkede skygge-film set med egne
+// oejne"). Genbruger de allerede-committede golden fixtures (samme input som
+// backend/lib/engine/v4/fixtures/*/input.json) for 4 arketyper + ÉN syntetisk
+// brosten-scenarie (M8's fulde kaos-mekanik er F3-scope — F2 emitterer kun
+// passage, jf. F2-core-design.md §4 punkt 3 — men ruten/finalen kan stadig
+// koeres og filmes med DEN mekanik der findes i dag).
+// ---------------------------------------------------------------------------
+
+const FIXTURES_DIR = join(SCRIPT_DIR, "..", "lib", "engine", "v4", "fixtures");
+
+const FILM_FIXTURE_SCENARIOS = [
+  { name: "01-bjerg-selektion", dir: "bjerg-selektion" },
+  { name: "02-flad-massespurt", dir: "flat-massespurt" },
+  { name: "03-punch-finale-forspring", dir: "punch-finale-forspring" },
+  { name: "04-nedkoerselsfinale", dir: "nedkoerselsfinale" },
+];
+
+// Syntetisk brosten-rute (intet golden-fixture-brosten-scenarie findes endnu —
+// M8 fuld kaos-mekanik er F3-scope). Genbruger flat-massespurt-fixturens
+// startfelt-form (samme abilities-struktur), egen rute + seed.
+function buildCobblesFilmScenario() {
+  const flatFixture = readJson(join(FIXTURES_DIR, "flat-massespurt", "input.json"));
+  return {
+    name: "05-brosten-syntetisk",
+    input: {
+      ...flatFixture,
+      route: {
+        distance_km: 165,
+        profile_type: "cobbles",
+        finale_type: "reduced_sprint",
+        segments: [
+          { kind: "flat", from_km: 0, to_km: 40 },
+          { kind: "cobbles", from_km: 40, to_km: 44, sector_name: "Sector A", stars: 4 },
+          { kind: "flat", from_km: 44, to_km: 80 },
+          { kind: "cobbles", from_km: 80, to_km: 85, sector_name: "Sector B", stars: 5 },
+          { kind: "flat", from_km: 85, to_km: 165 },
+        ],
+        weather: { kind: "overcast", wind_exposure: 0.35 },
+        waypoints: [{ kind: "finish", index: 0, name: "Maal", km: 165 }],
+      },
+      seed: "film-05-brosten-syntetisk-v1",
+    },
+  };
+}
+
+function buildFilmScenarios() {
+  const fromFixtures = FILM_FIXTURE_SCENARIOS.map((s) => ({
+    name: s.name,
+    input: readJson(join(FIXTURES_DIR, s.dir, "input.json")),
+  }));
+  return [...fromFixtures, buildCobblesFilmScenario()];
+}
+
+function padKm(km) {
+  return km.toFixed(2).padStart(8);
+}
+
+function formatFilmText(scenario, output) {
+  const { route } = scenario.input;
+  const lines = [];
+  lines.push(`=== ${scenario.name} — v4 etape-tidslinje (haandplukket film, #4030) ===`);
+  lines.push(`Rute: profile_type=${route.profile_type} finale_type=${route.finale_type ?? "n/a"} distance_km=${route.distance_km}`);
+  lines.push(`Vejr: ${route.weather?.kind ?? "n/a"} (wind_exposure=${route.weather?.wind_exposure ?? "n/a"})`);
+  lines.push(`Seed: ${scenario.input.seed}`);
+  lines.push(`Startfelt: ${scenario.input.startlist.length} ryttere`);
+  lines.push("");
+  lines.push("-- Tidslinje --");
+  for (const ev of output.timeline.events) {
+    lines.push(`km ${padKm(ev.km)}  ${ev.type.padEnd(20)} ${JSON.stringify(ev.params)}`);
+  }
+  lines.push("");
+  lines.push(`-- Resultat (top ${Math.min(15, output.results.length)}) --`);
+  const sorted = [...output.results].sort((a, b) => a.rank - b.rank).slice(0, 15);
+  const winnerTime = sorted[0]?.time_seconds ?? 0;
+  for (const r of sorted) {
+    const gap = round2(r.time_seconds - winnerTime);
+    lines.push(`${String(r.rank).padStart(3)}. ${r.rider_id.padEnd(10)} +${gap.toFixed(2)}s  gruppe=${r.group_id}  status=${r.status}`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Koerer de haandplukkede scenarier gennem simulateStageV4 og skriver
+ * laesbare .txt-film til outDir. Returnerer de skrevne stier (til PR-body).
+ * @param {string} outDir
+ * @returns {string[]}
+ */
+export function runFilms(outDir) {
+  mkdirSync(outDir, { recursive: true });
+  const scenarios = buildFilmScenarios();
+  const paths = [];
+  for (const scenario of scenarios) {
+    const output = simulateStageV4(scenario.input);
+    const text = formatFilmText(scenario, output);
+    const filePath = join(outDir, `${scenario.name}.txt`);
+    writeFileSync(filePath, text);
+    paths.push(filePath);
+  }
+  return paths;
+}
+
+// ---------------------------------------------------------------------------
+// TODO (fuld saeson-scope, F3+): denne harness koerer og scorer paa DE ETAPER
+// den faar via --stages — den koerer endnu ikke automatisk HELE S3-kalenderen.
+// Naar det er oensket: hent race_stage_profiles-raekker for S3 (read-only
+// SELECT) og feed dem ind som --stages, kombinér med en AEGTE population-
+// snapshot (node backend/scripts/exportPopulationSnapshot.js). headToHeadAnchors'
+// buildScorecard()/formatScorecard() skalerer allerede til vilkaarligt mange
+// etaper (aggregerer pr. anker paa tvaers af alle rows) — ingen aendring
+// paakraevet i scoringslaget for at koere den fulde kalender.
+// classifyWinType()-proxyen erstattes naar v4s finale.ts (M4) lander et rigtigt
+// win_type (i dag PLACEHOLDER_WIN_TYPE="group_finish" i index.ts).
 // ---------------------------------------------------------------------------
 
 function main() {
   const populationPath = argValue("population");
   const stagesPath = argValue("stages");
   const seedInput = argValue("seed", "head-to-head-v4-stub");
+  const filmsRequested = process.argv.includes("--films") || process.argv.some((a) => a.startsWith("--films="));
+  const filmsDir = argValue("films", join(SCRIPT_DIR, "out", "films"));
+
   if (!populationPath || !stagesPath) {
-    console.error("Usage: node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> [--seed=<streng>]");
+    console.error(
+      "Usage: node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> [--seed=<streng>] [--films[=<dir>]]",
+    );
     process.exit(2);
     return;
   }
@@ -237,6 +361,22 @@ function main() {
   console.log(`Population: ${population.riders?.length ?? 0} ryttere. Etaper: ${stages?.length ?? 0}. Seed: ${seedInput}`);
   const rows = runHeadToHead({ population, stages, seedInput });
   printComparisonTable(rows);
+
+  const teamByRider = buildTeamByRider(population.riders);
+  const abilitiesByRider = buildAbilitiesByRider(population.riders);
+  const v4Entrants = v4EntrantsFromPopulation(population.riders);
+  const v4EntrantsById = Object.fromEntries(v4Entrants.map((e) => [e.rider_id, e]));
+
+  const scorecard = buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById });
+  console.log("");
+  console.log(formatScorecard(scorecard));
+
+  if (filmsRequested) {
+    const paths = runFilms(filmsDir);
+    console.log("");
+    console.log(`Film-eksport (${paths.length} haandplukkede scenarier) skrevet til:`);
+    for (const p of paths) console.log(`  ${p}`);
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("headToHeadV4.js")) {
