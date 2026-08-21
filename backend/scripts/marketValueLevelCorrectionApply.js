@@ -195,6 +195,30 @@ export async function getDryRunReport({ supabase }) {
   return { status: "ok", gate, report };
 }
 
+/**
+ * HYPOTETISK dry-run med et eksplicit c — beslutningsgrundlag til ejeren
+ * (#3750, 21/8: fyringsværdi-valget). Kører uanset gate-status, fordi den
+ * netop skal kunne sammenligne kandidat-c'er FØR gaten er grøn. Skriver
+ * INTET og kan ALDRIG bruges af apply-grenen: runMarketValueLevelCorrectionApply
+ * læser altid c fra gate-loggen (decideApplyAllowed).
+ */
+export async function getDryRunReportWithOverride({
+  supabase,
+  c,
+  fetchGate = fetchLatestGate,
+  fetchSeasonNumber = fetchActiveSeasonNumber,
+  fetchPopulation = fetchCorrectionPopulation,
+}) {
+  if (!Number.isFinite(Number(c)) || Number(c) <= 0) {
+    throw new Error(`getDryRunReportWithOverride: ugyldigt c (${c})`);
+  }
+  const gate = await fetchGate({ supabase });
+  const seasonNumber = await fetchSeasonNumber({ supabase });
+  const population = await fetchPopulation({ supabase, seasonNumber });
+  const report = buildDryRunReport(population, Number(c));
+  return { status: "override", gate, report };
+}
+
 async function writeRiderValues(supabase, rows, c) {
   let written = 0;
   const receipts = [];
@@ -339,12 +363,38 @@ export async function runMarketValueLevelCorrectionApply({
   };
 }
 
+function printDryRunReport(report) {
+  console.log(`c = ${report.c}`);
+  console.log(`Population: ${report.populationSize}`);
+  console.log(`Σ værdi FØR:  ${report.totalBefore.toLocaleString("da-DK")}`);
+  console.log(`Σ værdi EFTER: ${report.totalAfter.toLocaleString("da-DK")}`);
+  console.log(`Delta: ${(report.totalDeltaPct * 100).toFixed(2)}%`);
+  console.log("\nPr. division:");
+  for (const d of report.byDivision) console.log(`  D${d.division}: n=${d.n} ${d.before.toLocaleString("da-DK")} → ${d.after.toLocaleString("da-DK")} (${(d.deltaPct * 100).toFixed(1)}%)`);
+  console.log("\nPr. aldersbånd:");
+  for (const b of report.byAgeBand) console.log(`  ${b.band}: n=${b.n} ${b.before.toLocaleString("da-DK")} → ${b.after.toLocaleString("da-DK")} (${(b.deltaPct * 100).toFixed(1)}%)`);
+  console.log("\n10 største absolutte fald:");
+  for (const t of report.top10Drops) console.log(`  ${t.id}: ${t.before.toLocaleString("da-DK")} → ${t.after.toLocaleString("da-DK")} (${t.delta.toLocaleString("da-DK")})`);
+  console.log("\n(dry-run — INTET skrevet. Kør med --confirm-apply for faktisk at anvende korrektionen.)");
+}
+
 const args = process.argv.slice(2);
 const CONFIRM_APPLY = args.includes("--confirm-apply");
+const cOverrideArg = args.find((a) => a.startsWith("--c-override="));
+const C_OVERRIDE = cOverrideArg ? Number(cOverrideArg.split("=")[1]) : null;
 
 async function main() {
   console.log("=== Niveau-korrektionens engangs-kørsel (#3449/#3750) ===");
   console.log(CONFIRM_APPLY ? "MODE: --confirm-apply (SKRIVER til databasen)" : "MODE: dry-run (read-only, default)");
+
+  if (cOverrideArg && CONFIRM_APPLY) {
+    console.error("--c-override er KUN tilladt i dry-run. Apply læser ALTID c fra gate-loggens c_candidate.");
+    process.exit(1);
+  }
+  if (cOverrideArg && (!Number.isFinite(C_OVERRIDE) || C_OVERRIDE <= 0)) {
+    console.error(`Ugyldig --c-override værdi: ${cOverrideArg}`);
+    process.exit(1);
+  }
 
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -352,6 +402,14 @@ async function main() {
     process.exit(1);
   }
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
+
+  if (!CONFIRM_APPLY && C_OVERRIDE != null) {
+    const { gate, report } = await getDryRunReportWithOverride({ supabase, c: C_OVERRIDE });
+    console.log(`\n⚠️  HYPOTETISK dry-run med c-override = ${C_OVERRIDE} (gate-status: ${gate?.gate_status?.toUpperCase() ?? "INGEN MÅLING"}).`);
+    console.log("Denne rapport er et beslutningsgrundlag — apply kan IKKE køre med dette c.");
+    printDryRunReport(report);
+    return;
+  }
 
   if (!CONFIRM_APPLY) {
     const { status, gate, report } = await getDryRunReport({ supabase });
@@ -361,18 +419,7 @@ async function main() {
       return;
     }
     console.log(`\nGate: GRØN (${gate.gate_reason_text})`);
-    console.log(`c = ${report.c}`);
-    console.log(`Population: ${report.populationSize}`);
-    console.log(`Σ værdi FØR:  ${report.totalBefore.toLocaleString("da-DK")}`);
-    console.log(`Σ værdi EFTER: ${report.totalAfter.toLocaleString("da-DK")}`);
-    console.log(`Delta: ${(report.totalDeltaPct * 100).toFixed(2)}%`);
-    console.log("\nPr. division:");
-    for (const d of report.byDivision) console.log(`  D${d.division}: n=${d.n} ${d.before.toLocaleString("da-DK")} → ${d.after.toLocaleString("da-DK")} (${(d.deltaPct * 100).toFixed(1)}%)`);
-    console.log("\nPr. aldersbånd:");
-    for (const b of report.byAgeBand) console.log(`  ${b.band}: n=${b.n} ${b.before.toLocaleString("da-DK")} → ${b.after.toLocaleString("da-DK")} (${(b.deltaPct * 100).toFixed(1)}%)`);
-    console.log("\n10 største absolutte fald:");
-    for (const t of report.top10Drops) console.log(`  ${t.id}: ${t.before.toLocaleString("da-DK")} → ${t.after.toLocaleString("da-DK")} (${t.delta.toLocaleString("da-DK")})`);
-    console.log("\n(dry-run — INTET skrevet. Kør med --confirm-apply for faktisk at anvende korrektionen.)");
+    printDryRunReport(report);
     return;
   }
 
