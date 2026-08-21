@@ -28,6 +28,7 @@ import {
   DEFAULT_AUCTION_CONFIG,
   FREE_AGENT_MIN_DURATION_HOURS,
 } from "../lib/auctionEngine.js";
+import { fetchSeasonTransitionBoundary } from "../lib/seasonTransitionBoundary.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { fetchGcClassicSplit, splitGcWins } from "../lib/dashboardRiderRankingGcSplit.js";
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
@@ -5639,17 +5640,23 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(400).json({ error: "Flash auctions run for a fixed 30 minutes and can't take a custom end time", errorCode: "flash_custom_end_conflict" });
   }
 
-  // #4004: seneste transfer_windows-række hentes ÉN gang og genbruges af
-  // både Deadline Day-gaten (flash-auktioner) og sæsonskifte-vindues-guarden
-  // nedenfor — se getAuctionSeasonBoundaryIssue i auctionEngine.js. Samme
-  // fail-open-adfærd som den hidtidige Deadline Day-gate havde: en fejlet
-  // opslag betyder blot ingen aktiv gate, ikke en 500.
-  const { data: boundaryWindow } = await supabase
-    .from("transfer_windows")
-    .select("status, closes_at")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single(); // best-effort: se kommentar ovenfor
+  // #4004: seneste transfer_windows-række (Deadline Day-gaten for
+  // flash-auktioner) og sæson-transitions-grænsen (sæsonskifte-guarden
+  // nedenfor) hentes parallelt — de er IKKE længere samme opslag: målingen
+  // mod prod 21/8 viste at transfer_windows.closes_at er død data (begge
+  // rækker status='closed'/closes_at=NULL siden 22/6), så guarden er omlagt
+  // til fetchSeasonTransitionBoundary (seasonTransitionBoundary.js). Begge er
+  // best-effort/fail-open: en fejlet opslag betyder blot ingen aktiv gate,
+  // ikke en 500.
+  const [{ data: latestTransferWindow }, seasonTransitionBoundary] = await Promise.all([
+    supabase
+      .from("transfer_windows")
+      .select("status, closes_at")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single(), // best-effort: se kommentar ovenfor
+    fetchSeasonTransitionBoundary(supabase),
+  ]);
 
   // Flash auction guard: only allowed during Deadline Day
   if (flash_auction) {
@@ -5658,8 +5665,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     let ddActive = false;
     if (override === "on") {
       ddActive = true;
-    } else if (override !== "off" && boundaryWindow?.status === "open" && boundaryWindow?.closes_at) {
-      const secs = (new Date(boundaryWindow.closes_at) - Date.now()) / 1000;
+    } else if (override !== "off" && latestTransferWindow?.status === "open" && latestTransferWindow?.closes_at) {
+      const secs = (new Date(latestTransferWindow.closes_at) - Date.now()) / 1000;
       ddActive = secs > 0 && secs <= 86400;
     }
     if (!ddActive) return res.status(403).json({ error: "Flash auctions are only available during Deadline Day", errorCode: "flash_deadline_day_only" });
@@ -5843,23 +5850,24 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       ? new Date(ends_at)
       : calculateAuctionEnd(new Date(), auctionCfg, rider.team_id ? {} : { minHours: FREE_AGENT_MIN_DURATION_HOURS });
 
-  // #4004: hård guard — se getAuctionSeasonBoundaryIssue (auctionEngine.js) for
-  // hvorfor transfer-vinduets lukketid er den bedst opnåelige proxy for
-  // sæsonskiftet. Rammer alle tre sluttids-veje (flash/custom/default), da
-  // calculatedEnd er fælles for dem.
-  const boundaryIssue = getAuctionSeasonBoundaryIssue(calculatedEnd, boundaryWindow);
+  // #4004: hård guard — se getAuctionSeasonBoundaryIssue (auctionEngine.js) +
+  // seasonTransitionBoundary.js for ankeret (sæson-transitionen, ikke
+  // transfer-vinduet — omlagt 21/8 efter prod-måling viste vinduets
+  // closes_at var død data). Rammer alle tre sluttids-veje
+  // (flash/custom/default), da calculatedEnd er fælles for dem.
+  const boundaryIssue = getAuctionSeasonBoundaryIssue(calculatedEnd, seasonTransitionBoundary);
   if (boundaryIssue) {
     // Locale-neutral DD/MM HH:mm i dansk tid — samme princip som padHour()
     // ovenfor (auction_end_outside_window): ingen sprogafhængig dato-tekst,
     // så errors.json-strengen kan være identisk på tværs af locale.
-    const closesAtDate = new Date(boundaryIssue.closesAt);
-    const closesAtText = new Intl.DateTimeFormat("en-GB", {
+    const boundaryDate = new Date(boundaryIssue.boundary);
+    const boundaryText = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Europe/Copenhagen", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
-    }).format(closesAtDate).replace(",", "");
+    }).format(boundaryDate).replace(",", "");
     return res.status(400).json({
-      error: `Auctions can't end after the transfer window closes (${closesAtText})`,
-      errorCode: "auction_end_crosses_window_close",
-      errorParams: { closesAt: closesAtText },
+      error: `Auctions can't end after the season change (${boundaryText})`,
+      errorCode: "auction_end_crosses_season_transition",
+      errorParams: { boundaryAt: boundaryText },
     });
   }
 
