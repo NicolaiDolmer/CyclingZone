@@ -30,6 +30,8 @@
 ## Agent-regler (fra fleet-playbook, bølge 1-3-læringer)
 
 - **Branch fra origin/main som FØRSTE skridt:** `git checkout -b <branch> origin/main` (worktrees oprettet fra HEAD kan stå på en feature-branch).
+- **Heredoc-forbud i ALLE spawn-prompter (F3-bølgen 21/8: en worker frøs PERMANENT i `<<'EOF'` og døde):** commit-beskeder og filer skrives med Write-værktøjet + `git commit -F <fil>` — aldrig heredoc/inline multi-line. Skriv forbuddet EKSPLICIT ind i hver worker-prompt; memory-reglen arver ikke af sig selv. Samme bølge: linter-/scriptkald der kan hænge (fx migrations-idempotens-linteren) køres som separat kommando med kort timeout — hænger den, skip + notér i PR-body.
+- **Launch-bevis-tjek: tæl `started`-entries i workflow-journalen mod forventet antal workers** straks efter launch — en agent kan dø tavst ved spawn (transient classifier-fejl, F3-bølgen 21/8: 5/6 startede, sporet stod usynligt i kø). Manglende spor re-spawnes frisk med det samme.
 - **PR-body:** `## Brugerverifikation` med mindst ét `- [x]` ELLER `backend-only`/`docs-only`-label — ellers fejler PR-checket.
 - **PatchNotes:** agenter rører IKKE `PatchNotesPage.jsx`; orkestrator laver én konsolideret entry til sidst (undgår merge-konflikter).
 - **Relaterede bugs (samme rod-domæne) = ÉN agent** — tjek fil-overlap før fan-out.
