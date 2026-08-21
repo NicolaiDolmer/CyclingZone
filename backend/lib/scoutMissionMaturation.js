@@ -31,6 +31,7 @@ import { SCOUT_JOB_CONFIG } from "./scoutEngine.js";
 import { generateShortlist } from "./scoutMission.js";
 import { getScoutState } from "./scoutAssignmentService.js";
 import { notifyScoutReportReady } from "./notificationService.js"; // #2945
+import { ageForSeason } from "./riderSeasonAge.js"; // #4058
 
 // Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
 // kendt potentiale, mappet til scoutMission's forventede rider-form. Scope
@@ -69,7 +70,13 @@ import { notifyScoutReportReady } from "./notificationService.js"; // #2945
 // kun på team_id IS NOT NULL, ikke owner_is_ai. Samme fix-mønster: ekskludér
 // owner_is_ai=true fra kandidat-poolen (no-op for free_agents — kontraktfrie
 // ryttere har altid owner_is_ai=false).
-export async function defaultLoadCandidates(supabase, targetPool = "free_agents") {
+// #4058: kandidat-alderen SKAL bruge sæson-alder (ageForSeason, SSOT
+// riderSeasonAge.js), aldrig wall-clock — samme fejlklasse som #3071/#3081.
+// seasonNumber leveres af kalderen (claimAndCompleteMission → resolveSeasonNumber,
+// udledt af assignment.season_id). Mangler seasonNumber (fx en direkte-kaldt
+// test uden season-kontekst), giver ageForSeason null tilbage — en manglende
+// alder er bedre end en forkert (samme kontrakt som frontend/src/lib/riderAge.js).
+export async function defaultLoadCandidates(supabase, targetPool = "free_agents", seasonNumber = null) {
   let ridersQuery = supabase
     .from("riders")
     // #3657: primary_type tilføjet — driver den nye scope:"type"-targeting i
@@ -92,7 +99,6 @@ export async function defaultLoadCandidates(supabase, targetPool = "free_agents"
   if (error) throw new Error(`scoutMissionMaturation: candidate riders load failed: ${error.message}`);
   if (intakeError) throw new Error(`scoutMissionMaturation: offered-intake load failed: ${intakeError.message}`);
   const offeredIntakeRiderIds = new Set((offered ?? []).map((r) => r.rider_id));
-  const currentYear = new Date().getFullYear();
   return (data ?? [])
     .filter((r) => !offeredIntakeRiderIds.has(r.id))
     .map((r) => ({
@@ -100,7 +106,7 @@ export async function defaultLoadCandidates(supabase, targetPool = "free_agents"
       potentiale: r.potentiale,
       divisionId: r.team?.league_division_id ?? null,
       country: r.nationality_code ?? null,
-      age: r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null,
+      age: ageForSeason(r.birthdate, seasonNumber), // #4058: sæson-alder, ikke wall-clock
       isNmEligible: true,
       primaryType: r.primary_type ?? null, // #3657: scope:"type"-targeting
       // #2581/#2644: for free_agents er ownerTeamId ALTID null (kandidat-poolen
@@ -118,6 +124,27 @@ async function defaultGetScout(supabase, teamId) {
   return scout;
 }
 
+// #4058: sæson-NUMMERET (ageForSeason's andet argument) for en given assignment.
+// Foretrækker assignment.season_id (sat ved mission-start, scoutAssignmentService.
+// startMission) — falder tilbage til den AKTIVE sæson for assignments startet FØR
+// season_id blev sporet (bagudkompatibelt, samme mønster som targetPool ovenfor).
+// Returnerer null hvis ingen sæson kan slås op (ageForSeason giver da null videre,
+// aldrig et gættet wall-clock-tal).
+async function resolveSeasonNumber(supabase, seasonId) {
+  if (seasonId) {
+    const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId).maybeSingle();
+    if (error) throw new Error(`scoutMissionMaturation: season lookup failed for ${seasonId}: ${error.message}`);
+    if (data?.number != null) return data.number;
+  }
+  const { data: active, error: activeError } = await supabase
+    .from("seasons")
+    .select("number")
+    .eq("status", "active")
+    .maybeSingle();
+  if (activeError) throw new Error(`scoutMissionMaturation: active season lookup failed: ${activeError.message}`);
+  return active?.number ?? null;
+}
+
 // Claim-first atomisk fuldførelse af ÉN due mission. Shortlisten beregnes FØR
 // claimet (ren læsning — deterministisk pr. missionId/teamId/riderId via
 // seededUnit, se scoutMission.js, så et redundant dobbelt-beregnet resultat
@@ -131,8 +158,9 @@ async function claimAndCompleteMission({ supabase, assignment, loadCandidates, g
   // (sat ved start, scoutAssignmentService.startMission) — bagudkompatibel
   // default "free_agents" for assignments der blev startet FØR denne feature.
   const targetPool = assignment.mission_criteria?.targetPool ?? "free_agents";
+  const seasonNumber = await resolveSeasonNumber(supabase, assignment.season_id); // #4058
   const [candidates, scout] = await Promise.all([
-    loadCandidates(supabase, targetPool),
+    loadCandidates(supabase, targetPool, seasonNumber),
     getScout(supabase, assignment.team_id),
   ]);
   const { shortlist, topRiderId } = generateShortlist({
