@@ -240,6 +240,18 @@ export type DayformTuning = {
 export type WorkCostTuning = {
   frontWorkFactor: Record<SegmentKind, number>;
   draftFactor: Record<SegmentKind, number>;
+  frontFraction: number; // andel af gruppen (stærkeste cp foerst) der regnes for "front" og betaler frontWorkFactor
+};
+
+// Segment-tempo (§4 punkt 1, "krav-tempo... afledes af segment-kind + stærkeste
+// motorer i gruppen (kollektiv CP)"). Intern til segmentLoop.ts's hastigheds-/
+// varighedsberegning — fog-gaten (#1791) gaelder KUN events[].params, ikke disse
+// interne konstanter, saa km/t-tal her laekker aldrig til spilleren.
+export type TerrainTuning = {
+  baseDemand: Record<SegmentKind, number>; // normaliseret CP-demand en gruppe typisk holder paa dette terraen
+  baseSpeedKmh: Record<SegmentKind, number>; // intern illustrativ basishastighed pr. terraen-type
+  strengthSpeedGain: number; // hvor meget kollektiv gruppe-CP over/under baseDemand skalerer hastigheden
+  speedMultiplierBounds: readonly [number, number]; // clamp paa hastigheds-multiplikatoren
 };
 
 export type GroupTuning = {
@@ -280,6 +292,7 @@ export type EngineTuning = {
   physiology: PhysiologyTuning;
   dayform: DayformTuning;
   work: WorkCostTuning;
+  terrain: TerrainTuning;
   groups: GroupTuning;
   selection: SelectionTuning;
   descent: DescentTuning;

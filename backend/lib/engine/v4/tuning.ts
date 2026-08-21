@@ -68,6 +68,26 @@ const tuning: EngineTuning = {
       descent: 0.75, // hjul-rabat paa descent (mellem rabat)
       cobbles: 0.85, // hjul-rabat paa cobbles (lav-mellem — ujaevnt terraen reducerer laesgevinst)
     },
+    frontFraction: 0.2, // andel af gruppen (stærkeste cp foerst) der regnes for "front" i work-cost-fordelingen
+  },
+
+  terrain: {
+    baseDemand: {
+      flat: 0.55, // normaliseret CP-demand en gruppe typisk holder paa flat
+      rolling: 0.6, // normaliseret CP-demand paa rolling
+      climb: 0.8, // normaliseret CP-demand paa climb (hoejere — selektions-drivende)
+      descent: 0.3, // normaliseret CP-demand paa descent (lav — frit fald, lidt pedalering)
+      cobbles: 0.65, // normaliseret CP-demand paa cobbles
+    },
+    baseSpeedKmh: {
+      flat: 42, // intern illustrativ basishastighed, flat (km/t — fog-gates aldrig timeline-params)
+      rolling: 36, // intern illustrativ basishastighed, rolling
+      climb: 18, // intern illustrativ basishastighed, climb
+      descent: 55, // intern illustrativ basishastighed, descent
+      cobbles: 32, // intern illustrativ basishastighed, cobbles
+    },
+    strengthSpeedGain: 0.25, // skalering af hastigheds-multiplikator pr. enhed kollektiv-CP over/under baseDemand
+    speedMultiplierBounds: [0.7, 1.3], // clamp paa hastigheds-multiplikatoren (undgaar urealistiske yderpunkter)
   },
 
   groups: {
