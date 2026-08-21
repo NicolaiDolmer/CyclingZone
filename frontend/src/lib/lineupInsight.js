@@ -1,6 +1,12 @@
 // frontend/src/lib/lineupInsight.js
 // Race Hub S4: rene helpers til opstilling-rute-match. Ingen React.
 
+// #3898: de 15 evne-nøgler til attribut-sortering i holdudtagelsens
+// evne-visning (#3809) — samme registry-kilde som Rider Database/rosterets
+// evne-kolonner (TeamPage's abilityColumns), ikke en ny liste opfundet her.
+import { ABILITY_KEYS } from "./abilities.js";
+const ABILITY_KEY_SET = new Set(ABILITY_KEYS);
+
 // Effektivt fit for en rytter på en valgt etape: per-etape når tilgængelig,
 // ellers løb-snit. null når intet fit findes (graceful degrade).
 export function effectiveStageFit(rider, stageIndex) {
@@ -30,6 +36,11 @@ export function bestFitRiderId(riders, selectedIds, stageIndex) {
 // primary_type sorterer asc-først, numerisk desc-først — jf. riderSort.js).
 export const SELECTION_SORT_KEYS = Object.freeze(["name", "primaryType", "routeMatch", "form", "fatigue"]);
 
+// #3898: sort-nøgler for evne-visningen ("abilities" viewMode) — routeMatch/
+// form/fatigue findes ikke som kolonner der, de 15 evner gør. name/primaryType
+// forbliver sorterbare i begge tilstande.
+export const SELECTION_ABILITY_SORT_KEYS = Object.freeze(["name", "primaryType", ...ABILITY_KEYS]);
+
 // Tekst-nøgler der starter stigende (A→Å). Resten er numeriske og starter
 // faldende, så "bedst/højest øverst" er default-klik — samme regel som
 // defaultSortDir i riderSort.js.
@@ -48,7 +59,16 @@ function selectionSortValue(rider, key, stageIndex) {
     case "routeMatch": return effectiveStageFit(rider, stageIndex);
     case "form": return Number.isFinite(rider?.form) ? rider.form : null;
     case "fatigue": return Number.isFinite(rider?.fatigue) ? rider.fatigue : null;
-    default: return null;
+    default:
+      // #3898: de 15 evne-nøgler (attribut-sortering i evne-visningen). Læses fra
+      // rider.abilities — samme felt RaceSelectionPanel allerede renderer evne-
+      // gitteret/-kolonnerne fra (flattenAbilities sker ikke her, panelet sender
+      // rå API-data der allerede har abilities-objektet).
+      if (ABILITY_KEY_SET.has(key)) {
+        const v = rider?.abilities?.[key];
+        return Number.isFinite(v) ? v : null;
+      }
+      return null;
   }
 }
 

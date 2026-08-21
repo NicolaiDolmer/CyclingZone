@@ -5,7 +5,9 @@ import {
   bestFitRiderId,
   selectionComparator,
   selectionDefaultSortDir,
+  SELECTION_ABILITY_SORT_KEYS,
 } from "./lineupInsight.js";
+import { ABILITY_KEYS } from "./abilities.js";
 
 const rider = (id, suitability, stageSuitability) => ({ id, suitability, stageSuitability });
 
@@ -74,4 +76,47 @@ test("selectionComparator: routeMatch bruger effektivt fit pr. etape", () => {
 test("selectionComparator: stabil tiebreak på id ved lige værdier", () => {
   const riders = [sortRider("r2", "Tie", { form: 50 }), sortRider("r1", "Tie", { form: 50 })];
   assert.deepEqual([...riders].sort(selectionComparator("form", "desc")).map((r) => r.id), ["r1", "r2"]);
+});
+
+// #3898 — evne-sortering i holdudtagelsens evne-visning.
+const abilityRider = (id, abilities = {}) => ({ id, abilities });
+
+test("SELECTION_ABILITY_SORT_KEYS: navn/type + alle 15 evne-nøgler, ingen routeMatch/form/fatigue", () => {
+  assert.deepEqual(SELECTION_ABILITY_SORT_KEYS.slice(0, 2), ["name", "primaryType"]);
+  assert.deepEqual(SELECTION_ABILITY_SORT_KEYS.slice(2), ABILITY_KEYS);
+  for (const nonAbilityKey of ["routeMatch", "form", "fatigue"]) {
+    assert.ok(!SELECTION_ABILITY_SORT_KEYS.includes(nonAbilityKey));
+  }
+});
+
+test("selectionDefaultSortDir: evne-nøgle starter desc-først (bedst øverst), samme regel som andre numeriske nøgler", () => {
+  assert.equal(selectionDefaultSortDir("climbing"), "desc");
+  assert.equal(selectionDefaultSortDir("sprint"), "desc");
+});
+
+test("selectionComparator: sorterer på en evne-nøgle læst fra rider.abilities", () => {
+  const riders = [
+    abilityRider("r1", { climbing: 40 }),
+    abilityRider("r2", { climbing: 90 }),
+    abilityRider("r3", { climbing: 70 }),
+  ];
+  const desc = [...riders].sort(selectionComparator("climbing", "desc")).map((r) => r.id);
+  assert.deepEqual(desc, ["r2", "r3", "r1"]);
+  const asc = [...riders].sort(selectionComparator("climbing", "asc")).map((r) => r.id);
+  assert.deepEqual(asc, ["r1", "r3", "r2"]);
+});
+
+test("selectionComparator: manglende evne-værdi sorteres altid sidst (samme regel som form/fatigue)", () => {
+  const riders = [
+    abilityRider("r1", { sprint: 30 }),
+    abilityRider("r2", {}),
+    abilityRider("r3", { sprint: 10 }),
+  ];
+  assert.deepEqual([...riders].sort(selectionComparator("sprint", "asc")).map((r) => r.id), ["r3", "r1", "r2"]);
+  assert.deepEqual([...riders].sort(selectionComparator("sprint", "desc")).map((r) => r.id), ["r1", "r3", "r2"]);
+});
+
+test("selectionComparator: ukendt/ikke-registreret nøgle giver null for begge, ingen kastet fejl", () => {
+  const riders = [abilityRider("r2"), abilityRider("r1")];
+  assert.doesNotThrow(() => riders.sort(selectionComparator("not_a_real_key", "desc")));
 });
