@@ -6,6 +6,9 @@
 >
 > **Besked 2 (værdier) og besked 3 (løn) SKAL begge postes FØR søndag 23/8.** Ejer-beslutning 17/8 (design-sessionen): refit-gaten er RØD, markedsvægten flipper ikke, værdierne står stille søndag, og lønreformen (#3393, A = 23.300) rammer alle ryttere ved sæsonstart. Besked 3 postes når løn-PR'en er merged og dry-run bekræftet, og senest lørdag 22/8.
 >
+> ⛔ **STATUS 21/8 (aften-revision):** **Besked 3 er OVERHALET og må IKKE postes.** Lønmodellen blev 19/8 ændret til `current_production_value` × global sats 0,35 uden divisions-skalering ([#3989](https://github.com/NicolaiDolmer/CyclingZone/issues/3989), #3393 parkeret), og ejeren postede selv en korrekt løn-besked i #the-roadbook 20/8 kl. 09:08 ("Heads-up: salaries are being reworked for Season 3"). Besked 3's præmis ("a salary is a price on the rider's value", A = 23.300) er dermed faktuelt forkert.
+> **Besked 1 (race-day) og besked 2 (værdier) er stadig aktuelle og stadig IKKE postet pr. 21/8 aften** (verificeret mod #the-roadbook; seneste opslag er 20/8-lønbeskeden). Begge skal fortsat ud FØR søndag. Én sætning i besked 2 er opdateret 21/8 så den peger på det allerede-postede løn-opslag i stedet for at love et kommende.
+>
 > Den gamle grøn-gate-variant og 30/8-fallbacken (`2026-08-14-vaerdi-besked.md`, aldrig postet) er begge overhalet og må ikke bruges.
 >
 > **Kanal:** #the-roadbook (EN), DA til de danske kanaler.
@@ -48,7 +51,7 @@ The model was refit on the corrected rider types, and bank sales at the fixed st
 
 But the measuring found something better than what it was looking for. The market agrees with the current model about which riders are worth more than others. It only disagrees about the overall level: real trades between managers happen below the listed values.
 
-That makes the fix much simpler than a new model. One level adjustment, applied once, so values match what riders actually trade for. I am not giving you a date for it, because dates are what went wrong last time. Instead there is a standard: I measure the trade evidence every Sunday, and the adjustment runs the first Sunday the evidence is solid enough to defend it. When it runs, values come down. Your riders are not getting worse, and the adjustment will not change a single salary. Wages are set by their own system from Sunday, more on that in a separate post.
+That makes the fix much simpler than a new model. One level adjustment, applied once, so values match what riders actually trade for. I am not giving you a date for it, because dates are what went wrong last time. Instead there is a standard: I measure the trade evidence every Sunday, and the adjustment runs the first Sunday the evidence is solid enough to defend it. When it runs, values come down. Your riders are not getting worse, and the adjustment will not change a single salary. Wages are set by their own system from Sunday, as covered in the salary post earlier this week.
 
 The direction has not changed. Values are moving toward what you actually pay for riders.
 
@@ -62,7 +65,7 @@ Modellen er tilpasset de rettede ryttertyper, og bank-salg til den faste startpr
 
 Men målingen fandt noget bedre end det den ledte efter. Markedet er enigt med den nuværende model om hvilke ryttere der er mere værd end andre. Den er kun uenig om det samlede niveau: rigtige handler mellem managere sker under de listede værdier.
 
-Det gør løsningen langt enklere end en ny model. Én niveau-justering, kørt én gang, så værdierne passer med det ryttere faktisk handles til. Jeg giver jer ikke en dato, for datoer var det der gik galt sidst. I stedet er der en standard: jeg måler handels-evidensen hver søndag, og justeringen kører den første søndag evidensen er solid nok til at bære den. Når den kører, kommer værdierne ned. Jeres ryttere bliver ikke dårligere, og justeringen ændrer ikke én eneste løn. Lønnen styres af sit eget system fra søndag, mere om det i et separat opslag.
+Det gør løsningen langt enklere end en ny model. Én niveau-justering, kørt én gang, så værdierne passer med det ryttere faktisk handles til. Jeg giver jer ikke en dato, for datoer var det der gik galt sidst. I stedet er der en standard: jeg måler handels-evidensen hver søndag, og justeringen kører den første søndag evidensen er solid nok til at bære den. Når den kører, kommer værdierne ned. Jeres ryttere bliver ikke dårligere, og justeringen ændrer ikke én eneste løn. Lønnen styres af sit eget system fra søndag, som beskrevet i løn-opslaget tidligere på ugen.
 
 Retningen er uændret. Værdierne bevæger sig mod det I faktisk betaler for ryttere.
 
