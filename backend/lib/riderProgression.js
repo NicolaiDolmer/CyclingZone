@@ -109,23 +109,37 @@ export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
   // abilityRoleClass' gulv-løft-invariant håndhæver det uanset værdierne.
   roleTags: Object.freeze({ signatur: 93, sekundaer: 80, haandvaerk: 70, andenRolle: 55, svaghed: 25 }),
 
-  // Potentiale → træningsfart-multiplikator. ══ SPREDT I TRIN 7 (ejer 16/8) ══
+  // Potentiale → træningsfart-multiplikator. ══ SPREDT I TRIN 7 (ejer 16/8),
+  // REKALIBRERET OP 21/8 (#3966) ══
+  //
+  // TRIN 7 (16/8) satte {1:0.11, 2:0.27, 3:0.42, 4:0.58, 5:0.73, 6:0.89}. Kombineret
+  // med #3709 trin 4/5's roleRate (samme dag som trin 4/5, 14/8) faldt raten på
+  // on-focus hård signatur-træning -70% (pot 6) til -92% (pot 1) siden før 14/8 —
+  // kvantificeret i #3966 (spillerrapporter 19/8: udvikling føltes død). Ejer-
+  // beslutning 21/8: rater OP, harness-gated, uden at gen-indføre før-14/8-tempoet.
+  //
+  // REKALIBRERINGEN (#3966, 21/8) løftede kun pot 1-5 — pot 6 er UÆNDRET (0.89):
+  // S4 (dage til 90 for bedste rytter) stod allerede på 311 af det tilladte
+  // 286-386-bånd, kun 25 dages margin til gulvet, så pot 6 kunne ikke løftes uden
+  // at bryde S4. Loftet for pot 1 er sat af S5 (fart-spænd 2,5-3,5x): 0.135 giver
+  // 2.61x, 0.11 margin til gulvet 2,5x. INGEN plads tilbage under de eksisterende
+  // S1-S5-gates for yderligere løft — se PR #3966 for scorecard + åbent spørgsmål
+  // om S4/S5-båndene selv skal genforhandles for mere hovedrum.
   //
   // Kalibreret mod S4/S5 målt på en ÆGTE KARRIERE (ejer-go 16/8: "det skal være
   // muligt at bedømme disse ting fx udfra en 16-årig og hele vejen til 40-årig"
   // — rytteren ældes, vækstbudgettet falder ved 20/23/26 år):
   //   • pot 6 fra 16 år med fuld støtte (facilitet 5, dedikeret hård træning,
-  //     bonus): 20 → 90 på 311 dage = 11,1 sæsoner (S4-bånd 286-386).
-  //     Uden topfacilitet: topper 89. Fra 17 år: topper 88. "Kun de bedste af
-  //     de bedste" er bogstaveligt.
-  //   • pot 1 når ~1/3 af pot 6's fremgang på samme tid (S5 = 3,0x).
+  //     bonus): 20 → 90 på 311 dage = 11,1 sæsoner (S4-bånd 286-386, uændret af
+  //     denne rekalibrering — pot 6 rørt ikke).
+  //   • pot 1 når nu lidt længere end før rekalibreringen på samme tid (S5 = 2,61x,
+  //     var 3,07x før #3966 — stadig inden for 2,5-3,5x-båndet).
   //
-  // Det nominelle forhold er ~8x, ikke 3x — gap-proportionaliteten æder
+  // Det nominelle forhold er ikke det simulerede — gap-proportionaliteten æder
   // forskellen, fordi den hurtige bremser op nær taget mens den langsomme
-  // stadig vokser frit. Det er derfor den gamle spredning (0,6-1,35 = 2,25x)
-  // kun målte 1,13x i praksis. Rør ikke tallene uden at køre
+  // stadig vokser frit. Rør ikke tallene uden at køre
   // scripts/spillervendteGates3709.mjs — den er facit.
-  rateByPotential: Object.freeze({ 1: 0.11, 2: 0.27, 3: 0.42, 4: 0.58, 5: 0.73, 6: 0.89 }),
+  rateByPotential: Object.freeze({ 1: 0.135, 2: 0.31, 3: 0.47, 4: 0.62, 5: 0.74, 6: 0.89 }),
 
   // ── SUPERSEDERET AF roleTags (trin 7) — LÆSES IKKE AF MOTOREN ──────────────
   // Beholdt fordi committede engangs-/dev-scripts og historiske audits refererer
