@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.166",
+    "date": "2026-08-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training gains adjusted up, most noticeable for young high-potential riders",
+          "body": "Following feedback that training progress felt too slow, we raised how fast abilities grow toward their potential. The lift is biggest for young riders with high potential, so week to week progress should feel clearer."
+        },
+        "da": {
+          "title": "Træningsudbyttet er justeret op, tydeligst for unge ryttere med højt potentiale",
+          "body": "Efter feedback om at træningsfremgang føltes for langsom har vi hævet hvor hurtigt evner vokser mod deres potentiale. Løftet er størst for unge ryttere med højt potentiale, så fremgangen bør føles tydeligere uge for uge."
+        },
+        "refs": [3966]
+      }
+    ]
+  },
+  {
     "version": "7.165",
     "date": "2026-08-21",
     "label": "Beta",
