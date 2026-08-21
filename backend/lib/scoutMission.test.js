@@ -137,6 +137,35 @@ test("generateShortlist: ekskluderer holdets EGNE ryttere (#2581)", () => {
   assert.ok(!result.shortlist.includes("rider-0"), "egen rytter (rider-0, ownerTeamId=team-1) må ikke optræde i shortlisten");
 });
 
+// #4058: rider_id'er holdet allerede har en scout_actions-række på (fra en
+// tidligere mission-shortlist ELLER target-undersøgelse) må ikke gentages i en
+// ny mission-shortlist for samme hold (jeppek 20/8: Carlos Lozano i 2 separate
+// U23-shortlists for samme hold).
+test("generateShortlist: ekskluderer rider_ids i excludeRiderIds (#4058)", () => {
+  const candidates = makePool(5);
+  const result = generateShortlist({
+    candidates, criteria: { scope: "division", value: "div-1" },
+    scout: DEFAULT_SCOUT, teamId: "team-1", missionId: "m-1",
+    excludeRiderIds: new Set(["rider-0", "rider-1", "rider-2", "rider-3"]),
+  });
+  assert.ok(!result.shortlist.some((id) => ["rider-0", "rider-1", "rider-2", "rider-3"].includes(id)),
+    "ingen af de ekskluderede rider_ids må optræde i shortlisten");
+});
+
+test("generateShortlist: excludeRiderIds udeladt (legacy-kaldere) er et no-op", () => {
+  const candidates = makePool(30);
+  const withExclude = generateShortlist({
+    candidates, criteria: { scope: "division", value: "div-1" },
+    scout: DEFAULT_SCOUT, teamId: "team-1", missionId: "m-1",
+    excludeRiderIds: new Set(),
+  });
+  const withoutExclude = generateShortlist({
+    candidates, criteria: { scope: "division", value: "div-1" },
+    scout: DEFAULT_SCOUT, teamId: "team-1", missionId: "m-1",
+  });
+  assert.deepEqual(withoutExclude, withExclude);
+});
+
 test("generateShortlist: candidates uden ownerTeamId (legacy/eksisterende tests) er uændret", () => {
   const candidates = makePool(30);
   const withOwner = generateShortlist({

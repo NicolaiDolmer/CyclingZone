@@ -77,6 +77,7 @@ function makeMockSupabase({ assignments = [], scoutActions = [], candidates = []
       }
       if (table === "scout_actions") {
         return {
+          select: () => selectBuilder(state.scoutActions), // #4058: dedup-opslaget
           insert(payload) {
             const rows = Array.isArray(payload) ? payload : [payload];
             for (const row of rows) {
@@ -438,5 +439,60 @@ describe("completeDueMissionAssignments — sæson-korrekt U23-alder (#4058)", (
     const result = await complete({ supabase, now });
     assert.deepEqual(result, { completed: 1 });
     assert.deepEqual(supabase.state.assignments[0].result.shortlist, ["just-u23-23"]);
+  });
+});
+
+// #4058 del 2 — gentagne fund: en rytter holdet allerede har en scout_actions-
+// række på (fra en tidligere mission-shortlist ELLER target-undersøgelse) må
+// ALDRIG dukke op i en ny mission-shortlist for samme hold. jeppek 20/8: Carlos
+// Lozano i 2 separate U23-shortlists for samme hold på 2 dage.
+describe("completeDueMissionAssignments — dedup mod scout_actions (#4058)", () => {
+  it("en rytter holdet allerede har scout_actions på EKSKLUDERES fra en ny mission-shortlist", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment()],
+      candidates: CANDIDATES,
+      scoutActions: [{ team_id: "team-1", rider_id: "rider-9" }], // holdets bedste kandidat (potentiale 5.5) allerede kendt
+    });
+    const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES });
+    assert.deepEqual(result, { completed: 1 });
+    assert.ok(!supabase.state.assignments[0].result.shortlist.includes("rider-9"),
+      "rider-9 har allerede en scout_actions-række for team-1 og må ikke gentages");
+  });
+
+  it("scout_actions for et ANDET hold påvirker ikke dette holds shortlist", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment({ team_id: "team-1" })],
+      candidates: CANDIDATES,
+      scoutActions: [{ team_id: "team-OTHER", rider_id: "rider-9" }],
+    });
+    const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES });
+    assert.deepEqual(result, { completed: 1 });
+    // rider-9 er IKKE ekskluderet her (kun scoutet af et andet hold) — bekræfter
+    // at dedup er pr.-hold, ikke globalt (Carlos Lozano-mønstret: normalt OK på
+    // tværs af FORSKELLIGE hold, kun gentagelse INDEN for samme hold er buggen).
+    const potentiallyIncluded = supabase.state.assignments[0].result.shortlist.length > 0;
+    assert.ok(potentiallyIncluded, "shortlisten skal stadig indeholde fund (ingen falsk exclusion på tværs af hold)");
+  });
+
+  it("end-to-end: rytter shortlistet i mission 1 dukker IKKE op igen i mission 2 for samme hold", async () => {
+    const supabase = makeMockSupabase({
+      assignments: [
+        missionAssignment({ id: "m-1", team_id: "team-1", created_at: "2026-08-01T09:00:00.000Z" }),
+        missionAssignment({ id: "m-2", team_id: "team-1", created_at: "2026-08-01T09:00:00.000Z" }),
+      ],
+      candidates: CANDIDATES,
+    });
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    // #3997: begge missioner er due samtidig og claimes/fuldføres SEKVENTIELT i
+    // completeDueMissionAssignments' for-loop — m-1's scout_actions-inserts er
+    // derfor allerede synlige i mock-staten når m-2's loadAlreadyScoutedRiderIds kører.
+    const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES });
+    assert.deepEqual(result, { completed: 2 });
+    const shortlist1 = supabase.state.assignments.find((a) => a.id === "m-1").result.shortlist;
+    const shortlist2 = supabase.state.assignments.find((a) => a.id === "m-2").result.shortlist;
+    const overlap = shortlist1.filter((id) => shortlist2.includes(id));
+    assert.deepEqual(overlap, [], "ingen rytter må optræde i BEGGE missioners shortlist for samme hold");
   });
 });

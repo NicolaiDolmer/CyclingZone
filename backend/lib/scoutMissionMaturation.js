@@ -145,6 +145,17 @@ async function resolveSeasonNumber(supabase, seasonId) {
   return active?.number ?? null;
 }
 
+// #4058: rider_id'er holdet ALLEREDE har en scout_actions-række på — fra en
+// tidligere mission-shortlist ELLER en target-undersøgelse (begge skriver til
+// samme ledger, #1543/scouting.js). Bruges til at ekskludere gentagne fund fra
+// fremtidige mission-shortlists for samme hold (jeppek 20/8: Carlos Lozano i
+// 2 separate U23-shortlists for samme hold på 2 dage).
+async function defaultLoadAlreadyScoutedRiderIds(supabase, teamId) {
+  const { data, error } = await supabase.from("scout_actions").select("rider_id").eq("team_id", teamId);
+  if (error) throw new Error(`scoutMissionMaturation: scout_actions load failed for ${teamId}: ${error.message}`);
+  return new Set((data ?? []).map((r) => r.rider_id));
+}
+
 // Claim-first atomisk fuldførelse af ÉN due mission. Shortlisten beregnes FØR
 // claimet (ren læsning — deterministisk pr. missionId/teamId/riderId via
 // seededUnit, se scoutMission.js, så et redundant dobbelt-beregnet resultat
@@ -153,15 +164,16 @@ async function resolveSeasonNumber(supabase, seasonId) {
 // rent faktisk rammer rækken — taber et kapløb (0 rækker ramt), skrives intet,
 // og notify() kaldes ikke. En mission kan derfor ALDRIG give to rapporter
 // (#3997 punkt 3), uanset hvor mange samtidige ticks/processer der rammer den.
-async function claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, now, notify }) {
+async function claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, loadAlreadyScoutedRiderIds, now, notify }) {
   // #2644 del 2: sweepen læser targetPool fra selve assignmentens mission_criteria
   // (sat ved start, scoutAssignmentService.startMission) — bagudkompatibel
   // default "free_agents" for assignments der blev startet FØR denne feature.
   const targetPool = assignment.mission_criteria?.targetPool ?? "free_agents";
   const seasonNumber = await resolveSeasonNumber(supabase, assignment.season_id); // #4058
-  const [candidates, scout] = await Promise.all([
+  const [candidates, scout, excludeRiderIds] = await Promise.all([
     loadCandidates(supabase, targetPool, seasonNumber),
     getScout(supabase, assignment.team_id),
+    loadAlreadyScoutedRiderIds(supabase, assignment.team_id), // #4058
   ]);
   const { shortlist, topRiderId } = generateShortlist({
     candidates,
@@ -169,6 +181,7 @@ async function claimAndCompleteMission({ supabase, assignment, loadCandidates, g
     scout,
     teamId: assignment.team_id,
     missionId: assignment.id,
+    excludeRiderIds,
   });
   const result = { shortlist, top_rider_id: topRiderId };
 
@@ -216,6 +229,7 @@ export async function completeDueMissionAssignments({
   days = SCOUT_JOB_CONFIG.mission.days,
   loadCandidates = defaultLoadCandidates,
   getScout = defaultGetScout,
+  loadAlreadyScoutedRiderIds = defaultLoadAlreadyScoutedRiderIds, // #4058, injicérbar for test
   notify = notifyScoutReportReady, // #2945, injicérbar for test
 }) {
   const dueBefore = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -231,7 +245,7 @@ export async function completeDueMissionAssignments({
   let failed = 0;
   for (const assignment of due ?? []) {
     try {
-      const outcome = await claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, now, notify });
+      const outcome = await claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, loadAlreadyScoutedRiderIds, now, notify });
       if (outcome.completed) completed += 1;
     } catch (err) {
       // best-effort: per-mission try/catch isolerer én fejlende assignment fra
