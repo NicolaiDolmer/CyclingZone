@@ -88,6 +88,10 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatTransfers", kind: "text" },
       { id: "sellOnTransferList", kind: "text" },
+      // #4066: wired in — the copy already lived in help.json (translated,
+      // en+da) but was never listed here, so the Market tab's bulk price
+      // edit had no reachable documentation.
+      { id: "bulkEditPrices", kind: "text" },
       { id: "valueDeviation", kind: "text" },
       { id: "sendOffer", kind: "steps" },
       { id: "proposeSwap", kind: "steps" },
@@ -160,6 +164,9 @@ const SECTION_DEFS = [
       { id: "whatWatchlist", kind: "text" },
       { id: "howToAdd", kind: "steps" },
       { id: "saleNotification", kind: "text" },
+      // #4066: wired in — copy already lived in help.json but was never
+      // listed here.
+      { id: "departureNotification", kind: "text" },
       { id: "watchlistCounter", kind: "text" },
       { id: "features", kind: "text" },
     ],
@@ -181,17 +188,33 @@ const SECTION_DEFS = [
       { id: "racesAndResults", kind: "text" },
       // #3858: Race Centre-siden (v7.140) — dagens løb samlet ét sted.
       { id: "raceCentre", kind: "text" },
+      // #4066: wired in — the two dashboard post-race cards (result summary
+      // + Hero & Agony) already had translated copy but no reachable docs.
+      { id: "latestTeamResult", kind: "text" },
+      { id: "heroAgonyCard", kind: "text" },
       // #2756: stage-ending-typerne (Summit/Downhill/Breakaway/…) var uforklarede i
       // kalender-/løbsvisningen — Discord-feedback, thelamba 20/7 ("There's 'summit'
       // and 'downhill', clear as day, but 'breakaway'?"). Tooltips på badget'et
       // forklarer den enkelte type; denne tabel samler alle på ét sted.
       { id: "stageEndings", kind: "textRows" },
+      // #4066: wired in — route/stage profile explainer and the race detail
+      // page (route, terrain DNA, lineup) belong right before the Final
+      // Kilometre replay, which is the last piece of "what you see on a
+      // race's page".
+      { id: "stageProfile", kind: "text" },
+      { id: "raceDetail", kind: "text" },
       { id: "finalKilometre", kind: "text" },
+      // #4066: wired in — Squad distribution board (moving riders between
+      // overlapping races) belongs with the rest of race-day team setup.
+      { id: "teamSelection", kind: "text" },
       { id: "prizeMoney", kind: "text" },
       { id: "divisionBonus", kind: "textRows" },
       { id: "raceLibrary", kind: "text" },
       { id: "promotionRelegation", kind: "text" },
       { id: "whenSeasonEnds", kind: "text" },
+      // #4066: wired in — the /seasons documentary section already had
+      // translated copy but no reachable docs.
+      { id: "seasonDocumentary", kind: "text" },
       { id: "adminRecomputeStandings", kind: "text" },
       { id: "adminBetaReset", kind: "text" },
     ],
@@ -249,11 +272,25 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatDailyTraining", kind: "text" },
       { id: "programs", kind: "steps" },
+      // #4066: wired in — the four intensity levels and the per-session
+      // ability mapping already had translated copy but no reachable docs;
+      // they belong right after "Setting programs" since they explain the
+      // two choices a program is made of.
+      { id: "dayTypes", kind: "text" },
+      { id: "focusAbilities", kind: "text" },
       { id: "trainToday", kind: "text" },
+      // #4066: wired in — what trains a rider with no focus set follows the
+      // "Train today" action it applies to.
+      { id: "smartDefault", kind: "text" },
       { id: "formFatigue", kind: "text" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
       { id: "longTermGrowth", kind: "text" },
+      // #4066: wired in — the type-gating percentages and the "why did my
+      // ability stop rising" FAQ both elaborate on longTermGrowth directly
+      // above.
+      { id: "typeGating", kind: "text" },
+      { id: "ceilingReached", kind: "text" },
       { id: "readingReport", kind: "text" },
       // #3721: wired in — the copy already lived in help.json (translated,
       // en+da) but was never listed here, so the "Weekly rhythm" panel and its
@@ -277,6 +314,10 @@ const SECTION_DEFS = [
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
+      // #4066: wired in — promoting/demoting between academy and senior
+      // squad outside graduation already had translated copy but no
+      // reachable docs.
+      { id: "promoteDemote", kind: "text" },
     ],
   },
   {
@@ -310,9 +351,16 @@ const SECTION_DEFS = [
       { id: "what", kind: "text" },
       { id: "suitability", kind: "text" },
       { id: "roles", kind: "text" },
+      // #4066: wired in — the per-stage tactics board already had
+      // translated copy but no reachable docs; it belongs right after
+      // roles, since it's the stage-race-specific extension of them.
+      { id: "stageTactics", kind: "text" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "fatigue", kind: "text" },
+      // #4066: wired in — read-only scouting of other divisions' start
+      // lists already had translated copy but no reachable docs.
+      { id: "scouting", kind: "text" },
     ],
   },
 ];
