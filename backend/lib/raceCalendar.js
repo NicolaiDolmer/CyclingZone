@@ -279,6 +279,11 @@ export function toCalendarWireEntry(entry) {
     id: entry.id,
     name: entry.name,
     raceType: entry.raceType,
+    // #1146 Z1: Season-visningen på planlægnings-boardet læser raceClass (monument/
+    // GT-styling) og entered (guld-tint = holdet har en gemt udtagelse). De var
+    // #2861-trimmet væk mens ingen klient læste dem; nu er de del af kontrakten.
+    raceClass: entry.raceClass,
+    entered: entry.entered,
     stages: entry.stages,
     division: entry.division,
     poolId: entry.poolId,
