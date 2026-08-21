@@ -192,6 +192,10 @@ export async function loadGoalContextForBoard({
       // uanset race_class (spiller-rapport 20/8: registreres i dag som en
       // gc-sejr, ikke en etapesejr, så målet aldrig opfyldes). result_type='gc'
       // + race_type='single' er samme skel som riderPalmares.js' oneDayWins.
+      // pagination-safe: one team's rank=1 GC results on single-day races,
+      // narrowed to the plan's season window — a season has ~28 race days, so
+      // wins per team are bounded far under the 1000-row cap (same bound class
+      // as the rank<=3 classic query above, #3331 audit).
       supabase
         .from("race_results")
         .select("races!inner(season_id)")
