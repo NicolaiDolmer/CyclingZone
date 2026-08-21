@@ -22,6 +22,6 @@
 - **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 27 løbsdage.
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Skalering:** #323.
 
-> **🤖 Aktive sessioner: NATBØLGE 21/8 KØRER** (Fable-orkestrator i hoved-checkout på main; 3 workflow-chunks, ~21 sonnet-workers i worktrees). Andre sessioner: STOP + spørg ejer.
+> **🤖 Aktiv session: Fable i hoved-checkout (21/8, ejer online)** — ejer-beslutninger (#4004/#4001/#4005-p3) → F2-designsession (#4030) → cutover-forberedelse. Andre sessioner: STOP + spørg ejer.
 
 _Historik i git-log, issue-tråde + docs/audits/._
