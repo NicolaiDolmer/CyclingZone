@@ -22,6 +22,6 @@
 
 > **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5; byg tidligst efter v4-gaten). **A6 AFGJORT 21/8: kalender-fanen består; Z1 v0 Season-visningen er shippet** (#4083). §3.4+§3.5 udført. Åbent: #3990-resten. Ny: #4076 (stående ordrer P3).
 >
-> **🤖 Ingen aktiv session** (aften-sessionen 21/8 lukket ~21:30; F3-merge-tog fuldført).
+> **🤖 Working agent: Claude Code (DolmerPC, hoved-checkout) — værdi/løn-session 21/8 aften: plan- og løfte-audit + gate-forhåndsmåling (#3750).**
 
 _Historik i git-log, issue-tråde + docs/audits/._
