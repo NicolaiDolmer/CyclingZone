@@ -6,6 +6,8 @@
     "strict": true,
     "erasableSyntaxOnly": true,
     "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "forceConsistentCasingInFileNames": true,
