@@ -253,8 +253,8 @@ test("toCalendarWireEntry bevarer PRÆCIS de felter kalender-fladen renderer", (
   const wire = toCalendarWireEntry(entry);
   assert.deepEqual(
     Object.keys(wire).sort(),
-    ["date", "division", "id", "isMine", "leaderSet", "name", "poolId", "poolLabel", "raceType", "stageSchedule", "stages", "terrain"],
-    "wire-formatet er kontrakten mod frontend/src/lib/calendarGrid.js — expandStageEvents læser netop disse",
+    ["date", "division", "entered", "id", "isMine", "leaderSet", "name", "poolId", "poolLabel", "raceClass", "raceType", "stageSchedule", "stages", "terrain"],
+    "wire-formatet er kontrakten mod frontend/src/lib/calendarGrid.js (expandStageEvents) + SeasonView (#1146: raceClass/entered)",
   );
   for (const key of Object.keys(wire)) {
     assert.deepEqual(wire[key], entry[key], `${key} skal videreføres uændret fra read-modellen`);
@@ -266,8 +266,9 @@ test("toCalendarWireEntry dropper de felter ingen kalender-klient læser (#2861)
   const wire = toCalendarWireEntry(entry);
   // Felterne findes STADIG i read-modellen (peak-plans-board'et bruger dem) — de
   // sendes bare ikke til kalenderen, hvor de kostede 67-73 kB rå JSON pr. load.
-  // poolId er UNDTAGET fra denne liste siden #2756 (pulje-vælgeren skal filtrere på den).
-  for (const dead of ["raceClass", "status", "poolIndex", "gameDayStart", "gameDayEnd", "terrainStages", "entered"]) {
+  // poolId er UNDTAGET fra denne liste siden #2756 (pulje-vælgeren skal filtrere på den);
+  // raceClass + entered UNDTAGET siden #1146 (Z1 Season-visningen læser dem).
+  for (const dead of ["status", "poolIndex", "gameDayStart", "gameDayEnd", "terrainStages"]) {
     assert.ok(dead in entry, `${dead} skal stadig findes i den fulde read-model`);
     assert.ok(!(dead in wire), `${dead} må ikke sendes til kalender-klienten`);
   }

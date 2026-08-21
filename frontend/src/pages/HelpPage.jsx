@@ -349,6 +349,7 @@ const SECTION_DEFS = [
     Icon: JerseyIcon,
     blocks: [
       { id: "what", kind: "text" },
+      { id: "seasonOverview", kind: "text" },
       { id: "suitability", kind: "text" },
       { id: "roles", kind: "text" },
       // #4066: wired in — the per-stage tactics board already had
