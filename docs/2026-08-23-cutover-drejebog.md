@@ -68,13 +68,13 @@ Den eneste der er klar, og derfor den eneste der er skrevet ud i fuld længde.
 
 ### Hvad kan IKKE rulles tilbage
 
-**Dette er dokumentets vigtigste afsnit.**
+**Dette er dokumentets vigtigste afsnit — og GENMÅLT 21/8: risikoen er allerede indfriet af en anden ændring.**
 
-Når `dailyTrainingEngine` tikker AI-holdene for første gang, **genopbygges deres `ability_caps` med alder** via `buildCapsForRider`. Deres nuværende caps er aldrig blevet aftrappet, fordi de udelukkende kom fra `backfillCores` uden alders-argument (#3591). Målt på dateret snapshot 10/8: **kun 46 af 3.473 AI-rytteres caps matcher noget `buildCapsForRider`-output overhovedet, og 45,4 % taber loft alene ved kaldformen (p10 Δ bedste-af-8 loft-rating −29).**
+Når `dailyTrainingEngine` tikker AI-holdene for første gang, **genopbygges deres `ability_caps` med alder** via `buildCapsForRider`. 10/8-målingen (46/3.473 match, 45,4 % ville tabe loft, p10 Δ −29 i FØR-#3666-rating-enheden) var grundlaget for alarmen — men **genmåling mod prod 21/8 viser delta = 0 for alle 2.961 AI-ryttere**: trin 7-backfillen (#3746, 16/8) anvendte allerede den nuværende formel (flad rolle-tag + alders-aftrapning, uden gulv jf. #3794) på HELE populationen. Divergensen er lukket af backfillen, ikke af flippet. Flippets caps-rebuild er dermed forventet et no-op. Måleværktøj: `backend/scripts/dev/remeasureGate3459.mjs` (read-only, genkøres som pre-flip-gate på dagen).
 
-At sætte flaget tilbage til `'off'` **gendanner ikke de gamle caps.** Flaget styrer hvilken motor der kører, ikke hvad den allerede har skrevet. En rollback kræver at caps skrives tilbage fra snapshottet — hvilket er en population-mutation med sin egen ejer-gate.
+At sætte flaget tilbage til `'off'` **gendanner ikke skrevne caps.** Flaget styrer hvilken motor der kører, ikke hvad den allerede har skrevet. En rollback kræver at caps skrives tilbage fra snapshottet — hvilket er en population-mutation med sin egen ejer-gate. Snapshot-disciplinen består derfor uændret.
 
-Ingen rytter kan miste *evne* (`buildCapsForRider` returnerer `max(tapered, current)`, så gulvet er rytterens nuværende evne). Det er **loftet** der falder — og det er et spiller-vendt tal.
+Ingen rytter kan miste *evne*. OBS rettet 21/8: garantien er IKKE længere `max(tapered, current)`-gulvet (fjernet 16/8, #3794) — den er strukturel: `dailyTraining` lægger kun til (gap ≤ 0 ⇒ nul vækst), `stepAbility` returnerer uændret ved gap ≤ 0, og `declineByYearsPastPeak` læser ikke loftet (verificeret 15/8 på #3794, `riderProgression.js:559-568`).
 
 **Ejer-beslutning 17/8:** spillerne får besked FØR flippet (beslutning 2 ovenfor). Præcis læringen fra #3709: spillerne så det selv, før vi meldte det.
 
@@ -117,7 +117,7 @@ Umiddelbart efter flip, før næste tick:
 
 Efter første tick:
 
-4. **Loft-deltaet på AI-hold mod snapshottet.** Stop-grænse: mediant loft-tab over p10-tallet fra 10/8 (Δ −29) betyder at noget andet end den forventede aftrapning er i gang.
+4. **Loft-deltaet på AI-hold mod snapshottet** (genmålt 21/8 i rå loft-enheder, se "Hvad kan IKKE rulles tilbage"). **Forventet: 0** — alle 2.961 AI-rytteres gemte lofter var 21/8 identiske med `buildCapsForRider`-genberegningen. **Pre-flip-gate på dagen:** kør `remeasureGate3459.mjs` igen lige før flip. **Stop hvis** >1 % af AI-populationen har bedste-af-8-delta ≠ 0, eller p10 < −5 loft-point — det betyder formel eller input har flyttet sig siden 21/8-målingen.
 5. Ingen rytter har mistet *evne* (ikke bare loft). Ét eneste tilfælde = stop.
 6. Antal ryttere tikket ≈ AI-ryttere + menneskeryttere. Langt under = sweepet filtrerer forkert.
 
@@ -360,7 +360,7 @@ Komponent 1 RØD (udgår), komponent 2 afventer design-session, komponent 3 KLAR
 ## Huller pr. 17/8 (status-opdateret 21/8)
 
 - ~~Det daglige ticks tidspunkt~~ **MÅLT 21/8:** trænings-/AI-recovery-sweeps poller hvert 5. minut (`cron.js:1391-1400`) med gate "efter kl. 22 dansk tid" — første tick efter flip lander **22:00-22:05**, dvs. INDE i søndagsvinduet 19:30-22:30. Post-tick-verifikation (punkt 4-6) kan køre 22:05-22:30. Etape-runneren er ugated (`cron.js:526`), men første S3-etape er tirsdag 11:00 — ~37 timers vindue fra tick til første etape under ny motor.
-- **Komponent 3's stop-grænse (Δ −29) står i før-#3666-rating-enheden og kan ikke bruges som gate uden genmåling** (spor 1-fund 17/8); gendannelses-værktøjet rapporterer i rå loft-enheder — genmål grænsen FØR 23/8. *(21/8: genmålings-opgave sat i kø i sessionen.)*
+- ~~Komponent 3's stop-grænse~~ **MÅLT 21/8 i rå loft-enheder: delta = 0 for alle 2.961 AI-ryttere** — #3746-backfillen (16/8) lukkede divergensen. Ny gate: forventet 0; stop ved >1 % ændrede eller p10 < −5 loft-point. Pre-flip-genmåling med `backend/scripts/dev/remeasureGate3459.mjs` på dagen (read-only, JSON-input via MCP-SELECT, se scriptets header).
 - Mandat: script-apply mod staging med ejerens egen nøgle udestår (agent-sessionen havde ikke stagings service-nøgle) — **generalprøve-punkt lørdag**.
 - Løn-effekten er ikke genmålt med ankerværdi-grundlag (hører i design-sessionen); værktøjets `--basis market` kan først køre når #3393 er merged.
 - ~~Om `processSeasonStart` rører `board_profiles`~~ **MÅLT 21/8: JA** — sæson-transitionen opdaterer `satisfaction`/`budget_modifier`/`seasons_completed` på `board_profiles` (`economyEngine.js:1756` og `:1826`, capture-tag `flow: "season-transition"`). Bindende følge: **mandat-backfillen køres EFTER sæsonskiftet** (den ligger allerede sidst i rækkefølgen) og genkøres lige før UI-flippet (idempotent, gratis).
