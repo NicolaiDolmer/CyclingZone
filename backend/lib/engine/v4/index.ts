@@ -5,8 +5,20 @@
 // Én deterministisk funktion: samme input => byte-identisk output (§2 invariant 1).
 // REN — ingen import fra oevrigt backend.
 
-import type { RiderLoad, StageInput, StageOutput, StageResult, TimelineEvent } from "./types.ts";
-import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop, type SegmentLoopResult } from "./segmentLoop.ts";
+import type { MechanicHooks, RiderLoad, StageInput, StageOutput, StageResult, TimelineEvent } from "./types.ts";
+import { runSegmentLoop, type SegmentLoopResult } from "./segmentLoop.ts";
+import { climbSelectionHook } from "./mechanics/climbSelection.ts";
+import { descentHook } from "./mechanics/descent.ts";
+import { finaleHook } from "./finale.ts";
+import { sortTimeline } from "./timeline.ts";
+
+// Fase C-wiring (#4030): de rigtige M2/M3/M4-implementeringer. Harness/tests
+// kan stadig injicere egne hooks via runSegmentLoop direkte.
+const LIVE_MECHANIC_HOOKS: MechanicHooks = {
+  climbSelection: climbSelectionHook,
+  descent: descentHook,
+  finale: finaleHook,
+};
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -57,19 +69,19 @@ function buildFinishEvent(results: StageResult[], distanceKm: number): TimelineE
 
 /**
  * Kerne-kontrakten (§2, frossen): route + startliste + ordrer + seed + tuning
- * -> tidslinje + resultater + belastninger + gruppe-snapshots. Fase A koerer
- * DEFAULT_MECHANIC_HOOKS (M2/M3/M4 er no-op); Fase B injicerer de rigtige
- * hooks via runSegmentLoop direkte (harness/tests) — simulateStageV4 selv
- * bruger altid de aktuelt registrerede default-hooks.
+ * -> tidslinje + resultater + belastninger + gruppe-snapshots.
  */
 export function simulateStageV4(input: StageInput): StageOutput {
-  const { state, timeline, groupSnapshots } = runSegmentLoop(input, DEFAULT_MECHANIC_HOOKS);
+  const { state, timeline, groupSnapshots } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);
   const results = buildResults(state);
   const loads = buildLoads(state);
   const finishEvent = buildFinishEvent(results, input.route.distance_km);
 
+  // Hooks emitterer midt-segment-events (fx descent attack ved km 1,27) efter
+  // loopets egne graense-events — stable-sort paa km genopretter #2410 §2.3's
+  // monotoni uden at flytte raekkefoelgen inden for samme km.
   return {
-    timeline: { timeline_version: 2, events: [...timeline, finishEvent] },
+    timeline: { timeline_version: 2, events: [...sortTimeline(timeline), finishEvent] },
     results,
     loads,
     groupSnapshots,
