@@ -151,3 +151,31 @@ const finaleExtra = {
 
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
+
+// ── Sub-tick-fysiologi (#4030, fixture-fund 21/8) — ADDITIV physiology-tuning ─
+// SS2's frosne PhysiologyTuning-kontrakt (types.ts) baerer ikke disse felter.
+// Samme moenster som finaleExtra ovenfor: physiology.ts importerer denne
+// direkte i stedet for at laese den via ctx.tuning/input.tuning.physiology.
+//
+// BAGGRUND: segmentLoop.ts's tickGroupRiders kaldte foer tickPhysiology ÉN
+// gang pr. rytter pr. segment med hele segmentets dtSeconds (ofte flere
+// tusinde sekunder). For taering (demand>cp) er ét stort Euler-skridt
+// matematisk EKSAKT (lineaer ODE, konstant koefficient) — problemet er
+// genopladningens eksponentielle ODE (`wprime += rate*(max-wprime)*dt`):
+// naar `rate*dt` bliver stor (hvilket den rutinemaessigt gjorde ved et helt
+// segments dtSeconds), overskyder ÉT Euler-skridt maalstregen og klampes til
+// wprimeMax — dvs. reel "kør traet ELLER fuldt genoplad i ét hop" i stedet
+// for den gradvise eksponentielle kurve. Fixet: del segmentets dtSeconds i N
+// lige store sub-tick (§ physiology.planSubTicks/tickPhysiologyOverSegment),
+// N afledt af segmentets km-laengde (kmPerSubTick) sa laengere segmenter faar
+// flere, kortere sub-tick — genopladning naermer sig den sande eksponentielle
+// kurve i stedet for at "snappe" til fuld reserve. Taering forbliver
+// vaerdimaessigt uaendret (lineaer, sub-tick-invariant), men rapporteres nu
+// ogsaa gradvist internt (samme akkumulerings-mekanisme for begge grene).
+const physiologySubTick = {
+  kmPerSubTick: 1, // ét sub-tick pr. paabegyndt km segment-laengde (§4030-fixture-fundet: "fx pr. km")
+  maxSubTicksPerSegment: 300, // perf-/determinisme-gulv: laengste realistiske etape-segment (~300 km) faar stadig <=1 sub-tick/km
+};
+
+/** Sub-tick-fysiologi-tuning (deep-frosset). Se physiologySubTick-kommentaren ovenfor. */
+export const PHYSIOLOGY_SUBTICK_TUNING = deepFreeze(physiologySubTick);
