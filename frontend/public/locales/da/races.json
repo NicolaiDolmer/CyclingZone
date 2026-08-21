@@ -6,6 +6,33 @@
     "tabStrategy": "Strategi",
     "tabCalendar": "Kalender"
   },
+  "seasonView": {
+    "toggleSeason": "Sæson",
+    "toggleDay": "Dag",
+    "meta": "Sæson {season} · {division} · {count, plural, one {# løb} other {# løb}} · {start} – {end}",
+    "divisionLabel": "Division {n}",
+    "hint": "Vælg en løbsdag for at åbne dens board",
+    "today": "I DAG",
+    "stagesGt": "{count} etaper · GT",
+    "stagesOnly": "{count} etaper",
+    "monument": "Monument · eksklusiv løbsdag",
+    "bandAria": "{name}, løbsdag {day}. Åbn dagens board.",
+    "dayPanel": {
+      "title": "Løbsdag {day} · {date}",
+      "meta": "{races, plural, one {# løb} other {# løb}} · {saved, plural, one {# udtagelse gemt} other {# udtagelser gemt}} · {open, plural, one {# åben} other {# åbne}}",
+      "openBoard": "Åbn dagens board →"
+    },
+    "legend": {
+      "label": "SIGNATUR",
+      "gt": "Grand Tour",
+      "monument": "Monument, eksklusiv løbsdag",
+      "selected": "Du har en udtagelse",
+      "none": "Ingen udtagelse endnu"
+    },
+    "empty": "Ingen løb på kalenderen endnu",
+    "error": "Sæsonkalenderen kunne ikke hentes. Intet er gået tabt. Prøv igen.",
+    "retry": "Prøv igen"
+  },
   "racehub": {
     "scope": {
       "mine": "Mine løb",

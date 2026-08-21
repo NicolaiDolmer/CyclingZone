@@ -1138,6 +1138,10 @@
         "title": "Udtag din løbstrup",
         "text": "Hvert løb kræver en komplet opstilling: den fulde feltstørrelse for løbets klasse (6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours). Gå til løbssiden og brug panelet Holdudtagelse. Du kan ikke gemme en delvis trup. Vil du stå over et løb, så afmeld dig det; mangler du raske ryttere, så hent fri-agenter til at fylde pladserne. Vælger du ikke selv, fylder din assistent automatisk en fuld opstilling fra dine tilgængelige ryttere, så du aldrig misser et løb."
       },
+      "seasonOverview": {
+        "title": "Sæson-visningen på planlægnings-boardet",
+        "text": "Planlægnings-boardet har to visninger. Dag viser én løbsdag ad gangen. Sæson viser hele din gruppes kalender på én tidslinje: Grand Tours som lange bjælker, monumentet på sin egen eksklusive løbsdag, og en guldtone på hvert løb hvor du allerede har en gemt udtagelse. Klik på et løb for at åbne dets dags-board."
+      },
       "suitability": {
         "title": "Sådan læser du udtagelses-tabellen",
         "text": "Hver rytter viser sin type (fx Spurter eller Klatrer), et egnethedstal fra 0 til 100 der angiver hvor godt rytteren passer til løbets terræn, samt aktuel Form og Træthed. Højere egnethed betyder et bedre match til parcouren. Skadede ryttere kan ikke udtages; brug Skjul skadede for at fjerne dem fra listen mens du vælger."
