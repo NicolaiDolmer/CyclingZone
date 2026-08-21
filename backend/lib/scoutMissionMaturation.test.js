@@ -8,14 +8,15 @@ import { missionReadyAt } from "./scoutEngine.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Supabase-mock: chainable query-builders (.eq/.is/.not/.lte) OG en betinget
-// update-kæde (.eq×N.select()) der spejler den ægte claim-first UPDATE.
-function makeMockSupabase({ assignments = [], scoutActions = [], candidates = [], offeredIntake = [] } = {}) {
+// Supabase-mock: chainable query-builders (.eq/.is/.not/.lte/.maybeSingle) OG en
+// betinget update-kæde (.eq×N.select()) der spejler den ægte claim-first UPDATE.
+function makeMockSupabase({ assignments = [], scoutActions = [], candidates = [], offeredIntake = [], seasons = [] } = {}) {
   const state = {
     assignments: JSON.parse(JSON.stringify(assignments)),
     scoutActions: JSON.parse(JSON.stringify(scoutActions)),
     candidates,
     offeredIntake: JSON.parse(JSON.stringify(offeredIntake)),
+    seasons: JSON.parse(JSON.stringify(seasons)),
     inserts: { scout_actions: [] },
     updates: [],
   };
@@ -24,17 +25,26 @@ function makeMockSupabase({ assignments = [], scoutActions = [], candidates = []
     const filters = [];
     const notNullFilters = [];
     let lteVal = null;
+    const matched = () => {
+      let out = rows.filter((r) => filters.every(([c, v]) => r[c] === v));
+      if (notNullFilters.length) out = out.filter((r) => notNullFilters.every((c) => r[c] != null));
+      if (supportsLte && lteVal) out = out.filter((r) => r[lteVal[0]] != null && r[lteVal[0]] <= lteVal[1]);
+      return out;
+    };
     const b = {
       select() { return b; },
       eq(col, val) { filters.push([col, val]); return b; },
       is(col, val) { filters.push([col, val]); return b; },
       not(col, op, val) { if (op === "is" && val === null) notNullFilters.push(col); return b; },
       lte(col, val) { lteVal = [col, val]; return b; },
+      // #4058: resolveSeasonNumber's seasons-opslag bruger .maybeSingle() —
+      // ingen match → null (aldrig et gæt), præcis 1 match → den række.
+      maybeSingle() {
+        const out = matched();
+        return Promise.resolve({ data: out[0] ? JSON.parse(JSON.stringify(out[0])) : null, error: null });
+      },
       then(resolve) {
-        let out = rows.filter((r) => filters.every(([c, v]) => r[c] === v));
-        if (notNullFilters.length) out = out.filter((r) => notNullFilters.every((c) => r[c] != null));
-        if (supportsLte && lteVal) out = out.filter((r) => r[lteVal[0]] != null && r[lteVal[0]] <= lteVal[1]);
-        return Promise.resolve({ data: JSON.parse(JSON.stringify(out)), error: null }).then(resolve);
+        return Promise.resolve({ data: JSON.parse(JSON.stringify(matched())), error: null }).then(resolve);
       },
     };
     return b;
@@ -67,6 +77,7 @@ function makeMockSupabase({ assignments = [], scoutActions = [], candidates = []
       }
       if (table === "scout_actions") {
         return {
+          select: () => selectBuilder(state.scoutActions), // #4058: dedup-opslaget
           insert(payload) {
             const rows = Array.isArray(payload) ? payload : [payload];
             for (const row of rows) {
@@ -82,6 +93,9 @@ function makeMockSupabase({ assignments = [], scoutActions = [], candidates = []
       }
       if (table === "academy_intake") {
         return { select: () => selectBuilder(state.offeredIntake) };
+      }
+      if (table === "seasons") {
+        return { select: () => selectBuilder(state.seasons) }; // #4058
       }
       throw new Error(`Unexpected table: ${table}`);
     },
@@ -126,6 +140,36 @@ describe("defaultLoadCandidates (#2581, flyttet fra scoutSweep.js #3997)", () =>
     });
     const candidates = await defaultLoadCandidates(supabase);
     assert.equal(candidates.find((c) => c.id === "r1").primaryType, "climber");
+  });
+
+  // #4058: alderen SKAL bruge sæson-alderen (ageForSeason, LAUNCH_REFERENCE_YEAR
+  // 2026 + (seasonNumber-1) − birthYear), aldrig wall-clock. jeppeks bug (20/8,
+  // sæson 2 aktiv): en rytter født 2003 blev regnet som 23 år (wall-clock,
+  // currentYear=2026) og slap gennem U23-filteret (<=23) — reelt er sæson-2-
+  // alderen 24 (2027-2003). SQL-bevis i #4058: 64 shortlist-rækker med denne
+  // præcise lækage.
+  it("#4058: sæson 2 — rytter født 2003 er 24 år (2027-2003), IKKE 23 (wall-clock-bug)", async () => {
+    const supabase = makeMockSupabase({ candidates: [riderRow({ id: "r1", birthdate: "2003-06-17" })] });
+    const candidates = await defaultLoadCandidates(supabase, "free_agents", 2);
+    assert.equal(candidates.find((c) => c.id === "r1").age, 24);
+  });
+
+  it("#4058: sæson 3 — samme rytter (født 2003) er 25 år (2028-2003), IKKE 23", async () => {
+    const supabase = makeMockSupabase({ candidates: [riderRow({ id: "r1", birthdate: "2003-06-17" })] });
+    const candidates = await defaultLoadCandidates(supabase, "free_agents", 3);
+    assert.equal(candidates.find((c) => c.id === "r1").age, 25);
+  });
+
+  it("#4058: sæson 1 (launch) — født 2003 er 23 år (2026-2003) — matcher wall-clock-tallet KUN i launch-året", async () => {
+    const supabase = makeMockSupabase({ candidates: [riderRow({ id: "r1", birthdate: "2003-06-17" })] });
+    const candidates = await defaultLoadCandidates(supabase, "free_agents", 1);
+    assert.equal(candidates.find((c) => c.id === "r1").age, 23);
+  });
+
+  it("#4058: manglende seasonNumber → age null (aldrig et wall-clock-gæt)", async () => {
+    const supabase = makeMockSupabase({ candidates: [riderRow({ id: "r1", birthdate: "2003-06-17" })] });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.equal(candidates.find((c) => c.id === "r1").age, null);
   });
 });
 
@@ -341,5 +385,114 @@ describe("completeDueMissionAssignments (#3997)", () => {
     const result = await complete({ supabase, now }); // ingen loadCandidates-override → default bruges
     assert.deepEqual(result, { completed: 1 });
     assert.deepEqual(supabase.state.assignments[0].result.shortlist, ["free-1"]);
+  });
+});
+
+// #4058 del 1 — end-to-end: en U23-missions kandidat-alder SKAL følge den
+// AKTIVE sæsons nummer (assignment.season_id → seasons.number), ikke wall-clock.
+// Bruger den ÆGTE defaultLoadCandidates (ingen loadCandidates-override), samme
+// begrundelse som "bagudkompatibel targetPool"-testen ovenfor.
+describe("completeDueMissionAssignments — sæson-korrekt U23-alder (#4058)", () => {
+  it("sæson 2: 2003-rytter (24 år) EKSKLUDERES af U23, 2004-rytter (23 år) INKLUDERES", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const candidates = [
+      riderRow({ id: "too-old-24", birthdate: "2003-06-17" }),
+      riderRow({ id: "just-u23-23", birthdate: "2004-06-17" }),
+    ];
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment({ mission_criteria: { scope: "u23" }, season_id: "season-2" })],
+      candidates,
+      seasons: [{ id: "season-2", number: 2, status: "active" }],
+    });
+    const result = await complete({ supabase, now });
+    assert.deepEqual(result, { completed: 1 });
+    assert.deepEqual(supabase.state.assignments[0].result.shortlist, ["just-u23-23"]);
+  });
+
+  it("sæson 3: 2004-rytter (24 år) EKSKLUDERES af U23, 2005-rytter (23 år) INKLUDERES", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const candidates = [
+      riderRow({ id: "too-old-24", birthdate: "2004-06-17" }),
+      riderRow({ id: "just-u23-23", birthdate: "2005-06-17" }),
+    ];
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment({ mission_criteria: { scope: "u23" }, season_id: "season-3" })],
+      candidates,
+      seasons: [{ id: "season-3", number: 3, status: "active" }],
+    });
+    const result = await complete({ supabase, now });
+    assert.deepEqual(result, { completed: 1 });
+    assert.deepEqual(supabase.state.assignments[0].result.shortlist, ["just-u23-23"]);
+  });
+
+  it("bagudkompatibel: assignment uden season_id falder tilbage til den AKTIVE sæson", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const candidates = [
+      riderRow({ id: "too-old-24", birthdate: "2003-06-17" }),
+      riderRow({ id: "just-u23-23", birthdate: "2004-06-17" }),
+    ];
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment({ mission_criteria: { scope: "u23" }, season_id: null })],
+      candidates,
+      seasons: [{ id: "season-2", number: 2, status: "active" }],
+    });
+    const result = await complete({ supabase, now });
+    assert.deepEqual(result, { completed: 1 });
+    assert.deepEqual(supabase.state.assignments[0].result.shortlist, ["just-u23-23"]);
+  });
+});
+
+// #4058 del 2 — gentagne fund: en rytter holdet allerede har en scout_actions-
+// række på (fra en tidligere mission-shortlist ELLER target-undersøgelse) må
+// ALDRIG dukke op i en ny mission-shortlist for samme hold. jeppek 20/8: Carlos
+// Lozano i 2 separate U23-shortlists for samme hold på 2 dage.
+describe("completeDueMissionAssignments — dedup mod scout_actions (#4058)", () => {
+  it("en rytter holdet allerede har scout_actions på EKSKLUDERES fra en ny mission-shortlist", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment()],
+      candidates: CANDIDATES,
+      scoutActions: [{ team_id: "team-1", rider_id: "rider-9" }], // holdets bedste kandidat (potentiale 5.5) allerede kendt
+    });
+    const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES });
+    assert.deepEqual(result, { completed: 1 });
+    assert.ok(!supabase.state.assignments[0].result.shortlist.includes("rider-9"),
+      "rider-9 har allerede en scout_actions-række for team-1 og må ikke gentages");
+  });
+
+  it("scout_actions for et ANDET hold påvirker ikke dette holds shortlist", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment({ team_id: "team-1" })],
+      candidates: CANDIDATES,
+      scoutActions: [{ team_id: "team-OTHER", rider_id: "rider-9" }],
+    });
+    const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES });
+    assert.deepEqual(result, { completed: 1 });
+    // rider-9 er IKKE ekskluderet her (kun scoutet af et andet hold) — bekræfter
+    // at dedup er pr.-hold, ikke globalt (Carlos Lozano-mønstret: normalt OK på
+    // tværs af FORSKELLIGE hold, kun gentagelse INDEN for samme hold er buggen).
+    const potentiallyIncluded = supabase.state.assignments[0].result.shortlist.length > 0;
+    assert.ok(potentiallyIncluded, "shortlisten skal stadig indeholde fund (ingen falsk exclusion på tværs af hold)");
+  });
+
+  it("end-to-end: rytter shortlistet i mission 1 dukker IKKE op igen i mission 2 for samme hold", async () => {
+    const supabase = makeMockSupabase({
+      assignments: [
+        missionAssignment({ id: "m-1", team_id: "team-1", created_at: "2026-08-01T09:00:00.000Z" }),
+        missionAssignment({ id: "m-2", team_id: "team-1", created_at: "2026-08-01T09:00:00.000Z" }),
+      ],
+      candidates: CANDIDATES,
+    });
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    // #3997: begge missioner er due samtidig og claimes/fuldføres SEKVENTIELT i
+    // completeDueMissionAssignments' for-loop — m-1's scout_actions-inserts er
+    // derfor allerede synlige i mock-staten når m-2's loadAlreadyScoutedRiderIds kører.
+    const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES });
+    assert.deepEqual(result, { completed: 2 });
+    const shortlist1 = supabase.state.assignments.find((a) => a.id === "m-1").result.shortlist;
+    const shortlist2 = supabase.state.assignments.find((a) => a.id === "m-2").result.shortlist;
+    const overlap = shortlist1.filter((id) => shortlist2.includes(id));
+    assert.deepEqual(overlap, [], "ingen rytter må optræde i BEGGE missioners shortlist for samme hold");
   });
 });

@@ -82,20 +82,32 @@ function deterministicShuffle(items, seedKey) {
 }
 
 // Genererer shortlist (3-5 navne) + top-fund for én mission.
-//   candidates : fuld rytter-pool (allerede indlæst af kalderen), form { id, potentiale, ... }
-//   criteria   : mission_criteria fra scout_assignments-rækken
-//   scout      : spejder-objekt (#2244) — reach/evaluation driver dækning/bias
-//   teamId     : holdets id (seed-komponent — per-team varians)
-//   missionId  : assignment-id (seed-komponent — unik pr. mission)
+//   candidates       : fuld rytter-pool (allerede indlæst af kalderen), form { id, potentiale, ... }
+//   criteria         : mission_criteria fra scout_assignments-rækken
+//   scout            : spejder-objekt (#2244) — reach/evaluation driver dækning/bias
+//   teamId           : holdets id (seed-komponent — per-team varians)
+//   missionId        : assignment-id (seed-komponent — unik pr. mission)
+//   excludeRiderIds  : #4058 — Set af rider_id holdet ALLEREDE har en scout_actions-
+//                      række på (fra en tidligere mission-shortlist ELLER en target-
+//                      undersøgelse). Udelades (default tomt Set → no-op) af kaldere
+//                      der ikke sætter den, fx eksisterende tests.
 // Returnerer { shortlist: [rider_id,...], topRiderId } (topRiderId = bedste SCORE,
 // ikke shufflet position — det er target for den gratis niveau-1-rapport).
-export function generateShortlist({ candidates, criteria, scout = DEFAULT_SCOUT, teamId, missionId }) {
+export function generateShortlist({ candidates, criteria, scout = DEFAULT_SCOUT, teamId, missionId, excludeRiderIds }) {
   // #2581: ekskludér holdets EGNE ryttere — en mission der "opdager" en rytter
   // holdet allerede ejer er meningsløs (prod-audit 17/7 fandt 2/46 tilfælde).
   // candidate.ownerTeamId er undefined for kaldere der ikke sætter den (fx
   // eksisterende tests) — filteret er da et no-op, ingen kontraktændring.
+  //
+  // #4058: ekskludér OGSÅ ryttere holdet allerede har fået en rapport på
+  // (scout_actions, mission-shortlist ELLER target) — uden dette dukkede samme
+  // rytter op i et ubegrænset antal fremtidige mission-shortlists for samme
+  // hold (Carlos Lozano, jeppek 20/8: 2 separate U23-shortlists på 2 dage).
+  // Hård exclusion (aldrig igen for samme hold), samme retning issue-undersøgelsen
+  // pegede på — i modsætning til target-stien er der intet niveau at "bruge op",
+  // en mission-shortlist er et engangsfund pr. rytter pr. hold.
   const filteredCandidates = Array.isArray(candidates)
-    ? candidates.filter((r) => r.ownerTeamId == null || r.ownerTeamId !== teamId)
+    ? candidates.filter((r) => (r.ownerTeamId == null || r.ownerTeamId !== teamId) && !excludeRiderIds?.has(r.id))
     : candidates;
   const pool = filterCandidatePool(filteredCandidates, criteria);
   if (pool.length === 0) return { shortlist: [], topRiderId: null };

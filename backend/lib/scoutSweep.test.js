@@ -21,7 +21,7 @@ it("defaultLoadCandidates re-eksporteres bagudkompatibelt (flyttet til scoutMiss
 // betinget update-kæde (target-claim + mission-claim), separate insert()-mocks
 // pr. tabel, samt scout_sweep_runs-mutex-tabellen (target-backstop, uændret).
 function makeMockSupabase({
-  assignments = [], scoutActions = [], sweepRuns = [], candidates = [], offeredIntake = [],
+  assignments = [], scoutActions = [], sweepRuns = [], candidates = [], offeredIntake = [], seasons = [],
 } = {}) {
   const state = {
     assignments: JSON.parse(JSON.stringify(assignments)),
@@ -29,6 +29,7 @@ function makeMockSupabase({
     sweepRuns: JSON.parse(JSON.stringify(sweepRuns)),
     candidates,
     offeredIntake: JSON.parse(JSON.stringify(offeredIntake)),
+    seasons: JSON.parse(JSON.stringify(seasons)), // #4058
     updates: [],
     inserts: { scout_actions: [], scout_sweep_runs: [] },
   };
@@ -37,17 +38,25 @@ function makeMockSupabase({
     const filters = [];
     const notNullFilters = [];
     let lteVal = null;
+    const matched = () => {
+      let out = rows.filter((r) => filters.every(([c, v]) => r[c] === v));
+      if (notNullFilters.length) out = out.filter((r) => notNullFilters.every((c) => r[c] != null));
+      if (supportsLte && lteVal) out = out.filter((r) => r[lteVal[0]] != null && r[lteVal[0]] <= lteVal[1]);
+      return out;
+    };
     const b = {
       select() { return b; },
       eq(col, val) { filters.push([col, val]); return b; },
       is(col, val) { filters.push([col, val]); return b; },
       not(col, op, val) { if (op === "is" && val === null) notNullFilters.push(col); return b; },
       lte(col, val) { lteVal = [col, val]; return b; },
+      // #4058: resolveSeasonNumber's seasons-opslag bruger .maybeSingle().
+      maybeSingle() {
+        const out = matched();
+        return Promise.resolve({ data: out[0] ? JSON.parse(JSON.stringify(out[0])) : null, error: null });
+      },
       then(resolve) {
-        let out = rows.filter((r) => filters.every(([c, v]) => r[c] === v));
-        if (notNullFilters.length) out = out.filter((r) => notNullFilters.every((c) => r[c] != null));
-        if (supportsLte && lteVal) out = out.filter((r) => r[lteVal[0]] != null && r[lteVal[0]] <= lteVal[1]);
-        return Promise.resolve({ data: JSON.parse(JSON.stringify(out)), error: null }).then(resolve);
+        return Promise.resolve({ data: JSON.parse(JSON.stringify(matched())), error: null }).then(resolve);
       },
     };
     return b;
@@ -111,6 +120,9 @@ function makeMockSupabase({
       }
       if (table === "academy_intake") {
         return { select: () => selectBuilder(state.offeredIntake) };
+      }
+      if (table === "seasons") {
+        return { select: () => selectBuilder(state.seasons) }; // #4058
       }
       throw new Error(`Unexpected table: ${table}`);
     },
