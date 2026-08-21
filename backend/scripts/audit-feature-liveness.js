@@ -294,6 +294,10 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // Board DNA-suggestions: backend-route findes, men frontend wiring afventer
   // board-feature-rollout (milestone-gated, samme spor som board_consequences).
   "GET /board/dna-suggestions",
+  // F3 taktik-ordrer v1 (#4030/#3855): API-first — taktik-kortet (PR #4093, draft)
+  // wirer disse ved integration. Fjern fra whitelisten naar kortet er merged.
+  "GET /races/:raceId/team-orders",
+  "PUT /races/:raceId/team-orders/:stageNumber",
   // Login-streak: frontend-kaldet fjernet i #1139 (Living World Product Doctrine
   // 2026-06-08) — login-streak er ikke længere et power-/pres-system. Endpointet
   // + login_streak-kolonnen bevares bevidst intakt indtil world-history-erstatningen
