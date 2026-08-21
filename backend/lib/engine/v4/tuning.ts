@@ -151,3 +151,41 @@ const finaleExtra = {
 
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
+
+// ── M6 (mechanics/leadout.ts, #4030) — ADDITIV leadout-tuning ─────────────────
+// Samme begrundelse som finaleExtra ovenfor: M6 er en F3-mekanik der bygger
+// oven paa den frosne EngineTuning-kontrakt uden at aendre den. leadout.ts
+// importerer denne direkte (samme moenster som finale.ts <- FINALE_EXTRA_TUNING).
+const leadoutExtra = {
+  maxScoreBonus: 0.12, // haardt loft paa finale-placerings-score-bonussen (samme skala som finale.ts's wprimeReserveWeight=0.15 — bounded, aldrig deterministisk sejr, mor-spec §4 M6)
+  fullTrainSize: 3, // antal leadout-ryttere i kontendentpuljen der giver fuld stoerrelses-multiplikator (aftagende marginalnytte derover, jf. trainSizeFactor)
+};
+
+/** M6 additiv leadout-tuning (deep-frosset). Se leadoutExtra-kommentaren ovenfor. */
+export const LEADOUT_EXTRA_TUNING = deepFreeze(leadoutExtra);
+
+// ── M9 (mechanics/bonusSeconds.ts, #4030) — ADDITIV bonussekunder-tuning ──────
+// tuning.ts's frosne `EngineTuning.bonusSeconds` (types.ts) baerer allerede
+// finishSeconds/intermediateSeconds-baandene (10/6/4 + 3/2/1, F2-placeholder
+// for M9 der da endnu ikke var bygget). Disse EKSTRA konstanter er de
+// haandtag M9 selv har brug for og som IKKE er en del af den frosne
+// BonusSecondsTuning-kontrakt: hvilke finale-typer der overhovedet er
+// mass-finish-etaper (ikke-ITT, jf. #2413-scopet "10/6/4s til top 3 paa
+// masse-etaper (ikke ITT)"), og det haarde per-rytter-per-etape-loft
+// (#2413: "GC-effekten er bounded (maks. ~10s/etape)").
+const bonusSecondsExtra = {
+  finishBonusEligibleFinaleTypes: [
+    "bunch_sprint",
+    "reduced_sprint",
+    "punch",
+    "breakaway",
+    "descent",
+    "long_climb",
+  ], // #2413: maal-bonus KUN paa masse-etaper — solo_tt (ITT) er bevidst UDELADT
+  maxTotalBonusSecondsPerRiderPerStage: 10, // #2413: samlet GC-effekt bounded ~10s/etape, ogsaa naar samme rytter baade tager maal- og indlagt-spurt-bonus
+  intermediateSprintQualityWeights: { sprint: 0.5, acceleration: 0.3, positioning: 0.2 }, // evne-vaegte for hvem der tager en indlagt spurt (distinkt fra finale.ts's egne demandVectorByFinaleType, saa spurt-udfaldet ikke er en ren kopi af maal-udfaldet)
+  intermediateSprintNoiseSd: 0.06, // seedet stoej-sd paa spurt-scoren (rank-guard-moenstret: stoej flytter afstande, ikke fortegn — se computeIntermediateSprintOrder)
+};
+
+/** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */
+export const BONUS_SECONDS_EXTRA_TUNING = deepFreeze(bonusSecondsExtra);
