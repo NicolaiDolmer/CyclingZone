@@ -592,6 +592,47 @@ test("loadEntrantsForRace: form/fatigue merges fra rider_condition når rækker 
   assert.equal(r2.fatigue, undefined);
 });
 
+// ── loadEntrantsForRace: skadede MANAGER-udtagne entries (#3896) ────────────────────
+// Root-cause-bug: fillMissingTeamEntries (auto-fyld) og raceEntryGenerator (auto-pick-
+// sweep) udelukkede allerede skadede kandidater (#2637/#1306) — men committede
+// race_entries fra en MANAGER-udtagelse blev aldrig krydset mod skadesstatus i selve
+// motoren. En rytter udtaget rask og siden skadet FØR løbsstart kunne derfor stadig stå
+// i startfeltet og score (Cooper Bennett, Discord 17/8). Denne test dækker gapet: en
+// manager-udtaget, aktivt skadet rytter skal IKKE med i entrants, mens en rytter med
+// udløbet skade (eller ingen condition-række) stadig skal med.
+test("loadEntrantsForRace: skadet MANAGER-udtaget entry ekskluderes fra startfeltet; udløbet skade/ingen condition består", async () => {
+  const supabase = makeSupabase({
+    race_entries: [
+      { rider_id: "r-hurt", team_id: "T1" },
+      { rider_id: "r-expired", team_id: "T1" },
+      { rider_id: "r-none", team_id: "T1" },
+    ],
+    riders: [
+      { id: "r-hurt", team_id: "T1", firstname: "Cooper", lastname: "Bennett", is_u25: false },
+      { id: "r-expired", team_id: "T1", firstname: "B", lastname: "B", is_u25: false },
+      { id: "r-none", team_id: "T1", firstname: "C", lastname: "C", is_u25: false },
+    ],
+    rider_derived_abilities: [
+      // r-hurt mangler abilities bevidst (mocken filtrerer ikke .in() server-side —
+      // spejler konventionen i fillMissingTeamEntries-testen nedenfor): er
+      // ekskluderet af skade-filteret FØR entrants bygges, så testen ikke skal
+      // afhænge af den senere abilities-guard for at bevise eksklusionen.
+      { rider_id: "r-expired", ...abil() },
+      { rider_id: "r-none", ...abil() },
+    ],
+    rider_condition: [
+      { rider_id: "r-hurt", injured_until: "2099-01-01" }, // langt i fremtiden → altid skadet
+      { rider_id: "r-expired", injured_until: "2020-01-01" }, // langt i fortiden → udløbet
+      // r-none har bevidst ingen condition-række
+    ],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-injured" } });
+  const ids = entrants.map((e) => e.rider_id);
+  assert.ok(!ids.includes("r-hurt"), "skadet manager-udtaget rytter må ikke stå i startfeltet");
+  assert.ok(ids.includes("r-expired"), "udløbet skade skal stadig med");
+  assert.ok(ids.includes("r-none"), "rytter uden condition-række skal stadig med");
+});
+
 // ── fillMissingTeamEntries: skadefilter (B2 #1306) ───────────────────────────────────
 test("fillMissingTeamEntries: skadede ryttere (injured_until >= i dag) udelukkes fra auto-entry; udløbet skade + ingen condition inkluderes", async () => {
   // Mocken returnerer rider_condition ufiltreret (gte simuleres ikke) — vi lægger

@@ -67,8 +67,12 @@ for (const { name, marker } of ROUTES) {
 }
 
 test("applyRiderEligibilityFilter er importeret i routes/api.js", () => {
+  // #3896: importlinjen fik en søskende-navngiven import (isRiderInjured — det
+  // kanoniske skades-predikat, samme delte modul) — matchet er bevidst løsnet til
+  // "applyRiderEligibilityFilter er ÉT af de navngivne imports fra riderEligibility.js"
+  // i stedet for at kræve DEN ENESTE, så det ikke låser importlinjens indhold fast.
   assert.match(
     apiSource,
-    /import\s*\{\s*applyRiderEligibilityFilter\s*\}\s*from\s*"\.\.\/lib\/riderEligibility\.js"/,
+    /import\s*\{[^}]*\bapplyRiderEligibilityFilter\b[^}]*\}\s*from\s*"\.\.\/lib\/riderEligibility\.js"/,
   );
 });

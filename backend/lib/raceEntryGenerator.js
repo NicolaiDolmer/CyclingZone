@@ -13,7 +13,7 @@ import {
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
-import { applyRiderEligibilityFilter } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, applyInjuredFilter } from "./riderEligibility.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 
 /**
@@ -350,7 +350,8 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       const { data: injured, error: injErr } = await selectInChunks({
         supabase, table: "rider_condition", columns: "rider_id, injured_until",
         inColumn: "rider_id", ids: riderIds, orderBy: ["rider_id"],
-        extra: (q) => q.gte("injured_until", copenhagenDateString()),
+        // #3896: kanonisk skades-filter (riderEligibility.applyInjuredFilter).
+        extra: (q) => applyInjuredFilter(q, copenhagenDateString()),
       });
       if (injErr) throw new Error(`rider_condition (injured): ${injErr.message}`);
       injuredIds = new Set((injured || []).map((r) => r.rider_id));

@@ -80,7 +80,7 @@ import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
@@ -859,12 +859,12 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   }
   const keptTeamSet = new Set(missingTeamIds);
 
-  // Spec 6.5 (#1306): skadede ryttere (injured_until >= i dag) må ikke auto-fyldes i startfeltet.
+  // Spec 6.5 (#1306) / #3896: skadede ryttere (kanonisk isRiderInjured) må ikke
+  // auto-fyldes i startfeltet.
   const todayStr = copenhagenDateString();
-  const { data: injured, error: injErr } = await supabase
-    .from("rider_condition")
-    .select("rider_id")
-    .gte("injured_until", todayStr);
+  const { data: injured, error: injErr } = await applyInjuredFilter(
+    supabase.from("rider_condition").select("rider_id"), todayStr
+  );
   if (injErr) throw new Error(`rider_condition (injured): ${injErr.message}`);
   const injuredIds = new Set((injured || []).map((r) => r.rider_id));
   // #1688: riders blev hentet for hele pre-cap-sættet — behold kun ryttere på de
@@ -1010,6 +1010,25 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
     const ridersById = new Map((entryRiders || []).map((r) => [r.id, r]));
     existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById });
+  }
+  // #3896: skadede committede entries må hverken starte eller simuleres — motoren
+  // ekskluderede tidligere KUN skade fra auto-fyld/auto-pick-kandidatpuljer (#2637/#1306),
+  // ALDRIG fra manager-udtagne race_entries. En rytter der blev udtaget rask og siden
+  // skadet FØR løbsstart kunne derfor stadig stå i startfeltet og score en etapesejr
+  // (Discord-bug 17/8, Cooper Bennett). Kører på HVER etape-build (mirror ghost-filteret
+  // ovenfor) — for etape 2+ fryser #1844 feltet alligevel til etape-1-snapshottet, så
+  // denne eksklusion reelt kun kan ændre feltet FØR løbet er startet.
+  if (existingEntries.length) {
+    const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
+    const { data: conditions, error: condErr } = await selectInChunks({
+      supabase, table: "rider_condition", columns: "rider_id, injured_until",
+      inColumn: "rider_id", ids: entryRiderIds,
+    });
+    if (condErr) throw new Error(`rider_condition (injured): ${condErr.message}`);
+    const injuredUntilByRider = new Map((conditions || []).map((c) => [c.rider_id, c.injured_until]));
+    existingEntries = filterOutInjuredEntries({
+      entries: existingEntries, injuredUntilByRider, todayStr: copenhagenDateString(),
+    });
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).

@@ -178,7 +178,7 @@ import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverride
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
-import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -4629,8 +4629,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
     const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
     const todayStr = copenhagenDateString();
+    // #3896: kanonisk skades-predikat (riderEligibility.isRiderInjured).
     const injuredIds = new Set(
-      (conditions || []).filter((c) => c.injured_until && c.injured_until >= todayStr).map((c) => c.rider_id)
+      (conditions || []).filter((c) => isRiderInjured(c.injured_until, todayStr)).map((c) => c.rider_id)
     );
     const candidateRiders = teamRiderIds
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
@@ -4923,12 +4924,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
     const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
-    // #2637: skadede ryttere (injured_until >= i dag) må ALDRIG auto-udtages — spejler
-    // raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
+    // #2637/#3896: skadede ryttere (kanonisk isRiderInjured) må ALDRIG auto-udtages —
+    // spejler raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
     // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
     const todayStr = copenhagenDateString();
     const injuredIds = new Set(
-      (conditions || []).filter((c) => c.injured_until && c.injured_until >= todayStr).map((c) => c.rider_id)
+      (conditions || []).filter((c) => isRiderInjured(c.injured_until, todayStr)).map((c) => c.rider_id)
     );
     const riders = teamRiderIds
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
