@@ -1,0 +1,20 @@
+/* Skelet (#4067 S1). Design-tokens porteres fra frontend/src/index.css i
+   token-slicen — hairline-borders, 5px radius, tabular figures, brand-fonte. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    "DM Sans",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: #1a1a1a;
+  background: #ffffff;
+}
