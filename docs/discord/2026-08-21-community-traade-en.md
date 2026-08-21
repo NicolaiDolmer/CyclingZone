@@ -118,38 +118,60 @@ Two harder ones I would like your take on:
 
 # 4 · September-afstemningen
 
+> **RETTET 21/8 efter kode-verifikation.** Første udkast havde 6 punkter der ALLEREDE er i spillet
+> (løbsrapporter m. story/why, Race Centre, ugeplan-fanen, Hall of Fame, swaps, auktions-notifikationer)
+> og 3 der var forkert formuleret (værdimodellen er allerede din egen, ikke en UCI-formel;
+> kontraktlængde findes allerede; dashboard-customize findes allerede).
+> Listen herunder indeholder KUN ting der reelt er åbne. De shippede er flyttet til besked 2,
+> som samtidig løser dit eget problem fra 3/8: "en for stor procentdel har aldrig åbnet et eneste resultat".
+
 **Kanal:** #feedback-and-ideas · **Titel:** `Season 3 is here: pick the 3 things I should build in September` · **Tone:** løs
 
-Season 3 starts Tuesday 🙂 That gives me roughly a month of building before the season gets deep enough that big changes start being risky, and I would much rather spend that month on what you want than on what I assume you want.
+**BESKED 1:**
 
-So here is the honest list of what I can realistically pick from in September. Everything on it is real and scoped, and something I could actually start on Monday.
+Season 3 starts Tuesday 🙂 That gives me roughly a month of building before the season gets deep enough that big changes get risky, and I would much rather spend it on what you want than on what I assume you want.
+
+So here is the honest list of what I can realistically pick from in September. All of it is real, scoped, and something I could start on Monday.
 
 **Reply with your top 3 by number.** One line of "why" is worth more to me than the vote itself.
 
 **Racing**
-1. More tactics: leadout trains, chase duties, attack triggers
-2. Race reports that explain what happened, not just who won
-3. A proper race centre: today's stages, live updates, results that are easy to find
+1. Tactics beyond the first version: leadout trains, chase duties, attack triggers, protect the leader
+2. Race reports that name your own orders: "he was up the road because you sent him there"
+3. Follow a stage while it is actually running, instead of reading the result afterwards
 
 **Your team**
-4. Dashboard rebuild: compact, and you decide what is on it and in what order
-5. A manager settings area: your country, your team country, your preferences in one place
-6. Training: weekly templates and a lot less clicking per rider
-7. Deeper scouting: real capacity per scout, better reports, less noise
+4. Dashboard: reorder every card, not just hide them, and make the whole page far more compact
+5. A settings area: pick your country and your team's country, and have the board care about it
+6. Training with a lot less clicking: apply a plan to a whole group at once
+7. Scouting with real capacity per scout, and routing you control
 
 **Market and money**
-8. Rider values that follow the actual market instead of a formula
-9. Contract length matters: longer deals cost more per year
-10. Loans, buyout clauses and swaps in the transfer system
-11. Notifications so you never miss an auction on a rider you want
+8. Rider values that react to what people actually pay at auction
+9. Contract length that changes the wage: longer deals cost more per year
+10. Loans and buyout clauses in the transfer system
+11. Email you when something happens while you are away, so you never miss an auction again
 
 **The world**
-12. U23 teams with their own calendar
+12. U23 teams with their own calendar, fed by your academy
 13. A press engine: automatic stories about your season and your rivals
 14. Rivalries between teams fighting over the same riders and the same places
-15. Hall of fame, records and club history that the game actually remembers
+15. Give the team doctor something to actually do: fatigue, injuries, real medical calls
 
-I am not going to build all 15 in September, obviously 😄 I will build 3, properly, and I will come back and tell you which ones and why. And if your idea is not on the list, say it anyway. The list is what I have thought of, not what is possible ✌️
+I am not going to build all 15 in September, obviously 😄 I will build some, properly, and I will come back and tell you which ones and why. And if your idea is not on the list, say it anyway. The list is what I have thought of, not what is possible ✌️
+
+**BESKED 2:**
+
+One more thing, because it matters before you vote: a few things people keep asking for are already in there, and I do not think everyone has found them 😅 Go and look first:
+
+- **The story of the stage.** Open any stage and you get a written account of what actually happened, plus tags on riders: off day, peak, sacrifice, outsider win, collapse, crash.
+- **The Race Centre.** Today's racing collected in one place.
+- **Week plan.** The training page has four tabs now, and the second one is your weekly rhythm.
+- **Hall of Fame.** Records, managers and division history.
+- **Swaps.** You can already trade rider for rider in the transfer system.
+- **Dashboard customise.** The button in the top right corner hides the cards you never use.
+
+If any of those were news to you, that is genuinely useful information for me on its own. Tell me where you would have expected to find them, because clearly they are not where you looked 🙂
 
 ---
 
