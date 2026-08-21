@@ -454,6 +454,11 @@
       "normal": "Normal",
       "save": "Spar kræfter"
     },
+    "effortHelp": {
+      "protect": "Giver alt for holdet i dag. Bygger ekstra træthed.",
+      "normal": "Kører normal indsats.",
+      "save": "Holder igen for at være friskere til dagene der tæller. Mindre træthed."
+    },
     "jerseyShortcutHint": "{name} er din rytter i førertrøjen.",
     "jerseyShortcut": "Gør {name} til kaptajn for de resterende etaper",
     "unsaved": "Du har ikke-gemte ændringer",

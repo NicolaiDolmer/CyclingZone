@@ -302,7 +302,7 @@
       "eyebrowOther": "Scouting report",
       "provenanceNamed": "Assessed by {name} · Tier {tier} scout",
       "provenanceDefault": "Assessed by your team's default scout (rating {overall})",
-      "recalcNote": "The band shows where he's realistically heading with your training. It reflects your CURRENT scout's precision and is recalculated whenever your scout changes, but the rider's actual abilities are never affected.",
+      "recalcNote": "The band shows where he's realistically heading with your training. It reflects your CURRENT scout's precision and is recalculated whenever your scout changes, but the rider's actual abilities are never affected. A better scout narrows the range, but it isn't a guarantee: the true value can occasionally sit just outside it.",
       "notScoutedTitle": "Not scouted",
       "notScoutedBody": "You don't know this rider's potential yet. Use a scout slot to get your scout's first read on him.",
       "potentialLabel": "Potential",

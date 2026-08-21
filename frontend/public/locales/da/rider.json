@@ -302,7 +302,7 @@
       "eyebrowOther": "Talentspejder-rapport",
       "provenanceNamed": "Vurderet af {name} · tier {tier}-spejder",
       "provenanceDefault": "Vurderet af holdets standard-spejder (rating {overall})",
-      "recalcNote": "Båndet viser hvor han realistisk er på vej hen med din træning. Det afspejler DIN NUVÆRENDE spejders præcision og genberegnes hver gang du skifter spejder, men rytterens faktiske evner påvirkes aldrig.",
+      "recalcNote": "Båndet viser hvor han realistisk er på vej hen med din træning. Det afspejler DIN NUVÆRENDE spejders præcision og genberegnes hver gang du skifter spejder, men rytterens faktiske evner påvirkes aldrig. En bedre spejder gør intervallet smallere, men er ikke en garanti: den sande værdi kan undtagelsesvis ligge lige udenfor.",
       "notScoutedTitle": "Ikke scoutet",
       "notScoutedBody": "Du kender ikke denne rytters potentiale endnu. Brug et scout-slot og få din spejders første vurdering af ham.",
       "potentialLabel": "Potentiale",
