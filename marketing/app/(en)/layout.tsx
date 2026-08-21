@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import SiteHeader from "@/components/site-header";
+import SiteFooter from "@/components/site-footer";
 import "../globals.css";
 
 // EN-root-layout (route-group). DA har sit eget root-layout i app/(da)/ så
 // <html lang> er korrekt i den server-leverede HTML for begge sprog.
+// Title-separator er "·" (em-dash er bandlyst i al copy).
 export const metadata: Metadata = {
   metadataBase: new URL("https://cyclingzone.org"),
   title: {
-    default: "Cycling Zone — Free Online Cycling Manager Game",
-    template: "%s — Cycling Zone",
+    default: "Cycling Zone · Free Online Cycling Manager Game",
+    template: "%s · Cycling Zone",
   },
   description:
     "Cycling Zone: fair, browser-based cycling manager MMO. Tactics, long-term planning and community rivalry. No pay-to-win, ever.",
@@ -30,6 +33,28 @@ export const metadata: Metadata = {
   },
 };
 
+// Samme @ids som frontend/index.html (#1405) så crawlere ser ÉN entitet.
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://cyclingzone.org/#organization",
+      name: "Cycling Zone",
+      url: "https://cyclingzone.org",
+      logo: "https://cyclingzone.org/brand/icon-512.png",
+      sameAs: ["https://discord.gg/ykysBrWUyC"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://cyclingzone.org/#website",
+      name: "Cycling Zone",
+      url: "https://cyclingzone.org",
+      publisher: { "@id": "https://cyclingzone.org/#organization" },
+    },
+  ],
+};
+
 export default function EnRootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
@@ -41,7 +66,21 @@ export default function EnRootLayout({ children }: LayoutProps<"/">) {
           type="font/woff2"
           crossOrigin="anonymous"
         />
+        <link
+          rel="preload"
+          href="/fonts/bebas-neue-latin-400-normal.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+        />
+        <div className="accent-rule" aria-hidden="true" />
+        <SiteHeader lang="en" />
         {children}
+        <SiteFooter lang="en" />
       </body>
     </html>
   );
