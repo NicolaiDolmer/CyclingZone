@@ -4,11 +4,11 @@
 
 **Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne.
 
-**Målt:** ~535 åbne issues (20/8 aften) · 232 brugere, 1 abo · **S2-finale søn 23/8 kl. 19; cutover 19:30-22:30; S3-løb fra tir 25/8.**
+**Målt:** ~535 åbne issues · 232 brugere, 1 abo · **S2-finale søn 23/8 kl. 19; cutover 19:30-22:30; S3 fra tir 25/8.**
 
 ## Uge-plan 21-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
-- **FRE 21/8:** F2 merget (kerne+M1-M4+fixtures, 6.750 grønne) · #4004-rework (pre-bid-varsel + sæsonskifte-guard + FA-auktion min. 12t) · ejer: S3-kalender LÅSES (lovet spillerne fre/lør) + Resend/moms/Discord-posts · **F3-NATBØLGE i nat** (M5-M14 + taktik-kort, spec 2026-08-21-race-tactics-orders-v1).
+- **FRE 21/8:** ✅ F2 + #4063 + #4069 merged · ejer: S3-kalender LÅSES (lovet fre/lør) + Resend/moms/Discord-posts · **F3-NATBØLGE i nat** ([plan](superpowers/plans/2026-08-21-f3-natboelge-plan.md)).
 - **LØR 22/8:** generalprøve mod staging (stopur, (a)-(h)) + restore-drill · ejer: mandat-apply mod staging m. egen nøgle · F3 review/merge · head-to-head-harness fuld + første kørsel.
 - **SØN 23/8:** S2-finale → cutover 19:30-22:30 (drejebog; pre-flip-gate remeasureGate3459; mandat EFTER sæsonskifte) → akademi-flip · head-to-head natten over på S3-kalenderen.
 - **MAN 24/8 (løbsfri):** kalibrering: scorecard + løbsfilm → **ejer-gate mandag aften på v4-flip** · /pro S3-launch-pakke · S3-velkomstpost.
@@ -17,7 +17,7 @@
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
 1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 k=100 MERGED 20/8 (#4007, flag off)** — flip ved cutover SAMMEN med c; rækkefølge c FØR #3353 bindende.
-2. **#4013 Supabase-perf MERGED 20/8** (index+autovacuum applied). Rest: `cherry-pick ac0d81200` (auth-commit) i uge 35 · **restore-drill dispatches manuelt LØRDAG** med generalprøven.
+2. Supabase-perf-rest: `cherry-pick ac0d81200` uge 35 · **restore-drill dispatches manuelt LØRDAG** med generalprøven.
 3. 🟠 **#3514 mandat** — 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-apply med ejer-nøgle.
 4. **Løn:** rest = søndagens genberegning af frosne kontrakter (drejebogen). #3393 PARKERET.
 5. 🟠 **#3901:** D1-plan LÅST+BYGGET (PR #3930, dry-run godkendt). **Cutover = søndag AFTEN 19:30-22:30** · **generalprøve LØRDAG** · bufferdag 24/8 (#3467). Drejebog script-verificeret 20/8 (trin 5 → `mandateMigration3514.mjs`; backup-trin 5a tilføjet).
@@ -27,14 +27,14 @@
 
 Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/specs/2026-08-13-rating-fundament-v3-design.md)
 
-9. **Trin 7 SKIBET 20/8** (7.158; backfill 8.980 ryttere inkl. frie agenter, refit, indbakke, panel verificeret). Rest: **#4039 fast-follow** (dæmpet loft forbi peak + scout-verdikt på skrift + tester-verifikationer) · voksen-baseline refittet 20/8.
+9. Trin 7-rest: **#4039 fast-follow** (dæmpet loft forbi peak + scout-verdikt på skrift + tester-verifikationer).
 
 **#3668 → #3512 = ét spor lige efter cutover** (+ transparens-sessionen; #3512 bærer et offentligt løfte fra 10/8).
 
 ## B2 · Værdi og løn (ejer-ramme 14/8)
 
-- **Løn-pakken merged** ([audit](audits/2026-08-19-loen-design-session.md)). Rest: ⚪ #3755 28-dages-måling (gate for gebyret) · ⚪ #3756 gebyret · 🔴 #3732 pengepolitik · #4001 akademi-intake-værdi modner første søndag (fremtid: 5 træningspas før auktion).
-- **Kalibrerings-session EFTER cutover** på ægte S3-tal (ejer 19/8): #3719+#3720 D3/D4-løft + upkeep · #3987 sponsor-skalering efter division/ranking · evt. løn-sats på MÅLT D1-indtægt (0,35 er ekstrapoleret) · **#3966 S4/S5-bånd genforhandles m. v4's samlede dagsbudget** (rate-løft merged 21/8, PR #4063/7.166) · **gradvis aldersnedgang i stedet for sæsonskifte-chok** (#4004-rodårsag, ejer 21/8).
+- Løn-rest: ⚪ #3755 28-dages-måling (gate for gebyret) · ⚪ #3756 gebyret · 🔴 #3732 pengepolitik · #4001 modner første søndag.
+- **Kalibrerings-session EFTER cutover** (ejer 19/8): #3719+#3720 D3/D4 + upkeep · #3987 sponsor-skalering · løn-sats på MÅLT D1-indtægt · #3966 S4/S5-bånd m. v4-dagsbudget · gradvis aldersnedgang (ejer 21/8).
 
 ## C · Talent-kanalen (rest)
 
@@ -62,7 +62,7 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 ## E2 · Race-oplevelsen
 
-**Rest:** #3914 PR B LIVE-broadcast · **#3855 v4: F1 SKIBET 20/8 · F2 BYGGET 21/8** (kerne+W'+M1-M4+tidslinje+fixtures på `feat/4030-engine-v4-f2-kerne`; descent-finale-bug fixes før merge) — næste = **F3-natbølge → head-to-head → flip-gate man 24/8** · taktik-ordrer v1 ejer-låst (T1-T4) · #3856 efter S3-bevis · #3864→v4-sporet · #3900+#3915 låst i KS3. Efter cutover-ugen: #4070 dashboard-redesign + #4071 manager-indstillinger (ejer-noter 18-19/8).
+**Rest:** #3914 PR B LIVE-broadcast · **#3855 v4: F1+F2 SKIBET** — næste = **F3-natbølge → head-to-head → flip-gate man 24/8** · taktik-ordrer v1 ejer-låst (T1-T4) · #3856 efter S3-bevis · #3864→v4-sporet · #3900+#3915 låst i KS3. Efter cutover-ugen: #4070 dashboard-redesign + #4071 manager-indstillinger.
 
 ## Parkeret — genbesøges når B og C er leveret
 
