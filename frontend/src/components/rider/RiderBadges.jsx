@@ -30,6 +30,9 @@ const BADGE_DEFS = {
   u23: { tone: "info" },
   u25: { tone: "info" },
   auction: { tone: "accent" },
+  // #4036: fast-pris transferliste (transfer_listings, adskilt fra auktion) —
+  // egen tone så de to salgsformer kan skelnes på ét blik i watchlisten.
+  listed: { tone: "info" },
   ai: { tone: "neutral" },
   incoming: { tone: "success" },
   outgoing: { tone: "danger" },

@@ -1947,6 +1947,7 @@ export default function RiderStatsPage() {
         <RiderInterestTab
           viewer={isMyRider ? "own" : "scouting"}
           watchlistCount={watchlistCount}
+          viewerWatching={onWatchlist}
           visits={visits}
           interest={interest}
         />

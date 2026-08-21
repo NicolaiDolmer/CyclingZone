@@ -1124,7 +1124,11 @@ router.get("/riders/:id/interest", requireAuth, async (req, res) => {
         .eq("rider_id", req.params.id)
         .order("created_at", { ascending: false }),
       supabase.from("rider_watchlist")
-        .select("created_at")
+        // #4036: user_id hentes KUN til den interne self-sammenligning nedenfor
+        // (er DENNE række vieherens egen?) — den rå værdi lander aldrig i JSON-
+        // svaret, kun det afledte self:true/false pr. event (privacy-kontrakt
+        // uændret: andres watchlist-medlemskab forbliver anonymt).
+        .select("created_at, user_id")
         .eq("rider_id", req.params.id)
         .order("created_at", { ascending: false })
         .limit(20),
@@ -1136,7 +1140,10 @@ router.get("/riders/:id/interest", requireAuth, async (req, res) => {
     if (!riderRes.data) return res.status(404).json({ error: "Rytter ikke fundet" });
     const ownerTeamId = riderRes.data.team_id ?? null;
     const isOwner = Boolean(req.team?.id && ownerTeamId === req.team.id);
-    res.json(buildRiderInterest({ scoutRows: scoutRes.data || [], watchRows: watchRes.data || [], isOwner, ownerTeamId }));
+    res.json(buildRiderInterest({
+      scoutRows: scoutRes.data || [], watchRows: watchRes.data || [], isOwner, ownerTeamId,
+      viewerTeamId: req.team?.id ?? null, viewerUserId: req.user?.id ?? null,
+    }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
