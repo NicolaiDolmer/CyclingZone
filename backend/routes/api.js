@@ -179,6 +179,7 @@ import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
+import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
@@ -4980,6 +4981,93 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       stagesCompleted: ctx.stages_completed, overrides,
     });
     res.json({ ok: true });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══ F3 taktik-ordrer v1 (#4030/#3855): race_team_orders pr. (team, race, stage) ═══
+//
+// Ejer-beslutning 21/8: race_team_orders er ENESTE sandhed for rolle + effort +
+// udbrud pr. etape; race_stage_roles (ovenfor) udfases efter v4-flippet — indtil
+// da lever begge endpoints side om side (ingen dobbeltskrivning: nyt UI skriver
+// KUN hertil). T2: lås ved etapestart (race_stage_schedule.scheduled_at), kørte
+// etaper altid låst. T4: ingen række = neutrale defaults (adapteren fylder ud —
+// motoren kræver aldrig ordrer). Håndhævelse i raceTeamOrdersApi.js.
+
+// GET /api/races/:raceId/team-orders — holdets ordrer for ALLE etaper + lås-meta.
+router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, status, stages, stages_completed")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+
+    const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const now = new Date();
+    const stages = [];
+    for (let sn = 1; sn <= ctx.stage_count; sn++) {
+      const scheduledAt = ctx.scheduleByStage.get(sn) ?? null;
+      stages.push({
+        stage_number: sn,
+        scheduled_at: scheduledAt,
+        locked: isStageLocked({ stageNumber: sn, stagesCompleted: ctx.stages_completed, scheduledAt, now }),
+      });
+    }
+    res.json({
+      stage_count: ctx.stage_count,
+      stages_completed: ctx.stages_completed,
+      race_completed: ctx.race_completed,
+      stages,
+      // T4 på læsesiden: fraværende etaper i `orders` betyder neutral default —
+      // frontend rendrer selv neutralTeamOrder()-formen for dem.
+      orders: ctx.orders,
+      riders: [...ctx.baseRoleByRider].map(([rider_id, race_role]) => ({ rider_id, race_role })),
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/races/:raceId/team-orders/:stageNumber — gem/erstat ÉN etapes ordre.
+router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const stageNumber = Number(req.params.stageNumber);
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, status, stages, stages_completed")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+
+    const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const result = validateTeamOrder({
+      order: req.body || {},
+      raceCompleted: ctx.race_completed,
+      stageNumber,
+      stageCount: ctx.stage_count,
+      stagesCompleted: ctx.stages_completed,
+      scheduledAt: ctx.scheduleByStage.get(stageNumber) ?? null,
+      teamRiderIds: ctx.teamRiderIds,
+    });
+    if (!result.ok) {
+      const code = result.errors[0];
+      const status = code === "team_orders_race_completed" || code === "team_orders_stage_locked" ? 409 : 400;
+      return res.status(status).json({ error: code, errors: result.errors });
+    }
+
+    const saved = await saveTeamOrder({
+      supabase, teamId: req.team.id, raceId: race.id, stageNumber, order: req.body,
+    });
+    res.json({ ok: true, order: saved });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
