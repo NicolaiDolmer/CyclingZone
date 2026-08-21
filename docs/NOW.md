@@ -22,6 +22,6 @@
 
 > **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5; byg tidligst efter v4-gaten). §3.4 (monument-B2) + §3.5 (dubletter) er UDFØRT af kalender-sessionen. Åbent: A6 kalenderfanen + #3990-resten (begreber+copy; off-by-one de facto løst data-side, se issue-kommentar 21/8). Ny: #4076 (stående ordrer P3).
 >
-> **🤖 Ingen aktiv session** (kalender-sessionen lukket 21/8 aften).
+> **🤖 Working agent: Claude Code aften-session 21/8** — Z1 v0 Season-visning (ejer-handoff, Refs #1146) + evt. F3-natbølge-launch (preflight GO kl. 18:05).
 
 _Historik i git-log, issue-tråde + docs/audits/._
