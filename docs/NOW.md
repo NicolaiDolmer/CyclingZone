@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Næste action (21/8): W7 hjælpetekst-fan-out + trin 7-fast-follow #4039** (dæmpet loft forbi peak + scout-verdikt på skrift + rolle-label er ALLEREDE skibet i #3798; tester-verifikationer afventer rytternavne fra ejer-DM). W7-issues: #3714 #3623 #3456 #3412 — princip: KORT på fladen, manualer i help.json (#4025). Ejer retter S3-kalenderen (fund samlet i #3547-kommentar 20/8; 7.152 nedtonet til "udkast").
+> **🎯 Næste action (21/8 morgen): natbølge-opfølgning** ([audit](audits/night-wave-2026-08-21.md)): ejer-go på 6 UI-PR'er (#4052-#4056, #4060) → derefter konsolideret patch note · beslutninger: #4004 (IKKE løst — needs-decision består), #4001 (låst symbolsk-værdi vs. fix før søndag), #4005-p3 (friisisch-citat) · orkestrator: review #4047-diff + første vagt-kørsel · investigations #3966/#3965 → F2-designsession. Ejer retter S3-kalenderen (#3547).
 
 > **✅ 20/8 MERGE-TOGET KØRT — alt live og prod-verificeret.** 12 merges: #3798 (7.158, inkl. rolle-label fra tester-feedback) → #4013 (7.159, index+autovacuum applied) → #4012 (7.160) → #4021 (7.161) → #4018 (7.162, bundle-budget 892→897 genmålt) + #4007 (k=100 bag flag, flip ved cutover m. #3449-c) + #4028 (v4 F1, segments/weather-migration applied) + #4029 (7.164, #3149 done) + 4 dependabot. Trin 7-kæden komplet: dismiss-migration, backfill 8.980/8.980 (backup: `rider_caps_3746_backup_20260816`, rollback-SQL i scriptets output), refit committet, indbakke 211/211, engangspanel set af ejer, Sentry 0 nye fejl. Labels flippet på #3746-kæden + #4010/#3985/#2748/#4011/#4000/#3149. Discord-sweep 20/8: 8 nye issues (#4031-#4038) + 6 opdaterede. audit-vagten lærte race_stage_claims (flygtig tabel).
 
