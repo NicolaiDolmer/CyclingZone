@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import SiteHeader from "@/components/site-header";
-import SiteFooter from "@/components/site-footer";
 import "../globals.css";
 
 // DA-root-layout. Alle ruter i denne gruppe ligger under /da/ og serveres med
@@ -12,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s · Cycling Zone",
   },
   description:
-    "Cycling Zone: fair, browser-baseret cycling manager-MMO. Taktik, langsigtet planlægning og rivalisering mellem managere. Aldrig pay-to-win.",
+    "Byg et hold, byd på ryttere i live-auktioner, sæt din taktik og kør en hel sæson. Et gratis, browser-baseret cycling manager-spil. Aldrig pay-to-win.",
   openGraph: {
     type: "website",
     siteName: "Cycling Zone",
@@ -75,10 +73,7 @@ export default function DaRootLayout({ children }: LayoutProps<"/">) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
         />
-        <div className="accent-rule" aria-hidden="true" />
-        <SiteHeader lang="da" />
         {children}
-        <SiteFooter lang="da" />
       </body>
     </html>
   );
