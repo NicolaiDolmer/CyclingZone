@@ -130,3 +130,24 @@ const tuning: EngineTuning = {
 
 /** EngineTuning-default (deep-frosset). Override via spread i harness/tests. */
 export const RACE_V4_TUNING: EngineTuning = deepFreeze(tuning);
+
+// ── M4 (finale.ts, Fase B3, #4030) — ADDITIVE finale-tuning ───────────────────
+// SS2's frosne FinaleTuning-kontrakt (types.ts) rummer kun demandVectorByFinaleType.
+// Disse ekstra konstanter er en BEVIDST SEPARAT eksport (ikke en del af
+// EngineTuning-typen, som er frosset og kun aendres af arkitekten) — finale.ts
+// importerer denne direkte i stedet for at laese den via ctx.tuning.finale.
+// Fysisk placeret her ("tuning.ts's finale-sektion") saa alle finale-konstanter
+// samles ét sted, jf. byggeplanens B3-scope ("additive felter i tuning.ts's
+// finale-sektion") uden at braekke den frosne kontrakt.
+const finaleExtra = {
+  chaseClosingSecondsPerKmPerUnit: 40, // sekunder/km lukket pr. enheds netto jagt-fordel (chasePower-leadDefend + wprimeWeight*reserveDiff)
+  chaseWprimeWeight: 0.5, // vaegt paa W'-reserve-differencen (jager vs. flygter) i lukkehastigheden
+  wprimeReserveWeight: 0.15, // vaegt paa egen W'-reserve i finale-placerings-scoren (#3965: reserve skal taelle for forspringsryttere)
+  placementGapMarginSeconds: 0.4, // margin OVER tuning.groups.mergeThresholdSeconds pr. placerings-tier (saa reelle splits ikke folder sammen igen i segmentLoop's efterfoelgende mergeGroups-kald)
+  placementGapScoreScale: 3, // skalerer score-differencen mellem to naboplacerings-tiers til ekstra sekunder ud over margin+jitter
+  placementGapJitterMaxSeconds: 0.3, // uniform jitter [0, max) paa tier-gap'et — paavirker KUN stoerrelsen, aldrig raekkefolgen (rank-guard-moenstret, designdoc §4)
+  placementFullResolutionCount: 20, // kun de N bedst placerede kontendere faar individuelle tiers; resten bunches i én samlet haleklump-gruppe
+};
+
+/** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
+export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
