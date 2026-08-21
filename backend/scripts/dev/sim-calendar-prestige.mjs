@@ -3,7 +3,7 @@
 // ejeren skal godkende: præcis kvote/tæthed pr. division, prestige-fordeling, eksempel-uge,
 // monument-binding. Kør: infisical run --env=prod -- node scripts/dev/sim-calendar-prestige.mjs
 import { createClient } from "@supabase/supabase-js";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE } from "../../lib/tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan } from "../../lib/tierCalendarMaterializer.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("Mangler SUPABASE_URL/SERVICE_KEY (infisical run --env=prod)"); process.exit(1); }
@@ -41,11 +41,14 @@ for (const tp of tierPlans) {
   const stageRaces = pool.raceRows.filter((r) => r.race_type === "stage_race");
   console.log(`  etapeløb ${stageRaces.length} (etaper: ${stageRaces.map((r) => r.stages).sort((a, b) => b - a).join(",")})`);
 
-  // Monument-binding-check
+  // B2 (#4075): monumenter har normal game_day i eget slot — verificér at deres
+  // game_day er EKSKLUSIV (ingen andre løb på samme game_day).
   const mons = pool.raceRows.filter((r) => r.race_class === "Monuments");
   if (mons.length) {
-    const allBanded = mons.every((m) => pool.stageRows.filter((s) => s.pool_race_id === m.pool_race_id).every((s) => s.game_day >= MONUMENT_GAMEDAY_BASE));
-    console.log(`  monumenter ${mons.length}: binding-fri ${allBanded ? "OK" : "FEJL"}`);
+    const monIds = new Set(mons.map((m) => m.pool_race_id));
+    const monDays = new Set(pool.stageRows.filter((s) => monIds.has(s.pool_race_id)).map((s) => s.game_day));
+    const clash = pool.stageRows.some((s) => !monIds.has(s.pool_race_id) && monDays.has(s.game_day));
+    console.log(`  monumenter ${mons.length}: eksklusiv game_day ${clash ? "FEJL" : "OK"}`);
   }
 }
 

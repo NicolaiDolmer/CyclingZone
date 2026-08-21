@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, balanceStageRaceFractionAcrossGtWindows, reshapeCobblesFractionToTwoWindows, pickLeastLoadedStreamAwayFromZero } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, balanceStageRaceFractionAcrossGtWindows, reshapeCobblesFractionToTwoWindows, pickLeastLoadedStreamAwayFromZero } from "./raceCalendarLanePacker.js";
 
 // Div 1: 3 Grand Tours (21) + mindre etapeløb + 5 monumenter + klassikere = 140 events (5×28).
 function div1() {
@@ -44,7 +44,7 @@ test("packer: HARD — overlap (forskellige binding-løb pr. game-dag) overstige
     assert.ok(r.maxOverlap <= cfg.overlapCap, `maxOverlap ${r.maxOverlap} > cap ${cfg.overlapCap}`);
     // Verificér også uafhængigt fra rå game_day-spans (ikke kun pakkerens egen tæller).
     const spans = r.placements
-      .filter((p) => p.stagesPlaced.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE))
+      .filter((p) => p.race_class !== "Monuments")
       .map((p) => [Math.min(...p.stagesPlaced.map((s) => s.game_day)), Math.max(...p.stagesPlaced.map((s) => s.game_day))]);
     const hi = Math.max(...spans.map((s) => s[1]));
     for (let g = 0; g <= hi; g++) {
@@ -59,14 +59,18 @@ test("packer: HARD — overlap (forskellige binding-løb pr. game-dag) overstige
 // #3469/#3470), som stadig SKAL være 100% kontinuert (ingen huller uden en beregnet
 // restDays). Se "packer: stream — GT-hviledage" nedenfor for den NYE kontrakt
 // (span = stages-1+restDays) når fractions+restDays ER sat.
-test("packer: kronologi (fallback uden date_text/fractions) — hver etape sin egen game-dag; et N-etapers løb spænder N game-dage", () => {
+test("packer: kronologi (fallback uden date_text/fractions) — hver etape sin egen game-dag; huller i et løbs span er KUN monument-indskud (#4075)", () => {
   const r = packLaneCalendar(div1());
+  const monumentGds = new Set(r.placements.filter((p) => p.race_class === "Monuments").flatMap((p) => p.stagesPlaced.map((s) => s.game_day)));
   for (const src of div1().stageRaces) {
     const p = r.placements.find((x) => x.id === src.id);
     assert.equal(p.stagesPlaced.length, src.stages);
     const gds = p.stagesPlaced.map((s) => s.game_day).sort((a, b) => a - b);
     assert.equal(new Set(gds).size, src.stages, `${src.id}: etaper deler game-dag`);
-    assert.equal(gds[gds.length - 1] - gds[0], src.stages - 1, `${src.id}: game-dage ikke sammenhængende`);
+    const gdSet = new Set(gds);
+    for (let g = gds[0]; g <= gds[gds.length - 1]; g++) {
+      if (!gdSet.has(g)) assert.ok(monumentGds.has(g), `${src.id}: hul paa game-dag ${g} er ikke et monument-indskud`);
+    }
   }
 });
 
@@ -97,17 +101,19 @@ test("packer: under en Grand Tour kører andre løb samtidig (ægte overlap find
   const r = packLaneCalendar(div1());
   const gt = r.placements.find((p) => p.id === "gt-1");
   const [a, b] = [Math.min(...gt.stagesPlaced.map((s) => s.game_day)), Math.max(...gt.stagesPlaced.map((s) => s.game_day))];
-  const overlaps = r.placements.some((p) => p.id !== "gt-1" && p.stagesPlaced.some((s) => s.game_day < MONUMENT_GAMEDAY_BASE && s.game_day >= a && s.game_day <= b));
+  const overlaps = r.placements.some((p) => p.id !== "gt-1" && p.race_class !== "Monuments" && p.stagesPlaced.some((s) => s.game_day >= a && s.game_day <= b));
   assert.ok(overlaps, "intet andet løb overlapper GT i game-dag-rum");
 });
 
-test("packer: monumenter binding-fri (game_day i bånd, unikke) og spredt over IRL-dage", () => {
+test("packer: monumenter har normal, EKSKLUSIV game_day i eget slot og er spredt over IRL-dage (#4075)", () => {
   const r = packLaneCalendar(div1());
   const mons = r.placements.filter((p) => p.race_class === "Monuments");
   assert.equal(mons.length, 5);
   const gds = mons.map((m) => m.stagesPlaced[0].game_day);
-  assert.ok(gds.every((g) => g >= MONUMENT_GAMEDAY_BASE), "monument game_day i bånd");
+  assert.ok(gds.every((g) => Number.isInteger(g) && g >= 0 && g <= r.timelineLength), "monument game_day er en normal loebsdag");
   assert.equal(new Set(gds).size, 5, "monument game_day unikke");
+  const otherGds = new Set(r.placements.filter((p) => p.race_class !== "Monuments").flatMap((p) => p.stagesPlaced.map((s) => s.game_day)));
+  assert.ok(gds.every((g) => !otherGds.has(g)), "ingen andre loeb paa et monuments game_day (eksklusiv loebsdag, B2)");
   const monDays = mons.map((m) => m.stagesPlaced[0].real_day);
   assert.ok(Math.max(...monDays) - Math.min(...monDays) >= 14, "monumenter spredt over sæsonen");
 });
@@ -296,7 +302,8 @@ test("packer: stream — monumenter fase-ankres til deres fraction-slot + kollis
   assert.equal(mons.length, 5);
   const gds = mons.map((m) => m.stagesPlaced[0].game_day);
   assert.equal(new Set(gds).size, 5, "monument game_day unikke (kollisionsvandring virker)");
-  assert.ok(gds.every((g) => g >= 100000), "monument game_day i bånd");
+  const otherGds = new Set(r.placements.filter((p) => p.race_class !== "Monuments").flatMap((p) => p.stagesPlaced.map((s) => s.game_day)));
+  assert.ok(gds.every((g) => Number.isInteger(g) && g >= 0 && !otherGds.has(g)), "monument game_day er normal og eksklusiv (#4075)");
 });
 
 test("packer: determinisme — samme input giver identisk output; omvendt input-rækkefølge giver identisk output når fractions findes", () => {
@@ -335,13 +342,14 @@ test("packer: stream — GT-hviledage: 3 hviledage splitter GT i 4 segmenter, hu
   const stageNumbers = gt1.stagesPlaced.map((s) => s.stage_number).sort((a, b) => a - b);
   assert.deepEqual(stageNumbers, Array.from({ length: 21 }, (_, i) => i + 1), "stage_number skal være tæt 1..21");
 
-  // Game_day-span = stages-1+restDays (NY kontrakt, jf. tierCalendarMaterializer.test.js).
+  // Game_day-span = stages-1+restDays + evt. monument-indskud (#4075) — huller ud over
+  // monument-gds skal være PRÆCIS de 3 hviledage.
   const gds = gt1.stagesPlaced.map((s) => s.game_day).sort((a, b) => a - b);
-  assert.equal(gds[gds.length - 1] - gds[0], 21 - 1 + 3, "game_day-span skal være stages-1+restDays");
+  const monumentGds = new Set(r.placements.filter((p) => p.race_class === "Monuments").flatMap((p) => p.stagesPlaced.map((s) => s.game_day)));
   const gdSet = new Set(gds);
   const holes = [];
-  for (let g = gds[0]; g <= gds[gds.length - 1]; g++) if (!gdSet.has(g)) holes.push(g);
-  assert.equal(holes.length, 3, "3 huller i gt-1s game_day-span");
+  for (let g = gds[0]; g <= gds[gds.length - 1]; g++) if (!gdSet.has(g) && !monumentGds.has(g)) holes.push(g);
+  assert.equal(holes.length, 3, "3 hviledags-huller i gt-1s game_day-span (ud over monument-indskud)");
 
   // Diagnostik (#3470 punkt 3): 3 planlagte, 3 fyldt, ingen degraderet.
   const report = r.grandTourRestDays.find((x) => x.id === "gt-1");
@@ -560,7 +568,6 @@ test("packer: stream — GT-hviledage (fallback, én GT uden fraction): reservat
 // beregning og kræve bit-for-bit samme facit på fixtures uden hviledage.
 function referenceSpanBasedOverlap(placements) {
   const spans = placements
-    .filter((p) => p.stagesPlaced.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE))
     .map((p) => [Math.min(...p.stagesPlaced.map((s) => s.game_day)), Math.max(...p.stagesPlaced.map((s) => s.game_day))]);
   const hi = spans.length ? Math.max(...spans.map((s) => s[1])) : -1;
   const overlapHistogram = {};
@@ -574,10 +581,10 @@ function referenceSpanBasedOverlap(placements) {
 }
 
 test("packer: #3470 — for løb UDEN hviledage er stage-baseret og span-baseret overlap-optælling MATEMATISK IDENTISK (regressionsvagt, ejer-beslutning 7/8)", () => {
+  // #4075: kun monument-FRIE fixtures — monument-indskud giver normale løb gd-huller
+  // ved indskudspunktet, så span- og stage-basering divergerer bevidst i div1.
   const fixtures = [
-    div1(),
     div3(),
-    withFraction(div1(), (r) => fractionOfId(r.id)),
     withFraction(div3(), (r) => fractionOfId(r.id)),
   ];
   for (const cfg of fixtures) {

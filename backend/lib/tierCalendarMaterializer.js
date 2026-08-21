@@ -12,7 +12,7 @@
 
 import { poolHasCalendar } from "./divisionCalendarGenerator.js";
 import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
-import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
@@ -30,7 +30,7 @@ import { grandTourRestDayCount } from "./grandTourRestDays.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { captureException } from "./sentry.js";
 
-export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
+export { TIER_CLASS_WHITELIST };
 
 const INSERT_BATCH = 500;
 
@@ -147,6 +147,34 @@ export function detectCalendarViolations({
     const name = cat.name ?? pl.name ?? null;
     if (name != null && usedRaceNamesBeforeTier.has(name)) {
       violations.push(`tier ${tier}: race name "${name}" (${pl.id}) already used in a higher tier this season (#2276 cross-tier dedup)`);
+    }
+  }
+
+  // #4075 invariant 4: within-tier dedup — samme løbsnavn må heller ikke optræde to gange
+  // i SAMME tier. Rod-årsag 20/8: kataloget indeholdt både gamle og nye versioner af de 3
+  // GT'er (external_id ændrede sig ved seed uden --prune), og selektionen valgte begge —
+  // alle 3 GT'er lå dobbelt i D1's live S3-kalender.
+  const namesSeenInTier = new Map();
+  for (const pl of placements) {
+    const cat = catalogById.get(pl.id) || {};
+    const name = cat.name ?? pl.name ?? null;
+    if (name == null) continue;
+    if (namesSeenInTier.has(name)) {
+      violations.push(`tier ${tier}: race name "${name}" selected twice in the same tier (${namesSeenInTier.get(name)} + ${pl.id}) (#4075 within-tier dedup)`);
+    } else {
+      namesSeenInTier.set(name, pl.id);
+    }
+  }
+
+  // #4075 invariant 5: GT-klasser SKAL bære grand_tour-arketypen — ellers genereres deres
+  // etapeprofiler som almindelige etapeløb (ingen åbnings-ITT, ingen GT-finale-regel).
+  // Rod-årsag 20/8: race_pool_archetypes.json pegede på de GAMLE external_ids, så de nye
+  // korte GT-rækker stod med terrain_archetype=NULL i prod.
+  for (const pl of placements) {
+    const cat = catalogById.get(pl.id) || {};
+    const raceClass = cat.race_class ?? pl.race_class ?? null;
+    if ((raceClass === "TourFrance" || raceClass === "GiroVuelta") && cat.terrain_archetype !== "grand_tour") {
+      violations.push(`tier ${tier}: race ${pl.id} (${cat.name ?? "?"}) has class "${raceClass}" but terrain_archetype "${cat.terrain_archetype ?? "NULL"}" — grand tours must carry the grand_tour archetype (#4075)`);
     }
   }
 
@@ -335,7 +363,7 @@ export function buildTierMaterializationPlan({
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
-    // game_day_start = løbets første IRL-dag (real_day), IKKE binding-nøglen (monumenter har bånd).
+    // game_day_start = løbets første IRL-dag (real_day), IKKE binding-nøglen (game_day).
     const gameDayStartById = new Map();
     for (const pl of packed.placements) gameDayStartById.set(pl.id, Math.min(...pl.stagesPlaced.map((s) => s.real_day)));
 

@@ -452,11 +452,100 @@ function orderAndBuildGrandTour(rng, types, stages, race, openingType = null) {
       opening = openingType;
     }
   }
-  const scaffold = sortByHint(rng, types); // crescendo-scaffold: sidste = hårdeste terræn
+  // #4075 (GT-etapevariation, lovet spillerne "denne update"): den rå crescendo-scaffold
+  // gav op til 7 ens profiler i træk (målt i S3: Hexagone 7× flat, Vuelta 5× high_mountain).
+  // Væv scaffoldet op i realistisk GT-form FØR finale-reglen: maks 2 ens profil-typer i
+  // træk, bjerg-familien i blokke på ≤3 adskilt af "breather"-etaper (som rigtige GT'ers
+  // dal-/sprintetaper mellem bjerg-blokkene). Kuverten bevares: sidste element er stadig
+  // det hårdeste terræn, så toGrandTourFinale's antagelse holder.
+  const scaffold = weaveGrandTourScaffold(sortByHint(rng, types));
   let ordered = toGrandTourFinale(rng, scaffold);
   if (opening) ordered = [opening, ...ordered];
   ordered = markSecondIttAsHilly(ordered);
+  // #4075: finale-omrokeringen (flad-pull til sidstepladsen) kan sammenføje to runs som
+  // vævningen havde adskilt — sidste cap-pas på alt UNDTAGEN de to fredede slut-etaper
+  // (hårdeste næstsidst + flad/ITT-finale, jf. toGrandTourFinale).
+  if (ordered.length > 4) {
+    const finaleTail = ordered.splice(ordered.length - 2, 2);
+    ordered = [...capIdenticalRuns(ordered, 3), ...finaleTail];
+  }
   return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true));
+}
+
+// #4075: cap identiske profil-runs på ≤`cap` ved pull-forward af nærmeste senere element
+// af en anden type (stabil + deterministisk, ingen rng). Findes ingen breaker senere i
+// listen, accepteres runnet defensivt (reglen kan ikke opfyldes for ekstreme multisæt).
+export function capIdenticalRuns(arr, cap = 2) {
+  const out = arr.slice();
+  let run = 1;
+  for (let i = 1; i < out.length; i++) {
+    if (out[i] === out[i - 1]) run++; else run = 1;
+    if (run > cap) {
+      let j = i + 1;
+      while (j < out.length && out[j] === out[i]) j++;
+      if (j >= out.length) break;
+      const [breaker] = out.splice(j, 1);
+      out.splice(i, 0, breaker);
+      run = 1;
+    }
+  }
+  return out;
+}
+
+const GT_MOUNTAIN_FAMILY = new Set(["mountain", "high_mountain"]);
+
+// #4075 (GT-etapevariation): væv crescendo-scaffoldet op i realistisk GT-form.
+// - Identiske profil-typer: typisk maks 2 i træk, hårdt loft på 3 (segment-grænser og
+//   bjerg-blokke må nå 3 — som rigtige GT'ers Alpe-blokke — aldrig scaffoldets 5-7).
+// - Bjerg-familien (mountain/high_mountain) deles i blokke på ≤3 — som rigtige GT'ers
+//   Alpe-/Pyrenæer-blokke — adskilt af 2 "breather"-etaper taget fra den hårde ende af
+//   det bløde udvalg (hilly/itt — dal- og mellemetaper mellem blokkene).
+// - Kuverten bevares: det hårdeste terræn (high_mountain hvis til stede) ligger SIDST,
+//   så toGrandTourFinale's "sidste element = hårdeste" stadig holder.
+// Deterministisk og rng-fri: samme scaffold → samme vævning.
+export function weaveGrandTourScaffold(scaffold) {
+  const hard = scaffold.filter((t) => GT_MOUNTAIN_FAMILY.has(t));
+  const soft = scaffold.filter((t) => !GT_MOUNTAIN_FAMILY.has(t));
+  if (hard.length <= 3 || soft.length < 2) return capIdenticalRuns(scaffold);
+  const hardWoven = capIdenticalRuns(hard);
+  const hi = hardWoven.lastIndexOf("high_mountain");
+  if (hi !== -1 && hi !== hardWoven.length - 1) {
+    hardWoven.splice(hi, 1);
+    hardWoven.push("high_mountain");
+  }
+  const blocks = [];
+  for (let i = 0; i < hardWoven.length; i += 3) blocks.push(hardWoven.slice(i, i + 3));
+  const breatherCount = Math.min(soft.length - 1, (blocks.length - 1) * 2);
+  // Breathere tages JÆVNT FORDELT over det bløde udvalg (ikke kun fra den hårde ende):
+  // ellers kan fronten ende som én homogen blok (fx 6× flat når multisættet er hilly-frit),
+  // som den afsluttende cap så kun kan bryde ved at hive bjerg-etaper helt frem i uge 1.
+  const breatherIdx = new Set();
+  for (let i = 1; i <= breatherCount; i++) {
+    let idx = Math.min(soft.length - 1, Math.round((i * soft.length) / (breatherCount + 1)));
+    while (breatherIdx.has(idx) && idx < soft.length - 1) idx++;
+    while (breatherIdx.has(idx) && idx > 0) idx--;
+    breatherIdx.add(idx);
+  }
+  const front = soft.filter((_, i) => !breatherIdx.has(i));
+  const breathers = [...breatherIdx].sort((a, b) => a - b).map((i) => soft[i]);
+  const tail = [];
+  for (let b = 0; b < blocks.length; b++) {
+    tail.push(...blocks[b]);
+    if (b < blocks.length - 1) tail.push(...breathers.splice(0, 2));
+  }
+  // Afsluttende pas med cap 3 på tværs af segment-grænserne (front|breathers|blokke kan
+  // ellers kæde ens typer til 4+ i træk). Bagefter genplaceres det hårdeste terræn sidst
+  // (pull-forward kan have flyttet det), så toGrandTourFinale's antagelse holder. Kan et
+  // ekstremt multisæt (fx 4+ high_mountain og næsten intet blødt) ikke opfylde begge krav,
+  // vinder hårdeste-sidst og runnet accepteres defensivt.
+  const woven = capIdenticalRuns([...capIdenticalRuns(front), ...breathers, ...tail], 3);
+  const hardType = hardWoven[hardWoven.length - 1];
+  const li = woven.lastIndexOf(hardType);
+  if (li !== -1 && li !== woven.length - 1) {
+    woven.splice(li, 1);
+    woven.push(hardType);
+  }
+  return woven;
 }
 
 // #3546 D: "ANDEN ITT i en GT bliver itt_hilly" (ejer-beslutning 17/8): retter at 7 D1-løb

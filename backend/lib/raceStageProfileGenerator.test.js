@@ -7,6 +7,8 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 
 import {
   generateRaceStageProfiles,
+  capIdenticalRuns,
+  weaveGrandTourScaffold,
   seedIdentityFor,
   ARCHETYPE_PROFILES,
   archetypeFor,
@@ -736,5 +738,48 @@ test("#3326-korrektion applyOpeningVariety: vælger hilly over itt når begge fi
     const ordered = ["flat", "hilly", "itt", "mountain", "flat"];
     const varied = applyOpeningVariety(makeRng(seed), ordered.slice());
     if (varied[0] !== "flat") assert.equal(varied[0], "hilly", `seed ${seed}: valgte ${varied[0]} i stedet for hilly`);
+  }
+});
+
+
+// ── #4075: GT-etapevariation (lovet spillerne) — vævning af crescendo-scaffoldet ──
+
+test("#4075 capIdenticalRuns: bryder runs over cap og bevarer multisættet", () => {
+  const input = ["flat", "flat", "flat", "flat", "rolling", "rolling", "hilly"];
+  const out = capIdenticalRuns(input, 2);
+  assert.deepEqual([...out].sort(), [...input].sort(), "multisættet er bevaret");
+  let run = 1;
+  for (let i = 1; i < out.length; i++) {
+    run = out[i] === out[i - 1] ? run + 1 : 1;
+    assert.ok(run <= 2, `run > 2 ved index ${i}: ${out.join(",")}`);
+  }
+});
+
+test("#4075 capIdenticalRuns: uden mulig breaker accepteres runnet defensivt", () => {
+  assert.deepEqual(capIdenticalRuns(["flat", "flat", "flat"], 2), ["flat", "flat", "flat"]);
+});
+
+test("#4075 weaveGrandTourScaffold: bevarer multiset, hårdeste terræn sidst, maks 3 ens i træk", () => {
+  const scaffold = ["itt", "flat", "flat", "flat", "flat", "flat", "flat", "flat", "rolling", "rolling", "rolling", "hilly", "hilly", "hilly", "mountain", "mountain", "mountain", "high_mountain", "high_mountain"];
+  const out = weaveGrandTourScaffold(scaffold.slice());
+  assert.deepEqual([...out].sort(), [...scaffold].sort(), "multisættet er bevaret");
+  assert.equal(out[out.length - 1], "high_mountain", "hårdeste terræn sidst (toGrandTourFinale-antagelsen)");
+  let run = 1;
+  for (let i = 1; i < out.length; i++) {
+    run = out[i] === out[i - 1] ? run + 1 : 1;
+    assert.ok(run <= 3, `run > 3 ved index ${i}: ${out.join(",")}`);
+  }
+});
+
+test("#4075 grand_tour-generering: aldrig over 3 ens profil-typer i træk (mange seeds)", () => {
+  for (let s = 1; s <= 120; s++) {
+    const types = generateRaceStageProfiles(
+      { id: "r", external_id: `weave${s}`, terrain_archetype: "grand_tour", race_type: "stage_race", stages: 17 + (s % 5) }
+    ).map((p) => p.profile_type);
+    let run = 1;
+    for (let i = 1; i < types.length; i++) {
+      run = types[i] === types[i - 1] ? run + 1 : 1;
+      assert.ok(run <= 3, `seed ${s}: ${run} ens i træk — ${types.join(",")}`);
+    }
   }
 });

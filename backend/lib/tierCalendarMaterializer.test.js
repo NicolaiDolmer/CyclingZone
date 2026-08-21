@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST } from "./tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 
@@ -156,9 +156,9 @@ test("plan: deterministisk", () => {
 // Fuldt prestige-katalog til Div 1+2+3.
 function fullCatalog() {
   const rows = [];
-  rows.push({ id: "gt-0", name: "Tour", race_class: "TourFrance", race_type: "stage_race", stages: 21 });
-  rows.push({ id: "gt-1", name: "Giro", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 });
-  rows.push({ id: "gt-2", name: "Vuelta", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 });
+  rows.push({ id: "gt-0", name: "Tour", race_class: "TourFrance", race_type: "stage_race", stages: 21, terrain_archetype: "grand_tour" });
+  rows.push({ id: "gt-1", name: "Giro", race_class: "GiroVuelta", race_type: "stage_race", stages: 21, terrain_archetype: "grand_tour" });
+  rows.push({ id: "gt-2", name: "Vuelta", race_class: "GiroVuelta", race_type: "stage_race", stages: 21, terrain_archetype: "grand_tour" });
   for (let i = 0; i < 5; i++) rows.push({ id: `mon-${i}`, name: `Mon ${i}`, race_class: "Monuments", race_type: "single", stages: 1 });
   [8, 8, 7, 7, 6, 6, 6, 5].forEach((st, i) => rows.push({ id: `owa-sr-${i}`, name: `OWA ${i}`, race_class: "OtherWorldTourA", race_type: "stage_race", stages: st }));
   for (let i = 0; i < 6; i++) rows.push({ id: `owa-od-${i}`, name: `OWA OD ${i}`, race_class: "OtherWorldTourA", race_type: "single", stages: 1 });
@@ -209,12 +209,18 @@ test("plan: Div 1 får alle 3 Grand Tours + alle 5 monumenter; div 3 ingen Grand
 // når date_text ER sat på GT'erne.
 test("plan: Grand Tour spænder 21 game-dage (kronologi, fallback uden date_text) men komprimeres i IRL (>1 etape/dag)", () => {
   const div1 = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM }).tierPlans.find((t) => t.tier === 1).pools[0];
+  const monPoolIds = new Set(div1.raceRows.filter((r) => r.race_class === "Monuments").map((r) => r.pool_race_id));
+  const monGds = new Set(div1.stageRows.filter((s) => monPoolIds.has(s.pool_race_id)).map((s) => s.game_day));
   for (const id of ["gt-0", "gt-1", "gt-2"]) {
     const rows = div1.stageRows.filter((s) => s.pool_race_id === id);
-    // Kronologi: 21 etaper = 21 forskellige game-dage, sammenhængende.
+    // Kronologi: 21 etaper = 21 forskellige game-dage; huller i spannet er KUN
+    // monument-indskud (#4075: monumenter har egen eksklusiv game_day i sekvensen).
     const gds = [...new Set(rows.map((s) => s.game_day))].sort((a, b) => a - b);
     assert.equal(gds.length, 21, `${id}: ${gds.length} game-dage (forventet 21)`);
-    assert.equal(gds[20] - gds[0], 20, `${id}: game-dage ikke sammenhængende`);
+    const gdSet = new Set(gds);
+    for (let g = gds[0]; g <= gds[20]; g++) {
+      if (!gdSet.has(g)) assert.ok(monGds.has(g), `${id}: hul paa game-dag ${g} er ikke et monument-indskud`);
+    }
     // IRL-komprimering: GT komprimeres (>1 etape på mindst én IRL-dag), ikke 1 etape/dag i 21 dage.
     const byIrl = {};
     for (const s of rows) { const d = Date.parse(s.scheduled_at) - (Date.parse(s.scheduled_at) % 86400000); byIrl[d] = (byIrl[d] || 0) + 1; }
@@ -260,9 +266,12 @@ test("#3470: GT-hviledage — span = stages-1+restDaysFilled når date_text find
     const rows = div1.stageRows.filter((s) => s.pool_race_id === id);
     const gds = [...new Set(rows.map((s) => s.game_day))].sort((a, b) => a - b);
     assert.equal(gds.length, 21, `${id}: skal stadig have 21 UNIKKE etape-game-dage`);
-    // Kun de FAKTISK fyldte hviledage strækker spændet — degraderede hviledage lægges IKKE
-    // ind som et hul (GT'ens næste etape lægges umiddelbart efter, "degradér ærligt").
-    assert.equal(gds[gds.length - 1] - gds[0], 21 - 1 + report.restDaysFilled, `${id}: span skal være stages-1+restDaysFilled`);
+    // Kun de FAKTISK fyldte hviledage strækker spændet (ud over evt. monument-indskud,
+    // #4075) — degraderede hviledage lægges IKKE ind som et hul.
+    const monPoolIds = new Set(div1.raceRows.filter((r) => r.race_class === "Monuments").map((r) => r.pool_race_id));
+    const monGds = new Set(div1.stageRows.filter((s) => monPoolIds.has(s.pool_race_id)).map((s) => s.game_day));
+    const monHolesInSpan = [...monGds].filter((g) => g > gds[0] && g < gds[gds.length - 1] && !gds.includes(g)).length;
+    assert.equal(gds[gds.length - 1] - gds[0], 21 - 1 + report.restDaysFilled + monHolesInSpan, `${id}: span skal være stages-1+restDaysFilled+monument-indskud`);
     const stageNumbers = rows.map((s) => s.stage_number).sort((a, b) => a - b);
     assert.deepEqual(stageNumbers, Array.from({ length: 21 }, (_, i) => i + 1), `${id}: stage_number skal være tæt 1..21 (Option A)`);
   }
@@ -279,18 +288,20 @@ test("#3470: GT-hviledage — span = stages-1+restDaysFilled når date_text find
   assert.ok(tier1.maxOverlap <= 3, `tier1 maxOverlap ${tier1.maxOverlap} > cap 3`);
 });
 
-test("plan: monumenter får game_day i binding-fri båndet; game_day_start = almindelig dag", () => {
+test("plan: monumenter får normal, EKSKLUSIV game_day (#4075); game_day_start = almindelig dag", () => {
   const div1 = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM }).tierPlans.find((t) => t.tier === 1).pools[0];
   const monRows = div1.raceRows.filter((r) => r.race_class === "Monuments");
   assert.equal(monRows.length, 5);
+  const monIds = new Set(monRows.map((m) => m.pool_race_id));
+  const monGds = new Set(div1.stageRows.filter((s) => monIds.has(s.pool_race_id)).map((s) => s.game_day));
   for (const m of monRows) {
     assert.ok(m.game_day_start >= 0 && m.game_day_start < 28, "monument game_day_start = almindelig dag");
     const sched = div1.stageRows.filter((s) => s.pool_race_id === m.pool_race_id);
-    assert.ok(sched.every((s) => s.game_day >= MONUMENT_GAMEDAY_BASE), "monument schedule game_day i båndet");
+    assert.ok(sched.every((s) => Number.isInteger(s.game_day) && s.game_day >= 0 && s.game_day < 100000), "monument schedule game_day er en normal loebsdag");
   }
-  // ikke-monumenter: game_day = tidslinje-ordinal (lille, IKKE i båndet), adskilt fra real_day.
+  assert.equal(monGds.size, 5, "monument game_days unikke");
+  assert.ok(div1.stageRows.every((s) => monIds.has(s.pool_race_id) || !monGds.has(s.game_day)), "ingen andre loeb paa et monuments game_day (eksklusiv, B2)");
   const gt = div1.stageRows.filter((s) => s.pool_race_id === "gt-0");
-  assert.ok(gt.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE), "Grand Tour game_day uden for monument-bånd");
   assert.equal(new Set(gt.map((s) => s.game_day)).size, 21, "Grand Tour = 21 unikke game-dage");
 });
 
@@ -996,4 +1007,27 @@ test("#3990 fail-safe: en fejlende seasons-skrivning vælter ikke kalender-mater
 
   assert.ok(summary.racesInserted > 0, "kalenderen skal stå selvom race-day-recompute fejler");
   assert.match(summary.raceDaysTotalError ?? "", /race_days/, "fejlen skal rapporteres på summary");
+});
+
+
+// ── #4075: invariant 4 (within-tier navne-dedup) + invariant 5 (GT-arketype) ──
+test("#4075 detectCalendarViolations: samme navn to gange i SAMME tier flages", () => {
+  const catalogById = new Map([
+    ["a", { name: "Giro della Penisola", race_class: "GiroVuelta", terrain_archetype: "grand_tour" }],
+    ["b", { name: "Giro della Penisola", race_class: "GiroVuelta", terrain_archetype: "grand_tour" }],
+  ]);
+  const pl = (id) => ({ id, stages: 5, stagesPlaced: [{ game_day: 0 }] });
+  const v = detectCalendarViolations({ tier: 1, placements: [pl("a"), pl("b")], catalogById });
+  assert.ok(v.some((x) => x.includes("#4075 within-tier dedup")), v.join(" · "));
+});
+
+test("#4075 detectCalendarViolations: GT-klasse uden grand_tour-arketype flages", () => {
+  const catalogById = new Map([
+    ["ok", { name: "Tour", race_class: "TourFrance", terrain_archetype: "grand_tour" }],
+    ["bad", { name: "Vuelta", race_class: "GiroVuelta", terrain_archetype: null }],
+  ]);
+  const pl = (id) => ({ id, stages: 5, stagesPlaced: [{ game_day: 0 }] });
+  const v = detectCalendarViolations({ tier: 1, placements: [pl("ok"), pl("bad")], catalogById });
+  assert.equal(v.length, 1, v.join(" · "));
+  assert.ok(v[0].includes("grand_tour archetype"), v[0]);
 });
