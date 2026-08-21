@@ -1519,7 +1519,7 @@
     },
     "raceClassificationsFaq": {
       "q": "What's the difference between GC, Classic/Monument and stage wins?",
-      "a": "Every race has a class (such as ProSeries, Monuments or a Grand Tour) and a type: stage race or one-day race. Stage races (like Grand Tours) run several stages and track two separate results: a stage win for topping an individual stage, and a GC win for leading the overall classification once the race finishes. One-day races (Classics and Monuments) only ever produce a single result when they finish, so winning one always counts as a GC win, never a stage win, even though there's no multi-day overall classification to speak of. Your team stats and achievements count stage wins and GC wins separately."
+      "a": "Every race has a class (such as ProSeries, Monuments or a Grand Tour) and a type: stage race or one-day race. Stage races (like Grand Tours) run several stages and track two separate results: a stage win for topping an individual stage, and a GC win for leading the overall classification once the race finishes. One-day races (Classics and Monuments) only ever produce a single result when they finish, so winning one always counts as a GC win, never a stage win, even though there's no multi-day overall classification to speak of. Your team stats and achievements count stage wins and GC wins separately. The board's 'race wins' target is an exception: a one-day win counts toward it just like a stage win does, since it's at least as big an achievement."
     },
     "raceJerseysFaq": {
       "q": "How do the green jersey and mountains jersey work?",

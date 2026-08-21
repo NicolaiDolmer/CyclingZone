@@ -53,7 +53,7 @@
       "heading": "What they evaluate on",
       "results": {
         "label": "Results",
-        "text": "stage wins, top placings, total wins"
+        "text": "race wins, top placings, total wins"
       },
       "finance": {
         "label": "Finances",
@@ -91,8 +91,8 @@
     "topNFinishPlanEnd": "Top {target} in the division at the end of the plan",
     "minNationalRiders": "Min. {target} riders from {country}",
     "signatureRider": "{count, plural, one {At least 1 high-renown rider} other {At least # high-renown riders}}",
-    "stageWins": "{target, plural, one {At least 1 stage win} other {At least # stage wins}}",
-    "stageWinsPlanPeriod": "At least {target} stage wins over the plan period",
+    "stageWins": "{target, plural, one {At least 1 race win} other {At least # race wins}}",
+    "stageWinsPlanPeriod": "At least {target} race wins over the plan period",
     "gcWins": "{target, plural, one {At least 1 overall win} other {At least # overall wins}}",
     "gcWinsPlanPeriod": "At least {target} overall wins over the plan period",
     "minU25Riders": "Min. {target} U25 riders on the team",
@@ -133,7 +133,7 @@
     "jersey_wins": "Stage-race jerseys",
     "relative_rank": "Division ranking",
     "top_n_finish": "Division finish",
-    "stage_wins": "Stage wins",
+    "stage_wins": "Race wins",
     "gc_wins": "Overall wins",
     "sponsor_growth": "Sponsor growth",
     "domestic_dominance": "Home dominance"
@@ -404,7 +404,7 @@
     "rankNone": "—"
   },
   "cumulative": {
-    "stageWins": "Stage wins",
+    "stageWins": "Race wins",
     "gcWins": "Total wins"
   },
   "wizard": {

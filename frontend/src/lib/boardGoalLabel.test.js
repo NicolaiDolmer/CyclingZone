@@ -88,10 +88,12 @@ test("null + truly unknown goal type fall back gracefully", () => {
 // de dansk råtekst fra DB-labelen). Dansk-mode skal stadig vise dansk.
 test("all board goal types resolve to English in EN (no DA leak)", () => {
   const cases = [
-    [{ type: "stage_wins", target: 1, label: "Mindst 1 etapesejr" }, "At least 1 stage win", "Mindst 1 etapesejr"],
-    [{ type: "stage_wins", target: 3, label: "Mindst 3 etapesejrer" }, "At least 3 stage wins", "Mindst 3 etapesejre"],
-    [{ type: "stage_wins", target: 4, cumulative: true, label: "Mindst 4 etapesejre over planperioden" },
-      "At least 4 stage wins over the plan period", "Mindst 4 etapesejre over planperioden"],
+    // #4034 · "etapesejr(e)" → "sejr(e)" (EN "stage win" → "race win"): en
+    // endagssejr tæller nu med i dette mål, så copyen må ikke længere kun nævne etaper.
+    [{ type: "stage_wins", target: 1, label: "Mindst 1 sejr" }, "At least 1 race win", "Mindst 1 sejr"],
+    [{ type: "stage_wins", target: 3, label: "Mindst 3 sejre" }, "At least 3 race wins", "Mindst 3 sejre"],
+    [{ type: "stage_wins", target: 4, cumulative: true, label: "Mindst 4 sejre over planperioden" },
+      "At least 4 race wins over the plan period", "Mindst 4 sejre over planperioden"],
     [{ type: "gc_wins", target: 1, label: "Mindst 1 samlet sejr" }, "At least 1 overall win", "Mindst 1 samlet sejr"],
     [{ type: "gc_wins", target: 2, label: "Mindst 2 samlede sejre" }, "At least 2 overall wins", "Mindst 2 samlede sejre"],
     [{ type: "min_u25_riders", target: 4, label: "Min. 4 U25-ryttere pa holdet" },

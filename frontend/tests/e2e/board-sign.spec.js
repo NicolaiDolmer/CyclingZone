@@ -143,7 +143,7 @@ test("wizard negotiates a goal, signs, and POSTs the correct payload (#2463)", a
   // Trin 3: underskrift — de forhandlede/accepterede mål er alle synlige.
   await expect(page.getByRole("heading", { name: "Underskrift" })).toBeVisible();
   await expect(page.getByText("Top 7 i divisionen")).toBeVisible();
-  await expect(page.getByText("Mindst 3 etapesejre")).toBeVisible();
+  await expect(page.getByText("Mindst 3 sejre")).toBeVisible();
 
   await page.getByRole("button", { name: /Underskriv kontrakt/ }).click();
 
@@ -162,7 +162,7 @@ test("wizard negotiates a goal, signs, and POSTs the correct payload (#2463)", a
   // med de forhandlede mål synlige i dashboard-panelet.
   await expect(page.getByRole("button", { name: "Forhandl ny plan →" })).toHaveCount(0);
   await expect(page.getByText("Top 7 i divisionen")).toBeVisible();
-  await expect(page.getByText("Mindst 3 etapesejre")).toBeVisible();
+  await expect(page.getByText("Mindst 3 sejre")).toBeVisible();
 });
 
 test("setup wizard: persistent proposal error shows an exit, and it does not auto-reopen (#2463)", async ({ page }) => {
