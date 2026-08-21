@@ -5640,17 +5640,19 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 
   // #4004: seneste transfer_windows-række hentes ÉN gang og genbruges af
   // både Deadline Day-gaten (flash-auktioner) og sæsonskifte-vindues-guarden
-  // nedenfor — se getAuctionSeasonBoundaryIssue i auctionEngine.js.
+  // nedenfor — se getAuctionSeasonBoundaryIssue i auctionEngine.js. Samme
+  // fail-open-adfærd som den hidtidige Deadline Day-gate havde: en fejlet
+  // opslag betyder blot ingen aktiv gate, ikke en 500.
   const { data: boundaryWindow } = await supabase
     .from("transfer_windows")
     .select("status, closes_at")
     .order("created_at", { ascending: false })
     .limit(1)
-    .single();
+    .single(); // best-effort: se kommentar ovenfor
 
   // Flash auction guard: only allowed during Deadline Day
   if (flash_auction) {
-    const { data: ddCfg } = await supabase.from("auction_timing_config").select("deadline_day_override").eq("id", 1).single();
+    const { data: ddCfg } = await supabase.from("auction_timing_config").select("deadline_day_override").eq("id", 1).single(); // best-effort: samme fail-open-adfærd som ovenfor
     const override = ddCfg?.deadline_day_override || "auto";
     let ddActive = false;
     if (override === "on") {
