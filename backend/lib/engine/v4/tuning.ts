@@ -10,7 +10,7 @@
 // REN — ingen import fra oevrigt backend. Overridable i harness/tests via
 // spread (`{ ...RACE_V4_TUNING, selection: { ...RACE_V4_TUNING.selection, ... } }`).
 
-import type { EngineTuning } from "./types.ts";
+import type { EngineTuning, ProfileType, SegmentKind } from "./types.ts";
 
 // Generisk dyb-freeze: RACE_V3_TUNING's moenster (Object.freeze) er fladt fordi
 // den er en flad tuning-flade; v4's tuning har nestede grupper (§4-5's kategorier)
@@ -151,3 +151,26 @@ const finaleExtra = {
 
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
+
+// ── M10 (mechanics/incidents.ts, #4030 #4080) — ADDITIV incidents-tuning ──────
+// SS2's frosne EngineTuning-kontrakt (types.ts) baerer INGEN incidents-sektion
+// (arkitekten har ikke tilfoejet den) — samme "bevidst separat eksport"-moenster
+// som finaleExtra ovenfor: mechanics/incidents.ts importerer denne konstant
+// DIREKTE i stedet for at laese den via ctx.tuning. Mor-spec §4 M10 + §8
+// beslutning 8 (3 km-reglen, flade etaper vs. bjergetaper).
+const incidentsExtra = {
+  baseRiskPerSegment: {
+    flat: 0.003, // basis-styrt-risiko pr. flat-segment (ambient, IKKE angrebs-koblet — adskilt fra descent.ts's angriber-only risiko)
+    rolling: 0.004, // basis-styrt-risiko pr. rolling-segment
+    climb: 0.0025, // basis-styrt-risiko pr. climb-segment (lavest — lav hastighed daemper alvoren/frekvensen)
+    descent: 0.005, // basis-styrt-risiko pr. descent-segment (ambient baggrundsrisiko, oveni descent.ts's angrebs-risiko)
+    cobbles: 0.012, // basis-styrt-risiko pr. cobbles-segment (hoejest — ujaevnt terraen, M8-forlaeb)
+  } as Record<SegmentKind, number>,
+  positioningDampening: 0.00006, // risiko-reduktion pr. positioning-evne-point (0-99-skala) — samme daempnings-moenster som descent.ts's incidentRiskDescendingDampening, ALDRIG omvendt fortegn
+  threeKmRuleWindowKm: 3, // "3 km-reglen"-vinduet fra maalstregen (mor-spec §8 beslutning 8)
+  flatProfileTypes: ["flat", "rolling", "cobbles", "classic"] as ProfileType[], // "FLADE etaper" i 3 km-reglens forstand — MODSAT bjergetaper; hilly/mountain/high_mountain udelukket (afgoerende gradient ved maal, M4-punch-territorium), itt/itt_hilly/ttt udelukket (ingen bundt-placering at beskytte). Start-kandidat, justerbar i head-to-head
+  unprotectedTimeLossSecondsRange: [5, 25] as readonly [number, number], // sekunder tabt ved et styrt UDEN 3 km-reglens beskyttelse — rent uheld, bevidst IKKE evne-skaleret (crash-alvor er ikke en testet evne, jf. monotoni-invarianten der kun gaelder evne-testede mekanikker)
+};
+
+/** M10 additiv incidents-tuning (deep-frosset). Se incidentsExtra-kommentaren ovenfor. */
+export const INCIDENTS_EXTRA_TUNING = deepFreeze(incidentsExtra);
