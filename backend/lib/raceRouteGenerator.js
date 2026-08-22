@@ -46,6 +46,26 @@ export const DISTANCE_BANDS = Object.freeze({
   cobbles: [150, 170], classic: [200, 260],
   itt: [15, 40], ttt: [25, 45], itt_hilly: [15, 30],
 });
+
+// #4104 (ejer-direktiv 21/8: "monumenter skal vaere lange ruter som i virkeligheden").
+// KLASSE-baandet slaar TERRAEN-baandet. Rod-aarsagen til at direktivet ikke bare var en
+// datarettelse: distancen blev valgt UDELUKKENDE af profile_type, og et monument faar en
+// almindelig terraen-profil (cobbles/hilly/rolling/mountain). Modellen havde derfor intet
+// sted at udtrykke "L'Enfer du Nord er 259 km" - maalt paa den LEVENDE S3-kalender var
+// Roubaix 155 km og dermed D1's KORTESTE endagsloeb, mens Division 4 koerte
+// classic-etaper paa 210-220 km.
+//
+// Baandet er sat efter de virkelige monumenter (255-288 km) og gOEr dem til spillets
+// laengste loeb, som de skal vaere. Naeste skridt (eget issue): per-loeb FORFATTEDE
+// laengder, saa Sanremo faktisk er laengere end Roubaix i stedet for tilfaeldigt fordelt
+// inden for baandet - modellen mangler stadig et sted at sige praecis det.
+//
+// NB: raceRouteRealismMetrics.js' WT_DISTANCE_BANDS spejler dette, ellers taelles
+// monumenterne som distance-outliers i realisme-scorecardet.
+export const CLASS_DISTANCE_BANDS = Object.freeze({
+  Monuments: [250, 290],
+});
+
 // Sub-3 (#2771) Task 6: prolog-arketype. profile_type FORBLIVER "itt" (design-
 // beslutning låst i spec §6 + plan Task 6 self-review) — prolog er en DISTANCE-
 // egenskab afgjort her i pass 2, ikke en ny arketype i pass 1 (som forbliver
@@ -334,7 +354,7 @@ function elevationGain(climbs, profileType) {
 /**
  * Berig én etape med en rute (pass 2). Ren funktion — muterer ikke input.
  * @param {{stage_number:number, profile_type:string, finale_type:(string|null)}} stage
- * @param {{external_id?:string, pool_race_id?:string, id?:string, season_id?:string, name?:string}} race
+ * @param {{external_id?:string, pool_race_id?:string, id?:string, season_id?:string, name?:string, race_class?:string}} race
  * @param {boolean} isStageRace  true = etape i et etapeløb; false = endagsløb (kun målspurt)
  * @returns {{distance_km,elevation_gain_m,climbs,sprints,sectors}}
  */
@@ -350,7 +370,13 @@ export function attachRoute(stage, race, isStageRace) {
   // falder uændret gennem det normale bånd (pass 1 forbliver bit-identisk;
   // determinisme: samme race-identitet + etape → samme afgørelse hver gang).
   const isProlog = pt === "itt" && stage.stage_number === 1 && isStageRace && rng() < PROLOGUE_PROBABILITY;
-  const [lo, hi] = isProlog ? PROLOGUE_DISTANCE_BAND : (DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
+  // #4104: klasse-baandet vinder over terraen-baandet, men KUN for endagsloeb (et
+  // monument er pr. definition et endagsloeb) og KUN naar race_class faktisk er sat.
+  // Kalder-stier der bygger et delvist seedRace-objekt uden race_class falder derfor
+  // uaendret gennem terraen-baandet i stedet for at kaste - samme defensive linje som
+  // #3620's "undefined er ikke det samme som null"-laering.
+  const classBand = !isStageRace && race?.race_class ? CLASS_DISTANCE_BANDS[race.race_class] : null;
+  const [lo, hi] = isProlog ? PROLOGUE_DISTANCE_BAND : (classBand ?? DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
   let distance_km = isTimeTrialProfile(pt) ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
   if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
   if (distance_km > hi) distance_km = hi;
