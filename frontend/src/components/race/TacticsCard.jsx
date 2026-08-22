@@ -27,7 +27,7 @@ import {
   teamPlanKey,
 } from "../../lib/tacticsPlan.js";
 import { formatLocalTime } from "../../lib/intl.js";
-import { Section, SectionHeader, Button, LockIcon, CheckIcon, Skeleton } from "../ui/index.js";
+import { Section, SectionHeader, Button, CategoryTag, LockIcon, CheckIcon, Skeleton } from "../ui/index.js";
 
 const ROLE_LABEL_KEY = { captain: "captain", sprint_captain: "sprint_captain", hunter: "hunter", helper: "helper", free_role: "free_role" };
 
@@ -60,7 +60,7 @@ function EffortSegmented({ t, value, disabled, onChange, ariaLabel }) {
   );
 }
 
-function TryBreakPill({ t, active, disabled, onClick, name }) {
+function TryBreakToggle({ t, active, disabled, onClick, name }) {
   return (
     <button
       type="button"
@@ -68,7 +68,7 @@ function TryBreakPill({ t, active, disabled, onClick, name }) {
       aria-pressed={active}
       aria-label={t("tacticsOrders.tryBreakAria", { name })}
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-cz-pill border px-2 py-1 text-3xs font-medium uppercase tracking-wide transition-colors flex-shrink-0 disabled:opacity-60 disabled:pointer-events-none
+      className={`inline-flex items-center gap-1 rounded-cz border px-2 py-1 text-3xs font-medium uppercase tracking-wide transition-colors flex-shrink-0 disabled:opacity-60 disabled:pointer-events-none
         ${active ? "border-cz-accent bg-cz-accent/10 text-cz-accent-t" : "border-cz-accent/40 text-cz-accent-t bg-transparent hover:bg-cz-accent/5"}`}
     >
       {active && <CheckIcon size={10} aria-hidden="true" />}
@@ -190,9 +190,9 @@ export default function TacticsCard({ raceId, stage = 1, riders: ridersProp }) {
               <span className="text-xs text-cz-1 min-w-0 truncate flex items-baseline gap-1.5">
                 {rider.name}
                 {rider.role && (
-                  <span className="text-3xs uppercase text-cz-accent-t border border-cz-accent/40 px-1.5 py-px rounded flex-shrink-0">
+                  <CategoryTag className="flex-shrink-0">
                     {t(`tacticsOrders.roleLabel.${ROLE_LABEL_KEY[rider.role] || "helper"}`)}
-                  </span>
+                  </CategoryTag>
                 )}
               </span>
               <span className="flex items-center gap-2 flex-shrink-0">
@@ -203,7 +203,7 @@ export default function TacticsCard({ raceId, stage = 1, riders: ridersProp }) {
                   onChange={(effort) => updateOrder((o) => setRiderEffort(o, rider.id, effort))}
                   ariaLabel={t("tacticsOrders.effortAria", { name: rider.name })}
                 />
-                <TryBreakPill
+                <TryBreakToggle
                   t={t}
                   active={ro.try_break}
                   disabled={locked}
