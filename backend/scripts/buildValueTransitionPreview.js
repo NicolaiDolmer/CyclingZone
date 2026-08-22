@@ -17,9 +17,12 @@
 //                     uden dæmpning
 //
 // Populationen: ejede + AI, ikke test/frosset/bank, ikke retired. Akademiryttere
-// er MED (ejer-krav 22/8: søndagens løn-genberegning omfatter dem) men flages
-// is_academy=true og får value_damped=null — deres VÆRDI er symbolsk indtil
-// første søndag (#4001, ejer-låst), så værdi-fanen holder dem ude.
+// er MED på BEGGE faner (ejer-krav 22/8): søndagens løn-genberegning omfatter
+// dem, og de bærer ~125 mio. i værdi (mange ældre akademi-kuld har fulde
+// v4-værdier, #3614) — kun friske #3972-intakes er symbolske. De flages
+// is_academy=true så UI'et kan markere dem. OBS: selve korrektions-populationen
+// (marketValueLevelCorrectionApply/marketValueSundaySweep) udelader stadig
+// akademi — ejer-beslutning udestår (se #3750-tråden 22/8).
 //
 // Kør fra backend/ (dotenv/config forventer backend/.env i cwd):
 //
@@ -108,9 +111,9 @@ async function main() {
     const ab = abilityByRider.get(r.id);
     const valueRider = { ...r, age: ageForSeason(r.birthdate, seasonNumber) };
     const isAcademy = !!r.is_academy;
-    const valueDamped = ab && !isAcademy ? predictBaseValue(valueRider, ab, damped) : null;
+    const valueDamped = ab ? predictBaseValue(valueRider, ab, damped) : null;
     const cpvDamped = ab ? currentProductionValue(valueRider, ab, damped) : null;
-    if (valueDamped == null && !isAcademy) noAbilities++;
+    if (valueDamped == null) noAbilities++;
     const cpvNow = Number(r.current_production_value) > 0 ? Number(r.current_production_value) : null;
     rows.push({
       rider_id: r.id,
@@ -129,11 +132,10 @@ async function main() {
     });
   }
 
-  // Σ værdi kun over seniorer (akademi har value_damped=null og symbolsk value_now).
   const sum = (key, onlySeniors = false) => rows.reduce((acc, r) => acc + ((onlySeniors && r.is_academy) ? 0 : (Number(r[key]) || 0)), 0);
   const academyN = rows.filter((r) => r.is_academy).length;
-  console.log(`Population: ${rows.length} ryttere, heraf ${academyN} akademi (${noAbilities} seniorer uden abilities → value_damped=null)`);
-  console.log(`Σ værdi i dag (seniorer): ${sum("value_now", true).toLocaleString("da-DK")}`);
+  console.log(`Population: ${rows.length} ryttere, heraf ${academyN} akademi (${noAbilities} uden abilities → value_damped=null)`);
+  console.log(`Σ værdi i dag:            ${sum("value_now").toLocaleString("da-DK")} (seniorer ${sum("value_now", true).toLocaleString("da-DK")})`);
   console.log(`Σ værdi dæmpet (før c):   ${sum("value_damped").toLocaleString("da-DK")}`);
   console.log(`Σ løn i dag:              ${sum("salary_now").toLocaleString("da-DK")}`);
   console.log(`Σ løn forventet (dæmpet): ${sum("salary_expected").toLocaleString("da-DK")}`);

@@ -28,7 +28,7 @@ const PREVIEW_ROWS = [
     riderId: "44444444-4444-4444-8444-444444444444",
     name: "Ditte Akademi", teamName: "Aquila Racing", teamIsAi: false, isAcademy: true,
     valuationType: "climber", primaryType: "climber",
-    valueNow: 3000, valueDamped: null,
+    valueNow: 3000, valueDamped: 2600,
     cpvNow: 2571, cpvDamped: 2571,
     salaryNow: 900, salaryExpected: 900, salaryExpectedNoDamp: 900,
   },
@@ -124,8 +124,9 @@ test("værdi-fanen: presets fra den officielle gate-måling; efter = dæmpet × 
   // Default c = nyeste vindue (0,775): Riva 5.129.549 × 0,775 = 3.975.400.
   await expect(page.getByRole("cell", { name: "3.975.400" })).toBeVisible();
   await expect(page.getByText("Carl Cpu")).toHaveCount(0);
-  // Akademiryttere er UDE af værdi-fanen (symbolsk værdi).
-  await expect(page.getByText("Ditte Akademi")).toHaveCount(0);
+  // Akademiryttere er MED på værdi-fanen (ejer-krav 22/8): 2.600 × 0,775 = 2.015.
+  await expect(page.getByText("Ditte Akademi")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "2.015" })).toBeVisible();
 
   // Preset median90 (0,655): 5.129.549 × 0,655 = 3.359.855.
   await page.getByRole("button", { name: /median90/ }).click();
