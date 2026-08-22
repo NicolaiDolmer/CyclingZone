@@ -12,7 +12,7 @@
 
 > **👤 Ejer-klik:** S3-kalenderen LÅSES (løftet fre/lør!) · **#4093 taktik-kort UI: visuelt go (draft)** · migration-apply-permission (se Next action) · post #patch-notes-catchup + 13 community-tråde ([discord/2026-08-21-community-traade-en.md](discord/2026-08-21-community-traade-en.md)) · /pro: #4074 valuta-mismatch blokerer flip · JeppeK-navne (#4039) · #3486 VERCEL_TOKEN.
 
-> **📌 Opfølgninger:** kalibrerings-session efter cutover: #3719/#3720/#3987/#3732/#2650 + #4059 (skarpe-dage-seed-skævhed, bekræftet 21/8) + D1-løn-sats + #3966-bånd · #3347-scorecard NO-GO for D2/D4 (katalog-bundet, interim) · W8 bundt 2 · #4001 · miljø-audit + #691 uge 35 · #3952/#3982 visuals · #4037 · `ceilingBandInversion.test.js` rød lokalt (CI grøn) · #4073 (lav) · fjern team-orders-whitelist i audit-feature-liveness når #4093 merges.
+> **📌 Opfølgninger:** kalibrerings-session efter cutover: #3719/#3720/#3987/#3732/#2650 + #4059 (skarpe-dage-seed-skævhed, bekræftet 21/8) + D1-løn-sats + #3966-bånd · #3347-scorecard NO-GO for D2/D4 (katalog-bundet, interim) · W8 bundt 2 · #4001 · miljø-audit + #691 uge 35 · #3952/#3982 visuals · #4037 · `ceilingBandInversion.test.js` rød lokalt (CI grøn) · #4073 (lav) · fjern team-orders-whitelist i audit-feature-liveness når #4093 merges · **PR #4112** (maybeSingle i requireAuth, backend-only, CI grøn) afventer review · **#3448-anker pushet som backup** (`feat/3448-level-anchor`) — PR først EFTER værdi-overgangen, rører samme kode; `a_floor_shift` står i config på main men læses ikke af nogen kode · wire `cleanup:worktrees` op som scheduled task (findes som prompt, kører ikke → 77 worktrees hobet op, 48 ryddet 22/8).
 
 ## Standing context (forever-relaunch)
 
