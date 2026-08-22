@@ -6,7 +6,7 @@
 
 > **🎯 Next action: GENERALPRØVE (egen session, ejer-beslutning 22/8 — IKKE kørt endnu):** drejebog (a)-(h) mod staging `staging-3746-trin7` m. stopur + restore-drill; ejerens staging-nøgle kræves til (e) mandat-apply; (f) løn-genberegning omfatter akademi (verificeret). Output = søndagsplan m. målte tider. **Værdi-overgangen er PARKERET på gaten:** officiel måling 22/8 RØD (spænd 0,225 > 0,15; nyeste vindue 0,775, median90 0,655, n90=80); cron måler søn 23/8 + ugentligt, realistisk 30/8+. Apply-population nu INKL. akademi (ejer 22/8), normalisering 1,1068. Ejeren bedømmer på `/admin/value-transition` (ejer-only, akademi på begge faner, 6.765 ryttere, tabel genbygget 22/8 18:30).
 
-> **✅ 21/8 AFTEN-SESSION (alt landet samme aften):** Z1 v0 Season-visning shippet (#4083, patch note 7.169, ejer-visuelt godkendt) · F3-natbølgen 11/11 spor leveret og merged (#4084-#4092 engine-moduler INERTE til wiring, #4091 orders-API, #4094 h2h-scorecard) · #4095 U23-sæsonsalder-fix (#4058 lukket før S3) · #4081 help-orphans + #4082 eslint merged · undersøgelser: #4059 bekræftet bug (seed-skævhed, til kalibrerings-session), #3981 afklaret (Discord-digest, ikke mail; drift af afsendelsestidspunkt). 3 agent-dødsfald genoprettet u. tab — postmortem: `.claude/learnings/2026-08-21-natboelge-agent-doedsfald.md`.
+> **✅ 21/8 aften:** Z1 v0 Season-visning (#4083, 7.169) · F3-natbølgen 11/11 merged (#4084-#4092 engine-moduler INERTE til wiring, #4091 orders-API, #4094 h2h) · #4095 U23-sæsonalder · #4081 + #4082. Undersøgelser: #4059 bekræftet bug (til kalibrering), #3981 afklaret (Discord-digest). Postmortem: `.claude/learnings/2026-08-21-natboelge-agent-doedsfald.md`.
 
 > **📅 Cutover SØNDAG AFTEN 19:30-22:30** (drejebog rev. 21/8): snapshot → race-day-flip (pre-flip-gate: remeasureGate3459) → D1-komprimering → løn-genberegning (dry-run ×2,21) → mandat-backfill → flag-flip #4007+#3449-c. **Generalprøve LØRDAG** + restore-drill + mandat-apply m. ejer-nøgle. Gate c: race_days_total = **28**. v4-gate MANDAG aften → evt. LIVE tir 25/8, v3-fallback ved rødt (addendum 8c).
 
@@ -19,6 +19,7 @@
 - **Liga:** 4-divisions-pyramide 1/2/4/8; S3: D1 = top 24 rigtige hold. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
 - **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 28 løbsdatoer (`race_days_total`=28 efter #4075-regen).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Skalering:** #323.
+- **Spiller-kommunikation (ejer-mandat 22/8):** fast ugerytme MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar spillerne inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)). Tråd-bank klar: [#4117](https://github.com/NicolaiDolmer/CyclingZone/issues/4117). Viger aldrig for et feature-spor.
 
 > **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5; byg tidligst efter v4-gaten). **A6 AFGJORT 21/8: kalender-fanen består; Z1 v0 Season-visningen er shippet** (#4083). §3.4+§3.5 udført. Åbent: #3990-resten. Ny: #4076 (stående ordrer P3).
 >

@@ -16,11 +16,11 @@
 
 ## A · Cutover 23/8 (dato-bundet, viger ikke)
 
-1. 🟠 **#3449 niveau-korrektion:** maskineri MERGED; gate RØD, apply ejer-gated tidligst 30/8. **#4000 k=100 MERGED 20/8 (#4007, flag off)** — flip ved cutover SAMMEN med c; rækkefølge c FØR #3353 bindende.
+1. 🟠 **#3449 niveau-korrektion:** gate RØD, apply ejer-gated tidligst 30/8. **#4000 k=100 merged, flag off** — flip ved cutover SAMMEN med c; rækkefølge c FØR #3353 bindende.
 2. Supabase-perf-rest: `cherry-pick ac0d81200` uge 35 · **restore-drill dispatches manuelt LØRDAG** med generalprøven.
 3. 🟠 **#3514 mandat** — 1a/1b merged inert (PR #3834); backfill 23/8 ejer-gated, gate GRØN. Rest: staging-apply med ejer-nøgle.
 4. **Løn:** rest = søndagens genberegning af frosne kontrakter (drejebogen). #3393 PARKERET.
-5. 🟠 **#3901:** D1-plan LÅST+BYGGET (PR #3930, dry-run godkendt). **Cutover = søndag AFTEN 19:30-22:30** · **generalprøve LØRDAG** · bufferdag 24/8 (#3467). Drejebog script-verificeret 20/8 (trin 5 → `mandateMigration3514.mjs`; backup-trin 5a tilføjet).
+5. 🟠 **#3901:** D1-plan bygget, dry-run godkendt, drejebog script-verificeret. **Cutover søndag AFTEN 19:30-22:30** · **generalprøve LØRDAG** · bufferdag 24/8 (#3467).
 6. 🔵 Auto-accept-floor bliver stående (ejer 13/8); rammer kun inaktive hold nu (#3584), aktive 25/8.
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
@@ -50,6 +50,7 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 ## E · Løbende (aldrig hovedspor)
 
+24. 🔴 **Spiller-kommunikation, fast ugerytme (#428)** — ejer-mandat 22/8, viger aldrig for et feature-spor. MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (~25 min) + svar spillerne inden 48t. Tråd-bank: **#4117**.
 23. Gæld: done-men-åbne lukkes løbende (KS3-workflow) · #3513 opsluger #2442/#2583/#2445.
 25. Ops-sidestrøm (uge 26.-30./8): **#4014** vagt på log-strømmen (advisors ser den IKKE) · **#4016** maskinlæsbart session-claim (prosa låser intet; 6. bid 20/8) · **#3486** `VERCEL_TOKEN` (2 min ejer-klik, låser #1784) · #2758 · #3487 · #691 service-key-rotation.
 
