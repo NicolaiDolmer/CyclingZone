@@ -60,6 +60,31 @@ describe("predictMarketPrice", () => {
     assert.throws(() => predictMarketPrice({ O: 60, age: "gammel", potentiale: 3.5, primary_type: "gc" }, COEF));
   });
 
+  it("a_floor_shift skalerer prisen med exp(shift) — et rent niveau-anker", () => {
+    const features = { O: 60, age: 26, potentiale: 3.5, popularity: 30, primary_type: "gc" };
+    const base = predictMarketPrice(features, COEF);
+    const shifted = predictMarketPrice(features, { ...COEF, a_floor_shift: Math.log(2) });
+    assert.ok(Math.abs(shifted / base - 2) < 1e-9);
+  });
+
+  it("a_floor_shift ændrer ALDRIG relativ prissætning (samme forhold mellem to ryttere)", () => {
+    const a = { O: 45, age: 22, potentiale: 5, popularity: 10, primary_type: "climber" };
+    const b = { O: 70, age: 31, potentiale: 2, popularity: 60, primary_type: "sprinter" };
+    const ratioBefore = predictMarketPrice(a, COEF) / predictMarketPrice(b, COEF);
+    const anchored = { ...COEF, a_floor_shift: -0.9 };
+    const ratioAfter = predictMarketPrice(a, anchored) / predictMarketPrice(b, anchored);
+    assert.ok(Math.abs(ratioAfter - ratioBefore) < 1e-9);
+  });
+
+  it("manglende eller ugyldigt a_floor_shift betyder intet anker, ikke et gæt", () => {
+    const features = { O: 60, age: 26, potentiale: 3.5, popularity: 30, primary_type: "gc" };
+    const base = predictMarketPrice(features, COEF); // COEF har ikke feltet
+    assert.equal(predictMarketPrice(features, { ...COEF, a_floor_shift: 0 }), base);
+    assert.equal(predictMarketPrice(features, { ...COEF, a_floor_shift: null }), base);
+    assert.equal(predictMarketPrice(features, { ...COEF, a_floor_shift: "0.5" }), base);
+    assert.equal(predictMarketPrice(features, { ...COEF, a_floor_shift: NaN }), base);
+  });
+
   it("kaster ved popularity_mode='residualized' (ikke understøttet i produktion)", () => {
     assert.throws(
       () => predictMarketPrice({ O: 60, age: 26, potentiale: 3.5, primary_type: "gc" }, { ...COEF, popularity_mode: "residualized" }),

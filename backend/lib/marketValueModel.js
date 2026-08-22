@@ -43,6 +43,22 @@ function offsetFor(type, offsetDict = {}) {
  * e_age2·age² + f_potentiale·potentiale + g_popularity·popularity +
  * h_is_youth·is_youth + offset[primary_type], derefter exp().
  *
+ * `a_floor_shift` er et NIVEAU-anker: et additivt led i ln-rummet, dvs. en ren
+ * multiplikator på hver forudsagt pris (exp(shift)). Det flytter hele
+ * prisstigen op eller ned UDEN at ændre nogen relativ prissætning — rangorden,
+ * type-offsets og alders-/evne-kurver er identiske før og efter.
+ *
+ * Hvorfor det er en ejer-knap og ikke et fittet tal (#3448, dry-run 7/8):
+ * modellens skæringspunkt er fittet på 1.058 faktiske handler med median
+ * 15.001 og MAKSIMUM 837.923. Men de handler er selekterede: en rytter til
+ * 22,8 mio. har aldrig kunnet sælges, fordi intet hold har haft råd (median
+ * holdsaldo 780.518). Modellen har altså aldrig set eliten handle og kan ikke
+ * udtale sig om dens niveau — kun om den relative prissætning, som den er
+ * markant bedre til end v4 (holdout MAE 56.118 vs. 119.571). Ankeret adskiller
+ * de to: modellen bestemmer FORHOLDET mellem ryttere, ejeren bestemmer
+ * NIVEAUET. Uden det afgør et OLS-skæringspunkt fittet på et censureret
+ * datasæt hele spillets prisniveau.
+ *
  * `model` er marketValueModelV1.json's `coefficients`-blok (eller kompatibel
  * shape). popularity_mode "residualized" understøttes IKKE her (kræver
  * fit-scriptets side-regression af popularity — v1.1's beslutning var
@@ -62,7 +78,12 @@ export function predictMarketPrice(features, coef) {
     throw new Error("predictMarketPrice: popularity_mode 'residualized' er ikke understøttet i produktion (kræver fit-scriptets side-regression)");
   }
   const off = offsetFor(primary_type, coef.offset);
+  // a_floor_shift lægges til i ln-rummet — se doc-kommentaren ovenfor. Fravær
+  // eller et ugyldigt tal betyder "intet anker" (0), ALDRIG et gæt: en model
+  // uden feltet skal opføre sig præcis som før feltet fandtes.
+  const anchor = Number.isFinite(coef.a_floor_shift) ? coef.a_floor_shift : 0;
   let lnPrice = coef.a
+    + anchor
     + coef.b * O
     + coef.c * O * O
     + coef.d_age * age
