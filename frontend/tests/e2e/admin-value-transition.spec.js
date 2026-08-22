@@ -1,7 +1,8 @@
-// #3750/#4000 — admin-forhåndsvisningen af værdi-overgangen: (1) siden er
-// admin-gated i UI'et (rolle-opslag), (2) værdi-fanen regner efter = dæmpet × c
-// og c-presets ændrer tallene live, (3) løn-fanen viser forventet S3-løn,
-// (4) sortérbar DataTable. Backend-gaten (requireAdmin) testes separat i
+// #3750/#4000 — EJERENS forhåndsvisning af værdi-overgangen: (1) siden er
+// ejer-gated (backend 403 ⇒ redirect, menupunkt skjult for andre admins),
+// (2) værdi-fanen regner efter = dæmpet × c med presets fra den OFFICIELLE
+// gate-måling, (3) løn-fanen viser forventet S3-løn, (4) sortérbar DataTable.
+// Backend-gaten (requireOwner) testes separat i
 // backend/routes/valueTransitionAdminRoute.test.js.
 import { test, expect } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
@@ -33,12 +34,28 @@ const PREVIEW_ROWS = [
   },
 ];
 
-async function setup(page) {
+// Den officielle måling 22/8 (RØD, ustabil kanal) — presets kommer herfra.
+const GATE = {
+  measured_date: "2026-08-22",
+  gate_status: "red",
+  gate_reason: "unstable_channel",
+  gate_reason_text: "De seneste 3 rullende 30-dages-medianer spænder 0.225 (1.000 → 0.811 → 0.775), over stabilitetsbåndet ±0.15.",
+  n_qualified_90d: 80,
+  median_price_over_anchor_90d: 0.655,
+  rolling_medians: [
+    { window_end: "2026-08-08", n: 21, median: 1.0 },
+    { window_end: "2026-08-15", n: 31, median: 0.811 },
+    { window_end: "2026-08-22", n: 54, median: 0.775 },
+  ],
+  c_candidate: null,
+};
+
+async function setup(page, { isOwner = true } = {}) {
   await stabilizePage(page);
   await installNetworkMocks(page);
 
   // Registreret EFTER installNetworkMocks → vinder routing. Admin-rollen er
-  // hele adgangen til siden (samme mønster som language-resync-flicker.spec).
+  // første led i adgangen (samme mønster som language-resync-flicker.spec).
   await page.route("**/rest/v1/users**", (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") {
@@ -55,51 +72,82 @@ async function setup(page) {
     });
   });
 
+  await page.route("**/api/admin/owner-check*", (route) => {
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(route.request()) });
+    }
+    return json(route, { isOwner });
+  });
+
+  await page.route("**/api/admin/market-value-level-correction/gate*", (route) => {
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(route.request()) });
+    }
+    return json(route, { gate: GATE });
+  });
+
   await page.route("**/api/admin/value-transition*", (route) => {
     if (route.request().method() === "OPTIONS") {
       return route.fulfill({ status: 204, headers: corsHeaders(route.request()) });
     }
-    return json(route, { computedAt: "2026-08-21T22:00:00Z", rows: PREVIEW_ROWS });
+    if (!isOwner) return json(route, { error: "Owner only" }, 403);
+    return json(route, { computedAt: "2026-08-22T14:00:00Z", rows: PREVIEW_ROWS });
   });
 
   await login(page);
   await page.goto("/admin/value-transition");
-  await expect(page.getByRole("heading", { name: "Værdi-overgangen — forhåndsvisning" })).toBeVisible();
 }
 
-test("værdi-fanen: efter = dæmpet × c, presets ændrer tallene, AI-hold er filtreret fra som default", async ({ page }) => {
-  await setup(page);
+test("ejer-gate: ikke-ejer-admin sendes til dashboardet og ser intet menupunkt", async ({ page }) => {
+  await setup(page, { isOwner: false });
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.getByRole("heading", { name: "Værdi-overgangen — forhåndsvisning" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Værdi-overgang" })).toHaveCount(0);
+});
 
-  // Default c = 0,894: Riva 5.129.549 × 0,894 = 4.585.817.
-  await expect(page.getByRole("cell", { name: "4.585.817" })).toBeVisible();
-  // AI-rytteren er skjult af "Kun spillerhold"-defaulten.
+test("værdi-fanen: presets fra den officielle gate-måling; efter = dæmpet × c; AI-hold filtreret fra", async ({ page }) => {
+  await setup(page);
+  await expect(page.getByRole("heading", { name: "Værdi-overgangen — forhåndsvisning" })).toBeVisible();
+
+  // Gate-status vises med den officielle måling.
+  await expect(page.getByTestId("gate-status")).toContainText("Gate RØD");
+  await expect(page.getByTestId("gate-status")).toContainText("0.775");
+
+  // Default c = nyeste vindue (0,775): Riva 5.129.549 × 0,775 = 3.975.400.
+  await expect(page.getByRole("cell", { name: "3.975.400" })).toBeVisible();
   await expect(page.getByText("Carl Cpu")).toHaveCount(0);
 
-  // Preset 0,666: Riva 5.129.549 × 0,666 = 3.416.280.
-  await page.getByRole("button", { name: "0,666" }).click();
-  await expect(page.getByRole("cell", { name: "3.416.280" })).toBeVisible();
+  // Preset median90 (0,655): 5.129.549 × 0,655 = 3.359.855.
+  await page.getByRole("button", { name: /median90/ }).click();
+  await expect(page.getByRole("cell", { name: "3.359.855" })).toBeVisible();
 
   // Slå AI-filteret FRA (default er til) → Carl Cpu dukker op.
   await page.getByRole("checkbox", { name: "Kun spillerhold" }).uncheck();
   await expect(page.getByText("Carl Cpu")).toBeVisible();
 });
 
-test("løn-fanen: forventet S3-løn vises med ændring, og tabellen kan sorteres", async ({ page }) => {
+test("løn-fanen: forventet S3-løn vises med ændring, og tabellen kan sorteres", async ({ page }, testInfo) => {
   await setup(page);
+  await expect(page.getByRole("heading", { name: "Værdi-overgangen — forhåndsvisning" })).toBeVisible();
 
   await page.getByRole("button", { name: "Løn", exact: true }).click();
   await expect(page.getByRole("cell", { name: "116.311" })).toBeVisible();
 
   // Sortér på "Forventet S3" stigende → mindste først (Berta 8.533 før Riva 116.311).
+  // På mobil dækker den sticky "Rytter"-kolonne headeren efter vandret
+  // scroll (pointer-interception på webkit) — der affyres klikket direkte på
+  // elementet; desktop bruger et ægte klik.
   const header = page.getByRole("columnheader", { name: /Forventet S3/ });
-  await header.click(); // desc
-  await header.click(); // asc
+  const clickHeader = async () => (testInfo.project.name.startsWith("mobile") ? header.dispatchEvent("click") : header.click());
+  await clickHeader(); // desc
+  await clickHeader(); // asc
   const firstDataRow = page.locator("table tbody tr").first();
   await expect(firstDataRow).toContainText("Berta Bakke");
 });
 
 test("screenshots til ejer-review (desktop + mobil)", async ({ page }, testInfo) => {
   await setup(page);
+  await expect(page.getByRole("heading", { name: "Værdi-overgangen — forhåndsvisning" })).toBeVisible();
   await page.screenshot({ path: evidenceShotPath(`pr-screens/3750-admin-vaerdi-fane-${testInfo.project.name}.png`), fullPage: true });
   await page.getByRole("button", { name: "Løn", exact: true }).click();
   await expect(page.getByRole("cell", { name: "116.311" })).toBeVisible();

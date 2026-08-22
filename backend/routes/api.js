@@ -84,6 +84,7 @@ import {
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
+import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
@@ -709,6 +710,15 @@ async function requireAdmin(req, res, next) {
       .eq("id", req.user.id)
       .single();
     if (u?.role !== "admin") return res.status(403).json({ error: "Admin only" });
+    next();
+  });
+}
+
+// #3750 · Ejer-only: requireAdmin + OWNER_USER_IDS-allowlist (backend/lib/ownerGate.js).
+// Bruges til flader der kun ejeren må se, selv om andre konti har admin-rollen.
+async function requireOwner(req, res, next) {
+  await requireAdmin(req, res, () => {
+    if (!isOwnerUser(req.user?.id)) return res.status(403).json({ error: "Owner only" });
     next();
   });
 }
@@ -12063,13 +12073,19 @@ router.get("/admin/market-value-level-correction/dry-run", requireAdmin, async (
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/admin/value-transition — #3750/#4000: admin-forhåndsvisning af
+// GET /api/admin/owner-check — #3750: er den indloggede admin også EJER
+// (OWNER_USER_IDS)? Bruges af Layout til at skjule ejer-only-menupunkter.
+router.get("/admin/owner-check", requireAdmin, (req, res) => {
+  res.json({ isOwner: isOwnerUser(req.user?.id) });
+});
+
+// GET /api/admin/value-transition — #3750/#4000: EJER-forhåndsvisning af
 // værdi-overgangen (niveau-korrektion + type-dæmpning) og de forventede
 // S3-lønninger. Read-only visning af value_transition_preview, som bygges af
 // backend/scripts/buildValueTransitionPreview.js — endpointet beregner INTET
 // selv og rører ingen spil-tilstand. c-scenarierne ganges på i UI'et
 // (niveauet er en ren multiplikator).
-router.get("/admin/value-transition", requireAdmin, async (req, res) => {
+router.get("/admin/value-transition", requireOwner, async (req, res) => {
   try {
     const rows = await fetchAllRows(() => supabase
       .from("value_transition_preview")
