@@ -422,6 +422,206 @@ function spanMoveOk(idx, newPos, events, racePositions, dayOfIdx, spineMinStages
   return span <= stages + NON_GT_STAGE_RACE_SPAN_HARD_SLACK;
 }
 
+// #4103 (ejer-direktiv 21/8 + ejer-aftale med spillerne i #feedback-and-ideas 22/8 20:27):
+// en Grand Tour maa ALDRIG fylde en hel kalenderdag, og den skal koeres i et KORT vindue.
+// Ejer ordret i traaden: "6 sounds like a decent max, yea" + "Agree on no days with 5 gt
+// stages". @thelamba havde maalt begge fejl paa den LEVENDE S3-kalender: Giro della
+// Penisola 18 etaper spredt over 11 kalenderdage (1-2/dag), mens Tour de l'Hexagone og
+// Vuelta Iberica havde dage med PRAECIS 5 GT-etaper - dvs. hele D1's dagskvote (density 5)
+// brugt paa eet loeb, saa ingen anden afgoerelse kunne naas den dag.
+//
+// HVORFOR ET SEPARAT PASS OG IKKE EN AENDRING AF TARGET-FORMLEN: #3546's leverance B
+// forsoegte praecis det (empirisk sweep af foerste GT's target-formel, faktor 2,3-3,0,
+// Giro-spaend 10 -> 7) og det BLEV FORKASTET, fordi det broed #3472 v3's haarde invariant
+// "to GT'er deler aldrig en kalenderdag" - verificeret baade i fixture og mod aegte
+// katalog. Se docs/audits/2026-08-17-s3-kalender-pakke-scorecard.md, afsnit B.
+//
+// Dette pass roerer IKKE stream-layoutet, target-formlen eller separations-bufferet. Det
+// opererer paa den ALLEREDE game_day-tildelte event-raekkefoelge, hvor real_day
+// udelukkende er en funktion af array-POSITION (buildDayChunks spejler slot-
+// konsumeringsloopet 1:1). Et bytte aendrer derfor KUN hvilken IRL-dag en etape koeres
+// paa - aldrig dens game_day, og dermed aldrig binding, overlap-cap eller GT-separationen
+// i game_day-rummet.
+//
+// MATEMATIKKEN: ved maxPerDay = 4 giver 18 etaper ceil(18/4) = 5 dage og 17 etaper
+// ceil(17/4) = 5 dage. Begge ejer-krav rammes med det SAMME tal: ingen dag med 5, og
+// vinduer paa 5 dage (under loftet paa 6). maxPerDay = 3 ville kraeve 6 dage pr. GT og
+// dermed FLYTTE vinduerne - praecis den klasse af indgreb #3546 viste er farlig.
+//
+// SIKKERHED (tre lag):
+//   1. Den ENESTE dag der kan faa en GT-etape den ikke havde foer, er modtagerdagen i et
+//      bytte. Guarden afviser byttet hvis modtagerdagen allerede baerer en ANDEN GT.
+//      Invarianten kan derfor ikke brydes, uanset antal passes.
+//   2. Oensket dag maales fra GT'ens EGEN foerste dag, saa komprimeringen trakker etaper
+//      TIDLIGERE, vaek fra den naeste GT. Afstanden mellem GT'er kan kun vokse.
+//   3. Der byttes ALTID kun med en ikke-GT-event, og hoejst eet bytte pr. pass: hele
+//      dag-/positions-modellen genberegnes derefter, saa canMoveTo/spanMoveOk aldrig
+//      arbejder paa forgaeldede positioner (den fejlklasse #3546's leverance C blev bidt af).
+export const MAX_GT_STAGES_PER_DAY = 4;
+
+// Flyt events[q] til position p (p < q) og skub p..q-1 een position frem.
+// ROTATION, ikke bytte: alle loeb med etaper INDEN FOR [p, q-1] forskydes ENSARTET
+// med +1, saa deres interne raekkefoelge bevares automatisk. Det er praecis det et
+// parvist bytte IKKE kan - en GT's etaper optager et sammenhaengende positions-loeb,
+// og en enkelt etape kan derfor hverken flyttes frem forbi sin efterfoelger eller
+// tilbage forbi sin forgaenger. Rotationen skyder i stedet et ikke-GT-event IND i
+// loebet, hvilket spreder GT'en over flere kalenderdage uden at nogen etape overhaler
+// nogen anden.
+function rotateInto(events, q, p) {
+  const ev = events[q];
+  for (let k = q; k > p; k--) events[k] = events[k - 1];
+  events[p] = ev;
+}
+function rotateBack(events, p, q) {
+  const ev = events[p];
+  for (let k = p; k < q; k++) events[k] = events[k + 1];
+  events[q] = ev;
+}
+
+// Fuld efterprOEvning af de invarianter en rotation kan true. Koeres EFTER hver
+// kandidat-rotation; fejler den, rulles rotationen tilbage. Billigere at skrive
+// eksplicit end at bevise for hvert enkelt tilfaelde - og det er netop den slags
+// stille invariant-brud #3546's leverance C blev bidt af (GT'er der delte kalenderdag
+// uden at nogen opdagede det).
+function calendarInvariantsOk(events, monSlot, days, D, spineMinStages) {
+  const { dayOfIdx, chunkByDay } = buildDayChunks(events, monSlot, days, D);
+
+  // 1. #3472 v3: to GT'er deler ALDRIG en kalenderdag.
+  for (const idxs of chunkByDay) {
+    let gtId = null;
+    for (const i of idxs) {
+      const ev = events[i];
+      if (lenOf(ev.race) < spineMinStages) continue;
+      if (gtId === null) gtId = ev.race.id;
+      else if (gtId !== ev.race.id) return false;
+    }
+  }
+
+  // 2. Hvert loebs etaper er real_day-monotone, og ikke-GT-etapeloeb overskrider
+  //    ikke #3546 H's haarde spaend-loft.
+  for (const [, list] of buildRacePositions(events)) {
+    let prev = -1;
+    let lo = Infinity, hi = -Infinity;
+    for (const e of list) {
+      const d = dayOfIdx[e.idx];
+      if (d == null) return false;
+      if (d < prev) return false;
+      prev = d;
+      if (d < lo) lo = d;
+      if (d > hi) hi = d;
+    }
+    const race = events[list[0].idx].race;
+    const stages = lenOf(race);
+    if (stages >= 2 && stages < spineMinStages && hi - lo + 1 > stages + NON_GT_STAGE_RACE_SPAN_HARD_SLACK) return false;
+  }
+  return true;
+}
+
+function enforceGrandTourDayCap(events, monSlot, days, D, spineMinStages, maxPerDay = MAX_GT_STAGES_PER_DAY) {
+  if (!events.length || days < 1 || maxPerDay < 1 || spineMinStages == null) return;
+  const isGt = (ev) => lenOf(ev.race) >= spineMinStages;
+  if (!events.some(isGt)) return;
+
+  // Soegevindue for rotations-donoren: hold indgrebet lokalt. Et event der rejser
+  // langt ville flytte sin egen fase-placering markant uden gevinst.
+  const WINDOW = 4 * D;
+
+  // Hoejst een rotation pr. gennemloeb: hele dag-/positions-modellen genberegnes
+  // derefter, saa canMoveTo aldrig ser forgaeldede positioner.
+  for (let pass = 0; pass < events.length; pass++) {
+    const { chunkByDay } = buildDayChunks(events, monSlot, days, D);
+    const racePositions = buildRacePositions(events);
+
+    const gtCountOn = (d) => chunkByDay[d].reduce((n, i) => n + (isGt(events[i]) ? 1 : 0), 0);
+    let overfull = -1;
+    for (let d = 0; d < days; d++) if (gtCountOn(d) > maxPerDay) { overfull = d; break; }
+    if (overfull === -1) return; // maalet naaet
+
+    // Den FOERSTE overskydende GT-etape paa dagen. Skydes et ikke-GT-event ind FOER
+    // den, rykker den (og resten af GT'ens loeb) een slot frem - altsaa til naeste dag.
+    const gtIdxs = chunkByDay[overfull].filter((i) => isGt(events[i]));
+    const p = gtIdxs[maxPerDay];
+    if (p == null) return;
+
+    let rotated = false;
+    for (let q = p + 1; q < Math.min(events.length, p + 1 + WINDOW); q++) {
+      if (isGt(events[q])) continue;                       // donoren skal vaere et ikke-GT-event
+      if (!canMoveTo(q, p, events, racePositions)) continue; // donorens egen etape-orden
+      rotateInto(events, q, p);
+      if (calendarInvariantsOk(events, monSlot, days, D, spineMinStages)) { rotated = true; break; }
+      rotateBack(events, p, q);                            // uacceptabel: rul tilbage
+    }
+    // Ingen lovlig rotation: den resterende overfyldte dag rapporteres af diagnose()
+    // i stedet for at blive tvunget igennem paa bekostning af en haard invariant.
+    if (!rotated) return;
+  }
+}
+
+// FASE 2 (#4103, ejer-loft 22/8: "6 sounds like a decent max"): komprimer en GT hvis
+// vinduet er bredere end maxSpan. Samme rotations-primitiv, modsat retning: et
+// ikke-GT-event traekkes UD af GT'ens positions-loeb og placeres efter det, hvorved
+// GT-etaperne rykker een slot TIDLIGERE og vinduet skrumper.
+//
+// Retningen er bevidst: komprimeringen traekker GT'en mod dens EGEN start, altsaa VAEK
+// fra den naeste GT. Afstanden mellem to GT'er kan derfor kun vokse. Det er praecis
+// modsat #3546 B's forkastede forsoeg, som flyttede GT'ens ANKER og dermed pressede
+// GT'erne mod hinanden indtil to af dem delte en kalenderdag.
+export const MAX_GT_SPAN_DAYS = 6;
+
+function compactGrandTourSpans(events, monSlot, days, D, spineMinStages, maxSpan = MAX_GT_SPAN_DAYS, maxPerDay = MAX_GT_STAGES_PER_DAY) {
+  if (!events.length || days < 1 || spineMinStages == null) return;
+  const isGt = (ev) => lenOf(ev.race) >= spineMinStages;
+  if (!events.some(isGt)) return;
+
+  for (let pass = 0; pass < events.length; pass++) {
+    const { dayOfIdx } = buildDayChunks(events, monSlot, days, D);
+    const racePositions = buildRacePositions(events);
+
+    // Find den bredeste GT der overskrider loftet.
+    let vaerst = null;
+    for (const [, list] of racePositions) {
+      if (!isGt(events[list[0].idx])) continue;
+      const dage = list.map((e) => dayOfIdx[e.idx]);
+      const spaend = Math.max(...dage) - Math.min(...dage) + 1;
+      if (spaend > maxSpan && (!vaerst || spaend > vaerst.spaend)) {
+        vaerst = { spaend, first: list[0].idx, last: list[list.length - 1].idx };
+      }
+    }
+    if (!vaerst) return; // alle GT-vinduer inden for loftet
+
+    // Traek det FOERSTE ikke-GT-event inde i loebet ud og laeg det efter loebet.
+    let komprimeret = false;
+    for (let q = vaerst.first + 1; q < vaerst.last; q++) {
+      if (isGt(events[q])) continue;
+      for (let r = vaerst.last; r > q; r--) {
+        if (!canMoveTo(q, r, events, racePositions)) continue;
+        rotateBack(events, q, r);
+        if (calendarInvariantsOk(events, monSlot, days, D, spineMinStages)
+            && !anyDayOverGtCap(events, monSlot, days, D, spineMinStages, maxPerDay)) {
+          komprimeret = true;
+          break;
+        }
+        rotateInto(events, r, q); // rul tilbage
+      }
+      if (komprimeret) break;
+    }
+    if (!komprimeret) return; // ingen lovlig komprimering tilbage
+  }
+}
+
+// Hjaelper: overskrider nogen kalenderdag GT-loftet? Bruges af fase 2 saa en
+// komprimering aldrig genindfoerer den fejl fase 1 netop har fjernet.
+function anyDayOverGtCap(events, monSlot, days, D, spineMinStages, maxPerDay) {
+  const { chunkByDay } = buildDayChunks(events, monSlot, days, D);
+  for (const idxs of chunkByDay) {
+    let n = 0;
+    for (const i of idxs) if (lenOf(events[i].race) >= spineMinStages) n++;
+    if (n > maxPerDay) return true;
+  }
+  return false;
+}
+
+
 // #3546 C: placerings-prioritet: bytter array-POSITIONEN af to `events`-entries (ALDRIG
 // deres game_day/stage_number/race-identitet) så en afgørelse lander på en dag der ellers
 // ikke ville have nogen. Positionel, fordi dag-tildelingen (buildDayChunks) er en REN
@@ -759,6 +959,13 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   // kalenderdag: se enforceDailyDecisions' docstring. Kører EFTER events er sorteret og
   // monSlot kendt (monument-dage tæller automatisk som en afgørelse), FØR slot-
   // konsumeringsloopet nedenfor fordeler dem til real_day.
+  // #4103: GT-dagsformen foerst (ren GT<->ikke-GT-bytning), derefter afgoerelses-
+  // daekningen. Raekkefoelgen er bevidst: enforceDailyDecisions udelukker GT'er fra HELE
+  // sit bytte-kandidatur (#3546 C-fixet), saa den kan hverken flytte en GT-etape tilbage
+  // eller aendre GT-antallet pr. dag - men den KAN reparere en afgoerelses-daekning som
+  // GT-omfordelingen maatte have forstyrret. Omvendt raekkefoelge ville ikke kunne det.
+  enforceGrandTourDayCap(events, monSlot, days, D, spineMinStages);
+  compactGrandTourSpans(events, monSlot, days, D, spineMinStages);
   enforceDailyDecisions(events, monSlot, days, D, spineMinStages);
 
   const placementsById = new Map();
