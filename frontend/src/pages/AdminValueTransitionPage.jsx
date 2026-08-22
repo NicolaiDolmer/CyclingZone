@@ -4,7 +4,6 @@ import { supabase } from "../lib/supabase";
 import { Button, Card, DataTable, EmptyState, ErrorState, Input, PageLoader, Select, SkeletonLines } from "../components/ui";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
 import {
-  C_PRESETS,
   buildValueRows,
   buildSalaryRows,
   filterRows,
@@ -95,7 +94,7 @@ export default function AdminValueTransitionPage() {
   const { getAuth } = useAdminAuth();
   const [state, setState] = useState({ loading: true, error: null, rows: [], computedAt: null, message: null, gate: null });
   const [tab, setTab] = useState("values"); // values | salaries
-  const [c, setC] = useState(C_PRESETS.fresh);
+  const [c, setC] = useState(1);
   const [q, setQ] = useState("");
   const [type, setType] = useState("all");
   const [humanOnly, setHumanOnly] = useState(true);
@@ -307,12 +306,6 @@ export default function AdminValueTransitionPage() {
                   <Button variant="secondary" onClick={() => setC(presets.median90)} title="90-dages-medianen (officiel måling)">
                     median90 {fmtC(presets.median90)}
                   </Button>
-                )}
-                {!presets && (
-                  <>
-                    <Button variant="secondary" onClick={() => setC(C_PRESETS.fresh)}>0,894</Button>
-                    <Button variant="secondary" onClick={() => setC(C_PRESETS.median90)}>0,666</Button>
-                  </>
                 )}
               </div>
             )}
