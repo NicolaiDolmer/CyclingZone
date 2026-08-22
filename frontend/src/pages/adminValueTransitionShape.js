@@ -36,10 +36,13 @@ export function buildSalaryRows(rows) {
   }));
 }
 
-export function filterRows(rows, { q = "", type = "all", humanOnly = true } = {}) {
+// includeAcademy: løn-fanen tæller akademiryttere med (søndagens genberegning
+// omfatter dem, ejer-krav 22/8); værdi-fanen holder dem ude (symbolsk værdi, #4001).
+export function filterRows(rows, { q = "", type = "all", humanOnly = true, includeAcademy = true } = {}) {
   const needle = q.trim().toLowerCase();
   return (rows || []).filter((r) => {
     if (humanOnly && r.teamIsAi) return false;
+    if (!includeAcademy && r.isAcademy) return false;
     if (type !== "all" && r.valuationType !== type) return false;
     if (needle) {
       const hay = `${r.name ?? ""} ${r.teamName ?? ""}`.toLowerCase();

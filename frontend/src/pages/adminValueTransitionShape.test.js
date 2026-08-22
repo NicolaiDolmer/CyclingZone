@@ -47,6 +47,12 @@ test("buildSalaryRows: delta for både dæmpet og u-dæmpet forventning; null be
   assert.equal(cpu.salaryDeltaPct, null);
 });
 
+test("filterRows: includeAcademy=false holder akademiryttere ude (værdi-fanen), default tager dem med (løn-fanen)", () => {
+  const rows = [...ROWS, { riderId: "d", name: "Ditte Akademi", teamName: "Aquila", teamIsAi: false, isAcademy: true, valuationType: "climber", valueNow: 3000, valueDamped: null, salaryNow: 900, salaryExpected: 2100, salaryExpectedNoDamp: 2100 }];
+  assert.deepEqual(filterRows(rows, { includeAcademy: false }).map((r) => r.riderId), ["a", "b"]);
+  assert.deepEqual(filterRows(rows).map((r) => r.riderId), ["a", "b", "d"]);
+});
+
 test("filterRows: humanOnly frasorterer AI-hold; type og søgning (navn ELLER hold) filtrerer", () => {
   assert.equal(filterRows(ROWS, { humanOnly: true }).length, 2);
   assert.equal(filterRows(ROWS, { humanOnly: false }).length, 3);

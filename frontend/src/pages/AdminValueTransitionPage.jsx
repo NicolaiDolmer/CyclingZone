@@ -152,9 +152,11 @@ export default function AdminValueTransitionPage() {
     });
   }, []);
 
+  // Værdi-fanen: uden akademi (symbolsk værdi indtil første søndag, #4001).
+  // Løn-fanen: MED akademi (søndagens genberegning omfatter dem, ejer-krav 22/8).
   const filtered = useMemo(
-    () => filterRows(state.rows, { q, type, humanOnly }),
-    [state.rows, q, type, humanOnly]
+    () => filterRows(state.rows, { q, type, humanOnly, includeAcademy: tab === "salaries" }),
+    [state.rows, q, type, humanOnly, tab]
   );
   const valueRows = useMemo(
     () => (tab === "values" ? sortRows(buildValueRows(filtered, c), sort, sortDir) : []),
@@ -180,7 +182,7 @@ export default function AdminValueTransitionPage() {
     sticky: true,
     sortKey: "name",
     render: (r) => r.name,
-    subline: (r) => r.teamName ?? "—",
+    subline: (r) => (r.isAcademy ? `${r.teamName ?? "—"} · akademi` : (r.teamName ?? "—")),
   };
 
   const valueColumns = [
@@ -231,7 +233,7 @@ export default function AdminValueTransitionPage() {
         <div>
           <h1 className="text-cz-1 text-xl font-bold">Værdi-overgangen — forhåndsvisning</h1>
           <p className="text-cz-3 text-sm mt-1">
-            Niveau-korrektion (c) + type-dæmpning pr. rytter, og forventet S3-løn (CPV × global sats — c-uafhængig).
+            Niveau-korrektion (c) + type-dæmpning pr. rytter (uden akademi), og forventet S3-løn inkl. akademiryttere (CPV × global sats — c-uafhængig).
             Read-only, kun ejeren: intet her ændrer spillet.
             {state.computedAt && ` Beregnet ${new Date(state.computedAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" })}.`}
           </p>

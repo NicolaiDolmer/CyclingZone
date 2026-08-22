@@ -12089,7 +12089,7 @@ router.get("/admin/value-transition", requireOwner, async (req, res) => {
   try {
     const rows = await fetchAllRows(() => supabase
       .from("value_transition_preview")
-      .select("rider_id, team_id, value_now, value_damped, cpv_now, cpv_damped, salary_now, salary_expected, salary_expected_no_damp, valuation_type, primary_type, computed_at, riders(firstname, lastname)")
+      .select("rider_id, team_id, value_now, value_damped, cpv_now, cpv_damped, salary_now, salary_expected, salary_expected_no_damp, valuation_type, primary_type, is_academy, computed_at, riders(firstname, lastname)")
       .order("rider_id"));
     if (rows.length === 0) {
       return res.json({ computedAt: null, rows: [], message: "Preview not built yet - run backend/scripts/buildValueTransitionPreview.js." });
@@ -12103,6 +12103,7 @@ router.get("/admin/value-transition", requireOwner, async (req, res) => {
         name: [r.riders?.firstname, r.riders?.lastname].filter(Boolean).join(" ") || r.rider_id,
         teamName: teamById.get(r.team_id)?.name ?? null,
         teamIsAi: !!teamById.get(r.team_id)?.is_ai,
+        isAcademy: !!r.is_academy,
         valuationType: r.valuation_type,
         primaryType: r.primary_type,
         valueNow: r.value_now,
