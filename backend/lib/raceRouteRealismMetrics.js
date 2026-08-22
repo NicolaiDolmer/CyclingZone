@@ -100,10 +100,15 @@ export const WT_DISTANCE_BANDS = Object.freeze({
   cobbles: [150, 170], classic: [200, 260], itt: [15, 40], ttt: [25, 45],
 });
 
+// #4104: monumenter prissaettes paa KLASSE, ikke terraen (se CLASS_DISTANCE_BANDS i
+// raceRouteGenerator.js). Uden dette spejl ville de fem monumenter taelle som
+// distance-outliers i scorecardet, praecis fordi de nu har den laengde de skal have.
+const WT_CLASS_DISTANCE_BANDS = Object.freeze({ Monuments: [250, 290] });
+
 // Flad-ud alle etaper i en race-liste. En stage_race har `stages` som array; en single ligeså.
 function allStages(races) {
   const out = [];
-  for (const r of races) for (const s of (Array.isArray(r.stages) ? r.stages : [])) out.push({ ...s, _race_type: r.race_type });
+  for (const r of races) for (const s of (Array.isArray(r.stages) ? r.stages : [])) out.push({ ...s, _race_type: r.race_type, _race_class: r.race_class ?? null });
   return out;
 }
 
@@ -136,7 +141,7 @@ export function scoreTier(tier, races) {
   }).length;
 
   const distanceOutliers = stages.filter((s) => {
-    const band = WT_DISTANCE_BANDS[s.profile_type];
+    const band = WT_CLASS_DISTANCE_BANDS[s._race_class] ?? WT_DISTANCE_BANDS[s.profile_type];
     return band && (s.distance_km < band[0] || s.distance_km > band[1]);
   }).length;
 
