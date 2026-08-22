@@ -68,6 +68,15 @@ export function searchParamsToFilters(searchParams, defaults) {
   return result;
 }
 
+// CodeQL-alarm #187 (js/clear-text-storage-of-sensitive-data) er afvist som
+// false positive 22/8: reglens heuristik læser ordet "salary" som
+// personfølsomt. Det der gemmes her er filter-KRITERIER (søgeord,
+// sorterings-nøgle, min/max-tærskler) for rytterdatabasen — præcis de samme
+// værdier som samtidig skrives til URL'en, og alle offentlige i spillet. Ingen
+// personoplysninger, ingen credentials. Flow-stien CodeQL fandt (fra
+// salaryColumns i AdminValueTransitionPage) går gennem den DELTE
+// DataTable-komponents onSort(col.sortKey) — komponenten er fælles for de to
+// sider, data er ikke.
 export function saveFiltersToSession(filters) {
   if (typeof window === "undefined") return;
   try {
