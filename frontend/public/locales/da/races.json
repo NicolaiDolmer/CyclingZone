@@ -504,6 +504,47 @@
       "generic": "Kunne ikke gemme din taktik. Prøv igen."
     }
   },
+  "tacticsOrders": {
+    "title": "Taktik",
+    "locksAt": "Låser {time}",
+    "locked": "Låst",
+    "lockedNote": "Ordrerne er låst for denne etape. De blev sat ved etapestart.",
+    "empty": "Gem din trup ovenfor for at sætte taktik for den.",
+    "planLabel": "Holdplan",
+    "breakawayLabel": "Udbrud",
+    "effortLabel": "Indsats",
+    "plan": {
+      "noCaptain": "Ingen kaptajn valgt endnu. Sæt din trup ovenfor.",
+      "chase": "{captain} er kaptajn. Holdet kører for at hente udbruddet ind.",
+      "neutral": "{captain} er kaptajn. Holdet aflæser løbet undervejs.",
+      "letGo": "{captain} er kaptajn. Holdet lader det tidlige udbrud gå."
+    },
+    "breakawayAria": "Holdets udbruds-holdning",
+    "breakaway": {
+      "chase": "Kør det ind",
+      "neutral": "Neutral",
+      "let_go": "Lad det gå"
+    },
+    "effortSummary": "{protect} arbejder · {normal} normal · {save} sparer",
+    "effort": {
+      "protect": "Arbejd",
+      "normal": "Normal",
+      "save": "Spar"
+    },
+    "effortAria": "Indsats for {name}",
+    "tryBreak": "Forsøg udbrud",
+    "tryBreakAria": "{name} forsøger at komme med i udbruddet",
+    "roleLabel": {
+      "captain": "Kaptajn",
+      "sprint_captain": "Spurt-kaptajn",
+      "hunter": "Udbrudsjæger",
+      "helper": "Rytter",
+      "free_role": "Fri rolle"
+    },
+    "save": "Gem taktik",
+    "saving": "Gemmer…",
+    "saved": "Taktikken er gemt."
+  },
   "strategy": {
     "title": "Holdstrategi",
     "subtitle": "Stående præferencer din assistent bruger til at bygge hver opstilling.",

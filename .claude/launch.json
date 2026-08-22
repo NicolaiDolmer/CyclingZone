@@ -60,6 +60,14 @@
       "env": { "VITE_PREVIEW_MOCK": "1" }
     },
     {
+      "name": "tactics-4030-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "port": 5314,
+      "autoPort": true,
+      "env": { "VITE_PREVIEW_MOCK": "1" }
+    },
+    {
       "name": "frontend-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--prefix", "frontend", "--", "--port", "4180", "--strictPort"],

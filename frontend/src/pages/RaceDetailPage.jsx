@@ -6,6 +6,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import CareerFirstMomentRow from "../components/CareerFirstMomentRow";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
+import TacticsCard from "../components/race/TacticsCard.jsx";
 import StageRoleMatrix from "../components/race/StageRoleMatrix.jsx";
 import StageStripe from "../components/race/StageStripe.jsx";
 import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
@@ -235,6 +236,11 @@ function HeroStatBlock({ label, value, sub, last = false }) {
     </div>
   );
 }
+
+// #4030: taktik-ordre-kortet (race engine v4 v1) er mock-drevet — orders-API'et
+// bygges parallelt og findes ikke endnu (se TacticsCard.jsx). Preview-only indtil
+// wiring + ejer-godkendelse (samme mønster som AdminSystemTab's BETA_ENABLED).
+const TACTICS_V4_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_PREVIEW_MOCK;
 
 export default function RaceDetailPage() {
   const { t, i18n } = useTranslation("races");
@@ -784,6 +790,10 @@ export default function RaceDetailPage() {
                 selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
                 selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
               />
+              {/* #4030: taktik-ordre-kortet (race engine v4 v1), Variant B — SEPARAT
+                  T2-kort under lineup-kortet (ejer-beslutning T1). Mock-drevet preview,
+                  se TACTICS_V4_PREVIEW ovenfor. */}
+              {TACTICS_V4_PREVIEW && <TacticsCard raceId={race.id} stage={scheduledStage} />}
             </div>
           )}
 
@@ -890,6 +900,12 @@ export default function RaceDetailPage() {
                   />
                 </div>
               </CollapsibleSection>
+              {/* #4030: taktik-ordre-kortet (race engine v4 v1), Variant B. TacticsCard
+                  er sit eget kort med egen titel/lock-meta (samme anatomi som lineup-
+                  kortet lige ovenfor) — ingen ekstra CollapsibleSection-indpakning,
+                  det ville duplikere titlen. Mock-drevet preview, se TACTICS_V4_PREVIEW
+                  ovenfor. */}
+              {TACTICS_V4_PREVIEW && <TacticsCard raceId={race.id} stage={scheduledStage} />}
               {race.race_type === "stage_race" && race.stages > 1 && (
                 <CollapsibleSection title={t("stageTactics.title")}>
                   <StageRoleMatrix
