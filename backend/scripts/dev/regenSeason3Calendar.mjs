@@ -165,14 +165,29 @@ console.log(`race_days_completed efter recompute: ${summary.raceDaysCompletedAft
 if (summary.raceDaysTotalError) console.warn(`⚠ race_days_total recompute fejlede (self-healende ved næste kørsel): ${summary.raceDaysTotalError}`);
 
 // ── Post-verify: den FAKTISK skrevne tidligste dag matcher #3467 ────────────
-const { data: earliestRows, error: pvErr } = await supabase
-  .from("race_stage_schedule")
-  .select("scheduled_at, race_id")
-  .in("race_id", (await supabase.from("races").select("id").eq("season_id", season.id)).data?.map((r) => r.id) ?? [])
-  .order("scheduled_at", { ascending: true })
-  .limit(1);
-if (pvErr) throw new Error(`post-verify race_stage_schedule: ${pvErr.message}`);
-const writtenEarliestDay = earliestRows?.[0]?.scheduled_at ? copenhagenDateString(new Date(earliestRows[0].scheduled_at)) : null;
+// #4104-fund (23/8): den oprindelige version lagde ALLE sæsonens race-id'er i ÉN
+// .in()-klausul. Med 471 løb sprænger det PostgREST-gatewayen og fejler med et
+// intetsigende "TypeError: fetch failed" — EFTER at hele kalenderen er skrevet.
+// Resultatet var en apply der lykkedes, men rapporterede rødt. Samme grænse som
+// SUPABASE_IN_CHUNK_SIZE (#3030) allerede findes for; her chunkes der i stedet, og
+// den globale tidligste dag er minimum af chunk-minima.
+const IN_CHUNK = 100;
+const { data: seasonRaceIds, error: idErr } = await supabase.from("races").select("id").eq("season_id", season.id);
+if (idErr) throw new Error(`post-verify races: ${idErr.message}`);
+const allIds = (seasonRaceIds ?? []).map((r) => r.id);
+let earliestIso = null;
+for (let i = 0; i < allIds.length; i += IN_CHUNK) {
+  const { data: rows, error: pvErr } = await supabase
+    .from("race_stage_schedule")
+    .select("scheduled_at")
+    .in("race_id", allIds.slice(i, i + IN_CHUNK))
+    .order("scheduled_at", { ascending: true })
+    .limit(1);
+  if (pvErr) throw new Error(`post-verify race_stage_schedule (chunk ${i / IN_CHUNK + 1}): ${pvErr.message}`);
+  const iso = rows?.[0]?.scheduled_at ?? null;
+  if (iso && (earliestIso === null || iso < earliestIso)) earliestIso = iso;
+}
+const writtenEarliestDay = earliestIso ? copenhagenDateString(new Date(earliestIso)) : null;
 console.log(`\nPost-verify: tidligste skrevne scheduled_at → dag ${writtenEarliestDay ?? "?"}`);
 if (writtenEarliestDay !== FIRST_RACE_DAY) {
   console.error(`POST-VERIFY FEJLEDE — den skrevne kalender starter ${writtenEarliestDay}, ikke ${FIRST_RACE_DAY}. Undersøg FØR videre skridt.`);
