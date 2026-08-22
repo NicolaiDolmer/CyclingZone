@@ -148,9 +148,13 @@ export async function fetchLatestGate({ supabase }) {
   return data;
 }
 
-// Samme population-definition som marketValueSundaySweep.js's defaultFetchPopulation
-// (ejede + AI, ikke test/frosset/bank, ikke retired/academy) — se den fils
-// kommentar for hvorfor AI-hold er med.
+// Population: ejede + AI, ikke test/frosset/bank, ikke retired — INKL. akademi
+// (ejer-beslutning 22/8, logget på #3750: akademiryttere bærer ~29 % af al
+// værdi, mange ældre kuld har fulde v4-værdier (#3614), og at lade dem stå
+// urørt når niveauet korrigeres ville være inkonsistent). Friske #3972-intakes
+// har symbolske værdier (1.000-5.000) og påvirkes dermed kun marginalt.
+// Afviger bevidst fra marketValueSundaySweep.js's defaultFetchPopulation
+// (markedsblendet, kill-switch off), som stadig udelader akademi.
 async function fetchCorrectionPopulation({ supabase, seasonNumber }) {
   const allTeams = await fetchAllRows(() => supabase
     .from("teams").select("id, division, is_test_account, is_frozen, is_bank").order("id"));
@@ -165,7 +169,7 @@ async function fetchCorrectionPopulation({ supabase, seasonNumber }) {
     .order("id"));
 
   return allRiders
-    .filter((r) => r.team_id != null && realTeamIds.has(r.team_id) && !r.is_retired && !r.is_academy)
+    .filter((r) => r.team_id != null && realTeamIds.has(r.team_id) && !r.is_retired)
     .map((r) => {
       const current_value = Number(r.base_value) > 0 ? Number(r.base_value) : (Number(r.market_value) || RIDER_BASE_VALUE_FALLBACK);
       const age = r.birthdate ? ageForSeason(r.birthdate, seasonNumber) : null;

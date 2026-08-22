@@ -34,16 +34,15 @@ export const TYPE_DAMPENING_ENABLED = false;
 // (predictProductionLn: a + b·O + c·O² + offset), så én global værdi-skalar =
 // ln(faktoren) lagt til hvert offset.
 //
-// VÆRDIEN er målt 21/8 på KORREKTIONS-populationen (6.342 ejede+AI ryttere,
-// ekskl. bank/test/frosset/retired/academy — samme population som
-// marketValueLevelCorrectionApply): Σ i dag 300.670.817 / Σ rå-dæmpet
-// 261.801.561 = 1,1485. Scorecardets ×1,230 (20/8) var målt på den FULDE
-// 8.945-population inkl. bank/akademi og er derfor +7,1 % for høj på den
-// population korrektionen faktisk gælder. Genmål med
+// VÆRDIEN er målt 22/8 på KORREKTIONS-populationen INKL. AKADEMI (6.849
+// ejede+AI ryttere, ekskl. bank/test/frosset/retired — samme population som
+// marketValueLevelCorrectionApply efter ejer-beslutningen 22/8 om at tage
+// akademiryttere med): Σ i dag 422.393.638 / Σ rå-dæmpet 381.646.233 = 1,1068.
+// Historik: scorecardets ×1,230 (20/8) var målt på den fulde 8.945-population
+// inkl. bank; 21/8 blev den målt til 1,1485 på seniorer alene. Genmål med
 // scripts/buildValueTransitionPreview.js --dry-run (Σ dæmpet skal ≈ Σ i dag)
-// hvis flippet udskydes mere end få dage. Fundet + rettet 21/8
-// (session-audit på #3750/#4000).
-export const TYPE_DAMPENING_NORMALIZATION = 1.1485;
+// hvis flippet udskydes mere end få dage. Session-audit #3750/#4000.
+export const TYPE_DAMPENING_NORMALIZATION = 1.1068;
 
 /**
  * n-vægtet regularisering af ÉN offset-værdi mod 0 (midten).

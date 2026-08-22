@@ -152,8 +152,10 @@ export default function AdminValueTransitionPage() {
     });
   }, []);
 
+  // Akademiryttere er MED på begge faner (ejer-krav 22/8): de bærer ~125 mio. i
+  // værdi, og søndagens løn-genberegning omfatter dem. Markeres "· akademi".
   const filtered = useMemo(
-    () => filterRows(state.rows, { q, type, humanOnly }),
+    () => filterRows(state.rows, { q, type, humanOnly, includeAcademy: true }),
     [state.rows, q, type, humanOnly]
   );
   const valueRows = useMemo(
@@ -180,7 +182,7 @@ export default function AdminValueTransitionPage() {
     sticky: true,
     sortKey: "name",
     render: (r) => r.name,
-    subline: (r) => r.teamName ?? "—",
+    subline: (r) => (r.isAcademy ? `${r.teamName ?? "—"} · akademi` : (r.teamName ?? "—")),
   };
 
   const valueColumns = [
@@ -231,7 +233,7 @@ export default function AdminValueTransitionPage() {
         <div>
           <h1 className="text-cz-1 text-xl font-bold">Værdi-overgangen — forhåndsvisning</h1>
           <p className="text-cz-3 text-sm mt-1">
-            Niveau-korrektion (c) + type-dæmpning pr. rytter, og forventet S3-løn (CPV × global sats — c-uafhængig).
+            Niveau-korrektion (c) + type-dæmpning pr. rytter, og forventet S3-løn (CPV × global sats — c-uafhængig). Akademiryttere er med på begge faner.
             Read-only, kun ejeren: intet her ændrer spillet.
             {state.computedAt && ` Beregnet ${new Date(state.computedAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" })}.`}
           </p>
