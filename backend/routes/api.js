@@ -687,11 +687,18 @@ async function requireAuth(req, res, next) {
   if (error || !user) return res.status(401).json({ error: "Invalid token" });
 
   // Fetch team for this user
+  // #3722: onboarding opretter holdet asynkront efter signup, så "ingen række
+  // endnu" er en LOVLIG tilstand her — IKKE en fejl. .single() svarede med en
+  // rigtig PostgREST-fejl (406) i det tilfælde, som druknede målbare 406'ere
+  // fra ægte fejl i logstøj (17 × 406 på /rest/v1/teams i ét 700 ms-vindue
+  // 14/8, alle fra normal onboarding-timing). .maybeSingle() giver data=null
+  // uden fejl når rækken ikke findes endnu — req.team er null i begge
+  // tilfælde, så nedstrøms opførsel er uændret.
   const { data: team } = await supabase
     .from("teams")
     .select("*")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   req.user = user;
   req.team = team;
