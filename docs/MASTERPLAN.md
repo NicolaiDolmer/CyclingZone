@@ -6,8 +6,8 @@
 
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
-- **LØR 22/8 (rest i aften):** generalprøve (a)-(h) + restore-drill · ejer: mandat-apply m. nøgle + S3-kalender LÅSES.
-- **SØN 23/8:** S2-finale → cutover 19:30-22:30 (drejebog; pre-flip-gate remeasureGate3459; mandat EFTER sæsonskifte) → akademi-flip. **Ny gate: #4120 FØR løn-genberegningen.**
+- **SØN 23/8:** ✅ S3-kalenderen anvendt+verificeret (#4121). **Rest før cutover:** generalprøve (a)-(h) + restore-drill · ejer: mandat-apply m. nøgle.
+- **SØN 23/8 aften:** S2-finale → cutover 19:30-22:30 (pre-flip-gate remeasureGate3459; mandat EFTER sæsonskifte) → akademi-flip. **Gate: #4120 FØR løn-genberegningen.**
 - **MAN 24/8 (løbsfri):** kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
@@ -40,7 +40,7 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5, byg efter v4-gaten). Z1 v0 shippet (#4083).
 
-8. 🔴 **Ejer-direktiv-klyngen 21/8 har intet hjem i P0-P5** (oprettet 22/8, EFTER spec'en): **#4102** program synligt · **#4103** kalender-audit · **#4104** monument-længde · **#4105** Toscana-grus · **#4106** udbruds-tekst · **#4107** ruteprofiler · **#4108** miniaturer · **#4109** Planlægning anti-AI-slop. Indplaceres FØR P0.
+8. 🟠 **Ejer-direktiv-klyngen 21/8** (#4104 ✅ shippet+anvendt): **#4102** program synligt · **#4103** kalender-audit (rest = balance-valg) · **#4105** Toscana-grus · **#4106** udbruds-tekst · **#4107** ruteprofiler · **#4108** miniaturer · **#4109** Planlægning anti-AI-slop. Indplaceres FØR P0.
 9. **P0** kalender-integritet: #3990-rest (off-by-one, ejer-kald) · navne-dedup-guard · #3329 · #2791. **P1** sæsonmatrix + rytter-inspektør + UI-gæld (#3954 #3428 #3410 #2030 #3425 #3955 #3529 #3455 #3374). **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405 + fjern `tacticsOrdersAdapter`-mock). **P3** assistenten (mål-løb-migration, #3087 #3088 #3957 #3939 #4076).
 
 ## D · Penge og vækst — gate: spor B leveret (ikke en dato)
