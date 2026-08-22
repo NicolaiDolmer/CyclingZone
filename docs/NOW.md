@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action — TO ting før 19:30, begge ejer-kørsler:** (1) **KALENDER-APPLY**, se blokken nedenfor — vinduet lukker ved cutover. (2) **GENERALPRØVE (IKKE kørt endnu):** drejebog (a)-(h) mod staging `staging-3746-trin7` m. stopur + restore-drill; ejerens staging-nøgle kræves til (e) mandat-apply; (f) løn-genberegning omfatter akademi (verificeret). Output = søndagsplan m. målte tider. **Værdi-overgangen er PARKERET på gaten:** måling 22/8 RØD (0,225 > 0,15); cron måler ugentligt, realistisk 30/8+. Apply-population inkl. akademi, normalisering 1,1068. Ejeren bedømmer på `/admin/value-transition`.
+> **🎯 Next action: GENERALPRØVE (IKKE kørt endnu):** drejebog (a)-(h) mod staging `staging-3746-trin7` m. stopur + restore-drill; ejerens staging-nøgle kræves til (e) mandat-apply; (f) løn-genberegning omfatter akademi (verificeret). Output = søndagsplan m. målte tider. **Værdi-overgangen er PARKERET på gaten:** måling 22/8 RØD (0,225 > 0,15); cron måler ugentligt, realistisk 30/8+. Apply-population inkl. akademi, normalisering 1,1068. Ejeren bedømmer på `/admin/value-transition`.
 
 > **📅 Cutover SØNDAG 19:30-22:30** (drejebog rev. 21/8): snapshot → race-day-flip → D1-komprimering → løn-genberegning → mandat-backfill → flag-flip #4007+#3449-c. Gate c: race_days_total = **28**. v4-gate MANDAG aften → evt. LIVE tir 25/8, v3-fallback ved rødt.
 
@@ -21,7 +21,7 @@
 
 > **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5; byg tidligst efter v4-gaten). **A6 AFGJORT 21/8: kalender-fanen består; Z1 v0 Season-visningen er shippet** (#4083). §3.4+§3.5 udført. Åbent: #3990-resten. Ny: #4076 (stående ordrer P3).
 >
-> **🔴 KALENDER-APPLY FØR 19:30 (ejer-kørsel):** [PR #4121](https://github.com/NicolaiDolmer/CyclingZone/pull/4121) — GT-dagsform (0 dage m. 5 GT-etaper, Giro 11→6 dage, D1 dage-uden-afgørelse 7→2) + monument-længder (Roubaix 155→255 km). 7024/7024 + preflight grønne. **Løbsudvalget er bit-identisk** — regenerering ruller IKKE kalenderen om. Merge → `git pull` → `regenSeason3Calendar.mjs` dry-run → ejer ser den → wipe+regen. `wipeSeason3Calendar.mjs` nægter at køre når sæsonen er `active`; efter 19:30 er det for sent. Claude er blokeret fra prod-scripts.
+> **✅ KALENDER-APPLY GENNEMFØRT 23/8 kl. 00:32** via workflow `season3-calendar-apply.yml` (dispatch, ejer-gated). Verificeret mod prod: 471 løb, 28 dage 25/8-21/9, maks 4 GT-etaper/dag, Giro 6 dage, monumenter 255-290 km, ingen delt GT-dag. Snapshot af den gamle kalender ligger som artifact (90 dage). **Fund undervejs:** `race_class` nåede aldrig rute-generatoren (insertets `select` manglede feltet) — monumenterne kom ud i 155-190 km i første kørsel. Rettet + `verifySeason3Calendar.mjs` asserterer nu mod prod efter hver apply.
 
 > **🤖 Ingen aktiv session.** Kalender-/værdi-session 22-23/8 lukket: masterplan + artifact opdateret, spor P oprettet · Discord-sweep → #4118/#4119 · **#4120 løn på frossen ryttertype (19,8x spænd) = ejer-valg A/B/C FØR søndagens løn-trin** · #4103-audit kørt (ITT D3 15,5 % mod D4 1,8 %; brosten D3 3x D1 — balance-valg til uge 35) · #4105 omfangs-rettet (ingen grus-arketype findes) · nye: #4122 forfattede løb, #4123 kalender-invarianter i CI.
 
