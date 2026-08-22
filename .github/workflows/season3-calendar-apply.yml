@@ -122,6 +122,14 @@ jobs:
         working-directory: backend
         run: node scripts/dev/regenSeason3Calendar.mjs --apply --jeg-har-set-dry-runnet
 
+      - name: Efterverifikation mod prod (laeser kun)
+        if: always() && inputs.mode == 'apply'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        working-directory: backend
+        run: node scripts/dev/verifySeason3Calendar.mjs
+
       - name: Resultat
         if: always()
         run: |

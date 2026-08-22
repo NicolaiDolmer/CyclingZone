@@ -71,6 +71,10 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, s
     id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
     external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
     terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+    // #4104: race_class SKAL med. Uden den prissaetter daeknings-verifikationen
+    // monumenterne paa terraen-baandet, mens skrive-stien bruger klasse-baandet -
+    // altsaa verificerer man andre ruter end dem der persisteres.
+    race_class: r.race_class ?? null,
     season_id: seasonId, season_variant: seasonVariant,
   };
 }
@@ -500,6 +504,13 @@ export async function materializeTierCalendars({
   // terrænfordelingen (jf. raceStageProfileGenerator.js).
   const externalIdByPoolRace = new Map((catalog || []).map((c) => [c.id, c.external_id ?? null]));
   const archetypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.terrain_archetype ?? null]));
+  // #4104: race_class laeses fra KATALOGET, ikke fra races-insertets .select(). Foerste
+  // forsoeg hentede den fra den indsatte raekke - men selectet paa linjen nedenfor tager
+  // kun (id, pool_race_id, name, race_type, stages) med, saa race_class var undefined og
+  // monument-baandet faldt tavst tilbage til terraen-baandet. Praecis #3620-fejlklassen:
+  // "kolonnen blev ikke selectet" forvekslet med "kolonnen er NULL". Katalog-opslaget er
+  // immunt over for at nogen aendrer selectet senere.
+  const raceClassByPoolRace = new Map((catalog || []).map((c) => [c.id, c.race_class ?? null]));
 
   const { data: existing, error: exErr } = await supabase.from("races").select("league_division_id, pool_race_id, name").eq("season_id", seasonId);
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
@@ -619,7 +630,7 @@ export async function materializeTierCalendars({
         // + season_id (variation pr. sæson) fra konteksten.
         // season_variant (#3347) er tierens resolverede re-draw — SAMME tal som
         // dæknings-verifikationen og realisme-scorecardet bruger.
-        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, season_id: seasonId, season_variant: seasonVariant };
+        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
         for (const p of generateRaceStageProfiles(seedRace)) {
           profileRows.push({
             race_id: race.id, stage_number: p.stage_number, profile_type: p.profile_type,
