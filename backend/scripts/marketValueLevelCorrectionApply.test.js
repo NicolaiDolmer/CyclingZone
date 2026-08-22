@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -248,4 +251,14 @@ test("runMarketValueLevelCorrectionApply: ingen ændrede ryttere ⇒ ingen notif
   assert.equal(result.applied, true);
   assert.equal(result.ridersChanged, 0);
   assert.equal(notifyCalls.length, 0);
+});
+
+// #3750 (ejer-beslutning 22/8): korrektions-populationen SKAL omfatte akademiryttere.
+// Kildetekst-guard mod at !r.is_academy-filteret sniger sig tilbage i
+// fetchCorrectionPopulation (akademiet bærer ~29 % af al værdi).
+test("fetchCorrectionPopulation udelader IKKE akademiryttere (ejer-beslutning 22/8)", () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "marketValueLevelCorrectionApply.js"), "utf8");
+  const fn = src.match(/async function fetchCorrectionPopulation\([\s\S]*?\n\}/);
+  if (!fn) throw new Error("fetchCorrectionPopulation ikke fundet");
+  if (/!r\.is_academy/.test(fn[0])) throw new Error("fetchCorrectionPopulation filtrerer akademi fra — strider mod ejer-beslutningen 22/8");
 });

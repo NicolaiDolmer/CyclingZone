@@ -121,8 +121,8 @@ test("applyTypeDampening() sammensætter fit.offset præcis som regularizeOffset
 
 // ── Normalisering (sum-neutralitet, fundet + rettet 21/8) ────────────────────
 
-test("TYPE_DAMPENING_NORMALIZATION er 1,1485 — sum-neutral på KORREKTIONS-populationen (målt 21/8; scorecardets 1,230 var fuld population)", () => {
-  assert.equal(TYPE_DAMPENING_NORMALIZATION, 1.1485);
+test("TYPE_DAMPENING_NORMALIZATION er 1,1068 — sum-neutral på KORREKTIONS-populationen INKL. akademi (målt 22/8; 1,1485 var seniorer alene, 1,230 fuld population)", () => {
+  assert.equal(TYPE_DAMPENING_NORMALIZATION, 1.1068);
 });
 
 test("buildDampenedOffsetTable: hvert offset = regulariseret + ln(normalisering) — global værdi-skalar i log-rum", () => {

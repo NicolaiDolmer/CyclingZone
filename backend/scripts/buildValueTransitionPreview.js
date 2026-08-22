@@ -20,9 +20,9 @@
 // er MED på BEGGE faner (ejer-krav 22/8): søndagens løn-genberegning omfatter
 // dem, og de bærer ~125 mio. i værdi (mange ældre akademi-kuld har fulde
 // v4-værdier, #3614) — kun friske #3972-intakes er symbolske. De flages
-// is_academy=true så UI'et kan markere dem. OBS: selve korrektions-populationen
-// (marketValueLevelCorrectionApply/marketValueSundaySweep) udelader stadig
-// akademi — ejer-beslutning udestår (se #3750-tråden 22/8).
+// is_academy=true så UI'et kan markere dem. Korrektions-populationen
+// (marketValueLevelCorrectionApply) tager dem OGSÅ med (ejer-beslutning 22/8)
+// — preview og apply rammer samme population.
 //
 // Kør fra backend/ (dotenv/config forventer backend/.env i cwd):
 //
