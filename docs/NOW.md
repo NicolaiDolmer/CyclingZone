@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action: VÆRDI-OVERGANGEN (ejer-direktiv 21/8: kør 21-22/8, FØR søndag)** — GO-pakke klar: PR #4096 (manuel gate-måling + c=nyeste vindue + sum-neutral dæmpning ×1,230 + c-override-dry-run) afventer ejer-review/merge. Dry-runs 21/8 (#3750-kommentar): c=0,894 → −10,6 % (anbefalet) vs. c=0,666 → −33,4 %. Rækkefølge: besked postes ([udkast](discord/2026-08-22-vaerdi-overgangs-besked.md)) → snapshot → manuel måling → c-apply m. ejer-go → dæmpnings-flip-deploy → fuld backfill → **GENKØR løn-dry-run** (dæmpning ændrer CPV → #3989-løn) → patch note. DEREFTER: F3-integration (wiring-noter i PR-bodies #4084-#4092, h2h #4094).
+> **🎯 Next action: VÆRDI-OVERGANGEN — ejeren BEDØMMER på `/admin/value-transition` (live 22/8 14:00, PR #4096 MERGED, migration applied, 6.383 ryttere i preview-tabellen).** Ejer-flow: bedøm tal → vælg c → post besked ([udkast](discord/2026-08-22-vaerdi-overgangs-besked.md)) → GO. Kæde ved GO: snapshot → c-apply → flip-PR deploy (TYPE_DAMPENING_ENABLED=true) → fuld backfill → genkørt løn-dry-run → patch note. **OFFICIEL GATE-MÅLING 22/8 15:05: RØD (ustabil kanal, spænd 0,225 > 0,15; nyeste vindue 0,775, median90 0,655, n90=80)** — apply NÆGTER; anbefaling: lad gaten afgøre (30/8+). Derefter generalprøve (drejebog (a)-(h), IKKE kørt endnu) kl. 19. F3-integration → søn formiddag/man.
 
 > **✅ 21/8 AFTEN-SESSION (alt landet samme aften):** Z1 v0 Season-visning shippet (#4083, patch note 7.169, ejer-visuelt godkendt) · F3-natbølgen 11/11 spor leveret og merged (#4084-#4092 engine-moduler INERTE til wiring, #4091 orders-API, #4094 h2h-scorecard) · #4095 U23-sæsonsalder-fix (#4058 lukket før S3) · #4081 help-orphans + #4082 eslint merged · undersøgelser: #4059 bekræftet bug (seed-skævhed, til kalibrerings-session), #3981 afklaret (Discord-digest, ikke mail; drift af afsendelsestidspunkt). 3 agent-dødsfald genoprettet u. tab — postmortem: `.claude/learnings/2026-08-21-natboelge-agent-doedsfald.md`.
 
@@ -22,6 +22,6 @@
 
 > **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5; byg tidligst efter v4-gaten). **A6 AFGJORT 21/8: kalender-fanen består; Z1 v0 Season-visningen er shippet** (#4083). §3.4+§3.5 udført. Åbent: #3990-resten. Ny: #4076 (stående ordrer P3).
 >
-> **🤖 Working agent: Ingen aktiv session.**
+> **🤖 Working agent: Claude Code (DolmerPC, hoved-checkout) — værdi-overgangs-session 22/8 eftermiddag (ejeren bedømmer på admin-siden).**
 
 _Historik i git-log, issue-tråde + docs/audits/._
