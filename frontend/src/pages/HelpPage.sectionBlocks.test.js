@@ -13,26 +13,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "HelpPage.jsx"), "utf8");
 
-// 16 forældreløse entries fundet ved backfill-sweep i #4064 — indholdsverifikation
-// og afvikling af listen er #4066. De renderes
-// bevidst IKKE endnu: kopien skal indholdsverificeres mod nuværende mekanik
-// før den vises til spillere. Fjern en nøgle herfra når den registreres
-// (eller slettes fra help.json). Ny copy må ALDRIG tilføjes hertil.
-const KNOWN_ORPHANS = {
-  transfers: ["bulkEditPrices"],
-  watchlist: ["departureNotification"],
-  season: [
-    "latestTeamResult",
-    "heroAgonyCard",
-    "stageProfile",
-    "raceDetail",
-    "teamSelection",
-    "seasonDocumentary",
-  ],
-  dailytraining: ["dayTypes", "focusAbilities", "typeGating", "ceilingReached", "smartDefault"],
-  academy: ["promoteDemote"],
-  raceSelection: ["stageTactics", "scouting"],
-};
+// De 16 forældreløse entries fra #4064-sweepet er nu alle registreret (#4066),
+// så allowlisten er tom og guarden er ren fremadrettet. Ny copy må ALDRIG
+// tilføjes hertil: skriv den i help.json OG registrér den i blocks-arrayet.
+const KNOWN_ORPHANS = {};
 
 function extractSectionDefs(src) {
   const match = src.match(/const SECTION_DEFS = \[([\s\S]*?)\n\];/);
