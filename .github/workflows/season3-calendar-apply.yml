@@ -1,0 +1,132 @@
+name: S3 calendar apply
+
+# Ejer-gated re-materialisering af saeson 3's kalender (#4103/#4104, PR #4121).
+#
+# HVORFOR EN WORKFLOW OG IKKE ET LOKALT SHELL: en destruktiv prod-operation hoerer
+# hjemme et sted med audit-log, faste secrets og et output nogen kan laese bagefter.
+# Repoet goer allerede praecis det for migrationer (auto-migrate.yml), restore-drills
+# og syv audits. Sidegevinst: naar noget fejler, kan logget laeses uden at nogen skal
+# copy-paste en fejlbesked videre.
+#
+# SIKKERHED
+#   - workflow_dispatch ONLY. Ingen cron, ingen push-trigger. Kan aldrig fyre af sig selv.
+#   - `mode` er som standard dry-run. Apply kraever BAADE mode=apply OG at
+#     `bekraeftelse` skrives ordret. To uafhaengige handlinger.
+#   - Alle gates ligger fortsat i de kaldte scripts: saeson-porten (status skal vaere
+#     'upcoming'), gameplay-porten (race_entries/-results/-roles skal vaere 0) og
+#     JSON-snapshottet der skrives FOER noget slettes.
+#   - Snapshottet uploades som artifact, saa det overlever runneren.
+#
+# Vinduet lukker naar saesonen bliver 'active' ved cutoveret. Derefter naegter
+# wipeSeason3Calendar.mjs at koere, og denne workflow fejler paa foerste trin.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run laeser kun. apply sletter og genopbygger kalenderen.'
+        required: true
+        default: 'dry-run'
+        type: choice
+        options:
+          - dry-run
+          - apply
+      bekraeftelse:
+        description: 'Kun ved apply: skriv ordret  jeg-har-set-dry-runnet'
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: s3-calendar-apply
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificer bekraeftelse ved apply
+        if: inputs.mode == 'apply'
+        run: |
+          if [ "${{ inputs.bekraeftelse }}" != "jeg-har-set-dry-runnet" ]; then
+            echo "STOP - mode=apply kraever at 'bekraeftelse' er praecis: jeg-har-set-dry-runnet"
+            echo "Fik: '${{ inputs.bekraeftelse }}'"
+            exit 1
+          fi
+          echo "Bekraeftelse OK."
+
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Verificer secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_KEY:-}" ]; then
+            echo "Mangler SUPABASE_URL eller SUPABASE_SERVICE_KEY"
+            exit 1
+          fi
+          echo "Secrets til stede."
+
+      - name: Kalender-plan (dry-run, laeser kun)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        working-directory: backend
+        run: node scripts/dev/regenSeason3Calendar.mjs
+
+      - name: Sletnings-plan (dry-run, laeser kun)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        working-directory: backend
+        run: node scripts/dev/wipeSeason3Calendar.mjs
+
+      - name: APPLY - slet gammel kalender (snapshot skrives foerst)
+        if: inputs.mode == 'apply'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        working-directory: backend
+        run: node scripts/dev/wipeSeason3Calendar.mjs --apply --jeg-har-set-dry-runnet
+
+      - name: Upload snapshot (saa det overlever runneren)
+        if: inputs.mode == 'apply' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3-kalender-snapshot
+          path: docs/snapshots/3546/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: APPLY - byg ny kalender
+        if: inputs.mode == 'apply'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        working-directory: backend
+        run: node scripts/dev/regenSeason3Calendar.mjs --apply --jeg-har-set-dry-runnet
+
+      - name: Resultat
+        if: always()
+        run: |
+          if [ "${{ inputs.mode }}" = "apply" ]; then
+            echo "Apply-koersel afsluttet. Verificér antal loeb, race_days_total, GT-vinduer og monument-laengder."
+          else
+            echo "Dry-run afsluttet. Intet er skrevet."
+          fi
