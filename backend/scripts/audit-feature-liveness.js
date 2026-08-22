@@ -294,8 +294,11 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // Board DNA-suggestions: backend-route findes, men frontend wiring afventer
   // board-feature-rollout (milestone-gated, samme spor som board_consequences).
   "GET /board/dna-suggestions",
-  // F3 taktik-ordrer v1 (#4030/#3855): API-first — taktik-kortet (PR #4093, draft)
-  // wirer disse ved integration. Fjern fra whitelisten naar kortet er merged.
+  // F3 taktik-ordrer v1 (#4030/#3855): API-first. Taktik-kortet ER merged
+  // (PR #4093, 22/8), men det kalder endnu IKKE disse endpoints: al I/O gaar
+  // gennem frontend/src/lib/tacticsOrdersAdapter.js, som stadig mocker svarene
+  // in-memory. Fjern foerst fra whitelisten naar adapterens krop er erstattet
+  // med et rigtigt fetch — grep efter "team-orders" i frontend/src/ som proeve.
   "GET /races/:raceId/team-orders",
   "PUT /races/:raceId/team-orders/:stageNumber",
   // Login-streak: frontend-kaldet fjernet i #1139 (Living World Product Doctrine
