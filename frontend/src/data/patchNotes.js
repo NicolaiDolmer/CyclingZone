@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.171",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Grand Tours are no longer crammed into single days",
+          "body": "A day can no longer be filled entirely by one Grand Tour. Three days in Division 1 had all five stages from the same race, which left no room for anything else. Each Grand Tour now runs at most four stages a day, inside a window of six days at most. The Giro was stretched across eleven days and is now six, so it feels like a Grand Tour instead of a background hum. The same races run on the same days otherwise — only the spread changed."
+        },
+        "da": {
+          "title": "Grand Tours proppes ikke længere ind på enkeltdage",
+          "body": "En dag kan ikke længere fyldes helt af ét Grand Tour. Tre dage i Division 1 havde alle fem etaper fra samme løb, og så var der ikke plads til andet. Hvert Grand Tour kører nu højst fire etaper om dagen, inden for et vindue på maks seks dage. Giroen var trukket over elleve dage og er nu seks, så den føles som et Grand Tour i stedet for baggrundsstøj. Ellers kører de samme løb på de samme dage — kun spredningen er ændret."
+        },
+        "refs": [4103]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The monuments are now the longest races in the game",
+          "body": "They were the shortest. L'Enfer du Nord ran 155 km — shorter than every other one-day race in Division 1, and shorter than the classics in Division 4. The five monuments now run 255 to 290 km, in line with the races they are modelled on. Their routes were rebuilt, so climbs, sprints and cobbled sectors match the new distance."
+        },
+        "da": {
+          "title": "Monumenterne er nu spillets længste løb",
+          "body": "De var de korteste. L'Enfer du Nord var på 155 km — kortere end alle andre endagsløb i Division 1, og kortere end klassikerne i Division 4. De fem monumenter kører nu 255 til 290 km, som de løb de er bygget over. Ruterne er bygget om, så stigninger, spurter og brostenssektorer passer til den nye længde."
+        },
+        "refs": [4104]
+      }
+    ]
+  },
+  {
     "version": "7.170",
     "date": "2026-08-22",
     "label": "Beta",
