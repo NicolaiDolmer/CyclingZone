@@ -21,6 +21,6 @@
 
 > **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5; byg tidligst efter v4-gaten). **A6 AFGJORT 21/8: kalender-fanen består; Z1 v0 Season-visningen er shippet** (#4083). §3.4+§3.5 udført. Åbent: #3990-resten. Ny: #4076 (stående ordrer P3).
 >
-> **🤖 Ingen aktiv session** (PR-oprydning 22/8 aften lukket: #4112 + #4065 + #4093 merged, 63 branches ryddet; generalprøven tages i egen session).
+> **🤖 Ingen aktiv session.** Planlægnings-/værdi-session 22/8 aften lukket: masterplan + artifact opdateret, spor P oprettet, Discord-sweep → #4118/#4119, **nyt #4120 (løn fryses på frossen ryttertype, 19,8x spænd) = ejer-valg A/B/C FØR søndagens løn-trin**.
 
 _Historik i git-log, issue-tråde + docs/audits/._
