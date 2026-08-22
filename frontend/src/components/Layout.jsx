@@ -108,14 +108,15 @@ function buildBottomItems(t, team) {
 // vækst-data ét sted i stedet for fire spredte sub-nav-punkter.
 // #3498: Fair play (/admin/fairplay, #3138) havde intet nav-punkt, kun direkte
 // URL — ejer-beslutning 8/8 om at give den samme synlighed som Vækst.
-function buildAdminGroup(t) {
+function buildAdminGroup(t, isOwner = false) {
   return {
     key: "admin", label: t("nav.group.admin"),
     items: [
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/growth", label: t("nav.item.growth") },
       { to: "/admin/fairplay", label: t("nav.item.fairplay") },
-      { to: "/admin/value-transition", label: t("nav.item.valueTransition") },
+      // #3750: ejer-only (OWNER_USER_IDS via /api/admin/owner-check) — skjult for andre admins.
+      ...(isOwner ? [{ to: "/admin/value-transition", label: t("nav.item.valueTransition") }] : []),
     ],
   };
 }
@@ -405,6 +406,7 @@ export default function Layout() {
   const [patchNotesLatestDate, setPatchNotesLatestDate] = useState(null);
   const [patchNotesUnread, setPatchNotesUnread]         = useState(false);
   const [isAdmin, setIsAdmin]               = useState(false);
+  const [isOwner, setIsOwner]               = useState(false); // #3750 ejer-only-menupunkter
   const [mobileOpen, setMobileOpen]         = useState(false);
   const [feedbackOpen, setFeedbackOpen]     = useState(false);
   const [openGroups, setOpenGroups]         = useState({});
@@ -447,14 +449,14 @@ export default function Layout() {
 
   useEffect(() => {
     const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
-    if (isAdmin) groups.push(buildAdminGroup(t));
+    if (isAdmin) groups.push(buildAdminGroup(t, isOwner));
     // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
     // flytningen — Min Managerprofil bor nu i bund-menuen, som ikke er en
     // foldbar gruppe, så der er ingen gruppe at åbne for den rute længere.
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled]);
+  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -464,6 +466,17 @@ export default function Layout() {
       const { data: userData } = await supabase.from("users")
         .select("role, username").eq("id", session.user.id).single();
       setIsAdmin(userData?.role === "admin");
+      if (userData?.role === "admin") {
+        // #3750: kun ejeren (OWNER_USER_IDS) ser ejer-only-punkter. Fail-closed: fejl ⇒ skjult.
+        try {
+          const r = await fetch(`${API}/api/admin/owner-check`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+          const d = r.ok ? await r.json() : null;
+          setIsOwner(Boolean(d?.isOwner));
+        } catch {
+          // best-effort: ejer-check er kun menu-synlighed; backend håndhæver selve gaten.
+          setIsOwner(false);
+        }
+      }
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
       if (teamData) {
         setTeam(teamData);
@@ -636,7 +649,7 @@ export default function Layout() {
   }
 
   const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
-  const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t)] : baseGroups;
+  const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t, isOwner)] : baseGroups;
   const bottomItems = buildBottomItems(t, team);
 
   const needsSetup = teamLoaded && !team?.manager_name;

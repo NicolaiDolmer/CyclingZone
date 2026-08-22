@@ -60,7 +60,9 @@ test("alle /admin/*-ruter har requireAdmin-middleware (#security-audit forward-g
   );
 
   const ungated = adminRoutes.filter(
-    (r) => !/\brequireAdmin\b/.test(r.middlewareSegment),
+    // #3750: requireOwner er en STRAMMERE variant (requireAdmin + OWNER_USER_IDS-allowlist,
+    // backend/lib/ownerGate.js) og opfylder derfor guarden.
+    (r) => !/\brequire(Admin|Owner)\b/.test(r.middlewareSegment),
   );
   assert.deepEqual(
     ungated.map((r) => `${r.verb.toUpperCase()} ${r.routePath}`),

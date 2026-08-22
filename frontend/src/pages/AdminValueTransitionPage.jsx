@@ -4,7 +4,6 @@ import { supabase } from "../lib/supabase";
 import { Button, Card, DataTable, EmptyState, ErrorState, Input, PageLoader, Select, SkeletonLines } from "../components/ui";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
 import {
-  C_PRESETS,
   buildValueRows,
   buildSalaryRows,
   filterRows,
@@ -13,12 +12,16 @@ import {
   typeOptions,
 } from "./adminValueTransitionShape";
 
-// #3750/#4000 — ejerens forhåndsvisning af værdi-overgangen: hvad hver rytters
+// #3750/#4000 — EJERENS forhåndsvisning af værdi-overgangen: hvad hver rytters
 // værdi bliver efter niveau-korrektion (c, justérbar) + type-dæmpning, og hvor
 // lønnen forventes at lande fra S3 (løn = CPV × global sats; c-uafhængig).
 // RENT read-only beslutningsværktøj: datagrundlaget bygges af
 // backend/scripts/buildValueTransitionPreview.js, og intet her ændrer
 // spil-tilstand. Selve apply er CLI-only med ejer-go.
+//
+// EJER-ONLY (22/8): backend-endpointet er requireOwner (OWNER_USER_IDS), ikke
+// kun requireAdmin — en 403 herfra behandles som "ikke adgang" og sender
+// videre til dashboardet, præcis som for ikke-admins.
 const API = import.meta.env.VITE_API_URL;
 
 const fmtNum = (n) => (n == null ? "—" : new Intl.NumberFormat("da-DK").format(Math.round(n)));
@@ -27,7 +30,20 @@ const fmtPct = (p) => {
   const r = Math.round(p * 10) / 10;
   return `${r > 0 ? "+" : ""}${r.toLocaleString("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 };
+const fmtC = (c) => (c == null ? "—" : Number(c).toFixed(3));
 const pctClass = (p) => (p == null ? "" : p < 0 ? "text-cz-danger" : "text-cz-success");
+
+// Den officielle gate-log-række (market_value_level_correction_gate_log) →
+// de to målte c-kandidater: nyeste 30-dages-vindue (= fyringsværdien når
+// gaten er grøn) og median90 (til sammenligning).
+export function gatePresets(gate) {
+  if (!gate) return null;
+  const rolling = Array.isArray(gate.rolling_medians) ? gate.rolling_medians : [];
+  const last = rolling.length ? rolling[rolling.length - 1] : null;
+  const newest = Number.isFinite(Number(last?.median)) ? Number(last.median) : null;
+  const median90 = Number.isFinite(Number(gate.median_price_over_anchor_90d)) ? Number(gate.median_price_over_anchor_90d) : null;
+  return { newest, median90 };
+}
 
 function SummaryTiles({ label, summary }) {
   return (
@@ -52,12 +68,33 @@ function SummaryTiles({ label, summary }) {
   );
 }
 
+function GateStatus({ gate }) {
+  if (!gate) {
+    return (
+      <p className="text-cz-3 text-sm" data-testid="gate-status">
+        Gate: ingen officiel måling endnu (søndags-cron eller manuel kørsel).
+      </p>
+    );
+  }
+  const green = gate.gate_status === "green";
+  const presets = gatePresets(gate);
+  return (
+    <p className="text-sm" data-testid="gate-status">
+      <span className={`font-semibold ${green ? "text-cz-success" : "text-cz-danger"}`}>
+        Gate {green ? "GRØN" : "RØD"}
+      </span>
+      <span className="text-cz-2"> · målt {gate.measured_date} · {gate.gate_reason_text}</span>
+      <span className="text-cz-3"> · nyeste vindue {fmtC(presets?.newest)} · median90 {fmtC(presets?.median90)}</span>
+    </p>
+  );
+}
+
 export default function AdminValueTransitionPage() {
   const [adminStatus, setAdminStatus] = useState("checking"); // checking | admin | not_admin
   const { getAuth } = useAdminAuth();
-  const [state, setState] = useState({ loading: true, error: null, rows: [], computedAt: null, message: null });
+  const [state, setState] = useState({ loading: true, error: null, rows: [], computedAt: null, message: null, gate: null });
   const [tab, setTab] = useState("values"); // values | salaries
-  const [c, setC] = useState(C_PRESETS.fresh);
+  const [c, setC] = useState(1);
   const [q, setQ] = useState("");
   const [type, setType] = useState("all");
   const [humanOnly, setHumanOnly] = useState(true);
@@ -77,10 +114,24 @@ export default function AdminValueTransitionPage() {
   const load = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const res = await fetch(`${API}/api/admin/value-transition`, { headers: await getAuth() });
+      const headers = await getAuth();
+      const res = await fetch(`${API}/api/admin/value-transition`, { headers });
+      if (res.status === 403) { setAdminStatus("not_admin"); return; }
       const data = await readAdminJson(res);
       if (!res.ok) throw new Error(adminErrorMessage(data, res));
-      setState({ loading: false, error: null, rows: data.rows ?? [], computedAt: data.computedAt ?? null, message: data.message ?? null });
+      // Gate-status er sekundær: fejler den, vises siden stadig (uden presets).
+      let gate = null;
+      try {
+        const gres = await fetch(`${API}/api/admin/market-value-level-correction/gate`, { headers });
+        const gdata = gres.ok ? await readAdminJson(gres) : null;
+        gate = gdata?.gate ?? null;
+      } catch {
+        // best-effort: gate-status er kun kontekst til presets; tabellen er det primære.
+        gate = null;
+      }
+      const presets = gatePresets(gate);
+      if (presets?.newest != null) setC(presets.newest);
+      setState({ loading: false, error: null, rows: data.rows ?? [], computedAt: data.computedAt ?? null, message: data.message ?? null, gate });
     } catch (err) {
       setState((s) => ({ ...s, loading: false, error: err.message }));
     }
@@ -121,6 +172,7 @@ export default function AdminValueTransitionPage() {
     [tab, filtered, c]
   );
   const types = useMemo(() => typeOptions(state.rows), [state.rows]);
+  const presets = useMemo(() => gatePresets(state.gate), [state.gate]);
 
   const stickyCol = {
     key: "name",
@@ -180,7 +232,7 @@ export default function AdminValueTransitionPage() {
           <h1 className="text-cz-1 text-xl font-bold">Værdi-overgangen — forhåndsvisning</h1>
           <p className="text-cz-3 text-sm mt-1">
             Niveau-korrektion (c) + type-dæmpning pr. rytter, og forventet S3-løn (CPV × global sats — c-uafhængig).
-            Read-only: intet her ændrer spillet.
+            Read-only, kun ejeren: intet her ændrer spillet.
             {state.computedAt && ` Beregnet ${new Date(state.computedAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" })}.`}
           </p>
         </div>
@@ -208,6 +260,8 @@ export default function AdminValueTransitionPage() {
         />
       ) : (
         <>
+          <GateStatus gate={state.gate} />
+
           <SummaryTiles label={tab === "values" ? "Værdi" : "Lønsum"} summary={summary} />
 
           <div className="flex flex-wrap items-center gap-3">
@@ -243,8 +297,16 @@ export default function AdminValueTransitionPage() {
                   className="w-[160px]"
                 />
                 <span className="text-cz-1 text-sm font-data tabular-nums w-[48px]">{c.toFixed(3)}</span>
-                <Button variant="secondary" onClick={() => setC(C_PRESETS.fresh)}>0,894</Button>
-                <Button variant="secondary" onClick={() => setC(C_PRESETS.median90)}>0,666</Button>
+                {presets?.newest != null && (
+                  <Button variant="secondary" onClick={() => setC(presets.newest)} title="Nyeste 30-dages-vindues median (officiel måling)">
+                    målt {fmtC(presets.newest)}
+                  </Button>
+                )}
+                {presets?.median90 != null && (
+                  <Button variant="secondary" onClick={() => setC(presets.median90)} title="90-dages-medianen (officiel måling)">
+                    median90 {fmtC(presets.median90)}
+                  </Button>
+                )}
               </div>
             )}
           </div>
