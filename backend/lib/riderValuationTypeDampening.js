@@ -26,6 +26,25 @@
 export const TYPE_DAMPENING_OFFSET_K = 100;
 export const TYPE_DAMPENING_ENABLED = false;
 
+// Sum-neutraliserings-faktoren. Doktrinen bag ejer-godkendelsen 20/8 er at
+// dæmpningen flytter FORDELINGEN mellem typer, ikke NIVEAUET
+// (typeDampeningScenarios4000.mjs's normalizationFactor) — niveauet ejes af
+// #3449-niveaukorrektionen (c). Uden faktoren ville flippet trække niveauet
+// markant UNDER det c netop har kalibreret mod markedet. V4 er log-additiv
+// (predictProductionLn: a + b·O + c·O² + offset), så én global værdi-skalar =
+// ln(faktoren) lagt til hvert offset.
+//
+// VÆRDIEN er målt 21/8 på KORREKTIONS-populationen (6.342 ejede+AI ryttere,
+// ekskl. bank/test/frosset/retired/academy — samme population som
+// marketValueLevelCorrectionApply): Σ i dag 300.670.817 / Σ rå-dæmpet
+// 261.801.561 = 1,1485. Scorecardets ×1,230 (20/8) var målt på den FULDE
+// 8.945-population inkl. bank/akademi og er derfor +7,1 % for høj på den
+// population korrektionen faktisk gælder. Genmål med
+// scripts/buildValueTransitionPreview.js --dry-run (Σ dæmpet skal ≈ Σ i dag)
+// hvis flippet udskydes mere end få dage. Fundet + rettet 21/8
+// (session-audit på #3750/#4000).
+export const TYPE_DAMPENING_NORMALIZATION = 1.1485;
+
 /**
  * n-vægtet regularisering af ÉN offset-værdi mod 0 (midten).
  * n/(n+k) → 1 for store n (offset stort set urørt), → 0 for små n (offset → 0).
@@ -83,6 +102,31 @@ export function regularizeOffsetTable(offsetTable, typeStats, k) {
  * @param {object|null} model  riderValuationModelV4.json-objektet (eller null)
  * @returns {object|null} model, evt. med regulariseret fit.offset
  */
+/**
+ * Ren transformation: regularisér offset-tabellen (n-vægtet mod 0) og læg
+ * derefter ln(normalization) til HVERT offset. V4 er log-additiv
+ * (predictProductionLn: a + b·O + c·O² + offset), så log-forskydningen
+ * multiplicerer enhver prediktion med normaliserings-faktoren —
+ * offsetFloor-fallbacken i predictProductionLn følger automatisk med, da den
+ * er Math.min over den transformerede tabel.
+ *
+ * @param {Record<string, number>} offsetTable  model.fit.offset
+ * @param {Record<string, {n: number}>} typeStats  model.type_stats
+ * @param {number} k
+ * @param {number} normalization  global værdi-skalar (1 = ingen)
+ * @returns {Record<string, number>}
+ */
+export function buildDampenedOffsetTable(offsetTable, typeStats, k, normalization) {
+  const regularized = regularizeOffsetTable(offsetTable, typeStats, k);
+  const norm = Number(normalization);
+  const logShift = Number.isFinite(norm) && norm > 0 ? Math.log(norm) : 0;
+  const out = {};
+  for (const [type, value] of Object.entries(regularized)) {
+    out[type] = Number.isFinite(Number(value)) ? Number(value) + logShift : value;
+  }
+  return out;
+}
+
 export function applyTypeDampening(model) {
   if (!TYPE_DAMPENING_ENABLED) return model;
   if (!model?.fit?.offset || !model?.type_stats) return model;
@@ -90,7 +134,12 @@ export function applyTypeDampening(model) {
     ...model,
     fit: {
       ...model.fit,
-      offset: regularizeOffsetTable(model.fit.offset, model.type_stats, TYPE_DAMPENING_OFFSET_K),
+      offset: buildDampenedOffsetTable(
+        model.fit.offset,
+        model.type_stats,
+        TYPE_DAMPENING_OFFSET_K,
+        TYPE_DAMPENING_NORMALIZATION
+      ),
     },
   };
 }

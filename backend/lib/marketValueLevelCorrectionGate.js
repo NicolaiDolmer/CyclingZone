@@ -157,15 +157,25 @@ export function evaluateLevelCorrectionGate({
     };
   }
 
+  // FYRINGSVÆRDIEN er medianen af det NYESTE 30-dages-vindue, ikke median90.
+  // Filens egen header dokumenterer hvorfor: kanalen har været i monoton drift
+  // (0,25 → 0,91 over 50 dage), så et c fittet på hele 90-dages-historikken er
+  // en bagudskuende aflæsning — målt 21/8 var median90 0,67 mod 0,89 i det
+  // friske vindue, dvs. ~25 % overkorrektion. Stabilitets-gaten (spread ≤ bånd)
+  // garanterer at de tre vinduer er enige, så det nyeste vindue er ikke et
+  // enkelt-uges udsving når gaten er grøn. median90 rapporteres fortsat i
+  // gate-loggen til sammenligning. (Session-beslutning 21/8, logget på #3750.)
+  const latestWindowMedian = validPoints[validPoints.length - 1].median;
   return {
     ...base,
     status: "green",
     reason: "stable",
     reasonText:
       `Forhandlet kanal stabil: ${n90} kvalificerede handler, seneste ${ROLLING_POINTS} rullende medianer ` +
-      `inden for ±${stabilityBand} af hinanden (spænd ${spread.toFixed(3)}).`,
+      `inden for ±${stabilityBand} af hinanden (spænd ${spread.toFixed(3)}). ` +
+      `c = nyeste 30-dages-vindues median (${latestWindowMedian.toFixed(3)}; median90 til sammenligning: ${median90?.toFixed(3) ?? "n/a"}).`,
     spread,
-    cCandidate: median90,
+    cCandidate: latestWindowMedian,
   };
 }
 
@@ -268,6 +278,12 @@ async function defaultCompleteMeasurement({ supabase, measuredDate, gate }) {
 export async function runMarketValueLevelCorrectionGateSweep({
   supabase,
   now,
+  // Ejer-direktiv 21/8 (fremrykket overgang til det nye værdisystem): en
+  // MANUEL måling må køres på en ikke-søndag via
+  // backend/scripts/runLevelCorrectionGateManual.js. Claim-dedup pr. dato
+  // gælder stadig, så cron-søndagen og en manuel kørsel kan aldrig
+  // dobbelt-måle samme dag. Cron-stien sætter aldrig dette flag.
+  manual = false,
   readMinTrades = readMinQualifiedTrades,
   readBand = readStabilityBand,
   fetchNegotiatedRawSales = defaultFetchNegotiatedRawSales,
@@ -282,7 +298,7 @@ export async function runMarketValueLevelCorrectionGateSweep({
     throw new Error("runMarketValueLevelCorrectionGateSweep: eksplicit `now` (Date) er påkrævet");
   }
 
-  if (copenhagenWeekdayKey(copenhagenDateString(now)) !== "sun") {
+  if (!manual && copenhagenWeekdayKey(copenhagenDateString(now)) !== "sun") {
     return { ran: false, skipped: "not_sunday" };
   }
 
@@ -336,5 +352,5 @@ export async function runMarketValueLevelCorrectionGateSweep({
     captureExceptionFn(err, { tags: { cron: "market-value-level-correction-gate", stage: "log-complete" } });
   }
 
-  return { ran: true, measuredDate, ...gate };
+  return { ran: true, measuredDate, manual, ...gate };
 }

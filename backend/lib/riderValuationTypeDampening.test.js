@@ -8,7 +8,9 @@ import assert from "node:assert/strict";
 import {
   TYPE_DAMPENING_ENABLED,
   TYPE_DAMPENING_OFFSET_K,
+  TYPE_DAMPENING_NORMALIZATION,
   applyTypeDampening,
+  buildDampenedOffsetTable,
   regularizeOffset,
   regularizeOffsetTable,
 } from "./riderValuationTypeDampening.js";
@@ -107,10 +109,46 @@ test("applyTypeDampening() sammensætter fit.offset præcis som regularizeOffset
   // Byg forventet output ved at kalde de samme rene funktioner applyTypeDampening
   // ville have kaldt, HVIS flaget var true — bekræfter sammensætningen (spread +
   // fit.offset-erstatning) er korrekt, uden at afhænge af den globale konstant.
-  const expectedOffset = regularizeOffsetTable(model.fit.offset, model.type_stats, TYPE_DAMPENING_OFFSET_K);
+  const expectedOffset = buildDampenedOffsetTable(
+    model.fit.offset, model.type_stats, TYPE_DAMPENING_OFFSET_K, TYPE_DAMPENING_NORMALIZATION
+  );
   const expectedModel = { ...model, fit: { ...model.fit, offset: expectedOffset } };
   // Disabled i dag ⇒ applyTypeDampening returnerer INPUT, ikke expectedModel —
   // dokumenterer eksplicit hvad der ændrer sig NÅR flippet sker.
   assert.notDeepEqual(applyTypeDampening(model), expectedModel);
   assert.equal(applyTypeDampening(model), model);
+});
+
+// ── Normalisering (sum-neutralitet, fundet + rettet 21/8) ────────────────────
+
+test("TYPE_DAMPENING_NORMALIZATION er 1,1485 — sum-neutral på KORREKTIONS-populationen (målt 21/8; scorecardets 1,230 var fuld population)", () => {
+  assert.equal(TYPE_DAMPENING_NORMALIZATION, 1.1485);
+});
+
+test("buildDampenedOffsetTable: hvert offset = regulariseret + ln(normalisering) — global værdi-skalar i log-rum", () => {
+  const offsetTable = { puncheur: 2.071, tt: -0.139 };
+  const typeStats = { puncheur: { n: 19 }, tt: { n: 2622 } };
+  const regularized = regularizeOffsetTable(offsetTable, typeStats, 100);
+  const damped = buildDampenedOffsetTable(offsetTable, typeStats, 100, 1.230);
+  for (const type of Object.keys(offsetTable)) {
+    assert.ok(Math.abs(damped[type] - (regularized[type] + Math.log(1.230))) < 1e-12, type);
+  }
+});
+
+test("buildDampenedOffsetTable: normalisering=1 ⇒ identisk med ren regularisering (ingen skalar)", () => {
+  const offsetTable = { climber: 0.8, sprinter: 0.3 };
+  const typeStats = { climber: { n: 500 }, sprinter: { n: 700 } };
+  assert.deepEqual(
+    buildDampenedOffsetTable(offsetTable, typeStats, 100, 1),
+    regularizeOffsetTable(offsetTable, typeStats, 100)
+  );
+});
+
+test("buildDampenedOffsetTable: log-forskydningen multiplicerer en v4-prediktion med præcis faktoren (exp-regnestykket)", () => {
+  // predictProductionLn = a + b·O + c·O² + offset ⇒ værdi = exp(...). Samme
+  // offset-tabel med +ln(f) giver exp(... + ln(f)) = f × værdi.
+  const before = Math.exp(1.0 + 0.5 + regularizeOffset(2.071, 19, 100));
+  const damped = buildDampenedOffsetTable({ puncheur: 2.071 }, { puncheur: { n: 19 } }, 100, 1.230);
+  const after = Math.exp(1.0 + 0.5 + damped.puncheur);
+  assert.ok(Math.abs(after / before - 1.230) < 1e-9);
 });

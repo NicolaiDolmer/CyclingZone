@@ -12063,6 +12063,52 @@ router.get("/admin/market-value-level-correction/dry-run", requireAdmin, async (
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/admin/value-transition — #3750/#4000: admin-forhåndsvisning af
+// værdi-overgangen (niveau-korrektion + type-dæmpning) og de forventede
+// S3-lønninger. Read-only visning af value_transition_preview, som bygges af
+// backend/scripts/buildValueTransitionPreview.js — endpointet beregner INTET
+// selv og rører ingen spil-tilstand. c-scenarierne ganges på i UI'et
+// (niveauet er en ren multiplikator).
+router.get("/admin/value-transition", requireAdmin, async (req, res) => {
+  try {
+    const rows = await fetchAllRows(() => supabase
+      .from("value_transition_preview")
+      .select("rider_id, team_id, value_now, value_damped, cpv_now, cpv_damped, salary_now, salary_expected, salary_expected_no_damp, valuation_type, primary_type, computed_at, riders(firstname, lastname)")
+      .order("rider_id"));
+    if (rows.length === 0) {
+      return res.json({ computedAt: null, rows: [], message: "Preview not built yet - run backend/scripts/buildValueTransitionPreview.js." });
+    }
+    const teams = await fetchAllRows(() => supabase.from("teams").select("id, name, is_ai").order("id"));
+    const teamById = new Map(teams.map((t) => [t.id, t]));
+    res.json({
+      computedAt: rows[0]?.computed_at ?? null,
+      rows: rows.map((r) => ({
+        riderId: r.rider_id,
+        name: [r.riders?.firstname, r.riders?.lastname].filter(Boolean).join(" ") || r.rider_id,
+        teamName: teamById.get(r.team_id)?.name ?? null,
+        teamIsAi: !!teamById.get(r.team_id)?.is_ai,
+        valuationType: r.valuation_type,
+        primaryType: r.primary_type,
+        valueNow: r.value_now,
+        valueDamped: r.value_damped,
+        cpvNow: r.cpv_now,
+        cpvDamped: r.cpv_damped,
+        salaryNow: r.salary_now,
+        salaryExpected: r.salary_expected,
+        salaryExpectedNoDamp: r.salary_expected_no_damp,
+      })),
+    });
+  } catch (e) {
+    // best-effort: manglende preview-tabel (migration ikke applied endnu) er en
+    // forventet tom-tilstand for admin-siden, ikke en fejl — samme mønster som
+    // gate-endpointet ovenfor. Alt andet captures + 500 nedenfor.
+    if (e?.code === "42P01" || /does not exist|schema cache/i.test(String(e?.message || ""))) {
+      return res.json({ computedAt: null, rows: [], message: "Preview table does not exist yet (migration not applied)." });
+    }
+    captureApiRouteError(e, req); res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/market/pause — hent pause-state (level + paused_at + reason)
 router.get("/admin/market/pause", requireAdmin, async (req, res) => {
   try {

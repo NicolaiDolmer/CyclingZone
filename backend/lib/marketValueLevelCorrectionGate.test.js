@@ -100,8 +100,28 @@ test("evaluateLevelCorrectionGate: GRØN når n90 >= minimum OG de 3 rullende me
   assert.equal(gate.status, "green");
   assert.equal(gate.reason, "stable");
   assert.ok(Number.isFinite(gate.cCandidate));
-  // c-kandidaten er 90-dages-medianen af selve populationen, ikke et rullende punkt.
+  // c-kandidaten er det NYESTE rullende vindues median (21/8-beslutningen, #3750).
   assert.ok(Math.abs(gate.cCandidate - 0.69) < 0.001);
+});
+
+test("evaluateLevelCorrectionGate: cCandidate er det NYESTE vindues median, IKKE median90 (drift-scenariet 21/8)", () => {
+  // 90-dages-populationen har median 0,67 (gamle billige handler), men de tre
+  // stabile rullende vinduer ligger 0,85-0,89. Fyringsværdien skal følge det
+  // friske marked — median90 rapporteres kun til sammenligning.
+  const qualified90d = Array.from({ length: 74 }, (_, i) => sale({ daysAgo: i % 89, price: 670, anchor: 1000 }));
+  const rollingMedians = [
+    { window_end: "2026-08-07", n: 22, median: 0.85 },
+    { window_end: "2026-08-14", n: 29, median: 0.88 },
+    { window_end: "2026-08-21", n: 51, median: 0.89 },
+  ];
+  const gate = evaluateLevelCorrectionGate({
+    qualified90d, rollingMedians,
+    minQualifiedTrades: DEFAULT_MIN_QUALIFIED_TRADES,
+    stabilityBand: DEFAULT_STABILITY_BAND,
+  });
+  assert.equal(gate.status, "green");
+  assert.ok(Math.abs(gate.cCandidate - 0.89) < 0.001, `cCandidate skal være nyeste vindue, fik ${gate.cCandidate}`);
+  assert.ok(Math.abs(gate.median90 - 0.67) < 0.001, "median90 rapporteres stadig");
 });
 
 test("evaluateLevelCorrectionGate: grænsetilfælde — spread PRÆCIS på båndet er stadig grøn (<=, ikke <)", () => {
@@ -141,6 +161,26 @@ test("runMarketValueLevelCorrectionGateSweep: no-op på en ikke-søndag", async 
     supabase: { from: () => ({}) }, now: SATURDAY, ...baseSweepDeps(),
   });
   assert.deepEqual(result, { ran: false, skipped: "not_sunday" });
+});
+
+test("runMarketValueLevelCorrectionGateSweep: manual=true kører på en ikke-søndag (ejer-direktiv 21/8) — dedup gælder stadig", async () => {
+  const completed = [];
+  const result = await runMarketValueLevelCorrectionGateSweep({
+    supabase: { from: () => ({}) }, now: SATURDAY, manual: true,
+    ...baseSweepDeps({
+      completeMeasurement: async ({ measuredDate, gate }) => { completed.push({ measuredDate, gate }); },
+    }),
+  });
+  assert.equal(result.ran, true);
+  assert.equal(result.manual, true);
+  assert.equal(completed.length, 1);
+
+  // Claim-dedup pr. dato blokerer stadig en manuel dobbelt-måling samme dag.
+  const deduped = await runMarketValueLevelCorrectionGateSweep({
+    supabase: { from: () => ({}) }, now: SATURDAY, manual: true,
+    ...baseSweepDeps({ claimMeasurement: async () => ({ claimed: false, tableMissing: false }) }),
+  });
+  assert.deepEqual(deduped, { ran: false, skipped: "already_measured_today" });
 });
 
 test("runMarketValueLevelCorrectionGateSweep: no-op når allerede målt i dag (persisteret dedup)", async () => {
