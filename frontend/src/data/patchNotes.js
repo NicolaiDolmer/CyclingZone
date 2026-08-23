@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.178",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Route profiles redrawn",
+          "body": "Every stage route now uses a fixed altitude scale per terrain type (flat, hilly, mountain, high mountain), so a short climb looks short and a high-mountain stage looks tall, instead of every stage stretching to fill its own frame. Climbs are coloured by their actual gradient in five bands from green to dark red. The same graph, at the same scale, now appears everywhere a route thumbnail is shown."
+        },
+        "da": {
+          "title": "Ruteprofiler tegnet om",
+          "body": "Hver etapes ruteprofil bruger nu en fast højdeskala pr. terræntype (flad, bakket, bjerg, high mountain), så en kort stigning ser kort ud og en high-mountain-etape ser høj ud, i stedet for at hver etape strækkes til at fylde sin egen ramme. Stigninger farves efter deres faktiske gradient i fem bånd fra grøn til mørkerød. Samme graf, i samme skala, vises nu alle steder en rute-miniature bruges."
+        },
+        "refs": [4107, 4108, 3958]
+      }
+    ]
+  },
+  {
     "version": "7.177",
     "date": "2026-08-23",
     "label": "Beta",

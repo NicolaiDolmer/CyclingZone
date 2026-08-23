@@ -67,8 +67,13 @@ export default function useTodayStages(teamId) {
           .select("id, name, race_type, stages, stages_completed, status")
           .in("id", ownRaceIds),
         // pagination-safe: afgrænset til MINE dagens race_id'er (0-2 løb).
+        // #3958 (ejer-mistanke bekræftet 23/8): tidligere hentede denne query KUN
+        // profile_type → miniaturen var et generisk 6-vejrs kategori-piktogram
+        // (TerrainGlyph), IKKE etapens ægte rutedata. Nu hentes de samme felter
+        // StageProfileGraph/buildProfileSeries bruger overalt ellers, så dashboardets
+        // "dagens etaper" viser SAMME rigtige rute som løbssiden (#4107/#4108).
         supabase.from("race_stage_profiles")
-          .select("race_id, stage_number, profile_type")
+          .select("race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors")
           .in("race_id", ownRaceIds),
         // pagination-safe: afgrænset til MINE dagens race_id'er (0-2 løb) — hele
         // løbets leader/team/stage-rækker for de par løb er langt under 1000.
@@ -83,7 +88,7 @@ export default function useTodayStages(teamId) {
 
       const raceById = new Map((racesRes.data || []).map((r) => [r.id, r]));
       const profileByKey = new Map(
-        (profilesRes.data || []).map((p) => [`${p.race_id}:${p.stage_number}`, p.profile_type])
+        (profilesRes.data || []).map((p) => [`${p.race_id}:${p.stage_number}`, p])
       );
       const resultRows = resultsRes.data || [];
 
@@ -91,6 +96,7 @@ export default function useTodayStages(teamId) {
         .map((row) => {
           const race = raceById.get(row.race_id);
           if (!race) return null;
+          const profile = profileByKey.get(`${race.id}:${row.stage_number}`) || null;
           return {
             raceId: race.id,
             raceName: race.name,
@@ -99,7 +105,10 @@ export default function useTodayStages(teamId) {
             totalStages: race.stages ?? 1,
             stagesCompleted: race.stages_completed ?? 0,
             scheduledMs: Date.parse(row.scheduled_at),
-            profileType: profileByKey.get(`${race.id}:${row.stage_number}`) || null,
+            profileType: profile?.profile_type || null,
+            // #3958: den FULDE profil-række, så miniaturen kan tegne StageProfileGraph
+            // (ægte rutedata) i stedet for kun at kende profile_type.
+            profile,
           };
         })
         .filter(Boolean);

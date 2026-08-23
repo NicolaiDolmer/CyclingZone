@@ -8,8 +8,72 @@
 // placering, længde, stejlhed og højde er derfor sande; kun bølgeterrænet mellem
 // stigningerne er fri form, og selv dens samlede stigning er bundet.
 
-/** Dal-reference i meter. Rent visuelt nulpunkt — ikke en påstand om havhøjde. */
+/** Dal-reference i meter (fallback for ukendt profile_type). Rent visuelt nulpunkt — ikke en påstand om havhøjde. */
 export const VALLEY_M = 180;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ejer-låst 23/8 (#4107, kommentar på issuet ER kontrakten): højdeskala FAST
+// pr. profile_type, ALDRIG pr. etape. Uden dette skalerede hver etape til sin
+// EGEN top (`series.maxY * 1.12` i StageProfileGraph.jsx), så en kort kat. 2
+// og en HC-massiv fyldte lige meget lodret plads — "psykopatisk stejl"-
+// problemet. Nu er en kort stigning kort, og en høj-bjerg-dag fylder rammen.
+//
+// De 10 profile_type-værdier kommer fra backend/lib/raceStageProfileGenerator.js's
+// PROFILE_TYPES; kun 4 er navngivet eksplicit i ejer-kommentaren (flat/hilly/
+// rolling/itt/mountain/high_mountain) — de resterende (cobbles, classic, ttt,
+// itt_hilly) er buckettet efter deres REELLE terrænkarakter, verificeret mod
+// backend/lib/raceRouteGenerator.js's CLIMB_SPEC + BASE_ELEVATION (worst-case
+// climb-stak pr. type), IKKE gættet:
+//   - cobbles: climb-pulje er identisk med rolling (cats "3"/"4", op til 2),
+//     BASE_ELEVATION 400 → worst-case ligner rolling, IKKE flat. 1200-bånd.
+//   - classic: climb-pulje op til kat. "1" + BASE_ELEVATION 900 (CANTABRICO-
+//     fixturen herunder har en 2795 hm summit-finish-etape) — mountain-bånd.
+//   - ttt/itt_hilly: samme kontraklokke-familie som itt (holdstart/kuperet
+//     enkeltstart) — følger itt's 1200-bånd for ensartethed på tværs af
+//     tidskørsels-formatet, selvom ttt aldrig trækker climbs.
+export const PROFILE_TYPE_SCALE_M = Object.freeze({
+  flat: 600, cobbles: 600,
+  hilly: 1200, rolling: 1200, itt: 1200, itt_hilly: 1200, ttt: 1200,
+  mountain: 2500, classic: 2500,
+  high_mountain: 3000,
+});
+// Visuel dal-basishøjde pr. type (opts §2b: "flad ~50-150 m, bjerg ~400-900 m").
+// Interpolerer glidende mellem de to ankre for de mellemliggende typer.
+export const PROFILE_TYPE_VALLEY_M = Object.freeze({
+  flat: 90, cobbles: 70, ttt: 90,
+  rolling: 220, hilly: 260, itt: 140, itt_hilly: 240,
+  mountain: 650, classic: 600,
+  high_mountain: 850,
+});
+const DEFAULT_SCALE_M = PROFILE_TYPE_SCALE_M.mountain; // ukendt type → bredt, konservativt loft (samme fallback-princip som GREEN_FINISH_SCALES.mountain)
+
+/** FAST højdeloft (m) for profilens type — ALDRIG afledt af etapens egen top. */
+export function elevationScaleFor(profileType) {
+  return PROFILE_TYPE_SCALE_M[profileType] ?? DEFAULT_SCALE_M;
+}
+/** Visuel dal-basishøjde (m) for profilens type. */
+export function valleyBaseFor(profileType) {
+  return PROFILE_TYPE_VALLEY_M[profileType] ?? VALLEY_M;
+}
+
+// Fem procent-bånd (ejer-låst 23/8): <4 grøn, 4-6 gul, 6-8 orange, 8-10 rød,
+// >10 mørkerød. Farverne er CSS-tokens i index.css (--climb-grad-1..5, samme
+// "reelle sport-data, ét sted"-mønster som --jersey-*) — INGEN hardkodet hex
+// i StageProfileGraph.jsx.
+export const GRADIENT_BAND_TOKEN = Object.freeze({
+  1: "--climb-grad-1", 2: "--climb-grad-2", 3: "--climb-grad-3", 4: "--climb-grad-4", 5: "--climb-grad-5",
+});
+/** 1-5 (grøn→mørkerød) for en stignings gennemsnitsgradient. Ukendt/NaN → 1. */
+export function gradientBand(avgGradient) {
+  const g = Number(avgGradient);
+  if (!Number.isFinite(g)) return 1;
+  if (g < 4) return 1;
+  if (g < 6) return 2;
+  if (g < 8) return 3;
+  if (g < 10) return 4;
+  return 5;
+}
+
 /**
  * Loft på hvor stejlt ruten falder fra en top (m/km ≈ 6,5 %). Ligger næste stigning
  * tæt, når ruten ALDRIG ned i dalen — den næste starter fra den højde nedkørslen
@@ -50,25 +114,25 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 /**
  * Syntetisér etapens højdekurve.
  * @param {object} profile  race_stage_profiles-række
- * @param {{yMax?:number}} [opts]  yMax = fælles y-loft (etape-striben); ændrer IKKE kurven
  * @returns {{xs:number[], ys:number[], spans:[number,number][], climbs:object[],
  *            maxY:number, ascent:number, waveAmplitude:number}|null}
  */
-export function buildProfileSeries(profile, opts = {}) {
+export function buildProfileSeries(profile) {
   if (!hasRouteData(profile)) return null;
   const D = Number(profile.distance_km);
+  const valley = valleyBaseFor(profile.profile_type);
   const climbs = (Array.isArray(profile.climbs) ? profile.climbs : [])
     .slice()
     .sort((a, b) => Number(a.crest_km) - Number(b.crest_km));
 
   // 1) Knuder: fod → top → begrænset nedkørsel → fod …
-  const knots = [[0, VALLEY_M]];
+  const knots = [[0, valley]];
   const spans = [];
-  let prevKm = 0, prevAlt = VALLEY_M;
+  let prevKm = 0, prevAlt = valley;
   for (const c of climbs) {
     const crest = Number(c.crest_km);
     const foot = Math.max(prevKm + 0.5, Math.min(crest - Number(c.length_km), crest - 0.5));
-    const footAlt = Math.max(VALLEY_M, prevAlt - DESCENT_M_PER_KM * (foot - prevKm));
+    const footAlt = Math.max(valley, prevAlt - DESCENT_M_PER_KM * (foot - prevKm));
     if (foot > knots[knots.length - 1][0]) knots.push([foot, footAlt]);
     const crestAlt = footAlt + climbGainM(c);
     knots.push([crest, crestAlt]);
@@ -76,7 +140,7 @@ export function buildProfileSeries(profile, opts = {}) {
     prevKm = crest; prevAlt = crestAlt;
   }
   if (prevKm < D) {
-    knots.push([D, Math.max(VALLEY_M, prevAlt - DESCENT_M_PER_KM * (D - prevKm))]);
+    knots.push([D, Math.max(valley, prevAlt - DESCENT_M_PER_KM * (D - prevKm))]);
   }
 
   const at = (x) => {
@@ -158,27 +222,18 @@ export function buildProfileSeries(profile, opts = {}) {
   }
   const ys = xs.map((x, i) => Math.max(20, base[i] + s * wav[i]));
   const peak = Math.max(...ys);
+  // FAST skala pr. type (ejer-låst 23/8) — ALDRIG peak alene. Sikkerhedsnet:
+  // hvis en teoretisk outlier-etape (fx tre stablede kat.3'ere på en rolling-
+  // dag) topper over det faste loft, udvides loftet til peak i stedet for at
+  // klippe kurven af midt i en stigning — loftet er NORMEN, ikke en hård clip.
+  const maxY = Math.max(elevationScaleFor(profile.profile_type), peak);
   return {
     xs, ys, spans, climbs,
-    maxY: Number.isFinite(opts.yMax) ? opts.yMax : peak,
+    maxY,
     ascent: ascentAt(s),
     // Bølgens top-til-bund-udsving. Kalibreringens kanariefugl — se testen.
     waveAmplitude: s * 1.85,
   };
-}
-
-/**
- * Fælles y-loft for et løbs etaper. Uden det ville hver mini-profil skalere til
- * sin egen top, og en flad etape ville se lige så bjergrig ud som en HC-dag.
- * @returns {number|null} null hvis ingen af etaperne har rutedata
- */
-export function sharedYMax(profiles) {
-  let max = null;
-  for (const p of profiles || []) {
-    const s = buildProfileSeries(p);
-    if (s && (max === null || s.maxY > max)) max = s.maxY;
-  }
-  return max;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

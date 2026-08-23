@@ -13,7 +13,7 @@ import { sortRacesByDateDesc } from "../../lib/raceCalendarSort";
 import { racesForPool } from "../../lib/racesByPool";
 import { raceHasReportableResults, raceIsInProgress } from "../../lib/raceResultVisibility.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../../lib/expectedPrizeCalculator";
-import { hasRouteData, sharedYMax } from "../../lib/stageRouteProfile.js";
+import { hasRouteData } from "../../lib/stageRouteProfile.js";
 import { fetchAllRows } from "../../lib/supabasePagination";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import {
@@ -58,16 +58,16 @@ function RaceCardRouteThumbnail({ race, profiles }) {
     );
   }
 
-  // Etapeløb: komprimeret mini-stribe med ALLE etaper på FÆLLES y-skala — en
-  // enkelt etape ville give et falsk indtryk af hele løbets form. yMax er
-  // løbets EGET loft, ikke boardets — det ville gøre alle løb lige høje.
-  const yMax = sharedYMax(withRoute);
+  // Etapeløb: komprimeret mini-stribe med ALLE etaper. #4107 (ejer-låst 23/8):
+  // hver etape skalerer nu til sin EGEN faste type-skala — intet fælles loft
+  // længere (det var netop det direktivet fjerner: "ingen per-stage/per-løb
+  // max-skalering tilbage" — en flad dag skal se flad ud, en HC-dag høj).
   const perW = CARD_THUMB_W / withRoute.length;
   return (
     <div className="mt-2 flex" style={{ width: CARD_THUMB_W, height: CARD_THUMB_H }}>
       {withRoute.map((p) => (
         <div key={p.stage_number} style={{ width: perW }}>
-          <StageProfileGraph profile={p} tier="mini" width={perW} height={CARD_THUMB_H} yMax={yMax}
+          <StageProfileGraph profile={p} tier="mini" width={perW} height={CARD_THUMB_H}
             uid={`cal-${race.id}-${p.stage_number}`} />
         </div>
       ))}

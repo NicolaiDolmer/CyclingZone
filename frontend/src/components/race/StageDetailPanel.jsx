@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../../lib/stageProfileConfig.js";
 import { hasRouteData, finaleFactorPct } from "../../lib/stageRouteProfile.js";
 import StageProfileGraph from "./StageProfileGraph.jsx";
+import StageWaypointReadout from "./StageWaypointReadout.jsx";
 import TerrainDNABar from "./TerrainDNABar.jsx";
 import Tooltip from "../ui/Tooltip.jsx";
 
@@ -10,6 +12,12 @@ import Tooltip from "../ui/Tooltip.jsx";
 export default function StageDetailPanel({ profile, stageLabel }) {
   const { t } = useTranslation("races");
   const labelKey = profile && profileLabelKey(profile.profile_type);
+  // #4107 pkt. 2 (ejer-låst 23/8): "compact"-tieret er mobil-/liste-brugt og
+  // skjuler tekst-labels — tryk på en stigning skal i stedet vise ÉN linje
+  // under grafen via den eksisterende waypoint/activeWaypoint-mekanik
+  // (samme StageWaypointReadout som StageProfileCard.jsx bruger).
+  const [selected, setSelected] = useState(null);
+  useEffect(() => { setSelected(null); }, [profile?.race_id, profile?.stage_number]);
   if (!labelKey) return null;
   const finaleKey = finaleLabelKey(profile.finale_type);
   const { points } = profileShape(profile.profile_type);
@@ -19,7 +27,15 @@ export default function StageDetailPanel({ profile, stageLabel }) {
       {hasRouteData(profile) ? (
         // Sub-4 (#2448): ægte rute i stedet for kategori-piktogrammet + finale-
         // pilen — graf-tieret "compact" tegner selv målflag og waypoint-markører.
-        <StageProfileGraph profile={profile} tier="compact" width={430} height={150} uid={`sdp-${profile.stage_number ?? 1}`} />
+        <>
+          <StageProfileGraph
+            profile={profile} tier="compact" width={430} height={150}
+            uid={`sdp-${profile.stage_number ?? 1}`}
+            activeWaypoint={selected} onWaypointSelect={setSelected}
+            hasClassifications={false}
+          />
+          <StageWaypointReadout waypoint={selected} passages={[]} stageNumber={profile.stage_number ?? 1} hasClassifications={false} />
+        </>
       ) : (
         <div className="relative">
           <svg viewBox="0 0 100 26" preserveAspectRatio="none" className="w-full h-24 block text-cz-1" aria-hidden="true">
