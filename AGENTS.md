@@ -82,6 +82,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 28. **Testplan er en del af designet** (#3661). Design-blokken afsluttes med en eksplicit verifikationsplan: test-tier (#3556), hvad ejeren skal se på preview/staging, og for store pakker en tester-runde på staging som norm (som trin 7 20/8). En funktion uden testplan er ikke "godkendt til build".
 
+29. **`docs/NOW.md` læses FØR enhver udtalelse om projektets tilstand, tidsplan eller prioritet.** Blokken "Aktiv styring" (🎯 Next action + 🤖 Working agent) er source of truth for hvad der sker hvornår — ikke DB-kolonner, ikke fil-datoer, ikke din egen udledning. Udled ALDRIG en tidsplan af data når NOW.md udtaler sig om den. Viser "Working agent" en anden aktiv session → STOP og spørg før pick-up ([#559](https://github.com/NicolaiDolmer/CyclingZone/issues/559)). Reglen gælder også når opgaven virker uafhængig af tidsplanen: en forkert tidsakse forgifter enhver anbefaling der bygges ovenpå den. _23/8: en session læste `seasons.start_date = 2026-08-24` og konkluderede at sæsonskiftet var "i morgen", mens NOW.md's første linje sagde "CUTOVER S2→S3 I AFTEN 23/8". Hele designsessionen blev bygget på den forkerte tidsakse, og der blev foreslået en implementeringsplan 70 minutter før cutover-vinduet åbnede._
+
 ### §LOKAL lokal-only-state (legacy — Codex-æra)
 
 `.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` blev bygget til at fange lokal-only state Codex efterlod på tværs af PC'er. Med solo Claude-operation er rutinen ikke længere en per-session-gate — kør kun auditen ad hoc hvis du mistænker drift (fx efter længere ophold på en sekundær PC). Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](docs/CROSS_PC_LOCAL_STATE.md).
