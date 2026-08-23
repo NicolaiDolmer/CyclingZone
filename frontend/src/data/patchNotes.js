@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.179",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Route profiles no longer predict that the breakaway wins",
+          "body": "Before a race, the finale label now reads Breakaway-friendly and describes the terrain, not the outcome. Whether a breakaway stays away is decided on the road. The three monuments that carried the label were corrected to reduced sprint or summit finish."
+        },
+        "da": {
+          "title": "Ruteprofiler forudsiger ikke længere at udbruddet vinder",
+          "body": "Før et løb hedder finalen nu Udbrudsvenlig og beskriver terrænet, ikke udfaldet. Om et udbrud holder hjem, afgøres på vejen. De tre monumenter der havde etiketten er rettet til reduceret spurt eller bjergfinale."
+        },
+        "refs": [4106]
+      }
+    ]
+  },
+  {
     "version": "7.178",
     "date": "2026-08-23",
     "label": "Beta",

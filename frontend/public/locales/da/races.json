@@ -1021,7 +1021,7 @@
       "long_climb": "Bjergfinale",
       "descent": "Nedkørselsfinale",
       "solo_tt": "Soloenkeltstart",
-      "breakaway": "Udbrud"
+      "breakaway": "Udbrudsvenlig"
     },
     "finaleTypeHint": {
       "bunch_sprint": "Feltet holder sammen, og etapen afgøres i en massespurt.",
@@ -1030,7 +1030,7 @@
       "long_climb": "Bjergfinale: selve stigningen er målstregen, hvor dagens største tidsforskelle opstår.",
       "descent": "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen.",
       "solo_tt": "Hver rytter starter alene mod uret, uden slipstrøm.",
-      "breakaway": "En tidlig udbrudsgruppe holder sig fri af feltet og opgør sejren indbyrdes."
+      "breakaway": "Terræn der begunstiger et tidligt udbrud. Om det holder hjem, afgøres på vejen, ikke her."
     },
     "route": {
       "stats": {
