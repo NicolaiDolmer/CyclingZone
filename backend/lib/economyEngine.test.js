@@ -534,7 +534,7 @@ function createSeasonEndSupabase({
       if (table === "finance_transactions") {
         return {
           select(columns, options) {
-            if (columns === "team_id") {
+            if (columns === "team_id" || columns === "team_id, reason_code") {
               const filters = {};
               return {
                 eq(col, val) {
