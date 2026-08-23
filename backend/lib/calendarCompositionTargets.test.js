@@ -5,6 +5,8 @@ import {
   TTT_ENGINE_SUPPORTED, COMPOSITION_TOLERANCE_PP, compositionCategory,
   computeCompositionStats, aggregateCompositionStats, toleranceFor,
   detectCompositionViolations,
+  TIER_UNIFORM_TARGET_CATEGORIES, TIER_UNIFORM_TARGET_FRACTIONS,
+  computeUniformTierStats, uniformTargetCount, detectUniformTierViolations,
 } from "./calendarCompositionTargets.js";
 import { PROFILE_TYPES } from "./raceStageProfileGenerator.js";
 
@@ -147,6 +149,71 @@ test("detectCompositionViolations: applyMinRaceDayTolerance løsner kun små sti
 
 test("detectCompositionViolations: stats=null giver tomt resultat frem for at kaste", () => {
   const { rows, violations } = detectCompositionViolations({ stats: null });
+  assert.deepEqual(rows, []);
+  assert.deepEqual(violations, []);
+});
+
+// ── #4103: uniform pr.-tier mål (itt/cobbles/high_mountain) ────────────────────────
+
+test("#4103: TIER_UNIFORM_TARGET_FRACTIONS matcher ejer-beslutningen 23/8", () => {
+  assert.deepEqual(TIER_UNIFORM_TARGET_FRACTIONS, { itt: 0.10, cobbles: 0.05, high_mountain: 0.12 });
+  assert.deepEqual([...TIER_UNIFORM_TARGET_CATEGORIES], ["itt", "cobbles", "high_mountain"]);
+});
+
+test("#4103: computeUniformTierStats tæller itt_hilly som itt, adskiller high_mountain fra mountain", () => {
+  const stats = computeUniformTierStats([
+    race("itt", "itt_hilly", "cobbles", "mountain", "high_mountain", "high_mountain"),
+    race("flat"), // endagsløb tæller med i nævneren
+  ]);
+  assert.equal(stats.raceDays, 7);
+  assert.equal(stats.counts.itt, 2, "itt + itt_hilly tælles begge som itt");
+  assert.equal(stats.counts.cobbles, 1);
+  assert.equal(stats.counts.high_mountain, 2, "kun high_mountain, IKKE almindelig mountain");
+  assert.equal(Math.round(stats.pct.high_mountain * 100) / 100, Math.round((200 / 7) * 100) / 100);
+});
+
+test("#4103: computeUniformTierStats med 0 løbsdage giver 0-pct uden division-by-zero", () => {
+  const stats = computeUniformTierStats([]);
+  assert.equal(stats.raceDays, 0);
+  assert.deepEqual(stats.pct, { itt: 0, cobbles: 0, high_mountain: 0 });
+});
+
+test("#4103: uniformTargetCount runder til nærmeste løbsdag pr. kategori", () => {
+  // Tier 1 (140 løbsdage, målt #4103): itt 10 % → 14, cobbles 5 % → 7, high_mountain 12 % → 16,8 → 17.
+  assert.equal(uniformTargetCount(140, "itt"), 14);
+  assert.equal(uniformTargetCount(140, "cobbles"), 7);
+  assert.equal(uniformTargetCount(140, "high_mountain"), 17);
+  // Tier 4 (448 løbsdage): itt 10 % → 44,8 → 45.
+  assert.equal(uniformTargetCount(448, "itt"), 45);
+  assert.equal(uniformTargetCount(0, "itt"), 0);
+});
+
+test("#4103: detectUniformTierViolations flager division 4's målte skævhed (23/8-tal)", () => {
+  // D4 FØR-tal fra #4103-issuet: itt 8/448 (1,8 %), cobbles 8/448 (1,8 %), high_mountain 88/448 (19,6 %).
+  const stages = [
+    ...Array(8).fill("itt"), ...Array(8).fill("cobbles"), ...Array(88).fill("high_mountain"),
+    ...Array(448 - 8 - 8 - 88).fill("flat"),
+  ];
+  const stats = computeUniformTierStats([race(...stages)]);
+  const { rows, violations } = detectUniformTierViolations({ stats, label: "D4" });
+  assert.equal(rows.length, 3);
+  assert.equal(violations.length, 3, "alle 3 kategorier ligger uden for ±2 pp for D4's FØR-tal");
+  assert.ok(violations.every((v) => v.includes("#4103")));
+});
+
+test("#4103: detectUniformTierViolations består når alle 3 kategorier rammer målet præcist", () => {
+  const stages = [
+    ...Array(10).fill("itt"), ...Array(5).fill("cobbles"), ...Array(12).fill("high_mountain"),
+    ...Array(73).fill("flat"),
+  ];
+  const stats = computeUniformTierStats([race(...stages)]);
+  assert.equal(stats.raceDays, 100);
+  const { violations } = detectUniformTierViolations({ stats });
+  assert.deepEqual(violations, []);
+});
+
+test("#4103: detectUniformTierViolations med stats=null giver tomt resultat", () => {
+  const { rows, violations } = detectUniformTierViolations({ stats: null });
   assert.deepEqual(rows, []);
   assert.deepEqual(violations, []);
 });

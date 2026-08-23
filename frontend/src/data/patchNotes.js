@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.177",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season 3 stage mix evened out across divisions",
+          "body": "Time trials, cobbled stages and high-mountain stages were spread very unevenly between divisions: some divisions barely had one type, others had far too many. Every division now runs 10% time trials, 5% cobbles and 12% high mountains. Only stages inside multi-stage races changed; one-day races, race names, dates and the number of stages are untouched."
+        },
+        "da": {
+          "title": "Sæson 3's etapesammensætning jævnet ud på tværs af divisioner",
+          "body": "Enkeltstarter, brostensetaper og højbjergsetaper var spredt meget ujævnt mellem divisionerne: nogle divisioner havde næsten ingen af én type, andre havde alt for mange. Hver division kører nu 10% enkeltstarter, 5% brosten og 12% højbjerge. Kun etaper inde i etapeløb er ændret; endagsløb, løbsnavne, datoer og antal etaper er urørt."
+        },
+        "refs": [4103]
+      }
+    ]
+  },
+  {
     "version": "7.173",
     "date": "2026-08-23",
     "label": "Beta",
