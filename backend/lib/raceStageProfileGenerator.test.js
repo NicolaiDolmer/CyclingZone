@@ -9,6 +9,7 @@ import {
   generateRaceStageProfiles,
   capIdenticalRuns,
   weaveGrandTourScaffold,
+  weaveMountainFamilyBlocks,
   seedIdentityFor,
   ARCHETYPE_PROFILES,
   archetypeFor,
@@ -782,4 +783,91 @@ test("#4075 grand_tour-generering: aldrig over 3 ens profil-typer i træk (mange
       assert.ok(run <= 3, `seed ${s}: ${run} ens i træk — ${types.join(",")}`);
     }
   }
+});
+
+// ── #3371 (ejer-direktiv 23/8): korte etapeløb (6-8 etaper) skal have mindre mekanisk
+// etape-rækkefølge — maks 2 bjerg-/high_mountain-etaper i træk, mindst én ikke-bjerg-etape
+// mellem bjergblokke, finalen ikke altid den hårdeste. GT'erne (#4121/#4075) er URØRT —
+// se de eksisterende #4075-tests ovenfor, som stadig består uændret.
+const MOUNTAIN_FAMILY_TEST = new Set(["mountain", "high_mountain"]);
+function longestMountainRun(types) {
+  let longest = 0, run = 0;
+  for (const t of types) {
+    run = MOUNTAIN_FAMILY_TEST.has(t) ? run + 1 : 0;
+    longest = Math.max(longest, run);
+  }
+  return longest;
+}
+
+test("#3371 weaveMountainFamilyBlocks: bevarer multiset, bryder bjerg-runs over blockSize", () => {
+  const scaffold = ["flat", "mountain", "mountain", "mountain", "high_mountain", "rolling"];
+  const out = weaveMountainFamilyBlocks(scaffold, { blockSize: 2 });
+  assert.deepEqual([...out].sort(), [...scaffold].sort(), "multisæt uændret");
+  assert.ok(longestMountainRun(out) <= 2, `bjerg-run > 2: ${out.join(",")}`);
+});
+
+test("#3371 weaveMountainFamilyBlocks: for få bløde etaper accepteres runnet defensivt (ingen kastning)", () => {
+  const scaffold = ["mountain", "mountain", "mountain"];
+  const out = weaveMountainFamilyBlocks(scaffold, { blockSize: 2 });
+  assert.deepEqual([...out].sort(), [...scaffold].sort());
+});
+
+// #3371: mountain_tour/summit_tour's FILLER-vægte kan (uafhængigt af denne PR — et
+// #3327/#3328-kompositions-spørgsmål, ikke et rækkefølge-spørgsmål) rulle et multisæt der
+// er så bjerg-tungt (5-7 af 6-8 etaper) at der IKKE er nok bløde etaper tilbage til at
+// adskille alle bjerg-blokke — matematisk umuligt at overholde loft=2 uden enten at ofre en
+// garanteret bjerg-etape (forbudt, jf. FORCE_SACRIFICE_PRIORITY ovenfor: "bjerge er ikke
+// fungible") eller bryde finale-arketypens egen kontrakt. weaveMountainFamilyBlocks
+// accepterer da defensivt (samme filosofi som GT's weaveGrandTourScaffold ved ekstreme
+// multisæt) — målt rate holdes lavt (se RATE_CAP), ikke nul. sprinter_tour_summits/
+// balanced_week/sprinters_week har rigelig blød kapacitet og holder loftet ABSOLUT (0
+// undtagelser målt over 300 seeds pr. arketype/etapetal under udviklingen af denne test).
+const HARD_CAP_ARCHETYPES = new Set(["sprinter_tour_summits", "balanced_week", "sprinters_week"]);
+const SUPPLY_LIMITED_RATE_CAP = 0.35; // ejer-synlig i PR-beskrivelsen, ikke gemt; målt reel rate ~16-20% over 300 seeds, marginen dækker 60-seed sampling-støj
+
+test("#3371 korte etapeløb (6-8 etaper), rigelig blød kapacitet: ALDRIG >2 bjerg-/high_mountain-etaper i træk", () => {
+  for (const archetype of HARD_CAP_ARCHETYPES) {
+    for (let stages = 6; stages <= 8; stages++) {
+      for (let s = 1; s <= 40; s++) {
+        const types = generateRaceStageProfiles(
+          { id: "r", external_id: `3371-${archetype}-${stages}-${s}`, terrain_archetype: archetype, race_type: "stage_race", stages }
+        ).map((p) => p.profile_type);
+        assert.ok(
+          longestMountainRun(types) <= 2,
+          `${archetype} (${stages} etaper, seed ${s}): bjerg-run > 2 — ${types.join(",")}`,
+        );
+      }
+    }
+  }
+});
+
+test("#3371 mountain_tour/summit_tour (bjerg-tunge arketyper): brud på loft=2 er sjældne, ikke systematiske", () => {
+  for (const archetype of ["mountain_tour", "summit_tour"]) {
+    for (let stages = 6; stages <= 8; stages++) {
+      let violations = 0, total = 0;
+      for (let s = 1; s <= 60; s++) {
+        const types = generateRaceStageProfiles(
+          { id: "r", external_id: `3371-rate-${archetype}-${stages}-${s}`, terrain_archetype: archetype, race_type: "stage_race", stages }
+        ).map((p) => p.profile_type);
+        total++;
+        if (longestMountainRun(types) > 2) violations++;
+      }
+      assert.ok(
+        violations / total <= SUPPLY_LIMITED_RATE_CAP,
+        `${archetype} (${stages} etaper): ${violations}/${total} brud (>${SUPPLY_LIMITED_RATE_CAP * 100}%) — vævningen er ikke længere kun defensiv-accept af ekstreme multisæt`,
+      );
+    }
+  }
+});
+
+test("#3371 mountain_tour (7 etaper): finalen er IKKE altid den hårdeste, over mange seeds", () => {
+  const finales = new Set();
+  for (let s = 1; s <= 100; s++) {
+    const types = generateRaceStageProfiles(
+      { id: "r", external_id: `3371-finale-${s}`, terrain_archetype: "mountain_tour", race_type: "stage_race", stages: 7 }
+    ).map((p) => p.profile_type);
+    finales.add(types[types.length - 1]);
+  }
+  assert.ok(finales.size > 1, `finalen varierer ikke over 100 seeds: ${[...finales].join(",")}`);
+  assert.ok(!MOUNTAIN_FAMILY_TEST.has([...finales][0]) || finales.size > 1, "mindst nogle finaler er ikke-bjerg");
 });

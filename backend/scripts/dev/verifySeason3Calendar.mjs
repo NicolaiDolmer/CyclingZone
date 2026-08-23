@@ -44,7 +44,12 @@ if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
 const tierOf = new Map(divs.map((d) => [d.id, d.tier]));
 
 console.log(`Loeb i alt: ${races.length}`);
-races.length === 471 ? ok("471 loeb") : brud(`forventede 471 loeb, fandt ${races.length}`);
+// #4131 (23/8): sæsonen komprimeret fra 28 til 27 dage (samme densitet, mindre kvote —
+// se docs/snapshots/4131/dry-run-2026-08-23.md) sænker det forventede antal fra 471 til
+// 446 (kun endagsløb, ingen GT/etapeløb forkortet). Tallet er MÅLT mod den planlagte
+// regenerering, ikke gættet — ændrer katalog/pulje-tilstand sig inden apply, kan det
+// afvige en smule; se dry-run-rapporten for den fulde metode.
+races.length === 446 ? ok("446 loeb (#4131: 27-dages-kalenderen)") : brud(`forventede 446 loeb, fandt ${races.length}`);
 
 // ── 2. Monument-laengder (#4104) ─────────────────────────────────────────────
 console.log("\n── Monument-laengder ──");
@@ -110,9 +115,19 @@ delte.length === 0
 // ── 4. Kalender-grundform ────────────────────────────────────────────────────
 console.log("\n── Kalender-grundform ──");
 const alleDage = new Set(sched.map((s) => String(s.scheduled_at).slice(0, 10)));
-alleDage.size === 28 ? ok("28 loebsdage i Division 1") : brud(`forventede 28 dage, fandt ${alleDage.size}`);
+// #4131 (23/8): 27 dage (var 28), samme first-day.
+alleDage.size === 27 ? ok("27 loebsdage i Division 1 (#4131)") : brud(`forventede 27 dage, fandt ${alleDage.size}`);
 const foerste = [...alleDage].sort()[0];
 foerste === "2026-08-25" ? ok("foerste loebsdag 2026-08-25") : brud(`foerste loebsdag er ${foerste}, forventede 2026-08-25`);
+
+// #4131 ejer-direktiv 23/8: sæsonen SKAL slutte på en søndag. Generisk invariant (ikke
+// hardkodet dato) — fanger fremover, uanset hvilken dato sæsonen reelt ender på, hvis en
+// senere kalender-ændring glemmer søndags-kravet (#4123: kalender-invarianter som CI-gate).
+const sidste = [...alleDage].sort().at(-1);
+const sidsteWeekday = sidste ? new Date(`${sidste}T12:00:00Z`).getUTCDay() : null; // 0 = søndag
+sidsteWeekday === 0
+  ? ok(`sidste loebsdag ${sidste} er soendag (#4131)`)
+  : brud(`sidste loebsdag ${sidste} er IKKE soendag (ugedag ${sidsteWeekday}) — ejer-direktiv 23/8 (#4131) kraever soendags-slut`);
 
 // ── Dom ──────────────────────────────────────────────────────────────────────
 console.log("\n" + "=".repeat(60));

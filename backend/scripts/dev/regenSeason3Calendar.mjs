@@ -44,7 +44,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-import { buildTierMaterializationPlan, materializeTierCalendars } from "../../lib/tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, materializeTierCalendars, TIER_DENSITY } from "../../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { copenhagenDateString } from "../../lib/copenhagenTime.js";
 import { loadPoolsAndCatalog } from "../s3CalendarPackageScorecard.js";
@@ -53,6 +53,22 @@ import { fmtInt } from "../lib/cutover3645.js";
 const SEASON_NUMBER = 3;
 // #3467, ejer-beslutning 18/8 (KS3): 24/8 = hviledag, første S3-løbsdag = 25/8.
 const OWNER_FIRST_RACE_DAY = "2026-08-25";
+
+// #4131, ejer-direktiv 23/8: sæsonen skal SLUTTE på en søndag, ikke mandag. 25/8 (tir) + 27
+// kalenderdage = 20/9 (søn) — se docs/snapshots/4131/dry-run-2026-08-23.md for udregningen.
+// Kvoten (game-day/etape-antal pr. tier) sættes til DENSITET × 27 i stedet for den hidtidige
+// hardkodede 140/112/84/56 (= densitet × 28): densiteten (5/4/3/2 løbsdage/dag, ejer-låst) skal
+// IKKE ændres, så en dag mindre skal give en tilsvarende mindre kvote (samme mønster som
+// #2276 rest-af-sæson-reparationen i reconcilePoolCalendarOnActivation).
+//
+// HVORFOR ikke bare realDays=27 med UÆNDRET kvote (140/112/84/56): det blev testet i
+// dry-runnet og BRØD #4121's GT-dags-loft (målt en dag med 5 etaper af samme Grand Tour i
+// træk, mod loftet på 4) — generatoren tvinges til at presse en GT's EGNE etaper sammen på
+// samme kalenderdag når kvoten ikke går op i færre dage. Den skalerede kvote her respekterer
+// loftet (målt maks 4 GT-etaper/dag i dry-runnet, 0 brud) og koster i stedet en mindre
+// reduktion i sæsonens samlede løbsantal (471 → 446, kun endagsløb, se dry-run-rapporten).
+const REAL_DAYS = 27;
+const QUOTAS = Object.fromEntries(Object.entries(TIER_DENSITY).map(([tier, density]) => [Number(tier), density * REAL_DAYS]));
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(name);
@@ -113,8 +129,11 @@ console.log(`FØRSTE S3-LØBSDAG:            ${FIRST_RACE_DAY}${FIRST_RACE_DAY =
 console.log(`from-anker (real_day 0 base): ${from.toISOString()}`);
 
 // ── Dry-run-plan: REN funktion, 100% read-only (samme mønster som scorecardet) ──
+console.log(`\n── #4131 27-dages-vindue ──`);
+console.log(`realDays=${REAL_DAYS} · quotas=${JSON.stringify(QUOTAS)} (densitet × ${REAL_DAYS}, mål: sidste løbsdag = søndag)`);
+
 const { pools, catalog } = await loadPoolsAndCatalog(supabase);
-const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, from, baseSeed: 1 });
+const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, from, baseSeed: 1, realDays: REAL_DAYS, quotas: QUOTAS });
 
 let earliestScheduledAt = null;
 let totalStageRows = 0;
@@ -143,6 +162,27 @@ if (earliestDay !== FIRST_RACE_DAY) {
 }
 console.log(`\nBufferdags-gate: OK — intet løb planlagt før ${FIRST_RACE_DAY}, 24/8 er reelt løbsfri.`);
 
+// #4131: sæsonens SIDSTE løbsdag skal være en søndag (ejer-direktiv 23/8). Beregnes fra den
+// PLANLAGTE kalender (samme mønster som bufferdags-gaten ovenfor) — fanger en fejl i
+// REAL_DAYS/from-beregningen FØR apply, ikke bagefter.
+let latestScheduledAt = null;
+for (const t of tierPlans) {
+  for (const p of t.pools) {
+    for (const s of p.stageRows) {
+      if (latestScheduledAt == null || s.scheduled_at > latestScheduledAt) latestScheduledAt = s.scheduled_at;
+    }
+  }
+}
+const latestDay = latestScheduledAt ? copenhagenDateString(new Date(latestScheduledAt)) : null;
+const latestWeekday = latestDay ? new Date(`${latestDay}T12:00:00Z`).getUTCDay() : null; // 0 = søndag
+console.log(`\nSidste planlagte scheduled_at: ${latestScheduledAt ?? "?"}`);
+console.log(`→ Sidste danske kalenderdag:     ${latestDay ?? "?"} (ugedag ${latestWeekday ?? "?"}, 0=søndag)`);
+if (latestWeekday !== 0) {
+  console.error(`\nSTOP — planens sidste løbsdag (${latestDay}) er IKKE en søndag (ugedag ${latestWeekday}). Ejer-direktiv 23/8 (#4131) kræver søndags-slut. Undersøg REAL_DAYS/quotas FØR apply.`);
+  process.exit(1);
+}
+console.log(`Søndags-slut-gate (#4131): OK — sidste løbsdag ${latestDay} er en søndag.`);
+
 if (!APPLY) {
   console.log(`\nDRY-RUN slut — intet skrevet. ${existingRaces > 0 ? `⚠ ${existingRaces} races findes stadig — kør wipeSeason3Calendar.mjs --apply FØRST.` : "0 eksisterende races — klar til apply når ejer-go foreligger."}`);
   console.log(`Kør med --apply --jeg-har-set-dry-runnet for at skrive (kun efter wipe + ejer-go).`);
@@ -158,6 +198,7 @@ if (existingRaces > 0) {
 console.log(`\n--- APPLY ---`);
 const summary = await materializeTierCalendars({
   supabase, seasonId: season.id, seasonStartDate: season.start_date, from, dryRun: false, log: (m) => console.log(m),
+  realDays: REAL_DAYS, quotas: QUOTAS,
 });
 console.log(`\n=== APPLY SUMMARY ===`);
 console.log(`races indsat: ${summary.racesInserted} · stage-profiler: ${summary.stageProfiles} · stage-schedule: ${summary.stageSchedules}`);

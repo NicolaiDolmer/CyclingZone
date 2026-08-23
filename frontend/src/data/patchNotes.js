@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.173",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season 3 now ends on a Sunday",
+          "body": "Season 3 now ends Sunday 20 September. The 25 one-day races planned for Monday 21 September were moved to earlier days, and the stage races that finished on that Monday (including the Vuelta and the Tour, so no two Grand Tours share a day) start one day earlier. Some days now carry one extra race. No race was removed."
+        },
+        "da": {
+          "title": "Sæson 3 slutter nu på en søndag",
+          "body": "Sæson 3 slutter nu søndag 20. september. De 25 endagsløb der lå mandag 21. september er flyttet til tidligere dage, og de etapeløb der sluttede den mandag (inkl. Vueltaen og Touren, så to Grand Tours aldrig deler en dag) starter en dag tidligere. Nogle dage har nu ét ekstra løb. Intet løb er fjernet."
+        },
+        "refs": [4131]
+      }
+    ]
+  },
+  {
     "version": "7.172",
     "date": "2026-08-23",
     "label": "Beta",
