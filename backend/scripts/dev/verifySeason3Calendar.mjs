@@ -14,6 +14,7 @@
 // Refs #4103 #4104 #4123
 
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
 
 const SEASON_ID = "00000000-0000-0000-0000-000000000003";
 const MAX_GT_PR_DAG = 4;
@@ -49,9 +50,13 @@ races.length === 471 ? ok("471 loeb") : brud(`forventede 471 loeb, fandt ${races
 console.log("\n── Monument-laengder ──");
 const monIds = races.filter((r) => r.race_class === "Monuments").map((r) => r.id);
 const navnAf = new Map(races.map((r) => [r.id, r.name]));
-const { data: monProfiler, error: mErr } = await supabase
-  .from("race_stage_profiles").select("race_id, distance_km").in("race_id", monIds);
-if (mErr) throw new Error(`race_stage_profiles (monumenter): ${mErr.message}`);
+// #4127: race_stage_profiles er deny-listet i pagination-guarden, fordi PostgREST
+// tavst skaerer et svar ned til 1000 raekker. Monument-listen er kort i dag, men et
+// verifikations-script der tavst kun tjekker de foerste 1000 raekker er vaerre end
+// ingen verifikation — saa bindingen til "under 1000" maa ikke vaere tilfaeldig.
+// fetchAllRowsChunkedIn pagineret + chunker ogsaa .in()-listen (#3030-gatewayen).
+const monProfiler = await fetchAllRowsChunkedIn(monIds, (chunk) =>
+  supabase.from("race_stage_profiles").select("race_id, distance_km").in("race_id", chunk).order("race_id"));
 for (const p of monProfiler.sort((a, b) => b.distance_km - a.distance_km)) {
   const navn = navnAf.get(p.race_id);
   p.distance_km >= MIN_MONUMENT_KM
@@ -62,9 +67,12 @@ for (const p of monProfiler.sort((a, b) => b.distance_km - a.distance_km)) {
 // ── 3. GT-dagsform (#4103) ───────────────────────────────────────────────────
 console.log("\n── Grand Tour-dagsform (Division 1) ──");
 const d1 = races.filter((r) => tierOf.get(r.league_division_id) === 1);
-const { data: sched, error: sErr } = await supabase
-  .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", d1.map((r) => r.id));
-if (sErr) throw new Error(`race_stage_schedule: ${sErr.message}`);
+// #4127: samme aarsag som monument-opslaget ovenfor. D1 har 140 schedule-raekker i
+// dag (maalt 23/8), men GT-etaper skaleres med divisionens stoerrelse, saa loftet er
+// ikke langt vaek. fetchAllRowsChunkedIn kaster ved DB-fejl, saa den tidligere
+// manuelle error-check er overfloedig.
+const sched = await fetchAllRowsChunkedIn(d1.map((r) => r.id), (chunk) =>
+  supabase.from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", chunk).order("race_id"));
 
 const gtIds = new Set(d1.filter((r) => r.race_type === "stage_race" && r.stages >= GT_MIN_STAGES).map((r) => r.id));
 const perDag = new Map();
