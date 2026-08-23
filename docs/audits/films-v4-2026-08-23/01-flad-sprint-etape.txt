@@ -1,0 +1,49 @@
+=== 01-flad-sprint-etape — Giro della Penisola, etape 4 (200km, flat/bunch_sprint, 0 stigninger) — v4 etape-tidslinje (haandplukket film, #4030) ===
+Rute: profile_type=flat finale_type=bunch_sprint distance_km=200
+Vejr: overcast (wind_exposure=0.3)
+Seed: head-to-head-v4-films-2026-08-23:4
+Startfelt: 180 ryttere
+
+-- Tidslinje --
+km     0.00  stage_start          {"field_count":180,"profile_type":"flat","distance_km":200}
+km   200.00  finale_attack        {"kind":"placement_gap","group_id":"finale-winner-0","gap_seconds":2.62}
+km   200.00  sprint_decided       {"winner_rider_id":"7d2b98a2-5472-4559-b330-7524ad7cd7fc","group_id":"finale-winner-0","finale_type":"bunch_sprint"}
+km   200.00  gap_update           {"group_id":"finale-tier-1","gap_seconds":2.62}
+km   200.00  gap_update           {"group_id":"finale-tier-2","gap_seconds":5.28}
+km   200.00  gap_update           {"group_id":"finale-tier-3","gap_seconds":7.95}
+km   200.00  gap_update           {"group_id":"finale-tier-4","gap_seconds":10.49}
+km   200.00  gap_update           {"group_id":"finale-tier-5","gap_seconds":13.02}
+km   200.00  gap_update           {"group_id":"finale-tier-6","gap_seconds":15.61}
+km   200.00  gap_update           {"group_id":"finale-tier-7","gap_seconds":18.29}
+km   200.00  gap_update           {"group_id":"finale-tier-8","gap_seconds":20.78}
+km   200.00  gap_update           {"group_id":"finale-tier-9","gap_seconds":23.25}
+km   200.00  gap_update           {"group_id":"finale-tier-10","gap_seconds":25.89}
+km   200.00  gap_update           {"group_id":"finale-tier-11","gap_seconds":28.31}
+km   200.00  gap_update           {"group_id":"finale-tier-12","gap_seconds":30.78}
+km   200.00  gap_update           {"group_id":"finale-tier-13","gap_seconds":33.29}
+km   200.00  gap_update           {"group_id":"finale-tier-14","gap_seconds":35.73}
+km   200.00  gap_update           {"group_id":"finale-tier-15","gap_seconds":38.19}
+km   200.00  gap_update           {"group_id":"finale-tier-16","gap_seconds":40.78}
+km   200.00  gap_update           {"group_id":"finale-tier-17","gap_seconds":43.24}
+km   200.00  gap_update           {"group_id":"finale-tier-18","gap_seconds":45.66}
+km   200.00  gap_update           {"group_id":"finale-tail-19","gap_seconds":48.34}
+km   200.00  finish               {"top":[{"rider_id":"7d2b98a2-5472-4559-b330-7524ad7cd7fc","rank":1,"gap":0},{"rider_id":"a4c2b1f9-c9a1-40f7-96b7-adc4eabf120b","rank":2,"gap":2.62},{"rider_id":"df4225de-74ed-46a5-b356-4d033b10ae77","rank":3,"gap":5.29},{"rider_id":"e0156e82-4a87-4890-b3e5-4e61c1e6c902","rank":4,"gap":7.95},{"rider_id":"57ed591f-1c68-4555-876c-529142d10f57","rank":5,"gap":10.49},{"rider_id":"2642a357-cd24-4921-82d1-a05794779423","rank":6,"gap":13.02},{"rider_id":"49696f23-2e86-4abc-943c-ee23ecd07cc5","rank":7,"gap":15.61},{"rider_id":"d4c3eb3e-ad5d-460b-b851-fa741900ad3e","rank":8,"gap":18.29},{"rider_id":"38fd728e-3b00-4ddf-b233-14859937a5eb","rank":9,"gap":20.78},{"rider_id":"2351f53f-7100-478c-89ed-b4c58d7be3d0","rank":10,"gap":23.25}],"win_type":"group_finish"}
+
+-- Resultat (top 15) --
+  1. 7d2b98a2-5472-4559-b330-7524ad7cd7fc +0.00s  gruppe=finale-winner-0  status=finished
+  2. a4c2b1f9-c9a1-40f7-96b7-adc4eabf120b +2.62s  gruppe=finale-tier-1  status=finished
+  3. df4225de-74ed-46a5-b356-4d033b10ae77 +5.29s  gruppe=finale-tier-2  status=finished
+  4. e0156e82-4a87-4890-b3e5-4e61c1e6c902 +7.95s  gruppe=finale-tier-3  status=finished
+  5. 57ed591f-1c68-4555-876c-529142d10f57 +10.49s  gruppe=finale-tier-4  status=finished
+  6. 2642a357-cd24-4921-82d1-a05794779423 +13.02s  gruppe=finale-tier-5  status=finished
+  7. 49696f23-2e86-4abc-943c-ee23ecd07cc5 +15.61s  gruppe=finale-tier-6  status=finished
+  8. d4c3eb3e-ad5d-460b-b851-fa741900ad3e +18.29s  gruppe=finale-tier-7  status=finished
+  9. 38fd728e-3b00-4ddf-b233-14859937a5eb +20.78s  gruppe=finale-tier-8  status=finished
+ 10. 2351f53f-7100-478c-89ed-b4c58d7be3d0 +23.25s  gruppe=finale-tier-9  status=finished
+ 11. 7e7cdb41-6913-4850-91a1-94f69a0a0fec +25.89s  gruppe=finale-tier-10  status=finished
+ 12. c3e89731-7814-4663-93c3-d10ab1ac7c91 +28.31s  gruppe=finale-tier-11  status=finished
+ 13. 8daf6e94-5cdd-4ef6-a9eb-2be5f9dc9405 +30.78s  gruppe=finale-tier-12  status=finished
+ 14. 8b600cc1-bf40-4860-b50f-44e7dd302c18 +33.29s  gruppe=finale-tier-13  status=finished
+ 15. e4cb37b6-e1fc-4945-b4c1-bca38d85a156 +35.73s  gruppe=finale-tier-14  status=finished
+
+(Feltet er et deterministisk 180-rytter-sample af den fulde 6328-rytters S3-population — realistisk etape-feltstoerrelse. Hovedscorecardets §5-ankre er maalt paa den FULDE population.)

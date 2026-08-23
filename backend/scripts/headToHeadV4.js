@@ -40,6 +40,8 @@ import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { entrantsFromAbilitiesRows } from "../lib/engine/v4/adapters/entrantAdapter.ts";
 import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter.ts";
 import { buildScorecard, formatScorecard } from "./lib/headToHeadAnchors.js";
+import { sampleField } from "./lib/headToHeadStats.js";
+import { makeRng } from "../lib/fictionalRiderGenerator.js";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -173,12 +175,23 @@ function printComparisonTable(rows) {
 // uden om process.exit/console.log-siden).
 // ---------------------------------------------------------------------------
 
-export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4-stub" }) {
+export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4-stub", fieldSize = null }) {
   if (!population?.riders?.length) throw new Error("population.riders mangler eller er tom");
   if (!Array.isArray(stages) || stages.length === 0) throw new Error("stages mangler eller er tom");
 
-  const v3Entrants = v3EntrantsFromPopulation(population.riders);
-  const v4Entrants = v4EntrantsFromPopulation(population.riders);
+  // fieldSize=null (default): SAMME hele population paa ALLE etaper — det
+  // oprindelige F2-adfaerd (uaendret, alle eksisterende tests dækker denne
+  // gren). fieldSize=N (23/8-tilfoejelse, jf. scorecard-dokumentets metodologi-
+  // afsnit): flere §5-ankre (feltsammenhaeng, bjerg-top10-spredning, nedkoersel/
+  // summit-ratio) er kalibreret paa REALISTISKE etape-feltstoerrelser
+  // (~150-200 ryttere) — en 6328-rytters "hele populationen paa hver etape"-
+  // koersel forvraenger disse SEKUND-baserede maal (stoerre felt = laengere
+  // hale, ogsaa naar kernen er lige saa sammenhaengende). Med fieldSize>0
+  // traekkes et DETERMINISTISK sample pr. etape (seedet af seedInput+etape-
+  // nummer, samme sampleField-helper som --films bruger), saa hver etape faar
+  // sit eget realistiske startfelt i stedet for hele populationen.
+  const wholePopV3Entrants = fieldSize ? null : v3EntrantsFromPopulation(population.riders);
+  const wholePopV4Entrants = fieldSize ? null : v4EntrantsFromPopulation(population.riders);
 
   const rows = [];
   for (const stageRow of stages) {
@@ -187,6 +200,15 @@ export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4
     }
     const stageSeedStr = `${seedInput}:${stageRow.stage_number ?? 1}`;
     const v3Seed = stableSeed(stageSeedStr);
+
+    let v3Entrants = wholePopV3Entrants;
+    let v4Entrants = wholePopV4Entrants;
+    if (fieldSize) {
+      const rng = makeRng(stableSeed(`${stageSeedStr}:field`));
+      const sampled = sampleField(rng, population.riders, fieldSize);
+      v3Entrants = v3EntrantsFromPopulation(sampled);
+      v4Entrants = v4EntrantsFromPopulation(sampled);
+    }
 
     const v3Output = simulateStage({ entrants: v3Entrants, stageProfile: stageRow, seed: v3Seed, v3: true });
     const route = routeFromStageProfileRow(stageRow);
@@ -282,7 +304,42 @@ function padKm(km) {
   return km.toFixed(2).padStart(8);
 }
 
-function formatFilmText(scenario, output) {
+// Laeselighed (23/8-scorecard-krav: "haandplukkede loebsfilm ejeren kan
+// laese"): rider_id-lister (peloton_splits/finale_attack/finish.top) er den
+// stoerste stoej-kilde i en tidslinje med et realistisk feltstoerrelse —
+// erstattes af et antal + de foerste faa id'er, IKKE hele listen. Rene
+// data-transformation, INGEN aendring af hvad der reelt skete i loebet (kun
+// af hvordan det VISES) — output.timeline.events selv rores ikke.
+const MAX_INLINE_RIDER_IDS = 3;
+
+function summarizeParamValue(value) {
+  if (Array.isArray(value) && value.length > MAX_INLINE_RIDER_IDS && value.every((v) => typeof v === "string")) {
+    return [...value.slice(0, MAX_INLINE_RIDER_IDS), `... (+${value.length - MAX_INLINE_RIDER_IDS} flere)`];
+  }
+  return value;
+}
+
+export function summarizeEventParams(params) {
+  if (!params || typeof params !== "object") return params;
+  const out = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "rider_ids") {
+      out[key] = summarizeParamValue(value);
+    } else if (key === "top" && Array.isArray(value)) {
+      // finish.top: behold som er (kun top-10, allerede kompakt).
+      out[key] = value;
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+// Exporteret (ikke kun internt brugt af runFilms) saa 23/8-scorecard-koersler
+// kan genbruge SAMME tekst-format til haandplukkede RIGTIGE S3-kalender-etaper
+// (docs/audits/films-v4-2026-08-23/) uden at duplikere formateringslogik —
+// scenario skal blot have {name, input:{route, seed, startlist}}.
+export function formatFilmText(scenario, output) {
   const { route } = scenario.input;
   const lines = [];
   lines.push(`=== ${scenario.name} — v4 etape-tidslinje (haandplukket film, #4030) ===`);
@@ -293,7 +350,7 @@ function formatFilmText(scenario, output) {
   lines.push("");
   lines.push("-- Tidslinje --");
   for (const ev of output.timeline.events) {
-    lines.push(`km ${padKm(ev.km)}  ${ev.type.padEnd(20)} ${JSON.stringify(ev.params)}`);
+    lines.push(`km ${padKm(ev.km)}  ${ev.type.padEnd(20)} ${JSON.stringify(summarizeEventParams(ev.params))}`);
   }
   lines.push("");
   lines.push(`-- Resultat (top ${Math.min(15, output.results.length)}) --`);
@@ -345,10 +402,15 @@ function main() {
   const seedInput = argValue("seed", "head-to-head-v4-stub");
   const filmsRequested = process.argv.includes("--films") || process.argv.some((a) => a.startsWith("--films="));
   const filmsDir = argValue("films", join(SCRIPT_DIR, "out", "films"));
+  // --field-size=N: se runHeadToHead's egen dokumentation (fieldSize-param) —
+  // traekker et realistisk, deterministisk sample pr. etape i stedet for at
+  // koere hele populationen paa hver etape. Udeladt = uaendret F2-adfaerd.
+  const fieldSizeArg = argValue("field-size");
+  const fieldSize = fieldSizeArg ? Number(fieldSizeArg) : null;
 
   if (!populationPath || !stagesPath) {
     console.error(
-      "Usage: node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> [--seed=<streng>] [--films[=<dir>]]",
+      "Usage: node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> [--seed=<streng>] [--films[=<dir>]] [--field-size=<n>]",
     );
     process.exit(2);
     return;
@@ -358,8 +420,8 @@ function main() {
   const stagesFile = readJson(stagesPath);
   const stages = Array.isArray(stagesFile) ? stagesFile : stagesFile.stages;
 
-  console.log(`Population: ${population.riders?.length ?? 0} ryttere. Etaper: ${stages?.length ?? 0}. Seed: ${seedInput}`);
-  const rows = runHeadToHead({ population, stages, seedInput });
+  console.log(`Population: ${population.riders?.length ?? 0} ryttere. Etaper: ${stages?.length ?? 0}. Seed: ${seedInput}${fieldSize ? `. Feltstoerrelse pr. etape: ${fieldSize} (sampled)` : ""}`);
+  const rows = runHeadToHead({ population, stages, seedInput, fieldSize });
   printComparisonTable(rows);
 
   const teamByRider = buildTeamByRider(population.riders);

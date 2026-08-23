@@ -1,0 +1,67 @@
+=== 02-bjergetape — Giro della Penisola, etape 16 (160km, high_mountain/long_climb, 4 stigninger) — v4 etape-tidslinje (haandplukket film, #4030) ===
+Rute: profile_type=high_mountain finale_type=long_climb distance_km=160
+Vejr: sun (wind_exposure=0.34)
+Seed: head-to-head-v4-films-2026-08-23:16
+Startfelt: 180 ryttere
+
+-- Tidslinje --
+km     0.00  stage_start          {"field_count":180,"profile_type":"high_mountain","distance_km":160}
+km    62.00  peloton_splits       {"group_id":"gruppetto-1000","source_group_id":"peloton-0","rider_ids":["006d682e-4bcf-495b-aaa8-b97923bb490a","009a5095-d2e5-4535-a11e-32e649bfd22c","009c564b-c572-4c99-974a-20147ea1ed81","... (+176 flere)"],"cause":"wprime_depleted","gap_seconds":123.52}
+km    62.00  gap_update           {"group_id":"gruppetto-1000","gap_seconds":123.52}
+km    68.30  gap_update           {"group_id":"gruppetto-1000","gap_seconds":151.47}
+km    70.10  gap_update           {"group_id":"gruppetto-1000","gap_seconds":165.68}
+km    84.00  peloton_splits       {"group_id":"chase-4000","source_group_id":"gruppetto-1000","rider_ids":["006d682e-4bcf-495b-aaa8-b97923bb490a","009a5095-d2e5-4535-a11e-32e649bfd22c","009c564b-c572-4c99-974a-20147ea1ed81","... (+175 flere)"],"cause":"wprime_depleted","gap_seconds":126.8}
+km    84.00  gap_update           {"group_id":"gruppetto-1000","gap_seconds":461.29}
+km    84.00  gap_update           {"group_id":"chase-4000","gap_seconds":588.1}
+km    94.00  finale_attack        {"direction":"descent","rider_ids":["644a70ca-668e-42aa-a135-31ece9369405","6dcae574-bf94-4127-8ebb-dcc7beb40ae4","33b09558-6021-494a-a81a-68bea08f3e7c","... (+47 flere)"],"group_id":"chase-5000","gained_seconds":10}
+km    94.00  gap_update           {"group_id":"gruppetto-1000","gap_seconds":482.96}
+km    94.00  gap_update           {"group_id":"chase-5000","gap_seconds":623.45}
+km    94.00  gap_update           {"group_id":"chase-4000","gap_seconds":633.45}
+km   106.00  peloton_splits       {"group_id":"chase-6000","source_group_id":"chase-4000","rider_ids":["006d682e-4bcf-495b-aaa8-b97923bb490a","009a5095-d2e5-4535-a11e-32e649bfd22c","0556e130-dfc9-432b-94e2-ac4342a1e735","... (+124 flere)"],"cause":"wprime_depleted","gap_seconds":121.33}
+km   106.00  peloton_splits       {"group_id":"chase-6001","source_group_id":"chase-5000","rider_ids":["009c564b-c572-4c99-974a-20147ea1ed81","01f46328-e5a3-44c9-bfd7-1d634c17730f","0851a56d-a3fe-484c-bbcd-4aa44c98ddf6","... (+46 flere)"],"cause":"wprime_depleted","gap_seconds":120}
+km   106.00  gap_update           {"group_id":"gruppetto-1000","gap_seconds":605.41}
+km   106.00  gap_update           {"group_id":"chase-5000","gap_seconds":809.35}
+km   106.00  gap_update           {"group_id":"chase-6001","gap_seconds":929.36}
+km   106.00  gap_update           {"group_id":"chase-4000","gap_seconds":971.04}
+km   106.00  gap_update           {"group_id":"chase-6000","gap_seconds":1092.38}
+km   118.20  gap_update           {"group_id":"gruppetto-1000","gap_seconds":631.85}
+km   118.20  gap_update           {"group_id":"chase-5000","gap_seconds":840.33}
+km   118.20  gap_update           {"group_id":"chase-6001","gap_seconds":970.37}
+km   118.20  gap_update           {"group_id":"chase-4000","gap_seconds":1032.71}
+km   118.20  gap_update           {"group_id":"chase-6000","gap_seconds":1164.39}
+km   146.60  gap_update           {"group_id":"gruppetto-1000","gap_seconds":741.05}
+km   146.60  gap_update           {"group_id":"chase-5000","gap_seconds":968.38}
+km   146.60  gap_update           {"group_id":"chase-6001","gap_seconds":1140.04}
+km   146.60  gap_update           {"group_id":"chase-4000","gap_seconds":1288.37}
+km   146.60  gap_update           {"group_id":"chase-6000","gap_seconds":1463.28}
+km   160.00  peloton_splits       {"group_id":"chase-9000","source_group_id":"chase-6000","rider_ids":["006d682e-4bcf-495b-aaa8-b97923bb490a","009a5095-d2e5-4535-a11e-32e649bfd22c","0556e130-dfc9-432b-94e2-ac4342a1e735","... (+123 flere)"],"cause":"wprime_depleted","gap_seconds":121.17}
+km   160.00  peloton_splits       {"group_id":"chase-9001","source_group_id":"chase-6001","rider_ids":["009c564b-c572-4c99-974a-20147ea1ed81","01f46328-e5a3-44c9-bfd7-1d634c17730f","0851a56d-a3fe-484c-bbcd-4aa44c98ddf6","... (+45 flere)"],"cause":"wprime_depleted","gap_seconds":120.45}
+km   160.00  finale_attack        {"kind":"gap_survived","group_id":"gruppetto-1000","gap_seconds":877.79}
+km   160.00  sprint_decided       {"winner_rider_id":"37d5339c-c7d1-4a60-90d3-b4fcfc7698b0","group_id":"finale-winner-0","finale_type":"long_climb"}
+km   160.00  gap_update           {"group_id":"gruppetto-1000","gap_seconds":877.79}
+km   160.00  gap_update           {"group_id":"chase-5000","gap_seconds":1123.94}
+km   160.00  gap_update           {"group_id":"chase-6001","gap_seconds":1354.3}
+km   160.00  gap_update           {"group_id":"chase-9001","gap_seconds":1481.96}
+km   160.00  gap_update           {"group_id":"chase-4000","gap_seconds":1592.82}
+km   160.00  gap_update           {"group_id":"chase-6000","gap_seconds":1846.09}
+km   160.00  gap_update           {"group_id":"chase-9000","gap_seconds":1967.26}
+km   160.00  finish               {"top":[{"rider_id":"37d5339c-c7d1-4a60-90d3-b4fcfc7698b0","rank":1,"gap":0},{"rider_id":"7a4db930-7462-4cb2-b9d6-b4488448bbe7","rank":2,"gap":877.79},{"rider_id":"8410f264-b6fa-4ba2-9183-953abb30bbf2","rank":3,"gap":1123.94},{"rider_id":"644a70ca-668e-42aa-a135-31ece9369405","rank":4,"gap":1354.3},{"rider_id":"009c564b-c572-4c99-974a-20147ea1ed81","rank":5,"gap":1481.96},{"rider_id":"01f46328-e5a3-44c9-bfd7-1d634c17730f","rank":6,"gap":1481.96},{"rider_id":"0851a56d-a3fe-484c-bbcd-4aa44c98ddf6","rank":7,"gap":1481.96},{"rider_id":"0c2357bb-4cf0-48d3-b608-a7e49933d67e","rank":8,"gap":1481.96},{"rider_id":"10fdebbf-9b52-4f0d-b3c1-bb3408330c66","rank":9,"gap":1481.96},{"rider_id":"1a724a7c-4b02-453f-90cb-73ed4ad4b257","rank":10,"gap":1481.96}],"win_type":"group_finish"}
+
+-- Resultat (top 15) --
+  1. 37d5339c-c7d1-4a60-90d3-b4fcfc7698b0 +0.00s  gruppe=finale-winner-0  status=finished
+  2. 7a4db930-7462-4cb2-b9d6-b4488448bbe7 +877.79s  gruppe=gruppetto-1000  status=finished
+  3. 8410f264-b6fa-4ba2-9183-953abb30bbf2 +1123.94s  gruppe=chase-5000  status=finished
+  4. 644a70ca-668e-42aa-a135-31ece9369405 +1354.30s  gruppe=chase-6001  status=finished
+  5. 009c564b-c572-4c99-974a-20147ea1ed81 +1481.96s  gruppe=chase-9001  status=finished
+  6. 01f46328-e5a3-44c9-bfd7-1d634c17730f +1481.96s  gruppe=chase-9001  status=finished
+  7. 0851a56d-a3fe-484c-bbcd-4aa44c98ddf6 +1481.96s  gruppe=chase-9001  status=finished
+  8. 0c2357bb-4cf0-48d3-b608-a7e49933d67e +1481.96s  gruppe=chase-9001  status=finished
+  9. 10fdebbf-9b52-4f0d-b3c1-bb3408330c66 +1481.96s  gruppe=chase-9001  status=finished
+ 10. 1a724a7c-4b02-453f-90cb-73ed4ad4b257 +1481.96s  gruppe=chase-9001  status=finished
+ 11. 1b2a907f-3c14-42b7-af70-d5ae5e828ea1 +1481.96s  gruppe=chase-9001  status=finished
+ 12. 1d41f001-83b2-4908-9cce-1b02fe60e24a +1481.96s  gruppe=chase-9001  status=finished
+ 13. 2658e6f4-d32b-4207-af0b-c3f1209c6ae1 +1481.96s  gruppe=chase-9001  status=finished
+ 14. 267ae2ce-b853-43a9-b686-a34409f6d90f +1481.96s  gruppe=chase-9001  status=finished
+ 15. 2f4317c1-bfeb-44b6-a1df-add60491018e +1481.96s  gruppe=chase-9001  status=finished
+
+(Feltet er et deterministisk 180-rytter-sample af den fulde 6328-rytters S3-population — realistisk etape-feltstoerrelse. Hovedscorecardets §5-ankre er maalt paa den FULDE population.)
