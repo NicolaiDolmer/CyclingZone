@@ -1,0 +1,76 @@
+{
+  "snapshot": {
+    "dir": "C:\\Dev\\CyclingZone\\docs\\snapshots\\3591",
+    "takenAt": "2026-08-13T08:42:25.072Z",
+    "activeSeasonNumber": 2
+  },
+  "population": {
+    "levende": 8717,
+    "human": 3530,
+    "ai": 3293,
+    "free": 1894
+  },
+  "i3593": {
+    "udenSekundaertAnlaeg": 606,
+    "udenSekundaertAnlaegPrEjer": {
+      "human": 95,
+      "ai": 0,
+      "free": 511
+    },
+    "stierUenige": 605,
+    "forankringAendrerMotorLoft": 0,
+    "forankringTypeSkiftPrimaer": 0,
+    "forankringTypeSkiftSekundaer": 0
+  },
+  "i3591": {
+    "tikketAendrerLoft": 516,
+    "prEjer": {
+      "human": {
+        "iAlt": 3530,
+        "aendres": 5,
+        "taber": 1,
+        "vinder": 4
+      },
+      "ai": {
+        "iAlt": 3293,
+        "aendres": 0,
+        "taber": 0,
+        "vinder": 0
+      },
+      "free": {
+        "iAlt": 1894,
+        "aendres": 511,
+        "taber": 62,
+        "vinder": 449
+      }
+    },
+    "sumDelta": {
+      "n": 516,
+      "min": -56,
+      "p10": -9.5,
+      "median": 6,
+      "p90": 73.5,
+      "max": 149
+    },
+    "ratingDelta": {
+      "n": 516,
+      "min": -3,
+      "p10": -0.5,
+      "median": 0,
+      "p90": 4,
+      "max": 9
+    },
+    "bestOf8Delta": {
+      "n": 516,
+      "min": -3,
+      "p10": -0.5,
+      "median": 0,
+      "p90": 4,
+      "max": 9
+    },
+    "typeSkiftPrimaer": 0,
+    "typeSkiftSekundaer": 38,
+    "baseValueFlyttet": 0
+  },
+  "gulvBrud": 0
+}
