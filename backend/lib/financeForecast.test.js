@@ -73,13 +73,13 @@ test("computeFinanceForecast: sund manager → grøn", () => {
   assert.equal(result.projected_prize, 18 * 6_000);
   assert.equal(result.projected_salary, -(18 * 8_000));
   assert.equal(result.projected_loan_interest, 0);
-  // #3236: D2-upkeep (140K) er nu med — target-sæson er 2, så ikke deferred.
-  assert.equal(result.projected_upkeep, -140_000);
+  // #3236: D2-upkeep er nu med — target-sæson er 2, så ikke deferred. Satser halveret 23/8 (S3): D2 = 70K.
+  assert.equal(result.projected_upkeep, -70_000);
   assert.equal(result.projected_facility_upkeep, 0, "ingen faciliteter i archetype");
   assert.equal(result.projected_staff_salary, 0, "ingen staff i archetype");
   assert.equal(result.projected_academy_drift, 0, "ingen akademi-ryttere i archetype");
-  // net = 240_000 + 108_000 - 144_000 - 140_000(upkeep D2) = 64_000 → ≥ 50K og debt 0/900K=0 → grøn.
-  assert.equal(result.projected_net, 64_000);
+  // net = 240_000 + 108_000 - 144_000 - 70_000(upkeep D2) = 134_000 → ≥ 50K og debt 0/900K=0 → grøn.
+  assert.equal(result.projected_net, 134_000);
   assert.ok(result.confidence_low < result.projected_net);
   assert.ok(result.confidence_high > result.projected_net);
 });
@@ -89,8 +89,8 @@ test("computeFinanceForecast: marginal manager → gul", () => {
   // sponsor = 240K × 0.9 = 216K, prize = 14×1500 = 21K, salary = -224K,
   // upkeep D3 = -40K (#3236). #4023: rente (-20K) er non-cash og indgår IKKE
   // i nettoet — den vises kun via projected_loan_interest.
-  // net = 216_000 + 21_000 - 224_000 - 40_000 = -27_000 → i [-50K, 50K] → gul.
-  assert.equal(result.projected_net, -27_000);
+  // net = 216_000 + 21_000 - 224_000 - 20_000 = -7_000 → i [-50K, 50K] → gul.
+  assert.equal(result.projected_net, -7_000);
   assert.equal(result.projected_loan_interest, -20_000);
   assert.equal(result.risk_tier, "yellow");
   // debt-ratio = 350K/600K = 0.583 → > 50% giver "debt_growing" warning.
@@ -113,8 +113,8 @@ test("computeFinanceForecast: konkurs-tæt manager → rød (net + trend)", () =
   const result = computeFinanceForecast(ARCHETYPES.nearBankrupt);
   // sponsor = 240K × 0.8 = 192K, prize = 12 × 800 = 9.6K, salary = -264K,
   // upkeep D3 = -40K (#3236). #4023: rente (-50K) er non-cash, udenfor nettoet.
-  // net = 192_000 + 9_600 - 264_000 - 40_000 = -102_400.
-  assert.equal(result.projected_net, -102_400);
+  // net = 192_000 + 9_600 - 264_000 - 20_000 = -82_400.
+  assert.equal(result.projected_net, -82_400);
   assert.equal(result.projected_loan_interest, -50_000);
   assert.equal(result.risk_tier, "red");
   // Trend består stadig (upkeep gør underskuddet endnu større, ikke mindre).
@@ -268,11 +268,11 @@ test("computeFinanceForecast (#3236): upkeep er division-skaleret og trækkes fr
     debtCeiling: 900_000,
     currentSeasonNumber: 1,
   });
-  // UPKEEP_BY_DIVISION: D1=440K, D3=40K (economyConstants.js).
-  assert.equal(d1.projected_upkeep, -440_000);
-  assert.equal(d3.projected_upkeep, -40_000);
-  assert.equal(d1.projected_net, 240_000 - 440_000);
-  assert.equal(d3.projected_net, 240_000 - 40_000);
+  // UPKEEP_BY_DIVISION: D1=220K, D3=20K (economyConstants.js, halveret 23/8 S3).
+  assert.equal(d1.projected_upkeep, -220_000);
+  assert.equal(d3.projected_upkeep, -20_000);
+  assert.equal(d1.projected_net, 240_000 - 220_000);
+  assert.equal(d3.projected_net, 240_000 - 20_000);
 });
 
 test("computeFinanceForecast (#3236): upkeep udskydes i sæson 1 (før første løb, #1678)", () => {
@@ -292,7 +292,7 @@ test("computeFinanceForecast (#3236): upkeep udskydes i sæson 1 (før første l
     debtCeiling: 900_000,
     targetSeasonNumber: 2,
   });
-  assert.equal(season2.projected_upkeep, -440_000, "sæson 2+ opkræver upkeep normalt");
+  assert.equal(season2.projected_upkeep, -220_000, "sæson 2+ opkræver upkeep normalt");
   assert.equal(season2.inputs.upkeep_deferred, false);
 });
 
@@ -828,7 +828,7 @@ test("computeFinanceForecast (#3986): projected_staff_facilities = facility_upke
     result.projected_facility_upkeep + result.projected_staff_salary,
   );
   // Divisions-upkeep er en SELVSTÆNDIG linje og må ikke tælle med to gange.
-  assert.equal(result.projected_upkeep, -140_000);
+  assert.equal(result.projected_upkeep, -70_000);
   assert.notEqual(result.projected_staff_facilities, 0, "forudsætning: der ER en facilitets-/stabsudgift");
   assert.ok(
     Math.abs(result.projected_staff_facilities) < Math.abs(result.projected_upkeep),
@@ -868,8 +868,9 @@ test("computeFinanceForecast (#3986): den rapporterede D2-sag — 164.910 var 14
     facilitiesEnabled: true,
   });
   assert.equal(r.projected_staff_facilities, -24_910, "linjen viser nu kun det manageren selv har ansat/bygget");
-  assert.equal(r.projected_upkeep, -140_000, "upkeep står for sig selv");
-  assert.equal(r.projected_staff_facilities + r.projected_upkeep, -164_910, "det gamle sammenlagte tal");
+  // Historisk var tallet 140.000 (dengang sagen blev rapporteret); satsen er halveret 23/8 (S3).
+  assert.equal(r.projected_upkeep, -70_000, "upkeep står for sig selv");
+  assert.equal(r.projected_staff_facilities + r.projected_upkeep, -94_910, "sammenlagt (post-halvering)");
 });
 
 // ─── #3899 · Multi-sæson: division-stikprøve threades gennem hele horisonten ──
