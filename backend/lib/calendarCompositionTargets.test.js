@@ -5,7 +5,7 @@ import {
   TTT_ENGINE_SUPPORTED, COMPOSITION_TOLERANCE_PP, compositionCategory,
   computeCompositionStats, aggregateCompositionStats, toleranceFor,
   detectCompositionViolations,
-  TIER_UNIFORM_TARGET_CATEGORIES, TIER_UNIFORM_TARGET_FRACTIONS, TIER_UNIFORM_TOLERANCE_PP,
+  TIER_UNIFORM_TARGET_CATEGORIES, TIER_UNIFORM_TARGET_FRACTIONS,
   computeUniformTierStats, uniformTargetCount, detectUniformTierViolations,
 } from "./calendarCompositionTargets.js";
 import { PROFILE_TYPES } from "./raceStageProfileGenerator.js";
