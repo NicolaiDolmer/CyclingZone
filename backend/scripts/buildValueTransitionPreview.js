@@ -61,6 +61,10 @@ export function buildExplicitlyDampenedModel(model) {
   }
   return {
     ...model,
+    // value_damped er pr. kontrakt "FØR c" (c-scenarierne ganges på i UI'et).
+    // Modellen bærer nu selv c varigt (level_correction, #3449) — neutralisér
+    // den her, ellers ville siden vise c to gange.
+    level_correction: 1,
     fit: {
       ...model.fit,
       offset: buildDampenedOffsetTable(

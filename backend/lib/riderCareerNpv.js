@@ -199,9 +199,27 @@ export function predictBaseValueV4(rider, abilities, model /*, opts */) {
   // de dygtige NU der skal være uoverkommelige, ikke unge talenter (lav overall nu).
   const overallNow = riderOverall(abilities);
   const premium = applyElitePremium(scale * npv, overallNow, model.elite_premium);
-  const baseValue = Math.round(premium);
+  // #3449 niveau-korrektion (c), VARIG udgave (ejer-beslutning 23/8 aften): c
+  // ganges på den FÆRDIGE base_value (efter scale + elite-præmie), præcis som
+  // marketValueLevelCorrectionApply.js gør på de lagrede rækker. Uden denne
+  // linje ville enhver genberegning (sæson-progressionen, søndags-refreshen,
+  // nye ryttere) skrive niveauet tilbage til det u-korrigerede — præcis den
+  // "refresh skrev det væk igen"-klasse #3449 selv advarer om. KUN base_value:
+  // currentProductionValue (løn-basen, #3989) røres bevidst ikke — lønnen er
+  // produktions-baseret, og apply-scriptet rører heller ikke CPV.
+  const level = levelCorrectionFactor(model);
+  const baseValue = Math.round(level * premium);
   if (!Number.isFinite(baseValue)) return null;
   return Math.max(1, baseValue);
+}
+
+// model.level_correction (riderValuationModelV4.json): c fra #3449-gaten.
+// Mangler/ugyldig/≤0 ⇒ 1 (ingen korrektion) — bagudkompatibel med test-modeller
+// og ældre JSON'er. Eksporteret så preview-/harness-scripts kan læse den samme
+// faktor i stedet for at gætte.
+export function levelCorrectionFactor(model) {
+  const v = Number(model?.level_correction);
+  return Number.isFinite(v) && v > 0 ? v : 1;
 }
 
 // Ren trajectory-udtræk til scorecardets symmetri-gate (veteran-forfald + ungdomspræmie

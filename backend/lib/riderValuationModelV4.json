@@ -70,6 +70,15 @@
     }
   },
   "scale": 2.9779287,
+  "level_correction": 0.810849161784679,
+  "level_correction_ref": {
+    "issue": "#3449 niveau-korrektion (c), varig udgave jf. ejer-beslutning 23/8",
+    "gate_log_id": "d61c5ad3-d813-4c5b-9570-6fd76d523781",
+    "measured_date": "2026-08-23",
+    "n_qualified_90d": 80,
+    "stability_band": 0.3,
+    "note": "Ganges paa den faerdige base_value i predictBaseValueV4 (kun vaerdi, ikke current_production_value). Samme c som marketValueLevelCorrectionApply.js skrev 23/8 aften."
+  },
   "scale_ref": {
     "median_current_base_value": 7016,
     "median_v4_raw_npv": 2356,

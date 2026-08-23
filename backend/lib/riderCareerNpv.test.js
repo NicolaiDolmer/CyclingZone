@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { predictBaseValueV4, careerTrajectory, hazard, applyElitePremium, currentProductionValue } from "./riderCareerNpv.js";
+import { readFileSync } from "node:fs";
+import { predictBaseValueV4, careerTrajectory, hazard, applyElitePremium, currentProductionValue, levelCorrectionFactor } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+
+const liveModel = JSON.parse(readFileSync(new URL("./riderValuationModelV4.json", import.meta.url), "utf8"));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -345,4 +348,36 @@ test("currentProductionValue: deterministisk + null-guards", () => {
   assert.equal(currentProductionValue(rider, abilities, null), null);
   assert.equal(currentProductionValue(rider, {}, model), null);
   assert.equal(currentProductionValue(rider, abilities, { fit: {} }), null);
+});
+
+// ── #3449 niveau-korrektion (c) i modellen, varig udgave (23/8) ───────────────
+test("#3449: model.level_correction ganges på base_value (kun værdi, ikke CPV)", () => {
+  const rider = { id: "r-lvl", primary_type: "climber", potentiale: 4, age: 26 };
+  const abilities = makeAbilities({ climbing: 70, endurance: 60 });
+  const plain = fixtureModel();
+  const corrected = fixtureModel({ level_correction: 0.811 });
+
+  const vPlain = predictBaseValueV4(rider, abilities, plain);
+  const vCorr = predictBaseValueV4(rider, abilities, corrected);
+  assert.ok(vPlain > 0);
+  // ±1: vPlain er selv afrundet, c ganges på den u-afrundede premium i koden.
+  assert.ok(Math.abs(vCorr - vPlain * 0.811) <= 1, `${vCorr} vs ${vPlain * 0.811}`);
+
+  // Lønbasen er bevidst uberørt (#3989 produktions-løn, apply-scriptet rører heller ikke CPV).
+  assert.equal(currentProductionValue(rider, abilities, corrected), currentProductionValue(rider, abilities, plain));
+});
+
+test("#3449: manglende/ugyldig level_correction ⇒ faktor 1 (bagudkompatibel)", () => {
+  const rider = { id: "r-lvl2", primary_type: "tt", potentiale: 3, age: 28 };
+  const abilities = makeAbilities({ time_trial: 66 });
+  const base = predictBaseValueV4(rider, abilities, fixtureModel());
+  assert.equal(levelCorrectionFactor(fixtureModel()), 1);
+  assert.equal(levelCorrectionFactor({ level_correction: 0 }), 1);
+  assert.equal(levelCorrectionFactor({ level_correction: "abc" }), 1);
+  assert.equal(predictBaseValueV4(rider, abilities, fixtureModel({ level_correction: "abc" })), base);
+  assert.equal(predictBaseValueV4(rider, abilities, fixtureModel({ level_correction: 0 })), base);
+});
+
+test("#3449: den committede V4-model bærer c fra 23/8-gaten", () => {
+  assert.ok(Math.abs(levelCorrectionFactor(liveModel) - 0.810849161784679) < 1e-12);
 });

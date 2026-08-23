@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.180",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Rider values corrected to what the market actually pays",
+          "body": "All rider values were lowered by the same factor (0.81), measured against negotiated transfers over the last 30 days. Rider type now counts far less in the value: a puncheur was priced at nine times a time trialist with the same ability, that gap is now 1.6x, and the total value of the game is unchanged by that part. Salaries are recalculated from the corrected values before the season switch tonight, so season 3 contracts follow the new numbers. Values are reviewed every Sunday from now on."
+        },
+        "da": {
+          "title": "Rytterværdier rettet til det markedet faktisk betaler",
+          "body": "Alle rytterværdier er sat ned med samme faktor (0,81), målt mod forhandlede handler de sidste 30 dage. Ryttertypen fylder nu langt mindre i værdien: en puncheur var prissat til ni gange en enkeltstartsrytter med samme evne, det spænd er nu 1,6x, og den del ændrer ikke spillets samlede værdi. Lønnen genberegnes ud fra de rettede værdier før sæsonskiftet i aften, så sæson 3-kontrakterne følger de nye tal. Værdierne gennemgås hver søndag fremover."
+        },
+        "refs": [3449, 4000, 4120]
+      }
+    ]
+  },
+  {
     "version": "7.179",
     "date": "2026-08-23",
     "label": "Beta",
