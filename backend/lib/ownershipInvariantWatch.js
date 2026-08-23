@@ -79,6 +79,29 @@ const SAMPLE_LIMIT = 50;
 // tærskel uden nogen data-reparation.
 export const PENDING_TRANSFER_STALE_HOURS = 48;
 
+// CYCLINGZONE-4M (22/8): invariant A/B er TOCTOU-følsomme, fordi vagten læser
+// auktioner og ryttere i TO separate, ikke-atomiske queries — og fordi
+// auctionFinalization SKRIVER RYTTEREN FØR den lukker auktionen.
+// tryPlaceYouthWinnerOnSenior sætter riders.team_id (auctionFinalization.js
+// ~l.427) og først EFTER clearFutureRaceEntries + closeTransferListings +
+// rider_ownership_events + debit + XP + Discord-DM til vinderen + DM til alle
+// tabende budgivere kalder den closeAuction (~l.590). I hele den hale — som
+// indeholder netværkskald og derfor let varer sekunder — er "ungdomsauktion er
+// stadig active OG rytteren er hold-ejet" TRANSIENT SAND ved design.
+// Prod-evidens: auktion 7ac6f845 (Jakob Sørensen) finaliserede 14:00:25.288;
+// rytterens ejerskab landede 14:00:26.045, ownership-event 14:00:26.305,
+// debiten 14:00:26.431 — og vagtens boot-run alarmerede 14:00:26.979, altså
+// midt i halen. Data var HELE VEJEN korrekte: ét ejerskabsevent, én debit,
+// ingen dobbeltbetaling. Alarmen var ren støj.
+// Samme lektie som CYCLINGZONE-31/CYCLINGZONE-48: en vagt der alarmerer på en
+// lovlig, forbigående tilstand bliver ignoreret og mister sin værdi.
+// FIX: alarmér aldrig på FØRSTE observation af A/B. Vent SETTLE og genlæs BÅDE
+// auktions-status og rytter-ejerskab; kun rækker hvor begge stadig holder er
+// ægte brud. Et RIGTIGT brud er en persistent tilstand og overlever genlæsningen
+// uændret — en finaliserings-hale gør ikke. Koster kun noget når der FAKTISK er
+// et fund (dvs. stort set aldrig), så den daglige 0-fund-tick er uændret.
+export const RECHECK_SETTLE_MS = 15_000;
+
 // Alle aktive/extended auktioner — begge invariant A og B læser fra samme
 // bagvedliggende population, så vi henter den én gang.
 async function fetchActiveAuctions(supabase) {
@@ -88,6 +111,25 @@ async function fetchActiveAuctions(supabase) {
       .select("id, rider_id, is_youth, seller_team_id, status")
       .in("status", ["active", "extended"])
       .order("id"));
+}
+
+// CYCLINGZONE-4M: genlæs NETOP de auktioner der så ud til at bryde A/B, så vi
+// kan se om de imens er lukket (= finaliserings-hale, ikke brud). Chunked af
+// samme grund som fetchRidersOwnership. Bemærk at der IKKE filtreres på status
+// her — vi vil netop kunne SE en status der har ændret sig.
+async function fetchAuctionsByIds(supabase, auctionIds) {
+  const byId = new Map();
+  for (let i = 0; i < auctionIds.length; i += CHUNK) {
+    const chunk = auctionIds.slice(i, i + CHUNK);
+    const rows = await fetchAllRows(() =>
+      supabase
+        .from("auctions")
+        .select("id, rider_id, is_youth, seller_team_id, status")
+        .in("id", chunk)
+        .order("id"));
+    for (const a of rows) byId.set(a.id, a);
+  }
+  return byId;
 }
 
 // Rytter-ejerskab for et sæt rytter-id'er, chunked (.in() kan ramme 1000-
@@ -153,6 +195,36 @@ function isOwned(ridersById, riderId) {
   return rider.team_id != null || rider.pending_team_id != null;
 }
 
+// CYCLINGZONE-4M: bekræft et A/B-fund efter SETTLE. Et fund overlever kun hvis
+// BEGGE ben stadig holder ved genlæsningen: auktionen er fortsat active/extended
+// OG rytteren er fortsat hold-ejet. Falder ét af dem bort, var vi midt i
+// auctionFinalizations hale (rytter skrevet, auktion endnu ikke lukket) — altså
+// en lovlig, forbigående tilstand, ikke et invariant-brud.
+//
+// Returnerer BÅDE de bekræftede auktioner og et opdateret rytter-map, så
+// Sentry-samplet viser ejerskabet som det ser ud EFTER genlæsningen (ellers
+// ville vi rapportere et team_id der nåede at ændre sig).
+async function confirmAuctionBreaches({ supabase, auctions, sleepFn, settleMs }) {
+  if (auctions.length === 0) return { confirmed: [], ridersById: new Map() };
+
+  await sleepFn(settleMs);
+
+  const freshAuctions = await fetchAuctionsByIds(supabase, auctions.map((a) => a.id));
+  const stillOpen = auctions.filter((a) =>
+    ["active", "extended"].includes(freshAuctions.get(a.id)?.status)
+  );
+  if (stillOpen.length === 0) return { confirmed: [], ridersById: new Map() };
+
+  const freshRiders = await fetchRidersOwnership(
+    supabase,
+    [...new Set(stillOpen.map((a) => a.rider_id))]
+  );
+  return {
+    confirmed: stillOpen.filter((a) => isOwned(freshRiders, a.rider_id)),
+    ridersById: freshRiders,
+  };
+}
+
 function auctionFindingSample(auctions, ridersById) {
   return auctions.slice(0, SAMPLE_LIMIT).map((a) => {
     const rider = ridersById.get(a.rider_id) || {};
@@ -178,6 +250,10 @@ function auctionFindingSample(auctions, ridersById) {
  * @param {(supabase:object, riderIds:string[]) => Promise<string[]>} [args.getRidersInActiveStageRaceFn]
  *        DI-hook (CYCLINGZONE-48) — invariant E's andet kriterie. Default er den
  *        ÆGTE getRidersInActiveStageRace, dvs. samme diskriminator som heal-sweepen.
+ * @param {number}   [args.recheckSettleMs] override af RECHECK_SETTLE_MS (tests).
+ * @param {(ms:number) => Promise<void>} [args.sleepFn] DI-hook (CYCLINGZONE-4M) —
+ *        settle-ventetiden før A/B genlæses. Stubbes i tests, så suiten ikke
+ *        bruger 15 sekunder på at bevise en race.
  * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number, strandedAcademy:number, stalePendingTransfer:number}, alerted:boolean}>}
  */
 export async function runOwnershipInvariantWatch({
@@ -186,6 +262,8 @@ export async function runOwnershipInvariantWatch({
   now = new Date(),
   pendingTransferStaleHours = PENDING_TRANSFER_STALE_HOURS,
   getRidersInActiveStageRaceFn = getRidersInActiveStageRace,
+  recheckSettleMs = RECHECK_SETTLE_MS,
+  sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -200,8 +278,32 @@ export async function runOwnershipInvariantWatch({
   ];
   const ridersById = await fetchRidersOwnership(supabase, riderIds);
 
-  const youthOwned = youthAuctions.filter((a) => isOwned(ridersById, a.rider_id));
-  const sellerlessOwned = sellerlessAuctions.filter((a) => isOwned(ridersById, a.rider_id));
+  // FØRSTE observation — endnu IKKE et brud. CYCLINGZONE-4M: A/B skal bekræftes
+  // efter settle, ellers alarmerer vi på auctionFinalizations hale (se
+  // RECHECK_SETTLE_MS). Genlæsningen kører kun når der er noget at bekræfte.
+  const youthSuspects = youthAuctions.filter((a) => isOwned(ridersById, a.rider_id));
+  const sellerlessSuspects = sellerlessAuctions.filter((a) => isOwned(ridersById, a.rider_id));
+
+  const youthConfirm = await confirmAuctionBreaches({
+    supabase, auctions: youthSuspects, sleepFn, settleMs: recheckSettleMs,
+  });
+  // Sælgerløse fund er allerede settlet af ovenstående vent når begge er sat;
+  // er kun B brudt, betaler vi ventetiden her i stedet. Ingen af delene rammer
+  // den normale 0-fund-tick.
+  const sellerlessConfirm = await confirmAuctionBreaches({
+    supabase,
+    auctions: sellerlessSuspects,
+    sleepFn: youthSuspects.length > 0 ? async () => {} : sleepFn,
+    settleMs: recheckSettleMs,
+  });
+
+  const youthOwned = youthConfirm.confirmed;
+  const sellerlessOwned = sellerlessConfirm.confirmed;
+  // Samplet skal vise ejerskabet EFTER genlæsningen, jf. confirmAuctionBreaches.
+  const sampleRiders = new Map([
+    ...youthConfirm.ridersById,
+    ...sellerlessConfirm.ridersById,
+  ]);
   const staleIntake = await findStaleOfferedIntake(supabase);
   const strandedAcademy = await fetchStrandedAcademyFreeAgents(supabase);
 
@@ -241,7 +343,7 @@ export async function runOwnershipInvariantWatch({
       {
         tags: { cron: "ownership-invariant-watch" },
         fingerprint: ["owned-rider-on-youth-auction"],
-        extra: { count: youthOwned.length, sample: auctionFindingSample(youthOwned, ridersById) },
+        extra: { count: youthOwned.length, sample: auctionFindingSample(youthOwned, sampleRiders) },
       }
     );
   }
@@ -255,7 +357,7 @@ export async function runOwnershipInvariantWatch({
       {
         tags: { cron: "ownership-invariant-watch" },
         fingerprint: ["owned-rider-on-sellerless-auction"],
-        extra: { count: sellerlessOwned.length, sample: auctionFindingSample(sellerlessOwned, ridersById) },
+        extra: { count: sellerlessOwned.length, sample: auctionFindingSample(sellerlessOwned, sampleRiders) },
       }
     );
   }
