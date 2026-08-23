@@ -7,16 +7,14 @@
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
 - **SØN 23/8 (gjort):** generalprøve på staging (PR #4136, målt køreplan) · kalender helt på plads (#4131 #4103 #3371 #4106 #4107/#4108 #4134 live).
-- **SØN 23/8 aften:** [cutover-session-prompt](sessions/2026-08-23-cutover-session-prompt.md): værdier FØR 19:30 (ejer-c + GO) → 19:05 D1-dry-run → 19:30 køreplan (GO pr. skridt) → løn kun på GO → entries → mandat.
-- **MAN 24/8 (løbsfri):** kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · /pro S3-launch · velkomstpost.
+- **SØN 23/8 aften (GJORT 19:12-20:45):** cutover S2→S3 gennemført med ejer-GO pr. skridt — c=0,811 applied + varig i modellen (#4135), dæmpning flippet, løn genberegnet FØR skiftet, D1-komprimering 214/214, transition 22 faser, 33.082 entries, mandat 217, achievements. Upkeep S3 halveret 220k/70k/20k/0 (ejer). Fixes: PR #4151.
+- **MAN 24/8 (løbsfri):** kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
-## A · Cutover 23/8 (dato-bundet, viger ikke)
+## A · Cutover 23/8 — GENNEMFØRT (rest herunder)
 
-1. 🔴 **#4120 løn-rangordenen:** ejer-valg D (22/8) = c → dæmpning → løn. Løn genberegnes I AFTEN kun efter ejeren har set tallene (18 x10-ryttere ved navn) og sagt GO.
-2. 🟠 **#3449 niveau-korrektion:** gate GRØN 23/8 (bånd 0,30, c_candidate 0,811). Apply kørt 17:23 UDEN go → rullet tilbage. Tages op FØR 19:30 med ejerens c. **#4000 = PR #4135 draft**, flippes SAMMEN med c.
-3. 🟠 **#3514 mandat** — backfill i aften (generalprøvet, gate GRØN). 4. 🟠 **#3901** D1-komprimering i aften (dry-run 19:05).
-5. Supabase-perf-rest uge 35. 🔵 Auto-accept-floor står (#3584).
+1. ✅ #4120/#3449/#4000/#3514/#3901: alt kørt og verificeret 23/8 aften (se NOW.md). Rest: merge PR #4151 (fixes) · 22:00-tick-verify · ejer poster besked 2.
+2. Supabase-perf-rest uge 35. 🔵 Auto-accept-floor står (#3584).
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
 

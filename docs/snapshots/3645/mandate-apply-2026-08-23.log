@@ -1,0 +1,71 @@
+✅ Selvtest: 6 kendte tilfælde + 2.000 tilfældige monotoni-tjek passerede.
+
+Mål: ghwvkxzhsbbltzfnuhhz   Tilstand: APPLY (SKRIVER)
+
+Læst: 649 board_profiles-rækker · 221 hold · aktiv sæson: S3
+
+════════════════════════════════════════════════════════════
+  SCORECARD: mandat-migrationen (#3514)
+════════════════════════════════════════════════════════════
+
+Hold i planen: 217
+Mandater der oprettes: 217
+Visions-milepæle der oprettes: 2059 (heraf headline: 1424)
+Confidence: min 13 · p10 39 · median 71 · p90 97 · max 100
+
+Fordeling FØR (de 3 gamle tal) vs. EFTER (ét confidence):
+  bånd      | før (plan-rækker) | efter (hold)
+  0-9       |     8    1.3 % |    0    0.0 %
+  10-14     |     6    1.0 % |    1    0.5 %
+  15-29     |    24    4.0 % |    7    3.2 %
+  30-39     |    29    4.8 % |   14    6.5 %
+  40-59     |   118   19.6 % |   47   21.7 %
+  60-74     |   137   22.8 % |   51   23.5 %
+  75-89     |   150   24.9 % |   57   26.3 %
+  90-100    |   130   21.6 % |   40   18.4 %
+
+Konsekvens-bånd: krydser nogen en tærskel de ikke krydsede før?
+  ✅ 0 hold krydser en NY konsekvens-tærskel. (Matematisk garanteret:
+     et vægtet snit kan ikke ligge under sit eget minimum, selvtesten bevogter det.)
+
+  Lettelser (hold der slipper ud af et lag): 32
+     lag 2: 15 hold
+     lag 3: 13 hold
+     lag 4: 8 hold
+     lag 5: 6 hold
+
+  Bonustilbud (lag 6, > 75): mister 24 hold · vinder 0 hold
+     Tabet er den TILSIGTEDE følge af at samle tre tal til ét: et hold der var
+     over 75 på ÉN plan, men lavere på de andre, var aldrig over 75 samlet set.
+     Eksempler: Fellaini Racing Team {"1yr":75,"3yr":80,"5yr":49}→71 · ADM Cycling {"1yr":78,"5yr":67}→75 · Team Craft - Postnord {"1yr":64,"3yr":76,"5yr":71}→69 · Easy Riders {"1yr":60,"3yr":76,"5yr":68}→66 · Efapel cycling {"1yr":78,"5yr":67}→75
+
+Visions-milepæle pr. mål-sæson (grandfathered fra planernes egne slut-sæsoner):
+  S3: 685 milepæle
+  S4: 230 milepæle
+  S5: 857 milepæle
+  S6: 287 milepæle
+
+Advarsler:
+  unsigned_long_plan_excluded: 47
+  mandate_goal_count_outside_3_5: 1
+
+════════════════════════════════════════════════════════════
+
+Backup → backup_board_profiles_3514_20260823 (skal oprettes manuelt hvis den ikke findes; se drejebogen komponent 4).
+✅ Backup verificeret: 649 rækker.
+
+Skrevet: 217 relationer · 217 mandater · 2059 milepæle · 217 kvitteringer.
+
+Post-verify:
+  ✅ Én relation pr. hold
+  ✅ Relations-antal matcher planen
+  ✅ Ingen confidence uden for 0-100
+  ✅ Hver relation har en kvittering for sit tal
+  ✅ Ingen milepæl uden mål-sæson
+  ✅ board_profiles er UÆNDRET i antal
+
+Mandater: 217 · Milepæle: 2059
+
+✅ Migrationen er skrevet og verificeret. Kill-switchen er stadig 'off',
+   flippet til 'on' er et separat, ejer-gated skridt (se drejebogen komponent 4).
+

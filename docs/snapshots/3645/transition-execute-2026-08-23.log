@@ -1,0 +1,915 @@
+
+════════════════════════════════════════════════════════════════════════
+SÆSON-TRANSITION 🔴 EXECUTE (skriver til prod)
+════════════════════════════════════════════════════════════════════════
+Fra sæson: #2 (id 00000000-0000-0000-0000-000000000002, status='completed')
+
+🏁 Processing season start: 00000000-0000-0000-0000-000000000003
+  ✅ martharacing: +592480 pts sponsor
+  ✅ Uni team: +346441 pts sponsor
+  ✅ Pro Cycling Team: +618240 pts sponsor
+  ✅ Verstappen racing: +291060 pts sponsor
+  ✅ The Morse Codes: +297840 pts sponsor
+  ✅ Scuderia Domingo: +525504 pts sponsor
+  ✅ Superholdet: +359864 pts sponsor
+  ✅ Trululu La Guacamaya: +317026 pts sponsor
+  ✅ Frigo cycling: +361524 pts sponsor
+  ✅ Parfek: +437920 pts sponsor
+  ✅ The wild ducks: +293763 pts sponsor (sponsor-pullout aktiv)
+  ✅ Krapouchi Cycling Team: +503608 pts sponsor
+  ✅ Lip Air France Team: +481712 pts sponsor
+  ✅ Xtreme Noob: +187000 pts sponsor
+  ✅ ADM Cycling: +481712 pts sponsor
+  ✅ Guds hånd: +481712 pts sponsor
+  ✅ Efapel cycling: +481712 pts sponsor
+  ✅ Visma LAB: +437920 pts sponsor
+  ✅ Les flandriens: +334116 pts sponsor (sponsor-pullout aktiv)
+  ✅ RMF Pro Athletic: +522583 pts sponsor
+  ✅ Team UNIQLO: +240000 pts sponsor
+  ✅ West Racing Team UK: +224400 pts sponsor
+  🪂 puckpuckpuck: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ puckpuckpuck: +387347 pts sponsor
+  ✅ Ponot Cycling: +481712 pts sponsor
+  ✅ Team Discover: +618240 pts sponsor
+  ✅ Easy Riders: +270270 pts sponsor
+  ✅ Feyenoord: +380324 pts sponsor
+  🪂 Team Craft - Postnord: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Team Craft - Postnord: +382228 pts sponsor
+  🪂 Marco Cycling: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Marco Cycling: +391537 pts sponsor
+  ✅ One Two Three Cycling Club: +437920 pts sponsor
+  ✅ Zeitgeist racing team: +481712 pts sponsor
+  ✅ GFDJ: +264600 pts sponsor
+  ✅ Sportivianna DeLuxe: +503608 pts sponsor
+  ✅ Saint-Claire-Viateur: +224400 pts sponsor
+  ✅ Kelme Cycling Team: +301607 pts sponsor
+  ✅ StormBreaker Continental Team: +566720 pts sponsor
+  🪂 Pruffolini: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Pruffolini: +354677 pts sponsor
+  ✅ c_02: +346046 pts sponsor
+  🪂 1ei: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ 1ei: +272342 pts sponsor
+  ✅ Liverpool Racing: +242550 pts sponsor
+  ✅ Chuchiet: +441600 pts sponsor
+  ✅ Tuft cycling: +368323 pts sponsor
+  ✅ gramodier union team: +332034 pts sponsor
+  ✅ Kemphanen Cycling Team: +525504 pts sponsor
+  ✅ Team Hansen Pro Cycling: +336000 pts sponsor
+  ✅ Suconia STNS Cycling Team: +533117 pts sponsor
+  ✅ Prema: +294840 pts sponsor
+  ✅ Trader Joe / Schwan’s: +618240 pts sponsor
+  ✅ Torpedo Zaffelare: +259314 pts sponsor
+  ✅ De Saltede Guder: +318780 pts sponsor
+  ✅ Chris Machines: +265328 pts sponsor
+  ✅ MMDH Cycling Team: +428398 pts sponsor
+  ✅ NewE Pro Cycling: +618240 pts sponsor
+  ✅ Johans drenge: +378378 pts sponsor
+  ✅ Hopplà Team: +451482 pts sponsor
+  ✅ Liska: +261800 pts sponsor
+  ✅ RaceGen Cycling Team: +314160 pts sponsor
+  ✅ Team Velocity One: +566720 pts sponsor
+  ✅ Crowther Racing: +210478 pts sponsor (sponsor-pullout aktiv)
+  ✅ nomatic racing: +311727 pts sponsor
+  ✅ Team Velux: +459816 pts sponsor
+  ✅ Team Baghjul: +290578 pts sponsor
+  🪂 Sigaard Cycling: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Sigaard Cycling: +402458 pts sponsor
+  ✅ TUN Racing: +233682 pts sponsor (sponsor-pullout aktiv)
+  ✅ Team Riskær: +618240 pts sponsor
+  ✅ Nordic Vikings: +220500 pts sponsor
+  ✅ COURTEMANCHE: +383574 pts sponsor
+  ✅ African Cycling Project: +331141 pts sponsor
+  ✅ Team Holly: +441198 pts sponsor
+  ✅ BPTrain: +226800 pts sponsor
+  ✅ Remco Goat: +407506 pts sponsor
+  ✅ Fucking bikers: +297779 pts sponsor
+  ✅ Team WolkerWessels: +314160 pts sponsor
+  ✅ Atom Bikers: +275940 pts sponsor
+  ✅ Franks Arme: +318240 pts sponsor
+  ✅ Sky Racing: +459816 pts sponsor
+  ✅ Nickstar Rockets: +255914 pts sponsor
+  ✅ Oranje babies: +252945 pts sponsor
+  ✅ Quercy-Gel Team: +481712 pts sponsor
+  ✅ Pattex Cycling Team: +386593 pts sponsor
+  ✅ Team Niller: +269404 pts sponsor (sponsor-pullout aktiv)
+  ✅ Kimi racing: +459816 pts sponsor
+  ✅ Jean-Luc: +328173 pts sponsor
+  ✅ Palantir Pro Cyling: +286246 pts sponsor
+  ✅ Talentfabrikken: +333143 pts sponsor
+  ✅ Silveracers: +303206 pts sponsor (sponsor-pullout aktiv)
+  ✅ Beany riders: +258874 pts sponsor
+  ✅ Apotekets drenge: +289800 pts sponsor
+  ✅ Finset Outboard: +307183 pts sponsor
+  ✅ Indeso: +592480 pts sponsor
+  ✅ Universal Cycling: +515200 pts sponsor
+  ✅ Team spirit: +353767 pts sponsor
+  ✅ De Opwijkse Pedaalstoempers: +525504 pts sponsor
+  🪂 Team Brutaliste: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Team Brutaliste: +441600 pts sponsor
+  ✅ Aron Pro Cycling: +485198 pts sponsor
+  ✅ Romelu racing: +384574 pts sponsor
+  ✅ GA$$A RACING: +181076 pts sponsor
+  ✅ Falcor Cycling: +270270 pts sponsor
+  ✅ HWT Rockets: +310686 pts sponsor
+  ✅ lopel racing: +481712 pts sponsor
+  ✅ Nike Specialized: +304701 pts sponsor
+  ✅ Apex Cycling: +927360 pts sponsor
+  ✅ Mexica Velo: +486864 pts sponsor
+  ✅ Corratec: +385650 pts sponsor
+  ✅ Underdogz ApS: +421622 pts sponsor
+  ✅ Team BRND: +260076 pts sponsor (sponsor-pullout aktiv)
+  ✅ TR Cycling: +927360 pts sponsor
+  ✅ Tom Tom: +446292 pts sponsor
+  ✅ Wandlitz Racing: +437920 pts sponsor
+  ✅ Xtrona Race Club (Vitrona): +446292 pts sponsor
+  ✅ Vallados del Sur: +525504 pts sponsor
+  ✅ Nexora Technologies: +309120 pts sponsor
+  ✅ Beers & Gears: +486864 pts sponsor
+  ✅ Fish racing: +252945 pts sponsor
+  ✅ JDG: +281804 pts sponsor
+  ✅ Red Corsairs: +300346 pts sponsor
+  ✅ Ardennaise Pro Cycling Team: +290365 pts sponsor
+  ✅ Cycl'evo: +389853 pts sponsor
+  ✅ Équipe Lorraine Acier: +618240 pts sponsor
+  🪂 Thoms tropper: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Thoms tropper: +271374 pts sponsor
+  ✅ Liams Geder: +224400 pts sponsor
+  ✅ Bad At Names: +927360 pts sponsor
+  ✅ CSM Unirea: +332231 pts sponsor
+  ✅ LEGO-Vestas Cycling Team: +470400 pts sponsor
+  ✅ Team Bucovina: +446976 pts sponsor
+  ✅ Equipo Kern Pharma: +462293 pts sponsor
+  ✅ SJ racing: +289800 pts sponsor
+  ✅ De lokale tosser: +470400 pts sponsor
+  ✅ L’Échappée du Soleil: +618240 pts sponsor
+  ✅ Chilihvidløg: +210372 pts sponsor (sponsor-pullout aktiv)
+  ✅ Euskaltel-Euskadi: +338476 pts sponsor
+  ✅ A-PEX VELO: +441600 pts sponsor
+  ✅ Team CSC: +583893 pts sponsor
+  ✅ TeebsteebsTeam: +458475 pts sponsor
+  ✅ De Cyklende Ulve: +238000 pts sponsor
+  ✅ Camp Cycling Team: +380953 pts sponsor
+  ✅ MatsenSid: +515200 pts sponsor
+  ✅ Cadenza Comoda Pro Cycling: +359759 pts sponsor
+  ✅ Time-Out Hooligans: +294840 pts sponsor
+  ✅ Swatt Team: +465141 pts sponsor
+  ✅ Team Lea: +313937 pts sponsor
+  ✅ Breakaway Bandits: +503608 pts sponsor
+  ✅ martha racing: +465923 pts sponsor
+  ✅ Rumler Roulers: +289800 pts sponsor
+  ✅ Aquila–L3gatus Racing Team: +336000 pts sponsor
+  ✅ Sunnyvale Cycling Club: +444363 pts sponsor
+  ✅ Ciclismo 2640: +315750 pts sponsor
+  ✅ Csilla ABC: +416024 pts sponsor
+  ✅ Cycle street: +573866 pts sponsor
+  ✅ Guntzracing: +446458 pts sponsor
+  ✅ Ballets Cycling: +437920 pts sponsor
+  ✅ Metro-L3: +240000 pts sponsor
+  ✅ Guinness Cycling Team: +313438 pts sponsor
+  ✅ Camargue Pro Cycling: +437920 pts sponsor
+  ✅ Koben Racing: +446292 pts sponsor
+  ✅ Team Fakta: +446292 pts sponsor
+  ✅ Scallabis Cycling Team: +618240 pts sponsor
+  🪂 Top Pro Cycling: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Top Pro Cycling: +394093 pts sponsor
+  ✅ Slock Lyset: +371989 pts sponsor
+  ✅ Sareas: +290773 pts sponsor
+  ✅ Helmers: +320386 pts sponsor
+  ✅ Wander Riders: +273700 pts sponsor
+  ✅ EvoPro: +470400 pts sponsor
+  ✅ Fellaini Racing Team: +566720 pts sponsor
+  ✅ International Cycling Team: +242550 pts sponsor
+  ✅ Breda: +566720 pts sponsor
+  ✅ Q365 Racing: +459816 pts sponsor
+  ✅ Reynolds Team: +309854 pts sponsor
+  ✅ Frederixhavn BC: +157500 pts sponsor
+  ✅ The Wheelbarrels: +164588 pts sponsor
+  ✅ Hardly Athletic: +441600 pts sponsor
+  ✅ Inuit Cycling: +320863 pts sponsor
+  ✅ TeamEgebjerg: +318780 pts sponsor
+  ✅ Piast Piastów: +291390 pts sponsor
+  ✅ Rockets: +433879 pts sponsor
+  ✅ UT RWANDA: +333590 pts sponsor
+  ✅ Bhutan Egg Racing: +437789 pts sponsor
+  ✅ Cana Climbers: +503608 pts sponsor
+  ✅ Isaac racing: +459816 pts sponsor
+  ✅ UAE Team Emirates: +405720 pts sponsor
+  ✅ Cycling Topper: +245800 pts sponsor
+  ✅ Pfeiffer Dev: +295682 pts sponsor
+  ✅ Sky Rats: +367773 pts sponsor
+  ✅ Viimsi Racing: +407293 pts sponsor
+  ✅ Festina Nissa: +342610 pts sponsor
+  ✅ Team Easy-On: +399840 pts sponsor
+  🪂 Summit Racing: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Summit Racing: +287980 pts sponsor
+  ✅ Dima Racing: +299734 pts sponsor
+  ✅ AFJJ: +234876 pts sponsor
+  ✅ Nordica: +416582 pts sponsor
+  ✅ Team Majer: +282555 pts sponsor
+  ✅ Timmer Racing: +525504 pts sponsor
+  🪂 North Sea Pro Cycling: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ North Sea Pro Cycling: +383239 pts sponsor
+  ✅ Lidl–Leffe Pro Drinking: +583893 pts sponsor
+  🪂 Slashska Cycling: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Slashska Cycling: +287980 pts sponsor
+  ✅ Wielerploeg Onder Ons Parike: +446292 pts sponsor
+  ✅ Bouboule Team: +618240 pts sponsor
+  ✅ 24/7 Aspire-Light Velo Team: +195500 pts sponsor
+  ✅ The 3rd Leg of Lukaku: +209893 pts sponsor
+  ✅ Guaracha Guerreros: +314160 pts sponsor
+  ✅ Minisize Biking: +416976 pts sponsor
+  ✅ Stella Artois Cycling Team: +459816 pts sponsor
+  ✅ Island Cycling Team: +466578 pts sponsor
+  ✅ den usaltet smør: +481712 pts sponsor
+  ✅ Purple Rain: +390935 pts sponsor
+  ✅ montísky: +291638 pts sponsor
+  ✅ Air France-KLM Team: +566720 pts sponsor
+  ✅ Squid Sycling: +390323 pts sponsor
+  ✅ Borregaard Racing: +230000 pts sponsor
+  🪂 Team Brennan: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Team Brennan: +511363 pts sponsor
+  ✅ Red Bull - Robley - Rockets: +525504 pts sponsor
+  ✅ Bacon Fræsers: +618240 pts sponsor
+  🪂 Team Thybo: +30000 pts nedrykningsfaldskærm (D2→D3)
+  ✅ Team Thybo: +370220 pts sponsor
+  ✅ Hatestone Cycling Club: +400539 pts sponsor
+  📊 martharacing: debt_breach_streak=0, transfer_frozen=false
+  🏭 martharacing: -70000 pts upkeep (div 2)
+  📊 Uni team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Uni team: -20000 pts upkeep (div 3)
+  📊 Pro Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Pro Cycling Team: -220000 pts upkeep (div 1)
+  🏗️ Pro Cycling Team: -60000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Pro Cycling Team: -1158 pts staff-sæsonløn (2 ansatte)
+  📊 Verstappen racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 Verstappen racing: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Verstappen racing: -70000 pts upkeep (div 2)
+  🏗️ Verstappen racing: -5000 pts facilitets-upkeep (2 tracks)
+  📊 The Morse Codes: debt_breach_streak=0, transfer_frozen=false
+  🏭 The Morse Codes: -20000 pts upkeep (div 3)
+  📊 Scuderia Domingo: debt_breach_streak=0, transfer_frozen=false
+  🎓 Scuderia Domingo: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 Scuderia Domingo: -70000 pts upkeep (div 2)
+  🏗️ Scuderia Domingo: -45000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Scuderia Domingo: -1818 pts staff-sæsonløn (2 ansatte)
+  📊 Superholdet: debt_breach_streak=0, transfer_frozen=false
+  📊 Trululu La Guacamaya: debt_breach_streak=0, transfer_frozen=false
+  📊 Frigo cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Frigo cycling: -20000 pts upkeep (div 3)
+  📊 Parfek: debt_breach_streak=0, transfer_frozen=false
+  🏭 Parfek: -20000 pts upkeep (div 3)
+  📊 The wild ducks: debt_breach_streak=0, transfer_frozen=false
+  🏭 The wild ducks: -20000 pts upkeep (div 3)
+  📊 Krapouchi Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Krapouchi Cycling Team: -20000 pts upkeep (div 3)
+  📊 Lip Air France Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Lip Air France Team: -20000 pts upkeep (div 3)
+  📊 Xtreme Noob: debt_breach_streak=0, transfer_frozen=false
+  🎓 Xtreme Noob: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 Xtreme Noob: -220000 pts upkeep (div 1)
+  🏗️ Xtreme Noob: -33500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Xtreme Noob: -1189 pts staff-sæsonløn (2 ansatte)
+  📊 ADM Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 ADM Cycling: -20000 pts upkeep (div 3)
+  📊 Guds hånd: debt_breach_streak=0, transfer_frozen=false
+  🏭 Guds hånd: -20000 pts upkeep (div 3)
+  📊 Efapel cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Efapel cycling: -20000 pts upkeep (div 3)
+  📊 Visma LAB: debt_breach_streak=0, transfer_frozen=false
+  🏭 Visma LAB: -20000 pts upkeep (div 3)
+  📊 Les flandriens: debt_breach_streak=0, transfer_frozen=false
+  🎓 Les flandriens: -5000 pts akademi-drift (1 pladser × 5000)
+  🏭 Les flandriens: -20000 pts upkeep (div 3)
+  📊 RMF Pro Athletic: debt_breach_streak=0, transfer_frozen=false
+  🎓 RMF Pro Athletic: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 RMF Pro Athletic: -70000 pts upkeep (div 2)
+  🏗️ RMF Pro Athletic: -38000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 RMF Pro Athletic: -7311 pts staff-sæsonløn (4 ansatte)
+  📊 Team UNIQLO: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team UNIQLO: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Team UNIQLO: -70000 pts upkeep (div 2)
+  🏗️ Team UNIQLO: -7000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Team UNIQLO: -783 pts staff-sæsonløn (2 ansatte)
+  📊 West Racing Team UK: debt_breach_streak=0, transfer_frozen=false
+  🎓 West Racing Team UK: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 West Racing Team UK: -70000 pts upkeep (div 2)
+  📊 puckpuckpuck: debt_breach_streak=0, transfer_frozen=false
+  🏭 puckpuckpuck: -20000 pts upkeep (div 3)
+  📊 Ponot Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Ponot Cycling: -20000 pts upkeep (div 3)
+  📊 Team Discover: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Discover: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Team Discover: -70000 pts upkeep (div 2)
+  📊 Easy Riders: debt_breach_streak=0, transfer_frozen=false
+  🎓 Easy Riders: -5000 pts akademi-drift (1 pladser × 5000)
+  🏭 Easy Riders: -70000 pts upkeep (div 2)
+  🏗️ Easy Riders: -3000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Easy Riders: -288 pts staff-sæsonløn (2 ansatte)
+  📊 Feyenoord: debt_breach_streak=0, transfer_frozen=false
+  📊 Team Craft - Postnord: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Craft - Postnord: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Team Craft - Postnord: -20000 pts upkeep (div 3)
+  📊 Marco Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Marco Cycling: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Marco Cycling: -20000 pts upkeep (div 3)
+  🏗️ Marco Cycling: -7000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Marco Cycling: -259 pts staff-sæsonløn (1 ansatte)
+  📊 One Two Three Cycling Club: debt_breach_streak=0, transfer_frozen=false
+  🏭 One Two Three Cycling Club: -20000 pts upkeep (div 3)
+  🏗️ One Two Three Cycling Club: -30000 pts facilitets-upkeep (1 tracks)
+  📊 Zeitgeist racing team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Zeitgeist racing team: -20000 pts upkeep (div 3)
+  📊 GFDJ: debt_breach_streak=0, transfer_frozen=false
+  🎓 GFDJ: -5000 pts akademi-drift (1 pladser × 5000)
+  🏭 GFDJ: -70000 pts upkeep (div 2)
+  🏗️ GFDJ: -38000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 GFDJ: -1494 pts staff-sæsonløn (3 ansatte)
+  📊 Sportivianna DeLuxe: debt_breach_streak=0, transfer_frozen=false
+  🎓 Sportivianna DeLuxe: -5000 pts akademi-drift (1 pladser × 5000)
+  🏭 Sportivianna DeLuxe: -20000 pts upkeep (div 3)
+  📊 Saint-Claire-Viateur: debt_breach_streak=0, transfer_frozen=false
+  🎓 Saint-Claire-Viateur: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Saint-Claire-Viateur: -70000 pts upkeep (div 2)
+  🏗️ Saint-Claire-Viateur: -3000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Saint-Claire-Viateur: -449 pts staff-sæsonløn (2 ansatte)
+  📊 Kelme Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  📊 StormBreaker Continental Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 StormBreaker Continental Team: -70000 pts upkeep (div 2)
+  📊 Pruffolini: debt_breach_streak=0, transfer_frozen=false
+  🏭 Pruffolini: -20000 pts upkeep (div 3)
+  📊 c_02: debt_breach_streak=0, transfer_frozen=false
+  📊 1ei: debt_breach_streak=0, transfer_frozen=false
+  🎓 1ei: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 1ei: -20000 pts upkeep (div 3)
+  🏗️ 1ei: -33500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 1ei: -2668 pts staff-sæsonløn (3 ansatte)
+  📊 Liverpool Racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 Liverpool Racing: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Liverpool Racing: -70000 pts upkeep (div 2)
+  🏗️ Liverpool Racing: -23000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Liverpool Racing: -2838 pts staff-sæsonløn (2 ansatte)
+  📊 Chuchiet: debt_breach_streak=0, transfer_frozen=false
+  🎓 Chuchiet: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Chuchiet: -220000 pts upkeep (div 1)
+  🏗️ Chuchiet: -31500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Chuchiet: -3937 pts staff-sæsonløn (3 ansatte)
+  📊 Tuft cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Tuft cycling: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Tuft cycling: -20000 pts upkeep (div 3)
+  📊 gramodier union team: debt_breach_streak=0, transfer_frozen=false
+  📊 Kemphanen Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Kemphanen Cycling Team: -20000 pts upkeep (div 3)
+  ⚠️  Team Hansen Pro Cycling: mangler 41339 pts til løn — opretter nødlån
+  📊 Team Hansen Pro Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Hansen Pro Cycling: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Team Hansen Pro Cycling: -220000 pts upkeep (div 1)
+  🏗️ Team Hansen Pro Cycling: -30000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Team Hansen Pro Cycling: -2648 pts staff-sæsonløn (3 ansatte)
+  📊 Suconia STNS Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Suconia STNS Cycling Team: -70000 pts upkeep (div 2)
+  📊 Prema: debt_breach_streak=0, transfer_frozen=false
+  🏭 Prema: -20000 pts upkeep (div 3)
+  🏗️ Prema: -3000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Prema: -309 pts staff-sæsonløn (2 ansatte)
+  📊 Trader Joe / Schwan’s: debt_breach_streak=0, transfer_frozen=false
+  🎓 Trader Joe / Schwan’s: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Trader Joe / Schwan’s: -70000 pts upkeep (div 2)
+  📊 Torpedo Zaffelare: debt_breach_streak=0, transfer_frozen=false
+  📊 De Saltede Guder: debt_breach_streak=0, transfer_frozen=false
+  🏭 De Saltede Guder: -20000 pts upkeep (div 3)
+  🏗️ De Saltede Guder: -23000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 De Saltede Guder: -1097 pts staff-sæsonløn (2 ansatte)
+  📊 Chris Machines: debt_breach_streak=0, transfer_frozen=false
+  🎓 Chris Machines: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Chris Machines: -70000 pts upkeep (div 2)
+  🏗️ Chris Machines: -3500 pts facilitets-upkeep (1 tracks)
+  🧑‍💼 Chris Machines: -259 pts staff-sæsonløn (1 ansatte)
+  📊 MMDH Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 MMDH Cycling Team: -20000 pts upkeep (div 3)
+  📊 NewE Pro Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 NewE Pro Cycling: -220000 pts upkeep (div 1)
+  🏗️ NewE Pro Cycling: -38000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 NewE Pro Cycling: -7150 pts staff-sæsonløn (3 ansatte)
+  📊 Johans drenge: debt_breach_streak=0, transfer_frozen=false
+  🎓 Johans drenge: -30000 pts akademi-drift (6 pladser × 5000)
+  🏭 Johans drenge: -20000 pts upkeep (div 3)
+  📊 Hopplà Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Hopplà Team: -20000 pts upkeep (div 3)
+  📊 Liska: debt_breach_streak=0, transfer_frozen=false
+  🎓 Liska: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 Liska: -70000 pts upkeep (div 2)
+  🏗️ Liska: -23000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Liska: -487 pts staff-sæsonløn (2 ansatte)
+  📊 RaceGen Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 RaceGen Cycling Team: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 RaceGen Cycling Team: -70000 pts upkeep (div 2)
+  🏗️ RaceGen Cycling Team: -11500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 RaceGen Cycling Team: -717 pts staff-sæsonløn (2 ansatte)
+  📊 Team Velocity One: debt_breach_streak=0, transfer_frozen=false
+  🏭 Team Velocity One: -70000 pts upkeep (div 2)
+  📊 Crowther Racing: debt_breach_streak=0, transfer_frozen=false
+  📊 nomatic racing: debt_breach_streak=0, transfer_frozen=false
+  📊 Team Velux: debt_breach_streak=0, transfer_frozen=false
+  🏭 Team Velux: -20000 pts upkeep (div 3)
+  📊 Team Baghjul: debt_breach_streak=0, transfer_frozen=false
+  📊 Sigaard Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Sigaard Cycling: -20000 pts upkeep (div 3)
+  📊 TUN Racing: debt_breach_streak=0, transfer_frozen=false
+  📊 Team Riskær: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Riskær: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Team Riskær: -70000 pts upkeep (div 2)
+  📊 Nordic Vikings: debt_breach_streak=0, transfer_frozen=false
+  🎓 Nordic Vikings: -5000 pts akademi-drift (1 pladser × 5000)
+  📊 COURTEMANCHE: debt_breach_streak=0, transfer_frozen=false
+  🏭 COURTEMANCHE: -20000 pts upkeep (div 3)
+  📊 African Cycling Project: debt_breach_streak=0, transfer_frozen=false
+  📊 Team Holly: debt_breach_streak=0, transfer_frozen=false
+  🏭 Team Holly: -20000 pts upkeep (div 3)
+  📊 BPTrain: debt_breach_streak=0, transfer_frozen=false
+  🎓 BPTrain: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 BPTrain: -70000 pts upkeep (div 2)
+  🏗️ BPTrain: -15000 pts facilitets-upkeep (1 tracks)
+  🧑‍💼 BPTrain: -490 pts staff-sæsonløn (1 ansatte)
+  📊 Remco Goat: debt_breach_streak=0, transfer_frozen=false
+  🏭 Remco Goat: -20000 pts upkeep (div 3)
+  📊 Fucking bikers: debt_breach_streak=0, transfer_frozen=false
+  📊 Team WolkerWessels: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team WolkerWessels: -30000 pts akademi-drift (6 pladser × 5000)
+  🏭 Team WolkerWessels: -70000 pts upkeep (div 2)
+  🏗️ Team WolkerWessels: -16000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Team WolkerWessels: -2949 pts staff-sæsonløn (4 ansatte)
+  📊 Atom Bikers: debt_breach_streak=0, transfer_frozen=false
+  🎓 Atom Bikers: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Atom Bikers: -220000 pts upkeep (div 1)
+  🏗️ Atom Bikers: -1500 pts facilitets-upkeep (1 tracks)
+  📊 Franks Arme: debt_breach_streak=0, transfer_frozen=false
+  🎓 Franks Arme: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Franks Arme: -220000 pts upkeep (div 1)
+  🏗️ Franks Arme: -45000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Franks Arme: -2596 pts staff-sæsonløn (2 ansatte)
+  📊 Sky Racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Sky Racing: -20000 pts upkeep (div 3)
+  📊 Nickstar Rockets: debt_breach_streak=0, transfer_frozen=false
+  🎓 Nickstar Rockets: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Nickstar Rockets: -220000 pts upkeep (div 1)
+  🏗️ Nickstar Rockets: -60000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Nickstar Rockets: -7467 pts staff-sæsonløn (4 ansatte)
+  📊 Oranje babies: debt_breach_streak=0, transfer_frozen=false
+  🏭 Oranje babies: -20000 pts upkeep (div 3)
+  📊 Quercy-Gel Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Quercy-Gel Team: -20000 pts upkeep (div 3)
+  📊 Pattex Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Pattex Cycling Team: -20000 pts upkeep (div 3)
+  📊 Team Niller: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Niller: -5000 pts akademi-drift (1 pladser × 5000)
+  📊 Kimi racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Kimi racing: -20000 pts upkeep (div 3)
+  📊 Jean-Luc: debt_breach_streak=0, transfer_frozen=false
+  📊 Palantir Pro Cyling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Palantir Pro Cyling: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Palantir Pro Cyling: -70000 pts upkeep (div 2)
+  🏗️ Palantir Pro Cyling: -11500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Palantir Pro Cyling: -1317 pts staff-sæsonløn (2 ansatte)
+  📊 Talentfabrikken: debt_breach_streak=0, transfer_frozen=false
+  🏭 Talentfabrikken: -20000 pts upkeep (div 3)
+  🏗️ Talentfabrikken: -30000 pts facilitets-upkeep (1 tracks)
+  🧑‍💼 Talentfabrikken: -4593 pts staff-sæsonløn (2 ansatte)
+  📊 Silveracers: debt_breach_streak=0, transfer_frozen=false
+  🏭 Silveracers: -20000 pts upkeep (div 3)
+  📊 Beany riders: debt_breach_streak=0, transfer_frozen=false
+  📊 Apotekets drenge: debt_breach_streak=0, transfer_frozen=false
+  📊 Finset Outboard: debt_breach_streak=0, transfer_frozen=false
+  🎓 Finset Outboard: -15000 pts akademi-drift (3 pladser × 5000)
+  📊 Indeso: debt_breach_streak=0, transfer_frozen=false
+  🏭 Indeso: -70000 pts upkeep (div 2)
+  📊 Universal Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Universal Cycling: -70000 pts upkeep (div 2)
+  📊 Team spirit: debt_breach_streak=0, transfer_frozen=false
+  📊 De Opwijkse Pedaalstoempers: debt_breach_streak=0, transfer_frozen=false
+  🎓 De Opwijkse Pedaalstoempers: -5000 pts akademi-drift (1 pladser × 5000)
+  🏭 De Opwijkse Pedaalstoempers: -20000 pts upkeep (div 3)
+  🏗️ De Opwijkse Pedaalstoempers: -16000 pts facilitets-upkeep (2 tracks)
+  📊 Team Brutaliste: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Brutaliste: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Team Brutaliste: -20000 pts upkeep (div 3)
+  🏗️ Team Brutaliste: -9500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Team Brutaliste: -389 pts staff-sæsonløn (2 ansatte)
+  📊 Aron Pro Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Aron Pro Cycling: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Aron Pro Cycling: -70000 pts upkeep (div 2)
+  🏗️ Aron Pro Cycling: -23000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Aron Pro Cycling: -431 pts staff-sæsonløn (2 ansatte)
+  📊 Romelu racing: debt_breach_streak=0, transfer_frozen=false
+  📊 GA$$A RACING: debt_breach_streak=0, transfer_frozen=false
+  🎓 GA$$A RACING: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 GA$$A RACING: -70000 pts upkeep (div 2)
+  🏗️ GA$$A RACING: -7000 pts facilitets-upkeep (2 tracks)
+  📊 Falcor Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Falcor Cycling: -20000 pts upkeep (div 3)
+  🏗️ Falcor Cycling: -3000 pts facilitets-upkeep (2 tracks)
+  📊 HWT Rockets: debt_breach_streak=0, transfer_frozen=false
+  📊 lopel racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 lopel racing: -20000 pts upkeep (div 3)
+  📊 Nike Specialized: debt_breach_streak=0, transfer_frozen=false
+  📊 Apex Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Apex Cycling: -30000 pts akademi-drift (6 pladser × 5000)
+  🏭 Apex Cycling: -220000 pts upkeep (div 1)
+  🏗️ Apex Cycling: -5000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Apex Cycling: -464 pts staff-sæsonløn (2 ansatte)
+  📊 Mexica Velo: debt_breach_streak=0, transfer_frozen=false
+  🏭 Mexica Velo: -20000 pts upkeep (div 3)
+  🏗️ Mexica Velo: -7000 pts facilitets-upkeep (2 tracks)
+  📊 Corratec: debt_breach_streak=0, transfer_frozen=false
+  🏭 Corratec: -20000 pts upkeep (div 3)
+  📊 Underdogz ApS: debt_breach_streak=0, transfer_frozen=false
+  🏭 Underdogz ApS: -20000 pts upkeep (div 3)
+  📊 Team BRND: debt_breach_streak=0, transfer_frozen=false
+  🏭 Team BRND: -20000 pts upkeep (div 3)
+  📊 TR Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 TR Cycling: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 TR Cycling: -220000 pts upkeep (div 1)
+  🏗️ TR Cycling: -9500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 TR Cycling: -704 pts staff-sæsonløn (2 ansatte)
+  📊 Tom Tom: debt_breach_streak=0, transfer_frozen=false
+  📊 Wandlitz Racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Wandlitz Racing: -20000 pts upkeep (div 3)
+  🏗️ Wandlitz Racing: -5000 pts facilitets-upkeep (2 tracks)
+  📊 Xtrona Race Club (Vitrona): debt_breach_streak=0, transfer_frozen=false
+  🎓 Xtrona Race Club (Vitrona): -5000 pts akademi-drift (1 pladser × 5000)
+  📊 Vallados del Sur: debt_breach_streak=0, transfer_frozen=false
+  🎓 Vallados del Sur: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Vallados del Sur: -220000 pts upkeep (div 1)
+  🏗️ Vallados del Sur: -16000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Vallados del Sur: -1224 pts staff-sæsonløn (2 ansatte)
+  📊 Nexora Technologies: debt_breach_streak=0, transfer_frozen=false
+  🎓 Nexora Technologies: -5000 pts akademi-drift (1 pladser × 5000)
+  🏗️ Nexora Technologies: -3000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Nexora Technologies: -744 pts staff-sæsonløn (4 ansatte)
+  📊 Beers & Gears: debt_breach_streak=0, transfer_frozen=false
+  🏭 Beers & Gears: -70000 pts upkeep (div 2)
+  🏗️ Beers & Gears: -9500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Beers & Gears: -2298 pts staff-sæsonløn (3 ansatte)
+  📊 Fish racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 Fish racing: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Fish racing: -20000 pts upkeep (div 3)
+  📊 JDG: debt_breach_streak=0, transfer_frozen=false
+  📊 Red Corsairs: debt_breach_streak=0, transfer_frozen=false
+  🎓 Red Corsairs: -20000 pts akademi-drift (4 pladser × 5000)
+  📊 Test A: debt_breach_streak=0, transfer_frozen=false
+  🏭 Test A: -20000 pts upkeep (div 3)
+  📊 Ardennaise Pro Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  📊 Cycl'evo: debt_breach_streak=0, transfer_frozen=false
+  📊 Équipe Lorraine Acier: debt_breach_streak=0, transfer_frozen=false
+  🎓 Équipe Lorraine Acier: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Équipe Lorraine Acier: -220000 pts upkeep (div 1)
+  🏗️ Équipe Lorraine Acier: -33500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Équipe Lorraine Acier: -6802 pts staff-sæsonløn (3 ansatte)
+  📊 Thoms tropper: debt_breach_streak=0, transfer_frozen=false
+  🎓 Thoms tropper: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 Thoms tropper: -20000 pts upkeep (div 3)
+  📊 Liams Geder: debt_breach_streak=0, transfer_frozen=false
+  🎓 Liams Geder: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Liams Geder: -70000 pts upkeep (div 2)
+  🏗️ Liams Geder: -23000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Liams Geder: -1129 pts staff-sæsonløn (2 ansatte)
+  📊 Bad At Names: debt_breach_streak=0, transfer_frozen=false
+  🎓 Bad At Names: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Bad At Names: -220000 pts upkeep (div 1)
+  🏗️ Bad At Names: -3000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Bad At Names: -389 pts staff-sæsonløn (2 ansatte)
+  📊 CSM Unirea: debt_breach_streak=0, transfer_frozen=false
+  🏭 CSM Unirea: -20000 pts upkeep (div 3)
+  📊 LEGO-Vestas Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 LEGO-Vestas Cycling Team: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 LEGO-Vestas Cycling Team: -220000 pts upkeep (div 1)
+  🏗️ LEGO-Vestas Cycling Team: -38000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 LEGO-Vestas Cycling Team: -8301 pts staff-sæsonløn (3 ansatte)
+  📊 Team Bucovina: debt_breach_streak=0, transfer_frozen=false
+  🏭 Team Bucovina: -20000 pts upkeep (div 3)
+  📊 Equipo Kern Pharma: debt_breach_streak=0, transfer_frozen=false
+  🏭 Equipo Kern Pharma: -20000 pts upkeep (div 3)
+  📊 SJ racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 SJ racing: -5000 pts akademi-drift (1 pladser × 5000)
+  🏗️ SJ racing: -1500 pts facilitets-upkeep (1 tracks)
+  📊 De lokale tosser: debt_breach_streak=0, transfer_frozen=false
+  🎓 De lokale tosser: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 De lokale tosser: -220000 pts upkeep (div 1)
+  🏗️ De lokale tosser: -38000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 De lokale tosser: -4452 pts staff-sæsonløn (3 ansatte)
+  📊 L’Échappée du Soleil: debt_breach_streak=0, transfer_frozen=false
+  🎓 L’Échappée du Soleil: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 L’Échappée du Soleil: -220000 pts upkeep (div 1)
+  🏗️ L’Échappée du Soleil: -60000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 L’Échappée du Soleil: -7304 pts staff-sæsonløn (3 ansatte)
+  📊 Chilihvidløg: debt_breach_streak=0, transfer_frozen=false
+  📊 Euskaltel-Euskadi: debt_breach_streak=0, transfer_frozen=false
+  🏭 Euskaltel-Euskadi: -20000 pts upkeep (div 3)
+  📊 A-PEX VELO: debt_breach_streak=0, transfer_frozen=false
+  🎓 A-PEX VELO: -30000 pts akademi-drift (6 pladser × 5000)
+  🏭 A-PEX VELO: -70000 pts upkeep (div 2)
+  🏗️ A-PEX VELO: -23000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 A-PEX VELO: -1454 pts staff-sæsonløn (2 ansatte)
+  📊 Team CSC: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team CSC: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Team CSC: -70000 pts upkeep (div 2)
+  🏗️ Team CSC: -1500 pts facilitets-upkeep (1 tracks)
+  📊 TeebsteebsTeam: debt_breach_streak=0, transfer_frozen=false
+  🎓 TeebsteebsTeam: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 TeebsteebsTeam: -20000 pts upkeep (div 3)
+  📊 De Cyklende Ulve: debt_breach_streak=0, transfer_frozen=false
+  🎓 De Cyklende Ulve: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 De Cyklende Ulve: -220000 pts upkeep (div 1)
+  🏗️ De Cyklende Ulve: -5000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 De Cyklende Ulve: -598 pts staff-sæsonløn (1 ansatte)
+  📊 Camp Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 Camp Cycling Team: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Camp Cycling Team: -20000 pts upkeep (div 3)
+  📊 MatsenSid: debt_breach_streak=0, transfer_frozen=false
+  🏭 MatsenSid: -70000 pts upkeep (div 2)
+  📊 Cadenza Comoda Pro Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Cadenza Comoda Pro Cycling: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Cadenza Comoda Pro Cycling: -70000 pts upkeep (div 2)
+  🏗️ Cadenza Comoda Pro Cycling: -60000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Cadenza Comoda Pro Cycling: -8028 pts staff-sæsonløn (3 ansatte)
+  📊 Time-Out Hooligans: debt_breach_streak=0, transfer_frozen=false
+  🎓 Time-Out Hooligans: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 Time-Out Hooligans: -20000 pts upkeep (div 3)
+  🏗️ Time-Out Hooligans: -11500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Time-Out Hooligans: -2443 pts staff-sæsonløn (3 ansatte)
+  📊 Swatt Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Swatt Team: -20000 pts upkeep (div 3)
+  📊 Team Lea: debt_breach_streak=0, transfer_frozen=false
+  🏭 Team Lea: -20000 pts upkeep (div 3)
+  📊 Breakaway Bandits: debt_breach_streak=0, transfer_frozen=false
+  🎓 Breakaway Bandits: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Breakaway Bandits: -70000 pts upkeep (div 2)
+  🏗️ Breakaway Bandits: -30000 pts facilitets-upkeep (1 tracks)
+  🧑‍💼 Breakaway Bandits: -2987 pts staff-sæsonløn (2 ansatte)
+  📊 Test Seller: debt_breach_streak=0, transfer_frozen=false
+  🏭 Test Seller: -20000 pts upkeep (div 3)
+  📊 martha racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 martha racing: -20000 pts upkeep (div 3)
+  📊 Rumler Roulers: debt_breach_streak=0, transfer_frozen=false
+  🎓 Rumler Roulers: -15000 pts akademi-drift (3 pladser × 5000)
+  📊 Aquila–L3gatus Racing Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 Aquila–L3gatus Racing Team: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 Aquila–L3gatus Racing Team: -220000 pts upkeep (div 1)
+  🏗️ Aquila–L3gatus Racing Team: -9500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Aquila–L3gatus Racing Team: -2090 pts staff-sæsonløn (4 ansatte)
+  📊 Sunnyvale Cycling Club: debt_breach_streak=0, transfer_frozen=false
+  🏭 Sunnyvale Cycling Club: -20000 pts upkeep (div 3)
+  📊 Ciclismo 2640: debt_breach_streak=0, transfer_frozen=false
+  📊 Csilla ABC: debt_breach_streak=0, transfer_frozen=false
+  🏭 Csilla ABC: -20000 pts upkeep (div 3)
+  📊 Cycle street: debt_breach_streak=0, transfer_frozen=false
+  🎓 Cycle street: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 Cycle street: -70000 pts upkeep (div 2)
+  🏗️ Cycle street: -11500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Cycle street: -1364 pts staff-sæsonløn (2 ansatte)
+  📊 Guntzracing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Guntzracing: -20000 pts upkeep (div 3)
+  📊 Ballets Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Ballets Cycling: -20000 pts upkeep (div 3)
+  📊 Metro-L3: debt_breach_streak=0, transfer_frozen=false
+  🎓 Metro-L3: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Metro-L3: -70000 pts upkeep (div 2)
+  🏗️ Metro-L3: -16500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Metro-L3: -1432 pts staff-sæsonløn (2 ansatte)
+  📊 Guinness Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 Guinness Cycling Team: -10000 pts akademi-drift (2 pladser × 5000)
+  📊 Camargue Pro Cycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Camargue Pro Cycling: -20000 pts upkeep (div 3)
+  📊 Koben Racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 Koben Racing: -30000 pts akademi-drift (6 pladser × 5000)
+  🏭 Koben Racing: -20000 pts upkeep (div 3)
+  📊 Team Fakta: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Fakta: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Team Fakta: -70000 pts upkeep (div 2)
+  🏗️ Team Fakta: -18500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Team Fakta: -214 pts staff-sæsonløn (2 ansatte)
+  📊 Scallabis Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 Scallabis Cycling Team: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 Scallabis Cycling Team: -70000 pts upkeep (div 2)
+  🏗️ Scallabis Cycling Team: -1500 pts facilitets-upkeep (1 tracks)
+  🧑‍💼 Scallabis Cycling Team: -193 pts staff-sæsonløn (1 ansatte)
+  📊 Top Pro Cycling: debt_breach_streak=1, transfer_frozen=true
+  🎓 Top Pro Cycling: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 Top Pro Cycling: -20000 pts upkeep (div 3)
+  🏗️ Top Pro Cycling: -16000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Top Pro Cycling: -1205 pts staff-sæsonløn (2 ansatte)
+  📊 Slock Lyset: debt_breach_streak=0, transfer_frozen=false
+  🏭 Slock Lyset: -20000 pts upkeep (div 3)
+  📊 Sareas: debt_breach_streak=0, transfer_frozen=false
+  📊 Helmers: debt_breach_streak=0, transfer_frozen=false
+  🎓 Helmers: -10000 pts akademi-drift (2 pladser × 5000)
+  📊 Wander Riders: debt_breach_streak=0, transfer_frozen=false
+  🎓 Wander Riders: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Wander Riders: -220000 pts upkeep (div 1)
+  🏗️ Wander Riders: -60000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Wander Riders: -7264 pts staff-sæsonløn (3 ansatte)
+  📊 EvoPro: debt_breach_streak=0, transfer_frozen=false
+  🎓 EvoPro: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 EvoPro: -220000 pts upkeep (div 1)
+  🏗️ EvoPro: -11500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 EvoPro: -1133 pts staff-sæsonløn (2 ansatte)
+  📊 Fellaini Racing Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Fellaini Racing Team: -70000 pts upkeep (div 2)
+  📊 International Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 International Cycling Team: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 International Cycling Team: -70000 pts upkeep (div 2)
+  🏗️ International Cycling Team: -15000 pts facilitets-upkeep (1 tracks)
+  🧑‍💼 International Cycling Team: -1548 pts staff-sæsonløn (1 ansatte)
+  📊 Breda: debt_breach_streak=0, transfer_frozen=false
+  🏭 Breda: -70000 pts upkeep (div 2)
+  📊 Q365 Racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Q365 Racing: -20000 pts upkeep (div 3)
+  🏗️ Q365 Racing: -1500 pts facilitets-upkeep (1 tracks)
+  📊 Reynolds Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 Reynolds Team: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Reynolds Team: -70000 pts upkeep (div 2)
+  🏗️ Reynolds Team: -38000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Reynolds Team: -1802 pts staff-sæsonløn (2 ansatte)
+  📊 Frederixhavn BC: debt_breach_streak=0, transfer_frozen=false
+  🏗️ Frederixhavn BC: -1500 pts facilitets-upkeep (1 tracks)
+  📊 The Wheelbarrels: debt_breach_streak=0, transfer_frozen=false
+  🎓 The Wheelbarrels: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 The Wheelbarrels: -20000 pts upkeep (div 3)
+  🏗️ The Wheelbarrels: -30000 pts facilitets-upkeep (2 tracks)
+  📊 Hardly Athletic: debt_breach_streak=0, transfer_frozen=false
+  🎓 Hardly Athletic: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Hardly Athletic: -70000 pts upkeep (div 2)
+  🏗️ Hardly Athletic: -45000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Hardly Athletic: -9175 pts staff-sæsonløn (4 ansatte)
+  📊 Inuit Cycling: debt_breach_streak=0, transfer_frozen=false
+  📊 TeamEgebjerg: debt_breach_streak=0, transfer_frozen=false
+  🎓 TeamEgebjerg: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 TeamEgebjerg: -20000 pts upkeep (div 3)
+  🏗️ TeamEgebjerg: -16000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 TeamEgebjerg: -2201 pts staff-sæsonløn (4 ansatte)
+  📊 Piast Piastów: debt_breach_streak=0, transfer_frozen=false
+  📊 Rockets: debt_breach_streak=0, transfer_frozen=false
+  🎓 Rockets: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Rockets: -20000 pts upkeep (div 3)
+  🏗️ Rockets: -3000 pts facilitets-upkeep (2 tracks)
+  📊 UT RWANDA: debt_breach_streak=0, transfer_frozen=false
+  📊 Bhutan Egg Racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Bhutan Egg Racing: -20000 pts upkeep (div 3)
+  📊 Cana Climbers: debt_breach_streak=0, transfer_frozen=false
+  🏭 Cana Climbers: -20000 pts upkeep (div 3)
+  📊 Isaac racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Isaac racing: -20000 pts upkeep (div 3)
+  📊 UAE Team Emirates: debt_breach_streak=0, transfer_frozen=false
+  📊 Cycling Topper: debt_breach_streak=0, transfer_frozen=false
+  📊 Pfeiffer Dev: debt_breach_streak=0, transfer_frozen=false
+  📊 Sky Rats: debt_breach_streak=0, transfer_frozen=false
+  🏭 Sky Rats: -20000 pts upkeep (div 3)
+  📊 Viimsi Racing: debt_breach_streak=0, transfer_frozen=false
+  🏭 Viimsi Racing: -20000 pts upkeep (div 3)
+  📊 Festina Nissa: debt_breach_streak=0, transfer_frozen=false
+  🏭 Festina Nissa: -20000 pts upkeep (div 3)
+  📊 Team Easy-On: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Easy-On: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Team Easy-On: -220000 pts upkeep (div 1)
+  🏗️ Team Easy-On: -33500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Team Easy-On: -4786 pts staff-sæsonløn (4 ansatte)
+  📊 Summit Racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 Summit Racing: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Summit Racing: -20000 pts upkeep (div 3)
+  🏗️ Summit Racing: -3000 pts facilitets-upkeep (2 tracks)
+  📊 Dima Racing: debt_breach_streak=0, transfer_frozen=false
+  📊 AFJJ: debt_breach_streak=0, transfer_frozen=false
+  🎓 AFJJ: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 AFJJ: -20000 pts upkeep (div 3)
+  🏗️ AFJJ: -7000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 AFJJ: -1507 pts staff-sæsonløn (4 ansatte)
+  📊 Nordica: debt_breach_streak=0, transfer_frozen=false
+  🎓 Nordica: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Nordica: -20000 pts upkeep (div 3)
+  📊 Team Majer: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Majer: -5000 pts akademi-drift (1 pladser × 5000)
+  🏭 Team Majer: -70000 pts upkeep (div 2)
+  📊 Timmer Racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 Timmer Racing: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Timmer Racing: -20000 pts upkeep (div 3)
+  📊 North Sea Pro Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 North Sea Pro Cycling: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 North Sea Pro Cycling: -20000 pts upkeep (div 3)
+  🏗️ North Sea Pro Cycling: -11500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 North Sea Pro Cycling: -223 pts staff-sæsonløn (1 ansatte)
+  📊 Lidl–Leffe Pro Drinking: debt_breach_streak=0, transfer_frozen=false
+  🎓 Lidl–Leffe Pro Drinking: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Lidl–Leffe Pro Drinking: -70000 pts upkeep (div 2)
+  🏗️ Lidl–Leffe Pro Drinking: -18500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Lidl–Leffe Pro Drinking: -3890 pts staff-sæsonløn (3 ansatte)
+  📊 Test B: debt_breach_streak=0, transfer_frozen=false
+  🏭 Test B: -20000 pts upkeep (div 3)
+  📊 Slashska Cycling: debt_breach_streak=0, transfer_frozen=false
+  🎓 Slashska Cycling: -10000 pts akademi-drift (2 pladser × 5000)
+  🏭 Slashska Cycling: -20000 pts upkeep (div 3)
+  🏗️ Slashska Cycling: -3000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Slashska Cycling: -482 pts staff-sæsonløn (2 ansatte)
+  📊 Wielerploeg Onder Ons Parike: debt_breach_streak=0, transfer_frozen=false
+  🏗️ Wielerploeg Onder Ons Parike: -5000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Wielerploeg Onder Ons Parike: -346 pts staff-sæsonløn (1 ansatte)
+  📊 Bouboule Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Bouboule Team: -70000 pts upkeep (div 2)
+  📊 24/7 Aspire-Light Velo Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 24/7 Aspire-Light Velo Team: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 24/7 Aspire-Light Velo Team: -220000 pts upkeep (div 1)
+  🏗️ 24/7 Aspire-Light Velo Team: -33500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 24/7 Aspire-Light Velo Team: -3116 pts staff-sæsonløn (3 ansatte)
+  📊 The 3rd Leg of Lukaku: debt_breach_streak=0, transfer_frozen=false
+  🎓 The 3rd Leg of Lukaku: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 The 3rd Leg of Lukaku: -20000 pts upkeep (div 3)
+  🏗️ The 3rd Leg of Lukaku: -16000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 The 3rd Leg of Lukaku: -1771 pts staff-sæsonløn (2 ansatte)
+  📊 Guaracha Guerreros: debt_breach_streak=0, transfer_frozen=false
+  🎓 Guaracha Guerreros: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 Guaracha Guerreros: -220000 pts upkeep (div 1)
+  🏗️ Guaracha Guerreros: -23000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Guaracha Guerreros: -1910 pts staff-sæsonløn (3 ansatte)
+  📊 Minisize Biking: debt_breach_streak=0, transfer_frozen=false
+  🏭 Minisize Biking: -70000 pts upkeep (div 2)
+  🏗️ Minisize Biking: -18500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Minisize Biking: -1304 pts staff-sæsonløn (2 ansatte)
+  📊 Stella Artois Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🏭 Stella Artois Cycling Team: -20000 pts upkeep (div 3)
+  📊 Island Cycling Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 Island Cycling Team: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 Island Cycling Team: -20000 pts upkeep (div 3)
+  🏗️ Island Cycling Team: -3000 pts facilitets-upkeep (2 tracks)
+  📊 den usaltet smør: debt_breach_streak=0, transfer_frozen=false
+  🏭 den usaltet smør: -20000 pts upkeep (div 3)
+  🏗️ den usaltet smør: -45000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 den usaltet smør: -6439 pts staff-sæsonløn (4 ansatte)
+  📊 Purple Rain: debt_breach_streak=0, transfer_frozen=false
+  🏭 Purple Rain: -20000 pts upkeep (div 3)
+  📊 montísky: debt_breach_streak=0, transfer_frozen=false
+  🏭 montísky: -20000 pts upkeep (div 3)
+  📊 Air France-KLM Team: debt_breach_streak=0, transfer_frozen=false
+  🎓 Air France-KLM Team: -20000 pts akademi-drift (4 pladser × 5000)
+  🏭 Air France-KLM Team: -70000 pts upkeep (div 2)
+  📊 Squid Sycling: debt_breach_streak=0, transfer_frozen=false
+  🏭 Squid Sycling: -20000 pts upkeep (div 3)
+  📊 Borregaard Racing: debt_breach_streak=0, transfer_frozen=false
+  🎓 Borregaard Racing: -25000 pts akademi-drift (5 pladser × 5000)
+  🏭 Borregaard Racing: -70000 pts upkeep (div 2)
+  🏗️ Borregaard Racing: -38000 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Borregaard Racing: -3548 pts staff-sæsonløn (1 ansatte)
+  📊 Team Brennan: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Brennan: -35000 pts akademi-drift (7 pladser × 5000)
+  🏭 Team Brennan: -20000 pts upkeep (div 3)
+  📊 Red Bull - Robley - Rockets: debt_breach_streak=0, transfer_frozen=false
+  🏭 Red Bull - Robley - Rockets: -20000 pts upkeep (div 3)
+  📊 Bacon Fræsers: debt_breach_streak=0, transfer_frozen=false
+  🏭 Bacon Fræsers: -220000 pts upkeep (div 1)
+  🏗️ Bacon Fræsers: -18500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Bacon Fræsers: -4285 pts staff-sæsonløn (4 ansatte)
+  📊 Team Thybo: debt_breach_streak=0, transfer_frozen=false
+  🎓 Team Thybo: -40000 pts akademi-drift (8 pladser × 5000)
+  🏭 Team Thybo: -20000 pts upkeep (div 3)
+  🏗️ Team Thybo: -18500 pts facilitets-upkeep (2 tracks)
+  🧑‍💼 Team Thybo: -1434 pts staff-sæsonløn (4 ansatte)
+  📊 Hatestone Cycling Club: debt_breach_streak=0, transfer_frozen=false
+  🎓 Hatestone Cycling Club: -15000 pts akademi-drift (3 pladser × 5000)
+  🏭 Hatestone Cycling Club: -20000 pts upkeep (div 3)
+  ✅ Rytterudvikling: 6495 udviklet · 2464↑ 1930↓ · 31 pensioneret
+
+── PLAN ──────────────────────────────────────────────────────────
+  2 → 3   ·   hold påvirket: 214
+  Allerede transitioneret? ja (resume — idempotent)
+  Sponsor garanteret total: 78.15M pts  (27 låst · 57 valgt · 130 auto-default)
+  + signing-bonusser:       0.09M pts
+     TR Cycling                 div 1    0.77M  contract/default
+     Apex Cycling               div 1    0.77M  contract/default
+     Bad At Names               div 1    0.77M  contract/default
+     StormBreaker Continental Team div 2    0.52M  contract/default
+     Bacon Fræsers              div 1    0.52M  contract/pending
+
+── FASE-LOG (rigtig kørsel) ───────────────────────────────────────
+  ✅ insert_next_season
+  ⏭️  mark_previous_completed — already completed
+  • global_rank_decay
+  ⏭️  close_prev_transfer_window — already closed
+  ✅ insert_next_transfer_window
+  • sponsor_season_objectives
+  • sponsor_contracts_renewal
+  • ai_contract_auto_renewal
+  • contract_expiry_release
+  • sponsor_payout (214)
+  • season_payroll
+  • season_parachute (14)
+  • rider_progression
+  • retirement_release
+  • squad_below_minimum_check
+  • season_fatigue_reset
+  • season_form_reset
+  • manager_setup_carry_over
+  ✅ admin_log
+  • discord_broadcast
+  • season_started_notifications
+  • contract_expiring_notifications
+
+════════════════════════════════════════════════════════════════════════
+Transition UDFØRT.
+
