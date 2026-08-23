@@ -1,23 +1,23 @@
 #!/usr/bin/env node
-// endSeasonS2.mjs — generalprøve/cutover-script til S2→S3-skiftet 23/8 2026 (#4131 generalprøve, refs #3645 #4129).
+// endSeasonS2.mjs - generalprøve/cutover-script til S2→S3-skiftet 23/8 2026 (#4131 generalprøve, refs #3645 #4129).
 //
 // Spejler POST /api/admin/seasons/:id/end (backend/routes/api.js:9937) 1:1 for en
 // vilkårlig sæson-id, fordi cutover-sessionen kører season-end server-side i
 // stedet for over HTTP (samme begrundelse som forgængeren, se
 // .claude/learnings/2026-05-26-manual-season-flow-engine-divergence.md).
-// Ændres endpointet, DIFF dette script mod det igen før næste cutover — kopiér
+// Ændres endpointet, DIFF dette script mod det igen før næste cutover - kopiér
 // IKKE blindt.
 //
 // Bygget ved at kopiere backend/scripts/endSeason-2026-07-26-s1.mjs og
 // diffe linje for linje mod den nuværende /admin/seasons/:id/end (23/8):
 //
 //   1. #2847-claimet (season_end_claims, claimSeasonEndOrReject) er nyt siden
-//      26/7-scriptet — TILFØJET her. Uden det kan scriptet ikke skelnes fra
+//      26/7-scriptet - TILFØJET her. Uden det kan scriptet ikke skelnes fra
 //      en samtidig UI-klik, og en dobbelt-POST-beskyttelse mangler.
 //   2. Sæson 0-specialcasen ("skip processSeasonEnd") er bevaret fra endpointet
 //      for parameter-fidelitet, men er ikke relevant for S2 (season.number=2).
 //   3. Pending-race-results-tjekket bruger her (som i 26/7-scriptet) et
-//      SQL-join i stedet for `.in()` over race-UUID'er — samme PostgREST-
+//      SQL-join i stedet for `.in()` over race-UUID'er - samme PostgREST-
 //      gateway-URL-grænse (#3030/#3031) rammes ved S2's ~455 løb. Semantikken
 //      er identisk med endpointets `.in(raceIds)`.
 //   4. Alt andet (ensureSeasonStandings → updateStandings → processSeasonEnd →
@@ -29,7 +29,7 @@
 //   pwsh -File scripts/with-staging.ps1 -Command @("node","scripts/endSeasonS2.mjs","--season-id","00000000-0000-0000-0000-000000000002","--execute")
 //
 // Prod (i aften, ejer-gated): brug UI-knappen "⏹ Afslut" på /admin/season, ikke
-// dette script — scriptet er bygget til generalprøven mod staging, hvor UI'et
+// dette script - scriptet er bygget til generalprøven mod staging, hvor UI'et
 // ikke er forbundet. Se docs/2026-08-23-cutover-drejebog.md.
 
 import { createClient } from "@supabase/supabase-js";
@@ -86,12 +86,12 @@ if (pendingError) {
   process.exit(1);
 }
 if ((pendingCount || 0) > 0) {
-  console.error(`❌ ${pendingCount} afventende løbsresultater i sæsonen — STOP`);
+  console.error(`❌ ${pendingCount} afventende løbsresultater i sæsonen - STOP`);
   process.exit(1);
 }
 console.log(`Pending race results: 0 ✅`);
 
-// ── Gate 3: #2805-spærren (uafviklede løb) — samme kald som endpointet ──
+// ── Gate 3: #2805-spærren (uafviklede løb) - samme kald som endpointet ──
 const seasonEndBlockers = await assessSeasonEndBlockers({ supabase, seasonId: SEASON_ID });
 if (seasonEndBlockers.blocked) {
   console.error(`❌ #2805-spærre: ${seasonEndBlockers.detail}`);
@@ -101,11 +101,11 @@ if (seasonEndBlockers.blocked) {
 console.log(`#2805-spærre: grøn ✅`);
 
 if (!EXECUTE) {
-  console.log(`\n🟢 Dry-run færdig — alle gates grønne. Kør med --execute.`);
+  console.log(`\n🟢 Dry-run færdig - alle gates grønne. Kør med --execute.`);
   process.exit(0);
 }
 
-// ── Gate 4 (#2847): atomisk claim mod concurrent dobbelt-kørsel — spejler
+// ── Gate 4 (#2847): atomisk claim mod concurrent dobbelt-kørsel - spejler
 //    claimSeasonEndOrReject, men uden et Express `res`-objekt at skrive til.
 const { error: claimError } = await supabase
   .from("season_end_claims")
@@ -144,14 +144,14 @@ if (endError) {
   process.exit(1);
 }
 
-// logActivity("season_ended", ...) — samme insert som api.js' logActivity-helper.
+// logActivity("season_ended", ...) - samme insert som api.js' logActivity-helper.
 try {
   await supabase.from("activity_feed").insert({
     type: "season_ended",
     team_id: null, team_name: null, rider_id: null, rider_name: null, amount: null,
     meta: { season_id: season.id, season_number: season.number },
   });
-} catch { /* silent — never block main flow (spejler endpointet) */ }
+} catch { /* silent - never block main flow (spejler endpointet) */ }
 
 console.log(`→ Discord-broadcast (staging: blankes af with-staging.ps1's live-guard) ...`);
 try {
