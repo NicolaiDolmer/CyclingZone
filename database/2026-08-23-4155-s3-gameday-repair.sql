@@ -50,7 +50,7 @@ create table if not exists public.backup_4155_entries_removed (
 );
 
 -- ------------------------------------------- 1. final_plan (temp, hele t1-3)
-create temp table final_plan on commit drop as
+create temp table if not exists final_plan on commit drop as
 select s.race_id, s.stage_number,
        coalesce(c.new_at, s.scheduled_at) as new_at
 from public.race_stage_schedule s
@@ -183,7 +183,7 @@ left join (values
 ) as c(c_race, c_stage, new_at) on c.c_race = s.race_id and c.c_stage = s.stage_number
 where r.season_id = '00000000-0000-0000-0000-000000000003' and ld.tier in (1,2,3);
 
-alter table final_plan add column new_gd integer;
+alter table final_plan add column if not exists new_gd integer;
 update final_plan
    set new_gd = ((new_at at time zone 'Europe/Copenhagen')::date - date '2026-08-25');
 
@@ -209,7 +209,7 @@ end $$;
 -- kronologisk og efterlader ikke tomme felter. Manuelle entries (is_auto_filled=false)
 -- bevares; kun manuel-mod-manuel span-overlaps opløses grådigt (få; generatoren rører
 -- dem aldrig, og constrainten kan ikke genskabes med dem stående).
-create temp table race_spans on commit drop as
+create temp table if not exists race_spans on commit drop as
 select race_id, min(new_gd) as gd_lo, max(new_gd) as gd_hi,
        min(new_at) as race_start, count(*) as n_stages
 from final_plan group by race_id;
@@ -230,7 +230,7 @@ where rs.race_id = e.race_id and r.id = e.race_id
   and e.is_auto_filled = true and r.status = 'scheduled';
 
 -- 2b. Manuel-mod-manuel konflikter: grådig pr. rytter over FINALE spans.
-create temp table entry_ranges on commit drop as
+create temp table if not exists entry_ranges on commit drop as
 select e.race_id, e.rider_id, e.team_id, e.created_at as entry_created,
        rs.n_stages, rs.race_start, int4range(rs.gd_lo, rs.gd_hi, '[]') as span
 from public.race_entries e
@@ -240,12 +240,12 @@ where r.status <> 'completed'
   and not exists (select 1 from public.race_withdrawals w
                    where w.race_id = e.race_id and w.team_id = e.team_id);
 
-create temp table conflicted_riders on commit drop as
+create temp table if not exists conflicted_riders on commit drop as
 select distinct a.rider_id
 from entry_ranges a join entry_ranges b
   on a.rider_id = b.rider_id and a.race_id <> b.race_id and a.span && b.span;
 
-create temp table drop_entries (race_id uuid, rider_id uuid, team_id uuid) on commit drop;
+create temp table if not exists drop_entries (race_id uuid, rider_id uuid, team_id uuid) on commit drop;
 
 do $$
 declare
