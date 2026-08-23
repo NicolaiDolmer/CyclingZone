@@ -1245,16 +1245,27 @@ export async function payDivisionBonuses(standings, seasonId, supabaseClient) {
   // #2951: dedup-tjek mod finance_transactions — bundet af team-count pr.
   // sæson (≤367/1000 25/7), samme driver som season_standings. Pagineret via
   // fetchAllRows for at holde 1000-loft-klassen tom.
+  // Cutover-fund 23/8: dedup'en filtrerede kun på type='bonus' — men
+  // board_bonus_accepted/sponsor-bonusser bærer SAMME type, så ethvert hold der
+  // havde taget en bestyrelses-/sponsorbonus i sæsonen blev fejlagtigt sprunget
+  // over ved sæson-slut (12 hold / 825k i S2→S3, bl.a. begge D2-puljevindere).
+  // Filtrér på reason_code, som er unik for divisionsbonussen.
   const existingRows = await fetchAllRowsOrThrow(() => (
     supabaseClient
       .from("finance_transactions")
-      .select("team_id")
+      .select("team_id, reason_code")
       .eq("season_id", seasonId)
       .eq("type", "bonus")
       .order("id", { ascending: true })
   ), "Could not check existing division bonuses");
 
-  const alreadyPaid = new Set((existingRows || []).map(r => r.team_id));
+  // Klient-side reason_code-filter (frem for et tredje .eq) af hensyn til
+  // test-mocks; semantikken er den samme. Rækker uden reason_code (ældre
+  // sæsoner før auditen) tælles KONSERVATIVT som betalt for ikke at
+  // dobbelt-udbetale ved en genkørsel af en gammel sæson.
+  const alreadyPaid = new Set((existingRows || [])
+    .filter(r => r.reason_code == null || r.reason_code === FINANCE_REASON.SEASON_END_DIVISION_BONUS)
+    .map(r => r.team_id));
 
   for (const standing of standings || []) {
     if (!standing.team_id || standing.team?.is_ai) continue;

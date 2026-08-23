@@ -48,3 +48,31 @@ samme klasse af fallback bør få completed-fallback eller eksplicit parameter.
   Klassen "refresh skrev det væk igen" (#3449) ramte altså NÆSTEN igen — fanget før apply.
 
 Refs #3901 #3449 #4151 #4135
+
+## Fund 3 (spiller-rapporteret samme aften): divisionsbonussen kolliderede med bestyrelsesbonussen i TO lag
+
+**Symptom:** 12 hold (bl.a. begge D2-puljevindere + Wander Riders) fik ingen
+divisionsbonus ved sæson-slut; spillerne fangede det i #dansk-snak inden midnat.
+
+**Rod-årsag, to uafhængige lag med samme fejl:**
+1. `payDivisionBonuses`' dedup filtrerede på `type='bonus'` alene — en accepteret
+   bestyrelsesbonus (samme type) talte som "allerede betalt".
+2. DB-indekset `uniq_bonus_per_team_season` (partial unique på type='bonus')
+   blokerede INSERT'en selv efter kode-fixet.
+
+**Fix:** reason_code-filter i dedup'en + indeks erstattet med
+`uniq_division_bonus_per_team_season` (scoped på reason_code). Reparation:
+`scripts/dev/repairCutoverBonusAndRetiredSalary2308.mjs` (12 hold / 825k).
+
+**Generalisering:** når en ny skrivning genbruger en eksisterende `type`, skal
+BÅDE kode-dedups OG partial-unique-indekser på den type revideres. `type` er
+ikke en identitet; `reason_code` er.
+
+## Fund 4 (spiller-rapporteret): S3-løn trukket for ryttere der pensionerede i skiftet
+
+`season_payroll` (fase 6) løber FØR `rider_progression` (fase 13), så de 28
+ryttere der pensionerede i transitionen fik deres fulde S3-løn trukket hos
+26 hold (~103.700). Pension afgøres af den AFSLUTTEDE sæsons alder og er
+deterministisk FØR transitionen — payroll kunne ekskludere dem. Repareret med
+refusioner (samme script); varigt fix = ekskludér deterministisk-pensionerede
+i payroll ELLER flyt payroll efter progression (design-beslutning, ikke natten).
