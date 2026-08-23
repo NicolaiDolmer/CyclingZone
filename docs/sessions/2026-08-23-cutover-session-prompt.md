@@ -88,3 +88,12 @@ Læst i koden, ikke kørt. Verificér med dry-run før nogen handler:
 **Fælde i den oplagte løsning:** `backfillCores`' genberegningssti skriver også `base_value` (`:464`). Kører den efter c, kan den overskrive korrektionen. Rækkefølgen mellem c og en CPV-genberegning skal afklares med ejeren, ikke gættes.
 
 **Konkret at gøre:** dry-run løn-genberegningen FØR og EFTER dæmpnings-flippet og sammenlign medianerne pr. `valuation_type`. Er de identiske, er hullet bekræftet, og kæden må ikke køres videre uden en CPV-genberegning. Vis ejeren tallene og få et GO på hvordan.
+
+### Alder + progression: to fakta blokkeren skal ses i lyset af
+
+- **Alder er udledt, ikke lagret.** `ageForSeason(birthdate, seasonNumber) = 2026 + (N-1) - fødselsår` (`riderSeasonAge.js:41`). Alle ryttere bliver et år ældre i det øjeblik transitionen gør S3 aktiv — ingen kolonne opdateres. Pension måles på den AFSLUTTEDE sæsons alder (S2).
+- **Progressionen skriver `current_production_value` om.** `riderProgressionEngine.js:226` opdaterer CPV for hver aktiv rytter hver sæson, og fasen kører INDE i transitionen, EFTER `season_payroll`.
+
+Konsekvens for kæden: CPV bliver skrevet om under transitionen uanset hvad der sker før. Køres løn-genberegningen før transitionen, fryses lønnen på CPV fra før progressionen og på S2-alder. Det er konsistent med at løn er frossen ved underskrift og ikke følger alder — men bekræft det med dry-run-tal, antag det ikke.
+
+Det rejser også spørgsmålet om progressionens egen CPV-beregning går gennem `applyTypeDampening()`. Gør den det, opdaterer transitionen selv CPV med dæmpningen — og så ser hullet ovenfor anderledes ud. **Afklar dette FØR kæden køres.** Det er ét grep + ét dry-run, ikke en antagelse der må bæres videre.
