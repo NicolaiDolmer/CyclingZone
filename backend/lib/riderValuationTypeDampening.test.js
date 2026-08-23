@@ -18,20 +18,23 @@ import { regularizeOffset as harnessRegularizeOffset } from "../scripts/dev/lib/
 
 // ── Flag-gate (den vigtigste test i denne fil — "må ikke ændre live-adfærd
 // før flip") ─────────────────────────────────────────────────────────────────
-test("#4000 TYPE_DAMPENING_ENABLED er FALSE — må kun flippes til true ved ejer-godkendt cutover, SAMMEN med #3449-c", () => {
-  assert.equal(TYPE_DAMPENING_ENABLED, false);
+test("#4000 TYPE_DAMPENING_ENABLED er TRUE — flippet 23/8 ved ejer-godkendt cutover, SAMMEN med #3449-c", () => {
+  assert.equal(TYPE_DAMPENING_ENABLED, true);
 });
 
 test("#4000 TYPE_DAMPENING_OFFSET_K er 100 — ejerens godkendte scorecard-anbefaling (20/8, #4003)", () => {
   assert.equal(TYPE_DAMPENING_OFFSET_K, 100);
 });
 
-test("applyTypeDampening: no-op når disabled — returnerer SAMME reference, ingen kopi", () => {
+test("applyTypeDampening: enabled (flip 23/8) — returnerer en NY model med dæmpet offset, input urørt", () => {
   const model = {
     fit: { offset: { puncheur: 2.071, gc: 0.463 }, alpha: 1, a: 1, b: 1 },
     type_stats: { puncheur: { n: 19 }, gc: { n: 34 } },
   };
-  assert.equal(applyTypeDampening(model), model);
+  const out = applyTypeDampening(model);
+  assert.notEqual(out, model);
+  assert.equal(model.fit.offset.puncheur, 2.071, "input må ikke muteres");
+  assert.ok(out.fit.offset.puncheur < 1, `puncheur-offset skal være dæmpet, fik ${out.fit.offset.puncheur}`);
 });
 
 test("applyTypeDampening: null/manglende model håndteres uden at kaste", () => {
@@ -113,10 +116,9 @@ test("applyTypeDampening() sammensætter fit.offset præcis som regularizeOffset
     model.fit.offset, model.type_stats, TYPE_DAMPENING_OFFSET_K, TYPE_DAMPENING_NORMALIZATION
   );
   const expectedModel = { ...model, fit: { ...model.fit, offset: expectedOffset } };
-  // Disabled i dag ⇒ applyTypeDampening returnerer INPUT, ikke expectedModel —
-  // dokumenterer eksplicit hvad der ændrer sig NÅR flippet sker.
-  assert.notDeepEqual(applyTypeDampening(model), expectedModel);
-  assert.equal(applyTypeDampening(model), model);
+  // Flippet 23/8 ⇒ applyTypeDampening returnerer den dæmpede model, ikke input.
+  assert.deepEqual(applyTypeDampening(model), expectedModel);
+  assert.notEqual(applyTypeDampening(model), model);
 });
 
 // ── Normalisering (sum-neutralitet, fundet + rettet 21/8) ────────────────────

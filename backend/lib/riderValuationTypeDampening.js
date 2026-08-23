@@ -24,7 +24,7 @@
 // MÅ IKKE sættes til true uden ejerens eksplicitte go PÅ cutover-tidspunktet
 // (dvs. SAMMEN med #3449-c, ikke før).
 export const TYPE_DAMPENING_OFFSET_K = 100;
-export const TYPE_DAMPENING_ENABLED = false;
+export const TYPE_DAMPENING_ENABLED = true; // FLIPPET 23/8: ejer-go sammen med #3449-c (cutover-dagen)
 
 // Sum-neutraliserings-faktoren. Doktrinen bag ejer-godkendelsen 20/8 er at
 // dæmpningen flytter FORDELINGEN mellem typer, ikke NIVEAUET
