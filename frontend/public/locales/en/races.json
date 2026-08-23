@@ -1021,7 +1021,7 @@
       "long_climb": "Summit finish",
       "descent": "Downhill finish",
       "solo_tt": "Solo time trial",
-      "breakaway": "Breakaway"
+      "breakaway": "Breakaway-friendly"
     },
     "finaleTypeHint": {
       "bunch_sprint": "The peloton stays together and the stage is decided in a mass sprint.",
@@ -1030,7 +1030,7 @@
       "long_climb": "Summit finish: the climb itself is the finish line, opening the biggest time gaps of the day.",
       "descent": "The finish comes after a descent, giving chasers a chance to close back down before the line.",
       "solo_tt": "Every rider starts alone against the clock, no drafting.",
-      "breakaway": "An early escape group stays clear of the peloton and contests the win among themselves."
+      "breakaway": "Terrain that favours an early escape. Whether it stays away is decided on the road, not here."
     },
     "route": {
       "stats": {
