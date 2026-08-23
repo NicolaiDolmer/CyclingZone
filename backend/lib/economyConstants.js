@@ -48,7 +48,12 @@ export const PARACHUTE_FACTOR = 0.5;
 // moneySupplyScorecard --synthetic. Præmie er det blødeste input — se scorecard-noten.
 // #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21 — MÅ IKKE ÆNDRES):
 // tier 4 upkeep = 0 (ingen gold sink i bunden — sponsoren bærer hele break-even-balancen).
-export const UPKEEP_BY_DIVISION = { 1: 440000, 2: 140000, 3: 40000, 4: 0 };
+// EJER-BESLUTNING 23/8 (cutover-aftenen, S3): halveret 440k/140k/40k → 220k/70k/20k.
+// Målt: med 440k ville ~5 nyoprykkede D1-hold starte S3 i minus (upkeep + hele
+// sæsonlønnen trækkes upfront i fase 6, mens præmier først kommer løbende; 5 D1-hold
+// har flerårige D2/D3-sponsoraftaler der ikke genforhandles ved skiftet). Fuld
+// kurve-kalibrering mod målt S3-data: #3720 (S4-satserne sættes dér).
+export const UPKEEP_BY_DIVISION = { 1: 220000, 2: 70000, 3: 20000, 4: 0 };
 
 // #1441 Fase 1 — FINAL sponsor-payout-loft (post board_modifier × pullout).
 // S2+ = D1 750k gross × 1.2 = 900k; S1/intro = D1 600k gross × 1.2 = 720k.

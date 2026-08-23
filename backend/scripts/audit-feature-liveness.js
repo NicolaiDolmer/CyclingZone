@@ -102,13 +102,8 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // Forum v1 (#3199): alle fem entries fjernet 7/8 — spillerne tog forummet i
   // brug første døgn (posts/replies/votes/reports har alle rows). Auditen
   // dækker dem igen.
-  // season_form_reset_runs (#3249/PR #3271, merged natbølge 4/8): claim-tabel
-  // mod dobbelt-decay i seasonFormReset. Skrives FØRST ved sæsonskifte med
-  // season_form_reset_mode='decay' (tidligst S2→S3-cutoveren 23/8) — kan ikke
-  // flag-gates i FLAG_GATED_EMPTY_TABLES, for mode ER allerede 'decay' mens
-  // tabellen korrekt er tom indtil transitionen. Samme klasse som hall_of_fame.
-  // Fjern entry når tabellen har rows (efter 23/8).
-  "season_form_reset_runs",
+  // season_form_reset_runs: fjernet 23/8 — S2→S3-cutoveren skrev den første
+  // claim-række, auditen dækker tabellen igen.
   // email_log (#2725/#2853): var her som en manuel "jeg tjekkede engang"-entry.
   // Flyttet 26/7 (#2985) til FLAG_GATED_EMPTY_TABLES — samme mekanisme som
   // academy_season_intake_runs. Se den registrering for den fulde forklaring;
@@ -147,8 +142,8 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // ryttertype-beslutningen i #3570 (se PR-tråden), så 0 rows er den korrekte,
   // forventede tilstand indtil ejeren aktivt fyrer korrektionen. Fjern begge
   // entries den dag scriptet er kørt og tabellerne har rows.
-  "market_value_level_correction_apply_log",
-  "market_value_level_correction_rider_receipts",
+  // (Begge fjernet 23/8: korrektionen (c=0,811) blev fyret på ejer-GO under
+  // cutoveren — apply_log og receipts har rows, auditen dækker dem igen.)
 ]);
 
 // PERMANENTE tom-tabel-suppressioner (fjernes ALDRIG ved rows — tom = sund

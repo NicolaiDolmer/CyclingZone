@@ -1,0 +1,259 @@
+
+════════════════════════════════════════════════════════════════════════════════════
+S2→S3 PYRAMIDE-KOMPRIMERING MED D1 (#3901) 🟢 DRY-RUN (read-only)
+════════════════════════════════════════════════════════════════════════════════════
+Kilde-sæson: #2 (status='active', id=00000000-0000-0000-0000-000000000002)
+Motor-flag season_end_skip_division_movement: 'off'
+ℹ️  Flaget står 'off' — helt normalt for en dry-run kørt i god tid før cutover. Skal sættes 'on' FØR selve "Afslut sæson" (se drejebogs-instruktion i bunden af dette output).
+Managerhold: 214 af 365 · global_rank_mv-rækker: 214 · countback-rækker: 581812 · puljer: 15
+
+── NAVNGIVEN TOP 24 → DIVISION 1 (ejer-godkendelse) ──
+    1  Wander Riders                 31017.5 gp  synlig rang 1     D3/Division 3 — D → D1  ⬆ OP
+    2  NewE Pro Cycling                19554 gp  synlig rang 2     D2/Division 2 — A → D1  ⬆ OP
+    3  LEGO-Vestas Cycling Team      18946.5 gp  synlig rang 3     D2/Division 2 — B → D1  ⬆ OP
+    4  L’Échappée du Soleil          18891.5 gp  synlig rang 4     D2/Division 2 — B → D1  ⬆ OP
+    5  Équipe Lorraine Acier         18649.5 gp  synlig rang 5     D2/Division 2 — A → D1  ⬆ OP
+    6  Nickstar Rockets                18380 gp  synlig rang 6     D3/Division 3 — C → D1  ⬆ OP
+    7  Team Easy-On                    17025 gp  synlig rang 7     D2/Division 2 — B → D1  ⬆ OP
+    8  Vallados del Sur                15704 gp  synlig rang 8     D3/Division 3 — B → D1  ⬆ OP
+    9  Team Hansen Pro Cycling         13576 gp  synlig rang 9     D2/Division 2 — A → D1  ⬆ OP
+   10  De lokale tosser              13189.5 gp  synlig rang 10    D2/Division 2 — B → D1  ⬆ OP
+   11  24/7 Aspire-Light Velo Team   13029.5 gp  synlig rang 11    D3/Division 3 — B → D1  ⬆ OP
+   12  Bacon Fræsers                   11807 gp  synlig rang 12    D2/Division 2 — A → D1  ⬆ OP
+   13  Bad At Names                    11548 gp  synlig rang 13    D3/Division 3 — A → D1  ⬆ OP
+   14  Franks Arme                     10121 gp  synlig rang 14    D3/Division 3 — B → D1  ⬆ OP
+   15  Xtreme Noob                      9676 gp  synlig rang 15    D3/Division 3 — C → D1  ⬆ OP
+   16  Pro Cycling Team                 8229 gp  synlig rang 16    D2/Division 2 — A → D1  ⬆ OP
+   17  Aquila–L3gatus Racing Team     8204.5 gp  synlig rang 17    D2/Division 2 — B → D1  ⬆ OP
+   18  De Cyklende Ulve               8045.5 gp  synlig rang 18    D3/Division 3 — A → D1  ⬆ OP
+   19  Guaracha Guerreros             6860.5 gp  synlig rang 19    D2/Division 2 — B → D1  ⬆ OP
+   20  TR Cycling                     6543.5 gp  synlig rang 20    D2/Division 2 — A → D1  ⬆ OP
+   21  EvoPro                         6264.5 gp  synlig rang 21    D2/Division 2 — A → D1  ⬆ OP
+   22  Chuchiet                       6039.5 gp  synlig rang 22    D2/Division 2 — B → D1  ⬆ OP
+   23  Atom Bikers                    5995.5 gp  synlig rang 23    D3/Division 3 — A → D1  ⬆ OP
+   24  Apex Cycling                   5973.5 gp  synlig rang 24    D2/Division 2 — A → D1  ⬆ OP
+
+── PULJE-FORDELING D2/D3/D4 (rank · hold · global point · fra → til) ──
+   25  RaceGen Cycling Team             5917 gp  D2/Division 2 — B → D2/Division 2 — A ↔ pul
+   26  Team CSC                       5883.5 gp  D3/Division 3 — D → D2/Division 2 — B ⬆ OP 
+   27  A-PEX VELO                     5736.5 gp  D2/Division 2 — A → D2/Division 2 — B ↔ pul
+   28  Team WolkerWessels               5627 gp  D2/Division 2 — A → D2/Division 2 — A   =  
+   29  Liska                            5590 gp  D3/Division 3 — B → D2/Division 2 — A ⬆ OP 
+   30  Saint-Claire-Viateur           5141.5 gp  D2/Division 2 — B → D2/Division 2 — B   =  
+   31  GFDJ                             4898 gp  D4/Division 4 — F → D2/Division 2 — B ⬆ OP 
+   32  Hardly Athletic                  4788 gp  D2/Division 2 — A → D2/Division 2 — A   =  
+   33  Suconia STNS Cycling Team        4758 gp  D2/Division 2 — B → D2/Division 2 — A ↔ pul
+   34  Breakaway Bandits              4607.5 gp  D3/Division 3 — C → D2/Division 2 — B ⬆ OP 
+   35  martharacing                   4522.5 gp  D3/Division 3 — C → D2/Division 2 — B ⬆ OP 
+   36  Liams Geder                      4405 gp  D2/Division 2 — A → D2/Division 2 — A   =  
+   37  Team Fakta                     4259.5 gp  D4/Division 4 — A → D2/Division 2 — A ⬆ OP 
+   38  Verstappen racing                4169 gp  D3/Division 3 — A → D2/Division 2 — B ⬆ OP 
+   39  Beers & Gears                    3695 gp  D4/Division 4 — C → D2/Division 2 — B ⬆ OP 
+   40  West Racing Team UK            3662.5 gp  D3/Division 3 — D → D2/Division 2 — A ⬆ OP 
+   41  Team Majer                       3610 gp  D4/Division 4 — G → D2/Division 2 — A ⬆ OP 
+   42  Borregaard Racing                3579 gp  D2/Division 2 — B → D2/Division 2 — B   =  
+   43  Scuderia Domingo                 3561 gp  D3/Division 3 — B → D2/Division 2 — B ⬆ OP 
+   44  Cycle street                     3412 gp  D2/Division 2 — B → D2/Division 2 — A ↔ pul
+   45  Scallabis Cycling Team         3383.5 gp  D3/Division 3 — A → D2/Division 2 — A ⬆ OP 
+   46  Minisize Biking                3290.5 gp  D2/Division 2 — B → D2/Division 2 — B   =  
+   47  Lidl–Leffe Pro Drinking          3008 gp  D2/Division 2 — A → D2/Division 2 — B ↔ pul
+   48  International Cycling Team       2984 gp  D4/Division 4 — B → D2/Division 2 — A ⬆ OP 
+   49  Palantir Pro Cyling              2971 gp  D2/Division 2 — A → D2/Division 2 — A   =  
+   50  Universal Cycling                2762 gp  D3/Division 3 — A → D2/Division 2 — B ⬆ OP 
+   51  RMF Pro Athletic               2749.5 gp  D2/Division 2 — A → D2/Division 2 — B ↔ pul
+   52  Easy Riders                    2731.5 gp  D3/Division 3 — C → D2/Division 2 — A ⬆ OP 
+   53  Air France-KLM Team              2708 gp  D3/Division 3 — C → D2/Division 2 — A ⬆ OP 
+   54  Team Discover                  2684.5 gp  D3/Division 3 — A → D2/Division 2 — B ⬆ OP 
+   55  StormBreaker Continental Team   2661.5 gp  D3/Division 3 — D → D2/Division 2 — B ⬆ OP 
+   56  BPTrain                          2538 gp  D4/Division 4 — D → D2/Division 2 — A ⬆ OP 
+   57  Team UNIQLO                    2500.5 gp  D2/Division 2 — B → D2/Division 2 — A ↔ pul
+   58  Reynolds Team                    2496 gp  D2/Division 2 — A → D2/Division 2 — B ↔ pul
+   59  Indeso                         2465.5 gp  D3/Division 3 — C → D2/Division 2 — B ⬆ OP 
+   60  Cadenza Comoda Pro Cycling     2385.5 gp  D2/Division 2 — B → D2/Division 2 — A ↔ pul
+   61  Fellaini Racing Team             2316 gp  D3/Division 3 — A → D2/Division 2 — A ⬆ OP 
+   62  Bouboule Team                    2292 gp  D3/Division 3 — A → D2/Division 2 — B ⬆ OP 
+   63  Metro-L3                       2280.5 gp  D2/Division 2 — B → D2/Division 2 — B   =  
+   64  Chris Machines                 2201.5 gp  D2/Division 2 — B → D2/Division 2 — A ↔ pul
+   65  Team Riskær                      2201 gp  D3/Division 3 — D → D2/Division 2 — A ⬆ OP 
+   66  Aron Pro Cycling                 2197 gp  D2/Division 2 — B → D2/Division 2 — B   =  
+   67  Trader Joe / Schwan’s            2159 gp  D3/Division 3 — A → D2/Division 2 — B ⬆ OP 
+   68  Team Velocity One                2128 gp  D3/Division 3 — A → D2/Division 2 — A ⬆ OP 
+   69  Liverpool Racing                 2127 gp  D4/Division 4 — C → D2/Division 2 — A ⬆ OP 
+   70  Breda                          2073.5 gp  D3/Division 3 — D → D2/Division 2 — B ⬆ OP 
+   71  MatsenSid                        2045 gp  D3/Division 3 — A → D2/Division 2 — B ⬆ OP 
+   72  GA$$A RACING                     1986 gp  D3/Division 3 — C → D2/Division 2 — A ⬆ OP 
+   73  Summit Racing                  1969.5 gp  D2/Division 2 — A → D3/Division 3 — A ⬇ NED
+   74  Zeitgeist racing team          1922.5 gp  D3/Division 3 — C → D3/Division 3 — B ↔ pul
+   75  Team Brennan                   1911.5 gp  D2/Division 2 — B → D3/Division 3 — C ⬇ NED
+   76  Sigaard Cycling                  1876 gp  D2/Division 2 — A → D3/Division 3 — D ⬇ NED
+   77  Wandlitz Racing                1757.5 gp  D3/Division 3 — A → D3/Division 3 — D ↔ pul
+   78  Q365 Racing                    1749.5 gp  D3/Division 3 — C → D3/Division 3 — C   =  
+   79  Guds hånd                      1689.5 gp  D3/Division 3 — A → D3/Division 3 — B ↔ pul
+   80  Thoms tropper                    1636 gp  D2/Division 2 — A → D3/Division 3 — A ⬇ NED
+   81  Isaac racing                     1594 gp  D3/Division 3 — B → D3/Division 3 — A ↔ pul
+   82  Team Velux                       1576 gp  D3/Division 3 — A → D3/Division 3 — B ↔ pul
+   83  North Sea Pro Cycling          1549.5 gp  D2/Division 2 — A → D3/Division 3 — C ⬇ NED
+   84  Timmer Racing                  1530.5 gp  D3/Division 3 — A → D3/Division 3 — D ↔ pul
+   85  puckpuckpuck                   1520.5 gp  D2/Division 2 — B → D3/Division 3 — D ⬇ NED
+   86  Quercy-Gel Team                  1517 gp  D3/Division 3 — A → D3/Division 3 — C ↔ pul
+   87  TeebsteebsTeam                   1462 gp  D3/Division 3 — A → D3/Division 3 — B ↔ pul
+   88  Red Bull - Robley - Rockets    1442.5 gp  D3/Division 3 — D → D3/Division 3 — A ↔ pul
+   89  Sky Racing                       1411 gp  D3/Division 3 — C → D3/Division 3 — A ↔ pul
+   90  Prema                            1408 gp  D4/Division 4 — G → D3/Division 3 — B ⬆ OP 
+   91  Lip Air France Team            1398.5 gp  D3/Division 3 — C → D3/Division 3 — C   =  
+   92  Slashska Cycling                 1391 gp  D2/Division 2 — A → D3/Division 3 — D ⬇ NED
+   93  Kemphanen Cycling Team           1331 gp  D3/Division 3 — D → D3/Division 3 — D   =  
+   94  Island Cycling Team              1323 gp  D4/Division 4 — H → D3/Division 3 — C ⬆ OP 
+   95  Kimi racing                    1299.5 gp  D3/Division 3 — A → D3/Division 3 — B ↔ pul
+   96  AFJJ                             1242 gp  D4/Division 4 — E → D3/Division 3 — A ⬆ OP 
+   97  The Morse Codes                1232.5 gp  D3/Division 3 — D → D3/Division 3 — A ↔ pul
+   98  Krapouchi Cycling Team           1223 gp  D3/Division 3 — B → D3/Division 3 — B   =  
+   99  Oranje babies                  1182.5 gp  D3/Division 3 — D → D3/Division 3 — C ↔ pul
+  100  Guntzracing                    1181.5 gp  D3/Division 3 — B → D3/Division 3 — D ↔ pul
+  101  Time-Out Hooligans               1180 gp  D4/Division 4 — G → D3/Division 3 — D ⬆ OP 
+  102  Marco Cycling                  1174.5 gp  D2/Division 2 — B → D3/Division 3 — C ⬇ NED
+  103  Team Thybo                     1169.5 gp  D2/Division 2 — A → D3/Division 3 — B ⬇ NED
+  104  Stella Artois Cycling Team     1156.5 gp  D3/Division 3 — C → D3/Division 3 — A ↔ pul
+  105  Fish racing                    1120.5 gp  D3/Division 3 — D → D3/Division 3 — A ↔ pul
+  106  Bhutan Egg Racing                1117 gp  D3/Division 3 — B → D3/Division 3 — B   =  
+  107  Nordica                          1110 gp  D3/Division 3 — B → D3/Division 3 — C ↔ pul
+  108  Csilla ABC                       1094 gp  D3/Division 3 — B → D3/Division 3 — D ↔ pul
+  109  De Opwijkse Pedaalstoempers      1090 gp  D4/Division 4 — E → D3/Division 3 — D ⬆ OP 
+  110  Parfek                         1085.5 gp  D3/Division 3 — D → D3/Division 3 — C ↔ pul
+  111  Remco Goat                       1082 gp  D3/Division 3 — C → D3/Division 3 — B ↔ pul
+  112  Squid Sycling                    1078 gp  D3/Division 3 — C → D3/Division 3 — A ↔ pul
+  113  The 3rd Leg of Lukaku            1077 gp  D4/Division 4 — F → D3/Division 3 — A ⬆ OP 
+  114  martha racing                    1054 gp  D3/Division 3 — B → D3/Division 3 — B   =  
+  115  Team Brutaliste                  1041 gp  D2/Division 2 — B → D3/Division 3 — C ⬇ NED
+  116  Purple Rain                      1030 gp  D3/Division 3 — C → D3/Division 3 — D ↔ pul
+  117  1ei                            1028.5 gp  D2/Division 2 — A → D3/Division 3 — D ⬇ NED
+  118  Swatt Team                     1023.5 gp  D3/Division 3 — D → D3/Division 3 — C ↔ pul
+  119  Silveracers                      1013 gp  D3/Division 3 — C → D3/Division 3 — B ↔ pul
+  120  Koben Racing                     1011 gp  D4/Division 4 — D → D3/Division 3 — A ⬆ OP 
+  121  Viimsi Racing                    1009 gp  D3/Division 3 — B → D3/Division 3 — A ↔ pul
+  122  Hatestone Cycling Club            995 gp  D3/Division 3 — D → D3/Division 3 — B ↔ pul
+  123  MMDH Cycling Team               992.5 gp  D3/Division 3 — D → D3/Division 3 — C ↔ pul
+  124  CSM Unirea                        981 gp  D3/Division 3 — A → D3/Division 3 — D ↔ pul
+  125  Equipo Kern Pharma                980 gp  D3/Division 3 — D → D3/Division 3 — D   =  
+  126  Sunnyvale Cycling Club            972 gp  D3/Division 3 — D → D3/Division 3 — C ↔ pul
+  127  Corratec                        929.5 gp  D3/Division 3 — D → D3/Division 3 — B ↔ pul
+  128  Slock Lyset                       924 gp  D3/Division 3 — C → D3/Division 3 — A ↔ pul
+  129  Team Bucovina                     912 gp  D3/Division 3 — B → D3/Division 3 — A ↔ pul
+  130  Team Holly                      909.5 gp  D3/Division 3 — C → D3/Division 3 — B ↔ pul
+  131  Top Pro Cycling                 883.5 gp  D2/Division 2 — B → D3/Division 3 — C ⬇ NED
+  132  Team Craft - Postnord             849 gp  D2/Division 2 — B → D3/Division 3 — D ⬇ NED
+  133  Tuft cycling                    842.5 gp  D3/Division 3 — B → D3/Division 3 — D ↔ pul
+  134  Pattex Cycling Team             836.5 gp  D3/Division 3 — B → D3/Division 3 — C ↔ pul
+  135  Mexica Velo                       829 gp  D4/Division 4 — H → D3/Division 3 — B ⬆ OP 
+  136  Euskaltel-Euskadi               797.5 gp  D3/Division 3 — A → D3/Division 3 — A   =  
+  137  Pruffolini                      776.5 gp  D2/Division 2 — A → D3/Division 3 — A ⬇ NED
+  138  De Saltede Guder                  776 gp  D4/Division 4 — H → D3/Division 3 — B ⬆ OP 
+  139  The Wheelbarrels                  767 gp  D3/Division 3 — C → D3/Division 3 — C   =  
+  140  Festina Nissa                     767 gp  D3/Division 3 — D → D3/Division 3 — D   =  
+  141  Underdogz ApS                     760 gp  D3/Division 3 — B → D3/Division 3 — D ↔ pul
+  142  Hopplà Team                       755 gp  D3/Division 3 — D → D3/Division 3 — C ↔ pul
+  143  Ponot Cycling                     745 gp  D4/Division 4 — D → D3/Division 3 — B ⬆ OP 
+  144  Les flandriens                    744 gp  D3/Division 3 — A → D3/Division 3 — A   =  
+  145  Team Lea                          742 gp  D3/Division 3 — B → D3/Division 3 — A ↔ pul
+  146  Rockets                           741 gp  D3/Division 3 — C → D3/Division 3 — B ↔ pul
+  147  ADM Cycling                       739 gp  D4/Division 4 — H → D3/Division 3 — C ⬆ OP 
+  148  Efapel cycling                    729 gp  D4/Division 4 — E → D3/Division 3 — D ⬆ OP 
+  149  Uni team                        705.5 gp  D3/Division 3 — C → D3/Division 3 — D ↔ pul
+  150  The wild ducks                    693 gp  D3/Division 3 — A → D3/Division 3 — C ↔ pul
+  151  COURTEMANCHE                    680.5 gp  D3/Division 3 — B → D3/Division 3 — B   =  
+  152  lopel racing                      643 gp  D4/Division 4 — E → D3/Division 3 — A ⬆ OP 
+  153  Camargue Pro Cycling              632 gp  D4/Division 4 — E → D3/Division 3 — A ⬆ OP 
+  154  den usaltet smør                  630 gp  D4/Division 4 — C → D3/Division 3 — B ⬆ OP 
+  155  Sportivianna DeLuxe               630 gp  D4/Division 4 — D → D3/Division 3 — C ⬆ OP 
+  156  Visma LAB                         623 gp  D4/Division 4 — E → D3/Division 3 — D ⬆ OP 
+  157  montísky                        616.5 gp  D3/Division 3 — C → D3/Division 3 — D ↔ pul
+  158  TeamEgebjerg                      579 gp  D4/Division 4 — D → D3/Division 3 — C ⬆ OP 
+  159  Camp Cycling Team               571.5 gp  D3/Division 3 — A → D3/Division 3 — B ↔ pul
+  160  Sky Rats                        571.5 gp  D3/Division 3 — D → D3/Division 3 — A ↔ pul
+  161  Cana Climbers                     561 gp  D4/Division 4 — C → D3/Division 3 — A ⬆ OP 
+  162  Talentfabrikken                   554 gp  D4/Division 4 — B → D3/Division 3 — B ⬆ OP 
+  163  Frigo cycling                     535 gp  D3/Division 3 — B → D3/Division 3 — C ↔ pul
+  164  Team BRND                       533.5 gp  D3/Division 3 — C → D3/Division 3 — D ↔ pul
+  165  Falcor Cycling                    524 gp  D4/Division 4 — F → D3/Division 3 — D ⬆ OP 
+  166  Ballets Cycling                   511 gp  D4/Division 4 — H → D3/Division 3 — C ⬆ OP 
+  167  One Two Three Cycling Club        481 gp  D4/Division 4 — G → D3/Division 3 — B ⬆ OP 
+  168  Johans drenge                     479 gp  D4/Division 4 — H → D3/Division 3 — A ⬆ OP 
+  169  Xtrona Race Club (Vitrona)        473 gp  D4/Division 4 — C → D4/Division 4 — A ↔ pul
+  170  Wielerploeg Onder Ons Parike      465 gp  D4/Division 4 — F → D4/Division 4 — B ↔ pul
+  171  Team Niller                     457.5 gp  D3/Division 3 — D → D4/Division 4 — B ⬇ NED
+  172  Tom Tom                           454 gp  D4/Division 4 — F → D4/Division 4 — A ↔ pul
+  173  UAE Team Emirates                 452 gp  D4/Division 4 — F → D4/Division 4 — A ↔ pul
+  174  Pfeiffer Dev                      433 gp  D3/Division 3 — B → D4/Division 4 — B ⬇ NED
+  175  Romelu racing                     403 gp  D4/Division 4 — H → D4/Division 4 — B ↔ pul
+  176  Cycl'evo                          398 gp  D4/Division 4 — G → D4/Division 4 — A ↔ pul
+  177  TUN Racing                      383.5 gp  D3/Division 3 — D → D4/Division 4 — A ⬇ NED
+  178  Ardennaise Pro Cycling Team       376 gp  D3/Division 3 — D → D4/Division 4 — B ⬇ NED
+  179  Beany riders                    371.5 gp  D3/Division 3 — B → D4/Division 4 — B ⬇ NED
+  180  Feyenoord                         366 gp  D4/Division 4 — G → D4/Division 4 — A ↔ pul
+  181  Inuit Cycling                     343 gp  D3/Division 3 — B → D4/Division 4 — A ⬇ NED
+  182  Superholdet                       320 gp  D4/Division 4 — E → D4/Division 4 — B ↔ pul
+  183  c_02                              272 gp  D4/Division 4 — D → D4/Division 4 — B ↔ pul
+  184  Team spirit                       272 gp  D4/Division 4 — F → D4/Division 4 — A ↔ pul
+  185  Cycling Topper                  257.5 gp  D3/Division 3 — B → D4/Division 4 — A ⬇ NED
+  186  Finset Outboard                   237 gp  D4/Division 4 — B → D4/Division 4 — B   =  
+  187  Apotekets drenge                  218 gp  D4/Division 4 — E → D4/Division 4 — B ↔ pul
+  188  gramodier union team              217 gp  D4/Division 4 — H → D4/Division 4 — A ↔ pul
+  189  Trululu La Guacamaya              212 gp  D4/Division 4 — A → D4/Division 4 — A   =  
+  190  UT RWANDA                         200 gp  D4/Division 4 — C → D4/Division 4 — B ↔ pul
+  191  Helmers                           188 gp  D4/Division 4 — C → D4/Division 4 — B ↔ pul
+  192  Torpedo Zaffelare               181.5 gp  D4/Division 4 — A → D4/Division 4 — A   =  
+  193  Jean-Luc                          169 gp  D4/Division 4 — A → D4/Division 4 — A   =  
+  194  African Cycling Project           146 gp  D4/Division 4 — A → D4/Division 4 — B ↔ pul
+  195  Guinness Cycling Team           137.5 gp  D4/Division 4 — B → D4/Division 4 — B   =  
+  196  HWT Rockets                     131.5 gp  D4/Division 4 — A → D4/Division 4 — A   =  
+  197  Ciclismo 2640                     128 gp  D4/Division 4 — D → D4/Division 4 — A ↔ pul
+  198  JDG                               115 gp  D4/Division 4 — C → D4/Division 4 — B ↔ pul
+  199  Nexora Technologies               109 gp  D4/Division 4 — G → D4/Division 4 — B ↔ pul
+  200  nomatic racing                    104 gp  D4/Division 4 — A → D4/Division 4 — A   =  
+  201  SJ racing                          85 gp  D4/Division 4 — E → D4/Division 4 — A ↔ pul
+  202  Kelme Cycling Team                 82 gp  D4/Division 4 — B → D4/Division 4 — B   =  
+  203  Red Corsairs                     78.5 gp  D4/Division 4 — B → D4/Division 4 — B   =  
+  204  Nike Specialized                   75 gp  D4/Division 4 — G → D4/Division 4 — A ↔ pul
+  205  Dima Racing                        50 gp  D4/Division 4 — D → D4/Division 4 — A ↔ pul
+  206  Fucking bikers                     41 gp  D4/Division 4 — C → D4/Division 4 — B ↔ pul
+  207  Frederixhavn BC                    31 gp  D4/Division 4 — B → D4/Division 4 — B   =  
+  208  Chilihvidløg                       29 gp  D4/Division 4 — A → D4/Division 4 — A   =  
+  209  Crowther Racing                  22.5 gp  D4/Division 4 — B → D4/Division 4 — A ↔ pul
+  210  Nordic Vikings                     14 gp  D4/Division 4 — B → D4/Division 4 — B   =  
+  211  Piast Piastów                       8 gp  D4/Division 4 — F → D4/Division 4 — B ↔ pul
+  212  Sareas                              5 gp  D4/Division 4 — A → D4/Division 4 — A   =  
+  213  Rumler Roulers                      5 gp  D4/Division 4 — F → D4/Division 4 — A ↔ pul
+  214  Team Baghjul                        4 gp  D4/Division 4 — D → D4/Division 4 — B ↔ pul
+
+  Netto: 77 op · 21 ned · 82 pulje-skift (samme division) · 34 uændret
+
+── CUTLINE-KONTEKST + TIE-SITUATIONER ──
+  Cutline 24: Apex Cycling (5973.5 gp, rang 24) vs RaceGen Cycling Team (5917 gp, rang 25) — margin 56.5 gp
+  Cutline 72: GA$$A RACING (1986 gp, rang 72) vs Summit Racing (1969.5 gp, rang 73) — margin 16.5 gp
+  Cutline 168: Johans drenge (479 gp, rang 168) vs Xtrona Race Club (Vitrona) (473 gp, rang 169) — margin 6 gp
+  I alt 5 pointgruppe(r) med 2+ hold på samme global_points i hele feltet (afgjort af countback/navn/id).
+
+── AI-FYLD (target efter flytning vs. AI-hold i puljen NU — reconcileAiTeamsForPool udfører dette ved --apply) ──
+  D1 Division 1     ægte 24 · AI nu 24 → target  0  (−24 viger)
+  D4 Division 4 — A ægte 23 · AI nu 15 → target  1  (−14 viger)
+  D4 Division 4 — B ægte 23 · AI nu 15 → target  1  (−14 viger)
+  D4 Division 4 — C ægte  0 · AI nu 15 → target  0  (−15 viger)
+  D4 Division 4 — D ægte  0 · AI nu 15 → target  0  (−15 viger)
+  D4 Division 4 — E ægte  0 · AI nu 15 → target  0  (−15 viger)
+  D4 Division 4 — F ægte  0 · AI nu 15 → target  0  (−15 viger)
+  D4 Division 4 — G ægte  0 · AI nu 16 → target  0  (−16 viger)
+  D4 Division 4 — H ægte  0 · AI nu 16 → target  0  (−16 viger)
+
+  I alt: 144 AI-hold viger (heraf 24 fra D1, når alle 24 pladser fyldes af ægte hold) · 0 AI-hold skal genereres andetsteds.
+
+📄 Snapshot skrevet: C:\Dev\CyclingZone\docs\snapshots\3901\dry-run-2026-08-23.json
+📄 Opsummering skrevet: C:\Dev\CyclingZone\docs\snapshots\3901\dry-run-2026-08-23.md
+
+🟢 Dry-run færdig — ingen writes.
+
+DREJEBOG:
+  1. Sæt season_end_skip_division_movement='on' i app_config — FØR "Afslut sæson".
+  2. Klik "Afslut sæson" (sæson #2 → 'completed').
+  3. Kør denne komprimering med --apply --snapshot=C:\Dev\CyclingZone\docs\snapshots\3901\dry-run-2026-08-23.json (regenerér FØRST hvis der er gået tid/flere løb — se cutline-note).
+  4. Kør transitionen.
+  5. Sæt season_end_skip_division_movement='off' EFTER transitionen (#2164).

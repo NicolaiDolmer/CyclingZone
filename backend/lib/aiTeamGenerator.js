@@ -439,11 +439,31 @@ async function removeAiTeams(supabase, aiTeams, count) {
     const watchedRiders = await fetchAllRows(() => supabase
       .from("riders").select("id, firstname, lastname").in("team_id", batch)
       .order("id", { ascending: true }));
-    const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
-    if (rErr) throw new Error(`AI-rider delete: ${rErr.message}`);
+    // Cutover-fix 23/8: authenticator-rollen har statement_timeout=8s, og én
+    // DELETE på 500+ ryttere (FK-kaskader til resultater/entries/watchlists)
+    // sprænger den (målt: 503 ryttere i D1-reconcilen → "canceling statement
+    // due to statement timeout"). Slet derfor i id-bidder på 100 — samme
+    // slutresultat, hvert statement langt under grænsen.
+    const riderIds = (watchedRiders || []).map((r) => r.id);
+    for (let j = 0; j < riderIds.length; j += 100) {
+      const idChunk = riderIds.slice(j, j + 100);
+      const { error: rErr } = await supabase.from("riders").delete().in("id", idChunk);
+      if (rErr) throw new Error(`AI-rider delete (chunk ${j / 100 + 1}): ${rErr.message}`);
+    }
+    // Belt-and-suspenders: ryttere uden for watchedRiders-selectet (må ikke
+    // findes, men en race mellem select og delete skal ikke efterlade forældre-
+    // løse rækker når holdene slettes nedenfor).
+    const { error: rRestErr } = await supabase.from("riders").delete().in("team_id", batch);
+    if (rRestErr) throw new Error(`AI-rider delete (rest): ${rRestErr.message}`);
     await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
-    const { error: tErr } = await supabase.from("teams").delete().in("id", batch);
-    if (tErr) throw new Error(`AI-team delete: ${tErr.message}`);
+    // 3 hold pr. statement: hvert hold kaskade-sletter historik (player_events,
+    // board_satisfaction_events, finance_transactions m.fl., ~2-3k raekker/hold)
+    // — 25 ad gangen sprang stadig 8s-grænsen (målt 23/8).
+    for (let j = 0; j < batch.length; j += 3) {
+      const teamChunk = batch.slice(j, j + 3);
+      const { error: tErr } = await supabase.from("teams").delete().in("id", teamChunk);
+      if (tErr) throw new Error(`AI-team delete (chunk ${Math.floor(j / 3) + 1}): ${tErr.message}`);
+    }
   }
   return toRemove.length;
 }

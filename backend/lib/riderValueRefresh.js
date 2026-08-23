@@ -116,7 +116,7 @@ async function writeUpdates(supabase, updates) {
 // Genberegn type+base_value+current_production_value for (evt. ét holds) ryttere;
 // skriv kun de ændrede. baseline/model defaulter fra de committede JSON-filer
 // (som runBaseValueBackfill).
-export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, log = noop, teamId } = {}) {
+export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, log = noop, teamId, seasonNumber: seasonNumberOverride } = {}) {
   const bl = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
   // #3570: OPT-IN via param, samme mønster som backfillCores.js — produktionens
   // CLI/sweep-callere sender ikke youthBaseline eksplicit og får derfor den
@@ -131,10 +131,25 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const m = model || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
 
   // v4-alder forankres i den aktive sæson (samme ageForSeason som progression).
-  const { data: season, error: seasonErr } = await supabase
-    .from("seasons").select("number").eq("status", "active").maybeSingle();
-  if (seasonErr) throw new Error(`value-refresh season lookup: ${seasonErr.message}`);
-  const seasonNumber = season?.number ?? 1;
+  // Cutover-fix 23/8: mellem "Afslut sæson" og transitionen er der INGEN aktiv
+  // sæson, og '?? 1' ankrede hele populationen ét år for ungt (Riva 4,17M i
+  // stedet for de ejer-godkendte 3,74M). seasonNumberOverride lader cutover-
+  // værktøjet ankre eksplicit; fallback uden aktiv sæson er nu seneste
+  // completed sæson (aldrig 1).
+  let seasonNumber = Number(seasonNumberOverride) || null;
+  if (!seasonNumber) {
+    const { data: season, error: seasonErr } = await supabase
+      .from("seasons").select("number").eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`value-refresh season lookup: ${seasonErr.message}`);
+    seasonNumber = season?.number ?? null;
+  }
+  if (!seasonNumber) {
+    const { data: lastDone, error: doneErr } = await supabase
+      .from("seasons").select("number").eq("status", "completed")
+      .order("number", { ascending: false }).limit(1).maybeSingle();
+    if (doneErr) throw new Error(`value-refresh season lookup (completed): ${doneErr.message}`);
+    seasonNumber = lastDone?.number ?? 1;
+  }
 
   const riderQuery = () => {
     // #3345: valuation_type (den FROSNE type) skal med i selectet — recomputeRiderValue
