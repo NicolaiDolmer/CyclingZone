@@ -21,7 +21,7 @@
 
 > **🧭 Planning Center: spec EJER-GODKENDT 21/8** — [superpowers/specs/2026-08-21-planning-center-fase2-design.md](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5; byg tidligst efter v4-gaten). **A6 AFGJORT 21/8: kalender-fanen består; Z1 v0 Season-visningen er shippet** (#4083). §3.4+§3.5 udført. Åbent: #3990-resten. Ny: #4076 (stående ordrer P3).
 >
-> **✅ KALENDER-APPLY GENNEMFØRT 23/8 kl. 00:32** via workflow `season3-calendar-apply.yml` (dispatch, ejer-gated). Verificeret mod prod: 471 løb, 28 dage 25/8-21/9, maks 4 GT-etaper/dag, Giro 6 dage, monumenter 255-290 km, ingen delt GT-dag. Snapshot af den gamle kalender ligger som artifact (90 dage).
+> **✅ KALENDER-APPLY 23/8 kl. 00:32** (`season3-calendar-apply.yml`, ejer-gated). Re-verificeret 23/8 11:40 efter #4130: 471 løb, **28 dage** 25/8-21/9, maks 4 GT-etaper/dag, Giro 6 dage, monumenter 255-290 km. Gammel kalender som artifact (90 dage).
 
 > **🤖 Ingen aktiv session.** Discord-triage + loft-analyse 23/8 lukket: sweep → #4124 (sæsonskifte-tidslinje), #4125 (divisions-upkeep) · **#4098 verificeret i data: 353 unge ryttere på 124 af 362 hold står "done" ~65 pt under eget maks-loft** (climbing værst; loft-19 = aldersnedskrivning fra 27 år, ikke evne-specifikt) · nyt #4128 (evne fastlåst under loft, 16 uforklarede) **planlagt men IKKE udført**: akkumulerer dagsudbyttet? start `dailyTrainingEngine.js` + `riderProgression.js:89`; `ability_progress` er kandidat-akkumulator · **ejer-klik venter:** thelamba-svaret i `docs/discord/2026-08-23-gt-dagsform-svar-thelamba.md`.
 
