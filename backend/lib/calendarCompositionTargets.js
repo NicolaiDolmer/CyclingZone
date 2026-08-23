@@ -246,3 +246,107 @@ export function detectCompositionViolations({
 
   return { rows, violations };
 }
+
+// ── #4103 (ejer-beslutning 23/8) — UNIFORM PR.-TIER MÅL for ITT/brosten/high_mountain ──
+//
+// PROBLEMET: S3's D3-verifikation (#4103) fandt at ITT/brosten/high_mountain-andelene
+// spredte sig VOLDSOMT på tværs af de 4 tiers, langt ud over hvad KB_TARGET/
+// TIER_COMPOSITION_TOLERANCE_PP ovenfor accepterer som "katalog-loft" — fx ITT fra
+// 1,8 % (tier 4) til 15,5 % (tier 3). Ejeren besluttede SAMME mål i alle divisioner
+// (ikke KB-schemaets sæson-aggregat med tier-specifik tolerance): ITT 10 % · brosten
+// 5 % · high_mountain 12 %, målt som andel af DIVISIONENS EGNE løbsdage (alle etaper
+// inkl. endagsløb i nævneren, samme nævner som computeCompositionStats ovenfor).
+//
+// FORSKELLEN til KB_TARGET/PROFILE_TO_CATEGORY ovenfor:
+//   1) KB's "mountain"-kategori lægger mountain+high_mountain sammen (§ #3295-
+//      beslutningen "gameplay-oplevet kuperet/bjerg"); denne måling holder
+//      high_mountain ADSKILT fra almindelig mountain — #4103 handler specifikt om
+//      SUMMIT-tætheden, ikke den bredere bjerg-familie.
+//   2) KB's tolerance er PR.-TIER DATA (kalibreret til den nuværende, skæve plan —
+//      se TIER_COMPOSITION_TOLERANCE_PP's docstring). #4103's pointe er netop at
+//      tier-spredningen IKKE længere skal accepteres for disse 3 kategorier — samme
+//      mål, samme (lave) tolerance for alle fire tiers.
+//   3) itt her tæller BÅDE "itt" og "itt_hilly" (en GT's anden enkeltstart, #3546 D) —
+//      begge er tidskørsler i spillerens oplevelse, samme gruppering compositionCategory
+//      bruger for "itt"-kategorien ovenfor.
+//
+// SCOPE: dette er en MÅLE-/scorecard-kontrakt (bruges af
+// scripts/dev/recomposeSeason3Stages4103.mjs's dry-run-rapport og kan genbruges af en
+// fremtidig efterverifikation). Den er IKKE koblet ind i ARCHETYPE_PROFILES's
+// filler-vægte endnu — at kalibrere generatoren så FREMTIDIGE sæsoner rammer disse tal
+// af sig selv (uden en engangs-DB-patch som #4103's) er en opfølgende opgave, ikke
+// del af denne fils scope.
+export const TIER_UNIFORM_TARGET_CATEGORIES = Object.freeze(["itt", "cobbles", "high_mountain"]);
+
+// Fraktion (0-1) af divisionens løbsdage, samme for alle tiers (ejer-beslutning 23/8).
+export const TIER_UNIFORM_TARGET_FRACTIONS = Object.freeze({ itt: 0.10, cobbles: 0.05, high_mountain: 0.12 });
+
+// Tolerance i procentpoint — samme lave tolerance for alle tiers (modsat
+// TIER_COMPOSITION_TOLERANCE_PP's pr.-tier-skala ovenfor): #4103's hele pointe er at
+// tiers IKKE længere må sprede sig efter katalog-tilfældigheder for disse 3 kategorier.
+export const TIER_UNIFORM_TOLERANCE_PP = 2;
+
+/**
+ * Tæl løbsdage pr. #4103-kategori (itt inkl. itt_hilly, cobbles, high_mountain) for ét
+ * sæt genererede løb — samme input-form som computeCompositionStats (races med
+ * .stages[].profile_type), men grupperingen er #4103's egen (se docstring ovenfor),
+ * IKKE PROFILE_TO_CATEGORY. Ren funktion — ingen DB/RNG.
+ *
+ * @param {Array<{stages: Array<{profile_type: string}>}>} races
+ * @returns {{raceDays:number, counts:object, pct:object}}
+ */
+export function computeUniformTierStats(races = []) {
+  const counts = Object.fromEntries(TIER_UNIFORM_TARGET_CATEGORIES.map((c) => [c, 0]));
+  let raceDays = 0;
+  for (const r of races) {
+    for (const s of Array.isArray(r?.stages) ? r.stages : []) {
+      raceDays += 1;
+      const pt = s?.profile_type;
+      if (pt === "itt" || pt === "itt_hilly") counts.itt += 1;
+      else if (pt === "cobbles") counts.cobbles += 1;
+      else if (pt === "high_mountain") counts.high_mountain += 1;
+    }
+  }
+  const pct = Object.fromEntries(
+    TIER_UNIFORM_TARGET_CATEGORIES.map((c) => [c, raceDays > 0 ? (100 * counts[c]) / raceDays : 0])
+  );
+  return { raceDays, counts, pct };
+}
+
+/**
+ * Det TALMÆSSIGE mål (antal løbsdage, ikke pp) for én #4103-kategori i en division med
+ * `raceDays` løbsdage i alt. Rundet til nærmeste heltal (almindelig afrunding, .5 op).
+ * Rene divisioner (`raceDays`=0) giver 0.
+ */
+export function uniformTargetCount(raceDays, category) {
+  const fraction = TIER_UNIFORM_TARGET_FRACTIONS[category] ?? 0;
+  return raceDays > 0 ? Math.round(raceDays * fraction) : 0;
+}
+
+/**
+ * Sammenlign stats mod #4103's uniforme mål. Samme rows/violations-facon som
+ * detectCompositionViolations ovenfor (rows for ALLE kategorier, violations kun for brud).
+ *
+ * @param {{stats:object, label?:string, tolerancePp?:number}} args
+ */
+export function detectUniformTierViolations({ stats, label = "division", tolerancePp = TIER_UNIFORM_TOLERANCE_PP } = {}) {
+  const rows = [];
+  const violations = [];
+  if (!stats) return { rows, violations };
+
+  for (const cat of TIER_UNIFORM_TARGET_CATEGORIES) {
+    const goalPct = (TIER_UNIFORM_TARGET_FRACTIONS[cat] ?? 0) * 100;
+    const actual = stats.pct[cat] ?? 0;
+    const delta = actual - goalPct;
+    const pass = Math.abs(delta) <= tolerancePp + 1e-9;
+    rows.push({ category: cat, target: goalPct, actual, delta, tolerance: tolerancePp, pass });
+    if (!pass) {
+      violations.push(
+        `${label}: ${cat} ${actual.toFixed(1)} % mod mål ${goalPct.toFixed(1)} % ` +
+        `(afvigelse ${delta >= 0 ? "+" : ""}${delta.toFixed(1)} pp, tolerance ±${tolerancePp.toFixed(1)} pp) (#4103)`
+      );
+    }
+  }
+
+  return { rows, violations };
+}
