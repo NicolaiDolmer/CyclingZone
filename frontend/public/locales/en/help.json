@@ -583,6 +583,18 @@
       "adminBetaReset": {
         "title": "Admin: beta reset",
         "text": "Under Admin, Beta test tools admin can run a partial reset or a full test reset. The suite can cancel open market activity, return manager riders to the AI/free pool, reset balances, divisions, boards, race calendar, seasons, XP/level and achievement unlocks. AI teams, bank teams and frozen teams are not affected by the manager resets."
+      },
+      "seasonChangeover": {
+        "title": "What happens to your riders at season changeover",
+        "steps": [
+          "Every rider ages up by one year.",
+          "Form decays toward 50: about 25% of each rider's end-of-season form carries into the new season.",
+          "Fatigue resets to 0 for every rider.",
+          "Injuries are NOT reset. They carry over unchanged.",
+          "Peak plans are unaffected by the changeover.",
+          "Wages and rider values update on the Sunday of changeover.",
+          "The new season's first race day is a Tuesday. The Monday before it has no races."
+        ]
       }
     },
     "prizes": {

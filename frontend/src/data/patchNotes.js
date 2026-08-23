@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.172",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Browse next season's race calendar, and a clearer planning board",
+          "body": "The Season view now has a picker to browse next season's calendar before it goes live, plus a short note on what changes at changeover (age, form, fatigue, injuries, wages). Going back from a race now returns to the day you were on. Each race also gets its own Clear selection button."
+        },
+        "da": {
+          "title": "Bladr i næste sæsons løbsprogram, og et tydeligere planlægningsboard",
+          "body": "Sæson-visningen har nu en vælger til at bladre i næste sæsons kalender, før den går live, plus en kort boks om hvad der ændrer sig ved sæsonskiftet (alder, form, træthed, skader, løn). Tilbage fra et løb lander nu på den dag du kom fra. Hvert løb har desuden sin egen Ryd udtagelse-knap."
+        },
+        "refs": [4102, 4124, 3954, 3428]
+      }
+    ]
+  },
+  {
     "version": "7.171",
     "date": "2026-08-23",
     "label": "Beta",

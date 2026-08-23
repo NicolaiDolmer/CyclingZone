@@ -187,6 +187,9 @@ const SECTION_DEFS = [
     Icon: FlagIcon,
     blocks: [
       { id: "seasonFlow", kind: "steps" },
+      // #4124: sæsonskiftets konsekvenser pr. rytter — kort version på
+      // Season-visningen (SeasonChangeoverNote), fuld forklaring her.
+      { id: "seasonChangeover", kind: "steps" },
       { id: "racesAndResults", kind: "text" },
       // #3858: Race Centre-siden (v7.140) — dagens løb samlet ét sted.
       { id: "raceCentre", kind: "text" },

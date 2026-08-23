@@ -36,7 +36,7 @@ function RoleBadge({ t, role }) {
 // #2819: dataTour sættes kun på brættets FØRSTE kolonne, så onboarding-touren
 // på /races har et stabilt anker at pege på (samme "kun første række"-mønster som
 // AuctionsPage's data-tour="auctions-bid-input").
-export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour }) {
+export default function RaceColumn({ column, onRemoveRider, onClearSelection, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour, boardState = null }) {
   const { t } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
@@ -98,7 +98,7 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
           egen interaktive flade — den var aldrig død, så den er urørt. */}
       <RaceLink
         id={column.id}
-        state={{ from: "board" }}
+        state={{ from: "board", ...boardState }}
         data-testid="race-column-open"
         aria-label={t("racehub.column.openRace", { name: column.name })}
         className="group block p-3 border-b border-cz-border cursor-pointer transition-colors hover:bg-cz-subtle/60"
@@ -215,7 +215,15 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
         </div>
       ) : null}
 
-      <div className="p-2 border-t border-cz-border flex items-center justify-end">
+      <div className="p-2 border-t border-cz-border flex items-center justify-between gap-2">
+        {/* #3428: "Ryd udtagelse" manglede pr. løb — kun × pr. rytter fandtes. Kun kladde-
+            operation (samme mønster som × og "Ryd dag"): rammer ikke serveren før Gem. */}
+        {!locked && !column.withdrawn && selectedIds.length > 0 ? (
+          <button type="button" onClick={() => onClearSelection?.(column.id)} disabled={busy}
+            className="text-xs text-cz-3 hover:text-cz-danger disabled:opacity-40 disabled:cursor-not-allowed">
+            {t("racehub.column.clearSelection")}
+          </button>
+        ) : <span />}
         <button type="button" onClick={() => onToggleWithdraw(column.id, !column.withdrawn)} disabled={busy || locked}
           className="text-xs text-cz-3 hover:text-cz-1 disabled:opacity-40 disabled:cursor-not-allowed">
           {column.withdrawn ? t("racehub.column.reenter") : t("racehub.column.withdraw")}

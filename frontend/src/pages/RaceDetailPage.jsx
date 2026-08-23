@@ -486,8 +486,18 @@ export default function RaceDetailPage() {
 
   // Kontekst-bevarende tilbage-link (board/dashboard/arkiv).
   // #3102 etape 2: arkivet er en fane i Resultat-hubben nu, ikke på /races.
+  // #3954: "board" pegede stadig på det nedlagte "/races" — det ruter videre
+  // via RacesLegacyRedirect til /resultater (glemt ved #3102-flytningen), så
+  // tilbage fra et løb åbnet på boardet landede i Resultater i stedet for
+  // Planlægnings-hubbens Holdudtagelse-fane. Peger nu direkte på fanen, og
+  // bevarer dag/scope fra RaceColumn's link-state så man lander på PRÆCIS den
+  // dag man kom fra, ikke boardets default-dag.
   const backFrom = location.state?.from;
-  const backTo = backFrom === "board" ? "/races" : backFrom === "dashboard" ? "/dashboard" : "/resultater?tab=archive";
+  const backDay = Number.isFinite(location.state?.day) ? location.state.day : null;
+  const backScope = location.state?.scope;
+  const backTo = backFrom === "board"
+    ? `/planning?tab=selection${backDay != null ? `&day=${backDay}` : ""}${backScope && backScope !== "mine" ? `&scope=${backScope}` : ""}`
+    : backFrom === "dashboard" ? "/dashboard" : "/resultater?tab=archive";
   const backLabel = backFrom ? t("detail.back") : t("detail.backToLibrary");
 
   // Endeligt klassement pr. type = rækkerne ved højeste etape-nummer for den type

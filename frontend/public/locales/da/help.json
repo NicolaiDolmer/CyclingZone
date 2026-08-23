@@ -583,6 +583,18 @@
       "adminBetaReset": {
         "title": "Admin: beta-reset",
         "text": "Under Admin, Beta-testværktøjer kan admin køre del-reset eller fuld test-reset. Suiten kan annullere åbne markedsaktiviteter, returnere manager-ryttere til AI/fri pulje, nulstille balancer, divisioner, bestyrelser, løbskalender, sæsoner, XP/level og achievement unlocks. AI-hold, bank-hold og frosne hold påvirkes ikke af manager-resettene."
+      },
+      "seasonChangeover": {
+        "title": "Hvad sker der med dine ryttere ved sæsonskiftet",
+        "steps": [
+          "Alle ryttere bliver ét år ældre.",
+          "Formen decayer mod 50: cirka 25% af hver rytters slutform følger med ind i den nye sæson.",
+          "Træthed nulstilles til 0 for alle ryttere.",
+          "Skader nulstilles IKKE. De følger med uændret.",
+          "Peak-planer påvirkes ikke af sæsonskiftet.",
+          "Løn og rytterværdier opdateres søndag ved sæsonskiftet.",
+          "Den nye sæsons første løbsdag er en tirsdag. Mandagen før er løbsfri."
+        ]
       }
     },
     "prizes": {

@@ -116,6 +116,22 @@ export default function RaceHubBoard() {
   const columns = data.columns || [];
   const roster = columns[0]?.riders || [];
 
+  // #3428: "hvor mange løb/ryttere rammer 'Ryd dag'?" var uklart ved overlappende
+  // løb. Talt fra de ikke-afmeldte kolonner der faktisk har en udtagelse lige nu
+  // (kladde hvis der er én, ellers server) — samme sæt "Ryd dag" rammer.
+  const dayClearImpact = (() => {
+    const raceIds = new Set();
+    const riderIds = new Set();
+    for (const c of columns) {
+      if (c.withdrawn) continue;
+      const ids = drafts[c.id]?.rider_ids || c.selection?.rider_ids || [];
+      if (!ids.length) continue;
+      raceIds.add(c.id);
+      for (const id of ids) riderIds.add(id);
+    }
+    return { races: raceIds.size, riders: riderIds.size };
+  })();
+
   // Fælles mutations-wrapper: tjek res.ok, surfacér fejlkode (+ evt. params til ICU-
   // beskeden, fx min/max ved selection_wrong_size), re-hent (rollback) bagefter.
   async function mutate(req, errParams = {}) {
@@ -302,6 +318,14 @@ export default function RaceHubBoard() {
       free_role_ids: (cur.free_role_ids || []).filter((id) => id !== riderId),
     });
   };
+  // #3428: "Ryd udtagelse" pr. løb — samme kladde-mønster som removeRider,
+  // bare hele trinen på én gang. Ingen bekræftelse (kladden er ikke gemt før
+  // "Gem ændringer", og "Kassér" fortryder hele kladden i ét klik).
+  const clearColumnSelection = (raceId) => {
+    const col = columns.find((c) => c.id === raceId);
+    if (!col) return;
+    commitDraft(col, { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [] });
+  };
 
   // Klik rytter → rolle: ryd rytteren fra alle roller, sæt den valgte. Kaptajn er
   // påkrævet, så hvis vi rydder kaptajnen uden at sætte en ny, falder vi tilbage til
@@ -366,7 +390,7 @@ export default function RaceHubBoard() {
   // "Ryd dag" (scope=day) er uændret — det er ikke kilden til den observerede hændelse.
   function clearSquad(scope) {
     if (scope !== "all") {
-      if (!window.confirm(t("racehub.clearDayWarn"))) return;
+      if (!window.confirm(t("racehub.clearDayWarn", dayClearImpact))) return;
       mutate((headers) =>
         fetch(`${API}/api/races/distribution/clear?day=${day}&scope=day`, { method: "POST", headers }))
         .then(() => setDrafts({}));
@@ -527,10 +551,10 @@ export default function RaceHubBoard() {
                 )}
                 <div className="grid sm:grid-cols-2 gap-3">
                   {g.columns.map((c, ci) => (
-                    <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
+                    <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
                       onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
                       raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
-                      dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} />
+                      dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
                   ))}
                 </div>
               </div>
@@ -538,15 +562,15 @@ export default function RaceHubBoard() {
           ) : (
             <div className="grid sm:grid-cols-2 gap-3 mb-4">
               {effectiveColumns.map((c, ci) => (
-                <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
+                <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
                   onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
                   raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
-                  dataTour={ci === 0 ? "races-column" : undefined} />
+                  dataTour={ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
               ))}
             </div>
           )}
           <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={liveBindingMap}
-            seasonLoadByRider={data.seasonLoadByRider || {}}
+            seasonLoadByRider={data.seasonLoadByRider || {}} dayClearImpact={dayClearImpact}
             onAddRiderToRace={addRider} onRegenerate={regenerate} onClearSquad={clearSquad} busy={busy}
             onDropRider={(raw) => handleDrop("pool", null, raw)} />
         </>

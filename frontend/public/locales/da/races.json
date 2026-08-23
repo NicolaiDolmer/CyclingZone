@@ -31,7 +31,28 @@
     },
     "empty": "Ingen løb på kalenderen endnu",
     "error": "Sæsonkalenderen kunne ikke hentes. Intet er gået tabt. Prøv igen.",
-    "retry": "Prøv igen"
+    "retry": "Prøv igen",
+    "picker": {
+      "ariaLabel": "Sæson",
+      "current": "Sæson {number} (aktuel)",
+      "upcoming": "Sæson {number} (kommende)",
+      "previous": "Sæson {number} (forrige)"
+    },
+    "startsOn": "Starter {date}",
+    "readOnlyHint": "Skrivebeskyttet forhåndsvisning. Redigering åbner automatisk når sæsonen bliver aktiv.",
+    "changeover": {
+      "title": "Hvad ændrer sig ved sæsonskiftet",
+      "items": {
+        "age": "Ryttere bliver ét år ældre",
+        "form": "Formen decayer mod 50 (cirka 25% følger med)",
+        "fatigue": "Træthed nulstilles til 0",
+        "injuries": "Skader nulstilles ikke",
+        "peaks": "Peak-planer er uændrede",
+        "wages": "Løn og rytterværdier opdateres søndag"
+      },
+      "firstRaceDay": "Første løbsdag: tirsdag. Mandag er løbsfri.",
+      "readMore": "Fuld forklaring i Hjælp"
+    }
   },
   "racehub": {
     "scope": {
@@ -75,9 +96,10 @@
       "clearAllSeason": "Ryd alt",
       "bound": "Kører allerede et overlappende løb",
       "loadShort": "{days}d",
-      "loadTitle": "Sæson-belastning: {races, plural, one {# løb} other {# løb}}, {days, plural, one {# løbsdag} other {# løbsdage}} tilmeldt denne sæson"
+      "loadTitle": "Sæson-belastning: {races, plural, one {# løb} other {# løb}}, {days, plural, one {# løbsdag} other {# løbsdage}} tilmeldt denne sæson",
+      "clearDayTooltip": "Rydder {races, plural, one {# løb} other {# løb}} og fjerner {riders, plural, one {# rytter} other {# ryttere}} for denne dag"
     },
-    "clearDayWarn": "Fjern alle ryttere fra dagens løb? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
+    "clearDayWarn": "Fjern {riders, plural, one {# rytter} other {# ryttere}} fra {races, plural, one {# løb} other {# løb}} i dag? Det kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
     "clearAllWarn": "Fjern alle ryttere fra ALLE dine resterende løb resten af sæsonen? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
     "clearAllDialog": {
       "title": "Ryd alle udtagelser?",
@@ -95,7 +117,8 @@
       "openRace": "Åbn {name}",
       "peaksHere": "Topper her: {names}",
       "paybackHere": "Payback-hul her: {names} ({points} form)",
-      "paybackHereNoPoints": "Payback-hul her: {names}"
+      "paybackHereNoPoints": "Payback-hul her: {names}",
+      "clearSelection": "Ryd udtagelse"
     },
     "popover": {
       "title": "Tilføj til hvilket løb?",
