@@ -164,6 +164,7 @@ test("#2647 invariant A — hold-ejet rytter (team_id) på aktiv ungdomsauktion 
     supabase: makeMock({ auctions, riders }),
     captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
     now: new Date("2026-07-03T11:00:00Z"),
+    sleepFn: async () => {}, // CYCLINGZONE-4M: settle stubbet — fixturen ændrer sig ikke
   });
   assert.equal(calls.length, 1, "kun ÉN capture uanset antal findings");
   assert.deepEqual(calls[0].ctx.fingerprint, ["owned-rider-on-youth-auction"]);
@@ -198,6 +199,7 @@ test("#2647 invariant B — hold-ejet rytter på sælgerløs, ikke-ungdoms, AKTI
   const result = await runOwnershipInvariantWatch({
     supabase: makeMock({ auctions, riders }),
     captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    sleepFn: async () => {}, // CYCLINGZONE-4M
   });
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].ctx.fingerprint, ["owned-rider-on-sellerless-auction"]);
@@ -290,6 +292,7 @@ test("#2647 alle tre invarianter brudt samtidig → tre separate captures, hver 
   const result = await runOwnershipInvariantWatch({
     supabase: makeMock({ auctions, riders, intake }),
     captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    sleepFn: async () => {}, // CYCLINGZONE-4M
   });
   assert.equal(calls.length, 3);
   const fingerprints = calls.map((c) => c.ctx.fingerprint[0]).sort();
@@ -567,4 +570,108 @@ test("#3330 flere stale pending-parkeringer → ÉN capture med alle i sample, i
   assert.equal(calls.length, 1, "ét Sentry-issue uanset antal findings (CYCLINGZONE-31-lektien)");
   assert.equal(calls[0].ctx.extra.count, 2);
   assert.equal(calls[0].ctx.extra.sample.length, 2);
+});
+
+// ─── CYCLINGZONE-4M: TOCTOU mod auctionFinalizations hale ────────────────────
+// auctionFinalization skriver riders.team_id FØR den lukker auktionen (der er
+// clearFutureRaceEntries + ownership-event + debit + Discord-DM'er imellem), så
+// "aktiv ungdomsauktion + hold-ejet rytter" er transient SAND ved hver eneste
+// gennemførte ungdomsauktion. Vagten læser auktioner og ryttere i to separate
+// queries og ramte præcis det vindue 22/8 kl. 14:00:26 (auktion 7ac6f845).
+// Fixturerne herunder muterer INDE i sleepFn — det er netop det der sker i prod
+// mens vagten venter.
+
+test("CYCLINGZONE-4M finaliserings-hale: auktionen lukkes under settle → INGEN alarm", async () => {
+  const auctions = [{ id: "auc-1", rider_id: "r-1", is_youth: true, seller_team_id: null, status: "active" }];
+  const riders = [{ id: "r-1", team_id: "team-A", pending_team_id: null }];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ auctions, riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    // closeAuction lander mens vi venter — præcis prod-forløbet.
+    sleepFn: async () => { auctions[0].status = "completed"; },
+  });
+  assert.equal(calls.length, 0, "en finaliserings-hale må ALDRIG alarmere");
+  assert.equal(result.findings.youthOwned, 0);
+  assert.equal(result.alerted, false);
+});
+
+test("CYCLINGZONE-4M ejerskabet forsvinder under settle (auktion stadig åben) → INGEN alarm", async () => {
+  const auctions = [{ id: "auc-1", rider_id: "r-1", is_youth: true, seller_team_id: null, status: "active" }];
+  const riders = [{ id: "r-1", team_id: "team-A", pending_team_id: null }];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ auctions, riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    sleepFn: async () => { riders[0].team_id = null; },
+  });
+  assert.equal(calls.length, 0, "begge ben skal holde ved genlæsningen");
+  assert.equal(result.findings.youthOwned, 0);
+});
+
+test("CYCLINGZONE-4M ÆGTE brud er persistent og overlever settle → alarmerer uændret", async () => {
+  const auctions = [
+    { id: "auc-1", rider_id: "r-1", is_youth: true, seller_team_id: null, status: "active" },
+    { id: "auc-2", rider_id: "r-2", is_youth: false, seller_team_id: null, status: "extended" },
+  ];
+  const riders = [
+    { id: "r-1", team_id: "team-A", pending_team_id: null },
+    { id: "r-2", team_id: "team-B", pending_team_id: null },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ auctions, riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    sleepFn: async () => {}, // intet ændrer sig — tilstanden er reelt brudt
+  });
+  assert.equal(result.findings.youthOwned, 1);
+  assert.equal(result.findings.sellerlessOwned, 1);
+  assert.equal(calls.length, 2, "detektionen af ægte brud er uændret");
+  assert.equal(result.alerted, true);
+});
+
+test("CYCLINGZONE-4M blandet: den ene auktion lukkes, den anden består → kun den bestående alarmerer", async () => {
+  const auctions = [
+    { id: "auc-hale", rider_id: "r-1", is_youth: true, seller_team_id: null, status: "active" },
+    { id: "auc-aegte", rider_id: "r-2", is_youth: true, seller_team_id: null, status: "active" },
+  ];
+  const riders = [
+    { id: "r-1", team_id: "team-A", pending_team_id: null },
+    { id: "r-2", team_id: "team-B", pending_team_id: null },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ auctions, riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    sleepFn: async () => { auctions[0].status = "completed"; },
+  });
+  assert.equal(result.findings.youthOwned, 1);
+  assert.equal(calls[0].ctx.extra.sample.length, 1);
+  assert.equal(calls[0].ctx.extra.sample[0].auctionId, "auc-aegte");
+});
+
+test("CYCLINGZONE-4M ren tick: settle ventes ALDRIG når der intet fund er (0-fund-tick er gratis)", async () => {
+  const auctions = [{ id: "auc-1", rider_id: "r-1", is_youth: true, seller_team_id: null, status: "active" }];
+  const riders = [{ id: "r-1", team_id: null, pending_team_id: null }];
+  let slept = 0;
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ auctions, riders }),
+    captureExceptionFn: () => {},
+    sleepFn: async () => { slept += 1; },
+  });
+  assert.equal(slept, 0, "den daglige 0-fund-tick må ikke koste ventetid");
+  assert.equal(result.alerted, false);
+});
+
+test("CYCLINGZONE-4M samplet viser ejerskabet EFTER genlæsningen, ikke det forældede", async () => {
+  const auctions = [{ id: "auc-1", rider_id: "r-1", is_youth: true, seller_team_id: null, status: "active" }];
+  const riders = [{ id: "r-1", team_id: "team-GAMMEL", pending_team_id: null }];
+  const calls = [];
+  await runOwnershipInvariantWatch({
+    supabase: makeMock({ auctions, riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    sleepFn: async () => { riders[0].team_id = "team-NY"; },
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].ctx.extra.sample[0].teamId, "team-NY");
 });
