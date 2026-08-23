@@ -1,75 +1,82 @@
-# #4131 minimal-patch dry-run — flyt 21/9's endagsloeb
+# #4131 minimal-patch dry-run v2 — flyt 21/9's endagsloeb (+1-loft, ejer-beslutning 23/8)
 
-Koert 2026-08-23, 100% read-only (prod-data via infisical). Flytter KUN de 25 endagsloeb der ligger paa mandag 21/9 til en tidligere dag i puljens EGEN kalender (25/8-20/9). Alt andet er uroert.
+Koert 2026-08-23, 100% read-only (prod-data via infisical). Ejer-beslutning ordret: "Vi skal have en kalender fra 25/8-20/9 paa lige saa mange loebsdage som vi havde planlagt i forvejen ... Det kan vi godt faa til at fungere." INGEN loeb udgaar, INGEN regenerering — kun de 25 endagsloeb der ligger 21/9 flyttes, puljens loft maa overskrides med +1 paa de dage det kraever.
 
 ## Maal
 
 | | Vaerdi | Maal |
 |---|---:|---:|
-| Loeb flyttet | 5 | 25 |
-| Loeb med uaendret dato | 466 | 446 |
-| D1-dage med kun 1 loeb (foer) | 3 | — |
-| race_entries for saeson 3 (foer) | 0 | — |
+| Loeb flyttet | 25 | 25 |
+| Loeb med uaendret dato | 446 | 446 |
+| race_entries for saeson 3 (foer) | 0 | 0 |
 
-## Maks loeb/dag pr. involveret pulje
+## Pr.-pulje: cap+1-dage + loebs-antal (verifikation: samlet loebs-antal pr. pulje er UAeNDRET — vi flytter kun DATO, ingen loeb tilfoejes/fjernes)
 
-| Pulje | Tier | Foer | Efter |
-|---|---|---:|---:|
-| 1 | 1 | 4 | 4 |
-| 2 | 2 | 4 | 4 |
-| 3 | 2 | 4 | 4 |
-| 4 | 3 | 3 | 3 |
-| 5 | 3 | 3 | 3 |
-| 6 | 3 | 3 | 3 |
-| 7 | 3 | 3 | 3 |
-| 8 | 4 | 2 | 2 |
-| 9 | 4 | 2 | 2 |
-| 10 | 4 | 2 | 2 |
-| 11 | 4 | 2 | 2 |
-| 12 | 4 | 2 | 2 |
-| 13 | 4 | 2 | 2 |
-| 14 | 4 | 2 | 2 |
-| 15 | 4 | 2 | 2 |
+| Pulje | Tier | M_pool (foer) | cap+1-dage | Dage | Loeb i puljen |
+|---|---|---:|---:|---|---:|
+| 1 | 1 | 4 | 0 | — | 33 |
+| 2 | 2 | 4 | 0 | — | 43 |
+| 3 | 2 | 4 | 0 | — | 43 |
+| 4 | 3 | 3 | 0 | — | 36 |
+| 5 | 3 | 3 | 0 | — | 36 |
+| 6 | 3 | 3 | 0 | — | 36 |
+| 7 | 3 | 3 | 0 | — | 36 |
+| 8 | 4 | 2 | 1 | 2026-08-25 | 26 |
+| 9 | 4 | 2 | 1 | 2026-08-25 | 26 |
+| 10 | 4 | 2 | 1 | 2026-08-25 | 26 |
+| 11 | 4 | 2 | 1 | 2026-08-25 | 26 |
+| 12 | 4 | 2 | 1 | 2026-08-25 | 26 |
+| 13 | 4 | 2 | 1 | 2026-08-25 | 26 |
+| 14 | 4 | 2 | 1 | 2026-08-25 | 26 |
+| 15 | 4 | 2 | 1 | 2026-08-25 | 26 |
 
-## Flytnings-plan (5 loeb)
+## Flytnings-plan (25 loeb)
 
-| Loeb | Pulje | Tier | Fra | Til | Ny belastning den dag | Note |
-|---|---|---|---|---|---:|---|
-| Giro Veneto | 2 | 2 | 2026-09-21 | 2026-09-01 | 3 |  |
-| Classica delle Colline Venete | 3 | 2 | 2026-09-21 | 2026-09-01 | 3 |  |
-| La Classique Bretonne | 1 | 1 | 2026-09-21 | 2026-09-05 | 2 |  |
-| Giro Veneto | 3 | 2 | 2026-09-21 | 2026-09-02 | 3 |  |
-| Classica delle Colline Venete | 2 | 2 | 2026-09-21 | 2026-09-02 | 3 |  |
+| Loeb | Pulje | Tier | Fra | Til | Belastning foer→efter | Cap-status | Note |
+|---|---|---|---|---|---|---|---|
+| Chrono des Herbiers Mineur | 14 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Grand Prix de Namur | 6 | 3 | 2026-09-21 | 2026-08-27 | 2→3 | inden for eksisterende loft |  |
+| Classique du Japon | 4 | 3 | 2026-09-21 | 2026-08-27 | 2→3 | inden for eksisterende loft |  |
+| Chrono des Herbiers Mineur | 10 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Chrono des Herbiers Mineur | 9 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Classique de Touraine | 4 | 3 | 2026-09-21 | 2026-08-28 | 2→3 | inden for eksisterende loft |  |
+| Giro Veneto | 2 | 2 | 2026-09-21 | 2026-09-01 | 2→3 | inden for eksisterende loft |  |
+| Grand Prix de Namur | 7 | 3 | 2026-09-21 | 2026-08-27 | 2→3 | inden for eksisterende loft |  |
+| Chrono des Herbiers Mineur | 8 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Classique du Japon | 5 | 3 | 2026-09-21 | 2026-08-27 | 2→3 | inden for eksisterende loft |  |
+| Classica delle Colline Venete | 3 | 2 | 2026-09-21 | 2026-09-01 | 2→3 | inden for eksisterende loft |  |
+| La Classique Bretonne | 1 | 1 | 2026-09-21 | 2026-09-05 | 1→2 | inden for eksisterende loft |  |
+| Classique du Japon | 6 | 3 | 2026-09-21 | 2026-08-28 | 2→3 | inden for eksisterende loft |  |
+| Classique du Japon | 7 | 3 | 2026-09-21 | 2026-08-28 | 2→3 | inden for eksisterende loft |  |
+| Classique de Touraine | 5 | 3 | 2026-09-21 | 2026-08-28 | 2→3 | inden for eksisterende loft |  |
+| Chrono des Herbiers Mineur | 13 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Chrono des Herbiers Mineur | 15 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Chrono des Herbiers Mineur | 11 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Giro Veneto | 3 | 2 | 2026-09-21 | 2026-09-02 | 2→3 | inden for eksisterende loft |  |
+| Grand Prix de Namur | 5 | 3 | 2026-09-21 | 2026-08-30 | 2→3 | inden for eksisterende loft |  |
+| Classique de Touraine | 6 | 3 | 2026-09-21 | 2026-08-30 | 2→3 | inden for eksisterende loft |  |
+| Grand Prix de Namur | 4 | 3 | 2026-09-21 | 2026-08-30 | 2→3 | inden for eksisterende loft |  |
+| Chrono des Herbiers Mineur | 12 | 4 | 2026-09-21 | 2026-08-25 | 2→3 | +1 (var 2) |  |
+| Classique de Touraine | 7 | 3 | 2026-09-21 | 2026-08-30 | 2→3 | inden for eksisterende loft |  |
+| Classica delle Colline Venete | 2 | 2 | 2026-09-21 | 2026-09-02 | 2→3 | inden for eksisterende loft |  |
 
-## Uloeste (20)
+## Bemanding paa cap+1-dage (information til ejeren, ikke en blokering)
 
-| Loeb | Pulje |
-|---|---|
-| Chrono des Herbiers Mineur | 14 |
-| Grand Prix de Namur | 6 |
-| Classique du Japon | 4 |
-| Chrono des Herbiers Mineur | 10 |
-| Chrono des Herbiers Mineur | 9 |
-| Classique de Touraine | 4 |
-| Grand Prix de Namur | 7 |
-| Chrono des Herbiers Mineur | 8 |
-| Classique du Japon | 5 |
-| Classique du Japon | 6 |
-| Classique du Japon | 7 |
-| Classique de Touraine | 5 |
-| Chrono des Herbiers Mineur | 13 |
-| Chrono des Herbiers Mineur | 15 |
-| Chrono des Herbiers Mineur | 11 |
-| Grand Prix de Namur | 5 |
-| Classique de Touraine | 6 |
-| Grand Prix de Namur | 4 |
-| Chrono des Herbiers Mineur | 12 |
-| Classique de Touraine | 7 |
+| Pulje | Tier | Dag | Hold | Min trup | Median trup | Rytter-behov (alle loeb den dag) | Hold der IKKE kan bemande fuldt |
+|---|---|---|---:|---:|---:|---:|---:|
+| 8 | 4 | 2026-08-25 | 9 | 5 | 11 | 18 | 8 |
+| 9 | 4 | 2026-08-25 | 9 | 8 | 9 | 18 | 8 |
+| 10 | 4 | 2026-08-25 | 9 | 11 | 14 | 18 | 7 |
+| 11 | 4 | 2026-08-25 | 9 | 4 | 12 | 18 | 7 |
+| 12 | 4 | 2026-08-25 | 9 | 4 | 13 | 18 | 8 |
+| 13 | 4 | 2026-08-25 | 9 | 4 | 13 | 18 | 8 |
+| 14 | 4 | 2026-08-25 | 8 | 8 | 14 | 18 | 6 |
+| 15 | 4 | 2026-08-25 | 8 | 1 | 12 | 18 | 6 |
 
 ## Entries
 
-race_entries for saeson 3 foer flytning: **0**. 0 fundet (saeson 3 er 2026-08-23, 2 dage foer foerste loebsdag 25/8) — INGEN entries at flytte/regenerere. Springes over ved --apply.
+race_entries for saeson 3 foer flytning: **0**. 0 fundet (saeson 3 er 2026-08-23, 2 dage foer foerste loebsdag 25/8) — springes over ved --apply.
 
 ## Konklusion
 
-20 loeb kunne IKKE placeres inden for eksisterende kapacitets-loft — se tabellen "Uloeste" ovenfor. Kraever ejer-beslutning (loesne loftet for netop disse dage, eller acceptere at de forbliver paa 21/9).
+Alle 25 loeb placeret. 8 cap+1-dage i alt paa tvaers af 8 puljer (se bemandings-tabellen for ejerens beslutningsgrundlag). 0 loeb fjernet, 0 puljer/tiers aendret, 0 andre loeb roert.
