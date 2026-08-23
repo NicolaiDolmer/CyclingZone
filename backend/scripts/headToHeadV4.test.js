@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runHeadToHead } from "./headToHeadV4.js";
+import { runHeadToHead, summarizeEventParams } from "./headToHeadV4.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = path.join(SCRIPT_DIR, "fixtures", "headToHeadV4-example");
@@ -131,5 +131,57 @@ test("CLI: --films skriver 5 haandplukkede v4-tidslinje-tekstfiler til den angiv
     assert.match(text, /v4 etape-tidslinje/);
     assert.match(text, /-- Tidslinje --/);
     assert.match(text, /-- Resultat \(top/);
+  }
+});
+
+test("summarizeEventParams: lang rider_ids-liste trunkeres til 3 + antal-note (laesbarhed, #4030 23/8)", () => {
+  const ids = Array.from({ length: 50 }, (_, i) => `rider-${i}`);
+  const out = summarizeEventParams({ rider_ids: ids, cause: "wprime_depleted", gap_seconds: 12 });
+  assert.equal(out.rider_ids.length, 4);
+  assert.deepEqual(out.rider_ids.slice(0, 3), ["rider-0", "rider-1", "rider-2"]);
+  assert.match(out.rider_ids[3], /\+47 flere/);
+  assert.equal(out.cause, "wprime_depleted");
+  assert.equal(out.gap_seconds, 12);
+});
+
+test("summarizeEventParams: kort rider_ids-liste (<= 3) beholdes uaendret", () => {
+  const out = summarizeEventParams({ rider_ids: ["a", "b"] });
+  assert.deepEqual(out.rider_ids, ["a", "b"]);
+});
+
+test("summarizeEventParams: ingen rider_ids-felt -> params uberoert", () => {
+  const out = summarizeEventParams({ gap_seconds: 5 });
+  assert.deepEqual(out, { gap_seconds: 5 });
+});
+
+test("summarizeEventParams: null/undefined params -> returneres uaendret uden kast", () => {
+  assert.equal(summarizeEventParams(null), null);
+  assert.equal(summarizeEventParams(undefined), undefined);
+});
+
+test("runHeadToHead: fieldSize traekker et mindre, deterministisk sample pr. etape (uaendret default-adfaerd naar udeladt)", () => {
+  const population = JSON.parse(readFileSync(POPULATION_PATH, "utf8"));
+  const stages = JSON.parse(readFileSync(STAGES_PATH, "utf8")).stages;
+  const fullSize = population.riders.length;
+  const rows = runHeadToHead({ population, stages, seedInput: "field-size-test", fieldSize: 2 });
+  for (const row of rows) {
+    assert.ok(row.raw.v4Output.results.length <= 2, "v4 startfelt skal vaere begraenset af fieldSize");
+    assert.ok(row.raw.v3Output.ranked.length <= 2, "v3 startfelt skal vaere begraenset af fieldSize");
+  }
+  // Determinisme: to koersler med samme seedInput+fieldSize giver samme rows.
+  const rowsAgain = runHeadToHead({ population, stages, seedInput: "field-size-test", fieldSize: 2 });
+  assert.deepEqual(
+    rows.map((r) => r.raw.v4Output.results.map((x) => x.rider_id)),
+    rowsAgain.map((r) => r.raw.v4Output.results.map((x) => x.rider_id)),
+  );
+  assert.ok(fullSize > 2, "fixture-population skal vaere stoerre end fieldSize for at teste noget meningsfuldt");
+});
+
+test("runHeadToHead: fieldSize=null (udeladt) bruger hele populationen paa hver etape (uaendret F2-adfaerd)", () => {
+  const population = JSON.parse(readFileSync(POPULATION_PATH, "utf8"));
+  const stages = JSON.parse(readFileSync(STAGES_PATH, "utf8")).stages;
+  const rows = runHeadToHead({ population, stages, seedInput: "no-field-size-test" });
+  for (const row of rows) {
+    assert.equal(row.raw.v4Output.results.length, population.riders.length);
   }
 });
