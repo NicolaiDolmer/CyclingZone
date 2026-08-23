@@ -100,7 +100,13 @@ function dayDiff(a, b) {
   return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86_400_000);
 }
 const CANDIDATE_DAYS = datesBetween(WINDOW_START, WINDOW_END);
+// #4131 (ejer-feedback 23/8, runde 2): alle 8 forrige cap+1-dage landede paa 25/8 (dag 1 —
+// i forvejen saesonens tungeste globale dag, og friske hold er ikke "klar"). Foerste 3 og
+// sidste 3 loebsdage udelukkes derfor som cap+1-KANDIDATER (haard regel) — normale,
+// under-loft-placeringer maa fortsat gerne lande der, kun +1-brug er forbudt.
+const FIRST_3_DAYS = new Set(CANDIDATE_DAYS.slice(0, 3));
 const LAST_3_DAYS = new Set(CANDIDATE_DAYS.slice(-3));
+const EXCLUDED_CAP1_DAYS = new Set([...FIRST_3_DAYS, ...LAST_3_DAYS]);
 
 console.log("=== #4131 minimal-patch v2: flyt 21/9's endagsloeb (+1-loft tilladt, ejer-beslutning 23/8) ===");
 console.log(APPLY ? "TILSTAND: APPLY (skriver til prod)" : "TILSTAND: DRY-RUN (100% read-only)");
@@ -130,6 +136,22 @@ const schedByRace = new Map();
 for (const s of sched) {
   if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
   schedByRace.get(s.race_id).push(s);
+}
+
+// #4131 runde 2: GLOBAL belastning pr. dag (alle 471 loeb, alle puljer, FOeR nogen
+// flytning) — bruges som tie-break saa forskellige puljers cap+1-valg spredes over
+// forskellige datoer i stedet for at klumpe paa den samme (globalt) laveste-belastede dag.
+// Statisk baseline (ikke live-opdateret under tildelingen) — det er den strukturelle
+// forskel mellem dage (fx 38 loeb paa 25/8 vs. ~30 andre steder) der skal drive spredningen,
+// ikke smaa forskydninger fra de 25 flyt selv.
+const globalDayLoad = new Map();
+for (const day of CANDIDATE_DAYS) globalDayLoad.set(day, 0);
+for (const r of races) {
+  const rows = schedByRace.get(r.id) || [];
+  for (const s of rows) {
+    const day = dayOf(s.scheduled_at);
+    if (globalDayLoad.has(day)) globalDayLoad.set(day, globalDayLoad.get(day) + 1);
+  }
 }
 
 // ── 2. Find de maal-loeb der (stadig) ligger 21/9 — idempotens-tjek ────────
@@ -199,6 +221,7 @@ for (const poolId of poolsInvolved) capPlusOneDays.set(poolId, new Set());
 
 const plan = [];
 const unresolved = [];
+const fallbackReasons = [];
 for (const race of sortedTargets) {
   const poolId = race.league_division_id;
   const tier = tierOf.get(poolId);
@@ -211,23 +234,57 @@ for (const race of sortedTargets) {
     const cell = m.get(day);
     const count = cell.races;
     const etaper = cell.etaper;
-    const feasible = count <= maxAllowed && (gtCellsByDay.get(day)?.gtEtaper ?? 0) <= MAX_GT_STAGES_PER_DAY;
     const wouldBeCapPlusOne = count === maxAllowed; // dette valg BRUGER +1-slottet
+    // #4131 runde 2: foerste/sidste 3 loebsdage er HAARDT udelukket som cap+1-kandidater —
+    // en almindelig (under-loft) placering maa dog fortsat gerne lande der (feasible
+    // paavirkes kun naar dette VALG selv ville bruge +1-slottet).
+    const feasible = count <= maxAllowed
+      && (gtCellsByDay.get(day)?.gtEtaper ?? 0) <= MAX_GT_STAGES_PER_DAY
+      && !(wouldBeCapPlusOne && EXCLUDED_CAP1_DAYS.has(day));
     let penalty = 0;
     if (wouldBeCapPlusOne) {
       const nearExistingCap1 = [...cap1Set].some((d2) => d2 !== day && Math.abs(dayDiff(day, d2)) < 2);
       if (nearExistingCap1) penalty += 1;
-      if (LAST_3_DAYS.has(day)) penalty += 1;
     }
-    return { day, count, etaper, feasible, wouldBeCapPlusOne, penalty };
+    return { day, count, etaper, feasible, wouldBeCapPlusOne, penalty, globalLoad: globalDayLoad.get(day) ?? 0 };
   }).filter((c) => c.feasible)
-    .sort((a, b) => a.count - b.count || a.penalty - b.penalty || a.etaper - b.etaper || a.day.localeCompare(b.day));
+    // #4131 runde 2: primaert puljens EGEN belastning (uaendret regel), men den GLOBALE
+    // belastning er nu andet-prioritet (foer penalty/etaper) — det er selve mekanismen der
+    // spreder de 8 puljers cap+1-valg over forskellige datoer i stedet for at de alle vaelger
+    // den samme globalt letteste dag (som var 25/8 sidste gang).
+    .sort((a, b) => a.count - b.count || a.globalLoad - b.globalLoad || a.penalty - b.penalty || a.etaper - b.etaper || a.day.localeCompare(b.day));
 
-  const chosen = scored[0];
+  let chosen = scored[0];
+  let fallbackReason = null;
+  if (!chosen) {
+    // #4131 runde 2, krav 4: INGEN feasible dag uden foerste/sidste 3 dage — fald tilbage
+    // til at TILLADE dem for cap+1 (stadig <=maxAllowed+1, ALDRIG +2), og FLAG det tydeligt
+    // fremfor at fejle stille eller efterlade loebet paa 21/9.
+    const fallbackScored = CANDIDATE_DAYS.map((day) => {
+      const cell = m.get(day);
+      const count = cell.races, etaper = cell.etaper;
+      const feasible = count <= maxAllowed && (gtCellsByDay.get(day)?.gtEtaper ?? 0) <= MAX_GT_STAGES_PER_DAY;
+      const wouldBeCapPlusOne = count === maxAllowed;
+      return { day, count, etaper, feasible, wouldBeCapPlusOne, globalLoad: globalDayLoad.get(day) ?? 0 };
+    }).filter((c) => c.feasible)
+      .sort((a, b) => a.count - b.count || a.globalLoad - b.globalLoad || a.etaper - b.etaper || a.day.localeCompare(b.day));
+    chosen = fallbackScored[0];
+    if (chosen) {
+      fallbackReason = `pulje ${poolId} (tier ${tier}): ingen feasible dag UDEN foerste/sidste 3 loebsdage — faldt tilbage til ${chosen.day} (blandt de udelukkede) for at undgaa at loebet blev paa 21/9. M_pool=${maxAllowed}.`;
+      fallbackReasons.push(fallbackReason);
+      console.log(`
+⚠ FALLBACK: ${fallbackReason}`);
+    }
+  }
   if (!chosen) { unresolved.push(race); continue; }
 
   m.set(chosen.day, { races: chosen.count + 1, etaper: chosen.etaper + 1 });
   if (chosen.wouldBeCapPlusOne) cap1Set.add(chosen.day);
+  // #4131 runde 2: LIVE-opdatér globalDayLoad efter hver tildeling — identiske puljer
+  // (#2276: samme kalender-signatur pr. tier) ser ELLERS praecis samme statiske globale
+  // billede og vaelger derfor alle sammen den samme dag. Ved at oege dagens globale taeller
+  // MED DET SAMME, skubber den NAESTE (tvilling-)puljes tie-break naturligt mod en anden dag.
+  globalDayLoad.set(chosen.day, (globalDayLoad.get(chosen.day) ?? 0) + 1);
 
   const slot = existingSlotFor(poolId, chosen.day);
   let time, game_day, note = "";
@@ -238,6 +295,7 @@ for (const race of sortedTargets) {
     game_day = gameDayFallbackCounter;
     note = "INGEN eksisterende loeb i puljen denne dag — nyt game_day allokeret (lavere tillid)";
   }
+  if (fallbackReason) note = (note ? note + " · " : "") + "FALLBACK: brugte foerste/sidste 3 dage (se afsnit i rapporten)";
   const scheduledAtIso = `${chosen.day}T${time.length === 5 ? time + ":00" : time}Z`;
 
   plan.push({
@@ -374,6 +432,16 @@ for (const p of plan) md += `| ${p.name} | ${p.poolId} | ${p.tier} | ${p.from} |
 if (unresolved.length) {
   md += `\n## Uloeste (${unresolved.length})\n\n| Loeb | Pulje |\n|---|---|\n`;
   for (const r of unresolved) md += `| ${r.name} | ${r.league_division_id} |\n`;
+}
+if (fallbackReasons.length) {
+  md += `
+## Fallback til foerste/sidste 3 dage (${fallbackReasons.length})
+
+Disse puljer havde INGEN feasible dag uden for de udelukkede foerste/sidste 3 loebsdage — faldt tilbage til at tillade det i stedet for at efterlade loebet paa 21/9:
+
+`;
+  for (const fr of fallbackReasons) md += `- ${fr}
+`;
 }
 md += `\n## Bemanding paa cap+1-dage (information til ejeren, ikke en blokering)\n\n`;
 if (staffingByPool.length) {
