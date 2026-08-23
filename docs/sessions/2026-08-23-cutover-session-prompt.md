@@ -33,3 +33,26 @@ Ingen prod-mutation uden at ejeren har skrevet "GO"/"kør" på NETOP det skridt,
 - Baggrunds-vent/Monitor virker ikke på denne maskine; brug forgrunds-kald med timeout 600000, og giv workers besked om det samme. Du bør ikke bruge workers i aften; kør selv, et skridt ad gangen.
 - Staging-branch `staging-cutover` (ref pywxpnynzmbukdvoiazp) er en prod-kopi i post-transition-tilstand; rør den ikke, slettes mandag (#3839).
 - Close-out: NOW.md (Next action = mandag: kalibrering + v4-afvigelser + rytter-pakken #3512/#4098/#4128), issues #4129 (nøglen sat/ryddet), #3901, #3514, #3645, patch note for sæsonskiftet, `check-agent-token-hygiene.ps1`.
+
+---
+
+## Tilføjet 17:58 af designsessionen (kontraktudløb + løn-rækkefølge)
+
+Fire punkter der ikke stod i prompten ovenfor. Alle tal er målt mod prod i dag.
+
+**F1. Kontraktudløb kører i aften. Det er ejer-besluttet i dag. Lad det køre.**
+Fase 5c (`contractExpiryRelease.js`) frigiver ryttere med `contract_end_season <= 2`. Prod lige nu: **834** seniorryttere på menneskehold. AI-holdenes 366 auto-fornyes i fase 5b-2 og frigives derfor ikke. Generalprøven målte præcis 834 `contract_expired_release`-notifikationer, så forvent samme størrelsesorden. **Bliv ikke alarmeret, og forsøg ikke at rette mekanikken midt i cutoveret.**
+- **58 af 214** menneskehold falder under 8 ryttere. Fase 6f (`squad_below_minimum_check`) sender KUN en notifikation. Ingen healer fylder dem op: `runStarterSquadHealSweep` er markør-gated på `starter_squad_allocated_at IS NULL` og rammer dem ikke. Kendt og accepteret.
+- Under 8 ryttere blokerer **ikke** løb. `MIN_RIDERS_FOR_RACE` importeres ikke i en eneste race-fil; holdet stiller op med færre (`raceAutopick.js:89` bruger kun `rule.max`). Konsekvensen er sportslig, ikke teknisk.
+- Den varige løsning er specet i `docs/superpowers/specs/2026-08-23-kontraktudloeb-tvangsauktion-design.md` (15 ejer-beslutninger), med #4145 og #4146 udskudt. Skal i produktion før S3 slutter 20/9. **Ikke i aften.**
+
+**F2. Post-transition-tjek: residualen.**
+Generalprøven efterlod 12 ryttere med `contract_end_season <= 2 AND team_id IS NOT NULL AND NOT is_academy` og undersøgte det ikke til bunds. Kør samme SQL mod prod efter transitionen og notér tallet i close-out. Er det markant større end 12, så undersøg: `releaseExpiredContractRiders` udskyder bevidst ryttere der er midt i et aktivt etapeløb (`deferredByRacing`), og de fanges først ved næste transition.
+
+**F3. Rækkefølge-spørgsmål til ejeren FØR skridt 20:12 (løn-genberegning).**
+Transitionen (19:47-20:01) kører fase 6 `season_payroll`, som trækker **hele S3's lønsum upfront** ud fra `riders.salary` som de står på det tidspunkt. Løn-genberegningen kl. 20:12 skriver nye værdier til `riders.salary` (`salaryRecompute3645.mjs:227`).
+Konsekvens: **S3 bliver betalt med de gamle lønninger, og de nye slår først igennem ved S4-skiftet.**
+Spørg ejeren om det er tilsigtet, eller om genberegningen skal ligge FØR transitionen. Dette er en observation af rækkefølgen, ikke en afgjort sag — træf ikke valget selv.
+
+**F4. Flip IKKE `wage_deduction_mode` i aften.**
+Prod står på `season_upfront` (verificeret i `app_config`). Ejeren besluttede i dag at flippe til `daily` ved S3→S4, ikke nu. `wageDeductionConfig.js`' header advarer eksplicit: et flip midt i en sæson, hvor sæsonlønnen allerede er trukket upfront, dobbelttrækker holdene resten af sæsonen.
