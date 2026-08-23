@@ -595,6 +595,75 @@ function toGrandTourFinale(rng, scaffold) {
 
 const MOUNTAIN_FAMILY = new Set(["mountain", "high_mountain"]);
 const CIRCUIT_FAMILY = new Set(["hilly", "classic"]); // IKKE "rolling" — den er sprint_finale-territorium, holder finale-typerne ikke-overlappende for målbarhed
+
+// #3371 (spillerfeedback + ejer-direktiv 23/8): korte etapeløb (6-8 etaper) er mekaniske —
+// målt i S3: La Course au Soleil itt>rolling>flat>itt>mountain>mountain>mountain>mountain
+// (4 bjergetaper i træk til sidst), Tour du Léman hilly>flat>mountain>mountain>mountain>hilly
+// (3 i træk). Den rå crescendo-scaffold (sortByHint) sorterer bjerg-familien sammen for
+// enden — samme rodårsag som #4075 (GT), men GT's fix (weaveGrandTourScaffold) er scoped
+// til GT-stien (orderAndBuildGrandTour) og rører ALDRIG denne sti.
+//
+// weaveMountainFamilyBlocks er en LOFT-PARAMETERISERET søster-funktion til
+// weaveGrandTourScaffold, samme blok+breather-algoritme, men to forskelle med vilje:
+//   1. blockSize=2 (mod GT's hårde 3) — issuet beder eksplicit om maks 2 i træk for korte
+//      etapeløb, ikke GT's 3.
+//   2. Tvinger IKKE det hårdeste terræn til sidste plads. GT skal altid slutte "rigtigt"
+//      (toGrandTourFinale afhænger af det); et kort etapeløb skal derimod IKKE altid have
+//      bjerg-finale (#3371's tredje krav) — her får finale-arketypen (summit_finale/
+//      sprint_finale/tt_finale/circuit_finale, se orderAndBuildFinaleDriven) frit spil på
+//      den allerede opbrudte scaffold i stedet.
+// weaveGrandTourScaffold er URØRT (egen kopi af blok-algoritmen) — GT's ordning må ikke
+// forringes (#4121, ejer-krav).
+export function weaveMountainFamilyBlocks(scaffold, { blockSize = 2, family = MOUNTAIN_FAMILY } = {}) {
+  const hard = scaffold.filter((t) => family.has(t));
+  const soft = scaffold.filter((t) => !family.has(t));
+  if (hard.length <= blockSize || soft.length < 1) return capIdenticalRuns(scaffold, blockSize);
+  // #3371-forsyningsfix: et FAST blockSize-loft (chunk i grupper på præcis `blockSize`) kan
+  // kræve flere breathere end der reelt findes bløde etaper til (fx 7 bjerg-etaper, kun 1
+  // blød ⇒ 4 blokke krævede 3 breathere, men kun 1 fandtes) — de ubetjente blok-grænser
+  // klæbede simpelthen sammen igen og gav runs på 4-7. I stedet: brug LIGE SÅ MANGE grupper
+  // som forsyningen (`soft.length`) reelt tillader breathere til (aldrig flere end det
+  // `blockSize`-ideelle antal), og fordel bjerg-etaperne SÅ JÆVNT som muligt over dem —
+  // matematisk det bedst mulige resultat ved knap forsyning (samme "accepter defensivt ved
+  // ekstreme multisæt"-filosofi som GT's weaveGrandTourScaffold, men uden at lade en hel
+  // hale klumpe sammen undervejs).
+  const idealGroups = Math.ceil(hard.length / blockSize);
+  const groupCount = Math.max(1, Math.min(idealGroups, soft.length + 1));
+  const blocks = [];
+  const base = Math.floor(hard.length / groupCount);
+  const extra = hard.length % groupCount;
+  let hi = 0;
+  for (let g = 0; g < groupCount; g++) {
+    const size = base + (g < extra ? 1 : 0);
+    blocks.push(hard.slice(hi, hi + size));
+    hi += size;
+  }
+  // Mindst 1 breather mellem hvert blok-par (#3371: "mindst én ... mellem bjergblokke"),
+  // begrænset af hvor mange bløde etaper der reelt findes (kan ikke give mere end vi har).
+  const breatherCount = Math.min(soft.length, blocks.length - 1);
+  const breatherIdx = new Set();
+  for (let i = 1; i <= breatherCount; i++) {
+    let idx = Math.min(soft.length - 1, Math.round((i * soft.length) / (breatherCount + 1)));
+    while (breatherIdx.has(idx) && idx < soft.length - 1) idx++;
+    while (breatherIdx.has(idx) && idx > 0) idx--;
+    breatherIdx.add(idx);
+  }
+  const front = soft.filter((_, i) => !breatherIdx.has(i));
+  const breathers = [...breatherIdx].sort((a, b) => a - b).map((i) => soft[i]);
+  const tail = [];
+  for (let b = 0; b < blocks.length; b++) {
+    tail.push(...blocks[b]);
+    if (b < blocks.length - 1) tail.push(...breathers.splice(0, 1));
+  }
+  // #3371: INGEN afsluttende cap-smoothing hen over hele det samlede array (til forskel fra
+  // weaveGrandTourScaffold). blocks/breatherne herover er allerede optimalt fordelt givet
+  // forsyningen (groupCount-beregningen ovenfor) — et efterfølgende cap-pas ville (målt) kunne
+  // TRÆKKE den ene tilgængelige breather fra sin bevidste plads midt i blok-grænsen og dermed
+  // FLYTTE et for-stort segment fra fronten om til HALEN, hvor der ikke findes en senere
+  // breaker at trække fremad (cap-funktionens pull-forward-mekanik virker kun når der ER en
+  // senere afviger) — værre, ikke bedre, ved knap forsyning.
+  return [...capIdenticalRuns(front, blockSize), ...breathers, ...tail];
+}
 const FLAT_FAMILY = new Set(["flat", "rolling"]);
 
 function isFeasibleOrderArchetype(name, types) {
@@ -758,8 +827,32 @@ function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, p
   types.length = stages; // defensiv trim (parity med orderAndBuildGrandTour)
   const weights = orderWeightsFor(terrainArchetype);
   const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, weights);
-  let ordered = applyOrderArchetype(rng, types, orderArchetype);
+  // #3371: bryd bjerg-blokke op FØR finale-arketypen anvendes (samme rækkefølge som GT's
+  // egen weaveGrandTourScaffold → toGrandTourFinale) — se weaveMountainFamilyBlocks'
+  // docstring for hvorfor loft=2 og "hårdeste sidst" ikke tvinges her.
+  const scaffold = weaveMountainFamilyBlocks(sortByHint(rng, types));
+  const transform = ORDER_TRANSFORMS[orderArchetype] ?? ORDER_TRANSFORMS.summit_finale;
+  let ordered = transform(rng, scaffold);
   ordered = applyOpeningVariety(rng, ordered);
+  // #3371 andet pas: BÅDE finale-transformen (sprint_finale/tt_finale/circuit_finale flytter
+  // én etape ud af midten til sidste plads) OG applyOpeningVariety (kan bytte en breather om
+  // på plads 0) kan lukke et hul første-pas-vævningen bevidst efterlod og gensammenføje to
+  // bjerg-blokke til 3+ i træk (målt begge veje: mountain_tour/summit_tour, 6-8 etaper).
+  // Er sidste plads IKKE bjerg (garanteret af sprint_finale/tt_finale/circuit_finale — deres
+  // egen regel), fredes den og RESTEN re-væves fra bunden: boundary-sikkert, fordi et
+  // ikke-bjerg-element aldrig kan forlænge et bjerg-run på tværs af grænsen. Er sidste plads
+  // BJERG (kun muligt for summit_finale), giver fredning IKKE mening — vævningen skal have
+  // frit spil over HELE arrayet, ellers kan et bjerg-run fra "resten" støde direkte op mod
+  // den fredede bjerg-finale og danne præcis det run vi prøver at undgå. Finalen må desuden
+  // gerne flytte sig her (#3371's tredje krav: ikke ALTID den hårdeste, ikke ALDRIG).
+  if (ordered.length > 3) {
+    if (MOUNTAIN_FAMILY.has(ordered[ordered.length - 1])) {
+      ordered = weaveMountainFamilyBlocks(ordered);
+    } else {
+      const finale = ordered[ordered.length - 1];
+      ordered = [...weaveMountainFamilyBlocks(ordered.slice(0, -1)), finale];
+    }
+  }
   return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true));
 }
 

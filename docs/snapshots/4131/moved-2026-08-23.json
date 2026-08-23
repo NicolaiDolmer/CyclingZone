@@ -1,0 +1,356 @@
+{
+  "takenAt": "2026-08-23T12:34:23.790Z",
+  "seasonId": "00000000-0000-0000-0000-000000000003",
+  "rows": [
+    {
+      "id": "67b3e0ad-fb76-44e0-b6e5-a977c40a27d3",
+      "name": "La Classique Bretonne",
+      "league_division_id": 1,
+      "scheduled_for": "2026-09-21T13:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T13:00:00+00:00",
+          "game_day": 84
+        }
+      ]
+    },
+    {
+      "id": "35d26376-b959-44e8-9e61-8e7ffa988784",
+      "name": "Giro Veneto",
+      "league_division_id": 2,
+      "scheduled_for": "2026-09-21T12:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T12:00:00+00:00",
+          "game_day": 54
+        }
+      ]
+    },
+    {
+      "id": "f3a28b7c-d78b-4fcb-ad80-6dc9c0cce519",
+      "name": "Classica delle Colline Venete",
+      "league_division_id": 2,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 55
+        }
+      ]
+    },
+    {
+      "id": "c33d2eb3-bb7e-482a-b1d0-84ec4743d71b",
+      "name": "Giro Veneto",
+      "league_division_id": 3,
+      "scheduled_for": "2026-09-21T12:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T12:00:00+00:00",
+          "game_day": 54
+        }
+      ]
+    },
+    {
+      "id": "5e618a12-13d2-4acf-969d-b5fa76cbf0d4",
+      "name": "Classica delle Colline Venete",
+      "league_division_id": 3,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 55
+        }
+      ]
+    },
+    {
+      "id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+      "name": "Grand Prix de Namur",
+      "league_division_id": 4,
+      "scheduled_for": "2026-09-21T10:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T10:00:00+00:00",
+          "game_day": 40
+        }
+      ]
+    },
+    {
+      "id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+      "name": "Classique de Touraine",
+      "league_division_id": 4,
+      "scheduled_for": "2026-09-21T13:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T13:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+      "name": "Classique du Japon",
+      "league_division_id": 4,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "c6c6772c-66c8-4826-bbc1-ff3bae962d98",
+      "name": "Grand Prix de Namur",
+      "league_division_id": 5,
+      "scheduled_for": "2026-09-21T10:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T10:00:00+00:00",
+          "game_day": 40
+        }
+      ]
+    },
+    {
+      "id": "b10953cd-8203-4a74-8798-103d99a81bfc",
+      "name": "Classique de Touraine",
+      "league_division_id": 5,
+      "scheduled_for": "2026-09-21T13:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T13:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "4ec14787-97aa-4de5-b4d1-d98c748d5a15",
+      "name": "Classique du Japon",
+      "league_division_id": 5,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "0e19844d-8c78-4dd5-bcaf-b77545bbe79f",
+      "name": "Grand Prix de Namur",
+      "league_division_id": 6,
+      "scheduled_for": "2026-09-21T10:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T10:00:00+00:00",
+          "game_day": 40
+        }
+      ]
+    },
+    {
+      "id": "c7453ce8-f588-4567-8bc7-95cfffbbbdb5",
+      "name": "Classique de Touraine",
+      "league_division_id": 6,
+      "scheduled_for": "2026-09-21T13:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T13:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "7c01fade-a58a-4186-935c-41148df26d14",
+      "name": "Classique du Japon",
+      "league_division_id": 6,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "48014b91-3875-47a5-a117-5ca79adcb677",
+      "name": "Grand Prix de Namur",
+      "league_division_id": 7,
+      "scheduled_for": "2026-09-21T10:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T10:00:00+00:00",
+          "game_day": 40
+        }
+      ]
+    },
+    {
+      "id": "de74e662-50cb-4ef5-9e12-b8b52d9171bf",
+      "name": "Classique de Touraine",
+      "league_division_id": 7,
+      "scheduled_for": "2026-09-21T13:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T13:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "acbdfac3-221a-48bf-81a3-727174aafb8c",
+      "name": "Classique du Japon",
+      "league_division_id": 7,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 41
+        }
+      ]
+    },
+    {
+      "id": "48f5e504-8c2b-466f-8a3f-69689ed2e0a0",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 8,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    },
+    {
+      "id": "30a704bb-d178-4efc-98e8-78229c667779",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 9,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    },
+    {
+      "id": "16e768a9-0799-4dcc-bdc3-95568c18238d",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 10,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    },
+    {
+      "id": "bbd01b83-4261-477f-9ab7-62419779c933",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 11,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    },
+    {
+      "id": "d3870fbb-4de4-47d0-a047-c98b5753d1b6",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 12,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    },
+    {
+      "id": "b1356f4a-2803-4a72-b433-3ba2c10f3df1",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 13,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    },
+    {
+      "id": "0d6deba6-8e40-4f05-a219-af6d0ab9b960",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 14,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    },
+    {
+      "id": "b15e5d16-0ece-477a-9c41-e2248de61c5f",
+      "name": "Chrono des Herbiers Mineur",
+      "league_division_id": 15,
+      "scheduled_for": "2026-09-21T16:00:00+00:00",
+      "game_day_start": 27,
+      "schedule": [
+        {
+          "stage_number": 1,
+          "scheduled_at": "2026-09-21T16:00:00+00:00",
+          "game_day": 27
+        }
+      ]
+    }
+  ]
+}

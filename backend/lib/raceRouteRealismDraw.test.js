@@ -57,12 +57,17 @@ const PLAN_SEASON_ID = SNAPSHOT.seasonId;
 const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000001d";
 
 // Samme idé, men for testen der SPECIFIKT skal bevise "kun ÉN tier brød, og KUN den
-// trækkes om" — fundet via søgeloopet ovenfor mod det regenererede snapshot (8/8): det
-// kanoniske træk bryder PRÆCIS tier 3 (#3469's nye nedkørsels-finale-gulv, "nedkørsels-
-// finale-etapedage 3 < 4"), og gen-træk 1 retter det. Samme skrøbelighed som RETRY_SEASON_ID
-// (se advarslen ovenfor) — søg en ny med samme loop, filtreret til
-// `retried.length === 1 && retried[0].tier === 3`, hvis denne holder op med at ramme.
-const SINGLE_TIER_RETRY_SEASON_ID = "00000000-0000-0000-0000-000000000005";
+// trækkes om" — fundet via søgeloopet ovenfor mod det regenererede snapshot. Samme
+// skrøbelighed som RETRY_SEASON_ID (se advarslen ovenfor) — søg en ny med samme loop,
+// filtreret til `retried.length === 1 && retried[0].tier === 3`, hvis denne holder op med
+// at ramme.
+//
+// #3371 (23/8): weaveMountainFamilyBlocks (maks 2 bjerg-etaper i træk for korte/mellemlange
+// løb) ændrede generatorens deterministiske output nok til at det GAMLE seed (…005) ikke
+// længere brød tier 3's bånd i det kanoniske træk — testen fejlede højlydt på sit eget
+// "fixturen skal reelt bryde noget"-assert (præcis den skrøbelighed advarslen ovenfor
+// forudsagde), ikke tavst. Genfundet med samme søgeloop mod snapshottet EFTER #3371.
+const SINGLE_TIER_RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000000b";
 
 // ── Syntetiske generatorer (fuld kontrol over hvornår et træk består) ────────
 const passingStage = () => ({ profile_type: "high_mountain", finale_type: "long_climb", distance_km: 170, sectors: [] });
