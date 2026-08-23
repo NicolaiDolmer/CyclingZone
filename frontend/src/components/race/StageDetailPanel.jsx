@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { profileShape, profileLabelKey, finaleLabelKey } from "../../lib/stageProfileConfig.js";
+import { profileShape, profileLabelKey, finaleLabelKey, finaleHintKey } from "../../lib/stageProfileConfig.js";
 import { hasRouteData, finaleFactorPct } from "../../lib/stageRouteProfile.js";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import TerrainDNABar from "./TerrainDNABar.jsx";
@@ -7,11 +7,13 @@ import Tooltip from "../ui/Tooltip.jsx";
 
 // Valgt-etape-panel: stor silhuet/graf + finale-markør + terræn-navn + terrain-DNA.
 // profile mangler/ukendt terræn → null (graceful, som StageProfileCard).
-export default function StageDetailPanel({ profile, stageLabel }) {
+// raceClass (#4106): monument-gate for breakaway-finale-hintet, se finaleHintKey.
+export default function StageDetailPanel({ profile, stageLabel, raceClass }) {
   const { t } = useTranslation("races");
   const labelKey = profile && profileLabelKey(profile.profile_type);
   if (!labelKey) return null;
   const finaleKey = finaleLabelKey(profile.finale_type);
+  const hintKey = finaleHintKey(profile.finale_type, { raceClass, profileType: profile.profile_type, distanceKm: profile.distance_km });
   const { points } = profileShape(profile.profile_type);
 
   return (
@@ -32,7 +34,7 @@ export default function StageDetailPanel({ profile, stageLabel }) {
           <span
             className="absolute -top-0.5 right-0 text-cz-accent-t"
             aria-hidden="true"
-            title={finaleKey ? t(`detail.finaleTypeHint.${profile.finale_type}`) : ""}
+            title={hintKey ? t(`detail.${hintKey}`) : ""}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
               <path d="M3 1 V13" stroke="currentColor" strokeWidth="1.5" />
@@ -51,7 +53,7 @@ export default function StageDetailPanel({ profile, stageLabel }) {
             forklarer HVAD finalen betyder; en <button> (ikke <span>) gør den
             tap-tilgængelig på mobil via focus-within, ikke kun hover. */}
         {finaleKey && (
-          <Tooltip label={t(`detail.finaleTypeHint.${profile.finale_type}`)}>
+          <Tooltip label={t(`detail.${hintKey}`)}>
             <button
               type="button"
               className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 cursor-help"

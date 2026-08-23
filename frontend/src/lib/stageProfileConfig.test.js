@@ -7,6 +7,8 @@ import {
   profileShape,
   profileLabelKey,
   finaleLabelKey,
+  breakawayTendencyAllowed,
+  finaleHintKey,
 } from "./stageProfileConfig.js";
 
 // Kontrakt-guard: profile/finale-nøglerne her SKAL matche CHECK-constrainten i
@@ -90,4 +92,50 @@ test("finaleLabelKey returnerer nøgle for kendte typer, null for ukendt/tom", (
   assert.equal(finaleLabelKey("nope"), null);
   assert.equal(finaleLabelKey(null), null);
   assert.equal(finaleLabelKey(undefined), null);
+});
+
+// #4106: ejer-direktiv 21/8 — ruteprofilen må ikke love et udbrud-facit FØR
+// løbet, og slet ikke på monumenter. breakawayTendencyAllowed er fallback-
+// gatet (intet breakaway-sandsynligheds-felt i profile-data).
+test("breakawayTendencyAllowed: aldrig på monument-race_class, uanset terræn", () => {
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Monuments", profileType: "flat" }), false);
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Monuments", profileType: "rolling" }), false);
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Monuments", profileType: "cobbles" }), false);
+});
+
+test("breakawayTendencyAllowed: aldrig ved distance >= 250 km, uanset race_class", () => {
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "rolling", distanceKm: 260 }), false);
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "rolling", distanceKm: 250 }), false);
+  // Under tærsklen er distance ikke i sig selv en gate.
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "rolling", distanceKm: 249 }), true);
+});
+
+test("breakawayTendencyAllowed: kun fladt/bølget terræn uden for monument-gaten", () => {
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "flat" }), true);
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "rolling" }), true);
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "hilly" }), false);
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "mountain" }), false);
+  assert.equal(breakawayTendencyAllowed({ raceClass: "Class1", profileType: "cobbles" }), false);
+});
+
+test("breakawayTendencyAllowed: manglende felter degraderer sikkert (ingen kastede fejl, false)", () => {
+  assert.equal(breakawayTendencyAllowed(), false);
+  assert.equal(breakawayTendencyAllowed({}), false);
+});
+
+test("finaleHintKey: ikke-breakaway finale_type går uændret til finaleTypeHint-nøglen", () => {
+  assert.equal(finaleHintKey("bunch_sprint", {}), "finaleTypeHint.bunch_sprint");
+  assert.equal(finaleHintKey("long_climb", { raceClass: "Monuments", profileType: "high_mountain" }), "finaleTypeHint.long_climb");
+});
+
+test("finaleHintKey: breakaway grener til tendens- eller dæmpet nøgle ud fra gaten", () => {
+  assert.equal(finaleHintKey("breakaway", { raceClass: "Class1", profileType: "rolling" }), "finaleTypeHint.breakaway");
+  assert.equal(finaleHintKey("breakaway", { raceClass: "Monuments", profileType: "cobbles" }), "finaleTypeHint.breakawayUnlikely");
+  assert.equal(finaleHintKey("breakaway", { raceClass: "Class1", profileType: "mountain" }), "finaleTypeHint.breakawayUnlikely");
+});
+
+test("finaleHintKey: ukendt/manglende finale_type → null (graceful degrade)", () => {
+  assert.equal(finaleHintKey("nope", {}), null);
+  assert.equal(finaleHintKey(null, {}), null);
+  assert.equal(finaleHintKey(undefined, {}), null);
 });

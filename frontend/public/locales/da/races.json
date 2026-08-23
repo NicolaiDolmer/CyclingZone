@@ -1030,7 +1030,8 @@
       "long_climb": "Bjergfinale: selve stigningen er målstregen, hvor dagens største tidsforskelle opstår.",
       "descent": "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen.",
       "solo_tt": "Hver rytter starter alene mod uret, uden slipstrøm.",
-      "breakaway": "En tidlig udbrudsgruppe holder sig fri af feltet og opgør sejren indbyrdes."
+      "breakaway": "Afgøres ofte af et udbrud på dette terræn.",
+      "breakawayUnlikely": "Tidlige udbrud holder sjældent her; feltet henter dem som regel."
     },
     "route": {
       "stats": {

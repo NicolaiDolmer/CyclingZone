@@ -115,11 +115,11 @@ const JERSEYS = [
 // kategoriserede stigninger (det gør ægte klassikere også — Koppenberg, Poggio),
 // men der må ikke stå point på spil. Backendens racePassages.js gater allerede
 // korrekt på isStageRace; det var kun fladen der lovede noget den ikke indfrier.
-function StageProfileSlot({ profile, stageLabel, passages, tier, hasClassifications = true }) {
+function StageProfileSlot({ profile, stageLabel, passages, tier, hasClassifications = true, raceClass }) {
   if (hasRouteData(profile)) {
     return <StageProfileCard profile={profile} stageLabel={stageLabel} passages={passages} tier={tier} hasClassifications={hasClassifications} />;
   }
-  return <LegacyStageProfileCard profile={profile} stageLabel={stageLabel} />;
+  return <LegacyStageProfileCard profile={profile} stageLabel={stageLabel} raceClass={raceClass} />;
 }
 
 // #3985: ejer-valgt terræn-badge (20/8) — stroke-ikon + tekstlabel. Genbruger
@@ -772,6 +772,7 @@ export default function RaceDetailPage() {
             <StageDetailPanel
               profile={profileByStage[scheduledStage]}
               stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+              raceClass={race.race_class}
             />
           )}
 
@@ -847,7 +848,7 @@ export default function RaceDetailPage() {
                 <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} profileByStage={profileByStage}
                   filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                   moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                  raceId={race.id} raceName={race.name} passages={passages} t={t} />
+                  raceId={race.id} raceName={race.name} raceClass={race.race_class} passages={passages} t={t} />
               ))}
             </div>
           )}
@@ -855,7 +856,7 @@ export default function RaceDetailPage() {
           {/* Enkeltdagsløb — ingen faner, bare måltavlen (+ holdklassement hvis det findes) */}
           {hasAnyResults && !isStageRace && (
             <div className="flex flex-col gap-[14px]">
-              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" hasClassifications={false} />
+              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" hasClassifications={false} raceClass={race.race_class} />
               {teamFilterBar}
               <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
                 <SectionStack>
@@ -1294,7 +1295,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
+function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceClass, passages, t }) {
   const [classTab, setClassTab] = useState("stage");
   const [finalKmOpen, setFinalKmOpen] = useState(false);
 
@@ -1426,7 +1427,7 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
           en foldet (default lukket) sektion — resultatet er etapens vigtigste
           indhold nu, ikke ruten. */}
       <CollapsibleSection title={t("detail.stageProfile.sectionTitle")} defaultOpen={false}>
-        <StageProfileSlot profile={profile} passages={passages} tier="full" />
+        <StageProfileSlot profile={profile} passages={passages} tier="full" raceClass={raceClass} />
       </CollapsibleSection>
     </div>
   );

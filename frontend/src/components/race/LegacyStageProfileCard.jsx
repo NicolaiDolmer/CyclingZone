@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { profileShape, profileLabelKey, finaleLabelKey } from "../../lib/stageProfileConfig.js";
+import { profileShape, profileLabelKey, finaleLabelKey, finaleHintKey } from "../../lib/stageProfileConfig.js";
 import Tooltip from "../ui/Tooltip.jsx";
 
 // #1484 — stiliseret terræn-indikator pr. etape. ÆRLIG: kategori-piktogram fra
@@ -10,12 +10,13 @@ import Tooltip from "../ui/Tooltip.jsx";
 // er degraderings-stien for etaper UDEN rutedata (S1/PCM-importerede løb med
 // distance_km=null). StageProfileSlot i RaceDetailPage.jsx afgør hvornår denne
 // bruges i stedet for det nye StageProfileCard (Sub-4-grafen).
-export default function LegacyStageProfileCard({ profile, stageLabel }) {
+export default function LegacyStageProfileCard({ profile, stageLabel, raceClass }) {
   const { t } = useTranslation("races");
   const labelKey = profile && profileLabelKey(profile.profile_type);
   if (!labelKey) return null;
 
   const finaleKey = finaleLabelKey(profile.finale_type);
+  const hintKey = finaleHintKey(profile.finale_type, { raceClass, profileType: profile.profile_type, distanceKm: profile.distance_km });
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-4 flex items-center gap-4">
@@ -29,7 +30,7 @@ export default function LegacyStageProfileCard({ profile, stageLabel }) {
           {/* #2756: samme uforklaret-stage-ending-fix som StageDetailPanel — se
               dens kommentar for kilden (Discord, thelamba 20/7). */}
           {finaleKey && (
-            <Tooltip label={t(`detail.finaleTypeHint.${profile.finale_type}`)}>
+            <Tooltip label={t(`detail.${hintKey}`)}>
               {" · "}
               <button type="button" className="text-cz-3 font-normal underline decoration-dotted cursor-help">
                 {t(`detail.${finaleKey}`)}

@@ -1030,7 +1030,8 @@
       "long_climb": "Summit finish: the climb itself is the finish line, opening the biggest time gaps of the day.",
       "descent": "The finish comes after a descent, giving chasers a chance to close back down before the line.",
       "solo_tt": "Every rider starts alone against the clock, no drafting.",
-      "breakaway": "An early escape group stays clear of the peloton and contests the win among themselves."
+      "breakaway": "Often decided by a breakaway on this terrain.",
+      "breakawayUnlikely": "Early moves rarely survive here; the peloton usually brings them back."
     },
     "route": {
       "stats": {

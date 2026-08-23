@@ -91,3 +91,45 @@ export function profileLabelKey(profileType) {
 export function finaleLabelKey(finaleType) {
   return finaleType && FINALE_TYPE_KEYS.includes(finaleType) ? `finaleType.${finaleType}` : null;
 }
+
+// #4106: race_class-værdien for monumenter. Spejl af MONUMENT_RACE_CLASSES i
+// backend/lib/boardConstants.js (samme "kopieret, ikke importeret"-mønster som
+// BREAKAWAY_STRENGTH i roleHint.js — frontend må ikke trække backend ind).
+const MONUMENT_RACE_CLASS = "Monuments";
+// Distance-fallback for monumenter der (endnu) ikke er tagget "Monuments" i
+// race_class — ejer-tærskel fra #4106: >= 250 km er monument-skala.
+const MONUMENT_DISTANCE_KM = 250;
+
+/**
+ * #4106 (ejer-direktiv 21/8): må en finale_type="breakaway" vises som en
+ * TENDENS ("afgøres ofte af et udbrud")? race_stage_profiles har intet
+ * breakaway-sandsynligheds-felt (kun profile_type + finale_type, se filens
+ * topkommentar) — derfor et forsigtigt fallback-gate, ikke en beregning:
+ *   - ALDRIG på monumenter (race_class "Monuments" eller distance >= 250 km).
+ *     Et samlet felt + hårdt tempo gør et udbrud der holder hele vejen
+ *     usandsynligt her — teksten må ikke love det som en tendens.
+ *   - ELLERS kun på fladt/bølget terræn, hvor udbrud rent faktisk oftest
+ *     holder (BREAKAWAY_STRENGTH i roleHint.js: flat/rolling er de trygge
+ *     bånd). Andre terræner (bakket/bjerge/brosten) falder til den dæmpede
+ *     "breakawayUnlikely"-tekst i stedet.
+ */
+export function breakawayTendencyAllowed({ raceClass, profileType, distanceKm } = {}) {
+  const isMonument = raceClass === MONUMENT_RACE_CLASS
+    || (Number.isFinite(distanceKm) && distanceKm >= MONUMENT_DISTANCE_KM);
+  if (isMonument) return false;
+  return profileType === "flat" || profileType === "rolling";
+}
+
+/**
+ * i18n-nøgle til finale-hint-teksten (tooltip/title). ÉN funktion for ALLE
+ * forbrugere (StageDetailPanel, LegacyStageProfileCard, ...) — #4106 krav 4:
+ * samme tekst genbruges overalt, ingen dupliceret gate-logik pr. komponent.
+ * Ukendt/manglende finale_type → null (samme graceful degrade som finaleLabelKey).
+ */
+export function finaleHintKey(finaleType, { raceClass, profileType, distanceKm } = {}) {
+  if (!finaleLabelKey(finaleType)) return null;
+  if (finaleType !== "breakaway") return `finaleTypeHint.${finaleType}`;
+  return breakawayTendencyAllowed({ raceClass, profileType, distanceKm })
+    ? "finaleTypeHint.breakaway"
+    : "finaleTypeHint.breakawayUnlikely";
+}
