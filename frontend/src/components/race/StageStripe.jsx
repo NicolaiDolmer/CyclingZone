@@ -1,7 +1,6 @@
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { profileShape, profileLabelKey } from "../../lib/stageProfileConfig.js";
-import { hasRouteData, sharedYMax } from "../../lib/stageRouteProfile.js";
+import { hasRouteData } from "../../lib/stageRouteProfile.js";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 
 // #1484-piktogrammet — bevares for etaper UDEN rutedata (S1/PCM-løb).
@@ -18,10 +17,10 @@ function LegacyMiniSilhouette({ profileType }) {
 // stages.length < 2 og ingen overall → null (one-day: parent viser panelet direkte).
 export default function StageStripe({ stages = [], activeStage, onSelect, times = null, showOverall = false }) {
   const { t } = useTranslation("races");
-  // Sub-4 (#2448): FÆLLES y-loft over hele løbet — ellers ville en flad etape
-  // fylde lodret præcis lige så meget som en HC-dag, og striben ville lyve om
-  // løbets form. Hooks skal kaldes før det tidlige return herunder.
-  const yMax = useMemo(() => sharedYMax(stages), [stages]);
+  // #4107 (ejer-låst 23/8): INGEN fælles y-loft mere — hver etape skalerer nu
+  // til sin EGEN faste type-skala (stageRouteProfile.elevationScaleFor), det
+  // er netop pointen ("en kort kat.2 ser kort ud, en HC ser lang ud" — også
+  // side om side i striben her).
   if (stages.length < 2 && !showOverall) return null;
 
   return (
@@ -57,8 +56,8 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
               ${active ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
           >
             <span className={active ? "text-cz-accent-t" : "text-cz-2"}>
-              {hasRouteData(s) && yMax
-                ? <StageProfileGraph profile={s} tier="mini" width={100} height={26} yMax={yMax} uid={`ms-${n}`} />
+              {hasRouteData(s)
+                ? <StageProfileGraph profile={s} tier="mini" width={100} height={26} uid={`ms-${n}`} />
                 : <LegacyMiniSilhouette profileType={s.profile_type} />}
               <span className="block text-3xs font-mono mt-0.5">{n}</span>
               {times?.[n]?.timeLabel && (

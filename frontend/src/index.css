@@ -191,6 +191,17 @@
   --jersey-young-bg:    241 245 249;  /* white (ungdom) */
   --jersey-young-fg:     26  26  26;
 
+  /* Stignings-gradientbånd (#4107, ejer-låst 23/8) — fem procent-bånd på
+     ruteprofilens klatre-ramper: <4 grøn, 4-6 gul, 6-8 orange, 8-10 rød,
+     >10 mørkerød. Reelle sport-data (klassisk ASO/Tour-farvekode), samme
+     "ét sted, begge temaer"-mønster som --jersey-* (#671 anti-drift) — ALDRIG
+     hardkodet hex i StageProfileGraph.jsx. Channel-format for <alpha-value>. */
+  --climb-grad-1:  34 197  94;  /* grøn   <4% */
+  --climb-grad-2: 234 179   8;  /* gul    4-6% */
+  --climb-grad-3: 249 115  22;  /* orange 6-8% */
+  --climb-grad-4: 220  38  38;  /* rød    8-10% */
+  --climb-grad-5: 127  29  29;  /* mørkerød >10% */
+
   /* Division-3 neutral (#671 anti-drift) — channel-format så divColor()/
      rgb(var / alpha) virker. Dæmpet navy-grå, holder division-markøren inden
      for guld+navy i stedet for den tidligere fremmede violet (--cz-chart-2).

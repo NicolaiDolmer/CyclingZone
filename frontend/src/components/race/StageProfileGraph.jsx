@@ -1,14 +1,20 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { buildProfileSeries, waypointsFor } from "../../lib/stageRouteProfile.js";
+import { buildProfileSeries, waypointsFor, gradientBand, GRADIENT_BAND_TOKEN } from "../../lib/stageRouteProfile.js";
 
-// Sub-4 (#2448): etapeprofil som SVG. Geometrien kommer fra stageRouteProfile.js;
-// her bor KUN tegningen. Alle farver fra cz-tokens (#671 anti-drift): KOM-rød =
-// --jersey-mountain, sprint-grøn = --jersey-points, mål/aktiv = --text-1.
+// Sub-4 (#2448) + #4107 (ejer-låst 23/8, variant A/ASO-stil): etapeprofil som
+// SVG. Geometrien kommer fra stageRouteProfile.js; her bor KUN tegningen.
+// Alle farver fra cz-tokens (#671 anti-drift): stignings-ramper = de fem
+// gradientbånd (--climb-grad-1..5, klassisk ASO/Tour-farvekode), KOM-skiltet
+// = --jersey-mountain (kategori, IKKE gradient — to forskellige dimensioner),
+// sprint-grøn = --jersey-points, mål/aktiv = --text-1.
 
-// Stejlhed → intensitet på rampen. Ét hue, tre trin — ikke en regnbue.
-function gradientAlpha(g) { return g >= 8 ? 1 : g >= 6 ? 0.62 : 0.38; }
-// Kategori-mætning: HC massiv, cat 4 svag.
+// Ramp-farve: de fem procent-bånd, ikke kategori — en kort kat.4 på 11 % skal
+// se lige så rød ud som en lang HC på 11 %.
+const bandToken = (g) => GRADIENT_BAND_TOKEN[gradientBand(g)];
+const bandColor = (g, alpha = 1) => `rgb(var(${bandToken(g)}) / ${alpha})`;
+// Kategori-skilt-mætning (HC massiv, cat 4 svag) — SEPARAT dimension fra
+// gradientbåndet: kategorien er UCI-pointværdi, gradienten er stejlhed.
 const CAT_ALPHA = { HC: 1, "1": 0.8, "2": 0.55, "3": 0.34, "4": 0.2 };
 const catFill = (c) => `rgb(var(--jersey-mountain-bg) / ${CAT_ALPHA[c] ?? 0.2})`;
 const catText = (c) => (c === "HC" || c === "1" ? "rgb(var(--jersey-mountain-fg))" : "var(--text-1)");
@@ -18,25 +24,34 @@ const PAD = {
   compact: { l: 12, r: 16, t: 26, b: 34 },
   mini:    { l: 0,  r: 0,  t: 2,  b: 2 },
 };
+// #4108: miniaturens default — 120x36, "ren mini-A" (samme komponent overalt).
+const DEFAULT_DIMS = { mini: { width: 120, height: 36 }, full: { width: 900, height: 340 }, compact: { width: 900, height: 340 } };
 
 // #2818: hasClassifications=false på endagsløb — stigningerne og mellemsprinten
 // tegnes stadig (kategori, navn, km-mærke: ægte klassikere annoncerer også
 // Koppenberg og Poggio), men uden point-/bonus-tallene. Bjerg- og point-
 // konkurrencer findes kun i etapeløb, hvor de akkumulerer over flere dage.
 export default function StageProfileGraph({
-  profile, tier = "full", width = 900, height = 340, yMax,
+  profile, tier = "full", width, height,
   activeWaypoint = null, onWaypointSelect = null, uid = "sp", hasClassifications = true,
 }) {
   const { t } = useTranslation("races");
-  const series = useMemo(() => buildProfileSeries(profile, yMax ? { yMax } : {}), [profile, yMax]);
+  // #4107 (ejer-låst 23/8): FAST højdeskala pr. profile_type — buildProfileSeries
+  // afgør selv loftet ud fra profilens type. Intet yMax-prop længere: en
+  // fælles/etape-overstyret skala var netop det direktivet fjerner ("ingen
+  // per-stage max-skalering tilbage").
+  const series = useMemo(() => buildProfileSeries(profile), [profile]);
   const waypoints = useMemo(() => waypointsFor(profile), [profile]);
   if (!series) return null;
 
   const mini = tier === "mini";
   const full = tier === "full";
+  const dims = DEFAULT_DIMS[tier] ?? DEFAULT_DIMS.compact;
+  const W = width ?? dims.width;
+  const H = height ?? dims.height;
   const p = PAD[tier] ?? PAD.compact;
-  const plotW = width - p.l - p.r;
-  const plotH = height - p.t - p.b;
+  const plotW = W - p.l - p.r;
+  const plotH = H - p.t - p.b;
   const D = Number(profile.distance_km);
   const top = series.maxY * 1.12;
   const X = (km) => p.l + (km / D) * plotW;
@@ -60,7 +75,7 @@ export default function StageProfileGraph({
 
   return (
     <svg
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`0 0 ${W} ${H}`}
       className="block w-full h-auto overflow-visible"
       preserveAspectRatio={mini ? "none" : undefined}
       role={mini ? undefined : "img"}
@@ -83,7 +98,7 @@ export default function StageProfileGraph({
 
       {full && gridLines.map((m) => (
         <g key={`g${m}`}>
-          <line x1={p.l} y1={Y(m)} x2={width - p.r} y2={Y(m)} stroke="var(--text-3)" strokeOpacity="0.2" strokeWidth="0.5" />
+          <line x1={p.l} y1={Y(m)} x2={W - p.r} y2={Y(m)} stroke="var(--text-3)" strokeOpacity="0.2" strokeWidth="0.5" />
           <text x={p.l - 6} y={Y(m) + 3} textAnchor="end" className="fill-cz-3 font-mono" fontSize="9">{m}</text>
         </g>
       ))}
@@ -107,11 +122,20 @@ export default function StageProfileGraph({
       {series.climbs.map((c, i) => {
         const [a, b] = series.spans[i];
         const seg = series.xs.reduce((acc, x, k) => (x >= a - 0.4 && x <= b + 0.4
-          ? acc + `${X(x).toFixed(1)},${Y(series.ys[k]).toFixed(1)} ` : acc), "");
+          ? acc + `${X(x).toFixed(1)},${Y(series.ys[k]).toFixed(1)} ` : acc), "").trim();
+        const first = seg.split(" ")[0]?.split(",")[0];
+        const last = seg.split(" ").slice(-1)[0]?.split(",")[0];
+        const komWp = !mini ? waypoints.find((wp) => wp.kind === "kom" && wp.index === i) : null;
         return (
-          <polyline key={`ramp${i}`} points={seg.trim()} fill="none"
-            stroke={`rgb(var(--jersey-mountain-bg) / ${gradientAlpha(c.avg_gradient)})`}
-            strokeWidth={mini ? 1.6 : 2.4} strokeLinecap="round" strokeLinejoin="round" />
+          <g key={`ramp${i}`}
+            className={!mini && onWaypointSelect ? "cursor-pointer" : undefined}
+            onClick={!mini ? pick(komWp) : undefined} onMouseEnter={!mini ? pick(komWp) : undefined}>
+            {/* Fyldt areal i gradientbåndets farve — variant A/ASO-stil (#4107). */}
+            <polygon points={`${seg} ${last},${baseY} ${first},${baseY}`}
+              fill={bandColor(c.avg_gradient, mini ? 0.5 : 0.35)} stroke="none" />
+            <polyline points={seg} fill="none" stroke={bandColor(c.avg_gradient, 1)}
+              strokeWidth={mini ? 1.6 : 2.4} strokeLinecap="round" strokeLinejoin="round" />
+          </g>
         );
       })}
 
@@ -126,10 +150,10 @@ export default function StageProfileGraph({
         // grafens højre kant og løbe ~40 px udenfor — og det er præcis de
         // etaper hvor stigningen er dagens historie.
         const EDGE = 64;
-        const nearEnd = cx > width - p.r - EDGE;
+        const nearEnd = cx > W - p.r - EDGE;
         const nearStart = cx < p.l + EDGE;
         const textAnchor = nearEnd ? "end" : nearStart ? "start" : "middle";
-        const textX = nearEnd ? width - p.r : nearStart ? p.l : cx;
+        const textX = nearEnd ? W - p.r : nearStart ? p.l : cx;
         // Point-mærkatet sidder normalt til højre for chippen; ved højre kant
         // flyttes det til venstre for den, så det ikke skydes ud over stregen.
         const ptsX = nearEnd ? cx - w / 2 - 4 : cx + w / 2 + 4;
@@ -154,7 +178,12 @@ export default function StageProfileGraph({
                   className="fill-cz-1" style={{ letterSpacing: "0.05em" }}>
                   {(c.name || "").toUpperCase()}
                 </text>
+                {/* Højde ved toppen (#4107 pkt. 1: "kategori-skilt + navn + højde +
+                    længde/% ved toppen") — cy er allerede den PIXEL-transformerede
+                    Y, den ægte meterhøjde er series.ys[crestIdx] før Y()-transformen. */}
                 <text x={textX} y={labelY + 31} textAnchor={textAnchor} fontSize="8" className="fill-cz-2 font-mono">
+                  {t("detail.route.waypoint.altitude", { m: Math.round(series.ys[crestIdx]) })}
+                  {" · "}
                   {t("detail.route.waypoint.gradient", {
                     length: c.length_km.toFixed(1), gradient: c.avg_gradient.toFixed(1),
                   })}
@@ -167,7 +196,7 @@ export default function StageProfileGraph({
 
       {!mini && (
         <>
-          <line x1={p.l} y1={axisY} x2={width - p.r} y2={axisY} stroke="var(--text-3)" strokeOpacity="0.5" strokeWidth="0.7" />
+          <line x1={p.l} y1={axisY} x2={W - p.r} y2={axisY} stroke="var(--text-3)" strokeOpacity="0.5" strokeWidth="0.7" />
           {kmTicks.map((k) => (
             <g key={`km${k}`}>
               <line x1={X(k)} y1={axisY} x2={X(k)} y2={axisY + 4} stroke="var(--text-3)" strokeOpacity="0.5" strokeWidth="0.7" />

@@ -1,13 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  hasRouteData, buildProfileSeries, sharedYMax,
+  hasRouteData, buildProfileSeries,
   komPointsForClimb, routeReadKeys, waypointsFor, finaleFactorPct,
   KOM_SCALES, GREEN_FINISH_SCALES, INTERMEDIATE_SPRINT_SCALE,
   FINISH_BONUS_SECONDS, INTERMEDIATE_BONUS_SECONDS,
   TECHNICAL_DESCENT_WINDOW_KM, VALLEY_MIN_DESCENT_KM, DISTANCE_BAND_MIDPOINTS,
   DESCENDING_FINALE_WEIGHT, TECHNICAL_FINALE_WEIGHT,
+  PROFILE_TYPE_SCALE_M, PROFILE_TYPE_VALLEY_M, elevationScaleFor, valleyBaseFor, gradientBand,
 } from "./stageRouteProfile.js";
+import { PROFILE_TYPES } from "../../../backend/lib/raceStageProfileGenerator.js";
 
 const PICOS_S4 = {
   race_id: "picos", stage_number: 4, profile_type: "high_mountain", finale_type: "descent",
@@ -149,28 +151,76 @@ test("dal-finish: sidste punkt ligger markant under etapens toppunkt", () => {
   assert.ok(ys[ys.length - 1] < Math.max(...ys) * 0.6);
 });
 
-test("yMax-override: fælles skala ændrer ikke geometrien, kun det rapporterede loft", () => {
-  const solo = buildProfileSeries(VLAAMSE_S1);
-  const shared = buildProfileSeries(VLAAMSE_S1, { yMax: 2000 });
-  assert.deepEqual(solo.ys, shared.ys, "kurven må ikke ændre sig");
-  assert.equal(shared.maxY, 2000);
-});
-
 test("uden rutedata kastes ikke — der returneres null", () => {
   assert.equal(buildProfileSeries({ profile_type: "flat" }), null);
   assert.equal(buildProfileSeries(null), null);
 });
 
-test("sharedYMax: loftet er den højeste etapes top, ikke hver etapes egen", () => {
-  const y = sharedYMax([VLAAMSE_S1, PICOS_S4, PROLOG]);
-  assert.equal(y, buildProfileSeries(PICOS_S4).maxY, "bjergetapen sætter loftet");
-  assert.ok(y > buildProfileSeries(VLAAMSE_S1).maxY * 3, "brosten-etapen skal blive lav");
+// ─────────────────────────────────────────────────────────────────────────────
+// #4107 (ejer-låst 23/8): FAST højdeskala pr. profile_type — "ingen per-stage
+// max-skalering tilbage". Erstatter de tidligere sharedYMax-tests.
+
+test("PROFILE_TYPE_SCALE_M: ALLE PROFILE_TYPES fra backend-generatoren er mappet", () => {
+  for (const pt of PROFILE_TYPES) {
+    assert.ok(Number.isFinite(PROFILE_TYPE_SCALE_M[pt]), `${pt} mangler en fast skala`);
+    assert.ok(Number.isFinite(PROFILE_TYPE_VALLEY_M[pt]), `${pt} mangler en dal-basishøjde`);
+  }
 });
 
-test("sharedYMax: etaper uden rutedata ignoreres; ingen rutedata → null", () => {
-  assert.equal(sharedYMax([{ profile_type: "flat" }]), null);
-  assert.equal(sharedYMax([]), null);
-  assert.equal(sharedYMax([{ profile_type: "flat" }, PROLOG]), buildProfileSeries(PROLOG).maxY);
+test("elevationScaleFor: de fire ejer-navngivne bånd (flat/sprint 600, hilly/rolling/itt 1200, mountain 2500, high_mountain 3000)", () => {
+  assert.equal(elevationScaleFor("flat"), 600);
+  assert.equal(elevationScaleFor("hilly"), 1200);
+  assert.equal(elevationScaleFor("rolling"), 1200);
+  assert.equal(elevationScaleFor("itt"), 1200);
+  assert.equal(elevationScaleFor("mountain"), 2500);
+  assert.equal(elevationScaleFor("high_mountain"), 3000);
+});
+
+test("elevationScaleFor: ukendt type falder tilbage til mountain-loftet (samme fallback-princip som GREEN_FINISH_SCALES)", () => {
+  assert.equal(elevationScaleFor("does-not-exist"), PROFILE_TYPE_SCALE_M.mountain);
+});
+
+test("buildProfileSeries.maxY: FAST loft pr. type — to vidt forskellige rolling-etaper (kort/lang, få/mange climbs) rammer SAMME loft", () => {
+  const shortRolling = buildProfileSeries({ ...VLAAMSE_S1, profile_type: "rolling", distance_km: 60, elevation_gain_m: 350, climbs: [], sectors: [] });
+  const longRolling = buildProfileSeries(IBERICA_S20.climbs.length ? { ...IBERICA_S20, profile_type: "rolling" } : IBERICA_S20);
+  assert.equal(shortRolling.maxY, PROFILE_TYPE_SCALE_M.rolling);
+  // Selv en etape med et stort elevation_gain_m stadig UNDER loftet rapporterer det FASTE loft, ikke sin egen peak.
+  assert.ok(longRolling.maxY >= PROFILE_TYPE_SCALE_M.rolling);
+});
+
+test("buildProfileSeries.maxY: en flad og en high_mountain-etape med SAMME rå elevation_gain_m/distance får FORSKELLIGE lodrette skalaer", () => {
+  const flatVersion = buildProfileSeries({ race_id: "x", stage_number: 1, profile_type: "flat", distance_km: 180, elevation_gain_m: 400, climbs: [], sprints: [], sectors: [] });
+  const mtnVersion = buildProfileSeries({ race_id: "x", stage_number: 1, profile_type: "high_mountain", distance_km: 180, elevation_gain_m: 400, climbs: [], sprints: [], sectors: [] });
+  assert.equal(flatVersion.maxY, PROFILE_TYPE_SCALE_M.flat);
+  assert.equal(mtnVersion.maxY, PROFILE_TYPE_SCALE_M.high_mountain);
+  assert.ok(mtnVersion.maxY > flatVersion.maxY * 4, "high_mountain skal se markant højere ud end flat, selv med identisk rå data");
+});
+
+test("buildProfileSeries.maxY: sikkerhedsnet — en outlier-peak over det faste loft klipper IKKE kurven af (loftet udvides til peak)", () => {
+  // PICOS_S4 er en high_mountain-etape (5283 hm) — loftet er 3000, men den ægte
+  // toppunkts-højde (dal + akkumulerede climbs) ligger typisk over det.
+  const s = buildProfileSeries(PICOS_S4);
+  const peak = Math.max(...s.ys);
+  assert.ok(s.maxY >= peak, "loftet må aldrig være lavere end den faktiske peak (ingen visuel afklipning)");
+});
+
+test("valleyBaseFor: bjerg-typer har en markant højere visuel dal-basis end flade typer", () => {
+  assert.ok(valleyBaseFor("flat") >= 50 && valleyBaseFor("flat") <= 150, "flad skal ligge i 50-150 m");
+  assert.ok(valleyBaseFor("high_mountain") >= 400 && valleyBaseFor("high_mountain") <= 900, "high_mountain skal ligge i 400-900 m");
+  assert.ok(valleyBaseFor("high_mountain") > valleyBaseFor("flat"));
+});
+
+test("gradientBand: de fem procent-bånd (<4 grøn, 4-6 gul, 6-8 orange, 8-10 rød, >10 mørkerød)", () => {
+  assert.equal(gradientBand(3.9), 1);
+  assert.equal(gradientBand(4), 2);
+  assert.equal(gradientBand(5.9), 2);
+  assert.equal(gradientBand(6), 3);
+  assert.equal(gradientBand(7.9), 3);
+  assert.equal(gradientBand(8), 4);
+  assert.equal(gradientBand(9.9), 4);
+  assert.equal(gradientBand(10), 5);
+  assert.equal(gradientBand(15), 5);
+  assert.equal(gradientBand(NaN), 1, "ukendt/NaN falder tilbage til bånd 1, kaster ikke");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1070,6 +1070,7 @@
         "finish": "Mål",
         "kmMark": "km {km}",
         "gradient": "{length} km @ {gradient} %",
+        "altitude": "{m} m højde",
         "afterCrest": "{km} km efter sidste top"
       },
       "atStake": "PÅ SPIL",

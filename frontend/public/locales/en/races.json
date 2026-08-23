@@ -1070,6 +1070,7 @@
         "finish": "Finish",
         "kmMark": "km {km}",
         "gradient": "{length} km @ {gradient}%",
+        "altitude": "{m} m alt.",
         "afterCrest": "{km} km after the last crest"
       },
       "atStake": "AT STAKE",

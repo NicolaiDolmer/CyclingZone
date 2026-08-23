@@ -10,7 +10,7 @@
 
 > **💰 Værdier (ejer: "rettes inden 18", men kalender FØRST):** gate GRØN 13:59 (bånd 0,30, c = **0,811**, −18,9 %, 6.771 ryttere, dry-run OK). Apply = `marketValueLevelCorrectionApply.js --confirm-apply` → merge PR #4135 (dæmpnings-flip + patch note 7.174) → løn i aften på rettede værdier (#4120 valg D). Spillerbesked: [discord/2026-08-23-vaerdi-opdatering-besked.md](discord/2026-08-23-vaerdi-opdatering-besked.md) (ejer har postet 0,76-udgaven, skal rettes til 0,81). Nattens røde måling gemt i `backup_gate_log_3449_20260823`.
 
-> **🏁 v4-gaten: RØD** (h2h-scorecard PR #4132: bjerg-spredning 4-5x, sprintere 45-61 %, nedkørsel forkert retning) → **tirsdag kører v3**; mandag = de tre afvigelser. Ruteprofiler A + mini-A bygget (PR #4137, preview mandag, design låst på #4107/#4108).
+> **🏁 v4-gaten: RØD** (h2h-scorecard PR #4132: bjerg-spredning 4-5x, sprintere 45-61 %, nedkørsel forkert retning) → **tirsdag kører v3**; mandag = de tre afvigelser. Ruteprofiler A + mini-A: ejer-GO 23/8 17:55, PR #4137 merges LIVE i aften (#4107/#4108).
 
 > **👤 Ejer-klik:** ret Discord-tallet til 0,81 · svar: skader nulstilles IKKE (kun træthed→0, form decay 25 %), egomadsens forslag er allerede sådan, cybersimon fixet i #4044, D1-upkeep-tal (#4125) · #3486 VERCEL_TOKEN · `railway login`.
 
