@@ -56,3 +56,35 @@ Spørg ejeren om det er tilsigtet, eller om genberegningen skal ligge FØR trans
 
 **F4. Flip IKKE `wage_deduction_mode` i aften.**
 Prod står på `season_upfront` (verificeret i `app_config`). Ejeren besluttede i dag at flippe til `daily` ved S3→S4, ikke nu. `wageDeductionConfig.js`' header advarer eksplicit: et flip midt i en sæson, hvor sæsonlønnen allerede er trukket upfront, dobbelttrækker holdene resten af sæsonen.
+
+---
+
+## RETTET RÆKKEFØLGE (ejer-beslutning 23/8 ca. 18:55) — overstyrer køreplanens placering
+
+Køreplanen i generalprøve-rapporten lægger løn-genberegningen kl. 20:12, altså EFTER "Udfør sæsonskifte". **Det er forkert og må ikke køres sådan.**
+
+Fase 6 i transitionen (`season_payroll`) trækker **hele S3's lønsum upfront** ud fra `riders.salary` som de står i det øjeblik (`wage_deduction_mode = season_upfront`). Kører rettelsen bagefter, betaler spillerne hele S3 på de gamle, forkerte lønninger, og de nye slår først igennem ved S4.
+
+**Den rækkefølge der skal køres:**
+
+1. Sidste S2-løb kl. 19:00
+2. **Afslut sæson (S2)** — bestyrelsen skal dømme på de værdier spillerne har set hele sæsonen. Kør IKKE værdi-korrektionen før dette skridt: `boardConsequences.js:321` bruger `market_value` til stjerne-beskyttelsen ved tvangssalg, og `market_value = COALESCE(base_value, 1000)`, så en korrektion før dommen sender ryttere under beskyttelsesgrænsen på tal spillerne aldrig har set
+3. D1-komprimering apply (stillingsbaseret, upåvirket af værdier)
+4. **Niveau-korrektion c** → **type-dæmpning #4000** → **løn-genberegning**. Bindende rækkefølge jf. `riderValuationTypeDampening.js`' header. Se BLOKKEREN nedenfor før skridt 3 i kæden
+5. **Udfør sæsonskifte** — fase 6 trækker nu S3's løn på de rettede tal
+6. Generér entries til S3, mandat-migration, sæson-achievements
+
+### BLOKKER der skal afklares FØR løn-genberegningen køres
+
+Læst i koden, ikke kørt. Verificér med dry-run før nogen handler:
+
+- `salaryRecompute3645.mjs:82` regner løn af `rider.current_production_value`, **læst fra databasen** (select-liste linje 109). Scriptet kalder ikke `applyTypeDampening` og genberegner ingenting.
+- `current_production_value` er en LAGRET kolonne, beregnet i `backfillCores.js` gennem værdimodellen efter `applyTypeDampening()` (`backfillCores.js:226` og `:439`).
+- Værdi-korrektionen skriver KUN `base_value` (`marketValueLevelCorrectionApply.js:234`).
+- Der findes intet genberegnings-skridt for `current_production_value` i køreplanen, drejebogen eller denne prompt.
+
+**Hvis det holder:** at flippe type-dæmpningen ændrer læse-tid-beregningen, men ikke den lagrede `current_production_value`. Løn-genberegningen ville så læse det UDÆMPEDE grundlag og fryse kontrakterne på præcis den 19,8x rangorden som #4120 siger ikke må blive bindende. Kæden ville se rigtig ud og give det forkerte resultat.
+
+**Fælde i den oplagte løsning:** `backfillCores`' genberegningssti skriver også `base_value` (`:464`). Kører den efter c, kan den overskrive korrektionen. Rækkefølgen mellem c og en CPV-genberegning skal afklares med ejeren, ikke gættes.
+
+**Konkret at gøre:** dry-run løn-genberegningen FØR og EFTER dæmpnings-flippet og sammenlign medianerne pr. `valuation_type`. Er de identiske, er hullet bekræftet, og kæden må ikke køres videre uden en CPV-genberegning. Vis ejeren tallene og få et GO på hvordan.
