@@ -2,7 +2,7 @@
 
 > Erstatter besked 2 i `2026-08-17-cutover-beskeder.md` og udkastet fra 22/8 (begge overhalet).
 > Kanal: #the-roadbook (EN), #dansk-snak (DA). Post FØR korrektionen køres, ikke efter.
-> Tal: c = 0,763 (nyeste 30-dages-vindue, måling 23/8), type-spænd 9,1x -> 1,6x, løn genberegnes i aften.
+> Tal: c = 0,811 (nyeste 30-dages-vindue, gate-måling 23/8 kl. 13:59: 1,025 -> 0,951 -> 0,811, spænd 0,214 < 0,30, GRØN), type-spænd 9,1x -> 1,6x, løn genberegnes i aften.
 
 ## EN
 
@@ -10,7 +10,7 @@
 
 We promised the values would be fixed before the season switch. Here is what happens today.
 
-All rider values are lowered by the same factor, 0.76. That number is not a guess: it is what negotiated transfers have actually paid compared to our values over the last 30 days. The market has been telling us our values were about a quarter too high, and today we listen.
+All rider values are lowered by the same factor, 0.81. That number is not a guess: it is what negotiated transfers have actually paid compared to our values over the last 30 days. The market has been telling us our values were about a fifth too high, and today we listen.
 
 Second, rider type counts far less. A puncheur was priced at nine times a time trialist with the same ability. That gap is now 1.6x. This part moves value between types, not out of the game: the total stays the same.
 
@@ -24,7 +24,7 @@ From now on values are reviewed every Sunday. If the market keeps moving, the va
 
 Vi lovede at værdierne blev rettet før sæsonskiftet. Her er hvad der sker i dag.
 
-Alle rytterværdier sættes ned med samme faktor, 0,76. Tallet er ikke et gæt: det er hvad forhandlede handler faktisk har betalt i forhold til vores værdier de sidste 30 dage. Markedet har fortalt os at vores værdier lå cirka en fjerdedel for højt, og i dag lytter vi.
+Alle rytterværdier sættes ned med samme faktor, 0,81. Tallet er ikke et gæt: det er hvad forhandlede handler faktisk har betalt i forhold til vores værdier de sidste 30 dage. Markedet har fortalt os at vores værdier lå cirka en femtedel for højt, og i dag lytter vi.
 
 Dernæst fylder ryttertypen langt mindre. En puncheur var prissat til ni gange en enkeltstartsrytter med samme evne. Det spænd er nu 1,6x. Den del flytter værdi mellem typer, ikke ud af spillet: den samlede værdi er den samme.
 
