@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.182",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season 3 calendar repaired before the first race",
+          "body": "A calendar generation error let the same rider be entered in two races on the same day, and it stretched four Division 1 stage races over 8 to 10 real days. Fixed before the first start: Division 1 now runs 5 or 6 stages every single day, the four stretched races are compact (5 to 6 days), and three one-day races moved to fill gaps late in the season (Westkust Klassieker and Limburgse Klassieker to 12 Sep, Prijs van de Schelde to 15 Sep). All automatic lineups were rebuilt so no rider rides two races on the same day. A small number of manual selections that broke that rule were cleared, so check your lineups for the coming days."
+        },
+        "da": {
+          "title": "Sæson 3-kalenderen repareret før første løb",
+          "body": "En fejl i kalender-genereringen lod samme rytter være tilmeldt to løb på samme dag, og den strakte fire 1. divisions-etapeløb over 8-10 rigtige dage. Rettet før første start: 1. division kører nu 5 eller 6 etaper hver eneste dag, de fire udstrakte løb er komprimeret (5-6 dage), og tre endagsløb er flyttet for at fylde huller sidst på sæsonen (Westkust Klassieker og Limburgse Klassieker til 12/9, Prijs van de Schelde til 15/9). Alle automatiske opstillinger er genopbygget, så ingen rytter kører to løb samme dag. Et lille antal manuelle udtagelser der brød den regel er nulstillet, så tjek dine opstillinger for de kommende dage."
+        },
+        "refs": [4155]
+      }
+    ]
+  },
+  {
     "version": "7.181",
     "date": "2026-08-23",
     "label": "Beta",
