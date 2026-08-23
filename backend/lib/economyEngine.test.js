@@ -2048,13 +2048,13 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
 
   assert.equal(preview.salary_deduction, 100);
   assert.equal(preview.loan_interest, 10);
-  assert.equal(preview.upkeep, 40000);
+  assert.equal(preview.upkeep, 20000);
   // v3.78/A3 + #1441 A6: balance_after følger processSeasonStart-rækkefølgen inkl. upkeep
-  // (D3 upkeep kalibreret 30000 → 40000).
-  // balance + sponsor − renter − løn − upkeep = 500 + 220 − 10 − 100 − 40000 = −39390
-  assert.equal(preview.balance_after, -39390);
+  // (D3 upkeep: 30000 → 40000 (A6) → 20000 (ejer 23/8, S3-halvering)).
+  // balance + sponsor − renter − løn − upkeep = 500 + 220 − 10 − 100 − 20000 = −19390
+  assert.equal(preview.balance_after, -19390);
   assert.equal(preview.needs_emergency_loan, true);
-  assert.equal(preview.emergency_loan_amount, 39390);
+  assert.equal(preview.emergency_loan_amount, 19390);
   assert.equal(preview.current_board_satisfaction, 50);
   assert.equal(preview.board_satisfaction, 78);
   assert.equal(preview.sponsor_modifier, 1.1);
@@ -3595,7 +3595,7 @@ test("#1980: processSeasonStart kørt to gange giver præcis ÉN parachute-post 
 
 // ─── Løbende upkeep-debit (#1441) ────────────────────────────────────────────
 
-test("processTeamSeasonPayroll debits 140000 as upkeep for a D2 team (#1441)", async () => {
+test("processTeamSeasonPayroll debits 70000 as upkeep for a D2 team (#1441)", async () => {
   const seasonId = "season-upkeep-1";
   const teamId = "team-upkeep-d2";
 
@@ -3676,7 +3676,7 @@ test("processTeamSeasonPayroll debits 140000 as upkeep for a D2 team (#1441)", a
   assert.equal(upkeepRows.length, 1, "Præcis én upkeep-transaktion skal skrives for D2-hold");
 
   const upkeep = upkeepRows[0];
-  assert.equal(upkeep.amount, -140000, "Upkeep-beløb skal være -140000 for division 2 (#1441 A6-kalibreret)");
+  assert.equal(upkeep.amount, -70000, "Upkeep-beløb skal være -70000 for division 2 (ejer 23/8, S3-halvering)");
   assert.equal(upkeep.team_id, teamId);
 
   // Idempotency-nøgle skal indeholde sæson + hold

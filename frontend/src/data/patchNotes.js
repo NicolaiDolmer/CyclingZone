@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.181",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season 3 is live",
+          "body": "The top 24 teams now race in Division 1, and every team is placed by final Season 2 standings. Salaries follow the corrected rider values from the start of the season. Division upkeep is halved (D1 220,000 / D2 70,000 / D3 20,000) so promoted teams are not pushed into debt on day one. 27 race days, first race Tuesday 11:00 CET."
+        },
+        "da": {
+          "title": "Sæson 3 er i gang",
+          "body": "De 24 bedste hold kører nu i 1. division, og alle hold er placeret efter sæson 2-slutstillingen. Lønnen følger de rettede rytterværdier fra sæsonstart. Divisions-upkeep er halveret (D1 220.000 / D2 70.000 / D3 20.000), så oprykkede hold ikke starter i gæld. 27 løbsdage, første løb tirsdag kl. 11:00."
+        },
+        "refs": [3901, 1155, 3645]
+      }
+    ]
+  },
+  {
     "version": "7.180",
     "date": "2026-08-23",
     "label": "Beta",

@@ -58,9 +58,17 @@ async function loadAndPlan() {
   const youthBaseline = JSON.parse(readFileSync(join(LIB, "riderTypesBaselineYouth.json"), "utf8"));
   const model = applyTypeDampening(JSON.parse(readFileSync(join(LIB, "riderValuationModelV4.json"), "utf8")));
 
-  const { data: season, error: seasonErr } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
-  if (seasonErr) throw new Error(`season lookup: ${seasonErr.message}`);
-  const seasonNumber = season?.number ?? 1;
+  const argSeason = (process.argv.find((a) => a.startsWith("--season-number=")) || "").split("=")[1];
+  let seasonNumber = Number(argSeason) || null;
+  if (!seasonNumber) {
+    const { data: season, error: seasonErr } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`season lookup: ${seasonErr.message}`);
+    seasonNumber = season?.number ?? null;
+  }
+  if (!seasonNumber) {
+    const { data: lastDone } = await sb.from("seasons").select("number").eq("status", "completed").order("number", { ascending: false }).limit(1).maybeSingle();
+    seasonNumber = lastDone?.number ?? 1;
+  }
 
   const riders = await fetchAllRows(() => sb.from("riders")
     .select("id, firstname, lastname, team_id, is_retired, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale, archetype_draw")
@@ -141,7 +149,7 @@ async function main() {
 
   console.log("\n→ Skriver via refreshChangedRiderValues (samme kode som søndags-sweepen)…");
   const t0 = Date.now();
-  const res = await refreshChangedRiderValues(sb, { log: (m) => console.log(`  ${m}`) });
+  const res = await refreshChangedRiderValues(sb, { log: (m) => console.log(`  ${m}`), seasonNumber: plan.seasonNumber });
   console.log(`  skrevet: ${fmt(res.written)} · ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 
   console.log("→ Post-verify: ny plan skal være tom…");
