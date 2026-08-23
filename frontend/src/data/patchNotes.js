@@ -46,6 +46,27 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.175",
+    "date": "2026-08-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Smoother stage order in Season 3's short stage races",
+          "body": "Stage order in Season 3's short stage races is now more natural: no more than two mountain stages in a row."
+        },
+        "da": {
+          "title": "Mere naturlig etaperækkefølge i sæson 3's korte etapeløb",
+          "body": "Etaperækkefølgen i sæson 3's korte etapeløb er nu mere naturlig: maks to bjergetaper i træk."
+        },
+        "refs": [3371]
+      }
+    ]
+  },
+  {
     "version": "7.173",
     "date": "2026-08-23",
     "label": "Beta",
