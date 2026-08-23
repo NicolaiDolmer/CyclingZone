@@ -60,6 +60,7 @@ import { MAX_GT_STAGES_PER_DAY } from "../../lib/raceCalendarLanePacker.js";
 import { recomputeSeasonRaceDays } from "../../lib/seasonRaceDays.js";
 import { runRaceEntryGenerator } from "../../lib/raceEntryGenerator.js";
 import { selectionSizeForRace } from "../../lib/raceAutopick.js";
+import { fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
 
 const SEASON_ID = "00000000-0000-0000-0000-000000000003";
 const STALE_DAY = "2026-09-21";
@@ -123,12 +124,15 @@ if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
 const tierOf = new Map(divs.map((d) => [d.id, d.tier]));
 
 const raceIds = races.map((r) => r.id);
-let sched = [];
-for (let i = 0; i < raceIds.length; i += 100) {
-  const { data, error } = await supabase.from("race_stage_schedule").select("race_id, stage_number, scheduled_at, game_day").in("race_id", raceIds.slice(i, i + 100));
-  if (error) throw new Error(`race_stage_schedule: ${error.message}`);
-  sched.push(...data);
-}
+// #3331: fetchAllRowsChunkedIn chunker BAADE .in()-listen (100 ad gangen, #3030)
+// OG hver chunks resultat via .range() (1000 ad gangen) — saa selv en pulje med
+// mange GT-etaper pr. loeb aldrig kan ramme PostgREST's stille 1000-raekke-loft.
+const sched = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
+  supabase.from("race_stage_schedule")
+    .select("race_id, stage_number, scheduled_at, game_day")
+    .in("race_id", chunk)
+    .order("race_id").order("stage_number"),
+);
 console.log(`race_stage_schedule-raekker: ${sched.length}`);
 
 const dayOf = (iso) => String(iso).slice(0, 10);
@@ -360,14 +364,15 @@ if (poolsWithCap1.length) {
   const humanTeams = (teams || []).filter((t) => t.is_ai === false && !t.is_bank && !t.is_test_account);
   const teamIds = humanTeams.map((t) => t.id);
 
-  let riderRows = [];
-  for (let i = 0; i < teamIds.length; i += 100) {
-    const { data, error } = await supabase.from("riders")
+  // #3331: samme fetchAllRowsChunkedIn-begrundelse som race_stage_schedule ovenfor
+  // — team_id-chunks paa 100 kan i teorien bringe raekketallet taet paa loftet
+  // naar mange puljer er cap+1-ramte, saa vi pagerer hver chunk eksplicit.
+  const riderRows = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+    supabase.from("riders")
       .select("id, team_id, is_academy, is_retired")
-      .in("team_id", teamIds.slice(i, i + 100));
-    if (error) throw new Error(`riders: ${error.message}`);
-    riderRows.push(...data);
-  }
+      .in("team_id", chunk)
+      .order("id"),
+  );
   // #3896: skades-status bor i rider_condition (rider_id, injured_until), ikke paa
   // riders selv — samme kilde som raceEntryGenerator.js's kanoniske applyInjuredFilter.
   const riderIds = riderRows.map((r) => r.id);
@@ -515,8 +520,8 @@ if (!APPLY) {
   try {
     execFileSync(process.execPath, ["scripts/dev/verifySeason3Calendar.mjs"], { stdio: "inherit", env: process.env });
     console.log(`\n✅ APPLY afsluttet. Post-verify OK.`);
-  } catch (e) {
-    console.error(`\n❌ Post-verify FEJLEDE (verifySeason3Calendar.mjs exit != 0). Undersoeg FOeR videre skridt.`);
+  } catch (err) {
+    console.error(`\n❌ Post-verify FEJLEDE (verifySeason3Calendar.mjs exit != 0): ${err.message}. Undersoeg FOeR videre skridt.`);
     process.exitCode = 1;
   }
 }
