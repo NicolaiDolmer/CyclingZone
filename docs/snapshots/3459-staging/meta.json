@@ -1,0 +1,35 @@
+{
+  "issue": 3459,
+  "toolIssue": 3645,
+  "purpose": "Rollback-grundlag for race-day-flippet 2026-08-23 (race_day_engine_enabled off → on).",
+  "takenAt": "2026-08-23T11:31:23.157Z",
+  "takenAtCopenhagen": "2026-08-23 13:31:23",
+  "supabaseProjectRef": "pywxpnynzmbukdvoiazp",
+  "activeSeasonNumber": 2,
+  "activeSeason": {
+    "number": 2,
+    "status": "active",
+    "start_date": "2026-07-27",
+    "end_date": null,
+    "race_days_completed": 28,
+    "race_days_total": 28
+  },
+  "raceDayEngineEnabled": "off",
+  "rowCounts": {
+    "rider_derived_abilities": 9386,
+    "riders": 9386,
+    "app_config": 47,
+    "seasons": 4
+  },
+  "integritet": {
+    "derivedMedCaps": 9386,
+    "derivedMedProgress": 9386,
+    "ridersUdenAfledtRaekke": 0,
+    "ridersMedArchetypeDraw": 9351
+  },
+  "noter": [
+    "Alle rækker, ingen is_retired-filtrering — rollback skal dække hele tabellen.",
+    "ability_caps/ability_progress er jsonb og gemmes uændret.",
+    "app_config er hele tabellen, alle kolonner."
+  ]
+}
