@@ -37,6 +37,7 @@ import {
   SEED_ACADEMY,
   SEED_ACADEMY_PNL,
   SEED_CALENDAR,
+  SEED_CALENDAR_S2,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
   SEED_SCOUTING_REPORT,
@@ -957,7 +958,12 @@ export function apiResponse(pathname, search = "") {
   // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
   // S6 (#1835): read-only "andre divisioner"-browse. Tjekkes FØR distribution (mere
   // specifik path) — selvom endsWith ikke ville krydse, holder rækkefølgen den tydelig.
-  if (pathname.endsWith("/api/races/calendar")) return SEED_CALENDAR;
+  // #4102: ?season_number=2 → "next season" (SeasonPicker), samme match-mønster
+  // som forum-kategori-filteret ovenfor.
+  if (pathname.endsWith("/api/races/calendar")) {
+    const seasonNumber = new URLSearchParams(search).get("season_number");
+    return seasonNumber === String(SEED_CALENDAR_S2.season.number) ? SEED_CALENDAR_S2 : SEED_CALENDAR;
+  }
   if (pathname.endsWith("/api/races/distribution/browse")) return SEED_BROWSE;
   if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;

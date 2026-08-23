@@ -4,12 +4,20 @@
 // GET /api/races/calendar; klik på et løb åbner dets dag på det eksisterende
 // dags-board (?day=, dansk kalenderdag-ordinal jf. backend/lib/seasonDay.js).
 // Read-only: al redigering sker på dags-boardet. Rytter×løb-gitteret er P1.
+//
+// #4102: backend understøttede allerede ?season_number= + availableSeasons
+// (B7 read-only-browsing), men UI'et havde ingen synlig indgang — kun URL.
+// SeasonPicker gør sæson-skiftet synligt og klikbart; samme komponent viser
+// "upcoming" FØR cutover og "previous" EFTER, uden egen gren (statusKey
+// afledes af activeNumber, ikke af en hardkodet S2/S3-antagelse).
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 import SeasonDayToggle from "./SeasonDayToggle.jsx";
+import SeasonPicker, { neighborSeasons } from "./SeasonPicker.jsx";
+import SeasonChangeoverNote from "./SeasonChangeoverNote.jsx";
 import {
   seasonRange,
   spanToRect,
@@ -75,6 +83,10 @@ export default function SeasonView({ onSwitchView }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
+  // #4102: sæson-listen + hvilken der er aktiv persisterer UD OVER den enkelte
+  // fetch, så SeasonPicker'en ikke blinker væk mens en NY sæson hentes (den
+  // hører til navigationen, ikke til det enkelte kalender-svar).
+  const [seasonsMeta, setSeasonsMeta] = useState(null); // { availableSeasons, activeNumber } | null
 
   // B7 (spec): næste sæson må browses read-only så snart kalenderen findes.
   // ?season=N viser en eksplicit sæson; er den ikke den aktive, er visningen
@@ -93,7 +105,10 @@ export default function SeasonView({ onSwitchView }) {
         const res = await fetch(`${API}/api/races/calendar${qs}`, { headers });
         if (!res.ok) throw new Error("calendar_failed");
         const json = await res.json();
-        if (alive) setData(json);
+        if (!alive) return;
+        setData(json);
+        const activeNumber = (json.availableSeasons || []).find((s) => s.status === "active")?.number ?? null;
+        setSeasonsMeta({ availableSeasons: json.availableSeasons || [], activeNumber });
       } catch {
         if (alive) { setData(null); setFailed(true); }
       } finally {
@@ -104,6 +119,23 @@ export default function SeasonView({ onSwitchView }) {
   }, [seasonParam, retryTick]);
 
   const todayIso = useMemo(() => copenhagenTodayISO(), []);
+
+  const pickerSeasons = useMemo(
+    () => neighborSeasons(seasonsMeta?.availableSeasons, seasonsMeta?.activeNumber),
+    [seasonsMeta],
+  );
+  // Den sæson brugeren faktisk kigger på lige nu — server-svaret vinder når det
+  // er der, ellers URL'ens ?season=, ellers den aktive (default-tilstand).
+  const viewedSeasonNumber = data?.season?.number ?? (Number.isFinite(seasonParam) ? seasonParam : seasonsMeta?.activeNumber ?? null);
+
+  function selectSeason(number) {
+    setParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (seasonsMeta?.activeNumber != null && number === seasonsMeta.activeNumber) p.delete("season");
+      else p.set("season", String(number));
+      return p;
+    }, { replace: true });
+  }
 
   const model = useMemo(() => {
     if (!data?.season) return null;
@@ -142,6 +174,7 @@ export default function SeasonView({ onSwitchView }) {
         open: focusBands.filter((b) => !b.hasSelection).length,
       },
       readOnly: activeNumber != null && data.season.number !== activeNumber,
+      upcoming: activeNumber != null && data.season.number > activeNumber,
       division: (data.entries || []).find((e) => e.poolId === data.ownPoolId)?.division ?? null,
     };
   }, [data, todayIso]);
@@ -174,11 +207,27 @@ export default function SeasonView({ onSwitchView }) {
   }
   const clampToRunning = (b) => (b.startDate <= todayIso && todayIso <= b.endDate ? todayIso : b.startDate);
 
-  if (loading) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
+  // Header-raden (toggle + evt. sæson-vælger) er den samme uanset loading/fejl/
+  // tom-tilstand, så sæson-skiftet aldrig forsvinder mens en anden sæsons data hentes.
+  const header = (
+    <div className="mb-4 flex flex-wrap items-center gap-2.5">
+      <SeasonDayToggle view="season" onChange={onSwitchView} />
+      {pickerSeasons.length > 1 && (
+        <SeasonPicker
+          seasons={pickerSeasons}
+          activeNumber={seasonsMeta?.activeNumber ?? null}
+          current={viewedSeasonNumber}
+          onSelect={selectSeason}
+        />
+      )}
+    </div>
+  );
+
+  if (loading) return <div>{header}<div className="flex justify-center py-10"><Spinner size={20} /></div></div>;
   if (failed) {
     return (
       <div>
-        <div className="mb-4"><SeasonDayToggle view="season" onChange={onSwitchView} /></div>
+        {header}
         <ErrorState
           description={t("seasonView.error")}
           action={
@@ -193,7 +242,7 @@ export default function SeasonView({ onSwitchView }) {
   if (!data?.season || !model || model.empty) {
     return (
       <div>
-        <div className="mb-4"><SeasonDayToggle view="season" onChange={onSwitchView} /></div>
+        {header}
         <EmptyState icon={<FlagIcon size={24} />} title={t("seasonView.empty")} />
       </div>
     );
@@ -216,10 +265,18 @@ export default function SeasonView({ onSwitchView }) {
 
   return (
     <div>
-      {/* Toggle + sæson-meta + klik-hint (én række, jf. mockup) */}
+      {/* Toggle + sæson-vælger + sæson-meta + klik-hint (jf. mockup) */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex flex-wrap items-center gap-2.5 min-w-0">
           <SeasonDayToggle view="season" onChange={onSwitchView} />
+          {pickerSeasons.length > 1 && (
+            <SeasonPicker
+              seasons={pickerSeasons}
+              activeNumber={seasonsMeta?.activeNumber ?? null}
+              current={viewedSeasonNumber}
+              onSelect={selectSeason}
+            />
+          )}
           <span className="text-xs text-cz-2 truncate">
             {t("seasonView.meta", {
               season: data.season.number,
@@ -229,8 +286,16 @@ export default function SeasonView({ onSwitchView }) {
               end: fmt.range(rail.endIso),
             })}
           </span>
+          {/* #4102: tydelig start-markering når man browser en kommende sæson read-only. */}
+          {model.upcoming && (
+            <span className="rounded-full border border-cz-accent/40 bg-cz-accent/10 px-2 py-0.5 font-data text-2xs font-semibold text-cz-accent-t whitespace-nowrap">
+              {t("seasonView.startsOn", { date: fmt.panel(rail.startIso) })}
+            </span>
+          )}
         </div>
-        <span className="font-data text-2xs text-cz-3">{t("seasonView.hint")}</span>
+        <span className="font-data text-2xs text-cz-3">
+          {model.readOnly ? t("seasonView.readOnlyHint") : t("seasonView.hint")}
+        </span>
       </div>
 
       <div className="rounded-cz border border-cz-border bg-cz-card p-4 sm:p-5">
@@ -331,6 +396,9 @@ export default function SeasonView({ onSwitchView }) {
           </div>
         </div>
       </div>
+
+      {/* #4124: sæsonskiftets tidslinje, kort + collapsible (fuld forklaring i Hjælp). */}
+      <SeasonChangeoverNote className="mt-4" />
     </div>
   );
 }

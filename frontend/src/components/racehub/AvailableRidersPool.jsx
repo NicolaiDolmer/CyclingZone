@@ -13,7 +13,7 @@ import { LockIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
 import { canAddRiderToColumn } from "../../lib/raceHubLogic.js";
 
-export default function AvailableRidersPool({ roster, columns, bindingMap, seasonLoadByRider = {}, onAddRiderToRace, onRegenerate, onClearSquad, busy, onDropRider }) {
+export default function AvailableRidersPool({ roster, columns, bindingMap, seasonLoadByRider = {}, dayClearImpact = null, onAddRiderToRace, onRegenerate, onClearSquad, busy, onDropRider }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: pulje-drop-zone (fjern rytter ved drop)
@@ -38,7 +38,10 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
           <button type="button" onClick={() => onRegenerate("missing")} disabled={busy}
             className="text-2xs uppercase tracking-wide font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
-          <button type="button" onClick={() => onClearSquad?.("day")} disabled={busy}
+          {/* #3428: "Ryd dag" rammer ALLE overlappende løb vist på boardet lige nu — uklart
+              før. Tooltip navngiver præcis hvor mange løb/ryttere den rydder. */}
+          <button type="button" onClick={() => onClearSquad?.("day")} disabled={busy || dayClearImpact?.races === 0}
+            title={dayClearImpact ? t("racehub.pool.clearDayTooltip", dayClearImpact) : undefined}
             className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearDay")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
           <button type="button" onClick={() => onClearSquad?.("all")} disabled={busy}

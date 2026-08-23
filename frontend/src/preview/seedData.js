@@ -1404,8 +1404,24 @@ function calEntry(o) {
   };
 }
 
+// #4102: to sæsoner i seedet, så SeasonPicker'en (Season 1 nuværende / Season 2
+// kommende) faktisk har noget at vise på preview. availableSeasons driver
+// picker'en; SEED_CALENDAR_S2 nedenfor er "next season, read-only" med samme
+// løb forskudt +60 dage og ingen udtagelser endnu (ny sæson, intet valgt).
+const AVAILABLE_SEASONS_PREVIEW = [
+  { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number, status: "active" },
+  { id: "season-e2e-2", number: ACTIVE_SEASON.season_number + 1, status: "upcoming" },
+];
+
+function shiftIso(iso, days) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export const SEED_CALENDAR = {
   season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number, raceDaysTotal: 60, raceDaysCompleted: 14 },
+  availableSeasons: AVAILABLE_SEASONS_PREVIEW,
   ownPoolId: TEST_TEAM.league_division_id,
   divisions: [
     { division: 1, pools: [{ id: 1, label: "Division 1", poolIndex: 0 }] },
@@ -1451,6 +1467,21 @@ export const SEED_CALENDAR = {
     calEntry({ id: "cal-16", name: "Japan Cup", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 28, date: "2026-07-23", terrain: "mountain", isMine: false }),
     calEntry({ id: "cal-17", name: "Coppa Bernocchi", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 28, date: "2026-07-23", terrain: "itt", isMine: false }),
   ],
+};
+
+// #4102: "Season 2 (upcoming)" via ?season_number=2 — samme løb som SEED_CALENDAR,
+// forskudt +60 dage, ingen udtagelser (entered:false) og gameDay nulstillet (næste
+// sæsons egen dagsakse), så Season-visningens read-only-tilstand kan screenshottes.
+export const SEED_CALENDAR_S2 = {
+  ...SEED_CALENDAR,
+  season: { id: "season-e2e-2", number: ACTIVE_SEASON.season_number + 1, raceDaysTotal: 60, raceDaysCompleted: 0 },
+  entries: SEED_CALENDAR.entries.map((e) => ({
+    ...e,
+    date: shiftIso(e.date, 60),
+    stageSchedule: undefined,
+    entered: false,
+    leaderSet: false,
+  })),
 };
 
 // #1441 A3 — start-tilstand for Klub-preview (mid-game D2-hold). Muteres af clubMock.

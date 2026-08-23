@@ -31,7 +31,28 @@
     },
     "empty": "No races on the calendar yet",
     "error": "The season calendar could not be loaded. Nothing was lost. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "picker": {
+      "ariaLabel": "Season",
+      "current": "Season {number} (current)",
+      "upcoming": "Season {number} (upcoming)",
+      "previous": "Season {number} (previous)"
+    },
+    "startsOn": "Starts {date}",
+    "readOnlyHint": "Read-only preview. Editing opens automatically once this season becomes active.",
+    "changeover": {
+      "title": "What changes at season changeover",
+      "items": {
+        "age": "Riders age +1",
+        "form": "Form decays toward 50 (about 25% carries over)",
+        "fatigue": "Fatigue resets to 0",
+        "injuries": "Injuries are not reset",
+        "peaks": "Peak plans stay unchanged",
+        "wages": "Wages and rider values update Sunday"
+      },
+      "firstRaceDay": "First race day: Tuesday. Monday is race-free.",
+      "readMore": "Full details in Help"
+    }
   },
   "racehub": {
     "scope": {
@@ -75,9 +96,10 @@
       "clearAllSeason": "Clear all",
       "bound": "Already racing in an overlapping race",
       "loadShort": "{days}d",
-      "loadTitle": "Season load: {races, plural, one {# race} other {# races}}, {days, plural, one {# race day} other {# race days}} entered this season"
+      "loadTitle": "Season load: {races, plural, one {# race} other {# races}}, {days, plural, one {# race day} other {# race days}} entered this season",
+      "clearDayTooltip": "Clears {races, plural, one {# race} other {# races}} and removes {riders, plural, one {# rider} other {# riders}} for this day"
     },
-    "clearDayWarn": "Remove every rider from today's races? This cannot be undone, and the assistant will not refill them until you ask it to.",
+    "clearDayWarn": "Remove {riders, plural, one {# rider} other {# riders}} from {races, plural, one {# race} other {# races}} today? This cannot be undone, and the assistant will not refill them until you ask it to.",
     "clearAllWarn": "Remove every rider from ALL your remaining races this season? This cannot be undone, and the assistant will not refill them until you ask it to.",
     "clearAllDialog": {
       "title": "Clear all selections?",
@@ -95,7 +117,8 @@
       "openRace": "Open {name}",
       "peaksHere": "Peaking here: {names}",
       "paybackHere": "Payback dip here: {names} ({points} form)",
-      "paybackHereNoPoints": "Payback dip here: {names}"
+      "paybackHereNoPoints": "Payback dip here: {names}",
+      "clearSelection": "Clear selection"
     },
     "popover": {
       "title": "Add to which race?",
