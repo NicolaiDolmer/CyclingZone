@@ -106,11 +106,62 @@ Countback-tiebreak-forespørgslen henter **571.614 rækker** fra `race_results` 
 
 | Trin | Kommando (prod-udgave) | Målt tid | Resultat |
 |---|---|---|---|
-| Window-wrap | `update transfer_windows set closed_at=now(), squad_enforcement_started_at=now(), squad_enforcement_completed_at=now(), final_whistle_sent_at=now() where season_id=<S2> and closed_at is null` (RETTET ift. gammel runbook, se FUND ovenfor) | øjeblikkeligt | 1 række opdateret |
+| Window-wrap | `update transfer_windows set closed_at=now(), squad_enforcement_started_at=now(), squad_enforcement_completed_at=now(), final_whistle_sent_at=now() where season_id=<S2> and closed_at is null` (RETTET ift. gammel runbook, se FUND trin 3) | øjeblikkeligt | 1 række opdateret |
 | Transition dry-run | `... node scripts/executeSeasonTransition.js --from=00000000-0000-0000-0000-000000000002` | 8,4 s | 214 hold påvirket, sponsor garanteret total 66,28M pts (27 låst · 56 valgt · 131 auto-default) + 0,09M signing-bonus |
-| Transition execute | `... node scripts/executeSeasonTransition.js --from=00000000-0000-0000-0000-000000000002 --execute` | *(se rapportens RÅ DATA — kørte i baggrunden, tal indsat efter fuldførelse)* | *(udfyldes)* |
+| Transition execute | `... node scripts/executeSeasonTransition.js --from=00000000-0000-0000-0000-000000000002 --execute` | **809,1 s (≈ 13 min 29 s)** | Alle 22 faser gennemført, `Transition UDFØRT`, exit 0 |
+| Entries til S3 (ikke i den oprindelige opgavebeskrivelse — se FUND) | `... node scripts/generateSeasonEntries.js --season=00000000-0000-0000-0000-000000000003 --execute` | *(se FUND — meget langsom pga. manglende constraint på staging)* | *(udfyldes)* |
 
-*(Post-verify og fase-log udfyldes efter kørslen er færdig.)*
+### Fase-log (rigtig kørsel)
+
+```
+✅ insert_next_season
+⏭️  mark_previous_completed — already completed
+•  global_rank_decay
+⏭️  close_prev_transfer_window — already closed
+✅ insert_next_transfer_window
+•  sponsor_season_objectives
+•  sponsor_contracts_renewal
+•  ai_contract_auto_renewal
+•  contract_expiry_release
+•  sponsor_payout (214)
+•  season_payroll
+•  season_parachute (13)
+•  rider_progression
+•  retirement_release
+•  squad_below_minimum_check
+•  season_fatigue_reset
+•  season_form_reset
+•  manager_setup_carry_over
+✅ admin_log
+•  discord_broadcast
+•  season_started_notifications
+•  contract_expiring_notifications
+```
+
+**`season_calendar` / `season_entry_generator` mangler i loggen som forventet** (`auto_calendar_enabled` er ikke sat — flaget findes slet ikke i `app_config`). Det betyder entries for S3 skal genereres MANUELT (se FUND) — akkurat som i den gamle S1→S2-drejebog skridt 6, men det trin var IKKE en del af den oprindelige opgavebeskrivelse for denne generalprøve.
+
+### Post-verify (mod staging)
+
+| Tjek | Forventet | Målt |
+|---|---|---|
+| `seasons` (S3) status | `active` | ✅ `active` |
+| `race_days_total` (S3) | 28 (MEN se FUND om #4131) | 28 |
+| Rytter-alder +1 | strukturel | **Intet at verificere som DB-diff** — `riders` har ingen `age`-kolonne; alder beregnes altid fra `birthdate` + aktivt sæsonnummer (`ageForSeason`). Korrekt "af sig selv" så snart `seasons.number` er 3 |
+| Form-decay (50 + (gammel−50)×0,25) | stikprøve 20 ryttere | **Kunne IKKE verificeres per rytter** — jeg tog ikke et `rider_condition`-snapshot FØR transitionen (hul i min egen forberedelse, se afsnit "Hvad kunne IKKE måles"). Aggregeret EFTER: `avg(form)=49,24` over 4.319 rækker, konsistent med decay-mod-50, men ikke en per-rytter-verifikation |
+| Fatigue = 0 | alle rækker | ✅ `avg(fatigue)=0,00` over 4.319 rækker |
+| Pensioner | ny `is_retired` | ✅ **31 pensioneret** (fra fase-loggen: "Rytterudvikling: 6.498 udviklet · 2.488↑ 1.930↓ · 31 pensioneret"). `select count(*) from riders where is_retired and team_id is not null` = **0** (retirement_release ryddede korrekt team_id) |
+| Akademi | — | 29 `academy_graduation_ready`-notifikationer sendt (proxy-mål, ikke en direkte optælling) |
+| Kontrakter udløbet | ~0 tilbage under grænsen | 834 `contract_expired_release`-notifikationer sendt. Resttal `contract_end_season <= 2 AND team_id IS NOT NULL AND NOT is_academy` = **12** (lille residual — ikke undersøgt til bunds, men langt under den oprindelige befolkning, ingen tegn på at fasen fejlede systemisk) |
+| Entries for S3 dag 1 (25/8) | genereret | ❌ **0 `race_entries` for NOGEN af de 471 S3-løb** umiddelbart efter transitionen — se FUND |
+| `admin_log` season_transition-rækker | præcis 1 (tidsfiltreret) | ✅ **1** (`select count(*) from admin_log where action_type='season_transition' and created_at > now() - interval '2 hours'`) |
+
+### FUND — kritisk: entries til S3 genereres IKKE af transitionen, og opgavens egen trinliste glemte skridtet
+
+`auto_calendar_enabled` findes ikke i `app_config` (fail-safe OFF), så transitionen springer `season_calendar`/`season_entry_generator`-faserne over — **helt som dokumenteret**. Men: umiddelbart efter transitionen var fuldført var der **0 `race_entries`-rækker for NOGEN af S3's 471 løb**. Uden et eksplicit `generateSeasonEntries.js`-kørsel (eller op til 60 minutters ventetid på den periodiske entry-sweep, som IKKE kører mod en Supabase-branch uden tilkoblet backend) starter S3 **uden felter i noget løb**. **Denne opgavebeskrivelses egen trinliste (KÆDEN, punkt 0-10) nævner IKKE dette skridt** — det er hentet fra den gamle `SEASON_TRANSITION_CHECKLIST.md` skridt 6, som IKKE er refereret i #4131-opgaven. **Dette skal tilføjes som et eksplicit skridt i køreplanen for i aften, mellem transitionen og løn-genberegningen.**
+
+### FUND — kritisk: `no_rider_double_booking`-constrainten mangler på staging (findes på PROD)
+
+`generateSeasonEntries.js --execute` faldt for **hvert eneste hold** tilbage til en langsom per-enheds-skrivning med beskeden *"batch-RPC afvist (constraint 'no_rider_double_booking' does not exist) — falder tilbage til per-enheds-skrivning (#3934)"*. Direkte verificeret: `select conname from pg_constraint where conname='no_rider_double_booking'` giver **1 række på PROD** (`race_entries`-tabellen) og **0 rækker på staging**. Det bekræfter mistanken fra `status=MIGRATIONS_FAILED` (se trin 1's FUND) — **staging-branchens skema er ikke 100 % identisk med PROD**, ikke kun manglende data i de ekskluderede tabeller. **Konsekvens for denne rapport:** entry-genererings-tiden målt på staging er kunstigt langsom (per-enheds-fallback i stedet for batch-RPC) og kan IKKE bruges som et pålideligt tidsestimat for i aften — PROD bør være hurtigere, fordi batch-stien virker der. **Anbefaling:** få nogen til at undersøge hvorfor staging-branchens skema mangler denne constraint FØR den bruges til en fremtidig generalprøve — og bekræft eksplicit at PROD har den (gjort her, ja) før i aften.
 
 ---
 
@@ -157,7 +208,59 @@ Scriptet forventer `--season=<uuid>` (lighedstegn). Kaldt med mellemrum i stedet
 
 ## 9. Rollback-test
 
-*(udfyldes efter kørsel)*
+**Vigtigt forbehold:** disse tre rollback-test blev kørt EFTER trin 5 (transitionen). Det er ikke det vindue drejebogen selv anbefaler for cap-rollbacken specifikt (den siger eksplicit at rollback SKAL ske FØR første etape under den nye motor — her var det efter en hel transition, inkl. rytterudvikling). Testen viser derfor både at MEKANIKKEN virker, OG konkret hvorfor timingen betyder noget (se (a) nedenfor).
+
+### (a) Caps-rollback (`restoreCaps3459.mjs`)
+
+| Trin | Kommando | Målt tid | Resultat |
+|---|---|---|---|
+| Apply | `CONFIRM_RESTORE=yes ... restoreCaps3459.mjs --snapshot ../docs/snapshots/3459-staging --apply` | **≈ 139 s** (første forsøg dræbt ved 2-min-grænsen efter ~1.800/2.043 rækker; genkørt idempotent, resten 146 rækker på 19,1 s) | 2.043 rækker skrevet tilbage, post-verify OK på alle |
+| Idempotens-verifikation | `... restoreCaps3459.mjs --snapshot ../docs/snapshots/3459-staging` (dry-run) | < 1 s | ✅ Plan tom: 0 rækker at skrive, 6.533/6.533 matcher allerede |
+
+**Hvorfor der overhovedet var noget at rulle tilbage:** i modsætning til lige efter selve flippet (gate grøn, 0 ændret — se trin 2), havde `rider_progression`-fasen i transitionen (trin 5) siden udviklet 6.498 ryttere og pensioneret 31 — så på TIDSPUNKTET for denne test var 2.043 rækker reelt forskellige fra 3459-snapshottet. Loft-sum-deltaet var **negativt for stort set alle** (p50 −80, p90 −71) — dvs. progressionen havde ÆNDRET (ikke nødvendigvis forøget) lofterne siden flippet. **2.853 ryttere fra snapshottet findes slet ikke længere** (fjernet af D1-komprimeringens AI-reconcile, som slettede 144 AI-holds rosters, samt retirement_release). Dette illustrerer PRÆCIST drejebogens advarsel: et cap-rollback efter at ny udvikling har fundet sted gør "resultater og lofter indbyrdes uenige" — havde jeg gjort dette i en RIGTIG cutover, ville jeg netop have skabt den tilstand drejebogen advarer imod. **Test bevidst udført for at bevise mekanikken virker, IKKE en anbefaling om at gøre det i den rækkefølge i aften.**
+
+### (b) Løn-rollback (SQL fra `database/2026-08-23-3645-cutover-backup-table.sql`)
+
+| Trin | Kommando | Målt tid | Resultat |
+|---|---|---|---|
+| Rollback-UPDATE | `UPDATE riders r SET salary = (b.row_before->>'salary')::bigint FROM cutover_3645_backup_20260823 b WHERE b.table_name='riders' AND b.row_id=r.id AND r.salary IS DISTINCT FROM ...` | øjeblikkeligt (MCP) | 0 fejl |
+| Post-verify (autoritativ, række-niveau) | `SELECT count(*) FROM riders r JOIN cutover_3645_backup_20260823 b ... WHERE r.salary IS DISTINCT FROM ...` | øjeblikkeligt | ✅ **0 rækker afviger** — hver enkelt rytters løn matcher nu backuppen præcist |
+
+**FUND (mindre, men vigtigt at vide):** hold-niveau lønsummer FØR/EFTER rollback matcher IKKE hinanden 1:1 for de 5 stikprøve-hold, fordi transitionen (trin 5, imellem apply og rollback) frigav/pensionerede nogle af holdenes ryttere — roster-sammensætningen ændrede sig, så et SUM(salary) pr. hold er ikke et pålideligt rollback-bevis når der er sket andet imellem. Den autoritative test er række-niveau (ovenfor, 0 afvigelser). Stikprøve (id · navn · før apply → efter rollback, hvor "efter rollback" nu afviger fra "før apply" udelukkende pga. roster-ændringer, ikke rollback-fejl):
+
+| Hold | Lønsum før løn-apply | Lønsum efter rollback |
+|---|---:|---:|
+| martharacing | 22.928 | 1.554 (mistede ryttere til pension/frigivelse siden) |
+| Uni team | 2.745 | 2.054 |
+| Pro Cycling Team | 110.806 | 109.368 |
+| Verstappen racing | 3.340 | 3.340 (uændret roster) |
+| The Morse Codes | 4.704 | 1.157 |
+
+### (c) Mandat-rollback (kill-switch + truncate)
+
+| Trin | Kommando (drejebogens SQL) | Resultat |
+|---|---|---|
+| Kill-switch | `update app_config set value='"off"' where key='board_mandate_model_enabled'` | Uændret (stod allerede `'off'`, aldrig flippet) |
+| Data-oprydning | `delete from board_satisfaction_events where reason_category='board_model_updated'; truncate board_vision_milestones; truncate board_mandates; truncate board_relations;` | **❌ FEJLEDE** — se FUND |
+
+### FUND — kritisk: mandat-rollbackens `TRUNCATE`-SQL i drejebogen virker IKKE
+
+```
+ERROR: 0A000: cannot truncate a table referenced in a foreign key constraint
+DETAIL: Table "board_satisfaction_events" references "board_vision_milestones".
+```
+
+Migrationen (#3514) tilføjede selv to nullable FK-kolonner (`mandate_id`, `milestone_id`) på `board_satisfaction_events`, som peger på de tabeller drejebogen vil TRUNCATE'e. Postgres nægter `TRUNCATE` på en tabel der er FK-mål, uanset om der reelt er 0 refererende rækker — det er en strukturel kontrol, ikke en datakontrol. **Fix, testet og verificeret at virke:** brug `DELETE FROM` i stedet for `TRUNCATE` på de tre tabeller (samme effekt her, da alle rækker slettes uden filter):
+
+```sql
+delete from public.board_vision_milestones;
+delete from public.board_mandates;
+delete from public.board_relations;
+```
+
+Kørt og verificeret: `mandates=0 · milestones=0 · relations=0 · receipts=0 · kill-switch='off'`. **`docs/2026-08-23-cutover-drejebog.md` (Komponent 4, "Rollback: konkret") skal rettes til `DELETE FROM` før den bruges i vrede** — den nuværende SQL ville stoppe en rollback midt i en incident med en fejlbesked der ikke umiddelbart forklarer hvorfor.
+
+**Mindre fund:** `board_satisfaction_events`-kvitteringerne var **374** i stedet for de forventede **217** (én pr. hold) — sandsynligvis fordi min afbrudte-og-genkørte `mandateMigration3514.mjs --apply` (se trin 7) indsatte kvitteringen som et rent INSERT frem for en upsert. Ikke undersøgt til bunds (ude af denne rapports tidsramme), men værd at kigge på inden i aften hvis der er risiko for en lignende afbrydelse.
 
 ---
 
