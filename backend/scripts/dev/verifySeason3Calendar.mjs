@@ -44,12 +44,12 @@ if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
 const tierOf = new Map(divs.map((d) => [d.id, d.tier]));
 
 console.log(`Loeb i alt: ${races.length}`);
-// #4131 (23/8): sæsonen komprimeret fra 28 til 27 dage (samme densitet, mindre kvote —
-// se docs/snapshots/4131/dry-run-2026-08-23.md) sænker det forventede antal fra 471 til
-// 446 (kun endagsløb, ingen GT/etapeløb forkortet). Tallet er MÅLT mod den planlagte
+// #4131 (23/8, ejer-beslutning): sæsonen komprimeret fra 28 til 27 dage UDEN at løb udgår
+// (minimal-patch: 25 endagsløb + 12 etapeløb flyttet, se docs/snapshots/4131/). Antallet er
+// derfor stadig 471. Tallet er MÅLT mod den applied
 // regenerering, ikke gættet — ændrer katalog/pulje-tilstand sig inden apply, kan det
 // afvige en smule; se dry-run-rapporten for den fulde metode.
-races.length === 446 ? ok("446 loeb (#4131: 27-dages-kalenderen)") : brud(`forventede 446 loeb, fandt ${races.length}`);
+races.length === 471 ? ok("471 loeb (#4131: 27-dages-kalenderen, intet loeb udgaaet)") : brud(`forventede 471 loeb, fandt ${races.length}`);
 
 // ── 2. Monument-laengder (#4104) ─────────────────────────────────────────────
 console.log("\n── Monument-laengder ──");

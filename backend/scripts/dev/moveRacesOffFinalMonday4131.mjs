@@ -200,7 +200,8 @@ function existingSlotFor(poolId, day) {
   for (const r of races) {
     if (r.league_division_id !== poolId) continue;
     const rows = schedByRace.get(r.id) || [];
-    for (const s of rows) if (dayOf(s.scheduled_at) === day) return { time: String(s.scheduled_at).slice(11), game_day: s.game_day };
+    // scheduled_at er UTC ("2026-08-28 10:00:00+00"); kun HH:MM:SS, offset tilfoejes som Z i scheduledAtIso.
+    for (const s of rows) if (dayOf(s.scheduled_at) === day) return { time: String(s.scheduled_at).slice(11, 19), game_day: s.game_day };
   }
   return null;
 }
