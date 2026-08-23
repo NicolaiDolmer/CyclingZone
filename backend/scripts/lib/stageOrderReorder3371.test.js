@@ -1,4 +1,4 @@
-// #3371 — tests for den rene permutations-scorer i stageOrderReorder3371.js.
+// #3371 - tests for den rene permutations-scorer i stageOrderReorder3371.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -64,13 +64,13 @@ test("chooseBestOrder: 4 bjerg i træk regnes om til 0 brud", () => {
   assert.equal(r.before.total, 2);
   assert.equal(r.after.total, 0);
   assert.equal(r.changed, true);
-  // Multisæt af typer er uændret — kun rækkefølgen må ændre sig.
+  // Multisæt af typer er uændret - kun rækkefølgen må ændre sig.
   const before = stages.map((s) => s.profile_type).slice().sort();
   const after = r.order.map((i) => stages[i].profile_type).slice().sort();
   assert.deepEqual(after, before);
 });
 
-test("chooseBestOrder: deterministisk — samme input+seedKey giver samme resultat hver gang", () => {
+test("chooseBestOrder: deterministisk - samme input+seedKey giver samme resultat hver gang", () => {
   const stages = ["itt", "itt", "mountain", "high_mountain", "high_mountain", "flat"].map((profile_type) => ({ profile_type }));
   const r1 = chooseBestOrder(stages, "race-C");
   const r2 = chooseBestOrder(stages, "race-C");

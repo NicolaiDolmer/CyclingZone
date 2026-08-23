@@ -1,12 +1,12 @@
-// #3371 — permutationsvalg for korte etapeløbs (5-8 etaper) rækkefølge i S3.
+// #3371 - permutationsvalg for korte etapeløbs (5-8 etaper) rækkefølge i S3.
 //
 // HVORFOR EN EGEN SCORER (ikke stageOrderMetrics.js). Den fil måler SÆSON-niveau
-// (mountain-finish %, delte sekvenser på tværs af hele kalenderen — se dens egen
+// (mountain-finish %, delte sekvenser på tværs af hele kalenderen - se dens egen
 // header). Ejer-direktivet 23/8 for #3371 er derimod et PR-LØB-niveau-krav: maks 2
 // bjerg/high_mountain i træk, mindst én flat/rolling/hilly mellem to bjergblokke,
 // ITT aldrig to i træk, første etape helst flat/rolling/itt. stageOrderMetrics.js
 // har ingen af de begreber (den tæller kun første/sidste etape og delte sekvenser).
-// Denne fil er derfor en NY, ren scorer — ingen DB/side-effekt.
+// Denne fil er derfor en NY, ren scorer - ingen DB/side-effekt.
 //
 // INTET HER RØRER EN DATABASE. Ingen import af supabase, ingen process.env.
 //
@@ -20,7 +20,7 @@ export const TT_TYPES = new Set(["itt", "itt_hilly"]);
 export const PREFERRED_OPENERS = new Set(["flat", "rolling", "itt"]);
 
 // FNV-1a 32-bit → heltals-seed. Samme algoritme som raceStageProfileGenerator.js's
-// (ueksporterede) stableSeed — dupliceret bevidst: 8 linjer, ikke værd at skabe en
+// (ueksporterede) stableSeed - dupliceret bevidst: 8 linjer, ikke værd at skabe en
 // delt afhængighed mellem lib/ (generatoren) og scripts/lib/ (dette engangsværktøj) for.
 export function stableSeed(str) {
   let h = 0x811c9dc5;
@@ -33,7 +33,7 @@ export function stableSeed(str) {
 
 /**
  * Tæl de tre HÅRDE brud-typer i en profile_type-sekvens, plus åbnings-præferencen
- * (soft — tælles separat, indgår ikke i `total`). Ren.
+ * (soft - tælles separat, indgår ikke i `total`). Ren.
  *
  * @param {string[]} types  profile_type i etape-rækkefølge
  */
@@ -83,7 +83,7 @@ export function countViolations(types) {
   return { mountainStreak, mountainBreak, ttAdjacent, total, openingOk };
 }
 
-// Heap's algoritme — genererer ALLE permutationer af [0..n-1] som en liste af
+// Heap's algoritme - genererer ALLE permutationer af [0..n-1] som en liste af
 // arrays (ikke en generator: opgavens loft er n ≤ 8 → maks 40.320 arrays, triviel
 // hukommelse/CPU for et engangsscript).
 function allPermutations(n) {
@@ -117,7 +117,7 @@ function cmpScore(a, b) {
  * Vælg den permutation af `stages` (sorteret efter nuværende stage_number) der
  * minimerer, i rækkefølge: (1) hårde brud (countViolations().total), (2) samlet
  * flytning fra oprindelig position, (3) manglende åbnings-præference. Ties brydes
- * deterministisk med en seedet rng pr. `seedKey` (typisk race_id) — giver den
+ * deterministisk med en seedet rng pr. `seedKey` (typisk race_id) - giver den
  * ejer-krævede sæson-variation ("bjergafslutning ok i ca. halvdelen af løbene,
  * varieret pr. seed") uden en eksplicit anti-bjergfinale-regel, som ville have
  * tvunget ALLE løb væk fra bjergfinale.
