@@ -2,18 +2,17 @@
 
 > **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok. [Visuel udgave](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
 
-**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne. **Målt:** ~540 åbne issues · 232 brugere, 1 abo. **S2-finale søn 23/8 kl. 19; cutover 19:30-22:30; S3 25/8-20/9 (27 dage, slutter altid søndag).** **Hard regel 23/8:** ingen prod-mutation uden ejerens "GO" på netop det skridt.
+**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne. **Målt:** ~540 åbne issues · 232 brugere, 1 abo. **S3 25/8-20/9 (27 dage, slutter altid søndag).** **Hard regel 23/8:** ingen prod-mutation uden ejerens "GO" på netop det skridt.
 
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
-- **GJORT 23-24/8:** cutover S2→S3 (c=0,811 varig, #4135; upkeep S3 220k/70k/20k/0) · kalender live · #4155 game_day D1-D3 repareret PROD (1.855 dobbeltbookinger → 0) · #4154-sanktion eksekveret. Detaljer: NOW.md + issue-tråde.
-- **MAN 24/8 (løbsfri):** 🔴 **#4163 FØRST** (i gang) — sweepen i deterministisk dødvande hvert tick siden #4155: 56 → 140 fejlede enheder, `no_rider_double_booking` uden deferrable; rammer også `/api/races/distribution/regenerate`. (#3960 lukket som opslugt) · **#4159 game_day-guard FØR næste kalender-generering** · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
+- **GJORT 23-24/8:** cutover S2→S3 · kalender live · #4155 game_day PROD · #4154+#3818-sanktioner · #4163 løst+applied. Tal og detaljer: NOW.md + issue-tråde.
+- **REST MAN 24/8 (løbsfri):** 🔴 **kalender-dimensionering (#4170 + #4161)** — se nedenfor, beslutning FØR 25/8 kl. 11 · **#4159 game_day-guard FØR næste kalender-generering** (fjerde vagt: assertér constraint-FORM, ikke eksistens) · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
-## A · Cutover 23/8 — GENNEMFØRT (rest herunder)
+## A · Cutover 23/8 — GENNEMFØRT
 
-1. ✅ #4120/#3449/#4000/#3514/#3901 kørt og verificeret 23/8; PR #4151/#4152/#4153 merged, 22:00-tick grøn. Rest: ejer poster besked 2.
-2. Supabase-perf-rest uge 35. 🔵 Auto-accept-floor står (#3584).
+1. 🔵 Rest: ejer poster besked 2 · Supabase-perf uge 35 · auto-accept-floor står (#3584).
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
 
@@ -37,6 +36,8 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5, byg efter v4-gaten). Z1 v0 shippet (#4083).
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8:** ✅ #4102 #4106 #4107 #4108 live 23/8 · #4103 rest = **præmier pr. division mandag m. #3719** (D4 11 % vs D1 108 % af sponsor) · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. Kalender-invarianter (#4123): søndagsslut + 471/27 i `verifySeason3Calendar.mjs`, mangler CI-gate.
+8b. 🔴 **Kalender-dimensionering — NY 24/8, afventer ejer-prioritering.** **#4170:** 157 af 471 S3-løb (33 %) har nul entries; 27 puljer provisioneret til 8 instanser hvor ~2 bruges. Strukturelt, ikke #4163-efterslæb (målt efter rent tick); 12 starter 25/8 kl. 11 tomme. **#4161:** D1 kræver op til 29 ryttere på én dag (4 samtidige løb). Samme rod-mistanke: sizing efter komprimeringen. *Anbefaling: tag dem samlet og FØR #4159 — gaten skal kende den rigtige sizing for at håndhæve den.*
+
 9. **P0** kalender-integritet: #3990-rest (off-by-one, ejer-kald) · navne-dedup-guard · #3329 · #2791. **P1** sæsonmatrix + rytter-inspektør + UI-gæld (#3954 #3428 #3410 #2030 #3425 #3955 #3529 #3455 #3374). **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405 + fjern `tacticsOrdersAdapter`-mock). **P3** assistenten (mål-løb-migration, #3087 #3088 #3957 #3939 #4076).
 
 ## D · Penge og vækst — gate: spor B leveret (ikke en dato)
@@ -47,8 +48,8 @@ Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-pl
 ## E · Løbende (aldrig hovedspor)
 
 12. 🔴 **Spiller-kommunikation, fast ugerytme (#428)** — ejer-mandat 22/8, viger aldrig. MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t. Tråd-bank **#4117**, løfte-audit **#4111**.
-13. Gæld: done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops (uge 26.-30./8): **#4014** log-vagt · **#4016** session-claim · **#3486** `VERCEL_TOKEN` · #2758 · #3487 · #691 · **worktree-hygiejne** (+ stale lokale branches).
-14. 🔵 **Fair play (#3131):** 2 sanktioner på 24 t (#4154, #3818); prisloft valgt fra, så #3138 er ENESTE værn. Rest: retnings-signal · overbetalings-signal · flag-triage (25/27 stod `new`) · #3438 · #3139 regler+trappe. **Lagt i E uden omprioritering — flyt op hvis nødvendigt.**
+13. Gæld: done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops (uge 26.-30./8): **#4014** log-vagt · **#4016** session-claim · **#3486** `VERCEL_TOKEN` · #2758 · #3487 · #691 · **worktree-hygiejne**.
+14. 🔵 **Fair play (#3131):** prisloft valgt fra efter #4154+#3818 → #3138 ENESTE værn. Rest: retnings- + overbetalings-signal · flag-triage · #3438 · #3139 regler. **Lagt i E, ikke omprioriteret.**
 
 ## F · Backlog-bølger (mål: 570 → ~200, #3154)
 
