@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.184",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Monuments get a race day to themselves",
+          "body": "A monument is meant to own its race day, so every rider is free to start it. In Division 1 all five monuments shared their race day with a stage race, which locked out anyone riding the Giro, the Vuelta or the Tour. Each monument now stands alone on its own race day. Nothing moved date: the calendar dates and start times are unchanged, only the race day numbers in Division 1 shift."
+        },
+        "da": {
+          "title": "Monumenterne får løbsdagen for sig selv",
+          "body": "Et monument skal have sin løbsdag alene, så alle ryttere kan stille op. I 1. division delte alle fem monumenter dagen med et etapeløb, hvilket udelukkede alle der kørte Giroen, Vueltaen eller Touren. Hvert monument står nu alene på sin egen løbsdag. Intet har flyttet dato: kalenderdatoer og starttider er uændrede, kun løbsdags-numrene i 1. division rykker."
+        },
+        "refs": [4075, 4159, 4176]
+      }
+    ]
+  },
+  {
     "version": "7.183",
     "date": "2026-08-24",
     "label": "Beta",

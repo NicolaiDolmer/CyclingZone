@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Næste session = **monument-eksklusivitet (byg, ejer-GO 24/8) + #4159 guard-rest + #4162/#4164 hjælpetekster** — færdig prompt i master-sessionens sidste svar 24/8. Derefter: **#4180** race:gate (blokerer #4178/PR #4179, navne-dubletter meldt i Discord igen 24/8) · #4183-rest (systemisk placering) · v4-afvigelser (#4132) · #3512 · kalibrering (#3719/#3720). Efterprøv: smukkethomsens løbsdags-mærke-melding (16:21) + at Carolus (D4-A) fik entries af sweepen.
+> **🎯 Next action:** (1) **#4183 ejer-beslutning** — ny spiller blev hold nr. 25 i D3-A; ALLE puljer er 24/24 fulde, nye tilmeldinger har ingen plads. (2) **#4180 race:gate utroværdig** — fejler på 6 af 30 tilfældige seeds. Blokerer #4178 (navne-pools, draft-PR #4179). (3) **#4159-rest:** DB-trigger-laget (relationel, ikke dato-formel — se #4159-tråden). Derefter: v4-afvigelser (#4132) · #3512 · kalibrering (#3719/#3720).
 
-> **✅ KALENDER/BINDING-KÆDEN KØRT 24/8 ~16:05** (PR #4169 merged + #4173-migration + akse-reparation, ejer-GO pr. skridt): binding = dag-MÆNGDE (`race_entry_days`, 124.898 rækker, 0 konflikter) — Émirats-mønstret væk; aksen repareret (943 rækker, cap-brud 29→0, dubletter 163→0, D1 27→75 løbsdage); motor verificeret `on`. Patch note 7.183. Detaljer: #4173/#4161-tråde. #4163 løst tidligere samme dag (PR #4167, condeferrable-guard).
+> **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-MÆNGDE (`race_entry_days`) · aksen repareret (cap-brud 29→0) · **monument = eksklusiv løbsdag** genoprettet i live S3 (107 rækker i D1, akse 75→80 løbsdage, monument-brud 5→0, ingen etape flyttede dato) · `game_day_start` resynket for 334 løb (gårsdagens halve reparation). Alle 4 kalender-invarianter grønne i `verify-invariants`. Reglen er nu gated på 3 niveauer + dagligt CI-job (`calendar-invariant-audit.yml`). PR #4185, patch note 7.184. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
 > **✅ CUTOVER S2→S3 GENNEMFØRT 23/8** (ejer-GO pr. skridt): 22 faser grønne, S3 aktiv 27 dage. c=0,811 varig (#4135). 7 D1-hold i minus ved start (upfront-model, forklaret). Log: git-log + issue-tråde.
 
