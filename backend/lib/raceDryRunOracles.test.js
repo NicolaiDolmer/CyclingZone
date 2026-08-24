@@ -60,6 +60,49 @@ test("GC-oracle fejler højt ved ikke-finite tider (parse-hul må ikke blive gr�
   assert.match(failures[0], /kunne ikke udlede/);
 });
 
+// -- #4197: hele klassementet, ikke kun vinderen ------------------------------
+//
+// "Vinderen har feltets minimum" ser kun paa ÉN rytter. Er raekkefoelgen brudt
+// laengere nede, siger det intet. orderedCumSeconds laaser hele GC-raekkefoelgen
+// til at vaere ikke-aftagende i nettotid (etape-gab minus bonussekunder).
+
+test("#4197: GC-raekkefoelge sorteret efter nettotid er groen", () => {
+  const failures = evaluateRaceStructuralOracles({
+    gc: { winnerCumSeconds: 0, minCumSeconds: 0, orderedCumSeconds: [0, 5, 19, 19, 240, 601] },
+  });
+  assert.deepEqual(failures, []);
+});
+
+test("#4197: en inversion LAENGERE NEDE i klassementet fanges, selv om vinderen er korrekt", () => {
+  const failures = evaluateRaceStructuralOracles({
+    // Vinderen har feltets minimum (0), saa det gamle orakel var groent her.
+    gc: { winnerCumSeconds: 0, minCumSeconds: 0, orderedCumSeconds: [0, 5, 40, 30, 90] },
+  });
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /ikke sorteret efter nettotid/);
+  assert.match(failures[0], /1 inversion/);
+});
+
+test("#4197: lige nettotider er lovlige (samme tid = anden tie-break)", () => {
+  const failures = evaluateRaceStructuralOracles({
+    gc: { winnerCumSeconds: 0, minCumSeconds: 0, orderedCumSeconds: [0, 0, 0, 12, 12, 30] },
+  });
+  assert.deepEqual(failures, []);
+});
+
+test("#4197: et parse-hul i klassementets nettotider bliver ikke groent", () => {
+  const failures = evaluateRaceStructuralOracles({
+    gc: { winnerCumSeconds: 0, minCumSeconds: 0, orderedCumSeconds: [0, NaN, 30] },
+  });
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /hele klassementet/);
+});
+
+test("#4197: uden orderedCumSeconds er adfaerden uaendret (bagudkompatibel)", () => {
+  assert.deepEqual(evaluateRaceStructuralOracles({ gc: { winnerCumSeconds: 0, minCumSeconds: 0 } }), []);
+  assert.equal(evaluateRaceStructuralOracles({ gc: { winnerCumSeconds: 90, minCumSeconds: 0 } }).length, 1);
+});
+
 test("flad/inverteret værdimodel fanges: top-decil ikke dyrere end bund-decil (#1198 race-M5)", () => {
   const inverted = evaluateRaceStructuralOracles({
     value: { topDecileMedian: 9_000, bottomDecileMedian: 2_000_000 },

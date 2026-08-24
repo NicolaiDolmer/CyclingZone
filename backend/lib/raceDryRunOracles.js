@@ -59,8 +59,28 @@ export function evaluateRaceStructuralOracles({ terrainResults = [], gc = null, 
       failures.push("GC-oracle: kunne ikke udlede kumulative tider fra etape-rækkerne");
     } else if (gc.winnerCumSeconds > gc.minCumSeconds) {
       failures.push(
-        `GC-vinderen har ${gc.winnerCumSeconds}s samlet etape-gab men feltets minimum er ${gc.minCumSeconds}s — klassementet er ikke laveste-tid-vinder`
+        `GC-vinderen har ${gc.winnerCumSeconds}s samlet nettotid men feltets minimum er ${gc.minCumSeconds}s — klassementet er ikke laveste-tid-vinder`
       );
+    }
+    // #4197: "vinderen har feltets minimum" er et svagt orakel — det ser kun paa
+    // ÉN rytter. Er raekkefoelgen brudt laengere nede i klassementet, siger det
+    // intet. orderedCumSeconds er hele GC-raekkefoelgens nettotider; de skal vaere
+    // ikke-aftagende. Lige tider er lovlige (samme tid = anden tie-break).
+    if (Array.isArray(gc.orderedCumSeconds) && gc.orderedCumSeconds.length > 1) {
+      const t = gc.orderedCumSeconds;
+      if (!t.every((v) => Number.isFinite(v))) {
+        failures.push("GC-oracle: kunne ikke udlede nettotid for hele klassementet");
+      } else {
+        const inversions = [];
+        for (let i = 1; i < t.length; i++) {
+          if (t[i] < t[i - 1]) inversions.push(`plads ${i} (${t[i]}s) foran plads ${i + 1} (${t[i - 1]}s)`);
+        }
+        if (inversions.length) {
+          failures.push(
+            `GC-raekkefoelgen er ikke sorteret efter nettotid: ${inversions.length} inversion(er), foerste: ${inversions[0]}`
+          );
+        }
+      }
     }
   }
 
