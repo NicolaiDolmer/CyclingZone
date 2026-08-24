@@ -28,7 +28,7 @@ with pairs as (
 ),
 binding as (
   -- Præcis de fire porte race_entry_days_rebuild bruger. Holdes i sync med
-  -- database/2026-08-25-4191-race-entry-days-diff-rebuild.sql.
+  -- database/2026-08-24-4191-race-entry-days-diff-rebuild.sql.
   select p.race_id, p.team_id,
     not (
          exists (select 1 from public.races r

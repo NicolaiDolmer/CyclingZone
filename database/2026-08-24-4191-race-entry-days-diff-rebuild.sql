@@ -1,6 +1,6 @@
 -- #4191 — race_entry_days_rebuild: skriv KUN forskellen, ikke hele mængden forfra.
 --
--- MÅLT MOD PROD 24/8-25/8 (kumulative tællere, pg_stat_user_tables):
+-- MÅLT MOD PROD 24/8 (kumulative tællere, pg_stat_user_tables):
 --   race_entry_days   n_tup_ins 1.035.981   n_tup_del 899.822   ved 135.539 levende rækker
 --   race_entries      n_tup_ins   137.691   n_tup_upd 135.006   ved 124.931 levende rækker
 -- Den AFLEDTE tabel får altså 7,5 gange så mange inserts som kilden, og bærer 65 MB indeks
