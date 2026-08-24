@@ -7,7 +7,7 @@
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import {
   windowsOverlap, raceBindingWindow,
-  isRiderDayInvariantViolation,
+  isRiderDayInvariantViolation, isConstraintNotDeferrable,
 } from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
@@ -477,6 +477,12 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   let roleUpdated = 0;
   let failedUnits = 0;
   const errors = [];
+  // #4163: batch-RPC'en kan afvises fordi no_rider_double_booking ikke er deferrable
+  // (skema-drift, ikke en dobbeltbooking). Det er en SYSTEMISK tilstand — hvert hold
+  // rammer den, hver enhed falder tilbage i insert-før-delete-dødvandet — så den skal
+  // rapporteres ÉN gang og som det FØRSTE i errors, ikke drukne bag fem generiske
+  // enheds-fejl der peger på den forkerte diagnose.
+  let constraintNotDeferrable = false;
 
   // Eksisterende auto-rækker for de berørte løb (kun live-kørsel) → diff-grundlag.
   const existingByUnit = new Map(); // "race|team" → Map(rider_id → race_role)
@@ -914,6 +920,14 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       roleUpdated += (batchResult?.role_updated ?? 0) + batchVacateNetHelper;
       continue;
     }
+    if (isConstraintNotDeferrable(batchErr) && !constraintNotDeferrable) {
+      constraintNotDeferrable = true;
+      console.error(
+        "🚨 Entry-generator: no_rider_double_booking er IKKE deferrable i DB — batch-RPC'en (#3934) " +
+        "kan ikke køre, og ALLE rytter-swaps mellem overlappende løb falder tilbage i insert-før-delete-" +
+        "dødvandet. Kør database/2026-08-24-4163-restore-deferrable-double-booking.sql (#4163)."
+      );
+    }
     console.warn(
       `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
     );
@@ -938,6 +952,14 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     removed,
     role_updated: roleUpdated,
     failed_units: failedUnits,
-    errors,
+    // #4163: den systemiske diagnose først — enheds-fejlene nedenfor er dens SYMPTOM.
+    errors: constraintNotDeferrable
+      ? [
+          "no_rider_double_booking er ikke deferrable i DB (#4163) — batch-RPC'en #3934 er ude af drift " +
+          "og hver rytter-swap mellem overlappende løb fejler i fallback-vejen",
+          ...errors,
+        ]
+      : errors,
+    constraint_not_deferrable: constraintNotDeferrable,
   };
 }
