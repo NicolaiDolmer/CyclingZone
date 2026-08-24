@@ -205,11 +205,27 @@ export async function repairD4Spread({ supabase, dryRun = true } = {}) {
   log(`flyttede ${moves.length} hold`);
 
   // ── 3. AI-fyld pr. pulje (idempotent, frossen #1688-politik) ──
+  //
+  // Generalprøven 24/8 døde tavst midt i denne fase (9 af 146 hold, ingen DB-fejl).
+  // reconcileAiTeamsForPool er idempotent, så en fejl i ÉN pulje må ikke afbryde de
+  // øvrige: vi fanger pr. pulje, logger den fulde fejl med stack, og fortsætter.
+  // Kørslen kan derefter gentages og tager kun det der mangler.
   const aiReport = [];
+  const aiErrors = [];
   for (const pid of poolIds) {
-    const res = await reconcileAiTeamsForPool({ supabase, poolId: pid });
-    aiReport.push({ poolId: pid, label: labelByPool.get(pid), created: res.created, removed: res.removed });
-    log(`  ${String(labelByPool.get(pid)).padEnd(18)} AI +${res.created} / -${res.removed}`);
+    const label = labelByPool.get(pid);
+    try {
+      const res = await reconcileAiTeamsForPool({ supabase, poolId: pid });
+      aiReport.push({ poolId: pid, label, created: res.created, removed: res.removed });
+      log(`  ${String(label).padEnd(18)} AI +${res.created} / -${res.removed}`);
+    } catch (err) {
+      aiErrors.push({ poolId: pid, label, error: err?.message || String(err) });
+      log(`  ${String(label).padEnd(18)} ❌ ${err?.message || err}`);
+      if (err?.stack) log(String(err.stack).split("\n").slice(0, 6).map((l) => `      ${l}`).join("\n"));
+    }
+  }
+  if (aiErrors.length) {
+    log(`\n⚠️  ${aiErrors.length}/${poolIds.length} puljer fejlede i AI-fyld — kør scriptet igen (idempotent).`);
   }
 
   // ── 4. in-app besked til dem der skiftede pulje ──
