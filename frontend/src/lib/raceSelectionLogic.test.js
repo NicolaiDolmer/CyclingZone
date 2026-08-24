@@ -19,8 +19,15 @@ test("validateSelectionClient: spejl af backend-koderne (#1906 fuld opstilling)"
   assert.deepEqual(ok, []);
   // Delvis trup (6 af 8 pladser) → wrong_size.
   assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_wrong_size"));
-  // For få raske ryttere (kun 5 til 8 pladser) → insufficient (afmeld/hent fri-agenter).
-  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 5 }).includes("selection_insufficient_riders"));
+  // #4175: for få raske ryttere (kun 5 til 8 pladser) → holdet KAN ikke fylde, og
+  // gemningen blokeres derfor IKKE længere. Backenden har tilladt delvis trup siden
+  // 28/6, og det er netop paa de dage hvor kalenderen kraever flere ryttere end truppen
+  // har (#4174) at manageren er noedt til at moede op med det han har.
+  assert.deepEqual(
+    validateSelectionClient({ riderIds: ["a","b","c","d","e"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 5 }),
+    [],
+    "kan holdet ikke fylde, maa en delvis trup gemmes"
+  );
   assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: null, sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_captain_required"));
   assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: "a", sprintCaptainId: "a", hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_role_overlap"));
 });
@@ -48,6 +55,39 @@ test("validateSelectionClient: requireFull=false tillader en delvis trup (#2637,
     size: { min: 6, max: 8 }, availableCount: 10,
   });
   assert.ok(defaultBehavior.includes("selection_wrong_size"), "default (requireFull=true) kræver stadig fuld trup");
+});
+
+// #4175 (spiller-rapport 24/8): tre managere kunne ikke gemme en udtagelse paa de dage
+// hvor kalenderen kraever flere ryttere end truppen har. Klienten var strengere end
+// backenden, som har tilladt delvis trup siden 28/6.
+test("validateSelectionClient: #4175 kan holdet IKKE fylde, blokeres en delvis trup ikke", () => {
+  // 5 ledige ryttere til et 7-mands felt: alt hvad manageren kan gemme skal kunne gemmes.
+  for (const antal of [1, 3, 5]) {
+    const ids = ["a", "b", "c", "d", "e"].slice(0, antal);
+    const fejl = validateSelectionClient({
+      riderIds: ids, captainId: ids[0], sprintCaptainId: null, hunterId: null,
+      size: { min: 7, max: 7 }, availableCount: 5,
+    });
+    assert.deepEqual(fejl, [], `${antal} af 7 skal kunne gemmes naar kun 5 er ledige`);
+  }
+});
+
+test("validateSelectionClient: #4175 nudgen bevares naar holdet FAKTISK kan fylde", () => {
+  // Samme delvise trup, men nu er der ryttere nok — saa er det et valg, ikke en noed,
+  // og #1906-nudgen mod fuld trup gaelder stadig.
+  const fejl = validateSelectionClient({
+    riderIds: ["a", "b", "c"], captainId: "a", sprintCaptainId: null, hunterId: null,
+    size: { min: 7, max: 7 }, availableCount: 12,
+  });
+  assert.ok(fejl.includes("selection_wrong_size"), "kan holdet fylde, guides det stadig mod fuld trup");
+});
+
+test("validateSelectionClient: #4175 over feltstoerrelsen afvises uanset hvor faa der er ledige", () => {
+  const fejl = validateSelectionClient({
+    riderIds: ["a", "b", "c", "d", "e", "f", "g", "h"], captainId: "a", sprintCaptainId: null, hunterId: null,
+    size: { min: 7, max: 7 }, availableCount: 5,
+  });
+  assert.ok(fejl.includes("selection_wrong_size"), "flere end feltstoerrelsen er stadig ugyldigt");
 });
 
 test("pickFallbackCaptain: vælger højest suitability, ekskl. sprint/jæger (#2028)", () => {

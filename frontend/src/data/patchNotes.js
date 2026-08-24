@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.183",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "You can save a lineup even when you cannot fill it",
+          "body": "If you did not have enough available riders for a full start list, saving was blocked entirely, so you ended up entering nobody at all. You can now save whatever riders you have, and the assistant tops up the rest at race time. Picking fewer than a full team when you do have the riders still asks you to fill it."
+        },
+        "da": {
+          "title": "Du kan gemme en opstilling selvom du ikke kan fylde den",
+          "body": "Havde du ikke nok ledige ryttere til et fuldt startfelt, blev gemningen blokeret helt, så du endte med slet ikke at stille op. Nu kan du gemme de ryttere du har, og assistenten fylder resten op ved løbstid. Vælger du færre end et fuldt hold når du faktisk har rytterne, bliver du stadig bedt om at fylde op."
+        },
+        "refs": [4175]
+      }
+    ]
+  },
+  {
     "version": "7.182",
     "date": "2026-08-24",
     "label": "Beta",
