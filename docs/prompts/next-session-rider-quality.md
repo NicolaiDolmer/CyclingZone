@@ -58,6 +58,8 @@ Defaulten skal være antallet af D4-puljer, ikke 2, ellers gentager S3→S4 præ
 
 **PostgREST topper stille ved 1000 rækker.** Et naivt `.select()` rapporterede 1000 tilmeldinger i stedet for de faktiske 4.982. Brug `fetchAllRows` fra `supabasePagination.js` med en stabil `.order()`.
 
+**`races.scheduled_for` er IKKE rytterens bindingsperiode.** Dobbeltbooking håndhæves af `no_rider_double_booking`, en exclusion constraint på `race_entries.binding_span` — en range i **game_day-enheder**, ikke kalenderdatoer. To løb kan have samme `scheduled_for` og alligevel binde rytteren i vidt forskellige perioder (målt eksempel: to løb begge med start 11/9, men spans `[14,17)` og `[17,22)`). En kontrol målt på `scheduled_for` gav 171 falske positiver hvor den korrekte måling på `binding_span` gav nul. Mål altid overlap som `a.binding_span && b.binding_span`.
+
 **Kør generalprøven.** Den fangede en fejl der ville have efterladt prod i halv tilstand natten før sæsonstart. Den er ikke ceremoni.
 
 **Søg dubletter grundigt før `gh issue create`.** #4172 blev oprettet uden at finde #4170, som beskrev samme problem fra symptom-siden.
