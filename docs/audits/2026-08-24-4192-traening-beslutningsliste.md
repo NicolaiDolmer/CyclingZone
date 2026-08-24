@@ -4,7 +4,7 @@
 >
 > **Sådan bruges den:** sæt et kryds i **Genåbn?**-kolonnen ved hver beslutning du vil have taget op igen. Der bygges intet før listen er markeret. `docs/TRAINING_RULES.md` skrives EFTER, med udgangspunkt i det du lader stå.
 
-Kilder: `2026-08-06-loebsdags-model-design.md` · `2026-08-09-3564-progressionskaede-samlet-design.md` · `2026-08-14-3659-rytterudvikling-og-traening-design.md`. Alt er verificeret mod koden på `main` og mod prod 25/8 (season-filtreret hvor det gælder sæson-data).
+Kilder: `2026-08-06-loebsdags-model-design.md` · `2026-08-09-3564-progressionskaede-samlet-design.md` · `2026-08-14-3659-rytterudvikling-og-traening-design.md`. Alt er verificeret mod koden på `main` og mod prod 24/8 (season-filtreret hvor det gælder sæson-data).
 
 ## Status-nøgle
 
@@ -51,7 +51,7 @@ Kilder: `2026-08-06-loebsdags-model-design.md` · `2026-08-09-3564-progressionsk
 | B10 | 11/8 | D-1: to ryttere af samme type skal kunne blive **forskellige** | ❌ | `riders.archetype_draw` indeholder kun `{primary, secondary}`, altså typeparret, ikke en pr.-evne-hældning. To sprintere med samme type og potentiale får samme profil | ☐ |
 | B11 | 11/8 | D-2: kilden = **medfødt hældning** (vægt pr. evne, ligger fast hele livet) **+ spillerens fokus** | ❌ | Den medfødte hældning pr. evne findes ikke. Kun fokus-siden er bygget | ☐ |
 | B12 | 11/8 | D-3: ligevægt arv/arbejde: vedholdende fokus over flere sæsoner kan flytte tyngdepunktet. **Antal sæsoner SKAL måles og sættes bevidst** | ❌ | Ikke bygget, ikke målt | ☐ |
-| B13 | 11/8 | D-4: **median-gab ~12 ved 28 år**. 6 fravalgt (usynligt), 20 fravalgt (skrøbelige ryttere, straffer små trupper). Verifikations-krav: 6/12/20 mod ægte population + race-motor FØR låsning | ⚠ | **Målt i prod 25/8 er median-gabbet 25 ved 28 år, 30 ved 29, 36 ved 30 og 40 ved 32**, altså 2-3× målet, og langt over de 20 ejeren udtrykkeligt fravalgte. Se forbehold nedenfor | ☐ |
+| B13 | 11/8 | D-4: **median-gab ~12 ved 28 år**. 6 fravalgt (usynligt), 20 fravalgt (skrøbelige ryttere, straffer små trupper). Verifikations-krav: 6/12/20 mod ægte population + race-motor FØR låsning | ⚠ | **Målt i prod 24/8 er median-gabbet 25 ved 28 år, 30 ved 29, 36 ved 30 og 40 ved 32**, altså 2-3× målet, og langt over de 20 ejeren udtrykkeligt fravalgte. Se forbehold nedenfor | ☐ |
 | B14 | 11/8 | D-5: scouting afslører **retningen**, aldrig niveauet | ❌ | Ikke bygget; afhænger af B8 | ☐ |
 
 ---
@@ -86,7 +86,7 @@ Kilder: `2026-08-06-loebsdags-model-design.md` · `2026-08-09-3564-progressionsk
 
 Spec'en fra 6/8 siger at det planlagte pas **ikke udføres** på en løbsdag. Koden beregner i stedet løbets udbytte som *det planlagte pas × 1,15*. Konsekvensen er at planen stadig bestemmer, og at intensiteten `rest` giver faktor 0, så en rytter på Hvile udvikler sig **ikke** af at køre løb.
 
-**Målt i prod 25/8, sæson 3:**
+**Målt i prod 24/8, sæson 3:**
 
 | Plan-intensitet | Ryttere med S3-plan | Heraf tilmeldt et S3-løb | Andel |
 |---|---|---|---|
@@ -112,7 +112,7 @@ Tre beslutninger (B1, B2, B7) og hele trin 1's remap-arbejde hviler på en forud
 
 Ejeren valgte median-gab **~12 ved 28 år** og fravalgte eksplicit 20, fordi *"ryttere bliver skrøbelige og små trupper straffes, hvilket kolliderer med 'straf aldrig styrke' ad bagvejen."*
 
-Målt mod prod 25/8 (bedste minus næstbedste afledte evne, median pr. årgang):
+Målt mod prod 24/8 (bedste minus næstbedste afledte evne, median pr. årgang):
 
 | Alder | 16 | 20 | 22 | 24 | 26 | **28** | 30 | 32 |
 |---|---|---|---|---|---|---|---|---|
