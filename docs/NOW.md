@@ -19,6 +19,6 @@
 - **Staging:** `scripts/refresh-staging.ps1` + `scripts/with-staging.ps1`; generalprøve FØR enhver destruktiv prod-op. `staging-cutover` slettes mandag (#3839).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation (ejer-mandat 22/8):** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** #4163-session kører i hoved-checkoutet på `fix/4163-deferrable-double-booking` (branch var skiftet dertil 24/8 formiddag — verificér ALTID branch før commit, brug worktree). Ugescan-sessionen 24/8 lukket 10:15: #3818-sanktion eksekveret + verificeret, PR #4168 åben. Bemærk: `staging-cutover` BEHOLDES til #4159-guard-test — #3839-sletningen venter.
+> **🤖 Working agent:** Ingen kendt aktiv session. **#4163 er i gang uden PR** — 2 commits pushet på `fix/4163-deferrable-double-booking` (senest `a1173ce1` constraint-form-vagt); spørg før pick-up. Hoved-checkoutet stod 24/8 formiddag på den branch uden varsel: **verificér ALTID branch før commit, brug worktree** (bed 4. gang). Ugescan-sessionen 24/8 lukket 10:15: #3818-sanktion eksekveret + verificeret, PR #4168 åben. Bemærk: `staging-cutover` BEHOLDES til #4159-guard-test — #3839-sletningen venter.
 
 _Historik i git-log, issue-tråde + docs/audits/._
