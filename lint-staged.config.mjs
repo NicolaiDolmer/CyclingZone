@@ -35,6 +35,13 @@ export default {
     // 2026-*.sql basenames + respects the historical whitelist, so passing the
     // staged paths is safe. Rule + recipes: docs/MIGRATIONS.md.
     `node scripts/lint-migration-idempotency.mjs ${files.map(escape).join(" ")}`,
+    // #4163 forward-guard: en migration der DROPPER en kritisk constraint skal
+    // give den tilbage i sin FULDE form. #4155 droppede no_rider_double_booking
+    // for at skrive en ny game_day-akse og genskabte den uden DEFERRABLE —
+    // batch-RPC'en (#3934) kunne derefter ikke køre, og entry-generator-sweepen
+    // stod i deterministisk dødvande timer før S3's første løbsdag. Vagten
+    // respekterer REMEDIATED-historikken. Regel: docs/MIGRATIONS.md.
+    `node scripts/lint-constraint-form.mjs ${files.map(escape).join(" ")}`,
   ],
   // #1068 forward-guard: i18n leak-check (DA-in-EN locale values + hardcoded
   // Danish strings in player-facing code). The script always does a full-repo
