@@ -6,7 +6,7 @@
 
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
-- **GJORT 23-24/8:** cutover S2→S3 (c=0,811 varig, #4135; upkeep 220k/70k/20k/0) · kalender live · #4155 game_day repareret PROD · #4154+#3818-sanktioner · #4163 løst+applied (sweep ude af dødvande + form-vagt i CI). Detaljer: NOW.md + issue-tråde.
+- **GJORT 23-24/8:** cutover S2→S3 · kalender live · #4155 game_day PROD · #4154+#3818-sanktioner · #4163 løst+applied. Tal og detaljer: NOW.md + issue-tråde.
 - **REST MAN 24/8 (løbsfri):** 🔴 **kalender-dimensionering (#4170 + #4161)** — se nedenfor, beslutning FØR 25/8 kl. 11 · **#4159 game_day-guard FØR næste kalender-generering** (fjerde vagt: assertér constraint-FORM, ikke eksistens) · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
@@ -49,6 +49,7 @@ Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-pl
 
 12. 🔴 **Spiller-kommunikation, fast ugerytme (#428)** — ejer-mandat 22/8, viger aldrig. MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t. Tråd-bank **#4117**, løfte-audit **#4111**.
 13. Gæld: done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops (uge 26.-30./8): **#4014** log-vagt · **#4016** session-claim · **#3486** `VERCEL_TOKEN` · #2758 · #3487 · #691 · **worktree-hygiejne**.
+14. 🔵 **Fair play (#3131):** prisloft valgt fra efter #4154+#3818 → #3138 ENESTE værn. Rest: retnings- + overbetalings-signal · flag-triage · #3438 · #3139 regler. **Lagt i E, ikke omprioriteret.**
 
 ## F · Backlog-bølger (mål: 570 → ~200, #3154)
 
