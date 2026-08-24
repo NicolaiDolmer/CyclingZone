@@ -34,6 +34,8 @@
 -- deres gamle loebsdage (season-filtreret mod sæson 3). Rollbacken kan altsaa ikke
 -- bryde no_rider_double_booking_day.
 --
+-- MELLEMTILSTAND: constraint'en udsaettes til commit, se noten ved set constraints.
+--
 -- IDEMPOTENT via markoer-tabellen backup_4203_rolled_back_at: anden kørsel er en no-op.
 -- Uden den ville et gentaget kald slette de udtagelser assistenten laver EFTER
 -- rollbacken, fordi slette-reglen er tidsbaseret.
@@ -41,6 +43,17 @@
 -- Ingen data gaar tabt: begge backup-tabeller bevares efter kørslen.
 
 begin;
+
+-- Mellemtilstands-problemet, faktisk maalt: foerste forsoeg 24/8 21:54 fejlede med
+--   Key (rider_id, season_id, game_day)=(..., 26) already exists
+-- La Doyenne flyttes TILBAGE til loebsdag 26 mens La Classique Bretonne flyttes VAEK
+-- fra 26. Schedule-opdateringen rammer alle otte loeb i eet statement, og AFTER ROW-
+-- triggeren genopbygger dag-raekkerne pr. raekke. Rammer La Doyennes genopbygning
+-- foerst, holder begge loeb dag 26 samtidig, og den UMIDDELBARE constraint afviser.
+-- Slut-tilstanden er lovlig (verificeret: nul kollisioner), det er kun vejen dertil
+-- der ikke er det. Derfor udsaettes constraint'en til commit. Det er praecis dét den
+-- er DEFERRABLE for (#3934/#4163) — samme greb som apply_race_entry_unit_batch bruger.
+set constraints public.no_rider_double_booking_day deferred;
 
 create table if not exists public.backup_4203_rolled_back_at (
   rullet_at timestamptz primary key default now(),
