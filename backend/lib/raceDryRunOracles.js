@@ -291,3 +291,73 @@ export function evaluatePeakNeutralityOracle(obs) {
   }
   return failures;
 }
+
+// ── #4180: aggregat-dom over MANGE seeds ─────────────────────────────────────
+// Gaten koerte foer tre hardcodede seeds og kraevede at HVER seed bestod alle
+// baand. Maalt paa 400 tilfaeldige seeds fejlede den paa 42 % af dem med
+// uaendret kode: 83-93 % af variansen paa maal-scorecardet er POPULATIONS-
+// bunden (hvert seed bygger sit eget felt), ikke loebs-stoej — at firedoble
+// antallet af loeb pr. seed flytter spredningen paa itt fra 10,18 til 10,28 pp.
+// Derfor doemmes maal-scorecardet (og rute-baandene) paa GENNEMSNITTET over
+// seedsne, mens de klasser der IKKE stoejer (strukturelle orakler, evne-
+// liveness, roles) forbliver haarde PR. SEED — de fejlede 0 ud af 400 seeds,
+// saa én roed seed dér er et aegte signal.
+//
+// Ejerens maaltal aendres IKKE af denne funktion; kun dommen.
+export const AGGREGATE_HARD_KINDS = ["structural", "liveness", "roles"];
+
+const gateMean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
+const gateStdev = (a) => {
+  if (a.length < 2) return 0;
+  const m = gateMean(a);
+  return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+};
+
+/**
+ * Doem en samling seed-koersler (metrik-dumps fra simulateSeasonDryRun.js
+ * --metrics-json) efter #4180-kontrakten.
+ * @param {Array<{seed:number, metrics:object|null}>} runs
+ * @param {{minSeeds?:number}} opts minSeeds = under denne graense giver et
+ *   gennemsnit ingen mening som dom; baandene rapporteres da uden dom (judged=false).
+ * @returns {{judged:boolean, crashed:number[], hardSeeds:Array, targetRows:Array, routeRows:Array, failures:string[]}}
+ */
+export function evaluateSeedAggregateGate(runs = [], { minSeeds = 10 } = {}) {
+  const crashed = runs.filter((r) => !r.metrics).map((r) => r.seed);
+  const usable = runs.filter((r) => r.metrics);
+  const failures = [];
+  if (crashed.length) failures.push(`${crashed.length} seeds crashede uden metrik-dump: ${crashed.join(", ")}`);
+
+  const hardSeeds = usable
+    .map((r) => ({
+      seed: r.seed,
+      messages: AGGREGATE_HARD_KINDS.flatMap((k) => (r.metrics.failures?.[k] || []).map((f) => `${k}: ${f}`)),
+    }))
+    .filter((r) => r.messages.length);
+  if (hardSeeds.length) {
+    failures.push(`${hardSeeds.length} seeds broed et per-seed-haardt baand (orakel/liveness/roles): ${hardSeeds.map((r) => r.seed).join(", ")}`);
+  }
+
+  const judged = usable.length >= minSeeds;
+
+  const targetRows = Object.keys(usable[0]?.metrics?.targets ?? {}).map((key) => {
+    const vals = usable.map((r) => r.metrics.targets[key].bornPct);
+    const target = usable[0].metrics.targets[key].targetPct;
+    const mean = gateMean(vals);
+    const pass = judged ? mean >= target : null;
+    if (pass === false) failures.push(`${key} gennemsnit ${(mean * 100).toFixed(1)}% under maal ${(target * 100).toFixed(0)}%`);
+    return { key, mean, target, sd: gateStdev(vals), worst: Math.min(...vals), n: vals.length, pass };
+  });
+
+  const routeRows = Object.keys(usable[0]?.metrics?.routeBands ?? {}).map((key) => {
+    const vals = usable.map((r) => r.metrics.routeBands[key].value);
+    const def = usable[0].metrics.routeBands[key];
+    const mean = gateMean(vals);
+    const okMin = def.min == null || (def.exclusive ? mean > def.min : mean >= def.min);
+    const okMax = def.max == null || mean <= def.max;
+    const pass = judged ? okMin && okMax : null;
+    if (pass === false) failures.push(`rute-baand ${key} gennemsnit ${mean.toFixed(2)} udenfor ${def.band}`);
+    return { key, mean, band: def.band, sd: gateStdev(vals), n: vals.length, pass };
+  });
+
+  return { judged, crashed, hardSeeds, targetRows, routeRows, failures };
+}
