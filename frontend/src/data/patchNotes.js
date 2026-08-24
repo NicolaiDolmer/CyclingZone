@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.186",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race cards show dates instead of a race-day range that was not true",
+          "body": "A stage race card read \"Race days 10-28\" even when the race only ran on seven of those days, so it looked like your riders were locked for three weeks. The lock was always correct; the label was not. Cards now show the race dates instead, and the race-day number stays on the board's day headings where one number means one day."
+        },
+        "da": {
+          "title": "Løbskortene viser datoer i stedet for et løbsdags-interval der ikke passede",
+          "body": "Et etapeløb stod som \"Løbsdag 10-28\" selvom løbet kun kørte på syv af de dage, så det så ud som om dine ryttere var låst i tre uger. Låsen var altid rigtig, mærkatet var ikke. Kortene viser nu løbets datoer, og løbsdags-tallet bliver stående på brættets dags-overskrifter, hvor ét tal betyder én dag."
+        },
+        "refs": [4193, 4190]
+      }
+    ]
+  },
+  {
     "version": "7.185",
     "date": "2026-08-24",
     "label": "Beta",

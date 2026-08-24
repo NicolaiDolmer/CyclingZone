@@ -259,3 +259,27 @@ export function mergeBindingMaps(base = {}, extra = {}) {
   }
   return map;
 }
+
+// #4187: løbskortets mærkat viste "Løbsdag {start}-{end}" — et SPÆND, ikke de dage
+// løbet faktisk binder. Et 7-etapers løb på løbsdag 10, 13, 17, 20, 23, 27, 28 læste
+// som "Løbsdag 10-28", altså 19 dages binding hvor der reelt er 7. Bindingen har
+// været korrekt siden #4173 (dag-mængde); kun teksten løj, og spillerne planlagde
+// efter den (smukkethomsen + egomadsen, Discord 24/8).
+//
+// Erstatningen er løbets DATOER. De kan ikke drive fra den in-game akse, de er dét
+// manageren planlægger efter, og de bliver ikke forkerte hvis aksen senere gøres
+// sammenhængende. Løbsdags-tallet står fortsat på brættets dags-overskrifter, hvor
+// det ER sandt (groupColumnsByGameDay ovenfor).
+//
+// Ren funktion: ingen Date.now(), ingen locale-gæt — kalderen sender sit i18n-sprog.
+// Samme dato i begge ender (endagsløb) giver ét datostykke, ikke "30. aug - 30. aug".
+export function raceDateRangeLabel({ startMs, endMs, locale = "en" } = {}) {
+  if (!Number.isFinite(startMs)) return null;
+  const fmt = new Intl.DateTimeFormat(locale, {
+    timeZone: "Europe/Copenhagen", day: "numeric", month: "short",
+  });
+  const start = fmt.format(new Date(startMs));
+  if (!Number.isFinite(endMs)) return start;
+  const end = fmt.format(new Date(endMs));
+  return start === end ? start : `${start} – ${end}`;
+}
