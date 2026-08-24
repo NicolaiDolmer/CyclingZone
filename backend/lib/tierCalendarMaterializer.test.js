@@ -1051,3 +1051,25 @@ test("#4075 materialize: pensionerede katalog-rækker (retired_at) er usynlige f
   assert.ok(!seen.has("gt-1-old"), "pensioneret række er filtreret fra katalog-læsningen");
   assert.ok(seen.has("gt-1"), "den aktive Giro er stadig i kataloget");
 });
+
+test("#4075 invariant 6: detectCalendarViolations flager et monument der deler loebsdag med et andet loeb", () => {
+  const catalog = new Map([
+    ["mon", { name: "Milano-Riviera", race_class: "Monuments" }],
+    ["gt", { name: "Giro della Penisola", race_class: "GiroVuelta" }],
+  ]);
+  const placements = [
+    { id: "mon", stages: 1, race_class: "Monuments", stagesPlaced: [{ stage_number: 1, game_day: 13 }] },
+    { id: "gt", stages: 18, race_class: "GiroVuelta", stagesPlaced: [{ stage_number: 4, game_day: 13 }] },
+  ];
+  const bad = detectCalendarViolations({ tier: 1, placements, catalogById: catalog });
+  assert.ok(bad.some((v) => v.includes("owns its race day")), `forventede monument-brud, fik: ${JSON.stringify(bad)}`);
+
+  const good = detectCalendarViolations({
+    tier: 1, catalogById: catalog,
+    placements: [
+      { id: "mon", stages: 1, race_class: "Monuments", stagesPlaced: [{ stage_number: 1, game_day: 14 }] },
+      { id: "gt", stages: 18, race_class: "GiroVuelta", stagesPlaced: [{ stage_number: 4, game_day: 13 }] },
+    ],
+  });
+  assert.equal(good.filter((v) => v.includes("owns its race day")).length, 0);
+});

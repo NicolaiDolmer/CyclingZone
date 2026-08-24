@@ -1,0 +1,207 @@
+name: Calendar invariant audit
+
+# Permanent forward-guard for #4159 / #4176: kalender-invarianterne og den
+# kritiske constraint-form skal måles mod PROD dagligt — ikke kun når nogen
+# husker at køre verify-invariants i hånden.
+#
+# Hvorfor dagligt mod prod og ikke kun i CI mod pakkerens output:
+# #4155-reparationen skrev game_day som en ren dato-offset direkte i prod og
+# brød den ejer-låste TIER_OVERLAP_CAP i alle fire divisioner. Ingen test fejlede,
+# fordi generatoren var uændret — skaden kom fra et reparations-script. Samme
+# hændelse gentog sig 24/8: akse-reparationen klappede D1's fem monumenter sammen
+# med deres naboløb (#4075's eksklusive løbsdag). Begge gange var koden korrekt og
+# DATAEN forkert, og kun en måling mod prod kan se dét.
+#
+# Gaten er BEVIDST snæver: den fejler på kalender-invarianterne og på
+# constraint-formen (#4159's scope). Øvrige invarianter fra verify-invariants
+# rapporteres i tracking-issuet, men vælter ikke jobbet — et permanent rødt
+# workflow bliver slået fra, og så vogter det ingenting.
+#
+# Triggers:
+#   - PR der rører kalender-libs, vagten selv eller dette workflow
+#   - Dagligt cron (03:50 UTC — efter league-size 03:40, før feature-liveness 04:00)
+#   - Manuel workflow_dispatch
+
+on:
+  pull_request:
+    paths:
+      - 'backend/lib/calendarOverlapInvariant.js'
+      - 'backend/lib/calendarGameDayRepair.js'
+      - 'backend/lib/calendarTierCaps.js'
+      - 'backend/lib/raceCalendarLanePacker.js'
+      - 'backend/lib/tierCalendarMaterializer.js'
+      - 'backend/scripts/verify-invariants.js'
+      - 'scripts/constraint-form-audit.sql'
+      - '.github/workflows/calendar-invariant-audit.yml'
+  schedule:
+    - cron: '50 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip secret-backed audit for Dependabot PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "Skipping calendar invariant audit for Dependabot PR because repository secrets are unavailable to Dependabot-triggered pull_request workflows."
+
+      - name: Check out repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        run: npm ci
+        working-directory: backend
+
+      - name: Calendar invariants against prod
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        id: invariants
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          export SUPABASE_URL SUPABASE_SERVICE_KEY
+          # verify-invariants exit 1'er hvis EN VILKAARLIG invariant fejler; gaten
+          # nedenfor skelner mellem kalender-brud (blokerende her) og oevrige.
+          node backend/scripts/verify-invariants.js --json > invariants.json || true
+          # --input-type=module: eksplicit modul-type, saa blokken ikke afhaenger af
+          # om repo-roden er CJS eller ESM (den ville ellers skifte under os).
+          node --input-type=module - <<'NODE' | tee invariants.txt
+            import { readFileSync, appendFileSync } from 'node:fs';
+            const d = JSON.parse(readFileSync('invariants.json', 'utf8'));
+            const rows = Object.entries(d.checks);
+            const kalenderBrud = rows.filter(([n, c]) => n.startsWith('calendar_') && !c.ok);
+            const oevrigeBrud = rows.filter(([n, c]) => !n.startsWith('calendar_') && !c.ok);
+            for (const [n, c] of rows) console.log(`${c.ok ? '[ok]  ' : '[FEJL]'} ${n}: ${c.detail}`);
+            for (const [, c] of kalenderBrud) {
+              for (const v of c.violations ?? []) console.log('   ' + JSON.stringify(v));
+            }
+            appendFileSync(process.env.GITHUB_OUTPUT,
+              `kalender_brud=${kalenderBrud.length}\noevrige_brud=${oevrigeBrud.length}\n`);
+          NODE
+
+      - name: Verify SUPABASE_DB_URL is configured
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "❌ SUPABASE_DB_URL secret missing — se docs/AUTO_MIGRATION_SETUP.md"
+            exit 1
+          fi
+
+      - name: Constraint form against prod (#4163)
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        id: constraints
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/constraint-form-audit.sql | sed '/^$/d')
+          printf '%s\n' "$FINDINGS" | sed '/^$/d' > constraint-form.txt
+          COUNT=$(printf '%s' "$FINDINGS" | sed '/^$/d' | wc -l | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" = "0" ]; then
+            echo "✅ Constraint-form: kritiske constraints er deferrable"
+          else
+            cat constraint-form.txt
+          fi
+
+      - name: Upload report
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]')
+        uses: actions/upload-artifact@v7
+        with:
+          name: calendar-invariant-report
+          path: |
+            invariants.json
+            invariants.txt
+            constraint-form.txt
+
+      - name: Comment on PR if findings (PR runs only)
+        if: github.event_name == 'pull_request' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0')
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('invariants.txt', 'utf8');
+            const body = [
+              '## ❌ Kalender-invariant-audit fandt brud mod prod',
+              '',
+              'Reglerne står i [`docs/CALENDAR_RULES.md`](docs/CALENDAR_RULES.md). Et brud her betyder at DATAEN i prod bryder en ejer-låst regel — ikke nødvendigvis at denne PR gør det.',
+              '',
+              '```',
+              report.trim(),
+              '```',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Open or update tracking issue (scheduled runs only)
+        if: github.event_name == 'schedule' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.invariants.outputs.oevrige_brud != '0')
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('invariants.txt', 'utf8');
+            const constraints = fs.existsSync('constraint-form.txt') ? fs.readFileSync('constraint-form.txt', 'utf8').trim() : '';
+            const kal = '${{ steps.invariants.outputs.kalender_brud }}';
+            const con = '${{ steps.constraints.outputs.count }}';
+            const andre = '${{ steps.invariants.outputs.oevrige_brud }}';
+            const title = `[bot] Invariant-audit: ${kal} kalender-brud, ${con} constraint-form-brud, ${andre} øvrige`;
+            const body = [
+              '## Invarianter målt mod prod',
+              '',
+              `Dagligt cron-run: **${kal}** kalender-brud, **${con}** constraint-form-brud, **${andre}** øvrige invariant-brud.`,
+              '',
+              'Kalender-reglerne og hvem der låste dem: [`docs/CALENDAR_RULES.md`](docs/CALENDAR_RULES.md). Et kalender-brud betyder at rækkerne i prod bryder en ejer-låst regel — typisk efter et reparations-script eller ad-hoc-SQL, ikke efter en generator-ændring (#4155, #4161, #4075).',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              constraints ? ['', '### Constraint-form', '```', constraints, '```'].join('\n') : '',
+              '',
+              'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'calendar-invariant-audit',
+            });
+            if (existing.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing[0].number, title, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body,
+                labels: ['calendar-invariant-audit', 'priority:high', 'type:bug', 'claude:todo'],
+              });
+            }
+
+      - name: Fail if calendar or constraint findings
+        if: steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0'
+        run: |
+          echo "::error::Kalender-invariant-audit: ${{ steps.invariants.outputs.kalender_brud }} kalender-brud, ${{ steps.constraints.outputs.count }} constraint-form-brud."
+          exit 1

@@ -170,6 +170,32 @@ export function detectCalendarViolations({
     }
   }
 
+  // #4075/#4176 invariant 6: et MONUMENT har sin egen, EKSKLUSIVE løbsdag (ejer-låst 21/8)
+  // — ingen modløb på samme game_day, så alle ryttere kan stille op. Kalender-DATOEN deles
+  // fortsat: de øvrige løb ligger i datoens andre tidsslots. Pakkeren bygger reglen ind
+  // (layoutStream, B2), men indtil nu var det kun pakkerens egen hensigt: #4161-akse-
+  // reparationen udledte game_day af datoerne alene og klappede D1's fem monumenter sammen
+  // med naboløbene i live S3. Reglen gates nu på alle tre niveauer (CI, denne preflight,
+  // verify-invariants mod prod).
+  const monumentGameDays = new Map(); // game_day -> monument-id
+  const gameDayRaces = new Map();     // game_day -> Set(race_id)
+  for (const pl of placements) {
+    const cat = catalogById.get(pl.id) || {};
+    const raceClass = cat.race_class ?? pl.race_class ?? null;
+    for (const st of pl.stagesPlaced ?? []) {
+      if (!Number.isFinite(st.game_day)) continue;
+      if (!gameDayRaces.has(st.game_day)) gameDayRaces.set(st.game_day, new Set());
+      gameDayRaces.get(st.game_day).add(pl.id);
+      if (raceClass === "Monuments" && !monumentGameDays.has(st.game_day)) monumentGameDays.set(st.game_day, pl.id);
+    }
+  }
+  for (const [gameDay, monumentId] of monumentGameDays) {
+    const others = [...(gameDayRaces.get(gameDay) ?? [])].filter((id) => id !== monumentId);
+    if (others.length) {
+      violations.push(`tier ${tier}: monument ${monumentId} shares game_day ${gameDay} with ${others.join(", ")} — a monument owns its race day (#4075)`);
+    }
+  }
+
   // #4075 invariant 5: GT-klasser SKAL bære grand_tour-arketypen — ellers genereres deres
   // etapeprofiler som almindelige etapeløb (ingen åbnings-ITT, ingen GT-finale-regel).
   // Rod-årsag 20/8: race_pool_archetypes.json pegede på de GAMLE external_ids, så de nye
