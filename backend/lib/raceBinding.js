@@ -97,6 +97,21 @@ export function isRiderDayInvariantViolation(error) {
   return String(error.message || "").includes("no_rider_double_booking");
 }
 
+// #4163: SÆRTILFÆLDE der skal fanges FØR isRiderDayInvariantViolation ovenfor.
+// Batch-RPC'en apply_race_entry_unit_batch (#3934) starter med `set constraints
+// no_rider_double_booking deferred`. Er constrainten IKKE deferrable, afviser
+// Postgres med SQLSTATE 42809 og beskeden `constraint "no_rider_double_booking"
+// is not deferrable` — en besked der INDEHOLDER constraint-navnet og derfor ellers
+// læses som en ægte dobbeltbooking. Det er den stik modsatte diagnose: intet er
+// dobbeltbooket, DB-skemaet er drevet fra det #3934 kræver (prod 24/8: #4155-
+// reparationen genskabte constrainten uden `deferrable`, og sweepen faldt tavst
+// tilbage i insert-før-delete-dødvandet, 140 fejlende enheder pr. tick).
+export function isConstraintNotDeferrable(error) {
+  if (!error) return false;
+  if (error.code === "42809") return true;
+  return /is not deferrable/i.test(String(error.message || ""));
+}
+
 // To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
 // to løb der starter samtidig overlapper). Defensiv mod null.
 export function windowsOverlap(a, b) {

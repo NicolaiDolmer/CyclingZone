@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -617,4 +617,37 @@ test("isRiderDayInvariantViolation: false for andre fejl / null", () => {
   assert.equal(isRiderDayInvariantViolation({ message: "connection reset" }), false);
   assert.equal(isRiderDayInvariantViolation(null), false);
   assert.equal(isRiderDayInvariantViolation(undefined), false);
+});
+
+// #4163 (prod 24/8): #4155-reparationen genskabte no_rider_double_booking uden
+// `deferrable`, så batch-RPC'ens `set constraints ... deferred` fejlede med 42809.
+// Beskeden INDEHOLDER constraint-navnet og blev derfor laest som en aegte
+// dobbeltbooking — den stik modsatte diagnose. Detektoren skal skelne.
+test("isConstraintNotDeferrable: genkender Postgres' 42809 (SET CONSTRAINTS paa ikke-deferrable)", () => {
+  assert.equal(
+    isConstraintNotDeferrable({ code: "42809", message: 'constraint "no_rider_double_booking" is not deferrable' }),
+    true
+  );
+});
+
+test("isConstraintNotDeferrable: genkender via besked uden .code", () => {
+  assert.equal(
+    isConstraintNotDeferrable({ message: 'constraint "no_rider_double_booking" is not deferrable' }),
+    true
+  );
+});
+
+test("isConstraintNotDeferrable: false for aegte dobbeltbooking + andre fejl", () => {
+  assert.equal(isConstraintNotDeferrable({ code: "23P01", message: "conflicting key value" }), false);
+  assert.equal(isConstraintNotDeferrable({ message: "connection reset" }), false);
+  assert.equal(isConstraintNotDeferrable(null), false);
+});
+
+// Praecis den forvekslings-faelde bugget bestod af: 42809-beskeden matcher
+// isRiderDayInvariantViolation's navne-fallback, saa raekkefoelgen af de to tjek
+// er en invariant, ikke en detalje.
+test("42809-beskeden matcher OGSAA isRiderDayInvariantViolation — derfor tjekkes not-deferrable FOERST", () => {
+  const err = { code: "42809", message: 'constraint "no_rider_double_booking" is not deferrable' };
+  assert.equal(isRiderDayInvariantViolation(err), true);
+  assert.equal(isConstraintNotDeferrable(err), true);
 });

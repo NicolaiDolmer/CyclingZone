@@ -230,6 +230,15 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
   // som Postgres' unique-indexes), day-invarianten (#3420) først EFTER hele
   // batchen (DEFERRED) — det er præcis dét der gør cross-enheds-swaps lovlige.
   function rpc(name, params = {}) {
+    // #4163: batchRpc: "not_deferrable" = prod-tilstanden 24/8 — RPC'en FINDES, men
+    // dens `set constraints ... deferred` afvises fordi #4155-reparationen genskabte
+    // no_rider_double_booking uden `deferrable`. Postgres svarer 42809.
+    if (name === "apply_race_entry_unit_batch" && batchRpc === "not_deferrable") {
+      return Promise.resolve({
+        data: null,
+        error: { code: "42809", message: 'constraint "no_rider_double_booking" is not deferrable' },
+      });
+    }
     if (name !== "apply_race_entry_unit_batch" || !batchRpc) {
       return Promise.resolve({ data: null, error: { message: `function ${name} does not exist` } });
     }
@@ -1656,4 +1665,40 @@ test("#3934: batch-RPC'en (deferred constraint) gennemfører samme swap uden fej
   for (const rid of ids("B")) assert.ok(!aSet.has(rid), `${rid} dobbeltbooket A↔B efter swap`);
   assert.equal(res.inserted, desiredA.length + desiredB.length, "swappen indsatte begge enheders nye rækker");
   assert.equal(res.removed, desiredA.length + desiredB.length, "…og fjernede begge enheders gamle rækker");
+});
+
+// #4163 (prod 24/8, CYCLINGZONE-32/-2D regressed): #4155-reparationen droppede
+// no_rider_double_booking foer schedule-skrivningen og genskabte den UDEN
+// `deferrable`. Batch-RPC'en (#3934) kunne derfor ikke koere, hvert hold faldt
+// tilbage i per-enheds-doedvandet, og de 140 enheds-fejl pr. tick pegede paa
+// "aegte dobbeltbooking" — den forkerte diagnose. Sweepen skal navngive den
+// systemiske aarsag FOERST, saa naeste hændelse kan læses direkte af loggen.
+test("#4163: RPC afvist med 42809 → systemisk diagnose foerst i errors + flag paa resultatet", async () => {
+  const { crossed } = await crossedSeedFromDesired();
+  const { state, seasonId } = seedSwapScenario();
+  state.race_entries = crossed.map((r) => ({ ...r }));
+  const supabase = makeSupabase(state, { enforceDayInvariant: true, batchRpc: "not_deferrable" });
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.constraint_not_deferrable, true, "skema-driften er flaget paa resultatet");
+  assert.ok(
+    res.errors[0].includes("ikke deferrable") && res.errors[0].includes("#4163"),
+    `foerste fejl skal navngive skema-driften, fik: ${res.errors[0]}`
+  );
+  // Symptomet (enheds-fejlene) er der stadig — men nu EFTER diagnosen.
+  assert.equal(res.failed_units, 2, "fallback-vejen fejler stadig som i 18/8-doedvandet");
+  assert.ok(
+    res.errors.slice(1).some((e) => e.includes("rider-day invariant (#3420)")),
+    "de generiske enheds-fejl bevares som symptom"
+  );
+});
+
+test("#4163: en RASK batch-RPC saetter ikke flaget", async () => {
+  const { crossed } = await crossedSeedFromDesired();
+  const { state, seasonId } = seedSwapScenario();
+  state.race_entries = crossed.map((r) => ({ ...r }));
+  const supabase = makeSupabase(state, { enforceDayInvariant: true, batchRpc: true });
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+  assert.equal(res.constraint_not_deferrable, false);
+  assert.equal(res.failed_units, 0);
 });
