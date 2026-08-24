@@ -7,7 +7,7 @@
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
 - **GJORT 23-24/8:** cutover S2→S3 · kalender live · #4155 game_day PROD · #4154+#3818-sanktioner · #4163 løst+applied. Tal og detaljer: NOW.md + issue-tråde.
-- **REST MAN 24/8 (løbsfri):** 🔴 **TÆND race-motoren** (`stage_scheduler_enabled=off` efter #4172) FØR 25/8 kl. 11 · **#4159 game_day-guard FØR næste kalender-generering** (fjerde vagt: assertér constraint-FORM, ikke eksistens) · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
+- **GJORT MAN 24/8:** kalender/binding-kæden (PR #4169 + #4173-migration + akse-reparation: cap-brud 29→0, dubletter 163→0, binding = dag-mængde) · motor verificeret `on` · #4170 lukket · patch note 7.183. **REST:** 🔴 **#4183** nye tilmeldinger har ingen puljeplads (hold 25 i D3-A, audit RØD på alle PR'er) · **#4159 guard-rest** (DB-trigger + d4PoolCount + condeferrable) · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
 ## A · Cutover 23/8 — GENNEMFØRT
@@ -36,7 +36,7 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5, byg efter v4-gaten). Z1 v0 shippet (#4083).
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8:** ✅ #4102 #4106 #4107 #4108 live 23/8 · #4103 rest = **præmier pr. division mandag m. #3719** (D4 11 % vs D1 108 % af sponsor) · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. Kalender-invarianter (#4123): søndagsslut + 471/27 i `verifySeason3Calendar.mjs`, mangler CI-gate.
-8b. ✅ **Kalender-dimensionering LØST 24/8 (#4172).** Rod-årsag: `d4PoolCount=2` i `pyramidCompression` lagde ALLE 48 D4-hold i pulje A/B. Spredt til 8 puljer à 24, fyldt med 2.880 eksisterende frie ryttere (ingen nye skabt). S3-løb uden entries: 157 → 1. **Rest:** `d4PoolCount`-guard så S3→S4 ikke gentager det (tag med #4159) · **#4161** D1-sizing (29 ryttere på én dag) · det sidste tomme løb er et D3-overlap, egen fejlklasse.
+8b. ✅ **Kalender-dimensionering + akse + binding LØST 24/8** (#4172 D4-spredning · #4169/#4173/#4161-kæden kørt i prod). **Rest:** `d4PoolCount`-guard (i #4159) · **#4174** rytterkrav pr. hold efter reparationen (balance-beslutning) · **#4183** puljeplads til nye tilmeldinger (ejer-beslutning, audit RØD).
 
 9. **P0** kalender-integritet: #3990-rest (off-by-one, ejer-kald) · navne-dedup-guard · #3329 · #2791. **P1** sæsonmatrix + rytter-inspektør + UI-gæld (#3954 #3428 #3410 #2030 #3425 #3955 #3529 #3455 #3374). **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405 + fjern `tacticsOrdersAdapter`-mock). **P3** assistenten (mål-løb-migration, #3087 #3088 #3957 #3939 #4076).
 
