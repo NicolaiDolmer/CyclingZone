@@ -16,7 +16,7 @@ import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities } from "./abilityDerivation.js";
 import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { buildCapsForRider } from "./riderProgression.js";
-import { predictBaseValue } from "./riderValuation.js";
+import { predictBaseValue, riderOverall } from "./riderValuation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -42,6 +42,7 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   const { riders } = generateLaunchPopulation();
   let superstar = 0, star = 0, solid = 0, domestique = 0, withType = 0;
   let maxValue = 0;
+  let maxOverall = 0;
   const typeSet = new Set();
   for (let i = 0; i < riders.length; i++) {
     const riderRow = { ...riders[i], id: `fic-test-${i}` };
@@ -74,6 +75,8 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
     else if (bv >= 200_000) solid++;
     else domestique++;
     if (bv > maxValue) maxValue = bv;
+    const ovr = riderOverall({ ...riderRow, ...abilities });
+    if (ovr > maxOverall) maxOverall = ovr;
   }
   assert.equal(withType, 800, "alle ryttere får en type via kæden");
   // #3325 (2026-08-04): predictBaseValue bruger primary_type som en KATEGORISK
@@ -93,8 +96,22 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   assert.ok(solid >= 80 && solid <= 280, `solide=${solid} uden for [80,280]`);
   // Bred bund: størstedelen er domestikker (<200k).
   assert.ok(domestique >= 450 && domestique <= 680, `domestikker=${domestique} uden for [450,680]`);
-  // v3-gevinst bevaret: ingen urealistiske outliers over toppen af design-skalaen.
-  assert.ok(maxValue <= 40_000_000, `max base_value=${maxValue} over 40M-loftet`);
+  // #4180 (2026-08-24): her stod tidligere `maxValue <= 40_000_000`. Det baand
+  // maalte ikke generatoren men VAERDIMODELLENS haeldning i toppen, og det holdt
+  // kun fordi denne test koerer ét laast seed. Maalt paa 42 seeds brydes 40M-
+  // loftet paa 44 % af dem MED koden paa main (op til 61,1M), og spillet har i
+  // drift en rytter til 51,5M. Aarsagen: vaerdikurven er saa stejl i toppen (1-2
+  // ryttere pr. overall-point) at ÉT overall-point flytter den dyreste rytter
+  // 32,1M -> 52,9M. Loftet var derfor et moentkast, ikke en invariant.
+  //
+  // Det generatoren FAKTISK styrer er evne-toppen, og den er stabil: feltets
+  // hoejeste overall maaler 68-73 over 42 seeds (middel 70,3), uaendret af
+  // #4180s rng-adskillelse (70,31 -> 70,36). Det er dét vi laaser her.
+  // Vaerdimodellens top-haeldning ejes af sit eget issue.
+  assert.ok(
+    maxOverall >= 64 && maxOverall <= 78,
+    `feltets hoejeste overall=${maxOverall} uden for [64,78] (maalt leje over 42 seeds: 68-73)`,
+  );
   // Alle 8 typer skal emergere fra kæden (etape-variation).
   assert.equal(typeSet.size, 8, `kun ${typeSet.size}/8 typer emergerede: ${[...typeSet].join(",")}`);
 });

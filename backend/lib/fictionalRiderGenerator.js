@@ -468,6 +468,22 @@ export function generateFictionalRiders({
   if (!Number.isInteger(referenceYear)) throw new Error("referenceYear skal være et heltal");
 
   const rng = makeRng(seed);
+  // #4180: navnene traekkes fra en EGEN rng-understroem, ikke fra hovedstroemmen.
+  //
+  // Foer #4180 kaldte makeUniqueName hovedstroemmen, og antallet af kald afhang
+  // af hvor mange navne-KOLLISIONER der opstod. Laengere navnelister giver faerre
+  // kollisioner, faerre rng-kald og dermed en forskudt stroem: en ren tilfoejelse
+  // af navne aendrede hver eneste rytters stats, krop og alder. Det gjorde
+  // navne-vedligehold uforholdsmaessigt dyrt (#4178/#4179) og blandede to ting
+  // sammen i enhver balance-diff: navnene og populationen.
+  //
+  // Med en egen understroem er navnelisterne frakoblet: at tilfoeje, splitte
+  // eller udvide et cluster kan ikke laengere flytte en eneste stat. Samme
+  // moenster og samme begrundelse som secondaryRng (#3634) nedenfor.
+  // Understroemmen er ren funktion af seed, saa determinismen er uaendret.
+  // 0x6a09e667 er SHA-256's foerste IV-ord — en veletableret, veldistribueret
+  // splitte-konstant, valgt forskellig fra secondaryRng's 0x9e3779b9.
+  const nameRng = makeRng((seed + 0x6a09e667) >>> 0);
   // #3416: brug det MEDSENDTE set direkte (ingen kopi) — kopien gjorde at to kald
   // der delte samme set (fx kerne+hale i buildWeakStarterPool) ikke kendte
   // hinandens navne og kunne give samme navn to gange på samme hold.
@@ -564,7 +580,7 @@ export function generateFictionalRiders({
     const archetype = ARCHETYPE_BY_TYPE[typeSeq[i]];
     const secondaryArchetype = ARCHETYPE_BY_TYPE[secondarySeq[i]];
 
-    const { firstname, lastname } = makeUniqueName(rng, cluster, usedFolded);
+    const { firstname, lastname } = makeUniqueName(nameRng, cluster, usedFolded);
     const stats = buildStats(rng, tier, archetype, secondaryArchetype, secondarySignatureWeight);
     const demo = buildDemographics(rng, tier, archetype, referenceYear, secondaryArchetype, secondarySignatureWeight);
     const physiology = seedArchetypePhysiology({
