@@ -71,10 +71,17 @@ export const SCARCE_TERRAIN_ARCHETYPES = Object.freeze([
 // de øvrige familier. Uden den kunne bjerg-forsyningen (summit-finaler, M-Down-loftet)
 // kun MÅLES af raceRouteRealismMetrics.js EFTER hele selection var låst — denne familie
 // giver samme "reservér/beskyt i valget" gulv som cobbles/flat/itt/hilly allerede har.
+// #4176 (ejer-beslutning 24/8): `itt_hilly` tæller nu med i itt-familien. "En bakket
+// enkeltstart bør tælle som en enkeltstart. Det er jo for fanden en enkeltstart."
+// Den var indtil nu udenfor HVER eneste terræn-familie, mens kompositionen
+// (PROFILE_TO_CATEGORY i calendarCompositionTargets.js) allerede talte den som ITT —
+// to grupperinger der modsagde hinanden uden begrundelse. Målt effekt på live sæson 3:
+// enkeltstarter der tæller mod gulvet går fra 12/11/10/2 til 14/11/10/6 pr. pulje
+// (D4 havde 6 enkeltstarter, men kun 2 af dem talte).
 export const TERRAIN_FAMILY_BY_PROFILE_TYPE = Object.freeze({
   cobbles: "cobbles",
   flat: "flat_sprint",
-  itt: "itt", ttt: "itt",
+  itt: "itt", ttt: "itt", itt_hilly: "itt",
   hilly: "hilly",
   mountain: "mountain", high_mountain: "mountain",
 });

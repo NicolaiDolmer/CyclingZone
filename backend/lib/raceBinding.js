@@ -91,10 +91,20 @@ export function raceGameDaySpan(scheduleRows) {
 // et RÅT race_entries.insert/upsert (raceEntryGenerator.js, raceRunner.js,
 // api.js's auto-select + regenerate) bruger dette til at give en navngiven fejl
 // i stedet for en opak 500 (#3098-mønsteret).
+// #4173: invarianten flyttede fra en EXCLUDE-constraint på race_entries.binding_span
+// (SQLSTATE 23P01, exclusion_violation) til en UNIQUE på race_entry_days (SQLSTATE
+// 23505, unique_violation) — et SPÆND bandt også de dage et løb holdt pause, og låste
+// derfor ryttere på dage de ikke kørte. Begge koder accepteres: 23P01 fordi et miljø
+// kan have den gamle constraint endnu, 23505 fordi det er den nye.
 export function isRiderDayInvariantViolation(error) {
   if (!error) return false;
+  const message = String(error.message || "");
+  // 23505 dækker OGSÅ race_entries' egen PK (race_id, rider_id) og uq_race_entries_*-
+  // rolleslottene (#2D) — kun binding-nøglen må tælle som et dag-brud, ellers ville et
+  // helt almindeligt dublet-insert blive rapporteret som "rytteren er bundet".
+  if (error.code === "23505") return message.includes("no_rider_double_booking");
   if (error.code === "23P01") return true;
-  return String(error.message || "").includes("no_rider_double_booking");
+  return message.includes("no_rider_double_booking");
 }
 
 // #4163: SÆRTILFÆLDE der skal fanges FØR isRiderDayInvariantViolation ovenfor.

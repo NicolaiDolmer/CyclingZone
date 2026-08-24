@@ -630,6 +630,18 @@ test("isConstraintNotDeferrable: genkender Postgres' 42809 (SET CONSTRAINTS paa 
   );
 });
 
+// #4173: invarianten flyttede fra EXCLUDE på race_entries.binding_span (23P01) til
+// UNIQUE på race_entry_days (23505) — et SPÆND bandt også de dage et løb holdt pause.
+test("isRiderDayInvariantViolation: genkender den nye dag-constraint (23505 + navn)", () => {
+  assert.equal(
+    isRiderDayInvariantViolation({
+      code: "23505",
+      message: 'duplicate key value violates unique constraint "no_rider_double_booking_day"',
+    }),
+    true
+  );
+});
+
 test("isConstraintNotDeferrable: genkender via besked uden .code", () => {
   assert.equal(
     isConstraintNotDeferrable({ message: 'constraint "no_rider_double_booking" is not deferrable' }),
@@ -650,4 +662,31 @@ test("42809-beskeden matcher OGSAA isRiderDayInvariantViolation — derfor tjekk
   const err = { code: "42809", message: 'constraint "no_rider_double_booking" is not deferrable' };
   assert.equal(isRiderDayInvariantViolation(err), true);
   assert.equal(isConstraintNotDeferrable(err), true);
+});
+
+test("isRiderDayInvariantViolation: 23505 fra ANDRE unique-constraints er IKKE et dagbrud", () => {
+  // race_entries' egen PK og uq_race_entries_*-rolleslottene (CYCLINGZONE-2D) giver
+  // samme SQLSTATE. Et almindeligt dublet-insert må ikke rapporteres som "rytteren er
+  // bundet" — så ville generatoren give brugeren en forkert navngiven fejl.
+  for (const navn of ["race_entries_pkey", "uq_race_entries_captain", "uq_race_entries_sprint_captain"]) {
+    assert.equal(
+      isRiderDayInvariantViolation({
+        code: "23505",
+        message: `duplicate key value violates unique constraint "${navn}"`,
+      }),
+      false,
+      `${navn} må ikke tælle som dagbrud`
+    );
+  }
+});
+
+test("isRiderDayInvariantViolation: navne-fallback dækker begge constraint-navne", () => {
+  assert.equal(
+    isRiderDayInvariantViolation({ message: 'violates unique constraint "no_rider_double_booking_day"' }),
+    true
+  );
+  assert.equal(
+    isRiderDayInvariantViolation({ message: 'violates exclusion constraint "no_rider_double_booking"' }),
+    true
+  );
 });
