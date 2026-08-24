@@ -32,6 +32,7 @@ on:
       - 'backend/lib/tierCalendarMaterializer.js'
       - 'backend/scripts/verify-invariants.js'
       - 'scripts/constraint-form-audit.sql'
+      - 'scripts/race-entry-days-drift-audit.sql'
       - '.github/workflows/calendar-invariant-audit.yml'
   schedule:
     - cron: '50 3 * * *'
@@ -122,6 +123,22 @@ jobs:
             cat constraint-form.txt
           fi
 
+      - name: Race entry days drift against prod (#4191)
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        id: entrydays
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/race-entry-days-drift-audit.sql | sed '/^$/d')
+          printf '%s\n' "$FINDINGS" | sed '/^$/d' > race-entry-days-drift.txt
+          COUNT=$(printf '%s' "$FINDINGS" | sed '/^$/d' | wc -l | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" = "0" ]; then
+            echo "✅ race_entry_days er præcis lig den udledte mængde"
+          else
+            cat race-entry-days-drift.txt
+          fi
+
       - name: Upload report
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]')
         uses: actions/upload-artifact@v7
@@ -131,9 +148,10 @@ jobs:
             invariants.json
             invariants.txt
             constraint-form.txt
+            race-entry-days-drift.txt
 
       - name: Comment on PR if findings (PR runs only)
-        if: github.event_name == 'pull_request' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0')
+        if: github.event_name == 'pull_request' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.entrydays.outputs.count != '0')
         uses: actions/github-script@v9
         with:
           script: |

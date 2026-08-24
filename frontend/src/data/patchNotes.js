@@ -1,8 +1,25 @@
-// AUTO-GENERERET af scripts/transform-patch-notes.mjs fra patch-notes-source-snapshot.json.
-// Efter første generering er DENNE fil source of truth: håndskrevne overskrifter +
-// audience-rettelser redigeres her direkte (re-kør IKKE transformen oven på dem).
-// CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
+  {
+    "version": "7.189",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "Saving a line-up no longer rewrites the whole binding table",
+          "body": "Every save rebuilt all of a race's rider-day rows from scratch, once per rider in the line-up. A seven-rider save wrote the same 49 rows seven times over. Saving now writes only what actually changed, so an unchanged line-up writes nothing at all. Nothing about the line-up itself changes; it just stops putting the database under load it never needed."
+        },
+        "da": {
+          "title": "At gemme et hold omskriver ikke længere hele bindingstabellen",
+          "body": "Hver gemning byggede alle løbets rytter-dage op forfra, én gang pr. rytter i holdet. En udtagelse med syv ryttere skrev de samme 49 rækker syv gange. Nu skrives kun det der faktisk har ændret sig, så et uændret hold slet ikke skriver noget. Selve udtagelsen opfører sig præcis som før; den holder bare op med at belaste databasen uden grund."
+        },
+        "refs": [4191]
+      }
+    ]
+  },
   {
     "version": "7.188",
     "date": "2026-08-24",
