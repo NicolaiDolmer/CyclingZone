@@ -4,9 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Tre PR'er grønne og klar til dit review:** [#4208](https://github.com/NicolaiDolmer/CyclingZone/pull/4208) (monument-byttet, rebaset så dens to lint-fejl er væk; optælling af de 22 manuelle udtagelser den rydder ligger på PR'en) · [#4205](https://github.com/NicolaiDolmer/CyclingZone/pull/4205) (#4191 diff-rebuild) · [#4207](https://github.com/NicolaiDolmer/CyclingZone/pull/4207) (#4192-listen). Derefter: **GT-komprimeringen** under #4176 (Giroen kører 18 etaper på 6 dage, nul hviledage) og **#4174** (mangler ét svar: hvor højt de inaktive hold fyldes op). Nyt fund: **#4206** (965 ryttere med identiske stats).
-
-> **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-mængde · aksen repareret (cap-brud 29→0) · monument = eksklusiv løbsdag genoprettet i S3. Alle 4 invarianter grønne, gated på 3 niveauer + dagligt CI-job. Regel-SSOT: `docs/CALENDAR_RULES.md`.
+> **🎯 Next action:** **Se de fire tynde endagsløb i spillet** (Le Mur de Huy 16 ryttere, Taunus-Klassiker 25, La Classique Bretonne 32, Grand Prix du Saint-Laurent 33, mod 101-128 for alle andre D1-endagsløb på samme afstand). Ejeren vil se dem selv før de fyldes op; forslaget er at rydde auto-udtagelserne på løbsdag 34/39/41/42 og lade generatoren fordele forfra (506 auto ryddes, 58 manuelle bevares). Derefter: **GT-komprimeringen** under #4176, som blokerer #4203 og #4209. **#4174** mangler ét svar: hvor højt de inaktive hold fyldes op. **#4192**-listen afventer din markering.
 
 
 > **⚖️ Fair play:** #3818 eksekveret 24/8 efter #4154-skabelonen (clawback af funnel-kontoens bruttobeløb + frys + auth-ban + advarsel in-game; #2221 var kun frys). Metode, tal og tekst: `docs/discord/2026-08-24-svarudkast-fairplay-3818.md`. **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord, har fået ingen forklaring.
@@ -23,12 +21,12 @@
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation (ejer-mandat 22/8):** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
 
-> **✅ #4180 + #4178 + #4183 LUKKET 24/8:** race:gate kører nu 50 seeds med aggregat-dom (falsk alarm 0,04 %); navne-RNG skilt fra stat-RNG. #4183: placeringen talte ikke frosne hold med. Prod repareret, alle 15 puljer på 24.
+> **📋 SESSION 24/8 AFTEN:** **#4191 live** (1,0 mio. inserts på 135k rækker; diff-rebuild + daglig drift-vagt, verificeret 0/0 mod prod). **#4192** alle 38 træningsbeslutninger listet: 15 bygget, 10 delvist, 8 ikke, 4 overhalet, 3 afvigelser. **#4174** kravet er 22/21/12/12 og 78 % af de AKTIVE hold klarer det; ejeren valgte at fylde inaktive trupper op med rå 49-statister. Nye fund: **#4206** (965 ryttere med identiske stats).
 
-> **📋 SESSION 24/8 AFTEN:** **#4190 diagnosen vendt:** pakkerens output har 0 huller i D2/D3/D4, kun bevidste monument-/GT-hviledags-indskud i D1; de 167 uforklarede huller i S3 kommer fra `deriveGameDayAxis`. **#4174 præmis forældet:** kravet er 22/21/12/12 og 78 % af de AKTIVE hold klarer det (issuets 21 % talte 142 inaktive med); ejeren afviste alle tre kalender-veje: hjælp trupperne i stedet. **#4191** 1,0 mio. inserts på 135k rækker; diff-rebuild verificeret på staging + ækvivalens mod prod (0/0). **#4192** alle 38 beslutninger listet i `docs/audits/2026-08-24-4192-traening-beslutningsliste.md`: 15 bygget, 10 delvist, 8 ikke, 4 overhalet, 3 afvigelser.
+> **📐 AKSEN ER SLOT, IKKE DAG (24/8, afgørende):** D1 har 80 slots over 27 datoer (2,96 pr. dato), D2/D3 2,00, D4 1,07. 95 etapeløb har huller i SLOTS, men kun 9 springer en KALENDERDATO over, og **471 af 471 løb bruger allerede lige så mange løbsdage som de har etaper**. **#4190 skrevet om** til navngivning + invariant; **#4209 i bero** (nul reelle hviledage i S3).
 
-> **📐 AKSEN ER SLOT, IKKE DAG (24/8, afgørende):** `game_day` er et halvdags-slot. D1 har 80 slots over 27 datoer (2,96 pr. dato), D2/D3 præcis 2,00, D4 1,07. Målt konsekvens: 95 etapeløb har huller i SLOTS, men kun 9 springer en KALENDERDATO over, og **471 af 471 løb bruger allerede lige så mange løbsdage som de har etaper**. **#4190 skrevet om** til navngivning + invariant (ejer-go); sammenhængs-reglen bortfalder. **#4209 sat i bero:** der findes nul reelle hviledage i S3, så der er ingen hviledag at binde på.
+> **⚠️ #4203 KØRT OG RULLET TILBAGE 24/8 22:05** (ejer-GO pr. skridt): monument-byttet bestod sin egen post-verify men brød **#4075** — alle fire flyttede Monumenter delte løbsdag med 1-2 andre løb. Den daglige invariant-audit fangede det. Rullet tilbage; kalenderen er den oprindelige, alle fire invarianter grønne, 0 monumenter deler dag. **Rest-skade:** fire endagsløb står tynde, fordi assistenten nåede at omfordele rytterne mens byttet var aktivt. Målt rodårsag: D1 har kun 6 løbsdage uden for et GT-vindue, og der skal bruges fire. Discord-udkastet er markeret MÅ IKKE POSTES. Postmortem: `.claude/learnings/2026-08-24-migration-bestod-egen-gate-men-brod-en-anden-regel.md`.
 
-> **🤖 Ingen aktiv session** (aften-sessionen 24/8 lukket: aksen afklaret, #4190 omskrevet, #4209 i bero, #4191 fikset, #4192-listen leveret, #4208 rebaset og målt op).
+> **🤖 Ingen aktiv session** (aften-sessionen 24/8 lukket: #4191 + #4192 merged og live, #4203 kørt og rullet tilbage, aksen afklaret, #4190 omskrevet, #4209 i bero).
 
 _Historik i git-log, issue-tråde + docs/audits/._
