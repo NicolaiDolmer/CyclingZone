@@ -1,0 +1,5377 @@
+{
+ "taget": "2026-08-24T19:11:11.010785+00:00",
+ "issue": 4183,
+ "hold": [
+  {
+   "id": "429064a9-00df-449a-b633-98051985163a",
+   "user_id": "8e553528-88ab-495a-bde7-aadf7ab87a3e",
+   "name": "Plattentuub",
+   "is_ai": false,
+   "ai_source_id": null,
+   "division": 3,
+   "balance": 812800,
+   "sponsor_income": 240000,
+   "is_frozen": false,
+   "created_at": "2026-08-24T14:58:43.755655+00:00",
+   "manager_name": "Mike Moonens",
+   "is_bank": false,
+   "season_1_identity_basis": {
+    "rider_count": 12,
+    "youth_level": "medium",
+    "star_profile": {
+     "label": "Lokalkendt",
+     "level": "medium",
+     "label_key": "starProfileLevel.medium",
+     "share_pct": 8,
+     "star_riders": [
+      {
+       "id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+       "name": "Didier Nsengimana",
+       "score": 79.7,
+       "lastname": "Nsengimana",
+       "firstname": "Didier",
+       "popularity": 71
+      }
+     ],
+     "headline_score": 52,
+     "star_rider_count": 1
+    },
+    "national_core": {
+     "code": "CN",
+     "count": 2,
+     "label": "Blandet trup",
+     "strength": "none",
+     "label_key": "nationalCoreLabel.mixed",
+     "share_pct": 17,
+     "established": false,
+     "label_params": {}
+    },
+    "youth_share_pct": 25,
+    "primary_specialization": "sprint",
+    "season_number_observed": 3,
+    "secondary_specialization": "breakaway",
+    "primary_specialization_label": "Sprinthold",
+    "primary_specialization_label_key": "specialization.sprint"
+   },
+   "consecutive_low_satisfaction_expirations": 0,
+   "team_dna_key": "sprint_kommerciel",
+   "team_dna_chosen_at": "2026-08-24T15:01:39.343+00:00",
+   "is_test_account": false,
+   "transfer_frozen": false,
+   "debt_breach_streak": 0,
+   "starter_squad_allocated_at": "2026-08-24T14:58:44.833+00:00",
+   "academy_intake_seeded_at": "2026-08-24T14:58:46.351+00:00",
+   "league_division_id": 4,
+   "starter_depth_topped_up_at": null,
+   "emergency_loan_streak": 0,
+   "pending_removal_at": null,
+   "onboarding_progress_dismissed_at": null,
+   "my_result_seen_race_id": null,
+   "dev_transition_dismissed_at": null
+  },
+  {
+   "id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "user_id": "5105967f-f0de-4434-8242-b721343a9400",
+   "name": "Landbouwkrediet",
+   "is_ai": false,
+   "ai_source_id": null,
+   "division": 3,
+   "balance": 812800,
+   "sponsor_income": 240000,
+   "is_frozen": false,
+   "created_at": "2026-08-24T15:09:32.546206+00:00",
+   "manager_name": "Sven",
+   "is_bank": false,
+   "season_1_identity_basis": {
+    "rider_count": 12,
+    "youth_level": "low",
+    "star_profile": {
+     "label": "Lokalkendt",
+     "level": "medium",
+     "label_key": "starProfileLevel.medium",
+     "share_pct": 0,
+     "star_riders": [],
+     "headline_score": 60,
+     "star_rider_count": 0
+    },
+    "national_core": {
+     "code": "CN",
+     "count": 2,
+     "label": "Blandet trup",
+     "strength": "none",
+     "label_key": "nationalCoreLabel.mixed",
+     "share_pct": 17,
+     "established": false,
+     "label_params": {}
+    },
+    "youth_share_pct": 8,
+    "primary_specialization": "sprint",
+    "season_number_observed": 3,
+    "secondary_specialization": "gc",
+    "primary_specialization_label": "Sprinthold",
+    "primary_specialization_label_key": "specialization.sprint"
+   },
+   "consecutive_low_satisfaction_expirations": 0,
+   "team_dna_key": null,
+   "team_dna_chosen_at": null,
+   "is_test_account": false,
+   "transfer_frozen": false,
+   "debt_breach_streak": 0,
+   "starter_squad_allocated_at": "2026-08-24T15:09:34.119+00:00",
+   "academy_intake_seeded_at": "2026-08-24T15:09:35.634+00:00",
+   "league_division_id": 6,
+   "starter_depth_topped_up_at": null,
+   "emergency_loan_streak": 0,
+   "pending_removal_at": null,
+   "onboarding_progress_dismissed_at": null,
+   "my_result_seen_race_id": null,
+   "dev_transition_dismissed_at": null
+  }
+ ],
+ "entries_antal": [
+  {
+   "team": "Plattentuub",
+   "entries": 216
+  },
+  {
+   "team": "Landbouwkrediet",
+   "entries": 216
+  }
+ ],
+ "entry_ids": [
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[1,8)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[1,8)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,8)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,8)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,8)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,8)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[6,13)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[6,13)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[6,13)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[6,13)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[6,13)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[6,13)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[8,17)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[8,17)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[8,17)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[8,17)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[8,17)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[8,17)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[9,10)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,10)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,10)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,10)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,10)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,10)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[14,15)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[14,15)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[14,15)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[14,15)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[14,15)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[14,15)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[15,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[15,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[17,18)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[17,18)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[17,18)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[17,18)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[17,18)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[17,18)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[20,29)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,29)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[20,29)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,29)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,29)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,29)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[20,25)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[20,25)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,25)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,25)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,25)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[20,25)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[21,22)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,22)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,22)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,22)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,22)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,22)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[26,27)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[26,27)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[26,27)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[26,27)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[26,27)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[26,27)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[27,31)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,31)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[27,31)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,31)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,31)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,31)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[29,34)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[29,34)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[29,34)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[29,34)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[29,34)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[29,34)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[31,32)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[31,32)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[31,32)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[31,32)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[31,32)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[31,32)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[34,40)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,40)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,40)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,40)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,40)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[34,40)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[36,37)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[36,37)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[36,37)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[36,37)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[36,37)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[36,37)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,43)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,43)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[37,43)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[37,43)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,43)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,43)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[40,41)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[40,41)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[40,41)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[40,41)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[40,41)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[40,41)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[42,47)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[42,47)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[42,47)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[42,47)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[42,47)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[42,47)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[44,49)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[44,49)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,49)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,49)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,49)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,49)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[47,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[47,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[47,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[47,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[47,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+    "rider_id": "6b9110ed-d491-4820-9eeb-71d199dd3909",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[47,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[49,50)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[49,50)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[49,50)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[49,50)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[49,50)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[49,50)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[52,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+    "rider_id": "ebc65f82-dbfc-4957-8ade-c1fef5b1171f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[52,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+    "rider_id": "ea9c0aca-14fa-4250-98bb-625702629935",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[52,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+    "rider_id": "38be0318-2299-413b-9068-ce6fc5185f47",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[52,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+    "rider_id": "35209483-a552-4592-9eda-a268e66a9135",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[52,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+    "rider_id": "894d7581-ca7c-49e9-b8b1-88cde8fcf750",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[52,53)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "captain",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T14:59:23.904179+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+    "rider_id": "fc88d61d-5ce6-4d93-afd6-c7330dd38616",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": false,
+    "created_at": "2026-08-24T14:59:43.031183+00:00",
+    "race_role": "captain",
+    "binding_span": "[0,6)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+    "rider_id": "6c5a28c3-fe05-40ef-b3cf-33a9389c15ce",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": false,
+    "created_at": "2026-08-24T14:59:43.031183+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[0,6)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+    "rider_id": "db19b19b-72f8-40a9-b818-9d5da3cab98b",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": false,
+    "created_at": "2026-08-24T14:59:43.031183+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,6)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+    "rider_id": "6a04c98d-9834-45d9-b2e3-6ebca94f482f",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": false,
+    "created_at": "2026-08-24T14:59:43.031183+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,6)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+    "rider_id": "618e5ff7-6bcb-4163-b0c3-8cd672cd7b0d",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": false,
+    "created_at": "2026-08-24T14:59:43.031183+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,6)"
+   }
+  },
+  {
+   "team_id": "429064a9-00df-449a-b633-98051985163a",
+   "entry": {
+    "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+    "rider_id": "91e8063b-8dee-4778-9530-7b137be16d36",
+    "team_id": "429064a9-00df-449a-b633-98051985163a",
+    "is_auto_filled": false,
+    "created_at": "2026-08-24T14:59:43.031183+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,6)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "469cfd7c-ca25-4be8-a3a9-e89814aff678",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[0,7)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "469cfd7c-ca25-4be8-a3a9-e89814aff678",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,7)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "469cfd7c-ca25-4be8-a3a9-e89814aff678",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,7)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "469cfd7c-ca25-4be8-a3a9-e89814aff678",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,7)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "469cfd7c-ca25-4be8-a3a9-e89814aff678",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,7)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "469cfd7c-ca25-4be8-a3a9-e89814aff678",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,7)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aebc8c29-d629-465b-a42b-8d6cc5d24d41",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aebc8c29-d629-465b-a42b-8d6cc5d24d41",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aebc8c29-d629-465b-a42b-8d6cc5d24d41",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aebc8c29-d629-465b-a42b-8d6cc5d24d41",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aebc8c29-d629-465b-a42b-8d6cc5d24d41",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aebc8c29-d629-465b-a42b-8d6cc5d24d41",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[0,1)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "6fed6815-2606-4c63-831c-2535cf650664",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[1,9)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "6fed6815-2606-4c63-831c-2535cf650664",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,9)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "6fed6815-2606-4c63-831c-2535cf650664",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,9)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "6fed6815-2606-4c63-831c-2535cf650664",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,9)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "6fed6815-2606-4c63-831c-2535cf650664",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,9)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "6fed6815-2606-4c63-831c-2535cf650664",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[1,9)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aba68f5b-894f-4868-8626-d56749768499",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aba68f5b-894f-4868-8626-d56749768499",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aba68f5b-894f-4868-8626-d56749768499",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aba68f5b-894f-4868-8626-d56749768499",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aba68f5b-894f-4868-8626-d56749768499",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "aba68f5b-894f-4868-8626-d56749768499",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[2,3)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0e19844d-8c78-4dd5-bcaf-b77545bbe79f",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[4,5)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0e19844d-8c78-4dd5-bcaf-b77545bbe79f",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[4,5)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0e19844d-8c78-4dd5-bcaf-b77545bbe79f",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[4,5)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0e19844d-8c78-4dd5-bcaf-b77545bbe79f",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[4,5)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0e19844d-8c78-4dd5-bcaf-b77545bbe79f",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[4,5)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0e19844d-8c78-4dd5-bcaf-b77545bbe79f",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[4,5)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e88d77f8-407f-4f02-89eb-96eba40c793c",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[7,14)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e88d77f8-407f-4f02-89eb-96eba40c793c",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[7,14)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e88d77f8-407f-4f02-89eb-96eba40c793c",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[7,14)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e88d77f8-407f-4f02-89eb-96eba40c793c",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[7,14)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e88d77f8-407f-4f02-89eb-96eba40c793c",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[7,14)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e88d77f8-407f-4f02-89eb-96eba40c793c",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[7,14)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "8b2cf70b-b5d3-46c0-b6f9-f9dc88b5de86",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[9,18)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "8b2cf70b-b5d3-46c0-b6f9-f9dc88b5de86",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,18)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "8b2cf70b-b5d3-46c0-b6f9-f9dc88b5de86",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,18)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "8b2cf70b-b5d3-46c0-b6f9-f9dc88b5de86",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,18)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "8b2cf70b-b5d3-46c0-b6f9-f9dc88b5de86",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,18)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "8b2cf70b-b5d3-46c0-b6f9-f9dc88b5de86",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[9,18)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c5741324-ef1a-4c77-b4f4-f96187c6ab6b",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c5741324-ef1a-4c77-b4f4-f96187c6ab6b",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c5741324-ef1a-4c77-b4f4-f96187c6ab6b",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c5741324-ef1a-4c77-b4f4-f96187c6ab6b",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c5741324-ef1a-4c77-b4f4-f96187c6ab6b",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c5741324-ef1a-4c77-b4f4-f96187c6ab6b",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[10,11)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b1b1ec8d-465c-4ee9-8923-632272046614",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b1b1ec8d-465c-4ee9-8923-632272046614",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b1b1ec8d-465c-4ee9-8923-632272046614",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b1b1ec8d-465c-4ee9-8923-632272046614",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b1b1ec8d-465c-4ee9-8923-632272046614",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b1b1ec8d-465c-4ee9-8923-632272046614",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[11,12)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "328cfee1-726e-41ba-acd2-54aa67fb6d80",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[15,16)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "328cfee1-726e-41ba-acd2-54aa67fb6d80",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,16)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "328cfee1-726e-41ba-acd2-54aa67fb6d80",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,16)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "328cfee1-726e-41ba-acd2-54aa67fb6d80",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,16)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "328cfee1-726e-41ba-acd2-54aa67fb6d80",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,16)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "328cfee1-726e-41ba-acd2-54aa67fb6d80",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[15,16)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c9c74e9e-5cc0-4ada-8d63-46a47700f661",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[16,21)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c9c74e9e-5cc0-4ada-8d63-46a47700f661",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[16,21)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c9c74e9e-5cc0-4ada-8d63-46a47700f661",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[16,21)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c9c74e9e-5cc0-4ada-8d63-46a47700f661",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[16,21)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c9c74e9e-5cc0-4ada-8d63-46a47700f661",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[16,21)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c9c74e9e-5cc0-4ada-8d63-46a47700f661",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[16,21)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2acd168e-d86c-4d75-aea0-0bab28431273",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2acd168e-d86c-4d75-aea0-0bab28431273",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2acd168e-d86c-4d75-aea0-0bab28431273",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2acd168e-d86c-4d75-aea0-0bab28431273",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2acd168e-d86c-4d75-aea0-0bab28431273",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2acd168e-d86c-4d75-aea0-0bab28431273",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[18,19)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "22c9d0c0-7d93-4335-abe4-9ad1879965ca",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "22c9d0c0-7d93-4335-abe4-9ad1879965ca",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "22c9d0c0-7d93-4335-abe4-9ad1879965ca",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "22c9d0c0-7d93-4335-abe4-9ad1879965ca",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "22c9d0c0-7d93-4335-abe4-9ad1879965ca",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "22c9d0c0-7d93-4335-abe4-9ad1879965ca",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[19,20)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7d407f5c-2c90-4f27-b1ee-19a327d49e85",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[21,30)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7d407f5c-2c90-4f27-b1ee-19a327d49e85",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,30)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7d407f5c-2c90-4f27-b1ee-19a327d49e85",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,30)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7d407f5c-2c90-4f27-b1ee-19a327d49e85",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,30)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7d407f5c-2c90-4f27-b1ee-19a327d49e85",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,30)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7d407f5c-2c90-4f27-b1ee-19a327d49e85",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,30)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "97894236-1334-4580-b94f-a2d42e5d7fe9",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[21,26)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "97894236-1334-4580-b94f-a2d42e5d7fe9",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,26)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "97894236-1334-4580-b94f-a2d42e5d7fe9",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[21,26)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "97894236-1334-4580-b94f-a2d42e5d7fe9",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,26)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "97894236-1334-4580-b94f-a2d42e5d7fe9",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,26)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "97894236-1334-4580-b94f-a2d42e5d7fe9",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[21,26)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7f25faab-7287-4d15-8821-0fad83a5ef11",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7f25faab-7287-4d15-8821-0fad83a5ef11",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7f25faab-7287-4d15-8821-0fad83a5ef11",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7f25faab-7287-4d15-8821-0fad83a5ef11",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7f25faab-7287-4d15-8821-0fad83a5ef11",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7f25faab-7287-4d15-8821-0fad83a5ef11",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[22,23)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d81782e0-0a6c-4eaf-8e0e-2eba8624e69c",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[23,24)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d81782e0-0a6c-4eaf-8e0e-2eba8624e69c",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[23,24)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d81782e0-0a6c-4eaf-8e0e-2eba8624e69c",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[23,24)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d81782e0-0a6c-4eaf-8e0e-2eba8624e69c",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[23,24)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d81782e0-0a6c-4eaf-8e0e-2eba8624e69c",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[23,24)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d81782e0-0a6c-4eaf-8e0e-2eba8624e69c",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[23,24)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e389fb59-ca03-472f-b19d-1e94c99dd57b",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[27,28)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e389fb59-ca03-472f-b19d-1e94c99dd57b",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,28)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e389fb59-ca03-472f-b19d-1e94c99dd57b",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,28)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e389fb59-ca03-472f-b19d-1e94c99dd57b",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,28)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e389fb59-ca03-472f-b19d-1e94c99dd57b",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,28)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "e389fb59-ca03-472f-b19d-1e94c99dd57b",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[27,28)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "1303c421-a920-4fe9-afc9-d1aa590c6ea0",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[28,32)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "1303c421-a920-4fe9-afc9-d1aa590c6ea0",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[28,32)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "1303c421-a920-4fe9-afc9-d1aa590c6ea0",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[28,32)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "1303c421-a920-4fe9-afc9-d1aa590c6ea0",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[28,32)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "1303c421-a920-4fe9-afc9-d1aa590c6ea0",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[28,32)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "1303c421-a920-4fe9-afc9-d1aa590c6ea0",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[28,32)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d4db4d7d-955e-4d18-ab40-0c9447557d62",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[30,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d4db4d7d-955e-4d18-ab40-0c9447557d62",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[30,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d4db4d7d-955e-4d18-ab40-0c9447557d62",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[30,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d4db4d7d-955e-4d18-ab40-0c9447557d62",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[30,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d4db4d7d-955e-4d18-ab40-0c9447557d62",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[30,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "d4db4d7d-955e-4d18-ab40-0c9447557d62",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[30,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ff863bc9-c341-4c0d-9454-e15487e98407",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ff863bc9-c341-4c0d-9454-e15487e98407",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ff863bc9-c341-4c0d-9454-e15487e98407",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ff863bc9-c341-4c0d-9454-e15487e98407",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ff863bc9-c341-4c0d-9454-e15487e98407",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ff863bc9-c341-4c0d-9454-e15487e98407",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[32,33)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7c01fade-a58a-4186-935c-41148df26d14",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[33,34)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7c01fade-a58a-4186-935c-41148df26d14",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[33,34)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7c01fade-a58a-4186-935c-41148df26d14",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[33,34)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7c01fade-a58a-4186-935c-41148df26d14",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[33,34)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7c01fade-a58a-4186-935c-41148df26d14",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[33,34)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7c01fade-a58a-4186-935c-41148df26d14",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[33,34)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ea709230-25d9-4ffb-a0f3-feb462e56111",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ea709230-25d9-4ffb-a0f3-feb462e56111",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ea709230-25d9-4ffb-a0f3-feb462e56111",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ea709230-25d9-4ffb-a0f3-feb462e56111",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ea709230-25d9-4ffb-a0f3-feb462e56111",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ea709230-25d9-4ffb-a0f3-feb462e56111",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[34,35)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "59ad7f9e-702a-4fde-b521-397c7ab6f31a",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[35,36)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "59ad7f9e-702a-4fde-b521-397c7ab6f31a",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,36)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "59ad7f9e-702a-4fde-b521-397c7ab6f31a",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,36)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "59ad7f9e-702a-4fde-b521-397c7ab6f31a",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,36)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "59ad7f9e-702a-4fde-b521-397c7ab6f31a",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,36)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "59ad7f9e-702a-4fde-b521-397c7ab6f31a",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,36)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "eb795f62-8f67-48c0-95fe-64eeff612927",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[35,41)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "eb795f62-8f67-48c0-95fe-64eeff612927",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,41)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "eb795f62-8f67-48c0-95fe-64eeff612927",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,41)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "eb795f62-8f67-48c0-95fe-64eeff612927",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,41)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "eb795f62-8f67-48c0-95fe-64eeff612927",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,41)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "eb795f62-8f67-48c0-95fe-64eeff612927",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[35,41)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "18167b64-4f2c-49e3-a4da-69b3ba0961cd",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[37,38)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "18167b64-4f2c-49e3-a4da-69b3ba0961cd",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,38)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "18167b64-4f2c-49e3-a4da-69b3ba0961cd",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,38)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "18167b64-4f2c-49e3-a4da-69b3ba0961cd",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,38)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "18167b64-4f2c-49e3-a4da-69b3ba0961cd",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,38)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "18167b64-4f2c-49e3-a4da-69b3ba0961cd",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[37,38)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "16b3d143-37df-4c59-9d22-ee061d932e96",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[38,44)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "16b3d143-37df-4c59-9d22-ee061d932e96",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[38,44)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "16b3d143-37df-4c59-9d22-ee061d932e96",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[38,44)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "16b3d143-37df-4c59-9d22-ee061d932e96",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[38,44)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "16b3d143-37df-4c59-9d22-ee061d932e96",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[38,44)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "16b3d143-37df-4c59-9d22-ee061d932e96",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[38,44)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7b4de12e-aeb3-4602-89ca-e46e3f5854df",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[41,42)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7b4de12e-aeb3-4602-89ca-e46e3f5854df",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[41,42)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7b4de12e-aeb3-4602-89ca-e46e3f5854df",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[41,42)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7b4de12e-aeb3-4602-89ca-e46e3f5854df",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[41,42)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7b4de12e-aeb3-4602-89ca-e46e3f5854df",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[41,42)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "7b4de12e-aeb3-4602-89ca-e46e3f5854df",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[41,42)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2f1d3989-d134-4a29-86d6-40e1fd33ee3c",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[43,48)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2f1d3989-d134-4a29-86d6-40e1fd33ee3c",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[43,48)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2f1d3989-d134-4a29-86d6-40e1fd33ee3c",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[43,48)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2f1d3989-d134-4a29-86d6-40e1fd33ee3c",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[43,48)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2f1d3989-d134-4a29-86d6-40e1fd33ee3c",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[43,48)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "2f1d3989-d134-4a29-86d6-40e1fd33ee3c",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[43,48)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c7453ce8-f588-4567-8bc7-95cfffbbbdb5",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[44,45)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c7453ce8-f588-4567-8bc7-95cfffbbbdb5",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,45)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c7453ce8-f588-4567-8bc7-95cfffbbbdb5",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,45)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c7453ce8-f588-4567-8bc7-95cfffbbbdb5",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,45)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c7453ce8-f588-4567-8bc7-95cfffbbbdb5",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,45)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "c7453ce8-f588-4567-8bc7-95cfffbbbdb5",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[44,45)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b4cc2e00-71c1-4c36-b6f7-677ff788adbb",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[45,50)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b4cc2e00-71c1-4c36-b6f7-677ff788adbb",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[45,50)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b4cc2e00-71c1-4c36-b6f7-677ff788adbb",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[45,50)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b4cc2e00-71c1-4c36-b6f7-677ff788adbb",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[45,50)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b4cc2e00-71c1-4c36-b6f7-677ff788adbb",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[45,50)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "b4cc2e00-71c1-4c36-b6f7-677ff788adbb",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[45,50)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "38d7a047-faa1-4c7f-9a65-9caa315d27ff",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[48,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "38d7a047-faa1-4c7f-9a65-9caa315d27ff",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "sprint_captain",
+    "binding_span": "[48,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "38d7a047-faa1-4c7f-9a65-9caa315d27ff",
+    "rider_id": "8cc1d49e-31d9-4419-bb74-eee779454daa",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[48,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "38d7a047-faa1-4c7f-9a65-9caa315d27ff",
+    "rider_id": "0fdddd09-83dd-4f98-b18b-96f3dcf3ab57",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[48,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "38d7a047-faa1-4c7f-9a65-9caa315d27ff",
+    "rider_id": "8a8b85c5-1d05-4cb8-a28a-b18346623815",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[48,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "38d7a047-faa1-4c7f-9a65-9caa315d27ff",
+    "rider_id": "31896d2f-f05e-47f8-95be-cdd4505eaad1",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[48,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "4813df26-9ed8-46d0-a261-e7f1d7538536",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "4813df26-9ed8-46d0-a261-e7f1d7538536",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "4813df26-9ed8-46d0-a261-e7f1d7538536",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "4813df26-9ed8-46d0-a261-e7f1d7538536",
+    "rider_id": "1c0c2f9f-88db-491a-ad83-830dc93cd64c",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "4813df26-9ed8-46d0-a261-e7f1d7538536",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "4813df26-9ed8-46d0-a261-e7f1d7538536",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[50,51)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ad206504-23a9-4f95-ae35-55822abe95e2",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ad206504-23a9-4f95-ae35-55822abe95e2",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ad206504-23a9-4f95-ae35-55822abe95e2",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ad206504-23a9-4f95-ae35-55822abe95e2",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ad206504-23a9-4f95-ae35-55822abe95e2",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "ad206504-23a9-4f95-ae35-55822abe95e2",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[51,52)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "3ea03234-61e2-40ae-b173-58b5435f5c6c",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "3ea03234-61e2-40ae-b173-58b5435f5c6c",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "3ea03234-61e2-40ae-b173-58b5435f5c6c",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "3ea03234-61e2-40ae-b173-58b5435f5c6c",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "3ea03234-61e2-40ae-b173-58b5435f5c6c",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "3ea03234-61e2-40ae-b173-58b5435f5c6c",
+    "rider_id": "0176d658-6ad9-4021-88f2-31ef65490f56",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[53,54)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0427fcb9-2be3-417c-b2a9-bf17d0ec70c2",
+    "rider_id": "b66505f0-4fe5-48d0-bdf4-1a8a7a45fd1b",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "captain",
+    "binding_span": "[54,55)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0427fcb9-2be3-417c-b2a9-bf17d0ec70c2",
+    "rider_id": "c19c643c-5656-45ae-8ae2-40e3d2521e74",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[54,55)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0427fcb9-2be3-417c-b2a9-bf17d0ec70c2",
+    "rider_id": "f1108c23-17d3-47c5-b510-c47f1476fbbd",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[54,55)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0427fcb9-2be3-417c-b2a9-bf17d0ec70c2",
+    "rider_id": "0ad9ae75-97f4-4e3a-9bbc-4e9936051ef6",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[54,55)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0427fcb9-2be3-417c-b2a9-bf17d0ec70c2",
+    "rider_id": "efd9dbd4-9e3e-4713-bcf3-677ed76dbda7",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[54,55)"
+   }
+  },
+  {
+   "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+   "entry": {
+    "race_id": "0427fcb9-2be3-417c-b2a9-bf17d0ec70c2",
+    "rider_id": "44b1c765-77fa-4be2-8cb5-79998ac34f11",
+    "team_id": "591135dc-7801-4dc8-9c94-f9b8c2095386",
+    "is_auto_filled": true,
+    "created_at": "2026-08-24T15:47:07.823785+00:00",
+    "race_role": "helper",
+    "binding_span": "[54,55)"
+   }
+  }
+ ],
+ "d4_pulje_tilstand": [
+  {
+   "pool_id": 8,
+   "label": "Division 4 — A",
+   "hold": 24,
+   "spillere": 6
+  },
+  {
+   "pool_id": 9,
+   "label": "Division 4 — B",
+   "hold": 24,
+   "spillere": 6
+  },
+  {
+   "pool_id": 10,
+   "label": "Division 4 — C",
+   "hold": 24,
+   "spillere": 6
+  },
+  {
+   "pool_id": 11,
+   "label": "Division 4 — D",
+   "hold": 24,
+   "spillere": 6
+  },
+  {
+   "pool_id": 12,
+   "label": "Division 4 — E",
+   "hold": 24,
+   "spillere": 6
+  },
+  {
+   "pool_id": 13,
+   "label": "Division 4 — F",
+   "hold": 24,
+   "spillere": 6
+  },
+  {
+   "pool_id": 14,
+   "label": "Division 4 — G",
+   "hold": 24,
+   "spillere": 6
+  },
+  {
+   "pool_id": 15,
+   "label": "Division 4 — H",
+   "hold": 24,
+   "spillere": 6
+  }
+ ]
+}
