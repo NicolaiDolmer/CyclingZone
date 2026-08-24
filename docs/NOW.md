@@ -21,6 +21,8 @@
 - **Staging:** `scripts/refresh-staging.ps1` + `scripts/with-staging.ps1`; generalprøve FØR enhver destruktiv prod-op. `staging-cutover` slettes mandag (#3839).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation (ejer-mandat 22/8):** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
+> **📋 #4189 analyseret 24/8:** Actor-guard til `claude.yml` (Option B) anbefales — præcis ændring dokumenteret i issue-comment. Blocker: workflow-filer kan ikke ændres af bot; ejeren skal editere `.github/workflows/claude.yml` manuelt (én linje).
+
 > **🤖 Ingen aktiv session** (master-sessionen 24/8 lukket ~18:00: kæden + #4183-swap kørt, PR #4182 merged, audit grøn, Discord-sweep krydset mod fixes — 3 kalender-spor tilbage, se Next action). Forrige sessions detaljer: #4172-tråden (D4-reparation udført, 157→1 tomme løb, motor verificeret on; #4170 lukket som dublet; guard-rest samlet i #4159).
 
 _Historik i git-log, issue-tråde + docs/audits/._
