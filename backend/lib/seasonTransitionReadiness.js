@@ -173,7 +173,7 @@ export async function assessSeasonEndBlockers({ supabase, seasonId } = {}) {
       .neq("status", "completed")
       .order("id", { ascending: true }));
   } catch (e) {
-    throw new Error(`Kunne ikke tælle uafviklede løb: ${e.message || e}`);
+    throw new Error(`Kunne ikke tælle uafviklede løb: ${e.message || e}`, { cause: e });
   }
 
   // #3038: fælles "puljer uden hold"-diskriminator (emptyPoolPolicy.js) — samme

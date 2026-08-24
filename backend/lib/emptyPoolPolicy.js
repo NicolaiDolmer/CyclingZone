@@ -33,7 +33,7 @@ export async function loadEmptyPoolFilter({ supabase }) {
       .select("id, league_division_id")
       .order("id", { ascending: true }));
   } catch (e) {
-    throw new Error(`teams (empty-pool-filter): ${e.message || e}`);
+    throw new Error(`teams (empty-pool-filter): ${e.message || e}`, { cause: e });
   }
 
   const teamsPerPool = new Map();
