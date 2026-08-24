@@ -17,6 +17,6 @@
 - **Staging:** `scripts/refresh-staging.ps1` + `scripts/with-staging.ps1`; generalprøve FØR enhver destruktiv prod-op. `staging-cutover` slettes mandag (#3839).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation (ejer-mandat 22/8):** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Ingen aktiv session** (24/8-sessionen: 3 spor målt read-only, 0 prod-mutationer; nye issues #4155/#4156/#4157, dossier på #4154).
+> **🤖 Ingen aktiv session** (nat-sessionen 24/8 lukket ~01:30: #4155-reparation PROD+merged, #4154-sanktion eksekveret, minus-hold afklaret; ejer-GO pr. prod-skridt hele vejen. Bemærk: `staging-cutover` BEHOLDES til #4159-guard-test — #3839-sletningen venter).
 
 _Historik i git-log, issue-tråde + docs/audits/._
