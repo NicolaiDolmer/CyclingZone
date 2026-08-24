@@ -28,6 +28,7 @@
 //
 // Refs #4161 #4162 #4159 #4155 #4169.
 
+import { writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { deriveGameDayAxis } from "../../lib/calendarGameDayRepair.js";
 import { checkCalendarOverlapInvariants } from "../../lib/calendarOverlapInvariant.js";
@@ -35,6 +36,18 @@ import { TIER_OVERLAP_CAP } from "../../lib/calendarTierCaps.js";
 
 const APPLY = process.argv.includes("--apply");
 const CONFIRMED = process.argv.includes("--jeg-har-set-dry-runnet");
+// --json=<sti>: skriv hele foer/efter-billedet ud saa det kan inspiceres visuelt
+// (ejer-krav 24/8: se kalenderen FOER apply, ikke kun tael brud).
+const JSON_OUT = (process.argv.find((a) => a.startsWith("--json=")) ?? "").slice("--json=".length) || null;
+// --sql=<sti>: skriv reparationen som ÉN transaktion med constraint'en udskudt.
+// Raekke-for-raekke via REST kan IKKE bruges: no_rider_double_booking er DEFERRABLE
+// INITIALLY IMMEDIATE (#3934/#4163), saa checket koerer pr. statement med mindre en
+// transaktion eksplicit beder om `deferred`. Under en raekke-for-raekke-omskrivning har
+// et loeb transient et SPAEND der blander gamle og nye etapevaerdier - et spaend der
+// hverken findes i start- eller sluttilstanden - og de transiente spaend kolliderer
+// (maalt: apply faldt paa raekke 10 af 943 den 24/8 11:59, rullet rent tilbage).
+// Sluttilstanden er verificeret konfliktfri; kun vejen dertil skal vaere atomar.
+const SQL_OUT = (process.argv.find((a) => a.startsWith("--sql=")) ?? "").slice("--sql=".length) || null;
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -60,20 +73,33 @@ async function selectAll(table, select, apply, orderBy = "id") {
   return out;
 }
 
+// DB'ens invariant er GROVERE end "samme in-game-dag": race_entries.binding_span er
+// int4range(min(game_day), max(game_day), '[]') pr. (race, hold), og
+// no_rider_double_booking afviser to entries for samme rytter hvis RANGES overlapper —
+// ogsaa selv om loebene aldrig deler en enkelt dag. Konflikter skal derfor taelles paa
+// spaend, ikke paa mae­ngder. (Foerste udgave af dette script talte mae­ngder og
+// undervurderede derfor risikoen; apply faldt paa constraint'en. #4161/#4163.)
+function spanOf(gameDays) {
+  const xs = [...gameDays].filter((g) => Number.isFinite(g) && g < 100000); // 100000+ = monument-sentinel, ikke-bindende
+  if (!xs.length) return null;
+  return [Math.min(...xs), Math.max(...xs)];
+}
+function overlapper(a, b) { return a && b && a[0] <= b[1] && b[0] <= a[1]; }
+
 function taelKonflikter(entries, gameDaysByRace) {
+  const spanByRace = new Map();
+  for (const [raceId, gds] of gameDaysByRace.entries()) spanByRace.set(raceId, spanOf(gds));
   const perRytter = new Map();
   for (const e of entries) {
-    const gds = gameDaysByRace.get(e.race_id);
-    if (!gds) continue;
+    const sp = spanByRace.get(e.race_id);
+    if (!sp) continue;
     if (!perRytter.has(e.rider_id)) perRytter.set(e.rider_id, []);
-    perRytter.get(e.rider_id).push(gds);
+    perRytter.get(e.rider_id).push(sp);
   }
   let n = 0;
   for (const spans of perRytter.values()) {
     for (let i = 0; i < spans.length; i++) {
-      for (let j = i + 1; j < spans.length; j++) {
-        for (const g of spans[i]) if (spans[j].has(g)) { n++; break; }
-      }
+      for (let j = i + 1; j < spans.length; j++) if (overlapper(spans[i], spans[j])) n++;
     }
   }
   return n;
@@ -90,7 +116,7 @@ async function main() {
   console.log(`\n#4161 game_day-akse-reparation — sæson ${season.number} (${season.status})`);
   console.log(`  start_date ${season.start_date} · løbsdage kørt ${season.race_days_completed}/${season.race_days_total}`);
 
-  const races = await selectAll("races", "id,name,league_division_id,season_id,stages,status,stages_completed",
+  const races = await selectAll("races", "id,name,league_division_id,season_id,stages,status,stages_completed,race_class",
     (q) => q.eq("season_id", season.id));
   const divisions = (await db.from("league_divisions").select("id,tier,label")).data ?? [];
   const divById = new Map(divisions.map((d) => [d.id, d]));
@@ -118,6 +144,7 @@ async function main() {
 
   const updates = [];
   const rapport = [];
+  const detalje = [];
   for (const [poolId, rows] of byPool.entries()) {
     const div = divById.get(poolId);
     const tier = div?.tier;
@@ -128,6 +155,23 @@ async function main() {
     const efter = checkCalendarOverlapInvariants({ scheduleRows: derived.rows, overlapCap: cap });
 
     for (const r of derived.rows) if (r.old_game_day !== r.game_day) updates.push(r);
+
+    if (JSON_OUT) {
+      detalje.push({
+        pulje: div?.label ?? String(poolId), tier, cap,
+        gameDaysPerDate: derived.gameDaysPerDate,
+        etaper: derived.rows.map((r) => ({
+          loeb: raceById.get(r.race_id)?.name ?? r.race_id,
+          klasse: raceById.get(r.race_id)?.race_class ?? null,
+          etaper_i_alt: raceById.get(r.race_id)?.stages ?? 1,
+          etape: r.stage_number,
+          dato: dkDate(r.scheduled_at),
+          tid: new Intl.DateTimeFormat("da-DK", { timeZone: "Europe/Copenhagen", hour: "2-digit", minute: "2-digit" }).format(new Date(r.scheduled_at)),
+          loebsdag_foer: r.old_game_day,
+          loebsdag_efter: r.game_day,
+        })),
+      });
+    }
 
     rapport.push({
       pulje: div?.label ?? poolId, tier, cap,
@@ -174,8 +218,58 @@ async function main() {
   }
   const konfliktFoer = taelKonflikter(mineEntries, foerNoegler);
   const konfliktEfter = taelKonflikter(mineEntries, efterNoegler);
-  console.log(`  Udtagelser: ${mineEntries.length} · rytter-kollisioner på tværs af in-game-dage før ${konfliktFoer}, efter ${konfliktEfter}` +
-    (konfliktEfter <= konfliktFoer ? "  [OK — reparationen strammer ikke]" : "  [ADVARSEL]"));
+  console.log(`  Udtagelser: ${mineEntries.length} · rytter-par med OVERLAPPENDE binding_span (DB-semantik): før ${konfliktFoer}, efter ${konfliktEfter}` +
+    (konfliktEfter <= konfliktFoer ? "  [OK — slutttilstanden strammer ikke]" : "  [BLOKERER — constraint ville afvise]"));
+
+  if (SQL_OUT) {
+    const vals = updates
+      .map((u) => `    ('${u.race_id}'::uuid, ${u.stage_number}, ${u.game_day})`)
+      .join(",\n");
+    writeFileSync(SQL_OUT, [
+      `-- #4161 - genskab in-game-aksen (game_day) i saeson ${season.number}.`,
+      `-- Genereret af scripts/dev/repairGameDayAxis4161.mjs --sql, fra den samme rene`,
+      `-- afledning (calendarGameDayRepair.js) som dry-runnet.`,
+      `--`,
+      `-- ${updates.length} raekker. KUN kolonnen game_day. scheduled_at, races.scheduled_for`,
+      `-- og race_entries roeres ikke.`,
+      `--`,
+      `-- Constraint'en udskydes til COMMIT: sluttilstanden er verificeret konfliktfri`,
+      `-- (0 overlappende binding_span-par baade foer og efter), men de transiente spaend`,
+      `-- under omskrivningen er det ikke. Kraever DEFERRABLE - gen-etableret i #4163/PR #4167.`,
+      `--`,
+      `-- Refs #4161 #4162 #4163 #4155`,
+      `-- ÉT statement (DO-blok), saa den koerer atomart uanset om klienten selv`,
+      `-- pakker den ind i en transaktion. SET CONSTRAINTS er transaktions-scoped og`,
+      `-- gaelder derfor resten af blokken.`,
+      `do $repair$`,
+      `begin`,
+      `  set constraints no_rider_double_booking deferred;`,
+      ``,
+      `  update race_stage_schedule rss`,
+      `     set game_day = v.gd`,
+      `    from (values`,
+      vals,
+      `    ) as v(race_id, stage_number, gd)`,
+      `   where rss.race_id = v.race_id`,
+      `     and rss.stage_number = v.stage_number`,
+      `     and rss.game_day is distinct from v.gd;`,
+      ``,
+      `  raise notice '#4161: % raekker opdateret', (select count(*) from race_stage_schedule);`,
+      `end`,
+      `$repair$;`,
+      ``,
+    ].join("\n"), "utf8");
+    console.log(`  SQL skrevet: ${SQL_OUT} (${updates.length} raekker, én transaktion)`);
+  }
+
+  if (JSON_OUT) {
+    writeFileSync(JSON_OUT, JSON.stringify({
+      saeson: season.number, start_date: season.start_date,
+      loebsdage_koert: season.race_days_completed, loebsdage_i_alt: season.race_days_total,
+      rapport, detalje,
+    }, null, 1), "utf8");
+    console.log(`  JSON skrevet: ${JSON_OUT}`);
+  }
 
   if (!APPLY) {
     console.log("\n  DRY-RUN — intet skrevet. Kør med --apply --jeg-har-set-dry-runnet efter ejer-go.\n");
