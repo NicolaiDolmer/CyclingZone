@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4190 regel-valg** (ejer udskød til 26/8: hvilke undtagelser må "et løb bruger sammenhængende løbsdage" tillade) · **#4174 trup-opfyldning** (ejer-valgt vej: fyld inaktive hold med rå 49-statister; mangler beslutning om hvor højt + dry-run + GO) · **#4192** afventer at listen markeres op. Afventer ejer: **PR #4205** (#4191 diff-rebuild) · **PR #4207** (#4192-listen) · **PR #4182**. Nye fund: **#4206** (965 ryttere har identiske stats i alle 14 felter) · #4195 · #4196. **#4197 halveret 24/8:** GC-orakel-alarmen var oraklets egen regnefejl (bonussekunder manglede) - motoren verificeret korrekt mod 26.493 GC-raekker i alle 189 rigtige etapeloeb, PR #4210 merged. Rest = longDayEnduranceLift-baandet paa middelvaerdien.
+> **🎯 Next action:** **Tre PR'er grønne og klar til dit review:** [#4208](https://github.com/NicolaiDolmer/CyclingZone/pull/4208) (monument-byttet, rebaset så dens to lint-fejl er væk; optælling af de 22 manuelle udtagelser den rydder ligger på PR'en) · [#4205](https://github.com/NicolaiDolmer/CyclingZone/pull/4205) (#4191 diff-rebuild) · [#4207](https://github.com/NicolaiDolmer/CyclingZone/pull/4207) (#4192-listen). Derefter: **GT-komprimeringen** under #4176 (Giroen kører 18 etaper på 6 dage, nul hviledage) og **#4174** (mangler ét svar: hvor højt de inaktive hold fyldes op). Nyt fund: **#4206** (965 ryttere med identiske stats).
 
 > **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-mængde · aksen repareret (cap-brud 29→0) · monument = eksklusiv løbsdag genoprettet i S3. Alle 4 invarianter grønne, gated på 3 niveauer + dagligt CI-job. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
@@ -27,6 +27,8 @@
 
 > **📋 SESSION 24/8 AFTEN:** **#4190 diagnosen vendt:** pakkerens output har 0 huller i D2/D3/D4, kun bevidste monument-/GT-hviledags-indskud i D1; de 167 uforklarede huller i S3 kommer fra `deriveGameDayAxis`. **#4174 præmis forældet:** kravet er 22/21/12/12 og 78 % af de AKTIVE hold klarer det (issuets 21 % talte 142 inaktive med); ejeren afviste alle tre kalender-veje: hjælp trupperne i stedet. **#4191** 1,0 mio. inserts på 135k rækker; diff-rebuild verificeret på staging + ækvivalens mod prod (0/0). **#4192** alle 38 beslutninger listet i `docs/audits/2026-08-24-4192-traening-beslutningsliste.md`: 15 bygget, 10 delvist, 8 ikke, 4 overhalet, 3 afvigelser.
 
-> **🤖 Ingen aktiv session** (aften-sessionen 24/8 lukket: #4190/#4174 målt om, #4191 fikset, #4192-listen leveret. Alle tre PR'er afventer ejer-review).
+> **📐 AKSEN ER SLOT, IKKE DAG (24/8, afgørende):** `game_day` er et halvdags-slot. D1 har 80 slots over 27 datoer (2,96 pr. dato), D2/D3 præcis 2,00, D4 1,07. Målt konsekvens: 95 etapeløb har huller i SLOTS, men kun 9 springer en KALENDERDATO over, og **471 af 471 løb bruger allerede lige så mange løbsdage som de har etaper**. **#4190 skrevet om** til navngivning + invariant (ejer-go); sammenhængs-reglen bortfalder. **#4209 sat i bero:** der findes nul reelle hviledage i S3, så der er ingen hviledag at binde på.
+
+> **🤖 Ingen aktiv session** (aften-sessionen 24/8 lukket: aksen afklaret, #4190 omskrevet, #4209 i bero, #4191 fikset, #4192-listen leveret, #4208 rebaset og målt op).
 
 _Historik i git-log, issue-tråde + docs/audits/._
