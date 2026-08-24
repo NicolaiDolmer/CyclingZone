@@ -4,7 +4,7 @@
 // vises read-only. Afmeld/deltag i footeren.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { computeColumnStatus, freshnessTier } from "../../lib/raceHubLogic.js";
+import { computeColumnStatus, freshnessTier, raceDateRangeLabel } from "../../lib/raceHubLogic.js";
 import { terrainBucket } from "../../lib/stageTerrain.js";
 import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
@@ -37,7 +37,7 @@ function RoleBadge({ t, role }) {
 // på /races har et stabilt anker at pege på (samme "kun første række"-mønster som
 // AuctionsPage's data-tour="auctions-bid-input").
 export default function RaceColumn({ column, onRemoveRider, onClearSelection, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour, boardState = null }) {
-  const { t } = useTranslation("races");
+  const { t, i18n } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
   const selectedIds = column.selection?.rider_ids || [];
@@ -64,13 +64,17 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
     if (s.free_role_ids?.includes(id)) return "free_role";
     return null;
   };
-  // #2195: synlig in-game løbsdag, så to løb på samme rigtige eftermiddag er tydeligt
-  // forskellige spil-dage. Etapeløb spænder start..slut; endagsløb er én dag. Skjult hvis ukendt.
-  const gd = column.game_day;
-  const gdEnd = column.game_day_end;
-  const raceDayLabel = Number.isFinite(gd)
-    ? (Number.isFinite(gdEnd) && gdEnd > gd ? t("racehub.raceDays", { start: gd, end: gdEnd }) : t("racehub.raceDay", { day: gd }))
-    : null;
+  // #2195 → #4187: kortet viste "Løbsdag {start}-{end}". Det tal er et SPÆND over den
+  // in-game akse, ikke de dage løbet binder: La Corsa dei Due Mari står som "Løbsdag
+  // 10-28" og binder 7 af de 19. Bindingen er korrekt (dag-mængde, #4173) — mærkatet
+  // var det eneste der løj, og spillerne planlagde efter det (Discord 24/8).
+  // Nu vises løbets DATOER, som ikke kan drive fra aksen. Løbsdags-tallet står fortsat
+  // som overskrift på brættets dags-sektioner (RaceHubBoard), hvor ét tal = én dag.
+  const raceDayLabel = raceDateRangeLabel({
+    startMs: column.window?.start,
+    endMs: column.window?.end,
+    locale: i18n.language,
+  });
   const status = locked
     ? { kind: "locked" }
     : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, max: column.size?.max, withdrawn: column.withdrawn });

@@ -1017,7 +1017,10 @@ export const SEED_DISTRIBUTION = {
     {
       id: "race-up-1", name: "Tour de Preview", race_class: "TourFrance", race_type: "stage_race",
       // Etapeløb gd 12-14 (bindingWindow = in-game-dag-span, samme shape som API'en).
-      stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 14 },
+      stages: 3, stages_completed: 0, status: "scheduled",
+      // #4187: window = raceTimeWindow(ms), samme form som API'en - loebskortet viser datoer.
+      window: { start: Date.parse("2026-08-31T09:00:00Z"), end: Date.parse("2026-09-02T13:00:00Z") },
+      bindingWindow: { start: 12, end: 14 },
       game_day: 12, game_day_end: 14, // #2195: synligt "Race days 12-14"-mærke
       // S5: fladt løb → jæger-chip = høj udbruds-chance.
       primaryProfileType: "flat", primaryFinaleType: null,
@@ -1032,7 +1035,9 @@ export const SEED_DISTRIBUTION = {
     {
       // In-game-dag-overlap med race-up-1 (gd 12 ⊂ 12-14) → én-rytter/ét-løb-binding.
       id: "race-overlap-1", name: "Critérium Preview", race_class: "ProSeries", race_type: "single",
-      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 12 },
+      stages: 1, stages_completed: 0, status: "scheduled",
+      window: { start: Date.parse("2026-08-31T11:00:00Z"), end: Date.parse("2026-08-31T11:00:00Z") },
+      bindingWindow: { start: 12, end: 12 },
       game_day: 12, game_day_end: 12, // in-game-dag 12 → ægte overlap med race-up-1
       // S5: bjerg-løb med summit-finale → jæger-chip = lav udbruds-chance (favoritterne afgør).
       primaryProfileType: "high_mountain", primaryFinaleType: "long_climb",
@@ -1047,7 +1052,9 @@ export const SEED_DISTRIBUTION = {
       // Kronologi-rebuild: samme IRL-dag, men in-game-dag 15 (efter race-up-1's span) → binder
       // IKKE race-up-1's ryttere. En rytter i Tour de Preview KAN derfor også stilles her.
       id: "race-free-1", name: "Klassiker Preview", race_class: "ProSeries", race_type: "single",
-      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 15, end: 15 },
+      stages: 1, stages_completed: 0, status: "scheduled",
+      window: { start: Date.parse("2026-08-31T15:00:00Z"), end: Date.parse("2026-08-31T15:00:00Z") },
+      bindingWindow: { start: 15, end: 15 },
       game_day: 15, game_day_end: 15, // samme IRL-dag, in-game-dag 15 → kompatibel med race-up-1
       primaryProfileType: "cobbles", primaryFinaleType: null,
       size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
@@ -1130,7 +1137,7 @@ export const SEED_BROWSE = {
   columns: [
     {
       id: "race-up-1", name: "Tour de Preview", race_class: "ProSeries", race_type: "single",
-      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 },
+      stages: 1, stages_completed: 0, status: "scheduled", window: { start: Date.parse("2026-08-31T17:00:00Z"), end: Date.parse("2026-08-31T17:00:00Z") },
       primaryProfileType: "flat", visible: true, daysUntilStart: 2, opensInDays: 0,
       teamCount: 2,
       teams: [
@@ -1140,7 +1147,7 @@ export const SEED_BROWSE = {
     },
     {
       id: "race-locked-1", name: "GP des Préviews", race_class: "Class1", race_type: "single",
-      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 23 },
+      stages: 1, stages_completed: 0, status: "scheduled", window: { start: Date.parse("2026-09-06T11:00:00Z"), end: Date.parse("2026-09-06T11:00:00Z") },
       primaryProfileType: "hilly", visible: false, daysUntilStart: 11, opensInDays: 4,
       teamCount: 0, teams: [],
     },

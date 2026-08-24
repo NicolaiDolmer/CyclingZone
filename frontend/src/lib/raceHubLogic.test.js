@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -279,4 +279,45 @@ test("shouldShowClearAllDialog: tom/manglende liste → false; mindst ét løb �
   assert.equal(shouldShowClearAllDialog(undefined), false);
   assert.equal(shouldShowClearAllDialog(null), false);
   assert.equal(shouldShowClearAllDialog([{ id: "a", name: "Tour Belge", startAt: 1 }]), true);
+});
+
+// ── #4187: løbskortets mærkat skal vise datoer, ikke løbsdags-spændet ────────────
+
+test("raceDateRangeLabel: etapeløb over flere dage giver et datointerval", () => {
+  const label = raceDateRangeLabel({
+    startMs: Date.parse("2026-08-30T09:00:00Z"),
+    endMs: Date.parse("2026-09-04T11:00:00Z"),
+    locale: "en",
+  });
+  assert.equal(label, "Aug 30 – Sep 4");
+});
+
+test("raceDateRangeLabel: endagsløb giver ÉT datostykke, ikke 'x - x'", () => {
+  const label = raceDateRangeLabel({
+    startMs: Date.parse("2026-08-30T09:00:00Z"),
+    endMs: Date.parse("2026-08-30T15:00:00Z"),
+    locale: "en",
+  });
+  assert.equal(label, "Aug 30");
+});
+
+test("raceDateRangeLabel: dansk locale formaterer dansk", () => {
+  const label = raceDateRangeLabel({
+    startMs: Date.parse("2026-08-30T09:00:00Z"),
+    endMs: Date.parse("2026-09-04T11:00:00Z"),
+    locale: "da",
+  });
+  assert.ok(label.includes("30."), `forventede dansk datoform, fik: ${label}`);
+  assert.ok(label.includes("–"), `forventede interval, fik: ${label}`);
+});
+
+test("raceDateRangeLabel: projiceres i Europe/Copenhagen, ikke UTC", () => {
+  // 23:30 UTC den 30/8 er 01:30 dansk tid den 31/8 (CEST, +2).
+  const label = raceDateRangeLabel({ startMs: Date.parse("2026-08-30T23:30:00Z"), locale: "en" });
+  assert.equal(label, "Aug 31");
+});
+
+test("raceDateRangeLabel: ukendt start giver null, saa kortet skjuler maerkatet", () => {
+  assert.equal(raceDateRangeLabel({ startMs: null, endMs: 123 }), null);
+  assert.equal(raceDateRangeLabel({}), null);
 });

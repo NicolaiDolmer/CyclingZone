@@ -25,7 +25,10 @@ const DISTRIBUTION = {
   columns: [
     {
       id: "race-adriatique", name: "Tour Adriatique", race_class: "ProSeries", race_type: "single",
-      stages: 1, status: "scheduled", window: { start: 14, end: 14 }, bindingWindow: { start: 14, end: 14 },
+      // #4187: window er raceTimeWindow(ms) i API'en - loebskortet viser datoen, ikke loebsdagen.
+      stages: 1, status: "scheduled",
+      window: { start: Date.parse("2026-09-02T11:00:00Z"), end: Date.parse("2026-09-02T11:00:00Z") },
+      bindingWindow: { start: 14, end: 14 },
       game_day: 14,
       size: { min: 6, max: 6 }, withdrawn: false, counts: { selected: 0, target: 6 },
       riders: [], selection: null,
@@ -48,7 +51,8 @@ const BROWSE = {
   columns: [
     {
       id: "race-hainan", name: "Tour de l'Île de Hainan", race_class: "ProSeries", race_type: "single",
-      stages: 1, stages_completed: 0, status: "scheduled", window: { start: 14, end: 14 },
+      stages: 1, stages_completed: 0, status: "scheduled",
+      window: { start: Date.parse("2026-09-02T11:00:00Z"), end: Date.parse("2026-09-02T11:00:00Z") },
       primaryProfileType: "flat", visible: true, daysUntilStart: 2, opensInDays: 0, teamCount: 0,
       teams: [],
     },
@@ -84,8 +88,9 @@ test("RaceColumn: klik på 'Løbsdag N' (ikke kun titlen) navigerer til løbet (
   const header = board.getByTestId("race-column-open");
   await expect(header).toHaveAttribute("href", "/races/race-adriatique");
 
-  // Klikket der før var dødt: "Løbsdag 14"-teksten (ikke titlen).
-  await board.getByText("Løbsdag 14").click();
+  // Klikket der før var dødt: dato-mærkatet (ikke titlen). #4187 erstattede
+  // "Løbsdag 14" med løbets dato — samme placering, samme hit-target.
+  await board.getByText("2. sep.").click();
   await expect(page).toHaveURL(/\/races\/race-adriatique$/);
 });
 
