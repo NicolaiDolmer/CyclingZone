@@ -1137,8 +1137,20 @@ for (const g of gtFinal.gc.slice(0, 10)) console.log(`   ${padS(g.rank, 2)}. ${l
 console.log(`  👕 Grøn: ${gtFinal.points[0] ? gtFinal.points[0].rider.name + " (" + gtFinal.points[0].rider.bornAs + ")" : "—"} · Bjerg: ${gtFinal.mountain[0] ? gtFinal.mountain[0].rider.name + " (" + gtFinal.mountain[0].rider.bornAs + ")" : "—"} · Ungdom: ${gtFinal.young[0] ? gtFinal.young[0].rider.name : "—"}`);
 
 // ── D. STRUKTURELLE MOTOR-ORACLES (#1198/#1144) — håndhævet, exit 1 ved brud ──
-// GC-tid-invarianten genberegnes UAFHÆNGIGT af raceRunner: summen af etape-gab
-// pr. rytter fra de rå 'stage'-rækker — GC-vinderen skal have feltets minimum.
+// GC-tid-invarianten genberegnes UAFHÆNGIGT af raceRunner ud fra de rå
+// 'stage'-rækker: nettotid = summen af etape-gab MINUS bonussekunder.
+//
+// #4197: bonusfradraget manglede, og oraklet råbte derfor falsk op på 3 af 50
+// seeds under --routes. Bonussekunder findes kun når etaperne har ruter med
+// sprints/bjergpassager, så fejlen var usynlig uden --routes (0 bonussekunder
+// i alle 50 seeds dér) og skjult under et permanent rødt race:gate:routes.
+// Motoren var korrekt hele vejen: både buildRaceResults (raceRunner.js:427) og
+// den live stage-for-stage-sti (raceClassifications.js:115) trækker bonussekunder
+// fra. Verificeret mod prod 24/8: 26.493 GC-rækker i alle 189 rigtige etapeløb
+// med bonussekunder stemmer 100 % med nettotiden — mens oraklets gamle formel
+// (uden fradrag) kun ramte 167 af 3.525 rækker i den første stikprøve.
+// Læringen: oraklet skal genberegne af de PUBLICEREDE kolonner (finish_time +
+// bonus_seconds), ikke af en delmængde af dem.
 const parseGap = (t) => {
   const m = /^\+(\d+):(\d{2})$/.exec(String(t || ""));
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
@@ -1148,13 +1160,17 @@ for (const row of resultRows) {
   if (row.result_type !== "stage") continue;
   const s = parseGap(row.finish_time);
   if (s == null) continue;
-  cumGapById.set(row.rider_id, (cumGapById.get(row.rider_id) || 0) + s);
+  // Bonussekunder trækkes fra — præcis som raceClassifications.accumulateStageRows.
+  const net = s - (Number(row.bonus_seconds) || 0);
+  cumGapById.set(row.rider_id, (cumGapById.get(row.rider_id) || 0) + net);
 }
 const gcAllRows = rowsOf("gc", finalStage);
 const gcOracle = gcAllRows.length
   ? {
       winnerCumSeconds: cumGapById.get(gcAllRows[0].rider_id) ?? NaN,
       minCumSeconds: Math.min(...gcAllRows.map((g) => cumGapById.get(g.rider_id) ?? NaN)),
+      // #4197: hele klassementets nettotider i GC-rækkefølge — skal være ikke-aftagende.
+      orderedCumSeconds: gcAllRows.map((g) => cumGapById.get(g.rider_id) ?? NaN),
     }
   : null;
 

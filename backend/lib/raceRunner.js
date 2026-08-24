@@ -1877,7 +1877,11 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
 
   // Klassementer akkumuleres fra persisterede + dagens rækker — dagens gap går
   // igennem formatGap FØRST, så klassementet bygger på PRÆCIS de afrundede gaps
-  // spillerne ser publiceret (sum af etape-gaps = GC, altid). Sub-2 (#2770):
+  // spillerne ser publiceret. #4197: GC = sum af etape-gaps MINUS bonussekunder —
+  // ikke sum af gaps alene. Uden ruter er der ingen passager og dermed ingen
+  // bonussekunder, så de to udtryk falder sammen dér; med ruter gør de IKKE.
+  // Den forkortelse stod tidligere her og forplantede sig til dry-run-oraklet,
+  // som derfor råbte falsk op på 3 af 50 seeds. Sub-2 (#2770):
   // passage-aggregaterne SKAL med her (samme betingelse som pushIndiv ovenfor),
   // ellers ser accumulateStageRows' hasPassageCols-check dem aldrig (Task 4).
   const todayStageRows = ranked.map((r) => {
