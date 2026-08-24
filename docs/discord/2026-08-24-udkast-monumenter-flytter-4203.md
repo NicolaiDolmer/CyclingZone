@@ -2,7 +2,7 @@
 
 > **Ejeren poster selv.** Udkastet er til copy-paste. EN først, DA under, som al spiller-vendt copy.
 >
-> **Post FØRST når migrationen er kørt og verificeret**, ikke før. Ellers står beskeden og lover en kalender der endnu ikke findes.
+> **Migrationen ER kørt og verificeret 24/8 kl. 21:20** (auto-migrate run 32778685181, alle fem post-verify-trin grønne). Kalenderen i opslaget er den der står i prod nu. Klar til at poste.
 
 **Kanal:** #announcements (eller den kanal ugenoter plejer at ligge i)
 
@@ -62,15 +62,15 @@ Der er ikke afviklet et eneste løb i sæsonen endnu, så intet af det der aller
 
 ## Note til ejeren, ikke til Discord
 
-Fire hold mister tilsammen 22 **manuelle** udtagelser, altså valg de selv har truffet:
+Fire hold mistede tilsammen 23 **manuelle** udtagelser, altså valg de selv havde truffet. Tallene er de faktiske, aflæst i `backup_4203_removed_entries` efter kørslen:
 
 | Hold | Manager | Manuelle ryddet |
 |---|---|---|
-| Team Hansen Pro Cycling | Simon Hansen | 11 |
-| Bacon Fræsers | Egomadsen | 5 |
-| Team Easy-On | Henning Primdahl | 3 |
+| Team Hansen Pro Cycling | Simon Hansen | 11 (6 + 5) |
+| Bacon Fræsers | Egomadsen | 5 (4 + 1) |
+| Team Easy-On | Henning Primdahl | 4 |
 | 24/7 Aspire-Light Velo Team | Robsteren | 3 |
 
 De er bevidst **ikke** nævnt ved navn i opslaget. Overvej en kort DM til de fire i stedet, så de ikke selv skal opdage det. Alle fire har 31-37 ryttere, så de kan sagtens vælge om.
 
-De resterende 333 ryddede udtagelser er assistentens auto-udfyldning og kræver ingen handling.
+De resterende 333 af de 356 ryddede udtagelser er assistentens auto-udfyldning og kræver ingen handling.
