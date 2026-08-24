@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4190 regel-valg** (ejer udskød til 26/8: hvilke undtagelser må "et løb bruger sammenhængende løbsdage" tillade) · **#4174 trup-opfyldning** (ejer-valgt vej: fyld inaktive hold med rå 49-statister; mangler beslutning om hvor højt + dry-run + GO) · **#4192** afventer at listen markeres op. Afventer ejer: **PR #4205** (#4191 diff-rebuild) · **PR #4207** (#4192-listen) · **PR #4182**. Nye fund: **#4206** (965 ryttere har identiske stats i alle 14 felter) · #4197 · #4195 · #4196.
+> **🎯 Next action:** **#4190 regel-valg** (ejer udskød til 26/8: hvilke undtagelser må "et løb bruger sammenhængende løbsdage" tillade) · **#4174 trup-opfyldning** (ejer-valgt vej: fyld inaktive hold med rå 49-statister; mangler beslutning om hvor højt + dry-run + GO) · **#4192** afventer at listen markeres op. Afventer ejer: **PR #4205** (#4191 diff-rebuild) · **PR #4207** (#4192-listen) · **PR #4182**. Nye fund: **#4206** (965 ryttere har identiske stats i alle 14 felter) · #4195 · #4196. **#4197 halveret 24/8:** GC-orakel-alarmen var oraklets egen regnefejl (bonussekunder manglede) - motoren verificeret korrekt mod 26.493 GC-raekker i alle 189 rigtige etapeloeb, PR #4210 merged. Rest = longDayEnduranceLift-baandet paa middelvaerdien.
 
 > **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-mængde · aksen repareret (cap-brud 29→0) · monument = eksklusiv løbsdag genoprettet i S3. Alle 4 invarianter grønne, gated på 3 niveauer + dagligt CI-job. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
