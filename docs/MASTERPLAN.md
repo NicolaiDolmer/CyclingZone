@@ -7,7 +7,7 @@
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
 - **GJORT 23-24/8:** cutover S2→S3 (c=0,811 varig, #4135; upkeep S3 220k/70k/20k/0) · kalender live · #4155 game_day D1-D3 repareret PROD (1.855 dobbeltbookinger → 0) · #4154-sanktion eksekveret. Detaljer: NOW.md + issue-tråde.
-- **MAN 24/8 (løbsfri):** 🔴 **#4163 FØRST** (i gang) — sweepen i deterministisk dødvande hvert tick siden #4155: 56 → 140 fejlede enheder, `no_rider_double_booking` uden deferrable; rammer også `/api/races/distribution/regenerate`. Standing issue: #3960 (priority:high 24/8) · **#4159 game_day-guard FØR næste kalender-generering** · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
+- **MAN 24/8 (løbsfri):** 🔴 **#4163 FØRST** (i gang) — sweepen i deterministisk dødvande hvert tick siden #4155: 56 → 140 fejlede enheder, `no_rider_double_booking` uden deferrable; rammer også `/api/races/distribution/regenerate`. (#3960 lukket som opslugt) · **#4159 game_day-guard FØR næste kalender-generering** · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
 ## A · Cutover 23/8 — GENNEMFØRT (rest herunder)
