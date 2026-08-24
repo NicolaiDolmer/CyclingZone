@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.188",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Monuments moved out of the Grand Tour windows",
+          "body": "Four of the five Monuments ran on a Grand Tour rest day, so the same riders could start a Monument in the middle of their Grand Tour. A Monument now never falls inside a Grand Tour. Milano-Riviera moves to 29 August, De Vlaamse Ronde to 5 September, L'Enfer du Nord to 7 September and La Doyenne des Ardennes to 10 September. La Classica d'Autunno is unchanged. Four smaller one-day races take the vacated dates so no race day sits empty: Le Mur de Huy 31 August, La Classique Bretonne 3 September, Taunus-Klassiker 14 September, Grand Prix du Saint-Laurent 19 September. Selections that clashed with a new date were cleared, so check your squad for these eight races."
+        },
+        "da": {
+          "title": "Monumenterne er flyttet ud af Grand Tour-vinduerne",
+          "body": "Fire af de fem Monumenter lå på en hviledag i en Grand Tour, så de samme ryttere kunne stille op til et Monument midt i deres Grand Tour. Et Monument ligger nu aldrig inde i en Grand Tour. Milano-Riviera rykker til 29. august, De Vlaamse Ronde til 5. september, L'Enfer du Nord til 7. september og La Doyenne des Ardennes til 10. september. La Classica d'Autunno er uændret. Fire mindre endagsløb overtager de ledige datoer, så ingen løbsdag står tom: Le Mur de Huy 31. august, La Classique Bretonne 3. september, Taunus-Klassiker 14. september, Grand Prix du Saint-Laurent 19. september. Udtagelser der kolliderede med en ny dato er ryddet, så tjek din trup til de otte løb."
+        },
+        "refs": [4203, 4173]
+      }
+    ]
+  },
+  {
     "version": "7.187",
     "date": "2026-08-24",
     "label": "Beta",
