@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { checkCalendarOverlapInvariants } from "./calendarOverlapInvariant.js";
-import { TIER_OVERLAP_CAP, TIER_DENSITY, gameDaysPerRealDay } from "./calendarTierCaps.js";
+import { TIER_OVERLAP_CAP, TIER_DENSITY, minGameDaysPerRealDay } from "./calendarTierCaps.js";
 import { packLaneCalendar } from "./raceCalendarLanePacker.js";
 
 // Rækker som de ligger i race_stage_schedule.
@@ -11,7 +11,7 @@ const row = (race_id, stage_number, game_day, scheduled_at = null) =>
 test("caps: de ejer-låste værdier er uændrede (2026-06-28)", () => {
   assert.deepEqual({ ...TIER_OVERLAP_CAP }, { 1: 3, 2: 3, 3: 2, 4: 2 });
   assert.deepEqual({ ...TIER_DENSITY }, { 1: 5, 2: 4, 3: 3, 4: 2 });
-  assert.deepEqual([1, 2, 3, 4].map(gameDaysPerRealDay), [2, 2, 2, 1]);
+  assert.deepEqual([1, 2, 3, 4].map(minGameDaysPerRealDay), [2, 2, 2, 1]);
 });
 
 test("ren kalender inden for cap giver ingen brud", () => {
@@ -58,7 +58,7 @@ test("fladet akse opdages: én game_day pr. kalenderdag i en division hvor K = 2
   const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier: 1 });
   assert.equal(r.gameDayCount, 2);
   assert.equal(r.realDayCount, 2);
-  assert.equal(r.expectedGameDaysPerRealDay, 2);
+  assert.equal(r.minGameDaysPerCalendarDay, 2);
   assert.equal(r.axisLooksCollapsed, true, "2 game_days på 2 kalenderdage i tier 1 er en fladet akse");
 });
 
@@ -68,7 +68,7 @@ test("Div 4 har K = 1 — dér ER én game_day pr. kalenderdag korrekt", () => {
     row("a", 2, 1, "2026-08-26T10:00:00Z"),
   ];
   const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier: 4 });
-  assert.equal(r.expectedGameDaysPerRealDay, 1);
+  assert.equal(r.minGameDaysPerCalendarDay, 1);
   assert.equal(r.axisLooksCollapsed, false);
   assert.equal(r.overlapViolationCount, 0);
 });

@@ -337,7 +337,7 @@ async function main() {
       if (r.axisLooksCollapsed) {
         calendarCollapsedPools.push({
           pool: label, tier, game_days: r.gameDayCount, kalenderdage: r.realDayCount,
-          forventet_game_days_pr_kalenderdag: r.expectedGameDaysPerRealDay,
+          mindst_game_days_pr_kalenderdag: r.minGameDaysPerCalendarDay,
         });
       }
     }

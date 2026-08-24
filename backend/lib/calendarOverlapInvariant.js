@@ -13,7 +13,7 @@
 // REN + deterministisk (ingen DB, ingen Date, ingen random) — kaldes både fra
 // verify-invariants (prod) og fra unit-tests.
 
-import { TIER_OVERLAP_CAP, gameDaysPerRealDay } from "./calendarTierCaps.js";
+import { TIER_OVERLAP_CAP, minGameDaysPerRealDay } from "./calendarTierCaps.js";
 
 /**
  * @param {{ scheduleRows: Array<{race_id, stage_number?, game_day, scheduled_at?}>,
@@ -21,7 +21,7 @@ import { TIER_OVERLAP_CAP, gameDaysPerRealDay } from "./calendarTierCaps.js";
  *   `scheduleRows` skal være ÉN pulje (league_division_id), ikke en hel tier — alle puljer i
  *   en tier deler kalender-FORM, men er selvstændige binding-rum (#2276).
  * @returns {{ overlapViolations, stageRepeatViolations, maxOverlap, overlapCap,
- *             gameDayCount, realDayCount, expectedGameDaysPerRealDay, axisLooksCollapsed }}
+ *             gameDayCount, realDayCount, minGameDaysPerCalendarDay, axisLooksCollapsed }}
  */
 export function checkCalendarOverlapInvariants({
   scheduleRows = [], tier = null, overlapCap = null, maxViolations = 50,
@@ -68,14 +68,15 @@ export function checkCalendarOverlapInvariants({
   }
   stageRepeatViolations.sort((a, b) => b.stages - a.stages || a.game_day - b.game_day);
 
-  // Diagnostik: er aksen fladet ud? For Div 1-3 er K = 2, så antallet af distinkte
-  // game_days SKAL være markant større end antallet af kalenderdage. Er de ens, er
-  // game_day blevet skrevet som en ren dato-offset (se #4161-postmortem).
-  const expectedGameDaysPerRealDay = tier == null ? null : gameDaysPerRealDay(tier);
+  // Diagnostik: er aksen fladet ud? For Div 1-3 skal der ligge FLERE in-game-dage inden i
+  // hver kalenderdag (mindst ceil(density/cap), i Div 1 typisk 3-5). Falder antallet af
+  // distinkte game_days sammen med antallet af kalenderdage, er game_day skrevet som en ren
+  // dato-offset. For Div 4 er ét til én derimod korrekt. Se #4161.
+  const minGameDaysPerCalendarDay = tier == null ? null : minGameDaysPerRealDay(tier);
   const gameDayCount = racesByGameDay.size;
   const realDayCount = realDays.size;
   const axisLooksCollapsed = Boolean(
-    expectedGameDaysPerRealDay && expectedGameDaysPerRealDay > 1 &&
+    minGameDaysPerCalendarDay && minGameDaysPerCalendarDay > 1 &&
     realDayCount > 0 && gameDayCount <= realDayCount
   );
 
@@ -85,6 +86,6 @@ export function checkCalendarOverlapInvariants({
     stageRepeatViolations: stageRepeatViolations.slice(0, maxViolations),
     stageRepeatViolationCount: stageRepeatViolations.length,
     maxOverlap, overlapCap: cap,
-    gameDayCount, realDayCount, expectedGameDaysPerRealDay, axisLooksCollapsed,
+    gameDayCount, realDayCount, minGameDaysPerCalendarDay, axisLooksCollapsed,
   };
 }
