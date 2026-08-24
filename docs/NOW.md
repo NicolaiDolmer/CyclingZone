@@ -4,11 +4,10 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Næste session: [prompt](sessions/2026-08-25-kalender-og-traening-ssot-session-prompt.md)** — kalenderen først (#4190 sammenhængende løbsdage · #4174 rytterkrav · #4191 churn), derefter træningens SSOT (#4192, første leverance = liste over de ~35 beslutninger). Afventer ejer: **PR #4198** (løbskort-datoer) · **PR #4182** · **#4183** puljer 24/24 fulde · **#4180** race:gate.
+> **🎯 Next action:** **Næste session: [prompt](sessions/2026-08-25-kalender-og-traening-ssot-session-prompt.md)** — kalenderen først (#4190 sammenhængende løbsdage · #4174 rytterkrav · #4191 churn), derefter træningens SSOT (#4192, første leverance = liste over de ~35 beslutninger). Afventer ejer: **PR #4199** (#4183 placerings-fix, prod allerede repareret) · **PR #4198** · **PR #4182**. Nye fund fra #4180: **#4197** (strukturelt GC-orakel fejler i rute-stien) · #4195 · #4196.
 
 > **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-MÆNGDE (`race_entry_days`) · aksen repareret (cap-brud 29→0) · **monument = eksklusiv løbsdag** genoprettet i live S3 (107 rækker i D1, akse 75→80 løbsdage, monument-brud 5→0, ingen etape flyttede dato) · `game_day_start` resynket for 334 løb (gårsdagens halve reparation). Alle 4 kalender-invarianter grønne i `verify-invariants`. Reglen er nu gated på 3 niveauer + dagligt CI-job (`calendar-invariant-audit.yml`). PR #4185, patch note 7.184. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
-> **✅ CUTOVER S2→S3 GENNEMFØRT 23/8** (ejer-GO pr. skridt): 22 faser grønne, S3 aktiv 27 dage. c=0,811 varig (#4135). 7 D1-hold i minus ved start (upfront-model, forklaret). Log: git-log + issue-tråde.
 
 > **⚖️ Fair play:** #3818 eksekveret 24/8 efter #4154-skabelonen (clawback af funnel-kontoens bruttobeløb + frys + auth-ban + advarsel in-game; #2221 var kun frys). Metode, tal og tekst: `docs/discord/2026-08-24-svarudkast-fairplay-3818.md`. **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord, har fået ingen forklaring.
 
@@ -23,8 +22,9 @@
 - **Staging:** `scripts/refresh-staging.ps1` + `scripts/with-staging.ps1`; generalprøve FØR enhver destruktiv prod-op. `staging-cutover` slettes mandag (#3839).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation (ejer-mandat 22/8):** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **✅ RACE:GATE GJORT TROVÆRDIG 24/8** (#4180, PR #4194 afventer ejer-merge): gaten fejlede 42 % af 400 tilfældige seeds med uændret kode. Nu 50 seeds med aggregat-dom, måltal uændrede, falsk alarm 0,04 %, CI 5s→47s. Navne-RNG skilt fra stat-RNG → #4179 er målt til 4.000/4.000 identiske stats og kan merges efter #4194. Tre pre-eksisterende fund udskilt: #4195 (værdimodellens top-hældning) · #4196 (balance-baseline rådnet bag advisory-check) · #4197 (rute-stiens GC-orakel).
 
-> **🤖 Ingen aktiv session** (master-sessionen 24/8 lukket ~18:00: kæden + #4183-swap kørt, PR #4182 merged, audit grøn, Discord-sweep krydset mod fixes — 3 kalender-spor tilbage, se Next action). Forrige sessions detaljer: #4172-tråden (D4-reparation udført, 157→1 tomme løb, motor verificeret on; #4170 lukket som dublet; guard-rest samlet i #4159).
+> **✅ #4180 + #4178 + #4183 LUKKET 24/8:** race:gate fejlede 42 % af 400 tilfældige seeds med uændret kode — nu 50 seeds med aggregat-dom (måltal uændrede, falsk alarm 0,04 %, CI 5s→47s). Navne-RNG skilt fra stat-RNG, så navnelister ikke kan flytte stats; #4179 målt til 4.000/4.000 identiske stats og merged. **#4183 rodårsag:** placeringen talte ikke frosne hold med, så to fulde D3-puljer så ledige ud og fik dagens tre tilmeldinger. Prod repareret pr. ejer-go (Plattentuub→D4-B, Landbouwkrediet→D4-C, begge puljer reconciled) — **alle 15 puljer på 24, audit grøn.**
+
+> **🤖 Ingen aktiv session** (sessionen 24/8 ~21:30 lukket: #4180/#4178/#4183 landet, prod repareret, audit grøn).
 
 _Historik i git-log, issue-tråde + docs/audits/._
