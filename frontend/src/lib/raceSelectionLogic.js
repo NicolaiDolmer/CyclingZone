@@ -51,16 +51,30 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
 // delvis trup igen når der allerede FINDES en gemt/auto-udtaget udtagelse (fx en skadet
 // rytter der fjernes fra en allerede committet etapeløbs-trup); kalderen sætter
 // `requireFull: !data.selection`.
+// #4175 (spiller-rapport 24/8, tre managere uafhængigt): den gamle udgave gjorde
+// `selection_insufficient_riders` til en BLOKERENDE fejl — kunne holdet ikke stille
+// size.max ryttere, kunne udtagelsen slet ikke gemmes. Det ramte præcis de dage hvor
+// kalenderen kræver flere ryttere end truppen har (#4174), altså der hvor manageren ER
+// nødt til at møde op med et halvt hold. Resultatet var at han i stedet mødte op med
+// NUL. knud_r_flink: "Er der en der kan teste om de kan gemme et ikke fuldt hold til et
+// løb? Jeg kan umiddelbart ikke." · egomadsen: "skal lave en sniger for overhovedet at
+// gemme den slags".
+//
+// Backendens egen validateSelection har tilladt delvis trup siden 28/6 (ejer-beslutning,
+// afløser #1906) og afviser KUN over feltstørrelsen. Klienten var altså strengere end
+// serveren uden grund.
+//
+// Nudgen fra #1906 bevares: kan holdet fylde, men har valgt for få, er det stadig en
+// fejl — det er dét `selection_wrong_size` betyder ("holdet KAN fylde", se ovenfor).
+// Kan holdet IKKE fylde, er en delvis trup den eneste lovlige handling, og så blokeres
+// den ikke længere.
 export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, availableCount, requireFull = true }) {
   const errors = [];
   const required = size.max;
-  if (requireFull) {
-    if (Number.isFinite(availableCount) && availableCount < required) {
-      errors.push("selection_insufficient_riders");
-    } else if (riderIds.length !== required) {
-      errors.push("selection_wrong_size");
-    }
-  } else if (riderIds.length > required) {
+  const kanFyldeTruppen = !Number.isFinite(availableCount) || availableCount >= required;
+  if (riderIds.length > required) {
+    errors.push("selection_wrong_size");
+  } else if (requireFull && kanFyldeTruppen && riderIds.length !== required) {
     errors.push("selection_wrong_size");
   }
   if (!captainId) errors.push("selection_captain_required");

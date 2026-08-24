@@ -136,6 +136,39 @@ test("raceBindingWindow: delvist-backfillet løb blander IKKE game_day + CET-ord
   assert.ok(w.end - w.start < 2, `vindue ${w.start}..${w.end} må ikke spænde sæson-langt`);
 });
 
+// #4173: binding er en MÆNGDE af faktiske løbsdage, ikke et spænd. Tour des Émirats-
+// casen fra prod: 7 etaper på løbsdag 8-13 med én pausedag — spænd-semantik låste
+// rytteren på pausedagen og blokerede 7 andre løb.
+test("raceBindingWindow (#4173): days = de faktiske løbsdage, sorteret og unik", () => {
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-08-25T09:00:00Z", game_day: 10 },
+    { scheduled_at: "2026-08-25T12:00:00Z", game_day: 8 },
+    { scheduled_at: "2026-08-26T09:00:00Z", game_day: 8 }, // dubleret dag-nøgle
+    { scheduled_at: "2026-08-26T12:00:00Z", game_day: 13 },
+  ]);
+  assert.deepEqual(w.days, [8, 10, 13]);
+  assert.equal(w.start, 8);
+  assert.equal(w.end, 13);
+});
+
+test("windowsOverlap (#4173): etapeløb med pause binder IKKE pausedagen (Émirats-fixet)", () => {
+  const emirats = raceBindingWindow(
+    [8, 9, 10, 12, 13].map((d) => ({ scheduled_at: "2026-08-25T09:00:00Z", game_day: d }))
+  );
+  const endagsIPausen = raceBindingWindow([{ scheduled_at: "2026-08-28T09:00:00Z", game_day: 11 }]);
+  assert.equal(windowsOverlap(emirats, endagsIPausen), false, "dag 11 er en pause — rytteren er fri");
+  // ...men en FAKTISK delt løbsdag binder stadig.
+  const endagsPaaDag12 = raceBindingWindow([{ scheduled_at: "2026-08-29T09:00:00Z", game_day: 12 }]);
+  assert.equal(windowsOverlap(emirats, endagsPaaDag12), true, "dag 12 køres faktisk — bundet");
+});
+
+test("windowsOverlap (#4173): spænd-fallback når days mangler (manuelt byggede vinduer)", () => {
+  assert.equal(windowsOverlap({ start: 4, end: 8 }, { start: 5, end: 5 }), true);
+  const medDays = raceBindingWindow([{ scheduled_at: "2026-08-25T09:00:00Z", game_day: 5 }]);
+  // Én side uden days → spænd-semantik (defensivt: gamle payloads/tests må ikke ændre dom).
+  assert.equal(windowsOverlap({ start: 4, end: 8 }, medDays), true);
+});
+
 test("windowsOverlap: deler tidspunkt → true; adskilte → false", () => {
   const a = { start: 100, end: 200 };
   assert.equal(windowsOverlap(a, { start: 150, end: 300 }), true);  // overlap
@@ -331,7 +364,7 @@ test("loadTeamBindingContext: monument med normal game_day binder direkte via ra
   const ctx = await loadTeamBindingContext({
     supabase, race: { id: "race-monument", season_id: "s1", league_division_id: 1 }, teamId: "team-1",
   });
-  assert.deepEqual(ctx.thisWindow, { start: 4, end: 4 }, "monumentets EGEN game_day, ingen afledning");
+  assert.deepEqual(ctx.thisWindow, { start: 4, end: 4, days: [4] }, "monumentets EGEN game_day, ingen afledning");
   const bound = findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces });
   assert.deepEqual(bound, ["r1"], "r1 er bundet: race-a har en etape på monumentets løbsdag (gd 4)");
 });
@@ -355,7 +388,7 @@ test("loadTeamBindingContext: monument på EKSKLUSIV game_day → ingen konflikt
   const ctx = await loadTeamBindingContext({
     supabase, race: { id: "race-monument", season_id: "s1", league_division_id: 1 }, teamId: "team-1",
   });
-  assert.deepEqual(ctx.thisWindow, { start: 5, end: 5 });
+  assert.deepEqual(ctx.thisWindow, { start: 5, end: 5, days: [5] });
   assert.deepEqual(findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }), [],
     "r1 er FRI: monumentets løbsdag (gd 5) er eksklusiv og race-a slutter gd 4");
 });
@@ -630,6 +663,18 @@ test("isConstraintNotDeferrable: genkender Postgres' 42809 (SET CONSTRAINTS paa 
   );
 });
 
+// #4173: invarianten flyttede fra EXCLUDE på race_entries.binding_span (23P01) til
+// UNIQUE på race_entry_days (23505) — et SPÆND bandt også de dage et løb holdt pause.
+test("isRiderDayInvariantViolation: genkender den nye dag-constraint (23505 + navn)", () => {
+  assert.equal(
+    isRiderDayInvariantViolation({
+      code: "23505",
+      message: 'duplicate key value violates unique constraint "no_rider_double_booking_day"',
+    }),
+    true
+  );
+});
+
 test("isConstraintNotDeferrable: genkender via besked uden .code", () => {
   assert.equal(
     isConstraintNotDeferrable({ message: 'constraint "no_rider_double_booking" is not deferrable' }),
@@ -650,4 +695,31 @@ test("42809-beskeden matcher OGSAA isRiderDayInvariantViolation — derfor tjekk
   const err = { code: "42809", message: 'constraint "no_rider_double_booking" is not deferrable' };
   assert.equal(isRiderDayInvariantViolation(err), true);
   assert.equal(isConstraintNotDeferrable(err), true);
+});
+
+test("isRiderDayInvariantViolation: 23505 fra ANDRE unique-constraints er IKKE et dagbrud", () => {
+  // race_entries' egen PK og uq_race_entries_*-rolleslottene (CYCLINGZONE-2D) giver
+  // samme SQLSTATE. Et almindeligt dublet-insert må ikke rapporteres som "rytteren er
+  // bundet" — så ville generatoren give brugeren en forkert navngiven fejl.
+  for (const navn of ["race_entries_pkey", "uq_race_entries_captain", "uq_race_entries_sprint_captain"]) {
+    assert.equal(
+      isRiderDayInvariantViolation({
+        code: "23505",
+        message: `duplicate key value violates unique constraint "${navn}"`,
+      }),
+      false,
+      `${navn} må ikke tælle som dagbrud`
+    );
+  }
+});
+
+test("isRiderDayInvariantViolation: navne-fallback dækker begge constraint-navne", () => {
+  assert.equal(
+    isRiderDayInvariantViolation({ message: 'violates unique constraint "no_rider_double_booking_day"' }),
+    true
+  );
+  assert.equal(
+    isRiderDayInvariantViolation({ message: 'violates exclusion constraint "no_rider_double_booking"' }),
+    true
+  );
 });

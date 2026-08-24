@@ -191,8 +191,10 @@ function bindingState() {
   state.race_stage_schedule = [
     { race_id: "race1", scheduled_at: "2026-07-27T18:00:00Z", game_day: 0 },
     { race_id: "race1", scheduled_at: "2026-07-30T18:00:00Z", game_day: 6 },
-    { race_id: "raceOld", scheduled_at: "2026-07-01T13:00:00Z", game_day: 4 },
-    { race_id: "raceSame", scheduled_at: "2026-07-28T13:00:00Z", game_day: 4 },
+    // #4173: binding er dag-MÆNGDE — race1 kører faktisk dag {0, 6}, så kun en delt
+    // FAKTISK dag (6) binder. Dag 4 ligger i race1's pause og ville være fri.
+    { race_id: "raceOld", scheduled_at: "2026-07-01T13:00:00Z", game_day: 6 },
+    { race_id: "raceSame", scheduled_at: "2026-07-28T13:00:00Z", game_day: 6 },
   ];
   state.race_withdrawals = [];
   return state;
@@ -200,8 +202,8 @@ function bindingState() {
 
 test("#3076: entry fra FORRIGE sæson udelukker ikke rytteren fra autofill", async () => {
   const state = bindingState();
-  // t1-r0 er holdets topscorer og er udtaget til et løb i sæson s0 på game_day 4,
-  // som overlapper race1's game_day-span 0-6 i det (sæson-relative) nøgle-rum.
+  // t1-r0 er holdets topscorer og er udtaget til et løb i sæson s0 på game_day 6,
+  // som deler race1's faktiske løbsdag 6 i det (sæson-relative) nøgle-rum.
   state.race_entries = [
     { race_id: "raceOld", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
   ];

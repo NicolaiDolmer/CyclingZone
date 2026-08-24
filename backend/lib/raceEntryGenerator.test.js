@@ -1441,11 +1441,12 @@ test("CYCLINGZONE-44: residual auto-række i fuld-manuel løb dobbeltbooker IKKE
     { id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
     { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
   ];
-  // Prod-formen: A = game_day 10-13, B = game_day 11-14 → vinduerne overlapper.
+  // Prod-formen: A og B DELER en faktisk løbsdag (13). #4173: spænd-overlap alene
+  // (fx {10,13} vs {11,14}) binder ikke længere — kun delte faktiske dage gør.
   state.race_stage_schedule = [
     { race_id: "A", stage_number: 1, scheduled_at: "2026-08-06T16:00:00Z", game_day: 10 },
     { race_id: "A", stage_number: 2, scheduled_at: "2026-08-09T16:00:00Z", game_day: 13 },
-    { race_id: "B", stage_number: 1, scheduled_at: "2026-08-07T10:00:00Z", game_day: 11 },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-08-09T10:00:00Z", game_day: 13 },
     { race_id: "B", stage_number: 2, scheduled_at: "2026-08-10T10:00:00Z", game_day: 14 },
   ];
   state.race_stage_profiles = [

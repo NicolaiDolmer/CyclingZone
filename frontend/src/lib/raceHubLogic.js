@@ -17,10 +17,17 @@ export function computeColumnStatus({ selected, target, withdrawn, max }) {
 // (Auto-gem-når-fuld + canFieldFullLineup udgået 28/6: board'et bruger nu eksplicit Gem +
 // tillader delvis trup. Se RaceHubBoard.saveAll + backend validateSelection.)
 
-// To in-game-dag-vinduer overlapper hvis de deler mindst én game-dag (inkl. ender).
-// Spejler backend raceBinding.windowsOverlap. Defensiv mod null (intet vindue → ingen binding).
+// To in-game-dag-vinduer overlapper hvis de deler mindst én FAKTISK løbsdag (#4173):
+// bærer begge sider en days-array (backendens raceBindingWindow serialiserer den), skæres
+// mængderne — et etapeløb med pause binder IKKE pausedagene. Ellers spænd-fallback (inkl.
+// ender). Spejler backend raceBinding.windowsOverlap. Defensiv mod null (intet vindue →
+// ingen binding).
 export function windowsOverlap(a, b) {
   if (!a || !b) return false;
+  if (Array.isArray(a.days) && Array.isArray(b.days)) {
+    const bDays = new Set(b.days);
+    return a.days.some((d) => bDays.has(d));
+  }
   return a.start <= b.end && b.start <= a.end;
 }
 

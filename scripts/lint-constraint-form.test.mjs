@@ -159,3 +159,36 @@ test('hver bevogtet constraint forklarer hvad formen garanterer', () => {
     }
   }
 });
+
+// -------------------------------------------------------- supersededBy (#4173)
+
+test('drop uden retur er lovligt naar SAMME fil tilfoejer den registrerede afloeser', () => {
+  const sql = `
+    alter table public.race_entry_days
+      add constraint no_rider_double_booking_day
+      unique (rider_id, season_id, game_day)
+      deferrable initially immediate;
+    alter table public.race_entries drop constraint if exists no_rider_double_booking;
+  `;
+  assert.deepEqual(scanSource(sql, 'flyt.sql'), []);
+});
+
+test('drop uden retur OG uden afloeser i filen er stadig et fund', () => {
+  const sql = `alter table public.race_entries drop constraint if exists no_rider_double_booking;`;
+  const findings = scanSource(sql, 'nedtag.sql');
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'dropped-not-restored');
+});
+
+test('afloeseren form-tjekkes selv: uden DEFERRABLE er den form-drift', () => {
+  const sql = `
+    alter table public.race_entry_days
+      add constraint no_rider_double_booking_day
+      unique (rider_id, season_id, game_day);
+    alter table public.race_entries drop constraint if exists no_rider_double_booking;
+  `;
+  const findings = scanSource(sql, 'flyt-uden-form.sql');
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'form-drift');
+  assert.equal(findings[0].constraint, 'no_rider_double_booking_day');
+});

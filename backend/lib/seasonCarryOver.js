@@ -97,6 +97,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "Manuelle udtagelser (is_auto_filled=false) på den kommende sæsons løb bliver ugyldige hvis holdet flytter pulje. Ikke sæson-scoped i skemaet (kun via races.season_id), derfor eksplicit her.",
   },
   {
+    table: "race_entry_days",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#4173: ren afledning af race_entries × race_stage_schedule — én række pr. (løb, rytter, løbsdag), vedligeholdt af de fire binding-triggere. Manageren konfigurerer intet her. Rækkerne følger deres udtagelse via FK (race_id, rider_id) ON DELETE CASCADE og genopbygges af race_entry_days_rebuild() når kalenderen, afmeldingen eller løbets status ændrer sig. season_id ligger på rækken fordi game_day er sæson-RELATIV (#3070) — uden den ville en ny sæsons løbsdag 4 kollidere med den forriges — ikke fordi tabellen bærer manager-opsætning.",
+  },
+  {
     table: "sponsor_contracts",
     disposition: CARRY_OVER_DISPOSITION.RESET_BY_DESIGN,
     why: "Sponsorvalget er et bevidst valg pr. sæson. Motoren har allerede en eksplicit fase (expireAndRenewContracts): matchende pending-kontrakt aktiveres, ellers default-fornyes med 'safe' (#2914). Ingen carry-over her — ændring af default-varianten er en økonomi-beslutning, ikke en carry-over-bug.",
