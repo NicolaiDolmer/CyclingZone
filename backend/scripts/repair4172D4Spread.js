@@ -11,14 +11,21 @@
 //
 // MÅLTILSTAND (ejer-godkendt 24/8):
 //   • 46 rigtige D4-hold snake-fordeles efter global_rank_mv over puljerne 8-15 → 5/5/6/6/6/6/6/6
-//   • hver pulje fyldes til POOL_TARGET_SIZE=24 med AI efter den frosne #1688-politik
 //   • S3's auto-filled D4-entries slettes og genopbygges af raceEntryGeneratorSweep
 //   • de managere der skifter pulje får in-app besked (samme type som normal reseed)
+//   • AI-fyld til POOL_TARGET_SIZE=24 (#1688-politik) — VALGFRIT, se --skip-ai
+//
+// --skip-ai (ejer-beslutning 24/8): AI-fyldet ville føde 3.456 nye ryttere (144 hold
+// à 24) timer før S3's første løbsdag, og generalprøven viste at netop den fase er
+// den skrøbelige. Uden AI-fyld skabes INGEN nye ryttere: puljerne får kun de ægte
+// hold, løbene bliver afviklelige, og transition-gaten 20/9 er reddet. Felterne er
+// tynde (6 hold pr. pulje mod S2's 8-10) indtil AI-fyldet køres separat bagefter.
 //
 // KØR ALDRIG --live mod prod uden ejer-godkendelse — ejeren skal have set dry-run-outputtet
 // og godkendt PRÆCIS dette skridt (hard rule: ejer ser live-tilstand før destruktive ops).
-//   node scripts/repair4172D4Spread.js            → dry-run: live state + plan, rører intet
-//   node scripts/repair4172D4Spread.js --live     → backup + flyt + AI-fyld + entry-reset + beskeder
+//   node scripts/repair4172D4Spread.js                     → dry-run, rører intet
+//   node scripts/repair4172D4Spread.js --live --skip-ai    → flyt + entry-reset + beskeder
+//   node scripts/repair4172D4Spread.js --live              → ovenstående + AI-fyld til 24
 //
 // SCHEDULER-FLAG: slås FRA under kørslen og genoprettes BEVIDST IKKE af scriptet.
 // At gen-tænde et live spiller-vendt system er ejer-only (memory: no-autonomous-resume).
@@ -84,7 +91,7 @@ async function loadState(supabase) {
   return { season, pools, poolIds, inD4, rankByTeam };
 }
 
-export async function repairD4Spread({ supabase, dryRun = true } = {}) {
+export async function repairD4Spread({ supabase, dryRun = true, skipAi = false } = {}) {
   const { season, pools, poolIds, inD4, rankByTeam } = await loadState(supabase);
   const labelByPool = new Map(pools.map((p) => [p.id, p.label]));
 
@@ -146,12 +153,15 @@ export async function repairD4Spread({ supabase, dryRun = true } = {}) {
     racesTouched: new Set(entries.map((e) => e.race_id)).size,
   };
 
-  log(`\n── #4172 · D4-spredning · sæson ${season.number} ──`);
-  log(`rigtige hold: ${plan.realTeams} · AI nu: ${plan.aiTeamsNow} · AI der oprettes: ${plan.aiToCreate}`);
+  log(`\n── #4172 · D4-spredning · sæson ${season.number}${skipAi ? " · UDEN AI-fyld (--skip-ai)" : ""} ──`);
+  log(`rigtige hold: ${plan.realTeams} · AI nu: ${plan.aiTeamsNow} · AI der oprettes: ${skipAi ? "0 (sprunget over)" : plan.aiToCreate}`);
   log(`hold der flytter pulje: ${plan.moves}`);
   log(`auto-entries der ryddes: ${plan.entriesToClear} i ${plan.racesTouched} løb\n`);
   for (const p of perPool) {
-    log(`  ${String(p.label).padEnd(18)} rigtige ${String(p.real).padStart(2)} · AI ${String(p.aiNow).padStart(2)} → ${String(p.aiTarget).padStart(2)}`);
+    const aiCol = skipAi
+      ? `AI ${String(p.aiNow).padStart(2)} (uændret)`
+      : `AI ${String(p.aiNow).padStart(2)} → ${String(p.aiTarget).padStart(2)}`;
+    log(`  ${String(p.label).padEnd(18)} rigtige ${String(p.real).padStart(2)} · ${aiCol} · felt ${String(p.real + (skipAi ? p.aiNow : p.aiTarget)).padStart(2)} hold`);
   }
 
   if (dryRun) {
@@ -196,41 +206,18 @@ export async function repairD4Spread({ supabase, dryRun = true } = {}) {
   }
   log(`ryddede ${cleared} auto-entries i ${byRace.size} løb`);
 
-  // ── 2. flyt hold ──
+  // ── 2. flyt hold + besked i SAMME iteration ──
+  //
+  // Beskeden sendes lige efter holdets egen flytning, ikke i et separat loop til
+  // sidst. Årsag: `moves` udledes af "nuværende pulje != mål-pulje", så ved en
+  // gentagelse efter et midtvejs-nedbrud ville listen være tom, og de allerede
+  // flyttede hold ville aldrig få besked. Koblet sådan her er et flyttet hold
+  // altid også et notificeret hold.
+  let notified = 0;
   for (const m of moves) {
     const { error } = await supabase.from("teams")
       .update({ league_division_id: m.toPoolId }).eq("id", m.teamId);
     if (error) throw new Error(`flyt hold ${m.teamId}: ${error.message}`);
-  }
-  log(`flyttede ${moves.length} hold`);
-
-  // ── 3. AI-fyld pr. pulje (idempotent, frossen #1688-politik) ──
-  //
-  // Generalprøven 24/8 døde tavst midt i denne fase (9 af 146 hold, ingen DB-fejl).
-  // reconcileAiTeamsForPool er idempotent, så en fejl i ÉN pulje må ikke afbryde de
-  // øvrige: vi fanger pr. pulje, logger den fulde fejl med stack, og fortsætter.
-  // Kørslen kan derefter gentages og tager kun det der mangler.
-  const aiReport = [];
-  const aiErrors = [];
-  for (const pid of poolIds) {
-    const label = labelByPool.get(pid);
-    try {
-      const res = await reconcileAiTeamsForPool({ supabase, poolId: pid });
-      aiReport.push({ poolId: pid, label, created: res.created, removed: res.removed });
-      log(`  ${String(label).padEnd(18)} AI +${res.created} / -${res.removed}`);
-    } catch (err) {
-      aiErrors.push({ poolId: pid, label, error: err?.message || String(err) });
-      log(`  ${String(label).padEnd(18)} ❌ ${err?.message || err}`);
-      if (err?.stack) log(String(err.stack).split("\n").slice(0, 6).map((l) => `      ${l}`).join("\n"));
-    }
-  }
-  if (aiErrors.length) {
-    log(`\n⚠️  ${aiErrors.length}/${poolIds.length} puljer fejlede i AI-fyld — kør scriptet igen (idempotent).`);
-  }
-
-  // ── 4. in-app besked til dem der skiftede pulje ──
-  let notified = 0;
-  for (const m of moves) {
     try {
       await notifyTeamOwner({
         supabase, teamId: m.teamId, type: "board_update",
@@ -244,7 +231,37 @@ export async function repairD4Spread({ supabase, dryRun = true } = {}) {
       console.error(`  ❌ besked fejlede for hold ${m.teamId}: ${err?.message || err}`);
     }
   }
-  log(`sendte ${notified}/${moves.length} beskeder`);
+  log(`flyttede ${moves.length} hold · sendte ${notified} beskeder`);
+
+  // ── 3. AI-fyld pr. pulje (idempotent, frossen #1688-politik) ──
+  //
+  // Generalprøven 24/8 døde tavst midt i denne fase (9 af 146 hold, ingen DB-fejl).
+  // reconcileAiTeamsForPool er idempotent, så en fejl i ÉN pulje må ikke afbryde de
+  // øvrige: vi fanger pr. pulje, logger den fulde fejl med stack, og fortsætter.
+  // Kørslen kan derefter gentages og tager kun det der mangler.
+  const aiReport = [];
+  const aiErrors = [];
+  if (skipAi) {
+    log(`\n⏭  AI-fyld SPRUNGET OVER (--skip-ai).`);
+    log(`    Puljerne har kun de ægte hold. Løbene KAN afvikles, men felterne er`);
+    log(`    tynde indtil AI-fyldet køres separat (kør scriptet igen uden --skip-ai).`);
+  } else {
+    for (const pid of poolIds) {
+      const label = labelByPool.get(pid);
+      try {
+        const res = await reconcileAiTeamsForPool({ supabase, poolId: pid });
+        aiReport.push({ poolId: pid, label, created: res.created, removed: res.removed });
+        log(`  ${String(label).padEnd(18)} AI +${res.created} / -${res.removed}`);
+      } catch (err) {
+        aiErrors.push({ poolId: pid, label, error: err?.message || String(err) });
+        log(`  ${String(label).padEnd(18)} ❌ ${err?.message || err}`);
+        if (err?.stack) log(String(err.stack).split("\n").slice(0, 6).map((l) => `      ${l}`).join("\n"));
+      }
+    }
+    if (aiErrors.length) {
+      log(`\n⚠️  ${aiErrors.length}/${poolIds.length} puljer fejlede i AI-fyld — kør scriptet igen (idempotent).`);
+    }
+  }
 
   log(`\n⚠️  scheduler-flag står 'off'. Gen-tænding er ejer-only — kør selv:`);
   log(`    update app_config set value = '${flagBefore ?? "on"}' where key = '${STAGE_SCHEDULER_FLAG_KEY}';\n`);
@@ -254,8 +271,9 @@ export async function repairD4Spread({ supabase, dryRun = true } = {}) {
 
 if (process.argv[1] && process.argv[1].endsWith("repair4172D4Spread.js")) {
   const dryRun = !process.argv.includes("--live");
+  const skipAi = process.argv.includes("--skip-ai");
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-  repairD4Spread({ supabase, dryRun })
-    .then((r) => log("færdig:", JSON.stringify({ dryRun: !!r.dryRun, moves: r.moves, aiToCreate: r.aiToCreate })))
+  repairD4Spread({ supabase, dryRun, skipAi })
+    .then((r) => log("færdig:", JSON.stringify({ dryRun: !!r.dryRun, skipAi, moves: r.moves, aiToCreate: skipAi ? 0 : r.aiToCreate })))
     .catch((err) => { console.error("FEJL:", err.message); process.exit(1); });
 }
