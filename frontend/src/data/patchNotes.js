@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Havde du ikke nok ledige ryttere til et fuldt startfelt, blev gemningen blokeret helt, så du endte med slet ikke at stille op. Nu kan du gemme de ryttere du har, og assistenten fylder resten op ved løbstid. Vælger du færre end et fuldt hold når du faktisk har rytterne, bliver du stadig bedt om at fylde op."
         },
         "refs": [4175]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Riders are only locked on days they actually race",
+          "body": "A stage race with a rest day used to lock its riders on the rest day too, blocking them from every other race in that window. Riders are now bound only on the days they actually ride, so a rest day means a free rider. Race day labels in the calendar were also repaired, and no pool exceeds its limit of simultaneous races."
+        },
+        "da": {
+          "title": "Ryttere låses kun på de dage de faktisk kører",
+          "body": "Et etapeløb med en hviledag låste før også rytterne på hviledagen, så de var blokeret fra alle andre løb i perioden. Ryttere bindes nu kun på de dage de faktisk kører, så en hviledag betyder en ledig rytter. Løbsdags-mærkerne i kalenderen er også repareret, og ingen pulje overskrider sit loft for samtidige løb."
+        },
+        "refs": [4173, 4161, 4162]
       }
     ]
   },
