@@ -7,7 +7,7 @@
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
 - **GJORT 23-24/8:** cutover S2→S3 · kalender live · #4155 game_day PROD · #4154+#3818-sanktioner · #4163 løst+applied. Tal og detaljer: NOW.md + issue-tråde.
-- **GJORT MAN 24/8:** kalender/binding-kæden (PR #4169 + #4173-migration + akse-reparation: cap-brud 29→0, dubletter 163→0, binding = dag-mængde) · motor verificeret `on` · #4170 lukket · patch note 7.183. **REST:** 🔴 **#4183** nye tilmeldinger har ingen puljeplads (hold 25 i D3-A, audit RØD på alle PR'er) · **#4159 guard-rest** (DB-trigger + d4PoolCount + condeferrable) · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
+- **GJORT MAN 24/8:** kalender/binding-kæden (PR #4169 + #4173-migration + akse-reparation: cap-brud 29→0, dubletter 163→0, binding = dag-mængde) · motor verificeret `on` · #4170 lukket · patch note 7.183. **OGSÅ GJORT 24/8 aften:** #4183-swap (AI-hold ud, Carolus → D4-A, audit GRØN, alle puljer 24) · PR #4182 merged (transition-gate-hul + inEmptyPool-dedup). **REST:** monument-eksklusivitet (ejer: "byg") · **#4159 guard-rest** (DB-trigger + d4PoolCount + condeferrable + dagligt CI-job) · #4162/#4164 hjælpetekster · #4183-rest (systemisk placering) · kalibrering → **ejer-gate på v4-flip** · #3720 · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
 ## A · Cutover 23/8 — GENNEMFØRT
