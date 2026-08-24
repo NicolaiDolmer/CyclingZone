@@ -2,7 +2,13 @@
 
 > **Ejeren poster selv.** Udkastet er til copy-paste. EN først, DA under, som al spiller-vendt copy.
 >
-> **Migrationen ER kørt og verificeret 24/8 kl. 21:20** (auto-migrate run 32778685181, alle fem post-verify-trin grønne). Kalenderen i opslaget er den der står i prod nu. Klar til at poste.
+> ## ⛔ MÅ IKKE POSTES
+>
+> **Byttet blev rullet tilbage 24/8 kl. 22:05.** Migrationen kørte 21:20, men brød #4075: alle fire flyttede Monumenter delte løbsdag med 1-2 andre løb, så ikke alle ryttere kunne stille op. Den daglige kalender-invariant-audit fangede det, og ejeren besluttede at rulle tilbage.
+>
+> **Kalenderen i prod er nu den oprindelige.** Ingen løb har skiftet dato. Datotabellerne herunder beskriver en kalender der ikke findes.
+>
+> Udkastet er bevaret, fordi teksten kan genbruges når byttet laves rigtigt sammen med GT-komprimeringen (#4176). **Ret datoerne mod prod før du poster.**
 
 **Kanal:** #announcements (eller den kanal ugenoter plejer at ligge i)
 
