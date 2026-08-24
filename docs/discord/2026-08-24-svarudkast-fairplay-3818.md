@@ -1,6 +1,21 @@
-# Svarudkast fair play #3818, 24/8 2026
+# Spillerbeskeder fair play #3818, 24/8 2026
 
-Til ejeren: post selv. Ingen af disse er sendt.
+## Status pr. 24/8 kl. 10:00 CPH
+
+| Modtager | Kanal | Status |
+|---|---|---|
+| Nickstar Rockets | in-game `admin_notice` | **SENDT** 24/8 kl. 10:00, ejer-godkendt tekst |
+| The Wheelbarrels | ingen | **IKKE sendt.** Se advarslen nedenfor |
+
+Den afsendte tekst til Nickstar er ikke udkastet i afsnit 2 herunder, men den kortere
+in-game-version i afsnit 3. Udkastene i afsnit 1 og 2 er bevaret som Discord-alternativer,
+hvis sagen skal genbesøges.
+
+> **⚠️ The Wheelbarrels kan ikke nås.** Kontoen er auth-banned
+> (`banned_until = 2126-01-01`) og frosset. Den har `language = en` og **ingen Discord**,
+> så in-game var eneste kanal, og ban'et lukkede den. Ejeren besluttede 24/8 ingen e-mail.
+> Spilleren er dermed låst ude uden nogen forklaring. Udkast 1 nedenfor ligger klar,
+> hvis han henvender sig, eller hvis beslutningen ændres.
 
 Bemærk: der findes endnu ingen offentliggjort fair play-regel (#3139 er åben), så ingen af
 udkastene henviser til en regel, spilleren kunne have læst. De beskriver hvad der er sket,
@@ -27,9 +42,8 @@ I am not assuming bad intent, and I would rather hear your side than guess at it
 is a reason for these transfers that I am not seeing, tell me and I will take it into
 account. Either way I will unfreeze you once we have talked.
 
-For context: Cycling Zone has no rule about transfer prices yet, and that is on me. I am
-adding a price cap so this cannot happen again, and the fair play rules will be published
-so nobody has to guess where the line is.
+For context: Cycling Zone has no rule about transfer prices yet, and that is on me. The
+fair play rules will be published so nobody has to guess where the line is.
 
 ### DA
 
@@ -49,8 +63,7 @@ gætte mig til den. Hvis der er en grund til handlerne, som jeg ikke kan se, så
 jeg tager den med. Uanset hvad låser jeg dig op igen, når vi har talt sammen.
 
 Til baggrund: Cycling Zone har endnu ingen regel om handelspriser, og det er min brøler.
-Jeg indfører et prisloft, så det ikke kan gentage sig, og fair play-reglerne bliver
-offentliggjort, så ingen skal gætte, hvor grænsen går.
+Fair play-reglerne bliver offentliggjort, så ingen skal gætte, hvor grænsen går.
 
 ---
 
@@ -73,8 +86,8 @@ standing while other managers compete on their own results.
 
 If I have misread the situation, tell me and I will listen.
 
-A price cap is going in so this stops being possible, and the fair play rules will be
-published so the line is clear in advance rather than after the fact.
+The fair play rules will be published so the line is clear in advance rather than after
+the fact.
 
 ### DA
 
@@ -93,5 +106,37 @@ jeg ikke lade stå, mens andre managere konkurrerer på deres egne resultater.
 
 Har jeg misforstået situationen, så sig til, og jeg lytter.
 
-Der kommer et prisloft, så det ikke længere er muligt, og fair play-reglerne bliver
-offentliggjort, så grænsen er klar på forhånd i stedet for bagefter.
+Fair play-reglerne bliver offentliggjort, så grænsen er klar på forhånd i stedet for
+bagefter.
+
+---
+
+## 3. Afsendt in-game-besked til Nickstar Rockets (EN)
+
+Sendt 24/8 kl. 10:00:58 CPH som `notifications.type = admin_notice`,
+`metadata.source = ownerSession.fairplay3818.warning`. Rå tekst uden i18n-koder;
+`NotificationsPage.jsx:188` falder tilbage til `title`/`message`.
+
+Spilleren har `language = en`, så beskeden er kun sendt på engelsk.
+
+**Titel:** Fair play: transfers with The Wheelbarrels reversed
+
+Between 10 and 24 August, The Wheelbarrels paid your team 463,200 for riders with a
+combined market value of 55,421. That money has been returned to them. Your balance is
+now 97,124. Your riders and your squad are untouched, and your team is not frozen.
+
+There is no published rule against overpaying yet, so I am not treating this as a rule you
+broke. But a one directional flow of that size hands a Division 1 team a budget advantage
+that did not come from racing, and I cannot let that stand while everyone else competes on
+their results. Please treat this as a formal warning.
+
+If you think I have misread this, get in touch and I will listen.
+
+---
+
+## Præcedens-note
+
+Der fandtes ingen tidligere fair play-besked i spillet, da denne blev skrevet.
+`admin_notice` var brugt fem gange, ingen af dem sanktionsrelateret, og der lå ingen
+sanktions-udkast i `docs/discord/`. Denne besked er den første af sin slags og bør bruges
+som skabelon næste gang, så tonen bliver konsistent.
