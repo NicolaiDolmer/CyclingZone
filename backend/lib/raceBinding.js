@@ -44,10 +44,16 @@ function bindingDayKey(row, useGameDay) {
 }
 
 // Binding-vindue: en rytter kan kun køre ét løb pr. IN-GAME løbsdag (#1823 + kalender-
-// rebuild). Returnerer { start, end } i in-game-dag-nøgler (heltal). Et endagsløb optager
-// én in-game-dag (start===end); et etapeløb fra første til sidste etapes in-game-dag. To
-// FORSKELLIGE løb konflikter iff in-game-dag-spans overlapper (windowsOverlap er unit-
-// agnostisk). Et løbs egne etaper binder aldrig mod hinanden (samme race_id). Tom/ugyldig → null.
+// rebuild). Returnerer { start, end, days } i in-game-dag-nøgler (heltal). Et endagsløb
+// optager én in-game-dag (start===end); et etapeløb sine FAKTISKE etape-dage.
+//
+// #4173: `days` (sorteret, unik array) er MÆNGDEN af løbsdage — to FORSKELLIGE løb
+// konflikter iff de deler mindst én faktisk løbsdag (windowsOverlap skærer mængderne).
+// Et spænd bandt også de dage et løb holdt pause (Tour des Émirats: 7 etaper på løbsdag
+// 8-13 med én pause låste 7 andre løb). start/end BEVARES til display/sortering og som
+// fallback for vinduer bygget uden days. Array (ikke Set) så vinduet kan serialiseres
+// JSON-rent til frontenden (raceHubLogic.js spejler overlap-testen).
+// Et løbs egne etaper binder aldrig mod hinanden (samme race_id). Tom/ugyldig → null.
 //
 // ÉT nøgle-rum pr. løb: game_day kun hvis ALLE rækker har den (ellers ville et delvist-
 // backfillet løb blande relative game_day-værdier (fx 5) med absolutte CET-ordinaler (~20k)
@@ -59,7 +65,8 @@ export function raceBindingWindow(scheduleRows) {
     .map((row) => bindingDayKey(row, useGameDay))
     .filter((o) => Number.isFinite(o));
   if (!keys.length) return null;
-  return { start: Math.min(...keys), end: Math.max(...keys) };
+  const days = [...new Set(keys)].sort((a, b) => a - b);
+  return { start: days[0], end: days[days.length - 1], days };
 }
 
 // Display-span for et løbs in-game løbsdage (#1984/#2195): { start, end } i game_day-heltal,
@@ -122,10 +129,16 @@ export function isConstraintNotDeferrable(error) {
   return /is not deferrable/i.test(String(error.message || ""));
 }
 
-// To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
-// to løb der starter samtidig overlapper). Defensiv mod null.
+// To vinduer overlapper hvis de deler mindst én FAKTISK løbsdag (#4173) — bærer begge
+// sider en days-mængde, skæres den (et løb med pause binder IKKE pausedagene). Ellers
+// spænd-fallback: deler mindst ét tidspunkt, inklusiv ender (vinduer bygget manuelt/
+// legacy uden days, fx raceTimeWindow-display eller gamle payloads). Defensiv mod null.
 export function windowsOverlap(a, b) {
   if (!a || !b) return false;
+  if (Array.isArray(a.days) && Array.isArray(b.days)) {
+    const bDays = new Set(b.days);
+    return a.days.some((d) => bDays.has(d));
+  }
   return a.start <= b.end && b.start <= a.end;
 }
 

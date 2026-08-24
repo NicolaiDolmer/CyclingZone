@@ -136,6 +136,39 @@ test("raceBindingWindow: delvist-backfillet løb blander IKKE game_day + CET-ord
   assert.ok(w.end - w.start < 2, `vindue ${w.start}..${w.end} må ikke spænde sæson-langt`);
 });
 
+// #4173: binding er en MÆNGDE af faktiske løbsdage, ikke et spænd. Tour des Émirats-
+// casen fra prod: 7 etaper på løbsdag 8-13 med én pausedag — spænd-semantik låste
+// rytteren på pausedagen og blokerede 7 andre løb.
+test("raceBindingWindow (#4173): days = de faktiske løbsdage, sorteret og unik", () => {
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-08-25T09:00:00Z", game_day: 10 },
+    { scheduled_at: "2026-08-25T12:00:00Z", game_day: 8 },
+    { scheduled_at: "2026-08-26T09:00:00Z", game_day: 8 }, // dubleret dag-nøgle
+    { scheduled_at: "2026-08-26T12:00:00Z", game_day: 13 },
+  ]);
+  assert.deepEqual(w.days, [8, 10, 13]);
+  assert.equal(w.start, 8);
+  assert.equal(w.end, 13);
+});
+
+test("windowsOverlap (#4173): etapeløb med pause binder IKKE pausedagen (Émirats-fixet)", () => {
+  const emirats = raceBindingWindow(
+    [8, 9, 10, 12, 13].map((d) => ({ scheduled_at: "2026-08-25T09:00:00Z", game_day: d }))
+  );
+  const endagsIPausen = raceBindingWindow([{ scheduled_at: "2026-08-28T09:00:00Z", game_day: 11 }]);
+  assert.equal(windowsOverlap(emirats, endagsIPausen), false, "dag 11 er en pause — rytteren er fri");
+  // ...men en FAKTISK delt løbsdag binder stadig.
+  const endagsPaaDag12 = raceBindingWindow([{ scheduled_at: "2026-08-29T09:00:00Z", game_day: 12 }]);
+  assert.equal(windowsOverlap(emirats, endagsPaaDag12), true, "dag 12 køres faktisk — bundet");
+});
+
+test("windowsOverlap (#4173): spænd-fallback når days mangler (manuelt byggede vinduer)", () => {
+  assert.equal(windowsOverlap({ start: 4, end: 8 }, { start: 5, end: 5 }), true);
+  const medDays = raceBindingWindow([{ scheduled_at: "2026-08-25T09:00:00Z", game_day: 5 }]);
+  // Én side uden days → spænd-semantik (defensivt: gamle payloads/tests må ikke ændre dom).
+  assert.equal(windowsOverlap({ start: 4, end: 8 }, medDays), true);
+});
+
 test("windowsOverlap: deler tidspunkt → true; adskilte → false", () => {
   const a = { start: 100, end: 200 };
   assert.equal(windowsOverlap(a, { start: 150, end: 300 }), true);  // overlap
@@ -331,7 +364,7 @@ test("loadTeamBindingContext: monument med normal game_day binder direkte via ra
   const ctx = await loadTeamBindingContext({
     supabase, race: { id: "race-monument", season_id: "s1", league_division_id: 1 }, teamId: "team-1",
   });
-  assert.deepEqual(ctx.thisWindow, { start: 4, end: 4 }, "monumentets EGEN game_day, ingen afledning");
+  assert.deepEqual(ctx.thisWindow, { start: 4, end: 4, days: [4] }, "monumentets EGEN game_day, ingen afledning");
   const bound = findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces });
   assert.deepEqual(bound, ["r1"], "r1 er bundet: race-a har en etape på monumentets løbsdag (gd 4)");
 });
@@ -355,7 +388,7 @@ test("loadTeamBindingContext: monument på EKSKLUSIV game_day → ingen konflikt
   const ctx = await loadTeamBindingContext({
     supabase, race: { id: "race-monument", season_id: "s1", league_division_id: 1 }, teamId: "team-1",
   });
-  assert.deepEqual(ctx.thisWindow, { start: 5, end: 5 });
+  assert.deepEqual(ctx.thisWindow, { start: 5, end: 5, days: [5] });
   assert.deepEqual(findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }), [],
     "r1 er FRI: monumentets løbsdag (gd 5) er eksklusiv og race-a slutter gd 4");
 });

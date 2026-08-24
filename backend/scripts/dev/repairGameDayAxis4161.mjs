@@ -73,33 +73,38 @@ async function selectAll(table, select, apply, orderBy = "id") {
   return out;
 }
 
-// DB'ens invariant er GROVERE end "samme in-game-dag": race_entries.binding_span er
-// int4range(min(game_day), max(game_day), '[]') pr. (race, hold), og
-// no_rider_double_booking afviser to entries for samme rytter hvis RANGES overlapper —
-// ogsaa selv om loebene aldrig deler en enkelt dag. Konflikter skal derfor taelles paa
-// spaend, ikke paa mae­ngder. (Foerste udgave af dette script talte mae­ngder og
-// undervurderede derfor risikoen; apply faldt paa constraint'en. #4161/#4163.)
-function spanOf(gameDays) {
+// DB'ens invariant er efter #4173 en MAENGDE, ikke et spaend: race_entry_days har én
+// raekke pr. (loeb, rytter, loebsdag) og UNIQUE (rider_id, season_id, game_day).
+// To loeb konflikter for en rytter iff de deler mindst én FAKTISK loebsdag — pausedage
+// binder ikke. Konflikter taelles derfor paa dag-maengder. (Historik: foerste udgave
+// talte maengder MENS DB'en haandhaevede spaend og undervurderede derfor risikoen —
+// apply faldt paa constraint'en (#4161/#4163). Anden udgave talte spaend. Nu er DB'ens
+// haandhaevelse selv dag-baseret (#4173), saa maengde-maaling er igen den korrekte —
+// FORUDSAT at 2026-08-24-4173-migrationen er applyet FOER dette script koerer.)
+function daySetOf(gameDays) {
   const xs = [...gameDays].filter((g) => Number.isFinite(g) && g < 100000); // 100000+ = monument-sentinel, ikke-bindende
-  if (!xs.length) return null;
-  return [Math.min(...xs), Math.max(...xs)];
+  return xs.length ? new Set(xs) : null;
 }
-function overlapper(a, b) { return a && b && a[0] <= b[1] && b[0] <= a[1]; }
+function delerDag(a, b) {
+  if (!a || !b) return false;
+  for (const d of a) if (b.has(d)) return true;
+  return false;
+}
 
 function taelKonflikter(entries, gameDaysByRace) {
-  const spanByRace = new Map();
-  for (const [raceId, gds] of gameDaysByRace.entries()) spanByRace.set(raceId, spanOf(gds));
+  const daysByRace = new Map();
+  for (const [raceId, gds] of gameDaysByRace.entries()) daysByRace.set(raceId, daySetOf(gds));
   const perRytter = new Map();
   for (const e of entries) {
-    const sp = spanByRace.get(e.race_id);
-    if (!sp) continue;
+    const ds = daysByRace.get(e.race_id);
+    if (!ds) continue;
     if (!perRytter.has(e.rider_id)) perRytter.set(e.rider_id, []);
-    perRytter.get(e.rider_id).push(sp);
+    perRytter.get(e.rider_id).push(ds);
   }
   let n = 0;
-  for (const spans of perRytter.values()) {
-    for (let i = 0; i < spans.length; i++) {
-      for (let j = i + 1; j < spans.length; j++) if (overlapper(spans[i], spans[j])) n++;
+  for (const sets of perRytter.values()) {
+    for (let i = 0; i < sets.length; i++) {
+      for (let j = i + 1; j < sets.length; j++) if (delerDag(sets[i], sets[j])) n++;
     }
   }
   return n;
@@ -218,7 +223,7 @@ async function main() {
   }
   const konfliktFoer = taelKonflikter(mineEntries, foerNoegler);
   const konfliktEfter = taelKonflikter(mineEntries, efterNoegler);
-  console.log(`  Udtagelser: ${mineEntries.length} · rytter-par med OVERLAPPENDE binding_span (DB-semantik): før ${konfliktFoer}, efter ${konfliktEfter}` +
+  console.log(`  Udtagelser: ${mineEntries.length} · rytter-par der DELER en faktisk løbsdag (DB-semantik efter #4173): før ${konfliktFoer}, efter ${konfliktEfter}` +
     (konfliktEfter <= konfliktFoer ? "  [OK — slutttilstanden strammer ikke]" : "  [BLOKERER — constraint ville afvise]"));
 
   if (SQL_OUT) {
@@ -234,16 +239,17 @@ async function main() {
       `-- og race_entries roeres ikke.`,
       `--`,
       `-- Constraint'en udskydes til COMMIT: sluttilstanden er verificeret konfliktfri`,
-      `-- (0 overlappende binding_span-par baade foer og efter), men de transiente spaend`,
-      `-- under omskrivningen er det ikke. Kraever DEFERRABLE - gen-etableret i #4163/PR #4167.`,
+      `-- (dag-maengde-semantik, #4173), men de transiente tilstande under omskrivningen`,
+      `-- er det ikke. Kraever DEFERRABLE (no_rider_double_booking_day er det).`,
+      `-- FORUDSAETNING: 2026-08-24-4173-migrationen er applyet (constrainten findes).`,
       `--`,
-      `-- Refs #4161 #4162 #4163 #4155`,
+      `-- Refs #4161 #4162 #4163 #4155 #4173`,
       `-- ÉT statement (DO-blok), saa den koerer atomart uanset om klienten selv`,
       `-- pakker den ind i en transaktion. SET CONSTRAINTS er transaktions-scoped og`,
       `-- gaelder derfor resten af blokken.`,
       `do $repair$`,
       `begin`,
-      `  set constraints no_rider_double_booking deferred;`,
+      `  set constraints no_rider_double_booking_day deferred;`,
       ``,
       `  update race_stage_schedule rss`,
       `     set game_day = v.gd`,

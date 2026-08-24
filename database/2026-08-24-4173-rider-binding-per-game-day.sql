@@ -386,4 +386,85 @@ begin
 end;
 $batch$;
 
+-- ── 8. replace_race_selection: guard på dag-MÆNGDEN, ikke spændet ────────────────
+-- RPC'ens egen forhåndskontrol (#2256, under advisory-lås) brugte stadig den naive
+-- {min,max}(game_day)-overlaps-test (w_start <= v_end AND v_start <= w_end) — præcis
+-- den interval-semantik constrainten er holdt op med at bruge. Uden dette skridt kan
+-- manageren stadig ikke gemme en rytter i et løb der ligger i et andet løbs PAUSE:
+-- DB'en tillader det nu, men RPC'en afviser først med 'selection_rider_bound'.
+--
+-- Guarden læser race_entry_days direkte: rækkerne findes KUN for bindende udtagelser
+-- (ikke completed, ikke afmeldt, fuldt backfillet, ikke monument-sentinel), så
+-- withdrawal-/status-filtrene fra den gamle LATERAL bortfalder — de er allerede
+-- indlejret i tabellens vedligehold (race_entry_days_rebuild). Sæson-scope (#3076) og
+-- team-scope bevares. v_full-gaten bevares også: et delvist backfillet løb binder i
+-- app-lagets CET-legacy-rum og skal ikke dag-matches mod game_day-rummet her.
+CREATE OR REPLACE FUNCTION public.replace_race_selection(p_team_id uuid, p_race_id uuid, p_rider_ids uuid[], p_roles text[])
+ RETURNS void
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_catalog'
+AS $function$
+DECLARE
+  v_len int := coalesce(array_length(p_rider_ids, 1), 0);
+  v_start int;
+  v_end int;
+  v_full boolean;
+  v_season_id uuid;
+BEGIN
+  IF coalesce(array_length(p_roles, 1), 0) <> v_len THEN
+    RAISE EXCEPTION 'selection_invalid_body' USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- Serialisér mod samtidige skriv til samme hold (samme nøgle som move_race_entry).
+  PERFORM pg_advisory_xact_lock(hashtext(p_team_id::text));
+
+  -- Binding-guard UNDER lås (#2256): afvis hvis en af de gemte ryttere allerede er
+  -- committet i et ANDET, ikke-afmeldt løb der DELER en faktisk løbsdag med dette løbs
+  -- schedule (#4173 — mængde, ikke spænd). #3076: kun løb i SAMME sæson kan binde.
+  IF v_len > 0 THEN
+    SELECT r.season_id INTO v_season_id
+      FROM races r WHERE r.id = p_race_id;
+
+    SELECT min(s.game_day), max(s.game_day), count(*) = count(s.game_day)
+      INTO v_start, v_end, v_full
+      FROM race_stage_schedule s
+     WHERE s.race_id = p_race_id;
+
+    -- Kun når DETTE løb er fuldt game_day-backfillet (ellers legacy-fallback i app-laget).
+    IF v_full AND v_start IS NOT NULL THEN
+      IF EXISTS (
+        SELECT 1
+          FROM race_entry_days d
+          JOIN race_stage_schedule s
+            ON s.race_id = p_race_id
+           AND s.game_day = d.game_day
+         WHERE d.team_id = p_team_id
+           AND d.race_id <> p_race_id
+           AND d.season_id IS NOT DISTINCT FROM v_season_id
+           AND d.rider_id = ANY (p_rider_ids)
+      ) THEN
+        RAISE EXCEPTION 'selection_rider_bound' USING ERRCODE = 'check_violation';
+      END IF;
+    END IF;
+  END IF;
+
+  -- Erstat holdets entries for løbet atomisk (hele delete+insert i denne transaktion).
+  DELETE FROM race_entries WHERE race_id = p_race_id AND team_id = p_team_id;
+
+  IF v_len > 0 THEN
+    INSERT INTO race_entries (race_id, rider_id, team_id, race_role, is_auto_filled)
+    SELECT p_race_id, p_rider_ids[i], p_team_id, p_roles[i], false
+    FROM generate_series(1, v_len) AS g(i);
+  END IF;
+END;
+$function$;
+
+COMMENT ON FUNCTION public.replace_race_selection(uuid, uuid, uuid[], text[]) IS
+  'Atomisk erstat holdets race_entries for ét løb (#2173) + binding-guard under '
+  'advisory-lås (#2256), sæson-scopet (#3076). #4173: guarden matcher på DELTE '
+  'faktiske løbsdage via race_entry_days (mængde-semantik) — et etapeløb med pause '
+  'binder ikke pausedagene. Afviser selection_rider_bound hvis en gemt rytter '
+  'allerede er committet i et andet ikke-afmeldt løb på en delt løbsdag. '
+  'is_auto_filled=false (manuel udtagelse).';
+
 commit;
