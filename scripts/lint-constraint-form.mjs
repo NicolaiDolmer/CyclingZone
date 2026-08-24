@@ -70,11 +70,30 @@ export const CRITICAL_CONSTRAINTS = {
         fix: 'deferrable initially immediate',
       },
     ],
+    // #4173: invarianten FLYTTEDE til race_entry_days. Et drop uden retur er
+    // lovligt hvis SAMME fil tilføjer afløseren (som selv står i dette register
+    // og dermed form-tjekkes). Alle andre drops uden retur er stadig fund.
+    supersededBy: 'no_rider_double_booking_day',
     why:
       'apply_race_entry_unit_batch (#3934) kører `set constraints no_rider_double_booking deferred` ' +
       'for at gøre en rytter-swap mellem to overlappende løb lovlig som helhed. Uden DEFERRABLE ' +
       'svarer Postgres 42809, hele batchen afvises, og entry-generator-sweepen ryger i det ' +
       'insert-før-delete-dødvande #3934 fjernede (prod-incident #4163, 24/8-2026).',
+  },
+  no_rider_double_booking_day: {
+    table: 'race_entry_days',
+    require: [
+      {
+        name: 'DEFERRABLE',
+        test: (s) => /\bDEFERRABLE\b/i.test(s),
+        fix: 'deferrable initially immediate',
+      },
+    ],
+    why:
+      '#4173-afløseren for no_rider_double_booking (dag-mængde i stedet for spænd). ' +
+      'apply_race_entry_unit_batch udskyder nu DENNE constraint (`set constraints ' +
+      'no_rider_double_booking_day deferred`) — uden DEFERRABLE svarer Postgres 42809 ' +
+      'og sweepen rammer præcis samme dødvande som #4163.',
   },
 };
 
@@ -137,6 +156,9 @@ export function scanSource(source, file = '<inline>') {
   const findings = [];
   const statements = splitStatements(source);
 
+  // Første pas: tæl adds/drops pr. bevogtet constraint, så supersededBy-reglen
+  // nedenfor kan slå afløserens tilstedeværelse op på tværs af navnene.
+  const tally = {};
   for (const name of CONSTRAINT_NAMES) {
     const spec = CRITICAL_CONSTRAINTS[name];
     let added = 0;
@@ -168,17 +190,32 @@ export function scanSource(source, file = '<inline>') {
       }
     }
 
-    if (dropped > 0 && added === 0) {
-      findings.push({
-        file,
-        line: firstDropLine,
-        constraint: name,
-        kind: 'dropped-not-restored',
-        message:
-          `${name} droppes i denne fil, men gives aldrig tilbage. Et kritisk DB-værn må ` +
-          `aldrig efterlades nedtaget af en migration.\n      Hvorfor: ${spec.why}`,
-      });
-    }
+    tally[name] = { added, dropped, firstDropLine };
+  }
+
+  for (const name of CONSTRAINT_NAMES) {
+    const spec = CRITICAL_CONSTRAINTS[name];
+    const { added, dropped, firstDropLine } = tally[name];
+    if (dropped === 0 || added > 0) continue;
+
+    // #4173: et drop uden retur er lovligt når SAMME fil etablerer den
+    // registrerede afløser — invarianten er flyttet, ikke nedtaget. Afløserens
+    // egen form tjekkes af dens eget registry-entry ovenfor.
+    if (spec.supersededBy && (tally[spec.supersededBy]?.added ?? 0) > 0) continue;
+
+    findings.push({
+      file,
+      line: firstDropLine,
+      constraint: name,
+      kind: 'dropped-not-restored',
+      message:
+        `${name} droppes i denne fil, men gives aldrig tilbage. Et kritisk DB-værn må ` +
+        `aldrig efterlades nedtaget af en migration.` +
+        (spec.supersededBy
+          ? ` (Lovlig undtagelse: samme fil tilføjer afløseren ${spec.supersededBy}.)`
+          : '') +
+        `\n      Hvorfor: ${spec.why}`,
+    });
   }
 
   return findings;
