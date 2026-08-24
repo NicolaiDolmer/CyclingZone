@@ -55,9 +55,8 @@ let cachedModel = null;
 function defaultModel() {
   if (!cachedModel) {
     // #2594 cutover: v4-modellen (karriere-NPV) er nu den live værdi-model.
-    // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
-    // flippes ved cutover (se riderValuationTypeDampening.js) — ingen
-    // adfærdsændring her i dag.
+    // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
+    // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
     cachedModel = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "riderValuationModelV4.json"), "utf8")));
   }
   return cachedModel;

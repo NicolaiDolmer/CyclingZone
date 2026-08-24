@@ -1,7 +1,7 @@
 // #4000 — type-dæmpning i værdiformlen: n-vægtet regularisering af
 // fit.offset[type] (V4-modellens karriere-NPV-koefficienter,
-// riderValuationModelV4.json). SLÅET FRA (TYPE_DAMPENING_ENABLED = false) —
-// ændrer INTET i live adfærd før et eksplicit, ejer-godkendt flip.
+// riderValuationModelV4.json). Tilstanden bor i TYPE_DAMPENING_ENABLED
+// nedenfor — læs flaget, ikke denne kommentar (flippet 23/8 med ejer-go).
 //
 // Baggrund (issue #4000, ejer-godkendt 20/8): offset[type] er fittet på meget
 // skæve stikprøvestørrelser (puncheur n=19 ⇒ 7,9x multiplikator, gc n=34 ⇒

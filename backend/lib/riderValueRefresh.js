@@ -125,9 +125,8 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const youthBl = youthBaseline !== undefined
     ? youthBaseline
     : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
-  // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
-  // flippes ved cutover (se riderValuationTypeDampening.js) — ingen
-  // adfærdsændring her i dag.
+  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
+  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
   const m = model || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
 
   // v4-alder forankres i den aktive sæson (samme ageForSeason som progression).

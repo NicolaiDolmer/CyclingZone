@@ -27,12 +27,14 @@
  */
 
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "./economyConstants.js";
+import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export async function assessTransitionReadiness({ supabase, fromSeasonId } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!fromSeasonId) throw new Error("fromSeasonId required");
 
-  const [windowRes, auctionsRes, racesRes, seasonRes] = await Promise.all([
+  const [windowRes, auctionsRes, racesRes, seasonRes, poolFilterRes] = await Promise.all([
     supabase
       .from("transfer_windows")
       .select("id, status, closed_at, final_whistle_sent_at, squad_enforcement_completed_at")
@@ -44,27 +46,37 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
       .from("auctions")
       .select("id", { count: "exact", head: true })
       .in("status", ["active", "extended"]),
-    supabase
+    // #3038-hul lukket 24/8: HEAD-tællingen så bort fra empty-pool-undtagelsen,
+    // så et løb i en pulje uden hold blokerede transitionen selvom season-end
+    // (assessSeasonEndBlockers) korrekt undtog det. Samme filter nu — og
+    // pagineringssikkert (mid-sæson kan uafviklede løb overstige 1000-cappen).
+    fetchAllRows(() => supabase
       .from("races")
-      .select("id", { count: "exact", head: true })
+      .select("id, league_division_id")
       .eq("season_id", fromSeasonId)
-      .neq("status", "completed"),
+      .neq("status", "completed")
+      .order("id", { ascending: true }))
+      .then((rows) => ({ data: rows, error: null }), (e) => ({ data: null, error: e })),
     supabase
       .from("seasons")
       .select("id, number, status")
       .eq("id", fromSeasonId)
       .maybeSingle(),
+    loadEmptyPoolFilter({ supabase })
+      .then((f) => ({ data: f, error: null }), (e) => ({ data: null, error: e })),
   ]);
 
   if (windowRes.error) throw new Error(`Kunne ikke læse transfervindue: ${windowRes.error.message}`);
   if (auctionsRes.error) throw new Error(`Kunne ikke tælle auktioner: ${auctionsRes.error.message}`);
-  if (racesRes.error) throw new Error(`Kunne ikke tælle løb: ${racesRes.error.message}`);
+  if (racesRes.error) throw new Error(`Kunne ikke tælle løb: ${racesRes.error.message || racesRes.error}`);
   if (seasonRes.error) throw new Error(`Kunne ikke læse sæson: ${seasonRes.error.message}`);
   if (!seasonRes.data) throw new Error(`Sæson ${fromSeasonId} findes ikke`);
+  if (poolFilterRes.error) throw new Error(`Kunne ikke læse puljer: ${poolFilterRes.error.message || poolFilterRes.error}`);
 
   const win = windowRes.data;
   const activeAuctions = auctionsRes.count || 0;
-  const unfinishedRaces = racesRes.count || 0;
+  const { inEmptyPool } = poolFilterRes.data;
+  const unfinishedRaces = (racesRes.data || []).filter((r) => !inEmptyPool(r)).length;
   const season = seasonRes.data;
   // #2361: for sæson 0 er der intet season-end-skridt at vente på (0→1-transitionen
   // kræver status='active' — den bliver aldrig 'completed' inden transition).
@@ -150,31 +162,23 @@ export async function assessSeasonEndBlockers({ supabase, seasonId } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId) throw new Error("seasonId required");
 
-  const { data: unfinished, error: racesError } = await supabase
-    .from("races")
-    .select("id, league_division_id")
-    .eq("season_id", seasonId)
-    .neq("status", "completed");
-  if (racesError) throw new Error(`Kunne ikke tælle uafviklede løb: ${racesError.message}`);
-
-  // #3038: samme "puljer uden hold"-diskriminator som stageScheduler.js
-  // (inEmptyPool). Fail-open ligesom scheduleren: en tom teams-tabel (mock/test-DB)
-  // deaktiverer filteret i stedet for at undtage alle løb.
-  const { data: teamPools, error: tpErr } = await supabase
-    .from("teams")
-    .select("league_division_id");
-  if (tpErr) throw new Error(`Kunne ikke læse puljer: ${tpErr.message}`);
-  const teamsPerPool = new Map();
-  for (const t of teamPools || []) {
-    if (t.league_division_id == null) continue;
-    teamsPerPool.set(t.league_division_id, (teamsPerPool.get(t.league_division_id) || 0) + 1);
+  // Pagineringssikker (#2974-mønstret): mid-sæson kan uafviklede løb overstige
+  // PostgREST's 1000-cap, og en trunkeret læsning ville tavst undertælle spærren.
+  let unfinished;
+  try {
+    unfinished = await fetchAllRows(() => supabase
+      .from("races")
+      .select("id, league_division_id")
+      .eq("season_id", seasonId)
+      .neq("status", "completed")
+      .order("id", { ascending: true }));
+  } catch (e) {
+    throw new Error(`Kunne ikke tælle uafviklede løb: ${e.message || e}`);
   }
-  const poolFilterActive = (teamPools || []).length > 0;
-  const inEmptyPool = (race) => (
-    poolFilterActive
-    && race.league_division_id != null
-    && !(teamsPerPool.get(race.league_division_id) > 0)
-  );
+
+  // #3038: fælles "puljer uden hold"-diskriminator (emptyPoolPolicy.js) — samme
+  // definition som stageScheduler.js og all_races_completed i transition-gaten.
+  const { inEmptyPool } = await loadEmptyPoolFilter({ supabase });
 
   const blockingRaces = (unfinished || []).filter((r) => !inEmptyPool(r));
   const unfinishedRaces = blockingRaces.length;

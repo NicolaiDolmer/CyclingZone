@@ -519,9 +519,8 @@ try {
 // GET /admin/rider-valuation-preview-v4, samme mønster som VALUATION_MODEL).
 let VALUATION_MODEL_V4 = null;
 try {
-  // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
-  // flippes ved cutover (se ../lib/riderValuationTypeDampening.js) — ingen
-  // adfærdsændring her i dag.
+  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
+  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
   VALUATION_MODEL_V4 = applyTypeDampening(JSON.parse(
     readFileSync(join(__dirname, "../lib/riderValuationModelV4.json"), "utf8")
   ));
