@@ -28,7 +28,7 @@ for (const seed of [1,2,3]) {
     const gd = byRace.get(r.pool_race_id).sort((a,b)=>a-b);
     for (let d = gd[0]; d <= gd[gd.length-1]; d++) { busy.add(d); if (isGt) gtBusy.add(d); }
   }
-  let free = 0, freeAll = 0; for (let d=lo; d<=hi; d++) { if (!busy.has(d) || gtBusy.has(d)) { if(!busy.has(d)||gtBusy.has(d)){} } }
+  let free = 0, freeAll = 0;
   for (let d=lo; d<=hi; d++) { const nonGtBusy = busy.has(d) && !gtBusy.has(d); if (!nonGtBusy) free++; if (!busy.has(d)) freeAll++; }
   console.log(`seed ${seed}: D1 loebsdage ${lo}..${hi} (${hi-lo+1}) | ikke-GT-etapeloeb ${nonGtCount} | monumenter ${monCount} | dage uden igangvaerende ikke-GT-etapeloeb: ${free} (${(100*free/(hi-lo+1)).toFixed(0)} %) | dage uden NOGET igangvaerende etapeloeb (GT medregnet): ${freeAll} (${(100*freeAll/(hi-lo+1)).toFixed(0)} %)`);
 }
