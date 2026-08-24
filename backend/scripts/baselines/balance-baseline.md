@@ -49,18 +49,18 @@ Udbruds-andel af bjergsejre: 1.3%
 
 | # | Rytter | Født-som | Afledt | Tid |
 |--:|---|---|---|---|
-| 1 | Ryan Dawson | gc | gc | +0:00 |
-| 2 | Jan Nowak | climber | climber | +6:56 |
-| 3 | Andrea Conti | gc | gc | +11:03 |
-| 4 | Emil Nyström | gc | climber | +11:48 |
-| 5 | Vojtěch Procházka | climber | climber | +12:47 |
-| 6 | Sergio Reyes | climber | climber | +13:14 |
-| 7 | Luca Riva | puncheur | climber | +13:48 |
-| 8 | Cody Pearce | tt | tt | +13:56 |
-| 9 | Gonzalo Bravo | climber | climber | +15:00 |
-| 10 | Théo Gauthier | climber | climber | +16:42 |
+| 1 | Keegan Fortin | gc | gc | +0:00 |
+| 2 | Stanisław Wróbel | climber | climber | +6:56 |
+| 3 | Diego Silvestri | gc | gc | +11:03 |
+| 4 | Magnus Mortensen | gc | climber | +11:48 |
+| 5 | Martin Marek | climber | climber | +12:47 |
+| 6 | Julián Escobar | climber | climber | +13:14 |
+| 7 | Giulio De Luca | puncheur | climber | +13:48 |
+| 8 | Callum Green | tt | tt | +13:56 |
+| 9 | Iván Gómez | climber | climber | +15:00 |
+| 10 | Fabien Berger | climber | climber | +16:42 |
 
-Trøjer: 🟢 Ryan Dawson (gc) · ⛰️ Jan Nowak (climber) · ⚪ Cody Pearce
+Trøjer: 🟢 Keegan Fortin (gc) · ⛰️ Stanisław Wróbel (climber) · ⚪ Callum Green
 
 ## Progression
 

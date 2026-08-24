@@ -286,70 +286,70 @@
       "gcTop10": [
         {
           "rank": 1,
-          "name": "Ryan Dawson",
+          "name": "Keegan Fortin",
           "bornAs": "gc",
           "derived": "gc",
           "time": "+0:00"
         },
         {
           "rank": 2,
-          "name": "Jan Nowak",
+          "name": "Stanisław Wróbel",
           "bornAs": "climber",
           "derived": "climber",
           "time": "+6:56"
         },
         {
           "rank": 3,
-          "name": "Andrea Conti",
+          "name": "Diego Silvestri",
           "bornAs": "gc",
           "derived": "gc",
           "time": "+11:03"
         },
         {
           "rank": 4,
-          "name": "Emil Nyström",
+          "name": "Magnus Mortensen",
           "bornAs": "gc",
           "derived": "climber",
           "time": "+11:48"
         },
         {
           "rank": 5,
-          "name": "Vojtěch Procházka",
+          "name": "Martin Marek",
           "bornAs": "climber",
           "derived": "climber",
           "time": "+12:47"
         },
         {
           "rank": 6,
-          "name": "Sergio Reyes",
+          "name": "Julián Escobar",
           "bornAs": "climber",
           "derived": "climber",
           "time": "+13:14"
         },
         {
           "rank": 7,
-          "name": "Luca Riva",
+          "name": "Giulio De Luca",
           "bornAs": "puncheur",
           "derived": "climber",
           "time": "+13:48"
         },
         {
           "rank": 8,
-          "name": "Cody Pearce",
+          "name": "Callum Green",
           "bornAs": "tt",
           "derived": "tt",
           "time": "+13:56"
         },
         {
           "rank": 9,
-          "name": "Gonzalo Bravo",
+          "name": "Iván Gómez",
           "bornAs": "climber",
           "derived": "climber",
           "time": "+15:00"
         },
         {
           "rank": 10,
-          "name": "Théo Gauthier",
+          "name": "Fabien Berger",
           "bornAs": "climber",
           "derived": "climber",
           "time": "+16:42"
@@ -358,19 +358,19 @@
       "jerseys": {
         "mountain": {
           "rank": 1,
-          "name": "Jan Nowak",
+          "name": "Stanisław Wróbel",
           "bornAs": "climber",
           "derived": "climber"
         },
         "points": {
           "rank": 1,
-          "name": "Ryan Dawson",
+          "name": "Keegan Fortin",
           "bornAs": "gc",
           "derived": "gc"
         },
         "young": {
           "rank": 1,
-          "name": "Cody Pearce",
+          "name": "Callum Green",
           "bornAs": "tt",
           "derived": "tt"
         }

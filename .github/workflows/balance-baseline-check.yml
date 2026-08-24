@@ -21,6 +21,9 @@ on:
       - "backend/lib/riderTypesBaseline.json"
       - "backend/lib/abilityDerivation.js"
       - "backend/lib/fictionalRiderGenerator.js"
+      # #4179: navnelisterne indgaar i snapshottet (rytternavne i GT-top10 og trojer),
+      # saa en ren navne-aendring driver baselinen uden at nogen job ser det.
+      - "backend/lib/fictionalRiderNames.js"
       - "backend/lib/raceStageProfileGenerator.js"
       - "backend/lib/raceSimulator.js"
       - "backend/lib/raceRunner.js"
