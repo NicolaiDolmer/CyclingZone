@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** (1) **#4183 ejer-beslutning** — ny spiller blev hold nr. 25 i D3-A; ALLE puljer er 24/24 fulde, nye tilmeldinger har ingen plads. (2) **#4180 race:gate utroværdig** — fejler på 6 af 30 tilfældige seeds. Blokerer #4178 (navne-pools, draft-PR #4179). (3) **PR #4186** (hjælpetekster #4162/#4164) afventer ejer-merge — player-facing tekst. (4) **#4159-rest:** DB-trigger-laget (relationel, ikke dato-formel). (5) **#3459:** ejer-valg på rest-fælden (rytter på Hvile der kører løb får nul udvikling — A behold / B gulv / C overskriv). Derefter: v4-afvigelser (#4132) · #3512 · kalibrering (#3719/#3720).
+> **🎯 Next action:** (1) **#4183 ejer-beslutning** — ny spiller blev hold nr. 25 i D3-A; ALLE puljer er 24/24 fulde, nye tilmeldinger har ingen plads. (2) **#4180 race:gate utroværdig** — fejler på 6 af 30 tilfældige seeds. Blokerer #4178 (navne-pools, draft-PR #4179). (3) **#4159-rest:** DB-trigger-laget (relationel, ikke dato-formel). (4) **#3459:** ejer-valg på rest-fælden (rytter på Hvile der kører løb får nul udvikling — A behold / B gulv / C overskriv). Derefter: v4-afvigelser (#4132) · #3512 · kalibrering (#3719/#3720).
 
 > **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-MÆNGDE (`race_entry_days`) · aksen repareret (cap-brud 29→0) · **monument = eksklusiv løbsdag** genoprettet i live S3 (107 rækker i D1, akse 75→80 løbsdage, monument-brud 5→0, ingen etape flyttede dato) · `game_day_start` resynket for 334 løb (gårsdagens halve reparation). Alle 4 kalender-invarianter grønne i `verify-invariants`. Reglen er nu gated på 3 niveauer + dagligt CI-job (`calendar-invariant-audit.yml`). PR #4185, patch note 7.184. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
