@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.187",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Leagues",
+        "en": {
+          "title": "New teams no longer land in a group that is already full",
+          "body": "Every group holds exactly 24 teams. A frozen team still holds its place, but the signup logic was not counting it, so two Division 3 groups looked like they had room when they did not. Three teams that signed up today were placed on top of a full group. The count is fixed, and the affected teams have been moved to a group with space. Nothing else about those teams changed."
+        },
+        "da": {
+          "title": "Nye hold lander ikke længere i en pulje der allerede er fuld",
+          "body": "Hver pulje rummer præcis 24 hold. Et frosset hold optager stadig sin plads, men tilmeldingen talte det ikke med, så to Division 3-puljer så ud til at have plads uden at have det. Tre hold der tilmeldte sig i dag blev placeret oveni en fuld pulje. Tællingen er rettet, og de berørte hold er flyttet til en pulje med plads. Intet andet på de hold er ændret."
+        },
+        "refs": [4183]
+      }
+    ]
+  },
+  {
     "version": "7.186",
     "date": "2026-08-24",
     "label": "Beta",
