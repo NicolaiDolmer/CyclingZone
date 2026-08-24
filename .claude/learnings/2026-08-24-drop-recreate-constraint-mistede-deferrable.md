@@ -52,6 +52,26 @@ dagen før S3's første løbsdag.
 - **Systemiske svigt skal navngives før deres symptomer.** Sweepen returnerer nu
   `constraint_not_deferrable` og lægger diagnosen først i `errors`.
 
+## Vagten der blev bygget
+
+Reglerne ovenfor er ikke efterladt som gode hensigter. `scripts/lint-constraint-form.mjs`
+håndhæver dem statisk over `database/*.sql` — i commit-hooken, i preflight og i CI:
+
+- Et `ADD CONSTRAINT` af en registreret constraint skal bære alle påkrævede klausuler.
+- En fil der DROPPER en registreret constraint skal give den tilbage i samme fil.
+- Registret (`CRITICAL_CONSTRAINTS`) kræver et `why` der siger hvad der går i stykker
+  uden klausulen, så den næste kan tage en informeret beslutning frem for at tilfredsstille
+  en lint.
+- Allerede-shippet historik parkeres i `REMEDIATED` med navnet på den migration der
+  reparerede den — samme "rewrite ikke historik, dokumentér den"-politik som
+  idempotens-vagtens whitelist.
+
+Testen der betyder noget: `ville have fanget #4155` kører vagten mod den ægte
+reparations-migration og bekræfter at den flages. En forward-guard der ikke beviseligt
+fanger den hændelse den blev født af, er en påstand — ikke en vagt.
+
+Regel + opskrifter: `docs/MIGRATIONS.md` § "Constraint form".
+
 ## Bredere: hører hjemme i #4159's transition-gate
 
 #4159 bygger allerede en blokerende gate ved sæsonskifte (`game_day`-mismatch = 0,

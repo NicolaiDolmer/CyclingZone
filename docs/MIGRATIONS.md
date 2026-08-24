@@ -129,3 +129,50 @@ Both run in CI (`migration-idempotency` job in `.github/workflows/ci.yml`); the
 guard also runs at commit time via `lint-staged` on staged `database/*.sql`.
 
 Refs [#401](https://github.com/NicolaiDolmer/CyclingZone/issues/401).
+
+---
+
+## Constraint form: recreate the FULL definition (#4163)
+
+Idempotency asks *"can this migration run again?"*. There is a second, orthogonal
+question a migration must answer: *"does it recreate the object in the **right
+form**?"*
+
+A migration that drops a constraint to rewrite data underneath it — a legitimate,
+common pattern — must give it back **exactly as it was**. Dropping
+`no_rider_double_booking` and re-adding it without `deferrable initially immediate`
+is not a cosmetic difference: the batch RPC `apply_race_entry_unit_batch` (#3934)
+opens with `set constraints … deferred`, and without deferrability Postgres answers
+`42809`. The entry-generator sweep then falls back to per-unit insert-before-delete
+and every rider swap between two overlapping races becomes a deterministic deadlock.
+
+That is exactly what happened on 24/8-2026 (#4163): the #4155 calendar repair
+recreated the constraint without the clause, and the sweep failed 116-140 units per
+tick in the hours before the season's first race day. Its post-verify asked
+`select conname from pg_constraint …` — existence, not form — and saw precisely what
+it asked for.
+
+**Rules**
+
+1. Before dropping, capture the definition: `select pg_get_constraintdef(oid) …`.
+   Compare it afterwards. Do not compare `conname`.
+2. Post-verify the **form**: for this constraint, `condeferrable = true`. Assert it
+   inside the same transaction so a half-restore rolls back.
+3. A migration may never leave a critical guard down: drop and re-add belong in the
+   same file.
+
+`scripts/lint-constraint-form.mjs` enforces 1 and 3 statically over `database/*.sql`
+(commit hook, preflight, and CI). Constraints whose form carries an operational
+guarantee are registered in `CRITICAL_CONSTRAINTS` with a `why` that says what
+breaks without the clause. Already-shipped files that predate the rule live in
+`REMEDIATED`, each naming the migration that repaired it — the same
+"don't rewrite history, document it" policy as the idempotency whitelist.
+
+```bash
+npm run lint:constraint-form        # run the guard over database/*.sql
+npm run test:lint-constraint-form   # unit tests, incl. proof it catches #4155
+```
+
+Refs [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163),
+[#4155](https://github.com/NicolaiDolmer/CyclingZone/issues/4155),
+[#3934](https://github.com/NicolaiDolmer/CyclingZone/issues/3934).

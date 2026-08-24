@@ -31,6 +31,8 @@
     "test:lint-sql": "node --test scripts/lint-sql-strings.test.mjs",
     "lint:migrations": "node scripts/lint-migration-idempotency.mjs",
     "test:lint-migrations": "node --test scripts/lint-migration-idempotency.test.mjs",
+    "lint:constraint-form": "node scripts/lint-constraint-form.mjs",
+    "test:lint-constraint-form": "node --test scripts/lint-constraint-form.test.mjs",
     "lint:ui-slop": "node scripts/lint-ui-slop.mjs",
     "test:lint-ui-slop": "node --test scripts/lint-ui-slop.test.mjs",
     "check:ui-slop-baseline": "node scripts/lint-ui-slop.mjs --update-baseline",

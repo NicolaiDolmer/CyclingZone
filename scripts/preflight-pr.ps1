@@ -56,6 +56,10 @@ try {
   node scripts/lint-schema-columns.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "schema-column-guard" }
 
+  Write-Host "== constraint-form-guard (drop/recreate der taber DEFERRABLE, #4163) ==" -ForegroundColor Cyan
+  node scripts/lint-constraint-form.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "constraint-form-guard" }
+
   Write-Host "== t2-container-guard (DataTable in a T1 max-w-4xl container, #3454) ==" -ForegroundColor Cyan
   node scripts/lint-t2-container-guard.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "t2-container-guard" }

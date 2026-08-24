@@ -190,6 +190,17 @@ jobs:
       - name: Run idempotency guard
         run: node scripts/lint-migration-idempotency.mjs
 
+      # #4163: samme familie, anden akse. Idempotens-vagten spoerger "kan denne
+      # migration koere igen?"; form-vagten spoerger "genskaber den objektet i
+      # den RIGTIGE form?". #4155 var idempotent OG forkert: den droppede
+      # no_rider_double_booking og gav den tilbage uden DEFERRABLE, hvilket satte
+      # entry-generator-sweepen i deterministisk doedvande timer foer S3-start.
+      - name: Test constraint-form guard
+        run: node --test scripts/lint-constraint-form.test.mjs
+
+      - name: Run constraint-form guard
+        run: node scripts/lint-constraint-form.mjs
+
   postgrest-cap-guard:
     runs-on: ubuntu-latest
     permissions:
