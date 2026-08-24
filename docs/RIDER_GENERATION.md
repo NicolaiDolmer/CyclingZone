@@ -35,7 +35,9 @@ Al generering er deterministisk: samme seed giver samme ryttere. Det er en hard 
 
 - Grund-seed: `LAUNCH_POPULATION.seed` i `fictionalLaunchPopulation.js`.
 - Per-hold: `deriveTeamSeed(baseSeed XOR hash("<poolId>:<ordinal>"))`. AI-hold bruger `baseSeed + 1688` for kernen og `baseSeed + 1688 + 7` for halen, så AI-trupper ikke spejler start-trupperne.
-- Ændrer du en navneliste, et tier-fraktion eller et stat-vindue, ændres hvilke ryttere en given seed producerer. Det er ufarligt for ryttere der allerede står i DB, men betyder at en re-generering ikke reproducerer den gamle population. Antag aldrig at en historisk seed kan genskabe historiske ryttere efter en listeændring.
+- **Navne og stats trækker fra ADSKILTE rng-understrømme** ([#4180](https://github.com/NicolaiDolmer/CyclingZone/issues/4180)). `makeUniqueName` bruger `makeRng(seed + 0x6a09e667)`, hovedstrømmen former alt andet. Konsekvens: at udvide, splitte eller omorganisere en navneliste ændrer **kun navne** — ikke én eneste rytters stats, krop, alder eller type. Verificeret med en forward-guard-test i `fictionalRiderGenerator.test.js`, som er kørt rød mod den gamle adfærd (211 af 400 ryttere flyttede sig dengang).
+- Ændrer du derimod et **tier-fraktion, et stat-vindue eller vægtene** i hovedstrømmen, ændres hvilke ryttere en given seed producerer. Det er ufarligt for ryttere der allerede står i DB, men betyder at en re-generering ikke reproducerer den gamle population.
+- Samme mønster findes for bi-typen (`secondaryRng`, [#3634](https://github.com/NicolaiDolmer/CyclingZone/issues/3634)). Reglen er generel: **et domæne der kan vedligeholdes uafhængigt, skal have sin egen understrøm**, ellers bliver vedligehold uforholdsmæssigt dyrt og enhver balance-diff blander to variable sammen.
 
 ## 2. Navne
 
