@@ -82,7 +82,9 @@ begin;
 set local statement_timeout = '5min';
 
 -- ---------------------------------------------------------------- 0. Planen
-create temporary table flyt_4203 (
+-- `if not exists` er formelt overflødigt (on commit drop → tabellen findes aldrig ved
+-- transaktionsstart), men idempotens-guarden (#401) kræver formen på AL CREATE TABLE.
+create temporary table if not exists flyt_4203 (
   fase       integer not null,          -- 1 = Monument ud, 2 = fyld-løb ind
   race_id    uuid primary key,
   navn       text    not null,
