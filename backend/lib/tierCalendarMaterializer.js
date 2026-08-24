@@ -34,13 +34,13 @@ export { TIER_CLASS_WHITELIST };
 
 const INSERT_BATCH = 500;
 
-// Tæthed pr. division (= "løbsdage kørt om dagen", ejer-låst). quota = density × realDays.
-export const TIER_DENSITY = Object.freeze({ 1: 5, 2: 4, 3: 3, 4: 2 });
-
-// Overlap-cap pr. division (ejer-låst 2026-06-28): max antal FORSKELLIGE løb der må binde en rytter
-// samtidig (= samtidige løb pr. in-game-dag). Div 1/2 = 3, Div 3/4 = 2. Adskilt fra tæthed: tætheden
-// er pacing (etaper/IRL-dag), cap'en er binding-tryk (forskellige løb/game-dag).
-export const TIER_OVERLAP_CAP = Object.freeze({ 1: 3, 2: 3, 3: 2, 4: 2 });
+// #4161: TIER_DENSITY + TIER_OVERLAP_CAP bor nu i calendarTierCaps.js, saa verifikations-
+// siden kan laese dem uden materializerens DB-/Sentry-afhaengigheder. Re-eksporteres her,
+// saa alle eksisterende importstier (regenSeason3Calendar, repair-scripts, scorecards)
+// virker uaendret. Vaerdierne er ejer-laaste - aendr dem i calendarTierCaps.js.
+// (import + re-export, ikke ren re-export: konstanterne bruges ogsaa lokalt herunder.)
+import { TIER_DENSITY, TIER_OVERLAP_CAP } from "./calendarTierCaps.js";
+export { TIER_DENSITY, TIER_OVERLAP_CAP };
 
 // Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
 // density, så en dag aldrig har flere etaper end slots.
@@ -167,6 +167,32 @@ export function detectCalendarViolations({
       violations.push(`tier ${tier}: race name "${name}" selected twice in the same tier (${namesSeenInTier.get(name)} + ${pl.id}) (#4075 within-tier dedup)`);
     } else {
       namesSeenInTier.set(name, pl.id);
+    }
+  }
+
+  // #4075/#4176 invariant 6: et MONUMENT har sin egen, EKSKLUSIVE løbsdag (ejer-låst 21/8)
+  // — ingen modløb på samme game_day, så alle ryttere kan stille op. Kalender-DATOEN deles
+  // fortsat: de øvrige løb ligger i datoens andre tidsslots. Pakkeren bygger reglen ind
+  // (layoutStream, B2), men indtil nu var det kun pakkerens egen hensigt: #4161-akse-
+  // reparationen udledte game_day af datoerne alene og klappede D1's fem monumenter sammen
+  // med naboløbene i live S3. Reglen gates nu på alle tre niveauer (CI, denne preflight,
+  // verify-invariants mod prod).
+  const monumentGameDays = new Map(); // game_day -> monument-id
+  const gameDayRaces = new Map();     // game_day -> Set(race_id)
+  for (const pl of placements) {
+    const cat = catalogById.get(pl.id) || {};
+    const raceClass = cat.race_class ?? pl.race_class ?? null;
+    for (const st of pl.stagesPlaced ?? []) {
+      if (!Number.isFinite(st.game_day)) continue;
+      if (!gameDayRaces.has(st.game_day)) gameDayRaces.set(st.game_day, new Set());
+      gameDayRaces.get(st.game_day).add(pl.id);
+      if (raceClass === "Monuments" && !monumentGameDays.has(st.game_day)) monumentGameDays.set(st.game_day, pl.id);
+    }
+  }
+  for (const [gameDay, monumentId] of monumentGameDays) {
+    const others = [...(gameDayRaces.get(gameDay) ?? [])].filter((id) => id !== monumentId);
+    if (others.length) {
+      violations.push(`tier ${tier}: monument ${monumentId} shares game_day ${gameDay} with ${others.join(", ")} — a monument owns its race day (#4075)`);
     }
   }
 

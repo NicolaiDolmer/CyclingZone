@@ -284,6 +284,10 @@ const SECTION_DEFS = [
       { id: "dayTypes", kind: "text" },
       { id: "focusAbilities", kind: "text" },
       { id: "trainToday", kind: "text" },
+      // #4164: a race replaces the day's session rather than adding to it, and
+      // it settles once per day no matter how many stages were ridden. Asked in
+      // #dansk-snak 24/8 and unanswerable from the page as it stood.
+      { id: "raceDays", kind: "text" },
       // #4066: wired in — what trains a rider with no focus set follows the
       // "Train today" action it applies to.
       { id: "smartDefault", kind: "text" },
@@ -355,6 +359,9 @@ const SECTION_DEFS = [
     blocks: [
       { id: "what", kind: "text" },
       { id: "seasonOverview", kind: "text" },
+      // #4162: a stage race finishing in fewer dates than it has stages reads
+      // like a broken calendar unless the two axes are explained once.
+      { id: "stagesPerDay", kind: "text" },
       { id: "suitability", kind: "text" },
       { id: "roles", kind: "text" },
       // #4066: wired in — the per-stage tactics board already had

@@ -19,6 +19,11 @@ function makeSupabase(tables = {}) {
       gt(c, v) { state.gtes.push([c, v]); return b; },
       in() { return b; },
       order() { return b; },
+      // fetchAllRows-forbrugere (emptyPoolPolicy.js): sidevis udsnit.
+      range(from, to) {
+        const rows = resolve(table, state);
+        return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+      },
       maybeSingle() {
         const rows = resolve(table, state);
         return Promise.resolve({ data: rows[0] ?? null, error: null });

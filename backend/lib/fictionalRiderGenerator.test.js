@@ -14,6 +14,7 @@ import {
   SECONDARY_SIGNATURE_WEIGHT,
 } from "./fictionalRiderGenerator.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
+import { NAME_CLUSTERS } from "./fictionalRiderNames.js";
 import { drawArchetypePair, DEFAULT_DISTRIBUTION, ARCHETYPE_TYPES } from "./archetypeDistribution.js";
 
 const REF_YEAR = 2026;
@@ -642,4 +643,56 @@ test("override bevarer kontrakten (stats i [50,85], pcm_id null)", () => {
       assert.ok(r[key] >= 50 && r[key] <= 85, `${key}=${r[key]} uden for [50,85]`);
     }
   }
+});
+
+// -- #4180: navne-RNG er adskilt fra stat-RNG --------------------------------
+//
+// Foer #4180 traak navnene fra hovedstroemmen, og antallet af traek afhang af
+// hvor mange navne-KOLLISIONER der opstod. Laengere lister -> faerre kollisioner
+// -> forskudt stroem -> hver eneste rytter fik andre stats. Denne test er
+// forward-guarden: en ren tilfoejelse til navnelisterne maa aendre navne og
+// INTET andet.
+test("#4180: udvidelse af navnelisterne aendrer navne, men ikke en eneste stat", () => {
+  const fingerprint = (r) => {
+    const { firstname: _firstname, lastname: _lastname, ...rest } = r;
+    return JSON.stringify(rest, Object.keys(rest).sort());
+  };
+  const run = () => generateFictionalRiders({ seed: 2026, count: 400, referenceYear: REF_YEAR }).riders;
+
+  const before = run();
+  const added = [];
+  try {
+    // Praecis den klasse af aendring #4178/#4179 laver: rene tilfoejelser til
+    // hvert cluster, ingen fjernelse eller omdoebning.
+    for (const key of Object.keys(NAME_CLUSTERS)) {
+      const cluster = NAME_CLUSTERS[key];
+      for (let i = 0; i < 10; i++) {
+        cluster.first.push(`Zzfirst${key}${i}`);
+        cluster.last.push(`Zzlast${key}${i}`);
+      }
+      added.push({ cluster, n: 10 });
+    }
+    const after = run();
+
+    assert.equal(after.length, before.length);
+    const statDiffs = before.filter((r, i) => fingerprint(r) !== fingerprint(after[i]));
+    assert.equal(
+      statDiffs.length, 0,
+      `${statDiffs.length} ryttere fik aendrede stats af en ren navne-tilfoejelse - navne-rng laekker ind i hovedstroemmen igen`,
+    );
+    // Sanity: testen ville vaere tom hvis navnene heller ikke aendrede sig.
+    const nameDiffs = before.filter((r, i) => r.firstname !== after[i].firstname || r.lastname !== after[i].lastname);
+    assert.ok(nameDiffs.length > 0, "navnene aendrede sig slet ikke - testen maaler ingenting");
+  } finally {
+    for (const { cluster, n } of added) {
+      cluster.first.length -= n;
+      cluster.last.length -= n;
+    }
+  }
+});
+
+test("#4180: navne-understroemmen aendrer ikke determinismen (samme seed -> samme output)", () => {
+  const a = generateFictionalRiders({ seed: 7, count: 200, referenceYear: REF_YEAR }).riders;
+  const b = generateFictionalRiders({ seed: 7, count: 200, referenceYear: REF_YEAR }).riders;
+  assert.deepEqual(a, b);
 });

@@ -67,6 +67,10 @@ const FIELD = parseInt(arg("field", "140"), 10);
 const GT_FIELD = parseInt(arg("gtField", "176"), 10);
 const REFERENCE_YEAR = 2026;
 const WRITE_HTML = !arg("no-html", false);
+// #4180: --metrics-json=<sti> skriver de MAALTE vaerdier (ikke kun bestaaet/fejlet)
+// maskinlaesbart, saa seed-variansen kan MAALES over mange seeds i stedet for at
+// blive gaettet. Rent output - forbruger ingen rng og aendrer ingen kode-gren.
+const METRICS_JSON_PATH = arg("metrics-json", null);
 // #1420: --mix=<preset> varierer rytter-blandingen (default = uændret population).
 // resolveMix kaster ved ukendt navn (fail fast med listen over gyldige presets).
 const MIX = arg("mix", "default");
@@ -1553,13 +1557,19 @@ if (ROUTES_MODE) {
     winnerShareTopQuartile(nonTechBatch, technicalComposite, technicalThreshold)
   );
 
-  routeBandRows = [
-    { key: "summitValleyGapRatio", value: summitValleyGapRatio, pass: summitValleyGapRatio >= 1.5, band: "≥1.50", fmt: (v) => v.toFixed(2) },
-    { key: "prologP90Gap", value: prologP90Gap, pass: prologP90Gap <= 60, band: "≤60s", fmt: (v) => `${v.toFixed(1)}s` },
-    { key: "ittDistanceGapRatio", value: ittDistanceGapRatio, pass: ittDistanceGapRatio >= 2, band: "≥2.00", fmt: (v) => v.toFixed(2) },
-    { key: "longDayEnduranceLift", value: longDayEnduranceLift, pass: longDayEnduranceLift > 3, band: ">+3pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
-    { key: "technicalFinaleLift", value: technicalFinaleLift, pass: technicalFinaleLift > 0, band: ">0pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
+  // #4180: min/max/exclusive er nu de NUMERISKE graenser, og pass afledes af dem,
+  // saa raceGate.js kan doemme paa AGGREGATET uden at genfortolke band-strengen.
+  const routeBandDefs = [
+    { key: "summitValleyGapRatio", value: summitValleyGapRatio, min: 1.5, band: "≥1.50", fmt: (v) => v.toFixed(2) },
+    { key: "prologP90Gap", value: prologP90Gap, max: 60, band: "≤60s", fmt: (v) => `${v.toFixed(1)}s` },
+    { key: "ittDistanceGapRatio", value: ittDistanceGapRatio, min: 2, band: "≥2.00", fmt: (v) => v.toFixed(2) },
+    { key: "longDayEnduranceLift", value: longDayEnduranceLift, min: 3, exclusive: true, band: ">+3pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
+    { key: "technicalFinaleLift", value: technicalFinaleLift, min: 0, exclusive: true, band: ">0pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
   ];
+  routeBandRows = routeBandDefs.map((r) => ({
+    ...r,
+    pass: (r.min == null || (r.exclusive ? r.value > r.min : r.value >= r.min)) && (r.max == null || r.value <= r.max),
+  }));
   routeBandFailures = routeBandRows.filter((r) => !r.pass);
 
   console.log(`\n${"─".repeat(80)}`);
@@ -1753,3 +1763,34 @@ ${stageBlocks}
 
 console.log(`\n${"─".repeat(80)}`);
 console.log(`Færdig. Read-only — intet skrevet til prod/DB. Exit-kontrakt: ${process.exitCode === 1 ? "❌ exit 1 (oracle-/bånd-brud)" : "✅ exit 0"}.\n`);
+
+
+// -- #4180: maskinlaesbart metrik-dump (--metrics-json) ------------------------
+// Skrives EFTER alle sektioner, saa det afspejler praecis dét koerslen rapporterede.
+// exitCode tages med, saa en harness kan skelne "baand brudt" fra "crash".
+if (METRICS_JSON_PATH) {
+  const payload = {
+    schema_version: 1,
+    seed: SEED,
+    params: { count: COUNT, races: RACES, field: FIELD, mix: MIX, condition: CONDITION_MODE, roles: ROLES_MODE, routes: ROUTES_MODE, v3: V3_MODE, population: POPULATION_MODE },
+    targets: Object.fromEntries(scorecard.map((s) => [s.terrain, { bornPct: s.bornPct, derivedPct: s.derivedPct, targetPct: s.targetPct, pass: s.pass }])),
+    liveness: Object.fromEntries(livenessResults.map((r) => [`${r.ability}:${r.terrain}:${r.mode}`, { value: r.rankGain, floor: floorFor(r.mode), pass: r.rankGain >= floorFor(r.mode) }])),
+    breakawayShare: Object.fromEntries(terrainResults.map((t) => [t.terrain, t.breakawayWinShare])),
+    dominance: Object.fromEntries(Object.entries(DOMINANCE_TARGETS).map(([k, band]) => [k, { value: dominanceMeasured[k] ?? null, min: band.min ?? null, max: band.max ?? null }])),
+    gini: seasonGini,
+    routeBands: Object.fromEntries(routeBandRows.map((r) => [r.key, { value: r.value, pass: r.pass, band: r.band, min: r.min ?? null, max: r.max ?? null, exclusive: !!r.exclusive }])),
+    failures: {
+      structural: structuralFailures,
+      targets: failedTargets.map((s) => s.terrain),
+      roles: rolesFailures,
+      liveness: livenessFailures,
+      breakaway: breakawayBandFailures,
+      dominance: dominanceFailures,
+      routeBands: routeBandFailures.map((r) => r.key),
+    },
+    exitCode: process.exitCode === 1 ? 1 : 0,
+  };
+  mkdirSync(dirname(METRICS_JSON_PATH), { recursive: true });
+  writeFileSync(METRICS_JSON_PATH, JSON.stringify(payload), "utf8");
+  console.log(`Metrik-JSON: ${METRICS_JSON_PATH}`);
+}

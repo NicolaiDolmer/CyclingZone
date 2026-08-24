@@ -53,8 +53,18 @@ test("draftBindingMap: binder rytter til de kolonner han er i kladden, med game-
 test("windowsOverlap: deler game-dag → true; forskellige game-dage → false", () => {
   assert.equal(windowsOverlap(W(4), W(4)), true);
   assert.equal(windowsOverlap(W(4), W(5)), false);
-  assert.equal(windowsOverlap({ start: 4, end: 8 }, W(5)), true); // etapeløb-span dækker gd5
+  assert.equal(windowsOverlap({ start: 4, end: 8 }, W(5)), true); // etapeløb-span dækker gd5 (fallback uden days)
   assert.equal(windowsOverlap(null, W(4)), false);
+});
+
+// #4173: bærer begge vinduer en days-array (backendens serialiserede dag-MÆNGDE),
+// binder kun FAKTISK delte løbsdage — et etapeløb med pause frigiver pausedagen.
+test("windowsOverlap (#4173): days-mængder skæres — pausedag binder ikke", () => {
+  const emirats = { start: 8, end: 13, days: [8, 9, 10, 12, 13] };
+  assert.equal(windowsOverlap(emirats, { start: 11, end: 11, days: [11] }), false, "dag 11 er pause");
+  assert.equal(windowsOverlap(emirats, { start: 12, end: 12, days: [12] }), true, "dag 12 køres");
+  // Én side uden days → spænd-fallback (gamle payloads må ikke ændre dom).
+  assert.equal(windowsOverlap(emirats, { start: 11, end: 11 }), true);
 });
 
 test("computeColumnStatus: full / understaffed / withdrawn", () => {

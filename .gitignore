@@ -110,3 +110,6 @@ backend/scripts/snapshots/
 # #3564 harness: lokale daterede prod-snapshots (committes aldrig)
 backend/scripts/dev/.snapshots-*/
 backend/scripts/dev/gates-matrix-3564.json
+
+# Lokal script-state for Discord-sweepen (#4172-sessionen)
+scripts/discord/.sweep-state.json

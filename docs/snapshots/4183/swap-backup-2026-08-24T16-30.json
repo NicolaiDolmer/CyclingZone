@@ -1,0 +1,2037 @@
+{
+ "tempo_team": {
+  "id": "2a28aa2c-d32e-4278-866a-722e161bd3d7",
+  "name": "Tempo Development",
+  "is_ai": true,
+  "balance": 500000,
+  "is_bank": false,
+  "user_id": null,
+  "division": 4,
+  "is_frozen": false,
+  "created_at": "2026-08-24T12:15:16.506893+00:00",
+  "ai_source_id": null,
+  "manager_name": null,
+  "team_dna_key": null,
+  "sponsor_income": 240000,
+  "is_test_account": false,
+  "transfer_frozen": false,
+  "debt_breach_streak": 0,
+  "league_division_id": 8,
+  "pending_removal_at": null,
+  "team_dna_chosen_at": null,
+  "emergency_loan_streak": 0,
+  "my_result_seen_race_id": null,
+  "season_1_identity_basis": null,
+  "academy_intake_seeded_at": null,
+  "starter_depth_topped_up_at": null,
+  "starter_squad_allocated_at": null,
+  "dev_transition_dismissed_at": null,
+  "onboarding_progress_dismissed_at": null,
+  "consecutive_low_satisfaction_expirations": 0
+ },
+ "carolus_team": {
+  "id": "9c5fa3b6-c222-4528-9b1e-1f7fe4d5b12c",
+  "name": "Carolus Racing Team",
+  "is_ai": false,
+  "balance": 810897,
+  "is_bank": false,
+  "user_id": "ee4cd241-63b5-4e7c-8f51-f23e0797bc36",
+  "division": 3,
+  "is_frozen": false,
+  "created_at": "2026-08-24T12:08:06.417424+00:00",
+  "ai_source_id": null,
+  "manager_name": "Strobbe",
+  "team_dna_key": null,
+  "sponsor_income": 240000,
+  "is_test_account": false,
+  "transfer_frozen": false,
+  "debt_breach_streak": 0,
+  "league_division_id": 4,
+  "pending_removal_at": null,
+  "team_dna_chosen_at": null,
+  "emergency_loan_streak": 0,
+  "my_result_seen_race_id": null,
+  "season_1_identity_basis": {
+   "rider_count": 12,
+   "youth_level": "medium",
+   "star_profile": {
+    "label": "Lokalkendt",
+    "level": "medium",
+    "label_key": "starProfileLevel.medium",
+    "share_pct": 8,
+    "star_riders": [
+     {
+      "id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+      "name": "Bonaventure Weldu",
+      "score": 71.3,
+      "lastname": "Weldu",
+      "firstname": "Bonaventure",
+      "popularity": 59
+     }
+    ],
+    "headline_score": 56,
+    "star_rider_count": 1
+   },
+   "national_core": {
+    "code": "CN",
+    "count": 2,
+    "label": "Blandet trup",
+    "strength": "none",
+    "label_key": "nationalCoreLabel.mixed",
+    "share_pct": 17,
+    "established": false,
+    "label_params": {}
+   },
+   "youth_share_pct": 25,
+   "primary_specialization": "breakaway",
+   "season_number_observed": 3,
+   "secondary_specialization": "sprint",
+   "primary_specialization_label": "Etapejaegerhold",
+   "primary_specialization_label_key": "specialization.breakaway"
+  },
+  "academy_intake_seeded_at": "2026-08-24T12:08:09.485+00:00",
+  "starter_depth_topped_up_at": null,
+  "starter_squad_allocated_at": "2026-08-24T12:08:07.676+00:00",
+  "dev_transition_dismissed_at": null,
+  "onboarding_progress_dismissed_at": null,
+  "consecutive_low_satisfaction_expirations": 0
+ },
+ "tempo_riders": [
+  {
+   "id": "8c3bbc31-3bc0-4375-a30d-4114d545310f",
+   "salary": 115,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "030c8108-c7ce-4be6-9b03-f5e35f31fc23",
+   "salary": 101,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "48707021-03ab-42b5-b452-3459720470c1",
+   "salary": 112,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "1dfdee6a-2d52-4203-b402-199abd35061f",
+   "salary": 124,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "0b7e41d4-ee41-4850-b029-92dfa52b6f00",
+   "salary": 101,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "84e8b73a-2d37-4022-9585-205388af2af1",
+   "salary": 124,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "ed772de4-57a7-48c8-9948-9676040660be",
+   "salary": 124,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "salary": 83,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "5991be9d-b929-4295-90f2-bff34a5c3290",
+   "salary": 112,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "salary": 83,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "a3e0aadc-babb-48bd-840a-d65c245b2e78",
+   "salary": 124,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "e3aa659f-07db-408a-9439-38a36a38ff09",
+   "salary": 124,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "32eb28d1-368b-4182-be71-e0936a63684e",
+   "salary": 124,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "salary": 112,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "dde7824f-d2ab-4567-9da8-ad77523a5083",
+   "salary": 92,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "salary": 101,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "04384202-34bd-47fc-928a-05137b3b6b85",
+   "salary": 121,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "c7200869-5246-496a-a72b-802533623afd",
+   "salary": 101,
+   "contract_length": 3,
+   "contract_end_season": 5
+  },
+  {
+   "id": "bc4a15b4-9d0b-4d49-9d47-85a75e2c7b89",
+   "salary": 112,
+   "contract_length": 2,
+   "contract_end_season": 4
+  },
+  {
+   "id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "salary": 124,
+   "contract_length": 2,
+   "contract_end_season": 4
+  }
+ ],
+ "tempo_entries": [
+  {
+   "race_id": "48f5e504-8c2b-466f-8a3f-69689ed2e0a0",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "48f5e504-8c2b-466f-8a3f-69689ed2e0a0",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "48f5e504-8c2b-466f-8a3f-69689ed2e0a0",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "48f5e504-8c2b-466f-8a3f-69689ed2e0a0",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "48f5e504-8c2b-466f-8a3f-69689ed2e0a0",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "48f5e504-8c2b-466f-8a3f-69689ed2e0a0",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e9d5de6a-0383-4b65-b483-732c8ff01425",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e9d5de6a-0383-4b65-b483-732c8ff01425",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e9d5de6a-0383-4b65-b483-732c8ff01425",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e9d5de6a-0383-4b65-b483-732c8ff01425",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e9d5de6a-0383-4b65-b483-732c8ff01425",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e9d5de6a-0383-4b65-b483-732c8ff01425",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "b13fe942-9b72-49c6-9854-0861c846c1d7",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "b13fe942-9b72-49c6-9854-0861c846c1d7",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "b13fe942-9b72-49c6-9854-0861c846c1d7",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "b13fe942-9b72-49c6-9854-0861c846c1d7",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "b13fe942-9b72-49c6-9854-0861c846c1d7",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "b13fe942-9b72-49c6-9854-0861c846c1d7",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "c6be8439-3fb2-4105-8d9f-2f2b15c0c607",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d78fcd60-58ab-427a-9579-5c3d778a5f40",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d78fcd60-58ab-427a-9579-5c3d778a5f40",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d78fcd60-58ab-427a-9579-5c3d778a5f40",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d78fcd60-58ab-427a-9579-5c3d778a5f40",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d78fcd60-58ab-427a-9579-5c3d778a5f40",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d78fcd60-58ab-427a-9579-5c3d778a5f40",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f05942bd-d9d7-4354-906f-0ce04bb6f17e",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "c6651cbf-519b-4880-b30d-f9051637fa0f",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d5c20778-8fce-44ee-a6cb-c8d72797292a",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8fa39271-6b39-4f7d-bcae-1dacc66438e4",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8fa39271-6b39-4f7d-bcae-1dacc66438e4",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8fa39271-6b39-4f7d-bcae-1dacc66438e4",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8fa39271-6b39-4f7d-bcae-1dacc66438e4",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8fa39271-6b39-4f7d-bcae-1dacc66438e4",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8fa39271-6b39-4f7d-bcae-1dacc66438e4",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "978fa032-6301-46fc-bfa4-61a3b499750b",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c4857eb-051d-4bc3-9f5a-ed74d920dda7",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c4857eb-051d-4bc3-9f5a-ed74d920dda7",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c4857eb-051d-4bc3-9f5a-ed74d920dda7",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c4857eb-051d-4bc3-9f5a-ed74d920dda7",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c4857eb-051d-4bc3-9f5a-ed74d920dda7",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c4857eb-051d-4bc3-9f5a-ed74d920dda7",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "bfc1fa33-6915-4ca4-8014-c64fc5c891e8",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "486adabe-5731-499c-a3a8-149d38d49249",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "b82025d8-4e3e-4505-9461-9217164a24e5",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d9ca50e9-5a0c-49db-a02f-8069187703aa",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "7b48e6d2-237c-4cb6-adff-2b4e79812508",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "7b48e6d2-237c-4cb6-adff-2b4e79812508",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "7b48e6d2-237c-4cb6-adff-2b4e79812508",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "7b48e6d2-237c-4cb6-adff-2b4e79812508",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "7b48e6d2-237c-4cb6-adff-2b4e79812508",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "7b48e6d2-237c-4cb6-adff-2b4e79812508",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "fe38f104-13fc-4be5-ba96-609732be9521",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0b52c130-1185-483c-873b-38bf0566915c",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0b52c130-1185-483c-873b-38bf0566915c",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0b52c130-1185-483c-873b-38bf0566915c",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0b52c130-1185-483c-873b-38bf0566915c",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0b52c130-1185-483c-873b-38bf0566915c",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0b52c130-1185-483c-873b-38bf0566915c",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1585cc57-a523-46f9-8b25-c88106a2b4e0",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1585cc57-a523-46f9-8b25-c88106a2b4e0",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1585cc57-a523-46f9-8b25-c88106a2b4e0",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1585cc57-a523-46f9-8b25-c88106a2b4e0",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1585cc57-a523-46f9-8b25-c88106a2b4e0",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1585cc57-a523-46f9-8b25-c88106a2b4e0",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3fdbed91-b3ea-483d-aee9-bc8e29d338a6",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3fdbed91-b3ea-483d-aee9-bc8e29d338a6",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3fdbed91-b3ea-483d-aee9-bc8e29d338a6",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3fdbed91-b3ea-483d-aee9-bc8e29d338a6",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3fdbed91-b3ea-483d-aee9-bc8e29d338a6",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3fdbed91-b3ea-483d-aee9-bc8e29d338a6",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c6c4411-c2bc-4928-9501-0fcd78abf2e4",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c6c4411-c2bc-4928-9501-0fcd78abf2e4",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c6c4411-c2bc-4928-9501-0fcd78abf2e4",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c6c4411-c2bc-4928-9501-0fcd78abf2e4",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c6c4411-c2bc-4928-9501-0fcd78abf2e4",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "2c6c4411-c2bc-4928-9501-0fcd78abf2e4",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "ce866ad5-6599-4e78-af8b-bdf0a524c24f",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "7b7dd502-57af-474d-ac35-4a91b331969c",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "460aa185-2464-4232-923f-2e238148a472",
+   "rider_id": "6e7997d4-4609-46e9-8bd3-b83c4020c9f8",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "460aa185-2464-4232-923f-2e238148a472",
+   "rider_id": "48707021-03ab-42b5-b452-3459720470c1",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "460aa185-2464-4232-923f-2e238148a472",
+   "rider_id": "48a3da3e-e494-4fbf-b6ae-a0f8b56a369f",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "460aa185-2464-4232-923f-2e238148a472",
+   "rider_id": "13fb30ce-4282-46d7-b7e9-1b8840ff6206",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "460aa185-2464-4232-923f-2e238148a472",
+   "rider_id": "138d8f75-3704-4296-b079-9218ddf9a6c5",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "460aa185-2464-4232-923f-2e238148a472",
+   "rider_id": "c7200869-5246-496a-a72b-802533623afd",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f512bacf-dbb4-497c-b5bf-8f6d55cf1e88",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "57abd8ee-0de3-43bd-98b6-38586c99f751",
+   "rider_id": "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+   "race_role": "captain",
+   "is_auto_filled": true
+  }
+ ],
+ "carolus_entries": [
+  {
+   "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "bf5c6b1a-7acd-40ee-bc91-93d37778ac55",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "36a9aef9-ea79-4973-8d31-d872e4625418",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f0fc45f8-6b69-4a54-998e-7992d5a157de",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "ab3566df-f410-4bab-9a2d-933a64f0a36f",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "3cda6953-23c8-4e5e-8353-a798b7514681",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "49ec413d-aa7e-44f1-95e9-85fdfa54d663",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a83c4753-103e-4cad-be62-d2993864e2a3",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e138df18-7d42-4967-9a05-ccf874284909",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "75bad723-a29b-4573-a0ef-8358245813c8",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e13de4dd-09da-4852-84d8-f628669f0568",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "777065a5-5d0b-4eb4-b2a6-7cf08efdf7f4",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "471038c0-0331-4cce-a51b-402ef71c4366",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "55aa83a3-78cb-4bbb-b095-6feefe125a01",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8f9bfbc7-08dc-4a13-9603-d30908f114a3",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e8d2e794-f55b-4b1c-a0b3-a7ef137b8f2a",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "d18482b3-ab60-4b35-9840-94bcfc2d1498",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "99c24c4c-129f-4657-b091-c78dcec6e86c",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "e4f74fc9-524a-4696-b5ca-9942c5770f13",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0e481f19-59a4-4da9-8e0e-2013ea241a62",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8a3e9c72-0aa6-4f4e-9d14-99a235cbf331",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "31bad741-91eb-453f-8a51-b7bedd1ba7ac",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "52dda2b2-bfa3-4c72-8bd1-794457648c88",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "04715ccc-8c49-41b7-a627-acc8b4ed4dcc",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "a995bb93-f44a-4da8-9468-6b35841dfc99",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21bce1c9-ecd6-49ae-8bef-fafea773a6bf",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f315fc01-ef7a-4304-bafe-ceb1b689333a",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "21026de6-28d8-4f91-92ca-81894703b8c1",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "1b7275a9-296a-4d16-ade3-18e427d91a04",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "f528356d-7b9b-4b61-b89f-0839e9ea4649",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "8260ba06-3a4d-4341-97ca-c76d87f2ce25",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "5187416c-8b13-43b2-8253-0ab21de296a1",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "4e09f94e-dc36-4c65-bf18-ef516f8bb01e",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "0bc9bbd7-a721-410d-8ff2-7fdb02aeefba",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "6097393d-38b9-4345-860e-168a5aa346bb",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+   "rider_id": "e74cbada-68fb-4385-856d-825eaa1461b7",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+   "rider_id": "9fcbaa7c-b39b-47b9-92f9-26211c6b1a20",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+   "rider_id": "bf30c0f2-5f2d-4243-a692-1e70dadb2d59",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+   "rider_id": "dbe804ee-f159-4705-84b2-34cb7ef8c7d2",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+   "rider_id": "9e126f0d-27e4-43ea-9595-06079e957421",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "30ca2e94-762d-4ae9-a63b-acbb3e077b20",
+   "rider_id": "086c77b6-23ac-4793-a5c7-e08aaef1c9d9",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+   "rider_id": "1e357425-2afb-4a74-a535-e3d3ff6ad3d9",
+   "race_role": "captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+   "rider_id": "c166e9d1-8312-41ef-9abe-9455602c3062",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+   "rider_id": "0aab8cee-5ad1-47c4-97c4-ed37232ed1ec",
+   "race_role": "sprint_captain",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+   "rider_id": "9012c4c6-898e-4b3d-b934-4c763796aa3a",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+   "rider_id": "4b0583c8-d66e-4deb-8d5a-e237c959b88d",
+   "race_role": "helper",
+   "is_auto_filled": true
+  },
+  {
+   "race_id": "76f310f3-24da-433f-ba23-147cf584202f",
+   "rider_id": "bbf58ad5-85fa-49ca-a330-a4ce405dc336",
+   "race_role": "helper",
+   "is_auto_filled": true
+  }
+ ]
+}

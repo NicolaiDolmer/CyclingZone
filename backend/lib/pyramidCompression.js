@@ -224,10 +224,14 @@ export function snakeAssign(orderedItems, pools) {
  *                                   adfærd er 100% uændret).
  *   næste d2Capacity              → tier 2-puljer (snake)
  *   næste d3Capacity              → tier 3-puljer (snake)
- *   resten                        → de FØRSTE d4PoolCount tier 4-puljer
- *                                   (pool_index-orden, snake) — samles i A/B
- *                                   så de får medspillere; øvrige D4-puljer
- *                                   forbliver AI/nye signups.
+ *   resten                        → ALLE tier 4-puljer (pool_index-orden,
+ *                                   snake). #4172 (ejer-krav 24/8): S3 blev
+ *                                   startet med defaulten 2, så alle 48 D4-hold
+ *                                   landede i pulje A+B mens C-H stod tomme med
+ *                                   156 uafviklelige løb. Defaulten er nu
+ *                                   ANTALLET af D4-puljer. `d4PoolCount` kan
+ *                                   stadig sættes eksplicit (fx 2 for at
+ *                                   reproducere S1→S2's historiske fordeling).
  *
  * #3901 (S2→S3, ejer-låst 18/8): d1Capacity=24 inkluderer Division 1 i
  * komprimeringen for FØRSTE gang — top 24 (nu rangeret via
@@ -240,6 +244,8 @@ export function snakeAssign(orderedItems, pools) {
  *        rankTeamsByGlobalRank (rank-orden).
  * @param {Array<{id, tier, pool_index}>} pools  league_divisions-rækker.
  * @param {number} [d1Capacity=0]  >0 aktiverer D1-segmentet (#3901).
+ * @param {number} [d4PoolCount]  antal tier 4-puljer resten fordeles over.
+ *        Udelades den, bruges ALLE tier 4-puljer (#4172).
  * @returns {{ assignments, byPool }} assignments =
  *   { teamId, name, rank, totalPoints, fromTier, fromPoolId, toTier, toPoolId,
  *     movement: 'promoted'|'relegated'|'unchanged'|'pool-move' }.
@@ -252,7 +258,7 @@ export function distributeCompression(rankedTeams, pools, {
   d1Capacity = 0,
   d2Capacity = 48,
   d3Capacity = 96,
-  d4PoolCount = 2,
+  d4PoolCount = null,
 } = {}) {
   const byTier = new Map();
   for (const p of pools || []) {
@@ -264,7 +270,9 @@ export function distributeCompression(rankedTeams, pools, {
   const d1Pools = byTier.get(1) || [];
   const d2Pools = byTier.get(2) || [];
   const d3Pools = byTier.get(3) || [];
-  const d4Pools = (byTier.get(4) || []).slice(0, d4PoolCount);
+  // #4172: default = ALLE D4-puljer. Et eksplicit tal skærer stadig fra toppen.
+  const allD4Pools = byTier.get(4) || [];
+  const d4Pools = d4PoolCount == null ? allD4Pools : allD4Pools.slice(0, d4PoolCount);
   if (d1Capacity > 0 && d1Pools.length !== 1) throw new Error(`distributeCompression: expected 1 tier 1 pool when d1Capacity is set, found ${d1Pools.length}`);
   if (d2Pools.length !== 2) throw new Error(`distributeCompression: expected 2 tier 2 pools, found ${d2Pools.length}`);
   if (d3Pools.length !== 4) throw new Error(`distributeCompression: expected 4 tier 3 pools, found ${d3Pools.length}`);

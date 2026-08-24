@@ -4,6 +4,83 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.185",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help now answers what a race day does to a rider",
+          "body": "Two questions kept coming up and Help had no answer. A race replaces that day's training session instead of adding to it, and it settles once per day: six stages on one date develop a rider exactly as much as one, though every stage adds its own fatigue. And a stage race can finish in fewer dates than it has stages, because a division runs several stages a day, while each stage still gets its own race day. Both are now written down under Daily Training and Race selection."
+        },
+        "da": {
+          "title": "Hjælp svarer nu på hvad en løbsdag gør ved en rytter",
+          "body": "To spørgsmål blev ved med at dukke op, og Hjælp havde intet svar. Et løb erstatter dagens træningspas i stedet for at lægge sig oven i det, og det gøres op én gang om dagen: seks etaper på én dato udvikler rytteren præcis lige så meget som én, selvom hver etape lægger sin egen træthed på. Og et etapeløb kan være færdigt på færre datoer end det har etaper, fordi en division kører flere etaper om dagen, mens hver etape stadig får sin egen løbsdag. Begge dele står nu under Daglig træning og Løbsudtagelse."
+        },
+        "refs": [4162, 4164]
+      }
+    ]
+  },
+  {
+    "version": "7.184",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Monuments get a race day to themselves",
+          "body": "A monument is meant to own its race day, so every rider is free to start it. In Division 1 all five monuments shared their race day with a stage race, which locked out anyone riding the Giro, the Vuelta or the Tour. Each monument now stands alone on its own race day. Nothing moved date: the calendar dates and start times are unchanged, only the race day numbers in Division 1 shift."
+        },
+        "da": {
+          "title": "Monumenterne får løbsdagen for sig selv",
+          "body": "Et monument skal have sin løbsdag alene, så alle ryttere kan stille op. I 1. division delte alle fem monumenter dagen med et etapeløb, hvilket udelukkede alle der kørte Giroen, Vueltaen eller Touren. Hvert monument står nu alene på sin egen løbsdag. Intet har flyttet dato: kalenderdatoer og starttider er uændrede, kun løbsdags-numrene i 1. division rykker."
+        },
+        "refs": [4075, 4159, 4176]
+      }
+    ]
+  },
+  {
+    "version": "7.183",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "You can save a lineup even when you cannot fill it",
+          "body": "If you did not have enough available riders for a full start list, saving was blocked entirely, so you ended up entering nobody at all. You can now save whatever riders you have, and the assistant tops up the rest at race time. Picking fewer than a full team when you do have the riders still asks you to fill it."
+        },
+        "da": {
+          "title": "Du kan gemme en opstilling selvom du ikke kan fylde den",
+          "body": "Havde du ikke nok ledige ryttere til et fuldt startfelt, blev gemningen blokeret helt, så du endte med slet ikke at stille op. Nu kan du gemme de ryttere du har, og assistenten fylder resten op ved løbstid. Vælger du færre end et fuldt hold når du faktisk har rytterne, bliver du stadig bedt om at fylde op."
+        },
+        "refs": [4175]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Riders are only locked on days they actually race",
+          "body": "A stage race with a rest day used to lock its riders on the rest day too, blocking them from every other race in that window. Riders are now bound only on the days they actually ride, so a rest day means a free rider. Race day labels in the calendar were also repaired, and no pool exceeds its limit of simultaneous races."
+        },
+        "da": {
+          "title": "Ryttere låses kun på de dage de faktisk kører",
+          "body": "Et etapeløb med en hviledag låste før også rytterne på hviledagen, så de var blokeret fra alle andre løb i perioden. Ryttere bindes nu kun på de dage de faktisk kører, så en hviledag betyder en ledig rytter. Løbsdags-mærkerne i kalenderen er også repareret, og ingen pulje overskrider sit loft for samtidige løb."
+        },
+        "refs": [4173, 4161, 4162]
+      }
+    ]
+  },
+  {
     "version": "7.182",
     "date": "2026-08-24",
     "label": "Beta",
