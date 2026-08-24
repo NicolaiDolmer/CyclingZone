@@ -78,14 +78,34 @@ export const SCARCE_TERRAIN_ARCHETYPES = Object.freeze([
 // to grupperinger der modsagde hinanden uden begrundelse. Målt effekt på live sæson 3:
 // enkeltstarter der tæller mod gulvet går fra 12/11/10/2 til 14/11/10/6 pr. pulje
 // (D4 havde 6 enkeltstarter, men kun 2 af dem talte).
+// #4176 (ejer-beslutning 24/8): `rolling` er sin EGEN familie — baroudeurens terræn.
+//
+// Afgjort empirisk, ikke efter navn. Overrepræsentation blandt etapevindere (andel af
+// sejre ÷ andel af populationen, S1+S2, 1,00 = neutralt):
+//   rolling:  baroudeur 1,85 · klatrer 1,38 · gc 1,20 · SPRINTER 1,14 · PUNCHEUR 0,91
+//   flad:     sprinter 3,01 (alt andet ≤ 1,04)
+//   kuperet:  baroudeur 1,66 · puncheur 1,51 · klatrer 1,44 · gc 1,43
+// Motorens egen vægtning siger det samme: flad er 0,61 spurt, kuperet er 0,44 punch,
+// mens rolling har INGEN dominerende evne — dens største vægte er udholdenhed 0,18 og
+// tilfældighed 0,20, de højeste af alle typer. Det er en udbrudsdag.
+//
+// Derfor hverken flat_sprint eller hilly: sprinteren står i 1,14 på rolling (mod 3,01 på
+// flad) og puncheuren i 0,91 (mod 1,51 på kuperet). Et gulv fyldt med rolling-etaper
+// ville altså ikke garantere nogen af de to typer det det blev lavet til.
+//
+// Baroudeuren var den ENESTE ryttertype uden en familie (brosten→brostensrytter,
+// flad→sprinter, itt→TT, kuperet→puncheur, bjerg→klatrer). Med rolling som familie er
+// garanti-systemet komplet. Kompositionen er UÆNDRET: rolling tæller fortsat som
+// "kuperet" dér, jf. ejerens egen gruppering i #3295.
 export const TERRAIN_FAMILY_BY_PROFILE_TYPE = Object.freeze({
   cobbles: "cobbles",
   flat: "flat_sprint",
   itt: "itt", ttt: "itt", itt_hilly: "itt",
   hilly: "hilly",
+  rolling: "rolling",
   mountain: "mountain", high_mountain: "mountain",
 });
-export const TERRAIN_FAMILIES = Object.freeze(["cobbles", "flat_sprint", "itt", "hilly", "mountain"]);
+export const TERRAIN_FAMILIES = Object.freeze(["cobbles", "flat_sprint", "itt", "hilly", "rolling", "mountain"]);
 
 // Minimum antal etaper (ikke løb!) pr. terræn-familie pr. PULJE pr. sæson. Pooler i en
 // tier deler identisk kalender (#2276), så "pr. pulje" = tierens samlede udvalg — ingen
