@@ -3,6 +3,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { checkCalendarOverlapInvariants } from "../lib/calendarOverlapInvariant.js";
+import { TIER_OVERLAP_CAP } from "../lib/calendarTierCaps.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ENV = path.resolve(SCRIPT_DIR, "../.env");
@@ -104,7 +106,7 @@ async function main() {
 
   const fetch_ = (table, select, filters, orderBy) => fetchAll(baseUrl, apiKey, table, select, filters, orderBy);
 
-  const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans, raceResultRows] = await Promise.all([
+  const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans, raceResultRows, activeSeasons, leagueDivisions] = await Promise.all([
     fetch_("teams", "id,division,is_ai,is_frozen,is_bank"),
     fetch_("riders", "id,team_id,is_academy,is_retired"),
     // #1673: aktive (ikke-retired) ryttere + deres derive-laget, til invariant-check.
@@ -119,6 +121,9 @@ async function main() {
     fetch_("loans", "team_id,amount_remaining,loan_type", { status: "eq.active" }),
     // #2974/#2898: hele race_results til duplikat-invarianten nedenfor.
     fetch_("race_results", "race_id,stage_number,rider_id,result_type,rank,points_earned"),
+    // #4161: kalender-akse + overlap-cap pr. pulje for den AKTIVE saeson.
+    fetch_("seasons", "id,number,status,start_date", { status: "eq.active" }),
+    fetch_("league_divisions", "id,tier,label"),
   ]);
 
   const humanTeams = teams.filter(t => !t.is_ai && !t.is_frozen && !t.is_bank);
@@ -282,6 +287,62 @@ async function main() {
     duplicateRanks.push({ raceId, stageNumber: Number(stageNumber), resultType, rank: Number(rank), rows: n });
   }
 
+  // ---- #4161: kalender-akse + overlap-cap pr. pulje (aktiv saeson) ----
+  // `game_day` er den IN-GAME dag der binder en rytter (raceBinding.js), IKKE kalenderdagen.
+  // Pakkeren lae­gger K = ceil(density / cap) hele game_days ind i hver kalenderdag, saa
+  // `density` etaper kan afvikles uden at nogen game_day bryder overlap-cap'en. Bliver den
+  // akse skrevet som en ren dato-offset (som #4155-reparationen gjorde), kollapser K til 1
+  // og cap'en brydes i alle divisioner paa én gang — uden at noget andet raaber op.
+  const activeSeason = activeSeasons[0] ?? null;
+  const divisionById = new Map(leagueDivisions.map((d) => [d.id, d]));
+  const calendarOverlapViolations = [];
+  const calendarStageRepeatViolations = [];
+  const calendarCollapsedPools = [];
+  let calendarPoolsChecked = 0;
+  if (activeSeason) {
+    const seasonRaces = await fetch_("races", "id,league_division_id,season_id,name", { season_id: `eq.${activeSeason.id}` });
+    const raceIds = new Set(seasonRaces.map((r) => r.id));
+    const divisionOfRace = new Map(seasonRaces.map((r) => [r.id, r.league_division_id]));
+    const nameOfRace = new Map(seasonRaces.map((r) => [r.id, r.name]));
+    const allStageRows = await fetch_("race_stage_schedule", "race_id,stage_number,scheduled_at,game_day", undefined, "race_id");
+
+    const rowsByPool = new Map();
+    for (const row of allStageRows) {
+      if (!raceIds.has(row.race_id)) continue;
+      const pool = divisionOfRace.get(row.race_id);
+      if (pool == null) continue;
+      if (!rowsByPool.has(pool)) rowsByPool.set(pool, []);
+      rowsByPool.get(pool).push(row);
+    }
+
+    for (const [poolId, rows] of rowsByPool.entries()) {
+      const div = divisionById.get(poolId);
+      const tier = div?.tier ?? null;
+      if (tier == null) continue;
+      calendarPoolsChecked += 1;
+      const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier });
+      const label = div?.label ?? `pulje ${poolId}`;
+      for (const v of r.overlapViolations) {
+        calendarOverlapViolations.push({
+          pool: label, tier, game_day: v.game_day, races: v.races, cap: v.cap,
+          race_names: v.race_ids.map((id) => nameOfRace.get(id) ?? id),
+        });
+      }
+      for (const v of r.stageRepeatViolations) {
+        calendarStageRepeatViolations.push({
+          pool: label, tier, race: nameOfRace.get(v.race_id) ?? v.race_id,
+          game_day: v.game_day, stages_same_day: v.stages, stage_numbers: v.stage_numbers,
+        });
+      }
+      if (r.axisLooksCollapsed) {
+        calendarCollapsedPools.push({
+          pool: label, tier, game_days: r.gameDayCount, kalenderdage: r.realDayCount,
+          forventet_game_days_pr_kalenderdag: r.expectedGameDaysPerRealDay,
+        });
+      }
+    }
+  }
+
   const checks = {
     no_double_active_auctions: check(
       doubleAuctions.length === 0,
@@ -366,6 +427,33 @@ async function main() {
         ? "OK — ingen rang tildelt to gange i samme klassement"
         : `${duplicateRanks.length} rang(e) tildelt 2+ gange i samme (løb, etape, klassement) (#2898)`,
       duplicateRanks.slice(0, 50)
+    ),
+    calendar_overlap_within_tier_cap: check(
+      calendarOverlapViolations.length === 0,
+      !activeSeason
+        ? "OK — ingen aktiv sæson at kontrollere"
+        : calendarOverlapViolations.length === 0
+          ? `OK — ${calendarPoolsChecked} pulje(r) holder TIER_OVERLAP_CAP (${JSON.stringify(TIER_OVERLAP_CAP)})`
+          : `${calendarOverlapViolations.length} in-game-dag(e) har FLERE samtidige løb end divisionens ejer-låste cap (#4161)`,
+      calendarOverlapViolations.slice(0, 50)
+    ),
+    calendar_one_stage_per_race_per_game_day: check(
+      calendarStageRepeatViolations.length === 0,
+      !activeSeason
+        ? "OK — ingen aktiv sæson at kontrollere"
+        : calendarStageRepeatViolations.length === 0
+          ? `OK — hver etape har sin egen in-game-dag i alle ${calendarPoolsChecked} pulje(r)`
+          : `${calendarStageRepeatViolations.length} løb kører 2+ etaper på SAMME in-game-dag — pakker-kontrakten er 1 etape = 1 game-dag (#4161)`,
+      calendarStageRepeatViolations.slice(0, 50)
+    ),
+    calendar_game_day_axis_not_collapsed: check(
+      calendarCollapsedPools.length === 0,
+      !activeSeason
+        ? "OK — ingen aktiv sæson at kontrollere"
+        : calendarCollapsedPools.length === 0
+          ? "OK — in-game-aksen er bredere end kalenderen i alle puljer hvor K > 1"
+          : `${calendarCollapsedPools.length} pulje(r) har game_day skrevet som ren dato-offset — K er kollapset til 1 (#4161)`,
+      calendarCollapsedPools.slice(0, 50)
     ),
   };
 
