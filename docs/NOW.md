@@ -21,6 +21,6 @@
 - **Staging:** `scripts/refresh-staging.ps1` + `scripts/with-staging.ps1`; generalprøve FØR enhver destruktiv prod-op. `staging-cutover` slettes mandag (#3839).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation (ejer-mandat 22/8):** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Ingen aktiv session** (24/8 ~14:30: Supabase-fejltriage → #4172 D4-reparation. Fandt at ALLE 48 D4-hold sad i pulje A/B (rod-årsag: `d4PoolCount=2` i pyramidCompression). Spredt til 8 puljer à 24 hold, fyldt med 2.880 EKSISTERENDE frie ryttere i stedet for at generere nye (ejer-idé). S3-løb uden entries: 157 → 1. Sidegevinst: #4178 navne-pools 15→22 clusters + `docs/RIDER_GENERATION.md` som SSOT — begge i draft, blokeret af #4180. Se prompt til næste session i issue-tråden på #4172.)
+> **🤖 Master-session AKTIV 24/8 ~15:00** (Claude Code, hoved-checkout + worktree): #4173-kæden → akse-reparation → PR #4169 før sæsonstart 25/8 kl. 11. Ejer-godkendt plan: begge prod-skridt i dag. Forrige sessions detaljer: #4172-tråden (D4-reparation udført, 157→1 tomme løb, motor verificeret on; #4170 lukket som dublet; guard-rest samlet i #4159).
 
 _Historik i git-log, issue-tråde + docs/audits/._
