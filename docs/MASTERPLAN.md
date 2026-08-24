@@ -6,10 +6,8 @@
 
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
-- **SØN 23/8 (gjort):** generalprøve på staging (PR #4136, målt køreplan) · kalender helt på plads (#4131 #4103 #3371 #4106 #4107/#4108 #4134 live).
-- **SØN 23/8 aften (GJORT 19:12-20:45):** cutover S2→S3 gennemført med ejer-GO pr. skridt — c=0,811 applied + varig i modellen (#4135), dæmpning flippet, løn genberegnet FØR skiftet, D1-komprimering 214/214, transition 22 faser, 33.082 entries, mandat 217, achievements. Upkeep S3 halveret 220k/70k/20k/0 (ejer). Fixes: PR #4151.
-- **NAT 23-24/8 (GJORT):** #4155 game_day-aksen D1-D3 repareret PROD (1.855 dobbeltbookinger → 0; D1 = 5-6 etaper/dag; felter genopbygget; PR #4158 merged) · #4154-sanktion eksekveret (donor-konto lukket, clawback 748.154) · minus-hold afklaret (by design).
-- **MAN 24/8 (løbsfri):** **#4159 game_day-guard FØR næste kalender-generering** · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
+- **GJORT 23-24/8:** cutover S2→S3 (c=0,811 varig, #4135; upkeep S3 220k/70k/20k/0) · kalender live · #4155 game_day D1-D3 repareret PROD (1.855 dobbeltbookinger → 0) · #4154-sanktion eksekveret. Detaljer: NOW.md + issue-tråde.
+- **MAN 24/8 (løbsfri):** 🔴 **#4163 FØRST** (i gang) — sweepen i deterministisk dødvande hvert tick siden #4155: 56 → 140 fejlede enheder, `no_rider_double_booking` uden deferrable; rammer også `/api/races/distribution/regenerate`. Standing issue: #3960 (priority:high 24/8) · **#4159 game_day-guard FØR næste kalender-generering** · kalibrering (scorecard + løbsfilm) → **ejer-gate på v4-flip** · #3720 upkeep/præmie-kurven (S4) · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
 ## A · Cutover 23/8 — GENNEMFØRT (rest herunder)
