@@ -12,7 +12,7 @@
 
 ## A · Cutover 23/8 — GENNEMFØRT (rest herunder)
 
-1. ✅ #4120/#3449/#4000/#3514/#3901: alt kørt og verificeret 23/8 aften (se NOW.md). Rest: merge PR #4151 (fixes) · 22:00-tick-verify · ejer poster besked 2.
+1. ✅ #4120/#3449/#4000/#3514/#3901 kørt og verificeret 23/8; PR #4151/#4152/#4153 merged, 22:00-tick grøn. Rest: ejer poster besked 2.
 2. Supabase-perf-rest uge 35. 🔵 Auto-accept-floor står (#3584).
 
 ## B · Rytter-pakken — "once and for all" (ALTOVERSKYGGENDE)
@@ -47,7 +47,8 @@ Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-pl
 ## E · Løbende (aldrig hovedspor)
 
 12. 🔴 **Spiller-kommunikation, fast ugerytme (#428)** — ejer-mandat 22/8, viger aldrig. MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t. Tråd-bank **#4117**, løfte-audit **#4111**.
-13. Gæld: done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops (uge 26.-30./8): **#4014** log-vagt · **#4016** session-claim · **#3486** `VERCEL_TOKEN` · #2758 · #3487 · #691 · **worktree-hygiejne**.
+13. Gæld: done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops (uge 26.-30./8): **#4014** log-vagt · **#4016** session-claim · **#3486** `VERCEL_TOKEN` · #2758 · #3487 · #691 · **worktree-hygiejne** (+ stale lokale branches).
+14. 🔵 **Fair play (#3131):** 2 sanktioner på 24 t (#4154, #3818); prisloft valgt fra, så #3138 er ENESTE værn. Rest: retnings-signal · overbetalings-signal · flag-triage (25/27 stod `new`) · #3438 · #3139 regler+trappe. **Lagt i E uden omprioritering — flyt op hvis nødvendigt.**
 
 ## F · Backlog-bølger (mål: 570 → ~200, #3154)
 
