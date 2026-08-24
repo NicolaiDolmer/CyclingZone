@@ -1,0 +1,331 @@
+[
+  {
+    "key": "academy_enabled",
+    "value": "on",
+    "description": null,
+    "updated_at": "2026-08-09T10:42:04.106951+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "academy_intake_pull_enabled",
+    "value": "off",
+    "description": "#3550 - pull-baseret akademi-intake (ét kuld/hold/uge, manager-hentet, søndags-drippet slukkes samtidig). off = uændret adfærd indtil cutover-flip 23/8.",
+    "updated_at": "2026-08-19T13:04:56.927707+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "alunta_reconcile_enabled",
+    "value": true,
+    "description": "Feature-flag for den daglige Alunta subscription-reconcile-cron (#2736). false = cronen no-op'er (manuelt script kører uafhængigt af flaget til verifikation). true/\"on\" = daglig sync af status+current_period_end fra Alunta GET /subscriptions. Fail-safe OFF indtil ejeren har verificeret feltudtræk mod ægte Alunta-svar via node scripts/reconcileAluntaSubscriptions.js.",
+    "updated_at": "2026-08-03T21:20:36.407121+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "auction_entry_gate_enabled",
+    "value": false,
+    "description": "#3134 fair-play: blokerer en konto fra at byde (manuelt eller via autobud) på en auktion der startede FØR kontoen blev oprettet — det præcise #2776-angreb. DEFAULT false: dry-run mod prod fandt 422 historiske bud fra 53 ægte hold der ville være blokeret, overvejende almindelig onboarding. Se PR #3134 før flip. Håndhæves i api.js (POST /auctions/:id/bid + PATCH /auctions/:id/proxy).",
+    "updated_at": "2026-08-03T15:53:47.734386+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "auto_entry_generator_enabled",
+    "value": "on",
+    "description": "Race Hub Fase 0b: proaktiv entry-generator. on = runRaceEntryGenerator genererer kalenderens trupper ved sæsonstart/ny kalender + admin-trigger; off (default) = gammel reaktiv fillMissingTeamEntries-autofill er eneste sti. Flip kun efter prod-bekræftelse.",
+    "updated_at": "2026-06-23T17:36:33.520377+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "auto_prize_enabled",
+    "value": "on",
+    "description": null,
+    "updated_at": "2026-06-21T22:59:16.363209+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "board_mandate_model_enabled",
+    "value": "off",
+    "description": "#3514 \"Mandatet\": kill-switch for bestyrelsens mandat-model (ét confidence-tal i board_relations + board_mandates + board_vision_milestones). off|beta|on. off (default) = board_profiles og de 3 satisfaction-tal er stadig sandheden, og de nye tabeller læses ikke. Flip er ejer-gated og forudsætter at mandateMigration3514.mjs er kørt med --apply. Rollback = sæt tilbage til off.",
+    "updated_at": "2026-08-17T12:35:08.821373+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "daily_training_enabled",
+    "value": "on",
+    "description": "When true, daily training tick runs for all human teams and form/fatigue mutations are active. Flip on relaunch day (#1305).",
+    "updated_at": "2026-06-13T21:21:16.91084+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "facilities_enabled",
+    "value": "on",
+    "description": "Feature flag for faciliteter/staff-systemet (#1441 A4). false = kun admins ser /klub + /staff (preview på prod). true/\"on\" = live for alle. Refs #2220.",
+    "updated_at": "2026-07-06T09:30:26.831811+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "fairplay_flag_threshold",
+    "value": 0.35,
+    "description": "Fair-play scoring-tærskel (#3138): mindste samlede score før en mistænkt hændelse skrives til fairplay_flags. Kalibreret mod #2221 (~1.6) og #2776 (~2.5) vs. de 5 kendte lovlige par (0.00–0.22). Kun detektions-følsomhed — ingen håndhævelse.",
+    "updated_at": "2026-08-06T08:39:28.389678+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "intake_offer_expiry_enabled",
+    "value": "on",
+    "description": null,
+    "updated_at": "2026-07-18T12:35:42.835428+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "loan_gate_min_account_age_days",
+    "value": 0,
+    "description": "#3134 fair-play: minimum holdalder i dage før et manager-initieret lån tillades (OR med loan_gate_min_race_days). 0 = ingen alders-krav. Begge 0 = lånespærren er helt slået fra. Håndhæves i loanEngine.createLoan.",
+    "updated_at": "2026-08-03T15:53:47.734386+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "loan_gate_min_race_days",
+    "value": 0,
+    "description": "#3134 fair-play: minimum antal DISTINKTE completed løbsdage et hold selv har kørt før et manager-initieret lån tillades (OR med loan_gate_min_account_age_days). 0 = ingen race-dage-krav. Håndhæves i loanEngine.createLoan.",
+    "updated_at": "2026-08-03T15:53:47.734386+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "market_value_global_weight",
+    "value": 0,
+    "description": "Hovedafbryder/skalering oven på den pr.-rytter-evidensvægt Z: w_rider = market_value_global_weight x Z_rider. Seedet til 0 så migrationen er inert selv hvis kill-switchen flippes ved en fejl. Beslutning 3 (15/8) afskaffede den globale 75/25-blanding - evidensen vejer nu pr. rytter, så den tiltænkte værdi ved aktivering er 1. Ugyldig/manglende værdi skal af koden behandles som 0 (fail-safe).",
+    "updated_at": "2026-08-17T12:39:49.840944+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "market_value_level_correction_min_qualified_trades",
+    "value": 40,
+    "description": "#3449: minimum antal kvalificerede forhandlede handler (transfer_offers, #3750-filteret indsnævret til kun kilde transfer) i det 90-dages-vindue søndags-gaten måler. Ejer-seedet 40 (19/8) — målingen 19/8 fandt n=74, så tærsklen alene ville have gjort gaten grøn; den binder ikke i praksis endnu, men stabilitets-kravet (næste nøgle) gør.",
+    "updated_at": "2026-08-19T13:37:52.413667+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "market_value_level_correction_stability_band",
+    "value": 0.3,
+    "description": "#3449: maks. parvis afstand mellem de seneste 3 ugentlige rullende 30-dages-medianer af pris/anker for den forhandlede kanal. Ejer-seedet ±0,15 (19/8). Målingen 19/8 var 0,665 → 0,775 → 0,908 (spænd 0,243) — over båndet, så gaten står RØD ved seed. Se backend/lib/marketValueLevelCorrectionGate.js.",
+    "updated_at": "2026-08-19T13:37:52.413667+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "market_value_level_correction_wage_anchor_a",
+    "value": null,
+    "description": "#3449 neutralitets-bundt (b): løn-neutral A for den anker-baserede lønformel (løn = A × (anker/100.000)^0,55, #3393-reformen — IKKE shippet på denne branch endnu). NULL indtil #3393 lander sin egen A-konfiguration; indtil da er dette ben af neutralitets-bundtet en dokumenteret no-op (se marketValueLevelCorrectionApply.js).",
+    "updated_at": "2026-08-19T13:37:52.413667+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "market_value_level_correction_youth_auction_start_rate",
+    "value": null,
+    "description": "#3449 neutralitets-bundt (a): dræn-neutral override af YOUTH_AUCTION_START_RATE (backend/lib/youthMarket.js). NULL = ingen niveau-korrektion har kørt endnu, banken bruger den hardcodede 0,25 uændret. Skrives KUN af marketValueLevelCorrectionApply.js --confirm-apply, til rate_gammel/c, så bankens kronepriser står stille når riders.market_value skaleres med c.",
+    "updated_at": "2026-08-19T13:37:52.413667+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "market_value_sweep_enabled",
+    "value": "off",
+    "description": "Markedsdrevet værdi-eftersyn (#3448/#3449). 'on' = søndags-sweepen blander riders.base_value mod markedsmodellens pris-gæt, vægtet med hver rytters egen handelsevidens (Z = n/(n+K), beslutning 3 af 15/8) og loftet af market_value_weekly_cap. 'off' (default) = ingen ændring. Aktivering er ejer-gated og kræver at et godkendt modelartefakt er promoveret; pr. 17/8 målte refittet (#3750) DÅRLIGERE end den kørende v4 - se docs/audits/2026-08-17-vaerdimodel-refit-scorecard.md.",
+    "updated_at": "2026-08-17T12:39:49.840944+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "market_value_weekly_cap",
+    "value": 0.25,
+    "description": "Ugentligt pr.-rytter ændrings-loft: |ny − nuværende| / nuværende <= denne værdi, hver søndag. 0.25 (±25 %) er ejer-besluttet 6/8. BEMÆRK auditten 14/8, grund 3: et uniformt loft bider hver uge på præcis de dyreste ryttere og virker som et handicap frem for en struktur. Tallet skal revurderes FØR flaget flippes; det står her fordi håndtaget skal være synligt, ikke fordi 0.25 er bekræftet.",
+    "updated_at": "2026-08-17T12:39:49.840944+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "peak_planner_enabled",
+    "value": "on",
+    "description": "S5 Season Planner launch-gate (#2224)",
+    "updated_at": "2026-07-21T11:57:14.30006+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "race_day_engine_enabled",
+    "value": "off",
+    "description": "Løbsdags-motoren (#3459 fase 2a): D1 (løbsdage erstatter dagens træningspas, intet dobbelt-load) + D3 (recoveryBase 4→4.5, recoveryFraction 0.13→0.15) + D4 (AI-hold kører samme dailyTrainingEngine, aiRecoverySweep no-op'er). off|beta|on. off (default) = motoren opfører sig bit-identisk med i dag. Planlagt flip: sæsonskiftet 23/8 sammen med markedsmodel-100% + løn-genberegning.",
+    "updated_at": "2026-08-07T11:04:55.375263+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "race_engine_v2_enabled",
+    "value": "on",
+    "description": "Race Engine light-motor (#1102). true = raceRunner/raceSimulator afvikler løb; false (default) = PCM-import-stien er præcis uændret (nød-fallback). Flip kun efter golden/distributions-verifikation + fiktiv population (#677/#669).",
+    "updated_at": "2026-06-13T21:21:16.91084+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "race_engine_v3_scoring",
+    "value": "on",
+    "description": "Race Engine v3 (#2224) dominans/varians-dybde (S1 roller-med-pris, S2 dagsform, ...). off|beta|on. off (default) = motoren scorer bit-identisk med dagens (v1). Kræver race_engine_v2_enabled=on/beta for overhovedet at køre.",
+    "updated_at": "2026-07-12T06:11:36.365801+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "race_stage_timeline",
+    "value": "on",
+    "description": null,
+    "updated_at": "2026-08-17T18:24:08.558217+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "scout_system_enabled",
+    "value": "on",
+    "description": null,
+    "updated_at": "2026-07-11T19:11:09.553757+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_academy_intake_enabled",
+    "value": "off",
+    "description": "#2911 - saeson-optagelse til akademiet ved skiftet (top-up til 8 pladser, maks 3 pr. hold). off = ejer-valgt, uaendret adfaerd.",
+    "updated_at": "2026-07-26T06:59:14.452503+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_documentary_llm_enabled",
+    "value": false,
+    "description": null,
+    "updated_at": "2026-08-06T09:23:16.527465+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_end_pool_reseed",
+    "value": "off",
+    "description": "Styrke-balanceret pulje-reseed ved sæson-slut (#2557 spor B). 'on' = economyEngine.reseedTierPools kører EFTER op/nedrykningen og FØR AI-fyld-sweepen: hver tier hvis dominans-margin overstiger season_end_pool_reseed_threshold får sine ÆGTE hold snake-fordelt på styrke over tierens puljer (AI-hold flyttes ikke, de regenereres af reconcileAiTeamsForPool). Kun league_division_id skrives, aldrig division. En plan der ikke sænker skævheds-indekset droppes automatisk. 'off' (default) = motorens nuværende, styrke-blinde adfærd, ingen læsninger og ingen skrivninger.",
+    "updated_at": "2026-08-05T14:55:57.642499+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_end_pool_reseed_threshold",
+    "value": 10,
+    "description": "Tærskel for pulje-reseed (#2557 spor B): en tier re-seedes kun hvis dens skævheds-indeks (det mest stakkede holds 4.-bedste rytter minus puljens 10.-bedste rival-rytter) er STØRRE end denne værdi. 10 er sat mellem de målte regimer 3/8 (margin <= 7 gav share4PlusSameTeamTop10 0,000; margin >= 11 gav 0,357-0,571) og er IKKE harness-verificeret. Ugyldig eller manglende værdi falder tilbage til 10 i koden. Læses kun når season_end_pool_reseed er 'on'.",
+    "updated_at": "2026-08-05T14:55:57.642499+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_end_skip_division_movement",
+    "value": "off",
+    "description": "#2851: spring op/nedrykning+AI-reconcile over i S1->S2 (komprimeringen flytter i stedet)",
+    "updated_at": "2026-07-26T17:46:21.135112+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_fatigue_reset_enabled",
+    "value": "on",
+    "description": "#2910 - saesonskiftet nulstiller traethed helt (alle paa 0). on = aktiv fra cutover 2026-07-26.",
+    "updated_at": "2026-07-26T06:59:14.452503+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_form_reset_band_max",
+    "value": 60,
+    "description": "#3232 · mode \"band\": øvre grænse for det tilfældige (seedet, deterministiske) sæsonstart-bånd. Bruges kun når season_form_reset_mode = \"band\".",
+    "updated_at": "2026-08-03T20:59:03.816561+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_form_reset_band_min",
+    "value": 40,
+    "description": "#3232 · mode \"band\": nedre grænse for det tilfældige (seedet, deterministiske) sæsonstart-bånd. Bruges kun når season_form_reset_mode = \"band\".",
+    "updated_at": "2026-08-03T20:59:03.816561+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_form_reset_baseline_value",
+    "value": 50,
+    "description": "#3232 · mode \"baseline\": den faste værdi alle rytteres form sættes til ved sæsonskiftet. Bruges kun når season_form_reset_mode = \"baseline\".",
+    "updated_at": "2026-08-03T20:59:03.816561+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_form_reset_decay_factor",
+    "value": 0.25,
+    "description": "#3232 · mode \"decay\": andelen af afstanden til target der IKKE henfalder (0 = fuld nulstilling til target, 1 = ingen ændring). Bruges kun når season_form_reset_mode = \"decay\".",
+    "updated_at": "2026-08-03T20:59:03.816561+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_form_reset_decay_target",
+    "value": 50,
+    "description": "#3232 · mode \"decay\": midtpunktet rytterens form henfalder mod. Bruges kun når season_form_reset_mode = \"decay\".",
+    "updated_at": "2026-08-03T20:59:03.816561+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_form_reset_mode",
+    "value": "decay",
+    "description": "Fastlægger HVORDAN alle rytteres form nulstilles ved sæsonskiftet (#3232, ejer-beslutning 2026-08-03: form skal nulstilles, målværdi TBD). \"off\" = ingen ændring (default, nuværende adfærd: form bæres uændret med fra forrige sæson). \"baseline\" = alle sættes til season_form_reset_baseline_value. \"band\" = hver rytter får en deterministisk, tilfældig værdi i [season_form_reset_band_min, season_form_reset_band_max], seedet på rytter+sæson (idempotent ved gen-kørsel). \"decay\" = ny = season_form_reset_decay_target + (gammel - target) × season_form_reset_decay_factor (bevarer et svagt aftryk af slutformen, IKKE idempotent ved gen-kørsel — se seasonFormReset.js). Håndhæves i seasonFormReset.js, kaldt fra seasonStartHooks.js. Ejeren vælger mode ud fra docs/audits/2026-08-03-form-reset-sim-3232.md.",
+    "updated_at": "2026-08-03T20:59:03.816561+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "season_transition_planned_at",
+    "value": "2026-08-23T19:30:00+02:00",
+    "description": null,
+    "updated_at": "2026-08-23T17:13:35.773438+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "stage_scheduler_enabled",
+    "value": "on",
+    "description": null,
+    "updated_at": "2026-06-21T22:59:16.363209+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "survey_banner_enabled",
+    "value": false,
+    "description": "When true, survey CTA banner is visible to ALL users on Dashboard. When false, only admins see it (preview-mode). Refs #364.",
+    "updated_at": "2026-05-16T19:26:23.679023+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "survey_banner_url",
+    "value": "https://tally.so/r/PLACEHOLDER",
+    "description": "Tally survey URL. Replace with real URL when survey goes live (sprint uge 2, ~2026-05-21). UTM-params appended client-side.",
+    "updated_at": "2026-05-16T19:26:23.679023+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "transfer_cooldown_amount_czk",
+    "value": 0,
+    "description": "#3134 fair-play: beløbstærskel (CZ$) for transfer_cooldown_hours-cooldownen. 0 = ingen cooldown (uanset transfer_cooldown_hours). Håndhæves i transferExecution.js.",
+    "updated_at": "2026-08-03T15:53:47.734386+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "transfer_cooldown_hours",
+    "value": 0,
+    "description": "#3134 fair-play: antal timer efter kontooprettelse hvor udgående transfer-/swap-betalinger over transfer_cooldown_amount_czk blokeres. 0 = ingen cooldown. Håndhæves i transferExecution.executeTransferOffer/executeSwapOffer.",
+    "updated_at": "2026-08-03T15:53:47.734386+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "transfer_price_cap_multiple",
+    "value": null,
+    "description": "Fair-play prisloft (#3133): højeste tilladte pris for en spiller-til-spiller-handel, som multiplum af rytterens market_value (fx 3 = 3×). null = deaktiveret (default, ingen adfærdsændring). Samme håndhævelsespunkter som transfer_price_floor_pct. Kandidatværdi afventer #3136.",
+    "updated_at": "2026-08-03T15:42:19.860866+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "transfer_price_floor_pct",
+    "value": 0,
+    "description": "Fair-play prisgulv (#3133): mindste tilladte pris for en spiller-til-spiller-handel, som andel af rytterens market_value (fx 0.25 = 25%). 0 = deaktiveret (default, ingen adfærdsændring). Håndhæves i transferPriceBand.js ved transfer_offers-accept, swap_offers-accept (samlet værdi inkl. cash_adjustment) og auktioners starting_price for EGEN rytter. Kandidatværdi afventer #3136 (empirisk rekalibrering).",
+    "updated_at": "2026-08-03T15:42:19.860866+00:00",
+    "updated_by": null
+  },
+  {
+    "key": "wage_deduction_mode",
+    "value": "season_upfront",
+    "description": "Løntræk-model (#2840): \"season_upfront\" (default, nuværende adfærd — ét engangstræk ved sæson-start) | \"daily\" (dagligt træk pr. rigtig dag, pro-rata via aktuel roster). Håndhæves i wageDeductionSweep.js + economyEngine.processTeamSeasonPayroll. Flip KUN ved sæson-grænse — se migrations-header for dobbelttræks-faren.",
+    "updated_at": "2026-08-03T21:15:13.029413+00:00",
+    "updated_by": null
+  }
+]
