@@ -4,13 +4,15 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** (1) **#4183 ejer-beslutning** — ny spiller blev hold nr. 25 i D3-A; ALLE puljer er 24/24 fulde, nye tilmeldinger har ingen plads. **S3's første løbsdag er TIR 25/8.** (2) **#4197** — strukturelt GC-orakel fejler på 2 af 50 seeds i rute-stien (GC-vinderen har ikke feltets laveste tid); `race:gate:routes` er permanent rød og har skjult det. (3) **#4159-rest:** DB-trigger-laget (relationel, ikke dato-formel — se #4159-tråden). Derefter: v4-afvigelser (#4132) · #3512 · kalibrering (#3719/#3720) · #4195/#4196.
+> **🎯 Next action:** (1) **#4183 ejer-beslutning** — ny spiller blev hold nr. 25 i D3-A; ALLE puljer er 24/24 fulde, nye tilmeldinger har ingen plads. **S3's første løbsdag er TIR 25/8.** (2) **#4197** — strukturelt GC-orakel fejler på 2 af 50 seeds i rute-stien (GC-vinderen har ikke feltets laveste tid); `race:gate:routes` er permanent rød og har skjult det. (3) **#4159-rest:** DB-trigger-laget (relationel, ikke dato-formel). (4) **#3459:** ejer-valg på rest-fælden (rytter på Hvile der kører løb får nul udvikling — A behold / B gulv / C overskriv). Derefter: v4-afvigelser (#4132) · #3512 · kalibrering (#3719/#3720) · #4195/#4196.
 
 > **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-MÆNGDE (`race_entry_days`) · aksen repareret (cap-brud 29→0) · **monument = eksklusiv løbsdag** genoprettet i live S3 (107 rækker i D1, akse 75→80 løbsdage, monument-brud 5→0, ingen etape flyttede dato) · `game_day_start` resynket for 334 løb (gårsdagens halve reparation). Alle 4 kalender-invarianter grønne i `verify-invariants`. Reglen er nu gated på 3 niveauer + dagligt CI-job (`calendar-invariant-audit.yml`). PR #4185, patch note 7.184. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
 > **✅ CUTOVER S2→S3 GENNEMFØRT 23/8** (ejer-GO pr. skridt): 22 faser grønne, S3 aktiv 27 dage. c=0,811 varig (#4135). 7 D1-hold i minus ved start (upfront-model, forklaret). Log: git-log + issue-tråde.
 
 > **⚖️ Fair play:** #3818 eksekveret 24/8 efter #4154-skabelonen (clawback af funnel-kontoens bruttobeløb + frys + auth-ban + advarsel in-game; #2221 var kun frys). Metode, tal og tekst: `docs/discord/2026-08-24-svarudkast-fairplay-3818.md`. **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord, har fået ingen forklaring.
+
+> **👥 Collab-gate live 24/8:** `main` kræver nu ejer-review (CODEOWNERS catch-all + `dismiss_stale_reviews`; 24 checks bevaret) + actor-guard på `auto-merge`. PR #4187 · `CONTRIBUTING.md` · `scripts/apply-collab-branch-protection.sh` (idempotent). Rest: **#4188** delt dev-Supabase + invitér hjælpere · **#4189** må collaborators trigge `@claude` på ejerens kvote (anbefaling: nej).
 
 > **💰 Værdier/løn S3-tilstand:** base_value = model(c 0,811 + type-dæmpning k=100); CPV dæmpet; løn = CPV × 0,35 frosset FØR transitionen (S2-alder, ejer-bekræftet rækkefølge). `wage_deduction_mode = season_upfront` (daily-flip = S3→S4). Upkeep S3 = 220k/70k/20k/0.
 

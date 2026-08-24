@@ -930,6 +930,10 @@
         "title": "Train today and the +25% boost",
         "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
       },
+      "raceDays": {
+        "title": "Race days and training",
+        "text": "A race day replaces that day's training session rather than adding to it, so a rider never gets both. The race is worth a little more than the session it replaced, about 15% more, but all of it goes into the abilities that stage demanded: a mountain stage builds Climbing, Endurance and Durability, a flat stage builds Flat, Sprint and Acceleration. It counts once per day. Riding six stages on one date develops a rider exactly as much as riding one, because development is settled per day. Fatigue is not: every stage adds its own load, while recovery only comes once a day, so a heavy day leaves a rider far more tired without making him any better. One catch worth knowing: the race takes the place of whatever you had planned that day, so a rider whose plan says Rest gets no development from racing. Give the riders you enter a real session."
+      },
       "smartDefault": {
         "title": "What trains a rider with no focus set?",
         "text": "A rider with no focus chosen is not left untrained: the assistant trains them toward a focus that suits their type, for example a Sprinter defaults to Sprint and a Climber to VO2max. You'll see a small 'Assistant: ... (auto)' note under the focus dropdown when this applies. Setting your own focus always overrides it. To apply a type-matched focus to several riders at once, select them and choose 'Smart focus (by rider type)' in the bulk-apply bar; riders who already have a focus set are skipped so your existing choices are never overwritten."
@@ -1153,6 +1157,10 @@
       "seasonOverview": {
         "title": "Season view on the planning board",
         "text": "The planning board has two views. Day shows one race day at a time. Season shows your whole group calendar on one timeline: Grand Tours as long bars, the monument on its own exclusive race day, and a gold tint on every race where you already have a saved selection. Click any race to open its day board."
+      },
+      "stagesPerDay": {
+        "title": "Why a stage race can finish in fewer days than it has stages",
+        "text": "Division 1 runs up to five stages a day, so an eight-stage race is often done in three or four dates. That is deliberate: it keeps a stage race from locking your riders for a week and a half. Each stage still gets its own race day, which is what binds a rider, so the eight stages occupy eight race days even when they run across four dates. That is why a race can read 'race day 12 to 19' while sitting on four dates in the calendar. A rider is bound one race per race day, never per date, so a team-mate is free to start a different race on the same date."
       },
       "suitability": {
         "title": "Reading the selection table",

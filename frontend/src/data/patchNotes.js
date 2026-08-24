@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.185",
+    "date": "2026-08-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help now answers what a race day does to a rider",
+          "body": "Two questions kept coming up and Help had no answer. A race replaces that day's training session instead of adding to it, and it settles once per day: six stages on one date develop a rider exactly as much as one, though every stage adds its own fatigue. And a stage race can finish in fewer dates than it has stages, because a division runs several stages a day, while each stage still gets its own race day. Both are now written down under Daily Training and Race selection."
+        },
+        "da": {
+          "title": "Hjælp svarer nu på hvad en løbsdag gør ved en rytter",
+          "body": "To spørgsmål blev ved med at dukke op, og Hjælp havde intet svar. Et løb erstatter dagens træningspas i stedet for at lægge sig oven i det, og det gøres op én gang om dagen: seks etaper på én dato udvikler rytteren præcis lige så meget som én, selvom hver etape lægger sin egen træthed på. Og et etapeløb kan være færdigt på færre datoer end det har etaper, fordi en division kører flere etaper om dagen, mens hver etape stadig får sin egen løbsdag. Begge dele står nu under Daglig træning og Løbsudtagelse."
+        },
+        "refs": [4162, 4164]
+      }
+    ]
+  },
+  {
     "version": "7.184",
     "date": "2026-08-24",
     "label": "Beta",

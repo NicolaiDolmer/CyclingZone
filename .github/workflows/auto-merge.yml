@@ -29,7 +29,12 @@ concurrency:
 
 jobs:
   auto-merge:
-    if: github.event.label.name == 'auto-merge'
+    # Actor-guard (#collab-gate): kun ejeren kan udløse auto-merge.
+    # Collaborators med write kan sætte labels, så uden denne linje ville en
+    # hjaelper kunne shippe til prod ved at klistre `auto-merge` paa sin egen PR.
+    # Branch protection (required review fra CODEOWNERS) blokerer det ogsaa, men
+    # her fejler det stille i stedet for at spamme PR'en med en roed workflow-run.
+    if: github.event.label.name == 'auto-merge' && github.event.sender.login == 'NicolaiDolmer'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

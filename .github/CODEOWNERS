@@ -11,6 +11,13 @@
 # GitHub kræver gyldige GitHub-brugernavne; @NicolaiDolmer er fallback-owner
 # der sikrer PR-review-enforcement mens AI-rollerne dokumenteres i kommentarer.
 
+# === CATCH-ALL (godkendelsesgate) ===
+# Sidste matchende pattern vinder i CODEOWNERS, så denne linje står ØVERST og
+# fanger alt der ikke er dækket længere nede (scripts/, root-filer, *.yml m.fl.).
+# Uden den kan en PR der kun rører fx scripts/ merges uden ejer-godkendelse,
+# selvom `require_code_owner_reviews` er slået til på main.
+*                                   @NicolaiDolmer
+
 # === FRONTEND (AI-rolle: CLAUDE) ===
 frontend/**                         @NicolaiDolmer
 
