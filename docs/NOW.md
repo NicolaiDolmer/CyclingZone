@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Næste session: [prompt](sessions/2026-08-25-kalender-og-traening-ssot-session-prompt.md)** — kalenderen først (#4190 sammenhængende løbsdage · #4174 rytterkrav · #4191 churn), derefter træningens SSOT (#4192, første leverance = liste over de ~35 beslutninger). Afventer ejer: **PR #4199** (#4183 placerings-fix, prod allerede repareret) · **PR #4198** · **PR #4182**. Nye fund fra #4180: **#4197** (strukturelt GC-orakel fejler i rute-stien) · #4195 · #4196.
+> **🎯 Next action:** **Næste session: [prompt](sessions/2026-08-25-kalender-og-traening-ssot-session-prompt.md)** — kalenderen først (#4190 sammenhængende løbsdage · #4174 rytterkrav · #4191 churn), derefter træningens SSOT (#4192, første leverance = liste over de ~35 beslutninger). Afventer ejer: **PR #4182** (transition-gate-hul + inEmptyPool-dedup) — eneste åbne PR. Nye fund fra #4180: **#4197** (strukturelt GC-orakel fejler i rute-stien) · #4195 · #4196.
 
 > **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-MÆNGDE (`race_entry_days`) · aksen repareret (cap-brud 29→0) · **monument = eksklusiv løbsdag** genoprettet i live S3 (107 rækker i D1, akse 75→80 løbsdage, monument-brud 5→0, ingen etape flyttede dato) · `game_day_start` resynket for 334 løb (gårsdagens halve reparation). Alle 4 kalender-invarianter grønne i `verify-invariants`. Reglen er nu gated på 3 niveauer + dagligt CI-job (`calendar-invariant-audit.yml`). PR #4185, patch note 7.184. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
@@ -25,6 +25,6 @@
 
 > **✅ #4180 + #4178 + #4183 LUKKET 24/8:** race:gate fejlede 42 % af 400 tilfældige seeds med uændret kode — nu 50 seeds med aggregat-dom (måltal uændrede, falsk alarm 0,04 %, CI 5s→47s). Navne-RNG skilt fra stat-RNG, så navnelister ikke kan flytte stats; #4179 målt til 4.000/4.000 identiske stats og merged. **#4183 rodårsag:** placeringen talte ikke frosne hold med, så to fulde D3-puljer så ledige ud og fik dagens tre tilmeldinger. Prod repareret pr. ejer-go (Plattentuub→D4-B, Landbouwkrediet→D4-C, begge puljer reconciled) — **alle 15 puljer på 24, audit grøn.**
 
-> **🤖 Ingen aktiv session** (sessionen 24/8 ~21:30 lukket: #4180/#4178/#4183 landet, prod repareret, audit grøn).
+> **🤖 Ingen aktiv session** (24/8 lukket: kalender-kæden + #4075 monument-reglen i prod · #4180/#4178/#4183 landet · #4198 løbskort-datoer · audit grøn). NB: #4191 er i gang i worktree `perf/4191-race-entry-days-diff`.
 
 _Historik i git-log, issue-tråde + docs/audits/._
