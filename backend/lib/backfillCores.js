@@ -220,9 +220,8 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const youthTypesModel = youthTypesBaseline !== undefined
     ? youthTypesBaseline
     : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
-  // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
-  // flippes ved cutover (se riderValuationTypeDampening.js) — ingen
-  // adfærdsændring her i dag.
+  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
+  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
   const valModel = valuationModel || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
   // #3570: seasonNumber flyttet HERTIL (var tidligere kun hentet ved trin 5) — trin 4
   // (ENDELIG type) skal nu også kende alderen for at vælge baseline.
@@ -433,9 +432,8 @@ export async function deriveForRiderIds(supabase, riderIds, {
 
 // ── base_value SHADOW (fra backfillRiderBaseValue.js) ─────────────────────────
 export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
-  // #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
-  // flippes ved cutover (se riderValuationTypeDampening.js) — ingen
-  // adfærdsændring her i dag.
+  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
+  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
   const m = model || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
   // #3345: valuation_type (den FROSNE type) skal med i selectet — predictBaseValue/
   // currentProductionValue læser den FØR primary_type (se riderValuation.js). Uden

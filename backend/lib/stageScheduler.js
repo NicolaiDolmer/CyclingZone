@@ -19,6 +19,7 @@
 import { copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
 import { detectInFlightRacesWithoutEntries } from "./raceActiveGuard.js";
+import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
 
 // Daglig afviklings-cap (loop-prævention, Beslutning D). Cap'et er en runaway-BACKSTOP
 // (mod cron-loop-incidenten 2026-05-21), IKKE throughput-styring — den PRIMÆRE styring er
@@ -141,23 +142,9 @@ export async function runStageScheduler({
 
   // P0 2/7: puljer uden hold (fx division 4-puljerne 8-15 mellem kalender-
   // materialisering og første manager/AI-fyld) må ikke give "No start list"-fejl
-  // hvert tick (~4.600 tavse fejlforsøg/døgn). Fail-open: returnerer teams-tabellen
-  // 0 rækker TOTALT (tom test-DB/mock) springes filteret over.
-  const { data: teamPools, error: tpErr } = await supabase
-    .from("teams")
-    .select("league_division_id");
-  if (tpErr) throw new Error(`teams: ${tpErr.message}`);
-  const teamsPerPool = new Map();
-  for (const t of teamPools || []) {
-    if (t.league_division_id == null) continue;
-    teamsPerPool.set(t.league_division_id, (teamsPerPool.get(t.league_division_id) || 0) + 1);
-  }
-  const poolFilterActive = (teamPools || []).length > 0;
-  const inEmptyPool = (race) => (
-    poolFilterActive
-    && race.league_division_id != null
-    && !(teamsPerPool.get(race.league_division_id) > 0)
-  );
+  // hvert tick (~4.600 tavse fejlforsøg/døgn). Fælles diskriminator
+  // (emptyPoolPolicy.js) — samme definition som season-end/transition-gaterne.
+  const { inEmptyPool } = await loadEmptyPoolFilter({ supabase });
 
   // P0 2/7: finalization-pending recovery. Løb hvor ALLE etaper er kørt men status
   // aldrig blev flippet til 'completed' (crash mellem trin — incidenten 30/6-2/7

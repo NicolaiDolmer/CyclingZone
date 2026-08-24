@@ -42,9 +42,8 @@ const YOUTH_TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTyp
 // #2594 cutover: cap-gaten SKAL bruge samme model som deriveForRiderIds persisterer
 // med (v4) — ellers kan en kandidat passere en v3-beregnet gate og lande over
 // tier-loftet når v4-værdien skrives (#2065-klassen, fanget af aiTeamGenerator-testen).
-// #4000: applyTypeDampening() er en no-op indtil TYPE_DAMPENING_ENABLED
-// flippes ved cutover (se riderValuationTypeDampening.js) — ingen
-// adfærdsændring her i dag.
+// #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
+// bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
 const VALUATION_MODEL = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "./riderValuationModelV4.json"), "utf8")));
 
 export const STARTER_SQUAD = Object.freeze({

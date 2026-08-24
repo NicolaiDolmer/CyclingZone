@@ -4,16 +4,34 @@ import assert from "node:assert/strict";
 import { assessSeasonEndBlockers, assessTransitionReadiness } from "./seasonTransitionReadiness.js";
 
 // ─── Mock Supabase ────────────────────────────────────────────────────────────
-// Dækker præcis de fire queries assessTransitionReadiness laver:
+// Dækker præcis de queries assessTransitionReadiness laver:
 //   transfer_windows: select().eq().order().limit().maybeSingle()
 //   auctions:         select(_, {count,head}).in()  → thenable {count}
-//   races:            select(_, {count,head}).eq().neq() → thenable {count}
+//   races:            select().eq().neq().order().range() (fetchAllRows, #3038-fixet)
+//   teams:            select().order().range()      (emptyPoolPolicy.js)
 //   seasons:          select().eq().maybeSingle() (#2361: season_end_completed)
+
+// Paged chain til fetchAllRows-forbrugere: alle filtre returnerer kæden,
+// range(from, to) leverer det udsnit.
+function pagedChain(rows) {
+  const chain = {
+    eq: () => chain,
+    neq: () => chain,
+    order: () => chain,
+    range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
+  };
+  return chain;
+}
 
 function createMockSupabase({
   win = null,
   activeAuctionCount = 0,
   unfinishedRaceCount = 0,
+  // Rækker for races-læsningen; default afledes af unfinishedRaceCount med
+  // league_division_id=null (blokerer altid, matcher den gamle count-adfærd).
+  unfinishedRaceRows = null,
+  // teams-tabellen (empty-pool-filteret). Default tom → fail-open, filter inaktivt.
+  teamRows = [],
   // #2361: default = sæson 1, status completed → season_end_completed er ok
   // som default, så eksisterende tests (der ikke handler om dette check)
   // fortsat udtrykker deres oprindelige "ready"/"blocked af X"-forventning.
@@ -24,6 +42,8 @@ function createMockSupabase({
   const thenableCount = (count) => ({
     then: (resolve) => resolve({ data: null, count, error: null }),
   });
+  const raceRows = unfinishedRaceRows
+    ?? Array.from({ length: unfinishedRaceCount }, (_, i) => ({ id: `race-${i}`, league_division_id: null }));
   return {
     from(table) {
       if (table === "transfer_windows") {
@@ -39,8 +59,10 @@ function createMockSupabase({
         return { select: () => ({ in: () => thenableCount(activeAuctionCount) }) };
       }
       if (table === "races") {
-        const chain = { eq: () => chain, neq: () => thenableCount(unfinishedRaceCount) };
-        return { select: () => chain };
+        return { select: () => pagedChain(raceRows) };
+      }
+      if (table === "teams") {
+        return { select: () => pagedChain(teamRows) };
       }
       if (table === "seasons") {
         const chain = {
@@ -87,6 +109,43 @@ test("assessTransitionReadiness — wrapped vindue + 0 auktioner + 0 uafviklede 
       "window_closed",
     ],
   );
+});
+
+// ============================================================
+// #3038-hul lukket 24/8: all_races_completed brugte en rå HEAD-tælling
+// uden empty-pool-undtagelsen — et løb i en pulje uden hold blokerede
+// transitionen selvom season-end (assessSeasonEndBlockers) undtog det.
+// ============================================================
+
+test("assessTransitionReadiness — uafviklet løb i TOM pulje blokerer ikke all_races_completed", async () => {
+  const supabase = createMockSupabase({
+    win: WRAPPED_WINDOW,
+    unfinishedRaceRows: [{ id: "race-dormant", league_division_id: "d4-pool-c" }],
+    teamRows: [{ id: "t1", league_division_id: "d1" }], // filter aktivt, ingen hold i d4-pool-c
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.checks.all_races_completed.ok, true, "dormant-pulje-løb må ikke spærre transitionen");
+});
+
+test("assessTransitionReadiness — uafviklet løb i AKTIV pulje blokerer stadig", async () => {
+  const supabase = createMockSupabase({
+    win: WRAPPED_WINDOW,
+    unfinishedRaceRows: [{ id: "race-live", league_division_id: "d1" }],
+    teamRows: [{ id: "t1", league_division_id: "d1" }],
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.checks.all_races_completed.ok, false);
+  assert.ok(result.failed_critical.includes("all_races_completed"));
+});
+
+test("assessTransitionReadiness — fail-open: tom teams-tabel deaktiverer pool-filteret (mock/test-DB)", async () => {
+  const supabase = createMockSupabase({
+    win: WRAPPED_WINDOW,
+    unfinishedRaceRows: [{ id: "race-x", league_division_id: "d4-pool-c" }],
+    teamRows: [],
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.checks.all_races_completed.ok, false, "uden hold-data skal spærren være konservativ");
 });
 
 // ============================================================
@@ -299,14 +358,22 @@ function createSeasonEndMock({
       if (table === "races") {
         const chain = {
           eq: () => chain,
-          neq: () => ({ then: (resolve) => resolve({ data: racesError ? null : unfinishedRaces, error: racesError }) }),
+          neq: () => chain,
+          order: () => chain,
+          range: (from, to) => (racesError
+            ? Promise.resolve({ data: null, error: racesError })
+            : Promise.resolve({ data: unfinishedRaces.slice(from, to + 1), error: null })),
         };
         return { select: () => chain };
       }
       if (table === "teams") {
-        return {
-          select: () => ({ then: (resolve) => resolve({ data: teamsError ? null : teamPools, error: teamsError }) }),
+        const chain = {
+          order: () => chain,
+          range: (from, to) => (teamsError
+            ? Promise.resolve({ data: null, error: teamsError })
+            : Promise.resolve({ data: teamPools.slice(from, to + 1), error: null })),
         };
+        return { select: () => chain };
       }
       if (table === "race_stage_schedule") {
         const chain = {
@@ -369,7 +436,7 @@ test("assessSeasonEndBlockers — query-fejl på puljer (teams) kaster (fail-clo
   const supabase = createSeasonEndMock({ unfinishedRaces: genUnfinishedRaces(2), teamsError: { message: "boom" } });
   await assert.rejects(
     () => assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID }),
-    /Kunne ikke læse puljer/,
+    /empty-pool-filter/,
   );
 });
 
