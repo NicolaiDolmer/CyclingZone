@@ -6,69 +6,69 @@
 
 ## Population
 
-800 ryttere · overall p50 20 (p90 50, max 70) · base_value p50 20163 (p99 17357114, max 32068504)
+800 ryttere · overall p50 20 (p90 49, max 71) · base_value p50 19304 (p99 16174663, max 64655557)
 
 | Type | Antal | base_value p50 | p90 | max |
 |---|--:|--:|--:|--:|
-| baroudeur | 23 | 6996 | 378563 | 711924 |
-| brostensrytter | 38 | 463803 | 1835154 | 2581484 |
-| climber | 275 | 12051 | 515607 | 4803037 |
-| gc | 34 | 2452883 | 20390757 | 32068504 |
-| puncheur | 12 | 7736 | 249343 | 716457 |
-| rouleur | 102 | 14452 | 466227 | 3149852 |
-| sprinter | 121 | 40403 | 1991155 | 17357114 |
-| tt | 195 | 19753 | 1574170 | 27649298 |
+| baroudeur | 97 | 7283 | 296552 | 777097 |
+| brostensrytter | 33 | 729158 | 2718910 | 5807542 |
+| climber | 242 | 13521 | 653160 | 6325096 |
+| gc | 30 | 1270229 | 34720356 | 52856429 |
+| puncheur | 13 | 10505 | 515537 | 1297729 |
+| rouleur | 2 | 808010 | 808010 | 808010 |
+| sprinter | 127 | 34220 | 2108538 | 13429799 |
+| tt | 256 | 14489 | 1001964 | 64655557 |
 
 ## Race-motor (vinder-fordeling pr. terræn)
 
 | Terræn | Nøgle-evne | Vinder ⌀ vs median | Distinkte | Stærkeste vandt | Top-vindertyper (født-som) |
 |---|---|---|--:|--:|---|
-| classic | endurance | 71 vs 32 | 41/300 | 41.3% | gc 45%, puncheur 35%, climber 9% |
-| cobbles | cobblestone | 75 vs 19 | 42/300 | 2% | brostensrytter 91%, gc 3%, baroudeur 2% |
-| flat | sprint | 87 vs 18 | 27/300 | 8.7% | sprinter 97%, gc 2%, baroudeur 0% |
-| high_mountain | climbing | 89 vs 23 | 25/300 | 42.3% | gc 63%, climber 30%, puncheur 8% |
-| hilly | punch | 77 vs 26 | 89/300 | 3% | puncheur 71%, climber 9%, baroudeur 6% |
-| itt | time_trial | 91 vs 23 | 26/300 | 12% | tt 78%, gc 22%, brostensrytter 0% |
-| mountain | climbing | 84 vs 23 | 73/300 | 40.3% | gc 56%, climber 32%, puncheur 8% |
-| rolling | endurance | 70 vs 32 | 63/300 | 40% | gc 45%, puncheur 23%, baroudeur 18% |
+| classic | endurance | 74 vs 29 | 35/300 | 50.3% | gc 51%, puncheur 24%, climber 11% |
+| cobbles | cobblestone | 82 vs 18 | 38/300 | 2.3% | brostensrytter 93%, gc 3%, puncheur 1% |
+| flat | sprint | 86 vs 18 | 30/300 | 2.7% | sprinter 99%, tt 1%, baroudeur 0% |
+| high_mountain | climbing | 92 vs 23 | 22/300 | 61.3% | gc 80%, climber 15%, puncheur 6% |
+| hilly | punch | 75 vs 26 | 90/300 | 14.7% | puncheur 62%, climber 12%, gc 10% |
+| itt | time_trial | 91 vs 23 | 27/300 | 24% | tt 73%, gc 27% |
+| mountain | climbing | 87 vs 23 | 66/300 | 54.3% | gc 68%, climber 21%, puncheur 7% |
+| rolling | endurance | 73 vs 29 | 64/300 | 43.7% | gc 53%, puncheur 17%, baroudeur 15% |
 
-Udbruds-andel af bjergsejre: 1.2%
+Udbruds-andel af bjergsejre: 1.3%
 
 ### Evne-liveness (⌀rank-gevinst pr. probe)
 
 | Probe | ⌀rank-gevinst |
 |---|--:|
-| aggression@mountain-bwgap | 0.015 |
-| climbing@mountain | 10.19 |
-| descending@mountain | 1.46 |
-| flat@rolling | 3.28 |
-| sprint@flat | 12.21 |
-| tempo@mountain | 1.26 |
+| aggression@mountain-bwgap | 0.017 |
+| climbing@mountain | 10.86 |
+| descending@mountain | 0.74 |
+| flat@rolling | 3.48 |
+| sprint@flat | 12.61 |
+| tempo@mountain | 2.39 |
 
 ### Grand Tour (21 etaper)
 
 | # | Rytter | Født-som | Afledt | Tid |
 |--:|---|---|---|---|
-| 1 | Manuel Fontana | gc | gc | +0:00 |
-| 2 | Pieter Dekker | climber | climber | +0:10 |
-| 3 | Andrea Sorrentino | puncheur | climber | +6:12 |
-| 4 | Ethan Whitfield | gc | gc | +6:56 |
-| 5 | Óscar López | climber | climber | +7:12 |
-| 6 | Kamil Zupan | climber | climber | +7:22 |
-| 7 | Patryk Kovač | climber | climber | +7:36 |
-| 8 | Sebastian Holmberg | climber | climber | +11:39 |
-| 9 | Pieter Claes | gc | gc | +11:49 |
-| 10 | George Carter | tt | tt | +11:54 |
+| 1 | Ryan Dawson | gc | gc | +0:00 |
+| 2 | Jan Nowak | climber | climber | +6:56 |
+| 3 | Andrea Conti | gc | gc | +11:03 |
+| 4 | Emil Nyström | gc | climber | +11:48 |
+| 5 | Vojtěch Procházka | climber | climber | +12:47 |
+| 6 | Sergio Reyes | climber | climber | +13:14 |
+| 7 | Luca Riva | puncheur | climber | +13:48 |
+| 8 | Cody Pearce | tt | tt | +13:56 |
+| 9 | Gonzalo Bravo | climber | climber | +15:00 |
+| 10 | Théo Gauthier | climber | climber | +16:42 |
 
-Trøjer: 🟢 Manuel Fontana (gc) · ⛰️ Pieter Dekker (climber) · ⚪ George Carter
+Trøjer: 🟢 Ryan Dawson (gc) · ⛰️ Jan Nowak (climber) · ⚪ Cody Pearce
 
 ## Progression
 
-800 simulerede ryttere over 6 sæsoner · pension/sæson: 7, 10, 8, 21, 23, 28
+800 simulerede ryttere over 6 sæsoner · pension/sæson: 7, 9, 6, 14, 19, 23
 
 | Metrik | p10 | p50 | p90 |
 |---|--:|--:|--:|
-| U25 ability-sum-delta/sæson | 1 | 13 | 29 |
-| Ungt talent base_value ×mult (n=33) | 2.31 | 4.53 | 8.31 |
-| Signatur-snit efter sim | — | 35 | 72 (p99 92, max 97) |
+| U25 ability-sum-delta/sæson | 0 | 5 | 22 |
+| Ungt talent base_value ×mult (n=48) | 1.55 | 2.51 | 4.85 |
+| Signatur-snit efter sim | — | 32 | 68 (p99 90, max 94) |
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { evaluateRaceStructuralOracles, minDistinctWinners, evaluateAbilityLivenessOracle, evaluateIncidentBoundsOracle, evaluatePeakCouplingScorecard, evaluatePeakNeutralityOracle } from "./raceDryRunOracles.js";
+import { evaluateRaceStructuralOracles, minDistinctWinners, evaluateAbilityLivenessOracle, evaluateIncidentBoundsOracle, evaluatePeakCouplingScorecard, evaluatePeakNeutralityOracle, evaluateSeedAggregateGate } from "./raceDryRunOracles.js";
 
 const healthyTerrain = (over = {}) => ({
   terrain: "flat", keyAb: "sprint", races: 300,
@@ -300,4 +300,91 @@ test("peak-neutralitet: peak virker ikke ved eget mål (A ikke bedre i løb 1) �
 test("peak-neutralitet: tom/manglende data → ingen brud", () => {
   assert.deepEqual(evaluatePeakNeutralityOracle({}), []);
   assert.deepEqual(evaluatePeakNeutralityOracle(null), []);
+});
+
+// -- #4180: aggregat-dom over mange seeds -------------------------------------
+
+// Bygger et metrik-dump som simulateSeasonDryRun.js --metrics-json ville skrive.
+const seedRun = (seed, { itt = 0.66, flat = 0.99, failures = {}, routeBands = null } = {}) => ({
+  seed,
+  metrics: {
+    targets: {
+      flat: { bornPct: flat, targetPct: 0.90 },
+      itt: { bornPct: itt, targetPct: 0.60 },
+    },
+    ...(routeBands ? { routeBands } : {}),
+    failures: { structural: [], liveness: [], roles: [], targets: [], breakaway: [], dominance: [], ...failures },
+  },
+});
+const manyRuns = (n, opts) => Array.from({ length: n }, (_, i) => seedRun(i + 1, typeof opts === "function" ? opts(i) : opts));
+
+test("aggregat-gate: sund baseline over 50 seeds er groen", () => {
+  const v = evaluateSeedAggregateGate(manyRuns(50));
+  assert.equal(v.judged, true);
+  assert.deepEqual(v.failures, []);
+  assert.deepEqual(v.targetRows.map((r) => r.pass), [true, true]);
+});
+
+test("aggregat-gate: enkelte seeds under maalet faelder IKKE gaten (det var #4180-fejlen)", () => {
+  // 10 af 50 seeds ligger under itt-maalet paa 60 %, men gennemsnittet holder.
+  const v = evaluateSeedAggregateGate(manyRuns(50, (i) => ({ itt: i < 10 ? 0.40 : 0.72 })));
+  assert.equal(v.targetRows.find((r) => r.key === "itt").pass, true);
+  assert.deepEqual(v.failures, []);
+});
+
+test("aggregat-gate: et faktisk fald i gennemsnittet faelder gaten", () => {
+  const v = evaluateSeedAggregateGate(manyRuns(50, { itt: 0.55 }));
+  assert.equal(v.targetRows.find((r) => r.key === "itt").pass, false);
+  assert.equal(v.failures.length, 1);
+  assert.match(v.failures[0], /itt gennemsnit 55\.0% under maal 60%/);
+});
+
+test("aggregat-gate: ét strukturelt orakel-brud paa én seed faelder gaten", () => {
+  const runs = manyRuns(50);
+  runs[7] = seedRun(8, { failures: { structural: ["GC-vinderen har ikke feltets laveste tid"] } });
+  const v = evaluateSeedAggregateGate(runs);
+  assert.equal(v.hardSeeds.length, 1);
+  assert.equal(v.hardSeeds[0].seed, 8);
+  assert.match(v.failures[0], /1 seeds broed et per-seed-haardt baand/);
+});
+
+test("aggregat-gate: liveness- og roles-brud er ogsaa per-seed-haarde", () => {
+  const runs = manyRuns(50);
+  runs[0] = seedRun(1, { failures: { liveness: ["tempo er doedvaegt"] } });
+  runs[1] = seedRun(2, { failures: { roles: ["kaptajn-delta"] } });
+  const v = evaluateSeedAggregateGate(runs);
+  assert.deepEqual(v.hardSeeds.map((r) => r.seed), [1, 2]);
+});
+
+test("aggregat-gate: crashede seeds taeller som fejl, ikke som fravaer", () => {
+  const runs = [...manyRuns(49), { seed: 50, metrics: null }];
+  const v = evaluateSeedAggregateGate(runs);
+  assert.deepEqual(v.crashed, [50]);
+  assert.match(v.failures[0], /1 seeds crashede/);
+});
+
+test("aggregat-gate: for faa seeds giver rapport uden dom (pass=null)", () => {
+  const v = evaluateSeedAggregateGate(manyRuns(3, { itt: 0.10 }));
+  assert.equal(v.judged, false);
+  assert.deepEqual(v.targetRows.map((r) => r.pass), [null, null]);
+  assert.deepEqual(v.failures, []);
+});
+
+test("aggregat-gate: rute-baand doemmes ogsaa paa gennemsnittet, min/max/exclusive respekteres", () => {
+  const bands = (lift) => ({
+    longDayEnduranceLift: { value: lift, band: ">+3pp", min: 3, max: null, exclusive: true },
+    prologP90Gap: { value: 48, band: "<=60s", min: null, max: 60, exclusive: false },
+  });
+  const green = evaluateSeedAggregateGate(manyRuns(50, { routeBands: bands(4.2) }));
+  assert.deepEqual(green.routeRows.map((r) => r.pass), [true, true]);
+  const red = evaluateSeedAggregateGate(manyRuns(50, { routeBands: bands(3) }));
+  // exclusive: gennemsnit praecis paa graensen er IKKE bestaaet.
+  assert.equal(red.routeRows.find((r) => r.key === "longDayEnduranceLift").pass, false);
+});
+
+test("aggregat-gate: tom input crasher ikke", () => {
+  const v = evaluateSeedAggregateGate([]);
+  assert.deepEqual(v.targetRows, []);
+  assert.deepEqual(v.routeRows, []);
+  assert.deepEqual(v.failures, []);
 });
