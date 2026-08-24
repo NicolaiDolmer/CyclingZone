@@ -73,7 +73,9 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 | Andel endagsløb (minimum) | `TIER_ONE_DAY_SHARE_MIN` | 0,45 | 0,45 | 0,48 | 0,45 | = mål − 0,10 | `tierCalendarGuarantees.js` |
 | Etapeløb uden bjergetape | `TIER_MOUNTAIN_FREE_STAGE_RACE_MIN` | 0 | 2 | 1 | 2 | 7/8 | `tierCalendarGuarantees.js` |
 | Etapeløbs-spænd | hård grænse | etaper + 3 kalenderdage | | | | 17/8 | [#3546 H](https://github.com/NicolaiDolmer/CyclingZone/issues/3546) |
-| Monumenter | egen eksklusiv løbsdag | | | | | 21/8 | [#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075) |
+| Monumenter | egen eksklusiv **løbsdag** (kalenderdatoen må deles) | | | | | 21/8 | [#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075) |
+
+**Monument-reglen, præcist.** Et monument har sin egen `game_day`: ingen modløb i puljen den løbsdag, så hver eneste rytter kan stille op. Den deler derimod gerne `scheduled_at`-DATO med andre løb — de ligger blot i datoens øvrige tidsslots. Pakkeren har bygget reglen ind siden 21/8 (`raceCalendarLanePacker.js`, B2). Den blev alligevel brudt i live S3: [#4161](https://github.com/NicolaiDolmer/CyclingZone/issues/4161)-akse-reparationen udledte `game_day` af datoerne alene, kendte ikke reglen, og klappede alle fem D1-monumenter sammen med deres naboløb. Derfor er reglen nu håndhævet på alle tre niveauer (§9), ikke kun i generatoren.
 
 > **Andelen måles på ANTAL LØB, ikke på løbsdage.** Det er et bevidst valg (#3327) og står i kodens overskrift. Målt på løbsdage ville D1 være 14 % — målt på løb er den 61 %.
 
@@ -197,6 +199,17 @@ Det tredje niveau er dét der manglede da #4155 brød overlap-cap'en. Tre invari
 - `calendar_overlap_within_tier_cap`
 - `calendar_one_stage_per_race_per_game_day`
 - `calendar_game_day_axis_not_collapsed`
+- `calendar_monument_exclusive_game_day` ([#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075), tilføjet 24/8)
+
+Monument-reglen er den første der har alle tre niveauer samtidigt:
+
+| Niveau | Hvor |
+|---|---|
+| CI mod pakkerens output | `calendarGameDayRepair.test.js`, `calendarOverlapInvariant.test.js`, `tierCalendarMaterializer.test.js` |
+| Sæsonskifte-preflight | `detectCalendarViolations` (invariant 6) → `seasonCalendarGate.gatePlan` |
+| `verify-invariants` mod prod | `calendar_monument_exclusive_game_day` |
+
+Og vagten kører nu af sig selv: `.github/workflows/calendar-invariant-audit.yml` måler kalender-invarianterne + den kritiske constraint-form (`scripts/constraint-form-audit.sql`, [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163)) mod prod hver nat 03:50 UTC og åbner et tracking-issue ved brud. Før det kørte `verify-invariants` kun når nogen huskede det i hånden — og begge hændelser (#4155, #4161) opstod i DATA, ikke i kode.
 
 Resten af tabellerne i denne fil har endnu ikke alle tre. Se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 

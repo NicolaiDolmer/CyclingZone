@@ -242,7 +242,7 @@ test("snakeAssign over 4 puljer vender hver anden række", () => {
 
 // ─── distributeCompression ───────────────────────────────────────────────────
 
-test("150 hold → præcis 48 i D2 (24+24), 96 i D3 (4×24), 6 i D4 A/B (3+3)", () => {
+test("150 hold → præcis 48 i D2 (24+24), 96 i D3 (4×24), 6 spredt over ALLE 8 D4-puljer (#4172)", () => {
   const pools = makePools();
   const { teams, standings } = makeRankedField(150);
   const ranked = rankTeamsGlobally({ teams, standings });
@@ -255,10 +255,12 @@ test("150 hold → præcis 48 i D2 (24+24), 96 i D3 (4×24), 6 i D4 A/B (3+3)", 
   assert.equal(byPool.get("d2-a"), 24);
   assert.equal(byPool.get("d2-b"), 24);
   for (const p of ["a", "b", "c", "d"]) assert.equal(byPool.get(`d3-${p}`), 24);
-  assert.equal(byPool.get("d4-a"), 3);
-  assert.equal(byPool.get("d4-b"), 3);
-  // Resten samles KUN i de to første D4-puljer — c..h får ingen.
-  for (const p of ["c", "d", "e", "f", "g", "h"]) assert.equal(byPool.get(`d4-${p}`) ?? 0, 0);
+  // #4172 (ejer-krav 24/8): defaulten er ALLE D4-puljer. S3 blev startet med den gamle
+  // default 2, saa alle 48 D4-hold landede i A+B mens C-H stod tomme med 156 uafviklelige loeb.
+  const d4Pools = ["a", "b", "c", "d", "e", "f", "g", "h"];
+  const d4Fordeling = d4Pools.map((p) => byPool.get(`d4-${p}`) ?? 0);
+  assert.equal(d4Fordeling.reduce((a, b) => a + b, 0), 6);
+  assert.equal(Math.max(...d4Fordeling), 1, "6 hold over 8 puljer = hoejst 1 pr. pulje");
 
   // Rank-grænserne er skarpe: rank 48 → D2, rank 49 → D3, rank 144 → D3, rank 145 → D4.
   const byRank = new Map(assignments.map((a) => [a.rank, a]));
@@ -474,4 +476,15 @@ test("#3901: re-run-determinisme gælder også D1-varianten", () => {
   const run1 = distributeCompression(rankTeamsByGlobalRank({ teams, globalRankRows }), pools, { d1Capacity: 24 });
   const run2 = distributeCompression(rankTeamsByGlobalRank({ teams, globalRankRows }), pools, { d1Capacity: 24 });
   assert.deepEqual(run1.assignments, run2.assignments);
+});
+
+test("#4172: et eksplicit d4PoolCount skaerer stadig fra toppen (S1→S2's historiske A/B-fordeling)", () => {
+  const pools = makePools();
+  const { teams, standings } = makeRankedField(150);
+  const ranked = rankTeamsGlobally({ teams, standings });
+  const { byPool } = distributeCompression(ranked, pools, { d4PoolCount: 2 });
+
+  assert.equal(byPool.get("d4-a"), 3);
+  assert.equal(byPool.get("d4-b"), 3);
+  for (const p of ["c", "d", "e", "f", "g", "h"]) assert.equal(byPool.get(`d4-${p}`) ?? 0, 0);
 });

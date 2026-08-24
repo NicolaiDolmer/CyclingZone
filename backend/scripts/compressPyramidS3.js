@@ -95,7 +95,10 @@ const FORCE = !!arg("force", false);
 const D1_CAPACITY = Number(arg("d1", 24));
 const D2_CAPACITY = Number(arg("d2", 48));
 const D3_CAPACITY = Number(arg("d3", 96));
-const D4_POOL_COUNT = Number(arg("d4pools", 2));
+// #4172: ingen default paa 2 - udelades flaget, fordeler distributeCompression over ALLE
+// D4-puljer (S3 blev startet med 2 og efterlod pulje C-H tomme med 156 uafviklelige loeb).
+const D4_POOL_COUNT_ARG = arg("d4pools", null);
+const D4_POOL_COUNT = D4_POOL_COUNT_ARG == null ? null : Number(D4_POOL_COUNT_ARG);
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {

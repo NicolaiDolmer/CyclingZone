@@ -155,9 +155,16 @@ async function main() {
     const tier = div?.tier;
     const cap = TIER_OVERLAP_CAP[tier] ?? 2;
 
-    const foer = checkCalendarOverlapInvariants({ scheduleRows: rows, overlapCap: cap });
-    const derived = deriveGameDayAxis({ scheduleRows: rows, overlapCap: cap });
-    const efter = checkCalendarOverlapInvariants({ scheduleRows: derived.rows, overlapCap: cap });
+    // #4075 (ejer-laast 21/8): et monument har sin EGEN loebsdag - ingen modloeb, saa alle
+    // ryttere kan stille op. Kalenderdatoen deles fortsat. Afledningen kendte ikke reglen
+    // foer #4176, og koerslen 24/8 klappede derfor D1's fem monumenter sammen med naboloeb.
+    const monumentRaceIds = new Set(
+      rows.map((r) => r.race_id).filter((id) => raceById.get(id)?.race_class === "Monuments")
+    );
+
+    const foer = checkCalendarOverlapInvariants({ scheduleRows: rows, overlapCap: cap, monumentRaceIds });
+    const derived = deriveGameDayAxis({ scheduleRows: rows, overlapCap: cap, monumentRaceIds });
+    const efter = checkCalendarOverlapInvariants({ scheduleRows: derived.rows, overlapCap: cap, monumentRaceIds });
 
     for (const r of derived.rows) if (r.old_game_day !== r.game_day) updates.push(r);
 
@@ -185,6 +192,13 @@ async function main() {
       maxSamtidigeFoer: foer.maxOverlap, maxSamtidigeEfter: efter.maxOverlap,
       capBrudFoer: foer.overlapViolationCount, capBrudEfter: efter.overlapViolationCount,
       dubletterFoer: foer.stageRepeatViolationCount, dubletterEfter: efter.stageRepeatViolationCount,
+      monumenter: monumentRaceIds.size,
+      monBrudFoer: foer.monumentSharedDayViolationCount, monBrudEfter: efter.monumentSharedDayViolationCount,
+      monBrudDetalje: foer.monumentSharedDayViolations.map((v) => ({
+        loebsdag: v.game_day,
+        monument: v.monument_race_ids.map((id) => raceById.get(id)?.name ?? id),
+        modloeb: v.other_race_ids.map((id) => raceById.get(id)?.name ?? id),
+      })),
       aendret: derived.changed,
     });
   }
@@ -198,9 +212,19 @@ async function main() {
       `${String(r.kalenderdage).padStart(13)}` +
       `${String(r.maxSamtidigeFoer).padStart(10)} → ${String(r.maxSamtidigeEfter)}` +
       `${String(r.capBrudFoer).padStart(9)} → ${String(r.capBrudEfter)}` +
+      `${String(r.monBrudFoer).padStart(9)} → ${String(r.monBrudEfter)}` +
       `${String(r.aendret).padStart(8)}`
     );
   }
+
+  const monBrudFoer = rapport.reduce((s, r) => s + r.monBrudFoer, 0);
+  const monBrudEfter = rapport.reduce((s, r) => s + r.monBrudEfter, 0);
+  for (const r of rapport) {
+    for (const v of r.monBrudDetalje) {
+      console.log(`  [monument-brud] ${r.pulje} loebsdag ${v.loebsdag}: ${v.monument.join(", ")} deler dagen med ${v.modloeb.join(", ")}`);
+    }
+  }
+  console.log(`  Monument-loebsdage der deles med andre loeb (#4075): foer ${monBrudFoer} -> efter ${monBrudEfter}.`);
 
   const restCap = rapport.reduce((s, r) => s + r.capBrudEfter, 0);
   const restDub = rapport.reduce((s, r) => s + r.dubletterEfter, 0);
@@ -230,13 +254,21 @@ async function main() {
     const vals = updates
       .map((u) => `    ('${u.race_id}'::uuid, ${u.stage_number}, ${u.game_day})`)
       .join(",\n");
+    const raceIdVals = [...new Set(updates.map((u) => u.race_id))]
+      .map((id) => `        ('${id}'::uuid)`)
+      .join(",\n");
     writeFileSync(SQL_OUT, [
       `-- #4161 - genskab in-game-aksen (game_day) i saeson ${season.number}.`,
       `-- Genereret af scripts/dev/repairGameDayAxis4161.mjs --sql, fra den samme rene`,
       `-- afledning (calendarGameDayRepair.js) som dry-runnet.`,
       `--`,
-      `-- ${updates.length} raekker. KUN kolonnen game_day. scheduled_at, races.scheduled_for`,
-      `-- og race_entries roeres ikke.`,
+      `-- ${updates.length} raekker i race_stage_schedule (KUN kolonnen game_day) + resync af`,
+      `-- races.game_day_start for de beroerte loeb. scheduled_at, races.scheduled_for og`,
+      `-- race_entries roeres ikke.`,
+      `--`,
+      `-- game_day_start er kalender-visningens kronologiske markoer (raceCalendar.js,`,
+      `-- dashboardMovementSignals.js). Efterlades den bagud, peger dashboardets "sidste`,
+      `-- loebsdag" paa den gamle akse - samme resync som #4155-reparationen lavede.`,
       `--`,
       `-- Constraint'en udskydes til COMMIT: sluttilstanden er verificeret konfliktfri`,
       `-- (dag-maengde-semantik, #4173), men de transiente tilstande under omskrivningen`,
@@ -260,7 +292,19 @@ async function main() {
       `     and rss.stage_number = v.stage_number`,
       `     and rss.game_day is distinct from v.gd;`,
       ``,
-      `  raise notice '#4161: % raekker opdateret', (select count(*) from race_stage_schedule);`,
+      ``,
+      `  update races r`,
+      `     set game_day_start = fp.min_gd`,
+      `    from (`,
+      `      select rss.race_id, min(rss.game_day) as min_gd`,
+      `        from race_stage_schedule rss`,
+      `       where rss.race_id in (select v2.race_id from (values`,
+      raceIdVals,
+      `       ) as v2(race_id))`,
+      `       group by rss.race_id`,
+      `    ) fp`,
+      `   where fp.race_id = r.id`,
+      `     and r.game_day_start is distinct from fp.min_gd;`,
       `end`,
       `$repair$;`,
       ``,
