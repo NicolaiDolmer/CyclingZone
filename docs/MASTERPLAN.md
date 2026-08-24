@@ -7,7 +7,7 @@
 ## Uge-plan 22-25/8 (ejer-godkendt 21/8; v4-mål = LIVE fra S3 dag 1, spec-addendum 8c)
 
 - **GJORT 23-24/8:** cutover S2→S3 · kalender live · #4155 game_day PROD · #4154+#3818-sanktioner · #4163 løst+applied. Tal og detaljer: NOW.md + issue-tråde.
-- **GJORT MAN 24/8:** hele kalender/binding-kæden + #4183-swap + PR #4182 — detaljer i NOW/issue-tråde. **REST:** monument-eksklusivitet (ejer: "byg") · **#4159 guard-rest** (DB-trigger + d4PoolCount + condeferrable + dagligt CI-job) · #4162/#4164 hjælpetekster · #4183-rest (systemisk placering) · kalibrering → **ejer-gate på v4-flip** · #3720 · /pro S3-launch · velkomstpost.
+- **GJORT MAN 24/8:** hele kalender/binding-kæden + #4183-swap + PR #4182 — detaljer i NOW/issue-tråde. **REST:** **#4159 guard-rest** = kun DB-trigger-laget tilbage (relationel, ikke dato-formel) · #4162/#4164 hjælpetekster · #4183-rest (systemisk placering) · kalibrering → **ejer-gate på v4-flip** · #3720 · /pro S3-launch · velkomstpost.
 - **TIR 25/8:** S3 første løbsdag 11:00 — v4 hvis grønt, ellers v3 (låst fallback) · overvågning.
 
 ## A · Cutover 23/8 — GENNEMFØRT
@@ -36,7 +36,7 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5, byg efter v4-gaten). Z1 v0 shippet (#4083).
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8:** ✅ #4102 #4106 #4107 #4108 live 23/8 · #4103 rest = **præmier pr. division mandag m. #3719** (D4 11 % vs D1 108 % af sponsor) · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. Kalender-invarianter (#4123): søndagsslut + 471/27 i `verifySeason3Calendar.mjs`, mangler CI-gate.
-8b. ✅ **Kalender-dimensionering + akse + binding LØST 24/8.** **Rest:** `d4PoolCount`-guard (i #4159) · **#4174** rytterkrav pr. hold (parkeret, balance-beslutning) · #4183-rest (systemisk placering).
+8b. ✅ **Kalender-dimensionering + akse + binding LØST 24/8.** **Rest:** **#4174** rytterkrav pr. hold (parkeret, balance-beslutning) · #4183-rest (systemisk placering).
 
 9. **P0** kalender-integritet: #3990-rest (off-by-one, ejer-kald) · navne-dedup-guard · #3329 · #2791. **P1** sæsonmatrix + rytter-inspektør + UI-gæld (#3954 #3428 #3410 #2030 #3425 #3955 #3529 #3455 #3374). **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405 + fjern `tacticsOrdersAdapter`-mock). **P3** assistenten (mål-løb-migration, #3087 #3088 #3957 #3939 #4076).
 
