@@ -196,20 +196,37 @@ async function pickDivisionForNewTeam(supabase) {
 
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
-    .select("league_division_id")
-    .eq("is_ai", false)
-    .eq("is_test_account", false)
-    .eq("is_frozen", false);
+    .select("league_division_id, is_ai, is_test_account, is_frozen, is_bank, pending_removal_at");
 
   if (teamsError) {
     throw createHttpError(500, teamsError.message);
   }
 
-  const counts = new Map(allPools.map((pool) => [pool.id, 0]));
+  // #4183: TO forskellige spoergsmaal kraever TO forskellige taellinger.
+  //
+  // occupancy = "har puljen en ledig PLADS?" Samme definition som
+  // #2377-invarianten i audit-league-size-invariant.js: alt der ikke er banken
+  // og ikke allerede er markeret til fjernelse holder en plads. Et FROSSET hold
+  // staar stadig i puljen, i kalenderen og i loebene - dets plads er optaget.
+  //
+  // realManagers = "hvor mange spillere er der i forvejen?" Bruges KUN til at
+  // sprede spillere jaevnt i overflow-divisionen, hvor AI-fyldet altid holder
+  // puljen paa 24, og hvor reconcileAiTeamsForPool trimmer et AI-hold naar en
+  // spiller rykker ind.
+  //
+  // Foer #4183 brugte MAETNINGS-testen realManagers. Et frosset hold gjorde
+  // derfor sin egen plads usynlig, og en fuld entry-pulje saa ud til at have
+  // plads. Maalt i prod 24/8: D3-A og D3-C havde hver ét frosset hold, laeste
+  // 24 i stedet for 25, og fik derfor BEGGE dagens nye tilmeldinger - i strid
+  // med #2377 (praecis 24 hold pr. pulje).
+  const occupancy = new Map(allPools.map((pool) => [pool.id, 0]));
+  const realManagers = new Map(allPools.map((pool) => [pool.id, 0]));
   for (const team of teams || []) {
-    if (counts.has(team.league_division_id)) {
-      counts.set(team.league_division_id, counts.get(team.league_division_id) + 1);
-    }
+    if (!occupancy.has(team.league_division_id)) continue;
+    if (team.is_bank === true || team.pending_removal_at != null) continue;
+    occupancy.set(team.league_division_id, occupancy.get(team.league_division_id) + 1);
+    if (team.is_ai === true || team.is_test_account === true || team.is_frozen === true) continue;
+    realManagers.set(team.league_division_id, realManagers.get(team.league_division_id) + 1);
   }
 
   // #2055 overflow: hvis ALLE entry-puljer er ved/over POOL_TARGET_SIZE (rigtige
@@ -217,16 +234,25 @@ async function pickDivisionForNewTeam(supabase) {
   // MAX_DIVISION-pulje, fald igennem dertil. Ellers: uændret blød-cap-adfærd i
   // entry-divisionen (graceful fallback, fx pre-migration/test-mock uden
   // MAX_DIVISION-puljer).
-  const entryIsSaturated = entryPools.every((pool) => counts.get(pool.id) >= POOL_TARGET_SIZE);
+  // #4183: maetning maales paa OCCUPANCY - en plads er optaget uanset hvem der
+  // sidder paa den. AI-hold i overflow-divisionen er stadig evict-bare, men det
+  // haandteres af reconcileAiTeamsForPool NAAR holdet er placeret, ikke ved at
+  // lade som om pladsen var tom paa forhaand.
+  const entryIsSaturated = entryPools.every((pool) => occupancy.get(pool.id) >= POOL_TARGET_SIZE);
   const useOverflow = entryIsSaturated && overflowPools.length > 0;
   const targetPools = useOverflow ? overflowPools : entryPools;
   const targetDivision = useOverflow ? MAX_DIVISION : MANAGER_ENTRY_DIVISION;
 
-  // Mindst-fyldte målpulje (deterministisk: laveste pulje-id ved lige fyldning).
+  // Mindst-fyldte maalpulje (deterministisk: foerste pulje ved lige fyldning).
+  // Entry-divisionen spreder paa OCCUPANCY - der er ingen AI at trimme dér, saa
+  // pladsen er den bindende ressource. Overflow-divisionen spreder paa
+  // REALMANAGERS, saa spillere fordeles jaevnt i stedet for at klumpe i den
+  // pulje der tilfaeldigvis har faerrest AI-hold.
+  const spread = useOverflow ? realManagers : occupancy;
   let chosenPoolId = targetPools[0].id;
-  let chosenCount = counts.get(chosenPoolId);
+  let chosenCount = spread.get(chosenPoolId);
   for (const pool of targetPools) {
-    const count = counts.get(pool.id);
+    const count = spread.get(pool.id);
     if (count < chosenCount) {
       chosenPoolId = pool.id;
       chosenCount = count;

@@ -1401,3 +1401,95 @@ test("#2022 upsertOwnTeamProfile kalibrerer board-mål mod start-truppen ved dan
   assert.ok(minRiders.target <= 8, "min_riders kalibreret til start-truppen (≤8), ikke statisk 15");
   assert.notEqual(minRiders.target, 15, "den statiske 15 omgås nu ved dannelse");
 });
+
+// -- #4183: en PLADS er optaget, uanset hvem der sidder paa den ---------------
+//
+// Maalt i prod 24/8: Division 3 - A og - C havde hver ét FROSSET hold. Maetnings-
+// testen taalte kun ikke-frosne spillere, saa puljerne laeste 24 i stedet for 25
+// og fik BEGGE dagens nye tilmeldinger oveni - i strid med #2377 (praecis 24).
+// Tre hold landede forkert paa én dag af praecis denne aarsag.
+
+test("#4183: frosset hold holder sin plads - fuld entry-pulje ser IKKE ledig ud", async () => {
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  // Alle entry-puljer er fysisk fulde (24 raekker). Én af dem har et frosset hold,
+  // praecis som D3-A i prod: 23 aktive spillere + 1 frosset = 24 pladser optaget.
+  const frozenPool = entryPools[0];
+  const teams = [
+    ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE - 1, league_division_id: frozenPool.id }),
+    ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: 1, league_division_id: frozenPool.id, is_frozen: true }),
+    ...entryPools.slice(1).flatMap((pool) =>
+      seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+    ),
+  ];
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-4183-frozen", name: "Frozen Slot Respect", managerName: "Manager",
+  });
+
+  assert.notEqual(
+    result.team.league_division_id, frozenPool.id,
+    "puljen med det frosne hold er FULD (24 pladser) og maa ikke modtage et hold nr. 25",
+  );
+  assert.equal(result.team.division, MAX_DIVISION, "alle entry-puljer er fulde -> overflow til bunden");
+});
+
+test("#4183: frosset hold goer ikke sin pulje til den mindst-fyldte", async () => {
+  // Naar der ER en aegte ledig plads et andet sted, skal den vindes af den pulje
+  // der faktisk har plads - ikke af den pulje hvis plads bare er usynlig.
+  const entryPools = seedDiv4Pools();
+  const frozenPool = entryPools[0];
+  const genuinelyFreePool = entryPools[3];
+  const teams = entryPools.flatMap((pool) => {
+    if (pool.id === frozenPool.id) {
+      // 20 aktive + 4 frosne = 24 pladser optaget, men kun 20 "spillere".
+      return [
+        ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE - 4, league_division_id: pool.id }),
+        ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: 4, league_division_id: pool.id, is_frozen: true }),
+      ];
+    }
+    if (pool.id === genuinelyFreePool.id) {
+      // 22 aktive = 22 pladser optaget. FAERRE optagede pladser, men FLERE spillere
+      // end den frosne pulje - saa de to taellinger peger paa hver sin pulje.
+      return seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE - 2, league_division_id: pool.id });
+    }
+    return seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id });
+  });
+  const supabase = createSupabaseDouble({ leagueDivisions: entryPools, teams });
+
+  const result = await upsert({
+    supabase, userId: "user-4183-spread", name: "Real Room Wins", managerName: "Manager",
+  });
+
+  assert.equal(
+    result.team.league_division_id, genuinelyFreePool.id,
+    "puljen med 22 optagede pladser skal vinde over puljen med 24 optagede (heraf 4 frosne)",
+  );
+});
+
+test("#4183: hold markeret til fjernelse frigiver sin plads (modsat frosne)", async () => {
+  // pending_removal_at er den EKSISTERENDE markoer for "besluttet ude, venter kun
+  // paa at loebene er afviklet" (#2639). Invarianten taeller dem ikke med, og
+  // placeringen maa derfor heller ikke goere det - ellers kan puljen aldrig fyldes op igen.
+  const entryPools = seedDiv4Pools();
+  const pendingPool = entryPools[2];
+  const teams = entryPools.flatMap((pool) => {
+    if (pool.id === pendingPool.id) {
+      const rows = seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id });
+      rows[0] = { ...rows[0], id: "pending-out", pending_removal_at: "2026-08-24T10:00:00Z" };
+      return rows;
+    }
+    return seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id });
+  });
+  const supabase = createSupabaseDouble({ leagueDivisions: entryPools, teams });
+
+  const result = await upsert({
+    supabase, userId: "user-4183-pending", name: "Takes Vacated Slot", managerName: "Manager",
+  });
+
+  assert.equal(
+    result.team.league_division_id, pendingPool.id,
+    "pladsen efter et hold der er markeret til fjernelse skal kunne genbesaettes",
+  );
+});
