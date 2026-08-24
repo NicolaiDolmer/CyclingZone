@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** (1) **#4183 ejer-beslutning** — ny spiller blev hold nr. 25 i D3-A; ALLE puljer er 24/24 fulde, nye tilmeldinger har ingen plads. **S3's første løbsdag er TIR 25/8.** (2) **#4197** — strukturelt GC-orakel fejler på 2 af 50 seeds i rute-stien (GC-vinderen har ikke feltets laveste tid); `race:gate:routes` er permanent rød og har skjult det. (3) **#4159-rest:** DB-trigger-laget (relationel, ikke dato-formel). (4) **#3459:** ejer-valg på rest-fælden (rytter på Hvile der kører løb får nul udvikling — A behold / B gulv / C overskriv). Derefter: v4-afvigelser (#4132) · #3512 · kalibrering (#3719/#3720) · #4195/#4196.
+> **🎯 Next action:** **Næste session: [prompt](sessions/2026-08-25-kalender-og-traening-ssot-session-prompt.md)** — kalenderen først (#4190 sammenhængende løbsdage · #4174 rytterkrav · #4191 churn), derefter træningens SSOT (#4192, første leverance = liste over de ~35 beslutninger). Afventer ejer: **PR #4198** (løbskort-datoer) · **PR #4182** · **#4183** puljer 24/24 fulde · **#4180** race:gate.
 
 > **✅ KALENDER-KÆDEN LUKKET 24/8** (ejer-GO pr. skridt): binding = dag-MÆNGDE (`race_entry_days`) · aksen repareret (cap-brud 29→0) · **monument = eksklusiv løbsdag** genoprettet i live S3 (107 rækker i D1, akse 75→80 løbsdage, monument-brud 5→0, ingen etape flyttede dato) · `game_day_start` resynket for 334 løb (gårsdagens halve reparation). Alle 4 kalender-invarianter grønne i `verify-invariants`. Reglen er nu gated på 3 niveauer + dagligt CI-job (`calendar-invariant-audit.yml`). PR #4185, patch note 7.184. Regel-SSOT: `docs/CALENDAR_RULES.md`.
 
