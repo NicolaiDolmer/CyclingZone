@@ -6,13 +6,22 @@ name: Nightly clock-drift test check
 # så den faldt tilbage på den rigtige klokke. Testene var grønne indtil
 # konstanten passerede vægur-tiden, derefter røde — uden nogen kodeændring.
 #
-# Dette job er en DETEKTOR, ikke en gate: det kører frontend `node --test`
-# med "nu" skubbet ~6 måneder frem via et preload-modul der monkeypatcher
-# Date (frontend/scripts/fake-clock-preload.mjs — kun new Date()/Date.now()
-# UDEN argumenter påvirkes, aldrig testenes egne faste tidsstempler). En
-# test der fejler under den fremskudte klokke, men er grøn i dag, læser
-# vægur-tiden et sted den ikke burde — nøjagtig #3385-klassen, fanget FØR
-# den kan gøre main rød uden en commit at pege på.
+# Dette job er en DETEKTOR, ikke en gate: det kører `node --test` med "nu"
+# skubbet ~6 måneder frem via et preload-modul der monkeypatcher Date
+# (scripts/fake-clock-preload.mjs — kun new Date()/Date.now() UDEN
+# argumenter påvirkes, aldrig testenes egne faste tidsstempler). En test der
+# fejler under den fremskudte klokke, men er grøn i dag, læser vægur-tiden et
+# sted den ikke burde — nøjagtig #3385-klassen, fanget FØR den kan gøre main
+# rød uden en commit at pege på.
+#
+# 25/8: udvidet fra frontend-only til BEGGE pakker. Detektoren dækkede kun
+# frontend, men hard rule 16 gælder hele repoet — og 25/8 fejlede præcis den
+# klasse i BACKEND: raceCalendarLanePackerGtDayCap.test.js hardkodede
+# firstRaceDate "2026-08-25" og lod resolveCalendarFrom falde tilbage på
+# vægur-tiden, så alle 6 tests blev røde på selve dagen. Verificeret på den
+# gamle testfil: grøn med klokken 30 dage tilbage, 6/6 røde med klokken 183
+# dage frem — dvs. en backend-kørsel ville have fanget den en måned før den
+# ramte main. Fixet i #4222; dette job er forward-guarden.
 #
 # Bevidst IKKE en required check pr. PR (se AGENTS.md-reglen indført med
 # denne fil): kun nightly cron + manuel dispatch. En gate ville kræve at
@@ -29,11 +38,24 @@ permissions:
   issues: write
 
 jobs:
-  clock-drift-test-check:
+  # Én kørsel pr. pakke. `fail-fast: false` så en rød frontend ikke skjuler en
+  # rød backend — rapporten skal vise BEGGE. Jobbet selv fejler ikke på røde
+  # tests; status skrives til artifact og report-jobbet dømmer.
+  run-suite:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: frontend
+            # Frontend kører node:test direkte over src/**.
+            test-command: node --test --test-reporter=spec
+          - package: backend
+            # Backend har sin egen runner (2 passes, #3172-isolationen).
+            test-command: node scripts/run-tests.js --test-reporter=spec
     defaults:
       run:
-        working-directory: frontend
+        working-directory: ${{ matrix.package }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -43,45 +65,100 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install ${{ matrix.package }} dependencies
         run: npm ci
 
-      - name: Run frontend tests with clock pushed 6 months forward
-        id: test
+      - name: Run ${{ matrix.package }} tests with clock pushed 6 months forward
         env:
           CZ_TEST_CLOCK_OFFSET_DAYS: '183'
+          # NODE_OPTIONS (ikke et bart `--import`-flag): backends runner spawner
+          # child-processer med deres eget `--import ./test-setup.js`, og et flag
+          # på forældreprocessen ville ikke nå dem. NODE_OPTIONS arves af alle
+          # children. Absolut file://-URL, så den resolver uanset child-cwd.
+          NODE_OPTIONS: --import file://${{ github.workspace }}/scripts/fake-clock-preload.mjs
         run: |
           set +e
-          node --import ./scripts/fake-clock-preload.mjs --test --test-reporter=spec > clock-drift-test.log 2>&1
+          ${{ matrix.test-command }} > clock-drift-test.log 2>&1
           status=$?
           set -e
           cat clock-drift-test.log
-          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "$status" > clock-drift-status.txt
 
-      - name: Upload test log
-        if: steps.test.outputs.status != '0'
+      # Altid upload (ikke kun ved fejl): report-jobbet læser status-filen for
+      # at afgøre om pakken var grøn.
+      - name: Upload ${{ matrix.package }} test log
         uses: actions/upload-artifact@v7
         with:
-          name: clock-drift-test-log
-          path: frontend/clock-drift-test.log
+          name: clock-drift-${{ matrix.package }}
+          path: |
+            ${{ matrix.package }}/clock-drift-test.log
+            ${{ matrix.package }}/clock-drift-status.txt
+
+  # Samler begge pakker i ÉT issue. Bevidst et separat job: hvis matrix-jobbene
+  # selv oprettede issues, ville de to kørsler race om det samme
+  # `clock-drift-audit`-issue og overskrive hinandens body.
+  report:
+    runs-on: ubuntu-latest
+    needs: run-suite
+    if: always()
+    steps:
+      - name: Download test logs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: clock-drift-*
+          path: drift-logs
+
+      - name: Collect failing packages
+        id: collect
+        run: |
+          failed=""
+          for dir in drift-logs/clock-drift-*; do
+            [ -d "$dir" ] || continue
+            pkg="${dir#drift-logs/clock-drift-}"
+            status=$(cat "$dir/clock-drift-status.txt" 2>/dev/null || echo "missing")
+            if [ "$status" != "0" ]; then
+              failed="$failed $pkg"
+            fi
+          done
+          failed="${failed# }"
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          if [ -n "$failed" ]; then
+            echo "::error::Clock-dependent tests found in:$failed"
+          fi
 
       - name: Open or update tracking issue
-        if: github.event_name == 'schedule' && steps.test.outputs.status != '0'
+        if: github.event_name == 'schedule' && steps.collect.outputs.failed != ''
         uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const log = fs.readFileSync(path.join('frontend', 'clock-drift-test.log'), 'utf8');
-            // GitHub issue-body-loft: hold reportet under et fornuftigt loft.
-            const trimmed = log.length > 20000 ? `${log.slice(0, 20000)}\n… (afkortet, se log-artifact)` : log;
-            const title = '[bot] Klokke-drift-test fandt klokke-afhængige frontend-tests';
+            const failed = '${{ steps.collect.outputs.failed }}'.split(' ').filter(Boolean);
+            const title = `[bot] Klokke-drift-test fandt klokke-afhængige tests (${failed.join(', ')})`;
+            const sections = [];
+            for (const pkg of failed) {
+              let log = '';
+              try {
+                log = fs.readFileSync(
+                  path.join('drift-logs', `clock-drift-${pkg}`, 'clock-drift-test.log'),
+                  'utf8',
+                );
+              } catch {
+                log = '(log mangler — se artifact)';
+              }
+              // GitHub issue-body-loft: del budgettet mellem pakkerne.
+              const budget = Math.floor(20000 / failed.length);
+              const trimmed =
+                log.length > budget ? `${log.slice(0, budget)}\n… (afkortet, se log-artifact)` : log;
+              sections.push(`### \`${pkg}\``, '', '```', trimmed.trim(), '```', '');
+            }
             const body = [
               '## Klokke-drift-test-check fandt fejlende test(s)',
               '',
-              'Nightly cron kørte frontend `node --test` med "nu" skubbet 6 måneder frem ' +
+              `Nightly cron kørte \`node --test\` i **${failed.join('** og **')}** med "nu" ` +
+                'skubbet 6 måneder frem ' +
                 '(se [#3385](https://github.com/${{ github.repository }}/issues/3385)). ' +
                 'Mindst én test der er grøn i dag fejler under den fremskudte klokke — ' +
                 'det betyder den læser vægur-tiden (`new Date()`/`Date.now()` uden argumenter) ' +
@@ -90,13 +167,11 @@ jobs:
               'Dette er PRÆCIS #3385-mekanismen: main kan blive rød uden en eneste ny commit, ' +
                 'blot fordi tiden passerer en fast test-konstant.',
               '',
-              '```',
-              trimmed.trim(),
-              '```',
-              '',
+              ...sections,
               'Fix: giv den fejlende test et eksplicit `now`-argument til produktionskoden ' +
-                '(samme mønster som #3383 / firstBidRecommendation.test.js) i stedet for at ' +
-                'lade den falde tilbage på `new Date()`.',
+                '(samme mønster som #3383 / firstBidRecommendation.test.js, og #4222 / ' +
+                'raceCalendarLanePackerGtDayCap.test.js) i stedet for at lade den falde ' +
+                'tilbage på `new Date()`.',
               '',
               'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
             ].join('\n');
@@ -125,7 +200,15 @@ jobs:
             }
 
       - name: Fail if clock-dependent tests were found
-        if: steps.test.outputs.status != '0'
+        if: steps.collect.outputs.failed != ''
         run: |
-          echo "::error::Frontend tests failed under a clock pushed 6 months forward. See test log / clock-drift-audit issue."
+          echo "::error::Tests failed under a clock pushed 6 months forward:${{ steps.collect.outputs.failed }}. See test log / clock-drift-audit issue."
+          exit 1
+
+      # En matrix-kørsel der crasher før upload (fx npm ci-fejl) må ikke give
+      # grønt lys: uden artifacts har detektoren intet målt.
+      - name: Fail if a suite never reported
+        if: needs.run-suite.result != 'success'
+        run: |
+          echo "::error::run-suite matrix did not complete (result: ${{ needs.run-suite.result }}) — detektoren målte ikke noget."
           exit 1
