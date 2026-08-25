@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.193",
+    "date": "2026-08-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "The dashboard now shows what's new on the forum",
+          "body": "A small card shows the two most recently active threads, with the same unread dot and reply count as the forum itself. It sits below your next actions, so you see it without leaving the dashboard. Forum has also moved up in the menu, right after Inbox."
+        },
+        "da": {
+          "title": "Dashboardet viser nu hvad der er nyt på forummet",
+          "body": "Et lille kort viser de to seneste aktive tråde, med samme ulæst-prik og svar-antal som forummet selv. Det sidder under dine næste handlinger, så du ser det uden at forlade dashboardet. Forum er også rykket op i menuen, lige efter Indbakke."
+        },
+        "refs": [3199]
+      }
+    ]
+  },
+  {
     "version": "7.192",
     "date": "2026-08-25",
     "label": "Beta",
