@@ -50,7 +50,7 @@ export default function NextActionsCard({
     items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
 
   return (
-    <Card className="mb-4 p-4">
+    <Card className="p-4">
       {/* #2849 — titlen følger SectionHeader-opskriften (15px/600), ikke den
           14px h2 (`text-sm`) kortet arvede fra før kontrakten (docs/design/
           PAGE_TEMPLATES.md § card meta-label/header). Selve <SectionHeader>

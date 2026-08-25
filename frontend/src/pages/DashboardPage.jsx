@@ -1000,9 +1000,42 @@ export default function DashboardPage() {
         }
       />
 
-      {/* #3915 — dagens etaper/løb for holdet, ALLERØVERST i indholdsflowet
-          (under page-header, over sæson-wrap/sæsonstart-blokken). Skjuler sig
-          selv når holdet ingen løb har i dag (mindst-støj-valg, ejer 18/8). */}
+      {/* Squad warning + kontrakt-fornyelses-advarsel — ALLERØVERST i
+          indholdsflowet, over dagens etaper. #3915 satte oprindeligt dagens
+          etaper allerøverst, men ejer besluttede 25/8 at KUN advarsler må stå
+          over dem: en trup under minimum og udløbende kontrakter er de eneste
+          ting på siden der koster point hvis de overses (Clarity: 94,65%
+          scroll-dybde — synlighed er ikke problemet, punktér de dyre ting). */}
+      {squadWarning && (
+        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
+          ${squadWarning.color === "red"
+            ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
+            : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}>
+          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <span>{t(`dashboard:squadWarning.${squadWarning.type}`, {
+            count: squadWarning.count,
+            limit: squadWarning.limit,
+            division: squadWarning.division,
+          })}</span>
+          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:squadWarning.ctaMyTeam")}</Link>
+        </div>
+      )}
+
+      {/* #1150 · Contract renewal warning — separat fra squad-cap-warningen
+          ovenfor (anden årsag, samme visuelle sprog). Vises altid når der er
+          udløbende kontrakter, uanset squad-cap-status. */}
+      {expiringContractCount > 0 && (
+        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
+          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <span>{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
+          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:contractWarning.cta")}</Link>
+        </div>
+      )}
+
+      {/* #3915 — dagens etaper/løb for holdet, herefter i indholdsflowet (under
+          page-header + advarsler ovenfor, over sæson-wrap/sæsonstart-blokken).
+          Skjuler sig selv når holdet ingen løb har i dag (mindst-støj-valg,
+          ejer 18/8). */}
       <TodayStagesStrip teamId={team?.id} />
 
       {/* Trin 7-overgangspanelet (#3746/#3803, ejer-design 18/8) — engangs-
@@ -1011,14 +1044,20 @@ export default function DashboardPage() {
           har dismissed (server-persisteret). */}
       <DevTransitionCard />
 
-      {/* #3310: første-løbs-øjeblikket ejer toppen indtil resultatet er set. */}
+      {/* #3310: første-løbs-øjeblikket ejer toppen indtil resultatet er set.
+          #dashboard-layout-25/8: kortets egen bundmargin flyttede ud i denne
+          wrapper (komponentens Card er nu margin-fri, så den passer ind i
+          to-kolonne-gridets 14px-gap ved sin ANDEN brug længere nede) — denne
+          top-ejende brug beholder præcis samme visuelle afstand som før. */}
       {firstRaceMomentActive && (
-        <MyLatestResultCard
-          data={myLatestResult}
-          nextRace={squadSelectionMissingRace}
-          nextRaceStartAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
-          nowMs={nowMs}
-        />
+        <div className="mb-4">
+          <MyLatestResultCard
+            data={myLatestResult}
+            nextRace={squadSelectionMissingRace}
+            nextRaceStartAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
+            nowMs={nowMs}
+          />
+        </div>
       )}
 
       {/* #2288 B — Onboarding progress flyttet til TOP af stakken (over Næste
@@ -1062,71 +1101,6 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Næste træk — prioriteret action-overblik (#271 Slice B).
-          Valgfri via customize (#1536). */}
-      {isVisible("nextActions") && (
-        <NextActionsCard
-          pending={actionSummary}
-          urgentAuctionCount={urgentAuctionCount}
-          loading={actionLoading}
-          squadSelectionMissingRace={squadSelectionMissingRace}
-          notTrainedToday={notTrainedToday}
-          boardPlanMissing={boardPlanMissing}
-        />
-      )}
-
-      {/* Forum-synlighed (#3199, variant B) — "From the forum". Placeret så højt
-          som muligt UDEN at komme foran spil-kritiske moduler: efter dagens
-          etaper, første-løbs-øjeblik, sæson-bannere og Næste træk, men FØR
-          advarsler/forecast/nedenstående kort. Almindeligt Card, ikke en CTA —
-          tager IKKE viewets guld-knap og tæller ikke i nudge-banner-reglen
-          (se ForumHighlightsCard-kommentaren). Valgfri via customize (#1005). */}
-      {isVisible("forumHighlights") && <ForumHighlightsCard />}
-
-      {/* Squad warning */}
-      {squadWarning && (
-        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
-          ${squadWarning.color === "red"
-            ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
-            : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}>
-          <AlertTriangleIcon size={16} className="flex-shrink-0" />
-          <span>{t(`dashboard:squadWarning.${squadWarning.type}`, {
-            count: squadWarning.count,
-            limit: squadWarning.limit,
-            division: squadWarning.division,
-          })}</span>
-          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:squadWarning.ctaMyTeam")}</Link>
-        </div>
-      )}
-
-      {/* #1150 · Contract renewal warning — separat fra squad-cap-warningen
-          ovenfor (anden årsag, samme visuelle sprog). Vises altid når der er
-          udløbende kontrakter, uanset squad-cap-status. */}
-      {expiringContractCount > 0 && (
-        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
-          <AlertTriangleIcon size={16} className="flex-shrink-0" />
-          <span>{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
-          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:contractWarning.cta")}</Link>
-        </div>
-      )}
-
-      {/* Slice 07g · Finance forecast widget — synlig altid (også grøn), så manageren
-          får et stabilt blik på kommende sæsons cashflow inden FinancePage.
-          Valgfri via customize (#1536). */}
-      {isVisible("forecast") && forecast && (
-        <div className="mb-4">
-          {/* #4231: `backendMessages` er flyttet ud af den inlinede language-chunk
-              og hentes nu via HttpBackend. Badget er den ENESTE forbruger paa
-              dashboardet, saa det gates paa kort-niveau i stedet for hele siden
-              (samme moenster som `board` i #3697). fallback=null frem for en
-              PageLoader: et badge der dukker op et oejeblik senere er bedre end
-              en spinner midt i dashboardet. */}
-          <I18nReadyGate ns="backendMessages" fallback={null}>
-            <FinanceForecastBadge forecast={forecast} />
-          </I18nReadyGate>
-        </div>
-      )}
-
       {/* Onboarding completion — vis engang når alle 4 trin er gennemført */}
       {!completionDismissed && onboardingProgress && onboardingProgress.completed_count === onboardingProgress.total_count && (
         <OnboardingCompletionCard onDismiss={dismissCompletion} />
@@ -1168,86 +1142,6 @@ export default function DashboardPage() {
       {/* #1140: OnboardingModal er konsolideret væk — OnboardingProgressCard
           ovenfor er den kanoniske onboarding-UI. Filen beholdes (genbruges evt.
           senere), men monteres ikke længere her. */}
-
-      {/* Season Status Banner — links to the race calendar (#1421: was a dead Card).
-          #2328: rettet fra /races (RaceHub) til /calendar — knappens tekst
-          ("Se kalender") lovede kalendersiden, men Linket pegede på RaceHub.
-          #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben. */}
-      {seasonInfo && (
-        <Link to="/planning?tab=calendar" className="group block">
-        <Card
-          borderClass="border-cz-border group-hover:border-cz-accent/30"
-          className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
-            <span className={`text-3xs px-1.5 py-0.5 rounded-full font-medium border
-              ${seasonInfo.status === "active" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-              : seasonInfo.status === "upcoming" ? "bg-cz-info-bg text-cz-info border-cz-info/30"
-              : "bg-cz-subtle text-cz-2 border-cz-border"}`}>
-              {t(`dashboard:seasonBanner.status.${seasonInfo.status}`, { defaultValue: seasonInfo.status })}
-            </span>
-          </div>
-
-          {seasonInfo.end_date && (() => {
-            const daysLeft = Math.ceil((new Date(seasonInfo.end_date) - new Date()) / 86400000);
-            if (daysLeft <= 0) return <span className="text-cz-3 text-xs">{t("dashboard:seasonBanner.ended")}</span>;
-            return (
-              <div className="flex items-center gap-1.5">
-                <span className="text-cz-1 font-mono font-bold text-sm">{daysLeft}</span>
-                <span className="text-cz-3 text-xs">{t("dashboard:seasonBanner.daysLeftSuffix")}</span>
-              </div>
-            );
-          })()}
-
-          {/* #1829: per-pulje løbsdage (kørt inkl. igangværende / puljens total), ikke det
-              sæson-globale tal. Falder bort hvis puljen ingen løb har (fx pulje-løst hold). */}
-          {(poolRaceDays?.total || 0) > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-cz-3 text-xs whitespace-nowrap">
-                {t("dashboard:seasonBanner.raceDays", { completed: poolRaceDays.completed, total: poolRaceDays.total })}
-                {poolRaceDays.inProgress > 0 && (
-                  <span className="text-cz-accent-t ms-1">· {t("dashboard:seasonBanner.raceDaysLive", { count: poolRaceDays.inProgress })}</span>
-                )}
-              </span>
-              <ProgressMeter
-                value={poolRaceDays.completed}
-                max={poolRaceDays.total}
-                tone="accent"
-                className="w-20"
-                trackClassName="h-1.5"
-                ariaLabel={t("dashboard:seasonBanner.raceDays", { completed: poolRaceDays.completed, total: poolRaceDays.total })}
-              />
-            </div>
-          )}
-
-          <div className="ms-auto flex items-center gap-3">
-            <span className="text-xs text-cz-accent-t group-hover:underline whitespace-nowrap">{t("dashboard:seasonBanner.viewCalendar")}</span>
-          </div>
-        </Card>
-        </Link>
-      )}
-
-      {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det løb der reelt
-          MANGLER udtagelse (squadSelectionMissingRace, #2328 — ikke bare det
-          tidligst scheduled-løb, som kunne være allerede-udtaget).
-          #3243: startAtMs/nowMs giver kortet en ægte countdown til løbsstart —
-          et helt nyt hold ved i dag ikke HVORNÅR deres første løb kører, kun AT
-          det gør. Samme race_stage_schedule-kilde som "Kommende løb"-kortet. */}
-      <TeamSelectionCtaCard
-        nextRace={squadSelectionMissingRace}
-        startAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
-        nowMs={nowMs}
-        primary={squadCtaActive}
-      />
-
-      {/* #2466: "How your team did" — resultat-push øverst over modul-gridden.
-          Kortet renderer intet før endpoint-svaret er landet (myLatestResult
-          starter som null), empty state når holdet endnu ingen løb har kørt.
-          #3310: mens første-løbs-varianten ejer toppen af dashboardet (se
-          firstRaceMomentActive ovenfor), udelades denne anden instans for at
-          undgå at kortet vises to gange. */}
-      {!firstRaceMomentActive && myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
 
       {/* #3398 (Maiden Win Engine): career-first-momentkort — renderer intet
           uden data. Bevidst FØR Hero & Agony: en career-first er det sjældnere,

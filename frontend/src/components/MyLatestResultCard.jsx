@@ -197,7 +197,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
         subtitle={race?.name}
         amount={totals?.prize_money}
       />
-    <Card className="p-5 mb-4">
+    <Card className="p-5">
       {/* flex-wrap: på smalle skærme må linket falde ned på egen linje frem for
           at trunkere modultitlen (54,9% af trafikken er mobil). */}
       <div className="flex items-center justify-between gap-x-3 gap-y-1 mb-1 flex-wrap">
