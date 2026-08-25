@@ -41,13 +41,29 @@ import { detectEmptyCalendarDays } from "../../lib/calendarDailyCoverage.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json");
 
+// #4215: scriptet er en GATE, ikke kun en rapport. Parametre kan overstyres, så samme
+// kode kan køre i CI (mod en fast fixture-dato), i sæsonskifte-preflighten (mod den
+// kalender der er ved at blive skrevet) og i hånden.
+//   --first-day=YYYY-MM-DD   første løbsdag  (default: ejer-beslutningen for S3)
+//   --days=N                 antal kalenderdage
+//   --now=YYYY-MM-DD         hvad scriptet skal regne som "i dag"
+//   --json                   maskinlæsbar rapport i stedet for tabellen
+// EXIT-KODE: 0 = alle gates grønne, 1 = mindst ét brud. Det er dét CI hænger på.
+function arg(name, fallback) {
+  const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
+  return hit ? hit.slice(name.length + 3) : fallback;
+}
+
 // Ejer-beslutning 25/8: fredag 28/8 → søndag 27/9 = 31 kalenderdage, løb hver dag.
-const FIRST_RACE_DAY = "2026-08-28";
-const LAST_RACE_DAY = "2026-09-27";
-const REAL_DAYS = 31;
+const FIRST_RACE_DAY = arg("first-day", "2026-08-28");
+const REAL_DAYS = Number(arg("days", "31"));
+const LAST_RACE_DAY = new Date(
+  Date.parse(`${FIRST_RACE_DAY}T00:00:00Z`) + (REAL_DAYS - 1) * 86_400_000
+).toISOString().slice(0, 10);
 // `now` injiceres, så scriptet er tidsuafhængigt (27/6-blitz-guarden afviser en
 // første løbsdag der ikke er strengt i fremtiden — se raceCalendarLanePackerGtDayCap.test.js).
-const NOW = new Date("2026-08-25T12:00:00Z");
+// Uden det ville CI begynde at fejle på selve dagen den hardkodede dato passeres.
+const NOW = new Date(`${arg("now", "2026-08-25")}T12:00:00Z`);
 const SEASON_UUID = "00000000-0000-0000-0000-000000000003";
 
 // De 22 nye løb fra database/2026-08-25-4218-katalog-22-nye-loeb.sql.
@@ -169,7 +185,14 @@ function main() {
   });
   rapport.dækning = { ok: dækning.ok, violations: dækning.violations };
 
-  if (asJson) { console.log(JSON.stringify(rapport, null, 2)); return; }
+  // Samme dom i begge udgaver — ellers ville --json altid exit'e 0 og gøre gaten
+  // usynligt grøn for enhver der bruger den maskinlæsbare sti.
+  const bruddene = rapport.tiers.reduce((n, t) =>
+    n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length + t.orderViol.length, 0);
+  if (asJson) {
+    console.log(JSON.stringify({ ...rapport, regelbrud: bruddene, ok: bruddene === 0 && dækning.ok && !kollisioner.length }, null, 2));
+    return bruddene === 0 && dækning.ok && kollisioner.length === 0;
+  }
 
   console.log(`\nS3-KALENDER SCORECARD — ${FIRST_RACE_DAY} til ${LAST_RACE_DAY} (${REAL_DAYS} kalenderdage)`);
   console.log(`Katalog: ${baseCatalog.length} + ${NYE_LOEB.length} nye = ${catalog.length} løb`);
@@ -221,6 +244,11 @@ function main() {
   console.log(alleBrud === 0 && dækning.ok && !kollisioner.length
     ? "Kalenderen overholder alle gates i docs/CALENDAR_RULES.md.\n"
     : "Se linjerne markeret FEJL / ! ovenfor.\n");
+  return alleBrud === 0 && dækning.ok && kollisioner.length === 0;
 }
 
-main();
+// #4215: exit 1 ved brud. UDEN den er scriptet kun en rapport nogen skal huske at
+// læse — og præcis dét var problemet: reglerne fandtes, men intet stoppede en kalender
+// der brød dem (#4155 brød TIER_OVERLAP_CAP i alle fire divisioner uopdaget).
+const groent = main();
+if (!groent) process.exitCode = 1;
