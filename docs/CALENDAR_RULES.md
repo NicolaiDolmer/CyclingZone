@@ -41,10 +41,33 @@ Antal slots = density, så en dag aldrig har flere etaper end slots.
 
 | Regel | Værdi | Låst | Kilde |
 |---|---|---|---|
-| Løbsdatoer pr. sæson | 27 | 23/8 | [#4131](https://github.com/NicolaiDolmer/CyclingZone/issues/4131) |
+| Løbsdatoer pr. sæson | **31** (S3: 28/8-27/9) | 25/8 | [#4218](https://github.com/NicolaiDolmer/CyclingZone/issues/4215) |
+| **Løb hver kalenderdag** | **ingen løbsfri dage inde i sæsonen — i ALLE divisioner** | 25/8 | [#4218](https://github.com/NicolaiDolmer/CyclingZone/issues/4215) |
 | Sæsonen slutter | altid en søndag | 23/8 | [#4131](https://github.com/NicolaiDolmer/CyclingZone/issues/4131) |
 | Bufferdag efter cutover | 1 dag uden løb | 18/8 | [#3467](https://github.com/NicolaiDolmer/CyclingZone/issues/3467) |
 | Puljer i samme division | deler identisk kalender-form | — | [#2276](https://github.com/NicolaiDolmer/CyclingZone/issues/2276) |
+
+**Løb hver dag, ordret (ejer 25/8):** *"Jeg vil ikke have dage uden løb. I den nye sæson skal der være løb hver dag."*
+
+Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En spiller i Division 4 skal have noget at se på hver eneste dag — ikke kun spillet som helhed. Det binder `realDays` sammen med kvoterne: **hver division skal have mindst lige så mange løbsdage som der er kalenderdage.** D4 havde 29 løbsdage over 27 kalenderdage (1,07/dag); over 31 dage ville den have 2 tomme dage, så kvoten skal hæves før generering, ikke bagefter.
+
+> ⚠ **Længden er ikke længere 27.** Værdien stod låst på 27 fra 23/8 og blev ændret til 31 den 25/8, da sæsonstarten blev udskudt fra tirsdag 25/8 til fredag 28/8 med uændret slutdato søndag 27/9. Ændrer du startdatoen igen, skal `realDays` efterregnes: **antal løbsdatoer = slutdato − startdato + 1**, og slutdatoen skal ramme en søndag.
+
+---
+
+## 2b. Rytterbinding
+
+| Regel | Værdi | Låst | Fil |
+|---|---|---|---|
+| Én rytter, ét løb | pr. **løbsdag** (`game_day`), ikke pr. kalenderdag | 25/8 | `no_rider_double_booking_day` |
+| Flere løb pr. IRL-dag | tilladt | 25/8 | — |
+| Etapeløb binder | **hele spændet, første til sidste etape** | 25/8 | `raceBinding.js` |
+
+**Ordret (ejer 25/8):** *"På en IRL dag, må en rytter gerne køre mere end et løb. På en løbsdag må en rytter ikke køre mere end et løb."* og *"de skal altså ikke kunne deltage i noget andet undervejs."*
+
+**Spænd, ikke mængde.** [#4173](https://github.com/NicolaiDolmer/CyclingZone/issues/4173) gjorde 24/8 bindingen til mængden af de løbsdage et løb faktisk kører. Det lod en rytter forlade et etapeløb midt i og køre et andet løb i springet — målt 25/8: 5.074 udtagelses-par på 1.694 ryttere, fx Julien Faure i Giro della Penisola (løbsdag 10-29) OG Milano-Riviera på løbsdag 14. Rettet i [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4214).
+
+> ⚠ **Springene i et løbs løbsdage er IKKE hviledage.** En løbsdag er et halvdags-slot, og slot-tælleren løber videre for de øvrige løb i puljen imens. La Corsa dei Due Mari kører 7 etaper på løbsdag 10, 13, 17, 20, 23, 27, 28 — over 6 kalenderdage. De spring kan ikke lukkes i kalenderen (løbet ville køre 7 etaper på to dage); de skal bindes. Kun 9 af 199 flerdagsløb har et ægte kalenderdags-hul, og de 9 er GT-hviledagene — som spænd-bindingen dækker af sig selv ([#4209](https://github.com/NicolaiDolmer/CyclingZone/issues/4209)).
 
 ---
 

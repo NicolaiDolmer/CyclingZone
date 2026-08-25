@@ -47,11 +47,25 @@ function bindingDayKey(row, useGameDay) {
 // rebuild). Returnerer { start, end, days } i in-game-dag-nøgler (heltal). Et endagsløb
 // optager én in-game-dag (start===end); et etapeløb sine FAKTISKE etape-dage.
 //
-// #4173: `days` (sorteret, unik array) er MÆNGDEN af løbsdage — to FORSKELLIGE løb
-// konflikter iff de deler mindst én faktisk løbsdag (windowsOverlap skærer mængderne).
-// Et spænd bandt også de dage et løb holdt pause (Tour des Émirats: 7 etaper på løbsdag
-// 8-13 med én pause låste 7 andre løb). start/end BEVARES til display/sortering og som
-// fallback for vinduer bygget uden days. Array (ikke Set) så vinduet kan serialiseres
+// #4217 (ejer-direktiv 25/8): `days` er hele SPÆNDET start..end, ikke kun de løbsdage
+// løbet faktisk kører. Er du udtaget til et etapeløb, er du bundet indtil det er slut.
+//
+// #4173 gjorde `days` til MÆNGDEN af faktiske etape-dage for at undgå at et løb med
+// pause låste ryttere på dage de ikke kørte. Det åbnede en større fejl: en rytter kunne
+// forlade et etapeløb midt i og køre et andet løb i springet. Målt i prod 25/8 (S3, før
+// første start): 5.074 udtagelses-par på 1.694 ryttere, fx Julien Faure i Giro della
+// Penisola (løbsdag 10-29) OG Milano-Riviera på løbsdag 14. Ejeren 25/8: "På en løbsdag
+// må en rytter ikke køre mere end et løb" + "de skal altså ikke kunne deltage i noget
+// andet undervejs" (#4209).
+//
+// Springene er IKKE hviledage. En løbsdag er et halvdags-slot, og slot-tælleren løber
+// videre for de andre løb i puljen imens: La Corsa dei Due Mari kører 7 etaper på
+// løbsdag 10, 13, 17, 20, 23, 27, 28 over 6 kalenderdage. Springene kan derfor ikke
+// lukkes i kalenderen — løbet ville køre 7 etaper på to dage. De skal bindes i stedet.
+// Spænd-binding er samtidig det der løser #4209: en GT-hviledag ligger inde i spændet,
+// så rytteren er bundet hen over den uden at hviledagene skal fjernes fra spillet.
+//
+// start/end bruges til display/sortering. Array (ikke Set) så vinduet kan serialiseres
 // JSON-rent til frontenden (raceHubLogic.js spejler overlap-testen).
 // Et løbs egne etaper binder aldrig mod hinanden (samme race_id). Tom/ugyldig → null.
 //
@@ -65,8 +79,11 @@ export function raceBindingWindow(scheduleRows) {
     .map((row) => bindingDayKey(row, useGameDay))
     .filter((o) => Number.isFinite(o));
   if (!keys.length) return null;
-  const days = [...new Set(keys)].sort((a, b) => a - b);
-  return { start: days[0], end: days[days.length - 1], days };
+  const start = Math.min(...keys);
+  const end = Math.max(...keys);
+  const days = [];
+  for (let day = start; day <= end; day += 1) days.push(day);
+  return { start, end, days };
 }
 
 // Display-span for et løbs in-game løbsdage (#1984/#2195): { start, end } i game_day-heltal,

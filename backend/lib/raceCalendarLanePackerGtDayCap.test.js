@@ -21,9 +21,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "__fixtures__", "racePoolCatalog.prod.json");
 const GT_MIN_STAGES = 15;
 
+// Fast fixture-dato + fast `now`. resolveCalendarFrom afviser en foerste loebsdag der
+// ikke er strengt i fremtiden (27/6-blitz-guarden), og laeste testen systemuret, ville
+// den derfor begynde at fejle praecis paa dagen 2026-08-25 — hvilket den gjorde 25/8.
+// `now` injiceres, saa testen er tidsuafhaengig OG deterministisk. Datoen er en ren
+// fixture: disse tests haevder noget om GT-dagsform, ikke om saesonens rigtige startdato
+// (den er 28/8, se docs/CALENDAR_RULES.md §2).
+const FIXTURE_FIRST_RACE_DAY = "2026-08-25";
+const FIXTURE_NOW = new Date("2026-08-01T12:00:00Z");
+
 function planlaeg() {
   const { pools, catalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
-  const from = resolveCalendarFrom({ firstRaceDate: "2026-08-25" });
+  const from = resolveCalendarFrom({ firstRaceDate: FIXTURE_FIRST_RACE_DAY, now: FIXTURE_NOW });
   return buildTierMaterializationPlan({ pools, catalog, from, baseSeed: 1 }).tierPlans;
 }
 

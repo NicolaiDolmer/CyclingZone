@@ -136,30 +136,35 @@ test("raceBindingWindow: delvist-backfillet løb blander IKKE game_day + CET-ord
   assert.ok(w.end - w.start < 2, `vindue ${w.start}..${w.end} må ikke spænde sæson-langt`);
 });
 
-// #4173: binding er en MÆNGDE af faktiske løbsdage, ikke et spænd. Tour des Émirats-
-// casen fra prod: 7 etaper på løbsdag 8-13 med én pausedag — spænd-semantik låste
-// rytteren på pausedagen og blokerede 7 andre løb.
-test("raceBindingWindow (#4173): days = de faktiske løbsdage, sorteret og unik", () => {
+// #4217 (ejer 25/8): binding er HELE spændet fra første til sidste etape. #4173 gjorde
+// den til mængden af faktisk kørte løbsdage, og det lod en rytter forlade et etapeløb
+// midt i og køre et andet løb i springet (Julien Faure: Giro løbsdag 10-29 OG
+// Milano-Riviera løbsdag 14). Springene er ikke hviledage — slot-tælleren løber videre
+// for de øvrige løb i puljen, så La Corsa dei Due Mari kører 7 etaper på løbsdag
+// 10, 13, 17, 20, 23, 27, 28 over 6 kalenderdage.
+test("raceBindingWindow (#4217): days = hele spændet, ikke kun de kørte løbsdage", () => {
   const w = raceBindingWindow([
     { scheduled_at: "2026-08-25T09:00:00Z", game_day: 10 },
     { scheduled_at: "2026-08-25T12:00:00Z", game_day: 8 },
     { scheduled_at: "2026-08-26T09:00:00Z", game_day: 8 }, // dubleret dag-nøgle
     { scheduled_at: "2026-08-26T12:00:00Z", game_day: 13 },
   ]);
-  assert.deepEqual(w.days, [8, 10, 13]);
+  assert.deepEqual(w.days, [8, 9, 10, 11, 12, 13]);
   assert.equal(w.start, 8);
   assert.equal(w.end, 13);
 });
 
-test("windowsOverlap (#4173): etapeløb med pause binder IKKE pausedagen (Émirats-fixet)", () => {
+test("windowsOverlap (#4217): etapeløb binder OGSÅ springet — intet sidespring undervejs", () => {
   const emirats = raceBindingWindow(
     [8, 9, 10, 12, 13].map((d) => ({ scheduled_at: "2026-08-25T09:00:00Z", game_day: d }))
   );
-  const endagsIPausen = raceBindingWindow([{ scheduled_at: "2026-08-28T09:00:00Z", game_day: 11 }]);
-  assert.equal(windowsOverlap(emirats, endagsIPausen), false, "dag 11 er en pause — rytteren er fri");
-  // ...men en FAKTISK delt løbsdag binder stadig.
+  const endagsISpringet = raceBindingWindow([{ scheduled_at: "2026-08-28T09:00:00Z", game_day: 11 }]);
+  assert.equal(windowsOverlap(emirats, endagsISpringet), true, "dag 11 ligger inde i løbet — bundet");
   const endagsPaaDag12 = raceBindingWindow([{ scheduled_at: "2026-08-29T09:00:00Z", game_day: 12 }]);
   assert.equal(windowsOverlap(emirats, endagsPaaDag12), true, "dag 12 køres faktisk — bundet");
+  // Uden for spændet er rytteren fri — bindingen vokser ikke ud over løbet selv.
+  const endagsEfter = raceBindingWindow([{ scheduled_at: "2026-08-30T09:00:00Z", game_day: 14 }]);
+  assert.equal(windowsOverlap(emirats, endagsEfter), false, "dag 14 er efter løbet — fri");
 });
 
 test("windowsOverlap (#4173): spænd-fallback når days mangler (manuelt byggede vinduer)", () => {
