@@ -35,8 +35,8 @@ Samling #3664; design LÅST 13/8. Spec: [`rating-fundament-v3`](superpowers/spec
 
 Spec ejer-godkendt 21/8: [planning-center-fase2](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (P0-P5, byg efter v4-gaten). Z1 v0 shippet (#4083).
 
-8. 🟠 **Ejer-direktiv-klyngen 21/8:** ✅ #4102 #4106 #4107 #4108 live 23/8 · #4103 rest = **præmier pr. division mandag m. #3719** (D4 11 % vs D1 108 % af sponsor) · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. Kalender-invarianter (#4123): søndagsslut + 471/27 i `verifySeason3Calendar.mjs`, mangler CI-gate.
-8b. ✅ **Kalender-dimensionering + akse + binding LØST 24/8.** **Rest:** **#4174** rytterkrav pr. hold (parkeret, balance-beslutning).
+8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 (D4 11 % vs D1 108 % af sponsor) · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
+8b. ✅ **Kalender-akse + binding LØST 24/8** (#4161 #4173 #4191). **Næste: GT-komprimeringen under #4176** (3 GT'er fylder 56 af D1's 80 løbsdage; Giroen 18 etaper på 6 dage). Den blokerer **#4203** (byttet kørt og rullet tilbage 24/8, brød #4075: kun 6 D1-løbsdage uden for et GT-vindue, der skal bruges fire) og **#4209**. **#4190** omskrevet til navngivning + invariant. **#4174**: fyld inaktive trupper op med rå 49-statister, mangler hvor højt.
 
 9. **P0** kalender-integritet: #3990-rest (off-by-one, ejer-kald) · navne-dedup-guard · #3329 · #2791. **P1** sæsonmatrix + rytter-inspektør + UI-gæld (#3954 #3428 #3410 #2030 #3425 #3955 #3529 #3455 #3374). **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405 + fjern `tacticsOrdersAdapter`-mock). **P3** assistenten (mål-løb-migration, #3087 #3088 #3957 #3939 #4076).
 
