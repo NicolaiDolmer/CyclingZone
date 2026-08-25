@@ -435,6 +435,11 @@
       "title": "New scout, reports recalculated",
       "message": "{scoutName} is now assessing your riders. Existing scouting reports are recalculated to match their precision, but your riders' actual abilities have not changed."
     },
+    "forumThreadReply": {
+      "title": "{count, plural, one {New reply to your thread} other {# new replies to your thread}}",
+      "message": "{count, plural, one {Someone replied to your thread} other {# new replies to your thread}}",
+      "messageWithTitle": "{count, plural, one {A new reply on \"{postTitle}\"} other {# new replies on \"{postTitle}\"}}"
+    },
     "careerMilestone": {
       "maidenWin": {
         "title": "Maiden victory",

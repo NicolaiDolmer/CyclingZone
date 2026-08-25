@@ -435,6 +435,11 @@
       "title": "Ny spejder, rapporter genberegnet",
       "message": "{scoutName} vurderer nu dine ryttere. Eksisterende scoutingrapporter genberegnes efter hans/hendes præcision, men dine rytteres faktiske evner er uændrede."
     },
+    "forumThreadReply": {
+      "title": "{count, plural, one {Nyt svar på din tråd} other {# nye svar på din tråd}}",
+      "message": "{count, plural, one {Nogen svarede på din tråd} other {# nye svar på din tråd}}",
+      "messageWithTitle": "{count, plural, one {Et nyt svar på \"{postTitle}\"} other {# nye svar på \"{postTitle}\"}}"
+    },
     "careerMilestone": {
       "maidenWin": {
         "title": "Første sejr",

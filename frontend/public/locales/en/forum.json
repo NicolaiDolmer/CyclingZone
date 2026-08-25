@@ -17,7 +17,8 @@
     "loadMore": "Load more",
     "emptyTitle": "No posts yet",
     "emptyDescription": "Be the first to start a conversation.",
-    "by": "By {name}"
+    "by": "By {name}",
+    "unread": "Unread"
   },
   "compose": {
     "title": "New post",
@@ -54,8 +55,9 @@
   "report": {
     "title": "Report content",
     "description": "The report goes straight to the admin. Use it for spam, abuse or anything that does not belong here.",
-    "reasonLabel": "Reason (optional)",
-    "reasonPlaceholder": "Why are you reporting this?",
+    "reasonLabel": "Reason",
+    "reasonPlaceholder": "Why are you reporting this? (at least 10 characters)",
+    "reasonMinError": "Add at least {count} characters explaining why.",
     "submit": "Send report",
     "cancel": "Cancel",
     "sent": "Thanks. The report has been sent to the admin."

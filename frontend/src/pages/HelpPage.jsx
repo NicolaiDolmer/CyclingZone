@@ -490,6 +490,7 @@ const FAQ_KEYS = [
   "forumFaq", // #3199
   "forumPollsFaq",
   "forumReportFaq",
+  "forumUnreadFaq", // #4118/#3451
 ];
 
 function buildSections(t, vars) {

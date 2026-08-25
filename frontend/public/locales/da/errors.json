@@ -205,6 +205,8 @@
     "forum_poll_option_not_found": "Den afstemningsmulighed findes ikke længere",
     "forum_invalid_target_type": "Ugyldigt rapport-mål",
     "forum_target_not_found": "Det rapporterede indhold blev ikke fundet. Det kan være blevet fjernet.",
+    "forum_reason_required": "En begrundelse er påkrævet",
+    "forum_reason_too_short": "Begrundelsen er for kort",
     "forum_reason_too_long": "Begrundelsen er for lang",
     "forum_report_not_found": "Rapporten blev ikke fundet",
     "forum_invalid_pinned": "Ugyldig pin-værdi",

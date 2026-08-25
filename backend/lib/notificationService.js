@@ -912,7 +912,10 @@ export function buildForumThreadReplyNotification({ postId, postTitle, replyCoun
       postId,
       postTitle: postTitle || null,
       replyCount: count,
-      titleCode: count > 1 ? "notif.forumThreadReply.titlePlural" : "notif.forumThreadReply.title",
+      // #666: ÉN kode pr. felt, ICU-plural (count) håndteret i i18next-icu —
+      // samme mønster som forum.json's "list.replies", ikke separate
+      // title/titlePlural-koder.
+      titleCode: "notif.forumThreadReply.title",
       titleParams: { count },
       messageCode: postTitle ? "notif.forumThreadReply.messageWithTitle" : "notif.forumThreadReply.message",
       messageParams: { count, postTitle: postTitle || "" },
@@ -988,7 +991,7 @@ export async function notifyForumThreadReply({
     if (insertError) throw insertError;
     return { delivered: true, deduped: false, id: inserted?.id, replyCount };
   } catch (err) {
-    console.error(`  ❌ forum-thread-reply-notifikation fejlede (tråd ${postId}):`, err?.message || err);
+    console.error(`  ❌ forum-thread-reply-notifikation fejlede (post ${postId}):`, err?.message || err);
     captureException(err, { tags: { flow: "notifications", stage: "forum-thread-reply" }, postId });
     return { delivered: false, deduped: false, reason: "error" };
   }

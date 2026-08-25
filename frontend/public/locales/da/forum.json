@@ -17,7 +17,8 @@
     "loadMore": "Hent flere",
     "emptyTitle": "Ingen opslag endnu",
     "emptyDescription": "Vær den første til at starte en samtale.",
-    "by": "Af {name}"
+    "by": "Af {name}",
+    "unread": "Ulæst"
   },
   "compose": {
     "title": "Nyt opslag",
@@ -54,8 +55,9 @@
   "report": {
     "title": "Rapportér indhold",
     "description": "Rapporten går direkte til admin. Brug den til spam, chikane eller andet der ikke hører hjemme her.",
-    "reasonLabel": "Begrundelse (valgfri)",
-    "reasonPlaceholder": "Hvorfor rapporterer du dette?",
+    "reasonLabel": "Begrundelse",
+    "reasonPlaceholder": "Hvorfor rapporterer du dette? (mindst 10 tegn)",
+    "reasonMinError": "Tilføj mindst {count} tegn der forklarer hvorfor.",
     "submit": "Send rapport",
     "cancel": "Annullér",
     "sent": "Tak. Rapporten er sendt til admin."

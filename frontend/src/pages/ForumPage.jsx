@@ -49,7 +49,21 @@ function PostRow({ post, t, language }) {
       className="block py-[13px] transition-colors hover:bg-cz-subtle -mx-2 px-2"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <span className="min-w-0 truncate text-[13.5px] font-medium text-cz-1">{post.title}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {/* #4118/#3451: gul prik — samme markup/farve som nav-prikken
+              (Layout.jsx), ikke et nyt visuelt sprog. Kun dekorativ; den
+              egentlige "ulæst"-status kommunikeres til skærmlæsere via
+              sr-only-teksten. */}
+          {post.is_unread && (
+            <span className="flex-shrink-0" title={t("list.unread")}>
+              <span aria-hidden="true" className="block h-2 w-2 rounded-full bg-cz-accent" />
+              <span className="sr-only">{t("list.unread")}</span>
+            </span>
+          )}
+          <span className={`min-w-0 truncate text-[13.5px] text-cz-1 ${post.is_unread ? "font-semibold" : "font-medium"}`}>
+            {post.title}
+          </span>
+        </span>
         <span className="shrink-0 font-data text-2xs tabular-nums text-cz-3">
           {t("list.replies", { count: post.reply_count })}
         </span>

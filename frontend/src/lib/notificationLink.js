@@ -72,5 +72,9 @@ export function resolveNotificationLink(notification, fallbackLink) {
   // tomme) sæson lige efter en transition.
   if (n.type === "season_ended" && n.related_id) return `/seasons/${n.related_id}`;
 
+  // #4118/#3517: svar på egen tråd — related_id er post_id, deep-link
+  // direkte til tråden i stedet for den generiske forum-forside.
+  if (n.type === "forum_thread_reply" && n.related_id) return `/forum/${n.related_id}`;
+
   return fallbackLink ?? null;
 }

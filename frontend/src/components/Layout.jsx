@@ -146,7 +146,10 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
         // #3199: nyt socialt lag — ingen brugsdata endnu, placeret sidst i
         // gruppen indtil Clarity-tallene kan rangere det.
-        { to: "/forum", label: t("nav.item.forum") },
+        // #4118/#3451: gul prik ved ulæst tråd-aktivitet — samme prik-recipe
+        // som Patch Notes (dot: true, dotFlags i NavItem), ikke et nyt
+        // visuelt sprog. Se forumUnread-state + fetchForumUnread nedenfor.
+        { to: "/forum", label: t("nav.item.forum"), dot: true, dotLabel: t("a11y.unreadForum") },
         // #3104 etape C: Personale (~400 sessions) er en fane i Klub nu
         // (/klub?tab=staff) — eget nav-punkt udgik, Klubhus 10 → 9 punkter.
       ],
@@ -219,6 +222,23 @@ async function fetchUnreadCount(userId) {
     .eq("user_id", userId)
     .eq("is_read", false);
   return count || 0;
+}
+
+// #4118/#3451: nav-prikkens kilde — ÉT let kald, ikke et N+1-opslag pr.
+// tråd (se getForumUnreadStatus, backend/lib/forum.js). Fejl (netværk/401
+// under en session-fornyelse) lader prikkens sidst kendte tilstand stå i
+// stedet for at fejle synligt — samme ikke-kritisk-UI-filosofi som patch-
+// notes-metaen ovenfor.
+async function fetchForumUnread(headers) {
+  if (!API || !headers) return null;
+  try {
+    const res = await fetch(`${API}/api/forum/unread-status`, { headers });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    return typeof data?.has_unread === "boolean" ? data.has_unread : null;
+  } catch {
+    return null;
+  }
 }
 
 function NavItem({ to, label, badge, dot, dotLabel, onClick, location, badgeCounts, dotFlags, exact, excludeQuery, excludePaths, title }) {
@@ -405,6 +425,10 @@ export default function Layout() {
   // boolean NavItem viser prikken ud fra. Se effekten nederst i komponenten.
   const [patchNotesLatestDate, setPatchNotesLatestDate] = useState(null);
   const [patchNotesUnread, setPatchNotesUnread]         = useState(false);
+  // #4118/#3451: gul prik ved "Forum" i navigationen — samme prik-recipe som
+  // Patch Notes, men serverdrevet (forumUnread kommer fra
+  // GET /api/forum/unread-status, ikke en lokal dato-sammenligning).
+  const [forumUnread, setForumUnread]                   = useState(false);
   const [isAdmin, setIsAdmin]               = useState(false);
   const [isOwner, setIsOwner]               = useState(false); // #3750 ejer-only-menupunkter
   const [mobileOpen, setMobileOpen]         = useState(false);
@@ -538,6 +562,7 @@ export default function Layout() {
 
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
+      fetchForumUnread(h).then((hasUnread) => { if (hasUnread != null) setForumUnread(hasUnread); });
       // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
       // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
       // (udløbet/fornyende session, #1792), 5xx og netværksfejl bevarer sidst kendte.
@@ -579,6 +604,39 @@ export default function Layout() {
           if (t) setBalance(t.balance);
         })
     );
+  }, [session]);
+
+  // #4118/#3451: forum_posts/forum_replies har allerede en SELECT-policy
+  // udelukkende for Realtime (#3199) — genbruges her til at genberegne
+  // nav-prikken hurtigt (i stedet for at vente op til 60s på heartbeatet
+  // nedenfor) når NOGEN poster/svarer, ikke kun requesterens egen aktivitet.
+  useEffect(() => {
+    if (!session) return;
+    return subscribeAuthedChannel("layout-forum-unread", channel => {
+      const refetch = async () => {
+        const h = await authHeaders();
+        const hasUnread = await fetchForumUnread(h);
+        if (hasUnread != null) setForumUnread(hasUnread);
+      };
+      channel
+        .on("postgres_changes", { event: "*", schema: "public", table: "forum_posts" }, refetch)
+        .on("postgres_changes", { event: "*", schema: "public", table: "forum_replies" }, refetch);
+    });
+  }, [session]);
+
+  // #4118/#3451: ForumPostPage markerer tråden læst server-side ved åbning
+  // (GET /api/forum/posts/:id) — window-event så prikken forsvinder MED DET
+  // SAMME i stedet for at vente på næste heartbeat/realtime-tick, samme
+  // event-i-stedet-for-prop-drilling-mønster som "cz:notif-deleted".
+  useEffect(() => {
+    if (!session) return;
+    async function handleForumRead() {
+      const h = await authHeaders();
+      const hasUnread = await fetchForumUnread(h);
+      if (hasUnread != null) setForumUnread(hasUnread);
+    }
+    window.addEventListener("cz:forum-thread-read", handleForumRead);
+    return () => window.removeEventListener("cz:forum-thread-read", handleForumRead);
   }, [session]);
 
   // Supabase DELETE-events mangler user_id i payload uden REPLICA IDENTITY FULL — lyt på window-event i stedet.
@@ -654,7 +712,9 @@ export default function Layout() {
 
   const needsSetup = teamLoaded && !team?.manager_name;
   // #3811: ulæst-prik-flag pr. `to` — samme recipe som badgeCounts ovenfor.
-  const dotFlags = buildNavDotFlags({ patchNotesUnread });
+  // #4118/#3451: forum-prikken lever uden for buildNavDotFlags (den er
+  // patch-notes-specifik og lokalt drevet) — samme kort, egen nøgle.
+  const dotFlags = { ...buildNavDotFlags({ patchNotesUnread }), "/forum": forumUnread };
   const sidebarProps = {
     navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags,
     logoutLabel: t("nav.item.logout"),

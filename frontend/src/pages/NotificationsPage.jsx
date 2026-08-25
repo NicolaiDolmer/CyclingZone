@@ -99,6 +99,10 @@ const TYPE_CONFIG = {
   // (altid sat når rytteren har et hold) overstyrer med rytterprofilen via
   // #1486-reglen ovenfor.
   career_milestone:          { Icon: TrophyIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/resultater" },
+  // #4118/#3517: svar på egen forum-tråd. Fallback-link er /forum —
+  // related_id (altid sat, se notifyForumThreadReply) overstyrer med den
+  // konkrete tråd via den dedikerede regel i notificationLink.js.
+  forum_thread_reply:        { Icon: InboxIcon,        color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/forum" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };

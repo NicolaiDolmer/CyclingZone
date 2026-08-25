@@ -1611,7 +1611,11 @@
     },
     "forumReportFaq": {
       "q": "How do I report a forum post or reply?",
-      "a": "Use the Report button on the post or reply. The report goes straight to the admin, who can remove content that does not belong. Reporting the same thing twice just updates your reason."
+      "a": "Use the Report button on the post or reply and add a short reason (at least 10 characters): reports without a reason are rejected. The report goes straight to the admin, who can remove content that does not belong. Reporting the same thing twice just updates your reason."
+    },
+    "forumUnreadFaq": {
+      "q": "What does the dot next to a forum thread mean?",
+      "a": "A thread is marked unread until you open it, based on its most recent post or reply, not when it was created. The same gold dot shows up next to \"Forum\" in the menu whenever any thread has unread activity. If someone replies to a thread you started, you also get a notification in your inbox; replying to your own thread never notifies you."
     }
   },
   "knownIssues": {

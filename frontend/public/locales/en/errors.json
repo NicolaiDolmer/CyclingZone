@@ -205,6 +205,8 @@
     "forum_poll_option_not_found": "That poll option no longer exists",
     "forum_invalid_target_type": "Invalid report target",
     "forum_target_not_found": "The reported content was not found. It may have been removed.",
+    "forum_reason_required": "A reason is required",
+    "forum_reason_too_short": "The reason is too short",
     "forum_reason_too_long": "The reason is too long",
     "forum_report_not_found": "Report not found",
     "forum_invalid_pinned": "Invalid pin value",

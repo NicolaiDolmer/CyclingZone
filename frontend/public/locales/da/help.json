@@ -1611,7 +1611,11 @@
     },
     "forumReportFaq": {
       "q": "Hvordan rapporterer jeg et opslag eller svar i forummet?",
-      "a": "Brug Rapportér-knappen på opslaget eller svaret. Rapporten går direkte til admin, som kan fjerne indhold der ikke hører hjemme. Rapporterer du det samme to gange, opdateres blot din begrundelse."
+      "a": "Brug Rapportér-knappen på opslaget eller svaret, og skriv en kort begrundelse (mindst 10 tegn): rapporter uden begrundelse afvises. Rapporten går direkte til admin, som kan fjerne indhold der ikke hører hjemme. Rapporterer du det samme to gange, opdateres blot din begrundelse."
+    },
+    "forumUnreadFaq": {
+      "q": "Hvad betyder prikken ved en forum-tråd?",
+      "a": "En tråd er markeret ulæst indtil du åbner den, ud fra dens seneste opslag eller svar, ikke hvornår den blev oprettet. Den samme gule prik vises ved \"Forum\" i menuen, når mindst én tråd har ulæst aktivitet. Svarer nogen på en tråd du selv har startet, får du også en notifikation i din indbakke; dit eget svar på egen tråd giver aldrig en notifikation."
     }
   },
   "knownIssues": {
