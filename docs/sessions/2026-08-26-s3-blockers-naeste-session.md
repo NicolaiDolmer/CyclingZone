@@ -2,6 +2,24 @@
 
 > Skrevet ved close-out 25/8 efter en workflow-session der diagnosticerede alle 11 blockers read-only og byggede et katalog over de sidste 7 dages bevidste ændringer. **Læs "Faldgruber" først** — den er ikke generisk, den er skrevet på baggrund af en konkret fejl jeg lavede i denne session.
 
+---
+
+## START HER — tre spørgsmål før du bygger noget
+
+Ejeren har bedt om at få disse stillet i denne session. Stil dem **ét ad gangen**, med tal og kontekst inde i selve spørgsmålet, og med din anbefaling. Byg ikke på et gæt.
+
+**1. Stage-mix.** Ejer-beslutningen 23/8 satte ITT 10 %, brosten 5 %, højbjerg 12 %, tolerance ±2 point. Målt mod prod 25/8 er højbjergs-målet brudt i **alle fire divisioner**: D1 7,7 % · D2 5,6 % · D3 9,7 % · D4 16,1 %. D2 ligger under halvdelen af målet, D4 langt over. Kalenderen blev genereret forfra 25/8 under #4218, og #4140's komposition fulgte ikke med.
+
+> Gælder målet stadig for sæson 3, eller ophævede #4218 det? Gælder det → kompositionen skal køres om før fredag kl. 11. Ophævet → SSOT'en skal have en note om at S3 bevidst afviger.
+
+**2. #4174 — hvor højt fyldes de inaktive trupper?** Prod-tal: D3 har 97 hold, hvoraf 75 ikke har været logget ind i 7 dage, og der er **nul AI-hold i D1–D3**. Kalenderen kræver op til 29 ryttere i D1 på løbsdag 21, 26 og 29.
+
+**3. GT-etapeantal.** Ejeren 25/8: *"Det er meningen at gt'erne er 17-18 etaper lange. Vi bør nok lande på et fast tal i stedet, sådan det er mere ensartet."* I dag: Giro 18, Hexagone 17, Vuelta 17.
+
+> Hvilket fast tal? Det ændrer ikke S3's kalender med mindre den skal regenereres; det låser reglen for S4 og frem. Husk at §3's regnestykke (*"6 dage × 4 etaper = 24 pladser. En GT på 21 etaper + 3 hviledage = 24"*) stadig hviler på 21 og skal regnes om.
+
+---
+
 ## Hvor vi står
 
 Sæson 3 starter **fredag 28/8 kl. 11**, udskudt fra tirsdag 25/8 (#4218) fordi holdudtagelsen ikke virkede. Kalenderen er genereret forfra: 28/8 → søn 27/9, 31 løbsdage, løb hver dag i alle fire divisioner, 531 løb. `stage_scheduler_enabled` og `auto_entry_generator_enabled` står **off** i prod. Alle spillere udtager forfra.
