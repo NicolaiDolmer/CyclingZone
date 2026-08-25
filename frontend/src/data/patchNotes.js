@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.190",
+    "date": "2026-08-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider ages are back",
+          "body": "Between two seasons every rider showed a dash instead of an age, the U23 and U25 badges disappeared, and the retirement warning on bids went silent. The age came from the season marked active, and between season 2 ending and season 3 starting there is no such season. Ages now follow the coming season, so they read correctly in the gap and do not jump when the season starts."
+        },
+        "da": {
+          "title": "Rytternes alder er tilbage",
+          "body": "Mellem to sæsoner viste hver rytter en streg i stedet for en alder, U23- og U25-mærkerne forsvandt, og pensionsadvarslen på bud var tavs. Alderen blev hentet fra den sæson der er markeret aktiv, og mellem sæson 2's slutning og sæson 3's start findes der ingen aktiv sæson. Alderen følger nu den kommende sæson, så den står rigtigt i mellemrummet og ikke hopper når sæsonen går i gang."
+        },
+        "refs": [4223]
+      }
+    ]
+  },
+  {
     "version": "7.189",
     "date": "2026-08-24",
     "label": "Beta",
