@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.191",
+    "date": "2026-08-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Rider rankings load again between seasons",
+          "body": "The rankings page failed with an error instead of showing anything. It asked for the season marked active, and between season 2 ending and season 3 starting there is no such season. It now shows the last completed season until the new one has run its first race day, labelled so you can see which season you are looking at. Rider ages on the page follow the coming season, the same as everywhere else."
+        },
+        "da": {
+          "title": "Rytterranglisten indlæser igen mellem sæsoner",
+          "body": "Ranglisten fejlede i stedet for at vise noget. Den bad om den sæson der er markeret aktiv, og mellem sæson 2's slutning og sæson 3's start findes der ingen aktiv sæson. Den viser nu sidste afsluttede sæson indtil den nye har kørt sin første løbsdag, mærket så du kan se hvilken sæson du kigger på. Rytternes alder på siden følger den kommende sæson, ligesom alle andre steder."
+        },
+        "refs": [4225]
+      }
+    ]
+  },
+  {
     "version": "7.190",
     "date": "2026-08-25",
     "label": "Beta",

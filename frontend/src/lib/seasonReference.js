@@ -53,3 +53,36 @@ export function pickReferenceSeason(rows) {
 export function pickReferenceSeasonNumber(rows) {
   return pickReferenceSeason(rows)?.number ?? null;
 }
+
+/**
+ * #4225: RESULTAT-varianten. Til flader der viser hvad der ER sket (ranglister,
+ * stillinger, resultatlister) frem for hvad der kommer.
+ *
+ * Praeferencen er bevidst den OMVENDTE af `pickReferenceSeason`: en kommende
+ * saeson har per definition nul resultater, saa den maa aldrig vinde over en
+ * afsluttet der faktisk har noget at vise. Ejer-beslutning 25/8: mellem to
+ * saesoner viser ranglisten sidste afsluttede saeson, tydeligt maerket.
+ *
+ * `upcoming` er stadig med som sidste udvej, saa den foerste saeson nogensinde
+ * giver et saesonnummer frem for null (en tom liste er en bedre tilstand end en
+ * fejl).
+ *
+ * @param {Array<{number:number, status:string}>|null|undefined} rows
+ * @returns {{number:number, status:string}|null}
+ */
+export function pickResultsSeason(rows) {
+  if (!Array.isArray(rows)) return null;
+  const valid = rows.filter(usable);
+  if (!valid.length) return null;
+
+  const active = valid.filter((r) => r.status === ACTIVE);
+  if (active.length) return active.reduce((a, b) => (b.number > a.number ? b : a));
+
+  const completed = valid.filter((r) => r.status === COMPLETED);
+  if (completed.length) return completed.reduce((a, b) => (b.number > a.number ? b : a));
+
+  const upcoming = valid.filter((r) => r.status === UPCOMING);
+  if (upcoming.length) return upcoming.reduce((a, b) => (b.number < a.number ? b : a));
+
+  return null;
+}
