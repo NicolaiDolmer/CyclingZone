@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #4231
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
 // #2182 — rangliste-modulet skal defaulte til spillerens egen division+pulje,
 // ikke hele tieren. Genbruger StandingsPage's rene merge/pulje-match-helpers i
@@ -1102,7 +1103,15 @@ export default function DashboardPage() {
           Valgfri via customize (#1536). */}
       {isVisible("forecast") && forecast && (
         <div className="mb-4">
-          <FinanceForecastBadge forecast={forecast} />
+          {/* #4231: `backendMessages` er flyttet ud af den inlinede language-chunk
+              og hentes nu via HttpBackend. Badget er den ENESTE forbruger paa
+              dashboardet, saa det gates paa kort-niveau i stedet for hele siden
+              (samme moenster som `board` i #3697). fallback=null frem for en
+              PageLoader: et badge der dukker op et oejeblik senere er bedre end
+              en spinner midt i dashboardet. */}
+          <I18nReadyGate ns="backendMessages" fallback={null}>
+            <FinanceForecastBadge forecast={forecast} />
+          </I18nReadyGate>
         </div>
       )}
 

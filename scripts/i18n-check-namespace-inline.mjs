@@ -62,7 +62,17 @@ const INLINE_EXEMPT = new Set([
   "pro", // ProUpgradePage — ready-gate
   "watchlist", // WatchlistPage — ready-gate
   "staffOverview", // StaffOverviewPage (tab i KlubPage) — ready-gate
-  "standings", // RankingsHubPage + StandingsPage (tab) — ready-gate
+  "standings",
+
+  // #4231: backendMessages var det tungeste tilbagevaerende inlinede namespace
+  // (56 KB raw da+en, ~15 KB gzipped). Backend sender {code, params}; frontend
+  // renderer via renderBackendMessage. Alle fem forbrugere er nu gated:
+  //   FinancePage + BoardPage + NotificationsPage  -> <I18nReadyGate> i App.jsx
+  //   FinanceForecastBadge paa dashboardet         -> kort-niveau gate,
+  //                                                   fallback=null (intet badge
+  //                                                   frem for en spinner)
+  //   SeasonFinanceReportPanel                     -> kun inde i FinancePage
+  "backendMessages", // RankingsHubPage + StandingsPage (tab) — ready-gate
 ]);
 
 function walk(dir, files = []) {
