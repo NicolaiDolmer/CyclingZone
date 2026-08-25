@@ -81,7 +81,14 @@ foreach ($wt in $worktrees) {
   }
 
   # Stall = for længe siden commit, ELLER ucommitted arbejde der ligger og flyder.
-  if ($branch -ne "main" -and ($minutes -ge $StallMinutes -or $dirty -gt 0)) {
+  #
+  # MEN: en branch der er helt afleveret er ikke et stall. Har den 0 ucommitted,
+  # 0 upushede commits OG en åben PR, så ER den færdig — worker'en er med rette
+  # holdt op med at committe. Uden denne undtagelse råber scriptet om hver eneste
+  # afsluttet opgave, og så holder man op med at læse det (fundet 25/8, første dag
+  # i brug: #4250 blev flagget som stall en time efter den var afleveret).
+  $afleveret = ($dirty -eq 0 -and $unpushed -eq 0 -and $pr -ne "")
+  if ($branch -ne "main" -and -not $afleveret -and ($minutes -ge $StallMinutes -or $dirty -gt 0)) {
     $stalled += [pscustomobject]@{ Branch = $branch; Minutes = $minutes; Dirty = $dirty; Path = $wt.Path }
   }
 }
