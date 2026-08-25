@@ -55,6 +55,10 @@ const EXCERPT_LENGTH = 200;
 const ACTIVITY_SCAN_LIMIT = 5000;
 // #3451: bounded scan for ulæst-status (nav-prik) — samme filosofi.
 const UNREAD_STATUS_SCAN_LIMIT = 2000;
+// #3517: bounded scan for opbaknings-tælling pr. tråd-visning — samme
+// filosofi som REPLY_RECOUNT_LIMIT/vote-limit 5000. Én tråd har typisk
+// ét opslag + <=500 svar (FORUM_REPLIES_LOAD_LIMIT), langt under grænsen.
+const REACTIONS_SCAN_LIMIT = 5000;
 
 export function parseForumLimit(raw) {
   const n = Number.parseInt(raw ?? "", 10);
@@ -208,6 +212,31 @@ async function resolveThreadReads({ supabase, userId, postIds }) {
 }
 
 /**
+ * #3517 · Batch-opslag af opbaknings-tal for en mængde mål af SAMME type
+ * (alle posts, eller alle replies) — bounded IN-select, samme mønster som
+ * resolveAuthors/resolveThreadReads (aldrig N+1 pr. indlæg). Returnerer
+ * counts (target_id -> antal) + mine (Set af target_id'er requesteren selv
+ * har bakket op). `userId` er valgfri — uden den er `mine` altid tom.
+ */
+async function resolveReactionSummaries({ supabase, targetType, targetIds, userId = null }) {
+  const counts = new Map();
+  const mine = new Set();
+  if (!targetIds.length) return { counts, mine };
+  const { data, error } = await supabase
+    .from("forum_reactions")
+    .select("target_id, user_id")
+    .eq("target_type", targetType)
+    .in("target_id", targetIds)
+    .limit(REACTIONS_SCAN_LIMIT);
+  if (error) throw new Error(`forum: could not resolve reactions (${targetType}): ${error.message}`);
+  for (const row of data || []) {
+    counts.set(row.target_id, (counts.get(row.target_id) ?? 0) + 1);
+    if (userId && row.user_id === userId) mine.add(row.target_id);
+  }
+  return { counts, mine };
+}
+
+/**
  * GET /api/forum/posts — én side, SENESTE AKTIVITET først (#4118: coalesce
  * (last_reply_at, created_at) desc — se filhoved-kommentaren for hvorfor
  * sorteringen sker i JS over et bounded udsnit). Pinnede opslag serveres i en
@@ -295,13 +324,31 @@ export async function getForumPost({ supabase, id, userId }) {
 
   const { data: replyRows, error: replyError } = await supabase
     .from("forum_replies")
-    .select("id, seq, created_at, post_id, user_id, team_id, body")
+    .select("id, seq, created_at, post_id, user_id, team_id, body, quoted_reply_id")
     .eq("post_id", id)
     .is("deleted_at", null)
     .order("seq", { ascending: true })
     .limit(FORUM_REPLIES_LOAD_LIMIT);
   if (replyError) throw new Error(`forum: could not load replies for ${id}: ${replyError.message}`);
   const replies = replyRows || [];
+
+  // #3517: citér-svar — de citerede rækker er ofte IKKE en del af `replies`
+  // (soft-slettede svar filtreres væk ovenfor af `.is("deleted_at", null)"),
+  // så klienten kan ikke selv rekonstruere citatet fra den aktuelle side.
+  // Slås op batch-vist (bounded IN, samme mønster som resolveAuthors) og
+  // shapes serverside — en slettet kilde lækker ALDRIG body/forfatter, kun
+  // { id, removed: true }.
+  const quotedReplyIds = [...new Set(replies.map((r) => r.quoted_reply_id).filter(Boolean))];
+  let quotedById = new Map();
+  if (quotedReplyIds.length) {
+    const { data: quotedRows, error: quotedError } = await supabase
+      .from("forum_replies")
+      .select("id, user_id, team_id, body, deleted_at")
+      .in("id", quotedReplyIds)
+      .limit(quotedReplyIds.length);
+    if (quotedError) throw new Error(`forum: could not resolve quoted replies for ${id}: ${quotedError.message}`);
+    quotedById = new Map((quotedRows || []).map((r) => [r.id, r]));
+  }
 
   const { data: optionRows, error: optionError } = await supabase
     .from("forum_poll_options")
@@ -339,7 +386,30 @@ export async function getForumPost({ supabase, id, userId }) {
     };
   }
 
-  const { usersById, teamsById } = await resolveAuthors({ supabase, rows: [post, ...replies] });
+  const { usersById, teamsById } = await resolveAuthors({
+    supabase,
+    rows: [post, ...replies, ...quotedById.values()],
+  });
+
+  // #3517: opbaknings-tal — post og svar er to forskellige target_type'r,
+  // hentet i to bounded kald (samme "det eksisterende trådkald"-krav som
+  // resolveThreadReads: ingen N+1 pr. indlæg).
+  const [postReactions, replyReactions] = await Promise.all([
+    resolveReactionSummaries({ supabase, targetType: "post", targetIds: [id], userId }),
+    resolveReactionSummaries({ supabase, targetType: "reply", targetIds: replies.map((r) => r.id), userId }),
+  ]);
+
+  function shapeQuoted(quotedReplyId) {
+    if (!quotedReplyId) return null;
+    const quoted = quotedById.get(quotedReplyId);
+    if (!quoted || quoted.deleted_at) return { id: quotedReplyId, removed: true };
+    return {
+      id: quoted.id,
+      removed: false,
+      excerpt: excerpt(quoted.body),
+      author: shapeAuthor(quoted, usersById, teamsById),
+    };
+  }
 
   return {
     status: 200,
@@ -357,6 +427,8 @@ export async function getForumPost({ supabase, id, userId }) {
         author: shapeAuthor(post, usersById, teamsById),
         // auth-UUID'er eksponeres aldrig til spiller-fladen — kun "er det mig".
         is_mine: Boolean(userId && post.user_id === userId),
+        support_count: postReactions.counts.get(post.id) ?? 0,
+        supported_by_me: postReactions.mine.has(post.id),
       },
       replies: replies.map((r) => ({
         id: r.id,
@@ -365,6 +437,9 @@ export async function getForumPost({ supabase, id, userId }) {
         body: r.body,
         author: shapeAuthor(r, usersById, teamsById),
         is_mine: Boolean(userId && r.user_id === userId),
+        support_count: replyReactions.counts.get(r.id) ?? 0,
+        supported_by_me: replyReactions.mine.has(r.id),
+        quoted: shapeQuoted(r.quoted_reply_id),
       })),
       poll,
     },
@@ -524,8 +599,14 @@ async function recountReplies({ supabase, postId, now = null }) {
 /**
  * POST /api/forum/posts/:id/replies — nyt svar. Returnerer post-titel/kategori
  * til routens Discord-ping (#3201), så routen ikke skal lave et ekstra opslag.
+ *
+ * #3517 · `quotedReplyId` (valgfri): et svar kan citere et andet svar — men
+ * KUN i samme tråd (afvises ellers med 400, ikke et tavst-ignoreret felt).
+ * `quotedUserId` returneres til routen så den kan notificere den citerede
+ * (samme forum_thread_reply-dedupe som trådejer-notifikationen, aldrig ved
+ * citat af egen kommentar — se notifyForumThreadReply's own_reply-guard).
  */
-export async function createForumReply({ supabase, postId, userId, teamId = null, body, now = new Date() }) {
+export async function createForumReply({ supabase, postId, userId, teamId = null, body, quotedReplyId = null, now = new Date() }) {
   if (!postId) return { status: 400, body: { error: "Missing id", errorCode: "forum_missing_id" } };
   const trimmedBody = typeof body === "string" ? body.trim() : "";
   if (!trimmedBody) {
@@ -545,6 +626,22 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
     return { status: 404, body: { error: "Post not found", errorCode: "forum_post_not_found" } };
   }
 
+  let quotedUserId = null;
+  if (quotedReplyId) {
+    const { data: quoted, error: quotedError } = await supabase
+      .from("forum_replies")
+      .select("id, post_id, user_id")
+      .eq("id", quotedReplyId)
+      .maybeSingle();
+    if (quotedError) throw new Error(`forum: could not load quoted reply ${quotedReplyId}: ${quotedError.message}`);
+    // Citat på tværs af tråde afvises — ikke bare tavst droppet, en klient der
+    // sender en fremmed reply-id skal se en 400, ikke et svar uden citat.
+    if (!quoted || quoted.post_id !== postId) {
+      return { status: 400, body: { error: "Invalid quoted reply", errorCode: "forum_invalid_quote" } };
+    }
+    quotedUserId = quoted.user_id;
+  }
+
   const { data: inserted, error: insertError } = await supabase
     .from("forum_replies")
     .insert({
@@ -552,6 +649,7 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
       user_id: userId,
       team_id: teamId,
       body: trimmedBody,
+      quoted_reply_id: quotedReplyId || null,
       created_at: now.toISOString(),
       deleted_at: null,
     })
@@ -567,6 +665,7 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
     // `post.user_id` (trådejeren) forlader ALDRIG body — kun brugt server-side
     // i api.js's #3517-notifikationskald (og Discord-pinget).
     post: { id: post.id, title: post.title, category: post.category, user_id: post.user_id },
+    quotedUserId,
   };
 }
 
@@ -671,6 +770,64 @@ export async function reportForumContent({ supabase, reporterUserId, targetType,
   if (upsertError) throw new Error(`forum: could not save report: ${upsertError.message}`);
 
   return { status: 200, body: { ok: true, already: Boolean(existing) } };
+}
+
+/**
+ * POST /api/forum/react — opbakning (#3517, ejer-designvalg 25/8: ÉN
+ * tæller, ikke en emoji-palet). Toggle pr. (bruger, mål): findes rækken
+ * allerede fjernes den (opbakning trukket tilbage), ellers oprettes den.
+ * Find-så-slet/insert i stedet for upsert, fordi vi netop skal kunne FJERNE
+ * opbakningen igen — en upsert ville kun kunne sætte den, aldrig toggle den.
+ * Ingen notifikation ved opbakning (v1-scope, ejer-direktiv).
+ */
+export async function toggleForumReaction({ supabase, targetType, targetId, userId, now = new Date() }) {
+  if (targetType !== "post" && targetType !== "reply") {
+    return { status: 400, body: { error: "Invalid target type", errorCode: "forum_invalid_target_type" } };
+  }
+  if (!targetId || typeof targetId !== "string") {
+    return { status: 400, body: { error: "Missing target id", errorCode: "forum_missing_id" } };
+  }
+
+  const table = targetType === "post" ? "forum_posts" : "forum_replies";
+  const { data: target, error: targetError } = await supabase
+    .from(table)
+    .select("id, deleted_at")
+    .eq("id", targetId)
+    .maybeSingle();
+  if (targetError) throw new Error(`forum: could not load reaction target: ${targetError.message}`);
+  if (!target || target.deleted_at) {
+    return { status: 404, body: { error: "Target not found", errorCode: "forum_target_not_found" } };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("forum_reactions")
+    .select("user_id")
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (existingError) throw new Error(`forum: could not check existing reaction: ${existingError.message}`);
+
+  if (existing) {
+    const { error: deleteError } = await supabase
+      .from("forum_reactions")
+      .delete()
+      .eq("target_type", targetType)
+      .eq("target_id", targetId)
+      .eq("user_id", userId);
+    if (deleteError) throw new Error(`forum: could not remove reaction: ${deleteError.message}`);
+  } else {
+    // Idempotent mod race (to hurtige klik): ignoreDuplicates gør et dobbelt
+    // "tilføj"-kald selvhelende i stedet for at fejle på PK'en.
+    const { error: insertError } = await supabase.from("forum_reactions").upsert(
+      { target_type: targetType, target_id: targetId, user_id: userId, created_at: now.toISOString() },
+      { onConflict: "target_type,target_id,user_id", ignoreDuplicates: true }
+    );
+    if (insertError) throw new Error(`forum: could not add reaction: ${insertError.message}`);
+  }
+
+  const { counts } = await resolveReactionSummaries({ supabase, targetType, targetIds: [targetId], userId });
+  return { status: 200, body: { ok: true, active: !existing, support_count: counts.get(targetId) ?? 0 } };
 }
 
 // ── Admin (#3201: rapport-indbakke + moderation) ─────────────────────────────
