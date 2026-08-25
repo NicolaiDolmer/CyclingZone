@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4236** — roden. Prompt: `sessions/2026-08-26-s3-blockers-naeste-session.md`. Tag evt. **#4123** først, så du kan SE hvad fixet flytter. Derefter #4183+#4233 (ét bug), #4200's rest, vagterne. **Tænd scheduler + entry-generator kun på ejer-GO, sidst.**
+> **🎯 Next action:** **#4236** — roden. Prompt: **`sessions/2026-08-26-samlet-workflow-session-prompt.md`** (S3 + forum, erstatter de tre tidligere). Tag evt. **#4123** først, så du kan SE hvad fixet flytter. Derefter #4183+#4233 (ét bug), #4200's rest, vagterne. **Tænd scheduler + entry-generator kun på ejer-GO, sidst.**
 
 > **📅 S3 UDSKUDT TIL FREDAG 28/8** (#4218, ejer-direktiv 25/8): 28/8 → søn 27/9, **31 løbsdage, løb hver dag i alle fire divisioner**, kalenderen genereret forfra (531 løb, 22 nye tilføjet). Målt i prod: sæson 3 = `active`, 0 løbsdage kørt. **`stage_scheduler_enabled` og `auto_entry_generator_enabled` står `off`.** Alle spillere udtager forfra.
 
@@ -15,6 +15,8 @@
 > **💰 Værdier/løn S3:** base_value = model(c 0,811 + type-dæmpning k=100) · CPV dæmpet · løn = CPV × 0,35, frosset FØR transitionen · `wage_deduction_mode = season_upfront` · upkeep 220k/70k/20k/0. Type-dæmpningen (#4000) er bygget bag flag, flippes med #3449 tidligst 30/8.
 
 > **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8 (clawback + frys + auth-ban). **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
+
+> **📣 Forum-sporet (parallelt, deler ingen filer med S3):** L1 merged+live (#4238). **#4249** dashboard-kort + layout-omlægning og **#4250** opbakning + citér-svar er MERGEABLE og afventer **ejerens visuelle go**. Efter #4250: kør `2026-08-25-3517-forum-reactions.sql` + fjern `schema-columns-ok` i `forum.js`. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235).
 
 ## Standing context (forever-relaunch)
 
