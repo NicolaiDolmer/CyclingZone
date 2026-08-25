@@ -14,6 +14,8 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
 | `docs/GITHUB_WORKFLOW.md` | GitHub-workflow eller agent-loop spørgsmål |
 | **SSOT'er — læs dit områdes fil FØR arbejde (hard rule 30, #4221)** | |
+| `docs/DASHBOARD_RULES.md` | **SSOT for dashboardet:** fuld bredde er undtagelsen (der ER et to-kolonne-grid) · rækkefølge med ejer-historik pr. issue · Clarity-tal (94,65 % scroll-dybde) · tjekliste før nyt modul |
+| `docs/FORUM_RULES.md` | **SSOT for forummet:** diagnosen (usynligt, ikke dødt) · låste designvalg (opbakning ikke emoji, ingen notifikation ved alle opslag) · datamodel + RLS · den åbne Discord-rolle-beslutning (#4235, 15/9) |
 | `docs/CALENDAR_RULES.md` | Kalenderen: de to akser, tæthed, GT-regler, terræn-dækning, komposition |
 | `docs/RACE_ENGINE_RULES.md` | Motoren, ruter og taktik: de to frosne kontrakter, rolle-vokabularet, mekanik-kataloget M1-M14, invarianterne, faserne F0-F6 |
 | `docs/PLANNING_CENTER_RULES.md` | Holdudtagelse og sæsonplanlægning: IA'en Z1-Z4, skrivevejen og dens rate limit, linserne, assistent-gaten |

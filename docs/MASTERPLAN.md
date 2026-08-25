@@ -13,17 +13,13 @@ S3 er udskudt til fre 28/8 → søn 27/9 (#4218). Rækkefølgen er ejer-valgt:
 3. **#4174** — ét ejer-svar: hvor højt fyldes de inaktive trupper.
 4. **Vagterne skal fange DATA-fejl:** #4229 · #4215 · #4219 · #4123. Fire invarianter stod grønt gennem fire timers nedbrud 25/8.
 5. **#4211** — de 6 resterende brud. **#4236** — løbsdags-kollisionen, årsag til de tynde felter.
-6. **Tænd scheduler + entry-generator** — begge står `off`; kun på ejer-GO, som sidste skridt.
+6. **Tænd scheduler + entry-generator** — står `off`; ejer-GO, sidste skridt.
 
 **Planning Center med (ejer 25/8):** P0 + UI-gælden + Z1-sæsonmatrixen. Design låst, se `superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md`. Aksen låses først når #4236 er afgjort.
 
-**UDSKUDT til efter fredag (ejer-godkendt):** v4 live-flip · #4203/#4209 · Planning Center P1-P3-resten + #4070/#4071 · backlog-bølgerne.
+**UDSKUDT (ejer-godkendt):** v4-flip · #4203/#4209 · PC P1-P3-rest + #4070/#4071 · backlog-bølgerne.
 
-**SSOT-disciplin (hard rule 30, ejer 25/8):** intet design uden at citere sit områdes SSOT; SSOT'en opdateres i samme PR.
-
-## A · Cutover — GENNEMFØRT 23/8
-
-1. 🔵 Rest: ejer poster besked 2 · Supabase-perf uge 35 (#4010 auth-fix cherry-pickes tilbage) · #3584.
+**SSOT-disciplin (hard rule 30, ejer 25/8):** intet design uden at citere sit områdes SSOT; SSOT'en opdateres i samme PR. Nye 25/8: `FORUM_RULES.md` · `DASHBOARD_RULES.md`.
 
 ## B · Rytter-pakken (ALTOVERSKYGGENDE)
 
@@ -45,7 +41,7 @@ SSOT: `PROGRESSION_RULES.md`. Samling #3664; design LÅST 13/8.
 SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
-8b. ✅ Kalender-akse + binding løst 24/8 (#4161 #4173 #4191) — men kalenderen er **genereret forfra 25/8** (#4218), så alle målinger fra 24/8 er forældede. 🔴 **#4236**: samme løbsdag dækker flere datoer (D1 25/89, D3 21/47) = årsagen til de fire tynde endagsløb. Retningen låst af `CALENDAR_RULES.md` §0. **#4203/#4209 udskudt** til efter genmåling. #4190 omskrevet til navngivning + invariant.
+8b. Kalenderen er **genereret forfra 25/8** (#4218) → alle målinger fra 24/8 er forældede. 🔴 **#4236**: samme løbsdag dækker flere datoer (D1 25/89, D3 21/47) = årsagen til de fire tynde endagsløb. Retning låst af `CALENDAR_RULES.md` §0. **#4203/#4209 udskudt** til efter genmåling. #4190 omskrevet til navngivning + invariant.
 
 9. **P0 + UI-gæld + Z1 er MED før fredag** (ejer 25/8). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: #3954 + de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
 
@@ -57,12 +53,14 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 ## E · Løbende (aldrig hovedspor)
 
 12. 🔴 **Spiller-kommunikation, fast ugerytme (#428)** — ejer-mandat 22/8, viger aldrig. MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t. Tråd-bank **#4117**, løfte-audit **#4111**.
-13. Gæld: done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops (uge 26.-30./8): **#4014** · **#4016** · **#3486** · #2758 · #3487 · #691 · worktree-hygiejne.
+13. Gæld: cutover-rest (ejer poster besked 2 · Supabase-perf uge 35, #4010 cherry-pick · #3584) · done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops (uge 26.-30./8): **#4014** · **#4016** · **#3486** · #2758 · #3487 · #691 · worktree-hygiejne.
 14. 🔵 **Fair play (#3131):** prisloft valgt fra → #3138 ENESTE værn. Rest: retnings- + overbetalings-signal · flag-triage · #3438 · #3139.
+
+15. ⚪ **Forum** (SSOT: `FORUM_RULES.md`) — L1 merged (#4238); **#4249** + **#4250** åbne; rollen mod Discord afgøres **15/9 (#4235)**.
 
 ## F · Backlog-bølger (#3154, 576 åbne — UDSKUDT til efter fredag)
 
-Lukkemandat: done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20. **Rest:** W7 (#3714 #3623 #3456 #3412) · W8: 53 needs-decision · #4118 · #4119 · #3944/#3945.
+Lukkemandat: done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20. **Rest:** W7 (#3714 #3623 #3456 #3412) · W8: 53 needs-decision · #4119 · #3944/#3945.
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 
