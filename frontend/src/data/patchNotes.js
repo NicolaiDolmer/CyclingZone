@@ -1,5 +1,54 @@
 export const PATCHES = [
   {
+    "version": "7.192",
+    "date": "2026-08-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "A rider is now tied up for a whole stage race",
+          "body": "A rider entered in a stage race could be picked for another race on a day his own race was not running a stage. He would leave his race halfway through, ride somewhere else and come back. A rider is now held from the first stage to the last, so he cannot appear anywhere else in between. Entries that broke the rule have been removed, and the freed places are left empty for you to fill yourself."
+        },
+        "da": {
+          "title": "En rytter er nu bundet et helt etapeløb igennem",
+          "body": "En rytter i et etapeløb kunne udtages til et andet løb på en dag hvor hans eget løb ikke kørte en etape. Han forlod altså sit løb midtvejs, kørte et andet sted og kom tilbage. Rytteren holdes nu fra første etape til sidste og kan ikke dukke op andre steder undervejs. Udtagelser der brød reglen er fjernet, og de frigjorte pladser står tomme til du selv fylder dem."
+        },
+        "refs": [4217]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "The assistant no longer picks for you",
+          "body": "The assistant used to fill squads on your behalf, including squads you had deliberately cleared and saved. Several of you lost more than an hour of planning to it. It now leaves every managed team alone. Your own auto-pick button works exactly as before, so you can still ask for a suggested squad whenever you want one. AI teams are still filled automatically, otherwise their races would start empty."
+        },
+        "da": {
+          "title": "Assistenten udtager ikke længere for dig",
+          "body": "Assistenten fyldte trupper ud på dine vegne, også trupper du bevidst havde ryddet og gemt. Flere af jer mistede over en times planlægning på den. Den rører nu ikke hold der har en manager. Din egen auto-udtag-knap virker præcis som før, så du kan stadig bede om et forslag når du vil have et. AI-hold fyldes fortsat automatisk, ellers ville deres løb starte tomme."
+        },
+        "refs": [4217, 4200, 4201]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season 3 runs 28 August to 27 September, with racing every day",
+          "body": "The season was rebuilt after the start moved to Friday 28 August. It now runs 31 race days instead of the 27 originally planned, and every division has racing on every single day. All selections were cleared in the rebuild, so everyone picks their squads again from scratch."
+        },
+        "da": {
+          "title": "Sæson 3 kører 28. august til 27. september, med løb hver dag",
+          "body": "Sæsonen blev bygget om da starten rykkede til fredag 28. august. Den kører nu 31 løbsdage mod de 27 der oprindeligt var planlagt, og hver division har løb på hver eneste dag. Alle udtagelser blev ryddet i ombygningen, så alle udtager deres hold forfra."
+        },
+        "refs": [4218]
+      }
+    ]
+  },
+  {
     "version": "7.191",
     "date": "2026-08-25",
     "label": "Beta",

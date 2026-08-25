@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { checkCalendarOverlapInvariants } from "../lib/calendarOverlapInvariant.js";
 import { TIER_OVERLAP_CAP } from "../lib/calendarTierCaps.js";
+import { evaluateActiveSeasonInvariant } from "../lib/activeSeasonInvariant.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ENV = path.resolve(SCRIPT_DIR, "../.env");
@@ -438,6 +439,15 @@ async function main() {
         : `${duplicateRanks.length} rang(e) tildelt 2+ gange i samme (løb, etape, klassement) (#2898)`,
       duplicateRanks.slice(0, 50)
     ),
+    // #4229 — SKAL stå før kalender-invarianterne herunder. De fire svarer alle
+    // "OK — ingen aktiv sæson at kontrollere" når der ingen aktiv sæson er, så
+    // hele suiten blev grøn præcis når spillet var mest i stykker (25/8: fire
+    // timer uden aktiv sæson, alder/rangliste/træning/akademi nede for alle).
+    // Denne er den der råber op i stedet.
+    exactly_one_active_season: (() => {
+      const r = evaluateActiveSeasonInvariant(activeSeasons);
+      return check(r.ok, r.detail, r.violations);
+    })(),
     calendar_overlap_within_tier_cap: check(
       calendarOverlapViolations.length === 0,
       !activeSeason
