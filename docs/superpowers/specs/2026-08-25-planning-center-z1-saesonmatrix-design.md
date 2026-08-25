@@ -1,6 +1,7 @@
 # Z1-sæsonmatrixen — rytter × løb-gitteret (design)
 
 **Dato:** 2026-08-25 · **Issue:** [#1146](https://github.com/NicolaiDolmer/CyclingZone/issues/1146) · **Fase:** Planning Center fase 2, P1
+**SSOT:** [`docs/PLANNING_CENTER_RULES.md`](../../PLANNING_CENTER_RULES.md) — områdets kilde, læst og citeret jf. hard rule 30. Rollerne kommer fra [`docs/RACE_ENGINE_RULES.md`](../../RACE_ENGINE_RULES.md) §1; akse-tilstanden fra [`docs/CALENDAR_RULES.md`](../../CALENDAR_RULES.md) §0.
 **Overordnet spec:** [`2026-08-21-planning-center-fase2-design.md`](2026-08-21-planning-center-fase2-design.md) — IA'en, de fire zoom-niveauer og de to skinner er låst dér. Dette dokument dækker kun Z1-gitteret.
 **Ejer-beslutninger:** designsession 25/8, fire valg, ét spørgsmål ad gangen.
 
@@ -133,9 +134,13 @@ Genbruges uændret: `SeasonView`, `SeasonDayToggle`, `SeasonPicker`, `seasonTime
 
 ## 10. Hvad vi tog fra spillerprototypen
 
-En spiller byggede 25/8 en fungerende prototype af samme gitter. Fuld gennemgang: [`.claude/learnings/2026-08-25-spillerprototype-afsloerede-to-brudte-kalender-invarianter.md`](../../../.claude/learnings/2026-08-25-spillerprototype-afsloerede-to-brudte-kalender-invarianter.md).
+En spiller byggede 25/8 videre på **vores egen preview** (`frontend/public/race-planning-preview.html`, shippet 20/8 i #4022). Fuld gennemgang: [`.claude/learnings/2026-08-25-spillerprototype-afsloerede-to-brudte-kalender-invarianter.md`](../../../.claude/learnings/2026-08-25-spillerprototype-afsloerede-to-brudte-kalender-invarianter.md).
 
-Taget med: begge akser samtidig · roller i cellen (C/S/B/F/D) frem for flueben · låsepanel med navngivet årsag og ét-kliks-fix ("Lozano is riding Tour des Émirats, which shares race days with Le Mur de Huy" → "Unassign from Tour des Émirats") · fodnoten som live problem-tæller ("No problems" i grønt, ellers antal) · "Kun problemer" som femte linse · cap-advarsel på løbsdags-aksen · trupstørrelse pr. klasse i cellen · roster-panel sorteret efter rolle.
+**Var vores allerede** — nævnt her så kreditten er rigtig: Gem plan, Ryd alle udtagelser, sorteringen, filtrene inklusive "Clashes only", og rolle-cellerne. De stod i vores preview fra 20/8.
+
+**Hans faktiske bidrag er datamodellen.** Vores preview definerede et løb ved `start`/`end`-**datoer** og målte overlap på delte datoer. Hans fil definerer det ved `d1`/`d2`-**løbsdage** og skriver eksplicit at overlap måles på dem, *"never on dates"*. Det skift afslørede [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236).
+
+Taget med derudover: begge akser vist samtidig · låsepanel med navngivet årsag og ét-kliks-fix ("Lozano is riding Tour des Émirats, which shares race days with Le Mur de Huy" → "Unassign from Tour des Émirats") · fodnoten som live problem-tæller ("No problems" i grønt, ellers antal) · cap-advarsel på løbsdags-aksen · trupstørrelse pr. klasse i cellen · roster-panel sorteret efter rolle.
 
 Ikke taget med: hans route match `/60` er en placeholder efter hans egen note, og vi har den ægte 0-100. Hans overlap måles på spændet `d1..d2`; vores dag-mængde siden #4173 er mere korrekt.
 
@@ -146,6 +151,6 @@ Z2, Z3, Z4 og de to skinner — de bor i fase 2-spec'en. Rytter-inspektøren, ta
 ## 12. Åbne punkter
 
 1. **Aksen** — låses når #4236 er afgjort.
-2. **Trupgrænser pr. klasse** — spillerens tal (7/8/6) skal verificeres mod vores egne før de bruges i "kun problemer"-linsen.
-3. **Rolle-sættet** — C/S/B/F/D skal afstemmes med motor-sporets T1-T4-roller, så der ikke opstår to vokabularer.
+2. **Trupgrænser pr. klasse** — spillerens tal (7/8/6) skal verificeres mod vores egne før de bruges i "kun problemer"-linsen. Grænserne står i dag kun i kode og er ikke skrevet ned.
+3. ~~**Rolle-sættet**~~ — **afklaret 25/8.** Vokabularet findes allerede kanonisk i prod: `captain`, `sprint_captain`, `hunter`, `helper`, `free_role` i `race_entries.race_role`, 69.962 rækker. Matrixen bruger dem. Se [`RACE_ENGINE_RULES.md`](../../RACE_ENGINE_RULES.md) §1. **Restproblemet er smallere og står som modsigelse dér:** `hunter` er en rolle, `try_break` er en ordre, og begge udtrykker "kør efter udbruddet" uden at noget siger hvilken der vinder.
 4. **Boardets gemme-model** — ejer valgte at lade den stå. Genbesøges hvis to modeller viser sig at forvirre.

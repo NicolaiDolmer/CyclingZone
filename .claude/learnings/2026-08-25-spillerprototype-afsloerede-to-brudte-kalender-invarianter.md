@@ -9,6 +9,14 @@ interaktiv prototype af rytter×løb-gitteret og delte den med ejeren.
 Prototypen blev læst som "input til vores design". Den viste sig at være noget andet:
 en præcis påstand om to kalender-invarianter, som vi ikke holder i prod.
 
+**Vigtig kredit-rettelse (samme dag):** han byggede videre på VORES egen preview,
+`frontend/public/race-planning-preview.html`, shippet 20/8 i #4022. Gem plan, Ryd alle
+udtagelser, sorteringen, filtrene inklusive "Clashes only" og rolle-cellerne var vores
+allerede. Jeg tilskrev ham fire af dem, indtil ejeren pegede på linket. Hans faktiske
+bidrag er ét og det er større: vores preview definerede et løb ved `start`/`end`-DATOER
+og målte overlap på delte datoer; han skiftede til `d1`/`d2`-LØBSDAGE. Det skift er det
+der afslørede fejlen.
+
 Han skriver dem selv i kommentarer i sin egen kode:
 
 > `d1`/`d2` are race-day numbers straight from the season plan — overlap is measured
