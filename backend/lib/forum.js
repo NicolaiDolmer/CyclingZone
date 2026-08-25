@@ -322,11 +322,6 @@ export async function getForumPost({ supabase, id, userId }) {
     return { status: 404, body: { error: "Post not found", errorCode: "forum_post_not_found" } };
   }
 
-  // schema-columns-ok: quoted_reply_id tilfoejes af
-  // database/2026-08-25-3517-forum-reactions.sql, som foerst koeres EFTER merge
-  // under #2642-rammerne (idempotent + post-verify). schema-snapshot.json er et
-  // spejl af prod og opdateres derfor foerst naar migrationen er applied - ikke
-  // i denne PR, hvor kolonnen endnu ikke findes i prod.
   const { data: replyRows, error: replyError } = await supabase
     .from("forum_replies")
     .select("id, seq, created_at, post_id, user_id, team_id, body, quoted_reply_id")

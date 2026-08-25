@@ -1,6 +1,6 @@
 {
   "$comment": "Mirror of the live public schema (relation -> columns) + single-column foreign keys. Read by scripts/lint-schema-columns.mjs to reject selects against columns that do not exist. Generated — do NOT hand-edit. Refresh: node scripts/lint-schema-columns.mjs --update-snapshot (requires SUPABASE_DB_URL via Infisical). Refs #3586.",
-  "generatedAt": "2026-08-23T13:30:18.062Z",
+  "generatedAt": "2026-08-25T17:36:50.086Z",
   "relations": {
     "academy_graduation": {
       "kind": "table",
@@ -321,6 +321,163 @@
         "backed_up_at"
       ]
     },
+    "backup_4155_entries_removed": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role",
+        "binding_span",
+        "removed_at",
+        "removal_reason"
+      ]
+    },
+    "backup_4155_stage_schedule": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "scheduled_at",
+        "created_at",
+        "game_day"
+      ]
+    },
+    "backup_4203_old_schedule": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "game_day",
+        "scheduled_at",
+        "gemt_at"
+      ]
+    },
+    "backup_4203_removed_entries": {
+      "kind": "table",
+      "columns": [
+        "fase",
+        "race_id",
+        "rider_id",
+        "team_id",
+        "race_role",
+        "is_auto_filled",
+        "maal_gd",
+        "konflikt_med",
+        "fjernet_at"
+      ]
+    },
+    "backup_4203_rolled_back_at": {
+      "kind": "table",
+      "columns": [
+        "rullet_at",
+        "raekker_gendannet",
+        "sweep_raekker_fjernet"
+      ]
+    },
+    "backup_4215_entries": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role",
+        "binding_span",
+        "backed_up_at"
+      ]
+    },
+    "backup_4215_races": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "season_id",
+        "name",
+        "race_type",
+        "stages",
+        "status",
+        "created_at",
+        "race_class",
+        "prize_paid_at",
+        "pool_race_id",
+        "edition_year",
+        "stages_completed",
+        "scheduled_for",
+        "league_division_id",
+        "game_day_start",
+        "backed_up_at"
+      ]
+    },
+    "backup_4215_schedule": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "scheduled_at",
+        "created_at",
+        "game_day",
+        "backed_up_at"
+      ]
+    },
+    "backup_4218_entry_clears": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "team_id",
+        "cleared_at",
+        "backed_up_at"
+      ]
+    },
+    "backup_4218_peak_plans": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "season_id",
+        "target_race_id",
+        "window_start",
+        "window_end",
+        "locked_at",
+        "created_at",
+        "backed_up_at"
+      ]
+    },
+    "backup_4218_stage_roles": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "rider_id",
+        "race_role",
+        "effort",
+        "updated_at",
+        "backed_up_at"
+      ]
+    },
+    "backup_4218_withdrawals": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "team_id",
+        "withdrawn_at",
+        "withdrawn_reason",
+        "backed_up_at"
+      ]
+    },
+    "backup_4227_seasons_2026_08_25": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "number",
+        "status",
+        "start_date",
+        "end_date",
+        "backed_up_at"
+      ]
+    },
     "backup_academy_freeagent_fix_20260628": {
       "kind": "table",
       "columns": [
@@ -407,6 +564,38 @@
         "old_calculated_end",
         "status",
         "backed_up_at"
+      ]
+    },
+    "backup_board_profiles_3514_20260823": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "plan_type",
+        "focus",
+        "satisfaction",
+        "budget_modifier",
+        "current_goals",
+        "season_id",
+        "created_at",
+        "updated_at",
+        "negotiation_status",
+        "proposed_goals",
+        "negotiation_rounds",
+        "negotiated_at",
+        "plan_start_season_number",
+        "plan_end_season_number",
+        "seasons_completed",
+        "cumulative_stage_wins",
+        "cumulative_gc_wins",
+        "plan_start_balance",
+        "plan_start_sponsor_income",
+        "is_baseline",
+        "tradeoff_active_until_season_id",
+        "tradeoff_payload",
+        "major_pivot_used_at",
+        "season_start_satisfaction",
+        "season_start_anchor_season_id"
       ]
     },
     "backup_boardgoals_formation_20260630": {
@@ -848,6 +1037,15 @@
         "taken_at"
       ]
     },
+    "backup_rsp_4106_20260823": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "race_id",
+        "finale_type",
+        "taken_at"
+      ]
+    },
     "backup_rss_4131b_20260823": {
       "kind": "table",
       "columns": [
@@ -1250,6 +1448,15 @@
         "deleted_by"
       ]
     },
+    "forum_reactions": {
+      "kind": "table",
+      "columns": [
+        "target_type",
+        "target_id",
+        "user_id",
+        "created_at"
+      ]
+    },
     "forum_replies": {
       "kind": "table",
       "columns": [
@@ -1261,7 +1468,8 @@
         "team_id",
         "body",
         "deleted_at",
-        "deleted_by"
+        "deleted_by",
+        "quoted_reply_id"
       ]
     },
     "forum_reports": {
@@ -1277,6 +1485,14 @@
         "status",
         "resolved_at",
         "resolved_by"
+      ]
+    },
+    "forum_thread_reads": {
+      "kind": "table",
+      "columns": [
+        "user_id",
+        "post_id",
+        "last_read_at"
       ]
     },
     "founder_supporter_waitlist": {
@@ -1695,6 +1911,16 @@
         "race_id",
         "team_id",
         "cleared_at"
+      ]
+    },
+    "race_entry_days": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "season_id",
+        "game_day",
+        "team_id"
       ]
     },
     "race_incidents": {
@@ -2898,7 +3124,9 @@
     "forum_poll_votes.post_id": "forum_posts",
     "forum_posts.team_id": "teams",
     "forum_replies.post_id": "forum_posts",
+    "forum_replies.quoted_reply_id": "forum_replies",
     "forum_replies.team_id": "teams",
+    "forum_thread_reads.post_id": "forum_posts",
     "global_rank_season_start_snapshot.season_id": "seasons",
     "global_rank_season_start_snapshot.team_id": "teams",
     "global_rank_weekly_snapshot.team_id": "teams",
