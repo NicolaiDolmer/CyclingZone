@@ -8,13 +8,15 @@
 
 S3 er udskudt til fre 28/8 → søn 27/9 (#4218). Rækkefølgen er ejer-valgt:
 
-1. **Holdudtagelsen — symptomerne LUKKET** (#4222). Rest: #4200's anden halvdel — delvise trupper toppes ikke op, mens fladen lover det modsatte (`raceRunner.js:812`). **#4201 AFGJORT:** sen udfyldning, tomme trupper, 1 t før løb, sweep 60→15 min.
-2. **Nye spillere kan lande:** #4183 + #4233 er **ÉT bug** — `aiTeamGenerator.js:403`, trimmen vælger i id-orden og kaster på transfer_offers-FK. D4-A står på 25 hold.
-3. **#4174** — ét ejer-svar: hvor højt fyldes inaktive trupper. Genmålt: kun D1 rammer stadig 29.
-4. **Vagterne:** #4229 · #4215 · #4219 · #4123. Ingen brænder fredag; alle gør os blinde bagefter. **#4123 er forudsætning** for at røre kalenderen — diff-værktøjet er dødt på en hardkodet dato.
-5. **#4236 er roden, verificeret:** én løbsdag spænder op til **9 kalenderdage** (D1 ld 15 = 5/9→13/9); D1 25/89, D3 21/47. Felter kan ikke fyldes lovligt → brænder fast i resultater. #4211: 5 af 6 brud er fejl i scriptet selv.
-5b. 🆕 **Stage-mix brudt i alle 4 divisioner** (#4103): højbjerg 5,6–16,1 % mod 12 ±2; regenereringen overskrev #4140. **Ejer-svar mangler.**
-6. **Tænd scheduler + entry-generator** — står `off`; ejer-GO, sidste skridt.
+1. **Holdudtagelsen:** #4222 lukket; rest er #4200's anden halvdel (`raceRunner.js:812`). **#4201 afgjort:** sen udfyldning, 1 t før løb, sweep 60→15 min.
+2. **Nye spillere kan lande:** #4183 + #4233 = ÉT bug (`aiTeamGenerator.js:403`). D4-A på 25 hold.
+3. **#4174** — ét ejer-svar: hvor højt fyldes inaktive trupper. Kun D1 rammer stadig 29.
+4. **Vagterne:** #4229 · #4215 · #4219 · **#4123 (forudsætning** for at røre kalenderen).
+5. **#4236 er roden:** én løbsdag spænder op til 9 kalenderdage; D1 25/89, D3 21/47. #4211: 5 af 6 brud er script-fejl.
+5b. 🆕 **Stage-mix brudt i alle 4 divisioner** (#4103) — **ejer-svar mangler.**
+6. **Tænd scheduler + entry-generator** — `off`; ejer-GO, sidste skridt.
+
+Detaljer og rodårsager: `sessions/2026-08-26-samlet-workflow-session-prompt.md` §3.
 
 **Planning Center med (ejer 25/8):** P0 + UI-gælden + Z1-sæsonmatrixen. Design låst, se `superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md`. Aksen låses først når #4236 er afgjort.
 
