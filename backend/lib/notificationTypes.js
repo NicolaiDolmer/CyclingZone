@@ -63,6 +63,11 @@ export const NOTIFICATION_TYPES = [
   // korrektionen har kørt ("Sunday value update: N riders moved"). Se
   // backend/scripts/marketValueLevelCorrectionApply.js.
   "market_value_level_correction",
+  // #4118/#3517 (Forum L1 "puls"): en ANDEN bruger svarer på din tråd —
+  // aldrig ved dit eget svar. Dedupe pr. (bruger, tråd): en ulæst
+  // notifikation for samme tråd opdateres ("N nye svar") i stedet for at
+  // stable nye rækker op. Se notifyForumThreadReply, notificationService.js.
+  "forum_thread_reply",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

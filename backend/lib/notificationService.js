@@ -892,3 +892,104 @@ export async function notifyScoutChanged({
     return { delivered: false, deduped: false, reason: "error" };
   }
 }
+
+// #4118/#3517 (Forum L1 "puls") ───────────────────────────────────────────
+
+export const FORUM_THREAD_REPLY_TYPE = "forum_thread_reply";
+
+export function buildForumThreadReplyNotification({ postId, postTitle, replyCount }) {
+  const count = Math.max(1, replyCount || 1);
+  const title = count > 1 ? `${count} new replies` : "New reply to your thread";
+  const message = postTitle
+    ? `${count > 1 ? `${count} new replies` : "A new reply"} on "${postTitle}"`
+    : (count > 1 ? `${count} new replies to your thread` : "Someone replied to your thread");
+  return {
+    type: FORUM_THREAD_REPLY_TYPE,
+    title,
+    message,
+    relatedId: postId,
+    metadata: {
+      postId,
+      postTitle: postTitle || null,
+      replyCount: count,
+      titleCode: count > 1 ? "notif.forumThreadReply.titlePlural" : "notif.forumThreadReply.title",
+      titleParams: { count },
+      messageCode: postTitle ? "notif.forumThreadReply.messageWithTitle" : "notif.forumThreadReply.message",
+      messageParams: { count, postTitle: postTitle || "" },
+    },
+  };
+}
+
+/**
+ * #3517 · Notificér trådejeren når en ANDEN bruger svarer på tråden — aldrig
+ * ved brugerens eget svar (håndhæves her, ikke kun ved kaldestedet, så en
+ * fremtidig kalder ikke kan glemme tjekket). Kaldes fra
+ * POST /api/forum/posts/:id/replies EFTER selve svaret er gemt — en fejlet
+ * notifikation må ALDRIG vælte selve svaret (samme A2-isolerings-mønster som
+ * resten af filen).
+ *
+ * DEDUPE (#3517-krav): findes der allerede en ULÆST forum_thread_reply-
+ * notifikation for samme (bruger, tråd), OPDATERES den (title/message/
+ * metadata.replyCount tæller op, created_at bumpes så den forbliver øverst i
+ * "Mine") i stedet for at indsætte en ny — en tråd med 20 svar giver derfor
+ * ALDRIG 20 notifikationer, kun ÉN der tæller op. En ny notifikation
+ * oprettes kun når ingen ulæst findes (eller den forrige er markeret læst).
+ */
+export async function notifyForumThreadReply({
+  supabase, threadOwnerUserId, replierUserId, postId, postTitle, now = new Date(),
+}) {
+  if (!threadOwnerUserId || !postId) return { delivered: false, deduped: false, reason: "missing_target" };
+  if (threadOwnerUserId === replierUserId) return { delivered: false, deduped: false, reason: "own_reply" };
+
+  try {
+    const { data: existingRows, error: findError } = await supabase
+      .from("notifications")
+      .select("id, metadata")
+      .eq("user_id", threadOwnerUserId)
+      .eq("type", FORUM_THREAD_REPLY_TYPE)
+      .eq("related_id", postId)
+      .eq("is_read", false)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (findError) throw findError;
+
+    const existing = existingRows?.[0] || null;
+    const replyCount = (existing?.metadata?.replyCount ?? 0) + 1;
+    const payload = buildForumThreadReplyNotification({ postId, postTitle, replyCount });
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({
+          title: payload.title,
+          message: payload.message,
+          metadata: payload.metadata,
+          created_at: now.toISOString(),
+        })
+        .eq("id", existing.id);
+      if (updateError) throw updateError;
+      return { delivered: true, deduped: true, id: existing.id, replyCount };
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: threadOwnerUserId,
+        type: payload.type,
+        title: payload.title,
+        message: payload.message,
+        related_id: payload.relatedId,
+        metadata: payload.metadata,
+        is_read: false,
+        created_at: now.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+    return { delivered: true, deduped: false, id: inserted?.id, replyCount };
+  } catch (err) {
+    console.error(`  ❌ forum-thread-reply-notifikation fejlede (tråd ${postId}):`, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "forum-thread-reply" }, postId });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
+}
