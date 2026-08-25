@@ -21,32 +21,36 @@ const ACTIVE = "active";
 const UPCOMING = "upcoming";
 const COMPLETED = "completed";
 
-function usable(row) {
-  return Number.isInteger(row?.number) && row.number > 0;
+// Saeson 0 er aabne-beta-fasens bogfoerings-saeson (0 loeb) og maa aldrig blive
+// reference - samme diskriminator som #2763/#2600 (`number > 0`).
+const usable = (r) => Number.isInteger(r?.number) && r.number > 0;
+
+// naermeste = laveste nummer (den der kommer foerst), seneste = hoejeste.
+const naermeste = (rows) => rows.reduce((a, b) => (b.number < a.number ? b : a));
+const seneste = (rows) => rows.reduce((a, b) => (b.number > a.number ? b : a));
+
+// Foerste status i `orden` der har mindst én raekke vinder. Flere aktive saesoner
+// ville vaere en datafejl; vi tager den seneste og lader invariant-vagten
+// (exactly_one_active_season) om at raabe op - vi gaetter ikke, vi vaelger stabilt.
+function pick(rows, orden) {
+  if (!Array.isArray(rows)) return null;
+  const valid = rows.filter(usable);
+  for (const status of orden) {
+    const traef = valid.filter((r) => r.status === status);
+    if (traef.length) return status === UPCOMING ? naermeste(traef) : seneste(traef);
+  }
+  return null;
 }
 
 /**
+ * ALDERS-varianten: peger FREMAD. Til flader der viser hvad en rytter ER nu
+ * (alder, U23/U25, pensionsrisiko).
+ *
  * @param {Array<{number:number, status:string}>|null|undefined} rows
  * @returns {{number:number, status:string}|null} null naar intet kan afgoeres.
  */
 export function pickReferenceSeason(rows) {
-  if (!Array.isArray(rows)) return null;
-  const valid = rows.filter(usable);
-  if (!valid.length) return null;
-
-  const active = valid.filter((r) => r.status === ACTIVE);
-  // Flere aktive saesoner ville vaere en datafejl; tag den hoejeste og lad
-  // invariant-vagterne om at raabe op — vi gaetter ikke, vi vaelger stabilt.
-  if (active.length) return active.reduce((a, b) => (b.number > a.number ? b : a));
-
-  // Naermeste kommende saeson = laveste nummer over 0.
-  const upcoming = valid.filter((r) => r.status === UPCOMING);
-  if (upcoming.length) return upcoming.reduce((a, b) => (b.number < a.number ? b : a));
-
-  const completed = valid.filter((r) => r.status === COMPLETED);
-  if (completed.length) return completed.reduce((a, b) => (b.number > a.number ? b : a));
-
-  return null;
+  return pick(rows, [ACTIVE, UPCOMING, COMPLETED]);
 }
 
 /** Saeson-NUMMERET fra samme praeference-raekkefoelge, eller null. */
@@ -55,34 +59,21 @@ export function pickReferenceSeasonNumber(rows) {
 }
 
 /**
- * #4225: RESULTAT-varianten. Til flader der viser hvad der ER sket (ranglister,
- * stillinger, resultatlister) frem for hvad der kommer.
+ * #4225: RESULTAT-varianten: peger BAGUD. Til flader der viser hvad der ER sket
+ * (ranglister, stillinger, resultatlister).
  *
- * Praeferencen er bevidst den OMVENDTE af `pickReferenceSeason`: en kommende
- * saeson har per definition nul resultater, saa den maa aldrig vinde over en
- * afsluttet der faktisk har noget at vise. Ejer-beslutning 25/8: mellem to
- * saesoner viser ranglisten sidste afsluttede saeson, tydeligt maerket.
+ * Raekkefoelgen er bevidst den OMVENDTE af alders-variantens: en kommende saeson
+ * har per definition nul resultater, saa den maa aldrig vinde over en afsluttet
+ * der faktisk har noget at vise. Ejer-beslutning 25/8: mellem to saesoner viser
+ * ranglisten sidste afsluttede saeson, tydeligt maerket.
  *
  * `upcoming` er stadig med som sidste udvej, saa den foerste saeson nogensinde
- * giver et saesonnummer frem for null (en tom liste er en bedre tilstand end en
- * fejl).
+ * giver et saesonnummer frem for null - en tom liste er en bedre tilstand end
+ * en fejl.
  *
  * @param {Array<{number:number, status:string}>|null|undefined} rows
  * @returns {{number:number, status:string}|null}
  */
 export function pickResultsSeason(rows) {
-  if (!Array.isArray(rows)) return null;
-  const valid = rows.filter(usable);
-  if (!valid.length) return null;
-
-  const active = valid.filter((r) => r.status === ACTIVE);
-  if (active.length) return active.reduce((a, b) => (b.number > a.number ? b : a));
-
-  const completed = valid.filter((r) => r.status === COMPLETED);
-  if (completed.length) return completed.reduce((a, b) => (b.number > a.number ? b : a));
-
-  const upcoming = valid.filter((r) => r.status === UPCOMING);
-  if (upcoming.length) return upcoming.reduce((a, b) => (b.number < a.number ? b : a));
-
-  return null;
+  return pick(rows, [ACTIVE, COMPLETED, UPCOMING]);
 }
