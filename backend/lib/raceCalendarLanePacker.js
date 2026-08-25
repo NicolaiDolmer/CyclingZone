@@ -177,15 +177,33 @@ function layoutBanded({ stageRaces, classics, density: D, days, cap }) {
   if (baselineClassics < 0) return null;
   if (classics.length !== baselineClassics + overlayCount) return null; // skal gå præcist op (kvote)
 
-  // Bin-pack etapeløb i B spor (FFD, kapacitet T).
+  // Bin-pack etapeloeb i B spor (kapacitet T).
+  //
+  // #4236: pakningen er nu EXACT med backtracking, ikke graadig mindst-brugte. Naar D1's
+  // etaper fylder praecis B*T (120 af 120 - nul slack), skal partitionen ramme hvert spor
+  // paa klingen; graadig fejler paa den slags og fik banded til at returnere null. Saa faldt
+  // hele tieren tilbage til stream, som hverken giver kontiguitet eller een dato pr. loebsdag.
+  // Med faa nok loeb pr. tier (12-17) er udtoemmende soegning med afskaering billig.
+  //
+  // Deterministisk: samme input -> samme partition (loeb sorteres byBigThenId foerst, og
+  // sporene proeves i raekkefoelge med dublet-afskaering paa identisk `used`).
+  const sorterede = [...stageRaces].sort(byBigThenId);
   const chains = Array.from({ length: B }, () => ({ items: [], used: 0 }));
-  for (const r of [...stageRaces].sort(byBigThenId)) {
-    let best = -1;
-    for (let c = 0; c < B; c++) if (chains[c].used + lenOf(r) <= T && (best === -1 || chains[c].used < chains[best].used)) best = c;
-    if (best === -1) return null;
-    chains[best].items.push(r);
-    chains[best].used += lenOf(r);
-  }
+  const pak = (i) => {
+    if (i === sorterede.length) return true;
+    const r = sorterede[i], L = lenOf(r);
+    const proevet = new Set();
+    for (let c = 0; c < B; c++) {
+      if (chains[c].used + L > T) continue;
+      if (proevet.has(chains[c].used)) continue; // spor med samme fyldning er ombyttelige
+      proevet.add(chains[c].used);
+      chains[c].items.push(r); chains[c].used += L;
+      if (pak(i + 1)) return true;
+      chains[c].items.pop(); chains[c].used -= L;
+    }
+    return false;
+  };
+  if (!pak(0)) return null;
   // Fyld hvert spor til T med baseline-klassikere. Rækkefølgen inden for sporet fase-sortéres
   // (se chain.seq nedenfor) når hele sporets etapeløb+klassikere har en date_text-fraction.
   // #3469-determinisme: `pool` kildes fra `classics` i RÅ input-rækkefølge (som før #3469) når
@@ -1179,9 +1197,16 @@ export function packLaneCalendar({
   const monuments = oneDayRaces.filter((r) => r.race_class === "Monuments");
   const classics = oneDayRaces.filter((r) => r.race_class !== "Monuments");
 
-  // Foretræk BANDED (straddle-fri blanding) når ingen monumenter; ellers STREAM.
+  // Foretraek BANDED. Den opfylder begge kalender-invarianter VED KONSTRUKTION: hvert spor
+  // laegger et loebs etaper paa loebsdage i traek (ejer-reglen 25/8), og loebsdag g = d*K + k
+  // tilhoerer praecis een kalenderdato (#4236). Stream goer ingen af delene.
+  //
+  // #4236: monumenter blokerede tidligere banded, fordi B2/#4075 kraevede en EKSKLUSIV
+  // loebsdag som banded ikke kan give. Den eksklusivitet er ophaevet (den leverede intet
+  // efter #4217's spaend-binding og var eneste aarsag til hullerne), saa et monument er nu
+  // en klassiker som alle andre - og D1 kan bruge banded.
   let layoutMode = "banded";
-  let res = monuments.length === 0 ? layoutBanded({ stageRaces, classics, density: D, days, cap }) : null;
+  let res = layoutBanded({ stageRaces, classics: [...classics, ...monuments], density: D, days, cap });
   if (!res) { layoutMode = "stream"; res = layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }); }
 
   const placements = res.placements;
