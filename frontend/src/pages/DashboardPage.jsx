@@ -1043,9 +1043,11 @@ export default function DashboardPage() {
       )}
 
       {/* #3915 — dagens etaper/løb for holdet, herefter i indholdsflowet (under
-          page-header + advarsler ovenfor, over sæson-wrap/sæsonstart-blokken).
-          Skjuler sig selv når holdet ingen løb har i dag (mindst-støj-valg,
-          ejer 18/8). */}
+          page-header + advarsler ovenfor). #3915 satte den oprindeligt
+          allerøverst; ejer besluttede 25/8 at KUN advarsler (trup + kontrakt-
+          fornyelse, se blokken ovenfor) må stå over dagens etaper — se docs/
+          DASHBOARD_RULES.md §2. Skjuler sig selv når holdet ingen løb har i
+          dag (mindst-støj-valg, ejer 18/8). */}
       <TodayStagesStrip teamId={team?.id} />
 
       {/* #3310: første-løbs-øjeblikket ejer toppen ALENE indtil resultatet er
