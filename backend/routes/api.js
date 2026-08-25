@@ -13542,7 +13542,9 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
         supabase,
         threadOwnerUserId: result.post?.user_id || null,
         replierUserId: req.user.id,
-        postId: result.post?.id || req.params.id,
+        // Kun DB-id'et: createForumReply garanterer result.post ved status 200,
+        // så fallbacket var dødt — det førte kun rå req.params.id ind i logningen.
+        postId: result.post?.id || null,
         postTitle: result.post?.title || null,
       }).catch(err => captureException(err));
     }

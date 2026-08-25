@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import util from "node:util";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 const {
@@ -1049,4 +1050,21 @@ test("notifyForumThreadReply: en fejlende opslag isoleres (fanges, kaster ikke) 
   const fake = createFakeSupabase({ notifications: [] }, { errors: { notifications: { select: "boom" } } });
   const result = await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u2", postId: "p1" });
   assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
+});
+
+// CodeQL #188: et postId med format-specifiers (fx "%s") må ikke kunne sluge
+// err-argumentet og dermed skjule den faktiske fejl i produktionsloggen.
+test("notifyForumThreadReply: et postId med %s-specifier skjuler ikke fejlbeskeden i loggen", async () => {
+  const fake = createFakeSupabase({ notifications: [] }, { errors: { notifications: { select: "boom" } } });
+  const lines = [];
+  const original = console.error;
+  console.error = (...args) => { lines.push(util.format(...args)); };
+  try {
+    await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u2", postId: "%s %d %j" });
+  } finally {
+    console.error = original;
+  }
+  const logged = lines.join(" | ");
+  assert.ok(logged.includes("%s %d %j"), `id skal logges ordret, fik: ${logged}`);
+  assert.ok(logged.includes("boom"), `fejlbeskeden skal overleve, fik: ${logged}`);
 });
