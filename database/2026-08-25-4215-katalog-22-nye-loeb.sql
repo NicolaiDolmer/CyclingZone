@@ -51,7 +51,7 @@ values
   ('cz4215-pro-silesie',    'Tour de Silésie',               'ProSeries', 'stage_race', 3, 'mountain_tour',  '12/7 - 14/7'),
   ('cz4215-pro-zeeland',    'Ronde van Zeeland',             'ProSeries', 'stage_race', 3, 'cobbled_tour',   '8/5 - 10/5'),
   -- Dybde til D3, som D2 ellers sulter via ProSeries-kaskaden.
-  ('cz4215-pro-irpinia',    'Giro dell''Irpinia',            'ProSeries', 'stage_race', 5, 'summit_tour',    '1/6 - 5/6'),
+  ('cz4215-pro-irpinia',    'Giro dell''Irpinia',            'ProSeries', 'stage_race', 5, 'hilly_tour',     '1/6 - 5/6'),
   ('cz4215-pro-yonne',      'Tour de l''Yonne',              'ProSeries', 'stage_race', 5, 'balanced_week',  '14/8 - 18/8'),
 
   -- Class1 (D3 + D4).
@@ -60,18 +60,18 @@ values
   ('cz4215-c1-euganei',     'Coppa dei Colli Euganei',       'Class1', 'single',     1, 'hilly_classic',   '11/5'),
   ('cz4215-c1-zamora',      'Gran Premio de Zamora',         'Class1', 'single',     1, 'itt_classic',     '27/6'),
   ('cz4215-c1-drenthe',     'Ronde van Drenthe Nieuw',       'Class1', 'single',     1, 'cobbled_classic', '15/3'),
-  ('cz4215-c1-sibillini',   'Giro dei Monti Sibillini',      'Class1', 'stage_race', 4, 'summit_tour',     '2/7 - 5/7'),
+  ('cz4215-c1-sibillini',   'Giro dei Monti Sibillini',      'Class1', 'stage_race', 4, 'hilly_tour',      '2/7 - 5/7'),
   -- Endagsløb: D3 manglede ikke etaper, men noget der kunne fylde ÉN dag (27/9).
   ('cz4215-c1-castelli',    'Trofeo dei Castelli Romani',    'Class1', 'single',     1, 'hilly_classic',   '6/9'),
   ('cz4215-c1-valladolid',  'Gran Premio de Valladolid',     'Class1', 'single',     1, 'flat_sprint',     '12/6'),
 
   -- Class2 (kun D4 — den smalleste pulje i spillet).
-  ('cz4215-c2-vosges',      'Circuit des Vosges',            'Class2', 'single',     1, 'mountain_classic','23/5'),
+  ('cz4215-c2-vosges',      'Circuit des Vosges',            'Class2', 'single',     1, 'hilly_classic',   '23/5'),
   ('cz4215-c2-valdichiana', 'Trofeo Val di Chiana',          'Class2', 'single',     1, 'hilly_classic',   '7/3'),
   ('cz4215-c2-segovia',     'Vuelta a Segovia Menor',        'Class2', 'stage_race', 3, 'hilly_tour',      '16/9 - 18/9'),
   ('cz4215-c2-waasland',    'Omloop van het Waasland',       'Class2', 'single',     1, 'flat_sprint',     '4/4'),
   ('cz4215-c2-morbihan',    'Grand Prix du Morbihan Mineur', 'Class2', 'single',     1, 'puncheur',        '30/8'),
-  ('cz4215-c2-perigord',    'Tour du Périgord',              'Class2', 'stage_race', 2, 'balanced_week',   '20/6 - 21/6')
+  ('cz4215-c2-perigord',    'Tour du Périgord',              'Class2', 'stage_race', 2, 'hilly_tour',      '20/6 - 21/6')
 on conflict (external_id) do nothing;
 
 -- Post-verify: 22 nye rækker, ingen navnekollision mod resten af kataloget.
