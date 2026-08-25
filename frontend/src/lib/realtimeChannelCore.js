@@ -59,7 +59,14 @@ export function subscribeAuthedChannelWith(client, channelName, configure) {
     // netop dét opslag der falder tilbage på api-nøglen.
     await client.realtime.setAuth(token);
     if (cancelled || channel) return;
-    channel = configure(client.channel(channelName));
+    // #4244: `configure` SKAL returnere kanalen, men en callback med blok-body
+    // der glemmer `return` gav `undefined.subscribe()` — en unhandled rejection
+    // i prod for hver mount, og kanalen blev aldrig abonneret. Kontrakten er
+    // stadig "returnér kanalen"; `?? fresh` gør bare at en glemt return koster
+    // læsbarhed frem for et brud. `.on()` returnerer selv kanalen, så begge
+    // kaldstils-varianter ender med samme objekt.
+    const fresh = client.channel(channelName);
+    channel = configure(fresh) ?? fresh;
     channel.subscribe();
   }
 
