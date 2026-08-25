@@ -991,7 +991,9 @@ export async function notifyForumThreadReply({
     if (insertError) throw insertError;
     return { delivered: true, deduped: false, id: inserted?.id, replyCount };
   } catch (err) {
-    console.error(`  ❌ forum-thread-reply-notifikation fejlede (post ${postId}):`, err?.message || err);
+    // postId må ALDRIG stå i format-string-positionen: et id som "%s" ville
+    // ellers sluge err-argumentet og skjule den faktiske fejl (CodeQL #188).
+    console.error("  ❌ forum-thread-reply-notifikation fejlede (post %s):", postId, err?.message || err);
     captureException(err, { tags: { flow: "notifications", stage: "forum-thread-reply" }, postId });
     return { delivered: false, deduped: false, reason: "error" };
   }
