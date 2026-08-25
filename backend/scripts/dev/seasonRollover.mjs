@@ -109,10 +109,65 @@ async function main() {
   if ((kørte ?? 0) > 0) {
     return stop(`${kørte} løb er kørt. Et sæsonskifte må ALDRIG køre på en sæson med resultater.`);
   }
-  if (season.status !== "upcoming") {
-    return stop(`status er '${season.status}', ikke 'upcoming'. Sæt den først — wipe og regen nægter begge ellers.`);
+  // ── #4228: SCRIPTET EJER NEDETIDS-VINDUET, IKKE OPERATØRENS HUKOMMELSE ────────
+  //
+  // Wipe og regen nægter begge at køre medmindre sæsonen står som 'upcoming'.
+  // Men en sæson uden status 'active' SLUKKER spillet: 30+ kaldesteder spørger på
+  // `.eq("status","active")`, og de får nul rækker. Målt 25/8, hvor sæson 3 blev
+  // sat til 'upcoming' kl. ~07:30 og aldrig sat tilbage: alders-visningen,
+  // ranglisten, den daglige træning og akademi-flytningen lå nede for ALLE
+  // spillere i fire timer. Tre spillere meldte det inden for halvanden time.
+  //
+  // Før krævede scriptet blot at operatøren havde flippet den selv og sagde intet
+  // om at flippe tilbage. Det er en instruktion, ikke en garanti. Nu gør scriptet
+  // det selv: den flipper ned lige før den destruktive del og op igen bagefter —
+  // også hvis kørslen fejler undervejs (se `genskabAktiv` i finally).
+  //
+  // Kom sæsonen ind som 'upcoming', var det operatørens egen tilstand, og den
+  // efterlades urørt. Vi tænder aldrig en sæson der ikke var tændt i forvejen.
+  if (season.status !== "upcoming" && season.status !== "active") {
+    return stop(`status er '${season.status}'. Kun 'active' eller 'upcoming' kan køre et sæsonskifte.`);
+  }
+  const varAktivFørRollover = season.status === "active";
+  if (varAktivFørRollover) {
+    log("   sæsonen er AKTIV. Scriptet sætter den til 'upcoming' under ombygningen");
+    log("   og tilbage til 'active' bagefter — også hvis noget fejler undervejs (#4228).");
+    if (APPLY) {
+      log("   ⚠ spillet er slukket for spillerne mens flowet kører: ingen alder, rangliste,");
+      log("     daglig træning eller akademi-flytning. Hold vinduet så kort som muligt.");
+    }
+  } else {
+    log("   sæsonen er 'upcoming' i forvejen — efterlades sådan (#4228).");
   }
 
+  // #4228: fra her og ned kan sæsonen være slukket. ALT er derfor pakket i
+  // try/finally, så `genskabAktiv` også kører når et af trinene kalder stop().
+  let sattTilUpcoming = false;
+  async function genskabAktiv() {
+    if (!sattTilUpcoming) return;
+    const { error } = await supabase
+      .from("seasons").update({ status: "active" })
+      .eq("id", season.id).eq("status", "upcoming");
+    if (error) {
+      log(`\n⚠⚠ KUNNE IKKE SÆTTE SÆSONEN TILBAGE TIL 'active': ${error.message}`);
+      log("   SPILLET ER STADIG SLUKKET FOR SPILLERNE. Kør manuelt:");
+      log(`   update seasons set status='active' where id='${season.id}' and status='upcoming';`);
+      process.exitCode = 1;
+      return;
+    }
+    log("\n   sæsonen er sat tilbage til 'active' (#4228).");
+  }
+
+  if (varAktivFørRollover && APPLY) {
+    const { error } = await supabase
+      .from("seasons").update({ status: "upcoming" })
+      .eq("id", season.id).eq("status", "active");
+    if (error) return stop(`kunne ikke sætte sæsonen til 'upcoming': ${error.message}`);
+    sattTilUpcoming = true;
+    log("   sæsonen er nu 'upcoming' — nedetids-vinduet er åbent.");
+  }
+
+  try {
   // ── 1. GATE: scorecardet før noget slettes ────────────────────────────────────
   trin(1, "Kalender-gate (#4215)");
   let scorecard;
@@ -183,6 +238,12 @@ async function main() {
     log("APPLY færdig. Motoren er IKKE tændt — det er et bevidst, separat ejer-valg.");
   }
   return true;
+  } finally {
+    // #4228: kører også når et trin ovenfor kaldte stop() eller kastede. Uden den
+    // ville en fejlet kørsel efterlade spillet slukket, hvilket er præcis det der
+    // skete 25/8 — bare med et menneske som den glemte finally-blok.
+    await genskabAktiv();
+  }
 }
 
 main().catch((err) => {
