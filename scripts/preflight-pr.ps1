@@ -78,5 +78,19 @@ if ($failed.Count -gt 0) {
   Write-Host ("PREFLIGHT RØD: {0}" -f ($failed -join ", ")) -ForegroundColor Red
   exit 1
 }
+
+# Stamp: markér at preflight kørte grønt på DENNE arbejdstræ-tilstand.
+# check-preflight-before-push.sh sammenligner stamp'ens mtime mod de ændrede
+# filers mtime ved `git push` og advarer hvis preflight er forældet.
+# Ligger under .git/ (ikke i repoet) og er worktree-specifik via --git-path.
+try {
+  $stamp = (& git rev-parse --git-path preflight-ok).Trim()
+  if ($stamp) {
+    Set-Content -Path $stamp -Value "preflight groen $(Get-Date -Format o)" -Encoding utf8
+  }
+} catch {
+  # Stamp er en bekvemmelighed, ikke en gate. Fejler den, så fejler preflight ikke.
+}
+
 Write-Host "PREFLIGHT GRØN — klar til push (husk tests + PR-body-reglerne i headeren)." -ForegroundColor Green
 exit 0
