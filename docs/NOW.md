@@ -27,6 +27,6 @@
 
 > **📋 SESSION 25/8 (workflow):** Alle 11 blockers diagnosticeret read-only — **8 har skiftet karakter**, issue-teksterne kan ikke bruges som bevis. **#4183 = #4233** (ét bug, `aiTeamGenerator.js:403`). **#4201 afgjort:** sen udfyldning, 1 t før løb, sweep 60→15 min. 🆕 **Stage-mix brudt i alle 4 divisioner** (#4103, højbjerg 5,6–16,1 % mod 12 ±2) — afventer ejer-svar. 🆕 **24 SSOT-regler bagud** (#4176 + #4254). **#4016 halvt leveret** (PR #4253 låser hovedmappen til main). **Åbne ejer-spørgsmål:** stage-mix · #4174-niveau · fast GT-etapetal.
 
-> **🤖 Ingen aktiv session.**
+> **🤖 Claude Code (hoved-checkout) — session startet 25/8, spor: S3-blockers (#4239 → #4123 → #4236).**
 
 _Historik i git-log, issue-tråde + docs/audits/._
