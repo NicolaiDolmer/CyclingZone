@@ -151,6 +151,7 @@ import {
   getForumReportCounts,
   markForumThreadRead,
   getForumUnreadStatus,
+  toggleForumReaction,
 } from "../lib/forum.js";
 import {
   contractOnAcquirePatch,
@@ -13514,7 +13515,9 @@ router.post("/forum/posts", requireAuth, forumWriteLimiter, async (req, res) => 
   }
 });
 
-// POST /api/forum/posts/:id/replies — nyt svar i tråden.
+// POST /api/forum/posts/:id/replies — nyt svar i tråden. #3517: body kan
+// bære quoted_reply_id (citér et andet svar i SAMME tråd — forum.js afviser
+// tråd-fremmede id'er med 400).
 router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (req, res) => {
   try {
     const result = await createForumReply({
@@ -13523,6 +13526,7 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
       userId: req.user.id,
       teamId: req.team?.id || null,
       body: req.body?.body,
+      quotedReplyId: req.body?.quoted_reply_id || null,
     });
     if (result.status === 200) {
       const replyBody = typeof req.body?.body === "string" ? req.body.body.trim() : "";
@@ -13538,17 +13542,54 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
         .catch(err => console.error("[forum] discord ping (reply) failed:", err.message));
       // #3517: notificér trådejeren (aldrig ved eget svar — notifyForumThreadReply
       // håndhæver det selv). Best-effort, svaret er allerede gemt.
+      const threadOwnerUserId = result.post?.user_id || null;
+      // #188/#4251: ALDRIG req.params.id som fallback — den er bruger-
+      // paavirkelig og endte i console.error's format-string-position.
+      // createForumReply garanterer result.post ved status 200, saa
+      // fallbacket var doedt i praksis.
+      const postId = result.post?.id || null;
+      const postTitle = result.post?.title || null;
       notifyForumThreadReply({
         supabase,
-        threadOwnerUserId: result.post?.user_id || null,
+        threadOwnerUserId,
         replierUserId: req.user.id,
-        // Kun DB-id'et: createForumReply garanterer result.post ved status 200,
-        // så fallbacket var dødt — det førte kun rå req.params.id ind i logningen.
-        postId: result.post?.id || null,
-        postTitle: result.post?.title || null,
+        postId,
+        postTitle,
       }).catch(err => captureException(err));
+      // #3517: notificér den CITEREDE bruger, samme dedupe-regel som ovenfor
+      // (genbruger notifyForumThreadReply). Springes over hvis den citerede
+      // allerede er trådejeren — ellers ville ét svar bumpe den samme
+      // dedupe-tæller to gange for samme begivenhed. Egen-citat-guard sker
+      // inde i notifyForumThreadReply (own_reply).
+      if (result.quotedUserId && result.quotedUserId !== threadOwnerUserId) {
+        notifyForumThreadReply({
+          supabase,
+          threadOwnerUserId: result.quotedUserId,
+          replierUserId: req.user.id,
+          postId,
+          postTitle,
+        }).catch(err => captureException(err));
+      }
     }
     res.status(result.status).json(result.body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/forum/react — toggle opbakning på opslag/svar (#3517: ÉN
+// tæller, ingen emoji-palet). Ingen notifikation ved opbakning.
+router.post("/forum/react", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { target_type: targetType, target_id: targetId } = req.body || {};
+    const { status, body } = await toggleForumReaction({
+      supabase,
+      targetType,
+      targetId,
+      userId: req.user.id,
+    });
+    res.status(status).json(body);
   } catch (e) {
     captureException(e);
     res.status(500).json({ error: e.message });

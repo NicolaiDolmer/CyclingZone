@@ -94,6 +94,20 @@ export const PATCHES = [
           "body": "Trådlisten sorterer efter seneste svar i stedet for hvornår tråden blev oprettet, så en gammel tråd med et frisk svar rykker op igen. Ulæste tråde får en lille prik, og den samme prik vises ved \"Forum\" i menuen, når der er ulæst aktivitet. Svarer du på en andens tråd, får de en notifikation der peger direkte på den (aldrig ved eget svar). At rapportere et opslag eller svar kræver nu en kort begrundelse."
         },
         "refs": [4118, 3451, 3517, 3452]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Back a post and quote a reply",
+          "body": "You can now back a post or a reply, so you can agree with someone without writing a whole answer. Every post shows how many managers have backed it. You can also quote a specific reply, which shows a short extract above your own answer and lets the other manager know you replied to them."
+        },
+        "da": {
+          "title": "Bak et indlæg op og citér et svar",
+          "body": "Du kan nu bakke et indlæg eller et svar op, så du kan give nogen ret uden at skrive et helt svar. Hvert indlæg viser hvor mange managere der har bakket op. Du kan også citere et bestemt svar, hvilket viser et kort uddrag over dit eget svar og giver den anden manager besked om at du har svaret."
+        },
+        "refs": [3517]
       }
     ]
   },

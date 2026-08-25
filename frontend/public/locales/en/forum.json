@@ -52,6 +52,17 @@
     "votes": "{count, plural, =0 {No votes yet} one {1 vote} other {# votes}}",
     "yourVote": "Your vote"
   },
+  "support": {
+    "ariaOn": "{count, plural, =0 {Remove your support} one {Remove your support (1 supporter)} other {Remove your support (# supporters)}}",
+    "ariaOff": "{count, plural, =0 {Support this} one {Support this (1 supporter)} other {Support this (# supporters)}}",
+    "count": "{count, plural, =0 {No support yet} one {1 supporter} other {# supporters}}"
+  },
+  "quote": {
+    "action": "Quote",
+    "cancel": "Cancel",
+    "replyingTo": "Replying to {name}",
+    "removedNotice": "This reply has been removed"
+  },
   "report": {
     "title": "Report content",
     "description": "The report goes straight to the admin. Use it for spam, abuse or anything that does not belong here.",

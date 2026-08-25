@@ -24,6 +24,7 @@ import {
   getForumReportCounts,
   markForumThreadRead,
   getForumUnreadStatus,
+  toggleForumReaction,
 } from "./forum.js";
 
 function post(overrides = {}) {
@@ -53,6 +54,7 @@ function seedState(overrides = {}) {
     forum_poll_options: [],
     forum_poll_votes: [],
     forum_thread_reads: [],
+    forum_reactions: [],
     users: [
       { id: "u1", username: "alice", email: "alice@example.com", role: "manager" },
       { id: "u2", username: "bob", email: "bob@example.com", role: "manager" },
@@ -284,6 +286,60 @@ test("getForumPost: svar i seq-orden, slettede svar udeladt, poll aggregeret ude
   assert.equal(JSON.stringify(result.body).includes("admin1"), false);
 });
 
+// #3517 · getForumPost: opbaknings-tal på post + svar, opløst i det eksisterende
+// trådkald (ingen separate N+1-kald pr. indlæg).
+test("getForumPost: support_count/supported_by_me på post og svar", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", user_id: "admin1", team_id: null })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "First", deleted_at: null, quoted_reply_id: null },
+    ],
+    forum_reactions: [
+      { target_type: "post", target_id: "p1", user_id: "u1", created_at: "2026-08-01T10:00:00Z" },
+      { target_type: "post", target_id: "p1", user_id: "u2", created_at: "2026-08-01T10:01:00Z" },
+      { target_type: "reply", target_id: "r1", user_id: "u2", created_at: "2026-08-01T11:05:00Z" },
+    ],
+  }));
+
+  const asU1 = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assert.equal(asU1.body.post.support_count, 2);
+  assert.equal(asU1.body.post.supported_by_me, true);
+  assert.equal(asU1.body.replies[0].support_count, 1);
+  assert.equal(asU1.body.replies[0].supported_by_me, false);
+
+  const asU2 = await getForumPost({ supabase: fake, id: "p1", userId: "u2" });
+  assert.equal(asU2.body.post.supported_by_me, true);
+  assert.equal(asU2.body.replies[0].supported_by_me, true);
+});
+
+// #3517 · citér-svar: kompakt uddrag med forfatter, ALDRIG indhold fra et slettet svar.
+test("getForumPost: citeret svar giver uddrag+forfatter, citeret SLETTET svar lækker aldrig indhold", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", user_id: "admin1", team_id: null })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "Original point", deleted_at: null, quoted_reply_id: null },
+      { id: "r2", seq: 2, created_at: "2026-08-01T12:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Agreed", deleted_at: null, quoted_reply_id: "r1" },
+      { id: "r3", seq: 3, created_at: "2026-08-01T13:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "Secret", deleted_at: "2026-08-02T09:00:00Z", quoted_reply_id: null },
+      { id: "r4", seq: 4, created_at: "2026-08-01T14:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Quoting removed", deleted_at: null, quoted_reply_id: "r3" },
+    ],
+  }));
+
+  const result = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  const [r1, r2, r4] = ["r1", "r2", "r4"].map((id) => result.body.replies.find((r) => r.id === id));
+  assert.equal(r1.quoted, null);
+
+  assert.equal(r2.quoted.id, "r1");
+  assert.equal(r2.quoted.removed, false);
+  assert.equal(r2.quoted.excerpt, "Original point");
+  assert.equal(r2.quoted.author.username, "alice");
+
+  // r3 (den citerede kilde) er soft-deleted og er derfor slet ikke i replies-listen —
+  // klienten kan ikke selv rekonstruere citatet, derfor SKAL backend shape det.
+  assert.equal(result.body.replies.some((r) => r.id === "r3"), false);
+  assert.deepEqual(r4.quoted, { id: "r3", removed: true });
+  assert.equal(JSON.stringify(r4).includes("Secret"), false);
+});
+
 // ── Opret opslag ────────────────────────────────────────────────────────────
 
 test("createForumPost: validering af kategori/titel/body", async () => {
@@ -365,6 +421,34 @@ test("createForumReply: 404 på slettet opslag; ellers indsætter + genberegner 
   assert.equal(fake.state.forum_posts[0].last_reply_at, now.toISOString());
 });
 
+// #3517 · citér-svar: kun tilladt inden for SAMME tråd; returnerer forfatter-id
+// til routens notifikation (aldrig selve UUID'en lækket til klienten — kun brugt
+// server-side i api.js).
+test("createForumReply: quotedReplyId skal høre til samme tråd, ellers 400; ellers gemmes den + quotedUserId returneres", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1" }), post({ id: "p2", seq: 2 })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u1", team_id: "t1", body: "Original", deleted_at: null, quoted_reply_id: null },
+      { id: "r-other-thread", seq: 2, created_at: "2026-08-01T11:00:00Z", post_id: "p2", user_id: "u2", team_id: "t2", body: "Elsewhere", deleted_at: null, quoted_reply_id: null },
+    ],
+  }));
+
+  const unknown = await createForumReply({ supabase: fake, postId: "p1", userId: "u2", body: "Hi", quotedReplyId: "nope" });
+  assert.equal(unknown.status, 400);
+  assert.equal(unknown.body.errorCode, "forum_invalid_quote");
+
+  const crossThread = await createForumReply({ supabase: fake, postId: "p1", userId: "u2", body: "Hi", quotedReplyId: "r-other-thread" });
+  assert.equal(crossThread.status, 400);
+  assert.equal(crossThread.body.errorCode, "forum_invalid_quote");
+  assert.equal(fake.state.forum_replies.length, 2, "ingen af de afviste citater må have indsat et svar");
+
+  const ok = await createForumReply({ supabase: fake, postId: "p1", userId: "u2", body: "I agree", quotedReplyId: "r1" });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.quotedUserId, "u1");
+  const insertedReply = fake.state.forum_replies.find((r) => r.body === "I agree");
+  assert.equal(insertedReply.quoted_reply_id, "r1");
+});
+
 // ── Poll-afstemning ─────────────────────────────────────────────────────────
 
 test("voteForumPoll: option skal høre til opslaget; genafstemning overskriver (én stemme pr. bruger)", async () => {
@@ -421,6 +505,54 @@ test("reportForumContent: idempotent pr. (reporter, target) — already=true and
   assert.equal(second.body.already, true);
   assert.equal(fake.state.forum_reports.length, 1);
   assert.equal(fake.state.forum_reports[0].reason, "Still spam links");
+});
+
+// ── Opbakning (#3517: ÉN tæller, ingen emoji-palet) ─────────────────────────
+
+test("toggleForumReaction: validering + 404 på ukendt/slettet mål", async () => {
+  const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" }), post({ id: "p2", seq: 2, deleted_at: "2026-08-02T10:00:00Z" })] }));
+  assert.equal((await toggleForumReaction({ supabase: fake, targetType: "nope", targetId: "p1", userId: "u1" })).body.errorCode, "forum_invalid_reaction_target_type");
+  assert.equal((await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "", userId: "u1" })).body.errorCode, "forum_missing_id");
+  assert.equal((await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "unknown", userId: "u1" })).status, 404);
+  assert.equal((await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "p2", userId: "u1" })).status, 404);
+});
+
+// Kernekrav: toggle er idempotent — samme bruger/mål skifter mellem
+// "bakket op" og "ikke bakket op", giver ALDRIG en dublet-række.
+test("toggleForumReaction: toggle-idempotens — til, fra, til igen ændrer aldrig antal ud over 0/1", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1" })],
+    forum_replies: [{ id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Reply", deleted_at: null, quoted_reply_id: null }],
+  }));
+
+  const on = await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "p1", userId: "u1" });
+  assert.equal(on.body.active, true);
+  assert.equal(on.body.support_count, 1);
+  assert.equal(fake.state.forum_reactions.length, 1);
+
+  const off = await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "p1", userId: "u1" });
+  assert.equal(off.body.active, false);
+  assert.equal(off.body.support_count, 0);
+  assert.equal(fake.state.forum_reactions.length, 0);
+
+  const onAgain = await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "p1", userId: "u1" });
+  assert.equal(onAgain.body.active, true);
+  assert.equal(onAgain.body.support_count, 1);
+  assert.equal(fake.state.forum_reactions.length, 1, "toggle må aldrig efterlade dubletter for samme (bruger, mål)");
+
+  // Reaktion på et SVAR bruger samme kode-sti — target_type-adskillelsen holder.
+  const replyOn = await toggleForumReaction({ supabase: fake, targetType: "reply", targetId: "r1", userId: "u1" });
+  assert.equal(replyOn.body.active, true);
+  assert.equal(replyOn.body.support_count, 1);
+  assert.equal(fake.state.forum_reactions.length, 2, "post- og reply-opbakning fra samme bruger er to uafhængige rækker");
+});
+
+test("toggleForumReaction: to brugere der bakker op tæller uafhængigt af hinanden", async () => {
+  const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" })] }));
+  await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "p1", userId: "u1" });
+  const secondUser = await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "p1", userId: "u2" });
+  assert.equal(secondUser.body.support_count, 2);
+  assert.equal(fake.state.forum_reactions.length, 2);
 });
 
 // ── Admin: rapport-indbakke + moderation ────────────────────────────────────
