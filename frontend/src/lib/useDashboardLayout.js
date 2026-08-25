@@ -25,6 +25,10 @@ export const DASHBOARD_MODULES = [
   { id: "riderRanking",  defaultVisible: true },
   // #2453: Global Rank-widget ("#N ▲x · point" → linker til /global-rank).
   { id: "globalRank",    defaultVisible: true },
+  // Forum-synlighed (#3199, variant B, ejer-godkendt): kompakt to-rækkers
+  // forum-kort ("From the forum"). Nyt modul defaulter til synligt for ALLE
+  // (samme merge-mod-defaults-regel som myLatestResult/heroAgony ovenfor).
+  { id: "forumHighlights", defaultVisible: true },
 ];
 
 const STORAGE_KEY = "cz-dashboard-layout";

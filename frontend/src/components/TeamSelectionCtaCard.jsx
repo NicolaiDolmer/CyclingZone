@@ -32,7 +32,7 @@ export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs
   const showCountdown = Number.isFinite(startAtMs) && Number.isFinite(nowMs);
 
   return (
-    <Card className="mb-5 p-5 flex flex-col sm:flex-row sm:items-center gap-4" data-testid="team-selection-cta">
+    <Card className="p-5 flex flex-col sm:flex-row sm:items-center gap-4" data-testid="team-selection-cta">
       <div className="flex items-start gap-3 min-w-0 flex-1">
         <span className="flex-shrink-0 mt-0.5 text-cz-accent-t" aria-hidden="true">
           <FlagIcon size={20} />

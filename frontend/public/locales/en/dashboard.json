@@ -274,8 +274,15 @@
       "board": "Board status",
       "recentResults": "Recent results",
       "riderRanking": "Rider ranking",
-      "globalRank": "Global Rank"
+      "globalRank": "Global Rank",
+      "forumHighlights": "From the forum"
     }
+  },
+  "forumHighlights": {
+    "title": "From the forum",
+    "allThreads": "All threads",
+    "emptyTitle": "Nothing new since your last visit.",
+    "emptyDescription": "Check back later or start a new thread."
   },
   "board": {
     "focus": {

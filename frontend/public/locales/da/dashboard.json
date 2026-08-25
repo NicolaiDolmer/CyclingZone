@@ -274,8 +274,15 @@
       "board": "Bestyrelsens status",
       "recentResults": "Seneste resultater",
       "riderRanking": "Rytterrangliste",
-      "globalRank": "Global Rank"
+      "globalRank": "Global Rank",
+      "forumHighlights": "Fra forummet"
     }
+  },
+  "forumHighlights": {
+    "title": "Fra forummet",
+    "allThreads": "Alle tråde",
+    "emptyTitle": "Intet nyt siden dit sidste besøg.",
+    "emptyDescription": "Kig forbi senere, eller start en ny tråd."
   },
   "board": {
     "focus": {

@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.193",
+    "date": "2026-08-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "The dashboard now shows what's new on the forum",
+          "body": "A small card shows the two most recently active threads, with the same unread dot and reply count as the forum itself. It sits next to your upcoming races, so you see it without leaving the dashboard. Forum has also moved up in the menu, right after Inbox."
+        },
+        "da": {
+          "title": "Dashboardet viser nu hvad der er nyt på forummet",
+          "body": "Et lille kort viser de to seneste aktive tråde, med samme ulæst-prik og svar-antal som forummet selv. Det sidder ved siden af dine kommende løb, så du ser det uden at forlade dashboardet. Forum er også rykket op i menuen, lige efter Indbakke."
+        },
+        "refs": [3199]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard reorganized into two columns",
+          "body": "The dashboard used to stack 16 modules full width before the two-column layout began. Squad and contract warnings now sit right at the top, above today's stages, since those are the only things on the page that cost you points if missed. Your latest result, next actions, squad selection, season status and the finance forecast now sit two side by side instead of taking a full row each. Nothing was removed, only rearranged."
+        },
+        "da": {
+          "title": "Dashboardet er lagt om i to kolonner",
+          "body": "Dashboardet stablede tidligere 16 moduler i fuld bredde før to-kolonne-layoutet begyndte. Trup- og kontraktadvarsler står nu øverst, over dagens etaper, fordi det er de eneste ting på siden der koster point hvis de overses. Dit seneste resultat, næste træk, holdudtagelse, sæsonstatus og økonomiprognosen står nu to og to side om side i stedet for hver deres fulde række. Intet er fjernet, kun flyttet."
+        },
+        "refs": [4249]
+      }
+    ]
+  },
+  {
     "version": "7.192",
     "date": "2026-08-25",
     "label": "Beta",
