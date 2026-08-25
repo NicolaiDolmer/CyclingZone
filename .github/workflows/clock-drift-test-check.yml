@@ -15,12 +15,12 @@ name: Nightly clock-drift test check
 # rød uden en commit at pege på.
 #
 # 25/8: udvidet fra frontend-only til BEGGE pakker. Detektoren dækkede kun
-# frontend, men hard rule 16 gælder hele repoet — og 25/8 fejlede præcis den
+# frontend, men hard rule 16 gælder hele repoet, og 25/8 fejlede præcis den
 # klasse i BACKEND: raceCalendarLanePackerGtDayCap.test.js hardkodede
 # firstRaceDate "2026-08-25" og lod resolveCalendarFrom falde tilbage på
 # vægur-tiden, så alle 6 tests blev røde på selve dagen. Verificeret på den
 # gamle testfil: grøn med klokken 30 dage tilbage, 6/6 røde med klokken 183
-# dage frem — dvs. en backend-kørsel ville have fanget den en måned før den
+# dage frem, dvs. en backend-kørsel ville have fanget den en måned før den
 # ramte main. Fixet i #4222; dette job er forward-guarden.
 #
 # Bevidst IKKE en required check pr. PR (se AGENTS.md-reglen indført med
@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   # Én kørsel pr. pakke. `fail-fast: false` så en rød frontend ikke skjuler en
-  # rød backend — rapporten skal vise BEGGE. Jobbet selv fejler ikke på røde
+  # rød backend. Rapporten skal vise BEGGE. Jobbet selv fejler ikke på røde
   # tests; status skrives til artifact og report-jobbet dømmer.
   run-suite:
     runs-on: ubuntu-latest
@@ -146,7 +146,7 @@ jobs:
                   'utf8',
                 );
               } catch {
-                log = '(log mangler — se artifact)';
+                log = '(log mangler, se artifact)';
               }
               // GitHub issue-body-loft: del budgettet mellem pakkerne.
               const budget = Math.floor(20000 / failed.length);
@@ -210,5 +210,5 @@ jobs:
       - name: Fail if a suite never reported
         if: needs.run-suite.result != 'success'
         run: |
-          echo "::error::run-suite matrix did not complete (result: ${{ needs.run-suite.result }}) — detektoren målte ikke noget."
+          echo "::error::run-suite matrix did not complete (result: ${{ needs.run-suite.result }}). Detektoren målte ikke noget."
           exit 1

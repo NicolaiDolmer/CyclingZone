@@ -1,7 +1,7 @@
 // #3385 — nightly klokke-drift-detektor.
 //
-// Delt mellem frontend og backend (derfor repo-roden, ikke frontend/scripts/ —
-// flyttet 25/8 da detektoren blev udvidet til backend, se AGENTS.md hard rule 16).
+// Delt mellem frontend og backend (derfor repo-roden, ikke frontend/scripts/),
+// flyttet 25/8 da detektoren blev udvidet til backend, se AGENTS.md hard rule 16.
 // Backends runner spawner child-processer, så DER skal modulet loades via
 // NODE_OPTIONS (arves af children), ikke et bart `--import`-flag på forælderen.
 //

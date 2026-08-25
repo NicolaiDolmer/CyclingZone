@@ -9,7 +9,7 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
 ## Hard rules
 
 > **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor på frontend + backend — ikke pr.-PR-gate) · 18 🔒 (`scripts/guard-commit-branch.sh`, blokerende) · 19-23 ✍️ (kvalitetsproces-regler, ejer-godkendt 18/8 pr. [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)).
+> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor på frontend + backend, ikke pr.-PR-gate) · 18 🔒 (`scripts/guard-commit-branch.sh`, blokerende) · 19-23 ✍️ (kvalitetsproces-regler, ejer-godkendt 18/8 pr. [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)).
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
