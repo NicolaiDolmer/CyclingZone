@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// backend/scripts/dev/calendarScorecard4215.mjs
-// #4215 — mål den PLANLAGTE S3-kalender mod ALLE reglerne i docs/CALENDAR_RULES.md.
+// backend/scripts/dev/calendarScorecard4218.mjs
+// #4218 — mål den PLANLAGTE S3-kalender mod ALLE reglerne i docs/CALENDAR_RULES.md.
 //
 // EJER-KRAV 25/8: "før vi skriver til spillerne skal kalenderen testes og godkendes
 // selvfølgelig. Tests i forhold til vores regler. Slutter det for tit nedad? Er der nok
@@ -11,14 +11,14 @@
 // etape-profilerne ad SAMME seed-vej som skrive-stien (seedRaceFor → generateRaceStageProfiles,
 // #3347/#4104). Tallene beskriver derfor det parcours der VILLE blive skrevet — ikke et nyt træk.
 //
-// De 22 nye katalog-løb (database/2026-08-25-4215-katalog-22-nye-loeb.sql) lægges oveni
+// De 22 nye katalog-løb (database/2026-08-25-4218-katalog-22-nye-loeb.sql) lægges oveni
 // in-memory, så scorecardet kan køres FØR seed'en er applyet i prod.
 //
 // KØRSEL
-//   cd backend && node scripts/dev/calendarScorecard4215.mjs
-//   cd backend && node scripts/dev/calendarScorecard4215.mjs --json
+//   cd backend && node scripts/dev/calendarScorecard4218.mjs
+//   cd backend && node scripts/dev/calendarScorecard4218.mjs --json
 //
-// Refs #4215 #4214 #4176 #3327 #3328 #3469 #3295 #3326 #3371 #4075 #2276
+// Refs #4218 #4217 #4176 #3327 #3328 #3469 #3295 #3326 #3371 #4075 #2276
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -50,7 +50,7 @@ const REAL_DAYS = 31;
 const NOW = new Date("2026-08-25T12:00:00Z");
 const SEASON_UUID = "00000000-0000-0000-0000-000000000003";
 
-// De 22 nye løb fra database/2026-08-25-4215-katalog-22-nye-loeb.sql.
+// De 22 nye løb fra database/2026-08-25-4218-katalog-22-nye-loeb.sql.
 const NYE_LOEB = [
   ["cz4215-pro-alentejo",  "Volta ao Alentejo",            "ProSeries", "stage_race", 4, "sprinters_week",  "3/4 - 6/4"],
   ["cz4215-pro-limousin",  "Tour du Limousin Nouveau",     "ProSeries", "stage_race", 4, "hilly_tour",      "18/8 - 21/8"],
@@ -175,7 +175,7 @@ function main() {
   console.log(`Katalog: ${baseCatalog.length} + ${NYE_LOEB.length} nye = ${catalog.length} løb`);
   console.log(`Navnekollisioner: ${kollisioner.length ? kollisioner.join(", ") : "ingen"}\n`);
 
-  console.log(`${ok(dækning.ok)} LØB HVER KALENDERDAG (#4215)`);
+  console.log(`${ok(dækning.ok)} LØB HVER KALENDERDAG (#4218)`);
   for (const v of dækning.violations) console.log(`     ${v}`);
 
   for (const t of rapport.tiers) {

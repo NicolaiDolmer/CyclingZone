@@ -1,4 +1,4 @@
--- #4214 — en rytter er bundet fra første til sidste etape af sit løb.
+-- #4217 — en rytter er bundet fra første til sidste etape af sit løb.
 --
 -- EJER-DIREKTIV 25/8:
 --   "På en IRL dag, må en rytter gerne køre mere end et løb.
@@ -48,7 +48,7 @@
 -- DRY-RUN. Sæt v_apply := false for kun at tælle. Scriptet ruller da tilbage og
 -- rapporterer hvad det VILLE gøre.
 --
--- Refs #4214 #4173 #4209 #4200 #4201 #4191 #4190 #3420 #1823
+-- Refs #4217 #4173 #4209 #4200 #4201 #4191 #4190 #3420 #1823
 
 begin;
 
@@ -75,7 +75,7 @@ begin
   );
 
   with span as (
-    -- #4214: HELE spændet, ikke kun de kørte dage. generate_series lukker springene.
+    -- #4217: HELE spændet, ikke kun de kørte dage. generate_series lukker springene.
     select min(s.game_day) as gd_min, max(s.game_day) as gd_max
       from public.race_stage_schedule s
      where s.race_id = p_race_id
@@ -113,7 +113,7 @@ end;
 $function$;
 
 comment on function public.race_entry_days_rebuild(uuid, uuid) is
-  '#4214: skriver én række pr. løbsdag i HELE løbets spænd (min..max game_day), så en
+  '#4217: skriver én række pr. løbsdag i HELE løbets spænd (min..max game_day), så en
   rytter er bundet fra første til sidste etape og ikke kan udtages til et andet løb i
   et spring. #4191-diffen bevaret: uændret udtagelse skriver nul rækker.';
 

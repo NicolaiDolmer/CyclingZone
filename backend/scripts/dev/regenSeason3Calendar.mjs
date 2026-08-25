@@ -51,8 +51,15 @@ import { loadPoolsAndCatalog } from "../s3CalendarPackageScorecard.js";
 import { fmtInt } from "../lib/cutover3645.js";
 
 const SEASON_NUMBER = 3;
-// #3467, ejer-beslutning 18/8 (KS3): 24/8 = hviledag, første S3-løbsdag = 25/8.
-const OWNER_FIRST_RACE_DAY = "2026-08-25";
+// #4218, ejer-direktiv 25/8: sæsonstarten udskudt fra tirsdag 25/8 til FREDAG 28/8, med
+// slutdato søndag 27/9. Årsagen er holdudtagelsen (#4217 overlappende udtagelser,
+// #4200/#4201 assistenten overskrev spillernes valg, #4175 ufulde trupper) — sæsonen blev
+// stoppet 25/8 kl. 08:31, før første start, med 0 løbsdage kørt.
+//
+// #3467's oprindelige 25/8 (bufferdag efter cutoveren) er dermed overhalet. Bufferdags-
+// FORMÅLET er uændret og opfyldt med god margin: der er nu tre døgn mellem beslutningen
+// og første start i stedet for ét.
+const OWNER_FIRST_RACE_DAY = "2026-08-28";
 
 // #4131, ejer-direktiv 23/8: sæsonen skal SLUTTE på en søndag, ikke mandag. 25/8 (tir) + 27
 // kalenderdage = 20/9 (søn) — se docs/snapshots/4131/dry-run-2026-08-23.md for udregningen.
@@ -67,7 +74,16 @@ const OWNER_FIRST_RACE_DAY = "2026-08-25";
 // samme kalenderdag når kvoten ikke går op i færre dage. Den skalerede kvote her respekterer
 // loftet (målt maks 4 GT-etaper/dag i dry-runnet, 0 brud) og koster i stedet en mindre
 // reduktion i sæsonens samlede løbsantal (471 → 446, kun endagsløb, se dry-run-rapporten).
-const REAL_DAYS = 27;
+// #4218, ejer-direktiv 25/8: 28/8 (fre) til 27/9 (søn) = 31 kalenderdage, og der skal
+// være LØB HVER DAG — "Jeg vil ikke have dage uden løb." Reglen gælder pr. DIVISION og
+// er gated i lib/calendarDailyCoverage.js.
+//
+// 31 dage krævede 22 nye katalog-løb (database/2026-08-25-4218-katalog-22-nye-loeb.sql).
+// Målt mod det GAMLE katalog var 28 dage loftet: D3 faldt til 19 dækkede dage og D4 til 28,
+// fordi klasse-whitelisten (#2276) giver dem de smalleste puljer og kaskaden sulter nedad
+// (D2 vælger ProSeries før D3, D3 vælger Class1 før D4). Se scripts/dev/calendarScorecard4218.mjs
+// for den fulde måling — den kører 100 % read-only og skal være grøn FØR apply.
+const REAL_DAYS = 31;
 const QUOTAS = Object.fromEntries(Object.entries(TIER_DENSITY).map(([tier, density]) => [Number(tier), density * REAL_DAYS]));
 
 function arg(name, fallback) {

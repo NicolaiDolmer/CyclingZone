@@ -1,7 +1,7 @@
 # Udkast: sæsonstart udskudt til fredag 28/8
 
 **Status: UDKAST. Ejeren poster selv.** Kanal: #announcements (+ evt. pin).
-Skrevet 25/8 kl. 08:45. Baggrund: #4214, #4200, #4201, #4175.
+Skrevet 25/8 kl. 08:45. Baggrund: #4217, #4200, #4201, #4175.
 
 ---
 

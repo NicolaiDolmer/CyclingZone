@@ -47,7 +47,7 @@ function bindingDayKey(row, useGameDay) {
 // rebuild). Returnerer { start, end, days } i in-game-dag-nøgler (heltal). Et endagsløb
 // optager én in-game-dag (start===end); et etapeløb sine FAKTISKE etape-dage.
 //
-// #4214 (ejer-direktiv 25/8): `days` er hele SPÆNDET start..end, ikke kun de løbsdage
+// #4217 (ejer-direktiv 25/8): `days` er hele SPÆNDET start..end, ikke kun de løbsdage
 // løbet faktisk kører. Er du udtaget til et etapeløb, er du bundet indtil det er slut.
 //
 // #4173 gjorde `days` til MÆNGDEN af faktiske etape-dage for at undgå at et løb med

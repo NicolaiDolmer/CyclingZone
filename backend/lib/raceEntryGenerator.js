@@ -203,7 +203,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
 
   // 5. Egnede hold: ikke test-konto, ikke frosset, INGEN ejer. Grupper pr. pulje.
   //
-  // #4214 (ejer-direktiv 25/8): den proaktive sweep må ALDRIG udtage på en spillers vegne.
+  // #4217 (ejer-direktiv 25/8): den proaktive sweep må ALDRIG udtage på en spillers vegne.
   // Tre spillere rapporterede 24/8 at deres ryddede trupper blev fyldt igen (#4200), og
   // arongreve/thelamba brugte over en time på planer sweepen overskrev. Ejeren 25/8:
   // "Vil du være sød at lade være med hele tiden at lave nye udtagelser på vegne af

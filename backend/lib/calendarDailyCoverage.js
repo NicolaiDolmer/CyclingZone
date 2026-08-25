@@ -1,5 +1,5 @@
 // backend/lib/calendarDailyCoverage.js
-// #4215 — "løb hver kalenderdag" som gate, ikke som hensigt.
+// #4218 — "løb hver kalenderdag" som gate, ikke som hensigt.
 //
 // EJER-DIREKTIV 25/8, ordret:
 //   "Jeg vil ikke have dage uden løb. I den nye sæson skal der være løb hver dag."
@@ -22,7 +22,7 @@
 // REN + deterministisk: ingen DB, ingen Date.now(), ingen random. Kalderen leverer
 // datoerne som "YYYY-MM-DD"-strenge i dansk tid (copenhagenDateString).
 //
-// Refs #4215 #4176 #4131 #4155 #4161
+// Refs #4218 #4176 #4131 #4155 #4161
 
 /**
  * Alle datoer fra og med `from` til og med `to`, som "YYYY-MM-DD".
@@ -62,7 +62,7 @@ export function detectEmptyCalendarDays({ stageDays = [], from, to, divisions } 
   if (!allDates.length) {
     return {
       ok: false,
-      violations: [`#4215: ugyldigt datointerval ${from}..${to}`],
+      violations: [`#4218: ugyldigt datointerval ${from}..${to}`],
       emptyByDivision: new Map(),
     };
   }
@@ -90,7 +90,7 @@ export function detectEmptyCalendarDays({ stageDays = [], from, to, divisions } 
       const shown = empty.slice(0, 5).join(", ");
       const more = empty.length > 5 ? ` (+${empty.length - 5} flere)` : "";
       violations.push(
-        `#4215: division ${div} har ${empty.length} kalenderdag(e) uden løb: ${shown}${more}`
+        `#4218: division ${div} har ${empty.length} kalenderdag(e) uden løb: ${shown}${more}`
       );
     }
   }
@@ -101,7 +101,7 @@ export function detectEmptyCalendarDays({ stageDays = [], from, to, divisions } 
 /**
  * Mindste antal løbsdage en division skal have for at kunne dække `realDays`
  * kalenderdage. Trivielt lig realDays — men navngivet, fordi det er dét tal
- * kvoterne skal efterregnes mod FØR generering, ikke efter (#4215).
+ * kvoterne skal efterregnes mod FØR generering, ikke efter (#4218).
  * @param {number} realDays
  * @returns {number}
  */

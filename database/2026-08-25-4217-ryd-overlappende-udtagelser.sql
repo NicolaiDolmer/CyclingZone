@@ -1,6 +1,6 @@
--- #4214 — ryd de udtagelser der bryder spænd-bindingen. DESTRUKTIV, ejer-gated.
+-- #4217 — ryd de udtagelser der bryder spænd-bindingen. DESTRUKTIV, ejer-gated.
 --
--- Køres FØR eller SAMMEN MED 2026-08-25-4214-spaend-binding.sql: den nye ønske-mængde
+-- Køres FØR eller SAMMEN MED 2026-08-25-4217-spaend-binding.sql: den nye ønske-mængde
 -- kan ikke skrives så længe en rytter står i to løb hvis spænd overlapper.
 --
 -- PRIORITET (hvilken udtagelse overlever):
@@ -11,11 +11,11 @@
 --
 -- DER GENUDFYLDES IKKE. Ejer-direktiv 25/8: "ikke gå ind og spille spillet på vegne af
 -- spillerne". Den frigjorte plads står tom til spilleren selv udtager. Assistentens
--- proaktive sweep er samtidig lukket for spillerhold (#4214 i raceEntryGenerator.js).
+-- proaktive sweep er samtidig lukket for spillerhold (#4217 i raceEntryGenerator.js).
 --
 -- DRY-RUN er default. Sæt v_apply := true for at slette.
 --
--- Refs #4214 #4173 #4209 #4200 #4201
+-- Refs #4217 #4173 #4209 #4200 #4201
 
 do $$
 declare
@@ -33,7 +33,7 @@ begin
   select id into v_season from public.seasons where status = 'active'
    order by number desc limit 1;
   if v_season is null then
-    raise exception '#4214: ingen aktiv sæson';
+    raise exception '#4217: ingen aktiv sæson';
   end if;
 
   create temp table if not exists cz_4214_drop (
@@ -92,13 +92,13 @@ begin
     end if;
   end loop;
 
-  raise notice '#4214 % — beholder %, fjerner % (heraf % manuelle)',
+  raise notice '#4217 % — beholder %, fjerner % (heraf % manuelle)',
     case when v_apply then 'APPLY' else 'DRY-RUN' end, v_kept_cnt, v_deleted, v_manual;
 
   if v_apply then
     delete from public.race_entries e
      using cz_4214_drop d
      where e.race_id = d.race_id and e.rider_id = d.rider_id;
-    raise notice '#4214 APPLY — % entries slettet', v_deleted;
+    raise notice '#4217 APPLY — % entries slettet', v_deleted;
   end if;
 end $$;

@@ -42,7 +42,7 @@ test("detectEmptyCalendarDays: fuld dækning i alle divisioner → ok", () => {
 
 // Kernefælden: spillet som helhed har løb hver dag, men D4 har huller. En global
 // optælling ville sige ok — reglen gælder pr. division (ejer 25/8).
-test("detectEmptyCalendarDays (#4215): D1 dækker alt, D4 har hul → ikke ok", () => {
+test("detectEmptyCalendarDays (#4218): D1 dækker alt, D4 har hul → ikke ok", () => {
   const dates = calendarDateRange("2026-08-28", "2026-08-31");
   const stageDays = [
     ...dates.map((date) => ({ division: 1, date })),

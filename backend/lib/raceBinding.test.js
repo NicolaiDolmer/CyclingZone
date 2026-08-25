@@ -136,13 +136,13 @@ test("raceBindingWindow: delvist-backfillet løb blander IKKE game_day + CET-ord
   assert.ok(w.end - w.start < 2, `vindue ${w.start}..${w.end} må ikke spænde sæson-langt`);
 });
 
-// #4214 (ejer 25/8): binding er HELE spændet fra første til sidste etape. #4173 gjorde
+// #4217 (ejer 25/8): binding er HELE spændet fra første til sidste etape. #4173 gjorde
 // den til mængden af faktisk kørte løbsdage, og det lod en rytter forlade et etapeløb
 // midt i og køre et andet løb i springet (Julien Faure: Giro løbsdag 10-29 OG
 // Milano-Riviera løbsdag 14). Springene er ikke hviledage — slot-tælleren løber videre
 // for de øvrige løb i puljen, så La Corsa dei Due Mari kører 7 etaper på løbsdag
 // 10, 13, 17, 20, 23, 27, 28 over 6 kalenderdage.
-test("raceBindingWindow (#4214): days = hele spændet, ikke kun de kørte løbsdage", () => {
+test("raceBindingWindow (#4217): days = hele spændet, ikke kun de kørte løbsdage", () => {
   const w = raceBindingWindow([
     { scheduled_at: "2026-08-25T09:00:00Z", game_day: 10 },
     { scheduled_at: "2026-08-25T12:00:00Z", game_day: 8 },
@@ -154,7 +154,7 @@ test("raceBindingWindow (#4214): days = hele spændet, ikke kun de kørte løbsd
   assert.equal(w.end, 13);
 });
 
-test("windowsOverlap (#4214): etapeløb binder OGSÅ springet — intet sidespring undervejs", () => {
+test("windowsOverlap (#4217): etapeløb binder OGSÅ springet — intet sidespring undervejs", () => {
   const emirats = raceBindingWindow(
     [8, 9, 10, 12, 13].map((d) => ({ scheduled_at: "2026-08-25T09:00:00Z", game_day: d }))
   );

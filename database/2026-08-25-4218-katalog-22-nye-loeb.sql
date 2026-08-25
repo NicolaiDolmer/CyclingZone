@@ -1,4 +1,4 @@
--- #4215 — 22 nye løb i race_pool, så sæsonen kan køre 31 løbsdage med løb HVER dag.
+-- #4218 — 22 nye løb i race_pool, så sæsonen kan køre 31 løbsdage med løb HVER dag.
 --
 -- EJER-DIREKTIV 25/8:
 --   "Jeg vil ikke have dage uden løb. I den nye sæson skal der være løb hver dag."
@@ -39,7 +39,7 @@
 -- samme række). ON CONFLICT DO NOTHING: kører scriptet to gange, indsættes 0 rækker.
 -- IKKE-DESTRUKTIV: rører ingen eksisterende række.
 --
--- Refs #4215 #4214 #2276 #4075 #4176 #3328
+-- Refs #4218 #4217 #2276 #4075 #4176 #3328
 
 insert into public.race_pool (external_id, name, race_class, race_type, stages, terrain_archetype, date_text)
 values
@@ -74,19 +74,29 @@ values
   ('cz4215-c2-perigord',    'Tour du Périgord',              'Class2', 'stage_race', 2, 'hilly_tour',      '20/6 - 21/6')
 on conflict (external_id) do nothing;
 
--- Post-verify: 22 nye rækker, ingen navnekollision mod resten af kataloget.
+-- Post-verify: 22 nye rækker, ingen navnekollision blandt de AKTIVE.
+--
+-- retired_at SKAL med i dublet-tjekket. Kataloget indeholder med vilje 7 pensionerede
+-- rækker — de gamle udgaver af Giro della Penisola (21 etaper), Tour de l'Hexagone (21),
+-- Vuelta Ibérica (21), Tour Adriatique, Tour d'Anatolie, Tour de Malaisie og Tour des
+-- Hauts Plateaux, alle pensioneret 21/8 da #3546 kortede GT'erne. De er stadig refereret
+-- af races i sæson 1 og 2, så de må ALDRIG slettes; historikken ville gå med.
+-- Generatoren ser dem ikke: tierCalendarMaterializer henter kataloget med
+-- .is("retired_at", null) (#4075). Et dublet-tjek uden det filter tæller dem med og
+-- fejler på en tilstand der er helt korrekt.
 do $$
 declare v_nye int; v_dub int;
 begin
   select count(*) into v_nye from public.race_pool where external_id like 'cz4215-%';
   select count(*) into v_dub from (
-    select name from public.race_pool group by name having count(*) > 1
+    select name from public.race_pool where retired_at is null
+    group by name having count(*) > 1
   ) d;
   if v_nye <> 22 then
-    raise exception '#4215: forventede 22 nye katalog-loeb, fandt %', v_nye;
+    raise exception '#4218: forventede 22 nye katalog-loeb, fandt %', v_nye;
   end if;
   if v_dub > 0 then
-    raise exception '#4215: % dublet-navn(e) i race_pool — navne-dedup er en haard invariant (#4075/#2276)', v_dub;
+    raise exception '#4218: % aktive dublet-navn(e) i race_pool - navne-dedup er en haard invariant (#4075/#2276)', v_dub;
   end if;
-  raise notice '#4215 OK — 22 nye loeb, 0 dublet-navne i kataloget';
+  raise notice '#4218 OK - 22 nye loeb, 0 aktive dublet-navne (7 pensionerede raekker ignoreret med vilje)';
 end $$;
