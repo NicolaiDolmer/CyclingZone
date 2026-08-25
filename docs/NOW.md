@@ -1,28 +1,30 @@
 # NOW — Aktuel arbejdsstatus
 
-> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) · **Kalender-SSOT:** [CALENDAR_RULES.md](CALENDAR_RULES.md) · Hard rules 24-28 i AGENTS.md.
+> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) · **Områdernes SSOT'er:** hard rule 30 i AGENTS.md — læs dit områdes fil FØR du rører noget.
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Tænd motoren fredag 28/8** — `stage_scheduler_enabled` står på `off` og er ejer-only. Sæson 3 er aktiv, kalenderen skrevet (531 løb, 31 løbsdage 28/8-27/9), spænd-bindingen live. Derefter: **#4220** enkeltstarter (kræver research + ejer-godkendte tal), **#4206** 965 ryttere med identiske stats, **#4174** hvor højt inaktive trupper fyldes op.
+> **🎯 Next action:** **#4200 + #4201 + #4217** — holdudtagelsen skal virke. Det var dem der udskød sæsonen. Derefter #4183/#4233 (nye spillere har ingen landingsplads), #4174 (ét ejer-svar: hvor højt fyldes inaktive trupper), vagterne (#4229 #4215 #4219 #4123), #4211's 6 brud, og til sidst **tænd scheduler + entry-generator — kun på ejer-GO.**
 
-> **🤖 Ingen aktiv session.**
+> **📅 S3 UDSKUDT TIL FREDAG 28/8** (#4218, ejer-direktiv 25/8): 28/8 → søn 27/9, **31 løbsdage, løb hver dag i alle fire divisioner**, kalenderen genereret forfra (531 løb, 22 nye tilføjet). Målt i prod: sæson 3 = `active`, 0 løbsdage kørt. **`stage_scheduler_enabled` og `auto_entry_generator_enabled` står `off`.** Alle spillere udtager forfra.
 
-> **📥 Afventer dit review (2 PR'er, ingen af dem aftalt paa forhaand):** [#4237](https://github.com/NicolaiDolmer/CyclingZone/pull/4237) udvider klokke-drift-detektoren til ogsaa at daekke backend (hard rule 16 var kun haandhaevet paa frontend, og det er derfor #4222 naaede main). [#4242](https://github.com/NicolaiDolmer/CyclingZone/pull/4242) goer preflight-reglen mekanisk med en warning-hook ved push. Begge groenne, ingen prod-impact. Rest: [#4239](https://github.com/NicolaiDolmer/CyclingZone/issues/4239) fire kalender-dev-scripts kaster fra 25/8, [#4240](https://github.com/NicolaiDolmer/CyclingZone/issues/4240) em-dash-reglens scope (ejer-beslutning).
+> **🚨 #4236 — kalender-blocker fundet 25/8:** samme løbsdag dækker flere datoer (D1 25 af 89, D3 21 af 47; D2/D4 rene). **Det er årsagen til de fire tynde endagsløb** — Le Mur de Huy deler løbsdag 29 med Tour des Émirats, der sluttede dagen før. Feltet er ikke lovligt at fylde, så at rydde auto-udtagelserne giver samme resultat igen. `CALENDAR_RULES.md` §0 siger en løbsdag bor INDE i én kalenderdag → det er en fejl, ikke slot-designet.
 
-> **🚨 HÆNDELSE 25/8 — fire timer uden aktiv sæson ([#4229](https://github.com/NicolaiDolmer/CyclingZone/issues/4229)):** kalender-regenereringen kræver `status='upcoming'`, sæson 3 blev sat tilbage kl. ~07:30 og aldrig sat til `active` igen. Alder, rangliste, daglig træning og akademi-flytning lå nede for ALLE spillere. Tre spillere meldte det inden for halvanden time; nattevagten ville have rapporteret grønt, fordi alle fire kalender-invarianter svarer *"ingen aktiv sæson at kontrollere"*. **Genoprettet kl. 11:49** (ejer-go): standings bootstrappet 0→362, status→active. `processSeasonStart` blev bevidst IKKE kørt igen — den har ingen idempotens-spærre og var allerede kørt 23/8. Postmortem: `.claude/learnings/2026-08-25-interregnum-ingen-aktiv-saeson.md`.
+> **⚠️ 4 TIMER UDEN AKTIV SÆSON 25/8** (#4229, 07:30-11:50): alder, rangliste, træning og akademi nede for alle. `seasonRollover.mjs` kræver status `upcoming`; ingen satte den tilbage til `active`. **Alle fire kalender-invarianter rapporterede GRØNT imens.** Postmortem + vagt-rest i issuet.
 
-> **⚠️ Prod-tilstand 25/8:** sæson 3 **aktiv**, start_date 28/8, 0 løbsdage kørt. `stage_scheduler_enabled` + `auto_entry_generator_enabled` = **off**. Spænd-binding kørt: 7 auto-udtagelser ryddet (0 manuelle), 20 dag-rækker backfillet, **0 dobbeltbookinger**. Backup: `backup_4227_seasons_2026_08_25`.
+> **💰 Værdier/løn S3:** base_value = model(c 0,811 + type-dæmpning k=100) · CPV dæmpet · løn = CPV × 0,35, frosset FØR transitionen · `wage_deduction_mode = season_upfront` · upkeep 220k/70k/20k/0. Type-dæmpningen (#4000) er bygget bag flag, flippes med #3449 tidligst 30/8.
+
+> **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8 (clawback + frys + auth-ban). **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
 
 ## Standing context (forever-relaunch)
 
-- **Liga:** 4-divisions-pyramide 1/2/4/8; S3: D1 = top 24 rigtige hold. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
-- **S3:** 28/8 (fre) → 27/9 (søn), **31 løbsdage**, løb hver kalenderdag i alle divisioner. Alle udtagelser ryddet — alle udtager forfra. Overlap intended; 1 rytter = 1 løb pr. **løbsdag**, og et etapeløb binder **hele spændet**.
-- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)).
-- **Collab-gate:** `main` kræver ejer-review — men **kun for andres arbejde**. Ejerens egne PR'er merges uden (ejer 25/8).
+- **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
+- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (ikke pr. dato — den forveksling har kostet tre hændelser). **Pension:** måles på AFSLUTTET sæsons alder.
+- **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only og sker aldrig som sidegevinst. v4-gaten var rød 23/8 (#4132).
+- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **📮 Klar til at poste:** `docs/discord/2026-08-25-udkast-saesonstart-udskudt.md` — rettet, ejeren poster selv.
+> **📋 SESSION 25/8:** GitHub-audit (32 lukket, 9 falske done-flag flippet, `claude:done` 43→5, åbne 607→576) · #4213 ejer-valg: auktionerne får lov at køre · **hard rule 30 + fire nye SSOT'er** (RACE_ENGINE, PLANNING_CENTER, ECONOMY, PROGRESSION) · Z1-designet besluttet, 4 valg, spec i `superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md`.
 
-> **⏳ Venter på ejeren:** #4220 enkeltstarter (tal) · brosten 6 %-målet · nedkørsels-finale-loft · #4174 opfyldnings-niveau · #4189 collaborators og `@claude` · #4231 om flere i18n-namespaces må koste et loader-blink.
+> **🤖 Ingen aktiv session.**
 
 _Historik i git-log, issue-tråde + docs/audits/._

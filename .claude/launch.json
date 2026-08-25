@@ -85,6 +85,14 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "serve", "-l", "4173", "docs/brand"],
       "port": 4173
+    },
+    {
+      "name": "forum-synlighed-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone-worktrees/feat-forum-synlighed/frontend"],
+      "port": 5210,
+      "autoPort": true,
+      "env": { "VITE_PREVIEW_MOCK": "1" }
     }
   ]
 }

@@ -13,6 +13,12 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/archive/feature-status-slice-07a.md` … `feature-status-slice-07h.md` | Historisk implementationsdetail og acceptance-arkiv for Economy Overhaul slice 07a–07h |
 | `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
 | `docs/GITHUB_WORKFLOW.md` | GitHub-workflow eller agent-loop spørgsmål |
+| **SSOT'er — læs dit områdes fil FØR arbejde (hard rule 30, #4221)** | |
+| `docs/CALENDAR_RULES.md` | Kalenderen: de to akser, tæthed, GT-regler, terræn-dækning, komposition |
+| `docs/RACE_ENGINE_RULES.md` | Motoren, ruter og taktik: de to frosne kontrakter, rolle-vokabularet, mekanik-kataloget M1-M14, invarianterne, faserne F0-F6 |
+| `docs/PLANNING_CENTER_RULES.md` | Holdudtagelse og sæsonplanlægning: IA'en Z1-Z4, skrivevejen og dens rate limit, linserne, assistent-gaten |
+| `docs/ECONOMY_RULES.md` | Økonomi, værdi og løn |
+| `docs/PROGRESSION_RULES.md` | Rytterudvikling, træning, potentiale, lofter, rating, ryttertyper |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
 | `docs/RIDER_GENERATION.md` | SSOT for hvordan ryttere SKABES: determinisme, navne-pools, trupstørrelser, AI-fyld-politik, derive-kæden. Skal opdateres ved enhver ændring i generationen (#4178) |
 | `docs/ALUNTA_OPS.md` | Alunta webhook/reconcile-opsætning · Infisical-nøgler · hvilke dashboard-events skal slås til · pre-fornyelses-tjekliste (#2736) |
