@@ -548,7 +548,9 @@ const FORUM_POSTS = [
 export function forumPostDetail(postId) {
   const post = FORUM_POSTS.find((p) => p.id === postId) || FORUM_POSTS[0];
   return {
-    post: { ...post, is_mine: post.author.username === "e2e" },
+    // #3517: opbakning på selve opslaget — statisk seed-tal, preview-mocken
+    // sporer ikke reelle toggles (samme begrænsning som poll-stemmer nedenfor).
+    post: { ...post, is_mine: post.author.username === "e2e", support_count: 14, supported_by_me: false },
     replies: post.id !== "forum-post-4" ? [
       {
         id: `${post.id}-r1`,
@@ -557,6 +559,9 @@ export function forumPostDetail(postId) {
         body: "Great initiative. My vote went to race replays, the finale deserves it.",
         author: { username: "peloton_pete", team_name: "Thunder Cycling" },
         is_mine: false,
+        support_count: 6,
+        supported_by_me: true,
+        quoted: null,
       },
       {
         id: `${post.id}-r2`,
@@ -565,6 +570,27 @@ export function forumPostDetail(postId) {
         body: "Agreed, and thanks for asking us directly in the game instead of only on Discord.",
         author: { username: "sofie_r", team_name: "Nordjysk CC" },
         is_mine: false,
+        support_count: 2,
+        supported_by_me: false,
+        // #3517: citér-svar — kompakt uddrag af r1 over eget svar.
+        quoted: {
+          id: `${post.id}-r1`,
+          removed: false,
+          excerpt: "Great initiative. My vote went to race replays, the finale deserves it.",
+          author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+        },
+      },
+      {
+        id: `${post.id}-r3`,
+        seq: 3,
+        created_at: "2026-08-06T07:45:00Z",
+        body: "Whatever the original comment said, I second it.",
+        author: { username: "e2e", team_name: "E2E Racing" },
+        is_mine: true,
+        support_count: 0,
+        supported_by_me: false,
+        // #3517: citat af et siden slettet svar — lækker ALDRIG indhold.
+        quoted: { id: `${post.id}-removed`, removed: true },
       },
     ] : [],
     poll: post.has_poll ? {

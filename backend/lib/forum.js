@@ -782,7 +782,7 @@ export async function reportForumContent({ supabase, reporterUserId, targetType,
  */
 export async function toggleForumReaction({ supabase, targetType, targetId, userId, now = new Date() }) {
   if (targetType !== "post" && targetType !== "reply") {
-    return { status: 400, body: { error: "Invalid target type", errorCode: "forum_invalid_target_type" } };
+    return { status: 400, body: { error: "Invalid target type", errorCode: "forum_invalid_reaction_target_type" } };
   }
   if (!targetId || typeof targetId !== "string") {
     return { status: 400, body: { error: "Missing target id", errorCode: "forum_missing_id" } };
@@ -796,7 +796,10 @@ export async function toggleForumReaction({ supabase, targetType, targetId, user
     .maybeSingle();
   if (targetError) throw new Error(`forum: could not load reaction target: ${targetError.message}`);
   if (!target || target.deleted_at) {
-    return { status: 404, body: { error: "Target not found", errorCode: "forum_target_not_found" } };
+    // Egen errorCode (ikke forum_target_not_found — den tekst er skrevet til
+    // rapportér-flowet, "det rapporterede indhold", som ville være misvisende
+    // her).
+    return { status: 404, body: { error: "Target not found", errorCode: "forum_reaction_target_not_found" } };
   }
 
   const { data: existing, error: existingError } = await supabase

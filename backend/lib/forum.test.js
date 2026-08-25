@@ -511,7 +511,7 @@ test("reportForumContent: idempotent pr. (reporter, target) — already=true and
 
 test("toggleForumReaction: validering + 404 på ukendt/slettet mål", async () => {
   const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" }), post({ id: "p2", seq: 2, deleted_at: "2026-08-02T10:00:00Z" })] }));
-  assert.equal((await toggleForumReaction({ supabase: fake, targetType: "nope", targetId: "p1", userId: "u1" })).body.errorCode, "forum_invalid_target_type");
+  assert.equal((await toggleForumReaction({ supabase: fake, targetType: "nope", targetId: "p1", userId: "u1" })).body.errorCode, "forum_invalid_reaction_target_type");
   assert.equal((await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "", userId: "u1" })).body.errorCode, "forum_missing_id");
   assert.equal((await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "unknown", userId: "u1" })).status, 404);
   assert.equal((await toggleForumReaction({ supabase: fake, targetType: "post", targetId: "p2", userId: "u1" })).status, 404);

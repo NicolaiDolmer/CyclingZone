@@ -7,7 +7,7 @@ import {
   Button, PageHeader, Section, SectionStack, SectionHeader, EmptyState, ErrorState,
   SkeletonLines, Modal, Field, Textarea,
 } from "../components/ui";
-import { InboxIcon } from "../components/ui/icons/index.jsx";
+import { InboxIcon, ArrowUpIcon, UndoIcon } from "../components/ui/icons/index.jsx";
 import { formatForumDate } from "./ForumPage.jsx";
 
 // #3199 — tråd-detalje: opslag + evt. ejer-poll + svar. T1 (max-w-4xl).
@@ -15,6 +15,19 @@ import { formatForumDate } from "./ForumPage.jsx";
 // aggregater + egen stemme kommer over wire — aldrig hvem der stemte hvad.
 // Rapportér-knappen findes på både opslag og svar; admin ser Slet/Pin
 // (backend håndhæver rollen — knapperne er kun synlige for admins).
+//
+// #3517 — opbakning (ÉN tæller, ingen emoji-palet — ejer-designvalg 25/8) på
+// både opslag og svar; citér-svar viser et kompakt uddrag af det citerede
+// svar over eget svar, med et klikbart spring til originalen (#reply-<id>).
+// Et citat af et siden slettet svar viser ALDRIG dets indhold — backend
+// shaper allerede { id, removed: true } for den gren (getForumPost).
+
+const QUOTE_PREVIEW_LENGTH = 140;
+
+function quotePreview(body) {
+  if (typeof body !== "string") return "";
+  return body.length > QUOTE_PREVIEW_LENGTH ? `${body.slice(0, QUOTE_PREVIEW_LENGTH)}…` : body;
+}
 
 const API = import.meta.env.VITE_API_URL;
 const BODY_MAX = 4000;
@@ -127,6 +140,54 @@ function ReportModal({ open, onClose, onSubmit, t }) {
   );
 }
 
+// #3517 — opbaknings-tæller. Egen opbakning er visuelt tydelig via den
+// eksisterende gule accent (samme farve som poll's "din stemme"-markering),
+// aldrig en emoji. `disabled` gates dobbelt-klik mens toggle-kaldet er inde.
+function SupportButton({ active, count, onToggle, disabled, t }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-pressed={active}
+      aria-label={t(active ? "support.ariaOn" : "support.ariaOff", { count })}
+      title={t("support.count", { count })}
+      className={`inline-flex items-center gap-1.5 rounded-cz border px-2.5 py-1 font-data text-2xs tabular-nums transition-colors disabled:opacity-60 ${
+        active ? "border-cz-accent/50 text-cz-accent-t" : "border-cz-border text-cz-2 hover:border-cz-3"
+      }`}
+    >
+      <ArrowUpIcon size={14} aria-hidden="true" />
+      <span>{count}</span>
+    </button>
+  );
+}
+
+// #3517 — kompakt uddrag af det citerede svar, vist over eget svar. Slettede
+// kilder (backend shaper kun { id, removed: true }) viser en neutral tekst,
+// aldrig indhold. `onJump` springer til originalen når den stadig findes.
+function QuotedReplyBlock({ quoted, onJump, t }) {
+  if (!quoted) return null;
+  if (quoted.removed) {
+    return (
+      <div className="mb-2 border-l-2 border-cz-border pl-2.5 text-2xs italic text-cz-3">
+        {t("quote.removedNotice")}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onJump(quoted.id)}
+      className="mb-2 block w-full border-l-2 border-cz-border pl-2.5 text-left text-2xs text-cz-3 transition-colors hover:border-cz-accent/50"
+    >
+      <span className="font-data uppercase tracking-[.04em] text-cz-3">
+        {t("list.by", { name: quoted.author?.username || quoted.author?.team_name || "?" })}
+      </span>
+      <p className="mt-0.5 truncate text-cz-2">{quoted.excerpt}</p>
+    </button>
+  );
+}
+
 function PollBlock({ poll, onVote, voting, t }) {
   const total = poll.total_votes || 0;
   return (
@@ -189,6 +250,8 @@ export default function ForumPostPage() {
   const [voting, setVoting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reportTarget, setReportTarget] = useState(null); // { type, id } | null
+  const [reactingKey, setReactingKey] = useState(null); // "post:<id>" | "reply:<id>" | null
+  const [quoteTarget, setQuoteTarget] = useState(null); // { id, excerpt, author } | null
 
   const tError = useCallback(
     (code) => (code && i18n.exists(`errors:api.${code}`) ? tErrors(`api.${code}`) : t("errors.submitFailed")),
@@ -240,7 +303,7 @@ export default function ForumPostPage() {
       const res = await fetch(`${API}/api/forum/posts/${postId}/replies`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ body: replyBody.trim() }),
+        body: JSON.stringify({ body: replyBody.trim(), quoted_reply_id: quoteTarget?.id || null }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -248,12 +311,41 @@ export default function ForumPostPage() {
         return;
       }
       setReplyBody("");
+      setQuoteTarget(null);
       await load();
     } catch {
       setReplyError(t("errors.submitFailed"));
     } finally {
       setReplySubmitting(false);
     }
+  }
+
+  // #3517 — toggle opbakning. `reactingKey` gater dobbelt-klik mens kaldet er
+  // inde; en fejl efterlader tælleren uændret (næste `load()` retter den op).
+  async function handleToggleReaction(targetType, targetId) {
+    const key = `${targetType}:${targetId}`;
+    if (reactingKey) return;
+    setReactingKey(key);
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${API}/api/forum/react`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ target_type: targetType, target_id: targetId }),
+      });
+      if (res.ok) await load();
+    } finally {
+      setReactingKey(null);
+    }
+  }
+
+  function handleQuote(reply) {
+    setQuoteTarget({ id: reply.id, excerpt: quotePreview(reply.body), author: reply.author });
+    document.getElementById("forum-reply-body")?.focus();
+  }
+
+  function handleJumpToOriginal(replyId) {
+    document.getElementById(`reply-${replyId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function handleVote(optionId) {
@@ -345,6 +437,13 @@ export default function ForumPostPage() {
             <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{post.body}</p>
             {poll && <PollBlock poll={poll} onVote={handleVote} voting={voting} t={t} />}
             <div className="mt-4 flex items-center gap-2 border-t border-cz-border pt-3">
+              <SupportButton
+                active={post.supported_by_me}
+                count={post.support_count ?? 0}
+                onToggle={() => handleToggleReaction("post", post.id)}
+                disabled={reactingKey === `post:${post.id}`}
+                t={t}
+              />
               {!post.is_mine && (
                 <Button variant="ghost" size="sm" onClick={() => setReportTarget({ type: "post", id: post.id })}>
                   {t("post.report")}
@@ -370,13 +469,27 @@ export default function ForumPostPage() {
             ) : (
               <div className="divide-y divide-cz-border">
                 {replies.map((reply) => (
-                  <div key={reply.id} className="py-[13px]">
+                  <div key={reply.id} id={`reply-${reply.id}`} className="py-[13px] scroll-mt-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <AuthorLine author={reply.author} createdAt={reply.created_at} language={language} t={t} />
+                        <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
                         <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <SupportButton
+                            active={reply.supported_by_me}
+                            count={reply.support_count ?? 0}
+                            onToggle={() => handleToggleReaction("reply", reply.id)}
+                            disabled={reactingKey === `reply:${reply.id}`}
+                            t={t}
+                          />
+                        </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleQuote(reply)}>
+                          <UndoIcon size={14} aria-hidden="true" className="me-1 inline -mt-0.5" />
+                          {t("quote.action")}
+                        </Button>
                         {!reply.is_mine && (
                           <Button variant="ghost" size="sm" onClick={() => setReportTarget({ type: "reply", id: reply.id })}>
                             {t("post.report")}
@@ -395,6 +508,19 @@ export default function ForumPostPage() {
             )}
 
             <form onSubmit={handleReply} className="mt-4 flex flex-col gap-3 border-t border-cz-border pt-4">
+              {quoteTarget && (
+                <div className="flex items-start justify-between gap-3 rounded-cz border border-cz-border bg-cz-subtle px-3 py-2">
+                  <div className="min-w-0">
+                    <span className="font-data text-2xs uppercase tracking-[.04em] text-cz-3">
+                      {t("quote.replyingTo", { name: quoteTarget.author?.username || quoteTarget.author?.team_name || "?" })}
+                    </span>
+                    <p className="mt-0.5 truncate text-2xs text-cz-2">{quoteTarget.excerpt}</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setQuoteTarget(null)}>
+                    {t("quote.cancel")}
+                  </Button>
+                </div>
+              )}
               <Field label={t("post.replyLabel")} htmlFor="forum-reply-body">
                 <Textarea
                   id="forum-reply-body"
