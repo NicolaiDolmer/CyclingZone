@@ -1014,6 +1014,46 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   return { placements, timelineLength: timelineLength + monumentThresholds.length, gtRestDayReport };
 }
 
+// #4236 (ejer-afgjort 25/8): en løbsdag hoerer til PRAECIS een kalenderdato.
+//
+// Rod-aarsagen er at de to akser tildeles uafhaengigt: `real_day` udledes af slot-positionen
+// (`Math.floor(slot / D)`), mens `game_day` baeres med fra eventet. Intet bandt dem, saa en
+// loebsdag kunne straekke sig over op til 12 kalenderdage. Bindingen er pr. loebsdag, og
+// dermed laaste et etapeloeb der var koert faerdigt fem dage foer feltet i et endagsloeb:
+// fire D1-endagsloeb stod med 16-33 ryttere mod 101-128 for sammenlignelige loeb.
+//
+// Normaliseringen er BEVIDST en slut-pass i stedet for en aendring inde i layoutStream:
+// stream-lagets game_day-tildeling baerer GT-separation, monument-taerskler og overlap-
+// designet, og at roere den ville saette tre laaste invarianter paa spil for at rette en
+// fjerde. Her omnummereres kun - og for BEGGE layouts, saa invarianten er strukturelt
+// garanteret i stedet for at afhaenge af hvilken gren der blev valgt.
+//
+// Sikkert fordi omnummereringen bevarer raekkefoelgen: (real_day, game_day) er ikke-aftagende
+// langs et loebs etaper, saa sortering paa det par bevarer kronologien pr. loeb. Loeb der
+// deler loebsdag PAA SAMME dato deler den fortsat (overlap-designet er uroert); dem der kun
+// delte den paa tvaers af datoer splittes, saa overlappet kan kun FALDE. Det er den modsatte
+// fejlklasse af `game_day := dato - startdato`, som blev afvist i #4155 og #4158 netop fordi
+// den fladede aksen ud og broed TIER_OVERLAP_CAP i alle fire divisioner.
+//
+// Returnerer den nye timelineLength (antal distinkte loebsdage). Den kan vaere hoejere end
+// foer, fordi hver splittet loebsdag bliver til to.
+function bindGameDaysToDates(placements) {
+  const seen = new Set();
+  for (const p of placements) for (const st of p.stagesPlaced) seen.add(`${st.real_day}|${st.game_day}`);
+
+  const ordered = [...seen]
+    .map((key) => key.split("|").map(Number))
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+  const remap = new Map();
+  ordered.forEach(([real_day, game_day], i) => remap.set(`${real_day}|${game_day}`, i));
+
+  for (const p of placements) {
+    for (const st of p.stagesPlaced) st.game_day = remap.get(`${st.real_day}|${st.game_day}`);
+  }
+  return ordered.length;
+}
+
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
 // uafhængigt af layout — #3470 ejer-beslutning 7/8: stage-baseret, ikke span-baseret; se
 // kommentaren ved maxOverlap/overlapHistogram nedenfor).
@@ -1131,7 +1171,10 @@ export function packLaneCalendar({
   if (!res) { layoutMode = "stream"; res = layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }); }
 
   const placements = res.placements;
-  const diag = diagnose(placements, days, D, cap, res.timelineLength, layoutMode, spineMinStages);
+  // #4236: bind de to akser FOER diagnostikken, saa straddleGameDays maaler den kalender
+  // der faktisk skrives - ikke den mellemtilstand layoutet efterlod.
+  const timelineLength = bindGameDaysToDates(placements);
+  const diag = diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMinStages);
 
   const placedIds = new Set(placements.map((p) => p.id));
   return {
