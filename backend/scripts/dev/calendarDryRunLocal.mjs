@@ -13,17 +13,17 @@
 //   node scripts/dev/calendarDryRunLocal.mjs            # dagsform pr. tier
 //   node scripts/dev/calendarDryRunLocal.mjs --tier=1   # kun D1, med dag-for-dag
 //   node scripts/dev/calendarDryRunLocal.mjs --json     # maskinlaesbart (til CI-diff)
+//   node scripts/dev/calendarDryRunLocal.mjs --first-day=2026-08-28 --now=2026-08-25
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { buildTierMaterializationPlan } from "../../lib/tierCalendarMaterializer.js";
-import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
+import { offlineCalendarFrom } from "./lib/devCalendarArgs.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json");
-const FIRST_RACE_DAY = "2026-08-25"; // #3467 bufferdag: samme anker som regenSeason3Calendar.mjs
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes("--json");
@@ -31,7 +31,10 @@ const tierArg = argv.find((a) => a.startsWith("--tier="));
 const onlyTier = tierArg ? Number(tierArg.split("=")[1]) : null;
 
 const { pools, catalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
-const from = resolveCalendarFrom({ firstRaceDate: FIRST_RACE_DAY });
+// #4239: --first-day/--now injiceres (frosne defaults = S3-ankeret), saa dry-runnen
+// giver samme resultat uanset hvornaar den koeres. Det er forudsaetningen for #4123s
+// gyldne diff: en default der foelger systemuret ville goere diffen ustabil.
+const { from, firstDay: FIRST_RACE_DAY } = offlineCalendarFrom(argv);
 const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, from, baseSeed: 1 });
 
 const GT_MIN_STAGES = 15;

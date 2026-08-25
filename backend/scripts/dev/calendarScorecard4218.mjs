@@ -26,6 +26,7 @@ import { dirname, join } from "node:path";
 
 import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
+import { arg as devArg } from "./lib/devCalendarArgs.mjs";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
 import {
   computeTierCoverageStats, detectCoverageViolations,
@@ -49,10 +50,8 @@ const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCata
 //   --now=YYYY-MM-DD         hvad scriptet skal regne som "i dag"
 //   --json                   maskinlæsbar rapport i stedet for tabellen
 // EXIT-KODE: 0 = alle gates grønne, 1 = mindst ét brud. Det er dét CI hænger på.
-function arg(name, fallback) {
-  const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
-  return hit ? hit.slice(name.length + 3) : fallback;
-}
+// #4239: delt med de oevrige kalender-dev-scripts, saa der kun er een arg-parser at rette.
+const arg = (name, fallback) => devArg(process.argv.slice(2), name, fallback);
 
 // Ejer-beslutning 25/8: fredag 28/8 → søndag 27/9 = 31 kalenderdage, løb hver dag.
 const FIRST_RACE_DAY = arg("first-day", "2026-08-28");

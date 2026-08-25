@@ -6,14 +6,16 @@
 //   cd backend && infisical run --env=prod -- node scripts/dev/dryRunMaterializeCoverage4075.mjs
 import { createClient } from "@supabase/supabase-js";
 import { materializeTierCalendars } from "../../lib/tierCalendarMaterializer.js";
-import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
+import { prodCalendarFrom } from "./lib/devCalendarArgs.mjs";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 const { data: seasons } = await supabase.from("seasons").select("id, number, status, start_date").eq("number", 3);
 const season = seasons?.[0];
 if (!season || season.status !== "upcoming") { console.error("STOP: sæson 3 ikke 'upcoming'"); process.exit(1); }
-const from = resolveCalendarFrom({ firstRaceDate: "2026-08-25" });
+// #4239: --first-day kan overstyres; `now` fryses IKKE, fordi scriptet dry-runner mod
+// en live saeson og anti-blitz-guarden skal vaere i kraft (27/6-blitzen).
+const { from } = prodCalendarFrom();
 const summary = await materializeTierCalendars({ supabase, seasonId: season.id, seasonStartDate: season.start_date, from, dryRun: true });
 let bad = 0;
 for (const t of summary.tiers) {
