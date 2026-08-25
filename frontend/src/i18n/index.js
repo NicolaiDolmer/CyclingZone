@@ -59,8 +59,6 @@ import financeDa from "../../public/locales/da/finance.json";
 import financeEn from "../../public/locales/en/finance.json";
 import sponsorDa from "../../public/locales/da/sponsor.json";
 import sponsorEn from "../../public/locales/en/sponsor.json";
-import backendMessagesDa from "../../public/locales/da/backendMessages.json";
-import backendMessagesEn from "../../public/locales/en/backendMessages.json";
 import headtoheadDa from "../../public/locales/da/headtohead.json";
 import headtoheadEn from "../../public/locales/en/headtohead.json";
 import halloffameDa from "../../public/locales/da/halloffame.json";
@@ -109,7 +107,7 @@ i18n
     // loadNamespaces via useTranslation). Stod de her, ville init vente på 2
     // HTTP-loads pr. namespace ved boot (da + en-fallback) og forsinke alt der
     // køer på init (fx changeLanguage).
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "errors", "banners", "feedback", "rider", "riders", "riderFilters", "riderTypes", "team", "finance", "sponsor", "backendMessages", "headtohead", "halloffame", "races", "training", "academy", "klub", "staff", "landing", "globalRank"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "errors", "banners", "feedback", "rider", "riders", "riderFilters", "riderTypes", "team", "finance", "sponsor", "headtohead", "halloffame", "races", "training", "academy", "klub", "staff", "landing", "globalRank"],
     defaultNS: "common",
     // #2849 bølge 4 + #3697: de sjældent besøgte namespaces er IKKE i resources
     // (lazy via HttpBackend fra /locales/{lng}/{ns}.json — filerne ligger
@@ -122,8 +120,8 @@ i18n
     // returnObjects). Fanget af ejeren på Vercel-preview 24/7.
     partialBundledLanguages: true,
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, feedback: feedbackDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, team: teamDa, finance: financeDa, sponsor: sponsorDa, backendMessages: backendMessagesDa, headtohead: headtoheadDa, halloffame: halloffameDa, races: racesDa, training: trainingDa, academy: academyDa, klub: klubDa, staff: staffDa, landing: landingDa, globalRank: globalRankDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, backendMessages: backendMessagesEn, headtohead: headtoheadEn, halloffame: halloffameEn, races: racesEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, landing: landingEn, globalRank: globalRankEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, feedback: feedbackDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, team: teamDa, finance: financeDa, sponsor: sponsorDa, headtohead: headtoheadDa, halloffame: halloffameDa, races: racesDa, training: trainingDa, academy: academyDa, klub: klubDa, staff: staffDa, landing: landingDa, globalRank: globalRankDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, headtohead: headtoheadEn, halloffame: halloffameEn, races: racesEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, landing: landingEn, globalRank: globalRankEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

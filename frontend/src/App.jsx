@@ -274,8 +274,8 @@ export default function App() {
                 Rytterrangliste · Global Rank som faner). ?view=/?compare=-dybe
                 links lander uændret på liga-fanen (default). */}
             <Route path="standings" element={<I18nReadyGate ns="standings"><RankingsHubPage /></I18nReadyGate>} />
-            <Route path="board" element={<I18nReadyGate ns="board"><BoardPage /></I18nReadyGate>} />
-            <Route path="notifications" element={<I18nReadyGate ns="notifications"><NotificationsPage /></I18nReadyGate>} />
+            <Route path="board" element={<I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><BoardPage /></I18nReadyGate></I18nReadyGate>} />
+            <Route path="notifications" element={<I18nReadyGate ns="notifications"><I18nReadyGate ns="backendMessages"><NotificationsPage /></I18nReadyGate></I18nReadyGate>} />
             {/* #3199: forum (opslag + tråd-detalje). */}
             <Route path="forum" element={<I18nReadyGate ns="forum"><ForumPage /></I18nReadyGate>} />
             <Route path="forum/:postId" element={<I18nReadyGate ns="forum"><ForumPostPage /></I18nReadyGate>} />
@@ -323,7 +323,7 @@ export default function App() {
             {/* #3102 etape 2: arkivet flyttede fra /races til Resultat-hubben. */}
             <Route path="race-archive" element={<Navigate to="/resultater?tab=archive" replace />} />
             <Route path="race-archive/:raceSlug" element={<RaceHistoryPage />} />
-            <Route path="finance" element={<FinancePage />} />
+            <Route path="finance" element={<I18nReadyGate ns="backendMessages"><FinancePage /></I18nReadyGate>} />
             <Route path="seasons/:seasonId/finance/:teamId" element={<SeasonFinanceReport />} />
             {/* #3102 etape 1: /race-points var en orphan — ingen nav-indgang og
                 ingen links siden point-tabellen blev en fane i /races. Samme
