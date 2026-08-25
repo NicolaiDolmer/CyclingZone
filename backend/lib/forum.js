@@ -15,15 +15,32 @@
 // deny-all for klienter (database/2026-08-06-3199-forum.sql) — hvem der
 // rapporterer/stemmer må aldrig nå en spiller-flade.
 //
-// YDELSE: paginering er keyset på `seq` (samme mønster som feedbackInbox,
-// #2842) — aldrig OFFSET. Svar-tællere genberegnes med bounded id-selects
-// (limit 1000) i stedet for read-modify-write på reply_count: genberegning
-// er selvhelende ved races, og 1000+ svar på ét opslag er uden for v1-skala.
+// YDELSE: paginering er keyset (samme mønster som feedbackInbox, #2842) —
+// aldrig OFFSET. Svar-tællere genberegnes med bounded id-selects (limit 1000)
+// i stedet for read-modify-write på reply_count: genberegning er selvhelende
+// ved races, og 1000+ svar på ét opslag er uden for v1-skala.
+//
+// #4118 (Forum L1 "puls"): trådlisten sorterer efter SENESTE AKTIVITET
+// (coalesce(last_reply_at, created_at) desc), ikke oprettelse — en levende
+// tråd med et nyt svar skal ligge over en stille tråd der blot er nyere.
+// PostgREST/postgrest-js kan ikke ORDER BY et coalesce-udtryk uden en
+// generated kolonne eller en RPC; i stedet hentes et bounded, allerede-
+// eksisterende-mønster udsnit (ACTIVITY_SCAN_LIMIT, samme filosofi som
+// REPLY_RECOUNT_LIMIT/vote-limit 5000 andetsteds i filen) og sorteres i
+// JS. Cursoren er derfor et sammensat (aktivitets-tidsstempel, seq)-par
+// kodet som "<epochMs>_<seq>" — ren seq ville ikke længere være en stabil
+// keyset-nøgle, fordi to opslag kan dele aktivitets-tidsstempel. Vokser
+// forummet forbi denne skala kræver sorteringen en DB-side generated
+// `last_activity_at`-kolonne i stedet for JS-scanningen.
 
 export const FORUM_CATEGORIES = ["general", "feedback_ideas"];
 export const FORUM_TITLE_MAX_LENGTH = 120;
 export const FORUM_BODY_MAX_LENGTH = 4000;
 export const FORUM_REPORT_REASON_MAX_LENGTH = 500;
+// #3452 (ejer-direktiv 6/8: "gider ikke se rapporter uden grund") — begrundelse
+// er nu påkrævet ved rapportering, minimum 10 tegn (nok til "spam i tråden",
+// for kort til at stoppe en tom-klik-rapport uden kontekst).
+export const FORUM_REPORT_REASON_MIN_LENGTH = 10;
 export const FORUM_POLL_MIN_OPTIONS = 2;
 export const FORUM_POLL_MAX_OPTIONS = 8;
 export const FORUM_POLL_OPTION_MAX_LENGTH = 100;
@@ -34,6 +51,10 @@ export const FORUM_REPORT_STATUSES = ["new", "resolved"];
 
 const REPLY_RECOUNT_LIMIT = 1000;
 const EXCERPT_LENGTH = 200;
+// #4118: bounded scan for aktivitets-sortering — se filhoved-kommentaren.
+const ACTIVITY_SCAN_LIMIT = 5000;
+// #3451: bounded scan for ulæst-status (nav-prik) — samme filosofi.
+const UNREAD_STATUS_SCAN_LIMIT = 2000;
 
 export function parseForumLimit(raw) {
   const n = Number.parseInt(raw ?? "", 10);
@@ -51,6 +72,46 @@ export function parseForumCursor(raw) {
 
 export function isValidForumCategory(category) {
   return FORUM_CATEGORIES.includes(category);
+}
+
+/** Aktivitets-nøgle for sortering: seneste svar, ellers oprettelse. */
+function activityAt(row) {
+  return row.last_reply_at || row.created_at;
+}
+
+function activityEpoch(row) {
+  return Date.parse(activityAt(row));
+}
+
+/** Nyeste aktivitet først; seq desc som stabilt tiebreak (delt tidsstempel). */
+function sortByActivityDesc(rows) {
+  return [...rows].sort((a, b) => {
+    const diff = activityEpoch(b) - activityEpoch(a);
+    return diff !== 0 ? diff : b.seq - a.seq;
+  });
+}
+
+/** Ugyldig/manipuleret cursor behandles som "første side", aldrig en 500. */
+export function parseForumActivityCursor(raw) {
+  if (raw == null || raw === "") return null;
+  const str = String(raw);
+  const sep = str.lastIndexOf("_");
+  if (sep <= 0) return null;
+  const ts = Number.parseInt(str.slice(0, sep), 10);
+  const seq = Number.parseInt(str.slice(sep + 1), 10);
+  if (!Number.isFinite(ts) || !Number.isFinite(seq) || seq <= 0) return null;
+  return { ts, seq };
+}
+
+function encodeForumActivityCursor(row) {
+  return `${activityEpoch(row)}_${row.seq}`;
+}
+
+/** Sorterer `row` strengt EFTER `cursor` i aktivitets-desc-rækkefølge. */
+function isAfterActivityCursor(row, cursor) {
+  const epoch = activityEpoch(row);
+  if (epoch !== cursor.ts) return epoch < cursor.ts;
+  return row.seq < cursor.seq;
 }
 
 function excerpt(text) {
@@ -97,7 +158,17 @@ function shapeAuthor(row, usersById, teamsById) {
 const POST_LIST_COLUMNS =
   "id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at";
 
-function shapeListPost(row, usersById, teamsById, pollPostIds) {
+// #3451: ulæst = ingen forum_thread_reads-række for (bruger, tråd), ELLER
+// trådens seneste aktivitet er nyere end brugerens last_read_at. `lastReadAt`
+// er null når kaldet ikke kender brugeren (fx tests uden userId) — falder
+// til "ulæst", som er den korrekte default for en bruger der aldrig har set
+// tråden.
+function isThreadUnread(row, lastReadAt) {
+  if (!lastReadAt) return true;
+  return activityAt(row) > lastReadAt;
+}
+
+function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId) {
   return {
     id: row.id,
     seq: row.seq,
@@ -109,32 +180,62 @@ function shapeListPost(row, usersById, teamsById, pollPostIds) {
     reply_count: row.reply_count ?? 0,
     last_reply_at: row.last_reply_at,
     has_poll: pollPostIds.has(row.id),
+    // Uden userId (ingen indlogget bruger — kun tests kalder listForumPosts
+    // sådan) er der ingen "ulæst for hvem", så feltet falder til false i
+    // stedet for at gætte via isThreadUnread's "ingen række = ulæst"-regel.
+    is_unread: userId ? isThreadUnread(row, readsByPostId.get(row.id)) : false,
     author: shapeAuthor(row, usersById, teamsById),
   };
 }
 
 /**
- * GET /api/forum/posts — én side, nyeste først. Pinnede opslag serveres i en
- * separat `pinned`-blok på FØRSTE side (ingen cursor) og er udeladt af den
- * paginerede hovedliste, så keyset-cursoren forbliver ren seq-orden.
+ * Batch-opslag af "sidst læst"-tidsstempler for én bruger over en mængde
+ * tråde — bounded IN-select, samme mønster som resolveAuthors (aldrig N+1
+ * pr. tråd). Returnerer et tomt map hvis der ikke er nogen bruger/rækker.
  */
-export async function listForumPosts({ supabase, category = null, limit, cursor }) {
+async function resolveThreadReads({ supabase, userId, postIds }) {
+  const map = new Map();
+  if (!userId || !postIds.length) return map;
+  const { data, error } = await supabase
+    .from("forum_thread_reads")
+    .select("post_id, last_read_at")
+    .eq("user_id", userId)
+    .in("post_id", postIds)
+    .limit(postIds.length);
+  if (error) throw new Error(`forum: could not resolve thread reads: ${error.message}`);
+  for (const row of data || []) map.set(row.post_id, row.last_read_at);
+  return map;
+}
+
+/**
+ * GET /api/forum/posts — én side, SENESTE AKTIVITET først (#4118: coalesce
+ * (last_reply_at, created_at) desc — se filhoved-kommentaren for hvorfor
+ * sorteringen sker i JS over et bounded udsnit). Pinnede opslag serveres i en
+ * separat `pinned`-blok på FØRSTE side (ingen cursor) og er udeladt af den
+ * paginerede hovedliste. `userId` (valgfri — tests kan udelade den) driver
+ * pr.-tråd is_unread (#3451).
+ */
+export async function listForumPosts({ supabase, category = null, limit, cursor, userId = null }) {
   const pageSize = parseForumLimit(limit);
-  const afterCursor = parseForumCursor(cursor);
+  const afterCursor = parseForumActivityCursor(cursor);
   const categoryFilter = isValidForumCategory(category) ? category : null;
 
   let query = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
     .is("deleted_at", null)
     .eq("is_pinned", false);
   if (categoryFilter) query = query.eq("category", categoryFilter);
-  if (afterCursor != null) query = query.lt("seq", afterCursor);
 
-  const { data, error } = await query.order("seq", { ascending: false }).limit(pageSize + 1);
+  // Bounded scan, sorteret + keyset-filtreret i JS (ikke OFFSET — se
+  // filhoved-kommentaren for begrundelsen).
+  const { data, error } = await query.order("seq", { ascending: false }).limit(ACTIVITY_SCAN_LIMIT);
   if (error) throw new Error(`forum: could not list posts: ${error.message}`);
 
-  const rows = data || [];
-  const hasMore = rows.length > pageSize;
-  const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+  const sortedRows = sortByActivityDesc(data || []);
+  const afterFiltered = afterCursor == null
+    ? sortedRows
+    : sortedRows.filter((row) => isAfterActivityCursor(row, afterCursor));
+  const hasMore = afterFiltered.length > pageSize;
+  const pageRows = afterFiltered.slice(0, pageSize);
 
   let pinnedRows = [];
   if (afterCursor == null) {
@@ -144,7 +245,9 @@ export async function listForumPosts({ supabase, category = null, limit, cursor 
     if (categoryFilter) pinnedQuery = pinnedQuery.eq("category", categoryFilter);
     const pinnedResult = await pinnedQuery.order("seq", { ascending: false }).limit(20);
     if (pinnedResult.error) throw new Error(`forum: could not list pinned posts: ${pinnedResult.error.message}`);
-    pinnedRows = pinnedResult.data || [];
+    // Pins ligger stadig ØVERST (egen blok, uafhængig af hovedlistens cursor);
+    // internt sorteres de også efter aktivitet, samme recipe som hovedlisten.
+    pinnedRows = sortByActivityDesc(pinnedResult.data || []);
   }
 
   const allRows = [...pinnedRows, ...pageRows];
@@ -162,10 +265,12 @@ export async function listForumPosts({ supabase, category = null, limit, cursor 
     pollPostIds = new Set((pollRows || []).map((r) => r.post_id));
   }
 
+  const readsByPostId = await resolveThreadReads({ supabase, userId, postIds });
+
   return {
-    pinned: pinnedRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds)),
-    items: pageRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds)),
-    next_cursor: hasMore ? pageRows[pageRows.length - 1].seq : null,
+    pinned: pinnedRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId)),
+    items: pageRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId)),
+    next_cursor: hasMore ? encodeForumActivityCursor(pageRows[pageRows.length - 1]) : null,
     limit: pageSize,
   };
 }
@@ -264,6 +369,45 @@ export async function getForumPost({ supabase, id, userId }) {
       poll,
     },
   };
+}
+
+/**
+ * POST-side-effekt af GET /api/forum/posts/:id (#3451): opdatér brugerens
+ * "sidst læst"-tidsstempel for tråden. Upsert på (user_id, post_id), samme
+ * mønster som voteForumPoll. Kaldes best-effort fra routen — en fejl her må
+ * ALDRIG blokere selve trådvisningen (route fanger og captureException'er).
+ */
+export async function markForumThreadRead({ supabase, userId, postId, now = new Date() }) {
+  if (!userId || !postId) return;
+  const { error } = await supabase.from("forum_thread_reads").upsert(
+    { user_id: userId, post_id: postId, last_read_at: now.toISOString() },
+    { onConflict: "user_id,post_id" }
+  );
+  if (error) throw new Error(`forum: could not mark thread read for ${postId}: ${error.message}`);
+}
+
+/**
+ * GET /api/forum/unread-status — billig kilde til nav-prikken (#3451): ÉT
+ * kald fra klienten, to bounded queries på backend (posts + reads, samme
+ * ikke-N+1-mønster som resolveAuthors) i stedet for én forespørgsel pr.
+ * tråd. Stopper ved første ulæste tråd — behøver ikke tælle alle.
+ */
+export async function getForumUnreadStatus({ supabase, userId }) {
+  if (!userId) return { has_unread: false };
+
+  const { data: postRows, error } = await supabase
+    .from("forum_posts")
+    .select("id, seq, created_at, last_reply_at")
+    .is("deleted_at", null)
+    .order("seq", { ascending: false })
+    .limit(UNREAD_STATUS_SCAN_LIMIT);
+  if (error) throw new Error(`forum: could not load posts for unread-status: ${error.message}`);
+  const rows = postRows || [];
+  if (!rows.length) return { has_unread: false };
+
+  const readsByPostId = await resolveThreadReads({ supabase, userId, postIds: rows.map((r) => r.id) });
+  const hasUnread = rows.some((row) => isThreadUnread(row, readsByPostId.get(row.id)));
+  return { has_unread: hasUnread };
 }
 
 function validatePollOptions(pollOptions) {
@@ -393,7 +537,7 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
 
   const { data: post, error: postError } = await supabase
     .from("forum_posts")
-    .select("id, title, category, deleted_at")
+    .select("id, title, category, user_id, deleted_at")
     .eq("id", postId)
     .maybeSingle();
   if (postError) throw new Error(`forum: could not load post ${postId}: ${postError.message}`);
@@ -420,7 +564,9 @@ export async function createForumReply({ supabase, postId, userId, teamId = null
   return {
     status: 200,
     body: { ok: true, id: inserted.id, seq: inserted.seq },
-    post: { id: post.id, title: post.title, category: post.category },
+    // `post.user_id` (trådejeren) forlader ALDRIG body — kun brugt server-side
+    // i api.js's #3517-notifikationskald (og Discord-pinget).
+    post: { id: post.id, title: post.title, category: post.category, user_id: post.user_id },
   };
 }
 
@@ -468,7 +614,9 @@ export async function voteForumPoll({ supabase, postId, userId, optionId, now = 
  * POST /api/forum/report — rapportér opslag/svar. Idempotent pr. (reporter,
  * target): gen-rapportering opdaterer bare reason i stedet for at fejle på
  * UNIQUE-constrainten. `already` fortæller routen om Discord-pinget skal
- * springes over (ingen ping-spam ved gentagne klik).
+ * springes over (ingen ping-spam ved gentagne klik). #3452: `reason` er
+ * PÅKRÆVET (min. FORUM_REPORT_REASON_MIN_LENGTH tegn) — ejer-direktiv 6/8,
+ * "gider ikke se rapporter uden grund".
  */
 export async function reportForumContent({ supabase, reporterUserId, targetType, targetId, reason = null, now = new Date() }) {
   if (targetType !== "post" && targetType !== "reply") {
@@ -478,6 +626,14 @@ export async function reportForumContent({ supabase, reporterUserId, targetType,
     return { status: 400, body: { error: "Missing target id", errorCode: "forum_missing_id" } };
   }
   const trimmedReason = typeof reason === "string" ? reason.trim() : "";
+  // #3452: begrundelse er obligatorisk (ejer-direktiv 6/8) — 400 med et
+  // dedikeret errorCode pr. fejlklasse, samme mønster som titel/body ovenfor.
+  if (!trimmedReason) {
+    return { status: 400, body: { error: "A reason is required", errorCode: "forum_reason_required" } };
+  }
+  if (trimmedReason.length < FORUM_REPORT_REASON_MIN_LENGTH) {
+    return { status: 400, body: { error: "The reason is too short", errorCode: "forum_reason_too_short" } };
+  }
   if (trimmedReason.length > FORUM_REPORT_REASON_MAX_LENGTH) {
     return { status: 400, body: { error: "Reason is too long", errorCode: "forum_reason_too_long" } };
   }

@@ -108,6 +108,7 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
   buildWelcomeNotification,
+  notifyForumThreadReply,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -148,6 +149,8 @@ import {
   deleteForumPost,
   deleteForumReply,
   getForumReportCounts,
+  markForumThreadRead,
+  getForumUnreadStatus,
 } from "../lib/forum.js";
 import {
   contractOnAcquirePatch,
@@ -13438,10 +13441,21 @@ router.post("/admin/feedback/:id/reply", requireAdmin, adminWriteLimiter, async 
 // fejle selve handlingen for spilleren.
 
 // GET /api/forum/posts — keyset-pagineret liste (pinned-blok på side 1).
+// #3451: is_unread pr. tråd kræver requesterens userId.
 router.get("/forum/posts", requireAuth, async (req, res) => {
   try {
     const { category, limit, cursor } = req.query;
-    res.json(await listForumPosts({ supabase, category, limit, cursor }));
+    res.json(await listForumPosts({ supabase, category, limit, cursor, userId: req.user.id }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/forum/unread-status — billig nav-prik-kilde (#3451): {has_unread}.
+router.get("/forum/unread-status", requireAuth, async (req, res) => {
+  try {
+    res.json(await getForumUnreadStatus({ supabase, userId: req.user.id }));
   } catch (e) {
     captureException(e);
     res.status(500).json({ error: e.message });
@@ -13452,6 +13466,11 @@ router.get("/forum/posts", requireAuth, async (req, res) => {
 router.get("/forum/posts/:id", requireAuth, async (req, res) => {
   try {
     const { status, body } = await getForumPost({ supabase, id: req.params.id, userId: req.user.id });
+    if (status === 200) {
+      // #3451: markér tråden læst — best-effort, må ALDRIG blokere visningen.
+      markForumThreadRead({ supabase, userId: req.user.id, postId: req.params.id })
+        .catch((err) => captureException(err));
+    }
     res.status(status).json(body);
   } catch (e) {
     captureException(e);
@@ -13517,6 +13536,15 @@ router.post("/forum/posts/:id/replies", requireAuth, forumWriteLimiter, async (r
           teamName: req.team?.name || null,
         }))
         .catch(err => console.error("[forum] discord ping (reply) failed:", err.message));
+      // #3517: notificér trådejeren (aldrig ved eget svar — notifyForumThreadReply
+      // håndhæver det selv). Best-effort, svaret er allerede gemt.
+      notifyForumThreadReply({
+        supabase,
+        threadOwnerUserId: result.post?.user_id || null,
+        replierUserId: req.user.id,
+        postId: result.post?.id || req.params.id,
+        postTitle: result.post?.title || null,
+      }).catch(err => captureException(err));
     }
     res.status(result.status).json(result.body);
   } catch (e) {

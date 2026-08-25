@@ -19,6 +19,9 @@ import { formatForumDate } from "./ForumPage.jsx";
 const API = import.meta.env.VITE_API_URL;
 const BODY_MAX = 4000;
 const REASON_MAX = 500;
+// #3452: ejer-direktiv 6/8 "gider ikke se rapporter uden grund" — skal matche
+// FORUM_REPORT_REASON_MIN_LENGTH i backend/lib/forum.js.
+const REASON_MIN = 10;
 const FORUM_POST_TABLES = ["forum_replies", "forum_posts"];
 
 async function authHeaders() {
@@ -54,12 +57,22 @@ function ReportModal({ open, onClose, onSubmit, t }) {
     }, 200);
   }
 
+  const trimmedReason = reason.trim();
+  // #3452: samme grænse som backend (FORUM_REPORT_REASON_MIN_LENGTH) —
+  // klientvalideret FØR submit, så spilleren ser fejlen med det samme i
+  // stedet for at vente på en 400 tur-retur.
+  const reasonTooShort = trimmedReason.length > 0 && trimmedReason.length < REASON_MIN;
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (trimmedReason.length < REASON_MIN) {
+      setError(t("report.reasonMinError", { count: REASON_MIN }));
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(reason.trim());
+      await onSubmit(trimmedReason);
       setSent(true);
     } catch (err) {
       setError(err?.message || t("errors.submitFailed"));
@@ -92,14 +105,19 @@ function ReportModal({ open, onClose, onSubmit, t }) {
               maxLength={REASON_MAX}
               onChange={(e) => setReason(e.target.value)}
               placeholder={t("report.reasonPlaceholder")}
+              aria-invalid={reasonTooShort || undefined}
+              required
             />
           </Field>
+          {reasonTooShort && !error && (
+            <p className="text-xs text-cz-danger">{t("report.reasonMinError", { count: REASON_MIN })}</p>
+          )}
           {error && <p className="text-xs text-cz-danger">{error}</p>}
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting}>
               {t("report.cancel")}
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting}>
+            <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting || trimmedReason.length < REASON_MIN}>
               {t("report.submit")}
             </Button>
           </div>
@@ -200,6 +218,10 @@ export default function ForumPostPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setState({ status: "ready", post: data.post, replies: data.replies || [], poll: data.poll || null });
+      // #4118/#3451: backend markerer tråden læst som side-effekt af dette
+      // kald (GET /api/forum/posts/:id) — fortæl Layout.jsx's nav-prik at
+      // genberegne med det samme i stedet for at vente på næste heartbeat.
+      window.dispatchEvent(new Event("cz:forum-thread-read"));
     } catch {
       setState((s) => (s.status === "ready" ? s : { status: "error", post: null, replies: [], poll: null }));
     }
@@ -251,14 +273,12 @@ export default function ForumPostPage() {
 
   async function submitReport(reason) {
     const headers = await authHeaders();
+    // #3452: reason er nu påkrævet — sendes altid (ReportModal validerer
+    // min. længde FØR dette kaldes).
     const res = await fetch(`${API}/api/forum/report`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        target_type: reportTarget?.type,
-        target_id: reportTarget?.id,
-        ...(reason ? { reason } : {}),
-      }),
+      body: JSON.stringify({ target_type: reportTarget?.type, target_id: reportTarget?.id, reason }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(tError(data?.errorCode));

@@ -45,6 +45,20 @@ export const PATCHES = [
           "body": "Sæsonen blev bygget om da starten rykkede til fredag 28. august. Den kører nu 31 løbsdage mod de 27 der oprindeligt var planlagt, og hver division har løb på hver eneste dag. Alle udtagelser blev ryddet i ombygningen, så alle udtager deres hold forfra."
         },
         "refs": [4218]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Forum threads now show what's actually new",
+          "body": "The thread list sorts by the latest reply instead of when a thread was created, so an old thread with a fresh answer floats back to the top. Unread threads get a small dot, and the same dot shows up next to \"Forum\" in the menu whenever there's unread activity. Reply to someone's thread and they get a notification pointing straight at it (never for your own replies). Reporting a post or reply now needs a short reason."
+        },
+        "da": {
+          "title": "Forum-tråde viser nu hvad der faktisk er nyt",
+          "body": "Trådlisten sorterer efter seneste svar i stedet for hvornår tråden blev oprettet, så en gammel tråd med et frisk svar rykker op igen. Ulæste tråde får en lille prik, og den samme prik vises ved \"Forum\" i menuen, når der er ulæst aktivitet. Svarer du på en andens tråd, får de en notifikation der peger direkte på den (aldrig ved eget svar). At rapportere et opslag eller svar kræver nu en kort begrundelse."
+        },
+        "refs": [4118, 3451, 3517, 3452]
       }
     ]
   },

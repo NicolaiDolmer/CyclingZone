@@ -102,7 +102,8 @@
     "saveNote": "Save note",
     "searchHelp": "Search help and FAQ",
     "selectSeason": "Select season",
-    "unreadPatchNotes": "New patch notes"
+    "unreadPatchNotes": "New patch notes",
+    "unreadForum": "New forum activity"
   },
   "leaderBadge": "Leader",
   "amountInput": {

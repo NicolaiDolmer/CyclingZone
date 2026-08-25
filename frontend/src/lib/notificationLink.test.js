@@ -88,3 +88,10 @@ test("ukendt type uden metadata/related_id falder tilbage til fallbackLink", () 
   assert.equal(resolveNotificationLink({ type: "admin_notice" }, null), null);
   assert.equal(resolveNotificationLink({ type: "welcome" }, "/auctions"), "/auctions");
 });
+
+// #4118/#3517: forum_thread_reply bærer post_id i related_id, deep-linker
+// direkte til tråden (ikke den generiske /forum-forside).
+test("#4118/#3517 forum_thread_reply deep-linker til tråden via related_id", () => {
+  const link = resolveNotificationLink({ type: "forum_thread_reply", related_id: "post-1" }, "/forum");
+  assert.equal(link, "/forum/post-1");
+});

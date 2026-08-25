@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 const {
   notifyUser,
@@ -19,6 +20,9 @@ const {
   buildScoutChangedNotification,
   notifyScoutChanged,
   SCOUT_CHANGED_TYPE,
+  buildForumThreadReplyNotification,
+  notifyForumThreadReply,
+  FORUM_THREAD_REPLY_TYPE,
 } = await import("./notificationService.js");
 
 function createNotificationSupabase({
@@ -968,5 +972,81 @@ test("notifyScoutChanged: en fejlende notify isoleres (fanges, kaster ikke) — 
   const supabase = createNotificationSupabase();
   const notify = async () => { throw new Error("boom"); };
   const result = await notifyScoutChanged({ supabase, teamId: "team-1", scoutName: "X", scoutTier: 1, notify });
+  assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
+});
+
+// ── #4118/#3517: forum-svar-notifikation (dedupe-tælling) ───────────────────
+
+test("buildForumThreadReplyNotification: ental vs. flertal + med/uden posttitel", () => {
+  const single = buildForumThreadReplyNotification({ postId: "p1", postTitle: "Season 4 wishlist", replyCount: 1 });
+  assert.equal(single.type, FORUM_THREAD_REPLY_TYPE);
+  assert.equal(single.relatedId, "p1");
+  assert.match(single.title, /^New reply/);
+  assert.match(single.message, /Season 4 wishlist/);
+  assert.equal(single.metadata.replyCount, 1);
+
+  const plural = buildForumThreadReplyNotification({ postId: "p1", postTitle: null, replyCount: 3 });
+  assert.match(plural.title, /^3 new replies/);
+  assert.match(plural.message, /3 new replies to your thread/);
+  assert.equal(plural.metadata.replyCount, 3);
+});
+
+test("notifyForumThreadReply: aldrig ved eget svar, no-op uden threadOwnerUserId/postId", async () => {
+  const fake = createFakeSupabase({ notifications: [] });
+  const own = await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "u1", replierUserId: "u1", postId: "p1" });
+  assert.deepEqual(own, { delivered: false, deduped: false, reason: "own_reply" });
+
+  const missing = await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: null, replierUserId: "u2", postId: "p1" });
+  assert.deepEqual(missing, { delivered: false, deduped: false, reason: "missing_target" });
+  assert.equal(fake.state.notifications.length, 0);
+});
+
+test("notifyForumThreadReply: første svar opretter en ny notifikation", async () => {
+  const fake = createFakeSupabase({ notifications: [] });
+  const result = await notifyForumThreadReply({
+    supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u2", postId: "p1", postTitle: "Season 4 wishlist",
+    now: new Date("2026-08-25T10:00:00Z"),
+  });
+  assert.equal(result.delivered, true);
+  assert.equal(result.deduped, false);
+  assert.equal(result.replyCount, 1);
+  assert.equal(fake.state.notifications.length, 1);
+  assert.equal(fake.state.notifications[0].user_id, "owner1");
+  assert.equal(fake.state.notifications[0].type, FORUM_THREAD_REPLY_TYPE);
+  assert.equal(fake.state.notifications[0].related_id, "p1");
+  assert.equal(fake.state.notifications[0].is_read, false);
+});
+
+// #3517-kernekrav: en tråd med mange svar giver ALDRIG mange notifikationer.
+test("notifyForumThreadReply: dedupe — opdaterer den ULÆSTE notifikation i stedet for at stable nye op", async () => {
+  const fake = createFakeSupabase({ notifications: [] });
+  await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u2", postId: "p1", postTitle: "T", now: new Date("2026-08-25T10:00:00Z") });
+  await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u3", postId: "p1", postTitle: "T", now: new Date("2026-08-25T10:05:00Z") });
+  const third = await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u2", postId: "p1", postTitle: "T", now: new Date("2026-08-25T10:10:00Z") });
+
+  assert.equal(fake.state.notifications.length, 1, "20 svar må ikke give 20 rækker — kun ÉN, opdateret");
+  assert.equal(third.deduped, true);
+  assert.equal(third.replyCount, 3);
+  assert.match(fake.state.notifications[0].title, /^3 new replies/);
+  assert.equal(fake.state.notifications[0].metadata.replyCount, 3);
+});
+
+test("notifyForumThreadReply: en LÆST notifikation blokerer ikke — næste svar opretter en frisk ét-tælling", async () => {
+  const fake = createFakeSupabase({
+    notifications: [{
+      id: "n1", user_id: "owner1", type: FORUM_THREAD_REPLY_TYPE, related_id: "p1",
+      title: "New reply to your thread", message: "A new reply on \"T\"",
+      is_read: true, created_at: "2026-08-24T10:00:00Z", metadata: { replyCount: 1 },
+    }],
+  });
+  const result = await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u2", postId: "p1", postTitle: "T", now: new Date("2026-08-25T10:00:00Z") });
+  assert.equal(result.deduped, false);
+  assert.equal(result.replyCount, 1);
+  assert.equal(fake.state.notifications.length, 2);
+});
+
+test("notifyForumThreadReply: en fejlende opslag isoleres (fanges, kaster ikke) — svaret må aldrig væltes", async () => {
+  const fake = createFakeSupabase({ notifications: [] }, { errors: { notifications: { select: "boom" } } });
+  const result = await notifyForumThreadReply({ supabase: fake, threadOwnerUserId: "owner1", replierUserId: "u2", postId: "p1" });
   assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
 });
