@@ -479,6 +479,9 @@ export function managerProfile(teamId) {
 // #3199 — forum-seed til preview/Playwright. Pinned ejer-opslag med poll +
 // almindelige spiller-opslag, samme shape som backend/lib/forum.js serverer.
 const FORUM_AUTHOR_OWNER = { username: "dolmer", team_name: null };
+// #4118/#3451: is_unread pr. tråd — pinned-1 og post-3 er læst (demonstrerer
+// den umarkerede tilstand), post-2 og post-4 er ulæst (prik + fed titel på
+// preview/e2e), så unread-status-mocken nedenfor har noget ægte at svare på.
 const FORUM_POSTS = [
   {
     id: "forum-pinned-1",
@@ -492,6 +495,7 @@ const FORUM_POSTS = [
     reply_count: 2,
     last_reply_at: "2026-08-06T07:20:00Z",
     has_poll: true,
+    is_unread: false,
     author: FORUM_AUTHOR_OWNER,
   },
   {
@@ -506,6 +510,7 @@ const FORUM_POSTS = [
     reply_count: 3,
     last_reply_at: "2026-08-06T06:10:00Z",
     has_poll: false,
+    is_unread: true,
     author: { username: "peloton_pete", team_name: "Thunder Cycling" },
   },
   {
@@ -520,6 +525,7 @@ const FORUM_POSTS = [
     reply_count: 1,
     last_reply_at: "2026-08-05T08:00:00Z",
     has_poll: false,
+    is_unread: false,
     author: { username: "sofie_r", team_name: "Nordjysk CC" },
   },
   {
@@ -534,6 +540,7 @@ const FORUM_POSTS = [
     reply_count: 0,
     last_reply_at: null,
     has_poll: false,
+    is_unread: true,
     author: { username: "e2e", team_name: "E2E Racing" },
   },
 ];
@@ -580,6 +587,12 @@ export function apiResponse(pathname, search = "") {
   const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
   if (managerMatch) return managerProfile(decodeURIComponent(managerMatch[1]));
 
+  // #4118/#3451: nav-prik-kilden — samme FORUM_POSTS-seed som listen/detaljen
+  // nedenfor, så preview/e2e viser den ÆGTE afledte tilstand i stedet for en
+  // uafhængig hardkodet boolean der kan drifte fra listens is_unread-felter.
+  if (pathname.endsWith("/api/forum/unread-status")) {
+    return { has_unread: FORUM_POSTS.some((p) => p.is_unread) };
+  }
   // #3199: forum-liste + tråd-detalje.
   const forumPostMatch = pathname.match(/\/api\/forum\/posts\/([^/]+)$/);
   if (forumPostMatch) return forumPostDetail(decodeURIComponent(forumPostMatch[1]));
