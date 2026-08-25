@@ -8,6 +8,7 @@ import {
   FORUM_LIST_MAX_LIMIT,
   parseForumLimit,
   parseForumCursor,
+  parseForumActivityCursor,
   isValidForumCategory,
   listForumPosts,
   getForumPost,
@@ -21,6 +22,8 @@ import {
   deleteForumPost,
   deleteForumReply,
   getForumReportCounts,
+  markForumThreadRead,
+  getForumUnreadStatus,
 } from "./forum.js";
 
 function post(overrides = {}) {
@@ -49,6 +52,7 @@ function seedState(overrides = {}) {
     forum_reports: [],
     forum_poll_options: [],
     forum_poll_votes: [],
+    forum_thread_reads: [],
     users: [
       { id: "u1", username: "alice", email: "alice@example.com", role: "manager" },
       { id: "u2", username: "bob", email: "bob@example.com", role: "manager" },
@@ -111,7 +115,7 @@ test("listForumPosts: pinned i egen blok på side 1, hovedliste nyeste først, f
   assert.equal(result.next_cursor, null);
 });
 
-test("listForumPosts: kategori-filter + keyset-cursor, pinned kun på side 1", async () => {
+test("listForumPosts: kategori-filter + keyset-cursor (sammensat aktivitet+seq), pinned kun på side 1", async () => {
   const fake = createFakeSupabase(seedState({
     forum_posts: [
       post({ id: "p1", seq: 1, category: "general" }),
@@ -124,11 +128,52 @@ test("listForumPosts: kategori-filter + keyset-cursor, pinned kun på side 1", a
   const page1 = await listForumPosts({ supabase: fake, category: "general", limit: "1" });
   assert.deepEqual(page1.items.map((p) => p.id), ["p3"]);
   assert.equal(page1.pinned.length, 1);
-  assert.equal(page1.next_cursor, 3);
+  assert.ok(page1.next_cursor); // sammensat streng, ikke længere et rå seq-tal
+  assert.deepEqual(parseForumActivityCursor(page1.next_cursor), { ts: Date.parse("2026-08-01T10:00:00Z"), seq: 3 });
 
-  const page2 = await listForumPosts({ supabase: fake, category: "general", limit: "1", cursor: String(page1.next_cursor) });
+  const page2 = await listForumPosts({ supabase: fake, category: "general", limit: "1", cursor: page1.next_cursor });
   assert.deepEqual(page2.items.map((p) => p.id), ["p1"]);
   assert.equal(page2.pinned.length, 0);
+  assert.equal(page2.next_cursor, null);
+});
+
+// #4118: kernen i sorterings-skiftet — en NY tråd uden svar overhales af en
+// GAMMEL tråd der lige har fået et FRISKT svar, men en tråd med et svar der
+// stadig er ældre end en helt ny tråd forbliver under den.
+test("listForumPosts: sorterer efter seneste aktivitet, ikke oprettelse", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      // Gammel tråd, men svar for 5 minutter siden — skal ligge ØVERST.
+      post({ id: "old-fresh-reply", seq: 1, created_at: "2026-08-01T08:00:00Z", last_reply_at: "2026-08-20T11:55:00Z" }),
+      // Helt ny tråd, ingen svar endnu — skal ligge i MIDTEN (nyere end den
+      // stille tråd, men ældre end trådens friske svar ovenfor).
+      post({ id: "new-no-reply", seq: 2, created_at: "2026-08-20T12:00:00Z", last_reply_at: null }),
+      // Gammel tråd, gammelt svar — skal ligge NEDERST.
+      post({ id: "old-stale-reply", seq: 3, created_at: "2026-08-02T09:00:00Z", last_reply_at: "2026-08-05T10:00:00Z" }),
+    ],
+  }));
+
+  const result = await listForumPosts({ supabase: fake });
+  assert.deepEqual(result.items.map((p) => p.id), ["new-no-reply", "old-fresh-reply", "old-stale-reply"]);
+});
+
+// Delt aktivitets-tidsstempel (fx to opslag oprettet samme sekund, ingen svar)
+// skal stadig give en stabil, ikke-gentagende/ikke-tabende side 2 — seq er
+// tiebreak'et.
+test("listForumPosts: side 2 gentager eller taber aldrig rækker ved delt aktivitets-tidsstempel", async () => {
+  const shared = "2026-08-10T10:00:00Z";
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "p1", seq: 1, created_at: shared }),
+      post({ id: "p2", seq: 2, created_at: shared }),
+      post({ id: "p3", seq: 3, created_at: shared }),
+    ],
+  }));
+
+  const page1 = await listForumPosts({ supabase: fake, limit: "2" });
+  assert.deepEqual(page1.items.map((p) => p.id), ["p3", "p2"]);
+  const page2 = await listForumPosts({ supabase: fake, limit: "2", cursor: page1.next_cursor });
+  assert.deepEqual(page2.items.map((p) => p.id), ["p1"]);
   assert.equal(page2.next_cursor, null);
 });
 
@@ -141,6 +186,60 @@ test("listForumPosts: slettede opslag vises aldrig", async () => {
   }));
   const result = await listForumPosts({ supabase: fake });
   assert.deepEqual(result.items.map((p) => p.id), ["p1"]);
+});
+
+// ── Ulæst-status pr. tråd (#3451) ───────────────────────────────────────────
+
+test("listForumPosts: is_unread pr. tråd — ingen læse-række, nyere aktivitet end last_read_at, eller læst", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "never-read", seq: 1, created_at: "2026-08-20T10:00:00Z" }),
+      post({ id: "read-then-replied", seq: 2, created_at: "2026-08-20T09:00:00Z", last_reply_at: "2026-08-21T10:00:00Z" }),
+      post({ id: "fully-read", seq: 3, created_at: "2026-08-19T10:00:00Z" }),
+    ],
+    forum_thread_reads: [
+      { user_id: "u1", post_id: "read-then-replied", last_read_at: "2026-08-20T09:30:00Z" }, // før svaret
+      { user_id: "u1", post_id: "fully-read", last_read_at: "2026-08-19T12:00:00Z" }, // efter oprettelse
+    ],
+  }));
+
+  const result = await listForumPosts({ supabase: fake, userId: "u1" });
+  const byId = Object.fromEntries(result.items.map((p) => [p.id, p.is_unread]));
+  assert.equal(byId["never-read"], true); // ingen forum_thread_reads-række
+  assert.equal(byId["read-then-replied"], true); // svaret kom EFTER last_read_at
+  assert.equal(byId["fully-read"], false);
+});
+
+test("listForumPosts: uden userId (fx tests) er intet markeret ulæst", async () => {
+  const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" })] }));
+  const result = await listForumPosts({ supabase: fake });
+  assert.equal(result.items[0].is_unread, false);
+});
+
+test("markForumThreadRead: upserter last_read_at pr. (bruger, tråd)", async () => {
+  const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" })] }));
+  const first = new Date("2026-08-20T10:00:00Z");
+  await markForumThreadRead({ supabase: fake, userId: "u1", postId: "p1", now: first });
+  assert.equal(fake.state.forum_thread_reads.length, 1);
+  assert.equal(fake.state.forum_thread_reads[0].last_read_at, first.toISOString());
+
+  const second = new Date("2026-08-21T10:00:00Z");
+  await markForumThreadRead({ supabase: fake, userId: "u1", postId: "p1", now: second });
+  assert.equal(fake.state.forum_thread_reads.length, 1); // upsert, ingen dublet
+  assert.equal(fake.state.forum_thread_reads[0].last_read_at, second.toISOString());
+});
+
+test("getForumUnreadStatus: has_unread er false uden brugte tråde/manglende userId, true ved mindst én ulæst tråd", async () => {
+  const fake = createFakeSupabase(seedState());
+  assert.deepEqual(await getForumUnreadStatus({ supabase: fake, userId: null }), { has_unread: false });
+  assert.deepEqual(await getForumUnreadStatus({ supabase: fake, userId: "u1" }), { has_unread: false });
+
+  const withPosts = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", seq: 1, created_at: "2026-08-20T10:00:00Z" })],
+    forum_thread_reads: [{ user_id: "u1", post_id: "p1", last_read_at: "2026-08-21T10:00:00Z" }],
+  }));
+  assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u1" }), { has_unread: false });
+  assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u2" }), { has_unread: true }); // u2 har aldrig læst p1
 });
 
 // ── Detalje + poll ──────────────────────────────────────────────────────────
@@ -296,19 +395,32 @@ test("reportForumContent: validering + 404 på slettet target", async () => {
   }));
   assert.equal((await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "meme", targetId: "p1" })).body.errorCode, "forum_invalid_target_type");
   assert.equal((await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "" })).body.errorCode, "forum_missing_id");
-  assert.equal((await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "p1" })).status, 404);
+  assert.equal((await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "p1", reason: "Looks like spam" })).status, 404);
+});
+
+// #3452 (ejer-direktiv 6/8): rapport uden begrundelse — påkrævet, min. 10 tegn.
+test("reportForumContent: begrundelse er påkrævet (min. 10 tegn)", async () => {
+  const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" })] }));
+  const base = { supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "p1" };
+  assert.equal((await reportForumContent({ ...base })).body.errorCode, "forum_reason_required");
+  assert.equal((await reportForumContent({ ...base, reason: "   " })).body.errorCode, "forum_reason_required");
+  assert.equal((await reportForumContent({ ...base, reason: "too short" })).body.errorCode, "forum_reason_too_short");
+  assert.equal((await reportForumContent({ ...base, reason: "x".repeat(501) })).body.errorCode, "forum_reason_too_long");
+  assert.equal(fake.state.forum_reports.length, 0);
+  const ok = await reportForumContent({ ...base, reason: "Spam links in every post" });
+  assert.equal(ok.status, 200);
 });
 
 test("reportForumContent: idempotent pr. (reporter, target) — already=true anden gang, ingen dublet", async () => {
   const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" })] }));
-  const first = await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "p1", reason: "spam" });
+  const first = await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "p1", reason: "Spam links" });
   assert.equal(first.status, 200);
   assert.equal(first.body.already, false);
 
-  const second = await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "p1", reason: "still spam" });
+  const second = await reportForumContent({ supabase: fake, reporterUserId: "u1", targetType: "post", targetId: "p1", reason: "Still spam links" });
   assert.equal(second.body.already, true);
   assert.equal(fake.state.forum_reports.length, 1);
-  assert.equal(fake.state.forum_reports[0].reason, "still spam");
+  assert.equal(fake.state.forum_reports[0].reason, "Still spam links");
 });
 
 // ── Admin: rapport-indbakke + moderation ────────────────────────────────────
