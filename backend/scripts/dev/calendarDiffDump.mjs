@@ -5,12 +5,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { buildTierMaterializationPlan } from "../../lib/tierCalendarMaterializer.js";
-import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
+import { offlineCalendarFrom } from "./lib/devCalendarArgs.mjs";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const f = JSON.parse(readFileSync(join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json"), "utf8"));
-const from = resolveCalendarFrom({ firstRaceDate: "2026-08-25" });
+// #4239: --first-day/--now injiceres, saa scriptet er tidsuafhaengigt (defaults er frosne).
+const { from } = offlineCalendarFrom();
 const { tierPlans } = buildTierMaterializationPlan({ pools: f.pools, catalog: f.catalog, from, baseSeed: 1 });
 const GT_MIN = 15;
 

@@ -4,7 +4,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { buildTierMaterializationPlan } from "../../lib/tierCalendarMaterializer.js";
-import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
+import { prodCalendarFrom } from "./lib/devCalendarArgs.mjs";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
 import { parseRacePoolCsv } from "../../lib/racePoolImport.js";
 import { loadPoolsAndCatalog } from "../s3CalendarPackageScorecard.js";
@@ -31,7 +31,8 @@ for (const r of rows) {
 }
 console.log(`Katalog: prod=${catalog.length} → renset=${clean.length} (CSV=${rows.length})`);
 
-const from = resolveCalendarFrom({ firstRaceDate: "2026-08-25" });
+// #4239: --first-day kan overstyres; `now` fryses IKKE (laeser prod-katalog, live-sti).
+const { from } = prodCalendarFrom();
 const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: clean, from, baseSeed: 1 });
 
 const t1 = tierPlans.find((t) => t.tier === 1);
