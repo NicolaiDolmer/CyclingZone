@@ -1,34 +1,26 @@
 # NOW — Aktuel arbejdsstatus
 
-> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) · **Arbejdsform:** arkitekt i hovedtråden, sonnet-workers i worktrees; PR der afventer justering = draft. Hard rules 24-28 i AGENTS.md (#3661).
+> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) · **Kalender-SSOT:** [CALENDAR_RULES.md](CALENDAR_RULES.md) · Hard rules 24-28 i AGENTS.md.
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Se de fire tynde endagsløb i spillet** (Le Mur de Huy 16 ryttere, Taunus-Klassiker 25, La Classique Bretonne 32, Grand Prix du Saint-Laurent 33, mod 101-128 for alle andre D1-endagsløb på samme afstand). Ejeren vil se dem selv før de fyldes op; forslaget er at rydde auto-udtagelserne på løbsdag 34/39/41/42 og lade generatoren fordele forfra (506 auto ryddes, 58 manuelle bevares). Derefter: **GT-komprimeringen** under #4176, som blokerer #4203 og #4209. **#4174** mangler ét svar: hvor højt de inaktive hold fyldes op. **#4192**-listen afventer din markering.
+> **🎯 Next action:** **Tænd motoren fredag 28/8** — `stage_scheduler_enabled` står på `off` og er ejer-only. Sæson 3 er aktiv, kalenderen skrevet (531 løb, 31 løbsdage 28/8-27/9), spænd-bindingen live. Derefter: **#4220** enkeltstarter (kræver research + ejer-godkendte tal), **#4206** 965 ryttere med identiske stats, **#4174** hvor højt inaktive trupper fyldes op.
 
+> **🤖 Ingen aktiv session.**
 
-> **⚖️ Fair play:** #3818 eksekveret 24/8 efter #4154-skabelonen (clawback af funnel-kontoens bruttobeløb + frys + auth-ban + advarsel in-game; #2221 var kun frys). Metode, tal og tekst: `docs/discord/2026-08-24-svarudkast-fairplay-3818.md`. **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord, har fået ingen forklaring.
+> **🚨 HÆNDELSE 25/8 — fire timer uden aktiv sæson ([#4229](https://github.com/NicolaiDolmer/CyclingZone/issues/4229)):** kalender-regenereringen kræver `status='upcoming'`, sæson 3 blev sat tilbage kl. ~07:30 og aldrig sat til `active` igen. Alder, rangliste, daglig træning og akademi-flytning lå nede for ALLE spillere. Tre spillere meldte det inden for halvanden time; nattevagten ville have rapporteret grønt, fordi alle fire kalender-invarianter svarer *"ingen aktiv sæson at kontrollere"*. **Genoprettet kl. 11:49** (ejer-go): standings bootstrappet 0→362, status→active. `processSeasonStart` blev bevidst IKKE kørt igen — den har ingen idempotens-spærre og var allerede kørt 23/8. Postmortem: `.claude/learnings/2026-08-25-interregnum-ingen-aktiv-saeson.md`.
 
-> **👥 Collab-gate live 24/8:** `main` kræver nu ejer-review (CODEOWNERS catch-all + `dismiss_stale_reviews`; 24 checks bevaret) + actor-guard på `auto-merge`. PR #4187 · `CONTRIBUTING.md` · `scripts/apply-collab-branch-protection.sh` (idempotent). Rest: **#4188** delt dev-Supabase + invitér hjælpere · **#4189** må collaborators trigge `@claude` på ejerens kvote (anbefaling: nej).
-
-> **💰 Værdier/løn S3-tilstand:** base_value = model(c 0,811 + type-dæmpning k=100); CPV dæmpet; løn = CPV × 0,35 frosset FØR transitionen (S2-alder, ejer-bekræftet rækkefølge). `wage_deduction_mode = season_upfront` (daily-flip = S3→S4). Upkeep S3 = 220k/70k/20k/0.
+> **⚠️ Prod-tilstand 25/8:** sæson 3 **aktiv**, start_date 28/8, 0 løbsdage kørt. `stage_scheduler_enabled` + `auto_entry_generator_enabled` = **off**. Spænd-binding kørt: 7 auto-udtagelser ryddet (0 manuelle), 20 dag-rækker backfillet, **0 dobbeltbookinger**. Backup: `backup_4227_seasons_2026_08_25`.
 
 ## Standing context (forever-relaunch)
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8; S3: D1 = top 24 rigtige hold. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
-- **Overlap intended**; 1 rytter = 1 løb/dag. **Pension:** måles på AFSLUTTET sæsons alder. **S3:** første løbsdag TIR 25/8, 27 løbsdatoer 25/8-20/9 (sæsoner slutter altid søndag).
-- **Staging:** `scripts/refresh-staging.ps1` + `scripts/with-staging.ps1`; generalprøve FØR enhver destruktiv prod-op. `staging-cutover` slettes mandag (#3839).
-- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation (ejer-mandat 22/8):** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
+- **S3:** 28/8 (fre) → 27/9 (søn), **31 løbsdage**, løb hver kalenderdag i alle divisioner. Alle udtagelser ryddet — alle udtager forfra. Overlap intended; 1 rytter = 1 løb pr. **løbsdag**, og et etapeløb binder **hele spændet**.
+- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)).
+- **Collab-gate:** `main` kræver ejer-review — men **kun for andres arbejde**. Ejerens egne PR'er merges uden (ejer 25/8).
 
+> **📮 Klar til at poste:** `docs/discord/2026-08-25-udkast-saesonstart-udskudt.md` — rettet, ejeren poster selv.
 
-> **📋 SESSION 24/8 AFTEN:** **#4191 live** (diff-rebuild, verificeret 0/0 mod prod). **#4192**: 38 træningsbeslutninger listet. **#4174**: kravet er 22/21/12/12, 78 % af de AKTIVE hold klarer det. Nye fund: **#4206** (965 ryttere med identiske stats).
-
-> **🚨 TRIAGE 25/8 07:30 — ejer-beslutning i dag:** **#4213**: 438 akademitilbud + 23 aktive ungdomsauktioner peger på ryttere der allerede står på et **AI-holds trup**. Rytterne blev skrevet over med en rå bulk-UPDATE (0 ejerskabsevents, `updated_at` urørt) mens de lå i pipelinen — sandsynligvis trup-opfyldningen omkring #4174. Tilbuddene er synlige for 168 af 223 menneskehold, og RPC-guarden `finalize_academy_acquisition` lukker dem igennem, så en manager der siger ja tager rytteren fra AI-holdet uden handel. **2 af de 23 auktioner har bud og lukker 25/8 20:13 UTC** — skal de annulleres? Samme klasse som hændelsen 18/7.
-
-> **📐 AKSEN ER SLOT, IKKE DAG (24/8, afgørende):** D1 har 80 slots over 27 datoer (2,96 pr. dato), D2/D3 2,00, D4 1,07. 95 etapeløb har huller i SLOTS, men kun 9 springer en KALENDERDATO over, og **471 af 471 løb bruger allerede lige så mange løbsdage som de har etaper**. **#4190 skrevet om** til navngivning + invariant; **#4209 i bero** (nul reelle hviledage i S3).
-
-> **⚠️ #4203 KØRT OG RULLET TILBAGE 24/8 22:05:** monument-byttet bestod sin egen post-verify men brød **#4075**. Kalenderen er den oprindelige, alle fire invarianter grønne. **Rest-skade:** fire endagsløb står tynde. Rodårsag: D1 har kun 6 løbsdage uden for et GT-vindue, og der skal bruges fire. Discord-udkastet: MÅ IKKE POSTES. Postmortem: `.claude/learnings/2026-08-24-migration-bestod-egen-gate-men-brod-en-anden-regel.md`.
-
-> **🤖 Ingen aktiv session** (aften-sessionen 24/8 lukket: #4191 + #4192 merged og live, #4203 kørt og rullet tilbage, aksen afklaret, #4190 omskrevet, #4209 i bero).
+> **⏳ Venter på ejeren:** #4220 enkeltstarter (tal) · brosten 6 %-målet · nedkørsels-finale-loft · #4174 opfyldnings-niveau · #4189 collaborators og `@claude` · #4231 om flere i18n-namespaces må koste et loader-blink.
 
 _Historik i git-log, issue-tråde + docs/audits/._
