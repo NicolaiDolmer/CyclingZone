@@ -137,6 +137,16 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       items: [
         { to: "/dashboard",      label: t("nav.item.dashboard") },     // 7.350
         { to: "/notifications",  label: t("nav.item.notifications"), badge: true }, // 6.152
+        // Forum-synlighed (#3199, ejer-beslutning 25/8): flyttet op til lige
+        // efter Indbakke, så den gule ulæst-prik sidder i øjenhøjde ved siden
+        // af den prik, spillerne allerede reagerer på — var tidligere sidst i
+        // gruppen ("ingen brugsdata endnu"). Sessions-tallene i kommentarerne
+        // herunder er stadig fra #3104/#3199-målingen (27/7), ikke genmålt
+        // for forum specifikt. #4118/#3451: gul prik ved ulæst tråd-aktivitet
+        // — samme prik-recipe som Patch Notes (dot: true, dotFlags i NavItem),
+        // ikke et nyt visuelt sprog. Se forumUnread-state + fetchForumUnread
+        // nedenfor.
+        { to: "/forum", label: t("nav.item.forum"), dot: true, dotLabel: t("a11y.unreadForum") },
         { to: "/team",           label: t("nav.item.team") },          // 5.955
         { to: "/training",       label: t("nav.item.training") },      // 2.732
         { to: "/finance",        label: t("nav.item.finance") },       // 2.258
@@ -144,12 +154,6 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/board",          label: t("nav.item.board") },         // 959
         ...scoutingNavItem(scoutSystemEnabled, t),                     // 689
         ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
-        // #3199: nyt socialt lag — ingen brugsdata endnu, placeret sidst i
-        // gruppen indtil Clarity-tallene kan rangere det.
-        // #4118/#3451: gul prik ved ulæst tråd-aktivitet — samme prik-recipe
-        // som Patch Notes (dot: true, dotFlags i NavItem), ikke et nyt
-        // visuelt sprog. Se forumUnread-state + fetchForumUnread nedenfor.
-        { to: "/forum", label: t("nav.item.forum"), dot: true, dotLabel: t("a11y.unreadForum") },
         // #3104 etape C: Personale (~400 sessions) er en fane i Klub nu
         // (/klub?tab=staff) — eget nav-punkt udgik, Klubhus 10 → 9 punkter.
       ],
