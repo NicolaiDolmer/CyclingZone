@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4236** — roden. Prompt: **`sessions/2026-08-26-samlet-workflow-session-prompt.md`** (S3 + forum, erstatter de tre tidligere). Tag evt. **#4123** først, så du kan SE hvad fixet flytter. Derefter #4183+#4233 (ét bug), #4200's rest, vagterne. **Tænd scheduler + entry-generator kun på ejer-GO, sidst.**
+> **🎯 Next action:** **#4236** — roden. Prompt: **`sessions/2026-08-26-samlet-workflow-session-prompt.md`** (S3 + forum, erstatter de tre tidligere). Tag evt. **#4123** først, så du kan SE hvad fixet flytter. Derefter #4183+#4233 (ét bug), #4200's rest, vagterne (**#4232 larmer nu** — drift-vagten crasher hver dag til 28/8). **Tænd scheduler + entry-generator kun på ejer-GO, sidst.**
 
 > **📅 S3 UDSKUDT TIL FREDAG 28/8** (#4218, ejer-direktiv 25/8): 28/8 → søn 27/9, **31 løbsdage, løb hver dag i alle fire divisioner**, kalenderen genereret forfra (531 løb, 22 nye tilføjet). Målt i prod: sæson 3 = `active`, 0 løbsdage kørt. **`stage_scheduler_enabled` og `auto_entry_generator_enabled` står `off`.** Alle spillere udtager forfra.
 
@@ -16,7 +16,7 @@
 
 > **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8 (clawback + frys + auth-ban). **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
 
-> **📣 Forum-sporet (parallelt, deler ingen filer med S3):** L1 (#4238), dashboard-kort (#4249) og opbakning + citér-svar (#4250) er merged+live — reactions-migrationen er kørt og `schema-columns-ok`-undtagelsen fjernet. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235).
+> **📣 Forum-sporet (parallelt, deler ingen filer med S3):** L1 (#4238), dashboard-kort (#4249) og opbakning + citér-svar (#4250) er merged+live — reactions-migrationen er kørt og `schema-columns-ok`-undtagelsen fjernet. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). **#4238 gav en regression** (#4244): forum-abonnementet glemte `return channel`, 18 spillere ramt — fikset+live 15:41, forward-guard i kernen så kaldstil ikke kan bryde kontrakten igen.
 
 ## Standing context (forever-relaunch)
 
