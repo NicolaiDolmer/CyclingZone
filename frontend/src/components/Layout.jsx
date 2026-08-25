@@ -618,7 +618,7 @@ export default function Layout() {
         const hasUnread = await fetchForumUnread(h);
         if (hasUnread != null) setForumUnread(hasUnread);
       };
-      channel
+      return channel
         .on("postgres_changes", { event: "*", schema: "public", table: "forum_posts" }, refetch)
         .on("postgres_changes", { event: "*", schema: "public", table: "forum_replies" }, refetch);
     });

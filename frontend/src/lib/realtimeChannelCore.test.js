@@ -149,3 +149,23 @@ test("#4010 unmount før token'et er hentet abonnerer ikke bagefter", async () =
   assert.deepEqual(client.calls.channels, []);
   assert.deepEqual(client.calls.subscribed, []);
 });
+
+test("#4244 configure uden return abonnerer stadig - ingen undefined.subscribe()", async () => {
+  // Regressionen fra #4238: forum-abonnementets callback havde blok-body og
+  // glemte `return channel`. `configure(...)` gav undefined, og
+  // `undefined.subscribe()` kastede en unhandled rejection ved hver mount —
+  // 8 spillere ramt på 12 minutter i prod 25/8 (Sentry CYCLINGZONE-4X).
+  const client = makeClient({ session: { access_token: JWT } });
+  const teardown = subscribeAuthedChannelWith(client, "forgot-return", (ch) => {
+    ch.on("postgres_changes", { table: "forum_posts" }, () => {});
+    // intet return — præcis kaldstilen fra Layout.jsx
+  });
+  await teardown.armed;
+
+  assert.deepEqual(client.calls.subscribed, ["forgot-return"], "kanalen skal abonneres alligevel");
+  assert.equal(client.calls.channels[0].handlers.length, 1, "handleren skal stadig sidde på");
+
+  // Og cleanup skal kunne rive netop den kanal ned igen.
+  teardown();
+  assert.deepEqual(client.calls.removed, ["forgot-return"]);
+});
