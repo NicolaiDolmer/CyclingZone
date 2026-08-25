@@ -201,12 +201,26 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     racesByPool.get(key).push(r);
   }
 
-  // 5. Egnede hold: ikke test-konto, ikke frosset. Grupper pr. pulje.
+  // 5. Egnede hold: ikke test-konto, ikke frosset, INGEN ejer. Grupper pr. pulje.
+  //
+  // #4214 (ejer-direktiv 25/8): den proaktive sweep må ALDRIG udtage på en spillers vegne.
+  // Tre spillere rapporterede 24/8 at deres ryddede trupper blev fyldt igen (#4200), og
+  // arongreve/thelamba brugte over en time på planer sweepen overskrev. Ejeren 25/8:
+  // "Vil du være sød at lade være med hele tiden at lave nye udtagelser på vegne af
+  // spillerne? ... De vil hellere selv udtage." Clear-markeringen (#2599) var det forkerte
+  // sted at løse det — den forudsætter at spilleren FØRST rydder og bekræfter, og en enkelt
+  // tabt markering giver hele oplevelsen tilbage. Grænsen går ved ejerskab i stedet: har
+  // holdet en bruger, rører sweepen det ikke.
+  //
+  // AI-hold (user_id is null) fyldes fortsat — uden dem starter deres løb tomme.
+  // Spillerens EGEN auto-fill-knap er upåvirket: den går gennem selectionAutoFill.js, som
+  // kalder assignTeamAcrossRaces direkte og aldrig denne funktion. Assistenten er dermed
+  // pull, ikke push (#4201).
   const { data: allTeams, error: teamErr } = await supabase
-    .from("teams").select("id, is_test_account, is_frozen, league_division_id")
+    .from("teams").select("id, is_test_account, is_frozen, league_division_id, user_id")
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
-  const eligibleTeams = (allTeams || []).filter((t) => !t.is_frozen);
+  const eligibleTeams = (allTeams || []).filter((t) => !t.is_frozen && !t.user_id);
   const teamsByPool = new Map();
   for (const t of eligibleTeams) {
     const key = t.league_division_id ?? null;
