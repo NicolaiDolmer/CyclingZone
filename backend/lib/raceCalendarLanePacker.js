@@ -971,87 +971,101 @@ function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, 
   const placementsById = new Map();
   const ensure = (race, type, stages) => { if (!placementsById.has(race.id)) placementsById.set(race.id, { id: race.id, type, race_class: race.race_class ?? null, stages, startRealDay: Infinity, stagesPlaced: [] }); return placementsById.get(race.id); };
 
-  // B2 (#4075): monumenter får en NORMAL, EKSKLUSIV game_day skudt ind i tierens sekvens.
-  // Pas 1 fordeler slots (monument eller næste event) og noterer hvert monuments indskuds-
-  // tærskel: (højeste game_day set i tidligere slots) + 1 — dvs. monumentet lander
-  // kronologisk mellem løbsdagen før og løbsdagen efter sit slot. Pas 2 omnummererer:
-  // monument nr. i (0-indekseret, i slot-orden) får game_day tærskel_i + i, og et normalt
-  // event med game_day g forskydes til g + antal(tærskler ≤ g). Ingen event deler dermed
-  // game_day med et monument (eksklusiv løbsdag: alle ryttere kan stille op), mens events
-  // der deler game_day indbyrdes (overlap-designet) bliver ved med det.
+  // #4236 (ejer-beslutning 25/8): monumentet DELER loebsdag i stedet for at faa sin egen.
+  //
+  // B2 (#4075, 21/8) gav monumentet en EKSKLUSIV game_day skudt ind i sekvensen, saa ingen
+  // rytter var bundet andetsteds og alle kunne stille op. Indskuddet forskoed alle senere
+  // events, og ramte taerskelen midt i et igangvaerende etapeloeb, rev det hul i loebets
+  // loebsdage: Tour du Hedjaz fik 9,10,11,13,14. To monumenter ramte fem D1-etapeloeb.
+  //
+  // Ejer-reglen 25/8: "hvis et loeb har fire etaper, skal loebsdagene ligge i traek.
+  // Ligesom i virkeligheden." Den slaar eksklusiviteten, og det koster ingenting, fordi
+  // eksklusiviteten holdt op med at virke da #4217 gjorde bindingen spaend-baseret 24 timer
+  // foer: rytteren er bundet HELE etapeloebets spaend, ogsaa henover monumentets loebsdag.
+  // Maalt mod prod: 0 delte ryttere i alle 9 monument/etapeloeb-kombinationer. Gevinsten var
+  // vaek, hullerne blev betalt alligevel.
+  //
+  // Monumentet beholder sit SLOT (og dermed sin kalenderdato og sin spredning over saesonen);
+  // kun den eksklusive loebsdag falder bort. Det faar en EKSISTERENDE loebsdag paa sin egen
+  // kalenderdato, saa der hverken indskydes et nyt tal (ingen huller) eller spaendes over to
+  // datoer (#4236). Blandt dagens loebsdage vaelges den mindst belastede, og kun en med plads
+  // under overlap-cap'en - saa monumentet aldrig selv braender cap'en.
   const slotAssignments = [];
-  const monumentThresholds = [];
-  let ei = 0, maxSeen = -1;
+  let ei = 0;
   for (let slot = 0; slot < totalSlots; slot++) {
-    if (monSlot.has(slot)) {
-      monumentThresholds.push(maxSeen + 1);
-      slotAssignments.push({ monument: monSlot.get(slot), slot });
-      continue;
-    }
-    if (ei < events.length) {
-      const ev = events[ei++];
-      if (ev.game_day > maxSeen) maxSeen = ev.game_day;
-      slotAssignments.push({ event: ev, slot });
-    }
+    if (monSlot.has(slot)) { slotAssignments.push({ monument: monSlot.get(slot), slot }); continue; }
+    if (ei < events.length) slotAssignments.push({ event: events[ei++], slot });
   }
-  const shiftFor = (g) => { let n = 0; for (const t of monumentThresholds) { if (t <= g) n++; else break; } return n; };
-  let monIdx = 0;
+
+  // Pas 1: de almindelige events. game_day baeres uaendret med - ingen forskydning.
   for (const a of slotAssignments) {
+    if (a.monument) continue;
     const real_day = Math.floor(a.slot / D), lane = a.slot % D;
-    if (a.monument) {
-      const p = ensure(a.monument, "single", 1);
-      p.stagesPlaced.push({ stage_number: 1, real_day, game_day: monumentThresholds[monIdx] + monIdx, lane });
-      p.startRealDay = Math.min(p.startRealDay, real_day);
-      monIdx++;
-      continue;
-    }
     const p = ensure(a.event.race, a.event.type, lenOf(a.event.race));
-    p.stagesPlaced.push({ stage_number: a.event.stage_number, real_day, game_day: a.event.game_day + shiftFor(a.event.game_day), lane });
+    p.stagesPlaced.push({ stage_number: a.event.stage_number, real_day, game_day: a.event.game_day, lane });
     p.startRealDay = Math.min(p.startRealDay, real_day);
   }
-  const placements = [...placementsById.values()];
-  for (const p of placements) p.stagesPlaced.sort((a, b) => a.stage_number - b.stage_number);
-  return { placements, timelineLength: timelineLength + monumentThresholds.length, gtRestDayReport };
-}
 
-// #4236 (ejer-afgjort 25/8): en løbsdag hoerer til PRAECIS een kalenderdato.
-//
-// Rod-aarsagen er at de to akser tildeles uafhaengigt: `real_day` udledes af slot-positionen
-// (`Math.floor(slot / D)`), mens `game_day` baeres med fra eventet. Intet bandt dem, saa en
-// loebsdag kunne straekke sig over op til 12 kalenderdage. Bindingen er pr. loebsdag, og
-// dermed laaste et etapeloeb der var koert faerdigt fem dage foer feltet i et endagsloeb:
-// fire D1-endagsloeb stod med 16-33 ryttere mod 101-128 for sammenlignelige loeb.
-//
-// Normaliseringen er BEVIDST en slut-pass i stedet for en aendring inde i layoutStream:
-// stream-lagets game_day-tildeling baerer GT-separation, monument-taerskler og overlap-
-// designet, og at roere den ville saette tre laaste invarianter paa spil for at rette en
-// fjerde. Her omnummereres kun - og for BEGGE layouts, saa invarianten er strukturelt
-// garanteret i stedet for at afhaenge af hvilken gren der blev valgt.
-//
-// Sikkert fordi omnummereringen bevarer raekkefoelgen: (real_day, game_day) er ikke-aftagende
-// langs et loebs etaper, saa sortering paa det par bevarer kronologien pr. loeb. Loeb der
-// deler loebsdag PAA SAMME dato deler den fortsat (overlap-designet er uroert); dem der kun
-// delte den paa tvaers af datoer splittes, saa overlappet kan kun FALDE. Det er den modsatte
-// fejlklasse af `game_day := dato - startdato`, som blev afvist i #4155 og #4158 netop fordi
-// den fladede aksen ud og broed TIER_OVERLAP_CAP i alle fire divisioner.
-//
-// Returnerer den nye timelineLength (antal distinkte loebsdage). Den kan vaere hoejere end
-// foer, fordi hver splittet loebsdag bliver til to.
-function bindGameDaysToDates(placements) {
-  const seen = new Set();
-  for (const p of placements) for (const st of p.stagesPlaced) seen.add(`${st.real_day}|${st.game_day}`);
-
-  const ordered = [...seen]
-    .map((key) => key.split("|").map(Number))
-    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-
-  const remap = new Map();
-  ordered.forEach(([real_day, game_day], i) => remap.set(`${real_day}|${game_day}`, i));
-
-  for (const p of placements) {
-    for (const st of p.stagesPlaced) st.game_day = remap.get(`${st.real_day}|${st.game_day}`);
+  // To opslag, og forskellen er vigtig: kandidaterne skal ligge paa monumentets EGEN
+  // kalenderdato (ellers spaender loebsdagen over to datoer), men cap'en taeller loeb pr.
+  // LOEBSDAG paa tvaers af hele puljen. Talte man kun pr. dato, ville en loebsdag der i
+  // forvejen straekker sig over flere datoer se ledig ud og cap'en braende.
+  const gameDaysOnDate = new Map(); // real_day -> Set(game_day)
+  const raceCountByGameDay = new Map(); // game_day -> Set(race_id)
+  for (const p of placementsById.values()) {
+    for (const st of p.stagesPlaced) {
+      if (!gameDaysOnDate.has(st.real_day)) gameDaysOnDate.set(st.real_day, new Set());
+      gameDaysOnDate.get(st.real_day).add(st.game_day);
+      if (!raceCountByGameDay.has(st.game_day)) raceCountByGameDay.set(st.game_day, new Set());
+      raceCountByGameDay.get(st.game_day).add(p.id);
+    }
   }
-  return ordered.length;
+
+  // Pas 2: monumenterne. Mindst belastede loebsdag paa dagen, med plads under cap'en.
+  //
+  // Raekkefoelgen er MEST BEGRAENSEDE FOERST (faerrest ledige loebsdage paa sin dato), ikke
+  // slot-orden. Slot-orden koerte sig fast: et tidligt monument tog den sidste ledige plads
+  // paa en dato et senere monument var noedt til at bruge, og fallbacken maatte saa indskyde
+  // en ny loebsdag - hvilket river hul praecis som B2 gjorde. Med mest-begraenset-foerst
+  // rammer fallbacken ikke i den nuvaerende kalender.
+  const monumentSlots = slotAssignments.filter((a) => a.monument).sort((a, b) => {
+    const ledige = (x) => [...(gameDaysOnDate.get(Math.floor(x.slot / D)) ?? [])]
+      .filter((g) => (raceCountByGameDay.get(g)?.size ?? 0) < cap).length;
+    return ledige(a) - ledige(b) || a.slot - b.slot;
+  });
+  for (const a of monumentSlots) {
+    const real_day = Math.floor(a.slot / D), lane = a.slot % D;
+    const kandidater = [...(gameDaysOnDate.get(real_day) ?? [])]
+      .sort((x, y) => (raceCountByGameDay.get(x)?.size ?? 0) - (raceCountByGameDay.get(y)?.size ?? 0) || x - y);
+    let valgt = kandidater.find((g) => (raceCountByGameDay.get(g)?.size ?? 0) < cap) ?? null;
+
+    // Ingen loebsdag paa dagen med plads under cap'en: giv monumentet sin egen, indskudt
+    // EFTER dagens hoejeste. Et indskud i enden forskyder ingen og river derfor ikke hul
+    // i et igangvaerende etapeloeb - i modsaetning til B2's indskud midt i sekvensen.
+    if (valgt == null) valgt = kandidater.length ? Math.max(...kandidater) + 0.5 : 0;
+
+    const p = ensure(a.monument, "single", 1);
+    p.stagesPlaced.push({ stage_number: 1, real_day, game_day: valgt, lane });
+    p.startRealDay = Math.min(p.startRealDay, real_day);
+    if (!gameDaysOnDate.has(real_day)) gameDaysOnDate.set(real_day, new Set());
+    gameDaysOnDate.get(real_day).add(valgt);
+    if (!raceCountByGameDay.has(valgt)) raceCountByGameDay.set(valgt, new Set());
+    raceCountByGameDay.get(valgt).add(p.id);
+  }
+
+  const placements = [...placementsById.values()];
+
+  // De halve loebsdage fra fallback-grenen ovenfor normaliseres til heltal. Rangordenen
+  // bevares, saa kronologien er uroert; kun nummereringen bliver hel igen.
+  const alle = [...new Set(placements.flatMap((p) => p.stagesPlaced.map((s) => s.game_day)))].sort((x, y) => x - y);
+  if (alle.some((g) => !Number.isInteger(g))) {
+    const remap = new Map(alle.map((g, i) => [g, i]));
+    for (const p of placements) for (const st of p.stagesPlaced) st.game_day = remap.get(st.game_day);
+  }
+
+  for (const p of placements) p.stagesPlaced.sort((a, b) => a.stage_number - b.stage_number);
+  const distinkte = new Set(placements.flatMap((p) => p.stagesPlaced.map((s) => s.game_day))).size;
+  return { placements, timelineLength: Math.max(timelineLength, distinkte), gtRestDayReport };
 }
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
@@ -1171,10 +1185,7 @@ export function packLaneCalendar({
   if (!res) { layoutMode = "stream"; res = layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }); }
 
   const placements = res.placements;
-  // #4236: bind de to akser FOER diagnostikken, saa straddleGameDays maaler den kalender
-  // der faktisk skrives - ikke den mellemtilstand layoutet efterlod.
-  const timelineLength = bindGameDaysToDates(placements);
-  const diag = diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMinStages);
+  const diag = diagnose(placements, days, D, cap, res.timelineLength, layoutMode, spineMinStages);
 
   const placedIds = new Set(placements.map((p) => p.id));
   return {

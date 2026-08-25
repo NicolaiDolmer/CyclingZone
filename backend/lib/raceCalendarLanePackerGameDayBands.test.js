@@ -116,3 +116,71 @@ test("#4236: aksen må ikke flades ud til én løbsdag pr. kalenderdag", () => {
     `D1: ${gameDays.size} løbsdage over ${dates.size} kalenderdage — aksen ser kollapset ud`
   );
 });
+
+// ── Ejer-regel 25/8: kronologi ────────────────────────────────────────────────
+// Ordret: "hvis et løb har fire etaper, skal løbsdagene jo ligge i træk. Ligesom i
+// virkeligheden. Løbsdag 4-5-6-7 f.eks. Det er ikke muligt at et løb på 4 dage har
+// løbsdagenumrene 3-5-7-12."
+//
+// Målt mod prod 25/8 er reglen brudt i 8 D1-løb og NUL løb i D2/D3/D4 (200 flerdags-løb).
+// Årsagen er monument-indskuddet: et monument fik sin egen eksklusive løbsdag skudt ind
+// midt i et igangværende etapeløb, hvilket rev et hul i dets løbsdage. To monumenter
+// (løbsdag 12 og 26) ramte fem etapeløb.
+//
+// Eksklusiviteten er samtidig holdt op med at levere: spænd-bindingen fra #4217 binder
+// rytteren hele etapeløbets spænd, ogsaa henover monumentets løbsdag. Målt i prod: 0 af
+// 9 monument/etapeløb-kombinationer havde en eneste delt rytter. Gevinsten var væk,
+// prisen blev betalt. Ejer-beslutning 25/8: kronologien vinder.
+
+test("#4236: et løbs løbsdage ligger i træk — ingen huller", () => {
+  const { tierPlans } = planFromFixture();
+  const brud = [];
+  for (const plan of tierPlans) {
+    for (const pool of plan.pools ?? []) {
+      const navn = new Map((pool.raceRows ?? []).map((r) => [r.pool_race_id, r.name]));
+      const byRace = new Map();
+      for (const s of pool.stageRows ?? []) {
+        if (!byRace.has(s.pool_race_id)) byRace.set(s.pool_race_id, []);
+        byRace.get(s.pool_race_id).push(s);
+      }
+      for (const [id, ss] of byRace) {
+        if (ss.length < 2) continue;
+        const gd = [...new Set(ss.map((s) => s.game_day))].sort((a, b) => a - b);
+        const hul = gd[gd.length - 1] - gd[0] + 1 - gd.length;
+        // GT-hviledage (#3470) er lovlige huller: rytteren er bundet henover dem, praecis
+        // som i virkeligheden. De identificeres paa etapetal >= spineMinStages (15).
+        const erGt = ss.length >= 15;
+        if (hul > 0 && !erGt) {
+          brud.push(`tier ${plan.tier}: ${navn.get(id)} (${ss.length} etaper) → løbsdag ${gd.join(",")}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(brud, [], `${brud.length} løb med hul i løbsdagene:\n  ${brud.slice(0, 8).join("\n  ")}`);
+});
+
+test("#4236: et monument deler løbsdag frem for at rive hul i et etapeløb", () => {
+  // Konsekvensen af ejer-beslutningen, gjort eksplicit: monumentet har ikke laengere
+  // sin egen eksklusive loebsdag. Testen sikrer at fjernelsen faktisk skete - ellers
+  // ville kronologi-testen ovenfor kunne blive groen ved at flytte monumenterne ud af
+  // saesonen i stedet, hvilket ikke er meningen.
+  const { tierPlans } = planFromFixture();
+  const t1 = tierPlans.find((p) => p.tier === 1);
+  const pool = (t1.pools ?? [])[0];
+  const monIds = new Set((pool.raceRows ?? []).filter((r) => r.race_class === "Monuments").map((r) => r.pool_race_id));
+  assert.ok(monIds.size > 0, "fixturen skal have monumenter i D1, ellers tester vi ingenting");
+
+  const byGameDay = new Map();
+  for (const s of pool.stageRows ?? []) {
+    if (!byGameDay.has(s.game_day)) byGameDay.set(s.game_day, new Set());
+    byGameDay.get(s.game_day).add(s.pool_race_id);
+  }
+  const alene = [...monIds].filter((id) => {
+    const gd = (pool.stageRows ?? []).find((s) => s.pool_race_id === id)?.game_day;
+    return byGameDay.get(gd)?.size === 1;
+  });
+  assert.ok(
+    alene.length < monIds.size,
+    `alle ${monIds.size} monumenter har stadig loebsdagen for sig selv - eksklusiviteten er ikke fjernet`
+  );
+});
