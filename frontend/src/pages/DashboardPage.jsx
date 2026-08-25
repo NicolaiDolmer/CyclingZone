@@ -21,6 +21,10 @@ import { formatCountdown } from "../lib/stageScheduleConfig.js";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
+// Forum-synlighed (#3199, variant B): kompakt to-rækkers "From the forum"-
+// kort. Selv-hentende komponentfil (ingen props), samme isolations-princip
+// som HeroAgonyCard/TodayStagesStrip nedenfor — se komponentfilens kommentar.
+import ForumHighlightsCard from "../components/ForumHighlightsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
 // #3397 (epic #3395 bølge 1): Hero & Agony moment-kort. Selv-hentende
@@ -1070,6 +1074,14 @@ export default function DashboardPage() {
           boardPlanMissing={boardPlanMissing}
         />
       )}
+
+      {/* Forum-synlighed (#3199, variant B) — "From the forum". Placeret så højt
+          som muligt UDEN at komme foran spil-kritiske moduler: efter dagens
+          etaper, første-løbs-øjeblik, sæson-bannere og Næste træk, men FØR
+          advarsler/forecast/nedenstående kort. Almindeligt Card, ikke en CTA —
+          tager IKKE viewets guld-knap og tæller ikke i nudge-banner-reglen
+          (se ForumHighlightsCard-kommentaren). Valgfri via customize (#1005). */}
+      {isVisible("forumHighlights") && <ForumHighlightsCard />}
 
       {/* Squad warning */}
       {squadWarning && (

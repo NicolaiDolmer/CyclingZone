@@ -81,6 +81,14 @@
       "port": 4180
     },
     {
+      "name": "forum-synlighed-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "port": 5210,
+      "autoPort": true,
+      "env": { "VITE_PREVIEW_MOCK": "1" }
+    },
+    {
       "name": "brand",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "serve", "-l", "4173", "docs/brand"],
