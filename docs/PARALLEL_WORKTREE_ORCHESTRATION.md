@@ -131,6 +131,55 @@ Derefter:
 - Force-delete local branches (squash-merge artifact): `git branch -D <branch> <branch> <branch>`
 - Remote branches auto-slettes typisk af GitHub merge-settings
 
+## Fire spoergsmaal FOER spawn (#4250, 25/8)
+
+Besvar alle fire, foer prompten skrives. Kan et af dem ikke besvares, er opgaven ikke klar til en worker. Reglerne fandtes som erfaring i forvejen den 25/8 og blev brudt alligevel, fordi de kun laa i orkestratorens hukommelse mens prompten blev skrevet fra bunden.
+
+### 1. Verifikationsniveau - hvem ejer e2e-slottet?
+
+Kun **een** worker ad gangen maa koere fuld `npm run test:e2e`. Den tager ~23 min, og to samtidige suiter paa samme maskine sulter hinanden.
+
+| Niveau | Hvornaar | Worker koerer |
+|---|---|---|
+| `TARGETED` (default) | smaa UI-diffs, isolerede frontend-aendringer | `node scripts/verify-affected.mjs` + `npm run lint` + frontend `node --test` |
+| `FULL` | backend, delte lib-hooks, i18n, config, >6 filer | alt ovenstaaende + hele e2e-suiten |
+
+Vaelger du `FULL` til mere end een samtidig worker, har du lavet fejlen fra 25/8. CI baerer altid fuld suite; orkestratoren koerer den een gang foer merge.
+
+### 2. Filkonflikt-kort - hvem roerer hvad?
+
+List de filer hver aktiv branch roerer. Ved overlap: enten **sekventielt** (den ene venter), eller **eksplicit ejerskab** (prompten navngiver hvem der ejer filen, og hvad den anden ikke maa roere). Naevn altid hvilke PR'er der er undervejs i samme filer.
+
+Filer der naesten altid konflikter: `frontend/src/data/patchNotes.js`, i18n-namespaces, `Layout.jsx`, `docs/NOW.md`.
+
+### 3. Kadence - og retten til at committe rod
+
+Prompten SKAL sige: commit efter hvert delfix, push mindst hvert 30. minut, **ogsaa ufaerdigt arbejde**. En `wip(...)`-commit er uendeligt meget bedre end ucommitted arbejde; commit gerne foer testene er koert.
+
+Den sidste saetning er ikke pynt. Den 25/8 stod en worker med 190 linjers faerdigt arbejde ucommitted, fordi den ventede paa at vaere "faerdig nok" til en paen commit.
+
+### 4. Hvad maa worker IKKE roere?
+
+Se "DU MAA IKKE"-listen i template'en nedenfor, og udvid den pr. opgave med filer ejet af en parallel PR.
+
+## Under koersel
+
+```
+pwsh -File scripts/worker-status.ps1
+```
+
+Eet kald viser alle worktrees: minutter siden sidste commit, **antal ucommitted filer**, upushede commits, aaben PR. Koer den hver gang du alligevel tjekker ind - den fanger den farlige tilstand (ucommitted arbejde), som en tavs worker ikke selv rapporterer.
+
+Eskalering: 30 min uden push -> krav om status og oejeblikkeligt push. Yderligere 15 min -> `TaskStop`, red arbejdet med en `wip`-commit, overtag selv.
+
+## Foer du melder faerdig
+
+Spoerg eksplicit: **hvad daekker denne verifikation ikke?**
+
+Den 25/8 blev en PR meldt faerdig med fem groenne kommandoer (7.149 backend-tests, 2.342 frontend-tests, 561 e2e, lint, preflight). Alle sande. Alle blinde for en `TypeError` der ramte hver eneste mount, fordi ingen test lytter paa `pageerror` (#4248). Antal groenne checks er ikke det samme som daekning.
+
+Tilfoejer opgaven en effekt - abonnement, interval, timer - saa navngiv den test der ville fange at effekten kaster. Findes den ikke, er den en del af opgaven. Postmortem: `.claude/learnings/2026-08-25-forum-unread-abonnement-brak-hver-mount.md`
+
 ## Sub-agent prompt template
 
 Hver subagent prompt skal være self-contained (ingen kontekst fra master-samtalen). Brug denne struktur:
@@ -152,8 +201,14 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 # Workflow
 1-5. <step-by-step>
 
-# Verify
+# Verify — niveau: <TARGETED | FULL>   (kun EEN worker maa have FULL)
 - <kommandoer der SKAL være grønne før commit>
+- TARGETED: `node scripts/verify-affected.mjs` + `npm run lint` + frontend `node --test`
+- FULL: ovenstaaende + `npm run test:e2e` (alle 3 projekter)
+
+# Kadence
+- Commit efter hvert delfix. Push mindst hvert 30. minut — OGSAA ufaerdigt arbejde (`wip(...)`).
+- Ucommitted arbejde kan gaa tabt. En grim commit slaar ingen commit.
 
 # Rebase + commit + push + PR
 1. `git fetch origin && git rebase origin/main`
