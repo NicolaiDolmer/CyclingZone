@@ -1,4 +1,4 @@
--- database/2026-08-25-4118-forum-thread-reads.sql
+-- database/2026-08-25-3451-forum-thread-reads.sql
 -- #4118/#3451 · Forum L1 "puls": pr.-tråd ulæst-tilstand + gul prik i nav.
 --
 -- Problem: forummet (#3199, live 6/8) har intet aktivitetssignal — 12 opslag/
