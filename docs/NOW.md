@@ -16,7 +16,7 @@
 
 > **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8 (clawback + frys + auth-ban). **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
 
-> **📣 Forum-sporet (parallelt, deler ingen filer med S3):** L1 merged+live (#4238). **#4249** dashboard-kort + layout-omlægning og **#4250** opbakning + citér-svar er MERGEABLE og afventer **ejerens visuelle go**. Efter #4250: kør `2026-08-25-3517-forum-reactions.sql` + fjern `schema-columns-ok` i `forum.js`. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235).
+> **📣 Forum-sporet (parallelt, deler ingen filer med S3):** L1 (#4238), dashboard-kort (#4249) og opbakning + citér-svar (#4250) er merged+live — reactions-migrationen er kørt og `schema-columns-ok`-undtagelsen fjernet. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235).
 
 ## Standing context (forever-relaunch)
 
