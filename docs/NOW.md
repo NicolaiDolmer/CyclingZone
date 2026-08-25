@@ -8,6 +8,8 @@
 
 > **🤖 Ingen aktiv session.**
 
+> **📥 Afventer dit review (2 PR'er, ingen af dem aftalt paa forhaand):** [#4237](https://github.com/NicolaiDolmer/CyclingZone/pull/4237) udvider klokke-drift-detektoren til ogsaa at daekke backend (hard rule 16 var kun haandhaevet paa frontend, og det er derfor #4222 naaede main). [#4242](https://github.com/NicolaiDolmer/CyclingZone/pull/4242) goer preflight-reglen mekanisk med en warning-hook ved push. Begge groenne, ingen prod-impact. Rest: [#4239](https://github.com/NicolaiDolmer/CyclingZone/issues/4239) fire kalender-dev-scripts kaster fra 25/8, [#4240](https://github.com/NicolaiDolmer/CyclingZone/issues/4240) em-dash-reglens scope (ejer-beslutning).
+
 > **🚨 HÆNDELSE 25/8 — fire timer uden aktiv sæson ([#4229](https://github.com/NicolaiDolmer/CyclingZone/issues/4229)):** kalender-regenereringen kræver `status='upcoming'`, sæson 3 blev sat tilbage kl. ~07:30 og aldrig sat til `active` igen. Alder, rangliste, daglig træning og akademi-flytning lå nede for ALLE spillere. Tre spillere meldte det inden for halvanden time; nattevagten ville have rapporteret grønt, fordi alle fire kalender-invarianter svarer *"ingen aktiv sæson at kontrollere"*. **Genoprettet kl. 11:49** (ejer-go): standings bootstrappet 0→362, status→active. `processSeasonStart` blev bevidst IKKE kørt igen — den har ingen idempotens-spærre og var allerede kørt 23/8. Postmortem: `.claude/learnings/2026-08-25-interregnum-ingen-aktiv-saeson.md`.
 
 > **⚠️ Prod-tilstand 25/8:** sæson 3 **aktiv**, start_date 28/8, 0 løbsdage kørt. `stage_scheduler_enabled` + `auto_entry_generator_enabled` = **off**. Spænd-binding kørt: 7 auto-udtagelser ryddet (0 manuelle), 20 dag-rækker backfillet, **0 dobbeltbookinger**. Backup: `backup_4227_seasons_2026_08_25`.
