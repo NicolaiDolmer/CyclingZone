@@ -66,6 +66,7 @@
     "title": "Rytterrangliste",
     "season": "Sæson {n}",
     "noActiveSeason": "Ingen aktiv sæson",
+    "completedSeasonNote": "· Afsluttet sæson. Den nye sæson er ikke gået i gang endnu.",
     "ridersCount": "{count} ryttere",
     "filterIndicator": "Viser Division {division}",
     "divisionFilterLabel": "Filtrér efter division",

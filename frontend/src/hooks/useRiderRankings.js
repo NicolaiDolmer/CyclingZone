@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
+import { pickResultsSeason } from "../lib/seasonReference.js";
 
 // Rytter-rangliste for den aktive sæson (#2175). Erstatter den gamle client-agg
 // der hentede ALLE ~38k race_results til browseren og aggregerede der (én fejlet
@@ -29,9 +30,21 @@ export function useRiderRankings() {
     setLoading(true);
     setError(null);
     try {
-      const { data: seasonData, error: seasonErr } = await supabase
-        .from("seasons").select("*").eq("status", "active").single();
+      // #4225: hentede før med `.eq("status","active").single()`. Mellem to
+      // sæsoner findes ingen aktiv række — prod 25/8 havde S1+S2 completed og S3
+      // upcoming — så `.single()` gav PGRST116 på nul rækker, fejlen blev
+      // re-thrown, og HELE ranglisten lå i sin fejltilstand for spillerne.
+      // Verificeret mod prod med anon-nøglen: "PGRST116 — Cannot coerce the
+      // result to a single JSON object".
+      //
+      // Ranglisten viser RESULTATER, så den bruger `pickResultsSeason` og ikke
+      // alders-variantens `pickReferenceSeason` (#4223): en kommende sæson har
+      // nul løbsdage, og at pege frem ville give en tom side. Ejer-beslutning
+      // 25/8: vis sidste afsluttede sæson, tydeligt mærket (se `isStale`).
+      const { data: seasonRows, error: seasonErr } = await supabase
+        .from("seasons").select("*").gt("number", 0);
       if (seasonErr) throw seasonErr;
+      const seasonData = pickResultsSeason(seasonRows);
       setSeason(seasonData);
       if (!seasonData) { setRiders([]); return; }
 
@@ -95,5 +108,10 @@ export function useRiderRankings() {
 
   useEffect(() => { load(); }, [load]);
 
-  return { riders, season, loading, error, reload: load };
+  // #4225: sand når den viste sæson ikke er den aktive — altså mellem to
+  // sæsoner. Fladen SKAL sætte en etiket på, så ingen tror de ser på den
+  // igangværende sæson. `season === null` er ikke stale, det er "ingen data".
+  const isStale = Boolean(season) && season.status !== "active";
+
+  return { riders, season, isStale, loading, error, reload: load };
 }

@@ -6,7 +6,8 @@ import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
-import { ageBadgeKey, seasonReferenceYear } from "../lib/riderAge";
+import { ageBadgeKey } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { formatNumber } from "../lib/intl";
 import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
@@ -114,10 +115,14 @@ export default function RiderRankingsPage() {
   // #2175: rangliste-data (sæson + færdig-aggregerede rytter-stats) kommer fra
   // useRiderRankings — ÉN let query mod rider_rankings_mv + display-join i stedet
   // for den gamle client-agg over ~38k race_results. error → fejl-UI, ikke spinner.
-  const { riders, season, loading, error, reload } = useRiderRankings();
-  // #3071: genbruger allerede-hentet aktiv sæson (useRiderRankings) frem for at
-  // fetche den igen — samme referenceårs-formel som riderAge.js's øvrige kaldere.
-  const seasonYear = seasonReferenceYear(season?.number);
+  const { riders, season, isStale, loading, error, reload } = useRiderRankings();
+  // #3071 → #4225: alderen må IKKE længere udledes af ranglistens sæson. De to
+  // faldt sammen så længe ranglisten altid viste den aktive sæson, men #4225 lader
+  // den vise sidste AFSLUTTEDE sæson i mellemrummet mellem to sæsoner. Gjorde vi
+  // stadig `seasonReferenceYear(season.number)`, ville en rytter stå som 29 her og
+  // 30 på Mit Hold samtidig — præcis den divergens #3071 blev åbnet for at lukke.
+  // Alderen kommer derfor fra den delte kilde, ligesom alle andre flader.
+  const seasonYear = useActiveSeasonYear();
   const [sortKey, setSortKey] = useState("points");
   const [sortAsc, setSortAsc] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState("all");
@@ -365,6 +370,12 @@ export default function RiderRankingsPage() {
         {season
           ? `${t("rankings.season", { n: season.number })}${filtered.length > 0 ? ` · ${t("rankings.ridersCount", { count: filtered.length })}` : ""}`
           : t("rankings.noActiveSeason")}
+        {/* #4225 — mellem to sæsoner viser ranglisten sidste AFSLUTTEDE sæson,
+            fordi den kommende har nul løbsdage. Uden denne etiket ville tallene
+            ligne den igangværende sæsons. Ejer-beslutning 25/8. */}
+        {isStale && (
+          <span className="ms-2 text-cz-3">{t("rankings.completedSeasonNote")}</span>
+        )}
         {/* #3507 — tydelig filter-indikator når man er landet her via
             dashboardets division-scopede "Fuld rangliste →"-link (eller har
             valgt en division manuelt), så det er soleklart at listen IKKE er
