@@ -17,7 +17,7 @@
 - **Liga:** 4-divisions-pyramide 1/2/4/8; S3: D1 = top 24 rigtige hold. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
 - **S3:** 28/8 (fre) → 27/9 (søn), **31 løbsdage**, løb hver kalenderdag i alle divisioner. Alle udtagelser ryddet — alle udtager forfra. Overlap intended; 1 rytter = 1 løb pr. **løbsdag**, og et etapeløb binder **hele spændet**.
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)).
-- **Collab-gate:** `main` kræver ejer-review — men **kun for andres arbejde**. Ejerens egne PR'er merges uden (ejer 25/8).
+- **Collab-gate:** `main` kræver ejer-review — men **kun for andres arbejde**. Ejerens egne PR'er merges uden (ejer 25/8). Script klar: `bash scripts/setup-main-ruleset.sh` (opretter to rulesets + slet klassisk protection manuelt, jf. #4241).
 
 > **📮 Klar til at poste:** `docs/discord/2026-08-25-udkast-saesonstart-udskudt.md` — rettet, ejeren poster selv.
 
