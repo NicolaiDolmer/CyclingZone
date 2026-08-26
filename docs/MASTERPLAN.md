@@ -8,14 +8,13 @@
 
 S3 er udskudt til fre 28/8 → søn 27/9 (#4218). Rækkefølgen er ejer-valgt:
 
-1. 🟠 **#4236 er roden.** Kontiguitets-pakker bygget og grøn: 0 brud i alle fire divisioner, scorecard exit 0, 7167/7168. Rest: PR. **Løser også #4190.** Ejer 26/8: GT = 2 hviledage der OPTAGER løbsdagen · monument-eksklusivitet ophævet · stream+banded slettet.
-2. 🔴 **#4272 shippes SAMMEN med #4236** — bånd for hvordan etaperne slutter (bjerg slutter nedad 59-70 %). Begge kræver regenerering, og den må kun køres ÉN gang. Enkeltstart 10 % i alle divisioner (m. #4220) · D1 brosten 3 % → 6 %.
-3. **Holdudtagelsen:** #4200's anden halvdel (`raceRunner.js:812`). #4201 afgjort. **#4174 afgjort 26/8:** alle hold behandles ens, assistenten 1 t før — virkningsløs i D1 til #4236 er ude.
-4. **Nye spillere kan lande:** #4183 + #4233 = ÉT bug (`aiTeamGenerator.js:403`). D4-A på 25 hold.
-5. **Vagterne:** #4229 · #4215 · #4219 · #4123 · #4211. **#4103 afgjort:** med i #4236's regenerering.
-6. **ÉN regenerering** (#4236 + #4272), dry-run-diff først. Derefter **tænd scheduler + entry-generator** — ejer-GO, sidst.
+1. 🟢 **Kalenderen er bygget:** #4236 + #4272 + #4273 i [PR #4276](https://github.com/NicolaiDolmer/CyclingZone/pull/4276), ejer-godkendt. Backend 7181/7181. Blokeret af [#4280](https://github.com/NicolaiDolmer/CyclingZone/pull/4280) (mobil-overløb, required check) — den merges først.
+2. **Holdudtagelsen:** #4200's anden halvdel (`raceRunner.js:812`). #4174 afgjort 26/8: alle hold ens, assistenten 1 t før.
+3. **Nye spillere kan lande:** #4183 + #4233 = ÉT bug (`aiTeamGenerator.js:403`). D4-A på 25 hold.
+4. **Vagterne:** #4229 · #4215 · #4219 · #4123 · #4211.
+5. **ÉN regenerering**, dry-run-diff først. Derefter **tænd scheduler + entry-generator** — ejer-GO, sidst.
 
-Ny gæld 26/8: **#4273** · **#4274**.
+Ny gæld 26/8: **#4274** · **[#4278](https://github.com/NicolaiDolmer/CyclingZone/issues/4278)** (D4 mest bjergrig, opad 41,9 % mod bånd 25-32 % — arketype-loft, ejer-valg). Katalog-lofter fra #4272: D1 brosten nåede 4,5 % ikke 6 %, D4 enkeltstart 8,1 % ikke 10 % — begge kræver flere løb i kataloget.
 
 **Planning Center med (ejer 25/8):** P0 + UI-gælden + Z1-sæsonmatrixen. Design låst, se `superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md`. Aksen låses først når #4236 er afgjort.
 
