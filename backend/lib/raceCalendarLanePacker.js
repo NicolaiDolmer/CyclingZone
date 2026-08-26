@@ -192,29 +192,37 @@ export function reshapeCobblesFractionToTwoWindows(races, isCobbles, {
 // Loeb med samme etapetal er ombyttelige i selve soegningen, saa der soeges paa ANTAL pr.
 // laengde. Identiteterne paasaettes bagefter i fase-raekkefoelge (seasonFraction), saa et
 // loeb lander samme sted i saesonen som i virkeligheden.
-function solveContiguousStarts({ lengths, D, days, cap, maxSteps = 2000000 }) {
-  const K = Math.ceil(D / cap);
-  const G = K * days;
+function solveContiguousStarts({ lengths, D, days, cap, maxSteps = 4000000 }) {
   if (lengths.reduce((a, b) => a + b, 0) !== D * days) return null;
 
   const byLen = new Map();
   for (const L of lengths) byLen.set(L, (byLen.get(L) ?? 0) + 1);
   const laengder = [...byLen.keys()].sort((a, b) => b - a);
 
+  // Variabel baandstoerrelse. En kalenderdato ejer et SAMMENHAENGENDE baand af loebsdage,
+  // men hvor mange den ejer afgoeres af pakningen - ikke af en fast K. Det er noedvendigt:
+  // med fast K = ceil(D/cap) = 2 kunne en Grand Tour hoejst koere 2 etaper pr. dato, og 18
+  // etaper ville blive til 9 datoer. Tre GT'er plus de kraevede mellemrum kraever da 29
+  // datoer ud af 28. I dag komprimerer en GT til 6 datoer, fordi D1 har ca. 3,1 loebsdage
+  // pr. dato. Datoen er faerdig naar den har praecis D etaper.
   const starts = [];
+  const bandSizes = [];
   let steps = 0;
 
-  const dfs = (g, pulje, aktive, brugtIDato) => {
+  const dfs = (g, dato, iBaand, brugtIDato, pulje, aktive, restStages) => {
     if (++steps > maxSteps) return false;
-    if (g === G) return aktive.size === 0 && [...pulje.values()].every((n) => n === 0);
+    if (dato === days) return restStages === 0 && aktive.size === 0;
+    if (restStages !== (days - dato) * D - brugtIDato) return false;
 
-    const kIDato = g % K;
-    const tilbageIDato = K - kIDato;
     let carried = 0;
     for (const n of aktive.values()) carried += n;
-    const restBudget = D - brugtIDato;
-    const lo = Math.max(carried, restBudget - cap * (tilbageIDato - 1));
-    const hi = Math.min(cap, restBudget);
+
+    const plads = D - brugtIDato;
+    // Mindst 1 loeb pr. loebsdag (ingen tomme loebsdage), hoejst cap - og aldrig mere end
+    // datoen har plads til.
+    const lo = Math.max(1, carried);
+    const hi = Math.min(cap, plads);
+    if (lo > hi) return false;
 
     for (let load = lo; load <= hi; load++) {
       const nye = load - carried;
@@ -222,11 +230,11 @@ function solveContiguousStarts({ lengths, D, days, cap, maxSteps = 2000000 }) {
 
       const kombinationer = [];
       const byg = (idx, rest, acc) => {
-        if (kombinationer.length > 2000) return;
+        if (kombinationer.length > 400) return;
         if (rest === 0) { kombinationer.push([...acc]); return; }
         if (idx >= laengder.length) return;
         const L = laengder[idx];
-        const maxN = L > G - g ? 0 : Math.min(pulje.get(L) ?? 0, rest);
+        const maxN = Math.min(pulje.get(L) ?? 0, rest);
         for (let n = maxN; n >= 0; n--) {
           for (let i = 0; i < n; i++) acc.push(L);
           byg(idx + 1, rest - n, acc);
@@ -243,8 +251,20 @@ function solveContiguousStarts({ lengths, D, days, cap, maxSteps = 2000000 }) {
         }
         const naeste = new Map();
         for (const [rest, n] of aktive) if (rest - 1 > 0) naeste.set(rest - 1, (naeste.get(rest - 1) ?? 0) + n);
-        const nyBrugt = kIDato === K - 1 ? 0 : brugtIDato + load;
-        if (dfs(g + 1, pulje, naeste, nyBrugt)) return true;
+
+        const nyBrugt = brugtIDato + load;
+        const datoFaerdig = nyBrugt === D;
+        if (datoFaerdig) bandSizes.push(iBaand + 1);
+        const ok = dfs(
+          g + 1,
+          datoFaerdig ? dato + 1 : dato,
+          datoFaerdig ? 0 : iBaand + 1,
+          datoFaerdig ? 0 : nyBrugt,
+          pulje, naeste, restStages - load,
+        );
+        if (ok) return true;
+        if (datoFaerdig) bandSizes.pop();
+
         for (let i = kombi.length - 1; i >= 0; i--) {
           const L = kombi[i];
           pulje.set(L, pulje.get(L) + 1);
@@ -257,7 +277,13 @@ function solveContiguousStarts({ lengths, D, days, cap, maxSteps = 2000000 }) {
     return false;
   };
 
-  return dfs(0, new Map(byLen), new Map(), 0) ? { starts: [...starts], K, G } : null;
+  const total = D * days;
+  if (!dfs(0, 0, 0, 0, new Map(byLen), new Map(), total)) return null;
+
+  // Loebsdag -> kalenderdato, udledt af de valgte baandstoerrelser.
+  const dateOfGameDay = [];
+  bandSizes.forEach((b, d) => { for (let i = 0; i < b; i++) dateOfGameDay.push(d); });
+  return { starts: [...starts], dateOfGameDay, G: dateOfGameDay.length };
 }
 
 function layoutContiguous({ stageRaces, classics, monuments, density: D, days, cap }) {
@@ -267,7 +293,8 @@ function layoutContiguous({ stageRaces, classics, monuments, density: D, days, c
 
   const loest = solveContiguousStarts({ lengths: alle.map(lenOf), D, days, cap });
   if (!loest) return null;
-  const { starts, K, G } = loest;
+  const { starts, dateOfGameDay, G } = loest;
+  const datoFor = (g) => dateOfGameDay[g];
 
   // Paasaet identiteter: for hvert etapetal parres startpladserne (kronologisk) med
   // loebene af samme laengde i fase-raekkefoelge. Mangler nogen en seasonFraction, falder
@@ -298,11 +325,11 @@ function layoutContiguous({ stageRaces, classics, monuments, density: D, days, c
         type: L > 1 ? "stage_race" : "single",
         race_class: race.race_class ?? null,
         stages: L,
-        startRealDay: Math.floor(g0 / K),
+        startRealDay: datoFor(g0),
         stagesPlaced: [],
       };
       for (let k = 0; k < L; k++) {
-        p.stagesPlaced.push({ stage_number: k + 1, real_day: Math.floor((g0 + k) / K), game_day: g0 + k, lane: 0 });
+        p.stagesPlaced.push({ stage_number: k + 1, real_day: datoFor(g0 + k), game_day: g0 + k, lane: 0 });
       }
       placementsById.set(race.id, p);
     });
