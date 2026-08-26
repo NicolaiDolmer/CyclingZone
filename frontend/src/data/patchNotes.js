@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.195",
+    "date": "2026-08-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard no longer overflows sideways on phones",
+          "body": "On a phone the dashboard was rendering wider than the screen, so the whole page came out zoomed down and could be dragged sideways. Menus anchored to the right edge, including the language switcher, were cut off. The page now matches the width of your screen."
+        },
+        "da": {
+          "title": "Dashboardet flyder ikke længere ud til siden på telefon",
+          "body": "På telefon blev dashboardet tegnet bredere end skærmen, så hele siden kom ud zoomet ned og kunne trækkes til siden. Menuer der er forankret i højre kant, blandt andet sprogvælgeren, blev skåret af. Siden følger nu bredden på din skærm."
+        },
+        "refs": [4275, 787]
+      }
+    ]
+  },
+  {
     "version": "7.194",
     "date": "2026-08-26",
     "label": "Beta",
