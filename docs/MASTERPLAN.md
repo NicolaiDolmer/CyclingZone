@@ -8,11 +8,11 @@
 
 S3 er udskudt til fre 28/8 → søn 27/9 (#4218). Rækkefølgen er ejer-valgt:
 
-1. 🟢 **Kalenderen er bygget:** #4236 + #4272 + #4273 i [PR #4276](https://github.com/NicolaiDolmer/CyclingZone/pull/4276), ejer-godkendt. Backend 7181/7181. Blokeret af [#4280](https://github.com/NicolaiDolmer/CyclingZone/pull/4280) (mobil-overløb, required check) — den merges først.
+1. 🔴 **Regenerér S3-kalenderen.** Koden er MERGED (#4276 + #4280); kun anvendelsen udestår. Målt live 26/8: 144 af 225 bjergetaper slutter nedad, 61 løbsdage over flere datoer. Blokeret af sæson-status `active` + 1.066 udtagelser i wipens gameplay-port. Køreplan: `docs/runbooks/2026-08-27-s3-kalender-regenerering.md`.
 2. **Holdudtagelsen:** #4200's anden halvdel (`raceRunner.js:812`). #4174 afgjort 26/8: alle hold ens, assistenten 1 t før.
 3. **Nye spillere kan lande:** #4183 + #4233 = ÉT bug (`aiTeamGenerator.js:403`). D4-A på 25 hold.
 4. **Vagterne:** #4229 · #4215 · #4219 · #4123 · #4211.
-5. **ÉN regenerering**, dry-run-diff først. Derefter **tænd scheduler + entry-generator** — ejer-GO, sidst.
+5. **Tænd scheduler + entry-generator** efter regenereringen — ejer-GO, allersidst.
 
 Ny gæld 26/8: **#4274** · **[#4278](https://github.com/NicolaiDolmer/CyclingZone/issues/4278)** (D4 mest bjergrig, opad 41,9 % mod bånd 25-32 % — arketype-loft, ejer-valg). Katalog-lofter fra #4272: D1 brosten nåede 4,5 % ikke 6 %, D4 enkeltstart 8,1 % ikke 10 % — begge kræver flere løb i kataloget.
 

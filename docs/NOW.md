@@ -4,13 +4,13 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer-GO til merge af [PR #4276](https://github.com/NicolaiDolmer/CyclingZone/pull/4276)** (#4236+#4272+#4273) + **ÉN** regenerering. Dry-run med før/efter-diff FØR skrivning. Tænd derefter `stage_scheduler_enabled` + `auto_entry_generator_enabled` (ejer-only, allersidst). **Åben beslutning: D4’s samlede opad 41,9 % mod bånd 25-32 %** (#4272).
+> **🎯 Next action:** **Kør S3-regenereringen.** Koden er merged; kun anvendelsen udestår. Køreplan: [`docs/runbooks/2026-08-27-s3-kalender-regenerering.md`](runbooks/2026-08-27-s3-kalender-regenerering.md) · session-prompt: `sessions/2026-08-27-s3-regenerering-session-prompt.md`. **Discord-besked FØRST**, derefter ejer-GO pr. skridt.
 
-> **🔴 #4275 — main er RØD på `frontend-smoke`: dashboardet flyder vandret over på mobil** (siden 535 px bred på en 393 px skærm; sprogvælgeren var kun symptomet). Rod: `grid lg:grid-cols-2` uden `grid-cols-1` → implicitte auto-kolonner. Fix i [PR #4280](https://github.com/NicolaiDolmer/CyclingZone/pull/4280), ejer-godkendt visuelt. **#4280 skal merges FØR #4276** — den er required check.
+> **🔴 REGENERERINGEN ER BLOKERET AF TO VÆRN.** Sæson 3 står `active` (scripts kræver `upcoming`), og wipens gameplay-port stopper på **1.066 udtagelser — 991 spillernes egne fra 29 hold**, seneste 26/8 kl. 20:30. Begge skal åbnes eksplicit af ejeren. **#4229: statusskiftet gav 4 timers nedetid 25/8.** Fallback uden wipe: in-place `finale_type`-opdatering (retter de 144 bjergetaper, koster intet, retter ikke løbsdagene).
 
 > **📅 S3 STARTER FREDAG 28/8 KL. 11** → søn 27/9. 31 løbsdage, løb hver dag i alle fire divisioner. `stage_scheduler_enabled` og `auto_entry_generator_enabled` står **off** — gen-tænding er ejer-only, allersidst.
 
-> **✅ #4236 + #4272 + #4273 KLAR TIL MERGE** (26/8, branch `fix/4236-loebsdag-baand-pr-kalenderdato`). #4236: løbsdage i træk, én dato pr. løbsdag — straddle 40→**0**, huller 8→**0**, falske bindinger 12→**0**. #4272: bjerg-opad 6-13 %→**52-60 %**, bjerg-nedad 59-70 %→**20-33 %**; sæson-aggregatet rammer ALLE bånd uden tolerance. Scorecard exit 0, backend **7181/7181**, preflight grøn. **Løser også #4190.**
+> **✅ #4236 + #4272 + #4273 + #4275 MERGED (26/8).** Backend 7181/7181, scorecard exit 0, e2e grøn. **Men IKKE anvendt på S3.** Målt live 26/8 21:20: `mountain` 144 af 225 slutter **nedad** (64 %) · 61 løbsdage over flere datoer (værste 7) · 8 løb med hul.
 
 > **⚠️ TO KATALOG-LOFTER + ÉT ÅBENT VALG (#4272).** D1's brosten nåede 2,6→**4,5 %** (6 % kræver flere brostens-løb; ved 8 reservationer falder D3 under sit gulv). D4's enkeltstart 4,8→**8,1 %** (kun 3 fritstående ITT-løb i Class1/Class2). **Uløst:** D4 trækker 5 af 6 `summit_tour`, hver med 2 garanterede højbjergs-etaper → 16 % højbjerg mod D1's 8 %, og samlet opad 41,9 %. Kræver arketype-**loft** (reservationer er gulve) eller flere flade Class1/Class2-etapeløb. **Spildesign-valg, afventer ejer.** **To regenereringer er forbudt.**
 
