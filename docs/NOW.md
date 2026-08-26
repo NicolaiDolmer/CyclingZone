@@ -6,7 +6,7 @@
 
 > **🎯 Next action:** **Ejer-GO til merge af [PR #4276](https://github.com/NicolaiDolmer/CyclingZone/pull/4276)** (#4236+#4272+#4273) + **ÉN** regenerering. Dry-run med før/efter-diff FØR skrivning. Tænd derefter `stage_scheduler_enabled` + `auto_entry_generator_enabled` (ejer-only, allersidst). **Åben beslutning: D4’s samlede opad 41,9 % mod bånd 25-32 %** (#4272).
 
-> **🔴 #4275 — main er RØD på `language-switcher` e2e** (sprog-dropdownen klippes af på mobil, #787-regression). Verificeret på ren main, ikke branch-specifikt. **Den blokerer alle PR’ers required check**, også #4276. Fix kræver visuel ejer-godkendelse.
+> **🔴 #4275 — main er RØD på `frontend-smoke`: dashboardet flyder vandret over på mobil** (siden 535 px bred på en 393 px skærm; sprogvælgeren var kun symptomet). Rod: `grid lg:grid-cols-2` uden `grid-cols-1` → implicitte auto-kolonner. Fix i [PR #4280](https://github.com/NicolaiDolmer/CyclingZone/pull/4280), ejer-godkendt visuelt. **#4280 skal merges FØR #4276** — den er required check.
 
 > **📅 S3 STARTER FREDAG 28/8 KL. 11** → søn 27/9. 31 løbsdage, løb hver dag i alle fire divisioner. `stage_scheduler_enabled` og `auto_entry_generator_enabled` står **off** — gen-tænding er ejer-only, allersidst.
 
