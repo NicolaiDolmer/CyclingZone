@@ -692,6 +692,18 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   if (e1) throw new Error(`race_entries (binding others): ${e1.message}`);
   if (!entries.length) return { thisWindow, otherRacesByTeam: new Map() };
 
+  // Rod A-paritet (#1823/#4283): et holds AFMELDTE løb binder ikke — entries bevares ved
+  // afmelding (gen-tilmelding giver samme trup), men de tæller ikke som optaget tid.
+  // Søster-stien loadTeamBindingContext filtrerer allerede withdrawn; uden samme filter her
+  // phantom-binder et afmeldt etapeløbs entries rytterne, og runtime-autofyldet stiller et
+  // unødigt tyndt startfelt i overlappende løb.
+  const { data: wRows, error: eWd } = await supabase
+    .from("race_withdrawals").select("race_id, team_id").in("team_id", teamIds);
+  if (eWd) throw new Error(`race_withdrawals (binding others): ${eWd.message}`);
+  const withdrawnKeys = new Set((wRows || []).map((w) => `${w.team_id}|${w.race_id}`));
+  const bindingEntries = entries.filter((e) => !withdrawnKeys.has(`${e.team_id}|${e.race_id}`));
+  if (!bindingEntries.length) return { thisWindow, otherRacesByTeam: new Map() };
+
   // #3076 (samme rod-årsag som #3070, tredje lag): binding-nøglen er game_day, som er
   // SÆSON-RELATIV og nulstilles hver sæson (prod: både S1 og S2 spænder 0..~100000).
   // Uden sæson-filter ser excludeBoundRiders en forrige-sæsons entry som en aktiv binding
@@ -712,7 +724,7 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
     throw new Error(`loadFieldBindingContext: could not resolve season_id for race ${race?.id}; binding would cross the season boundary (#3076)`);
   }
 
-  const candidateRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  const candidateRaceIds = [...new Set(bindingEntries.map((e) => e.race_id))];
   const seasonRows = [];
   for (let i = 0; i < candidateRaceIds.length; i += 200) {
     const { data, error } = await supabase
@@ -745,7 +757,7 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   for (const rid of otherRaceIds) windowByRace.set(rid, raceBindingWindow(schedByRace.get(rid)));
 
   const byTeamRace = new Map(); // teamId → Map(raceId → [rider_id])
-  for (const e of entries) {
+  for (const e of bindingEntries) {
     if (!byTeamRace.has(e.team_id)) byTeamRace.set(e.team_id, new Map());
     const m = byTeamRace.get(e.team_id);
     if (!m.has(e.race_id)) m.set(e.race_id, []);

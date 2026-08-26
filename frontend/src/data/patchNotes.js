@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.197",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Clearer message when a rider is already booked",
+          "body": "If you tried to pick a rider who was tied up by another race, and the only clash was a rest day in a stage race, the save could fail with a technical error. You now get the normal message telling you which race has the rider."
+        },
+        "da": {
+          "title": "Klarere besked når en rytter allerede er optaget",
+          "body": "Hvis du prøvede at udtage en rytter der var optaget af et andet løb, og det eneste sammenfald var en hviledag i et etapeløb, kunne gemningen fejle med en teknisk fejl. Du får nu den normale besked der fortæller hvilket løb rytteren er i."
+        },
+        "refs": [4283]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "The assistant frees up riders from races you left",
+          "body": "When you withdrew from a race, the assistant still treated your selected riders as busy on those days and could leave them out of other races. Riders from a withdrawn race now count as available again."
+        },
+        "da": {
+          "title": "Assistenten frigiver ryttere fra løb du har forladt",
+          "body": "Når du meldte dit hold fra et løb, regnede assistenten stadig de udtagne ryttere som optaget på de dage og kunne udelade dem fra andre løb. Ryttere fra et afmeldt løb tæller nu som ledige igen."
+        },
+        "refs": [4283]
+      }
+    ]
+  },
+  {
     "version": "7.196",
     "date": "2026-08-26",
     "label": "Beta",

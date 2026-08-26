@@ -58,3 +58,74 @@ Ejer-krav 25/8: "Holdudtagelse skal være fejlfri." Det var udtagelses-fejlene
 - verify-invariants.js har forældede typelister (finance/notification) + 24 hold over
   trupgrænse, 2 over gældsloft, 4 dobbelt-listede ryttere, 132 uforankrede anlæg (#3593).
   Målt i nat; ikke kalender-relateret. Regenererings-sessionen opretter issues i close-out.
+
+## 6 · Fredag-morgen-tjekliste (kl. 9–11, read-only, Supabase-MCP)
+
+> Skrevet 27/8 af beredskabssessionen. Alle queries er kørt og verificeret mod prod 27/8
+> kl. ~00:30 (svar i parentes). Kør dem i rækkefølge; alle "skal være 0" er hard stops —
+> afvigelse → find rod-årsag FØR kl. 11, ingen fixes uden ejer-go.
+
+**1. Flag-tjek** (27/8: begge `on` — regenererings-sessionen har tændt dem):
+```sql
+select key, value from app_config
+ where key in ('auto_entry_generator_enabled','stage_scheduler_enabled');
+```
+
+**2. Dagens løb + starttider** (forventet: løb i alle 4 divisioner, første start kl. 11 dansk = 09:00 UTC):
+```sql
+with s3 as (select id from seasons where status='active')
+select r.league_division_id as pulje, count(distinct r.id) as loeb,
+       min(sch.scheduled_at) as foerste_start_utc
+  from races r join race_stage_schedule sch on sch.race_id=r.id, s3
+ where r.season_id=s3.id and sch.scheduled_at::date = current_date
+ group by r.league_division_id order by 1;
+```
+
+**3. Assistent-dækning** — kør kl. ~10:15 (assistenten udtager 1 t før løb, #4174).
+Hold i puljen uden entries til et løb der starter inden for 2 t (skal være 0 kl. 10:15 for kl. 11-løbene):
+```sql
+with s3 as (select id from seasons where status='active'),
+imminent as (
+  select r.id, r.name, r.league_division_id, min(sch.scheduled_at) first_start
+    from races r join race_stage_schedule sch on sch.race_id=r.id, s3
+   where r.season_id=s3.id and r.stages_completed=0
+   group by r.id, r.name, r.league_division_id
+  having min(sch.scheduled_at) between now() and now()+interval '2 hours')
+select i.name, i.first_start, t.name as hold_uden_entries
+  from imminent i
+  join teams t on t.league_division_id = i.league_division_id
+ where not (t.is_bank or t.is_frozen or coalesce(t.is_test_account,false))
+   and not exists (select 1 from race_entries e where e.race_id=i.id and e.team_id=t.id)
+   and not exists (select 1 from race_withdrawals w where w.race_id=i.id and w.team_id=t.id);
+```
+(Kørt ordret 27/8 med 48t-vindue: 611 hold uden entries — forventet FØR assistenten har
+kørt; den udtager først 1 t før hvert løb. Kl. 10:15 skal 2t-vinduet være 0.)
+
+**4. Overlap pr. løbsdag** — skal være 0 (27/8: 0):
+```sql
+with s3 as (select id from seasons where status='active')
+select d.rider_id, d.game_day, count(distinct d.race_id)
+  from race_entry_days d, s3 where d.season_id=s3.id
+ group by d.rider_id, d.game_day having count(distinct d.race_id)>1;
+```
+
+**5. Binding-sanity** — begge skal være 0 (27/8: 0 og 0 på de første 87 rigtige entries):
+```sql
+-- a) entries i bindende løb uden entry_days-rækker
+with s3 as (select id from seasons where status='active')
+select count(*) from race_entries e join races r on r.id=e.race_id, s3
+ where r.season_id=s3.id and r.status <> 'completed'
+   and not exists (select 1 from race_withdrawals w where w.race_id=e.race_id and w.team_id=e.team_id)
+   and not exists (select 1 from race_entry_days d where d.race_id=e.race_id and d.rider_id=e.rider_id);
+-- b) binding_span afviger fra den nye akse
+with s3 as (select id from seasons where status='active'),
+x as (select r.id race_id, min(s.game_day) a, max(s.game_day) b
+        from races r join race_stage_schedule s on s.race_id=r.id, s3
+       where r.season_id=s3.id group by r.id)
+select count(*) from race_entries e join x on x.race_id=e.race_id
+ where e.binding_span is distinct from int4range(x.a, x.b, '[]');
+```
+
+**6. Fejl-puls:** Sentry (backend-projektet) + Railway-log for `selection_rider_bound`,
+`23505`/`no_rider_double_booking` og 500'ere på `/selection` siden kl. 9. Enkelte navngivne
+409'ere er OK (spillere der rammer bindingen er by design); 500'ere og 23505 rå-fejl er ikke.
