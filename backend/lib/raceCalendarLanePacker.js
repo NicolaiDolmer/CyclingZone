@@ -162,6 +162,168 @@ export function reshapeCobblesFractionToTwoWindows(races, isCobbles, {
 
 // ---- BANDED: B baseline-spor + overlay; hele game-dage pr. IRL-dag (straddle-fri) ----
 // Returnerer { placements, timelineLength } eller null hvis ikke realiserbart.
+// #4236 - KONTIGUITETS-LAYOUT (ejer-regel 25/8 + #4236 i eet).
+//
+// De to invarianter det garanterer VED KONSTRUKTION:
+//   1. Et loebs loebsdage ligger I TRAEK. "Hvis et loeb har fire etaper, skal loebsdagene
+//      ligge i traek. Ligesom i virkeligheden. Loebsdag 4-5-6-7." (ejer 25/8)
+//   2. En loebsdag hoerer til PRAECIS een kalenderdato (#4236). Dato d ejer loebsdagene
+//      [d*K, (d+1)*K), saa bindingen aldrig kan laase et felt med et loeb der er koert
+//      faerdigt paa en anden dato.
+//
+// Hvorfor et nyt layout og ikke en lap paa de to gamle:
+//   - layoutStream udleder real_day af slot-positionen og baerer game_day fra eventet. De
+//     to akser er uafhaengige, saa den kan hverken love 1 eller 2.
+//   - layoutBanded lover begge, men kun med sin egen rigide kvote (B ens spor der loeber
+//     hele tidslinjen + R endagsloebs-pladser). D1 skulle skifte 8 etaper ud med
+//     endagsloeb, og andelen af endagsloeb ville gaa fra 61 % til ca. 68 % mod maalet paa
+//     55 % (#3327, ejer 7/8). Kalenderens indhold skal afgoeres af spildesign, ikke af
+//     hvad pakkeren tilfaeldigvis kan pakke.
+//
+// Modellen: vi vaelger kun EEN ting pr. loeb - dets START-loebsdag. Resten foelger, fordi
+// etaperne ligger i traek. Bindingerne er
+//   load(g) <= cap                             hoejst cap loeb paa samme loebsdag
+//   sum(load) over datoens K loebsdage = D     praecis density etaper hver dag (#4218)
+// og der er NUL slack: sum(etaper) = D*days. Hver loebsdag skal ramme sit tal praecist.
+// Det er dét der goer graadig pakning haabloes - og samtidig soegetraeet smalt nok til at
+// vaere udtoemmende. Maalt mod prod-kataloget loeses alle fire divisioner paa under 1 ms
+// (29-153 skridt).
+//
+// Loeb med samme etapetal er ombyttelige i selve soegningen, saa der soeges paa ANTAL pr.
+// laengde. Identiteterne paasaettes bagefter i fase-raekkefoelge (seasonFraction), saa et
+// loeb lander samme sted i saesonen som i virkeligheden.
+function solveContiguousStarts({ lengths, D, days, cap, maxSteps = 2000000 }) {
+  const K = Math.ceil(D / cap);
+  const G = K * days;
+  if (lengths.reduce((a, b) => a + b, 0) !== D * days) return null;
+
+  const byLen = new Map();
+  for (const L of lengths) byLen.set(L, (byLen.get(L) ?? 0) + 1);
+  const laengder = [...byLen.keys()].sort((a, b) => b - a);
+
+  const starts = [];
+  let steps = 0;
+
+  const dfs = (g, pulje, aktive, brugtIDato) => {
+    if (++steps > maxSteps) return false;
+    if (g === G) return aktive.size === 0 && [...pulje.values()].every((n) => n === 0);
+
+    const kIDato = g % K;
+    const tilbageIDato = K - kIDato;
+    let carried = 0;
+    for (const n of aktive.values()) carried += n;
+    const restBudget = D - brugtIDato;
+    const lo = Math.max(carried, restBudget - cap * (tilbageIDato - 1));
+    const hi = Math.min(cap, restBudget);
+
+    for (let load = lo; load <= hi; load++) {
+      const nye = load - carried;
+      if (nye < 0) continue;
+
+      const kombinationer = [];
+      const byg = (idx, rest, acc) => {
+        if (kombinationer.length > 2000) return;
+        if (rest === 0) { kombinationer.push([...acc]); return; }
+        if (idx >= laengder.length) return;
+        const L = laengder[idx];
+        const maxN = L > G - g ? 0 : Math.min(pulje.get(L) ?? 0, rest);
+        for (let n = maxN; n >= 0; n--) {
+          for (let i = 0; i < n; i++) acc.push(L);
+          byg(idx + 1, rest - n, acc);
+          for (let i = 0; i < n; i++) acc.pop();
+        }
+      };
+      byg(0, nye, []);
+
+      for (const kombi of kombinationer) {
+        for (const L of kombi) {
+          pulje.set(L, pulje.get(L) - 1);
+          aktive.set(L, (aktive.get(L) ?? 0) + 1);
+          starts.push({ g, L });
+        }
+        const naeste = new Map();
+        for (const [rest, n] of aktive) if (rest - 1 > 0) naeste.set(rest - 1, (naeste.get(rest - 1) ?? 0) + n);
+        const nyBrugt = kIDato === K - 1 ? 0 : brugtIDato + load;
+        if (dfs(g + 1, pulje, naeste, nyBrugt)) return true;
+        for (let i = kombi.length - 1; i >= 0; i--) {
+          const L = kombi[i];
+          pulje.set(L, pulje.get(L) + 1);
+          aktive.set(L, aktive.get(L) - 1);
+          if (aktive.get(L) === 0) aktive.delete(L);
+          starts.pop();
+        }
+      }
+    }
+    return false;
+  };
+
+  return dfs(0, new Map(byLen), new Map(), 0) ? { starts: [...starts], K, G } : null;
+}
+
+function layoutContiguous({ stageRaces, classics, monuments, density: D, days, cap }) {
+  if (D < 1 || days < 1 || cap < 1) return null;
+  const alle = [...stageRaces, ...classics, ...monuments];
+  if (!alle.length) return null;
+
+  const loest = solveContiguousStarts({ lengths: alle.map(lenOf), D, days, cap });
+  if (!loest) return null;
+  const { starts, K, G } = loest;
+
+  // Paasaet identiteter: for hvert etapetal parres startpladserne (kronologisk) med
+  // loebene af samme laengde i fase-raekkefoelge. Mangler nogen en seasonFraction, falder
+  // vi tilbage til byBigThenId, saa resultatet stadig er deterministisk.
+  const slotsByLen = new Map();
+  for (const st of starts) {
+    if (!slotsByLen.has(st.L)) slotsByLen.set(st.L, []);
+    slotsByLen.get(st.L).push(st.g);
+  }
+  for (const arr of slotsByLen.values()) arr.sort((a, b) => a - b);
+
+  const racesByLen = new Map();
+  for (const r of alle) {
+    const L = lenOf(r);
+    if (!racesByLen.has(L)) racesByLen.set(L, []);
+    racesByLen.get(L).push(r);
+  }
+
+  const placementsById = new Map();
+  for (const [L, races] of racesByLen) {
+    const slots = slotsByLen.get(L) ?? [];
+    if (slots.length !== races.length) return null; // kan ikke ske - samme multiset som soegningen
+    const iOrden = orderByPhase(races) ?? [...races].sort(byBigThenId);
+    iOrden.forEach((race, i) => {
+      const g0 = slots[i];
+      const p = {
+        id: race.id,
+        type: L > 1 ? "stage_race" : "single",
+        race_class: race.race_class ?? null,
+        stages: L,
+        startRealDay: Math.floor(g0 / K),
+        stagesPlaced: [],
+      };
+      for (let k = 0; k < L; k++) {
+        p.stagesPlaced.push({ stage_number: k + 1, real_day: Math.floor((g0 + k) / K), game_day: g0 + k, lane: 0 });
+      }
+      placementsById.set(race.id, p);
+    });
+  }
+
+  // Baner tildeles pr. kalenderdato i loebsdags-raekkefoelge, saa hver dato bruger 0..D-1.
+  const perDate = new Map();
+  for (const p of placementsById.values()) {
+    for (const st of p.stagesPlaced) {
+      if (!perDate.has(st.real_day)) perDate.set(st.real_day, []);
+      perDate.get(st.real_day).push(st);
+    }
+  }
+  for (const sts of perDate.values()) {
+    sts.sort((a, b) => a.game_day - b.game_day);
+    sts.forEach((st, i) => { st.lane = i; });
+  }
+
+  return { placements: [...placementsById.values()], timelineLength: G };
+}
+
 function layoutBanded({ stageRaces, classics, density: D, days, cap }) {
   if (D < 1 || days < 1) return null;
   const K = Math.ceil(D / cap);          // game-dage pr. IRL-dag
@@ -1205,8 +1367,12 @@ export function packLaneCalendar({
   // loebsdag som banded ikke kan give. Den eksklusivitet er ophaevet (den leverede intet
   // efter #4217's spaend-binding og var eneste aarsag til hullerne), saa et monument er nu
   // en klassiker som alle andre - og D1 kan bruge banded.
-  let layoutMode = "banded";
-  let res = layoutBanded({ stageRaces, classics: [...classics, ...monuments], density: D, days, cap });
+  // #4236: kontiguitets-layoutet foerst - det eneste der garanterer BEGGE invarianter med
+  // den komposition spillet faktisk oensker. Banded og stream bevares som fallback, saa en
+  // tier hvor soegningen ikke konvergerer stadig faar en kalender.
+  let layoutMode = "contiguous";
+  let res = layoutContiguous({ stageRaces, classics, monuments, density: D, days, cap });
+  if (!res) { layoutMode = "banded"; res = layoutBanded({ stageRaces, classics: [...classics, ...monuments], density: D, days, cap }); }
   if (!res) { layoutMode = "stream"; res = layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }); }
 
   const placements = res.placements;
