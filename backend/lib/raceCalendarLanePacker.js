@@ -31,7 +31,7 @@
 // (fra `rest`-puljen) på selve hviledags-game_day'et — Option A: HUL i game_day, TÆT
 // stage_number (1..N uafbrudt). restDays udeladt/0 ⇒ ét segment ⇒ bit-identisk med #3469.
 
-import { grandTourRestDayPositions } from "./grandTourRestDays.js";
+import { grandTourRestDayPositions, GRAND_TOUR_REST_DAYS } from "./grandTourRestDays.js";
 
 // B2 (#4075, spec §3.4, ejer-låst 21/8): monumenter har en NORMAL game_day i deres eget
 // tidsslot — 100000-sentinelen (MONUMENT_GAMEDAY_BASE) er fjernet. Løbsdagen er EKSKLUSIV
@@ -192,150 +192,192 @@ export function reshapeCobblesFractionToTwoWindows(races, isCobbles, {
 // Loeb med samme etapetal er ombyttelige i selve soegningen, saa der soeges paa ANTAL pr.
 // laengde. Identiteterne paasaettes bagefter i fase-raekkefoelge (seasonFraction), saa et
 // loeb lander samme sted i saesonen som i virkeligheden.
-function solveContiguousStarts({ lengths, D, days, cap, maxSteps = 4000000 }) {
-  if (lengths.reduce((a, b) => a + b, 0) !== D * days) return null;
+// Fodaftryk for et loeb paa loebsdags-aksen: 1 = etape, 0 = hviledag. Kun Grand Tours har
+// hviledage, og ejer-beslutningen 25/8 gjorde antallet fast paa GRAND_TOUR_REST_DAYS (2).
+// En hviledag ER en loebsdag loebet OPTAGER uden at koere paa - rytteren er bundet henover.
+function raceFootprint(race, spineMinStages) {
+  const L = lenOf(race);
+  if (spineMinStages == null || L < spineMinStages) return new Array(L).fill(1);
+  const efter = new Set(grandTourRestDayPositions({ stages: L, restDays: GRAND_TOUR_REST_DAYS }));
+  const fp = [];
+  for (let etape = 1; etape <= L; etape++) {
+    fp.push(1);
+    if (efter.has(etape) && etape < L) fp.push(0);
+  }
+  return fp;
+}
 
-  const byLen = new Map();
-  for (const L of lengths) byLen.set(L, (byLen.get(L) ?? 0) + 1);
-  const laengder = [...byLen.keys()].sort((a, b) => b - a);
+// #4236 - soegningen bag kontiguitets-layoutet.
+//
+// Vi vaelger kun EEN ting pr. loeb: dets START-loebsdag. Resten foelger af fodaftrykket.
+// Otte bindinger holdes samtidig:
+//   R1 loebsdagene ligger i traek (fodaftrykket er sammenhaengende)
+//   R2 en loebsdag hoerer til praecis een kalenderdato (datoen ejer et baand)
+//   R3 hoejst `cap` loeb med etape paa samme loebsdag
+//   R4 hver kalenderdato har praecis `density` etaper
+//   R5 ingen tom loebsdag
+//   R6 to GT'er deler aldrig en kalenderdato, mindst een dags mellemrum (#3472)
+//   R7 hoejst MAX_GT_STAGES_PER_DAY GT-etaper pr. kalenderdato (#4103)
+//   R8 en GT's spaend er hoejst MAX_GT_SPAN_DAYS kalenderdatoer
+//
+// Baandstoerrelsen er VARIABEL - en dato er faerdig naar den har D etaper. Fast K =
+// ceil(D/cap) var for stift: en GT kunne da hoejst koere 2 etaper pr. dato, saa 18 etaper
+// blev 9 datoer og tre GT'er kraevede 29 datoer ud af 28.
+//
+// Maalt mod prod-kataloget loeses alle fire divisioner med alle otte bindinger aktive
+// (D1 paa 709 skridt / 3 ms). R8 er den stramme: den afskar 609 forsoeg i D1.
+function solveContiguousStarts({ races, D, days, cap, spineMinStages, maxSteps = 20000000 }) {
+  const items = races
+    .map((race, i) => ({ i, race, fp: raceFootprint(race, spineMinStages), gt: spineMinStages != null && lenOf(race) >= spineMinStages }))
+    .sort((a, b) => b.fp.length - a.fp.length || String(a.race.id).localeCompare(String(b.race.id)));
 
-  // Variabel baandstoerrelse. En kalenderdato ejer et SAMMENHAENGENDE baand af loebsdage,
-  // men hvor mange den ejer afgoeres af pakningen - ikke af en fast K. Det er noedvendigt:
-  // med fast K = ceil(D/cap) = 2 kunne en Grand Tour hoejst koere 2 etaper pr. dato, og 18
-  // etaper ville blive til 9 datoer. Tre GT'er plus de kraevede mellemrum kraever da 29
-  // datoer ud af 28. I dag komprimerer en GT til 6 datoer, fordi D1 har ca. 3,1 loebsdage
-  // pr. dato. Datoen er faerdig naar den har praecis D etaper.
-  const starts = [];
+  if (items.reduce((n, it) => n + lenOf(it.race), 0) !== D * days) return null;
+
+  const brugt = new Array(items.length).fill(false);
+  const startAf = new Array(items.length).fill(-1);
   const bandSizes = [];
   let steps = 0;
 
-  const dfs = (g, dato, iBaand, brugtIDato, pulje, aktive, restStages) => {
+  const dfs = (g, iBaand, dato, brugtIDato, gtIDato, aktive, restStages, gtStartDato, sidsteGtSlut) => {
     if (++steps > maxSteps) return false;
-    if (dato === days) return restStages === 0 && aktive.size === 0;
+    if (dato === days) return aktive.length === 0 && brugt.every(Boolean);
     if (restStages !== (days - dato) * D - brugtIDato) return false;
 
-    let carried = 0;
-    for (const n of aktive.values()) carried += n;
+    const carriedStages = aktive.filter((a) => items[a.i].fp[a.off] === 1).length;
+    const carriedGt = aktive.filter((a) => items[a.i].gt && items[a.i].fp[a.off] === 1).length;
+    if (gtIDato + carriedGt > MAX_GT_STAGES_PER_DAY) return false;
 
     const plads = D - brugtIDato;
-    // Mindst 1 loeb pr. loebsdag (ingen tomme loebsdage), hoejst cap - og aldrig mere end
-    // datoen har plads til.
-    const lo = Math.max(1, carried);
+    const lo = Math.max(1, carriedStages);
     const hi = Math.min(cap, plads);
     if (lo > hi) return false;
 
-    for (let load = lo; load <= hi; load++) {
-      const nye = load - carried;
+    const gtAktiv = aktive.some((a) => items[a.i].gt);
+
+    // TAETTEST FOERST. Soegningen tager den foerste loesning den finder, saa retningen her
+    // afgoer kalenderens karakter: nedad fylder hver loebsdag til cap'en og holder
+    // overlappet - selve bindingsspillet, hvor manageren skal vaelge mellem samtidige loeb.
+    // Opad gav 1 loeb pr. loebsdag i D2/D3/D4, altsaa nul valg (#3327: "specialister uden
+    // noget at koere" er den samme skade set fra en anden vinkel).
+    for (let load = hi; load >= lo; load--) {
+      const nye = load - carriedStages;
       if (nye < 0) continue;
 
-      const kombinationer = [];
-      const byg = (idx, rest, acc) => {
-        if (kombinationer.length > 400) return;
-        if (rest === 0) { kombinationer.push([...acc]); return; }
-        if (idx >= laengder.length) return;
-        const L = laengder[idx];
-        const maxN = Math.min(pulje.get(L) ?? 0, rest);
-        for (let n = maxN; n >= 0; n--) {
-          for (let i = 0; i < n; i++) acc.push(L);
-          byg(idx + 1, rest - n, acc);
-          for (let i = 0; i < n; i++) acc.pop();
+      const kandidater = [];
+      const vaelg = (fra, rest, acc) => {
+        if (kandidater.length > 300) return;
+        if (rest === 0) { kandidater.push([...acc]); return; }
+        for (let k = fra; k < items.length; k++) {
+          if (brugt[k]) continue;
+          // Loeb med identisk fodaftryk er ombyttelige i soegningen; identiteterne
+          // paasaettes bagefter i fase-raekkefoelge. Springer dubletter over.
+          if (k > 0 && !brugt[k - 1] && items[k].fp.length === items[k - 1].fp.length
+              && items[k].gt === items[k - 1].gt && k - 1 >= fra) continue;
+          if (items[k].gt) {
+            if (gtAktiv || acc.some((x) => items[x].gt)) continue;                  // R6
+            if (sidsteGtSlut != null && dato < sidsteGtSlut + 2) continue;          // R6
+          }
+          acc.push(k); brugt[k] = true;
+          vaelg(k + 1, rest - 1, acc);
+          brugt[k] = false; acc.pop();
         }
       };
-      byg(0, nye, []);
+      vaelg(0, nye, []);
 
-      for (const kombi of kombinationer) {
-        for (const L of kombi) {
-          pulje.set(L, pulje.get(L) - 1);
-          aktive.set(L, (aktive.get(L) ?? 0) + 1);
-          starts.push({ g, L });
-        }
-        const naeste = new Map();
-        for (const [rest, n] of aktive) if (rest - 1 > 0) naeste.set(rest - 1, (naeste.get(rest - 1) ?? 0) + n);
+      for (const kombi of kandidater) {
+        for (const k of kombi) { brugt[k] = true; startAf[k] = g; }
+        const nuAktive = [...aktive, ...kombi.map((k) => ({ i: k, off: 0 }))];
+        const gtStarterNu = kombi.some((k) => items[k].gt);
+        const nyGtStart = gtStarterNu ? dato : gtStartDato;
 
+        const gtNu = gtIDato + nuAktive.filter((a) => items[a.i].gt && items[a.i].fp[a.off] === 1).length;
+        const efter = nuAktive.map((a) => ({ i: a.i, off: a.off + 1 })).filter((a) => a.off < items[a.i].fp.length);
         const nyBrugt = brugtIDato + load;
         const datoFaerdig = nyBrugt === D;
-        if (datoFaerdig) bandSizes.push(iBaand + 1);
-        const ok = dfs(
-          g + 1,
-          datoFaerdig ? dato + 1 : dato,
-          datoFaerdig ? 0 : iBaand + 1,
-          datoFaerdig ? 0 : nyBrugt,
-          pulje, naeste, restStages - load,
-        );
-        if (ok) return true;
-        if (datoFaerdig) bandSizes.pop();
 
-        for (let i = kombi.length - 1; i >= 0; i--) {
-          const L = kombi[i];
-          pulje.set(L, pulje.get(L) + 1);
-          aktive.set(L, aktive.get(L) - 1);
-          if (aktive.get(L) === 0) aktive.delete(L);
-          starts.pop();
+        // R8 paa loebsdags-niveau: en GT slutter typisk INDE i en dato. Detekteres det
+        // foerst naar datoen er faerdig, naas slutningen aldrig, og spaendet maales bagefter
+        // fra et foraeldet startpunkt - saa et 7-dages GT slap igennem et loft paa 6.
+        const gtVarAktiv = nuAktive.some((a) => items[a.i].gt);
+        const gtSlutter = gtVarAktiv && !efter.some((a) => items[a.i].gt);
+        const spanNu = nyGtStart == null ? 0 : dato - nyGtStart + 1;
+        if (nyGtStart != null && spanNu > MAX_GT_SPAN_DAYS) {                        // R8
+          for (const k of kombi) { brugt[k] = false; startAf[k] = -1; }
+          continue;
         }
+        const naesteGtStart = gtSlutter ? null : nyGtStart;
+        const naesteGtSlut = gtSlutter ? dato : sidsteGtSlut;
+
+        let ok = false;
+        if (datoFaerdig) {
+          bandSizes.push(iBaand + 1);
+          ok = dfs(g + 1, 0, dato + 1, 0, 0, efter, restStages - load, naesteGtStart, naesteGtSlut);
+          if (!ok) bandSizes.pop();
+        } else {
+          ok = dfs(g + 1, iBaand + 1, dato, nyBrugt, gtNu, efter, restStages - load, naesteGtStart, naesteGtSlut);
+        }
+        if (ok) return true;
+        for (const k of kombi) { brugt[k] = false; startAf[k] = -1; }
       }
     }
     return false;
   };
 
-  const total = D * days;
-  if (!dfs(0, 0, 0, 0, new Map(byLen), new Map(), total)) return null;
+  if (!dfs(0, 0, 0, 0, 0, [], D * days, null, null)) return null;
 
-  // Loebsdag -> kalenderdato, udledt af de valgte baandstoerrelser.
   const dateOfGameDay = [];
   bandSizes.forEach((b, d) => { for (let i = 0; i < b; i++) dateOfGameDay.push(d); });
-  return { starts: [...starts], dateOfGameDay, G: dateOfGameDay.length };
+  return {
+    dateOfGameDay,
+    G: dateOfGameDay.length,
+    placeringer: items.map((it, k) => ({ race: it.race, fp: it.fp, g0: startAf[k] })),
+  };
 }
 
-function layoutContiguous({ stageRaces, classics, monuments, density: D, days, cap }) {
+function layoutContiguous({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }) {
   if (D < 1 || days < 1 || cap < 1) return null;
   const alle = [...stageRaces, ...classics, ...monuments];
   if (!alle.length) return null;
 
-  const loest = solveContiguousStarts({ lengths: alle.map(lenOf), D, days, cap });
+  const loest = solveContiguousStarts({ races: alle, D, days, cap, spineMinStages });
   if (!loest) return null;
-  const { starts, dateOfGameDay, G } = loest;
-  const datoFor = (g) => dateOfGameDay[g];
+  const { dateOfGameDay, G, placeringer } = loest;
 
-  // Paasaet identiteter: for hvert etapetal parres startpladserne (kronologisk) med
-  // loebene af samme laengde i fase-raekkefoelge. Mangler nogen en seasonFraction, falder
-  // vi tilbage til byBigThenId, saa resultatet stadig er deterministisk.
-  const slotsByLen = new Map();
-  for (const st of starts) {
-    if (!slotsByLen.has(st.L)) slotsByLen.set(st.L, []);
-    slotsByLen.get(st.L).push(st.g);
-  }
-  for (const arr of slotsByLen.values()) arr.sort((a, b) => a - b);
-
-  const racesByLen = new Map();
-  for (const r of alle) {
-    const L = lenOf(r);
-    if (!racesByLen.has(L)) racesByLen.set(L, []);
-    racesByLen.get(L).push(r);
+  // Identiteterne paasaettes i fase-raekkefoelge inden for hver fodaftryks-klasse, saa et
+  // loeb lander samme sted i saesonen som i virkeligheden (#3469). Uden seasonFraction
+  // falder vi tilbage til byBigThenId - stadig deterministisk, ogsaa ved omvendt input.
+  const grupper = new Map();
+  for (const pl of placeringer) {
+    const noegle = `${pl.fp.length}|${pl.fp.join("")}`;
+    if (!grupper.has(noegle)) grupper.set(noegle, []);
+    grupper.get(noegle).push(pl);
   }
 
   const placementsById = new Map();
-  for (const [L, races] of racesByLen) {
-    const slots = slotsByLen.get(L) ?? [];
-    if (slots.length !== races.length) return null; // kan ikke ske - samme multiset som soegningen
-    const iOrden = orderByPhase(races) ?? [...races].sort(byBigThenId);
-    iOrden.forEach((race, i) => {
-      const g0 = slots[i];
+  for (const gruppe of grupper.values()) {
+    const slots = gruppe.map((pl) => pl.g0).sort((a, b) => a - b);
+    const iOrden = orderByPhase(gruppe.map((pl) => pl.race)) ?? gruppe.map((pl) => pl.race).sort(byBigThenId);
+    iOrden.forEach((race, idx) => {
+      const g0 = slots[idx];
+      const fp = gruppe[0].fp;
       const p = {
         id: race.id,
-        type: L > 1 ? "stage_race" : "single",
+        type: lenOf(race) > 1 ? "stage_race" : "single",
         race_class: race.race_class ?? null,
-        stages: L,
-        startRealDay: datoFor(g0),
+        stages: lenOf(race),
+        startRealDay: dateOfGameDay[g0],
         stagesPlaced: [],
       };
-      for (let k = 0; k < L; k++) {
-        p.stagesPlaced.push({ stage_number: k + 1, real_day: datoFor(g0 + k), game_day: g0 + k, lane: 0 });
-      }
+      let etape = 0;
+      fp.forEach((erEtape, k) => {
+        if (!erEtape) return; // hviledag: loebsdagen er optaget, men der koeres ikke
+        etape += 1;
+        p.stagesPlaced.push({ stage_number: etape, real_day: dateOfGameDay[g0 + k], game_day: g0 + k, lane: 0 });
+      });
       placementsById.set(race.id, p);
     });
   }
 
-  // Baner tildeles pr. kalenderdato i loebsdags-raekkefoelge, saa hver dato bruger 0..D-1.
   const perDate = new Map();
   for (const p of placementsById.values()) {
     for (const st of p.stagesPlaced) {
@@ -1398,7 +1440,7 @@ export function packLaneCalendar({
   // den komposition spillet faktisk oensker. Banded og stream bevares som fallback, saa en
   // tier hvor soegningen ikke konvergerer stadig faar en kalender.
   let layoutMode = "contiguous";
-  let res = layoutContiguous({ stageRaces, classics, monuments, density: D, days, cap });
+  let res = layoutContiguous({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages });
   if (!res) { layoutMode = "banded"; res = layoutBanded({ stageRaces, classics: [...classics, ...monuments], density: D, days, cap }); }
   if (!res) { layoutMode = "stream"; res = layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }); }
 
