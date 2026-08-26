@@ -1070,7 +1070,7 @@ export default function DashboardPage() {
           dens partner er skjult, så et par med ét skjult modul aldrig efterlader
           en tom celle. */}
       {(myLatestResultPaired || nextActionsVisible) && (
-        <div className="grid lg:grid-cols-2 gap-[14px] mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px] mb-4">
           {myLatestResultPaired && (
             <div className={nextActionsVisible ? undefined : "lg:col-span-2"}>
               <MyLatestResultCard data={myLatestResult} />
@@ -1097,7 +1097,7 @@ export default function DashboardPage() {
           nextRace, sæsonbanneret uden seasonInfo), så vi spejler den samme
           betingelse her for at vide hvornår kollaps-col-span skal på. */}
       {(showTeamSelectionCta || seasonInfo) && (
-        <div className="grid lg:grid-cols-2 gap-[14px] mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px] mb-4">
           {showTeamSelectionCta && (
             <div className={seasonInfo ? undefined : "lg:col-span-2"}>
               {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det løb der
@@ -1275,7 +1275,7 @@ export default function DashboardPage() {
       {heroAgonyVisible && <HeroAgonyCard teamId={team?.id} teamName={team?.name} />}
 
       {/* Main grid — #2849 bølge 1: sibling-gap 14px (spec) */}
-      <div className="grid lg:grid-cols-2 gap-[14px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px]">
 
         {/* My auctions + winning */}
         {isVisible("auctions") && (
