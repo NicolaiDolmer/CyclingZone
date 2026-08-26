@@ -78,13 +78,17 @@ Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En
 | Hvad er en GT | `GRAND_TOUR_MIN_STAGES` | ≥ 15 etaper | — | `grandTourRestDays.js` |
 | GT-etaper pr. kalenderdag | `MAX_GT_STAGES_PER_DAY` | 4 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
 | GT-spænd i kalenderdage | `MAX_GT_SPAN_DAYS` | 6 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
-| Hviledage pr. GT | `GRAND_TOUR_MAX_REST_DAYS` | 3 | 6/8 | `grandTourRestDays.js` |
+| Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 25/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
 | GT'er kun i | tier 1 | — | [#2251](https://github.com/NicolaiDolmer/CyclingZone/issues/2251) | `tierCalendarMaterializer.js` |
 | To GT'er må ikke dele kalenderdag | real-day-separation | ≥ 1 dags mellemrum | 6/8 | [#3472](https://github.com/NicolaiDolmer/CyclingZone/issues/3472) |
 
 Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no days with 5 gt stages"* + *"6 sounds like a decent max"*.
 
-> ⚠ **Nul slæk.** 6 dage × 4 etaper = 24 pladser. En GT på 21 etaper + 3 hviledage = 24. Præcis fyldt. Enhver placering der ikke er perfekt er umulig. Skal én af de fire knapper ændres, skal de tre andre efterregnes.
+**Hviledage, præcist (ejer 25/8, #4236).** Antallet er **2 for enhver GT** — en spilregel, ikke en egenskab udledt af det virkelige løbs datoer. Før blev det regnet som `clamp(spanDays - stages, 0, 3)` fra `date_text`, hvilket gav 0-3 afhængigt af kataloget, og 0 når feltet manglede. To GT'er i samme sæson kunne dermed have forskelligt antal uden at nogen havde besluttet det.
+
+**En hviledag ER en løbsdag** som GT'en optager uden at køre på. Spændet er derfor `etaper + 2` sammenhængende løbsdage, og rytteren er bundet henover — som i virkeligheden, hvor man ikke forlader Giroen på hviledagen for at køre et andet løb. Det er allerede hvad spænd-bindingen (#4217) gør, så det ændrer intet for spilleren. Positionerne er efter etape 9 og 15 (`GT_REST_DAY_PATTERN[2]`).
+
+> ⚠ **Nul slæk.** 6 dage × 4 etaper = 24 pladser. En GT på 21 etaper + 2 hviledage = 23, altså én plads til overs. Enhver placering der ikke er næsten perfekt er umulig. Skal én af de fire knapper ændres, skal de tre andre efterregnes.
 
 ---
 
