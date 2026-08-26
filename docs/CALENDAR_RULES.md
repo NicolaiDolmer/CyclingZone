@@ -78,13 +78,17 @@ Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En
 | Hvad er en GT | `GRAND_TOUR_MIN_STAGES` | ≥ 15 etaper | — | `grandTourRestDays.js` |
 | GT-etaper pr. kalenderdag | `MAX_GT_STAGES_PER_DAY` | 4 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
 | GT-spænd i kalenderdage | `MAX_GT_SPAN_DAYS` | 6 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
-| Hviledage pr. GT | `GRAND_TOUR_MAX_REST_DAYS` | 3 | 6/8 | `grandTourRestDays.js` |
+| Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
 | GT'er kun i | tier 1 | — | [#2251](https://github.com/NicolaiDolmer/CyclingZone/issues/2251) | `tierCalendarMaterializer.js` |
 | To GT'er må ikke dele kalenderdag | real-day-separation | ≥ 1 dags mellemrum | 6/8 | [#3472](https://github.com/NicolaiDolmer/CyclingZone/issues/3472) |
 
 Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no days with 5 gt stages"* + *"6 sounds like a decent max"*.
 
-> ⚠ **Nul slæk.** 6 dage × 4 etaper = 24 pladser. En GT på 21 etaper + 3 hviledage = 24. Præcis fyldt. Enhver placering der ikke er perfekt er umulig. Skal én af de fire knapper ændres, skal de tre andre efterregnes.
+**Hviledage, præcist (ejer 26/8, #4236).** Antallet er **2 for enhver GT** — en spilregel, ikke en egenskab udledt af det virkelige løbs datoer. Før blev det regnet som `clamp(spanDays - stages, 0, 3)` fra `date_text`, hvilket gav 0-3 afhængigt af kataloget, og 0 når feltet manglede. To GT'er i samme sæson kunne dermed have forskelligt antal uden at nogen havde besluttet det.
+
+**En hviledag ER en løbsdag** som GT'en optager uden at køre på. Spændet er derfor `etaper + 2` sammenhængende løbsdage, og rytteren er bundet henover — som i virkeligheden, hvor man ikke forlader Giroen på hviledagen for at køre et andet løb. Det er allerede hvad spænd-bindingen (#4217) gør, så det ændrer intet for spilleren. Positionerne er efter etape 9 og 15 (`GT_REST_DAY_PATTERN[2]`).
+
+> ⚠ **Nul slæk.** 6 dage × 4 etaper = 24 pladser. En GT på 21 etaper + 2 hviledage = 23, altså én plads til overs. Enhver placering der ikke er næsten perfekt er umulig. Skal én af de fire knapper ændres, skal de tre andre efterregnes.
 
 ---
 
@@ -96,9 +100,9 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 | Andel endagsløb (minimum) | `TIER_ONE_DAY_SHARE_MIN` | 0,45 | 0,45 | 0,48 | 0,45 | = mål − 0,10 | `tierCalendarGuarantees.js` |
 | Etapeløb uden bjergetape | `TIER_MOUNTAIN_FREE_STAGE_RACE_MIN` | 0 | 2 | 1 | 2 | 7/8 | `tierCalendarGuarantees.js` |
 | Etapeløbs-spænd | hård grænse | etaper + 3 kalenderdage | | | | 17/8 | [#3546 H](https://github.com/NicolaiDolmer/CyclingZone/issues/3546) |
-| Monumenter | egen eksklusiv **løbsdag** (kalenderdatoen må deles) | | | | | 21/8 | [#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075) |
+| Monumenter | **ingen eksklusiv løbsdag** — deler som ethvert andet løb | | | | | 26/8 | [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236) |
 
-**Monument-reglen, præcist.** Et monument har sin egen `game_day`: ingen modløb i puljen den løbsdag, så hver eneste rytter kan stille op. Den deler derimod gerne `scheduled_at`-DATO med andre løb — de ligger blot i datoens øvrige tidsslots. Pakkeren har bygget reglen ind siden 21/8 (`raceCalendarLanePacker.js`, B2). Den blev alligevel brudt i live S3: [#4161](https://github.com/NicolaiDolmer/CyclingZone/issues/4161)-akse-reparationen udledte `game_day` af datoerne alene, kendte ikke reglen, og klappede alle fem D1-monumenter sammen med deres naboløb. Derfor er reglen nu håndhævet på alle tre niveauer (§9), ikke kun i generatoren.
+**Monument-reglen, præcist (ejer 26/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 26/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**; det måles i `raceCalendarLanePackerInvariants.test.js`.
 
 > **Andelen måles på ANTAL LØB, ikke på løbsdage.** Det er et bevidst valg (#3327) og står i kodens overskrift. Målt på løbsdage ville D1 være 14 % — målt på løb er den 61 %.
 
@@ -153,7 +157,23 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 
 ### Arketype-reservationer
 
-Gulvene *måler* efter selection. Reservationerne *sikrer* før: `summit_tour` (summit-finaler), `cobbled_tour` (brosten i etapeløb), `itt_classic` (fritstående enkeltstart), `hilly_tour` (etapeløb uden bjerg). `TIER_ARCHETYPE_RESERVATIONS`, #3295.
+Gulvene *måler* efter selection. Reservationerne *sikrer* før: `summit_tour` (summit-finaler), `cobbled_tour` (brosten i etapeløb), `itt_classic` (fritstående enkeltstart), `hilly_tour` (etapeløb uden bjerg), `balanced_week` (den eneste arketype med **ITT i sine garantier**). `TIER_ARCHETYPE_RESERVATIONS`, #3295.
+
+**Ændret 26/8 ([#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272)), begge ejer-asks:**
+
+- **D1 `cobbled_classic` 4 → 6.** Ejeren 26/8: *"Det er ikke okay, at division 1 kun har 3 brostensetaper."* D1 går fra 4 til 6 brosten-etaper (2,6 % → 3,9 %). **Ikke helt i mål**, og tallet er valgt på en MÅLT afvejning, ikke på hvad der maksimerer D1:
+
+  | `cobbled_classic` | D1 brosten | D3 etaper | D3 dage uden afgørelse |
+  |---|--:|--:|--:|
+  | 4 (før) | 4 (2,6 %) | 86 | 7 |
+  | **6** | **6 (3,9 %)** | 84 | **7** |
+  | 7 | 7 (4,5 %) | 82 | **11** |
+  | 8 | — | — | D3 under sit brostens-gulv (4 < 5) |
+
+  Brostens-klassikere er ENDAGSLØB, og endagsløb er det der skaber afgørelses-dage. Flyttes de syvende og ottende til D1, mister D3 fire dage hvor noget afgøres — en dårlig handel for én ekstra brosten-etape. Ved 8 bryder D3's ejer-låste gulv helt (samme forsynings-konflikt som [#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075)). K-B-målet på 6 % (≈ 9 etaper) kræver flere brostens-løb i kataloget.
+
+  > **Bemærk:** `daysWithoutDecisionCount` MÅLES af pakkeren, men er ikke gated. Denne afvejning ville derfor ikke være fanget af et grønt scorecard — den blev fundet ved at diffe før/efter.
+- **D4 `balanced_week` 0 → 2, `itt_classic` 1 → 2.** D4 lå på 5 % enkeltstart mod målet 10 %. Årsagen var målt: D4's klasse-vindue (Class1/Class2) rummer kun 3 fritstående ITT-løb, og dets etapeløbs-arketyper (`summit_tour`, `hilly_tour`) er så korte at garantierne opbruger alle etape-pladser — `balanced_week` er den eneste arketype i vinduet der **garanterer** en ITT. Resultat: 3 → 5 ITT-etaper (4,8 % → 8,1 %).
 
 ---
 
@@ -192,6 +212,51 @@ Gulvene *måler* efter selection. Reservationerne *sikrer* før: `summit_tour` (
 
 ---
 
+## 7b. Hvordan etaperne slutter (finale-bånd)
+
+`stageFinaleMetrics.js` + `FINALE_WEIGHTS_BY_PROFILE` i `raceStageProfileGenerator.js`, [#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272) (ejer-beslutning 26/8) / [#3426](https://github.com/NicolaiDolmer/CyclingZone/issues/3426).
+
+Før #4272 målte kalenderen kun "slutter det for tit nedad?" — den håndhævede intet. Udfaldet var derfor drevet af generatorens vægte frem for af en regel, og `mountain` sluttede **nedad 59-70 %** i D1-D3 mod **opad 6-13 %**. Det er omvendt af virkeligheden.
+
+"Opad" = `long_climb` + `punch` · "fladt" = `bunch_sprint` + `reduced_sprint` · "nedad" = `descent` · "udbrud" = `breakaway`.
+
+### Bånd pr. terræntype — samme i alle fire divisioner
+
+| Terræntype | Opad | Fladt | Nedad | Udbrud |
+|---|---|---|---|---|
+| `high_mountain` | 80-100 % | — | maks 15 % | — |
+| `mountain` | 45-65 % | — | 20-35 % | 10-25 % |
+| `hilly` | 40-60 % | 15-30 % | — | 15-30 % |
+| `cobbles` | — | 30-50 % | — | 40-60 % |
+| `rolling` | — | 25-45 % | — | 55-75 % |
+| `flat` | — | 90-100 % | — | — |
+| `itt` / `itt_hilly` / `ttt` | — | — | — | 100 % `solo_tt` |
+
+En "—" er **ikke** "uspecificeret": klassen har vægt 0 i generatoren og gates mod 0. En bunch-sprint i højbjerget er et brud, ikke en tolereret sjældenhed. `classic` (monument-arketypen) står bevidst uden for tabellen — den rapporteres, men bånd-gates ikke.
+
+### Samlet bånd på tværs af alle etaper
+
+opad 25-32 % · fladt 32-40 % · nedad højst 10 % · udbrud 12-20 %.
+
+### To gate-lag — og hvorfor
+
+Et løbs parcours er seedet på løbets **virkelige identitet** (`external_id`), så det samme løb har det samme parcours i alle fire divisioner. En divisions finale-fordeling kan derfor ikke styres direkte: divisionen er en **stikprøve** af katalogets løb, og andelen svinger binomialt omkring generatorens vægt. Med n = 10-40 etaper pr. terræntype pr. division er standardfejlen 8-16 pp, så et råt ±0 pp-bånd ville være rødt på en *korrekt* generator omtrent hver tredje gang — samme fælde som #3469 allerede har betalt for én gang.
+
+| Lag | Mod hvad | Tolerance |
+|---|---|---|
+| **Sæson-aggregatet** (alle fire divisioner) | det rå bånd | ingen |
+| **Pr. division** | båndet + 2 standardfejl, kun ved n ≥ 12 | stikprøve-afhængig |
+
+Scorecardet markerer med `✗` når en andel ligger uden for det **rå** bånd, også når stikprøve-tillægget bærer den igennem — en strukturel skævhed er dermed synlig, ikke skjult bag et grønt flueben.
+
+### Afledt konsekvens: `descent_finale_min`
+
+`TIER_TARGETS.descent_finale_min` (`raceRouteRealismMetrics.js`) er et **gulv** under nedkørsels-finaler og blev kalibreret 8/8 mod en generator hvor `mountain` sluttede nedad 60 % af tiden. Båndene ovenfor gør D2's gamle gulv på 10 matematisk uopnåeligt (23 `mountain` × 0,35 + 7 `high_mountain` × 0,15 = 9,1 < 10). Målt konsekvens af at lade det stå: 20 af 400 sæsoner udtømte alle 12 gen-træk. Gulvene er derfor re-deriveret til D1 8 · **D2 5** · D3 4 · **D4 3**.
+
+> **Regel:** et gulv må aldrig kræve mere end båndet tillader. `raceRouteRealismMetrics.test.js` låser den relation.
+
+---
+
 ## 8. Rytterbinding og trupkrav
 
 | Regel | Værdi | Kilde |
@@ -216,6 +281,8 @@ En regel der kun findes som en konstant er ikke håndhævet. Målet er at hver r
 | **CI mod pakkerens output** | regressioner i generatoren | `raceCalendarLanePacker.test.js`, `calendarOverlapInvariant.test.js` |
 | **Sæsonskifte-preflight** | en skæv generering før den går live | `seasonCalendarGate.js`, [#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123) |
 | **`verify-invariants` mod prod** | reparations-scripts og ad-hoc-SQL | `scripts/verify-invariants.js` |
+
+Finale-båndene (§7b) har de to første: `stageFinaleMetrics.test.js` i CI og `calendarScorecard4218.mjs` i preflighten. Det tredje niveau (prod-invariant) mangler — se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
 Det tredje niveau er dét der manglede da #4155 brød overlap-cap'en. Tre invarianter er på plads ([PR #4169](https://github.com/NicolaiDolmer/CyclingZone/pull/4169)):
 

@@ -22,7 +22,6 @@
 //
 // REN + deterministisk (ingen DB/Date/random) — samme kontrakt som seasonPhaseProfiles.js.
 
-import { parseRaceDateText } from "./seasonPhaseProfiles.js";
 
 // Samme tærskel som tierRaceSelection.GRAND_TOUR_MIN_STAGES — importeres IKKE herfra
 // (ville skabe en cirkulær afhængighed grandTourRestDays.js → tierRaceSelection.js →
@@ -30,7 +29,10 @@ import { parseRaceDateText } from "./seasonPhaseProfiles.js";
 // sin egen konstant, samme praksis som tierCalendarMaterializer.js re-eksporterer den).
 export const GRAND_TOUR_MIN_STAGES = 15;
 
-export const GRAND_TOUR_MAX_REST_DAYS = 3;
+// Ejer-beslutning 25/8 (#4236): en Grand Tour har PRAECIS 2 hviledage. Foer blev antallet
+// udledt af `date_text` og kunne blive 0-3 - to GT'er i samme saeson kunne have forskelligt
+// antal uden at nogen havde besluttet det, og 0 hvis date_text manglede. Ensartet nu.
+export const GRAND_TOUR_REST_DAYS = 2;
 
 // Hviledags-ANTAL → 1-indekserede etape-numre EFTER hvilke en hviledag indsættes.
 export const GT_REST_DAY_PATTERN = Object.freeze({
@@ -41,23 +43,17 @@ export const GT_REST_DAY_PATTERN = Object.freeze({
 });
 
 /**
- * Antal hviledage for et løb, udledt af date_text (start/slut-dato) og etape-antal:
- * restDays = clamp(spanDays - stages, 0, GRAND_TOUR_MAX_REST_DAYS), hvor spanDays =
- * (endDoy - startDoy + 1) — INKLUSIV start- og slutdag (Giro 8/5-31/5 = 24 dage).
- * 0 hvis løbet ikke er en GT (< GRAND_TOUR_MIN_STAGES etaper) eller date_text
- * mangler/ikke kan parses (samme fallback-kontrakt som seasonPhaseProfiles.js —
- * kalderen (packLaneCalendar) falder da tilbage til sin hviledags-frie sti).
- * @param {{dateText?: string|null, stages?: number}} args
- * @returns {number} heltal 0..GRAND_TOUR_MAX_REST_DAYS
+ * Antal hviledage for et løb. Ejer-beslutning 25/8 (#4236): en Grand Tour har PRÆCIS
+ * GRAND_TOUR_REST_DAYS (2). Ikke-GT'er (< GRAND_TOUR_MIN_STAGES etaper) har 0.
+ * `dateText` indgår ikke længere — antallet er en spilregel, ikke en egenskab ved det
+ * virkelige løbs datoer, og den gamle udledning gav uensartede 0-3.
+ * @param {{stages?: number}} args
+ * @returns {number} 0 eller GRAND_TOUR_REST_DAYS
  */
-export function grandTourRestDayCount({ dateText, stages } = {}) {
+export function grandTourRestDayCount({ stages } = {}) {
   const stageCount = Number(stages);
   if (!Number.isFinite(stageCount) || stageCount < GRAND_TOUR_MIN_STAGES) return 0;
-  const parsed = parseRaceDateText(dateText);
-  if (!parsed) return 0;
-  const spanDays = parsed.endDoy - parsed.startDoy + 1;
-  if (!Number.isFinite(spanDays)) return 0;
-  return Math.max(0, Math.min(GRAND_TOUR_MAX_REST_DAYS, Math.round(spanDays - stageCount)));
+  return GRAND_TOUR_REST_DAYS;
 }
 
 /**

@@ -199,7 +199,16 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   // brostens-MONUMENTER opfylder selv en reservation på 2 (målt: D1-cobbles faldt til
   // 2 < gulvets 3). 4 reserverer monumenterne + 2 ægte OWTB-brostens-klassikere;
   // OWTB-supply er 3, så tier 2 beholder mindst 1 + OWTC/ProSeries til sit eget gulv.
-  1: Object.freeze({ itt_classic: 1, cobbled_classic: 4 }),
+  // #4272 (26/8): cobbled_classic 4 → 6 (ejer-ask: "Det er ikke okay, at division 1 kun
+  // har 3 brostensetaper"). 6 og ikke mere, fordi brostens-klassikere er ENDAGSLØB og
+  // endagsløb er det der skaber afgørelses-dage. Målt pr. reservationstal:
+  //   4 → D1 4 brosten (2,6 %) · D3 86 etaper · D3 7 dage uden afgørelse
+  //   6 → D1 6 brosten (3,9 %) · D3 84 etaper · D3 7 dage uden afgørelse  ← valgt
+  //   7 → D1 7 brosten (4,5 %) · D3 82 etaper · D3 11 dage uden afgørelse
+  //   8 → D3 falder under sit ejer-låste brostens-gulv (4 < 5), jf. #4075
+  // Den syvende brosten-etape koster altså D3 fire dage hvor noget afgøres. 6 giver D1
+  // 50 % flere brosten UDEN den regning, og lader D3 beholde margin på sit gulv (6/5).
+  1: Object.freeze({ itt_classic: 1, cobbled_classic: 6 }),
   // summit_tour 1→2 (#3469, 7/8 catalog-upgrade følge-commit): de 2 nye OWTC summit_tour-
   // løb (Vuelta a los Pirineos + Tour des Grandes Alpes, seedet 7/8) gør D2's
   // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge
@@ -207,7 +216,7 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   // taget. Reservationen garanterer det, samme princip som resten af tabellen.
   2: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
   3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
-  4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
+  4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 2, hilly_tour: 2, balanced_week: 2 }),
 });
 
 const MOUNTAIN_PROFILE_TYPES = new Set(["mountain", "high_mountain"]);

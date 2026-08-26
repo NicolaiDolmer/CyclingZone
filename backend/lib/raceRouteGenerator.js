@@ -173,7 +173,7 @@ export function buildClimbs(rng, profileType, finaleType, distanceKm, namer) {
   // #3546 E (ejer-valgt 17/8 aften): en SEEDET andel af hilly/rolling-etaper skal have et
   // uphill-klimaks (sidste stigning topper VED målstregen) i stedet for aldrig at gøre det.
   // Prod målte 0/254 hilly og 0/65 rolling med summit_finish, fordi finale_type-baseret
-  // summit-logik kun dækker mountain-familien (FINALE_BY_PROFILE for hilly/rolling
+  // summit-logik kun dækker mountain-familien (FINALE_WEIGHTS_BY_PROFILE for hilly/rolling
   // indeholder aldrig "long_climb"). Denne roll er UAFHÆNGIG af finale_type (rører ALDRIG
   // motoren/passage-ordenen/KOM-pointene: den genbruger blot summit-boolean'en buildClimbs
   // allerede havde) og forbruges KUN for hilly/rolling, så alle andre profil-typers rute-

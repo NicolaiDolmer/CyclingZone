@@ -7,7 +7,7 @@
 // TT-hjaelper loefter holdet selv uden egen chance"); verifikations-baggrund:
 // gh issue #3463 ("ni ryttere fra samme hold ville hver faa deres egen tid").
 //
-// Diskriminator ITT vs. TTT: raceStageProfileGenerator.js's FINALE_BY_PROFILE
+// Diskriminator ITT vs. TTT: raceStageProfileGenerator.js's FINALE_WEIGHTS_BY_PROFILE
 // mapper BAADE "itt"/"itt_hilly" OG "ttt" til finale_type "solo_tt" — de er
 // altsaa IKKE til at skelne paa finale_type alene (#3463-verifikationen fandt
 // netop dette). Den korrekte diskriminator er route.profile_type === "ttt".

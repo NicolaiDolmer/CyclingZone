@@ -74,6 +74,26 @@ const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile
 // absorberer spredningen, samme mekanisme som D1/D3/D4); D2's tidligere observerede
 // skred (summit 4, M-Down 53 %) fanges stadig som rødt, nu af det HÆVEDE summit_min=8
 // (regressionstest i raceRouteRealismMetrics.test.js).
+// ── #4272 (26/8): descent_finale_min RE-DERIVERET mod ejerens nye finale-bånd ────
+//
+// De gamle gulve (D1 8 · D2 10 · D3 4 · D4 4) blev kalibreret 8/8 mod en generator hvor
+// `mountain` sluttede NEDAD i 60 % af tilfældene. #4272 vender det bevidst om
+// (TERRAIN_FINALE_BANDS: mountain nedad 20-35 %, high_mountain nedad 0-15 %, SAMLET nedad
+// højst 10 %) — og så bliver D2's gulv på 10 MATEMATISK UOPNÅELIGT, ikke bare stramt:
+//
+//   D2 har 23 mountain- + 7 high_mountain-etaper. Bånd-LOFTET giver
+//   23 × 0,35 + 7 × 0,15 = 9,1 nedkørsels-finaler — under gulvets 10.
+//
+// MÅLT konsekvens af at lade gulvet stå (400 sæsoners re-draw-søgning mod
+// __fixtures__/seasonTierCalendarSnapshot.json): 0 → 20 sæsoner (5 %) UDTØMTE alle 12
+// gen-træk, og S3's eget træk gik fra attempt 0 til attempt 9 af 12 i D2. Et gulv der
+// tvinger re-drawet til at lede efter en fordeling båndet forbyder, er ikke en vagt —
+// det er en deadlock med 5 % fejlrate.
+//
+// Gulvene er derfor sat til det båndene faktisk kan levere, med margin (målt på S3:
+// D1 10 · D2 7 · D3 4 · D4 3). De vogter stadig det #3469 satte dem til at vogte —
+// at nedkørsels-finalen findes som løbstype — bare mod den nye, ejer-besluttede skala.
+// Efter re-deriveringen: 0 af 400 sæsoner udtømmer gen-trækket igen.
 export const TIER_TARGETS = Object.freeze({
   1: {
     summit_min: 12, mdown_max_pct: 55, itt_min: 1, cobbles_min: 1,
@@ -81,7 +101,7 @@ export const TIER_TARGETS = Object.freeze({
   },
   2: {
     summit_min: 8, mdown_max_pct: 60, itt_min: 1, cobbles_min: 1,
-    bunch_sprint_min: 15, descent_finale_min: 10, solo_tt_final_min: 1,
+    bunch_sprint_min: 15, descent_finale_min: 5, solo_tt_final_min: 1,
   },
   3: {
     summit_min: 8, mdown_max_pct: 55, itt_min: 1, cobbles_min: 1,
@@ -89,7 +109,7 @@ export const TIER_TARGETS = Object.freeze({
   },
   4: {
     summit_min: 4, mdown_max_pct: 60, itt_min: 1, cobbles_min: 1,
-    bunch_sprint_min: 7, descent_finale_min: 4, solo_tt_final_min: 1,
+    bunch_sprint_min: 7, descent_finale_min: 3, solo_tt_final_min: 1,
   },
 });
 
@@ -132,7 +152,7 @@ export function scoreTier(tier, races) {
   // finale_type (tværs af alle profile_type), ikke en andel. descent-finale-etapedage
   // GENBRUGER mdown-tælleren — det er PRÆCIS samme tal, blot udtrykt som et minimums-gulv
   // i stedet for et procent-loft (mdown_max_pct), fordi kun mountain/high_mountain-profiler
-  // kan få finale_type "descent" (raceStageProfileGenerator.js's FINALE_BY_PROFILE).
+  // kan få finale_type "descent" (raceStageProfileGenerator.js's FINALE_WEIGHTS_BY_PROFILE).
   const bunchSprintStageDays = stages.filter((s) => s.finale_type === "bunch_sprint").length;
   const descentFinaleStageDays = mdown.length;
   const soloTtFinalRaces = races.filter((r) => {

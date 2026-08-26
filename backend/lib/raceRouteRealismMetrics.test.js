@@ -109,8 +109,27 @@ test("#3469: TIER_TARGETS matcher hærdnings-pakken for D1/D2", () => {
   assert.equal(TIER_TARGETS[2].itt_min, 1);
   assert.equal(TIER_TARGETS[2].cobbles_min, 1);
   assert.equal(TIER_TARGETS[2].bunch_sprint_min, 15);
-  assert.equal(TIER_TARGETS[2].descent_finale_min, 10);
+  // #4272 (26/8): 10 → 5. Ejerens finale-bånd gør 10 matematisk uopnåeligt for D2
+  // (23 mountain × 0,35 + 7 high_mountain × 0,15 = 9,1 < 10), så gulvet deadlockede
+  // re-drawet — 20 af 400 sæsoner udtømte alle 12 forsøg. Se docstringen i
+  // raceRouteRealismMetrics.js for udledningen og målingen.
+  assert.equal(TIER_TARGETS[2].descent_finale_min, 5);
   assert.equal(TIER_TARGETS[2].solo_tt_final_min, 1);
+});
+
+// #4272: gulvene for nedkørsels-finaler skal ligge UNDER det ejerens bånd kan levere,
+// ellers leder re-drawet efter en fordeling båndet forbyder. Låser den relation, så en
+// fremtidig hævning af et gulv ikke gen-introducerer deadlocken.
+test("#4272: descent_finale_min er opnåeligt inden for finale-båndene i alle divisioner", () => {
+  // Målt på S3-planen (scripts/dev/calendarScorecard4218.mjs): faktiske nedkørsels-finaler
+  // pr. division. Gulvet skal have margin ned til dette, ikke ligge over det.
+  const måltPåS3 = { 1: 10, 2: 7, 3: 4, 4: 3 };
+  for (const tier of [1, 2, 3, 4]) {
+    assert.ok(
+      TIER_TARGETS[tier].descent_finale_min <= måltPåS3[tier],
+      `tier ${tier}: gulv ${TIER_TARGETS[tier].descent_finale_min} > målt ${måltPåS3[tier]} — re-drawet vil lede efter noget båndet forbyder (#4272)`
+    );
+  }
 });
 
 // #3469: alle 4 divisioner er nu realisme-gatede — ingen tier er længere bevidst

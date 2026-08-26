@@ -3,7 +3,7 @@
     {
       "stage_number": 1,
       "profile_type": "mountain",
-      "finale_type": "descent",
+      "finale_type": "punch",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -18,7 +18,7 @@
     {
       "stage_number": 2,
       "profile_type": "mountain",
-      "finale_type": "descent",
+      "finale_type": "long_climb",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -73,7 +73,7 @@
     {
       "stage_number": 2,
       "profile_type": "flat",
-      "finale_type": "reduced_sprint",
+      "finale_type": "bunch_sprint",
       "demand_vector": {
         "sprint": 0.61,
         "acceleration": 0.15,
@@ -86,7 +86,7 @@
     {
       "stage_number": 3,
       "profile_type": "mountain",
-      "finale_type": "descent",
+      "finale_type": "punch",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -101,7 +101,7 @@
     {
       "stage_number": 4,
       "profile_type": "mountain",
-      "finale_type": "descent",
+      "finale_type": "long_climb",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -135,7 +135,7 @@
     {
       "stage_number": 1,
       "profile_type": "hilly",
-      "finale_type": "reduced_sprint",
+      "finale_type": "breakaway",
       "demand_vector": {
         "punch": 0.44,
         "tempo": 0.1,
@@ -152,7 +152,7 @@
     {
       "stage_number": 1,
       "profile_type": "hilly",
-      "finale_type": "punch",
+      "finale_type": "reduced_sprint",
       "demand_vector": {
         "punch": 0.44,
         "tempo": 0.1,
@@ -180,7 +180,7 @@
     {
       "stage_number": 3,
       "profile_type": "flat",
-      "finale_type": "reduced_sprint",
+      "finale_type": "bunch_sprint",
       "demand_vector": {
         "sprint": 0.61,
         "acceleration": 0.15,
