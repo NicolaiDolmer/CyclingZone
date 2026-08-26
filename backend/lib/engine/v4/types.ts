@@ -88,7 +88,7 @@ export type Waypoint = {
   summit_finish?: boolean;
 };
 
-// Profil-typer (raceStageProfileGenerator.js FINALE_BY_PROFILE-noegler).
+// Profil-typer (raceStageProfileGenerator.js FINALE_WEIGHTS_BY_PROFILE-noegler).
 export type ProfileType =
   | "flat"
   | "rolling"
@@ -101,7 +101,7 @@ export type ProfileType =
   | "itt_hilly"
   | "ttt";
 
-// Finale-typer (raceStageProfileGenerator.js FINALE_BY_PROFILE-vaerdier).
+// Finale-typer (raceStageProfileGenerator.js FINALE_WEIGHTS_BY_PROFILE-vaerdier).
 export type FinaleType =
   | "bunch_sprint"
   | "reduced_sprint"

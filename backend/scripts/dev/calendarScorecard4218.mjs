@@ -37,6 +37,10 @@ import {
   ACTIVE_TARGET, TIER_COMPOSITION_TOLERANCE_PP, CATEGORY_LABELS,
 } from "../../lib/calendarCompositionTargets.js";
 import { computeStageOrderStats, detectStageOrderViolations, STAGE_ORDER_TARGETS } from "../../lib/stageOrderMetrics.js";
+import {
+  computeFinaleStats, mergeFinaleStats, detectFinaleViolations,
+  TERRAIN_FINALE_BANDS, OVERALL_FINALE_BAND, FINALE_CLASSES, CLASS_LABELS, MIN_SAMPLE,
+} from "../../lib/stageFinaleMetrics.js";
 import { detectEmptyCalendarDays } from "../../lib/calendarDailyCoverage.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -152,7 +156,10 @@ function main() {
     const order = computeStageOrderStats(målbare);
     const orderViol = detectStageOrderViolations({ stats: order, label: `tier ${plan.tier}` });
 
-    // "Slutter det for tit nedad?" — finale_type === "descent" på tværs af alle etaper.
+    // "Slutter det for tit nedad?" — nu et BÅND pr. terræntype + samlet (#4272), ikke
+    // kun en descent-optælling. `finaleViol` er GATEN (bånd + stikprøve-tillæg, se
+    // stageFinaleMetrics.js); `finaleRaw` er de samme bånd UDEN tillæg, rapporteret så
+    // en strukturel skævhed er synlig selv når stikprøve-tillægget bærer den igennem.
     let descent = 0, etaper = 0;
     const finaler = new Map();
     for (const r of målbare) {
@@ -163,6 +170,9 @@ function main() {
         if (f === "descent") descent += 1;
       }
     }
+    const finale = computeFinaleStats(målbare);
+    const finaleViol = detectFinaleViolations({ stats: finale, label: `tier ${plan.tier}`, strict: false });
+    const finaleRaw = detectFinaleViolations({ stats: finale, label: `tier ${plan.tier}`, strict: true });
 
     rapport.tiers.push({
       tier: plan.tier,
@@ -174,6 +184,7 @@ function main() {
       maxOverlap: plan.maxOverlap, overlapCap: plan.overlapCap,
       tommeLøbsdage: plan.emptyDays, dageUdenAfgørelse: plan.daysWithoutDecisionCount,
       coverage, coverageViol, composition, compositionViol, order, orderViol,
+      finale, finaleViol, finaleRaw,
       descent, descentAndel: etaper ? descent / etaper : 0,
       finaler: Object.fromEntries([...finaler.entries()].sort((a, b) => b[1] - a[1])),
     });
@@ -186,8 +197,15 @@ function main() {
 
   // Samme dom i begge udgaver — ellers ville --json altid exit'e 0 og gøre gaten
   // usynligt grøn for enhver der bruger den maskinlæsbare sti.
+  // Sæson-aggregatet gates mod de RÅ bånd (n = 20-90 pr. terræntype, stor nok til at
+  // båndet er meningsfuldt); pr. division gates mod bånd + stikprøve-tillæg. Se
+  // stageFinaleMetrics.js for hvorfor der er to lag.
+  rapport.sæsonFinale = mergeFinaleStats(rapport.tiers.map((t) => t.finale));
+  rapport.sæsonFinaleViol = detectFinaleViolations({ stats: rapport.sæsonFinale, label: "sæson", strict: true });
+
   const bruddene = rapport.tiers.reduce((n, t) =>
-    n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length + t.orderViol.length, 0);
+    n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length + t.orderViol.length
+      + t.finaleViol.length, 0) + rapport.sæsonFinaleViol.length;
   if (asJson) {
     console.log(JSON.stringify({ ...rapport, regelbrud: bruddene, ok: bruddene === 0 && dækning.ok && !kollisioner.length }, null, 2));
     return bruddene === 0 && dækning.ok && kollisioner.length === 0;
@@ -227,18 +245,45 @@ function main() {
     if (Number.isFinite(finishMountain)) {
       console.log(`  ${ok(finishMountain <= STAGE_ORDER_TARGETS.mountain_finish_max_pct)} Etapeløb der slutter på bjerg: ${finishMountain.toFixed(1)} % (maks ${STAGE_ORDER_TARGETS.mountain_finish_max_pct} %) · flad slutning ${(t.order?.flatFinishPct ?? 0).toFixed(1)} % · ITT-slutning ${(t.order?.ittFinishPct ?? 0).toFixed(1)} %`);
     }
-    console.log(`  --- Slutter nedad (finale_type=descent): ${t.descent} af ${t.etaper} etaper = ${pct(t.descentAndel)}`);
-    console.log(`      finaler: ${Object.entries(t.finaler).map(([k, v]) => `${k} ${v}`).join(" · ")}`);
+    console.log(`  ${ok(t.finaleViol.length === 0)} Finale-bånd pr. terræn (#4272) — slutter nedad i alt: ${t.descent} af ${t.etaper} = ${pct(t.descentAndel)}`);
+    for (const p of Object.keys(TERRAIN_FINALE_BANDS)) {
+      const slot = t.finale.byProfile?.[p];
+      if (!slot?.total) continue;
+      const bands = TERRAIN_FINALE_BANDS[p];
+      const celler = FINALE_CLASSES
+        .filter((c) => bands[c] || slot.pct[c] > 0)
+        .map((c) => {
+          const [lo, hi] = bands[c] ?? [0, 0];
+          const got = slot.pct[c];
+          return `${CLASS_LABELS[c]} ${got.toFixed(0)}%${got < lo || got > hi ? `✗[${lo}-${hi}]` : ""}`;
+        });
+      const lille = slot.total < MIN_SAMPLE ? " (n<min, kun rapport)" : "";
+      console.log(`      ${p.padEnd(14)} n=${String(slot.total).padStart(3)}  ${celler.join(" · ")}${lille}`);
+    }
+    const o = t.finale.overall;
+    console.log(`      ${"SAMLET".padEnd(14)} n=${String(t.finale.total).padStart(3)}  ` +
+      Object.entries(OVERALL_FINALE_BAND).map(([c, [lo, hi]]) => {
+        const got = o.pct[c];
+        return `${CLASS_LABELS[c]} ${got.toFixed(1)}%${got < lo || got > hi ? `✗[${lo}-${hi}]` : ""}`;
+      }).join(" · ") + ` · ${CLASS_LABELS.tt} ${o.pct.tt.toFixed(1)}%`);
+    // ✗ = uden for det RÅ bånd. Står linjen samtidig som OK, bæres afvigelsen af
+    // stikprøve-tillægget (lille n) — den er rapporteret, ikke skjult.
+    if (t.finaleRaw.length && !t.finaleViol.length) {
+      console.log(`      (${t.finaleRaw.length} afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)`);
+    }
 
     console.log(`  ${ok((t.maxOverlap ?? 0) <= (t.overlapCap ?? 99))} Samtidige løb pr. løbsdag: maks ${t.maxOverlap} (cap ${t.overlapCap})`);
     console.log(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (GT, monument, whitelist, dedup): ${t.planViolations.length} brud`);
     for (const v of t.planViolations.slice(0, 5)) console.log(`     ${v}`);
-    for (const v of [...t.coverageViol, ...t.compositionViol, ...t.orderViol].slice(0, 6)) console.log(`     ! ${v}`);
+    for (const v of [...t.coverageViol, ...t.compositionViol, ...t.orderViol, ...t.finaleViol].slice(0, 8)) console.log(`     ! ${v}`);
   }
 
   const alleBrud = rapport.tiers.reduce((n, t) =>
-    n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length + t.orderViol.length, 0);
+    n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length + t.orderViol.length
+      + t.finaleViol.length, 0) + rapport.sæsonFinaleViol.length;
   console.log(`\n${"═".repeat(72)}`);
+  console.log(`${ok(rapport.sæsonFinaleViol.length === 0)} SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (${rapport.sæsonFinale.total} etaper)`);
+  for (const v of rapport.sæsonFinaleViol) console.log(`     ! ${v}`);
   console.log(`SAMLET: ${alleBrud} regelbrud · dækning ${dækning.ok ? "OK" : "HULLER"} · ${kollisioner.length} navnekollisioner`);
   console.log(alleBrud === 0 && dækning.ok && !kollisioner.length
     ? "Kalenderen overholder alle gates i docs/CALENDAR_RULES.md.\n"

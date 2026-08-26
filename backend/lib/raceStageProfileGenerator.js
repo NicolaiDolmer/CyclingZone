@@ -93,23 +93,42 @@ export const DEMAND_VECTORS = Object.freeze({
   classic:       Object.freeze({ endurance: 0.18, punch: 0.16, climbing: 0.12, cobblestone: 0.10, tempo: 0.06, flat: 0.06, positioning: 0.06, tactics: 0.04, sprint: 0.04, randomness: 0.18 }),
 });
 
-// Plausible finale-typer pr. terræn (display + senere modifier). Første = mest typisk.
-// #1021 Fase 1: finale_type driver udbruds-bonussen. mellembjerg (mountain) er
-// descent-domineret (transition/nedkørsels-finish = udbruds-venlig; de store summit-
-// finaler hører til high_mountain); hilly får et breakaway-alternativ; high_mountain
-// er summit-domineret men kan ramme en descent (lang bjergdag der ikke slutter opad).
-// finaleFor vægter første element ~60%.
-const FINALE_BY_PROFILE = Object.freeze({
-  flat:          ["bunch_sprint", "reduced_sprint"],
-  rolling:       ["breakaway", "reduced_sprint", "bunch_sprint"],
-  hilly:         ["punch", "reduced_sprint", "breakaway"],
-  mountain:      ["descent", "breakaway", "long_climb"],
-  high_mountain: ["long_climb", "long_climb", "descent"],
-  itt:           ["solo_tt"],
-  itt_hilly:     ["solo_tt"],
-  ttt:           ["solo_tt"],
-  cobbles:       ["reduced_sprint", "breakaway"],
-  classic:       ["punch", "reduced_sprint", "long_climb"],
+// Plausible finale-typer pr. terræn som VÆGTE (display + udbruds-modifier).
+// #1021 Fase 1: finale_type driver udbruds-bonussen.
+//
+// #4272 (ejer-beslutning 26/8): vægtene er kalibreret mod ejerens bånd pr. terræntype
+// (TERRAIN_FINALE_BANDS i stageFinaleMetrics.js) — IKKE længere en positionsliste hvor
+// første element fik ~60 %. Den gamle model gjorde `mountain` til en NEDKØRSELS-etape
+// (descent først → målt 59-70 % nedad i D1-D3, kun 6-13 % opad), hvilket er omvendt af
+// virkeligheden og præcis klagen i #3426. Båndene håndhæves nu af scorecardet.
+//
+// VÆGTENE SIGTER MOD BÅNDENES MIDTE, ikke mod kanten — en division er en stikprøve på
+// 10-40 etaper pr. terræntype, så et vægtsæt der ramte kanten ville falde ud af båndet
+// halvdelen af gangene. En klasse ejeren har markeret "—" i bånd-tabellen har VÆGT 0
+// her, så "ikke nævnt" og "kan ikke forekomme" er samme ting (fx bunch_sprint i bjerget).
+//
+// "Opad" = long_climb + punch · "fladt" = bunch_sprint + reduced_sprint.
+const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
+  // fladt 90-100 % → 100 % (begge muligheder er flade).
+  flat:          Object.freeze([{ value: "bunch_sprint", weight: 70 }, { value: "reduced_sprint", weight: 30 }]),
+  // fladt 25-45 % → 35 · udbrud 55-75 % → 65.
+  rolling:       Object.freeze([{ value: "breakaway", weight: 65 }, { value: "reduced_sprint", weight: 20 }, { value: "bunch_sprint", weight: 15 }]),
+  // opad 40-60 % → 50 · fladt 15-30 % → 25 · udbrud 15-30 % → 25.
+  hilly:         Object.freeze([{ value: "punch", weight: 50 }, { value: "reduced_sprint", weight: 25 }, { value: "breakaway", weight: 25 }]),
+  // opad 45-65 % · nedad 20-35 % · udbrud 10-25 %. Var 60 % descent — kernen i #4272.
+  mountain:      Object.freeze([{ value: "long_climb", weight: 41 }, { value: "punch", weight: 8 }, { value: "descent", weight: 34 }, { value: "breakaway", weight: 17 }]),
+  // opad 80-100 % · nedad maks 15 %.
+  high_mountain: Object.freeze([{ value: "long_climb", weight: 84 }, { value: "punch", weight: 9 }, { value: "descent", weight: 7 }]),
+  itt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
+  itt_hilly:     Object.freeze([{ value: "solo_tt", weight: 100 }]),
+  ttt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
+  // fladt 30-50 % → 45 · udbrud 40-60 % → 55.
+  cobbles:       Object.freeze([{ value: "reduced_sprint", weight: 45 }, { value: "breakaway", weight: 55 }]),
+  // `classic` står IKKE i ejerens bånd-tabel (den dækker de otte genererede terræner,
+  // classic er monument-arketypen). Den beholder derfor sin egen realistiske blanding
+  // — Lombardia/Liège slutter opad, Sanremo/Roubaix samlet — og er RAPPORTERET men
+  // ikke bånd-gated i scorecardet. Andelen er lille (0-4 etaper pr. division).
+  classic:       Object.freeze([{ value: "punch", weight: 45 }, { value: "long_climb", weight: 20 }, { value: "reduced_sprint", weight: 20 }, { value: "breakaway", weight: 15 }]),
 });
 
 // Terræn-fordeling for endagsløb (race_type='single'). Afspejler ProSeries-feltet:
@@ -335,10 +354,6 @@ function seedKeyFor(race) {
   return `${id}${seasonSeedSuffix(race)}`;
 }
 
-function pick(rng, arr) {
-  return arr[Math.floor(rng() * arr.length)];
-}
-
 function weightedPick(rng, items) {
   const total = items.reduce((s, it) => s + it.weight, 0);
   let r = rng() * total;
@@ -395,11 +410,12 @@ function demandVectorFor(profileType) {
 }
 
 export function finaleFor(rng, profileType) {
-  const options = FINALE_BY_PROFILE[profileType] || [];
+  const options = FINALE_WEIGHTS_BY_PROFILE[profileType] || [];
   if (!options.length) return null;
-  // Vægt mod den mest typiske (første): ~60% første, ellers uniformt blandt resten.
-  if (options.length === 1 || rng() < 0.6) return options[0];
-  return pick(rng, options.slice(1));
+  // #4272: ét vægtet træk (weightedPick bruger præcis ÉT rng-kald, som den gamle
+  // 60/40-sti gjorde i sit hyppigste tilfælde). Vægtene bor i tabellen ovenfor, så
+  // båndene kan justeres uden at røre trækket.
+  return weightedPick(rng, options);
 }
 
 function toStage(rng, profileType, stageNumber, race, isStageRace) {

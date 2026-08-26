@@ -54,7 +54,14 @@ const PLAN_SEASON_ID = SNAPSHOT.seasonId;
 //
 // Selve re-draw-MEKANIKKEN testes desuden syntetisk (fakeGenerator nedenfor), hvor det er
 // garanteret at retry-stien rammes uanset hvad generatorens vægte gør.
-const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000001d";
+// #4272 (26/8): …01d holdt op med at ramme re-draw-stien da FINALE_WEIGHTS_BY_PROFILE
+// erstattede den positionsbaserede FINALE_BY_PROFILE (mountain gik fra 60 % descent til
+// 34 %) og descent_finale_min blev re-deriveret. Genfundet med søgeloopet ovenfor —
+// præcis den skrøbelighed advarslen forudsiger, og testen fejlede højlydt, ikke tavst.
+// …007 trækker om i tier 3 OG tier 4 (attempt 1 begge steder) mens tier 1 består i
+// første forsøg — resolveSeasonDrawVariants-testen nedenfor kræver præcis den form
+// (variants.get(1) === 0 og variants.get(3) > 0).
+const RETRY_SEASON_ID = "00000000-0000-0000-0000-000000000007";
 
 // Samme idé, men for testen der SPECIFIKT skal bevise "kun ÉN tier brød, og KUN den
 // trækkes om" — fundet via søgeloopet ovenfor mod det regenererede snapshot. Samme
@@ -67,7 +74,11 @@ const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000001d";
 // længere brød tier 3's bånd i det kanoniske træk — testen fejlede højlydt på sit eget
 // "fixturen skal reelt bryde noget"-assert (præcis den skrøbelighed advarslen ovenfor
 // forudsagde), ikke tavst. Genfundet med samme søgeloop mod snapshottet EFTER #3371.
-const SINGLE_TIER_RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000000b";
+//
+// #4272 (26/8): samme historie igen — …00b brød ikke længere tier 3 alene efter
+// finale-vægtene blev båndstyrede. Genfundet med samme loop, filtreret til
+// `retried.length === 1 && retried[0].tier === 3`: …006 (tier 3, attempt 1).
+const SINGLE_TIER_RETRY_SEASON_ID = "00000000-0000-0000-0000-000000000006";
 
 // ── Syntetiske generatorer (fuld kontrol over hvornår et træk består) ────────
 const passingStage = () => ({ profile_type: "high_mountain", finale_type: "long_climb", distance_km: 170, sectors: [] });

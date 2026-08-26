@@ -157,7 +157,12 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 
 ### Arketype-reservationer
 
-Gulvene *måler* efter selection. Reservationerne *sikrer* før: `summit_tour` (summit-finaler), `cobbled_tour` (brosten i etapeløb), `itt_classic` (fritstående enkeltstart), `hilly_tour` (etapeløb uden bjerg). `TIER_ARCHETYPE_RESERVATIONS`, #3295.
+Gulvene *måler* efter selection. Reservationerne *sikrer* før: `summit_tour` (summit-finaler), `cobbled_tour` (brosten i etapeløb), `itt_classic` (fritstående enkeltstart), `hilly_tour` (etapeløb uden bjerg), `balanced_week` (den eneste arketype med **ITT i sine garantier**). `TIER_ARCHETYPE_RESERVATIONS`, #3295.
+
+**Ændret 26/8 ([#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272)), begge ejer-asks:**
+
+- **D1 `cobbled_classic` 4 → 7.** Ejeren 26/8: *"Det er ikke okay, at division 1 kun har 3 brostensetaper."* D1 går fra 4 til 7 brosten-etaper (2,6 % → 4,5 %). **Ikke helt i mål:** K-B-målet er 6 % (≈ 9 etaper), men ved 8 reservationer falder D3 under sit ejer-låste brostens-gulv (målt: 4 < 5) — samme forsynings-konflikt som [#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075). 7 er det højeste D1 kan tage uden at sulte D3. Resten kræver flere brostens-løb i kataloget.
+- **D4 `balanced_week` 0 → 2, `itt_classic` 1 → 2.** D4 lå på 5 % enkeltstart mod målet 10 %. Årsagen var målt: D4's klasse-vindue (Class1/Class2) rummer kun 3 fritstående ITT-løb, og dets etapeløbs-arketyper (`summit_tour`, `hilly_tour`) er så korte at garantierne opbruger alle etape-pladser — `balanced_week` er den eneste arketype i vinduet der **garanterer** en ITT. Resultat: 3 → 5 ITT-etaper (4,8 % → 8,1 %).
 
 ---
 
@@ -196,6 +201,51 @@ Gulvene *måler* efter selection. Reservationerne *sikrer* før: `summit_tour` (
 
 ---
 
+## 7b. Hvordan etaperne slutter (finale-bånd)
+
+`stageFinaleMetrics.js` + `FINALE_WEIGHTS_BY_PROFILE` i `raceStageProfileGenerator.js`, [#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272) (ejer-beslutning 26/8) / [#3426](https://github.com/NicolaiDolmer/CyclingZone/issues/3426).
+
+Før #4272 målte kalenderen kun "slutter det for tit nedad?" — den håndhævede intet. Udfaldet var derfor drevet af generatorens vægte frem for af en regel, og `mountain` sluttede **nedad 59-70 %** i D1-D3 mod **opad 6-13 %**. Det er omvendt af virkeligheden.
+
+"Opad" = `long_climb` + `punch` · "fladt" = `bunch_sprint` + `reduced_sprint` · "nedad" = `descent` · "udbrud" = `breakaway`.
+
+### Bånd pr. terræntype — samme i alle fire divisioner
+
+| Terræntype | Opad | Fladt | Nedad | Udbrud |
+|---|---|---|---|---|
+| `high_mountain` | 80-100 % | — | maks 15 % | — |
+| `mountain` | 45-65 % | — | 20-35 % | 10-25 % |
+| `hilly` | 40-60 % | 15-30 % | — | 15-30 % |
+| `cobbles` | — | 30-50 % | — | 40-60 % |
+| `rolling` | — | 25-45 % | — | 55-75 % |
+| `flat` | — | 90-100 % | — | — |
+| `itt` / `itt_hilly` / `ttt` | — | — | — | 100 % `solo_tt` |
+
+En "—" er **ikke** "uspecificeret": klassen har vægt 0 i generatoren og gates mod 0. En bunch-sprint i højbjerget er et brud, ikke en tolereret sjældenhed. `classic` (monument-arketypen) står bevidst uden for tabellen — den rapporteres, men bånd-gates ikke.
+
+### Samlet bånd på tværs af alle etaper
+
+opad 25-32 % · fladt 32-40 % · nedad højst 10 % · udbrud 12-20 %.
+
+### To gate-lag — og hvorfor
+
+Et løbs parcours er seedet på løbets **virkelige identitet** (`external_id`), så det samme løb har det samme parcours i alle fire divisioner. En divisions finale-fordeling kan derfor ikke styres direkte: divisionen er en **stikprøve** af katalogets løb, og andelen svinger binomialt omkring generatorens vægt. Med n = 10-40 etaper pr. terræntype pr. division er standardfejlen 8-16 pp, så et råt ±0 pp-bånd ville være rødt på en *korrekt* generator omtrent hver tredje gang — samme fælde som #3469 allerede har betalt for én gang.
+
+| Lag | Mod hvad | Tolerance |
+|---|---|---|
+| **Sæson-aggregatet** (alle fire divisioner) | det rå bånd | ingen |
+| **Pr. division** | båndet + 2 standardfejl, kun ved n ≥ 12 | stikprøve-afhængig |
+
+Scorecardet markerer med `✗` når en andel ligger uden for det **rå** bånd, også når stikprøve-tillægget bærer den igennem — en strukturel skævhed er dermed synlig, ikke skjult bag et grønt flueben.
+
+### Afledt konsekvens: `descent_finale_min`
+
+`TIER_TARGETS.descent_finale_min` (`raceRouteRealismMetrics.js`) er et **gulv** under nedkørsels-finaler og blev kalibreret 8/8 mod en generator hvor `mountain` sluttede nedad 60 % af tiden. Båndene ovenfor gør D2's gamle gulv på 10 matematisk uopnåeligt (23 `mountain` × 0,35 + 7 `high_mountain` × 0,15 = 9,1 < 10). Målt konsekvens af at lade det stå: 20 af 400 sæsoner udtømte alle 12 gen-træk. Gulvene er derfor re-deriveret til D1 8 · **D2 5** · D3 4 · **D4 3**.
+
+> **Regel:** et gulv må aldrig kræve mere end båndet tillader. `raceRouteRealismMetrics.test.js` låser den relation.
+
+---
+
 ## 8. Rytterbinding og trupkrav
 
 | Regel | Værdi | Kilde |
@@ -220,6 +270,8 @@ En regel der kun findes som en konstant er ikke håndhævet. Målet er at hver r
 | **CI mod pakkerens output** | regressioner i generatoren | `raceCalendarLanePacker.test.js`, `calendarOverlapInvariant.test.js` |
 | **Sæsonskifte-preflight** | en skæv generering før den går live | `seasonCalendarGate.js`, [#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123) |
 | **`verify-invariants` mod prod** | reparations-scripts og ad-hoc-SQL | `scripts/verify-invariants.js` |
+
+Finale-båndene (§7b) har de to første: `stageFinaleMetrics.test.js` i CI og `calendarScorecard4218.mjs` i preflighten. Det tredje niveau (prod-invariant) mangler — se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
 Det tredje niveau er dét der manglede da #4155 brød overlap-cap'en. Tre invarianter er på plads ([PR #4169](https://github.com/NicolaiDolmer/CyclingZone/pull/4169)):
 

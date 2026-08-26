@@ -307,11 +307,24 @@ test("#3347 apply: de indsatte profiler er tierens RESOLVEREDE re-draw, ikke alt
   // løbene (#3469-tilføjelse) leverer bunch-sprint-forsyning; uden dem har kataloget
   // næsten ingen "flat"-etaper (kun de garanterede flad-åbningsetaper i summit_tour/
   // cobbled_tour), og bunch_sprint_min ville aldrig kunne opfyldes.
+  //
+  // #4273 (løst 26/8): itt_classic 3 → 8 og hilly_classic 30 → 25. SYMPTOMET var at
+  // testen ikke længere kunne finde en sæson hvor re-draw-stien fyrede; DIAGNOSEN (målt
+  // ved at printe draw.firstDrawFailures) var at HVERT træk brød `fritstående ITT 0 < 1`
+  // og derfor UDTØMTE alle 12 gen-træk — attempt faldt tilbage til 0, og testens
+  // `attempt > 0 && !exhausted` blev aldrig sand. Med kun 3 itt_classic mod 30
+  // hilly_classic valgte selection-walket slet ingen enkeltstart, og re-draw kan pr.
+  // konstruktion IKKE rette det: det varierer parcours for et allerede fastlåst
+  // løbsudvalg, aldrig hvilke løb der blev valgt (samme pointe som #3469-noten i
+  // raceRouteRealismDraw.test.js). Forsyningen er derfor hævet så en fritstående
+  // enkeltstart rent faktisk vælges — så er ITT-båndet opfyldt, og det ENESTE
+  // resterende brud (nedkørsels-finale 3 < 4) er præcis den slags et gen-træk KAN
+  // rette. Fixturen er skærpet, ikke testen svækket.
   const catalog = [
     ...[6, 5, 5, 4].map((stages, i) => ({ id: `st-${i}`, name: `Summit Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages, external_id: `ext-st-${i}`, terrain_archetype: "summit_tour" })),
     ...[5, 4].map((stages, i) => ({ id: `cb-${i}`, name: `Cobbled Tour ${i}`, race_class: "ProSeries", race_type: "stage_race", stages, external_id: `ext-cb-${i}`, terrain_archetype: "cobbled_tour" })),
-    ...Array.from({ length: 3 }, (_, i) => ({ id: `itt-${i}`, name: `Chrono ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-itt-${i}`, terrain_archetype: "itt_classic" })),
-    ...Array.from({ length: 30 }, (_, i) => ({ id: `hc-${i}`, name: `Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-hc-${i}`, terrain_archetype: "hilly_classic" })),
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `itt-${i}`, name: `Chrono ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-itt-${i}`, terrain_archetype: "itt_classic" })),
+    ...Array.from({ length: 25 }, (_, i) => ({ id: `hc-${i}`, name: `Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-hc-${i}`, terrain_archetype: "hilly_classic" })),
     ...Array.from({ length: 15 }, (_, i) => ({ id: `fs-${i}`, name: `Sprint Classic ${i}`, race_class: "ProSeries", race_type: "single", stages: 1, external_id: `ext-fs-${i}`, terrain_archetype: "flat_sprint" })),
   ];
   const metaById = new Map(catalog.map((c) => [c.id, c]));

@@ -199,7 +199,7 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   // brostens-MONUMENTER opfylder selv en reservation på 2 (målt: D1-cobbles faldt til
   // 2 < gulvets 3). 4 reserverer monumenterne + 2 ægte OWTB-brostens-klassikere;
   // OWTB-supply er 3, så tier 2 beholder mindst 1 + OWTC/ProSeries til sit eget gulv.
-  1: Object.freeze({ itt_classic: 1, cobbled_classic: 4 }),
+  1: Object.freeze({ itt_classic: 1, cobbled_classic: 7 }),
   // summit_tour 1→2 (#3469, 7/8 catalog-upgrade følge-commit): de 2 nye OWTC summit_tour-
   // løb (Vuelta a los Pirineos + Tour des Grandes Alpes, seedet 7/8) gør D2's
   // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge
@@ -207,7 +207,7 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   // taget. Reservationen garanterer det, samme princip som resten af tabellen.
   2: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2, cobbled_classic: 5 }),
   3: Object.freeze({ summit_tour: 3, cobbled_tour: 1, itt_classic: 1, hilly_tour: 1, cobbled_classic: 4 }),
-  4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 1, hilly_tour: 2 }),
+  4: Object.freeze({ summit_tour: 2, cobbled_tour: 1, itt_classic: 2, hilly_tour: 2, balanced_week: 2 }),
 });
 
 const MOUNTAIN_PROFILE_TYPES = new Set(["mountain", "high_mountain"]);
