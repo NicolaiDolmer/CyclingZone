@@ -4,13 +4,13 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4272** — bånd for hvordan etaperne slutter. Prompt: **`sessions/2026-08-26-kalender-kvalitet-session-prompt.md`**. Derefter #4273, frontend+preflight, PR for #4236+#4272 samlet, og **én** regenerering på ejer-GO.
+> **🎯 Next action:** **Ejer-GO til merge + ÉN regenerering.** PR med #4236+#4272 er grøn og klar. Dry-run med før/efter-diff FØR skrivning. Derefter tænd `stage_scheduler_enabled` + `auto_entry_generator_enabled` (ejer-only, allersidst). **Åben beslutning: D4s samlede opad 41,9 % mod bånd 25-32 %** — se #4272.
 
 > **📅 S3 STARTER FREDAG 28/8 KL. 11** → søn 27/9. 31 løbsdage, løb hver dag i alle fire divisioner. `stage_scheduler_enabled` og `auto_entry_generator_enabled` står **off** — gen-tænding er ejer-only, allersidst.
 
-> **✅ #4236 LØST (26/8), mangler PR.** Kontiguitets-pakker: løbsdage i træk, én dato pr. løbsdag. Målt mod prod-katalog: straddle 40→**0** · løb med hul 8→**0** · falske bindinger 12→**0** · GT-spænd over loftet 2→**0**. Scorecard exit 0, backend 7167/7168. **Løser også #4190.** Branch `fix/4236-loebsdag-baand-pr-kalenderdato`. `raceCalendarLanePacker.js` 1483→620 linjer; stream+banded slettet.
+> **✅ #4236 + #4272 + #4273 KLAR TIL MERGE** (26/8, branch `fix/4236-loebsdag-baand-pr-kalenderdato`). #4236: løbsdage i træk, én dato pr. løbsdag — straddle 40→**0**, huller 8→**0**, falske bindinger 12→**0**. #4272: bjerg-opad 6-13 %→**52-60 %**, bjerg-nedad 59-70 %→**20-33 %**; sæson-aggregatet rammer ALLE bånd uden tolerance. Scorecard exit 0, backend **7181/7181**, preflight grøn. **Løser også #4190.**
 
-> **🔴 #4272 SKAL MED I SAMME REGENERERING.** Bjergetaper slutter **nedad 59-70 %** i D1-D3, bakkeetaper svinger 33-86 % opad pr. division. Ejer-godkendte bånd står i issuet. Også: D1's brosten 3 % → 6 % · enkeltstart 10 % i alle divisioner (m. #4220) · mere overlap, monument-solo som præference. **To regenereringer er forbudt** — #4218's regenerering 25/8 skabte selv flere blockers.
+> **⚠️ TO KATALOG-LOFTER + ÉT ÅBENT VALG (#4272).** D1's brosten nåede 2,6→**4,5 %** (6 % kræver flere brostens-løb; ved 8 reservationer falder D3 under sit gulv). D4's enkeltstart 4,8→**8,1 %** (kun 3 fritstående ITT-løb i Class1/Class2). **Uløst:** D4 trækker 5 af 6 `summit_tour`, hver med 2 garanterede højbjergs-etaper → 16 % højbjerg mod D1's 8 %, og samlet opad 41,9 %. Kræver arketype-**loft** (reservationer er gulve) eller flere flade Class1/Class2-etapeløb. **Spildesign-valg, afventer ejer.** **To regenereringer er forbudt.**
 
 > **⚖️ Ejer-beslutninger 26/8:** løbsdage i træk ("løbsdag 4-5-6-7, ikke 3-5-7-12") · GT = **2** hviledage der OPTAGER løbsdagen · **monument-eksklusiviteten ophævet** (0 delte ryttere målt i alle 9 kombinationer efter #4217 — gevinsten var væk, hullerne blev betalt) · #4174: alle hold udtages ens, assistenten 1 t før.
 
@@ -27,7 +27,7 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **📋 SESSION 26/8:** #4239 merged (kalender-værktøjet lever). #4236 bygget og grøn. Ny gæld: **#4273** (#3347-testen kan ikke længere fremprovokere reparations-stien — 400 sæsoner søgt, 0 brud) · **#4274** (dev-script skrev rapport i et andet worktree). Løse worktrees med ucommitted filer: `feat/4030-h2h-scorecard`, `fix/3709-signaturfaktor`.
+> **📋 SESSION 26/8 (aften):** #4272 bygget, #4273 løst (fixturen valgte aldrig en fritstående ITT, så hvert træk udtømte gen-trækkene — forsyningen hævet, testen uændret). `descent_finale_min` re-deriveret (D2 10→5, D4 4→3): ejerens bånd gjorde D2's gulv matematisk uopnåeligt, og 20 af 400 sæsoner udtømte re-drawet — nu 0. Patch note 7.194. **Løse worktrees sikret+pushet** (#4030 296 linjer, #3709 236 linjer). Rest: **#4274** (dev-script skrev rapport i et andet worktree).
 
 > **🤖 Ingen aktiv session.**
 
