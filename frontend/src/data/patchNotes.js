@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.196",
+    "date": "2026-08-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Race days go back to season 2 rules",
+          "body": "Racing does not develop your riders in season 3. A rider who races still does the session you planned that day, exactly as before, and the race adds its own fatigue on top. Development comes from training.\n\nThe version announced for season 3, where a race replaced the day's session and built the abilities the stage demanded, is switched off again. It asked too much of you: the session you had picked decided what you got out of the race, a rider set to Rest got nothing at all, and the rules were hard to read. It returns in season 4 in a simpler form.\n\nIf you moved young riders up to your senior squad for this, you can move them back to the Academy at no cost."
+        },
+        "da": {
+          "title": "Løbsdage følger igen sæson 2-reglerne",
+          "body": "Løb udvikler ikke dine ryttere i sæson 3. En rytter der kører løb gennemfører stadig det pas du har planlagt den dag, præcis som før, og løbet lægger sin egen træthed oven i. Udviklingen kommer fra træningen.\n\nDen version der blev annonceret til sæson 3, hvor løbet erstattede dagens pas og byggede de evner etapen krævede, er slukket igen. Den krævede for meget af dig: det pas du havde valgt afgjorde hvad du fik ud af løbet, en rytter sat til Hvile fik ingenting, og reglerne var svære at gennemskue. Den vender tilbage i sæson 4 i en enklere form.\n\nHar du rykket unge ryttere op på seniorholdet på grund af det her, kan du frit rykke dem tilbage til Akademiet."
+        },
+        "refs": [4277]
+      }
+    ]
+  },
+  {
     "version": "7.195",
     "date": "2026-08-26",
     "label": "Beta",

@@ -6,6 +6,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
 import { conditionMultiplier, nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { RACE_DAY_ENGINE_FLAG_KEY } from "./raceDayEngineFlag.js";
+import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "./raceDayDevelopmentFlag.js";
 import { buildCapsForRider } from "./riderProgression.js";
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
@@ -885,8 +886,22 @@ test("Plan B: trænings-facilitet + chef løfter dags-score; uden club-data = bi
 const IMPORTED_AT_TODAY = "2026-06-12T08:00:00Z"; // 10:00 CEST — inde i tickDate's danske døgn
 const IMPORTED_AT_YESTERDAY = "2026-06-11T08:00:00Z"; // udenfor tickDate's danske døgn
 
+// #4275: motoren læser nu TO uafhængige flag. Denne helper tænder begge, så de
+// eksisterende D1/D2/D3-tests bliver ved med at måle den "fuldt tændte" adfærd de
+// blev skrevet til. Selve splittet dækkes af sit eget test-afsnit nedenfor.
 function seedFlagOn(state, value = "on") {
-  state.app_config = [{ key: RACE_DAY_ENGINE_FLAG_KEY, value }];
+  state.app_config = [
+    { key: RACE_DAY_ENGINE_FLAG_KEY, value },
+    { key: RACE_DAY_DEVELOPMENT_FLAG_KEY, value },
+  ];
+}
+
+// #4275: kun ÉT af de to flag tændt — de fire kombinationer skal kunne stå frit.
+function seedFlags(state, { engine = null, development = null } = {}) {
+  state.app_config = [
+    ...(engine == null ? [] : [{ key: RACE_DAY_ENGINE_FLAG_KEY, value: engine }]),
+    ...(development == null ? [] : [{ key: RACE_DAY_DEVELOPMENT_FLAG_KEY, value: development }]),
+  ];
 }
 
 test("D1+D2 (flag on): racede rytteren i dag → race-udvikling (IKKE 0), plan urørt, load=0 (ikke rest -14)", async () => {
@@ -1010,6 +1025,70 @@ test("D1 (flag off, default): et race_results-hit i dag ændrer INTET — bit-id
   assert.equal(rr.race_day, false, "flag off → løbsdags-gaten er slet ikke aktiv");
   assert.equal(rr.intensity, "hard", "intensiteten er den ægte plan-intensitet, ikke 'race'");
   assert.ok(rr.gains.climbing >= 1, "rytteren trænede normalt (bit-identisk med før #3459)");
+});
+
+// ── #4275: splittet mellem motor-flag (D3) og udviklings-flag (D1+D2) ─────────
+//
+// Ejer-beslutning 26/8: løbsdags-udviklingen slukkes for S3 og genindføres til
+// S4, MENS recovery-konstanterne (D3) og AI-pariteten (D4) bliver on. Før
+// splittet gatede ét flag alle fire, så "sluk udviklingen" ville have rullet
+// træthedsmedianen tilbage fra 57 til 67 for hele populationen. Disse to tests
+// er den egentlige regressionsspærre mod at koblingen sniger sig ind igen.
+
+test("#4275: motor on + udvikling off → racende rytter træner NORMALT, men beholder D3's recovery-pakke", async () => {
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+  });
+  seedFlags(state, { engine: "on", development: "off" });
+  state.race_results = [{ rider_id: "r1", result_type: "stage", imported_at: IMPORTED_AT_TODAY }];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  // D1+D2 er slukket: præcis S2-adfærd for løbsdage.
+  assert.equal(rr.race_day, false, "udvikling off → løbsdags-gaten er ikke aktiv");
+  assert.equal(rr.intensity, "hard", "rytteren kører sit planlagte pas, ikke 'race'");
+  assert.ok(rr.gains.climbing >= 1, "rytteren trænede normalt trods løb samme dag (S2-adfærd)");
+
+  // D3 er STADIG tændt: trætheden skal følge 4.5/0.15-pakken med det ÆGTE
+  // trænings-load ("hard"), ikke løbsdagens load=0 og ikke de gamle 4/0.13.
+  const expectedFatigue = nextFatigue({
+    fatigue: 30, intensity: "hard", recoveryAbility: 50, ...RACE_DAY_ENGINE_RECOVERY_CONFIG,
+  });
+  const staleFatigue = nextFatigue({ fatigue: 30, intensity: "hard", recoveryAbility: 50 });
+  const cond = state.rider_condition.find((c) => c.rider_id === "r1");
+  assert.equal(cond.fatigue, expectedFatigue, "D3-pakken gælder stadig når kun udviklingen er slukket");
+  assert.notEqual(expectedFatigue, staleFatigue, "testen er kun meningsfuld hvis de to pakker faktisk giver forskellige tal");
+});
+
+test("#4275: motor off + udvikling on → race-udvikling sker, men UDEN D3's recovery-pakke", async () => {
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  seedFlags(state, { engine: "off", development: "on" });
+  state.race_results = [{ rider_id: "r1", result_type: "stage", imported_at: IMPORTED_AT_TODAY }];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.race_day, true, "udvikling on → løbsdagen registreres uanset motor-flagget");
+  assert.ok(rr.score > 0, `løbet udvikler rytteren (var ${rr.score})`);
+
+  // Motor-flagget er off → CONDITION_CONFIG's status quo, ikke 4.5/0.15.
+  const expectedFatigue = nextFatigue({ fatigue: 30, intensity: "race", recoveryAbility: 50 });
+  const cond = state.rider_condition.find((c) => c.rider_id === "r1");
+  assert.equal(cond.fatigue, expectedFatigue, "uden motor-flagget bruges de gamle recovery-konstanter");
 });
 
 // ── #3459 D2: race-udviklings-tick (søster-funktion applyRaceDevelopmentTick) ──
