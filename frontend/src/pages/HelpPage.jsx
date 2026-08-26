@@ -410,6 +410,12 @@ const FAQ_KEYS = [
   "developmentProjectionFaq",
   "trainingFocusFaq",
   "restForDevelopedFaq",
+  // #4261: løb-som-træning-FAQ — svar på fem konkrete spørgsmål fra Discord om
+  // hvordan løbsdage og daglig træning spiller sammen i sæson 3 (dev-flag off).
+  "raceDayIntensityFaq",
+  "raceDayProfileMatchFaq",
+  "raceDayAcademyFaq",
+  "flatCobblesHardTrainingFaq",
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
   "peakTraining",

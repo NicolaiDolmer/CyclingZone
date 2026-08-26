@@ -1321,6 +1321,22 @@
       "q": "My rider is fully developed. Should I just set them to Rest?",
       "a": "Once every ability in a rider's chosen focus has reached its lifetime ceiling, every line in that focus reads 'done', and more training there adds nothing: the daily gain comes from the gap between current ability and ceiling, and at zero gap it stays zero at any intensity. Normal or Hard on a maxed-out rider still builds Fatigue, and Hard still carries the same injury risk as usual, for no ability gain in return, so Rest is the safer pick: it removes Fatigue instead of adding it. A rider's post-peak decline from around age 28 runs at the same fixed, age-based rate every season change regardless of what intensity you trained at, so neither training nor Rest speeds it up or slows it down. If a different focus still has room, switching there beats resting."
     },
+    "raceDayIntensityFaq": {
+      "q": "Does my chosen intensity still matter on a day my rider races?",
+      "a": "Yes, exactly as on any other day. Racing doesn't change what that day's session gives: Rest gives zero gain, Hard gives the most gain and the most fatigue (plus injury risk once Fatigue is high), same as a non-race day. The race is a separate load on top: its own fatigue adds to whatever the session already built, so a rider who races and trains Hard the same day carries both."
+    },
+    "raceDayProfileMatchFaq": {
+      "q": "Does my rider's training session need to match the race's terrain (flat, mountain, cobbles)?",
+      "a": "No, not right now. Season 3 runs on season 2's race-day rules (patch 7.196): a race doesn't hand out its own ability reward, so there is nothing for a session to 'match'. Train each rider toward what he needs long-term. A design that links the session to the stage terrain is planned for season 4, but it isn't locked yet, so don't plan around a specific version of it."
+    },
+    "raceDayAcademyFaq": {
+      "q": "Is it worth racing young Academy talents, or is Academy training always better?",
+      "a": "Racing costs no ability development in season 3: your talent still gets the exact session you planned that day, whether he races or not. The real cost is fatigue: a race adds its own load on top of training, and a talent who races often needs lighter sessions and real rest days to stay under the injury threshold, same as any senior rider. There's no Academy-specific penalty for racing, so the trade-off is about managing fatigue, not lost development."
+    },
+    "flatCobblesHardTrainingFaq": {
+      "q": "Why can't I train Flat or Cobbles at Hard intensity?",
+      "a": "By design, no Hard session targets those two abilities today. The three Hard sessions are Intervals (Climbing, Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Flat is trained by Tempo (Normal) and Aero (Easy); Cobbles only by Technique (Easy). There's currently no way to push either one at Hard."
+    },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
       "a": "Yes, in one specific way. Scouting missions never involve your own riders: a mission's candidate pool only searches other teams' and free-agent riders, and a single-rider investigation costs and takes the same regardless of your scout's rating. But the precision of the potential ranges you see does follow your chief scout: he knows your own squad fully, so his rating decides how narrow the potential range and per-type ceiling bands on your own riders are, exactly as for a fully scouted rival. No scout ever reports an exact value: even at the highest rating you see a narrow range, never a precise number value."
