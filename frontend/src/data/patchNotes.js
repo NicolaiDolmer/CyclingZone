@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.194",
+    "date": "2026-08-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Mountain stages now finish uphill",
+          "body": "Mountain stages used to end on a descent about two thirds of the time, which is the opposite of real racing. They now finish uphill in most cases, with a descent finish as the exception it should be. Hill stages got the same treatment, so a division no longer gets its own random mix. Climbers and puncheurs have more to ride for, and the change applies in all four divisions."
+        },
+        "da": {
+          "title": "Bjergetaper slutter nu opad",
+          "body": "Bjergetaper sluttede før på en nedkørsel omkring to tredjedele af gangene, hvilket er det modsatte af virkelig cykelsport. De slutter nu opad i de fleste tilfælde, og en nedkørselsfinale er den undtagelse den bør være. Bakkeetaper har fået samme behandling, så en division ikke længere får sin egen tilfældige blanding. Klatrere og punchere har mere at køre efter, og ændringen gælder i alle fire divisioner."
+        },
+        "refs": [4272, 3426]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "A race's days now run back to back",
+          "body": "A four day race could previously land on race days 3, 5, 7 and 12 with gaps in between, and a single race day could stretch across two calendar dates. Both are gone. A stage race now runs on consecutive race days, and each race day sits on one date. That also makes rider binding correct: a rider is tied up for exactly the days the race actually runs."
+        },
+        "da": {
+          "title": "Et løbs dage ligger nu i forlængelse af hinanden",
+          "body": "Et firedages løb kunne før havne på løbsdag 3, 5, 7 og 12 med huller imellem, og en enkelt løbsdag kunne strække sig over to kalenderdatoer. Begge dele er væk. Et etapeløb kører nu på løbsdage i træk, og hver løbsdag ligger på én dato. Det gør også rytterbindingen korrekt: en rytter er bundet præcis de dage løbet faktisk kører."
+        },
+        "refs": [4236, 4190]
+      }
+    ]
+  },
+  {
     "version": "7.193",
     "date": "2026-08-25",
     "label": "Beta",
