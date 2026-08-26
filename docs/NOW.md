@@ -33,6 +33,6 @@
 
 > **📋 SESSION 26/8 (aften):** #4272 bygget, #4273 løst (fixturen valgte aldrig en fritstående ITT, så hvert træk udtømte gen-trækkene — forsyningen hævet, testen uændret). `descent_finale_min` re-deriveret (D2 10→5, D4 4→3): ejerens bånd gjorde D2's gulv matematisk uopnåeligt, og 20 af 400 sæsoner udtømte re-drawet — nu 0. Patch note 7.194. **Løse worktrees sikret+pushet** (#4030 296 linjer, #3709 236 linjer). Rest: **#4274** (dev-script skrev rapport i et andet worktree).
 
-> **🤖 Ingen aktiv session.**
+> **🤖 Working agent: Claude Code (hoved-checkout) kører S3-regenereringen, startet 26/8 kl. 23:11.** Andre sessioner: rør IKKE kalenderen, sæson-status eller udtagelser.
 
 _Historik i git-log, issue-tråde + docs/audits/._
