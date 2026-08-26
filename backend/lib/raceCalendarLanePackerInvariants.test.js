@@ -111,7 +111,7 @@ test("en hviledag optager løbsdagen, men fylder ikke en plads", () => {
 });
 
 test("intet løb forsvinder ud af kalenderen", () => {
-  const { plan, pool, meta, byRace } = d1();
+  const { plan, meta, byRace } = d1();
   assert.deepEqual(plan.unplaced ?? [], [], "etapeløb må ikke tabes");
   assert.deepEqual(plan.leftoverSingles ?? [], [], "endagsløb må ikke tabes");
   for (const [id, r] of meta) {

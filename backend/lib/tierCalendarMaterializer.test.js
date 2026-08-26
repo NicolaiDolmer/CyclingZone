@@ -208,20 +208,6 @@ test("plan: Div 1 får alle 3 Grand Tours + alle 5 monumenter; div 3 ingen Grand
 // #3469), som SKAL forblive 100% kontinuert (0 hviledage, ingen date_text at udlede dem
 // af). Se "#3470: GT-hviledage" nedenfor for den NYE kontrakt (span = stages-1+restDays)
 // når date_text ER sat på GT'erne.
-// #3470: fullCatalog() + date_text på de 3 GT'er (rigtige Giro/Tour/Vuelta-datoer, samme
-// tal som grandTourRestDays.test.js) — aktiverer #3469's fase-ankrede STREAM-gren OG
-// dermed #3470's hviledags-segmentering (restDays udledes AUTOMATISK af date_text, ingen
-// separat "restDays"-fixture-felt). Resten af kataloget er bevidst UDEN date_text (samme
-// isolerede gate-test-mønster som raceCalendarLanePacker.test.js's fallback-tests).
-function fullCatalogWithGtDates() {
-  return fullCatalog().map((c) => {
-    if (c.id === "gt-1") return { ...c, date_text: "8/5 - 31/5" };  // Giro → 24 dage/21 etaper → 3 hviledage
-    if (c.id === "gt-0") return { ...c, date_text: "1/7 - 23/7" };  // Tour → 23 dage/21 etaper → 2 hviledage
-    if (c.id === "gt-2") return { ...c, date_text: "22/8 - 13/9" }; // Vuelta → 23 dage/21 etaper → 2 hviledage
-    return c;
-  });
-}
-
 test("plan: overlap-cap pr. division — Div 1/2 max 3, Div 3 max 2", () => {
   const tp = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM }).tierPlans;
   const byTier = Object.fromEntries(tp.map((t) => [t.tier, t]));
