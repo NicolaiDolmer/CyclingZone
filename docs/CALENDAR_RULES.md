@@ -161,7 +161,18 @@ Gulvene *måler* efter selection. Reservationerne *sikrer* før: `summit_tour` (
 
 **Ændret 26/8 ([#4272](https://github.com/NicolaiDolmer/CyclingZone/issues/4272)), begge ejer-asks:**
 
-- **D1 `cobbled_classic` 4 → 7.** Ejeren 26/8: *"Det er ikke okay, at division 1 kun har 3 brostensetaper."* D1 går fra 4 til 7 brosten-etaper (2,6 % → 4,5 %). **Ikke helt i mål:** K-B-målet er 6 % (≈ 9 etaper), men ved 8 reservationer falder D3 under sit ejer-låste brostens-gulv (målt: 4 < 5) — samme forsynings-konflikt som [#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075). 7 er det højeste D1 kan tage uden at sulte D3. Resten kræver flere brostens-løb i kataloget.
+- **D1 `cobbled_classic` 4 → 6.** Ejeren 26/8: *"Det er ikke okay, at division 1 kun har 3 brostensetaper."* D1 går fra 4 til 6 brosten-etaper (2,6 % → 3,9 %). **Ikke helt i mål**, og tallet er valgt på en MÅLT afvejning, ikke på hvad der maksimerer D1:
+
+  | `cobbled_classic` | D1 brosten | D3 etaper | D3 dage uden afgørelse |
+  |---|--:|--:|--:|
+  | 4 (før) | 4 (2,6 %) | 86 | 7 |
+  | **6** | **6 (3,9 %)** | 84 | **7** |
+  | 7 | 7 (4,5 %) | 82 | **11** |
+  | 8 | — | — | D3 under sit brostens-gulv (4 < 5) |
+
+  Brostens-klassikere er ENDAGSLØB, og endagsløb er det der skaber afgørelses-dage. Flyttes de syvende og ottende til D1, mister D3 fire dage hvor noget afgøres — en dårlig handel for én ekstra brosten-etape. Ved 8 bryder D3's ejer-låste gulv helt (samme forsynings-konflikt som [#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075)). K-B-målet på 6 % (≈ 9 etaper) kræver flere brostens-løb i kataloget.
+
+  > **Bemærk:** `daysWithoutDecisionCount` MÅLES af pakkeren, men er ikke gated. Denne afvejning ville derfor ikke være fanget af et grønt scorecard — den blev fundet ved at diffe før/efter.
 - **D4 `balanced_week` 0 → 2, `itt_classic` 1 → 2.** D4 lå på 5 % enkeltstart mod målet 10 %. Årsagen var målt: D4's klasse-vindue (Class1/Class2) rummer kun 3 fritstående ITT-løb, og dets etapeløbs-arketyper (`summit_tour`, `hilly_tour`) er så korte at garantierne opbruger alle etape-pladser — `balanced_week` er den eneste arketype i vinduet der **garanterer** en ITT. Resultat: 3 → 5 ITT-etaper (4,8 % → 8,1 %).
 
 ---
