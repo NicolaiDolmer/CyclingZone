@@ -3,10 +3,26 @@
 // GATEN (#2769): regenerér en sæsons profiler IN-MEMORY (rører INTET i DB) mod live-katalog
 // og print scorecardet pr. tier. Bruges FØR nogen apply/regen.
 //
-//   node scripts/raceRouteRealismScorecard.js --season 2
+//   node scripts/raceRouteRealismScorecard.js --season 2              (plan-tilstand)
+//   node scripts/raceRouteRealismScorecard.js --season 3 --mod-prod   (prod-tilstand)
 //
-// Regenererer via generateRaceStageProfiles (samme seed-kontekst som materializeren:
-// external_id + terrain_archetype + season_id), så tallene matcher det en fuld regen ville give.
+// TO TILSTANDE — og de måler IKKE det samme (#4219):
+//
+//   PLAN (default): regenerér profilerne in-memory via generateRaceStageProfiles (samme
+//     seed-kontekst som materializeren: external_id + terrain_archetype + season_id).
+//     Svarer på "ville en fuld regen give en lovlig kalender?". Kræver intet skrevet i
+//     DB og er derfor den eneste tilstand der giver mening FØR en apply/regen — og i CI.
+//
+//   --mod-prod: læs `races` + `race_stage_profiles` for sæsonen og score DE rækker.
+//     Svarer på "er den kalender der FAKTISK står i basen lovlig?".
+//
+// #4219, fundet 25/8 under S3-ombygningen: kun plan-tilstanden fandtes, og gaten meldte
+// NO-GO med 5 båndbrud mens den skrevne kalender opfyldte alle fire bånd. Det kostede
+// tre unødvendige wipe/regen-runder. Konsekvensen går begge veje, og den anden vej er
+// værre: et reparations-script eller ad-hoc-SQL kan ændre den LIVE kalender uden at
+// plan-tilstanden opdager det — præcis #4155-fejlklassen, hvor TIER_OVERLAP_CAP blev
+// brudt i alle fire divisioner uopdaget. Gaten skal køre BEGGE steder; forskellen
+// mellem dem er netop der fejlene gemmer sig (#4176 punkt 3).
 //
 // EXIT-KONTRAKT (#2854 — tre udfald, ikke to):
 //   0 = GO      · hver gatet delscore (tier-bånd OG GT-bånd) kørte og bestod.
@@ -80,12 +96,86 @@ export async function collectSeasonTierRaces({ supabase, seasonNumber, generateP
 }
 
 /**
+ * #4219 PROD-TILSTAND: læs den SKREVNE kalender (races + race_stage_profiles) og
+ * returnér samme form som collectSeasonTierRaces, så scoreSeason/formatScorecard er
+ * uændrede. READ-ONLY.
+ *
+ * Forskelle fra plan-tilstanden, bevidst:
+ *   · Ingen generator kaldes. Der er intet gen-træk (#3347) at rapportere, så `draw`
+ *     udelades — et re-draw hører til en plan, ikke til rækker der allerede står skrevet.
+ *   · `race_class` hentes med. Plan-tilstanden henter den ikke, så dens `_race_class` er
+ *     null og distance-outliers falder tilbage på det brede profil-bånd. Prod-tilstanden
+ *     måler mod det snævrere klasse-bånd. Kun advisory, gater ikke — men de to
+ *     tilstande kan derfor rapportere forskelligt antal outliers på samme kalender.
+ *   · Et løb uden profil-rækker er IKKE nul etaper. Det er fravær af evidens og bogføres
+ *     som "kunne ikke vurderes" (exit 2), aldrig som et bånd der bestod på tom luft
+ *     (#2854). Præcis den fejl gaten findes for at undgå.
+ */
+export async function collectSeasonTierRacesFromDb({ supabase, seasonNumber }) {
+  const { data: season } = await supabase.from("seasons").select("id").eq("number", seasonNumber).single();
+  if (!season) throw new Error(`Sæson ${seasonNumber} ikke fundet`);
+
+  const divisions = await fetchAllRows(() => supabase.from("league_divisions").select("id, tier").order("id"));
+  const tierByDiv = new Map(divisions.map((d) => [d.id, d.tier]));
+  // Samme én-pulje-pr-tier-stikprøve som plan-tilstanden: alle puljer i en tier har
+  // identisk løbssæt, og seed-nøglen er division-uafhængig → identisk parcours.
+  const onePoolByTier = new Map();
+  for (const d of [...divisions].sort((a, b) => a.id - b.id)) if (!onePoolByTier.has(d.tier)) onePoolByTier.set(d.tier, d.id);
+  const samplePools = new Set(onePoolByTier.values());
+
+  const catalog = await fetchAllRows(() => supabase.from("race_pool").select("id, external_id, terrain_archetype").order("id"));
+  const metaByPool = new Map(catalog.map((c) => [c.id, { external_id: c.external_id, terrain_archetype: c.terrain_archetype }]));
+
+  const races = await fetchAllRows(() =>
+    supabase.from("races").select("id, name, race_type, race_class, stages, pool_race_id, league_division_id").eq("season_id", season.id).order("id"));
+  const sampled = races.filter((r) => samplePools.has(r.league_division_id));
+  const sampledIds = new Set(sampled.map((r) => r.id));
+
+  // fetchAllRows: 1.239 etaper i S3 er langt over PostgREST's 1000-row-loft, og en
+  // trunkeret side ville gøre en GT for kort → falsk "kan ikke vurderes", eller værre,
+  // et for lavt km-tal der scorer som båndbrud. Stabil order på (race_id, stage_number).
+  const profileRows = await fetchAllRows(() =>
+    supabase.from("race_stage_profiles")
+      .select("race_id, stage_number, profile_type, finale_type, distance_km, elevation_gain_m, climbs, sprints")
+      .order("race_id").order("stage_number"));
+  const stagesByRace = new Map();
+  for (const prof of profileRows) {
+    if (!sampledIds.has(prof.race_id)) continue;
+    if (!stagesByRace.has(prof.race_id)) stagesByRace.set(prof.race_id, []);
+    stagesByRace.get(prof.race_id).push(prof);
+  }
+  for (const list of stagesByRace.values()) list.sort((a, b) => a.stage_number - b.stage_number);
+
+  const byTier = new Map();
+  for (const r of sampled) {
+    const tier = tierByDiv.get(r.league_division_id);
+    const meta = metaByPool.get(r.pool_race_id) || {};
+    if (!byTier.has(tier)) byTier.set(tier, { tier, races: [], errors: [] });
+    const stages = stagesByRace.get(r.id) || [];
+    if (!stages.length) {
+      byTier.get(tier).errors.push(`Løb ikke vurderet: ${r.name ?? r.id} har ingen race_stage_profiles-rækker — kalenderen er skrevet, profilerne er ikke`);
+      continue;
+    }
+    byTier.get(tier).races.push({
+      ...r, stages,
+      external_id: meta.external_id ?? null,
+      terrain_archetype: meta.terrain_archetype ?? null,
+      season_id: season.id,
+    });
+  }
+  return [...byTier.keys()].sort((a, b) => a - b).map((t) => byTier.get(t));
+}
+
+/**
  * Render-lag: summary → linjer. Ren funktion, så outputtet kan asserteres i test.
  * tierEntries er valgfri og bruges KUN til at rapportere #3347's re-draw-varianter —
  * et re-draw må aldrig ske i tavshed.
  */
-export function formatScorecard(summary, seasonNumber, tierEntries = []) {
-  const lines = [`\n=== Rute-realisme-scorecard — sæson ${seasonNumber} (in-memory regen, generator v${GENERATOR_VERSION}) ===\n`];
+export function formatScorecard(summary, seasonNumber, tierEntries = [], mode = "plan") {
+  const modeLabel = mode === "prod"
+    ? "MOD PROD — den skrevne kalender (races + race_stage_profiles)"
+    : `plan — in-memory regen, generator v${GENERATOR_VERSION}`;
+  const lines = [`\n=== Rute-realisme-scorecard — sæson ${seasonNumber} (${modeLabel}) ===\n`];
   const redrawn = tierEntries.filter((t) => t.draw && (t.draw.attempt > 0 || t.draw.exhausted));
   for (const t of redrawn) {
     if (t.draw.exhausted) {
@@ -137,6 +227,9 @@ const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLTo
 if (isMain) {
   const seasonIdx = process.argv.indexOf("--season");
   const SEASON = seasonIdx >= 0 ? Number(process.argv[seasonIdx + 1]) : 2;
+  // #4219: default er UÆNDRET plan-tilstand. Prod-tilstanden skal vælges bevidst — et
+  // scorecard der stille skiftede måle-grundlag ville være værre end de to separate.
+  const MODE = process.argv.includes("--mod-prod") ? "prod" : "plan";
 
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   // Manglende creds/DB-fejl = "kunne ikke vurderes" (exit 2), ikke "bånd brudt" (exit 1).
@@ -147,9 +240,11 @@ if (isMain) {
   // med åbne supabase-handles fælder libuv på Windows med exit 127, hvilket ville
   // gøre exit-kontrakten ovenfor til et løfte scriptet ikke holder.
   try {
-    const tierEntries = await collectSeasonTierRaces({ supabase, seasonNumber: SEASON });
+    const tierEntries = MODE === "prod"
+      ? await collectSeasonTierRacesFromDb({ supabase, seasonNumber: SEASON })
+      : await collectSeasonTierRaces({ supabase, seasonNumber: SEASON });
     const summary = scoreSeason(tierEntries);
-    for (const line of formatScorecard(summary, SEASON, tierEntries)) console.log(line);
+    for (const line of formatScorecard(summary, SEASON, tierEntries, MODE)) console.log(line);
     process.exitCode = summary.exitCode;
   } catch (e) {
     console.error(e);
