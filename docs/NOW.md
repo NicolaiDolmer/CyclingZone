@@ -4,7 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Sæsonstart-beredskab: holdudtagelsen mod den nye kalender.** Session-prompt: `sessions/2026-08-27-holdudtagelse-beredskab-session-prompt.md`. 30 hold udtager forfra inden fredag kl. 11; binding_span-koden (#4236) fik sin første prod-kalender i nat.
+> **🎯 Next action:** **Natsession (Opus): `sessions/2026-08-27-natsession-opus-foer-saesonstart.md`** — 15 opgaver, mandat PR'er + lav-risiko merges. Fredag morgen: ejeren reviewer **PR #4284** (udtagelses-fixes #4283) FØR kl. 11 → merge → apply migration → kl. 9-11-tjeklisten i beredskabs-promptens §6.
+
+> **✅ UDTAGELSES-BEREDSKAB GENNEMFØRT 27/8 kl. ~01:15 (#4283/PR #4284).** Prod målt read-only: aksen kontiguert i alle 15 puljer, 3 GT'er spænd=etaper+2, de første 87 rigtige S3-udtagelser fejlfri (0 overlap, 0 binding-fejl). To fund fixet i PR #4284 (hviledags-konflikt gav opak 500; autofyldet frigav ikke afmeldte løb) — fuld suite grøn (backend 7191, e2e 561/561), **afventer ejer-review**. Fredag-tjekliste i beredskabs-promptens §6.
 
 > **✅ S3-REGENERERINGEN GENNEMFØRT 27/8 kl. ~00:20 (runbook fulgt, ejer-GO pr. skridt).** Ny kalender live: **529 løb / 1.239 etaper**, 28/8 → søn 27/9. Prod-målt efter: 0 løbsdage over flere datoer (per pulje), 0 utilsigtede huller (kun GT'ernes 2 hviledage), mountain-nedad 27 % (før 64 %). Scorecard 0 regelbrud; 4 kalender-invarianter grønne. Vindue ~31 min. Udtagelser wiped m. backup (`backup_4236_*`, 1.101 rækker); 237 form-peaks bevaret m. `target_race_id=null`. **Motorerne er ON** (`stage_scheduler_enabled` + `auto_entry_generator_enabled`, ejer-GO 27/8). Spillertest af kalenderen i dag (ejer organiserer).
 
