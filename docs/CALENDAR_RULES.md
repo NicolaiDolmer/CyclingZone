@@ -78,13 +78,13 @@ Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En
 | Hvad er en GT | `GRAND_TOUR_MIN_STAGES` | ≥ 15 etaper | — | `grandTourRestDays.js` |
 | GT-etaper pr. kalenderdag | `MAX_GT_STAGES_PER_DAY` | 4 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
 | GT-spænd i kalenderdage | `MAX_GT_SPAN_DAYS` | 6 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
-| Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 25/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
+| Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
 | GT'er kun i | tier 1 | — | [#2251](https://github.com/NicolaiDolmer/CyclingZone/issues/2251) | `tierCalendarMaterializer.js` |
 | To GT'er må ikke dele kalenderdag | real-day-separation | ≥ 1 dags mellemrum | 6/8 | [#3472](https://github.com/NicolaiDolmer/CyclingZone/issues/3472) |
 
 Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no days with 5 gt stages"* + *"6 sounds like a decent max"*.
 
-**Hviledage, præcist (ejer 25/8, #4236).** Antallet er **2 for enhver GT** — en spilregel, ikke en egenskab udledt af det virkelige løbs datoer. Før blev det regnet som `clamp(spanDays - stages, 0, 3)` fra `date_text`, hvilket gav 0-3 afhængigt af kataloget, og 0 når feltet manglede. To GT'er i samme sæson kunne dermed have forskelligt antal uden at nogen havde besluttet det.
+**Hviledage, præcist (ejer 26/8, #4236).** Antallet er **2 for enhver GT** — en spilregel, ikke en egenskab udledt af det virkelige løbs datoer. Før blev det regnet som `clamp(spanDays - stages, 0, 3)` fra `date_text`, hvilket gav 0-3 afhængigt af kataloget, og 0 når feltet manglede. To GT'er i samme sæson kunne dermed have forskelligt antal uden at nogen havde besluttet det.
 
 **En hviledag ER en løbsdag** som GT'en optager uden at køre på. Spændet er derfor `etaper + 2` sammenhængende løbsdage, og rytteren er bundet henover — som i virkeligheden, hvor man ikke forlader Giroen på hviledagen for at køre et andet løb. Det er allerede hvad spænd-bindingen (#4217) gør, så det ændrer intet for spilleren. Positionerne er efter etape 9 og 15 (`GT_REST_DAY_PATTERN[2]`).
 
@@ -100,9 +100,9 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 | Andel endagsløb (minimum) | `TIER_ONE_DAY_SHARE_MIN` | 0,45 | 0,45 | 0,48 | 0,45 | = mål − 0,10 | `tierCalendarGuarantees.js` |
 | Etapeløb uden bjergetape | `TIER_MOUNTAIN_FREE_STAGE_RACE_MIN` | 0 | 2 | 1 | 2 | 7/8 | `tierCalendarGuarantees.js` |
 | Etapeløbs-spænd | hård grænse | etaper + 3 kalenderdage | | | | 17/8 | [#3546 H](https://github.com/NicolaiDolmer/CyclingZone/issues/3546) |
-| Monumenter | **ingen eksklusiv løbsdag** — deler som ethvert andet løb | | | | | 25/8 | [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236) |
+| Monumenter | **ingen eksklusiv løbsdag** — deler som ethvert andet løb | | | | | 26/8 | [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236) |
 
-**Monument-reglen, præcist (ejer 25/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 25/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**; det måles i `raceCalendarLanePackerInvariants.test.js`.
+**Monument-reglen, præcist (ejer 26/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 26/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**; det måles i `raceCalendarLanePackerInvariants.test.js`.
 
 > **Andelen måles på ANTAL LØB, ikke på løbsdage.** Det er et bevidst valg (#3327) og står i kodens overskrift. Målt på løbsdage ville D1 være 14 % — målt på løb er den 61 %.
 
