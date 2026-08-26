@@ -12,6 +12,8 @@
 
 > **✅ #4236 + #4272 + #4273 + #4275 MERGED (26/8).** Backend 7181/7181, scorecard exit 0, e2e grøn. **Men IKKE anvendt på S3.** Målt live 26/8 21:20: `mountain` 144 af 225 slutter **nedad** (64 %) · 61 løbsdage over flere datoer (værste 7) · 8 løb med hul.
 
+> **✅ #4277 MERGED + ANVENDT (26/8, ddf70da62).** Løbsdags-udvikling har eget flag. Prod-verificeret: `race_day_development_enabled`=**off**, `race_day_engine_enabled`=**on** (D3+D4 bevaret). S3 = S2's løbsdags-regler; retur i S4. **Løs ende:** `audit` (league-size) rød på main + alle branches — ikke required, reelt dødt værn.
+
 > **⚠️ TO KATALOG-LOFTER + ÉT ÅBENT VALG (#4272).** D1's brosten nåede 2,6→**4,5 %** (6 % kræver flere brostens-løb; ved 8 reservationer falder D3 under sit gulv). D4's enkeltstart 4,8→**8,1 %** (kun 3 fritstående ITT-løb i Class1/Class2). **Uløst:** D4 trækker 5 af 6 `summit_tour`, hver med 2 garanterede højbjergs-etaper → 16 % højbjerg mod D1's 8 %, og samlet opad 41,9 %. Kræver arketype-**loft** (reservationer er gulve) eller flere flade Class1/Class2-etapeløb. **Spildesign-valg, afventer ejer.** **To regenereringer er forbudt.**
 
 > **⚖️ Ejer-beslutninger 26/8:** løbsdage i træk ("løbsdag 4-5-6-7, ikke 3-5-7-12") · GT = **2** hviledage der OPTAGER løbsdagen · **monument-eksklusiviteten ophævet** (0 delte ryttere målt i alle 9 kombinationer efter #4217 — gevinsten var væk, hullerne blev betalt) · #4174: alle hold udtages ens, assistenten 1 t før.
