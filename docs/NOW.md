@@ -4,29 +4,31 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4236** — roden. Prompt: **`sessions/2026-08-26-samlet-workflow-session-prompt.md`** (S3 + forum, erstatter de tre tidligere). Tag evt. **#4123** først, så du kan SE hvad fixet flytter. Derefter #4183+#4233 (ét bug), #4200's rest, vagterne (**#4232 larmer nu** — drift-vagten crasher hver dag til 28/8). **Tænd scheduler + entry-generator kun på ejer-GO, sidst.**
+> **🎯 Next action:** **#4272** — bånd for hvordan etaperne slutter. Prompt: **`sessions/2026-08-26-kalender-kvalitet-session-prompt.md`**. Derefter #4273, frontend+preflight, PR for #4236+#4272 samlet, og **én** regenerering på ejer-GO.
 
-> **📅 S3 UDSKUDT TIL FREDAG 28/8** (#4218, ejer-direktiv 25/8): 28/8 → søn 27/9, **31 løbsdage, løb hver dag i alle fire divisioner**, kalenderen genereret forfra (531 løb, 22 nye tilføjet). Målt i prod: sæson 3 = `active`, 0 løbsdage kørt. **`stage_scheduler_enabled` og `auto_entry_generator_enabled` står `off`.** Alle spillere udtager forfra.
+> **📅 S3 STARTER FREDAG 28/8 KL. 11** → søn 27/9. 31 løbsdage, løb hver dag i alle fire divisioner. `stage_scheduler_enabled` og `auto_entry_generator_enabled` står **off** — gen-tænding er ejer-only, allersidst.
 
-> **🚨 #4236 — verificeret mod prod 25/8:** én løbsdag spænder op til **9 kalenderdage** — D1 løbsdag 15 dækker 5/9, 10/9 og 13/9. D1 25/89, D3 21/47; D2/D4 rene. Bindingen lyver, så felterne ikke kan fyldes lovligt, og det brænder fast i resultater der ikke kan køres om. Rod: `raceCalendarLanePacker.js:1005`. **`game_day := dato − startdato` er afvist to gange** (#4155, #4158) — foreslå den ikke igen.
+> **✅ #4236 LØST (26/8), mangler PR.** Kontiguitets-pakker: løbsdage i træk, én dato pr. løbsdag. Målt mod prod-katalog: straddle 40→**0** · løb med hul 8→**0** · falske bindinger 12→**0** · GT-spænd over loftet 2→**0**. Scorecard exit 0, backend 7167/7168. **Løser også #4190.** Branch `fix/4236-loebsdag-baand-pr-kalenderdato`. `raceCalendarLanePacker.js` 1483→620 linjer; stream+banded slettet.
 
-> **⚠️ 4 TIMER UDEN AKTIV SÆSON 25/8** (#4229, 07:30-11:50): alder, rangliste, træning og akademi nede for alle. `seasonRollover.mjs` kræver status `upcoming`; ingen satte den tilbage til `active`. **Alle fire kalender-invarianter rapporterede GRØNT imens.** Postmortem + vagt-rest i issuet.
+> **🔴 #4272 SKAL MED I SAMME REGENERERING.** Bjergetaper slutter **nedad 59-70 %** i D1-D3, bakkeetaper svinger 33-86 % opad pr. division. Ejer-godkendte bånd står i issuet. Også: D1's brosten 3 % → 6 % · enkeltstart 10 % i alle divisioner (m. #4220) · mere overlap, monument-solo som præference. **To regenereringer er forbudt** — #4218's regenerering 25/8 skabte selv flere blockers.
 
-> **💰 Værdier/løn S3:** base_value = model(c 0,811 + type-dæmpning k=100) · CPV dæmpet · løn = CPV × 0,35, frosset FØR transitionen · `wage_deduction_mode = season_upfront` · upkeep 220k/70k/20k/0. Type-dæmpningen (#4000) er bygget bag flag, flippes med #3449 tidligst 30/8.
+> **⚖️ Ejer-beslutninger 26/8:** løbsdage i træk ("løbsdag 4-5-6-7, ikke 3-5-7-12") · GT = **2** hviledage der OPTAGER løbsdagen · **monument-eksklusiviteten ophævet** (0 delte ryttere målt i alle 9 kombinationer efter #4217 — gevinsten var væk, hullerne blev betalt) · #4174: alle hold udtages ens, assistenten 1 t før.
 
-> **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8 (clawback + frys + auth-ban). **Ejer 24/8: prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
+> **💰 Værdier/løn S3:** base_value = model(c 0,811 + type-dæmpning k=100) · CPV dæmpet · løn = CPV × 0,35, frosset FØR transitionen · `wage_deduction_mode = season_upfront` · upkeep 220k/70k/20k/0. Type-dæmpningen (#4000) flippes med #3449 tidligst 30/8.
 
-> **📣 Forum-sporet (parallelt, deler ingen filer med S3):** L1 (#4238), dashboard-kort (#4249) og opbakning + citér-svar (#4250) er merged+live — reactions-migrationen er kørt og `schema-columns-ok`-undtagelsen fjernet. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). **#4238 gav en regression** (#4244): forum-abonnementet glemte `return channel`, 18 spillere ramt — fikset+live 15:41, forward-guard i kernen så kaldstil ikke kan bryde kontrakten igen.
+> **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8. **Prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
+
+> **📣 Forum:** L1 (#4238), dashboard-kort (#4249) og opbakning (#4250) er merged+live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: #4252 · #4248 · #4255.
 
 ## Standing context (forever-relaunch)
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
-- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (ikke pr. dato — den forveksling har kostet tre hændelser). **Pension:** måles på AFSLUTTET sæsons alder.
-- **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only og sker aldrig som sidegevinst. v4-gaten var rød 23/8 (#4132).
-- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
+- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag**. **Pension:** måles på AFSLUTTET sæsons alder.
+- **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
+- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **📋 SESSION 25/8 (workflow):** Alle 11 blockers diagnosticeret read-only — **8 har skiftet karakter**, issue-teksterne kan ikke bruges som bevis. **#4183 = #4233** (ét bug, `aiTeamGenerator.js:403`). **#4201 afgjort:** sen udfyldning, 1 t før løb, sweep 60→15 min. 🆕 **Stage-mix brudt i alle 4 divisioner** (#4103, højbjerg 5,6–16,1 % mod 12 ±2) — afventer ejer-svar. 🆕 **24 SSOT-regler bagud** (#4176 + #4254). **#4016 halvt leveret** (PR #4253 låser hovedmappen til main). **Åbne ejer-spørgsmål:** stage-mix · #4174-niveau · fast GT-etapetal.
+> **📋 SESSION 26/8:** #4239 merged (kalender-værktøjet lever). #4236 bygget og grøn. Ny gæld: **#4273** (#3347-testen kan ikke længere fremprovokere reparations-stien — 400 sæsoner søgt, 0 brud) · **#4274** (dev-script skrev rapport i et andet worktree). Løse worktrees med ucommitted filer: `feat/4030-h2h-scorecard`, `fix/3709-signaturfaktor`.
 
-> **🤖 Claude Code (hoved-checkout) — session startet 25/8, spor: S3-blockers (#4239 → #4123 → #4236).**
+> **🤖 Ingen aktiv session.**
 
 _Historik i git-log, issue-tråde + docs/audits/._

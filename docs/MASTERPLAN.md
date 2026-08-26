@@ -8,21 +8,20 @@
 
 S3 er udskudt til fre 28/8 → søn 27/9 (#4218). Rækkefølgen er ejer-valgt:
 
-1. **Holdudtagelsen:** #4222 lukket; rest er #4200's anden halvdel (`raceRunner.js:812`). **#4201 afgjort:** sen udfyldning, 1 t før løb, sweep 60→15 min.
-2. **Nye spillere kan lande:** #4183 + #4233 = ÉT bug (`aiTeamGenerator.js:403`). D4-A på 25 hold.
-3. **#4174** — ét ejer-svar: hvor højt fyldes inaktive trupper. Kun D1 rammer stadig 29.
-4. **Vagterne:** #4229 · #4215 · #4219 · **#4123 (forudsætning** for at røre kalenderen).
-5. **#4236 er roden:** én løbsdag spænder op til 9 kalenderdage; D1 25/89, D3 21/47. #4211: 5 af 6 brud er script-fejl.
-5b. 🆕 **Stage-mix brudt i alle 4 divisioner** (#4103) — **ejer-svar mangler.**
-6. **Tænd scheduler + entry-generator** — `off`; ejer-GO, sidste skridt.
+1. 🟠 **#4236 er roden.** Kontiguitets-pakker bygget og grøn: 0 brud i alle fire divisioner, scorecard exit 0, 7167/7168. Rest: PR. **Løser også #4190.** Ejer 26/8: GT = 2 hviledage der OPTAGER løbsdagen · monument-eksklusivitet ophævet · stream+banded slettet.
+2. 🔴 **#4272 shippes SAMMEN med #4236** — bånd for hvordan etaperne slutter (bjerg slutter nedad 59-70 %). Begge kræver regenerering, og den må kun køres ÉN gang. Enkeltstart 10 % i alle divisioner (m. #4220) · D1 brosten 3 % → 6 %.
+3. **Holdudtagelsen:** #4200's anden halvdel (`raceRunner.js:812`). #4201 afgjort. **#4174 afgjort 26/8:** alle hold behandles ens, assistenten 1 t før — virkningsløs i D1 til #4236 er ude.
+4. **Nye spillere kan lande:** #4183 + #4233 = ÉT bug (`aiTeamGenerator.js:403`). D4-A på 25 hold.
+5. **Vagterne:** #4229 · #4215 · #4219 · #4123 · #4211. **#4103 afgjort:** med i #4236's regenerering.
+6. **ÉN regenerering** (#4236 + #4272), dry-run-diff først. Derefter **tænd scheduler + entry-generator** — ejer-GO, sidst.
 
-Detaljer og rodårsager: `sessions/2026-08-26-samlet-workflow-session-prompt.md` §3.
+Ny gæld 26/8: **#4273** · **#4274**.
 
 **Planning Center med (ejer 25/8):** P0 + UI-gælden + Z1-sæsonmatrixen. Design låst, se `superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md`. Aksen låses først når #4236 er afgjort.
 
 **UDSKUDT (ejer-godkendt):** v4-flip · #4203/#4209 · PC P1-P3-rest + #4070/#4071 · backlog-bølgerne.
 
-**SSOT-disciplin (hard rule 30, ejer 25/8):** intet design uden at citere sit områdes SSOT; opdatér den i samme PR. Nye 25/8: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. 🆕 **24 regler bagud** — 12 kalender (#4176) + 12 udenfor (**#4254**); kostede allerede én fejlmelding.
+**SSOT-disciplin (hard rule 30):** citér områdets SSOT i designet, opdatér den i samme PR. **24 regler bagud** — #4176 + #4254.
 
 ## B · Rytter-pakken (ALTOVERSKYGGENDE)
 
@@ -44,7 +43,7 @@ SSOT: `PROGRESSION_RULES.md`. Samling #3664; design LÅST 13/8.
 SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
-8b. Kalenderen **genereret forfra 25/8** (#4218) → målinger fra 24/8 er forældede; #4236 står i punkt 5. **#4203/#4209 udskudt.** #4190 omskrevet til navngivning + invariant.
+8b. Kalenderen **genereret forfra 25/8** (#4218) → målinger fra 24/8 er forældede; #4236 står i punkt 5. **#4203/#4209 udskudt.**
 
 9. **P0 + UI-gæld + Z1 er MED før fredag** (ejer 25/8). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
 
@@ -59,7 +58,7 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 13. Gæld: cutover-rest (besked 2 · Supabase-perf uge 35 m. #4010 · #3584) · done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops: **#4016 halvt** (PR #4253 låser hovedmappen) · **#3486** · #2758 · #3487 · #691 · worktree-hygiejne (300+ døde).
 14. 🔵 **Fair play (#3131):** prisloft valgt fra → #3138 ENESTE værn. Rest: retnings- + overbetalings-signal · flag-triage · #3438 · #3139.
 
-15. ⚪ **Forum** (SSOT: `FORUM_RULES.md`) — **#4249** + **#4250** åbne; rollen mod Discord afgøres **15/9 (#4235)**.
+15. ⚪ **Forum** (SSOT: `FORUM_RULES.md`) — L1 + dashboard + opbakning merged+live 25/8. Rest: #4252 · #4248 · #4255. Rolle mod Discord **15/9 (#4235)**.
 
 ## F · Backlog-bølger (#3154, 576 åbne — UDSKUDT til efter fredag)
 
