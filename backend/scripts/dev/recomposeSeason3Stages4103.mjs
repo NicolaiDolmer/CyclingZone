@@ -89,13 +89,15 @@ import { seasonSeedSuffix } from "../../lib/raceSeedAxis.js";
 import { resolveVariantByRaceId } from "../../lib/raceRouteRealismDraw.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
 import { TIER_UNIFORM_TARGET_FRACTIONS, TIER_UNIFORM_TARGET_CATEGORIES } from "../../lib/calendarCompositionTargets.js";
+import { repoRoot } from "../lib/repoRoot.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../../.env"), quiet: true });
 
 const SEASON_ID = "00000000-0000-0000-0000-000000000003";
 const REPORT_DATE = "2026-08-23";
-const SNAPSHOT_DIR = join(__dirname, "../../../docs/snapshots/4103");
+// #4274: ankret på git-toplevel, ikke __dirname — se scripts/lib/repoRoot.mjs.
+const SNAPSHOT_DIR = join(repoRoot(), "docs/snapshots/4103");
 
 const APPLY = process.argv.includes("--apply");
 const CONFIRMED = process.env.CONFIRM_4103 === "yes";

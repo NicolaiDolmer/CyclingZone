@@ -33,13 +33,15 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { outputScore } from "../lib/riderValuation.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
+import { repoRoot } from "./lib/repoRoot.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
 
 const OUT_IDX = process.argv.indexOf("--out");
+// #4274: ankret fallback-stien på git-toplevel, ikke __dirname — se lib/repoRoot.mjs.
 const OUT_PATH = OUT_IDX !== -1 ? process.argv[OUT_IDX + 1]
-  : join(__dirname, "../../scratchpad-overall-rating-scorecard.md");
+  : join(repoRoot(), "scratchpad-overall-rating-scorecard.md");
 
 const ALPHA = 0.5; // samme blend som værdimodellen (O = 0,5·speciale + 0,5·mean)
 
