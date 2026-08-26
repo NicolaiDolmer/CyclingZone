@@ -886,7 +886,7 @@ test("Plan B: trænings-facilitet + chef løfter dags-score; uden club-data = bi
 const IMPORTED_AT_TODAY = "2026-06-12T08:00:00Z"; // 10:00 CEST — inde i tickDate's danske døgn
 const IMPORTED_AT_YESTERDAY = "2026-06-11T08:00:00Z"; // udenfor tickDate's danske døgn
 
-// #4275: motoren læser nu TO uafhængige flag. Denne helper tænder begge, så de
+// #4277: motoren læser nu TO uafhængige flag. Denne helper tænder begge, så de
 // eksisterende D1/D2/D3-tests bliver ved med at måle den "fuldt tændte" adfærd de
 // blev skrevet til. Selve splittet dækkes af sit eget test-afsnit nedenfor.
 function seedFlagOn(state, value = "on") {
@@ -896,7 +896,7 @@ function seedFlagOn(state, value = "on") {
   ];
 }
 
-// #4275: kun ÉT af de to flag tændt — de fire kombinationer skal kunne stå frit.
+// #4277: kun ÉT af de to flag tændt — de fire kombinationer skal kunne stå frit.
 function seedFlags(state, { engine = null, development = null } = {}) {
   state.app_config = [
     ...(engine == null ? [] : [{ key: RACE_DAY_ENGINE_FLAG_KEY, value: engine }]),
@@ -1027,7 +1027,7 @@ test("D1 (flag off, default): et race_results-hit i dag ændrer INTET — bit-id
   assert.ok(rr.gains.climbing >= 1, "rytteren trænede normalt (bit-identisk med før #3459)");
 });
 
-// ── #4275: splittet mellem motor-flag (D3) og udviklings-flag (D1+D2) ─────────
+// ── #4277: splittet mellem motor-flag (D3) og udviklings-flag (D1+D2) ─────────
 //
 // Ejer-beslutning 26/8: løbsdags-udviklingen slukkes for S3 og genindføres til
 // S4, MENS recovery-konstanterne (D3) og AI-pariteten (D4) bliver on. Før
@@ -1035,7 +1035,7 @@ test("D1 (flag off, default): et race_results-hit i dag ændrer INTET — bit-id
 // træthedsmedianen tilbage fra 57 til 67 for hele populationen. Disse to tests
 // er den egentlige regressionsspærre mod at koblingen sniger sig ind igen.
 
-test("#4275: motor on + udvikling off → racende rytter træner NORMALT, men beholder D3's recovery-pakke", async () => {
+test("#4277: motor on + udvikling off → racende rytter træner NORMALT, men beholder D3's recovery-pakke", async () => {
   const state = seedState({
     conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
     plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
@@ -1067,7 +1067,7 @@ test("#4275: motor on + udvikling off → racende rytter træner NORMALT, men be
   assert.notEqual(expectedFatigue, staleFatigue, "testen er kun meningsfuld hvis de to pakker faktisk giver forskellige tal");
 });
 
-test("#4275: motor off + udvikling on → race-udvikling sker, men UDEN D3's recovery-pakke", async () => {
+test("#4277: motor off + udvikling on → race-udvikling sker, men UDEN D3's recovery-pakke", async () => {
   const state = seedState({
     conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
     plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],

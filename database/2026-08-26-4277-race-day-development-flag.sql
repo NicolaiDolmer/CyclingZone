@@ -1,4 +1,4 @@
--- Løbsdags-UDVIKLINGEN udskilt til eget flag (#4275).
+-- Løbsdags-UDVIKLINGEN udskilt til eget flag (#4277).
 --
 -- COMMITTES SOM .sql. Idempotent (INSERT ... ON CONFLICT (key) DO NOTHING), så
 -- den kan køres flere gange uden effekt. Applies post-merge under #2642-rammerne.
@@ -29,5 +29,5 @@
 
 INSERT INTO public.app_config (key, value, description) VALUES
   ('race_day_development_enabled', '"off"'::jsonb,
-   'Løbsdags-udvikling (#4275, udskilt fra race_day_engine_enabled): D1 (løbsdage erstatter dagens træningspas) + D2 (løbet udvikler etapens evner, ~15% af det erstattede pas). off|beta|on. off (default) = sæson 2-adfærd: en racende rytter kører sit normale træningspas, og løbstræthed lægges oven i træningstrætheden. Slukket for S3 pr. ejer-beslutning 26/8; planlagt genindførsel til S4. D3 (recovery-konstanter) og D4 (AI-paritet) hænger fortsat på race_day_engine_enabled og er IKKE påvirket af dette flag.')
+   'Løbsdags-udvikling (#4277, udskilt fra race_day_engine_enabled): D1 (løbsdage erstatter dagens træningspas) + D2 (løbet udvikler etapens evner, ~15% af det erstattede pas). off|beta|on. off (default) = sæson 2-adfærd: en racende rytter kører sit normale træningspas, og løbstræthed lægges oven i træningstrætheden. Slukket for S3 pr. ejer-beslutning 26/8; planlagt genindførsel til S4. D3 (recovery-konstanter) og D4 (AI-paritet) hænger fortsat på race_day_engine_enabled og er IKKE påvirket af dette flag.')
 ON CONFLICT (key) DO NOTHING;

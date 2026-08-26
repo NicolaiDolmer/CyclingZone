@@ -19,7 +19,7 @@ test("flag key er stabil", () => {
   assert.equal(RACE_DAY_DEVELOPMENT_FLAG_KEY, "race_day_development_enabled");
 });
 
-test("#4275: udviklings-flagget er en ANDEN nøgle end motor-flagget", () => {
+test("#4277: udviklings-flagget er en ANDEN nøgle end motor-flagget", () => {
   // Hele pointen med splittet. Skulle de to nogensinde kollapse til samme nøgle,
   // er "sluk udviklingen, behold recovery-konstanterne" umuligt igen.
   assert.notEqual(RACE_DAY_DEVELOPMENT_FLAG_KEY, RACE_DAY_ENGINE_FLAG_KEY);

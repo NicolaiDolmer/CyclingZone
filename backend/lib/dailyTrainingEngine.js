@@ -45,7 +45,7 @@ function addDaysToDate(dateStr, days) {
 // resolver som { data: null, error } så kald-stedet kan falde tilbage til "ingen
 // løbsdag antaget" (log warning) i stedet for at vælte hele trænings-dagen for et
 // helt hold pga. én best-effort-berigelse. Kun kaldt når raceDayDevelopmentOn
-// (#4275; kald-stedet sender Promise.resolve({data:[],error:null}) når flag off —
+// (#4277; kald-stedet sender Promise.resolve({data:[],error:null}) når flag off —
 // ingen ekstra DB-belastning for en slukket feature).
 // #3459 D2: select udvidet med race_id + stage_number — koblingspunktet til
 // race_stage_profiles (profil-typen) der driver RACE_PROFILE_ABILITY_MAP nedenfor.
@@ -169,12 +169,12 @@ export async function runTeamTrainingDay({
 
   const riderIds = riders.map((r) => r.id);
 
-  // #3459 D1 / #4275: flagene afgør om løbsdags-lookuppet overhovedet skal køre —
+  // #3459 D1 / #4277: flagene afgør om løbsdags-lookuppet overhovedet skal køre —
   // læst FØR batch-Promise.all'et så den betingede query kan indgå i samme batch
   // (kodemap-kravet: "i samme Promise.all som øvrige hold-inputs") uden at spilde
   // en query på en slukket feature.
   //
-  // #4275: de to flag er UAFHÆNGIGE. `raceDayEngineOn` styrer nu KUN D3
+  // #4277: de to flag er UAFHÆNGIGE. `raceDayEngineOn` styrer nu KUN D3
   // (recovery-konstanterne nedenfor); D1+D2 — lookuppet, "race"-intensiteten og
   // udviklings-tick'et — hænger på `raceDayDevelopmentOn`. Læses parallelt: to
   // uafhængige app_config-opslag uden indbyrdes rækkefølge.
@@ -203,7 +203,7 @@ export async function runTeamTrainingDay({
     supabase.from("training_week_plans")
       .select("rider_id, days")
       .eq("team_id", teamId),
-    // #3459 D1 / #4275: kun query'et når UDVIKLINGS-flagget er on — off giver en
+    // #3459 D1 / #4277: kun query'et når UDVIKLINGS-flagget er on — off giver en
     // no-op-promise (bit-identisk med før #3459, ingen ekstra DB-kald). Bevidst
     // `raceDayDevelopmentOn`, ikke `raceDayEngineOn`: uden D2 har lookuppet ingen
     // aftager, og så er det ren spildt query pr. hold pr. dag.
@@ -333,11 +333,11 @@ export async function runTeamTrainingDay({
     // Er rytteren skadet i dag?
     const injuredToday = !!(cond.injured_until && cond.injured_until >= tickDate);
 
-    // #3459 D1 / #4275: racede rytteren i dag (udviklings-flag on)? injuredToday
+    // #3459 D1 / #4277: racede rytteren i dag (udviklings-flag on)? injuredToday
     // har forrang (kan i praksis ikke ske samtidig — en skadet rytter stilles ikke
     // til start — men defensivt konsistent med resten af grenen).
     //
-    // #4275: `raceDayDevelopmentOn` er den eneste gate her. Med udviklingen off
+    // #4277: `raceDayDevelopmentOn` er den eneste gate her. Med udviklingen off
     // er `racedRiderIds` altid tom (lookuppet kørte ikke), så gaten er teknisk
     // redundant — den bliver stående fordi den gør intentionen læsbar dér hvor
     // grenen vælges, i stedet for at hvile på en tom mængde langt oppe i filen.
@@ -425,7 +425,7 @@ export async function runTeamTrainingDay({
     // race_day_engine_enabled — udeladt (flag off) = CONDITION_CONFIG's status quo
     // (bit-identisk); on = RACE_DAY_ENGINE_RECOVERY_CONFIG (4.5/0.15, empirisk valgt).
     //
-    // #4275: BEVIDST `raceDayEngineOn`, ikke udviklings-flagget. Restitutions-
+    // #4277: BEVIDST `raceDayEngineOn`, ikke udviklings-flagget. Restitutions-
     // konstanterne er kalibreret mod HELE populationens træthedsfordeling (median
     // 57 mod 67 med de gamle tal), ikke mod løbsdags-udviklingen. At slukke
     // udviklingen må ikke rulle dem tilbage — det var netop koblingen der gjorde
