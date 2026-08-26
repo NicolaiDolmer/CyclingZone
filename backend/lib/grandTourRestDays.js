@@ -22,7 +22,6 @@
 //
 // REN + deterministisk (ingen DB/Date/random) — samme kontrakt som seasonPhaseProfiles.js.
 
-import { parseRaceDateText } from "./seasonPhaseProfiles.js";
 
 // Samme tærskel som tierRaceSelection.GRAND_TOUR_MIN_STAGES — importeres IKKE herfra
 // (ville skabe en cirkulær afhængighed grandTourRestDays.js → tierRaceSelection.js →

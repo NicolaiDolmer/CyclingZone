@@ -177,24 +177,16 @@ export function detectCalendarViolations({
   // reparationen udledte game_day af datoerne alene og klappede D1's fem monumenter sammen
   // med naboløbene i live S3. Reglen gates nu på alle tre niveauer (CI, denne preflight,
   // verify-invariants mod prod).
-  const monumentGameDays = new Map(); // game_day -> monument-id
-  const gameDayRaces = new Map();     // game_day -> Set(race_id)
-  for (const pl of placements) {
-    const cat = catalogById.get(pl.id) || {};
-    const raceClass = cat.race_class ?? pl.race_class ?? null;
-    for (const st of pl.stagesPlaced ?? []) {
-      if (!Number.isFinite(st.game_day)) continue;
-      if (!gameDayRaces.has(st.game_day)) gameDayRaces.set(st.game_day, new Set());
-      gameDayRaces.get(st.game_day).add(pl.id);
-      if (raceClass === "Monuments" && !monumentGameDays.has(st.game_day)) monumentGameDays.set(st.game_day, pl.id);
-    }
-  }
-  for (const [gameDay, monumentId] of monumentGameDays) {
-    const others = [...(gameDayRaces.get(gameDay) ?? [])].filter((id) => id !== monumentId);
-    if (others.length) {
-      violations.push(`tier ${tier}: monument ${monumentId} shares game_day ${gameDay} with ${others.join(", ")} — a monument owns its race day (#4075)`);
-    }
-  }
+  // #4236 (ejer-beslutning 25/8): monument-eksklusiviteten er OPHAEVET, og gaten er derfor
+  // fjernet her. Reglen sagde at et monument ejer sin loebsdag alene, saa alle ryttere kunne
+  // stille op. Den holdt op med at levere da #4217 gjorde bindingen spaend-baseret 24 timer
+  // foer: rytteren er bundet hele etapeloebets spaend, ogsaa henover monumentets loebsdag.
+  // Maalt mod prod: 0 delte ryttere i alle 9 monument/etapeloeb-kombinationer - gevinsten
+  // var vaek. Prisen blev betalt alligevel: det eksklusive indskud rev hul i loebsdagene hos
+  // fem D1-etapeloeb og var eneste aarsag til at kronologi-reglen var brudt.
+  //
+  // Det der stadig gaelder for monumenter - at de ligger spredt over saesonen - maales i
+  // raceCalendarLanePackerInvariants.test.js. Se CALENDAR_RULES.md §4.
 
   // #4075 invariant 5: GT-klasser SKAL bære grand_tour-arketypen — ellers genereres deres
   // etapeprofiler som almindelige etapeløb (ingen åbnings-ITT, ingen GT-finale-regel).
