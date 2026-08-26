@@ -932,7 +932,7 @@
       },
       "raceDays": {
         "title": "Race days and training",
-        "text": "A race day replaces that day's training session rather than adding to it, so a rider never gets both. The race is worth a little more than the session it replaced, about 15% more, but all of it goes into the abilities that stage demanded: a mountain stage builds Climbing, Endurance and Durability, a flat stage builds Flat, Sprint and Acceleration. It counts once per day. Riding six stages on one date develops a rider exactly as much as riding one, because development is settled per day. Fatigue is not: every stage adds its own load, while recovery only comes once a day, so a heavy day leaves a rider far more tired without making him any better. One catch worth knowing: the race takes the place of whatever you had planned that day, so a rider whose plan says Rest gets no development from racing. Give the riders you enter a real session."
+        "text": "A race day does not change that day's training. Your rider still does the session you planned, and the race adds its own fatigue on top of the training load. Racing itself does not raise abilities: development comes from training, whether a rider races that day or not. What racing does cost is freshness, and every stage adds its own load while recovery only comes once a day, so a rider on a heavy stage race tires fast. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest before their Form falls away."
       },
       "smartDefault": {
         "title": "What trains a rider with no focus set?",

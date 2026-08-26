@@ -22,6 +22,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { riderLevelBand } from "./staffAbilityConstants.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
+import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
@@ -43,9 +44,9 @@ function addDaysToDate(dateStr, days) {
 // på holdets rider_ids. Fail-safe by construction: ALDRIG throw — en query-fejl
 // resolver som { data: null, error } så kald-stedet kan falde tilbage til "ingen
 // løbsdag antaget" (log warning) i stedet for at vælte hele trænings-dagen for et
-// helt hold pga. én best-effort-berigelse. Kun kaldt når raceDayEngineOn (kald-
-// stedet sender Promise.resolve({data:[],error:null}) når flag off — ingen ekstra
-// DB-belastning for en slukket feature).
+// helt hold pga. én best-effort-berigelse. Kun kaldt når raceDayDevelopmentOn
+// (#4277; kald-stedet sender Promise.resolve({data:[],error:null}) når flag off —
+// ingen ekstra DB-belastning for en slukket feature).
 // #3459 D2: select udvidet med race_id + stage_number — koblingspunktet til
 // race_stage_profiles (profil-typen) der driver RACE_PROFILE_ABILITY_MAP nedenfor.
 async function loadRacedRiderIdsToday(supabase, riderIds, now, tickDate) {
@@ -168,11 +169,19 @@ export async function runTeamTrainingDay({
 
   const riderIds = riders.map((r) => r.id);
 
-  // #3459 D1: flaget afgør om løbsdags-lookuppet overhovedet skal køre — læst FØR
-  // batch-Promise.all'et så den betingede query kan indgå i samme batch (kodemap-
-  // kravet: "i samme Promise.all som øvrige hold-inputs") uden at spilde en query
-  // på en slukket feature.
-  const raceDayEngineOn = await isRaceDayEngineEnabled(supabase);
+  // #3459 D1 / #4277: flagene afgør om løbsdags-lookuppet overhovedet skal køre —
+  // læst FØR batch-Promise.all'et så den betingede query kan indgå i samme batch
+  // (kodemap-kravet: "i samme Promise.all som øvrige hold-inputs") uden at spilde
+  // en query på en slukket feature.
+  //
+  // #4277: de to flag er UAFHÆNGIGE. `raceDayEngineOn` styrer nu KUN D3
+  // (recovery-konstanterne nedenfor); D1+D2 — lookuppet, "race"-intensiteten og
+  // udviklings-tick'et — hænger på `raceDayDevelopmentOn`. Læses parallelt: to
+  // uafhængige app_config-opslag uden indbyrdes rækkefølge.
+  const [raceDayEngineOn, raceDayDevelopmentOn] = await Promise.all([
+    isRaceDayEngineEnabled(supabase),
+    isRaceDayDevelopmentEnabled(supabase),
+  ]);
 
   // ── 3) Load abilities, training plans + condition i parallell ─────────────────
   const [
@@ -194,9 +203,11 @@ export async function runTeamTrainingDay({
     supabase.from("training_week_plans")
       .select("rider_id, days")
       .eq("team_id", teamId),
-    // #3459 D1: kun query'et når flagget er on — flag off giver en no-op-promise
-    // (bit-identisk med før #3459, ingen ekstra DB-kald).
-    raceDayEngineOn
+    // #3459 D1 / #4277: kun query'et når UDVIKLINGS-flagget er on — off giver en
+    // no-op-promise (bit-identisk med før #3459, ingen ekstra DB-kald). Bevidst
+    // `raceDayDevelopmentOn`, ikke `raceDayEngineOn`: uden D2 har lookuppet ingen
+    // aftager, og så er det ren spildt query pr. hold pr. dag.
+    raceDayDevelopmentOn
       ? loadRacedRiderIdsToday(supabase, riderIds, now, tickDate)
       : Promise.resolve({ data: [], error: null }),
   ]);
@@ -215,7 +226,7 @@ export async function runTeamTrainingDay({
   // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
   // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
   const racedRiderProfileByRider = new Map();
-  if (raceDayEngineOn) {
+  if (raceDayDevelopmentOn) {
     if (raceDayResult.error) {
       // ASCII-only besked (#i18n-leak-guard, BACKEND_CONTEXT matcher error/message-linjer med
       // æ/ø/å) — dette er intern ops-logging, ikke en spiller-synlig API-fejl.
@@ -322,10 +333,15 @@ export async function runTeamTrainingDay({
     // Er rytteren skadet i dag?
     const injuredToday = !!(cond.injured_until && cond.injured_until >= tickDate);
 
-    // #3459 D1: racede rytteren i dag (flag on)? injuredToday har forrang (kan i
-    // praksis ikke ske samtidig — en skadet rytter stilles ikke til start — men
-    // defensivt konsistent med resten af grenen).
-    const racedToday = !injuredToday && raceDayEngineOn && racedRiderIds.has(rider.id);
+    // #3459 D1 / #4277: racede rytteren i dag (udviklings-flag on)? injuredToday
+    // har forrang (kan i praksis ikke ske samtidig — en skadet rytter stilles ikke
+    // til start — men defensivt konsistent med resten af grenen).
+    //
+    // #4277: `raceDayDevelopmentOn` er den eneste gate her. Med udviklingen off
+    // er `racedRiderIds` altid tom (lookuppet kørte ikke), så gaten er teknisk
+    // redundant — den bliver stående fordi den gør intentionen læsbar dér hvor
+    // grenen vælges, i stedet for at hvile på en tom mængde langt oppe i filen.
+    const racedToday = !injuredToday && raceDayDevelopmentOn && racedRiderIds.has(rider.id);
 
     // Pre-tick træthed til skaderisiko-beregning (brug den aktuelle, ikke den næste).
     const preFatigue = Number(cond.fatigue ?? 0);
@@ -408,6 +424,12 @@ export async function runTeamTrainingDay({
     // Træthed + form for næste dag. #3459 D3: recoveryBase/recoveryFraction følger
     // race_day_engine_enabled — udeladt (flag off) = CONDITION_CONFIG's status quo
     // (bit-identisk); on = RACE_DAY_ENGINE_RECOVERY_CONFIG (4.5/0.15, empirisk valgt).
+    //
+    // #4277: BEVIDST `raceDayEngineOn`, ikke udviklings-flagget. Restitutions-
+    // konstanterne er kalibreret mod HELE populationens træthedsfordeling (median
+    // 57 mod 67 med de gamle tal), ikke mod løbsdags-udviklingen. At slukke
+    // udviklingen må ikke rulle dem tilbage — det var netop koblingen der gjorde
+    // "sluk udviklingen for S3" umulig før dette split.
     const newFatigue = nextFatigue({
       fatigue: preFatigue,
       intensity: effectiveIntensity,
