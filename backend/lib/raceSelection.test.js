@@ -111,6 +111,32 @@ test("saveSelection: removalOnly=true omgår race_lineup_frozen-guarden for et i
   assert.deepEqual(rpcArgs.args.p_rider_ids, ["r1", "r2"]);
 });
 
+// #4283: RPC-guarden matcher kun dette løbs FAKTISKE etape-dage — en konflikt der alene
+// rammer en hvile-/pausedag i #4217-spændet slipper forbi og fanges først af
+// no_rider_double_booking_day-constrainten (rå 23505 uden 'selection_rider_bound' i
+// beskeden). saveSelection skal klassificere den som selection_rider_bound, så ruten
+// svarer den navngivne 409 og ikke en opak 500.
+test("saveSelection: rå 23505 fra no_rider_double_booking_day klassificeres som selection_rider_bound (#4283)", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: {
+    code: "23505",
+    message: 'duplicate key value violates unique constraint "no_rider_double_booking_day"',
+  } }) };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0 };
+  await assert.rejects(
+    () => saveSelection({ supabase, race, teamId: "t1", riderIds: ["r1"], captainId: "r1" }),
+    (err) => err.code === "selection_rider_bound"
+  );
+});
+
+test("saveSelection: en URELATERET RPC-fejl får IKKE selection_rider_bound-koden", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: { code: "XX000", message: "connection reset" } }) };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0 };
+  await assert.rejects(
+    () => saveSelection({ supabase, race, teamId: "t1", riderIds: ["r1"], captainId: "r1" }),
+    (err) => err.code === undefined && /connection reset/.test(err.message)
+  );
+});
+
 test("saveSelection: uden removalOnly (default) afvises et igangværende løb stadig med race_lineup_frozen", async () => {
   const supabase = { rpc: () => Promise.resolve({ error: null }) };
   const race = { id: "race1", status: "scheduled", stages_completed: 3 };

@@ -7,6 +7,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter, isRiderInjured } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
+import { isRiderDayInvariantViolation } from "./raceBinding.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
@@ -103,7 +104,14 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
     // den eksisterende i18n-nøgle i stedet for en opak 500 (TOCTOU-taberen skal se
     // samme besked som pre-flight-tjekket giver).
     const err = new Error(`replace_race_selection: ${rpcErr.message}`);
-    if (String(rpcErr.message || "").includes("selection_rider_bound")) err.code = "selection_rider_bound";
+    // #4283: RPC'ens egen guard matcher kun dette løbs FAKTISKE etape-dage — en konflikt
+    // der alene rammer en hvile-/pausedag i #4217-spændet slipper forbi guarden og fanges
+    // først af no_rider_double_booking_day-constrainten (rå 23505, ingen
+    // 'selection_rider_bound' i beskeden). Klassificér den ens, så TOCTOU-taberen får den
+    // navngivne 409 i stedet for en opak 500.
+    if (String(rpcErr.message || "").includes("selection_rider_bound") || isRiderDayInvariantViolation(rpcErr)) {
+      err.code = "selection_rider_bound";
+    }
     throw err;
   }
   return rows;
