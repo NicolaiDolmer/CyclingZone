@@ -29,7 +29,8 @@ import {
   TRAINING_SESSIONS_BY_LEVEL,
   SKILL_SESSIONS,
 } from "../lib/trainingDayTypes.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, yesterdaySummary, riderDayStories } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, yesterdaySummary, riderDayStories, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED } from "../lib/trainingReport.js";
+import { formatDate } from "../lib/intl.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
 import FocusPanel from "../components/training/FocusPanel.jsx";
@@ -637,14 +638,18 @@ export default function TrainingPage() {
   // trænings-kørsler (useTrainingHistory skærer selv forrige sæsons hale fra).
   // Uden en kendt sæsonstart bliver map'et tomt, rækkerne får seasonGains = null
   // og viser "—" i stedet for et opfundet "+0".
+  // #4293: en sæson kan være `active` med en start_date i FREMTIDEN (interregnum
+  // mellem to sæsoner). Da er der ingen sæsondage at kvittere for, og map'et
+  // bliver tomt — rækkerne får seasonGains = null og viser "—" i stedet for et
+  // målt "+0" om en periode der ikke er begyndt.
   const seasonGainsByRider = useMemo(() => {
     const out = {};
-    if (!history.seasonStart) return out;
+    if (history.seasonState !== SEASON_RECEIPT_RUNNING || !history.seasonStart) return out;
     for (const r of riders) {
       out[r.id] = seasonAbilityGains(history.seasonRuns, r.id, history.seasonStart) ?? {};
     }
     return out;
-  }, [riders, history.seasonRuns, history.seasonStart]);
+  }, [riders, history.seasonRuns, history.seasonStart, history.seasonState]);
 
   // #3746 trin 7: Week plan-fanens kompakte oversigt — ryttere med en egen
   // individuel ugeplan-override. Genbruger riderWeekPlans (allerede hentet af
@@ -1328,6 +1333,16 @@ export default function TrainingPage() {
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
         ) : (
           <>
+            {/* #4293: "This season"-kolonnen står tom hele vejen ned når sæsonen
+                er aktiv men endnu ikke begyndt. Fladen siger roligt hvorfor og
+                hvornår tallene begynder, i stedet for at lade en kolonne fuld af
+                "—" tale for sig selv. Samme copy-nøgle som rytterprofilens
+                kvittering, så de to steder ikke kan sige forskellige ting. */}
+            {history.seasonState === SEASON_RECEIPT_NOT_STARTED && history.seasonStart && (
+              <p className="mb-2 text-2xs text-cz-3 leading-snug">
+                {t("receipt.notStarted", { date: formatDate(history.seasonStart) })}
+              </p>
+            )}
             <div ref={rosterTableRef} className={WRAP}>
               <div className={SCROLLER}>
                 <table className={TABLE} data-sortable>

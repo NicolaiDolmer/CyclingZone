@@ -12,6 +12,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
+import { copenhagenDayKey } from "./raceCentre.js";
+import { seasonReceiptState, SEASON_RECEIPT_UNKNOWN } from "./trainingReport.js";
 
 // Vinduet historikken dækker (dage tilbage). Matcher idx_training_day_runs_team_date.
 export const HISTORY_DAYS = 30;
@@ -28,19 +30,23 @@ export function useTrainingHistory() {
   const [runs, setRuns] = useState([]);     // [{ tick_date, executed_by, bonus_applied, report }] — seneste 30 dage
   const [seasonRuns, setSeasonRuns] = useState([]); // samme form, men kun dage i den AKTIVE sæson (#3709 trin 1)
   const [seasonStart, setSeasonStart] = useState(null); // "YYYY-MM-DD" | null
+  // #4293: "unknown" | "notStarted" | "running" — se seasonReceiptState. En sæson
+  // kan være `active` med en start_date i FREMTIDEN (interregnum mellem to
+  // sæsoner), og den tilstand fandtes ikke før: den blev vist som et målt "+0".
+  const [seasonState, setSeasonState] = useState(SEASON_RECEIPT_UNKNOWN);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const user = await getAuthedUser();
-      if (!user) { setRuns([]); setSeasonRuns([]); return; }
+      if (!user) { setRuns([]); setSeasonRuns([]); setSeasonState(SEASON_RECEIPT_UNKNOWN); return; }
       const { data: myTeam } = await supabase
         .from("teams")
         .select("id")
         .eq("user_id", user.id)
         .single();
-      if (!myTeam) { setRuns([]); setSeasonRuns([]); return; }
+      if (!myTeam) { setRuns([]); setSeasonRuns([]); setSeasonState(SEASON_RECEIPT_UNKNOWN); return; }
 
       // #3709 trin 1: kvitteringens enhed er point pr. SÆSON, så vinduet skal
       // kende sæsonstarten. Sæson 1 kørte 34 dage (22/6 til 26/7, målt 14/8), så
@@ -58,6 +64,15 @@ export function useTrainingHistory() {
       // afventende tilstand i stedet for et opfundet "+0".
       const activeStart = !seasonError && season?.start_date ? String(season.start_date) : null;
       setSeasonStart(activeStart);
+
+      // #4293: sæsonen kan være aktiv OG endnu ikke begyndt. `start_date` er en
+      // DATE på kalenderdags-aksen (docs/CALENDAR_RULES.md §0), så "i dag"
+      // udledes i spillets tidszone og ikke i browserens: en spiller i Los
+      // Angeles må ikke se sæsonen som ikke-startet et halvt døgn efter alle
+      // andre. Fallback (copenhagenDayKey kan kun fejle på en ugyldig ms) er
+      // UTC-dagen, samme kilde som 30-dages-vinduet nedenfor.
+      const todayKey = copenhagenDayKey(Date.now()) ?? sinceDate(0);
+      setSeasonState(seasonReceiptState(activeStart, todayKey));
 
       const windowStart = sinceDate(HISTORY_DAYS);
       const since = activeStart && activeStart < windowStart ? activeStart : windowStart;
@@ -84,5 +99,5 @@ export function useTrainingHistory() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { runs, seasonRuns, seasonStart, loading, refresh };
+  return { runs, seasonRuns, seasonStart, seasonState, loading, refresh };
 }
