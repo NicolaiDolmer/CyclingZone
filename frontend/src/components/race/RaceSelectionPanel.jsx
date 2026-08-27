@@ -179,7 +179,7 @@ export default function RaceSelectionPanel({
   // panel) — round-trip'et i save() sikrer at badge'n matcher hvad der reelt gemmes.
   const freeRoleSet = new Set(sel.freeRoleIds || []);
   // #4295: antal blokerer aldrig nedad. Klienten spejler nu backenden præcist (kun over
-  // feltstørrelsen + kaptajn + rolle-overlap), så en delvis trup altid kan gemmes — også
+  // feltstørrelsen + kaptajn + rolle-overlap), så en delvis trup altid kan gemmes, også
   // ved en førstegangs-udtagelse, som var netop den tilstand "Ryd alt" efterlader.
   const clientErrors = validateSelectionClient({ ...sel, size });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
@@ -196,7 +196,7 @@ export default function RaceSelectionPanel({
   const raceLive = (data.race?.stages_completed ?? 0) > 0;
   const errParams = { min: size.min, max: size.max };
   // #4295: den IKKE-blokerende afløser for #1906's hårde krav om en fuld trup. Nudgen
-  // skal bygge på ryttere der er frie til NETOP dette løb — ikke på `availableCount`,
+  // skal bygge på ryttere der er frie til NETOP dette løb, ikke på `availableCount`,
   // som er hele den raske trup og aldrig trækker bundne ryttere fra. Det var præcis den
   // utætte antagelse #4175's escape-ventil hvilede på, så ventilen udløste aldrig for et
   // hold med ryttere nok på papiret men ingen ledige til dagens løb. Hinten er ren

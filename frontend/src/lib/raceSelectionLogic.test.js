@@ -15,7 +15,7 @@ test("toggleRider: tilføjer/fjerner og respekterer max + rydder roller for fjer
 
 // #4295: klienten må ALDRIG afvise et gem serveren accepterer. Backendens
 // validateSelection (backend/lib/raceSelection.js:25) afviser kun `riderIds.length >
-// sizeRule.max` — der er intet minimum nogen steder i gem-stien. Disse tests er
+// sizeRule.max`. Der er intet minimum nogen steder i gem-stien. Disse tests er
 // kontrakten mod den regel.
 test("validateSelectionClient: ANTAL blokerer kun opad (spejl af backend raceSelection.js:25)", () => {
   // Enhver trupstørrelse fra 1 til size.max er lovlig, i alle tre feltstørrelser.

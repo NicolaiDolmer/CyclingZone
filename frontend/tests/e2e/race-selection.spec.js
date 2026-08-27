@@ -4,7 +4,7 @@
 //   - Supabase REST-laget (races + race_results) så RaceDetailPage loader et
 //     "scheduled" løb og renderer RaceSelectionPanel.
 //   - GET /api/races/:id/selection så panelet henter rytterliste + størrelsesgrænser.
-//   - PUT /api/races/:id/selection — fanger request-body og asserterer rider_ids +
+//   - PUT /api/races/:id/selection: fanger request-body og asserterer rider_ids +
 //     captain_id (fuld trup i basis-testen, delvis trup i #4295-testene nederst).
 //
 // Mønster følger race-detail.spec.js: stabilizePage → installNetworkMocks →

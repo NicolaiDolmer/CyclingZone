@@ -58,7 +58,7 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
 //          altså når holdet FAKTISK kunne fylde feltet.
 //   #4295  viste at ventilen var utæt. `availableCount` er "hele den raske trup"
 //          (backend/lib/raceSelection.js:223) og trækker ALDRIG ryttere fra der er bundet
-//          i et overlappende løb — bound_riders beregnes separat i ruten. Et hold med 29
+//          i et overlappende løb. bound_riders beregnes separat i ruten. Et hold med 29
 //          ryttere har derfor altid `availableCount >= size.max`, så ventilen udløste
 //          aldrig i praksis, og en førstegangs-udtagelse (efter "Ryd alt" eller en
 //          kalender-rebuild) var stadig blokeret. Oveni løj fejlteksten: brugeren fik
@@ -74,7 +74,7 @@ export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, 
   // BEVIDST divergens der står tilbage efter #4295: backenden kræver kun kaptajn når
   // riderIds.length > 0 (raceSelection.js:36-41), klienten kræver den altid. En helt tom
   // trup (ren auto-udtagelse) kan derfor ikke gemmes fra løbssiden. Uden for #4295's
-  // scope — ejer-beslutning, ikke en oversete-fejl.
+  // scope: det er en ejer-beslutning, ikke en overset fejl.
   if (!captainId) errors.push("selection_captain_required");
   const roles = [captainId, sprintCaptainId, hunterId].filter(Boolean);
   if (new Set(roles).size !== roles.length) errors.push("selection_role_overlap");
