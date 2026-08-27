@@ -69,7 +69,7 @@ reviews:
       instructions: >-
         Player-facing copy er EN-først, DA-sekundær. Flag opfundet indhold og
         em-dashes (—) i copy. Ny/ændret spilmekanik kræver opdatering af
-        help.json (en+da) og PatchNotesPage.jsx. Undgå AI-slop-æstetik
+        help.json (en+da) og frontend/src/data/patchNotes.js. Undgå AI-slop-æstetik
         (rounded-2xl, glows, gradient-blobs, emoji-ikoner). Kun .js relative
         imports — extensionless imports består Vite men fejler i Node's ESM-loader
         i CI.
