@@ -98,7 +98,7 @@ export default function RaceSelectionPanel({
   const earlySaving = status === "saving";
   const earlyBusy = earlySaving || autoStatus === "loading";
   const earlyClientErrors = data
-    ? validateSelectionClient({ ...sel, size: data.size, availableCount: data.availableCount, requireFull: !data.selection })
+    ? validateSelectionClient({ ...sel, size: data.size })
     : [];
   const earlySaveBlockReason = earlyClientErrors.length > 0
     ? t(`selection.errors.${earlyClientErrors[0]}`, { min: data?.size?.min, max: data?.size?.max })
@@ -170,7 +170,7 @@ export default function RaceSelectionPanel({
     );
   }
 
-  const { size, riders, availableCount } = data;
+  const { size, riders } = data;
   // #2265: ryttere bundet i et ANDET løb med overlappende in-game-dag-vindue (server-
   // beregnet). Bundne ryttere greyes + kan ikke tilføjes; er en bunden rytter allerede
   // valgt (fx efter en reschedule) vises en konflikt-markering, men han kan fjernes.
@@ -178,11 +178,10 @@ export default function RaceSelectionPanel({
   // #2376: free_role vises som badge (rollens editor er boardets rollekort, ikke dette
   // panel) — round-trip'et i save() sikrer at badge'n matcher hvad der reelt gemmes.
   const freeRoleSet = new Set(sel.freeRoleIds || []);
-  // #2637: kræv kun en FULD trup ved en førstegangs-udtagelse (#1906, ingen gemt
-  // selection endnu). Findes der allerede en gemt/auto-udtaget udtagelse, tillader
-  // backenden en delvis trup for ethvert efterfølgende gem (ejer 28/6) — typisk fordi
-  // en skadet rytter netop er fjernet fra en allerede committet etapeløbs-trup.
-  const clientErrors = validateSelectionClient({ ...sel, size, availableCount, requireFull: !data.selection });
+  // #4295: antal blokerer aldrig nedad. Klienten spejler nu backenden præcist (kun over
+  // feltstørrelsen + kaptajn + rolle-overlap), så en delvis trup altid kan gemmes — også
+  // ved en førstegangs-udtagelse, som var netop den tilstand "Ryd alt" efterlader.
+  const clientErrors = validateSelectionClient({ ...sel, size });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
   const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
@@ -196,6 +195,20 @@ export default function RaceSelectionPanel({
   // forvirrende "gemt, men afvist" for et forsøg på at tilføje en ny rytter midt i løbet.
   const raceLive = (data.race?.stages_completed ?? 0) > 0;
   const errParams = { min: size.min, max: size.max };
+  // #4295: den IKKE-blokerende afløser for #1906's hårde krav om en fuld trup. Nudgen
+  // skal bygge på ryttere der er frie til NETOP dette løb — ikke på `availableCount`,
+  // som er hele den raske trup og aldrig trækker bundne ryttere fra. Det var præcis den
+  // utætte antagelse #4175's escape-ventil hvilede på, så ventilen udløste aldrig for et
+  // hold med ryttere nok på papiret men ingen ledige til dagens løb. Hinten er ren
+  // visning: den går ALDRIG i clientErrors, så Gem-knappen forbliver aktiv.
+  const openSpots = size.max - sel.riderIds.length;
+  const selectedIdSet = new Set(sel.riderIds);
+  const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)).length;
+  // Vises først når manageren har udtaget mindst én rytter: på et urørt panel er
+  // "7 pladser står åbne" bare en gentagelse af undertekstens "udtag op til {max}".
+  const partialHint = sel.riderIds.length > 0 && openSpots > 0
+    ? t(freeLeft >= openSpots ? "selection.partialHint" : "selection.partialHintShort", { open: openSpots, free: freeLeft })
+    : null;
   const saving = status === "saving";
   // #3310 quality-fix: Auto-select kører en server-mutation (delete+insert) på samme
   // race_entries-rækker som et manuelt Gem. Uden dette gør en manuel toggle/klik MENS
@@ -669,6 +682,12 @@ export default function RaceSelectionPanel({
                 {t(`selection.errors.${code}`, errParams)}
               </p>
             ))}
+            {/* #4295: delvis trup er lovlig, så dette er en neutral oplysning (text-cz-3),
+                ikke en advarsel (text-cz-warning). Den forklarer hvad der sker med de
+                tomme pladser, i stedet for at kalde dem en fejl. */}
+            {partialHint && (
+              <p data-testid="selection-partial-hint" className="text-xs text-cz-3">{partialHint}</p>
+            )}
             {status === "error" && errorKey && (
               <p className="text-xs text-cz-danger">
                 {/* #2637: en navngivet selection_rider_bound-fejl (rytter + løb) er langt

@@ -38,45 +38,43 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
   return best;
 }
 
-// Spejler backend raceSelection.validateSelection (#1906 for `requireFull=true`).
-// `required` = løbets pladsantal (size.max). To distinkte fejl så UI kan guide:
-//   selection_insufficient_riders → holdet har for få raske ryttere (afmeld / hent fri-agenter)
-//   selection_wrong_size          → holdet KAN fylde, men har valgt for få/mange
+// Spejler backend raceSelection.validateSelection (backend/lib/raceSelection.js:25).
 //
-// `requireFull` (default true, #1906 "hård fuld opstilling"): en FØRSTEGANGS-udtagelse
-// via dette panel skal nå size.max før Gem aktiveres — det guider nye managere til en
-// komplet trup i stedet for at lade dem gemme 1-2 ryttere ved et uheld. #2637: backendens
-// egen validateSelection tillader en DELVIS trup for ethvert efterfølgende gem (ejer
-// 28/6, afløser #1906) — kun over feltstørrelsen afvises. Panelet SKAL derfor tillade en
-// delvis trup igen når der allerede FINDES en gemt/auto-udtaget udtagelse (fx en skadet
-// rytter der fjernes fra en allerede committet etapeløbs-trup); kalderen sætter
-// `requireFull: !data.selection`.
-// #4175 (spiller-rapport 24/8, tre managere uafhængigt): den gamle udgave gjorde
-// `selection_insufficient_riders` til en BLOKERENDE fejl — kunne holdet ikke stille
-// size.max ryttere, kunne udtagelsen slet ikke gemmes. Det ramte præcis de dage hvor
-// kalenderen kræver flere ryttere end truppen har (#4174), altså der hvor manageren ER
-// nødt til at møde op med et halvt hold. Resultatet var at han i stedet mødte op med
-// NUL. knud_r_flink: "Er der en der kan teste om de kan gemme et ikke fuldt hold til et
-// løb? Jeg kan umiddelbart ikke." · egomadsen: "skal lave en sniger for overhovedet at
-// gemme den slags".
+// KONTRAKTEN (#4295): klienten må ALDRIG afvise et gem serveren ville acceptere.
+// Præcis tre ting blokerer:
+//   selection_wrong_size       → flere ryttere end feltstørrelsen (size.max)
+//   selection_captain_required → ingen kaptajn blandt de udtagne
+//   selection_role_overlap     → samme rytter i to roller
+// ANTAL blokerer aldrig nedad. En DELVIS TRUP ER ALTID LOVLIG (ejer 28/6): er truppen
+// ikke fuld ved race-tid, top-fylder raceEntryGenerator gabet fra holdets ledige ryttere.
 //
-// Backendens egen validateSelection har tilladt delvis trup siden 28/6 (ejer-beslutning,
-// afløser #1906) og afviser KUN over feltstørrelsen. Klienten var altså strengere end
-// serveren uden grund.
+// #1906's "hårde fulde opstilling" er hermed helt afløst. Historikken, så den ikke
+// genopfindes:
+//   #1906  gjorde en fuld trup til et krav i panelet (nudge mod komplet trup).
+//   #2637  lempede kravet til kun at gælde en FØRSTEGANGS-udtagelse, via kalderens
+//          `requireFull: !data.selection`, så en skadet rytter kunne fjernes fra en
+//          allerede gemt trup.
+//   #4175  tilføjede en escape-ventil: kravet gjaldt kun når `availableCount >= size.max`,
+//          altså når holdet FAKTISK kunne fylde feltet.
+//   #4295  viste at ventilen var utæt. `availableCount` er "hele den raske trup"
+//          (backend/lib/raceSelection.js:223) og trækker ALDRIG ryttere fra der er bundet
+//          i et overlappende løb — bound_riders beregnes separat i ruten. Et hold med 29
+//          ryttere har derfor altid `availableCount >= size.max`, så ventilen udløste
+//          aldrig i praksis, og en førstegangs-udtagelse (efter "Ryd alt" eller en
+//          kalender-rebuild) var stadig blokeret. Oveni løj fejlteksten: brugeren fik
+//          "Du kan højst udtage {max} ryttere" fordi han havde valgt for FÅ.
 //
-// Nudgen fra #1906 bevares: kan holdet fylde, men har valgt for få, er det stadig en
-// fejl — det er dét `selection_wrong_size` betyder ("holdet KAN fylde", se ovenfor).
-// Kan holdet IKKE fylde, er en delvis trup den eneste lovlige handling, og så blokeres
-// den ikke længere.
-export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, availableCount, requireFull = true }) {
+// Nudgen mod en fuld trup lever videre, men som en IKKE-BLOKERENDE hint-linje i
+// RaceSelectionPanel (`selection.partialHint`), bygget på ryttere der faktisk er frie til
+// DETTE løb (ikke bundet, ikke skadet). Den hører ikke hjemme her: denne funktion afgør
+// om der MÅ gemmes, ikke hvad der er klogt at gemme.
+export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size }) {
   const errors = [];
-  const required = size.max;
-  const kanFyldeTruppen = !Number.isFinite(availableCount) || availableCount >= required;
-  if (riderIds.length > required) {
-    errors.push("selection_wrong_size");
-  } else if (requireFull && kanFyldeTruppen && riderIds.length !== required) {
-    errors.push("selection_wrong_size");
-  }
+  if (riderIds.length > size.max) errors.push("selection_wrong_size");
+  // BEVIDST divergens der står tilbage efter #4295: backenden kræver kun kaptajn når
+  // riderIds.length > 0 (raceSelection.js:36-41), klienten kræver den altid. En helt tom
+  // trup (ren auto-udtagelse) kan derfor ikke gemmes fra løbssiden. Uden for #4295's
+  // scope — ejer-beslutning, ikke en oversete-fejl.
   if (!captainId) errors.push("selection_captain_required");
   const roles = [captainId, sprintCaptainId, hunterId].filter(Boolean);
   if (new Set(roles).size !== roles.length) errors.push("selection_role_overlap");
