@@ -14,7 +14,7 @@ _Rettelse til min egen første version af denne rapport: jeg skrev at branch pro
 
 | PR | Hvad | Status |
 |---|---|---|
-| [#4285](https://github.com/NicolaiDolmer/CyclingZone/pull/4285) | #4200 anden halvdel — en ryddet trup bliver ryddet | **Venter på dig.** Kode-PR. Fuld e2e: 561 passed. **Merge før kl. 11** |
+| [#4285](https://github.com/NicolaiDolmer/CyclingZone/pull/4285) | #4200 anden halvdel — en ryddet trup bliver ryddet | **Venter på dig.** Kode-PR. Lokalt 561 passed; CI-smoke rød på en urelateret test — se §0b. **Merge før kl. 11** |
 | [#4286](https://github.com/NicolaiDolmer/CyclingZone/pull/4286) | #4233/#4183 — nye spillere kan lande i en pulje på 24 | **Venter på dig.** Kode-PR. **Merge før kl. 11** |
 | [#4291](https://github.com/NicolaiDolmer/CyclingZone/pull/4291) | #4260/#4184 — rå i18n-nøgler + vagtens typelister og målemetoder | **Venter på dig.** Rører spillervendt tekst |
 | [#4287](https://github.com/NicolaiDolmer/CyclingZone/pull/4287) | #4261 — svar på løb-som-træning i Hjælp | ✅ **Merget** (13ec1e839) |
@@ -22,6 +22,25 @@ _Rettelse til min egen første version af denne rapport: jeg skrev at branch pro
 | [#4290](https://github.com/NicolaiDolmer/CyclingZone/pull/4290) | #4219/#4215 — scorecards måler prod, kalender-gate i CI | ✅ **Merget** |
 
 Done-flip er sat på #4219 #4281 #4258 #4274 #4261. **#4215 er bevidst holdt på `claude:todo`**: kun 1 af #4176's 3 krævede kørsels-steder er leveret.
+
+### 0b · Én rød CI-check du skal kende til
+
+`frontend-smoke` er **rød på #4285** (559 passed, 1 failed) og var også rød på #4291.
+Begge fejl er på `mobile-webkit`, og det er **to forskellige, urelaterede tests**:
+
+- #4285: `finance-prize-sort.spec.js:52` — men diffen rører ingen finans-kode overhovedet.
+- #4291: `3708-transfer-history-ai-cleanup.spec.js` — fejlen er en `console.error`-assertion
+  med `useForumHighlights failed: Load failed`, altså et mislykket netværkskald i
+  preview-miljøet.
+
+Hele suiten er **grøn lokalt på #4285's commit** (561 passed, alle tre projekter, 15,9 min),
+og de fire kørsler umiddelbart før (#4290, #4289, #4287, #4286) var alle grønne. Mønsteret
+peger på infrastruktur-flake, ikke på koden. **Begge jobs er sat til re-run** — resultatet
+er postet på PR'erne.
+
+Bemærk: der findes pr. i nat **ingen main-kørsel** af `Playwright Smoke` at sammenligne med.
+Det hul er præcis #4281, og den natlige cron der lukker det blev merget i nat (#4289), så
+fra i morgen tidlig er der et main-svar at holde en branch op imod.
 
 **Din egen [#4284](https://github.com/NicolaiDolmer/CyclingZone/pull/4284) er urørt** som aftalt.
 Test-merget mod #4285: `raceRunner.js` merger **rent**. Eneste konflikt er
