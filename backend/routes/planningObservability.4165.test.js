@@ -1,17 +1,17 @@
 /**
- * #4165 — forward-guard for observerbarheden af de to fejl-grene bag den tomme
+ * #4165 - forward-guard for observerbarheden af de to fejl-grene bag den tomme
  * planlægnings-flade.
  *
  * En spiller kunne ikke komme ind i planlægningen 23/8. Symptomet blev fikset i
  * frontenden (tavs null-gren), men UDLØSEREN kunne ikke bestemmes bagudrettet:
- * de to mest sandsynlige svar — 401 "Invalid token" fra requireAuth og 400 "No
- * team found" fra GET /races/distribution — havde hverken log eller Sentry, og
+ * de to mest sandsynlige svar - 401 "Invalid token" fra requireAuth og 400 "No
+ * team found" fra GET /races/distribution - havde hverken log eller Sentry, og
  * klienten kastede svaret væk. Nul spor i alle tre observations-lag.
  *
  * Denne test pinner at begge grene nu efterlader en log-linje, OG at de gør det
  * uden at bryde de to regler der gør netop den slags logning farlig:
  *   1. aldrig selve token'et eller authorization-headeren i loggen,
- *   2. ingen Sentry-issue på 400 "No team found" — onboarding opretter holdet
+ *   2. ingen Sentry-issue på 400 "No team found" - onboarding opretter holdet
  *      asynkront (#3722), så tilstanden er lovlig. Et issue pr. forekomst ville
  *      være samme falske positiv som #4299.
  *
@@ -30,7 +30,7 @@ const source = readFileSync(join(HERE, "api.js"), "utf8");
 // requireAuth-kroppen: fra funktions-signaturen til næste top-level function.
 function requireAuthBody() {
   const start = source.indexOf("async function requireAuth(req, res, next) {");
-  assert.ok(start > 0, "requireAuth skal kunne findes — ellers tester regexen intet");
+  assert.ok(start > 0, "requireAuth skal kunne findes - ellers tester regexen intet");
   const end = source.indexOf("async function requireAdmin", start);
   assert.ok(end > start, "requireAdmin skal ligge efter requireAuth");
   return source.slice(start, end);
@@ -80,7 +80,7 @@ test("400 No team found opretter IKKE et Sentry-issue (lovlig onboarding-tilstan
   assert.doesNotMatch(
     guard,
     /captureException/,
-    "holdet oprettes asynkront efter signup (#3722) — et issue pr. forekomst er en falsk positiv (#4299)",
+    "holdet oprettes asynkront efter signup (#3722) - et issue pr. forekomst er en falsk positiv (#4299)",
   );
 });
 

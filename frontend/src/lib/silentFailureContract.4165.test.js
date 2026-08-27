@@ -2,17 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-// #4165 — planlægnings-hubben blankede for en spiller, og en genindlæsning
+// #4165 - planlægnings-hubben blankede for en spiller, og en genindlæsning
 // hjalp ikke. Rodårsagen var ikke mobil-specifik: tre af hubbens fire indgange
 // hentede deres flade UDEN nogen fejl-state overhovedet. Manglende token,
 // ikke-2xx svar og netværksfejl returnerede alle tavst, og render-grenen
-// `if (!data?.enabled) return null` tegnede derefter intet — den blandede
+// `if (!data?.enabled) return null` tegnede derefter intet - den blandede
 // "feature-flag off" sammen med "kaldet lykkedes ikke".
 //
 // Denne fil er forward-guarden for de tre flader. Den pinner tre ting pr. flade:
 //   1. begge fejl-grene sætter loadError (ingen tavs return),
 //   2. fejlen rapporteres, så en gentagelse kan diagnosticeres,
-//   3. fejl-render-grenen ligger FØR flag-grenen — rækkefølgen er hele bugget.
+//   3. fejl-render-grenen ligger FØR flag-grenen - rækkefølgen er hele bugget.
 //
 // Source-string-guards, samme form som silentFailureContract.2465.test.js:
 // der er ingen jsdom i denne kodebase, så komponenterne kan ikke rendres i
@@ -71,7 +71,7 @@ for (const { name, source, slug } of SURFACES) {
     const errorIdx = source.indexOf("if (loadError) {");
     const flagIdx = source.indexOf("if (!data?.enabled) return null");
     assert.ok(errorIdx > 0, "der skal findes en fejl-render-gren");
-    assert.ok(flagIdx > 0, "flag-off-grenen skal bevares — den er en legitim tom tilstand");
+    assert.ok(flagIdx > 0, "flag-off-grenen skal bevares - den er en legitim tom tilstand");
     assert.ok(
       errorIdx < flagIdx,
       "ligger flag-grenen først, tegnes en fejlet hentning igen som en tom flade",

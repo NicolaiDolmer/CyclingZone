@@ -101,7 +101,7 @@ Byg aldrig disse om. Verificeret mod koden 25/8.
 | 2 | Kalender-fanen har nul URL-tilstand | `CalendarPage.jsx:49-62` — `tab`, `division`, `pool` er ren `useState` |
 | 3 | Tilbage fra løb åbnet på boardet lander i Resultater | `RaceColumn.jsx:100` → #3954 |
 | 4 | Drag er ren HTML5, 0 touch-handlers; løb→løb har intet klik-alternativ | `raceHubDnd.js` |
-| 5 | Fem flader returnerer tavst `null` ved slukket flag ELLER fejlet kald | `StrategyPage.jsx:61` m.fl. |
+| 5 | **Hubbens tre flader lukket 27/8 (#4165).** Holdudtagelse, Strategi og Startlister skelner nu fejlet kald (ErrorState + retry) fra slukket flag (tom tilstand). Uden for hubben står to tilbage med samme mønster: `RaceSelectionPanel.jsx:159`, `StageRoleMatrix.jsx:90+174` (`if (!res.ok) return;` uden fejl-state) | `RaceHubBoard.jsx`, `StrategyPage.jsx`, `DivisionStartLists.jsx` |
 | 6 | Formplanen viser form, aldrig træthed, selvom API'et sender begge | `PlannerSquad.jsx`, `MasterCanvas.jsx` |
 
 ---

@@ -27,7 +27,7 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   const dayParam = Number.parseInt(params.get("day"), 10);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  // #4165: samme tavse degradering som RaceHubBoard havde — begge fejl-grene
+  // #4165: samme tavse degradering som RaceHubBoard havde - begge fejl-grene
   // returnerede uden state, og `!data?.enabled → null` tegnede en tom flade.
   const [loadError, setLoadError] = useState(null); // { kind, status? } | null
 
@@ -75,7 +75,7 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   const setPool = (id) => { params.set("pool", String(id)); params.delete("day"); setParams(params, { replace: true }); };
 
   if (loading && !data) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
-  // #4165: fejl FØR flag-grenen — ellers tegnes en fejlet hentning som "slukket".
+  // #4165: fejl FØR flag-grenen - ellers tegnes en fejlet hentning som "slukket".
   // Vises også når der ligger gamle data: en fejlet pulje-/dagskift ville ellers
   // efterlade den FORRIGE puljes startlister under den nye markering, hvilket er
   // en løgn om hvad manageren kigger på.

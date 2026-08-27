@@ -40,7 +40,7 @@ export default function StrategyPage() {
   // kan gengive den samme handling — ikke bare lukke fejlen.
   const lastActionRef = useRef(null); // "preview" | "save" | "regenerate" | null
   // #4165: #2465 gav MUTATIONERNE en fejl-flade, men selve hentningen beholdt den
-  // tavse gren — !res.ok og netværksfejl satte ingen state, og `!data?.enabled →
+  // tavse gren - !res.ok og netværksfejl satte ingen state, og `!data?.enabled →
   // null` tegnede så en tom side. Samme rettelse som RaceHubBoard får her.
   const [loadError, setLoadError] = useState(null); // { kind, status? } | null
 

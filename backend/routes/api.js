@@ -691,7 +691,7 @@ async function requireAuth(req, res, next) {
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) {
-    // #4165: DENNE gren var usynlig i alle tre observations-lag — ingen log,
+    // #4165: DENNE gren var usynlig i alle tre observations-lag - ingen log,
     // ingen Sentry, og klienten kastede svaret væk. Da en spiller ikke kunne
     // komme ind i planlægningen, kunne udløseren derfor ikke bestemmes
     // bagudrettet. En kort warn-linje gør et afvist token synligt i Railway-
@@ -705,7 +705,7 @@ async function requireAuth(req, res, next) {
 
   // Fetch team for this user
   // #3722: onboarding opretter holdet asynkront efter signup, så "ingen række
-  // endnu" er en LOVLIG tilstand her — IKKE en fejl. .single() svarede med en
+  // endnu" er en LOVLIG tilstand her - IKKE en fejl. .single() svarede med en
   // rigtig PostgREST-fejl (406) i det tilfælde, som druknede målbare 406'ere
   // fra ægte fejl i logstøj (17 × 406 på /rest/v1/teams i ét 700 ms-vindue
   // 14/8, alle fra normal onboarding-timing). .maybeSingle() giver data=null
@@ -4268,7 +4268,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
   if (!req.team) {
     // #4165: den anden usynlige fejl-gren bag den tomme planlægnings-flade.
     // Warn-linje, IKKE Sentry: onboarding opretter holdet asynkront efter signup
-    // (#3722), så "ingen række endnu" er en LOVLIG tilstand — et Sentry-issue pr.
+    // (#3722), så "ingen række endnu" er en LOVLIG tilstand - et Sentry-issue pr.
     // forekomst ville være samme falske positiv som #4299. user_id er en UUID
     // uden PII (samme linje som setSentryUser, #621).
     console.warn(`[races/distribution] 400 no_team user=${req.user?.id}`);

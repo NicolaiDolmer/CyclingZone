@@ -51,7 +51,7 @@ for (const vp of SHOTS) {
   // Preview-mocken intercepter window.fetch i selve appen, saa Playwrights
   // page.route aldrig ser board-kaldet. Vi wrapper derfor mockens fetch bagefter
   // og lader netop /api/races/distribution fejle. Navigationen til hubben skal
-  // vaere KLIENT-side (pushState + popstate) — en goto ville genindlaese
+  // vaere KLIENT-side (pushState + popstate) - en goto ville genindlaese
   // dokumentet og kaste wrapperen vaek.
   await page.evaluate(() => {
     const orig = window.fetch;

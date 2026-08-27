@@ -70,7 +70,7 @@ export default function RaceHubBoard() {
   const [clearAllPreview, setClearAllPreview] = useState(null);
   // #4165: hentningen af board'et havde INGEN fejl-state. Manglende token, et
   // ikke-2xx svar og en netværksfejl returnerede alle tavst, og render-grenen
-  // `!data?.enabled → null` tegnede så en helt tom flade — uden spinner, uden
+  // `!data?.enabled → null` tegnede så en helt tom flade - uden spinner, uden
   // besked, uden retry. Derfor hjalp en genindlæsning heller ikke: samme fejlende
   // kald, samme intet. Samme fejlklasse som usePlanner havde før #2849 bølge 6.
   // { kind: "auth" | "http" | "network", status? } | null
@@ -91,7 +91,7 @@ export default function RaceHubBoard() {
       const res = await fetch(Number.isFinite(day) ? `${url}?day=${day}` : url, { headers });
       if (!res.ok) {
         // Krop-koden (fx "No team found") kommer med i telemetrien, så en gentagelse
-        // kan diagnosticeres uden at gætte — den vises IKKE til manageren.
+        // kan diagnosticeres uden at gætte - den vises IKKE til manageren.
         const body = await res.json().catch(() => ({}));
         setLoadError({ kind: "http", status: res.status });
         reportLoadFailure("racehub_board", { kind: "http", status: res.status, reason: body?.error });
@@ -108,7 +108,7 @@ export default function RaceHubBoard() {
   }, []);
 
   // Retry fra fejl-fladen: vis spinneren igen, så knappen har en synlig effekt.
-  // (load() sætter bevidst ikke loading=true selv — et dag-skift skal ikke rive
+  // (load() sætter bevidst ikke loading=true selv - et dag-skift skal ikke rive
   // board'et ned og erstatte det med en spinner.)
   const retryLoad = () => {
     setLoading(true);
