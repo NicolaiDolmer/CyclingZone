@@ -49,6 +49,17 @@ Konkret næste gang:
 - `help.json` (en+da) rettet, `selection_insufficient_riders` slettet symmetrisk.
 - Tre unit-tests låste den gamle adfærd og er skrevet om til kontrakt-tests mod backendens regel. To e2e dækker nu førstegangs-udtagelsen med delvis trup, hvor der før slet ingen test var.
 
+## Efterskrift: gulvet kom tilbage samme dag, men et andet sted
+
+Ejeren besluttede 27/8 at et hold skal have **mindst 6 udtagne ryttere for at stille op** i et løb. Det ligner en tilbagerulning af denne postmortem, og det er det ikke. Forskellen er hvor reglen sidder:
+
+- Det gulv der blev fjernet lå på **Gem**. Det forhindrede manageren i at skrive sin egen kladde ned, og det havde ingen modsvarighed i backenden. Det er stadig væk, og skal blive det.
+- Det gulv der kom til ligger på **deltagelsen**, håndhævet i motoren (`raceRunner.loadEntrantsForRace`) og synligt i UI'et som en konsekvens-sætning. Manageren kan stadig gemme tre ryttere; holdet stiller bare ikke op med tre.
+
+Den skelnen er hele læringen ovenfor sagt forfra: en regel om hvad der er *klogt* hører hjemme som tekst på fladen og som en konsekvens i motoren, ikke som en spærre på en gem-knap.
+
+Hint-linjen fra dette fix blev derfor udvidet i stedet for erstattet. Den siger nu en af tre ting, og hvilken der er sand afhænger stadig af det samme tal — ryttere der er frie til netop dette løb. Fristelsen var at lade den sige "stiller ikke op" hver gang der er under 6 valgte, fordi det er sådan reglen lyder. Det ville have været en ny løgn på samme flade: sen-redningen fylder op til 6 når holdet har frie ryttere, så i det almindelige tilfælde stiller holdet netop op.
+
 ## Åbent efter fixet
 
 Dashboard-nudgen (`raceSquadSelectionStatus.js:20`), Race Centre-kortet, board-status-pillen og notifikations-sweepet måler alle "komplet" som antal `== size.max`. Et hold der beviseligt ikke kan fylde feltet står derfor permanent som "Holdudtagelse mangler" med en notifikation der ikke kan handles på. Samme forkerte præmis, ny flade. Ejer-spørgsmål, ikke rettet her.
