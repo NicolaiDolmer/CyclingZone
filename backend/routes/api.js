@@ -193,7 +193,7 @@ import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/season
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
-import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
+import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
@@ -3761,6 +3761,17 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           // kan vise payback-risiko pr. løb FØR valget uden at klienten har sin egen
           // vindue-formel (to formler for samme tal er #3071-fejlklassen).
           peakWindow: snapPeakWindow(stageDatesByRaceId.get(e.id) || []),
+          // #4312: ÆGTE sidste etapedato ("YYYY-MM-DD" CET). Uden den regnede
+          // frontenden slutdatoen som `date + (gameDayEnd - gameDayStart)`, altså
+          // LØBSDAGE lagt oven i en KALENDERDATO. De to er ikke samme enhed
+          // (docs/CALENDAR_RULES.md §1: "game_day kan ALDRIG udledes af
+          // scheduled_at"; pakkeren lægger flere hele løbsdage inden i hver
+          // kalenderdag, D1 kører 75-103 løbsdage over 27-28 datoer). Målt 27/8:
+          // 98 af 206 flerdagsløb i S3 fik forkert slutdato, værst de tre Grand
+          // Tours med +13 til +14 dage. Vueltaens mærkat sluttede 4. oktober,
+          // en uge efter sæsonen. Samme kilde som peakWindow ovenfor, så de to
+          // tal kan ikke drifte fra hinanden. Intet ekstra DB-kald.
+          dateEnd: lastStageDate(stageDatesByRaceId.get(e.id)),
           gameDayStart: e.gameDayStart,
           gameDayEnd: e.gameDayEnd,
           stages: e.stages,

@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.208",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Stage races showed the wrong end date when picking a peak",
+          "body": "The peak target list stretched a stage race far past its real finish. The Vuelta read as ending 4 October, a week after the season ends, when it actually finishes 21 September. 98 of 206 stage races were affected, the three Grand Tours worst. Dates now come from the real stage schedule. Your peak plans were never wrong, only the dates next to them."
+        },
+        "da": {
+          "title": "Etapeløb viste forkert slutdato når du valgte et peak",
+          "body": "Listen over peak-mål strækkede etapeløb langt forbi deres rigtige slutning. Vueltaen stod til at slutte 4. oktober, en uge efter sæsonen slutter, selvom den er færdig 21. september. 98 af 206 etapeløb var ramt, de tre Grand Tours værst. Datoerne kommer nu fra den rigtige etapeplan. Dine formplaner har aldrig været forkerte, kun datoerne ved siden af dem."
+        },
+        "refs": [4312]
+      }
+    ]
+  },
+  {
     "version": "7.207",
     "date": "2026-08-27",
     "label": "Beta",

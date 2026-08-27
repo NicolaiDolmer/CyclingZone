@@ -77,6 +77,25 @@ export function snapPeakWindow(raceStageDates, { radiusDays = PEAK_WINDOW_RADIUS
   };
 }
 
+// #4312: sidste etapedato for et løb, som "YYYY-MM-DD" (CET). Samme input som
+// snapPeakWindow, så de to tal ikke kan drifte fra hinanden.
+//
+// Findes fordi frontenden ellers regner slutdatoen selv som
+// `date + (gameDayEnd - gameDayStart)`, altsaa LØBSDAGE lagt oven i en KALENDERDATO.
+// De to er forskellige akser og må aldrig blandes (docs/CALENDAR_RULES.md §1).
+// Rækkefølgen i input er DB-rækkefølgen, ikke nødvendigvis sorteret, så vi tager
+// max frem for sidste element. Tomt/ugyldigt input → null, så kalderen kan vise
+// startdatoen alene frem for et opdigtet spænd.
+export function lastStageDate(raceStageDates) {
+  let max = -Infinity;
+  for (const d of raceStageDates || []) {
+    const ord = dateStringToOrdinal(d);
+    if (ord == null) continue;
+    if (ord > max) max = ord;
+  }
+  return Number.isFinite(max) ? ordinalToDateString(max) : null;
+}
+
 /**
  * Er en peak-plan låst (ikke længere redigerbar)? En persisteret locked_at er en
  * hård lås; ellers udledes låsen ved læse-tid: nu >= (window_start − lockLeadDays).

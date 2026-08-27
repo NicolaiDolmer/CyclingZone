@@ -65,6 +65,12 @@ function makeRace(id, name, terrain, date, isMine, stages, summits, division, ri
   return {
     id, name, raceClass: stages > 1 ? "WorldTour" : "ProSeries", division, isMine,
     date, gameDayStart: ord(date), gameDayEnd: ord(date) + (raceDays - 1), stages, raceDays, terrain,
+    // #4312: ægte sidste etapedato, som boardet nu sender. BEMÆRK at denne mock er
+    // grunden til at fejlen aldrig kunne ses på preview: den sætter gameDayStart/End
+    // fra kalenderdatoen, altså 1:1 mellem løbsdag og dato, og præcis den antagelse
+    // var det der var forkert i prod. Her er 1:1 stadig sandt, så dateEnd følger
+    // raceDays; i prod kommer den fra de virkelige etapedatoer.
+    dateEnd: addDays(date, raceDays - 1),
     // #3102 PR 2 (hul 2): det vindue en peak mod løbet ville få. I prod snappes det
     // server-side om median-etapedagen (snapPeakWindow); mocken centrerer om start-
     // datoen — SAMME center som makePeak nedenfor, så dropdown-risikoen og
