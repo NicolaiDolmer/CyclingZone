@@ -7,20 +7,18 @@
 ## SÆSONSTART fre 28/8 kl. 11 — holdudtagelse + planlægning (ejer-godkendt 27/8)
 
 Master-sessionen 27/8 blev for stor til én session. **Detalje: [`2026-08-28-saesonstart-fortsaettelse-prompt.md`](../superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md).**
-**Leveret:** #4293 · peak-oprydningen (812 forældreløse planer slettet) · designspec for de tre overlap-flader.
-
 **Rækkefølge herfra (ejer-godkendt 27/8):**
 
-1. **Luk bølge 1:** #4300 · #4303 · #4304 (migration efter merge) · #4301 (m. minimum-6-gulvet).
+1. **#4311** → **#4307** trup-opfyldning (121 hold, 571 ryttere, rammer sat) → **#4301** minimum-6 (draft). Kæden skal tages i den rækkefølge.
 2. **#4306** afmeldt hold starter stadig løbet. Ejer-beslutning 27/8, ubygget. Rører `loadEntrantsForRace` som minimum-gulvet, så rækkefølgen tæller.
-3. **Spor B, planner-UI:** #4296 · #4259. Design færdigt og committet, byg fra spec'en.
-4. **Assistent + formplan:** #4201 · #4212 · #4271.
+3. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren.
+4. **Assistent + formplan:** #4212 (ejer-valg A/B/C, anbefaling A) · #4201 · #4271.
 5. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først.
-6. **#4305** flaky required check.
+6. **Ops:** #4308 · #4309/#4305. Parallel-session 27/8 har dem.
 
-**Ejer-beslutninger 27/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6 for at stille op, fladt** (21 hold kan ikke fylde 6; ejeren fik tallet og valgte alligevel).
+**Ejer-beslutninger 27/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt**. NB: grundlaget var 21 hold; målt er **130 starter på 129 hold**. Genmål efter #4307.
 
-**Rettet 27/8:** #4299 var falsk positiv (reelt hul: #4306). Z1-aksen er **ikke** fri: op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
+**Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
 
 Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 (vagt-fejl) · #4292 · #4123 + #4215-rest.
 **UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
