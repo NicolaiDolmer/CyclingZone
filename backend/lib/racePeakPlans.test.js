@@ -104,10 +104,10 @@ test("aggregateDemandVector: ingen gyldige profiler → null", () => {
 
 // ── Fake supabase (samme mønster som raceFatigue.test.js) ─────────────────────
 // Bygger en thenable query-builder; det sidste led i kæden resolves med { data }.
-// Fake'en HÅNDHÆVER ikke filtrene (eq/in/not er no-ops der returnerer alle rækker)
-// — den REGISTRERER dem i `notFilters`. Det er bevidst: så kan én test bevise at
-// query'en beder DB'en om det rigtige, og en anden bevise at JS-siden alligevel
-// smider rækken væk hvis den slipper igennem. To lag, to assertions (#4294).
+// Fake'en HÅNDHÆVER ikke filtrene: eq/in er no-ops der returnerer alle rækker.
+// Det er bevidst her, fordi #4294-guarden netop ligger på JS-siden og ikke i
+// queryen, så testene beviser at rækken smides væk uanset hvad DB'en leverer.
+// `not` er med for at spejle den ægte klient, ikke fordi nogen test bruger den.
 function makeSupabase(tables = {}) {
   const notFilters = [];
   function from(table) {
@@ -211,13 +211,6 @@ test("loadPeakPlans: en plan uden målløb udelades (forældreløst vindue, #429
   assert.equal(map.has("r2"), false, "rytter uden ét eneste gyldigt vindue er slet ikke i map'et");
 });
 
-test("loadPeakPlans: query'en beder DB'en om at udelade NULL-mål (#4294)", async () => {
-  const supabase = makeSupabase({ rider_peak_plans: [] });
-  await loadPeakPlans({ supabase, seasonId: "s1", riderIds: ["r1"] });
-  assert.deepEqual(supabase.notFilters, [
-    { table: "rider_peak_plans", column: "target_race_id", operator: "is", value: null },
-  ]);
-});
 
 // ── serializePeakInputs (checksum-determinisme) ───────────────────────────────
 

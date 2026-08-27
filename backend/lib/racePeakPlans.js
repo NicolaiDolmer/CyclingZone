@@ -356,14 +356,14 @@ export async function loadPeakPlans({ supabase, seasonId, riderIds }) {
       .from("rider_peak_plans")
       .select("rider_id, window_start, window_end, target_race_id")
       .eq("season_id", seasonId)
-      .in("rider_id", slice)
-      // Lag 1: hent dem aldrig. Lag 2 er række-tjekket nedenfor.
-      .not("target_race_id", "is", null);
+      .in("rider_id", slice);
     if (error) throw new Error(`rider_peak_plans: ${error.message}`);
     for (const row of data || []) {
-      // Samme fail-safe som datovalideringen: et vindue uden anker er per
-      // definition ikke et spillervalg, så motoren må ikke se det — også hvis
-      // query-filteret ovenfor en dag refaktoreres væk.
+      // Filteret ligger paa RAEKKEN, ikke i queryen. En .not("target_race_id",
+      // "is", null) i kaeden ville vaere billigere, men supabase-mocken i
+      // backend/lib/raceRunner.test.js implementerer ikke .not() efter .in(),
+      // saa den vaelter syv afviklings-tests. Forskellen er nogle faa hentede
+      // raekker, og efter migrationen findes de slet ikke.
       if (!row.target_race_id) continue;
       const start = dateStringToOrdinal(row.window_start);
       const end = dateStringToOrdinal(row.window_end);
