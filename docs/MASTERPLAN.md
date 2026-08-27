@@ -8,13 +8,16 @@
 
 S3 er udskudt til fre 28/8 → søn 27/9 (#4218). Rækkefølgen er ejer-valgt:
 
-1. **Holdudtagelsen:** #4200's anden halvdel (`raceRunner.js:812`). #4174 afgjort 26/8: alle hold ens, assistenten 1 t før. Beredskabs-session: `sessions/2026-08-27-holdudtagelse-beredskab-session-prompt.md`.
-2. **Nye spillere kan lande:** #4183 + #4233 = ÉT bug (`aiTeamGenerator.js:403`). D4-A på 25 hold.
-3. **Vagterne:** #4229 · #4215 · #4219 · #4123 · #4211.
+1. **Holdudtagelsen:** #4200 anden halvdel leveret — **PR #4285** (fuld e2e 561 passed, afventer ejer). Ejerens egen **PR #4284** afventer review; test-merge mod #4285 er ren bortset fra patch-note-versionen.
+2. **Nye spillere kan lande:** rod-årsag fundet og fikset — **PR #4286**. AI-trimmen valgte kandidater i id-orden uden at kende `transfer_offers`-FK'en, og D4-A's to første AI-hold var netop de blokerede. D3-A er i øvrigt tilbage på 24; kun D4-A står på 25.
+3. **Vagterne:** #4229 lukket (verificeret shippet). #4215+#4219 leveret i **PR #4290** — scorecardet kan nu måle prod, og kalender-gaten kører i CI. #4281+#4258+#4274 i **PR #4289**; #4184 hos sidste worker. **#4123 mangler stadig** (invarianter som CI-gate + gylden kalender-diff) — naturlig efterfølger til #4290.
+4. **Hjælp/FAQ:** #4261 besvaret i **PR #4287** + svarudkast til ejeren i `docs/drafts/`.
+
+Natsessionens fulde rapport + de 3 ejer-beslutninger: `docs/audits/2026-08-28-natsession-rapport.md`.
 
 (S3-kalenderen regenereret + motorer tændt 27/8 — done, se NOW.md.)
 
-Ny gæld 26-27/8: **#4274** · **[#4278](https://github.com/NicolaiDolmer/CyclingZone/issues/4278)** (D4 mest bjergrig, opad 41,9 % mod bånd 25-32 % — arketype-loft, ejer-valg) · **#4282** (2 hold over gældsloft) · #4281 (smoke kun på PR'er). Katalog-lofter fra #4272: D1 brosten nåede 4,5 % ikke 6 %, D4 enkeltstart 8,1 % ikke 10 % — begge kræver flere løb i kataloget.
+Ny gæld 26-28/8: **#4288** (GT-båndet kræver 21 etaper, S3 kører 17-18 → de 3 GT'er er umålte) · **#4274** · **[#4278](https://github.com/NicolaiDolmer/CyclingZone/issues/4278)** (D4 mest bjergrig, opad 41,9 % mod bånd 25-32 % — arketype-loft, ejer-valg) · **#4282** (2 hold over gældsloft) · #4281 (smoke kun på PR'er). Katalog-lofter fra #4272: D1 brosten nåede 4,5 % ikke 6 %, D4 enkeltstart 8,1 % ikke 10 % — begge kræver flere løb i kataloget.
 
 **Planning Center med (ejer 25/8):** P0 + UI-gælden + Z1-sæsonmatrixen. Design låst, se `superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md`. Aksen låses først når #4236 er afgjort.
 
