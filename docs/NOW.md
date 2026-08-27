@@ -33,6 +33,4 @@
 
 > **🤖 Working agent:** Claude Code (Opus 5) — sesonstart-master-session 27/8, workflow-baseret. Spor A+B+D (bølge 1) og C (bølge 2).
 
-> **🩺 #4165 (bølge B):** planlægnings-hubbens tre API-flader tegnede INTET når kaldet fejlede (flag-off og fejl delte render-gren). Nu ErrorState + retry i alle tre; 401/400 logges i backend. Udløseren 23/8 er stadig ubestemt.
-
 _Historik i git-log, issue-tråde + docs/audits/._
