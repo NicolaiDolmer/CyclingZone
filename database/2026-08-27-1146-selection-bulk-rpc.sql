@@ -141,16 +141,24 @@ begin
       raise exception 'selection_invalid_body' using errcode = 'check_violation';
     end if;
 
-    -- FUND1 (#4310-refutation): forward-guard, spejler prepareSelectionChange
-    -- (backend/lib/raceSelection.js) og apply_race_entry_unit_batch's
-    -- sweep_race_lineup_frozen (#2074, database/2026-08-24-4173-...sql:318-326). Et løb
-    -- hvis status ikke er 'scheduled', eller hvis feltet er LÅST (stages_completed>0), må
-    -- kun modtage en RENT FJERNENDE ændring (v_rider_ids ⊆ de entries holdet allerede har
-    -- for løbet) — ellers afvises hele batchen. Dette er et BACKSTOP mod TOCTOU: app-laget
-    -- har allerede håndhævet præcis denne regel FØR kaldet (mod en race-række læst ved
-    -- requestens start) — dette tjek fanger et løb der overgik til frosset/afsluttet
-    -- MENS batchen blev forberedt (fx et stage-scheduler-tick midt i en lang bulk-save).
-    select (r.status <> 'scheduled' or coalesce(r.stages_completed, 0) > 0)
+    -- FUND1 (#4310-refutation, strammet efter 2. refutation): forward-guard som TOCTOU-
+    -- backstop. Spejler prepareSelectionChange (backend/lib/raceSelection.js) 1:1 som TO
+    -- ADSKILTE regler, praecis som app-laget, fordi de to regler IKKE deler undtagelse:
+    --   1) status <> 'scheduled' -> UBETINGET afvisning (selection_race_not_open, :132).
+    --      Ingen fjernelses-undtagelse: et ikke-aabent loeb (fx 'completed') er haardt
+    --      laast, jf. raceActiveGuard.js:55-56 (#2074, "intet aktivt felt efter
+    --      finalisering"). En sammensmeltet regel her tillod fjernelse mod completed.
+    --   2) stages_completed > 0 -> kun REN FJERNELSE tilladt (#1825/#2637, :151).
+    -- App-laget haandhaever samme regler FOER kaldet; dette fanger et loeb der skiftede
+    -- tilstand MENS batchen blev forberedt (fx et stage-scheduler-tick midt i bulk-save).
+    if exists (
+      select 1 from public.races r
+       where r.id = v_race_id and r.status <> 'scheduled'
+    ) then
+      raise exception 'selection_race_not_open' using errcode = 'check_violation';
+    end if;
+
+    select coalesce(r.stages_completed, 0) > 0
       into v_frozen
       from public.races r
      where r.id = v_race_id;

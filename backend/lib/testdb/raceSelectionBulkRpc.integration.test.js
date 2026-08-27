@@ -140,14 +140,32 @@ test("FUND 1: afviser en TILFØJELSE til et løb med stages_completed>0 (selecti
   assert.equal(rows[0].n, 0);
 });
 
-test("FUND 1: afviser med samme kode når løbets status ikke er 'scheduled' (fx 'completed'), selv med stages_completed=0", async () => {
+test("FUND 1: afviser UBETINGET når løbets status ikke er 'scheduled' (fx 'completed'), selv med stages_completed=0 (selection_race_not_open)", async () => {
   const teamId = "11111111-1111-1111-1111-111111111111";
   const riderX = "22222222-2222-2222-2222-222222222222";
   const { raceId } = await makeRace({ status: "completed", stagesCompleted: 0 });
   await assert.rejects(
     () => callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX], roles: ["captain"] }] }),
-    /selection_race_started/,
+    /selection_race_not_open/,
   );
+});
+
+test("FUND 1: afviser også en REN FJERNELSE mod et 'completed'-løb (ingen removal-undtagelse for ikke-åbne løb, #2074)", async () => {
+  const teamId = "11111111-1111-1111-1111-111111111111";
+  const riderX = "22222222-2222-2222-2222-222222222222";
+  const riderY = "33333333-3333-3333-3333-333333333333";
+  // Byg feltet mens løbet er åbent, afslut det derefter (finalisering).
+  const { raceId } = await makeRace({ stagesCompleted: 0 });
+  await callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX, riderY], roles: ["captain", "helper"] }] });
+  await db.query("UPDATE races SET status = 'completed' WHERE id = $1", [raceId]);
+  // Ren fjernelse er tilladt for et frosset-men-åbent løb; for et afsluttet løb er der
+  // intet aktivt felt at redigere (raceActiveGuard.js:55-56, #2074).
+  await assert.rejects(
+    () => callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX], roles: ["captain"] }] }),
+    /selection_race_not_open/,
+  );
+  const { rows } = await db.query("SELECT count(*)::int AS n FROM race_entries WHERE race_id = $1", [raceId]);
+  assert.equal(rows[0].n, 2);
 });
 
 test("FUND 1: TILLADER en REN FJERNELSE fra et frosset løb (v_rider_ids ⊆ eksisterende entries)", async () => {
