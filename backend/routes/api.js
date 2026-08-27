@@ -190,7 +190,7 @@ import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetai
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
-import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
+import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
@@ -3630,6 +3630,10 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       fetchAllScheduleRowsWithGameDay(supabase, allRaceIds),
       fetchAllStageProfiles(supabase, allRaceIds, "race_id, stage_number, profile_type, finale_type, demand_vector"),
     ]);
+    // #4245: løbsdage pr. løb = distinkte game_day. Afledt af de allerede hentede
+    // scheduleRows — intet ekstra DB-kald. Går med i racesOut nedenfor, så
+    // formplanens belastnings-chip læser samme tal som Race Hub'ens.
+    const raceDaysByRaceId = raceDaysByRace(scheduleRows || []);
 
     const model = buildCalendarModel({
       races: raceList,
@@ -3742,6 +3746,11 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           gameDayStart: e.gameDayStart,
           gameDayEnd: e.gameDayEnd,
           stages: e.stages,
+          // #4245: LØBSDAGE pr. løb (distinkte game_day), så formplanens belastnings-
+          // chip ikke summerer etaper klient-side. Må ALDRIG regnes som gameDayEnd -
+          // gameDayStart + 1: springene i et løbs game_day-serie er ikke løbsdage
+          // (#4209). Fallback til stages for løb uden schedule-rækker.
+          raceDays: raceDaysByRaceId.get(e.id) ?? e.stages ?? 1,
           terrain: e.terrain,
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
@@ -4435,19 +4444,17 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       nameByRace: new Map((races || []).map((r) => [r.id, r.name])),
     });
 
-    // #2772: sæson-belastning pr. rytter — antal løb + løbsdage (etaper) rytteren
-    // er tilmeldt henover HELE sæsonen, auto-fyldte inklusive (rytteren stiller
-    // til start uanset hvem der satte ham på listen). Afledt af de allerede
-    // hentede eligible entries (ghosts/udlånte tæller ikke, #1906) — intet ekstra
-    // DB-kald. Løbsdage = løbets etape-antal (1 rytter = 1 løb/dag er ejer-design).
-    const stagesByRaceId = new Map((races || []).map((r) => [r.id, r.stages ?? 1]));
-    const seasonLoadByRider = {};
-    for (const e of teamEntries || []) {
-      const cur = seasonLoadByRider[e.rider_id] || { races: 0, raceDays: 0 };
-      cur.races += 1;
-      cur.raceDays += stagesByRaceId.get(e.race_id) ?? 1;
-      seasonLoadByRider[e.rider_id] = cur;
-    }
+    // #2772: sæson-belastning pr. rytter — antal løb + løbsdage rytteren er tilmeldt
+    // henover HELE sæsonen, auto-fyldte inklusive (rytteren stiller til start uanset
+    // hvem der satte ham på listen). Afledt af de allerede hentede eligible entries
+    // (ghosts/udlånte tæller ikke, #1906) + schedRows (hentet MED game_day ovenfor) —
+    // intet ekstra DB-kald.
+    // #4245: LØBSDAGE = distinkte game_day pr. løb (docs/CALENDAR_RULES.md §0), IKKE
+    // etape-antal. To etaper på samme løbsdag er én løbsdag for rytteren. Den gamle
+    // regel ("løbsdage = løbets etape-antal") var kun tilfældigt rigtig så længe
+    // pakkeren gav hver etape sin egen game_day.
+    const raceDaysByRaceId = raceDaysByRace(schedRows || []);
+    const seasonLoad = seasonLoadByRider({ entries: teamEntries || [], raceDaysByRaceId });
 
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
@@ -4463,7 +4470,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       // #3102 PR 2 / #2772: payback-dybden i formpoint (afledt af motorens
       // konstanter, aldrig hardkodet i copy) + sæson-belastning pr. rytter.
       paybackFormPoints: peakValueFormPoints({}).payback,
-      seasonLoadByRider,
+      seasonLoadByRider: seasonLoad,
     });
   } catch (err) {
     captureException(err);

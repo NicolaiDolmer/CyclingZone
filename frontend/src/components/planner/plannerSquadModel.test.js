@@ -123,9 +123,12 @@ test("pendingSuggestionPairs: forslag uden mål-løb sendes aldrig videre", () =
 
 // ── #3102 PR 2 (hul 2): payback-risiko pr. løb i dropdownen, FØR valget ───────
 
-const riskRace = (id, date, { peakWindow, stages, isMine = true } = {}) => ({
+const riskRace = (id, date, { peakWindow, stages, raceDays, isMine = true } = {}) => ({
   id, name: `Race ${id}`, date, isMine,
   stages: stages ?? 1,
+  // #4245: payloaden bærer nu løbsdage (distinkte game_day) ved siden af etapetallet.
+  // Default = etapetallet, som er det normale tilfælde (én etape pr. løbsdag).
+  raceDays: raceDays ?? stages ?? 1,
   // Vinduet kommer FÆRDIGT fra boardet (snapPeakWindow server-side) — testene
   // sætter det direkte, som payloaden ville.
   peakWindow: peakWindow ?? null,
@@ -219,19 +222,33 @@ test("locksImmediatelyRaceIds: defensiv — manglende peakWindow/todayOrd giver 
 
 // ── #2772: sæson-belastning pr. rytter ────────────────────────────────────────
 
-test("riderSeasonLoad: løb + løbsdage (etaper) summeres over registrerede entries", () => {
+test("riderSeasonLoad: løb + løbsdage summeres over registrerede entries", () => {
   const races = [
-    riskRace("oneday", "2026-08-10", { stages: 1 }),
-    riskRace("tour", "2026-08-20", { stages: 5 }),
-    riskRace("unentered", "2026-08-25", { stages: 3 }),
+    riskRace("oneday", "2026-08-10", { stages: 1, raceDays: 1 }),
+    riskRace("tour", "2026-08-20", { stages: 5, raceDays: 5 }),
+    riskRace("unentered", "2026-08-25", { stages: 3, raceDays: 3 }),
   ];
   const rider = { id: "rd1", registeredRaceIds: ["oneday", "tour"] };
   assert.deepEqual(riderSeasonLoad({ rider, races }), { races: 2, raceDays: 6 });
 });
 
-test("riderSeasonLoad: ukendte løb (uden for payloadens kalender) tælles ikke; manglende stages → 1", () => {
-  const races = [{ id: "known", name: "Known", date: "2026-08-10", isMine: true }]; // ingen stages-felt
-  const rider = { id: "rd1", registeredRaceIds: ["known", "gone-race"] };
-  assert.deepEqual(riderSeasonLoad({ rider, races }), { races: 1, raceDays: 1 });
+// #4245: løbsdage != etaper. Et løb med to etaper på samme løbsdag binder rytteren
+// ÉN dag (docs/CALENDAR_RULES.md §0 + §2b). Den gamle etape-sum gav 2 her.
+test("riderSeasonLoad: raceDays slår stages — to etaper på samme løbsdag er én løbsdag (#4245)", () => {
+  const races = [
+    riskRace("doubleheader", "2026-08-10", { stages: 2, raceDays: 1 }),
+    riskRace("tour", "2026-08-20", { stages: 5, raceDays: 5 }),
+  ];
+  const rider = { id: "rd1", registeredRaceIds: ["doubleheader", "tour"] };
+  assert.deepEqual(riderSeasonLoad({ rider, races }), { races: 2, raceDays: 6 });
+});
+
+test("riderSeasonLoad: ukendte løb (uden for payloadens kalender) tælles ikke; manglende raceDays falder til stages, så til 1", () => {
+  const races = [
+    { id: "known", name: "Known", date: "2026-08-10", isMine: true }, // hverken raceDays eller stages
+    { id: "legacy", name: "Legacy", date: "2026-08-12", isMine: true, stages: 3 }, // gammelt board-svar
+  ];
+  const rider = { id: "rd1", registeredRaceIds: ["known", "legacy", "gone-race"] };
+  assert.deepEqual(riderSeasonLoad({ rider, races }), { races: 2, raceDays: 4 });
   assert.deepEqual(riderSeasonLoad({ rider: { id: "x" }, races }), { races: 0, raceDays: 0 });
 });

@@ -15,6 +15,8 @@ import {
   startListVisible,
   daysUntilStart,
   groupGrossSquads,
+  raceDaysByRace,
+  seasonLoadByRider,
 } from "./raceDistribution.js";
 
 const W = (h) => ({ start: Date.parse(`2026-07-04T${h}:00Z`), end: Date.parse(`2026-07-04T${h}:00Z`) });
@@ -330,4 +332,61 @@ test("buildExternalBindings: manglende navn → null; tom input → tom map", ()
   });
   assert.equal(map.r1[0].name, null);
   assert.deepEqual(buildExternalBindings({}), {});
+});
+
+// ── #4245: løbsdage != etaper ────────────────────────────────────────────────
+// Den regressionstest der VILLE have fanget fejlen: feltet raceDays summerede
+// races.stages (etapetal). Det var kun tilfældigt rigtigt så længe hver etape fik
+// sin egen game_day. docs/CALENDAR_RULES.md §0 + §2b: rytteren bindes pr. LØBSDAG.
+
+test("raceDaysByRace: to etaper på samme løbsdag tæller ÉN løbsdag (#4245)", () => {
+  const rows = [
+    { race_id: "a", stage_number: 1, game_day: 4 },
+    { race_id: "a", stage_number: 2, game_day: 4 }, // samme løbsdag → ikke en ekstra dag
+    { race_id: "b", stage_number: 1, game_day: 10 },
+    { race_id: "b", stage_number: 2, game_day: 13 }, // spring på 3 dage
+  ];
+  const m = raceDaysByRace(rows);
+  assert.equal(m.get("a"), 1, "to etaper, én løbsdag (den gamle etape-sum gav 2)");
+  assert.equal(m.get("b"), 2, "spring i game_day er ikke ekstra løbsdage (#4209) — et spænd ville give 4");
+});
+
+test("raceDaysByRace: rækker uden brugbar game_day ignoreres", () => {
+  const rows = [
+    { race_id: "a", stage_number: 1, game_day: null },
+    { race_id: "a", stage_number: 2, game_day: 7 },
+    { race_id: "c", stage_number: 1, game_day: undefined },
+  ];
+  const m = raceDaysByRace(rows);
+  assert.equal(m.get("a"), 1);
+  assert.equal(m.has("c"), false, "løb helt uden game_day får ingen post (kalderen falder tilbage til 1)");
+  assert.equal(raceDaysByRace().size, 0);
+});
+
+test("seasonLoadByRider: løbsdage summeres fra løbsdags-kortet, ikke fra etaper (#4245)", () => {
+  const entries = [
+    { race_id: "a", rider_id: "r1" },
+    { race_id: "b", rider_id: "r1" },
+    { race_id: "b", rider_id: "r2" },
+  ];
+  // "a" har 3 etaper men kun 1 løbsdag; "b" har 2 etaper på 2 løbsdage.
+  const raceDaysByRaceId = new Map([["a", 1], ["b", 2]]);
+  assert.deepEqual(seasonLoadByRider({ entries, raceDaysByRaceId }), {
+    r1: { races: 2, raceDays: 3 },
+    r2: { races: 1, raceDays: 2 },
+  });
+});
+
+test("seasonLoadByRider: løb uden løbsdags-data tæller som mindst én løbsdag", () => {
+  // Fallback-grenen skal give 1, ALDRIG 0 — chippen i AvailableRidersPool er gated
+  // på `load.raceDays > 0`, så en 0-værdi ville skjule belastningen tavst.
+  assert.deepEqual(
+    seasonLoadByRider({ entries: [{ race_id: "z", rider_id: "r1" }], raceDaysByRaceId: new Map() }),
+    { r1: { races: 1, raceDays: 1 } }
+  );
+  assert.deepEqual(
+    seasonLoadByRider({ entries: [{ race_id: "z", rider_id: "r1" }], raceDaysByRaceId: new Map([["z", 0]]) }),
+    { r1: { races: 1, raceDays: 1 } }
+  );
+  assert.deepEqual(seasonLoadByRider(), {});
 });
