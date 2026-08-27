@@ -97,7 +97,12 @@ export default function RaceSelectionPanel({
   // returnsene nedenfor til selve visningen (touched-listen).
   const earlySaving = status === "saving";
   const earlyBusy = earlySaving || autoStatus === "loading";
-  const earlyClientErrors = data
+  // `data?.size` og ikke bare `data`: flag-OFF-svaret (api.js: `{ enabled: false, race,
+  // race_v3_enabled }`) har ingen `size`, og denne linje kører FOER den tidlige
+  // return nedenfor. validateSelectionClient laeser `size.max` uden guard, saa et
+  // bart `data` ville kaste TypeError og hvidskaerme siden i det oejeblik flaget slukkes.
+  // Latent ogsaa foer #4295; lukket her fordi den er gratis at lukke.
+  const earlyClientErrors = data?.size
     ? validateSelectionClient({ ...sel, size: data.size })
     : [];
   const earlySaveBlockReason = earlyClientErrors.length > 0
@@ -206,7 +211,11 @@ export default function RaceSelectionPanel({
   const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)).length;
   // Vises først når manageren har udtaget mindst én rytter: på et urørt panel er
   // "7 pladser står åbne" bare en gentagelse af undertekstens "udtag op til {max}".
-  const partialHint = sel.riderIds.length > 0 && openSpots > 0
+  // `!raceLive`: er løbet allerede i gang, top-fylder assistenten IKKE. raceEntryGenerator
+  // fryser ethvert løb med stages_completed > 0 (#1825) og springer det over for alle hold.
+  // Uden guarden ville hinten love et auto-fyld samtidig med at raceLiveNote lige ovenfor
+  // siger at ingen nye ryttere kan tilføjes. To modstridende sætninger, og hinten er den falske.
+  const partialHint = !raceLive && sel.riderIds.length > 0 && openSpots > 0
     ? t(freeLeft >= openSpots ? "selection.partialHint" : "selection.partialHintShort", { open: openSpots, free: freeLeft })
     : null;
   const saving = status === "saving";

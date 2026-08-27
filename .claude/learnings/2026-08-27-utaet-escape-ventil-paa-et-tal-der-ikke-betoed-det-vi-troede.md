@@ -19,7 +19,7 @@ const kanFyldeTruppen = !Number.isFinite(availableCount) || availableCount >= re
 availableCount: riderRows.filter((r) => !r.injured).length,
 ```
 
-Det er hele den raske trup. Ryttere der er bundet i et overlappende løb tælles med som ledige, fordi `bound_riders` beregnes et helt andet sted (`api.js:3989-4007`) og aldrig trækkes fra. Et hold med 29 ryttere har derfor **altid** `availableCount >= size.max`. Ventilen udløste aldrig for et rigtigt hold, og blokeringen stod uændret for præcis den tilstand spillerne rammer: en førstegangs-udtagelse efter "Ryd alt" eller en kalender-rebuild.
+Det er hele den raske trup. Ryttere der er bundet i et overlappende løb tælles med som ledige, fordi `bound_riders` beregnes et helt andet sted (`api.js:3990-4009`) og aldrig trækkes fra. Et hold med 29 ryttere har derfor **altid** `availableCount >= size.max`. Ventilen udløste aldrig for et rigtigt hold, og blokeringen stod uændret for præcis den tilstand spillerne rammer: en førstegangs-udtagelse efter "Ryd alt" eller en kalender-rebuild.
 
 Fejlteksten gjorde det værre. Ved for FÅ valgte ryttere fik brugeren "Du kan højst udtage 7 ryttere".
 
@@ -51,4 +51,4 @@ Konkret næste gang:
 
 ## Åbent efter fixet
 
-Dashboard-nudgen (`raceSquadSelectionStatus.js:21`), Race Centre-kortet, board-status-pillen og notifikations-sweepet måler alle "komplet" som antal `== size.max`. Et hold der beviseligt ikke kan fylde feltet står derfor permanent som "Holdudtagelse mangler" med en notifikation der ikke kan handles på. Samme forkerte præmis, ny flade. Ejer-spørgsmål, ikke rettet her.
+Dashboard-nudgen (`raceSquadSelectionStatus.js:20`), Race Centre-kortet, board-status-pillen og notifikations-sweepet måler alle "komplet" som antal `== size.max`. Et hold der beviseligt ikke kan fylde feltet står derfor permanent som "Holdudtagelse mangler" med en notifikation der ikke kan handles på. Samme forkerte præmis, ny flade. Ejer-spørgsmål, ikke rettet her.

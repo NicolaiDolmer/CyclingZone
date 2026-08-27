@@ -400,7 +400,7 @@ test("#4295 delvis trup kan gemmes ved en foerstegangs-udtagelse", async ({ page
 
 // #4295: hint-linjen skal tale om ryttere der er frie til NETOP dette loeb. Bundne ryttere
 // (udtaget i et overlappende loeb) taeller med i availableCount, men kan ikke bruges her.
-// Det er knud_r_flinks egen case: "4 available riders for a race that requires 7".
+// Tallene nedenfor er testens egen fixture, ikke en rapporteret spiller-situation.
 test("#4295 hint-linjen taeller kun ryttere der er frie til dette loeb", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
@@ -464,4 +464,56 @@ test("#4295 hint-linjen taeller kun ryttere der er frie til dette loeb", async (
   await saveBtn.click();
   await expect(panel.getByText(/udtagelsen er gemt/i)).toBeVisible();
   expect(capturedBody.rider_ids).toHaveLength(4);
+});
+
+// #4295: hint-linjen lover at assistenten fylder de aabne pladser. Det sker IKKE i et
+// loeb der allerede er i gang: raceEntryGenerator fryser ethvert loeb med
+// stages_completed > 0 (#1825) og springer det over for alle hold. Uden `!raceLive`
+// viste panelet to modstridende saetninger samtidig, og hinten var den falske.
+test("#4295 hint-linjen vises ikke naar loebet allerede er i gang", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  // Etapeloeb midt i afviklingen: status er stadig 'scheduled' hele vejen (#1825),
+  // saa det er stages_completed der afgoer om loebet er live.
+  const LIVE_RACE = { ...SCHEDULED_RACE, race_type: "stage", stages: 5, stages_completed: 2 };
+
+  await page.route("**/rest/v1/races**", (route) => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? LIVE_RACE : [LIVE_RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", (route) => json(route, []));
+
+  await page.route(`**/api/races/${RACE_ID}/selection`, async (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders(request),
+      body: JSON.stringify({
+        enabled: true,
+        race: LIVE_RACE,
+        size: { min: 7, max: 7 },
+        // Delvis trup der ALLEREDE er gemt: 4 af 7 pladser, tre staar aabne.
+        selection: { rider_ids: ["sel-r0", "sel-r1", "sel-r2", "sel-r3"], captain_id: "sel-r0" },
+        riders: SELECTION_RIDERS,
+        availableCount: 8,
+        bound_riders: [],
+      }),
+    });
+  });
+
+  await login(page);
+  await page.goto(`/races/${RACE_ID}`);
+
+  const panel = page.getByTestId("race-selection-panel");
+  await expect(panel).toBeVisible();
+
+  // Loebet er i gang: panelet siger at der ikke kan tilfoejes nye ryttere ...
+  await expect(panel.getByText(/Løbet er i gang/i)).toBeVisible();
+  // ... og saa maa det IKKE samtidig love at assistenten fylder de tre aabne pladser.
+  await expect(panel.getByTestId("selection-partial-hint")).toHaveCount(0);
 });
