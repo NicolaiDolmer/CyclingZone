@@ -828,7 +828,7 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   // udtog assistenten en fuld trup til dig; gemte du tre, stod du med tre og startede
   // ikke. Nu er "har valgt" = har mindst MIN_RACE_ENTRIES ryttere i feltet; ligger
   // holdet under, fylder assistenten forskellen fra holdets frie ryttere.
-  // Afmeldte (#Fase 0b) og ryddede (#4285/#4200) hold springes fortsat over — begge
+  // Afmeldte (Fase 0b) og ryddede (#4285/#4200) hold springes fortsat over — begge
   // markeringer er spillerens egen udtalte beslutning om ikke at stille op.
   const riderIdsByTeam = new Map();
   for (const e of existingEntries || []) {
@@ -881,22 +881,31 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   // stærkeste på aggregeret roster-base_value. Beregnes FØR skade-/abilities-
   // filtrering, så cap'et følger holdets reelle styrke (ikke det tilfældige antal
   // skadede den dag). Deterministisk tie-break på team_id, så samme felt hver gang.
-  if (missingTeamIds.length > POOL_TARGET_SIZE) {
-    const strengthByTeam = new Map(missingTeamIds.map((id) => [id, 0]));
+  //
+  // #4295: cap'et gælder kun hold der TILFØJES feltet, altså dem uden en eneste entry.
+  // Et hold der ligger under gulvet er allerede i feltet med sine egne manuelle picks;
+  // at cappe det væk ville betyde at manageren blev skåret ud af sit eget løb, og
+  // strength-summen ville desuden være undervurderet for netop dem (deres udtagne
+  // ryttere er filtreret ud af `riders` ovenfor).
+  const rescueTeamIds = missingTeamIds.filter((id) => (entryCountByTeam.get(id) || 0) > 0);
+  let emptyTeamIds = missingTeamIds.filter((id) => !(entryCountByTeam.get(id) || 0));
+  if (emptyTeamIds.length > POOL_TARGET_SIZE) {
+    const strengthByTeam = new Map(emptyTeamIds.map((id) => [id, 0]));
     for (const r of riders || []) {
       if (strengthByTeam.has(r.team_id)) {
         strengthByTeam.set(r.team_id, strengthByTeam.get(r.team_id) + (r.base_value || 0));
       }
     }
     const keptIds = new Set(
-      [...missingTeamIds]
+      [...emptyTeamIds]
         .sort((a, b) => {
           const diff = (strengthByTeam.get(b) || 0) - (strengthByTeam.get(a) || 0);
           return diff !== 0 ? diff : (a < b ? -1 : a > b ? 1 : 0);
         })
         .slice(0, POOL_TARGET_SIZE),
     );
-    missingTeamIds = missingTeamIds.filter((id) => keptIds.has(id));
+    emptyTeamIds = emptyTeamIds.filter((id) => keptIds.has(id));
+    missingTeamIds = [...emptyTeamIds, ...rescueTeamIds];
   }
   const keptTeamSet = new Set(missingTeamIds);
 
