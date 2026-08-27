@@ -68,7 +68,7 @@ Der findes i dag tre indgange til auto-udfyld (dagsboardet, `PlannerAssistantCar
 |---|---|---|
 | Udtagelser | ja | gitterets eget indhold |
 | Kun problemer | ja | udtagelser + klassegrænser + binding, regnes i browseren |
-| Belastning | ja, efter fix | `load.raceDays` — se modsigelse 1 |
+| Belastning | ja | `load.raceDays` = distinkte `race_stage_schedule.game_day` pr. løb (#4245) |
 | Form og peak | senere | `peak_planner_enabled` er `on` i prod (koden defaulter off) |
 | Rute-match | kun ved celle-åbning | `frontend/src/lib/suitability.js`, ægte 0-100 mod demand-vektoren |
 
@@ -110,11 +110,12 @@ Byg aldrig disse om. Verificeret mod koden 25/8.
 
 | # | Modsigelse | Issue |
 |---|---|---|
-| 1 | `api.js:4444` lægger **etapetal** i et felt der hedder `raceDays`. Tallet er tilfældigt rigtigt efter #4161 og bliver forkert i samme sekund to etaper deler en løbsdag | denne fil §5 |
 | 2 | To gemme-modeller: boardet skriver straks, matrixen ved Gem — men spec'en siger "ét sted at gemme" | denne fil §1 |
 | 3 | Tre indgange til auto-udfyld; #4201 kan gøre alle tre forkerte | [#4201](https://github.com/NicolaiDolmer/CyclingZone/issues/4201) |
 | 4 | `?view=`-parameteren slettes af `SeasonView.jsx:202` og sættes aldrig, selvom regel 6 kræver den | [#1146](https://github.com/NicolaiDolmer/CyclingZone/issues/1146) |
 | 5 | Trupgrænser pr. klasse er ikke skrevet ned noget sted — de findes kun i kode | denne fil |
+
+Modsigelse 1 (`raceDays` bar etapetal) er lukket af [#4245](https://github.com/NicolaiDolmer/CyclingZone/issues/4245). Nummereringen står urørt, så henvisninger til modsigelse 2-5 andre steder stadig peger rigtigt.
 
 ---
 
