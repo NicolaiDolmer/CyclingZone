@@ -9,7 +9,48 @@ og bedre end før kalender-rebuilden, når spillerne logger ind.
 
 ---
 
-## 1. Start her
+## 1. Start med spillerne, ikke med koden
+
+**Ejer-krav 27/8.** Før du rører en PR, gør du dette:
+
+**1a. Læs de sidste 24 timer i Discord.** MCP-værktøjerne `discord_read_messages` og
+`discord_get_forum_channels` er den direkte vej; `scripts/discord/` har read-only sweep-scripts hvis du skal
+have flere kanaler på én gang. Kanalerne der betyder noget: `#feedback-and-ideas`, `#the-roadbook`,
+`#staff-chat`, `#dansk-snak`. Læs også forum-tråde i appen hvis noget peger derhen.
+
+**1b. Foreslå hvad ejeren skal svare på.** Én liste, prioriteret, med et konkret udkast pr. punkt.
+**Du sender aldrig selv.** Udkast til copy-paste, ejeren poster. Tjek FØRST om han allerede har svaret,
+så du ikke foreslår noget der er overstået. EN først, DA under, æøå, ingen em-dash.
+
+**1c. Skriv patch notes til Discord for det der ER blevet færdigt**, så Discord-patch-noterne er ajour.
+De skal skrives til spillere, ikke til udviklere: hvad var galt, hvad sker der nu, hvad skal du selv gøre.
+Kort. Ejer-direktiv 13/8: markant kortere og lettere at læse end vi plejer.
+
+Råmaterialet fra 27/8, alt merged og live:
+
+| Version | Issue | Hvad spilleren mærker |
+|---|---|---|
+| 7.204 | #4293 | Træningssiden viste +0 på hver evne før sæsonen var begyndt. Den forklarer nu hvorfor og hvornår tællingen starter |
+| 7.205 | #4245 | Belastnings-tallet talte etaper og gamle sæsoner med. Snittet viste 18,1 hvor det sande var 4,9. Sponsor-teksten siger nu etape, ikke løbsdag. Ingen penge flyttet |
+| 7.206 | #4294 | Alle formpeaks fra den gamle kalender er ryddet. 812 planer der viste No peak uden at kunne fjernes. Peaks sat efter ombygningen er urørte |
+| 7.207 | #4165 | Planlægning blev helt blank når et kald fejlede. Siger nu hvad der gik galt, at intet er tabt, og har en Prøv igen-knap |
+
+**1d. Skriv hvad der er på tegnebrættet i dag og i morgen**, så spillerne ved hvad de kan forvente.
+Kun det spiller-vendte, og kun det du faktisk tror lander. Kandidater: #4296 (se hvilke løbsdage et løb
+spænder over, og hvilke løb det kolliderer med, før du klikker) · #4259 (se på ét blik hvem der allerede
+kører) · #4295 (minimum 6 for at stille op) · #4306 (afmeldte hold stiller ikke op) · #4307 (opfyldning
+af tynde trupper).
+
+> **ADVARSEL om minimum-6-udkastet.** [`docs/drafts/2026-08-27-minimum-6-ryttere-varsel.md`](../../docs/drafts/2026-08-27-minimum-6-ryttere-varsel.md)
+> siger "Fra i morgen" og "From tomorrow's start". **Reglen er holdt tilbage** (se afsnit 3), så udkastet er
+> forkert som det står. Ret datoen eller hold det tilbage, men post det ikke uændret.
+
+**1e. Opret det der mangler i GitHub.** Kommer der noget frem i Discord som ikke har et issue, så opret det
+med det samme, med spillerens ordrette citat og et link til beskeden. Søg efter dubletter først.
+
+---
+
+## 2. PR-tilstand
 
 ```bash
 gh pr list --state open --json number,title,mergeStateStatus
@@ -33,7 +74,7 @@ versioner, løft din egen over mains top. Kast aldrig den ene væk. Ved flere co
 
 ---
 
-## 2b. #4301 er holdt tilbage. Læs dette før du merger den
+## 3. #4301 er holdt tilbage. Læs dette før du merger den
 
 Minimum-6-gulvet er bygget og teknisk færdigt, men den må **ikke** merges som den står. To grunde:
 
@@ -62,7 +103,7 @@ også er efter-mutation-genhentningen, så et `setLoading(true)` dér giver et s
 gemmer. Den rigtige rettelse er en separat retry-funktion. `SeasonView` har samme mønster rettet korrekt
 (`SeasonView.jsx:111`) og kan bruges som skabelon.
 
-## 2. Beslutninger ejeren traf 27/8. Genåbn dem ikke
+## 4. Beslutninger ejeren traf 27/8. Genåbn dem ikke
 
 | # | Beslutning | Konsekvens |
 |---|---|---|
@@ -80,7 +121,7 @@ og **ejeren poster selv**.
 
 ---
 
-## 3. Fem ting den gamle prompt tog fejl af
+## 5. Fem ting den gamle prompt tog fejl af
 
 Verificeret mod kode og prod 27/8:
 
@@ -100,7 +141,7 @@ skrevet ned, i `CALENDAR_RULES.md:265`. SSOT'ens egen modsigelse 5 var forkert.
 
 ---
 
-## 4. Arbejdet der mangler, i rækkefølge
+## 6. Arbejdet der mangler, i rækkefølge
 
 ### Først: luk bølge 1
 De fire PR'er i tabellen ovenfor. **Migrationen i #4304 applies af dig efter merge**
@@ -142,7 +183,7 @@ Det er et åbent ejer-spørgsmål: hvilken skal være den **klikbare** celle-aks
 
 ---
 
-## 5. Process der beviste sit værd i dag. Dette er krav, ikke råd
+## 7. Process der beviste sit værd. Dette er krav, ikke råd
 
 **Adversarisk verifikation af hver PR, før merge.** Den fangede i dag, på tværs af fem PR'er:
 
@@ -174,7 +215,7 @@ køre. Bruger du preview-serveren, så verificér at den serverer worktree'et og
 
 ---
 
-## 6. Faste rammer
+## 8. Faste rammer
 
 - **Ét issue pr. PR.** `Refs #N`, aldrig `Closes`. PR-body efter `PULL_REQUEST_TEMPLATE` inkl. Brugerverifikation.
   `pwsh -File scripts/preflight-pr.ps1` før push.
@@ -190,7 +231,7 @@ køre. Bruger du preview-serveren, så verificér at den serverer worktree'et og
 - **Postmortem** i `.claude/learnings/` ved hver bugfix. **Patch notes + Hjælp** ved enhver brugerrettet ændring.
 - **Opfølgninger ejer du selv.** Fund bliver til issue plus egen worker i sessionen. Ingen chips til ejeren.
 
-## 7. Løse ender
+## 9. Løse ender
 
 - **13 worktrees** ligger tilbage, heraf 7 på branches merged og slettet på origin. Oprydning blev blokeret
   af auto-mode i dag; den kræver ejerens tilladelse eller hans egen hånd.
