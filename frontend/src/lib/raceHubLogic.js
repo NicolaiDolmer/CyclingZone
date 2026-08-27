@@ -116,17 +116,22 @@ export function deriveRaceStatus(status, stagesCompleted, stages) {
   return status;
 }
 
-// Per-pulje løbsdage-tæller (#1829). Ét race day = én etape. Den gamle tæller var
-// sæson-GLOBAL (seasons.race_days_completed = sum(stages) over completede løb) og
-// viste forkert tal for managerens egen pulje. Her summeres KUN puljens egne løb,
-// og igangværende etaper TÆLLER med (i modsætning til sum-completed-mønsteret), så
-// "kørt / muligt" er ærligt mens et etapeløb stadig kører. Pure → testbar + klient-
-// side (ingen migration). `races` = puljens løb [{ status, stages, stages_completed }].
-//   completed  — løbsdage kørt: completede løb tæller alle stages, igangværende
+// Per-pulje ETAPE-tæller (#1829). Den gamle tæller var sæson-GLOBAL
+// (seasons.race_days_completed = sum(stages) over completede løb) og viste forkert
+// tal for managerens egen pulje. Her summeres KUN puljens egne løb, og igangværende
+// etaper TÆLLER med (i modsætning til sum-completed-mønsteret), så "kørt / muligt"
+// er ærligt mens et etapeløb stadig kører. Pure → testbar + klient-side (ingen
+// migration). `races` = puljens løb [{ status, stages, stages_completed }].
+//
+// #4245: hed poolRaceDayTotals og kaldte resultatet løbsdage. Den summerer
+// races.stages, og en løbsdag er den in-game-dag der binder rytteren
+// (docs/CALENDAR_RULES.md §0) — den kan rumme etaper fra flere løb og kan aldrig
+// udledes af et etapetal. Navn og copy siger nu ETAPER, som er det den tæller.
+//   completed  — etaper kørt: completede løb tæller alle stages, igangværende
 //                tæller stages_completed (klampet til [0, stages])
-//   total      — puljens samlede løbsdage = sum(stages)
-//   inProgress — løbsdage der hører til løb som STADIG kører (delmængde af completed)
-export function poolRaceDayTotals(races = []) {
+//   total      — puljens samlede etaper = sum(stages)
+//   inProgress — etaper der hører til løb som STADIG kører (delmængde af completed)
+export function poolStageTotals(races = []) {
   let completed = 0;
   let total = 0;
   let inProgress = 0;

@@ -48,6 +48,89 @@ export function focusProgress(focus, progressForRider) {
 // forlader serveren"), og patch note v7.119 lover spillerne at det præcise loft
 // ikke kan aflæses. Taget venter til trin 3.
 
+// ── #4293: kvitteringens TREDJE tilstand ────────────────────────────────────────
+//
+// En sæson kan stå som `active` i databasen og stadig have en `start_date` der
+// ligger i FREMTIDEN. Mellem to sæsoner findes et interregnum (sæson 2 sluttede
+// 23/8, sæson 3 blev aktiv med start 28/8), og rytterne træner videre på de dage.
+//
+// Før #4293 kendte kvitteringen kun to tilstande: "sæson ukendt" (seasonStart =
+// null → "—") og "sæson kendt" (→ tal). Interregnummet faldt i den anden, så
+// nul faktiske sæsondage blev vist som et MÅLT "+0" pr. evne under overskriften
+// "Siden 28. aug" — et tal om en periode der ikke er begyndt. En kvittering må
+// ikke lyve (spec §5, #3659), heller ikke om HVILKEN periode den dækker.
+//
+// Vinduet flyttes bevidst IKKE til "siden forrige sæsons slutning":
+//   • enheden er point pr. SÆSON (ejer-beslutning 9, 14/8), og interregnummets
+//     dage hører til ingen sæson,
+//   • et vindue der talte dem med ville få tallet til at FALDE på sæsonstarts-
+//     dagen, når vinduet snapper til den ægte start. En kvittering der går
+//     baglæns er en værre løgn end en der siger "ikke begyndt endnu".
+// Træningen i interregnummet er stadig synlig og sand samme sted: "Nu"-kolonnen
+// bærer de point der landede, baren bærer fremdriften mod næste point, og den
+// daglige log viser hvert pas.
+//
+//   seasonStart : "YYYY-MM-DD" for den aktive sæsons start, eller null
+//   today       : "YYYY-MM-DD" — dagens dato på KALENDERDAGS-aksen
+//                 (Europe/Copenhagen, samme akse som tick_date, jf.
+//                 docs/CALENDAR_RULES.md §0)
+//
+// Returnerer én af dato-tilstandene nedenfor. En ubrugelig dato giver "unknown",
+// aldrig "running": den tvivlsomme tilstand skal vise "—", ikke et opfundet tal.
+export const SEASON_RECEIPT_UNKNOWN = "unknown";
+export const SEASON_RECEIPT_NOT_STARTED = "notStarted";
+export const SEASON_RECEIPT_RUNNING = "running";
+// Sæsonen kører, men der er endnu ikke hentet en eneste træningsdag inde i den.
+// Se seasonReceiptView nedenfor.
+export const SEASON_RECEIPT_NO_DAYS = "noDays";
+
+const PLAIN_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function seasonReceiptState(seasonStart, today) {
+  const start = seasonStart == null ? "" : String(seasonStart);
+  const now = today == null ? "" : String(today);
+  if (!PLAIN_DAY_RE.test(start) || !PLAIN_DAY_RE.test(now)) return SEASON_RECEIPT_UNKNOWN;
+  // Rene "YYYY-MM-DD"-strenge, så streng-sammenligning ER dato-sammenligning
+  // (ingen Date-parsing, ingen tidszone). Sæsonens FØRSTE dag tæller med.
+  return start <= now ? SEASON_RECEIPT_RUNNING : SEASON_RECEIPT_NOT_STARTED;
+}
+
+// Den tilstand fladen skal TEGNE. seasonReceiptState svarer på datoen alene;
+// her kommer sæsonens faktisk hentede træningsdage ind.
+//
+//   dateState  : resultatet af seasonReceiptState
+//   seasonRuns : kørsler inde i sæsonen, eller null når hentningen fejlede
+//
+// To ærligheds-huller som datoen alene ikke lukker:
+//
+//   • Sæsonens FØRSTE dag, før dagens tick har kørt, har nul kørsler. Uden en
+//     egen tilstand ville hver evne stå på "+0" under "Siden 28. aug" — samme
+//     visning som den fejl #4293 handler om, bare med et ægte målt nul bagved.
+//     Nul træningsdage er ikke et resultat, det er en sæson der lige er
+//     begyndt, og fladen siger det med ord i stedet for med et tal. Det gælder
+//     også et hold der er kommet til midt i en sæson og endnu ikke har trænet.
+//   • En FEJLET hentning giver også nul kørsler, men vi ved da ingenting: den
+//     falder til "unknown" ("tallene vises når sæsonen er hentet"), ikke til et
+//     nul vi ikke har målt.
+//
+// Kun "running" betyder "her er der sæsondage at kvittere for" — det er den
+// eneste tilstand hvor kaldestederne må regne et sæsontal ud.
+export function seasonReceiptView(dateState, seasonRuns) {
+  if (dateState !== SEASON_RECEIPT_RUNNING) return dateState;
+  if (!Array.isArray(seasonRuns)) return SEASON_RECEIPT_UNKNOWN;
+  return seasonRuns.length === 0 ? SEASON_RECEIPT_NO_DAYS : SEASON_RECEIPT_RUNNING;
+}
+
+// Fodnotens copy-nøgle pr. tilstand (training-namespacet). ÉT sted, så
+// rytterprofilens kvittering og /training-rosteret ikke kan komme til at sige
+// forskellige ting om samme sæson. Kun "notStarted" bruger {date}.
+export const SEASON_RECEIPT_NOTE_KEY = {
+  [SEASON_RECEIPT_RUNNING]: "receipt.note",
+  [SEASON_RECEIPT_NO_DAYS]: "receipt.noDaysYet",
+  [SEASON_RECEIPT_NOT_STARTED]: "receipt.notStarted",
+  [SEASON_RECEIPT_UNKNOWN]: "receipt.pending",
+};
+
 // Sæsonens hele point pr. evne for ÉN rytter, summeret fra trænings-kørslerne.
 //
 //   runs        : [{ tick_date, report: { riders: [...] } }] — samme form som

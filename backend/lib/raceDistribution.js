@@ -236,3 +236,75 @@ export function groupGrossSquads({ entries = [], ridersById = new Map(), teamsBy
   out.sort((a, b) => String(a.team.name ?? "").localeCompare(String(b.team.name ?? "")));
   return out;
 }
+
+// #4245: LØBSDAGE pr. løb = antal DISTINKTE game_day i løbets schedule-rækker
+// (race_stage_schedule.game_day), ikke etape-antallet. To etaper på samme løbsdag
+// er ÉN løbsdag for rytteren (docs/CALENDAR_RULES.md §0: game_day er den in-game
+// akse der binder rytteren, og den kan aldrig udledes af scheduled_at).
+//
+// BELASTNING ER IKKE BINDING — de to tal er bevidst forskellige:
+//   · BINDING bruger hele SPÆNDET min(game_day)..max(game_day). Det er ejer-direktiv
+//     25/8 (#4217, docs/CALENDAR_RULES.md §2b + §8): er du udtaget til et etapeløb,
+//     er du bundet indtil det er slut, også hen over springene. Se raceBinding.js.
+//   · BELASTNING (dette tal) er de løbsdage rytteren FAKTISK kører på. Springene i
+//     et løbs game_day-serie er ikke hviledage — en løbsdag er et halvdags-slot, og
+//     slot-tælleren løber videre for de øvrige løb i puljen imens (CALENDAR_RULES
+//     §2b). La Corsa dei Due Mari kører 7 etaper på løbsdag 10, 13, 17, 20, 23, 27,
+//     28: 7 løbsdages belastning, men et bundet spænd på 19.
+// Derfor: distinkte værdier, ALDRIG spændet (end-start+1, jf. raceGameDaySpan) — det
+// ville måle bindingen og kalde den belastning.
+//
+// `scheduleRows` = [{race_id, game_day}]. `stagesByRaceId` (valgfri) = Map<race_id,
+// stages>: FÆLLES fallback for løb uden brugbare game_day-rækker, så alle flader der
+// viser løbsdage falder ens tilbage (#4245 rework: Race Hub faldt til 1, planner-
+// boardet til etapetal — et delvist backfillet etapeløb viste derfor 1 dag på den ene
+// skærm og 8 på den anden). Etapetallet er det ærlige estimat: efter akse-reparationen
+// (#4161) får hver etape sin egen løbsdag. Mindst 1. Pure, ingen DB.
+export function raceDaysByRace(scheduleRows = [], { stagesByRaceId } = {}) {
+  const daysByRace = new Map();
+  for (const row of scheduleRows) {
+    if (!Number.isFinite(row?.game_day)) continue;
+    if (!daysByRace.has(row.race_id)) daysByRace.set(row.race_id, new Set());
+    daysByRace.get(row.race_id).add(row.game_day);
+  }
+  const out = new Map([...daysByRace].map(([id, set]) => [id, set.size]));
+  if (stagesByRaceId) {
+    for (const [raceId, stages] of stagesByRaceId) {
+      if (out.has(raceId)) continue;
+      const n = Number(stages);
+      out.set(raceId, Number.isFinite(n) && n > 0 ? Math.trunc(n) : 1);
+    }
+  }
+  return out;
+}
+
+// #2772/#4245: sæson-belastning pr. rytter: antal løb + antal LØBSDAGE rytteren er
+// tilmeldt henover sæsonen, auto-fyldte entries inklusive (rytteren stiller til start
+// uanset hvem der satte ham på listen). `entries` skal ALLEREDE være eligibility-
+// krydset af kalderen (loadEligibleEntries: ghosts/udlånte/pensionerede tæller ikke,
+// #1906).
+//
+// `seasonRaceIds` (Set) er PÅKRÆVET af enhver flade hvis copy siger "denne sæson".
+// race_entries er ikke sæson-scopet i sig selv, så uden filteret tæller entries fra
+// TIDLIGERE sæsoner med. Målt read-only mod prod 27/8: 68.661 af 94.184 entries var
+// fra tidligere sæsoner (73 %), 3.483 af 5.194 ryttere med entries fik et for højt
+// tal (snit 18,1 løb vist mod 4,9 sande, værst 56 for meget), og 2.364 af dem har
+// slet ingen løb i den aktive sæson (#4245 rework).
+//
+// Fallback: et løb uden game_day-rækker tæller som mindst ÉN løbsdag, derfor `|| 1`
+// og ikke `?? 1` — en 0-værdi ville slippe igennem og skjule belastnings-chippen
+// tavst pga. `load.raceDays > 0`-gaten i AvailableRidersPool. Det ægte fallback-valg
+// (etapetal) sker ÉT sted, i raceDaysByRace's `stagesByRaceId`; `|| 1` her er kun
+// sidste værn. Pure.
+export function seasonLoadByRider({ entries = [], raceDaysByRaceId = new Map(), seasonRaceIds } = {}) {
+  const inSeason = seasonRaceIds instanceof Set ? seasonRaceIds : null;
+  const out = {};
+  for (const e of entries) {
+    if (inSeason && !inSeason.has(e.race_id)) continue;
+    const cur = out[e.rider_id] || { races: 0, raceDays: 0 };
+    cur.races += 1;
+    cur.raceDays += raceDaysByRaceId.get(e.race_id) || 1;
+    out[e.rider_id] = cur;
+  }
+  return out;
+}

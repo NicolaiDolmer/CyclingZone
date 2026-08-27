@@ -268,7 +268,7 @@ export default function SponsorOfferModal({
                   </div>
                 )}
 
-                {/* Regnestykket i stedet for en formel: garanteret + løbsdage ×
+                {/* Regnestykket i stedet for en formel: garanteret + etaper ×
                     rate = hvad holdet får ved at stille til start. Betingede
                     bonusser står for sig, så kortet ikke lover sejrspenge. */}
                 <dl className="flex flex-col gap-1.5 text-xs">

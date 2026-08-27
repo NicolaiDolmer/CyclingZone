@@ -157,16 +157,20 @@ export function locksImmediatelyRaceIds({ races, todayOrd }) {
 }
 
 /**
- * Sæson-belastning pr. rytter (#2772): hvor mange løb og løbsdage (etaper) er
- * rytteren tilmeldt henover sæsonen — auto-fyldte entries inklusive, for rytteren
- * stiller til start uanset hvem der satte ham på listen. Løbsdage = etape-antal
- * (1 rytter = 1 løb/dag er ejer-design). Registrerede løb uden for boardets
- * kalender (fx en anden divisions løb efter op-/nedrykning) tælles ikke — vi
- * viser kun hvad payloaden kan stå inde for.
+ * Sæson-belastning pr. rytter (#2772): hvor mange løb og løbsdage er rytteren
+ * tilmeldt henover sæsonen, auto-fyldte entries inklusive, for rytteren stiller
+ * til start uanset hvem der satte ham på listen. Registrerede løb uden for
+ * boardets kalender (fx en anden divisions løb efter op-/nedrykning) tælles ikke.
+ * Vi viser kun hvad payloaden kan stå inde for.
+ *
+ * #4245: LØBSDAGE er `race.raceDays` fra payloaden (distinkte game_day, regnet
+ * serverside af raceDaysByRace), IKKE etape-antallet. To etaper på samme løbsdag
+ * er én løbsdag for rytteren (docs/CALENDAR_RULES.md §0 + §2b). `stages` er kun
+ * fallback for et board-svar fra før feltet fandtes.
  *
  * @param {object} args
  * @param {object} args.rider              board-rytter (registeredRaceIds)
- * @param {Array<object>} args.races       board'ets racesOut (stages)
+ * @param {Array<object>} args.races       board'ets racesOut (raceDays, stages)
  * @returns {{races:number, raceDays:number}}
  */
 export function riderSeasonLoad({ rider, races }) {
@@ -177,7 +181,10 @@ export function riderSeasonLoad({ rider, races }) {
     const race = raceById.get(id);
     if (!race) continue;
     raceCount += 1;
-    raceDays += Number.isFinite(race.stages) && race.stages > 0 ? race.stages : 1;
+    const days = Number.isFinite(race.raceDays) && race.raceDays > 0
+      ? race.raceDays
+      : (Number.isFinite(race.stages) && race.stages > 0 ? race.stages : 1);
+    raceDays += days;
   }
   return { races: raceCount, raceDays };
 }

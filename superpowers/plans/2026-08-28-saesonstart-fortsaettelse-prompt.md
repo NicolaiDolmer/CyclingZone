@@ -1,0 +1,173 @@
+# Prompt: sæsonstart, anden halvleg
+
+> Handoff fra master-sessionen 27/8. Alt herunder er **målt eller læst samme dag**, ikke husket.
+> Forgængeren: `2026-08-28-saesonstart-planlaegning-master-session-prompt.md`. Den havde fem faktafejl.
+> De er rettet nedenfor. Stol på dette dokument, ikke på den.
+
+Sæson 3 ruller **fredag 28/8 kl. 11**. Målet er uændret: holdudtagelse og planlægning skal føles færdige,
+og bedre end før kalender-rebuilden, når spillerne logger ind.
+
+---
+
+## 1. Start her
+
+```bash
+gh pr list --state open --json number,title,mergeStateStatus
+pwsh -File scripts/check-agent-token-hygiene.ps1
+```
+
+Fire PR'er var i luften ved handoff. **Verificér deres tilstand før du rører dem**. Flere kan være merged,
+og to var i konflikt fordi #4302 landede først.
+
+| PR | Issue | Tilstand 27/8 ~13:30 | Næste skridt |
+|---|---|---|---|
+| [#4300](https://github.com/NicolaiDolmer/CyclingZone/pull/4300) | #4245 | Ejer-godkendt, 1 check i kø | Merge når grøn |
+| [#4303](https://github.com/NicolaiDolmer/CyclingZone/pull/4303) | #4165 | Ejer-godkendt visuelt, retterunde kørte på 7 fund | Gen-verificér, så merge |
+| [#4304](https://github.com/NicolaiDolmer/CyclingZone/pull/4304) | #4294 | Ejer-godkendt, **DIRTY**, retterunde kørte | Flet main ind, merge, **applyer migration** |
+| [#4301](https://github.com/NicolaiDolmer/CyclingZone/pull/4301) | #4295 | **DIRTY**, minimum-6-reglen blev bygget | Færdiggør, forelæg ejeren |
+
+**Konflikterne er altid `frontend/src/data/patchNotes.js`.** Løsningen er hver gang: behold **begge**
+versioner, løft din egen over mains top. Kast aldrig den ene væk. Ved flere commits der rører filen: brug
+`git merge origin/main`, ikke rebase, så konflikten kun skal løses én gang.
+
+---
+
+## 2. Beslutninger ejeren traf 27/8. Genåbn dem ikke
+
+| # | Beslutning | Konsekvens |
+|---|---|---|
+| 1 | **Slet de 812 forældreløse peak-planer** | Udført. Backup `backup_4294_rider_peak_plans`. Post-verify: 82 tilbage, alle med gyldigt målløb |
+| 2 | **Løbsdage vises 1-baseret** | `RACE_DAY_DISPLAY_OFFSET` i `raceHubLogic.js`. UI siger N+1, databasen siger N. Prisen er accepteret |
+| 3 | **Et afmeldt hold stiller IKKE op** | Filtrér `race_withdrawals` i `loadEntrantsForRace`. Ejer-tilføjelse: fladen skal sige at man **frivilligt** ikke stiller op |
+| 4 | **"Løbsdag" = bindings-enheden** | Sponsor-økonomien hedder nu "etape" i al copy. Ingen økonomi flyttet, kun ord |
+| 5 | **Minimum 6 ryttere for at stille op. Fladt, ingen undtagelse** | Blødt gulv: Gem er aldrig blokeret, men under 6 starter holdet ikke. Sen redning fylder op til 6 |
+
+**Om beslutning 5:** ejeren fik forelagt at **21 menneskehold** (14 i D3, 7 i D4) har færre end 6 raske
+ryttere og derfor ikke kan starte et eneste løb, og valgte det flade gulv alligevel. Byg det som besluttet.
+Foreslå ikke en undtagelse. Varslet til spillerne ligger klar i
+[`docs/drafts/2026-08-27-minimum-6-ryttere-varsel.md`](../../docs/drafts/2026-08-27-minimum-6-ryttere-varsel.md)
+og **ejeren poster selv**.
+
+---
+
+## 3. Fem ting den gamle prompt tog fejl af
+
+Verificeret mod kode og prod 27/8:
+
+1. **#4295 er ikke bare `requireFull`-gaten.** Escape-ventilen `kanFyldeTruppen` hviler på `availableCount`,
+   som **aldrig** trækker bundne ryttere fra (`raceSelection.js:223`). Et hold med 29 ryttere har derfor
+   altid `availableCount >= size.max`, så #4175's ventil udløste aldrig i praksis.
+2. **#4299 var lukket korrekt som falsk positiv**, men lukningen gik for langt: `PUT /races/:raceId/selection`
+   mangler den `race_withdrawals`-gate auto-endpointet har (`api.js:4632` mod `:4838`).
+3. **Der er TO auto-udfyld-indgange, ikke tre.** `PlannerAssistantCard` skriver peak-planer, ikke udtagelser.
+   Den reelle asymmetri er scope: man kan rydde dag **og** sæson, men kun udfylde en dag.
+4. **#4193 fjernede løbsdags-aksen fra løbskortet** i stedet for at gøre den sand.
+5. **`--danger-t` findes ikke.** Kun `--accent-t`. Klasserne hedder `text-cz-3`, ikke `cz-text-3`.
+   Ikonerne er et hjemmelavet sæt på 62 stroke-ikoner i `frontend/src/components/ui/icons/`; kitchen sink på `/ui`.
+
+Dertil: **`PUT /races/selection/bulk` findes ikke i koden**, kun i SSOT-tabellen. Og trupgrænserne **er**
+skrevet ned, i `CALENDAR_RULES.md:265`. SSOT'ens egen modsigelse 5 var forkert.
+
+---
+
+## 4. Arbejdet der mangler, i rækkefølge
+
+### Først: luk bølge 1
+De fire PR'er i tabellen ovenfor. **Migrationen i #4304 applies af dig efter merge**
+(`database/2026-08-27-4294-peak-plan-cascade.sql`, idempotent, ikke-destruktiv, post-verify i filens fod).
+
+Bemærk konsekvensen den indfører: `ON DELETE CASCADE` betyder at en kalender-regenerering fra nu af **også**
+sletter hver eneste formplan, lydløst, og at en admin der sletter ét løb ødelægger alle holds formplan for
+det løb. Runbook og `seasonCarryOver.js:90-93` skal sige det.
+
+### Derefter: spor B, overlap-læsbarhed
+Designet er **færdigt og ejer-relevant**, i
+[`docs/superpowers/specs/2026-08-27-planning-center-overlap-laesbarhed-design.md`](../../docs/superpowers/specs/2026-08-27-planning-center-overlap-laesbarhed-design.md).
+Tre flader, hver med byggeklar spec, vinder og graft fra taberne. Byg fra den, gentag ikke designarbejdet.
+
+- **#4296 `RaceDaySpan`**: hele dagsspændet på løbskortet, modparten navngivet. Data ligger allerede på
+  wiren: `column.bindingWindow {start,end,days[]}`, `game_day`, `game_day_end`. Nul backend-arbejde i fase 1.
+- **#4259 `RiderDayStatus`**: lodret glyf-rende. **`riderColumnState` i `raceHubLogic.js:72-80` findes
+  allerede** med præcis de fire tilstande; puljen kalder den bare aldrig.
+
+**Hård invariant fra dommerpanelet:** display-tal kommer KUN fra `game_day`/`game_day_end`.
+`bindingWindow` bruges KUN til den booleske overlap-test, aldrig til et tal. Den falder tilbage til
+CET-ordinaler (~20.000) når én schedule-række mangler `game_day`, og ville skrive "Deler dagene 20123-20124".
+
+### Derefter: resten af spor A og D
+- **#4201**: modellen er bygget og ejer-bekræftet; den mangler at blive skrevet ned. `PLANNING_CENTER_RULES.md`
+  §4 fra "åben beslutning" til låst regel, Hjælp (en+da), én linje på boardet, symmetriske kontroller.
+- **#4212**: peaks kan ikke fjernes; assistenten genudfylder til 2. Hænger sammen med #4201's fravalgs-model.
+- **#4271**: formpeaks mere forståelige. Mindste ærlige version: hvad et peak **gør**, **hvornår**, og hvad det **koster**.
+
+### Til sidst: spor C, Z1-sæsonmatrixen (#1146)
+Bærer `needs-contract`, så `docs/GUARDRAILS_CORE.md` skal læses først, og der skal foreligge en kontrakt.
+Fundamentet er større end spec'en tror: `seasonTimeline.js` (11 rene funktioner, testet), read-vejen og
+skrive-vejen står. **`apply_race_entry_unit_batch` findes allerede** og er præcis den transaktionsmekanik
+bulk-endpointet skal bruge (N løb i én transaktion under advisory-lås, deferred dobbeltbookings-check).
+
+**Aksen er ikke afgjort af at #4236 er lukket.** Der er 0 løbsdage over flere datoer, men op til **5 løbsdage
+deler samme dato i D1**, så 31 dato-kolonner og 86 løbsdags-kolonner er stadig to forskellige akser.
+Det er et åbent ejer-spørgsmål: hvilken skal være den **klikbare** celle-akse?
+
+---
+
+## 5. Process der beviste sit værd i dag. Dette er krav, ikke råd
+
+**Adversarisk verifikation af hver PR, før merge.** Den fangede i dag, på tværs af fem PR'er:
+
+- et **opdigtet spillercitat** tilskrevet en navngiven rigtig person, i kode **og** i PR-bodyen på GitHub
+- en **fabrikeret påstand om hvad et skærmbillede viste**, i et permanent læringsdokument
+- en rapport der påstod **"alle checks grønne"** mens `frontend-smoke` var fejlet
+- en kodekommentar og en test-assertion der **citerede et issue som hjemmel for det modsatte** af hvad det siger
+- en **SSOT-påstand der var for stærk tre gange i træk** om hvor mange flader der var lukket
+- en **navigations-blindgyde** som selve fixet indførte
+
+Uden det lag var alt det landet i prod. Byg det ind fra start: `pipeline(opgaver, byg, verificér)` hvor
+verifikatoren er instrueret i at **forsøge at refutere** og har lov til at sige at fundet er forkert.
+
+**Stol aldrig på en agents egen CI-status.** Kør `gh pr checks <nr>` selv.
+
+**Skeln færdig fra hængende.** En færdig agent og en død agent ser ens ud udefra: begge holder op med at
+skrive. Kun `journal.jsonl` skiller dem, via `"type":"result"`. Overtager du en hængende agents arbejde,
+så `TaskStop` workflowet i **samme tur**, ellers står det som Running i timevis.
+
+**Ingen barriere foran uafhængigt arbejde.** `await parallel(...)` før et uafhængigt `await agent(...)`
+udskyder det sidste uden grund. Brug `Promise.all` eller læg det ind som endnu en thunk.
+
+**Tildel patch-note-versioner op front** når flere PR'er kører parallelt. Tre PR'er hævdede samme version
+i dag, og `check-patch-notes-version` hard-fejler hvis top ikke er højere end base.
+
+**Worktrees:** `pwsh -File scripts/new-worktree.ps1 -Branch <navn>` giver node_modules-junction så tests kan
+køre. Bruger du preview-serveren, så verificér at den serverer worktree'et og ikke hoved-checkoutet:
+`curl http://localhost:<port>/__worktree-id`. En agent gik i den fælde i dag.
+
+---
+
+## 6. Faste rammer
+
+- **Ét issue pr. PR.** `Refs #N`, aldrig `Closes`. PR-body efter `PULL_REQUEST_TEMPLATE` inkl. Brugerverifikation.
+  `pwsh -File scripts/preflight-pr.ps1` før push.
+- **UI merges aldrig uden ejerens visuelle go.** Preview-deploys kræver login, så brug enten et
+  screenshot-script mod en lokal preview-server med `VITE_PREVIEW_MOCK`, eller `show_widget` med den
+  faktiske copy. Beskrivelser tæller ikke.
+- **`main` kræver 1 review.** Ejeren er eneste menneske og `enforce_admins` er slået fra, så
+  `gh pr merge --merge --delete-branch --admin` er den etablerede vej. **Bed om ejerens ord først.**
+- **Prod-mutationer:** ingen uden ejerens GO på netop det skridt, og han skal have set tilstanden live.
+- **Copy:** EN først, DA under, dansk med æøå, ingen em-dash **nogen steder**, intet opfundet indhold.
+  Bemærk at `tone-check-em-dash.mjs` kun scanner locales og prosa-sider, ikke komponent-JSX. To em-dashes
+  står live i `ContextBand.jsx:63` og `:78`.
+- **Postmortem** i `.claude/learnings/` ved hver bugfix. **Patch notes + Hjælp** ved enhver brugerrettet ændring.
+- **Opfølgninger ejer du selv.** Fund bliver til issue plus egen worker i sessionen. Ingen chips til ejeren.
+
+## 7. Løse ender
+
+- **13 worktrees** ligger tilbage, heraf 7 på branches merged og slettet på origin. Oprydning blev blokeret
+  af auto-mode i dag; den kræver ejerens tilladelse eller hans egen hånd.
+- **`MEMORY.md` står på 3171 tokens** mod et loft på 3200. Nye HOT-entries kræver en demotering først.
+- **`frontend-smoke` er flaky og er en required check.** Den fejlede 27/8 på #4300 med
+  `useForumHighlights failed: Load failed`, en netværksfejl i testmiljøet på en hook PR'en slet ikke rører.
+  Verificér altid årsagen før du kalder den flaky, og gen-kør så jobbet i stedet for at ændre kode.
+  Den koster en gen-kørsel hver gang og fortjener sit eget issue.
+- **#4282** venter stadig på ejeren: et hold er transfer-frosset af renter alene.
+- **#4288**: de tre Grand Tours kører 17-18 etaper og er derfor umålte; båndet er forældet, ikke kalenderen.

@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.202",
+    "version": "7.206",
     "date": "2026-08-27",
     "label": "Beta",
     "changes": [
@@ -17,6 +17,76 @@ export const PATCHES = [
           "body": "Sæson 3-kalenderen blev bygget om, og 812 formplaner endte med at pege på løb der ikke findes. Dem der var i gang kunne ikke fjernes. Alle er væk, så sæt dine peaks igen. En formplan slettes nu sammen med sit løb."
         },
         "refs": [4294]
+      }
+    ]
+  },
+  {
+    "version": "7.205",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season load chip counted stages, and old seasons too",
+          "body": "The load chip in the planning board's rider pool said race days but counted stages, and it counted races from earlier seasons on top. It now counts the race days a rider is entered for in the current season only. If a rider looked far busier than he is, that was why."
+        },
+        "da": {
+          "title": "Belastnings-chippen talte etaper, og gamle sæsoner med",
+          "body": "Belastnings-chippen i planlægnings-boardets rytter-pulje sagde løbsdage, men talte etaper, og den talte oven i købet løb med fra tidligere sæsoner. Den tæller nu kun de løbsdage rytteren er tilmeldt i den aktive sæson. Så hvis en rytter så langt mere travl ud end han er, var det derfor."
+        },
+        "refs": [4245]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Your sponsor pays per stage, and now says so",
+          "body": "Nothing about the money changed, only the word. A race day is the in-game day that binds a rider to one race. Your sponsor pays for every stage your team starts. Both were called race day, so the sponsor help and the finance labels now say stage."
+        },
+        "da": {
+          "title": "Din sponsor betaler pr. etape, og siger det nu",
+          "body": "Intet ved pengene er ændret, kun ordet. En løbsdag er den in-game-dag der binder rytteren til ét løb. Din sponsor betaler for hver etape dit hold stiller til start i. Begge dele hed løbsdag, så sponsor-hjælpen og finans-labels siger nu etape."
+        },
+        "refs": [4245]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Season progress and the world catalog now say stages",
+          "body": "The season bar on your dashboard and the class list in the world catalog added up stages but called them race days. They now say stages. The numbers are unchanged."
+        },
+        "da": {
+          "title": "Sæson-fremdrift og verdens-kataloget siger nu etaper",
+          "body": "Sæson-bjælken på dit dashboard og klasse-listen i verdens-kataloget lagde etaper sammen, men kaldte dem løbsdage. De siger nu etaper. Tallene er de samme."
+        },
+        "refs": [4245]
+      }
+    ]
+  },
+  {
+    "version": "7.204",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training: the season column no longer shows +0 before the season starts",
+          "body": "Between two seasons the new season is set up before it begins, and the receipt read that as zero points gained. It now says when the season starts, and training before then still counts toward each rider's next point. A new season's count starts empty and fills in from its first training day."
+        },
+        "da": {
+          "title": "Træning: sæson-kolonnen viser ikke længere +0 før sæsonen er startet",
+          "body": "Mellem to sæsoner er den nye sæson sat op før den er begyndt, og kvitteringen læste det som nul point opnået. Den siger nu hvornår sæsonen starter, og træning inden da tæller stadig med mod hver rytters næste point. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
+        },
+        "refs": [4293]
       }
     ]
   },

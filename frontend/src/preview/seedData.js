@@ -1073,6 +1073,13 @@ export const SEED_DISTRIBUTION = {
   bindingMap: { [RIDERS[0].id]: ["race-up-1"] },
   // #3102 PR 2 / #2772: payback-dybde i formpoint (mock-spejling af motorens tal,
   // jf. plannerMock.js) + sæson-belastning pr. rytter til pulje-chips'ene.
+  //
+  // #4245: `seasonLoadByRider` herunder er et FÆRDIGT wire-svar, hårdkodet. Preview
+  // kalder derfor ikke raceDaysByRace/seasonLoadByRider, og Race Hub-chippen kan
+  // ikke demonstrere løbsdage-mod-etaper her. Den flade der KAN demonstrere det er
+  // formplanens chip: plannerMock.js' r-alpine har 6 etaper på 5 løbsdage, og
+  // riderSeasonLoad regnes klient-side dér. Ændrer du tallene herunder, så husk at
+  // de er e2e-synlige (snapshots).
   paybackFormPoints: -14,
   seasonLoadByRider: Object.fromEntries(
     SEED_BOARD_ROSTER.map((r, i) => [r.id, { races: 2 + (i % 3), raceDays: 3 + i * 2 }]),

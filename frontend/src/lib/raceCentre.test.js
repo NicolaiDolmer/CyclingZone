@@ -27,6 +27,17 @@ test("copenhagenDayKey: krydser dagsgrænsen i København, ikke i UTC", () => {
   assert.equal(copenhagenDayKey(NaN), null);
 });
 
+test("copenhagenDayKey: en zone runtime'en ikke kender giver null, ikke et kast (#4293)", () => {
+  // Intl.DateTimeFormat kaster RangeError på en ukendt zone (stripped ICU).
+  // Dagsnøglen slås op midt i data-hentninger (useTrainingHistory), hvor et
+  // kast ville rive resten af hentningen med sig og tømme hele historikken.
+  assert.doesNotThrow(() => copenhagenDayKey(AUG17_2130Z, "Mars/Olympus_Mons"));
+  assert.equal(copenhagenDayKey(AUG17_2130Z, "Mars/Olympus_Mons"), null);
+  // Null-grenen findes allerede hos begge interne kaldere.
+  assert.equal(copenhagenDayStart(AUG17_2130Z, "Mars/Olympus_Mons"), null);
+  assert.equal(isRaceDayToday(AUG17_2130Z, AUG17_2130Z, "Mars/Olympus_Mons"), false);
+});
+
 test("isRaceDayToday: samme København-dag", () => {
   assert.equal(isRaceDayToday(AUG17_2130Z, Date.parse("2026-08-17T06:00:00Z")), true);
   assert.equal(isRaceDayToday(AUG17_2230Z, Date.parse("2026-08-17T06:00:00Z")), false);

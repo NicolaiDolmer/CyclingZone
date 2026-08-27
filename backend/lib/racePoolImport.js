@@ -192,15 +192,21 @@ export function computeStalePoolPrune({
   return { toDelete, skippedReferenced, keptInSeed };
 }
 
-// Beregner en oversigt over pool-løb pr. klasse: antal og samlede løbsdage.
-// Bruges af AdminPage til at vise "her er hvad du kan vælge".
+// Beregner en oversigt over pool-løb pr. klasse: antal løb og samlede ETAPER.
+// Bruges af AdminPage til at vise "her er hvad du kan vælge" + af verdens-
+// katalogets klasse-oversigt.
+//
+// #4245: feltet hed `raceDays` og summerede `stages`. En løbsdag er den in-game-
+// dag der binder rytteren (docs/CALENDAR_RULES.md §0); den kan rumme etaper fra
+// flere løb og kan ALDRIG udledes af et etapetal. Feltet hedder derfor nu det det
+// indeholder: `stages`.
 export function summarizePool(poolRows) {
   const summary = {};
   for (const row of poolRows || []) {
     const cls = row.race_class;
-    if (!summary[cls]) summary[cls] = { count: 0, raceDays: 0 };
+    if (!summary[cls]) summary[cls] = { count: 0, stages: 0 };
     summary[cls].count += 1;
-    summary[cls].raceDays += Number(row.stages) || 0;
+    summary[cls].stages += Number(row.stages) || 0;
   }
   return summary;
 }
