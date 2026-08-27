@@ -47,7 +47,7 @@ export default function CalendarPage() {
   const { t, i18n } = useTranslation(["calendar", "common"]);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
-  // #2849 bølge 3 — kanonisk fejl-tilstand (states-sheet manglede en ÷ pr. audit'en).
+  // #2849 bølge 3: kanonisk fejl-tilstand (states-sheet manglede en ÷ pr. audit'en).
   // #4165: var et boolean sat KUN fra catch'en, og hentningen tjekkede ikke
   // res.ok. Et 401 fra requireAuth har en gyldig JSON-krop, så res.json() lykkes,
   // `data` bliver {error:"Invalid token"}, og `!data?.season` tegnede så
