@@ -30,7 +30,8 @@
       "none": "No selection yet"
     },
     "empty": "No races on the calendar yet",
-    "error": "The season calendar could not be loaded. Nothing was lost. Try again.",
+    "error": "Nothing was lost. This view is read-only.",
+    "errorSession": "Your session has ended. Sign in again to keep planning.",
     "retry": "Try again",
     "picker": {
       "ariaLabel": "Season",
@@ -52,9 +53,16 @@
       },
       "firstRaceDay": "First race day: Tuesday. Monday is race-free.",
       "readMore": "Full details in Help"
-    }
+    },
+    "errorTitle": "Season calendar could not be loaded"
   },
   "racehub": {
+    "error": {
+      "title": "Team selection could not be loaded",
+      "body": "Nothing was lost. Your line-ups are safe.",
+      "session": "Your session has ended. Sign in again to keep planning.",
+      "retry": "Try again"
+    },
     "scope": {
       "mine": "My races",
       "division": "My division",
@@ -622,6 +630,9 @@
     },
     "error": {
       "title": "Something went wrong",
+      "loadTitle": "Team strategy could not be loaded",
+      "loadBody": "Nothing was lost. Your saved strategy is safe.",
+      "session": "Your session has ended. Sign in again to keep planning.",
       "retry": "Try again"
     }
   },
@@ -1110,6 +1121,12 @@
     "accumulatedSub": "Top riders by total points across all editions"
   },
   "browse": {
+    "error": {
+      "title": "Start lists could not be loaded",
+      "body": "This view is read-only, so nothing was lost.",
+      "session": "Your session has ended. Sign in again to keep planning.",
+      "retry": "Try again"
+    },
     "readonly": "Read-only",
     "heading": "{division} · {pool}",
     "headingGeneric": "Start lists",

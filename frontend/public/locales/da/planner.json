@@ -184,6 +184,7 @@
     "generic": "Noget gik galt. Prøv igen.",
     "title": "Kunne ikke indlæse sæsonplanlæggeren",
     "description": "Intet gik tabt. Dine peaks og træningsplaner er sikre. Prøv igen.",
+    "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
     "retry": "Prøv igen",
     "division_not_settled": "Din division for den sæson afgøres ved sæsonskiftet, så peaks kan ikke sættes endnu."
   },

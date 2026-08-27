@@ -9,7 +9,8 @@ import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";
 import PoolPicker from "./PoolPicker.jsx";
 import StartListColumn from "./StartListColumn.jsx";
-import { Spinner, EmptyState, FlagIcon, LockIcon } from "../ui";
+import { reportLoadFailure } from "../../lib/actionTelemetry.js";
+import { Spinner, EmptyState, ErrorState, FlagIcon, LockIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -26,10 +27,25 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   const dayParam = Number.parseInt(params.get("day"), 10);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // #4165: samme tavse degradering som RaceHubBoard havde - begge fejl-grene
+  // returnerede uden state, og `!data?.enabled → null` tegnede en tom flade.
+  const [loadError, setLoadError] = useState(null); // { kind, status? } | null
+  // #4165: vælgerne (scope + pulje + dag) må OVERLEVE en fejlet hentning. Lå de
+  // kun i success-grenen, var et fejlet pulje- eller dagsskift en blindgyde: den
+  // eneste knap tilbage, "Prøv igen", gentager samme pool/day og dermed samme
+  // fejl, og et faneskift i hubben rydder hverken ?scope eller ?pool. Skallen
+  // holdes derfor uden for `data` og ryddes aldrig ved fejl (heller ikke af
+  // retry'ets setData(null)). { pools, ownPoolId, currentDay, timeline } | null
+  const [navShell, setNavShell] = useState(null);
 
   const load = useCallback(async (pool, day) => {
     const headers = await authHeaders();
-    if (!headers) { setLoading(false); return; }
+    if (!headers) {
+      setLoadError({ kind: "auth" });
+      reportLoadFailure("racehub_browse", { kind: "auth" });
+      setLoading(false);
+      return;
+    }
     const qs = new URLSearchParams();
     if (pool != null) qs.set("pool", pool);
     if (Number.isFinite(day)) qs.set("day", String(day));
@@ -38,19 +54,100 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
     const base = `${API}/api/races/distribution/browse`;
     try {
       const res = await fetch(qs.toString() ? `${base}?${qs}` : base, { headers });
-      if (res.ok) setData(await res.json());
-    } catch {
-      /* netværk — behold forrige tilstand */
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setLoadError({ kind: "http", status: res.status });
+        reportLoadFailure("racehub_browse", { kind: "http", status: res.status, reason: body?.error });
+        return;
+      }
+      // #4165: egen gren for parsningen - ellers tagges en malformet 200-krop
+      // som "network" og peger triagen mod spillerens forbindelse.
+      let json;
+      try {
+        json = await res.json();
+      } catch (cause) {
+        setLoadError({ kind: "parse", status: res.status });
+        reportLoadFailure("racehub_browse", { kind: "parse", status: res.status, cause });
+        return;
+      }
+      setData(json);
+      setNavShell({
+        pools: json.pools || [],
+        ownPoolId: json.ownPoolId ?? null,
+        currentDay: json.currentDay ?? null,
+        timeline: json.timeline ?? null,
+      });
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError({ kind: "network" });
+      reportLoadFailure("racehub_browse", { kind: "network", cause });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => { load(poolParam, Number.isFinite(dayParam) ? dayParam : undefined); }, [load, poolParam, dayParam]);
+
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError(null);
+    // #4165: spinner-gaten nedenfor er `loading && !data`, så et retry med gamle
+    // data i state ville springe BÅDE spinneren og fejl-grenen over og tegne den
+    // FORRIGE puljes startlister under den nye markering - præcis den løgn
+    // kommentaren ved fejl-grenen siger den undgår. Ryd dem, så retry'et viser
+    // spinneren indtil det nye svar lander.
+    setData(null);
+    load(poolParam, Number.isFinite(dayParam) ? dayParam : undefined);
+  };
 
   const setDay = (d) => { params.set("day", String(d)); setParams(params, { replace: true }); };
   const setPool = (id) => { params.set("pool", String(id)); params.delete("day"); setParams(params, { replace: true }); };
 
   if (loading && !data) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
+  // #4165: fejl FØR flag-grenen - ellers tegnes en fejlet hentning som "slukket".
+  // Vises også når der ligger gamle data: en fejlet pulje-/dagskift ville ellers
+  // efterlade den FORRIGE puljes startlister under den nye markering, hvilket er
+  // en løgn om hvad manageren kigger på.
+  if (loadError) {
+    // #4165: scope- og pulje-vælgerne bliver stående. Uden dem var fejl-fladen en
+    // blindgyde - kun "Prøv igen", som gentager samme pulje og samme dag. Puljen
+    // der markeres er den manageren BAD om (fra ?pool), ikke den forrige der
+    // lykkedes: markeringen skal matche URL'en, mens fejlbeskeden forklarer at
+    // dens indhold ikke kunne hentes.
+    const shellPools = navShell?.pools || [];
+    const requestedPool =
+      (poolParam != null ? shellPools.find((p) => String(p.id) === String(poolParam)) : null)
+      ?? shellPools.find((p) => p.id === navShell?.ownPoolId)
+      ?? null;
+    const shellOwnTier = shellPools.find((p) => p.id === navShell?.ownPoolId)?.tier ?? null;
+    const navDay = Number.isFinite(dayParam) ? dayParam : (navShell?.currentDay ?? 1);
+    return (
+      <div>
+        <ContextBand
+          scope={scope}
+          day={navDay}
+          currentDay={navShell?.currentDay ?? null}
+          timeline={navShell?.timeline ?? null}
+          onScopeChange={onScopeChange}
+          onDayChange={setDay}
+        />
+        <PoolPicker
+          pools={shellPools}
+          selected={requestedPool}
+          ownPoolId={navShell?.ownPoolId ?? null}
+          lockTier={scope === "division" ? shellOwnTier : null}
+          onSelect={setPool}
+        />
+        <div role="alert" className="mx-auto max-w-xl py-6">
+          <ErrorState
+            title={t("browse.error.title")}
+            description={loadError.kind === "auth" ? t("browse.error.session") : t("browse.error.body")}
+            action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("browse.error.retry")}</Button>}
+          />
+        </div>
+      </div>
+    );
+  }
   if (!data?.enabled) return null;
 
   const day = Number.isFinite(dayParam) ? dayParam : (data.focusDay ?? data.currentDay);
