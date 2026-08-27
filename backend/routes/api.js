@@ -192,7 +192,7 @@ import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibi
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
-import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
+import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
@@ -417,6 +417,7 @@ import {
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
+import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
@@ -4294,6 +4295,159 @@ router.get("/races/calendar", requireAuth, cached({
     res.status(500).json({ error: err.message });
   }
 }));
+
+// Holdets gemte udtagelser (rider_id + race_role) i en liste egen-pulje-løb. Chunket
+// (#1307-mønster, selectInChunks) — en fuld sæson kan runde IN_CHUNK_SIZE=200 løb.
+async function fetchTeamRaceEntriesWithRider(supabase, teamId, raceIds) {
+  if (!raceIds.length) return [];
+  const { data, error } = await selectInChunks({
+    supabase, table: "race_entries", columns: "race_id, rider_id, race_role",
+    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("team_id", teamId),
+  });
+  if (error) throw new Error(`race_entries (selection/season): ${error.message}`);
+  return data;
+}
+
+// #1146: GET /api/races/selection/season — read-only aggregat til sæsonmatrixen
+// (rytter × løbsdag) i /planning?tab=selection&view=season. Egen-pulje-løb som
+// løbsdags-spænd (raceGameDaySpan-semantikken — HARD INVARIANT: display kommer
+// KUN herfra, ALDRIG fra bindingWindow, som falder tilbage til CET-ordinaler og
+// ville vise ~20000 i UI'et), holdets gemte udtagelser i disse løb, roster m.
+// evner + rute-match-demand-vektor (aggregateDemandVector — samme funktion som
+// peak-plans/board bruger, så "Route match"-linsen (frontend/src/lib/suitability.js)
+// regner på PRÆCIS samme grundlag), trupstørrelse pr. løb (selectionSizeForRace)
+// og en game_day→dato-mapping for date-bånd-headeren (buildGameDayDateMap, dækker
+// ALLE puljers schedule — som kalenderen — så en hviledag i EGEN pulje stadig kan
+// vise en dato, hvis en anden puljes løb kører den game_day).
+//
+// Read-only: gem sker via PUT /races/selection/bulk (#4316, endnu ikke merged —
+// se PR-beskrivelsen). ?season_number= browser en anden sæson read-only (samme
+// mønster som kalenderen/#4102).
+router.get("/races/selection/season", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    const seasonNumberRaw = req.query?.season_number;
+    const seasonNumber = Number(seasonNumberRaw);
+    const wantsExplicitSeason =
+      Number.isFinite(seasonNumber) && seasonNumberRaw !== undefined && seasonNumberRaw !== "";
+    const seasonQuery = supabase.from("seasons").select("id, number");
+    const [{ data: season, error: seasonErr }, { data: activeSeasonRow, error: activeErr }] = await Promise.all([
+      wantsExplicitSeason ? seasonQuery.eq("number", seasonNumber).maybeSingle() : seasonQuery.eq("status", "active").maybeSingle(),
+      supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
+    ]);
+    if (seasonErr) throw new Error(`seasons (selection/season): ${seasonErr.message}`);
+    if (activeErr) throw new Error(`seasons (active check, selection/season): ${activeErr.message}`);
+    const ownPoolId = req.team?.league_division_id ?? null;
+    if (!season) {
+      return res.json({ enabled: true, season: null, ownPoolId, readOnly: false, races: [], riders: [], entries: [], dayDates: [] });
+    }
+    const readOnly = activeSeasonRow != null && season.number !== activeSeasonRow.number;
+
+    const { data: raceRows, error: racesErr } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id")
+      .eq("season_id", season.id);
+    if (racesErr) throw new Error(`races (selection/season): ${racesErr.message}`);
+    const allRaceIds = (raceRows || []).map((r) => r.id);
+
+    // ALLE puljers schedule (som kalenderen) — kun sådan kan en hviledag i egen pulje
+    // få en dato, når det er en ANDEN puljes løb der kører netop den game_day.
+    const scheduleRows = await fetchAllScheduleRowsWithGameDay(supabase, allRaceIds);
+    const dayDateMap = buildGameDayDateMap(scheduleRows);
+    const scheduleByRace = new Map();
+    for (const row of scheduleRows) {
+      if (!scheduleByRace.has(row.race_id)) scheduleByRace.set(row.race_id, []);
+      scheduleByRace.get(row.race_id).push(row);
+    }
+
+    const ownRaceRows = (raceRows || []).filter((r) => ownPoolId != null && r.league_division_id === ownPoolId);
+    const races = [];
+    for (const race of ownRaceRows) {
+      const rows = scheduleByRace.get(race.id) || [];
+      // HARD INVARIANT (#1146 kontrakt-punkt 2): display-tal KUN fra raceGameDaySpan.
+      // Et delvist-backfillet løb (mangler game_day på nogen rækker) → null → skjules,
+      // ALDRIG et bindingWindow-fallback-tal (~20000 CET-ordinal) i UI'et.
+      const span = raceGameDaySpan(rows);
+      if (!span) continue;
+      const scheduledDays = new Set(rows.map((r) => r.game_day).filter((d) => Number.isFinite(d)));
+      // GT-hviledage (#3470/#4217): huller i spændet uden egen etape den dag.
+      const restGameDays = [];
+      if (span.end > span.start) {
+        for (let gd = span.start; gd <= span.end; gd++) if (!scheduledDays.has(gd)) restGameDays.push(gd);
+      }
+      const sizeRule = selectionSizeForRace(race);
+      races.push({
+        id: race.id, name: race.name, raceClass: race.race_class, stages: race.stages ?? 1,
+        status: race.status, stagesCompleted: race.stages_completed ?? 0,
+        gameDayStart: span.start, gameDayEnd: span.end, restGameDays,
+        sizeMin: sizeRule.min, sizeMax: sizeRule.max,
+      });
+    }
+    races.sort((a, b) => a.gameDayStart - b.gameDayStart || a.name.localeCompare(b.name));
+    const ownRaceIds = races.map((r) => r.id);
+
+    // Roster + evner (samme kilder som getSelectionContext, raceSelection.js) +
+    // rute-match-demand pr. løb (aggregateDemandVector — delt med peak-plans/board).
+    const { data: teamRidersRaw, error: ridersErr } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type").eq("team_id", req.team.id)
+    );
+    if (ridersErr) throw new Error(`riders (selection/season): ${ridersErr.message}`);
+    const teamRiders = teamRidersRaw || [];
+    const riderIds = teamRiders.map((r) => r.id);
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const [abilitiesRes, conditionRes, profileRows] = await Promise.all([
+      riderIds.length ? supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIds) : Promise.resolve({ data: [] }),
+      riderIds.length ? supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", riderIds) : Promise.resolve({ data: [] }),
+      fetchAllStageProfiles(supabase, ownRaceIds, "race_id, stage_number, demand_vector"),
+    ]);
+    if (abilitiesRes.error) throw new Error(`rider_derived_abilities (selection/season): ${abilitiesRes.error.message}`);
+    if (conditionRes.error) throw new Error(`rider_condition (selection/season): ${conditionRes.error.message}`);
+    const abilityByRider = new Map((abilitiesRes.data || []).map((a) => [a.rider_id, a]));
+    const conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
+    const todayStr = copenhagenDateString();
+
+    const profByRace = new Map();
+    for (const row of profileRows) {
+      if (!profByRace.has(row.race_id)) profByRace.set(row.race_id, []);
+      profByRace.get(row.race_id).push(row);
+    }
+    for (const race of races) {
+      race.demandVector = aggregateDemandVector(profByRace.get(race.id) || []);
+    }
+
+    const riders = teamRiders.map((r) => {
+      const ab = abilityByRider.get(r.id);
+      return {
+        id: r.id,
+        name: [r.firstname, r.lastname].filter(Boolean).join(" "),
+        primaryType: r.primary_type ?? null,
+        secondaryType: r.secondary_type ?? null,
+        abilities: ab ? Object.fromEntries(RACE_SIM_ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
+        injured: isRiderInjured(conditionByRider.get(r.id)?.injured_until ?? null, todayStr),
+      };
+    });
+
+    const entries = await fetchTeamRaceEntriesWithRider(supabase, req.team.id, ownRaceIds);
+
+    res.json({
+      enabled: true,
+      season: { id: season.id, number: season.number },
+      ownPoolId,
+      readOnly,
+      races,
+      riders,
+      entries: entries.map((e) => ({ raceId: e.race_id, riderId: e.rider_id, raceRole: e.race_role })),
+      dayDates: [...dayDateMap.entries()].map(([gameDay, date]) => ({ gameDay, date })),
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Race Hub Fase 1 — GET /api/races/distribution?day=N
 // Aggregat-læsning til trup-fordeling-board'et: dagens egne-pulje overlap-løb som
