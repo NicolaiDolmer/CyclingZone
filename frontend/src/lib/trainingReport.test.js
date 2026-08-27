@@ -5,6 +5,9 @@ import {
   todayGainTotal,
   seasonAbilityGains, abilityReceipt, focusAbilityReceipt, abilityYesterdayPct,
   yesterdaySummary, riderDayStories,
+  seasonReceiptState, seasonReceiptView, SEASON_RECEIPT_NOTE_KEY,
+  SEASON_RECEIPT_UNKNOWN, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_RUNNING,
+  SEASON_RECEIPT_NO_DAYS,
   PEAK_FORM_THRESHOLD, NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
 
@@ -165,6 +168,98 @@ test("seasonAbilityGains: ingen sæsonstart → null, ikke et opfundet nul", () 
 test("seasonAbilityGains: rytter uden linje i kørslen giver tom kvittering, ikke fejl", () => {
   const runs = [{ tick_date: "2026-08-02", report: { riders: [{ rider_id: "anden", gains: { sprint: 5 } }] } }];
   assert.deepEqual(seasonAbilityGains(runs, WEBER, SEASON_2_START), {});
+});
+
+// ── #4293: kvitteringens tredje tilstand ───────────────────────────────────────
+//
+// Prod 27/8: sæson 3 stod som `active` med start_date 2026-08-28, altså dagen
+// EFTER. Sæson 2 sluttede 23/8, så 24.-27/8 hørte til ingen sæson, og
+// træningen kørte videre (354/357/359 kørsler de tre dage). Kvitteringen kendte
+// kun to tilstande og viste derfor "+0" på hver evne under overskriften
+// "Siden 28. aug".
+
+test("seasonReceiptState: aktiv sæson med start_date i FREMTIDEN er ikke begyndt (#4293)", () => {
+  assert.equal(seasonReceiptState("2026-08-28", "2026-08-27"), SEASON_RECEIPT_NOT_STARTED);
+});
+
+test("seasonReceiptState: sæsonens FØRSTE dag er i gang (>=, ikke >)", () => {
+  // Samme grænse som seasonAbilityGains' tick_date >= seasonStart, så badgen og
+  // tallet aldrig kan være uenige om hvorvidt dag 1 tæller.
+  assert.equal(seasonReceiptState("2026-08-28", "2026-08-28"), SEASON_RECEIPT_RUNNING);
+});
+
+test("seasonReceiptState: en sæson der kører er i gang", () => {
+  assert.equal(seasonReceiptState("2026-07-27", "2026-08-27"), SEASON_RECEIPT_RUNNING);
+});
+
+test("seasonReceiptState: ingen sæson hentet er ukendt, ikke 'i gang'", () => {
+  assert.equal(seasonReceiptState(null, "2026-08-27"), SEASON_RECEIPT_UNKNOWN);
+  assert.equal(seasonReceiptState(undefined, "2026-08-27"), SEASON_RECEIPT_UNKNOWN);
+  assert.equal(seasonReceiptState("", "2026-08-27"), SEASON_RECEIPT_UNKNOWN);
+});
+
+test("seasonReceiptState: ubrugelig dato falder til ukendt, aldrig til et tal", () => {
+  // Den tvivlsomme tilstand skal vise "—", ikke et opfundet "+0".
+  assert.equal(seasonReceiptState("2026-08-28", null), SEASON_RECEIPT_UNKNOWN);
+  assert.equal(seasonReceiptState("2026-08-28", "i morgen"), SEASON_RECEIPT_UNKNOWN);
+  assert.equal(seasonReceiptState("28-08-2026", "2026-08-27"), SEASON_RECEIPT_UNKNOWN);
+});
+
+test("seasonReceiptView: sæsonens første morgen er 'ingen dage endnu', ikke et målt +0 (#4293)", () => {
+  // Fra sæsonstartsdagens midnat til dagens tick har kørt er der nul kørsler
+  // inde i sæsonen. Uden en egen tilstand ville hver evne stå på "+0" under
+  // "Siden 28. aug" — pixel for pixel den visning der blev rapporteret.
+  const dateState = seasonReceiptState("2026-08-28", "2026-08-28");
+  assert.equal(dateState, SEASON_RECEIPT_RUNNING);
+  assert.equal(seasonReceiptView(dateState, []), SEASON_RECEIPT_NO_DAYS);
+});
+
+test("seasonReceiptView: en sæson med mindst én træningsdag er 'i gang'", () => {
+  const runs = [{ tick_date: "2026-08-28", report: { riders: [] } }];
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_RUNNING, runs), SEASON_RECEIPT_RUNNING);
+});
+
+test("seasonReceiptView: en fejlet hentning er ukendt, ikke 'ingen dage endnu'", () => {
+  // Nul kørsler fordi vi ikke FIK noget svar er ikke et nul vi har målt.
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_RUNNING, null), SEASON_RECEIPT_UNKNOWN);
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_RUNNING, undefined), SEASON_RECEIPT_UNKNOWN);
+});
+
+test("seasonReceiptView: dato-tilstandene går uændret igennem", () => {
+  // En sæson der ikke er begyndt har pr. definition nul dage; den skal stadig
+  // sige "starter <dato>", ikke "ingen træningsdage endnu".
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_NOT_STARTED, []), SEASON_RECEIPT_NOT_STARTED);
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_NOT_STARTED, null), SEASON_RECEIPT_NOT_STARTED);
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_UNKNOWN, []), SEASON_RECEIPT_UNKNOWN);
+});
+
+test("SEASON_RECEIPT_NOTE_KEY: hver tilstand har sin egen fodnote (#4293)", () => {
+  // Ét sted, så rytterprofilen og /training ikke kan sige forskellige ting.
+  const states = [
+    SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NO_DAYS,
+    SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_UNKNOWN,
+  ];
+  for (const s of states) assert.equal(typeof SEASON_RECEIPT_NOTE_KEY[s], "string", `${s} mangler en fodnote`);
+  assert.equal(new Set(states.map((s) => SEASON_RECEIPT_NOTE_KEY[s])).size, states.length);
+});
+
+test("abilityReceipt: en sæson der ikke er begyndt giver '—', ikke et målt +0 (#4293)", () => {
+  // Sådan som fladerne kalder den: seasonGains = null når tilstanden ikke er
+  // "running", uanset at der ligger kørsler i vinduet.
+  const notStarted = seasonReceiptState("2026-08-28", "2026-08-27");
+  const seasonGains = notStarted === SEASON_RECEIPT_RUNNING
+    ? seasonAbilityGains(WEBER_RUNS, WEBER, "2026-08-28")
+    : null;
+  const rows = abilityReceipt(["durability", "sprint"], {
+    abilities: { durability: 71, sprint: 64 },
+    progress: { durability: 0.4, sprint: 0.1 },
+    seasonGains,
+  });
+  assert.deepEqual(rows.map((r) => r.gained), [null, null]);
+  // Nu-værdien og fremdriften er stadig sande og bliver stående: de bærer den
+  // træning interregnummet gav.
+  assert.deepEqual(rows.map((r) => r.value), [71, 64]);
+  assert.deepEqual(rows.map((r) => r.pct), [40, 10]);
 });
 
 test("abilityReceipt: nu, sæson og fremdrift pr. evne (Weber, målt i prod 14/8)", () => {

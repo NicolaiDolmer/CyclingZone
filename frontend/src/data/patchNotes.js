@@ -21,6 +21,27 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.204",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training: the season column no longer shows +0 before the season starts",
+          "body": "Between two seasons the new season is set up before it begins, and the receipt read that as zero points gained. It now says when the season starts, and training before then still counts toward each rider's next point. A new season's count starts empty and fills in from its first training day."
+        },
+        "da": {
+          "title": "Træning: sæson-kolonnen viser ikke længere +0 før sæsonen er startet",
+          "body": "Mellem to sæsoner er den nye sæson sat op før den er begyndt, og kvitteringen læste det som nul point opnået. Den siger nu hvornår sæsonen starter, og træning inden da tæller stadig med mod hver rytters næste point. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
+        },
+        "refs": [4293]
+      }
+    ]
+  },
+  {
     "version": "7.200",
     "date": "2026-08-27",
     "label": "Beta",
