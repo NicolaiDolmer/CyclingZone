@@ -236,6 +236,11 @@ køre. Bruger du preview-serveren, så verificér at den serverer worktree'et og
 - **13 worktrees** ligger tilbage, heraf 7 på branches merged og slettet på origin. Oprydning blev blokeret
   af auto-mode i dag; den kræver ejerens tilladelse eller hans egen hånd.
 - **`MEMORY.md` står på 3171 tokens** mod et loft på 3200. Nye HOT-entries kræver en demotering først.
+- **To ops-issues fra 27/8 der ville have gjort dagen markant kortere, begge små indgreb:**
+  [#4308](https://github.com/NicolaiDolmer/CyclingZone/issues/4308) patch notes brækker enhver parallel
+  PR-bølge (samme konflikt løst fire gange, og gaten fanger ikke en syntaksfejl i den fil den vogter) og
+  [#4309](https://github.com/NicolaiDolmer/CyclingZone/issues/4309) `frontend-smoke` er required, tager
+  20 minutter og flaker (19 CI-kørsler på én dag). **Overvej at tage dem FØR næste bølge**, ikke efter.
 - **`frontend-smoke` er flaky og er en required check.** Den fejlede 27/8 på #4300 med
   `useForumHighlights failed: Load failed`, en netværksfejl i testmiljøet på en hook PR'en slet ikke rører.
   Verificér altid årsagen før du kalder den flaky, og gen-kør så jobbet i stedet for at ændre kode.
