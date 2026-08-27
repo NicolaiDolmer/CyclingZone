@@ -68,8 +68,13 @@ export async function fetchDayInputs(supabase, dateStr) {
   );
 
   if (runs.length === 0) {
+    // #4232: feltnavnene her SKAL matche normal-grenens return nederst i
+    // funktionen. Den tomme gren hed feltet `incidentObservations`, mens
+    // runBalanceDriftWatch læser `inputs.incidentObservationsInput` — på hver
+    // løbsfri dag (sæsonpause) blev det `undefined.map()`, og vagten crashede
+    // FØR computeDayMetrics, så dagens række aldrig blev skrevet.
     return {
-      observations: [], incidentObservations: [],
+      observations: [], incidentObservationsInput: [],
       winsByRider: new Map(), startsByRider: new Map(),
       jourSansHits: 0, riderStageCount: 0, breakawayWins: 0, breakawayEligibleStages: 0,
       skippedNullRiderRows: 0,
