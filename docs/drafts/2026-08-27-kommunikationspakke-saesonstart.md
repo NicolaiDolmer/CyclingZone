@@ -44,57 +44,33 @@ Et halvt løfte du kan holde er bedre end et helt du må bryde i morgen.
 
 > **The season 3 calendar is live. Go ahead and pick your teams.**
 >
-> The rebuild is done and the calendar is stable. Nothing more is being regenerated, so
-> anything you set from now on stays. Sorry for the wait, and for the silence in here since
-> last night.
+> Sorry for the silence in here since last night.
 >
-> One thing worth knowing before you plan Division 1. A Grand Tour holds your rider for the
-> whole race, rest days included. Each of the three has two rest days in the middle, and six
-> one day races fall on exactly those days: Klassieker van Harelbeke, Klassieker van Brugge,
-> La Classique Bretonne, De Vlaamse Ronde, Tour de la Loire and La Classica d'Autunno. A rider
-> inside the Tour, Giro or Vuelta cannot start any of them. That is deliberate, the same way it
-> works in real racing, but you cannot see it on the race card yet, so I am saying it here. If
-> you are weighing a Grand Tour against the classics around it, those six belong on the Grand
-> Tour side of the scale.
+> The calendar has not been touched since 23:38 yesterday. Everything picked since then has stuck: 34 teams have made 1,815 selections, the most recent a few minutes ago. It is safe to plan.
 >
-> Two things worth knowing before Friday:
+> **Form peaks: set yours again.** The rebuild left 812 peak plans pointing at races that no longer exist, and the ones already under way could not be removed. All 812 are cleared.
 >
-> Form peaks. Rebuilding the calendar left 812 peak plans pointing at races that no longer
-> exist, and the ones already under way could not be removed. They are all cleared now, so
-> set your peaks again.
+> **Division 1, worth knowing before you plan.** A Grand Tour holds your rider for the whole race, rest days included. Each of the three has two rest days, and six one day races fall on exactly those days: Klassieker van Harelbeke, Klassieker van Brugge, La Classique Bretonne, De Vlaamse Ronde, Tour de la Loire and La Classica d'Autunno. A rider inside the Giro, Tour or Vuelta cannot start any of them. That is deliberate, but the race card does not show it yet.
 >
-> If you do not get around to picking. A team that has not touched a race still gets a squad
-> picked automatically when the race runs, so you will not miss a start. The one exception is
-> deliberate: if you used Clear day or Clear all on a race, it stays empty. Clearing is treated
-> as a decision, not as an empty slot, and it is undone the moment you pick a squad yourself.
+> **If you do not get around to picking.** A race you have not touched gets a squad chosen automatically when it runs, so you will not miss a start. If you used Clear day or Clear all, that race stays empty until you pick it yourself. That is on purpose.
+>
+> Season 3 runs Friday 28 August to Sunday 27 September.
 
 ### Udkast (DA)
 
 > **Sæson 3-kalenderen er live. Sæt endelig hold.**
 >
-> Ombygningen er færdig og kalenderen er stabil. Der bliver ikke genereret mere, så det du
-> sætter fra nu af bliver stående. Undskyld ventetiden, og undskyld stilheden herinde siden
-> i går aftes.
+> Undskyld stilheden herinde siden i går aftes.
 >
-> Én ting er værd at vide inden du planlægger 1. division. En Grand Tour binder din rytter i
-> hele løbet, hviledagene med. De tre har hver to hviledage midt i løbet, og der ligger seks
-> endagsløb på præcis de dage: Klassieker van Harelbeke, Klassieker van Brugge, La Classique
-> Bretonne, De Vlaamse Ronde, Tour de la Loire og La Classica d'Autunno. En rytter der er inde
-> i Touren, Giroen eller Vueltaen kan ikke stille op i nogen af dem. Det er med vilje, ligesom
-> i virkelighedens cykelsport, men det kan man ikke se på løbskortet endnu, så jeg siger det
-> her. Sidder du og vejer en Grand Tour op mod klassikerne omkring den, hører de seks til på
-> Grand Tour-siden af vægten.
+> Kalenderen er ikke rørt siden kl. 23.38 i går. Alt hvad der er sat siden, står stadig: 34 hold har lavet 1.815 udtagelser, den seneste for få minutter siden. Det er sikkert at planlægge.
 >
-> To ting det er værd at vide inden fredag:
+> **Formpeaks: sæt dine igen.** Ombygningen efterlod 812 formplaner der pegede på løb der ikke findes mere, og dem der allerede var i gang kunne ikke fjernes. Alle 812 er ryddet.
 >
-> Formpeaks. Kalender-ombygningen efterlod 812 formplaner der pegede på løb der ikke findes
-> mere, og dem der allerede var i gang kunne ikke fjernes. De er ryddet nu, så sæt dine peaks
-> igen.
+> **1. division, værd at vide inden du planlægger.** En Grand Tour binder din rytter i hele løbet, hviledagene med. De tre har hver to hviledage, og der ligger seks endagsløb på præcis de dage: Klassieker van Harelbeke, Klassieker van Brugge, La Classique Bretonne, De Vlaamse Ronde, Tour de la Loire og La Classica d'Autunno. En rytter der er inde i Giroen, Touren eller Vueltaen kan ikke stille op i nogen af dem. Det er med vilje, men løbskortet viser det ikke endnu.
 >
-> Hvis du ikke når at sætte hold. Et hold der ikke har rørt et løb får stadig sat et hold
-> automatisk når løbet køres, så du misser ikke en start. Den ene undtagelse er med vilje: har
-> du brugt Ryd dag eller Ryd alt på et løb, bliver det stående tomt. En rydning er en
-> beslutning, ikke et tomt felt, og den ophæves i samme øjeblik du selv udtager.
+> **Hvis du ikke når at sætte hold.** Et løb du ikke har rørt får sat et hold automatisk når det køres, så du misser ikke en start. Har du brugt Ryd dag eller Ryd alt, bliver det løb stående tomt indtil du selv udtager. Det er med vilje.
+>
+> Sæson 3 kører fredag 28. august til søndag 27. september.
 
 ---
 
