@@ -28,6 +28,8 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "topic": "Planning",
+        "en": {
           "title": "Form peaks left over from the old calendar have been cleared",
           "body": "Rebuilding the season 3 calendar left 812 peak plans pointing at races that no longer exist, and ones already under way could not be removed. All are gone, so set your peaks again. A peak plan is now deleted with its race."
         },
