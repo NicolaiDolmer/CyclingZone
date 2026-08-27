@@ -283,7 +283,11 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     withdrawnByRace.get(w.race_id).add(w.team_id);
   }
 
-  // 7b. #2599: eksplicitte "ryd"-markeringer (race_entry_clears). Spilleren har trykket
+  // 7b. #2599: eksplicitte "ryd"-markeringer (race_entry_clears). Semantikken er skrevet
+  // ét sted: backend/lib/raceEntryClears.js — læs den FØR du ændrer her. Løbs-tidens
+  // autofyld (raceRunner.fillMissingTeamEntries) håndhæver den samme regel via
+  // loadClearedTeamIds; de to stier skal blive ved med at være enige (#4200).
+  // Spilleren har trykket
   // "Ryd dag"/"Ryd alt" og bekræftet — generatoren må ALDRIG fylde den (race,team)-enhed
   // ud igen, mirror afmeldings-mønsteret ovenfor, men pr. (race,team) i stedet for globalt
   // pr. race (holdet deltager stadig, kun auto-udtagelsen er sat på pause). En efterfølgende

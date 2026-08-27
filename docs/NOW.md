@@ -4,15 +4,13 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Kør S3-regenereringen.** Koden er merged; kun anvendelsen udestår. Køreplan: [`docs/runbooks/2026-08-27-s3-kalender-regenerering.md`](runbooks/2026-08-27-s3-kalender-regenerering.md) · session-prompt: `sessions/2026-08-27-s3-regenerering-session-prompt.md`. **Discord-besked FØRST**, derefter ejer-GO pr. skridt.
+> **🎯 Next action:** **Ejerens fredag-morgen-rutine (28/8, sæsonstart kl. 11).** Rapport + de 3 beslutninger: [`docs/audits/2026-08-28-natsession-rapport.md`](audits/2026-08-28-natsession-rapport.md). Rækkefølge: review+merge **PR #4284** (din egen) → **#4285** (#4200) → **#4286** (#4233: D4-A på 25) → apply #4284s migration → §6-tjeklisten (query 3 **kl. ~10:15**) → **post svar-udkastene i Discord** (`docs/drafts/2026-08-27-4261-svarudkast-loeb-som-traening.md`). Også åben: **#4291** (rå i18n-nøgler, rører spillertekst).
 
-> **🔴 REGENERERINGEN ER BLOKERET AF TO VÆRN.** Sæson 3 står `active` (scripts kræver `upcoming`), og wipens gameplay-port stopper på **1.066 udtagelser — 991 spillernes egne fra 29 hold**, seneste 26/8 kl. 20:30. Begge skal åbnes eksplicit af ejeren. **#4229: statusskiftet gav 4 timers nedetid 25/8.** Fallback uden wipe: in-place `finale_type`-opdatering (retter de 144 bjergetaper, koster intet, retter ikke løbsdagene).
+> **✅ NATSESSION 27/8 (01:10-02:30): 5 PR'er, 0 prod-mutationer.** Prod read-only kl. 02:10: overlap pr. løbsdag **0**, binding-sanity **0/0**, alle motor-flag **on** (`race_day_development` off). 14 af 15 puljer på 24; **D4-A på 25** (fikset i #4286). Assistenten er pull, ikke push: af 24.724 S3-udtagelser ligger 24.615 på AI-hold og kun 109 på 3 menneskehold, alle player-initierede. **Nye fund:** D1 har 0 brosten-i-etapeløb (bånd ≥1) · de 3 GT'er kører 17-18 etaper og er derfor **umålte** (**#4288**, båndet er forældet, ikke kalenderen) · #4282+#4146 er begge **vagt-fejl**, 0 reelle brud. **Ejer-beslutning venter:** et hold er transfer-frosset af renter alene (#4282). 9 done-men-åbne issues lukket. **Merget i nat:** #4287 (Hjælp) · #4289 (CI-vagter) · #4290 (kalender-vagter).
 
-> **📅 S3 STARTER FREDAG 28/8 KL. 11** → søn 27/9. 31 løbsdage, løb hver dag i alle fire divisioner. `stage_scheduler_enabled` og `auto_entry_generator_enabled` står **off** — gen-tænding er ejer-only, allersidst.
+> **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`); 237 form-peaks bevaret m. `target_race_id=null`. Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
 
-> **✅ #4236 + #4272 + #4273 + #4275 MERGED (26/8).** Backend 7181/7181, scorecard exit 0, e2e grøn. **Men IKKE anvendt på S3.** Målt live 26/8 21:20: `mountain` 144 af 225 slutter **nedad** (64 %) · 61 løbsdage over flere datoer (værste 7) · 8 løb med hul.
-
-> **✅ #4277 MERGED + ANVENDT (26/8, ddf70da62).** Løbsdags-udvikling har eget flag. Prod-verificeret: `race_day_development_enabled`=**off**, `race_day_engine_enabled`=**on** (D3+D4 bevaret). S3 = S2's løbsdags-regler; retur i S4. **Løs ende:** `audit` (league-size) rød på main + alle branches — ikke required, reelt dødt værn.
+> **⚠️ Invariant-fund (ikke kalender):** #4184 udvidet (typelister + monument-værn forældet efter ophævelsen), #4146 (24 hold over trupgrænse), **#4282 NY** (2 hold over gældsloft). #4204 (20 min-kørsel) bekræftet.
 
 > **⚠️ TO KATALOG-LOFTER + ÉT ÅBENT VALG (#4272).** D1's brosten nåede 2,6→**4,5 %** (6 % kræver flere brostens-løb; ved 8 reservationer falder D3 under sit gulv). D4's enkeltstart 4,8→**8,1 %** (kun 3 fritstående ITT-løb i Class1/Class2). **Uløst:** D4 trækker 5 af 6 `summit_tour`, hver med 2 garanterede højbjergs-etaper → 16 % højbjerg mod D1's 8 %, og samlet opad 41,9 %. Kræver arketype-**loft** (reservationer er gulve) eller flere flade Class1/Class2-etapeløb. **Spildesign-valg, afventer ejer.** **To regenereringer er forbudt.**
 
@@ -31,8 +29,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **📋 SESSION 26/8 (aften):** #4272 bygget, #4273 løst (fixturen valgte aldrig en fritstående ITT, så hvert træk udtømte gen-trækkene — forsyningen hævet, testen uændret). `descent_finale_min` re-deriveret (D2 10→5, D4 4→3): ejerens bånd gjorde D2's gulv matematisk uopnåeligt, og 20 af 400 sæsoner udtømte re-drawet — nu 0. Patch note 7.194. **Løse worktrees sikret+pushet** (#4030 296 linjer, #3709 236 linjer). Rest: **#4274** (dev-script skrev rapport i et andet worktree).
-
-> **🤖 Working agent: Claude Code (hoved-checkout) kører S3-regenereringen, startet 26/8 kl. 23:11.** Andre sessioner: rør IKKE kalenderen, sæson-status eller udtagelser.
+> **🤖 Ingen aktiv session.**
 
 _Historik i git-log, issue-tråde + docs/audits/._

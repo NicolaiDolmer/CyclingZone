@@ -1321,6 +1321,22 @@
       "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
       "a": "Når alle evner i rytterens valgte fokus har nået deres livstidsloft, står hver linje i det fokus som \"færdig\", og mere træning i det fokus giver intet ekstra: dagens gevinst beregnes ud fra afstanden mellem nuværende evne og loftet, og ved nul afstand forbliver den nul uanset intensitet. Kører du Normal eller Hård på en færdigudviklet rytter, bygger det stadig Træthed op, og Hård har stadig samme skaderisiko som for enhver anden rytter, for ingen evnegevinst til gengæld, så Hvile er det sikre valg: det fjerner Træthed i stedet for at bygge den op. Rytterens fald efter toppen omkring 28 år kører under alle omstændigheder med en fast, alders-bestemt hastighed ved hvert sæsonskifte, uanset hvilken intensitet du trænede med, så hverken træning eller Hvile fremskynder eller bremser det. Har rytteren stadig plads i et andet fokus, er det at skifte fokus det bedre valg frem for hvile."
     },
+    "raceDayIntensityFaq": {
+      "q": "Betyder min valgte intensitet stadig noget den dag min rytter kører løb?",
+      "a": "Ja, nøjagtig som på en almindelig dag. Løbet ændrer ikke hvad dagens pas giver: Hvile giver intet, Hård giver mest udbytte og mest træthed (plus skaderisiko når trætheden er høj), præcis som på en dag uden løb. Løbet er en selvstændig belastning oven i: dets egen træthed lægges oven på det pas allerede byggede, så en rytter der både kører løb og træner hårdt samme dag, bærer begge dele."
+    },
+    "raceDayProfileMatchFaq": {
+      "q": "Skal min rytters træningspas matche løbets terræn (fladt, bjerge, brosten)?",
+      "a": "Nej, ikke lige nu. Sæson 3 kører på sæson 2's løbsdags-regler (patch 7.196): et løb giver ikke sin egen evne-belønning, så der er intet for et pas at \"matche\". Træn hver rytter mod det han har brug for på sigt. En model hvor pas og etapeprofil hænger sammen er planlagt til sæson 4, men den er ikke låst endnu, så byg ikke din plan omkring en bestemt udgave af den."
+    },
+    "raceDayAcademyFaq": {
+      "q": "Kan det betale sig at køre løb med unge akademi-talenter, eller er akademi-træning altid bedre?",
+      "a": "Det koster ingen evneudvikling i sæson 3 at køre løb: dit talent får stadig præcis det pas du planlagde den dag, uanset om han kører løb eller ej. Den reelle pris er træthed: et løb lægger sin egen belastning oven i træningen, og et talent der ofte kører løb, har brug for lettere pas og rigtige hviledage for at holde sig under skadetærsklen, ligesom enhver senior-rytter. Der er ingen akademi-specifik straf for at køre løb, så afvejningen handler om at styre trætheden, ikke om tabt udvikling."
+    },
+    "flatCobblesHardTrainingFaq": {
+      "q": "Hvorfor kan jeg ikke træne Fladt eller Brosten med Hård intensitet?",
+      "a": "Det er en bevidst del af designet, at ingen Hård-session rammer de to evner i dag. De tre Hårde sessioner er Intervaller (Bjerg, Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Fladt trænes af Tempo (Normal) og Aero (Let); Brosten kun af Teknik (Let). Der findes i dag ingen måde at presse nogen af de to på Hård."
+    },
     "scoutNetworkOwnRidersFaq": {
       "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
       "a": "Ja, på ét bestemt punkt. Spejder-missioner omfatter aldrig dine egne ryttere: en missions kandidat-pulje søger kun i andre holds og kontraktfrie ryttere, og en enkelt-rytter-undersøgelse koster og tager det samme uanset din spejders rating. Men præcisionen af de potentiale-intervaller du ser, følger din chefscout: han kender din egen trup fuldt ud, så hans rating afgør hvor smalle potentiale-intervallet og loft-båndene pr. ryttertype er på dine egne ryttere, nøjagtig som for en fuldt scoutet rival. Ingen spejder melder nogensinde en eksakt værdi: selv ved højeste rating ser du et smalt interval, aldrig et præcist talværdi."

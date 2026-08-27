@@ -43,7 +43,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ── Backend-kilder ───────────────────────────────────────────────────────────
-import { TRAINING_FOCUSES } from "./training.js";
+import { TRAINING_FOCUSES, TRAINING_FOCUS_KEYS } from "./training.js";
+import { loadCheckAllowedTypes } from "../../scripts/lint-finance-types.mjs";
 import { BREAKAWAY_BONUS } from "./raceSimulator.js";
 import { PROFILE_TYPES, FINALE_TYPES, DEMAND_VECTORS, ABILITY_DIMENSIONS } from "./raceStageProfileGenerator.js";
 import { RIDER_TYPE_KEYS as BACKEND_RIDER_TYPE_KEYS } from "./riderTypes.js";
@@ -398,6 +399,67 @@ test("#3762 · de to dayTypeForProgram-implementeringer er enige om ALLE par", (
         feDayTypes.sessionForProgram(program),
         beDayTypes.sessionForProgram(program),
         `${focus} + ${intensity} (session)`,
+      );
+    }
+  }
+});
+
+// ── #4260 · trænings-fokus mangler en oversat label → rå i18n-nøgle i UI ────
+// Målt 25/8 (Discord-sweep, #4260): TRAINING_FOCUS_KEYS fik `tempo` tilføjet af
+// #3762, men `rider.json`'s FLADE `focus_<key>`-liste (bruges af
+// frontend/src/pages/TrainingPage.jsx og frontend/src/components/training/
+// TrainingHistory.jsx via `training.focus_${row.focus}`) blev aldrig udvidet —
+// spilleren så en rå nøgle når han trænede Tempo. Den NESTEDE
+// `profile.training.focus.<key>`-liste (RiderDevelopmentTab/RiderTrainingTab)
+// havde allerede tempo+restitution, så kun den flade liste var ramt — men
+// begge dækkes her, så et FREMTIDIGT nyt fokus (#3762-mønstret gentaget)
+// fejler synligt i stedet for at drifte tavst igen.
+test("#4260 · alle TRAINING_FOCUS_KEYS + restitution har en focus_<key>-label i rider.json (en+da)", () => {
+  const allFocuses = [...TRAINING_FOCUS_KEYS, beDayTypes.RECOVERY_FOCUS];
+  for (const locale of ["en", "da"]) {
+    const messages = JSON.parse(read(`frontend/public/locales/${locale}/rider.json`));
+    const flat = messages.training ?? {};
+    for (const focus of allFocuses) {
+      assert.ok(
+        flat[`focus_${focus}`] !== undefined,
+        `${locale}/rider.json mangler den flade nøgle training.focus_${focus} (rider:training.focus_${focus} — brugt af TrainingPage/TrainingHistory)`,
+      );
+    }
+  }
+});
+
+test("#4260 · alle TRAINING_FOCUS_KEYS + restitution har en profile.training.focus.<key>-label i rider.json (en+da)", () => {
+  const allFocuses = [...TRAINING_FOCUS_KEYS, beDayTypes.RECOVERY_FOCUS];
+  for (const locale of ["en", "da"]) {
+    const messages = JSON.parse(read(`frontend/public/locales/${locale}/rider.json`));
+    const nested = messages.profile?.training?.focus ?? {};
+    for (const focus of allFocuses) {
+      assert.ok(
+        nested[focus] !== undefined,
+        `${locale}/rider.json mangler profile.training.focus.${focus} (rider:profile.training.focus.${focus} — brugt af RiderDevelopmentTab/RiderTrainingTab)`,
+      );
+    }
+  }
+});
+
+// ── #4260/#4184 · finance_transactions.type mangler en oversat label ────────
+// Målt 24/8 (#4260, Discord-sweep): finans-historikken viste rå kode for
+// transaktionstyper der ALDRIG fik en `transactions.type.<type>`-label i
+// finance.json (fx parachute, sponsor_race_day, facility_purchase, upkeep —
+// samme 13 typer #4184 fandt manglede i verify-invariants' håndholdte
+// whitelist). Kilden her er DEN SAMME autoritative CHECK-constraint-parser
+// som scripts/lint-finance-types.mjs og verify-invariants.js nu bruger — så
+// denne test og de to andre kan aldrig komme ud af trit med hinanden.
+test("#4260 · alle CHECK-tilladte finance_transactions.type har en transactions.type-label i finance.json (en+da)", () => {
+  const { values: allowedTypes, source } = loadCheckAllowedTypes();
+  assert.ok(source, "kunne ikke parse finance_transactions_type_check fra database/*.sql — se lint-finance-types.mjs");
+  for (const locale of ["en", "da"]) {
+    const messages = JSON.parse(read(`frontend/public/locales/${locale}/finance.json`));
+    const typeLabels = messages.transactions?.type ?? {};
+    for (const type of allowedTypes) {
+      assert.ok(
+        typeLabels[type] !== undefined,
+        `${locale}/finance.json mangler transactions.type.${type} (finance:transactions.type.${type})`,
       );
     }
   }

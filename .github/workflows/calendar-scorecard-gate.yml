@@ -1,0 +1,94 @@
+# Kalender-scorecard-gate (#4215) — pakkerens output måles mod ALLE reglerne i
+# docs/CALENDAR_RULES.md ved hver PR der rører kalender-generatoren.
+#
+# HVORFOR. Scorecardet fandt to reelle brud første gang det blev kørt 25/8 (D3
+# kuperet 23,9 % mod mål 32 %, D4 bjerg 38,7 % mod mål 28 %). Begge blev lukket
+# før kalenderen gik live — men kun fordi et menneske huskede at køre scriptet i
+# hånden. Det er præcis den fejlklasse #4176 findes for: en regel der kun lever
+# som en konstant generatoren *forsøger* at ramme. #4155 brød TIER_OVERLAP_CAP i
+# alle fire divisioner uden at nogen opdagede det.
+#
+# HVAD DENNE GATE ER — og ikke er. #4176 punkt 3 kræver at scorecardet kører TRE
+# steder: (1) CI mod pakkerens output, (2) sæsonskifte-preflight før en ny
+# kalender går live, (3) verify-invariants mod prod. Denne fil er KUN (1).
+# De to andre er stadig åbne i #4215; skriv dem ikke som løst.
+#
+# DETERMINISME. Jobbet sender bevidst hverken --first-day eller --now: scriptet
+# er en offline/fixture-sti, og `offlineCalendarFrom` (scripts/dev/lib/
+# devCalendarArgs.mjs, #4239) fryser BEGGE i ét fælles sted. Uden den frysning
+# ville jobbet blive rødt af sig selv den dag vægur-tiden passerede første
+# løbsdag — 27/6-blitz-guarden afviser en kalender i fortiden, og præcis den
+# fejl gjorde 6 backend-tests røde på selve dagen 25/8 (#4222). At gentage
+# datoerne her ville skabe en anden sandhed der kan komme ud af trit med
+# fixturen; sæsonens rammer opdateres ét sted.
+#
+# Scriptet er 100 % DB-frit: det kører den rene buildTierMaterializationPlan mod
+# lib/__fixtures__/racePoolCatalog.prod.json. Ingen secrets, ingen prod-adgang.
+#
+# Refs #4215 #4176 #4218 #4155 #3327 #3295 #3326
+
+name: Calendar scorecard gate
+
+on:
+  pull_request:
+    paths:
+      - "backend/lib/tierCalendarMaterializer.js"
+      - "backend/lib/tierCalendarGuarantees.js"
+      - "backend/lib/calendarCompositionTargets.js"
+      - "backend/lib/calendarDailyCoverage.js"
+      - "backend/lib/stageOrderMetrics.js"
+      - "backend/lib/stageFinaleMetrics.js"
+      - "backend/lib/raceStageProfileGenerator.js"
+      - "backend/lib/calendarStartDate.js"
+      - "backend/lib/__fixtures__/racePoolCatalog.prod.json"
+      - "backend/scripts/dev/calendarScorecard4218.mjs"
+      - ".github/workflows/calendar-scorecard-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calendar-scorecard:
+    name: calendar-scorecard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      # --json først, så rapporten findes uanset udfald. `|| true` fordi scriptet
+      # exit 1'er ved brud (det er hele pointen) og steppet ellers ville dø før
+      # den læsbare tabel blev skrevet — samme fælde som league-size-auditten sad i.
+      - name: Kalender-scorecard (JSON-rapport)
+        run: node scripts/dev/calendarScorecard4218.mjs --json > calendar-scorecard.json || true
+
+      # `set -o pipefail` er IKKE default i GitHub's bash-shell. Uden den ville
+      # `tee` sluge scriptets exit 1 og gaten ville altid være grøn — en gate der
+      # ikke kan blive rød er ikke en gate.
+      - name: Kalender-scorecard (læsbar tabel + dom)
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/dev/calendarScorecard4218.mjs | tee calendar-scorecard.txt
+
+      - name: Upload rapport
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: calendar-scorecard
+          path: |
+            backend/calendar-scorecard.json
+            backend/calendar-scorecard.txt

@@ -39,8 +39,7 @@
 // `docs/snapshots/3634/`. Uden et læsbart snapshot køres der ikke.
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -51,9 +50,10 @@ import {
   ARCHETYPE_TYPES,
   DEFAULT_DISTRIBUTION,
 } from "../../lib/archetypeDistribution.js";
+import { repoRoot } from "../lib/repoRoot.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SNAPSHOT_DIR = join(__dirname, "../../../docs/snapshots/3634");
+// #4274: ankret på git-toplevel, ikke __dirname — se scripts/lib/repoRoot.mjs.
+const SNAPSHOT_DIR = join(repoRoot(), "docs/snapshots/3634");
 
 const APPLY = process.argv.includes("--apply");
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;

@@ -67,9 +67,28 @@ jobs:
           SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
           SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
           export SUPABASE_URL SUPABASE_SERVICE_KEY
-          node backend/scripts/audit-league-size-invariant.js --json > league-size-audit.json
-          node backend/scripts/audit-league-size-invariant.js | tee league-size-audit.txt
-          total=$(node -e "const d=require('./league-size-audit.json');console.log(d.total_findings)")
+          # Scriptet exit 1'er naar det FINDER noget — det er dets normale
+          # "rødt" signal, ikke en fejl. run-steps bruger `bash -e` som default
+          # shell, saa uden `|| true` her doede steppet paa selve fund-linjen:
+          # hverken den laesbare tee-rapport, total-udregningen eller de senere
+          # PR-/issue-kommentar-steps naaede nogensinde at koere (verificeret i
+          # run 33022476909 — total var permanent tom, league-size-audit.txt
+          # manglede). `|| true` betyder IKKE "ignorer crashes" — valideringen
+          # nedenfor skelner stadig et gyldigt JSON-fund (rødt, scriptet virkede)
+          # fra et decideret crash (intet/ugyldigt JSON, fx manglende secrets).
+          node backend/scripts/audit-league-size-invariant.js --json > league-size-audit.json || true
+          node backend/scripts/audit-league-size-invariant.js | tee league-size-audit.txt || true
+
+          if [ ! -s league-size-audit.json ]; then
+            echo "::error::audit-league-size-invariant.js skrev ingen JSON-output — scriptet crashede (fx manglende secrets). Det er IKKE et normalt fund, se run-loggen ovenfor."
+            exit 2
+          fi
+
+          total=$(node -e "
+            const d = JSON.parse(require('fs').readFileSync('league-size-audit.json', 'utf8'));
+            if (typeof d.total_findings !== 'number') { throw new Error('total_findings mangler eller er ikke et tal'); }
+            console.log(d.total_findings);
+          ") || { echo "::error::league-size-audit.json var ugyldigt/ufuldstaendigt — scriptet crashede midt i koersel."; exit 2; }
           echo "total=$total" >> "$GITHUB_OUTPUT"
 
       - name: Upload report

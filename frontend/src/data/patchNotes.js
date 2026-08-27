@@ -1,5 +1,96 @@
 export const PATCHES = [
   {
+    "version": "7.200",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Finance history no longer shows raw codes for some transactions",
+          "body": "A handful of transaction types in your finance history (relegation parachute, sponsor race day bonus, facility upgrades, staff severance, scout travel, and a few more) were missing their text and fell back to the internal type name. They now show a proper label."
+        },
+        "da": {
+          "title": "Finans-historikken viser ikke længere rå koder for enkelte transaktioner",
+          "body": "En håndfuld transaktionstyper i din finans-historik (nedrykningsfaldskærm, sponsor løbsdag-bonus, facilitetsopgraderinger, fratrædelsesgodtgørelse, spejder-rejse og et par til) manglede deres tekst og faldt tilbage til det interne type-navn. De viser nu en rigtig label."
+        },
+        "refs": [4260]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Firing a rider no longer shows a raw code in the history line",
+          "body": "Releasing a senior rider against a buyout fee wrote a finance entry with no translated text, so the history line fell back to a generic label. It now describes the release correctly."
+        },
+        "da": {
+          "title": "Fyring af en rytter viser ikke længere en rå kode i historik-linjen",
+          "body": "Frigivelse af en seniorrytter mod et buyout-gebyr skrev en finans-postering uden oversat tekst, så historik-linjen faldt tilbage til en generisk label. Den beskriver nu fyringen korrekt."
+        },
+        "refs": [4260]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training Tempo no longer shows a raw code",
+          "body": "The Tempo training session was missing its text label and showed the internal name instead, both on the Training page and in a rider's training history. It now shows \"Tempo\" like every other session."
+        },
+        "da": {
+          "title": "Træning 'Tempo' viser ikke længere en rå kode",
+          "body": "Trænings-passet Tempo manglede sin tekst-label og viste det interne navn i stedet, både på Træning-siden og i en rytters træningshistorik. Det viser nu 'Tempo' ligesom alle andre pas."
+        },
+        "refs": [4260]
+      }
+    ]
+  },
+  {
+    "version": "7.199",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "A squad you cleared stays cleared",
+          "body": "When you used Clear day or Clear all and confirmed it, the assistant could still fill that squad back in when the race started. It now leaves it alone: a race you cleared starts with no riders from your team.\n\nClearing is still yours to undo. The moment you pick riders yourself, or ask for auto-fill, the assistant is free to help again."
+        },
+        "da": {
+          "title": "En trup du har ryddet, bliver ryddet",
+          "body": "Brugte du Ryd dag eller Ryd alt og bekræftede det, kunne assistenten stadig fylde truppen ud igen når løbet gik i gang. Det gør han ikke længere: et løb du har ryddet, starter uden ryttere fra dit hold.\n\nDet er stadig dig der bestemmer. I samme øjeblik du selv udtager ryttere, eller beder om automatisk udfyldning, må assistenten hjælpe igen."
+        },
+        "refs": [4200, 2599]
+      }
+    ]
+  },
+  {
+    "version": "7.198",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Race day FAQ: fatigue, intensity, Academy",
+          "body": "Added straight answers in Help for the questions that came up after the season 2 race-day rules returned. Does fatigue stack when you race and train the same day: yes. Does your intensity still matter: yes, exactly like any other day. Does your session need to match the stage terrain: no, not this season. Is it worth racing young Academy talents: yes, no development penalty, only extra fatigue to manage. And why Flat and Cobbles have no Hard session today."
+        },
+        "da": {
+          "title": "Løbsdags-FAQ: træthed, intensitet, akademi",
+          "body": "Tilføjet klare svar i Hjælp på de spørgsmål der kom efter sæson 2's løbsdags-regler vendte tilbage. Lægger trætheden sig oven i hinanden når du kører løb og træner samme dag: ja. Betyder din intensitet stadig noget: ja, præcis som på enhver anden dag. Skal dit pas matche etapens terræn: nej, ikke denne sæson. Kan det betale sig at køre løb med unge akademi-talenter: ja, ingen udviklings-straf, kun ekstra træthed at styre. Og hvorfor Fladt og Brosten ikke har en Hård session i dag."
+        },
+        "refs": [4261]
+      }
+    ]
+  },
+  {
     "version": "7.197",
     "date": "2026-08-27",
     "label": "Beta",
