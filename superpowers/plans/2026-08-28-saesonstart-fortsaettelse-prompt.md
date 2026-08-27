@@ -19,18 +19,48 @@ pwsh -File scripts/check-agent-token-hygiene.ps1
 Fire PR'er var i luften ved handoff. **Verificér deres tilstand før du rører dem**. Flere kan være merged,
 og to var i konflikt fordi #4302 landede først.
 
-| PR | Issue | Tilstand 27/8 ~13:30 | Næste skridt |
+| PR | Issue | Tilstand ved handoff | Næste skridt |
 |---|---|---|---|
-| [#4300](https://github.com/NicolaiDolmer/CyclingZone/pull/4300) | #4245 | Ejer-godkendt, 1 check i kø | Merge når grøn |
-| [#4303](https://github.com/NicolaiDolmer/CyclingZone/pull/4303) | #4165 | Ejer-godkendt visuelt, retterunde kørte på 7 fund | Gen-verificér, så merge |
-| [#4304](https://github.com/NicolaiDolmer/CyclingZone/pull/4304) | #4294 | Ejer-godkendt, **DIRTY**, retterunde kørte | Flet main ind, merge, **applyer migration** |
-| [#4301](https://github.com/NicolaiDolmer/CyclingZone/pull/4301) | #4295 | **DIRTY**, minimum-6-reglen blev bygget | Færdiggør, forelæg ejeren |
+| #4300 | #4245 | **MERGED** 27/8 | Færdig, issue markeret done |
+| #4302 | #4293 | **MERGED** 27/8 | Færdig, issue markeret done |
+| [#4303](https://github.com/NicolaiDolmer/CyclingZone/pull/4303) | #4165 | Syv fund rettet, seks verificeret lukket, CI grøn | Merge når CI er grøn efter sidste flet |
+| [#4304](https://github.com/NicolaiDolmer/CyclingZone/pull/4304) | #4294 | Rettet, main flettet ind | Bump patch note til 7.207, merge, **apply migration** |
+| [#4301](https://github.com/NicolaiDolmer/CyclingZone/pull/4301) | #4295 | **HOLDT TILBAGE med vilje** | Se afsnit 2b |
 
 **Konflikterne er altid `frontend/src/data/patchNotes.js`.** Løsningen er hver gang: behold **begge**
 versioner, løft din egen over mains top. Kast aldrig den ene væk. Ved flere commits der rører filen: brug
 `git merge origin/main`, ikke rebase, så konflikten kun skal løses én gang.
 
 ---
+
+## 2b. #4301 er holdt tilbage. Læs dette før du merger den
+
+Minimum-6-gulvet er bygget og teknisk færdigt, men den må **ikke** merges som den står. To grunde:
+
+**1. Et blokerende fund.** `partialSquadOutlook` returnerer `null` ved `selected === 0`
+(`frontend/src/lib/raceSelectionLogic.js:112`), på antagelsen om at assistenten så fylder en hel trup.
+Under gulvet gør den ikke det: den skriver intet hvis den ikke kan nå 6. Målt: **195 af 226 menneskehold
+har nul udtagelser lige nu**, og 128 af de 130 tabte starter rammer hold i præcis den tilstand. Reglen tager
+altså et løb fra 128 hold uden ét ord på nogen flade. Det skal fikses uanset hvad.
+
+**2. Grundlaget flyttede sig.** Ejeren traf beslutningen ud fra "21 menneskehold kan ikke fylde 6". Målt mod
+prod ved at simulere åbningsdagen løb for løb: **130 starter forsvinder, fordelt på 129 menneskehold**.
+Årsagen er at der kører tre løb samtidig i D1 til D3, så et hold skal stille 18 ryttere, eller 22 i D1.
+D3's medianhold har 9 raske. D3 alene mister 74 starter. Felter kollapser: Rund um Köln Neu 19 til 5.
+
+**Og trup-opfyldningen er ikke kørt siden 24. juni** (se #4307): 105 hold ligger under 12 ryttere, og en
+kørsel ville oprette 422 ryttere. Ejerens ord 27/8: *"De hold der er inaktive har vi jo aftalt, at disse hold
+skal have en opfyldning af ryttere i dag. Hvis der er aktive hold der ikke har nok ryttere, så er det jo
+deres eget valg."* Gulvets konsekvens afhænger direkte af den opfyldning.
+
+**Rækkefølgen er derfor:** afklar aktivitets-definitionen med ejeren, vis ham listen, kør opfyldningen med
+hans GO, **mål simuleringen igen**, og forelæg ham så det rigtige tal før #4301 merges.
+
+Løs ende i #4303 der ikke blev fikset: retry-knappen er inert på auth-grenen i Formplan-fanen
+(`usePlanner.js:44`, `refresh()` sætter aldrig `setLoading(true)`). Den blev IKKE rettet, fordi `refresh()`
+også er efter-mutation-genhentningen, så et `setLoading(true)` dér giver et spinner-blink hver gang man
+gemmer. Den rigtige rettelse er en separat retry-funktion. `SeasonView` har samme mønster rettet korrekt
+(`SeasonView.jsx:111`) og kan bruges som skabelon.
 
 ## 2. Beslutninger ejeren traf 27/8. Genåbn dem ikke
 
