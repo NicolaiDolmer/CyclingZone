@@ -9,8 +9,8 @@
 --
 -- Målt i prod 27/8 før reparationen: 812 af 894 planer i S3 uden målløb, 731 med
 -- vinduer der overlappede den NYE kalender, 490 ryttere ramt. På åbningsdagen
--- 28/8 dækkede 280 af de forældreløse vinduer dagen — 274 distinkte ryttere,
--- heraf 272 på 27 menneskehold — som altså ville have stået i et peak ingen
+-- 28/8 dækkede 280 af de forældreløse vinduer dagen. Det er 274 distinkte
+-- ryttere, heraf 272 på 27 menneskehold, som altså ville have stået i et peak ingen
 -- spiller havde valgt eller kunne se. 316 af planerne på menneskehold var
 -- allerede låst (`isPlanLocked` ser kun på `window_start`), så spilleren kunne
 -- ikke fjerne dem.

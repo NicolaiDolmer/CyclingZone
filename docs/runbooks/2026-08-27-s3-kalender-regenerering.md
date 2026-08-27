@@ -33,7 +33,7 @@ Seneste udtagelse   26/8 kl. 20:30
 
 ## Sprængradius: hvad en regenerering river med sig
 
-Prisen ovenfor er ufuldstændig. Den nævner kun udtagelserne. **En regenerering sletter også hver eneste `rider_peak_plans`-række for sæsonen — hvert holds formplaner — og efter [#4294](https://github.com/NicolaiDolmer/CyclingZone/issues/4294) sker det lydløst.**
+Prisen ovenfor er ufuldstændig. Den nævner kun udtagelserne. **En regenerering sletter også hver eneste `rider_peak_plans`-række for sæsonen, altså hvert holds formplaner, og efter [#4294](https://github.com/NicolaiDolmer/CyclingZone/issues/4294) sker det lydløst.**
 
 `rider_peak_plans.target_race_id` er en FK til `races`. Den var `ON DELETE SET NULL`, og migrationen `database/2026-08-27-4294-peak-plan-cascade.sql` skifter den til **`ON DELETE CASCADE`**. Forskellen for en regenerering:
 
@@ -46,7 +46,7 @@ Prisen ovenfor er ufuldstændig. Den nævner kun udtagelserne. **En regenerering
 
 Kørslen 26/8 var "før"-kolonnen: 812 af 894 planer mistede deres målløb, 731 af vinduerne overlappede den nye kalender, og 280 planer (274 ryttere, heraf 272 på 27 menneskehold) ville have stået i et peak ingen spiller havde valgt på åbningsdagen 28/8. Dataen blev repareret 27/8 med ejer-GO.
 
-"Efter"-kolonnen er den rigtige adfærd, men den er **uigenkaldelig og uden tæller**. Databasen spørger ikke, og der er ingen ejer-gate på FK-niveau. `wipeSeason3Calendar.mjs` har stadig `rider_peak_plans` i sin gameplay-port og stopper på ét ikke-nul fund — men enhver anden vej til at slette løb har ikke den port: rå `delete from races` via SQL, og admin-endpointet `DELETE /api/admin/races/:raceId` (som dermed også sletter hvert holds formplan for det ene løb).
+"Efter"-kolonnen er den rigtige adfærd, men den er **uigenkaldelig og uden tæller**. Databasen spørger ikke, og der er ingen ejer-gate på FK-niveau. `wipeSeason3Calendar.mjs` har stadig `rider_peak_plans` i sin gameplay-port og stopper på ét ikke-nul fund. Men enhver anden vej til at slette løb har ikke den port: rå `delete from races` via SQL, og admin-endpointet `DELETE /api/admin/races/:raceId` (som dermed også sletter hvert holds formplan for det ene løb).
 
 ### Nyt skridt: tag backup FØRST
 
@@ -65,7 +65,7 @@ create table if not exists backup_peak_plans_<dato> as
 select count(*) from backup_peak_plans_<dato>;
 ```
 
-Mønsteret er det samme som `backup_4294_rider_peak_plans` (812 rækker, skrevet 27/8 kl. 09:25 CEST) — alle kolonner plus `backed_up_at`, så rækkerne kan skrives tilbage én for én hvis regenereringen skal rulles tilbage.
+Mønsteret er det samme som `backup_4294_rider_peak_plans` (812 rækker, skrevet 27/8 kl. 09:25 CEST): alle kolonner plus `backed_up_at`, så rækkerne kan skrives tilbage én for én hvis regenereringen skal rulles tilbage.
 
 **Efter regenereringen** hører formplanerne til i "Efter"-listen nederst: spillerne skal sætte peaks forfra, præcis som de skal udtage forfra. Skriv det i Discord-beskeden (skridt 0), ikke først i patch noten bagefter.
 
@@ -85,7 +85,7 @@ Hvert skridt kræver ejer-GO. Ingen kæde af mutationer i træk.
 | # | Skridt | Kommando | Verificér før næste |
 |---|---|---|---|
 | 0 | **Discord-besked ud** | ejeren poster | Beskeden er synlig i kanalen (nævner BÅDE udtagelser og formplaner) |
-| 0b | **Backup af formplaner** | SQL, ejer-GO — se [Sprængradius](#sprængradius-hvad-en-regenerering-river-med-sig) | `count(*)` på backup-tabellen matcher det forventede tab |
+| 0b | **Backup af formplaner** | SQL, ejer-GO, se [Sprængradius](#sprængradius-hvad-en-regenerering-river-med-sig) | `count(*)` på backup-tabellen matcher det forventede tab |
 | 1 | Dry-run af regen | `node scripts/dev/regenSeason3Calendar.mjs` | Første løbsdag = 2026-08-28 |
 | 2 | **Sæson → `upcoming`** | SQL, ejer-GO | `select status from seasons where number=3` |
 | 3 | Dry-run af wipe | `node scripts/dev/wipeSeason3Calendar.mjs` | Rapporterer 531 løb, ingen uventede tabeller |
@@ -106,7 +106,7 @@ Alle scripts køres med `infisical run --env=prod --` foran, fra `C:\Dev\Cycling
 - `stage_scheduler_enabled` + `auto_entry_generator_enabled` tændes **først** når kalenderen er verificeret. Ejer-only.
 - Patch note 7.194 er allerede skrevet og beskriver ændringen.
 - Spillerne skal udtage forfra. Assistenten udtager automatisk 1 time før hvert løb ([#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174)), så ingen står uden hold — men de mister deres egne valg.
-- **Spillerne skal også sætte formpeaks forfra.** Efter [#4294](https://github.com/NicolaiDolmer/CyclingZone/issues/4294) er sæsonens `rider_peak_plans` slettet sammen med løbene, og der er ingen assistent der sætter en peak for dem. Verificér at backuppen fra skridt 0b stadig findes, og at `select count(*) from rider_peak_plans p join races r on r.id = p.target_race_id join seasons s on s.id = r.season_id where s.number = 3` er 0 som forventet — ikke et tal der overrasker dig.
+- **Spillerne skal også sætte formpeaks forfra.** Efter [#4294](https://github.com/NicolaiDolmer/CyclingZone/issues/4294) er sæsonens `rider_peak_plans` slettet sammen med løbene, og der er ingen assistent der sætter en peak for dem. Verificér at backuppen fra skridt 0b stadig findes, og at `select count(*) from rider_peak_plans p join races r on r.id = p.target_race_id join seasons s on s.id = r.season_id where s.number = 3` er 0 som forventet, ikke et tal der overrasker dig.
 
 ## Fallback hvis regenereringen ikke kan nås
 

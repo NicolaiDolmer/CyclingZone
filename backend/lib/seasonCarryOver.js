@@ -58,7 +58,7 @@
  *
  * NB til analogien ovenfor (2026-08-27, #4294): `rider_peak_plans.target_race_id`
  * har siden fået ON DELETE CASCADE, så DEN går ikke længere lydløst i stykker når
- * målløbet slettes — rækken forsvinder med løbet. `team_race_strategy
+ * målløbet slettes: rækken forsvinder med løbet. `team_race_strategy
  * .target_race_ids` er stadig JSONB uden FK og går fortsat lydløst i stykker.
  */
 
@@ -94,7 +94,7 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
   {
     table: "rider_peak_plans",
     disposition: CARRY_OVER_DISPOSITION.REVALIDATE,
-    why: "Managere lægger peak-planer på den KOMMENDE sæsons løb, så rækkerne findes allerede. Risikoen er at op-/nedrykning flytter holdet til en anden pulje, hvorefter mål-løbet ikke er i holdets kalender — og motoren fejler lydløst. Det er wrong_pool-grenen: løbet findes stadig, planen bliver liggende, vi tæller den, og sletning er ejer-gated. missing_target-grenen kan derimod ikke længere opstå ved at målløbet SLETTES: #4294 skiftede target_race_id-FK'en fra ON DELETE SET NULL til ON DELETE CASCADE (database/2026-08-27-4294-peak-plan-cascade.sql), så databasen fjerner planen sammen med løbet, uden ejer-gate og uden at spørge. Sletter du et løb, sletter du hvert holds formplan for det løb. Tælleren beholdes som detektor for de øvrige veje til et uopnåeligt mål (rytter skiftet hold, løb flyttet pulje).",
+    why: "Managere lægger peak-planer på den KOMMENDE sæsons løb, så rækkerne findes allerede. Risikoen er at op-/nedrykning flytter holdet til en anden pulje, hvorefter mål-løbet ikke er i holdets kalender, og motoren fejler lydløst. Det er wrong_pool-grenen: løbet findes stadig, planen bliver liggende, vi tæller den, og sletning er ejer-gated. missing_target-grenen kan derimod ikke længere opstå ved at målløbet SLETTES: #4294 skiftede target_race_id-FK'en fra ON DELETE SET NULL til ON DELETE CASCADE (database/2026-08-27-4294-peak-plan-cascade.sql), så databasen fjerner planen sammen med løbet, uden ejer-gate og uden at spørge. Sletter du et løb, sletter du hvert holds formplan for det løb. Tælleren beholdes som detektor for de øvrige veje til et uopnåeligt mål (rytter skiftet hold, løb flyttet pulje).",
   },
   {
     table: "race_entries",

@@ -69,7 +69,7 @@ Tælleren var altså en detektor ingen læste. En invariant der kun tæller, men
 aldrig fejler, er ikke en invariant.
 
 Den kommentar er nu selv rettet i samme PR: efter CASCADE er sletningen IKKE
-ejer-gated — databasen fjerner planen sammen med løbet. Havde vi ladet den stå,
+ejer-gated. Databasen fjerner planen sammen med løbet. Havde vi ladet den stå,
 ville rettelsen have skabt sin egen SSOT-drift: en registrering der beskrev en
 gate der ikke længere findes.
 

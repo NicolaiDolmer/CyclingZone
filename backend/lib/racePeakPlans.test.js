@@ -107,7 +107,7 @@ test("aggregateDemandVector: ingen gyldige profiler → null", () => {
 // Fake'en HÅNDHÆVER ikke filtrene: select/eq/in er no-ops der returnerer alle
 // rækker. Det er bevidst her, fordi #4294-guarden netop ligger på JS-siden og
 // ikke i queryen, så testene beviser at rækken smides væk uanset hvad DB'en
-// leverer — også hvis nogen senere fjerner et filter fra kæden.
+// leverer, også hvis nogen senere fjerner et filter fra kæden.
 function makeSupabase(tables = {}) {
   function from(table) {
     const rows = tables[table] ?? [];
