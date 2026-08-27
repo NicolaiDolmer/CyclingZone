@@ -31,6 +31,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Ingen aktiv session.**
+> **🤖 Working agent:** Parallel-session 27/8 (Claude Code, DOLMERPC): saesonmatrix #1146 + #4246 + ops #4308/#4309. Roerer IKKE #4296/#4259/#4212/peak-undersoegelsen (anden session).
 
 _Historik i git-log, issue-tråde + docs/audits/._
