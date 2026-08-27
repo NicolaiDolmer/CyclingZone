@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.209",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Race cards show the days they run, and name the race they clash with",
+          "body": "A card only told you the day a race started, so the only way to find an overlap was to add a rider and see what happened. Cards now show the full span, and a line underneath names the race that shares those days. If the same rider is picked for both, that line turns red and says so. Race day numbers now start at 1."
+        },
+        "da": {
+          "title": "Løbskort viser de dage de kører, og navngiver det løb de støder sammen med",
+          "body": "Et kort fortalte kun hvilken dag et løb startede, så den eneste måde at opdage et overlap på var at sætte en rytter ind og se hvad der skete. Kortene viser nu hele spændet, og en linje nedenunder navngiver det løb der deler de dage. Er samme rytter udtaget til begge, bliver linjen rød og siger det. Løbsdags-numre starter nu fra 1."
+        },
+        "refs": [4296]
+      }
+    ]
+  },
+  {
     "version": "7.208",
     "date": "2026-08-27",
     "label": "Beta",
