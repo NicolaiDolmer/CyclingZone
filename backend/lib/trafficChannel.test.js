@@ -77,6 +77,28 @@ test("Hattrick roterer på nummererede servere", () => {
   }
 });
 
+test("apex-domæne og www-subdomæne er SAMME kanal", () => {
+  // Fundet ved at køre aggregatoren mod ægte prod-data 27/8: dugout-online.com
+  // og www.dugout-online.com blev to separate kanaler, fordi reglen kun testede
+  // suffikset ".dugout-online.com". Samme fejlklasse som Reddit-web vs. app.
+  assert.equal(resolveChannel({ referrer: "https://dugout-online.com/" }), "dugout-online");
+  assert.equal(resolveChannel({ referrer: "https://www.dugout-online.com/" }), "dugout-online");
+
+  // Gælder alle domæne-regler, ikke kun den ene der blev fundet.
+  assert.equal(channelFromHost("hattrick.org"), "hattrick");
+  assert.equal(channelFromHost("www89.hattrick.org"), "hattrick");
+  assert.equal(channelFromHost("perplexity.ai"), "ai-assistant");
+  assert.equal(channelFromHost("www.perplexity.ai"), "ai-assistant");
+  assert.equal(channelFromHost("youtube.com"), "youtube");
+  assert.equal(channelFromHost("m.youtube.com"), "youtube");
+});
+
+test("domæne-regler fanger ikke værter der blot ender på samme bogstaver", () => {
+  // "ikkehattrick.org" ender ikke på ".hattrick.org" og må ikke matche.
+  assert.equal(channelFromHost("ikkehattrick.org"), "ikkehattrick.org");
+  assert.equal(channelFromHost("fakereddit.com"), "fakereddit.com");
+});
+
 test("Google-landedomæner er organisk søgning", () => {
   assert.equal(channelFromHost("google.com"), "organic-search");
   assert.equal(channelFromHost("www.google.com"), "organic-search");

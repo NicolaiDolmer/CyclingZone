@@ -83,17 +83,29 @@ const EXACT_HOSTS = new Map([
   ["github.com", "github"],
 ]);
 
-// Suffiks-regler for værter der varierer. Rækkefølgen betyder ikke noget: en
-// vært matcher højst én regel i praksis, og første match vinder.
+// Domæne-regler for værter der varierer. Matcher BÅDE apex-domænet selv og
+// ethvert subdomæne under det.
+//
+// At matche apex separat er ikke en detalje: en ren suffiks-test på
+// ".dugout-online.com" fanger www.dugout-online.com men IKKE dugout-online.com,
+// så samme side blev til to kanaler. Præcis samme fejlklasse som Reddit-web vs.
+// Reddit-app, fundet ved at køre aggregatoren mod ægte prod-data 27/8.
 //
 // Hattrick roterer på nummererede servere (www85..www89, stage) og er derfor
 // umulig at dække med en eksakt liste. Google har ~190 landedomæner.
-const HOST_SUFFIXES = Object.freeze([
-  { suffix: ".hattrick.org", channel: "hattrick" },
-  { suffix: ".dugout-online.com", channel: "dugout-online" },
-  { suffix: ".reddit.com", channel: "reddit" },
-  { suffix: ".perplexity.ai", channel: "ai-assistant" },
+const DOMAIN_RULES = Object.freeze([
+  { domain: "hattrick.org", channel: "hattrick" },
+  { domain: "dugout-online.com", channel: "dugout-online" },
+  { domain: "reddit.com", channel: "reddit" },
+  { domain: "perplexity.ai", channel: "ai-assistant" },
+  { domain: "discord.com", channel: "discord" },
+  { domain: "youtube.com", channel: "youtube" },
+  { domain: "facebook.com", channel: "facebook" },
 ]);
+
+function matchesDomain(host, domain) {
+  return host === domain || host.endsWith(`.${domain}`);
+}
 
 // Google-landedomæner: google.com, google.dk, google.co.uk, www.google.de ...
 // Bevidst snæver: kræver at værten ER google eller starter med "www.google."
@@ -161,8 +173,8 @@ export function channelFromHost(host, selfHosts = SELF_HOSTS) {
   const exact = EXACT_HOSTS.get(lower);
   if (exact) return exact;
   if (GOOGLE_HOST.test(lower)) return "organic-search";
-  for (const { suffix, channel } of HOST_SUFFIXES) {
-    if (lower.endsWith(suffix)) return channel;
+  for (const { domain, channel } of DOMAIN_RULES) {
+    if (matchesDomain(lower, domain)) return channel;
   }
   return lower;
 }
