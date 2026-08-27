@@ -125,6 +125,7 @@
     "note": "Whole points gained since the season started. A gold dot marks the abilities the current focus trains.",
     "pending": "Season totals appear once the active season is loaded.",
     "notStarted": "The season starts {date}. Season totals begin then, and training before that still counts toward the next point.",
+    "noDaysYet": "No training days in this season yet. Season totals start after the first day of training, and every point already earned stays in the bars.",
     "yesterdayContribution": "{pct}% of this bar came from yesterday's session."
   },
   "gainedToday": "+{count} today",

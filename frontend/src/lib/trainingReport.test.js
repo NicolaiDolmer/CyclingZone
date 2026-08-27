@@ -5,8 +5,9 @@ import {
   todayGainTotal,
   seasonAbilityGains, abilityReceipt, focusAbilityReceipt, abilityYesterdayPct,
   yesterdaySummary, riderDayStories,
-  seasonReceiptState,
+  seasonReceiptState, seasonReceiptView, SEASON_RECEIPT_NOTE_KEY,
   SEASON_RECEIPT_UNKNOWN, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_RUNNING,
+  SEASON_RECEIPT_NO_DAYS,
   PEAK_FORM_THRESHOLD, NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
 
@@ -202,6 +203,44 @@ test("seasonReceiptState: ubrugelig dato falder til ukendt, aldrig til et tal", 
   assert.equal(seasonReceiptState("2026-08-28", null), SEASON_RECEIPT_UNKNOWN);
   assert.equal(seasonReceiptState("2026-08-28", "i morgen"), SEASON_RECEIPT_UNKNOWN);
   assert.equal(seasonReceiptState("28-08-2026", "2026-08-27"), SEASON_RECEIPT_UNKNOWN);
+});
+
+test("seasonReceiptView: sæsonens første morgen er 'ingen dage endnu', ikke et målt +0 (#4293)", () => {
+  // Fra sæsonstartsdagens midnat til dagens tick har kørt er der nul kørsler
+  // inde i sæsonen. Uden en egen tilstand ville hver evne stå på "+0" under
+  // "Siden 28. aug" — pixel for pixel den visning der blev rapporteret.
+  const dateState = seasonReceiptState("2026-08-28", "2026-08-28");
+  assert.equal(dateState, SEASON_RECEIPT_RUNNING);
+  assert.equal(seasonReceiptView(dateState, []), SEASON_RECEIPT_NO_DAYS);
+});
+
+test("seasonReceiptView: en sæson med mindst én træningsdag er 'i gang'", () => {
+  const runs = [{ tick_date: "2026-08-28", report: { riders: [] } }];
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_RUNNING, runs), SEASON_RECEIPT_RUNNING);
+});
+
+test("seasonReceiptView: en fejlet hentning er ukendt, ikke 'ingen dage endnu'", () => {
+  // Nul kørsler fordi vi ikke FIK noget svar er ikke et nul vi har målt.
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_RUNNING, null), SEASON_RECEIPT_UNKNOWN);
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_RUNNING, undefined), SEASON_RECEIPT_UNKNOWN);
+});
+
+test("seasonReceiptView: dato-tilstandene går uændret igennem", () => {
+  // En sæson der ikke er begyndt har pr. definition nul dage; den skal stadig
+  // sige "starter <dato>", ikke "ingen træningsdage endnu".
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_NOT_STARTED, []), SEASON_RECEIPT_NOT_STARTED);
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_NOT_STARTED, null), SEASON_RECEIPT_NOT_STARTED);
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_UNKNOWN, []), SEASON_RECEIPT_UNKNOWN);
+});
+
+test("SEASON_RECEIPT_NOTE_KEY: hver tilstand har sin egen fodnote (#4293)", () => {
+  // Ét sted, så rytterprofilen og /training ikke kan sige forskellige ting.
+  const states = [
+    SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NO_DAYS,
+    SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_UNKNOWN,
+  ];
+  for (const s of states) assert.equal(typeof SEASON_RECEIPT_NOTE_KEY[s], "string", `${s} mangler en fodnote`);
+  assert.equal(new Set(states.map((s) => SEASON_RECEIPT_NOTE_KEY[s])).size, states.length);
 });
 
 test("abilityReceipt: en sæson der ikke er begyndt giver '—', ikke et målt +0 (#4293)", () => {

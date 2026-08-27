@@ -5,8 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copenhagenDayKey } from "./raceCentre.js";
 import {
-  seasonReceiptState,
-  SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_RUNNING,
+  seasonReceiptState, seasonReceiptView,
+  SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_UNKNOWN,
 } from "./trainingReport.js";
 
 // #4293 — useTrainingHistory er en React-hook, og repoet kører `node --test`
@@ -56,7 +56,31 @@ test("#4293 hooken eksponerer seasonState sammen med seasonStart", () => {
 });
 
 test("#4293 hooken afleder tilstanden af seasonReceiptState, ikke af 'har vi en dato'", () => {
-  assert.match(source, /setSeasonState\(seasonReceiptState\(/, "seasonState skal komme fra seasonReceiptState");
+  assert.match(
+    source,
+    /seasonReceiptView\(seasonReceiptState\(/,
+    "seasonState skal komme fra seasonReceiptState (dato) gennem seasonReceiptView (hentede dage)",
+  );
+  assert.match(source, /setSeasonState\(receiptState\(/, "seasonState skal sættes fra den fælles afledning");
+});
+
+test("#4293 tilstanden sættes EFTER dagene, så et opslag ikke kan tømme historikken", () => {
+  // Rækkefølgen er selve fixet på det andet fund: sættes tilstanden før
+  // hentningen, river en fejl i dato-opslaget både den daglige log,
+  // 30-dages-trenden og hele kvitteringen med sig.
+  const setRunsAt = source.indexOf("setRuns(rows.filter(");
+  const setSeasonRunsAt = source.indexOf("setSeasonRuns(seasonRows)");
+  const setStateAt = source.indexOf("setSeasonState(receiptState(activeStart, seasonRows))");
+  assert.ok(setRunsAt > 0 && setSeasonRunsAt > 0 && setStateAt > 0, "alle tre kald skal findes");
+  assert.ok(setStateAt > setRunsAt, "seasonState skal sættes efter setRuns");
+  assert.ok(setStateAt > setSeasonRunsAt, "seasonState skal sættes efter setSeasonRuns");
+});
+
+test("#4293 en fejlet hentning bliver ikke til 'ingen træningsdage'", () => {
+  // seasonReceiptView(…, null) → unknown for en kørende sæson: et manglende
+  // svar er ikke et målt nul.
+  assert.equal(seasonReceiptView(SEASON_RECEIPT_RUNNING, null), SEASON_RECEIPT_UNKNOWN);
+  assert.match(source, /setSeasonState\(receiptState\(activeStart, null\)\)/, "fejl-grenen skal sende null videre");
 });
 
 test("#4293 hookens 'i dag' er en dansk kalenderdag, ikke en UTC-dag", () => {

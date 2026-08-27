@@ -24,14 +24,23 @@ export const LIVE_PLAYBACK_WINDOW_MS = 30 * 60 * 1000;
 // Hvilken København-kalenderdag falder et tidspunkt på? Samme Intl-baserede
 // metode som relativeDayKey (stageScheduleConfig.js), så midnat-grænsen er
 // korrekt uanset hvor spilleren selv sidder ([[feedback_timezone_copenhagen]]).
+// Kontrakt: KASTER ALDRIG. Intl.DateTimeFormat kaster RangeError på en runtime
+// der ikke kender zonen (stripped ICU), og kaldestederne bruger dagsnøglen midt
+// i data-hentninger hvor et kast ville rive resten af hentningen med sig
+// (#4293). En ukendt zone giver derfor null, præcis som en ugyldig ms, og hver
+// kalder har allerede en null-gren.
 export function copenhagenDayKey(ms, timeZone = RACE_TIMEZONE) {
   if (!Number.isFinite(ms)) return null;
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(ms));
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(ms));
+  } catch {
+    return null;
+  }
 }
 
 // Zonens offset (ms) på et givet tidspunkt — afledt af Intl, så sommertid

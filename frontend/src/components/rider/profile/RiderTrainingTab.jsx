@@ -23,7 +23,8 @@ import { TRAINING_FOCUS_ABILITIES, injuryDaysLeft } from "../../../lib/training.
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
-  SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_UNKNOWN,
+  SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_UNKNOWN,
+  SEASON_RECEIPT_NOTE_KEY,
 } from "../../../lib/trainingReport.js";
 import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
 import { formatDate } from "../../../lib/intl.js";
@@ -236,14 +237,19 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
 
   const seasonStart = trainingHistory?.seasonStart ?? null;
   // #4293: sæsonen kan være aktiv OG endnu ikke begyndt (interregnum mellem to
-  // sæsoner). Kun i "running" findes der sæsondage at kvittere for. I de to
-  // andre tilstande er seasonGains null, så hver evne viser "—" i stedet for et
-  // målt "+0" om en periode der ikke er startet.
+  // sæsoner), og en kørende sæson kan endnu ikke have en eneste træningsdag
+  // (sæsonens første morgen). Kun i "running" findes der sæsondage at kvittere
+  // for. I de øvrige tilstande er seasonGains null, så hver evne viser "—" i
+  // stedet for et "+0" om en periode der ikke har målt noget.
   const seasonState = trainingHistory?.seasonState ?? SEASON_RECEIPT_UNKNOWN;
   const seasonRunning = seasonState === SEASON_RECEIPT_RUNNING;
   const seasonGains = seasonRunning
     ? seasonAbilityGains(trainingHistory?.seasonRuns, rider.id, seasonStart)
     : null;
+  // Sæsonen ER begyndt i både "running" og "noDays", så badgen siger "Siden
+  // <dato>" i begge. Kun den ikke-begyndte sæson siger "Starter <dato>".
+  const seasonBegun = seasonRunning || seasonState === SEASON_RECEIPT_NO_DAYS;
+  const seasonNoteKey = SEASON_RECEIPT_NOTE_KEY[seasonState] ?? "receipt.pending";
   const rowsByAbility = Object.fromEntries(
     abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
       abilities: rider.abilities,
@@ -259,11 +265,12 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
         <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
           {tTraining("receipt.title")}
         </h3>
-        {seasonStart && (
+        {seasonStart && seasonState !== SEASON_RECEIPT_UNKNOWN && (
           <span className="font-data text-3xs uppercase tracking-[.08em] text-cz-3">
             {/* #4293: overskriften sagde "Siden 28. aug" om en dato i FREMTIDEN.
-                Er sæsonen ikke begyndt, siger badgen hvornår den gør. */}
-            {tTraining(seasonRunning ? "receipt.since" : "receipt.startsOn", { date: formatDate(seasonStart) })}
+                Er sæsonen ikke begyndt, siger badgen hvornår den gør. Kender vi
+                ikke tilstanden, lover badgen ingen periode overhovedet. */}
+            {tTraining(seasonBegun ? "receipt.since" : "receipt.startsOn", { date: formatDate(seasonStart) })}
           </span>
         )}
       </div>
@@ -288,16 +295,14 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
         ))}
       </div>
 
-      {/* Tre tilstande, ikke to (#4293): i gang → hvad tallene er; aktiv men
-          ikke begyndt → hvornår de begynder; ingen sæson hentet → afventer.
-          Kortet bliver stående i alle tre: "Nu" og "På vej" er sande uanset
-          sæsonens tilstand, og de bærer netop den træning interregnummet gav. */}
+      {/* Fire tilstande, ikke to (#4293): i gang → hvad tallene er; aktiv men
+          ikke begyndt → hvornår de begynder; begyndt uden en eneste
+          træningsdag → at tællingen starter forfra; ingen sæson hentet →
+          afventer. Kortet bliver stående i alle fire: "Nu" og "På vej" er sande
+          uanset sæsonens tilstand, og de bærer netop den træning der lå
+          mellem to sæsoner. */}
       <p className="mt-3 pt-2.5 border-t border-cz-border text-3xs text-cz-3 leading-snug">
-        {seasonRunning
-          ? tTraining("receipt.note")
-          : seasonState === SEASON_RECEIPT_NOT_STARTED && seasonStart
-            ? tTraining("receipt.notStarted", { date: formatDate(seasonStart) })
-            : tTraining("receipt.pending")}
+        {tTraining(seasonNoteKey, { date: seasonStart ? formatDate(seasonStart) : "" })}
       </p>
     </div>
   );

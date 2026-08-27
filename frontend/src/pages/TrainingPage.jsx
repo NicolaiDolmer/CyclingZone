@@ -29,7 +29,7 @@ import {
   TRAINING_SESSIONS_BY_LEVEL,
   SKILL_SESSIONS,
 } from "../lib/trainingDayTypes.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, yesterdaySummary, riderDayStories, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, yesterdaySummary, riderDayStories, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
@@ -639,9 +639,10 @@ export default function TrainingPage() {
   // Uden en kendt sæsonstart bliver map'et tomt, rækkerne får seasonGains = null
   // og viser "—" i stedet for et opfundet "+0".
   // #4293: en sæson kan være `active` med en start_date i FREMTIDEN (interregnum
-  // mellem to sæsoner). Da er der ingen sæsondage at kvittere for, og map'et
-  // bliver tomt — rækkerne får seasonGains = null og viser "—" i stedet for et
-  // målt "+0" om en periode der ikke er begyndt.
+  // mellem to sæsoner), og en begyndt sæson kan endnu ikke have en eneste
+  // træningsdag. I begge tilfælde er der ingen sæsondage at kvittere for, og
+  // map'et bliver tomt — rækkerne får seasonGains = null og viser "—" i stedet
+  // for et "+0" om en periode der ikke har målt noget.
   const seasonGainsByRider = useMemo(() => {
     const out = {};
     if (history.seasonState !== SEASON_RECEIPT_RUNNING || !history.seasonStart) return out;
@@ -1333,14 +1334,15 @@ export default function TrainingPage() {
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
         ) : (
           <>
-            {/* #4293: "This season"-kolonnen står tom hele vejen ned når sæsonen
-                er aktiv men endnu ikke begyndt. Fladen siger roligt hvorfor og
-                hvornår tallene begynder, i stedet for at lade en kolonne fuld af
-                "—" tale for sig selv. Samme copy-nøgle som rytterprofilens
-                kvittering, så de to steder ikke kan sige forskellige ting. */}
-            {history.seasonState === SEASON_RECEIPT_NOT_STARTED && history.seasonStart && (
+            {/* #4293: "This season"-kolonnen står tom hele vejen ned både når
+                sæsonen er aktiv men endnu ikke begyndt, og på sæsonens første
+                morgen før dagens tick har kørt. Fladen siger roligt hvorfor, i
+                stedet for at lade en kolonne fuld af "—" tale for sig selv.
+                Samme copy-nøgle som rytterprofilens kvittering, så de to steder
+                ikke kan sige forskellige ting. */}
+            {(history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
               <p className="mb-2 text-2xs text-cz-3 leading-snug">
-                {t("receipt.notStarted", { date: formatDate(history.seasonStart) })}
+                {t(SEASON_RECEIPT_NOTE_KEY[history.seasonState], { date: formatDate(history.seasonStart) })}
               </p>
             )}
             <div ref={rosterTableRef} className={WRAP}>

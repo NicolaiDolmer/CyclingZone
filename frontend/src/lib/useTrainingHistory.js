@@ -13,7 +13,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
 import { copenhagenDayKey } from "./raceCentre.js";
-import { seasonReceiptState, SEASON_RECEIPT_UNKNOWN } from "./trainingReport.js";
+import { seasonReceiptState, seasonReceiptView, SEASON_RECEIPT_UNKNOWN } from "./trainingReport.js";
 
 // Vinduet historikken dækker (dage tilbage). Matcher idx_training_day_runs_team_date.
 export const HISTORY_DAYS = 30;
@@ -26,13 +26,32 @@ function sinceDate(days, now = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
+// #4293: kvitteringens tilstand, klar til at sættes. Datoen udledes på
+// KALENDERDAGS-aksen (Europe/Copenhagen, samme akse som tick_date, jf.
+// docs/CALENDAR_RULES.md §0) — ikke browserens og ikke UTC's: 2026-08-27T22:00Z
+// ER 28/8 kl. 00:00 i København, så en UTC-baseret "i dag" ville vise sæsonen
+// som ikke-begyndt de første to timer af dens egen første dag.
+//
+// copenhagenDayKey kaster aldrig (kontrakt + test i raceCentre.js: en zone
+// runtime'en ikke kender giver null, ikke RangeError), så et opslag her kan
+// ikke rive resten af refresh() med sig. Fallbacken er UTC-dagen, samme kilde
+// som 30-dages-vinduet.
+//
+//   seasonRuns : sæsonens hentede dage, eller null når hentningen fejlede
+function receiptState(activeStart, seasonRuns) {
+  const today = copenhagenDayKey(Date.now()) ?? sinceDate(0);
+  return seasonReceiptView(seasonReceiptState(activeStart, today), seasonRuns);
+}
+
 export function useTrainingHistory() {
   const [runs, setRuns] = useState([]);     // [{ tick_date, executed_by, bonus_applied, report }] — seneste 30 dage
   const [seasonRuns, setSeasonRuns] = useState([]); // samme form, men kun dage i den AKTIVE sæson (#3709 trin 1)
   const [seasonStart, setSeasonStart] = useState(null); // "YYYY-MM-DD" | null
-  // #4293: "unknown" | "notStarted" | "running" — se seasonReceiptState. En sæson
-  // kan være `active` med en start_date i FREMTIDEN (interregnum mellem to
-  // sæsoner), og den tilstand fandtes ikke før: den blev vist som et målt "+0".
+  // #4293: "unknown" | "notStarted" | "noDays" | "running" — se
+  // seasonReceiptState + seasonReceiptView. En sæson kan være `active` med en
+  // start_date i FREMTIDEN (interregnum mellem to sæsoner), og en kørende sæson
+  // kan endnu ikke have en eneste træningsdag. Ingen af de to tilstande fandtes
+  // før: begge blev vist som et målt "+0".
   const [seasonState, setSeasonState] = useState(SEASON_RECEIPT_UNKNOWN);
   const [loading, setLoading] = useState(true);
 
@@ -65,15 +84,6 @@ export function useTrainingHistory() {
       const activeStart = !seasonError && season?.start_date ? String(season.start_date) : null;
       setSeasonStart(activeStart);
 
-      // #4293: sæsonen kan være aktiv OG endnu ikke begyndt. `start_date` er en
-      // DATE på kalenderdags-aksen (docs/CALENDAR_RULES.md §0), så "i dag"
-      // udledes i spillets tidszone og ikke i browserens: en spiller i Los
-      // Angeles må ikke se sæsonen som ikke-startet et halvt døgn efter alle
-      // andre. Fallback (copenhagenDayKey kan kun fejle på en ugyldig ms) er
-      // UTC-dagen, samme kilde som 30-dages-vinduet nedenfor.
-      const todayKey = copenhagenDayKey(Date.now()) ?? sinceDate(0);
-      setSeasonState(seasonReceiptState(activeStart, todayKey));
-
       const windowStart = sinceDate(HISTORY_DAYS);
       const since = activeStart && activeStart < windowStart ? activeStart : windowStart;
 
@@ -87,8 +97,19 @@ export function useTrainingHistory() {
         .order("tick_date", { ascending: false });
       if (!error) {
         const rows = data ?? [];
+        const seasonRows = activeStart ? rows.filter((r) => String(r.tick_date) >= activeStart) : [];
         setRuns(rows.filter((r) => String(r.tick_date) >= windowStart));
-        setSeasonRuns(activeStart ? rows.filter((r) => String(r.tick_date) >= activeStart) : []);
+        setSeasonRuns(seasonRows);
+        // Tilstanden afgøres FØRST her, EFTER at dagene er sat: en kørende
+        // sæson uden en eneste træningsdag (sæsonens første morgen, før dagens
+        // tick) er ikke et målt "+0", men en sæson der lige er begyndt. Se
+        // seasonReceiptView.
+        setSeasonState(receiptState(activeStart, seasonRows));
+      } else {
+        // Fejlet hentning: vi ved intet om sæsonens dage, så tilstanden må ikke
+        // blive til et nul. receiptState(…, null) falder til "unknown" for en
+        // kørende sæson og lader "notStarted" stå (den er ren dato).
+        setSeasonState(receiptState(activeStart, null));
       }
     } catch {
       /* netværk — behold tidligere state */
