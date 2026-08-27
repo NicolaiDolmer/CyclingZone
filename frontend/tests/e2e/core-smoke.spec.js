@@ -448,8 +448,9 @@ test("dashboard team-selection CTA links to the next selectable race", async ({ 
 test("dashboard shows per-pool race-days counter incl. in-progress (#1829)", async ({ page }) => {
   await login(page);
   await page.goto("/dashboard");
-  // POOL_RACES (fixtures): completed-løbsdage = 1+1+2 = 4, total = 11, igangværende = 2
+  // POOL_RACES (fixtures): completede ETAPER = 1+1+2 = 4, total = 11, igangværende = 2
   // → tælleren viser "4/11 ... · 2 live/i gang" (per-pulje, ikke det sæson-globale 0/28).
+  // #4245: tælleren summerer races.stages, så copyen siger etaper, ikke løbsdage.
   await expect(page.getByText(/4\/11/).first()).toBeVisible();
   await expect(page.getByText(/2\s+(live|i gang)/i).first()).toBeVisible();
 });
