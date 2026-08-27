@@ -4,23 +4,20 @@
 
 **Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne. **Målt:** 576 åbne issues · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejerens "GO" på netop det skridt.
 
-## Frem til FREDAG 28/8 kl. 11 (ejer-godkendt 25/8) — alt andet viger
+## SÆSONSTART fre 28/8 kl. 11 — holdudtagelse + planlægning (ejer-godkendt 27/8)
 
-S3 er udskudt til fre 28/8 → søn 27/9 (#4218). Rækkefølgen er ejer-valgt:
+Fredags-blokken **leveret**: #4284 · #4285 · #4286 · #4291 merged 27/8; kalender + motorer live (NOW.md). Rapport: `docs/audits/2026-08-28-natsession-rapport.md`.
 
-1. **Holdudtagelsen:** #4200 leveret — **PR #4285** (fuld e2e 561 passed). Ejerens egen **PR #4284** afventer review; test-merge er ren bortset fra patch-note-versionen.
-2. **Nye spillere kan lande:** **PR #4286**. AI-trimmen valgte i id-orden uden at kende `transfer_offers`-FK'en, og D4-A's to første AI-hold var netop de blokerede. D3-A er tilbage på 24; kun D4-A står på 25.
-3. **Vagterne:** #4229 lukket · #4219+#4215 merged (#4290) · #4281+#4258+#4274 merged (#4289) · #4184 i **PR #4291**. **Rest: #4123** (invarianter som CI-gate + gylden diff) og **#4215-resten** — #4176 kræver scorecardet 3 steder, kun CI er leveret.
+20 spillerrettede issues 24.-27/8, tre fjerdedele samme tema. Master-session, fuld kontekst + verificerede rod-årsager i prompten: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md).
 
-Natsessionens rapport + 3 ejer-beslutninger: `docs/audits/2026-08-28-natsession-rapport.md`.
+1. **A · Holdudtagelsen (FØR kl. 11):** #4295 (klienten blokerer stadig delvis trup — strengere end serveren; kobler til #4174) · #4299 (entry uden `binding_span` + dag-rækker, begge værn blinde) · #4201 ("pull, ikke push" er ALLEREDE i koden — ratificér i SSOT + gør synlig, byg intet nyt).
+2. **D · Formplanen (FØR kl. 11):** #4294 (låst "no peak" + fremstår peaket; ejer lovede fuld reset 26/8) · #4212 · #4293 · #4271.
+3. **B · Overlap-læsbarhed:** #4296 (kortet viser kun startdagen) · #4259 · #4245 (`raceDays` tæller etaper) · #4165.
+4. **C · Z1-sæsonmatrixen (#1146):** aksen er FRI (#4236 lukket, 0 løbsdage over flere datoer) → kolonner = 31 datoer. Bulk-endpoint · kladde + Gem plan · låsepanel · tre linser · `?view=`.
 
-(S3-kalenderen regenereret + motorer tændt 27/8 — done, se NOW.md.)
+Ny gæld, **ikke** i sessionen: #4288 (GT-båndet kræver 21 etaper, S3 kører 17-18) · [#4278](https://github.com/NicolaiDolmer/CyclingZone/issues/4278) (D4 opad 41,9 % mod bånd 25-32 % — ejer-valg) · #4282/#4146 (vagt-fejl, 0 reelle brud) · #4292 · #4123 + #4215-rest.
 
-Ny gæld 26-28/8: **#4288** (GT-båndet kræver 21 etaper, S3 kører 17-18 → de 3 GT'er er umålte) · **[#4278](https://github.com/NicolaiDolmer/CyclingZone/issues/4278)** (D4 mest bjergrig, opad 41,9 % mod bånd 25-32 % — ejer-valg) · **#4282**/#4146 (begge vagt-fejl, 0 reelle brud — men ét hold er transfer-frosset af renter alene, ejer-beslutning). Katalog-lofter fra #4272 kræver flere løb i kataloget; detaljer i NOW.md.
-
-**Planning Center med (ejer 25/8):** P0 + UI-gælden + Z1-sæsonmatrixen. Design låst, se `superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md`. Aksen låses først når #4236 er afgjort.
-
-**UDSKUDT (ejer-godkendt):** v4-flip · #4203/#4209 · PC P1-P3-rest + #4070/#4071 · backlog-bølgerne.
+**UDSKUDT (ejer-godkendt):** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølgerne · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
 
 **SSOT-disciplin (hard rule 30):** citér områdets SSOT, opdatér den i samme PR. **24 regler bagud** — #4176 + #4254.
 
@@ -44,7 +41,7 @@ SSOT: `PROGRESSION_RULES.md`. Samling #3664; design LÅST 13/8.
 SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
-9. **P0 + UI-gæld + Z1 er MED før fredag** (ejer 25/8). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
+9. **P0 + UI-gæld + Z1 kører i sæsonstart-sessionen** (ejer 25/8; spor B+C ovenfor). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
 
 ## D · Penge og vækst — gate: spor B leveret (ikke en dato)
 
