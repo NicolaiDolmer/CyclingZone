@@ -54,7 +54,7 @@ import {
   effortByRiderForStage,
   serializeStageRoleOverrides,
 } from "./raceStageRoles.js";
-import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+import { autopickTeamSelection, selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
 // S5 (#2224): form-peaks — I/O-loadere (peak-planer + stage-datoer) +
 // traeningskvalitet-seam. KUN kaldt når v3=true (flag-off skal forblive bit-
 // identisk); peak-inputs går ind på entrants/stages via de samme v3-gates som S3.
@@ -80,7 +80,7 @@ import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.js";
-import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
@@ -822,7 +822,26 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   } catch (teamErr) {
     throw new Error(`teams: ${teamErr.message}`, { cause: teamErr });
   }
-  const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
+  // #4295 (ejer-godkendt 27/8): redningen fylder op til GULVET, ikke kun fra nul.
+  // Før talte ethvert hold med mindst én entry som "har valgt" og blev sprunget over.
+  // Med et fladt gulv på 6 gjorde det den forkerte handling billigst: gemte du nul,
+  // udtog assistenten en fuld trup til dig; gemte du tre, stod du med tre og startede
+  // ikke. Nu er "har valgt" = har mindst MIN_RACE_ENTRIES ryttere i feltet; ligger
+  // holdet under, fylder assistenten forskellen fra holdets frie ryttere.
+  // Afmeldte (#Fase 0b) og ryddede (#4285/#4200) hold springes fortsat over — begge
+  // markeringer er spillerens egen udtalte beslutning om ikke at stille op.
+  const riderIdsByTeam = new Map();
+  for (const e of existingEntries || []) {
+    if (!riderIdsByTeam.has(e.team_id)) riderIdsByTeam.set(e.team_id, new Set());
+    riderIdsByTeam.get(e.team_id).add(e.rider_id);
+  }
+  const entryCountByTeam = new Map([...riderIdsByTeam].map(([teamId, ids]) => [teamId, ids.size]));
+  // Hold der allerede er PÅ eller OVER gulvet røres ikke (uændret #1307-adfærd for dem).
+  const teamsAtOrAboveFloor = new Set(
+    [...entryCountByTeam].filter(([, count]) => count >= MIN_RACE_ENTRIES).map(([teamId]) => teamId)
+  );
+  // Ryttere der allerede står i feltet må aldrig fyldes ind igen (dublet-entry).
+  const alreadyEnteredRiderIds = new Set((existingEntries || []).map((e) => e.rider_id));
   // Fase 0b: hold der har trukket sig fra løbet (frivillig deltagelse) udelades.
   const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
   // #4200 (anden halvdel): hold der eksplicit har RYDDET denne enhed udelades også.
@@ -840,7 +859,7 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   // semantikken er eksplicit (service_role/bulk bypasser desuden RLS).
   const racePoolId = race?.league_division_id ?? null;
   let eligibleTeams = (teams || []).filter(
-    (t) => !t.is_frozen && !teamsWithEntries.has(t.id)
+    (t) => !t.is_frozen && !teamsAtOrAboveFloor.has(t.id)
       && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id)
   );
   if (racePoolId != null) {
@@ -891,7 +910,11 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   const injuredIds = new Set((injured || []).map((r) => r.rider_id));
   // #1688: riders blev hentet for hele pre-cap-sættet — behold kun ryttere på de
   // hold der overlevede felt-cap'et, så cappede hold ikke smutter ind i feltet.
-  const candidates = (riders || []).filter((r) => !injuredIds.has(r.id) && keptTeamSet.has(r.team_id));
+  // #4295: en rytter der ALLEREDE står i feltet (holdets egne manuelle picks) må ikke
+  // fyldes ind igen af redningen — det ville give en dublet-entry for samme (race, rider).
+  const candidates = (riders || []).filter(
+    (r) => !injuredIds.has(r.id) && keptTeamSet.has(r.team_id) && !alreadyEnteredRiderIds.has(r.id)
+  );
   if (!candidates.length) return [];
 
   const candidateIds = candidates.map((r) => r.id);
@@ -931,8 +954,27 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
     const available = excludeBoundRiders({
       riders: teamRiders, thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [],
     });
-    for (const pick of autopickTeamSelection({ riders: available, stages, sizeRule })) {
-      rows.push({ race_id: race.id, rider_id: pick.rider_id, team_id: teamId, race_role: pick.race_role, is_auto_filled: true });
+    // #4295: to forskellige jobs bag samme løkke.
+    //   0 entries  → uændret #1307-autopick: assistenten udtager en HEL trup (sizeRule)
+    //                med kaptajn og spurt-kaptajn, fordi manageren intet har valgt.
+    //   1..5 entries → SEN REDNING: fyld præcis op til gulvet (6), ikke op til feltet.
+    //                Managerens egne picks og roller står; de tilføjede er hjælpere, så
+    //                redningen aldrig sætter en anden kaptajn end den han selv valgte.
+    const existingCount = entryCountByTeam.get(teamId) || 0;
+    const isRescue = existingCount > 0;
+    const rule = isRescue
+      ? { min: MIN_RACE_ENTRIES - existingCount, max: MIN_RACE_ENTRIES - existingCount }
+      : sizeRule;
+    const picks = autopickTeamSelection({ riders: available, stages, sizeRule: rule });
+    // Rækker kun hvis holdet FAKTISK når gulvet. Kan det ikke (for få frie ryttere),
+    // stiller det ikke op alligevel — og så skal der ikke skrives auto-entries der
+    // binder rytterne på løbsdagen for et startfelt de aldrig kommer i.
+    if (existingCount + picks.length < MIN_RACE_ENTRIES) continue;
+    for (const pick of picks) {
+      rows.push({
+        race_id: race.id, rider_id: pick.rider_id, team_id: teamId,
+        race_role: isRescue ? "helper" : pick.race_role, is_auto_filled: true,
+      });
     }
   }
 
@@ -1057,7 +1099,25 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   const autopicked = allowAutofill
     ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist })
     : [];
-  const entries = [...existingEntries, ...autopicked];
+  let entries = [...existingEntries, ...autopicked];
+  // #4295 (ejer-beslutning 27/8): GULVET. Et hold skal have mindst 6 ryttere for at
+  // stille op. Kører EFTER redningen ovenfor, så et hold der kunne fyldes op til 6 er
+  // fyldt op FØR gulvet måles — ellers ville et hold med 3 gemte ryttere ryge ud af et
+  // felt assistenten lige havde reddet.
+  //
+  // Kun ved løbets start (allowAutofill = stageIndex 0, raceRunner.js:2127). Et
+  // igangværende etapeløb må ikke miste et hold midtvejs fordi skade-filteret ovenfor
+  // har taget en rytter fra en trup der startede med præcis 6: gulvet gælder hvem der
+  // STILLER OP, ikke hvem der stadig er i løbet på etape 4.
+  if (allowAutofill) {
+    const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries });
+    if (droppedTeamIds.length) {
+      console.log(
+        `[race ${race.id}] ${droppedTeamIds.length} hold stiller ikke op: under ${MIN_RACE_ENTRIES} udtagne ryttere (#4295)`
+      );
+    }
+    entries = kept;
+  }
   if (!entries.length) return [];
 
   const teamByRider = new Map(entries.map((e) => [e.rider_id, e.team_id]));

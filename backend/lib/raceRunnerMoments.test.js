@@ -30,6 +30,12 @@ const ENTRANTS = [
   entrant("b2", "B", { sprint: 72, acceleration: 66 }, true),
   entrant("b3", "B", { punch: 64, climbing: 50 }, false),
   entrant("b4", "B", { endurance: 55, recovery: 52 }, false),
+  // #4295 (ejer-beslutning 27/8): et hold skal have mindst 6 ryttere for at stille op.
+  // Feltet var 4+4 og ville nu slet ikke starte, saa begge hold er fyldt op til gulvet.
+  entrant("a5", "A", { endurance: 58, climbing: 48 }, false),
+  entrant("a6", "A", { punch: 56, positioning: 50 }, false),
+  entrant("b5", "B", { endurance: 57, recovery: 49 }, false),
+  entrant("b6", "B", { sprint: 51, acceleration: 47 }, false),
 ];
 // Samme race-id som raceRunnerIncidents.test.js — verificeret deterministisk
 // output (b4 abandon på stage 2, ægte moment-vokabular fyrer for feltet).
