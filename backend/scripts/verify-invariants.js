@@ -6,31 +6,45 @@ import path from "node:path";
 import { checkCalendarOverlapInvariants } from "../lib/calendarOverlapInvariant.js";
 import { TIER_OVERLAP_CAP } from "../lib/calendarTierCaps.js";
 import { evaluateActiveSeasonInvariant } from "../lib/activeSeasonInvariant.js";
+import { loadCheckAllowedTypes } from "../../scripts/lint-finance-types.mjs";
+import { NOTIFICATION_TYPES } from "../lib/notificationTypes.js";
+import { MAX_SQUAD_SIZE } from "../lib/marketUtils.js";
+import { DEBT_CEILING_BY_DIVISION } from "../lib/economyConstants.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ENV = path.resolve(SCRIPT_DIR, "../.env");
 
-// #1614/#838: ét fælles roster-loft (30) for alle divisioner — matcher håndhævelsen i marketUtils.MARKET_SQUAD_LIMITS.
-const SQUAD_MAX = { 1: 30, 2: 30, 3: 30 };
-const DEBT_CEILING = { 1: 1_200_000, 2: 900_000, 3: 600_000 };
+// #4282/#4146: disse to var tidligere en hardkodet {1,2,3}-map HER i scriptet —
+// division 4 manglede helt, og `if (max !== undefined)` sprang derfor D4-hold
+// stille over. Importeret nu fra den kanoniske kilde i stedet for genskrevet:
+// - Trup: MAX_SQUAD_SIZE (marketUtils.js) er ÉT fælles loft for alle 4
+//   divisioner (getSquadLimits' D4-fallback bruger samme værdi) — ingen
+//   per-division-map at glemme en nøgle i.
+// - Gæld: DEBT_CEILING_BY_DIVISION (economyConstants.js) har alle 4 divisioner,
+//   inkl. D4 (400.000).
+const SQUAD_MAX = MAX_SQUAD_SIZE;
+const DEBT_CEILING = DEBT_CEILING_BY_DIVISION;
 
-const KNOWN_TX_TYPES = new Set([
-  "sponsor", "prize", "salary", "transfer_in", "transfer_out",
-  "interest", "bonus", "starting_budget",
-  "loan_received", "loan_repayment", "loan_interest",
-  "emergency_loan", "admin_adjustment",
-]);
+// #4184: disse to lister var tidligere håndholdte kopier her i scriptet, og drev
+// stille fra deres autoritative kilder — målt mod prod 24/8: 13 finans- + 22
+// notifikations-typer blev fejlagtigt flaget som "ukendte" (ren vagt-støj, ikke
+// datafejl), som druknede ægte fund samme dag. Afledt nu direkte fra koden:
+// - Finans: samme CHECK-constraint-parser som scripts/lint-finance-types.mjs
+//   (#2957) bruger — den autoritative finance_transactions_type_check, parset
+//   fra den nyeste database/*.sql-migration der redefinerer den.
+// - Notifikationer: NOTIFICATION_TYPES fra backend/lib/notificationTypes.js,
+//   som notificationTypes.test.js allerede holder i paritet med sit eget
+//   CHECK-constraint. Ingen af listerne kan længere drifte uden at ÉN af de to
+//   guards (denne + de eksisterende unit-tests) fejler synligt.
+const { values: KNOWN_TX_TYPES, source: financeTypeSource } = loadCheckAllowedTypes();
+if (!financeTypeSource) {
+  throw new Error(
+    "finance_transactions_type_check kunne ikke parses fra database/*.sql — " +
+      "lint-finance-types.mjs's parser er sandsynligvis brudt (verify-invariants #4184)."
+  );
+}
 
-const KNOWN_NOTIF_TYPES = new Set([
-  "bid_received", "bid_placed", "auction_won", "auction_lost", "auction_outbid",
-  "transfer_offer_received", "transfer_offer_accepted", "transfer_offer_rejected",
-  "transfer_counter", "transfer_offer_withdrawn", "transfer_interest",
-  "new_race", "race_results_imported", "season_started", "season_ended",
-  "board_update", "board_critical", "salary_paid", "sponsor_paid",
-  "watchlist_rider_listed", "watchlist_rider_auction",
-  "loan_created", "emergency_loan", "loan_paid_off",
-  "deadline_day_warning", "auction_cancelled", "squad_enforced",
-]);
+const KNOWN_NOTIF_TYPES = new Set(NOTIFICATION_TYPES);
 
 function parseArgs(argv) {
   const args = { envPath: DEFAULT_ENV, format: "text" };
@@ -119,7 +133,7 @@ async function main() {
     fetch_("swap_offers", "id,offered_rider_id,status", { status: "in.(pending,countered,awaiting_confirmation)" }),
     fetch_("finance_transactions", "type"),
     fetch_("notifications", "type"),
-    fetch_("loans", "team_id,amount_remaining,loan_type", { status: "eq.active" }),
+    fetch_("loans", "team_id,principal,origination_fee,loan_type", { status: "eq.active" }),
     // #2974/#2898: hele race_results til duplikat-invarianten nedenfor.
     fetch_("race_results", "race_id,stage_number,rider_id,result_type,rank,points_earned"),
     // #4161: kalender-akse + overlap-cap pr. pulje for den AKTIVE saeson.
@@ -140,18 +154,21 @@ async function main() {
     .filter(([, n]) => n > 1)
     .map(([riderId, n]) => ({ riderId, count: n }));
 
-  // Check 2: Trupstørrelse overskrider ikke max for divisionen (tæller kun human teams)
+  // Check 2: Trupstørrelse overskrider ikke max for divisionen (tæller kun human teams).
+  // #4282/#4146: 30-cap'en er senior-kun (auctionRules.js: "senior 30-cap") —
+  // akademiet har sit eget separate loft (getAuctionBidRoomBlock). Uden filteret
+  // talte optællingen akademi- og pensionerede ryttere med i en cap de aldrig
+  // har været omfattet af (25 falske positiver mod prod 27/8).
   const squadSize = new Map();
   for (const r of riders) {
-    if (r.team_id && humanTeamIds.has(r.team_id)) {
+    if (r.team_id && humanTeamIds.has(r.team_id) && !r.is_academy && !r.is_retired) {
       squadSize.set(r.team_id, (squadSize.get(r.team_id) || 0) + 1);
     }
   }
   const oversized = [];
   for (const [teamId, count] of squadSize.entries()) {
     const div = divisionOf.get(teamId);
-    const max = SQUAD_MAX[div];
-    if (max !== undefined && count > max) oversized.push({ teamId, division: div, count, max });
+    if (count > SQUAD_MAX) oversized.push({ teamId, division: div, count, max: SQUAD_MAX });
   }
 
   // Check 3: Finance transaction types er alle kendte
@@ -162,11 +179,19 @@ async function main() {
   const unknownNotifTypes = [...new Set(notifRows.map(r => r.type))]
     .filter(t => !KNOWN_NOTIF_TYPES.has(t));
 
-  // Check 5: Aktiv finance-gæld overskrider ikke divisionsloft
+  // Check 5: Aktiv finance-gæld overskrider ikke divisionsloft.
+  // #4282: loftet styrer hvor meget et hold må LÅNE (principal + origination_fee
+  // ved lånetidspunktet) — ikke `amount_remaining`, som også indeholder rente
+  // motoren selv har kapitaliseret ind siden. Målt mod prod 27/8: to hold lånte
+  // præcis op til loftet og blev fejlagtigt flaget, fordi vagten målte på
+  // amount_remaining (inkl. rente). economyEngine.js (#2912) ekskluderer bevidst
+  // rente fra STRAFFEN af samme grund ("man ikke bør straffes for motorens egen
+  // kapitalisering") — vagten skal måle det samme som håndhævelsen, ikke mere.
   const debtByTeam = new Map();
   for (const loan of activeLoans) {
     if (humanTeamIds.has(loan.team_id)) {
-      debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + Number(loan.amount_remaining));
+      const drawn = Number(loan.principal || 0) + Number(loan.origination_fee || 0);
+      debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + drawn);
     }
   }
   const debtBreaches = [];
