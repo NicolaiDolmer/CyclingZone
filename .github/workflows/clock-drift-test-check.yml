@@ -78,6 +78,16 @@ jobs:
           # på forældreprocessen ville ikke nå dem. NODE_OPTIONS arves af alle
           # children. Absolut file://-URL, så den resolver uanset child-cwd.
           NODE_OPTIONS: --import file://${{ github.workspace }}/scripts/fake-clock-preload.mjs
+          # #4258: samme dummy-værdier som ci.yml's backend-tests job. Uden dem
+          # crasher enhver backend-testfil der importerer et modul som eager-kalder
+          # createClient() (fx lib/discordNotifier.js) med "supabaseUrl is required"
+          # FØR en eneste test overhovedet kører — det er ikke et klokke-afhængigt
+          # fund (#3385-klassen), det er en manglende env-var i selve jobbet.
+          # Verificeret 27/8: samme 18 filer med samme "SUPABASE_URL is required"
+          # crash, uafhængigt af CZ_TEST_CLOCK_OFFSET_DAYS. Ingen ægte
+          # klokke-afhængig test fundet i denne kørsel.
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_SERVICE_KEY: test-service-key
         run: |
           set +e
           ${{ matrix.test-command }} > clock-drift-test.log 2>&1

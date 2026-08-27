@@ -58,6 +58,7 @@ import {
 } from "../lib/riderProgression.js";
 import { nextFatigue, nextForm, conditionMultiplier } from "../lib/riderCondition.js";
 import { academySeasonFracForAge, isAcademyAge, ACADEMY } from "../lib/academyFlag.js";
+import { repoRoot } from "./lib/repoRoot.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -878,7 +879,8 @@ async function main() {
   // efter-billede FØR taper (2026-07-15-cap-consolidation-curves.json) bevares URØRT
   // — de er ejerens sammenlignings-reference. Denne fil er den KOMBINEREDE tilstand
   // (model A + alders-taper, ejer-valg B 16/7).
-  const outDir = join(__dirname, "../../docs/audits");
+  // #4274: ankret på git-toplevel, ikke __dirname — se lib/repoRoot.mjs.
+  const outDir = join(repoRoot(), "docs/audits");
   mkdirSync(outDir, { recursive: true });
   const outPath = join(outDir, "2026-07-16-cap-taper-curves.json");
   const jsonOut = {
