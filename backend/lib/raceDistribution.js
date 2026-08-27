@@ -286,9 +286,10 @@ export function raceDaysByRace(scheduleRows = [], { stagesByRaceId } = {}) {
 //
 // `seasonRaceIds` (Set) er PÅKRÆVET af enhver flade hvis copy siger "denne sæson".
 // race_entries er ikke sæson-scopet i sig selv, så uden filteret tæller entries fra
-// TIDLIGERE sæsoner med: målt i prod 27/8 var 69.115 af 94.712 entries gamle, 2.367
-// af 4.854 ryttere fik en oppustet chip (snit 14,4 løb vist mod 5,3 sande), værst
-// 56 løb vist for en rytter med 0 i den aktive sæson (#4245 rework).
+// TIDLIGERE sæsoner med. Målt read-only mod prod 27/8: 68.661 af 94.184 entries var
+// fra tidligere sæsoner (73 %), 3.483 af 5.194 ryttere med entries fik et for højt
+// tal (snit 18,1 løb vist mod 4,9 sande, værst 56 for meget), og 2.364 af dem har
+// slet ingen løb i den aktive sæson (#4245 rework).
 //
 // Fallback: et løb uden game_day-rækker tæller som mindst ÉN løbsdag, derfor `|| 1`
 // og ikke `?? 1` — en 0-værdi ville slippe igennem og skjule belastnings-chippen

@@ -42,7 +42,7 @@ test("GET /races/distribution: raceDays kommer fra game_day, ikke fra races.stag
   assert.match(
     block,
     /seasonRaceIds: new Set\(raceIds\)/,
-    "chippen siger 'tilmeldt denne sæson' — entries SKAL sæson-scopes (#4245 rework: 73 % af entries i prod var gamle sæsoners)"
+    "chippen siger 'tilmeldt denne sæson', så entries SKAL sæson-scopes (#4245 rework: 73 % af entries i prod var fra tidligere sæsoner)"
   );
   assert.doesNotMatch(
     block,

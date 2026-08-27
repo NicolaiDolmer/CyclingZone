@@ -416,7 +416,7 @@ test("seasonLoadByRider: løb uden løbsdags-data tæller som mindst én løbsda
 test("seasonLoadByRider: entries uden for den aktive sæson tælles ikke (#4245)", () => {
   // Chippens copy siger "tilmeldt denne sæson". race_entries er ikke sæson-scopet,
   // så uden seasonRaceIds tælles gamle sæsoners entries med. Målt i prod 27/8:
-  // 69.115 af 94.712 entries var fra tidligere sæsoner.
+  // 68.661 af 94.184 entries var fra tidligere sæsoner.
   const entries = [
     { race_id: "nu-1", rider_id: "r1" },
     { race_id: "nu-2", rider_id: "r1" },
