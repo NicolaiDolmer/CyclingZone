@@ -6,18 +6,18 @@
 
 ## SÆSONSTART fre 28/8 kl. 11 — holdudtagelse + planlægning (ejer-godkendt 27/8)
 
-Fredags-blokken **leveret**: #4284 · #4285 · #4286 · #4291 merged 27/8; kalender + motorer live (NOW.md). Rapport: `docs/audits/2026-08-28-natsession-rapport.md`.
+Fredags-blokken **leveret**: #4284 · #4285 · #4286 · #4291 merged 27/8; kalender + motorer live. Rapport: `docs/audits/2026-08-28-natsession-rapport.md`.
 
-20 spillerrettede issues 24.-27/8, tre fjerdedele samme tema. Master-session, fuld kontekst + verificerede rod-årsager i prompten: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md).
+20 spillerrettede issues 24.-27/8, tre fjerdedele samme tema. Workflow-master-session (design + build), fuld kontekst i prompten: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md).
 
-1. **A · Holdudtagelsen (FØR kl. 11):** #4295 (klienten blokerer stadig delvis trup — strengere end serveren; kobler til #4174) · #4299 (entry uden `binding_span` + dag-rækker, begge værn blinde) · #4201 ("pull, ikke push" er ALLEREDE i koden — ratificér i SSOT + gør synlig, byg intet nyt).
-2. **D · Formplanen (FØR kl. 11):** #4294 (låst "no peak" + fremstår peaket; ejer lovede fuld reset 26/8) · #4212 · #4293 · #4271.
-3. **B · Overlap-læsbarhed:** #4296 (kortet viser kun startdagen) · #4259 · #4245 (`raceDays` tæller etaper) · #4165.
-4. **C · Z1-sæsonmatrixen (#1146):** aksen er FRI (#4236 lukket, 0 løbsdage over flere datoer) → kolonner = 31 datoer. Bulk-endpoint · kladde + Gem plan · låsepanel · tre linser · `?view=`.
+1. **Bølge 1 (parallelt) · A Holdudtagelsen (FØR kl. 11):** #4295 (klienten blokerer stadig delvis trup — strengere end serveren; kobler til #4174) · #4299 (entry uden `binding_span` + dag-rækker, begge værn blinde) · #4201 ("pull, ikke push" er ALLEREDE i koden — ratificér i SSOT + gør synlig).
+2. **Bølge 1 · D Formplanen (FØR kl. 11):** #4294 (låst "no peak" + fremstår peaket; ejer lovede fuld reset 26/8) · #4212 · #4293 · #4271.
+3. **Bølge 1 · B Overlap-læsbarhed — sessionens største designopgave:** #4296 (dagsspænd + konflikt på løbskortet) · #4259 (rytter-glyf) · #4245 (`raceDays` tæller etaper) · #4165 (mobil først).
+4. **Bølge 2 · C Z1-sæsonmatrixen (#1146):** aksen er FRI (#4236 lukket) → kolonner = 31 datoer. Bulk-endpoint · kladde + Gem plan · konfliktpanel · tre linser · `?view=`.
 
-Ny gæld, **ikke** i sessionen: #4288 (GT-båndet kræver 21 etaper, S3 kører 17-18) · [#4278](https://github.com/NicolaiDolmer/CyclingZone/issues/4278) (D4 opad 41,9 % mod bånd 25-32 % — ejer-valg) · #4282/#4146 (vagt-fejl, 0 reelle brud) · #4292 · #4123 + #4215-rest.
+Ny gæld, **ikke** i sessionen: #4288 (GT-båndet kræver 21 etaper, S3 kører 17-18) · **#4278** (D4 opad 41,9 % mod bånd 25-32 % — ejer-valg) · #4282/#4146 (vagt-fejl, 0 brud) · #4292 · #4123 + #4215-rest.
 
-**UDSKUDT (ejer-godkendt):** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølgerne · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
+**UDSKUDT (ejer-godkendt):** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
 
 **SSOT-disciplin (hard rule 30):** citér områdets SSOT, opdatér den i samme PR. **24 regler bagud** — #4176 + #4254.
 
