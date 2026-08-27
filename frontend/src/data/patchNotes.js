@@ -1,5 +1,54 @@
 export const PATCHES = [
   {
+    "version": "7.200",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Finance history no longer shows raw codes for some transactions",
+          "body": "A handful of transaction types in your finance history (relegation parachute, sponsor race day bonus, facility upgrades, staff severance, scout travel, and a few more) were missing their text and fell back to the internal type name. They now show a proper label."
+        },
+        "da": {
+          "title": "Finans-historikken viser ikke længere rå koder for enkelte transaktioner",
+          "body": "En håndfuld transaktionstyper i din finans-historik (nedrykningsfaldskærm, sponsor løbsdag-bonus, facilitetsopgraderinger, fratrædelsesgodtgørelse, spejder-rejse og et par til) manglede deres tekst og faldt tilbage til det interne type-navn. De viser nu en rigtig label."
+        },
+        "refs": [4260]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Firing a rider no longer shows a raw code in the history line",
+          "body": "Releasing a senior rider against a buyout fee wrote a finance entry with no translated text, so the history line fell back to a generic label. It now describes the release correctly."
+        },
+        "da": {
+          "title": "Fyring af en rytter viser ikke længere en rå kode i historik-linjen",
+          "body": "Frigivelse af en seniorrytter mod et buyout-gebyr skrev en finans-postering uden oversat tekst, så historik-linjen faldt tilbage til en generisk label. Den beskriver nu fyringen korrekt."
+        },
+        "refs": [4260]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training Tempo no longer shows a raw code",
+          "body": "The Tempo training session was missing its text label and showed the internal name instead, both on the Training page and in a rider's training history. It now shows \"Tempo\" like every other session."
+        },
+        "da": {
+          "title": "Træning 'Tempo' viser ikke længere en rå kode",
+          "body": "Trænings-passet Tempo manglede sin tekst-label og viste det interne navn i stedet, både på Træning-siden og i en rytters træningshistorik. Det viser nu 'Tempo' ligesom alle andre pas."
+        },
+        "refs": [4260]
+      }
+    ]
+  },
+  {
     "version": "7.199",
     "date": "2026-08-27",
     "label": "Beta",
