@@ -21,6 +21,55 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.205",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season load chip counted stages, and old seasons too",
+          "body": "The load chip in the planning board's rider pool said race days but counted stages, and it counted races from earlier seasons on top. It now counts the race days a rider is entered for in the current season only. If a rider looked far busier than he is, that was why."
+        },
+        "da": {
+          "title": "Belastnings-chippen talte etaper, og gamle sæsoner med",
+          "body": "Belastnings-chippen i planlægnings-boardets rytter-pulje sagde løbsdage, men talte etaper, og den talte oven i købet løb med fra tidligere sæsoner. Den tæller nu kun de løbsdage rytteren er tilmeldt i den aktive sæson. Så hvis en rytter så langt mere travl ud end han er, var det derfor."
+        },
+        "refs": [4245]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Your sponsor pays per stage, and now says so",
+          "body": "Nothing about the money changed, only the word. A race day is the in-game day that binds a rider to one race. Your sponsor pays for every stage your team starts. Both were called race day, so the sponsor help and the finance labels now say stage."
+        },
+        "da": {
+          "title": "Din sponsor betaler pr. etape, og siger det nu",
+          "body": "Intet ved pengene er ændret, kun ordet. En løbsdag er den in-game-dag der binder rytteren til ét løb. Din sponsor betaler for hver etape dit hold stiller til start i. Begge dele hed løbsdag, så sponsor-hjælpen og finans-labels siger nu etape."
+        },
+        "refs": [4245]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Season progress and the world catalog now say stages",
+          "body": "The season bar on your dashboard and the class list in the world catalog added up stages but called them race days. They now say stages. The numbers are unchanged."
+        },
+        "da": {
+          "title": "Sæson-fremdrift og verdens-kataloget siger nu etaper",
+          "body": "Sæson-bjælken på dit dashboard og klasse-listen i verdens-kataloget lagde etaper sammen, men kaldte dem løbsdage. De siger nu etaper. Tallene er de samme."
+        },
+        "refs": [4245]
+      }
+    ]
+  },
+  {
     "version": "7.204",
     "date": "2026-08-27",
     "label": "Beta",

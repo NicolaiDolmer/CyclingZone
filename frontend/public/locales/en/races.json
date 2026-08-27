@@ -314,7 +314,7 @@
   "world": {
     "loading": "Loading world calendar…",
     "totalRaces": "{count} races in total across the world calendar",
-    "classSummary": "{count} races · {days} days",
+    "classSummary": "{count} races · {stages} stages",
     "filteredOn": "Filtered on {class}.",
     "clearFilter": "Clear filter",
     "thRace": "Race",

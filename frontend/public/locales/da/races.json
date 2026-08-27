@@ -314,7 +314,7 @@
   "world": {
     "loading": "Indlæser verdens-kalender…",
     "totalRaces": "{count} løb totalt på tværs af verdens-kalenderen",
-    "classSummary": "{count} løb · {days} dage",
+    "classSummary": "{count} løb · {stages} etaper",
     "filteredOn": "Filtreret på {class}.",
     "clearFilter": "Ryd filter",
     "thRace": "Løb",

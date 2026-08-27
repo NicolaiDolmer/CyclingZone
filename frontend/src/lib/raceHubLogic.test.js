@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -125,35 +125,35 @@ test("deriveRaceStatus: robust mod manglende stages", () => {
   assert.equal(deriveRaceStatus("scheduled", 0, null), "scheduled");
 });
 
-// poolRaceDayTotals (#1829): per-pulje løbsdage-tæller. total = sum(stages);
-// completed = løbsdage faktisk kørt INKL. igangværende etaper; inProgress = de
-// løbsdage der hører til løb som stadig kører (ærligt mellemregnings-tal).
-test("poolRaceDayTotals: total = sum(stages); completed inkluderer igangværende etaper", () => {
+// poolStageTotals (#1829/#4245): per-pulje ETAPE-tæller. total = sum(stages);
+// completed = etaper faktisk kørt INKL. igangværende; inProgress = de
+// etaper der hører til løb som stadig kører (ærligt mellemregnings-tal).
+test("poolStageTotals: total = sum(stages); completed inkluderer igangværende etaper", () => {
   const races = [
     { status: "completed", stages: 1, stages_completed: 1 },  // endagsløb færdig → 1/1
     { status: "scheduled", stages: 7, stages_completed: 3 },  // etapeløb i gang → 3 af 7
     { status: "scheduled", stages: 5, stages_completed: 0 },  // ikke startet → 0 af 5
   ];
-  assert.deepEqual(poolRaceDayTotals(races), { completed: 4, total: 13, inProgress: 3 });
+  assert.deepEqual(poolStageTotals(races), { completed: 4, total: 13, inProgress: 3 });
 });
 
-test("poolRaceDayTotals: completed-løb tæller alle sine etaper selv hvis stages_completed mangler", () => {
-  assert.deepEqual(poolRaceDayTotals([{ status: "completed", stages: 21, stages_completed: 0 }]),
+test("poolStageTotals: completed-løb tæller alle sine etaper selv hvis stages_completed mangler", () => {
+  assert.deepEqual(poolStageTotals([{ status: "completed", stages: 21, stages_completed: 0 }]),
     { completed: 21, total: 21, inProgress: 0 });
 });
 
-test("poolRaceDayTotals: tom liste → nul", () => {
-  assert.deepEqual(poolRaceDayTotals([]), { completed: 0, total: 0, inProgress: 0 });
-  assert.deepEqual(poolRaceDayTotals(), { completed: 0, total: 0, inProgress: 0 });
+test("poolStageTotals: tom liste → nul", () => {
+  assert.deepEqual(poolStageTotals([]), { completed: 0, total: 0, inProgress: 0 });
+  assert.deepEqual(poolStageTotals(), { completed: 0, total: 0, inProgress: 0 });
 });
 
-test("poolRaceDayTotals: manglende stages → tæller som 1 (matcher DEFAULT 1)", () => {
-  assert.deepEqual(poolRaceDayTotals([{ status: "scheduled", stages: null, stages_completed: 0 }]),
+test("poolStageTotals: manglende stages → tæller som 1 (matcher DEFAULT 1)", () => {
+  assert.deepEqual(poolStageTotals([{ status: "scheduled", stages: null, stages_completed: 0 }]),
     { completed: 0, total: 1, inProgress: 0 });
 });
 
-test("poolRaceDayTotals: stages_completed klampes til [0, stages] (defensivt mod inkonsistent data)", () => {
-  assert.deepEqual(poolRaceDayTotals([{ status: "scheduled", stages: 7, stages_completed: 9 }]),
+test("poolStageTotals: stages_completed klampes til [0, stages] (defensivt mod inkonsistent data)", () => {
+  assert.deepEqual(poolStageTotals([{ status: "scheduled", stages: 7, stages_completed: 9 }]),
     { completed: 7, total: 7, inProgress: 0 });
 });
 
