@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Planning",
         "en": {
           "title": "Form peaks left over from the old calendar have been cleared",
-          "body": "When the season 3 calendar was rebuilt, every peak plan lost its target race but kept its date window. That left riders showing \"No peak\" with a remove button you could not click, and it would have given form bonuses on race days nobody had chosen. All 812 affected plans have been removed, so every rider starts season 3 with a clean slate. Peaks you have set since the rebuild are untouched. A peak plan is now deleted together with its target race, so this cannot happen again."
+          "body": "Rebuilding the season 3 calendar left 812 peak plans pointing at races that no longer exist, and ones already under way could not be removed. All are gone, so set your peaks again. A peak plan is now deleted with its race."
         },
         "da": {
           "title": "Formpeaks tilbage fra den gamle kalender er ryddet",
-          "body": "Da sæson 3-kalenderen blev bygget om, mistede alle formplaner deres målløb, men beholdt deres datovindue. Det efterlod ryttere med \"No peak\" og en fjern-knap der ikke kunne klikkes, og det ville have givet formbonus på løbsdage ingen havde valgt. Alle 812 berørte planer er fjernet, så hver rytter starter sæson 3 med blanke ark. Peaks du selv har sat efter ombygningen er urørte. En formplan slettes nu sammen med sit målløb, så det ikke kan ske igen."
+          "body": "Sæson 3-kalenderen blev bygget om, og 812 formplaner endte med at pege på løb der ikke findes. Dem der var i gang kunne ikke fjernes. Alle er væk, så sæt dine peaks igen. En formplan slettes nu sammen med sit løb."
         },
         "refs": [4294]
       }

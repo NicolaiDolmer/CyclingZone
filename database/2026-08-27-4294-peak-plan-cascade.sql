@@ -3,14 +3,17 @@
 -- ROD-ÅRSAG. `rider_peak_plans` gemmer BÅDE et anker (`target_race_id`) og et
 -- AFLEDT resultat (`window_start`/`window_end`, snappet om målløbets etapedatoer
 -- af snapPeakWindow). Kun ankeret havde en FK, og den var ON DELETE SET NULL.
--- Da kalender-regenereringen 27/8 slettede sæson 3's races, nulstillede FK'en
--- derfor ankeret mens vinduet blev stående med den GAMLE kalenders datoer.
+-- Da kalender-regenereringen slettede sæson 3's races (de nye løb er skrevet
+-- 26/8 kl. 23:38 CEST), nulstillede FK'en derfor ankeret mens vinduet blev
+-- stående med den GAMLE kalenders datoer.
 --
 -- Målt i prod 27/8 før reparationen: 812 af 894 planer i S3 uden målløb, 731 med
 -- vinduer der overlappede den NYE kalender, 490 ryttere ramt. På åbningsdagen
--- 28/8 ville 280 ryttere fordelt på 27 menneskehold have stået i et peak ingen
--- spiller havde valgt eller kunne se, og 316 planer var allerede låst
--- (`isPlanLocked` ser kun på `window_start`), så spilleren kunne ikke fjerne dem.
+-- 28/8 dækkede 280 af de forældreløse vinduer dagen — 274 distinkte ryttere,
+-- heraf 272 på 27 menneskehold — som altså ville have stået i et peak ingen
+-- spiller havde valgt eller kunne se. 316 af planerne på menneskehold var
+-- allerede låst (`isPlanLocked` ser kun på `window_start`), så spilleren kunne
+-- ikke fjerne dem.
 -- Motoren filtrerede ikke på `target_race_id`, så vinduerne ville have fyret:
 -- `race_engine_v3_scoring` og `peak_planner_enabled` er begge `on` i prod.
 --

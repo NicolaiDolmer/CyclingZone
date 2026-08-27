@@ -104,26 +104,24 @@ test("aggregateDemandVector: ingen gyldige profiler → null", () => {
 
 // ── Fake supabase (samme mønster som raceFatigue.test.js) ─────────────────────
 // Bygger en thenable query-builder; det sidste led i kæden resolves med { data }.
-// Fake'en HÅNDHÆVER ikke filtrene: eq/in er no-ops der returnerer alle rækker.
-// Det er bevidst her, fordi #4294-guarden netop ligger på JS-siden og ikke i
-// queryen, så testene beviser at rækken smides væk uanset hvad DB'en leverer.
-// `not` er med for at spejle den ægte klient, ikke fordi nogen test bruger den.
+// Fake'en HÅNDHÆVER ikke filtrene: select/eq/in er no-ops der returnerer alle
+// rækker. Det er bevidst her, fordi #4294-guarden netop ligger på JS-siden og
+// ikke i queryen, så testene beviser at rækken smides væk uanset hvad DB'en
+// leverer — også hvis nogen senere fjerner et filter fra kæden.
 function makeSupabase(tables = {}) {
-  const notFilters = [];
   function from(table) {
     const rows = tables[table] ?? [];
     const b = {
       select() { return b; },
       eq() { return b; },
       in() { return b; },
-      not(column, operator, value) { notFilters.push({ table, column, operator, value }); return b; },
       then(resolve, reject) {
         return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
       },
     };
     return b;
   }
-  return { from, notFilters };
+  return { from };
 }
 
 // ── loadStageDayOrdinals ──────────────────────────────────────────────────────
@@ -192,7 +190,8 @@ test("loadPeakPlans: ugyldig dato på en plan → planen udelades", async () => 
 // ankeret når kalenderen regenereres. Alle tre skriveveje afviser et tomt
 // target_race_id med 400, så NULL er aldrig et spillervalg. Testene her erstatter
 // den gamle assertion om at en NULL-række TALTE MED — den kodificerede netop den
-// adfærd der gav 280 ryttere en usynlig peak på sæsonens åbningsdag.
+// adfærd der ville have givet 274 ryttere (280 planer) en usynlig peak på
+// sæsonens åbningsdag.
 
 test("loadPeakPlans: en plan uden målløb udelades (forældreløst vindue, #4294)", async () => {
   const supabase = makeSupabase({

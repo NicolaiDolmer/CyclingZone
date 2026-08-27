@@ -13256,7 +13256,18 @@ router.get("/admin/cron-runs", requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/admin/races/:raceId — slet løb (cascader til race_results)
+// DELETE /api/admin/races/:raceId — slet løb.
+//
+// SPRÆNGRADIUS. Sletningen cascader til `race_results` OG — siden #4294
+// (database/2026-08-27-4294-peak-plan-cascade.sql) — til `rider_peak_plans`
+// via `target_race_id`. Sletter du ét løb, sletter du samtidig HVERT holds
+// formplan for det løb, tavst og uden ejer-bekræftelse. Planerne kan ikke
+// gendannes herfra; managerens valg af peak-vindue er væk.
+//
+// Det er den ønskede adfærd (et vindue uden sit målløb er meningsløst i alle tre
+// lag, se migrationens hoved), men den er ikke synlig fra kaldstedet. Skal du
+// slette løb i bulk — fx en kalender-regenerering — så tag backup af
+// `rider_peak_plans` FØRST. Køreplan: docs/runbooks/2026-08-27-s3-kalender-regenerering.md.
 router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { raceId } = req.params;

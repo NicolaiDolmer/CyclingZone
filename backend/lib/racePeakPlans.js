@@ -320,7 +320,7 @@ export async function loadStageDayOrdinals({ supabase, raceId }) {
  *
  * FORÆLDRELØSE VINDUER UDELADES (#4294). En række her bærer BÅDE et anker
  * (target_race_id) og et AFLEDT resultat (window_start/end, snappet om målløbets
- * etaper). Kun ankeret har en FK, så da kalender-regenereringen 27/8 slettede
+ * etaper). Kun ankeret har en FK, så da kalender-regenereringen sent 26/8 slettede
  * sæson 3's races, nullede `ON DELETE SET NULL` ankeret mens vinduet blev stående
  * med den GAMLE kalenders datoer: 812 planer der pegede på ingenting, hvoraf 731
  * overlappede den nye kalender. Uden dette filter ville motoren give +6..+29

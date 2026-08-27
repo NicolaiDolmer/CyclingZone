@@ -7,7 +7,8 @@ ventede på at nogen slettede en række et andet sted.
 
 ## Hvad der skete
 
-Kalenderen for sæson 3 blev regenereret 27/8. Det slettede sæsonens `races`.
+Kalenderen for sæson 3 blev regenereret sent 26/8 (de nye løb er skrevet 26/8 kl.
+23:38 CEST; skaden blev opdaget 27/8). Det slettede sæsonens `races`.
 
 `rider_peak_plans` gemmer to ting i samme række:
 
@@ -22,9 +23,12 @@ datoer fra en kalender der ikke fandtes mere.
 
 Målt i prod før reparationen:
 
-- **731** af de 812 vinduer overlappede den NYE kalender
-- **490** ryttere ramt, **280** af dem ville stå i peak på åbningsdagen
-- **27** menneskehold, og **316** planer var allerede låst for spilleren
+- **731** af de 812 vinduer overlappede den NYE kalender, fordelt på **490** ryttere
+- **280** af de forældreløse vinduer dækkede åbningsdagen 28/8. Det er **planer**,
+  ikke ryttere: distinkte ryttere med et sådant vindue var **274**, heraf **272**
+  på menneskehold
+- **27** menneskehold ramt på åbningsdagen, og **316** af planerne på menneskehold
+  var allerede låst for spilleren
 - `race_engine_v3_scoring` og `peak_planner_enabled` er begge `on` i prod
 
 ## Hvorfor ingen opdagede det
@@ -58,10 +62,16 @@ Fejlklassen kan søges efter. Kig efter tabeller hvor:
 - et andet felt i samme række er beregnet ud fra det felt FK'en peger på, **og**
 - ingen skrivevej re-beregner eller rydder op når FK'en nulstilles.
 
-I dette repo var `seasonCarryOver.js:90-93` allerede klar over problemet: den
-**tæller** forældreløse planer og lader dem ligge, med kommentaren at sletning er
-ejer-gated. Tælleren var altså en detektor ingen læste. En invariant der kun
-tæller, men aldrig fejler, er ikke en invariant.
+I dette repo var carry-over-registret i `seasonCarryOver.js` (entry'en for
+`rider_peak_plans`) allerede klar over problemet: `revalidatePeakPlans` **tæller**
+forældreløse planer og lader dem ligge, med kommentaren at sletning er ejer-gated.
+Tælleren var altså en detektor ingen læste. En invariant der kun tæller, men
+aldrig fejler, er ikke en invariant.
+
+Den kommentar er nu selv rettet i samme PR: efter CASCADE er sletningen IKKE
+ejer-gated — databasen fjerner planen sammen med løbet. Havde vi ladet den stå,
+ville rettelsen have skabt sin egen SSOT-drift: en registrering der beskrev en
+gate der ikke længere findes.
 
 ## Den anden halvdel: NULL var illegitim her, men ikke i går
 
@@ -91,6 +101,13 @@ begge fejl er dyre.
 3. **Fail-safe:** `loadPeakPlans` og `raceCardPeakOverlay` udelader planer uden
    målløb, så motoren er beskyttet selv hvis en fremtidig skrivevej efterlader en.
    Efter migrationen er det en vagt uden arbejde, og det er meningen.
+4. **Sprængradius skrevet ned de tre steder den nu gælder.** CASCADE gør skaden
+   lydløs, så den skal stå der hvor nogen trykker på knappen:
+   `docs/runbooks/2026-08-27-s3-kalender-regenerering.md` (ny sektion plus et
+   backup-skridt 0b før noget slettes), kommentaren over
+   `DELETE /api/admin/races/:raceId` i `backend/routes/api.js` (ét slettet løb
+   sletter nu hvert holds formplan for det løb), og carry-over-registret.
+   En rettelse der kun står i migrationen er en rettelse ingen ser.
 
 ## Refs
 
