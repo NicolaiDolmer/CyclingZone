@@ -17,7 +17,7 @@ import { Spinner, EmptyState, ErrorState, Button, FlagIcon, LockIcon, AlertTrian
 import {
   ROLE_LETTER, buildDraftsFromEntries, roleOf, advanceCell, dirtyRaceIds,
   buildDayColumns, buildDateBands, buildRaceHeaderGroups, buildRiderRowSegments, countProblems,
-  raceCurrentCount, riderLoadDays, emptyRaceDraft,
+  raceCurrentCount, riderLoadDays, emptyRaceDraft, raceForDay,
 } from "../../lib/seasonMatrix.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -74,7 +74,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   const dayColumns = useMemo(() => buildDayColumns(races), [races]);
   const dayDatesMap = useMemo(() => new Map((data?.dayDates ?? []).map((d) => [d.gameDay, d.date])), [data]);
   const dateBands = useMemo(() => buildDateBands(dayColumns, dayDatesMap), [dayColumns, dayDatesMap]);
-  const raceGroups = useMemo(() => buildRaceHeaderGroups(dayColumns, races), [dayColumns, races]);
+  // Race-navn-headeren er lane-pakket (#4323 fund 1) — races[] overlapper hyppigt
+  // i game_day-spænd (op til 3 løb samme løbsdag i D1), så én header-række kan
+  // ikke rumme dem alle uden at colSpan-summen sprænger antal kolonner.
+  const raceLanes = useMemo(() => buildRaceHeaderGroups(dayColumns, races), [dayColumns, races]);
   const problems = useMemo(() => countProblems(races, draftByRace), [races, draftByRace]);
   const dirtyIds = useMemo(() => dirtyRaceIds(draftByRace, serverByRace), [draftByRace, serverByRace]);
   const isDirty = dirtyIds.length > 0;
@@ -270,7 +273,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           </colgroup>
           <thead>
             <tr>
-              <th rowSpan={3} className="sticky left-0 z-sticky bg-cz-subtle border-b border-r border-cz-border px-3 py-1.5 text-left align-bottom" style={{ minWidth: 148 }}>
+              <th rowSpan={raceLanes.laneCount + 2} className="sticky left-0 z-sticky bg-cz-subtle border-b border-r border-cz-border px-3 py-1.5 text-left align-bottom" style={{ minWidth: 148 }}>
                 <span className="text-2xs uppercase tracking-wide text-cz-3">{t("matrix.heading")}</span>
               </th>
               {dateBands.map((band, i) => (
@@ -284,28 +287,35 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                 </th>
               ))}
             </tr>
-            <tr>
-              {raceGroups.map((g, i) => (
-                <th
-                  key={i}
-                  colSpan={g.days.length}
-                  title={g.race?.name}
-                  className={`border-b border-cz-border px-1 py-1 text-3xs font-medium overflow-hidden whitespace-nowrap ${g.race ? raceGroupTint(g.race) : ""}`}
-                >
-                  {g.race ? (
-                    <span className="flex items-center justify-between gap-1">
-                      <span className="truncate">{g.race.name}</span>
-                      <span className="tabular-nums text-cz-3 shrink-0">
-                        {t("matrix.squadCount", { count: raceCurrentCount(draftByRace, g.race.id), max: g.race.sizeMax })}
+            {raceLanes.map((laneGroups, laneIdx) => (
+              <tr key={`lane-${laneIdx}`}>
+                {laneGroups.map((g, i) => (
+                  <th
+                    key={i}
+                    colSpan={g.colSpan}
+                    title={g.race?.name}
+                    className={`border-b border-cz-border px-1 py-1 text-3xs font-medium overflow-hidden whitespace-nowrap ${g.race ? raceGroupTint(g.race) : ""}`}
+                  >
+                    {g.race ? (
+                      <span className="flex items-center justify-between gap-1">
+                        <span className="truncate">{g.race.name}</span>
+                        <span className="tabular-nums text-cz-3 shrink-0">
+                          {t("matrix.squadCount", { count: raceCurrentCount(draftByRace, g.race.id), max: g.race.sizeMax })}
+                        </span>
                       </span>
-                    </span>
-                  ) : null}
-                </th>
-              ))}
-            </tr>
+                    ) : null}
+                  </th>
+                ))}
+              </tr>
+            ))}
             <tr>
-              {raceGroups.flatMap((g) =>
-                g.days.map((day, idx) => (
+              {dayColumns.map((day) => {
+                // Etape-nummer INDEN i løbet (ikke en global kolonne-tæller) — samme
+                // semantik som før lane-fixet, nu udledt af races[] direkte, så den er
+                // uafhængig af hvilken lane løbet endte i.
+                const race = raceForDay(races, day);
+                const idx = race ? day - race.gameDayStart : 0;
+                return (
                   <th key={day} className="border-b border-cz-border p-0" style={{ width: colWidth, minWidth: colWidth }}>
                     <button
                       type="button"
@@ -316,8 +326,8 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       {idx + 1}
                     </button>
                   </th>
-                ))
-              )}
+                );
+              })}
             </tr>
           </thead>
           <tbody>

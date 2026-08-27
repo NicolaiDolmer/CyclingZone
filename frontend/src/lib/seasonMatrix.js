@@ -152,13 +152,23 @@ export function buildDateBands(dayColumns, dayDatesMap) {
  * #3 — ét holdudtag pr. løb tegnes som ÉT spænd) eller enkeltstående tomme
  * celler. `activeRaces` = races[] filtreret til dem der reelt har en gyldig
  * dag-akse (buildDayColumns' input) — races-listen selv er fint.
+ *
+ * DEFENSIV GUARD: en rytter kan ikke lovligt sidde i to løb der overlapper i
+ * game_day-spænd samtidig (DB-constraint no_rider_double_booking_day), så
+ * ranges BØR aldrig overlappe. Hvis kladden alligevel indeholder et overlap
+ * (data endnu ikke valideret/gemt), klippes det senere spænd til KUN de
+ * kolonner der er tilbage fra det punkt — spændet forskyder ALDRIG resten af
+ * rækken. countProblems() opdager og tæller konflikten uafhængigt af denne
+ * visning (peerConflicts), så den forbliver synlig i problemtælleren.
  */
 export function buildRiderRowSegments(dayColumns, races, draftByRace, riderId) {
-  // Ranges rytteren sidder i lige nu, længste først (defensivt ved overlap i data).
+  // Ranges rytteren sidder i lige nu, længste først, dernæst tidligste start
+  // (defensivt ved overlap i data — deterministisk hvem der "vinder" spændet).
   const ranges = races
     .filter((r) => roleOf(draftByRace.get(r.id), riderId) != null)
     .map((r) => ({ race: r, role: roleOf(draftByRace.get(r.id), riderId) }))
-    .sort((a, b) => (b.race.gameDayEnd - b.race.gameDayStart) - (a.race.gameDayEnd - a.race.gameDayStart));
+    .sort((a, b) => (b.race.gameDayEnd - b.race.gameDayStart) - (a.race.gameDayEnd - a.race.gameDayStart)
+      || a.race.gameDayStart - b.race.gameDayStart);
 
   const segments = [];
   let i = 0;
@@ -166,9 +176,14 @@ export function buildRiderRowSegments(dayColumns, races, draftByRace, riderId) {
     const day = dayColumns[i];
     const hit = ranges.find((r) => day >= r.race.gameDayStart && day <= r.race.gameDayEnd);
     if (!hit) { segments.push({ kind: "empty", day }); i += 1; continue; }
-    const spanDays = dayColumns.filter((d) => d >= hit.race.gameDayStart && d <= hit.race.gameDayEnd);
+    // Klip til kolonner FRA `i` og frem (ikke hit.race.gameDayStart) — hvis et
+    // tidligere, overlappende spænd allerede har konsumeret de(n) forreste
+    // dag(e) af dette løb, tælles de ikke med igen.
+    let j = i;
+    while (j < dayColumns.length && dayColumns[j] <= hit.race.gameDayEnd) j += 1;
+    const spanDays = dayColumns.slice(i, j);
     segments.push({ kind: "entry", race: hit.race, role: hit.role, days: spanDays, colSpan: spanDays.length });
-    i += spanDays.length;
+    i = j;
   }
   return segments;
 }
@@ -179,24 +194,79 @@ export function raceForDay(races, day) {
 }
 
 /**
- * Race-navn-headeren over dag-kolonnerne: grupperer dayColumns pr. løb (samme
- * greedy walk som buildRiderRowSegments, uden rytter-filter) — så en race-
- * gruppes colSpan altid summer til det korrekte antal kolonner, selv i det
- * sjældne tilfælde at to egen-pulje-løb overlapper (første i sorteret
- * rækkefølge vinder gruppen; kolonnen forbliver klikbar/redigerbar uanset).
+ * Lane-pakning af løb der overlapper i game_day-spænd — SAMME algoritme som
+ * seasonTimeline.packLanes bruger til Z1 v0's dato-bånd (længste spænd først,
+ * dernæst tidligste start, grådig first-fit), men på game_day-HELTAL i stedet
+ * for datostrenge (kontrakt #2 — ingen dato-konvertering i dette lag). Op til
+ * 3 løb deler samme løbsdag i D1 — det er NORMALT, ikke en undtagelse.
+ */
+function packRaceLanes(races) {
+  const valid = (races || []).filter(
+    (r) => Number.isFinite(r.gameDayStart) && Number.isFinite(r.gameDayEnd) && r.gameDayEnd >= r.gameDayStart
+  );
+  const sorted = [...valid].sort((a, b) => (b.gameDayEnd - b.gameDayStart) - (a.gameDayEnd - a.gameDayStart)
+    || a.gameDayStart - b.gameDayStart);
+  const lanes = []; // pr. bane: liste af [start,end]-intervaller allerede placeret
+  const laned = [];
+  for (const r of sorted) {
+    let placed = false;
+    for (let i = 0; i < lanes.length; i++) {
+      if (lanes[i].every(([s, e]) => r.gameDayEnd < s || r.gameDayStart > e)) {
+        lanes[i].push([r.gameDayStart, r.gameDayEnd]);
+        laned.push({ ...r, lane: i });
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      lanes.push([[r.gameDayStart, r.gameDayEnd]]);
+      laned.push({ ...r, lane: lanes.length - 1 });
+    }
+  }
+  laned.laneCount = lanes.length;
+  return laned;
+}
+
+/**
+ * Race-navn-headeren over dag-kolonnerne. MODBEVIST antagelse rettet: løb
+ * overlapper HYPPIGT i game_day-spænd (op til 3 løb samme løbsdag i D1,
+ * normalt) — en enkelt header-række kan derfor ikke rumme alle løb uden at
+ * dens colSpan-sum sprænger antallet af kolonner. Headeren lane-pakkes derfor
+ * (packRaceLanes, samme mekanik som Z1 v0's packLanes): hver lane er en EGEN
+ * header-række hvis grupper (løb + gap-celler for dage andre lanes dækker)
+ * summer colSpan til NØJAGTIGT dayColumns.length. Returnerer et array af
+ * lanes (`lanes[lane] = grupper[]`) med `.laneCount` på selve arrayet (samme
+ * mønster som packLanes).
  */
 export function buildRaceHeaderGroups(dayColumns, races) {
-  const groups = [];
-  let i = 0;
-  while (i < dayColumns.length) {
-    const day = dayColumns[i];
-    const race = races.find((r) => day >= r.gameDayStart && day <= r.gameDayEnd);
-    if (!race) { groups.push({ race: null, days: [day] }); i += 1; continue; }
-    const days = dayColumns.filter((d) => d >= race.gameDayStart && d <= race.gameDayEnd);
-    groups.push({ race, days });
-    i += days.length;
+  const laned = packRaceLanes(races);
+  const laneCount = laned.laneCount;
+  const lanes = [];
+  for (let lane = 0; lane < laneCount; lane++) {
+    const laneRaces = laned.filter((r) => r.lane === lane);
+    const groups = [];
+    let i = 0;
+    while (i < dayColumns.length) {
+      const day = dayColumns[i];
+      const race = laneRaces.find((r) => day >= r.gameDayStart && day <= r.gameDayEnd);
+      if (!race) {
+        // Gap: dage denne lane ikke dækker (et andet løb ligger her i en
+        // anden lane) — slås sammen til ÉN gap-celle pr. sammenhængende run.
+        let j = i;
+        while (j < dayColumns.length && !laneRaces.some((r) => dayColumns[j] >= r.gameDayStart && dayColumns[j] <= r.gameDayEnd)) j += 1;
+        const days = dayColumns.slice(i, j);
+        groups.push({ race: null, days, colSpan: days.length });
+        i = j;
+        continue;
+      }
+      const days = dayColumns.filter((d) => d >= race.gameDayStart && d <= race.gameDayEnd);
+      groups.push({ race, days, colSpan: days.length });
+      i += days.length;
+    }
+    lanes.push(groups);
   }
-  return groups;
+  lanes.laneCount = laneCount;
+  return lanes;
 }
 
 /** Rytterens samlede løbsdage i den AKTUELLE kladde (Load-linsen, #1146 kontrakt-punkt 6). */
