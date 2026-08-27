@@ -133,7 +133,7 @@ async function main() {
     fetch_("swap_offers", "id,offered_rider_id,status", { status: "in.(pending,countered,awaiting_confirmation)" }),
     fetch_("finance_transactions", "type"),
     fetch_("notifications", "type"),
-    fetch_("loans", "team_id,principal,origination_fee,loan_type", { status: "eq.active" }),
+    fetch_("loans", "team_id,amount_remaining,accrued_interest,loan_type", { status: "eq.active" }),
     // #2974/#2898: hele race_results til duplikat-invarianten nedenfor.
     fetch_("race_results", "race_id,stage_number,rider_id,result_type,rank,points_earned"),
     // #4161: kalender-akse + overlap-cap pr. pulje for den AKTIVE saeson.
@@ -180,18 +180,24 @@ async function main() {
     .filter(t => !KNOWN_NOTIF_TYPES.has(t));
 
   // Check 5: Aktiv finance-gæld overskrider ikke divisionsloft.
-  // #4282: loftet styrer hvor meget et hold må LÅNE (principal + origination_fee
-  // ved lånetidspunktet) — ikke `amount_remaining`, som også indeholder rente
-  // motoren selv har kapitaliseret ind siden. Målt mod prod 27/8: to hold lånte
-  // præcis op til loftet og blev fejlagtigt flaget, fordi vagten målte på
-  // amount_remaining (inkl. rente). economyEngine.js (#2912) ekskluderer bevidst
-  // rente fra STRAFFEN af samme grund ("man ikke bør straffes for motorens egen
-  // kapitalisering") — vagten skal måle det samme som håndhævelsen, ikke mere.
+  // #4282: loftet håndhæves mod `interestExcludedDebt` — economyEngine.js:783's
+  // egen navn for `amount_remaining - accrued_interest` — ikke rå
+  // `amount_remaining` (medregner al kapitaliseret rente nogensinde) og IKKE
+  // `principal + origination_fee` ("trukket beløb", det først forsøgte fix
+  // her). Trukket beløb blev afprøvet og afvist 27/8: et hold med flere
+  // aktive lån kan have afdraget betydeligt på dem (amount_remaining under
+  // principal), og trukket beløb tæller den afdragne del med alligevel — det
+  // gav 5 falske positiver mod prod (rå amount_remaining gav kun 2). Målt med
+  // amount_remaining - accrued_interest: 0 brud. economyEngine.js's egen
+  // begrundelse (#2912) gælder præcis her: "man ikke bør straffes for
+  // motorens egen kapitalisering" — vagten skal måle det SAMME som
+  // håndhævelsen, hverken mere (rå amount_remaining) eller mindre skarpt men
+  // forkert (trukket beløb).
   const debtByTeam = new Map();
   for (const loan of activeLoans) {
     if (humanTeamIds.has(loan.team_id)) {
-      const drawn = Number(loan.principal || 0) + Number(loan.origination_fee || 0);
-      debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + drawn);
+      const interestExcluded = Number(loan.amount_remaining || 0) - Number(loan.accrued_interest || 0);
+      debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + interestExcluded);
     }
   }
   const debtBreaches = [];
