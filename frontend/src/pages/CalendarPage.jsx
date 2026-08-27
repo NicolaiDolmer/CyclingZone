@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { reportLoadFailure } from "../lib/actionTelemetry.js";
 import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
 import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
 import {
@@ -32,20 +33,34 @@ function copenhagenTodayISO() {
   }).format(new Date());
 }
 
+// #4165: returnerede før `Bearer undefined` når sessionen var væk, så en død
+// session blev til et 401 vi alligevel ikke læste. Null er det ærlige svar -
+// kalderen har så en auth-gren at vise, i stedet for at bruge et kald på et svar
+// den på forhånd ved bliver afvist. Samme form som de fire øvrige hub-flader.
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
+  const token = session?.access_token;
+  return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : null;
 }
 
 export default function CalendarPage() {
   const { t, i18n } = useTranslation(["calendar", "common"]);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
-  // #2849 bølge 3 — kanonisk fejl-tilstand (states-sheet manglede en ÷ pr. audit'en);
-  // fanger kun UDFALDET af det uændrede fetch-kald, rører ikke selve query'en
-  // (kalender-performance er #2861). retryTick re-trigger'er samme effekt uændret.
-  const [fetchFailed, setFetchFailed] = useState(false);
+  // #2849 bølge 3 — kanonisk fejl-tilstand (states-sheet manglede en ÷ pr. audit'en).
+  // #4165: var et boolean sat KUN fra catch'en, og hentningen tjekkede ikke
+  // res.ok. Et 401 fra requireAuth har en gyldig JSON-krop, så res.json() lykkes,
+  // `data` bliver {error:"Invalid token"}, og `!data?.season` tegnede så
+  // tom-tilstanden "Ingen aktiv sæson" - en fejlet hentning der påstår noget
+  // konkret og forkert om spillet. Nu bærer den en kind som de øvrige hub-flader.
+  // { kind: "auth" | "http" | "parse" | "network", status? } | null
+  const [loadError, setLoadError] = useState(null);
   const [retryTick, setRetryTick] = useState(0);
+  // #4165: sæson-vælgeren skal OVERLEVE en fejlet hentning (samme grund som
+  // SeasonView holder seasonsMeta uden for svaret). Uden den er fejl-fladen en
+  // blindgyde: "Prøv igen" henter præcis den sæson der lige fejlede, og der er
+  // ingen vej til en anden.
+  const [seasonsMeta, setSeasonsMeta] = useState(null); // { availableSeasons } | null
   const [tab, setTab] = useState("mine");
   const [division, setDivision] = useState(null); // null = all divisions
   // #2756: pulje/gruppe-vælger inden for en division ("Division 2 A") — spillere
@@ -64,15 +79,38 @@ export default function CalendarPage() {
   useEffect(() => {
     let alive = true;
     (async () => {
+      if (!API) { setLoading(false); return; }
+      setLoading(true);
+      setLoadError(null);
+      const headers = await authHeaders();
+      if (!headers) {
+        reportLoadFailure("calendar_page", { kind: "auth" });
+        if (alive) { setData(null); setLoadError({ kind: "auth" }); setLoading(false); }
+        return;
+      }
       try {
-        if (!API) { setLoading(false); return; }
-        setLoading(true);
-        setFetchFailed(false);
         const qs = seasonNumber != null ? `?season_number=${seasonNumber}` : "";
-        const res = await fetch(`${API}/api/races/calendar${qs}`, { headers: await authHeaders() });
-        const json = await res.json();
+        const res = await fetch(`${API}/api/races/calendar${qs}`, { headers });
+        if (!res.ok) {
+          // Krop-koden kommer med i telemetrien, ikke på skærmen.
+          const body = await res.json().catch(() => ({}));
+          reportLoadFailure("calendar_page", { kind: "http", status: res.status, reason: body?.error });
+          if (alive) { setData(null); setLoadError({ kind: "http", status: res.status }); }
+          return;
+        }
+        // Egen gren for parsningen - ellers tagges en malformet 200-krop som
+        // "network" og peger triagen mod spillerens forbindelse.
+        let json;
+        try {
+          json = await res.json();
+        } catch (cause) {
+          reportLoadFailure("calendar_page", { kind: "parse", status: res.status, cause });
+          if (alive) { setData(null); setLoadError({ kind: "parse", status: res.status }); }
+          return;
+        }
         if (!alive) return;
         setData(json);
+        setSeasonsMeta({ availableSeasons: json.availableSeasons || [] });
         // Default the division selector to the player's own division (tier).
         const ownTier = ownDivisionTier(json);
         if (ownTier != null) setDivision(ownTier);
@@ -81,14 +119,21 @@ export default function CalendarPage() {
         const todayYM = copenhagenTodayISO().slice(0, 7);
         const monthForToday = months.find((m) => `${m.year}-${String(m.month).padStart(2, "0")}` === todayYM);
         setCursor(monthForToday || months[0] || ymOfToday());
-      } catch {
-        if (alive) { setData(null); setFetchFailed(true); }
+      } catch (cause) {
+        reportLoadFailure("calendar_page", { kind: "network", cause });
+        if (alive) { setData(null); setLoadError({ kind: "network" }); }
       } finally {
         if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
   }, [seasonNumber, retryTick]);
+
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError(null);
+    setRetryTick((n) => n + 1);
+  };
 
   const todayISO = useMemo(() => copenhagenTodayISO(), []);
 
@@ -135,11 +180,38 @@ export default function CalendarPage() {
 
   if (loading) return <PageLoader label={t("loadingAria")} />;
 
-  const availableSeasons = data?.availableSeasons || [];
+  // #4165: sæson-listen overlever en fejlet hentning (seasonsMeta), så vælgeren
+  // stadig er der at klikke på når svaret for én sæson fejler.
+  const availableSeasons = data?.availableSeasons || seasonsMeta?.availableSeasons || [];
   // #2449: viser den viste sæsons nummer i vælgeren — det eksplicitte valg hvis
   // sat, ellers hvad serveren faldt tilbage til (aktiv sæson).
   const displaySeasonNumber = seasonNumber ?? data?.season?.number ?? null;
   const onSeasonChange = (n) => setSeasonNumber(n);
+
+  // #4165: fejl-grenen ligger FØR tom-grenen. Rækkefølgen er bindende - ligger
+  // den tomme først, tegnes en fejlet hentning igen som "Ingen aktiv sæson".
+  // Sæson-vælgeren bliver stående, så fejlen ikke er en blindgyde.
+  if (loadError) {
+    return (
+      <div>
+        <CalendarControls
+          t={t} division={division} onDivision={setDivision} data={data}
+          availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange}
+        />
+        <div role="alert">
+          <ErrorState
+            title={t("error.title")}
+            description={loadError.kind === "auth" ? t("error.session") : t("error.description")}
+            action={
+              <Button size="sm" variant="secondary" onClick={retryLoad}>
+                {t("error.retry")}
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (!data?.season) {
     return (
@@ -148,17 +220,7 @@ export default function CalendarPage() {
           t={t} division={division} onDivision={setDivision} data={data}
           availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange}
         />
-        {fetchFailed ? (
-          <ErrorState
-            title={t("error.title")}
-            description={t("error.description")}
-            action={
-              <Button size="sm" variant="secondary" onClick={() => setRetryTick((n) => n + 1)}>
-                {t("error.retry")}
-              </Button>
-            }
-          />
-        ) : seasonNumber != null ? (
+        {seasonNumber != null ? (
           <EmptyState icon={<CalendarIcon size={32} aria-hidden="true" />} title={t("notGenerated.title", { number: seasonNumber })} description={t("notGenerated.desc")} />
         ) : (
           <EmptyState icon={<CalendarIcon size={32} aria-hidden="true" />} title={t("noSeason.title")} description={t("noSeason.desc")} />

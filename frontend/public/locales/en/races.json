@@ -53,7 +53,8 @@
       },
       "firstRaceDay": "First race day: Tuesday. Monday is race-free.",
       "readMore": "Full details in Help"
-    }
+    },
+    "errorTitle": "Season calendar could not be loaded"
   },
   "racehub": {
     "error": {

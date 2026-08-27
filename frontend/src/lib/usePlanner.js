@@ -65,7 +65,17 @@ export function usePlanner(seasonNumber = null) {
         reportLoadFailure("season_planner_board", { kind: "http", status: res.status });
         setError("http"); setLoading(false); return;
       }
-      const data = await res.json();
+      // #4165: parsningen har sin EGEN gren. Lå res.json() i den ydre try, blev
+      // en malformet 200-krop rapporteret som "network" - spillerens forbindelse
+      // - selvom fejlen kom fra serveren eller en proxy. Forkert triage i netop
+      // det signal instrumenteringen er bygget til at bære.
+      let data;
+      try {
+        data = await res.json();
+      } catch (cause) {
+        reportLoadFailure("season_planner_board", { kind: "parse", status: res.status, cause });
+        setError("parse"); setLoading(false); return;
+      }
       setEnabled(Boolean(data.enabled));
       if (data.enabled) {
         setBoard({

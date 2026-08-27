@@ -30,6 +30,13 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   // #4165: samme tavse degradering som RaceHubBoard havde - begge fejl-grene
   // returnerede uden state, og `!data?.enabled → null` tegnede en tom flade.
   const [loadError, setLoadError] = useState(null); // { kind, status? } | null
+  // #4165: vælgerne (scope + pulje + dag) må OVERLEVE en fejlet hentning. Lå de
+  // kun i success-grenen, var et fejlet pulje- eller dagsskift en blindgyde: den
+  // eneste knap tilbage, "Prøv igen", gentager samme pool/day og dermed samme
+  // fejl, og et faneskift i hubben rydder hverken ?scope eller ?pool. Skallen
+  // holdes derfor uden for `data` og ryddes aldrig ved fejl (heller ikke af
+  // retry'ets setData(null)). { pools, ownPoolId, currentDay, timeline } | null
+  const [navShell, setNavShell] = useState(null);
 
   const load = useCallback(async (pool, day) => {
     const headers = await authHeaders();
@@ -64,6 +71,12 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
         return;
       }
       setData(json);
+      setNavShell({
+        pools: json.pools || [],
+        ownPoolId: json.ownPoolId ?? null,
+        currentDay: json.currentDay ?? null,
+        timeline: json.timeline ?? null,
+      });
       setLoadError(null);
     } catch (cause) {
       setLoadError({ kind: "network" });
@@ -96,13 +109,42 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   // efterlade den FORRIGE puljes startlister under den nye markering, hvilket er
   // en løgn om hvad manageren kigger på.
   if (loadError) {
+    // #4165: scope- og pulje-vælgerne bliver stående. Uden dem var fejl-fladen en
+    // blindgyde - kun "Prøv igen", som gentager samme pulje og samme dag. Puljen
+    // der markeres er den manageren BAD om (fra ?pool), ikke den forrige der
+    // lykkedes: markeringen skal matche URL'en, mens fejlbeskeden forklarer at
+    // dens indhold ikke kunne hentes.
+    const shellPools = navShell?.pools || [];
+    const requestedPool =
+      (poolParam != null ? shellPools.find((p) => String(p.id) === String(poolParam)) : null)
+      ?? shellPools.find((p) => p.id === navShell?.ownPoolId)
+      ?? null;
+    const shellOwnTier = shellPools.find((p) => p.id === navShell?.ownPoolId)?.tier ?? null;
+    const navDay = Number.isFinite(dayParam) ? dayParam : (navShell?.currentDay ?? 1);
     return (
-      <div role="alert" className="mx-auto max-w-xl py-6">
-        <ErrorState
-          title={t("browse.error.title")}
-          description={loadError.kind === "auth" ? t("browse.error.session") : t("browse.error.body")}
-          action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("browse.error.retry")}</Button>}
+      <div>
+        <ContextBand
+          scope={scope}
+          day={navDay}
+          currentDay={navShell?.currentDay ?? null}
+          timeline={navShell?.timeline ?? null}
+          onScopeChange={onScopeChange}
+          onDayChange={setDay}
         />
+        <PoolPicker
+          pools={shellPools}
+          selected={requestedPool}
+          ownPoolId={navShell?.ownPoolId ?? null}
+          lockTier={scope === "division" ? shellOwnTier : null}
+          onSelect={setPool}
+        />
+        <div role="alert" className="mx-auto max-w-xl py-6">
+          <ErrorState
+            title={t("browse.error.title")}
+            description={loadError.kind === "auth" ? t("browse.error.session") : t("browse.error.body")}
+            action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("browse.error.retry")}</Button>}
+          />
+        </div>
       </div>
     );
   }

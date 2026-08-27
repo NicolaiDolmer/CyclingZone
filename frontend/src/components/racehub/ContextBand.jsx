@@ -42,6 +42,13 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
           </button>
         ))}
       </div>
+      {/* #4165: dag-rækken kræver en tidslinje. Uden dage ville den tegne en tom
+          stribe og skrive "Dag N af 0" - et opdigtet tal af præcis den slags
+          #3107 forbød. Fejl-fladerne monterer båndet UDEN tidslinje netop for at
+          beholde scope-skifteren (vejen tilbage til "Mine løb"), så her falder
+          dag-navigationen bare væk indtil et svar lander. */}
+      {days.length > 0 && (
+      <>
       <div className="flex items-center gap-2">
         <button type="button" aria-label={t("racehub.timeline.prev")} disabled={day <= 1}
           onClick={() => onDayChange(day - 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">‹</button>
@@ -78,6 +85,8 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
           {day === currentDay ? ` — ${t("racehub.timeline.youAreHere")}` : ""}
         </span>
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -103,6 +103,13 @@ export default function SeasonView({ onSwitchView }) {
   useEffect(() => {
     let alive = true;
     (async () => {
+      // #4165: spinneren tændes FØR session-tjekket. Lå den efter, var "Prøv
+      // igen" på auth-grenen inert: retryTick genkørte effekten, men den satte
+      // kun setFailed("auth") til den SAMME værdi, React bailede ud, og intet på
+      // skærmen flyttede sig. Nu blinker spinneren, og sessionen bliver reelt
+      // læst igen - er man logget ind i en anden fane imens, lander visningen.
+      setLoading(true);
+      setFailed(null);
       const headers = await authHeaders();
       if (!headers) {
         // #4165: returnerede tavst -> data blev ved med at være null, og
@@ -112,8 +119,6 @@ export default function SeasonView({ onSwitchView }) {
         setLoading(false);
         return;
       }
-      setLoading(true);
-      setFailed(null);
       const qs = Number.isFinite(seasonParam) ? `?season_number=${seasonParam}` : "";
       try {
         const res = await fetch(`${API}/api/races/calendar${qs}`, { headers });
@@ -121,14 +126,24 @@ export default function SeasonView({ onSwitchView }) {
           reportLoadFailure("racehub_season_view", { kind: "http", status: res.status });
           throw new Error("calendar_failed");
         }
-        const json = await res.json();
+        // #4165: parsningen har sin EGEN gren. Lå res.json() i den ydre try,
+        // blev en malformet 200-krop tagget "network" i Sentry - altså en
+        // server- eller proxy-fejl fejlmeldt som spillerens forbindelse, i netop
+        // det signal triagen skal hvile på næste gang.
+        let json;
+        try {
+          json = await res.json();
+        } catch (cause) {
+          reportLoadFailure("racehub_season_view", { kind: "parse", status: res.status, cause });
+          throw new Error("calendar_failed");
+        }
         if (!alive) return;
         setData(json);
         const activeNumber = (json.availableSeasons || []).find((s) => s.status === "active")?.number ?? null;
         setSeasonsMeta({ availableSeasons: json.availableSeasons || [], activeNumber });
       } catch (cause) {
-        // http-grenen har allerede rapporteret sig selv med sin status; kun
-        // ægte netværks-/parse-fejl skal tælles som "network" her.
+        // http- og parse-grenene har allerede rapporteret sig selv med deres
+        // egen kind; kun ægte netværksfejl skal tælles som "network" her.
         if (cause?.message !== "calendar_failed") {
           reportLoadFailure("racehub_season_view", { kind: "network", cause });
         }
@@ -253,6 +268,12 @@ export default function SeasonView({ onSwitchView }) {
       <div role="alert">
         {header}
         <ErrorState
+          // #4165: uden title faldt ErrorState tilbage på sin hardkodede
+          // engelske default ("Something went wrong"), så en dansk manager fik
+          // engelsk overskrift over dansk brødtekst. De fire øvrige flader
+          // sender alle en oversat titel - anatomien i PAGE_TEMPLATES.md
+          // forudsætter den.
+          title={t("seasonView.errorTitle")}
           description={failed === "auth" ? t("seasonView.errorSession") : t("seasonView.error")}
           action={
             <Button size="sm" variant="secondary" onClick={() => setRetryTick((n) => n + 1)}>

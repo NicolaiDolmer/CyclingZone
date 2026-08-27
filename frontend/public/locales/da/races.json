@@ -53,7 +53,8 @@
       },
       "firstRaceDay": "Første løbsdag: tirsdag. Mandag er løbsfri.",
       "readMore": "Fuld forklaring i Hjælp"
-    }
+    },
+    "errorTitle": "Sæsonkalenderen kunne ikke hentes"
   },
   "racehub": {
     "error": {

@@ -71,10 +71,15 @@ export default function RaceHubBoard() {
   // #4165: hentningen af board'et havde INGEN fejl-state. Manglende token, et
   // ikke-2xx svar og en netværksfejl returnerede alle tavst, og render-grenen
   // `!data?.enabled → null` tegnede så en helt tom flade - uden spinner, uden
-  // besked, uden retry. Derfor hjalp en genindlæsning heller ikke: samme fejlende
-  // kald, samme intet. Samme fejlklasse som usePlanner havde før #2849 bølge 6.
-  // { kind: "auth" | "http" | "network", status? } | null
+  // besked, uden retry. Samme fejlklasse som usePlanner havde før #2849 bølge 6.
+  // { kind: "auth" | "http" | "parse" | "network", status? } | null
   const [loadError, setLoadError] = useState(null);
+  // #4165: kontekstbåndets navigation (scope-pills + dag-tidslinje) må OVERLEVE
+  // en fejlet hentning. Lå den kun i success-grenen, efterlod et fejlet dag-skift
+  // manageren med én knap - "Prøv igen" - der gentager præcis det samme fejlende
+  // kald for den samme dag. Skallen holdes derfor uden for `data` og ryddes aldrig
+  // ved fejl. { currentDay, focusDay, timeline } | null
+  const [navShell, setNavShell] = useState(null);
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
@@ -110,6 +115,11 @@ export default function RaceHubBoard() {
         return;
       }
       setData(json);
+      setNavShell({
+        currentDay: json.currentDay ?? null,
+        focusDay: json.focusDay ?? null,
+        timeline: json.timeline ?? null,
+      });
       setLoadError(null);
     } catch (cause) {
       setLoadError({ kind: "network" });
@@ -160,13 +170,32 @@ export default function RaceHubBoard() {
   // mønster som SeasonPlannerPage). Rækkefølgen er bindende: fejl-grenen skal ligge
   // FØR flag-grenen, ellers bliver en fejl igen tegnet som en tom flade.
   if (loadError) {
+    // #4165: kontekstbåndet bliver stående. Uden det var fejl-fladen en
+    // navigations-blindgyde: "Prøv igen" gentager SAMME dag og SAMME scope, så
+    // en dag hvis svar konsekvent fejler kunne ikke forlades herfra. Med båndet
+    // kan manageren skifte dag eller gå til en anden scope og komme videre.
+    // Har ingen hentning nogensinde lykkedes, er der ingen tidslinje at vise -
+    // så falder dag-rækken væk af sig selv (ContextBand), og scope-pillsene står
+    // tilbage. Bemærk: data-testid'en hører til det RIGTIGE board og må ikke
+    // sidde her, ellers ville "boardet er ikke tegnet" ikke længere kunne testes.
+    const navDay = Number.isFinite(dayParam) ? dayParam : (navShell?.focusDay ?? navShell?.currentDay ?? 1);
     return (
-      <div role="alert" className="mx-auto max-w-xl py-6">
-        <ErrorState
-          title={t("racehub.error.title")}
-          description={loadError.kind === "auth" ? t("racehub.error.session") : t("racehub.error.body")}
-          action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("racehub.error.retry")}</Button>}
+      <div>
+        <ContextBand
+          scope={scope}
+          day={navDay}
+          currentDay={navShell?.currentDay ?? null}
+          timeline={navShell?.timeline ?? null}
+          onScopeChange={setScope}
+          onDayChange={setDay}
         />
+        <div role="alert" className="mx-auto max-w-xl py-6">
+          <ErrorState
+            title={t("racehub.error.title")}
+            description={loadError.kind === "auth" ? t("racehub.error.session") : t("racehub.error.body")}
+            action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("racehub.error.retry")}</Button>}
+          />
+        </div>
       </div>
     );
   }
