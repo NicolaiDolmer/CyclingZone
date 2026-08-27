@@ -400,8 +400,11 @@ test("#4295 delvis trup kan gemmes ved en foerstegangs-udtagelse", async ({ page
 
 // #4295: hint-linjen skal tale om ryttere der er frie til NETOP dette loeb. Bundne ryttere
 // (udtaget i et overlappende loeb) taeller med i availableCount, men kan ikke bruges her.
-// Tallene nedenfor er testens egen fixture, ikke en rapporteret spiller-situation.
-test("#4295 hint-linjen taeller kun ryttere der er frie til dette loeb", async ({ page }) => {
+// Med gulvet (ejer-beslutning 27/8: mindst 6 udtagne for at stille op) er det praecis den
+// forskel der afgoer konsekvensen: 4 valgte + 0 frie naar aldrig 6, saa holdet stiller ikke
+// op. Havde vi talt paa availableCount (29), ville panelet have lovet et auto-fyld der ikke
+// kan ske. Tallene er testens egen fixture, ikke en rapporteret spiller-situation.
+test("#4295 konsekvens-linjen: ingen frie ryttere til dette loeb → holdet stiller ikke op", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
 
@@ -453,12 +456,14 @@ test("#4295 hint-linjen taeller kun ryttere der er frie til dette loeb", async (
   }
   await panel.getByRole("combobox").first().selectOption({ index: 1 });
 
-  // Alle frie ryttere er brugt: 3 pladser staar aabne, 0 ryttere tilbage. Teksten siger
-  // sandheden i stedet for at kraeve en umulig fuld trup.
+  // Alle frie ryttere er brugt: 4 valgte, 0 tilbage, og gulvet er 6. Panelet siger
+  // konsekvensen i klar tekst FOER klikket, ikke i en toast bagefter.
   const hint = panel.getByTestId("selection-partial-hint");
-  await expect(hint).toHaveText(/3 pladser står åbne/);
-  await expect(hint).toHaveText(/0 ryttere er frie til dette løb/);
+  await expect(hint).toHaveAttribute("data-outlook", "willNotStart");
+  await expect(hint).toHaveText(/Færre end 6 ryttere/);
+  await expect(hint).toHaveText(/stiller ikke op i dette løb/);
 
+  // Gem er stadig aabent: gulvet ligger paa deltagelsen, ikke paa Gem-knappen.
   const saveBtn = panel.getByRole("button", { name: /gem udtagelse/i });
   await expect(saveBtn).toBeEnabled();
   await saveBtn.click();

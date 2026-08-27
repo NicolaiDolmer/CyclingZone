@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.207",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "A line-up needs 6 riders to start",
+          "body": "Your team now needs at least 6 riders in a line-up to start that race. Fewer than 6 and it does not start.\n\nYou can still save a smaller line-up: your assistant fills it up to 6 at race time when you have riders free."
+        },
+        "da": {
+          "title": "En opstilling skal have 6 ryttere for at stille op",
+          "body": "Dit hold skal nu have mindst 6 ryttere i en opstilling for at stille op i løbet. Er I færre end 6, stiller holdet ikke op.\n\nDu kan stadig gemme en mindre opstilling: assistenten fylder op til 6 ved løbstid, hvis du har frie ryttere."
+        },
+        "refs": [4295, 4174]
+      }
+    ]
+  },
+  {
     "version": "7.205",
     "date": "2026-08-27",
     "label": "Beta",

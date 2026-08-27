@@ -554,6 +554,7 @@ export default function RaceHubBoard() {
                     <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
                       onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
                       raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
+                      roster={roster} bindingMap={liveBindingMap}
                       dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
                   ))}
                 </div>
@@ -565,6 +566,7 @@ export default function RaceHubBoard() {
                 <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
                   onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
                   raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
+                  roster={roster} bindingMap={liveBindingMap}
                   dataTour={ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
               ))}
             </div>

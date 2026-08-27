@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
-import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLogic.js";
+import { toggleRider, validateSelectionClient, partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
@@ -206,17 +206,25 @@ export default function RaceSelectionPanel({
   // utætte antagelse #4175's escape-ventil hvilede på, så ventilen udløste aldrig for et
   // hold med ryttere nok på papiret men ingen ledige til dagens løb. Hinten er ren
   // visning: den går ALDRIG i clientErrors, så Gem-knappen forbliver aktiv.
-  const openSpots = size.max - sel.riderIds.length;
   const selectedIdSet = new Set(sel.riderIds);
   const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)).length;
   // Vises først når manageren har udtaget mindst én rytter: på et urørt panel er
   // "7 pladser står åbne" bare en gentagelse af undertekstens "udtag op til {max}".
-  // `!raceLive`: er løbet allerede i gang, top-fylder assistenten IKKE. raceEntryGenerator
+  // `raceLive`: er løbet allerede i gang, top-fylder assistenten IKKE. raceEntryGenerator
   // fryser ethvert løb med stages_completed > 0 (#1825) og springer det over for alle hold.
   // Uden guarden ville hinten love et auto-fyld samtidig med at raceLiveNote lige ovenfor
   // siger at ingen nye ryttere kan tilføjes. To modstridende sætninger, og hinten er den falske.
-  const partialHint = !raceLive && sel.riderIds.length > 0 && openSpots > 0
-    ? t(freeLeft >= openSpots ? "selection.partialHint" : "selection.partialHintShort", { open: openSpots, free: freeLeft })
+  //
+  // #4295: gulvet (6) gør at der nu er TO ting at sige om en delvis trup, og hvilken der
+  // er sand afhænger af holdets frie ryttere. Reglen ligger ét sted (partialSquadOutlook),
+  // så panelet og dagsboardets kolonne aldrig kan sige to forskellige ting om samme løb.
+  // Linjen er ren visning: den går ALDRIG i clientErrors, så Gem-knappen forbliver aktiv.
+  const outlook = partialSquadOutlook({
+    selected: sel.riderIds.length, free: freeLeft, fieldMax: size.max, raceLive,
+  });
+  const partialHint = outlook
+    ? t(`selection.${outlook.kind === "willNotStart" ? "willNotStart"
+      : outlook.kind === "assistantFills" ? "partialHint" : "partialHintShort"}`, outlook)
     : null;
   const saving = status === "saving";
   // #3310 quality-fix: Auto-select kører en server-mutation (delete+insert) på samme
@@ -691,11 +699,19 @@ export default function RaceSelectionPanel({
                 {t(`selection.errors.${code}`, errParams)}
               </p>
             ))}
-            {/* #4295: delvis trup er lovlig, så dette er en neutral oplysning (text-cz-3),
-                ikke en advarsel (text-cz-warning). Den forklarer hvad der sker med de
-                tomme pladser, i stedet for at kalde dem en fejl. */}
+            {/* #4295: to grader af samme linje. Fylder assistenten pladserne, er det en
+                neutral oplysning (text-cz-3). Stiller holdet slet ikke op, er det en
+                konsekvens manageren skal se FØR han klikker Gem — text-cz-warning, samme
+                sprog som "mangler ryttere"-chippen på brættet, ikke text-cz-danger: en
+                delvis trup er stadig lovlig at gemme, det er ikke en fejl. */}
             {partialHint && (
-              <p data-testid="selection-partial-hint" className="text-xs text-cz-3">{partialHint}</p>
+              <p
+                data-testid="selection-partial-hint"
+                data-outlook={outlook.kind}
+                className={`text-xs ${outlook.kind === "willNotStart" ? "text-cz-warning" : "text-cz-3"}`}
+              >
+                {partialHint}
+              </p>
             )}
             {status === "error" && errorKey && (
               <p className="text-xs text-cz-danger">

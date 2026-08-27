@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { toggleRider, validateSelectionClient, pickFallbackCaptain } from "./raceSelectionLogic.js";
+import { toggleRider, validateSelectionClient, pickFallbackCaptain, partialSquadOutlook, MIN_RACE_ENTRIES } from "./raceSelectionLogic.js";
+import { MIN_RACE_ENTRIES as BACKEND_MIN_RACE_ENTRIES } from "../../../backend/lib/raceAutopick.js";
 
 test("toggleRider: tilføjer/fjerner og respekterer max + rydder roller for fjernet rytter", () => {
   const s0 = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null };
@@ -101,4 +102,49 @@ test("pickFallbackCaptain: alle kandidater har anden rolle → fald tilbage til 
 test("pickFallbackCaptain: tom trup → null; manglende suitability → deterministisk (id asc)", () => {
   assert.equal(pickFallbackCaptain({ riderIds: [], suitabilityOf: () => 0 }), null);
   assert.equal(pickFallbackCaptain({ riderIds: ["b", "a"], suitabilityOf: () => undefined }), "a");
+});
+
+// ── #4295: gulvet (ejer-beslutning 27/8) ──────────────────────────────────────
+// Drift-guard: frontend og backend er separate npm-pakker og kan ikke dele et
+// build-time-import, så tallet er duplikeret. Ændrer backenden gulvet, fejler
+// denne test indtil frontenden følger med — samme mønster som rulesNumbers.test.js.
+test("MIN_RACE_ENTRIES matcher backendens gulv (drift-guard)", () => {
+  assert.equal(MIN_RACE_ENTRIES, BACKEND_MIN_RACE_ENTRIES);
+  assert.equal(MIN_RACE_ENTRIES, 6, "ejer-beslutning 27/8: fladt gulv på 6");
+});
+
+test("partialSquadOutlook: under gulvet UDEN frie ryttere nok → holdet stiller ikke op", () => {
+  // 4 valgte til et 7-mands-felt, ingen frie ryttere tilbage: assistenten kan ikke
+  // løfte truppen til 6, så konsekvensen er at holdet ikke starter.
+  const out = partialSquadOutlook({ selected: 4, free: 0, fieldMax: 7 });
+  assert.equal(out.kind, "willNotStart");
+  assert.equal(out.min, 6);
+});
+
+test("partialSquadOutlook: under gulvet MED frie ryttere nok → assistenten fylder, holdet starter", () => {
+  // Samme 4 valgte, men 3 frie: 4+3 = 7 ≥ gulvet, så holdet stiller op. At sige
+  // 'stiller ikke op' her ville være løgn — det er præcis den fejl #4295 lukkede.
+  const out = partialSquadOutlook({ selected: 4, free: 3, fieldMax: 7 });
+  assert.equal(out.kind, "assistantFills");
+  assert.equal(out.open, 3);
+});
+
+test("partialSquadOutlook: over gulvet men under feltet → færre frie end pladser er stadig en start", () => {
+  // Grand Tour (8): 6 valgte er på gulvet, 1 fri til 2 åbne pladser.
+  const out = partialSquadOutlook({ selected: 6, free: 1, fieldMax: 8 });
+  assert.equal(out.kind, "assistantFillsWhatItCan");
+  assert.equal(out.open, 2);
+  assert.equal(out.free, 1);
+});
+
+test("partialSquadOutlook: gulvet er fladt — 6 til en Grand Tour stiller op", () => {
+  assert.equal(partialSquadOutlook({ selected: 6, free: 0, fieldMax: 8 }).kind, "assistantFillsWhatItCan");
+  assert.equal(partialSquadOutlook({ selected: 6, free: 0, fieldMax: 6 }), null, "fuld trup → intet at sige");
+});
+
+test("partialSquadOutlook: urørt panel og igangværende løb siger ingenting", () => {
+  assert.equal(partialSquadOutlook({ selected: 0, free: 10, fieldMax: 7 }), null,
+    "vælger du ikke, udtager assistenten en hel trup — der mangler intet");
+  assert.equal(partialSquadOutlook({ selected: 2, free: 0, fieldMax: 7, raceLive: true }), null,
+    "et løb i gang top-fyldes aldrig (#1825), og startfeltet er afgjort");
 });

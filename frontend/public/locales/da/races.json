@@ -398,6 +398,8 @@
     "count": "{count}/{max} udtaget",
     "partialHint": "{open, plural, one {1 plads står åben. Assistenten fylder den når løbet køres.} other {# pladser står åbne. Assistenten fylder dem når løbet køres.}}",
     "partialHintShort": "{open, plural, one {1 plads står åben} other {# pladser står åbne}}, {free, plural, one {1 rytter er fri} other {# ryttere er frie}} til dette løb. Assistenten fylder hvad den kan.",
+    "willNotStart": "Færre end {min} ryttere. Dit hold stiller ikke op i dette løb.",
+    "willNotStartShort": "Under {min} ryttere. Stiller ikke op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
     "hunter": "Udbruds-jæger (valgfri)",

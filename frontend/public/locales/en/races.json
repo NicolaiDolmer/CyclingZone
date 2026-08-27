@@ -398,6 +398,8 @@
     "count": "{count}/{max} selected",
     "partialHint": "{open, plural, one {1 spot open. Your assistant fills it when the race runs.} other {# spots open. Your assistant fills them when the race runs.}}",
     "partialHintShort": "{open, plural, one {1 spot open} other {# spots open}}, {free, plural, one {1 rider free} other {# riders free}} for this race. Your assistant fills what it can.",
+    "willNotStart": "Fewer than {min} riders. Your team will not start this race.",
+    "willNotStartShort": "Under {min} riders. Does not start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
     "hunter": "Breakaway hunter (optional)",

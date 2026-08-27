@@ -80,3 +80,44 @@ export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, 
   if (new Set(roles).size !== roles.length) errors.push("selection_role_overlap");
   return errors;
 }
+
+// #4295 (ejer-beslutning 27/8): et hold skal have MINDST 6 udtagne ryttere for at stille
+// op i et løb. Fladt gulv, uafhængigt af feltstørrelsen (6/7/8 pr. klasse). Backendens
+// SSOT er raceAutopick.MIN_RACE_ENTRIES; frontend og backend er separate npm-pakker og
+// kan ikke dele et build-time-import (samme mønster som rulesNumbers.js), så tallet er
+// duplikeret her og PINNET af drift-guarden i raceSelectionLogic.test.js. Ændrer
+// backenden gulvet, fejler den test indtil dette tal følger med.
+export const MIN_RACE_ENTRIES = 6;
+
+// Hvad sker der med de tomme pladser? ÉN kilde til den sætning, så panelet og dagsboardets
+// kolonne aldrig kan sige to forskellige ting om det samme løb.
+//
+//   "willNotStart"             — under gulvet, og assistenten kan ikke nå det med de frie
+//                                ryttere holdet har tilbage. Holdet stiller ikke op.
+//   "assistantFills"           — pladser åbne, og der er frie ryttere nok til dem alle.
+//   "assistantFillsWhatItCan"  — pladser åbne, færre frie ryttere end pladser, men gulvet
+//                                nås stadig, så holdet stiller op.
+//   null                       — intet at sige (fuld trup, urørt panel, eller et løb der
+//                                allerede er i gang).
+//
+// `raceLive` (stages_completed > 0): assistenten top-fylder ALDRIG et igangværende løb
+// (#1825), så hverken løftet om et auto-fyld eller gulvet gælder dér — gulvet afgør hvem
+// der STILLER OP, og det er afgjort da løbet startede.
+//
+// selected === 0 giver bevidst null: har manageren intet valgt, udtager assistenten en
+// hel trup (#1307/#4174), så et urørt løb hverken mangler noget eller udebliver.
+export function partialSquadOutlook({ selected, free = 0, fieldMax, raceLive = false }) {
+  if (raceLive) return null;
+  const picked = Number(selected) || 0;
+  if (picked <= 0) return null;
+  const freeLeft = Math.max(0, Number(free) || 0);
+  const open = Math.max(0, (Number(fieldMax) || picked) - picked);
+  if (picked < MIN_RACE_ENTRIES && picked + freeLeft < MIN_RACE_ENTRIES) {
+    return { kind: "willNotStart", open, free: freeLeft, min: MIN_RACE_ENTRIES };
+  }
+  if (open === 0) return null;
+  return {
+    kind: freeLeft >= open ? "assistantFills" : "assistantFillsWhatItCan",
+    open, free: freeLeft, min: MIN_RACE_ENTRIES,
+  };
+}
