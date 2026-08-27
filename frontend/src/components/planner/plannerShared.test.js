@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName, nextPlannableSeason, effectivePlannerFilter } from "./plannerShared.js";
+import { dateToOrdinal, monthTicks, formatOrdinalShort, formatRaceDateLabel, statusMeta, riderShortName, nextPlannableSeason, effectivePlannerFilter } from "./plannerShared.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -89,4 +89,48 @@ test("effectivePlannerFilter: divisionPending tvinger 'all' uanset valgt filter"
 test("effectivePlannerFilter: uden divisionPending er managerens valg urørt", () => {
   assert.equal(effectivePlannerFilter("mine", false), "mine");
   assert.equal(effectivePlannerFilter("all", false), "all");
+});
+
+// #4312: maerkatet skal komme fra AEGTE etapedatoer. Funktionen havde ingen test
+// da fejlen blev fundet, saa adfaerden var ikke laast af noget.
+test("formatRaceDateLabel: endagsloeb viser en dato", () => {
+  assert.equal(formatRaceDateLabel({ date: "2026-09-02", dateEnd: "2026-09-02" }, MONTHS), "2 Sep");
+});
+
+test("formatRaceDateLabel: etapeloeb viser spaendet fra dateEnd, samme maaned", () => {
+  assert.equal(formatRaceDateLabel({ date: "2026-09-07", dateEnd: "2026-09-12" }, MONTHS), "7-12 Sep");
+});
+
+test("formatRaceDateLabel: maaned-skift skriver begge maaneder", () => {
+  assert.equal(formatRaceDateLabel({ date: "2026-08-28", dateEnd: "2026-09-02" }, MONTHS), "28 Aug - 2 Sep");
+});
+
+// FORWARD-GUARD, hele grunden til #4312. Loebsdags-spaendet maa ALDRIG blive lagt
+// oven i startdatoen. Tour de l'Hexagone i S3: game_day 28-46 (19 loebsdage), men
+// loebet koerer 7. til 12. september (6 kalenderdage). Den gamle formel
+// startOrd + (gameDayEnd - gameDayStart) gav "7-25 Sep".
+test("formatRaceDateLabel: loebsdags-spaend lægges ALDRIG oven i datoen (#4312)", () => {
+  const tour = { date: "2026-09-07", dateEnd: "2026-09-12", gameDayStart: 28, gameDayEnd: 46 };
+  const out = formatRaceDateLabel(tour, MONTHS);
+  assert.equal(out, "7-12 Sep");
+  assert.ok(!out.includes("25"), "25 Sep var den gamle, forkerte slutdato");
+});
+
+// Vueltaen var det vaerste tilfaelde: maerkatet sluttede 4. oktober, en uge efter
+// saesonen sluttede 27. september.
+test("formatRaceDateLabel: Vuelta-tilfaeldet rækker ikke ud over saesonen (#4312)", () => {
+  const vuelta = { date: "2026-09-16", dateEnd: "2026-09-21", gameDayStart: 53, gameDayEnd: 71 };
+  const out = formatRaceDateLabel(vuelta, MONTHS);
+  assert.equal(out, "16-21 Sep");
+  assert.ok(!out.includes("Oct"), "maerkatet maa ikke naa oktober");
+});
+
+test("formatRaceDateLabel: manglende dateEnd viser startdatoen alene, ikke et opdigtet spaend", () => {
+  assert.equal(formatRaceDateLabel({ date: "2026-09-07", gameDayStart: 28, gameDayEnd: 46 }, MONTHS), "7 Sep");
+  assert.equal(formatRaceDateLabel({ date: "2026-09-07", dateEnd: null }, MONTHS), "7 Sep");
+});
+
+test("formatRaceDateLabel: ugyldig startdato giver tom streng", () => {
+  assert.equal(formatRaceDateLabel({ date: null, dateEnd: "2026-09-12" }, MONTHS), "");
+  assert.equal(formatRaceDateLabel(null, MONTHS), "");
 });
