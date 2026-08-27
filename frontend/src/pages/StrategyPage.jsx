@@ -60,7 +60,16 @@ export default function StrategyPage() {
         reportLoadFailure("strategy_page", { kind: "http", status: res.status, reason: body?.error });
         return;
       }
-      const j = await res.json();
+      // #4165: egen gren for parsningen - ellers tagges en malformet 200-krop
+      // som "network" og peger triagen mod spillerens forbindelse.
+      let j;
+      try {
+        j = await res.json();
+      } catch (cause) {
+        setLoadError({ kind: "parse", status: res.status });
+        reportLoadFailure("strategy_page", { kind: "parse", status: res.status, cause });
+        return;
+      }
       setData(j);
       if (j.enabled) setDraft({
         aChain: j.a_chain || [], captainPriorities: j.captain_priorities || {},

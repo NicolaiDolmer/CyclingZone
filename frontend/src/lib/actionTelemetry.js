@@ -118,7 +118,10 @@ export function reportActionFailure(action, detail = {}) {
  *
  * @param {string} surface  Stabilt slug for fladen, fx "racehub_board".
  * @param {object} [detail]
- * @param {"auth"|"http"|"network"} [detail.kind]  Hvilken gren der fejlede.
+ * @param {"auth"|"http"|"network"|"parse"} [detail.kind]  Hvilken gren der fejlede.
+ *   "parse" = 2xx med en krop der ikke er gyldig JSON. Den har sin egen kind,
+ *   fordi den ellers ville tælle som "network" og pege triagen mod spillerens
+ *   forbindelse i stedet for mod serveren/proxyen.
  * @param {number} [detail.status]  HTTP-status hvis der var et svar.
  * @param {string} [detail.reason]  Backend-fejlkode fra svarets krop.
  * @param {unknown} [detail.cause]  Kastet Error (netværksfejl) hvis der var en.

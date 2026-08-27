@@ -97,7 +97,19 @@ export default function RaceHubBoard() {
         reportLoadFailure("racehub_board", { kind: "http", status: res.status, reason: body?.error });
         return;
       }
-      setData(await res.json());
+      // #4165: parsningen har sin EGEN gren. Lå den i den ydre try, blev en
+      // malformet 200-krop tagget "network" i Sentry - altså en server- eller
+      // proxy-fejl fejlmeldt som spillerens forbindelse, og dermed en løgn i
+      // netop den triage instrumenteringen er bygget til.
+      let json;
+      try {
+        json = await res.json();
+      } catch (cause) {
+        setLoadError({ kind: "parse", status: res.status });
+        reportLoadFailure("racehub_board", { kind: "parse", status: res.status, cause });
+        return;
+      }
+      setData(json);
       setLoadError(null);
     } catch (cause) {
       setLoadError({ kind: "network" });

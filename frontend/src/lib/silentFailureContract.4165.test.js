@@ -63,9 +63,23 @@ for (const { name, source, slug } of SURFACES) {
     assert.match(source, /\} finally \{\s*\n\s*setLoading\(false\);/);
   });
 
+  test(`${name}: en malformet 2xx-krop tagges "parse", ikke "network"`, () => {
+    // Lå res.json() i den ydre try, blev en ugyldig JSON-krop rapporteret som
+    // spillerens netværksfejl - forkert triage i netop det signal fixet bygger.
+    assert.doesNotMatch(
+      source,
+      /setData\(await res\.json\(\)\);/,
+      "parsningen skal have sin egen gren, ikke dele catch med netværksfejlen",
+    );
+    assert.match(
+      source,
+      new RegExp(`reportLoadFailure\\("${slug}", \\{ kind: "parse", status: res\\.status`),
+    );
+  });
+
   test(`${name}: fejlen rapporteres med fladens eget slug`, () => {
     assert.match(source, /import \{ reportLoadFailure \} from ".*actionTelemetry\.js"/);
-    for (const kind of ["auth", "http", "network"]) {
+    for (const kind of ["auth", "http", "network", "parse"]) {
       assert.match(
         source,
         new RegExp(`reportLoadFailure\\("${slug}", \\{ kind: "${kind}"`),
@@ -96,6 +110,19 @@ test("retryLoad viser spinneren igen, så knappen har en synlig effekt", () => {
       source,
       /const retryLoad = \(\) => \{\s*\n\s*setLoading\(true\);\s*\n\s*setLoadError\(null\);/,
       `${name}: retry uden setLoading(true) ser ud som om intet skete`,
+    );
+  }
+});
+
+test("en `loading && !data`-spinnergate skal rydde data ved retry", () => {
+  // Ellers springer retry'et både spinneren og fejl-grenen over og tegner de
+  // GAMLE data under den nye markering, indtil kaldet lander.
+  for (const { name, source } of SURFACES) {
+    if (!/if \(loading && !data\)/.test(source)) continue;
+    assert.match(
+      source,
+      /const retryLoad = \(\) => \{[^}]*setData\(null\);/,
+      `${name}: retry med gamle data i state viser den forrige visning som om den var ny`,
     );
   }
 });

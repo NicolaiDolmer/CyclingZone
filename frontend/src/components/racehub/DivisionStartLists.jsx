@@ -53,7 +53,17 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
         reportLoadFailure("racehub_browse", { kind: "http", status: res.status, reason: body?.error });
         return;
       }
-      setData(await res.json());
+      // #4165: egen gren for parsningen - ellers tagges en malformet 200-krop
+      // som "network" og peger triagen mod spillerens forbindelse.
+      let json;
+      try {
+        json = await res.json();
+      } catch (cause) {
+        setLoadError({ kind: "parse", status: res.status });
+        reportLoadFailure("racehub_browse", { kind: "parse", status: res.status, cause });
+        return;
+      }
+      setData(json);
       setLoadError(null);
     } catch (cause) {
       setLoadError({ kind: "network" });
@@ -68,6 +78,12 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   const retryLoad = () => {
     setLoading(true);
     setLoadError(null);
+    // #4165: spinner-gaten nedenfor er `loading && !data`, så et retry med gamle
+    // data i state ville springe BÅDE spinneren og fejl-grenen over og tegne den
+    // FORRIGE puljes startlister under den nye markering - præcis den løgn
+    // kommentaren ved fejl-grenen siger den undgår. Ryd dem, så retry'et viser
+    // spinneren indtil det nye svar lander.
+    setData(null);
     load(poolParam, Number.isFinite(dayParam) ? dayParam : undefined);
   };
 
