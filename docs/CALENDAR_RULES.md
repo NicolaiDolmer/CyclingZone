@@ -266,7 +266,7 @@ Scorecardet markerer med `✗` når en andel ligger uden for det **rå** bånd, 
 | Startfelt pr. klasse | ProSeries/Class1/Class2 6 · WorldTour + Monumenter 7 · GT 8 | `raceAutopick.js` |
 | Trup-loft | 30 (32 i åbent vindue) | `marketUtils.js` |
 
-> ⚠ **`binding_span` er et INTERVAL `[min(game_day), max(game_day)]`, ikke en mængde.** Et etapeløb med en pause binder rytteren på pausedagene. Tour des Émirats (7 etaper over 6 løbsdage) låser 7 andre løb. Se [#4173](https://github.com/NicolaiDolmer/CyclingZone/issues/4173).
+> ✅ **`binding_span` er et INTERVAL `[min(game_day), max(game_day)]`, og det er TILSIGTET.** Ejer-direktiv 25/8 ([#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217)): *"På en IRL dag, må en rytter gerne køre mere end et løb. På en løbsdag må en rytter ikke køre mere end et løb"* og *"de skal altså ikke kunne deltage i noget andet undervejs"*. Er du udtaget til et etapeløb, er du bundet indtil det er slut, også på pausedage. [#4173](https://github.com/NicolaiDolmer/CyclingZone/issues/4173) gjorde 24/8 bindingen til mængden af faktiske etape-dage; det åbnede en større fejl, hvor en rytter kunne forlade et etapeløb midt i og køre et andet løb i springet. Se `backend/lib/raceBinding.js:50-52`.
 >
 > ⚠ **Overlap-cap × startfelt er aldrig koblet til trupstørrelserne.** Kalenderen kræver i dag op til 29 ryttere på én dag i D1; kun 21 % af alle hold kan levere det. Se [#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174).
 
@@ -314,5 +314,4 @@ Resten af tabellerne i denne fil har endnu ikke alle tre. Se [#4176](https://git
 | 3 | GT-reglerne har nul slæk (6 × 4 = 21 + 3) | denne fil §3 |
 | 4 | Terræn-gulvene er observerede værdier, ikke kvalitetsmål | denne fil §5 |
 | 5 | Overlap-cap × startfelt overstiger 79 % af holdenes trupper | [#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174) |
-| 6 | `binding_span` binder på interval frem for på faktiske løbsdage | [#4173](https://github.com/NicolaiDolmer/CyclingZone/issues/4173) |
-| 7 | Tre klassifikationssystemer over samme etaper (`profile_type`, terræn-familie, kompositions-kategori) | denne fil §5 |
+| 6 | Tre klassifikationssystemer over samme etaper (`profile_type`, terræn-familie, kompositions-kategori) | denne fil §5 |

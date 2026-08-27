@@ -4,11 +4,13 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Start sæsonstart-master-sessionen** — prompt: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md). Workflow-session, design + build. **Bølge 1 parallelt:** **A** holdudtagelse (#4295 · #4299 · #4201) + **D** formplanen (#4294 · #4212 · #4293 · #4271) FØR kl. 11, og **B** overlap-læsbarhed (#4296 · #4259 · #4245 · #4165) samme døgn. **Bølge 2:** **C** Z1-sæsonmatrixen (#1146, aksen er fri). UI/UX-brief m. komponent-specs i prompten; ejer-visuelt-go før merge. Fredags-blokken leveret: **#4284 · #4285 · #4286 · #4291** merged 27/8. Rest på ejeren: apply #4284s migration · §6-tjeklisten (query 3 kl. ~10:15) · **post svar-udkastene i Discord** (`docs/drafts/2026-08-27-4261-svarudkast-loeb-som-traening.md`) · **PR #4298**.
+> **🎯 Next action:** **Sæsonstart-master-sessionen KØRER** (prompt: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md)). **Bølge 1 i gang:** #4294 · #4295 · #4245 · #4165 · #4293, hver i eget worktree m. adversarisk verifikation. **Derefter:** B (#4296 · #4259) på designpanelets specs, så A3 (#4201) og C (Z1, #1146). **Ejer-beslutninger truffet 27/8:** slet 812 forældreløse peaks (gjort) · løbsdage vises **1-baseret**. Rest på ejeren: apply #4284s migration · §6-tjeklisten · **post svar-udkastene i Discord** · **PR #4298**.
 
-> **✅ NATSESSION 27/8 (01:10-02:30): 5 PR'er, 0 prod-mutationer.** Prod read-only kl. 02:10: overlap pr. løbsdag **0**, binding-sanity **0/0**, alle motor-flag **on** (`race_day_development` off). 14 af 15 puljer på 24; **D4-A på 25** (fikset i #4286). Assistenten er pull, ikke push: af 24.724 S3-udtagelser ligger 24.615 på AI-hold og kun 109 på 3 menneskehold, alle player-initierede. **Nye fund:** D1 har 0 brosten-i-etapeløb (bånd ≥1) · de 3 GT'er kører 17-18 etaper og er derfor **umålte** (**#4288**, båndet er forældet, ikke kalenderen) · #4282+#4146 er begge **vagt-fejl**, 0 reelle brud. **Ejer-beslutning venter:** et hold er transfer-frosset af renter alene (#4282). 9 done-men-åbne issues lukket. **Merget i nat:** #4287 (Hjælp) · #4289 (CI-vagter) · #4290 (kalender-vagter).
+> **✅ PEAK-REPARATION 27/8 (ejer-GO kl. 09:2x):** kalender-regenereringen nullede `target_race_id` (FK er `ON DELETE SET NULL`) men lod vinduerne stå med den GAMLE kalenders datoer. **812** foraeldreløse planer, 731 med vinduer i den live sæson, **280 ryttere på 27 menneskehold ville stå i utilsigtet peak på åbningsdagen**. NOW.md's tidligere tal "237" var forkert. Backup `backup_4294_rider_peak_plans` (812 rækker), slettet, post-verify: 82 planer tilbage, alle med gyldigt målløb, 0 uden mål. Forward-guard (FK → CASCADE + filter i `loadPeakPlans`) i PR.
 
-> **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`); 237 form-peaks bevaret m. `target_race_id=null`. Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
+> **✅ NATSESSION 27/8:** 5 PR'er, 0 prod-mutationer. Prod read-only: overlap pr. løbsdag **0**, alle motor-flag **on** (`race_day_development` off). Assistenten er **pull, ikke push** (24.615 af 24.724 S3-udtagelser på AI-hold). **Åbent:** #4288 (de 3 GT'er er umålte, båndet er forældet) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning).
+
+> **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`). Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
 
 > **⚠️ Invariant-fund (ikke kalender):** #4184 udvidet (typelister + monument-værn forældet efter ophævelsen), #4146 (24 hold over trupgrænse), **#4282 NY** (2 hold over gældsloft). #4204 (20 min-kørsel) bekræftet.
 
@@ -20,7 +22,7 @@
 
 > **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8. **Prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
 
-> **📣 Forum:** L1 (#4238), dashboard-kort (#4249) og opbakning (#4250) er merged+live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: #4252 · #4248 · #4255.
+> **📣 Forum:** L1 (#4238), dashboard-kort (#4249), opbakning (#4250) live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: #4252 · #4248 · #4255.
 
 ## Standing context (forever-relaunch)
 
@@ -29,6 +31,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Ingen aktiv session.**
+> **🤖 Working agent:** Claude Code (Opus 5) — sesonstart-master-session 27/8, workflow-baseret. Spor A+B+D (bølge 1) og C (bølge 2).
 
 _Historik i git-log, issue-tråde + docs/audits/._
