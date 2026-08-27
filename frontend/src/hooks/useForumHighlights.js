@@ -44,7 +44,12 @@ export default function useForumHighlights() {
       const highlights = selectForumHighlights(data.pinned, data.items, HIGHLIGHT_COUNT);
       setState({ status: "ready", threads: highlights });
     } catch (e) {
-      console.error("useForumHighlights failed:", e?.message || e);
+      // Kortet fejler bevidst stille på UI'en (se kommentarblok ovenfor).
+      // console.warn, ikke console.error: e2e-suitens collectBrowserErrors
+      // (fixtures.js) eskalerer console.error til hård test-fejl, så en
+      // harmløs netværksfejl her gjorde en flaky mobile-webkit-fejl til en
+      // falsk rød suite. Refs #4309/#4305.
+      console.warn("useForumHighlights failed:", e?.message || e);
       setState({ status: "error", threads: [] });
     }
   }, []);

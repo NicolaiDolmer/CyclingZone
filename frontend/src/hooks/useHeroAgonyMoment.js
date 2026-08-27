@@ -99,7 +99,13 @@ export default function useHeroAgonyMoment(teamId, teamName) {
         stageNumber: latest.stage_number,
       });
     } catch (e) {
-      console.error("useHeroAgonyMoment failed:", e?.message || e);
+      // Kortet fejler bevidst stille på UI'en (samme idiom som
+      // useForumHighlights/useTodayStages). console.warn, ikke
+      // console.error: e2e-suitens collectBrowserErrors (fixtures.js)
+      // eskalerer console.error til hård test-fejl, så en harmløs
+      // netværksfejl her gjorde en flaky mobile-webkit-fejl til en falsk
+      // rød suite. Refs #4309/#4305.
+      console.warn("useHeroAgonyMoment failed:", e?.message || e);
       setState({ loading: false, moment: null, race: null, stageNumber: null });
     }
   }, [teamId, teamName]);
