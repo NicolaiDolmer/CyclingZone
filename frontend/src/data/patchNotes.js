@@ -21,6 +21,31 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.201",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "You can save a squad that is not full",
+          "body": "Setting a lineup for the first time, or setting one again after you cleared the race, still refused to save unless you filled every spot. Any number of riders up to the field size now saves.
+
+The panel tells you how many spots are open, and how many riders you actually have free for that race, instead of blocking you. Your assistant fills the open spots when the race runs."
+        },
+        "da": {
+          "title": "Du kan gemme en trup der ikke er fuld",
+          "body": "Udtog du hold til et løb første gang, eller igen efter du havde ryddet løbet, kunne du stadig ikke gemme uden at fylde alle pladser. Nu kan du gemme et hvilket som helst antal ryttere op til feltstørrelsen.
+
+Panelet fortæller hvor mange pladser der står åbne, og hvor mange ryttere du reelt har frie til det løb, i stedet for at blokere dig. Assistenten fylder de åbne pladser når løbet køres."
+        },
+        "refs": [4295, 4175, 1906]
+      }
+    ]
+  },
+  {
     "version": "7.200",
     "date": "2026-08-27",
     "label": "Beta",

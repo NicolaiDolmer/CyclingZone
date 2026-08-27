@@ -4,8 +4,8 @@
 //   - Supabase REST-laget (races + race_results) så RaceDetailPage loader et
 //     "scheduled" løb og renderer RaceSelectionPanel.
 //   - GET /api/races/:id/selection så panelet henter rytterliste + størrelsesgrænser.
-//   - PUT /api/races/:id/selection — fanger request-body og asserterer 8 rider_ids
-//     (fuld trup, #1906) + captain_id.
+//   - PUT /api/races/:id/selection — fanger request-body og asserterer rider_ids +
+//     captain_id (fuld trup i basis-testen, delvis trup i #4295-testene nederst).
 //
 // Mønster følger race-detail.spec.js: stabilizePage → installNetworkMocks →
 // spec-specifikke overrides (LIFO, senest registrerede matcher først) → login → goto.
@@ -113,8 +113,9 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   await expect(panel.getByRole("checkbox", { name: /Rider 8/ })).toBeDisabled();
 
   // Vælg den fulde trup — 8 raske ryttere (Rider 0-7; Rider 8 er skadet).
-  // #1906 ("hård fuld opstilling"): validateSelectionClient kræver size.max ryttere,
-  // ikke kun size.min, så save først aktiveres ved en komplet trup.
+  // NB: en fuld trup er ikke længere et KRAV for at gemme (#4295 fjernede #1906's
+  // blokering; se de to #4295-tests nederst i filen). Denne test dækker stadig det
+  // normale flow hvor manageren fylder feltet helt op.
   for (let i = 0; i < 8; i++) {
     await panel.getByRole("checkbox", { name: new RegExp(`Rider ${i}`) }).check();
   }
@@ -318,4 +319,149 @@ test("fremmed-pulje-løb viser read-only forklaring, ikke et udtageligt panel", 
   await expect(page.getByTestId("race-selection-panel")).toHaveCount(0);
   // Ingen gem-knap at fejle på.
   await expect(page.getByRole("button", { name: /gem udtagelse/i })).toHaveCount(0);
+});
+
+// #4295 (spiller-rapport 27/8, knud_r_flink): en FOERSTEGANGS-udtagelse (selection: null,
+// tilstanden efter "Ryd alt" eller en kalender-rebuild) kunne ikke gemmes med faerre end
+// size.max ryttere. #4175's escape-ventil hvilede paa availableCount, som er hele den raske
+// trup og aldrig traekker bundne ryttere fra, saa den udloeste aldrig for et hold med
+// ryttere nok paa papiret. Denne test daekker praecis det hul: 29 ledige paa papiret,
+// 7-mands felt, 4 valgte, ingen gemt udtagelse.
+test("#4295 delvis trup kan gemmes ved en foerstegangs-udtagelse", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", (route) => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? SCHEDULED_RACE : [SCHEDULED_RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", (route) => json(route, []));
+
+  let capturedBody = null;
+  await page.route(`**/api/races/${RACE_ID}/selection`, async (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    if (request.method() === "PUT") {
+      try { capturedBody = JSON.parse(request.postData() || "{}"); } catch { capturedBody = {}; }
+      return route.fulfill({ status: 200, contentType: "application/json", headers: corsHeaders(request), body: JSON.stringify({ ok: true }) });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders(request),
+      body: JSON.stringify({
+        enabled: true,
+        race: SCHEDULED_RACE,
+        size: { min: 7, max: 7 },
+        selection: null,
+        riders: SELECTION_RIDERS,
+        // Stor trup paa papiret: praecis den vaerdi der fik #4175's ventil til at tie.
+        availableCount: 29,
+        bound_riders: [],
+      }),
+    });
+  });
+
+  await login(page);
+  await page.goto(`/races/${RACE_ID}`);
+
+  const panel = page.getByTestId("race-selection-panel");
+  await expect(panel).toBeVisible();
+
+  // 4 af 7 pladser + kaptajn.
+  for (let i = 0; i < 4; i++) {
+    await panel.getByRole("checkbox", { name: new RegExp(`Rider ${i}`) }).check();
+  }
+  await expect(panel.getByText(/4\/7/)).toBeVisible();
+  await panel.getByRole("combobox").first().selectOption({ index: 1 });
+
+  // Hint-linjen er en NEUTRAL oplysning, ikke en blokering: 3 aabne pladser, og der er
+  // frie ryttere nok til dem (8 raske minus de 4 valgte).
+  const hint = panel.getByTestId("selection-partial-hint");
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText(/3 pladser står åbne/);
+  await expect(hint).toHaveText(/Assistenten fylder dem/);
+  // Den gamle, loegnagtige fejltekst ("Du kan hoejst udtage 7 ryttere" ved for FAA
+  // valgte) maa ikke vises nogen steder i panelet.
+  await expect(panel.getByText(/højst udtage/i)).toHaveCount(0);
+
+  // Gem er aktiv og gemmer faktisk de 4.
+  const saveBtn = panel.getByRole("button", { name: /gem udtagelse/i });
+  await expect(saveBtn).toBeEnabled();
+  await saveBtn.click();
+  await expect(panel.getByText(/udtagelsen er gemt/i)).toBeVisible();
+
+  expect(capturedBody).not.toBeNull();
+  expect(capturedBody.rider_ids).toHaveLength(4);
+  expect(capturedBody.rider_ids).toContain(capturedBody.captain_id);
+});
+
+// #4295: hint-linjen skal tale om ryttere der er frie til NETOP dette loeb. Bundne ryttere
+// (udtaget i et overlappende loeb) taeller med i availableCount, men kan ikke bruges her.
+// Det er knud_r_flinks egen case: "4 available riders for a race that requires 7".
+test("#4295 hint-linjen taeller kun ryttere der er frie til dette loeb", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", (route) => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? SCHEDULED_RACE : [SCHEDULED_RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", (route) => json(route, []));
+
+  let capturedBody = null;
+  await page.route(`**/api/races/${RACE_ID}/selection`, async (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    if (request.method() === "PUT") {
+      try { capturedBody = JSON.parse(request.postData() || "{}"); } catch { capturedBody = {}; }
+      return route.fulfill({ status: 200, contentType: "application/json", headers: corsHeaders(request), body: JSON.stringify({ ok: true }) });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders(request),
+      body: JSON.stringify({
+        enabled: true,
+        race: SCHEDULED_RACE,
+        size: { min: 7, max: 7 },
+        selection: null,
+        riders: SELECTION_RIDERS,
+        availableCount: 29,
+        // Rider 4-7 er bundet i et andet loeb, Rider 8 er skadet → kun Rider 0-3 er frie.
+        bound_riders: [4, 5, 6, 7].map((i) => ({
+          rider_id: `sel-r${i}`, bound_race_id: "other-race", bound_race_name: "Overlappende loeb",
+        })),
+      }),
+    });
+  });
+
+  await login(page);
+  await page.goto(`/races/${RACE_ID}`);
+
+  const panel = page.getByTestId("race-selection-panel");
+  await expect(panel).toBeVisible();
+  // Bundne ryttere kan ikke vaelges.
+  await expect(panel.getByRole("checkbox", { name: /Rider 4/ })).toBeDisabled();
+
+  for (let i = 0; i < 4; i++) {
+    await panel.getByRole("checkbox", { name: new RegExp(`Rider ${i}`) }).check();
+  }
+  await panel.getByRole("combobox").first().selectOption({ index: 1 });
+
+  // Alle frie ryttere er brugt: 3 pladser staar aabne, 0 ryttere tilbage. Teksten siger
+  // sandheden i stedet for at kraeve en umulig fuld trup.
+  const hint = panel.getByTestId("selection-partial-hint");
+  await expect(hint).toHaveText(/3 pladser står åbne/);
+  await expect(hint).toHaveText(/0 ryttere er frie til dette løb/);
+
+  const saveBtn = panel.getByRole("button", { name: /gem udtagelse/i });
+  await expect(saveBtn).toBeEnabled();
+  await saveBtn.click();
+  await expect(panel.getByText(/udtagelsen er gemt/i)).toBeVisible();
+  expect(capturedBody.rider_ids).toHaveLength(4);
 });
