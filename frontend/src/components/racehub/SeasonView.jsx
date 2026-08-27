@@ -135,7 +135,9 @@ export default function SeasonView({ onSwitchView }) {
           json = await res.json();
         } catch (cause) {
           reportLoadFailure("racehub_season_view", { kind: "parse", status: res.status, cause });
-          throw new Error("calendar_failed");
+          // Sentinel-fejlen bærer den oprindelige parse-fejl som `cause`, så den
+          // ydre catch kan kende grenen på message'en UDEN at tabe stakken.
+          throw new Error("calendar_failed", { cause });
         }
         if (!alive) return;
         setData(json);

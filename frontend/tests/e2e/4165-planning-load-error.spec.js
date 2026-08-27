@@ -1,7 +1,8 @@
-// #4165 - planlægnings-hubben blankede for en spiller, og en genindlæsning hjalp
-// ikke. Holdudtagelses-boardet havde ingen fejl-state: et ikke-2xx svar blev
-// kastet væk, og `if (!data?.enabled) return null` tegnede derefter intet - en
-// flade uden spinner, uden besked og uden retry.
+// #4165 - planlægnings-hubben blankede for en spiller. Holdudtagelses-boardet
+// havde ingen fejl-state: et ikke-2xx svar blev kastet væk, og
+// `if (!data?.enabled) return null` tegnede derefter intet - en flade uden
+// spinner, uden besked og uden retry. (Om en genindlæsning hjalp den aften er
+// IKKE afgjort - tråden siger to forskellige ting. Skriv det ikke som fastslået.)
 //
 // Testhullet der lod bugget slippe ud: preview-mocken svarer altid 200 på
 // /api/races/distribution, så hele fejl-halvdelen af kontrakten var utestet. Den
