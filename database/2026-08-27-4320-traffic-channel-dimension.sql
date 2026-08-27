@@ -126,3 +126,26 @@ $function$;
 
 COMMENT ON FUNCTION public.traffic_visit_rollup(timestamptz) IS
   'Besøgs-rollup for #2040-scorecardet, udvidet med first-touch kanal-felter i #4320. Kanal-mappingen (host → kanal) sker i backend/lib/trafficChannel.js, ikke her.';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 3. Grants: gendan service_role-only EXECUTE
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- KRITISK, og grunden til at DROP + CREATE af en SECURITY DEFINER-funktion er
+-- farligere end det ser ud: en DROP smider funktionens ACL væk, og en frisk
+-- CREATE FUNCTION får Postgres' default, som er EXECUTE TO PUBLIC. Uden dette
+-- afsnit ville anon og authenticated kunne kalde en SECURITY DEFINER-funktion
+-- der læser HELE traffic_events — en tabel der ellers er service_role-only
+-- (RLS enabled, nul policies). Det er præcis klassen fra #2858, og hændelsen i
+-- #3765 kostede 9 dages eksponering.
+--
+-- Målet er den ACL funktionen har i prod i dag, verificeret 27/8:
+--   postgres=X/postgres | service_role=X/postgres
+--
+-- REVOKE ALL FROM PUBLIC er det der reelt fjerner default-adgangen. De
+-- eksplicitte REVOKE fra anon/authenticated er no-ops når PUBLIC allerede er
+-- ryddet, men gør hensigten læsbar og er hvad check-secdef-revoke-lint.mjs
+-- kræver af enhver SECURITY DEFINER-funktion.
+REVOKE ALL     ON FUNCTION public.traffic_visit_rollup(timestamptz) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.traffic_visit_rollup(timestamptz) FROM anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.traffic_visit_rollup(timestamptz) TO service_role;
