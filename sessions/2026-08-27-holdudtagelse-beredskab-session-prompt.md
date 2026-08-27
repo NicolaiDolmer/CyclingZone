@@ -118,12 +118,21 @@ select count(*) from race_entries e join races r on r.id=e.race_id, s3
    and not exists (select 1 from race_withdrawals w where w.race_id=e.race_id and w.team_id=e.team_id)
    and not exists (select 1 from race_entry_days d where d.race_id=e.race_id and d.rider_id=e.rider_id);
 -- b) binding_span afviger fra den nye akse
+-- RETTET 27/8 kl. 06:00: den oprindelige udgave manglede afmeldings-undtagelsen
+-- som (a) har. Et AFMELDT hold beholder sine entries (#1823, saa gen-tilmelding
+-- giver samme trup), men de binder ikke: binding_span er NULL og der er ingen
+-- race_entry_days-raekker. Det er den KORREKTE tilstand, men uden `not exists`
+-- nedenfor taeller den som et brud. Maalt i prod 27/8: praecis 1 saadan raekke
+-- (Equipe Lorraine Acier, De Openingsklassieker) — en afmelding, ikke en fejl.
+-- Uden rettelsen vokser tallet med hver afmelding fredag og ligner et brudt vaern.
 with s3 as (select id from seasons where status='active'),
 x as (select r.id race_id, min(s.game_day) a, max(s.game_day) b
         from races r join race_stage_schedule s on s.race_id=r.id, s3
        where r.season_id=s3.id group by r.id)
 select count(*) from race_entries e join x on x.race_id=e.race_id
- where e.binding_span is distinct from int4range(x.a, x.b, '[]');
+ where e.binding_span is distinct from int4range(x.a, x.b, '[]')
+   and not exists (select 1 from race_withdrawals w
+                    where w.race_id = e.race_id and w.team_id = e.team_id);
 ```
 
 **6. Fejl-puls:** Sentry (backend-projektet) + Railway-log for `selection_rider_bound`,
