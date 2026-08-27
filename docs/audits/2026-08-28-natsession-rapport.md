@@ -16,31 +16,48 @@ _Rettelse til min egen første version af denne rapport: jeg skrev at branch pro
 |---|---|---|
 | [#4285](https://github.com/NicolaiDolmer/CyclingZone/pull/4285) | #4200 anden halvdel — en ryddet trup bliver ryddet | **Venter på dig.** Kode-PR. Lokalt 561 passed; CI-smoke rød på en urelateret test — se §0b. **Merge før kl. 11** |
 | [#4286](https://github.com/NicolaiDolmer/CyclingZone/pull/4286) | #4233/#4183 — nye spillere kan lande i en pulje på 24 | **Venter på dig.** Kode-PR. **Merge før kl. 11** |
-| [#4291](https://github.com/NicolaiDolmer/CyclingZone/pull/4291) | #4260/#4184 — rå i18n-nøgler + vagtens typelister og målemetoder | **Venter på dig.** Rører spillervendt tekst |
+| [#4291](https://github.com/NicolaiDolmer/CyclingZone/pull/4291) | #4260/#4184 — rå i18n-nøgler + vagtens typelister og målemetoder | **Venter på dig.** Rører spillervendt tekst. Smoke rød af samme grund som #4285 — se §0b |
 | [#4287](https://github.com/NicolaiDolmer/CyclingZone/pull/4287) | #4261 — svar på løb-som-træning i Hjælp | ✅ **Merget** (13ec1e839) |
 | [#4289](https://github.com/NicolaiDolmer/CyclingZone/pull/4289) | #4281/#4258/#4274 + audit-workflowet | ✅ **Merget** |
 | [#4290](https://github.com/NicolaiDolmer/CyclingZone/pull/4290) | #4219/#4215 — scorecards måler prod, kalender-gate i CI | ✅ **Merget** |
 
 Done-flip er sat på #4219 #4281 #4258 #4274 #4261. **#4215 er bevidst holdt på `claude:todo`**: kun 1 af #4176's 3 krævede kørsels-steder er leveret.
 
-### 0b · Én rød CI-check du skal kende til
+### 0b · `frontend-smoke` er rød på #4285 og #4291 — og jeg fandt hvorfor
 
-`frontend-smoke` er **rød på #4285** (559 passed, 1 failed) og var også rød på #4291.
-Begge fejl er på `mobile-webkit`, og det er **to forskellige, urelaterede tests**:
+**Begge er samme underliggende problem, og det er ikke deres kode.** Skrevet op som
+**[#4292](https://github.com/NicolaiDolmer/CyclingZone/issues/4292)**.
 
-- #4285: `finance-prize-sort.spec.js:52` — men diffen rører ingen finans-kode overhovedet.
-- #4291: `3708-transfer-history-ai-cleanup.spec.js` — fejlen er en `console.error`-assertion
-  med `useForumHighlights failed: Load failed`, altså et mislykket netværkskald i
-  preview-miljøet.
+Alle fire kørsler landede på `559 passed, 1 failed`. Fejlteksten er den samme:
 
-Hele suiten er **grøn lokalt på #4285's commit** (561 passed, alle tre projekter, 15,9 min),
-og de fire kørsler umiddelbart før (#4290, #4289, #4287, #4286) var alle grønne. Mønsteret
-peger på infrastruktur-flake, ikke på koden. **Begge jobs er sat til re-run** — resultatet
-er postet på PR'erne.
+```
+Error: console.error(s): useForumHighlights failed: Load failed
+```
 
-Bemærk: der findes pr. i nat **ingen main-kørsel** af `Playwright Smoke` at sammenligne med.
-Det hul er præcis #4281, og den natlige cron der lukker det blev merget i nat (#4289), så
-fra i morgen tidlig er der et main-svar at holde en branch op imod.
+`useForumHighlights.js:47` logger til **`console.error`** ved enhver fejl i sit fetch mod
+`/api/forum/posts` — også et transient netværks-hikke (`Load failed` er WebKit's besked for
+et fetch der aldrig kom igennem). Hooken sidder i `ForumHighlightsCard` på dashboardet, og
+en håndfuld e2e-tests asserterer at konsollen er tom.
+
+Det forklarer to mønstre der lignede to problemer:
+
+- **#4291 fejlede på samme spec-fil begge gange** (`3708-transfer-history-ai-cleanup`, linje
+  55 og 85). Den asserterer på tom konsol — den er kanariefuglen og fanger hikket hver gang.
+- **#4285 fejlede på fire forskellige filer** (`finance-prize-sort`,
+  `transfer-history-no-sale-filter`, `board-wizard-back`, plus et login-timeout i
+  `fixtures.js:350`). De fejler kun hvis hikket rammer præcis deres egen ventetid.
+
+**Ingen af de fejlende tests rører de to PR'ers kode.** #4285 rører race-udtagelse, #4291
+rører i18n-nøgler — ingen af dem rører forum, finans-sortering eller board-wizarden.
+Lokalt er #4285 grøn: 561 passed, alle tre projekter.
+
+`ForumHighlightsCard` gik live 25/8 (#4249) og smoke-fejlene begynder 26-27/8. Tidsmæssigt
+konsistent, men **kausaliteten er ikke bevist** — der findes ingen main-historik at
+sammenligne med. Netop det hul lukker den natlige cron der blev merget i nat (#4289), så
+efter et par nætter er der data.
+
+**Min vurdering: begge PR'er kan merges.** Den røde check er ægte, men den hører til #4292,
+ikke til dem. Vil du hellere vente, så er #4286 (som er grøn) den vigtigste af de to før kl. 11.
 
 **Din egen [#4284](https://github.com/NicolaiDolmer/CyclingZone/pull/4284) er urørt** som aftalt.
 Test-merget mod #4285: `raceRunner.js` merger **rent**. Eneste konflikt er
