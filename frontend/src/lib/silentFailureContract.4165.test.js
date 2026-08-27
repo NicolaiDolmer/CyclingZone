@@ -301,6 +301,21 @@ test("hubbens to øvrige flader har fejl-copy i BEGGE sprog", () => {
   assert.ok(da.seasonView.errorTitle, "da mangler seasonView.errorTitle");
   assert.notEqual(en.seasonView.errorTitle, da.seasonView.errorTitle);
 
+  // ErrorState-anatomien (PAGE_TEMPLATES.md): titlen siger HVAD der fejlede,
+  // beskrivelsen hvad der er sikkert. Gentager beskrivelsen titlen, er copyen
+  // ikke bare redundant - den gør også e2e's getByText(..., {exact:false})
+  // tvetydig, fordi to elementer så matcher den samme streng.
+  for (const [lang, dict] of [["en", en], ["da", da]]) {
+    assert.ok(
+      !dict.seasonView.error.includes(dict.seasonView.errorTitle),
+      `${lang}: seasonView.error må ikke gentage titlen`,
+    );
+    assert.ok(
+      !dict.seasonView.errorSession.includes(dict.seasonView.errorTitle),
+      `${lang}: seasonView.errorSession må ikke gentage titlen`,
+    );
+  }
+
   assert.ok(enP.error.session, "en mangler planner error.session");
   assert.ok(daP.error.session, "da mangler planner error.session");
   assert.notEqual(enP.error.session, daP.error.session);
@@ -339,4 +354,16 @@ test("fejl-copyen findes i BEGGE sprog (key-parity)", () => {
   assert.notEqual(en.racehub.error.title, da.racehub.error.title);
   assert.notEqual(en.browse.error.title, da.browse.error.title);
   assert.notEqual(en.strategy.error.loadTitle, da.strategy.error.loadTitle);
+
+  // Samme anatomi-regel som for sæson-visningen: brødteksten gentager ikke
+  // overskriften.
+  for (const dict of [en, da]) {
+    for (const [title, body] of [
+      [dict.racehub.error.title, dict.racehub.error.body],
+      [dict.browse.error.title, dict.browse.error.body],
+      [dict.strategy.error.loadTitle, dict.strategy.error.loadBody],
+    ]) {
+      assert.ok(!body.includes(title), `brødteksten må ikke gentage titlen: "${title}"`);
+    }
+  }
 });

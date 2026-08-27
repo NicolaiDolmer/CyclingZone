@@ -30,7 +30,7 @@
       "none": "No selection yet"
     },
     "empty": "No races on the calendar yet",
-    "error": "The season calendar could not be loaded. Nothing was lost. Try again.",
+    "error": "Nothing was lost. This view is read-only.",
     "errorSession": "Your session has ended. Sign in again to keep planning.",
     "retry": "Try again",
     "picker": {

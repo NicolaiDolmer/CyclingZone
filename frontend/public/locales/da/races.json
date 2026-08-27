@@ -30,7 +30,7 @@
       "none": "Ingen udtagelse endnu"
     },
     "empty": "Ingen løb på kalenderen endnu",
-    "error": "Sæsonkalenderen kunne ikke hentes. Intet er gået tabt. Prøv igen.",
+    "error": "Intet gik tabt. Denne visning er kun til læsning.",
     "errorSession": "Din session er udløbet. Log ind igen for at planlægge videre.",
     "retry": "Prøv igen",
     "picker": {
