@@ -66,6 +66,7 @@
     },
     "problemsOnly": "Problems only",
     "save": "Save plan",
+    "saveCount": "{count, plural, one {Save plan · # change} other {Save plan · # changes}}",
     "saving": "Saving...",
     "saveError": "Nothing was lost. Try saving again.",
     "noProblems": "No problems",

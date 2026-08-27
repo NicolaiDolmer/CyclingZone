@@ -135,6 +135,22 @@ test("buildRiderRowSegments (fund 1, #4323): defensiv guard klipper et senere ov
   assert.ok(problems.affectedRiderIds.has("rider1"));
 });
 
+test("dirtyRaceIds: taeller PRAECIS det antal Gem plan-knappen skal vise", () => {
+  const server = new Map([
+    ["r1", { ...emptyRaceDraft(), rider_ids: ["a"] }],
+    ["r2", { ...emptyRaceDraft(), rider_ids: ["b"] }],
+    ["r3", { ...emptyRaceDraft(), rider_ids: ["c"] }],
+  ]);
+  const draft = new Map([
+    ["r1", { ...emptyRaceDraft(), rider_ids: ["a"] }], // uændret
+    ["r2", { ...emptyRaceDraft(), rider_ids: ["b", "d"] }], // ændret
+    ["r3", { ...emptyRaceDraft(), rider_ids: [] }], // ændret (ryttere fjernet)
+  ]);
+  const ids = dirtyRaceIds(draft, server);
+  assert.equal(ids.length, 2, "kun r2 og r3 er reelt dirty");
+  assert.deepEqual([...ids].sort(), ["r2", "r3"]);
+});
+
 test("raceForDay: finder løbet der dækker en given løbsdag", () => {
   const races = [{ id: "r1", gameDayStart: 2, gameDayEnd: 6 }];
   assert.equal(raceForDay(races, 4).id, "r1");

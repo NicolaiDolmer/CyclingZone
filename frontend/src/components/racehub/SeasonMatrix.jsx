@@ -80,6 +80,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   const raceLanes = useMemo(() => buildRaceHeaderGroups(dayColumns, races), [dayColumns, races]);
   const problems = useMemo(() => countProblems(races, draftByRace), [races, draftByRace]);
   const dirtyIds = useMemo(() => dirtyRaceIds(draftByRace, serverByRace), [draftByRace, serverByRace]);
+  const dirtyIdSet = useMemo(() => new Set(dirtyIds), [dirtyIds]);
   const isDirty = dirtyIds.length > 0;
 
   // Ugemte ændringer bubbles op til SeasonView, som guarder sæson-skift/view-toggle
@@ -250,7 +251,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             {saveError && <span className="text-2xs text-cz-danger">{t("matrix.saveError")}</span>}
             {isDirty && (
               <Button size="sm" variant="primary" loading={saving} onClick={saveAll}>
-                {t("matrix.save")}
+                {t("matrix.saveCount", { count: dirtyIds.length })}
               </Button>
             )}
           </div>
@@ -350,10 +351,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                         const race = races.find((r) => seg.day >= r.gameDayStart && seg.day <= r.gameDayEnd);
                         const peak = peakDays?.get(seg.day);
                         const fit = lens === "routeMatch" && race && rider.abilities ? riderSuitability(rider.abilities, race.demandVector).score : null;
+                        const isDraftCell = race && dirtyIdSet.has(race.id);
                         return (
                           <td
                             key={seg.day}
-                            className={`border-b border-cz-border p-0 ${peak ? "bg-cz-accent/10" : ""}`}
+                            className={`border-b border-cz-border p-0 ${peak ? "bg-cz-accent/10" : ""} ${isDraftCell ? "outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : ""}`}
                             style={{ width: colWidth }}
                           >
                             <button
@@ -373,11 +375,12 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       const restSet = new Set(race.restGameDays || []);
                       const peakHit = days.find((d) => peakDays?.has(d));
                       const peakInfo = peakHit ? peakTitle(peakDays.get(peakHit)) : null;
+                      const isDraftCell = dirtyIdSet.has(race.id);
                       return (
                         <td
                           key={race.id}
                           colSpan={seg.colSpan}
-                          className={`border-b border-cz-border p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""}`}
+                          className={`border-b border-cz-border p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""} ${isDraftCell ? "outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : ""}`}
                           style={{ width: colWidth * seg.colSpan }}
                         >
                           <button
