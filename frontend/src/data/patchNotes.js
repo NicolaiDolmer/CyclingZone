@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Planning",
         "en": {
           "title": "Planning now tells you when a view could not be loaded",
-          "body": "When a planning view failed to load, it went blank or claimed to be empty, with no message and nothing to click. Team selection, Form plan, Strategy and Start lists now say what happened and give you a Try again button."
+          "body": "When a planning view failed to load, it went blank or claimed to be empty, with no message and nothing to click. Team selection, Form plan, Strategy, Start lists and the Calendar now say what happened and give you a Try again button. The day and pool selectors stay on screen, so a failed view is no longer a dead end."
         },
         "da": {
           "title": "Planlægning siger nu til når en visning ikke kunne hentes",
-          "body": "Når en planlægningsvisning ikke kunne hentes, gik den blank eller påstod at den var tom, uden besked og uden noget at klikke på. Holdudtagelse, Formplan, Strategi og Startlister siger nu hvad der skete og giver dig en Prøv igen-knap."
+          "body": "Når en planlægningsvisning ikke kunne hentes, gik den blank eller påstod at den var tom, uden besked og uden noget at klikke på. Holdudtagelse, Formplan, Strategi, Startlister og Kalender siger nu hvad der skete og giver dig en Prøv igen-knap. Dag- og puljevælgerne bliver stående, så en fejlet visning ikke længere er en blindgyde."
         },
         "refs": [4165]
       }
