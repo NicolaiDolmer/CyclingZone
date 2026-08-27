@@ -332,6 +332,47 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
   return { riderNames, teamNames };
 }
 
+// #4233 (Sentry CYCLINGZONE-4W): har holdet raekker i `transfer_offers` der blokerer
+// en hard delete? To FK'er paa den tabel er NO ACTION (ikke CASCADE):
+//   transfer_offers.rider_id      -> riders  (blokerer `delete from riders`)
+//   transfer_offers.seller_team_id -> teams  (blokerer `delete from teams`)
+// Begge maa tjekkes: den foerste sprænger rytter-sletningen, den anden hold-sletningen.
+//
+// Uden dette pre-filter valgte trimmen et blokeret hold, ramte FK'en og kastede — hele
+// reconcilen doede, og puljen blev staaende over target. Maalt i prod 27/8: D4-A stod
+// paa 25 hold, og de TO foerste AI-hold i id-orden (Drivetrain Devo, Pinnacle Devo) var
+// praecis de blokerede, mens 16 trimbare hold laa lige bagved i koeen. Trimmen skulle
+// fjerne ét og valgte det ene den ikke kunne.
+//
+// Med filteret opfoerer blokeringen sig som de to eksisterende (#2074 inflight, #2389
+// uudbetalte praemier): kandidaten springes over, naeste tages i stedet, og underskuddet
+// udskydes via pending_removal_at. Doede tilbud (withdrawn/accepted/rejected) forsvinder
+// aldrig af sig selv, saa de hold forbliver udskudt indtil FK-semantikken er afgjort
+// (#4233's A/B/C — ejer-beslutning, ikke noget denne funktion foregriber).
+export async function teamHasBlockingTransferOffers(supabase, teamId) {
+  const { data: asSeller, error: sellerErr } = await supabase
+    .from("transfer_offers").select("id").eq("seller_team_id", teamId).limit(1);
+  if (sellerErr) throw new Error(`AI-trim (transfer_offers seller for ${teamId}): ${sellerErr.message}`);
+  if ((asSeller || []).length > 0) return true;
+
+  // fetchAllRows + id-order: et AI-holds trup er lille, men en trunkeret liste ville
+  // misse praecis den rytter der blokerer — samme paginerings-disciplin som #2389.
+  const riderRows = await fetchAllRows(() => supabase
+    .from("riders").select("id").eq("team_id", teamId).order("id", { ascending: true }));
+  const riderIds = (riderRows || []).map((r) => r.id);
+  if (!riderIds.length) return false;
+
+  // Chunkes som selve delete'en (100 ad gangen): en lang `in`-liste sprænger URL'en.
+  for (let i = 0; i < riderIds.length; i += 100) {
+    const chunk = riderIds.slice(i, i + 100);
+    const { data: offers, error: offerErr } = await supabase
+      .from("transfer_offers").select("id").in("rider_id", chunk).limit(1);
+    if (offerErr) throw new Error(`AI-trim (transfer_offers riders for ${teamId}): ${offerErr.message}`);
+    if ((offers || []).length > 0) return true;
+  }
+  return false;
+}
+
 // #2187: slet ét navngivet AI-hold (rytter+hold). Bruges af heal-sweep-retryen, som
 // (modsat removeAiTeams' kandidat-udvælgelse fra en pulje-liste) allerede kender det
 // præcise hold-id den skal forsøge igen.
@@ -345,6 +386,16 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
 // men rapporteret som "failed" i stedet for korrekt udskudt). Filtrér de blokerede
 // ryttere fra FØR delete i stedet.
 export async function deleteAiTeamById(supabase, teamId) {
+  // #4233: transfer_offers-FK'erne (rider_id + seller_team_id, begge NO ACTION) sprænger
+  // baade rytter- og hold-sletningen. Tjek FOER vi roerer noget: en delvis sletning ville
+  // efterlade holdet uden trup uden at bringe puljen naermere target. Udskyd hele holdet.
+  if (await teamHasBlockingTransferOffers(supabase, teamId)) {
+    await markPendingRemoval(supabase, [teamId]);
+    console.warn(
+      `  ⏳ deleteAiTeamById(${teamId}): blokerende transfer_offers (#4233) — sletning udskudt, hold markeret pending_removal_at.`
+    );
+    return { deleted: false, deferred: true, blockedRiderIds: [] };
+  }
   // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
   await snapshotRaceResultNamesForTeams(supabase, [teamId]);
   // #2524: hent navn+id FØR delete — rider_watchlist har ingen FK-cascade, så
@@ -400,8 +451,12 @@ async function removeAiTeams(supabase, aiTeams, count) {
     if (toRemove.length >= count) break;
     // #2389: uudbetalte præmier blokerer OGSÅ trim — ellers kolliderer sletningen
     // med auto-prize-sweepen/standings-recalc (samme udskudt-trim-mekanik).
+    // #4233: transfer_offers-FK'erne er NO ACTION og blokerer OGSAA trim — samme
+    // udskudt-trim-mekanik. Uden dette led valgte loopet et hold det ikke kunne
+    // slette, og hele reconcilen kastede i stedet for at tage naeste kandidat.
     if (await teamHasInflightEntries(supabase, team.id, inflightRaceIds)
-        || await teamHasUnpaidPrizeResults(supabase, team.id)) {
+        || await teamHasUnpaidPrizeResults(supabase, team.id)
+        || await teamHasBlockingTransferOffers(supabase, team.id)) {
       blockedIds.push(team.id);
       continue;
     }
@@ -418,9 +473,9 @@ async function removeAiTeams(supabase, aiTeams, count) {
     const deficit = count - toRemove.length;
     const deferredIds = blockedIds.slice(0, deficit);
     console.warn(
-      `  ⏳ AI-trim deferred: ${deficit} AI-hold har entries i igangværende løb (låst felt, #2074) ` +
-      `eller uudbetalte præmier (#2389) og kan ikke trimmes nu — markeret pending_removal_at (#2187), ` +
-      `en heal-sweep fuldfører når løbet er kørt færdigt og udbetalt.`
+      `  ⏳ AI-trim deferred: ${deficit} AI-hold har entries i igangværende løb (låst felt, #2074), ` +
+      `uudbetalte præmier (#2389) eller blokerende transfer_offers (#4233) og kan ikke trimmes nu — ` +
+      `markeret pending_removal_at (#2187), en heal-sweep fuldfører når blokeringen er væk.`
     );
     if (deferredIds.length) {
       await markPendingRemoval(supabase, deferredIds);

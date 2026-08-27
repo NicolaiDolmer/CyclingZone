@@ -9,10 +9,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
+import { repoRoot } from "../lib/repoRoot.mjs";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -32,8 +32,8 @@ const raceIds = races.map((r) => r.id);
 const schedule = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_schedule").select("*").in("race_id", chunk).order("race_id").order("stage_number"));
 const profiles = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_profiles").select("*").in("race_id", chunk).order("race_id").order("stage_number"));
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const outDir = resolve(__dirname, "../../../docs/snapshots/4075");
+// #4274: ankret på git-toplevel, ikke __dirname — se scripts/lib/repoRoot.mjs.
+const outDir = join(repoRoot(), "docs", "snapshots", "4075");
 mkdirSync(outDir, { recursive: true });
 const stamp = new Date().toISOString().slice(0, 10);
 const outFile = join(outDir, `pre-session-snapshot-season3-${stamp}.json`);

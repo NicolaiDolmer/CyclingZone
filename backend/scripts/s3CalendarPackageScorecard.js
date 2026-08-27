@@ -35,6 +35,7 @@ import { writeFileSync } from "node:fs";
 import { buildTierMaterializationPlan } from "../lib/tierCalendarMaterializer.js";
 import { generateRaceStageProfiles } from "../lib/raceStageProfileGenerator.js";
 import { GRAND_TOUR_MIN_STAGES } from "../lib/tierRaceSelection.js";
+import { repoRoot } from "./lib/repoRoot.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -552,7 +553,8 @@ if (isMain) {
     } else {
       const md = formatMarkdown(result);
       console.log(md);
-      const outPath = join(__dirname, "../../docs/audits/2026-08-17-s3-kalender-pakke-scorecard.md");
+      // #4274: ankret på git-toplevel, ikke __dirname — se lib/repoRoot.mjs.
+      const outPath = join(repoRoot(), "docs/audits/2026-08-17-s3-kalender-pakke-scorecard.md");
       writeFileSync(outPath, md, "utf8");
       console.error(`\n[skrevet] ${outPath}`);
     }

@@ -400,6 +400,89 @@ test("#1739 reconcileAiTeamsForPool: ny manager i fuld entry-pulje trimmer ét A
   assert.ok(supabase.state.teams.some((t) => t.id === "first-mgr"), "eksisterende manager aldrig fjernet");
 });
 
+// ── #4233 · transfer_offers-FK blokerer trim ──────────────────────────────────
+// Sentry CYCLINGZONE-4W, prod 25/8: `transfer_offers.rider_id -> riders` er NO ACTION,
+// saa `delete from riders` blev afvist og HELE reconcilen kastede. Trimmen valgte
+// kandidater i id-orden UDEN at vide hvilke der var blokerede — og maalt i prod 27/8
+// var de to foerste AI-hold i D4-A netop de blokerede, mens 16 trimbare laa lige bagved.
+// Puljen stod derfor paa 25 hold mod #2377's krav om praecis 24.
+
+test("#4233 reconcileAiTeamsForPool: AI-hold med blokerende transfer_offers springes over, naeste trimmes i stedet", async () => {
+  const pools = seedPools();
+  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
+  const supabase = makeSupabase({
+    league_divisions: pools,
+    teams: [
+      { id: "first-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
+    ],
+    riders: [],
+  });
+  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+
+  // Blokér praecis den kandidat trimmen ville vaelge foerst (laveste id).
+  const aiSorted = supabase.state.teams
+    .filter((t) => t.league_division_id === t3a.id && t.is_ai)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const blockedTeam = aiSorted[0];
+  const nextTeam = aiSorted[1];
+  const blockedRider = supabase.state.riders.find((r) => r.team_id === blockedTeam.id);
+  assert.ok(blockedRider, "det blokerede AI-hold har en trup at haenge tilbuddet paa");
+  supabase.state.transfer_offers = [
+    { id: "offer-1", rider_id: blockedRider.id, seller_team_id: blockedTeam.id, status: "withdrawn" },
+  ];
+
+  supabase.state.teams.push({
+    id: "new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+    division: 3, league_division_id: t3a.id,
+  });
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 1, "trimmen lykkes stadig — den tager naeste kandidat");
+  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE, "puljen tilbage paa target");
+  assert.ok(
+    supabase.state.teams.some((t) => t.id === blockedTeam.id),
+    "det blokerede hold staar urort tilbage",
+  );
+  assert.ok(
+    !supabase.state.teams.some((t) => t.id === nextTeam.id),
+    "naeste kandidat i id-orden blev trimmet i stedet",
+  );
+});
+
+test("#4233 reconcileAiTeamsForPool: er ALLE kandidater blokerede, trimmes ingen og underskuddet udskydes", async () => {
+  const pools = seedPools();
+  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
+  const supabase = makeSupabase({
+    league_divisions: pools,
+    teams: [
+      { id: "first-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
+    ],
+    riders: [],
+  });
+  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+
+  const aiTeams = supabase.state.teams.filter((t) => t.league_division_id === t3a.id && t.is_ai);
+  supabase.state.transfer_offers = aiTeams.map((t, i) => ({
+    id: `offer-${i}`, rider_id: null, seller_team_id: t.id, status: "accepted",
+  }));
+
+  supabase.state.teams.push({
+    id: "new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+    division: 3, league_division_id: t3a.id,
+  });
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 0, "ingen kan trimmes");
+  assert.equal(
+    supabase.state.teams.filter((t) => t.league_division_id === t3a.id && t.pending_removal_at != null).length,
+    1,
+    "praecis underskuddet (1) markeres pending_removal_at — ikke hele puljen (#2407)",
+  );
+  assert.ok(supabase.state.teams.some((t) => t.id === "new-mgr"), "den nye manager rammes aldrig");
+});
+
 test("#1739 reconcileAiTeamsForPool: første manager i tom entry-pulje top-up'er feltet", async () => {
   // En tom tier-3-pulje fyldes IKKE af generatoren (politik), men når den FØRSTE
   // manager rykker ind skal feltet fyldes op til target (managere medregnes).

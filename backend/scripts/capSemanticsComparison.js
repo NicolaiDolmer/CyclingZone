@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { buildYouthCaps, buildCaps, buildCapsForRider, PROGRESSION_CONFIG } from "../lib/riderProgression.js";
+import { repoRoot } from "./lib/repoRoot.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -209,7 +210,8 @@ async function main() {
     scorecard,
     points_16_21: points,
   };
-  const outPath = join(__dirname, "../../docs/audits/2026-07-15-cap-semantics-comparison.json");
+  // #4274: ankret på git-toplevel, ikke __dirname — se lib/repoRoot.mjs.
+  const outPath = join(repoRoot(), "docs/audits/2026-07-15-cap-semantics-comparison.json");
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, JSON.stringify(out, null, 2));
   console.log(`\n✅ Skrevet: ${outPath}`);

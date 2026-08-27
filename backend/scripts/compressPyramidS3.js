@@ -77,6 +77,7 @@ import {
 import { SEASON_END_SKIP_MOVEMENT_FLAG_KEY } from "../lib/seasonEndMovementFlag.js";
 import { targetAiCountForPool, reconcileAiTeamsForPool } from "../lib/aiTeamGenerator.js";
 import { notifyTeamOwner } from "../lib/notificationService.js";
+import { repoRoot } from "./lib/repoRoot.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -437,7 +438,8 @@ const snapshot = {
   ai_totals: { totalAiRemoved, totalAiCreated },
 };
 
-const snapDir = join(__dirname, "..", "..", "docs", "snapshots", "3901");
+// #4274: ankret på git-toplevel, ikke __dirname — se lib/repoRoot.mjs.
+const snapDir = join(repoRoot(), "docs", "snapshots", "3901");
 mkdirSync(snapDir, { recursive: true });
 const stamp = dateStamp();
 const jsonPath = join(snapDir, `dry-run-${stamp}.json`);
