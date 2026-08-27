@@ -6,6 +6,8 @@
 
 > **🎯 Next action:** **Ejer-rest foerst:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) med patch notes 7.204-7.209 (gennemgaaet + godkendt enkeltvis), tegnebraettet og 7 enkeltsvar m. citat. Kalender-go'et ER postet. **Beslut #4212** (A/B/C, anbefaling A: behold modellen, goer udvejen synlig, laeg den under #4271). **Merget 27/8 aften:** #4298 · #4312 peak-maal-datoer (98/206 etapeloeb havde forkert slutdato) · #4296 loebskortets spaend + overlap-navngivning. **Blokeret-kaede:** #4301 (draft) ← #4307 trup-opfyldning ← #4311 taktik springer fyld-klemmen over. **Naeste build:** #4306 · #4317 ContextBand-aksen (4 forkerte tal) · #4259 (byg FORFRA, se refutations-kommentar) · #4271 · Z1 #1146.
 
+> **🧱 Nyt spor (efter fredag, MASTERPLAN pkt. 16):** PR **#4334** taender frontend-typecheck + regenererer skematyper (`database.types.ts` daekkede 46 af 143 tabeller). Afventer ejer. Opfoelgning #4326-#4333.
+
 > **⚠️ Aabne fra 27/8:** #4288 (de 3 GT'er koerer 17-18 etaper, baandet kraever 21 = umaalte) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning) · #4318 (to flader siger "Race day" om to forskellige tal).
 
 > **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`). Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.

@@ -6,7 +6,7 @@
 
 ## SÆSONSTART fre 28/8 kl. 11 — holdudtagelse + planlægning (ejer-godkendt 27/8)
 
-Master-sessionen 27/8 blev for stor til én session. **Detalje: [`2026-08-28-saesonstart-fortsaettelse-prompt.md`](../superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md).**
+**Detalje: [`2026-08-28-saesonstart-fortsaettelse-prompt.md`](../superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md).**
 **Rækkefølge herfra (ejer-godkendt 27/8):**
 
 1. **#4311** → **#4307** trup-opfyldning (121 hold, 571 ryttere, rammer sat) → **#4301** minimum-6 (draft). Kæden skal tages i den rækkefølge.
@@ -58,6 +58,8 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 14. 🔵 **Fair play (#3131):** prisloft valgt fra → #3138 ENESTE værn. Rest: retnings- + overbetalings-signal · flag-triage · #3438 · #3139.
 
 15. ⚪ **Forum** (SSOT: `FORUM_RULES.md`) — rest: #4252 · #4248 · #4255. Rolle mod Discord **15/9 (#4235)**.
+
+16. ⚪ **Typelaget (efter fredag):** PR **#4334** + kæden #4326-#4333 (kontekst i #4325).
 
 ## F · Backlog-bølger (#3154, 576 åbne — UDSKUDT til efter fredag)
 
