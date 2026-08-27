@@ -338,6 +338,11 @@ test("buildExternalBindings: manglende navn → null; tom input → tom map", ()
 // Den regressionstest der VILLE have fanget fejlen: feltet raceDays summerede
 // races.stages (etapetal). Det var kun tilfældigt rigtigt så længe hver etape fik
 // sin egen game_day. docs/CALENDAR_RULES.md §0 + §2b: rytteren bindes pr. LØBSDAG.
+//
+// Belastning != binding: bindingen er hele spændet min..max game_day (ejer-direktiv
+// 25/8, #4217, CALENDAR_RULES §2b + §8). Belastning er de løbsdage rytteren faktisk
+// kører på — springene imellem er ikke hviledage, men halvdags-slots hvor puljens
+// ØVRIGE løb kører. De to tal er bevidst forskellige.
 
 test("raceDaysByRace: to etaper på samme løbsdag tæller ÉN løbsdag (#4245)", () => {
   const rows = [
@@ -348,7 +353,11 @@ test("raceDaysByRace: to etaper på samme løbsdag tæller ÉN løbsdag (#4245)"
   ];
   const m = raceDaysByRace(rows);
   assert.equal(m.get("a"), 1, "to etaper, én løbsdag (den gamle etape-sum gav 2)");
-  assert.equal(m.get("b"), 2, "spring i game_day er ikke ekstra løbsdage (#4209), et spænd ville give 4");
+  assert.equal(
+    m.get("b"),
+    2,
+    "belastning = de løbsdage rytteren kører på; spændet 10..13 er BINDINGEN (#4217) og ville give 4"
+  );
 });
 
 test("raceDaysByRace: rækker uden brugbar game_day ignoreres", () => {
@@ -359,8 +368,21 @@ test("raceDaysByRace: rækker uden brugbar game_day ignoreres", () => {
   ];
   const m = raceDaysByRace(rows);
   assert.equal(m.get("a"), 1);
-  assert.equal(m.has("c"), false, "løb helt uden game_day får ingen post (kalderen falder tilbage til 1)");
+  assert.equal(m.has("c"), false, "løb helt uden game_day får ingen post når der ikke gives et fallback-kort");
   assert.equal(raceDaysByRace().size, 0);
+});
+
+test("raceDaysByRace: fælles fallback — løb uden game_day-rækker får etapetallet (#4245)", () => {
+  // Rework-fund: Race Hub faldt til 1 løbsdag, planner-boardet til etapetal. Et
+  // delvist backfillet etapeløb viste derfor 1 dag på den ene skærm og 8 på den
+  // anden. Fallbacket bor nu ÉT sted, så begge flader falder ens tilbage.
+  const rows = [{ race_id: "a", stage_number: 1, game_day: 4 }];
+  const stagesByRaceId = new Map([["a", 3], ["b", 8], ["c", null], ["d", 0]]);
+  const m = raceDaysByRace(rows, { stagesByRaceId });
+  assert.equal(m.get("a"), 1, "løb MED game_day-rækker bruger de distinkte dage, ikke etapetallet");
+  assert.equal(m.get("b"), 8, "løb uden game_day-rækker falder til etapetallet, ikke til 1");
+  assert.equal(m.get("c"), 1, "ubrugeligt etapetal → mindst 1");
+  assert.equal(m.get("d"), 1, "0 etaper → mindst 1 (0 ville skjule belastnings-chippen tavst)");
 });
 
 test("seasonLoadByRider: løbsdage summeres fra løbsdags-kortet, ikke fra etaper (#4245)", () => {
@@ -389,4 +411,31 @@ test("seasonLoadByRider: løb uden løbsdags-data tæller som mindst én løbsda
     { r1: { races: 1, raceDays: 1 } }
   );
   assert.deepEqual(seasonLoadByRider(), {});
+});
+
+test("seasonLoadByRider: entries uden for den aktive sæson tælles ikke (#4245)", () => {
+  // Chippens copy siger "tilmeldt denne sæson". race_entries er ikke sæson-scopet,
+  // så uden seasonRaceIds tælles gamle sæsoners entries med. Målt i prod 27/8:
+  // 69.115 af 94.712 entries var fra tidligere sæsoner.
+  const entries = [
+    { race_id: "nu-1", rider_id: "r1" },
+    { race_id: "nu-2", rider_id: "r1" },
+    { race_id: "gammel-1", rider_id: "r1" }, // sæson 2
+    { race_id: "gammel-2", rider_id: "r2" }, // sæson 2 — r2 har intet i år
+  ];
+  const raceDaysByRaceId = new Map([["nu-1", 1], ["nu-2", 3]]);
+  const seasonRaceIds = new Set(["nu-1", "nu-2"]);
+
+  assert.deepEqual(
+    seasonLoadByRider({ entries, raceDaysByRaceId, seasonRaceIds }),
+    { r1: { races: 2, raceDays: 4 } },
+    "kun den aktive sæsons entries; r2 forsvinder helt i stedet for at vise 1 løb"
+  );
+
+  // Uden filteret: den gamle, oppustede adfærd — dokumenteret, så et fremtidigt
+  // kald der glemmer seasonRaceIds ikke ser ud som om det var meningen.
+  assert.deepEqual(seasonLoadByRider({ entries, raceDaysByRaceId }), {
+    r1: { races: 3, raceDays: 5 },
+    r2: { races: 1, raceDays: 1 },
+  });
 });

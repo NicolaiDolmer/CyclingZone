@@ -3632,8 +3632,12 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     ]);
     // #4245: løbsdage pr. løb = distinkte game_day. Afledt af de allerede hentede
     // scheduleRows, intet ekstra DB-kald. Går med i racesOut nedenfor, så
-    // formplanens belastnings-chip læser samme tal som Race Hub'ens.
-    const raceDaysByRaceId = raceDaysByRace(scheduleRows || []);
+    // formplanens belastnings-chip læser samme tal som Race Hub'ens — SAMME
+    // fallback også (stagesByRaceId), så et delvist backfillet løb ikke viser
+    // ét tal her og et andet på Race Hub'en.
+    const raceDaysByRaceId = raceDaysByRace(scheduleRows || [], {
+      stagesByRaceId: new Map(raceList.map((r) => [r.id, r.stages])),
+    });
 
     const model = buildCalendarModel({
       races: raceList,
@@ -3748,9 +3752,10 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           stages: e.stages,
           // #4245: LØBSDAGE pr. løb (distinkte game_day), så formplanens belastnings-
           // chip ikke summerer etaper klient-side. Må ALDRIG regnes som gameDayEnd -
-          // gameDayStart + 1: springene i et løbs game_day-serie er ikke løbsdage
-          // (#4209). Fallback til stages for løb uden schedule-rækker.
-          raceDays: raceDaysByRaceId.get(e.id) ?? e.stages ?? 1,
+          // gameDayStart + 1: det spænd er BINDINGEN (ejer-direktiv 25/8, #4217,
+          // docs/CALENDAR_RULES.md §2b + §8), ikke de dage rytteren faktisk kører.
+          // Fallback for løb uden game_day-rækker ligger i raceDaysByRace ovenfor.
+          raceDays: raceDaysByRaceId.get(e.id) ?? 1,
           terrain: e.terrain,
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
@@ -4452,9 +4457,19 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // #4245: LØBSDAGE = distinkte game_day pr. løb (docs/CALENDAR_RULES.md §0), IKKE
     // etape-antal. To etaper på samme løbsdag er én løbsdag for rytteren. Den gamle
     // regel ("løbsdage = løbets etape-antal") var kun tilfældigt rigtig så længe
-    // pakkeren gav hver etape sin egen game_day.
-    const raceDaysByRaceId = raceDaysByRace(schedRows || []);
-    const seasonLoad = seasonLoadByRider({ entries: teamEntries || [], raceDaysByRaceId });
+    // pakkeren gav hver etape sin egen game_day. Fallback for løb uden game_day-
+    // rækker: løbets etapetal (samme kilde som planner-boardet, se raceDaysByRace).
+    const raceDaysByRaceId = raceDaysByRace(schedRows || [], {
+      stagesByRaceId: new Map((races || []).map((r) => [r.id, r.stages])),
+    });
+    // #4245 rework: chippens copy siger "tilmeldt denne sæson", men race_entries er
+    // ikke sæson-scopet — uden `seasonRaceIds` tælles entries fra tidligere sæsoner
+    // med. `raceIds` er allerede sæson-scopet (races er hentet på season_id).
+    const seasonLoad = seasonLoadByRider({
+      entries: teamEntries || [],
+      raceDaysByRaceId,
+      seasonRaceIds: new Set(raceIds),
+    });
 
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
