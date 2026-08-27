@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Finance",
         "en": {
           "title": "Finance history no longer shows raw codes for some transactions",
-          "body": "A handful of transaction types in your finance history — relegation parachute, sponsor race day bonus, facility upgrades, staff severance, scout travel, and a few more — were missing their text and fell back to the internal type name. They now show a proper label."
+          "body": "A handful of transaction types in your finance history (relegation parachute, sponsor race day bonus, facility upgrades, staff severance, scout travel, and a few more) were missing their text and fell back to the internal type name. They now show a proper label."
         },
         "da": {
           "title": "Finans-historikken viser ikke længere rå koder for enkelte transaktioner",
-          "body": "En håndfuld transaktionstyper i din finans-historik — nedrykningsfaldskærm, sponsor løbsdag-bonus, facilitetsopgraderinger, fratrædelsesgodtgørelse, spejder-rejse og et par til — manglede deres tekst og faldt tilbage til det interne type-navn. De viser nu en rigtig label."
+          "body": "En håndfuld transaktionstyper i din finans-historik (nedrykningsfaldskærm, sponsor løbsdag-bonus, facilitetsopgraderinger, fratrædelsesgodtgørelse, spejder-rejse og et par til) manglede deres tekst og faldt tilbage til det interne type-navn. De viser nu en rigtig label."
         },
         "refs": [4260]
       },
