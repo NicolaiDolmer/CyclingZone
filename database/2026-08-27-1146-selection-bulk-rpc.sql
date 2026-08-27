@@ -39,9 +39,21 @@
 --   IKKE-transaktionelt kald FØR sin egen RPC, se PUT /:raceId/selection).
 --
 -- ALT-ELLER-INTET. En fejl (ukendt rolle-længde, dobbeltbooking der overlever app-lagets
--- pre-flight) ruller HELE kaldet tilbage — ingen delvist gemte løb. Frosne felter/pulje-
--- binding/trupstørrelse håndhæves IKKE her (se begrundelse ovenfor) — de er allerede
--- håndhævet af prepareSelectionChange før kaldet.
+-- pre-flight) ruller HELE kaldet tilbage — ingen delvist gemte løb. Pulje-binding/
+-- trupstørrelse håndhæves IKKE her (se begrundelse ovenfor) — de er allerede håndhævet
+-- af prepareSelectionChange før kaldet. Frys-guarden (stages_completed>0/status≠scheduled)
+-- HAR derimod sin egen SQL-backstop nedenfor (#4310-refutation, spejler
+-- apply_race_entry_unit_batch's sweep_race_lineup_frozen) — se hovedloopet.
+--
+-- race_entry_days-OPRYDNING (#4310-refutation, verificeret via
+-- backend/lib/testdb/raceSelectionBulkRpc.integration.test.js mod ægte Postgres-DDL):
+-- trg_race_entries_sync_days (database/2026-08-24-4173-...sql) fyrer KUN på insert/update
+-- af race_id/team_id, ALDRIG på DELETE — men race_entry_days_entry_fkey er selv ON DELETE
+-- CASCADE fra race_entry_days(race_id,rider_id) → race_entries(race_id,rider_id), så hver
+-- delete i hovedloopet/auto-release-loopet nedenfor rydder sine race_entry_days-rækker
+-- SYNKRONT via denne cascade, uanset om løbets ønskeliste bagefter er tom eller ej. De
+-- eksplicitte race_entry_days_rebuild-kald i loopene er derfor et bevidst REDUNDANT
+-- backstop (defense-in-depth), ikke en rettelse af et hul — se kommentarerne inline.
 --
 -- IDEMPOTENT. CREATE OR REPLACE; ingen data røres af denne fil. Ejeren applier post-merge
 -- under #2642-rammerne (idempotent + post-verify, ikke destruktiv). APPLY IKKE her.
@@ -52,7 +64,7 @@
 --      -- p_changes, SET CONSTRAINTS ... IMMEDIATE til sidst.
 --   2. select proname from pg_proc where proname = 'replace_race_selection_bulk'; -- 1 række
 --
--- Refs #1146 #3934 #4173 #2642 #2637
+-- Refs #1146 #3934 #4173 #2642 #2637 #2074 #4310
 begin;
 
 create or replace function public.replace_race_selection_bulk(
@@ -71,6 +83,8 @@ declare
   v_rider_ids uuid[];
   v_roles text[];
   v_len int;
+  v_frozen boolean;
+  v_current_rider_ids uuid[];
 begin
   if p_changes is null or jsonb_typeof(p_changes) <> 'array' or jsonb_array_length(p_changes) = 0 then
     raise exception 'selection_invalid_body' using errcode = 'check_violation';
@@ -96,6 +110,19 @@ begin
        and team_id = p_team_id
        and rider_id = (v_release->>'rider_id')::uuid
        and is_auto_filled = true;
+
+    -- FUND2 (#4310-refutation) — VERIFICERET (ikke antaget, se integrationstesten
+    -- backend/lib/testdb/raceSelectionBulkRpc.integration.test.js): trg_race_entries_sync_days
+    -- fyrer KUN på insert/update af race_id/team_id (database/2026-08-24-4173-...sql:150-152)
+    -- — ALDRIG på DELETE. Rensningen af den frigivne rytters race_entry_days-rækker sker HER
+    -- alligevel, fordi race_entry_days_entry_fkey er FOREIGN KEY (race_id, rider_id)
+    -- REFERENCES race_entries(race_id, rider_id) ON DELETE CASCADE (samme fil, linje 62-64):
+    -- selve DELETE'en ovenfor cascader synkront, uafhængigt af triggeren. Dette rebuild-kald
+    -- er derfor et REDUNDANT backstop (defense-in-depth, ikke en bugfix) — det gør RPC'ens
+    -- korrekthed uafhængig af at en fremtidig migration ikke svækker den cascade (fx til SET
+    -- NULL), og dækker desuden det tilfælde at det frigivne løb OGSÅ optræder i p_changes
+    -- senere i samme batch.
+    perform public.race_entry_days_rebuild((v_release->>'race_id')::uuid, p_team_id);
   end loop;
 
   for v_change in select * from jsonb_array_elements(p_changes) loop
@@ -114,10 +141,34 @@ begin
       raise exception 'selection_invalid_body' using errcode = 'check_violation';
     end if;
 
+    -- FUND1 (#4310-refutation): forward-guard, spejler prepareSelectionChange
+    -- (backend/lib/raceSelection.js) og apply_race_entry_unit_batch's
+    -- sweep_race_lineup_frozen (#2074, database/2026-08-24-4173-...sql:318-326). Et løb
+    -- hvis status ikke er 'scheduled', eller hvis feltet er LÅST (stages_completed>0), må
+    -- kun modtage en RENT FJERNENDE ændring (v_rider_ids ⊆ de entries holdet allerede har
+    -- for løbet) — ellers afvises hele batchen. Dette er et BACKSTOP mod TOCTOU: app-laget
+    -- har allerede håndhævet præcis denne regel FØR kaldet (mod en race-række læst ved
+    -- requestens start) — dette tjek fanger et løb der overgik til frosset/afsluttet
+    -- MENS batchen blev forberedt (fx et stage-scheduler-tick midt i en lang bulk-save).
+    select (r.status <> 'scheduled' or coalesce(r.stages_completed, 0) > 0)
+      into v_frozen
+      from public.races r
+     where r.id = v_race_id;
+
+    if v_frozen then
+      select coalesce(array_agg(rider_id), '{}'::uuid[]) into v_current_rider_ids
+        from public.race_entries
+       where race_id = v_race_id and team_id = p_team_id;
+
+      if not (v_rider_ids <@ v_current_rider_ids) then
+        raise exception 'selection_race_started' using errcode = 'check_violation';
+      end if;
+    end if;
+
     -- Erstat holdets entries for DETTE løb atomisk (samme kerne som replace_race_selection).
-    -- Binding-guarden ligger IKKE her (i modsætning til replace_race_selection) — den er
-    -- app-lagets ansvar FØR kaldet (peer- + DB-konflikter, se api.js), fordi et enkelt
-    -- løbs pre-check her ikke kan se resten af SAMME batches ændringer endnu. Det
+    -- Peer-/DB-binding-guarden ligger IKKE her (i modsætning til replace_race_selection) —
+    -- den er app-lagets ansvar FØR kaldet (peer- + DB-konflikter, se api.js), fordi et
+    -- enkelt løbs pre-check her ikke kan se resten af SAMME batches ændringer endnu. Det
     -- udskudte constraint-tjek nedenfor er backstoppet.
     delete from public.race_entries where race_id = v_race_id and team_id = p_team_id;
 
@@ -126,6 +177,16 @@ begin
       select v_race_id, v_rider_ids[i], p_team_id, v_roles[i], false
       from generate_series(1, v_len) as g(i);
     end if;
+
+    -- FUND2 (#4310-refutation) — VERIFICERET, samme konklusion som ovenfor: DELETE'en
+    -- (linje 159) cascader allerede korrekt via race_entry_days_entry_fkey ON DELETE CASCADE
+    -- for hver slettet race_entries-række, UANSET om feltet bagefter gøres tomt (v_len=0,
+    -- ingen insert, triggeren fyrer derfor ikke — se citatet ovenfor) eller genfyldes
+    -- (v_len>0, triggeren fyrer OGSÅ, redundant men harmløst). Dette rebuild-kald er derfor
+    -- et bevidst REDUNDANT backstop (defense-in-depth, ikke en bugfix): RPC'ens korrekthed
+    -- afhænger dermed ikke alene af at en fremtidig migration bevarer ON DELETE CASCADE på
+    -- race_entry_days_entry_fkey. Idempotent — samme funktion triggeren selv kalder.
+    perform public.race_entry_days_rebuild(v_race_id, p_team_id);
   end loop;
 
   -- Tving det udskudte check til at køre HER (#3934-mønsteret): fanger en dobbeltbooking
@@ -145,7 +206,9 @@ comment on function public.replace_race_selection_bulk(uuid, jsonb, jsonb) is
   replace_race_selection), no_rider_double_booking_day udskudt til batchens afslutning så
   en lovlig swap mellem to p_changes-løb er rækkefølge-uafhængig (#3934-mønsteret).
   p_auto_releases frigiver #2637-konflikter i UBERØRTE løb i SAMME transaktion. App-laget
-  (api.js) validerer roller/trupstørrelse/frosne felter/pulje-binding FØR kaldet — samme
-  regler som PUT /:raceId/selection (prepareSelectionChange).';
+  (api.js) validerer roller/trupstørrelse/pulje-binding FØR kaldet — samme regler som PUT
+  /:raceId/selection (prepareSelectionChange). Egen SQL-niveau forward-guard (#2074/#4310)
+  afviser en TOCTOU-tilføjelse til et løb der blev frosset/afsluttet efter app-lagets
+  pre-flight, med samme fejlkode (selection_race_started) som prepareSelectionChange.';
 
 commit;

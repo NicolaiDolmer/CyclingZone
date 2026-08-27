@@ -1,7 +1,7 @@
 // backend/lib/raceSelection.test.js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk } from "./raceSelection.js";
+import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts } from "./raceSelection.js";
 
 // Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
 const base = {
@@ -324,6 +324,94 @@ test("saveSelectionBulk: en URELATERET RPC-fejl får IKKE selection_rider_bound-
     () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: [], roles: [] }] }),
     (err) => err.code === undefined && /connection reset/.test(err.message)
   );
+});
+
+// #4310-refutation FUND 1 (SQL-niveau forward-guard i replace_race_selection_bulk):
+// RPC'ens egen 'selection_race_started'-fejl (TOCTOU-backstop mod et løb der blev
+// frosset/afsluttet MELLEM app-lagets prepareSelectionChange og transaktionens commit)
+// skal klassificeres med samme fejlkode som prepareSelectionChange bruger for den
+// almindelige sti, så api.js kan svare 409 ens uanset hvilket lag der fangede det.
+test("saveSelectionBulk: rå 'selection_race_started' fra RPC'ens forward-guard klassificeres korrekt (#4310 FUND 1)", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: {
+    code: "check_violation",
+    message: "selection_race_started",
+  } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: ["r1"], roles: ["captain"] }] }),
+    (err) => err.code === "selection_race_started"
+  );
+});
+
+// #4310-refutation FUND 3: classifyBulkSelectionConflicts er den rene funktion der GØR en
+// swap mellem to (eller flere) celler i SAMME bulk-kald rækkefølge-uafhængig — udtrukket af
+// PUT /races/selection/bulk (api.js), hvor den tidligere lå inline og kun var dækket af
+// kildetekst-regex (0% reel adfærdsdækning, jf. #4310's verdict). Testene nedenfor beviser
+// selve egenskaben: resultatet for et givet race afhænger KUN af mængden af ændringer i
+// batchen, ikke af deres rækkefølge i `changes`-arrayet.
+const win = (start, end) => ({ start, end, days: Array.from({ length: end - start + 1 }, (_, i) => start + i) });
+
+test("classifyBulkSelectionConflicts: 2-vejs swap (rytter flyttes fra race A til race B) er rækkefølge-uafhængig — begge 'clear'", () => {
+  const a = { raceId: "A", riderIds: [], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(2, 4) }; // overlapper A, men A har IKKE r1 længere
+  for (const changes of [[a, b], [b, a]]) {
+    const results = classifyBulkSelectionConflicts({ changes, otherRacesByRace: new Map() });
+    const byRace = new Map(results.map((r) => [r.race_id, r]));
+    assert.equal(byRace.get("A").kind, "clear", `A skal være clear (rækkefølge: ${changes.map((c) => c.raceId)})`);
+    assert.equal(byRace.get("B").kind, "clear", `B skal være clear (rækkefølge: ${changes.map((c) => c.raceId)})`);
+  }
+});
+
+test("classifyBulkSelectionConflicts: 3-vejs rotation (r1: A→B, r2: B→C, r3: C→A, alle vinduer overlapper) er rækkefølge-uafhængig — alle 'clear'", () => {
+  const a = { raceId: "A", riderIds: ["r3"], window: win(1, 5) }; // A afgiver r1, modtager r3 (fra C)
+  const b = { raceId: "B", riderIds: ["r1"], window: win(1, 5) }; // B afgiver r2, modtager r1 (fra A)
+  const c = { raceId: "C", riderIds: ["r2"], window: win(1, 5) }; // C afgiver r3, modtager r2 (fra B)
+  const permutations = [[a, b, c], [c, b, a], [b, a, c], [c, a, b]];
+  for (const changes of permutations) {
+    const results = classifyBulkSelectionConflicts({ changes, otherRacesByRace: new Map() });
+    for (const r of results) {
+      assert.equal(r.kind, "clear", `${r.race_id} skal være clear (rækkefølge: ${changes.map((c) => c.raceId)})`);
+    }
+  }
+});
+
+test("classifyBulkSelectionConflicts: ÆGTE peer-konflikt (samme rytter ønsket i to overlappende races i SAMME batch) blokerer altid, uanset rækkefølge", () => {
+  const a = { raceId: "A", riderIds: ["r1"], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(2, 4) }; // overlapper A, BEGGE vil have r1 → ægte kollision
+  for (const changes of [[a, b], [b, a]]) {
+    const results = classifyBulkSelectionConflicts({ changes, otherRacesByRace: new Map() });
+    const byRace = new Map(results.map((r) => [r.race_id, r]));
+    assert.equal(byRace.get("A").kind, "peer_conflict");
+    assert.equal(byRace.get("B").kind, "peer_conflict");
+    assert.deepEqual(byRace.get("A").conflicts, [{ rider_id: "r1", race_id: "A", conflict_race_id: "B" }]);
+    assert.deepEqual(byRace.get("B").conflicts, [{ rider_id: "r1", race_id: "B", conflict_race_id: "A" }]);
+  }
+});
+
+test("classifyBulkSelectionConflicts: IKKE-overlappende vinduer med samme rytter i to races er IKKE en konflikt", () => {
+  const a = { raceId: "A", riderIds: ["r1"], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(10, 12) }; // samme rytter, men ingen dag-overlap
+  const results = classifyBulkSelectionConflicts({ changes: [a, b], otherRacesByRace: new Map() });
+  for (const r of results) assert.equal(r.kind, "clear");
+});
+
+test("classifyBulkSelectionConflicts: DB-konflikt (mod et løb UDENFOR batchen) klassificeres som db_conflict, ikke peer_conflict", () => {
+  const a = { raceId: "A", riderIds: ["r1", "r2"], window: win(1, 3) };
+  const otherRacesByRace = new Map([
+    ["A", [{ raceId: "Z", window: win(2, 5), riderIds: ["r1"] }]], // Z er UDENFOR batchen
+  ]);
+  const [result] = classifyBulkSelectionConflicts({ changes: [a], otherRacesByRace });
+  assert.equal(result.kind, "db_conflict");
+  assert.deepEqual(result.boundRiderIds, ["r1"]);
+});
+
+test("classifyBulkSelectionConflicts: peer-konflikt tjekkes FØR DB-konflikt (samme rytter rammer begge slags samtidig)", () => {
+  const a = { raceId: "A", riderIds: ["r1"], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(1, 3) }; // peer-kollision på r1
+  const otherRacesByRace = new Map([
+    ["A", [{ raceId: "Z", window: win(1, 3), riderIds: ["r1"] }]], // ville OGSÅ være en db-konflikt
+  ]);
+  const [resultA] = classifyBulkSelectionConflicts({ changes: [a, b], otherRacesByRace });
+  assert.equal(resultA.kind, "peer_conflict", "peer-konflikten skal vinde (blokerende under alle omstændigheder)");
 });
 
 // Rod B (#1800/#1742): getSelectionContext må kun vise/tælle løbs-berettigede ryttere.

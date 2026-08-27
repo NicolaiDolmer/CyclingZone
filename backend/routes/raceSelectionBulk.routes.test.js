@@ -7,6 +7,15 @@
 // raceSelection.test.js — denne fil dækker KUN routens wiring: auth/rate-limit,
 // cap/tomt-body-afvisning, og at den genbruger single-endpointets delte funktioner
 // i stedet for at kopiere/divergere valideringen (#1146-kontraktkravet).
+//
+// #4310-refutation (FUND 3): den peer-/DB-konflikt-KLASSIFIKATION der rent faktisk
+// beviser at en swap er rækkefølge-uafhængig lå TIDLIGERE inline i handleren, og var
+// derfor kun dækket her som kildetekst-regex — 0% reel adfærdsdækning. Den er nu
+// udtrukket til den rene, direkte kaldbare classifyBulkSelectionConflicts (backend/lib/
+// raceSelection.js), og DEN reelle egenskab (2-vejs/3-vejs swap, rækkefølge-
+// uafhængighed, peer- vs. DB-konflikt-klassifikation) er bevist med kørende tests i
+// raceSelection.test.js. Denne fil beviser nu kun at routen RENT FAKTISK KALDER den
+// udtrukne funktion (wiring), ikke længere selve konflikt-logikken.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -78,28 +87,32 @@ test("PUT /races/selection/bulk genbruger selectionRoleFor (samme rolle-mapping 
   assert.match(block, /selectionRoleFor\(/);
 });
 
-// Peer-konflikter (mod en ANDEN ændring i SAMME kald) skal afvises — auto-release
-// gælder KUN #2637-konflikter mod løb UDENFOR batchen (se raceSelection.test.js for
-// den semantiske adfærd via saveSelectionBulk).
-test("PUT /races/selection/bulk klassificerer peer-konflikter (samme batch) som blokerende, ikke auto-løsbare", () => {
+// Peer-/DB-konflikt-klassifikationen (2-vejs/3-vejs swap, rækkefølge-uafhængighed) er
+// udtrukket til classifyBulkSelectionConflicts — den ADFÆRD bevises af de kørende tests
+// i raceSelection.test.js, ikke her. Denne test beviser kun WIRING: routen kalder
+// rent faktisk den udtrukne funktion, og håndterer begge dens konflikt-typer
+// (peer_conflict -> 409 selection_rider_bound; db_conflict -> resolveBindingConflictDetails).
+test("PUT /races/selection/bulk kalder classifyBulkSelectionConflicts og håndterer begge konflikt-typer", () => {
   const block = handlerBlock();
-  assert.match(block, /peerBound/);
+  assert.match(block, /classifyBulkSelectionConflicts\(\{/);
+  assert.match(block, /result\.kind === "peer_conflict"/);
+  assert.match(block, /result\.kind === "db_conflict"/);
   assert.match(block, /selection_rider_bound/);
 });
 
 // Alt-eller-intet-kontrakten (#1146): HELE batchen skal valideres FØR noget som helst
 // skrives. Kan ikke udøves uden en live server (se raceSelection.test.js for
 // saveSelectionBulk's egen ét-RPC-kald-kontrakt) — her låses rækkefølgen i kildeteksten:
-// begge valideringspas (prepareSelectionChange + peer-konflikt-tjekket) ligger FØR
+// begge valideringspas (prepareSelectionChange + konflikt-klassifikationen) ligger FØR
 // saveSelectionBulk-kaldet.
 test("PUT /races/selection/bulk validerer ALLE ændringer FØR den skriver noget (saveSelectionBulk kaldes sidst)", () => {
   const block = handlerBlock();
   const prepIdx = block.indexOf("prepareSelectionChange(");
-  const peerIdx = block.indexOf("peerBound");
+  const classifyIdx = block.indexOf("classifyBulkSelectionConflicts(");
   const saveIdx = block.indexOf("saveSelectionBulk(");
-  assert.ok(prepIdx !== -1 && peerIdx !== -1 && saveIdx !== -1, "alle tre markører skal findes i routen");
+  assert.ok(prepIdx !== -1 && classifyIdx !== -1 && saveIdx !== -1, "alle tre markører skal findes i routen");
   assert.ok(prepIdx < saveIdx, "prepareSelectionChange skal kaldes FØR saveSelectionBulk");
-  assert.ok(peerIdx < saveIdx, "peer-konflikt-tjekket skal ligge FØR saveSelectionBulk");
+  assert.ok(classifyIdx < saveIdx, "konflikt-klassifikationen skal ligge FØR saveSelectionBulk");
 });
 
 test("PUT /races/selection/bulk er registreret FØR /races/:raceId/selection/auto (ingen param-kollision)", () => {
@@ -108,9 +121,9 @@ test("PUT /races/selection/bulk er registreret FØR /races/:raceId/selection/aut
   assert.ok(bulkIdx !== -1 && autoIdx !== -1);
 });
 
-test("raceSelection.js eksporterer prepareSelectionChange + saveSelectionBulk + roleFor", () => {
+test("raceSelection.js eksporterer prepareSelectionChange + saveSelectionBulk + classifyBulkSelectionConflicts + roleFor", () => {
   assert.match(
     apiSource,
-    /import\s*\{[^}]*\bprepareSelectionChange\b[^}]*\bsaveSelectionBulk\b[^}]*\}\s*from\s*"\.\.\/lib\/raceSelection\.js"/s,
+    /import\s*\{[^}]*\bprepareSelectionChange\b[^}]*\bsaveSelectionBulk\b[^}]*\bclassifyBulkSelectionConflicts\b[^}]*\}\s*from\s*"\.\.\/lib\/raceSelection\.js"/s,
   );
 });

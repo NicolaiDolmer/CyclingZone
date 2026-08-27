@@ -181,12 +181,12 @@ import { RACE_DAY_ENGINE_FLAG_KEY } from "../lib/raceDayEngineFlag.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { validateSelection, saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
+import { validateSelection, saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation, windowsOverlap } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
@@ -4896,44 +4896,37 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       otherRacesByRace.set(change.raceId, binding.otherRaces.filter((o) => !batchRaceIds.has(o.raceId)));
     }
 
-    // Pas 2: binding-konflikter. To slags:
+    // Pas 2: binding-konflikter. To slags, klassificeret af den rene, direkte testede
+    // classifyBulkSelectionConflicts (backend/lib/raceSelection.js, udtrukket #4310-
+    // refutation FUND 3 — lå tidligere inline her, kun dækket af kildetekst-regex):
     //  · Peer (mod en ANDEN ændring i SAMME kald): altid blokerende — vi kan ikke gætte
     //    hvilket af to samtidige manuelle ønsker der skal vige. Spilleren må selv rydde
     //    kladden. (En ægte swap mellem to celler i SAMME kald er IKKE en peer-konflikt her,
     //    fordi den fjernede rytter simpelthen ikke optræder i den anden celles rider_ids.)
     //  · DB (mod et løb UDENFOR denne batch): klassificeres akkurat som single-endpointet
     //    (#2637) — auto-udtaget + ikke-startet løb frigives automatisk, alt andet afvises
-    //    navngivet.
-    const peerRaces = changes.map((c) => ({
-      raceId: c.raceId, window: windowByRace.get(c.raceId), riderIds: prepared.get(c.raceId).riderIds,
+    //    navngivet. Selve resolvable/blocking-opdelingen kræver et DB-opslag
+    //    (resolveBindingConflictDetails) og bliver derfor her i route-laget.
+    const bulkChanges = changes.map((c) => ({
+      raceId: c.raceId, riderIds: prepared.get(c.raceId).riderIds, window: windowByRace.get(c.raceId),
     }));
+    const classifications = classifyBulkSelectionConflicts({ changes: bulkChanges, otherRacesByRace });
     const autoReleases = []; // { race_id, rider_id } — udføres INDE i bulk-RPC'en, samme transaktion.
 
-    for (const change of changes) {
-      const raceId = change.raceId;
-      const { riderIds, ctx } = prepared.get(raceId);
-      const thisWindow = windowByRace.get(raceId);
-
-      const peerOthers = peerRaces.filter((p) => p.raceId !== raceId);
-      const peerBound = findRiderBindingConflicts({ riderIds, thisWindow, otherRaces: peerOthers });
-      if (peerBound.length) {
-        const conflicts = peerBound.map((riderId) => {
-          const other = peerOthers.find(
-            (p) => windowsOverlap(thisWindow, p.window) && (p.riderIds || []).includes(riderId)
-          );
-          return { rider_id: riderId, race_id: raceId, conflict_race_id: other?.raceId ?? null };
-        });
-        return res.status(409).json({ error: "selection_rider_bound", race_id: raceId, conflicts });
+    for (const result of classifications) {
+      if (result.kind === "peer_conflict") {
+        return res.status(409).json({ error: "selection_rider_bound", race_id: result.race_id, conflicts: result.conflicts });
       }
-
-      const dbOthers = otherRacesByRace.get(raceId);
-      const dbBound = findRiderBindingConflicts({ riderIds, thisWindow, otherRaces: dbOthers });
-      if (dbBound.length) {
+      if (result.kind === "db_conflict") {
+        const raceId = result.race_id;
+        const { ctx } = prepared.get(raceId);
+        const thisWindow = windowByRace.get(raceId);
+        const dbOthers = otherRacesByRace.get(raceId);
         const { resolvable, blocking } = await resolveBindingConflictDetails({
-          supabase, teamId: req.team.id, boundRiderIds: dbBound, thisWindow, otherRaces: dbOthers, riders: ctx.riders,
+          supabase, teamId: req.team.id, boundRiderIds: result.boundRiderIds, thisWindow, otherRaces: dbOthers, riders: ctx.riders,
         });
         if (blocking.length) {
-          return res.status(409).json({ error: "selection_rider_bound", race_id: raceId, bound_rider_ids: dbBound, conflicts: blocking });
+          return res.status(409).json({ error: "selection_rider_bound", race_id: raceId, bound_rider_ids: result.boundRiderIds, conflicts: blocking });
         }
         for (const r of resolvable) autoReleases.push({ race_id: r.race_id, rider_id: r.rider_id });
       }
@@ -4977,6 +4970,13 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     // og prøve igen.
     if (err?.code === "selection_rider_bound") {
       return res.status(409).json({ error: "selection_rider_bound" });
+    }
+    // #2074/#4310: RPC'ens egen forward-guard (database/2026-08-27-1146-selection-bulk-
+    // rpc.sql) fangede et løb der blev frosset/afsluttet MELLEM app-lagets prepareSelectionChange
+    // ovenfor og denne transaktions commit — samme fejlkode som prepareSelectionChange
+    // bruger for den almindelige (ikke-TOCTOU) sti.
+    if (err?.code === "selection_race_started") {
+      return res.status(409).json({ error: "selection_race_started" });
     }
     captureException(err);
     res.status(500).json({ error: err.message });
