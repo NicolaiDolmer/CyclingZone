@@ -31,6 +31,7 @@
     },
     "empty": "No races on the calendar yet",
     "error": "The season calendar could not be loaded. Nothing was lost. Try again.",
+    "errorSession": "Your session has ended. Sign in again to keep planning.",
     "retry": "Try again",
     "picker": {
       "ariaLabel": "Season",

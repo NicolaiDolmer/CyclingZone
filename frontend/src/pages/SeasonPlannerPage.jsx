@@ -199,12 +199,14 @@ export default function SeasonPlannerPage() {
   // #2849 bølge 6 — audit-fund "L/E/F ✓/✓/÷": board-hentningen havde ingen
   // fejl-gren (kun tavs "beholder tidligere state" i usePlanner). Kanonisk
   // ErrorState + secondary retry, samme mønster som CalendarPage.
+  // #4165: grenen skal blive liggende FØR `!enabled` nedenfor - ellers tegnes en
+  // fejlet hentning igen som "feature ikke live endnu".
   if (error) {
     return (
-      <div className="mx-auto max-w-6xl">
+      <div role="alert" className="mx-auto max-w-6xl">
         <ErrorState
           title={t("error.title")}
-          description={t("error.description")}
+          description={error === "auth" ? t("error.session") : t("error.description")}
           action={<Button size="sm" variant="secondary" onClick={() => planner.refresh()}>{t("error.retry")}</Button>}
         />
       </div>

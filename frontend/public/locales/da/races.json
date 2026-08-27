@@ -31,6 +31,7 @@
     },
     "empty": "Ingen løb på kalenderen endnu",
     "error": "Sæsonkalenderen kunne ikke hentes. Intet er gået tabt. Prøv igen.",
+    "errorSession": "Din session er udløbet. Log ind igen for at planlægge videre.",
     "retry": "Prøv igen",
     "picker": {
       "ariaLabel": "Sæson",
