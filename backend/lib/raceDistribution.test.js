@@ -348,7 +348,7 @@ test("raceDaysByRace: to etaper på samme løbsdag tæller ÉN løbsdag (#4245)"
   ];
   const m = raceDaysByRace(rows);
   assert.equal(m.get("a"), 1, "to etaper, én løbsdag (den gamle etape-sum gav 2)");
-  assert.equal(m.get("b"), 2, "spring i game_day er ikke ekstra løbsdage (#4209) — et spænd ville give 4");
+  assert.equal(m.get("b"), 2, "spring i game_day er ikke ekstra løbsdage (#4209), et spænd ville give 4");
 });
 
 test("raceDaysByRace: rækker uden brugbar game_day ignoreres", () => {
@@ -378,7 +378,7 @@ test("seasonLoadByRider: løbsdage summeres fra løbsdags-kortet, ikke fra etape
 });
 
 test("seasonLoadByRider: løb uden løbsdags-data tæller som mindst én løbsdag", () => {
-  // Fallback-grenen skal give 1, ALDRIG 0 — chippen i AvailableRidersPool er gated
+  // Fallback-grenen skal give 1, ALDRIG 0. Chippen i AvailableRidersPool er gated
   // på `load.raceDays > 0`, så en 0-værdi ville skjule belastningen tavst.
   assert.deepEqual(
     seasonLoadByRider({ entries: [{ race_id: "z", rider_id: "r1" }], raceDaysByRaceId: new Map() }),

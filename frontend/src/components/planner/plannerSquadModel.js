@@ -158,10 +158,10 @@ export function locksImmediatelyRaceIds({ races, todayOrd }) {
 
 /**
  * Sæson-belastning pr. rytter (#2772): hvor mange løb og løbsdage er rytteren
- * tilmeldt henover sæsonen — auto-fyldte entries inklusive, for rytteren stiller
+ * tilmeldt henover sæsonen, auto-fyldte entries inklusive, for rytteren stiller
  * til start uanset hvem der satte ham på listen. Registrerede løb uden for
  * boardets kalender (fx en anden divisions løb efter op-/nedrykning) tælles ikke
- * — vi viser kun hvad payloaden kan stå inde for.
+ * Vi viser kun hvad payloaden kan stå inde for.
  *
  * #4245: LØBSDAGE er `race.raceDays` fra payloaden (distinkte game_day, regnet
  * serverside af raceDaysByRace), IKKE etape-antallet. To etaper på samme løbsdag

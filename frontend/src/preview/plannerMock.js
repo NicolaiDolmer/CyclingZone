@@ -58,7 +58,7 @@ function raceProfileSummary(strip) {
 
 // #4245: raceDays (LØBSDAGE = distinkte game_day) er sit eget felt, ikke etapetallet.
 // Default = ét løb, én etape pr. løbsdag, som langt de fleste løb er. Sæt det lavere
-// end `stages` for et løb med to etaper på samme løbsdag — det er præcis den forskel
+// end `stages` for et løb med to etaper på samme løbsdag. Det er præcis den forskel
 // belastnings-chippen skal vise, og den kan ellers ikke ses på preview.
 function makeRace(id, name, terrain, date, isMine, stages, summits, division, rivalPeakCount, raceDays = stages) {
   const strip = stages > 1 ? mountainStages(stages, summits) : [{ stage: 1, terrain, summit: terrain === "mountain" }];
@@ -87,7 +87,7 @@ const RACES = [
   // dagen selv under den nye regel. Dropdown-advarslen ("låser med det samme")
   // dækker netop dette sjældnere, men stadig reelle, tilfælde.
   makeRace("r-imminent", "City Criterium", "sprint", "2026-06-02", true, 1, 0, 3, 0),
-  // #4245: 6 etaper, men kun 5 LØBSDAGE — to af etaperne deler en løbsdag (en
+  // #4245: 6 etaper, men kun 5 LØBSDAGE. To af etaperne deler en løbsdag (en
   // formiddags-prolog og en eftermiddags-etape). Belastnings-chippen skal vise 5,
   // ikke 6. Uden dette løb i mocken kan forskellen ikke ses på preview overhovedet,
   // for al prod-data har lige nu én etape pr. løbsdag.

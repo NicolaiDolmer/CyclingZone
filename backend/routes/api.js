@@ -3631,7 +3631,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       fetchAllStageProfiles(supabase, allRaceIds, "race_id, stage_number, profile_type, finale_type, demand_vector"),
     ]);
     // #4245: løbsdage pr. løb = distinkte game_day. Afledt af de allerede hentede
-    // scheduleRows — intet ekstra DB-kald. Går med i racesOut nedenfor, så
+    // scheduleRows, intet ekstra DB-kald. Går med i racesOut nedenfor, så
     // formplanens belastnings-chip læser samme tal som Race Hub'ens.
     const raceDaysByRaceId = raceDaysByRace(scheduleRows || []);
 
@@ -4444,10 +4444,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       nameByRace: new Map((races || []).map((r) => [r.id, r.name])),
     });
 
-    // #2772: sæson-belastning pr. rytter — antal løb + løbsdage rytteren er tilmeldt
+    // #2772: sæson-belastning pr. rytter: antal løb + løbsdage rytteren er tilmeldt
     // henover HELE sæsonen, auto-fyldte inklusive (rytteren stiller til start uanset
     // hvem der satte ham på listen). Afledt af de allerede hentede eligible entries
-    // (ghosts/udlånte tæller ikke, #1906) + schedRows (hentet MED game_day ovenfor) —
+    // (ghosts/udlånte tæller ikke, #1906) + schedRows (hentet MED game_day ovenfor):
     // intet ekstra DB-kald.
     // #4245: LØBSDAGE = distinkte game_day pr. løb (docs/CALENDAR_RULES.md §0), IKKE
     // etape-antal. To etaper på samme løbsdag er én løbsdag for rytteren. Den gamle

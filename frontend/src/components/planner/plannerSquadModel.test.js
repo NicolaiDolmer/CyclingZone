@@ -234,7 +234,7 @@ test("riderSeasonLoad: løb + løbsdage summeres over registrerede entries", () 
 
 // #4245: løbsdage != etaper. Et løb med to etaper på samme løbsdag binder rytteren
 // ÉN dag (docs/CALENDAR_RULES.md §0 + §2b). Den gamle etape-sum gav 2 her.
-test("riderSeasonLoad: raceDays slår stages — to etaper på samme løbsdag er én løbsdag (#4245)", () => {
+test("riderSeasonLoad: raceDays slår stages, to etaper på samme løbsdag er én løbsdag (#4245)", () => {
   const races = [
     riskRace("doubleheader", "2026-08-10", { stages: 2, raceDays: 1 }),
     riskRace("tour", "2026-08-20", { stages: 5, raceDays: 5 }),

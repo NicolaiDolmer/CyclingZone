@@ -243,7 +243,7 @@ export function groupGrossSquads({ entries = [], ridersById = new Map(), teamsBy
 // game_day, og game_day kan aldrig udledes af scheduled_at). Distinkte værdier er
 // eneste rigtige mål: et SPÆND (end-start+1, jf. raceGameDaySpan) overtæller løb
 // med spring i game_day-serien, for springene er ikke løbsdage (#4209).
-// `scheduleRows` = [{race_id, game_day}]. Pure — ingen DB.
+// `scheduleRows` = [{race_id, game_day}]. Pure, ingen DB.
 export function raceDaysByRace(scheduleRows = []) {
   const daysByRace = new Map();
   for (const row of scheduleRows) {
@@ -254,12 +254,12 @@ export function raceDaysByRace(scheduleRows = []) {
   return new Map([...daysByRace].map(([id, set]) => [id, set.size]));
 }
 
-// #2772/#4245: sæson-belastning pr. rytter — antal løb + antal LØBSDAGE rytteren er
+// #2772/#4245: sæson-belastning pr. rytter: antal løb + antal LØBSDAGE rytteren er
 // tilmeldt henover sæsonen, auto-fyldte entries inklusive (rytteren stiller til start
 // uanset hvem der satte ham på listen). `entries` skal ALLEREDE være eligibility-
 // krydset af kalderen (loadEligibleEntries: ghosts/udlånte/pensionerede tæller ikke,
 // #1906). Fallback: et løb uden game_day-rækker (fx delvist backfillet) tæller som
-// mindst ÉN løbsdag — derfor `|| 1` og ikke `?? 1`, for en 0-værdi ville slippe
+// mindst ÉN løbsdag, derfor `|| 1` og ikke `?? 1`, for en 0-værdi ville slippe
 // igennem og skjule belastnings-chippen tavst pga. `load.raceDays > 0`-gaten i
 // AvailableRidersPool. Pure.
 export function seasonLoadByRider({ entries = [], raceDaysByRaceId = new Map() } = {}) {

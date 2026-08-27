@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 // #4245 forward-guard: sæson-belastningens LØBSDAGE må aldrig igen afledes af
 // races.stages (etapetal). Kilde-scan efter samme mønster som
-// riderPeakPlans.routes.test.js — låser wiringen i routes/api.js, så etape-tallet
+// riderPeakPlans.routes.test.js. Låser wiringen i routes/api.js, så etape-tallet
 // ikke kan snige sig tilbage i belastnings-blokken uden at CI råber.
 // SSOT for reglen: docs/CALENDAR_RULES.md §0 (game_day og scheduled_at er to
 // uafhængige akser) + §2b (bindingen sker pr. løbsdag, ikke pr. kalenderdag).
