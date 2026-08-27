@@ -286,7 +286,10 @@ export function raceDateRangeLabel({ startMs, endMs, locale = "en" } = {}) {
   const start = fmt.format(new Date(startMs));
   if (!Number.isFinite(endMs)) return start;
   const end = fmt.format(new Date(endMs));
-  return start === end ? start : `${start} – ${end}`;
+  // Bindestreg, ikke en-dash. Ingen em- eller en-dash i spiller-vendt copy
+  // (ejer-regel). tone-check-em-dash.mjs scanner kun locales og prosa-sider,
+  // ikke komponent-JSX, saa denne stod live indtil #4296.
+  return start === end ? start : `${start} - ${end}`;
 }
 
 // #4296: HÅRD INVARIANT, må IKKE brydes.

@@ -289,7 +289,7 @@ test("raceDateRangeLabel: etapeløb over flere dage giver et datointerval", () =
     endMs: Date.parse("2026-09-04T11:00:00Z"),
     locale: "en",
   });
-  assert.equal(label, "Aug 30 – Sep 4");
+  assert.equal(label, "Aug 30 - Sep 4");
 });
 
 test("raceDateRangeLabel: endagsløb giver ÉT datostykke, ikke 'x - x'", () => {
@@ -308,7 +308,9 @@ test("raceDateRangeLabel: dansk locale formaterer dansk", () => {
     locale: "da",
   });
   assert.ok(label.includes("30."), `forventede dansk datoform, fik: ${label}`);
-  assert.ok(label.includes("–"), `forventede interval, fik: ${label}`);
+  assert.ok(label.includes(" - "), `forventede interval, fik: ${label}`);
+  // #4296: bindestreg, ALDRIG en-dash eller em-dash i spiller-vendt copy.
+  assert.ok(!label.includes("–") && !label.includes("—"), `dash i copy: ${label}`);
 });
 
 test("raceDateRangeLabel: projiceres i Europe/Copenhagen, ikke UTC", () => {
