@@ -51,17 +51,17 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 import { chooseBestOrder, countViolations, sequenceLabel } from "../lib/stageOrderReorder3371.js";
+import { repoRoot } from "../lib/repoRoot.mjs";
 
 const SEASON_ID = "00000000-0000-0000-0000-000000000003";
 const MIN_STAGES = 5;
 const MAX_STAGES = 8;
 const REPORT_DATE = "2026-08-23";
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SNAPSHOT_DIR = join(__dirname, "..", "..", "..", "docs", "snapshots", "3371");
+// #4274: ankret på git-toplevel, ikke __dirname — se scripts/lib/repoRoot.mjs.
+const SNAPSHOT_DIR = join(repoRoot(), "docs", "snapshots", "3371");
 
 const argv = process.argv.slice(2);
 const APPLY = argv.includes("--apply");

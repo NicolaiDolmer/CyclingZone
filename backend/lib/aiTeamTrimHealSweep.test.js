@@ -24,6 +24,11 @@ function dbMock(state) {
       is(c, v) { filters.push({ t: "is", c, v }); return b; },
       not(c, op, v) { if (op === "is" && v === null) filters.push({ t: "not-is-null", c }); return b; },
       order() { return b; },
+      // #4233: teamHasBlockingTransferOffers laeser transfer_offers med .limit(1).
+      // Mocken manglede metoden helt, saa den ellers-tomme tabel gav en TypeError i
+      // stedet for "ingen blokering" — mock-huller skal fejle som mock-huller, ikke
+      // som forretningslogik.
+      limit(n) { return Promise.resolve({ data: rows().filter(matches).slice(0, n), error: null }); },
       range(from) {
         const data = from === 0 ? rows().filter(matches) : [];
         return Promise.resolve({ data, error: null });
@@ -211,6 +216,63 @@ test("#2187 sweep: per-hold fejl isoleres (én fejler, resten heales)", async ()
   assert.equal(res.failed, 1);
   assert.equal(res.errors[0].teamId, "a");
   assert.deepEqual(removed, ["b"]);
+});
+
+// #4233: transfer_offers-FK'erne (rider_id + seller_team_id, begge NO ACTION) er en
+// TREDJE selvstaendig blokerings-grund. Doede tilbud (withdrawn/accepted/rejected)
+// forsvinder aldrig af sig selv, saa holdet forbliver udskudt — men det maa aldrig
+// tvangsslettes af backstoppen, kun rapporteres.
+test("#4233 sweep: hold med blokerende transfer_offers slettes IKKE — markoeren bevares", async () => {
+  const now = new Date("2026-07-12T12:00:00Z");
+  const rows = [
+    { id: "ai-1", name: "AI One", is_ai: true, league_division_id: "pool-a", pending_removal_at: hoursAgo(now, 2) },
+  ];
+  const removed = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: dbMock({
+      teams: rows.map((r) => ({ ...r })),
+      league_divisions: [{ id: "pool-a", tier: 4 }],
+      riders: [{ id: "r-1", team_id: "ai-1" }],
+      transfer_offers: [{ id: "o-1", rider_id: "r-1", seller_team_id: null, status: "accepted" }],
+    }),
+    now,
+    getInflightIds: async () => [],
+    getStalledIds: async () => [],
+    teamBlockingRaceIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    removeTeam: async (_s, id) => { removed.push(id); },
+  });
+
+  assert.deepEqual(removed, [], "det tilbuds-blokerede hold slettes ikke");
+  assert.equal(res.healed, 0);
+  assert.equal(res.failed, 0, "blokering er ikke en fejl — den er en udskydelse");
+  assert.deepEqual(res.stale, [], "under backstoppen er den endnu ikke stale");
+});
+
+test("#4233 sweep: tilbuds-blokering over backstoppen rapporteres stale, aldrig tvangsslettet", async () => {
+  const now = new Date("2026-07-12T12:00:00Z");
+  const rows = [
+    { id: "ai-1", name: "AI One", is_ai: true, league_division_id: "pool-a", pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 24) },
+  ];
+  const removed = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: dbMock({
+      teams: rows.map((r) => ({ ...r })),
+      league_divisions: [{ id: "pool-a", tier: 4 }],
+      riders: [],
+      transfer_offers: [{ id: "o-1", rider_id: null, seller_team_id: "ai-1", status: "withdrawn" }],
+    }),
+    now,
+    getInflightIds: async () => [],
+    getStalledIds: async () => [],
+    teamBlockingRaceIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    removeTeam: async (_s, id) => { removed.push(id); },
+  });
+
+  assert.deepEqual(removed, [], "backstoppen sletter aldrig — den melder");
+  assert.equal(res.stale.length, 1);
+  assert.equal(res.stale[0].reason, "pending_exceeds_backstop");
 });
 
 test("#2187 sweep: ingen kandidater → no-op", async () => {

@@ -24,6 +24,24 @@ on:
   # (skipped = grøn for required checks, præcis som på docs-/backend-PR'er)
   # og kø-batches ikke betaler ~10 min windows-runtime pr. omgang.
   merge_group:
+  # #4281: main kan stå rød i dagevis uden at nogen opdager det, fordi
+  # `pull_request` kun kører mod DIFF'en — en PR merget med rød smoke (eller en
+  # dårlig merge af to grønne PR'er) efterlader ingen efterfølgende kørsel der
+  # fanger det. Konkret 26/8: et layout-overløb (#4275) + to røde e2e-tests lå
+  # på ren main (verificeret på 20b1debe1) i mindst et døgn, uopdaget, indtil en
+  # urelateret session kørte hele suiten af andre grunde.
+  #
+  # Natlig cron i stedet for en push-trigger pr. merge til main: suiten tager
+  # ~18-20 min på windows-latest, og en push-trigger ville betale den pris
+  # FOR HVER merge. Nightly fanger et rødt main inden for et døgn — samme
+  # afvejning som #4155/#4161 → calendar-invariant-audit.yml.
+  #
+  # Denne trigger gør IKKE frontend-smoke til et nyt required check, og den
+  # ændrer intet ved det eksisterende required check på PR'er: en scheduled
+  # kørsel er ikke knyttet til en PR eller et commit-SHA nogen anden PR
+  # afventer, den rapporterer kun til et tracking-issue (se nedenfor).
+  schedule:
+    - cron: '10 4 * * *' # dagligt 04:10 UTC — efter calendar-invariant-audit + clock-drift-test-check (begge 03:50)
 
 permissions:
   contents: read
@@ -36,12 +54,16 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend || steps.mg.outputs.frontend }}
+      frontend: ${{ steps.filter.outputs.frontend || steps.mg.outputs.frontend || steps.sch.outputs.frontend }}
     steps:
       - name: Merge group skips suite
         if: github.event_name == 'merge_group'
         run: echo "frontend=false" >> "$GITHUB_OUTPUT"
         id: mg
+      - name: Nightly schedule always runs full suite
+        if: github.event_name == 'schedule'
+        run: echo "frontend=true" >> "$GITHUB_OUTPUT"
+        id: sch
       - name: Detect frontend changes
         id: filter
         if: github.event_name == 'pull_request'
@@ -66,6 +88,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # fejl-kommentar på PR'en (rød suite må ikke være stille)
+      issues: write # #4281: tracking-issue ved rødt på den natlige cron
     defaults:
       run:
         working-directory: frontend
@@ -160,3 +183,43 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **frontend-smoke fejlede** — den fulde Playwright-suite fandt regressioner. [Se run + playwright-report-artifact]($RUN_URL).
 
           Rød e2e må ikke merges stille (#2000-spec-rot → PR #2114): fix koden eller opdatér spec'en i samme PR. Auto-merge venter nu eksplicit på dette check."
+
+      # #4281: samme mønster som calendar-invariant-audit.yml / clock-drift-test-check.yml
+      # — ét samlet issue pr. audit-type, opdateret in-place i stedet for et nyt
+      # issue pr. rød nat. Kun scheduled runs opretter/opdaterer issuet; en rød
+      # PR-kørsel har allerede PR-kommentaren ovenfor og fejler sit eget required check.
+      - name: Open or update tracking issue (nightly schedule only)
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const title = '[bot] Playwright Smoke rød på main (nightly)';
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const body = [
+              '## Playwright Smoke fejlede på en natlig kørsel mod main',
+              '',
+              'Dette er IKKE en PR-kørsel — den fulde e2e-suite kørte natligt mod main og fandt en rød tilstand ' +
+                'som ingen PR-kørsel nødvendigvis vil fange igen (se [#4281](https://github.com/${{ github.repository }}/issues/4281)).',
+              '',
+              'main kan have stået rød siden den PR der introducerede fejlen blev merget — check playwright-report-artifact-en på run-linket for detaljer.',
+              '',
+              `Run-link: ${runUrl}`,
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'playwright-smoke-audit',
+            });
+            if (existing.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing[0].number, title, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body,
+                labels: ['playwright-smoke-audit', 'priority:high', 'type:bug', 'claude:todo'],
+              });
+            }

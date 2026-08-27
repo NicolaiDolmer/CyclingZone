@@ -45,6 +45,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import {
   teamInflightRaceIds,
   teamHasUnpaidPrizeResults,
+  teamHasBlockingTransferOffers,
   getInflightRaceIds,
   getStalledInflightRaceIds,
   deleteAiTeamById,
@@ -119,6 +120,11 @@ export async function runAiTeamTrimHealSweep({
   // #2389: uudbetalte præmier blokerer også trim (sletning før auto-prize krediterer
   // løbet gav P0002 + FK-fejl i standings-recalc). Auto-prize sweeper hvert 5. minut.
   hasUnpaidPrizes = teamHasUnpaidPrizeResults,
+  // #4233: transfer_offers-FK'erne (rider_id + seller_team_id) er NO ACTION og blokerer
+  // hard delete. Doede tilbud forsvinder aldrig af sig selv, saa et saadant hold forbliver
+  // udskudt indtil FK-semantikken er afgjort — det rapporteres via `stale`, aldrig
+  // tvangsslettet (backstoppen sletter ikke, den melder).
+  hasBlockingOffers = teamHasBlockingTransferOffers,
   removeTeam = deleteAiTeamById,
   // #2407: pr.-pulje trim-budget (hard-gate mod at slette under target) + rydning
   // af forældede markører. Injicerbare for test.
@@ -185,7 +191,11 @@ export async function runAiTeamTrimHealSweep({
       const prizeBlocked = blockingInflight.length > 0
         ? false
         : await hasUnpaidPrizes(supabase, team.id);
-      const blocked = blockingInflight.length > 0 || prizeBlocked;
+      // #4233: tredje selvstændige grund, samme kortslutnings-mønster som ovenfor.
+      const offersBlocked = blockingInflight.length > 0 || prizeBlocked
+        ? false
+        : await hasBlockingOffers(supabase, team.id);
+      const blocked = blockingInflight.length > 0 || prizeBlocked || offersBlocked;
 
       if (!blocked) {
         await removeTeam(supabase, team.id);
