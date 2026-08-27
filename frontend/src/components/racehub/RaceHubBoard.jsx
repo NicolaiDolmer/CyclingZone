@@ -17,7 +17,8 @@ import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsB
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
-import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
+import { reportLoadFailure } from "../../lib/actionTelemetry.js";
+import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -67,21 +68,53 @@ export default function RaceHubBoard() {
   // kommende løb GET /clear-preview fandt; `now` fryses ved åbning så nedtællingerne i
   // dialogen ikke tikker mens man læser (statisk, ærligt snapshot af øjeblikket man klikkede).
   const [clearAllPreview, setClearAllPreview] = useState(null);
+  // #4165: hentningen af board'et havde INGEN fejl-state. Manglende token, et
+  // ikke-2xx svar og en netværksfejl returnerede alle tavst, og render-grenen
+  // `!data?.enabled → null` tegnede så en helt tom flade — uden spinner, uden
+  // besked, uden retry. Derfor hjalp en genindlæsning heller ikke: samme fejlende
+  // kald, samme intet. Samme fejlklasse som usePlanner havde før #2849 bølge 6.
+  // { kind: "auth" | "http" | "network", status? } | null
+  const [loadError, setLoadError] = useState(null);
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
-    if (!headers) { setLoading(false); return; }
+    if (!headers) {
+      setLoadError({ kind: "auth" });
+      reportLoadFailure("racehub_board", { kind: "auth" });
+      setLoading(false);
+      return;
+    }
     // Path som egen literal (query konkateneres separat) — holder /api/races/distribution
     // matchbar for feature-liveness-auditens frontend-scan (ellers læses qs som path-segment).
     const url = `${API}/api/races/distribution`;
     try {
       const res = await fetch(Number.isFinite(day) ? `${url}?day=${day}` : url, { headers });
-      if (res.ok) setData(await res.json());
-    } catch {
-      /* netværk — board forbliver i forrige tilstand */
+      if (!res.ok) {
+        // Krop-koden (fx "No team found") kommer med i telemetrien, så en gentagelse
+        // kan diagnosticeres uden at gætte — den vises IKKE til manageren.
+        const body = await res.json().catch(() => ({}));
+        setLoadError({ kind: "http", status: res.status });
+        reportLoadFailure("racehub_board", { kind: "http", status: res.status, reason: body?.error });
+        return;
+      }
+      setData(await res.json());
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError({ kind: "network" });
+      reportLoadFailure("racehub_board", { kind: "network", cause });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
+
+  // Retry fra fejl-fladen: vis spinneren igen, så knappen har en synlig effekt.
+  // (load() sætter bevidst ikke loading=true selv — et dag-skift skal ikke rive
+  // board'et ned og erstatte det med en spinner.)
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError(null);
+    load(Number.isFinite(dayParam) ? dayParam : undefined);
+  };
 
   // Mine-board hentes kun i "mine"-scope; browse-scopes (division/others, S6) bruger
   // DivisionStartLists med sit eget read-only endpoint.
@@ -110,6 +143,21 @@ export default function RaceHubBoard() {
   if (scope !== "mine") return <DivisionStartLists scope={scope} onScopeChange={setScope} />;
 
   if (loading) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
+  // #4165: "kaldet fejlede" og "flaget er slukket" er to forskellige tilstande og
+  // må ikke dele render-gren. Fejl → kanonisk ErrorState + secondary retry (samme
+  // mønster som SeasonPlannerPage). Rækkefølgen er bindende: fejl-grenen skal ligge
+  // FØR flag-grenen, ellers bliver en fejl igen tegnet som en tom flade.
+  if (loadError) {
+    return (
+      <div role="alert" className="mx-auto max-w-xl py-6">
+        <ErrorState
+          title={t("racehub.error.title")}
+          description={loadError.kind === "auth" ? t("racehub.error.session") : t("racehub.error.body")}
+          action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("racehub.error.retry")}</Button>}
+        />
+      </div>
+    );
+  }
   if (!data?.enabled) return null; // flag OFF → board skjult (kalender-faner viser stadig)
 
   const day = Number.isFinite(dayParam) ? dayParam : (data.focusDay ?? data.currentDay);

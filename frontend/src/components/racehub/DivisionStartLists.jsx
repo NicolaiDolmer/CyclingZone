@@ -9,7 +9,8 @@ import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";
 import PoolPicker from "./PoolPicker.jsx";
 import StartListColumn from "./StartListColumn.jsx";
-import { Spinner, EmptyState, FlagIcon, LockIcon } from "../ui";
+import { reportLoadFailure } from "../../lib/actionTelemetry.js";
+import { Spinner, EmptyState, ErrorState, FlagIcon, LockIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -26,10 +27,18 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   const dayParam = Number.parseInt(params.get("day"), 10);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // #4165: samme tavse degradering som RaceHubBoard havde — begge fejl-grene
+  // returnerede uden state, og `!data?.enabled → null` tegnede en tom flade.
+  const [loadError, setLoadError] = useState(null); // { kind, status? } | null
 
   const load = useCallback(async (pool, day) => {
     const headers = await authHeaders();
-    if (!headers) { setLoading(false); return; }
+    if (!headers) {
+      setLoadError({ kind: "auth" });
+      reportLoadFailure("racehub_browse", { kind: "auth" });
+      setLoading(false);
+      return;
+    }
     const qs = new URLSearchParams();
     if (pool != null) qs.set("pool", pool);
     if (Number.isFinite(day)) qs.set("day", String(day));
@@ -38,19 +47,49 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
     const base = `${API}/api/races/distribution/browse`;
     try {
       const res = await fetch(qs.toString() ? `${base}?${qs}` : base, { headers });
-      if (res.ok) setData(await res.json());
-    } catch {
-      /* netværk — behold forrige tilstand */
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setLoadError({ kind: "http", status: res.status });
+        reportLoadFailure("racehub_browse", { kind: "http", status: res.status, reason: body?.error });
+        return;
+      }
+      setData(await res.json());
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError({ kind: "network" });
+      reportLoadFailure("racehub_browse", { kind: "network", cause });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => { load(poolParam, Number.isFinite(dayParam) ? dayParam : undefined); }, [load, poolParam, dayParam]);
+
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError(null);
+    load(poolParam, Number.isFinite(dayParam) ? dayParam : undefined);
+  };
 
   const setDay = (d) => { params.set("day", String(d)); setParams(params, { replace: true }); };
   const setPool = (id) => { params.set("pool", String(id)); params.delete("day"); setParams(params, { replace: true }); };
 
   if (loading && !data) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
+  // #4165: fejl FØR flag-grenen — ellers tegnes en fejlet hentning som "slukket".
+  // Vises også når der ligger gamle data: en fejlet pulje-/dagskift ville ellers
+  // efterlade den FORRIGE puljes startlister under den nye markering, hvilket er
+  // en løgn om hvad manageren kigger på.
+  if (loadError) {
+    return (
+      <div role="alert" className="mx-auto max-w-xl py-6">
+        <ErrorState
+          title={t("browse.error.title")}
+          description={loadError.kind === "auth" ? t("browse.error.session") : t("browse.error.body")}
+          action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("browse.error.retry")}</Button>}
+        />
+      </div>
+    );
+  }
   if (!data?.enabled) return null;
 
   const day = Number.isFinite(dayParam) ? dayParam : (data.focusDay ?? data.currentDay);

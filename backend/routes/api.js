@@ -684,10 +684,24 @@ async function createRaceRecord(payload) {
 
 async function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace("Bearer ", "");
+  // Ingen log her med vilje: vores egen SPA sender ALDRIG et request uden token
+  // (authHeaders() returnerer null og kaldet udebliver), så denne gren er stort
+  // set kun scannere/probes. Logges den, drukner de interessante 401'ere i støj.
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return res.status(401).json({ error: "Invalid token" });
+  if (error || !user) {
+    // #4165: DENNE gren var usynlig i alle tre observations-lag — ingen log,
+    // ingen Sentry, og klienten kastede svaret væk. Da en spiller ikke kunne
+    // komme ind i planlægningen, kunne udløseren derfor ikke bestemmes
+    // bagudrettet. En kort warn-linje gør et afvist token synligt i Railway-
+    // loggen. Kun fejl-KODEN logges, aldrig selve token'et eller headeren
+    // (hard rule: dump aldrig secret-værdier), og stien uden query-streng.
+    console.warn(
+      `[auth] 401 invalid_token ${req.method} ${req.originalUrl.split("?")[0]} (${error?.code || error?.name || "no_user"})`,
+    );
+    return res.status(401).json({ error: "Invalid token" });
+  }
 
   // Fetch team for this user
   // #3722: onboarding opretter holdet asynkront efter signup, så "ingen række
@@ -4251,7 +4265,15 @@ router.get("/races/calendar", requireAuth, cached({
 // kolonner + holdets trup + binding-map + sæson-tidslinje. Saves går stadig via
 // PUT /races/:raceId/selection (guards bevares). flag OFF → enabled:false.
 router.get("/races/distribution", requireAuth, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!req.team) {
+    // #4165: den anden usynlige fejl-gren bag den tomme planlægnings-flade.
+    // Warn-linje, IKKE Sentry: onboarding opretter holdet asynkront efter signup
+    // (#3722), så "ingen række endnu" er en LOVLIG tilstand — et Sentry-issue pr.
+    // forekomst ville være samme falske positiv som #4299. user_id er en UUID
+    // uden PII (samme linje som setSentryUser, #621).
+    console.warn(`[races/distribution] 400 no_team user=${req.user?.id}`);
+    return res.status(400).json({ error: "No team found" });
+  }
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });

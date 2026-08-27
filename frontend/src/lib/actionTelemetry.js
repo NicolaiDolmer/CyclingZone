@@ -101,5 +101,41 @@ export function reportActionFailure(action, detail = {}) {
   });
 }
 
+/**
+ * Rapportér at en FLADE ikke kunne hentes (read, ikke mutation).
+ *
+ * #4165: en spiller kunne ikke komme ind i planlægningen. Boardet kastede både
+ * ikke-2xx-svar og netværksfejl væk og tegnede intet, så hændelsen efterlod nul
+ * spor — hverken i UI'et, i Sentry eller i backend-loggen. En mislykket
+ * hentning er ikke en afvisning (spilleren ramte ingen regel); det er en flade
+ * der er nede for netop den manager, og derfor en ægte hændelse. Den går til
+ * Sentry som exception, ikke som breadcrumb — modsat `rejected` ovenfor.
+ *
+ * Tags holdes lav-kardinale (`surface` + `kind` + status), så de fire klasser
+ * (auth/http/network pr. flade) grupperer hver for sig. Kendt godartet klasse:
+ * 400 fra /races/distribution mens onboarding endnu ikke har oprettet holdet
+ * (#3722) — triagér den som støj, ikke som drift.
+ *
+ * @param {string} surface  Stabilt slug for fladen, fx "racehub_board".
+ * @param {object} [detail]
+ * @param {"auth"|"http"|"network"} [detail.kind]  Hvilken gren der fejlede.
+ * @param {number} [detail.status]  HTTP-status hvis der var et svar.
+ * @param {string} [detail.reason]  Backend-fejlkode fra svarets krop.
+ * @param {unknown} [detail.cause]  Kastet Error (netværksfejl) hvis der var en.
+ * @param {object} [detail.context] Spil-id'er uden PII.
+ */
+export function reportLoadFailure(surface, detail = {}) {
+  if (!surface || !ENABLED) return;
+  const { kind = "http", status, reason, cause, context } = detail;
+  const error = cause instanceof Error
+    ? cause
+    : new Error(`load failed: ${surface} (${kind}${status ? ` ${status}` : ""})`);
+  Sentry.captureException(error, {
+    level: "warning",
+    tags: { load_failure: surface, load_failure_kind: kind, ...(status ? { load_failure_status: String(status) } : {}) },
+    extra: { reason: trim(reason), status, ...context },
+  });
+}
+
 // Kun til test — lader unit-tests verificere trim-adfærden uden Sentry-runtime.
 export const __testing__ = { trim };

@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../lib/supabase";
+import { reportLoadFailure } from "../lib/actionTelemetry.js";
 import { PageLoader, SectionStack, EmptyState, ErrorState, Button } from "../components/ui";
 import AChainEditor from "../components/racehub/strategy/AChainEditor.jsx";
 import RoleRulesEditor from "../components/racehub/strategy/RoleRulesEditor.jsx";
@@ -38,26 +39,62 @@ export default function StrategyPage() {
   // #2849 bølge 6: hvilken handling der fejlede, så ErrorState's ene retry-knap
   // kan gengive den samme handling — ikke bare lukke fejlen.
   const lastActionRef = useRef(null); // "preview" | "save" | "regenerate" | null
+  // #4165: #2465 gav MUTATIONERNE en fejl-flade, men selve hentningen beholdt den
+  // tavse gren — !res.ok og netværksfejl satte ingen state, og `!data?.enabled →
+  // null` tegnede så en tom side. Samme rettelse som RaceHubBoard får her.
+  const [loadError, setLoadError] = useState(null); // { kind, status? } | null
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
-    if (!headers) { setLoading(false); return; }
+    if (!headers) {
+      setLoadError({ kind: "auth" });
+      reportLoadFailure("strategy_page", { kind: "auth" });
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${API}/api/races/strategy`, { headers });
-      if (res.ok) {
-        const j = await res.json();
-        setData(j);
-        if (j.enabled) setDraft({
-          aChain: j.a_chain || [], captainPriorities: j.captain_priorities || {},
-          roleRules: j.role_rules || {}, targetRaceIds: j.target_race_ids || [],
-        });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setLoadError({ kind: "http", status: res.status });
+        reportLoadFailure("strategy_page", { kind: "http", status: res.status, reason: body?.error });
+        return;
       }
-    } catch { /* netværk — siden forbliver i forrige tilstand */ }
-    setLoading(false);
+      const j = await res.json();
+      setData(j);
+      if (j.enabled) setDraft({
+        aChain: j.a_chain || [], captainPriorities: j.captain_priorities || {},
+        roleRules: j.role_rules || {}, targetRaceIds: j.target_race_ids || [],
+      });
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError({ kind: "network" });
+      reportLoadFailure("strategy_page", { kind: "network", cause });
+    } finally {
+      setLoading(false);
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError(null);
+    load();
+  };
+
   if (loading) return <PageLoader label={t("strategy.title")} />;
+  // #4165: fejlet hentning FØR flag-grenen, ellers ser en fejl ud som "ikke aktiv".
+  if (loadError) {
+    return (
+      <div role="alert" className="max-w-4xl mx-auto">
+        <ErrorState
+          title={t("strategy.error.loadTitle")}
+          description={loadError.kind === "auth" ? t("strategy.error.session") : t("strategy.error.loadBody")}
+          action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("strategy.error.retry")}</Button>}
+        />
+      </div>
+    );
+  }
   if (!data?.enabled) return null;
   if (!data.roster?.length) return (
     <div className="max-w-4xl mx-auto">

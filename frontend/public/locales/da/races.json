@@ -55,6 +55,12 @@
     }
   },
   "racehub": {
+    "error": {
+      "title": "Holdudtagelsen kunne ikke hentes",
+      "body": "Intet gik tabt. Dine opstillinger er sikre.",
+      "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
+      "retry": "Prøv igen"
+    },
     "scope": {
       "mine": "Mine løb",
       "division": "Min division",
@@ -622,6 +628,9 @@
     },
     "error": {
       "title": "Noget gik galt",
+      "loadTitle": "Holdstrategien kunne ikke hentes",
+      "loadBody": "Intet gik tabt. Din gemte strategi er sikker.",
+      "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
       "retry": "Prøv igen"
     }
   },
@@ -1110,6 +1119,12 @@
     "accumulatedSub": "Top ryttere efter samlede point på tværs af alle udgaver"
   },
   "browse": {
+    "error": {
+      "title": "Startlisterne kunne ikke hentes",
+      "body": "Denne visning er kun til læsning, så intet gik tabt.",
+      "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
+      "retry": "Prøv igen"
+    },
     "readonly": "Skrivebeskyttet",
     "heading": "{division} · {pool}",
     "headingGeneric": "Startlister",
