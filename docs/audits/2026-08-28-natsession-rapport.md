@@ -180,8 +180,11 @@ Tre issues beskrev noget der ikke længere passer. Verificeret før jeg skrev de
 - **`audit` (league-size) var et dødt værn.** Steppet kører under `bash -e`, og scriptet
   `exit 1`'er ved fund — så det døde på **første** linje, før den læsbare rapport blev
   skrevet, før `total` blev sat, og før kommentar-/artifact-mekanikken. Resultatet var et
-  rødt X uden en eneste linje om hvad den fandt. Fixet i #4289. Auditten forbliver rød
-  indtil #4286 er merget og D4-A er trimmet — men den siger nu hvorfor.
+  rødt X uden en eneste linje om hvad den fandt. Fixet i #4289 — **og verificeret i CI,
+  ikke kun lokalt**: #4289's egen `audit`-kørsel er rød med teksten *"League-size invariant
+  audit found 1 deviating group(s). See report artifact."* Den ene gruppe er D4-A på 25.
+  Auditten forbliver altså rød indtil #4286 er merget og puljen er trimmet — men den siger
+  nu hvorfor, og rapporten kommer med.
 - **#4274** (dev-script skrev i et fremmed worktree): fikset som **mitigering**, ikke som
   rod-årsag. En kontrolleret reproduktion lykkedes ikke, og det står eksplicit som gæt i
   PR-body. ~40 flere scripts har samme `__dirname`-mønster og er bevidst ikke rørt.
