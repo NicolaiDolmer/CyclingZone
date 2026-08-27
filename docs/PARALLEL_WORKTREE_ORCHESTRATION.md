@@ -222,7 +222,7 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 
 # DU MÅ IKKE
 - Rør docs/NOW.md (centralkoordineret af master-session)
-- Rør frontend/src/data/patchNotes.js (medmindre cat:user-feature). Er ændringen brugervendt: aflever patch note-tekst (EN først, DA under) i din rapport/PR-body i stedet. Orkestratoren skriver ÉN samlet commit til filen efter bølgen (undgår merge-konflikter, ejer-rammer 27/8).
+- Rør frontend/src/data/patchNotes.js. INGEN undtagelser, heller ikke cat:user-feature (ejer-beslutning 27/8 efter #4308: undtagelsen lod PR #4294 røre filen direkte og udløse konfliktkæden). Er ændringen brugervendt: aflever patch note-tekst (EN først, DA under) i din rapport/PR-body i stedet. Orkestratoren skriver ÉN samlet commit til filen efter bølgen (undgår merge-konflikter).
 - Rør MEMORY.md eller andre memory-filer
 - Bruge PowerShell heredoc — ALTID Write→fil + `git commit -F`
 - Arbejde i C:\dev\CyclingZone (main worktree)
