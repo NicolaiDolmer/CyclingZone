@@ -59,7 +59,7 @@ bruges KUN til den booleske overlap-test, aldrig til et tal. Den falder tilbage 
 CET-ordinaler (~20.000) når én schedule-række mangler `game_day`, og ville skrive
 "Deler dagene 20123-20124".
 
-### B. #4246 — roller og ordrer siger det samme
+### B. #4246: roller og ordrer siger det samme
 
 Dette er **åben beslutning 1 i race-planning-README'en** og hører derfor sammen med A.
 
@@ -71,12 +71,12 @@ bruge spillets ord.
 Selve issuet spørger om `hunter` mod `try_break` skal afgøres FØR `TeamOrder` fryses i v4.
 Afklar overlappet, og forelæg ejeren ét klart valg hvis rolle og ordre reelt siger det samme.
 
-### C. #4308 — patch notes brækker enhver parallel PR-bølge
+### C. #4308: patch notes brækker enhver parallel PR-bølge
 
 Samme konflikt løst fire gange 27/8, og gaten fanger ikke en syntaksfejl i den fil den vogter.
 Ren ops, ingen UI. **Må merges selv.**
 
-### D. #4309 — frontend-smoke er required, tager 20 min og flaker
+### D. #4309: frontend-smoke er required, tager 20 min og flaker
 
 19 CI-kørsler på én dag, samme check kørt fire gange på én PR. Verificér altid årsagen før du
 kalder en kørsel flaky. Ren ops, ingen UI. **Må merges selv.**
@@ -95,7 +95,7 @@ kalder en kørsel flaky. Ren ops, ingen UI. **Må merges selv.**
 
 **Frontend `node --test` er obligatorisk før push.** Vite tilgiver extensionless imports,
 Node's ESM-loader i CI gør ikke, så en manglende `.js` fejler først i CI (#803).
-Kør også `npm run lint` — verify-local og vite-build kører ikke eslint, CI gør.
+Kør også `npm run lint`, for verify-local og vite-build kører ikke eslint, CI gør.
 
 `pwsh -File scripts/preflight-pr.ps1` før hver push. Ét issue pr. PR, `Refs #N`, aldrig
 `Closes`. PR-body efter `PULL_REQUEST_TEMPLATE` inklusive Brugerverifikation-sektionen.
