@@ -181,7 +181,7 @@ import { RACE_DAY_ENGINE_FLAG_KEY } from "../lib/raceDayEngineFlag.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { validateSelection, saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
+import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
@@ -4698,7 +4698,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     race = raceRow;
 
     // #1146: pulje-binding, body-shape, frys/fjernelse-undtagelse (#2637) og
-    // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js) — delt
+    // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js), delt
     // med bulk-endpointet (PUT /races/selection/bulk) længere nede, samme regler begge veje.
     // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
     // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
