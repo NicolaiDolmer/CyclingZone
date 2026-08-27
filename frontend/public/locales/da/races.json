@@ -56,6 +56,33 @@
     },
     "errorTitle": "Sæsonkalenderen kunne ikke hentes"
   },
+  "matrix": {
+    "heading": "Udtagelsesmatrix",
+    "lens": {
+      "entries": "Udtagelser",
+      "routeMatch": "Rutematch",
+      "formPeak": "Form og peak",
+      "load": "Belastning"
+    },
+    "problemsOnly": "Kun problemer",
+    "save": "Gem plan",
+    "saving": "Gemmer...",
+    "saveError": "Intet gik tabt. Prøv at gemme igen.",
+    "noProblems": "Ingen problemer",
+    "problemsCount": "{count, plural, one {# problem} other {# problemer}}",
+    "leaveUnsaved": "Du har ugemte ændringer i matrixen. Forlad alligevel?",
+    "errorTitle": "Udtagelsesmatrixen kunne ikke hentes",
+    "empty": "Ingen løb i denne sæson endnu",
+    "restDay": "Hviledag",
+    "dayAria": "Løbsdag {index}, {date}. Åbn dagens board.",
+    "cellEmptyAria": "{rider}, {race}: ikke udtaget. Klik for at tilføje.",
+    "cellFilledAria": "{rider}, {race}: {role}. Klik for at skifte.",
+    "squadCount": "{count}/{max}",
+    "loadSuffix": "{count, plural, one {# løbsdag} other {# løbsdage}}",
+    "peakWindow": "Peak-vindue · sigter mod {race}",
+    "peakWindowNoTarget": "Peak-vindue",
+    "peakLocked": "låst"
+  },
   "racehub": {
     "error": {
       "title": "Holdudtagelsen kunne ikke hentes",
