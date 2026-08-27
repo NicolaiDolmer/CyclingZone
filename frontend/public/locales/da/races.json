@@ -78,7 +78,7 @@
     "heading": "Trup-fordeling",
     "overlap": "{count} løb i dag",
     "raceDay": "Løbsdag {day}",
-    "raceDays": "Løbsdag {start}-{end}",
+    "raceDays": "Løbsdage {start}-{end}",
     "sameDayNote": "Samme rigtige dag, forskellige løbsdage. En rytter kan køre ét løb pr. løbsdag.",
     "learnReuse": {
       "title": "Genbrug af en rytter på tværs af løbsdage",
@@ -126,7 +126,14 @@
       "peaksHere": "Topper her: {names}",
       "paybackHere": "Payback-hul her: {names} ({points} form)",
       "paybackHereNoPoints": "Payback-hul her: {names}",
-      "clearSelection": "Ryd udtagelse"
+      "clearSelection": "Ryd udtagelse",
+      "sharesDay": "Deler løbsdag {day} med {race}",
+      "sharesDays": "Deler løbsdagene {start}-{end} med {race}",
+      "sharesMany": "Deler løbsdage med {count, plural, one {# andet løb} other {# andre løb}}",
+      "sharesItem": "Løbsdag {day} · {race}",
+      "sharesItemDays": "Løbsdagene {start}-{end} · {race}",
+      "clash": "{rider} kører begge på løbsdag {day}",
+      "clashMany": "{count, plural, one {# rytter kører} other {# ryttere kører}} begge løb"
     },
     "popover": {
       "title": "Tilføj til hvilket løb?",
