@@ -3,7 +3,11 @@
 Skrevet 27/8 af Claude. Alt herunder er udkast til copy-paste. **Du poster selv.**
 Rækkefølgen er prioriteret: A skylder du dem, resten kan følge efter.
 
-Alt er målt eller læst 27/8. Ingen opfundet tekst, ingen tal jeg ikke har verificeret.
+**Revisionsspor.** Første version af denne pakke indeholdt en fejl: den lovede spillerne et fix
+på GT-hviledags-bindingen, som viser sig at være den ønskede regel og ejerens eget direktiv fra
+25/8 (#4217). Rettet. Derefter er hvert tal og hvert citat i dokumentet efterprøvet enkeltvis.
+Se **Revisionsspor, hvad der er efterprøvet** nederst for hvad der er målt, og for de to
+sætninger der ikke kan måles og derfor er dine.
 
 ---
 
@@ -29,6 +33,13 @@ det er slut. Men det kan man ikke se på fladen, og D1-spillerne sidder lige nu 
 op mod klassikerne. Udkastet nedenfor siger det som planlægnings-information, ikke som en
 undskyldning.
 
+**Én sætning i udkastet kan kun du stå inde for.** Der står *"Nothing more is being
+regenerated"* / *"Der bliver ikke genereret mere"*. Det er et løfte om hvad du gør fremad, ikke
+noget jeg kan måle. Du sagde selv i staff-chat kl. 14:27 at du *tolker* det som en god ting at
+kalenderen ikke har fået klager, og det er ikke det samme som en beslutning om at holde op. Er
+du ikke sikker, så skriv i stedet "kalenderen er live, og siger jeg til hvis der kommer mere".
+Et halvt løfte du kan holde er bedre end et helt du må bryde i morgen.
+
 ### Udkast (EN)
 
 > **The season 3 calendar is live. Go ahead and pick your teams.**
@@ -52,9 +63,10 @@ undskyldning.
 > exist, and the ones already under way could not be removed. They are all cleared now, so
 > set your peaks again.
 >
-> If you do not get around to picking. A team with no selection still gets a squad picked
-> automatically at race time, so you will not miss a start. The planning assistant that used
-> to refill squads you had deliberately cleared is still off, so your own choices are safe.
+> If you do not get around to picking. A team that has not touched a race still gets a squad
+> picked automatically when the race runs, so you will not miss a start. The one exception is
+> deliberate: if you used Clear day or Clear all on a race, it stays empty. Clearing is treated
+> as a decision, not as an empty slot, and it is undone the moment you pick a squad yourself.
 
 ### Udkast (DA)
 
@@ -79,9 +91,10 @@ undskyldning.
 > mere, og dem der allerede var i gang kunne ikke fjernes. De er ryddet nu, så sæt dine peaks
 > igen.
 >
-> Hvis du ikke når at sætte hold. Et hold uden udtagelse får stadig sat et hold automatisk når
-> løbet køres, så du misser ikke en start. Den planlægnings-assistent der tidligere fyldte
-> hold op som du bevidst havde tømt, er stadig slukket, så dine egne valg står.
+> Hvis du ikke når at sætte hold. Et hold der ikke har rørt et løb får stadig sat et hold
+> automatisk når løbet køres, så du misser ikke en start. Den ene undtagelse er med vilje: har
+> du brugt Ryd dag eller Ryd alt på et løb, bliver det stående tomt. En rydning er en
+> beslutning, ikke et tomt felt, og den ophæves i samme øjeblik du selv udtager.
 
 ---
 
@@ -103,9 +116,8 @@ Fire ting landede i dag, alle live. Skrevet til spillere, ikke til udviklere.
 > row of zeros that looked like a bug.
 >
 > The load chip counted the wrong thing. In the planning board's rider pool it said race days
-> but counted stages, and it counted races from earlier seasons on top. One team's average
-> read 18.1 where the true number was 4.9. It now counts race days in the current season only.
-> If a rider looked far busier than he is, that was why.
+> but counted stages, and it counted races from earlier seasons on top. It now counts race days
+> in the current season only. If a rider looked far busier than he is, that was why.
 >
 > Planning tells you when something failed to load. A failed view used to go blank or claim to
 > be empty, with nothing to click. Team selection, Form plan, Strategy, Start lists and the
@@ -129,9 +141,9 @@ Fire ting landede i dag, alle live. Skrevet til spillere, ikke til udviklere.
 > række nuller der lignede en fejl.
 >
 > Belastnings-tallet talte det forkerte. I planlægnings-boardets rytterpulje stod der løbsdage,
-> men den talte etaper, og den talte oven i købet løb med fra tidligere sæsoner. Ét holds snit
-> viste 18,1 hvor det sande tal var 4,9. Den tæller nu kun løbsdage i den aktive sæson. Hvis en
-> rytter så langt mere travl ud end han er, var det derfor.
+> men den talte etaper, og den talte oven i købet løb med fra tidligere sæsoner. Den tæller nu
+> kun løbsdage i den aktive sæson. Hvis en rytter så langt mere travl ud end han er, var det
+> derfor.
 >
 > Planlægning siger til når noget ikke kunne hentes. En fejlet visning gik før blank eller
 > påstod den var tom, uden noget at klikke på. Holdudtagelse, Formplan, Strategi, Startlister
@@ -295,3 +307,47 @@ tage stilling til, ikke noget jeg gør uopfordret.
 #staff-chat og #dansk-snak som tekstkanaler i den gamle guild. De tre findes kun i den nye, og
 #feedback-and-ideas er et forum, ikke en tekstkanal. Rettet i praksis, noteret her så næste
 session ikke leder samme sted.
+
+---
+
+## Revisionsspor, hvad der er efterprøvet
+
+Efter at første version indeholdt en forkert påstand, er hvert tal og citat efterprøvet
+enkeltvis. Her er kilden til hvert enkelt, så du kan efterprøve mig.
+
+### Målt i prod 27/8
+
+| Påstand i teksten | Kilde | Resultat |
+|---|---|---|
+| 812 formplaner ryddet | `select count(*) from backup_4294_rider_peak_plans` | 812 rækker, præcis |
+| Ingen forældreløse tilbage | `rider_peak_plans` join `seasons` hvor `number=3` | 403 planer, 0 uden målløb |
+| De tre GT'er har 2 hviledage hver | `race_stage_schedule.game_day` pr. GT | Giro 0-19 (18 etaper), Tour 28-46 (17), Vuelta 53-71 (17) |
+| Seks navngivne løb på hviledagene | join på `game_day` + samme `league_division_id` | Præcis ét D1-løb pr. huldag, alle seks navne bekræftet |
+| Auto-udtagelse fylder for hold der ikke har rørt løbet | `raceRunner.js:824-847` (`fillMissingTeamEntries`) | Bekræftet i koden |
+| Rydning bliver respekteret | `race_entry_clears` + `raceRunner.js:835` | 12 rækker i S3, fordelt på 1 hold |
+| Felt-cap på 24 hold rammer ikke nogen | `teams` grupperet på `league_division_id` | Ingen pulje har over 24 hold |
+
+### Citater
+
+Alle syv spillercitater i afsnit D er hentet ordret via Discord-MCP fra guild
+1504615050831466669. Tidsstempler er konverteret fra UTC til dansk tid. Ingen af dem er
+omskrevet, forkortet eller gengivet efter hukommelsen.
+
+### Fjernet fordi det ikke kunne efterprøves
+
+Første version skrev i patch note-udkastet at et holds belastnings-snit *"viste 18,1 hvor det
+sande tal var 4,9"*. De tal stammer fra handoff-dokumentet, ikke fra min egen måling, og den
+faktiske patch note i `patchNotes.js` indeholder dem ikke. Taget ud frem for at gengive et tal
+jeg ikke selv har regnet.
+
+### De to sætninger der er dine, ikke mine
+
+1. *"Nothing more is being regenerated"* i afsnit A. Et løfte om fremtidig adfærd. Kan ikke
+   måles. Se noten i afsnit A.
+2. Ordet *"deliberate"* om GT-hviledags-bindingen. Det hviler på #4217 og dit eget citat
+   derfra, ikke på en måling. Jeg mener det er dækkende, men det er din regel at beskrive.
+
+### Stadig ubesvaret, og bevidst ikke gættet på
+
+egomadsens peak-mål-rapport, egomadsens fire træningsspørgsmål, og jeppeks ryttertal. Jeg har
+ikke skrevet udkast til nogen af de tre. Se afsnit D5, D6 og løse ender.
